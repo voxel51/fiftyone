@@ -85,6 +85,34 @@ export class ByteClientReadable implements McapTypes.IReadable {
 }
 
 function sourceSizeBytes(source: ByteSourceDescriptor): bigint | undefined {
-  const sizeBytes = source.sizeBytes ?? source.fingerprint?.sizeBytes;
-  return sizeBytes === undefined ? undefined : BigInt(sizeBytes);
+  const sizeBytes: unknown = source.sizeBytes ?? source.fingerprint?.sizeBytes;
+  if (sizeBytes === undefined) {
+    return undefined;
+  }
+
+  // Bad sample metadata should make the MCAP reader fall back to unknown-size
+  // reads, not crash before it can ask the byte client for data.
+  if (typeof sizeBytes === "number") {
+    if (!Number.isFinite(sizeBytes) || sizeBytes < 0) {
+      return undefined;
+    }
+
+    const integerSizeBytes = Math.floor(sizeBytes);
+    return Number.isSafeInteger(integerSizeBytes)
+      ? BigInt(integerSizeBytes)
+      : undefined;
+  }
+  if (typeof sizeBytes !== "string") {
+    return undefined;
+  }
+
+  if (!/^\d+$/.test(sizeBytes)) {
+    return undefined;
+  }
+
+  try {
+    return BigInt(sizeBytes);
+  } catch {
+    return undefined;
+  }
 }

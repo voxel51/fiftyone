@@ -54,11 +54,11 @@ export const foxgloveCompressedImageDecoder: Decoder = {
 };
 
 function mimeTypeFromFormat(format: string): string | undefined {
-  if (!format || format === "unknown") {
+  const lowerFormat = format.trim().toLowerCase();
+  if (!lowerFormat || lowerFormat === "unknown") {
     return undefined;
   }
 
-  const lowerFormat = format.toLowerCase();
   const normalized = lowerFormat === "jpg" ? "jpeg" : lowerFormat;
   return normalized.startsWith("image/") ? normalized : `image/${normalized}`;
 }

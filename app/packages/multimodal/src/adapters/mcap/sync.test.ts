@@ -52,6 +52,24 @@ describe("MCAP sync policy selection", () => {
     expect(window.messagesByTopic["/lidar"]?.[0]?.timelineTimeNs).toBe(108n);
     expect(window.messagesByTopic["/pose"]?.[0]?.timelineTimeNs).toBe(100n);
   });
+
+  it("rejects fractional and non-finite stream limits", () => {
+    for (const limit of [1.5, Number.NaN]) {
+      expect(() =>
+        createWindowBounds({
+          timeNs: 100n,
+          streamPolicies: {
+            "/camera": {
+              limit,
+            },
+          },
+          topics: ["/camera"],
+        })
+      ).toThrow(
+        "MCAP sync policy for /camera must request a positive integer frame limit"
+      );
+    }
+  });
 });
 
 function createDecodedMessage(

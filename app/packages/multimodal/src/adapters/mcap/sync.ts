@@ -241,9 +241,9 @@ function resolveStreamSyncPolicy(
 ): McapResolvedStreamSyncPolicy {
   const mode = normalizePlaybackSyncMode(policy?.mode);
   const limit = policy?.limit ?? DEFAULT_STREAM_SYNC_LIMIT;
-  if (limit < 1) {
+  if (!Number.isFinite(limit) || !Number.isInteger(limit) || limit < 1) {
     throw new Error(
-      `MCAP sync policy for ${topic} must request at least one frame`
+      `MCAP sync policy for ${topic} must request a positive integer frame limit`
     );
   }
 

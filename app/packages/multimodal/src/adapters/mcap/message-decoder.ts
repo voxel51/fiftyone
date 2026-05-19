@@ -85,10 +85,25 @@ export async function decodeMcapMessage({
 export function mcapMessageRecordId(
   message: McapTypes.TypedMcapRecords["Message"]
 ): string {
+  // Channel/time/sequence are the intended identity, but malformed or merged
+  // streams can reuse them. Include payload shape so decode caches stay honest.
   return [
     message.channelId.toString(),
     message.logTime.toString(),
     message.publishTime.toString(),
     message.sequence.toString(),
+    message.data.byteLength.toString(),
+    hashMessageData(message.data),
   ].join(":");
+}
+
+function hashMessageData(data: Uint8Array): string {
+  // FNV-1a is tiny, deterministic, fast; this only guards local cache keys
+  let hash = 0x811c9dc5;
+  for (const byte of data) {
+    hash ^= byte;
+    hash = Math.imul(hash, 0x01000193);
+  }
+
+  return (hash >>> 0).toString(16).padStart(8, "0");
 }

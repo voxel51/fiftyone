@@ -67,6 +67,30 @@ describe("Foxglove decoders", () => {
     expect(output.visualization.mimeType).toBe("image/jpeg");
   });
 
+  it("normalizes whitespace and unknown compressed image formats", () => {
+    const jpeg = foxgloveCompressedImageDecoder.decode(
+      compressedImageMessage(" JPG "),
+      {
+        schemaData: COMPRESSED_IMAGE_FIXTURE.schemaData,
+      }
+    );
+    const unknown = foxgloveCompressedImageDecoder.decode(
+      compressedImageMessage(" UNKNOWN "),
+      {
+        schemaData: COMPRESSED_IMAGE_FIXTURE.schemaData,
+      }
+    );
+
+    if (
+      jpeg.visualization?.kind !== VISUALIZATION_KIND.ENCODED_IMAGE ||
+      unknown.visualization?.kind !== VISUALIZATION_KIND.ENCODED_IMAGE
+    ) {
+      throw new Error("Expected encoded image visualizations");
+    }
+    expect(jpeg.visualization.mimeType).toBe("image/jpeg");
+    expect(unknown.visualization.mimeType).toBeUndefined();
+  });
+
   it("treats invalid optional bigint protobuf fields as absent", () => {
     expect(optionalBigInt({ seconds: "not-a-number" }, "seconds")).toBe(
       undefined

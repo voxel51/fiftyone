@@ -350,20 +350,31 @@ async function resolveRawCandidateForIndexedMessage({
     rawReadCache.set(key, rawCandidates);
   }
 
-  const rawCandidate = (await rawCandidates).find(
+  // The index gives us channel + log time, not a full raw-message identity.
+  // If multiple raw messages match, picking the first would decode arbitrary data.
+  const matches = (await rawCandidates).filter(
     (raw) =>
       raw.message.channelId === candidate.channelId &&
       raw.message.logTime === candidate.logTimeNs
   );
-  if (!rawCandidate) {
+  if (matches.length === 0) {
     throw new Error(
-      `Missing MCAP message for indexed ${
+      `Missing MCAP message for indexed ${candidate.topic} entry with channel ${
+        candidate.channelId
+      } at ${candidate.logTimeNs.toString()}`
+    );
+  }
+  if (matches.length > 1) {
+    throw new Error(
+      `Ambiguous MCAP indexed-to-raw match for ${
         candidate.topic
-      } entry at ${candidate.logTimeNs.toString()}`
+      } entry with channel ${
+        candidate.channelId
+      } at ${candidate.logTimeNs.toString()}`
     );
   }
 
-  return rawCandidate;
+  return matches[0];
 }
 
 async function collectRawCandidatesForIndexedLookup({

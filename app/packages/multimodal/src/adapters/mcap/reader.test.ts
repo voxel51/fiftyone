@@ -7,6 +7,7 @@ import {
   readIndexedMessageTimesForReader,
   type McapIndexedReaderLike,
 } from "./reader";
+import { ByteClientReadable } from "./reader/byte-readable";
 
 const MCAP_CHUNK_OPCODE = 0x06;
 const MCAP_MESSAGE_INDEX_OPCODE = 0x07;
@@ -139,12 +140,48 @@ describe("MCAP indexed message times", () => {
     expect(entries.map((entry) => entry.logTimeNs)).toEqual([20n]);
   });
 
+  it("ignores non-integer indexed message limits", async () => {
+    const index = createMessageIndexRecord(7, [[10n, 1n]]);
+    const offset = 64n;
+    const { readable, reads } = createReadable([{ bytes: index, offset }]);
+    const reader = createReader({
+      chunkIndexes: [
+        createChunkIndex({
+          messageEndTime: 10n,
+          messageIndexLength: BigInt(index.byteLength),
+          messageIndexOffsets: new Map([[7, offset]]),
+          messageStartTime: 10n,
+        }),
+      ],
+    });
+
+    await expect(
+      collect(
+        readIndexedMessageTimesForReader(reader, readable, {
+          limit: 1.5,
+          topics: ["/camera"],
+        })
+      )
+    ).resolves.toEqual([]);
+    expect(reads).toEqual([]);
+  });
+
   it("rejects malformed message index records", () => {
     const bytes = createMessageIndexRecord(7, [[10n, 1n]]);
     bytes[0] = MCAP_CHUNK_OPCODE;
 
     expect(() => parseMcapMessageIndexRecord(bytes)).toThrow(
       "Expected MCAP MessageIndex record"
+    );
+  });
+
+  it("rejects message index records with leftover content bytes", () => {
+    const bytes = messageIndexRecordWithExtraContentByte(
+      createMessageIndexRecord(7, [[10n, 1n]])
+    );
+
+    expect(() => parseMcapMessageIndexRecord(bytes)).toThrow(
+      "MCAP MessageIndex records byte range mismatch"
     );
   });
 
@@ -173,6 +210,35 @@ describe("MCAP indexed message times", () => {
     );
 
     expect(readerFactory).toHaveBeenCalledTimes(2);
+  });
+
+  it("ignores malformed source sizes before byte reads", async () => {
+    const readBytes = vi.fn(
+      async (request: Parameters<ByteResourceClient["readBytes"]>[0]) => ({
+        bytes: new Uint8Array([1]),
+        range: request.range,
+        source: request.source,
+      })
+    );
+    const readable = new ByteClientReadable(
+      {
+        sizeBytes: "not-a-number",
+        sourceId: "source:1",
+        url: "mcap-source://sample",
+      },
+      { readBytes }
+    );
+
+    await expect(readable.read(128n, 1n)).resolves.toEqual(new Uint8Array([1]));
+    expect(readBytes).toHaveBeenCalledWith({
+      cachePolicy: undefined,
+      range: { length: 1n, offset: 128n },
+      source: {
+        sizeBytes: "not-a-number",
+        sourceId: "source:1",
+        url: "mcap-source://sample",
+      },
+    });
   });
 });
 
@@ -271,6 +337,17 @@ function createMessageIndexRecord(
     view.setBigUint64(offset + 8, messageOffset, true);
     offset += 16;
   }
+
+  return bytes;
+}
+
+function messageIndexRecordWithExtraContentByte(
+  record: Uint8Array
+): Uint8Array {
+  const bytes = new Uint8Array(record.byteLength + 1);
+  bytes.set(record);
+  const view = new DataView(bytes.buffer);
+  view.setBigUint64(1, view.getBigUint64(1, true) + 1n, true);
 
   return bytes;
 }

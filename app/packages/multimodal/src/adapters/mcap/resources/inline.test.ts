@@ -207,7 +207,7 @@ describe("MCAP resources", () => {
       bytes: messageBytes,
       cache: {
         decoderOptionsKey: "activeTimeline=log",
-        recordId: "7:100:101:2",
+        recordId: expect.stringMatching(/^7:100:101:2:3:[0-9a-f]{8}$/),
         source,
         streamId: "/topic",
         timeNs: 100n,
@@ -227,6 +227,30 @@ describe("MCAP resources", () => {
         schemaEncoding: "protobuf",
       },
     });
+  });
+
+  it("does not decode messages when the decoded-message limit is invalid", async () => {
+    const decodeClient = createTestDecodeClient();
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient,
+      readerFactory: vi.fn(async () =>
+        createReader({
+          messages: [createMessage(new Uint8Array([1]))],
+        })
+      ),
+    });
+
+    await expect(
+      collect(
+        client.readDecodedMessages({
+          limit: 0,
+          source: createMcapSourceDescriptor(),
+          topics: ["/topic"],
+        })
+      )
+    ).resolves.toEqual([]);
+    expect(decodeClient.decode).not.toHaveBeenCalled();
   });
 
   it("reads synchronized playback batches with one raw scan and shared decode work", async () => {
@@ -287,6 +311,45 @@ describe("MCAP resources", () => {
       windows[1]?.messages.map((message) => message.timelineTimeNs)
     ).toEqual([90n, 108n]);
     expect(readMessages).toHaveBeenCalledTimes(1);
+    expect(decodeClient.decode).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps synchronized decode cache entries distinct for changed payloads", async () => {
+    const source = createMcapSourceDescriptor();
+    const messages = [
+      createMessage(new Uint8Array([1]), {
+        logTime: 100n,
+        publishTime: 101n,
+        sequence: 2,
+      }),
+      createMessage(new Uint8Array([2]), {
+        logTime: 100n,
+        publishTime: 101n,
+        sequence: 2,
+      }),
+    ];
+    const decodeClient = createTestDecodeClient();
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient,
+      readerFactory: vi.fn(async () =>
+        createReader({
+          messages,
+        })
+      ),
+    });
+
+    const windows = await client.readSynchronizedMessageBatch({
+      timeNs: [100n],
+      source,
+      defaultStreamPolicy: {
+        limit: 2,
+        mode: PlaybackSyncMode.STRICT,
+      },
+      topics: ["/topic"],
+    });
+
+    expect(windows[0]?.messages).toHaveLength(2);
     expect(decodeClient.decode).toHaveBeenCalledTimes(2);
   });
 
@@ -373,6 +436,48 @@ describe("MCAP resources", () => {
       { endTime: 108n, startTime: 108n, topics: ["/lidar"] },
     ]);
     expect(decodeClient.decode).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects ambiguous indexed-to-raw message matches", async () => {
+    const source = createMcapSourceDescriptor();
+    const first = createMessage(new Uint8Array([1]), {
+      logTime: 90n,
+      publishTime: 91n,
+    });
+    const second = createMessage(new Uint8Array([2]), {
+      logTime: 90n,
+      publishTime: 92n,
+    });
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      yield createIndexedMessageTime("/topic", 7, 90n, 900n);
+    });
+    const readMessages = vi.fn(async function* () {
+      yield first;
+      yield second;
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          readIndexedMessageTimes,
+          readMessages,
+        })
+      ),
+    });
+
+    await expect(
+      client.readSynchronizedMessageBatch({
+        timeNs: [90n],
+        source,
+        defaultStreamPolicy: {
+          mode: PlaybackSyncMode.STRICT,
+        },
+        topics: ["/topic"],
+      })
+    ).rejects.toThrow(
+      "Ambiguous MCAP indexed-to-raw match for /topic entry with channel 7 at 90"
+    );
   });
 
   it("returns empty synchronized batches without opening a reader", async () => {

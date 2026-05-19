@@ -18,6 +18,8 @@ const MESSAGE_INDEX_RECORD_READER_OPTIONS: NonNullable<
   // CRC validation only applies to chunk/attachment data, not MessageIndex records.
   validateCrcs: false,
 };
+const MCAP_RECORD_HEADER_BYTES = 9;
+const MESSAGE_INDEX_CONTENT_HEADER_BYTES = 6;
 
 /**
  * Reads ordered MCAP message times directly from chunk message-index records.
@@ -27,7 +29,12 @@ export async function* readIndexedMessageTimesForReader(
   readable: McapTypes.IReadable,
   args: McapReadIndexedMessageTimesRequest = {}
 ): AsyncGenerator<McapIndexedMessageTime, void, void> {
-  if (args.limit !== undefined && args.limit <= 0) {
+  if (
+    args.limit !== undefined &&
+    (!Number.isFinite(args.limit) ||
+      !Number.isInteger(args.limit) ||
+      args.limit <= 0)
+  ) {
     return;
   }
 
@@ -134,11 +141,44 @@ export function parseMcapMessageIndexRecord(
       `MCAP MessageIndex byte range has ${reader.bytesRemaining()} trailing bytes`
     );
   }
+  assertMessageIndexRecordsFillRecord(bytes);
 
   return {
     channelId: record.channelId,
     records: record.records,
   };
+}
+
+function assertMessageIndexRecordsFillRecord(bytes: Uint8Array) {
+  if (bytes.byteLength < MCAP_RECORD_HEADER_BYTES) {
+    return;
+  }
+
+  // @mcap/core validates that it can parse a MessageIndex, but it can still
+  // accept a record whose declared content has bytes after the records array.
+  // Re-read the record header here so missing/extra record bytes fail loudly.
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const recordLength = view.getBigUint64(1, true);
+  if (recordLength > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new Error(
+      "MCAP MessageIndex record length exceeds safe number range"
+    );
+  }
+
+  const recordEnd = MCAP_RECORD_HEADER_BYTES + Number(recordLength);
+  const recordsStart =
+    MCAP_RECORD_HEADER_BYTES + MESSAGE_INDEX_CONTENT_HEADER_BYTES;
+  if (recordEnd < recordsStart) {
+    throw new Error("MCAP MessageIndex record content is incomplete");
+  }
+
+  const recordsByteLength = view.getUint32(MCAP_RECORD_HEADER_BYTES + 2, true);
+  const recordsEnd = recordsStart + recordsByteLength;
+  if (recordsEnd !== recordEnd) {
+    throw new Error(
+      `MCAP MessageIndex records byte range mismatch: recordsStart=${recordsStart}, recordsEnd=${recordsEnd}, recordsByteLength=${recordsByteLength}, recordEnd=${recordEnd}, MCAP_RECORD_HEADER_BYTES=${MCAP_RECORD_HEADER_BYTES}, MESSAGE_INDEX_CONTENT_HEADER_BYTES=${MESSAGE_INDEX_CONTENT_HEADER_BYTES}`
+    );
+  }
 }
 
 async function readChunkIndexedMessageTimes({

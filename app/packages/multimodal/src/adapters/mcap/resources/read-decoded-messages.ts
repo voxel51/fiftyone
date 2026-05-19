@@ -22,6 +22,17 @@ export async function* readMcapDecodedMessages({
   readonly request: McapReadDecodedMessagesRequest;
   readonly timeline: McapTimelineStrategy;
 }): AsyncGenerator<McapDecodedMessage, void, void> {
+  // Validate before the read/decode loop so bad limits do not decode one item
+  // just to discard it afterward.
+  if (
+    request.limit !== undefined &&
+    (!Number.isFinite(request.limit) ||
+      !Number.isInteger(request.limit) ||
+      request.limit <= 0)
+  ) {
+    return;
+  }
+
   let count = 0;
   const { endTime, startTime } = timeline.messageReadRange({
     endTimeNs: request.endTimeNs,
@@ -33,6 +44,10 @@ export async function* readMcapDecodedMessages({
     startTime,
     topics: request.topics,
   })) {
+    if (request.limit !== undefined && count >= request.limit) {
+      return;
+    }
+
     const decodedMessage = await decodeMcapMessage({
       decodeClient,
       message,
@@ -49,6 +64,10 @@ export async function* readMcapDecodedMessages({
       )
     ) {
       continue;
+    }
+
+    if (request.limit !== undefined && count >= request.limit) {
+      return;
     }
 
     yield decodedMessage;
