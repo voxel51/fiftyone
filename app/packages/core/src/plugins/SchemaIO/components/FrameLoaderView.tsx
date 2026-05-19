@@ -66,7 +66,7 @@ export default function FrameLoaderView(props: ViewPropsType) {
     [triggerEvent, on_load_range, localIdRef.current]
   );
 
-  const [currentFrame, setCurrentFrame] = useState(DEFAULT_FRAME_NUMBER);
+  const [_currentFrame, setCurrentFrame] = useState(DEFAULT_FRAME_NUMBER);
 
   const myRenderFrame = React.useCallback(
     (frameNumber: number) => {
