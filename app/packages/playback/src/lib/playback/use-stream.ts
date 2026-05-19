@@ -1,6 +1,7 @@
 import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { usePlayback } from "./PlaybackProvider";
+import { usePlaybackStore } from "./playback-store-context";
 import { streamValueAtom } from "./atoms";
 
 /**
@@ -21,8 +22,17 @@ import { streamValueAtom } from "./atoms";
  */
 export function useStream<T = unknown>(id: string): T | null {
   const { subscribeStream } = usePlayback();
+  const store = usePlaybackStore();
 
-  useEffect(() => subscribeStream(id), [id, subscribeStream]);
+  // subscribeStream is a stable action; an empty id is a no-op subscription
+  // (the engine never has a stream registered under "") — skip the work.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!id) return undefined;
+    return subscribeStream(id);
+  }, [id]);
 
-  return useAtomValue(streamValueAtom(id)) as T | null;
+  // Target the playback store explicitly — see `playback-store-context.ts`
+  // for why we can't rely on Jotai's nearest-provider lookup.
+  return useAtomValue(streamValueAtom(id), { store }) as T | null;
 }

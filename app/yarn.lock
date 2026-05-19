@@ -3483,6 +3483,7 @@ __metadata:
   resolution: "@fiftyone/playback@workspace:packages/playback"
   dependencies:
     "@eslint/compat": "npm:^1.1.1"
+    "@fiftyone/tiling": "npm:*"
     "@voxel51/voodo": "npm:^0.0.30"
     eslint: "npm:9.7.0"
     eslint-plugin-react: "npm:^7.35.0"
@@ -3599,7 +3600,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/tiling@workspace:packages/tiling":
+"@fiftyone/tiling@npm:*, @fiftyone/tiling@workspace:packages/tiling":
   version: 0.0.0-use.local
   resolution: "@fiftyone/tiling@workspace:packages/tiling"
   dependencies:

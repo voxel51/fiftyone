@@ -7,14 +7,14 @@ import {
   PLAYHEAD_STATE_PAUSED,
   PLAYHEAD_STATE_PLAYING,
   PlayheadState,
-} from "../lib/constants";
-import { TimelineName } from "../lib/timeline/state";
-import { convertFrameNumberToPercentage } from "../lib/timeline/use-timeline-viz-utils";
-import { getGradientStringForSeekbar } from "../lib/timeline/utils";
-import BufferingIcon from "./svgs/buffering.svg?react";
-import PauseIcon from "./svgs/pause.svg?react";
-import PlayIcon from "./svgs/play.svg?react";
-import SpeedIcon from "./svgs/speed.svg?react";
+} from "../../lib/constants";
+import { TimelineName } from "../../lib/timeline/state";
+import { convertFrameNumberToPercentage } from "../../lib/timeline/use-timeline-viz-utils";
+import { getGradientStringForSeekbar } from "../../lib/timeline/utils";
+import BufferingIcon from "../svgs/buffering.svg?react";
+import PauseIcon from "../svgs/pause.svg?react";
+import PlayIcon from "../svgs/play.svg?react";
+import SpeedIcon from "../svgs/speed.svg?react";
 interface PlayheadProps {
   status: PlayheadState;
   timelineName: TimelineName;
@@ -88,14 +88,14 @@ export const Seekbar = React.forwardRef<
         convertFrameNumberToPercentage(buffer[1], totalFrames),
       ] as BufferRange;
     });
-  }, [loaded]);
+  }, [loaded, totalFrames]);
 
   const loadingScaled = React.useMemo(() => {
     return [
       convertFrameNumberToPercentage(loading[0], totalFrames),
       convertFrameNumberToPercentage(loading[1], totalFrames),
     ] as BufferRange;
-  }, [loading]);
+  }, [loading, totalFrames]);
 
   const gradientString = React.useMemo(
     () =>
@@ -175,14 +175,14 @@ export const Speed = React.forwardRef<
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setSpeed(parseFloat(e.target.value));
     },
-    []
+    [setSpeed]
   );
 
   const rangeValue = React.useMemo(() => (speed / 2) * 100, [speed]);
 
   const resetSpeed = React.useCallback(() => {
     setSpeed(1);
-  }, []);
+  }, [setSpeed]);
 
   return (
     <TimelineElementContainer

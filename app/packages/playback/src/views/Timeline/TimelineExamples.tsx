@@ -1,9 +1,9 @@
 import { BufferRange } from "@fiftyone/utilities";
 import React from "react";
-import { DEFAULT_FRAME_NUMBER } from "../lib/constants";
-import { useCreateTimeline } from "../lib/timeline/use-create-timeline";
-import { useDefaultTimelineNameImperative } from "../lib/timeline/use-default-timeline-name";
-import { useTimeline } from "../lib/timeline/use-timeline";
+import { DEFAULT_FRAME_NUMBER } from "../../lib/constants";
+import { useCreateTimeline } from "../../lib/timeline/use-create-timeline";
+import { useDefaultTimelineNameImperative } from "../../lib/timeline/use-default-timeline-name";
+import { useTimeline } from "../../lib/timeline/use-timeline";
 import { Timeline } from "./Timeline";
 
 /**
@@ -60,7 +60,7 @@ export const TimelineCreator = () => {
   const { getName } = useDefaultTimelineNameImperative();
   const timelineName = React.useMemo(() => getName(), [getName]);
 
-  const loadRange = React.useCallback(async (_range: BufferRange) => {
+  const loadRange = React.useCallback(async (range: BufferRange) => {
     return new Promise<void>((resolve) => {
       setTimeout(() => {
         resolve();
@@ -113,7 +113,7 @@ export const TimelineSubscriber1 = () => {
   const [myLocalFrameNumber, setMyLocalFrameNumber] =
     React.useState(DEFAULT_FRAME_NUMBER);
 
-  const loadRange = React.useCallback(async (_range: BufferRange) => {
+  const loadRange = React.useCallback(async (range: BufferRange) => {
     // no-op for now, but maybe for testing, i can resolve a promise inside settimeout
   }, []);
 
@@ -121,7 +121,7 @@ export const TimelineSubscriber1 = () => {
     setMyLocalFrameNumber(frameNumber);
   }, []);
 
-  const { subscribe, isTimelineInitialized } = useTimeline();
+  const { subscribe, isTimelineInitialized, getFrameNumber } = useTimeline();
 
   React.useEffect(() => {
     if (!isTimelineInitialized) {
@@ -156,7 +156,7 @@ export const TimelineSubscriber2 = () => {
   const [myLocalFrameNumber, setMyLocalFrameNumber] =
     React.useState(DEFAULT_FRAME_NUMBER);
 
-  const loadRange = React.useCallback(async (_range: BufferRange) => {
+  const loadRange = React.useCallback(async (range: BufferRange) => {
     // no-op for now, but maybe for testing, i can resolve a promise inside settimeout
   }, []);
 

@@ -3,6 +3,12 @@
 // through these instead of calling `useAtomValue(...)` directly — keeps
 // jotai out of the view layer and gives us one place to evolve the
 // reactive read story (memoization, derived state, dev warnings, …).
+//
+// Every hook reads through `usePlaybackStore()` and targets that store
+// explicitly via `useAtomValue(atom, { store })`. That way the playback
+// atoms always resolve to the surrounding `<PlaybackProvider>`'s store
+// regardless of any other Jotai `<Provider>` (e.g. TilingProvider's)
+// nested between the provider and the consumer.
 // ---------------------------------------------------------------------------
 
 import { useAtomValue } from "jotai";
@@ -20,10 +26,12 @@ import {
   viewEndAtom,
   viewStartAtom,
 } from "./atoms";
+import { usePlaybackStore } from "./playback-store-context";
 
 /** Visual playhead position in seconds — updates every RAF tick + on scrub. */
 export function usePlayhead(): number {
-  return useAtomValue(playheadAtom);
+  const store = usePlaybackStore();
+  return useAtomValue(playheadAtom, { store });
 }
 
 /**
@@ -31,48 +39,58 @@ export function usePlayhead(): number {
  * `usePlayhead()` while buffering — use this to drive data, not visuals.
  */
 export function useCurrentTime(): number {
-  return useAtomValue(currentTimeAtom);
+  const store = usePlaybackStore();
+  return useAtomValue(currentTimeAtom, { store });
 }
 
 export function useIsPlaying(): boolean {
-  return useAtomValue(isPlayingAtom);
+  const store = usePlaybackStore();
+  return useAtomValue(isPlayingAtom, { store });
 }
 
 export function useIsBuffering(): boolean {
-  return useAtomValue(isBufferingAtom);
+  const store = usePlaybackStore();
+  return useAtomValue(isBufferingAtom, { store });
 }
 
 /** Live duration (max of registered streams, or the provider's fallback). */
 export function useDuration(): number {
-  return useAtomValue(durationAtom);
+  const store = usePlaybackStore();
+  return useAtomValue(durationAtom, { store });
 }
 
 /** Live step interval (min of registered streams, or the provider's fallback). */
 export function useStepInterval(): number {
-  return useAtomValue(stepIntervalAtom);
+  const store = usePlaybackStore();
+  return useAtomValue(stepIntervalAtom, { store });
 }
 
 /** Left edge of the visible timeline window, in seconds. */
 export function useViewStart(): number {
-  return useAtomValue(viewStartAtom);
+  const store = usePlaybackStore();
+  return useAtomValue(viewStartAtom, { store });
 }
 
 /** Right edge of the visible timeline window, in seconds. */
 export function useViewEnd(): number {
-  return useAtomValue(viewEndAtom);
+  const store = usePlaybackStore();
+  return useAtomValue(viewEndAtom, { store });
 }
 
 export function useLoopStart(): number {
-  return useAtomValue(loopStartAtom);
+  const store = usePlaybackStore();
+  return useAtomValue(loopStartAtom, { store });
 }
 
 export function useLoopEnd(): number {
-  return useAtomValue(loopEndAtom);
+  const store = usePlaybackStore();
+  return useAtomValue(loopEndAtom, { store });
 }
 
 /** Playback speed multiplier. 1.0 = normal. */
 export function useSpeed(): number {
-  return useAtomValue(speedAtom);
+  const store = usePlaybackStore();
+  return useAtomValue(speedAtom, { store });
 }
 
 /**
@@ -81,5 +99,6 @@ export function useSpeed(): number {
  * repeats, so consumers can re-fire on every event.
  */
 export function useSeekEvent(): { time: number; seq: number } | null {
-  return useAtomValue(seekEventAtom);
+  const store = usePlaybackStore();
+  return useAtomValue(seekEventAtom, { store });
 }

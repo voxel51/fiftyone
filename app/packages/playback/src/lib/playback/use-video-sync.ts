@@ -1,6 +1,7 @@
-import { useAtomValue, useSetAtom, useStore } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, type RefObject } from "react";
 import { currentTimeAtom, isPlayingAtom, playheadAtom } from "./atoms";
+import { usePlaybackStore } from "./playback-store-context";
 
 /**
  * Seek tolerance in seconds. If the playhead and the video's currentTime
@@ -20,17 +21,20 @@ const SEEK_TOLERANCE_S = 0.15;
  *   `currentTimeAtom` so the rest of the UI follows the video's natural
  *   playback rate.
  *
- * Pass the ref of a `<video>` element. The hook reads the nearest
- * Jotai store from the surrounding `PlaybackProvider`.
+ * Pass the ref of a `<video>` element. Every atom read/write and the
+ * `store.sub` subscription below target the playback store explicitly
+ * via `usePlaybackStore()` — we can't rely on Jotai's nearest-Provider
+ * lookup because `<PlaybackProvider>` deliberately doesn't mount one
+ * (see `playback-store-context.ts`).
  */
 export function useVideoSync(
   videoRef: RefObject<HTMLVideoElement | null>
 ): void {
-  const isPlaying = useAtomValue(isPlayingAtom);
-  const setPlayhead = useSetAtom(playheadAtom);
-  const setCurrentTime = useSetAtom(currentTimeAtom);
-  const setIsPlaying = useSetAtom(isPlayingAtom);
-  const store = useStore();
+  const store = usePlaybackStore();
+  const isPlaying = useAtomValue(isPlayingAtom, { store });
+  const setPlayhead = useSetAtom(playheadAtom, { store });
+  const setCurrentTime = useSetAtom(currentTimeAtom, { store });
+  const setIsPlaying = useSetAtom(isPlayingAtom, { store });
 
   // play / pause
   useEffect(() => {
