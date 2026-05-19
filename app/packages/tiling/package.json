@@ -1,5 +1,6 @@
 {
     "name": "@fiftyone/tiling",
+    "version": "0.1.0",
     "main": "./src/index.ts",
     "types": "./src/index.ts",
     "packageManager": "yarn@4.9.1",
