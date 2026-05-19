@@ -1,28 +1,26 @@
 import { cleanup, render } from "@testing-library/react";
-import { useSetAtom } from "jotai";
 import React, { useEffect } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
+import { usePlaybackStore } from "../../lib/playback/playback-store-context";
 import { viewEndAtom, viewStartAtom } from "../../lib/playback/atoms";
 import LoopOverlays from "./LoopOverlays";
 import styles from "./LoopOverlays.module.css";
 
 /**
  * Drives the view atoms (no provider-prop shortcut for view bounds).
- * Writes the atoms directly rather than going through `usePlayback().setView`,
- * because the public setter rejects inverted/collapsed windows — and the
- * "zero-width view" tests below need to put the engine into exactly that
- * state to exercise the components' internal defensive paths.
+ * Writes the playback store's view atoms directly rather than going
+ * through `usePlayback().setView`, because the public setter rejects
+ * inverted/collapsed windows — and the "zero-width view" tests below
+ * need to put the engine into exactly that state to exercise the
+ * components' internal defensive paths.
  */
 function ViewSetter({ start, end }: { start: number; end: number }) {
-  const setViewStart = useSetAtom(viewStartAtom);
-  const setViewEnd = useSetAtom(viewEndAtom);
-  // Jotai setters are referentially stable — not in deps by design.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const store = usePlaybackStore();
   useEffect(() => {
-    setViewStart(start);
-    setViewEnd(end);
-  }, [start, end]);
+    store.set(viewStartAtom, start);
+    store.set(viewEndAtom, end);
+  }, [store, start, end]);
   return null;
 }
 

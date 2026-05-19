@@ -2,7 +2,11 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useAtomValue } from "jotai";
 import { useEffect, useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { PlaybackProvider, usePlayback } from "../../lib/playback/PlaybackProvider";
+import {
+  PlaybackProvider,
+  usePlayback,
+  usePlaybackStore,
+} from "../../lib/playback/PlaybackProvider";
 import {
   viewEndAtom,
   viewStartAtom,
@@ -13,8 +17,9 @@ import styles from "./TimelineRuler.module.css";
 // Renders the current view window to the DOM so tests can assert on
 // post-action atom state without touching the store directly.
 function ViewReadout() {
-  const vs = useAtomValue(viewStartAtom);
-  const ve = useAtomValue(viewEndAtom);
+  const store = usePlaybackStore();
+  const vs = useAtomValue(viewStartAtom, { store });
+  const ve = useAtomValue(viewEndAtom, { store });
   return <span data-testid="view">{`${vs.toFixed(3)} / ${ve.toFixed(3)}`}</span>;
 }
 

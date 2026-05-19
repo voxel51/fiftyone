@@ -2,7 +2,11 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { PlaybackProvider, usePlayback } from "../../lib/playback/PlaybackProvider";
+import {
+  PlaybackProvider,
+  usePlayback,
+  usePlaybackStore,
+} from "../../lib/playback/PlaybackProvider";
 import { playheadAtom } from "../../lib/playback/atoms";
 import TimelineTrack, { TimelineTrackProps } from "./TimelineTrack";
 import styles from "./TimelineTrack.module.css";
@@ -12,7 +16,8 @@ import styles from "./TimelineTrack.module.css";
  * touching the store directly.
  */
 function PlayheadReadout() {
-  const t = useAtomValue(playheadAtom);
+  const store = usePlaybackStore();
+  const t = useAtomValue(playheadAtom, { store });
   return <span data-testid="playhead">{t.toFixed(3)}</span>;
 }
 

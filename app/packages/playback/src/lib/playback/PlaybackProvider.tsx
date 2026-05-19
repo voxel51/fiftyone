@@ -1,5 +1,5 @@
-import { Provider as JotaiProvider } from "jotai";
 import React, { createContext, useContext, useMemo } from "react";
+import { PlaybackStoreContext } from "./playback-store-context";
 import type { PlaybackConfig, PlaybackContextValue } from "./types";
 import { useDuration, useStepInterval } from "./use-playback-state";
 import { usePlaybackEngine } from "./use-playback-engine";
@@ -7,11 +7,11 @@ import { usePlaybackEngine } from "./use-playback-engine";
 const PlaybackContext = createContext<PlaybackContextValue | null>(null);
 
 /**
- * Renders the context inside the JotaiProvider so it can subscribe to the
- * stream-derived atoms (`durationAtom`, `stepIntervalAtom`) and surface
- * their live values on the context. Without this inner component
- * `usePlayback()` would be locked to the static prop fallbacks and
- * wouldn't reflect what streams actually report.
+ * Reads the live duration / stepInterval (which our reactive hooks pull
+ * from the playback store via the explicit-store context) and overlays
+ * them on the static base context. Without this `usePlayback()` would
+ * be locked to the provider's prop fallbacks and never reflect what
+ * registered streams report.
  */
 function PlaybackContextHost({
   baseContext,
@@ -51,12 +51,19 @@ export function PlaybackProvider({
     defaultSpeed,
   });
 
+  // We deliberately do NOT mount a Jotai `<Provider>` here. Every reactive
+  // read in this package goes through `usePlaybackStore()` and targets
+  // this store explicitly via `useAtomValue(atom, { store })`, so the
+  // Jotai-context "nearest provider wins" lookup never enters the
+  // picture. A nested `<JotaiProvider>` from another package (e.g.
+  // TilingProvider) used to shadow the playback store and silently
+  // route every read to the wrong atoms — that's the bug this avoids.
   return (
-    <JotaiProvider store={store}>
+    <PlaybackStoreContext.Provider value={store}>
       <PlaybackContextHost baseContext={contextValue}>
         {children}
       </PlaybackContextHost>
-    </JotaiProvider>
+    </PlaybackStoreContext.Provider>
   );
 }
 
@@ -72,3 +79,5 @@ export function usePlayback(): PlaybackContextValue {
   if (!ctx) throw new Error("usePlayback must be used inside <PlaybackProvider>");
   return ctx;
 }
+
+export { usePlaybackStore } from "./playback-store-context";

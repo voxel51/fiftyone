@@ -1,5 +1,5 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
-import { useAtomValue, useStore } from "jotai";
+import { useAtomValue } from "jotai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   currentTimeAtom,
@@ -13,7 +13,7 @@ import {
   viewEndAtom,
   viewStartAtom,
 } from "./atoms";
-import { PlaybackProvider, usePlayback } from "./PlaybackProvider";
+import { PlaybackProvider, usePlayback, usePlaybackStore } from "./PlaybackProvider";
 import type { PlaybackStream } from "./types";
 
 interface RenderOpts {
@@ -25,13 +25,19 @@ interface RenderOpts {
 function renderEngine(opts: RenderOpts = {}) {
   const { duration = 10, defaultLoopStart, defaultLoopEnd } = opts;
   return renderHook(
-    () => ({
-      api: usePlayback(),
-      store: useStore(),
-      playhead: useAtomValue(playheadAtom),
-      currentTime: useAtomValue(currentTimeAtom),
-      isPlaying: useAtomValue(isPlayingAtom),
-    }),
+    () => {
+      const store = usePlaybackStore();
+      return {
+        api: usePlayback(),
+        store,
+        // Playback atoms live on the PlaybackProvider's store; target it
+        // explicitly so reads still work after we stopped mounting a
+        // Jotai `<Provider>` for the playback store.
+        playhead: useAtomValue(playheadAtom, { store }),
+        currentTime: useAtomValue(currentTimeAtom, { store }),
+        isPlaying: useAtomValue(isPlayingAtom, { store }),
+      };
+    },
     {
       wrapper: ({ children }) => (
         <PlaybackProvider
@@ -418,7 +424,7 @@ describe("PlaybackProvider engine actions", () => {
 
     it("falls back to 1/30 when neither prop nor stream provides a step", () => {
       const { result } = renderHook(
-        () => ({ store: useStore() }),
+        () => ({ store: usePlaybackStore() }),
         {
           wrapper: ({ children }) => (
             <PlaybackProvider>{children}</PlaybackProvider>
