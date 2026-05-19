@@ -889,6 +889,31 @@ class TestGetYOLOEVPPredictor:
         assert isinstance(exc.value.__cause__, AttributeError)
 
 
+class TestFiftyOneYOLOEVPForwardPassPrompts:
+    """Direct tests for the extracted _forward_pass_prompts method."""
+
+    def test_returns_per_image_results_with_none_for_no_prompt(
+        self, monkeypatch
+    ):
+        result_a = object()
+        result_b = object()
+
+        def fake_predict(img, **kwargs):
+            return [result_a if img == "A" else result_b]
+
+        model = TestFiftyOneYOLOEVPVisualPrompts._make_model(
+            monkeypatch, predict=fake_predict
+        )
+        vp = {"bboxes": np.array([[0.0, 0.0, 1.0, 1.0]]), "cls": np.array([0])}
+
+        raw = model._forward_pass_prompts(
+            orig_images=["A", "B", "C"],
+            visual_prompts_list=[vp, None, vp],
+        )
+
+        assert raw == [[result_a], None, [result_b]]
+
+
 class TestFiftyOneYOLOEVPPredictAllIntegration:
     """End-to-end through build_get_item -> get_model_inputs_from_get_item ->
     predict_all."""

@@ -809,12 +809,6 @@ class FiftyOneYOLOEVPModel(FiftyOneYOLOModel):
     def _predict_all_visual_prompts(
         self, orig_images, visual_prompts_list, vp_classes_list
     ):
-        vp_predictor_cls = _get_yoloe_vp_predictor()
-        default_args = self._model.predictor.args
-        default_rect = default_args.rect
-        default_retina_masks = default_args.retina_masks
-        default_conf = default_args.conf
-
         all_labels = []
         try:
             if not (
@@ -826,16 +820,58 @@ class FiftyOneYOLOEVPModel(FiftyOneYOLOModel):
                     "orig_images, visual_prompts_list, and vp_classes_list "
                     "must have equal length"
                 )
-            # YOLOEVPSegPredictor requires per-image visual_prompts dicts,
-            # so batched prediction is not supported here.
-            for orig_img, visual_prompts, classes in zip(
-                orig_images, visual_prompts_list, vp_classes_list
-            ):
-                if visual_prompts is None:
+
+            raw_results = self._forward_pass_prompts(
+                orig_images, visual_prompts_list
+            )
+            for results, classes in zip(raw_results, vp_classes_list):
+                if results is None:
                     all_labels.append(fol.Detections())
                     continue
+                labels = self._output_processor(
+                    results,
+                    None,
+                    vp_classes=classes,
+                    confidence_thresh=self.config.confidence_thresh,
+                    classes=self.config.filter_classes,
+                )
+                if isinstance(labels, list):
+                    labels = labels[0] if labels else fol.Detections()
+                all_labels.append(labels)
+        finally:
+            self._set_predictor(self.config, self._model)
 
-                results = self._model.predict(
+        return all_labels
+
+    def _forward_pass_prompts(self, orig_images, visual_prompts_list):
+        """Per-image visual-prompt forward pass.
+
+        YOLOEVPSegPredictor requires a single ``visual_prompts`` dict per
+        image, so batched prediction is not supported here. Each image is
+        run through ``self._model.predict`` independently.
+
+        Args:
+            orig_images: a list of original images
+            visual_prompts_list: a parallel list of ``visual_prompts``
+                dicts, or ``None`` for samples with no prompts
+
+        Returns:
+            a parallel list of raw ultralytics ``Results`` lists, with
+            ``None`` entries for samples that had no prompts
+        """
+        vp_predictor_cls = _get_yoloe_vp_predictor()
+        default_args = self._model.predictor.args
+        default_rect = default_args.rect
+        default_retina_masks = default_args.retina_masks
+        default_conf = default_args.conf
+
+        raw_results = []
+        for orig_img, visual_prompts in zip(orig_images, visual_prompts_list):
+            if visual_prompts is None:
+                raw_results.append(None)
+                continue
+            raw_results.append(
+                self._model.predict(
                     orig_img,
                     visual_prompts=visual_prompts,
                     predictor=vp_predictor_cls,
@@ -849,23 +885,9 @@ class FiftyOneYOLOEVPModel(FiftyOneYOLOModel):
                     if self.config.confidence_thresh is not None
                     else default_conf,
                 )
+            )
 
-                labels = self._output_processor(
-                    results,
-                    None,
-                    vp_classes=classes,
-                    confidence_thresh=self.config.confidence_thresh,
-                    classes=self.config.filter_classes,
-                )
-
-                if isinstance(labels, list):
-                    labels = labels[0] if labels else fol.Detections()
-
-                all_labels.append(labels)
-        finally:
-            self._set_predictor(self.config, self._model)
-
-        return all_labels
+        return raw_results
 
     def build_get_item(self, field_mapping=None):
         return YOLOEVPGetItem(
