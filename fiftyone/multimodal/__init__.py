@@ -6,9 +6,8 @@ Multimodal scaffolding for shared contracts and extension points.
 |
 """
 
-from . import adapters, decoders, resolver, server
+from . import decoders, resolver, server
 from . import schemas
-from .adapters import MultimodalAdapter
 from .decoders import (
     DecodedIngestFields,
     DecodedIngestValue,
@@ -25,12 +24,10 @@ from .resolver import PlaybackPlanBuilder
 __all__ = [
     "DecodedIngestFields",
     "DecodedIngestValue",
-    "MultimodalAdapter",
     "MultimodalDecoder",
     "MultimodalPayload",
     "PayloadDescriptorKey",
     "PlaybackPlanBuilder",
-    "adapters",
     "clear_decoders",
     "decoders",
     "get_decoder",
