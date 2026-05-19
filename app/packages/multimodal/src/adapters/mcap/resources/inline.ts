@@ -1,12 +1,9 @@
 import {
   type ByteResourceClient,
-  type DecodeExecutor,
   type DecodeResourceClient,
-  type MultimodalResourcesClient,
   createMultimodalResourcesClient,
 } from "../../../client/resources";
 import { createDecodeResourceClient } from "../../../client/resources/clients";
-import type { DecoderRegistry } from "../../../decoders";
 import { createMcapDecoderRegistry } from "../decoders";
 import { readMcapDecodedMessages } from "./read-decoded-messages";
 import {
@@ -36,10 +33,7 @@ import {
 export interface CreateInlineMcapResourceClientOptions {
   readonly byteClient?: ByteResourceClient;
   readonly decodeClient?: DecodeResourceClient;
-  readonly decodeExecutor?: DecodeExecutor;
-  readonly decoderRegistry?: DecoderRegistry;
   readonly readerFactory?: McapReaderFactory;
-  readonly resources?: MultimodalResourcesClient;
 }
 
 /**
@@ -48,14 +42,13 @@ export interface CreateInlineMcapResourceClientOptions {
 export function createInlineMcapResourceClient(
   options: CreateInlineMcapResourceClientOptions = {}
 ): McapResourceClient {
-  const resources = options.resources ?? createMultimodalResourcesClient();
+  const resources = createMultimodalResourcesClient();
   const byteClient = options.byteClient ?? resources.bytes;
   const decodeClient =
     options.decodeClient ??
     createDecodeResourceClient({
       cache: resources.caches.decoded,
-      executor: options.decodeExecutor,
-      registry: options.decoderRegistry ?? createMcapDecoderRegistry(),
+      registry: createMcapDecoderRegistry(),
     });
   const readerFactory = options.readerFactory ?? createDefaultMcapReader;
   const readerStore = createMcapReaderStore({ byteClient, readerFactory });

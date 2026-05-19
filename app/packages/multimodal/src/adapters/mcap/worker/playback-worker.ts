@@ -1,9 +1,10 @@
 import { setFetchFunction } from "@fiftyone/utilities";
-import {
-  createMultimodalResourcesClient,
-  type DecodedOutputCache,
-} from "../../../client/resources";
+import type { DecodedOutputCache } from "../../../client/resources";
+import { createMultimodalResourcesClient } from "../../../client/resources";
+import { createDecodeResourceClient } from "../../../client/resources/clients";
+import { createMcapDecoderRegistry } from "../decoders";
 import { createInlineMcapResourceClient } from "../resources";
+import type { McapResourceClient } from "../types";
 import {
   isMcapPlaybackWorkerStreamRequest,
   runMcapPlaybackWorkerStreamRequest,
@@ -17,7 +18,6 @@ import type {
   McapPlaybackWorkerRpcRequest,
   McapPlaybackWorkerStreamType,
 } from "./playback-worker-types";
-import type { McapResourceClient } from "../types";
 
 type McapPlaybackWorkerScope = {
   close(): void;
@@ -149,15 +149,17 @@ function transferablesForResponse(response: McapPlaybackWorkerResponse) {
 }
 
 function createWorkerResourceClient(): McapResourceClient {
+  const resources = createMultimodalResourcesClient();
+
   return createInlineMcapResourceClient({
-    resources: createMultimodalResourcesClient({
-      caches: {
-        // Decoded visualization buffers are transferred to the UI thread.
-        // Reusing worker-cached decoded results would either return detached
-        // buffers or force extra clones, so playback-window reuse belongs on
-        // the main thread.
-        decoded: transferSafeNoopDecodedOutputCache,
-      },
+    byteClient: resources.bytes,
+    decodeClient: createDecodeResourceClient({
+      // Decoded visualization buffers are transferred to the UI thread.
+      // Reusing worker-cached decoded results would either return detached
+      // buffers or force extra clones, so playback-window reuse belongs on
+      // the main thread.
+      cache: transferSafeNoopDecodedOutputCache,
+      registry: createMcapDecoderRegistry(),
     }),
   });
 }
