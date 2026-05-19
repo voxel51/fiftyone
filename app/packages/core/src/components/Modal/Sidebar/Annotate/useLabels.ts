@@ -58,6 +58,32 @@ const LABEL_LIST_INFO: Record<string, { listKey: string; type: LabelType }> = {
  * downstream factory can just ask by sub-field name without knowing where
  * its label lives in the sample tree.
  */
+
+/**
+ * Pulls fulfilled values out of a `Promise.allSettled` batch and logs
+ * rejected ones. Used so one bad label decode doesn't abort the entire
+ * sample's label hydration.
+ */
+const collectFulfilled = <T>(
+  results: PromiseSettledResult<T>[],
+  context: string
+): T[] => {
+  const values: T[] = [];
+
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      values.push(result.value);
+    } else {
+      console.warn(
+        `Skipping label in ${context}: failed to create annotation label`,
+        result.reason
+      );
+    }
+  }
+
+  return values;
+};
+
 const buildLabelResolveUrl = (
   sources: { [key: string]: string },
   expandedPath: string,
@@ -129,24 +155,24 @@ const handleSample = async ({
     const array = isList ? result : result ? [result] : [];
     const expandedPath = paths[path];
 
-    labels.push(
-      ...(await Promise.all(
-        array.map((item, idx) =>
-          createLabel(path, type, item, {
-            resolveUrl: buildLabelResolveUrl(
-              sources,
-              expandedPath,
-              isList,
-              idx,
-              item
-            ),
-            skipMaskDecode: hasExistingOverlay(
-              (item as { _id?: string })?._id ?? ""
-            ),
-          })
-        )
-      ))
+    const settled = await Promise.allSettled(
+      array.map((item, idx) =>
+        createLabel(path, type, item, {
+          resolveUrl: buildLabelResolveUrl(
+            sources,
+            expandedPath,
+            isList,
+            idx,
+            item
+          ),
+          skipMaskDecode: hasExistingOverlay(
+            (item as { _id?: string })?._id ?? ""
+          ),
+        })
+      )
     );
+
+    labels.push(...collectFulfilled(settled, `path "${path}"`));
   }
 
   // Process fields in activeLabelSchemas that aren't in Recoil's activeFields
@@ -175,40 +201,47 @@ const handleSample = async ({
 
       if (Array.isArray(items)) {
         const expandedPath = `${schemaPath}.${listInfo.listKey}`;
-        labels.push(
-          ...(await Promise.all(
-            items.map((item, idx) =>
-              createLabel(schemaPath, listInfo.type, item, {
-                resolveUrl: buildLabelResolveUrl(
-                  sources,
-                  expandedPath,
-                  true,
-                  idx,
-                  item
-                ),
-                skipMaskDecode: hasExistingOverlay(
-                  (item as { _id?: string })?._id ?? ""
-                ),
-              })
-            )
-          ))
+        const settled = await Promise.allSettled(
+          items.map((item, idx) =>
+            createLabel(schemaPath, listInfo.type, item, {
+              resolveUrl: buildLabelResolveUrl(
+                sources,
+                expandedPath,
+                true,
+                idx,
+                item
+              ),
+              skipMaskDecode: hasExistingOverlay(
+                (item as { _id?: string })?._id ?? ""
+              ),
+            })
+          )
         );
+
+        labels.push(...collectFulfilled(settled, `schema "${schemaPath}"`));
       }
     } else if (KNOWN_SINGULAR_TYPES.has(cls)) {
-      labels.push(
-        await createLabel(schemaPath, cls as LabelType, fieldData, {
-          resolveUrl: buildLabelResolveUrl(
-            sources,
-            schemaPath,
-            false,
-            0,
-            fieldData
-          ),
-          skipMaskDecode: hasExistingOverlay(
-            (fieldData as { _id?: string })?._id ?? ""
-          ),
-        })
-      );
+      try {
+        labels.push(
+          await createLabel(schemaPath, cls as LabelType, fieldData, {
+            resolveUrl: buildLabelResolveUrl(
+              sources,
+              schemaPath,
+              false,
+              0,
+              fieldData
+            ),
+            skipMaskDecode: hasExistingOverlay(
+              (fieldData as { _id?: string })?._id ?? ""
+            ),
+          })
+        );
+      } catch (err) {
+        console.warn(
+          `Skipping label at "${schemaPath}": failed to create annotation label`,
+          err
+        );
+      }
     } else {
       console.warn(`Unsupported label _cls "${cls}" for field "${schemaPath}"`);
     }

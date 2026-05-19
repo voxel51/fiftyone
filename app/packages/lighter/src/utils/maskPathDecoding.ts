@@ -83,13 +83,20 @@ const bindWorker = (slot: Slot, worker: Worker): void => {
   });
 
   worker.addEventListener("error", (event) => {
+    // Guard against stale error events from a worker we've already replaced.
+    // Without this, a late-arriving error from the old instance would
+    // terminate the healthy replacement bound to the same slot.
+    if (slot.worker !== worker) {
+      return;
+    }
+
     console.error("[decodeMaskPath] worker crashed; respawning slot:", event);
     // Fail the in-flight job so one bad payload doesn't hang the caller.
     const failed = slot.job;
     slot.job = null;
     failed?.resolve(undefined);
 
-    slot.worker.terminate();
+    worker.terminate();
     bindWorker(slot, new MaskPathDecodeWorker());
 
     drain();
@@ -198,6 +205,15 @@ async function decodeMaskPathImpl(
 
     try {
       const response = await fetch(url);
+
+      if (!response.ok) {
+        console.error(
+          `[decodeMaskPath] fallback fetch failed: HTTP ${response.status} ` +
+            `${response.statusText} (${url})`
+        );
+        return undefined;
+      }
+
       const blob = await response.blob();
 
       const mask = await decodeMaskOnDisk(blob, cls, field, {} as never);
