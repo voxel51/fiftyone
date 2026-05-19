@@ -1,7 +1,9 @@
 import { cleanup, render } from "@testing-library/react";
+import { useSetAtom } from "jotai";
 import { useEffect } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { PlaybackProvider, usePlayback } from "../../lib/playback/PlaybackProvider";
+import { viewEndAtom, viewStartAtom } from "../../lib/playback/atoms";
 import PlayheadLine from "./PlayheadLine";
 import styles from "./PlayheadLine.module.css";
 
@@ -9,15 +11,28 @@ function Seeker({ time }: { time: number }) {
   const { seek } = usePlayback();
   useEffect(() => {
     seek(time);
-  }, [seek, time]);
+    // seek is a referentially-stable Jotai setter from usePlayback.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [time]);
   return null;
 }
 
+/**
+ * Writes the view atoms directly rather than going through
+ * `usePlayback().setView` — the public setter rejects collapsed
+ * windows, and the zero-width view test below specifically needs to
+ * exercise the component's internal defense against `viewEnd ===
+ * viewStart`.
+ */
 function ViewSetter({ start, end }: { start: number; end: number }) {
-  const { setView } = usePlayback();
+  const setViewStart = useSetAtom(viewStartAtom);
+  const setViewEnd = useSetAtom(viewEndAtom);
+  // Jotai setters are referentially stable — not in deps by design.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    setView(start, end);
-  }, [setView, start, end]);
+    setViewStart(start);
+    setViewEnd(end);
+  }, [start, end]);
   return null;
 }
 

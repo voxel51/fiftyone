@@ -91,10 +91,11 @@ describe("TimelineControls", () => {
 
   it("invokes onToggle when the row is clicked outside a button", () => {
     const onToggle = vi.fn();
-    const { container } = renderControls({ onToggle });
-    const divider = container.querySelector('[aria-hidden="true"]');
-    expect(divider).not.toBeNull();
-    fireEvent.click(divider!);
+    renderControls({ onToggle });
+    // Click the divider — it's the only inert filler inside the row that
+    // isn't a button. Targeting by data-testid avoids hitting any
+    // aria-hidden svg children of the voodo Buttons.
+    fireEvent.click(screen.getByTestId("timeline-controls-divider"));
     expect(onToggle).toHaveBeenCalledTimes(1);
   });
 

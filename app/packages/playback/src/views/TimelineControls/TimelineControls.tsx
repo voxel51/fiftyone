@@ -78,7 +78,11 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({ onToggle }) => {
         onClick={stepForward}
       />
 
-      <span className={styles.divider} aria-hidden />
+      <span
+        className={styles.divider}
+        data-testid="timeline-controls-divider"
+        aria-hidden
+      />
       <PlayheadTime />
       <LoopBounds />
     </div>

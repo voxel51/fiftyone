@@ -49,10 +49,12 @@ describe("TimelineHeader", () => {
 
   it("forwards onToggle: clicking the controls row outside a button fires it", () => {
     const onToggle = vi.fn();
-    const { container } = render(<HeaderHarness onToggle={onToggle} />);
-    const divider = container.querySelector('[aria-hidden="true"]');
-    expect(divider).not.toBeNull();
-    fireEvent.click(divider!);
+    render(<HeaderHarness onToggle={onToggle} />);
+    // Click the divider — the only inert filler inside the row.
+    // Targeting by data-testid avoids hitting any aria-hidden svg
+    // children of the voodo Buttons (which would route the click into
+    // the button and short-circuit the row handler).
+    fireEvent.click(screen.getByTestId("timeline-controls-divider"));
     expect(onToggle).toHaveBeenCalledTimes(1);
   });
 
