@@ -7,6 +7,7 @@
  */
 
 import type { OverlayMask } from "@fiftyone/looker/src/numpy";
+import { LRUCache } from "lru-cache";
 import { v4 as uuidv4 } from "uuid";
 
 import MaskPathDecodeWorker from "./maskPathDecodeWorker?worker&inline";
@@ -36,6 +37,26 @@ interface Slot {
 
 let slots: Slot[] | undefined;
 const queue: PendingJob[] = [];
+
+// Dedupe concurrent decodes for the same URL. Useful when two callers
+// overlap — e.g. a slow cloud fetch with a re-entering effect.
+const inFlight = new Map<string, Promise<OverlayMask | undefined>>();
+
+// Cache resolved decodes. Sequential repeats of the same URL (the common
+// case for fast local fetches where in-flight dedupe misses) get the
+// cached `OverlayMask` instead of a fresh worker fetch.
+//
+// LRU-bounded so the cache stays memory-safe across long sessions with
+// many unique masks. Sized by buffer byte count.
+//
+// The buffer is read-only from `MaskCanvas`'s perspective; multiple
+// instances can share it safely.
+const CACHE_MAX_BYTES = 128 * 1024 * 1024;
+const cache = new LRUCache<string, OverlayMask>({
+  maxSize: CACHE_MAX_BYTES,
+  sizeCalculation: (mask) => mask.buffer.byteLength,
+  ttl: 30_000, // 30 seconds; allow for frequent refresh
+});
 
 const supportsWorkers = (): boolean =>
   typeof Worker !== "undefined" && typeof window !== "undefined";
@@ -136,6 +157,34 @@ const drain = (): void => {
  * this as "no mask available yet" and proceed without one.
  */
 export async function decodeMaskPath(
+  url: string,
+  field: string,
+  cls: string
+): Promise<OverlayMask | undefined> {
+  const cached = cache.get(url);
+  if (cached) {
+    console.debug(`[mask-path] cache hit for ${url}`);
+    return cached;
+  }
+
+  const existing = inFlight.get(url);
+  if (existing) {
+    console.debug(`[mask-path] dedupe in-flight fetch for ${url}`);
+    return existing;
+  }
+
+  const promise = decodeMaskPathImpl(url, field, cls);
+  inFlight.set(url, promise);
+  void promise
+    .then((mask) => {
+      if (mask) cache.set(url, mask);
+    })
+    .finally(() => inFlight.delete(url));
+
+  return promise;
+}
+
+async function decodeMaskPathImpl(
   url: string,
   field: string,
   cls: string

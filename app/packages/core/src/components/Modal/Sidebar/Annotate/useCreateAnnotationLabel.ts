@@ -43,6 +43,12 @@ export const useCreateAnnotationLabel = () => {
          * (e.g. `mask_path`).
          */
         resolveUrl?: (subField: string) => string | undefined;
+        /**
+         * When true, skip the `mask_path` pre-decode. Used by the refresh
+         * path in `useLabels`, where the existing scene overlay is reused
+         * and any newly-decoded mask would be discarded.
+         */
+        skipMaskDecode?: boolean;
       }
     ): Promise<AnnotationLabel> => {
       if (type === CLASSIFICATION) {
@@ -71,11 +77,31 @@ export const useCreateAnnotationLabel = () => {
         // the structural path to a fetchable URL; we don't fetch
         // `label.mask_path` directly because the raw value is not always
         // a fetchable URL on its own.
-        const maskUrl = options?.resolveUrl?.("mask_path");
+        const maskUrl = options?.skipMaskDecode
+          ? undefined
+          : options?.resolveUrl?.("mask_path");
+        if (
+          !options?.skipMaskDecode &&
+          label?.mask_path &&
+          !label?.mask &&
+          !maskUrl
+        ) {
+          console.warn(
+            `[mask-path] detection ${data._id} in field "${field}" has ` +
+              `mask_path but the caller did not provide a resolvable URL; ` +
+              `the mask will render as a placeholder.`
+          );
+        }
         const preDecodedMask =
           !label?.mask && label?.mask_path && maskUrl
             ? await decodeMaskPath(maskUrl, field, DETECTION)
             : undefined;
+        if (label?.mask_path && !label?.mask && maskUrl && !preDecodedMask) {
+          console.warn(
+            `[mask-path] decode failed for detection ${data._id} in field ` +
+              `"${field}" (url=${maskUrl}); the mask will render as a placeholder.`
+          );
+        }
 
         const overlay = overlayFactory.create<
           DetectionOverlayOptions,

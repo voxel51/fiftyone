@@ -70,30 +70,64 @@ const buildLabelResolveUrl = (
       ? `${expandedPath}[${idx}].${subField}`
       : `${expandedPath}.${subField}`;
 
-    if (sources[key]) {
-      return sources[key];
+    // Resolve the raw value: sources[key] takes precedence (server-provided,
+    // structurally keyed), falling back to the label's own sub-field.
+    const raw = sources[key] ?? get(item, subField);
+    if (typeof raw !== "string") {
+      console.debug(
+        `[mask-path] no URL for "${key}" (no source entry, raw value not a string)`
+      );
+      return undefined;
     }
 
-    const raw = get(item, subField);
-    return typeof raw === "string" ? getSampleSrc(raw) : undefined;
+    // `getSampleSrc` rewrites local-style paths into a `/media`-shaped URL;
+    // returns URL-shaped values unchanged. If it returns the value
+    // unchanged, the raw value isn't directly fetchable on its own and
+    // we'd just generate a request that 404s — return undefined and let
+    // the caller skip the decode.
+    const transformed = getSampleSrc(raw);
+    if (transformed === raw) {
+      console.warn(
+        `[mask-path] no URL for "${key}" — value "${raw}" is not fetchable on its own.`
+      );
+      return undefined;
+    }
+
+    console.debug(
+      `[mask-path] resolved "${key}" → ${transformed} (source: ${
+        sources[key] ? "sources" : "raw label"
+      })`
+    );
+    return transformed;
   };
 };
 
 const handleSample = async ({
   createLabel,
   getFieldType,
+  hasExistingOverlay,
   paths,
   sample,
   schemas,
 }: {
   createLabel: ReturnType<typeof useCreateAnnotationLabel>;
   getFieldType: (path: string) => Promise<LabelType>;
+  /**
+   * Returns true if the scene already holds an overlay for the given
+   * label id. Used to skip redundant `mask_path` decodes during refresh —
+   * the existing overlay's mask is reused.
+   */
+  hasExistingOverlay: (id: string) => boolean;
   paths: { [key: string]: string };
   sample: ModalSample;
   schemas: string[];
 }) => {
   const data = sample.sample;
   const sources = getNormalizedUrls(sample.urls ?? {});
+  console.debug(
+    `[mask-path] handleSample: ${Object.keys(sources).length} sources entries`,
+    sources
+  );
   const labels: AnnotationLabel[] = [];
 
   for (const path in paths) {
@@ -128,6 +162,9 @@ const handleSample = async ({
               isList,
               idx,
               item
+            ),
+            skipMaskDecode: hasExistingOverlay(
+              (item as { _id?: string })?._id ?? ""
             ),
           })
         )
@@ -172,6 +209,9 @@ const handleSample = async ({
                   idx,
                   item
                 ),
+                skipMaskDecode: hasExistingOverlay(
+                  (item as { _id?: string })?._id ?? ""
+                ),
               })
             )
           ))
@@ -186,6 +226,9 @@ const handleSample = async ({
             false,
             0,
             fieldData
+          ),
+          skipMaskDecode: hasExistingOverlay(
+            (fieldData as { _id?: string })?._id ?? ""
           ),
         })
       );
@@ -462,6 +505,7 @@ export default function useLabels() {
           sample: modalSample,
           getFieldType,
           schemas: active,
+          hasExistingOverlay: (id) => !!id && !!scene?.getOverlay(id),
         });
 
       if (loadingRef.current === LabelsState.UNSET) {

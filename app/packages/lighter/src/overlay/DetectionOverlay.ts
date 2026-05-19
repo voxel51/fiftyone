@@ -128,6 +128,13 @@ export class DetectionOverlay
     const maskSource = options.preDecodedMask ?? this.label.mask;
     if (maskSource) {
       this.mask = new MaskCanvas(maskSource);
+    } else if (this.label.mask_path) {
+      // `mask_path` was present on the label but the caller didn't supply
+      // a decoded source (e.g. the URL couldn't be resolved). Construct an
+      // empty placeholder so `hasMask()` correctly reports "yes" — without
+      // it, the save flow would treat the missing canvas as a user
+      // deletion and wipe the mask_path on the backend.
+      this.mask = new MaskCanvas();
     }
   }
 

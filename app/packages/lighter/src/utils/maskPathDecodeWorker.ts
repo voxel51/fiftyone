@@ -40,9 +40,20 @@ const STUB_COLORING = {} as Coloring;
 
 self.onmessage = async (event: MessageEvent<DecodeRequest>) => {
   const { uuid, url, field, cls } = event.data;
+  console.debug(`[mask-path worker] fetch ${url} (field=${field})`);
 
   try {
     const response = await fetch(url);
+    if (!response.ok) {
+      const payload: DecodeFailure = {
+        uuid,
+        ok: false,
+        error: `fetch ${url} → HTTP ${response.status}`,
+      };
+
+      (self as DedicatedWorkerGlobalScope).postMessage(payload);
+      return;
+    }
     const blob = await response.blob();
     const mask = await decodeMaskOnDisk(blob, cls, field, STUB_COLORING);
 
