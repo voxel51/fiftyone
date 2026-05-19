@@ -111,6 +111,14 @@ export class DetectionOverlay
   private textBounds?: Rect;
 
   private mask?: MaskCanvas;
+  /**
+   * The mask source picked at construction time — inline `SerializedMask`
+   * if present, otherwise a pre-decoded `OverlayMask` from `mask_path`.
+   * Retained so {@link rehydrateMask} can reseed `MaskCanvas` after a
+   * destroy/re-add cycle (e.g. undoing a deletion) without depending on
+   * `label.mask`, which is `undefined` for `mask_path`-sourced overlays.
+   */
+  private maskSource?: SerializedMask | OverlayMask;
   private segmentationTool?: SegmentationToolState;
 
   // Pen tool state
@@ -125,9 +133,9 @@ export class DetectionOverlay
     this.isResizeable = options.resizeable !== false;
     this.#relativeBounds = options.relativeBounds || NO_BOUNDS;
 
-    const maskSource = options.preDecodedMask ?? this.label.mask;
-    if (maskSource) {
-      this.mask = new MaskCanvas(maskSource);
+    this.maskSource = options.preDecodedMask ?? this.label.mask;
+    if (this.maskSource) {
+      this.mask = new MaskCanvas(this.maskSource);
     } else if (this.label.mask_path) {
       // `mask_path` was present on the label but the caller didn't supply
       // a decoded source (e.g. the URL couldn't be resolved). Construct an
@@ -156,6 +164,9 @@ export class DetectionOverlay
     }
 
     if (label.mask) {
+      // Inline mask takes precedence over any `mask_path`-sourced
+      // `OverlayMask` we may have been carrying.
+      this.maskSource = label.mask;
       if (this.mask) {
         this.mask.updateSource(label.mask);
       } else {
@@ -166,6 +177,7 @@ export class DetectionOverlay
       // null — explicit removal
       // `undefined` can be cases when mask has not been saved yet - leave it alone
       const hadMask = !!this.mask;
+      this.maskSource = undefined;
       this.mask?.destroy();
       this.mask = undefined;
       if (hadMask) this.markDirty();
@@ -1121,6 +1133,7 @@ export class DetectionOverlay
    */
   removeMask(): void {
     const hadMask = !!this.mask;
+    this.maskSource = undefined;
     this.mask?.destroy();
     this.mask = undefined;
     this.markDirty();
@@ -1351,9 +1364,9 @@ export class DetectionOverlay
    */
   rehydrateMask(): void {
     if (this.mask) return;
-    if (!this.label.mask) return;
+    if (!this.maskSource) return;
 
-    this.mask = new MaskCanvas(this.label.mask);
+    this.mask = new MaskCanvas(this.maskSource);
 
     this.forceHoverLeave();
     this.markDirty();
