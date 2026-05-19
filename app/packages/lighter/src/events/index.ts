@@ -136,7 +136,13 @@ export type LighterEventGroup = {
   "lighter:detection-mode-quit": { eventId: string };
   /** Emitted when user clicks without dragging in segmentation mode to close out the current detection */
   "lighter:segmentation-mode-quit": { eventId: string };
-  /** Emitted when the AI mask should be established and point selection ended (e.g. right-click) */
+  /**
+   * Generic "quit the active annotation mode" request, fired by global gestures
+   * (e.g. right-click on empty canvas). Listeners are expected to no-op unless
+   * their own mode is active, in which case they deactivate it.
+   */
+  "lighter:active-mode-quit-requested": { eventId: string };
+  /** Emitted when the AI mask should be established and point selection ended (e.g. right-click). */
   "lighter:point-selection-finalize": { eventId: string };
 
   // ============================================================================

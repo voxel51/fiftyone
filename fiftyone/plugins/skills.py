@@ -118,27 +118,34 @@ def list_skills(enabled=True, plugin=None, category=None):
 
 
 def _iter_plugin_skills(plugin_definition):
+    declared = set(plugin_definition.skills)
+    if not declared:
+        return
+
     plugin_dir = os.path.realpath(plugin_definition.directory)
-    for rel_path in plugin_definition.skills:
-        skill_path = os.path.realpath(os.path.join(plugin_dir, rel_path))
-        try:
-            outside = (
-                os.path.commonpath([plugin_dir, skill_path]) != plugin_dir
+    skills_dir = os.path.join(plugin_dir, "skills")
+    if not os.path.isdir(skills_dir):
+        return
+
+    skill_map = {}
+    with os.scandir(skills_dir) as it:
+        for entry in it:
+            if not entry.is_dir():
+                continue
+            skill_path = os.path.join(entry.path, "SKILL.md")
+            if not os.path.isfile(skill_path):
+                continue
+            metadata = _parse_skill_frontmatter(skill_path)
+            skill_map[metadata.get("name", entry.name)] = (
+                skill_path,
+                metadata,
             )
-        except ValueError:
-            outside = True
 
-        if outside:
-            logger.warning(
-                "Ignoring skill path outside plugin directory: %s", rel_path
-            )
+    for name in declared:
+        if name not in skill_map:
+            logger.debug("Skill '%s' declared but not found in skills/", name)
             continue
-
-        if not os.path.isfile(skill_path):
-            logger.debug(f"Skill file not found: '{skill_path}'")
-            continue
-
-        metadata = _parse_skill_frontmatter(skill_path)
+        skill_path, metadata = skill_map[name]
         yield SkillDefinition(skill_path, metadata, plugin_definition.name)
 
 

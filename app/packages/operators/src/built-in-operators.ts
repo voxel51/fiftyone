@@ -1,6 +1,7 @@
 import {
   Layout,
   SpaceNode,
+  useInitializePanel,
   usePanelTitle,
   usePanels,
   useSetPanelStateById,
@@ -26,8 +27,8 @@ import {
 import { useOperatorExecutor } from ".";
 import useRefetchableSavedViews from "../../core/src/hooks/useRefetchableSavedViews";
 import registerPanel from "./Panel/register";
+import "./builtin";
 import {
-  ExecutionContext,
   Operator,
   OperatorConfig,
   OperatorResult,
@@ -37,6 +38,19 @@ import {
 } from "./operators";
 import { useShowOperatorIO } from "./state";
 import usePanelEvent from "./usePanelEvent";
+
+import type {
+  ExecutionContext,
+  OpenPanelHooks,
+  OpenPanelParams,
+  OpenSampleHooks,
+  OpenSampleParams,
+  TrackEventHooks,
+  TrackEventParams,
+} from "./ts";
+
+const { FIFTYONE_GRID_SPACES_ID, FIFTYONE_MODAL_SPACES_ID, PANEL_SURFACE } =
+  fos.constants;
 
 //
 // BUILT-IN OPERATORS
@@ -128,51 +142,34 @@ class OpenPanel extends Operator {
   }
   async resolveInput(): Promise<types.Property> {
     const inputs = new types.Object();
-    inputs.str("name", {
-      view: new types.AutocompleteView({
-        choices: [
-          new types.Choice("Embeddings"),
-          new types.Choice("Histograms"),
-          new types.Choice("Samples"),
-          new types.Choice("Map"),
-        ],
-        label: "Name of the panel",
-        required: true,
-      }),
-    });
-    inputs.bool("isActive", {
-      label: "Auto-select on open",
-      required: true,
-      default: true,
-    });
+    inputs.str("name", { label: "Name of the panel to open", required: true });
+    inputs.bool("isActive", { label: "Auto-select on open", default: true });
     inputs.enum("layout", ["horizontal", "vertical"]);
     inputs.bool("force", {
-      label: "Force (skips panel exists check)",
+      label: "Force (skips panel existence check)",
       default: false,
     });
-    inputs.obj("sessionState", {
-      label: "Initial session state",
-      view: new types.HiddenView({}),
-    });
-    inputs.obj("localState", {
-      label: "Initial local state",
-      view: new types.HiddenView({}),
-    });
+    inputs.obj("state", { label: "Initial session state for the panel" });
+    inputs.obj("data", { label: "Initial local state for the panel" });
     return new types.Property(inputs);
   }
-  useHooks() {
-    const { FIFTYONE_GRID_SPACES_ID } = fos.constants;
+  useHooks(): OpenPanelHooks {
     const availablePanels = usePanels();
-    const { spaces } = useSpaces(FIFTYONE_GRID_SPACES_ID);
-    const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
-    const setPanelStateById = useSetPanelStateById();
-    const setPanelStateLocalById = useSetPanelStateById(true);
+    const gridSpaces = useSpaces(FIFTYONE_GRID_SPACES_ID).spaces;
+    const isModalOpen = useRecoilValue(fos.isModalActive);
+    const modalSpaces = useSpaces(FIFTYONE_MODAL_SPACES_ID).spaces;
+    const openedGridPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
+    const openedModalPanels = useSpaceNodes(FIFTYONE_MODAL_SPACES_ID);
+    const initializePanel = useInitializePanel();
+
     return {
       availablePanels,
-      openedPanels,
-      spaces,
-      setPanelStateById,
-      setPanelStateLocalById,
+      gridSpaces,
+      isModalOpen,
+      modalSpaces,
+      openedGridPanels,
+      openedModalPanels,
+      initializePanel,
     };
   }
   findFirstPanelContainer(node: SpaceNode): SpaceNode | null {
@@ -186,24 +183,44 @@ class OpenPanel extends Operator {
 
     return null;
   }
-  async execute({ hooks, params }: ExecutionContext) {
+  async execute(ctx: ExecutionContext<OpenPanelParams, OpenPanelHooks>) {
+    const { hooks, params } = ctx;
     const {
-      spaces,
-      openedPanels,
       availablePanels,
-      setPanelStateById,
-      setPanelStateLocalById,
+      gridSpaces,
+      isModalOpen,
+      modalSpaces,
+      openedGridPanels,
+      openedModalPanels,
+      initializePanel,
     } = hooks;
-    const { name, isActive, layout, force, forceDuplicate, state, data } =
-      params;
+    const {
+      data,
+      force,
+      forceDuplicate,
+      isActive = true,
+      layout,
+      name,
+      state,
+    } = params;
+    const openedPanels = isModalOpen ? openedModalPanels : openedGridPanels;
+    const spaces = isModalOpen ? modalSpaces : gridSpaces;
     const targetSpace = this.findFirstPanelContainer(spaces.root);
     if (!targetSpace) {
-      return console.error("No panel container found");
+      throw new Error("No panel container found");
+    }
+    const panel = availablePanels.find((panel) => name === panel.name);
+    if (!panel && !force) {
+      throw new Error(`Panel with name ${name} does not exist`);
+    }
+    const scope = isModalOpen ? PANEL_SURFACE.MODAL : PANEL_SURFACE.GRID;
+    const surfaces = panel?.panelOptions?.surfaces || PANEL_SURFACE.GRID;
+    if (!surfaces.includes(scope)) {
+      throw new Error(
+        `Panel with name ${name} cannot be opened in a ${scope} surface`
+      );
     }
     const openedPanel = openedPanels.find(({ type }) => type === name);
-    const panel = availablePanels.find((panel) => name === panel.name);
-    if (!panel && !force)
-      return console.warn(`Panel with name ${name} does not exist`);
     const allowDuplicate = force
       ? Boolean(forceDuplicate)
       : panel?.panelOptions?.allowDuplicates;
@@ -212,14 +229,8 @@ class OpenPanel extends Operator {
       return;
     }
     const newNode = new SpaceNode();
-    if (state) {
-      setPanelStateById(newNode.id, () => state);
-    }
-    if (data) {
-      setPanelStateLocalById(newNode.id, () => data);
-    }
+    await initializePanel(newNode.id, scope, state, data);
     newNode.type = name;
-    // add panel to the default space as an inactive panels
     spaces.addNodeAfter(targetSpace, newNode, isActive);
     if (layout) {
       spaces.splitLayout(targetSpace, getLayout(layout), newNode);
@@ -236,7 +247,6 @@ class OpenAllPanels extends Operator {
     });
   }
   useHooks(): object {
-    const { FIFTYONE_GRID_SPACES_ID } = fos.constants;
     const availablePanels = usePanels();
     const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
     const openPanelOperator = useOperatorExecutor("open_panel");
@@ -279,7 +289,6 @@ class ClosePanel extends Operator {
     return new types.Property(inputs);
   }
   useHooks(): object {
-    const { FIFTYONE_GRID_SPACES_ID } = fos.constants;
     const { spaces } = useSpaces(FIFTYONE_GRID_SPACES_ID);
     const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
     return { openedPanels, spaces };
@@ -309,7 +318,6 @@ class CloseAllPanels extends Operator {
     });
   }
   useHooks(): object {
-    const { FIFTYONE_GRID_SPACES_ID } = fos.constants;
     const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
     const closePanel = useOperatorExecutor("close_panel");
     return { openedPanels, closePanel };
@@ -340,7 +348,6 @@ class SplitPanel extends Operator {
     return new types.Property(inputs);
   }
   useHooks(): object {
-    const { FIFTYONE_GRID_SPACES_ID } = fos.constants;
     const { spaces } = useSpaces(FIFTYONE_GRID_SPACES_ID);
     const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
     return { spaces, openedPanels };
@@ -850,7 +857,7 @@ class TestOperator extends Operator {
   }
   async execute({ params }: ExecutionContext) {
     const parsedParams = JSON.parse(params.raw_params.trim());
-    executeOperator(params.operator, parsedParams);
+    executeOperator(params.operator, parsedParams, { callback: console.log });
   }
 }
 
@@ -927,7 +934,7 @@ class ClearPanelState extends Operator {
       unlisted: true,
     });
   }
-  useHooks(ctx: ExecutionContext): {} {
+  useHooks(): {} {
     return { updatePanelState: useUpdatePanelStatePartial() };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
@@ -943,7 +950,7 @@ class ClearPanelData extends Operator {
       unlisted: true,
     });
   }
-  useHooks(ctx: ExecutionContext): {} {
+  useHooks(): {} {
     return { updatePanelState: useUpdatePanelStatePartial(true) };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
@@ -959,7 +966,7 @@ class SetPanelState extends Operator {
       unlisted: true,
     });
   }
-  useHooks(ctx: ExecutionContext): {} {
+  useHooks(): {} {
     return { updatePanelState: useUpdatePanelStatePartial() };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
@@ -975,7 +982,7 @@ class SetPanelData extends Operator {
       unlisted: true,
     });
   }
-  useHooks(ctx: ExecutionContext): {} {
+  useHooks(): {} {
     return { updatePanelState: useUpdatePanelStatePartial(true) };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
@@ -991,7 +998,7 @@ class PatchPanelData extends Operator {
       unlisted: true,
     });
   }
-  useHooks(ctx: ExecutionContext): {} {
+  useHooks(): {} {
     return { updatePanelState: useUpdatePanelStatePartial(true) };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
@@ -1008,11 +1015,15 @@ function useUpdatePanelStatePartial(local?: boolean) {
     targetParam = targetParam || targetPartial;
     setTimeout(() => {
       const panelId = ctx.getCurrentPanelId();
+      const fullMerge = ctx.params.fullMerge ?? ctx.params.full_merge ?? false;
       setPanelStateById(panelId, (current = {}) => {
         const currentCustomPanelState = current?.[targetPartial] || {};
         let updatedState;
         const providedData = ctx.params[targetParam];
-        if (set) {
+        if (fullMerge) {
+          // fullMerge = deep merge at root level
+          return merge({}, current, providedData);
+        } else if (set) {
           // set = replace entire state
           updatedState = providedData;
         } else if (deepMerge) {
@@ -1044,7 +1055,7 @@ class PatchPanelState extends Operator {
       unlisted: true,
     });
   }
-  useHooks(ctx: ExecutionContext): {} {
+  useHooks(): {} {
     return { updatePanelState: useUpdatePanelStatePartial() };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
@@ -1064,7 +1075,7 @@ class ReducePanelState extends Operator {
       unlisted: true,
     });
   }
-  useHooks(ctx: ExecutionContext): {} {
+  useHooks(): {} {
     const setPanelStateById = useSetPanelStateById();
     return { setPanelStateById };
   }
@@ -1087,7 +1098,7 @@ class ShowPanelOutput extends Operator {
       unlisted: true,
     });
   }
-  useHooks(ctx: ExecutionContext): {} {
+  useHooks(): {} {
     return { updatePanelState: useUpdatePanelStatePartial(true) };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
@@ -1151,7 +1162,7 @@ class PromptUserForOperation extends Operator {
     inputs.bool("skip_prompt", { label: "Skip prompt", default: false });
     return new types.Property(inputs);
   }
-  useHooks(ctx: ExecutionContext): {} {
+  useHooks(): {} {
     const triggerEvent = usePanelEvent();
     return { triggerEvent };
   }
@@ -1204,7 +1215,7 @@ class Notify extends Operator {
     });
     return new types.Property(inputs);
   }
-  useHooks(ctx: ExecutionContext): {} {
+  useHooks(): {} {
     return { notify: fos.useNotification() };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
@@ -1223,7 +1234,7 @@ class SetExtendedSelection extends Operator {
       unlisted: true,
     });
   }
-  useHooks(ctx: ExecutionContext): {} {
+  useHooks(): {} {
     return {
       setExtendedSelection: useSetRecoilState(fos.extendedSelection),
       clearExtendedSelection: useSetRecoilState(fos.extendedSelection),
@@ -1323,22 +1334,22 @@ export class TrackEvent extends Operator {
       unlisted: true,
     });
   }
-  useHooks(ctx: ExecutionContext): {
-    setActiveFields: (fields: string[]) => void;
-  } {
+  useHooks(): TrackEventHooks {
     const trackEvent = useTrackEvent();
-    return {
-      trackEvent,
-    };
+    return { trackEvent };
   }
-  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+  async resolveInput(): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.str("event", { label: "Event", required: true });
     inputs.obj("properties", { label: "Properties" });
     return new types.Property(inputs);
   }
-  async execute(ctx: ExecutionContext): Promise<void> {
-    ctx.hooks.trackEvent(ctx.params.event, ctx.params.properties);
+  async execute(
+    ctx: ExecutionContext<TrackEventParams, TrackEventHooks>
+  ): Promise<void> {
+    const { hooks, params } = ctx;
+    const { event, properties } = params;
+    hooks.trackEvent(event, properties);
   }
 }
 
@@ -1388,7 +1399,9 @@ export class SetPlayheadState extends Operator {
     inputs.str("timeline_name", { label: "Timeline name" });
     return new types.Property(inputs);
   }
-  useHooks(ctx: ExecutionContext): SetPlayheadStateHooks {
+  useHooks(
+    ctx: ExecutionContext<SetPlayheadStateParams, SetPlayheadStateHooks>
+  ): SetPlayheadStateHooks {
     const timeline = fop.useTimeline(ctx.params.timeline_name);
     return {
       setPlayheadState: (state: fop.PlayheadState) => {
@@ -1514,21 +1527,33 @@ class OpenSample extends Operator {
   }
   async resolveInput(): Promise<types.Property> {
     const inputs = new types.Object();
+
     inputs.str("id", { label: "Sample ID" });
     inputs.str("group_id", { label: "Group ID" });
+    inputs.enum("mode", ["explore", "annotate"]);
 
     return new types.Property(inputs);
   }
-  useHooks(): object {
+  useHooks(): OpenSampleHooks {
+    const { activateAnnotateMode, activateExploreMode } =
+      fos.useModalModeController();
+
     return {
       setExpanded: fos.useSetExpandedSample(),
+      activateAnnotateMode,
+      activateExploreMode,
     };
   }
-  async execute({ hooks, params }: ExecutionContext) {
-    hooks.setExpanded({
-      id: params.id,
-      group_id: params.group_id,
-    });
+  async execute(ctx: ExecutionContext<OpenSampleParams, OpenSampleHooks>) {
+    const { hooks, params } = ctx;
+    const { setExpanded, activateAnnotateMode, activateExploreMode } = hooks;
+    const { id, group_id, mode } = params;
+    if (mode === "annotate") {
+      activateAnnotateMode();
+    } else {
+      activateExploreMode();
+    }
+    setExpanded({ id, groupId: group_id });
   }
 }
 
@@ -1546,7 +1571,7 @@ class CloseSample extends Operator {
       close: fos.useClearModal(),
     };
   }
-  async execute({ hooks, params }: ExecutionContext) {
+  async execute({ hooks }: ExecutionContext) {
     hooks.close();
   }
 }

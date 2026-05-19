@@ -2,6 +2,9 @@ import { getFetchFunction } from "@fiftyone/utilities";
 import type {
   AgentTaskType,
   AnnotationAgent,
+  AnnotationAgentLifecycle,
+  AnnotationAgentLifecycleListener,
+  AnnotationAgentLifecycleStatus,
   AnnotationContext,
   InferenceCapability,
   InferenceResult,
@@ -36,6 +39,9 @@ export class OperatorAnnotationAgent<T extends InferenceResultProxy>
   implements AnnotationAgent<T>
 {
   private readonly subscriptionControllers = new Map<string, AbortController>();
+  private lifecycleStatus: AnnotationAgentLifecycleStatus = "idle";
+  private readonly lifecycleListeners =
+    new Set<AnnotationAgentLifecycleListener>();
 
   constructor(private readonly operatorUri: string) {}
 
@@ -52,30 +58,48 @@ export class OperatorAnnotationAgent<T extends InferenceResultProxy>
    * @throws Error If the operator returns a delegated result but no executor ID.
    */
   async infer(context: AnnotationContext): Promise<InferenceResult<T>> {
-    const response = await getFetchFunction()<
-      OperatorRequest,
-      OperatorResponse<T>
-    >("POST", "/operators/execute", this.buildExecuteBody(context));
+    this.setLifecycleStatus("inferring");
 
-    if (response.error || response.error_message) {
-      throw new Error(response.error ?? response.error_message);
-    }
+    try {
+      const response = await getFetchFunction()<
+        OperatorRequest,
+        OperatorResponse<T>
+      >("POST", "/operators/execute", this.buildExecuteBody(context));
 
-    if (response.delegated) {
-      const sessionId = response.result?.id;
-      if (!sessionId) {
-        throw new Error(
-          `Operator ${this.operatorUri} returned a delegated result with no operator id`
-        );
+      if (response.error || response.error_message) {
+        throw new Error(response.error ?? response.error_message);
       }
-      return { type: "async", sessionId };
-    }
 
-    return {
-      type: "sync",
-      taskType: context.taskType,
-      response: response.result?.result,
-    };
+      if (response.delegated) {
+        const sessionId = response.result?.id;
+        if (!sessionId) {
+          throw new Error(
+            `Operator ${this.operatorUri} returned a delegated result with no operator id`
+          );
+        }
+        // Delegated execution: surface the handoff as idle locally; subscribers
+        // will receive sync results out-of-band.
+        this.setLifecycleStatus("idle");
+        return { type: "async", sessionId };
+      }
+
+      this.setLifecycleStatus("idle");
+      return {
+        type: "sync",
+        taskType: context.taskType,
+        response: response.result?.result,
+      };
+    } catch (err) {
+      this.setLifecycleStatus("error");
+      this.emitLifecycle({
+        kind: "error",
+        error: {
+          kind: "inference_failure",
+          message: err instanceof Error ? err.message : String(err),
+        },
+      });
+      throw err;
+    }
   }
 
   /**
@@ -145,6 +169,29 @@ export class OperatorAnnotationAgent<T extends InferenceResultProxy>
   async abort(sessionId: string): Promise<void> {
     await this.unsubscribe(sessionId);
     // todo backend abort
+  }
+
+  onLifecycleEvent(listener: AnnotationAgentLifecycleListener): () => void {
+    this.lifecycleListeners.add(listener);
+    return () => {
+      this.lifecycleListeners.delete(listener);
+    };
+  }
+
+  getLifecycleStatus(): AnnotationAgentLifecycleStatus {
+    return this.lifecycleStatus;
+  }
+
+  private setLifecycleStatus(status: AnnotationAgentLifecycleStatus): void {
+    if (status === this.lifecycleStatus) return;
+    this.lifecycleStatus = status;
+    this.emitLifecycle({ kind: "status", status });
+  }
+
+  private emitLifecycle(event: AnnotationAgentLifecycle): void {
+    for (const listener of this.lifecycleListeners) {
+      listener(event);
+    }
   }
 
   /**

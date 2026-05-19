@@ -237,9 +237,18 @@ describe("useMergeTool", () => {
     expect(result.current.mergeTargetId).toBe(null);
   });
 
-  it("disabled is false when at least one mask detection is in the sidebar", () => {
+  it("disabled is false when at least two mask detections are in the sidebar", () => {
+    getDefaultStore().set(labelsAtom, [
+      { type: "Detection", data: { mask: "fake-mask-1" } },
+      { type: "Detection", data: { mask: "fake-mask-2" } },
+    ]);
     const { result } = renderHook(() => useMergeTool());
     expect(result.current.disabled).toBe(false);
+  });
+
+  it("disabled is true with only one mask detection (need two to merge)", () => {
+    const { result } = renderHook(() => useMergeTool());
+    expect(result.current.disabled).toBe(true);
   });
 
   it("disabled is true when there are no mask detections in the sidebar", () => {
