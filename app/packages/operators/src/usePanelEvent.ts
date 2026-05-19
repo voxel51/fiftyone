@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useActivePanelEventsCount } from "./hooks";
 import { OperatorResult, executeOperator } from "./operators";
 import { usePromptOperatorInput } from "./state";
-import { ExecutionCallback, ParamsType } from "./types-internal";
+import { ExecutionCallback, ParamsType } from "./ts";
 
 type HandlerOptions = {
   params: { [name: string]: unknown };

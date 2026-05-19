@@ -60,7 +60,7 @@ const ApplyOntologySection = ({ field }: ApplyOntologySectionProps) => {
         spacing={Spacing.Sm}
         style={{ alignItems: "center", justifyContent: "space-between" }}
       >
-        <Text variant={TextVariant.Lg}>Apply Ontology</Text>
+        <Text variant={TextVariant.Lg}>Ontology</Text>
         <Toggle size={Size.Md} checked={expanded} onChange={handleToggle} />
       </Stack>
       <Text variant={TextVariant.Lg} color={TextColor.Secondary}>

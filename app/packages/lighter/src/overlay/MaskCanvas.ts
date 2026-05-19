@@ -534,25 +534,34 @@ export class MaskCanvas {
       const dw = (otherBounds.width / newBounds.width) * this.canvas.width;
       const dh = (otherBounds.height / newBounds.height) * this.canvas.height;
 
+      // Disable smoothing so the source's binary edge pixels don't get
+      // bilinear-spread across two destination pixels at fractional offsets.
+      // updateCanvas thresholds any non-zero alpha to fully opaque, so without
+      // this the anti-aliased fringe would be promoted to solid pixels and
+      // the mask would grow by ~1 pixel on each edge.
+      const prevSmoothing = this.context.imageSmoothingEnabled;
+      this.context.imageSmoothingEnabled = false;
       this.context.globalCompositeOperation = "source-over";
       this.context.drawImage(otherSource, dx, dy, dw, dh);
+      this.context.imageSmoothingEnabled = prevSmoothing;
     }
 
-    this.paintEnd(newBounds, onEncoded);
-
-    return newBounds;
+    return this.paintEnd(newBounds, onEncoded);
   }
 
-  paintEnd(bounds: Rect, onEncoded?: () => void) {
-    if (!this.canvas) return;
+  paintEnd(bounds: Rect, onEncoded?: () => void): Rect {
+    if (!this.canvas) return bounds;
 
     this.lastPoint = undefined;
 
     // Rebuild the canvas to recolor + threshold anti-aliased edge pixels
-    // before the snapshot and encode.
+    // before computing tight bounds and snapshotting.
     this.updateCanvas(this.canvas.width, this.canvas.height);
 
-    this.postStrokeBounds = { ...bounds };
+    // Snap bounds down to the painted region.
+    const finalBounds = this.cropToContent(bounds) ?? bounds;
+
+    this.postStrokeBounds = { ...finalBounds };
     this.postStrokeSnapshot = this.takeSnapshot();
 
     // Refresh single-channel mask data so hit-testing reflects the edit.
@@ -568,6 +577,8 @@ export class MaskCanvas {
       .catch((err) => {
         console.error("[MaskCanvas] paintEnd encode failed:", err);
       });
+
+    return finalBounds;
   }
 
   getPaintStrokeData(): PaintStrokeData {
@@ -702,11 +713,58 @@ export class MaskCanvas {
 
     this.updateCanvas(newWidth, newHeight, offsetX, offsetY);
 
+    // Existing pixels were shifted by (offsetX, offsetY); the cached lastPoint
+    // is in canvas-pixel coords and must be shifted in lockstep so paintLine
+    // continues to interpolate from the correct origin after a resize.
+    if (this.lastPoint) {
+      this.lastPoint = {
+        x: this.lastPoint.x + offsetX,
+        y: this.lastPoint.y + offsetY,
+      };
+    }
+
     return {
       x: minX,
       y: minY,
       width: newWidth,
       height: newHeight,
+    };
+  }
+
+  /**
+   * Crops the editing canvas to the tight bbox of opaque pixels and returns
+   * the corresponding world-space bounds. Returns `undefined` when the canvas
+   * is already tight, or when it is fully transparent (nothing to crop to).
+   */
+  private cropToContent(bounds: Rect): Rect | undefined {
+    if (!this.canvas || !this.context) return undefined;
+
+    const tight = this.getBounds();
+    if (!tight) return undefined;
+
+    const { width, height } = this.canvas;
+    const tightW = tight.maxX - tight.minX + 1;
+    const tightH = tight.maxY - tight.minY + 1;
+
+    if (
+      tight.minX === 0 &&
+      tight.minY === 0 &&
+      tightW === width &&
+      tightH === height
+    ) {
+      return undefined;
+    }
+
+    const pxW = bounds.width / width;
+    const pxH = bounds.height / height;
+
+    this.updateCanvas(tightW, tightH, -tight.minX, -tight.minY);
+
+    return {
+      x: bounds.x + tight.minX * pxW,
+      y: bounds.y + tight.minY * pxH,
+      width: tightW * pxW,
+      height: tightH * pxH,
     };
   }
 

@@ -7,14 +7,10 @@ FiftyOne Server ontology route unit tests.
 """
 
 import json
-import os
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
-# Ontology SDK is gated by VFF_ONTOLOGY_CA; enable for the whole module.
-os.environ.setdefault("VFF_ONTOLOGY_CA", "1")
 
 import fiftyone.core.odm as foo
 from fiftyone.core.odm.ontology import OntologyDocument, OntologyType

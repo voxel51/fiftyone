@@ -72,7 +72,7 @@ describe("SAM2BrowserAnnotationAgent", () => {
 
   beforeEach(() => {
     provider = makeProvider();
-    agent = new SAM2BrowserAnnotationAgent(provider);
+    agent = new SAM2BrowserAnnotationAgent(() => provider);
   });
 
   describe("infer", () => {
@@ -94,7 +94,7 @@ describe("SAM2BrowserAnnotationAgent", () => {
     });
 
     it("should throw if mediaUrl has not been set", async () => {
-      const freshAgent = new SAM2BrowserAnnotationAgent(makeProvider());
+      const freshAgent = new SAM2BrowserAnnotationAgent(() => makeProvider());
 
       await expect(
         freshAgent.infer({

@@ -20,6 +20,10 @@ vi.mock("./useCanManageSchema", () => ({
   default: vi.fn(() => true),
 }));
 
+vi.mock("./useDeactivateAllModes", () => ({
+  useDeactivateAllModes: () => vi.fn(),
+}));
+
 vi.mock("./useAnnotationContextManager", async (importOriginal) => {
   const actual = await importOriginal<
     typeof import("./useAnnotationContextManager")

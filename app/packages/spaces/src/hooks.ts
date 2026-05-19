@@ -33,6 +33,7 @@ import {
   panelTitlesState,
   panelsCloseEffect,
   panelsLoadingStateAtom,
+  panelsLocalStateAtom,
   panelsStateAtom,
   previousTabsGroupAtom,
   spaceSelector,
@@ -44,6 +45,7 @@ import {
   SpaceNodeType,
 } from "./types";
 import { getNodes } from "./utils";
+import { isNullish } from "@fiftyone/utilities";
 
 type SpacePanelRegistration = PanelRegistration | PlotRegistration;
 
@@ -93,13 +95,14 @@ export function useSpaces(id: string, defaultState?: SpaceNodeJSON) {
 }
 
 /**
- * Get and set multiple panels state
+ * Get and set multiple panels session or local state
  */
-export function usePanelsState(): [
-  PanelsStateObject,
-  (newPanelsState: PanelsStateObject) => void
-] {
-  const [panelsState, setPanelsState] = useRecoilState(panelsStateAtom);
+export function usePanelsState(
+  local?: boolean
+): [PanelsStateObject, (newPanelsState: PanelsStateObject) => void] {
+  const [panelsState, setPanelsState] = useRecoilState(
+    local ? panelsLocalStateAtom : panelsStateAtom
+  );
 
   const state = Object.fromEntries(panelsState);
   function setState(newPanelsState: PanelsStateObject) {
@@ -532,4 +535,27 @@ export function usePanelAreaRenderer(areaId: string) {
     : undefined;
 
   return { setRenderer, unsetRenderer, currentRendererId, CurrentRenderer };
+}
+
+export function useInitializePanel() {
+  return useRecoilCallback(
+    ({ set, snapshot }) =>
+      async (
+        panelId: string,
+        scope?: string,
+        state?: Record<string, unknown>,
+        data?: Record<string, unknown>
+      ) => {
+        const currentIdToScope = await snapshot.getPromise(panelIdToScopeAtom);
+        if (!isNullish(scope)) {
+          set(panelIdToScopeAtom, { ...currentIdToScope, [panelId]: scope });
+        }
+        if (state) {
+          set(panelStateSelector({ panelId, local: false, scope }), state);
+        }
+        if (data) {
+          set(panelStateSelector({ panelId, local: true, scope }), data);
+        }
+      }
+  );
 }

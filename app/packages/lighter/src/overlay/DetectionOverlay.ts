@@ -829,9 +829,12 @@ export class DetectionOverlay
     const wasPainting = this.interactionState === "PAINTING";
 
     this.interactionState = "NONE";
-    this.mask?.paintEnd(this.bounds, () => {
+    const croppedBounds = this.mask?.paintEnd(this.bounds, () => {
       this.markDirty();
     });
+    if (croppedBounds) {
+      this.bounds = croppedBounds;
+    }
     this.moveStartPoint = undefined;
     this.moveStartPosition = undefined;
     this.moveStartBounds = undefined;
@@ -1201,7 +1204,7 @@ export class DetectionOverlay
       this.bounds = updatedBounds;
     }
 
-    this.mask.paintEnd(this.bounds, () => {
+    this.bounds = this.mask.paintEnd(this.bounds, () => {
       this.markDirty();
     });
 
@@ -1228,7 +1231,10 @@ export class DetectionOverlay
    * Updates the pen cursor position for live preview rendering.
    */
   updatePenMousePosition(worldPoint: Point | null): void {
-    this.maskKeypoints?.setPreviewPoint(worldPoint);
+    if (!this.maskKeypoints) return;
+
+    this.maskKeypoints.setPreviewPoint(worldPoint);
+    this.markDirty();
   }
 
   /**
