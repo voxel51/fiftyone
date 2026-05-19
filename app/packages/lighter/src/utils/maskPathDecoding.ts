@@ -163,13 +163,11 @@ export async function decodeMaskPath(
 ): Promise<OverlayMask | undefined> {
   const cached = cache.get(url);
   if (cached) {
-    console.debug(`[mask-path] cache hit for ${url}`);
     return cached;
   }
 
   const existing = inFlight.get(url);
   if (existing) {
-    console.debug(`[mask-path] dedupe in-flight fetch for ${url}`);
     return existing;
   }
 

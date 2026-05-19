@@ -1,11 +1,11 @@
 import { DetectionOverlay, useLighter } from "@fiftyone/lighter";
 import {
+  activeFields,
   AnnotationLabel,
   AnnotationLabelData,
-  ModalSample,
-  activeFields,
   field,
   isPatchesView,
+  ModalSample,
   useCurrentSampleId,
   useModalSample,
 } from "@fiftyone/state";
@@ -74,31 +74,12 @@ const buildLabelResolveUrl = (
     // structurally keyed), falling back to the label's own sub-field.
     const raw = sources[key] ?? get(item, subField);
     if (typeof raw !== "string") {
-      console.debug(
-        `[mask-path] no URL for "${key}" (no source entry, raw value not a string)`
-      );
       return undefined;
     }
 
-    // `getSampleSrc` rewrites local-style paths into a `/media`-shaped URL;
-    // returns URL-shaped values unchanged. If it returns the value
-    // unchanged, the raw value isn't directly fetchable on its own and
-    // we'd just generate a request that 404s — return undefined and let
-    // the caller skip the decode.
-    const transformed = getSampleSrc(raw);
-    if (transformed === raw) {
-      console.warn(
-        `[mask-path] no URL for "${key}" — value "${raw}" is not fetchable on its own.`
-      );
-      return undefined;
-    }
-
-    console.debug(
-      `[mask-path] resolved "${key}" → ${transformed} (source: ${
-        sources[key] ? "sources" : "raw label"
-      })`
-    );
-    return transformed;
+    // `getSampleSrc` rewrites local-style paths into a `/media`-shaped URL
+    // and returns URL-shaped values unchanged
+    return getSampleSrc(raw);
   };
 };
 
@@ -124,10 +105,6 @@ const handleSample = async ({
 }) => {
   const data = sample.sample;
   const sources = getNormalizedUrls(sample.urls ?? {});
-  console.debug(
-    `[mask-path] handleSample: ${Object.keys(sources).length} sources entries`,
-    sources
-  );
   const labels: AnnotationLabel[] = [];
 
   for (const path in paths) {

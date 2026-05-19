@@ -40,7 +40,6 @@ const STUB_COLORING = {} as Coloring;
 
 self.onmessage = async (event: MessageEvent<DecodeRequest>) => {
   const { uuid, url, field, cls } = event.data;
-  console.debug(`[mask-path worker] fetch ${url} (field=${field})`);
 
   try {
     const response = await fetch(url);
