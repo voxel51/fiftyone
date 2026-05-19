@@ -38,7 +38,6 @@ import { usePolylineMode } from "./Edit/usePolylineMode";
 import { useSegmentationMode } from "./Edit/useSegmentationMode";
 import { useDeactivateAllModes } from "./useDeactivateAllModes";
 import { Anchor, Text, Tooltip } from "@voxel51/voodo";
-import { FeatureFlag, FeatureFlagged } from "@fiftyone/feature-flags";
 
 const ActionsDiv = styled.div`
   align-items: center;
@@ -465,12 +464,8 @@ const Actions = () => {
             ) : (
               <>
                 <Detection />
-                <FeatureFlagged feature={FeatureFlag.VFF_AI_SEGMENTATION}>
-                  <Segmentation />
-                </FeatureFlagged>
-                <FeatureFlagged feature={FeatureFlag.VFF_POLYLINE_ANNOTATION}>
-                  <Polyline />
-                </FeatureFlagged>
+                <Segmentation />
+                <Polyline />
               </>
             )}
           </ItemLeft>
