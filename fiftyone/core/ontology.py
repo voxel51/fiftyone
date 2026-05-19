@@ -19,7 +19,6 @@ from fiftyone.core.annotation.attributes import (
     attr_insert_to_dict,
 )
 from fiftyone.core.odm.ontology import OntologyDocument, OntologyType
-from fiftyone.internal.features.registry import require_feature
 
 
 class Ontology(abc.ABC):
@@ -89,7 +88,6 @@ class Ontology(abc.ABC):
         """Whether this ontology is a taxonomy."""
         return self._TYPE == OntologyType.TAXONOMY.value
 
-    @require_feature("VFF_ONTOLOGY_CA")
     def save(self) -> None:
         """Saves this ontology to the database."""
         self._validate()
@@ -107,7 +105,6 @@ class Ontology(abc.ABC):
 
         self._doc.save()
 
-    @require_feature("VFF_ONTOLOGY_CA")
     def reload(self) -> None:
         """Reloads this ontology from the database."""
         if self._doc is None:
@@ -118,7 +115,6 @@ class Ontology(abc.ABC):
         self._doc.reload()
         self._apply_doc(self._doc)
 
-    @require_feature("VFF_ONTOLOGY_CA")
     def delete(self) -> None:
         """Deletes this ontology from the database."""
         if self._doc is None:
@@ -129,7 +125,6 @@ class Ontology(abc.ABC):
         self._doc.delete()
         self._doc = None
 
-    @require_feature("VFF_ONTOLOGY_CA")
     def clone(self, new_name: str) -> "Ontology":
         """Clones this ontology under a new name.
 
@@ -338,7 +333,6 @@ def _objects_by_slug(name: str):
     )
 
 
-@require_feature("VFF_ONTOLOGY_CA")
 def load_ontology(name: str) -> Ontology:
     """Loads the latest version of an ontology by name.
 
@@ -358,7 +352,6 @@ def load_ontology(name: str) -> Ontology:
     return _from_doc(doc)
 
 
-@require_feature("VFF_ONTOLOGY_CA")
 def list_ontologies(glob_patt: Optional[str] = None) -> list[str]:
     """Lists ontology names in the database.
 
@@ -379,7 +372,6 @@ def list_ontologies(glob_patt: Optional[str] = None) -> list[str]:
     return sorted(docs.distinct("name"))
 
 
-@require_feature("VFF_ONTOLOGY_CA")
 def ontology_exists(name: str) -> bool:
     """Checks if an ontology with the given name exists.
 
@@ -470,7 +462,6 @@ def _find_label_schema_refs_by_ontology(
     ]
 
 
-@require_feature("VFF_ONTOLOGY_CA")
 def delete_ontology(name: str, force: bool = False) -> None:
     """Deletes an ontology and all its versions from the database.
 

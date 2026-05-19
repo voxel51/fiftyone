@@ -53,7 +53,7 @@ const LabelHamburgerMenu = () => {
   const setData = useSetAtom(currentData);
   const { isEditingMask } = useSegmentationMode();
 
-  const isMaskDetection = !!(data?.mask || isEditingMask);
+  const isMaskDetection = !!(data?.mask || data?.mask_path || isEditingMask);
   const isDetection = type === DETECTION;
 
   const handleAddMask = useCallback(() => {
@@ -66,7 +66,7 @@ const LabelHamburgerMenu = () => {
   const handleRemoveMask = useCallback(() => {
     if (overlay instanceof DetectionOverlay) {
       overlay.removeMask();
-      setData({ mask: undefined });
+      setData({ mask: undefined, mask_path: undefined });
       setOpen(false);
     }
   }, [overlay, setData]);

@@ -14,7 +14,6 @@ from starlette.requests import Request
 
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
-from fiftyone.internal.features.registry import is_feature_enabled
 from fiftyone.server.utils.json import JSONResponse
 
 
@@ -22,9 +21,6 @@ class Ontologies(HTTPEndpoint):
     """Endpoint that lists ontologies for the Schema Manager picker."""
 
     async def get(self, request: Request) -> JSONResponse:
-        if not is_feature_enabled("VFF_ONTOLOGY_CA"):
-            raise HTTPException(status_code=404)
-
         type_filter = request.query_params.get("type") or None
         name_filter = request.query_params.get("name") or None
 
@@ -45,14 +41,11 @@ class OntologyAttributes(HTTPEndpoint):
     response carries a ``_source`` key set to the ontology name, matching the
     format expected by the frontend merge logic.
 
-    Returns 404 when the feature flag is off, when the ontology does not
-    exist, or when it is not an annotation ontology.
+    Returns 404 when the ontology does not exist or is not an annotation
+    ontology.
     """
 
     async def get(self, request: Request) -> JSONResponse:
-        if not is_feature_enabled("VFF_ONTOLOGY_CA"):
-            raise HTTPException(status_code=404)
-
         name = request.path_params["name"]
 
         attributes = await fou.run_sync_task(_load_attributes, name)
