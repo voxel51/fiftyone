@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ObjectSchemaType, ViewPropsType } from "../utils/types";
+import { ViewPropsType } from "../utils/types";
 import { DEFAULT_FRAME_NUMBER } from "@fiftyone/playback/src/lib/constants";
 import { BufferManager, BufferRange } from "@fiftyone/utilities";
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId, useSetPanelStateById } from "@fiftyone/spaces";
-import { useTimeline } from "@fiftyone/playback/src/lib/use-timeline";
+import { useTimeline } from "@fiftyone/playback/src/lib/timeline/use-timeline";
 import _ from "lodash";
 
 const FRAME_LOADED_EVENT = "frames-loaded";
