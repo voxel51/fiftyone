@@ -235,6 +235,16 @@ export class InteractionManager {
   private readonly DOUBLE_CLICK_DISTANCE_THRESHOLD = 3; // pixels
 
   private currentPixelCoordinates?: Point;
+
+  // Hover handling is rAF-coalesced.
+  // Multiple pointermoves between frames collapse into one hover update.
+  // Drag/onMove dispatch is intentionally NOT coalesced — sub-frame precision
+  // matters for precise edits.
+  private pendingHoverRaf: number | null = null;
+  private latestHoverPoint?: Point;
+  private latestHoverEvent?: PointerEvent;
+  private latestHoverHandler?: InteractionHandler;
+
   private readonly eventBus: EventDispatcher<LighterEventGroup>;
 
   private pendingAction?: {
@@ -607,13 +617,15 @@ export class InteractionManager {
     this.syncModifiersFromEvent(event);
 
     const interactiveHandler = this.getInteractiveHandler();
-    let handler =
-      this.findInteractingHandler() || this.findHandlerAtPoint(point);
+    const interactingHandler = this.findInteractingHandler();
+
+    const hitHandler = this.findHandlerAtPoint(point);
+    let handler = interactingHandler || hitHandler;
 
     if (!interactiveHandler) {
       // we don't want to handle hover in interactive mode
       // for instance, no tooltips, no hover states, etc
-      this.handleHover(this.currentPixelCoordinates, event);
+      this.scheduleHoverUpdate(this.currentPixelCoordinates, event, hitHandler);
     }
 
     // To determine drag behavior, we allow for two cases:
@@ -670,7 +682,15 @@ export class InteractionManager {
 
         event.preventDefault();
       }
-      this.configureCursorStyle(handler, worldPoint, scale);
+    }
+
+    // Treat the canonical-media overlay as "no overlay" so the creation-mode
+    // fallbacks can fire when the user is hovering over the blank image
+    const cursorHandler =
+      handler && handler.id !== this.canonicalMediaId ? handler : undefined;
+
+    if (cursorHandler) {
+      this.configureCursorStyle(cursorHandler, worldPoint, scale);
     } else if (segmentationModeBridge.isActive() && !interactiveHandler) {
       const isMergeTool =
         segmentationModeBridge.getActiveTool() === SegmentationTool.Merge;
@@ -879,6 +899,9 @@ export class InteractionManager {
   };
 
   private handlePointerLeave = (event: PointerEvent): void => {
+    // Cancel next hover cycle; no longer on the canvas
+    this.cancelPendingHover();
+
     // Clear hover state when leaving canvas
     if (this.hoveredHandler) {
       const point = this.getCanvasPoint(event);
@@ -1143,15 +1166,81 @@ export class InteractionManager {
     });
   };
 
-  private handleHover(point: Point, event: PointerEvent): void {
+  /**
+   * Coalesces hover work onto a single rAF callback. Multiple pointermoves
+   * between frames overwrite the stored point/handler; only the latest is
+   * processed when the rAF fires. Caller must already have resolved the
+   * hover target via {@link findHandlerAtPoint} (or pass `undefined` to
+   * trigger hover-clear).
+   */
+  private scheduleHoverUpdate(
+    point: Point,
+    event: PointerEvent,
+    resolvedHandler: InteractionHandler | undefined
+  ): void {
+    this.latestHoverPoint = point;
+    this.latestHoverEvent = event;
+    this.latestHoverHandler = resolvedHandler;
+
+    if (this.pendingHoverRaf !== null) {
+      return;
+    }
+
+    this.pendingHoverRaf = requestAnimationFrame(() => {
+      this.pendingHoverRaf = null;
+      const latestPoint = this.latestHoverPoint;
+      const latestEvent = this.latestHoverEvent;
+      // Clear the handler ref to allow it to be GCd before the next frame
+      const latestHandler = this.latestHoverHandler;
+      this.latestHoverHandler = undefined;
+
+      if (latestPoint && latestEvent) {
+        this.handleHover(latestPoint, latestEvent, latestHandler);
+      }
+    });
+  }
+
+  /**
+   * Cancels any pending hover rAF and drops the latest cached point/event.
+   */
+  private cancelPendingHover(): void {
+    if (this.pendingHoverRaf !== null) {
+      cancelAnimationFrame(this.pendingHoverRaf);
+      this.pendingHoverRaf = null;
+    }
+
+    this.latestHoverPoint = undefined;
+    this.latestHoverEvent = undefined;
+    this.latestHoverHandler = undefined;
+  }
+
+  private handleHover(
+    point: Point,
+    event: PointerEvent,
+    resolvedHandler: InteractionHandler | undefined
+  ): void {
     const worldPoint = this.renderer.screenToWorld(point);
     const scale = this.renderer.getScale();
 
-    const handler = this.findHandlerAtPoint(point);
+    // Hover target is pre-resolved by the caller (single hit-test per
+    // pointermove). `undefined` means either nothing under the cursor or a
+    // drag is active and hover should be cleared.
+    const handler = resolvedHandler;
     const interactingHandler = this.findInteractingHandler();
 
     if (!handler || handler.id === this.canonicalMediaId) {
-      this.canvas.style.cursor = "default";
+      // Skip the "default" cursor write when a creation mode is active —
+      // handlePointerMove's synchronous fallback writes the mode cursor
+      // (crosshair for detection mode, brush for segmentation) on every
+      // event, and this rAF runs later. Writing "default" here would
+      // overwrite that, producing the flicker between mode cursor and
+      // "default" reported during bounding-box creation.
+      if (
+        !segmentationModeBridge.isActive() &&
+        !detectionModeBridge.isActive()
+      ) {
+        this.canvas.style.cursor = "default";
+      }
 
       if (this.hoveredHandler) {
         this.hoveredHandler.onHoverLeave?.(point, event);
@@ -1446,6 +1535,7 @@ export class InteractionManager {
    * Destroys the interaction manager and removes event listeners.
    */
   destroy(): void {
+    this.cancelPendingHover();
     this.canvas.removeEventListener("pointerdown", this.handlePointerDown);
     this.canvas.removeEventListener("pointermove", this.handlePointerMove);
     this.canvas.removeEventListener("pointerup", this.handlePointerUp);
