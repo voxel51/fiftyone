@@ -47,12 +47,12 @@ const INITIAL_TILES: Record<string, TilingTile> = Object.fromEntries(
 function MockSetup() {
   const bundles = useMockStreams(STREAM_CONFIGS);
   const setTileSource = useSetTileSourceFor();
-  // setTileSource is a stable jotai-backed setter — not in deps by design.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     for (const b of bundles) {
       setTileSource(`${b.id}-1`, b.id);
     }
+    // setTileSource is a stable jotai-backed setter — not in deps by design.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bundles]);
   return null;
 }
