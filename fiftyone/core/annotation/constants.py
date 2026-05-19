@@ -201,8 +201,6 @@ SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE = {
     fom.IMAGE: {
         fol.Detection,
         fol.Detections,
-        fol.Keypoint,
-        fol.Keypoints,
         fol.Polyline,
         fol.Polylines,
     },
