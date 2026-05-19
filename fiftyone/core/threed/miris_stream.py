@@ -37,6 +37,7 @@ class MirisStream(Object3D):
         scale: Optional[Vec3UnionType] = None,
         quaternion: Optional[Quaternion] = None,
     ):
+        """Initializes a :class:`MirisStream`."""
         super().__init__(
             name=name,
             visible=visible,
@@ -52,6 +53,7 @@ class MirisStream(Object3D):
         self.viewer_key = viewer_key
 
     def _to_dict_extra(self):
+        """Extra properties to include in dictionary representation."""
         return {
             "assetUuid": self.asset_uuid,
             "viewerKey": self.viewer_key,
