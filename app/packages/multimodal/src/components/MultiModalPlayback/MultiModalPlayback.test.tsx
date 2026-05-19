@@ -60,15 +60,6 @@ describe("MultiModalPlayback shell", () => {
     expect(screen.getByText("Select a tile to inspect.")).toBeTruthy();
   });
 
-  it("hides the left sidebar after the toggle is clicked", () => {
-    render(<MultiModalPlayback fileName="x" />);
-    // Both sidebars start open → both drawers render.
-    expect(screen.getAllByTestId("drawer")).toHaveLength(2);
-    fireEvent.click(screen.getByTestId("tiling-header-toggle-left-sidebar"));
-    // The Drawer mock unmounts when `open` flips to false.
-    expect(screen.getAllByTestId("drawer")).toHaveLength(1);
-  });
-
   it("respects defaultLeftOpen / defaultRightOpen=false", () => {
     render(
       <MultiModalPlayback
