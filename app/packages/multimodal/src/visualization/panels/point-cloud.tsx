@@ -212,6 +212,9 @@ function buildPointCloudRenderData(
   const colors = new Float32Array(maxSampleCount * POINT_COMPONENT_COUNT);
   const heightBounds = computeSourceHeightBounds(sourcePositions);
   const bounds = new THREE.Box3();
+  // Bounds are updated per rendered point; reuse one vector to avoid a large
+  // allocation burst on dense point clouds.
+  const tmpVec = new THREE.Vector3();
   let renderedPointCount = 0;
 
   bounds.makeEmpty();
@@ -239,17 +242,18 @@ function buildPointCloudRenderData(
       targetOffset,
       normalizeHeight(z, heightBounds.minHeight, heightBounds.maxHeight)
     );
-    bounds.expandByPoint(
-      new THREE.Vector3(
-        positions[targetOffset + X_COMPONENT_INDEX],
-        positions[targetOffset + Y_COMPONENT_INDEX],
-        positions[targetOffset + Z_COMPONENT_INDEX]
-      )
+    tmpVec.set(
+      positions[targetOffset + X_COMPONENT_INDEX],
+      positions[targetOffset + Y_COMPONENT_INDEX],
+      positions[targetOffset + Z_COMPONENT_INDEX]
     );
+    bounds.expandByPoint(tmpVec);
     renderedPointCount++;
   }
 
-  if (heightBounds.finitePointCount === 0) {
+  // Sampling can miss all finite source points, so the drawn count is the
+  // authoritative signal for whether Three.js needs fallback bounds.
+  if (renderedPointCount === 0) {
     bounds.setFromCenterAndSize(
       new THREE.Vector3(),
       new THREE.Vector3(

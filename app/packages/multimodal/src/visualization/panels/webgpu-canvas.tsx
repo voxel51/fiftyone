@@ -67,6 +67,7 @@ export function WebGpuCanvas({
 }: WebGpuCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const canvasStateRef = useRef<WebGpuRootState | null>(null);
+  const clearColorRef = useRef(clearColor);
   const mountedRef = useRef(true);
   const onErrorRef = useRef(onError);
   const onReadyRef = useRef(onReady);
@@ -92,44 +93,49 @@ export function WebGpuCanvas({
 
   const createRenderer = useCallback<
     (canvas: HTMLCanvasElement | OffscreenCanvas) => RootState["gl"]
-  >(
-    (canvas) => {
-      const renderer = new THREE.WebGPURenderer({
-        alpha: false,
-        antialias: true,
-        canvas: canvas as HTMLCanvasElement,
-        depth: true,
-        powerPreference: "high-performance",
-        stencil: false,
+  >((canvas) => {
+    const renderer = new THREE.WebGPURenderer({
+      alpha: false,
+      antialias: true,
+      canvas: canvas as HTMLCanvasElement,
+      depth: true,
+      powerPreference: "high-performance",
+      stencil: false,
+    });
+    rendererRef.current = renderer;
+    rendererReadyRef.current = false;
+    // Canvas may ask for a renderer before React rebuilds callbacks. Read the
+    // color from a ref so renderer creation stays stable across color changes.
+    prepareWebGpuRenderer(renderer, clearColorRef.current);
+
+    renderer
+      .init()
+      .then(() => {
+        if (!mountedRef.current || rendererRef.current !== renderer) {
+          renderer.dispose();
+          return;
+        }
+
+        rendererReadyRef.current = true;
+        setIsReady(true);
+        onErrorRef.current?.(null);
+      })
+      .catch((error: unknown) => {
+        if (mountedRef.current && rendererRef.current === renderer) {
+          // A failed WebGPU init can leave GPU/browser resources attached to
+          // the renderer object. Dispose only the current renderer instance.
+          renderer.dispose();
+          rendererRef.current = null;
+          rendererReadyRef.current = false;
+          setIsReady(false);
+          onErrorRef.current?.(
+            error instanceof Error ? error.message : String(error)
+          );
+        }
       });
-      rendererRef.current = renderer;
-      rendererReadyRef.current = false;
-      prepareWebGpuRenderer(renderer, clearColor);
 
-      renderer
-        .init()
-        .then(() => {
-          if (!mountedRef.current || rendererRef.current !== renderer) {
-            renderer.dispose();
-            return;
-          }
-
-          rendererReadyRef.current = true;
-          setIsReady(true);
-          onErrorRef.current?.(null);
-        })
-        .catch((error: unknown) => {
-          if (mountedRef.current && rendererRef.current === renderer) {
-            onErrorRef.current?.(
-              error instanceof Error ? error.message : String(error)
-            );
-          }
-        });
-
-      return renderer as unknown as RootState["gl"];
-    },
-    [clearColor]
-  );
+    return renderer as unknown as RootState["gl"];
+  }, []);
 
   // This effect keeps the latest error callback available to async renderer setup.
   useEffect(() => {
@@ -155,6 +161,7 @@ export function WebGpuCanvas({
 
   // This effect reapplies renderer color settings when the clear color changes.
   useEffect(() => {
+    clearColorRef.current = clearColor;
     if (rendererRef.current) {
       prepareWebGpuRenderer(rendererRef.current, clearColor);
       canvasStateRef.current?.invalidate();

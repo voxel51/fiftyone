@@ -81,6 +81,7 @@ export function ImageTexturePlane({
         depthWrite={false}
         map={textureHandle.texture}
         toneMapped={false}
+        transparent
       />
     </mesh>
   );
