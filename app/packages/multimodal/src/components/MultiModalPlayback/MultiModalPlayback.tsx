@@ -60,7 +60,7 @@ export interface MultiModalPlaybackProps {
 }
 
 /**
- * Production-ready multi-modal playback shell. Composes the three
+ * Multi-modal playback shell. Composes the three
  * providers we always need — `PlaybackProvider`, `TrackProvider`,
  * `TilingProvider` — and the standard four-region layout:
  *
