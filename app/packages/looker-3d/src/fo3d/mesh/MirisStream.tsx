@@ -10,7 +10,10 @@ import type { MirisStreamAsset } from "../render-types";
 let _mirisPromise: Promise<unknown> | null = null;
 const ensureMirisRuntime = () => {
   if (!_mirisPromise) {
-    _mirisPromise = import("@miris-inc/three")
+    _mirisPromise = import("@miris-inc/three").catch((err) => {
+      _mirisPromise = null;
+      throw err;
+    });
   }
   return _mirisPromise as Promise<{ MirisStream: unknown }>;
 };
@@ -33,7 +36,9 @@ export const MirisStream = ({
   const ds = useRecoilValue(dataset as never) as {
     info?: Record<string, unknown>;
   } | null;
-  const datasetViewerKey = ds?.info?.["miris_viewer_key"] as string | undefined;
+  const rawDatasetViewerKey = ds?.info?.["miris_viewer_key"];
+  const datasetViewerKey =
+    typeof rawDatasetViewerKey === "string" ? rawDatasetViewerKey : undefined;
   const viewerKey = asset.viewerKey ?? datasetViewerKey;
 
   const [stream, setStream] = useState<Group | null>(null);
