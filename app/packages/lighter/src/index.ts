@@ -122,6 +122,7 @@ export type {
 } from "./types";
 
 export { getOverlayColor } from "./utils/colorMapping";
+export { decodeMaskPath } from "./utils/maskPathDecoding";
 
 // Constants
 export { DEFAULT_ZOOM_PAD } from "./constants";

@@ -7,6 +7,7 @@ import {
   SegmentationToolShape,
   type SegmentationToolState,
 } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
+import type { OverlayMask } from "@fiftyone/looker/src/numpy";
 import type { SerializedMask } from "@fiftyone/utilities";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { DrawStyle, Point, Rect } from "../types";
@@ -53,10 +54,14 @@ export interface PaintStrokeData {
  * ```
  */
 export class MaskCanvas {
-  // Cached decoded mask bitmap, keyed by the raw mask string to detect changes.
+  // Cached decoded mask bitmap, keyed by the raw mask source to detect changes.
   private maskBitmap?: ImageBitmap;
-  /** Raw mask data awaiting decode (deferred until color is known). */
-  private rawMaskData?: string;
+  /**
+   * Raw mask source awaiting decode (deferred until color is known). Either
+   * a base64-encoded numpy string (inline `mask` field) or a pre-decoded
+   * {@link OverlayMask} produced from a `mask_path` fetch.
+   */
+  private rawMaskData?: string | OverlayMask;
   /** True while an async decode is in flight. */
   private decoding = false;
   /** The color used for the current decoded bitmap, so we can re-decode on color change. */
@@ -81,18 +86,22 @@ export class MaskCanvas {
   private postStrokeSnapshot?: MaskSnapshot;
   private postStrokeBounds?: Rect;
 
-  constructor(maskData?: SerializedMask) {
-    this.rawMaskData = MaskCanvas.extractB64(maskData);
+  constructor(maskData?: SerializedMask | OverlayMask) {
+    this.rawMaskData = MaskCanvas.extractSource(maskData);
   }
 
   /**
-   * Extracts the base64 string from a SerializedMask, which may be a plain
-   * string or a `{ $binary: { base64: string } }` wrapper.
+   * Normalizes the input mask source to either a base64 string (for inline
+   * `mask` data) or a pre-decoded {@link OverlayMask} (for `mask_path` data).
+   * Plain `undefined` and `{ $binary: { base64 } }` wrappers are unwrapped.
    */
-  private static extractB64(mask?: SerializedMask): string | undefined {
+  private static extractSource(
+    mask?: SerializedMask | OverlayMask
+  ): string | OverlayMask | undefined {
     if (!mask) return undefined;
     if (typeof mask === "string") return mask;
-    return mask.$binary.base64;
+    if ("$binary" in mask) return mask.$binary.base64;
+    return mask;
   }
 
   /**
@@ -101,12 +110,12 @@ export class MaskCanvas {
    * bitmap, raw pixels, editing canvas, undo snapshots — so that subsequent
    * renders / hit-tests reflect the new source rather than a stale canvas.
    */
-  updateSource(mask?: SerializedMask): boolean {
-    const b64 = MaskCanvas.extractB64(mask);
-    if (b64 === this.rawMaskData) return false;
+  updateSource(mask?: SerializedMask | OverlayMask): boolean {
+    const source = MaskCanvas.extractSource(mask);
+    if (source === this.rawMaskData) return false;
 
     this.reset();
-    this.rawMaskData = b64;
+    this.rawMaskData = source;
     return true;
   }
 
