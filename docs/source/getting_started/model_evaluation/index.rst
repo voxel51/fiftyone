@@ -51,7 +51,7 @@ Each notebook contains the necessary `pip install` commands at the beginning, so
 **System Requirements**
 
 - **Operating System:** Linux (Ubuntu 24.04), macOS
-- **Python:** 3.9, 3.11
+- **Python:** 3.10, 3.11
 - **Memory:** 8GB RAM recommended for evaluation operations
 - **Storage:** 2GB free space for datasets and models
 - **Notebook Environment:** Jupyter, Google Colab, VS Code notebooks (all validated)
