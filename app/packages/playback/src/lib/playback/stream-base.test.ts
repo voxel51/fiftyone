@@ -97,7 +97,7 @@ describe("PlaybackStreamBase", () => {
       s.onCommit(1, store);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expect(store.get(streamValueAtom("camera") as any)).toBe("frame-at-1");
+      expect(store.get(streamValueAtom("camera"))).toBe("frame-at-1");
     });
 
     it("publishes null when getValue returns null", () => {
@@ -107,7 +107,7 @@ describe("PlaybackStreamBase", () => {
       s.onCommit(1, store);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expect(store.get(streamValueAtom("camera") as any)).toBeNull();
+      expect(store.get(streamValueAtom("camera"))).toBeNull();
     });
 
     it("scopes published values per stream id", () => {
@@ -121,9 +121,9 @@ describe("PlaybackStreamBase", () => {
       lidar.onCommit(0, store);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expect(store.get(streamValueAtom("cam") as any)).toBe("cam-0");
+      expect(store.get(streamValueAtom("cam"))).toBe("cam-0");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expect(store.get(streamValueAtom("lidar") as any)).toBe("lidar-0");
+      expect(store.get(streamValueAtom("lidar"))).toBe("lidar-0");
     });
 
     it("invokes getValue exactly once per commit", () => {
