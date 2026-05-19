@@ -148,6 +148,9 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       const rect = ruler.getBoundingClientRect();
       const laneX = dragRef.current.lastPointerX - rect.left - labelWidth;
       const laneWidth = rect.width - labelWidth;
+      // Guard against zero/negative lane width — the ratio math below
+      // would produce NaN/Infinity and feed garbage into seek().
+      if (laneWidth <= 0) return;
       if (laneX < 0 || laneX > laneWidth) return;
       const vs = dragRef.current.startVs;
       const ve = dragRef.current.startVe;
@@ -161,10 +164,11 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
     viewRef.current = { viewStart, viewEnd };
   }, [viewStart, viewEnd]);
 
+  // `setView` is a Jotai setter — referentially stable across renders —
+  // so the ref's initial value is also its final value; no syncing effect
+  // needed.
   const setViewRef = useRef(setView);
-  useEffect(() => {
-    setViewRef.current = setView;
-  });
+  setViewRef.current = setView;
 
   // Wheel-to-zoom attached to zoomRef (outer container) or the ruler itself.
   useEffect(() => {
@@ -176,6 +180,8 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       const { viewStart: vs, viewEnd: ve } = viewRef.current;
       const rect = (rulerEl ?? target).getBoundingClientRect();
       const laneWidth = rect.width - labelWidth;
+      // Guard against zero/negative lane width — see drag handler above.
+      if (laneWidth <= 0) return;
 
       if (e.ctrlKey) {
         e.preventDefault();
@@ -251,11 +257,16 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
     <div
       ref={rulerRef}
       className={clsx(styles.ruler, className)}
+      data-testid="timeline-ruler"
       style={{ cursor }}
       {...lanePointerProps}
     >
       {labelWidth > 0 && (
-        <div className={styles.labelSpacer} style={{ width: labelWidth }} />
+        <div
+          className={styles.labelSpacer}
+          data-testid="timeline-ruler-label-spacer"
+          style={{ width: labelWidth }}
+        />
       )}
 
       <div className={styles.lane}>

@@ -6,4 +6,4 @@ export * from "./src/lib/timeline/use-frame-number";
 export * from "./src/lib/timeline/use-timeline";
 export * from "./src/lib/timeline/use-timeline-viz-utils";
 export * from "./src/lib/timeline/utils";
-export * from "./src/views/Timeline";
+export * from "./src/views/Timeline/Timeline";

@@ -20,7 +20,9 @@ function ViewSetter({ start, end }: { start: number; end: number }) {
   const { setView } = usePlayback();
   useEffect(() => {
     setView(start, end);
-  }, [setView, start, end]);
+    // setView is a referentially-stable Jotai setter from usePlayback.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [start, end]);
   return null;
 }
 

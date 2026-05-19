@@ -88,14 +88,14 @@ export const Seekbar = React.forwardRef<
         convertFrameNumberToPercentage(buffer[1], totalFrames),
       ] as BufferRange;
     });
-  }, [loaded]);
+  }, [loaded, totalFrames]);
 
   const loadingScaled = React.useMemo(() => {
     return [
       convertFrameNumberToPercentage(loading[0], totalFrames),
       convertFrameNumberToPercentage(loading[1], totalFrames),
     ] as BufferRange;
-  }, [loading]);
+  }, [loading, totalFrames]);
 
   const gradientString = React.useMemo(
     () =>
@@ -175,14 +175,14 @@ export const Speed = React.forwardRef<
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setSpeed(parseFloat(e.target.value));
     },
-    []
+    [setSpeed]
   );
 
   const rangeValue = React.useMemo(() => (speed / 2) * 100, [speed]);
 
   const resetSpeed = React.useCallback(() => {
     setSpeed(1);
-  }, []);
+  }, [setSpeed]);
 
   return (
     <TimelineElementContainer

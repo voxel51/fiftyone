@@ -22,7 +22,9 @@ function Seeker({ time }: { time: number }) {
   const { seek } = usePlayback();
   useEffect(() => {
     seek(time);
-  }, [seek, time]);
+    // seek is a referentially-stable Jotai setter from usePlayback.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [time]);
   return null;
 }
 
@@ -30,7 +32,9 @@ function ViewSetter({ start, end }: { start: number; end: number }) {
   const { setView } = usePlayback();
   useEffect(() => {
     setView(start, end);
-  }, [setView, start, end]);
+    // setView is a referentially-stable Jotai setter from usePlayback.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [start, end]);
   return null;
 }
 
@@ -96,6 +100,11 @@ function renderRulerWithZoomRef(opts: RenderOpts = {}) {
 const inlineStyle = (el: Element): string => el.getAttribute("style") ?? "";
 
 describe("TimelineRuler", () => {
+  // Save the original so afterEach can restore Element.prototype — otherwise
+  // the stub leaks into later test suites that share the test runner.
+  const originalGetBoundingClientRect =
+    Element.prototype.getBoundingClientRect;
+
   beforeEach(() => {
     // The wheel handler reads getBoundingClientRect to convert the cursor's
     // clientX into a lane position. jsdom returns zeroes by default.
@@ -112,7 +121,10 @@ describe("TimelineRuler", () => {
     }));
   });
 
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    Element.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+  });
 
   describe("structure", () => {
     it("renders the ruler, lane, loop handles, and playhead group", () => {

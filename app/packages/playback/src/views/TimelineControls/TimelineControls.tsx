@@ -46,6 +46,7 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({ onToggle }) => {
   return (
     <div
       className={clsx(styles.root, { [styles.clickable]: !!onToggle })}
+      data-testid="timeline-controls-root"
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       role={onToggle ? "button" : undefined}

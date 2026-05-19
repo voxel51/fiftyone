@@ -99,7 +99,10 @@ export function useMockStreams(
     return () => {
       for (const c of cleanups) c();
     };
-  }, [bundles, registerStream, registerTile]);
+    // registerStream / registerTile are stable hook callbacks; bundles is
+    // the only changing input.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bundles]);
 
   return bundles;
 }

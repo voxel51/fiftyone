@@ -85,6 +85,9 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   const { seek } = usePlayback();
 
   const viewDuration = viewEnd - viewStart;
+  // Degenerate view (zero/negative width) — would produce NaN/Infinity
+  // CSS values and break layout for every bar/marker below.
+  if (viewDuration <= 0) return null;
   const pct = (t: number) =>
     `${((t - viewStart) / viewDuration) * 100}%`;
 

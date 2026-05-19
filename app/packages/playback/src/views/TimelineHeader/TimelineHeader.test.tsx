@@ -3,7 +3,6 @@ import { useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
 import TimelineHeader from "./TimelineHeader";
-import styles from "./TimelineHeader.module.css";
 
 /**
  * Provides a stable ref the ruler needs. The element doesn't need to be
@@ -36,11 +35,11 @@ describe("TimelineHeader", () => {
   afterEach(() => cleanup());
 
   it("renders the controls row (play / step buttons) and the ruler", () => {
-    const { container } = render(<HeaderHarness />);
+    render(<HeaderHarness />);
     expect(screen.getByRole("button", { name: "Play" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Step back" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Step forward" })).toBeTruthy();
-    expect(container.querySelector(`.${rulerStyles.ruler}`)).not.toBeNull();
+    expect(screen.getByTestId("timeline-ruler")).not.toBeNull();
   });
 
   it("renders the PlayheadTime readout (proxied through TimelineControls)", () => {
@@ -65,22 +64,20 @@ describe("TimelineHeader", () => {
   });
 
   it("passes labelWidth down to the ruler", () => {
-    const { container } = render(<HeaderHarness labelWidth={150} />);
+    render(<HeaderHarness labelWidth={150} />);
     // The ruler renders a labelSpacer div whose inline width === labelWidth.
-    const spacer = container.querySelector(`.${rulerStyles.labelSpacer}`) as HTMLElement;
-    expect(spacer).not.toBeNull();
+    const spacer = screen.getByTestId("timeline-ruler-label-spacer");
     expect(spacer.getAttribute("style") ?? "").toContain("width: 150px");
   });
 
   it("renders the controls row and the ruler in document order", () => {
-    const { container } = render(<HeaderHarness />);
-    const root = container.querySelector(`.${styles.root}`);
-    expect(root).not.toBeNull();
+    render(<HeaderHarness />);
+    const root = screen.getByTestId("timeline-header-root");
     // Controls (root has class "root" with border-bottom) is the first
     // child; ruler is the second.
-    const children = Array.from(root!.children);
+    const children = Array.from(root.children);
     expect(children).toHaveLength(2);
     expect(children[0].querySelector('[aria-label="Play"]')).not.toBeNull();
-    expect(children[1].classList.contains("ruler")).toBe(true);
+    expect(children[1]).toBe(screen.getByTestId("timeline-ruler"));
   });
 });

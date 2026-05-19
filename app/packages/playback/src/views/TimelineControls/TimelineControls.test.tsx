@@ -106,21 +106,21 @@ describe("TimelineControls", () => {
   });
 
   it("applies the .clickable class only when onToggle is provided", () => {
-    const { container: withToggle } = renderControls({ onToggle: vi.fn() });
+    renderControls({ onToggle: vi.fn() });
     expect(
-      withToggle.querySelector(".root")!.classList.contains("clickable")
+      screen.getByTestId("timeline-controls-root").classList.contains("clickable")
     ).toBe(true);
 
     cleanup();
-    const { container: withoutToggle } = renderControls({});
+    renderControls({});
     expect(
-      withoutToggle.querySelector(".root")!.classList.contains("clickable")
+      screen.getByTestId("timeline-controls-root").classList.contains("clickable")
     ).toBe(false);
   });
 
   it("renders without crashing when onToggle is omitted and the row is clicked", () => {
-    const { container } = renderControls({});
-    const row = container.querySelector(".root") as HTMLElement;
+    renderControls({});
+    const row = screen.getByTestId("timeline-controls-root");
     expect(() => fireEvent.click(row)).not.toThrow();
   });
 });

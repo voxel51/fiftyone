@@ -38,7 +38,7 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
   children,
 }) => {
   return (
-    <div className={styles.root}>
+    <div className={styles.root} data-testid="timeline-header-root">
       <TimelineControls onToggle={onToggle} />
       <TimelineRuler labelWidth={labelWidth} zoomRef={zoomRef} />
       {children ? <div className={styles.belowRuler}>{children}</div> : null}

@@ -12,7 +12,9 @@ function Seeker({ time }: { time: number }) {
   const { seek } = usePlayback();
   useEffect(() => {
     seek(time);
-  }, [seek, time]);
+    // seek from usePlayback() is a referentially-stable Jotai setter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [time]);
   return null;
 }
 
@@ -48,6 +50,12 @@ describe("PlayheadTime", () => {
   it("zero-pads sub-10-second values in both fields", () => {
     renderTime(7, 1.5);
     expect(screen.getByText("0:01.50 / 0:07.00")).toBeTruthy();
+  });
+
+  it("rolls over to minutes once the playhead crosses 60s", () => {
+    // 83.45s = 1:23.45 — locks in M:SS.cs formatting past the minute mark.
+    renderTime(120, 83.45);
+    expect(screen.getByText("1:23.45 / 2:00.00")).toBeTruthy();
   });
 
   it("renders a single text node (currentTime / duration)", () => {

@@ -36,6 +36,10 @@ function renderBar(duration = 10) {
 }
 
 describe("SimplePlaybackBar", () => {
+  // Capture originals so afterEach can restore Element.prototype to the
+  // state we found it in — otherwise the patches leak into later tests.
+  const originalSetPointerCapture = Element.prototype.setPointerCapture;
+
   beforeEach(() => {
     // jsdom reports clientWidth = 0 (no layout engine). Stub a deterministic
     // 100px track width so the ratio math (offsetX / clientWidth) lines up.
@@ -48,7 +52,11 @@ describe("SimplePlaybackBar", () => {
     Element.prototype.setPointerCapture = vi.fn();
   });
 
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+    Element.prototype.setPointerCapture = originalSetPointerCapture;
+  });
 
   it("renders a play button when paused", () => {
     renderBar();

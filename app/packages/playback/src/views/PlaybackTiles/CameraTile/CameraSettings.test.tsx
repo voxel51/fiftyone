@@ -30,7 +30,10 @@ const RegisterCameras: React.FC<{
     return () => {
       for (const d of disposes) d();
     };
-  }, [entries, registerTile]);
+    // registerTile is memoized inside useTileRegistry — stable across
+    // renders, no need to include here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entries]);
   return null;
 };
 
