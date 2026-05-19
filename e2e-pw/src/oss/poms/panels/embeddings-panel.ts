@@ -11,7 +11,10 @@ export class EmbeddingsPom {
   readonly asserter: EmebddingsAsserter;
   readonly lassoTool: Locator;
 
-  constructor(readonly page: Page, eventUtils: EventUtils) {
+  constructor(
+    readonly page: Page,
+    eventUtils: EventUtils
+  ) {
     this.locator = this.page.getByTestId("embeddings-container");
     this.selector = new SelectorPom(this.locator, eventUtils, "embeddings");
     this.colorbySelector = new SelectorPom(

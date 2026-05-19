@@ -108,7 +108,8 @@ const useCreateAnnotationLabel = () => {
             selectable: true,
           }
         );
-        addOverlay(overlay);
+        // needs to pass in true, so that first point is undo-able. Otherwise, the overlay doesn't exist in the store until after the first point is placed, so the initial state isn't captured in the undo stack
+        addOverlay(overlay, true);
 
         // Selecting the new overlay triggers `usePolylineMode`'s effect to
         // install an `InteractivePolylineHandler` for editing. Creation
@@ -200,10 +201,10 @@ export function buildNewLabelData(
 
   if (type === POLYLINE) {
     return {
-      ...data,
-      points: options?.origin ? [[options.origin]] : [],
       closed: false,
       filled: false,
+      ...data,
+      points: options?.origin ? [[options.origin]] : [],
     };
   }
 

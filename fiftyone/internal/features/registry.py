@@ -78,9 +78,9 @@ def require_feature(feature: FeatureFlag):
 
     Example::
 
-        @require_feature("VFF_ONTOLOGY_CA")
-        def create_ontology(ontology):
-            ontology.save()
+        @require_feature("VFF_MY_FEATURE")
+        def do_thing():
+            ...
     """
 
     def decorator(func):
