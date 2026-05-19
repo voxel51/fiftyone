@@ -8,6 +8,17 @@ export const MIN_LOAD_RANGE_SIZE = 350;
 export const ATOM_FAMILY_CONFIGS_LRU_CACHE_SIZE = 100;
 export const SEEK_BAR_DEBOUNCE = 10;
 
+// ---------------------------------------------------------------------------
+// TimelineWithTracks layout
+// ---------------------------------------------------------------------------
+
+/** Width of the label column shared between ruler and tracks (px). */
+export const TIMELINE_LABEL_WIDTH = 140;
+/** Initial open size of the timeline drawer in px. Capped by content height. */
+export const TIMELINE_DEFAULT_DRAWER_SIZE = 220;
+/** Hard ceiling on the timeline drawer height in px (independent of content). */
+export const TIMELINE_DRAWER_MAX_SIZE = 600;
+
 export const PLAYHEAD_STATE_PLAYING = "playing";
 export const PLAYHEAD_STATE_PAUSED = "paused";
 export const PLAYHEAD_STATE_BUFFERING = "buffering";

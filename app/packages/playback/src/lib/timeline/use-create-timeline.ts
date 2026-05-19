@@ -14,14 +14,14 @@ import {
   SequenceTimelineSubscription,
   setFrameNumberAtom,
   updatePlayheadStateAtom,
-} from "../lib/state";
+} from "./state";
 import {
   DEFAULT_FRAME_NUMBER,
   PLAYHEAD_STATE_BUFFERING,
   PLAYHEAD_STATE_PAUSED,
   PLAYHEAD_STATE_PLAYING,
   PLAYHEAD_STATE_WAITING_TO_PAUSE,
-} from "./constants";
+} from "../constants";
 import { useDefaultTimelineNameImperative } from "./use-default-timeline-name";
 import { getTimelineSetFrameNumberEventName } from "./utils";
 
@@ -71,7 +71,7 @@ export const useCreateTimeline = (
   useEffect(() => {
     // missing config might be used as a technique to delay the initialization of the timeline
     if (!newTimelineProps.config) {
-      return;
+      return undefined;
     }
 
     addTimeline({ name: timelineName, config: newTimelineProps.config });
@@ -163,7 +163,7 @@ export const useCreateTimeline = (
       return;
     }
 
-    if (playHeadStateRef.current === "buffering") {
+    if (playHeadStateRef.current === PLAYHEAD_STATE_BUFFERING) {
       return;
     }
 
@@ -241,7 +241,9 @@ export const useCreateTimeline = (
         return;
       }
 
-      lastDrawTime.current = newTime - (elapsed % updateFreq);
+      // Use the ref so a closure-captured stale `updateFreq` can't drift
+      // the frame timing across re-renders.
+      lastDrawTime.current = newTime - (elapsed % updateFreqRef.current);
 
       // don't commit if: we're at the end of the timeline
       if (frameNumberRef.current === configRef.current.totalFrames) {
@@ -306,7 +308,8 @@ export const useCreateTimeline = (
           isLastDrawFinishedRef.current = true;
         });
     },
-    [pause, timelineName, updateFreq]
+    // updateFreq is read via updateFreqRef.current.
+    [pause, timelineName]
   );
 
   const startAnimation = useCallback(() => {

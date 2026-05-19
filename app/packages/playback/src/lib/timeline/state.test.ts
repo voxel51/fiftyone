@@ -1,8 +1,8 @@
 import { describe, expect, it, vitest } from "vitest";
 import { getLoadRangeForFrameNumber } from "./state";
 
-vitest.mock("./constants", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("./constants")>();
+vitest.mock("../constants", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../constants")>();
   return {
     ...actual,
     MIN_LOAD_RANGE_SIZE: 5,
