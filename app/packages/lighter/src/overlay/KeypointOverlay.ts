@@ -753,7 +753,6 @@ export class KeypointOverlay
    * on subsequent hover once the handler is uninstalled.
    */
   cancelPointDrag(): void {
-    if (this.dragPointIndex === null) return;
     this.dragPointIndex = null;
     this.moveStartScreenPoint = undefined;
     this.moveStartRelativePoint = undefined;
