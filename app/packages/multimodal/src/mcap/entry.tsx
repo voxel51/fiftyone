@@ -1,11 +1,11 @@
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import { GridRenderer } from "./GridRenderer";
-import { ModalRenderer } from "./ModalRenderer";
+import { MultiModalPlaybackRenderer } from "./MultiModalPlaybackRenderer";
 
 registerComponent({
   name: "McapRenderer",
   label: "Mcap Renderer",
-  component: ModalRenderer,
+  component: MultiModalPlaybackRenderer,
   type: PluginComponentType.SampleRenderer,
   activator: () => true,
   sampleRendererOptions: {
