@@ -113,6 +113,7 @@ export const useDetectionMode = () => {
     editingLabelType === DETECTION &&
     !selectedLabel?.isNew &&
     !selectedLabel?.data?.mask &&
+    !selectedLabel?.data?.mask_path &&
     !isEditingMask;
 
   const noActiveFields = fields.length === 0;

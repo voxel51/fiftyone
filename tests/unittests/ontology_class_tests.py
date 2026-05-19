@@ -6,12 +6,7 @@ FiftyOne ontology data class unit tests.
 |
 """
 
-import os
 import unittest
-
-# Ontology SDK is gated by VFF_ONTOLOGY_CA; enable for the whole module.
-# Tests that need the flag off manage the env var themselves.
-os.environ.setdefault("VFF_ONTOLOGY_CA", "1")
 
 from fiftyone.core.annotation.attributes import (
     MAX_CONDITION_DEPTH,

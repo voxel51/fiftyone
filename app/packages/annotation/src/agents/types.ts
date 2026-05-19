@@ -3,6 +3,7 @@ import {
   DetectionsParent,
   PolylinesParent,
 } from "../deltas";
+import type { ProviderError } from "../providers";
 
 /**
  * The category of annotation work an agent can perform.
@@ -161,6 +162,57 @@ export type InferenceResultProxy =
   | SegmentationInferenceResult;
 
 /**
+ * Coarse lifecycle states an {@link AnnotationAgent} may transition through.
+ *
+ * Agents are the source of truth for these states. Consumers should listen
+ * via {@link AnnotationAgent.onLifecycleEvent} or — preferred — subscribe to
+ * `annotation:agentLifecycleStatusChange` on the annotation event bus, which
+ * is bridged from agent emissions.
+ *
+ * - `"idle"`               - no work in flight
+ * - `"initializing"`       - one-time setup (e.g. spawning a worker)
+ * - `"downloading-weights"`- fetching model weights; pair with progress events
+ * - `"encoding-image"`     - image-level preprocessing / encoder pass
+ * - `"inferring"`          - running the model
+ * - `"error"`              - a terminal error occurred; see paired error event
+ */
+export type AnnotationAgentLifecycleStatus =
+  | "idle"
+  | "initializing"
+  | "downloading-weights"
+  | "encoding-image"
+  | "inferring"
+  | "error";
+
+/**
+ * Progress payload for {@link AnnotationAgentLifecycle} `"progress"` events.
+ * `file` is an agent-defined identifier (e.g. `"encoder"` / `"decoder"`).
+ */
+export type AnnotationAgentDownloadProgress = {
+  file: string;
+  loaded: number;
+  total: number;
+};
+
+/**
+ * Single-channel lifecycle event emitted by an {@link AnnotationAgent}.
+ *
+ * Bridged onto distinct entries of `AnnotationEventGroup` by the canonical
+ * `useRegisterAgentLifecycleEvents` hook.
+ */
+export type AnnotationAgentLifecycle =
+  | { kind: "status"; status: AnnotationAgentLifecycleStatus }
+  | ({ kind: "progress" } & AnnotationAgentDownloadProgress)
+  | { kind: "error"; error: ProviderError };
+
+/**
+ * Listener for {@link AnnotationAgent.onLifecycleEvent}.
+ */
+export type AnnotationAgentLifecycleListener = (
+  event: AnnotationAgentLifecycle
+) => void;
+
+/**
  * Contract which every annotation agent must satisfy.
  *
  * Agents are opaque to the UX — they may be client-side (e.g. a web worker)
@@ -236,4 +288,24 @@ export interface AnnotationAgent<T extends InferenceResultProxy> {
    * @param sessionId - The session ID from an `AsyncInferenceResult`.
    */
   abort(sessionId: string): Promise<void>;
+
+  /**
+   * Subscribe to coarse lifecycle events from this agent (status changes,
+   * download progress, terminal errors).
+   *
+   * Implementations should emit a `"status"` event for every transition so
+   * a single listener can drive UI without polling. Late subscribers can
+   * read the current status via {@link getLifecycleStatus} and wait for the
+   * next event.
+   *
+   * @returns A function that, when called, removes the listener.
+   */
+  onLifecycleEvent(listener: AnnotationAgentLifecycleListener): () => void;
+
+  /**
+   * Returns the agent's current lifecycle status. Useful for consumers that
+   * mount after the agent has already transitioned and need the current
+   * state without waiting for the next event.
+   */
+  getLifecycleStatus(): AnnotationAgentLifecycleStatus;
 }

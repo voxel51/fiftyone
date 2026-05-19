@@ -181,7 +181,9 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         );
 
         if (!currentOwner || prevOwner !== currentOwner) {
-          delete value[name];
+          // null, not `delete`: the auto-save delta must carry an explicit
+          // unset, otherwise the existing-detection merge resurrects the value.
+          value[name] = null;
         }
       }
 

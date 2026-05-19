@@ -49,6 +49,10 @@ const buildAnnotationLabel = (overlay: BaseOverlay): LabelProxy | undefined => {
         ? {
             ...(_mask && { mask: _mask }),
             ...(pendingMask && { mask: pendingMask }),
+            // Edits to a `mask_path`-sourced detection are persisted as an
+            // inline `mask`; null the path so the backend doesn't end up
+            // with both fields pointing at divergent data.
+            ...(pendingMask && _maskPath && { mask_path: null }),
           }
         : hadMask
         ? { mask: null, mask_path: null }

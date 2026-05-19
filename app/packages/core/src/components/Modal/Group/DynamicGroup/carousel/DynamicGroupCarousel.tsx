@@ -2,8 +2,8 @@ import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { useBrowserStorage } from "@fiftyone/state";
 import { Resizable } from "re-resizable";
-import React, { useEffect, useState } from "react";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import React from "react";
+import { useRecoilValue } from "recoil";
 import { DynamicGroupsFlashlightWrapper } from "./DynamicGroupsFlashlightWrapper";
 
 const MAX_CAROUSEL_HEIGHT = 600;
@@ -18,36 +18,6 @@ export const DynamicGroupCarousel = React.memo(() => {
   const isMainVisible = useRecoilValue(
     fos.groupMediaIsMain2DViewerVisibleSetting
   );
-
-  /**
-   * BIG HACK: TODO: FIX ME
-   *
-   * Problem = flashlight is not re-rendering when group by field changes.
-   * Solution was to key it by groupByValue, but when the component
-   * subscribes to the groupByFieldValue using useRecoilValue(fos.groupByFieldValue),
-   * while it solves the problem, it causes flashlight to behave weirdly.
-   * (try scrolling carousel and selecting samples, flashlight will reset to the front)
-   *
-   */
-  const getGroupByFieldValue = useRecoilCallback(({ snapshot }) => () => {
-    const groupByField = snapshot.getLoadable(fos.groupByFieldValue).getValue();
-    return groupByField;
-  });
-
-  const [groupByValue, setGroupByValue] = useState(getGroupByFieldValue());
-  const groupByValueRef = React.useRef(groupByValue);
-  groupByValueRef.current = groupByValue;
-
-  useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      const groupByFieldValue = getGroupByFieldValue();
-      if (groupByFieldValue !== groupByValueRef.current) {
-        setGroupByValue(groupByFieldValue);
-      }
-    }, 50);
-
-    return () => window.clearInterval(intervalId);
-  }, []);
 
   return (
     <Resizable
@@ -73,7 +43,7 @@ export const DynamicGroupCarousel = React.memo(() => {
       }}
       data-cy={"group-carousel"}
     >
-      <DynamicGroupsFlashlightWrapper key={groupByValue} />
+      <DynamicGroupsFlashlightWrapper />
     </Resizable>
   );
 });
