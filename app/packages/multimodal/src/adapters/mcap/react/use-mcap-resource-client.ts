@@ -2,8 +2,8 @@ import { useEffect, useMemo } from "react";
 import {
   createMcapResourceClient,
   type CreateMcapResourceClientOptions,
-} from "./resource-client";
-import type { McapResourceClient } from "./types";
+} from "../resource-client";
+import type { McapResourceClient } from "../types";
 
 /**
  * Options for creating an MCAP resource client in React renderers.

@@ -38,7 +38,7 @@ module.exports = {
       severity: "error",
       from: { path: `${MCAP}resources/` },
       to: {
-        path: `${MCAP}(hooks|index|resource-client)\\.tsx?$`,
+        path: `${MCAP}(react/|index\\.ts$|resource-client\\.ts$)`,
       },
     },
     {
@@ -46,7 +46,7 @@ module.exports = {
       severity: "error",
       from: { path: `${MCAP}(decoders|reader|resources|worker)(/|$)` },
       to: {
-        path: `${MCAP}(GridRenderer|ModalRenderer|entry)\\.tsx?$`,
+        path: `${MCAP}(react/|entry\\.tsx$)`,
       },
     },
     {
@@ -54,7 +54,7 @@ module.exports = {
       severity: "error",
       from: { path: `${MCAP}worker/` },
       to: {
-        path: `${MCAP}(GridRenderer|ModalRenderer|entry|hooks|index|resource-client)\\.tsx?$`,
+        path: `${MCAP}(react/|entry\\.tsx$|index\\.ts$|resource-client\\.ts$)`,
       },
     },
     {
@@ -62,7 +62,7 @@ module.exports = {
       severity: "error",
       from: { path: `${MCAP}reader/` },
       to: {
-        path: `${MCAP}(resources/|worker/|GridRenderer\\.tsx$|ModalRenderer\\.tsx$|entry\\.tsx$|hooks\\.ts$|index\\.ts$|resource-client\\.ts$)`,
+        path: `${MCAP}(resources/|worker/|react/|entry\\.tsx$|index\\.ts$|resource-client\\.ts$)`,
       },
     },
     {
@@ -70,7 +70,7 @@ module.exports = {
       severity: "error",
       from: { path: `${MCAP}decoders/` },
       to: {
-        path: `${MCAP}(reader/|resources/|worker/|GridRenderer\\.tsx$|ModalRenderer\\.tsx$|entry\\.tsx$|hooks\\.ts$|index\\.ts$|resource-client\\.ts$)`,
+        path: `${MCAP}(reader/|resources/|worker/|react/|entry\\.tsx$|index\\.ts$|resource-client\\.ts$)`,
       },
     },
     {

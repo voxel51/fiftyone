@@ -3,8 +3,8 @@
  * TODO(FOEPD-3830): REPLACE THIS DECODE/FETCH SLICE WITH PRODUCTION CODE.
  */
 import type { SampleRendererProps } from "@fiftyone/plugins";
-import { useSceneInventory } from "../../client/hooks";
-import { getSampleIdentifiers } from "./sample";
+import { useSceneInventory } from "../../../client/hooks";
+import { getSampleIdentifiers } from "../sample";
 
 /**
  * Grid proof renderer for MCAP-backed multimodal samples.

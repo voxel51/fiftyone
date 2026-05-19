@@ -1,6 +1,5 @@
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
-import { GridRenderer } from "./GridRenderer";
-import { ModalRenderer } from "./ModalRenderer";
+import { GridRenderer, ModalRenderer } from "./react";
 
 registerComponent({
   name: "McapRenderer",

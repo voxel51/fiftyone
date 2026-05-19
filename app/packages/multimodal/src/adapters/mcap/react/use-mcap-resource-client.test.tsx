@@ -1,6 +1,6 @@
 import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useMcapResourceClient } from "./hooks";
+import { useMcapResourceClient } from "./use-mcap-resource-client";
 
 const resourceHarness = vi.hoisted(() => {
   const client = {
@@ -22,7 +22,7 @@ const resourceHarness = vi.hoisted(() => {
   };
 });
 
-vi.mock("./resource-client", () => ({
+vi.mock("../resource-client", () => ({
   createMcapResourceClient: resourceHarness.createMcapResourceClient,
 }));
 

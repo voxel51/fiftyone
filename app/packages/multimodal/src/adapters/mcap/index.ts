@@ -1,8 +1,8 @@
 /**
  * React helper for MCAP renderer client lifecycle.
  */
-export { useMcapResourceClient } from "./hooks";
-export type { UseMcapResourceClientOptions } from "./hooks";
+export { useMcapResourceClient } from "./react";
+export type { UseMcapResourceClientOptions } from "./react";
 
 /**
  * Public MCAP resource client factory.

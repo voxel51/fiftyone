@@ -25,7 +25,7 @@ which ranges to read and which payload descriptors to decode.
 ### Adapters
 
 Adapters compose queries and resources for a concrete source format. The MCAP
-adapter under `src/mcap` owns MCAP indexing, chunk decompression,
+adapter under `src/adapters/mcap` owns MCAP indexing, chunk decompression,
 channel/schema mapping, sync-window selection, worker playback, and
 adapter-owned decoder registration. Its public surface presents playback-ready
 APIs.
@@ -49,8 +49,8 @@ APIs.
 
 ## Worker Playback
 
-Playback uses `src/mcap/worker` so MCAP scans, decompression, and payload
-decoding do not block the main UI thread. The worker owns the same MCAP
+Playback uses `src/adapters/mcap/worker` so MCAP scans, decompression, and
+payload decoding do not block the main UI thread. The worker owns the same MCAP
 resource client as inline execution, but exposes it through prioritized RPC:
 
 -   current-frame requests run before speculative playback batches,
@@ -85,9 +85,10 @@ caches, described below.
 
 2. **MCAP reader and index caches**
 
-    `src/mcap/reader` owns initialized MCAP readers per source. The reader
-    store prevents each playback request from rebuilding the MCAP reader,
-    reparsing summary metadata, and recreating the seekable reader wrapper.
+    `src/adapters/mcap/reader` owns initialized MCAP readers per source. The
+    reader store prevents each playback request from rebuilding the MCAP
+    reader, reparsing summary metadata, and recreating the seekable reader
+    wrapper.
 
     The default reader also gives `@mcap/core` a message-index cache budget.
     That cache is owned by the MCAP library, but the adapter sets the budget
