@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
 import TimelineControls from "./TimelineControls";
+import styles from "./TimelineControls.module.css";
 
 interface RenderOpts {
   duration?: number;
@@ -109,13 +110,13 @@ describe("TimelineControls", () => {
   it("applies the .clickable class only when onToggle is provided", () => {
     renderControls({ onToggle: vi.fn() });
     expect(
-      screen.getByTestId("timeline-controls-root").classList.contains("clickable")
+      screen.getByTestId("timeline-controls-root").classList.contains(styles.clickable)
     ).toBe(true);
 
     cleanup();
     renderControls({});
     expect(
-      screen.getByTestId("timeline-controls-root").classList.contains("clickable")
+      screen.getByTestId("timeline-controls-root").classList.contains(styles.clickable)
     ).toBe(false);
   });
 
