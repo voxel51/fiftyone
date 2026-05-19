@@ -409,6 +409,12 @@ export class InteractivePolylineHandler implements InteractionHandler {
     this.overlay.setPreviewAnchorFlipped(false);
     this.overlay.setPreviewAnchorPointId(null);
     this.overlay.setDeletable(this.priorIsDeletable);
+    // The select-click that triggered handler install ran the overlay's own
+    // onPointerDown (setting per-point drag state) before this handler took
+    // over dispatch. Pointer-up then routed to the handler, not the overlay,
+    // so that state would otherwise outlive the handler and re-engage drag
+    // on the next hover.
+    this.overlay.cancelPointDrag();
   }
 
   /**

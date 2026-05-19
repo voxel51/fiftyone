@@ -744,6 +744,22 @@ export class KeypointOverlay
     return true;
   }
 
+  /**
+   * Resets per-point drag tracking. For use by interactive handlers that take
+   * over drag ownership (e.g. {@link InteractivePolylineHandler}): the click
+   * that selects an overlay enters this overlay's own onPointerDown and sets
+   * drag state, but the matching pointer-up may dispatch to the now-installed
+   * handler instead, leaving drag state stranded. Stranded state re-engages
+   * on subsequent hover once the handler is uninstalled.
+   */
+  cancelPointDrag(): void {
+    if (this.dragPointIndex === null) return;
+    this.dragPointIndex = null;
+    this.moveStartScreenPoint = undefined;
+    this.moveStartRelativePoint = undefined;
+    this.renderer?.enableZoomPan();
+  }
+
   // ---------------------------------------------------------------------------
   // Public mutation API
   // ---------------------------------------------------------------------------
