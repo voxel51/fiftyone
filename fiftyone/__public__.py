@@ -55,6 +55,16 @@ from .core.expressions import (
     ViewExpression,
     VALUE,
 )
+from .core.annotation.attributes import (
+    AttributeSpec,
+    When,
+    WhenAnd,
+    WhenCondition,
+    WhenEquals,
+    WhenIn,
+    WhenOperator,
+    WhenOr,
+)
 from .core.ontology import (
     AnnotationOntology,
     apply_ontology,

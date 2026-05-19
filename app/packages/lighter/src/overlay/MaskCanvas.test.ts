@@ -7,9 +7,19 @@ import {
   SegmentationToolMode,
   SegmentationToolShape,
 } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { MaskCanvas } from "./MaskCanvas";
 import type { Rect } from "../types";
+import { maskBounds } from "../utils";
+
+// Stub maskBounds so tests can drive paintEnd's post-stroke crop directly —
+// the jsdom canvas mock in vitest.setup.ts has no real pixel storage, so we
+// can't compute a tight bbox from painted pixels at runtime.
+vi.mock("../utils", async () => {
+  const actual = await vi.importActual<typeof import("../utils")>("../utils");
+  return { ...actual, maskBounds: vi.fn() };
+});
+const mockedMaskBounds = vi.mocked(maskBounds);
 
 const WHITE = "#ffffff";
 
@@ -74,7 +84,9 @@ describe("MaskCanvas.mergeFrom", () => {
       targetBounds
     );
 
-    // Union: (0,0) → (18,18)
+    // Union: (0,0) → (18,18). The post-merge crop is a no-op here because
+    // the jsdom canvas mock has no real pixel storage — see paintEnd suite
+    // below for shrink coverage with maskBounds mocked.
     expect(newBounds.x).toBe(0);
     expect(newBounds.y).toBe(0);
     expect(newBounds.width).toBe(18);
@@ -133,10 +145,53 @@ describe("MaskCanvas.mergeFrom", () => {
       targetBounds
     );
 
-    // Source is inside target; bounds shouldn't grow.
+    // Source is inside target; bounds shouldn't grow. (Crop is a no-op in
+    // the mocked canvas env.)
     expect(newBounds.x).toBe(targetBounds.x);
     expect(newBounds.y).toBe(targetBounds.y);
     expect(newBounds.width).toBe(targetBounds.width);
     expect(newBounds.height).toBe(targetBounds.height);
+  });
+});
+
+describe("MaskCanvas.paintEnd shrink", () => {
+  it("snaps bounds down to the painted region reported by maskBounds", () => {
+    const bounds: Rect = { x: 0, y: 0, width: 20, height: 20 };
+    const mc = seedCanvas(bounds, bounds);
+
+    // Pretend the painted region tight-bounds to pixels (3,4)-(7,8).
+    mockedMaskBounds.mockReturnValueOnce({
+      minX: 3,
+      minY: 4,
+      maxX: 7,
+      maxY: 8,
+    });
+
+    const newBounds = mc.paintEnd(bounds);
+
+    expect(newBounds).toEqual({ x: 3, y: 4, width: 5, height: 5 });
+  });
+
+  it("returns bounds unchanged when the canvas is already tight", () => {
+    const bounds: Rect = { x: 0, y: 0, width: 5, height: 5 };
+    const mc = seedCanvas(bounds, bounds);
+
+    mockedMaskBounds.mockReturnValueOnce({
+      minX: 0,
+      minY: 0,
+      maxX: 4,
+      maxY: 4,
+    });
+
+    expect(mc.paintEnd(bounds)).toEqual(bounds);
+  });
+
+  it("returns bounds unchanged when maskBounds reports no opaque pixels", () => {
+    const bounds: Rect = { x: 0, y: 0, width: 10, height: 10 };
+    const mc = seedCanvas(bounds, bounds);
+
+    mockedMaskBounds.mockReturnValueOnce(null);
+
+    expect(mc.paintEnd(bounds)).toEqual(bounds);
   });
 });

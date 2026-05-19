@@ -36,8 +36,8 @@ import { useClassificationMode } from "./Edit/useClassificationMode";
 import { useDetectionMode } from "./Edit/useDetectionMode";
 import { usePolylineMode } from "./Edit/usePolylineMode";
 import { useSegmentationMode } from "./Edit/useSegmentationMode";
+import { useDeactivateAllModes } from "./useDeactivateAllModes";
 import { Anchor, Text, Tooltip } from "@voxel51/voodo";
-import { FeatureFlag, FeatureFlagged } from "@fiftyone/feature-flags";
 
 const ActionsDiv = styled.div`
   align-items: center;
@@ -433,14 +433,11 @@ const Actions = () => {
   // This checks if a 3d sample is pinned - is true when media type is `group` with a 3d slice pinned
   const { isPinned: is3dSamplePinned } = useRenderConfig3dState();
 
-  const { classificationModeActive, deactivateClassificationMode } =
-    useClassificationMode();
-  const { detectionModeActive, deactivateDetectionMode } = useDetectionMode();
-  const { segmentationModeActive, deactivateSegmentationMode } =
-    useSegmentationMode();
-  const { polylineModeActive, deactivatePolylineMode } = usePolylineMode();
+  const { classificationModeActive } = useClassificationMode();
+  const { detectionModeActive } = useDetectionMode();
+  const { segmentationModeActive } = useSegmentationMode();
+  const { polylineModeActive } = usePolylineMode();
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
-  const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
 
   const noActiveActions =
     !classificationModeActive &&
@@ -450,19 +447,7 @@ const Actions = () => {
     !current3dAnnotationMode;
   const areThreeDActionsVisible = is3dDataset || is3dSamplePinned;
 
-  const deactivateAll = useCallback(() => {
-    deactivateClassificationMode();
-    deactivateDetectionMode();
-    deactivateSegmentationMode();
-    setCurrent3dAnnotationMode(null);
-    deactivatePolylineMode();
-  }, [
-    deactivateClassificationMode,
-    deactivateDetectionMode,
-    deactivatePolylineMode,
-    deactivateSegmentationMode,
-    setCurrent3dAnnotationMode,
-  ]);
+  const deactivateAll = useDeactivateAllModes();
 
   return (
     <DeactivateAllContext.Provider value={deactivateAll}>
@@ -479,12 +464,8 @@ const Actions = () => {
             ) : (
               <>
                 <Detection />
-                <FeatureFlagged feature={FeatureFlag.VFF_AI_SEGMENTATION}>
-                  <Segmentation />
-                </FeatureFlagged>
-                <FeatureFlagged feature={FeatureFlag.VFF_POLYLINE_ANNOTATION}>
-                  <Polyline />
-                </FeatureFlagged>
+                <Segmentation />
+                <Polyline />
               </>
             )}
           </ItemLeft>

@@ -127,11 +127,7 @@ export class MaskKeypoints extends KeypointOverlay {
     const points = this.getAbsolutePoints();
     const connections = points.reduce(
       (memo, _point, index) =>
-        index === 0
-          ? memo
-          : index === points.length - 1
-          ? [...memo, [index - 1, index], [index, 0]]
-          : [...memo, [index - 1, index]],
+        index === 0 ? memo : [...memo, [index - 1, index]],
       []
     );
     this.setConnections(connections);
@@ -154,6 +150,21 @@ export class MaskKeypoints extends KeypointOverlay {
       renderer.drawLines(
         edgeSegments,
         { strokeStyle: strokeColor, lineWidth },
+        this.containerId
+      );
+    }
+
+    // 1b. Preview-state closing edge (last -> first) at reduced opacity so it
+    // reads as in-progress, distinct from the committed edges above.
+    if (absPoints.length > 2) {
+      renderer.drawLine(
+        absPoints[absPoints.length - 1],
+        absPoints[0],
+        {
+          strokeStyle: strokeColor,
+          lineWidth,
+          opacity: PREVIEW_LINE_OPACITY,
+        },
         this.containerId
       );
     }

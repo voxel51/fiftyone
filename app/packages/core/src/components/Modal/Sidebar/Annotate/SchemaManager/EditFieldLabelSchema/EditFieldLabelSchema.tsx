@@ -1,5 +1,4 @@
 import { scrollable } from "@fiftyone/components";
-import { FeatureFlag, FeatureFlagged } from "@fiftyone/feature-flags";
 import {
   Anchor,
   Button,
@@ -71,9 +70,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
         </Text>
       </div>
 
-      <FeatureFlagged feature={FeatureFlag.VFF_ONTOLOGY_CA}>
-        <ApplyOntologySection field={field} />
-      </FeatureFlagged>
+      <ApplyOntologySection field={field} />
 
       <div
         style={{

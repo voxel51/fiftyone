@@ -1241,6 +1241,20 @@ class ConfigureScenarioPlotResolver(foo.Operator):
             return None, e
 
 
+class ListScenarios(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="list_me_scenarios",
+            label="List model evaluation scenarios",
+            unlisted=True,
+        )
+
+    def execute(self, ctx):
+        scenarios = get_scenarios(ctx)
+        return scenarios
+
+
 # we use `fosu.cache_dataset()` rather than `@execution_cache` here so that
 # the cached dataset can be reused outside of the current prompt session
 def get_dataset(ctx):

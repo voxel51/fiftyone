@@ -4,6 +4,7 @@ import {
   DefaultContextManager,
   useActiveModalFields,
   useQueryPerformanceSampleLimit,
+  useUnboundStateRef,
 } from "@fiftyone/state";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { jotaiStore } from "@fiftyone/state/src/jotai";
@@ -12,6 +13,7 @@ import { usePrimitiveController } from "./Edit/useActivePrimitive";
 import useSave from "./Edit/useSave";
 import { useAnnotationSchemaContext } from "./state";
 import useCanManageSchema from "./useCanManageSchema";
+import { useDeactivateAllModes } from "./useDeactivateAllModes";
 import {
   schemaManagementOpsAtom,
   useSchemaResolver,
@@ -110,6 +112,9 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
   const schemaResolver = useSchemaResolver();
   const { isPrimitive, setActivePrimitive } = usePrimitiveController();
   const { reset: clearStaleMutations } = useSampleMutationManager();
+  // Held in a ref so exit() invokes the most recent deactivator chain
+  // even when the captured `exit` closure was snapshotted at mount.
+  const deactivateAllModesRef = useUnboundStateRef(useDeactivateAllModes());
 
   const activateField = useCallback(
     async (field: string): Promise<EnterResult> => {
@@ -225,9 +230,10 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
     if (contextManager.isActive()) {
       saveChanges();
       clearStaleMutations();
+      deactivateAllModesRef.current();
       contextManager.exit();
     }
-  }, [clearStaleMutations, contextManager, saveChanges]);
+  }, [clearStaleMutations, contextManager, deactivateAllModesRef, saveChanges]);
 
   return useMemo(
     () => ({
