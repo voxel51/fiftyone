@@ -1665,7 +1665,12 @@ export class Scene2D {
     handler: InteractionHandler | InteractiveDetectionHandler
   ): void {
     if (this.interactiveMode) {
-      return;
+      console.warn(
+        "[Scene2D] enterInteractiveMode called while interactive mode is " +
+          "already active; replacing existing handler",
+        { incoming: handler?.id, existing: this.interactiveHandler?.id }
+      );
+      this.exitInteractiveMode();
     }
 
     this.interactiveMode = true;
