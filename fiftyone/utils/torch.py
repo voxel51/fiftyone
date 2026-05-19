@@ -297,22 +297,6 @@ class GetItem(object):
         """
         raise NotImplementedError("subclasses must implement __call__()")
 
-    def _load_media(self, d):
-        """Loads the media for a sample.
-
-        Subclasses should read whichever keys they require (typically
-        ``"filepath"``) from ``d`` and return the loaded media (e.g., a PIL
-        image, numpy array, or model-specific representation).
-
-        Args:
-            d: a dict mapping the :meth:`required_keys` to values from the
-                sample being processed
-
-        Returns:
-            the loaded media object
-        """
-        raise NotImplementedError("subclasses must implement _load_media()")
-
     @property
     def required_keys(self):
         """The list of keys that must exist on the dicts provided to the
