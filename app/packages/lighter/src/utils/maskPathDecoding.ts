@@ -61,6 +61,17 @@ const cache = new LRUCache<string, OverlayMask>({
 const supportsWorkers = (): boolean =>
   typeof Worker !== "undefined" && typeof window !== "undefined";
 
+/** Worker factory. */
+const spawnWorker = (): Worker => {
+  try {
+    return new MaskPathDecodeWorker();
+  } catch {
+    return new Worker(new URL("./maskPathDecodeWorker.ts", import.meta.url), {
+      type: "module",
+    });
+  }
+};
+
 const bindWorker = (slot: Slot, worker: Worker): void => {
   slot.worker = worker;
 
@@ -97,7 +108,7 @@ const bindWorker = (slot: Slot, worker: Worker): void => {
     failed?.resolve(undefined);
 
     worker.terminate();
-    bindWorker(slot, new MaskPathDecodeWorker());
+    bindWorker(slot, spawnWorker());
 
     drain();
   });
@@ -106,7 +117,7 @@ const bindWorker = (slot: Slot, worker: Worker): void => {
 const createSlot = (): Slot => {
   const slot: Slot = { worker: undefined as unknown as Worker, job: null };
 
-  bindWorker(slot, new MaskPathDecodeWorker());
+  bindWorker(slot, spawnWorker());
 
   return slot;
 };
@@ -168,6 +179,14 @@ export async function decodeMaskPath(
   field: string,
   cls: string
 ): Promise<OverlayMask | undefined> {
+  // Defensive: callers should never pass a non-string URL, but if they do,
+  // a downstream `fetch(undefined)` would resolve to a phantom request
+  // against the page origin. Treat as "no mask" and bail.
+  if (typeof url !== "string" || url.length === 0) {
+    console.warn("[decodeMaskPath] called with invalid url:", url);
+    return undefined;
+  }
+
   const cached = cache.get(url);
   if (cached) {
     return cached;

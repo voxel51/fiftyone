@@ -41,6 +41,19 @@ const STUB_COLORING = {} as Coloring;
 self.onmessage = async (event: MessageEvent<DecodeRequest>) => {
   const { uuid, url, field, cls } = event.data;
 
+  // Defensive: callers should never reach the worker with a non-string URL,
+  // but if they do, `fetch(undefined)` coerces to `fetch("undefined")` and
+  // produces phantom requests against the page origin. Fail fast instead.
+  if (typeof url !== "string" || url.length === 0) {
+    const payload: DecodeFailure = {
+      uuid,
+      ok: false,
+      error: `invalid url: ${String(url)}`,
+    };
+    (self as DedicatedWorkerGlobalScope).postMessage(payload);
+    return;
+  }
+
   try {
     const response = await fetch(url);
     if (!response.ok) {
