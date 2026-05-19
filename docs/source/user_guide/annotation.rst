@@ -205,13 +205,12 @@ Create and save an ontology with the SDK:
 
 .. code-block:: python
 
-   from fiftyone.core.annotation.attributes import AttributeSpec
-   from fiftyone.core.ontology import AnnotationOntology
+   import fiftyone as fo
 
-   ontology = AnnotationOntology(
+   ontology = fo.AnnotationOntology(
        name="vehicle_damage_ontology",
        attributes=[
-           AttributeSpec(name="damage_present", type="bool", component="toggle"),
+           fo.AttributeSpec(name="damage_present", type="bool", component="toggle"),
        ],
    )
    ontology.save()
@@ -221,10 +220,9 @@ Attach the ontology to a field on a dataset's label schema:
 .. code-block:: python
 
    import fiftyone as fo
-   from fiftyone.core.ontology import apply_ontology
 
    dataset = fo.load_dataset("my_dataset")
-   label_schemas = apply_ontology(
+   label_schemas = fo.apply_ontology(
        dataset.label_schemas,
        field_name="detections",
        ontology_name="vehicle_damage_ontology",
@@ -246,23 +244,22 @@ the parent, including ``label`` itself.
 
 .. code-block:: python
 
-   from fiftyone.core.annotation.attributes import AttributeSpec, WhenEquals
-   from fiftyone.core.ontology import AnnotationOntology
+   import fiftyone as fo
 
-   AnnotationOntology(
+   fo.AnnotationOntology(
        name="vehicles",
        attributes=[
-           AttributeSpec(
+           fo.AttributeSpec(
                name="num_doors",
                type="int",
                component="text",
-               when=WhenEquals(field="label", value="car"),
+               when=fo.WhenEquals(field="label", value="car"),
            ),
-           AttributeSpec(
+           fo.AttributeSpec(
                name="cargo_capacity",
                type="float",
                component="text",
-               when=WhenEquals(field="label", value="truck"),
+               when=fo.WhenEquals(field="label", value="truck"),
            ),
        ],
    ).save()
