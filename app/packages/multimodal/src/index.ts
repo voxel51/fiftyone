@@ -1,10 +1,4 @@
 /**
- * Public app hooks for source-agnostic multimodal server artifacts.
- */
-export { usePlaybackPlan, useSceneInventory } from "./client/hooks";
-export type { MultimodalQueryState } from "./client/hooks";
-
-/**
  * Public decoder registry and decoder authoring contracts.
  */
 export {

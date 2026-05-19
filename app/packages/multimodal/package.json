@@ -6,9 +6,6 @@
     "types": "./src/index.ts",
     "exports": {
         ".": "./src/index.ts",
-        "./client": "./src/client/index.ts",
-        "./client/hooks": "./src/client/hooks/index.ts",
-        "./client/queries": "./src/client/queries/index.ts",
         "./client/resources": "./src/client/resources/index.ts",
         "./decoders": "./src/decoders/index.ts",
         "./inject": "./src/inject/index.ts",
@@ -25,15 +22,6 @@
             ],
             "client/resources": [
                 "src/client/resources/index.ts"
-            ],
-            "client/queries": [
-                "src/client/queries/index.ts"
-            ],
-            "client/hooks": [
-                "src/client/hooks/index.ts"
-            ],
-            "client": [
-                "src/client/index.ts"
             ],
             "inject": [
                 "src/inject/index.ts"

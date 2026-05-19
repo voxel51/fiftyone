@@ -51,23 +51,6 @@ function remoteReadProfile(filepath: string) {
 }
 
 /**
- * Extracts the dataset and sample identifiers.
- */
-export function getSampleIdentifiers(ctx: SampleRendererProps["ctx"]): {
-  readonly datasetId: string | null;
-  readonly sampleId: string | null;
-} {
-  const sampleRecord = ctx.sample.sample as SampleRecord;
-
-  return {
-    datasetId: normalizeIdentifier(ctx.dataset.datasetId),
-    sampleId:
-      normalizeIdentifier(sampleRecord._id) ??
-      normalizeIdentifier(sampleRecord.id),
-  };
-}
-
-/**
  * Builds an MCAP byte source from the modal sample filepath.
  */
 export function getMcapSourceDescriptor(

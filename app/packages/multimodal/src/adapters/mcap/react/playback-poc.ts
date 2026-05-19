@@ -12,7 +12,6 @@ import {
   byteSourceCacheKey,
   serializeCacheKey,
 } from "../../../client/resources/cache";
-import type { StreamInventory } from "../../../schemas/v1";
 import { createMcapTimelineTicks } from "../timeline";
 import {
   MCAP_ACTIVE_TIMELINE,
@@ -180,21 +179,6 @@ export interface McapPlaybackState {
    * Starts or stops playback.
    */
   readonly togglePlaying: () => void;
-
-  /**
-   * Topic inventory loading error.
-   */
-  readonly topicError: string | null;
-
-  /**
-   * Loading status for MCAP topic inventory.
-   */
-  readonly topicStatus: McapLoadStatus;
-
-  /**
-   * Topic inventory read from the MCAP summary.
-   */
-  readonly topics: readonly StreamInventory[];
 }
 
 type FrameLoadIntent = "load" | "playback" | "seek";
@@ -238,11 +222,6 @@ export function useMcapPlayback({
   const [isPlaying, setIsPlaying] = useState(false);
   const [timelineStatus, setTimelineStatus] = useState<McapLoadStatus>("idle");
   const [frameStatus, setFrameStatus] = useState<McapLoadStatus>("idle");
-  const [topicStatus, setTopicStatus] = useState<McapLoadStatus>("idle");
-  const [topicInventory, setTopicInventory] = useState<
-    readonly StreamInventory[]
-  >([]);
-  const [topicError, setTopicError] = useState<string | null>(null);
   const [displayMessagesByTopic, setDisplayMessagesByTopic] =
     useState<McapPlaybackMessagesByTopic>({});
   const [error, setError] = useState<string | null>(null);
@@ -312,44 +291,6 @@ export function useMcapPlayback({
     inFlightFrameRequestsRef.current.clear();
     markPlaybackBufferChanged();
   }, [playbackWindowCache, playbackWindowRequestKey]);
-
-  useEffect(() => {
-    if (!source || sourceProblem) {
-      setTopicInventory([]);
-      setTopicStatus("idle");
-      setTopicError(null);
-      return;
-    }
-
-    let cancelled = false;
-    setTopicInventory([]);
-    setTopicStatus("loading");
-    setTopicError(null);
-
-    client
-      .readTopics({ source })
-      .then((nextTopics) => {
-        if (cancelled) {
-          return;
-        }
-
-        setTopicInventory(nextTopics);
-        setTopicStatus("ready");
-      })
-      .catch((caughtError) => {
-        if (cancelled) {
-          return;
-        }
-
-        setTopicInventory([]);
-        setTopicStatus("error");
-        setTopicError(errorMessage(caughtError));
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [client, source, sourceKey, sourceProblem]);
 
   // Timeline discovery resets playback state because source, active timeline,
   // and tick generation define the frame-index coordinate system.
@@ -800,9 +741,6 @@ export function useMcapPlayback({
     timelineStatus,
     timelineTickCount,
     togglePlaying,
-    topicError,
-    topicStatus,
-    topics: topicInventory,
   };
 }
 

@@ -4,9 +4,6 @@
  */
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import type { ChangeEvent, CSSProperties, ReactNode } from "react";
-import { useRef } from "react";
-import type { ByteSourceDescriptor } from "../../../client/resources";
-import { byteSourceCacheKey } from "../../../client/resources/cache";
 import type { DecodedVisualization } from "../../../decoders";
 import { PlaybackSyncMode, type StreamInventory } from "../../../schemas/v1";
 import { ImagePanel } from "../../../visualization/panels/image";
@@ -19,7 +16,6 @@ import {
   type McapStreamSyncPolicies,
 } from "../types";
 import { DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ } from "../timeline";
-import { getMcapSourceDescriptor } from "../sample";
 import {
   type McapLoadStatus,
   type McapPlaybackMessagesByTopic,
@@ -27,7 +23,9 @@ import {
   type McapTimelineBufferStatus,
   useMcapPlayback,
 } from "./playback-poc";
+import { useMcapTopics, type McapTopicsStatus } from "./use-mcap-topics";
 import { useMcapResourceClient } from "./use-mcap-resource-client";
+import { useStableMcapSource } from "./use-stable-mcap-source";
 
 const ACTIVE_TIMELINE_OPTIONS = [MCAP_ACTIVE_TIMELINE.LOG] as const;
 const MCAP_DEMO_PLAYBACK_TOPICS = [
@@ -102,7 +100,8 @@ export function ModalRenderer({
   timelineTickRateHz = DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ,
 }: ModalRendererProps) {
   const mcap = useMcapResourceClient({ worker: true });
-  const source = useMcapSourceDescriptor(ctx);
+  const source = useStableMcapSource(ctx);
+  const topicState = useMcapTopics({ client: mcap, source });
   // Playback data path: this POC reads MCAP bytes directly through the adapter's
   // worker-backed resource client. It does not currently depend on server-side
   // inventory or playback-plan query artifacts.
@@ -149,9 +148,9 @@ export function ModalRenderer({
         timelineTickCount={playback.timelineTickCount}
       />
       <TopicInventoryPanel
-        error={playback.topicError}
-        status={playback.topicStatus}
-        topics={playback.topics}
+        error={topicState.error}
+        status={topicState.status}
+        topics={topicState.topics}
       />
     </div>
   );
@@ -292,7 +291,7 @@ function TopicInventoryPanel({
   topics,
 }: {
   readonly error: string | null;
-  readonly status: McapLoadStatus;
+  readonly status: McapTopicsStatus;
   readonly topics: readonly StreamInventory[];
 }) {
   return (
@@ -333,24 +332,6 @@ function TopicInventoryPanel({
       )}
     </section>
   );
-}
-
-function useMcapSourceDescriptor(ctx: SampleRendererProps["ctx"]) {
-  const nextSource = getMcapSourceDescriptor(ctx);
-  const nextSourceKey = mcapSourceKey(nextSource);
-  const sourceRef = useRef<{
-    readonly source: ByteSourceDescriptor | null;
-    readonly sourceKey: string;
-  }>();
-
-  if (!sourceRef.current || sourceRef.current.sourceKey !== nextSourceKey) {
-    sourceRef.current = {
-      source: nextSource,
-      sourceKey: nextSourceKey,
-    };
-  }
-
-  return sourceRef.current.source;
 }
 
 function timelineBufferSegmentStyle(
@@ -477,10 +458,6 @@ function ErrorNotice({ children }: { readonly children: ReactNode }) {
   );
 }
 
-function mcapSourceKey(source: ByteSourceDescriptor | null) {
-  return source ? byteSourceCacheKey(source) : "";
-}
-
 function formatSeconds(ns: bigint) {
   return `${(Number(ns) / 1_000_000_000).toFixed(3)}s`;
 }
@@ -499,7 +476,7 @@ function formatTopicPayload(topic: StreamInventory) {
   return `${schema} · ${payload.encoding}${schemaEncoding}`;
 }
 
-function topicInventorySummary(status: McapLoadStatus, topicCount: number) {
+function topicInventorySummary(status: McapTopicsStatus, topicCount: number) {
   if (status === "loading") {
     return "loading";
   }

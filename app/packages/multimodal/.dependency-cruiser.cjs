@@ -74,18 +74,6 @@ module.exports = {
       },
     },
     {
-      name: "client-resources-do-not-import-queries-or-hooks",
-      severity: "error",
-      from: { path: `${SRC}client/resources/` },
-      to: { path: `${SRC}client/(queries|hooks)/` },
-    },
-    {
-      name: "client-queries-do-not-import-hooks",
-      severity: "error",
-      from: { path: `${SRC}client/queries/` },
-      to: { path: `${SRC}client/hooks/` },
-    },
-    {
       name: "schemas-do-not-import-runtime-layers",
       severity: "error",
       from: { path: `${SRC}schemas/` },

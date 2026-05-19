@@ -3,35 +3,29 @@
  * TODO(FOEPD-3830): REPLACE THIS DECODE/FETCH SLICE WITH PRODUCTION CODE.
  */
 import type { SampleRendererProps } from "@fiftyone/plugins";
-import { useSceneInventory } from "../../../client/hooks";
-import { getSampleIdentifiers } from "../sample";
+import { useMcapSampleTopics } from "./use-mcap-sample-topics";
 
 /**
  * Grid proof renderer for MCAP-backed multimodal samples.
  */
 export function GridRenderer({ ctx }: SampleRendererProps) {
-  const { datasetId, sampleId } = getSampleIdentifiers(ctx);
-  const inventoryState = useSceneInventory(
-    datasetId && sampleId ? { datasetId, sampleId } : null
-  );
+  const topicState = useMcapSampleTopics(ctx);
 
-  if (inventoryState.status === "loaded") {
-    return <div>{inventoryState.data.streams.length} streams</div>;
+  if (topicState.status === "ready") {
+    return <div>{topicState.topics.length} topics</div>;
   }
 
   const message =
-    !datasetId || !sampleId
-      ? "Inventory identifiers missing"
-      : inventoryState.status === "error"
-      ? "Inventory unavailable"
-      : "Loading inventory";
+    topicState.status === "idle"
+      ? "MCAP source missing"
+      : topicState.status === "error"
+      ? "Topics unavailable"
+      : "Loading topics";
 
   return (
     <div>
       <div>{message}</div>
-      {inventoryState.status === "error" && (
-        <div>{inventoryState.error.message}</div>
-      )}
+      {topicState.status === "error" && <div>{topicState.error}</div>}
     </div>
   );
 }

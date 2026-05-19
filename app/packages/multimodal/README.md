@@ -4,15 +4,6 @@ App-side package for multimodal data loading, decoding, and visualization.
 
 ## Layer Contracts
 
-### Queries
-
-Queries fetch small server-authored protobuf artifacts, such as scene inventory
-and playback plans. Query code lives under `src/client/queries`, with React
-wrappers under `src/client/hooks`.
-
-Queries do not read media bytes or decode payloads. They are always format
-agnostic.
-
 ### Resources
 
 Resources cover byte-range reads, decode execution, and bounded cache contracts
@@ -24,11 +15,11 @@ which ranges to read and which payload descriptors to decode.
 
 ### Adapters
 
-Adapters compose queries and resources for a concrete source format. The MCAP
-adapter under `src/adapters/mcap` owns MCAP indexing, chunk decompression,
-channel/schema mapping, sync-window selection, worker playback, and
-adapter-owned decoder registration. Its public surface presents playback-ready
-APIs.
+Adapters compose resources for a concrete source format. The MCAP adapter under
+`src/adapters/mcap` owns MCAP indexing, chunk decompression, channel/schema
+mapping, direct topic metadata reads, sync-window selection, worker playback,
+and adapter-owned decoder registration. Its public surface presents
+playback-ready APIs.
 
 ## Runtime Flow for Synchronized Playback
 
@@ -36,9 +27,9 @@ APIs.
    creates a worker-backed MCAP resource client.
 2. The MCAP resource client initializes an `@mcap/core` indexed reader over app
    media byte-range URLs, using the raw byte cache and decompression handlers.
-3. The modal asks the MCAP reader summary for topic inventory via
-   `readTopics(...)` and asks the same source for the active timeline range via
-   `readTimelineRange(...)`.
+3. Grid and modal renderers ask the MCAP reader summary for topic metadata via
+   `readTopics(...)`; the modal asks the same source for the active timeline
+   range via `readTimelineRange(...)`.
 4. The driver then reads synchronized windows with
    `readSynchronizedMessages(...)` for load/seek and
    `readSynchronizedMessageBatch(...)` for playback lookahead.
