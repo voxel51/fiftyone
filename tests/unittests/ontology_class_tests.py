@@ -994,6 +994,66 @@ class OntologySDKTests(unittest.TestCase):
         original = load_ontology("original")
         self.assertEqual(original.name, "original")
 
+    def test_save_overwrite_appends_new_version(self):
+        from fiftyone.core.ontology import load_ontology
+
+        self._make_ontology("versioned").save()
+
+        fresh = AnnotationOntology(
+            name="versioned",
+            description="rev 2",
+            attributes=[
+                AttributeSpec(name="x", type="bool", component="checkbox"),
+            ],
+        )
+        fresh.save(overwrite=True)
+
+        self.assertEqual(fresh.version, 2)
+
+        loaded = load_ontology("versioned")
+        self.assertEqual(loaded.version, 2)
+        self.assertEqual(loaded.description, "rev 2")
+        self.assertEqual(len(loaded.attributes), 1)
+        self.assertEqual(loaded.attributes[0].name, "x")
+
+    def test_save_without_overwrite_rejects_collision(self):
+        self._make_ontology("collide").save()
+
+        with self.assertRaises(ValueError):
+            self._make_ontology("collide").save()
+
+    def test_save_overwrite_no_existing_doc_creates_version_1(self):
+        fresh = self._make_ontology("brand_new")
+        fresh.save(overwrite=True)
+
+        self.assertEqual(fresh.version, 1)
+
+    def test_save_ontology_function_mirrors_instance_save(self):
+        from fiftyone.core.ontology import load_ontology, save_ontology
+
+        ao = self._make_ontology("via_module_fn")
+        save_ontology(ao)
+
+        self.assertEqual(ao.version, 1)
+        self.assertEqual(load_ontology("via_module_fn").name, "via_module_fn")
+
+    def test_save_ontology_function_forwards_overwrite(self):
+        from fiftyone.core.ontology import load_ontology, save_ontology
+
+        save_ontology(self._make_ontology("forwarded"))
+
+        fresh = AnnotationOntology(
+            name="forwarded",
+            description="rev 2",
+            attributes=[
+                AttributeSpec(name="x", type="bool", component="checkbox"),
+            ],
+        )
+        save_ontology(fresh, overwrite=True)
+
+        self.assertEqual(fresh.version, 2)
+        self.assertEqual(load_ontology("forwarded").description, "rev 2")
+
 
 if __name__ == "__main__":
     unittest.main()
