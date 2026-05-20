@@ -30,8 +30,9 @@ class OntologyType(str, Enum):  # TODO - update to StrEnum
     ontologies can reference the same taxonomy by name.
 
     ``ANNOTATION_ONTOLOGY`` — a container that defines classes, attributes
-    (with optional conditional display logic), and references to taxonomies.
-    This is the document that gets connected to a label schema on a field.
+    (with optional conditional display logic), and an optional reference to
+    a bundled taxonomy. This is the document that gets connected to a
+    label schema on a field.
     """
 
     TAXONOMY = "taxonomy"

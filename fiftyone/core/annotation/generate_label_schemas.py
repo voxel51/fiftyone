@@ -285,11 +285,6 @@ def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
             sample_collection, field_name, label_schema
         )
 
-        # Same reasoning for ``taxonomy``.
-        label_schema = _preserve_taxonomy(
-            sample_collection, field_name, label_schema
-        )
-
         if is_scalar:
             return label_schema
 
@@ -441,20 +436,6 @@ def _preserve_applied_ontology(
     applied_ontology = stored_field_schema.get(foac.APPLIED_ONTOLOGY)
     if applied_ontology is not None:
         label_schema[foac.APPLIED_ONTOLOGY] = applied_ontology
-
-    return label_schema
-
-
-def _preserve_taxonomy(
-    sample_collection, field_name: str, label_schema: dict
-) -> dict:
-    # Carries a stored taxonomy reference through regeneration. Same
-    # contract as ``_preserve_applied_ontology``.
-    stored_label_schemas = sample_collection._dataset._doc.label_schemas or {}
-    stored_field_schema = stored_label_schemas.get(field_name) or {}
-    taxonomy = stored_field_schema.get(foac.TAXONOMY)
-    if taxonomy is not None:
-        label_schema[foac.TAXONOMY] = taxonomy
 
     return label_schema
 

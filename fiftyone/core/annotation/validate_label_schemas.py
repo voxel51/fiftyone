@@ -443,8 +443,6 @@ def _validate_label_field_label_schema(
             )
         elif key == foac.APPLIED_ONTOLOGY:
             _validate_applied_ontology(field_name, value)
-        elif key == foac.TAXONOMY:
-            _validate_taxonomy_ref(field_name, value)
         elif key == foac.COMPONENT and value not in foac.STR_COMPONENTS:
             _raise_component_error(field_name, value)
         elif key == foac.DEFAULT:
@@ -714,27 +712,6 @@ def _validate_applied_ontology(field_name: str, value: str) -> None:
         raise ValueError(
             f"'{foac.APPLIED_ONTOLOGY}' references '{value}' which is not "
             f"an annotation ontology for field '{field_name}'"
-        )
-
-
-def _validate_taxonomy_ref(field_name: str, value: str) -> None:
-    # Field-level only — attribute-level taxonomy references aren't
-    # validated here yet.
-    # Late import to avoid a circular import with the ontology SDK.
-    from fiftyone.core.ontology import load_ontology
-
-    try:
-        ontology = load_ontology(value)
-    except ValueError:
-        raise ValueError(
-            f"'{foac.TAXONOMY}' references unknown ontology "
-            f"'{value}' for field '{field_name}'"
-        )
-
-    if not ontology.is_taxonomy:
-        raise ValueError(
-            f"'{foac.TAXONOMY}' references '{value}' which is not "
-            f"a taxonomy for field '{field_name}'"
         )
 
 

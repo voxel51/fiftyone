@@ -6,14 +6,9 @@ FiftyOne annotation unit tests.
 |
 """
 
-import os
 from exceptiongroup import ExceptionGroup
 import unittest
 from unittest.mock import MagicMock, patch
-
-# Taxonomy SDK is gated by VFF_ONTOLOGY_TX; enable for the whole module so
-# the taxonomy validation tests below can seed real Taxonomy documents.
-os.environ.setdefault("VFF_ONTOLOGY_TX", "1")
 
 import fiftyone as fo
 import fiftyone.core.fields as fof
@@ -1074,56 +1069,6 @@ class LabelSchemaValidationTests(unittest.TestCase):
                 fields="str_field",
             )
 
-    @drop_datasets
-    @drop_ontologies
-    def test_taxonomy_recognized_on_label_field(self):
-        dataset = _make_taxonomy_test_dataset()
-        validate_label_schemas(
-            dataset,
-            {"type": "detections", "taxonomy": "my_taxonomy"},
-            fields="detections",
-        )
-
-    @drop_datasets
-    @drop_ontologies
-    def test_taxonomy_unknown_reference_raises(self):
-        dataset = _make_taxonomy_test_dataset()
-        with self.assertRaises(ExceptionGroup):
-            validate_label_schemas(
-                dataset,
-                {
-                    "type": "detections",
-                    "taxonomy": "nonexistent_taxonomy_xyz",
-                },
-                fields="detections",
-            )
-
-    @drop_datasets
-    @drop_ontologies
-    def test_taxonomy_wrong_type_rejected(self):
-        # An annotation ontology used in a `taxonomy` slot must be rejected.
-        dataset = _make_taxonomy_test_dataset()
-        with self.assertRaises(ExceptionGroup):
-            validate_label_schemas(
-                dataset,
-                {"type": "detections", "taxonomy": "my_ontology"},
-                fields="detections",
-            )
-
-    @drop_datasets
-    @drop_ontologies
-    def test_taxonomy_rejected_on_non_label_field(self):
-        dataset = _make_taxonomy_test_dataset()
-        with self.assertRaises(ExceptionGroup):
-            validate_label_schemas(
-                dataset,
-                {
-                    "type": "str",
-                    "component": "text",
-                    "taxonomy": "my_taxonomy",
-                },
-                fields="str_field",
-            )
 
 
 def _make_applied_ontology_test_dataset(ontology_name: str = "my_ontology"):
@@ -1132,35 +1077,6 @@ def _make_applied_ontology_test_dataset(ontology_name: str = "my_ontology"):
     collection so the validator can resolve the reference.
     """
     AnnotationOntology(name=ontology_name).save()
-
-    dataset = fo.Dataset()
-    dataset.add_sample(
-        fo.Sample(
-            filepath="image.png",
-            detections=fo.Detections(detections=[fo.Detection(label="one")]),
-        )
-    )
-    dataset.add_sample_field("str_field", fo.StringField)
-
-    return dataset
-
-
-def _make_taxonomy_test_dataset(
-    taxonomy_name: str = "my_taxonomy",
-    ann_ontology_name: str = "my_ontology",
-):
-    """Dataset with a `detections` label field and a `str_field`, plus a real
-    `Taxonomy` and `AnnotationOntology` persisted so the validator can resolve
-    references and detect the wrong-type case.
-    """
-    from fiftyone.core.annotation.nodes import Node
-    from fiftyone.core.ontology import Taxonomy
-
-    Taxonomy(
-        name=taxonomy_name,
-        root=Node(name="root", values=[Node(name="a")]),
-    ).save()
-    AnnotationOntology(name=ann_ontology_name).save()
 
     dataset = fo.Dataset()
     dataset.add_sample(

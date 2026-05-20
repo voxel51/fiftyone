@@ -705,7 +705,7 @@ class AnnotationOntologyTests(unittest.TestCase):
         ao = AnnotationOntology(
             name="vehicle_damage_ontology",
             description="Vehicle damage annotation",
-            taxonomies=["vehicle_classes"],
+            taxonomy="vehicle_classes",
             attributes=[
                 AttributeSpec(
                     name="damage_present",
@@ -723,13 +723,13 @@ class AnnotationOntologyTests(unittest.TestCase):
         )
         self.assertEqual(ao.name, "vehicle_damage_ontology")
         self.assertEqual(ao.description, "Vehicle damage annotation")
-        self.assertEqual(ao.taxonomies, ["vehicle_classes"])
+        self.assertEqual(ao.taxonomy, "vehicle_classes")
         self.assertEqual(len(ao.attributes), 2)
         self.assertEqual(ao._TYPE, "annotation_ontology")
 
     def test_create_empty(self):
         ao = AnnotationOntology(name="empty")
-        self.assertEqual(ao.taxonomies, [])
+        self.assertIsNone(ao.taxonomy)
         self.assertEqual(ao.attributes, [])
 
     def test_none_name_raises(self):
@@ -752,7 +752,7 @@ class AnnotationOntologyTests(unittest.TestCase):
         ao = AnnotationOntology(
             name="test_ao",
             description="A test",
-            taxonomies=["tax1"],
+            taxonomy="tax1",
             attributes=[
                 AttributeSpec(
                     name="attr1",
@@ -765,7 +765,7 @@ class AnnotationOntologyTests(unittest.TestCase):
         self.assertEqual(d["name"], "test_ao")
         self.assertEqual(d["type"], "annotation_ontology")
         self.assertEqual(d["description"], "A test")
-        self.assertEqual(d["root"]["taxonomies"], ["tax1"])
+        self.assertEqual(d["root"]["taxonomy"], "tax1")
         self.assertEqual(len(d["root"]["attributes"]), 1)
         self.assertEqual(d["root"]["attributes"][0]["name"], "attr1")
 
@@ -775,7 +775,7 @@ class AnnotationOntologyTests(unittest.TestCase):
             "type": "annotation_ontology",
             "description": "A test",
             "root": {
-                "taxonomies": ["tax1", "tax2"],
+                "taxonomy": "tax1",
                 "attributes": [
                     {
                         "name": "attr1",
@@ -799,7 +799,7 @@ class AnnotationOntologyTests(unittest.TestCase):
         ao = AnnotationOntology.from_dict(d)
         self.assertEqual(ao.name, "test_ao")
         self.assertEqual(ao.description, "A test")
-        self.assertEqual(ao.taxonomies, ["tax1", "tax2"])
+        self.assertEqual(ao.taxonomy, "tax1")
         self.assertEqual(len(ao.attributes), 2)
         self.assertEqual(ao.attributes[1].when.field, "attr1")
 
@@ -807,21 +807,21 @@ class AnnotationOntologyTests(unittest.TestCase):
         ao = AnnotationOntology.from_dict(
             {"name": "test_ao", "type": "annotation_ontology", "root": None}
         )
-        self.assertEqual(ao.taxonomies, [])
+        self.assertIsNone(ao.taxonomy)
         self.assertEqual(ao.attributes, [])
 
     def test_from_dict_with_missing_root(self):
         ao = AnnotationOntology.from_dict(
             {"name": "test_ao", "type": "annotation_ontology"}
         )
-        self.assertEqual(ao.taxonomies, [])
+        self.assertIsNone(ao.taxonomy)
         self.assertEqual(ao.attributes, [])
 
     def test_roundtrip(self):
         original = AnnotationOntology(
             name="vehicle_damage_ontology",
             description="Vehicle damage annotation",
-            taxonomies=["vehicle_classes"],
+            taxonomy="vehicle_classes",
             attributes=[
                 AttributeSpec(
                     name="damage_present",
@@ -846,7 +846,7 @@ class AnnotationOntologyTests(unittest.TestCase):
         restored = AnnotationOntology.from_dict(original.to_dict())
         self.assertEqual(restored.name, original.name)
         self.assertEqual(restored.description, original.description)
-        self.assertEqual(restored.taxonomies, original.taxonomies)
+        self.assertEqual(restored.taxonomy, original.taxonomy)
         self.assertEqual(len(restored.attributes), 3)
         self.assertEqual(restored.attributes[2].when.field, "damage_location")
 
@@ -876,7 +876,6 @@ class OntologySDKTests(unittest.TestCase):
         return AnnotationOntology(
             name=name,
             description="Test annotation ontology",
-            taxonomies=["vehicle_classes"],
             attributes=[
                 AttributeSpec(
                     name="damage_present",
@@ -905,7 +904,7 @@ class OntologySDKTests(unittest.TestCase):
         loaded = load_ontology("test_ontology")
         self.assertEqual(loaded.name, "test_ontology")
         self.assertEqual(loaded.description, "Test annotation ontology")
-        self.assertEqual(loaded.taxonomies, ["vehicle_classes"])
+        self.assertIsNone(loaded.taxonomy)
         self.assertEqual(len(loaded.attributes), 2)
         self.assertEqual(loaded.attributes[0].name, "damage_present")
         self.assertEqual(loaded.attributes[1].when.field, "damage_present")
