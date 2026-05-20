@@ -3374,6 +3374,7 @@ __metadata:
     "@biomejs/biome": "npm:^1.8.3"
     "@emotion/react": "npm:^11.14.0"
     "@emotion/styled": "npm:^11.14.0"
+    "@miris-inc/three": "npm:0.0.8-ec1b54d"
     "@react-three/drei": "npm:^10.7.6"
     "@react-three/fiber": "npm:^8.18.0"
     "@types/chroma-js": "npm:^3.1.1"
@@ -4631,6 +4632,13 @@ __metadata:
   version: 2.0.1
   resolution: "@microsoft/fetch-event-source@npm:2.0.1"
   checksum: 10/c147055fafe83801efb9834136ba4b7944406a0bba3517afcea6ceeb56714b5ef78c2e89544bd9c1426ad1d2f964a087e3a719169ae04855836a23fb53269f8d
+  languageName: node
+  linkType: hard
+
+"@miris-inc/three@npm:0.0.8-ec1b54d":
+  version: 0.0.8-ec1b54d
+  resolution: "@miris-inc/three@npm:0.0.8-ec1b54d"
+  checksum: 10/48b7c600122c1f8f0efbf4569de00ab351ab89f0ac9388b156c7b37b2d29c256122ddbeb9ed0ccc74227957eb13ba4d8fdefed86bba395f7ad77886143e233a6
   languageName: node
   linkType: hard
 
