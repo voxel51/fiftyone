@@ -833,8 +833,6 @@ is in progress and after it completes.
 
 .. image:: /images/plugins/operators/runs/logs_in_progress.png
 
-**Logs structure**
-
 Logs are displayed in a tabular format. You can click the icons to toggle the visibility
 of columns, show timestamps in your local timezone, filter logs by severity.
 You can also search for specific keywords or limit the logs to a custom time range.
