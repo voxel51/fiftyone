@@ -81,7 +81,7 @@ setup(
         "sseclient-py>=1.7.2,<2",
         "sse-starlette>=0.10.3,<4",
         "starlette>=0.49.1,<0.53",
-        "strawberry-graphql>=0.262.4,<0.292.0",
+        "strawberry-graphql>=0.312.3,<0.313.0",
         "tabulate>=0.7,<0.10",
         "tqdm>=2,<5",
         "xmltodict>=1,<2",
