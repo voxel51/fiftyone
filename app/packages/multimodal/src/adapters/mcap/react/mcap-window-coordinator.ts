@@ -12,7 +12,7 @@ import type {
   McapTimelineRange,
 } from "../types";
 
-const MAX_PREFETCH_BATCH = 8;
+const MAX_PREFETCH_BATCH = 32;
 
 /**
  * Shared fetch/cache layer for MCAP synchronized message windows.
@@ -42,7 +42,7 @@ export class McapWindowCoordinator {
     private readonly topics: readonly string[],
     private readonly streamPolicies: McapStreamSyncPolicies,
     private readonly activeTimeline: McapActiveTimeline,
-    maxCacheEntries = 128
+    maxCacheEntries = 512
   ) {
     this.startTimeNs = range.startTimeNs;
     this.durationSec =

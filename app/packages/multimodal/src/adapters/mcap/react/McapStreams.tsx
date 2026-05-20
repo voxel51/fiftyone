@@ -24,7 +24,7 @@ import { useMcapResourceClient } from "./use-mcap-resource-client";
 import { useStableMcapSource } from "./use-stable-mcap-source";
 
 // How far ahead (in seconds) to keep the buffer filled during playback.
-const LOOKAHEAD_SECONDS = 5;
+const LOOKAHEAD_SECONDS = 15;
 
 export interface McapTopicSpec {
   readonly topic: string;
