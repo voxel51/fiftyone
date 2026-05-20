@@ -78,48 +78,18 @@ export function createMemoryByteRangeCache(
       // fallback keeps direct cache users and custom fill policies reusable.
       const containingHit = cache.find((candidate) => {
         const sourceMatches =
-          candidate.source.sourceId === request.source.sourceId &&
-          candidate.source.url === request.source.url;
+          byteSourceCacheKey(candidate.source) ===
+          byteSourceCacheKey(request.source);
         if (!sourceMatches) {
           return false;
         }
-
-        const candidateSize =
-          candidate.source.sizeBytes ?? candidate.source.fingerprint?.sizeBytes;
-        const requestSize =
-          request.source.sizeBytes ?? request.source.fingerprint?.sizeBytes;
-        const sizeMatches =
-          candidateSize === undefined ||
-          requestSize === undefined ||
-          candidateSize === requestSize;
-
-        const candidateFirstChunkCrc =
-          candidate.source.fingerprint?.firstChunkCrc;
-        const requestFirstChunkCrc = request.source.fingerprint?.firstChunkCrc;
-        const firstChunkCrcMatches =
-          candidateFirstChunkCrc === undefined ||
-          requestFirstChunkCrc === undefined ||
-          candidateFirstChunkCrc === requestFirstChunkCrc;
-
-        const candidateLastChunkCrc =
-          candidate.source.fingerprint?.lastChunkCrc;
-        const requestLastChunkCrc = request.source.fingerprint?.lastChunkCrc;
-        const lastChunkCrcMatches =
-          candidateLastChunkCrc === undefined ||
-          requestLastChunkCrc === undefined ||
-          candidateLastChunkCrc === requestLastChunkCrc;
 
         const rangeContainsRequest =
           candidate.range.offset <= request.range.offset &&
           candidate.range.offset + candidate.range.length >=
             request.range.offset + request.range.length;
 
-        return (
-          sizeMatches &&
-          firstChunkCrcMatches &&
-          lastChunkCrcMatches &&
-          rangeContainsRequest
-        );
+        return rangeContainsRequest;
       });
       if (!containingHit) {
         return undefined;
@@ -234,17 +204,24 @@ function setByteBoundedEntry<Value extends object>(
 }
 
 /**
- * Creates a stable key for byte-source identity.
+ * Creates a stable key for source content identity.
  */
 export function byteSourceCacheKey(source: ByteSourceDescriptor): string {
-  const fingerprint = source.fingerprint;
+  // Source size can be discovered after the first read, and fetch URLs can
+  // rotate without changing bytes. Keep durable caches tied only to content.
+  return serializeCacheKey([source.sourceId]);
+}
 
+/**
+ * Creates a stable key for the current byte access path.
+ */
+export function byteSourceAccessKey(source: ByteSourceDescriptor): string {
+  // Readers/workers own transport state, so they must refresh when the URL or
+  // read profile changes even though the underlying sourceId stays stable.
   return serializeCacheKey([
     source.sourceId,
     source.url,
-    source.sizeBytes ?? fingerprint?.sizeBytes ?? null,
-    fingerprint?.firstChunkCrc?.toString() ?? null,
-    fingerprint?.lastChunkCrc?.toString() ?? null,
+    source.readProfile ?? null,
   ]);
 }
 

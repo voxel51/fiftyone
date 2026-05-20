@@ -212,6 +212,130 @@ describe("MCAP indexed message times", () => {
     expect(readerFactory).toHaveBeenCalledTimes(2);
   });
 
+  it("recreates readers when the source URL changes", async () => {
+    const readerFactory = vi.fn(async () =>
+      createReader({
+        chunkIndexes: [],
+      })
+    );
+    const byteClient: ByteResourceClient = {
+      readBytes: vi.fn(),
+    };
+    const readerStore = createMcapReaderStore({ byteClient, readerFactory });
+
+    await readerStore.get(
+      createSource({
+        sourceId: "source:1",
+        url: "bytes://source/old",
+      })
+    );
+    await readerStore.get(
+      createSource({
+        sourceId: "source:1",
+        url: "bytes://source/new",
+      })
+    );
+
+    expect(readerFactory).toHaveBeenCalledTimes(2);
+  });
+
+  it("reuses readers when only source size is discovered", async () => {
+    const readerFactory = vi.fn(async () =>
+      createReader({
+        chunkIndexes: [],
+      })
+    );
+    const byteClient: ByteResourceClient = {
+      readBytes: vi.fn(),
+    };
+    const readerStore = createMcapReaderStore({ byteClient, readerFactory });
+
+    await readerStore.get(
+      createSource({
+        sourceId: "source:1",
+        url: "bytes://source",
+      })
+    );
+    await readerStore.get({
+      sizeBytes: "256",
+      sourceId: "source:1",
+      url: "bytes://source",
+    });
+
+    expect(readerFactory).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses descriptor size before probing byte clients", async () => {
+    const byteClient: ByteResourceClient = {
+      readBytes: vi.fn(),
+      stat: vi.fn(),
+    };
+    const readable = new ByteClientReadable(
+      {
+        sizeBytes: "128",
+        sourceId: "source:1",
+        url: "mcap-source://sample",
+      },
+      byteClient
+    );
+
+    await expect(readable.size()).resolves.toBe(128n);
+    expect(byteClient.stat).not.toHaveBeenCalled();
+    expect(byteClient.readBytes).not.toHaveBeenCalled();
+  });
+
+  it("uses byte client stat when descriptor size is missing", async () => {
+    const byteClient: ByteResourceClient = {
+      readBytes: vi.fn(),
+      stat: vi.fn(async (source) => ({
+        ...source,
+        sizeBytes: "128",
+      })),
+    };
+    const readable = new ByteClientReadable(
+      {
+        sourceId: "source:1",
+        url: "mcap-source://sample",
+      },
+      byteClient
+    );
+
+    await expect(readable.size()).resolves.toBe(128n);
+    expect(byteClient.stat).toHaveBeenCalledWith({
+      sourceId: "source:1",
+      url: "mcap-source://sample",
+    });
+    expect(byteClient.readBytes).not.toHaveBeenCalled();
+  });
+
+  it("falls back to a tiny range read when stat cannot resolve size", async () => {
+    const byteClient: ByteResourceClient = {
+      readBytes: vi.fn(
+        async (request: Parameters<ByteResourceClient["readBytes"]>[0]) => ({
+          bytes: new Uint8Array([1]),
+          range: request.range,
+          source: {
+            ...request.source,
+            sizeBytes: "128",
+          },
+        })
+      ),
+      stat: vi.fn(async () => undefined),
+    };
+    const source = {
+      sourceId: "source:1",
+      url: "mcap-source://sample",
+    };
+    const readable = new ByteClientReadable(source, byteClient);
+
+    await expect(readable.size()).resolves.toBe(128n);
+    expect(byteClient.stat).toHaveBeenCalledWith(source);
+    expect(byteClient.readBytes).toHaveBeenCalledWith({
+      range: { length: 1n, offset: 0n },
+      source,
+    });
+  });
+
   it("ignores malformed source sizes before byte reads", async () => {
     const readBytes = vi.fn(
       async (request: Parameters<ByteResourceClient["readBytes"]>[0]) => ({

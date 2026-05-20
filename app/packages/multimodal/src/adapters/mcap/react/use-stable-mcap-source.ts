@@ -1,7 +1,7 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import { useRef } from "react";
 import type { ByteSourceDescriptor } from "../../../client/resources";
-import { byteSourceCacheKey } from "../../../client/resources/cache";
+import { byteSourceAccessKey } from "../../../client/resources/cache";
 import { getMcapSourceDescriptor } from "../sample";
 
 /**
@@ -12,7 +12,7 @@ export function useStableMcapSource(
   ctx: SampleRendererProps["ctx"]
 ): ByteSourceDescriptor | null {
   const nextSource = getMcapSourceDescriptor(ctx);
-  const nextSourceKey = mcapSourceKey(nextSource);
+  const nextSourceKey = nextSource ? byteSourceAccessKey(nextSource) : "";
   const sourceRef = useRef<{
     readonly source: ByteSourceDescriptor | null;
     readonly sourceKey: string;
@@ -26,8 +26,4 @@ export function useStableMcapSource(
   }
 
   return sourceRef.current.source;
-}
-
-function mcapSourceKey(source: ByteSourceDescriptor | null) {
-  return source ? byteSourceCacheKey(source) : "";
 }

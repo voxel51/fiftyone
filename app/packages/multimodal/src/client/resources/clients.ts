@@ -4,7 +4,11 @@ import {
   type FetchFunctionResult,
 } from "@fiftyone/utilities";
 import { defaultDecoderRegistry, type DecoderRegistry } from "../../decoders";
-import { byteRangeCacheKey, decodedOutputCacheKey } from "./cache";
+import {
+  byteSourceAccessKey,
+  decodedOutputCacheKey,
+  serializeCacheKey,
+} from "./cache";
 import {
   BYTE_SOURCE_READ_PROFILE,
   DEFAULT_LOCAL_BYTE_CACHE_BLOCK_SIZE_BYTES,
@@ -56,6 +60,39 @@ export function createHttpByteResourceClient(
   fetchFunction?: AbortableFetchFunction
 ): ByteResourceClient {
   return {
+    async stat(source) {
+      const fetchBytes: AbortableFetchFunction =
+        fetchFunction ?? getFetchFunctionExtended();
+      const controller = new AbortController();
+
+      try {
+        const { headers } = await withHttpByteReadTimeout(
+          fetchBytes<undefined, ArrayBuffer>({
+            method: "HEAD",
+            path: source.url,
+            result: "arrayBuffer",
+            retries: DEFAULT_HTTP_BYTE_READ_RETRIES,
+            signal: controller.signal,
+          }),
+          controller
+        );
+        const sizeBytes = parseHttpContentLength(
+          headers?.get("Content-Length")
+        );
+
+        return sizeBytes === undefined
+          ? undefined
+          : {
+              ...source,
+              sizeBytes: sizeBytes.toString(),
+            };
+      } catch {
+        // HEAD is only an optimization; object stores and CORS policies often
+        // block it even when ranged GETs are allowed.
+        return undefined;
+      }
+    },
+
     async readBytes(request) {
       if (request.range.offset < 0n) {
         throw new Error("Byte range offset must be non-negative");
@@ -129,21 +166,6 @@ export function createHttpByteResourceClient(
       // Preserve discovered source size so later cache fills can align blocks.
       let source = request.source;
       if (totalSizeBytes !== undefined) {
-        const existingSizeBytes =
-          source.sizeBytes ?? source.fingerprint?.sizeBytes;
-        const parsedExistingSizeBytes =
-          existingSizeBytes === undefined || !/^\d+$/.test(existingSizeBytes)
-            ? undefined
-            : BigInt(existingSizeBytes);
-        if (
-          parsedExistingSizeBytes !== undefined &&
-          parsedExistingSizeBytes !== totalSizeBytes
-        ) {
-          throw new Error(
-            `Expected source size ${existingSizeBytes} but Content-Range reported ${totalSizeBytes.toString()}`
-          );
-        }
-
         const sizeBytes = totalSizeBytes.toString();
         if (source.sizeBytes !== sizeBytes) {
           source = {
@@ -205,6 +227,10 @@ export function createCachedByteResourceClient(
   const pendingByteReads = new Map<string, Promise<ByteRangeReadResult>>();
 
   return {
+    async stat(source) {
+      return reader.stat?.(source);
+    },
+
     async readBytes(request) {
       // Widen small reads to cacheable blocks when the source size is known.
       let fillRequest = request;
@@ -220,12 +246,7 @@ export function createCachedByteResourceClient(
           blockSizeBytes > 0 &&
           request.range.length < BigInt(blockSizeBytes)
         ) {
-          const sizeBytes =
-            request.source.sizeBytes ?? request.source.fingerprint?.sizeBytes;
-          const sourceSize =
-            sizeBytes === undefined || !/^\d+$/.test(sizeBytes)
-              ? undefined
-              : BigInt(sizeBytes);
+          const sourceSize = parseSourceSizeBytes(request.source.sizeBytes);
 
           if (sourceSize !== undefined) {
             const blockSize = BigInt(blockSizeBytes);
@@ -261,7 +282,9 @@ export function createCachedByteResourceClient(
         }
       }
 
-      const fillKey = byteRangeCacheKey(fillRequest);
+      // In-flight request coalescing follows the active access URL, while the
+      // durable byte cache above follows stable sourceId content identity.
+      const fillKey = byteRangeAccessKey(fillRequest);
       let fill = pendingByteReads.get(fillKey);
       if (!fill) {
         fill = reader
@@ -281,6 +304,38 @@ export function createCachedByteResourceClient(
       return sliceByteRangeResult(result, request.range);
     },
   };
+}
+
+function parseHttpContentLength(value: string | null | undefined) {
+  if (value === undefined || value === null || !/^\d+$/.test(value)) {
+    return undefined;
+  }
+
+  try {
+    return BigInt(value);
+  } catch {
+    return undefined;
+  }
+}
+
+function parseSourceSizeBytes(value: string | undefined) {
+  if (value === undefined || !/^\d+$/.test(value)) {
+    return undefined;
+  }
+
+  try {
+    return BigInt(value);
+  } catch {
+    return undefined;
+  }
+}
+
+function byteRangeAccessKey(request: ByteRangeReadRequest): string {
+  return serializeCacheKey([
+    byteSourceAccessKey(request.source),
+    request.range.offset.toString(),
+    request.range.length.toString(),
+  ]);
 }
 
 /**

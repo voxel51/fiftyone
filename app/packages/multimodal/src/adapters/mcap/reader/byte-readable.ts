@@ -28,6 +28,17 @@ export class ByteClientReadable implements McapTypes.IReadable {
       return this.resolvedSizeBytes;
     }
 
+    // Prefer cheap transport metadata before doing a tiny ranged GET; many
+    // object stores allow range reads but block HEAD, so both paths are needed.
+    const statSource = await this.byteClient.stat?.(this.source);
+    if (statSource) {
+      this.updateSource(statSource);
+    }
+
+    if (this.resolvedSizeBytes !== undefined) {
+      return this.resolvedSizeBytes;
+    }
+
     const result = await this.byteClient.readBytes({
       range: { length: 1n, offset: 0n },
       source: this.source,
@@ -54,7 +65,7 @@ export class ByteClientReadable implements McapTypes.IReadable {
     size: bigint,
     cachePolicy?: { readonly blockFill?: boolean }
   ): Promise<Uint8Array> {
-    const sourceSize = sourceSizeBytes(this.source) ?? this.resolvedSizeBytes;
+    const sourceSize = this.resolvedSizeBytes ?? sourceSizeBytes(this.source);
     if (sourceSize !== undefined && offset + size > sourceSize) {
       throw new Error(
         `Read of ${size.toString()} bytes at offset ${offset.toString()} exceeds source size ${sourceSize.toString()}`
@@ -85,7 +96,7 @@ export class ByteClientReadable implements McapTypes.IReadable {
 }
 
 function sourceSizeBytes(source: ByteSourceDescriptor): bigint | undefined {
-  const sizeBytes: unknown = source.sizeBytes ?? source.fingerprint?.sizeBytes;
+  const sizeBytes: unknown = source.sizeBytes;
   if (sizeBytes === undefined) {
     return undefined;
   }

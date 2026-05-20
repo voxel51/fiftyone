@@ -9,7 +9,6 @@ type SampleRecord = {
   readonly _id?: unknown;
   readonly id?: unknown;
   readonly filepath?: unknown;
-  // todo: get it from inventory
   readonly metadata?: {
     readonly size_bytes?: unknown;
     readonly sizeBytes?: unknown;
@@ -63,6 +62,8 @@ export function getMcapSourceDescriptor(
     return null;
   }
 
+  // compute_metadata() can give us an initial size hint, but byte readers still
+  // discover the transport size from HEAD or Content-Range when this is absent.
   const sizeBytes = normalizeSizeBytes(
     sampleRecord.metadata?.size_bytes ?? sampleRecord.metadata?.sizeBytes
   );

@@ -7,6 +7,7 @@ import type { Decoder } from "../../decoders";
 import { DecoderRegistry } from "../../decoders";
 import { VISUALIZATION_KIND } from "../../visualization";
 import {
+  byteSourceCacheKey,
   decodedOutputCacheKey,
   createMemoryByteRangeCache,
   createMemoryDecodedOutputCache,
@@ -56,6 +57,92 @@ describe("multimodal resource clients", () => {
     ).resolves.toMatchObject({ bytes: new Uint8Array([1, 2, 3]) });
 
     expect(calls[0]?.headers).toEqual({ Range: "bytes=4-6" });
+  });
+
+  it("stats HTTP byte sources with HEAD Content-Length", async () => {
+    const { calls, extendedFetch } = createFetchMock({
+      "bytes://source/default": new Uint8Array(7).buffer,
+    });
+    const client = createHttpByteResourceClient(extendedFetch);
+    const source = {
+      sourceId: "source:1",
+      url: "bytes://source/default",
+    };
+
+    await expect(client.stat?.(source)).resolves.toEqual({
+      ...source,
+      sizeBytes: "7",
+    });
+    expect(calls[0]).toMatchObject({
+      method: "HEAD",
+      path: "bytes://source/default",
+      result: "arrayBuffer",
+    });
+  });
+
+  it("falls back to ranged GET when HEAD does not report size", async () => {
+    const { calls, extendedFetch } = createFetchMock(
+      {
+        "bytes://source/default": new Uint8Array([1, 2, 3]).buffer,
+      },
+      { head: "missing" }
+    );
+    const client = createHttpByteResourceClient(extendedFetch);
+    const request = {
+      ...createByteRangeReadRequest(),
+      range: { length: 3n, offset: 4n },
+      source: {
+        sourceId: "source:1",
+        url: "bytes://source/default",
+      },
+    };
+
+    await expect(client.stat?.(request.source)).resolves.toBeUndefined();
+    await expect(client.readBytes(request)).resolves.toMatchObject({
+      bytes: new Uint8Array([1, 2, 3]),
+      source: {
+        sizeBytes: "7",
+      },
+    });
+    expect(calls.map((call) => call.method)).toEqual(["HEAD", "GET"]);
+  });
+
+  it("treats failed HTTP HEAD size probes as unknown size", async () => {
+    const { extendedFetch } = createFetchMock(
+      {
+        "bytes://source/default": new Uint8Array([1, 2, 3]).buffer,
+      },
+      { head: "fail" }
+    );
+    const client = createHttpByteResourceClient(extendedFetch);
+
+    await expect(
+      client.stat?.({
+        sourceId: "source:1",
+        url: "bytes://source/default",
+      })
+    ).resolves.toBeUndefined();
+  });
+
+  it("overrides stale source size hints from Content-Range", async () => {
+    const { extendedFetch } = createFetchMock({
+      "bytes://source/default": new Uint8Array([1, 2, 3]).buffer,
+    });
+    const client = createHttpByteResourceClient(extendedFetch);
+
+    await expect(
+      client.readBytes({
+        range: { length: 3n, offset: 4n },
+        source: {
+          ...createByteRangeReadRequest().source,
+          sizeBytes: "999",
+        },
+      })
+    ).resolves.toMatchObject({
+      source: {
+        sizeBytes: "7",
+      },
+    });
   });
 
   it("fills and reuses the raw byte cache", async () => {
@@ -109,6 +196,50 @@ describe("multimodal resource clients", () => {
     });
     await expect(cache.get(second)).resolves.toMatchObject({
       bytes: new Uint8Array([2]),
+    });
+  });
+
+  it("keeps byte source cache keys stable when size is discovered", () => {
+    expect(
+      byteSourceCacheKey({
+        sourceId: "source:1",
+        url: "bytes://source/old",
+      })
+    ).toBe(
+      byteSourceCacheKey({
+        sizeBytes: "128",
+        sourceId: "source:1",
+        url: "bytes://source/new",
+      })
+    );
+  });
+
+  it("reuses byte cache entries across discovered size and URL changes", async () => {
+    const cache = createMemoryByteRangeCache({ maxSizeBytes: 128 });
+    const cached = createByteRangeReadRequest({
+      range: { length: 64n, offset: 0n },
+      source: {
+        sizeBytes: "128",
+        sourceId: "source:1",
+        url: "bytes://source/old",
+      },
+    });
+    const request = createByteRangeReadRequest({
+      range: { length: 4n, offset: 4n },
+      source: {
+        sourceId: "source:1",
+        url: "bytes://source/new",
+      },
+    });
+
+    await cache.put({
+      bytes: bytesForRange(cached),
+      range: cached.range,
+      source: cached.source,
+    });
+
+    await expect(cache.get(request)).resolves.toMatchObject({
+      bytes: new Uint8Array([4, 5, 6, 7]),
     });
   });
 
@@ -238,6 +369,32 @@ describe("multimodal resource clients", () => {
     await expect(client.readBytes(request)).resolves.toMatchObject({
       bytes: new Uint8Array([4, 5, 6, 7]),
     });
+
+    expect(reader.readBytes).toHaveBeenCalledWith(request);
+  });
+
+  it("keeps exact reads when source size is unknown", async () => {
+    const reader: ByteResourceClient = {
+      readBytes: vi.fn(async (readRequest) => ({
+        bytes: bytesForRange(readRequest),
+        range: readRequest.range,
+        source: readRequest.source,
+      })),
+    };
+    const cache = createMemoryByteRangeCache({ maxSizeBytes: 128 });
+    const client = createCachedByteResourceClient(reader, {
+      blockSizeBytes: 64,
+      memory: cache,
+    });
+    const request = createByteRangeReadRequest({
+      range: { length: 4n, offset: 4n },
+      source: {
+        sourceId: "source:1",
+        url: "bytes://source/default",
+      },
+    });
+
+    await client.readBytes(request);
 
     expect(reader.readBytes).toHaveBeenCalledWith(request);
   });
@@ -520,7 +677,8 @@ describe("multimodal resource clients", () => {
 });
 
 function createFetchMock(
-  responses: Readonly<Record<string, ArrayBufferLike>>
+  responses: Readonly<Record<string, ArrayBufferLike>>,
+  options: { readonly head?: "missing" | "fail" } = {}
 ): {
   calls: FetchCall[];
   extendedFetch: ExtendedFetchFunction;
@@ -535,6 +693,22 @@ function createFetchMock(
     const response = responses[path];
     if (!response) {
       throw new Error(`No mock response for ${path}`);
+    }
+
+    if (method === "HEAD") {
+      if (options.head === "fail") {
+        throw new Error(`Mock HEAD failed for ${path}`);
+      }
+
+      return {
+        headers:
+          options.head === "missing"
+            ? new Headers()
+            : new Headers({
+                "Content-Length": response.byteLength.toString(),
+              }),
+        response: new ArrayBuffer(0) as Result,
+      };
     }
 
     return {

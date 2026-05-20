@@ -1,6 +1,5 @@
 import type { DecodeContext, Decoder, DecoderRegistry } from "../../decoders";
 import type { DecodedOutput, PayloadDescriptor } from "../../decoders";
-import type { SourceFingerprint } from "../../schemas/v1";
 import type { BYTE_SOURCE_READ_PROFILE } from "./constants";
 
 /**
@@ -44,16 +43,10 @@ export interface ByteSourceDescriptor {
   readonly url: string;
 
   /**
-   * Decimal source size in bytes when known; kept as a string for uint64-safe
-   * protobuf/JSON transport.
+   * Decimal source size in bytes when known. This may come from sample
+   * metadata, HEAD, or Content-Range, and is not part of source identity.
    */
   readonly sizeBytes?: string;
-
-  /**
-   * Optional content fingerprint that lets caches distinguish sources with the
-   * same id/url after data changes.
-   */
-  readonly fingerprint?: SourceFingerprint;
 }
 
 /**
@@ -113,6 +106,13 @@ export interface ByteRangeReadResult {
  * Generic client for reading source byte ranges.
  */
 export interface ByteResourceClient {
+  /**
+   * Optionally resolves source metadata without reading bytes.
+   */
+  stat?(
+    source: ByteSourceDescriptor
+  ): Promise<ByteSourceDescriptor | undefined>;
+
   /**
    * Reads the requested source byte range and returns exactly that range.
    */

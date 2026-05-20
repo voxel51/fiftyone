@@ -1,9 +1,5 @@
 import { getFetchParameters, mergeHeaders } from "@fiftyone/utilities";
-import {
-  byteSourceCacheKey,
-  serializeCacheKey,
-} from "../../../client/resources/cache";
-import type { ByteSourceDescriptor } from "../../../client/resources";
+import { byteSourceAccessKey } from "../../../client/resources/cache";
 import { McapPlaybackWorkerTransport } from "./playback-worker-transport";
 import {
   type McapPlaybackWorkerFetchParameters,
@@ -15,6 +11,7 @@ import {
   type McapPlaybackWorkerStreamType,
   type McapPlaybackWorkerUnaryType,
 } from "./playback-worker-types";
+import { mcapErrorMessage } from "../errors";
 import type {
   McapDecodedMessage,
   McapReadDecodedMessagesRequest,
@@ -108,7 +105,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
       return Promise.reject(new Error("MCAP worker client is disposed"));
     }
 
-    const sourceKey = mcapWorkerSourceKey(payload.source);
+    const sourceKey = byteSourceAccessKey(payload.source);
     return this.transport.request(
       this.workerForSource(sourceKey),
       sourceKey,
@@ -125,7 +122,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
       throw new Error("MCAP worker client is disposed");
     }
 
-    const sourceKey = mcapWorkerSourceKey(payload.source);
+    const sourceKey = byteSourceAccessKey(payload.source);
     yield* this.transport.stream(
       this.workerForSource(sourceKey),
       sourceKey,
@@ -160,7 +157,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
       worker.postMessage(initRequest);
     } catch (error) {
       if (this.worker === worker) {
-        this.resetWorker(errorMessage(error, "MCAP worker startup failed"));
+        this.resetWorker(mcapErrorMessage(error, "MCAP worker startup failed"));
       } else {
         disposeWorker(worker);
       }
@@ -212,10 +209,6 @@ function disposeWorker(worker: Worker | undefined) {
   worker.terminate();
 }
 
-function errorMessage(error: unknown, defaultMessage: string): string {
-  return error instanceof Error ? error.message : defaultMessage;
-}
-
 function workerFetchParameters(): McapPlaybackWorkerFetchParameters {
   const { headers, origin, pathPrefix } = getFetchParameters();
 
@@ -224,11 +217,4 @@ function workerFetchParameters(): McapPlaybackWorkerFetchParameters {
     origin,
     pathPrefix,
   };
-}
-
-function mcapWorkerSourceKey(source: ByteSourceDescriptor): string {
-  return serializeCacheKey([
-    source.readProfile ?? null,
-    byteSourceCacheKey(source),
-  ]);
 }

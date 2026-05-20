@@ -2,7 +2,7 @@ import type {
   ByteResourceClient,
   ByteSourceDescriptor,
 } from "../../../client/resources";
-import { byteSourceCacheKey } from "../../../client/resources/cache";
+import { byteSourceAccessKey } from "../../../client/resources/cache";
 import { ByteClientReadable } from "./byte-readable";
 import type { McapIndexedReaderLike, McapReaderFactory } from "./types";
 
@@ -37,7 +37,7 @@ export function createMcapReaderStore({
     },
 
     get(source) {
-      const key = byteSourceCacheKey(source);
+      const key = byteSourceAccessKey(source);
       let reader = readers.get(key);
 
       if (!reader) {
