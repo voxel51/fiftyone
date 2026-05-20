@@ -15,8 +15,14 @@ module.exports = {
     {
       name: "generic-multimodal-layers-do-not-import-adapters",
       severity: "error",
-      from: { path: `${SRC}(client|decoders|schemas|visualization)(/|$)` },
+      from: { path: `${SRC}(decoders|query|schemas|visualization)(/|$)` },
       to: { path: `${SRC}adapters/` },
+    },
+    {
+      name: "decoders-do-not-import-query",
+      severity: "error",
+      from: { path: `${SRC}decoders/` },
+      to: { path: `${SRC}query/` },
     },
     {
       name: "only-inject-imports-mcap-entry",
@@ -77,7 +83,7 @@ module.exports = {
       name: "schemas-do-not-import-runtime-layers",
       severity: "error",
       from: { path: `${SRC}schemas/` },
-      to: { path: `${SRC}(adapters|client|decoders|visualization)/` },
+      to: { path: `${SRC}(adapters|decoders|query|visualization)/` },
     },
   ],
   options: {
