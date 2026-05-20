@@ -14,4 +14,8 @@ export { default as dataset } from "./dataset";
 export { default as histogramValues } from "./histogramValues";
 export { default as lightning } from "./lightning";
 export { default as mainSample } from "./mainSample";
-export { default as paginateSamples } from "./paginateSamples";
+export {
+  default as paginateSamples,
+  type PaginateSamplesConnection,
+  type PaginateSamplesNode,
+} from "./paginateSamples";
