@@ -77,6 +77,27 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
   const [settingsSlotEl, setSettingsSlotEl] = useState<HTMLElement | null>(
     null
   );
+  // Per-tile title overrides — published by tile bodies (via
+  // `useSetTileTitle`) when they want their chrome/sidebar header to
+  // reflect runtime state instead of the static config title.
+  const [titleOverrides, setTitleOverrides] = useState<
+    Record<string, string>
+  >({});
+  const setTileTitleOverride = useCallback(
+    (tileId: string, title: string | null) => {
+      setTitleOverrides((prev) => {
+        if (title === null) {
+          if (!(tileId in prev)) return prev;
+          const next = { ...prev };
+          delete next[tileId];
+          return next;
+        }
+        if (prev[tileId] === title) return prev;
+        return { ...prev, [tileId]: title };
+      });
+    },
+    []
+  );
   // Seed the counter past any `<prefix>-<n>` suffix in the initial tiles,
   // so the first `addTile("camera", ...)` against `{ "camera-1": ... }`
   // produces `camera-2` instead of colliding with `camera-1`. Walks every
@@ -87,6 +108,10 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       return m ? Math.max(max, Number(m[1])) : max;
     }, 0) + 1
   );
+  // Always-current ref so autoLayout stays referentially stable — avoids
+  // stale captures in useMemo dependency-suppressed consumers (TilingHeader).
+  const tilesRef = useRef(tiles);
+  tilesRef.current = tiles;
 
   /**
    * Layout setter that also reconciles the entries map (drops orphans
@@ -114,6 +139,18 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
         for (const id of idsToRemove) {
           tileSelectionAtom.remove(id);
         }
+        // Also drop any title overrides for removed tiles.
+        setTitleOverrides((prev) => {
+          const next = { ...prev };
+          let changed = false;
+          for (const id of idsToRemove) {
+            if (id in next) {
+              delete next[id];
+              changed = true;
+            }
+          }
+          return changed ? next : prev;
+        });
       }
       setFocusedTileId((current) =>
         current && presentIds.has(current) ? current : null
@@ -159,6 +196,8 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       // Release the per-tile atomFamily entry so the store doesn't
       // grow unbounded across long sessions.
       tileSelectionAtom.remove(id);
+      // Drop any title override for the removed tile too.
+      setTileTitleOverride(id, null);
     },
     []
   );
@@ -168,8 +207,10 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
     // entry can exist in `tiles` without being placed in the tree
     // yet (e.g. when `initialLayout` is null or partial), and we
     // don't want auto-layout to silently drop it.
-    setLayoutState(autoLayoutFn(Object.keys(tiles)));
-  }, [tiles]);
+    // Read from ref so this callback stays stable across tile additions,
+    // avoiding stale captures in useMemo consumers that suppress deps.
+    setLayoutState(autoLayoutFn(Object.keys(tilesRef.current)));
+  }, []);
 
   const value = useMemo<TilingContextValue>(
     () => ({
@@ -183,6 +224,8 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       autoLayout,
       settingsSlotEl,
       setSettingsSlotEl,
+      titleOverrides,
+      setTileTitleOverride,
     }),
     [
       layout,
@@ -192,6 +235,8 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       addTile,
       removeTile,
       autoLayout,
+      titleOverrides,
+      setTileTitleOverride,
       settingsSlotEl,
     ]
   );

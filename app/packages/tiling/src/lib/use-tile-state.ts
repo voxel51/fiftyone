@@ -1,7 +1,7 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { registeredTilesAtom, tileSelectionAtom } from "./atoms";
-import { useTileId } from "./TilingProvider";
+import { useTileId, useTiling } from "./TilingProvider";
 import type { RegisteredTile } from "./types";
 
 // Stable placeholder so atomFamily doesn't churn when a component is
@@ -47,6 +47,45 @@ export function useTileSelectionFor<T = unknown>(
   tileId: string | null
 ): T | null {
   return useAtomValue(tileSelectionAtom(tileId ?? NO_TILE)) as T | null;
+}
+
+/**
+ * Read the title override for the surrounding tile. Returns `null`
+ * when nothing has been published — callers fall back to the static
+ * `MosaicTileConfig.title`.
+ */
+export function useTileTitle(): string | null {
+  const tileId = useTileId();
+  const { titleOverrides } = useTiling();
+  return tileId ? (titleOverrides[tileId] ?? null) : null;
+}
+
+/**
+ * Read the title override for an explicit `tileId` — used by surfaces
+ * outside a `TileIdScope` (the header in `TileSettingsSidebar`).
+ * Pass `null` when no tile is focused.
+ */
+export function useTileTitleFor(tileId: string | null): string | null {
+  const { titleOverrides } = useTiling();
+  return tileId ? (titleOverrides[tileId] ?? null) : null;
+}
+
+/**
+ * Setter for the surrounding tile's title override. Pass `null` to
+ * revert the header back to the static `MosaicTileConfig.title`. Use
+ * this from a tile body when its content makes the original title
+ * stale (e.g. the user picks a different source in the settings UI).
+ */
+export function useSetTileTitle(): (title: string | null) => void {
+  const tileId = useTileId();
+  const { setTileTitleOverride } = useTiling();
+  return useCallback(
+    (title: string | null) => {
+      if (!tileId) return;
+      setTileTitleOverride(tileId, title);
+    },
+    [tileId, setTileTitleOverride]
+  );
 }
 
 /**
