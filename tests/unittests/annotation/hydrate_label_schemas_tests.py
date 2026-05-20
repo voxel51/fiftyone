@@ -161,13 +161,12 @@ class HydrateLabelSchemasTests(unittest.TestCase):
         from fiftyone.core.annotation.nodes import Node
         from fiftyone.core.ontology import Taxonomy
 
-        Taxonomy(
+        tax = Taxonomy(
             name="vehicle_classes",
             root=Node(name="root", values=[Node(name="car")]),
-        ).save()
-        AnnotationOntology(
-            name="my_ontology", taxonomy="vehicle_classes"
-        ).save()
+        )
+        tax.save()
+        AnnotationOntology(name="my_ontology", taxonomy=tax).save()
 
         schema = {
             "type": "detections",
@@ -175,7 +174,8 @@ class HydrateLabelSchemasTests(unittest.TestCase):
             "attributes": [],
         }
         result = hydrate_applied_ontology(schema)
-        self.assertEqual(result["applied_taxonomy"], "vehicle_classes")
+        # Surfaced as the taxonomy's slug.
+        self.assertEqual(result["applied_taxonomy"], "vehicle-classes")
         # Not persisted on the input.
         self.assertNotIn("applied_taxonomy", schema)
 

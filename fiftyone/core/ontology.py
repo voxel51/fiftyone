@@ -209,17 +209,20 @@ class AnnotationOntology(Ontology):
     Args:
         name: the ontology name
         description: optional description
-        taxonomy: optional name of a :class:`Taxonomy` bundled with this
-            ontology. The frontend reads this to know whether to fetch a
-            class tree alongside the attributes.
+        taxonomy: optional :class:`Taxonomy` instance to bundle with this
+            ontology. Stored internally as the taxonomy's slug.
         attributes: list of :class:`AttributeSpec` instances
 
     Example::
 
+        vehicle_classes = Taxonomy(
+            name="vehicle_classes",
+            root=Node(name="root", values=[Node(name="car")]),
+        )
         AnnotationOntology(
             name="vehicle_damage_ontology",
             description="Vehicle damage annotation",
-            taxonomy="vehicle_classes",
+            taxonomy=vehicle_classes,
             attributes=[
                 AttributeSpec(
                     name="damage_present",
@@ -243,12 +246,25 @@ class AnnotationOntology(Ontology):
         self,
         name: str,
         description: Optional[str] = None,
-        taxonomy: Optional[str] = None,
+        taxonomy: Optional["Taxonomy"] = None,
         attributes: Optional[list[AttributeSpec]] = None,
     ):
         super().__init__(name=name, description=description)
-        self.taxonomy = taxonomy
+        self.taxonomy = self._extract_taxonomy_slug(taxonomy)
         self.attributes = attributes or []
+
+    @staticmethod
+    def _extract_taxonomy_slug(
+        taxonomy: Optional["Taxonomy"],
+    ) -> Optional[str]:
+        if taxonomy is None:
+            return None
+        if not isinstance(taxonomy, Taxonomy):
+            raise TypeError(
+                f"taxonomy must be a Taxonomy instance, got "
+                f"{type(taxonomy).__name__}"
+            )
+        return fou.to_slug(taxonomy.name)
 
     def _validate(self) -> None:
         # Lazy import — ``ontology_validation`` imports
@@ -295,14 +311,17 @@ class AnnotationOntology(Ontology):
             an :class:`AnnotationOntology`
         """
         root = d.get("root") or {}
-        return cls(
+        ao = cls(
             name=d["name"],
             description=d.get("description"),
-            taxonomy=root.get("taxonomy"),
             attributes=[
                 AttributeSpec.from_dict(a) for a in root.get("attributes", [])
             ],
         )
+        # Dict stores the already-resolved slug; assign past the
+        # Taxonomy-instance type check at construction.
+        ao.taxonomy = root.get("taxonomy")
+        return ao
 
 
 class Taxonomy(Ontology):
@@ -648,6 +667,9 @@ def _find_annotation_ontology_refs_by_taxonomy(
     bundles the given taxonomy. Older versions may still reference it
     after an unset; we only act on the latest version per slug.
     """
+    # ``root.taxonomy`` is stored as a slug; normalize the input so
+    # callers can pass either the name or slug form.
+    taxonomy_slug = fou.to_slug(taxonomy_name)
     pipeline = [
         {"$match": {"type": OntologyType.ANNOTATION_ONTOLOGY.value}},
         {"$sort": {"slug": 1, "version": -1}},
@@ -658,7 +680,7 @@ def _find_annotation_ontology_refs_by_taxonomy(
                 "root": {"$first": "$root"},
             }
         },
-        {"$match": {"root.taxonomy": taxonomy_name}},
+        {"$match": {"root.taxonomy": taxonomy_slug}},
         {"$project": {"name": 1, "_id": 0}},
     ]
     # pylint: disable-next=no-member

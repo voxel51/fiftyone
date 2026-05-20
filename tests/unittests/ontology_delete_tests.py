@@ -348,6 +348,7 @@ class FindLabelSchemaRefsTests(unittest.TestCase):
 
 
 _TAXONOMY_NAME = "test_taxonomy"
+_TAXONOMY_SLUG = "test-taxonomy"
 
 
 def _make_taxonomy(name: str = _TAXONOMY_NAME) -> None:
@@ -363,7 +364,8 @@ def _make_taxonomy(name: str = _TAXONOMY_NAME) -> None:
 def _make_ao_bundling_taxonomy(
     ao_name: str, taxonomy_name: str = _TAXONOMY_NAME
 ) -> None:
-    AnnotationOntology(name=ao_name, taxonomy=taxonomy_name).save()
+    tax = load_ontology(taxonomy_name)
+    AnnotationOntology(name=ao_name, taxonomy=tax).save()
 
 
 class DeleteTaxonomyTests(unittest.TestCase):
@@ -393,7 +395,7 @@ class DeleteTaxonomyTests(unittest.TestCase):
 
         # Taxonomy and AO ref should be untouched.
         self.assertTrue(fo.ontology_exists(_TAXONOMY_NAME))
-        self.assertEqual(load_ontology("my_ao").taxonomy, _TAXONOMY_NAME)
+        self.assertEqual(load_ontology("my_ao").taxonomy, _TAXONOMY_SLUG)
 
     def test_force_delete_taxonomy_unsets_ao_ref_and_deletes(self) -> None:
         _make_taxonomy()

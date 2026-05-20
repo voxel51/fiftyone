@@ -390,31 +390,28 @@ class TaxonomyRefValidTests(unittest.TestCase):
         from fiftyone.core.annotation.nodes import Node
         from fiftyone.core.ontology import Taxonomy
 
-        Taxonomy(
+        tax = Taxonomy(
             name="vehicle_classes",
             root=Node(name="root", values=[Node(name="car")]),
-        ).save()
-
-        ao = AnnotationOntology(
-            name="ao_with_tax",
-            taxonomy="vehicle_classes",
         )
+        tax.save()
+
+        ao = AnnotationOntology(name="ao_with_tax", taxonomy=tax)
         validate_annotation_ontology(ao)
 
-    def test_unknown_taxonomy_ref_raises(self):
-        ao = AnnotationOntology(
-            name="ao_dangling", taxonomy="does_not_exist"
-        )
+    def test_dangling_taxonomy_ref_raises(self):
+        # Constructed with a valid Taxonomy, then the Taxonomy is deleted
+        # behind the AO's back — the saved slug is now dangling.
+        ao = AnnotationOntology(name="ao_dangling")
+        ao.taxonomy = "does_not_exist"
         with self.assertRaises(ValueError):
             validate_annotation_ontology(ao)
 
     def test_wrong_type_taxonomy_ref_raises(self):
-        # An AnnotationOntology used in the taxonomy slot must be rejected.
         AnnotationOntology(name="some_other_ao").save()
 
-        ao = AnnotationOntology(
-            name="ao_wrong_type", taxonomy="some_other_ao"
-        )
+        ao = AnnotationOntology(name="ao_wrong_type")
+        ao.taxonomy = "some_other_ao"
         with self.assertRaises(ValueError):
             validate_annotation_ontology(ao)
 

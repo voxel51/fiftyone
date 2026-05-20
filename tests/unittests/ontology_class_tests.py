@@ -702,10 +702,14 @@ class AttributeSpecTests(unittest.TestCase):
 
 class AnnotationOntologyTests(unittest.TestCase):
     def test_create(self):
+        tax = Taxonomy(
+            name="vehicle classes",
+            root=Node(name="root", values=[Node(name="car")]),
+        )
         ao = AnnotationOntology(
             name="vehicle_damage_ontology",
             description="Vehicle damage annotation",
-            taxonomy="vehicle_classes",
+            taxonomy=tax,
             attributes=[
                 AttributeSpec(
                     name="damage_present",
@@ -723,7 +727,8 @@ class AnnotationOntologyTests(unittest.TestCase):
         )
         self.assertEqual(ao.name, "vehicle_damage_ontology")
         self.assertEqual(ao.description, "Vehicle damage annotation")
-        self.assertEqual(ao.taxonomy, "vehicle_classes")
+        # Stored as the taxonomy's slug.
+        self.assertEqual(ao.taxonomy, "vehicle-classes")
         self.assertEqual(len(ao.attributes), 2)
         self.assertEqual(ao._TYPE, "annotation_ontology")
 
@@ -731,6 +736,10 @@ class AnnotationOntologyTests(unittest.TestCase):
         ao = AnnotationOntology(name="empty")
         self.assertIsNone(ao.taxonomy)
         self.assertEqual(ao.attributes, [])
+
+    def test_taxonomy_string_rejected(self):
+        with self.assertRaises(TypeError):
+            AnnotationOntology(name="ao", taxonomy="vehicle_classes")
 
     def test_none_name_raises(self):
         with self.assertRaises(ValueError):
@@ -749,10 +758,11 @@ class AnnotationOntologyTests(unittest.TestCase):
         self.assertEqual(ao.name, "padded")
 
     def test_to_dict(self):
+        tax = Taxonomy(name="tax1", root=Node(name="root"))
         ao = AnnotationOntology(
             name="test_ao",
             description="A test",
-            taxonomy="tax1",
+            taxonomy=tax,
             attributes=[
                 AttributeSpec(
                     name="attr1",
@@ -818,10 +828,14 @@ class AnnotationOntologyTests(unittest.TestCase):
         self.assertEqual(ao.attributes, [])
 
     def test_roundtrip(self):
+        tax = Taxonomy(
+            name="vehicle_classes",
+            root=Node(name="root", values=[Node(name="car")]),
+        )
         original = AnnotationOntology(
             name="vehicle_damage_ontology",
             description="Vehicle damage annotation",
-            taxonomy="vehicle_classes",
+            taxonomy=tax,
             attributes=[
                 AttributeSpec(
                     name="damage_present",
