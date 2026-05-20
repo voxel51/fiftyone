@@ -26,6 +26,16 @@ export type PaginateSamplesNode = Exclude<
   { readonly __typename: "%other" }
 >;
 
+/**
+ * Type guard for {@link PaginateSamplesConnection}. Returns `true` when
+ * `samples` is the successful connection variant and `edges` / `pageInfo` are
+ * safe to access.
+ */
+export const isPaginateSamplesConnection = (
+  samples: paginateSamplesQuery$data["samples"]
+): samples is PaginateSamplesConnection =>
+  samples.__typename === "SampleItemStrConnection";
+
 export default r(graphql`
   query paginateSamplesQuery(
     $count: Int = 20
