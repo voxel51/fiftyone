@@ -83,6 +83,10 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       return m ? Math.max(max, Number(m[1])) : max;
     }, 0) + 1
   );
+  // Always-current ref so autoLayout stays referentially stable — avoids
+  // stale captures in useMemo dependency-suppressed consumers (TilingHeader).
+  const tilesRef = useRef(tiles);
+  tilesRef.current = tiles;
 
   /**
    * Layout setter that also reconciles the entries map (drops orphans
@@ -166,8 +170,10 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
     // entry can exist in `tiles` without being placed in the tree
     // yet (e.g. when `initialLayout` is null or partial), and we
     // don't want auto-layout to silently drop it.
-    setLayoutState(autoLayoutFn(Object.keys(tiles)));
-  }, [tiles]);
+    // Read from ref so this callback stays stable across tile additions,
+    // avoiding stale captures in useMemo consumers that suppress deps.
+    setLayoutState(autoLayoutFn(Object.keys(tilesRef.current)));
+  }, []);
 
   const registerSettings = useCallback(
     (tileId: string, Component: React.ComponentType) => {

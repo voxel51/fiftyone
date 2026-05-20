@@ -44,3 +44,12 @@ export const tileSourceAtom = atomFamily(
 export const tileSelectionAtom = atomFamily(
   (_tileId: string) => atom<unknown>(null) as PrimitiveAtom<unknown>
 );
+
+/**
+ * Per-tile-id title override. `null` means "use the static title from
+ * `MosaicTileConfig`". Set via `useSetTileTitle()` to update the header
+ * when a tile's content changes (e.g. the user picks a different camera source).
+ */
+export const tileTitleAtom = atomFamily(
+  (_tileId: string) => atom<string | null>(null) as PrimitiveAtom<string | null>
+);

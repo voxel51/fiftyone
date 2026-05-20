@@ -1,7 +1,17 @@
-import { Checkbox, Select, Text, TextColor, TextVariant } from "@voxel51/voodo";
-import React, { useMemo } from "react";
+import {
+  Checkbox,
+  Dropdown,
+  DropdownAnchor,
+  DropdownTrigger,
+  MenuTextItem,
+  Text,
+  TextColor,
+  TextVariant,
+} from "@voxel51/voodo";
+import React from "react";
 import {
   useSetTileSource,
+  useSetTileTitle,
   useTileSourcesByType,
   useTileSource,
 } from "@fiftyone/tiling";
@@ -16,15 +26,10 @@ const CameraSettings: React.FC = () => {
   const sources = useTileSourcesByType("camera");
   const sourceId = useTileSource();
   const setSource = useSetTileSource();
+  const setTitle = useSetTileTitle();
 
-  const options = useMemo(
-    () =>
-      sources.map((s) => ({
-        id: s.streamId,
-        data: { label: s.title },
-      })),
-    [sources]
-  );
+  const currentLabel =
+    sources.find((s) => s.streamId === sourceId)?.title ?? "Select source";
 
   return (
     <div className={styles.root}>
@@ -32,11 +37,22 @@ const CameraSettings: React.FC = () => {
         <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
           Source
         </Text>
-        <Select
-          options={options}
-          value={sourceId ?? ""}
-          onChange={(v) => setSource((v as string) || null)}
-        />
+        <Dropdown
+          anchor={DropdownAnchor.BottomStart}
+          trigger={<DropdownTrigger>{currentLabel}</DropdownTrigger>}
+        >
+          {sources.map((s) => (
+            <MenuTextItem
+              key={s.streamId}
+              onClick={() => {
+                setSource(s.streamId);
+                setTitle(s.title);
+              }}
+            >
+              {s.title}
+            </MenuTextItem>
+          ))}
+        </Dropdown>
       </div>
 
       <Checkbox label="Show overlays" defaultChecked />

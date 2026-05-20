@@ -1,6 +1,7 @@
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import React from "react";
-import { useTiling } from "../../lib/TilingProvider";
+import { TileIdScope, useTiling } from "../../lib/TilingProvider";
+import { useTileTitleFor } from "../../lib/use-tile-state";
 import SidebarPanel from "../SidebarPanel/SidebarPanel";
 
 /**
@@ -17,11 +18,16 @@ const TileSettingsSidebar: React.FC = () => {
   // mid-render or the consumer's layout state races ahead of the registry.
   const focusedTile =
     focusedTileId && tiles[focusedTileId] ? tiles[focusedTileId] : null;
-  const title = focusedTile ? `Settings: ${focusedTile.title}` : "Settings";
+  const titleOverride = useTileTitleFor(focusedTileId ?? null);
+  const title = focusedTile
+    ? `Settings: ${titleOverride ?? focusedTile.title}`
+    : "Settings";
   return (
     <SidebarPanel title={title}>
-      {focusedTile && FocusedTileSettings ? (
-        <FocusedTileSettings />
+      {focusedTile && FocusedTileSettings && focusedTileId ? (
+        <TileIdScope tileId={focusedTileId}>
+          <FocusedTileSettings />
+        </TileIdScope>
       ) : (
         <Text variant={TextVariant.Sm} color={TextColor.Muted}>
           Focus a tile to edit its settings.

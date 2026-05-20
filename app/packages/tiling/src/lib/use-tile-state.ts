@@ -4,6 +4,7 @@ import {
   registeredTilesAtom,
   tileSelectionAtom,
   tileSourceAtom,
+  tileTitleAtom,
 } from "./atoms";
 import { useTileId } from "./TilingProvider";
 import type { RegisteredTile } from "./types";
@@ -58,6 +59,42 @@ export function useSetTileSourceFor(): (
   return useCallback(
     (tileId, sourceId) => store.set(tileSourceAtom(tileId), sourceId),
     [store]
+  );
+}
+
+/**
+ * Read the current tile's title override. Returns `null` when no override
+ * has been set — callers should fall back to the static config title.
+ */
+export function useTileTitle(): string | null {
+  const tileId = useTileId();
+  return useAtomValue(tileTitleAtom(tileId ?? NO_TILE));
+}
+
+/**
+ * Read the title override for an explicit `tileId` — used by surfaces
+ * that aren't inside a `TileIdScope` but know which tile to inspect
+ * (e.g. `TileSettingsSidebar` reading the focused tile's override title).
+ * Pass `null` when no tile is focused.
+ */
+export function useTileTitleFor(tileId: string | null): string | null {
+  return useAtomValue(tileTitleAtom(tileId ?? NO_TILE));
+}
+
+/**
+ * Setter for the current tile's title override. Pass `null` to revert to
+ * the static config title.
+ */
+export function useSetTileTitle(): (title: string | null) => void {
+  const tileId = useTileId();
+  const set = useSetAtom(tileTitleAtom(tileId ?? NO_TILE));
+  return useCallback(
+    (title: string | null) => {
+      if (!tileId) return;
+      set(title);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tileId]
   );
 }
 

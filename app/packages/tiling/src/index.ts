@@ -21,6 +21,7 @@ export {
   registeredTilesAtom,
   tileSourceAtom,
   tileSelectionAtom,
+  tileTitleAtom,
 } from "./lib/atoms";
 export {
   useTileSource,
@@ -29,6 +30,9 @@ export {
   useTileSelection,
   useSetTileSelection,
   useTileSelectionFor,
+  useTileTitle,
+  useTileTitleFor,
+  useSetTileTitle,
   useTileTypes,
   useTileSourcesByType,
 } from "./lib/use-tile-state";

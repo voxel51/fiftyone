@@ -52,6 +52,13 @@
   background: transparent;
 }
 
+/* react-mosaic always renders the drag-preview ghost (.mosaic-preview) inside
+   each window at z-index 0. Since we set the window body to transparent it bleeds
+   through. Hide it — the drag image is captured by react-dnd before it's hidden. */
+.root :global(.mosaic .mosaic-window > .mosaic-preview) {
+  display: none;
+}
+
 /* Pull the per-tile margin in (react-mosaic defaults to 3px on each
    side → 6px gap + 2px window borders ≈ 8px between tile contents).
    2px gives 4px gap + 2px borders ≈ 6px — visibly slim without making
