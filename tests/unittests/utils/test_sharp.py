@@ -314,9 +314,10 @@ class TestAppleSharpExportGaussians:
         output_dir = str(tmp_path / "splats")
         os.makedirs(output_dir)
 
-        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), \
-                 patch("fiftyone.utils.sharp.AppleSharpModel._splat_to_pointcloud"), \
-                 patch("fiftyone.utils.sharp.fo3d.Scene.write"):
+        # I think this fails on the Windows build
+        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), patch(
+            "fiftyone.utils.sharp.AppleSharpModel._splat_to_pointcloud"
+        ), patch("fiftyone.utils.sharp.fo3d.Scene.write"):
             model = self._make_model(output_dir)
             result = model._export_gaussians(None, 1000.0, 1080, 1920)
 
