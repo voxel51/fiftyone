@@ -25,6 +25,7 @@ import eta.core.learning as etal
 import eta.core.utils as etau
 
 import fiftyone.core.config as foc
+import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.models as fom
 import fiftyone.core.media as fomd
@@ -1847,20 +1848,115 @@ def _is_string_array(targets):
         return False
 
 
+def _field_depth(samples, path):
+    """Returns the nesting depth of ``samples.values(path)``.
+
+    The outer per-sample iteration always contributes one level. Each list-
+    typed component along ``path`` contributes another. For example:
+
+    -  ``"filepath"`` -> 1
+    -  ``"frames.id"`` -> 2
+    -  ``"ground_truth.detections"`` -> 2
+    -  ``"ground_truth.detections.bounding_box"`` -> 3
+    """
+    depth = 1
+    keys = path.split(".")
+
+    if keys[0] == "frames" and samples._has_frame_fields():
+        depth += 1
+        keys = keys[1:]
+        schema = samples.get_frame_field_schema()
+    else:
+        schema = samples.get_field_schema()
+
+    for key in keys:
+        field = schema.get(key)
+        if field is None:
+            break
+
+        if isinstance(field, fof.ListField):
+            depth += 1
+            field = field.field
+
+        if isinstance(field, fof.EmbeddedDocumentField):
+            schema = field.get_field_schema()
+        else:
+            schema = {}
+
+    return depth
+
+
+def _flatten_with_coords(nested, prefix=()):
+    """Yields ``(value, coord)`` pairs by recursively descending ``nested``.
+
+    Recursion stops at non-list values. ``None`` entries (missing list fields)
+    yield no rows.
+    """
+    if nested is None:
+        return
+    if not isinstance(nested, list):
+        yield nested, prefix
+        return
+    for i, sub in enumerate(nested):
+        yield from _flatten_with_coords(sub, prefix + (i,))
+
+
+def _walk_value(nested, coord, depth):
+    """Indexes into ``nested`` using the first ``depth`` elements of ``coord``.
+
+    Parent fields stop short of the row's coord length; child fields walk the
+    full depth and return whatever subtree remains.
+    """
+    value = nested
+    for i in range(depth):
+        if value is None:
+            return None
+        value = value[coord[i]]
+    return value
+
+
+def _serialize_list(values, local_process_group):
+    """Wraps ``values`` in a serialized list backed by the right storage for
+    the current process group.
+    """
+    if local_process_group is None:
+        return TorchSerializedList(values)
+
+    if get_local_rank(local_process_group) == 0:
+        return TorchShmSerializedList(values, local_process_group)
+
+    # Non-master ranks read from shared memory; data is broadcast by rank 0
+    return TorchShmSerializedList([], local_process_group)
+
+
 class FiftyOneTorchDataset(Dataset):
     """Constructs a :class:`torch:torch.utils.data.Dataset` that loads data
     from an arbitrary :class:`fiftyone.core.collections.SampleCollection` via
     the provided :class:`GetItem` instance.
 
-    .. warning::
+    The dataset is a flat table with one row per ``index_field`` value. When
+    ``index_field`` traverses a list-typed field, the dataset fans out: each
+    frame, detection, polyline, etc. becomes its own row. Fields in
+    ``get_item.field_mapping`` are resolved per row — child fields (at or
+    below the index path) yield their per-row value, while parent fields
+    (above) are shared by every row under the same parent.
 
-        For input views with repeated sample IDs, it is recommended to use
-        ``vectorize=True``. Do not use ``vectorize=False`` in this case,
-        it will give unexpected results.
+    The contract on ``index_field`` is:
+
+    -   It must be a dotted field path whose leaf is a scalar that is unique
+        across the collection (e.g. ``"id"``, ``"frames.id"``,
+        ``"ground_truth.detections.id"``).
+    -   Intermediate path components must be list-typed (a ListField or the
+        special ``frames`` field).
+
+    These constraints are documented but not enforced.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         get_item: a :class:`GetItem`
+        index_field ("id"): the dotted field path that defines the dataset's
+            rows. The default ``"id"`` is the sample id, in which case the
+            dataset behaves as one row per sample
         vectorize (False): whether to load and cache the required fields from
             the sample collection upfront (True) or lazily load the values from
             each sample when items are retrieved (False). Vectorizing gives
@@ -1879,6 +1975,7 @@ class FiftyOneTorchDataset(Dataset):
         self,
         samples,
         get_item,
+        index_field="id",
         vectorize=False,
         skip_failures=False,
         local_process_group=None,
@@ -1886,10 +1983,14 @@ class FiftyOneTorchDataset(Dataset):
         super().__init__()
 
         self.field_mapping = get_item.field_mapping.copy()
+        self.index_field = index_field
 
-        # Optimization: only select the specific fields that we'll need to
-        # pass to `get_item`
-        samples = samples.select_fields(list(self.field_mapping.values()))
+        # Optimization: only select fields needed for `get_item` plus the
+        # index field
+        fields_to_select = list(
+            set(self.field_mapping.values()) | {index_field}
+        )
+        samples = samples.select_fields(fields_to_select)
 
         self.dataset_name = samples._root_dataset.name
         self.stages = (
@@ -1901,16 +2002,35 @@ class FiftyOneTorchDataset(Dataset):
         self.get_item = get_item
         self.skip_failures = skip_failures
 
-        self.ids = self._load_field(
-            samples, "id", local_process_group=local_process_group
-        )
+        # Precompute the nesting depth of `samples.values(field)` for each
+        # field we will resolve; used by the per-row walk
+        self._field_depths = {
+            field: _field_depth(samples, field)
+            for field in self.field_mapping.values()
+        }
 
-        if not vectorize and len(set(self.ids)) != len(self.ids):
-            logger.warning(
-                "The sample collection contains repeated sample IDs. This can "
-                "lead to unexpected results when `vectorize=False`. It is "
-                "recommended to use `vectorize=True` in this case."
-            )
+        # Build keys, coords, and sample ids on the master rank only; other
+        # ranks read from shared memory
+        on_master = (
+            local_process_group is None
+            or get_local_rank(local_process_group) == 0
+        )
+        if on_master:
+            nested = samples.values(index_field)
+            keys = []
+            coords = []
+            for value, coord in _flatten_with_coords(nested):
+                keys.append(value)
+                coords.append(coord)
+            sample_ids = keys if index_field == "id" else samples.values("id")
+        else:
+            keys = []
+            coords = []
+            sample_ids = []
+
+        self.keys = _serialize_list(keys, local_process_group)
+        self._coords = _serialize_list(coords, local_process_group)
+        self._sample_ids = _serialize_list(sample_ids, local_process_group)
 
         self.vectorize = vectorize
         self.cached_fields = None
@@ -1926,30 +2046,17 @@ class FiftyOneTorchDataset(Dataset):
     def _cache_fields(self, samples, local_process_group=None):
         self.cached_fields = {}
 
-        fields_to_load = list(self.field_mapping.values())
-
-        if "id" in fields_to_load:
-            self.cached_fields["id"] = self.ids
-            fields_to_load.remove("id")
+        on_master = (
+            local_process_group is None
+            or get_local_rank(local_process_group) == 0
+        )
 
         # @todo load all fields via a single `values()` call
-        for field_name in fields_to_load:
-            self.cached_fields[field_name] = self._load_field(
-                samples, field_name, local_process_group=local_process_group
+        for field in self.field_mapping.values():
+            values = samples.values(field) if on_master else []
+            self.cached_fields[field] = _serialize_list(
+                values, local_process_group
             )
-
-    def _load_field(self, samples, field_name, local_process_group=None):
-        if local_process_group is None:
-            return TorchSerializedList(samples.values(field_name))
-
-        if get_local_rank(local_process_group) == 0:
-            return TorchShmSerializedList(
-                samples.values(field_name), local_process_group
-            )
-
-        # We don't need to pass actual data if we're not in local rank 0
-        # we read it from shared memory instead
-        return TorchShmSerializedList([], local_process_group)
 
     @property
     def samples(self):
@@ -2036,40 +2143,70 @@ class FiftyOneTorchDataset(Dataset):
 
             return e
 
-    def _get_samples(self, indices):
-        ids = [self.ids[idx] for idx in indices]
-        return fov.make_optimized_select_view(self.samples, ids, ordered=True)
+    def _resolve_row(self, nested_by_field, coord):
+        """Extracts one row's field values from per-field nested structures.
+
+        ``nested_by_field[field]`` is the value of ``samples.values(field)``
+        for some collection (either the cached upfront view, or the
+        per-batch select view). The outer index ``coord[0]`` selects the
+        sample within that collection.
+        """
+        d = {}
+        for key, field in self.field_mapping.items():
+            try:
+                depth = self._field_depths[field]
+                d[key] = _walk_value(
+                    nested_by_field[field],
+                    coord,
+                    min(len(coord), depth),
+                )
+            except Exception as e:
+                error = ValueError(
+                    f"Error loading field {field} assigned to key {key}: {e}"
+                )
+                if not self.skip_failures:
+                    raise error from e
+
+                return error
+
+        return d
 
     def _prepare_batch_db(self, indices):
-        samples = self._get_samples(indices)
+        # Find unique sample indices in batch, preserving first-seen order
+        unique_sample_idxs = list(
+            dict.fromkeys(self._coords[i][0] for i in indices)
+        )
+        sample_ids = [self._sample_ids[s] for s in unique_sample_idxs]
+
+        view = fov.make_optimized_select_view(
+            self.samples, sample_ids, ordered=True
+        )
+
+        # Fetch all required fields in a single aggregation
+        fields = list(set(self.field_mapping.values()))
+        if len(fields) == 1:
+            results = [view.values(fields[0])]
+        else:
+            results = view.values(fields)
+        nested_by_field = dict(zip(fields, results))
+
+        # Remap global sample idx -> position within the batch view
+        idx_remap = {gi: li for li, gi in enumerate(unique_sample_idxs)}
+
         batch = []
-        for sample in samples:
-            d = {}
-            for key, field in self.field_mapping.items():
-                try:
-                    d[key] = sample[field]
-                except Exception as e:
-                    error = ValueError(
-                        f"Error loading field {field} assigned to key {key}: {e}"
-                    )
-                    if not self.skip_failures:
-                        raise error from e
-
-                    d = error
-                    break
-
-            batch.append(d)
+        for i in indices:
+            coord = self._coords[i]
+            local_coord = (idx_remap[coord[0]],) + tuple(coord[1:])
+            batch.append(self._resolve_row(nested_by_field, local_coord))
 
         return batch
 
     def _prepare_batch_vectorized(self, indices):
         batch = []
         for i in indices:
-            d = {}
-            for key, field in self.field_mapping.items():
-                d[key] = self.cached_fields[field][i]
-
-            batch.append(d)
+            batch.append(
+                self._resolve_row(self.cached_fields, self._coords[i])
+            )
 
         return batch
 
@@ -2092,7 +2229,7 @@ class FiftyOneTorchDataset(Dataset):
         return res
 
     def __len__(self):
-        return len(self.ids)
+        return len(self.keys)
 
 
 class TorchImageDataset(Dataset):

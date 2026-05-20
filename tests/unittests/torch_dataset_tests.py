@@ -57,6 +57,66 @@ class ShortLivedDataset:
         self._dataset.delete()
 
 
+class ShortLivedDetectionDataset:
+    """In-memory dataset with image samples containing ``Detections``."""
+
+    def __init__(self, n_per_sample=(2, 3, 2), **kwargs):
+        self._dataset = fo.Dataset(**kwargs)
+
+        samples = []
+        for i, n in enumerate(n_per_sample):
+            sample = fo.Sample(filepath=f"img{i}.png")
+            sample["ground_truth"] = fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label=f"obj{i}_{j}",
+                        bounding_box=[
+                            0.1 * j,
+                            0.1 * j,
+                            0.2,
+                            0.2,
+                        ],
+                    )
+                    for j in range(n)
+                ]
+            )
+            samples.append(sample)
+
+        self._dataset.add_samples(samples)
+        self._dataset.persistent = True
+
+    def __enter__(self):
+        return self._dataset
+
+    def __exit__(self, *args):
+        self._dataset.persistent = False
+        self._dataset.delete()
+
+
+class ShortLivedVideoDataset:
+    """In-memory dataset with video samples containing frames."""
+
+    def __init__(self, n_frames_per_sample=(2, 3), **kwargs):
+        self._dataset = fo.Dataset(**kwargs)
+
+        samples = []
+        for i, n in enumerate(n_frames_per_sample):
+            sample = fo.Sample(filepath=f"video{i}.mp4", media_type="video")
+            for f in range(1, n + 1):
+                sample.frames[f] = fo.Frame(frame_label=f"v{i}_f{f}")
+            samples.append(sample)
+
+        self._dataset.add_samples(samples)
+        self._dataset.persistent = True
+
+    def __enter__(self):
+        return self._dataset
+
+    def __exit__(self, *args):
+        self._dataset.persistent = False
+        self._dataset.delete()
+
+
 class FiftyOneTorchDatasetTests(unittest.TestCase):
     def test_ids_correct(self):
         with ShortLivedDataset() as dataset:
@@ -64,7 +124,14 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
                 IdentityGetItem(["id", "filepath"])
             )
             self.assertEqual(
-                [torch_dataset.ids[i] for i in range(len(torch_dataset))],
+                [torch_dataset.keys[i] for i in range(len(torch_dataset))],
+                dataset.values("id"),
+            )
+            self.assertEqual(
+                [
+                    torch_dataset._sample_ids[i]
+                    for i in range(len(torch_dataset))
+                ],
                 dataset.values("id"),
             )
 
@@ -80,6 +147,9 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
                     f"Cached field {cf} not found in cached fields",
                 )
 
+                # `cached_fields[field]` is per-sample (length = n_samples). For
+                # a top-level scalar field on an `id`-indexed dataset, that
+                # equals `len(torch_dataset)`.
                 self.assertEqual(
                     [
                         torch_dataset.cached_fields[cf][i]
@@ -95,7 +165,7 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
                 IdentityGetItem(["filepath"]), vectorize=True
             )
             self.assertEqual(
-                [torch_dataset.ids[i] for i in range(len(torch_dataset))],
+                [torch_dataset.keys[i] for i in range(len(torch_dataset))],
                 dataset.values("id"),
             )
 
@@ -166,6 +236,188 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
                     self.assertEqual(res[i], 1)
                 else:
                     self.assertTrue(isinstance(res[i], Exception))
+
+    # -------------------------------------------------------------------------
+    # Tests for non-default `index_field` (per-detection / per-frame rows)
+    # -------------------------------------------------------------------------
+
+    def _per_detection_indexing_impl(self, vectorize):
+        n_per_sample = (2, 3, 2)
+        total = sum(n_per_sample)
+
+        with ShortLivedDetectionDataset(n_per_sample) as dataset:
+            get_item = IdentityGetItem(
+                ["filepath", "label", "bbox"],
+                field_mapping={
+                    "label": "ground_truth.detections.label",
+                    "bbox": "ground_truth.detections.bounding_box",
+                },
+            )
+            torch_dataset = dataset.to_torch(
+                get_item,
+                index_field="ground_truth.detections.id",
+                vectorize=vectorize,
+            )
+
+            self.assertEqual(len(torch_dataset), total)
+
+            # Expected per-row data
+            filepaths = dataset.values("filepath")
+            labels = dataset.values("ground_truth.detections.label")
+            bboxes = dataset.values("ground_truth.detections.bounding_box")
+            det_ids = dataset.values("ground_truth.detections.id")
+
+            # Verify keys match the flattened detection IDs
+            flat_det_ids = [
+                did for sample_dets in det_ids for did in sample_dets
+            ]
+            self.assertEqual(
+                [torch_dataset.keys[i] for i in range(len(torch_dataset))],
+                flat_det_ids,
+            )
+
+            # Each row: [parent filepath (broadcast), per-detection label,
+            # per-detection bbox]
+            row = 0
+            for sidx, n in enumerate(n_per_sample):
+                for j in range(n):
+                    item = torch_dataset[row]
+                    self.assertEqual(item[0], filepaths[sidx])
+                    self.assertEqual(item[1], labels[sidx][j])
+                    self.assertEqual(item[2], bboxes[sidx][j])
+                    row += 1
+
+    def test_per_detection_indexing_db(self):
+        self._per_detection_indexing_impl(vectorize=False)
+
+    def test_per_detection_indexing_vectorized(self):
+        self._per_detection_indexing_impl(vectorize=True)
+
+    def _per_frame_indexing_impl(self, vectorize):
+        n_frames_per_sample = (2, 3)
+        total = sum(n_frames_per_sample)
+
+        with ShortLivedVideoDataset(n_frames_per_sample) as dataset:
+            get_item = IdentityGetItem(
+                ["filepath", "frame_label"],
+                field_mapping={
+                    "frame_label": "frames.frame_label",
+                },
+            )
+            torch_dataset = dataset.to_torch(
+                get_item,
+                index_field="frames.id",
+                vectorize=vectorize,
+            )
+
+            self.assertEqual(len(torch_dataset), total)
+
+            filepaths = dataset.values("filepath")
+            frame_labels = dataset.values("frames.frame_label")
+            frame_ids = dataset.values("frames.id")
+
+            flat_frame_ids = [
+                fid for sample_fids in frame_ids for fid in sample_fids
+            ]
+            self.assertEqual(
+                [torch_dataset.keys[i] for i in range(len(torch_dataset))],
+                flat_frame_ids,
+            )
+
+            row = 0
+            for sidx, n in enumerate(n_frames_per_sample):
+                for j in range(n):
+                    item = torch_dataset[row]
+                    self.assertEqual(item[0], filepaths[sidx])
+                    self.assertEqual(item[1], frame_labels[sidx][j])
+                    row += 1
+
+    def test_per_frame_indexing_db(self):
+        self._per_frame_indexing_impl(vectorize=False)
+
+    def test_per_frame_indexing_vectorized(self):
+        self._per_frame_indexing_impl(vectorize=True)
+
+    def test_vectorized_vs_db_parity_per_detection(self):
+        n_per_sample = (2, 3, 2)
+        with ShortLivedDetectionDataset(n_per_sample) as dataset:
+            get_item = IdentityGetItem(
+                ["filepath", "label", "bbox"],
+                field_mapping={
+                    "label": "ground_truth.detections.label",
+                    "bbox": "ground_truth.detections.bounding_box",
+                },
+            )
+
+            td_db = dataset.to_torch(
+                get_item,
+                index_field="ground_truth.detections.id",
+                vectorize=False,
+            )
+            td_vec = dataset.to_torch(
+                get_item,
+                index_field="ground_truth.detections.id",
+                vectorize=True,
+            )
+
+            self.assertEqual(len(td_db), len(td_vec))
+
+            indices = list(range(len(td_db)))
+            db_batch = td_db.__getitems__(indices)
+            vec_batch = td_vec.__getitems__(indices)
+            self.assertEqual(db_batch, vec_batch)
+
+            # Also verify single-index access matches
+            for i in indices:
+                self.assertEqual(td_db[i], td_vec[i])
+
+    def test_skip_failures_per_detection(self):
+        # Add a sample whose detections lack the requested field to trigger
+        # an error when calling get_item.
+        n_per_sample = (2, 2)
+        with ShortLivedDetectionDataset(n_per_sample) as dataset:
+            # Clear the `label` on the first detection of the first sample
+            sample = dataset.first()
+            sample["ground_truth"].detections[0].label = None
+            sample.save()
+
+            class RequireLabel(GetItem):
+                @property
+                def required_keys(self):
+                    return ["label"]
+
+                def __call__(self, d):
+                    if d["label"] is None:
+                        raise ValueError("missing label")
+                    return d["label"]
+
+            gi = RequireLabel(
+                field_mapping={"label": "ground_truth.detections.label"}
+            )
+
+            # Without skip_failures, the failing row raises
+            td = dataset.to_torch(
+                gi,
+                index_field="ground_truth.detections.id",
+                skip_failures=False,
+            )
+            with self.assertRaises(Exception):
+                _ = td[0]
+
+            # With skip_failures, the failing row returns an Exception, others
+            # return their label
+            td = dataset.to_torch(
+                gi,
+                index_field="ground_truth.detections.id",
+                skip_failures=True,
+            )
+            self.assertEqual(len(td), sum(n_per_sample))
+
+            results = td.__getitems__(list(range(len(td))))
+            # Row 0 is the one with `None` label
+            self.assertTrue(isinstance(results[0], Exception))
+            for i in range(1, len(results)):
+                self.assertIsInstance(results[i], str)
 
 
 if __name__ == "__main__":
