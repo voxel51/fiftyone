@@ -11,6 +11,7 @@ import type { ModalViewportState } from "../../jotai/modal";
 import { __unsafeModalViewportAtom } from "../../jotai/modal";
 import type { ModalSample } from "../../recoil";
 import {
+  GroupSampleNotFound,
   State,
   activeFields,
   currentSampleId,
@@ -81,6 +82,17 @@ export const useModalSample = (): ModalSample | undefined => {
     return loadable.contents;
   }
 
+  if (loadable.state === "hasError") {
+    // Sparse / jagged groups can legitimately have no sample for the current
+    // slice — treat as "no sample" instead of crashing callers. Other errors
+    // (including plain SampleNotFound) still bubble.
+    if (loadable.contents instanceof GroupSampleNotFound) {
+      return undefined;
+    }
+    throw loadable.contents;
+  }
+
+  // loading
   return undefined;
 };
 

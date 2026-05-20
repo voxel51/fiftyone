@@ -12,7 +12,7 @@ import {
   hasGroupSlices,
   modalGroupSlice,
 } from "./groups";
-import { modalLooker, modalSample } from "./modal";
+import { groupSampleAtMainSlice, modalLooker } from "./modal";
 import { dynamicGroupsViewMode, selectedMediaField } from "./options";
 import { fieldPaths } from "./schema";
 import { datasetName, parentMediaTypeSelector } from "./selectors";
@@ -138,7 +138,10 @@ export const imaVidLookerState = atomFamily<any, string>({
 export const groupByFieldValue = selector({
   key: "groupByFieldValue",
   get: ({ get }) => {
-    return get(modalSample)?.sample?._group ?? null;
+    // Always read from the sample on the main groupSlice, independent of
+    // which slice the modal is currently displaying. See
+    // {@link groupSampleAtMainSlice}.
+    return get(groupSampleAtMainSlice)?.sample?._group ?? null;
   },
 });
 
