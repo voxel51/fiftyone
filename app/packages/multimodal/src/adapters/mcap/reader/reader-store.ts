@@ -1,8 +1,5 @@
-import type {
-  ByteResourceClient,
-  ByteSourceDescriptor,
-} from "../../../client/resources";
-import { byteSourceAccessKey } from "../../../client/resources/cache";
+import type { ByteClient, ByteSourceDescriptor } from "../../../query/bytes";
+import { byteSourceAccessKey } from "../../../query/bytes";
 import { ByteClientReadable } from "./byte-readable";
 import type { McapIndexedReaderLike, McapReaderFactory } from "./types";
 
@@ -18,7 +15,7 @@ export interface McapReaderStore {
  * Dependencies used to construct an MCAP reader store.
  */
 export interface CreateMcapReaderStoreOptions {
-  readonly byteClient: ByteResourceClient;
+  readonly byteClient: ByteClient;
   readonly readerFactory: McapReaderFactory;
 }
 

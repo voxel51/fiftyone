@@ -43,6 +43,17 @@ describe("MCAP sample source descriptors", () => {
     });
     expect(source?.sizeBytes).toBeUndefined();
   });
+
+  it("ignores non-string sample filepaths", () => {
+    const source = getMcapSourceDescriptor(
+      createContext({
+        filepath: 123,
+      })
+    );
+
+    expect(source).toBeNull();
+    expect(getSampleSrc).not.toHaveBeenCalled();
+  });
 });
 
 function createContext(sample: unknown): SampleRendererProps["ctx"] {

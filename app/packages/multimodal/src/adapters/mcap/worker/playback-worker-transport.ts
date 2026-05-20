@@ -1,4 +1,5 @@
 import { mcapPlaybackWorkerOperation } from "./playback-worker-rpc";
+import { mcapError } from "../errors";
 import type {
   McapPlaybackWorkerRequest,
   McapPlaybackWorkerRequestPayloadByType,
@@ -62,7 +63,7 @@ export class McapPlaybackWorkerTransport {
         worker.postMessage(message);
       } catch (error) {
         this.pending.delete(id);
-        reject(error instanceof Error ? error : new Error(String(error)));
+        reject(mcapError(error));
       }
     });
   }
@@ -91,7 +92,7 @@ export class McapPlaybackWorkerTransport {
       worker.postMessage(message);
     } catch (error) {
       this.streams.delete(id);
-      throw error instanceof Error ? error : new Error(String(error));
+      throw mcapError(error);
     }
 
     try {

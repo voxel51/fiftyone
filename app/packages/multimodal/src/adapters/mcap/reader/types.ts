@@ -1,5 +1,5 @@
 import type { McapIndexedReader, McapTypes } from "@mcap/core";
-import type { ByteSourceDescriptor } from "../../../client/resources";
+import type { ByteSourceDescriptor } from "../../../query/bytes";
 
 /**
  * One timestamp and byte offset entry from an MCAP message index.

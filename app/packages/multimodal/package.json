@@ -6,7 +6,9 @@
     "types": "./src/index.ts",
     "exports": {
         ".": "./src/index.ts",
-        "./client/resources": "./src/client/resources/index.ts",
+        "./query": "./src/query/index.ts",
+        "./query/bytes": "./src/query/bytes/index.ts",
+        "./query/decode": "./src/query/decode/index.ts",
         "./decoders": "./src/decoders/index.ts",
         "./inject": "./src/inject/index.ts",
         "./adapters/mcap": "./src/adapters/mcap/index.ts",
@@ -20,8 +22,14 @@
             "decoders": [
                 "src/decoders/index.ts"
             ],
-            "client/resources": [
-                "src/client/resources/index.ts"
+            "query": [
+                "src/query/index.ts"
+            ],
+            "query/bytes": [
+                "src/query/bytes/index.ts"
+            ],
+            "query/decode": [
+                "src/query/decode/index.ts"
             ],
             "inject": [
                 "src/inject/index.ts"

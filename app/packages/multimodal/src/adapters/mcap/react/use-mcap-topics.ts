@@ -1,7 +1,9 @@
 import { LRUCache } from "lru-cache";
 import { useEffect, useMemo, useState } from "react";
-import type { ByteSourceDescriptor } from "../../../client/resources";
-import { byteSourceCacheKey } from "../../../client/resources/cache";
+import {
+  byteSourceCacheKey,
+  type ByteSourceDescriptor,
+} from "../../../query/bytes";
 import type { StreamInventory } from "../../../schemas/v1";
 import { mcapErrorMessage } from "../errors";
 import type { McapResourceClient } from "../types";

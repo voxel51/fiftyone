@@ -1,11 +1,9 @@
 import type { McapTypes } from "@mcap/core";
-import type {
-  ByteResourceClient,
-  ByteSourceDescriptor,
-} from "../../../client/resources";
+import type { ByteClient, ByteSourceDescriptor } from "../../../query/bytes";
+import { parseByteSize } from "../../../query/bytes";
 
 /**
- * Adapts the generic byte-resource client to the seekable MCAP readable API.
+ * Adapts the generic byte query client to the seekable MCAP readable API.
  */
 export class ByteClientReadable implements McapTypes.IReadable {
   private source: ByteSourceDescriptor;
@@ -13,7 +11,7 @@ export class ByteClientReadable implements McapTypes.IReadable {
 
   constructor(
     source: ByteSourceDescriptor,
-    private readonly byteClient: ByteResourceClient
+    private readonly byteClient: ByteClient
   ) {
     this.source = source;
   }
@@ -96,34 +94,7 @@ export class ByteClientReadable implements McapTypes.IReadable {
 }
 
 function sourceSizeBytes(source: ByteSourceDescriptor): bigint | undefined {
-  const sizeBytes: unknown = source.sizeBytes;
-  if (sizeBytes === undefined) {
-    return undefined;
-  }
-
-  // Bad sample metadata should make the MCAP reader fall back to unknown-size
-  // reads, not crash before it can ask the byte client for data.
-  if (typeof sizeBytes === "number") {
-    if (!Number.isFinite(sizeBytes) || sizeBytes < 0) {
-      return undefined;
-    }
-
-    const integerSizeBytes = Math.floor(sizeBytes);
-    return Number.isSafeInteger(integerSizeBytes)
-      ? BigInt(integerSizeBytes)
-      : undefined;
-  }
-  if (typeof sizeBytes !== "string") {
-    return undefined;
-  }
-
-  if (!/^\d+$/.test(sizeBytes)) {
-    return undefined;
-  }
-
-  try {
-    return BigInt(sizeBytes);
-  } catch {
-    return undefined;
-  }
+  // Bad sample metadata should fall back to unknown-size reads, not crash
+  // before the reader can ask the byte client for transport-discovered size.
+  return parseByteSize(source.sizeBytes);
 }

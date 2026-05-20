@@ -1,6 +1,6 @@
 import "../browser-node-globals";
 import { McapIndexedReader, type McapTypes } from "@mcap/core";
-import type { ByteSourceDescriptor } from "../../../client/resources";
+import type { ByteSourceDescriptor } from "../../../query/bytes";
 import { loadDecompressHandlers } from "../mcap-support";
 import { readIndexedMessageTimesForReader } from "./message-index";
 import type {

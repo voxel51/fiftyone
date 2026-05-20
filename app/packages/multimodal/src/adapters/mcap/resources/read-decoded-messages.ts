@@ -1,4 +1,4 @@
-import type { DecodeResourceClient } from "../../../client/resources";
+import type { DecodeClient } from "../../../query/decode";
 import { isWithinRange } from "../sync";
 import { decodeMcapMessage } from "../message-decoder";
 import type { McapIndexedReaderLike } from "../reader";
@@ -17,7 +17,7 @@ export async function* readMcapDecodedMessages({
   request,
   timeline,
 }: {
-  readonly decodeClient: DecodeResourceClient;
+  readonly decodeClient: DecodeClient;
   readonly reader: McapIndexedReaderLike;
   readonly request: McapReadDecodedMessagesRequest;
   readonly timeline: McapTimelineStrategy;
@@ -44,10 +44,6 @@ export async function* readMcapDecodedMessages({
     startTime,
     topics: request.topics,
   })) {
-    if (request.limit !== undefined && count >= request.limit) {
-      return;
-    }
-
     const decodedMessage = await decodeMcapMessage({
       decodeClient,
       message,
@@ -64,10 +60,6 @@ export async function* readMcapDecodedMessages({
       )
     ) {
       continue;
-    }
-
-    if (request.limit !== undefined && count >= request.limit) {
-      return;
     }
 
     yield decodedMessage;

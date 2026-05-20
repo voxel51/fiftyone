@@ -1,6 +1,6 @@
 import type { McapTypes } from "@mcap/core";
 import { describe, expect, it, vi } from "vitest";
-import type { ByteResourceClient } from "../../client/resources";
+import type { ByteClient } from "../../query/bytes";
 import {
   createMcapReaderStore,
   parseMcapMessageIndexRecord,
@@ -191,7 +191,7 @@ describe("MCAP indexed message times", () => {
         chunkIndexes: [],
       })
     );
-    const byteClient: ByteResourceClient = {
+    const byteClient: ByteClient = {
       readBytes: vi.fn(),
     };
     const readerStore = createMcapReaderStore({ byteClient, readerFactory });
@@ -218,7 +218,7 @@ describe("MCAP indexed message times", () => {
         chunkIndexes: [],
       })
     );
-    const byteClient: ByteResourceClient = {
+    const byteClient: ByteClient = {
       readBytes: vi.fn(),
     };
     const readerStore = createMcapReaderStore({ byteClient, readerFactory });
@@ -245,7 +245,7 @@ describe("MCAP indexed message times", () => {
         chunkIndexes: [],
       })
     );
-    const byteClient: ByteResourceClient = {
+    const byteClient: ByteClient = {
       readBytes: vi.fn(),
     };
     const readerStore = createMcapReaderStore({ byteClient, readerFactory });
@@ -266,7 +266,7 @@ describe("MCAP indexed message times", () => {
   });
 
   it("uses descriptor size before probing byte clients", async () => {
-    const byteClient: ByteResourceClient = {
+    const byteClient: ByteClient = {
       readBytes: vi.fn(),
       stat: vi.fn(),
     };
@@ -285,7 +285,7 @@ describe("MCAP indexed message times", () => {
   });
 
   it("uses byte client stat when descriptor size is missing", async () => {
-    const byteClient: ByteResourceClient = {
+    const byteClient: ByteClient = {
       readBytes: vi.fn(),
       stat: vi.fn(async (source) => ({
         ...source,
@@ -309,9 +309,9 @@ describe("MCAP indexed message times", () => {
   });
 
   it("falls back to a tiny range read when stat cannot resolve size", async () => {
-    const byteClient: ByteResourceClient = {
+    const byteClient: ByteClient = {
       readBytes: vi.fn(
-        async (request: Parameters<ByteResourceClient["readBytes"]>[0]) => ({
+        async (request: Parameters<ByteClient["readBytes"]>[0]) => ({
           bytes: new Uint8Array([1]),
           range: request.range,
           source: {
@@ -338,7 +338,7 @@ describe("MCAP indexed message times", () => {
 
   it("ignores malformed source sizes before byte reads", async () => {
     const readBytes = vi.fn(
-      async (request: Parameters<ByteResourceClient["readBytes"]>[0]) => ({
+      async (request: Parameters<ByteClient["readBytes"]>[0]) => ({
         bytes: new Uint8Array([1]),
         range: request.range,
         source: request.source,

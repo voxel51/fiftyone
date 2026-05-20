@@ -3,11 +3,9 @@ import { getSampleSrc } from "@fiftyone/state";
 import {
   BYTE_SOURCE_READ_PROFILE,
   type ByteSourceDescriptor,
-} from "../../client/resources";
+} from "../../query/bytes";
 
 type SampleRecord = {
-  readonly _id?: unknown;
-  readonly id?: unknown;
   readonly filepath?: unknown;
   readonly metadata?: {
     readonly size_bytes?: unknown;
@@ -15,13 +13,9 @@ type SampleRecord = {
   };
 };
 
-function normalizeIdentifier(value: unknown): string | null {
+function normalizeFilepath(value: unknown): string | null {
   if (typeof value === "string" && value) {
     return value;
-  }
-
-  if (typeof value === "number") {
-    return value.toString();
   }
 
   return null;
@@ -56,7 +50,7 @@ export function getMcapSourceDescriptor(
   ctx: SampleRendererProps["ctx"]
 ): ByteSourceDescriptor | null {
   const sampleRecord = ctx.sample.sample as SampleRecord;
-  const filepath = normalizeIdentifier(sampleRecord.filepath);
+  const filepath = normalizeFilepath(sampleRecord.filepath);
 
   if (!filepath) {
     return null;

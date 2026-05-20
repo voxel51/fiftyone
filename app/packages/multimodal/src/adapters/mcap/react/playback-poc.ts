@@ -7,11 +7,11 @@
 import { LRUCache } from "lru-cache";
 import type { MutableRefObject } from "react";
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
-import type { ByteSourceDescriptor } from "../../../client/resources";
 import {
   byteSourceCacheKey,
-  serializeCacheKey,
-} from "../../../client/resources/cache";
+  type ByteSourceDescriptor,
+} from "../../../query/bytes";
+import { serializeCacheKey } from "../../../query/cache-utils";
 import { mcapErrorMessage } from "../errors";
 import { createMcapTimelineTicks } from "../timeline";
 import {

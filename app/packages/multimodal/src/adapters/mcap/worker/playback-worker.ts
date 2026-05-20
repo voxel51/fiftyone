@@ -1,7 +1,8 @@
 import { setFetchFunction } from "@fiftyone/utilities";
-import type { DecodedOutputCache } from "../../../client/resources";
-import { createMultimodalResourcesClient } from "../../../client/resources";
-import { createDecodeResourceClient } from "../../../client/resources/clients";
+import { createMultimodalQueryClient } from "../../../query";
+import type { DecodedOutputCache } from "../../../query/decode";
+import { createDecodeClient } from "../../../query/decode";
+import { mcapErrorMessage } from "../errors";
 import { createMcapDecoderRegistry } from "../decoders";
 import { createInlineMcapResourceClient } from "../resources";
 import type { McapResourceClient } from "../types";
@@ -94,7 +95,7 @@ async function runAndRespond(message: McapPlaybackWorkerRpcRequest) {
     });
   } catch (error) {
     postResponse({
-      error: error instanceof Error ? error.message : String(error),
+      error: mcapErrorMessage(error),
       id: message.id,
       ok: false,
     });
@@ -149,11 +150,11 @@ function transferablesForResponse(response: McapPlaybackWorkerResponse) {
 }
 
 function createWorkerResourceClient(): McapResourceClient {
-  const resources = createMultimodalResourcesClient();
+  const query = createMultimodalQueryClient();
 
   return createInlineMcapResourceClient({
-    byteClient: resources.bytes,
-    decodeClient: createDecodeResourceClient({
+    byteClient: query.bytes,
+    decodeClient: createDecodeClient({
       // Decoded visualization buffers are transferred to the UI thread.
       // Reusing worker-cached decoded results would either return detached
       // buffers or force extra clones, so playback-window reuse belongs on

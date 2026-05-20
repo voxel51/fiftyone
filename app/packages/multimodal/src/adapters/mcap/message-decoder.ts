@@ -1,8 +1,6 @@
 import type { McapTypes } from "@mcap/core";
-import type {
-  ByteSourceDescriptor,
-  DecodeResourceClient,
-} from "../../client/resources";
+import type { ByteSourceDescriptor } from "../../query/bytes";
+import type { DecodeClient } from "../../query/decode";
 import type { McapIndexedReaderLike } from "./reader";
 import type { McapTimelineStrategy } from "./timeline";
 import type { McapDecodedMessage } from "./types";
@@ -12,7 +10,7 @@ import type { McapDecodedMessage } from "./types";
  */
 export interface DecodeMcapMessageRequest {
   readonly channel?: McapTypes.TypedMcapRecords["Channel"];
-  readonly decodeClient: DecodeResourceClient;
+  readonly decodeClient: DecodeClient;
   readonly message: McapTypes.TypedMcapRecords["Message"];
   readonly reader?: McapIndexedReaderLike;
   readonly schema?: McapTypes.TypedMcapRecords["Schema"];

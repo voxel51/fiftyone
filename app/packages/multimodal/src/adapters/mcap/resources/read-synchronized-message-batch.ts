@@ -1,5 +1,5 @@
 import type { McapTypes } from "@mcap/core";
-import type { DecodeResourceClient } from "../../../client/resources";
+import type { DecodeClient } from "../../../query/decode";
 import {
   compareByTimelineTime,
   createWindowBounds,
@@ -40,7 +40,7 @@ export async function readMcapSynchronizedMessageBatch({
   request,
   timeline,
 }: {
-  readonly decodeClient: DecodeResourceClient;
+  readonly decodeClient: DecodeClient;
   readonly reader: McapIndexedReaderLike;
   readonly request: McapReadSynchronizedMessageBatchRequest;
   readonly timeline: McapTimelineStrategy;
@@ -289,7 +289,7 @@ async function decodeIndexedCandidate({
   timeline,
 }: {
   readonly candidate: McapIndexedMessageCandidate;
-  readonly decodeClient: DecodeResourceClient;
+  readonly decodeClient: DecodeClient;
   readonly indexedDecodeCache: Map<string, Promise<McapDecodedMessage>>;
   readonly rawDecodeCache: Map<string, Promise<McapDecodedMessage>>;
   readonly rawReadCache: Map<
@@ -406,7 +406,7 @@ async function decodeRawCandidate({
 }: {
   readonly candidate: McapRawMessageCandidate;
   readonly decodeCache: Map<string, Promise<McapDecodedMessage>>;
-  readonly decodeClient: DecodeResourceClient;
+  readonly decodeClient: DecodeClient;
   readonly source: McapReadSynchronizedMessageBatchRequest["source"];
   readonly timeline: McapTimelineStrategy;
 }): Promise<McapDecodedMessage> {

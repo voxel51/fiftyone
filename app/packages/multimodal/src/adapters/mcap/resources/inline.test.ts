@@ -1,7 +1,7 @@
 import type { McapTypes } from "@mcap/core";
 import { describe, expect, it, vi } from "vitest";
-import type { ByteSourceDescriptor } from "../../../client/resources";
-import type { DecodeResourceClient } from "../../../client/resources";
+import type { ByteSourceDescriptor } from "../../../query/bytes";
+import type { DecodeClient } from "../../../query/decode";
 import type { DecodedOutput } from "../../../decoders";
 import { PlaybackSyncMode } from "../../../schemas/v1";
 import { VISUALIZATION_KIND } from "../../../visualization";
@@ -693,7 +693,7 @@ function createIndexedMessageTime(
   };
 }
 
-function createTestDecodeClient(): DecodeResourceClient {
+function createTestDecodeClient(): DecodeClient {
   return {
     decode: vi.fn(async (request) => ({
       context: request.context,

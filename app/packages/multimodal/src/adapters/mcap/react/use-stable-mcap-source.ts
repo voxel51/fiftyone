@@ -1,7 +1,9 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import { useRef } from "react";
-import type { ByteSourceDescriptor } from "../../../client/resources";
-import { byteSourceAccessKey } from "../../../client/resources/cache";
+import {
+  byteSourceAccessKey,
+  type ByteSourceDescriptor,
+} from "../../../query/bytes";
 import { getMcapSourceDescriptor } from "../sample";
 
 /**

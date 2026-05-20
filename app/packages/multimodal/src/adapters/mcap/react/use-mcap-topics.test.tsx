@@ -1,7 +1,7 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ByteSourceDescriptor } from "../../../client/resources";
+import type { ByteSourceDescriptor } from "../../../query/bytes";
 import type { StreamInventory } from "../../../schemas/v1";
 import type { McapResourceClient } from "../types";
 import { useMcapTopics, type McapTopicsState } from "./use-mcap-topics";

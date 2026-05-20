@@ -1,6 +1,6 @@
 import { render, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { ByteSourceDescriptor } from "../../../client/resources";
+import type { ByteSourceDescriptor } from "../../../query/bytes";
 import { PlaybackSyncMode } from "../../../schemas/v1";
 import { MCAP_ACTIVE_TIMELINE, type McapResourceClient } from "../types";
 import { useMcapPlayback } from "./playback-poc";

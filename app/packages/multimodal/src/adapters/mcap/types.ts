@@ -1,7 +1,5 @@
-import type {
-  ByteSourceDescriptor,
-  DecodeResourceResult,
-} from "../../client/resources";
+import type { ByteSourceDescriptor } from "../../query/bytes";
+import type { DecodeResult } from "../../query/decode";
 import type { PlaybackSyncMode, StreamInventory } from "../../schemas/v1";
 
 /**
@@ -90,7 +88,7 @@ export interface McapReadDecodedMessagesRequest {
   readonly limit?: number;
 
   /**
-   * MCAP source to read through the shared byte-resource layer.
+   * MCAP source to read through the shared byte query layer.
    */
   readonly source: ByteSourceDescriptor;
 
@@ -170,7 +168,7 @@ export interface McapReadSynchronizedMessagesRequest {
   readonly defaultStreamPolicy?: McapStreamSyncPolicy;
 
   /**
-   * MCAP source to read through the shared byte-resource layer.
+   * MCAP source to read through the shared byte query layer.
    */
   readonly source: ByteSourceDescriptor;
 
@@ -214,7 +212,7 @@ export interface McapDecodedMessage {
   /**
    * Decoder output for the message payload.
    */
-  readonly decoded: DecodeResourceResult;
+  readonly decoded: DecodeResult;
 
   /**
    * MCAP message log time.

@@ -1,5 +1,5 @@
 import { getFetchParameters, mergeHeaders } from "@fiftyone/utilities";
-import { byteSourceAccessKey } from "../../../client/resources/cache";
+import { byteSourceAccessKey } from "../../../query/bytes";
 import { McapPlaybackWorkerTransport } from "./playback-worker-transport";
 import {
   type McapPlaybackWorkerFetchParameters,
@@ -11,7 +11,7 @@ import {
   type McapPlaybackWorkerStreamType,
   type McapPlaybackWorkerUnaryType,
 } from "./playback-worker-types";
-import { mcapErrorMessage } from "../errors";
+import { mcapError, mcapErrorMessage } from "../errors";
 import type {
   McapDecodedMessage,
   McapReadDecodedMessagesRequest,
@@ -161,7 +161,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
       } else {
         disposeWorker(worker);
       }
-      throw error instanceof Error ? error : new Error(String(error));
+      throw mcapError(error);
     }
 
     return this.worker;
