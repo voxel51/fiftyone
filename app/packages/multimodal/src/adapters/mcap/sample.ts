@@ -5,14 +5,6 @@ import {
   type ByteSourceDescriptor,
 } from "../../query/bytes";
 
-type SampleRecord = {
-  readonly filepath?: unknown;
-  readonly metadata?: {
-    readonly size_bytes?: unknown;
-    readonly sizeBytes?: unknown;
-  };
-};
-
 function normalizeFilepath(value: unknown): string | null {
   if (typeof value === "string" && value) {
     return value;
@@ -21,17 +13,9 @@ function normalizeFilepath(value: unknown): string | null {
   return null;
 }
 
-function normalizeSizeBytes(value: unknown): string | null {
-  if (typeof value === "string" && value) {
-    return /^\d+$/.test(value) ? value : null;
-  }
-
+function normalizeSizeBytes(value: number | undefined): string | null {
   if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
     return Math.trunc(value).toString();
-  }
-
-  if (typeof value === "bigint" && value >= 0n) {
-    return value.toString();
   }
 
   return null;
@@ -40,7 +24,7 @@ function normalizeSizeBytes(value: unknown): string | null {
 function remoteReadProfile(filepath: string) {
   return /^(https?|s3|gs|gcs|az|abfs|abfss):\/\//i.test(filepath)
     ? BYTE_SOURCE_READ_PROFILE.REMOTE
-    : undefined;
+    : BYTE_SOURCE_READ_PROFILE.LOCAL;
 }
 
 /**
@@ -49,8 +33,10 @@ function remoteReadProfile(filepath: string) {
 export function getMcapSourceDescriptor(
   ctx: SampleRendererProps["ctx"]
 ): ByteSourceDescriptor | null {
-  const sampleRecord = ctx.sample.sample as SampleRecord;
-  const filepath = normalizeFilepath(sampleRecord.filepath);
+  const media = ctx.media;
+  const sample = ctx.sample.sample;
+
+  const filepath = normalizeFilepath(media.path);
 
   if (!filepath) {
     return null;
@@ -58,15 +44,12 @@ export function getMcapSourceDescriptor(
 
   // compute_metadata() can give us an initial size hint, but byte readers still
   // discover the transport size from HEAD or Content-Range when this is absent.
-  const sizeBytes = normalizeSizeBytes(
-    sampleRecord.metadata?.size_bytes ?? sampleRecord.metadata?.sizeBytes
-  );
-  const readProfile = remoteReadProfile(filepath);
+  const sizeBytes = normalizeSizeBytes(sample.metadata?.size_bytes);
 
   return {
-    readProfile: readProfile ?? undefined,
+    readProfile: remoteReadProfile(filepath),
     sizeBytes: sizeBytes ?? undefined,
-    sourceId: filepath,
+    sourceId: sample._id,
     url: getSampleSrc(filepath),
   };
 }
