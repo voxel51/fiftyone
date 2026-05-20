@@ -599,7 +599,7 @@ async def serialize_dataset(
         try:
             dataset = fo.load_dataset(dataset_name, reload=True)
         except fod.DatasetNotFoundError:
-            return None, None
+            return None
 
         view_name = None
         try:
@@ -689,9 +689,10 @@ async def serialize_dataset(
 
         return data, collection
 
-    data, collection = await run_sync_task(run)
-    if data is None:
+    result = await run_sync_task(run)
+    if result is None:
         return None
+    data, collection = result
     data.sample_fields = await get_grid_adapter().get_grid_field_schema(
         collection
     )

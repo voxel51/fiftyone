@@ -66,6 +66,9 @@ class MongoGridAdapter:
         *,
         form,
     ):
+        if not form.paths:
+            return []
+
         from pymongo.errors import ExecutionTimeout
 
         from fiftyone.server.aggregations import _resolve_path_aggregation
@@ -136,6 +139,9 @@ class MongoGridAdapter:
         return ValuePickerResult(total=total, page=list(page))
 
     async def lightning(self, dataset, *, request):
+        if not request.paths:
+            return []
+
         collections, queries, resolvers, is_frames = zip(
             *[
                 resolve_lightning_path_queries(path, dataset)

@@ -27,6 +27,7 @@ import typing as t
 from bson import ObjectId
 from bson.errors import InvalidId
 from motor.motor_asyncio import AsyncIOMotorCollection
+from pymongo.errors import OperationFailure
 
 import fiftyone as fo
 import fiftyone.core.fields as fof
@@ -269,7 +270,7 @@ async def _do_async_query(
         )
 
     if match_filter:
-        query.insert(0, {"$match": match_filter})
+        query = [{"$match": match_filter}] + query
 
     return [i async for i in collection.aggregate(query)]
 
@@ -309,8 +310,8 @@ async def _do_list_distinct_query(
 
     try:
         result = await collection.distinct(query.path)
-    except:
-        # too many results
+    except OperationFailure:
+        # too many results (e.g. 16MB BSON cap exceeded)
         return None
 
     values = []
@@ -461,7 +462,11 @@ def _first(
     )
 
 
-def _filter_result(dataset, path, sort):
+def _filter_result(
+    dataset: fo.Dataset,
+    path: str,
+    sort: t.Union[t.Literal[-1], t.Literal[1]],
+):
     field = dataset.get_field(path)
     while isinstance(field, fo.ListField):
         field = field.field
@@ -487,12 +492,12 @@ def _handle_nonfinites(sort: t.Union[t.Literal[-1], t.Literal[1]]):
 
 
 async def _handle_pipeline(
-    pipeline,
+    pipeline: t.List[t.Dict],
     dataset: fo.Dataset,
     collection: AsyncIOMotorCollection,
     query: DistinctQuery,
     is_frames: bool,
-    disable_limit=False,
+    disable_limit: bool = False,
 ):
     match_search = None
 
@@ -520,7 +525,11 @@ async def _handle_pipeline(
 
     async for value in collection.aggregate(pipeline, **kwargs):
         value = value.get("_id", None)
-        if value is None or value in exclude:
+        if value is None:
+            continue
+        if query.is_object_id_field:
+            value = str(value)
+        if value in exclude:
             continue
 
         values.add(value)
