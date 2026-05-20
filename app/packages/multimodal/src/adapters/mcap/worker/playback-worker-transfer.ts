@@ -42,38 +42,37 @@ function decodedMessagesFromResult(
 function isSynchronizedWindow(
   value: unknown
 ): value is McapSynchronizedMessageWindow {
-  return (
-    !!value &&
-    typeof value === "object" &&
-    "messages" in value &&
-    Array.isArray(value.messages)
-  );
+  return Array.isArray(recordFromUnknown(value)?.messages);
 }
 
 function isDecodedMessage(value: unknown): value is McapDecodedMessage {
-  if (!isRecord(value)) {
+  const decoded = recordFromUnknown(value)?.decoded;
+  const output = recordFromUnknown(decoded)?.output;
+  const outputRecord = recordFromUnknown(output);
+  if (!outputRecord) {
     return false;
   }
 
-  const decoded = value.decoded;
-  if (!isRecord(decoded) || !isRecord(decoded.output)) {
-    return false;
-  }
+  return hasTransferableResourceHints(outputRecord.resourceHints);
+}
 
-  // Transfer list extraction dereferences this path later; keep the guard strict
-  // so arbitrary worker payloads cannot crash transfer collection.
-  const resourceHints = decoded.output.resourceHints;
-  if (resourceHints === undefined) {
+function hasTransferableResourceHints(value: unknown): boolean {
+  if (value === undefined) {
     return true;
   }
 
+  // Decoder hints are the one bit of this response shape we dereference before
+  // structured cloning, so validate only that narrow path.
+  const resourceHints = recordFromUnknown(value);
   return (
-    isRecord(resourceHints) &&
+    !!resourceHints &&
     (resourceHints.transferables === undefined ||
       Array.isArray(resourceHints.transferables))
   );
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === "object";
+function recordFromUnknown(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : null;
 }
