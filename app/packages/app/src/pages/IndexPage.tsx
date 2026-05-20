@@ -13,6 +13,8 @@ const IndexPageQueryNode = graphql`
       colorBy
       colorPool
       colorscale
+      gridPagination
+      gridPageSize
       multicolorKeypoints
       showSkeletons
     }

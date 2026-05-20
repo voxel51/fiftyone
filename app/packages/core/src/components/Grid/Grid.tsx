@@ -1,15 +1,17 @@
 import styles from "./Grid.module.css";
 
+import { Button } from "@fiftyone/components";
 import Spotlight from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import React, { useState } from "react";
-import { useRecoilValue } from "recoil";
+import React, { useEffect, useState } from "react";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { useMemoOne } from "use-memo-one";
 import { v4 as uuid } from "uuid";
 import { useSyncLabelsRenderingStatus } from "../../hooks";
 import {
   gridAutosizing,
   gridCrop,
+  gridPage,
   gridSpacing,
   maxGridItemsSizeBytes,
   pageParameters,
@@ -29,11 +31,42 @@ import useZoomSetting from "./useZoomSetting";
 
 const MAX_INSTANCES = 200;
 const MAX_ROWS = 200;
+const GRID_PAGE_PARAM = "page";
+
+const getPageFromSearch = (search: string) => {
+  const value = new URLSearchParams(search).get(GRID_PAGE_PARAM);
+  const page = Number.parseInt(value ?? "", 10);
+
+  return Number.isFinite(page) && page > 0 ? page - 1 : 0;
+};
+
+const setPageInLocation = (page: number) => {
+  const searchParams = new URLSearchParams(window.location.search);
+
+  if (page > 0) {
+    searchParams.set(GRID_PAGE_PARAM, String(page + 1));
+  } else {
+    searchParams.delete(GRID_PAGE_PARAM);
+  }
+
+  const search = searchParams.toString();
+  const nextUrl = `${window.location.pathname}${
+    search.length ? `?${search}` : ""
+  }${window.location.hash}`;
+  const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+  if (nextUrl !== currentUrl) {
+    window.history.pushState(window.history.state, "", nextUrl);
+  }
+};
 
 function Grid() {
   const id = useMemoOne(() => uuid(), []);
   const pixels = useMemoOne(() => uuid(), []);
   const spacing = useRecoilValue(gridSpacing);
+  const config = useRecoilValue(fos.config);
+  const total = useRecoilValue(fos.datasetSampleCount);
+  const [currentPage, setCurrentPage] = useRecoilState(gridPage);
   const { pageReset, reset } = useRefreshers();
   const [resizing, setResizing] = useState(false);
   const zoom = useZoomSetting();
@@ -42,7 +75,6 @@ function Grid() {
 
   const records = useRecords(pageReset);
 
-  // divide by two, half for the hidden cache and half for max shown
   const maxBytes = useRecoilValue(maxGridItemsSizeBytes) / 2;
   const cache = useLookerCache({
     maxHiddenItems: MAX_INSTANCES,
@@ -51,9 +83,38 @@ function Grid() {
     ...useLabelVisibility(),
   });
 
+  const pageSizeFromConfig = config?.gridPageSize ?? 20;
+
+  useEffect(() => {
+    if (!config?.gridPagination || typeof window === "undefined") {
+      return undefined;
+    }
+
+    const syncPageFromUrl = () => {
+      setCurrentPage(getPageFromSearch(window.location.search));
+    };
+
+    syncPageFromUrl();
+    window.addEventListener("popstate", syncPageFromUrl);
+
+    return () => {
+      window.removeEventListener("popstate", syncPageFromUrl);
+    };
+  }, [config?.gridPagination, setCurrentPage]);
+
+  useEffect(() => {
+    if (!config?.gridPagination || typeof window === "undefined") {
+      return undefined;
+    }
+
+    setPageInLocation(currentPage);
+  }, [config?.gridPagination, currentPage]);
+
   const { page, store } = useSpotlightPager({
     clearRecords: reset,
     pageSelector: pageParameters,
+    pagination: config?.gridPagination,
+    pageSize: pageSizeFromConfig,
     records,
     zoomSelector: gridCrop,
   });
@@ -80,22 +141,24 @@ function Grid() {
 
     cache.freeze();
 
+    const paginationEnabled = config?.gridPagination;
+
     return new Spotlight<number, fos.Sample>({
       ...get(),
       ...renderer,
-
       maxRows: MAX_ROWS,
       maxItemsSizeBytes: autosizing ? maxBytes : undefined,
       scrollbar: true,
       spacing,
-
-      get: (next) => page(next),
+      get: (next) => (paginationEnabled ? page(currentPage) : page(next)),
       onItemClick: setSample,
       rowAspectRatioThreshold: zoom,
     });
   }, [
-    cache,
     autosizing,
+    cache,
+    config?.gridPagination,
+    currentPage,
     get,
     maxBytes,
     page,
@@ -112,10 +175,43 @@ function Grid() {
   useUpdates({ cache, getFontSize, options: lookerOptions, spotlight });
   useResize(id, setResizing);
 
+  const maxPage = Math.max(0, Math.ceil(total / pageSizeFromConfig) - 1);
+  const start = total === 0 ? 0 : currentPage * pageSizeFromConfig + 1;
+  const end = total === 0 ? 0 : Math.min((currentPage + 1) * pageSizeFromConfig, total);
+
   return (
     <div className={styles.gridContainer}>
       <div id={id} className={styles.spotlightGrid} data-cy="fo-grid" />
       <div id={pixels} className={styles.fallingPixels} />
+      {config?.gridPagination ? (
+        <div className={styles.paginationBar}>
+          <Button
+            color="secondary"
+            onClick={async () => {
+              const next = Math.max(0, currentPage - 1);
+              setCurrentPage(next);
+              await page(next);
+            }}
+            disabled={currentPage === 0}
+          >
+            Prev
+          </Button>
+          <div className={styles.paginationLabel}>
+            {total === 0 ? "Showing 0 of 0" : `Showing ${start}–${end} of ${total}`}
+          </div>
+          <Button
+            color="secondary"
+            onClick={async () => {
+              const next = Math.min(maxPage, currentPage + 1);
+              setCurrentPage(next);
+              await page(next);
+            }}
+            disabled={currentPage >= maxPage}
+          >
+            Next
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

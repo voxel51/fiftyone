@@ -6,6 +6,8 @@ FiftyOne Server aggregations
 |
 """
 
+from __future__ import annotations
+
 from datetime import date, datetime, timedelta
 import typing as t
 
@@ -14,6 +16,15 @@ import strawberry as gql
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
+from fiftyone.core.fields import (
+    BooleanField,
+    DateField,
+    DateTimeField,
+    FloatField,
+    IntField,
+    ListField,
+    StringField,
+)
 
 from fiftyone.server.constants import LIST_LIMIT
 from fiftyone.server.data import T
@@ -61,7 +72,7 @@ CountValuesResponses = t.Annotated[
     ],
     gql.union("CountValuesResponses"),
 ]
-COUNT_VALUES_TYPES = {fo.BooleanField, fo.IntField, fo.StringField}
+COUNT_VALUES_TYPES = {BooleanField, IntField, StringField}
 
 
 @gql.type
@@ -119,10 +130,10 @@ HistogramValuesResponses = t.Annotated[
 
 
 HISTOGRAM_VALUES_TYPES = {
-    fo.DateField,
-    fo.DateTimeField,
-    fo.IntField,
-    fo.FloatField,
+    DateField,
+    DateTimeField,
+    IntField,
+    FloatField,
 }
 
 
@@ -186,7 +197,7 @@ async def _count(
 ) -> t.Tuple[t.Callable[[t.List], CountResponse], foa.Count]:
     field = view.get_field(input.field)
 
-    while isinstance(field, fo.ListField):
+    while isinstance(field, ListField):
         field = field.field
 
     def resolve(count: int):
@@ -200,20 +211,20 @@ async def _count_values(
 ) -> t.Tuple[t.Callable[[t.List], CountValuesResponses], foa.CountValues]:
     field = view.get_field(input.field)
 
-    while isinstance(field, fo.ListField):
+    while isinstance(field, ListField):
         field = field.field
 
     def resolve(data: t.List):
         _, data = data
         values = [ValueCount(key=value, value=count) for value, count in data]
 
-        if isinstance(field, fo.StringField):
+        if isinstance(field, StringField):
             return StrCountValuesResponse(values=values)
 
-        if isinstance(field, fo.BooleanField):
+        if isinstance(field, BooleanField):
             return BoolCountValuesResponse(values=values)
 
-        if isinstance(field, fo.IntField):
+        if isinstance(field, IntField):
             return IntCountValuesResponse(values=values)
 
     return resolve, foa.CountValues(input.field, _first=LIST_LIMIT, _asc=False)
@@ -224,7 +235,7 @@ async def _histogram_values(
 ) -> t.Tuple[t.Callable[[t.List], HistogramValuesResponses], foa.CountValues]:
     field = view.get_field(input.field)
 
-    while isinstance(field, fo.ListField):
+    while isinstance(field, ListField):
         field = field.field
 
     range = await view._async_aggregate(
@@ -233,7 +244,7 @@ async def _histogram_values(
     range_ = range.pop("bounds")
     bins = _DEFAULT_NUM_HISTOGRAM_BINS
 
-    if isinstance(field, fo.IntField):
+    if isinstance(field, IntField):
         if range_[0] is None:
             range_ = (0, 0)
         delta = range_[1] - range_[0]
@@ -250,19 +261,19 @@ async def _histogram_values(
         range_ = (range_[0], range_[1] + timedelta(milliseconds=100))
     elif isinstance(range_[1], date):
         range_ = (range_[0], range_[1] + timedelta(days=1))
-    elif not isinstance(field, fo.IntField):
+    elif not isinstance(field, IntField):
         range_ = (range_[0], range_[1] + 1e-6)
 
     def resolve(data):
         counts, edges, other = data
         data = {"counts": counts, "edges": edges, "other": other}
-        if isinstance(field, (fo.DateField, fo.DateTimeField)):
+        if isinstance(field, (DateField, DateTimeField)):
             return DatetimeHistogramValuesResponse(**data)
 
-        if isinstance(field, fo.FloatField):
+        if isinstance(field, FloatField):
             return FloatHistogramValuesResponse(**data)
 
-        if isinstance(field, fo.IntField):
+        if isinstance(field, IntField):
             return IntHistogramValuesResponse(**data)
 
     return resolve, foa.HistogramValues(input.field, bins=bins, range=range_)

@@ -6,6 +6,8 @@ FiftyOne Server sample endpoints.
 |
 """
 
+from __future__ import annotations
+
 import base64
 import datetime
 import logging

@@ -22,11 +22,12 @@ os.environ["FIFTYONE_SERVER"] = "1"
 
 import fiftyone as fo
 import fiftyone.constants as foc
+import fiftyone.core.config as focfg
 
 from fiftyone.server.app import app
 from fiftyone.server.events import set_port
 
-DEBUG_LOGGING = fo.config.logging_level == "DEBUG"
+DEBUG_LOGGING = focfg.load_config().logging_level == "DEBUG"
 
 if DEBUG_LOGGING:
     logging.getLogger("asyncio").setLevel(logging.DEBUG)
@@ -40,10 +41,10 @@ def start_server(
     open_browser=False,
 ):
     if port is None:
-        port = fo.config.default_app_port
+        port = focfg.load_config().default_app_port
 
     if address is None:
-        address = fo.config.default_app_address
+        address = focfg.load_config().default_app_address
 
     if clean_start:
         fo.delete_datasets("*")

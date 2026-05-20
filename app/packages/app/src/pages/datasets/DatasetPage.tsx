@@ -35,6 +35,8 @@ const DatasetPageQueryNode = graphql`
       colorBy
       colorPool
       colorscale
+      gridPagination
+      gridPageSize
       multicolorKeypoints
       showSkeletons
     }

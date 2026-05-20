@@ -10,6 +10,8 @@ export default r(graphql`
       colorscale
       disableFrameFiltering
       gridZoom
+      gridPagination
+      gridPageSize
       enableQueryPerformance
       defaultQueryPerformance
       loopVideos

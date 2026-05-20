@@ -30,6 +30,7 @@ from starlette.types import Scope
 
 import fiftyone as fo
 import fiftyone.constants as foc
+import fiftyone.core.config as focfg
 import fiftyone.core.context as focx
 from fiftyone.operators.store.notification_service import (
     MongoChangeStreamNotificationServiceLifecycleManager,
@@ -149,7 +150,7 @@ app = Starlette(
         Mount(
             "/plugins",
             app=Static(
-                directory=fo.config.plugins_dir,
+                directory=focfg.load_config().plugins_dir,
                 html=True,
                 check_dir=False,
                 follow_symlink=True,

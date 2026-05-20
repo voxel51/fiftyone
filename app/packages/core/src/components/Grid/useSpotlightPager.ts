@@ -14,7 +14,7 @@ import type { Records } from "./useRecords";
 import useTimeout from "./useTimeout";
 import { handleNode } from "./utils";
 
-export const PAGE_SIZE = 20;
+export const DEFAULT_PAGE_SIZE = 20;
 
 export type SampleStore = WeakMap<ID, { sample: fos.Sample; index: number }>;
 
@@ -24,7 +24,8 @@ const processSamplePageData = (
   data: fos.ResponseFrom<foq.paginateSamplesQuery>,
   schema: Schema,
   zoom: boolean,
-  records: Map<string, number>
+  records: Map<string, number>,
+  pageSize: number
 ) => {
   if (data.samples.__typename !== "SampleItemStrConnection") {
     throw new Error(
@@ -37,7 +38,7 @@ const processSamplePageData = (
     const id = { description: node.id };
 
     store.set(id, node);
-    records.set(node.id, page * PAGE_SIZE + i);
+    records.set(node.id, page * pageSize + i);
 
     return {
       key: page,
@@ -55,6 +56,8 @@ const useSpotlightPager = ({
   pageSelector,
   records,
   zoomSelector,
+  pageSize,
+  pagination,
 }: {
   clearRecords: string;
   pageSelector: RecoilValueReadOnly<
@@ -62,6 +65,8 @@ const useSpotlightPager = ({
   >;
   records: Records;
   zoomSelector: RecoilValueReadOnly<boolean>;
+  pageSize?: number;
+  pagination?: boolean;
 }) => {
   const environment = useRelayEnvironment();
   const pager = useRecoilValue(pageSelector);
@@ -81,7 +86,8 @@ const useSpotlightPager = ({
   const page = useRecoilCallback(
     ({ snapshot }) => {
       return async (pageNumber: number) => {
-        const variables = pager(pageNumber, PAGE_SIZE);
+        const size = pageSize ?? DEFAULT_PAGE_SIZE;
+        const variables = pager(pageNumber, size);
         let subscription: Subscription;
         const schema = await snapshot.getPromise(
           fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
@@ -121,14 +127,24 @@ const useSpotlightPager = ({
                 data,
                 schema,
                 zoom,
-                records
+                records,
+                size
               );
               for (const item of items) keys.current.add(item.id.description);
 
               resolve({
                 items,
-                next: data.samples.pageInfo.hasNextPage ? pageNumber + 1 : null,
-                previous: pageNumber > 0 ? pageNumber - 1 : null,
+                next:
+                  pagination && pageSize
+                    ? null
+                    : data.samples.pageInfo.hasNextPage
+                      ? pageNumber + 1
+                      : null,
+                previous: pagination
+                  ? null
+                  : pageNumber > 0
+                    ? pageNumber - 1
+                    : null,
               });
             },
             complete: () => {
@@ -139,7 +155,7 @@ const useSpotlightPager = ({
         });
       };
     },
-    [environment, handleError, handleTimeout, pager, store, zoom]
+    [environment, handleError, handleTimeout, pager, pagination, store, zoom, pageSize]
   );
 
   return { page, records, store };

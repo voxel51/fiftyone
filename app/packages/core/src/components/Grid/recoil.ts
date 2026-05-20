@@ -76,7 +76,16 @@ export const gridAutosizing = selector({
 
 export const gridPage = atom({
   key: "gridPage",
-  default: 0,
+  default:
+    typeof window === "undefined"
+      ? 0
+      : Math.max(
+          0,
+          (Number.parseInt(
+            new URLSearchParams(window.location.search).get("page") ?? "",
+            10
+          ) || 1) - 1
+        ),
 });
 
 export const gridAt = atom<string | null>({
