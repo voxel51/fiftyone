@@ -94,60 +94,6 @@ class Node:
             d["values"] = [v.to_dict() for v in self.values]
         return d
 
-    def find(self, name: str) -> Optional["Node"]:
-        """Returns the descendant (or self) with the given name, or
-        ``None``.
-
-        Node names are unique within a taxonomy (enforced by
-        :func:`fiftyone.core.ontology_validation.validate_taxonomy`),
-        so the first match is the only match.
-
-        Args:
-            name: the node name to search for
-
-        Returns:
-            the matching :class:`Node` or ``None``
-        """
-        if self.name == name:
-            return self
-        for child in self.values or []:
-            match = child.find(name)
-            if match is not None:
-                return match
-        return None
-
-    def truncated(self, depth: int) -> "Node":
-        """Returns a copy of this node with descendants limited to
-        ``depth`` levels below.
-
-        At the truncation boundary, nodes that had children in the
-        source are returned with ``values=[]`` so the wire format
-        distinguishes them from real leaves (which have no ``values``
-        key).
-
-        Args:
-            depth: non-negative recursion depth. ``0`` returns just this
-                node with no descendants.
-
-        Returns:
-            a new :class:`Node`
-        """
-        if depth <= 0:
-            return Node(
-                name=self.name,
-                description=self.description,
-                can_select=self.can_select,
-                deprecated=self.deprecated,
-                values=[] if self.values else None,
-            )
-        return Node(
-            name=self.name,
-            description=self.description,
-            can_select=self.can_select,
-            deprecated=self.deprecated,
-            values=[c.truncated(depth - 1) for c in (self.values or [])],
-        )
-
     @classmethod
     def from_dict(cls, d: dict) -> "Node":
         """Creates a :class:`Node` from a dict.
@@ -176,3 +122,61 @@ class Node:
     def __repr__(self) -> str:
         n = len(self.values) if self.values is not None else 0
         return f"Node(name={self.name!r}, values={n})"
+
+
+# The functions below walk the dict form of a node tree (as produced by
+# ``Node.to_dict`` and stored in ``OntologyDocument.root``) without
+# hydrating into :class:`Node` instances. Large taxonomies (~50k nodes)
+# pay a ~400ms cost for the recursive dataclass construction in
+# ``Node.from_dict``; read-only consumers that just need to slice or
+# project a subtree skip that entirely by operating on dicts.
+
+
+def find_in_dict(root: dict, name: str) -> Optional[dict]:
+    """Returns the first descendant (or ``root`` itself) whose ``name``
+    matches, or ``None``.
+
+    Node names are unique within a taxonomy (enforced by
+    :func:`fiftyone.core.ontology_validation.validate_taxonomy`), so the
+    first match is the only match.
+
+    Args:
+        root: a node-shaped dict
+        name: the node name to search for
+
+    Returns:
+        the matching dict (a reference into ``root``) or ``None``
+    """
+    if root.get("name") == name:
+        return root
+    for child in root.get("values") or []:
+        match = find_in_dict(child, name)
+        if match is not None:
+            return match
+    return None
+
+
+def truncate_dict(node: dict, depth: int) -> dict:
+    """Returns a copy of ``node`` truncated to ``depth`` levels below.
+
+    At the truncation boundary, nodes that had children in the source
+    are returned with ``values=[]`` so the wire format distinguishes
+    them from real leaves (which have no ``values`` key).
+
+    Args:
+        node: a node-shaped dict
+        depth: non-negative recursion depth. ``0`` returns just
+            ``node`` with no descendants.
+
+    Returns:
+        a new dict; the input is not mutated
+    """
+    if depth <= 0:
+        truncated = {k: v for k, v in node.items() if k != "values"}
+        if node.get("values"):
+            truncated["values"] = []
+        return truncated
+    out = dict(node)
+    if "values" in node:
+        out["values"] = [truncate_dict(c, depth - 1) for c in node["values"]]
+    return out

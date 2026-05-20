@@ -14,6 +14,7 @@ from starlette.requests import Request
 
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
+from fiftyone.core.annotation.nodes import find_in_dict, truncate_dict
 from fiftyone.server.utils.json import JSONResponse
 
 
@@ -73,9 +74,7 @@ class OntologyTaxonomy(HTTPEndpoint):
                     detail="'depth' must be a non-negative integer",
                 )
 
-        body, error = await fou.run_sync_task(
-            _load_taxonomy_response, name, node_name, depth
-        )
+        body, error = await _load_taxonomy_response(name, node_name, depth)
         if error is not None:
             raise HTTPException(status_code=404, detail=error)
 
@@ -151,46 +150,90 @@ async def _list_ontology_summaries(
     return summaries
 
 
-def _load_taxonomy_response(
+def _select_subtree(
+    root_dict: dict[str, Any],
+    taxonomy_name: str,
+    node_name: Optional[str],
+    depth: Optional[int],
+) -> tuple[Optional[dict[str, Any]], Optional[str]]:
+    """Applies the ``?node=`` and ``?depth=`` filters to a taxonomy root.
+
+    Order matters: subtree selection happens before depth truncation so
+    ``depth`` counts levels below the requested node, not below the
+    original root.
+
+    Returns a ``(subtree, error)`` pair with exactly one ``None``.
+    """
+    if node_name is not None:
+        subtree = find_in_dict(root_dict, node_name)
+        if subtree is None:
+            return (
+                None,
+                f"Node '{node_name}' not found in taxonomy "
+                f"'{taxonomy_name}'",
+            )
+    else:
+        subtree = root_dict
+
+    if depth is not None:
+        subtree = truncate_dict(subtree, depth)
+
+    return subtree, None
+
+
+async def _load_taxonomy_doc(
+    name: str,
+) -> tuple[Optional[dict[str, Any]], Optional[str]]:
+    """Fetches the latest version of a Taxonomy ontology document by
+    name. Returns a ``(doc, error)`` pair with exactly one ``None``.
+    """
+    collection = foo.get_async_db_conn()["ontologies"]
+    pipeline = [
+        {"$match": {"slug": fou.to_slug(name)}},
+        {"$sort": {"version": -1}},
+        {"$limit": 1},
+    ]
+    docs = await foo.aggregate(collection, pipeline).to_list(1)
+    if not docs:
+        return None, f"Taxonomy '{name}' not found"
+
+    doc = docs[0]
+    if doc.get("type") != "taxonomy":
+        return None, f"Ontology '{name}' is not a taxonomy"
+
+    return doc, None
+
+
+async def _load_taxonomy_response(
     name: str, node_name: Optional[str], depth: Optional[int]
 ) -> tuple[Optional[dict[str, Any]], Optional[str]]:
     """Resolves a taxonomy name and serializes the requested subtree.
 
-    Returns a ``(body, error)`` pair: ``body`` is the response dict on
-    success and ``error`` is the 404 detail string on failure. Exactly
-    one is ``None``.
+    Returns a ``(body, error)`` pair with exactly one ``None``.
     """
-    from fiftyone.core.ontology import Ontology, load_ontology
+    doc, error = await _load_taxonomy_doc(name)
+    if error is not None:
+        return None, error
 
-    try:
-        target_taxonomy = load_ontology(name)
-    except ValueError:
-        return None, f"Taxonomy '{name}' not found"
+    root_dict = doc.get("root") or {}
+    subtree, error = _select_subtree(
+        root_dict, doc["name"], node_name, depth
+    )
+    if error is not None:
+        return None, error
 
-    if not target_taxonomy.is_taxonomy:
-        return None, f"Ontology '{name}' is not a taxonomy"
-
-    # Narrow the response to the named subtree when requested.
-    if node_name is not None:
-        target_node = target_taxonomy.root.find(node_name)
-        if target_node is None:
-            return (
-                None,
-                f"Node '{node_name}' not found in taxonomy "
-                f"'{target_taxonomy.name}'",
-            )
-    else:
-        target_node = target_taxonomy.root
-
-    # Truncate the subtree when a depth cap is requested.
-    if depth is not None:
-        target_node = target_node.truncated(depth)
-
-    # Build the response from ontology metadata + the filtered subtree.
-    # Calling the base ``Ontology.to_dict`` skips the subclass override
-    # that would re-serialize the full root tree we just filtered.
-    body = Ontology.to_dict(target_taxonomy)
-    body["root"] = target_node.to_dict()
+    body: dict[str, Any] = {
+        "name": doc["name"],
+        "type": doc["type"],
+        "version": doc.get("version"),
+    }
+    if doc.get("description") is not None:
+        body["description"] = doc["description"]
+    for field_name in ("created_at", "last_modified_at"):
+        dt = doc.get(field_name)
+        if dt is not None:
+            body[field_name] = dt.isoformat()
+    body["root"] = subtree
     return body, None
 
 
