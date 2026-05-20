@@ -831,7 +831,7 @@ The Logs tab on the Run page allows you to view logs for a delegated operation.
 Logs are stored in MongoDB and are available in the Logs tab both while a run
 is in progress and after it completes.
 
-..image:: /images/plugins/operators/runs/logs_in_progress.png
+.. image:: /images/plugins/operators/runs/logs_in_progress.png
 
 **Logs structure**
 
@@ -841,14 +841,6 @@ You can also search for specific keywords or limit the logs to a custom time ran
 
 .. image:: /images/plugins/operators/runs/logs_action_bar.png
 
-**Downloading logs**
-
-You can directly download the logs for a delegated operation from both the Runs
-table and the operation's Run page:
-
-.. image:: /images/plugins/operators/runs/logs_download_runs_list_kebab.png
-
-.. image:: /images/plugins/operators/runs/logs_download_preview_pane.png
 
 **Log retention and archival**
 
@@ -866,12 +858,17 @@ log retention behavior:
     ``gs://my-bucket/do-logs`` or ``s3://my-bucket/do-logs``. If unset, logs
     are deleted without being uploaded. Default is ``None``.
 
+Once archived, you can access the logs for a particular run by clicking the
+"Download logs" option from the Run page:
+
+.. image:: /images/plugins/operators/runs/logs_menu_download.png
+
 .. note::
 
     If you are using a third-party orchestrator, a ``run_link`` can be
     added to each run to link back to the external run details page.
 
-.. _enterprise-run-page-view:
+.. _enterprise-run-page-metrics:
 
 Metrics
 ^^^^^^^
@@ -891,6 +888,8 @@ While an operation is running, admins also have access to a Database panel that 
 them to monitor MongoDB system metrics and query performance in real time.
 
 .. image:: /images/plugins/operators/runs/metrics_database.png
+
+.. _enterprise-run-page-view:
 
 View
 ^^^^
