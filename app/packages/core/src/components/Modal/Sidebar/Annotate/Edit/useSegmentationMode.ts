@@ -252,13 +252,7 @@ export const useSegmentationMode = () => {
 
   // Auto-enable segmentation mode when a pre-existing mask detection is selected,
   // auto-disable when a pre-existing label of a different type is selected.
-  //
-  // New labels are ignored — the mode was set intentionally via the toolbar button.
   useEffect(() => {
-    if (selectedLabel?.isNew) {
-      return;
-    }
-
     if (isEditingSegmentation && !segmentationModeActive) {
       setSegmentationModeActive(true);
     } else if (
@@ -269,7 +263,6 @@ export const useSegmentationMode = () => {
       setSegmentationModeActive(false);
     }
   }, [
-    selectedLabel?.isNew,
     selectedLabel?.overlay,
     editingLabelType,
     isEditingSegmentation,
