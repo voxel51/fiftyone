@@ -27,6 +27,7 @@ import typing as t
 from bson import ObjectId
 from bson.errors import InvalidId
 from motor.motor_asyncio import AsyncIOMotorCollection
+from pymongo import ASCENDING, DESCENDING
 from pymongo.errors import OperationFailure
 
 import fiftyone as fo
@@ -49,6 +50,13 @@ from fiftyone.server.view import get_view
 
 
 _OBJECT_ID_HEX_LEN = 24
+
+
+# Pymongo sort direction. The two legal values are pymongo.ASCENDING (1)
+# and pymongo.DESCENDING (-1). We can't write Literal[ASCENDING, DESCENDING]
+# directly because pymongo declares them as bare module-level ints (no
+# Final), so they widen to `int` for type-checkers.
+SortDirection = t.Literal[1, -1]
 
 
 _INT_CLS = {
@@ -125,14 +133,14 @@ def resolve_lightning_path_queries(
             _first(
                 field_path,
                 dataset,
-                1,
+                ASCENDING,
                 is_frame_field,
                 limit=path.max_documents_search,
             ),
             _first(
                 field_path,
                 dataset,
-                -1,
+                DESCENDING,
                 is_frame_field,
                 limit=path.max_documents_search,
             ),
@@ -155,14 +163,14 @@ def resolve_lightning_path_queries(
             _first(
                 field_path,
                 dataset,
-                1,
+                ASCENDING,
                 is_frame_field,
                 limit=path.max_documents_search,
             ),
             _first(
                 field_path,
                 dataset,
-                -1,
+                DESCENDING,
                 is_frame_field,
                 limit=path.max_documents_search,
             ),
@@ -369,7 +377,7 @@ async def _do_distinct_grouped_pipeline(
         pipeline += [{"$match": match_filter}]
 
     pipeline += [
-        {"$sort": {query.path: 1}},
+        {"$sort": {query.path: ASCENDING}},
         {"$group": {"_id": f"${query.path}"}},
     ]
 
@@ -398,7 +406,7 @@ def _add_search(query: DistinctQuery):
 def _first(
     path: str,
     dataset: fo.Dataset,
-    sort: t.Union[t.Literal[-1], t.Literal[1]],
+    sort: SortDirection,
     is_frame_field: bool,
     limit=None,
 ):
@@ -438,7 +446,7 @@ def _first(
                             "initialValue": None,
                             "in": {
                                 "$min"
-                                if sort == 1
+                                if sort == ASCENDING
                                 else "$max": [
                                     "$$value",
                                     "$$this",
@@ -465,7 +473,7 @@ def _first(
 def _filter_result(
     dataset: fo.Dataset,
     path: str,
-    sort: t.Union[t.Literal[-1], t.Literal[1]],
+    sort: SortDirection,
 ):
     field = dataset.get_field(path)
     while isinstance(field, fo.ListField):
@@ -477,13 +485,13 @@ def _filter_result(
     return _handle_nonfinites(sort)
 
 
-def _handle_nonfinites(sort: t.Union[t.Literal[-1], t.Literal[1]]):
+def _handle_nonfinites(sort: SortDirection):
     return [
         {
             "$match": {
                 "_id": (
                     {"$gt": float("-inf")}
-                    if sort == 1
+                    if sort == ASCENDING
                     else {"$lt": float("inf")}
                 )
             }
