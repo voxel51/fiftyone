@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@fiftyone/utilities", () => ({
   getFetchParameters: vi.fn(),
@@ -308,5 +308,35 @@ describe("BrowserAnnotationProvider", () => {
     const err = await provider.infer({ imageUrl: "test.jpg", points: [{ x: 0.5, y: 0.5, label: 1 }] }).catch((e: Error) => e);
     expect(err).toBeInstanceOf(Error);
     expect((err as Error).message).toBe("Worker not initialized");
+  });
+
+  describe("test-only worker-factory seam", () => {
+    afterEach(() => {
+      delete (window as Window).__FO_TEST_SAM2_WORKER_FACTORY;
+    });
+
+    it("uses window.__FO_TEST_SAM2_WORKER_FACTORY when present, bypassing `new Worker()`", async () => {
+      // Stub the global Worker as a spy so we can prove it isn't called.
+      // The default path (when the seam is unset) is already exercised by
+      // every other test in this file.
+      const WorkerSpy = vi.fn();
+      vi.stubGlobal("Worker", WorkerSpy);
+
+      const injected = new MockWorker();
+      const factory = vi.fn().mockReturnValue(injected);
+      (window as Window).__FO_TEST_SAM2_WORKER_FACTORY = factory;
+
+      const provider = new BrowserAnnotationProvider();
+      await provider.initialize();
+
+      expect(factory).toHaveBeenCalledTimes(1);
+      expect(WorkerSpy).not.toHaveBeenCalled();
+      // The injected worker received the protocol traffic.
+      const calls = injected.postMessage.mock.calls.map(
+        (c: unknown[]) => (c[0] as { type: string }).type
+      );
+      expect(calls).toContain("init");
+      expect(calls).toContain("loadModel");
+    });
   });
 });
