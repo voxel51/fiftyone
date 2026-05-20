@@ -1125,6 +1125,51 @@ class NodeTests(unittest.TestCase):
         self.assertNotIn("deprecated", d)
         self.assertNotIn("description", d)
 
+    def test_find_returns_self_on_match(self):
+        n = Node(name="car")
+        self.assertIs(n.find("car"), n)
+
+    def test_find_returns_descendant(self):
+        sedan = Node(name="sedan")
+        cars = Node(name="cars", values=[sedan])
+        root = Node(name="root", values=[cars])
+        self.assertIs(root.find("sedan"), sedan)
+
+    def test_find_returns_none_when_missing(self):
+        root = Node(name="root", values=[Node(name="car")])
+        self.assertIsNone(root.find("missing"))
+
+    def test_truncated_zero_drops_children_marks_truncated(self):
+        # Branch with children → values=[] indicates truncation.
+        n = Node(name="cars", values=[Node(name="sedan")]).truncated(0)
+        self.assertEqual(n.values, [])
+
+    def test_truncated_zero_real_leaf_keeps_no_values(self):
+        # Real leaf → values=None (omitted in dict).
+        n = Node(name="car").truncated(0)
+        self.assertIsNone(n.values)
+
+    def test_truncated_one_keeps_direct_children_only(self):
+        deep = Node(
+            name="root",
+            values=[
+                Node(
+                    name="cars",
+                    values=[Node(name="sedan", values=[Node(name="camry")])],
+                ),
+            ],
+        )
+        out = deep.truncated(1)
+        # root has cars; cars is truncated → values=[]
+        self.assertEqual(out.values[0].name, "cars")
+        self.assertEqual(out.values[0].values, [])
+
+    def test_truncated_returns_copy(self):
+        original = Node(name="cars", values=[Node(name="sedan")])
+        out = original.truncated(0)
+        self.assertIsNot(out, original)
+        self.assertEqual(original.values[0].name, "sedan")
+
 
 class TaxonomyTests(unittest.TestCase):
     def _tree(self):
