@@ -94,60 +94,6 @@ class Node:
             d["values"] = [v.to_dict() for v in self.values]
         return d
 
-    def find(self, name: str) -> Optional["Node"]:
-        """Returns the descendant (or self) with the given name, or
-        ``None``.
-
-        Node names are unique within a taxonomy (enforced by
-        :func:`fiftyone.core.ontology_validation.validate_taxonomy`),
-        so the first match is the only match.
-
-        Args:
-            name: the node name to search for
-
-        Returns:
-            the matching :class:`Node` or ``None``
-        """
-        if self.name == name:
-            return self
-        for child in self.values or []:
-            match = child.find(name)
-            if match is not None:
-                return match
-        return None
-
-    def truncated(self, depth: int) -> "Node":
-        """Returns a copy of this node with descendants limited to
-        ``depth`` levels below.
-
-        At the truncation boundary, nodes that had children in the
-        source are returned with ``values=[]`` so the wire format
-        distinguishes them from real leaves (which have no ``values``
-        key).
-
-        Args:
-            depth: non-negative recursion depth. ``0`` returns just this
-                node with no descendants.
-
-        Returns:
-            a new :class:`Node`
-        """
-        if depth <= 0:
-            return Node(
-                name=self.name,
-                description=self.description,
-                can_select=self.can_select,
-                deprecated=self.deprecated,
-                values=[] if self.values else None,
-            )
-        return Node(
-            name=self.name,
-            description=self.description,
-            can_select=self.can_select,
-            deprecated=self.deprecated,
-            values=[c.truncated(depth - 1) for c in (self.values or [])],
-        )
-
     @classmethod
     def from_dict(cls, d: dict) -> "Node":
         """Creates a :class:`Node` from a dict.
