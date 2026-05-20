@@ -6,11 +6,7 @@ FiftyOne ontology delete cascade unit tests.
 |
 """
 
-import os
 import unittest
-
-# Ontology SDK is gated by VFF_ONTOLOGY_CA; enable for the whole module.
-os.environ.setdefault("VFF_ONTOLOGY_CA", "1")
 
 import fiftyone as fo
 import fiftyone.core.odm as foo

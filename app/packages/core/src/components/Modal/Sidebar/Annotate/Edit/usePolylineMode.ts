@@ -65,8 +65,12 @@ const resolveEmptyHit = (ctx: PolylineEmptyHitContext) =>
  *
  * The mode exits when:
  *
- * - The deactivation function is called explicitly, or
- * - Selection moves from a 2D polyline to a different label, or to nothing.
+ * - The deactivation function is called explicitly (toolbar toggle, generic
+ *   mode-quit gesture, etc.), or
+ * - Selection moves from a 2D polyline to a different (non-polyline) label.
+ *
+ * Deselecting entirely does NOT exit the mode — the user is still in polyline
+ * mode, just without an active edit target, ready to draw a new one.
  */
 export const usePolylineMode = () => {
   const [polylineModeActive, setPolylineModeActive] = useAtom(
@@ -94,7 +98,7 @@ export const usePolylineMode = () => {
     ? "No active fields"
     : polylineModeActive
     ? "Exit polyline mode"
-    : "Edit polylines";
+    : "Create new polylines";
 
   const exitInstalledHandler = useCallback(() => {
     if (!installedHandlerRef.current) {
@@ -106,9 +110,10 @@ export const usePolylineMode = () => {
   }, [scene]);
 
   // Selection drives the mode. Selecting a 2D polyline activates polyline
-  // mode; selecting a non-polyline (or deselecting) exits it.
-  // Toolbar activations with no selection are preserved (the previous selection
-  // ref lets us distinguish "no change" from "user deselected").
+  // mode; switching from a polyline to a *different* non-polyline label
+  // exits it. Deselecting entirely leaves the mode active so the user can
+  // immediately draw another polyline — exiting requires an explicit gesture
+  // (toolbar toggle or generic mode-quit).
   const prevSelectedLabelRef = useRef(selectedLabel);
   useEffect(() => {
     const prev = prevSelectedLabelRef.current;
@@ -119,12 +124,10 @@ export const usePolylineMode = () => {
 
     if (isPolyline2d) {
       setPolylineModeActive(true);
-    } else if (wasPolyline2d) {
-      // Selection moved away from a polyline (different label or deselect).
+    } else if (wasPolyline2d && selectedLabel) {
+      // Switched from a polyline to a different non-polyline label.
       setPolylineModeActive(false);
     }
-    // Otherwise the selection isn't (and wasn't) a polyline — leave the mode
-    // alone so toolbar-driven activations stick around for creation.
   }, [selectedLabel, setPolylineModeActive]);
 
   // Stable ref so the creation handler's `onCreate` always sees the latest

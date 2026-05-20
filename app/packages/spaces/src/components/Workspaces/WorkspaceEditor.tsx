@@ -1,12 +1,6 @@
-import {
-  COLOR_OPTIONS,
-  Dialog,
-  MuiButton,
-  Selection,
-  TextField,
-} from "@fiftyone/components";
-import { executeOperator, useOperatorExecutor } from "@fiftyone/operators";
-import { sessionSpaces } from "@fiftyone/state";
+import { Dialog, MuiButton, Selection, TextField } from "@fiftyone/components";
+import { executeOperator } from "@fiftyone/operators";
+import { sessionSpaces, constants } from "@fiftyone/state";
 import { Delete } from "@mui/icons-material";
 import {
   Box,
@@ -19,11 +13,12 @@ import {
 import { useCallback, useMemo, useState } from "react";
 import { useRecoilCallback, useRecoilState, useResetRecoilState } from "recoil";
 import { workspaceEditorStateAtom } from "../../state";
-import { useWorkspaces } from "./hooks";
 import { LOAD_WORKSPACE_OPERATOR } from "./constants";
+import { useWorkspaces } from "./hooks";
 
 const SAVE_WORKSPACE_OPERATOR = "@voxel51/operators/save_workspace";
 const DELETE_WORKSPACE_OPERATOR = "@voxel51/operators/delete_workspace";
+const { COLOR_OPTIONS } = constants;
 
 export default function WorkspaceEditor() {
   const { reset } = useWorkspaces();

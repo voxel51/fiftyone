@@ -55,7 +55,7 @@ export default function Edit() {
   const data = useAtomValue(currentData);
   const isReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
   const { isEditingMask } = useSegmentationMode();
-  const isMaskDetection = !!(data?.mask || isEditingMask);
+  const isMaskDetection = !!(data?.mask || data?.mask_path || isEditingMask);
   const [activePrimitivePath] = useActivePrimitive();
 
   const clear = useClearModal();

@@ -58,19 +58,21 @@ export default function Workspaces() {
   if (!canInitialize) return null;
 
   return (
-    <Box>
+    <Box sx={{ position: "relative" }}>
       <Button
         size="small"
         onClick={() => {
           setOpen(!open);
         }}
         sx={{
-          position: "absolute",
           right: 5,
+          top: 8,
+          float: "right",
+          height: 0,
           zIndex: 1,
+          pr: "0.75rem",
           color: (theme) => theme.palette.text.secondary,
           fontSize: 14,
-          pr: "0.75rem",
         }}
         endIcon={<AutoAwesomeMosaicOutlined sx={{ fontSize: 18 }} />}
       >
@@ -88,9 +90,9 @@ export default function Workspaces() {
           style={{
             minWidth: "300px",
             position: "absolute",
-            top: "22px",
+            top: "18px",
             right: "0px",
-            padding: "0",
+            padding: "0px",
           }}
         >
           <Box>
