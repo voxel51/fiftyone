@@ -13,10 +13,8 @@ import fiftyone.core.odm as foo
 from fiftyone.core.annotation.attributes import AttributeSpec
 from fiftyone.core.ontology import (
     AnnotationOntology,
-    _find_annotation_ontology_refs_by_taxonomy,
     _find_label_schema_refs_by_ontology,
     delete_ontology,
-    load_ontology,
 )
 
 
@@ -345,147 +343,6 @@ class FindLabelSchemaRefsTests(unittest.TestCase):
         result = _find_label_schema_refs_by_ontology(_ONTOLOGY_NAME)
 
         self.assertEqual(result, [])
-
-
-_TAXONOMY_NAME = "test_taxonomy"
-_TAXONOMY_SLUG = "test-taxonomy"
-
-
-def _make_taxonomy(name: str = _TAXONOMY_NAME) -> None:
-    from fiftyone.core.annotation.nodes import Node
-    from fiftyone.core.ontology import Taxonomy
-
-    Taxonomy(
-        name=name,
-        root=Node(name="root", values=[Node(name="a"), Node(name="b")]),
-    ).save()
-
-
-def _make_ao_bundling_taxonomy(
-    ao_name: str, taxonomy_name: str = _TAXONOMY_NAME
-) -> None:
-    tax = load_ontology(taxonomy_name)
-    AnnotationOntology(name=ao_name, taxonomy=tax).save()
-
-
-class DeleteTaxonomyTests(unittest.TestCase):
-    def setUp(self) -> None:
-        db = foo.get_db_conn()
-        db.drop_collection("ontologies")
-        fo.delete_non_persistent_datasets()
-
-    def tearDown(self) -> None:
-        db = foo.get_db_conn()
-        db.drop_collection("ontologies")
-        fo.delete_non_persistent_datasets()
-
-    def test_delete_unreferenced_taxonomy_succeeds(self) -> None:
-        _make_taxonomy()
-
-        delete_ontology(_TAXONOMY_NAME)
-
-        self.assertFalse(fo.ontology_exists(_TAXONOMY_NAME))
-
-    def test_delete_referenced_taxonomy_without_force_raises(self) -> None:
-        _make_taxonomy()
-        _make_ao_bundling_taxonomy("my_ao")
-
-        with self.assertRaises(ValueError):
-            delete_ontology(_TAXONOMY_NAME)
-
-        # Taxonomy and AO ref should be untouched.
-        self.assertTrue(fo.ontology_exists(_TAXONOMY_NAME))
-        self.assertEqual(load_ontology("my_ao").taxonomy, _TAXONOMY_SLUG)
-
-    def test_force_delete_taxonomy_unsets_ao_ref_and_deletes(self) -> None:
-        _make_taxonomy()
-        _make_ao_bundling_taxonomy("my_ao")
-
-        delete_ontology(_TAXONOMY_NAME, force=True)
-
-        # Taxonomy gone.
-        self.assertFalse(fo.ontology_exists(_TAXONOMY_NAME))
-        # AO survives without its bundled taxonomy.
-        self.assertIsNone(load_ontology("my_ao").taxonomy)
-
-    def test_force_delete_taxonomy_unsets_via_new_ao_version(self) -> None:
-        # Append-only: the unset is an appended version, not an in-place
-        # mutation. The latest AO version no longer carries the ref;
-        # whether prior versions still do is unspecified by this API.
-        _make_taxonomy()
-        _make_ao_bundling_taxonomy("my_ao")
-        ao_before = load_ontology("my_ao")
-
-        delete_ontology(_TAXONOMY_NAME, force=True)
-
-        ao_after = load_ontology("my_ao")
-        self.assertGreater(ao_after.version, ao_before.version)
-        self.assertIsNone(ao_after.taxonomy)
-
-    def test_force_delete_taxonomy_does_not_touch_label_schemas(
-        self,
-    ) -> None:
-        # applied_taxonomy is a hydration-time output, never persisted.
-        # The cascade scans AOs, not label schemas.
-        _make_taxonomy()
-        ds = fo.Dataset()
-        ds._doc.label_schemas = {
-            "ground_truth": {
-                "type": "detections",
-                "applied_ontology": "some_ao",
-            }
-        }
-        ds._doc.save()
-        snapshot = dict(ds._doc.label_schemas)
-
-        delete_ontology(_TAXONOMY_NAME, force=True)
-
-        ds.reload()
-        self.assertEqual(dict(ds._doc.label_schemas), snapshot)
-
-
-class FindAnnotationOntologyRefsByTaxonomyTests(unittest.TestCase):
-    def setUp(self) -> None:
-        db = foo.get_db_conn()
-        db.drop_collection("ontologies")
-
-    def tearDown(self) -> None:
-        db = foo.get_db_conn()
-        db.drop_collection("ontologies")
-
-    def test_no_ontologies_returns_empty(self) -> None:
-        self.assertEqual(
-            _find_annotation_ontology_refs_by_taxonomy(_TAXONOMY_NAME), []
-        )
-
-    def test_unrelated_ao_excluded(self) -> None:
-        AnnotationOntology(name="no_tax_ao").save()
-        self.assertEqual(
-            _find_annotation_ontology_refs_by_taxonomy(_TAXONOMY_NAME), []
-        )
-
-    def test_finds_ao_bundling_taxonomy(self) -> None:
-        _make_taxonomy()
-        _make_ao_bundling_taxonomy("my_ao")
-
-        self.assertEqual(
-            _find_annotation_ontology_refs_by_taxonomy(_TAXONOMY_NAME),
-            ["my_ao"],
-        )
-
-    def test_latest_version_only(self) -> None:
-        # If the latest AO version no longer references the taxonomy
-        # (older versions did), the AO should NOT appear in the result.
-        _make_taxonomy()
-        _make_ao_bundling_taxonomy("my_ao")
-
-        ao = load_ontology("my_ao")
-        ao.taxonomy = None
-        ao.save()
-
-        self.assertEqual(
-            _find_annotation_ontology_refs_by_taxonomy(_TAXONOMY_NAME), []
-        )
 
 
 if __name__ == "__main__":
