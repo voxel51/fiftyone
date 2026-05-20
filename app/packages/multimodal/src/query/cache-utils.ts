@@ -13,6 +13,9 @@ const ESTIMATED_UNKNOWN_FIELD_SIZE_BYTES = 1;
 const MIN_CACHE_SIZE_BYTES = 1;
 const MIN_CACHE_ENTRY_SIZE_BYTES = 1;
 
+/**
+ * Creates an LRU cache sized by normalized byte capacity.
+ */
 export function createByteBoundedCache<Value extends object>(
   options: MemoryCacheOptions
 ) {
@@ -26,6 +29,9 @@ export function createByteBoundedCache<Value extends object>(
   });
 }
 
+/**
+ * Stores an entry only when its byte estimate fits the cache budget.
+ */
 export function setByteBoundedEntry<Value extends object>(
   cache: LRUCache<string, Value>,
   options: MemoryCacheOptions,
@@ -58,6 +64,9 @@ export function serializeCacheKey(parts: readonly (string | null)[]): string {
   return JSON.stringify(parts);
 }
 
+/**
+ * Estimates nested decoded payload size for cache eviction.
+ */
 export function estimateFieldSize(
   value: unknown,
   visited = new WeakSet<object>()

@@ -9,6 +9,13 @@ const typedMcapSupport = mcapSupport as unknown as {
   protobufFromBinaryDescriptor: (schemaData: Uint8Array) => Root;
 };
 
+/**
+ * Loads MCAP decompression handlers through the typed support shim.
+ */
 export const loadDecompressHandlers = typedMcapSupport.loadDecompressHandlers;
+
+/**
+ * Builds a protobuf root from MCAP binary schema descriptors.
+ */
 export const protobufFromBinaryDescriptor =
   typedMcapSupport.protobufFromBinaryDescriptor;
