@@ -1,4 +1,4 @@
-export { OPERATOR_PROMPT_AREAS } from "./constants";
+export { OPERATOR_PROMPT_AREAS, RiskLevel } from "./constants";
 export { useFirstExistingUri } from "./hooks";
 export { useOperators } from "./loader";
 export { default as OperatorBrowser } from "./OperatorBrowser";

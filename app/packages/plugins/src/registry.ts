@@ -186,7 +186,14 @@ export type PanelOptions = {
   /** Surfaces where plugin is made available.
    * If this is not provided, the plugin will be available in grid only.
    */
-  surfaces?: "grid" | "modal" | "grid modal";
+  surfaces?:
+    | "grid"
+    | "modal"
+    | "portal"
+    | "grid modal"
+    | "grid portal"
+    | "modal portal"
+    | "grid modal portal";
 
   /**
    * Content displayed on the right side of the label in the panel title bar.

@@ -1940,7 +1940,8 @@ class AnnotationBackendConfig(foa.AnnotationMethodConfig):
             mask_targets = label_info.get("mask_targets", None)
             if isinstance(mask_targets, dict):
                 label_info["mask_targets"] = {
-                    int(k): v for k, v in mask_targets.items()
+                    int(k) if fof.is_integer_target(k) else k: v
+                    for k, v in mask_targets.items()
                 }
 
     def serialize(self, *args, **kwargs):

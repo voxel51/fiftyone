@@ -216,7 +216,14 @@ export const COMPONENT_OPTIONS: Record<
 export const NUMERIC_TYPES = ["int", "float", "list<int>", "list<float>"];
 
 // Types that don't need/support a default value
-export const NO_DEFAULT_TYPES = ["bool", "date", "datetime", "dict", "id"];
+export const NO_DEFAULT_TYPES = ["date", "datetime", "dict", "id"];
+
+// Options for the bool default Select (empty id = no default)
+export const BOOL_DEFAULT_OPTIONS = [
+  { id: "", data: { label: "(none)" } },
+  { id: "true", data: { label: "True" } },
+  { id: "false", data: { label: "False" } },
+];
 
 // List types
 export const LIST_TYPES = ["list<str>", "list<int>", "list<float>"];

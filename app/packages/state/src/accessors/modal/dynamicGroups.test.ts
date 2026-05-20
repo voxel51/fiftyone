@@ -103,6 +103,18 @@ describe("useGroupByFieldValue", () => {
 });
 
 describe("useElementsCount", () => {
+  it("surfaces errors from the count selector as a render error", () => {
+    stateStore.loadables = {
+      groupByFieldValue: { state: "hasValue", contents: "cat" },
+      "dynamicGroupsElementCount-true-cat": {
+        state: "hasError",
+        contents: new Error("count failed"),
+      },
+    };
+    const { result } = renderHook(() => useElementsCount(true));
+    expect(result.error).toEqual(new Error("count failed"));
+  });
+
   it("returns 0 before the count settles", () => {
     stateStore.loadables = {
       groupByFieldValue: { state: "hasValue", contents: "cat" },

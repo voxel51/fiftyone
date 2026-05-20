@@ -37,7 +37,7 @@ test.afterAll(async ({ foWebServer }) => {
 
 test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await datasetFactory.createDataset({
+  await datasetFactory.createBlankDataset({
     datasetName,
     numSamples: 2,
   });

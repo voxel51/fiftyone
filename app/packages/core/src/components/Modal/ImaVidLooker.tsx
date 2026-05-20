@@ -9,7 +9,7 @@ import {
   useDefaultTimelineNameImperative,
   useTimeline,
 } from "@fiftyone/playback";
-import { Timeline } from "@fiftyone/playback/src/views/Timeline";
+import { Timeline } from "@fiftyone/playback/src/views/Timeline/Timeline";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOnSelectLabel } from "@fiftyone/state";
 import type { BufferRange } from "@fiftyone/utilities";

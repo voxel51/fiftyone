@@ -125,7 +125,9 @@ export const useSegmentationMode = () => {
 
   const isEditingSegmentation =
     editingLabelType === DETECTION &&
-    (!!selectedLabel?.data?.mask || isEditingMask);
+    (!!selectedLabel?.data?.mask ||
+      !!selectedLabel?.data?.mask_path ||
+      isEditingMask);
 
   const noActiveFields = fields.length === 0;
   const disabled = isPatchView || noActiveFields;
@@ -151,8 +153,10 @@ export const useSegmentationMode = () => {
     sceneRef.current?.exitInteractiveMode();
     onExit();
     aiMode.deactivate();
+    mergeTool.clearMergeTarget();
+    manualMode.switchTool(SegmentationTool.Select);
     setSegmentationModeActive(false);
-  }, [aiMode, onExit, setSegmentationModeActive]);
+  }, [aiMode, manualMode, mergeTool, onExit, setSegmentationModeActive]);
 
   const toggleSegmentationMode = useCallback(() => {
     if (segmentationModeActive) {
@@ -217,9 +221,12 @@ export const useSegmentationMode = () => {
         // selected, deselect it — the Merge tool only operates on masks.
         const selected = selectedLabelRef.current;
         const overlayId = selected?.overlay?.id;
+        const data = selected?.data as {
+          mask?: unknown;
+          mask_path?: unknown;
+        };
         const hasMask =
-          selected?.type === "Detection" &&
-          !!(selected.data as { mask?: unknown })?.mask;
+          selected?.type === "Detection" && !!(data?.mask || data?.mask_path);
 
         if (hasMask && overlayId) {
           mergeTool.setMergeTarget(overlayId);
@@ -303,14 +310,22 @@ export const useSegmentationMode = () => {
   }, [closeOpenLabel, createDetection, manualMode.tool]);
 
   /**
-   * Accept the current AI mask, tear down point selection, and switch to the
-   * brush so the user can refine the mask manually. The overlay stays
-   * selected and in editing mode.
+   * Finish the current AI point-selection session. Cycle deactivate→activate
+   * so the keypoint overlay/handler is re-installed for a fresh next
+   * detection while staying in AI mode.
    */
   const finalizePointSelection = useCallback(() => {
+    const currentScene = sceneRef.current;
+    const overlay = selectedLabelRef.current?.overlay;
+    if (currentScene && overlay instanceof DetectionOverlay) {
+      CommandContextManager.instance()
+        .getActiveContext()
+        .pushUndoable(new AddOverlayCommand(currentScene, overlay));
+    }
+
     aiMode.deactivate();
-    manualMode.switchTool(SegmentationTool.Brush);
-  }, [aiMode, manualMode]);
+    aiMode.activate();
+  }, [aiMode]);
 
   // ----------------------------  Public interface  ----------------------- //
 

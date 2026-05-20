@@ -28,6 +28,7 @@ import {
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { dataset } from "./dataset";
 import {
+  groupByFieldValue,
   imaVidLookerState,
   isDynamicGroup,
   isNestedDynamicGroup,
@@ -52,7 +53,6 @@ import {
   pinned3DSampleSlice,
 } from "./renderConfig3d.atoms";
 import { datasetName, parentMediaTypeSelector } from "./selectors";
-import { State } from "./types";
 import { mapSampleResponse } from "./utils";
 import * as viewAtoms from "./view";
 
@@ -358,7 +358,8 @@ export const groupSamples = graphQLSelectorFamily<
       return {
         count,
         dataset: get(datasetName),
-        view: get(groupView),
+        view: get(viewAtoms.view),
+        dynamicGroup: get(groupByFieldValue),
         filter: {
           group: {
             slice: get(groupSlice),
@@ -400,7 +401,8 @@ export const groupHasSampleOnSlice = graphQLSelectorFamily<
       return {
         count: 1,
         dataset: get(datasetName),
-        view: get(groupView),
+        view: get(viewAtoms.view),
+        dynamicGroup: get(groupByFieldValue),
         filter: {
           group: {
             slice,
@@ -497,16 +499,4 @@ export const activeModalSidebarSample = selector({
 export const groupStatistics = atomFamily<"group" | "slice", boolean>({
   key: "groupStatistics",
   default: "slice",
-});
-
-/**
- * A group view, i.e. all slices of a group, can potentially be of a dynamic
- * group. The GroupBy stage is filtered to accommodate this
- */
-export const groupView = selector<State.Stage[]>({
-  key: "groupView",
-  get: ({ get }) =>
-    get(viewAtoms.view).filter(
-      (stage) => stage._cls !== viewAtoms.GROUP_BY_VIEW_STAGE
-    ),
 });
