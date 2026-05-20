@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ByteSourceDescriptor } from "../../../client/resources";
 import { byteSourceCacheKey } from "../../../client/resources/cache";
 import type { StreamInventory } from "../../../schemas/v1";
+import { mcapErrorMessage } from "../errors";
 import type { McapResourceClient } from "../types";
 
 export type McapTopicsStatus = "idle" | "loading" | "ready" | "error";
@@ -43,7 +44,10 @@ export function useMcapTopics({
   client,
   source,
 }: UseMcapTopicsOptions): McapTopicsState {
-  const sourceKey = useMemo(() => mcapSourceKey(source), [source]);
+  const sourceKey = useMemo(
+    () => (source ? byteSourceCacheKey(source) : ""),
+    [source]
+  );
   const [state, setState] = useState<McapTopicsState>(IDLE_TOPICS_STATE);
 
   useEffect(() => {
@@ -87,7 +91,7 @@ export function useMcapTopics({
         }
 
         setState({
-          error: errorMessage(caughtError),
+          error: mcapErrorMessage(caughtError),
           status: "error",
           topics: [],
         });
@@ -129,12 +133,4 @@ function topicsCacheEntry(
   mcapTopicsCache.set(sourceKey, entry);
 
   return entry;
-}
-
-function mcapSourceKey(source: ByteSourceDescriptor | null) {
-  return source ? byteSourceCacheKey(source) : "";
-}
-
-function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : String(error);
 }

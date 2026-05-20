@@ -1,4 +1,5 @@
 import { McapStreamReader, type McapTypes } from "@mcap/core";
+import { mcapErrorMessage } from "../errors";
 import type {
   McapIndexedMessageTime,
   McapIndexedReaderLike,
@@ -123,7 +124,7 @@ export function parseMcapMessageIndexRecord(
     record = reader.nextRecord();
   } catch (error) {
     throw new Error(
-      `Expected MCAP MessageIndex record: ${errorMessage(
+      `Expected MCAP MessageIndex record: ${mcapErrorMessage(
         error,
         "failed to parse record"
       )}`
@@ -350,10 +351,6 @@ function isWithinIndexedRange(
   }
 
   return true;
-}
-
-function errorMessage(error: unknown, fallback: string): string {
-  return error instanceof Error ? error.message : fallback;
 }
 
 function compareIndexedMessageTimes(

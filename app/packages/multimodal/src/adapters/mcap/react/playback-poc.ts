@@ -12,6 +12,7 @@ import {
   byteSourceCacheKey,
   serializeCacheKey,
 } from "../../../client/resources/cache";
+import { mcapErrorMessage } from "../errors";
 import { createMcapTimelineTicks } from "../timeline";
 import {
   MCAP_ACTIVE_TIMELINE,
@@ -236,7 +237,10 @@ export function useMcapPlayback({
   const frameLoadIntentRef = useRef<FrameLoadIntent>("load");
   const currentTimeNsRef = useRef<bigint | undefined>(undefined);
   const heldMessagesByTopicRef = useRef(new Map<string, McapDecodedMessage>());
-  const sourceKey = useMemo(() => mcapSourceKey(source), [source]);
+  const sourceKey = useMemo(
+    () => (source ? byteSourceCacheKey(source) : ""),
+    [source]
+  );
   const sourceProblem = sourceProblemMessage(source);
   const timelineKey = timelineCacheKey(
     sourceKey,
@@ -358,7 +362,7 @@ export function useMcapPlayback({
         heldMessagesByTopicRef.current.clear();
         setDisplayMessagesByTopic({});
         setTimelineStatus("error");
-        setError(errorMessage(caughtError));
+        setError(mcapErrorMessage(caughtError));
       });
 
     return () => {
@@ -472,7 +476,7 @@ export function useMcapPlayback({
         }
 
         setFrameStatus("error");
-        setError(errorMessage(caughtError));
+        setError(mcapErrorMessage(caughtError));
       })
       .finally(() => {
         inFlightFrameRequestsRef.current.delete(cacheKey);
@@ -646,7 +650,7 @@ export function useMcapPlayback({
               );
         if (!currentWindow) {
           setFrameStatus("error");
-          setError(errorMessage(caughtError));
+          setError(mcapErrorMessage(caughtError));
         } else {
           setDisplayMessagesByTopic(
             displayMessagesForWindow(
@@ -1002,12 +1006,4 @@ function sourceProblemMessage(source: ByteSourceDescriptor | null) {
   }
 
   return null;
-}
-
-function mcapSourceKey(source: ByteSourceDescriptor | null) {
-  return source ? byteSourceCacheKey(source) : "";
-}
-
-function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : String(error);
 }
