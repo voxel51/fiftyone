@@ -4,15 +4,28 @@ import { SchemaViewType, ViewPropsType } from "./types";
 const CSS_UNIT_PATTERN =
   /(\d+)(cm|mm|in|px|pt|pc|em|ex|ch|rem|vw|vh|vmin|vmax|%)$/;
 
-export function parseSize(value: number | string, max?: number) {
+export function parseSize(
+  value: number | string,
+  max?: number,
+  defaultUnit?: string
+) {
   const valueIsNumber = typeof value === "number";
   const valueIsRelativeString =
     typeof value === "string" && !CSS_UNIT_PATTERN.test(value);
+
   const maxIsNumber = typeof max === "number";
-  if ((valueIsNumber || valueIsRelativeString) && maxIsNumber) {
+  if (maxIsNumber && (valueIsNumber || valueIsRelativeString)) {
     const floatValue = parseFloat(value.toString());
     return Math.min(1, Math.max(floatValue / 100, 0)) * max;
   }
+
+  if (defaultUnit !== undefined && valueIsRelativeString) {
+    const numericValue = parseFloat(value);
+    if (!Number.isNaN(numericValue)) {
+      return `${numericValue}${defaultUnit}`;
+    }
+  }
+
   return value;
 }
 

@@ -17,6 +17,7 @@
         "type-check": "tsc --noEmit"
     },
     "dependencies": {
+        "lru-cache": "^11.0.1",
         "pixi.js": "^8.13.1"
     },
     "devDependencies": {

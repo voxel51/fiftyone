@@ -1,6 +1,6 @@
 import { ExecutionContext } from "./operators";
 import { useOperatorPrompt } from "./state";
-import { ParamsType, ResolvablePropertyOptions } from "./types-internal";
+import { ParamsType, ResolvablePropertyOptions } from "./ts";
 
 export class BaseType {}
 
@@ -1304,13 +1304,28 @@ export class ToastView extends View {
  * Operator class for rendering a execution button.
  */
 
-class OperatorExecutionButtonView extends View {
+export class OperatorExecutionButtonView extends View {
   constructor(options: ViewProps) {
     super(options);
     this.name = "OperatorExecutionButtonView";
   }
   static fromJSON(json) {
     return new OperatorExecutionButtonView(json);
+  }
+}
+
+/**
+ * Operator class for describing a ComponentView {@link View} for an
+ * operator type. When using ComponentView, you can render a registered custom
+ * plugin component.
+ */
+export class ComponentView extends View {
+  constructor(component: string, options: ViewProps) {
+    super({ ...options, component });
+    this.name = "ComponentView";
+  }
+  static fromJSON(json) {
+    return new ComponentView(json.component, json);
   }
 }
 
@@ -1326,6 +1341,7 @@ export enum Places {
   MAP_ACTIONS = "map-actions",
   MAP_SECONDARY_ACTIONS = "map-secondary-actions",
   DISPLAY_OPTIONS = "display-options",
+  HEADER_ACTIONS = "header-actions",
 }
 
 // NOTE: keys should always match fiftyone/operators/types.py
@@ -1389,6 +1405,8 @@ const VIEWS = {
   PillBadgeView,
   ModalView,
   ToastView,
+  OperatorExecutionButtonView,
+  ComponentView,
 };
 
 export function typeFromJSON({ name, ...rest }): ANY_TYPE {

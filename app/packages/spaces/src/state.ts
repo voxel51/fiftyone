@@ -1,11 +1,16 @@
-import { COLOR_OPTIONS } from "@fiftyone/components";
+import { constants } from "@fiftyone/state";
+import { ReactNode } from "react";
 import { atom, selectorFamily } from "recoil";
 import {
+  PanelIdToScopeType,
   PanelStateParameter,
   PanelStatePartialParameter,
   PanelsCloseEffect,
   SpaceNodeJSON,
 } from "./types";
+import { SubscribableMap } from "./utils/SubscribableMap";
+
+const { COLOR_OPTIONS } = constants;
 
 // a react hook for managing the state of all spaces in the app
 // it should use recoil to persist the tree
@@ -139,6 +144,9 @@ function getStateAtom(local?: boolean, scope?: string) {
   return local || nonGridScope ? panelsLocalStateAtom : panelsStateAtom;
 }
 
-type PanelIdToScopeType = {
-  [panelId: string]: string;
-};
+export const panelAreaRenderers = new SubscribableMap<string, ReactNode>();
+
+export const currentPanelAreasRenderer = atom<Map<string, string>>({
+  key: "currentPanelAreasRenderer",
+  default: new Map<string, string>(),
+});

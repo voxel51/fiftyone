@@ -125,7 +125,9 @@ export const useSegmentationMode = () => {
 
   const isEditingSegmentation =
     editingLabelType === DETECTION &&
-    (!!selectedLabel?.data?.mask || isEditingMask);
+    (!!selectedLabel?.data?.mask ||
+      !!selectedLabel?.data?.mask_path ||
+      isEditingMask);
 
   const noActiveFields = fields.length === 0;
   const disabled = isPatchView || noActiveFields;
@@ -219,9 +221,12 @@ export const useSegmentationMode = () => {
         // selected, deselect it — the Merge tool only operates on masks.
         const selected = selectedLabelRef.current;
         const overlayId = selected?.overlay?.id;
+        const data = selected?.data as {
+          mask?: unknown;
+          mask_path?: unknown;
+        };
         const hasMask =
-          selected?.type === "Detection" &&
-          !!(selected.data as { mask?: unknown })?.mask;
+          selected?.type === "Detection" && !!(data?.mask || data?.mask_path);
 
         if (hasMask && overlayId) {
           mergeTool.setMergeTarget(overlayId);
