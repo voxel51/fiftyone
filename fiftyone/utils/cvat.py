@@ -5966,6 +5966,17 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 else:
                     class_val = False
 
+            # CVAT skeleton shapes store keypoints in an "elements" array
+            # rather than a top-level "points" field. Flatten them into
+            # a single points list so CVATShape can process them.
+            if shape_type == "skeleton":
+                elements = anno.get("elements", [])
+                skeleton_points = []
+                for elem in elements:
+                    skeleton_points.extend(elem.get("points", []))
+                anno = dict(anno)
+                anno["points"] = skeleton_points
+
             cvat_shape = CVATShape(
                 anno,
                 class_map,
@@ -6044,9 +6055,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             elif shape_type == "polyline":
                 label_type = "polylines"
                 label = cvat_shape.to_polyline()
-            elif shape_type == "points":
+            elif shape_type in ("points", "skeleton"):
                 label_type = "keypoints"
                 label = cvat_shape.to_keypoint()
+            else:
+                logger.debug(
+                    "Ignoring unsupported CVAT shape type '%s'", shape_type
+                )
 
             if keyframe and label is not None:
                 label["keyframe"] = True
