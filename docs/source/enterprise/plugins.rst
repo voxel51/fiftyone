@@ -816,22 +816,30 @@ display the error message and stack trace that occurred:
 Logs
 ^^^^
 
-The Logs tab on the Run page allows you to view available logs associated with
-a delegated operation:
+The Logs tab on the Run page allows you to view logs for a delegated operation.
 
-.. image:: /images/plugins/operators/runs/logs_general.png
+.. image:: /images/plugins/operators/runs/logs_completed.png
+
+.. note::
+
+    Logs are only available for delegated operations that were executed on the
+    builtin FiftyOne Orchestrator. If you are using an external orchestrator,
+    log availability depends on your specific integration and configuration.
 
 **Viewing logs**
 
 Logs are stored in MongoDB and are available in the Logs tab both while a run
 is in progress and after it completes.
 
+..image:: /images/plugins/operators/runs/logs_in_progress.png
+
 **Logs structure**
 
-Logs are displayed in a tabular format as pictured below, including the
-timestamp, severity, and message associated with each log entry:
+Logs are displayed in a tabular format. You can click the icons to toggle the visibility
+of columns, show timestamps in your local timezone, filter logs by severity.
+You can also search for specific keywords or limit the logs to a custom time range.
 
-.. image:: /images/plugins/operators/runs/logs_general_with_columns.png
+.. image:: /images/plugins/operators/runs/logs_action_bar.png
 
 **Downloading logs**
 
@@ -864,6 +872,25 @@ log retention behavior:
     added to each run to link back to the external run details page.
 
 .. _enterprise-run-page-view:
+
+Metrics
+^^^^^^^
+
+The Metrics tab on the Run page allows you to view any metrics that were
+collected during the execution of the delegated operation. These include
+system metrics such as CPU and memory usage, network io, and sampled profiling data.
+
+.. image:: /images/plugins/operators/runs/metrics_overview.png
+
+If the run was executed on a gpu-enabled cluster, you can also see gpu-specific metrics
+such as gpu utilization and gpu memory usage.
+
+.. image:: /images/plugins/operators/runs/metrics_gpu.png
+
+While an operation is running, admins also have access to a Database panel that allows
+them to monitor MongoDB system metrics and query performance in real time.
+
+.. image:: /images/plugins/operators/runs/metrics_database.png
 
 View
 ^^^^
