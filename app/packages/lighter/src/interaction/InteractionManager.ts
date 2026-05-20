@@ -619,12 +619,28 @@ export class InteractionManager {
     const interactiveHandler = this.getInteractiveHandler();
     const interactingHandler = this.findInteractingHandler();
 
-    const hitHandler = this.findHandlerAtPoint(point);
-    let handler = interactingHandler || hitHandler;
+    // Skip the full handler scan when a pointer-move is already owned.
+    // Interactive editing pins `handler` to the interactive handler, and
+    // drag pins it to the interacting handler
+    let hitHandler: InteractionHandler | undefined;
+    let handler: InteractionHandler | undefined;
 
-    if (!interactiveHandler) {
-      // we don't want to handle hover in interactive mode
-      // for instance, no tooltips, no hover states, etc
+    if (interactiveHandler || interactingHandler) {
+      handler = interactingHandler || interactiveHandler;
+
+      if (!interactiveHandler) {
+        // Drag, no interactive editing. Still schedule a hover update so
+        // handleHover's reordered `interactingHandler` branch can dispatch
+        // the unhover for whichever overlay was hovered when the drag began.
+        this.scheduleHoverUpdate(
+          this.currentPixelCoordinates,
+          event,
+          undefined
+        );
+      }
+    } else {
+      hitHandler = this.findHandlerAtPoint(point);
+      handler = hitHandler;
       this.scheduleHoverUpdate(this.currentPixelCoordinates, event, hitHandler);
     }
 
