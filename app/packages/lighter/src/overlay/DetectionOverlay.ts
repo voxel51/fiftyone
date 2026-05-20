@@ -856,7 +856,8 @@ export class DetectionOverlay
     const wasPainting = this.interactionState === "PAINTING";
 
     this.interactionState = "NONE";
-    const croppedBounds = this.mask?.paintEnd(this.bounds, () => {
+    const croppedBounds = this.mask?.paintEnd(this.bounds, (encoded) => {
+      this.maskSource = encoded;
       this.markDirty();
     });
     if (croppedBounds) {
@@ -1238,7 +1239,8 @@ export class DetectionOverlay
       this.bounds = updatedBounds;
     }
 
-    this.bounds = this.mask.paintEnd(this.bounds, () => {
+    this.bounds = this.mask.paintEnd(this.bounds, (encoded) => {
+      this.maskSource = encoded;
       this.markDirty();
     });
 
@@ -1318,7 +1320,10 @@ export class DetectionOverlay
     const newBounds = this.mask.mergeFrom(
       sourceSource,
       source.bounds,
-      this.bounds
+      this.bounds,
+      (encoded) => {
+        this.maskSource = encoded;
+      }
     );
 
     this.bounds = newBounds;
@@ -1355,7 +1360,16 @@ export class DetectionOverlay
   ): void {
     this.mask ??= new MaskCanvas();
 
-    this.mask.restoreSnapshot(snapshot);
+    if (snapshot) {
+      this.mask.restoreSnapshot(snapshot, (encoded) => {
+        this.maskSource = encoded;
+      });
+    } else {
+      // Clearing to "no mask" — drop the rehydration source too so a later
+      // destroy/re-add doesn't resurrect a stale serialized payload.
+      this.mask.restoreSnapshot(undefined);
+      this.maskSource = undefined;
+    }
     this.bounds = bounds;
     this.markDirty();
   }
