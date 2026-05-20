@@ -33,6 +33,55 @@ class Ontologies(HTTPEndpoint):
         )
 
 
+class OntologyTaxonomy(HTTPEndpoint):
+    """Returns the tree for a taxonomy.
+
+    ``GET /ontologies/{name}/taxonomy`` — path parameter ``name`` is a
+    :class:`fiftyone.core.ontology.Taxonomy`'s human-readable name.
+
+    Optional query parameters:
+        node: if set, root the response at this named node. 404 when no
+            node with that name exists in the taxonomy.
+        depth: if set, limit the response to this many levels below the
+            response root. ``depth=0`` returns the root node with no
+            children; truncated branches that had children in the source
+            are serialized with ``"values": []`` so the caller can
+            distinguish them from real leaves (no ``values`` key).
+
+    Returns 404 when the named ontology does not exist or is not a
+    taxonomy.
+    """
+
+    async def get(self, request: Request) -> JSONResponse:
+        name = request.path_params["name"]
+        node_name = request.query_params.get("node") or None
+
+        depth_str = request.query_params.get("depth")
+        if depth_str is None:
+            depth = None
+        else:
+            try:
+                depth = int(depth_str)
+            except ValueError as e:
+                raise HTTPException(
+                    status_code=400,
+                    detail="'depth' must be a non-negative integer",
+                ) from e
+            if depth < 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="'depth' must be a non-negative integer",
+                )
+
+        body, error = await fou.run_sync_task(
+            _load_taxonomy_response, name, node_name, depth
+        )
+        if error is not None:
+            raise HTTPException(status_code=404, detail=error)
+
+        return JSONResponse({"taxonomy": body})
+
+
 class OntologyAttributes(HTTPEndpoint):
     """Returns the attributes list for a single annotation ontology.
 
@@ -100,6 +149,49 @@ async def _list_ontology_summaries(
         dt = s.get("last_modified_at")
         s["last_modified_at"] = dt.isoformat() if dt is not None else None
     return summaries
+
+
+def _load_taxonomy_response(
+    name: str, node_name: Optional[str], depth: Optional[int]
+) -> tuple[Optional[dict[str, Any]], Optional[str]]:
+    """Resolves a taxonomy name and serializes the requested subtree.
+
+    Returns a ``(body, error)`` pair: ``body`` is the response dict on
+    success and ``error`` is the 404 detail string on failure. Exactly
+    one is ``None``.
+    """
+    from fiftyone.core.ontology import Ontology, load_ontology
+
+    try:
+        target_taxonomy = load_ontology(name)
+    except ValueError:
+        return None, f"Taxonomy '{name}' not found"
+
+    if not target_taxonomy.is_taxonomy:
+        return None, f"Ontology '{name}' is not a taxonomy"
+
+    # Narrow the response to the named subtree when requested.
+    if node_name is not None:
+        target_node = target_taxonomy.root.find(node_name)
+        if target_node is None:
+            return (
+                None,
+                f"Node '{node_name}' not found in taxonomy "
+                f"'{target_taxonomy.name}'",
+            )
+    else:
+        target_node = target_taxonomy.root
+
+    # Truncate the subtree when a depth cap is requested.
+    if depth is not None:
+        target_node = target_node.truncated(depth)
+
+    # Build the response from ontology metadata + the filtered subtree.
+    # Calling the base ``Ontology.to_dict`` skips the subclass override
+    # that would re-serialize the full root tree we just filtered.
+    body = Ontology.to_dict(target_taxonomy)
+    body["root"] = target_node.to_dict()
+    return body, None
 
 
 def _load_attributes(name: str) -> Optional[list[dict[str, Any]]]:
