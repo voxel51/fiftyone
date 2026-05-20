@@ -264,7 +264,11 @@ export class MaskCanvas {
     this.context = maskContext;
 
     if (this.maskBitmap) {
+      // Disable image smoothing to prevent feathering on fractional pixels
+      const prevSmoothing = this.context.imageSmoothingEnabled;
+      this.context.imageSmoothingEnabled = false;
       this.context.drawImage(this.maskBitmap, 0, 0, width, height);
+      this.context.imageSmoothingEnabled = prevSmoothing;
       this.maskBitmap.close();
       this.maskBitmap = undefined;
     }
