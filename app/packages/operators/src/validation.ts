@@ -1,6 +1,6 @@
 import { isNullish, pluralize } from "@fiftyone/utilities";
 import { Boolean, Enum, List, Number, Object, Property, String } from "./types";
-import { ParamsType } from "./types-internal";
+import { ParamsType } from "./ts";
 
 export class ValidationError {
   constructor(public reason, public property, public path) {}

@@ -44,6 +44,7 @@ vi.mock("@fiftyone/state", () => ({
   })),
   useActiveModalFields: () => [[], vi.fn()],
   useQueryPerformanceSampleLimit: () => 1000,
+  useUnboundStateRef: (val: unknown) => ({ current: val }),
 }));
 
 vi.mock("@fiftyone/state/src/jotai", () => ({
@@ -72,6 +73,10 @@ vi.mock("./state", () => ({
 
 vi.mock("./useCanManageSchema", () => ({
   default: vi.fn(() => mockCanManageSchema),
+}));
+
+vi.mock("./useDeactivateAllModes", () => ({
+  useDeactivateAllModes: () => vi.fn(),
 }));
 
 vi.mock("./useSchemaResolver", async () => {

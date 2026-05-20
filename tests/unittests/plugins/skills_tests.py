@@ -31,7 +31,7 @@ _PLUGIN_YML = """\
 name: {plugin}
 version: 1.0.0
 skills:
-  - skills/{skill}/SKILL.md
+  - {skill}
 """
 
 _PLUGIN_YML_NO_SKILLS = """\
