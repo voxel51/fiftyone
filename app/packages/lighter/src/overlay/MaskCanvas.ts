@@ -516,7 +516,7 @@ export class MaskCanvas {
     otherSource: HTMLCanvasElement | ImageBitmap,
     otherBounds: Rect,
     ourBounds: Rect,
-    onEncoded?: () => void
+    onEncoded?: (encoded: string) => void
   ): Rect {
     this.ensureCanvas(ourBounds);
     this.paintStart(ourBounds);
@@ -558,7 +558,7 @@ export class MaskCanvas {
     return this.paintEnd(newBounds, onEncoded);
   }
 
-  paintEnd(bounds: Rect, onEncoded?: () => void): Rect {
+  paintEnd(bounds: Rect, onEncoded?: (encoded: string) => void): Rect {
     if (!this.canvas) return bounds;
 
     this.lastPoint = undefined;
@@ -581,7 +581,7 @@ export class MaskCanvas {
       .then((encoded) => {
         if (this.canvas !== capturedCanvas) return;
         this.pendingMask = encoded;
-        onEncoded?.();
+        onEncoded?.(encoded);
       })
       .catch((err) => {
         console.error("[MaskCanvas] paintEnd encode failed:", err);
@@ -821,9 +821,13 @@ export class MaskCanvas {
   /**
    * Replaces the current canvas contents with a previously captured snapshot.
    * If `snapshot` is `undefined`, clears the canvas entirely (restoring the
-   * "no mask" state). Kicks off `encodeMask` so `pendingMask` stays in sync.
+   * "no mask" state). Kicks off `encodeMask` so `pendingMask` stays in sync;
+   * `onEncoded` fires once with the encoded payload when that completes.
    */
-  restoreSnapshot(snapshot: MaskSnapshot | undefined): void {
+  restoreSnapshot(
+    snapshot: MaskSnapshot | undefined,
+    onEncoded?: (encoded: string) => void
+  ): void {
     if (!snapshot) {
       this.canvas = undefined;
       this.context = undefined;
@@ -851,6 +855,7 @@ export class MaskCanvas {
       .then((encoded) => {
         if (this.canvas !== capturedCanvas) return;
         this.pendingMask = encoded;
+        onEncoded?.(encoded);
       })
       .catch((err) => {
         console.error("[MaskCanvas] restoreSnapshot encode failed:", err);
