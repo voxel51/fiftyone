@@ -67,7 +67,7 @@ setup(
         "jsonpatch>=1,<2",
         "mongoengine~=0.29.1",  # Keep small bounds on mongo-related libraries
         "motor~=3.6.0",  # Keep small bounds on mongo-related libraries
-        "Pillow>=6.2,!=11.2.*",  # Pillow 11.2.0 introduced CVE 2025-48379 that is fixed in 11.3.0
+        "Pillow>=12.2",
         "plotly>=6.1.1,<7",
         "pprintpp>=0.1,<0.5",
         "protobuf==6.33.6",
