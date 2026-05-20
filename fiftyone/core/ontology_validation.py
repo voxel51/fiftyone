@@ -33,16 +33,13 @@ def validate_annotation_ontology(ontology: AnnotationOntology) -> None:
     # TODO: `When.field` resolution is deferred — `field` may reference
     # an attribute in another label-schema layer, so it needs the full
     # label-schema context. Enforce at resolution time or in the frontend.
-    #
-    # TODO: taxonomy-reference resolution is deferred until Phase 2 ships
-    # `Taxonomy` documents; validate that each `ontology.taxonomies` name
-    # resolves to a `Taxonomy` in the DB once the type exists.
     errors: list[str] = [
         *_validate_when_operators(ontology),
         *_validate_types(ontology),
         *_validate_components(ontology),
         *_validate_no_cycles(ontology),
         *_validate_then_keys(ontology),
+        *_validate_taxonomy_ref(ontology),
     ]
 
     if errors:
@@ -180,6 +177,35 @@ def _validate_no_cycles(ontology: AnnotationOntology) -> list[str]:
                 continue
             seen.add(node)
             to_visit.extend(graph[node])
+    return errors
+
+
+def _validate_taxonomy_ref(ontology: AnnotationOntology) -> list[str]:
+    """Confirms ``ontology.taxonomy`` (if set) resolves to a saved
+    :class:`Taxonomy`.
+    """
+    # Late import to dodge a circular import via the SDK entry points.
+    from fiftyone.core.ontology import load_ontology
+
+    errors: list[str] = []
+    if ontology.taxonomy is None:
+        return errors
+
+    try:
+        ref = load_ontology(ontology.taxonomy)
+    except ValueError:
+        errors.append(
+            f"taxonomy reference {ontology.taxonomy!r} does not resolve "
+            f"to a saved ontology"
+        )
+        return errors
+
+    if not ref.is_taxonomy:
+        errors.append(
+            f"taxonomy reference {ontology.taxonomy!r} resolves to a "
+            f"non-taxonomy ontology"
+        )
+
     return errors
 
 

@@ -49,6 +49,7 @@ STR_LIST = "list<str>"
 
 
 APPLIED_ONTOLOGY = "applied_ontology"
+APPLIED_TAXONOMY = "applied_taxonomy"
 ATTRIBUTES = "attributes"
 CLASSES = "classes"
 COMPONENT = "component"
