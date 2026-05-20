@@ -77,7 +77,7 @@ class McapAdapter(MultimodalAdapter):
                     return cls._read_scene_inventory(
                         summary=summary,
                         scene_id=filepath,
-                        size=storage.get_file_size(filepath),
+                        size=0,
                         first_chunk_crc=chunk_crc(f, chunk_indices[0]),
                         last_chunk_crc=chunk_crc(f, chunk_indices[-1]),
                     )
@@ -85,7 +85,7 @@ class McapAdapter(MultimodalAdapter):
             return cls._read_scene_inventory(
                 summary=summary,
                 scene_id=filepath,
-                size=storage.get_file_size(filepath),
+                size=0,
                 first_chunk_crc=None,
                 last_chunk_crc=None,
             )

@@ -1036,16 +1036,3 @@ def _to_bytes(val, encoding="utf-8"):
         raise TypeError("Failed to convert %s to bytes" % type(b))
 
     return b
-
-
-def get_file_size(path):
-    """
-    Returns the size of the file at the given path in bytes.
-
-    Args:
-        path: the filepath
-
-    Returns:
-        the file size in bytes
-    """
-    return os.path.getsize(path)
