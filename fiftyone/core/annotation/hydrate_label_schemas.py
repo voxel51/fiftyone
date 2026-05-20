@@ -143,6 +143,10 @@ def dehydrate_applied_ontology(label_schema: dict) -> dict:
     ontology_owned_names = {a.name for a in ontology.attributes}
 
     cleaned = copy.deepcopy(label_schema)
+    # ``applied_taxonomy`` is surfaced at hydrate time from the bundled
+    # ontology's ``taxonomy`` field; the canonical store lives on the
+    # ontology, not the label schema. Drop it so a round-tripped schema
+    # doesn't persist a stale copy.
     cleaned.pop(foac.APPLIED_TAXONOMY, None)
     kept = []
     for attr in cleaned.get(foac.ATTRIBUTES, []):

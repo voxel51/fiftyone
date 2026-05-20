@@ -244,5 +244,3 @@ def _make_applied_ontology_test_dataset(ontology_name: str = "my_ontology"):
     dataset._doc.save()
 
     return dataset
-
-
