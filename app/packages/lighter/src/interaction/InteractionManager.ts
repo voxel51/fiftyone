@@ -1206,9 +1206,13 @@ export class InteractionManager {
       this.pendingHoverRaf = null;
       const latestPoint = this.latestHoverPoint;
       const latestEvent = this.latestHoverEvent;
-      // Clear the handler ref to allow it to be GCd before the next frame
-      const latestHandler = this.latestHoverHandler;
+      // A handler removed via removeHandler/clearHandlers between
+      // scheduling and now is stale.
+      // Drop the ref so it can be GC'd before the next frame.
+      const cached = this.latestHoverHandler;
       this.latestHoverHandler = undefined;
+      const latestHandler =
+        cached && this.handlers.includes(cached) ? cached : undefined;
 
       if (latestPoint && latestEvent) {
         this.handleHover(latestPoint, latestEvent, latestHandler);
@@ -1244,6 +1248,20 @@ export class InteractionManager {
     const handler = resolvedHandler;
     const interactingHandler = this.findInteractingHandler();
 
+    // If we are dragging, we should unhover the previous one
+    if (interactingHandler) {
+      if (this.hoveredHandler) {
+        this.hoveredHandler.onHoverLeave?.(point, event);
+        this.eventBus.dispatch("lighter:overlay-unhover", {
+          id: this.hoveredHandler.id,
+          point,
+        });
+        this.hoveredHandler = undefined;
+      }
+
+      return;
+    }
+
     if (!handler || handler.id === this.canonicalMediaId) {
       // Skip the "default" cursor write when a creation mode is active —
       // handlePointerMove's synchronous fallback writes the mode cursor
@@ -1271,19 +1289,6 @@ export class InteractionManager {
 
       this.hoveredHandler = undefined;
 
-      return;
-    }
-
-    // If we are dragging, we should unhover the previous one
-    if (interactingHandler) {
-      if (this.hoveredHandler) {
-        this.hoveredHandler.onHoverLeave?.(point, event);
-        this.eventBus.dispatch("lighter:overlay-unhover", {
-          id: this.hoveredHandler.id,
-          point,
-        });
-        this.hoveredHandler = undefined;
-      }
       return;
     }
 
