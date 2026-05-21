@@ -5,7 +5,7 @@ module.exports = {
   },
   overrides: [
     {
-      files: ["src/worker/**/*.ts"],
+      files: ["src/worker/**/*.ts", "src/mcap/worker/**/*.ts"],
       env: {
         browser: false,
         es6: true,
