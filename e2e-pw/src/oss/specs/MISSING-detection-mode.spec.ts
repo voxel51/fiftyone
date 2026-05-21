@@ -18,7 +18,7 @@ const test = base.extend<{
       `detection-mode-${testInfo.title.replace(/\s+/g, "-")}`
     );
 
-    await datasetFactory.createBlankDataset({
+    await datasetFactory.createDataset({
       datasetName: name,
       schema: {
         detections: "Detections",

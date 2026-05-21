@@ -7,7 +7,7 @@ import { HorizontalAlign, Jimp, loadFont, VerticalAlign } from "jimp";
 const fonts = require("jimp/fonts");
 
 /**
- * Generates a blank PNG image at the specified path, with optional fill color
+ * Generates a PNG image at the specified path, with optional fill color
  * and centered watermark text.
  *
  * @param options - Configuration for image generation.
@@ -27,7 +27,7 @@ const fonts = require("jimp/fonts");
  *
  * @example
  * // Minimal usage
- * await createBlankImage({
+ * await createImage({
  *   outputPath: "/tmp/images/sample.png",
  *   width: 128,
  *   height: 128,
@@ -35,7 +35,7 @@ const fonts = require("jimp/fonts");
  *
  * @example
  * // With all options
- * await createBlankImage({
+ * await createImage({
  *   outputPath: "/tmp/images/42.png",
  *   width: 256,
  *   height: 256,
@@ -44,7 +44,7 @@ const fonts = require("jimp/fonts");
  *   hideLogs: true,
  * });
  */
-export const createBlankImage = async (options: {
+export const createImage = async (options: {
   /** The absolute or relative file path where the image will be saved. */
   outputPath: string;
   /** The width of the image in pixels. */
@@ -71,9 +71,7 @@ export const createBlankImage = async (options: {
   const startTime = performance.now();
 
   if (!hideLogs) {
-    console.log(
-      `Creating blank image with options: ${JSON.stringify(options)}`
-    );
+    console.log(`Creating image with options: ${JSON.stringify(options)}`);
   }
 
   const image = new Jimp({ width, height, color: fillColor ?? "#00ddff" });
