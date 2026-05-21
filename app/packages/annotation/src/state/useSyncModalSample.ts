@@ -1,6 +1,6 @@
 import { useModalSample, useModalSampleSchema } from "@fiftyone/state";
 import { useEffect } from "react";
-import { useSample } from "./useSample";
+import { useSampleInstance } from "./useSample";
 
 /**
  * Hydrate the shared {@link Sample} from the Recoil-backed modal sample.
@@ -14,7 +14,7 @@ import { useSample } from "./useSample";
  * Mount once at the annotation root.
  */
 export const useSyncModalSample = (): void => {
-  const sample = useSample();
+  const sample = useSampleInstance();
   const modalSample = useModalSample();
   const schema = useModalSampleSchema();
 

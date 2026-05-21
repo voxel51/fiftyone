@@ -246,6 +246,37 @@ describe("Sample", () => {
     });
   });
 
+  describe("deleteField", () => {
+    it("marks a non-label field for removal", () => {
+      const s = new Sample({
+        schema: detectionsSchema,
+        data: { uuid: "abc" },
+      });
+      s.deleteField("uuid");
+      expect(s.getResolved("uuid")).toBeUndefined();
+      expect(s.getJsonPatch()).toEqual([{ op: "remove", path: "/uuid" }]);
+    });
+
+    it("is undone by a subsequent setField", () => {
+      const s = new Sample({
+        schema: detectionsSchema,
+        data: { uuid: "abc" },
+      });
+      s.deleteField("uuid");
+      s.setField("uuid", "xyz");
+      expect(s.getResolved("uuid")).toBe("xyz");
+      expect(s.getJsonPatch()).toEqual([
+        { op: "replace", path: "/uuid", value: "xyz" },
+      ]);
+    });
+
+    it("emits no delta when the source already lacks the field", () => {
+      const s = new Sample({ schema: detectionsSchema });
+      s.deleteField("uuid");
+      expect(s.getJsonPatch()).toEqual([]);
+    });
+  });
+
   describe("deleteLabel", () => {
     it("removes a single label", () => {
       const s = new Sample({

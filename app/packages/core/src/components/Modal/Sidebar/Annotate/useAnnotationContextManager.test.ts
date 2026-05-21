@@ -32,7 +32,7 @@ let mockMgmtOps: {
 } | null = null;
 
 vi.mock("@fiftyone/annotation", () => ({
-  useSampleMutationManager: () => ({ reset: vi.fn() }),
+  useSampleInstance: () => ({ clear: vi.fn() }),
 }));
 
 vi.mock("@fiftyone/state", () => ({

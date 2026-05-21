@@ -283,10 +283,22 @@ export class Sample {
   }
 
   /**
+   * Mark a non-label field for deletion. The next {@link getJsonPatch} will
+   * emit a `remove` op for it if the source has a value at this path.
+   */
+  deleteField(path: string): void {
+    delete this.transientData[path];
+    this.transientDeletes.add(path);
+    this.notify();
+  }
+
+  /**
    * Delete a label at the given path.
    *
-   * - For single labels, removes the field entirely.
-   * - For list labels, `id` is required and the matching element is removed.
+   * - For single labels, removes the field entirely (delegates to
+   *   {@link deleteField}).
+   * - For list labels, `id` is required and the matching element is removed
+   *   from the parent list.
    */
   deleteLabel(path: string, id?: string): void {
     const type = this.getLabelType(path);
@@ -310,12 +322,13 @@ export class Sample {
         ...existing,
         [child]: prior.filter((l) => l._id !== id),
       };
-    } else {
-      delete this.transientData[path];
-      this.transientDeletes.add(path);
+
+      this.notify();
+
+      return;
     }
 
-    this.notify();
+    this.deleteField(path);
   }
 
   // ---- batch ops ----

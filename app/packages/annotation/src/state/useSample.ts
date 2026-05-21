@@ -15,6 +15,14 @@ import { useSyncExternalStore } from "react";
 const sampleAtom = atom(new Sample());
 
 /**
+ * Get the shared {@link Sample} without subscribing to its mutations. The
+ * returned instance is stable — use this from callbacks and event handlers
+ * that only need to read on demand. Prefer {@link useSample} when the
+ * component should re-render on every change.
+ */
+export const useSampleInstance = (): Sample => useAtomValue(sampleAtom);
+
+/**
  * Subscribe to the shared {@link Sample}. The component re-renders whenever
  * the sample mutates (source data, schema, transient edits).
  */

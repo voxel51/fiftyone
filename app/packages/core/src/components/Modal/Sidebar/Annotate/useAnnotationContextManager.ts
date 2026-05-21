@@ -1,4 +1,4 @@
-import { useSampleMutationManager } from "@fiftyone/annotation";
+import { useSampleInstance } from "@fiftyone/annotation";
 import {
   type ContextManager,
   DefaultContextManager,
@@ -111,7 +111,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
   const canManageSchema = useCanManageSchema();
   const schemaResolver = useSchemaResolver();
   const { isPrimitive, setActivePrimitive } = usePrimitiveController();
-  const { reset: clearStaleMutations } = useSampleMutationManager();
+  const sample = useSampleInstance();
   // Held in a ref so exit() invokes the most recent deactivator chain
   // even when the captured `exit` closure was snapshotted at mount.
   const deactivateAllModesRef = useUnboundStateRef(useDeactivateAllModes());
@@ -229,11 +229,11 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
   const exit = useCallback(() => {
     if (contextManager.isActive()) {
       saveChanges();
-      clearStaleMutations();
+      sample.clear();
       deactivateAllModesRef.current();
       contextManager.exit();
     }
-  }, [clearStaleMutations, contextManager, deactivateAllModesRef, saveChanges]);
+  }, [contextManager, deactivateAllModesRef, sample, saveChanges]);
 
   return useMemo(
     () => ({

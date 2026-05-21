@@ -6,5 +6,3 @@ export * from "./useLighterDeltaSupplier";
 export * from "./usePersistAnnotationDeltas";
 export * from "./usePersistenceEventHandler";
 export * from "./usePersistenceRetryController";
-export * from "./useSampleMutationManager";
-export * from "./useSidebarDeltaSupplier";
