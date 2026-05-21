@@ -24,8 +24,6 @@
   pointer-events: none;
 }
 
-/* Strip react-mosaic's default chrome — we provide our own via TileHeader
-   in renderToolbar and our tile bodies as the window children. */
 .root :global(.mosaic) {
   background: transparent;
 }
@@ -37,9 +35,6 @@
   background: var(--color-content-bg-card-2);
 }
 
-/* react-mosaic auto-wires the toolbar as the drag source; we render a
-   TileHeader inside via renderToolbar. Strip default padding/border so
-   the TileHeader is the only thing styling that row. */
 .root :global(.mosaic .mosaic-window-toolbar) {
   padding: 0;
   background: transparent;
@@ -57,6 +52,7 @@
    so the icon is empty and the bare title + h4 show through under the
    real tile body as a "ghost" layer. We don't use the drag preview —
    hide it. */
+/* Blueprint-styled drag preview leaks through as a ghost — hide it. */
 .root :global(.mosaic .mosaic-preview) {
   display: none;
 }
@@ -69,10 +65,6 @@
   margin: 2px;
 }
 
-/* Split hit area: still draggable, but its width matches the tile
-   margins on each side so it sits in the gap without overlapping the
-   tile body. Vertical splits use width + horizontal margin; horizontal
-   splits use the column variant. */
 .root :global(.mosaic .mosaic-split) {
   background: transparent;
 }
@@ -91,21 +83,15 @@
   background: var(--color-brand-primary);
 }
 
-/* TileHeader fills the full toolbar width so the whole row is draggable. */
 .toolbarHeader {
   width: 100%;
 }
 
-/* Wraps tile.render() output so we can attach pointer-down for focus
-   without each tile having to opt in. */
 .bodyWrapper {
   width: 100%;
   height: 100%;
 }
 
-/* Focused window — inset accent outline so the user sees which tile new
-   spawns will split. Outline (rather than border) avoids fighting the
-   base .mosaic-window border specificity. */
 .focused {
   outline: 2px solid var(--color-brand-primary);
   outline-offset: -2px;
