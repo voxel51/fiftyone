@@ -59,14 +59,12 @@ class Static(StaticFiles):
         scope: Scope,
         status_code: int = 200,
     ) -> Response:
-        method = scope["method"]
         request_headers = Headers(scope=scope)
 
         response = FileResponse(
             full_path,
             status_code=status_code,
             stat_result=stat_result,
-            method=method,
         )
         if response.path.endswith("index.html"):
             response.headers["cache-control"] = "no-store"
