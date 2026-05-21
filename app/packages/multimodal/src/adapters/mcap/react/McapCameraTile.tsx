@@ -29,7 +29,7 @@ const McapCameraTile: React.FC = () => {
   if (!frame) {
     return (
       <div style={styles.center}>
-        <Spinner size={Size.Md} />
+        <Spinner size={Size.Lg} />
       </div>
     );
   }

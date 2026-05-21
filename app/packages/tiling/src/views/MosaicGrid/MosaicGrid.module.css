@@ -52,6 +52,15 @@
   background: transparent;
 }
 
+/* react-mosaic ships a `.mosaic-preview` drag thumbnail styled with
+   Blueprint icon classes (`bp3-icon-*`). Blueprint isn't loaded here,
+   so the icon is empty and the bare title + h4 show through under the
+   real tile body as a "ghost" layer. We don't use the drag preview —
+   hide it. */
+.root :global(.mosaic .mosaic-preview) {
+  display: none;
+}
+
 /* Pull the per-tile margin in (react-mosaic defaults to 3px on each
    side → 6px gap + 2px window borders ≈ 8px between tile contents).
    2px gives 4px gap + 2px borders ≈ 6px — visibly slim without making
