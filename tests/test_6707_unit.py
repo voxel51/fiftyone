@@ -29,12 +29,15 @@ class FakeDet:
 
 def _make_cats(gt_specs, pred_specs):
     id_key, iou_key = "eval_id", "eval_iou"
-    gts   = [FakeDet(l, i, b) for l, i, b in gt_specs]
-    preds = [FakeDet(l, i, b, c) for l, i, b, c in pred_specs]
+    gts   = [FakeDet(label, det_id, box) for label, det_id, box in gt_specs]
+    preds = [FakeDet(label, det_id, box, conf) for label, det_id, box, conf in pred_specs]
     for obj in gts + preds:
         obj[id_key] = _NO_MATCH_ID
         obj[iou_key] = _NO_MATCH_IOU
-    iscrowd = lambda l: l._iscrowd
+
+    def iscrowd(obj):
+        return obj._iscrowd
+
     cats = defaultdict(lambda: defaultdict(list))
     for gt in gts:
         cats[gt.label]["gts"].append(gt)
