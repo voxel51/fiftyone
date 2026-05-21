@@ -4,7 +4,6 @@
  */
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import type { ChangeEvent, CSSProperties, ReactNode } from "react";
-import type { DecodedVisualization } from "../../../decoders";
 import { PlaybackSyncMode, type StreamInventory } from "../../../schemas/v1";
 import { ImagePanel } from "../../../visualization/panels/image";
 import { PointCloudPanel } from "../../../visualization/panels/point-cloud";
@@ -13,8 +12,13 @@ import {
   MCAP_ACTIVE_TIMELINE,
   type McapActiveTimeline,
   type McapDecodedMessage,
+  type McapStaticTransformGraph,
   type McapStreamSyncPolicies,
 } from "../types";
+import {
+  resolveMcapStaticFrameTransform,
+  selectMcapFixedFrame,
+} from "../frame-graph";
 import { DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ } from "../timeline";
 import {
   type McapLoadStatus,
@@ -26,6 +30,7 @@ import {
 import { useMcapTopics, type McapTopicsStatus } from "./use-mcap-topics";
 import { useMcapResourceClient } from "./use-mcap-resource-client";
 import { useStableMcapSource } from "./use-stable-mcap-source";
+import { useMcapStaticTransforms } from "./use-mcap-static-transforms";
 
 const ACTIVE_TIMELINE_OPTIONS = [MCAP_ACTIVE_TIMELINE.LOG] as const;
 const MCAP_DEMO_PLAYBACK_TOPICS = [
@@ -51,11 +56,14 @@ const STREAM_SYNC_POLICIES: McapStreamSyncPolicies = {
 type McapDemoPlaybackTopic = typeof MCAP_DEMO_PLAYBACK_TOPICS[number];
 
 type StreamSpec = {
+  readonly coordinateFrameId?: string;
   readonly label: string;
   readonly topic: McapDemoPlaybackTopic;
 };
 type StreamGridProps = {
   readonly messagesByTopic: McapPlaybackMessagesByTopic;
+  readonly staticTransformGraph: McapStaticTransformGraph;
+  readonly staticTransformsReady: boolean;
 };
 type TimelineControlsProps = {
   readonly activeTimeline: McapActiveTimeline;
@@ -102,6 +110,7 @@ export function ModalRenderer({
   const mcap = useMcapResourceClient({ worker: true });
   const source = useStableMcapSource(ctx);
   const topicState = useMcapTopics({ client: mcap, source });
+  const staticTransforms = useMcapStaticTransforms({ client: mcap, source });
   // Playback data path: this POC reads MCAP bytes directly through the adapter's
   // worker-backed resource client. It does not currently depend on server-side
   // inventory or playback-plan query artifacts.
@@ -132,7 +141,14 @@ export function ModalRenderer({
   return (
     <div style={styles.shell}>
       {playback.error ? <ErrorNotice>{playback.error}</ErrorNotice> : null}
-      <StreamGrid messagesByTopic={playback.displayMessagesByTopic} />
+      {staticTransforms.error ? (
+        <ErrorNotice>{staticTransforms.error}</ErrorNotice>
+      ) : null}
+      <StreamGrid
+        messagesByTopic={playback.displayMessagesByTopic}
+        staticTransformGraph={staticTransforms.graph}
+        staticTransformsReady={staticTransforms.status === "ready"}
+      />
       <TimelineControls
         activeTimeline={playback.activeTimeline}
         bufferStatus={playback.bufferStatus}
@@ -158,13 +174,19 @@ export function ModalRenderer({
 
 // UI-only pieces below receive already-orchestrated playback state. Keeping
 // them dumb makes the data flow above easier to audit when playback evolves.
-function StreamGrid({ messagesByTopic }: StreamGridProps) {
+function StreamGrid({
+  messagesByTopic,
+  staticTransformGraph,
+  staticTransformsReady,
+}: StreamGridProps) {
   return (
     <div style={styles.streamGrid}>
       {STREAMS.map((stream) => (
         <StreamPanel
           key={stream.topic}
           message={messagesByTopic[stream.topic]}
+          staticTransformGraph={staticTransformGraph}
+          staticTransformsReady={staticTransformsReady}
           stream={stream}
         />
       ))}
@@ -389,9 +411,13 @@ function timelineFramePercent(frameIndex: number, totalFrameCount: number) {
 
 function StreamPanel({
   message,
+  staticTransformGraph,
+  staticTransformsReady,
   stream,
 }: {
   readonly message: McapDecodedMessage | undefined;
+  readonly staticTransformGraph: McapStaticTransformGraph;
+  readonly staticTransformsReady: boolean;
   readonly stream: StreamSpec;
 }) {
   return (
@@ -408,7 +434,10 @@ function StreamPanel({
       <div style={styles.viewport}>
         {message ? (
           <VisualizationFrame
-            visualization={message.decoded.output.visualization}
+            explicitFrameId={stream.coordinateFrameId}
+            message={message}
+            staticTransformGraph={staticTransformGraph}
+            staticTransformsReady={staticTransformsReady}
           />
         ) : (
           <div style={styles.empty}>No synchronized message in tolerance</div>
@@ -419,10 +448,18 @@ function StreamPanel({
 }
 
 function VisualizationFrame({
-  visualization,
+  explicitFrameId,
+  message,
+  staticTransformGraph,
+  staticTransformsReady,
 }: {
-  readonly visualization: DecodedVisualization | undefined;
+  readonly explicitFrameId: string | undefined;
+  readonly message: McapDecodedMessage;
+  readonly staticTransformGraph: McapStaticTransformGraph;
+  readonly staticTransformsReady: boolean;
 }) {
+  const visualization = message.decoded.output.visualization;
+
   if (!visualization) {
     return <div style={styles.empty}>No visualization for decoded message</div>;
   }
@@ -434,15 +471,74 @@ function VisualizationFrame({
   }
 
   if (visualization.kind === VISUALIZATION_KIND.POINT_CLOUD) {
+    const frameTransformState = pointCloudFrameTransform({
+      explicitFrameId,
+      sourceFrameId: visualization.coordinateFrameId,
+      staticTransformGraph,
+      staticTransformsReady,
+    });
+
     return (
       <PointCloudPanel
+        frameTransform={frameTransformState.transform}
         frame={visualization}
         style={styles.visualizationPanel}
+        warning={frameTransformState.warning}
       />
     );
   }
 
   return <div style={styles.empty}>Unsupported visualization</div>;
+}
+
+function pointCloudFrameTransform({
+  explicitFrameId,
+  sourceFrameId,
+  staticTransformGraph,
+  staticTransformsReady,
+}: {
+  readonly explicitFrameId: string | undefined;
+  readonly sourceFrameId: string | undefined;
+  readonly staticTransformGraph: McapStaticTransformGraph;
+  readonly staticTransformsReady: boolean;
+}) {
+  if (!sourceFrameId) {
+    return {
+      transform: undefined,
+      warning: null,
+    };
+  }
+
+  const targetFrameId = selectMcapFixedFrame({
+    explicitFrameId,
+    graph: staticTransformGraph,
+    sourceFrameIds: [sourceFrameId],
+  });
+  if (!targetFrameId) {
+    return {
+      transform: undefined,
+      warning: null,
+    };
+  }
+
+  const transform = resolveMcapStaticFrameTransform({
+    graph: staticTransformGraph,
+    sourceFrameId,
+    targetFrameId,
+  });
+  if (transform) {
+    return {
+      transform,
+      warning: null,
+    };
+  }
+
+  return {
+    transform: undefined,
+    warning: staticTransformsReady
+      ? `No static transform path from ${sourceFrameId} to ${targetFrameId}`
+      : null,
+  };
 }
 
 function ErrorNotice({ children }: { readonly children: ReactNode }) {

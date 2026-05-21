@@ -15,6 +15,15 @@ export { createMcapResourceClient } from "./resource-client";
 export { DEFAULT_MCAP_SYNC_TOLERANCE_NS } from "./sync";
 
 /**
+ * Static frame graph helpers used by 3D MCAP renderers.
+ */
+export {
+  createMcapStaticTransformGraph,
+  resolveMcapStaticFrameTransform,
+  selectMcapFixedFrame,
+} from "./frame-graph";
+
+/**
  * MCAP timeline constants used by playback clocks.
  */
 export { MCAP_ACTIVE_TIMELINE } from "./types";
@@ -33,18 +42,24 @@ export type { McapIndexedReaderLike, McapReaderFactory } from "./reader";
  * Public MCAP resource, playback, and sync policy contracts.
  */
 export type {
+  McapComposedFrameTransform,
   McapDecodedMessage,
   McapReadDecodedMessagesRequest,
+  McapReadStaticTransformsRequest,
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
   McapReadTopicsRequest,
   McapReadTimelineRangeRequest,
   McapResolvedStreamSyncPolicy,
   McapResourceClient,
+  McapQuaternion,
+  McapStaticTransform,
+  McapStaticTransformGraph,
   McapStreamSyncPolicies,
   McapStreamSyncPolicy,
   McapSynchronizedMessageWindow,
   McapTimelineRange,
+  McapVector3,
   McapActiveTimeline,
 } from "./types";
 

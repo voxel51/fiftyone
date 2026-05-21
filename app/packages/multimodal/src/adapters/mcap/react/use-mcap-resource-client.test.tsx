@@ -12,6 +12,7 @@ const resourceHarness = vi.hoisted(() => {
     }),
     readSynchronizedMessageBatch: vi.fn(),
     readSynchronizedMessages: vi.fn(),
+    readStaticTransforms: vi.fn(),
     readTopics: vi.fn(),
     readTimelineRange: vi.fn(),
   };

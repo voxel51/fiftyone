@@ -15,11 +15,13 @@ import { mcapError, mcapErrorMessage } from "../errors";
 import type {
   McapDecodedMessage,
   McapReadDecodedMessagesRequest,
+  McapReadStaticTransformsRequest,
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
   McapReadTopicsRequest,
   McapReadTimelineRangeRequest,
   McapResourceClient,
+  McapStaticTransformGraph,
   McapSynchronizedMessageWindow,
   McapTimelineRange,
 } from "../types";
@@ -83,6 +85,12 @@ class WorkerMcapResourceClient implements McapResourceClient {
     request: McapReadTopicsRequest
   ): Promise<readonly StreamInventory[]> {
     return this.request("readTopics", request);
+  }
+
+  readStaticTransforms(
+    request: McapReadStaticTransformsRequest
+  ): Promise<McapStaticTransformGraph> {
+    return this.request("readStaticTransforms", request);
   }
 
   readSynchronizedMessages(

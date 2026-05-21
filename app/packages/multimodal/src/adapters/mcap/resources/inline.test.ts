@@ -8,6 +8,19 @@ import { VISUALIZATION_KIND } from "../../../visualization";
 import { createInlineMcapResourceClient } from "./inline";
 import { MCAP_ACTIVE_TIMELINE } from "../types";
 
+const FRAME_TRANSFORM_SCHEMA_DATA = bytes(
+  "CmcKH2dvb2dsZS9wcm90b2J1Zi90aW1lc3RhbXAucHJvdG8SD2dvb2dsZS5wcm90b2J1ZiIrCglUaW1lc3RhbXASDwoHc2Vjb25kcxgBIAEoAxINCgVuYW5vcxgCIAEoBWIGcHJvdG8zClYKFmZveGdsb3ZlL1ZlY3RvcjMucHJvdG8SCGZveGdsb3ZlIioKB1ZlY3RvcjMSCQoBeBgBIAEoARIJCgF5GAIgASgBEgkKAXoYAyABKAFiBnByb3RvMwpnChlmb3hnbG92ZS9RdWF0ZXJuaW9uLnByb3RvEghmb3hnbG92ZSI4CgpRdWF0ZXJuaW9uEgkKAXgYASABKAESCQoBeRgCIAEoARIJCgF6GAMgASgBEgkKAXcYBCABKAFiBnByb3RvMwrIAgodZm94Z2xvdmUvRnJhbWVUcmFuc2Zvcm0ucHJvdG8SCGZveGdsb3ZlGh9nb29nbGUvcHJvdG9idWYuVGltZXN0YW1wLnByb3RvGhZmb3hnbG92ZS9WZWN0b3IzLnByb3RvGhlmb3hnbG92ZS9RdWF0ZXJuaW9uLnByb3RvIsABCg5GcmFtZVRyYW5zZm9ybRItCgl0aW1lc3RhbXAYASABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhcKD3BhcmVudF9mcmFtZV9pZBgCIAEoCRIWCg5jaGlsZF9mcmFtZV9pZBgDIAEoCRImCgt0cmFuc2xhdGlvbhgEIAEoCzIRLmZveGdsb3ZlLlZlY3RvcjMSJgoIcm90YXRpb24YBSABKAsyFC5mb3hnbG92ZS5RdWF0ZXJuaW9uYgZwcm90bzM="
+);
+const FRAME_TRANSFORMS_SCHEMA_DATA = bytes(
+  "CmcKH2dvb2dsZS9wcm90b2J1Zi90aW1lc3RhbXAucHJvdG8SD2dvb2dsZS5wcm90b2J1ZiIrCglUaW1lc3RhbXASDwoHc2Vjb25kcxgBIAEoAxINCgVuYW5vcxgCIAEoBWIGcHJvdG8zClYKFmZveGdsb3ZlL1ZlY3RvcjMucHJvdG8SCGZveGdsb3ZlIioKB1ZlY3RvcjMSCQoBeBgBIAEoARIJCgF5GAIgASgBEgkKAXoYAyABKAFiBnByb3RvMwpnChlmb3hnbG92ZS9RdWF0ZXJuaW9uLnByb3RvEghmb3hnbG92ZSI4CgpRdWF0ZXJuaW9uEgkKAXgYASABKAESCQoBeRgCIAEoARIJCgF6GAMgASgBEgkKAXcYBCABKAFiBnByb3RvMwrIAgodZm94Z2xvdmUvRnJhbWVUcmFuc2Zvcm0ucHJvdG8SCGZveGdsb3ZlGh9nb29nbGUvcHJvdG9idWYuVGltZXN0YW1wLnByb3RvGhZmb3hnbG92ZS9WZWN0b3IzLnByb3RvGhlmb3hnbG92ZS9RdWF0ZXJuaW9uLnByb3RvIsABCg5GcmFtZVRyYW5zZm9ybRItCgl0aW1lc3RhbXAYASABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhcKD3BhcmVudF9mcmFtZV9pZBgCIAEoCRIWCg5jaGlsZF9mcmFtZV9pZBgDIAEoCRImCgt0cmFuc2xhdGlvbhgEIAEoCzIRLmZveGdsb3ZlLlZlY3RvcjMSJgoIcm90YXRpb24YBSABKAsyFC5mb3hnbG92ZS5RdWF0ZXJuaW9uYgZwcm90bzMKkgEKHmZveGdsb3ZlL0ZyYW1lVHJhbnNmb3Jtcy5wcm90bxIIZm94Z2xvdmUaHWZveGdsb3ZlL0ZyYW1lVHJhbnNmb3JtLnByb3RvIj8KD0ZyYW1lVHJhbnNmb3JtcxIsCgp0cmFuc2Zvcm1zGAEgAygLMhguZm94Z2xvdmUuRnJhbWVUcmFuc2Zvcm1iBnByb3RvMw=="
+);
+const FRAME_TRANSFORM_MESSAGE = bytes(
+  "CgQIBxAUEgNtYXAaBWxpZGFyIhsJAAAAAAAA8D8RAAAAAAAAAEAZAAAAAAAACEAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPw=="
+);
+const FRAME_TRANSFORMS_MESSAGE = bytes(
+  "ClkKBAgBEBQSA21hcBoJYmFzZV9saW5rIhsJAAAAAAAA8D8RAAAAAAAAAAAZAAAAAAAAAAAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPwpbCgQIAhAUEgliYXNlX2xpbmsaBWxpZGFyIhsJAAAAAAAAAAARAAAAAAAAAEAZAAAAAAAAAAAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPw=="
+);
+
 describe("MCAP resources", () => {
   it("reads topic inventory from summary channels without scanning messages", async () => {
     const source = createMcapSourceDescriptor();
@@ -165,6 +178,172 @@ describe("MCAP resources", () => {
     expect(topics[0]?.payload?.schemaEncoding).toBeUndefined();
     expect(topics[1]?.payload?.schema).toBeUndefined();
     expect(topics[1]?.payload?.schemaEncoding).toBeUndefined();
+  });
+
+  it("returns an empty static transform graph when /tf_static is absent", async () => {
+    const readMessages = vi.fn(async function* () {
+      for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
+        yield message;
+      }
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          readMessages,
+        })
+      ),
+    });
+
+    const graph = await client.readStaticTransforms({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(graph).toEqual({
+      diagnostics: [],
+      frameIds: [],
+      transforms: [],
+    });
+    expect(readMessages).toHaveBeenCalledWith({ topics: ["/tf_static"] });
+  });
+
+  it("normalizes foxglove.FrameTransform messages from /tf_static", async () => {
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/tf_static",
+              }),
+            ],
+          ]),
+          messages: [
+            createMessage(FRAME_TRANSFORM_MESSAGE, { channelId: 10 }),
+          ],
+          schemasById: new Map([
+            [
+              10,
+              createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+                id: 10,
+                name: "foxglove.FrameTransform",
+              }),
+            ],
+          ]),
+        })
+      ),
+    });
+
+    const graph = await client.readStaticTransforms({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(graph.frameIds).toEqual(["lidar", "map"]);
+    expect(graph.diagnostics).toEqual([]);
+    expect(graph.transforms).toEqual([
+      {
+        childFrameId: "lidar",
+        parentFrameId: "map",
+        rotation: { w: 1, x: 0, y: 0, z: 0 },
+        sourceChannelId: 10,
+        sourceTopic: "/tf_static",
+        timestampNs: 7_000_000_020n,
+        translation: { x: 1, y: 2, z: 3 },
+      },
+    ]);
+  });
+
+  it("flattens foxglove.FrameTransforms messages and caches static reads", async () => {
+    const source = createMcapSourceDescriptor();
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(FRAME_TRANSFORMS_MESSAGE, { channelId: 10 });
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/tf_static",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(FRAME_TRANSFORMS_SCHEMA_DATA, {
+                id: 10,
+                name: "foxglove.FrameTransforms",
+              }),
+            ],
+          ]),
+        })
+      ),
+    });
+
+    const first = await client.readStaticTransforms({ source });
+    const second = await client.readStaticTransforms({ source });
+
+    expect(second).toBe(first);
+    expect(readMessages).toHaveBeenCalledTimes(1);
+    expect(first.transforms.map((transform) => transform.childFrameId)).toEqual(
+      ["base_link", "lidar"]
+    );
+    expect(first.transforms.map((transform) => transform.parentFrameId)).toEqual(
+      ["map", "base_link"]
+    );
+  });
+
+  it("skips unsupported /tf_static schemas with diagnostics", async () => {
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/tf_static",
+              }),
+            ],
+          ]),
+          messages: [createMessage(new Uint8Array([1]), { channelId: 10 })],
+          schemasById: new Map([
+            [
+              10,
+              createSchema(new Uint8Array([9]), {
+                id: 10,
+                name: "example.Transform",
+              }),
+            ],
+          ]),
+        })
+      ),
+    });
+
+    const graph = await client.readStaticTransforms({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(graph.transforms).toEqual([]);
+    expect(graph.diagnostics).toEqual([
+      "Skipped unsupported /tf_static channel 10: protobuf/protobuf/example.Transform",
+    ]);
   });
 
   it("decodes log-timeline messages through the generic decode client", async () => {
@@ -790,4 +969,8 @@ function createMessage(
     sequence: options.sequence ?? 2,
     type: "Message",
   };
+}
+
+function bytes(base64: string): Uint8Array {
+  return Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
 }

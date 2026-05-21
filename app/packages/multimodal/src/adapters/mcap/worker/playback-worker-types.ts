@@ -1,10 +1,12 @@
 import type {
   McapDecodedMessage,
   McapReadDecodedMessagesRequest,
+  McapReadStaticTransformsRequest,
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
   McapReadTopicsRequest,
   McapReadTimelineRangeRequest,
+  McapStaticTransformGraph,
   McapSynchronizedMessageWindow,
   McapTimelineRange,
 } from "../types";
@@ -39,6 +41,7 @@ export type McapPlaybackWorkerFetchParameters = {
  */
 export type McapPlaybackWorkerRequestPayloadByType = {
   readonly readDecodedMessages: McapReadDecodedMessagesRequest;
+  readonly readStaticTransforms: McapReadStaticTransformsRequest;
   readonly readSynchronizedMessageBatch: McapReadSynchronizedMessageBatchRequest;
   readonly readSynchronizedMessages: McapReadSynchronizedMessagesRequest;
   readonly readTimelineRange: McapReadTimelineRangeRequest;
@@ -49,6 +52,7 @@ export type McapPlaybackWorkerRequestPayloadByType = {
  * Unary result payloads returned by worker RPC calls.
  */
 export type McapPlaybackWorkerResultByType = {
+  readonly readStaticTransforms: McapStaticTransformGraph;
   readonly readSynchronizedMessageBatch: readonly McapSynchronizedMessageWindow[];
   readonly readSynchronizedMessages: McapSynchronizedMessageWindow;
   readonly readTimelineRange: McapTimelineRange;

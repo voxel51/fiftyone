@@ -134,6 +134,67 @@ export interface McapReadTopicsRequest {
 }
 
 /**
+ * Request for static frame transforms discovered from `/tf_static`.
+ */
+export interface McapReadStaticTransformsRequest {
+  /**
+   * MCAP source to inspect for static transform messages.
+   */
+  readonly source: ByteSourceDescriptor;
+}
+
+/**
+ * Three-dimensional vector in source coordinate units.
+ */
+export interface McapVector3 {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+}
+
+/**
+ * Quaternion rotation.
+ */
+export interface McapQuaternion {
+  readonly w: number;
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+}
+
+/**
+ * Normalized static transform from a child frame into its parent frame.
+ */
+export interface McapStaticTransform {
+  readonly childFrameId: string;
+  readonly parentFrameId: string;
+  readonly rotation: McapQuaternion;
+  readonly sourceChannelId: number;
+  readonly sourceTopic: string;
+  readonly timestampNs?: bigint;
+  readonly translation: McapVector3;
+}
+
+/**
+ * Static transform graph built from `/tf_static`.
+ */
+export interface McapStaticTransformGraph {
+  readonly diagnostics: readonly string[];
+  readonly frameIds: readonly string[];
+  readonly transforms: readonly McapStaticTransform[];
+}
+
+/**
+ * Composed transform mapping coordinates from sourceFrameId into targetFrameId.
+ */
+export interface McapComposedFrameTransform {
+  readonly rotation: McapQuaternion;
+  readonly sourceFrameId: string;
+  readonly targetFrameId: string;
+  readonly translation: McapVector3;
+}
+
+/**
  * Playable time range for one MCAP timeline.
  */
 export interface McapTimelineRange {
@@ -318,6 +379,13 @@ export interface McapResourceClient {
   readTopics(
     request: McapReadTopicsRequest
   ): Promise<readonly StreamInventory[]>;
+
+  /**
+   * Reads normalized static frame transforms from `/tf_static`.
+   */
+  readStaticTransforms(
+    request: McapReadStaticTransformsRequest
+  ): Promise<McapStaticTransformGraph>;
 
   /**
    * Reads one synchronized decoded message window around a playback time.

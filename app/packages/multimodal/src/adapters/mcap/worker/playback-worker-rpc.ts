@@ -45,6 +45,10 @@ export const MCAP_PLAYBACK_WORKER_OPERATIONS: McapPlaybackWorkerOperationMap = {
     kind: "stream",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
   },
+  readStaticTransforms: {
+    kind: "unary",
+    priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+  },
   readSynchronizedMessageBatch: {
     kind: "unary",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.PLAYBACK_BATCH,
@@ -89,6 +93,8 @@ export function runMcapPlaybackWorkerUnaryRequest(
   message: McapPlaybackWorkerRpcRequest<McapPlaybackWorkerUnaryType>
 ): Promise<McapPlaybackWorkerResultByType[McapPlaybackWorkerUnaryType]> {
   switch (message.type) {
+    case "readStaticTransforms":
+      return client.readStaticTransforms(message.payload);
     case "readSynchronizedMessageBatch":
       return client.readSynchronizedMessageBatch(message.payload);
     case "readSynchronizedMessages":

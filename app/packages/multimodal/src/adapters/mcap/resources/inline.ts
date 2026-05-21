@@ -1,4 +1,4 @@
-import { type ByteClient } from "../../../query/bytes";
+import { byteSourceAccessKey, type ByteClient } from "../../../query/bytes";
 import { type DecodeClient, createDecodeClient } from "../../../query/decode";
 import { createMultimodalQueryClient } from "../../../query";
 import { createMcapDecoderRegistry } from "../decoders";
@@ -11,15 +11,18 @@ import {
 import { mcapTimelineRangeFromReader } from "./read-timeline-range";
 import { readMcapSynchronizedMessageBatch } from "./read-synchronized-message-batch";
 import { resolveMcapTimelineStrategy } from "../timeline";
+import { readMcapStaticTransforms } from "./read-static-transforms";
 import { readMcapTopics } from "./read-topics";
 import {
   type McapDecodedMessage,
   type McapReadDecodedMessagesRequest,
+  type McapReadStaticTransformsRequest,
   type McapReadSynchronizedMessageBatchRequest,
   type McapReadSynchronizedMessagesRequest,
   type McapReadTopicsRequest,
   type McapReadTimelineRangeRequest,
   type McapResourceClient,
+  type McapStaticTransformGraph,
   type McapSynchronizedMessageWindow,
   type McapTimelineRange,
 } from "../types";
@@ -49,9 +52,14 @@ export function createInlineMcapResourceClient(
     });
   const readerFactory = options.readerFactory ?? createDefaultMcapReader;
   const readerStore = createMcapReaderStore({ byteClient, readerFactory });
+  const staticTransformReads = new Map<
+    string,
+    Promise<McapStaticTransformGraph>
+  >();
 
   const client: McapResourceClient = {
     dispose() {
+      staticTransformReads.clear();
       readerStore.dispose();
     },
 
@@ -79,6 +87,27 @@ export function createInlineMcapResourceClient(
     async readTopics(request: McapReadTopicsRequest) {
       const reader = await readerStore.get(request.source);
       return readMcapTopics(reader);
+    },
+
+    async readStaticTransforms(
+      request: McapReadStaticTransformsRequest
+    ): Promise<McapStaticTransformGraph> {
+      const sourceKey = byteSourceAccessKey(request.source);
+      const cached = staticTransformReads.get(sourceKey);
+      if (cached) {
+        return cached;
+      }
+
+      const read = readerStore
+        .get(request.source)
+        .then((reader) => readMcapStaticTransforms(reader))
+        .catch((error) => {
+          staticTransformReads.delete(sourceKey);
+          throw error;
+        });
+      staticTransformReads.set(sourceKey, read);
+
+      return read;
     },
 
     async readSynchronizedMessageBatch(

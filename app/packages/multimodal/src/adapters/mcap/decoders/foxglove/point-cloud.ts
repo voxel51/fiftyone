@@ -66,6 +66,7 @@ export const foxglovePointCloudDecoder: Decoder = {
       resourceHints: resourceHintsForArrayBufferViews(positions),
       timing: timingFromContext(context, messageTimestamp),
       visualization: {
+        ...(frameId ? { coordinateFrameId: frameId } : {}),
         fields: packedFieldMetadata,
         kind: VISUALIZATION_KIND.POINT_CLOUD,
         pointCount,

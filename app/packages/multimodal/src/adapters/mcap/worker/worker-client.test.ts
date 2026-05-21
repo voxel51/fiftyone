@@ -72,6 +72,32 @@ describe("worker-backed MCAP resource client", () => {
     await expect(topics).resolves.toEqual(result);
   });
 
+  it("sends static transform reads at idle-prefetch priority", async () => {
+    const { client, workers } = createClientHarness();
+    const request = {
+      source: createSource("source:1"),
+    };
+    const result = {
+      diagnostics: [],
+      frameIds: ["map"],
+      transforms: [],
+    };
+
+    const staticTransforms = client.readStaticTransforms(request);
+    const worker = workers[0];
+
+    expect(worker.messages[1]).toMatchObject({
+      id: 1,
+      payload: request,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+      type: "readStaticTransforms",
+    });
+
+    worker.respond({ id: 1, ok: true, result });
+
+    await expect(staticTransforms).resolves.toEqual(result);
+  });
+
   it("sends playback batches at playback priority", async () => {
     const { client, workers } = createClientHarness();
     const request = {
