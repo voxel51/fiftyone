@@ -399,6 +399,9 @@ const useSlicesData = <T,>(path: string) => {
 
 const Loadable = ({ path }: { path: string }) => {
   const value = useActiveModalSampleValue<string | number | null>(path);
+  if (path === "group.name" && !value) {
+    throw new Error(value);
+  }
   const isLoading = value === LOADING;
   const none = !isLoading && (value === null || value === undefined);
   const { fields, ftype } =

@@ -5,8 +5,8 @@ import { ModalPom } from "src/oss/poms/modal";
 import { SampleCanvasType } from "src/oss/poms/modal/sample-canvas";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-const datasetName = getUniqueDatasetNameWithPrefix("jagged-multimodal-groups");
-const sharedMeshPath = `/tmp/jagged-multimodal-groups-${datasetName}-mesh.ply`;
+const datasetName = getUniqueDatasetNameWithPrefix("sparse-multimodal-groups");
+const sharedMeshPath = `/tmp/sparse-multimodal-groups-${datasetName}-mesh.ply`;
 const groupSpecs = [
   {
     scene: "scene-1",
@@ -27,13 +27,13 @@ const groupSpecs = [
 ].map((spec, index) => ({
   ...spec,
   leftPath: spec.slices.includes("left")
-    ? `/tmp/jagged-multimodal-groups-${datasetName}-${spec.scene}-left.png`
+    ? `/tmp/sparse-multimodal-groups-${datasetName}-${spec.scene}-left.png`
     : null,
   rightPath: spec.slices.includes("right")
-    ? `/tmp/jagged-multimodal-groups-${datasetName}-${spec.scene}-right.png`
+    ? `/tmp/sparse-multimodal-groups-${datasetName}-${spec.scene}-right.png`
     : null,
   pcdPath: spec.slices.includes("pcd")
-    ? `/tmp/jagged-multimodal-groups-${datasetName}-${spec.scene}-pcd.fo3d`
+    ? `/tmp/sparse-multimodal-groups-${datasetName}-${spec.scene}-pcd.fo3d`
     : null,
   leftName: `${spec.scene}-left`,
   rightName: `${spec.scene}-right`,
@@ -192,7 +192,7 @@ if fo.dataset_exists("${datasetName}"):
   });
 });
 
-test.describe.serial("jagged multimodal groups", () => {
+test.describe.serial("sparse multimodal groups", () => {
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });

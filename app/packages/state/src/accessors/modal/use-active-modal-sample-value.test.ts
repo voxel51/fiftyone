@@ -99,7 +99,7 @@ describe("useActiveModalSampleValue", () => {
     expect(result.current).toBe("baz");
   });
 
-  it("treats GroupSampleNotFound as LOADING (sparse / jagged groups)", () => {
+  it("treats GroupSampleNotFound as LOADING (sparse groups)", () => {
     setSample({
       state: "hasError",
       contents: new mockErrors.GroupSampleNotFound(),

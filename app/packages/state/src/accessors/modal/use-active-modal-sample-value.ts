@@ -4,7 +4,7 @@
  * Sidebar entry value reader for the modal's active sample. The single hook
  * here, {@link useActiveModalSampleValue}, pulls a single field value out of the modal
  * sidebar sample and surfaces a {@link LOADING} sentinel while the underlying
- * selector is unresolved or transiently absent (sparse / jagged group
+ * selector is unresolved or transiently absent (sparse group
  * slices). Other errors bubble.
  *
  * @module accessors/modal/use-active-modal-sample-value
@@ -22,7 +22,7 @@ import { useAssertedRecoilValue } from "../../recoil/utils";
  * available yet. Returned in two cases:
  *
  * 1. The active modal sidebar sample is still loading.
- * 2. The sample failed with {@link GroupSampleNotFound} — sparse / jagged
+ * 2. The sample failed with {@link GroupSampleNotFound} — sparse
  *    groups can legitimately lack a sample on the active slice; consumers
  *    should render a placeholder rather than crashing.
  *

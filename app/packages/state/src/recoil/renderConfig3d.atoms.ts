@@ -193,7 +193,7 @@ export const interaction3dState = selector<
       pinnedSlice: get(pinned3DSampleSlice),
     });
 
-    // Defer reading modalSample — it may throw GroupSampleNotFound for jagged
+    // Defer reading modalSample — it may throw GroupSampleNotFound for sparse
     // multimodal groups where the current 2D slice doesn't exist in this group.
     // In those cases the representative sample comes from the 3D slice map instead.
     const representativeSample =

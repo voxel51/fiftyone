@@ -84,7 +84,7 @@ export const useModalSample = (): ModalSample | undefined => {
   }
 
   if (loadable.state === "hasError") {
-    // Sparse / jagged groups can legitimately have no sample for the current
+    // Sparse groups can legitimately have no sample for the current
     // slice — treat as "no sample" instead of crashing callers. Other errors
     // (including plain SampleNotFound) still bubble.
     if (loadable.contents instanceof GroupSampleNotFound) {
