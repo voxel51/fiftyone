@@ -1,7 +1,7 @@
 -r test.txt
 
 numpy
-pydicom>=3.0.2
+pydicom>=2.2.0
 shapely>=2.1.2
 tensorflow
 tensorflow-datasets
