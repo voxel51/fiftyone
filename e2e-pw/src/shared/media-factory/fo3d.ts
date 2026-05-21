@@ -32,7 +32,7 @@ export const createFo3d = ({
     wireframe: false,
   };
 
-  const scene = {
+  const scene: Record<string, unknown> = {
     _type: "Scene",
     name: "root",
     visible: true,
