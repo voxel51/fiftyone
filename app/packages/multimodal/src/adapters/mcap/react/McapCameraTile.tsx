@@ -1,14 +1,17 @@
-import { TileSettingsContent } from "@fiftyone/tiling";
+import { TileSettingsContent, useSetTileTitle } from "@fiftyone/tiling";
 import {
   Checkbox,
-  Select,
+  Dropdown,
+  DropdownAnchor,
+  DropdownTrigger,
+  MenuTextItem,
   Size,
   Spinner,
   Text,
   TextColor,
   TextVariant,
 } from "@voxel51/voodo";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import type { EncodedImageVisualization } from "../../../decoders";
 import { useSceneSourcesByType } from "../../../scene-inventory";
 import { ImagePanel } from "../../../visualization/panels/image";
@@ -19,19 +22,21 @@ import { useMcapTopicStream } from "./use-mcap-topic-stream";
 const McapCameraTile: React.FC = () => {
   const [topic, setTopic] = useState<string | null>(null);
   const cameras = useSceneSourcesByType("camera");
+  const setTileTitle = useSetTileTitle();
 
   // Auto-bind to the first available camera the first time we render
   // with one available and nothing chosen yet.
   useEffect(() => {
     if (topic !== null || cameras.length === 0) return;
-    setTopic(cameras[0]?.id ?? null);
-  }, [cameras, topic]);
+    const first = cameras[0];
+    if (!first) return;
+    setTopic(first.id);
+    setTileTitle(first.label);
+  }, [cameras, topic, setTileTitle]);
 
   const frame = useMcapTopicStream<EncodedImageVisualization>(topic ?? "");
-  const options = useMemo(
-    () => cameras.map((c) => ({ id: c.id, data: { label: c.label } })),
-    [cameras]
-  );
+  const currentLabel =
+    cameras.find((c) => c.id === topic)?.label ?? "Select source";
 
   return (
     <>
@@ -41,11 +46,22 @@ const McapCameraTile: React.FC = () => {
             <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
               Source
             </Text>
-            <Select
-              options={options}
-              value={topic ?? ""}
-              onChange={(v) => setTopic((v as string) || null)}
-            />
+            <Dropdown
+              anchor={DropdownAnchor.BottomStart}
+              trigger={<DropdownTrigger>{currentLabel}</DropdownTrigger>}
+            >
+              {cameras.map((c) => (
+                <MenuTextItem
+                  key={c.id}
+                  onClick={() => {
+                    setTopic(c.id);
+                    setTileTitle(c.label);
+                  }}
+                >
+                  {c.label}
+                </MenuTextItem>
+              ))}
+            </Dropdown>
           </div>
           <Checkbox label="Show overlays" defaultChecked />
           <Checkbox label="Show bounding boxes" />

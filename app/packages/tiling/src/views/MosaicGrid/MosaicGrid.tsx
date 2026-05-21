@@ -44,7 +44,6 @@ export interface MosaicGridProps {
 }
 
 interface TileWindowProps {
-  id: string;
   path: MosaicBranch[];
   tile: MosaicTileConfig;
   isFocused: boolean;
@@ -54,7 +53,6 @@ interface TileWindowProps {
 }
 
 const TileWindow: React.FC<TileWindowProps> = ({
-  id,
   path,
   tile,
   isFocused,
@@ -179,7 +177,6 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
     return (
       <TileIdScope tileId={id}>
         <TileWindow
-          id={id}
           path={path}
           tile={tile}
           isFocused={isFocused}

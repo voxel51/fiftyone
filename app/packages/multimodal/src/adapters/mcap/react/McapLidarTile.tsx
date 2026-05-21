@@ -1,14 +1,17 @@
-import { TileSettingsContent } from "@fiftyone/tiling";
+import { TileSettingsContent, useSetTileTitle } from "@fiftyone/tiling";
 import {
   Checkbox,
-  Select,
+  Dropdown,
+  DropdownAnchor,
+  DropdownTrigger,
+  MenuTextItem,
   Size,
   Spinner,
   Text,
   TextColor,
   TextVariant,
 } from "@voxel51/voodo";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import type { PointCloudVisualization } from "../../../decoders";
 import { useSceneSourcesByType } from "../../../scene-inventory";
 import { PointCloudPanel } from "../../../visualization/panels/point-cloud";
@@ -19,17 +22,19 @@ import { useMcapTopicStream } from "./use-mcap-topic-stream";
 const McapLidarTile: React.FC = () => {
   const [topic, setTopic] = useState<string | null>(null);
   const lidars = useSceneSourcesByType("lidar");
+  const setTileTitle = useSetTileTitle();
 
   useEffect(() => {
     if (topic !== null || lidars.length === 0) return;
-    setTopic(lidars[0]?.id ?? null);
-  }, [lidars, topic]);
+    const first = lidars[0];
+    if (!first) return;
+    setTopic(first.id);
+    setTileTitle(first.label);
+  }, [lidars, topic, setTileTitle]);
 
   const frame = useMcapTopicStream<PointCloudVisualization>(topic ?? "");
-  const options = useMemo(
-    () => lidars.map((l) => ({ id: l.id, data: { label: l.label } })),
-    [lidars]
-  );
+  const currentLabel =
+    lidars.find((l) => l.id === topic)?.label ?? "Select source";
 
   return (
     <>
@@ -39,11 +44,22 @@ const McapLidarTile: React.FC = () => {
             <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
               Source
             </Text>
-            <Select
-              options={options}
-              value={topic ?? ""}
-              onChange={(v) => setTopic((v as string) || null)}
-            />
+            <Dropdown
+              anchor={DropdownAnchor.BottomStart}
+              trigger={<DropdownTrigger>{currentLabel}</DropdownTrigger>}
+            >
+              {lidars.map((l) => (
+                <MenuTextItem
+                  key={l.id}
+                  onClick={() => {
+                    setTopic(l.id);
+                    setTileTitle(l.label);
+                  }}
+                >
+                  {l.label}
+                </MenuTextItem>
+              ))}
+            </Dropdown>
           </div>
           <Checkbox label="Color by height" defaultChecked />
           <Checkbox label="Show ground plane" />
