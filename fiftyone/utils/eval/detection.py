@@ -170,6 +170,7 @@ def evaluate_detections(
         is_temporal,
         iou=iou,
         classwise=classwise,
+        classes=classes,
         custom_metrics=custom_metrics,
         **kwargs,
     )
@@ -266,6 +267,7 @@ class DetectionEvaluationConfig(BaseEvaluationMethodConfig):
         gt_field,
         iou=None,
         classwise=None,
+        classes=None,
         custom_metrics=None,
         **kwargs,
     ):
@@ -274,6 +276,7 @@ class DetectionEvaluationConfig(BaseEvaluationMethodConfig):
         self.gt_field = gt_field
         self.iou = iou
         self.classwise = classwise
+        self.classes = classes
         self.custom_metrics = custom_metrics
 
     @property
