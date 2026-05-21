@@ -16,10 +16,10 @@ import typing as t
 from fiftyone.core.collections import SampleCollection
 from fiftyone.core.dataset import Dataset
 import fiftyone.core.media as fom
-import fiftyone.core.odm as foo
 import fiftyone.core.stages as fos
 from fiftyone.core.utils import run_sync_task
 
+from fiftyone.server.db import get_grid_adapter
 from fiftyone.server.filters import SampleFilter
 import fiftyone.server.metadata as fosm
 from fiftyone.server.paginator import Connection, Edge, PageInfo
@@ -121,24 +121,20 @@ async def paginate_samples(
     if int(after) > -1:
         view = view.skip(int(after) + 1)
 
-    pipeline = await get_samples_pipeline(view, sample_filter)
     maxTimeMS = max_query_time * 1000 if max_query_time else None
-    samples = await foo.aggregate(
-        foo.get_async_db_conn()[view._dataset._sample_collection_name],
-        pipeline,
-        hint,
-        maxTimeMS=maxTimeMS,
-    ).to_list(first + 1)
-
-    more = False
-    if len(samples) > first:
-        samples = samples[:first]
-        more = True
+    page = await get_grid_adapter().paginate_samples(
+        view,
+        sample_filter=sample_filter,
+        first=first,
+        filters=filters,
+        hint=hint,
+        max_time_ms=maxTimeMS,
+    )
 
     metadata_cache = {}
     url_cache = {}
     additional_media_fields = (
-        fosm._get_additional_media_fields(view) if samples else None
+        fosm._get_additional_media_fields(view) if page.samples else None
     )
     nodes = await asyncio.gather(
         *[
@@ -150,7 +146,7 @@ async def paginate_samples(
                 pagination_data,
                 additional_media_fields=additional_media_fields,
             )
-            for sample in samples
+            for sample in page.samples
         ]
     )
 
@@ -166,7 +162,7 @@ async def paginate_samples(
     return Connection(
         page_info=PageInfo(
             has_previous_page=False,
-            has_next_page=more,
+            has_next_page=page.has_more,
             start_cursor=edges[0].cursor if edges else None,
             end_cursor=edges[-1].cursor if len(edges) > 1 else None,
         ),
