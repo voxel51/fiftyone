@@ -131,6 +131,12 @@ def get_view(
 
         if dynamic_group is not None:
             view = view.get_dynamic_group(dynamic_group)
+            # inject _group so relay store records are consistent with modal
+            view = view.add_stage(
+                fosg.Mongo(
+                    [{"$addFields": {"_group": {"$literal": dynamic_group}}}]
+                )
+            )
 
         media_types = None
         if sample_filter is not None:
@@ -313,10 +319,18 @@ def handle_group_filter(
                     {group_field + ".name": {"$in": filter.slices}}
                 )
 
-                # add dynamic group value
-                _group, _ = stage._get_group_expr(view)
+                # modal: inject _group so the relay store record carries the
+                # dynamic group value for the sample being viewed
                 view = view._add_view_stage(
-                    fosg.Mongo([{"$addFields": {"_group": _group}}])
+                    fosg.Mongo(
+                        [
+                            {
+                                "$addFields": {
+                                    "_group": stage._get_group_expr(view)[0]
+                                }
+                            }
+                        ]
+                    )
                 )
 
             if isinstance(
@@ -767,6 +781,7 @@ def _make_keypoint_list_filter(args, view, path, field):
     if isinstance(field.field, fof.BooleanField):
         true, false = args["true"], args["false"]
         f = F(name)
+        expr = None
         if true and false:
             expr = f.is_in([True, False])
 

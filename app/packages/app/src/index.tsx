@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 /// <reference types="./env.d.ts" />
 import { ErrorBoundary, ThemeProvider } from "@fiftyone/components";
 import { BeforeScreenshotContext, screenshotCallbacks } from "@fiftyone/state";
@@ -11,7 +15,10 @@ import "./index.css";
 import "@voxel51/voodo/theme.css";
 import { useRouter } from "./routing";
 
-if (process.env.NODE_ENV === "development" && import.meta.env.VITE_DEV_WORKTREE_NAME) {
+if (
+  process.env.NODE_ENV === "development" &&
+  import.meta.env.VITE_DEV_WORKTREE_NAME
+) {
   document.title = `${document.title} (${import.meta.env.VITE_DEV_WORKTREE_NAME})`;
 }
 

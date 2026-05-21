@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import {
   ActivityToast,
   Dataset,
@@ -18,8 +22,8 @@ import { graphql } from "relay-runtime";
 import Nav from "../../components/Nav";
 import type { Route } from "../../routing";
 import style from "../index.module.css";
-import type { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
 import { DatasetGridRendererFailover } from "./DatasetGridRendererFailover";
+import type { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
 
 const DatasetPageQueryNode = graphql`
   query DatasetPageQuery(

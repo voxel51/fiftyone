@@ -19,9 +19,9 @@ import {
 import styled from "styled-components";
 import { prettify } from "../../../utils/generic";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
+import { QuickEditEntry } from "../../Modal/Sidebar/Annotate";
 import { NameAndCountContainer } from "../../utils";
 import RegularEntry from "./RegularEntry";
-import { QuickEditEntry } from "../../Modal/Sidebar/Annotate";
 
 const expandedPathValueEntry = atomFamily<boolean, string>({
   key: "expandedPathValueEntry",
@@ -461,11 +461,11 @@ const PathValueEntry = ({
   ) => void;
 }) => {
   const [hovering, setHovering] = useState<boolean>(false);
-  const { activeSlices: active3dSlices, isPinned } =
-    fos.useRenderConfig3dState();
+  const isPinned = fos.useIs3dPinned();
+  const active3dSlices = fos.useActive3dSlices();
   const slices = isPinned && (active3dSlices?.length || 1) > 1;
-
   const isScalar = useRecoilValue(isScalarValue(path));
+
   return (
     <div
       onMouseEnter={() => setHovering(true)}

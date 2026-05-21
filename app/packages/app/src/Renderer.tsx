@@ -1,7 +1,11 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import type { Queries } from "./makeRoutes";
 import type { Entry } from "./routing";
 
-import { Loading, Pending } from "@fiftyone/components";
+import { Pending } from "@fiftyone/components";
 import { subscribe } from "@fiftyone/relay";
 import {
   isModalActive,
@@ -26,6 +30,7 @@ import {
   useSetRecoilState,
 } from "recoil";
 import { useRouterContext } from "./routing";
+import Pixelating from "./Pixelating";
 
 export const pendingEntry = atom<boolean>({
   key: "pendingEntry",
@@ -94,8 +99,8 @@ const Renderer = () => {
     );
   }, [router, setPending]);
 
-  const loading = <Loading>Pixelating...</Loading>;
 
+  const loading = <Pixelating/>
   if (!routeEntry || !ready) return loading;
 
   return (
