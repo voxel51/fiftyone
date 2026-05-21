@@ -33,6 +33,11 @@ export class McapTopicCache {
     this._subscriberCount++;
     return () => {
       this._subscriberCount--;
+      // Last subscriber gone — drop everything. Holding decoded frames
+      // for a topic no tile is rendering is pure memory pressure, and a
+      // future re-subscribe should start from a clean slate so it can't
+      // flash stale data while the next fetch lands.
+      if (this._subscriberCount === 0) this.cache.clear();
     };
   }
 
