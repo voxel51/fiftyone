@@ -6,24 +6,48 @@
     "types": "./src/index.ts",
     "exports": {
         ".": "./src/index.ts",
-        "./client": "./src/client/index.ts",
-        "./client/hooks": "./src/client/hooks/index.ts",
+        "./query": "./src/query/index.ts",
+        "./query/bytes": "./src/query/bytes/index.ts",
+        "./query/decode": "./src/query/decode/index.ts",
+        "./decoders": "./src/decoders/index.ts",
         "./inject": "./src/inject/index.ts",
-        "./schemas/v1": "./src/schemas/v1/index.ts"
+        "./adapters/mcap": "./src/adapters/mcap/index.ts",
+        "./schemas/v1": "./src/schemas/v1/index.ts",
+        "./visualization": "./src/visualization/index.ts",
+        "./visualization/panels/image": "./src/visualization/panels/image.tsx",
+        "./visualization/panels/point-cloud": "./src/visualization/panels/point-cloud.tsx"
     },
     "typesVersions": {
         "*": {
-            "client/hooks": [
-                "src/client/hooks/index.ts"
+            "decoders": [
+                "src/decoders/index.ts"
             ],
-            "client": [
-                "src/client/index.ts"
+            "query": [
+                "src/query/index.ts"
+            ],
+            "query/bytes": [
+                "src/query/bytes/index.ts"
+            ],
+            "query/decode": [
+                "src/query/decode/index.ts"
             ],
             "inject": [
                 "src/inject/index.ts"
             ],
+            "adapters/mcap": [
+                "src/adapters/mcap/index.ts"
+            ],
             "schemas/v1": [
                 "src/schemas/v1/index.ts"
+            ],
+            "visualization": [
+                "src/visualization/index.ts"
+            ],
+            "visualization/panels/image": [
+                "src/visualization/panels/image.tsx"
+            ],
+            "visualization/panels/point-cloud": [
+                "src/visualization/panels/point-cloud.tsx"
             ]
         }
     },
@@ -38,6 +62,17 @@
         "@bufbuild/protobuf": "^2.11.0",
         "@fiftyone/plugins": "*",
         "@fiftyone/tiling": "*",
-        "@fiftyone/utilities": "*"
+        "@fiftyone/utilities": "*",
+        "@mcap/core": "^2.2.1",
+        "@mcap/support": "^1.1.0",
+        "@react-three/drei": "9.105.4",
+        "@react-three/fiber": "^8.18.0",
+        "buffer": "^6.0.3",
+        "lru-cache": "^11.0.1",
+        "protobufjs": "^7.2.5",
+        "three": "^0.182.0"
+    },
+    "devDependencies": {
+        "@types/three": "^0.176.0"
     }
 }

@@ -37,7 +37,7 @@ describe("integrity of generated contracts", () => {
     const scene = create(SceneInventorySchema, {
       inventoryId: "inventory-1",
       sceneId: "scene-1",
-      sourceFormat: "mcap",
+      sourceFormat: "container-format",
       inventoryVersion: "v1",
     });
 
