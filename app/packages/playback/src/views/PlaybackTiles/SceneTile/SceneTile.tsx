@@ -1,13 +1,9 @@
+import { TileSettingsContent, useSetTileSelection } from "@fiftyone/tiling";
 import { OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import React from "react";
-import { useStream } from "../../../lib/playback/use-stream";
 import { usePlayhead } from "../../../lib/playback/use-playback-state";
-import {
-  useSetTileSelection,
-  useTileSource,
-} from "@fiftyone/tiling";
-import { useTileSettings } from "@fiftyone/tiling";
+import { useStream } from "../../../lib/playback/use-stream";
 import SceneSettings from "./SceneSettings";
 import styles from "./SceneTile.module.css";
 
@@ -16,17 +12,23 @@ interface ScenePose {
   rotation?: number;
 }
 
+export interface SceneTileProps {
+  /** Stream id this tile renders. */
+  streamId: string;
+}
+
 /**
  * 3D scene tile body — a Three.js (via react-three-fiber) scene with a
- * box moving along a closed path. Reads its bound source from the
- * per-tile `tileSourceAtom`. The orange box is clickable: clicking it
- * publishes the current pose to `tileSelectionAtom` so the inspector
- * sidebar can show its data.
+ * box moving along a closed path. The orange box is clickable;
+ * clicking it publishes the current pose to `tileSelectionAtom` so
+ * the inspector sidebar can show its data.
  */
-const SceneTile: React.FC = () => {
-  useTileSettings(SceneSettings);
+const SceneTile: React.FC<SceneTileProps> = ({ streamId }) => {
   return (
     <div className={styles.body}>
+      <TileSettingsContent>
+        <SceneSettings />
+      </TileSettingsContent>
       <Canvas
         camera={{ position: [4, 3, 4], fov: 50 }}
         style={{ background: "#0f1115" }}
@@ -35,7 +37,7 @@ const SceneTile: React.FC = () => {
         <directionalLight position={[5, 5, 5]} intensity={1.2} />
         <PathReference />
         <FloorGrid />
-        <AnimatedBox />
+        <AnimatedBox streamId={streamId} />
         <OrbitControls enablePan={false} />
       </Canvas>
     </div>
@@ -57,26 +59,23 @@ function pathPoint(t: number): [number, number, number] {
 }
 
 /**
- * The animated box. Reads the tile's source via `useTileSource()` —
- * when bound to a stream that publishes a pose, the box tracks that
- * position; otherwise it falls back to the closed-form orbit driven
- * by `playheadAtom`. Clicking the box publishes its current pose to
+ * When the bound stream publishes a pose, the box tracks that
+ * position; otherwise it falls back to a closed-form orbit driven by
+ * `playheadAtom`. Clicking the box publishes its current pose to
  * `tileSelectionAtom` so the inspector can render it.
  */
-const AnimatedBox: React.FC = () => {
+const AnimatedBox: React.FC<{ streamId: string }> = ({ streamId }) => {
   const t = usePlayhead();
-  const sourceId = useTileSource();
-  const pose = useStream<ScenePose>(sourceId ?? "");
-  const [x, y, z] =
-    sourceId && pose?.position ? pose.position : pathPoint(t);
+  const pose = useStream<ScenePose>(streamId);
+  const [x, y, z] = pose?.position ?? pathPoint(t);
   const setSelection = useSetTileSelection();
   const handleClick = (e: { stopPropagation: () => void }) => {
     e.stopPropagation();
     setSelection({
       kind: "scene-object",
-      sourceId: sourceId ?? null,
+      sourceId: streamId,
       position: [x, y, z],
-      rotation: sourceId && pose?.rotation != null ? pose.rotation : null,
+      rotation: pose?.rotation ?? null,
       timestampSec: t,
     });
   };

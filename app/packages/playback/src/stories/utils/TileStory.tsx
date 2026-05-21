@@ -1,10 +1,5 @@
-import {
-  Tile,
-  TileIdScope,
-  TilingProvider,
-  useSetTileSourceFor,
-} from "@fiftyone/tiling";
-import React, { useEffect } from "react";
+import { Tile, TileIdScope, TilingProvider } from "@fiftyone/tiling";
+import React from "react";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
 import { TrackProvider } from "../../lib/tracks/TrackProvider";
 import { useMockStreams, type MockStreamConfig } from "./use-mock-streams";
@@ -13,13 +8,10 @@ const TILE_ID = "story-tile";
 
 /**
  * Wraps a single per-tile story in the full provider stack
- * (`PlaybackProvider` + `TrackProvider` + `TilingProvider`) and registers
- * one mock stream. The bound tile id is fixed (`story-tile`) and pre-set
- * to the stream's id so `useStream` / `useTileSource` / `useTileSettings`
- * inside the tile body resolve to real data instead of placeholders.
- *
- * Per-tile stories should pass their tile body as `children`; the
- * standard chrome (header + bordered content) wraps it automatically.
+ * (`PlaybackProvider` + `TrackProvider` + `TilingProvider`) and
+ * registers one mock stream so the tile body's `useStream` resolves to
+ * real data. The caller is responsible for passing the stream id to
+ * its tile body (`config.id`) via the `children` slot.
  */
 export interface TileStoryProps {
   /** Stream config registered for the duration of the story. */
@@ -29,7 +21,7 @@ export interface TileStoryProps {
   /** Width × height of the tile container. */
   width?: number;
   height?: number;
-  /** The tile body (e.g. `<CameraTile />`). */
+  /** The tile body — typically `<CameraTile streamId={config.id} />`. */
   children: React.ReactNode;
 }
 
@@ -59,21 +51,10 @@ const Inner: React.FC<TileStoryProps> = ({
   children,
 }) => {
   useMockStreams([config]);
-  const setTileSource = useSetTileSourceFor();
-  // setTileSource is a stable jotai-backed setter — not in deps by design.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    setTileSource(TILE_ID, config.id);
-  }, [config.id]);
-
   return (
     <TileIdScope tileId={TILE_ID}>
       <div style={{ width, height }}>
-        <Tile
-          title={title}
-          onClose={() => {}}
-          onFullscreen={() => {}}
-        >
+        <Tile title={title} onClose={() => {}} onFullscreen={() => {}}>
           {children}
         </Tile>
       </div>

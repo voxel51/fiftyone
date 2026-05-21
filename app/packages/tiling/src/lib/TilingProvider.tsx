@@ -8,13 +8,14 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import type { MosaicNode } from "react-mosaic-component";
 import {
   addTileToLayout,
   autoLayout as autoLayoutFn,
   collectTileIds,
 } from "../views/MosaicGrid/MosaicGrid";
-import { tileSelectionAtom, tileSourceAtom } from "./atoms";
+import { tileSelectionAtom } from "./atoms";
 import type {
   AddTileOptions,
   TilingContextValue,
@@ -70,9 +71,12 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
   // Per-instance Jotai store so multiple <TilingProvider>s on the same
   // page each get isolated atom state (sources, selections, registry).
   const jotaiStore = useMemo(() => createStore(), []);
-  const [settings, setSettings] = useState<
-    Record<string, React.ComponentType>
-  >({});
+  // Settings sidebar registers itself as a portal target here. Tile
+  // bodies render `<TileSettingsContent>` whose children portal into
+  // this element when the surrounding tile is focused.
+  const [settingsSlotEl, setSettingsSlotEl] = useState<HTMLElement | null>(
+    null
+  );
   // Seed the counter past any `<prefix>-<n>` suffix in the initial tiles,
   // so the first `addTile("camera", ...)` against `{ "camera-1": ... }`
   // produces `camera-2` instead of colliding with `camera-1`. Walks every
@@ -108,7 +112,6 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
         // Free per-tile atomFamily entries so dynamic tile ids don't
         // accumulate in the store across long sessions.
         for (const id of idsToRemove) {
-          tileSourceAtom.remove(id);
           tileSelectionAtom.remove(id);
         }
       }
@@ -153,9 +156,8 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
         return stripped;
       });
       setFocusedTileId((current) => (current === id ? null : current));
-      // Release the per-tile atomFamily entries so the store doesn't
+      // Release the per-tile atomFamily entry so the store doesn't
       // grow unbounded across long sessions.
-      tileSourceAtom.remove(id);
       tileSelectionAtom.remove(id);
     },
     []
@@ -169,27 +171,6 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
     setLayoutState(autoLayoutFn(Object.keys(tiles)));
   }, [tiles]);
 
-  const registerSettings = useCallback(
-    (tileId: string, Component: React.ComponentType) => {
-      setSettings((prev) =>
-        prev[tileId] === Component ? prev : { ...prev, [tileId]: Component }
-      );
-      return () => {
-        setSettings((prev) => {
-          if (!(tileId in prev)) return prev;
-          const next = { ...prev };
-          delete next[tileId];
-          return next;
-        });
-      };
-    },
-    []
-  );
-
-  const FocusedTileSettings = focusedTileId
-    ? (settings[focusedTileId] ?? null)
-    : null;
-
   const value = useMemo<TilingContextValue>(
     () => ({
       layout,
@@ -200,8 +181,8 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       addTile,
       removeTile,
       autoLayout,
-      FocusedTileSettings,
-      registerSettings,
+      settingsSlotEl,
+      setSettingsSlotEl,
     }),
     [
       layout,
@@ -211,8 +192,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       addTile,
       removeTile,
       autoLayout,
-      FocusedTileSettings,
-      registerSettings,
+      settingsSlotEl,
     ]
   );
 
@@ -267,19 +247,29 @@ export function useTileId(): string | null {
 }
 
 /**
- * Register a settings component for the surrounding tile. The component
- * is rendered (as `<Component />`) in the settings panel whenever this
- * tile is focused. Pass a module-level component reference, not an
- * inline JSX element — element identity changes every render and would
- * thrash the registry.
+ * Renders its children into the settings sidebar when the surrounding
+ * tile is focused. Lets a tile body share local React state with its
+ * settings UI via normal props — no atoms or shared stores required,
+ * since the settings JSX stays inside the tile body's React tree even
+ * though it appears in the sidebar's DOM.
+ *
+ *     function MyTile() {
+ *       const [x, setX] = useState(0);
+ *       return (
+ *         <>
+ *           <Body x={x} />
+ *           <TileSettingsContent>
+ *             <Settings x={x} onChange={setX} />
+ *           </TileSettingsContent>
+ *         </>
+ *       );
+ *     }
  */
-export function useTileSettings(Component: React.ComponentType): void {
+export const TileSettingsContent: React.FC<{
+  children: React.ReactNode;
+}> = ({ children }) => {
   const tileId = useTileId();
-  const { registerSettings } = useTiling();
-  useEffect(() => {
-    if (!tileId) return undefined;
-    return registerSettings(tileId, Component);
-    // registerSettings is a useCallback([]) — stable across renders.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tileId, Component]);
-}
+  const { focusedTileId, settingsSlotEl } = useTiling();
+  if (!tileId || tileId !== focusedTileId || !settingsSlotEl) return null;
+  return createPortal(children, settingsSlotEl);
+};

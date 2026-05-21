@@ -17,7 +17,7 @@ export const Default: StoryObj = {
         fps: 30,
       }}
     >
-      <CameraTile />
+      <CameraTile streamId="camera_front" />
     </TileStory>
   ),
 };

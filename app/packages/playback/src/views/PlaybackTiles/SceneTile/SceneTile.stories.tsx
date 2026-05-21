@@ -16,7 +16,7 @@ export const Default: StoryObj = {
         duration: 12,
       }}
     >
-      <SceneTile />
+      <SceneTile streamId="scene_world" />
     </TileStory>
   ),
 };

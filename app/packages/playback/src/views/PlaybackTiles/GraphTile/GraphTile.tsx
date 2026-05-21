@@ -1,8 +1,7 @@
+import { TileSettingsContent, useSetTileSelection } from "@fiftyone/tiling";
 import React, { useMemo } from "react";
 import { usePlayback } from "../../../lib/playback/PlaybackProvider";
 import { usePlayhead } from "../../../lib/playback/use-playback-state";
-import { useSetTileSelection } from "@fiftyone/tiling";
-import { useTileSettings } from "@fiftyone/tiling";
 import GraphSettings from "./GraphSettings";
 import styles from "./GraphTile.module.css";
 
@@ -13,14 +12,20 @@ const SAMPLE_STEP = 4;
 const clamp = (v: number, lo: number, hi: number) =>
   Math.min(hi, Math.max(lo, v));
 
+export interface GraphTileProps {
+  /** Stream id (currently unused — the chart is closed-form). Accepted
+   *  so the demo story can render the graph tile through the same
+   *  `streamId`-prop interface as the others. */
+  streamId?: string;
+}
+
 /**
  * Graph tile body — two stylized line series with a vertical playhead
  * cursor synced to the current playback time. Clicking the chart both
  * seeks the playhead AND publishes the sample at that time to
  * `tileSelectionAtom` so the inspector sidebar can read it.
  */
-const GraphTile: React.FC = () => {
-  useTileSettings(GraphSettings);
+const GraphTile: React.FC<GraphTileProps> = () => {
   const { samples, path1, path2 } = useMemo(() => buildPaths(), []);
   const playhead = usePlayhead();
   const { duration, seek } = usePlayback();
@@ -54,6 +59,9 @@ const GraphTile: React.FC = () => {
 
   return (
     <div className={styles.body}>
+      <TileSettingsContent>
+        <GraphSettings />
+      </TileSettingsContent>
       <svg
         viewBox={`0 0 ${CHART_VIEWBOX_W} ${CHART_VIEWBOX_H}`}
         className={styles.chart}

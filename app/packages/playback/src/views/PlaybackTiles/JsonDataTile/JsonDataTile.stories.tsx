@@ -17,7 +17,7 @@ export const Default: StoryObj = {
         hz: 10,
       }}
     >
-      <JsonDataTile />
+      <JsonDataTile streamId="metadata" />
     </TileStory>
   ),
 };

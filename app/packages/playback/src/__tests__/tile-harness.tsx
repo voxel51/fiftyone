@@ -1,24 +1,21 @@
 // Shared providers + tile-registry helper for PlaybackTiles tests.
-// Keeps each per-tile test file small.
 
+import { IconName } from "@voxel51/voodo";
 import {
   TileIdScope,
   TilingProvider,
   useTileRegistry,
+  type RegisteredTile,
 } from "@fiftyone/tiling";
 import { Provider as JotaiProvider, createStore } from "jotai";
 import React, { useEffect, useMemo } from "react";
 import { PlaybackProvider } from "../lib/playback/PlaybackProvider";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 const DummyTile: React.FC = () => null;
 
 export interface TileRegistration {
-  streamId: string;
   type: string;
   typeLabel?: string;
-  title?: string;
   Tile?: React.ComponentType;
 }
 
@@ -29,16 +26,15 @@ export const RegisterTiles: React.FC<{ entries: TileRegistration[] }> = ({
   // registerTile is a stable jotai-backed setter — not in deps by design.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    const disposes = entries.map((e) =>
-      registerTile({
-        streamId: e.streamId,
+    const disposes = entries.map((e) => {
+      const entry: RegisteredTile = {
         type: e.type,
         typeLabel: e.typeLabel ?? e.type,
-        title: e.title ?? e.streamId,
-        icon: "icon",
+        icon: IconName.GridView,
         Tile: e.Tile ?? DummyTile,
-      })
-    );
+      };
+      return registerTile(entry);
+    });
     return () => {
       for (const d of disposes) d();
     };
