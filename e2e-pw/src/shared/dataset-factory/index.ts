@@ -7,7 +7,6 @@ import path from "path";
 import { OssLoader } from "src/oss/fixtures/loader";
 import { createImage } from "../media-factory/image";
 import { createFo3d } from "../media-factory/fo3d";
-import { createPcd } from "../media-factory/pcd";
 import { createPly } from "../media-factory/ply";
 import { createId, ensureDirExists, indexToId } from "../utils";
 
