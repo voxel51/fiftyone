@@ -13,11 +13,7 @@ import {
 } from "@voxel51/voodo";
 import clsx from "clsx";
 import React, { useMemo } from "react";
-import { useRegisteredTiles } from "../../lib/use-registered-tiles";
-import {
-  useSetTileSourceFor,
-  useTileTypes,
-} from "../../lib/use-tile-state";
+import { useTileTypes } from "../../lib/use-tile-state";
 import { useTiling } from "../../lib/TilingProvider";
 import { SidebarLeftIcon, SidebarRightIcon } from "./tiling-header-icons";
 import styles from "./TilingHeader.module.css";
@@ -37,12 +33,10 @@ export interface TilingHeaderProps {
  * Top-of-page chrome for a tiling layout:
  *
  * - Filename on the left (truncates with ellipsis when narrow)
- * - "Add tile" icon-button dropdown — items are inferred from the
- *   distinct tile *types* among the entries registered with the tile
- *   Spawning a Camera tile binds it to the first registered camera
- *   stream by default; the user can swap to any other registered
- *   camera through the tile's settings panel. Auto Layout is
- *   appended at the bottom.
+ * - "Add tile" icon-button dropdown — one item per registered tile
+ *   type. The spawned tile picks its own data binding (topic, stream,
+ *   etc.); tiling doesn't know or care. Auto Layout is appended at
+ *   the bottom.
  * - Two right-aligned sidebar toggles using mirrored "panel" icons that
  *   visually convey which side they control
  *
@@ -57,9 +51,7 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
   onToggleRightSidebar,
 }) => {
   const types = useTileTypes();
-  const allTiles = useRegisteredTiles();
   const { addTile, autoLayout } = useTiling();
-  const setTileSource = useSetTileSourceFor();
 
   const tileMenu = useMemo(() => {
     if (types.length === 0) return null;
@@ -73,22 +65,13 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
               icon={entry.icon}
               text={entry.typeLabel}
               onClick={() => {
-                const newTileId = addTile(
+                addTile(
                   {
                     title: entry.typeLabel,
                     render: () => <TileComponent />,
                   },
                   { idPrefix: entry.type }
                 );
-                // Default the spawn to the first registered source of
-                // this type, if any. The user can swap via the settings
-                // sidebar's source picker.
-                const firstSource = allTiles.find(
-                  (t) => t.type === entry.type
-                );
-                if (firstSource) {
-                  setTileSource(newTileId, firstSource.streamId);
-                }
               }}
             />
           );
@@ -101,10 +84,9 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
         />
       </>
     );
-    // addTile / autoLayout / setTileSource are stable callbacks from
-    // their providers; only re-build when types or registrations change.
+    // addTile / autoLayout are stable callbacks from their providers.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [types, allTiles]);
+  }, [types]);
 
   return (
     <div className={styles.root}>

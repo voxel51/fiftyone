@@ -2,27 +2,17 @@ import type { ComponentType, ReactNode } from "react";
 import type { MosaicNode } from "react-mosaic-component";
 
 /**
- * One entry in the tile registry — links a data source (e.g. a
- * playback stream) to the tile component that should render it.
- *
- * Tiling is the owner here, not the data layer: the playback engine
- * (or any other source) calls `registerTile(...)` with this shape
- * whenever a source becomes available for spawning into a tile.
- *
- * The same `type` may be registered for multiple sources (e.g. several
- * camera streams). UIs that show "what kinds of tiles can I add" should
- * use `useTileTypes()` (deduplicated by `type`); UIs that show "which
- * source feeds this tile" should use `useTileSourcesByType(type)`.
+ * One entry in the tile registry — a renderable tile kind that the
+ * "Add tile" menu can spawn. Keyed by `type`; registering the same
+ * `type` again replaces the entry. The tile knows nothing about its
+ * data — picking a topic / stream / dataset is the tile's own
+ * concern, not tiling's.
  */
 export interface RegisteredTile {
-  /** Id of the source this tile renders — typically a playback stream id. */
-  streamId: string;
-  /** Discriminator used to group sources of the same kind. */
+  /** Stable key. One entry per `type`; the menu shows one item per type. */
   type: string;
-  /** Menu label for the type, shared across every source of this `type`. */
+  /** Menu label for the type. */
   typeLabel: string;
-  /** Per-source display name (used in the settings source picker). */
-  title: string;
   /** Menu / chrome icon. Opaque to tiling — passed straight through to voodo. */
   icon: unknown;
   /** Tile body component, mounted as `<Tile />` when a new tile spawns. */

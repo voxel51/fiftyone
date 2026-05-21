@@ -14,7 +14,7 @@ import {
   autoLayout as autoLayoutFn,
   collectTileIds,
 } from "../views/MosaicGrid/MosaicGrid";
-import { tileSelectionAtom, tileSourceAtom } from "./atoms";
+import { tileSelectionAtom } from "./atoms";
 import type {
   AddTileOptions,
   TilingContextValue,
@@ -108,7 +108,6 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
         // Free per-tile atomFamily entries so dynamic tile ids don't
         // accumulate in the store across long sessions.
         for (const id of idsToRemove) {
-          tileSourceAtom.remove(id);
           tileSelectionAtom.remove(id);
         }
       }
@@ -153,9 +152,8 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
         return stripped;
       });
       setFocusedTileId((current) => (current === id ? null : current));
-      // Release the per-tile atomFamily entries so the store doesn't
+      // Release the per-tile atomFamily entry so the store doesn't
       // grow unbounded across long sessions.
-      tileSourceAtom.remove(id);
       tileSelectionAtom.remove(id);
     },
     []

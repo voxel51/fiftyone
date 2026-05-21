@@ -1,74 +1,62 @@
-import { useTileRegistry, useSetTileSourceFor } from "@fiftyone/tiling";
+import { useTileRegistry } from "@fiftyone/tiling";
 import { IconName } from "@voxel51/voodo";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import McapCameraTile from "./McapCameraTile";
 import McapLidarTile from "./McapLidarTile";
-import type { McapTopicSpec } from "./McapStreams";
+
+/**
+ * Tile catalog for the MCAP adapter. New `type` strings should map to
+ * a component here — adding a kind is one entry, not N per-source
+ * registrations.
+ */
+const TILE_BY_TYPE = {
+  camera: {
+    typeLabel: "Camera",
+    icon: IconName.GridView,
+    Tile: McapCameraTile,
+  },
+  lidar: {
+    typeLabel: "Lidar",
+    icon: IconName.Embeddings,
+    Tile: McapLidarTile,
+  },
+} as const satisfies Record<
+  string,
+  { typeLabel: string; icon: unknown; Tile: React.ComponentType }
+>;
+
+type KnownTileType = keyof typeof TILE_BY_TYPE;
+
+function isKnownTileType(type: string): type is KnownTileType {
+  return type in TILE_BY_TYPE;
+}
 
 export interface UseMcapTilesOptions {
-  cameraTopics: readonly McapTopicSpec[];
-  lidarTopic?: McapTopicSpec;
-  /** Seed initial tile-source bindings only after the data stream is ready. */
-  isReady: boolean;
+  /** Unique source types present in the current scene inventory. */
+  presentTypes: readonly string[];
 }
 
 /**
- * Registers all MCAP camera and lidar topics as tiling tiles, and seeds
- * the initial tile-source bindings once the data stream is ready.
- *
- * Completely decoupled from data fetching — only manages the tiling layer.
+ * Registers one tile per unique source type in the scene. The "Add
+ * tile" menu shows one entry per kind (Camera, Lidar, …); each spawned
+ * tile owns its own per-instance topic selection.
  */
-export function useMcapTiles({
-  cameraTopics,
-  lidarTopic,
-  isReady,
-}: UseMcapTilesOptions): void {
+export function useMcapTiles({ presentTypes }: UseMcapTilesOptions): void {
   const { registerTile } = useTileRegistry();
-  const setTileSource = useSetTileSourceFor();
-  const tilesSeededRef = useRef(false);
 
-  // Seed initial tile-source bindings once (using the `${topic}-1` key
-  // convention that matches the initialTiles entries in entry.tsx).
   useEffect(() => {
-    if (!isReady || tilesSeededRef.current) return;
-    tilesSeededRef.current = true;
-    for (const { topic } of cameraTopics) {
-      setTileSource(`${topic}-1`, topic);
-    }
-    if (lidarTopic) {
-      setTileSource(`${lidarTopic.topic}-1`, lidarTopic.topic);
-    }
-    // setTileSource is a stable jotai-backed setter.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isReady]);
-
-  // Register camera tiles.
-  useEffect(() => {
-    const cleanups = cameraTopics.map(({ topic, label }) =>
-      registerTile({
-        streamId: topic,
-        type: "camera",
-        typeLabel: "Camera",
-        title: label,
-        icon: IconName.GridView,
-        Tile: McapCameraTile,
-      })
-    );
-    return () => cleanups.forEach((c) => c());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [registerTile]);
-
-  // Register lidar tile.
-  useEffect(() => {
-    if (!lidarTopic) return;
-    return registerTile({
-      streamId: lidarTopic.topic,
-      type: "lidar",
-      typeLabel: "Lidar",
-      title: lidarTopic.label,
-      icon: IconName.Embeddings,
-      Tile: McapLidarTile,
+    const cleanups = presentTypes.flatMap((type) => {
+      if (!isKnownTileType(type)) return [];
+      const entry = TILE_BY_TYPE[type];
+      return [
+        registerTile({
+          type,
+          typeLabel: entry.typeLabel,
+          icon: entry.icon,
+          Tile: entry.Tile,
+        }),
+      ];
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [registerTile, lidarTopic?.topic]);
+    return () => cleanups.forEach((c) => c());
+  }, [presentTypes, registerTile]);
 }

@@ -1,29 +1,26 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
-import type { TilingTile } from "@fiftyone/tiling";
 import MultiModalPlayback from "../../components/MultiModalPlayback/MultiModalPlayback";
+import type { SceneSource } from "../../scene-inventory";
 import { PlaybackSyncMode } from "../../schemas/v1";
 import { GridRenderer } from "./react";
-import McapCameraTile from "./react/McapCameraTile";
-import McapLidarTile from "./react/McapLidarTile";
 import { McapStreams } from "./react/McapStreams";
 import { useStableMcapSource } from "./react/use-stable-mcap-source";
 import type { McapStreamSyncPolicies } from "./types";
 
 // ---------------------------------------------------------------------------
-// NuScenes topic config (POC — production will discover topics from inventory)
+// NuScenes scene inventory (POC — production will discover this dynamically)
 // ---------------------------------------------------------------------------
 
-const CAMERA_TOPICS = [
-  { topic: "/CAM_FRONT/image_rect_compressed", label: "Front camera" },
-  { topic: "/CAM_FRONT_LEFT/image_rect_compressed", label: "Front-left camera" },
-  { topic: "/CAM_FRONT_RIGHT/image_rect_compressed", label: "Front-right camera" },
-  { topic: "/CAM_BACK/image_rect_compressed", label: "Back camera" },
-  { topic: "/CAM_BACK_LEFT/image_rect_compressed", label: "Back-left camera" },
-  { topic: "/CAM_BACK_RIGHT/image_rect_compressed", label: "Back-right camera" },
-] as const;
-
-const LIDAR_TOPIC = { topic: "/LIDAR_TOP", label: "Top lidar" } as const;
+const SCENE_SOURCES: readonly SceneSource[] = [
+  { id: "/CAM_FRONT/image_rect_compressed", type: "camera", label: "Front camera" },
+  { id: "/CAM_FRONT_LEFT/image_rect_compressed", type: "camera", label: "Front-left camera" },
+  { id: "/CAM_FRONT_RIGHT/image_rect_compressed", type: "camera", label: "Front-right camera" },
+  { id: "/CAM_BACK/image_rect_compressed", type: "camera", label: "Back camera" },
+  { id: "/CAM_BACK_LEFT/image_rect_compressed", type: "camera", label: "Back-left camera" },
+  { id: "/CAM_BACK_RIGHT/image_rect_compressed", type: "camera", label: "Back-right camera" },
+  { id: "/LIDAR_TOP", type: "lidar", label: "Top lidar" },
+];
 
 const CAMERA_SYNC_POLICY = {
   mode: PlaybackSyncMode.LATEST,
@@ -43,31 +40,18 @@ const STREAM_SYNC_POLICIES: McapStreamSyncPolicies = {
   },
 };
 
-// One front camera + lidar visible on open. Sources are bound by McapStreams
-// using the `${topic}-1` key convention at coordinator-ready time.
-const INITIAL_TILES: Record<string, TilingTile> = {
-  [`${CAMERA_TOPICS[0].topic}-1`]: {
-    title: CAMERA_TOPICS[0].label,
-    render: () => <McapCameraTile />,
-  },
-  [`${LIDAR_TOPIC.topic}-1`]: {
-    title: LIDAR_TOPIC.label,
-    render: () => <McapLidarTile />,
-  },
-};
-
 function McapModalRenderer({ ctx }: SampleRendererProps) {
   const source = useStableMcapSource(ctx);
   const fileName = source?.sourceId.split("/").pop() ?? "recording.mcap";
 
   return (
-    <MultiModalPlayback fileName={fileName} initialTiles={INITIAL_TILES} defaultLeftOpen={false} defaultRightOpen={false}>
-      <McapStreams
-        ctx={ctx}
-        cameraTopics={[...CAMERA_TOPICS]}
-        lidarTopic={LIDAR_TOPIC}
-        streamPolicies={STREAM_SYNC_POLICIES}
-      />
+    <MultiModalPlayback
+      fileName={fileName}
+      sources={SCENE_SOURCES}
+      defaultLeftOpen={false}
+      defaultRightOpen={false}
+    >
+      <McapStreams ctx={ctx} streamPolicies={STREAM_SYNC_POLICIES} />
     </MultiModalPlayback>
   );
 }

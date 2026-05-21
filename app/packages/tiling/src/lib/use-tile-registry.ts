@@ -4,23 +4,19 @@ import { registeredTilesAtom } from "./atoms";
 import type { RegisteredTile } from "./types";
 
 /**
- * Imperative tile-registry API. The integration layer (the code that
- * knows about your data sources — playback streams, server feeds,
- * whatever) calls `registerTile` for each spawnable source. The
- * returned function unregisters the entry — call it in a cleanup
- * effect on unmount.
+ * Imperative tile-registry API. Domains call `registerTile` to declare
+ * a renderable tile kind (one per `type`). The returned function
+ * unregisters the entry — call it in a cleanup effect on unmount.
  *
- * Tiling owns the registry; data layers don't have to know it exists.
- * UIs that consume the registry use `useTileTypes` (deduped) or
- * `useTileSourcesByType(type)` (filtered).
+ * Registering the same `type` twice replaces the previous entry so
+ * re-registers don't accumulate dupes. The tile itself owns its data
+ * binding — tiling never tracks per-tile sources.
  *
  *     const { registerTile } = useTileRegistry();
  *     useEffect(() => {
  *       const dispose = registerTile({
- *         streamId: "camera_front",
  *         type: "camera",
  *         typeLabel: "Camera",
- *         title: "Camera front",
  *         icon: IconName.GridView,
  *         Tile: CameraTile,
  *       });
@@ -33,15 +29,13 @@ export function useTileRegistry(): {
   const store = useStore();
   const registerTile = useCallback(
     (entry: RegisteredTile) => {
-      // Replace any existing entry with the same streamId so re-registers
-      // don't accumulate dupes.
       store.set(registeredTilesAtom, (prev) => [
-        ...prev.filter((t) => t.streamId !== entry.streamId),
+        ...prev.filter((t) => t.type !== entry.type),
         entry,
       ]);
       return () => {
         store.set(registeredTilesAtom, (prev) =>
-          prev.filter((t) => t.streamId !== entry.streamId)
+          prev.filter((t) => t.type !== entry.type)
         );
       };
     },
