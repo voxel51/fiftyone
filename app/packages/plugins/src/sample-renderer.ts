@@ -8,6 +8,7 @@ type SampleRendererSurface = "grid" | "modal";
 
 export type SampleRendererSampleLike = {
   sample: {
+    _id: string;
     filepath: string;
     media_type?: string | null;
     _media_type?: string | null;
@@ -15,6 +16,7 @@ export type SampleRendererSampleLike = {
       width?: number;
       height?: number;
       mime_type?: string;
+      size_bytes?: number;
     };
   };
   urls?:
