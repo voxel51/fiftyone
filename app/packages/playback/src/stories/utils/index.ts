@@ -1,7 +1,3 @@
-// Re-exports for mock-stream factories used by demo stories. Import
-// from "./utils" so the stories don't have to know individual file
-// names — each factory returns a `MockStreamBundle` (see types.ts).
-
 export type {
   MockStreamBundle,
   MockStreamFactoryOptions,
@@ -50,5 +46,3 @@ export {
   type MockStreamConfig,
   buildBundle,
 } from "./use-mock-streams";
-
-export { default as TileStory, type TileStoryProps } from "./TileStory";

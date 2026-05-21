@@ -1,8 +1,7 @@
+import { TileSettingsContent, useSetTileSelection } from "@fiftyone/tiling";
 import React, { useMemo } from "react";
 import { usePlayback } from "../../../lib/playback/PlaybackProvider";
 import { usePlayhead } from "../../../lib/playback/use-playback-state";
-import { useSetTileSelection } from "@fiftyone/tiling";
-import { useTileSettings } from "@fiftyone/tiling";
 import GraphSettings from "./GraphSettings";
 import styles from "./GraphTile.module.css";
 
@@ -13,14 +12,11 @@ const SAMPLE_STEP = 4;
 const clamp = (v: number, lo: number, hi: number) =>
   Math.min(hi, Math.max(lo, v));
 
-/**
- * Graph tile body — two stylized line series with a vertical playhead
- * cursor synced to the current playback time. Clicking the chart both
- * seeks the playhead AND publishes the sample at that time to
- * `tileSelectionAtom` so the inspector sidebar can read it.
- */
-const GraphTile: React.FC = () => {
-  useTileSettings(GraphSettings);
+export interface GraphTileProps {
+  streamId?: string;
+}
+
+const GraphTile: React.FC<GraphTileProps> = () => {
   const { samples, path1, path2 } = useMemo(() => buildPaths(), []);
   const playhead = usePlayhead();
   const { duration, seek } = usePlayback();
@@ -36,9 +32,6 @@ const GraphTile: React.FC = () => {
     const time = r * duration;
     seek(time);
 
-    // Sample the curves at the click position so the inspector has
-    // values to display. y is in viewBox space (0–80) where 40 is the
-    // chart's mid line; normalize to [-1, 1] for readability.
     const sampleIndex = Math.round(r * (samples.length - 1));
     const s = samples[sampleIndex];
     setSelection({
@@ -54,6 +47,9 @@ const GraphTile: React.FC = () => {
 
   return (
     <div className={styles.body}>
+      <TileSettingsContent>
+        <GraphSettings />
+      </TileSettingsContent>
       <svg
         viewBox={`0 0 ${CHART_VIEWBOX_W} ${CHART_VIEWBOX_H}`}
         className={styles.chart}
@@ -79,7 +75,6 @@ const GraphTile: React.FC = () => {
         />
         <path d={path1} className={styles.series1} />
         <path d={path2} className={styles.series2} />
-        {/* Playhead cursor synced to currentTime / duration. */}
         <line
           x1={playheadX}
           x2={playheadX}
@@ -107,7 +102,6 @@ interface Sample {
   accel: number;
 }
 
-/** Convert a viewBox y (0–80, mid 40) to a normalized signal in roughly [-1, 1]. */
 function normalize(y: number): number {
   return Number(((40 - y) / 25).toFixed(3));
 }

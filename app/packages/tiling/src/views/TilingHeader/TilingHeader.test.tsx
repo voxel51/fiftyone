@@ -1,32 +1,22 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { IconName } from "@voxel51/voodo";
 import React, { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { TilingProvider } from "../../lib/TilingProvider";
+import type { RegisteredTile } from "../../lib/types";
 import { useTileRegistry } from "../../lib/use-tile-registry";
 import TilingHeader from "./TilingHeader";
 
 const CameraTile: React.FC = () => <div data-testid="camera-body" />;
 const LidarTile: React.FC = () => <div data-testid="lidar-body" />;
 
-/**
- * Mount inside the TilingProvider so it can register tile entries
- * exactly the way `useMockStreams` does in production stories.
- */
-const RegisterTiles: React.FC<{
-  entries: Array<{
-    streamId: string;
-    type: string;
-    typeLabel: string;
-    title: string;
-    Tile: React.ComponentType;
-  }>;
-}> = ({ entries }) => {
+const RegisterTiles: React.FC<{ entries: RegisteredTile[] }> = ({
+  entries,
+}) => {
   const { registerTile } = useTileRegistry();
   useEffect(() => {
-    const disposes = entries.map((e) =>
-      registerTile({ ...e, icon: "any" as unknown })
-    );
+    const disposes = entries.map((e) => registerTile(e));
     return () => {
       for (const d of disposes) d();
     };
@@ -91,17 +81,15 @@ describe("TilingHeader", () => {
         <RegisterTiles
           entries={[
             {
-              streamId: "camera_front",
               type: "camera",
               typeLabel: "Camera",
-              title: "Camera front",
+              icon: IconName.GridView,
               Tile: CameraTile,
             },
             {
-              streamId: "lidar_top",
               type: "lidar",
               typeLabel: "Lidar",
-              title: "Lidar top",
+              icon: IconName.Embeddings,
               Tile: LidarTile,
             },
           ]}
