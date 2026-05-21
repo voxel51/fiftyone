@@ -1,4 +1,4 @@
-import { Sample } from "@fiftyone/looker/src/state";
+import { Sample as LookerSample } from "@fiftyone/looker/src/state";
 import _ from "lodash";
 import mime from "mime";
 import { Field } from "./schema";
@@ -17,6 +17,7 @@ export * from "./order";
 export * from "./paths";
 export * from "./permission";
 export * from "./Resource";
+export * from "./sample";
 export * from "./schema";
 export { default as sizeBytesEstimate } from "./size-bytes-estimate";
 export * as styles from "./styles";
@@ -706,7 +707,7 @@ export const clone = <T>(data: T): Mutable<T> => {
   return JSON.parse(JSON.stringify(data));
 };
 
-export const getMimeType = (sample: Sample) => {
+export const getMimeType = (sample: LookerSample) => {
   if (sample.metadata && sample.metadata.mime_type) {
     return sample.metadata.mime_type;
   }

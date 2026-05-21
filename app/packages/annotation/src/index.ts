@@ -4,4 +4,5 @@ export * from "./events";
 export * from "./hooks";
 export * from "./persistence";
 export * from "./providers";
+export * from "./state";
 export * from "./util";
