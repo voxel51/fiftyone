@@ -4465,9 +4465,9 @@ class SampleCollection(object):
                 ground truth :class:`fiftyone.core.labels.Segmentation`
                 instances
             eval_key (None): a string key to use to refer to this evaluation
-            mask_targets (None): a dict mapping pixel values or RGB hex strings
-                to labels. If not provided, the observed values are used as
-                labels
+            mask_targets (None): a dict mapping pixel values (2D masks) or RGB
+                hex strings (3D masks) to semantic label strings. If not
+                provided, the observed values are used as labels
             method (None): a string specifying the evaluation method to use.
                 The supported values are
                 ``fo.evaluation_config.segmentation_backends.keys()`` and the
@@ -10499,8 +10499,14 @@ class SampleCollection(object):
                 determines which attributes are included for all fields that do
                 not explicitly define their per-field attributes (in addition
                 to any per-class attributes)
-            mask_targets (None): a dict mapping pixel values to semantic label
-                strings. Only applicable when annotating semantic segmentations
+            mask_targets (None): a dict mapping pixel values (2D masks) or RGB
+                hex strings (3D masks) to semantic label strings. Only
+                applicable when annotating semantic segmentations. All new
+                label fields must have mask targets provided via one of the
+                supported methods. For existing label fields, if mask targets
+                are not provided by this argument nor ``label_schema``, any
+                applicable mask targets stored on your dataset will be used, if
+                available
             allow_additions (True): whether to allow new labels to be added.
                 Only applicable when editing existing label fields
             allow_deletions (True): whether to allow labels to be deleted. Only
