@@ -1,48 +1,65 @@
-import { useTileId, useTileSettings } from "@fiftyone/tiling";
-import { Size, Spinner } from "@voxel51/voodo";
-import { useAtom } from "jotai";
-import { useEffect } from "react";
+import { TileSettingsContent } from "@fiftyone/tiling";
+import {
+  Checkbox,
+  Select,
+  Size,
+  Spinner,
+  Text,
+  TextColor,
+  TextVariant,
+} from "@voxel51/voodo";
+import React, { useEffect, useMemo, useState } from "react";
 import type { PointCloudVisualization } from "../../../decoders";
 import { useSceneSourcesByType } from "../../../scene-inventory";
 import { PointCloudPanel } from "../../../visualization/panels/point-cloud";
-import McapLidarSettings from "./McapLidarSettings";
-import { mcapTileTopicAtom } from "./mcap-tile-selection";
+import settingsStyles from "../../../../../playback/src/views/PlaybackTiles/tile-settings.module.css";
+import styles from "./McapTile.module.css";
 import { useMcapTopicStream } from "./use-mcap-topic-stream";
 
-const PANEL_STYLE = { height: "100%", width: "100%" } as const;
-
 const McapLidarTile: React.FC = () => {
-  useTileSettings(McapLidarSettings);
-  const tileId = useTileId();
+  const [topic, setTopic] = useState<string | null>(null);
   const lidars = useSceneSourcesByType("lidar");
-  const [topic, setTopic] = useAtom(mcapTileTopicAtom(tileId ?? ""));
 
   useEffect(() => {
     if (topic !== null || lidars.length === 0) return;
     setTopic(lidars[0]?.id ?? null);
-  }, [lidars, topic, setTopic]);
+  }, [lidars, topic]);
 
   const frame = useMcapTopicStream<PointCloudVisualization>(topic ?? "");
+  const options = useMemo(
+    () => lidars.map((l) => ({ id: l.id, data: { label: l.label } })),
+    [lidars]
+  );
 
-  if (!frame) {
-    return (
-      <div style={styles.center}>
-        <Spinner size={Size.Lg} />
-      </div>
-    );
-  }
-
-  return <PointCloudPanel frame={frame} style={PANEL_STYLE} />;
+  return (
+    <>
+      <TileSettingsContent>
+        <div className={settingsStyles.root}>
+          <div className={settingsStyles.field}>
+            <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+              Source
+            </Text>
+            <Select
+              options={options}
+              value={topic ?? ""}
+              onChange={(v) => setTopic((v as string) || null)}
+            />
+          </div>
+          <Checkbox label="Color by height" defaultChecked />
+          <Checkbox label="Show ground plane" />
+          <Checkbox label="Show intensity overlay" />
+          <Checkbox label="Cull behind sensor" defaultChecked />
+        </div>
+      </TileSettingsContent>
+      {frame ? (
+        <PointCloudPanel frame={frame} className={styles.panel} />
+      ) : (
+        <div className={styles.loading}>
+          <Spinner size={Size.Lg} />
+        </div>
+      )}
+    </>
+  );
 };
-
-const styles = {
-  center: {
-    alignItems: "center",
-    display: "flex",
-    height: "100%",
-    justifyContent: "center",
-    width: "100%",
-  },
-} as const;
 
 export default McapLidarTile;

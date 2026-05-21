@@ -4,9 +4,9 @@
 export {
   TilingProvider,
   TileIdScope,
+  TileSettingsContent,
   useTiling,
   useTileId,
-  useTileSettings,
 } from "./lib/TilingProvider";
 export type { TilingProviderProps } from "./lib/TilingProvider";
 export type {

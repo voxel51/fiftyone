@@ -2,23 +2,27 @@ import { act, cleanup, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { TileIdScope, TilingProvider, useTileSettings, useTiling } from "../../lib/TilingProvider";
+import {
+  TileIdScope,
+  TileSettingsContent,
+  TilingProvider,
+  useTiling,
+} from "../../lib/TilingProvider";
 import TileSettingsSidebar from "./TileSettingsSidebar";
 
 const SETTINGS_LABEL = "camera-settings-panel";
 
-const Settings: React.FC = () => (
-  <div data-testid={SETTINGS_LABEL}>camera knobs</div>
-);
-
 /**
- * Mounts a tile body inside `TileIdScope` and registers the settings
- * panel — same shape a real PlaybackTile would use.
+ * Mounts a tile body inside `TileIdScope` and renders its settings JSX
+ * via the portal — same shape a real PlaybackTile would use.
  */
-const TileBody: React.FC = () => {
-  useTileSettings(Settings);
-  return <div data-testid="tile-body" />;
-};
+const TileBody: React.FC = () => (
+  <div data-testid="tile-body">
+    <TileSettingsContent>
+      <div data-testid={SETTINGS_LABEL}>camera knobs</div>
+    </TileSettingsContent>
+  </div>
+);
 
 const FocusButton: React.FC<{ id: string }> = ({ id }) => {
   const { setFocusedTileId } = useTiling();
@@ -40,7 +44,7 @@ describe("TileSettingsSidebar", () => {
     expect(screen.getByText("Focus a tile to edit its settings.")).toBeTruthy();
   });
 
-  it("renders the focused tile's registered settings when a tile is focused", () => {
+  it("portals the focused tile's settings into the sidebar", () => {
     render(
       <TilingProvider
         initialTiles={{

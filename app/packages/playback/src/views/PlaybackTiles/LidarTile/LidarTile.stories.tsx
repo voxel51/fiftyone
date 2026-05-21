@@ -17,7 +17,7 @@ export const Default: StoryObj = {
         hz: 10,
       }}
     >
-      <LidarTile />
+      <LidarTile streamId="lidar_top" />
     </TileStory>
   ),
 };

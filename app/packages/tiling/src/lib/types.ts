@@ -1,3 +1,4 @@
+import type { IconName } from "@voxel51/voodo";
 import type { ComponentType, ReactNode } from "react";
 import type { MosaicNode } from "react-mosaic-component";
 
@@ -13,8 +14,8 @@ export interface RegisteredTile {
   type: string;
   /** Menu label for the type. */
   typeLabel: string;
-  /** Menu / chrome icon. Opaque to tiling — passed straight through to voodo. */
-  icon: unknown;
+  /** Menu / chrome icon. Passed straight to voodo's `<MenuIconTextItem>`. */
+  icon: IconName | ReactNode;
   /** Tile body component, mounted as `<Tile />` when a new tile spawns. */
   Tile: ComponentType;
 }
@@ -60,10 +61,12 @@ export interface TilingContextValue {
   removeTile: (id: string) => void;
   autoLayout: () => void;
 
-  // Settings registry
-  FocusedTileSettings: ComponentType | null;
-  registerSettings: (
-    tileId: string,
-    Component: ComponentType
-  ) => () => void;
+  /**
+   * Portal target for the focused tile's settings UI. `TileSettingsSidebar`
+   * writes the slot element via `setSettingsSlotEl`; tile bodies render
+   * `<TileSettingsContent>` whose children portal into this element
+   * when the surrounding tile is focused.
+   */
+  settingsSlotEl: HTMLElement | null;
+  setSettingsSlotEl: (el: HTMLElement | null) => void;
 }

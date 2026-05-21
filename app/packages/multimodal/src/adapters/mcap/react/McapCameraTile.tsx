@@ -1,50 +1,66 @@
-import { useTileId, useTileSettings } from "@fiftyone/tiling";
-import { Size, Spinner } from "@voxel51/voodo";
-import { useAtom } from "jotai";
-import { useEffect } from "react";
+import { TileSettingsContent } from "@fiftyone/tiling";
+import {
+  Checkbox,
+  Select,
+  Size,
+  Spinner,
+  Text,
+  TextColor,
+  TextVariant,
+} from "@voxel51/voodo";
+import React, { useEffect, useMemo, useState } from "react";
 import type { EncodedImageVisualization } from "../../../decoders";
 import { useSceneSourcesByType } from "../../../scene-inventory";
 import { ImagePanel } from "../../../visualization/panels/image";
-import McapCameraSettings from "./McapCameraSettings";
-import { mcapTileTopicAtom } from "./mcap-tile-selection";
+import settingsStyles from "../../../../../playback/src/views/PlaybackTiles/tile-settings.module.css";
+import styles from "./McapTile.module.css";
 import { useMcapTopicStream } from "./use-mcap-topic-stream";
 
-const PANEL_STYLE = { height: "100%", width: "100%" } as const;
-
 const McapCameraTile: React.FC = () => {
-  useTileSettings(McapCameraSettings);
-  const tileId = useTileId();
+  const [topic, setTopic] = useState<string | null>(null);
   const cameras = useSceneSourcesByType("camera");
-  const [topic, setTopic] = useAtom(mcapTileTopicAtom(tileId ?? ""));
 
   // Auto-bind to the first available camera the first time we render
   // with one available and nothing chosen yet.
   useEffect(() => {
     if (topic !== null || cameras.length === 0) return;
     setTopic(cameras[0]?.id ?? null);
-  }, [cameras, topic, setTopic]);
+  }, [cameras, topic]);
 
   const frame = useMcapTopicStream<EncodedImageVisualization>(topic ?? "");
+  const options = useMemo(
+    () => cameras.map((c) => ({ id: c.id, data: { label: c.label } })),
+    [cameras]
+  );
 
-  if (!frame) {
-    return (
-      <div style={styles.center}>
-        <Spinner size={Size.Lg} />
-      </div>
-    );
-  }
-
-  return <ImagePanel frame={frame} style={PANEL_STYLE} />;
+  return (
+    <>
+      <TileSettingsContent>
+        <div className={settingsStyles.root}>
+          <div className={settingsStyles.field}>
+            <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+              Source
+            </Text>
+            <Select
+              options={options}
+              value={topic ?? ""}
+              onChange={(v) => setTopic((v as string) || null)}
+            />
+          </div>
+          <Checkbox label="Show overlays" defaultChecked />
+          <Checkbox label="Show bounding boxes" />
+          <Checkbox label="Show track ids" />
+        </div>
+      </TileSettingsContent>
+      {frame ? (
+        <ImagePanel frame={frame} className={styles.panel} />
+      ) : (
+        <div className={styles.loading}>
+          <Spinner size={Size.Lg} />
+        </div>
+      )}
+    </>
+  );
 };
-
-const styles = {
-  center: {
-    alignItems: "center",
-    display: "flex",
-    height: "100%",
-    justifyContent: "center",
-    width: "100%",
-  },
-} as const;
 
 export default McapCameraTile;

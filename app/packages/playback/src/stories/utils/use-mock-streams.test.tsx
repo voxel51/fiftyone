@@ -1,5 +1,4 @@
 import { cleanup, render } from "@testing-library/react";
-import { TilingProvider, useRegisteredTiles } from "@fiftyone/tiling";
 import { Provider as JotaiProvider, createStore } from "jotai";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -18,96 +17,83 @@ import { useMockStreams, type MockStreamConfig } from "./use-mock-streams";
 
 const Probe: React.FC<{
   configs: MockStreamConfig[];
-  onReady: (state: {
-    duration: number;
-    tileTypes: string[];
-    tileStreamIds: string[];
-  }) => void;
+  onReady: (state: { duration: number; bundleIds: string[] }) => void;
 }> = ({ configs, onReady }) => {
-  useMockStreams(configs);
+  const bundles = useMockStreams(configs);
   const { duration } = usePlayback();
-  const tiles = useRegisteredTiles();
   React.useEffect(() => {
     onReady({
       duration,
-      tileTypes: tiles.map((t) => t.type),
-      tileStreamIds: tiles.map((t) => t.streamId),
+      bundleIds: bundles.map((b) => b.id),
     });
-  }, [duration, tiles, onReady]);
+  }, [duration, bundles, onReady]);
   return null;
 };
 
 describe("useMockStreams", () => {
   afterEach(() => cleanup());
 
-  it("registers each stream with the playback engine and each tile with the registry", () => {
+  it("registers each stream with the playback engine and returns the bundles", () => {
     const store = createStore();
-    const captured: Array<{
-      duration: number;
-      tileTypes: string[];
-      tileStreamIds: string[];
-    }> = [];
+    const captured: Array<{ duration: number; bundleIds: string[] }> = [];
     render(
       <JotaiProvider store={store}>
         <PlaybackProvider>
-          <TilingProvider>
-            <Probe
-              configs={[
-                { type: "camera", id: "cam_a", title: "Cam A", duration: 8 },
-                { type: "lidar", id: "lid_a", title: "Lid A", duration: 12 },
-              ]}
-              onReady={(s) => captured.push(s)}
-            />
-          </TilingProvider>
+          <Probe
+            configs={[
+              { type: "camera", id: "cam_a", title: "Cam A", duration: 8 },
+              { type: "lidar", id: "lid_a", title: "Lid A", duration: 12 },
+            ]}
+            onReady={(s) => captured.push(s)}
+          />
         </PlaybackProvider>
       </JotaiProvider>
     );
 
-    // The last captured snapshot reflects steady state.
     const last = captured[captured.length - 1];
     expect(last.duration).toBe(12); // max of registered streams
-    expect(last.tileStreamIds).toEqual(["cam_a", "lid_a"]);
-    expect(last.tileTypes).toEqual(["camera", "lidar"]);
+    expect(last.bundleIds).toEqual(["cam_a", "lid_a"]);
   });
 
-  it("unregisters tiles + streams on unmount", () => {
+  it("unregisters streams on unmount", () => {
     const store = createStore();
-    const snapshots: Array<{ tileStreamIds: string[]; duration: number }> = [];
+    const snapshots: Array<{ bundleIds: string[]; duration: number }> = [];
     const { unmount } = render(
       <JotaiProvider store={store}>
         <PlaybackProvider duration={3}>
-          <TilingProvider>
-            <Probe
-              configs={[
-                { type: "camera", id: "cam_a", title: "Cam A", duration: 8 },
-              ]}
-              onReady={(s) => snapshots.push(s)}
-            />
-          </TilingProvider>
+          <Probe
+            configs={[
+              { type: "camera", id: "cam_a", title: "Cam A", duration: 8 },
+            ]}
+            onReady={(s) => snapshots.push(s)}
+          />
         </PlaybackProvider>
       </JotaiProvider>
     );
-    expect(snapshots[snapshots.length - 1].tileStreamIds).toEqual(["cam_a"]);
+    expect(snapshots[snapshots.length - 1].bundleIds).toEqual(["cam_a"]);
 
     unmount();
 
-    // After unmount the tile registry on this store should be empty.
-    let postTiles: string[] = [];
+    // Re-mount a probe with no streams to confirm the engine duration
+    // collapses back to its fallback (no streams registered).
+    let postDuration = -1;
     render(
       <JotaiProvider store={store}>
-        <TilingProvider>
-          <Reader onReady={(t) => (postTiles = t)} />
-        </TilingProvider>
+        <PlaybackProvider duration={3}>
+          <DurationReader onReady={(d) => (postDuration = d)} />
+        </PlaybackProvider>
       </JotaiProvider>
     );
-    expect(postTiles).toEqual([]);
+    expect(postDuration).toBe(3);
   });
 });
 
-const Reader: React.FC<{ onReady: (ids: string[]) => void }> = ({ onReady }) => {
-  const tiles = useRegisteredTiles();
+const DurationReader: React.FC<{ onReady: (d: number) => void }> = ({
+  onReady,
+}) => {
+  const { duration } = usePlayback();
   React.useEffect(() => {
-    onReady(tiles.map((t) => t.streamId));
-  }, [tiles, onReady]);
+    onReady(duration);
+  }, [duration, onReady]);
   return null;
 };

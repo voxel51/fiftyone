@@ -20,10 +20,7 @@ const TILE_BY_TYPE = {
     icon: IconName.Embeddings,
     Tile: McapLidarTile,
   },
-} as const satisfies Record<
-  string,
-  { typeLabel: string; icon: unknown; Tile: React.ComponentType }
->;
+} as const;
 
 type KnownTileType = keyof typeof TILE_BY_TYPE;
 
