@@ -16,6 +16,11 @@ import {
   type Track,
 } from "../../../../playback/src/lib/tracks/TrackProvider";
 import TimelineWithTracks from "../../../../playback/src/views/TimelineWithTracks/TimelineWithTracks";
+import {
+  useMcapInitialTiles,
+  useMcapSceneInventory,
+} from "../../adapters/mcap/react/use-mcap-scene-inventory";
+import { SceneInventoryProvider } from "../../scene-inventory";
 import styles from "./MultiModalPlayback.module.css";
 
 export interface MultiModalPlaybackProps {
@@ -99,23 +104,31 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   children,
   className,
 }) => {
+  // POC: only MCAP backs the inventory today. When other file kinds
+  // arrive, switch on extension (or move dispatch into a registry).
+  const sources = useMcapSceneInventory(fileName);
+  const defaultInitialTiles = useMcapInitialTiles(fileName);
+  const resolvedInitialTiles = initialTiles ?? defaultInitialTiles;
+
   return (
     <PlaybackProvider>
       <TrackProvider
         initialTracks={tracks}
         initialPinnedIds={defaultPinnedTrackIds}
       >
-        <TilingProvider initialTiles={initialTiles}>
-          {children}
-          <Layout
-            fileName={fileName}
-            leftSidebar={leftSidebar}
-            rightSidebar={rightSidebar}
-            defaultLeftOpen={defaultLeftOpen}
-            defaultRightOpen={defaultRightOpen}
-            className={className}
-          />
-        </TilingProvider>
+        <SceneInventoryProvider sources={sources}>
+          <TilingProvider initialTiles={resolvedInitialTiles}>
+            {children}
+            <Layout
+              fileName={fileName}
+              leftSidebar={leftSidebar}
+              rightSidebar={rightSidebar}
+              defaultLeftOpen={defaultLeftOpen}
+              defaultRightOpen={defaultRightOpen}
+              className={className}
+            />
+          </TilingProvider>
+        </SceneInventoryProvider>
       </TrackProvider>
     </PlaybackProvider>
   );

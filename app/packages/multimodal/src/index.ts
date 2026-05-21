@@ -32,3 +32,16 @@ export {
   VISUALIZATION_PANEL_REGISTRY,
 } from "./visualization";
 export type { PanelType, VisualizationKind } from "./visualization";
+
+/**
+ * Scene inventory — discoverable data sources for the current scene.
+ */
+export {
+  SceneInventoryProvider,
+  useSceneInventory,
+  useSceneSourcesByType,
+} from "./scene-inventory";
+export type {
+  SceneInventoryProviderProps,
+  SceneSource,
+} from "./scene-inventory";

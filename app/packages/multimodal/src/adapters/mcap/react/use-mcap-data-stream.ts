@@ -295,7 +295,13 @@ export function useMcapDataStream({
 
       const cleanup = cache.subscribe();
       prefetchLookaheadFrom(store.get(playheadAtom));
-      return cleanup;
+      return () => {
+        cleanup();
+        // Cache cleared itself in its own cleanup once the count hit 0;
+        // also drop the held-last-frame so a future re-subscribe can't
+        // flash stale content from the previous session.
+        if (!cache.isActive) lastFrameRef.current.delete(topic);
+      };
     },
     [prefetchLookaheadFrom, store]
   );
