@@ -162,6 +162,25 @@ class TestYOLOEVPGetItem:
         assert result["visual_prompts"] is None
         assert result["vp_classes"] is None
 
+    def test_call_rejects_transform_returning_non_dict(self, tmp_path):
+        import torch
+        from PIL import Image
+
+        from fiftyone.utils.ultralytics import YOLOEVPGetItem
+
+        path = tmp_path / "x.png"
+        Image.new("RGB", (4, 4)).save(path)
+
+        prompt = fol.Detections(
+            detections=[
+                fol.Detection(label="dog", bounding_box=[0.0, 0.0, 0.5, 0.5])
+            ]
+        )
+
+        item = YOLOEVPGetItem(transform=lambda img: torch.zeros(3, 4, 4))
+        with pytest.raises(TypeError, match="transform must return a dict"):
+            item({"filepath": str(path), "prompt_field": prompt})
+
 
 class TestFiftyOneYOLOEVPCollate:
     def test_collate_collects_visual_prompts_and_stacks_images(self):

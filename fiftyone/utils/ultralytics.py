@@ -731,6 +731,11 @@ class YOLOEVPGetItem(fout.GetItem):
                 "YOLOEVPGetItem requires a transform to produce tensors"
             )
         result = self._transform(img)
+        if not isinstance(result, dict):
+            raise TypeError(
+                "YOLOEVPGetItem transform must return a dict, got %s"
+                % type(result).__name__
+            )
 
         prompt = d["prompt_field"]
         if prompt is not None and prompt.detections:
@@ -768,14 +773,21 @@ class FiftyOneYOLOEVPModel(FiftyOneYOLOModel):
 
     @staticmethod
     def collate_fn(batch):
-        visual_prompts = [item.get("visual_prompts") for item in batch]
-        vp_classes = [item.get("vp_classes") for item in batch]
-        orig_images = [img.get("orig_img") for img in batch]
-        orig_shapes = [_get_image_dims(img)[::-1] for img in orig_images]
-        images = torch.stack([img.get("img") for img in batch])
+        visual_prompts = []
+        vp_classes = []
+        orig_imgs = []
+        orig_shapes = []
+        imgs = []
+        for item in batch:
+            visual_prompts.append(item.get("visual_prompts"))
+            vp_classes.append(item.get("vp_classes"))
+            orig_img = item.get("orig_img")
+            orig_imgs.append(orig_img)
+            orig_shapes.append(_get_image_dims(orig_img)[::-1])
+            imgs.append(item.get("img"))
         return {
-            "orig_imgs": orig_images,
-            "images": images,
+            "orig_imgs": orig_imgs,
+            "images": torch.stack(imgs),
             "orig_shapes": orig_shapes,
             "visual_prompts": visual_prompts,
             "vp_classes": vp_classes,
