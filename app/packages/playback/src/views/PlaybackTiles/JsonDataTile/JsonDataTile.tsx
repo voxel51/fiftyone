@@ -1,17 +1,12 @@
+import { TileSettingsContent } from "@fiftyone/tiling";
 import React from "react";
 import { useStream } from "../../../lib/playback/use-stream";
-import { useTileSource } from "@fiftyone/tiling";
-import { useTileSettings } from "@fiftyone/tiling";
 import JsonDataSettings from "./JsonDataSettings";
 import styles from "./JsonDataTile.module.css";
 
 export interface JsonDataTileProps {
-  /**
-   * Object to render as JSON. When provided, takes priority over the
-   * tile's bound stream — useful for the standalone story to pass a
-   * fixed sample.
-   */
   data?: unknown;
+  streamId?: string;
 }
 
 const PLACEHOLDER_DATA = {
@@ -26,21 +21,22 @@ const PLACEHOLDER_DATA = {
   status: "ok",
 };
 
-/**
- * JSON tile body — syntax-colored render of an arbitrary object. Chrome
- * is provided externally (see `Tile` / `MosaicGrid`).
- */
-const JsonDataTile: React.FC<JsonDataTileProps> = ({ data }) => {
-  useTileSettings(JsonDataSettings);
-  const sourceId = useTileSource();
-  const streamValue = useStream<unknown>(sourceId ?? "");
+const JsonDataTile: React.FC<JsonDataTileProps> = ({ data, streamId }) => {
+  const streamValue = useStream<unknown>(streamId ?? "");
   const value =
     data !== undefined
       ? data
-      : sourceId && streamValue !== null
+      : streamValue !== null
         ? streamValue
         : PLACEHOLDER_DATA;
-  return <div className={styles.body}>{formatJson(value)}</div>;
+  return (
+    <div className={styles.body}>
+      <TileSettingsContent>
+        <JsonDataSettings />
+      </TileSettingsContent>
+      {formatJson(value)}
+    </div>
+  );
 };
 
 function formatJson(value: unknown, indent = 0): React.ReactNode {

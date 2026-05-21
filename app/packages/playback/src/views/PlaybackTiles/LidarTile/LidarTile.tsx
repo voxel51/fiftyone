@@ -1,7 +1,6 @@
+import { TileSettingsContent } from "@fiftyone/tiling";
 import React, { useMemo } from "react";
 import { useStream } from "../../../lib/playback/use-stream";
-import { useTileSource } from "@fiftyone/tiling";
-import { useTileSettings } from "@fiftyone/tiling";
 import LidarSettings from "./LidarSettings";
 import styles from "./LidarTile.module.css";
 
@@ -9,28 +8,31 @@ interface LidarFrame {
   points?: Array<[number, number, number]>;
 }
 
-const LidarTile: React.FC = () => {
-  useTileSettings(LidarSettings);
-  // Deterministic-ish scatter so the placeholder is stable across renders.
-  const placeholder = useMemo(() => generatePoints(160), []);
-  const sourceId = useTileSource();
-  const frame = useStream<LidarFrame>(sourceId ?? "");
+export interface LidarTileProps {
+  streamId: string;
+}
 
-  // When a stream is connected and publishing, project its 3D points
-  // into the 2D placeholder viewBox so the live data drives the dots.
-  const livePoints =
-    sourceId && frame?.points
-      ? frame.points.map(([x, , z]) => ({
-          x: 50 + x * 8,
-          y: 50 + z * 8,
-          r: 0.5,
-          a: 0.8,
-        }))
-      : null;
+const LidarTile: React.FC<LidarTileProps> = ({ streamId }) => {
+  // Stable placeholder scatter when no live data is available.
+  const placeholder = useMemo(() => generatePoints(160), []);
+  const frame = useStream<LidarFrame>(streamId);
+
+  // Project the stream's 3D points onto the 2D viewBox.
+  const livePoints = frame?.points
+    ? frame.points.map(([x, , z]) => ({
+        x: 50 + x * 8,
+        y: 50 + z * 8,
+        r: 0.5,
+        a: 0.8,
+      }))
+    : null;
   const points = livePoints ?? placeholder;
 
   return (
     <div className={styles.body}>
+      <TileSettingsContent>
+        <LidarSettings />
+      </TileSettingsContent>
       <svg
         className={styles.points}
         viewBox="0 0 100 100"

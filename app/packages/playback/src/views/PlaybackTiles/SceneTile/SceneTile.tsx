@@ -1,13 +1,9 @@
+import { TileSettingsContent, useSetTileSelection } from "@fiftyone/tiling";
 import { OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import React from "react";
-import { useStream } from "../../../lib/playback/use-stream";
 import { usePlayhead } from "../../../lib/playback/use-playback-state";
-import {
-  useSetTileSelection,
-  useTileSource,
-} from "@fiftyone/tiling";
-import { useTileSettings } from "@fiftyone/tiling";
+import { useStream } from "../../../lib/playback/use-stream";
 import SceneSettings from "./SceneSettings";
 import styles from "./SceneTile.module.css";
 
@@ -16,17 +12,16 @@ interface ScenePose {
   rotation?: number;
 }
 
-/**
- * 3D scene tile body — a Three.js (via react-three-fiber) scene with a
- * box moving along a closed path. Reads its bound source from the
- * per-tile `tileSourceAtom`. The orange box is clickable: clicking it
- * publishes the current pose to `tileSelectionAtom` so the inspector
- * sidebar can show its data.
- */
-const SceneTile: React.FC = () => {
-  useTileSettings(SceneSettings);
+export interface SceneTileProps {
+  streamId: string;
+}
+
+const SceneTile: React.FC<SceneTileProps> = ({ streamId }) => {
   return (
     <div className={styles.body}>
+      <TileSettingsContent>
+        <SceneSettings />
+      </TileSettingsContent>
       <Canvas
         camera={{ position: [4, 3, 4], fov: 50 }}
         style={{ background: "#0f1115" }}
@@ -35,7 +30,7 @@ const SceneTile: React.FC = () => {
         <directionalLight position={[5, 5, 5]} intensity={1.2} />
         <PathReference />
         <FloorGrid />
-        <AnimatedBox />
+        <AnimatedBox streamId={streamId} />
         <OrbitControls enablePan={false} />
       </Canvas>
     </div>
@@ -46,7 +41,6 @@ const ORBIT_RADIUS = 2;
 const ORBIT_HEIGHT_AMPLITUDE = 0.6;
 const ORBIT_PERIOD_SECONDS = 6;
 
-/** Path parameter goes 0 → 1 over `ORBIT_PERIOD_SECONDS`. */
 function pathPoint(t: number): [number, number, number] {
   const u = (t % ORBIT_PERIOD_SECONDS) / ORBIT_PERIOD_SECONDS;
   const angle = u * Math.PI * 2;
@@ -56,27 +50,18 @@ function pathPoint(t: number): [number, number, number] {
   return [x, y, z];
 }
 
-/**
- * The animated box. Reads the tile's source via `useTileSource()` —
- * when bound to a stream that publishes a pose, the box tracks that
- * position; otherwise it falls back to the closed-form orbit driven
- * by `playheadAtom`. Clicking the box publishes its current pose to
- * `tileSelectionAtom` so the inspector can render it.
- */
-const AnimatedBox: React.FC = () => {
+const AnimatedBox: React.FC<{ streamId: string }> = ({ streamId }) => {
   const t = usePlayhead();
-  const sourceId = useTileSource();
-  const pose = useStream<ScenePose>(sourceId ?? "");
-  const [x, y, z] =
-    sourceId && pose?.position ? pose.position : pathPoint(t);
+  const pose = useStream<ScenePose>(streamId);
+  const [x, y, z] = pose?.position ?? pathPoint(t);
   const setSelection = useSetTileSelection();
   const handleClick = (e: { stopPropagation: () => void }) => {
     e.stopPropagation();
     setSelection({
       kind: "scene-object",
-      sourceId: sourceId ?? null,
+      sourceId: streamId,
       position: [x, y, z],
-      rotation: sourceId && pose?.rotation != null ? pose.rotation : null,
+      rotation: pose?.rotation ?? null,
       timestampSec: t,
     });
   };
@@ -88,9 +73,7 @@ const AnimatedBox: React.FC = () => {
   );
 };
 
-/** Renders the closed path as a thin loop so the box's trajectory is visible. */
 const PathReference: React.FC = () => {
-  // Sampled enough times to look smooth at the radius/amplitude we use.
   const samples = 96;
   const positions = React.useMemo(() => {
     const arr = new Float32Array(samples * 3);

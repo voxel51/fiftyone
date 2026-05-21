@@ -1,4 +1,3 @@
-import { useTileRegistry } from "@fiftyone/tiling";
 import { useEffect, useMemo } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import {
@@ -58,23 +57,20 @@ export function buildBundle(config: MockStreamConfig): MockStreamBundle {
 /**
  * Build mock-stream bundles from `configs` and register each one with
  * the surrounding `PlaybackProvider`. Returns the bundles so the caller
- * can:
+ * can build initial tiles or otherwise enumerate "what data exists".
  *
- * - seed `TilingProvider`'s `initialTiles` from them,
- * - drive the add-tile menu from them,
- * - or otherwise enumerate "what data exists right now".
+ * Tile registration is the caller's responsibility — the new tile
+ * model registers one entry per type, not per source, so this hook
+ * stays focused on stream-side wiring.
  *
  * The bundles are built **once on mount** — changing `configs` on
- * subsequent renders does NOT rebuild the streams. This mirrors how
- * `PlaybackProvider` treats its config: provider config is mount-time,
- * so the stream set should be too. Pass a stable configs array, or
- * remount the provider tree to swap streams.
+ * subsequent renders does NOT rebuild the streams. Pass a stable
+ * configs array, or remount the provider tree to swap streams.
  */
 export function useMockStreams(
   configs: MockStreamConfig[]
 ): MockStreamBundle[] {
   const { registerStream } = usePlayback();
-  const { registerTile } = useTileRegistry();
 
   // Built once at mount. The lint suppression is intentional — see the
   // doc comment above for the mount-time-only contract.
@@ -85,22 +81,12 @@ export function useMockStreams(
   );
 
   useEffect(() => {
-    const cleanups = bundles.flatMap((b) => [
-      registerStream(b.stream),
-      registerTile({
-        streamId: b.id,
-        type: b.type,
-        typeLabel: b.typeLabel,
-        title: b.title,
-        icon: b.icon,
-        Tile: b.Tile,
-      }),
-    ]);
+    const cleanups = bundles.map((b) => registerStream(b.stream));
     return () => {
       for (const c of cleanups) c();
     };
-    // registerStream / registerTile are stable hook callbacks; bundles is
-    // the only changing input.
+    // registerStream is a stable hook callback; bundles is the only
+    // changing input.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bundles]);
 
