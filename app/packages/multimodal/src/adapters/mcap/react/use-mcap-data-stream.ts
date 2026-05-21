@@ -62,10 +62,44 @@ export function useMcapDataStream({
 
   // Stable refs — read in RAF/subscribe callbacks without closure capture.
   const topicCachesRef = useRef<Map<string, McapTopicCache>>(new Map());
-  const pendingTicksRef = useRef<Set<string>>(new Set());
+  // Pending fetches keyed by tick → set of topics each in-flight request
+  // is covering. Per-topic so a request that omits a newly-subscribed
+  // topic doesn't make collectMissingTicks think that topic is in flight.
+  const pendingTicksRef = useRef<Map<string, Set<string>>>(new Map());
   const lastFrameRef = useRef<Map<string, unknown>>(new Map());
   const indexRef = useRef<McapTimelineIndex | null>(null);
   indexRef.current = index;
+
+  // Pending helpers — wrap the per-tick topic sets so call sites read
+  // like simple predicates instead of repeating the get/has dance.
+  const isTopicPending = (tickKey: string, topic: string): boolean =>
+    pendingTicksRef.current.get(tickKey)?.has(topic) ?? false;
+  const markTopicsPending = (
+    tickKeys: readonly string[],
+    topics: readonly string[]
+  ): void => {
+    const pending = pendingTicksRef.current;
+    for (const key of tickKeys) {
+      let covered = pending.get(key);
+      if (!covered) {
+        covered = new Set();
+        pending.set(key, covered);
+      }
+      for (const t of topics) covered.add(t);
+    }
+  };
+  const clearTopicsPending = (
+    tickKeys: readonly string[],
+    topics: readonly string[]
+  ): void => {
+    const pending = pendingTicksRef.current;
+    for (const key of tickKeys) {
+      const covered = pending.get(key);
+      if (!covered) continue;
+      for (const t of topics) covered.delete(t);
+      if (covered.size === 0) pending.delete(key);
+    }
+  };
 
   // Ensure a cache exists for every known topic.
   useEffect(() => {
@@ -109,14 +143,19 @@ export function useMcapDataStream({
   const fetchBatch = useCallback(
     (ticks: bigint[], activeTopics: string[]) => {
       if (ticks.length === 0 || activeTopics.length === 0 || !source) return;
-      const pending = pendingTicksRef.current;
       const caches = topicCachesRef.current;
 
-      const toFetch = ticks.filter((t) => !pending.has(t.toString()));
+      // Only include a tick if at least one active topic needs it (not
+      // already pending for that topic). A tick that's fully covered by
+      // in-flight requests across every active topic is dropped.
+      const toFetch = ticks.filter((tick) => {
+        const tickKey = tick.toString();
+        return activeTopics.some((t) => !isTopicPending(tickKey, t));
+      });
       if (toFetch.length === 0) return;
 
       const keys = toFetch.map((t) => t.toString());
-      for (const key of keys) pending.add(key);
+      markTopicsPending(keys, activeTopics);
 
       client
         .readSynchronizedMessageBatch({
@@ -145,7 +184,7 @@ export function useMcapDataStream({
         })
         .catch(noop)
         .finally(() => {
-          for (const key of keys) pending.delete(key);
+          clearTopicsPending(keys, activeTopics);
         });
     },
     // streamPolicies is mount-time config — read fresh on every call.
@@ -153,9 +192,9 @@ export function useMcapDataStream({
     [client, source, store]
   );
 
-  // Collect uncached, non-pending ticks in [startSec, endSec] for the active
-  // topic set, capped at MAX_PREFETCH_BATCH. Reads from refs so this works
-  // before/after the engine stream registers.
+  // Collect ticks in [startSec, endSec] where at least one active topic
+  // still needs the data — i.e. not cached and not already pending for
+  // that specific topic. Capped at MAX_PREFETCH_BATCH.
   const collectMissingTicks = useCallback(
     (startSec: number, endSec: number): bigint[] => {
       const currentIndex = indexRef.current;
@@ -163,15 +202,17 @@ export function useMcapDataStream({
       const activeTopics = getActiveTopics();
       if (activeTopics.length === 0) return [];
       const caches = topicCachesRef.current;
-      const pending = pendingTicksRef.current;
       const startNs = currentIndex.secToNs(startSec);
       const endNs = currentIndex.secToNs(endSec);
       const toFetch: bigint[] = [];
       for (const tick of currentIndex.ticks) {
         if (tick < startNs) continue;
         if (tick > endNs) break;
-        const allCached = activeTopics.every((t) => caches.get(t)?.has(tick));
-        if (!allCached && !pending.has(tick.toString())) toFetch.push(tick);
+        const tickKey = tick.toString();
+        const needsFetch = activeTopics.some(
+          (t) => !caches.get(t)?.has(tick) && !isTopicPending(tickKey, t)
+        );
+        if (needsFetch) toFetch.push(tick);
         if (toFetch.length >= MAX_PREFETCH_BATCH) break;
       }
       return toFetch;
@@ -212,7 +253,6 @@ export function useMcapDataStream({
 
     const nativeStep = 1 / DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ;
     const caches = topicCachesRef.current;
-    const pending = pendingTicksRef.current;
     const lastFrame = lastFrameRef.current;
 
     const stream: PlaybackStream = {
@@ -227,9 +267,19 @@ export function useMcapDataStream({
         if (!tick) return "missing";
         const activeTopics = getActiveTopics();
         if (activeTopics.length === 0) return "ready";
-        if (activeTopics.every((t) => caches.get(t)?.has(tick))) return "ready";
-        if (pending.has(tick.toString())) return "loading";
-        return "missing";
+        const tickKey = tick.toString();
+        let allCached = true;
+        let everyMissingIsPending = true;
+        for (const t of activeTopics) {
+          if (caches.get(t)?.has(tick)) continue;
+          allCached = false;
+          if (!isTopicPending(tickKey, t)) {
+            everyMissingIsPending = false;
+            break;
+          }
+        }
+        if (allCached) return "ready";
+        return everyMissingIsPending ? "loading" : "missing";
       },
 
       prefetch: ([startSec, endSec]) => {
@@ -295,7 +345,13 @@ export function useMcapDataStream({
 
       const cleanup = cache.subscribe();
       prefetchLookaheadFrom(store.get(playheadAtom));
-      return cleanup;
+      return () => {
+        cleanup();
+        // Cache cleared itself in its own cleanup once the count hit 0;
+        // also drop the held-last-frame so a future re-subscribe can't
+        // flash stale content from the previous session.
+        if (!cache.isActive) lastFrameRef.current.delete(topic);
+      };
     },
     [prefetchLookaheadFrom, store]
   );
