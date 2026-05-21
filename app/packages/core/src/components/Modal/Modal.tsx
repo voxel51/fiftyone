@@ -10,12 +10,7 @@ import {
   KnownContexts,
   useKeyBindings,
 } from "@fiftyone/commands";
-import {
-  ErrorDisplayMarkup,
-  HelpPanel,
-  JSONPanel,
-  Loading,
-} from "@fiftyone/components";
+import { ErrorDisplayMarkup, HelpPanel, JSONPanel } from "@fiftyone/components";
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
@@ -25,13 +20,7 @@ import {
   jotaiStore,
 } from "@fiftyone/state/src/jotai";
 import { is3d } from "@fiftyone/utilities";
-import React, {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-} from "react";
+import React, { Fragment, Suspense, useCallback, useMemo, useRef } from "react";
 import ReactDOM from "react-dom";
 import {
   FallbackProps,
@@ -42,12 +31,12 @@ import styled from "styled-components";
 import Actions from "./Actions";
 import ModalNavigation from "./ModalNavigation";
 import { ModalSpace } from "./ModalSpace";
+import { ModalStatusBar } from "./ModalStatusBar";
 import { Sidebar } from "./Sidebar";
+import { SegmentationToolbar } from "./Sidebar/Annotate/Edit/SegmentationToolbar";
+import { useAnnotationStatus } from "./Sidebar/Annotate/Edit/useAnnotationStatus";
 import SchemaManagementProvider from "./Sidebar/Annotate/SchemaManagementProvider";
 import { useAnnotationTracking } from "./Sidebar/Annotate/useAnnotationTracking";
-import { SegmentationToolbar } from "./Sidebar/Annotate/Edit/SegmentationToolbar";
-import { ModalStatusBar } from "./ModalStatusBar";
-import { useAnnotationStatus } from "./Sidebar/Annotate/Edit/useAnnotationStatus";
 import useCanManageSchema from "./Sidebar/Annotate/useCanManageSchema";
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
@@ -103,40 +92,6 @@ const AnnotationHandlerRegistration = () => {
 };
 
 const ModalErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
-  const modalGroupSlice = useRecoilValue(fos.modalGroupSlice);
-  const errorSliceRef = useRef(modalGroupSlice);
-  const recoverGroupSlice = useRecoilCallback(
-    ({ snapshot, set }) =>
-      async () => {
-        const fallback = await snapshot.getPromise(fos.groupSlice);
-
-        if (fallback) {
-          set(fos.modalGroupSlice, fallback);
-        }
-      },
-    []
-  );
-
-  useEffect(() => {
-    if (error instanceof fos.GroupSampleNotFound) {
-      void recoverGroupSlice();
-    }
-  }, [error, recoverGroupSlice]);
-
-  useEffect(() => {
-    if (
-      error instanceof fos.GroupSampleNotFound &&
-      modalGroupSlice &&
-      modalGroupSlice !== errorSliceRef.current
-    ) {
-      resetErrorBoundary();
-    }
-  }, [error, modalGroupSlice, resetErrorBoundary]);
-
-  if (error instanceof fos.GroupSampleNotFound) {
-    return <Loading>Pixelating...</Loading>;
-  }
-
   return (
     <ErrorDisplayMarkup
       error={error as Error}
@@ -153,8 +108,6 @@ const Modal = () => {
   const { enabled: isAnnotationEnabled } = useRecoilValue(canAnnotate);
   const clearModal = fos.useClearModal();
   const is3dVisible = fos.useIs3dVisible();
-  const groupSlice = useRecoilValue(fos.groupSlice);
-  const modalGroupSlice = useRecoilValue(fos.modalGroupSlice);
   const modalSelector = useRecoilValue(fos.modalSelector);
 
   const onPointerDownModalWrapper = useCallback((e: React.PointerEvent) => {
@@ -357,17 +310,16 @@ const Modal = () => {
         data-cy="modal"
       >
         <Actions />
-        {isAnnotationEnabled && <AnnotationHandlerRegistration />}
+        {isAnnotationEnabled && (
+          <Suspense>
+            <AnnotationHandlerRegistration />
+          </Suspense>
+        )}
         <TooltipInfo />
         <ModalContainer style={{ ...screenParams }}>
           <ReactErrorBoundary
             FallbackComponent={ModalErrorFallback}
-            resetKeys={[
-              modalSelector?.id,
-              modalSelector?.groupId,
-              groupSlice,
-              modalGroupSlice,
-            ]}
+            resetKeys={[modalSelector?.id, modalSelector?.groupId]}
           >
             <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
             <ModalNavigation closePanels={closePanels} />

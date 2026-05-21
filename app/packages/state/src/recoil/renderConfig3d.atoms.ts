@@ -23,6 +23,7 @@ import {
 } from "./groups";
 import {
   getGroupSampleMediaPath,
+  getRepresentative3dSlice,
   resolveInteraction3dState,
 } from "./groups.utils";
 import { ModalSample, modalSample } from "./modal";
@@ -170,16 +171,36 @@ export const interaction3dState = selector<
     const isGrouped = get(isGroup);
     const currentActive3dSlices = get(active3dSlices);
 
-    return resolveInteraction3dState({
-      isGroup: isGrouped,
-      modalSample: get(modalSample),
+    if (!isGrouped) {
+      return resolveInteraction3dState({
+        isGroup: false,
+        modalSample: get(modalSample),
+        activeSlices: currentActive3dSlices,
+        activeSampleMap: {},
+        allSampleMap: {},
+        pinnedSlice: get(pinned3DSampleSlice),
+      });
+    }
+
+    const allSampleMapValue = get(all3dSlicesToSampleMap);
+    const sampleMap = currentActive3dSlices.length
+      ? get(active3dSlicesToSampleMap)
+      : allSampleMapValue;
+
+    const representativeSlice = getRepresentative3dSlice({
       activeSlices: currentActive3dSlices,
-      activeSampleMap: currentActive3dSlices.length
-        ? get(active3dSlicesToSampleMap)
-        : {},
-      allSampleMap: isGrouped ? get(all3dSlicesToSampleMap) : {},
+      sampleMap,
       pinnedSlice: get(pinned3DSampleSlice),
     });
+
+    // Defer reading modalSample — it may throw GroupSampleNotFound for jagged
+    // multimodal groups where the current 2D slice doesn't exist in this group.
+    // In those cases the representative sample comes from the 3D slice map instead.
+    const representativeSample =
+      (representativeSlice ? sampleMap[representativeSlice] : null) ??
+      get(modalSample);
+
+    return { sampleMap, representativeSlice, representativeSample };
   },
 });
 
