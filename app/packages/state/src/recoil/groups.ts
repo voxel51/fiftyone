@@ -12,7 +12,6 @@ import {
   DefaultValue,
   atom,
   atomFamily,
-  noWait,
   selector,
   selectorFamily,
 } from "recoil";
@@ -34,21 +33,15 @@ import {
   isNestedDynamicGroup,
   shouldRenderImaVidLooker,
 } from "./dynamicGroups";
-import {
-  GroupSampleNotFound,
-  ModalSample,
-  modalLooker,
-  modalSample,
-  modalSelector,
-} from "./modal";
+import { ModalSample, modalLooker, modalSample, modalSelector } from "./modal";
 import { RelayEnvironmentKey } from "./relay";
 import {
   active3dSlices,
-  active3dSlicesToSampleMap,
   allNon3dSlices,
   fo3dSlice,
   has3dSlice,
   hasFo3dSlice,
+  interaction3dSample,
   is3dPinned,
   pinned3DSampleSlice,
 } from "./renderConfig3d.atoms";
@@ -451,26 +444,7 @@ export const activeModalSample = selector({
   key: "activeModalSample",
   get: ({ get }) => {
     if (get(is3dPinned)) {
-      if (get(hasFo3dSlice)) {
-        return get(fo3dSample).sample;
-      }
-
-      const slices = get(active3dSlices);
-      const key = slices.length === 1 ? slices[0] : get(pinned3DSampleSlice);
-      return get(active3dSlicesToSampleMap)[key]?.sample;
-    }
-
-    if (get(isGroup)) {
-      // Use noWait to catch GroupSampleNotFound for jagged multimodal groups
-      // where the active 2D slice is absent in this particular group, without
-      // crashing the UI. For other states (loading, other errors), fall through
-      // to get(modalSample) to preserve normal suspension behavior.
-      const loadable = get(noWait(modalSample));
-      if (loadable.state === "hasError") {
-        if (loadable.contents instanceof GroupSampleNotFound) return null;
-        throw loadable.contents;
-      }
-      return get(modalSample)?.sample ?? null;
+      return get(interaction3dSample).sample;
     }
 
     return get(modalSample).sample;
