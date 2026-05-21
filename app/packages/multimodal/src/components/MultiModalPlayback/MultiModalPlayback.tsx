@@ -17,9 +17,10 @@ import {
 } from "../../../../playback/src/lib/tracks/TrackProvider";
 import TimelineWithTracks from "../../../../playback/src/views/TimelineWithTracks/TimelineWithTracks";
 import {
-  SceneInventoryProvider,
-  type SceneSource,
-} from "../../scene-inventory";
+  useMcapInitialTiles,
+  useMcapSceneInventory,
+} from "../../adapters/mcap/react/use-mcap-scene-inventory";
+import { SceneInventoryProvider } from "../../scene-inventory";
 import styles from "./MultiModalPlayback.module.css";
 
 export interface MultiModalPlaybackProps {
@@ -33,13 +34,6 @@ export interface MultiModalPlaybackProps {
 
   /** Initial tile entries seeded into the embedded TilingProvider. */
   initialTiles?: Record<string, TilingTile>;
-
-  /**
-   * Data sources available in this scene. Published via
-   * `SceneInventoryProvider` so tiles and their settings can
-   * discover what they can render. Defaults to an empty list.
-   */
-  sources?: readonly SceneSource[];
 
   /**
    * Override for the left sidebar. Defaults to {@link TileSettingsSidebar}
@@ -98,14 +92,11 @@ export interface MultiModalPlaybackProps {
  *       <RegisterMyStreams />
  *     </MultiModalPlayback>
  */
-const EMPTY_SOURCES: readonly SceneSource[] = [];
-
 const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   fileName,
   tracks,
   defaultPinnedTrackIds,
   initialTiles,
-  sources = EMPTY_SOURCES,
   leftSidebar = <TileSettingsSidebar />,
   rightSidebar = <TilingInspectorSidebar />,
   defaultLeftOpen = true,
@@ -113,6 +104,12 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   children,
   className,
 }) => {
+  // POC: only MCAP backs the inventory today. When other file kinds
+  // arrive, switch on extension (or move dispatch into a registry).
+  const sources = useMcapSceneInventory(fileName);
+  const defaultInitialTiles = useMcapInitialTiles(fileName);
+  const resolvedInitialTiles = initialTiles ?? defaultInitialTiles;
+
   return (
     <PlaybackProvider>
       <TrackProvider
@@ -120,7 +117,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
         initialPinnedIds={defaultPinnedTrackIds}
       >
         <SceneInventoryProvider sources={sources}>
-          <TilingProvider initialTiles={initialTiles}>
+          <TilingProvider initialTiles={resolvedInitialTiles}>
             {children}
             <Layout
               fileName={fileName}
