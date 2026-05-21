@@ -57,3 +57,51 @@ describe("handles dynamic groups", () => {
     });
   });
 });
+
+describe("groupByFieldValue reconstruction", () => {
+  const testGroupByFieldValue = <
+    TestSelector<typeof dynamicGroups.groupByFieldValue>
+  >(<unknown>dynamicGroups.groupByFieldValue);
+
+  it("returns server-provided _group as-is", () => {
+    setMockAtoms({
+      modalSample: { sample: { _group: ["scene-1", "CAM_BACK"] } },
+      dynamicGroupParameters: { groupBy: ["scene_id", "sensor_name"] },
+    });
+    expect(testGroupByFieldValue()).toEqual(["scene-1", "CAM_BACK"]);
+  });
+
+  it("reconstructs from array groupBy when _group missing (pagination edge case)", () => {
+    setMockAtoms({
+      modalSample: {
+        sample: { scene_id: "scene-7", sensor_name: "CAM_FRONT" },
+      },
+      dynamicGroupParameters: { groupBy: ["scene_id", "sensor_name"] },
+    });
+    expect(testGroupByFieldValue()).toEqual(["scene-7", "CAM_FRONT"]);
+  });
+
+  it("reconstructs from string groupBy when _group missing", () => {
+    setMockAtoms({
+      modalSample: { sample: { scene_id: "scene-7" } },
+      dynamicGroupParameters: { groupBy: "scene_id" },
+    });
+    expect(testGroupByFieldValue()).toEqual("scene-7");
+  });
+
+  it("returns null when no dynamicGroupParameters present", () => {
+    setMockAtoms({
+      modalSample: { sample: { _id: "abc" } },
+      dynamicGroupParameters: null,
+    });
+    expect(testGroupByFieldValue()).toBeNull();
+  });
+
+  it("returns null when modalSample is unavailable", () => {
+    setMockAtoms({
+      modalSample: null,
+      dynamicGroupParameters: { groupBy: "scene_id" },
+    });
+    expect(testGroupByFieldValue()).toBeNull();
+  });
+});

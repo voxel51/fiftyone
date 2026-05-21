@@ -1,6 +1,6 @@
 import { PointInfo, type Sample } from "@fiftyone/looker";
 import { mainSample, mainSampleQuery } from "@fiftyone/relay";
-import { atom, selector } from "recoil";
+import { atom, atomFamily, selector } from "recoil";
 import { graphQLSelector } from "recoil-relay";
 import { VariablesOf } from "relay-runtime";
 import type { Lookers } from "../hooks";
@@ -148,12 +148,19 @@ export const nullableModalSampleId = selector<string>({
   },
 });
 
-export const modalSample = graphQLSelector<
+// Lets modalSample skip mainSampleQuery when pagination already has the doc.
+export const cachedSampleById = atomFamily<ModalSample | null, string>({
+  key: "cachedSampleById",
+  default: null,
+  dangerouslyAllowMutability: true,
+});
+
+const modalSampleFromQuery = graphQLSelector<
   VariablesOf<mainSampleQuery>,
-  ModalSample
+  ModalSample | null
 >({
   environment: RelayEnvironmentKey,
-  key: "modalSample",
+  key: "modalSampleFromQuery",
   query: mainSample,
   mapResponse: (data: ModalSampleResponse, { variables }) => {
     if (!data.sample) {
@@ -175,6 +182,9 @@ export const modalSample = graphQLSelector<
 
     if (current === null) return null;
 
+    // Cache hit: skip network entirely.
+    if (get(cachedSampleById(current.id))) return null;
+
     const slice = get(groupSlice);
     const sliceSelect = get(modalGroupSlice);
 
@@ -193,6 +203,25 @@ export const modalSample = graphQLSelector<
       },
     };
   },
+});
+
+export const modalSample = selector<ModalSample>({
+  key: "modalSample",
+  get: ({ get }) => {
+    const current = get(modalSelector);
+    if (!current) {
+      throw new Error("modal sample is not defined");
+    }
+    const cached = get(cachedSampleById(current.id));
+    if (cached) return cached;
+
+    const fromQuery = get(modalSampleFromQuery);
+    if (!fromQuery) {
+      throw new SampleNotFound(`sample with id ${current.id} not found`);
+    }
+    return fromQuery;
+  },
+  dangerouslyAllowMutability: true,
 });
 
 export const tooltipCoordinates = atom<ComputeCoordinatesReturnType | null>({

@@ -6,7 +6,12 @@ import { Schema } from "@fiftyone/utilities";
 import { useMemo, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { VariablesOf, fetchQuery, useRelayEnvironment } from "react-relay";
-import { RecoilValueReadOnly, selector, useRecoilValue } from "recoil";
+import {
+  RecoilValueReadOnly,
+  selector,
+  useRecoilTransaction_UNSTABLE,
+  useRecoilValue,
+} from "recoil";
 
 const PAGE_SIZE = 20;
 
@@ -15,9 +20,11 @@ const processSamplePageData = (
   store: fos.LookerStore<fos.Lookers>,
   data: fos.ResponseFrom<foq.paginateSamplesQuery>,
   schema: Schema,
-  zoom?: boolean
+  zoom: boolean | undefined,
+  cacheSamples: (samples: fos.ModalSample[]) => void
 ) => {
-  return data.samples.edges.map((edge, i) => {
+  const cached: fos.ModalSample[] = [];
+  const items = data.samples.edges.map((edge, i) => {
     if (edge.node.__typename === "%other") {
       throw new Error("unexpected sample type");
     }
@@ -25,6 +32,7 @@ const processSamplePageData = (
     const node = edge.node as fos.ModalSample;
     store.samples.set(node.sample._id, node);
     store.indices.set(offset + i, node.sample._id);
+    cached.push(node);
 
     return {
       aspectRatio: zoom
@@ -33,6 +41,8 @@ const processSamplePageData = (
       id: edge.node.id,
     };
   });
+  if (cached.length) cacheSamples(cached);
+  return items;
 };
 
 export const defaultZoom = selector({
@@ -59,6 +69,16 @@ const useFlashlightPager = (
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
 
+  const cacheSamples = useRecoilTransaction_UNSTABLE(
+    ({ set }) =>
+      (samples: fos.ModalSample[]) => {
+        for (const sample of samples) {
+          set(fos.cachedSampleById(sample.sample._id as string), sample);
+        }
+      },
+    []
+  );
+
   const pager = useMemo(() => {
     return async (pageNumber: number) => {
       const variables = await page(pageNumber, PAGE_SIZE);
@@ -75,7 +95,8 @@ const useFlashlightPager = (
               store,
               data,
               schema,
-              zoomValue
+              zoomValue,
+              cacheSamples
             );
 
             subscription.unsubscribe();
@@ -92,7 +113,7 @@ const useFlashlightPager = (
         });
       });
     };
-  }, [environment, handleError, page, schema, store, zoom]);
+  }, [cacheSamples, environment, handleError, page, schema, store, zoom]);
 
   const ref = useRef<FlashlightConfig<number>["get"]>(pager);
   ref.current = pager;

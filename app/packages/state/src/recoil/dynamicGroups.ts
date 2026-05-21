@@ -138,7 +138,18 @@ export const imaVidLookerState = atomFamily<any, string>({
 export const groupByFieldValue = selector({
   key: "groupByFieldValue",
   get: ({ get }) => {
-    return get(modalSample)?.sample?._group ?? null;
+    const sample = get(modalSample)?.sample;
+    if (!sample) return null;
+    const grp = sample._group;
+    if (grp !== undefined && grp !== null) return grp;
+    // Pagination edges omit server-derived _group; reconstruct from groupBy spec.
+    const params = get(dynamicGroupParameters);
+    const groupBy = (params as { groupBy?: string | string[] } | null)?.groupBy;
+    if (!groupBy) return null;
+    if (Array.isArray(groupBy)) {
+      return groupBy.map((f) => (sample as Record<string, unknown>)[f]);
+    }
+    return (sample as Record<string, unknown>)[groupBy] ?? null;
   },
 });
 
