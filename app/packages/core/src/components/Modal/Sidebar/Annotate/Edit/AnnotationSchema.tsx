@@ -20,7 +20,7 @@ import {
   currentField,
   currentOverlay,
   currentSchema,
-} from "./state";
+} from "./useAnnotationContext/selectors";
 
 const useSchema = (readOnly: boolean) => {
   const config = useAtomValue(currentSchema);

@@ -16,7 +16,7 @@ import {
   PolylineEntryStatus,
   PolylineProgressStatus,
 } from "./annotationStatusContent";
-import { currentData } from "./state";
+import { currentData } from "./useAnnotationContext/selectors";
 import { _unsafeDetectionModeActiveAtom } from "./useDetectionMode";
 import { _unsafeMergeTargetIdAtom } from "./useMergeTool";
 import { _unsafePolylineModeActiveAtom } from "./usePolylineMode";

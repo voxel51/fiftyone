@@ -1,7 +1,7 @@
 import { useAtomValue } from "jotai";
 import React from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
-import { currentOverlay } from "./state";
+import { currentOverlay } from "./useAnnotationContext/selectors";
 
 const createId = () => {
   return {

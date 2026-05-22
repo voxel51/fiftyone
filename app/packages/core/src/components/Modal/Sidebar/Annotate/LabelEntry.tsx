@@ -9,7 +9,7 @@ import { useMemo } from "react";
 import styled from "styled-components";
 import { Column } from "./Components";
 import { editing } from "./Edit";
-import { savedLabel } from "./Edit/state";
+import { savedLabel } from "./Edit/useAnnotationContext/atoms";
 import { ICONS } from "./Icons";
 import { fieldType } from "./state";
 import useColor from "./useColor";

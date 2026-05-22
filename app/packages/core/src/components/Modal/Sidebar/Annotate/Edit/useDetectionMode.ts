@@ -8,7 +8,11 @@ import { DETECTION } from "@fiftyone/utilities";
 import useExit from "./useExit";
 
 import { isPatchesView } from "@fiftyone/state";
-import { current, currentType, fieldsOfType } from "./state";
+import {
+  current,
+  currentType,
+  fieldsOfType,
+} from "./useAnnotationContext/selectors";
 import { useAnnotationContext } from "./useAnnotationContext";
 
 /**

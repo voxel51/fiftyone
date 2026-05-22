@@ -14,7 +14,7 @@ import { Box, Stack, TextField } from "@mui/material";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { Vector3Tuple } from "three";
-import { currentData, currentOverlay } from "./state";
+import { currentData, currentOverlay } from "./useAnnotationContext/selectors";
 
 interface Coordinates3d {
   position: { x?: number; y?: number; z?: number };

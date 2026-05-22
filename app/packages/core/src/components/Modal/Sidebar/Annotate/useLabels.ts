@@ -17,7 +17,7 @@ import { splitAtom, useAtomCallback } from "jotai/utils";
 import { get } from "lodash";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { selector, useRecoilCallback, useRecoilValue } from "recoil";
-import type { LabelType } from "./Edit/state";
+import type { LabelType } from "./Edit/useAnnotationContext/atoms";
 import {
   isFieldReadOnly,
   labelSchemasData,

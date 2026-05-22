@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import type { LabelType } from "./Edit/state";
+import type { LabelType } from "./Edit/useAnnotationContext/atoms";
 import {
   CLASSIFICATION,
   DETECTION,

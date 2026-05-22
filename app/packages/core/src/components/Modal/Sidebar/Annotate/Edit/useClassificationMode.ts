@@ -4,7 +4,7 @@ import { CLASSIFICATION } from "@fiftyone/utilities";
 import { useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
-import { currentType, fieldsOfType } from "./state";
+import { currentType, fieldsOfType } from "./useAnnotationContext/selectors";
 import { useAnnotationContext } from "./useAnnotationContext";
 import useExit from "./useExit";
 

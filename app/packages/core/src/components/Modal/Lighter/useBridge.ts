@@ -26,11 +26,11 @@ import { useAtomCallback } from "jotai/utils";
 import { useCallback, useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { editing } from "../Sidebar/Annotate/Edit";
+import { savedLabel } from "../Sidebar/Annotate/Edit/useAnnotationContext/atoms";
 import {
   current,
   currentData,
-  savedLabel,
-} from "../Sidebar/Annotate/Edit/state";
+} from "../Sidebar/Annotate/Edit/useAnnotationContext/selectors";
 import { useDetectionMode } from "../Sidebar/Annotate/Edit/useDetectionMode";
 import { usePolylineMode } from "../Sidebar/Annotate/Edit/usePolylineMode";
 import {

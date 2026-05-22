@@ -15,7 +15,7 @@ import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { useLabelsContext } from "../useLabels";
-import { current } from "./state";
+import { current } from "./useAnnotationContext/selectors";
 import useExit from "./useExit";
 
 export default function useDelete() {

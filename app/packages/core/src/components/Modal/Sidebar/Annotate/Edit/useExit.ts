@@ -7,7 +7,7 @@ import {
 import { useAtomValue } from "jotai";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
-import { current, currentOverlay } from "./state";
+import { current, currentOverlay } from "./useAnnotationContext/selectors";
 import { useAnnotationContext } from "./useAnnotationContext";
 
 export default function useExit() {

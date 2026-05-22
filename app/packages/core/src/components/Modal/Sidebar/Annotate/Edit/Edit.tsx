@@ -20,7 +20,7 @@ import {
   currentFieldIsReadOnlyAtom,
   currentOverlay,
   currentType,
-} from "./state";
+} from "./useAnnotationContext/selectors";
 import PrimitiveWrapper from "./PrimitiveWrapper";
 import useActivePrimitive from "./useActivePrimitive";
 import useExit from "./useExit";

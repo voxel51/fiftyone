@@ -4,7 +4,8 @@ import { getDefaultStore } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { editing } from "./Edit";
-import { current, savedLabel } from "./Edit/state";
+import { savedLabel } from "./Edit/useAnnotationContext/atoms";
+import { current } from "./Edit/useAnnotationContext/selectors";
 import useExit from "./Edit/useExit";
 import { labelMap } from "./useLabels";
 

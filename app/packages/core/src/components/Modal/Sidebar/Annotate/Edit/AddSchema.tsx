@@ -12,7 +12,7 @@ import styled from "styled-components";
 import { activeSchemaTab } from "../state";
 import useCanManageSchema from "../useCanManageSchema";
 import { useSchemaManagerModal } from "../SchemaManager/hooks";
-import { editing } from "./state";
+import { editing } from "./useAnnotationContext/atoms";
 
 const Container = styled.div`
   flex: 1;

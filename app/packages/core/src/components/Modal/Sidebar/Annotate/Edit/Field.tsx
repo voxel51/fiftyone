@@ -16,14 +16,14 @@ import { useCallback, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import AddSchema from "./AddSchema";
+import { editing } from "./useAnnotationContext/atoms";
 import {
   current,
   currentDisabledFields,
   currentField,
   currentFields,
   currentType,
-  editing,
-} from "./state";
+} from "./useAnnotationContext/selectors";
 
 const createSchema = (
   choices: string[],

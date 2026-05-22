@@ -13,7 +13,7 @@ import {
   imagePixelsToCanvasPixels,
   relativeToImagePixels,
 } from "./coordinateConversion";
-import { currentData, currentOverlay } from "./state";
+import { currentData, currentOverlay } from "./useAnnotationContext/selectors";
 
 const createInput = (name: string, readOnly?: boolean) => {
   return {

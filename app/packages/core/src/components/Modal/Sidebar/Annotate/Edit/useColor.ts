@@ -4,7 +4,7 @@ import { getOverlayColor } from "@fiftyone/lighter";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import useColorMappingContext from "../../../Lighter/useColorMappingContext";
-import { current } from "./state";
+import { current } from "./useAnnotationContext/selectors";
 
 export default function useColor(overlay?: BaseOverlay) {
   const coloring = useColorMappingContext();

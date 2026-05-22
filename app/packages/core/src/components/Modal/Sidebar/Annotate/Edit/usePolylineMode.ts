@@ -17,7 +17,7 @@ import { POLYLINE } from "@fiftyone/utilities";
 import { atom, useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
-import { fieldsOfType } from "./state";
+import { fieldsOfType } from "./useAnnotationContext/selectors";
 import {
   type CreateOptions,
   useAnnotationContext,

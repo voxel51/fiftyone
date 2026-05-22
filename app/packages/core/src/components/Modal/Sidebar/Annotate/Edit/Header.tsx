@@ -21,7 +21,7 @@ import {
   currentFieldIsReadOnlyAtom,
   currentOverlay,
   currentType,
-} from "./state";
+} from "./useAnnotationContext/selectors";
 import { useAnnotationContext } from "./useAnnotationContext";
 
 import { KnownCommands, KnownContexts, useCommand } from "@fiftyone/commands";

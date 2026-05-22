@@ -16,7 +16,11 @@ import {
 import { isPatchesView } from "@fiftyone/state";
 import { DETECTION } from "@fiftyone/utilities";
 
-import { current, currentType, fieldsOfType } from "./state";
+import {
+  current,
+  currentType,
+  fieldsOfType,
+} from "./useAnnotationContext/selectors";
 import { useAnnotationContext } from "./useAnnotationContext";
 import { useAIAnnotationMode } from "./useAIAnnotationMode";
 import useExit from "./useExit";

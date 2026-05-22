@@ -2,7 +2,7 @@ import * as fos from "@fiftyone/state";
 import { Box, Typography } from "@mui/material";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { currentData } from "./state";
+import { currentData } from "./useAnnotationContext/selectors";
 import type { Coordinates } from "@fiftyone/looker/src/state";
 
 /**

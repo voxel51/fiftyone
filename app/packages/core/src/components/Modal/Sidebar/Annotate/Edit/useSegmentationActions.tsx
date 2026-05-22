@@ -21,7 +21,7 @@ import {
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import styled from "styled-components";
-import { editing } from "./state";
+import { editing } from "./useAnnotationContext/atoms";
 import useExit from "./useExit";
 import {
   MAX_CURSOR_SIZE,

@@ -8,7 +8,7 @@ import {
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import styled from "styled-components";
-import { currentOverlay } from "./state";
+import { currentOverlay } from "./useAnnotationContext/selectors";
 
 const Container = styled.div`
   display: flex;

@@ -5,7 +5,7 @@ import { atomWithStorage } from "jotai/utils";
 import React, { useCallback } from "react";
 import styled from "styled-components";
 import { CheckboxView } from "../../../../../plugins/SchemaIO/components";
-import { currentType } from "../Edit/state";
+import { currentType } from "../Edit/useAnnotationContext/selectors";
 import Modal from "./Modal";
 
 const showDeleteConfirmation = atom(false);
