@@ -72,7 +72,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
 
       return [
         spec.leftPath &&
-          mediaFactory.createBlankImage({
+          mediaFactory.createImage({
             outputPath: spec.leftPath,
             width: 320,
             height: 240,
@@ -81,7 +81,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
             hideLogs: true,
           }),
         spec.rightPath &&
-          mediaFactory.createBlankImage({
+          mediaFactory.createImage({
             outputPath: spec.rightPath,
             width: 320,
             height: 240,

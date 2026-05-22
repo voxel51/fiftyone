@@ -3,7 +3,7 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
-import { createBlankImage } from "src/shared/media-factory/image";
+import { createImage } from "src/shared/media-factory/image";
 
 const test = base.extend<{
   grid: GridPom;
@@ -54,7 +54,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   // create a dataset with two groups, each with 2 image samples
   const imageCreatePromises = imagePaths.map(
     async (imgPath) =>
-      await createBlankImage({
+      await createImage({
         outputPath: imgPath,
         width: 100,
         height: 100,
