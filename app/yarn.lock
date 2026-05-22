@@ -3656,6 +3656,7 @@ __metadata:
     "@fiftyone/state": "workspace:*"
     "@fiftyone/tiling": "workspace:*"
     "@voxel51/voodo": "npm:^0.0.30"
+    clsx: "npm:^2.1.0"
     jotai: "npm:^2.9.3"
     vite: "npm:^7.3.2"
   languageName: unknown
