@@ -1,0 +1,17 @@
+{
+    "name": "@fiftyone/video-annotation",
+    "main": "./index.ts",
+    "packageManager": "yarn@4.9.1",
+    "dependencies": {
+        "@fiftyone/lighter": "workspace:*",
+        "@fiftyone/playback": "workspace:*",
+        "@fiftyone/state": "workspace:*",
+        "@fiftyone/tiling": "workspace:*",
+        "@voxel51/voodo": "^0.0.30",
+        "clsx": "^2.1.0",
+        "jotai": "^2.9.3"
+    },
+    "devDependencies": {
+        "vite": "^7.3.2"
+    }
+}

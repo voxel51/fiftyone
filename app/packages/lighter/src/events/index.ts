@@ -193,6 +193,14 @@ export type LighterEventGroup = {
   "lighter:selection-changed": {
     selectedIds: string[];
     deselectedIds: string[];
+    /**
+     * True when the selection state change was driven by something other than
+     * a user gesture — currently set when an overlay is removed from the
+     * scene (its selection is dropped as a side effect of removal, not because
+     * the user picked something else). Listeners that care about user intent
+     * should skip deselect entries when this is true.
+     */
+    ignoreSideEffects?: boolean;
   };
   /** Emitted when all overlays are deselected */
   "lighter:selection-cleared": {

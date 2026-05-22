@@ -15,6 +15,7 @@ import {
   viewStartAtom,
 } from "./atoms";
 import type {
+  PlaybackClockSource,
   PlaybackConfig,
   PlaybackContextValue,
   PlaybackStore,
@@ -23,6 +24,26 @@ import type {
 
 const clamp = (v: number, lo: number, hi: number) =>
   Math.min(hi, Math.max(lo, v));
+
+/**
+ * Cap on per-tick `dt` (sec) in the engine's wallclock-driven advance.
+ * When the main thread is blocked (memory pressure, GC pause, throttled
+ * tab) RAF callbacks pile up and the next `timestamp - lastTimestamp`
+ * can be huge. Without a cap, the engine teleports `targetTime`
+ * forward by seconds in a single tick — past where any blocking stream
+ * has caught up to. The cap turns that into "advance one cap-step,
+ * then wait for the barrier to refresh."
+ *
+ * 0.133s ≈ 4 frames at 30fps. Generous enough to absorb a 100ms GC
+ * pause without throttling smooth playback; tight enough that a
+ * post-stall tick doesn't overshoot beyond what `bufferState` could
+ * meaningfully gate.
+ *
+ * Only applies in the dt-driven path. When a clock source is
+ * registered (e.g. video-anchored playback), the cap is irrelevant
+ * because `targetTime` comes from the source directly.
+ */
+const MAX_TICK_DT_S = 0.133;
 
 export function usePlaybackEngine({
   duration = 0,
@@ -70,7 +91,14 @@ export function usePlaybackEngine({
   const streamsRef = useRef<Map<string, PlaybackStream>>(new Map());
   const subscribersRef = useRef<Map<string, number>>(new Map());
   const rafIdRef = useRef<number | null>(null);
+  // Wallclock at the previous tick. Used for `dt`-driven advance when
+  // no clock source is registered. Reset to `null` on play() so the
+  // first tick after pause doesn't see a huge gap.
   const lastTimestampRef = useRef<number | null>(null);
+  // Optional override for the engine's wallclock advance. When non-null and
+  // `read()` returns a number, the engine uses that as the next target time;
+  // when `null` or `read()` returns `null`, the engine falls back to dt.
+  const clockSourceRef = useRef<PlaybackClockSource | null>(null);
   const seekDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seekSeqRef = useRef(0);
 
@@ -149,38 +177,82 @@ export function usePlaybackEngine({
     [store, isActive]
   );
 
+  /**
+   * Engine RAF tick. Two modes, chosen per tick based on whether a
+   * `PlaybackClockSource` has been registered via `setClockSource`:
+   *
+   * - **Default (wallclock-driven, no clock source)**: advance
+   *   `playhead` by capped `dt`. Gate the commit on all blocking
+   *   subscribed streams reporting ready at `targetTime`. This is the
+   *   general-purpose model — label-only timelines, image-sequence
+   *   playback, sensor data, multi-stream coordinated playback all
+   *   live here. The engine is the authority on time; streams
+   *   contribute readiness.
+   *
+   * - **External clock (with registered clock source)**: `targetTime`
+   *   comes from `clockSourceRef.current.read()`. The engine doesn't
+   *   compute `dt`; it observes whatever time the source reports and
+   *   commits gated on the same barrier check. Use this for the
+   *   video-anchored case where the `<video>` element's actual
+   *   presentation time should drive the timeline (avoids the
+   *   wallclock-vs-decoder race).
+   *
+   * If a registered clock source returns `null` (no opinion this
+   * tick — e.g. video hasn't presented a first frame yet), we fall
+   * back to the dt path for that tick. So the modes compose: the
+   * presence of a source doesn't disable dt; only an actual value
+   * does.
+   */
   const tick = useCallback(
     (timestamp: number) => {
-      // Capture first timestamp to avoid a large dt spike on the first frame.
+      // Capture first timestamp so the first tick after a pause/seek
+      // doesn't see a huge dt spike.
       if (lastTimestampRef.current === null) {
         lastTimestampRef.current = timestamp;
         rafIdRef.current = requestAnimationFrame(tick);
         return;
       }
 
-      const dt = ((timestamp - lastTimestampRef.current) / 1000) * store.get(speedAtom);
-      lastTimestampRef.current = timestamp;
-
+      const speed = store.get(speedAtom);
       const currentTime = store.get(playheadAtom);
       const loopStart = store.get(loopStartAtom);
       const loopEnd = store.get(loopEndAtom);
+      const duration = store.get(durationAtom);
 
-      const rawNext = currentTime + dt;
+      const externalTime = clockSourceRef.current?.read() ?? null;
+
+      let rawNext: number;
+      if (externalTime !== null) {
+        // External clock owns the timeline
+        rawNext = externalTime;
+        lastTimestampRef.current = timestamp;
+      } else {
+        // dt-driven advance. Cap to absorb main-thread blocks.
+        const rawDt = (timestamp - lastTimestampRef.current) / 1000;
+        const cappedDt = Math.min(rawDt, MAX_TICK_DT_S);
+        const dt = cappedDt * speed;
+        lastTimestampRef.current = timestamp;
+        rawNext = currentTime + dt;
+      }
+
       const willWrap = rawNext >= loopEnd;
       const targetTime = willWrap ? loopStart : rawNext;
 
-      const duration = store.get(durationAtom);
+      // Barrier: every blocking, subscribed stream must be ready at
+      // `targetTime` before we commit. Streams that report `missing`
+      // get a prefetch nudge; `loading` is already in flight.
       let isBuffering = false;
-
       for (const s of streamsRef.current.values()) {
         if (!s.blocking) continue;
-        if (!isActive(s.id)) continue; // dormant — no subscribers
+        if (!isActive(s.id)) continue;
         const state = s.bufferState(targetTime);
         if (state === "ready") continue;
         isBuffering = true;
-        // "loading" means fetch already in flight — don't re-request.
         if (state === "missing") {
-          s.prefetch?.([targetTime, Math.min(duration, targetTime + (s.lookaheadSeconds ?? 3))]);
+          s.prefetch?.([
+            targetTime,
+            Math.min(duration, targetTime + (s.lookaheadSeconds ?? 3)),
+          ]);
         }
       }
 
@@ -189,8 +261,8 @@ export function usePlaybackEngine({
       if (!isBuffering) {
         store.set(playheadAtom, targetTime);
         doCommit(targetTime);
-        // Loop-wrap is a discontinuous jump — fire immediately so streams
-        // can flush their cache and buffer around loopStart.
+        // Loop-wrap is a discontinuous jump — fire immediately so
+        // streams can flush their cache and buffer around loopStart.
         if (willWrap) fireSeekEvent(loopStart, true);
       }
 
@@ -298,10 +370,14 @@ export function usePlaybackEngine({
         store.set(loopEndAtom, le);
       },
       setSpeed: (speed: number) => {
-        // NaN / Infinity / non-positive values would corrupt `dt` in the
-        // RAF tick and produce invalid playhead progression.
+        // NaN / Infinity / non-positive values would corrupt `dt` in
+        // the RAF tick and produce invalid playhead progression.
         if (!Number.isFinite(speed) || speed <= 0) return;
         store.set(speedAtom, speed);
+        // When a clock source is registered, the engine's `dt` arithmetic
+        // isn't running — the source already paces the timeline. Speed in that
+        // mode has to be applied at the source (e.g. `v.playbackRate` for a
+        // video clock source).
       },
       registerStream: (stream: PlaybackStream) => {
         streamsRef.current.set(stream.id, stream);
@@ -318,7 +394,10 @@ export function usePlaybackEngine({
         };
       },
       subscribeStream: (id: string) => {
-        subscribersRef.current.set(id, (subscribersRef.current.get(id) ?? 0) + 1);
+        subscribersRef.current.set(
+          id,
+          (subscribersRef.current.get(id) ?? 0) + 1
+        );
         // One-shot cleanup. StrictMode's setup→cleanup→setup cycle (and
         // any consumer that retains a stale cleanup) would otherwise
         // double-decrement and drop a still-mounted stream.
@@ -331,6 +410,21 @@ export function usePlaybackEngine({
             subscribersRef.current.delete(id);
           } else {
             subscribersRef.current.set(id, next);
+          }
+        };
+      },
+      setClockSource: (source: PlaybackClockSource | null) => {
+        clockSourceRef.current = source;
+        // Reset the dt anchor so a switch back to wallclock mode
+        // doesn't see a huge gap accumulated while the source was
+        // driving.
+        lastTimestampRef.current = null;
+        return () => {
+          // Identity guard: a stale cleanup from a previous source
+          // shouldn't yank out a newer one.
+          if (clockSourceRef.current === source) {
+            clockSourceRef.current = null;
+            lastTimestampRef.current = null;
           }
         };
       },

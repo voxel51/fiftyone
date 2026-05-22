@@ -121,7 +121,12 @@ export type {
   ViewportState,
 } from "./types";
 
-export { getOverlayColor } from "./utils/colorMapping";
+// Utilities
+export {
+  getLabelColorFromContext,
+  getOverlayColor,
+  type ColorMappingContext,
+} from "./utils/colorMapping";
 export { decodeMaskPath } from "./utils/maskPathDecoding";
 
 // Constants

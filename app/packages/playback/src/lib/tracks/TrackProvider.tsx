@@ -3,7 +3,6 @@ import React, {
   useCallback,
   useContext,
   useMemo,
-  useRef,
   useState,
 } from "react";
 
@@ -60,11 +59,17 @@ export interface TrackContextValue {
 const TrackContext = createContext<TrackContextValue | null>(null);
 
 export interface TrackProviderProps {
-  /** Tracks to broadcast. Treated as mount-time config (no churn). */
-  initialTracks?: Track[];
+  /**
+   * Tracks to broadcast. Reactive; callers should provide a stable reference
+   * so a new identity is a signal that the track list changed.
+   */
+  tracks?: Track[];
   /**
    * Track ids that should start pinned to the timeline. Anything else
-   * sits in the "unpinned" pool, browsable but not rendered.
+   * sits in the "unpinned" pool, browsable but not rendered. **Mount-time
+   * only** — captured into local state on the first render and never read
+   * again. To mutate pin state after mount, call `togglePin` / `setPinned`
+   * from `useTrackPinning()`.
    */
   initialPinnedIds?: string[];
   children: React.ReactNode;
@@ -86,14 +91,10 @@ export interface TrackProviderProps {
  * provider when the user opens that recording.
  */
 export const TrackProvider: React.FC<TrackProviderProps> = ({
-  initialTracks = [],
+  tracks = [],
   initialPinnedIds = [],
   children,
 }) => {
-  // Tracks are mount-time config — no setter exposed. Capture in a ref so
-  // a parent passing a fresh `initialTracks` array on every render doesn't
-  // bust the context's memoization.
-  const tracksRef = useRef(initialTracks);
   const [pinnedIds, setPinnedSet] = useState<Set<string>>(
     () => new Set(initialPinnedIds)
   );
@@ -121,13 +122,13 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
 
   const value = useMemo<TrackContextValue>(
     () => ({
-      tracks: tracksRef.current,
+      tracks,
       pinnedIds,
       togglePin,
       setPinned,
     }),
     // togglePin / setPinned are useCallback([]) — referentially stable.
-    [pinnedIds]
+    [tracks, pinnedIds]
   );
 
   return (

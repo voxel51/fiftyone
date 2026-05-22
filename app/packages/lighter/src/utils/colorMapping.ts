@@ -26,13 +26,17 @@ export interface StrokeStyles {
 }
 
 /**
- * Maps Lighter / Annotation overlay information to a color using FiftyOne's color scheme system.
+ * Resolve a color for a label under the given color-mapping context.
  *
- * This is a lightweight adapter around Looker's getLabelColor function, while making some key assumptions:
- * 1. Label tags are not accounted for.
+ * Lightweight adapter around Looker's `getLabelColor`, with the same
+ * assumption as {@link getOverlayColor}: label tags are not accounted for.
+ *
+ * Use this when you need to color a UI element by the same rules the
+ * overlay would use but don't have a {@link BaseOverlay} instance.
  */
-export function getOverlayColor(
-  overlay: BaseOverlay,
+export function getLabelColorFromContext(
+  path: string,
+  label: unknown,
   context: ColorMappingContext
 ): string {
   // Convert ColorSchemeInput to Coloring interface
@@ -54,15 +58,12 @@ export function getOverlayColor(
     targets: [],
   };
 
-  // Map overlay properties to getLabelColor parameters
-  const path = overlay.field;
-  const label = overlay.label as any;
-
-  // Handle case when overlay.label is null or undefined
+  // Handle case when label is null or undefined
   if (!label) {
-    // Return a default color when no label is available
     return getColor(context.colorScheme.colorPool, context.seed, path);
   }
+
+  const typedLabel = label as Record<string, unknown>;
 
   // Sensible defaults for missing parameters (lean towards false or undefined)
   const isTagged = false;
@@ -81,30 +82,44 @@ export function getOverlayColor(
       valueColors: field.valueColors ? [...field.valueColors] : undefined,
     })
   );
-  const embeddedDocType = label["_cls"];
+  const embeddedDocType = typedLabel["_cls"];
   const isPolyline3D =
-    "points3d" in label &&
-    Array.isArray(label["points3d"]) &&
-    label["points3d"].length > 0;
+    "points3d" in typedLabel &&
+    Array.isArray(typedLabel["points3d"]) &&
+    (typedLabel["points3d"] as unknown[]).length > 0;
   const isDetection3D =
-    "location" in label &&
-    Array.isArray(label["location"]) &&
-    label["location"].length > 0 &&
-    "dimensions" in label &&
-    Array.isArray(label["dimensions"]) &&
-    label["dimensions"].length > 0;
+    "location" in typedLabel &&
+    Array.isArray(typedLabel["location"]) &&
+    (typedLabel["location"] as unknown[]).length > 0 &&
+    "dimensions" in typedLabel &&
+    Array.isArray(typedLabel["dimensions"]) &&
+    (typedLabel["dimensions"] as unknown[]).length > 0;
   const is3D = isPolyline3D || isDetection3D;
 
   return getLabelColor({
     coloring,
     path,
-    label,
+    label: typedLabel as any,
     isTagged,
     labelTagColors,
     customizeColorSetting,
     is3D,
     embeddedDocType,
   });
+}
+
+/**
+ * Maps Lighter / Annotation overlay information to a color using FiftyOne's
+ * color scheme system.
+ *
+ * Thin wrapper around {@link getLabelColorFromContext} that extracts the
+ * field + label from an overlay instance.
+ */
+export function getOverlayColor(
+  overlay: BaseOverlay,
+  context: ColorMappingContext
+): string {
+  return getLabelColorFromContext(overlay.field, overlay.label, context);
 }
 
 /**
