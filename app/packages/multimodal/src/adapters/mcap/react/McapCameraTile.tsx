@@ -1,36 +1,31 @@
-import { useTileSettings, useTileSource } from "@fiftyone/tiling";
 import { Size, Spinner } from "@voxel51/voodo";
-import CameraSettings from "../../../../../playback/src/views/PlaybackTiles/CameraTile/CameraSettings";
+import React, { useEffect, useState } from "react";
 import type { EncodedImageVisualization } from "../../../decoders";
+import { useSceneSourcesByType } from "../../../scene-inventory";
 import { ImagePanel } from "../../../visualization/panels/image";
+import styles from "./McapTile.module.css";
 import { useMcapTopicStream } from "./use-mcap-topic-stream";
 
-const PANEL_STYLE = { height: "100%", width: "100%" } as const;
-
 const McapCameraTile: React.FC = () => {
-  useTileSettings(CameraSettings);
-  const sourceId = useTileSource();
-  const frame = useMcapTopicStream<EncodedImageVisualization>(sourceId ?? "");
+  const [topic, setTopic] = useState<string | null>(null);
+  const cameras = useSceneSourcesByType("camera");
+
+  useEffect(() => {
+    if (topic !== null || cameras.length === 0) return;
+    setTopic(cameras[0]?.id ?? null);
+  }, [cameras, topic]);
+
+  const frame = useMcapTopicStream<EncodedImageVisualization>(topic ?? "");
 
   if (!frame) {
     return (
-      <div style={styles.center}>
+      <div className={styles.loading}>
         <Spinner size={Size.Md} />
       </div>
     );
   }
 
-  return <ImagePanel frame={frame} style={PANEL_STYLE} />;
+  return <ImagePanel frame={frame} className={styles.panel} />;
 };
-
-const styles = {
-  center: {
-    alignItems: "center",
-    display: "flex",
-    height: "100%",
-    justifyContent: "center",
-    width: "100%",
-  },
-} as const;
 
 export default McapCameraTile;

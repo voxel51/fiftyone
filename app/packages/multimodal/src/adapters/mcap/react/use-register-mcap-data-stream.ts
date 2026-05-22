@@ -1,17 +1,15 @@
-import { useAtomValue } from "jotai";
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { ByteSourceDescriptor } from "../../../query/bytes";
-import { usePlayback } from "../../../../../playback/src/lib/playback/PlaybackProvider";
-import { usePlaybackStore } from "../../../../../playback/src/lib/playback/playback-store-context";
 import {
   playheadAtom,
   seekEventAtom,
   streamValueAtom,
-} from "../../../../../playback/src/lib/playback/atoms";
-import type {
-  PlaybackStore,
-  PlaybackStream,
-} from "../../../../../playback/src/lib/playback/types";
+  usePlayback,
+  usePlaybackStore,
+  type PlaybackStore,
+  type PlaybackStream,
+} from "@fiftyone/playback";
+import { useAtomValue } from "jotai";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { ByteSourceDescriptor } from "../../../query/bytes";
 import { DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ } from "../timeline";
 import type {
   McapResourceClient,
@@ -19,7 +17,7 @@ import type {
   McapSynchronizedMessageWindow,
 } from "../types";
 import { MCAP_ACTIVE_TIMELINE } from "../types";
-import { mcapDataStreamAtom } from "./mcap-atoms";
+import { useSetMcapDataStream } from "./mcap-data-stream-context";
 import type { McapTimelineIndex } from "./mcap-timeline-index";
 import { createMcapTimelineIndex } from "./mcap-timeline-index";
 import { McapTopicCache } from "./mcap-topic-cache";
@@ -45,10 +43,11 @@ export interface UseMcapDataStreamOptions {
  * - One readSynchronizedMessageBatch call covers the entire lookahead window
  *   for all active topics simultaneously. Per-topic caches deduplicate
  *   concurrent requests for the same tick.
- * - Writes { subscribeToTopic } into mcapDataStreamAtom (scoped to the
- *   playback store) so tiles can subscribe to individual topic caches.
+ * - Publishes `{ subscribeToTopic }` into the surrounding
+ *   `McapDataStreamProvider` so tile bodies can subscribe to
+ *   individual topic caches without going through an atom.
  */
-export function useMcapDataStream({
+export function useRegisterMcapDataStream({
   client,
   source,
   allTopics,
@@ -56,6 +55,7 @@ export function useMcapDataStream({
 }: UseMcapDataStreamOptions): void {
   const { registerStream, subscribeStream } = usePlayback();
   const store = usePlaybackStore();
+  const setDataStream = useSetMcapDataStream();
   const seekEvent = useAtomValue(seekEventAtom, { store });
 
   const [index, setIndex] = useState<McapTimelineIndex | null>(null);
@@ -357,11 +357,11 @@ export function useMcapDataStream({
   );
 
   useEffect(() => {
-    store.set(mcapDataStreamAtom, { subscribeToTopic });
+    setDataStream({ subscribeToTopic });
     return () => {
-      store.set(mcapDataStreamAtom, null);
+      setDataStream(null);
     };
-  }, [store, subscribeToTopic]);
+  }, [setDataStream, subscribeToTopic]);
 }
 
 // ---------------------------------------------------------------------------

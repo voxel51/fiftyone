@@ -1,8 +1,7 @@
+import { streamValueAtom, usePlaybackStore } from "@fiftyone/playback";
 import { useAtomValue } from "jotai";
 import { useEffect } from "react";
-import { usePlaybackStore } from "../../../../../playback/src/lib/playback/playback-store-context";
-import { streamValueAtom } from "../../../../../playback/src/lib/playback/atoms";
-import { mcapDataStreamAtom } from "./mcap-atoms";
+import { useMcapDataStream } from "./mcap-data-stream-context";
 
 /**
  * Tile-side hook: subscribes to one MCAP topic and returns its current frame.
@@ -15,7 +14,7 @@ import { mcapDataStreamAtom } from "./mcap-atoms";
  */
 export function useMcapTopicStream<T = unknown>(topic: string): T | null {
   const store = usePlaybackStore();
-  const dataStream = useAtomValue(mcapDataStreamAtom, { store });
+  const dataStream = useMcapDataStream();
 
   useEffect(() => {
     if (!topic || !dataStream) return undefined;
