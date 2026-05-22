@@ -1,7 +1,6 @@
 import { DetectionLabel } from "@fiftyone/looker";
 import { useClearModal } from "@fiftyone/state";
 import { DETECTION, KEYPOINT, POLYLINE } from "@fiftyone/utilities";
-import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 import styled from "styled-components";
 import { isDetection3d } from "../../../../../utils/labels";
@@ -14,13 +13,7 @@ import { KeypointDetails } from "./KeypointDetails";
 import { PolylineDetails } from "./PolylineDetails";
 import Position from "./Position";
 import Position3d from "./Position3d";
-import {
-  currentData,
-  currentField,
-  currentFieldIsReadOnlyAtom,
-  currentOverlay,
-  currentType,
-} from "./useAnnotationContext/selectors";
+import { useAnnotationContext } from "./useAnnotationContext";
 import PrimitiveWrapper from "./PrimitiveWrapper";
 import useActivePrimitive from "./useActivePrimitive";
 import useExit from "./useExit";
@@ -49,11 +42,12 @@ const Content = styled.div`
 `;
 
 export default function Edit() {
-  const field = useAtomValue(currentField);
-  const overlay = useAtomValue(currentOverlay);
-  const type = useAtomValue(currentType);
-  const data = useAtomValue(currentData);
-  const isReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
+  const { selected } = useAnnotationContext();
+  const field = selected.field;
+  const overlay = selected.overlay;
+  const type = selected.type;
+  const data = selected.data;
+  const isReadOnly = selected.isFieldReadOnly;
   const { isEditingMask } = useSegmentationMode();
   const isMaskDetection = !!(data?.mask || data?.mask_path || isEditingMask);
   const [activePrimitivePath] = useActivePrimitive();

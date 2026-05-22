@@ -16,7 +16,7 @@ import {
   PolylineEntryStatus,
   PolylineProgressStatus,
 } from "./annotationStatusContent";
-import { currentData } from "./useAnnotationContext/selectors";
+import { useAnnotationContext } from "./useAnnotationContext";
 import { _unsafeDetectionModeActiveAtom } from "./useDetectionMode";
 import { _unsafeMergeTargetIdAtom } from "./useMergeTool";
 import { _unsafePolylineModeActiveAtom } from "./usePolylineMode";
@@ -54,7 +54,8 @@ export const useAnnotationStatus = () => {
     error: inferenceError,
   } = useInferenceStatus();
   const { positivePoints, negativePoints } = useToolsContext();
-  const polylineData = useAtomValue(currentData) as
+  const { selected } = useAnnotationContext();
+  const polylineData = selected.data as
     | PolylineAnnotationLabel["data"]
     | null;
 

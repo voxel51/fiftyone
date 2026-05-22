@@ -1,7 +1,6 @@
-import { useAtomValue } from "jotai";
 import React from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
-import { currentOverlay } from "./useAnnotationContext/selectors";
+import { useAnnotationContext } from "./useAnnotationContext";
 
 const createId = () => {
   return {
@@ -25,7 +24,7 @@ const createSchema = () => ({
 });
 
 const Id = () => {
-  const overlay = useAtomValue(currentOverlay);
+  const overlay = useAnnotationContext().selected.overlay;
   if (!overlay) {
     return null;
   }

@@ -11,10 +11,9 @@ import {
 } from "@fiftyone/looker-3d";
 import { DETECTION } from "@fiftyone/utilities";
 import { Box, Stack, TextField } from "@mui/material";
-import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { Vector3Tuple } from "three";
-import { currentData, currentOverlay } from "./useAnnotationContext/selectors";
+import { useAnnotationContext } from "./useAnnotationContext";
 
 interface Coordinates3d {
   position: { x?: number; y?: number; z?: number };
@@ -57,8 +56,9 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
     dimensions: {},
     rotation: {},
   });
-  const data = useAtomValue<DetectionLabel>(currentData);
-  const overlay = useAtomValue(currentOverlay);
+  const { selected } = useAnnotationContext();
+  const data = selected.data as DetectionLabel | null;
+  const overlay = selected.overlay;
   const eventBus = useAnnotationEventBus();
   const labelId = data?._id ?? "";
 

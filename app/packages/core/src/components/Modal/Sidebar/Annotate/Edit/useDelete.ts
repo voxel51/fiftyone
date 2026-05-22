@@ -11,17 +11,17 @@ import {
   KnownContexts,
   useKeyBindings,
 } from "@fiftyone/commands";
-import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { useLabelsContext } from "../useLabels";
-import { current } from "./useAnnotationContext/selectors";
+import { useAnnotationContext } from "./useAnnotationContext";
 import useExit from "./useExit";
 
 export default function useDelete() {
   const commandBus = useCommandBus();
   const { scene, removeOverlay } = useLighter();
-  const label = useAtomValue(current);
+  const { selected } = useAnnotationContext();
+  const label = selected.label;
   const schema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
