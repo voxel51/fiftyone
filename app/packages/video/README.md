@@ -1,7 +1,7 @@
 # @fiftyone/video
 
-Browser-side video frame decoding demo using `mp4box` + `VideoDecoder`. Lets you
-scrub by frame number and renders the decoded frame to a canvas.
+Browser-side video frame decoding demo using `mp4box` + `VideoDecoder`. Lets
+you scrub by frame number and renders the decoded frame to a canvas.
 
 ## Setup
 
@@ -20,8 +20,8 @@ sudo apt-get install ffmpeg
 ```
 
 The video file is not checked in; `yarn dev` (and `yarn build`) generates it
-automatically if missing via the `predev` / `prebuild` hook in
-`package.json`, which runs `scripts/ensure-video.sh`.
+automatically if missing via the `predev` / `prebuild` hook in `package.json`,
+which runs `scripts/ensure-video.sh`.
 
 ```bash
 cd app/packages/video
@@ -38,23 +38,22 @@ rm public/frame_indexed.mp4
 
 ## Using the video as a FiftyOne dataset
 
-The same file works as the source for a tiny FiftyOne video dataset, useful
-for cross-checking frame numbers between the browser-side decoder and
-FiftyOne's frame-indexed sample model. The snippet below creates a video
-sample with the mp4 as its `filepath`, then extracts each of the 510 frames
-as a PNG and attaches the PNG path onto the matching `Frame` document.
+The same file works as the source for a tiny FiftyOne video dataset, useful for
+cross-checking frame numbers between the browser-side decoder and FiftyOne's
+frame-indexed sample model. The snippet below creates a video sample with the
+mp4 as its `filepath`, then extracts each of the 510 frames as a PNG and
+attaches the PNG path onto the matching `Frame` document.
 
 ### Two valid media sources per sample
 
 A FiftyOne video dataset can carry two different media references for a single
 video:
 
-1. **`VideoSample.filepath`** — the container file (here, the `.mp4`). Best
-   for compact storage, scrubbing, and any consumer that can do its own
-   frame decode (the browser demo above, ML pipelines that read mp4
-   directly, etc.).
-2. **`FrameSample.filepath`** — per-frame image files (here, the PNGs).
-   Best for random-access frame display in the App, frame-level annotation
+1. **`VideoSample.filepath`** — the container file (here, the `.mp4`). Best for
+   compact storage, scrubbing, and any consumer that can do its own frame
+   decode (the browser demo above, ML pipelines that read mp4 directly, etc.).
+2. **`FrameSample.filepath`** — per-frame image files (here, the PNGs). Best
+   for random-access frame display in the App, frame-level annotation
    workflows, and tools that don't want to decode video themselves.
 
 The App and the annotation surface should both treat these as
@@ -62,83 +61,66 @@ The App and the annotation surface should both treat these as
 addressable frames — never falling back to a raw `<video>` element — and
 subscribers receive concrete per-frame data:
 
-- A dataset with **only** a video filepath: decode the mp4 in-browser via
-  `VideoDecoder` and feed each decoded `VideoFrame` to subscribers.
-  Annotate against the decoded frame.
-- A dataset with **only** frame filepaths: decode each per-frame image and
-  feed it to the same subscriber surface.
-- A dataset with **both**: advanced users should be able to switch the
-  media source — decode the mp4 for fast scrub / preview, switch to PNGs
-  for deterministic per-frame inspection / annotation — without rebuilding
-  the dataset. Either path produces real frames flowing through the same
-  subscriber interface, so labels stay coherent across the two views.
+-   A dataset with **only** a video filepath: decode the mp4 in-browser via
+    `VideoDecoder` and feed each decoded `VideoFrame` to subscribers. Annotate
+    against the decoded frame.
+-   A dataset with **only** frame filepaths: decode each per-frame image and
+    feed it to the same subscriber surface.
+-   A dataset with **both**: advanced users should be able to switch the media
+    source — decode the mp4 for fast scrub / preview, switch to PNGs for
+    deterministic per-frame inspection / annotation — without rebuilding the
+    dataset. Either path produces real frames flowing through the same
+    subscriber interface, so labels stay coherent across the two views.
 
-This is the dataset shape the snippet below builds — `filepath` on the
-video sample plus a per-frame `filepath` on each of the 510 `Frame`
-documents.
+This is the dataset shape the snippet below builds — `filepath` on the video
+sample plus a per-frame `filepath` on each of the 510 `Frame` documents.
 
 ```python
-import os
-import subprocess
-
 import fiftyone as fo
 
 VIDEO = "app/packages/video/public/frame_indexed.mp4"
 FRAMES_DIR = "app/packages/video/public/frames"
-os.makedirs(FRAMES_DIR, exist_ok=True)
 
-# 1) Sample every frame as a PNG with ffmpeg. -start_number 1 keeps the
-#    filename index aligned with FiftyOne's 1-indexed frame numbers.
-subprocess.run(
-    [
-        "ffmpeg", "-hide_banner", "-loglevel", "error",
-        "-i", VIDEO,
-        "-start_number", "1",
-        os.path.join(FRAMES_DIR, "%06d.png"),
-    ],
-    check=True,
-)
-
-# 2) Build the dataset with one video sample.
 dataset = fo.Dataset("video-frame-indexed", overwrite=True)
-sample = fo.Sample(filepath=VIDEO)
-dataset.add_sample(sample)
-sample.compute_metadata()  # populates total_frame_count, fps, etc.
+dataset.add_sample(fo.Sample(filepath=VIDEO))
 
-# 3) Attach each PNG's filepath onto the matching Frame document.
-for n in range(1, sample.metadata.total_frame_count + 1):
-    sample.frames[n]["filepath"] = os.path.join(FRAMES_DIR, f"{n:06d}.png")
-
-sample.save()
+# Samples each video into per-frame PNGs and populates the `filepath` field
+# on every Frame document of the source dataset. Frame numbers are 1-indexed
+# and match the filename suffix.
+dataset.to_frames(
+    sample_frames=True,
+    output_dir=FRAMES_DIR,
+    frames_patt="%06d.png",
+)
 
 session = fo.launch_app(dataset)
 session.wait()
 ```
 
-Once launched, opening the sample in the modal lets you scrub through the
-510 frames; each `Frame` document now carries the PNG path you can read out
-of the SDK or render alongside the decoded video frame in the browser demo.
+Once launched, opening the sample in the modal lets you scrub through the 510
+frames; each `Frame` document now carries the PNG path you can read out of the
+SDK or render alongside the decoded video frame in the browser demo.
 
 ## TODO: cross-check pixel values between browser decode and SDK ffmpeg
 
 The two media paths described above are only equivalent if **the pixels
 match**. Browser-side decoding uses `VideoDecoder` (libavcodec backend on
-Chromium) and the FO SDK extracts frames via `ffmpeg`. Both go through
-roughly the same H.264 pipeline, but YUV→RGB conversion, color matrix
-selection, chroma upsampling, and any pixel-format quirks can introduce
-per-channel differences of a few units.
+Chromium) and the FO SDK extracts frames via `ffmpeg`. Both go through roughly
+the same H.264 pipeline, but YUV→RGB conversion, color matrix selection, chroma
+upsampling, and any pixel-format quirks can introduce per-channel differences
+of a few units.
 
 We need to verify this. Specifically:
 
-- Decode frame N in the browser via `VideoDecoder` and read the pixels
-  back from the canvas (or copy from the `VideoFrame` into a `Uint8Array`).
-- Read the corresponding PNG (or re-extract that single frame via ffmpeg)
-  in the SDK and read its pixels.
-- Compare per-pixel — exact match expected. If not, quantify the delta and
-  decide whether to (a) standardize on one decode path everywhere or (b)
-  accept the drift and document it.
+-   Decode frame N in the browser via `VideoDecoder` and read the pixels back
+    from the canvas (or copy from the `VideoFrame` into a `Uint8Array`).
+-   Read the corresponding PNG (or re-extract that single frame via ffmpeg) in
+    the SDK and read its pixels.
+-   Compare per-pixel — exact match expected. If not, quantify the delta and
+    decide whether to (a) standardize on one decode path everywhere or (b)
+    accept the drift and document it.
 
-This matters because annotation coordinates and pixel-level operations
-(masks, segmentation, color-pickers) need to address the same pixel space
-in both surfaces. Different pixel values between App and SDK would lead to
-annotations that look right in one and wrong in the other.
+This matters because annotation coordinates and pixel-level operations (masks,
+segmentation, color-pickers) need to address the same pixel space in both
+surfaces. Different pixel values between App and SDK would lead to annotations
+that look right in one and wrong in the other.
