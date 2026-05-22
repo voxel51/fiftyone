@@ -1,0 +1,20 @@
+{
+    "name": "@fiftyone/video",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "predev": "./scripts/ensure-video.sh",
+        "dev": "vite",
+        "prebuild": "./scripts/ensure-video.sh",
+        "build": "tsc -b && vite build",
+        "preview": "vite preview"
+    },
+    "dependencies": {
+        "mp4box": "^0.5.4"
+    },
+    "devDependencies": {
+        "typescript": "^5.5.0",
+        "vite": "^7.3.2"
+    }
+}
