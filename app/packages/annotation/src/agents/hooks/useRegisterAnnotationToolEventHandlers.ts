@@ -3,13 +3,12 @@ import {
   useToolsContext,
   useToolsState,
 } from "./useToolsContext";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { useAnnotationAgent } from "./useAnnotationAgent";
 import { useAgentSelector } from "./useAgentSelector";
 import { useApplyInferenceResult } from "./useApplyInferenceResult";
 import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
-import useCreate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useCreate";
 import { useRegisterPointSelectionEventHandlers } from "./useRegisterPointSelectionEventHandlers";
 import { useRegisterAgentLifecycleEvents } from "./useRegisterAgentLifecycleEvents";
 
@@ -33,10 +32,14 @@ const isToolsContextValid = (context: ToolsContext): boolean => {
 export const useRegisterAnnotationToolEventHandlers = () => {
   const toolsContext = useToolsContext();
   const { reset: resetToolsState } = useToolsState();
-  const { selected } = useAnnotationContext();
+  const { selected, createNew } = useAnnotationContext();
 
   const agent = useAnnotationAgent(useAgentSelector().activeAgent?.agent);
-  const applyInferenceResult = useApplyInferenceResult(useCreate("Detection"));
+  const createDetection = useCallback(
+    () => createNew("Detection"),
+    [createNew]
+  );
+  const applyInferenceResult = useApplyInferenceResult(createDetection);
 
   // register handlers for specific tools
   useRegisterPointSelectionEventHandlers();

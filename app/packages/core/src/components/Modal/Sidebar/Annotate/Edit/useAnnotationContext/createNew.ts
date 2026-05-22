@@ -24,7 +24,6 @@ import {
 } from "@fiftyone/utilities";
 import { getDefaultStore } from "jotai";
 import { isFieldReadOnly, labelSchemaData } from "../../state";
-import { buildNewLabelData } from "../useCreate";
 import { defaultField, type LabelType } from "../state";
 
 export interface CreateOptions {
@@ -121,4 +120,65 @@ export function createNewLabel(
   }
 
   return null;
+}
+
+/**
+ * Build the initial label data payload for a new label of the given type.
+ *
+ * Pulls default values from the label schema (top-level `default` and per-
+ * attribute defaults), seeds `label` from `labelValue` or the first declared
+ * class, and (for polylines) seeds the first vertex from `origin`.
+ *
+ * Exported so {@link currentField}'s field-swap writer in `state.ts` can
+ * rebuild the data payload when the user reassigns a label's field.
+ */
+export function buildNewLabelData(
+  field: string,
+  type: LabelType,
+  options?: CreateOptions
+) {
+  const labelId = options?.id ?? objectId();
+  const store = getDefaultStore();
+
+  const fieldSchema = store.get(labelSchemaData(field));
+  const labelSchema = fieldSchema?.label_schema;
+  const defaults: Record<string, unknown> = {};
+  const labelValue = options?.labelValue || labelSchema?.classes?.[0];
+
+  if (labelSchema?.default !== undefined) {
+    defaults.label = labelSchema.default;
+  }
+
+  if (Array.isArray(labelSchema?.attributes)) {
+    for (const attr of labelSchema.attributes) {
+      if (attr.name && attr.default !== undefined) {
+        defaults[attr.name] = attr.default;
+      }
+    }
+  }
+
+  const data = {
+    _cls:
+      type === CLASSIFICATION
+        ? "Classification"
+        : type === DETECTION
+        ? "Detection"
+        : type === POLYLINE
+        ? "Polyline"
+        : undefined,
+    _id: labelId,
+    ...defaults,
+    ...(labelValue && { label: labelValue }),
+  };
+
+  if (type === POLYLINE) {
+    return {
+      closed: false,
+      filled: false,
+      ...data,
+      points: options?.origin ? [[options.origin]] : [],
+    };
+  }
+
+  return data;
 }

@@ -20,7 +20,7 @@ import {
 } from "../state";
 import { addLabel, labels, labelsByPath } from "../useLabels";
 import { activePrimitiveAtom } from "./useActivePrimitive";
-import { buildNewLabelData } from "./useCreate";
+import { buildNewLabelData } from "./useAnnotationContext/createNew";
 
 export const savedLabel = atom<AnnotationLabel["data"] | null>(null);
 

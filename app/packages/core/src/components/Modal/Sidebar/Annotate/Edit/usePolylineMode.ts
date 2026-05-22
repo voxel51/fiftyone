@@ -18,8 +18,10 @@ import { atom, useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { fieldsOfType } from "./state";
-import { useAnnotationContext } from "./useAnnotationContext";
-import useCreate from "./useCreate";
+import {
+  type CreateOptions,
+  useAnnotationContext,
+} from "./useAnnotationContext";
 
 /**
  * Utility method to determine if an {@link AnnotationLabel} is a 2d polyline.
@@ -78,7 +80,7 @@ export const usePolylineMode = () => {
     polylineModeActiveAtom
   );
   const { scene } = useLighter();
-  const { selected } = useAnnotationContext();
+  const { selected, createNew } = useAnnotationContext();
   const isPatchView = useRecoilValue(isPatchesView);
   const fields = useAtomValue(fieldsOfType(POLYLINE));
 
@@ -133,7 +135,10 @@ export const usePolylineMode = () => {
 
   // Stable ref so the creation handler's `onCreate` always sees the latest
   // create function without needing to swap the installed handler.
-  const createPolyline = useCreate(POLYLINE);
+  const createPolyline = useCallback(
+    (options?: CreateOptions) => createNew(POLYLINE, options),
+    [createNew]
+  );
   const createPolylineRef = useRef(createPolyline);
   createPolylineRef.current = createPolyline;
 

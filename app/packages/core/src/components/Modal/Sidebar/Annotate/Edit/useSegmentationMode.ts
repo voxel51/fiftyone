@@ -19,7 +19,6 @@ import { DETECTION } from "@fiftyone/utilities";
 import { current, currentType, fieldsOfType } from "./state";
 import { useAnnotationContext } from "./useAnnotationContext";
 import { useAIAnnotationMode } from "./useAIAnnotationMode";
-import useCreate from "./useCreate";
 import useExit from "./useExit";
 import {
   SegmentationTool,
@@ -78,7 +77,7 @@ const isEditingMaskAtom = atom((get) => {
  */
 export const useSegmentationMode = () => {
   const { scene, addOverlay } = useLighter();
-  const { selected } = useAnnotationContext();
+  const { selected, createNew } = useAnnotationContext();
   const onExit = useExit();
   const isPatchView = useRecoilValue(isPatchesView);
   const fields = useAtomValue(fieldsOfType(DETECTION));
@@ -110,7 +109,6 @@ export const useSegmentationMode = () => {
   const aiMode = useAIAnnotationMode();
   const mergeTool = useMergeTool();
 
-  const createDetection = useCreate(DETECTION);
   const editingLabelType = useAtomValue(currentType);
 
   const sceneRef = useRef(scene);
@@ -275,9 +273,7 @@ export const useSegmentationMode = () => {
    */
   const create = useCallback(() => {
     closeOpenLabel();
-    // TODO: assume previous `field` and `labelValue`
-    // e.g. createDetection({ field, labelValue });
-    const newLabel = createDetection();
+    const newLabel = createNew(DETECTION);
 
     if (newLabel?.overlay instanceof DetectionOverlay) {
       newLabel.overlay.initMask();
@@ -296,7 +292,7 @@ export const useSegmentationMode = () => {
           );
       }
     }
-  }, [closeOpenLabel, createDetection, manualMode.tool]);
+  }, [closeOpenLabel, createNew, manualMode.tool]);
 
   /**
    * Finish the current AI point-selection session. Cycle deactivate→activate

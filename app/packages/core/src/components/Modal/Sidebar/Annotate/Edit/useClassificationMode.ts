@@ -5,7 +5,7 @@ import { useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { currentType, fieldsOfType } from "./state";
-import useCreate from "./useCreate";
+import { useAnnotationContext } from "./useAnnotationContext";
 import useExit from "./useExit";
 
 /**
@@ -15,7 +15,7 @@ import useExit from "./useExit";
  * for the "Create new classification" button.
  */
 export const useClassificationMode = () => {
-  const create = useCreate(CLASSIFICATION);
+  const annotationContext = useAnnotationContext();
   const onExit = useExit();
   const isPatchView = useRecoilValue(isPatchesView);
   const reset3dAnnotationMode = useReset3dAnnotationMode();
@@ -36,9 +36,9 @@ export const useClassificationMode = () => {
   const activateClassificationMode = useCallback(() => {
     if (disabled) return;
 
-    create();
+    annotationContext.createNew(CLASSIFICATION);
     reset3dAnnotationMode();
-  }, [create, disabled, reset3dAnnotationMode]);
+  }, [annotationContext, disabled, reset3dAnnotationMode]);
 
   const deactivateClassificationMode = useCallback(() => {
     onExit();
