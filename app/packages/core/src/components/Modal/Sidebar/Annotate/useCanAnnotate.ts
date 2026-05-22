@@ -1,18 +1,26 @@
 import {
   canAnnotate,
   isGeneratedView,
-  isGroup,
   isPatchesView,
   mediaType,
   readOnly,
+  useGroupSlices,
+  useIsGroupDataset,
 } from "@fiftyone/state";
 import { isAnnotationSupported } from "@fiftyone/utilities";
 import { useRecoilValue } from "recoil";
-import { useGroupAnnotationSlices } from "./useGroupAnnotationSlices";
+
+/**
+ * Returns true if the current group dataset has at least one slice with a
+ * media type that supports annotation (image or 3D).
+ */
+function useHasAnnotationSupportedSlices(): boolean {
+  return useGroupSlices(["image", "3d"]).length > 0;
+}
 
 export type AnnotationDisabledReason =
   | "generatedView"
-  | "groupedDatasetNoSupportedSlices"
+  | "groupDatasetNoSupportedSlices"
   | "videoDataset"
   | null;
 
@@ -21,38 +29,6 @@ export interface CanAnnotateResult {
   showAnnotationTab: boolean;
   /** If tab is shown but disabled, the reason why */
   disabledReason: AnnotationDisabledReason;
-  /** Whether this is a grouped dataset (to show slice selector) */
-  isGroupedDataset: boolean;
-}
-
-const MEDIA_TYPE_TO_DISABLED_REASON: Partial<
-  Record<
-    string,
-    Exclude<
-      AnnotationDisabledReason,
-      "generatedView" | "groupedDatasetNoSupportedSlices" | null
-    >
-  >
-> = {
-  video: "videoDataset",
-};
-
-export function getDisabledReason(
-  currentMediaType: string | null | undefined,
-  isGenerated: boolean,
-  isGrouped: boolean,
-  hasSupportedSlices: boolean
-): AnnotationDisabledReason {
-  if (isGenerated) return "generatedView";
-
-  if (isGrouped) {
-    return hasSupportedSlices ? null : "groupedDatasetNoSupportedSlices";
-  }
-
-  if (currentMediaType && !isAnnotationSupported(currentMediaType)) {
-    return MEDIA_TYPE_TO_DISABLED_REASON[currentMediaType] ?? null;
-  }
-  return null;
 }
 
 export default function useCanAnnotate(): CanAnnotateResult {
@@ -60,30 +36,43 @@ export default function useCanAnnotate(): CanAnnotateResult {
   const { enabled: canAnnotateEnabled } = useRecoilValue(canAnnotate);
   const currentMediaType = useRecoilValue(mediaType);
   const isGenerated = useRecoilValue(isGeneratedView);
-  const isGroupedDataset = useRecoilValue(isGroup);
-  const { supportedSlices } = useGroupAnnotationSlices();
 
-  const hasSupportedSlices = supportedSlices.length > 0;
   const isPatches = useRecoilValue(isPatchesView);
   const isUnsupportedGeneratedView = isGenerated && !isPatches;
+  const hasSlices = useHasAnnotationSupportedSlices();
+  const isGroup = useIsGroupDataset();
 
   // hide tab entirely if user lacks edit permission or feature disabled
   if (isReadOnlySnapshot || !canAnnotateEnabled) {
     return {
       showAnnotationTab: false,
       disabledReason: null,
-      isGroupedDataset: isGroupedDataset,
+    };
+  }
+
+  if (isGroup && !hasSlices) {
+    return {
+      showAnnotationTab: true,
+      disabledReason: "groupDatasetNoSupportedSlices",
+    };
+  }
+
+  if (!isGroup && !isAnnotationSupported(currentMediaType)) {
+    return {
+      showAnnotationTab: true,
+      disabledReason: "videoDataset",
+    };
+  }
+
+  if (isGenerated && isUnsupportedGeneratedView) {
+    return {
+      showAnnotationTab: true,
+      disabledReason: "generatedView",
     };
   }
 
   return {
-    isGroupedDataset,
     showAnnotationTab: true,
-    disabledReason: getDisabledReason(
-      currentMediaType,
-      isUnsupportedGeneratedView,
-      isGroupedDataset,
-      hasSupportedSlices
-    ),
+    disabledReason: null,
   };
 }
