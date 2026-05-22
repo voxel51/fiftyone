@@ -43,6 +43,36 @@ const NUSCENES_SOURCES: readonly SceneSource[] = [
     label: "Back-right camera",
   },
   { id: "/LIDAR_TOP", type: "lidar", label: "Top lidar" },
+  {
+    id: "/CAM_FRONT/annotations",
+    type: "image-annotation",
+    label: "Front camera annotations",
+  },
+  {
+    id: "/CAM_FRONT_LEFT/annotations",
+    type: "image-annotation",
+    label: "Front-left camera annotations",
+  },
+  {
+    id: "/CAM_FRONT_RIGHT/annotations",
+    type: "image-annotation",
+    label: "Front-right camera annotations",
+  },
+  {
+    id: "/CAM_BACK/annotations",
+    type: "image-annotation",
+    label: "Back camera annotations",
+  },
+  {
+    id: "/CAM_BACK_LEFT/annotations",
+    type: "image-annotation",
+    label: "Back-left camera annotations",
+  },
+  {
+    id: "/CAM_BACK_RIGHT/annotations",
+    type: "image-annotation",
+    label: "Back-right camera annotations",
+  },
 ];
 
 const CAMERA_SYNC_POLICY = {
@@ -57,6 +87,12 @@ const NUSCENES_STREAM_POLICIES: McapStreamSyncPolicies = {
   "/CAM_BACK/image_rect_compressed": CAMERA_SYNC_POLICY,
   "/CAM_BACK_LEFT/image_rect_compressed": CAMERA_SYNC_POLICY,
   "/CAM_BACK_RIGHT/image_rect_compressed": CAMERA_SYNC_POLICY,
+  "/CAM_FRONT/annotations": CAMERA_SYNC_POLICY,
+  "/CAM_FRONT_LEFT/annotations": CAMERA_SYNC_POLICY,
+  "/CAM_FRONT_RIGHT/annotations": CAMERA_SYNC_POLICY,
+  "/CAM_BACK/annotations": CAMERA_SYNC_POLICY,
+  "/CAM_BACK_LEFT/annotations": CAMERA_SYNC_POLICY,
+  "/CAM_BACK_RIGHT/annotations": CAMERA_SYNC_POLICY,
   "/LIDAR_TOP": {
     mode: PlaybackSyncMode.LATEST,
     toleranceBeforeNs: 200_000_000n,
