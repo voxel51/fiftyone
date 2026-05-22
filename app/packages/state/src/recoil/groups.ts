@@ -355,7 +355,7 @@ export const groupSamples = graphQLSelectorFamily<
           group: {
             slice: get(groupSlice),
             id: groupIdValue,
-            slices,
+            slices: slices ?? [],
           },
         },
         paginationData,

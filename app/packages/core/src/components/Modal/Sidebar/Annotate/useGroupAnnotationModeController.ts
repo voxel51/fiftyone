@@ -9,14 +9,14 @@ import { useRecoilState } from "recoil";
 
 /**
  * Hook that manages visibility settings when transitioning between
- * Explore and Annotate modes for grouped datasets.
+ * Explore and Annotate modes for group datasets.
  *
  * - Captures visibility settings when entering Annotate mode
  * - Restores visibility settings when returning to Explore mode
  */
 export function useGroupAnnotationModeController() {
   const mode = useModalMode();
-  const { is3dVisibleSetting: threeDVisible } = fos.useRenderConfig3dState();
+  const threeDVisible = fos.useIs3dVisibleSetting();
   const { setVisible } = fos.useRenderConfig3dActions();
   const [modalGroupSliceValue, setModalGroupSliceValue] = useRecoilState(
     fos.modalGroupSlice
@@ -28,8 +28,10 @@ export function useGroupAnnotationModeController() {
   const [carouselVisible, setCarouselVisible] = useRecoilState(
     fos.groupMediaIsCarouselVisibleSetting
   );
-  // Track the previous mode for detecting transitions
-  const prevModeRef = useRef(mode);
+  // Always initialize to EXPLORE so that a modal opening directly in ANNOTATE
+  // mode (e.g. after close/reopen with modalMode persisted) is treated as an
+  // EXPLORE → ANNOTATE transition.
+  const prevModeRef = useRef(ModalMode.EXPLORE);
 
   const visibilitySnapshotRef = useRef<GroupVisibilityConfigSnapshot | null>(
     null
