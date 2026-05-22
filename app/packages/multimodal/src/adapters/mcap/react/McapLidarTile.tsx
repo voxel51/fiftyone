@@ -1,36 +1,28 @@
-import { useTileSettings, useTileSource } from "@fiftyone/tiling";
 import { Size, Spinner } from "@voxel51/voodo";
-import LidarSettings from "../../../../../playback/src/views/PlaybackTiles/LidarTile/LidarSettings";
+import React from "react";
 import type { PointCloudVisualization } from "../../../decoders";
 import { PointCloudPanel } from "../../../visualization/panels/point-cloud";
+import styles from "./McapTile.module.css";
 import { useMcapTopicStream } from "./use-mcap-topic-stream";
 
-const PANEL_STYLE = { height: "100%", width: "100%" } as const;
+export interface McapLidarTileProps {
+  /** MCAP topic this tile renders. Threaded in from the initial-tiles
+   *  map's render closure. */
+  topic: string;
+}
 
-const McapLidarTile: React.FC = () => {
-  useTileSettings(LidarSettings);
-  const sourceId = useTileSource();
-  const frame = useMcapTopicStream<PointCloudVisualization>(sourceId ?? "");
+const McapLidarTile: React.FC<McapLidarTileProps> = ({ topic }) => {
+  const frame = useMcapTopicStream<PointCloudVisualization>(topic);
 
   if (!frame) {
     return (
-      <div style={styles.center}>
+      <div className={styles.loading}>
         <Spinner size={Size.Md} />
       </div>
     );
   }
 
-  return <PointCloudPanel frame={frame} style={PANEL_STYLE} />;
+  return <PointCloudPanel frame={frame} className={styles.panel} />;
 };
-
-const styles = {
-  center: {
-    alignItems: "center",
-    display: "flex",
-    height: "100%",
-    justifyContent: "center",
-    width: "100%",
-  },
-} as const;
 
 export default McapLidarTile;
