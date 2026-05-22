@@ -2,6 +2,7 @@ import type {
   BaseOverlay,
   ClassificationOptions,
   ClassificationOverlay,
+  DetectionLabel,
   DetectionOverlayOptions,
   DetectionOverlay,
   OverlayFactory,
@@ -11,10 +12,7 @@ import type {
   Scene2D,
 } from "@fiftyone/lighter";
 import { InteractiveDetectionHandler } from "@fiftyone/lighter";
-import type {
-  ClassificationLabel,
-  DetectionLabel,
-} from "@fiftyone/looker";
+import type { ClassificationLabel } from "@fiftyone/looker";
 import type { AnnotationLabel } from "@fiftyone/state";
 import {
   CLASSIFICATION,
@@ -24,7 +22,8 @@ import {
 } from "@fiftyone/utilities";
 import { getDefaultStore } from "jotai";
 import { isFieldReadOnly, labelSchemaData } from "../../state";
-import { defaultField, type LabelType } from "../state";
+import { type LabelType } from "./atoms";
+import { defaultField } from "./selectors";
 
 export interface CreateOptions {
   id?: string;
@@ -92,7 +91,9 @@ export function createNewLabel(
     >("detection", {
       field,
       id,
-      label: data as DetectionLabel,
+      // buildNewLabelData returns a minimal seed; lighter's DetectionLabel
+      // expects fields populated by the user (bbox, etc.) at create time.
+      label: data as unknown as DetectionLabel,
       draggable: !readOnly,
       resizeable: !readOnly,
     });

@@ -4,17 +4,14 @@ import {
   clearTransformStateSelector,
   selectedLabelForAnnotationAtom,
 } from "@fiftyone/looker-3d/src/state";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
-import { editing } from ".";
-import { current, currentOverlay, savedLabel } from "./state";
-import useActivePrimitive from "./useActivePrimitive";
+import { current, currentOverlay } from "./state";
+import { useAnnotationContext } from "./useAnnotationContext";
 
 export default function useExit() {
-  const setEditing = useSetAtom(editing);
-  const [, setActivePrimitive] = useActivePrimitive();
-  const setSaved = useSetAtom(savedLabel);
+  const annotationContext = useAnnotationContext();
   const { scene, removeOverlay } = useLighter();
   const overlay = useAtomValue(currentOverlay);
   const label = useAtomValue(current);
@@ -57,18 +54,16 @@ export default function useExit() {
      * 3D SPECIFIC LOGIC ENDS HERE.
      */
 
-    // reset editing state
-    setSaved(null);
-    setEditing(null);
-    setActivePrimitive(null);
+    // Records last-used into useAnnotationContext memory and resets
+    // editing/savedLabel/activePrimitive atoms.
+    annotationContext.clear();
   }, [
+    annotationContext,
     clearTransformState,
     label,
     overlay,
     removeOverlay,
     scene,
-    setActivePrimitive,
-    setEditing,
-    setSaved,
+    setSelectedLabelForAnnotation,
   ]);
 }

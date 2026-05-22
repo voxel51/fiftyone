@@ -6,24 +6,23 @@ import { countBy, maxBy } from "lodash";
 import { useCallback, useMemo } from "react";
 import { isFieldReadOnly, labelSchemaData } from "../../state";
 import { labelsByPath } from "../../useLabels";
+import { activePrimitiveAtom } from "../useActivePrimitive";
+import { editing, type LabelType, savedLabel } from "./atoms";
+import { type CreateOptions, createNewLabel } from "./createNew";
 import {
   current,
   currentData,
   currentField,
   currentFieldIsReadOnlyAtom,
   currentOverlay,
+  currentSchema,
   currentType,
   defaultField,
-  editing,
   fieldsOfType,
   hasChanges,
   isEditing as isEditingAtom,
   isNew as isNewAtom,
-  type LabelType,
-  savedLabel,
-} from "../state";
-import { activePrimitiveAtom } from "../useActivePrimitive";
-import { type CreateOptions, createNewLabel } from "./createNew";
+} from "./selectors";
 
 export type { CreateOptions };
 
@@ -56,6 +55,7 @@ export interface AnnotationContextSelected {
   field: string | null;
   type: LabelType | null;
   overlay: AnnotationLabel["overlay"] | undefined;
+  schema: ReturnType<typeof currentSchema.read> | null;
   savedData: AnnotationLabel["data"] | null;
   isEditing: boolean;
   isNew: boolean;
@@ -101,6 +101,7 @@ export const useAnnotationContext = (): AnnotationContext => {
   const field = useAtomValue(currentField);
   const type = useAtomValue(currentType);
   const overlay = useAtomValue(currentOverlay);
+  const schema = useAtomValue(currentSchema);
   const savedData = useAtomValue(savedLabel);
   const isEditing = useAtomValue(isEditingAtom);
   const isNew = useAtomValue(isNewAtom);
@@ -117,6 +118,7 @@ export const useAnnotationContext = (): AnnotationContext => {
       field: field ?? null,
       type,
       overlay,
+      schema,
       savedData,
       isEditing,
       isNew: Boolean(isNew),
@@ -135,6 +137,7 @@ export const useAnnotationContext = (): AnnotationContext => {
       overlay,
       pendingNewType,
       savedData,
+      schema,
       type,
     ]
   );
@@ -143,7 +146,11 @@ export const useAnnotationContext = (): AnnotationContext => {
   const writeField = useSetAtom(currentField);
   const setEditing = useSetAtom(editing);
   const setSaved = useSetAtom(savedLabel);
-  const setActivePrimitive = useSetAtom(activePrimitiveAtom);
+  // activePrimitiveAtom is `atom<string | null>(null)` and jotai's inference
+  // loses the WritableAtom shape — cast at the use site.
+  const setActivePrimitive = useSetAtom(
+    activePrimitiveAtom as PrimitiveAtom<string | null>
+  );
 
   const recordCurrentToLastUsed = useAtomCallback(
     useCallback((get, set) => {
