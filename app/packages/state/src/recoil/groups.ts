@@ -362,6 +362,11 @@ export const groupSamples = graphQLSelectorFamily<
       };
     },
   mapResponse: (data: ResponseFrom<foq.paginateSamplesQuery>) => {
+    if (!foq.isPaginateSamplesConnection(data.samples)) {
+      throw new Error(
+        `groupSamples: unexpected samples response __typename ${data.samples.__typename}`
+      );
+    }
     return data.samples.edges.map((edge) => {
       return mapSampleResponse(edge.node as ModalSample);
     });
@@ -405,6 +410,11 @@ export const groupHasSampleOnSlice = graphQLSelectorFamily<
       };
     },
   mapResponse: (data: ResponseFrom<foq.paginateSamplesQuery>) => {
+    if (!foq.isPaginateSamplesConnection(data.samples)) {
+      throw new Error(
+        `groupHasSampleOnSlice: unexpected samples response __typename ${data.samples.__typename}`
+      );
+    }
     return data.samples.edges.length > 0;
   },
 });
