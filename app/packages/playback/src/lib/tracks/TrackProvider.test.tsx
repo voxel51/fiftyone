@@ -18,11 +18,12 @@ const TRACKS: Track[] = [
 
 const wrap =
   (tracks: Track[] = TRACKS, initialPinnedIds: string[] = []) =>
-  ({ children }: { children: React.ReactNode }) => (
-    <TrackProvider tracks={tracks} initialPinnedIds={initialPinnedIds}>
-      {children}
-    </TrackProvider>
-  );
+  ({ children }: { children: React.ReactNode }) =>
+    (
+      <TrackProvider tracks={tracks} initialPinnedIds={initialPinnedIds}>
+        {children}
+      </TrackProvider>
+    );
 
 describe("TrackProvider", () => {
   afterEach(() => cleanup());

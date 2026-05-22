@@ -1,4 +1,7 @@
-import type { Track, TrackEvent } from "../../playback/src/lib/tracks/TrackProvider";
+import type {
+  Track,
+  TrackEvent,
+} from "../../playback/src/lib/tracks/TrackProvider";
 import {
   getPresenceIntervals,
   type PresenceInterval,

@@ -3,7 +3,11 @@ import type { ModalSample } from "@fiftyone/state";
 import { TilingProvider } from "@fiftyone/tiling";
 import React, { useMemo, useState } from "react";
 import { PlaybackProvider } from "../../playback/src/lib/playback/PlaybackProvider";
-import { FRAME_FIELD, FrameLabelsTracks, RegisterFrameLabels } from "./FrameLabels";
+import {
+  FRAME_FIELD,
+  FrameLabelsTracks,
+  RegisterFrameLabels,
+} from "./FrameLabels";
 import { LinkedOverlayStateBridge } from "./linkedTracks";
 import {
   RegisterSyntheticLabels,
