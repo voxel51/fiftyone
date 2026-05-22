@@ -19,8 +19,8 @@ import {
   currentType,
   defaultField,
   fieldsOfType,
-  useAnnotationContext,
 } from "./state";
+import { useAnnotationContext } from "./useAnnotationContext";
 
 /**
  * Flag to track if detection mode is active.
@@ -77,7 +77,7 @@ export const useDetectionMode = () => {
   const labelsMap = useAtomValue(labelsByPath);
   const defaultDetectionField = useAtomValue(defaultField(DETECTION));
   const { scene } = useLighter();
-  const { selectedLabel } = useAnnotationContext();
+  const { selected } = useAnnotationContext();
   const createDetection = useCreate(DETECTION);
   const onExit = useExit();
   const fields = useAtomValue(fieldsOfType(DETECTION));
@@ -86,8 +86,8 @@ export const useDetectionMode = () => {
   const sceneRef = useRef(scene);
   sceneRef.current = scene;
 
-  const selectedLabelRef = useRef(selectedLabel);
-  selectedLabelRef.current = selectedLabel;
+  const selectedLabelRef = useRef(selected.label);
+  selectedLabelRef.current = selected.label;
 
   const isEditingMask = useAtomValue(isEditingMaskAtom);
   const setEditingMaskIds = useSetAtom(editingMaskLabelIdsAtom);
@@ -111,8 +111,8 @@ export const useDetectionMode = () => {
 
   const isEditingDetection =
     editingLabelType === DETECTION &&
-    !selectedLabel?.data?.mask &&
-    !selectedLabel?.data?.mask_path &&
+    !selected.label?.data?.mask &&
+    !selected.label?.data?.mask_path &&
     !isEditingMask;
 
   const noActiveFields = fields.length === 0;

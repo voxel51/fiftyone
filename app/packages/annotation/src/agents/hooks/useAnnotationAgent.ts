@@ -9,7 +9,7 @@ import {
   ROI,
 } from "../types";
 import { useCallback, useEffect, useMemo } from "react";
-import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
+import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import { atom, useAtom } from "jotai";
 import { useToolsContext } from "./useToolsContext";
 import { useActiveTask } from "./useActiveTask";
@@ -120,18 +120,18 @@ export const useAnnotationAgent = <T extends InferenceResultProxy>(
  * In all cases, this context includes the current {@link SampleDescriptor}.
  */
 const useAgentContext = (): AnnotationContext | null => {
-  const { selectedLabel } = useAnnotationContext();
+  const { selected } = useAnnotationContext();
   const sampleDescriptor = useSampleDescriptor();
   const toolsContext = useToolsContext();
 
   return useMemo(() => {
     const labelOverride =
-      selectedLabel && "bounding_box" in selectedLabel.data
+      selected.label && "bounding_box" in selected.label.data
         ? {
-            textPrompt: selectedLabel.data.label,
+            textPrompt: selected.label.data.label,
             regionsOfInterest: [
               bboxToRoi(
-                (selectedLabel as DetectionAnnotationLabel).data.bounding_box
+                (selected.label as DetectionAnnotationLabel).data.bounding_box
               ),
             ],
           }
@@ -145,5 +145,5 @@ const useAgentContext = (): AnnotationContext | null => {
       ...labelOverride,
       sampleDescriptor,
     };
-  }, [sampleDescriptor, selectedLabel, toolsContext]);
+  }, [sampleDescriptor, selected.label, toolsContext]);
 };

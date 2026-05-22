@@ -16,12 +16,8 @@ import {
 import { isPatchesView } from "@fiftyone/state";
 import { DETECTION } from "@fiftyone/utilities";
 
-import {
-  current,
-  currentType,
-  fieldsOfType,
-  useAnnotationContext,
-} from "./state";
+import { current, currentType, fieldsOfType } from "./state";
+import { useAnnotationContext } from "./useAnnotationContext";
 import { useAIAnnotationMode } from "./useAIAnnotationMode";
 import useCreate from "./useCreate";
 import useExit from "./useExit";
@@ -82,7 +78,7 @@ const isEditingMaskAtom = atom((get) => {
  */
 export const useSegmentationMode = () => {
   const { scene, addOverlay } = useLighter();
-  const { selectedLabel } = useAnnotationContext();
+  const { selected } = useAnnotationContext();
   const onExit = useExit();
   const isPatchView = useRecoilValue(isPatchesView);
   const fields = useAtomValue(fieldsOfType(DETECTION));
@@ -120,13 +116,13 @@ export const useSegmentationMode = () => {
   const sceneRef = useRef(scene);
   sceneRef.current = scene;
 
-  const selectedLabelRef = useRef(selectedLabel);
-  selectedLabelRef.current = selectedLabel;
+  const selectedLabelRef = useRef(selected.label);
+  selectedLabelRef.current = selected.label;
 
   const isEditingSegmentation =
     editingLabelType === DETECTION &&
-    (!!selectedLabel?.data?.mask ||
-      !!selectedLabel?.data?.mask_path ||
+    (!!selected.label?.data?.mask ||
+      !!selected.label?.data?.mask_path ||
       isEditingMask);
 
   const noActiveFields = fields.length === 0;
@@ -219,14 +215,14 @@ export const useSegmentationMode = () => {
         // Adopt an already-selected mask detection as the merge target so
         // the user doesn't have to re-click it. If a non-mask label is
         // selected, deselect it — the Merge tool only operates on masks.
-        const selected = selectedLabelRef.current;
-        const overlayId = selected?.overlay?.id;
-        const data = selected?.data as {
+        const target = selectedLabelRef.current;
+        const overlayId = target?.overlay?.id;
+        const data = target?.data as {
           mask?: unknown;
           mask_path?: unknown;
         };
         const hasMask =
-          selected?.type === "Detection" && !!(data?.mask || data?.mask_path);
+          target?.type === "Detection" && !!(data?.mask || data?.mask_path);
 
         if (hasMask && overlayId) {
           mergeTool.setMergeTarget(overlayId);
@@ -247,7 +243,7 @@ export const useSegmentationMode = () => {
     scene,
     segmentationModeActive,
     tool: manualMode.tool,
-    selectedOverlay: selectedLabel?.overlay,
+    selectedOverlay: selected.label?.overlay,
   });
 
   // Auto-enable segmentation mode when a pre-existing mask detection is selected,
@@ -263,7 +259,7 @@ export const useSegmentationMode = () => {
       setSegmentationModeActive(false);
     }
   }, [
-    selectedLabel?.overlay,
+    selected.label?.overlay,
     editingLabelType,
     isEditingSegmentation,
     segmentationModeActive,

@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from "uuid";
 import { useAnnotationAgent } from "./useAnnotationAgent";
 import { useAgentSelector } from "./useAgentSelector";
 import { useApplyInferenceResult } from "./useApplyInferenceResult";
-import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
+import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import useCreate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useCreate";
 import { useRegisterPointSelectionEventHandlers } from "./useRegisterPointSelectionEventHandlers";
 import { useRegisterAgentLifecycleEvents } from "./useRegisterAgentLifecycleEvents";
@@ -33,7 +33,7 @@ const isToolsContextValid = (context: ToolsContext): boolean => {
 export const useRegisterAnnotationToolEventHandlers = () => {
   const toolsContext = useToolsContext();
   const { reset: resetToolsState } = useToolsState();
-  const { selectedLabel } = useAnnotationContext();
+  const { selected } = useAnnotationContext();
 
   const agent = useAnnotationAgent(useAgentSelector().activeAgent?.agent);
   const applyInferenceResult = useApplyInferenceResult(useCreate("Detection"));
@@ -50,7 +50,7 @@ export const useRegisterAnnotationToolEventHandlers = () => {
       let cancelled = false;
 
       if (isToolsContextValid(toolsContext) && agent) {
-        const labelId = selectedLabel?.overlay?.id ?? uuidv4();
+        const labelId = selected.label?.overlay?.id ?? uuidv4();
 
         agent
           .infer(labelId)

@@ -21,8 +21,8 @@ import {
   currentFieldIsReadOnlyAtom,
   currentOverlay,
   currentType,
-  useAnnotationContext,
 } from "./state";
+import { useAnnotationContext } from "./useAnnotationContext";
 
 import { KnownCommands, KnownContexts, useCommand } from "@fiftyone/commands";
 import useColor from "./useColor";
@@ -169,7 +169,7 @@ const Header = () => {
       {currentFieldIsReadOnly && <span>Read-only</span>}
       <ItemRight>
         <Stack direction="row" alignItems="center">
-          {annotationContext.selectedLabel !== null && <LabelHamburgerMenu />}
+          {annotationContext.selected.label !== null && <LabelHamburgerMenu />}
         </Stack>
       </ItemRight>
     </Row>

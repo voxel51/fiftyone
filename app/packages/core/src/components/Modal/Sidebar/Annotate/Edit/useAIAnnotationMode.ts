@@ -7,7 +7,7 @@ import {
 } from "@fiftyone/annotation/src/agents";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { atom, getDefaultStore, useAtom, useAtomValue } from "jotai";
-import { useAnnotationContext } from "./state";
+import { useAnnotationContext } from "./useAnnotationContext";
 
 export interface AIAnnotationMode {
   activate(): void;
@@ -50,28 +50,28 @@ const useDefaultAgent = () => {
  * @param reset Callback invoked when label selection state changes
  */
 const useLabelReset = (isActive: boolean, reset: () => void) => {
-  const { selectedLabel } = useAnnotationContext();
+  const { selected } = useAnnotationContext();
   const previousSelectedLabelIdRef = useRef<string | null>(
-    selectedLabel?.overlay?.id ?? null
+    selected.label?.overlay?.id ?? null
   );
 
   // When the selected label changes,
   // reset state to ensure a clean starting point for the next label
   useEffect(() => {
     if (!isActive) {
-      previousSelectedLabelIdRef.current = selectedLabel?.overlay?.id ?? null;
+      previousSelectedLabelIdRef.current = selected.label?.overlay?.id ?? null;
       return;
     }
 
     const previousId = previousSelectedLabelIdRef.current;
-    const currentId = selectedLabel?.overlay?.id ?? null;
+    const currentId = selected.label?.overlay?.id ?? null;
 
     if (previousId && previousId !== currentId) {
       reset();
     }
 
     previousSelectedLabelIdRef.current = currentId;
-  }, [selectedLabel]);
+  }, [selected.label]);
 };
 
 /**

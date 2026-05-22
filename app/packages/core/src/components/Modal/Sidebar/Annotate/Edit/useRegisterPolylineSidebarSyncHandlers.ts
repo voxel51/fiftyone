@@ -5,7 +5,7 @@ import {
   useLighterEventHandler,
 } from "@fiftyone/lighter";
 import { useCallback } from "react";
-import { useAnnotationContext } from "./state";
+import { useAnnotationContext } from "./useAnnotationContext";
 import { POLYLINE } from "@fiftyone/utilities";
 
 /**
@@ -17,7 +17,7 @@ import { POLYLINE } from "@fiftyone/utilities";
  */
 export const useRegisterPolylineSidebarSyncHandlers = () => {
   const { scene } = useLighter();
-  const { selectedLabel, updateSelectedLabelData } = useAnnotationContext();
+  const { selected, setData } = useAnnotationContext();
 
   const useEventHandler = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
@@ -25,23 +25,23 @@ export const useRegisterPolylineSidebarSyncHandlers = () => {
 
   const syncFromOverlay = useCallback(
     (payload: { id: string }) => {
-      const overlay = selectedLabel?.overlay;
+      const overlay = selected.label?.overlay;
       if (
         !(overlay instanceof PolylineOverlay) ||
         payload.id !== overlay.id ||
-        selectedLabel?.type !== POLYLINE
+        selected.label?.type !== POLYLINE
       ) {
         return;
       }
 
-      updateSelectedLabelData({
-        ...selectedLabel.data,
+      setData({
+        ...selected.label.data,
         points: overlay.getNestedPoints(),
         closed: overlay.getClosed(),
         filled: overlay.getFilled(),
       });
     },
-    [selectedLabel, updateSelectedLabelData]
+    [selected.label, setData]
   );
 
   useEventHandler("lighter:keypoint-point-added", syncFromOverlay);

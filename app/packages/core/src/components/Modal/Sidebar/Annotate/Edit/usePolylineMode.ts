@@ -17,7 +17,8 @@ import { POLYLINE } from "@fiftyone/utilities";
 import { atom, useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
-import { fieldsOfType, useAnnotationContext } from "./state";
+import { fieldsOfType } from "./state";
+import { useAnnotationContext } from "./useAnnotationContext";
 import useCreate from "./useCreate";
 
 /**
@@ -77,7 +78,7 @@ export const usePolylineMode = () => {
     polylineModeActiveAtom
   );
   const { scene } = useLighter();
-  const { selectedLabel } = useAnnotationContext();
+  const { selected } = useAnnotationContext();
   const isPatchView = useRecoilValue(isPatchesView);
   const fields = useAtomValue(fieldsOfType(POLYLINE));
 
@@ -114,21 +115,21 @@ export const usePolylineMode = () => {
   // exits it. Deselecting entirely leaves the mode active so the user can
   // immediately draw another polyline — exiting requires an explicit gesture
   // (toolbar toggle or generic mode-quit).
-  const prevSelectedLabelRef = useRef(selectedLabel);
+  const prevSelectedLabelRef = useRef(selected.label);
   useEffect(() => {
     const prev = prevSelectedLabelRef.current;
-    prevSelectedLabelRef.current = selectedLabel;
+    prevSelectedLabelRef.current = selected.label;
 
-    const isPolyline2d = is2dPolyline(selectedLabel);
+    const isPolyline2d = is2dPolyline(selected.label);
     const wasPolyline2d = is2dPolyline(prev);
 
     if (isPolyline2d) {
       setPolylineModeActive(true);
-    } else if (wasPolyline2d && selectedLabel) {
+    } else if (wasPolyline2d && selected.label) {
       // Switched from a polyline to a different non-polyline label.
       setPolylineModeActive(false);
     }
-  }, [selectedLabel, setPolylineModeActive]);
+  }, [selected.label, setPolylineModeActive]);
 
   // Stable ref so the creation handler's `onCreate` always sees the latest
   // create function without needing to swap the installed handler.
@@ -146,7 +147,7 @@ export const usePolylineMode = () => {
       return;
     }
 
-    const isPolyline2d = is2dPolyline(selectedLabel);
+    const isPolyline2d = is2dPolyline(selected.label);
 
     if (!polylineModeActive) {
       exitInstalledHandler();
@@ -154,7 +155,7 @@ export const usePolylineMode = () => {
     }
 
     if (isPolyline2d) {
-      const targetOverlay = selectedLabel.overlay as PolylineOverlay;
+      const targetOverlay = selected.label!.overlay as PolylineOverlay;
 
       const installed = installedHandlerRef.current;
       if (
@@ -205,7 +206,7 @@ export const usePolylineMode = () => {
 
     scene.enterInteractiveMode(handler);
     installedHandlerRef.current = handler;
-  }, [exitInstalledHandler, polylineModeActive, scene, selectedLabel]);
+  }, [exitInstalledHandler, polylineModeActive, scene, selected.label]);
 
   // Tear down on unmount (e.g., scene swap, modal close).
   useEffect(() => {
