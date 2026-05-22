@@ -65,6 +65,16 @@ export interface TimelineTrackProps {
   onPinClick?: () => void;
   onContextMenu?: (e: React.MouseEvent<HTMLDivElement>) => void;
   className?: string;
+  /** Fired on the row root. Used for cross-component hover linking. */
+  onMouseEnter?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  /** Fired on the row root. Used for cross-component hover linking. */
+  onMouseLeave?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  /**
+   * Fired when the track row is clicked anywhere except the pin button
+   * or an event marker / interval bar. Lane clicks still seek.
+   * `onTrackClick` runs alongside the seek, not in place of it.
+   */
+  onTrackClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
 }
 
 const TimelineTrack: React.FC<TimelineTrackProps> = ({
@@ -82,6 +92,9 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   onPinClick,
   onContextMenu,
   className,
+  onMouseEnter,
+  onMouseLeave,
+  onTrackClick,
 }) => {
   const viewStart = useViewStart();
   const viewEnd = useViewEnd();
@@ -93,8 +106,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   // Degenerate view (zero/negative width) — would produce NaN/Infinity
   // CSS values and break layout for every bar/marker below.
   if (viewDuration <= 0) return null;
-  const pct = (t: number) =>
-    `${((t - viewStart) / viewDuration) * 100}%`;
+  const pct = (t: number) => `${((t - viewStart) / viewDuration) * 100}%`;
 
   // Background bar is rendered only when both start/end are provided.
   const hasBackground = start !== undefined && end !== undefined;
@@ -107,8 +119,15 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   return (
     <div
       className={clsx(styles.root, className)}
-      style={{ height }}
+      style={{
+        height,
+        ...(onTrackClick ? { cursor: "pointer" } : null),
+      }}
       onContextMenu={onContextMenu}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      onClick={onTrackClick}
+      data-track-id={id}
     >
       {labelWidth > 0 && (
         <div className={styles.label} style={{ width: labelWidth }}>
@@ -182,13 +201,19 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
           )
           .map((e, i) => {
             const handleClick = (ev: React.MouseEvent) => {
-              ev.stopPropagation();
+              // Deliberately no stopPropagation. The click bubbles to
+              // the row root so `onTrackClick` fires for marker / interval-bar
+              // clicks too. The lane's onClick filters by target class so seek
+              // doesn't double-fire.
               const lane = laneRef.current;
               if (lane) {
                 const rect = lane.getBoundingClientRect();
                 const t =
                   viewStart +
-                  Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width)) *
+                  Math.max(
+                    0,
+                    Math.min(1, (ev.clientX - rect.left) / rect.width)
+                  ) *
                     viewDuration;
                 seek(t);
               }
@@ -219,8 +244,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
               const left = pct(Math.max(e.startSec, viewStart));
               const right = Math.min(e.endSec!, viewEnd);
               const width = `${
-                ((right - Math.max(e.startSec, viewStart)) / viewDuration) *
-                100
+                ((right - Math.max(e.startSec, viewStart)) / viewDuration) * 100
               }%`;
               return (
                 <ContextMenu key={i} menu={menu}>
@@ -234,8 +258,12 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                     }}
                     title={
                       e.label
-                        ? `${e.label}  (${e.startSec.toFixed(2)}–${e.endSec!.toFixed(2)}s)`
-                        : `${labelText}  (${e.startSec.toFixed(2)}–${e.endSec!.toFixed(2)}s)`
+                        ? `${e.label}  (${e.startSec.toFixed(
+                            2
+                          )}–${e.endSec!.toFixed(2)}s)`
+                        : `${labelText}  (${e.startSec.toFixed(
+                            2
+                          )}–${e.endSec!.toFixed(2)}s)`
                     }
                     onClick={handleClick}
                   />

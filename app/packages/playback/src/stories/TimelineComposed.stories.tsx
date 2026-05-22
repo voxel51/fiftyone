@@ -47,7 +47,7 @@ export const Default: StoryObj = {
   render: () => (
     <PlaybackProvider duration={12} stepInterval={1 / 30}>
       <TrackProvider
-        initialTracks={DEFAULT_TRACKS}
+        tracks={DEFAULT_TRACKS}
         initialPinnedIds={DEFAULT_PINNED_TRACK_IDS}
       >
         <StoryShell>

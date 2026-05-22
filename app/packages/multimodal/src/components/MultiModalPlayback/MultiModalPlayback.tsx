@@ -102,7 +102,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   return (
     <PlaybackProvider>
       <TrackProvider
-        initialTracks={tracks}
+        tracks={tracks}
         initialPinnedIds={defaultPinnedTrackIds}
       >
         <TilingProvider initialTiles={initialTiles}>

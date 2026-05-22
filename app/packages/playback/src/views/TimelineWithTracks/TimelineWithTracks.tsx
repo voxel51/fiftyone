@@ -15,7 +15,9 @@ import {
 import LoopOverlays from "../Loop/LoopOverlays";
 import PlayheadLine from "../Playhead/PlayheadLine";
 import TimelineHeader from "../TimelineHeader/TimelineHeader";
-import TimelineTrack from "../TimelineTrack/TimelineTrack";
+import TimelineTrack, {
+  type TimelineTrackProps,
+} from "../TimelineTrack/TimelineTrack";
 import styles from "./TimelineWithTracks.module.css";
 
 export interface TimelineWithTracksProps {
@@ -32,6 +34,14 @@ export interface TimelineWithTracksProps {
    */
   maxSize?: number;
   className?: string;
+  /**
+   * Per-row prop override. Returned partial is merged onto the props
+   * passed to each {@link TimelineTrack}.
+   */
+  decorateTrack?: (
+    track: Track,
+    pinned: boolean
+  ) => Partial<TimelineTrackProps>;
 }
 
 /**
@@ -51,6 +61,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   defaultSize = TIMELINE_DEFAULT_DRAWER_SIZE,
   maxSize = TIMELINE_DRAWER_MAX_SIZE,
   className,
+  decorateTrack,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const tracks = useTracks();
@@ -104,6 +115,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
       pinned
       onPinClick={() => togglePin(track.id)}
       onEventClick={(e) => seek(e.startSec)}
+      {...(decorateTrack ? decorateTrack(track, true) : null)}
     />
   );
 
@@ -164,20 +176,26 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
               {pinned.map(renderPinnedTrack)}
             </div>
             <div ref={unpinnedSectionRef}>
-              {unpinned.map((track) => (
-                <TimelineTrack
-                  key={track.id}
-                  id={track.id}
-                  label={track.label}
-                  color={track.color}
-                  events={track.events}
-                  labelWidth={labelWidth}
-                  pinned={false}
-                  onPinClick={() => togglePin(track.id)}
-                  onEventClick={(e) => seek(e.startSec)}
-                  className={styles.unpinnedTrack}
-                />
-              ))}
+              {unpinned.map((track) => {
+                const extra = decorateTrack
+                  ? decorateTrack(track, false)
+                  : null;
+                return (
+                  <TimelineTrack
+                    key={track.id}
+                    id={track.id}
+                    label={track.label}
+                    color={track.color}
+                    events={track.events}
+                    labelWidth={labelWidth}
+                    pinned={false}
+                    onPinClick={() => togglePin(track.id)}
+                    onEventClick={(e) => seek(e.startSec)}
+                    {...extra}
+                    className={clsx(styles.unpinnedTrack, extra?.className)}
+                  />
+                );
+              })}
             </div>
           </div>
 
