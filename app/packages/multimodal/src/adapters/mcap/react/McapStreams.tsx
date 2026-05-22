@@ -1,60 +1,37 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
-import { useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { usePlaybackStore } from "../../../../../playback/src/lib/playback/playback-store-context";
-import type { McapStreamSyncPolicies } from "../types";
-import { mcapDataStreamAtom } from "./mcap-atoms";
-import { useMcapDataStream } from "./use-mcap-data-stream";
+import { useSceneInventory } from "../../../scene-inventory";
 import { useMcapResourceClient } from "./use-mcap-resource-client";
+import { useMcapStreamPolicies } from "./use-mcap-scene-inventory";
 import { useMcapTiles } from "./use-mcap-tiles";
+import { useRegisterMcapDataStream } from "./use-register-mcap-data-stream";
 import { useStableMcapSource } from "./use-stable-mcap-source";
-
-export interface McapTopicSpec {
-  readonly topic: string;
-  readonly label: string;
-}
 
 export interface McapStreamsProps {
   ctx: SampleRendererProps["ctx"];
-  cameraTopics: readonly McapTopicSpec[];
-  lidarTopic?: McapTopicSpec;
-  streamPolicies?: McapStreamSyncPolicies;
 }
 
 /**
- * Rendered as a non-visual child of MultiModalPlayback. Calls the two MCAP
- * setup hooks inside the playback + tiling providers and renders nothing.
- *
- * useMcapDataStream  — single PlaybackStream, per-topic caches, batch fetch.
- * useMcapTiles       — tile registry entries + initial tile-source bindings.
+ * Non-visual child of MultiModalPlayback. Reads the scene inventory
+ * from the surrounding `SceneInventoryProvider` and per-topic policies
+ * from the filename-driven hook, then wires the MCAP data layer
+ * (single playback stream, per-topic caches, tile registry).
  */
-export function McapStreams({
-  ctx,
-  cameraTopics,
-  lidarTopic,
-  streamPolicies = {},
-}: McapStreamsProps) {
+export function McapStreams({ ctx }: McapStreamsProps) {
   const client = useMcapResourceClient({ worker: true });
   const source = useStableMcapSource(ctx);
-  const store = usePlaybackStore();
+  const sources = useSceneInventory();
+  const fileName = source?.sourceId.split("/").pop() ?? "";
+  const streamPolicies = useMcapStreamPolicies(fileName);
 
-  const allTopics = useMemo(
-    () => [
-      ...cameraTopics.map((c) => c.topic),
-      ...(lidarTopic ? [lidarTopic.topic] : []),
-    ],
-    [cameraTopics, lidarTopic]
+  const allTopics = useMemo(() => sources.map((s) => s.id), [sources]);
+  const presentTypes = useMemo(
+    () => Array.from(new Set(sources.map((s) => s.type))),
+    [sources]
   );
 
-  useMcapDataStream({ client, source, allTopics, streamPolicies });
-
-  const dataStream = useAtomValue(mcapDataStreamAtom, { store });
-
-  useMcapTiles({
-    cameraTopics,
-    lidarTopic,
-    isReady: dataStream !== null,
-  });
+  useRegisterMcapDataStream({ client, source, allTopics, streamPolicies });
+  useMcapTiles({ presentTypes });
 
   return null;
 }
