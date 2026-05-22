@@ -4,9 +4,10 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "predev": "./scripts/ensure-video.sh",
+        "ensure-assets": "./scripts/ensure-video.sh && python ./scripts/ensure-frames.py",
+        "predev": "yarn ensure-assets",
         "dev": "vite",
-        "prebuild": "./scripts/ensure-video.sh",
+        "prebuild": "yarn ensure-assets",
         "build": "tsc -b && vite build",
         "preview": "vite preview"
     },
