@@ -1,7 +1,7 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { registeredTilesAtom, tileSelectionAtom } from "./atoms";
-import { useTileId } from "./TilingProvider";
+import { useTileId, useTiling } from "./TilingProvider";
 import type { RegisteredTile } from "./types";
 
 // Stable placeholder for use outside a TileIdScope; writes no-op.
@@ -29,6 +29,29 @@ export function useTileSelectionFor<T = unknown>(
   tileId: string | null
 ): T | null {
   return useAtomValue(tileSelectionAtom(tileId ?? NO_TILE)) as T | null;
+}
+
+export function useTileTitle(): string | null {
+  const tileId = useTileId();
+  const { titleOverrides } = useTiling();
+  return tileId ? (titleOverrides[tileId] ?? null) : null;
+}
+
+export function useTileTitleFor(tileId: string | null): string | null {
+  const { titleOverrides } = useTiling();
+  return tileId ? (titleOverrides[tileId] ?? null) : null;
+}
+
+export function useSetTileTitle(): (title: string | null) => void {
+  const tileId = useTileId();
+  const { setTileTitleOverride } = useTiling();
+  return useCallback(
+    (title: string | null) => {
+      if (!tileId) return;
+      setTileTitleOverride(tileId, title);
+    },
+    [tileId, setTileTitleOverride]
+  );
 }
 
 export function useTileTypes(): RegisteredTile[] {

@@ -57,4 +57,14 @@ export interface TilingContextValue {
   // Portal target for the focused tile's settings UI.
   settingsSlotEl: HTMLElement | null;
   setSettingsSlotEl: (el: HTMLElement | null) => void;
+
+  /**
+   * Per-tile title overrides. A tile body calls `useSetTileTitle(...)`
+   * when its content makes the static `MosaicTileConfig.title` stale —
+   * for example, when the user picks a different source in settings.
+   * Header consumers (the tile chrome + the settings sidebar header)
+   * read the override and fall back to the static title when absent.
+   */
+  titleOverrides: Record<string, string>;
+  setTileTitleOverride: (tileId: string, title: string | null) => void;
 }
