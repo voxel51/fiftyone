@@ -1,20 +1,23 @@
 import { TileSettingsContent } from "@fiftyone/tiling";
 import { Checkbox, Size, Spinner } from "@voxel51/voodo";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import type { PointCloudVisualization } from "../../../decoders";
+import { useSceneSourcesByType } from "../../../scene-inventory";
 import { PointCloudPanel } from "../../../visualization/panels/point-cloud";
 import settingsStyles from "../../../../../playback/src/views/PlaybackTiles/tile-settings.module.css";
 import styles from "./McapTile.module.css";
 import { useMcapTopicStream } from "./use-mcap-topic-stream";
 
-export interface McapLidarTileProps {
-  /** MCAP topic this tile renders. Threaded in from the initial-tiles
-   *  map's render closure. */
-  topic: string;
-}
+const McapLidarTile: React.FC = () => {
+  const [topic, setTopic] = useState<string | null>(null);
+  const lidars = useSceneSourcesByType("lidar");
 
-const McapLidarTile: React.FC<McapLidarTileProps> = ({ topic }) => {
-  const frame = useMcapTopicStream<PointCloudVisualization>(topic);
+  useEffect(() => {
+    if (topic !== null || lidars.length === 0) return;
+    setTopic(lidars[0]?.id ?? null);
+  }, [lidars, topic]);
+
+  const frame = useMcapTopicStream<PointCloudVisualization>(topic ?? "");
 
   return (
     <>

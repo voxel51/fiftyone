@@ -12,26 +12,14 @@ import McapLidarTile from "./McapLidarTile";
 // they return the fixed NuScenes config regardless of `fileName`.
 // ---------------------------------------------------------------------------
 
-const NUSCENES_CAMERA_FRONT: SceneSource = {
-  id: "/CAM_FRONT/image_rect_compressed",
-  type: "camera",
-  label: "Front camera",
-};
-
-const NUSCENES_LIDAR_TOP: SceneSource = {
-  id: "/LIDAR_TOP",
-  type: "lidar",
-  label: "Top lidar",
-};
-
 const NUSCENES_SOURCES: readonly SceneSource[] = [
-  NUSCENES_CAMERA_FRONT,
+  { id: "/CAM_FRONT/image_rect_compressed", type: "camera", label: "Front camera" },
   { id: "/CAM_FRONT_LEFT/image_rect_compressed", type: "camera", label: "Front-left camera" },
   { id: "/CAM_FRONT_RIGHT/image_rect_compressed", type: "camera", label: "Front-right camera" },
   { id: "/CAM_BACK/image_rect_compressed", type: "camera", label: "Back camera" },
   { id: "/CAM_BACK_LEFT/image_rect_compressed", type: "camera", label: "Back-left camera" },
   { id: "/CAM_BACK_RIGHT/image_rect_compressed", type: "camera", label: "Back-right camera" },
-  NUSCENES_LIDAR_TOP,
+  { id: "/LIDAR_TOP", type: "lidar", label: "Top lidar" },
 ];
 
 const CAMERA_SYNC_POLICY = {
@@ -52,16 +40,14 @@ const NUSCENES_STREAM_POLICIES: McapStreamSyncPolicies = {
   },
 };
 
-// One front camera + lidar visible on open. The topic is threaded into
-// the tile body via the render closure.
 const NUSCENES_INITIAL_TILES: Record<string, TilingTile> = {
-  [`${NUSCENES_CAMERA_FRONT.id}-1`]: {
-    title: NUSCENES_CAMERA_FRONT.label,
-    render: () => <McapCameraTile topic={NUSCENES_CAMERA_FRONT.id} />,
+  "camera-default": {
+    title: "Camera",
+    render: () => <McapCameraTile />,
   },
-  [`${NUSCENES_LIDAR_TOP.id}-1`]: {
-    title: NUSCENES_LIDAR_TOP.label,
-    render: () => <McapLidarTile topic={NUSCENES_LIDAR_TOP.id} />,
+  "lidar-default": {
+    title: "Lidar",
+    render: () => <McapLidarTile />,
   },
 };
 
@@ -79,7 +65,10 @@ export function useMcapStreamPolicies(
   return useMemo(() => NUSCENES_STREAM_POLICIES, []);
 }
 
-/** Default tile layout for a freshly-opened MCAP file. */
+/**
+ * Default tile layout for a freshly-opened MCAP file. Each tile
+ * auto-binds to the first source of its type in the scene inventory.
+ */
 export function useMcapInitialTiles(
   _fileName: string
 ): Record<string, TilingTile> {

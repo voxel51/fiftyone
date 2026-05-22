@@ -3,7 +3,6 @@ import React from "react";
 import MultiModalPlayback from "../../../components/MultiModalPlayback/MultiModalPlayback";
 import { McapDataStreamProvider } from "./mcap-data-stream-context";
 import { McapStreams } from "./McapStreams";
-import { useMcapInitialTiles } from "./use-mcap-scene-inventory";
 import { useStableMcapSource } from "./use-stable-mcap-source";
 
 /**
@@ -15,13 +14,11 @@ import { useStableMcapSource } from "./use-stable-mcap-source";
 const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
   const source = useStableMcapSource(ctx);
   const fileName = source?.sourceId.split("/").pop() ?? "recording.mcap";
-  const initialTiles = useMcapInitialTiles(fileName);
 
   return (
     <McapDataStreamProvider>
       <MultiModalPlayback
         fileName={fileName}
-        initialTiles={initialTiles}
         defaultLeftOpen={false}
         defaultRightOpen={false}
       >
