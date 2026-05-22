@@ -1,5 +1,6 @@
 export * from "./3d";
 export * from "./dynamicGroups";
+export * from "./use-active-modal-sample-value";
 
 import type { Schema } from "@fiftyone/utilities";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";

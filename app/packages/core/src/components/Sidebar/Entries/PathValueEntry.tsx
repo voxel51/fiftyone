@@ -14,7 +14,6 @@ import {
   selectorFamily,
   useRecoilState,
   useRecoilValue,
-  useRecoilValueLoadable,
 } from "recoil";
 import styled from "styled-components";
 import { prettify } from "../../../utils/generic";
@@ -22,6 +21,8 @@ import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import { QuickEditEntry } from "../../Modal/Sidebar/Annotate";
 import { NameAndCountContainer } from "../../utils";
 import RegularEntry from "./RegularEntry";
+
+const { LOADING, useActiveModalSampleValue } = fos;
 
 const expandedPathValueEntry = atomFamily<boolean, string>({
   key: "expandedPathValueEntry",
@@ -252,12 +253,15 @@ const SlicesLengthLoadable = ({ path }: { path: string }) => {
 };
 
 const LengthLoadable = ({ path }: { path: string }) => {
-  const data = useData<unknown[]>(path);
+  const data = useActiveModalSampleValue<unknown[]>(path);
+  if (data === LOADING) {
+    return <LoadingDots text="" />;
+  }
   return <>{data?.length || 0}</>;
 };
 
 const ListLoadable = ({ path }: { path: string }) => {
-  const data = useData<Primitive[]>(path);
+  const data = useActiveModalSampleValue<Primitive[]>(path);
   const { fields, ftype, subfield } = fos.useAssertedRecoilValue(
     fos.field(path)
   );
@@ -269,10 +273,15 @@ const ListLoadable = ({ path }: { path: string }) => {
   }
 
   const values = useMemo(() => {
+    if (data === LOADING) return LOADING;
     return Array.from(data || []).map((value) =>
       format({ fields, ftype: field, value, timeZone })
     );
   }, [data, field, fields, timeZone]);
+
+  if (values === LOADING) {
+    return <LoadingDots text="" />;
+  }
 
   return (
     <ListContainer data-cy={`sidebar-entry-${path}`}>
@@ -389,8 +398,19 @@ const useSlicesData = <T,>(path: string) => {
 };
 
 const Loadable = ({ path }: { path: string }) => {
-  const value = useData<string | number | null>(path);
-  const none = value === null || value === undefined;
+  const value = useActiveModalSampleValue<string | number | null>(path);
+  if (value === LOADING) return <LoadingDots text="" />;
+  return <LoadableValue path={path} value={value} />;
+};
+
+const LoadableValue = ({
+  path,
+  value,
+}: {
+  path: string;
+  value: string | number | null;
+}) => {
+  const none = value == null;
   const { fields, ftype } =
     useRecoilValue(fos.field(path)) ?? makePseudoField(path);
   const color = useRecoilValue(fos.pathColor(path));
@@ -412,31 +432,6 @@ const Loadable = ({ path }: { path: string }) => {
       {none ? "None" : formatted}
     </div>
   );
-};
-
-const useData = <T,>(path: string): T => {
-  const keys = path.split(".");
-  const loadable = useRecoilValueLoadable(fos.activeModalSidebarSample);
-  const field = fos.useAssertedRecoilValue(fos.field(keys[0]));
-  const isList = useRecoilValue(fos.isOfDocumentFieldList(path));
-
-  if (loadable.state === "loading") {
-    throw loadable.contents;
-  }
-
-  if (loadable.state === "hasError") {
-    if (loadable.contents instanceof fos.GroupSampleNotFound) {
-      return null as T;
-    }
-
-    if (loadable.contents instanceof fos.SampleNotFound) {
-      throw new Promise(() => null);
-    }
-
-    throw loadable.contents;
-  }
-
-  return fos.pullSidebarValue(field, keys, loadable.contents, isList) as T;
 };
 
 const isScalarValue = selectorFamily({
