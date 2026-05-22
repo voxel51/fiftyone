@@ -3034,6 +3034,7 @@ __metadata:
     "@fiftyone/relay": "npm:*"
     "@fiftyone/state": "npm:*"
     "@fiftyone/utilities": "npm:*"
+    "@fiftyone/video-annotation": "workspace:*"
     "@material-ui/core": "npm:4.12.4"
     "@types/lodash": "npm:^4.14.182"
     "@types/mime": "npm:^2.0.3"
@@ -3349,7 +3350,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/lighter@workspace:packages/lighter":
+"@fiftyone/lighter@workspace:*, @fiftyone/lighter@workspace:packages/lighter":
   version: 0.0.0-use.local
   resolution: "@fiftyone/lighter@workspace:packages/lighter"
   dependencies:
@@ -3491,7 +3492,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/playback@workspace:packages/playback":
+"@fiftyone/playback@workspace:*, @fiftyone/playback@workspace:packages/playback":
   version: 0.0.0-use.local
   resolution: "@fiftyone/playback@workspace:packages/playback"
   dependencies:
@@ -3589,7 +3590,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/state@npm:*, @fiftyone/state@workspace:packages/state":
+"@fiftyone/state@npm:*, @fiftyone/state@workspace:*, @fiftyone/state@workspace:packages/state":
   version: 0.0.0-use.local
   resolution: "@fiftyone/state@workspace:packages/state"
   dependencies:
@@ -3613,7 +3614,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/tiling@npm:*, @fiftyone/tiling@workspace:packages/tiling":
+"@fiftyone/tiling@npm:*, @fiftyone/tiling@workspace:*, @fiftyone/tiling@workspace:packages/tiling":
   version: 0.0.0-use.local
   resolution: "@fiftyone/tiling@workspace:packages/tiling"
   dependencies:
@@ -3643,6 +3644,20 @@ __metadata:
     vite: "npm:^7.3.2"
   peerDependencies:
     react: "*"
+  languageName: unknown
+  linkType: soft
+
+"@fiftyone/video-annotation@workspace:*, @fiftyone/video-annotation@workspace:packages/video-annotation":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/video-annotation@workspace:packages/video-annotation"
+  dependencies:
+    "@fiftyone/lighter": "workspace:*"
+    "@fiftyone/playback": "workspace:*"
+    "@fiftyone/state": "workspace:*"
+    "@fiftyone/tiling": "workspace:*"
+    "@voxel51/voodo": "npm:^0.0.30"
+    jotai: "npm:^2.9.3"
+    vite: "npm:^7.3.2"
   languageName: unknown
   linkType: soft
 
