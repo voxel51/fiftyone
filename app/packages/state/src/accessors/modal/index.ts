@@ -1,3 +1,4 @@
+export * from "./3d";
 export * from "./dynamicGroups";
 
 import type { Schema } from "@fiftyone/utilities";

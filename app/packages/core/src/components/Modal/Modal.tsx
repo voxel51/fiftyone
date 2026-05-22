@@ -19,7 +19,7 @@ import {
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
-import { canAnnotate, ModalMode, useModalMode } from "@fiftyone/state";
+import { ModalMode, canAnnotate, useModalMode } from "@fiftyone/state";
 import {
   currentModalUniqueIdJotaiAtom,
   jotaiStore,
@@ -33,11 +33,11 @@ import React, {
   useRef,
 } from "react";
 import ReactDOM from "react-dom";
-import { useRecoilCallback, useRecoilValue } from "recoil";
 import {
-  ErrorBoundary as ReactErrorBoundary,
   FallbackProps,
+  ErrorBoundary as ReactErrorBoundary,
 } from "react-error-boundary";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Actions from "./Actions";
 import ModalNavigation from "./ModalNavigation";
@@ -152,7 +152,7 @@ const Modal = () => {
   const pointerDownTargetRef = useRef<EventTarget | null>(null);
   const { enabled: isAnnotationEnabled } = useRecoilValue(canAnnotate);
   const clearModal = fos.useClearModal();
-  const { is3dVisible } = fos.useRenderConfig3dState();
+  const is3dVisible = fos.useIs3dVisible();
   const groupSlice = useRecoilValue(fos.groupSlice);
   const modalGroupSlice = useRecoilValue(fos.modalGroupSlice);
   const modalSelector = useRecoilValue(fos.modalSelector);

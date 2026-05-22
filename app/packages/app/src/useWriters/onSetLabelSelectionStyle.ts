@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import {
   setLabelSelectionStyle,
   type setLabelSelectionStyleMutation,
@@ -14,9 +18,7 @@ const onSetLabelSelectionStyle: RegisteredWriter<"labelSelectionStyle"> =
       mutation: setLabelSelectionStyle,
       variables: {
         style:
-          style instanceof DefaultValue
-            ? DEFAULT_LABEL_SELECTION_STYLE
-            : style,
+          style instanceof DefaultValue ? DEFAULT_LABEL_SELECTION_STYLE : style,
         subscription,
       },
     });
