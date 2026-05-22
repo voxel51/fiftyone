@@ -1,13 +1,17 @@
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import React, { useCallback } from "react";
 import { useTiling } from "../../lib/TilingProvider";
+import { useTileTitleFor } from "../../lib/use-tile-state";
 import SidebarPanel from "../SidebarPanel/SidebarPanel";
 
 const TileSettingsSidebar: React.FC = () => {
   const { focusedTileId, tiles, setSettingsSlotEl } = useTiling();
   const focusedTile =
     focusedTileId && tiles[focusedTileId] ? tiles[focusedTileId] : null;
-  const title = focusedTile ? `Settings: ${focusedTile.title}` : "Settings";
+  const titleOverride = useTileTitleFor(focusedTileId);
+  const title = focusedTile
+    ? `Settings: ${titleOverride ?? focusedTile.title}`
+    : "Settings";
 
   const slotRef = useCallback(
     (el: HTMLDivElement | null) => setSettingsSlotEl(el),
