@@ -17,14 +17,25 @@ const initialContent: StatusContent = null;
 const statusContentAtom: PrimitiveAtom<StatusContent> = atom(initialContent);
 
 const Container = styled.div`
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1502;
-  pointer-events: none;
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
+  padding: 2px 8px;
   user-select: none;
   white-space: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  z-index: 1502;
+`;
+
+// Auto margins center the content when it fits and collapse to 0 when it
+// overflows, so the scrollable region starts at the leftmost character
+// instead of clipping it off.
+const Inner = styled.div`
+  margin: 0 auto;
+  flex-shrink: 0;
 `;
 
 const IconWrap = styled.span`
@@ -48,7 +59,11 @@ const IconWrap = styled.span`
 export const ModalStatusBar = () => {
   const content = useAtomValue(statusContentAtom);
   if (!content) return null;
-  return <Container data-cy="modal-status-bar">{content}</Container>;
+  return (
+    <Container data-cy="modal-status-bar">
+      <Inner>{content}</Inner>
+    </Container>
+  );
 };
 
 /**
