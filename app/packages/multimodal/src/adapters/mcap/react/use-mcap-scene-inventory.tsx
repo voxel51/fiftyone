@@ -44,6 +44,11 @@ const NUSCENES_SOURCES: readonly SceneSource[] = [
   },
   { id: "/LIDAR_TOP", type: "lidar", label: "Top lidar" },
   {
+    id: "/markers/annotations",
+    type: "scene-annotation",
+    label: "Scene annotations",
+  },
+  {
     id: "/CAM_FRONT/annotations",
     type: "image-annotation",
     label: "Front camera annotations",
@@ -105,6 +110,7 @@ const NUSCENES_STREAM_POLICIES: McapStreamSyncPolicies = {
     mode: PlaybackSyncMode.LATEST,
     toleranceBeforeNs: 200_000_000n,
   },
+  "/markers/annotations": ANNOTATION_SYNC_POLICY,
 };
 
 const NUSCENES_INITIAL_TILES: Record<string, TilingTile> = {

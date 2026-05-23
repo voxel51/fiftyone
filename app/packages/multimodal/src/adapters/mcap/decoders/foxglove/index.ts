@@ -1,28 +1,23 @@
 import type { Decoder } from "../../../../decoders";
 import { foxgloveCompressedImageDecoder } from "./compressed-image";
+import { foxgloveFrameTransformDecoder } from "./frame-transform";
 import { foxgloveImageAnnotationsDecoder } from "./image-annotations";
 import { foxglovePointCloudDecoder } from "./point-cloud";
+import { foxgloveSceneUpdateDecoder } from "./scene-update";
 
-/**
- * Foxglove compressed image decoder export.
- */
 export { foxgloveCompressedImageDecoder } from "./compressed-image";
-
-/**
- * Foxglove image annotations decoder export.
- */
+export { foxgloveFrameTransformDecoder } from "./frame-transform";
 export { foxgloveImageAnnotationsDecoder } from "./image-annotations";
-
-/**
- * Foxglove point cloud decoder export.
- */
 export { foxglovePointCloudDecoder } from "./point-cloud";
+export { foxgloveSceneUpdateDecoder } from "./scene-update";
 
 /**
  * Built-in Foxglove decoders for the MCAP adapter.
  */
 export const foxgloveDecoders: readonly Decoder[] = [
   foxgloveCompressedImageDecoder,
+  foxgloveFrameTransformDecoder,
   foxgloveImageAnnotationsDecoder,
   foxglovePointCloudDecoder,
+  foxgloveSceneUpdateDecoder,
 ];

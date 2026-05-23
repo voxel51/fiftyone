@@ -15,11 +15,17 @@ import React, { useEffect, useState } from "react";
 import type { PointCloudVisualization } from "../../../decoders";
 import { useSceneSourcesByType } from "../../../scene-inventory";
 import { PointCloudPanel } from "../../../visualization/panels/point-cloud";
+import McapLidarBoxes from "./McapLidarBoxes";
 import settingsStyles from "./McapTile.settings.module.css";
 import styles from "./McapTile.module.css";
 import { useMcapTopicStream } from "./use-mcap-topic-stream";
+import { useMcapTfTree } from "./use-tf-tree";
+
+const SCENE_ANNOTATION_TOPIC = "/markers/annotations";
 
 const McapLidarTile: React.FC = () => {
+  const [showAnnotations, setShowAnnotations] = useState(false);
+  const [tfReady, setTfReady] = useState(false);
   const lidars = useSceneSourcesByType("lidar");
   const setTileTitle = useSetTileTitle();
   // Initialize from the first available source — develop's auto-pick
@@ -43,6 +49,11 @@ const McapLidarTile: React.FC = () => {
   const frame = useMcapTopicStream<PointCloudVisualization>(topic);
   const currentLabel =
     lidars.find((l) => l.id === topic)?.label ?? "Select source";
+
+  // Use the selected lidar's frame_id as the render frame. The topic
+  // doubles as the TF frame name (`/LIDAR_TOP`-style names → frame
+  // `LIDAR_TOP`).
+  const renderFrame = topic ? topic.replace(/^\//, "") : "";
 
   return (
     <>
@@ -69,14 +80,34 @@ const McapLidarTile: React.FC = () => {
               ))}
             </Dropdown>
           </div>
-          <Checkbox label="Color by height" defaultChecked />
-          <Checkbox label="Show ground plane" />
-          <Checkbox label="Show intensity overlay" />
-          <Checkbox label="Cull behind sensor" defaultChecked />
+          <div className={settingsStyles.field}>
+            <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+              Annotations
+            </Text>
+            <Checkbox
+              label={
+                showAnnotations && !tfReady
+                  ? "Show 3D annotations (loading…)"
+                  : "Show 3D annotations"
+              }
+              checked={showAnnotations}
+              onChange={setShowAnnotations}
+            />
+          </div>
         </div>
       </TileSettingsContent>
+      {showAnnotations ? (
+        <TfReadyReporter onReady={setTfReady} />
+      ) : null}
       {frame ? (
-        <PointCloudPanel frame={frame} className={styles.panel} />
+        <PointCloudPanel frame={frame} className={styles.panel}>
+          {showAnnotations && renderFrame ? (
+            <McapLidarBoxes
+              topic={SCENE_ANNOTATION_TOPIC}
+              renderFrame={renderFrame}
+            />
+          ) : null}
+        </PointCloudPanel>
       ) : (
         <div className={styles.loading}>
           <Spinner size={Size.Lg} />
@@ -84,6 +115,22 @@ const McapLidarTile: React.FC = () => {
       )}
     </>
   );
+};
+
+/**
+ * Headless: subscribes to the TF tree only while mounted (i.e. while
+ * the lidar annotations toggle is on), and reports ready state up so
+ * the tile can show a loading status next to the checkbox.
+ */
+const TfReadyReporter: React.FC<{ onReady: (ready: boolean) => void }> = ({
+  onReady,
+}) => {
+  const { ready } = useMcapTfTree();
+  useEffect(() => {
+    onReady(ready);
+    return () => onReady(false);
+  }, [ready, onReady]);
+  return null;
 };
 
 export default McapLidarTile;

@@ -589,11 +589,24 @@ export function useRegisterMcapDataStream({
   const getTimelineIndex = useCallback(() => indexRef.current, []);
 
   useEffect(() => {
-    setDataStream({ subscribeToTopic, getTopicCache, getTimelineIndex });
+    setDataStream({
+      subscribeToTopic,
+      getTopicCache,
+      getTimelineIndex,
+      client,
+      source,
+    });
     return () => {
       setDataStream(null);
     };
-  }, [setDataStream, subscribeToTopic, getTopicCache, getTimelineIndex]);
+  }, [
+    setDataStream,
+    subscribeToTopic,
+    getTopicCache,
+    getTimelineIndex,
+    client,
+    source,
+  ]);
 }
 
 // ---------------------------------------------------------------------------

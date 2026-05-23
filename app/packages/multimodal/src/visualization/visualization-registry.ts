@@ -5,8 +5,10 @@
  */
 export const VISUALIZATION_KIND = Object.freeze({
   ENCODED_IMAGE: "encoded-image",
+  FRAME_TRANSFORM: "frame-transform",
   IMAGE_ANNOTATIONS: "image-annotations",
   POINT_CLOUD: "point-cloud",
+  SCENE_UPDATE: "scene-update",
 } as const);
 
 /**
@@ -37,6 +39,8 @@ export const VISUALIZATION_PANEL_REGISTRY: Readonly<
   Record<VisualizationKind, PanelType>
 > = Object.freeze({
   [VISUALIZATION_KIND.ENCODED_IMAGE]: PANEL_TYPE.IMAGE,
+  [VISUALIZATION_KIND.FRAME_TRANSFORM]: PANEL_TYPE.THREE_D,
   [VISUALIZATION_KIND.IMAGE_ANNOTATIONS]: PANEL_TYPE.IMAGE,
   [VISUALIZATION_KIND.POINT_CLOUD]: PANEL_TYPE.THREE_D,
+  [VISUALIZATION_KIND.SCENE_UPDATE]: PANEL_TYPE.THREE_D,
 });

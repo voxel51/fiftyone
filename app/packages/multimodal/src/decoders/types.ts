@@ -108,13 +108,72 @@ export interface ImageAnnotationsVisualization {
 }
 
 /**
+ * 3D Cartesian vector — used for positions and sizes in scene primitives.
+ */
+export type Vec3 = readonly [number, number, number];
+
+/**
+ * Quaternion in (x, y, z, w) order — matches Foxglove + Three.js convention.
+ */
+export type Quat = readonly [number, number, number, number];
+
+/**
+ * Single 3D cuboid primitive from a scene-update entity.
+ */
+export interface SceneUpdateCube {
+  readonly position: Vec3;
+  readonly orientation: Quat;
+  readonly size: Vec3;
+  readonly color: RgbaColor | null;
+}
+
+/**
+ * One scene-update entity. Carries a stable string id so consumers can
+ * track the same logical object across messages without spatial matching.
+ */
+export interface SceneUpdateEntity {
+  readonly id: string;
+  readonly frameId: string;
+  readonly timestampNs: bigint;
+  readonly cubes: readonly SceneUpdateCube[];
+  readonly metadata: Readonly<Record<string, string>>;
+}
+
+/**
+ * Renderer-neutral 3D scene-update snapshot decoded from a
+ * foxglove.SceneUpdate message. Other primitive types (spheres, lines,
+ * arrows, triangles, models, texts) are intentionally omitted until we
+ * need them.
+ */
+export interface SceneUpdateVisualization {
+  readonly kind: typeof VISUALIZATION_KIND.SCENE_UPDATE;
+  readonly entities: readonly SceneUpdateEntity[];
+}
+
+/**
+ * One frame-to-frame coordinate transform decoded from a
+ * foxglove.FrameTransform message. The TF tree consumer aggregates
+ * these into a graph for per-tick transform lookups.
+ */
+export interface FrameTransformVisualization {
+  readonly kind: typeof VISUALIZATION_KIND.FRAME_TRANSFORM;
+  readonly parentFrameId: string;
+  readonly childFrameId: string;
+  readonly timestampNs: bigint;
+  readonly translation: Vec3;
+  readonly rotation: Quat;
+}
+
+/**
  * Decoder-owned visual artifact. Decoders may omit this for messages that only
  * contribute metadata, transforms, annotations, or other nonvisual state.
  */
 export type DecodedVisualization =
   | EncodedImageVisualization
+  | FrameTransformVisualization
   | ImageAnnotationsVisualization
-  | PointCloudVisualization;
+  | PointCloudVisualization
+  | SceneUpdateVisualization;
 
 /**
  * Encoded payload identity used by frontend decoder selection.

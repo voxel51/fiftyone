@@ -1,6 +1,6 @@
 /* eslint-disable react/no-unknown-property */
 import { useThree } from "@react-three/fiber";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
 
@@ -74,6 +74,7 @@ export interface PointCloudFrameTransform {
  * Props for rendering one decoded point-cloud visualization frame.
  */
 export interface PointCloudPanelProps {
+  readonly children?: ReactNode;
   readonly className?: string;
   readonly fit?: "initial" | "frame" | "never";
   readonly frame: PointCloudVisualization;
@@ -89,6 +90,7 @@ export interface PointCloudPanelProps {
  * Production point-cloud visualization panel backed by a stable Three.js canvas.
  */
 export function PointCloudPanel({
+  children,
   className,
   fit = "initial",
   frame,
@@ -110,8 +112,11 @@ export function PointCloudPanel({
         pointSize={pointSize}
         positions={frame.positions}
         transform={frameTransform}
-      />
+      >
+        {children}
+      </PointCloudSceneContent>
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [fit, frame.positions, frameTransform, maxRenderedPoints, pointSize]
   );
 
@@ -141,6 +146,7 @@ export function PointCloudPanel({
 }
 
 function PointCloudSceneContent({
+  children,
   fit: _fit,
   maxRenderedPoints,
   onFinitePointCount,
@@ -148,6 +154,7 @@ function PointCloudSceneContent({
   positions,
   transform,
 }: {
+  readonly children?: ReactNode;
   readonly fit: "initial" | "frame" | "never";
   readonly maxRenderedPoints: number;
   readonly onFinitePointCount: (count: number) => void;
@@ -181,6 +188,7 @@ function PointCloudSceneContent({
       >
         <PointCloudPoints data={data} pointSize={pointSize} />
       </group>
+      {children}
     </Base3DScene>
   );
 }

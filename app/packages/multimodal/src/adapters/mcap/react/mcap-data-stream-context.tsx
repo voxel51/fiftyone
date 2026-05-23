@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
+import type { ByteSourceDescriptor } from "../../../query/bytes";
+import type { McapResourceClient } from "../types";
 import type { McapTimelineIndex } from "./mcap-timeline-index";
 import type { McapTopicCache } from "./mcap-topic-cache";
 
@@ -21,6 +23,13 @@ export interface McapDataStream {
   /** Read access to the timeline index — ordered ticks plus
    *  `nearestTick(timeSec)` / `secToNs(timeSec)`. */
   readonly getTimelineIndex: () => McapTimelineIndex | null;
+
+  /** Resource client used by the data stream. Exposed so tile bodies
+   *  can issue out-of-band reads (e.g. one-shot TF history). */
+  readonly client: McapResourceClient;
+
+  /** Current byte source descriptor. `null` until a sample is open. */
+  readonly source: ByteSourceDescriptor | null;
 }
 
 interface McapDataStreamContextValue {
