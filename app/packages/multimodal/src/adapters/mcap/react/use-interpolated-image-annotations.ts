@@ -110,7 +110,6 @@ function vizOf(msg: McapDecodedMessage): ImageAnnotationsVisualization | null {
 type Point2 = readonly [number, number];
 
 const MATCH_DISTANCE_PX = 200;
-const MIN_MATCH_IOU = 0.15;
 
 function interpolateImageAnnotations(
   prev: ImageAnnotationsVisualization,
@@ -212,35 +211,27 @@ function interpolateLineList(
   const prevGroups = groupLineList(prevPrim.points, prevTexts);
   const nextGroups = groupLineList(nextPrim.points, nextTexts);
 
-  // Per-prev candidate selection:
-  //   1. Same label class (hard).
-  //   2. Centroid within MATCH_DISTANCE_PX (coarse position filter).
-  //   3. AABB IoU above MIN_IOU (rejects gross size mismatches —
-  //      e.g. a parked truck near a passing sedan).
-  //   4. Among survivors, pick the lowest symmetric Chamfer distance
-  //      over the cuboid's unique vertices (shape similarity tiebreak).
-  // Greedy: first prev to claim a next wins.
+  // Greedy nearest-centroid match per label class. Same label is required
+  // so a car can't accidentally interpolate to a pedestrian.
   const usedNext = new Set<number>();
   const matchedPairs: { prev: Group; next: Group | null }[] = prevGroups.map(
     (pg) => {
       let bestIdx = -1;
-      let bestScore = Infinity;
-      const distSqThreshold = MATCH_DISTANCE_PX * MATCH_DISTANCE_PX;
+      let bestDist = Infinity;
       for (let j = 0; j < nextGroups.length; j++) {
         if (usedNext.has(j)) continue;
         const ng = nextGroups[j];
         if (ng.label !== pg.label) continue;
-        if (squaredDistance(pg.centroid, ng.centroid) > distSqThreshold) {
-          continue;
-        }
-        if (aabbIoU(pg.bounds, ng.bounds) < MIN_MATCH_IOU) continue;
-        const score = chamferDistance(pg.vertices, ng.vertices);
-        if (score < bestScore) {
-          bestScore = score;
+        const d = squaredDistance(pg.centroid, ng.centroid);
+        if (d < bestDist) {
+          bestDist = d;
           bestIdx = j;
         }
       }
-      if (bestIdx === -1) return { prev: pg, next: null };
+      const threshold = MATCH_DISTANCE_PX * MATCH_DISTANCE_PX;
+      if (bestIdx === -1 || bestDist > threshold) {
+        return { prev: pg, next: null };
+      }
       usedNext.add(bestIdx);
       return { prev: pg, next: nextGroups[bestIdx] };
     }
@@ -271,118 +262,81 @@ function interpolateLineList(
 interface Group {
   readonly segments: readonly [Point2, Point2][];
   readonly centroid: Point2;
-  readonly bounds: Bounds;
-  readonly vertices: readonly Point2[];
   readonly label: string | null;
 }
 
-/**
- * Each annotation message encodes N objects with cuboid edges and labels
- * paired by index: `points` is `N * segmentsPerObject * 2` long and
- * `texts` has length N. The Nth chunk of segments is labeled by the Nth
- * text. We use that as the source of truth instead of spatial guessing.
- * Falls back to one big group when the data doesn't divide cleanly.
- */
 function groupLineList(
   points: readonly Point2[],
   texts: readonly ImageAnnotationText[]
 ): readonly Group[] {
   const segmentCount = Math.floor(points.length / 2);
   if (segmentCount === 0) return [];
-  if (texts.length === 0 || segmentCount % texts.length !== 0) {
-    const segments: [Point2, Point2][] = [];
-    for (let i = 0; i < segmentCount; i++) {
-      segments.push([points[i * 2], points[i * 2 + 1]]);
-    }
-    return [makeGroup(segments, null)];
-  }
-  const segmentsPerObject = segmentCount / texts.length;
-  const groups: Group[] = [];
-  for (let i = 0; i < texts.length; i++) {
-    const segments: [Point2, Point2][] = [];
-    const start = i * segmentsPerObject;
-    for (let j = 0; j < segmentsPerObject; j++) {
-      const seg = start + j;
-      segments.push([points[seg * 2], points[seg * 2 + 1]]);
-    }
-    groups.push(makeGroup(segments, texts[i]?.text ?? null));
-  }
-  return groups;
-}
 
-function makeGroup(
-  segments: readonly [Point2, Point2][],
-  label: string | null
-): Group {
-  const bounds = segmentsBounds(segments);
-  const centroid: Point2 = [
-    (bounds.minX + bounds.maxX) / 2,
-    (bounds.minY + bounds.maxY) / 2,
-  ];
-  return {
-    segments,
-    centroid,
-    bounds,
-    vertices: uniqueVertices(segments),
-    label,
+  const parent: number[] = [];
+  for (let i = 0; i < segmentCount; i++) parent[i] = i;
+  const find = (i: number): number => {
+    while (parent[i] !== i) {
+      parent[i] = parent[parent[i]];
+      i = parent[i];
+    }
+    return i;
   };
-}
+  const union = (a: number, b: number): void => {
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) parent[ra] = rb;
+  };
 
-function uniqueVertices(
-  segments: readonly [Point2, Point2][]
-): readonly Point2[] {
-  const seen = new Set<string>();
-  const out: Point2[] = [];
-  for (const [a, b] of segments) {
-    for (const p of [a, b]) {
-      const k = `${Math.round(p[0] * 100)}|${Math.round(p[1] * 100)}`;
-      if (seen.has(k)) continue;
-      seen.add(k);
-      out.push(p);
+  const endpointToSegment = new Map<string, number>();
+  const key = ([x, y]: Point2): string =>
+    `${Math.round(x * 100)}|${Math.round(y * 100)}`;
+  for (let i = 0; i < segmentCount; i++) {
+    for (const p of [points[i * 2], points[i * 2 + 1]]) {
+      const k = key(p);
+      const existing = endpointToSegment.get(k);
+      if (existing === undefined) endpointToSegment.set(k, i);
+      else union(existing, i);
     }
   }
-  return out;
-}
 
-function aabbIoU(a: Bounds, b: Bounds): number {
-  const x1 = Math.max(a.minX, b.minX);
-  const y1 = Math.max(a.minY, b.minY);
-  const x2 = Math.min(a.maxX, b.maxX);
-  const y2 = Math.min(a.maxY, b.maxY);
-  if (x2 <= x1 || y2 <= y1) return 0;
-  const inter = (x2 - x1) * (y2 - y1);
-  const areaA = Math.max(0, a.maxX - a.minX) * Math.max(0, a.maxY - a.minY);
-  const areaB = Math.max(0, b.maxX - b.minX) * Math.max(0, b.maxY - b.minY);
-  const union = areaA + areaB - inter;
-  return union > 0 ? inter / union : 0;
-}
+  const components = new Map<number, [Point2, Point2][]>();
+  for (let i = 0; i < segmentCount; i++) {
+    const root = find(i);
+    let segs = components.get(root);
+    if (!segs) {
+      segs = [];
+      components.set(root, segs);
+    }
+    segs.push([points[i * 2], points[i * 2 + 1]]);
+  }
 
-/**
- * Symmetric Chamfer distance between two point sets — average nearest-
- * neighbour distance from A→B plus from B→A, halved. Small values mean
- * the two cuboid wireframes have similar vertex layouts (good match).
- */
-function chamferDistance(a: readonly Point2[], b: readonly Point2[]): number {
-  if (a.length === 0 || b.length === 0) return Infinity;
-  let sumAB = 0;
-  for (const pa of a) {
-    let minD = Infinity;
-    for (const pb of b) {
-      const d = squaredDistance(pa, pb);
-      if (d < minD) minD = d;
-    }
-    sumAB += Math.sqrt(minD);
+  // Fold tiny floating components (heading indicators inside a cuboid)
+  // into the larger component whose AABB contains their centroid.
+  const raw = [...components.values()].map((segments) => ({
+    segments,
+    bounds: segmentsBounds(segments),
+  }));
+  const sorted = [...raw].sort((a, b) => b.segments.length - a.segments.length);
+  const finals: { segments: [Point2, Point2][] }[] = [];
+  for (const c of sorted) {
+    const cx = (c.bounds.minX + c.bounds.maxX) / 2;
+    const cy = (c.bounds.minY + c.bounds.maxY) / 2;
+    const host =
+      c.segments.length <= 2
+        ? finals.find((h) => {
+            const b = segmentsBounds(h.segments);
+            return cx >= b.minX && cx <= b.maxX && cy >= b.minY && cy <= b.maxY;
+          })
+        : undefined;
+    if (host) host.segments.push(...c.segments);
+    else finals.push({ segments: [...c.segments] });
   }
-  let sumBA = 0;
-  for (const pb of b) {
-    let minD = Infinity;
-    for (const pa of a) {
-      const d = squaredDistance(pa, pb);
-      if (d < minD) minD = d;
-    }
-    sumBA += Math.sqrt(minD);
-  }
-  return (sumAB / a.length + sumBA / b.length) / 2;
+
+  return finals.map(({ segments }) => {
+    const b = segmentsBounds(segments);
+    const centroid: Point2 = [(b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2];
+    return { segments, centroid, label: nearestLabel(texts, centroid) };
+  });
 }
 
 interface Bounds {
@@ -408,6 +362,24 @@ function segmentsBounds(segments: readonly [Point2, Point2][]): Bounds {
     if (y2 > maxY) maxY = y2;
   }
   return { minX, minY, maxX, maxY };
+}
+
+function nearestLabel(
+  texts: readonly ImageAnnotationText[],
+  point: Point2
+): string | null {
+  let bestIdx = -1;
+  let bestDist = Infinity;
+  for (let i = 0; i < texts.length; i++) {
+    const t = texts[i];
+    if (!t.text) continue;
+    const d = squaredDistance(t.position, point);
+    if (d < bestDist) {
+      bestDist = d;
+      bestIdx = i;
+    }
+  }
+  return bestIdx === -1 ? null : texts[bestIdx]?.text ?? null;
 }
 
 function squaredDistance(a: Point2, b: Point2): number {

@@ -23,11 +23,7 @@
   font-size: 0.8125rem;
   cursor: pointer;
   text-align: center;
-}
-
-.tab:focus-visible {
-  outline: 2px solid var(--color-brand-primary);
-  outline-offset: 2px;
+  outline: none;
 }
 
 .tab:hover {
