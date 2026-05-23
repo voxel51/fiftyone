@@ -1,9 +1,6 @@
-import React, {
-  createContext,
-  useContext,
-  useMemo,
-  useState,
-} from "react";
+import React, { createContext, useContext, useMemo, useState } from "react";
+import type { McapTimelineIndex } from "./mcap-timeline-index";
+import type { McapTopicCache } from "./mcap-topic-cache";
 
 /**
  * The handle a tile body uses to subscribe to MCAP topic data. The
@@ -16,6 +13,14 @@ export interface McapDataStream {
    *  subscriber count; the topic's cache + held last-frame are
    *  released when the count reaches zero. */
   readonly subscribeToTopic: (topic: string) => () => void;
+
+  /** Read access to one topic's decoded message cache. Used by
+   *  consumers that need lookahead (e.g. annotation interpolation). */
+  readonly getTopicCache: (topic: string) => McapTopicCache | undefined;
+
+  /** Read access to the timeline index — ordered ticks plus
+   *  `nearestTick(timeSec)` / `secToNs(timeSec)`. */
+  readonly getTimelineIndex: () => McapTimelineIndex | null;
 }
 
 interface McapDataStreamContextValue {
@@ -41,10 +46,7 @@ export const McapDataStreamProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
   const [dataStream, setDataStream] = useState<McapDataStream | null>(null);
-  const value = useMemo(
-    () => ({ dataStream, setDataStream }),
-    [dataStream]
-  );
+  const value = useMemo(() => ({ dataStream, setDataStream }), [dataStream]);
   return (
     <McapDataStreamContext.Provider value={value}>
       {children}
@@ -59,8 +61,6 @@ export function useMcapDataStream(): McapDataStream | null {
 }
 
 /** Setter used by the setup hook to publish its handle. */
-export function useSetMcapDataStream(): (
-  next: McapDataStream | null
-) => void {
+export function useSetMcapDataStream(): (next: McapDataStream | null) => void {
   return useContext(McapDataStreamContext).setDataStream;
 }

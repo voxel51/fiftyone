@@ -1,65 +1,82 @@
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
-import React from "react";
+import clsx from "clsx";
+import React, { useState } from "react";
 import { useTiling } from "../../lib/TilingProvider";
 import { useTileSelectionFor } from "../../lib/use-tile-state";
-import SidebarPanel from "../SidebarPanel/SidebarPanel";
 import styles from "./TilingInspectorSidebar.module.css";
 
+type InspectorTab = "explore" | "annotate";
+
 /**
- * Right-hand sidebar that shows the focused tile's current "selection"
- * — whatever the tile body wrote into `tileSelectionAtom(tileId)` when
- * the user clicked an inspectable element (a graph sample, a 3D scene
- * object, …). Each tile defines its own payload shape; we render the
- * payload as syntax-colored JSON so any structure displays sensibly.
- * 
- * NOTE: This is very subject to change
+ * Right-hand sidebar with two top-level modes: Explore (current tile
+ * inspection) and Annotate (future annotation workflows). Explore is
+ * the historical inspector behavior — Annotate is a placeholder until
+ * the workflow lands.
  */
 const TilingInspectorSidebar: React.FC = () => {
-  const { focusedTileId, tiles } = useTiling();
-  const focusedTile = focusedTileId ? tiles[focusedTileId] : null;
+  const [tab, setTab] = useState<InspectorTab>("explore");
+
+  return (
+    <div className={styles.root}>
+      <div className={styles.tabs} role="tablist">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "explore"}
+          className={clsx(styles.tab, tab === "explore" && styles.tabActive)}
+          onClick={() => setTab("explore")}
+        >
+          Explore
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "annotate"}
+          className={clsx(styles.tab, tab === "annotate" && styles.tabActive)}
+          onClick={() => setTab("annotate")}
+        >
+          Annotate
+        </button>
+      </div>
+      <div className={styles.body}>
+        {tab === "explore" ? <ExplorePanel /> : <AnnotatePanel />}
+      </div>
+    </div>
+  );
+};
+
+const ExplorePanel: React.FC = () => {
+  const { focusedTileId } = useTiling();
   const selection = useTileSelectionFor(focusedTileId);
 
   if (!focusedTileId) {
     return (
-      <SidebarPanel title="Inspector">
-        <Text variant={TextVariant.Sm} color={TextColor.Muted}>
-          Select a tile to inspect.
-        </Text>
-      </SidebarPanel>
+      <Text variant={TextVariant.Sm} color={TextColor.Muted}>
+        Select a tile to inspect.
+      </Text>
     );
   }
 
-  return (
-    <SidebarPanel title="Inspector">
-      <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-        Focused tile
+  if (selection == null) {
+    return (
+      <Text variant={TextVariant.Sm} color={TextColor.Muted}>
+        Click something inside the tile (a graph sample, a 3D object…) to
+        inspect its data.
       </Text>
-      <Text variant={TextVariant.Sm} color={TextColor.Primary}>
-        {focusedTile?.title ?? focusedTileId}
-      </Text>
+    );
+  }
 
-      <div className={styles.spacer} />
-
-      <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-        Selection
-      </Text>
-      {selection != null ? (
-        <pre className={styles.json}>{formatSelection(selection)}</pre>
-      ) : (
-        <Text variant={TextVariant.Sm} color={TextColor.Muted}>
-          Click something inside the tile (a graph sample, a 3D
-          object…) to inspect its data.
-        </Text>
-      )}
-    </SidebarPanel>
-  );
+  return <pre className={styles.json}>{formatSelection(selection)}</pre>;
 };
+
+const AnnotatePanel: React.FC = () => (
+  <Text variant={TextVariant.Sm} color={TextColor.Muted}>
+    Annotation workflows are coming soon.
+  </Text>
+);
 
 function formatSelection(value: unknown): string {
   try {
-    // JSON.stringify returns `undefined` (without throwing) for top-level
-    // undefined / function / symbol values — fall back to String() so
-    // the <pre> never renders blank.
     return JSON.stringify(value, null, 2) ?? String(value);
   } catch {
     return String(value);
