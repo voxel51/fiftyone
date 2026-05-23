@@ -27,8 +27,8 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
         fileName={fileName}
         sceneSources={sceneSources}
         initialTiles={initialTiles}
-        defaultLeftOpen={false}
-        defaultRightOpen={false}
+        defaultLeftOpen
+        defaultRightOpen
       >
         <McapStreams ctx={ctx} />
       </MultiModalPlayback>

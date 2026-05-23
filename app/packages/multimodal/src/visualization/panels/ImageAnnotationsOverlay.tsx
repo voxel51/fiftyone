@@ -482,95 +482,43 @@ interface LineListGroup {
   readonly bounds: Bounds;
 }
 
+/**
+ * Each annotation message encodes N objects with cuboid edges and
+ * labels paired by index: `points` is `N * segmentsPerObject * 2`
+ * long, `texts.length === N`, and the Nth chunk of segments is
+ * labeled by the Nth text. Use that pairing directly rather than
+ * spatially guessing. Falls back to one big group when the data
+ * doesn't divide cleanly (other producers might encode differently).
+ */
 function groupLineListByLabel(
   points: readonly Point2[],
   texts: readonly ImageAnnotationText[]
 ): readonly LineListGroup[] {
-  // Connected components on shared endpoints — each component is one
-  // logical object (e.g. a cuboid wireframe). After CC, small floating
-  // components whose centroid sits inside a larger component's AABB get
-  // folded into that larger component (heading indicators inside a cuboid).
-  const parent: number[] = [];
-  const find = (i: number): number => {
-    while (parent[i] !== i) {
-      parent[i] = parent[parent[i]];
-      i = parent[i];
-    }
-    return i;
-  };
-  const union = (a: number, b: number): void => {
-    const ra = find(a);
-    const rb = find(b);
-    if (ra !== rb) parent[ra] = rb;
-  };
-
   const segmentCount = Math.floor(points.length / 2);
-  for (let i = 0; i < segmentCount; i++) parent[i] = i;
-
-  const endpointToSegment = new Map<string, number>();
-  const pointKey = ([x, y]: Point2): string =>
-    `${Math.round(x * 100)}|${Math.round(y * 100)}`;
-
-  for (let i = 0; i < segmentCount; i++) {
-    const a = points[i * 2];
-    const b = points[i * 2 + 1];
-    for (const p of [a, b]) {
-      const k = pointKey(p);
-      const existing = endpointToSegment.get(k);
-      if (existing === undefined) {
-        endpointToSegment.set(k, i);
-      } else {
-        union(existing, i);
-      }
+  if (segmentCount === 0) return [];
+  if (texts.length === 0 || segmentCount % texts.length !== 0) {
+    const segments: [Point2, Point2][] = [];
+    for (let i = 0; i < segmentCount; i++) {
+      segments.push([points[i * 2], points[i * 2 + 1]]);
     }
+    return [{ label: null, segments, bounds: segmentsBounds(segments) }];
   }
-
-  const componentSegments = new Map<number, [Point2, Point2][]>();
-  for (let i = 0; i < segmentCount; i++) {
-    const root = find(i);
-    let segs = componentSegments.get(root);
-    if (!segs) {
-      segs = [];
-      componentSegments.set(root, segs);
+  const segmentsPerObject = segmentCount / texts.length;
+  const groups: LineListGroup[] = [];
+  for (let i = 0; i < texts.length; i++) {
+    const segments: [Point2, Point2][] = [];
+    const start = i * segmentsPerObject;
+    for (let j = 0; j < segmentsPerObject; j++) {
+      const seg = start + j;
+      segments.push([points[seg * 2], points[seg * 2 + 1]]);
     }
-    segs.push([points[i * 2], points[i * 2 + 1]]);
+    groups.push({
+      label: texts[i]?.text ?? null,
+      segments,
+      bounds: segmentsBounds(segments),
+    });
   }
-
-  const rawComponents = [...componentSegments.values()].map((segments) => ({
-    segments,
-    bounds: segmentsBounds(segments),
-  }));
-
-  const sorted = [...rawComponents].sort(
-    (a, b) => b.segments.length - a.segments.length
-  );
-  const finalComponents: { segments: [Point2, Point2][]; bounds: Bounds }[] =
-    [];
-  for (const c of sorted) {
-    const center: Point2 = [
-      (c.bounds.minX + c.bounds.maxX) / 2,
-      (c.bounds.minY + c.bounds.maxY) / 2,
-    ];
-    const host =
-      c.segments.length <= 2
-        ? finalComponents.find((h) => boundsContainPoint(h.bounds, center))
-        : undefined;
-    if (host) {
-      host.segments.push(...c.segments);
-      host.bounds = segmentsBounds(host.segments);
-    } else {
-      finalComponents.push({ segments: [...c.segments], bounds: c.bounds });
-    }
-  }
-
-  return finalComponents.map(({ segments, bounds }) => {
-    const centroid: Point2 = [
-      (bounds.minX + bounds.maxX) / 2,
-      (bounds.minY + bounds.maxY) / 2,
-    ];
-    const label = nearestLabel(texts, centroid);
-    return { label, segments, bounds };
-  });
+  return groups;
 }
 
 function segmentsBounds(segments: readonly [Point2, Point2][]): Bounds {
@@ -591,23 +539,20 @@ function segmentsBounds(segments: readonly [Point2, Point2][]): Bounds {
   return { minX, minY, maxX, maxY };
 }
 
-function boundsContainPoint(b: Bounds, [x, y]: Point2): boolean {
-  return x >= b.minX && x <= b.maxX && y >= b.minY && y <= b.maxY;
-}
-
 function nearestTextIndex(
   texts: readonly ImageAnnotationText[],
   point: Point2
 ): number {
   let bestIdx = -1;
   let bestDist = Infinity;
+  const maxSq = MAX_LABEL_DIST_PX * MAX_LABEL_DIST_PX;
   for (let i = 0; i < texts.length; i++) {
     const t = texts[i];
     if (!t.text) continue;
     const dx = t.position[0] - point[0];
     const dy = t.position[1] - point[1];
     const d = dx * dx + dy * dy;
-    if (d < bestDist) {
+    if (d < bestDist && d <= maxSq) {
       bestDist = d;
       bestIdx = i;
     }
@@ -637,6 +582,8 @@ function pointsCentroid(points: readonly Point2[]): Point2 | null {
 // Subset of `@fiftyone/utilities`' default app color pool with the orange
 // and orange-leaning entries pulled out — those collide with the orange
 // hover / selected highlight (#ff7a18).
+const MAX_LABEL_DIST_PX = 200;
+
 const DEFAULT_COLOR_POOL: readonly string[] = [
   "#ee0000",
   "#999900",
