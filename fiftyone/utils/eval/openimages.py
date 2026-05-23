@@ -163,7 +163,7 @@ class OpenImagesEvaluation(DetectionEvaluation):
                 "Open Images evaluation"
             )
 
-    def evaluate(self, sample_or_frame, eval_key=None):
+    def evaluate(self, sample_or_frame, eval_key=None, classes=None):
         """Performs Open Images-style evaluation on the given image.
 
         Predicted objects are matched to ground truth objects in descending
@@ -226,6 +226,7 @@ class OpenImagesEvaluation(DetectionEvaluation):
             self.config,
             pos_labs,
             neg_labs,
+            classes=classes,
         )
 
     def generate_results(
@@ -479,7 +480,7 @@ def _expand_detection_hierarchy(cats, obj, config, label_type):
 
 
 def _open_images_evaluation_single_iou(
-    gts, preds, eval_key, config, pos_labs, neg_labs
+    gts, preds, eval_key, config, pos_labs, neg_labs, classes=None
 ):
     iou_thresh = min(config.iou, 1 - 1e-10)
     id_key = "%s_id" % eval_key
@@ -504,6 +505,7 @@ def _open_images_evaluation_single_iou(
         eval_key=eval_key,
         id_key=id_key,
         iou_key=iou_key,
+        classes=classes,
     )
 
     return matches
@@ -588,7 +590,7 @@ def _open_images_evaluation_setup(
 
 
 def _compute_matches(
-    cats, pred_ious, iou_thresh, iscrowd, eval_key, id_key, iou_key
+    cats, pred_ious, iou_thresh, iscrowd, eval_key, id_key, iou_key, classes=None
 ):
     matches = []
 
@@ -718,6 +720,8 @@ def _compute_matches(
         # Leftover GTs are false negatives
         for gt in objects["gts"]:
             if gt[id_key] == _NO_MATCH_ID:
+                if classes is not None and gt.label not in classes:
+                    continue
                 gt[eval_key] = "fn"
                 matches.append((gt.label, None, None, None, gt.id, None))
 
