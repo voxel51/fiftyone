@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
   DetectionOverlay,
   DrawStyle,
@@ -235,5 +235,58 @@ export const usePointSelection = (): PointSelection => {
     }
   }, [getOverlay, keypointOverlayId, scene]);
 
-  return { activate, clearPoints, deactivate, isActive };
+  // Resets the state atoms without interacting with the scene. Use this when
+  // the underlying scene has already been destroyed (e.g. sample navigation)
+  // and the overlay/handler references are now stale.
+  const reset = useCallback(() => {
+    setIsActive(false);
+    setKeypointOverlayId(null);
+    setInteractiveHandler(null);
+  }, [setInteractiveHandler, setIsActive, setKeypointOverlayId]);
+
+  return { activate, clearPoints, deactivate, isActive, reset };
+};
+
+/**
+ * Singleton hook which keeps point selection state coherent with the lighter
+ * scene lifecycle. When the modal navigates to a new sample, the previous
+ * `Scene2D` is destroyed and a new one takes its place — the keypoint overlay
+ * and interactive handler go with it, but the activation atoms persist. This
+ * hook detects that drift and rebuilds the tool on the new scene so the user
+ * stays in point selection mode across navigation.
+ *
+ * **Wire once at the composition root** alongside the other
+ * `useRegister*` handlers.
+ */
+export const useSyncPointSelectionWithScene = () => {
+  const { scene } = useLighter();
+  const { activate, reset } = usePointSelection();
+
+  // Refs decouple effect re-runs from callback identity churn — usePointSelection
+  // returns a fresh object on every render.
+  const activateRef = useRef(activate);
+  const resetRef = useRef(reset);
+  activateRef.current = activate;
+  resetRef.current = reset;
+
+  useEffect(() => {
+    if (!scene) {
+      return;
+    }
+
+    const store = getDefaultStore();
+    if (!store.get(pointSelectionActiveAtom)) {
+      return;
+    }
+
+    const overlayId = store.get(keypointOverlayIdAtom);
+    if (overlayId && scene.getOverlay(overlayId)) {
+      // Overlay still belongs to the current scene
+      return;
+    }
+
+    // Atoms reference an overlay/handler from a destroyed scene; rebuild.
+    resetRef.current();
+    activateRef.current();
+  }, [scene]);
 };
