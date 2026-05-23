@@ -1,10 +1,11 @@
 import { useSetTileSelection } from "@fiftyone/tiling";
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 
 import {
   ImageAnnotationsOverlay,
   type ImageAnnotationPickedPrimitive,
 } from "../../../visualization/panels/image-annotations-overlay";
+import { useMcapAnnotationSelection } from "./mcap-annotation-selection-context";
 import { useInterpolatedImageAnnotations } from "./use-interpolated-image-annotations";
 
 export interface McapCameraAnnotationOverlayProps {
@@ -32,7 +33,7 @@ const McapCameraAnnotationOverlay: React.FC<
 }) => {
   const frame = useInterpolatedImageAnnotations(topic, { interpolate });
   const setSelection = useSetTileSelection();
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const { selectedKey, setSelectedKey } = useMcapAnnotationSelection();
 
   const handleSelect = useCallback(
     (picked: ImageAnnotationPickedPrimitive) => {

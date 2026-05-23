@@ -1,11 +1,12 @@
 import { useSetTileSelection } from "@fiftyone/tiling";
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 
 import type { SceneUpdateVisualization } from "../../../decoders";
 import {
   SceneUpdateBoxes,
   type SceneUpdatePickedEntity,
 } from "../../../visualization/panels/scene-update-boxes";
+import { useMcapAnnotationSelection } from "./mcap-annotation-selection-context";
 import { useMcapDataStream } from "./mcap-data-stream-context";
 import { useMcapTopicStream } from "./use-mcap-topic-stream";
 import { useMcapTfTree, useTfTransformMatrix } from "./use-tf-tree";
@@ -49,7 +50,7 @@ const McapLidarBoxes: React.FC<McapLidarBoxesProps> = ({
   );
 
   const setSelection = useSetTileSelection();
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const { selectedKey, setSelectedKey } = useMcapAnnotationSelection();
 
   const handleSelect = useCallback(
     (picked: SceneUpdatePickedEntity) => {

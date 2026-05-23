@@ -647,9 +647,7 @@ function pickHandler(
 }
 
 function lineWidth(thickness: number): number {
-  // Source thickness is conservative; bump it ~1.5x for readability while
-  // keeping the look light.
-  return Math.max(1.5, thickness * 1.5);
+  return Math.max(1, thickness);
 }
 
 function displayRect(

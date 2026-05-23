@@ -1,6 +1,7 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import React from "react";
 import MultiModalPlayback from "../../../components/MultiModalPlayback/MultiModalPlayback";
+import { McapAnnotationSelectionProvider } from "./mcap-annotation-selection-context";
 import { McapDataStreamProvider } from "./mcap-data-stream-context";
 import { McapStreams } from "./McapStreams";
 import {
@@ -23,15 +24,17 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
 
   return (
     <McapDataStreamProvider>
-      <MultiModalPlayback
-        fileName={fileName}
-        sceneSources={sceneSources}
-        initialTiles={initialTiles}
-        defaultLeftOpen
-        defaultRightOpen
-      >
-        <McapStreams ctx={ctx} />
-      </MultiModalPlayback>
+      <McapAnnotationSelectionProvider>
+        <MultiModalPlayback
+          fileName={fileName}
+          sceneSources={sceneSources}
+          initialTiles={initialTiles}
+          defaultLeftOpen
+          defaultRightOpen
+        >
+          <McapStreams ctx={ctx} />
+        </MultiModalPlayback>
+      </McapAnnotationSelectionProvider>
     </McapDataStreamProvider>
   );
 };
