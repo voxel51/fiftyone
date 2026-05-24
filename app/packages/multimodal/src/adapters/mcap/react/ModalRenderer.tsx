@@ -3,8 +3,14 @@
  * TODO(FOEPD-3830): REPLACE THIS DECODE/FETCH SLICE WITH PRODUCTION CODE.
  */
 import type { SampleRendererProps } from "@fiftyone/plugins";
-import type { ChangeEvent, CSSProperties, ReactNode } from "react";
-import type { DecodedVisualization } from "../../../decoders";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type ChangeEvent,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { PlaybackSyncMode, type StreamInventory } from "../../../schemas/v1";
 import { ImagePanel } from "../../../visualization/panels/image";
 import { PointCloudPanel } from "../../../visualization/panels/point-cloud";
@@ -16,6 +22,7 @@ import {
   type McapStreamSyncPolicies,
 } from "../types";
 import { DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ } from "../timeline";
+import { nonEmpty } from "../strings";
 import {
   type McapLoadStatus,
   type McapPlaybackMessagesByTopic,
@@ -26,13 +33,34 @@ import {
 import { useMcapTopics, type McapTopicsStatus } from "./use-mcap-topics";
 import { useMcapResourceClient } from "./use-mcap-resource-client";
 import { useStableMcapSource } from "./use-stable-mcap-source";
+import {
+  useMcapFrameTransforms,
+  type McapFrameTransformResolver,
+} from "./use-mcap-frame-transforms";
 
 const ACTIVE_TIMELINE_OPTIONS = [MCAP_ACTIVE_TIMELINE.LOG] as const;
-const MCAP_DEMO_PLAYBACK_TOPICS = [
-  "/CAM_FRONT/image_rect_compressed",
-  "/CAM_FRONT_LEFT/image_rect_compressed",
-  "/LIDAR_TOP",
+const MCAP_TOPIC_METADATA_KEY = "mcap.topic";
+const MCAP_FRAME_ID_METADATA_KEY = "mcap.channel_metadata.frame_id";
+const EMPTY_STREAM_METADATA = Object.freeze({}) as Readonly<
+  Record<string, string>
+>;
+const PLAYBACK_STREAM_BINDINGS: readonly McapPlaybackStreamBinding[] = [
+  {
+    fallbackLabel: "Front camera",
+    topic: "/CAM_FRONT/image_rect_compressed",
+  },
+  {
+    fallbackLabel: "Front-left camera",
+    topic: "/CAM_FRONT_LEFT/image_rect_compressed",
+  },
+  {
+    fallbackLabel: "Top lidar",
+    topic: "/LIDAR_TOP",
+  },
 ] as const;
+const MCAP_DEMO_PLAYBACK_TOPICS = PLAYBACK_STREAM_BINDINGS.map(
+  (binding) => binding.topic
+);
 const CAMERA_SYNC_LOOKBACK_NS = 120_000_000n;
 const LIDAR_SYNC_LOOKBACK_NS = 200_000_000n;
 const CAMERA_SYNC_POLICY = {
@@ -47,15 +75,44 @@ const STREAM_SYNC_POLICIES: McapStreamSyncPolicies = {
     toleranceBeforeNs: LIDAR_SYNC_LOOKBACK_NS,
   },
 };
+// Auto is a local sensor-viewer policy. Dataset-specific sensor frames are not
+// listed here; they enter through decoded message or stream metadata.
+const LOCAL_SENSOR_FIXED_FRAME_PREFERENCE = [
+  "base_link",
+  "base_footprint",
+  "ego_vehicle",
+  "ego",
+  "vehicle",
+  "body",
+] as const;
+const GLOBAL_FIXED_FRAME_FALLBACK_PREFERENCE = [
+  "odom",
+  "map",
+  "world",
+] as const;
+const AUTO_FIXED_FRAME_VALUE = "__auto__";
 
-type McapDemoPlaybackTopic = typeof MCAP_DEMO_PLAYBACK_TOPICS[number];
-
-type StreamSpec = {
+type McapPlaybackStreamBinding = {
+  readonly fallbackLabel: string;
+  readonly topic: string;
+};
+type McapHydratedPlaybackStreamSpec = {
+  readonly coordinateFrameId?: string;
   readonly label: string;
-  readonly topic: McapDemoPlaybackTopic;
+  readonly metadata: Readonly<Record<string, string>>;
+  readonly payload?: StreamInventory["payload"];
+  readonly recordCount?: string;
+  readonly streamId: string;
+  readonly topic: string;
 };
 type StreamGridProps = {
+  readonly fixedFrameSelection: string;
+  readonly frameIds: readonly string[];
+  readonly resolveFrameTransform: McapFrameTransformResolver;
+  readonly frameTransformsReady: boolean;
   readonly messagesByTopic: McapPlaybackMessagesByTopic;
+  readonly onFixedFrameSelectionChange: (frameId: string) => void;
+  readonly streams: readonly McapHydratedPlaybackStreamSpec[];
 };
 type TimelineControlsProps = {
   readonly activeTimeline: McapActiveTimeline;
@@ -77,21 +134,6 @@ type ModalRendererProps = SampleRendererProps & {
   readonly timelineTickRateHz?: number;
 };
 
-const STREAMS: readonly StreamSpec[] = [
-  {
-    label: "Front camera",
-    topic: MCAP_DEMO_PLAYBACK_TOPICS[0],
-  },
-  {
-    label: "Front-left camera",
-    topic: MCAP_DEMO_PLAYBACK_TOPICS[1],
-  },
-  {
-    label: "Top lidar",
-    topic: MCAP_DEMO_PLAYBACK_TOPICS[2],
-  },
-];
-
 /**
  * Modal proof renderer for MCAP-backed multimodal samples.
  */
@@ -102,6 +144,17 @@ export function ModalRenderer({
   const mcap = useMcapResourceClient({ worker: true });
   const source = useStableMcapSource(ctx);
   const topicState = useMcapTopics({ client: mcap, source });
+  const [fixedFrameSelection, setFixedFrameSelection] = useState(
+    AUTO_FIXED_FRAME_VALUE
+  );
+  const streams = useMemo(
+    () =>
+      hydrateMcapPlaybackStreamSpecs({
+        bindings: PLAYBACK_STREAM_BINDINGS,
+        topics: topicState.topics,
+      }),
+    [topicState.topics]
+  );
   // Playback data path: this POC reads MCAP bytes directly through the adapter's
   // worker-backed resource client. It does not currently depend on server-side
   // inventory or playback-plan query artifacts.
@@ -111,6 +164,12 @@ export function ModalRenderer({
     streamPolicies: STREAM_SYNC_POLICIES,
     timelineTickRateHz,
     topics: MCAP_DEMO_PLAYBACK_TOPICS,
+  });
+  const frameTransforms = useMcapFrameTransforms({
+    activeTimeline: playback.activeTimeline,
+    client: mcap,
+    source,
+    timeNs: playback.timeNs,
   });
 
   const handlePlayClick = () => {
@@ -132,7 +191,18 @@ export function ModalRenderer({
   return (
     <div style={styles.shell}>
       {playback.error ? <ErrorNotice>{playback.error}</ErrorNotice> : null}
-      <StreamGrid messagesByTopic={playback.displayMessagesByTopic} />
+      {frameTransforms.error ? (
+        <ErrorNotice>{frameTransforms.error}</ErrorNotice>
+      ) : null}
+      <StreamGrid
+        fixedFrameSelection={fixedFrameSelection}
+        frameIds={frameTransforms.frameIds}
+        frameTransformsReady={frameTransforms.status === "ready"}
+        messagesByTopic={playback.displayMessagesByTopic}
+        onFixedFrameSelectionChange={setFixedFrameSelection}
+        resolveFrameTransform={frameTransforms.resolve}
+        streams={streams}
+      />
       <TimelineControls
         activeTimeline={playback.activeTimeline}
         bufferStatus={playback.bufferStatus}
@@ -158,13 +228,26 @@ export function ModalRenderer({
 
 // UI-only pieces below receive already-orchestrated playback state. Keeping
 // them dumb makes the data flow above easier to audit when playback evolves.
-function StreamGrid({ messagesByTopic }: StreamGridProps) {
+function StreamGrid({
+  fixedFrameSelection,
+  frameIds,
+  frameTransformsReady,
+  messagesByTopic,
+  onFixedFrameSelectionChange,
+  resolveFrameTransform,
+  streams,
+}: StreamGridProps) {
   return (
     <div style={styles.streamGrid}>
-      {STREAMS.map((stream) => (
+      {streams.map((stream) => (
         <StreamPanel
+          fixedFrameSelection={fixedFrameSelection}
+          frameIds={frameIds}
+          frameTransformsReady={frameTransformsReady}
           key={stream.topic}
           message={messagesByTopic[stream.topic]}
+          onFixedFrameSelectionChange={onFixedFrameSelectionChange}
+          resolveFrameTransform={resolveFrameTransform}
           stream={stream}
         />
       ))}
@@ -318,7 +401,9 @@ function TopicInventoryPanel({
                 <div style={styles.topicName}>
                   {topic.displayName || topic.streamId}
                 </div>
-                <div style={styles.topicStreamId}>{topic.streamId}</div>
+                <div style={styles.topicStreamId}>
+                  {topicInventoryDetail(topic)}
+                </div>
               </div>
               <div style={styles.topicSchemaCell}>
                 {formatTopicPayload(topic)}
@@ -388,27 +473,87 @@ function timelineFramePercent(frameIndex: number, totalFrameCount: number) {
 }
 
 function StreamPanel({
+  fixedFrameSelection,
+  frameIds,
+  frameTransformsReady,
   message,
+  onFixedFrameSelectionChange,
+  resolveFrameTransform,
   stream,
 }: {
+  readonly fixedFrameSelection: string;
+  readonly frameIds: readonly string[];
+  readonly frameTransformsReady: boolean;
   readonly message: McapDecodedMessage | undefined;
-  readonly stream: StreamSpec;
+  readonly onFixedFrameSelectionChange: (frameId: string) => void;
+  readonly resolveFrameTransform: McapFrameTransformResolver;
+  readonly stream: McapHydratedPlaybackStreamSpec;
 }) {
+  const pointCloudSourceFrameId = pointCloudSourceFrameForMessage({
+    message,
+    stream,
+  });
+  const explicitFixedFrameId = selectedFixedFrameId(fixedFrameSelection);
+  const frameSelectorOptions = useMemo(
+    () =>
+      frameSelectionOptions({
+        frameIds,
+        resolveFrameTransform,
+        sourceFrameId: pointCloudSourceFrameId,
+        timeNs: message?.timelineTimeNs,
+      }),
+    [
+      frameIds,
+      message?.timelineTimeNs,
+      pointCloudSourceFrameId,
+      resolveFrameTransform,
+    ]
+  );
+
+  useEffect(() => {
+    if (
+      pointCloudSourceFrameId &&
+      explicitFixedFrameId &&
+      !frameSelectorOptions.includes(explicitFixedFrameId)
+    ) {
+      onFixedFrameSelectionChange(AUTO_FIXED_FRAME_VALUE);
+    }
+  }, [
+    explicitFixedFrameId,
+    frameSelectorOptions,
+    onFixedFrameSelectionChange,
+    pointCloudSourceFrameId,
+  ]);
+
   return (
     <section style={styles.panel}>
       <div style={styles.panelHeader}>
         <div>
           <div style={styles.panelTitle}>{stream.label}</div>
-          <div style={styles.topic}>{stream.topic}</div>
+          <div style={styles.topic}>{streamSubtitle(stream)}</div>
         </div>
-        <div style={styles.timestamp}>
-          {message ? formatSeconds(message.timelineTimeNs) : "no frame"}
+        <div style={styles.panelHeaderControls}>
+          <div style={styles.timestamp}>
+            {message ? formatSeconds(message.timelineTimeNs) : "no frame"}
+          </div>
+          {pointCloudSourceFrameId ? (
+            <FrameSelector
+              onChange={onFixedFrameSelectionChange}
+              options={frameSelectorOptions}
+              selectedFrameId={fixedFrameSelection}
+              sourceFrameId={pointCloudSourceFrameId}
+            />
+          ) : null}
         </div>
       </div>
       <div style={styles.viewport}>
         {message ? (
           <VisualizationFrame
-            visualization={message.decoded.output.visualization}
+            fixedFrameSelection={fixedFrameSelection}
+            frameTransformsReady={frameTransformsReady}
+            message={message}
+            resolveFrameTransform={resolveFrameTransform}
+            stream={stream}
           />
         ) : (
           <div style={styles.empty}>No synchronized message in tolerance</div>
@@ -419,10 +564,20 @@ function StreamPanel({
 }
 
 function VisualizationFrame({
-  visualization,
+  fixedFrameSelection,
+  frameTransformsReady,
+  message,
+  resolveFrameTransform,
+  stream,
 }: {
-  readonly visualization: DecodedVisualization | undefined;
+  readonly fixedFrameSelection: string;
+  readonly frameTransformsReady: boolean;
+  readonly message: McapDecodedMessage;
+  readonly resolveFrameTransform: McapFrameTransformResolver;
+  readonly stream: McapHydratedPlaybackStreamSpec;
 }) {
+  const visualization = message.decoded.output.visualization;
+
   if (!visualization) {
     return <div style={styles.empty}>No visualization for decoded message</div>;
   }
@@ -434,15 +589,149 @@ function VisualizationFrame({
   }
 
   if (visualization.kind === VISUALIZATION_KIND.POINT_CLOUD) {
+    const frameTransformState = pointCloudFrameTransform({
+      // Prefer the decoded message frame because Foxglove payloads can carry a
+      // frame_id per message. The stream frame is only the readTopics channel
+      // metadata fallback for payloads that omit their own frame.
+      sourceFrameId:
+        nonEmpty(visualization.coordinateFrameId) ??
+        nonEmpty(stream.coordinateFrameId),
+      targetFrameId: selectedFixedFrameId(fixedFrameSelection),
+      frameTransformsReady,
+      resolveFrameTransform,
+      timeNs: message.timelineTimeNs,
+    });
+
     return (
       <PointCloudPanel
+        frameTransform={frameTransformState.transform}
         frame={visualization}
         style={styles.visualizationPanel}
+        warning={frameTransformState.warning}
       />
     );
   }
 
   return <div style={styles.empty}>Unsupported visualization</div>;
+}
+
+function pointCloudFrameTransform({
+  frameTransformsReady,
+  resolveFrameTransform,
+  sourceFrameId,
+  targetFrameId,
+  timeNs,
+}: {
+  readonly frameTransformsReady: boolean;
+  readonly resolveFrameTransform: McapFrameTransformResolver;
+  readonly sourceFrameId: string | undefined;
+  readonly targetFrameId: string | undefined;
+  readonly timeNs: bigint;
+}) {
+  if (!sourceFrameId) {
+    return {
+      transform: undefined,
+      warning: null,
+    };
+  }
+
+  const frameResolution = resolveFixedFrameTransform({
+    resolveFrameTransform,
+    sourceFrameId,
+    targetFrameId,
+    timeNs,
+  });
+  if (frameResolution.status === "resolved") {
+    return {
+      transform: frameResolution.transform,
+      warning: null,
+    };
+  }
+
+  return {
+    transform: undefined,
+    warning:
+      frameResolution.status === "pending"
+        ? `Waiting for frame transforms from ${sourceFrameId} to ${frameResolution.targetFrameId}`
+        : frameTransformsReady
+        ? targetFrameId
+          ? `No frame transform path from ${sourceFrameId} to ${targetFrameId}`
+          : `No frame transform path from ${sourceFrameId} to a fixed frame`
+        : null,
+  };
+}
+
+function resolveFixedFrameTransform({
+  resolveFrameTransform,
+  sourceFrameId,
+  targetFrameId,
+  timeNs,
+}: {
+  readonly resolveFrameTransform: McapFrameTransformResolver;
+  readonly sourceFrameId: string;
+  readonly targetFrameId: string | undefined;
+  readonly timeNs: bigint;
+}) {
+  if (targetFrameId) {
+    return resolveFrameTransform(sourceFrameId, targetFrameId, timeNs);
+  }
+
+  let pending: ReturnType<McapFrameTransformResolver> | undefined = undefined;
+  const candidates = autoFixedFrameCandidates(sourceFrameId);
+
+  for (const targetFrameId of candidates) {
+    const resolution = resolveFrameTransform(
+      sourceFrameId,
+      targetFrameId,
+      timeNs
+    );
+    if (resolution.status === "resolved") {
+      return resolution;
+    }
+    if (resolution.status === "pending" && !pending) {
+      pending = resolution;
+    }
+  }
+
+  return (
+    pending ?? {
+      sourceFrameId,
+      status: "missing" as const,
+      targetFrameId: candidates[0] ?? sourceFrameId,
+    }
+  );
+}
+
+function FrameSelector({
+  onChange,
+  options,
+  selectedFrameId,
+  sourceFrameId,
+}: {
+  readonly onChange: (frameId: string) => void;
+  readonly options: readonly string[];
+  readonly selectedFrameId: string;
+  readonly sourceFrameId: string;
+}) {
+  return (
+    <label style={styles.frameSelectorLabel}>
+      <span style={styles.frameSelectorText}>Frame</span>
+      <select
+        aria-label="Fixed frame"
+        onChange={(event) => onChange(event.target.value)}
+        style={styles.frameSelector}
+        title={`source: ${sourceFrameId}`}
+        value={selectedFrameId}
+      >
+        <option value={AUTO_FIXED_FRAME_VALUE}>Auto</option>
+        {options.map((frameId) => (
+          <option key={frameId} value={frameId}>
+            {frameId === sourceFrameId ? `${frameId} (source)` : frameId}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
 }
 
 function ErrorNotice({ children }: { readonly children: ReactNode }) {
@@ -458,8 +747,212 @@ function ErrorNotice({ children }: { readonly children: ReactNode }) {
   );
 }
 
+function hydrateMcapPlaybackStreamSpecs({
+  bindings,
+  topics,
+}: {
+  readonly bindings: readonly McapPlaybackStreamBinding[];
+  readonly topics: readonly StreamInventory[];
+}): readonly McapHydratedPlaybackStreamSpec[] {
+  const topicsByMcapTopic = inventoryByMcapTopic(topics);
+
+  return bindings.map((binding) => {
+    const inventory = topicsByMcapTopic.get(binding.topic);
+    const coordinateFrameId = nonEmpty(
+      inventory?.metadata[MCAP_FRAME_ID_METADATA_KEY]
+    );
+
+    return {
+      ...(coordinateFrameId ? { coordinateFrameId } : {}),
+      label: nonEmpty(inventory?.displayName) ?? binding.fallbackLabel,
+      metadata: inventory?.metadata ?? EMPTY_STREAM_METADATA,
+      ...(inventory?.payload ? { payload: inventory.payload } : {}),
+      ...(inventory?.recordCount ? { recordCount: inventory.recordCount } : {}),
+      streamId: nonEmpty(inventory?.streamId) ?? binding.topic,
+      topic: binding.topic,
+    };
+  });
+}
+
+function inventoryByMcapTopic(topics: readonly StreamInventory[]) {
+  const topicsByMcapTopic = new Map<string, StreamInventory>();
+
+  for (const topic of topics) {
+    const mcapTopic = nonEmpty(topic.metadata[MCAP_TOPIC_METADATA_KEY]);
+    if (mcapTopic && !topicsByMcapTopic.has(mcapTopic)) {
+      topicsByMcapTopic.set(mcapTopic, topic);
+    }
+  }
+
+  for (const topic of topics) {
+    const displayName = nonEmpty(topic.displayName);
+    if (displayName && !topicsByMcapTopic.has(displayName)) {
+      topicsByMcapTopic.set(displayName, topic);
+    }
+  }
+
+  return topicsByMcapTopic;
+}
+
+function pointCloudSourceFrameForMessage({
+  message,
+  stream,
+}: {
+  readonly message: McapDecodedMessage | undefined;
+  readonly stream: McapHydratedPlaybackStreamSpec;
+}) {
+  const visualization = message?.decoded.output.visualization;
+  if (visualization?.kind !== VISUALIZATION_KIND.POINT_CLOUD) {
+    return undefined;
+  }
+
+  return (
+    nonEmpty(visualization.coordinateFrameId) ??
+    nonEmpty(stream.coordinateFrameId)
+  );
+}
+
+function selectedFixedFrameId(selection: string) {
+  return selection === AUTO_FIXED_FRAME_VALUE ? undefined : selection;
+}
+
+function frameSelectionOptions({
+  frameIds,
+  resolveFrameTransform,
+  sourceFrameId,
+  timeNs,
+}: {
+  readonly frameIds: readonly string[];
+  readonly resolveFrameTransform: McapFrameTransformResolver;
+  readonly sourceFrameId: string | undefined;
+  readonly timeNs: bigint | undefined;
+}) {
+  const options: string[] = [];
+  const seen = new Set<string>();
+  const knownFrameIds = new Set(frameIds);
+  const source = nonEmpty(sourceFrameId);
+
+  for (const frameId of LOCAL_SENSOR_FIXED_FRAME_PREFERENCE) {
+    if (
+      isSelectableFrameOption({
+        frameId,
+        knownFrameIds,
+        resolveFrameTransform,
+        sourceFrameId: source,
+        timeNs,
+      })
+    ) {
+      appendFrameOption(options, seen, frameId);
+    }
+  }
+
+  appendFrameOption(options, seen, source);
+
+  for (const frameId of frameIds) {
+    if (
+      isSelectableFrameOption({
+        frameId,
+        knownFrameIds,
+        resolveFrameTransform,
+        sourceFrameId: source,
+        timeNs,
+      })
+    ) {
+      appendFrameOption(options, seen, frameId);
+    }
+  }
+
+  for (const frameId of GLOBAL_FIXED_FRAME_FALLBACK_PREFERENCE) {
+    if (
+      isSelectableFrameOption({
+        frameId,
+        knownFrameIds,
+        resolveFrameTransform,
+        sourceFrameId: source,
+        timeNs,
+      })
+    ) {
+      appendFrameOption(options, seen, frameId);
+    }
+  }
+
+  return options;
+}
+
+function autoFixedFrameCandidates(sourceFrameId: string) {
+  const candidates: string[] = [];
+  const seen = new Set<string>();
+
+  for (const frameId of LOCAL_SENSOR_FIXED_FRAME_PREFERENCE) {
+    appendFrameOption(candidates, seen, frameId);
+  }
+
+  for (const frameId of GLOBAL_FIXED_FRAME_FALLBACK_PREFERENCE) {
+    appendFrameOption(candidates, seen, frameId);
+  }
+
+  appendFrameOption(candidates, seen, sourceFrameId);
+
+  return candidates;
+}
+
+function isSelectableFrameOption({
+  frameId,
+  knownFrameIds,
+  resolveFrameTransform,
+  sourceFrameId,
+  timeNs,
+}: {
+  readonly frameId: string;
+  readonly knownFrameIds: ReadonlySet<string>;
+  readonly resolveFrameTransform: McapFrameTransformResolver;
+  readonly sourceFrameId: string | undefined;
+  readonly timeNs: bigint | undefined;
+}) {
+  if (!sourceFrameId || timeNs === undefined) {
+    return false;
+  }
+
+  const resolution = resolveFrameTransform(sourceFrameId, frameId, timeNs);
+
+  return (
+    resolution.status === "resolved" ||
+    (resolution.status === "pending" && knownFrameIds.has(frameId))
+  );
+}
+
+function appendFrameOption(
+  options: string[],
+  seen: Set<string>,
+  frameId: string | undefined
+) {
+  const cleaned = nonEmpty(frameId);
+  if (!cleaned || seen.has(cleaned)) {
+    return;
+  }
+
+  seen.add(cleaned);
+  options.push(cleaned);
+}
+
 function formatSeconds(ns: bigint) {
   return `${(Number(ns) / 1_000_000_000).toFixed(3)}s`;
+}
+
+function streamSubtitle(stream: McapHydratedPlaybackStreamSpec) {
+  return stream.coordinateFrameId
+    ? `${stream.topic} · ${stream.coordinateFrameId}`
+    : stream.topic;
+}
+
+function topicInventoryDetail(topic: StreamInventory) {
+  const coordinateFrameId = nonEmpty(
+    topic.metadata[MCAP_FRAME_ID_METADATA_KEY]
+  );
+
+  return coordinateFrameId
+    ? `${topic.streamId} · ${coordinateFrameId}`
+    : topic.streamId;
 }
 
 function formatTopicPayload(topic: StreamInventory) {
@@ -585,6 +1078,28 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 13,
     padding: 16,
   },
+  frameSelector: {
+    background: "#0b1622",
+    border: "1px solid #32485e",
+    borderRadius: 4,
+    color: "#edf6ff",
+    fontSize: 11,
+    maxWidth: 132,
+    minWidth: 96,
+    padding: "4px 6px",
+  },
+  frameSelectorLabel: {
+    alignItems: "center",
+    color: "#9fb3c8",
+    display: "flex",
+    fontSize: 11,
+    gap: 6,
+    justifyContent: "flex-end",
+    minWidth: 0,
+  },
+  frameSelectorText: {
+    whiteSpace: "nowrap",
+  },
   notice: {
     borderRadius: 4,
     fontSize: 12,
@@ -611,6 +1126,13 @@ const styles: Record<string, CSSProperties> = {
     gap: 10,
     justifyContent: "space-between",
     padding: "10px 12px",
+  },
+  panelHeaderControls: {
+    alignItems: "flex-end",
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+    minWidth: 0,
   },
   panelTitle: {
     color: "#edf6ff",
