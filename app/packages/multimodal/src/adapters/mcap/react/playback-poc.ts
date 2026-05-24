@@ -157,6 +157,11 @@ export interface McapPlaybackState {
   readonly relativeTimeNs: bigint | undefined;
 
   /**
+   * Absolute playback timeline time for the current frame.
+   */
+  readonly timeNs: bigint | undefined;
+
+  /**
    * Seeks to a frame index and pauses playback.
    */
   readonly seekFrame: (frameIndex: number) => void;
@@ -742,6 +747,7 @@ export function useMcapPlayback({
     relativeTimeNs,
     seekFrame,
     selectActiveTimeline,
+    timeNs,
     timelineStatus,
     timelineTickCount,
     togglePlaying,
