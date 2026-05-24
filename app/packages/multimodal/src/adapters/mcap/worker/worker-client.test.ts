@@ -7,6 +7,7 @@ import {
   type McapPlaybackWorkerResponse,
 } from "./playback-worker-types";
 import { createWorkerMcapResourceClient } from "./worker-client";
+import type { McapFrameTransformSet } from "../types";
 
 vi.mock("@fiftyone/utilities", () => ({
   getFetchParameters: () => ({
@@ -70,6 +71,70 @@ describe("worker-backed MCAP resource client", () => {
     worker.respond({ id: 1, ok: true, result });
 
     await expect(topics).resolves.toEqual(result);
+  });
+
+  it("sends frame transform bootstrap reads at current-frame priority", async () => {
+    const { client, workers } = createClientHarness();
+    const request = {
+      source: createSource("source:1"),
+    };
+    const result = {
+      samples: [
+        {
+          childFrameId: "lidar",
+          parentFrameId: "map",
+          rotation: { w: 1, x: 0, y: 0, z: 0 },
+          translation: { x: 1, y: 2, z: 3 },
+        },
+      ],
+    };
+
+    const bootstrap = client.readFrameTransformBootstrap(request);
+    const worker = workers[0];
+
+    expect(worker.messages[1]).toMatchObject({
+      id: 1,
+      payload: request,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+      type: "readFrameTransformBootstrap",
+    });
+
+    worker.respond({
+      id: 1,
+      ok: true,
+      result: result as unknown as McapFrameTransformSet,
+    });
+
+    const set = await bootstrap;
+    expect(set.samples[0]?.rotation.clone).toEqual(expect.any(Function));
+    expect(set.samples[0]?.translation.clone).toEqual(expect.any(Function));
+    expect(set.samples[0]?.translation.toArray()).toEqual([1, 2, 3]);
+  });
+
+  it("sends frame transform windows at idle-prefetch priority", async () => {
+    const { client, workers } = createClientHarness();
+    const request = {
+      endTimeNs: 20n,
+      source: createSource("source:1"),
+      startTimeNs: 10n,
+    };
+    const result = {
+      samples: [],
+    };
+
+    const window = client.readFrameTransformWindow(request);
+    const worker = workers[0];
+
+    expect(worker.messages[1]).toMatchObject({
+      id: 1,
+      payload: request,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+      type: "readFrameTransformWindow",
+    });
+
+    worker.respond({ id: 1, ok: true, result });
+
+    await expect(window).resolves.toEqual(result);
   });
 
   it("sends playback batches at playback priority", async () => {

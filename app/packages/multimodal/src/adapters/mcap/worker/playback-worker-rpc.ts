@@ -45,6 +45,14 @@ export const MCAP_PLAYBACK_WORKER_OPERATIONS: McapPlaybackWorkerOperationMap = {
     kind: "stream",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
   },
+  readFrameTransformBootstrap: {
+    kind: "unary",
+    priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+  },
+  readFrameTransformWindow: {
+    kind: "unary",
+    priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+  },
   readSynchronizedMessageBatch: {
     kind: "unary",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.PLAYBACK_BATCH,
@@ -89,6 +97,10 @@ export function runMcapPlaybackWorkerUnaryRequest(
   message: McapPlaybackWorkerRpcRequest<McapPlaybackWorkerUnaryType>
 ): Promise<McapPlaybackWorkerResultByType[McapPlaybackWorkerUnaryType]> {
   switch (message.type) {
+    case "readFrameTransformBootstrap":
+      return client.readFrameTransformBootstrap(message.payload);
+    case "readFrameTransformWindow":
+      return client.readFrameTransformWindow(message.payload);
     case "readSynchronizedMessageBatch":
       return client.readSynchronizedMessageBatch(message.payload);
     case "readSynchronizedMessages":

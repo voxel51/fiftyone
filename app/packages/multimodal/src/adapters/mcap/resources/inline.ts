@@ -1,4 +1,4 @@
-import { type ByteClient } from "../../../query/bytes";
+import { byteSourceAccessKey, type ByteClient } from "../../../query/bytes";
 import { type DecodeClient, createDecodeClient } from "../../../query/decode";
 import { createMultimodalQueryClient } from "../../../query";
 import { createMcapDecoderRegistry } from "../decoders";
@@ -11,10 +11,18 @@ import {
 import { mcapTimelineRangeFromReader } from "./read-timeline-range";
 import { readMcapSynchronizedMessageBatch } from "./read-synchronized-message-batch";
 import { resolveMcapTimelineStrategy } from "../timeline";
+import { hydrateMcapFrameTransformSet } from "../frame-transforms";
+import {
+  readMcapFrameTransformBootstrap,
+  readMcapFrameTransformWindow,
+} from "./read-frame-transforms";
 import { readMcapTopics } from "./read-topics";
 import {
   type McapDecodedMessage,
+  type McapHydratedFrameTransformSet,
   type McapReadDecodedMessagesRequest,
+  type McapReadFrameTransformBootstrapRequest,
+  type McapReadFrameTransformWindowRequest,
   type McapReadSynchronizedMessageBatchRequest,
   type McapReadSynchronizedMessagesRequest,
   type McapReadTopicsRequest,
@@ -23,6 +31,7 @@ import {
   type McapSynchronizedMessageWindow,
   type McapTimelineRange,
 } from "../types";
+import type { StreamInventory } from "../../../schemas/v1";
 
 /**
  * Inline-only options for constructing an MCAP resource client.
@@ -49,9 +58,21 @@ export function createInlineMcapResourceClient(
     });
   const readerFactory = options.readerFactory ?? createDefaultMcapReader;
   const readerStore = createMcapReaderStore({ byteClient, readerFactory });
+  const topicReads = new Map<string, Promise<readonly StreamInventory[]>>();
+  const frameTransformBootstrapReads = new Map<
+    string,
+    Promise<McapHydratedFrameTransformSet>
+  >();
+  const frameTransformWindowReads = new Map<
+    string,
+    Promise<McapHydratedFrameTransformSet>
+  >();
 
   const client: McapResourceClient = {
     dispose() {
+      topicReads.clear();
+      frameTransformBootstrapReads.clear();
+      frameTransformWindowReads.clear();
       readerStore.dispose();
     },
 
@@ -77,8 +98,70 @@ export function createInlineMcapResourceClient(
     },
 
     async readTopics(request: McapReadTopicsRequest) {
-      const reader = await readerStore.get(request.source);
-      return readMcapTopics(reader);
+      const sourceKey = byteSourceAccessKey(request.source);
+      const cached = topicReads.get(sourceKey);
+      if (cached) {
+        return cached;
+      }
+
+      const read = readerStore
+        .get(request.source)
+        .then((reader) => readMcapTopics(reader))
+        .catch((error) => {
+          topicReads.delete(sourceKey);
+          throw error;
+        });
+      topicReads.set(sourceKey, read);
+
+      return read;
+    },
+
+    async readFrameTransformBootstrap(
+      request: McapReadFrameTransformBootstrapRequest
+    ): Promise<McapHydratedFrameTransformSet> {
+      const sourceKey = byteSourceAccessKey(request.source);
+      const cached = frameTransformBootstrapReads.get(sourceKey);
+      if (cached) {
+        return cached;
+      }
+
+      const read = readerStore
+        .get(request.source)
+        .then((reader) => readMcapFrameTransformBootstrap(reader))
+        .then(hydrateMcapFrameTransformSet)
+        .catch((error) => {
+          frameTransformBootstrapReads.delete(sourceKey);
+          throw error;
+        });
+      frameTransformBootstrapReads.set(sourceKey, read);
+
+      return read;
+    },
+
+    async readFrameTransformWindow(
+      request: McapReadFrameTransformWindowRequest
+    ): Promise<McapHydratedFrameTransformSet> {
+      const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
+      const sourceKey = byteSourceAccessKey(request.source);
+      const windowKey = `${sourceKey}\0${timeline.id}\0${request.startTimeNs}\0${request.endTimeNs}`;
+      const cached = frameTransformWindowReads.get(windowKey);
+      if (cached) {
+        return cached;
+      }
+
+      const read = readerStore
+        .get(request.source)
+        .then((reader) =>
+          readMcapFrameTransformWindow({ reader, request, timeline })
+        )
+        .then(hydrateMcapFrameTransformSet)
+        .catch((error) => {
+          frameTransformWindowReads.delete(windowKey);
+          throw error;
+        });
+      frameTransformWindowReads.set(windowKey, read);
+
+      return read;
     },
 
     async readSynchronizedMessageBatch(
