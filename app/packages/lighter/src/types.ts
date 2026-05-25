@@ -203,5 +203,14 @@ export class BoundingBoxPersistence {
 
 export interface RenderMeta {
   canonicalMediaBounds: Rect;
-  overlayIndex: number;
+}
+
+/**
+ * The zoom and pan state of a viewer, used to transfer camera position
+ * when switching between Explore (Looker) and Annotate (Lighter) modes.
+ */
+export interface ViewportState {
+  readonly scale: number;
+  readonly panX: number;
+  readonly panY: number;
 }

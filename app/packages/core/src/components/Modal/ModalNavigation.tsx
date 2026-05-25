@@ -92,7 +92,9 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
             clearUndo();
             return await navigation.next(offset).then((s) => {
               selectiveRenderingEventBus.removeAllListeners();
-              setModal(s);
+              setModal(s, {
+                source: fos.SET_EXPANDED_SAMPLE_SOURCE_NAVIGATION,
+              });
             });
           }
         },
@@ -112,7 +114,9 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
             clearUndo();
             return await navigation.previous(offset).then((s) => {
               selectiveRenderingEventBus.removeAllListeners();
-              setModal(s);
+              setModal(s, {
+                source: fos.SET_EXPANDED_SAMPLE_SOURCE_NAVIGATION,
+              });
             });
           }
         },

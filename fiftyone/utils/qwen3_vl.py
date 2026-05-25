@@ -180,7 +180,9 @@ class Qwen3VLModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
             raise ValueError(
                 f"video_fps must be positive, got {self.video_fps}"
             )
-        self.max_video_frames = self.parse_int(d, "max_video_frames", default=128)
+        self.max_video_frames = self.parse_int(
+            d, "max_video_frames", default=128
+        )
         if self.max_video_frames <= 0:
             raise ValueError(
                 f"max_video_frames must be positive, got {self.max_video_frames}"
@@ -194,7 +196,7 @@ class Qwen3VLModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         self.raw_inputs = True
 
 
-class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin):
+class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
     """Wrapper for running inference with Qwen3-VL models.
 
     Qwen3-VL is a vision-language model family that supports:
@@ -264,6 +266,10 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin):
     def has_embeddings(self):
         return self._output_processor is None
 
+    @property
+    def can_embed_prompts(self):
+        return self.has_embeddings
+
     def _download_model(self, config):
         pass
 
@@ -271,11 +277,22 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin):
         model_cls = transformers.Qwen3VLForConditionalGeneration
         dtype = torch.bfloat16 if self._using_gpu else torch.float32
 
+        # HuggingFace models loaded with `device_map="auto"` may end up on an
+        # unexpected GPU in multi-GPU environments. If the user explicitly
+        # requested a device via `device=...`, honor it by disabling auto
+        # device mapping and moving the model to `self._device`.
+        device_map = None
+        if self._using_gpu:
+            device_map = "auto" if config.device is None else None
+
         model = model_cls.from_pretrained(
             config.name_or_path,
             torch_dtype=dtype,
-            device_map="auto" if self._using_gpu else None,
+            device_map=device_map,
         )
+
+        if device_map is None:
+            model = model.to(self._device)
         model.eval()
 
         self._processor = transformers.AutoProcessor.from_pretrained(
@@ -342,7 +359,7 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin):
             )
 
             generated_ids_trimmed = [
-                out_ids[len(in_ids):]
+                out_ids[len(in_ids) :]
                 for in_ids, out_ids in zip(inputs["input_ids"], generated_ids)
             ]
 
@@ -412,7 +429,9 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin):
             if img.shape[0] in (1, 3, 4) and img.shape[2] not in (1, 3, 4):
                 img = np.transpose(img, (1, 2, 0))
 
-        if isinstance(img, np.ndarray) and np.issubdtype(img.dtype, np.floating):
+        if isinstance(img, np.ndarray) and np.issubdtype(
+            img.dtype, np.floating
+        ):
             if img.max() <= 1.0:
                 img = img * 255.0
             img = np.clip(img, 0, 255).astype(np.uint8)
@@ -448,6 +467,71 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin):
             a ``num_images x embedding_dim`` numpy array
         """
         return self._predict_all(args)
+
+    def embed_prompt(self, prompt):
+        """Generates an embedding for the given text prompt.
+
+        Args:
+            prompt: a text string
+
+        Returns:
+            a numpy vector
+        """
+        return self.embed_prompts([prompt])[0]
+
+    def embed_prompts(self, prompts):
+        """Generates embeddings for the given text prompts.
+
+        Args:
+            prompts: an iterable of text strings
+
+        Returns:
+            a ``num_prompts x num_dims`` array of prompt embeddings
+        """
+        return self._embed_prompts(prompts)
+
+    def _embed_prompts(self, prompts):
+        """Generate embeddings for text prompts.
+
+        Uses the same chat template and hidden-state extraction as
+        image embedding so text and image vectors share the same
+        embedding space.
+        """
+        prompts = list(prompts)
+        if not prompts:
+            raise ValueError("prompts must contain at least one text string")
+
+        embeddings = []
+
+        for text in prompts:
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": text},
+                    ],
+                }
+            ]
+
+            inputs = self._processor.apply_chat_template(
+                messages,
+                tokenize=True,
+                add_generation_prompt=False,
+                return_dict=True,
+                return_tensors="pt",
+            )
+            inputs = inputs.to(self._model.device)
+
+            with torch.no_grad():
+                outputs = self._model(
+                    **inputs,
+                    output_hidden_states=True,
+                    return_dict=True,
+                )
+
+            embeddings.append(self._postprocess_embedding(outputs))
+
+        return np.vstack(embeddings)
 
     def _embed_video(self, video_reader):
         """Generate a single embedding for a video via native Qwen3-VL video input.
@@ -498,7 +582,9 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin):
             }
         ]
 
-        image_inputs, video_inputs = qwen_vl_utils.process_vision_info(messages)
+        image_inputs, video_inputs = qwen_vl_utils.process_vision_info(
+            messages
+        )
         text = self._processor.apply_chat_template(
             messages,
             tokenize=False,

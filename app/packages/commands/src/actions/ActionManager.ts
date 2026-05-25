@@ -140,6 +140,25 @@ export class ActionManager {
   }
 
   /**
+   * Removes all entries matching the predicate from both the undo
+   * and redo stacks.
+   *
+   * @param predicate Returns true for entries that should be removed.
+   */
+  prune(predicate: (undoable: Undoable) => boolean): void {
+    const beforeUndo = this.undoStack.length;
+    const beforeRedo = this.redoStack.length;
+    this.undoStack = this.undoStack.filter((u) => !predicate(u));
+    this.redoStack = this.redoStack.filter((u) => !predicate(u));
+    if (
+      this.undoStack.length !== beforeUndo ||
+      this.redoStack.length !== beforeRedo
+    ) {
+      this.fireUndoListeners();
+    }
+  }
+
+  /**
    * Gets the current undo stack size.
    * @returns Number of undoable actions in undo stack.
    */

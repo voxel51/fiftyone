@@ -7,6 +7,7 @@ export * from "./cache";
 export { freeVideos, getFrameNumber } from "./elements/util";
 export * from "./lookers";
 export * from "./overlays";
+export * from "./selection";
 export * from "./selective-rendering-events";
 export type {
   BaseState,
@@ -26,3 +27,18 @@ export type {
 export { zoomAspectRatio } from "./zoom";
 export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
+
+// CSS module class names for selection icons — reusable in React components
+export {
+  lookerCheckbox,
+  lookerLabel,
+  selectionIconCheckmark,
+  selectionIconGreenCheckmark,
+  selectionIconRedCheckmark,
+  selectionIconThumbsup,
+  selectionIconThumbsdown,
+  selectionIconPin,
+  selectionIconStar,
+  selectionIconX,
+  selectionIconBookmark,
+} from "./elements/common/util.module.css";

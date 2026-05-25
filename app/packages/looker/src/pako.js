@@ -1,11 +1,11 @@
 /* eslint-disable */
 /* pako 1.0.11 nodeca/pako */
 // added for lightweight web worker support
-const module = { exports: {} };
-const exports = module.exports;
+const _pakoMod = { exports: {} };
+const _pakoExp = _pakoMod.exports;
 (function (f) {
-  if (typeof exports === "object" && typeof module !== "undefined") {
-    module.exports = f();
+  if (typeof _pakoExp === "object" && typeof _pakoMod !== "undefined") {
+    _pakoMod.exports = f();
   } else if (typeof define === "function" && define.amd) {
     define([], f);
   } else {
@@ -3728,4 +3728,4 @@ exports.inflateUndermine = inflateUndermine;
   )("/lib/inflate.js");
 });
 // added for native module + rollup compatibility (2/2)
-export default module.exports;
+export default _pakoMod.exports;

@@ -7,13 +7,55 @@
  */
 
 /**
+ * Parses a CSS color string into 8-bit RGBA components.
+ *
+ * Convenience wrapper around {@link parseColorWithAlpha} that unpacks the
+ * packed hex color into separate `r`/`g`/`b` bytes and converts the
+ * normalized `[0, 1]` alpha into a `[0, 255]` integer suitable for direct
+ * write into an `ImageData` / `Uint8ClampedArray` buffer.
+ *
+ * @param cssColor - CSS color string (e.g. `"#ff0000"`, `"rgba(255, 0, 0, 0.5)"`,
+ *   `"hsl(0, 100%, 50%)"`).
+ * @returns `{ r, g, b, a }` with each channel an integer in `[0, 255]`.
+ */
+export function parseColorToRGBA(cssColor: string): {
+  r: number;
+  g: number;
+  b: number;
+  a: number;
+} {
+  const { color: hexColor, alpha } = parseColorWithAlpha(cssColor);
+
+  return {
+    r: (hexColor >> 16) & 0xff,
+    g: (hexColor >> 8) & 0xff,
+    b: hexColor & 0xff,
+    a: Math.round(alpha * 255),
+  };
+}
+
+/**
  * Parses a CSS color string and converts it to PixiJS color format with alpha.
  * Supports hex, rgb, rgba, hsl, and hsla color formats.
  *
  * @param color - CSS color string (e.g., "#ff0000", "rgb(255,0,0)", "hsl(0,100%,50%)")
  * @returns Object containing color (as hex number) and alpha (0-1)
  */
+const colorCache = new Map<string, { color: number; alpha: number }>();
+
 export function parseColorWithAlpha(color: string): {
+  color: number;
+  alpha: number;
+} {
+  const cached = colorCache.get(color);
+  if (cached) return { ...cached };
+
+  const result = parseColorWithAlphaUncached(color);
+  colorCache.set(color, result);
+  return { ...result };
+}
+
+function parseColorWithAlphaUncached(color: string): {
   color: number;
   alpha: number;
 } {

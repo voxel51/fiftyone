@@ -1,6 +1,9 @@
 import type {
-  BoundingBoxOverlay,
+  DetectionOverlay,
   ClassificationOverlay,
+  KeypointLabel,
+  KeypointOverlay,
+  PolylineOverlay,
 } from "@fiftyone/lighter";
 import { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
 import { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
@@ -51,12 +54,13 @@ import {
 import { collapseFields, getCurrentEnvironment } from "../utils";
 import * as atoms from "./atoms";
 import { getBrowserStorageEffectForKey } from "./customEffects";
+import { activeModalSidebarSample } from "./groups";
 import {
   active3dSlices,
   active3dSlicesToSampleMap,
-  activeModalSidebarSample,
+  is3dPinned,
   pinned3DSampleSlice,
-} from "./groups";
+} from "./renderConfig3d.atoms";
 import { isLargeVideo } from "./options";
 import { cumulativeValues, values } from "./pathData";
 import {
@@ -145,7 +149,7 @@ export interface ClassificationAnnotationLabel extends Label {
 
 export interface DetectionAnnotationLabel extends Label {
   data: DetectionLabel;
-  overlay: BoundingBoxOverlay;
+  overlay: DetectionOverlay;
   type: "Detection";
 }
 
@@ -157,15 +161,22 @@ export interface Detection3DAnnotationLabel extends Label {
 
 export interface PolylineAnnotationLabel extends Label {
   data: PolylineLabel;
-  overlay: GenericOverlay<PolylineLabel>;
+  overlay: PolylineOverlay | GenericOverlay<PolylineLabel>;
   type: "Polyline";
+}
+
+export interface KeypointAnnotationLabel extends Label {
+  data: KeypointLabel;
+  overlay: KeypointOverlay;
+  type: "Keypoint";
 }
 
 export type AnnotationLabel =
   | ClassificationAnnotationLabel
   | DetectionAnnotationLabel
   | Detection3DAnnotationLabel
-  | PolylineAnnotationLabel;
+  | PolylineAnnotationLabel
+  | KeypointAnnotationLabel;
 
 export type AnnotationLabelData = AnnotationLabel["data"];
 
@@ -278,6 +289,10 @@ export const validateGroupName = (current: string[], name: string): boolean => {
   }
   return true;
 };
+
+export const TAGS_FIELD = "tags";
+export const LABEL_TAGS_FIELD = "_label_tags";
+export const OTHER_GROUP = "other";
 
 export const RESERVED_GROUPS = new Set([
   "frame tags",
@@ -1062,8 +1077,7 @@ export const hiddenNoneGroups = selector({
     let slices = ["default"];
 
     const multipleSlices =
-      Boolean(get(pinned3DSampleSlice)) &&
-      (get(active3dSlices)?.length || 1) > 1;
+      Boolean(get(is3dPinned)) && (get(active3dSlices)?.length || 1) > 1;
     if (multipleSlices) {
       samples = get(active3dSlicesToSampleMap);
       slices = Array.from(get(active3dSlices) || []).sort();

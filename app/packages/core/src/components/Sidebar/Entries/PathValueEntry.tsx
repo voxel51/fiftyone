@@ -180,7 +180,9 @@ const ListValueEntry = ({
           : ftype
       })`}
       backgroundColor={backgroundColor}
+      clickable
       color={color}
+      onHeaderClick={() => setExpanded(!expanded)}
       heading={
         <NameAndCountContainer>
           <FieldLabelAndInfo
@@ -218,6 +220,10 @@ const ListValueEntry = ({
               setExpanded(!expanded);
             }}
             onMouseDown={(event) => {
+              event.stopPropagation();
+              event.preventDefault();
+            }}
+            onMouseUp={(event) => {
               event.stopPropagation();
               event.preventDefault();
             }}
@@ -358,22 +364,14 @@ const SlicesLoadable = ({ path }: { path: string }) => {
 
 const useSlicesData = <T,>(path: string) => {
   const keys = path.split(".");
-  const loadable = useRecoilValueLoadable(fos.active3dSlicesToSampleMap);
-  const slices = Array.from(useRecoilValue(fos.active3dSlices) || []).sort();
+  const { activeSampleMap, activeSlices } = fos.useRenderConfig3dState();
+  const slices = Array.from(activeSlices || []).sort();
 
-  if (loadable.state === "loading") {
-    throw loadable.contents;
-  }
-
-  if (loadable.state === "hasError") {
-    throw loadable.contents;
-  }
-
-  if (!slices.every((slice) => loadable.contents[slice])) {
+  if (!slices.every((slice) => activeSampleMap[slice])) {
     throw new Promise(() => null);
   }
 
-  const data = { ...loadable.contents } as object;
+  const data = { ...activeSampleMap } as object;
 
   const target = fos.useAssertedRecoilValue(fos.field(keys[0]));
   const isList = useRecoilValue(fos.isOfDocumentFieldList(path));
@@ -418,21 +416,24 @@ const Loadable = ({ path }: { path: string }) => {
 const useData = <T,>(path: string): T => {
   const keys = path.split(".");
   const loadable = useRecoilValueLoadable(fos.activeModalSidebarSample);
+  const field = fos.useAssertedRecoilValue(fos.field(keys[0]));
+  const isList = useRecoilValue(fos.isOfDocumentFieldList(path));
 
   if (loadable.state === "loading") {
     throw loadable.contents;
   }
 
   if (loadable.state === "hasError") {
+    if (loadable.contents instanceof fos.GroupSampleNotFound) {
+      return null as T;
+    }
+
     if (loadable.contents instanceof fos.SampleNotFound) {
       throw new Promise(() => null);
     }
 
     throw loadable.contents;
   }
-
-  const field = fos.useAssertedRecoilValue(fos.field(keys[0]));
-  const isList = useRecoilValue(fos.isOfDocumentFieldList(path));
 
   return fos.pullSidebarValue(field, keys, loadable.contents, isList) as T;
 };
@@ -460,9 +461,9 @@ const PathValueEntry = ({
   ) => void;
 }) => {
   const [hovering, setHovering] = useState<boolean>(false);
-  const pinned3DSample = useRecoilValue(fos.pinned3DSampleSlice);
-  const active3dSlices = useRecoilValue(fos.active3dSlices);
-  const slices = Boolean(pinned3DSample) && (active3dSlices?.length || 1) > 1;
+  const { activeSlices: active3dSlices, isPinned } =
+    fos.useRenderConfig3dState();
+  const slices = isPinned && (active3dSlices?.length || 1) > 1;
 
   const isScalar = useRecoilValue(isScalarValue(path));
   return (
@@ -497,7 +498,7 @@ interface PrimitivesObject {
 
 type Primitives = Primitive | PrimitivesObject;
 
-const format = ({
+export const format = ({
   fields,
   ftype,
   timeZone,
@@ -508,15 +509,22 @@ const format = ({
   timeZone: string;
   value: Primitives;
 }) => {
-  if (ftype === EMBEDDED_DOCUMENT_FIELD && typeof value === "object") {
+  if (
+    ftype === EMBEDDED_DOCUMENT_FIELD &&
+    value !== null &&
+    typeof value === "object"
+  ) {
     return formatObject({ fields, timeZone, value: value as object });
   }
 
-  return formatPrimitiveOrURL({ ftype, value: value as Primitive, timeZone });
+  return formatPrimitiveOrURL({
+    ftype,
+    value: value as Primitive,
+    timeZone,
+  });
 };
 
 const formatPrimitiveOrURL = (params: {
-  fields?: Schema;
   ftype: string;
   timeZone: string;
   value: Primitive;

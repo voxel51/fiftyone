@@ -1,19 +1,20 @@
-import { isDetection3d } from "@fiftyone/core";
-import { JSONDeltas } from "@fiftyone/core/src/client";
+import { isDetection3d } from "@fiftyone/core/src/utils/labels";
+import type { JSONDeltas } from "@fiftyone/core/src/client";
 import {
   extractNestedField,
   generateJsonPatch,
 } from "@fiftyone/core/src/utils/json";
-import { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
-import { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
-import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
-import {
+import type { KeypointLabel } from "@fiftyone/lighter";
+import type { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
+import type { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
+import type { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
+import type {
   AnnotationLabel,
   DetectionAnnotationLabel,
   PrimitiveValue,
   Sample,
 } from "@fiftyone/state";
-import { Field, Primitive } from "@fiftyone/utilities";
+import { Field, isObject, Primitive } from "@fiftyone/utilities";
 import { get } from "lodash";
 import type { OpType } from "./types";
 import { arePrimitivesEqual, isPrimitiveFieldType } from "./util";
@@ -21,21 +22,28 @@ import { arePrimitivesEqual, isPrimitiveFieldType } from "./util";
 /**
  * Helper type representing a `fo.Polylines`-like element.
  */
-type PolylinesParent = {
+export type PolylinesParent = {
   polylines: PolylineLabel[];
+};
+
+/**
+ * Helper type representing a `fo.Keypoints`-like element.
+ */
+export type KeypointsParent = {
+  keypoints: KeypointLabel[];
 };
 
 /**
  * Helper type representing a `fo.Detections`-like element.
  */
-type DetectionsParent = {
+export type DetectionsParent = {
   detections: DetectionLabel[];
 };
 
 /**
  * Helper type representing a `fo.Classifications`-like element.
  */
-type ClassificationsParent = {
+export type ClassificationsParent = {
   classifications: ClassificationLabel[];
 };
 
@@ -48,7 +56,9 @@ type FieldType =
   | "Classification"
   | "Classifications"
   | "Polyline"
-  | "Polylines";
+  | "Polylines"
+  | "Keypoint"
+  | "Keypoints";
 
 const isFieldType = (field: Field, fieldType: FieldType): boolean => {
   return field?.embeddedDocType === `fiftyone.core.labels.${fieldType}`;
@@ -78,7 +88,10 @@ export const buildAnnotationPath = (
  * Helper type encapsulating label metadata relevant to delta calculations.
  */
 type LabelMetadata<T> = {
-  type: Extract<FieldType, "Detection" | "Classification" | "Polyline">;
+  type: Extract<
+    FieldType,
+    "Detection" | "Classification" | "Polyline" | "Keypoint"
+  >;
   path: string;
   data: T;
 };
@@ -97,7 +110,9 @@ type Detection2DMetadata = LabelMetadata<DetectionLabel> & {
  * This type represents a union of valid {@link LabelMetadata} variants.
  */
 export type LabelProxy =
-  | LabelMetadata<ClassificationLabel | DetectionLabel | PolylineLabel>
+  | LabelMetadata<
+      ClassificationLabel | DetectionLabel | PolylineLabel | KeypointLabel
+    >
   | Detection2DMetadata
   | PrimitiveValue;
 
@@ -185,6 +200,18 @@ export const buildMutationDeltas = (
       return buildPolylineMutationDeltas(
         sample,
         label as LabelMetadata<PolylineLabel>
+      );
+    }
+  } else if (label.type === "Keypoint") {
+    if (isFieldType(schema, "Keypoints")) {
+      return buildKeypointsMutationDeltas(
+        sample,
+        label as LabelMetadata<KeypointLabel>
+      );
+    } else if (isFieldType(schema, "Keypoint")) {
+      return buildKeypointMutationDeltas(
+        sample,
+        label as LabelMetadata<KeypointLabel>
       );
     }
   } else if (isPrimitiveFieldType(schema)) {
@@ -287,7 +314,28 @@ export const buildDeletionDeltas = (
           (ply) => ply._id !== label.data._id
         ),
       });
-    } else {
+    } else if (isFieldType(schema, "Polyline")) {
+      return [{ op: "remove", path: "/" }];
+    }
+  } else if (label.type === "Keypoint") {
+    if (isFieldType(schema, "Keypoints")) {
+      const existingLabel = <KeypointsParent>(
+        extractNestedField(sample, label.path)
+      );
+
+      if (!existingLabel || !Array.isArray(existingLabel.keypoints)) {
+        // label doesn't exist
+        console.warn(`can't delete label; no keypoints found at ${label.path}`);
+        return [];
+      }
+
+      return generateJsonPatch(existingLabel, {
+        ...existingLabel,
+        keypoints: existingLabel.keypoints.filter(
+          (kpt) => kpt._id !== label.data._id
+        ),
+      });
+    } else if (isFieldType(schema, "Keypoint")) {
       return [{ op: "remove", path: "/" }];
     }
   }
@@ -305,7 +353,7 @@ export const buildDeletionDeltas = (
  * @param path Label path
  * @param data Label data
  */
-const buildSingleMutationDelta = <
+export const buildSingleMutationDelta = <
   T extends AnnotationLabel["data"] | Primitive
 >(
   sample: Sample,
@@ -313,7 +361,16 @@ const buildSingleMutationDelta = <
   data: T
 ): JSONDeltas => {
   const existingLabel = <T>extractNestedField(sample, path) ?? {};
-  return generateJsonPatch(existingLabel, data);
+
+  // Merge with existing data so server-enriched properties
+  //  (`_cls`, `_id`, `tags`) are preserved when the overlay only has a
+  //  subset of fields
+  const merged =
+    isObject(data) && isObject(existingLabel)
+      ? { ...existingLabel, ...data }
+      : data;
+
+  return generateJsonPatch(existingLabel, merged);
 };
 
 const buildPrimitiveMutationDelta = (
@@ -520,6 +577,64 @@ export const buildPolylinesMutationDeltas = (
   const newLabel = {
     ...existingLabel,
     polylines: newArray,
+  };
+
+  return generateJsonPatch(existingLabel, newLabel);
+};
+
+/**
+ * Build a list of JSON deltas for the given sample and keypoint label.
+ *
+ * This method assumes that the keypoint exists as a top-level field (i.e. not
+ * part of an `fo.Keypoints` field).
+ *
+ * @param sample Sample containing unmodified label data
+ * @param label Current label state
+ */
+export const buildKeypointMutationDeltas = (
+  sample: Sample,
+  label: LabelMetadata<KeypointLabel>
+): JSONDeltas => {
+  return buildSingleMutationDelta(sample, label.path, label.data);
+};
+
+/**
+ * Build a list of JSON deltas for the given sample and keypoint label.
+ *
+ * This method assumes that the keypoint exists as part of a parent
+ * `fo.Keypoints` field.
+ *
+ * @param sample Sample containing unmodified label data
+ * @param label Current label state
+ */
+export const buildKeypointsMutationDeltas = (
+  sample: Sample,
+  label: LabelMetadata<KeypointLabel>
+): JSONDeltas => {
+  const existingLabel = <{ keypoints: KeypointLabel[] }>(
+    extractNestedField(sample, label.path)
+  ) ?? {
+    keypoints: [],
+  };
+
+  const existingKeypoint = existingLabel.keypoints.find(
+    (kpt) => kpt._id === label.data._id
+  );
+
+  const mergedKeypoint = existingKeypoint
+    ? { ...existingKeypoint, ...label.data }
+    : { ...label.data };
+
+  const newArray = [...existingLabel.keypoints];
+  upsertArrayElement(
+    newArray,
+    mergedKeypoint,
+    (kpt) => kpt._id === label.data._id
+  );
+
+  const newLabel = {
+    ...existingLabel,
+    keypoints: newArray,
   };
 
   return generateJsonPatch(existingLabel, newLabel);

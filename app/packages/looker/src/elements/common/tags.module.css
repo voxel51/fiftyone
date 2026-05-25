@@ -10,7 +10,6 @@
   scrollbar-width: none;
   width: 100%;
   pointer-events: none;
-
   font-size: 14px;
   line-height: 12px;
 }
@@ -30,7 +29,6 @@
   display: inline-block;
   box-sizing: content-box;
   padding: 2px;
-  color: var(--fo-palette-text-lookerTag);
   border-radius: 3px;
   font-weight: bold;
   text-align: center;
@@ -41,8 +39,4 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.lookerTags > div > a {
-  color: var(--fo-palette-text-lookerTag);
 }

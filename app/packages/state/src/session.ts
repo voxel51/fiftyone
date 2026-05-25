@@ -7,6 +7,13 @@ import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { useCallback } from "react";
 import { atom, AtomOptions, DefaultValue, RecoilState, selector } from "recoil";
 import { State } from "./recoil";
+import {
+  DEFAULT_LABEL_SELECTION_STYLE,
+  DEFAULT_SELECTION_STYLE,
+  type LabelSelectionStyle,
+  type SelectionStyle,
+  type SelectionType,
+} from "./recoil/types";
 
 export const GRID_SPACES_DEFAULT = {
   id: "",
@@ -88,8 +95,10 @@ export interface Session {
   modalFilters: State.Filters;
   modalSelector?: ModalSelector;
   readOnly: boolean;
-  selectedSamples: Set<string>;
+  selectedSamples: Map<string, SelectionType>;
   selectedLabels: State.SelectedLabel[];
+  sampleSelectionStyle: SelectionStyle;
+  labelSelectionStyle: LabelSelectionStyle;
   sessionSpaces: SpaceNodeJSON;
   sessionGroupSlice?: string;
 }
@@ -111,8 +120,10 @@ export const SESSION_DEFAULT: Session = {
   fieldVisibilityStage: undefined,
   filters: {},
   modalFilters: {},
-  selectedSamples: new Set(),
+  selectedSamples: new Map(),
   selectedLabels: [],
+  sampleSelectionStyle: DEFAULT_SELECTION_STYLE,
+  labelSelectionStyle: DEFAULT_LABEL_SELECTION_STYLE,
   sessionSpaces: GRID_SPACES_DEFAULT,
   sessionGroupSlice: undefined,
 };

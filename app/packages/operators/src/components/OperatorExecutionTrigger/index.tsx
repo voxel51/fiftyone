@@ -1,16 +1,17 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Box } from "@mui/material";
-import { OperatorExecutionMenu } from "../OperatorExecutionMenu";
-import {
-  ExecutionCallback,
-  ExecutionErrorCallback,
-  OperatorExecutorOptions,
-} from "../../types-internal";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   OperatorExecutionOption,
   useOperatorExecutionOptions,
   useOperatorExecutor,
 } from "../../state";
+import {
+  ExecutionCallback,
+  ExecutionErrorCallback,
+  OperatorExecutorOptions,
+} from "../../ts";
+import { OperatorExecutionMenu } from "../OperatorExecutionMenu";
+import RequiresOrchestrator from "../RequiresOrchestrator";
 
 /**
  * Component which acts as a trigger for opening an `OperatorExecutionMenu`.
@@ -98,10 +99,11 @@ export const OperatorExecutionTrigger = ({
     [executorOptions, operator, executionParams]
   );
 
-  const { executionOptions } = useOperatorExecutionOptions({
-    operatorUri,
-    onExecute,
-  });
+  const { executionOptions, requiresOrchestratorSetup } =
+    useOperatorExecutionOptions({
+      operatorUri,
+      onExecute,
+    });
 
   // Click handler controls the state of the context menu.
   const clickHandler = useCallback(() => {
@@ -115,9 +117,13 @@ export const OperatorExecutionTrigger = ({
 
   return (
     <>
-      <Box ref={containerRef} onClick={clickHandler} {...props}>
-        {children}
-      </Box>
+      {requiresOrchestratorSetup && <RequiresOrchestrator />}
+
+      {!requiresOrchestratorSetup && (
+        <Box ref={containerRef} onClick={clickHandler} {...props}>
+          {children}
+        </Box>
+      )}
 
       <OperatorExecutionMenu
         anchor={containerRef.current}

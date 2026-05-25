@@ -9,6 +9,7 @@ FiftyOne SSE operators.
 import logging
 
 import fiftyone.operators as foo
+import fiftyone.operators.types as types
 from fiftyone.operators.executor import ExecutionContext
 from fiftyone.operators.remote_notifier import default_sse_notifier
 
@@ -33,6 +34,8 @@ class SseOperatorConfig(foo.OperatorConfig):
             icon=icon,
             light_icon=light_icon,
             dark_icon=dark_icon,
+            unlisted=True,
+            risk_level=types.RiskLevel.LOW,
         )
         self.store_name = store_name
 

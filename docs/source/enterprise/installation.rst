@@ -400,12 +400,26 @@ the following:
 
 .. code-block:: shell
 
+   [default]
+   account_name = ...
+   sas_token = ...
+   alias = ...  # optional
+
+.. code-block:: shell
+
     [default]
     account_name = ...
     client_id = ...
     secret = ...
     tenant = ...
     alias = ...  # optional
+
+.. note::
+
+   File based cloud credentials support interpolation so make sure to escape
+   any special characters if you want their literal version to be used.
+   For example, sas_tokens often contain ``%`` characters that should be escaped as
+   ``%%`` in the .ini file.
 
 When populating samples with Azure Storage filepaths, you can either specify
 paths by their full URL:
@@ -685,4 +699,54 @@ Enterprise server to that user's local machine. However, you can change this
 default, so that local SDK usage will download credentials from the Enterprise
 server, and there is no need to configure credentials locally. To enable
 downloading of credentials to machines, set the environment variable
-`FEATURE_FLAG_ENABLE_CREDS_LOCAL_USE` to `True` on the Enterprise server.
+`FEATURE_FLAG_ENABLE_CREDS_LOCAL_USE` to `True` in the `teams-api` container.
+
+.. _enterprise-ai-model-weights:
+
+AI Model Weights
+________________
+
+The FiftyOne Enterprise App ships with AI-assisted mask segmentation for annotation
+workflows. By default, the required model weights are served from Voxel51's
+CDN and no configuration is required.
+
+Deployments that prefer to serve the weights from their own infrastructure
+can set the optional `FIFTYONE_MODEL_WEIGHTS_BASE_SAM2` environment
+variable on the `fiftyone-app` container. The value is a base URL or
+cloud path that hosts the weights. The App appends the specific weight
+file to it at request time.
+
+The base location must host the two files that the App fetches:
+
+* `encoder.with_runtime_opt.ort`
+* `decoder.onnx`
+
+The SAM2 tiny variant is recommended for optimal user experience. The
+simplest way to populate your own location is to mirror the files Voxel51
+serves from its CDN, which are the canonical artifacts that the App is
+built against:
+
+.. code-block:: shell
+
+    curl -sSL -o encoder.with_runtime_opt.ort \
+        https://models-cdn.voxel51.com/sam2/encoder.with_runtime_opt.ort
+    curl -sSL -o decoder.onnx \
+        https://models-cdn.voxel51.com/sam2/decoder.onnx
+
+Then upload both files to the location referenced by
+`FIFTYONE_MODEL_WEIGHTS_BASE_SAM2`.
+
+.. code-block:: shell
+
+    # Private GCS bucket
+    FIFTYONE_MODEL_WEIGHTS_BASE_SAM2=gs://my-bucket/sam2
+
+    # Private S3 bucket
+    FIFTYONE_MODEL_WEIGHTS_BASE_SAM2=s3://my-bucket/sam2
+
+    # Private HTTPS endpoint
+    FIFTYONE_MODEL_WEIGHTS_BASE_SAM2=https://cdn.internal.example.com/sam2
+
+When a cloud path is used, URLs are signed automatically using the
+deployment's :ref:`cloud credentials <enterprise-cloud-credentials>`, so
+the `fiftyone-app` container must have read access to the bucket.

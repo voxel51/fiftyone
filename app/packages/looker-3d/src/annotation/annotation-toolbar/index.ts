@@ -1,7 +1,7 @@
 export { AnnotationToolbar } from "./AnnotationToolbar";
 export type {
-  AnnotationAction,
-  AnnotationActionGroup,
+  ToolbarActionItem,
+  ToolbarActionGroup,
   AnnotationToolbarProps,
 } from "../types";
 export { useAnnotationActions } from "./useAnnotationActions";

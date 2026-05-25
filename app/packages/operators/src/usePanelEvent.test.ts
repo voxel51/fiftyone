@@ -14,7 +14,10 @@ vi.mock("@fiftyone/spaces", () => ({
     (cb) => (panelId, options) => cb(panelId, undefined, [options])
   ),
 }));
-vi.mock("@fiftyone/state", () => ({ useNotification: vi.fn() }));
+vi.mock("@fiftyone/state", () => ({
+  useNotification: vi.fn(),
+  constants: { COLOR_OPTIONS: [{ color: "#000000" }] },
+}));
 vi.mock("./hooks", () => ({ useActivePanelEventsCount: vi.fn() }));
 vi.mock("./operators", async () => {
   const actual = await vi.importActual("./operators");

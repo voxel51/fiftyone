@@ -4,6 +4,18 @@ import { EventGroup, EventHandler } from "../types";
 import { useEventBus } from "./useEventBus";
 
 /**
+ * Options for configuring event handler behavior.
+ */
+type UseEventHandlerOptions = {
+  /**
+   * If true, the handler will unregister itself after firing once.
+   * If the component unmounts before the event fires, the handler is still cleaned up.
+   * @default false
+   */
+  once?: boolean;
+};
+
+/**
  * Factory function that creates a type-safe event handler hook.
  * The returned hook automatically registers/unregisters handlers on mount/unmount.
  *
@@ -29,6 +41,11 @@ import { useEventBus } from "./useEventBus";
  *     console.log("Event D received");
  *   }, []));
  *
+ *   // One-time handler — automatically unregisters after the first event
+ *   useDemoEventHandler("demo:eventA", useCallback((data) => {
+ *     console.log("fires once:", data.id);
+ *   }, []), { once: true });
+ *
  *   return <div>...</div>;
  * }
  * ```
@@ -47,13 +64,18 @@ export function createUseEventHandler<T extends EventGroup>(
 ) {
   return function useEventHandler<K extends keyof T>(
     event: K,
-    handler: EventHandler<T[K]>
+    handler: EventHandler<T[K]>,
+    { once = false }: UseEventHandlerOptions = {}
   ) {
     const bus = useEventBus<T>(channelId);
 
     useEffect(() => {
+      if (once) {
+        return bus.once(event, handler);
+      }
+
       bus.on(event, handler);
       return () => bus.off(event, handler);
-    }, [bus, event, handler, channelId]);
+    }, [bus, event, handler, once]);
   };
 }

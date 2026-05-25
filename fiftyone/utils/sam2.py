@@ -32,89 +32,196 @@ smutil = fou.lazy_import("sam2.utils.misc")
 logger = logging.getLogger(__name__)
 
 
-def _subtract_negative_box_regions(mask, neg_detections, width, height):
-    """Subtract negative bounding box regions from a segmentation mask.
+def _sam2_image_transform(img):
+    """Transforms image for SAM2 model input.
 
     Args:
-        mask: numpy array representing segmentation mask(s). Supports:
-            - 2D (H, W) for video model
-            - 3D (N, H, W) for image model
-            - 4D (N, 1, H, W) for image model
-        neg_detections: a :class:`fiftyone.core.labels.Detections` containing
-            negative prompt boxes, or None
-        width: image/frame width in pixels
-        height: image/frame height in pixels
+        img: a PIL or a uint8 numpy array containing image in HWC format
 
     Returns:
-        the modified mask with negative regions zeroed out
+        a PIL image or a uint8 numpy array containing image in HWC format
+        a tuple containing original image dimensions
     """
-    if not neg_detections or not isinstance(neg_detections, fol.Detections):
-        return mask
-
-    if len(neg_detections.detections) == 0:
-        return mask
-
-    for neg_det in neg_detections.detections:
-        box_xyxy = fosam._to_abs_boxes(
-            np.array([neg_det.bounding_box]), width, height, chunk_size=1
-        )
-        box_abs = np.round(box_xyxy.squeeze()).astype(int)
-        nx1, ny1, nx2, ny2 = (
-            max(0, box_abs[0]),
-            max(0, box_abs[1]),
-            min(width, box_abs[2]),
-            min(height, box_abs[3]),
-        )
-        if nx2 > nx1 and ny2 > ny1:
-            if mask.ndim == 2:
-                mask[ny1:ny2, nx1:nx2] = 0
-            elif mask.ndim == 3:
-                mask[:, ny1:ny2, nx1:nx2] = 0
-            else:
-                mask[:, 0, ny1:ny2, nx1:nx2] = 0
-
-    return mask
+    if isinstance(img, np.ndarray):
+        return img, img.shape[:2]
+    return img, img.size[::-1]
 
 
-class SegmentAnything2ImageModelConfig(
-    fout.TorchImageModelConfig, fozm.HasZooModel
-):
-    """Configuration for running a :class:`SegmentAnything2ImageModel`.
-
-    See :class:`fiftyone.utils.torch.TorchImageModelConfig` for additional
-    arguments.
+def _sam2_box_transform(boxes_xyxy, orig_hw, resolution):
+    """Transforms boxes for SAM2 model prompts.
 
     Args:
-        auto_kwargs (None): a dictionary of keyword arguments to pass to
-            ``segment_anything.SamAutomaticMaskGenerator(model, **auto_kwargs)``
-        points_mask_index (None): an optional mask index to use for each
-            keypoint output
+        boxes_xyxy: list of boxes in XYXY pixels
+        img_hw: original image height and width
+
+    Returns:
+        resized boxes for SAM2 as a Bx4 tensor
     """
-
-    def __init__(self, d):
-        d = self.init(d)
-        super().__init__(d)
-
-        self.auto_kwargs = self.parse_dict(d, "auto_kwargs", default=None)
-        self.points_mask_index = self.parse_int(
-            d, "points_mask_index", default=None
-        )
-        if self.points_mask_index and not 0 <= self.points_mask_index <= 2:
-            raise ValueError("mask_index must be 0, 1, or 2")
+    boxes = torch.as_tensor(boxes_xyxy, dtype=torch.float32)
+    h, w = orig_hw
+    coords = boxes.reshape(-1, 2, 2).clone()
+    coords[..., 0] = coords[..., 0] / w
+    coords[..., 1] = coords[..., 1] / h
+    return coords * resolution
 
 
-class SegmentAnything2VideoModelConfig(
-    fout.TorchImageModelConfig, fozm.HasZooModel
-):
-    """Configuration for running a :class:`SegmentAnything2VideoModel`.
+def _sam2_point_transform(points, img_hw, point_labels=None, resolution=None):
+    """Transforms points for SAM2 model prompts.
 
-    See :class:`fiftyone.utils.torch.TorchImageModelConfig` for additional
+    Args:
+        points: relative points in xyxy format
+        img_hw: original image height and width
+        point_labels (None): list containing positive (1) and negative (0) point labels. Defaults to None.
+
+    Returns:
+        a torch tensor containing points in XYXY pixels for SAM2 model
+        a torch tensor containing positive and negative labels
+    """
+    _ = img_hw
+    norm_points, labels = fosam._to_sam_points(
+        points,
+        height=1,
+        width=1,
+        point_labels=point_labels,
+    )
+    unnorm_points = (
+        torch.as_tensor(norm_points, dtype=torch.float32) * resolution
+    )
+    return unnorm_points, torch.tensor(labels, dtype=torch.int)
+
+
+class SegmentAnything2ImageModelConfig(fosam.SegmentAnythingModelConfig):
+    """Configuration for running a :class:`SegmentAnything2ImageModel`.
+
+    See :class:`fiftyone.utils.sam.SegmentAnythingModelConfig` for additional
     arguments.
     """
 
-    def __init__(self, d):
-        d = self.init(d)
+    def __init__(self, cfg_dict):
+        """Initializes :class:`SegmentAnything2ImageModelConfig`
+
+        Args:
+            cfg_dict: a dictionary with config parameters
+        """
+        d = self.init(cfg_dict)
         super().__init__(d)
+
+        self.get_item_cls = self.parse_string(
+            d,
+            "get_item_cls",
+            default="fiftyone.utils.sam2.SegmentAnything2ImageGetItem",
+        )
+
+
+class _SAM2Predictor(fosam._SAMPredictor):
+    """Wrapper for ``sam2.sam2_image_predictor.SAM2ImagePredictor``.
+
+    Args:
+        model: a :class:`sam2.modeling.sam2_base.SAM2Base` model
+    """
+
+    def __init__(self, model):
+        self.processor = smip.SAM2ImagePredictor(model)
+        self.sam_transforms = (
+            self.processor._transforms
+            if hasattr(self.processor, "_transforms")
+            else smip.SAM2Transforms(model.image_size, mask_threshold=0)
+        )
+        self.image_id = None
+        self.resolution = float(self.sam_transforms.resolution)
+
+    def image_transform(self, img):
+        """Transforms image for SAM2 model input.
+
+        Args:
+            img: a uint8 numpy array containing image in HWC format
+
+        Returns:
+            a uint8 numpy array containing image in HWC format
+            a tuple containing original image dimensions
+        """
+        return _sam2_image_transform(img)
+
+    def box_transform(self, boxes_xyxy, img_hw):
+        """Transforms boxes for SAM2 model prompts.
+
+        Args:
+            boxes_xyxy: list of boxes in XYXY pixels
+            img_hw: original image height and width
+
+        Returns:
+            resized boxes for SAM2 as a Bx4 tensor
+        """
+        return _sam2_box_transform(
+            boxes_xyxy, img_hw, resolution=self.resolution
+        )
+
+    def point_transform(self, points, img_hw, point_labels=None):
+        """Transforms points for SAM2 model prompts.
+
+        Args:
+            points: relative points in xyxy format
+            img_hw: original image height and width
+            point_labels (None): list containing positive (1) and negative (0) point labels. Defaults to None.
+
+        Returns:
+            a torch tensor containing points in XYXY pixels for SAM2 model
+            a torch tensor containing positive and negative labels
+        """
+        return _sam2_point_transform(
+            points,
+            img_hw,
+            point_labels,
+            resolution=self.resolution,
+        )
+
+    def valid_image(self, curr_id):
+        if self.processor._is_image_set:
+            return curr_id == self.image_id
+        return False
+
+    @property
+    def original_size(self):
+        return self.processor._orig_hw[0]
+
+    def predict(
+        self,
+        boxes=None,
+        point_coords=None,
+        point_labels=None,
+        multimask_output=False,
+    ):
+        """Wrapper for ``sam2.sam2_image_predictor.Sam2ImagePredictor._predict``
+
+        Args:
+          point_coords (None): a BxNx2 array of point prompts in (X,Y) pixels
+          point_labels (None): a BxN array of labels for the
+            point prompts. 1 indicates a foreground point and 0 indicates a
+            background point.
+          boxes (None): a Bx4 array of box prompts in XYXY format.
+          multimask_output (False): if true, the model will return three masks.
+
+        Returns:
+          the output masks in BxCxHxW format where C is the number of masks
+          model's prediction in BxC
+          low resolution logits in BxCxHxW where H=W=256
+        """
+        return self.processor._predict(
+            point_coords=point_coords,
+            point_labels=point_labels,
+            boxes=boxes,
+            multimask_output=multimask_output,
+        )
+
+
+class SegmentAnything2ImageGetItem(fosam.SegmentAnythingImageGetItem):
+    pass
+
+
+class SegmentAnything2ImageGetItemForVideo(
+    fosam.SegmentAnythingImageGetItemForVideo
+):
+    pass
 
 
 class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
@@ -166,25 +273,6 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
 
         session = fo.launch_app(dataset)
 
-    Negative prompt example::
-
-        import fiftyone as fo
-        import fiftyone.zoo as foz
-
-        dataset = foz.load_zoo_dataset("quickstart", max_samples=5)
-
-        model = foz.load_zoo_model("segment-anything-2-hiera-tiny-image-torch")
-
-        # Use positive and negative prompts to refine segmentation
-        dataset.apply_model(
-            model,
-            label_field="refined_segmentations",
-            prompt_field="positive_detections",
-            negative_prompt_field="negative_detections",
-        )
-
-        session = fo.launch_app(dataset)
-
     Automatic segmentation example::
 
         import fiftyone as fo
@@ -207,129 +295,120 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
 
     def __init__(self, config):
         dir(sam2)  # ensure package is installed
+
+        if config.entrypoint_args is None:
+            config.entrypoint_args = {}
+        if "ckpt_path" not in config.entrypoint_args:
+            config.entrypoint_args["ckpt_path"] = config.model_path
         super().__init__(config=config)
 
-        self._curr_negative_prompts = None
-
-    def _load_model(self, config):
-        entrypoint = etau.get_function(config.entrypoint_fcn)
-        model = entrypoint(
-            config.entrypoint_args["model_cfg"],
-            ckpt_path=config.model_path,
-            device=self._device,
-        )
-
-        model = model.to(self._device)
-        if self.using_half_precision:
-            model = model.half()
-
-        model.eval()
-
-        return model
-
     def _load_predictor(self):
-        return smip.SAM2ImagePredictor(self._model)
+        return _SAM2Predictor(self._model)
 
-    def predict_all(self, imgs, samples=None):
-        field_name = self._get_field()
-        if field_name is not None and samples is not None:
-            prompt_type, prompts, classes = self._parse_samples(
-                samples, field_name
+    def build_get_item(self, field_mapping=None):
+        """Same as :meth:`fosam.SegmentAnythingModel.build_get_item` but uses picklable
+        module transforms and works with ``spawn`` multiprocessing (no TorchScript).
+        """
+        get_item_cls = self.config.get_item_cls
+        if get_item_cls is None:
+            raise ValueError("GetItem class is set to None")
+
+        if not etau.is_str(self.config.get_item_cls):
+            raise TypeError(
+                f"Expected class string. GetItem class can't be initialized from {get_item_cls}"
             )
-        else:
-            prompt_type, prompts, classes = None, None, None
+        get_item = etau.get_class(get_item_cls)
+        get_item_args = dict(self.config.get_item_args or {})
+        if "box_transform_kwargs" not in get_item_args:
+            get_item_args["box_transform_kwargs"] = {
+                "resolution": float(self._sam_predictor.resolution)
+            }
+        if "point_transform_kwargs" not in get_item_args:
+            get_item_args["point_transform_kwargs"] = {
+                "resolution": float(self._sam_predictor.resolution)
+            }
 
-        self._curr_prompt_type = prompt_type
-        self._curr_prompts = prompts
-        self._curr_classes = classes
+        field_mapping = {} if field_mapping is None else dict(field_mapping)
+        fosam._expand_sam_prompt_field(field_mapping)
 
-        negative_field = None
-        if "negative_prompt_field" in self.needs_fields:
-            negative_field = self.needs_fields["negative_prompt_field"]
-            if negative_field.startswith("frames."):
-                negative_field = negative_field[len("frames."):]
-
-        if negative_field and samples is not None:
-            negative_prompts = []
-            for sample in samples:
-                try:
-                    value = sample.get_field(negative_field)
-                except AttributeError:
-                    logger.warning(
-                        "Sample %s has no field '%s'", sample.id, negative_field
-                    )
-                    value = None
-                negative_prompts.append(value)
-            self._curr_negative_prompts = negative_prompts
-        else:
-            self._curr_negative_prompts = None
-
-        return self._predict_all(imgs)
-
-    def _forward_pass_boxes(self, imgs):
-        sam2_predictor = self._load_predictor()
-        self._output_processor = fout.InstanceSegmenterOutputProcessor(
-            self._curr_classes
+        return get_item(
+            field_mapping=field_mapping,
+            transform=get_item_args.pop("transform", _sam2_image_transform),
+            use_numpy=get_item_args.pop("use_numpy", True),
+            box_transform=get_item_args.pop(
+                "box_transform", _sam2_box_transform
+            ),
+            point_transform=get_item_args.pop(
+                "point_transform", _sam2_point_transform
+            ),
+            **get_item_args,
         )
-        outputs = []
-        for idx, (img, detections) in enumerate(zip(imgs, self._curr_prompts)):
-            ## If no detections, return empty tensors instead of running SAM
-            if detections is None or len(detections.detections) == 0:
-                h, w = img.shape[1], img.shape[2]
-                outputs.append(
-                    {
-                        "boxes": torch.tensor([[]]),
-                        "labels": torch.empty([0, 4]),
-                        "masks": torch.empty([0, 1, h, w]),
-                    }
-                )
-                continue
-            inp = fosam._to_sam_input(img)
-            sam2_predictor.set_image(inp)
-            h, w = img.size(1), img.size(2)
-
-            boxes = np.array([d.bounding_box for d in detections.detections])
-            boxes_xyxy = fosam._to_abs_boxes(boxes, w, h)
-            sam_boxes = np.round(boxes_xyxy).astype(int)
-
-            labels = torch.tensor(
-                [
-                    self._curr_classes.index(d.label)
-                    for d in detections.detections
-                ],
-                device=sam2_predictor.device,
-            )
-
-            masks, scores, _ = sam2_predictor.predict(
-                point_coords=None,
-                point_labels=None,
-                box=sam_boxes[None, :],
-                multimask_output=False,
-            )
-
-            if self._curr_negative_prompts and idx < len(self._curr_negative_prompts):
-                masks = _subtract_negative_box_regions(
-                    masks, self._curr_negative_prompts[idx], w, h
-                )
-
-            if masks.ndim == 3:
-                masks = np.expand_dims(masks, axis=1)
-            outputs.append(
-                {
-                    "boxes": torch.tensor(boxes_xyxy),
-                    "labels": labels,
-                    "masks": torch.tensor(masks, device=sam2_predictor.device),
-                    "scores": torch.tensor(
-                        scores, device=sam2_predictor.device
-                    ),
-                }
-            )
-
-        return outputs
 
     def _load_auto_generator(self):
         kwargs = self.config.auto_kwargs or {}
         return samg.SAM2AutomaticMaskGenerator(self._model, **kwargs)
+
+    def _load_model(self, config):
+        if "device" not in config.entrypoint_args:
+            config.entrypoint_args["device"] = str(self._device)
+        model = super()._load_model(config)
+        return model
+
+    def _forward_pass(self, imgs):
+        """Forward pass with prompts
+
+        Args:
+            imgs: a dict containing model input
+
+        Returns:
+            a dict containing model output
+        """
+        images = imgs.pop("image")
+
+        self._sam_predictor.processor.set_image_batch(images)
+
+        point_coords = imgs.get("point_coords")
+        point_labels = imgs.get("point_labels")
+        boxes = imgs.get("boxes")
+        mask_inputs = imgs.get("mask_inputs")  # Not used currently
+        multimask_output = (
+            True if (boxes is None and point_coords is not None) else False
+        )
+        outputs = []
+        for img_idx in range(len(images)):
+            out_masks, iou_pred, _ = self._sam_predictor.processor._predict(
+                point_coords=point_coords[img_idx]
+                if point_coords is not None
+                else None,
+                point_labels=point_labels[img_idx]
+                if point_labels is not None
+                else None,
+                boxes=boxes[img_idx] if boxes is not None else None,
+                mask_input=mask_inputs[img_idx] if mask_inputs else None,
+                multimask_output=multimask_output,
+            )
+            outputs.append(
+                {
+                    "masks": out_masks.float(),
+                    "iou_predictions": iou_pred.float(),
+                }
+            )
+        return outputs
+
+
+# TODO: Refactor SAM2 Video Model to use GetItem
+class SegmentAnything2VideoModelConfig(
+    fout.TorchImageModelConfig, fozm.HasZooModel
+):
+    """Configuration for running a :class:`SegmentAnything2VideoModel`.
+
+    See :class:`fiftyone.utils.torch.TorchImageModelConfig` for additional
+    arguments.
+    """
+
+    def __init__(self, d):
+        d = self.init(d)
+        super().__init__(d)
 
 
 class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
@@ -363,25 +442,6 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
 
         session = fo.launch_app(dataset)
 
-    Negative prompt example::
-
-        import fiftyone as fo
-        import fiftyone.zoo as foz
-
-        dataset = foz.load_zoo_dataset("quickstart-video", max_samples=1)
-
-        model = foz.load_zoo_model("segment-anything-2-hiera-tiny-video-torch")
-
-        # Use positive and negative prompts to refine segmentation
-        dataset.apply_model(
-            model,
-            label_field="refined_segmentations",
-            prompt_field="frames.positive_detections",
-            negative_prompt_field="frames.negative_detections",
-        )
-
-        session = fo.launch_app(dataset)
-
     Args:
         config: a :class:`SegmentAnything2VideoModelConfig`
     """
@@ -410,7 +470,6 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
 
         self._curr_prompt_type = None
         self._curr_prompts = None
-        self._curr_negative_prompts = None
         self._curr_classes = None
         self._curr_frame_width = None
         self._curr_frame_height = None
@@ -426,24 +485,20 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
         entrypoint = etau.get_function(config.entrypoint_fcn)
         with self.ctx:
             model = entrypoint(
-                config.entrypoint_args["model_cfg"],
+                config.entrypoint_args["config_file"],
                 ckpt_path=config.model_path,
                 device=self._device,
             )
         return model
 
     def predict(self, video_reader, sample):
-        field_name, negative_field_name = self._get_field()
+        field_name = self._get_field()
         (
             self._curr_frame_width,
             self._curr_frame_height,
         ) = video_reader.frame_size
         self._curr_prompts = self._get_prompts(sample, field_name)
         self._curr_prompt_type = self._get_prompt_type(sample, field_name)
-        if negative_field_name:
-            self._curr_negative_prompts = self._get_prompts(sample, negative_field_name)
-        else:
-            self._curr_negative_prompts = None
 
         return self._forward_pass(video_reader, sample)
 
@@ -465,17 +520,7 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
 
         prompt_field = prompt_field[len("frames.") :]
 
-        # Get negative_prompt_field if provided
-        negative_prompt_field = None
-        if "negative_prompt_field" in self.needs_fields:
-            negative_prompt_field = self.needs_fields["negative_prompt_field"]
-            if not negative_prompt_field.startswith("frames."):
-                raise ValueError(
-                    "'negative_prompt_field' should be a frame field for segment anything 2 video model"
-                )
-            negative_prompt_field = negative_prompt_field[len("frames.") :]
-
-        return prompt_field, negative_prompt_field
+        return prompt_field
 
     def _get_prompt_type(self, sample, field_name):
         for _, frame in sample.frames.items():
@@ -565,14 +610,6 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
                     (out_mask_logits[i] > 0.0).cpu().numpy(), axis=0
                 )
 
-                if self._curr_negative_prompts and out_frame_idx < len(self._curr_negative_prompts):
-                    mask = _subtract_negative_box_regions(
-                        mask,
-                        self._curr_negative_prompts[out_frame_idx],
-                        self._curr_frame_width,
-                        self._curr_frame_height,
-                    )
-
                 box = fosam._mask_to_box(mask)
                 if box is None:
                     continue
@@ -628,24 +665,10 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
                 classes_obj_id_map[ann_obj_id] = keypoint.label
                 points, labels = fosam._to_sam_points(
                     keypoint.points,
-                    self._curr_frame_width,
-                    self._curr_frame_height,
-                    keypoint,
+                    width=self._curr_frame_width,
+                    height=self._curr_frame_height,
+                    point_labels=fosam._get_sam_point_labels(keypoint),
                 )
-
-                if self._curr_negative_prompts and frame_idx < len(self._curr_negative_prompts):
-                    neg_frame_keypoints = self._curr_negative_prompts[frame_idx]
-                    if neg_frame_keypoints and isinstance(neg_frame_keypoints, fol.Keypoints) and len(neg_frame_keypoints.keypoints) > 0:
-                        for neg_keypoint in neg_frame_keypoints.keypoints:
-                            neg_points, _ = fosam._to_sam_points(
-                                neg_keypoint.points,
-                                self._curr_frame_width,
-                                self._curr_frame_height,
-                                neg_keypoint,
-                            )
-                            neg_labels = np.zeros(len(neg_points), dtype=int)
-                            points = np.vstack([points, neg_points])
-                            labels = np.concatenate([labels, neg_labels])
 
                 _, _, _ = self.model.add_new_points_or_box(
                     inference_state=inference_state,

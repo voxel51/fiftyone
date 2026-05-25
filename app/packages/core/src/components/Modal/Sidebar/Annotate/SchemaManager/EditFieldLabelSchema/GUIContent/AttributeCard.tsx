@@ -3,7 +3,7 @@
  * Used by both AddAttributeCard and AttributesSection edit mode.
  */
 
-import { Orientation, RichList, Spacing, Stack } from "@voxel51/voodo";
+import { RichList } from "@voxel51/voodo";
 import type { AttributeFormData, ListItemProps } from "../../utils";
 import AttributeFormContent from "./AttributeFormContent";
 import CardActions from "./CardActions";
@@ -23,6 +23,7 @@ interface AttributeCardProps {
   canDrag?: boolean;
   /** When true, name and type are rendered as read-only text */
   isEditing?: boolean;
+  readOnly?: boolean;
 }
 
 /**
@@ -40,6 +41,7 @@ export const createAttributeCardItem = ({
   onDelete,
   canDrag = false,
   isEditing = false,
+  readOnly = false,
 }: AttributeCardProps): {
   id: string;
   data: ListItemProps;
@@ -55,6 +57,7 @@ export const createAttributeCardItem = ({
         onSave={onSave}
         canSave={canSave}
         onDelete={onDelete}
+        readOnly={readOnly}
       />
     ),
     additionalContent: (
@@ -75,15 +78,7 @@ export const createAttributeCardItem = ({
 const AttributeCard = (props: AttributeCardProps) => {
   const listItem = createAttributeCardItem(props);
 
-  return (
-    <Stack
-      orientation={Orientation.Column}
-      spacing={Spacing.Md}
-      style={{ marginBottom: "12px" }}
-    >
-      <RichList listItems={[listItem]} draggable={false} />
-    </Stack>
-  );
+  return <RichList listItems={[listItem]} draggable={false} />;
 };
 
 export default AttributeCard;

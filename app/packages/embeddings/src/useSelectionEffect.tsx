@@ -44,7 +44,7 @@ export function useSelectionEffect() {
           if (res.selected) {
             resolved = res.selected;
           } else if (selectedSamples && selectedSamples.size) {
-            resolved = Array.from(selectedSamples);
+            resolved = Array.from(selectedSamples.keys());
           }
           setPlotSelection(resolved);
         });

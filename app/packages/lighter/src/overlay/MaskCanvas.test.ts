@@ -1,0 +1,307 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
+import {
+  SegmentationTool,
+  SegmentationToolMode,
+  SegmentationToolShape,
+} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
+import { describe, expect, it, vi } from "vitest";
+import { MaskCanvas } from "./MaskCanvas";
+import type { Rect } from "../types";
+import { maskBounds } from "../utils";
+
+// Stub maskBounds so tests can drive paintEnd's post-stroke crop directly —
+// the jsdom canvas mock in vitest.setup.ts has no real pixel storage, so we
+// can't compute a tight bbox from painted pixels at runtime. encodeMask is
+// stubbed to a known string so tests can observe what onEncoded receives.
+vi.mock("../utils", async () => {
+  const actual = await vi.importActual<typeof import("../utils")>("../utils");
+  return {
+    ...actual,
+    maskBounds: vi.fn(),
+    encodeMask: vi.fn().mockResolvedValue("encoded-mask"),
+  };
+});
+const mockedMaskBounds = vi.mocked(maskBounds);
+
+const WHITE = "#ffffff";
+
+/**
+ * Returns a small mask canvas already in editing mode, painted white over a
+ * given world-space sub-rectangle. Skips the lazy decode path so tests run
+ * synchronously against canvas pixels.
+ */
+const seedCanvas = (bounds: Rect, paintRect: Rect): MaskCanvas => {
+  const mc = new MaskCanvas();
+  const toolState = {
+    active: true,
+    tool: SegmentationTool.Select,
+    shape: SegmentationToolShape.Circle,
+    mode: SegmentationToolMode.Add,
+    size: 0,
+    cursorSize: 0,
+  } satisfies Parameters<MaskCanvas["paintAt"]>[2];
+  // A no-op paint dab to force the editing canvas into existence at our bounds.
+  mc.paintAt({ x: bounds.x, y: bounds.y }, bounds, toolState, {
+    strokeStyle: WHITE,
+  });
+  // Get the underlying canvas via getPreviewSource and fill the requested
+  // sub-rectangle directly (bypasses the line-interpolation and color logic).
+  const canvas = mc.getPreviewSource() as HTMLCanvasElement;
+  const ctx = canvas.getContext("2d")!;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = WHITE;
+  ctx.fillRect(
+    Math.round(paintRect.x - bounds.x),
+    Math.round(paintRect.y - bounds.y),
+    Math.round(paintRect.width),
+    Math.round(paintRect.height)
+  );
+  return mc;
+};
+
+describe("MaskCanvas.mergeFrom", () => {
+  it("expands bounds to the union of target and source", () => {
+    // target at (0,0,10x10) with a small painted square at (0,0,4x4)
+    const targetBounds: Rect = { x: 0, y: 0, width: 10, height: 10 };
+    const target = seedCanvas(targetBounds, {
+      x: 0,
+      y: 0,
+      width: 4,
+      height: 4,
+    });
+
+    // source at (8,8,10x10) with a small painted square at (12,12,4x4)
+    const sourceBounds: Rect = { x: 8, y: 8, width: 10, height: 10 };
+    const source = seedCanvas(sourceBounds, {
+      x: 12,
+      y: 12,
+      width: 4,
+      height: 4,
+    });
+
+    const sourceCanvas = source.getPreviewSource() as HTMLCanvasElement;
+    const newBounds = target.mergeFrom(
+      sourceCanvas,
+      sourceBounds,
+      targetBounds
+    );
+
+    // Union: (0,0) → (18,18). The post-merge crop is a no-op here because
+    // the jsdom canvas mock has no real pixel storage — see paintEnd suite
+    // below for shrink coverage with maskBounds mocked.
+    expect(newBounds.x).toBe(0);
+    expect(newBounds.y).toBe(0);
+    expect(newBounds.width).toBe(18);
+    expect(newBounds.height).toBe(18);
+  });
+
+  it("captures pre/post snapshots reachable via getPaintStrokeData", () => {
+    const targetBounds: Rect = { x: 0, y: 0, width: 10, height: 10 };
+    const target = seedCanvas(targetBounds, {
+      x: 0,
+      y: 0,
+      width: 4,
+      height: 4,
+    });
+
+    const sourceBounds: Rect = { x: 8, y: 8, width: 10, height: 10 };
+    const source = seedCanvas(sourceBounds, {
+      x: 12,
+      y: 12,
+      width: 4,
+      height: 4,
+    });
+
+    const sourceCanvas = source.getPreviewSource() as HTMLCanvasElement;
+    target.mergeFrom(sourceCanvas, sourceBounds, targetBounds);
+
+    const data = target.getPaintStrokeData();
+    expect(data.beforeBounds).toEqual(targetBounds);
+    expect(data.afterBounds).toBeDefined();
+    expect(data.afterBounds?.width).toBeGreaterThan(targetBounds.width);
+    expect(data.beforeSnapshot).toBeDefined();
+    expect(data.afterSnapshot).toBeDefined();
+  });
+
+  it("handles a source fully contained within the target's bounds without expanding", () => {
+    const targetBounds: Rect = { x: 0, y: 0, width: 20, height: 20 };
+    const target = seedCanvas(targetBounds, {
+      x: 0,
+      y: 0,
+      width: 5,
+      height: 5,
+    });
+
+    const sourceBounds: Rect = { x: 10, y: 10, width: 5, height: 5 };
+    const source = seedCanvas(sourceBounds, {
+      x: 10,
+      y: 10,
+      width: 5,
+      height: 5,
+    });
+
+    const sourceCanvas = source.getPreviewSource() as HTMLCanvasElement;
+    const newBounds = target.mergeFrom(
+      sourceCanvas,
+      sourceBounds,
+      targetBounds
+    );
+
+    // Source is inside target; bounds shouldn't grow. (Crop is a no-op in
+    // the mocked canvas env.)
+    expect(newBounds.x).toBe(targetBounds.x);
+    expect(newBounds.y).toBe(targetBounds.y);
+    expect(newBounds.width).toBe(targetBounds.width);
+    expect(newBounds.height).toBe(targetBounds.height);
+  });
+});
+
+describe("MaskCanvas.paintEnd shrink", () => {
+  it("snaps bounds down to the painted region reported by maskBounds", () => {
+    const bounds: Rect = { x: 0, y: 0, width: 20, height: 20 };
+    const mc = seedCanvas(bounds, bounds);
+
+    // Pretend the painted region tight-bounds to pixels (3,4)-(7,8).
+    mockedMaskBounds.mockReturnValueOnce({
+      minX: 3,
+      minY: 4,
+      maxX: 7,
+      maxY: 8,
+    });
+
+    const newBounds = mc.paintEnd(bounds);
+
+    expect(newBounds).toEqual({ x: 3, y: 4, width: 5, height: 5 });
+  });
+
+  it("returns bounds unchanged when the canvas is already tight", () => {
+    const bounds: Rect = { x: 0, y: 0, width: 5, height: 5 };
+    const mc = seedCanvas(bounds, bounds);
+
+    mockedMaskBounds.mockReturnValueOnce({
+      minX: 0,
+      minY: 0,
+      maxX: 4,
+      maxY: 4,
+    });
+
+    expect(mc.paintEnd(bounds)).toEqual(bounds);
+  });
+
+  it("returns bounds unchanged when maskBounds reports no opaque pixels", () => {
+    const bounds: Rect = { x: 0, y: 0, width: 10, height: 10 };
+    const mc = seedCanvas(bounds, bounds);
+
+    mockedMaskBounds.mockReturnValueOnce(null);
+
+    expect(mc.paintEnd(bounds)).toEqual(bounds);
+  });
+});
+
+describe("MaskCanvas onEncoded plumbing", () => {
+  // Drives DetectionOverlay.maskSource: callers need the freshly encoded mask
+  // so a destroy/re-add cycle can rehydrate without depending on a save
+  // round-trip back through label.mask.
+
+  it("paintEnd invokes onEncoded with the encoded mask once encode resolves", async () => {
+    const bounds: Rect = { x: 0, y: 0, width: 5, height: 5 };
+    const mc = seedCanvas(bounds, bounds);
+    mockedMaskBounds.mockReturnValueOnce({
+      minX: 0,
+      minY: 0,
+      maxX: 4,
+      maxY: 4,
+    });
+
+    const onEncoded = vi.fn();
+    mc.paintEnd(bounds, onEncoded);
+
+    // Allow the encodeMask Promise to settle.
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(onEncoded).toHaveBeenCalledTimes(1);
+    expect(onEncoded).toHaveBeenCalledWith("encoded-mask");
+  });
+
+  it("mergeFrom plumbs onEncoded through to paintEnd", async () => {
+    const targetBounds: Rect = { x: 0, y: 0, width: 10, height: 10 };
+    const target = seedCanvas(targetBounds, {
+      x: 0,
+      y: 0,
+      width: 4,
+      height: 4,
+    });
+    const sourceBounds: Rect = { x: 8, y: 8, width: 10, height: 10 };
+    const source = seedCanvas(sourceBounds, {
+      x: 12,
+      y: 12,
+      width: 4,
+      height: 4,
+    });
+
+    const onEncoded = vi.fn();
+    target.mergeFrom(
+      source.getPreviewSource() as HTMLCanvasElement,
+      sourceBounds,
+      targetBounds,
+      onEncoded
+    );
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(onEncoded).toHaveBeenCalledWith("encoded-mask");
+  });
+
+  it("restoreSnapshot invokes onEncoded after replaying a snapshot", async () => {
+    const bounds: Rect = { x: 0, y: 0, width: 5, height: 5 };
+    const mc = seedCanvas(bounds, bounds);
+    mockedMaskBounds.mockReturnValueOnce({
+      minX: 0,
+      minY: 0,
+      maxX: 4,
+      maxY: 4,
+    });
+    mc.paintEnd(bounds);
+    // Wait for the paintEnd encode so the snapshot below has a canvas to
+    // capture from; the subsequent restoreSnapshot call is what we're testing.
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const snapshot = mc.getPaintStrokeData().afterSnapshot;
+    expect(snapshot).toBeDefined();
+
+    const onEncoded = vi.fn();
+    mc.restoreSnapshot(snapshot, onEncoded);
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(onEncoded).toHaveBeenCalledWith("encoded-mask");
+  });
+
+  it("restoreSnapshot(undefined) skips onEncoded (cleared to empty mask)", async () => {
+    const bounds: Rect = { x: 0, y: 0, width: 5, height: 5 };
+    const mc = seedCanvas(bounds, bounds);
+    mockedMaskBounds.mockReturnValueOnce({
+      minX: 0,
+      minY: 0,
+      maxX: 4,
+      maxY: 4,
+    });
+    mc.paintEnd(bounds);
+    await Promise.resolve();
+
+    const onEncoded = vi.fn();
+    mc.restoreSnapshot(undefined, onEncoded);
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(onEncoded).not.toHaveBeenCalled();
+  });
+});

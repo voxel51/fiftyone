@@ -11,6 +11,8 @@ import { ModalSidebarPom } from "./modal-sidebar";
 import { SampleCanvasPom } from "./sample-canvas";
 import { ModalVideoControlsPom } from "./video-controls";
 
+const SAMPLE_LOAD_TIMEOUT = Duration.Seconds(20);
+
 export class ModalPom {
   readonly assert: ModalAsserter;
 
@@ -124,6 +126,8 @@ export class ModalPom {
       }
 
       await this.page.keyboard.press("c");
+      // Controls take time to hide
+      // eslint-disable-next-line playwright/no-wait-for-timeout
       await this.page.waitForTimeout(300);
 
       attempts++;
@@ -165,6 +169,30 @@ export class ModalPom {
     await this.groupCarousel.getByTestId("flashlight").evaluate((e, left) => {
       e.scrollTo({ left: left ?? e.scrollWidth });
     }, left);
+  }
+
+  async scrollCarouselTo(slice: string) {
+    await this.groupCarousel
+      .getByTestId("flashlight")
+      .evaluate(async (el, targetText) => {
+        const hasTarget = () => {
+          for (const t of el.querySelectorAll('[data-cy="thumbnail-title"]')) {
+            if (t.textContent === targetText) return true;
+          }
+          return false;
+        };
+
+        if (hasTarget()) return;
+
+        // 384ms is the debounce time for Flashlight's zooming plus two frames of margin
+        const ZOOMING_DEBOUNCE_MS = 384;
+        const step = Math.max(el.clientWidth, 200);
+        for (let pos = 0; pos <= el.scrollWidth; pos += step) {
+          el.scrollTo({ left: pos });
+          await new Promise((r) => setTimeout(r, ZOOMING_DEBOUNCE_MS));
+          if (hasTarget()) return;
+        }
+      }, slice);
   }
 
   async navigateCarousel(index: number, allowErrorInfo = false) {
@@ -238,7 +266,8 @@ export class ModalPom {
         )?.textContent;
         return slice !== currentSlice;
       },
-      { currentSlice, groupField }
+      { currentSlice, groupField },
+      { timeout: SAMPLE_LOAD_TIMEOUT }
     );
     return this.waitForSampleLoadDomAttribute(allowErrorInfo);
   }
@@ -302,6 +331,19 @@ export class ModalPom {
         );
       },
       allowErrorInfo,
+      { timeout: SAMPLE_LOAD_TIMEOUT }
+    );
+  }
+
+  async waitForLighterReady() {
+    return this.page.waitForFunction(
+      () =>
+        (
+          document.querySelector(
+            `[data-cy=lighter-sample-renderer]`
+          ) as HTMLElement | null
+        )?.style.visibility === "visible",
+      undefined,
       { timeout: Duration.Seconds(20) }
     );
   }
@@ -323,6 +365,19 @@ class ModalAsserter {
     await expect(this.modalPom.locator).toBeVisible();
   }
 
+  async verifyHasNoViewerError() {
+    await expect(
+      this.modalPom.modalContainer.getByTestId("looker-error-info")
+    ).toHaveCount(0);
+  }
+
+  async verifyPrimary2dRendererVisible() {
+    await expect(this.modalPom.groupLooker).toBeVisible();
+  }
+
+  async verify3dRendererVisible() {
+    await expect(this.modalPom.looker3d).toBeVisible();
+  }
   async verifySelectionCount(n: number) {
     const action = this.modalPom.locator.getByTestId("action-manage-selected");
 
@@ -345,8 +400,10 @@ class ModalAsserter {
     title: string,
     { pinned }: { pinned: boolean } = { pinned: false }
   ) {
-    const actualTitle = await this.modalPom.modalSamplePluginTitle;
-    const expectedTitle = pinned ? `📌 ${title}` : title;
-    expect(actualTitle).toBe(expectedTitle);
+    await expect
+      .poll(async () => this.modalPom.modalSamplePluginTitle, {
+        timeout: 5000,
+      })
+      .toBe(pinned ? `📌 ${title}` : title);
   }
 }

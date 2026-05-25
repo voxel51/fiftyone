@@ -66,6 +66,9 @@ def drop_collection(collection_name):
     return decorator
 
 
+drop_ontologies = drop_collection("ontologies")
+
+
 def skip_windows(func):
     """Decorator that skips a test when running on Windows."""
 

@@ -4,25 +4,27 @@
 import {
   ImageOptions,
   ImageOverlay,
+  UNDEFINED_LIGHTER_SCENE_ID,
   overlayFactory,
-  useLighter,
+  useLighterEventHandler,
   useLighterSetupWithPixi,
 } from "@fiftyone/lighter";
 import type { Sample } from "@fiftyone/state";
-import * as fos from "@fiftyone/state";
-import { getSampleSrc } from "@fiftyone/state";
+import { getSampleSrc, useModalLookerOptions } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
 import React, {
+  useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
-import { useRecoilValue } from "recoil";
 import { activeLabelSchemas } from "../Sidebar/Annotate/state";
+import { LighterToolbar } from "./LighterToolbar";
 import { singletonCanvas } from "./SharedCanvas";
 import { useBridge } from "./useBridge";
+import useRetrieveViewport from "./useRetrieveViewport";
+import useViewport from "./useViewport";
 
 export interface LighterSampleRendererProps {
   /** Custom CSS class name */
@@ -41,40 +43,15 @@ export const LighterSampleRenderer = ({
   const containerRef = useRef<HTMLDivElement>(null);
   // unique scene id allows us to destroy/recreate scenes reliably
   const [sceneId, setSceneId] = useState<string | null>(null);
-
-  const { scene, isReady, addOverlay } = useLighter();
+  const [isCanvasHovered, setIsCanvasHovered] = useState(false);
+  const [isRevealed, setIsRevealed] = useState(false);
 
   // use a ref for the sample data, effects do not run solely because the
   // sample changed
   const sampleRef = useRef(sample);
   sampleRef.current = sample;
 
-  /**
-   * This effect is responsible for loading the sample and adding the overlays to the scene.
-   */
-  useEffect(() => {
-    if (!isReady || !scene) return;
-
-    const sample = sampleRef.current;
-    const mediaUrl =
-      sample.urls.length > 0 && sample.urls[0].url
-        ? getSampleSrc(sample.urls[0].url)
-        : null;
-
-    if (mediaUrl) {
-      const mediaOverlay = overlayFactory.create<ImageOptions, ImageOverlay>(
-        "image",
-        {
-          src: mediaUrl,
-          maintainAspectRatio: true,
-        }
-      );
-      addOverlay(mediaOverlay, false);
-
-      // Set the image overlay as canonical media for coordinate transformations
-      scene.setCanonicalMedia(mediaOverlay);
-    }
-  }, [isReady, addOverlay, scene]);
+  const onReveal = useCallback(() => setIsRevealed(true), []);
 
   useEffect(() => {
     // sceneId should be deterministic, but unique for a given sample snapshot
@@ -87,6 +64,8 @@ export const LighterSampleRenderer = ({
   return (
     <div
       ref={containerRef}
+      onMouseEnter={() => setIsCanvasHovered(true)}
+      onMouseLeave={() => setIsCanvasHovered(false)}
       className={`lighter-sample-renderer ${className}`}
       data-cy="lighter-sample-renderer"
       id="lighter-sample-renderer-container"
@@ -95,11 +74,19 @@ export const LighterSampleRenderer = ({
         height: "100%",
         display: "flex",
         flexDirection: "column",
+        minHeight: 0,
+        visibility: isRevealed ? "visible" : "hidden",
       }}
     >
       {containerRef.current && sceneId && (
-        <LighterSetupImpl containerRef={containerRef} sceneId={sceneId} />
+        <LighterSetupImpl
+          containerRef={containerRef}
+          sceneId={sceneId}
+          sampleRef={sampleRef}
+          onReveal={onReveal}
+        />
       )}
+      {isCanvasHovered && <LighterToolbar />}
     </div>
   );
 };
@@ -107,16 +94,19 @@ export const LighterSampleRenderer = ({
 const LighterSetupImpl = (props: {
   containerRef: React.RefObject<HTMLDivElement>;
   sceneId: string;
+  sampleRef: React.RefObject<Sample>;
+  onReveal: () => void;
 }) => {
-  const { containerRef, sceneId } = props;
+  const { containerRef, sceneId, sampleRef, onReveal } = props;
 
-  const options = useRecoilValue(
-    fos.lookerOptions({ modal: true, withFilter: false })
-  );
+  const sampleId = sampleRef.current?.sample?._id;
+
+  const options = useModalLookerOptions();
 
   // Read activePaths directly from Jotai to bypass Recoil's filterPaths,
   // which strips newly created fields not yet in the GraphQL schema cache
   const jotaiActivePaths = useAtomValue(activeLabelSchemas);
+
   const mergedOptions = useMemo(
     () => ({
       ...options,
@@ -125,12 +115,48 @@ const LighterSetupImpl = (props: {
     [options, jotaiActivePaths]
   );
 
-  const canvas = singletonCanvas.getCanvas(containerRef.current);
+  const canvas = singletonCanvas.getCanvas(containerRef.current ?? undefined);
 
   const { scene } = useLighterSetupWithPixi(canvas, mergedOptions, sceneId);
 
+  // Add the canonical image overlay to the scene that belongs to *this* mount.
+  // The identity guard prevents firing against a stale scene that the
+  // lighterSceneAtom may still hold from a previous mount
+  useEffect(() => {
+    if (!scene || scene.getSceneId() !== sceneId) return;
+
+    const sample = sampleRef.current;
+    const mediaUrl =
+      sample.urls.length > 0 && sample.urls[0].url
+        ? getSampleSrc(sample.urls[0].url)
+        : null;
+
+    if (!mediaUrl) return;
+
+    const mediaOverlay = overlayFactory.create<ImageOptions, ImageOverlay>(
+      "image",
+      {
+        src: mediaUrl,
+        maintainAspectRatio: true,
+      }
+    );
+    scene.addOverlay(mediaOverlay);
+
+    // Set the image overlay as canonical media for coordinate transformations
+    scene.setCanonicalMedia(mediaOverlay);
+  }, [scene, sceneId]);
+
+  const useEventHandler = useLighterEventHandler(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
+  useEventHandler("lighter:viewport-init-complete", onReveal, { once: true });
+
+  useViewport(sampleId);
+
   // This is the bridge between FiftyOne state management system and Lighter
   useBridge(scene);
+
+  useRetrieveViewport(scene, sampleId);
 
   return null;
 };

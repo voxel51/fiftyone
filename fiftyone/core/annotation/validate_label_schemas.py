@@ -441,6 +441,8 @@ def _validate_label_field_label_schema(
                 value,
                 allow_new_attrs=allow_new_attrs,
             )
+        elif key == foac.APPLIED_ONTOLOGY:
+            _validate_applied_ontology(field_name, value)
         elif key == foac.COMPONENT and value not in foac.STR_COMPONENTS:
             _raise_component_error(field_name, value)
         elif key == foac.DEFAULT:
@@ -692,6 +694,25 @@ def _validate_values_setting(field_name, value, _type, key=foac.VALUES):
                 f"invalid value '{v}' in '{key}' setting for field "
                 f"'{field_name}'"
             )
+
+
+def _validate_applied_ontology(field_name: str, value: str) -> None:
+    # Late import to avoid a circular import with the ontology SDK.
+    from fiftyone.core.ontology import load_ontology
+
+    try:
+        ontology = load_ontology(value)
+    except ValueError:
+        raise ValueError(
+            f"'{foac.APPLIED_ONTOLOGY}' references unknown ontology "
+            f"'{value}' for field '{field_name}'"
+        )
+
+    if not ontology.is_annotation_ontology:
+        raise ValueError(
+            f"'{foac.APPLIED_ONTOLOGY}' references '{value}' which is not "
+            f"an annotation ontology for field '{field_name}'"
+        )
 
 
 _CLASSIFICATION = "classification"

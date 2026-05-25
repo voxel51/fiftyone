@@ -2,11 +2,12 @@ import { AnalyticsInfo, usingAnalytics } from "@fiftyone/analytics";
 import SpaceNode from "@fiftyone/spaces/src/SpaceNode";
 import { SpaceNodeJSON } from "@fiftyone/spaces/src/types";
 import { spaceNodeFromJSON } from "@fiftyone/spaces/src/utils";
+import type { SelectionStyle, SelectionType } from "@fiftyone/state";
 import { getFetchFunction, isNullish, ServerError } from "@fiftyone/utilities";
 import { CallbackInterface } from "recoil";
-import { QueueItemStatus } from "./constants";
+import { QueueItemStatus, RiskLevel } from "./constants";
 import * as types from "./types";
-import { ExecutionCallback, OperatorExecutorOptions } from "./types-internal";
+import { ExecutionCallback, OperatorExecutorOptions } from "./ts";
 import { stringifyError } from "./utils";
 import { ValidationContext, ValidationError } from "./validation";
 
@@ -81,7 +82,8 @@ export type RawContext = {
   extended: boolean;
   view: string;
   filters: object;
-  selectedSamples: Set<string>;
+  selectedSamples: Map<string, SelectionType>;
+  sampleSelectionStyle: SelectionStyle;
   selectedLabels: any[];
   currentSample: string;
   viewName: string;
@@ -251,6 +253,7 @@ export type OperatorConfigOptions = {
   resolveExecutionOptionsOnChange?: boolean;
   skipInput?: boolean;
   skipOutput?: boolean;
+  riskLevel?: RiskLevel;
 };
 export class OperatorConfig {
   public name: string;
@@ -269,6 +272,7 @@ export class OperatorConfig {
   public resolveExecutionOptionsOnChange = false;
   public skipInput: boolean;
   public skipOutput: boolean;
+  public riskLevel: RiskLevel = RiskLevel.LOW;
 
   constructor(options: OperatorConfigOptions) {
     this.name = options.name;
@@ -289,6 +293,7 @@ export class OperatorConfig {
       options.resolveExecutionOptionsOnChange || false;
     this.skipInput = options.skipInput || false;
     this.skipOutput = options.skipOutput || false;
+    this.riskLevel = options.riskLevel || RiskLevel.LOW;
   }
   static fromJSON(json) {
     return new OperatorConfig({
@@ -308,6 +313,7 @@ export class OperatorConfig {
       resolveExecutionOptionsOnChange: json.resolve_execution_options_on_change,
       skipInput: json.skip_input,
       skipOutput: json.skip_output,
+      riskLevel: json.risk_level,
     });
   }
 }
@@ -336,6 +342,9 @@ export class Operator {
   get unlisted() {
     return this.config.unlisted;
   }
+  get riskLevel() {
+    return this.config.riskLevel || RiskLevel.LOW;
+  }
   async needsUserInput(ctx: ExecutionContext) {
     const inputs = await this.resolveInput(ctx);
     return inputs && inputs.type && inputs.type.properties.size > 0;
@@ -359,7 +368,7 @@ export class Operator {
     }
     return false;
   }
-  useHooks(): object {
+  useHooks(): unknown {
     // This can be overridden to use hooks in the execute function
     return {};
   }
@@ -379,10 +388,10 @@ export class Operator {
     }
     return null;
   }
-  async resolvePlacement(): Promise<void | types.Placement> {
+  async resolvePlacement(): Promise<void | null | types.Placement> {
     return null;
   }
-  async execute(ctx: ExecutionContext) {
+  async execute(ctx: ExecutionContext): Promise<unknown> {
     ctx;
     throw new Error(`Operator ${this.uri} does not implement execute`);
   }
@@ -574,6 +583,21 @@ function formatSelectedLabels(selectedLabels) {
   return labels;
 }
 
+function formatSelectionPayload(currentContext: RawContext) {
+  return {
+    selected: currentContext.selectedSamples
+      ? Array.from(currentContext.selectedSamples.keys())
+      : [],
+    selected_samples: currentContext.selectedSamples
+      ? Array.from(currentContext.selectedSamples.entries()).map(
+          ([id, type]) => ({ id, type })
+        )
+      : [],
+    sample_selection_style: currentContext.sampleSelectionStyle || {},
+    selected_labels: formatSelectedLabels(currentContext.selectedLabels),
+  };
+}
+
 async function executeOperatorAsGenerator(
   operator: Operator,
   ctx: ExecutionContext
@@ -592,10 +616,7 @@ async function executeOperatorAsGenerator(
       operator_uri: operator.uri,
       params: ctx.params,
       request_delegation: ctx.requestDelegation,
-      selected: currentContext.selectedSamples
-        ? Array.from(currentContext.selectedSamples)
-        : [],
-      selected_labels: formatSelectedLabels(currentContext.selectedLabels),
+      ...formatSelectionPayload(currentContext),
       view: currentContext.view,
       view_name: currentContext.viewName,
       group_slice: currentContext.groupSlice,
@@ -760,10 +781,7 @@ export async function executeOperatorWithContext(
           operator_uri: operatorURI,
           params: ctx.params,
           request_delegation: ctx.requestDelegation,
-          selected: currentContext.selectedSamples
-            ? Array.from(currentContext.selectedSamples)
-            : [],
-          selected_labels: formatSelectedLabels(currentContext.selectedLabels),
+          ...formatSelectionPayload(currentContext),
           view: currentContext.view,
           view_name: currentContext.viewName,
           group_slice: currentContext.groupSlice,
@@ -833,7 +851,7 @@ type CurrentContext = {
   view: any;
   extended: any;
   filters: any;
-  selectedSamples: Set<string>;
+  selectedSamples: Map<string, SelectionType>;
   selectedLabels: any;
   currentSample: string;
   viewName: string;
@@ -869,10 +887,7 @@ export async function resolveRemoteType(
       request_delegation: ctx.requestDelegation,
       results: results ? results.result : null,
       target,
-      selected: currentContext.selectedSamples
-        ? Array.from(currentContext.selectedSamples)
-        : [],
-      selected_labels: formatSelectedLabels(currentContext.selectedLabels),
+      ...formatSelectionPayload(currentContext),
       view: currentContext.view,
       view_name: currentContext.viewName,
       group_slice: currentContext.groupSlice,
@@ -948,10 +963,7 @@ export async function resolveExecutionOptions(
       operator_uri: operatorURI,
       params: ctx.params,
       request_delegation: ctx.requestDelegation,
-      selected: currentContext.selectedSamples
-        ? Array.from(currentContext.selectedSamples)
-        : [],
-      selected_labels: formatSelectedLabels(currentContext.selectedLabels),
+      ...formatSelectionPayload(currentContext),
       view: currentContext.view,
       view_name: currentContext.viewName,
       group_slice: currentContext.groupSlice,
@@ -983,10 +995,7 @@ export async function fetchRemotePlacements(ctx: ExecutionContext) {
       extended_selection: currentContext.extendedSelection,
       view: currentContext.view,
       filters: currentContext.filters,
-      selected: currentContext.selectedSamples
-        ? Array.from(currentContext.selectedSamples)
-        : [],
-      selected_labels: formatSelectedLabels(currentContext.selectedLabels),
+      ...formatSelectionPayload(currentContext),
       current_sample: currentContext.currentSample,
       view_name: currentContext.viewName,
       group_slice: currentContext.groupSlice,

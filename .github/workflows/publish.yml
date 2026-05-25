@@ -35,7 +35,7 @@ jobs:
       # See
       # [fiftyone](https://pypi.org/manage/project/fiftyone/settings/publishing)
       - name: Publish
-        uses: pypa/gh-action-pypi-publish@v1.13.0
+        uses: pypa/gh-action-pypi-publish@v1.14.0
 
   publish-docker-images:
     needs: [publish]
@@ -43,7 +43,6 @@ jobs:
     strategy:
       matrix:
         python:
-          - "3.9"
           - "3.10"
           - "3.11"
           - "3.12"

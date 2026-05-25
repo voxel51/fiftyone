@@ -17,15 +17,13 @@
         "type-check": "tsc --noEmit"
     },
     "dependencies": {
+        "lru-cache": "^11.0.1",
         "pixi.js": "^8.13.1"
     },
     "devDependencies": {
-        "@types/react": "^18.2.0",
-        "@types/react-dom": "^18.2.0",
         "@typescript-eslint/eslint-plugin": "^6.0.0",
         "@typescript-eslint/parser": "^6.0.0",
-        "eslint": "^8.0.0",
-        "typescript": "^5.8.3"
+        "eslint": "^8.0.0"
     },
     "peerDependencies": {
         "@fiftyone/commands": "*",

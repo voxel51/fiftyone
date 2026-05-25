@@ -3,24 +3,26 @@
  */
 
 import type {
-  Dimensions2D,
   DrawStyle,
   Point,
   Rect,
   TextOptions,
+  ViewportState,
 } from "../types";
-import type { ImageOptions, ImageSource } from "./Renderer2D";
+import type { ImageOptions, ImageSource, Renderer2D } from "./Renderer2D";
 
 /**
  * Mock implementation of Renderer2D for lightweight testing and development.
  * This mock provides no-op implementations of all renderer methods, making it
  * suitable for creating lightweight lighter scenes without actual rendering.
  */
-export class MockRenderer2D {
+export class MockRenderer2D implements Renderer2D {
   private canvas: HTMLCanvasElement;
   private tickHandlers: (() => void)[] = [];
   private containers = new Map<string, any>();
   private scale = 1;
+  private panX = 0;
+  private panY = 0;
   private containerDimensions = { width: 800, height: 600 };
 
   constructor(canvas?: HTMLCanvasElement) {
@@ -75,14 +77,42 @@ export class MockRenderer2D {
     position: Point,
     options: TextOptions | undefined,
     containerId: string
-  ): Dimensions2D {
+  ): Rect {
     this.containers.set(containerId, {
       type: "text",
       text,
       position,
       options,
     });
-    return { width: text.length * 8, height: 16 };
+    return { x: position.x, y: position.y, width: text.length * 8, height: 16 };
+  }
+
+  drawPoint(
+    center: Point,
+    radius: number,
+    style: DrawStyle,
+    containerId: string
+  ): void {
+    this.containers.set(containerId, {
+      type: "point",
+      center,
+      radius,
+      style,
+    });
+  }
+
+  drawPoints(
+    centers: Point[],
+    radius: number,
+    style: DrawStyle,
+    containerId: string
+  ): void {
+    this.containers.set(containerId, {
+      type: "points",
+      centers,
+      radius,
+      style,
+    });
   }
 
   drawLine(
@@ -95,6 +125,26 @@ export class MockRenderer2D {
       type: "line",
       start,
       end,
+      style,
+    });
+  }
+
+  drawLines(
+    segments: Array<[Point, Point]>,
+    style: DrawStyle,
+    containerId: string
+  ): void {
+    this.containers.set(containerId, {
+      type: "lines",
+      segments,
+      style,
+    });
+  }
+
+  drawPolygon(points: Point[], style: DrawStyle, containerId: string): void {
+    this.containers.set(containerId, {
+      type: "polygon",
+      points,
       style,
     });
   }
@@ -176,9 +226,35 @@ export class MockRenderer2D {
     return this.canvas;
   }
 
+  zoomIn(): void {}
+
+  zoomOut(): void {}
+
   disableZoomPan(): void {}
 
   enableZoomPan(): void {}
+
+  resetZoomPan(): void {
+    this.scale = 1;
+    this.panX = 0;
+    this.panY = 0;
+  }
+
+  getViewportState(): ViewportState {
+    return { scale: this.scale, panX: 0, panY: 0 };
+  }
+
+  setViewportState({ scale, panX, panY }: ViewportState): void {
+    this.scale = scale;
+    this.panX = panX;
+    this.panY = panY;
+  }
+
+  fitToRect(_worldRect: Rect, _padding?: number): void {}
+
+  isReady(): boolean {
+    return true;
+  }
 
   screenToWorld(screenPoint: Point): Point {
     return {

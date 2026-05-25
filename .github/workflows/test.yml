@@ -53,7 +53,6 @@ jobs:
         os:
           - ubuntu-latest
         python:
-          - "3.9"
           - "3.10"
           - "3.11"
           - "3.12"
@@ -121,7 +120,7 @@ jobs:
             --ignore tests/no_wrapper
       - name: Upload
         if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == '3.11' }}
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml

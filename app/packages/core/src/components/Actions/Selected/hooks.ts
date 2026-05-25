@@ -30,7 +30,7 @@ export const useClearSampleSelection = (close) => {
   const setSelected = fos.useSetSelected();
 
   return useCallback(() => {
-    setSelected(new Set());
+    setSelected(new Map());
     close();
   }, [close, setSelected]);
 };

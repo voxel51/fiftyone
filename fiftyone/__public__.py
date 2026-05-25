@@ -55,6 +55,24 @@ from .core.expressions import (
     ViewExpression,
     VALUE,
 )
+from .core.annotation.attributes import (
+    AttributeSpec,
+    When,
+    WhenAnd,
+    WhenCondition,
+    WhenEquals,
+    WhenIn,
+    WhenOperator,
+    WhenOr,
+)
+from .core.ontology import (
+    AnnotationOntology,
+    apply_ontology,
+    delete_ontology,
+    list_ontologies,
+    load_ontology,
+    ontology_exists,
+)
 from .core.fields import (
     flatten_schema,
     ArrayField,

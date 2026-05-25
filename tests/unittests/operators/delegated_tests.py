@@ -958,6 +958,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         completed_doc.run_state = ExecutionRunState.COMPLETED
         completed_doc.result = ExecutionResult(result={"executed": True})
 
+        on_ping = mock.MagicMock(return_value="some log")
+
         with patch.object(
             self.svc, "get", side_effect=[running_doc, completed_doc]
         ), patch(
@@ -969,14 +971,26 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                 operation=doc,
                 log=False,
                 monitor=True,
+                on_monitor_ping=on_ping,
             )
 
-            # Verify ping was called with the operation ID
             mock_ping.assert_called_once_with(doc.id)
 
         self.assertIsNotNone(result)
         self.assertIsNone(result.error)
         self.assertEqual(result.result, {"executed": True})
+
+        mock_process.is_alive.side_effect = [True, True, False]
+        with patch.object(
+            self.svc, "get", return_value=running_doc
+        ), patch.object(self.svc._repo, "ping") as mock_ping:
+            self.svc._monitor_operation(
+                mock_process,
+                doc.id,
+                check_interval_seconds=0,
+                on_monitor_ping=lambda pid: "",
+            )
+            mock_ping.assert_called_once_with(doc.id)
 
     @patch("psutil.Process")
     @patch("logging.handlers.QueueListener")
@@ -2463,9 +2477,7 @@ class TestPipelineRequestParamsOverrides(unittest.TestCase):
                     name="export_stage",
                     operator_uri="@test/export_op",
                     params={"format": "json"},
-                    request_params_overrides={
-                        "dataset_name": "export_dataset"
-                    },
+                    request_params_overrides={"view_name": "export_view"},
                 ),
             ]
         )
@@ -2493,5 +2505,5 @@ class TestPipelineRequestParamsOverrides(unittest.TestCase):
         # Verify second stage overrides
         self.assertEqual(
             doc.pipeline.stages[1].request_params_overrides,
-            {"dataset_name": "export_dataset"},
+            {"view_name": "export_view"},
         )

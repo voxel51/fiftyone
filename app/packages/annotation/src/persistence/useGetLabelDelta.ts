@@ -31,6 +31,7 @@ const LABEL_TYPE_TO_EMBEDDED_DOC: Record<string, string> = {
   Detection: "fiftyone.core.labels.Detections",
   Classification: "fiftyone.core.labels.Classifications",
   Polyline: "fiftyone.core.labels.Polylines",
+  Keypoint: "fiftyone.core.labels.Keypoints",
 };
 
 /**

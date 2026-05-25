@@ -94,7 +94,9 @@ Labelers only have access to datasets to which they have been specifically
 granted access (a dataset's
 :ref:`default access level <enterprise-default-access>` does not apply to
 Labelers), and they may only be granted **Can view** or **Can tag** access
-to datasets.
+to datasets. Additionally, Labelers can update annotations and metadata on
+samples using FiftyOne's :ref:`in-App annotation features <in-app-annotation>`,
+but cannot make changes to the Annotation Schema.
 
 Labelers cannot create new datasets, clone existing datasets, export datasets, or
 view other users of the deployment.
@@ -146,6 +148,89 @@ existing users to the group by clicking on "Add users".
 
    Non-existing users cannot be directly added to a group. Users must be
    invited and accept the invitation before they can be added to a group.
+
+.. _enterprise-service-accounts:
+
+Service accounts
+----------------
+
+Service accounts are non-human principals designed for programmatic, automated,
+or machine-to-machine access to FiftyOne Enterprise. They authenticate
+exclusively via API keys and cannot log in interactively through the App.
+
+Common use cases include:
+
+-  CI/CD pipelines that run model evaluation or dataset quality checks
+-  Data ingestion scripts that upload and curate samples automatically
+-  Automated annotation workflows and model-in-the-loop jobs
+-  Any process that needs to interact with FiftyOne without a human user
+
+Unlike human users, service accounts have no email address, no user profile,
+and cannot receive invitations.
+
+.. note::
+
+   Only admins can create, view, update, or delete service accounts.
+
+**Roles**
+
+Service accounts can only be assigned a role that has API key access enabled, since
+API keys are their only authentication mechanism. Which roles have this
+permission depends on your deployment's license configuration. You can check
+which roles support API keys by navigating to the
+"Settings > Security > Roles" page.
+
+The assigned role determines what the service account can do, such as which
+datasets it can access by default and whether it can create new datasets.
+
+**Groups**
+
+Service accounts can be added to
+:ref:`user groups <enterprise-groups>` in the same way as human users,
+allowing you to manage dataset permissions for a set of service accounts (or a
+mix of users and service accounts) as a single entity.
+
+**Dataset permissions**
+
+Service accounts can be granted individual or group-based dataset permissions
+using the same permission model as human users. All five permission levels —
+**No access**, **Can view**, **Can tag**, **Can edit**, and **Can manage** — apply,
+subject to the service account's role.
+
+**Managing service accounts via the UI**
+
+Admins can manage service accounts through the
+"Settings > Team > Service Accounts" page:
+
+.. image:: /images/enterprise/admin_team_service_accounts_page.png
+   :alt: admin-team-service-accounts-page
+   :align: center
+
+Create a new service account by clicking "Create service account" and
+providing a name, role, and optional description:
+
+.. image:: /images/enterprise/admin_create_service_account.png
+   :alt: admin-create-service-account
+   :align: center
+
+Click on a service account to view its details, edit its name, role, or
+description, and manage its API keys:
+
+.. image:: /images/enterprise/admin_service_account_detail.png
+   :alt: admin-service-account-detail
+   :align: center
+
+**Managing service accounts via the SDK**
+
+Service accounts can be managed programmatically via the
+:ref:`Management SDK <enterprise-sdk-service-account-management>`.
+
+**API keys**
+
+Service accounts authenticate via API keys. These can be generated through the
+UI on the "Settings > Team > Service Accounts" page, or programmatically via
+the :ref:`Management SDK <enterprise-sdk-api-keys>`. Once generated, configure
+the connection by following the steps in :ref:`API Connection <enterprise-api-connection>`.
 
 .. _enterprise-permissions:
 

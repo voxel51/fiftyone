@@ -9,7 +9,7 @@ export const getPythonCommand = (argv: string[]) => {
     return `. /e2e/venv/bin/activate && export PYTHONPATH=/e2e/fiftyone && ${cmd}`;
   }
 
-  return `source ${process.env.VENV_PATH}/bin/activate && export PYTHONPATH=${process.env.FIFTYONE_ROOT_DIR} && ${cmd}`;
+  return `. ${process.env.VENV_PATH}/bin/activate && export PYTHONPATH=${process.env.FIFTYONE_ROOT_DIR} && ${cmd}`;
 };
 
 export const getStringifiedKwargs = (

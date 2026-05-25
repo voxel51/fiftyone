@@ -14,7 +14,14 @@ import eta.core.utils as etau
 
 import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
+from fiftyone.core.session.constants import (
+    DEFAULT_LABEL_SELECTION_STYLE,
+    DEFAULT_SELECTION_STYLE,
+    VALID_ICON_STYLES,
+    VALID_LABEL_SELECTION_STYLES,
+)
 import fiftyone.core.session.events as fose
+from fiftyone.core.session.utils import normalize_selected_samples
 from fiftyone.core.state import build_color_scheme
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
@@ -98,8 +105,10 @@ class Mutation(SetColorScheme):
         )
         state.group_id = None
         state.sample_id = None
-        state.selected = []
         state.selected_labels = []
+        state.selected_samples = []
+        state.sample_selection_style = dict(DEFAULT_SELECTION_STYLE)
+        state.label_selection_style = dict(DEFAULT_LABEL_SELECTION_STYLE)
         state.spaces = foo.default_workspace_factory()
         state.view = None
 
@@ -175,8 +184,63 @@ class Mutation(SetColorScheme):
         session: t.Optional[str],
         selected: t.List[str],
     ) -> bool:
+        """Backward-compatible mutation that accepts a flat list of sample IDs.
+
+        All samples are set to ``"default"`` selection type.
+        """
+        samples = [{"id": sid, "type": "default"} for sid in selected]
         await dispatch_event(
-            subscription, fose.SelectSamples(sample_ids=selected)
+            subscription,
+            fose.SelectSamples(samples=samples),
+        )
+        return True
+
+    @gql.mutation
+    async def set_selected_samples(
+        self,
+        subscription: str,
+        session: t.Optional[str],
+        selected_samples: JSON,
+    ) -> bool:
+        samples = normalize_selected_samples(selected_samples or [])
+        await dispatch_event(
+            subscription,
+            fose.SelectSamples(samples=samples),
+        )
+        return True
+
+    @gql.mutation
+    async def set_sample_selection_style(
+        self,
+        subscription: str,
+        session: t.Optional[str],
+        style: JSON,
+    ) -> bool:
+        if not isinstance(style, dict):
+            style = dict(DEFAULT_SELECTION_STYLE)
+        for key in ("default", "alt"):
+            if style.get(key) not in VALID_ICON_STYLES:
+                style[key] = DEFAULT_SELECTION_STYLE[key]
+        await dispatch_event(
+            subscription, fose.SetSampleSelectionStyle(style=style)
+        )
+        return True
+
+    @gql.mutation
+    async def set_label_selection_style(
+        self,
+        subscription: str,
+        session: t.Optional[str],
+        style: JSON,
+    ) -> bool:
+        incoming = style if isinstance(style, dict) else {}
+        style = dict(DEFAULT_LABEL_SELECTION_STYLE)
+        for key in ("default", "alt"):
+            candidate = incoming.get(key)
+            if candidate in VALID_LABEL_SELECTION_STYLES:
+                style[key] = candidate
+        await dispatch_event(
+            subscription, fose.SetLabelSelectionStyle(style=style)
         )
         return True
 
@@ -208,8 +272,8 @@ class Mutation(SetColorScheme):
         state = get_state()
         state.group_id = None
         state.sample_id = None
-        state.selected = []
         state.selected_labels = []
+        state.selected_samples = []
 
         if not dataset_name:
             state.dataset = None

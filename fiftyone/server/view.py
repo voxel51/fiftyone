@@ -14,7 +14,7 @@ from bson.errors import InvalidId
 
 import fiftyone.core.collections as foc
 import fiftyone.core.dataset as fod
-from fiftyone.core.expressions import ViewField as F, VALUE
+from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -98,7 +98,8 @@ def get_view(
             :class:`fiftyone.core.stages.ViewStage` instances
         filters (None): an optional ``dict`` of App defined filters
         pagination_data (False): whether process samples as pagination data
-            - excludes all :class:`fiftyone.core.fields.DictField` values
+            - excludes all :class:`fiftyone.core.fields.DictField` and
+              :class:`fiftyone.core.fields.VectorField` values
             - filters label fields
         dynamic_group (None): an optional dynamic group value to select. Only
             applicable when a :class:`fiftyone.core.stages.GroupBy` stage is
@@ -237,9 +238,8 @@ def get_extended_view(
             )
 
     if pagination_data:
-        # omit all dict field values for performance, not needed by grid
+        # omit all dict and vector field values for performance, not needed by grid
         view = _project_pagination_paths(view, media_types)
-        view = _add_labels_tags_counts(view)
 
     return view
 
@@ -349,29 +349,6 @@ def handle_group_filter(
     return view, media_types
 
 
-def _add_labels_tags_counts(view):
-    view = view.set_field(_LABEL_TAGS, [], _allow_missing=True)
-
-    for path, field in foc._iter_label_fields(view):
-        if isinstance(field, fof.ListField) or (
-            isinstance(field, fof.EmbeddedDocumentField)
-            and issubclass(field.document_type, fol._HasLabelList)
-        ):
-            if view._is_frame_field(path):
-                add_tags = _add_frame_labels_tags
-            else:
-                add_tags = _add_labels_tags
-        else:
-            if view._is_frame_field(path):
-                add_tags = _add_frame_label_tags
-            else:
-                add_tags = _add_label_tags
-
-        view = add_tags(path, field, view)
-
-    return _count_list_items(_LABEL_TAGS, view)
-
-
 def _project_pagination_paths(
     view: foc.SampleCollection, media_types: Optional[Tuple[str]] = None
 ):
@@ -385,7 +362,7 @@ def _project_pagination_paths(
     excluded = [
         path
         for path, field in schema.items()
-        if isinstance(field, fof.DictField)
+        if isinstance(field, (fof.DictField, fof.VectorField))
     ]
 
     selected_fields = ["_group"]  # store dynamic group values
@@ -868,100 +845,6 @@ def _apply_none(expr, f, none):
     return expr
 
 
-def _add_frame_labels_tags(path, field, view):
-    path = path[len("frames.") :]
-    items = path
-    if isinstance(field, fof.ListField):
-        field = field.field
-
-    if issubclass(field.document_type, fol._HasLabelList):
-        items = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD)
-
-    reduce = F(items).reduce(VALUE.extend(F("tags")), [])
-    view = view.add_stage(
-        fosg.SetField(
-            _LABEL_TAGS,
-            F(_LABEL_TAGS).extend(
-                F("frames").reduce(
-                    VALUE.extend(F(items).exists().if_else(reduce, [])),
-                    [],
-                )
-            ),
-            # we are only counting "first frame" labels tags, frame limit is ok
-            _allow_limit=True,
-            _allow_missing=True,
-        )
-    )
-    return view
-
-
-def _add_frame_label_tags(path, field, view):
-    path = path[len("frames.") :]
-    tags = "%s.tags" % path
-    view = view.add_stage(
-        fosg.SetField(
-            _LABEL_TAGS,
-            F(_LABEL_TAGS).extend(
-                F("frames").reduce(
-                    VALUE.extend((F(tags) != None).if_else(F(tags), [])), []
-                )
-            ),
-            # we are only counting "first frame" label tags, frame limit is ok
-            _allow_limit=True,
-            _allow_missing=True,
-        )
-    )
-    return view
-
-
-def _add_labels_tags(path, field, view):
-    items = path
-    if isinstance(field, fof.ListField):
-        field = field.field
-
-    if issubclass(field.document_type, fol._HasLabelList):
-        items = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD)
-
-    view = view.set_field(
-        _LABEL_TAGS,
-        F(path)
-        .exists()
-        .if_else(
-            F(_LABEL_TAGS).extend(
-                F(items).reduce(VALUE.extend(F("tags")), [])
-            ),
-            F(_LABEL_TAGS),
-        ),
-        _allow_missing=True,
-    )
-    return view
-
-
-def _add_label_tags(path, field, view):
-    tags = "%s.tags" % path
-    return view.set_field(
-        _LABEL_TAGS,
-        F(_LABEL_TAGS).extend((F(tags) != None).if_else(F(tags), [])),
-        _allow_missing=True,
-    )
-
-
-def _count_list_items(path, view):
-    function = (
-        "function(items) {"
-        "let counts = {};"
-        "items && items.forEach((i) => {"
-        "counts[i] = 1 + (counts[i] || 0);"
-        "});"
-        "return counts;"
-        "}"
-    )
-
-    return view.set_field(
-        path, F(path)._function(function), _allow_missing=True
-    )
-
-
 def _match_label_tags(view: foc.SampleCollection, label_tags):
     label_paths = [
         (
@@ -975,15 +858,15 @@ def _match_label_tags(view: foc.SampleCollection, label_tags):
     values = label_tags["values"]
     exclude = label_tags["exclude"]
     matching = label_tags["isMatching"]
-    expr = lambda exclude, values: {"$nin" if exclude else "$in": values}
 
     if not exclude or matching:
+        operator = "$nor" if exclude else "$or"
         view = view.mongo(
             [
                 {
                     "$match": {
-                        "$or": [
-                            {f"{path}.tags": expr(exclude, values)}
+                        operator: [
+                            {f"{path}.tags": {"$in": values}}
                             for path in label_paths
                         ]
                     }
@@ -991,16 +874,17 @@ def _match_label_tags(view: foc.SampleCollection, label_tags):
             ]
         )
 
-    if not matching and exclude:
-        view = view.exclude_labels(
-            tags=label_tags["values"],
-            omit_empty=False,
-            fields=view._get_label_fields(),
-        )
-    elif not matching:
-        view = view.select_labels(
-            tags=label_tags["values"],
-            fields=view._get_label_fields(),
-        )
+    if not matching:
+        if exclude:
+            view = view.exclude_labels(
+                tags=values,
+                omit_empty=False,
+                fields=view._get_label_fields(),
+            )
+        else:
+            view = view.select_labels(
+                tags=values,
+                fields=view._get_label_fields(),
+            )
 
     return view

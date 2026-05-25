@@ -99,6 +99,7 @@ class FiftyOneCommand(Command):
         _register_command(subparsers, "datasets", DatasetsCommand)
         _register_command(subparsers, "migrate", MigrateCommand)
         _register_command(subparsers, "operators", OperatorsCommand)
+        _register_command(subparsers, "skills", SkillsCommand)
         _register_command(subparsers, "delegated", DelegatedCommand)
         _register_command(subparsers, "plugins", PluginsCommand)
         _register_command(subparsers, "utils", UtilsCommand)
@@ -1820,15 +1821,16 @@ class DatasetZooListCommand(Command):
             "-t",
             "--tags",
             metavar="TAGS",
-            help="only show datasets with the specified tag or list,of,tags",
+            nargs="+",
+            help="only show datasets with the specified tag(s)",
         )
         parser.add_argument(
             "-l",
             "--license",
             metavar="LICENSE",
+            nargs="+",
             help=(
-                "only show datasets distributed under the specified license "
-                "or any of the list,of,licenses"
+                "only show datasets distributed under the specified license(s)"
             ),
         )
 
@@ -1867,11 +1869,8 @@ def _print_zoo_dataset_list(
     match_license=None,
     names_only=False,
 ):
-    if match_tags is not None:
-        match_tags = match_tags.split(",")
-
     if match_license is not None:
-        match_license = set(match_license.split(","))
+        match_license = set(match_license)
 
     available_datasets = defaultdict(dict)
     for source, datasets in all_datasets.items():
@@ -2353,7 +2352,8 @@ class ModelZooListCommand(Command):
             "-t",
             "--tags",
             metavar="TAGS",
-            help="only show models with the specified tag or list,of,tags",
+            nargs="+",
+            help="only show models with the specified tag(s)",
         )
         parser.add_argument(
             "-s",
@@ -2365,10 +2365,8 @@ class ModelZooListCommand(Command):
             "-l",
             "--license",
             metavar="LICENSE",
-            help=(
-                "only show models distributed under the specified license or "
-                "any of the list,of,licenses"
-            ),
+            nargs="+",
+            help="only show models distributed under the specified license(s)",
         )
 
     @staticmethod
@@ -2378,12 +2376,6 @@ class ModelZooListCommand(Command):
         tags = args.tags
         source = args.source
         license = args.license
-
-        if tags is not None:
-            tags = tags.split(",")
-
-        if license is not None:
-            license = license.split(",")
 
         models = fozm._list_zoo_models(
             tags=tags, source=source, license=license
@@ -3878,6 +3870,9 @@ class PluginsListCommand(Command):
         # List plugins whose name matches the given glob pattern
         fiftyone plugins list --glob-patt '@voxel51/*'
 
+        # List plugins with the given tag
+        fiftyone plugins list --tags <tag>
+
         # List enabled plugins
         fiftyone plugins list --enabled
 
@@ -3895,6 +3890,13 @@ class PluginsListCommand(Command):
             "--glob-patt",
             metavar="PATT",
             help="only show plugins whose name matches the glob pattern",
+        )
+        parser.add_argument(
+            "-t",
+            "--tags",
+            metavar="TAGS",
+            nargs="+",
+            help="only show plugins with the specified tag(s)",
         )
         parser.add_argument(
             "-e",
@@ -3949,6 +3951,7 @@ class PluginsListCommand(Command):
 
         _print_plugins_list(
             glob_patt=args.glob_patt,
+            tags=args.tags,
             enabled=enabled,
             builtin=builtin,
             names_only=args.names_only,
@@ -3956,7 +3959,7 @@ class PluginsListCommand(Command):
 
 
 def _print_plugins_list(
-    glob_patt=None, enabled="all", builtin="all", names_only=False
+    glob_patt=None, tags=None, enabled="all", builtin="all", names_only=False
 ):
     plugin_definitions = fop.list_plugins(
         enabled=enabled, builtin=builtin, shadowed="all"
@@ -3966,6 +3969,13 @@ def _print_plugins_list(
         regex = re.compile(fnmatch.translate(glob_patt))
         plugin_definitions = [
             pd for pd in plugin_definitions if regex.match(pd.name)
+        ]
+
+    if tags is not None:
+        plugin_definitions = [
+            pd
+            for pd in plugin_definitions
+            if all(tag in pd.tags for tag in tags)
         ]
 
     if names_only:
@@ -3984,6 +3994,7 @@ def _print_plugins_list(
     headers = [
         "plugin",
         "version",
+        "tags",
         "enabled",
         "builtin",
         "shadowed",
@@ -3997,6 +4008,7 @@ def _print_plugins_list(
             {
                 "plugin": pd.name,
                 "version": pd.version or "",
+                "tags": pd.tags,
                 "enabled": enabled,
                 "builtin": pd.builtin,
                 "shadowed": shadowed,
@@ -4452,6 +4464,128 @@ class PluginsDeleteCommand(Command):
 
         for name in names:
             fop.delete_plugin(name)
+
+
+class SkillsCommand(Command):
+    """Tools for working with FiftyOne skills."""
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "list", SkillsListCommand)
+
+    @staticmethod
+    def execute(parser, args):
+        parser.print_help()
+
+
+class SkillsListCommand(Command):
+    """List skills provided by installed plugins.
+
+    Examples::
+
+        # List all available skills
+        fiftyone skills list
+
+        # List skills from a specific plugin
+        fiftyone skills list --plugin @voxel51/my-plugin
+
+        # List skills in a specific category
+        fiftyone skills list --category data-ingestion
+
+        # List enabled skills
+        fiftyone skills list --enabled
+
+        # List skill names only
+        fiftyone skills list --names-only
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-p",
+            "--plugin",
+            nargs="+",
+            metavar="PLUGIN",
+            help="only show skills from this plugin(s)",
+        )
+        parser.add_argument(
+            "-c",
+            "--category",
+            nargs="+",
+            metavar="CATEGORY",
+            help="only show skills in this category(s)",
+        )
+        parser.add_argument(
+            "-e",
+            "--enabled",
+            action="store_true",
+            default=None,
+            help="only show skills from enabled plugins",
+        )
+        parser.add_argument(
+            "-d",
+            "--disabled",
+            action="store_true",
+            default=None,
+            help="only show skills from disabled plugins",
+        )
+        parser.add_argument(
+            "-n",
+            "--names-only",
+            action="store_true",
+            help="only show names",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if args.enabled:
+            enabled = True
+        elif args.disabled:
+            enabled = False
+        else:
+            enabled = "all"
+
+        _print_skills_list(
+            plugin=args.plugin,
+            category=args.category,
+            enabled=enabled,
+            names_only=args.names_only,
+        )
+
+
+def _print_skills_list(
+    plugin=None, category=None, enabled="all", names_only=False
+):
+    skills = fop.list_skills(plugin=plugin, category=category, enabled=enabled)
+
+    if names_only:
+        skills_map = defaultdict(list)
+        for s in skills:
+            skills_map[s.plugin_name].append(s)
+
+        for pname, plugin_skills in skills_map.items():
+            print(pname)
+            for s in plugin_skills:
+                print("    " + s.name)
+
+        return
+
+    enabled_plugins = set(fop.list_enabled_plugins())
+
+    headers = ["name", "category", "plugin", "enabled"]
+    rows = [
+        {
+            "name": s.name,
+            "category": s.category or "",
+            "plugin": s.plugin_name,
+            "enabled": s.plugin_name in enabled_plugins,
+        }
+        for s in skills
+    ]
+    records = [tuple(_format_cell(r[key]) for key in headers) for r in rows]
+    table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
+    print(table_str)
 
 
 class LabsCommand(Command):
@@ -5205,8 +5339,8 @@ def _print_dict_as_table(d, headers=None):
 
     records = []
     for k, v in d.items():
-        if isinstance(v, list) and v:
-            records.append((k, v[0]))
+        if isinstance(v, list):
+            records.append((k, v[0] if v else None))
             for e in v[1:]:
                 records.append(("", e))
         else:

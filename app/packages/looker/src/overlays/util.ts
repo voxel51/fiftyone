@@ -4,8 +4,14 @@
 
 import { COLOR_BY, REGRESSION, getColor } from "@fiftyone/utilities";
 import colorString from "color-string";
-import { INFO_COLOR, SELECTED_AND_HOVERED_COLOR } from "../constants";
+import {
+  INFO_COLOR,
+  LABEL_SELECTION_GREEN,
+  LABEL_SELECTION_RED,
+  SELECTED_AND_HOVERED_COLOR,
+} from "../constants";
 import type {
+  BaseOptions,
   BaseState,
   Coloring,
   Coordinates,
@@ -313,14 +319,17 @@ export function getInstanceStrokeStyles({
   getColor,
   isHoveringInstance,
   dashLength,
+  labelSelectionColor,
 }: {
   isSelected: boolean;
   getColor: () => string;
   isHoveringInstance: boolean;
   dashLength: number;
+  labelSelectionColor?: string | null;
 }) {
-  // Main stroke color
-  let strokeColor = getColor();
+  // Main stroke color — override with label selection color when selected
+  let strokeColor =
+    labelSelectionColor && isSelected ? labelSelectionColor : getColor();
   let overlayStrokeColor: string | null = null;
   let overlayDash: number | null = null;
 
@@ -337,4 +346,38 @@ export function getInstanceStrokeStyles({
   }
 
   return { strokeColor, overlayStrokeColor, overlayDash };
+}
+
+export interface LabelSelectionVisuals {
+  styleName: string;
+  /** The override color for the label, or null to keep the field's color */
+  color: string | null;
+}
+
+/**
+ * Resolves the visual style for a selected label based on its type and the
+ * configured label selection style. Returns null if the label is not selected.
+ */
+export function resolveLabelSelectionVisuals(
+  labelId: string,
+  options: BaseOptions
+): LabelSelectionVisuals | null {
+  const { selectedLabels, selectedLabelTypes, labelSelectionStyle } = options;
+
+  if (!selectedLabels.includes(labelId)) {
+    return null;
+  }
+
+  const labelType = selectedLabelTypes[labelId] || "default";
+  const styleName = labelSelectionStyle[labelType] || "dashed";
+
+  switch (styleName) {
+    case "dashed-green":
+      return { styleName, color: LABEL_SELECTION_GREEN };
+    case "dashed-red":
+      return { styleName, color: LABEL_SELECTION_RED };
+    case "dashed":
+    default:
+      return { styleName, color: null };
+  }
 }

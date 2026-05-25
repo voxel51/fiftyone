@@ -65,7 +65,10 @@ export const useExecutionStoreSubscribe = <T>({
     }
 
     if (!event.data) {
-      console.error("No data in execution store subscribe event");
+      // Empty-data frames are emitted by sse-starlette keep-alive
+      // comments / unnamed events. Not an error — just skip silently
+      // (debug-level so it's still discoverable if you need it).
+      console.debug("No data in execution store subscribe event");
       return;
     }
 

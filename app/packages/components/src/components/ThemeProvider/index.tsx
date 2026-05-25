@@ -88,7 +88,6 @@ let theme = extendMuiTheme({
           primary: "hsl(200, 0%, 0%)",
           secondary: "hsl(200, 0%, 30%)",
           tertiary: "hsl(200, 0%, 50%)",
-          lookerTag: "hsl(200, 0%, 100%)",
           invert: "hsl(200, 0%, 100%)",
         },
         custom: {
@@ -169,11 +168,10 @@ let theme = extendMuiTheme({
         },
         focusVisible: "hsl(212, 97%, 43%, 0.3)",
         text: {
+          buttonHighlight: "hsl(200, 0%, 100%)",
           primary: "hsl(200, 0%, 100%)",
           secondary: "hsl(200, 0%, 70%)",
           tertiary: "hsl(200, 0%, 50%)",
-          buttonHighlight: "hsl(200, 0%, 100%)",
-          lookerTag: "hsl(200, 0%, 100%)",
           invert: "hsl(200, 0%, 5%)",
         },
         custom: {

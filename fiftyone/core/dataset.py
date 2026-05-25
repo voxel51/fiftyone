@@ -18,6 +18,7 @@ import os
 import random
 import string
 from datetime import datetime
+from typing import Optional
 
 import cachetools
 import eta.core.serial as etas
@@ -56,6 +57,7 @@ foos = fou.lazy_import("fiftyone.operators.store")
 
 
 _SUMMARY_FIELD_KEY = "_summary_field"
+_AUTO_TRANSFORMATION_MAX_INTERMEDIATES = 2
 
 logger = logging.getLogger(__name__)
 
@@ -1366,18 +1368,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         # Try to infer from group slice
         if self.media_type == fom.GROUP:
-            group = None
-            if self.group_field is not None:
-                group = getattr(sample, self.group_field, None)
-            if group is None and self.group_field == "group":
-                group = getattr(sample, "group", None)
-
-            if group is not None:
-                try:
-                    slice_name = group.name
-                    return intrinsics_map.get(slice_name)
-                except (AttributeError, KeyError):
-                    pass
+            slice_name = fog.get_group_slice_name(sample, self.group_field)
+            if slice_name is not None:
+                return intrinsics_map.get(slice_name)
 
         return None
 
@@ -1403,6 +1396,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             4. If ``chain_via`` is provided and no direct match is found,
                chain transforms through the intermediate frames
+
+            5. If no direct match is found, ``chain_via`` is not provided,
+               and ``target_frame`` is ``"world"``, attempt automatic chaining
+               through a bounded number of intermediate frames (default 2).
+               This is only used when exactly one valid path exists
 
         Args:
             sample: a :class:`fiftyone.core.sample.Sample`
@@ -1438,21 +1436,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # Try to infer source_frame from group slice if not provided
         if source_frame is None:
             if self.media_type == fom.GROUP:
-                group = None
-                if self.group_field is not None:
-                    group = getattr(sample, self.group_field, None)
-                if group is None and self.group_field == "group":
-                    group = getattr(sample, "group", None)
+                source_frame = fog.get_group_slice_name(
+                    sample, self.group_field
+                )
 
-                if group is not None:
-                    try:
-                        source_frame = group.name
-                    except (AttributeError, KeyError):
-                        pass
+        direct_transforms = self._get_direct_transformations(
+            sample, transforms
+        )
 
         # Try direct resolution first
         result = self._resolve_transformation_direct(
-            sample, source_frame, target_frame, transforms
+            source_frame, target_frame, direct_transforms
         )
         if result is not None:
             return result
@@ -1460,64 +1454,182 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # If chain_via is provided, try chaining through intermediate frames
         if chain_via is not None and source_frame is not None:
             return self._resolve_transformation_chain(
-                sample, source_frame, target_frame, chain_via, transforms
+                source_frame, target_frame, chain_via, direct_transforms
+            )
+
+        # Auto-chain only for source -> world when no explicit chain is given
+        if (
+            chain_via is None
+            and source_frame is not None
+            and target_frame == focam.DEFAULT_TRANSFORM_TARGET_FRAME
+        ):
+            return self._resolve_transformation_auto_chain(
+                source_frame, target_frame, direct_transforms
             )
 
         return None
 
-    def _resolve_transformation_direct(
-        self, sample, source_frame, target_frame, transforms
-    ):
-        """Directly resolve transform without chaining."""
-        # Check for sample-level transforms by matching type
-        for _, value in sample.iter_fields():
-            if isinstance(value, list):
-                for item in value:
-                    if isinstance(
-                        item,
-                        (focam.StaticTransform, focam.StaticTransformRef),
-                    ):
-                        t = self._resolve_single_transformation(
-                            item, source_frame, target_frame
-                        )
-                        if t is not None:
-                            return t
-            elif isinstance(
-                value, (focam.StaticTransform, focam.StaticTransformRef)
-            ):
-                t = self._resolve_single_transformation(
-                    value, source_frame, target_frame
-                )
-                if t is not None:
-                    return t
+    def _get_direct_transformations(self, sample, transforms):
+        """Builds direct transforms keyed by ``(source_frame, target_frame)``."""
+        sample_transforms = {}
+        dataset_transforms = {}
+        world_shorthand = {}
 
+        def _add_transform(target, source_frame, target_frame, transform):
+            if source_frame is None:
+                return
+
+            if target_frame is None:
+                target_frame = focam.DEFAULT_TRANSFORM_TARGET_FRAME
+
+            target.setdefault((source_frame, target_frame), transform)
+
+        for _, value in sample.iter_fields():
+            values = value if isinstance(value, list) else (value,)
+            for item in values:
+                if isinstance(item, focam.StaticTransform):
+                    _add_transform(
+                        sample_transforms,
+                        item.source_frame,
+                        item.target_frame,
+                        item,
+                    )
+                elif isinstance(item, focam.StaticTransformRef):
+                    transform = transforms.get(item.ref, None)
+                    if transform is None:
+                        continue
+
+                    source_frame, target_frame = self._parse_transform_ref(
+                        item.ref
+                    )
+                    _add_transform(
+                        sample_transforms,
+                        source_frame,
+                        target_frame,
+                        transform,
+                    )
+
+        for key, transform in transforms.items():
+            source_frame, target_frame = self._parse_transform_ref(key)
+            entry_key = (source_frame, target_frame)
+
+            # Normalize implicit "source -> world" dataset entries so the
+            # returned transform object matches the normalized lookup key.
+            if (
+                isinstance(transform, focam.StaticTransform)
+                and transform.target_frame is None
+                and target_frame == focam.DEFAULT_TRANSFORM_TARGET_FRAME
+            ):
+                transform = copy.deepcopy(transform)
+                transform.target_frame = focam.DEFAULT_TRANSFORM_TARGET_FRAME
+
+            if "::" in key:
+                dataset_transforms[entry_key] = transform
+            else:
+                world_shorthand[entry_key] = transform
+
+        for entry_key, transform in world_shorthand.items():
+            # Preserve explicit "source::world" entries over shorthand
+            # "source" entries when both are present.
+            dataset_transforms.setdefault(entry_key, transform)
+
+        # Sample-level transforms win over dataset-level transforms.
+        dataset_transforms.update(sample_transforms)
+        return dataset_transforms
+
+    def _resolve_transformation_direct(
+        self, source_frame, target_frame, direct_transforms
+    ):
+        """Directly resolves a transform from the normalized direct map."""
         if source_frame is None:
             return None
 
-        # Look up in dataset-level transforms
-        key = f"{source_frame}::{target_frame}"
-        if key in transforms:
-            return transforms[key]
-
-        # Try without target frame (implies world)
-        if (
-            target_frame == focam.DEFAULT_TRANSFORM_TARGET_FRAME
-            and source_frame in transforms
-        ):
-            return transforms[source_frame]
-
-        return None
+        return direct_transforms.get((source_frame, target_frame), None)
 
     def _resolve_transformation_chain(
-        self, sample, source_frame, target_frame, chain_via, transforms
+        self, source_frame, target_frame, chain_via, direct_transforms
     ):
         """Resolve transform by chaining through intermediate frames."""
         frames = [source_frame] + list(chain_via) + [target_frame]
 
+        return self._resolve_transformation_chain_frames(
+            frames, direct_transforms
+        )
+
+    def _resolve_transformation_auto_chain(
+        self,
+        source_frame,
+        target_frame,
+        direct_transforms,
+        max_intermediates=None,
+    ):
+        """Resolve a unique source -> ... -> world chain automatically.
+
+        We use a deterministic DFS (depth-limited) over simple paths in the
+        direct-transform graph
+        """
+        if max_intermediates is None:
+            max_intermediates = _AUTO_TRANSFORMATION_MAX_INTERMEDIATES
+
+        if max_intermediates < 1:
+            return None
+
+        # Convert the normalized direct transforms into an adjacency list
+        adjacency = defaultdict(list)
+        for (src, tgt), transform in direct_transforms.items():
+            adjacency[src].append((tgt, transform))
+
+        for edges in adjacency.values():
+            edges.sort(key=lambda item: item[0])
+
+        max_hops = max_intermediates + 1
+        valid_path_count = 0
+        valid_transform = None
+        # Track the current path so our depth-limited DFS can both compose
+        # transforms in order and prevent revisiting frames within a
+        # candidate simple path.
+        pending = [([source_frame], None)]
+
+        while pending:
+            path, composed = pending.pop()
+            current = path[-1]
+            if current == target_frame:
+                # Direct source -> target resolution was already attempted
+                # before auto-chaining, so only count paths with at least one
+                # intermediate frame here
+                if len(path) > 2:
+                    valid_path_count += 1
+                    if valid_path_count == 1:
+                        valid_transform = composed
+                    else:
+                        # If more than one forward path works,
+                        # implicit chaining is ambiguous, so resolve nothing.
+                        return None
+
+                continue
+
+            if len(path) - 1 >= max_hops:
+                continue
+
+            for next_frame, transform in reversed(adjacency.get(current, ())):
+                if next_frame in path:
+                    continue
+
+                next_composed = (
+                    transform
+                    if composed is None
+                    else composed.compose(transform)
+                )
+                pending.append((path + [next_frame], next_composed))
+
+        return valid_transform
+
+    def _resolve_transformation_chain_frames(self, frames, direct_transforms):
+        """Resolve a transform by composing direct transforms in frame order."""
         result = None
         for src, tgt in zip(frames, frames[1:]):
             transform = self._resolve_transformation_direct(
-                sample, src, tgt, transforms
+                src, tgt, direct_transforms
             )
 
             if transform is None:
@@ -1530,37 +1642,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return result
 
-    def _resolve_single_transformation(
-        self, value, source_frame, target_frame
-    ):
-        """Helper to resolve a single transform value."""
-        transforms = self.static_transforms or {}
+    def _parse_transform_ref(self, ref):
+        """Parses frame names from 'source::target' or 'source' ref keys."""
+        parts = ref.split("::", 1)
+        source_frame = parts[0]
+        target_frame = (
+            parts[1]
+            if len(parts) > 1
+            else focam.DEFAULT_TRANSFORM_TARGET_FRAME
+        )
 
-        if isinstance(value, focam.StaticTransform):
-            val_target = (
-                value.target_frame or focam.DEFAULT_TRANSFORM_TARGET_FRAME
-            )
-            if (
-                value.source_frame == source_frame
-                and val_target == target_frame
-            ):
-                return value
-        elif isinstance(value, focam.StaticTransformRef):
-            # Look up the reference
-            ref_value = transforms.get(value.ref)
-            if ref_value is not None:
-                # Parse the ref to check frames
-                parts = value.ref.split("::", 1)
-                ref_source = parts[0]
-                ref_target = (
-                    parts[1]
-                    if len(parts) > 1
-                    else focam.DEFAULT_TRANSFORM_TARGET_FRAME
-                )
-                if ref_source == source_frame and ref_target == target_frame:
-                    return ref_value
-
-        return None
+        return source_frame, target_frame
 
     def get_transform_chain(
         self, source_frame, target_frame, intermediate_frames=None
@@ -1724,6 +1816,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Raises:
             ExceptionGroup: if the label schema is invalid
         """
+        # Defensive: the frontend is expected to submit a schema with no
+        # ontology-sourced attributes or _source markers, but strip them here
+        # regardless so a hand-edited / malformed payload cannot persist
+        # ontology content as local copies.
+        label_schema = foa.dehydrate_applied_ontology(label_schema)
         foa.validate_label_schemas(
             self,
             label_schema,
@@ -8940,7 +9037,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _expand_schema(self, sample, dynamic):
         expanded = False
+        schema = None
 
+        schema = None
         if not dynamic:
             schema = self.get_field_schema(include_private=True)
 
@@ -8998,6 +9097,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self.add_group_slice(slice_name, media_type)
 
     def _expand_frame_schema(self, frames, dynamic):
+        schema = None
         if not dynamic:
             schema = self.get_frame_field_schema(include_private=True)
 
@@ -11112,17 +11212,23 @@ def _merge_docs(
                 doc_fields.append(root)
 
             if merge_lists:
-                for i in range(len(list_fields)):
-                    f = list_fields[i]
-                    if f.startswith(root + "."):
-                        del list_fields[i]
-                        doc_list_fields[root].append(f[len(root + ".") :])
+                prefix = root + "."
 
-                for i in range(len(elem_fields)):
-                    f = elem_fields[i]
-                    if f.startswith(root + "."):
-                        del elem_fields[i]
-                        doc_elem_fields[root].append(f[len(root + ".") :])
+                _keep_list_fields = []
+                for f in list_fields:
+                    if f.startswith(prefix):
+                        doc_list_fields[root].append(f[len(prefix) :])
+                    else:
+                        _keep_list_fields.append(f)
+                list_fields[:] = _keep_list_fields
+
+                _keep_elem_fields = []
+                for f in elem_fields:
+                    if f.startswith(prefix):
+                        doc_elem_fields[root].append(f[len(prefix) :])
+                    else:
+                        _keep_elem_fields.append(f)
+                elem_fields[:] = _keep_elem_fields
 
     # Handle merging of simple fields
     if overwrite:

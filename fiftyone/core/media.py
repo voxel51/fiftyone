@@ -5,9 +5,9 @@ Sample media utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import eta.core.image as etai
 import eta.core.video as etav
-
 
 # Valid media types
 VIDEO = "video"

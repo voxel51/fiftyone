@@ -4,14 +4,20 @@ import {
   DefaultContextManager,
   useActiveModalFields,
   useQueryPerformanceSampleLimit,
+  useUnboundStateRef,
 } from "@fiftyone/state";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { jotaiStore } from "@fiftyone/state/src/jotai";
 import { useCallback, useMemo } from "react";
 import { usePrimitiveController } from "./Edit/useActivePrimitive";
 import useSave from "./Edit/useSave";
 import { useAnnotationSchemaContext } from "./state";
 import useCanManageSchema from "./useCanManageSchema";
-import { useSchemaManager } from "./useSchemaManager";
+import { useDeactivateAllModes } from "./useDeactivateAllModes";
+import {
+  schemaManagementOpsAtom,
+  useSchemaResolver,
+} from "./useSchemaResolver";
 
 /**
  * Status code when attempting to initialize annotation schema.
@@ -101,14 +107,28 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
 
   const [activeFields, setActiveFields] = useActiveModalFields();
   const { setLabelSchema, setActiveSchemaPaths } = useAnnotationSchemaContext();
-  const schemaManager = useSchemaManager();
   const sampleScanLimit = useQueryPerformanceSampleLimit();
   const canManageSchema = useCanManageSchema();
+  const schemaResolver = useSchemaResolver();
   const { isPrimitive, setActivePrimitive } = usePrimitiveController();
   const { reset: clearStaleMutations } = useSampleMutationManager();
+  // Held in a ref so exit() invokes the most recent deactivator chain
+  // even when the captured `exit` closure was snapshotted at mount.
+  const deactivateAllModesRef = useUnboundStateRef(useDeactivateAllModes());
 
   const activateField = useCallback(
     async (field: string): Promise<EnterResult> => {
+      // Read management ops from the store at execution time to avoid
+      // stale closure — the atom may be set by SchemaManagementProvider's
+      // effect after this callback was created.
+      const mgmtOps = jotaiStore.get(schemaManagementOpsAtom);
+
+      if (!canManageSchema || !mgmtOps) {
+        return {
+          status: InitializationStatus.InsufficientPermissions,
+        };
+      }
+
       // activate only the specified field
       setActiveFields([field]);
 
@@ -119,30 +139,21 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       // create and activate the field schema
       try {
         // check for existing schema
-        let listSchemaResponse = await schemaManager.listSchemas({});
+        let listSchemaResponse = await schemaResolver.listSchemas({});
 
         // if it doesn't exist, create it
         if (!listSchemaResponse.label_schemas[field]?.label_schema) {
-          if (!canManageSchema) {
-            setLabelSchema(listSchemaResponse.label_schemas);
-            return {
-              status: InitializationStatus.InsufficientPermissions,
-            };
-          }
-
-          await schemaManager.initializeSchema({
+          await mgmtOps.initializeSchema({
             field,
             scan_samples: true,
             limit: sampleScanLimit,
           });
         }
 
-        if (canManageSchema) {
-          await schemaManager.activateSchemas({ fields: [field] });
-        }
+        await mgmtOps.activateSchemas({ fields: [field] });
 
         // refresh annotation state
-        listSchemaResponse = await schemaManager.listSchemas({});
+        listSchemaResponse = await schemaResolver.listSchemas({});
         setLabelSchema(listSchemaResponse.label_schemas);
         setActiveSchemaPaths(listSchemaResponse.active_label_schemas);
 
@@ -166,7 +177,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       canManageSchema,
       isPrimitive,
       sampleScanLimit,
-      schemaManager,
+      schemaResolver,
       setActiveFields,
       setActivePrimitive,
       setActiveSchemaPaths,
@@ -219,9 +230,10 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
     if (contextManager.isActive()) {
       saveChanges();
       clearStaleMutations();
+      deactivateAllModesRef.current();
       contextManager.exit();
     }
-  }, [clearStaleMutations, contextManager, saveChanges]);
+  }, [clearStaleMutations, contextManager, deactivateAllModesRef, saveChanges]);
 
   return useMemo(
     () => ({

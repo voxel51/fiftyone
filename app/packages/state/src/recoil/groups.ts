@@ -6,12 +6,6 @@ import {
   groupSliceFragment,
   groupSliceFragment$key,
 } from "@fiftyone/relay";
-import {
-  is3d,
-  isFo3d,
-  setContains3d,
-  setContainsFo3d,
-} from "@fiftyone/utilities";
 import { get as getPath } from "lodash";
 import { VariablesOf } from "react-relay";
 import {
@@ -40,6 +34,14 @@ import {
 } from "./dynamicGroups";
 import { ModalSample, modalLooker, modalSample, modalSelector } from "./modal";
 import { RelayEnvironmentKey } from "./relay";
+import {
+  active3dSlices,
+  allNon3dSlices,
+  has3dSlice,
+  interaction3dSample,
+  is3dPinned,
+  pinned3DSampleSlice,
+} from "./renderConfig3d.atoms";
 import { datasetName, parentMediaTypeSelector } from "./selectors";
 import { State } from "./types";
 import { mapSampleResponse } from "./utils";
@@ -75,36 +77,6 @@ export const groupMediaIsCarouselVisible = selector<boolean>({
 });
 
 /**
- * User setting controlling whether the 3D viewer panel is visible
- * in the modal for grouped datasets with 3D slices.
- */
-export const groupMedia3dVisibleSetting = atom<boolean>({
-  key: "groupMediaIs3dVisibleSetting",
-  default: true,
-  effects: [
-    getBrowserStorageEffectForKey("groupMediaIs3DVisible", {
-      sessionStorage: true,
-      valueClass: "boolean",
-    }),
-  ],
-});
-
-/**
- * Derived selector that determines if the 3D viewer should actually be visible.
- * Combines user setting with contextual rules (requires 3D slices, hidden for ImaVid in nested groups).
- */
-export const groupMediaIs3dVisible = selector<boolean>({
-  key: "groupMedia3dVisible",
-  get: ({ get }) => {
-    const set = get(groupMediaTypesSet);
-    const has3d = setContains3d(set);
-    const isImaVidInNestedGroup =
-      get(shouldRenderImaVidLooker(true)) && get(isNestedDynamicGroup);
-    return get(groupMedia3dVisibleSetting) && has3d && !isImaVidInNestedGroup;
-  },
-});
-
-/**
  * User setting controlling whether the main 2D viewer
  * is visible in the modal for grouped datasets. Persisted to session storage.
  */
@@ -134,37 +106,6 @@ export const groupMediaIsMain2DViewerVisible = selector<boolean>({
   },
 });
 
-/**
- * The name of the currently pinned 3D slice. When a 3D slice is pinned,
- * its sample data is used for sidebar display instead of the main slice's data.
- */
-export const pinned3DSampleSlice = atom<string | null>({
-  key: "pinned3DSampleSlice",
-  default: null,
-});
-
-/**
- * Whether the 3D viewer is currently "pinned" (focused). When true, the sidebar
- * displays data from the pinned 3D sample rather than the main modal sample.
- */
-export const pinned3d = atom<boolean>({
-  key: "pinned3d",
-  default: false,
-});
-
-export const pinned3DSample = selector({
-  key: "pinned3DSample",
-  get: ({ get }) => {
-    if (get(hasFo3dSlice)) {
-      return get(fo3dSample);
-    }
-
-    return get(all3dSlicesToSampleMap)[get(pinned3DSampleSlice)];
-  },
-});
-
-export type SliceName = string | undefined | null;
-
 export const isGroup = selector<boolean>({
   key: "isGroup",
   get: ({ get }) => {
@@ -191,7 +132,7 @@ export const groupSlice = selector<string>({
         get(defaultGroupSlice) === slice ? new DefaultValue() : slice
       );
       set(selectedLabels, []);
-      set(selectedSamples, new Set());
+      set(selectedSamples, new Map());
 
       return;
     }
@@ -201,7 +142,7 @@ export const groupSlice = selector<string>({
       const session = getSessionRef();
       session.sessionGroupSlice =
         slice instanceof DefaultValue ? undefined : slice;
-      session.selectedSamples = new Set();
+      session.selectedSamples = new Map();
       session.selectedLabels = [];
 
       unsubscribe();
@@ -227,7 +168,7 @@ export const defaultGroupSlice = graphQLSyncFragmentAtom<
   }
 );
 
-export const modalGroupSlice = atom<string>({
+export const modalGroupSlice = atom<string | null>({
   key: "modalGroupSlice",
   default: null,
 });
@@ -263,6 +204,48 @@ export const groupSlices = selector({
   },
 });
 
+/**
+ * Slice names that actually exist for the currently opened modal group.
+ *
+ * This differs from {@link groupSlices}, which describes dataset-level slice
+ * definitions. Sparse groups may omit some slices entirely, and annotate-mode
+ * selectors should only offer slices that are present for the active group.
+ */
+export const currentGroupSliceNames = selector<string[]>({
+  key: "currentGroupSliceNames",
+  get: ({ get }) => {
+    if (!get(hasGroupSlices) || !get(groupId)) {
+      return [];
+    }
+
+    const slices = get(groupSlices);
+    if (!slices.length) {
+      return [];
+    }
+
+    const currentGroupField = get(groupField);
+    const samples = get(
+      groupSamples({
+        slices,
+        count: null,
+        paginationData: false,
+      })
+    );
+    const availableSliceSet = new Set(
+      samples
+        .map(
+          (sample) =>
+            getPath(sample.sample, `${currentGroupField}.name`) as unknown as
+              | string
+              | null
+        )
+        .filter(Boolean)
+    );
+
+    return slices.filter((slice) => availableSliceSet.has(slice));
+  },
+});
+
 export const groupMediaTypesSet = selector<Set<string>>({
   key: "groupMediaTypesSet",
   get: ({ get }) =>
@@ -279,85 +262,6 @@ export const hasGroupSlices = selector<boolean>({
   },
 });
 
-export const has3dSlice = selector<boolean>({
-  key: "has3dSlice",
-  get: ({ get }) => {
-    return setContains3d(get(groupMediaTypesSet));
-  },
-});
-
-export const hasFo3dSlice = selector<boolean>({
-  key: "hasFo3dSlice",
-  get: ({ get }) => {
-    return setContainsFo3d(get(groupMediaTypesSet));
-  },
-});
-
-/**
- * List of currently active (visible) 3D slice names in the modal.
- * Used to track which 3D slices are being displayed in the 3D viewer.
- */
-export const active3dSlices = atom<string[]>({
-  key: "active3dSlices",
-  default: [],
-});
-
-export const active3dSlicesToSampleMap = selector({
-  key: "active3dSlicesToSampleMap",
-  get: ({ get }) => {
-    const active = get(active3dSlices);
-
-    if (!active?.length) {
-      return {
-        default: get(modalSample),
-      };
-    }
-
-    return Object.fromEntries(
-      Object.entries(get(all3dSlicesToSampleMap)).filter(([slice]) =>
-        active.includes(slice)
-      )
-    );
-  },
-});
-
-export const all3dSlicesToSampleMap = selector({
-  key: "all3dSlicesToSampleMap",
-  get: ({ get }) => {
-    return Object.fromEntries<ModalSample>(
-      get(threedSamples).map<[string, ModalSample]>((sample) => [
-        getPath(sample.sample, `${get(groupField)}.name`) as unknown as string,
-        sample as ModalSample,
-      ])
-    );
-  },
-});
-
-export const all3dSlices = selector<string[]>({
-  key: "all3dSlices",
-  get: ({ get }) => {
-    return get(groupMediaTypes)
-      .filter(({ mediaType }) => is3d(mediaType))
-      .map(({ name }) => name);
-  },
-});
-
-export const hasMultiple3dSlices = selector<boolean>({
-  key: "hasMultiple3dSlices",
-  get: ({ get }) => {
-    return get(all3dSlices).length > 1;
-  },
-});
-
-export const allNon3dSlices = selector<string[]>({
-  key: "allNon3dSlices",
-  get: ({ get }) => {
-    return get(groupMediaTypes)
-      .filter(({ mediaType }) => !is3d(mediaType))
-      .map(({ name }) => name);
-  },
-});
-
 export const currentSlice = selectorFamily<string | null, boolean>({
   key: "currentSlice",
   get:
@@ -367,7 +271,7 @@ export const currentSlice = selectorFamily<string | null, boolean>({
 
       const slice = get(modal ? modalGroupSlice : groupSlice);
 
-      if (!slice || (modal && get(pinned3d))) {
+      if (!slice || (modal && get(is3dPinned))) {
         return get(pinned3DSampleSlice);
       }
 
@@ -376,14 +280,14 @@ export const currentSlice = selectorFamily<string | null, boolean>({
 });
 
 export const currentSlices = selectorFamily<string[] | null, boolean>({
-  key: "currentSlice",
+  key: "currentSlices",
   get:
     (modal) =>
     ({ get }) => {
       if (!get(isGroup)) return null;
       const slice = get(modal ? modalGroupSlice : groupSlice);
 
-      if (!slice || (modal && get(pinned3d))) {
+      if (!slice || (modal && get(is3dPinned))) {
         return get(active3dSlices);
       }
 
@@ -395,15 +299,10 @@ export const activeSliceDescriptorLabel = selector<string>({
   key: "activeSliceDescriptorLabel",
   get: ({ get }) => {
     const currentSliceValue = get(currentSlice(true));
-    const activeFo3dSlice = get(fo3dSlice);
     const active3dSlicesValue = get(active3dSlices);
 
-    if (!get(pinned3d)) {
+    if (!get(is3dPinned)) {
       return currentSliceValue;
-    }
-
-    if (activeFo3dSlice) {
-      return activeFo3dSlice;
     }
 
     const numActive3dSlices = active3dSlicesValue?.length;
@@ -474,72 +373,45 @@ export const non3dSamples = selector({
     get(groupSamples({ slices: get(allNon3dSlices), count: 1 })),
 });
 
-export const fo3dSlice = selector({
-  key: "fo3dSlice",
-  get: ({ get }) => {
-    const fo3dSlices = get(groupMediaTypes)
-      .filter(({ mediaType }) => isFo3d(mediaType))
-      .map(({ name }) => name);
+export const groupHasSampleOnSlice = graphQLSelectorFamily<
+  VariablesOf<foq.paginateSamplesQuery>,
+  { groupId: string | null; slice: string | null },
+  boolean | null
+>({
+  key: "groupHasSampleOnSlice",
+  environment: RelayEnvironmentKey,
+  query: foq.paginateSamples,
+  variables:
+    ({ groupId, slice }) =>
+    ({ get }) => {
+      if (!groupId || !slice) {
+        return null;
+      }
 
-    if (fo3dSlices?.length > 1)
-      throw new Error("can't have more than one fo3d slice");
-
-    return fo3dSlices[0];
-  },
-});
-
-export const fo3dContent = atom({
-  key: "fo3dContent",
-  default: null,
-});
-
-export const fo3dSample = selector({
-  key: "fo3dSample",
-  get: ({ get }) => {
-    if (!get(isGroup)) return get(modalSample);
-
-    if (get(isDynamicGroup) && !get(hasFo3dSlice)) {
-      return get(modalSample);
-    }
-
-    if (!get(hasFo3dSlice)) return null;
-
-    const sample = get(
-      groupSamples({
-        slices: [get(fo3dSlice)],
+      return {
         count: 1,
+        dataset: get(datasetName),
+        view: get(groupView),
+        filter: {
+          group: {
+            slice,
+            id: groupId,
+            slices: [slice],
+          },
+        },
         paginationData: false,
-      })
-    )[0];
-
-    return sample;
+      };
+    },
+  mapResponse: (data: ResponseFrom<foq.paginateSamplesQuery>) => {
+    return data.samples.edges.length > 0;
   },
-});
-
-export const threedSamples = selector({
-  key: "threedSamples",
-  get: ({ get }) =>
-    get(
-      groupSamples({
-        slices: get(all3dSlices),
-        count: null,
-        // do not omit dict data, provide the unfiltered samples to Looker3d
-        paginationData: false,
-      })
-    ),
 });
 
 export const activeModalSample = selector({
   key: "activeModalSample",
   get: ({ get }) => {
-    if (get(pinned3d)) {
-      if (get(hasFo3dSlice)) {
-        return get(fo3dSample).sample;
-      }
-
-      const slices = get(active3dSlices);
-      const key = slices.length === 1 ? slices[0] : get(pinned3DSampleSlice);
-      return get(active3dSlicesToSampleMap)[key]?.sample;
+    if (get(is3dPinned)) {
+      return get(interaction3dSample).sample;
     }
 
     return get(modalSample).sample;

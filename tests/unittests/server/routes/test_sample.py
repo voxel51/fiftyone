@@ -5,6 +5,7 @@ FiftyOne Server mutation endpoint unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import datetime
 
 # pylint: disable=no-value-for-parameter
@@ -19,8 +20,12 @@ from starlette.responses import Response
 
 import fiftyone as fo
 import fiftyone.core.labels as fol
+from fiftyone.core.labels import _read_mask, _write_mask
 import fiftyone.server.routes.sample as fors
 from fiftyone import DynamicEmbeddedDocument
+import numpy as np
+
+import fiftyone.core.utils as fou
 
 
 def _create_dummy_instance(cls_type: type) -> dict:
@@ -797,6 +802,373 @@ class TestHandleJsonPatch:
         # Verify the successful operations were applied before the errors were raised
         assert target.label == "dog"
         assert target.bounding_box == [0.1, 0.2, 0.3, 0.4]
+
+
+class TestArrayFieldMaskPatches:
+    """Tests for ArrayField handling of base64-encoded mask data through
+    the JSON patch endpoint.
+
+    The patch endpoint masks as base64-encoded compressed numpy
+    arrays (the same wire format the server uses when serializing masks
+    for the frontend). These tests verify that ArrayField correctly
+    decodes such strings in both the to_mongo (field-level patch) and
+    to_python (from_dict / full-object patch) paths.
+    """
+
+    @staticmethod
+    def _make_mask_b64(mask_array):
+        """Create a base64-encoded compressed numpy string from an array,"""
+        return fou.serialize_numpy_array(np.asarray(mask_array), ascii=True)
+
+    def test_array_field_to_mongo_decodes_b64_string(self):
+        """ArrayField.to_mongo must decode a base64 string into a proper
+        numpy array before serializing, rather than wrapping the raw
+        string with np.asarray (which produces a unicode dtype)."""
+        mask = np.array([[0, 1], [1, 0]], dtype=np.uint8)
+        mask_b64 = self._make_mask_b64(mask)
+
+        field = fo.ArrayField()
+        mongo_value = field.to_mongo(mask_b64)
+
+        # to_mongo returns Binary bytes; round-trip through to_python
+        # to verify the stored data decodes back to the original array
+        result = field.to_python(mongo_value)
+        assert isinstance(result, np.ndarray)
+        np.testing.assert_array_equal(result, mask)
+
+    def test_array_field_to_python_decodes_b64_string(self):
+        """ArrayField.to_python must decode a base64 string into a numpy
+        array.  This path is exercised when Detection.from_dict is
+        called with a mask value from the annotation client."""
+        mask = np.array([[0, 1], [1, 0]], dtype=np.uint8)
+        mask_b64 = self._make_mask_b64(mask)
+
+        field = fo.ArrayField()
+        result = field.to_python(mask_b64)
+
+        assert isinstance(result, np.ndarray)
+        np.testing.assert_array_equal(result, mask)
+
+    def test_handle_json_patch_add_detection_with_mask(self):
+        """Full-object patch: add a new detection (with _cls) that
+        includes a base64 mask.  Verifies that to_python (via
+        Detection.from_dict) decodes the string correctly."""
+        mask = np.array([[1, 0, 1], [0, 1, 0]], dtype=np.uint8)
+        mask_b64 = self._make_mask_b64(mask)
+
+        target = fo.Detections(detections=[])
+        new_detection = {
+            "_cls": "Detection",
+            "label": "dog",
+            "bounding_box": [0.5, 0.5, 0.2, 0.2],
+            "mask": mask_b64,
+        }
+        patch_list = [
+            {"op": "add", "path": "/detections/-", "value": new_detection},
+        ]
+
+        result = fors.handle_json_patch(target, patch_list)
+
+        assert len(result.detections) == 1
+        assert result.detections[0].label == "dog"
+        assert isinstance(result.detections[0].mask, np.ndarray)
+        np.testing.assert_array_equal(result.detections[0].mask, mask)
+
+    @pytest.fixture(name="sample_with_detection")
+    def fixture_sample_with_detection(self, dataset):
+        """Creates a sample with a detection that has no mask."""
+        sample = fo.Sample(filepath="/tmp/test_mask.jpg")
+        sample["ground_truth"] = fol.Detections(
+            detections=[
+                fol.Detection(
+                    label="cat",
+                    bounding_box=[0.1, 0.1, 0.2, 0.2],
+                )
+            ]
+        )
+        dataset.add_sample(sample)
+        sample.save()
+        sample.reload()
+        return sample
+
+    @pytest.fixture(name="mutator")
+    def fixture_mutator(self):
+        return fors.Sample(
+            scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
+        )
+
+    @pytest.fixture(name="mock_request")
+    def fixture_mock_request(self, dataset_id, sample_with_detection):
+        mock_request = MagicMock()
+        mock_request.path_params = {
+            "dataset_id": dataset_id,
+            "sample_id": str(sample_with_detection.id),
+        }
+        mock_request.headers = {
+            "Content-Type": "application/json-patch+json",
+            "If-Match": fors.generate_sample_etag(sample_with_detection),
+        }
+        mock_request.body = AsyncMock(return_value=json_payload({}))
+        return mock_request
+
+    @pytest.mark.asyncio
+    async def test_patch_add_mask_persists_as_numpy(
+        self, mutator, mock_request, sample_with_detection
+    ):
+        """End-to-end: patch a detection's mask via the Sample endpoint,
+        save, reload, and verify the mask survives the round-trip as a
+        numpy array with the correct dtype and values."""
+        mask = np.array([[1, 0], [0, 1]], dtype=np.uint8)
+        mask_b64 = self._make_mask_b64(mask)
+
+        patch_payload = [
+            {
+                "op": "add",
+                "path": "/ground_truth/detections/0/mask",
+                "value": mask_b64,
+            },
+        ]
+        mock_request.body.return_value = json_payload(patch_payload)
+
+        await mutator.patch(mock_request)
+
+        sample_with_detection.reload()
+        persisted_mask = sample_with_detection.ground_truth.detections[0].mask
+        assert isinstance(persisted_mask, np.ndarray)
+        assert persisted_mask.dtype == np.uint8
+        np.testing.assert_array_equal(persisted_mask, mask)
+
+
+class TestCommitMask:
+    """Tests for the commit-mask endpoint that writes in-database masks
+    back to their on-disk mask_path."""
+
+    @pytest.fixture(name="mask_file")
+    def fixture_mask_file(self, tmp_path):
+        """Creates a temporary mask PNG file with known content."""
+        mask_path = str(tmp_path / "original_mask.png")
+        _write_mask(np.zeros((10, 10), dtype=np.uint8), mask_path)
+        return mask_path
+
+    @pytest.fixture(name="sample_with_mask_path")
+    def fixture_sample_with_mask_path(self, dataset, mask_file):
+        """Creates a sample with a Detection that has a mask_path."""
+        sample = fo.Sample(filepath="/tmp/test_commit.jpg")
+        sample["ground_truth"] = fol.Detections(
+            detections=[
+                fol.Detection(
+                    label="cat",
+                    bounding_box=[0.1, 0.1, 0.2, 0.2],
+                    mask_path=mask_file,
+                )
+            ]
+        )
+        dataset.add_sample(sample)
+        sample.save()
+        sample.reload()
+        return sample
+
+    @pytest.fixture(name="commit_endpoint")
+    def fixture_commit_endpoint(self):
+        return fors.CommitMask(
+            scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
+        )
+
+    def _make_commit_request(
+        self, dataset_id, sample_id, field, detection_id
+    ):
+        """Build a mock POST request for the commit-mask endpoint."""
+        mock_request = MagicMock()
+        mock_request.headers = {}
+        mock_request.path_params = {
+            "dataset_id": dataset_id,
+            "sample_id": str(sample_id),
+        }
+        mock_request.body = AsyncMock(
+            return_value=json_payload(
+                {"field": field, "detection_id": detection_id}
+            )
+        )
+        return mock_request
+
+    def _make_sample(self, dataset, field_name="ground_truth", **det_kwargs):
+        """Helper to create a sample with a single Detection."""
+        sample = fo.Sample(filepath="/tmp/test_commit.jpg")
+        sample[field_name] = fol.Detections(
+            detections=[
+                fol.Detection(
+                    label="test",
+                    bounding_box=[0.1, 0.1, 0.2, 0.2],
+                    **det_kwargs,
+                )
+            ]
+        )
+        dataset.add_sample(sample)
+        sample.save()
+        sample.reload()
+        return sample
+
+    @pytest.mark.asyncio
+    async def test_commit_mask_writes_to_disk_and_clears_db(
+        self, commit_endpoint, dataset_id, sample_with_mask_path, mask_file
+    ):
+        """Commit writes the in-database mask to mask_path and clears the
+        in-database mask."""
+        sample = sample_with_mask_path
+        det = sample.ground_truth.detections[0]
+        det_id = str(det.id)
+
+        # Verify original file is all zeros
+        before = _read_mask(mask_file)
+        assert before.max() == 0, "precondition: file is all zeros"
+
+        # Simulate a UI edit: set an in-DB mask
+        edited_mask = np.ones((10, 10), dtype=np.uint8)
+        det.mask = edited_mask
+        sample.save()
+
+        request = self._make_commit_request(
+            dataset_id, sample.id, "ground_truth", det_id
+        )
+        response = await commit_endpoint.post(request)
+
+        assert response.status_code == 200
+        body = json.loads(response.body)
+        assert body["committed"] is True
+        assert body["mask_path"] == mask_file
+
+        # Verify DB: mask cleared, mask_path preserved
+        sample.reload()
+        det = sample.ground_truth.detections[0]
+        assert det.mask is None
+        assert det.mask_path == mask_file
+
+        # Verify disk: file was overwritten with edited mask
+        after = _read_mask(mask_file)
+        assert after.max() > 0, "file should now have content"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "field, det_id_fn, status, description",
+        [
+            # missing required params
+            (None, lambda _: "x", 400, "missing field"),
+            ("ground_truth", lambda _: None, 400, "missing detection_id"),
+            # nonexistent field
+            ("no_such_field", lambda _: "x", 404, "nonexistent field"),
+            # nonexistent detection
+            ("ground_truth", lambda _: str(ObjectId()), 404, "bad det id"),
+        ],
+        ids=[
+            "missing_field",
+            "missing_detection_id",
+            "nonexistent_field",
+            "bad_detection_id",
+        ],
+    )
+    async def test_commit_mask_error_simple(
+        self,
+        commit_endpoint,
+        dataset_id,
+        sample_with_mask_path,
+        field,
+        det_id_fn,
+        status,
+        description,
+    ):
+        """Parametrized error cases that reuse sample_with_mask_path."""
+        det_id = det_id_fn(sample_with_mask_path)
+        request = self._make_commit_request(
+            dataset_id, sample_with_mask_path.id, field, det_id
+        )
+        with pytest.raises(HTTPException) as exc_info:
+            await commit_endpoint.post(request)
+        assert exc_info.value.status_code == status, description
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "setup, status, description",
+        [
+            (
+                {"field": "ground_truth", "det_kwargs": {
+                    "mask": np.ones((5, 5), dtype=np.uint8),
+                }},
+                400,
+                "mask but no mask_path",
+            ),
+            (
+                {"field": "ground_truth", "det_kwargs": {
+                    "mask_path": "/tmp/_placeholder.png",
+                }},
+                400,
+                "mask_path but no in-database mask",
+            ),
+            (
+                {"field": "animal", "classification": True},
+                400,
+                "non-Detections field",
+            ),
+        ],
+        ids=["no_mask_path", "no_inline_mask", "non_detections"],
+    )
+    async def test_commit_mask_error_custom_sample(
+        self,
+        commit_endpoint,
+        dataset,
+        dataset_id,
+        setup,
+        status,
+        description,
+    ):
+        """Parametrized error cases that need custom sample setup."""
+        det_kwargs = setup.get("det_kwargs", {})
+
+        if setup.get("classification"):
+            sample = fo.Sample(filepath="/tmp/test_err.jpg")
+            sample[setup["field"]] = fol.Classification(label="dog")
+            dataset.add_sample(sample)
+            sample.save()
+            sample.reload()
+            det_id = str(ObjectId())
+        else:
+            sample = self._make_sample(
+                dataset,
+                field_name=setup["field"],
+                **det_kwargs,
+            )
+            det_id = str(
+                sample[setup["field"]].detections[0].id
+            )
+
+        request = self._make_commit_request(
+            dataset_id, sample.id, setup["field"], det_id
+        )
+        with pytest.raises(HTTPException) as exc_info:
+            await commit_endpoint.post(request)
+        assert exc_info.value.status_code == status, description
+
+    @pytest.mark.asyncio
+    async def test_commit_mask_write_failure(
+        self, commit_endpoint, dataset, dataset_id
+    ):
+        """export_mask raising an error returns 500."""
+        sample = self._make_sample(
+            dataset,
+            mask=np.ones((5, 5), dtype=np.uint8),
+            mask_path="/tmp/_write_fail.png",
+        )
+        det_id = str(sample.ground_truth.detections[0].id)
+        request = self._make_commit_request(
+            dataset_id, sample.id, "ground_truth", det_id
+        )
+
+        with patch(
+            "fiftyone.core.labels.Detection.export_mask",
+            side_effect=OSError("disk full"),
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                await commit_endpoint.post(request)
+            assert exc_info.value.status_code == 500
 
 
 class TestSampleFieldRoute:

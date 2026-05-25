@@ -1,6 +1,11 @@
 import { Archetype3d, Looker3dOverlayLabel } from "@fiftyone/looker-3d";
 import { AnnotationLabel } from "@fiftyone/state";
-import { BoundingBoxOverlay } from "@fiftyone/lighter";
+import { DetectionOverlay } from "@fiftyone/lighter";
+import type {
+  AnnotationAgentDownloadProgress,
+  AnnotationAgentLifecycleStatus,
+} from "./agents";
+import type { ProviderError } from "./providers";
 
 export const AnnotationChannelId = "default";
 
@@ -83,7 +88,7 @@ export type AnnotationEventGroup = {
    */
   "annotation:canvasDetectionOverlayEstablish": {
     id: string;
-    overlay: BoundingBoxOverlay;
+    overlay: DetectionOverlay;
   };
   /**
    * Notification event emitted when a canvas overlay is hovered.
@@ -153,4 +158,24 @@ export type AnnotationEventGroup = {
    * Notification event emitted when a label edit is undone.
    */
   "annotation:undoLabelEdit": { label: Partial<AnnotationLabel["data"]> };
+
+  /**
+   * Notification event emitted when the active annotation agent transitions
+   * between lifecycle states (e.g. `"initializing"` → `"inferring"`).
+   */
+  "annotation:agentLifecycleStatusChange": {
+    status: AnnotationAgentLifecycleStatus;
+  };
+
+  /**
+   * Notification event emitted when the active annotation agent reports
+   * download progress for model weights or other large assets.
+   */
+  "annotation:agentDownloadProgress": AnnotationAgentDownloadProgress;
+
+  /**
+   * Notification event emitted when the active annotation agent reports
+   * a terminal error. Paired with a `"status": "error"` lifecycle change.
+   */
+  "annotation:agentError": { error: ProviderError };
 };

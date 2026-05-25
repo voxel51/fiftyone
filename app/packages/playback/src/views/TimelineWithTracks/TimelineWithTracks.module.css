@@ -1,0 +1,74 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 100%;
+}
+
+/* Non-scrolling wrapper that acts as the positioning context for the
+   PlayheadLine and LoopOverlays. Keeping them here (rather than inside
+   tracksArea) means they always cover the full visible height regardless
+   of how far the user has scrolled inside the tracks region. */
+.tracksOuter {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Inner scroll container for the tracks. PlayheadLine / LoopOverlays
+   intentionally do NOT live here — see tracksOuter above.
+   `height: 100%` (not `flex: 1`) because the Drawer's internal `.content`
+   wrapper isn't a flex container — `flex: 1` would be ignored and we'd
+   fall back to natural content height, defeating the overflow:auto.
+   Vertical scroll only — the playhead's translate3d intentionally extends
+   past the visible width and must NOT trigger horizontal scrolling.
+   The scrollbar is hidden visually (wheel / keyboard scrolling still
+   works) so its width doesn't reduce the lane's effective width — the
+   ruler doesn't have a scrollbar, and a mismatched width would desync
+   the ruler playhead from the in-tracks playhead. */
+.tracksArea {
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.tracksArea::-webkit-scrollbar {
+  display: none;
+}
+
+.tracksBody {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Pinned tracks block, rendered into the always-visible header below
+   the ruler. Tracks here are full opacity since they're the user's
+   "promoted" tracks. */
+.pinnedTracks {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Wrapper used only when the drawer is closed: hosts the pinned tracks
+   inside the TimelineHeader's below-ruler slot AND acts as the
+   positioning context for PlayheadLine / LoopOverlays so they anchor
+   over the visible pinned section. */
+.pinnedOverlayHost {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Unpinned tracks live in the collapsible drawer body. Dimmed so they
+   read as "browse / available" — pin one to move it into the header
+   block above. */
+.unpinnedTrack {
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+
+.unpinnedTrack:hover {
+  opacity: 0.9;
+}

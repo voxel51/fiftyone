@@ -34,17 +34,30 @@ import {
   usePolylineOperations,
   useWorkingDoc,
 } from "../store";
-import type {
-  AnnotationAction,
-  AnnotationActionGroup,
-  TransformMode,
-} from "../types";
+import type { ToolbarActionGroup, TransformMode } from "../types";
 import { AnnotationPlaneTooltip } from "./AnnotationPlaneTooltip";
 import {
   PlaneCoordinateInputs,
   VertexCoordinateInputs,
 } from "./CoordinateInputs";
 import { FieldSelection } from "./FieldSelection";
+
+const createCoordinateAction = (customComponent: React.ReactNode) => ({
+  id: "coordinate-inputs",
+  actions: [
+    {
+      id: "coordinate-inputs-component",
+      label: "Coordinates",
+      icon: <Typography variant="caption">XYZ</Typography>,
+      tooltip: "Edit coordinates",
+      isActive: false,
+      isDisabled: false,
+      isVisible: true,
+      onClick: () => {},
+      customComponent,
+    },
+  ],
+});
 
 export const useAnnotationActions = () => {
   const selectedLabelForAnnotation = useRecoilValue(
@@ -252,8 +265,8 @@ export const useAnnotationActions = () => {
 
   const onExit = useExit();
 
-  const actions: AnnotationActionGroup[] = useMemo(() => {
-    const baseActions: AnnotationActionGroup[] = [
+  const actions: ToolbarActionGroup[] = useMemo(() => {
+    const baseActions: ToolbarActionGroup[] = [
       {
         id: "edit-actions",
         label: "",
@@ -377,7 +390,7 @@ export const useAnnotationActions = () => {
             icon: <OpenWith />,
             tooltip: "Translate or move object",
             isActive:
-              currentArchetypeSelectedForTransform &&
+              !!currentArchetypeSelectedForTransform &&
               transformMode === "translate",
             isDisabled: !currentArchetypeSelectedForTransform,
             onClick: () => handleTransformModeChange("translate"),
@@ -406,33 +419,13 @@ export const useAnnotationActions = () => {
       },
     ];
 
-    if (
-      (selectedPoint && currentArchetypeSelectedForTransform === "point") ||
-      currentArchetypeSelectedForTransform === "annotation-plane" ||
-      currentArchetypeSelectedForTransform === "cuboid"
+    if (currentArchetypeSelectedForTransform === "annotation-plane") {
+      baseActions.push(createCoordinateAction(<PlaneCoordinateInputs />));
+    } else if (
+      selectedPoint &&
+      currentArchetypeSelectedForTransform === "point"
     ) {
-      const coordinateInputAction: AnnotationAction = {
-        id: "coordinate-inputs-component",
-        label: "Coordinates",
-        icon: <Typography variant="caption">XYZ</Typography>,
-        tooltip: "Edit coordinates",
-        isActive: false,
-        isDisabled: false,
-        isVisible: true,
-        // No-op since this is a custom component
-        onClick: () => {},
-        customComponent:
-          currentArchetypeSelectedForTransform === "annotation-plane" ? (
-            <PlaneCoordinateInputs hideRotation={false} />
-          ) : (
-            <VertexCoordinateInputs />
-          ),
-      };
-
-      baseActions.push({
-        id: "coordinate-inputs",
-        actions: [coordinateInputAction],
-      });
+      baseActions.push(createCoordinateAction(<VertexCoordinateInputs />));
     }
 
     return baseActions;
@@ -454,6 +447,8 @@ export const useAnnotationActions = () => {
     editing,
     isPolylineAnnotateActive,
     isCuboidAnnotateActive,
+    isCreatingCuboid,
+    handleToggleCreateCuboid,
     onExit,
   ]);
 

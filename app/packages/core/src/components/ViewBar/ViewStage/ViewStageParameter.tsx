@@ -28,6 +28,7 @@ const ViewStageParameterDiv = animated(styled.div`
   box-sizing: border-box;
   border: 1px solid ${({ theme }) => theme.primary.plainColor};
   display: flex;
+  align-items: center;
   overflow: visible;
   height: 100%;
 `);
@@ -36,9 +37,8 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
   & > input {
     background-color: transparent;
     border: none;
-    padding: 0.5rem 0 0.5rem 0.5rem;
+    padding: 0 0 0 0.5rem;
     color: ${({ theme }) => theme.text.primary};
-    height: 1rem;
     font-weight: bold;
   }
 
@@ -253,7 +253,7 @@ const ObjectEditor = ({
         ref={containerRef}
       >
         {state.matches("reading") ? (
-          <div style={{ padding: "0.5em", whiteSpace: "nowrap" }}>
+          <div style={{ padding: "0 0.5em", whiteSpace: "nowrap" }}>
             {convert(value, makePlaceholder(state.context))}
           </div>
         ) : (
@@ -282,7 +282,6 @@ const ObjectEditor = ({
                 style={{
                   cursor: "pointer",
                   color: theme.text.primary,
-                  marginTop: "0.2em",
                   position: "absolute",
                   right: "0.2rem",
                 }}
@@ -442,7 +441,6 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
                 style={{
                   cursor: "pointer",
                   color: theme.text.primary,
-                  marginTop: "0.2em",
                 }}
                 onMouseEnter={() => send("MOUSEENTER")}
                 onMouseLeave={() => send("MOUSELEAVE")}

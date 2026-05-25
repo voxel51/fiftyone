@@ -17,7 +17,7 @@ This page describes how to write your own FiftyOne plugins.
 Design overview
 _______________
 
-Plugins are composed of one or more panels, operators, and components.
+Plugins are composed of one or more panels, operators, skills, and components.
 
 Together these building blocks enable you to build full-featured interactive
 data applications that tailor FiftyOne to your specific use case and workflow.
@@ -25,7 +25,7 @@ Whether you're working with images, videos, or other data types, a plugin can
 help you streamline your machine learning workflows and co-develop your data
 and models.
 
-.. image:: /images/plugins/plugin-design.png
+.. image:: https://cdn.voxel51.com/develop_plugins/plugin-design.png
     :align: center
 
 .. _plugins-design-types:
@@ -37,10 +37,10 @@ FiftyOne plugins can be written in Python or JavaScript (JS), or a combination
 of both.
 
 Python plugins are built using the `fiftyone` package, pip packages, and your
-own Python. They can consist of panels and operators.
+own Python. They can consist of panels, operators, and skills.
 
 JS plugins are built using the `@fiftyone` TypeScript packages, npm packages,
-and your own TypeScript. They can consist of panels, operators, and custom
+and your own TypeScript. They can consist of panels, operators, skills, and custom
 components.
 
 .. _plugins-design-panels:
@@ -96,6 +96,21 @@ plugin use.
     Jump to :ref:`this section <developing-operators>` for more information
     about developing operators.
 
+.. _plugins-design-skills:
+
+Skills
+------
+
+Skills are Markdown files that teach AI agents how to perform complex
+FiftyOne workflows using natural language. Each skill describes a task that
+an agent can be asked to perform, providing step-by-step guidance that the
+agent follows to complete the workflow autonomously.
+
+.. note::
+
+    Jump to :ref:`this section <developing-plugins-skills>` for more
+    information about developing skills.
+
 .. _plugins-design-components:
 
 Components
@@ -141,6 +156,34 @@ directory.
    For JS plugins we recommend forking the
    `FiftyOne Hello World JS Example <https://github.com/voxel51/hello-world-plugin-js>`_
    repository and following the conventions there to build your JS plugin.
+
+.. _plugins-local-testing:
+
+Testing plugins locally
+-----------------------
+
+.. versionadded:: 1.13.0
+
+The easiest way to test a plugin during development is the
+``fiftyone app debug`` command, which launches the App with server logs
+printed directly to your shell:
+
+.. code-block:: shell
+
+    fiftyone app debug
+
+You can also load a specific dataset immediately on launch:
+
+.. code-block:: shell
+
+    fiftyone app debug <name>
+
+.. note::
+
+    Make sure your plugin is installed in your
+    :ref:`plugins directory <plugins-directory>` before launching. If you
+    add or modify a plugin while the App is running, restart the debug
+    session to pick up the changes.
 
 .. _plugin-anatomy:
 
@@ -218,12 +261,17 @@ The following fields are available:
     +------------------------------+-----------+-----------------------------------------------------------------------------+
     | `description`                |           | A brief description of the plugin                                           |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `tags`                       |           | A list of tags for the plugin                                               |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
     | `fiftyone.version`           |           | A semver version specifier (or `*`) describing the required                 |
     |                              |           | FiftyOne version for the plugin to work properly                            |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
     | `operators`                  |           | A list of operator names registered by the plugin, if any                   |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
     | `panels`                     |           | A list of panel names registered by the plugin, if any                      |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `skills`                     |           | A list of :ref:`skill <developing-plugins-skills>` names registered by |
+    |                              |           | the plugin, if any                                                          |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
     | `secrets`                    |           | A list of secret keys that may be used by the plugin, if any                |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
@@ -2678,6 +2726,94 @@ performing a cleanup action:
 
         # ... normal stage logic
 
+.. _pipeline-request-params-overrides:
+
+Overriding request parameters per stage
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, each stage in a pipeline inherits the same execution context as the
+top-level pipeline operator — including its ``view``, ``view_name``, and other
+request parameters.
+
+Use ``request_params_overrides`` on a :class:`PipelineStage
+<fiftyone.operators.types.PipelineStage>` to give a specific stage a different
+execution context. Any key you include in ``request_params_overrides`` will
+shadow the corresponding value from the top-level request for that stage only;
+all other stages are unaffected.
+
+Commonly overridden parameters include:
+
+- ``view`` — a :class:`DatasetView <fiftyone.core.view.DatasetView>` to apply
+  (serialized automatically), or ``None`` to clear any active view
+- ``view_name`` — the name of a saved view to use
+- ``selected`` — a list of selected sample IDs
+- ``group_slice`` — the group slice to use
+
+.. note::
+
+    Do **not** include ``params`` inside ``request_params_overrides``. Use the
+    ``params`` field of :class:`PipelineStage
+    <fiftyone.operators.types.PipelineStage>` directly for operator parameters.
+
+.. note::
+
+    The following parameters cannot be overridden per stage and will be ignored
+    if included: ``dataset_id``, ``dataset_name``, ``delegated``,
+    ``delegation_target``, ``request_delegation``, ``results``.
+
+.. code-block:: python
+
+    import fiftyone.operators as foo
+    import fiftyone.operators.types as types
+
+    class MultiViewPipeline(foo.PipelineOperator):
+        @property
+        def config(self):
+            return foo.OperatorConfig(
+                name="multi_view_pipeline",
+                label="Multi-View Pipeline",
+                allow_delegated_execution=True,
+                allow_immediate_execution=False,
+            )
+
+        def resolve_pipeline(self, ctx):
+            pipeline = types.Pipeline()
+
+            # Stage 1 runs against the view the user has open
+            pipeline.stage(
+                operator_uri="@my-plugin/compute_stats",
+                name="Stats on current view",
+                params={"field": "predictions"},
+            )
+
+            # Stage 2 runs against a different saved view
+            pipeline.stage(
+                operator_uri="@my-plugin/compute_stats",
+                name="Stats on val split",
+                params={"field": "predictions"},
+                request_params_overrides={"view_name": "val_split"},
+            )
+
+            # Stage 3 runs against the full dataset (no view applied)
+            pipeline.stage(
+                operator_uri="@my-plugin/compute_stats",
+                name="Stats on full dataset",
+                params={"field": "predictions"},
+                request_params_overrides={"view": None, "view_name": None},
+            )
+
+            # Stage 4 runs against a programmatic slice of the current view,
+            # useful for manual batching
+            batch = ctx.view[:100]
+            pipeline.stage(
+                operator_uri="@my-plugin/compute_stats",
+                name="Stats on first 100 samples",
+                params={"field": "predictions"},
+                request_params_overrides={"view": batch},
+            )
+
+            return pipeline
+
 .. _operator-secrets:
 
 Accessing secrets
@@ -3037,7 +3173,7 @@ subsequent sections.
                 allow_multiple=False,
 
                 # Whether the panel should be available in the grid, modal, or both
-                # Possible values: "grid", "modal", "grid modal"       
+                # Possible values: "grid", "modal", "grid modal"
                 surfaces="grid",  # default = "grid"
 
                 # Markdown-formatted text that describes the panel. This is
@@ -3271,7 +3407,7 @@ subsequent sections.
             }
             ctx.panel.set_state("event", "on_change_extended_selection")
             ctx.panel.set_data("event_data", event)
-        
+
         def on_change_group_slice(self, ctx):
             """Implement this method to set panel state/data when the current
             group slice changes.
@@ -3890,6 +4026,95 @@ avoid roadblocks along the way.
     plugin to see a collection of fully-functional panels that demonstrate
     the common patterns below.
 
+.. _panel-hybrid-python-js-panels:
+
+Hybrid panels (Python + JavaScript/React)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+FiftyOne supports building panels that combine Python and JavaScript/React
+code. This allows you to leverage the full power of React and the JS ecosystem
+while still taking advantage of the simplicity and expressiveness of Python for
+defining panel logic and state.
+
+The Python panel class handles configuration, state initialization, and event
+logic. The ``render()`` method connects to the React component via
+``composite_view=True``. Any event handlers passed as view kwargs become
+callable from JavaScript:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.operators as foo
+    import fiftyone.operators.types as types
+
+    class HybridPanel(foo.Panel):
+        @property
+        def config(self):
+            return foo.PanelConfig(
+                name="hybrid_panel",
+                label="Hybrid Panel",
+                icon="adjust",
+                surfaces="grid modal",
+            )
+
+        def on_load(self, ctx):
+            ctx.panel.set_state("count", 0)
+
+        def increment(self, ctx):
+            count = ctx.panel.get_state("count") or 0
+            ctx.panel.set_state("count", count + 1)
+
+        def render(self, ctx):
+            panel = types.Object()
+            return types.Property(
+                panel,
+                view=types.View(
+                    component="MyCustomView",
+                    composite_view=True,
+                    increment=self.increment,
+                ),
+            )
+
+    def register(p):
+        p.register(HybridPanel)
+
+On the JavaScript side, register a component whose ``name`` matches the
+``component`` argument in ``render()``. Access panel state via
+``usePanelStatePartial`` and trigger Python event handlers using
+``useTriggerPanelEvent``:
+
+.. code-block:: jsx
+    :linenos:
+
+    import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
+    import { usePanelStatePartial } from "@fiftyone/spaces";
+    import { useTriggerPanelEvent } from "@fiftyone/operators";
+
+    function MyCustomView({ schema }) {
+        const [state] = usePanelStatePartial("state", {});
+        const triggerEvent = useTriggerPanelEvent();
+        const { increment } = schema.view;
+
+        return (
+            <button onClick={() => triggerEvent(increment)}>
+                Count: {state.count}
+            </button>
+        );
+    }
+
+    registerComponent({
+        name: "MyCustomView",
+        label: "MyCustomView",
+        component: MyCustomView,
+        type: PluginComponentType.Component,
+        activator: () => true,
+    });
+
+.. note::
+
+    Check out the `Hybrid Panel Plugin <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/hybrid-panel>`_
+    for a complete example of building a hybrid panel.
+
 .. _panel-callbacks:
 
 Callbacks
@@ -3912,7 +4137,7 @@ and programmatically modify the current state.
 
 .. warning::
 
-    The return value of all panel events—including builtin events (such as 
+    The return value of all panel events—including builtin events (such as
     `on_load`, `on_unload`, `on_change_ctx`, etc.) and custom events (such as
     `on_change_brain_key`, `on_click_start`, etc.)—must be JSON-serializable.
 
@@ -4508,6 +4733,31 @@ you to reveal all of its available methods during development:
         ctx.
         ...
 
+.. _developing-plugins-skills:
+
+Developing skills
+_________________
+
+Skills are Markdown files that teach AI agents how to perform complex
+FiftyOne workflows using natural language. A skill describes a task that
+an agent can be asked to perform — such as importing a dataset, running
+inference, or finding duplicates — and provides step-by-step guidance
+that the agent follows to complete the workflow autonomously.
+
+You can bundle skills inside any FiftyOne plugin by placing them in a
+`skills/` subdirectory and declaring their names in your `fiftyone.yml`:
+
+.. code-block:: yaml
+
+    skills:
+      - my-skill-name
+
+.. note::
+
+    See :ref:`Developing skills <developing-skills-authoring>` for a full
+    guide on authoring skills, including the required file structure, YAML
+    frontmatter fields, and how to contribute skills to the community.
+
 .. _developing-js-plugins:
 
 Developing JS plugins
@@ -4518,13 +4768,13 @@ This section describes how to develop JS-specific plugin components.
 Getting Started
 ---------------
 
-To start building your own JS plugin, refer to the 
-`hello-world-plugin-js <https://github.com/voxel51/hello-world-plugin-js>`_ 
-repository. This repo serves as a starting point, providing examples of a build 
+To start building your own JS plugin, refer to the
+`hello-world-plugin-js <https://github.com/voxel51/hello-world-plugin-js>`_
+repository. This repo serves as a starting point, providing examples of a build
 process, a JS panel, and a JS operator.
 
-The `fiftyone-js-plugin-build <https://github.com/voxel51/fiftyone-js-plugin-build>`_ 
-package offers a utility for configuring `vite <https://vite.dev>`_ to build your 
+The `fiftyone-js-plugin-build <https://github.com/voxel51/fiftyone-js-plugin-build>`_
+package offers a utility for configuring `vite <https://vite.dev>`_ to build your
 JS plugin bundle.
 
 Component types
@@ -4709,6 +4959,76 @@ Using the custom component as the view for a Python operator field:
 
         def execute(self, ctx):
             return {}
+
+.. _custom-sample-renderers:
+
+Custom sample renderers
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Plugins can register ``SampleRenderer`` components to provide custom rendering
+for non-native media types in the grid and modal. Native media types
+(``image``, ``video``, ``point-cloud``, ``3d``) continue
+to use the built-in media renderers.
+
+Each sample renderer declares ``sampleRendererOptions.supports``. The simplest
+form is a matcher object with ``extensions``, ``mimeTypes``, and
+``mediaTypes``. All specified matcher groups must match (AND), and values in a
+group are matched case-insensitively (OR). ``supports`` can also be a predicate
+function that receives the sample renderer match context.
+
+Grid rendering is opt-in. Set ``sampleRendererOptions.grid.enabled`` to
+``true`` to enable a renderer in the grid. If you need a different grid-only
+implementation, provide ``sampleRendererOptions.grid.overrideComponent``;
+otherwise the canonical renderer component is reused in both modal and grid.
+
+The sample renderer component receives a single ``ctx`` prop containing the
+sample renderer render context:
+
+-   ``sample`` and ``media``
+-   ``surface`` (``"modal"`` or ``"grid"``)
+-   ``dataset`` and ``schema``
+
+Here's an example of a hypothetical plugin config that renders PDF files in
+both the grid and modal:
+
+.. code-block:: jsx
+    :linenos:
+
+    import {
+      type SampleRendererProps,
+      PluginComponentType,
+      registerComponent,
+    } from "@fiftyone/plugins";
+
+    function PdfRenderer({ ctx }: SampleRendererProps) {
+      return (
+        <iframe
+          src={ctx.media.url ?? ""}
+          title={ctx.sample.sample.filepath}
+          style={{ width: "100%", height: "100%", border: 0 }}
+        />
+      );
+    }
+
+    registerComponent({
+      name: "PDFRenderer",
+      label: "PDF renderer",
+      component: PdfRenderer,
+      type: PluginComponentType.SampleRenderer,
+      activator: () => true,
+      sampleRendererOptions: {
+        priority: 100,
+        supports: {
+          extensions: [".pdf"],
+          mimeTypes: ["application/pdf"],
+          mediaTypes: ["unknown"],
+        },
+        grid: {
+          enabled: true,
+        },
+      },
+    });
+
 
 FiftyOne App state
 ------------------

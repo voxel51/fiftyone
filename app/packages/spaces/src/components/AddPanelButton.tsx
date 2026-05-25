@@ -1,6 +1,5 @@
 import { IconButton, Popout, scrollable, useTheme } from "@fiftyone/components";
 import {
-  Categories,
   getCategoryForPanel,
   getCategoryLabel,
   PluginComponentRegistration,
@@ -22,10 +21,9 @@ export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
   const panelsPredicate = useCallback(
     (panel: PluginComponentRegistration) => {
       const surface = panel.panelOptions?.surfaces;
-      if (isModalActive) {
-        return surface === "modal" || surface === "grid modal";
-      }
-      return surface !== "modal";
+      const isModalPanel = surface?.includes("modal");
+      const isGridPanel = !surface || surface.includes("grid");
+      return isModalActive ? isModalPanel : isGridPanel;
     },
     [isModalActive]
   );

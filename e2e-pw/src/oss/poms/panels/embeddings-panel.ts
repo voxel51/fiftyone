@@ -11,7 +11,10 @@ export class EmbeddingsPom {
   readonly asserter: EmebddingsAsserter;
   readonly lassoTool: Locator;
 
-  constructor(readonly page: Page, eventUtils: EventUtils) {
+  constructor(
+    readonly page: Page,
+    eventUtils: EventUtils
+  ) {
     this.locator = this.page.getByTestId("embeddings-container");
     this.selector = new SelectorPom(this.locator, eventUtils, "embeddings");
     this.colorbySelector = new SelectorPom(
@@ -93,8 +96,8 @@ class EmebddingsAsserter {
       timeout: 2000,
     });
 
-    await this.embeddingsPom.lassoTool.click({ timeout: 500 });
+    await this.embeddingsPom.lassoTool.click();
     await this.embeddingsPom.selectAll();
-    await expect(this.panelPom.selectionCount).toBeVisible({ timeout: 500 });
+    await expect(this.panelPom.selectionCount).toBeVisible();
   }
 }

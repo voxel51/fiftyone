@@ -1,5 +1,7 @@
 name: "@voxel51/operators"
 description: Core FiftyOne operators
+tags:
+  - core
 version: 1.0.0
 fiftyone:
   version: "*"
@@ -46,6 +48,7 @@ operators:
   - download_file
   - model_evaluation_configure_scenario
   - mes_plot_resolver
+  - list_me_scenarios
 
   # view stages
   - load_group_by
@@ -61,3 +64,6 @@ operators:
   - set_active_label_schemas
   - update_label_schema
   - validate_label_schemas
+
+  # dataset
+  - get_field_schema

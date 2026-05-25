@@ -4,10 +4,12 @@ import {
   CLASSIFICATIONS,
   DETECTION,
   DETECTIONS,
+  KEYPOINT,
+  KEYPOINTS,
   POLYLINE,
   POLYLINES,
 } from "@fiftyone/utilities";
-import { atom, PrimitiveAtom, useAtomValue } from "jotai";
+import { atom, PrimitiveAtom, useAtomValue, useSetAtom } from "jotai";
 import { atomFamily, atomWithReset } from "jotai/utils";
 import { capitalize } from "lodash";
 import {
@@ -55,17 +57,20 @@ export const hasChanges = atom((get) => {
 const IS_CLASSIFICIATION = new Set([CLASSIFICATION, CLASSIFICATIONS]);
 const IS_DETECTION = new Set([DETECTION, DETECTIONS]);
 const IS_POLYLINE = new Set([POLYLINE, POLYLINES]);
-const IS_LIST = new Set([CLASSIFICATIONS, DETECTIONS, POLYLINES]);
+const IS_KEYPOINT = new Set([KEYPOINT, KEYPOINTS]);
+const IS_LIST = new Set([CLASSIFICATIONS, DETECTIONS, POLYLINES, KEYPOINTS]);
 const IS = {
   [CLASSIFICATION]: IS_CLASSIFICIATION,
   [DETECTION]: IS_DETECTION,
   [POLYLINE]: IS_POLYLINE,
+  [KEYPOINT]: IS_KEYPOINT,
 };
 
 export type LabelType =
   | typeof CLASSIFICATION
   | typeof DETECTION
-  | typeof POLYLINE;
+  | typeof POLYLINE
+  | typeof KEYPOINT;
 
 export const current = atom(
   (get) => {
@@ -88,14 +93,14 @@ export const current = atom(
 
 export const currentData = atom(
   (get) => get(current)?.data ?? null,
-  (get, set, data: Partial<AnnotationLabel["data"]>) => {
+  (get, set, data: Partial<AnnotationLabel["data"]>, replace?: boolean) => {
     const currentEditing = get(editing);
 
     if (currentEditing && typeof currentEditing !== "string") {
       const current = get(currentEditing);
       return set(currentEditing, {
         ...current,
-        data: { ...current.data, ...data },
+        data: replace ? data : { ...current.data, ...data },
       });
     }
   }
@@ -116,7 +121,9 @@ export const currentField = atom(
     }
 
     const currentData = currentLabel.data;
-    const data = buildNewLabelData(path, currentData._cls, currentData?._id);
+    const data = buildNewLabelData(path, currentData._cls, {
+      id: currentData?._id,
+    });
     data.bounding_box = currentData?.bounding_box;
 
     currentLabel.overlay?.updateField(path);
@@ -273,10 +280,12 @@ export const deleteValue = atom(null, (get, set) => {
  * Public API for interacting with the active annotation context.
  */
 export interface AnnotationContext {
-  /**
-   * Currently-selected annotation label.
-   */
+  /** Currently-selected annotation label. */
   selectedLabel: AnnotationLabel | null;
+  /** Fiftyone label data for currently-selected annotation label. */
+  selectedLabelData: AnnotationLabel["data"] | null;
+  /** Sets the label data for the currently-selected annotation label. */
+  updateSelectedLabelData: (data: AnnotationLabel["data"]) => void;
 }
 
 /**
@@ -285,5 +294,7 @@ export interface AnnotationContext {
 export const useAnnotationContext = (): AnnotationContext => {
   return {
     selectedLabel: useAtomValue(current),
+    selectedLabelData: useAtomValue(currentData),
+    updateSelectedLabelData: useSetAtom(currentData),
   };
 };

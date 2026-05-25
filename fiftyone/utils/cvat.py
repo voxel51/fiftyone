@@ -3142,6 +3142,9 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
 
             Note that this argument cannot be provided when uploading existing
             tracks
+        coerce_text_attrs (True): whether to coerce CVAT text attributes to
+            numeric types during annotation download. Set to False to preserve
+            text attribute values as strings
     """
 
     def __init__(
@@ -3173,6 +3176,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         frame_start=None,
         frame_stop=None,
         frame_step=None,
+        coerce_text_attrs=True,
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
@@ -3196,6 +3200,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self.frame_start = _validate_frame_arg(frame_start, "frame_start")
         self.frame_stop = _validate_frame_arg(frame_stop, "frame_stop")
         self.frame_step = _validate_frame_arg(frame_step, "frame_step")
+        self.coerce_text_attrs = coerce_text_attrs
 
         # store privately so these aren't serialized
         self._username = username
@@ -3361,8 +3366,12 @@ class CVATBackend(foua.AnnotationBackend):
     def download_annotations(self, results):
         api = self.connect_to_api()
 
+        coerce_text_attrs = getattr(results.config, "coerce_text_attrs", True)
+
         logger.info("Downloading labels from CVAT...")
-        annotations = api.download_annotations(results)
+        annotations = api.download_annotations(
+            results, coerce_text_attrs=coerce_text_attrs
+        )
         logger.info("Download complete")
 
         return annotations
@@ -4644,12 +4653,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return results
 
-    def download_annotations(self, results):
+    def download_annotations(self, results, coerce_text_attrs=True):
         """Download the annotations from the CVAT server for the given results
         instance and parses them into the appropriate FiftyOne types.
 
         Args:
             results: a :class:`CVATAnnotationResults`
+            coerce_text_attrs (True): whether to coerce text attributes to
+                numeric types. Set to False to preserve text attribute values
+                as strings
 
         Returns:
             the annotations dict
@@ -4719,9 +4731,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     frame_stop -= offset
 
                 # Download task data
-                attr_id_map, _class_map_rev = self._get_attr_class_maps(
-                    task_id
-                )
+                (
+                    attr_id_map,
+                    attr_type_map,
+                    _class_map_rev,
+                ) = self._get_attr_class_maps(task_id)
+
+                if coerce_text_attrs:
+                    attr_type_map = None
 
                 job_ids = self._get_job_ids(task_id)
                 for job_id in job_ids:
@@ -4797,6 +4814,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             frame_stop,
                             frame_step,
                             assigned_scalar_attrs=scalar_attrs,
+                            attr_type_map=attr_type_map,
                         )
                         label_field_results = self._merge_results(
                             label_field_results, tag_results
@@ -4818,6 +4836,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             assigned_scalar_attrs=scalar_attrs,
                             occluded_attrs=_occluded_attrs,
                             group_id_attrs=_group_id_attrs,
+                            attr_type_map=attr_type_map,
                         )
                         label_field_results = self._merge_results(
                             label_field_results, shape_results
@@ -4851,6 +4870,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                                 immutable_attrs=immutable_attrs,
                                 occluded_attrs=_occluded_attrs,
                                 group_id_attrs=_group_id_attrs,
+                                attr_type_map=attr_type_map,
                             )
                             label_field_results = self._merge_results(
                                 label_field_results, track_shape_results
@@ -4891,16 +4911,20 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         labels = self._get_task_labels(task_id)
         _class_map = {}
         attr_id_map = {}
+        attr_type_map = {}
         for label in labels:
             _class_map[label["id"]] = label["name"]
             attr_id_map[label["id"]] = {
                 i["name"]: i["id"] for i in label["attributes"]
             }
+            attr_type_map[label["id"]] = {
+                i["id"]: i.get("input_type", None) for i in label["attributes"]
+            }
 
         # AL: not sure why we didn't just reverse keys/vals initially
         class_map_rev = {n: i for i, n in _class_map.items()}
 
-        return attr_id_map, class_map_rev
+        return attr_id_map, attr_type_map, class_map_rev
 
     def _get_paginated_results(self, base_url, get_page_url=None, value=None):
         results = []
@@ -4932,8 +4956,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self, search_url_fcn, target, target_key, value_key
     ):
         search_url = search_url_fcn(target)
-        resp = self.get(search_url).json()
-        for info in resp["results"]:
+        results = self._get_paginated_results(search_url)
+        for info in results:
             if info[target_key] == target:
                 return info[value_key]
 
@@ -5808,6 +5832,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         immutable_attrs=None,
         occluded_attrs=None,
         group_id_attrs=None,
+        attr_type_map=None,
     ):
         results = {}
         prev_type = None
@@ -5848,6 +5873,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 immutable_attrs=immutable_attrs,
                 occluded_attrs=occluded_attrs,
                 group_id_attrs=group_id_attrs,
+                attr_type_map=attr_type_map,
             )
 
         # For non-outside tracked objects, the last track goes to the end of
@@ -5883,6 +5909,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     immutable_attrs=immutable_attrs,
                     occluded_attrs=occluded_attrs,
                     group_id_attrs=group_id_attrs,
+                    attr_type_map=attr_type_map,
                 )
 
         return results
@@ -5907,6 +5934,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         immutable_attrs=None,
         occluded_attrs=None,
         group_id_attrs=None,
+        attr_type_map=None,
     ):
         frame = anno["frame"]
 
@@ -5923,6 +5951,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_id = frame_data.get("frame_id", None)
 
         label = None
+        label_type = None
 
         if anno_type in ("shapes", "track"):
             shape_type = anno["type"]
@@ -5948,6 +5977,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 occluded_attrs=occluded_attrs,
                 group_id_attrs=group_id_attrs,
                 group_id=track_group_id,
+                attr_type_map=attr_type_map,
             )
 
             # Non-keyframe annotations were interpolated from keyframes but
@@ -5962,8 +5992,32 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 label_type = "detections"
                 label = cvat_shape.to_detection()
             elif shape_type == "mask":
-                label_type = "detections"
-                label = cvat_shape.to_instance()
+                if expected_label_type in (
+                    "polyline",
+                    "polylines",
+                    "polygon",
+                    "polygons",
+                ):
+                    # Convert mask to polyline/polygon
+                    detection = cvat_shape.to_instance()
+                    if expected_label_type in ("polyline", "polylines"):
+                        filled = False
+                    else:
+                        filled = True
+
+                    label_type = "polylines"
+                    label = detection.to_polyline(tolerance=2, filled=filled)
+                    label.id = detection.id
+                elif expected_label_type == "segmentation":
+                    # Convert mask to a piece of a segmentation mask
+                    detection = cvat_shape.to_instance()
+                    label_type = "segmentation"
+                    label = detection.to_polyline(tolerance=2, filled=True)
+                    label.id = detection.id
+                else:
+                    # Default: keep as instance detection with mask
+                    label_type = "detections"
+                    label = cvat_shape.to_instance()
             elif shape_type == "polygon":
                 if expected_label_type == "segmentation":
                     # A piece of a segmentation mask
@@ -6005,11 +6059,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             if expected_label_type == "scalar":
                 label_type = "scalar"
                 if assigned_scalar_attrs:
+                    _attr_types = (
+                        attr_type_map.get(anno["label_id"], {})
+                        if attr_type_map
+                        else {}
+                    )
                     num_attrs = len(anno["attributes"])
                     attr_ind = 0
                     while label is None and attr_ind < num_attrs:
+                        attr = anno["attributes"][attr_ind]
+                        attr_type = _attr_types.get(attr["spec_id"], None)
                         label = _parse_value(
-                            anno["attributes"][attr_ind]["value"]
+                            attr["value"], attr_type=attr_type
                         )
                         attr_ind += 1
                         if label is not None:
@@ -6029,7 +6090,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     label = class_map[anno["label_id"]]
             else:
                 label_type = "classifications"
-                cvat_tag = CVATTag(anno, class_map, attr_id_map, server_id_map)
+                cvat_tag = CVATTag(
+                    anno,
+                    class_map,
+                    attr_id_map,
+                    server_id_map,
+                    attr_type_map=attr_type_map,
+                )
                 label = cvat_tag.to_classification()
 
         if label is None or label_type in ignore_types:
@@ -7049,6 +7116,7 @@ class CVATLabel(object):
         attr_id_map,
         server_id_map,
         attributes=None,
+        attr_type_map=None,
     ):
         cvat_id = label_dict["label_id"]
         server_id = label_dict["id"]
@@ -7068,9 +7136,11 @@ class CVATLabel(object):
 
         # Parse attributes
         attr_id_map_rev = {v: k for k, v in attr_id_map[cvat_id].items()}
+        _attr_types = attr_type_map.get(cvat_id, {}) if attr_type_map else {}
         for attr in attrs:
             name = attr_id_map_rev[attr["spec_id"]]
-            value = _parse_value(attr["value"])
+            attr_type = _attr_types.get(attr["spec_id"], None)
+            value = _parse_value(attr["value"], attr_type=attr_type)
             if value is not None:
                 if name.startswith("attribute:"):
                     name = name[len("attribute:") :]
@@ -7152,6 +7222,7 @@ class CVATShape(CVATLabel):
         occluded_attrs=None,
         group_id_attrs=None,
         group_id=None,
+        attr_type_map=None,
     ):
         super().__init__(
             label_dict,
@@ -7159,6 +7230,7 @@ class CVATShape(CVATLabel):
             attr_id_map,
             server_id_map,
             attributes=immutable_attrs,
+            attr_type_map=attr_type_map,
         )
 
         self.frame_size = ()
@@ -7633,7 +7705,10 @@ def _from_int_bool(value):
     return None
 
 
-def _parse_value(value):
+def _parse_value(value, attr_type=None):
+    if attr_type == "text":
+        return None if value == "" else str(value)
+
     try:
         return int(value)
     except:
