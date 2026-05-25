@@ -164,7 +164,6 @@ class Sapiens2PoseModel(fout.TorchImageModel, fom.SupportsGetItem):
     def __init__(self, config):
         config.raw_inputs = True
         super().__init__(config)
-        fom.SupportsGetItem.__init__(self)
         self._keypoint_thresh = config.keypoint_thresh
         self._codec = self._build_codec()
 
