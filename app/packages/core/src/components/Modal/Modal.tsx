@@ -43,8 +43,6 @@ import Actions from "./Actions";
 import ModalNavigation from "./ModalNavigation";
 import { ModalSpace } from "./ModalSpace";
 import { Sidebar } from "./Sidebar";
-import SchemaManagementProvider from "./Sidebar/Annotate/SchemaManagementProvider";
-import useCanManageSchema from "./Sidebar/Annotate/useCanManageSchema";
 import { useAnnotationTracking } from "./Sidebar/Annotate/useAnnotationTracking";
 import { SegmentationToolbar } from "./Sidebar/Annotate/Edit/SegmentationToolbar";
 import { ModalStatusBar } from "./ModalStatusBar";
@@ -95,11 +93,10 @@ const AnnotationHandlerRegistration = () => {
   useAnnotationTracking();
 
   const modalMode = useModalMode();
-  const canManageSchema = useCanManageSchema();
 
   useAutoSave(modalMode === ModalMode.ANNOTATE);
 
-  return canManageSchema ? <SchemaManagementProvider /> : <Fragment />;
+  return <Fragment />;
 };
 
 const ModalErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
