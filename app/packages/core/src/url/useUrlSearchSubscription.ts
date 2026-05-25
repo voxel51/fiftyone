@@ -1,29 +1,11 @@
 /**
  * Router-agnostic URL search-string read + write primitive.
  *
- * Both the OSS Relay router (`@fiftyone/app/src/routing`) and the teams-app
- * Next.js router push SPA navigations through `window.history.pushState` /
- * `replaceState`. This module monkey-patches both (once) to dispatch a
- * `fo:url-changed` event whenever either of them fires, so any number of
- * features can subscribe via `useUrlSearch()` without knowing about a router.
- *
- * Mirrors the technique in
- * `app/packages/core/src/task-context/useTaskUrlParams.ts` (see
- * `feat/nav_to_task`); generalizes the event name from `task-context:nav`
- * to `fo:url-changed` so multiple URL-driven features can share one patch.
- *
- * For writes, prefer `writeUrlSearch(...)` over calling
- * `window.history.replaceState` directly — it dispatches the event so other
- * subscribers see the change.
- *
- * Caveats:
- *   - Direct `replaceState` does NOT trigger the OSS history@5 router's
- *     internal listeners (those fire on `popstate` only), so no route refetch.
- *   - Direct `replaceState` does NOT update Next.js's `router.query` either.
- *     That's fine for the schema-manager contract since nothing reads
- *     `router.query.schemaManager` after the modal closes; if a future
- *     consumer needs Next.js to see the change, it should call
- *     `next/router.replace({ shallow: true })` instead.
+ * Monkey-patches `window.history.pushState` / `replaceState` once to
+ * dispatch a `fo:url-changed` event, so subscribers (via `useUrlSearch`)
+ * pick up SPA navigations made through any router. Prefer
+ * `writeUrlSearch(...)` over calling `replaceState` directly so the event
+ * fires for subscribers.
  */
 
 import { useEffect, useState } from "react";
