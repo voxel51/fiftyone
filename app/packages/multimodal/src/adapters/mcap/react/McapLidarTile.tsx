@@ -26,6 +26,14 @@ const McapLidarTile: React.FC = () => {
   // behaviour. State lets the user swap via the dropdown.
   const [topic, setTopic] = useState<string>(lidars[0]?.id ?? "");
 
+  // If lidars populated after the initial render (or the selected topic
+  // disappeared), bind to the first available source.
+  useEffect(() => {
+    if (!topic && lidars[0]) {
+      setTopic(lidars[0].id);
+    }
+  }, [lidars, topic]);
+
   // Keep the tile title in sync whenever the selected topic resolves.
   useEffect(() => {
     const label = lidars.find((l) => l.id === topic)?.label;

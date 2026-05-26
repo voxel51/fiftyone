@@ -33,24 +33,24 @@ export function useTileSelectionFor<T = unknown>(
 
 export function useTileTitle(): string | null {
   const tileId = useTileId();
-  const { titleOverrides } = useTiling();
-  return tileId ? (titleOverrides[tileId] ?? null) : null;
+  const { tiles } = useTiling();
+  return tileId ? (tiles[tileId]?.title ?? null) : null;
 }
 
 export function useTileTitleFor(tileId: string | null): string | null {
-  const { titleOverrides } = useTiling();
-  return tileId ? (titleOverrides[tileId] ?? null) : null;
+  const { tiles } = useTiling();
+  return tileId ? (tiles[tileId]?.title ?? null) : null;
 }
 
-export function useSetTileTitle(): (title: string | null) => void {
+export function useSetTileTitle(): (title: string) => void {
   const tileId = useTileId();
-  const { setTileTitleOverride } = useTiling();
+  const { setTileTitle } = useTiling();
   return useCallback(
-    (title: string | null) => {
+    (title: string) => {
       if (!tileId) return;
-      setTileTitleOverride(tileId, title);
+      setTileTitle(tileId, title);
     },
-    [tileId, setTileTitleOverride]
+    [tileId, setTileTitle]
   );
 }
 

@@ -26,6 +26,14 @@ const McapCameraTile: React.FC = () => {
   // State lets the user swap via the dropdown.
   const [topic, setTopic] = useState<string>(cameras[0]?.id ?? "");
 
+  // If cameras populated after the initial render (or the selected topic
+  // disappeared), bind to the first available source.
+  useEffect(() => {
+    if (!topic && cameras[0]) {
+      setTopic(cameras[0].id);
+    }
+  }, [cameras, topic]);
+
   // Keep the tile title in sync whenever the selected topic resolves.
   useEffect(() => {
     const label = cameras.find((c) => c.id === topic)?.label;
