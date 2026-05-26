@@ -1,9 +1,15 @@
 import { useLighter } from "@fiftyone/lighter";
 import { isGeneratedView } from "@fiftyone/state";
 import { getDefaultStore } from "jotai";
+import { useAtomCallback } from "jotai/utils";
 import { useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { useAnnotationContext } from "./Edit/useAnnotationContext";
+import {
+  editingLabelAtom,
+  pendingNewTypeAtom,
+} from "./Edit/useAnnotationContext/atoms";
+import { current } from "./Edit/useAnnotationContext/selectors";
 import useExit from "./Edit/useExit";
 import { labelMap } from "./useLabels";
 
@@ -31,17 +37,32 @@ export default function useFocus(): FocusController {
   const { scene } = useLighter();
   const onExit = useExit();
   const isGenerated = useRecoilValue(isGeneratedView);
-  const { selected, select } = useAnnotationContext();
+  const { select } = useAnnotationContext();
+
+  // Read fresh from the store; closure-captured `selected.label` is stale
+  // when this fires from a synchronous lighter event chain that ran after
+  // `createNew` updated the atom but before React re-rendered.
+  const readEditState = useAtomCallback(
+    useCallback((get) => {
+      const label = get(current);
+      return {
+        label,
+        pendingNewType: get(pendingNewTypeAtom),
+        hasEditingAtom: get(editingLabelAtom) !== null,
+      };
+    }, [])
+  );
 
   const selectOverlay = useCallback(
     (id: string, options?: FocusOptions) => {
       if (options?.ignoreSideEffects) return;
 
+      const { label: currentLabel, pendingNewType, hasEditingAtom } =
+        readEditState();
+
       // Something is already being edited (either a label or a pending
       // new-type schema flow) — cancel the new selection.
-      if (selected.label !== null || selected.pendingNewType !== null) {
-        const currentLabel = selected.label;
-
+      if (hasEditingAtom || pendingNewType !== null) {
         if (currentLabel?.isNew) return;
 
         // Re-clicking the overlay that's already being edited — needed
@@ -60,7 +81,7 @@ export default function useFocus(): FocusController {
       select(label);
       scene?.selectOverlay(id, { ignoreSideEffects: true });
     },
-    [scene, select, selected.label, selected.pendingNewType]
+    [readEditState, scene, select]
   );
 
   const deselectOverlay = useCallback(
