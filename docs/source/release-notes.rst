@@ -3,6 +3,147 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.19.0
+--------------------------
+*Released May 26, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.16.0 <release-notes-v1.16.0>`, plus:
+
+App
+
+- Upgraded the :ref:`Run page <enterprise-run-page>` of delegated operations
+  with a full :ref:`metrics dashboard <enterprise-run-page-metrics>` that
+  surfaces live system, database, and delegated-operation telemetry. The
+  dashboard is admin-only by default, with dataset-permission-based access
+  controls available for non-admin users
+- Live :ref:`log streaming <enterprise-run-page-logs>` during delegated
+  operation execution is now powered by a sidecar that captures `stdout` and
+  `stderr` and surfaces in-progress logs, progress bars, and package versions
+  directly in the UI
+- Added the FiftyOne MCP server and `litellm` to the `fiftyone-app` container
+  in support of AI agent capabilities
+- The Database panel on the live runs metrics page is now collapsed by default
+  and hidden entirely for non-admin users
+- Fixed a bug where the Next.js loading bar could remain visible indefinitely,
+  and improved the performance of target selection on slower deployments
+- Fixed a bug where the Cloud credentials "Groups" tab could show global
+  credentials when no groups existed
+- Fixed a bug where cloud credentials were unnecessarily queried when no group
+  was selected
+
+Core
+
+- Added support for
+  :ref:`per-deployment AI model weights <enterprise-ai-model-weights>`,
+  allowing administrators to configure where models in the model zoo source
+  their weights from, including private buckets and air-gapped mirrors
+- Fixed a bug in scheduled tasks where self-rescheduling on each tick could
+  cause tasks to drift; tasks are now a self-contained loop
+
+Auth and Users
+
+- Fixed a CAS lockout in legacy mode caused by unrestricted onboarding flows
+- Labeler and service accounts now appear in the CAS audit table
+- Improved redirect preservation across client-side session and auth errors
+
+Security
+
+- Resolved CVE-2026-24049, CVE-2026-23949, and CVE-2026-6357 in the
+  delegated-operation sidecar
+- Updated a number of dependencies in order to resolve security
+  vulnerabilities: `pyjwt`, `ujson`, and `langchain-core`
+
+Build
+
+- Bumped the minimum supported Redis version
+
+
+.. _release-notes-v1.16.0:
+
+FiftyOne 1.16.0
+---------------
+*Released May 26, 2026*
+
+In-App Annotation
+
+- Added :ref:`Annotation Ontologies <annotation-ontologies>`: a new framework
+  for declaring an append-only, versioned schema for your labels and their
+  attributes. Ontologies support
+  :ref:`conditional attributes <annotation-conditional-attributes>` whose
+  visibility is driven by composable `When` expressions (`WhenEquals`,
+  `WhenIn`, and arbitrary `WhenAnd`/`WhenOr` trees), and they can be applied to
+  any field via the :ref:`Schema Manager <schema-manager>`.
+- Added support for editing instance segmentation masks in in-app annotation
+- Added click-to-segment functionality in the in-app annotation experience,
+  allowing annotators to iteratively define masks using SAM2
+- Added support for editing 2D polylines in in-app annotation
+- Improved overall annotation canvas stability
+
+Plugins and Operators
+
+- Added :ref:`plugin skills <plugins-design-skills>`: plugins can now bundle
+  agent-discoverable skills that are surfaced via a new top-level
+  `fiftyone skills` CLI command. Skills are first-class in the plugin
+  framework and resolved by name rather than path
+- Added several new built-in operators, including operators to get and
+  set view filters, list and open panels, get and set panel state and data,
+  list brain runs, list evaluations, list model-evaluation scenarios, get
+  field schemas, and update the color scheme
+- Plugins can now register custom components into arbitrary panel areas,
+  including a new resizable right sidebar in the grid view and a header
+  placement that lets plugins render content directly into the App header
+- Added a `risk_level` configuration option to operators, providing
+  additional guardrails for high-impact actions
+- Added support for
+  :ref:`request_params_overrides <pipeline-request-params-overrides>` on
+  pipeline operators
+  `#7277 <https://github.com/voxel51/fiftyone/pull/7277>`_
+
+App
+
+- Increased the default width of the panel area
+- Centered the BarChart within histogram containers
+- Stabilized navigation of dynamic group carousels
+  `#7516 <https://github.com/voxel51/fiftyone/pull/7516>`_
+- Improved synchronization of Explore and Annotate viewports, reducing
+  rendering flicker and stale state when toggling between the two
+
+Models
+
+- Added SAM3 to the model zoo
+  `#7303 <https://github.com/voxel51/fiftyone/pull/7303>`_
+- Fixed device allocation for the Qwen3-VL model so that it correctly uses
+  the user-selected device
+
+Core
+
+- Improved HTTP error responses: malformed JSON now returns 400 instead of
+  500, missing filepaths now return 400, and 404 coverage was broadened for
+  the `/media` endpoint
+- Fixed a bug where serialized segmentation masks could be persisted in an
+  incompatible binary format
+
+Build
+
+- Removed the upper bound on supported Python versions. The Windows installer
+  now emits a warning when an unsupported Python version is detected rather
+  than failing the install
+
+Documentation
+
+- Updated the :ref:`in-App annotation <in-app-annotation>` documentation to
+  cover the new ontology, segmentation, polyline, and AI-assisted workflows
+- Added :ref:`logs <enterprise-run-page-logs>` and
+  :ref:`metrics <enterprise-run-page-metrics>` sections to the delegated
+  operation Run page docs
+  `#7611 <https://github.com/voxel51/fiftyone/pull/7611>`_
+- Added documentation for the
+  :ref:`AI model weights <enterprise-ai-model-weights>` endpoint
+  `#7556 <https://github.com/voxel51/fiftyone/pull/7556>`_
+- Documented the new :ref:`plugin skills <plugins-design-skills>` framework
+  and updated the plugin development guide accordingly
+
+
 FiftyOne Enterprise 2.18.1
 --------------------------
 *Released May 7, 2026*
