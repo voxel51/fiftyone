@@ -171,8 +171,8 @@ test(`dynamic groups of groups works`, async ({
   await modal.imavid.setLooping(false);
   await modal.imavid.toggleSettings();
 
-  await modal.imavid.playUntilFrames("2 / 2", true);
-
+  await modal.imavid.togglePlay();
+  await modal.imavid.waitUntilFrameTextIs("2 / 2", true);
   await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
     scene_key: "1",
     order_key: "2",

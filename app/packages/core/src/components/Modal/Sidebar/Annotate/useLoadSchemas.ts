@@ -30,8 +30,6 @@ export default function useLoadSchemas() {
   // SchemaManager Modal unmount via useSchemaManagerCleanup hook
   return useCallback(() => {
     // Reset schema data to trigger loading state
-    setData(null);
-    setActive(null);
 
     // Reset paths order and close modal
     setActivePathsOrder(null);

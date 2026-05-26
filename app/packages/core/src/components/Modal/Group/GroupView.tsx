@@ -56,60 +56,54 @@ export const GroupView = () => {
   return (
     <div className={groupContainer} data-cy="group-container">
       <div className={mainGroup}>
-        {(isCarouselVisible || isMainVisible) && (
-          <Resizable
-            size={{
-              height: "100% !important",
-              width: is3dVisible && !shouldRender3DBelow ? width : "100%",
-            }}
-            minWidth={300}
-            minHeight={"100%"}
-            maxWidth={is3dVisible && !shouldRender3DBelow ? "90%" : "100%"}
-            enable={{
-              top: false,
-              right: is3dVisible && !shouldRender3DBelow ? true : false,
-              bottom: false,
-              left: false,
-              topRight: false,
-              bottomRight: false,
-              bottomLeft: false,
-              topLeft: false,
-            }}
-            onResizeStop={(_, __, ___, { width: delta }) =>
-              setWidth(String(Number(width) + delta))
-            }
-            style={{
-              position: "relative",
-              borderRight: `1px solid ${theme.primary.plainBorder}`,
-              overflow: "hidden",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-            }}
-          >
-            {isCarouselVisible && (
-              <GroupCarousel
-                key={`${key}-${mediaField}`}
-                fullHeight={!isMainVisible}
-              />
-            )}
-            {isMainVisible && (
-              <EnsureGroupSample>
-                <GroupImageVideoSample />
-              </EnsureGroupSample>
-            )}
-            {shouldRender3DBelow && (
-              <GroupSuspense>
-                <GroupSample3d />
-              </GroupSuspense>
-            )}
-          </Resizable>
-        )}
-        {!shouldRender3DBelow && is3dVisible && (
-          <GroupSuspense>
-            <GroupSample3d />
-          </GroupSuspense>
-        )}
+        <EnsureGroupSample>
+          {(isCarouselVisible || isMainVisible) && (
+            <Resizable
+              size={{
+                height: "100% !important",
+                width: is3dVisible && !shouldRender3DBelow ? width : "100%",
+              }}
+              minWidth={300}
+              minHeight={"100%"}
+              maxWidth={is3dVisible && !shouldRender3DBelow ? "90%" : "100%"}
+              enable={{
+                top: false,
+                right: is3dVisible && !shouldRender3DBelow ? true : false,
+                bottom: false,
+                left: false,
+                topRight: false,
+                bottomRight: false,
+                bottomLeft: false,
+                topLeft: false,
+              }}
+              onResizeStop={(_, __, ___, { width: delta }) =>
+                setWidth(String(Number(width) + delta))
+              }
+              style={{
+                position: "relative",
+                borderRight: `1px solid ${theme.primary.plainBorder}`,
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+              }}
+            >
+              {isCarouselVisible && (
+                <GroupCarousel
+                  key={`${key}-${mediaField}`}
+                  fullHeight={!isMainVisible}
+                />
+              )}
+              {isMainVisible && (
+                <GroupSuspense main2d>
+                  <GroupImageVideoSample />
+                </GroupSuspense>
+              )}
+              {shouldRender3DBelow && <GroupSample3d />}
+            </Resizable>
+          )}
+          {!shouldRender3DBelow && is3dVisible && <GroupSample3d />}
+        </EnsureGroupSample>
       </div>
     </div>
   );
