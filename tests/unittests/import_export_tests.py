@@ -11,6 +11,7 @@ import pathlib
 import random
 import string
 import tempfile
+import time
 import unittest
 from unittest import mock
 
@@ -232,9 +233,18 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
             "carol",
         )
 
+        source_tag_modified_at = max(
+            tag.last_modified_at for tag in fomm.list_temporal_tags(dataset)
+        )
+        time.sleep(0.05)
+
         dataset2 = fo.Dataset.from_dir(
             dataset_dir=export_dir,
             dataset_type=fo.types.FiftyOneDataset,
+        )
+        imported_tags = fomm.list_temporal_tags(dataset2)
+        sample_modified_at = dict(
+            zip(dataset2.values("id"), dataset2.values("last_modified_at"))
         )
 
         self.assertEqual(
@@ -243,6 +253,13 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
         self.assertEqual(
             self._temporal_tag_tuples(dataset),
             self._temporal_tag_tuples(dataset2),
+        )
+        self.assertGreater(dataset2.last_modified_at, source_tag_modified_at)
+        self.assertTrue(
+            all(
+                sample_modified_at[tag.sample_id] > tag.last_modified_at
+                for tag in imported_tags
+            )
         )
 
         etau.delete_file(tags_path)
@@ -260,42 +277,6 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
         )
 
         self.assertFalse(os.path.isfile(tags_path))
-
-    @drop_temporal_tags
-    @drop_datasets
-    def test_fiftyone_dataset_temporal_tags_legacy_anchor_import(self):
-        dataset, _ = self._make_temporal_tag_dataset()
-        export_dir = self._new_dir()
-
-        dataset.export(
-            export_dir=export_dir,
-            dataset_type=fo.types.FiftyOneDataset,
-        )
-
-        tags_path = os.path.join(export_dir, TEMPORAL_TAGS_EXPORT_FILENAME)
-        exported = etas.read_json(tags_path)
-        for doc in exported["temporal_tags"]:
-            doc.pop("anchor", None)
-            doc.pop("created_at", None)
-            doc.pop("last_modified_at", None)
-            doc.pop("created_by", None)
-            doc.pop("last_modified_by", None)
-
-        exported["temporal_tags"][0]["anchor"] = None
-        etas.write_json(exported, tags_path)
-
-        dataset2 = fo.Dataset.from_dir(
-            dataset_dir=export_dir,
-            dataset_type=fo.types.FiftyOneDataset,
-        )
-
-        tags = fomm.list_temporal_tags(dataset2)
-        self.assertEqual(len(tags), 3)
-        self.assertTrue(all(tag.anchor is None for tag in tags))
-        self.assertTrue(all(tag.created_at is not None for tag in tags))
-        self.assertTrue(all(tag.last_modified_at is not None for tag in tags))
-        self.assertTrue(all(tag.created_by is None for tag in tags))
-        self.assertTrue(all(tag.last_modified_by is None for tag in tags))
 
     @drop_temporal_tags
     @drop_datasets

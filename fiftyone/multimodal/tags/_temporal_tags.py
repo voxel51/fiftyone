@@ -6,6 +6,10 @@ Temporal tags are sample-scoped records stored in the dedicated
 sidecars, and low-level orphan cleanup all flow through this module so the
 storage contract stays in one place.
 
+The collection and indexes are created lazily on first write. Public CRUD
+bumps linked sample and dataset ``last_modified_at`` values; lifecycle cleanup
+helpers rely on their own owning operations for freshness.
+
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
@@ -20,7 +24,7 @@ import os
 from typing import Iterable
 
 from bson import ObjectId
-from pymongo import ASCENDING, InsertOne, UpdateOne
+from pymongo import ASCENDING, InsertOne, UpdateMany, UpdateOne
 
 import eta.core.utils as etau
 
@@ -385,6 +389,7 @@ class TemporalTags(object):
 
         collection = _get_or_create_collection()
         collection.bulk_write(list(ops_by_key.values()), ordered=False)
+        _touch_parent_last_modified_at(self._dataset, sample_ids.values(), now)
 
         persisted_docs = collection.find(
             {
@@ -439,7 +444,14 @@ class TemporalTags(object):
         if collection is None:
             return 0
 
-        return collection.delete_many(query).deleted_count
+        sample_ids = collection.distinct("_sample_id", query)
+        deleted_count = collection.delete_many(query).deleted_count
+        if deleted_count:
+            _touch_parent_last_modified_at(
+                self._dataset, sample_ids, _utcnow()
+            )
+
+        return deleted_count
 
     def clear(self):
         """Deletes all temporal tags in this collection.
@@ -828,6 +840,33 @@ def _validate_sample_ids_exist(
     return sample_id_map
 
 
+def _touch_parent_last_modified_at(dataset, sample_ids, last_modified_at):
+    sample_ids = sorted(
+        {
+            _ensure_object_id(sample_id, "sample_ids")
+            for sample_id in sample_ids
+        },
+        key=str,
+    )
+    if not sample_ids:
+        return
+
+    ops = []
+    batch_size = fou.recommend_batch_size_for_value(
+        ObjectId(), max_size=100000
+    )
+    for _ids in fou.iter_batches(sample_ids, batch_size):
+        ops.append(
+            UpdateMany(
+                {"_id": {"$in": _ids}},
+                {"$set": {"last_modified_at": last_modified_at}},
+            )
+        )
+
+    dataset._bulk_write(ops, ids=sample_ids)
+    dataset._update_last_modified_at(last_modified_at=last_modified_at)
+
+
 def _to_storage_doc(tag: TemporalTag, dataset_id, sample_id):
     start = _ensure_integer(tag.start, "start")
     end = _ensure_integer(tag.end, "end")
@@ -1196,9 +1235,7 @@ def _utcnow():
 
 
 def _ensure_indexes(collection) -> None:
-    _create_or_replace_index(
-        collection,
-        "unique_temporal_tag",
+    collection.create_index(
         [
             ("_dataset_id", ASCENDING),
             ("_sample_id", ASCENDING),
@@ -1208,11 +1245,10 @@ def _ensure_indexes(collection) -> None:
             ("end", ASCENDING),
             ("tag", ASCENDING),
         ],
+        name="unique_temporal_tag",
         unique=True,
     )
-    _create_or_replace_index(
-        collection,
-        "temporal_tag_overlap",
+    collection.create_index(
         [
             ("_dataset_id", ASCENDING),
             ("_sample_id", ASCENDING),
@@ -1221,12 +1257,11 @@ def _ensure_indexes(collection) -> None:
             ("start", ASCENDING),
             ("end", ASCENDING),
         ],
+        name="temporal_tag_overlap",
     )
     # Viewer reads usually pin one sample and optionally add a time window,
     # without necessarily knowing an index type or anchor up front.
-    _create_or_replace_index(
-        collection,
-        "temporal_tag_sample_range",
+    collection.create_index(
         [
             ("_dataset_id", ASCENDING),
             ("_sample_id", ASCENDING),
@@ -1236,12 +1271,11 @@ def _ensure_indexes(collection) -> None:
             ("anchor", ASCENDING),
             ("tag", ASCENDING),
         ],
+        name="temporal_tag_sample_range",
     )
     # Search and track-population flows start from tag values, then need the
     # matching sample IDs and ranges.
-    _create_or_replace_index(
-        collection,
-        "temporal_tag_tag_lookup",
+    collection.create_index(
         [
             ("_dataset_id", ASCENDING),
             ("tag", ASCENDING),
@@ -1251,24 +1285,16 @@ def _ensure_indexes(collection) -> None:
             ("index_type", ASCENDING),
             ("anchor", ASCENDING),
         ],
+        name="temporal_tag_tag_lookup",
     )
-    _create_or_replace_index(
-        collection,
-        "temporal_tag_counts",
+    collection.create_index(
         [
             ("_dataset_id", ASCENDING),
             ("anchor", ASCENDING),
             ("tag", ASCENDING),
         ],
+        name="temporal_tag_counts",
     )
-
-
-def _create_or_replace_index(collection, name, keys, **kwargs) -> None:
-    existing = collection.index_information().get(name, None)
-    if existing is not None and existing.get("key", None) != keys:
-        collection.drop_index(name)
-
-    collection.create_index(keys, name=name, **kwargs)
 
 
 __all__ = [

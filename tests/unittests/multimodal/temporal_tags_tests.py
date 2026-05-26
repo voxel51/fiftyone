@@ -192,6 +192,90 @@ class TemporalTagTests(unittest.TestCase):
 
     @drop_temporal_tags
     @drop_datasets
+    def test_parent_timestamps_on_crud(self):
+        dataset, sample_ids = _make_dataset(2)
+        first_id, second_id = sample_ids
+
+        before_dataset, before_first = _modified_timestamps(dataset, first_id)
+        _, before_second = _modified_timestamps(dataset, second_id)
+
+        time.sleep(0.05)
+        inserted = fomm.add_temporal_tags(
+            dataset, fomm.TemporalTag(first_id, 0, 10, "review")
+        )[0]
+        after_add_dataset, after_add_first = _modified_timestamps(
+            dataset, first_id
+        )
+        _, after_add_second = _modified_timestamps(dataset, second_id)
+
+        self.assertGreater(after_add_dataset, before_dataset)
+        self.assertGreater(after_add_first, before_first)
+        self.assertEqual(after_add_second, before_second)
+
+        time.sleep(0.05)
+        repeated = fomm.add_temporal_tags(
+            dataset, fomm.TemporalTag(first_id, 0, 10, "review")
+        )[0]
+        after_repeat_dataset, after_repeat_first = _modified_timestamps(
+            dataset, first_id
+        )
+
+        self.assertEqual(repeated.id, inserted.id)
+        self.assertEqual(repeated.created_at, inserted.created_at)
+        self.assertGreater(
+            repeated.last_modified_at, inserted.last_modified_at
+        )
+        self.assertGreater(after_repeat_dataset, after_add_dataset)
+        self.assertGreater(after_repeat_first, after_add_first)
+
+        before_noop_dataset, before_noop_first = _modified_timestamps(
+            dataset, first_id
+        )
+        time.sleep(0.05)
+        self.assertEqual(fomm.delete_temporal_tags(dataset, tags="missing"), 0)
+        after_noop_dataset, after_noop_first = _modified_timestamps(
+            dataset, first_id
+        )
+
+        self.assertEqual(after_noop_dataset, before_noop_dataset)
+        self.assertEqual(after_noop_first, before_noop_first)
+
+        time.sleep(0.05)
+        self.assertEqual(
+            fomm.delete_temporal_tags(dataset, ids=inserted.id), 1
+        )
+        after_delete_dataset, after_delete_first = _modified_timestamps(
+            dataset, first_id
+        )
+
+        self.assertGreater(after_delete_dataset, after_noop_dataset)
+        self.assertGreater(after_delete_first, after_noop_first)
+
+        fomm.add_temporal_tags(
+            dataset,
+            [
+                fomm.TemporalTag(first_id, 20, 30, "clear"),
+                fomm.TemporalTag(second_id, 20, 30, "clear"),
+            ],
+        )
+        before_clear_dataset, before_clear_first = _modified_timestamps(
+            dataset, first_id
+        )
+        _, before_clear_second = _modified_timestamps(dataset, second_id)
+
+        time.sleep(0.05)
+        self.assertEqual(fomm.TemporalTags(dataset).clear(), 2)
+        after_clear_dataset, after_clear_first = _modified_timestamps(
+            dataset, first_id
+        )
+        _, after_clear_second = _modified_timestamps(dataset, second_id)
+
+        self.assertGreater(after_clear_dataset, before_clear_dataset)
+        self.assertGreater(after_clear_first, before_clear_first)
+        self.assertGreater(after_clear_second, before_clear_second)
+
+    @drop_temporal_tags
+    @drop_datasets
     def test_storage_filtering_counts_and_deletion(self):
         dataset, sample_ids = _make_dataset(2)
         first = fomm.TemporalTag(sample_ids[0], 0, 10, "review")
@@ -329,36 +413,6 @@ class TemporalTagTests(unittest.TestCase):
 
     @drop_temporal_tags
     @drop_datasets
-    def test_replaces_legacy_unique_index(self):
-        collection = foo.get_db_conn()[TEMPORAL_TAGS_COLLECTION_NAME]
-        collection.create_index(
-            [
-                ("_dataset_id", 1),
-                ("_sample_id", 1),
-                ("index_type", 1),
-                ("start", 1),
-                ("end", 1),
-                ("tag", 1),
-            ],
-            unique=True,
-            name="unique_temporal_tag",
-        )
-
-        dataset, sample_ids = _make_dataset()
-        fomm.add_temporal_tags(
-            dataset,
-            fomm.TemporalTag(
-                sample_ids[0], 0, 10, "review", anchor="camera_front"
-            ),
-        )
-
-        index_keys = collection.index_information()["unique_temporal_tag"][
-            "key"
-        ]
-        self.assertIn(("anchor", 1), index_keys)
-
-    @drop_temporal_tags
-    @drop_datasets
     def test_creates_query_indexes(self):
         dataset, sample_ids = _make_dataset()
         fomm.add_temporal_tags(
@@ -432,10 +486,39 @@ class TemporalTagTests(unittest.TestCase):
                 view, fomm.TemporalTag(sample_ids[1], 10, 20, "missing")
             )
 
+        (
+            before_view_delete_dataset,
+            before_view_delete_first,
+        ) = _modified_timestamps(dataset, sample_ids[0])
+        _, before_view_delete_second = _modified_timestamps(
+            dataset, sample_ids[1]
+        )
+        _, before_view_delete_third = _modified_timestamps(
+            dataset, sample_ids[2]
+        )
+
+        time.sleep(0.05)
         self.assertEqual(
             fomm.delete_temporal_tags(view, tags="shared"),
             1,
         )
+        (
+            after_view_delete_dataset,
+            after_view_delete_first,
+        ) = _modified_timestamps(dataset, sample_ids[0])
+        _, after_view_delete_second = _modified_timestamps(
+            dataset, sample_ids[1]
+        )
+        _, after_view_delete_third = _modified_timestamps(
+            dataset, sample_ids[2]
+        )
+
+        self.assertGreater(
+            after_view_delete_dataset, before_view_delete_dataset
+        )
+        self.assertGreater(after_view_delete_first, before_view_delete_first)
+        self.assertEqual(after_view_delete_second, before_view_delete_second)
+        self.assertEqual(after_view_delete_third, before_view_delete_third)
         self.assertEqual(
             fomm.count_temporal_tags(dataset),
             {"other": 1, "shared": 1, "view": 1},
@@ -641,6 +724,16 @@ def _temporal_tag_count_for_sample(dataset_id, sample_id):
     return foo.get_db_conn()[TEMPORAL_TAGS_COLLECTION_NAME].count_documents(
         {"_dataset_id": dataset_id, "_sample_id": ObjectId(sample_id)}
     )
+
+
+def _modified_timestamps(dataset, sample_id):
+    dataset.reload()
+    dataset_doc = foo.get_db_conn().datasets.find_one({"_id": dataset._doc.id})
+    sample_doc = dataset._sample_collection.find_one(
+        {"_id": ObjectId(sample_id)}
+    )
+
+    return dataset_doc["last_modified_at"], sample_doc["last_modified_at"]
 
 
 def _temporal_tag_provenance(tags):
