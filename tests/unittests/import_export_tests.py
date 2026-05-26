@@ -11,26 +11,34 @@ import random
 import string
 import tempfile
 import unittest
+from unittest import mock
 
 import cv2
 import numpy as np
 import pytest
 
+import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
 
 import fiftyone as fo
+import fiftyone.multimodal as fomm
 import fiftyone.utils.coco as fouc
 import fiftyone.utils.image as foui
 import fiftyone.utils.labels as foul
 import fiftyone.utils.yolo as fouy
 from fiftyone import ViewField as F
+from fiftyone.multimodal.tags import (
+    TEMPORAL_TAGS_COLLECTION_NAME,
+    TEMPORAL_TAGS_EXPORT_FILENAME,
+)
 
-from decorators import drop_datasets
+from decorators import drop_collection, drop_datasets
 
 skipwindows = pytest.mark.skipif(
     os.name == "nt", reason="Windows hangs in workflows, fix me"
 )
+drop_temporal_tags = drop_collection(TEMPORAL_TAGS_COLLECTION_NAME)
 
 
 class ImageDatasetTests(unittest.TestCase):
@@ -159,6 +167,155 @@ class DuplicateImageExportTests(ImageDatasetTests):
         )
 
         self.assertEqual(len(dataset2), 2)
+
+
+class TemporalTagsImportExportTests(ImageDatasetTests):
+    @drop_temporal_tags
+    @drop_datasets
+    def test_fiftyone_dataset_temporal_tags_round_trip(self):
+        dataset, sample_ids = self._make_temporal_tag_dataset()
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        tags_path = os.path.join(export_dir, TEMPORAL_TAGS_EXPORT_FILENAME)
+        self.assertTrue(os.path.isfile(tags_path))
+
+        exported = etas.read_json(tags_path)["temporal_tags"]
+        self.assertEqual(len(exported), 3)
+        for doc in exported:
+            self.assertEqual(
+                set(doc.keys()),
+                {"sample_id", "index_type", "start", "end", "tag"},
+            )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        self.assertEqual(
+            fomm.count_temporal_tags(dataset2), {"drop": 1, "keep": 2}
+        )
+        self.assertEqual(
+            self._temporal_tag_tuples(dataset),
+            self._temporal_tag_tuples(dataset2),
+        )
+
+        etau.delete_file(tags_path)
+        dataset3 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        self.assertEqual(fomm.count_temporal_tags(dataset3), {})
+
+        fomm.delete_temporal_tags(dataset, delete_all=True)
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        self.assertFalse(os.path.isfile(tags_path))
+
+    @drop_temporal_tags
+    @drop_datasets
+    def test_fiftyone_dataset_temporal_tags_view_export(self):
+        dataset, sample_ids = self._make_temporal_tag_dataset()
+        view = dataset.select([sample_ids[0], sample_ids[2]])
+        export_dir = self._new_dir()
+
+        view.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        self.assertEqual(fomm.count_temporal_tags(dataset2), {"keep": 2})
+        self.assertEqual(
+            {tag.sample_id for tag in fomm.list_temporal_tags(dataset2)},
+            {sample_ids[0], sample_ids[2]},
+        )
+
+    @drop_temporal_tags
+    @drop_datasets
+    def test_fiftyone_dataset_temporal_tags_max_samples(self):
+        dataset, sample_ids = self._make_temporal_tag_dataset()
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+            max_samples=1,
+        )
+
+        self.assertEqual(len(dataset2), 1)
+        self.assertEqual(fomm.count_temporal_tags(dataset2), {"keep": 1})
+        self.assertEqual(
+            fomm.list_temporal_tags(dataset2)[0].sample_id, sample_ids[0]
+        )
+
+    @drop_temporal_tags
+    @drop_datasets
+    def test_fiftyone_dataset_temporal_tags_nonempty_migration_import(self):
+        dataset, _ = self._make_temporal_tag_dataset()
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset()
+        dataset2.add_sample(fo.Sample(filepath=self._new_image()))
+
+        with mock.patch(
+            "fiftyone.utils.data.importers.fomi.needs_migration",
+            return_value=True,
+        ):
+            dataset2.add_dir(
+                dataset_dir=export_dir,
+                dataset_type=fo.types.FiftyOneDataset,
+            )
+
+        self.assertEqual(
+            fomm.count_temporal_tags(dataset2), {"drop": 1, "keep": 2}
+        )
+
+    def _make_temporal_tag_dataset(self):
+        dataset = fo.Dataset()
+        samples = [fo.Sample(filepath=self._new_image()) for _ in range(3)]
+        dataset.add_samples(samples)
+        sample_ids = dataset.values("id")
+
+        fomm.add_temporal_tags(
+            dataset,
+            [
+                fomm.TemporalTag(sample_ids[0], 0, 10, "keep"),
+                fomm.TemporalTag(sample_ids[1], 10, 20, "drop"),
+                fomm.TemporalTag(sample_ids[2], 20, 30, "keep"),
+            ],
+        )
+
+        return dataset, sample_ids
+
+    def _temporal_tag_tuples(self, dataset):
+        return [
+            (tag.sample_id, tag.index_type, tag.start, tag.end, tag.tag)
+            for tag in fomm.list_temporal_tags(dataset)
+        ]
 
 
 class ImageExportCoersionTests(ImageDatasetTests):
