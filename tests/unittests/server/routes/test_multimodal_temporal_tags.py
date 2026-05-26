@@ -6,8 +6,8 @@ Multimodal temporal tag route unit tests.
 |
 """
 
+import asyncio
 import json
-import time
 from unittest.mock import AsyncMock, MagicMock
 
 from bson import ObjectId
@@ -148,7 +148,7 @@ class TestMultimodalTemporalTagsRoute:
         sample_ids,
     ):
         before_post = _modified_timestamps(dataset, sample_ids[0])
-        time.sleep(0.05)
+        await asyncio.sleep(0.05)
 
         request = _make_request(
             dataset_id,
@@ -185,7 +185,7 @@ class TestMultimodalTemporalTagsRoute:
                 "anchor": "camera_front",
             },
         )
-        time.sleep(0.05)
+        await asyncio.sleep(0.05)
         response = await sample_temporal_tags_endpoint.get(request)
         listed = _json_body(response)["temporal_tags"]
         after_get = _modified_timestamps(dataset, sample_ids[0])
@@ -198,7 +198,7 @@ class TestMultimodalTemporalTagsRoute:
             sample_id=sample_ids[0],
             body={"ids": [created[0]["id"]]},
         )
-        time.sleep(0.05)
+        await asyncio.sleep(0.05)
         response = await sample_temporal_tags_endpoint.delete(request)
         after_delete = _modified_timestamps(dataset, sample_ids[0])
 
@@ -257,7 +257,7 @@ class TestMultimodalTemporalTagsRoute:
         )[0]
         before_patch = _modified_timestamps(dataset, sample_ids[0])
 
-        time.sleep(0.05)
+        await asyncio.sleep(0.05)
         request = _make_request(
             dataset_id,
             sample_id=sample_ids[0],
@@ -312,7 +312,7 @@ class TestMultimodalTemporalTagsRoute:
         )
 
         before_get = _dataset_last_modified_at(dataset)
-        time.sleep(0.05)
+        await asyncio.sleep(0.05)
         request = _make_request(
             dataset_id,
             query_params={"start": "5", "end": "15"},
@@ -325,7 +325,7 @@ class TestMultimodalTemporalTagsRoute:
         assert [tag["tag"] for tag in temporal_tags] == ["clip", "clip"]
         assert after_get == before_get
 
-        time.sleep(0.05)
+        await asyncio.sleep(0.05)
         request = _make_request(
             dataset_id,
             query_params={"start": "5", "end": "15"},
