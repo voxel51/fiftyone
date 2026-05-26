@@ -5,7 +5,7 @@ reviews:
   profile: "assertive"
   request_changes_workflow: false
   changed_files_summary: false
-  auto_assign_reviewers: true
+  auto_assign_reviewers: false
   high_level_summary: true
   poem: false
   review_status: true
