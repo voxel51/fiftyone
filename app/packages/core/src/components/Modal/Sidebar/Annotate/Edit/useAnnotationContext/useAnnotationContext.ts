@@ -8,6 +8,7 @@ import { isFieldReadOnly, labelSchemaData } from "../../state";
 import { labelsByPath } from "../../useLabels";
 import { activePrimitiveAtom } from "../useActivePrimitive";
 import {
+  currentEditingMaskAtom,
   editingLabelAtom,
   type LabelType,
   pendingNewTypeAtom,
@@ -26,6 +27,7 @@ import {
   fieldsOfType,
   hasChanges,
   isEditing as isEditingSelector,
+  isEditingMask as isEditingMaskSelector,
   isNew as isNewSelector,
 } from "./selectors";
 
@@ -63,6 +65,8 @@ export interface AnnotationContextSelected {
   schema: ReturnType<typeof currentSchema.read> | null;
   savedData: AnnotationLabel["data"] | null;
   isEditing: boolean;
+  /** True when the current label is mid-mask-authoring. */
+  isEditingMask: boolean;
   isNew: boolean;
   hasChanges: boolean;
   isFieldReadOnly: boolean;
@@ -90,6 +94,12 @@ export interface AnnotationContext {
    * atom).
    */
   setSavedData: (data: AnnotationLabel["data"] | null) => void;
+  /**
+   * Mark a label id as mid-mask-authoring (when `hasMask` is true) or clear
+   * that mark (when false). `selected.isEditingMask` reflects whether the
+   * currently-edited label's id is in this set.
+   */
+  setEditingMask: (id: string, hasMask: boolean) => void;
 
   select: (labelAtom: PrimitiveAtom<AnnotationLabel>) => void;
   createNew: (
@@ -127,6 +137,7 @@ export const useAnnotationContext = (): AnnotationContext => {
   const schema = useAtomValue(currentSchema);
   const savedData = useAtomValue(savedLabel);
   const isEditing = useAtomValue(isEditingSelector);
+  const isEditingMask = useAtomValue(isEditingMaskSelector);
   const isNew = useAtomValue(isNewSelector);
   const dirty = useAtomValue(hasChanges);
   const fieldReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
@@ -142,6 +153,7 @@ export const useAnnotationContext = (): AnnotationContext => {
       schema,
       savedData,
       isEditing,
+      isEditingMask,
       isNew: Boolean(isNew),
       hasChanges: dirty,
       isFieldReadOnly: fieldReadOnly,
@@ -153,6 +165,7 @@ export const useAnnotationContext = (): AnnotationContext => {
       field,
       fieldReadOnly,
       isEditing,
+      isEditingMask,
       isNew,
       label,
       overlay,
@@ -249,9 +262,14 @@ export const useAnnotationContext = (): AnnotationContext => {
 
   const selectExisting = useAtomCallback(
     useCallback((get, set, labelAtom: PrimitiveAtom<AnnotationLabel>) => {
-      set(savedLabel, get(labelAtom).data);
+      const data = get(labelAtom).data;
+      set(savedLabel, data);
       set(editingLabelAtom, labelAtom);
       set(pendingNewTypeAtom, null);
+      // Initialize the mid-mask flag from the just-selected label's data
+      // so the flag is correct even when no lighter event has fired yet.
+      const maskFields = data as { mask?: unknown; mask_path?: unknown };
+      set(currentEditingMaskAtom, Boolean(maskFields.mask || maskFields.mask_path));
     }, [])
   );
   const select = useCallback<AnnotationContext["select"]>(
@@ -273,15 +291,18 @@ export const useAnnotationContext = (): AnnotationContext => {
     [compareEditingAtom]
   );
 
+  const setCurrentEditingMask = useSetAtom(currentEditingMaskAtom);
   const clear = useCallback<AnnotationContext["clear"]>(() => {
     recordCurrentToLastUsed();
     setSaved(null);
     setEditingLabel(null);
     setPendingNewType(null);
     setActivePrimitive(null);
+    setCurrentEditingMask(false);
   }, [
     recordCurrentToLastUsed,
     setActivePrimitive,
+    setCurrentEditingMask,
     setEditingLabel,
     setPendingNewType,
     setSaved,
@@ -345,6 +366,19 @@ export const useAnnotationContext = (): AnnotationContext => {
     [setSaved]
   );
 
+  const writeEditingMask = useAtomCallback(
+    useCallback((get, set, id: string, hasMask: boolean) => {
+      const currentId = (get(current)?.data as { _id?: string } | undefined)?._id;
+      if (currentId === id) {
+        set(currentEditingMaskAtom, hasMask);
+      }
+    }, [])
+  );
+  const setEditingMask = useCallback<AnnotationContext["setEditingMask"]>(
+    (id, hasMask) => writeEditingMask(id, hasMask),
+    [writeEditingMask]
+  );
+
   const lastUsed = useMemo<AnnotationContext["lastUsed"]>(
     () => ({
       fieldFor: (t) => computeFieldFor(t),
@@ -361,6 +395,7 @@ export const useAnnotationContext = (): AnnotationContext => {
       setData,
       setField,
       setSavedData,
+      setEditingMask,
       select,
       createNew,
       clear,
@@ -375,6 +410,7 @@ export const useAnnotationContext = (): AnnotationContext => {
       select,
       selected,
       setData,
+      setEditingMask,
       setField,
       setSavedData,
     ]

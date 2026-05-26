@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { atom, useAtom } from "jotai";
 import { useRecoilValue } from "recoil";
 
 import { useLighter } from "@fiftyone/lighter";
@@ -8,7 +8,6 @@ import { DETECTION } from "@fiftyone/utilities";
 import useExit from "./useExit";
 
 import { isPatchesView } from "@fiftyone/state";
-import { current } from "./useAnnotationContext/selectors";
 import {
   useAnnotationContext,
   useAnnotationFields,
@@ -23,19 +22,6 @@ import {
  */
 const detectionModeActiveAtom = atom<boolean>(false);
 export { detectionModeActiveAtom as _unsafeDetectionModeActiveAtom };
-
-// Set of label ids currently being authored as masks. Updated by
-// `useBridge` via the public `setEditingMask` action.
-const editingMaskLabelIdsAtom = atom<ReadonlySet<string>>(new Set<string>());
-
-// Derived: does the currently-edited label have a mask?
-const isEditingMaskAtom = atom((get) => {
-  const ids = get(editingMaskLabelIdsAtom);
-  if (ids.size === 0) return false;
-
-  const data = get(current)?.data as { _id?: string } | undefined;
-  return data?._id !== undefined && ids.has(data._id);
-});
 
 /**
  * Centralized hook for managing detection mode state and operations.
@@ -56,26 +42,6 @@ export const useDetectionMode = () => {
   const sceneRef = useRef(scene);
   sceneRef.current = scene;
 
-  const isEditingMask = useAtomValue(isEditingMaskAtom);
-  const setEditingMaskIds = useSetAtom(editingMaskLabelIdsAtom);
-
-  // Mark `id` as mid-mask authoring (when `hasMask`) or clear that
-  const setEditingMask = useCallback(
-    (id: string, hasMask: boolean) => {
-      setEditingMaskIds((prev) => {
-        const has = prev.has(id);
-        if (hasMask === has) return prev;
-
-        const next = new Set(prev);
-        if (hasMask) next.add(id);
-        else next.delete(id);
-
-        return next;
-      });
-    },
-    [setEditingMaskIds]
-  );
-
   // `mask` and `mask_path` are Detection-only fields; cast at the access
   // site since the union narrows them out.
   const labelData = selected.label?.data as
@@ -85,7 +51,7 @@ export const useDetectionMode = () => {
     editingLabelType === DETECTION &&
     !labelData?.mask &&
     !labelData?.mask_path &&
-    !isEditingMask;
+    !selected.isEditingMask;
 
   const noActiveFields = fields.length === 0;
   const disabled = isPatchView || noActiveFields;
@@ -166,9 +132,8 @@ export const useDetectionMode = () => {
       deactivateDetectionMode,
       toggleDetectionMode,
 
-      // Bridge actions (wired to Lighter events by `useBridge`)
+      // Action
       create,
-      setEditingMask,
     }),
     [
       activateDetectionMode,
@@ -178,7 +143,6 @@ export const useDetectionMode = () => {
       toggleDetectionMode,
       tooltip,
       create,
-      setEditingMask,
     ]
   );
 };

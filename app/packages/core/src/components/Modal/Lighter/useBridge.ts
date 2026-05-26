@@ -59,7 +59,7 @@ export const useBridge = (scene: Scene2D | null) => {
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
   const save = useSetAtom(currentData);
-  const { clear } = useAnnotationContext();
+  const { clear, setEditingMask } = useAnnotationContext();
   const getCurrentLabel = useAtomCallback(
     useCallback((get) => get(current), [])
   );
@@ -348,10 +348,9 @@ export const useBridge = (scene: Scene2D | null) => {
           save(newLabel);
         }
 
-        segmentationMode.setEditingMask(payload.id, payload.hasMask);
-        detectionMode.setEditingMask(payload.id, payload.hasMask);
+        setEditingMask(payload.id, payload.hasMask);
       },
-      [detectionMode, save, segmentationMode]
+      [save, setEditingMask]
     )
   );
 

@@ -22,6 +22,7 @@ import { labelsByPath } from "../../useLabels";
 import { activePrimitiveAtom } from "../useActivePrimitive";
 import { buildNewLabelData } from "./createNew";
 import {
+  currentEditingMaskAtom,
   editingLabelAtom,
   type LabelType,
   pendingNewTypeAtom,
@@ -167,6 +168,13 @@ export const isEditing = atom((get) => {
 export const isNew = atom(
   (get) => get(pendingNewTypeAtom) !== null || get(current)?.isNew
 );
+
+/**
+ * True when the currently-edited label is mid-mask-authoring. Read-only
+ * projection of {@link currentEditingMaskAtom}; storage and write semantics
+ * live in `useAnnotationContext`'s `clear` / `select` / `setEditingMask`.
+ */
+export const isEditingMask = atom((get) => get(currentEditingMaskAtom));
 
 export const fieldsOfType = atomFamily((type: LabelType | null) =>
   atom((get) => {

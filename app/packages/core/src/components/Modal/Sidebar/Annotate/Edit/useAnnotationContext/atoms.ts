@@ -18,6 +18,22 @@ export const savedLabel = atom<AnnotationLabel["data"] | null>(
 ) as PrimitiveAtom<AnnotationLabel["data"] | null>;
 
 /**
+ * Whether the currently-edited label is mid-mask-authoring.
+ *
+ * Lighter dispatches `overlay-label-updated` with a `hasMask` flag during
+ * AI mask painting / brush strokes before the label data commits. This
+ * flag captures that transient state for the *current* label. It is:
+ *
+ * - reset to `false` on {@link clear}
+ * - initialized from `data.mask | data.mask_path` on {@link select} so the
+ *   flag is correct immediately when switching to a label whose mask
+ *   already lives in committed data
+ * - updated by the {@link AnnotationContext.setEditingMask} action, which
+ *   ignores writes that don't match the current label's id
+ */
+export const currentEditingMaskAtom = atom<boolean>(false) as PrimitiveAtom<boolean>;
+
+/**
  * Atom holding a pointer to the label being edited.
  *
  * `null` means no label is being edited. When non-null, the inner
