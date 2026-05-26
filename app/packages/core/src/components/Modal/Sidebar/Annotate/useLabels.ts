@@ -499,7 +499,20 @@ export default function useLabels() {
     };
 
     resetOverlays();
-  }, [active, removeOverlay, setLabels, setLoading]); // omit: [currentLabels]
+  }, [active, removeOverlay, setLabels, setLoading]);
+
+  // Reset when the sample changes so the primary loading effect below starts
+  // fresh instead of entering the refresh path with stale labels.
+  useEffect(() => {
+    return () => {
+      currentLabels.forEach((label) => {
+        removeOverlay(label.overlay.id, false);
+      });
+      setLabels([]);
+      loadingRef.current = LabelsState.UNSET;
+      setLoading(LabelsState.UNSET);
+    };
+  }, [currentSampleId, scene, removeOverlay, setLabels, setLoading]);
 
   useEffect(() => {
     // Flipped to `true` by the cleanup function so in-flight async work
@@ -589,6 +602,7 @@ export default function useLabels() {
     addLabelToRenderer,
     addLabelToStore,
     createLabel,
+    currentSampleId,
     getFieldType,
     isPatches,
     modalSample?.sample,
@@ -599,19 +613,6 @@ export default function useLabels() {
     setLoading,
     updateLabelAtom,
   ]);
-
-  /**
-   * Resets label state when the sample ID or scene changes.
-   * Clears all labels and reverts loading state to UNSET so that the
-   * primary loading effect above can re-initialize for the new context.
-   */
-  useEffect(() => {
-    return () => {
-      setLabels([]);
-      loadingRef.current = LabelsState.UNSET;
-      setLoading(LabelsState.UNSET);
-    };
-  }, [currentSampleId, scene, setLabels, setLoading]);
 
   useSyncOverlayReadOnly();
   useHover();
