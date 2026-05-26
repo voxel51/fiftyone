@@ -14,6 +14,14 @@ are deleted, and FiftyOne dataset import/export preserves them through the
 string that qualifies the context for their ``start`` and ``end`` values, plus
 optional provenance fields describing when and by whom records were written.
 
+Adding a temporal tag is an upsert on
+``(dataset, sample, index_type, anchor, start, end, tag)``: repeated adds update
+``last_modified_at`` without changing ``created_at``. Range filters use
+half-open overlap semantics, so ``start=10, end=20`` matches records whose
+stored interval overlaps ``[10, 20)``. Anchors participate in identity and
+filtering, allowing the same tag and range to coexist under different reference
+contexts.
+
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
