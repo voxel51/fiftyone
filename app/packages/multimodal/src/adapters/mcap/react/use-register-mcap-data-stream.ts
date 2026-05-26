@@ -42,6 +42,14 @@ interface McapPlaybackPolicy {
   readonly prefetchBatchSeconds: number;
 
   /**
+   * Maximum number of background prefetch batches to enqueue in one pass.
+   * Keeping this lower than the full lookahead lets the current-frame request
+   * win worker time on mount, seek, and subscription while still filling the
+   * buffer through periodic top-ups.
+   */
+  readonly prefetchBatchesPerPass: number;
+
+  /**
    * Cadence for topping up lookahead while playback advances. This should be
    * much slower than RAF but comfortably faster than the buffer can drain.
    */
@@ -83,6 +91,7 @@ interface DerivedMcapPlaybackPolicy extends McapPlaybackPolicy {
 const DEFAULT_MCAP_PLAYBACK_POLICY: McapPlaybackPolicy = {
   lookaheadSeconds: 15,
   prefetchBatchSeconds: 5,
+  prefetchBatchesPerPass: 1,
   prefetchRefreshSeconds: 1,
   topicCacheLookaheadMultiplier: 2,
 } as const;
@@ -306,6 +315,53 @@ export function useRegisterMcapDataStream({
     [client, source, store]
   );
 
+  // Fetch the nearest target frame through the worker's current-frame lane so
+  // mount, seek, subscription, and buffering recovery do not wait behind a
+  // larger background lookahead batch.
+  const fetchCurrentFrame = useCallback(
+    (tick: bigint, activeTopics: string[]) => {
+      if (activeTopics.length === 0 || !source) {
+        return false;
+      }
+
+      const caches = topicCachesRef.current;
+      const tickKey = tick.toString();
+      const topicsToFetch = activeTopics.filter(
+        (topic) =>
+          !caches.get(topic)?.has(tick) && !isTopicPending(tickKey, topic)
+      );
+      if (topicsToFetch.length === 0) return false;
+
+      markTopicsPending([tickKey], topicsToFetch);
+
+      client
+        .readSynchronizedMessages({
+          activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+          source,
+          streamPolicies: streamPoliciesRef.current,
+          timeNs: tick,
+          topics: topicsToFetch,
+        })
+        .then((window) => {
+          distributeWindowToCaches(window, caches, topicsToFetch);
+          pushTickToStore(
+            activeTopics,
+            tick,
+            caches,
+            lastFrameRef.current,
+            store
+          );
+        })
+        .catch(noop)
+        .finally(() => {
+          clearTopicsPending([tickKey], topicsToFetch);
+        });
+
+      return true;
+    },
+    [client, source, store]
+  );
+
   // Collect ticks in [startSec, endSec] where at least one active topic
   // still needs the data — i.e. not cached and not already pending for
   // that specific topic. Capped by the resolved playback policy.
@@ -338,9 +394,9 @@ export function useRegisterMcapDataStream({
     [getActiveTopics]
   );
 
-  // Push cached current frame for the active set AND kick off a batch
-  // prefetch of [timeSec, timeSec+LOOKAHEAD] so the buffer starts filling
-  // immediately (mount, tile subscribe, seek).
+  // Push cached current frame for the active set, request a missing current
+  // frame on the priority lane, and then enqueue bounded background lookahead
+  // so mount, tile subscribe, and seek paint before bulk prefetch completes.
   const prefetchLookaheadFrom = useCallback(
     (timeSec: number) => {
       const currentIndex = indexRef.current;
@@ -358,6 +414,7 @@ export function useRegisterMcapDataStream({
           lastFrameRef.current,
           store
         );
+        fetchCurrentFrame(tick, activeTopics);
       }
 
       fillMissingLookaheadFrom({
@@ -368,7 +425,7 @@ export function useRegisterMcapDataStream({
         timeSec,
       });
     },
-    [collectMissingTicks, fetchBatch, getActiveTopics, store]
+    [collectMissingTicks, fetchBatch, fetchCurrentFrame, getActiveTopics, store]
   );
 
   // Register the single engine stream and the proactive lookahead subscription.
@@ -408,8 +465,11 @@ export function useRegisterMcapDataStream({
       },
 
       prefetch: ([startSec, endSec]) => {
+        const activeTopics = getActiveTopics();
+        const tick = index.nearestTick(startSec);
+        if (tick) fetchCurrentFrame(tick, activeTopics);
         const missing = collectMissingTicks(startSec, endSec);
-        if (missing.length > 0) fetchBatch(missing, getActiveTopics());
+        if (missing.length > 0) fetchBatch(missing, activeTopics);
       },
 
       onCommit: (timeSec, commitStore) => {
@@ -465,6 +525,7 @@ export function useRegisterMcapDataStream({
     subscribeStream,
     store,
     fetchBatch,
+    fetchCurrentFrame,
     collectMissingTicks,
     getActiveTopics,
   ]);
@@ -547,7 +608,11 @@ function fillMissingLookaheadFrom({
   timeSec: number;
 }): void {
   const endSec = timeSec + policy.lookaheadSeconds;
-  for (let i = 0; i < policy.prefetchBatchesPerLookahead; i++) {
+  const batchesToQueue = Math.min(
+    policy.prefetchBatchesPerPass,
+    policy.prefetchBatchesPerLookahead
+  );
+  for (let i = 0; i < batchesToQueue; i++) {
     const missing = collectMissingTicks(timeSec, endSec);
     if (missing.length === 0) return;
     if (!fetchBatch(missing, activeTopics)) return;
