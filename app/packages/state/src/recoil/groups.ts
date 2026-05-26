@@ -37,8 +37,10 @@ import { ModalSample, modalLooker, modalSample, modalSelector } from "./modal";
 import { RelayEnvironmentKey } from "./relay";
 import {
   active3dSlices,
+  active3dSlicesToSampleMap,
   allNon3dSlices,
   has3dSlice,
+  hasFo3dSlice,
   interaction3dSample,
   is3dPinned,
   pinned3DSampleSlice,
@@ -355,13 +357,18 @@ export const groupSamples = graphQLSelectorFamily<
           group: {
             slice: get(groupSlice),
             id: groupIdValue,
-            slices,
+            slices: slices ?? [],
           },
         },
         paginationData,
       };
     },
   mapResponse: (data: ResponseFrom<foq.paginateSamplesQuery>) => {
+    if (!foq.isPaginateSamplesConnection(data.samples)) {
+      throw new Error(
+        `groupSamples: unexpected samples response __typename ${data.samples.__typename}`
+      );
+    }
     return data.samples.edges.map((edge) => {
       return mapSampleResponse(edge.node as ModalSample);
     });
@@ -405,6 +412,11 @@ export const groupHasSampleOnSlice = graphQLSelectorFamily<
       };
     },
   mapResponse: (data: ResponseFrom<foq.paginateSamplesQuery>) => {
+    if (!foq.isPaginateSamplesConnection(data.samples)) {
+      throw new Error(
+        `groupHasSampleOnSlice: unexpected samples response __typename ${data.samples.__typename}`
+      );
+    }
     return data.samples.edges.length > 0;
   },
 });
@@ -413,7 +425,13 @@ export const activeModalSample = selector({
   key: "activeModalSample",
   get: ({ get }) => {
     if (get(is3dPinned)) {
-      return get(interaction3dSample).sample;
+      if (get(hasFo3dSlice)) {
+        return get(interaction3dSample).sample;
+      }
+
+      const slices = get(active3dSlices);
+      const key = slices.length === 1 ? slices[0] : get(pinned3DSampleSlice);
+      return get(active3dSlicesToSampleMap)[key]?.sample;
     }
 
     return get(modalSample).sample;
