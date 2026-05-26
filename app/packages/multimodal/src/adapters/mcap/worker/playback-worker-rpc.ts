@@ -8,6 +8,7 @@ import {
   type McapPlaybackWorkerStreamType,
   type McapPlaybackWorkerUnaryType,
 } from "./playback-worker-types";
+import { dehydrateMcapFrameTransformSet } from "../frame-transforms";
 import type { McapResourceClient } from "../types";
 
 /**
@@ -98,9 +99,13 @@ export function runMcapPlaybackWorkerUnaryRequest(
 ): Promise<McapPlaybackWorkerResultByType[McapPlaybackWorkerUnaryType]> {
   switch (message.type) {
     case "readFrameTransformBootstrap":
-      return client.readFrameTransformBootstrap(message.payload);
+      return client
+        .readFrameTransformBootstrap(message.payload)
+        .then(dehydrateMcapFrameTransformSet);
     case "readFrameTransformWindow":
-      return client.readFrameTransformWindow(message.payload);
+      return client
+        .readFrameTransformWindow(message.payload)
+        .then(dehydrateMcapFrameTransformSet);
     case "readSynchronizedMessageBatch":
       return client.readSynchronizedMessageBatch(message.payload);
     case "readSynchronizedMessages":

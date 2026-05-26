@@ -190,9 +190,39 @@ export class McapFrameTransformStore {
 }
 
 /**
- * Re-wraps a frame transform set in fresh THREE instances. Required after a
- * postMessage hop because structured clone strips THREE prototypes; safe to
- * call on already-hydrated input since it reads structurally.
+ * Snapshots THREE-typed samples to plain `{x,y,z[,w]}` shapes safe to send
+ * across `postMessage`. Required because `structuredClone` strips THREE
+ * prototypes and `Quaternion` exposes `x/y/z/w` only as getters — after the
+ * hop those properties read as `undefined`. Reads the values while the
+ * prototype is still attached. Pair with `hydrateMcapFrameTransformSet` on
+ * the receiving side. The return type is `McapFrameTransformSet` because the
+ * wire form lives only between postMessage and hydration.
+ */
+export function dehydrateMcapFrameTransformSet(
+  set: McapFrameTransformSet
+): McapFrameTransformSet {
+  return {
+    samples: set.samples.map((sample) => ({
+      ...sample,
+      rotation: {
+        x: sample.rotation.x,
+        y: sample.rotation.y,
+        z: sample.rotation.z,
+        w: sample.rotation.w,
+      } as unknown as Quaternion,
+      translation: {
+        x: sample.translation.x,
+        y: sample.translation.y,
+        z: sample.translation.z,
+      } as unknown as Vector3,
+    })),
+  };
+}
+
+/**
+ * Re-wraps a dehydrated frame transform set in fresh THREE instances on the
+ * receiving side of `postMessage`. Safe on already-hydrated input because it
+ * reads structurally.
  */
 export function hydrateMcapFrameTransformSet(
   set: McapFrameTransformSet

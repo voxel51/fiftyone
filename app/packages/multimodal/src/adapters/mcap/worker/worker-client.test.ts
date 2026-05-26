@@ -1,4 +1,5 @@
 import { create } from "@bufbuild/protobuf";
+import { Quaternion, Vector3 } from "three";
 import { describe, expect, it, vi } from "vitest";
 import { StreamInventorySchema } from "../../../schemas/v1";
 import {
@@ -7,6 +8,7 @@ import {
   type McapPlaybackWorkerResponse,
 } from "./playback-worker-types";
 import { createWorkerMcapResourceClient } from "./worker-client";
+import { dehydrateMcapFrameTransformSet } from "../frame-transforms";
 import type { McapFrameTransformSet } from "../frame-transform-types";
 
 vi.mock("@fiftyone/utilities", () => ({
@@ -78,13 +80,16 @@ describe("worker-backed MCAP resource client", () => {
     const request = {
       source: createSource("source:1"),
     };
-    const result = {
+    // What the worker actually produces — real THREE instances. The worker's
+    // RPC layer dehydrates these before postMessage; the test simulates that
+    // and the structuredClone hop so the receiver exercises real serialization.
+    const workerResult: McapFrameTransformSet = {
       samples: [
         {
           childFrameId: "lidar",
           parentFrameId: "map",
-          rotation: { w: 1, x: 0, y: 0, z: 0 },
-          translation: { x: 1, y: 2, z: 3 },
+          rotation: new Quaternion(0, 0, 0, 1),
+          translation: new Vector3(1, 2, 3),
         },
       ],
     };
@@ -102,12 +107,12 @@ describe("worker-backed MCAP resource client", () => {
     worker.respond({
       id: 1,
       ok: true,
-      result: result as unknown as McapFrameTransformSet,
+      result: structuredClone(dehydrateMcapFrameTransformSet(workerResult)),
     });
 
     const set = await bootstrap;
-    expect(set.samples[0]?.rotation.clone).toEqual(expect.any(Function));
-    expect(set.samples[0]?.translation.clone).toEqual(expect.any(Function));
+    expect(set.samples[0]?.rotation).toBeInstanceOf(Quaternion);
+    expect(set.samples[0]?.translation).toBeInstanceOf(Vector3);
     expect(set.samples[0]?.translation.toArray()).toEqual([1, 2, 3]);
   });
 
@@ -118,9 +123,7 @@ describe("worker-backed MCAP resource client", () => {
       source: createSource("source:1"),
       startTimeNs: 10n,
     };
-    const result = {
-      samples: [],
-    };
+    const workerResult: McapFrameTransformSet = { samples: [] };
 
     const window = client.readFrameTransformWindow(request);
     const worker = workers[0];
@@ -132,9 +135,13 @@ describe("worker-backed MCAP resource client", () => {
       type: "readFrameTransformWindow",
     });
 
-    worker.respond({ id: 1, ok: true, result });
+    worker.respond({
+      id: 1,
+      ok: true,
+      result: structuredClone(dehydrateMcapFrameTransformSet(workerResult)),
+    });
 
-    await expect(window).resolves.toEqual(result);
+    await expect(window).resolves.toEqual(workerResult);
   });
 
   it("sends playback batches at playback priority", async () => {

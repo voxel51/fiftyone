@@ -1,6 +1,10 @@
 import { Quaternion, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
-import { McapFrameTransformStore } from "./frame-transforms";
+import {
+  dehydrateMcapFrameTransformSet,
+  hydrateMcapFrameTransformSet,
+  McapFrameTransformStore,
+} from "./frame-transforms";
 import type { McapFrameTransformSample } from "./frame-transform-types";
 
 describe("MCAP frame transform store", () => {
@@ -156,6 +160,73 @@ describe("MCAP frame transform store", () => {
     });
 
     expect(store.frameIds()).toEqual(["base_link", "camera", "lidar", "map"]);
+  });
+});
+
+describe("frame transform worker boundary serialization", () => {
+  it("survives a structuredClone round-trip via dehydrate/hydrate", () => {
+    // Models a real worker postMessage. The worker dehydrates THREE instances
+    // before posting; structuredClone strips any leftover prototypes; the
+    // receiver hydrates back to real THREE.
+    const originalRotation = new Quaternion(0.1, 0.2, 0.3, 0.4).normalize();
+    const set = {
+      samples: [
+        {
+          childFrameId: "lidar",
+          parentFrameId: "map",
+          rotation: originalRotation,
+          timeNs: 123n,
+          translation: new Vector3(1, 2, 3),
+        },
+      ],
+    };
+
+    const dehydrated = dehydrateMcapFrameTransformSet(set);
+    const overWire = structuredClone(dehydrated);
+    const [received] = hydrateMcapFrameTransformSet(overWire).samples;
+    if (!received) {
+      throw new Error("Expected one hydrated sample");
+    }
+
+    expect(received.rotation).toBeInstanceOf(Quaternion);
+    expect(received.translation).toBeInstanceOf(Vector3);
+    expect(received.rotation.x).toBeCloseTo(originalRotation.x);
+    expect(received.rotation.y).toBeCloseTo(originalRotation.y);
+    expect(received.rotation.z).toBeCloseTo(originalRotation.z);
+    expect(received.rotation.w).toBeCloseTo(originalRotation.w);
+    expect(received.translation.toArray()).toEqual([1, 2, 3]);
+    expect(received.timeNs).toBe(123n);
+  });
+
+  it("would lose Quaternion values without dehydration", () => {
+    // Lock in the reason `dehydrateMcapFrameTransformSet` exists: structured
+    // clone strips Quaternion's x/y/z/w accessors. Skipping dehydration on the
+    // worker side yields zeroed rotations after hydrate. If this test ever
+    // starts failing, THREE's Quaternion storage changed and the workaround is
+    // worth revisiting.
+    const set = {
+      samples: [
+        {
+          childFrameId: "lidar",
+          parentFrameId: "map",
+          rotation: new Quaternion(0.1, 0.2, 0.3, 0.4).normalize(),
+          translation: new Vector3(),
+        },
+      ],
+    };
+
+    const overWireWithoutDehydrate = structuredClone(set);
+    const [received] = hydrateMcapFrameTransformSet(
+      overWireWithoutDehydrate
+    ).samples;
+    if (!received) {
+      throw new Error("Expected one hydrated sample");
+    }
+
+    expect(received.rotation.x).toBe(0);
+    expect(received.rotation.y).toBe(0);
+    expect(received.rotation.z).toBe(0);
+    expect(received.rotation.w).toBe(1);
   });
 });
 
