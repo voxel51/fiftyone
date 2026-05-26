@@ -1,5 +1,5 @@
 import { PillButton } from "@fiftyone/components";
-import { useOutsideClick } from "@fiftyone/state";
+import { ModalMode, useModalMode, useOutsideClick } from "@fiftyone/state";
 import ViewComfyIcon from "@mui/icons-material/ViewComfy";
 import React from "react";
 import { ActionDiv } from "../../../Actions/utils";
@@ -10,6 +10,8 @@ export default () => {
   const [open, setOpen] = React.useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
   useOutsideClick(ref, () => open && setOpen(false));
+
+  if (useModalMode() === ModalMode.ANNOTATE) return null;
 
   return (
     <ActionDiv ref={ref} data-cy="action-toggle-group-media-visibility">

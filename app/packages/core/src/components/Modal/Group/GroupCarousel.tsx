@@ -175,7 +175,7 @@ const Column: React.FC = () => {
 
   return (
     <>
-      {isEmpty && <Loading>No data</Loading>}
+      {isEmpty && <Loading>No samples</Loading>}
       <div
         style={{
           display: "block",
