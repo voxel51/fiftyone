@@ -22,8 +22,8 @@ import { useMcapTopicStream } from "./use-mcap-topic-stream";
 const McapCameraTile: React.FC = () => {
   const cameras = useSceneSourcesByType("camera");
   const setTileTitle = useSetTileTitle();
-  // Initialize from the first available source — develop's auto-pick
-  // behaviour. State lets the user swap via the dropdown.
+  // Initialize from the first available source.
+  // State lets the user swap via the dropdown.
   const [topic, setTopic] = useState<string>(cameras[0]?.id ?? "");
 
   // Keep the tile title in sync whenever the selected topic resolves.
