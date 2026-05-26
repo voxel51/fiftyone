@@ -46,6 +46,9 @@ class TemporalTagTests(unittest.TestCase):
             persisted[0].index_type,
             TimeTrackType.TIME_TRACK_TYPE_DURATION_NS,
         )
+        self.assertIsNone(persisted[0].anchor)
+        self.assertNotIn("anchor", persisted[0].to_dict())
+        self.assertEqual(persisted[0].copy(), persisted[0])
 
         temporal_tags = fomm.TemporalTags(dataset)
         self.assertTrue(temporal_tags)
@@ -67,6 +70,10 @@ class TemporalTagTests(unittest.TestCase):
             fomm.TemporalTag(sample_id, 2, 1, "backwards"),
             fomm.TemporalTag(sample_id, 0.5, 1, "fractional"),
             fomm.TemporalTag(sample_id, 0, 1, ""),
+            fomm.TemporalTag(sample_id, 0, 1, "empty-anchor", anchor=""),
+            fomm.TemporalTag(sample_id, 0, 1, "blank-anchor", anchor="   "),
+            fomm.TemporalTag(sample_id, 0, 1, "bad-anchor", anchor=3),
+            fomm.TemporalTag(sample_id, 0, 1, "bool-anchor", anchor=False),
             fomm.TemporalTag(
                 sample_id,
                 0,
@@ -169,6 +176,92 @@ class TemporalTagTests(unittest.TestCase):
 
     @drop_temporal_tags
     @drop_datasets
+    def test_anchor_identity_filtering_counts_and_deletion(self):
+        dataset, sample_ids = _make_dataset()
+        sample_id = sample_ids[0]
+
+        unanchored = fomm.TemporalTag(sample_id, 0, 10, "review")
+        camera = fomm.TemporalTag(
+            sample_id, 0, 10, "review", anchor="camera_front"
+        )
+        lidar = fomm.TemporalTag(
+            sample_id, 0, 10, "review", anchor="lidar_top"
+        )
+
+        inserted = fomm.add_temporal_tags(dataset, [unanchored, camera, lidar])
+        repeated = fomm.add_temporal_tags(dataset, camera)
+
+        self.assertEqual(len(inserted), 3)
+        self.assertEqual(inserted[1].id, repeated[0].id)
+        self.assertEqual(
+            [tag.anchor for tag in inserted],
+            [None, "camera_front", "lidar_top"],
+        )
+        self.assertEqual(inserted[1].to_dict()["anchor"], "camera_front")
+        self.assertEqual(fomm.count_temporal_tags(dataset), {"review": 3})
+        self.assertEqual(
+            fomm.count_temporal_tags(
+                dataset, fomm.TemporalTagFilter(anchors="camera_front")
+            ),
+            {"review": 1},
+        )
+
+        anchored_tags = fomm.list_temporal_tags(
+            dataset,
+            fomm.TemporalTagFilter(anchors=["camera_front", "lidar_top"]),
+        )
+        self.assertEqual(
+            {tag.anchor for tag in anchored_tags},
+            {"camera_front", "lidar_top"},
+        )
+
+        self.assertEqual(
+            fomm.delete_temporal_tags(
+                dataset,
+                filter=fomm.TemporalTagFilter(anchors="camera_front"),
+            ),
+            1,
+        )
+        self.assertEqual(fomm.count_temporal_tags(dataset), {"review": 2})
+        self.assertEqual(
+            fomm.list_temporal_tags(
+                dataset, fomm.TemporalTagFilter(anchors="camera_front")
+            ),
+            [],
+        )
+
+    @drop_temporal_tags
+    @drop_datasets
+    def test_replaces_legacy_unique_index(self):
+        collection = foo.get_db_conn()[TEMPORAL_TAGS_COLLECTION_NAME]
+        collection.create_index(
+            [
+                ("_dataset_id", 1),
+                ("_sample_id", 1),
+                ("index_type", 1),
+                ("start", 1),
+                ("end", 1),
+                ("tag", 1),
+            ],
+            unique=True,
+            name="unique_temporal_tag",
+        )
+
+        dataset, sample_ids = _make_dataset()
+        fomm.add_temporal_tags(
+            dataset,
+            fomm.TemporalTag(
+                sample_ids[0], 0, 10, "review", anchor="camera_front"
+            ),
+        )
+
+        index_keys = collection.index_information()["unique_temporal_tag"][
+            "key"
+        ]
+        self.assertIn(("anchor", 1), index_keys)
+
+    @drop_temporal_tags
+    @drop_datasets
     def test_view_scoped_operations(self):
         dataset, sample_ids = _make_dataset(3)
         fomm.add_temporal_tags(
@@ -256,8 +349,12 @@ class TemporalTagTests(unittest.TestCase):
         fomm.add_temporal_tags(
             dataset,
             [
-                fomm.TemporalTag(sample_ids[0], 0, 10, "first"),
-                fomm.TemporalTag(sample_ids[1], 10, 20, "second"),
+                fomm.TemporalTag(
+                    sample_ids[0], 0, 10, "first", anchor="camera_front"
+                ),
+                fomm.TemporalTag(
+                    sample_ids[1], 10, 20, "second", anchor="lidar_top"
+                ),
                 fomm.TemporalTag(sample_ids[2], 20, 30, "third"),
             ],
         )
@@ -282,18 +379,27 @@ class TemporalTagTests(unittest.TestCase):
         fomm.add_temporal_tags(
             dataset,
             [
-                fomm.TemporalTag(sample_ids[0], 0, 10, "first"),
+                fomm.TemporalTag(
+                    sample_ids[0], 0, 10, "first", anchor="camera_front"
+                ),
                 fomm.TemporalTag(sample_ids[1], 10, 20, "second"),
             ],
         )
 
         full_clone = dataset.clone()
         self.assertEqual(len(fomm.list_temporal_tags(full_clone)), 2)
+        self.assertEqual(
+            fomm.count_temporal_tags(
+                full_clone, fomm.TemporalTagFilter(anchors="camera_front")
+            ),
+            {"first": 1},
+        )
 
         view_clone = dataset.select([sample_ids[0]]).clone()
         view_clone_tags = fomm.list_temporal_tags(view_clone)
         self.assertEqual(len(view_clone_tags), 1)
         self.assertEqual(view_clone_tags[0].sample_id, sample_ids[0])
+        self.assertEqual(view_clone_tags[0].anchor, "camera_front")
 
         dataset_id = dataset._doc.id
         self.assertEqual(_temporal_tag_count(dataset_id), 2)
@@ -309,7 +415,9 @@ class TemporalTagTests(unittest.TestCase):
         fomm.add_temporal_tags(
             dataset,
             [
-                fomm.TemporalTag(sample_ids[0], 0, 10, "first"),
+                fomm.TemporalTag(
+                    sample_ids[0], 0, 10, "first", anchor="camera_front"
+                ),
                 fomm.TemporalTag(sample_ids[1], 10, 20, "second"),
             ],
         )
@@ -340,11 +448,15 @@ class TemporalTagTests(unittest.TestCase):
 
         fomm.add_temporal_tags(
             orphan_dataset,
-            fomm.TemporalTag(orphan_sample_ids[0], 0, 10, "orphan"),
+            fomm.TemporalTag(
+                orphan_sample_ids[0], 0, 10, "orphan", anchor="camera_front"
+            ),
         )
         fomm.add_temporal_tags(
             active_dataset,
-            fomm.TemporalTag(active_sample_ids[0], 0, 10, "active"),
+            fomm.TemporalTag(
+                active_sample_ids[0], 0, 10, "active", anchor="lidar_top"
+            ),
         )
 
         orphan_dataset_id = orphan_dataset._doc.id

@@ -5,6 +5,7 @@ FiftyOne import/export-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import os
 import pathlib
 import random
@@ -187,10 +188,18 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
         exported = etas.read_json(tags_path)["temporal_tags"]
         self.assertEqual(len(exported), 3)
         for doc in exported:
+            expected_keys = {"sample_id", "index_type", "start", "end", "tag"}
+            if doc.get("anchor", None) is not None:
+                expected_keys.add("anchor")
+
             self.assertEqual(
                 set(doc.keys()),
-                {"sample_id", "index_type", "start", "end", "tag"},
+                expected_keys,
             )
+        self.assertEqual(
+            {doc.get("anchor", None) for doc in exported},
+            {None, "camera_front", "lidar_top"},
+        )
 
         dataset2 = fo.Dataset.from_dir(
             dataset_dir=export_dir,
@@ -223,6 +232,34 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
 
     @drop_temporal_tags
     @drop_datasets
+    def test_fiftyone_dataset_temporal_tags_legacy_anchor_import(self):
+        dataset, _ = self._make_temporal_tag_dataset()
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        tags_path = os.path.join(export_dir, TEMPORAL_TAGS_EXPORT_FILENAME)
+        exported = etas.read_json(tags_path)
+        for doc in exported["temporal_tags"]:
+            doc.pop("anchor", None)
+
+        exported["temporal_tags"][0]["anchor"] = None
+        etas.write_json(exported, tags_path)
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        tags = fomm.list_temporal_tags(dataset2)
+        self.assertEqual(len(tags), 3)
+        self.assertTrue(all(tag.anchor is None for tag in tags))
+
+    @drop_temporal_tags
+    @drop_datasets
     def test_fiftyone_dataset_temporal_tags_view_export(self):
         dataset, sample_ids = self._make_temporal_tag_dataset()
         view = dataset.select([sample_ids[0], sample_ids[2]])
@@ -239,6 +276,10 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
         )
 
         self.assertEqual(fomm.count_temporal_tags(dataset2), {"keep": 2})
+        self.assertEqual(
+            {tag.anchor for tag in fomm.list_temporal_tags(dataset2)},
+            {None, "camera_front"},
+        )
         self.assertEqual(
             {tag.sample_id for tag in fomm.list_temporal_tags(dataset2)},
             {sample_ids[0], sample_ids[2]},
@@ -265,6 +306,9 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
         self.assertEqual(fomm.count_temporal_tags(dataset2), {"keep": 1})
         self.assertEqual(
             fomm.list_temporal_tags(dataset2)[0].sample_id, sample_ids[0]
+        )
+        self.assertEqual(
+            fomm.list_temporal_tags(dataset2)[0].anchor, "camera_front"
         )
 
     @drop_temporal_tags
@@ -303,8 +347,12 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
         fomm.add_temporal_tags(
             dataset,
             [
-                fomm.TemporalTag(sample_ids[0], 0, 10, "keep"),
-                fomm.TemporalTag(sample_ids[1], 10, 20, "drop"),
+                fomm.TemporalTag(
+                    sample_ids[0], 0, 10, "keep", anchor="camera_front"
+                ),
+                fomm.TemporalTag(
+                    sample_ids[1], 10, 20, "drop", anchor="lidar_top"
+                ),
                 fomm.TemporalTag(sample_ids[2], 20, 30, "keep"),
             ],
         )
@@ -313,7 +361,14 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
 
     def _temporal_tag_tuples(self, dataset):
         return [
-            (tag.sample_id, tag.index_type, tag.start, tag.end, tag.tag)
+            (
+                tag.sample_id,
+                tag.index_type,
+                tag.anchor,
+                tag.start,
+                tag.end,
+                tag.tag,
+            )
             for tag in fomm.list_temporal_tags(dataset)
         ]
 

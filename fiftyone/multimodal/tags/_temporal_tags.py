@@ -42,6 +42,7 @@ SUPPORTED_INDEX_TYPES = {
 _TEMPORAL_TAG_SORT = [
     ("_sample_id", ASCENDING),
     ("index_type", ASCENDING),
+    ("anchor", ASCENDING),
     ("start", ASCENDING),
     ("end", ASCENDING),
     ("tag", ASCENDING),
@@ -59,6 +60,8 @@ class TemporalTag(object):
         tag: the tag value
         index_type: a :class:`TimeTrackType` value describing the index
             archetype. Defaults to ``TIME_TRACK_TYPE_DURATION_NS``
+        anchor (None): an optional opaque reference key that qualifies the
+            context for ``start`` and ``end``
         id: the persisted temporal tag ID, when available
     """
 
@@ -69,6 +72,7 @@ class TemporalTag(object):
         end,
         tag,
         index_type=DEFAULT_INDEX_TYPE,
+        anchor=None,
         id=None,
     ):
         self.sample_id = sample_id
@@ -76,12 +80,13 @@ class TemporalTag(object):
         self.end = end
         self.tag = tag
         self.index_type = index_type
+        self.anchor = anchor
         self.id = id
 
     def __repr__(self):
         return (
             "%s(sample_id=%r, start=%r, end=%r, tag=%r, "
-            "index_type=%r, id=%r)"
+            "index_type=%r, anchor=%r, id=%r)"
             % (
                 self.__class__.__name__,
                 self.sample_id,
@@ -89,6 +94,7 @@ class TemporalTag(object):
                 self.end,
                 self.tag,
                 self.index_type,
+                self.anchor,
                 self.id,
             )
         )
@@ -107,6 +113,7 @@ class TemporalTag(object):
             self.end,
             self.tag,
             index_type=self.index_type,
+            anchor=self.anchor,
             id=self.id,
         )
 
@@ -119,6 +126,9 @@ class TemporalTag(object):
             "end": self.end,
             "tag": self.tag,
         }
+        if self.anchor is not None:
+            d["anchor"] = self.anchor
+
         if self.id is not None:
             d["id"] = self.id
 
@@ -136,6 +146,7 @@ class TemporalTagFilter:
     Args:
         sample_ids: an optional sample ID or iterable of sample IDs
         tags: an optional tag or iterable of tags
+        anchors: an optional anchor or iterable of anchors
         index_type: an optional :class:`TimeTrackType` value
         start: an optional inclusive lower bound for overlap queries
         end: an optional exclusive upper bound for overlap queries
@@ -143,6 +154,7 @@ class TemporalTagFilter:
 
     sample_ids: str | Iterable[str] | None = None
     tags: str | Iterable[str] | None = None
+    anchors: str | Iterable[str] | None = None
     index_type: int | None = None
     start: int | None = None
     end: int | None = None
@@ -271,8 +283,9 @@ class TemporalTags(object):
     def add(self, tags: TemporalTag | Iterable[TemporalTag]):
         """Adds temporal tags to this collection.
 
-        The tuple ``(dataset, sample_id, index_type, start, end, tag)`` is
-        unique, so adding the same tag interval multiple times is idempotent.
+        The tuple ``(dataset, sample_id, index_type, anchor, start, end, tag)``
+        is unique, so adding the same tag interval multiple times is
+        idempotent.
 
         Args:
             tags: a temporal tag or iterable of temporal tags
@@ -305,6 +318,7 @@ class TemporalTags(object):
                             "_dataset_id": doc["_dataset_id"],
                             "_sample_id": doc["_sample_id"],
                             "index_type": doc["index_type"],
+                            "anchor": doc["anchor"],
                             "start": doc["start"],
                             "end": doc["end"],
                             "tag": doc["tag"],
@@ -415,8 +429,8 @@ class TemporalTags(object):
 def add_temporal_tags(dataset, tags: TemporalTag | Iterable[TemporalTag]):
     """Adds temporal tags to a dataset.
 
-    The tuple ``(dataset, sample_id, index_type, start, end, tag)`` is unique,
-    so adding the same tag interval multiple times is idempotent.
+    The tuple ``(dataset, sample_id, index_type, anchor, start, end, tag)`` is
+    unique, so adding the same tag interval multiple times is idempotent.
     If a view is provided, all tag sample IDs must belong to the view.
 
     Args:
@@ -628,6 +642,7 @@ def export_tags(sample_collection, export_path, progress=None) -> int:
         [
             ("_sample_id", ASCENDING),
             ("index_type", ASCENDING),
+            ("anchor", ASCENDING),
             ("start", ASCENDING),
             ("end", ASCENDING),
             ("tag", ASCENDING),
@@ -771,6 +786,7 @@ def _to_storage_doc(tag: TemporalTag, dataset_id, sample_id):
         "_dataset_id": dataset_id,
         "_sample_id": sample_id,
         "index_type": _ensure_index_type(tag.index_type),
+        "anchor": _ensure_optional_anchor(tag.anchor),
         "start": start,
         "end": end,
         "tag": _ensure_tag(tag.tag),
@@ -782,6 +798,7 @@ def _from_storage_doc(doc) -> TemporalTag:
         id=str(doc["_id"]),
         sample_id=str(doc["_sample_id"]),
         index_type=doc["index_type"],
+        anchor=doc.get("anchor", None),
         start=doc["start"],
         end=doc["end"],
         tag=doc["tag"],
@@ -789,13 +806,18 @@ def _from_storage_doc(doc) -> TemporalTag:
 
 
 def _to_export_doc(doc):
-    return {
+    export_doc = {
         "sample_id": str(doc["_sample_id"]),
         "index_type": doc["index_type"],
         "start": doc["start"],
         "end": doc["end"],
         "tag": doc["tag"],
     }
+    anchor = doc.get("anchor", None)
+    if anchor is not None:
+        export_doc["anchor"] = anchor
+
+    return export_doc
 
 
 def _from_export_doc(doc) -> TemporalTag:
@@ -805,6 +827,7 @@ def _from_export_doc(doc) -> TemporalTag:
         start=doc.get("start", None),
         end=doc.get("end", None),
         tag=doc.get("tag", None),
+        anchor=doc.get("anchor", None),
     )
 
 
@@ -833,6 +856,11 @@ def _build_query(
     if filter.tags is not None:
         query["tag"] = _build_in_query(
             _ensure_string_list(filter.tags, "tags")
+        )
+
+    if filter.anchors is not None:
+        query["anchor"] = _build_in_query(
+            _ensure_string_list(filter.anchors, "anchors")
         )
 
     if filter.index_type is not None:
@@ -866,6 +894,7 @@ def _is_empty_filter(filter: TemporalTagFilter) -> bool:
     return (
         filter.sample_ids is None
         and filter.tags is None
+        and filter.anchors is None
         and filter.index_type is None
         and filter.start is None
         and filter.end is None
@@ -910,6 +939,13 @@ def _ensure_tag(value) -> str:
     return _ensure_non_empty_string(value, "tag")
 
 
+def _ensure_optional_anchor(value) -> str | None:
+    if value is None:
+        return None
+
+    return _ensure_non_empty_string(value, "anchor")
+
+
 def _ensure_object_id(value, field_name) -> ObjectId:
     if isinstance(value, ObjectId):
         return value
@@ -946,6 +982,7 @@ def _unique_query(doc):
         "_dataset_id": doc["_dataset_id"],
         "_sample_id": doc["_sample_id"],
         "index_type": doc["index_type"],
+        "anchor": doc["anchor"],
         "start": doc["start"],
         "end": doc["end"],
         "tag": doc["tag"],
@@ -956,6 +993,7 @@ def _unique_key(doc):
     return (
         doc["_sample_id"],
         doc["index_type"],
+        doc.get("anchor", None),
         doc["start"],
         doc["end"],
         doc["tag"],
@@ -963,10 +1001,11 @@ def _unique_key(doc):
 
 
 def _query_from_unique_key(key):
-    sample_id, index_type, start, end, tag = key
+    sample_id, index_type, anchor, start, end, tag = key
     return {
         "_sample_id": sample_id,
         "index_type": index_type,
+        "anchor": anchor,
         "start": start,
         "end": end,
         "tag": tag,
@@ -997,35 +1036,49 @@ def _utcnow():
 
 
 def _ensure_indexes(collection) -> None:
-    collection.create_index(
+    _create_or_replace_index(
+        collection,
+        "unique_temporal_tag",
         [
             ("_dataset_id", ASCENDING),
             ("_sample_id", ASCENDING),
             ("index_type", ASCENDING),
+            ("anchor", ASCENDING),
             ("start", ASCENDING),
             ("end", ASCENDING),
             ("tag", ASCENDING),
         ],
         unique=True,
-        name="unique_temporal_tag",
     )
-    collection.create_index(
+    _create_or_replace_index(
+        collection,
+        "temporal_tag_overlap",
         [
             ("_dataset_id", ASCENDING),
             ("_sample_id", ASCENDING),
             ("index_type", ASCENDING),
+            ("anchor", ASCENDING),
             ("start", ASCENDING),
             ("end", ASCENDING),
         ],
-        name="temporal_tag_overlap",
     )
-    collection.create_index(
+    _create_or_replace_index(
+        collection,
+        "temporal_tag_counts",
         [
             ("_dataset_id", ASCENDING),
+            ("anchor", ASCENDING),
             ("tag", ASCENDING),
         ],
-        name="temporal_tag_counts",
     )
+
+
+def _create_or_replace_index(collection, name, keys, **kwargs) -> None:
+    existing = collection.index_information().get(name, None)
+    if existing is not None and existing.get("key", None) != keys:
+        collection.drop_index(name)
+
+    collection.create_index(keys, name=name, **kwargs)
 
 
 __all__ = [
