@@ -28,7 +28,7 @@ export function useFetchFrustumParameters() {
   const datasetId = useRecoilValue(fos.datasetId);
   const sampleId = useRecoilValue(fos.currentSampleId);
   const isGroup = useRecoilValue(fos.isGroup);
-  const modalSample = useRecoilValue(fos.modalSample);
+  const modalSample = fos.useStableModalSample();
 
   const { resolveUrlForImageSlice, isLoadingImageSlices } =
     useImageSlicesIfAvailable(modalSample);
