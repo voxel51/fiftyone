@@ -25,8 +25,8 @@ import {
   defaultField,
   fieldsOfType,
   hasChanges,
-  isEditing as isEditingAtom,
-  isNew as isNewAtom,
+  isEditing as isEditingSelector,
+  isNew as isNewSelector,
 } from "./selectors";
 
 export type { CreateOptions };
@@ -97,6 +97,16 @@ export interface AnnotationContext {
     overrides?: CreateOptions
   ) => AnnotationLabel | null;
   clear: () => void;
+  /**
+   * Returns true when the supplied atom is the one currently being edited.
+   * Compares against the editing pointer at call time (no stale snapshot),
+   * so it's safe inside `useEffect` callbacks that don't list the editing
+   * state in their deps.
+   *
+   * Use this to ask "is THIS label atom the active one?" without leaking
+   * the underlying atom pointer through the public API.
+   */
+  isEditingAtom: (labelAtom: PrimitiveAtom<AnnotationLabel>) => boolean;
 
   lastUsed: {
     fieldFor: (type: LabelType) => string | null;
@@ -116,8 +126,8 @@ export const useAnnotationContext = (): AnnotationContext => {
   const overlay = useAtomValue(currentOverlay);
   const schema = useAtomValue(currentSchema);
   const savedData = useAtomValue(savedLabel);
-  const isEditing = useAtomValue(isEditingAtom);
-  const isNew = useAtomValue(isNewAtom);
+  const isEditing = useAtomValue(isEditingSelector);
+  const isNew = useAtomValue(isNewSelector);
   const dirty = useAtomValue(hasChanges);
   const fieldReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
   const pendingNewType = useAtomValue(pendingNewTypeAtom);
@@ -249,6 +259,20 @@ export const useAnnotationContext = (): AnnotationContext => {
     [selectExisting]
   );
 
+  const compareEditingAtom = useAtomCallback(
+    useCallback(
+      (get, _set, labelAtom: PrimitiveAtom<AnnotationLabel>) =>
+        get(editingLabelAtom) === labelAtom,
+      []
+    )
+  );
+  const isEditingAtom = useCallback<AnnotationContext["isEditingAtom"]>(
+    // useAtomCallback's signature widens the return to `Result | Promise<Result>`;
+    // our callback is synchronous so this is always boolean.
+    (labelAtom) => compareEditingAtom(labelAtom) as boolean,
+    [compareEditingAtom]
+  );
+
   const clear = useCallback<AnnotationContext["clear"]>(() => {
     recordCurrentToLastUsed();
     setSaved(null);
@@ -340,11 +364,13 @@ export const useAnnotationContext = (): AnnotationContext => {
       select,
       createNew,
       clear,
+      isEditingAtom,
       lastUsed,
     }),
     [
       clear,
       createNew,
+      isEditingAtom,
       lastUsed,
       select,
       selected,

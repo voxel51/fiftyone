@@ -1,5 +1,4 @@
-import { editingLabelAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext/atoms";
-import { useAtomValue } from "jotai";
+import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import { useEffect, useRef } from "react";
 import { useSetRecoilState } from "recoil";
 import {
@@ -17,7 +16,8 @@ import {
  * editing-state layer while 3D state stays in 3D.
  */
 export function useReset3dOnEditExit() {
-  const editingLabel = useAtomValue(editingLabelAtom);
+  const { selected } = useAnnotationContext();
+  const editingLabel = selected.label;
   const previousRef = useRef(editingLabel);
   const setSelectedLabel = useSetRecoilState(selectedLabelForAnnotationAtom);
   const clearTransformState = useSetRecoilState(clearTransformStateSelector);
