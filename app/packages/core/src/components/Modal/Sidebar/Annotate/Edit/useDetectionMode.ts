@@ -76,10 +76,15 @@ export const useDetectionMode = () => {
     [setEditingMaskIds]
   );
 
+  // `mask` and `mask_path` are Detection-only fields; cast at the access
+  // site since the union narrows them out.
+  const labelData = selected.label?.data as
+    | { mask?: unknown; mask_path?: unknown }
+    | undefined;
   const isEditingDetection =
     editingLabelType === DETECTION &&
-    !selected.label?.data?.mask &&
-    !selected.label?.data?.mask_path &&
+    !labelData?.mask &&
+    !labelData?.mask_path &&
     !isEditingMask;
 
   const noActiveFields = fields.length === 0;

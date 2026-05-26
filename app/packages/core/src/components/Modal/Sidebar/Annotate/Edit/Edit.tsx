@@ -49,7 +49,15 @@ export default function Edit() {
   const data = selected.data;
   const isReadOnly = selected.isFieldReadOnly;
   const { isEditingMask } = useSegmentationMode();
-  const isMaskDetection = !!(data?.mask || data?.mask_path || isEditingMask);
+  // `mask` and `mask_path` exist only on DetectionLabel; the union narrows
+  // them out. Cast at the access site rather than type-guarding the whole
+  // expression.
+  const maskFields = data as { mask?: unknown; mask_path?: unknown } | null;
+  const isMaskDetection = !!(
+    maskFields?.mask ||
+    maskFields?.mask_path ||
+    isEditingMask
+  );
   const [activePrimitivePath] = useActivePrimitive();
 
   const clear = useClearModal();

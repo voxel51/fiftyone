@@ -5,8 +5,9 @@ import { useAtomValue } from "jotai";
 import React, { useEffect } from "react";
 import styled from "styled-components";
 import Actions from "./Actions";
-import Edit, { isEditing } from "./Edit";
+import Edit from "./Edit";
 import useDelete from "./Edit/useDelete";
+import { useAnnotationContext } from "./Edit/useAnnotationContext";
 import ImportSchema, { useShowImportSchema } from "./ImportSchema";
 import SchemaManager from "./SchemaManager";
 import { useSchemaManagerModal } from "./SchemaManager/hooks";
@@ -71,7 +72,7 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
 
   const { schemaManagerDisplayed } = useSchemaManagerModal();
   const loading = useAtomValue(labelSchemasData) === null;
-  const isEditingValue = useAtomValue(isEditing);
+  const isEditingValue = useAnnotationContext().selected.isEditing;
 
   const contextManager = useAnnotationContextManager();
   const { clear: clearUndo } = useUndoRedo(KnownContexts.ModalAnnotate);

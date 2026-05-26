@@ -11,7 +11,6 @@ import {
   useModalSampleSchema,
   useUnboundStateRef,
 } from "@fiftyone/state";
-import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
@@ -20,10 +19,6 @@ import {
   useAnnotationContext,
   useAnnotationFields,
 } from "./useAnnotationContext";
-import {
-  current,
-  currentField,
-} from "./useAnnotationContext/selectors";
 
 const createSchema = (
   choices: string[],
@@ -56,14 +51,15 @@ const createSchema = (
 
 const Field = () => {
   const { fields, disabledFields: disabled } = useAnnotationFields();
-  const [currentFieldValue, setCurrentField] = useAtom(currentField);
+  const { selected, setField } = useAnnotationContext();
+  const currentFieldValue = selected.field;
+  const setCurrentField = setField;
   const isPatches = useRecoilValue(isPatchesView);
-  const currentLabel = useAtomValue(current);
+  const currentLabel = selected.label;
   const schema = useMemo(
     () => createSchema(fields, disabled, isPatches),
     [disabled, fields, isPatches]
   );
-  const { selected } = useAnnotationContext();
   const pendingNewType = selected.pendingNewType;
   const modalSampleSchema = useModalSampleSchema();
   const commandBus = useCommandBus();

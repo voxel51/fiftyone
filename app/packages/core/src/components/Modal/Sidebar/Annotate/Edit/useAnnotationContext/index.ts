@@ -1,3 +1,4 @@
+export type { LabelType } from "./atoms";
 export type { CreateOptions } from "./createNew";
 export {
   type AnnotationContext,

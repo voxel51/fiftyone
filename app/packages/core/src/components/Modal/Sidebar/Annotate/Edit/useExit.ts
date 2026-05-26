@@ -1,15 +1,12 @@
 import { useLighter } from "@fiftyone/lighter";
 import { TypeGuards } from "@fiftyone/lighter/src/core/Scene2D";
-import { useAtomValue } from "jotai";
 import { useCallback } from "react";
-import { current, currentOverlay } from "./useAnnotationContext/selectors";
 import { useAnnotationContext } from "./useAnnotationContext";
 
 export default function useExit() {
   const annotationContext = useAnnotationContext();
   const { scene, removeOverlay } = useLighter();
-  const overlay = useAtomValue(currentOverlay);
-  const label = useAtomValue(current);
+  const { label, overlay } = annotationContext.selected;
 
   return useCallback(() => {
     // If this is an uncommitted dummy label with no value, remove it from the scene

@@ -47,7 +47,14 @@ const LabelHamburgerMenu = () => {
   const overlay = selected.overlay;
   const { isEditingMask } = useSegmentationMode();
 
-  const isMaskDetection = !!(data?.mask || data?.mask_path || isEditingMask);
+  // `mask`/`mask_path` are Detection-only fields; the union narrows them
+  // out. Cast at the access site.
+  const maskFields = data as { mask?: unknown; mask_path?: unknown } | null;
+  const isMaskDetection = !!(
+    maskFields?.mask ||
+    maskFields?.mask_path ||
+    isEditingMask
+  );
   const isDetection = type === DETECTION;
 
   const handleAddMask = useCallback(() => {
