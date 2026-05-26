@@ -1,6 +1,5 @@
-import type * as foq from "@fiftyone/relay";
+import type { PaginateSamplesNode } from "@fiftyone/relay";
 import type { ID, SpotlightConfig } from "@fiftyone/spotlight";
-import type { ResponseFrom } from "../utils";
 
 import { get } from "lodash";
 import { useRecoilCallback } from "recoil";
@@ -9,15 +8,7 @@ import * as groupAtoms from "../recoil/groups";
 import useSetExpandedSample from "./useSetExpandedSample";
 import useSetModalState from "./useSetModalState";
 
-export type Sample = Exclude<
-  Exclude<
-    ResponseFrom<foq.paginateSamplesQuery>["samples"]["edges"][0]["node"],
-    {
-      readonly __typename: "%other";
-    }
-  >,
-  null
->;
+export type Sample = Exclude<PaginateSamplesNode, null>;
 
 export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
   const setExpandedSample = useSetExpandedSample();

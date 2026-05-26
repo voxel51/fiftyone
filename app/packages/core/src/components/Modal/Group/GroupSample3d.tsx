@@ -1,11 +1,10 @@
 import { Loading } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { useEffect, useMemo } from "react";
+import { Suspense, useEffect, useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { SampleWrapper } from "../Sample2D";
 import { Sample3d } from "../Sample3d";
 import { GroupSampleWrapper } from "./GroupSampleWrapper";
-import { GroupSuspense } from "./GroupSuspense";
 
 const Sample3dWrapper = () => {
   const interactionSample = fos.useStableInteraction3dSample();
@@ -56,8 +55,8 @@ export default () => {
   }
 
   return (
-    <GroupSuspense>
+    <Suspense fallback={<Loading>Pixelating...</Loading>}>
       <Sample3dWrapper />
-    </GroupSuspense>
+    </Suspense>
   );
 };
