@@ -203,6 +203,9 @@ def _temporal_tags_from_create_payload(
 def _delete_request_from_payload(data, sample_id: str) -> dict:
     _require_dict(data, "request body")
 
+    # Route deletes are always scoped by the path sample. Callers can delete by
+    # id/tag/filter, or opt into deleting all temporal tags for that sample via
+    # `delete_all`; dataset-wide deletes remain SDK-only.
     delete_all = data.get("delete_all", False)
     if not isinstance(delete_all, bool):
         raise HTTPException(
@@ -386,6 +389,8 @@ def _require_dict(value, field: str) -> None:
 
 
 def _reject_temporal_tag_timestamps(record: dict) -> None:
+    # Timestamps are system-managed in route CRUD. SDK/import callers can
+    # preserve provenance explicitly when they need to migrate existing records.
     fields = {"created_at", "last_modified_at"} & set(record)
     if fields:
         raise HTTPException(

@@ -7,6 +7,7 @@ Multimodal temporal tag route unit tests.
 """
 
 import json
+import time
 from unittest.mock import AsyncMock, MagicMock
 
 from bson import ObjectId
@@ -102,6 +103,23 @@ def _json_body(response):
     return json.loads(response.body.decode("utf-8"))
 
 
+def _modified_timestamps(dataset, sample_id):
+    dataset.reload()
+    dataset_doc = foo.get_db_conn().datasets.find_one({"_id": dataset._doc.id})
+    sample_doc = dataset._sample_collection.find_one(
+        {"_id": ObjectId(sample_id)}
+    )
+
+    return dataset_doc["last_modified_at"], sample_doc["last_modified_at"]
+
+
+def _dataset_last_modified_at(dataset):
+    dataset.reload()
+    dataset_doc = foo.get_db_conn().datasets.find_one({"_id": dataset._doc.id})
+
+    return dataset_doc["last_modified_at"]
+
+
 class TestMultimodalTemporalTagsRoute:
     """Tests for the multimodal temporal tag collection route."""
 
@@ -109,9 +127,13 @@ class TestMultimodalTemporalTagsRoute:
     async def test_sample_scoped_create_list_and_delete_temporal_tags(
         self,
         sample_temporal_tags_endpoint,
+        dataset,
         dataset_id,
         sample_ids,
     ):
+        before_post = _modified_timestamps(dataset, sample_ids[0])
+        time.sleep(0.05)
+
         request = _make_request(
             dataset_id,
             sample_id=sample_ids[0],
@@ -126,6 +148,7 @@ class TestMultimodalTemporalTagsRoute:
 
         response = await sample_temporal_tags_endpoint.post(request)
         created = _json_body(response)["temporal_tags"]
+        after_post = _modified_timestamps(dataset, sample_ids[0])
 
         assert len(created) == 1
         assert created[0]["id"]
@@ -136,6 +159,8 @@ class TestMultimodalTemporalTagsRoute:
         assert created[0]["last_modified_by"] == "alice"
         assert isinstance(created[0]["created_at"], str)
         assert isinstance(created[0]["last_modified_at"], str)
+        assert after_post[0] > before_post[0]
+        assert after_post[1] > before_post[1]
 
         request = _make_request(
             dataset_id,
@@ -144,19 +169,26 @@ class TestMultimodalTemporalTagsRoute:
                 "anchor": "camera_front",
             },
         )
+        time.sleep(0.05)
         response = await sample_temporal_tags_endpoint.get(request)
         listed = _json_body(response)["temporal_tags"]
+        after_get = _modified_timestamps(dataset, sample_ids[0])
 
         assert listed == created
+        assert after_get == after_post
 
         request = _make_request(
             dataset_id,
             sample_id=sample_ids[0],
             body={"ids": [created[0]["id"]]},
         )
+        time.sleep(0.05)
         response = await sample_temporal_tags_endpoint.delete(request)
+        after_delete = _modified_timestamps(dataset, sample_ids[0])
 
         assert _json_body(response) == {"deleted": 1}
+        assert after_delete[0] > after_get[0]
+        assert after_delete[1] > after_get[1]
 
         request = _make_request(dataset_id, sample_id=sample_ids[0])
         response = await sample_temporal_tags_endpoint.get(request)
@@ -210,23 +242,30 @@ class TestMultimodalTemporalTagsRoute:
             ],
         )
 
+        before_get = _dataset_last_modified_at(dataset)
+        time.sleep(0.05)
         request = _make_request(
             dataset_id,
             query_params={"start": "5", "end": "15"},
         )
         response = await temporal_tags_endpoint.get(request)
         temporal_tags = _json_body(response)["temporal_tags"]
+        after_get = _dataset_last_modified_at(dataset)
 
         assert [tag["sample_id"] for tag in temporal_tags] == sample_ids[:2]
         assert [tag["tag"] for tag in temporal_tags] == ["clip", "clip"]
+        assert after_get == before_get
 
+        time.sleep(0.05)
         request = _make_request(
             dataset_id,
             query_params={"start": "5", "end": "15"},
         )
         response = await temporal_tag_counts_endpoint.get(request)
+        after_counts = _dataset_last_modified_at(dataset)
 
         assert _json_body(response)["counts"] == {"clip": 2}
+        assert after_counts == after_get
 
     @pytest.mark.asyncio
     async def test_lists_tag_hits_across_samples_and_counts_all_tags(
@@ -321,6 +360,36 @@ class TestMultimodalTemporalTagsRoute:
         assert len(remaining) == 1
         assert remaining[0]["sample_id"] == sample_ids[0]
         assert remaining[0]["anchor"] == "camera_rear"
+
+    @pytest.mark.asyncio
+    async def test_delete_all_is_sample_scoped(
+        self,
+        sample_temporal_tags_endpoint,
+        dataset,
+        dataset_id,
+        sample_ids,
+    ):
+        fomt.add_temporal_tags(
+            dataset,
+            [
+                fomt.TemporalTag(sample_ids[0], 0, 10, "first"),
+                fomt.TemporalTag(sample_ids[0], 10, 20, "second"),
+                fomt.TemporalTag(sample_ids[1], 0, 10, "other"),
+            ],
+        )
+
+        request = _make_request(
+            dataset_id,
+            sample_id=sample_ids[0],
+            body={"delete_all": True},
+        )
+        response = await sample_temporal_tags_endpoint.delete(request)
+
+        assert _json_body(response) == {"deleted": 2}
+        assert fomt.count_temporal_tags(dataset) == {"other": 1}
+        assert [tag.sample_id for tag in fomt.list_temporal_tags(dataset)] == [
+            sample_ids[1]
+        ]
 
     @pytest.mark.asyncio
     async def test_validation_errors_return_400(
