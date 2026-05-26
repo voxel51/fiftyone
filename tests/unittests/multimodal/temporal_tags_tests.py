@@ -632,6 +632,114 @@ class TemporalTagTests(unittest.TestCase):
 
     @drop_temporal_tags
     @drop_datasets
+    def test_sample_collection_temporal_tag_convenience(self):
+        dataset, sample_ids = _make_dataset(3)
+
+        persisted = dataset.temporal_tags.add(
+            [
+                fomm.TemporalTag(sample_ids[0], 0, 10, "shared"),
+                fomm.TemporalTag(sample_ids[1], 10, 20, "shared"),
+            ]
+        )
+
+        self.assertEqual(dataset.temporal_tags.count(), {"shared": 2})
+        self.assertEqual(
+            [tag.id for tag in dataset.temporal_tags.values()],
+            [tag.id for tag in persisted],
+        )
+
+        updated = dataset.temporal_tags.update(
+            persisted[0].id,
+            end=12,
+            tag="review",
+            last_modified_by="alice",
+        )
+        self.assertEqual(updated.end, 12)
+        self.assertEqual(updated.tag, "review")
+        self.assertEqual(updated.last_modified_by, "alice")
+        self.assertEqual(
+            dataset.temporal_tags.count(), {"review": 1, "shared": 1}
+        )
+
+        view = dataset.select([sample_ids[0], sample_ids[2]])
+        self.assertEqual(view.temporal_tags.count(), {"review": 1})
+
+        with self.assertRaises(ValueError):
+            view.temporal_tags.add(
+                fomm.TemporalTag(sample_ids[1], 20, 30, "outside")
+            )
+
+        self.assertEqual(view.temporal_tags.delete(tags="review"), 1)
+        self.assertEqual(dataset.temporal_tags.count(), {"shared": 1})
+
+    @drop_temporal_tags
+    @drop_datasets
+    def test_match_temporal_tags(self):
+        dataset, sample_ids = _make_dataset(4)
+        fomm.add_temporal_tags(
+            dataset,
+            [
+                fomm.TemporalTag(
+                    sample_ids[0],
+                    0,
+                    10,
+                    "review",
+                    anchor="camera_front",
+                ),
+                fomm.TemporalTag(
+                    sample_ids[1],
+                    5,
+                    15,
+                    "review",
+                    anchor="lidar_top",
+                ),
+                fomm.TemporalTag(sample_ids[2], 20, 30, "other"),
+            ],
+        )
+
+        self.assertEqual(
+            set(dataset.match_temporal_tags(tags="review").values("id")),
+            set(sample_ids[:2]),
+        )
+        self.assertEqual(
+            dataset.match_temporal_tags(
+                tags="review", start=10, end=11
+            ).values("id"),
+            [sample_ids[1]],
+        )
+        self.assertEqual(
+            dataset.match_temporal_tags(anchors="camera_front").values("id"),
+            [sample_ids[0]],
+        )
+        self.assertEqual(
+            set(
+                dataset.match_temporal_tags(tags="review", bool=False).values(
+                    "id"
+                )
+            ),
+            {sample_ids[2], sample_ids[3]},
+        )
+
+        view = dataset.select([sample_ids[0], sample_ids[2], sample_ids[3]])
+        self.assertEqual(
+            view.match_temporal_tags(tags="review").values("id"),
+            [sample_ids[0]],
+        )
+        self.assertEqual(
+            view.match_temporal_tags(tags="missing").values("id"),
+            [],
+        )
+        self.assertEqual(
+            set(
+                view.match_temporal_tags(tags="missing", bool=False).values(
+                    "id"
+                )
+            ),
+            {sample_ids[0], sample_ids[2], sample_ids[3]},
+        )
+
+    @drop_temporal_tags
+    @drop_datasets
     def test_generated_view_operations_use_backing_dataset(self):
         dataset = fo.Dataset()
         sample = fo.Sample(
