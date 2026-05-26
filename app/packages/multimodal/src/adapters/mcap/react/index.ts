@@ -2,7 +2,6 @@
  * React renderers for MCAP-backed samples.
  */
 export { GridRenderer } from "./GridRenderer";
-export { ModalRenderer } from "./ModalRenderer";
 
 /**
  * React helper for MCAP renderer resource-client lifecycle.
