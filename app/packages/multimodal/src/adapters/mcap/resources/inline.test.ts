@@ -325,6 +325,55 @@ describe("MCAP resources", () => {
     expect(set.samples[0]?.translation.toArray()).toEqual([1, 2, 3]);
   });
 
+  it("includes bootstrap transform channels when summary stats are unavailable", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
+        channelId: 10,
+      });
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/tf_static",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+                id: 10,
+                name: "foxglove.FrameTransform",
+              }),
+            ],
+          ]),
+        })
+      ),
+    });
+
+    const set = await client.readFrameTransformBootstrap({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(readMessages).toHaveBeenCalledWith({
+      topics: ["/tf_static"],
+    });
+    expect(set.samples).toHaveLength(1);
+    expect(set.samples[0]).toMatchObject({
+      childFrameId: "lidar",
+      parentFrameId: "map",
+    });
+  });
+
   it("flattens foxglove.FrameTransforms bootstrap messages and caches reads", async () => {
     const source = createMcapSourceDescriptor();
     const readMessages = vi.fn(async function* () {
@@ -438,6 +487,71 @@ describe("MCAP resources", () => {
     });
     expect(set.samples[0]?.rotation.toArray()).toEqual([0, 0, 0, 1]);
     expect(set.samples[0]?.translation.toArray()).toEqual([1, 2, 3]);
+  });
+
+  it("keeps dynamic frame transform window reads in a bounded LRU cache", async () => {
+    const source = createMcapSourceDescriptor();
+    const readMessages = vi.fn(async function* () {
+      for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
+        yield message;
+      }
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/tf",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+                id: 10,
+                name: "foxglove.FrameTransform",
+              }),
+            ],
+          ]),
+        })
+      ),
+    });
+
+    await client.readFrameTransformWindow({
+      endTimeNs: 0n,
+      source,
+      startTimeNs: 0n,
+    });
+    await client.readFrameTransformWindow({
+      endTimeNs: 0n,
+      source,
+      startTimeNs: 0n,
+    });
+
+    expect(readMessages).toHaveBeenCalledTimes(1);
+
+    for (let index = 1; index <= 32; index += 1) {
+      await client.readFrameTransformWindow({
+        endTimeNs: BigInt(index),
+        source,
+        startTimeNs: BigInt(index),
+      });
+    }
+    await client.readFrameTransformWindow({
+      endTimeNs: 0n,
+      source,
+      startTimeNs: 0n,
+    });
+
+    expect(readMessages).toHaveBeenCalledTimes(34);
   });
 
   it("treats window samples without a message timestamp as static (no timeNs)", async () => {

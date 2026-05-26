@@ -6,6 +6,7 @@ import type {
   McapFrameTransformResolution,
   McapFrameTransformSample,
   McapFrameTransformSet,
+  McapFrameTransformSetWire,
   McapFrameTransformTimeRange,
 } from "./frame-transform-types";
 import { compareBigInt } from "./sync";
@@ -195,12 +196,11 @@ export class McapFrameTransformStore {
  * prototypes and `Quaternion` exposes `x/y/z/w` only as getters — after the
  * hop those properties read as `undefined`. Reads the values while the
  * prototype is still attached. Pair with `hydrateMcapFrameTransformSet` on
- * the receiving side. The return type is `McapFrameTransformSet` because the
- * wire form lives only between postMessage and hydration.
+ * the receiving side.
  */
 export function dehydrateMcapFrameTransformSet(
   set: McapFrameTransformSet
-): McapFrameTransformSet {
+): McapFrameTransformSetWire {
   return {
     samples: set.samples.map((sample) => ({
       ...sample,
@@ -209,12 +209,12 @@ export function dehydrateMcapFrameTransformSet(
         y: sample.rotation.y,
         z: sample.rotation.z,
         w: sample.rotation.w,
-      } as unknown as Quaternion,
+      },
       translation: {
         x: sample.translation.x,
         y: sample.translation.y,
         z: sample.translation.z,
-      } as unknown as Vector3,
+      },
     })),
   };
 }
@@ -225,7 +225,7 @@ export function dehydrateMcapFrameTransformSet(
  * reads structurally.
  */
 export function hydrateMcapFrameTransformSet(
-  set: McapFrameTransformSet
+  set: McapFrameTransformSetWire
 ): McapFrameTransformSet {
   return {
     samples: set.samples.map((sample) => ({

@@ -201,7 +201,8 @@ function PointCloudPoints({
   }, [geometry, invalidate]);
 
   return (
-    <points frustumCulled={false} geometry={geometry}>
+    <points frustumCulled={false}>
+      <primitive attach="geometry" object={geometry} />
       <pointsMaterial size={pointSize} sizeAttenuation={false} vertexColors />
     </points>
   );

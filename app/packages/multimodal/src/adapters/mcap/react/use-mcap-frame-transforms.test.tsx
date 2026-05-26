@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { useEffect } from "react";
 import { Quaternion, Vector3 } from "three";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -15,6 +15,7 @@ import {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
 });
 
 describe("useMcapFrameTransforms", () => {
@@ -117,6 +118,46 @@ describe("useMcapFrameTransforms", () => {
       expect(screen.getByTestId("frames").textContent).toBe("ready:resolved:");
     });
   });
+
+  it("backs off and caps retries after dynamic window read failures", async () => {
+    vi.useFakeTimers();
+    const source = createSource("retry");
+    const client = createFrameTransformClient({
+      readFrameTransformWindow: vi.fn(async () => {
+        throw new Error("temporary tf failure");
+      }),
+    });
+
+    render(
+      <FrameTransformsHarness
+        client={client}
+        label="frames"
+        source={source}
+        timeNs={100n}
+      />
+    );
+
+    await flushReactWork();
+    expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("frames").textContent).toBe(
+      "ready:pending:temporary tf failure"
+    );
+
+    await runNextTimer();
+    await flushReactWork();
+    expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(2);
+
+    await runNextTimer();
+    await flushReactWork();
+    expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(3);
+
+    await runNextTimer();
+    await flushReactWork();
+    expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(4);
+
+    await runNextTimer();
+    expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(4);
+  });
 });
 
 function FrameTransformsHarness({
@@ -200,6 +241,19 @@ function deferred<T>() {
   };
 
   return { promise, reject: deferredReject, resolve: deferredResolve };
+}
+
+async function runNextTimer() {
+  await act(async () => {
+    await vi.runOnlyPendingTimersAsync();
+  });
+}
+
+async function flushReactWork() {
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
 }
 
 function sample(

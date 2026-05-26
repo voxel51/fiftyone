@@ -23,6 +23,43 @@ export interface McapFrameTransformSet {
 }
 
 /**
+ * Plain quaternion shape safe to send through structured clone.
+ */
+export interface McapQuaternionWire {
+  readonly w: number;
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+}
+
+/**
+ * Plain vector shape safe to send through structured clone.
+ */
+export interface McapVector3Wire {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+}
+
+/**
+ * Serialized frame transform sample used across worker boundaries.
+ */
+export interface McapFrameTransformSampleWire {
+  readonly childFrameId: string;
+  readonly parentFrameId: string;
+  readonly rotation: McapQuaternionWire;
+  readonly timeNs?: bigint;
+  readonly translation: McapVector3Wire;
+}
+
+/**
+ * Serialized frame transform set used across worker boundaries.
+ */
+export interface McapFrameTransformSetWire {
+  readonly samples: readonly McapFrameTransformSampleWire[];
+}
+
+/**
  * Composed transform mapping coordinates from sourceFrameId into targetFrameId.
  */
 export interface McapComposedFrameTransform {

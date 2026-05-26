@@ -1,3 +1,4 @@
+import { LRUCache } from "lru-cache";
 import { byteSourceAccessKey, type ByteClient } from "../../../query/bytes";
 import { type DecodeClient, createDecodeClient } from "../../../query/decode";
 import { createMultimodalQueryClient } from "../../../query";
@@ -32,6 +33,8 @@ import {
 } from "../types";
 import type { StreamInventory } from "../../../schemas/v1";
 
+const FRAME_TRANSFORM_WINDOW_READ_CACHE_LIMIT = 32;
+
 /**
  * Inline-only options for constructing an MCAP resource client.
  */
@@ -62,10 +65,12 @@ export function createInlineMcapResourceClient(
     string,
     Promise<McapFrameTransformSet>
   >();
-  const frameTransformWindowReads = new Map<
+  const frameTransformWindowReads = new LRUCache<
     string,
     Promise<McapFrameTransformSet>
-  >();
+  >({
+    max: FRAME_TRANSFORM_WINDOW_READ_CACHE_LIMIT,
+  });
 
   const client: McapResourceClient = {
     dispose() {
@@ -153,7 +158,9 @@ export function createInlineMcapResourceClient(
           readMcapFrameTransformWindow({ reader, request, timeline })
         )
         .catch((error) => {
-          frameTransformWindowReads.delete(windowKey);
+          if (frameTransformWindowReads.get(windowKey) === read) {
+            frameTransformWindowReads.delete(windowKey);
+          }
           throw error;
         });
       frameTransformWindowReads.set(windowKey, read);

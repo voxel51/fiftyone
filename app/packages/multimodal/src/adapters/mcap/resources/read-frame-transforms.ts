@@ -94,7 +94,7 @@ export async function readMcapFrameTransformBootstrap(
 ): Promise<McapFrameTransformSet> {
   const bootstrapChannels = discoverFrameTransformChannels(reader).filter(
     (entry) =>
-      entry.messageCount !== undefined &&
+      entry.messageCount === undefined ||
       entry.messageCount <= BOOTSTRAP_CHANNEL_MESSAGE_CAP
   );
   if (bootstrapChannels.length === 0) {

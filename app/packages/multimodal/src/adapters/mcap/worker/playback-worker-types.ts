@@ -1,4 +1,4 @@
-import type { McapFrameTransformSet } from "../frame-transform-types";
+import type { McapFrameTransformSetWire } from "../frame-transform-types";
 import type {
   McapDecodedMessage,
   McapReadDecodedMessagesRequest,
@@ -63,8 +63,8 @@ export type McapPlaybackWorkerRequestPayloadByType = {
  * Unary result payloads returned by worker RPC calls.
  */
 export type McapPlaybackWorkerResultByType = {
-  readonly readFrameTransformBootstrap: McapFrameTransformSet;
-  readonly readFrameTransformWindow: McapFrameTransformSet;
+  readonly readFrameTransformBootstrap: McapFrameTransformSetWire;
+  readonly readFrameTransformWindow: McapFrameTransformSetWire;
   readonly readSynchronizedMessageBatch: readonly McapSynchronizedMessageWindow[];
   readonly readSynchronizedMessages: McapSynchronizedMessageWindow;
   readonly readTimelineRange: McapTimelineRange;

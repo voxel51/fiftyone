@@ -13,6 +13,8 @@ import type { McapActiveTimeline, McapResourceClient } from "../types";
 // chase every playback tick.
 const DYNAMIC_TRANSFORM_LOOKBACK_NS = 500_000_000n;
 const DYNAMIC_TRANSFORM_LOOKAHEAD_NS = 500_000_000n;
+const DYNAMIC_TRANSFORM_RETRY_BASE_DELAY_MS = 250;
+const DYNAMIC_TRANSFORM_WINDOW_MAX_RETRIES = 3;
 
 export type McapFrameTransformsStatus = "idle" | "loading" | "ready" | "error";
 
@@ -65,6 +67,10 @@ export function useMcapFrameTransforms({
     version: 0,
   });
   const inFlightRangesRef = useRef<readonly McapFrameTransformTimeRange[]>([]);
+  const retryCountRef = useRef<Map<string, number>>(new Map());
+  const retryTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
+    new Map()
+  );
   const sourceGenerationRef = useRef(0);
 
   /**
@@ -72,7 +78,10 @@ export function useMcapFrameTransforms({
    * source-wide transform bootstrap before dynamic windows are requested.
    */
   useEffect(() => {
+    const retryTimeouts = retryTimeoutsRef.current;
+    clearRetryTimeouts(retryTimeouts);
     inFlightRangesRef.current = [];
+    retryCountRef.current.clear();
     sourceGenerationRef.current += 1;
     const sourceGeneration = sourceGenerationRef.current;
     storeRef.current = null;
@@ -124,6 +133,7 @@ export function useMcapFrameTransforms({
 
     return () => {
       active = false;
+      clearRetryTimeouts(retryTimeouts);
     };
   }, [client, source]);
 
@@ -145,6 +155,7 @@ export function useMcapFrameTransforms({
     }
 
     const requestedRange = dynamicRangeForTime(timeNs);
+    const requestedRangeKey = frameTransformRangeKey(requestedRange);
     const sourceGeneration = sourceGenerationRef.current;
     inFlightRangesRef.current = [...inFlightRangesRef.current, requestedRange];
 
@@ -161,6 +172,7 @@ export function useMcapFrameTransforms({
         }
 
         storeRef.current?.addDynamic(set.samples, requestedRange);
+        retryCountRef.current.delete(requestedRangeKey);
         inFlightRangesRef.current = inFlightRangesRef.current.filter(
           (candidate) => candidate !== requestedRange
         );
@@ -175,14 +187,36 @@ export function useMcapFrameTransforms({
           return;
         }
 
-        inFlightRangesRef.current = inFlightRangesRef.current.filter(
-          (candidate) => candidate !== requestedRange
-        );
+        const retryCount = retryCountRef.current.get(requestedRangeKey) ?? 0;
         setState((current) => ({
           ...current,
           error: mcapErrorMessage(caughtError),
-          version: current.version + 1,
         }));
+        if (retryCount >= DYNAMIC_TRANSFORM_WINDOW_MAX_RETRIES) {
+          return;
+        }
+
+        const nextRetryCount = retryCount + 1;
+        retryCountRef.current.set(requestedRangeKey, nextRetryCount);
+        const existingTimeout = retryTimeoutsRef.current.get(requestedRangeKey);
+        if (existingTimeout) {
+          clearTimeout(existingTimeout);
+        }
+        const timeout = setTimeout(() => {
+          retryTimeoutsRef.current.delete(requestedRangeKey);
+          if (sourceGeneration !== sourceGenerationRef.current) {
+            return;
+          }
+
+          inFlightRangesRef.current = inFlightRangesRef.current.filter(
+            (candidate) => candidate !== requestedRange
+          );
+          setState((current) => ({
+            ...current,
+            version: current.version + 1,
+          }));
+        }, dynamicTransformRetryDelayMs(nextRetryCount));
+        retryTimeoutsRef.current.set(requestedRangeKey, timeout);
       });
 
     return undefined;
@@ -220,6 +254,23 @@ export function useMcapFrameTransforms({
     }),
     [frameIds, resolve, state.error, state.status]
   );
+}
+
+function frameTransformRangeKey(range: McapFrameTransformTimeRange): string {
+  return `${range.startTimeNs}:${range.endTimeNs}`;
+}
+
+function dynamicTransformRetryDelayMs(retryCount: number): number {
+  return DYNAMIC_TRANSFORM_RETRY_BASE_DELAY_MS * 2 ** (retryCount - 1);
+}
+
+function clearRetryTimeouts(
+  timeouts: Map<string, ReturnType<typeof setTimeout>>
+) {
+  for (const timeout of timeouts.values()) {
+    clearTimeout(timeout);
+  }
+  timeouts.clear();
 }
 
 function dynamicRangeForTime(timeNs: bigint): McapFrameTransformTimeRange {
