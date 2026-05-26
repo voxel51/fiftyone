@@ -1062,6 +1062,36 @@ def _ensure_indexes(collection) -> None:
             ("end", ASCENDING),
         ],
     )
+    # Viewer reads usually pin one sample and optionally add a time window,
+    # without necessarily knowing an index type or anchor up front.
+    _create_or_replace_index(
+        collection,
+        "temporal_tag_sample_range",
+        [
+            ("_dataset_id", ASCENDING),
+            ("_sample_id", ASCENDING),
+            ("start", ASCENDING),
+            ("end", ASCENDING),
+            ("index_type", ASCENDING),
+            ("anchor", ASCENDING),
+            ("tag", ASCENDING),
+        ],
+    )
+    # Search and track-population flows start from tag values, then need the
+    # matching sample IDs and ranges.
+    _create_or_replace_index(
+        collection,
+        "temporal_tag_tag_lookup",
+        [
+            ("_dataset_id", ASCENDING),
+            ("tag", ASCENDING),
+            ("_sample_id", ASCENDING),
+            ("start", ASCENDING),
+            ("end", ASCENDING),
+            ("index_type", ASCENDING),
+            ("anchor", ASCENDING),
+        ],
+    )
     _create_or_replace_index(
         collection,
         "temporal_tag_counts",

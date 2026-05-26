@@ -262,6 +262,38 @@ class TemporalTagTests(unittest.TestCase):
 
     @drop_temporal_tags
     @drop_datasets
+    def test_creates_query_indexes(self):
+        dataset, sample_ids = _make_dataset()
+        fomm.add_temporal_tags(
+            dataset,
+            fomm.TemporalTag(
+                sample_ids[0], 0, 10, "review", anchor="camera_front"
+            ),
+        )
+
+        collection = foo.get_db_conn()[TEMPORAL_TAGS_COLLECTION_NAME]
+        indexes = collection.index_information()
+
+        self.assertEqual(
+            indexes["temporal_tag_sample_range"]["key"][:4],
+            [
+                ("_dataset_id", 1),
+                ("_sample_id", 1),
+                ("start", 1),
+                ("end", 1),
+            ],
+        )
+        self.assertEqual(
+            indexes["temporal_tag_tag_lookup"]["key"][:3],
+            [
+                ("_dataset_id", 1),
+                ("tag", 1),
+                ("_sample_id", 1),
+            ],
+        )
+
+    @drop_temporal_tags
+    @drop_datasets
     def test_view_scoped_operations(self):
         dataset, sample_ids = _make_dataset(3)
         fomm.add_temporal_tags(
