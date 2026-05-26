@@ -59,10 +59,11 @@ export const currentData = atom(
     const labelAtom = get(editingLabelAtom);
     if (labelAtom) {
       const c = get(labelAtom);
-      return set(labelAtom, {
-        ...c,
-        data: replace ? data : { ...c.data, ...data },
-      });
+      // The patched data always matches `c.data`'s sub-type at runtime —
+      // consumers only ever patch fields valid for the current label —
+      // but TS can't narrow the discriminated union across the spread.
+      const nextData = replace ? data : { ...c.data, ...data };
+      return set(labelAtom, { ...c, data: nextData } as AnnotationLabel);
     }
   }
 );
@@ -77,16 +78,31 @@ export const currentField = atom(
       return;
     }
 
-    const oldData = currentLabel.data;
+    // `_id` and `bounding_box` live on label data at runtime (Mongo ObjectId
+    // and detection bbox), but neither is declared in the looker TS types.
+    // Cast through the known runtime shape to access them safely.
+    type WithRuntimeFields = { _id?: string; bounding_box?: number[] };
+    const oldData = currentLabel.data as AnnotationLabel["data"] &
+      WithRuntimeFields;
     const data = buildNewLabelData(path, currentLabel.type, {
-      id: oldData?._id,
-    });
-    data.bounding_box = oldData?.bounding_box;
+      id: oldData._id,
+    }) as AnnotationLabel["data"] & WithRuntimeFields;
 
-    currentLabel.overlay?.updateField(path);
-    currentLabel.overlay?.updateLabel(data);
+    // Carry bbox across field swaps (no-op for non-Detection types).
+    data.bounding_box = oldData.bounding_box;
 
-    set(current, { ...currentLabel, path, data });
+    // Overlay shape varies per label type; the intersection collapses to
+    // `never` for updateLabel's parameter. Cast at the call site.
+    const overlay = currentLabel.overlay as
+      | {
+          updateField?(path: string): void;
+          updateLabel?(label: AnnotationLabel["data"]): void;
+        }
+      | undefined;
+    overlay?.updateField?.(path);
+    overlay?.updateLabel?.(data);
+
+    set(current, { ...currentLabel, path, data } as AnnotationLabel);
   }
 );
 
