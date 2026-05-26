@@ -1,12 +1,7 @@
 import { useLighter } from "@fiftyone/lighter";
 import { TypeGuards } from "@fiftyone/lighter/src/core/Scene2D";
-import {
-  clearTransformStateSelector,
-  selectedLabelForAnnotationAtom,
-} from "@fiftyone/looker-3d/src/state";
 import { useAtomValue } from "jotai";
 import { useCallback } from "react";
-import { useSetRecoilState } from "recoil";
 import { current, currentOverlay } from "./useAnnotationContext/selectors";
 import { useAnnotationContext } from "./useAnnotationContext";
 
@@ -15,19 +10,6 @@ export default function useExit() {
   const { scene, removeOverlay } = useLighter();
   const overlay = useAtomValue(currentOverlay);
   const label = useAtomValue(current);
-
-  /**
-   * 3D SPECIFIC IMPORTS
-   * : TODO: CLEAN THIS UP. THIS FUNCTION SHOULDN'T BE
-   * COUPLED TO LIGHTER OR LOOKER-3D.
-   */
-  const setSelectedLabelForAnnotation = useSetRecoilState(
-    selectedLabelForAnnotationAtom
-  );
-  const clearTransformState = useSetRecoilState(clearTransformStateSelector);
-  /**
-   * 3D SPECIFIC IMPORTS ENDS HERE.
-   */
 
   return useCallback(() => {
     // If this is an uncommitted dummy label with no value, remove it from the scene
@@ -43,27 +25,11 @@ export default function useExit() {
       }
     }
 
-    /**
-     * 3D SPECIFIC LOGIC
-     * : TODO: CLEAN THIS UP. THIS FUNCTION SHOULDN'T BE
-     * COUPLED TO LIGHTER OR LOOKER-3D.
-     */
-    setSelectedLabelForAnnotation(null);
-    clearTransformState(null);
-    /**
-     * 3D SPECIFIC LOGIC ENDS HERE.
-     */
-
     // Records last-used into useAnnotationContext memory and resets
-    // editing/savedLabel/activePrimitive atoms.
+    // editing/savedLabel/activePrimitive atoms. The atom transition is
+    // picked up by looker-3d's `useReset3dOnEditExit` hook, which owns the
+    // 3D-specific selection/transform cleanup — keeping this file in the
+    // editing-state layer rather than reaching across packages.
     annotationContext.clear();
-  }, [
-    annotationContext,
-    clearTransformState,
-    label,
-    overlay,
-    removeOverlay,
-    scene,
-    setSelectedLabelForAnnotation,
-  ]);
+  }, [annotationContext, label, overlay, removeOverlay, scene]);
 }
