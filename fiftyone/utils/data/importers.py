@@ -5,6 +5,7 @@ Dataset importers.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from datetime import datetime
 import inspect
 import itertools
@@ -37,6 +38,7 @@ from fiftyone.core.sample import Sample
 import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.migrations as fomi
+import fiftyone.multimodal.tags._temporal_tags as fommtt
 import fiftyone.types as fot
 
 from .parsers import (
@@ -46,7 +48,6 @@ from .parsers import (
     FiftyOneImageLabelsSampleParser,
     FiftyOneVideoLabelsSampleParser,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -1823,8 +1824,6 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._media_fields = None
 
     def setup(self):
-        import fiftyone.multimodal.tags._temporal_tags as fommtt
-
         self._data_dir = os.path.join(self.dataset_dir, "data")
         self._fields_dir = os.path.join(self.dataset_dir, "fields")
         self._anno_dir = os.path.join(self.dataset_dir, "annotations")
@@ -1879,8 +1878,6 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             sample_ids = self._import_samples(
                 dataset, dataset_dict, tags=tags, progress=progress
             )
-
-        import fiftyone.multimodal.tags._temporal_tags as fommtt
 
         fommtt.import_tags(
             dataset,
