@@ -180,6 +180,7 @@ def _temporal_tags_from_create_payload(
     tags = []
     for record in records:
         _require_dict(record, "temporal tag")
+        _reject_temporal_tag_timestamps(record)
         record_sample_id = record.get("sample_id", None)
         _ensure_matching_sample_id(record_sample_id, sample_id)
 
@@ -191,6 +192,8 @@ def _temporal_tags_from_create_payload(
                 tag=record.get("tag", None),
                 index_type=record.get("index_type", fomt.DEFAULT_INDEX_TYPE),
                 anchor=record.get("anchor", None),
+                created_by=record.get("created_by", None),
+                last_modified_by=record.get("last_modified_by", None),
             )
         )
 
@@ -379,6 +382,21 @@ def _require_dict(value, field: str) -> None:
         raise HTTPException(
             status_code=400,
             detail=f"'{field}' must be an object",
+        )
+
+
+def _reject_temporal_tag_timestamps(record: dict) -> None:
+    fields = {"created_at", "last_modified_at"} & set(record)
+    if fields:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Temporal tag %s %s response-only"
+                % (
+                    ", ".join(sorted(fields)),
+                    "is" if len(fields) == 1 else "are",
+                )
+            ),
         )
 
 

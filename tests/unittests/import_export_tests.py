@@ -188,17 +188,48 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
         exported = etas.read_json(tags_path)["temporal_tags"]
         self.assertEqual(len(exported), 3)
         for doc in exported:
-            expected_keys = {"sample_id", "index_type", "start", "end", "tag"}
+            expected_keys = {
+                "sample_id",
+                "index_type",
+                "start",
+                "end",
+                "tag",
+                "created_at",
+                "last_modified_at",
+            }
             if doc.get("anchor", None) is not None:
                 expected_keys.add("anchor")
+
+            if doc.get("created_by", None) is not None:
+                expected_keys.add("created_by")
+
+            if doc.get("last_modified_by", None) is not None:
+                expected_keys.add("last_modified_by")
 
             self.assertEqual(
                 set(doc.keys()),
                 expected_keys,
             )
+            self.assertIsInstance(doc["created_at"], str)
+            self.assertIsInstance(doc["last_modified_at"], str)
+
         self.assertEqual(
             {doc.get("anchor", None) for doc in exported},
             {None, "camera_front", "lidar_top"},
+        )
+        exported_by_tag = {
+            (doc["tag"], doc.get("anchor", None)): doc for doc in exported
+        }
+        self.assertEqual(
+            exported_by_tag[("keep", "camera_front")]["created_by"], "alice"
+        )
+        self.assertEqual(
+            exported_by_tag[("keep", "camera_front")]["last_modified_by"],
+            "alice",
+        )
+        self.assertEqual(
+            exported_by_tag[("drop", "lidar_top")]["last_modified_by"],
+            "carol",
         )
 
         dataset2 = fo.Dataset.from_dir(
@@ -245,6 +276,10 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
         exported = etas.read_json(tags_path)
         for doc in exported["temporal_tags"]:
             doc.pop("anchor", None)
+            doc.pop("created_at", None)
+            doc.pop("last_modified_at", None)
+            doc.pop("created_by", None)
+            doc.pop("last_modified_by", None)
 
         exported["temporal_tags"][0]["anchor"] = None
         etas.write_json(exported, tags_path)
@@ -257,6 +292,10 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
         tags = fomm.list_temporal_tags(dataset2)
         self.assertEqual(len(tags), 3)
         self.assertTrue(all(tag.anchor is None for tag in tags))
+        self.assertTrue(all(tag.created_at is not None for tag in tags))
+        self.assertTrue(all(tag.last_modified_at is not None for tag in tags))
+        self.assertTrue(all(tag.created_by is None for tag in tags))
+        self.assertTrue(all(tag.last_modified_by is None for tag in tags))
 
     @drop_temporal_tags
     @drop_datasets
@@ -310,6 +349,9 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
         self.assertEqual(
             fomm.list_temporal_tags(dataset2)[0].anchor, "camera_front"
         )
+        self.assertEqual(
+            fomm.list_temporal_tags(dataset2)[0].created_by, "alice"
+        )
 
     @drop_temporal_tags
     @drop_datasets
@@ -348,10 +390,20 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
             dataset,
             [
                 fomm.TemporalTag(
-                    sample_ids[0], 0, 10, "keep", anchor="camera_front"
+                    sample_ids[0],
+                    0,
+                    10,
+                    "keep",
+                    anchor="camera_front",
+                    created_by="alice",
                 ),
                 fomm.TemporalTag(
-                    sample_ids[1], 10, 20, "drop", anchor="lidar_top"
+                    sample_ids[1],
+                    10,
+                    20,
+                    "drop",
+                    anchor="lidar_top",
+                    last_modified_by="carol",
                 ),
                 fomm.TemporalTag(sample_ids[2], 20, 30, "keep"),
             ],
@@ -368,6 +420,10 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
                 tag.start,
                 tag.end,
                 tag.tag,
+                tag.created_by,
+                tag.last_modified_by,
+                tag.created_at,
+                tag.last_modified_at,
             )
             for tag in fomm.list_temporal_tags(dataset)
         ]

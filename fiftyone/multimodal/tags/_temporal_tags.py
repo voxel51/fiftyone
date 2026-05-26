@@ -62,6 +62,11 @@ class TemporalTag(object):
             archetype. Defaults to ``TIME_TRACK_TYPE_DURATION_NS``
         anchor (None): an optional opaque reference key that qualifies the
             context for ``start`` and ``end``
+        created_by (None): an optional actor that created the temporal tag
+        last_modified_by (None): an optional actor that last modified the
+            temporal tag
+        created_at (None): the creation timestamp, when available
+        last_modified_at (None): the last-modified timestamp, when available
         id: the persisted temporal tag ID, when available
     """
 
@@ -73,6 +78,10 @@ class TemporalTag(object):
         tag,
         index_type=DEFAULT_INDEX_TYPE,
         anchor=None,
+        created_by=None,
+        last_modified_by=None,
+        created_at=None,
+        last_modified_at=None,
         id=None,
     ):
         self.sample_id = sample_id
@@ -81,12 +90,19 @@ class TemporalTag(object):
         self.tag = tag
         self.index_type = index_type
         self.anchor = anchor
+        self.created_by = created_by
+        self.last_modified_by = last_modified_by
+        self.created_at = _coerce_optional_datetime(created_at, "created_at")
+        self.last_modified_at = _coerce_optional_datetime(
+            last_modified_at, "last_modified_at"
+        )
         self.id = id
 
     def __repr__(self):
         return (
             "%s(sample_id=%r, start=%r, end=%r, tag=%r, "
-            "index_type=%r, anchor=%r, id=%r)"
+            "index_type=%r, anchor=%r, created_by=%r, "
+            "last_modified_by=%r, created_at=%r, last_modified_at=%r, id=%r)"
             % (
                 self.__class__.__name__,
                 self.sample_id,
@@ -95,6 +111,10 @@ class TemporalTag(object):
                 self.tag,
                 self.index_type,
                 self.anchor,
+                self.created_by,
+                self.last_modified_by,
+                self.created_at,
+                self.last_modified_at,
                 self.id,
             )
         )
@@ -114,6 +134,10 @@ class TemporalTag(object):
             self.tag,
             index_type=self.index_type,
             anchor=self.anchor,
+            created_by=self.created_by,
+            last_modified_by=self.last_modified_by,
+            created_at=self.created_at,
+            last_modified_at=self.last_modified_at,
             id=self.id,
         )
 
@@ -128,6 +152,22 @@ class TemporalTag(object):
         }
         if self.anchor is not None:
             d["anchor"] = self.anchor
+
+        if self.created_by is not None:
+            d["created_by"] = self.created_by
+
+        if self.last_modified_by is not None:
+            d["last_modified_by"] = self.last_modified_by
+
+        if self.created_at is not None:
+            d["created_at"] = _serialize_datetime(
+                self.created_at, "created_at"
+            )
+
+        if self.last_modified_at is not None:
+            d["last_modified_at"] = _serialize_datetime(
+                self.last_modified_at, "last_modified_at"
+            )
 
         if self.id is not None:
             d["id"] = self.id
@@ -308,24 +348,38 @@ class TemporalTags(object):
             doc = _to_storage_doc(
                 tag, self._dataset._doc.id, sample_ids[str(tag.sample_id)]
             )
+            created_at, last_modified_at = _resolve_write_timestamps(doc, now)
             key = _unique_key(doc)
             keys.append(key)
             if key not in ops_by_key:
+                set_on_insert = {
+                    "_dataset_id": doc["_dataset_id"],
+                    "_sample_id": doc["_sample_id"],
+                    "index_type": doc["index_type"],
+                    "anchor": doc["anchor"],
+                    "start": doc["start"],
+                    "end": doc["end"],
+                    "tag": doc["tag"],
+                    "created_at": created_at,
+                }
+                update = {"$setOnInsert": set_on_insert}
+                set_fields = {"last_modified_at": last_modified_at}
+
+                created_by = doc.get("created_by", None)
+                if created_by is not None:
+                    set_on_insert["created_by"] = created_by
+
+                last_modified_by = doc.get("last_modified_by", None)
+                if last_modified_by is not None:
+                    set_fields["last_modified_by"] = last_modified_by
+                elif created_by is not None:
+                    set_on_insert["last_modified_by"] = created_by
+
+                update["$set"] = set_fields
+
                 ops_by_key[key] = UpdateOne(
                     _unique_query(doc),
-                    {
-                        "$setOnInsert": {
-                            "_dataset_id": doc["_dataset_id"],
-                            "_sample_id": doc["_sample_id"],
-                            "index_type": doc["index_type"],
-                            "anchor": doc["anchor"],
-                            "start": doc["start"],
-                            "end": doc["end"],
-                            "tag": doc["tag"],
-                            "created_at": now,
-                        },
-                        "$set": {"last_modified_at": now},
-                    },
+                    update,
                     upsert=True,
                 )
 
@@ -614,8 +668,7 @@ def clone_tags(
     ops = []
     for doc in collection.find(query, {"_id": False}):
         doc["_dataset_id"] = target_dataset._doc.id
-        doc["created_at"] = now
-        doc["last_modified_at"] = now
+        _fill_missing_timestamps(doc, now)
         ops.append(InsertOne(doc))
 
     if not ops:
@@ -790,6 +843,7 @@ def _to_storage_doc(tag: TemporalTag, dataset_id, sample_id):
         "start": start,
         "end": end,
         "tag": _ensure_tag(tag.tag),
+        **_to_storage_provenance(tag),
     }
 
 
@@ -802,10 +856,15 @@ def _from_storage_doc(doc) -> TemporalTag:
         start=doc["start"],
         end=doc["end"],
         tag=doc["tag"],
+        created_by=doc.get("created_by", None),
+        last_modified_by=doc.get("last_modified_by", None),
+        created_at=doc.get("created_at", None),
+        last_modified_at=doc.get("last_modified_at", None),
     )
 
 
 def _to_export_doc(doc):
+    _fill_missing_timestamps(doc, _utcnow())
     export_doc = {
         "sample_id": str(doc["_sample_id"]),
         "index_type": doc["index_type"],
@@ -816,6 +875,21 @@ def _to_export_doc(doc):
     anchor = doc.get("anchor", None)
     if anchor is not None:
         export_doc["anchor"] = anchor
+
+    for field_name in (
+        "created_by",
+        "last_modified_by",
+        "created_at",
+        "last_modified_at",
+    ):
+        value = doc.get(field_name, None)
+        if value is None:
+            continue
+
+        if field_name.endswith("_at"):
+            value = _serialize_datetime(value, field_name)
+
+        export_doc[field_name] = value
 
     return export_doc
 
@@ -828,6 +902,10 @@ def _from_export_doc(doc) -> TemporalTag:
         end=doc.get("end", None),
         tag=doc.get("tag", None),
         anchor=doc.get("anchor", None),
+        created_by=doc.get("created_by", None),
+        last_modified_by=doc.get("last_modified_by", None),
+        created_at=doc.get("created_at", None),
+        last_modified_at=doc.get("last_modified_at", None),
     )
 
 
@@ -944,6 +1022,88 @@ def _ensure_optional_anchor(value) -> str | None:
         return None
 
     return _ensure_non_empty_string(value, "anchor")
+
+
+def _to_storage_provenance(tag: TemporalTag) -> dict:
+    provenance = {}
+
+    if tag.created_by is not None:
+        provenance["created_by"] = _ensure_non_empty_string(
+            tag.created_by, "created_by"
+        )
+
+    if tag.last_modified_by is not None:
+        provenance["last_modified_by"] = _ensure_non_empty_string(
+            tag.last_modified_by, "last_modified_by"
+        )
+
+    if tag.created_at is not None:
+        provenance["created_at"] = _coerce_datetime(
+            tag.created_at, "created_at"
+        )
+
+    if tag.last_modified_at is not None:
+        provenance["last_modified_at"] = _coerce_datetime(
+            tag.last_modified_at, "last_modified_at"
+        )
+
+    return provenance
+
+
+def _resolve_write_timestamps(doc, now):
+    created_at = doc.get("created_at", None)
+    last_modified_at = doc.get("last_modified_at", None)
+
+    if created_at is None and last_modified_at is None:
+        created_at = now
+        last_modified_at = now
+    elif created_at is None:
+        created_at = last_modified_at
+    elif last_modified_at is None:
+        last_modified_at = created_at
+
+    return created_at, last_modified_at
+
+
+def _fill_missing_timestamps(doc, now) -> None:
+    created_at, last_modified_at = _resolve_write_timestamps(doc, now)
+    doc["created_at"] = created_at
+    doc["last_modified_at"] = last_modified_at
+
+
+def _coerce_optional_datetime(value, field_name):
+    if value is None:
+        return None
+
+    return _coerce_datetime(value, field_name)
+
+
+def _coerce_datetime(value, field_name):
+    if isinstance(value, datetime):
+        dt = value
+    elif etau.is_str(value):
+        value = value[:-1] + "+00:00" if value.endswith("Z") else value
+        try:
+            dt = datetime.fromisoformat(value)
+        except ValueError as e:
+            raise ValueError(
+                "Temporal tag %s must be a datetime or ISO datetime string"
+                % field_name
+            ) from e
+    else:
+        raise ValueError(
+            "Temporal tag %s must be a datetime or ISO datetime string"
+            % field_name
+        )
+
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+
+    return dt
+
+
+def _serialize_datetime(value, field_name) -> str:
+    return _coerce_datetime(value, field_name).isoformat()
 
 
 def _ensure_object_id(value, field_name) -> ObjectId:

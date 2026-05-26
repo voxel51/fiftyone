@@ -6,6 +6,7 @@ Multimodal temporal tag unit tests.
 |
 """
 
+import time
 import unittest
 
 from bson import ObjectId
@@ -47,7 +48,16 @@ class TemporalTagTests(unittest.TestCase):
             TimeTrackType.TIME_TRACK_TYPE_DURATION_NS,
         )
         self.assertIsNone(persisted[0].anchor)
+        self.assertIsNone(persisted[0].created_by)
+        self.assertIsNone(persisted[0].last_modified_by)
+        self.assertIsNotNone(persisted[0].created_at)
+        self.assertIsNotNone(persisted[0].last_modified_at)
+        self.assertEqual(
+            persisted[0].created_at, persisted[0].last_modified_at
+        )
         self.assertNotIn("anchor", persisted[0].to_dict())
+        self.assertIn("created_at", persisted[0].to_dict())
+        self.assertIn("last_modified_at", persisted[0].to_dict())
         self.assertEqual(persisted[0].copy(), persisted[0])
 
         temporal_tags = fomm.TemporalTags(dataset)
@@ -75,6 +85,24 @@ class TemporalTagTests(unittest.TestCase):
             fomm.TemporalTag(sample_id, 0, 1, "bad-anchor", anchor=3),
             fomm.TemporalTag(sample_id, 0, 1, "bool-anchor", anchor=False),
             fomm.TemporalTag(
+                sample_id, 0, 1, "empty-created-by", created_by=""
+            ),
+            fomm.TemporalTag(
+                sample_id,
+                0,
+                1,
+                "blank-last-modified-by",
+                last_modified_by="   ",
+            ),
+            fomm.TemporalTag(sample_id, 0, 1, "bad-created-by", created_by=3),
+            fomm.TemporalTag(
+                sample_id,
+                0,
+                1,
+                "bool-last-modified-by",
+                last_modified_by=False,
+            ),
+            fomm.TemporalTag(
                 sample_id,
                 0,
                 1,
@@ -92,6 +120,75 @@ class TemporalTagTests(unittest.TestCase):
         self.assertEqual(fomm.list_temporal_tags(dataset), [])
         with self.assertRaises(ValueError):
             temporal_tags.first()
+
+    @drop_temporal_tags
+    @drop_datasets
+    def test_provenance_upserts(self):
+        dataset, sample_ids = _make_dataset()
+        sample_id = sample_ids[0]
+
+        inserted = fomm.add_temporal_tags(
+            dataset,
+            fomm.TemporalTag(sample_id, 0, 10, "review", created_by="alice"),
+        )[0]
+
+        self.assertEqual(inserted.created_by, "alice")
+        self.assertEqual(inserted.last_modified_by, "alice")
+        self.assertEqual(inserted.created_at, inserted.last_modified_at)
+        self.assertEqual(
+            inserted.to_dict()["created_at"], inserted.created_at.isoformat()
+        )
+        self.assertEqual(
+            inserted.to_dict()["last_modified_at"],
+            inserted.last_modified_at.isoformat(),
+        )
+
+        time.sleep(0.02)
+        repeated = fomm.add_temporal_tags(
+            dataset,
+            fomm.TemporalTag(sample_id, 0, 10, "review", created_by="bob"),
+        )[0]
+
+        self.assertEqual(repeated.id, inserted.id)
+        self.assertEqual(repeated.created_by, "alice")
+        self.assertEqual(repeated.last_modified_by, "alice")
+        self.assertEqual(repeated.created_at, inserted.created_at)
+        self.assertGreater(
+            repeated.last_modified_at, inserted.last_modified_at
+        )
+
+        time.sleep(0.02)
+        modified = fomm.add_temporal_tags(
+            dataset,
+            fomm.TemporalTag(
+                sample_id, 0, 10, "review", last_modified_by="carol"
+            ),
+        )[0]
+
+        self.assertEqual(modified.id, inserted.id)
+        self.assertEqual(modified.created_by, "alice")
+        self.assertEqual(modified.last_modified_by, "carol")
+        self.assertEqual(modified.created_at, inserted.created_at)
+        self.assertGreater(
+            modified.last_modified_at, repeated.last_modified_at
+        )
+
+        manual = fomm.add_temporal_tags(
+            dataset,
+            fomm.TemporalTag(
+                sample_id,
+                20,
+                30,
+                "manual",
+                created_at="2026-01-01T00:00:00Z",
+                last_modified_at="2026-01-02T00:00:00+00:00",
+            ),
+        )[0]
+
+        self.assertEqual(manual.created_at.isoformat(), "2026-01-01T00:00:00")
+        self.assertEqual(
+            manual.last_modified_at.isoformat(), "2026-01-02T00:00:00"
+        )
 
     @drop_temporal_tags
     @drop_datasets
@@ -412,14 +509,31 @@ class TemporalTagTests(unittest.TestCase):
             dataset,
             [
                 fomm.TemporalTag(
-                    sample_ids[0], 0, 10, "first", anchor="camera_front"
+                    sample_ids[0],
+                    0,
+                    10,
+                    "first",
+                    anchor="camera_front",
+                    created_by="alice",
                 ),
-                fomm.TemporalTag(sample_ids[1], 10, 20, "second"),
+                fomm.TemporalTag(
+                    sample_ids[1],
+                    10,
+                    20,
+                    "second",
+                    last_modified_by="bob",
+                ),
             ],
         )
 
         full_clone = dataset.clone()
-        self.assertEqual(len(fomm.list_temporal_tags(full_clone)), 2)
+        source_tags = fomm.list_temporal_tags(dataset)
+        full_clone_tags = fomm.list_temporal_tags(full_clone)
+        self.assertEqual(len(full_clone_tags), 2)
+        self.assertEqual(
+            _temporal_tag_provenance(source_tags),
+            _temporal_tag_provenance(full_clone_tags),
+        )
         self.assertEqual(
             fomm.count_temporal_tags(
                 full_clone, fomm.TemporalTagFilter(anchors="camera_front")
@@ -527,3 +641,15 @@ def _temporal_tag_count_for_sample(dataset_id, sample_id):
     return foo.get_db_conn()[TEMPORAL_TAGS_COLLECTION_NAME].count_documents(
         {"_dataset_id": dataset_id, "_sample_id": ObjectId(sample_id)}
     )
+
+
+def _temporal_tag_provenance(tags):
+    return [
+        (
+            tag.created_by,
+            tag.last_modified_by,
+            tag.created_at,
+            tag.last_modified_at,
+        )
+        for tag in tags
+    ]

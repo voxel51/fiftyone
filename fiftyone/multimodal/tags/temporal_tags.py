@@ -11,7 +11,8 @@ Temporal tags are sample-scoped records stored in the dedicated
 ``temporal_tags`` collection. They are removed when linked samples or datasets
 are deleted, and FiftyOne dataset import/export preserves them through the
 ``temporal_tags.json`` sidecar. Tags may include an optional opaque ``anchor``
-string that qualifies the context for their ``start`` and ``end`` values.
+string that qualifies the context for their ``start`` and ``end`` values, plus
+optional provenance fields describing when and by whom records were written.
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_

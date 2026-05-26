@@ -120,6 +120,7 @@ class TestMultimodalTemporalTagsRoute:
                 "end": 10,
                 "tag": "review",
                 "anchor": "camera_front",
+                "created_by": "alice",
             },
         )
 
@@ -131,6 +132,10 @@ class TestMultimodalTemporalTagsRoute:
         assert created[0]["sample_id"] == sample_ids[0]
         assert created[0]["tag"] == "review"
         assert created[0]["anchor"] == "camera_front"
+        assert created[0]["created_by"] == "alice"
+        assert created[0]["last_modified_by"] == "alice"
+        assert isinstance(created[0]["created_at"], str)
+        assert isinstance(created[0]["last_modified_at"], str)
 
         request = _make_request(
             dataset_id,
@@ -382,6 +387,19 @@ class TestMultimodalTemporalTagsRoute:
                         "start": 0,
                         "end": 10,
                         "tag": "wrong-sample",
+                    },
+                ),
+            ),
+            (
+                sample_temporal_tags_endpoint.post,
+                _make_request(
+                    dataset_id,
+                    sample_id=sample_ids[0],
+                    body={
+                        "created_at": "2026-01-01T00:00:00",
+                        "start": 0,
+                        "end": 10,
+                        "tag": "response-only-created-at",
                     },
                 ),
             ),
