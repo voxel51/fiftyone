@@ -21,7 +21,12 @@ import {
 import { labelsByPath } from "../../useLabels";
 import { activePrimitiveAtom } from "../useActivePrimitive";
 import { buildNewLabelData } from "./createNew";
-import { editing, type LabelType, savedLabel } from "./atoms";
+import {
+  editingLabelAtom,
+  type LabelType,
+  pendingNewTypeAtom,
+  savedLabel,
+} from "./atoms";
 
 const IS_CLASSIFICATION = new Set([CLASSIFICATION, CLASSIFICATIONS]);
 const IS_DETECTION = new Set([DETECTION, DETECTIONS]);
@@ -37,16 +42,13 @@ const IS = {
 
 export const current = atom(
   (get) => {
-    const currentEditing = get(editing);
-    if (currentEditing && typeof currentEditing !== "string") {
-      return get(currentEditing);
-    }
-    return null;
+    const labelAtom = get(editingLabelAtom);
+    return labelAtom ? get(labelAtom) : null;
   },
   (get, set, label: AnnotationLabel) => {
-    const currentEditing = get(editing);
-    if (currentEditing && typeof currentEditing !== "string") {
-      set(currentEditing, label);
+    const labelAtom = get(editingLabelAtom);
+    if (labelAtom) {
+      set(labelAtom, label);
     }
   }
 );
@@ -54,10 +56,10 @@ export const current = atom(
 export const currentData = atom(
   (get) => get(current)?.data ?? null,
   (get, set, data: Partial<AnnotationLabel["data"]>, replace?: boolean) => {
-    const currentEditing = get(editing);
-    if (currentEditing && typeof currentEditing !== "string") {
-      const c = get(currentEditing);
-      return set(currentEditing, {
+    const labelAtom = get(editingLabelAtom);
+    if (labelAtom) {
+      const c = get(labelAtom);
+      return set(labelAtom, {
         ...c,
         data: replace ? data : { ...c.data, ...data },
       });
@@ -132,11 +134,8 @@ export const disabledFields = atomFamily((type: LabelType) =>
 );
 
 export const currentType = atom<LabelType | null>((get) => {
-  const value = get(editing);
-
-  if (typeof value === "string") {
-    return value;
-  }
+  const pending = get(pendingNewTypeAtom);
+  if (pending) return pending;
 
   const type = get(current)?.type;
   if (type) {
@@ -151,11 +150,11 @@ export const currentType = atom<LabelType | null>((get) => {
 
 export const isEditing = atom((get) => {
   if (get(activePrimitiveAtom) !== null) return true;
-  return get(editing) !== null;
+  return get(editingLabelAtom) !== null || get(pendingNewTypeAtom) !== null;
 });
 
 export const isNew = atom(
-  (get) => typeof get(editing) === "string" || get(current)?.isNew
+  (get) => get(pendingNewTypeAtom) !== null || get(current)?.isNew
 );
 
 export const fieldsOfType = atomFamily((type: LabelType | null) =>

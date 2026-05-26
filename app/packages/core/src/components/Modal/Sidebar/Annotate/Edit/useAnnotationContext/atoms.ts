@@ -6,7 +6,7 @@ import {
   POLYLINE,
 } from "@fiftyone/utilities";
 import { atom, type PrimitiveAtom } from "jotai";
-import { atomWithReset } from "jotai/utils";
+import { RESET } from "jotai/utils";
 
 export type LabelType =
   | typeof CLASSIFICATION
@@ -19,22 +19,54 @@ export const savedLabel = atom<AnnotationLabel["data"] | null>(
 ) as PrimitiveAtom<AnnotationLabel["data"] | null>;
 
 /**
- * Atom that tracks the current editing state for annotations.
+ * Atom holding a pointer to the label being edited.
  *
- * Three possible value shapes:
+ * `null` means no label is being edited. When non-null, the inner
+ * `PrimitiveAtom<AnnotationLabel>` is the live store entry for the label's
+ * data — writes to it propagate to the labels list and any subscribed
+ * components.
  *
- * 1. `null` — no label is being edited.
- *
- * 2. `PrimitiveAtom<AnnotationLabel>` — a label is being edited; the atom
- *    reference points to the label data being modified.
- *
- * 3. `LabelType` string — the user wants to create a new label of this type,
- *    but no schema fields exist for it. This triggers the "Add Schema" UI
- *    flow (see Field.tsx).
- *
- * Consumers should not read this atom directly — use {@link useAnnotationContext}
- * and its `selected.pendingNewType` / `selected.label` projections instead.
+ * Mutually exclusive with {@link pendingNewTypeAtom}: at most one is non-null
+ * at any time. The {@link editing} back-compat atom enforces this invariant
+ * when written through.
  */
-export const editing = atomWithReset<
-  PrimitiveAtom<AnnotationLabel> | LabelType | null
->(null);
+export const editingLabelAtom = atom<PrimitiveAtom<AnnotationLabel> | null>(
+  null
+) as PrimitiveAtom<PrimitiveAtom<AnnotationLabel> | null>;
+
+/**
+ * Atom holding the label type the user is trying to create when no schema
+ * fields exist for it yet — triggers the "Add Schema" UI flow.
+ *
+ * Mutually exclusive with {@link editingLabelAtom}.
+ */
+export const pendingNewTypeAtom = atom<LabelType | null>(
+  null
+) as PrimitiveAtom<LabelType | null>;
+
+/**
+ * @deprecated Back-compat shim composing {@link editingLabelAtom} and
+ * {@link pendingNewTypeAtom} as the legacy tri-state union. New code should
+ * use {@link useAnnotationContext} or the underlying atoms directly.
+ */
+type EditingValue = PrimitiveAtom<AnnotationLabel> | LabelType | null;
+
+export const editing = atom<EditingValue, [EditingValue | typeof RESET], void>(
+  (get) => {
+    const labelAtom = get(editingLabelAtom);
+    if (labelAtom) return labelAtom;
+    return get(pendingNewTypeAtom);
+  },
+  (_get, set, value) => {
+    if (value === RESET || value === null) {
+      set(editingLabelAtom, null);
+      set(pendingNewTypeAtom, null);
+    } else if (typeof value === "string") {
+      set(editingLabelAtom, null);
+      set(pendingNewTypeAtom, value);
+    } else {
+      set(editingLabelAtom, value);
+      set(pendingNewTypeAtom, null);
+    }
+  }
+);

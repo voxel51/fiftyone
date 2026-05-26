@@ -7,7 +7,12 @@ import { useCallback, useMemo } from "react";
 import { isFieldReadOnly, labelSchemaData } from "../../state";
 import { labelsByPath } from "../../useLabels";
 import { activePrimitiveAtom } from "../useActivePrimitive";
-import { editing, type LabelType, savedLabel } from "./atoms";
+import {
+  editingLabelAtom,
+  type LabelType,
+  pendingNewTypeAtom,
+  savedLabel,
+} from "./atoms";
 import { type CreateOptions, createNewLabel } from "./createNew";
 import {
   current,
@@ -107,9 +112,7 @@ export const useAnnotationContext = (): AnnotationContext => {
   const isNew = useAtomValue(isNewAtom);
   const dirty = useAtomValue(hasChanges);
   const fieldReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
-  const editingValue = useAtomValue(editing);
-  const pendingNewType =
-    typeof editingValue === "string" ? (editingValue as LabelType) : null;
+  const pendingNewType = useAtomValue(pendingNewTypeAtom);
 
   const selected = useMemo<AnnotationContextSelected>(
     () => ({
@@ -144,7 +147,8 @@ export const useAnnotationContext = (): AnnotationContext => {
 
   const writeData = useSetAtom(currentData);
   const writeField = useSetAtom(currentField);
-  const setEditing = useSetAtom(editing);
+  const setEditingLabel = useSetAtom(editingLabelAtom);
+  const setPendingNewType = useSetAtom(pendingNewTypeAtom);
   const setSaved = useSetAtom(savedLabel);
   // activePrimitiveAtom is `atom<string | null>(null)` and jotai's inference
   // loses the WritableAtom shape — cast at the use site.
@@ -228,7 +232,8 @@ export const useAnnotationContext = (): AnnotationContext => {
   const selectExisting = useAtomCallback(
     useCallback((get, set, labelAtom: PrimitiveAtom<AnnotationLabel>) => {
       set(savedLabel, get(labelAtom).data);
-      set(editing, labelAtom);
+      set(editingLabelAtom, labelAtom);
+      set(pendingNewTypeAtom, null);
     }, [])
   );
   const select = useCallback<AnnotationContext["select"]>(
@@ -239,9 +244,16 @@ export const useAnnotationContext = (): AnnotationContext => {
   const clear = useCallback<AnnotationContext["clear"]>(() => {
     recordCurrentToLastUsed();
     setSaved(null);
-    setEditing(null);
+    setEditingLabel(null);
+    setPendingNewType(null);
     setActivePrimitive(null);
-  }, [recordCurrentToLastUsed, setActivePrimitive, setEditing, setSaved]);
+  }, [
+    recordCurrentToLastUsed,
+    setActivePrimitive,
+    setEditingLabel,
+    setPendingNewType,
+    setSaved,
+  ]);
 
   const createNew = useCallback<AnnotationContext["createNew"]>(
     (createType, overrides) => {
@@ -264,13 +276,13 @@ export const useAnnotationContext = (): AnnotationContext => {
       if (built) {
         const newAtom = atom<AnnotationLabel>({ isNew: true, ...built });
         setSaved(built.data);
-        setEditing(newAtom);
+        setEditingLabel(newAtom);
         return built;
       }
 
-      // No schema fields exist — flip editing to the type string to trigger
-      // the AddSchema flow.
-      setEditing(createType);
+      // No schema fields exist — set pendingNewType to trigger the
+      // AddSchema flow.
+      setPendingNewType(createType);
       return null;
     },
     [
@@ -280,7 +292,8 @@ export const useAnnotationContext = (): AnnotationContext => {
       computeLabelFor,
       overlayFactory,
       scene,
-      setEditing,
+      setEditingLabel,
+      setPendingNewType,
       setSaved,
     ]
   );
