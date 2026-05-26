@@ -24,7 +24,7 @@ const TILE_BY_TYPE = {
 type KnownTileType = keyof typeof TILE_BY_TYPE;
 
 function isKnownTileType(type: string): type is KnownTileType {
-  return type in TILE_BY_TYPE;
+  return Object.hasOwn(TILE_BY_TYPE, type);
 }
 
 export interface UseMcapTilesOptions {

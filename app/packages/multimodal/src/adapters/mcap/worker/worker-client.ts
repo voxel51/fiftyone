@@ -1,5 +1,6 @@
 import { getFetchParameters, mergeHeaders } from "@fiftyone/utilities";
 import { byteSourceAccessKey } from "../../../query/bytes";
+import { hydrateMcapFrameTransformSet } from "../frame-transforms";
 import { McapPlaybackWorkerTransport } from "./playback-worker-transport";
 import {
   type McapPlaybackWorkerFetchParameters,
@@ -12,9 +13,12 @@ import {
   type McapPlaybackWorkerUnaryType,
 } from "./playback-worker-types";
 import { mcapError, mcapErrorMessage } from "../errors";
+import type { McapFrameTransformSet } from "../frame-transform-types";
 import type {
   McapDecodedMessage,
   McapReadDecodedMessagesRequest,
+  McapReadFrameTransformBootstrapRequest,
+  McapReadFrameTransformWindowRequest,
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
   McapReadTopicsRequest,
@@ -83,6 +87,22 @@ class WorkerMcapResourceClient implements McapResourceClient {
     request: McapReadTopicsRequest
   ): Promise<readonly StreamInventory[]> {
     return this.request("readTopics", request);
+  }
+
+  readFrameTransformBootstrap(
+    request: McapReadFrameTransformBootstrapRequest
+  ): Promise<McapFrameTransformSet> {
+    return this.request("readFrameTransformBootstrap", request).then(
+      hydrateMcapFrameTransformSet
+    );
+  }
+
+  readFrameTransformWindow(
+    request: McapReadFrameTransformWindowRequest
+  ): Promise<McapFrameTransformSet> {
+    return this.request("readFrameTransformWindow", request).then(
+      hydrateMcapFrameTransformSet
+    );
   }
 
   readSynchronizedMessages(

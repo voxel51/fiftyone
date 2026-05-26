@@ -79,10 +79,11 @@ export function ImageTexturePlane({
       <meshBasicMaterial
         depthTest={false}
         depthWrite={false}
-        map={textureHandle.texture}
         toneMapped={false}
         transparent
-      />
+      >
+        <primitive attach="map" object={textureHandle.texture} />
+      </meshBasicMaterial>
     </mesh>
   );
 }
