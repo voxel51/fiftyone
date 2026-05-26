@@ -922,10 +922,10 @@ class VolumeIconElement extends BaseElement<VideoState, HTMLDivElement> {
     if (this.element.firstChild) this.element.firstChild.remove();
     if (this.muted) {
       this.element.title = "Unmute (m)";
-      this.element.appendChild(volumeMuted);
+      this.element.appendChild(volumeMuted());
     } else {
       this.element.title = "Mute (m)";
-      this.element.appendChild(volumeIcon);
+      this.element.appendChild(volumeIcon());
       this.element;
     }
 
@@ -1025,7 +1025,7 @@ class PlaybackRateIconElement extends BaseElement<VideoState, HTMLDivElement> {
     element.style.padding = "2px";
     element.style.display = "flex";
     element.title = "Reset playback rate (p)";
-    element.appendChild(playbackRate);
+    element.appendChild(playbackRate());
     return element;
   }
 
