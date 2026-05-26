@@ -10,13 +10,19 @@ import {
 import { Drawer } from "@voxel51/voodo";
 import clsx from "clsx";
 import React, { useState, type ReactNode } from "react";
-import { PlaybackProvider } from "../../../../playback/src/lib/playback/PlaybackProvider";
 import {
+  PlaybackProvider,
+  TimelineWithTracks,
   TrackProvider,
   type Track,
-} from "../../../../playback/src/lib/tracks/TrackProvider";
-import TimelineWithTracks from "../../../../playback/src/views/TimelineWithTracks/TimelineWithTracks";
+} from "@fiftyone/playback";
+import {
+  SceneInventoryProvider,
+  type SceneSource,
+} from "../../scene-inventory";
 import styles from "./MultiModalPlayback.module.css";
+
+const EMPTY_SOURCES: readonly SceneSource[] = [];
 
 export interface MultiModalPlaybackProps {
   /** Filename rendered on the left of the top bar. */
@@ -29,6 +35,9 @@ export interface MultiModalPlaybackProps {
 
   /** Initial tile entries seeded into the embedded TilingProvider. */
   initialTiles?: Record<string, TilingTile>;
+
+  /** Discoverable data sources for the current scene. */
+  sceneSources?: readonly SceneSource[];
 
   /**
    * Override for the left sidebar. Defaults to {@link TileSettingsSidebar}
@@ -92,6 +101,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   tracks,
   defaultPinnedTrackIds,
   initialTiles,
+  sceneSources = EMPTY_SOURCES,
   leftSidebar = <TileSettingsSidebar />,
   rightSidebar = <TilingInspectorSidebar />,
   defaultLeftOpen = true,
@@ -105,17 +115,19 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
         initialTracks={tracks}
         initialPinnedIds={defaultPinnedTrackIds}
       >
-        <TilingProvider initialTiles={initialTiles}>
-          {children}
-          <Layout
-            fileName={fileName}
-            leftSidebar={leftSidebar}
-            rightSidebar={rightSidebar}
-            defaultLeftOpen={defaultLeftOpen}
-            defaultRightOpen={defaultRightOpen}
-            className={className}
-          />
-        </TilingProvider>
+        <SceneInventoryProvider sources={sceneSources}>
+          <TilingProvider initialTiles={initialTiles}>
+            {children}
+            <Layout
+              fileName={fileName}
+              leftSidebar={leftSidebar}
+              rightSidebar={rightSidebar}
+              defaultLeftOpen={defaultLeftOpen}
+              defaultRightOpen={defaultRightOpen}
+              className={className}
+            />
+          </TilingProvider>
+        </SceneInventoryProvider>
       </TrackProvider>
     </PlaybackProvider>
   );
