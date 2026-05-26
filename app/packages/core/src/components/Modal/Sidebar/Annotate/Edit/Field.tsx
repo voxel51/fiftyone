@@ -16,13 +16,12 @@ import { useCallback, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import AddSchema from "./AddSchema";
-import { editing } from "./useAnnotationContext/atoms";
+import { useAnnotationContext } from "./useAnnotationContext";
 import {
   current,
   currentDisabledFields,
   currentField,
   currentFields,
-  currentType,
 } from "./useAnnotationContext/selectors";
 
 const createSchema = (
@@ -64,8 +63,8 @@ const Field = () => {
     () => createSchema(fields, disabled, isPatches),
     [disabled, fields, isPatches]
   );
-  const type = useAtomValue(currentType);
-  const state = useAtomValue(editing);
+  const { selected } = useAnnotationContext();
+  const pendingNewType = selected.pendingNewType;
   const modalSampleSchema = useModalSampleSchema();
   const commandBus = useCommandBus();
   const nextFieldValue = useRef(currentFieldValue);
@@ -133,7 +132,7 @@ const Field = () => {
       )}
       {/* Means the user wants to create a label but no schema fields exist for that type.
       Show AddSchema to let them create the required field. */}
-      {typeof state === "string" && <AddSchema type={type} />}
+      {pendingNewType !== null && <AddSchema type={pendingNewType} />}
     </>
   );
 };

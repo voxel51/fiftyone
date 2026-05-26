@@ -4,11 +4,11 @@ import { isDetection3dOverlay, isPolyline3dOverlay } from "@fiftyone/looker-3d";
 import type { AnnotationLabel } from "@fiftyone/state";
 import { animated } from "@react-spring/web";
 import type { PrimitiveAtom } from "jotai";
-import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
+import { getDefaultStore, useAtomValue } from "jotai";
 import { useMemo } from "react";
 import styled from "styled-components";
 import { Column } from "./Components";
-import { editing } from "./Edit";
+import { useAnnotationContext } from "./Edit/useAnnotationContext";
 import { savedLabel } from "./Edit/useAnnotationContext/atoms";
 import { ICONS } from "./Icons";
 import { fieldType } from "./state";
@@ -57,7 +57,7 @@ const Line = styled.div<{ fill: string }>`
 const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
   const label = useAtomValue(atom);
   const type = useAtomValue(fieldType(label.path ?? ""));
-  const setEditing = useSetAtom(editing);
+  const { select } = useAnnotationContext();
   const Icon = ICONS[type] ?? (() => null);
   const hoveringLabelIdsList = useAtomValue(hoveringLabelIds);
   const { scene } = useLighter();
@@ -104,14 +104,15 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
           },
         });
 
-        // For 3D labels, select3DLabelForAnnotation handles setting the editing atom
-        // to the correct 3D-specific atom.
-        // We should not overwrite it here
+        // For 3D labels, select3DLabelForAnnotation handles setting the
+        // editing pointer to the correct 3D-specific atom. We should not
+        // overwrite it here — just sync savedLabel so dirty tracking starts
+        // from this label's data.
         if (!is3DLabel) {
-          setEditing(atom);
+          select(atom);
+        } else {
+          store.set(savedLabel, store.get(atom).data);
         }
-
-        store.set(savedLabel, store.get(atom).data);
       }}
       className={isHovering ? "hovering" : ""}
       onMouseEnter={handleMouseEnter}

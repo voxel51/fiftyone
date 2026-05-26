@@ -6,7 +6,6 @@ import {
   POLYLINE,
 } from "@fiftyone/utilities";
 import { atom, type PrimitiveAtom } from "jotai";
-import { RESET } from "jotai/utils";
 
 export type LabelType =
   | typeof CLASSIFICATION
@@ -44,29 +43,3 @@ export const pendingNewTypeAtom = atom<LabelType | null>(
   null
 ) as PrimitiveAtom<LabelType | null>;
 
-/**
- * @deprecated Back-compat shim composing {@link editingLabelAtom} and
- * {@link pendingNewTypeAtom} as the legacy tri-state union. New code should
- * use {@link useAnnotationContext} or the underlying atoms directly.
- */
-type EditingValue = PrimitiveAtom<AnnotationLabel> | LabelType | null;
-
-export const editing = atom<EditingValue, [EditingValue | typeof RESET], void>(
-  (get) => {
-    const labelAtom = get(editingLabelAtom);
-    if (labelAtom) return labelAtom;
-    return get(pendingNewTypeAtom);
-  },
-  (_get, set, value) => {
-    if (value === RESET || value === null) {
-      set(editingLabelAtom, null);
-      set(pendingNewTypeAtom, null);
-    } else if (typeof value === "string") {
-      set(editingLabelAtom, null);
-      set(pendingNewTypeAtom, value);
-    } else {
-      set(editingLabelAtom, value);
-      set(pendingNewTypeAtom, null);
-    }
-  }
-);

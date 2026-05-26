@@ -25,8 +25,7 @@ import { useSetAtom } from "jotai";
 import { useAtomCallback } from "jotai/utils";
 import { useCallback, useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
-import { editing } from "../Sidebar/Annotate/Edit";
-import { savedLabel } from "../Sidebar/Annotate/Edit/useAnnotationContext/atoms";
+import { useAnnotationContext } from "../Sidebar/Annotate/Edit/useAnnotationContext";
 import {
   current,
   currentData,
@@ -60,8 +59,7 @@ export const useBridge = (scene: Scene2D | null) => {
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
   const save = useSetAtom(currentData);
-  const setEditing = useSetAtom(editing);
-  const setSavedLabel = useSetAtom(savedLabel);
+  const { clear } = useAnnotationContext();
   const getCurrentLabel = useAtomCallback(
     useCallback((get) => get(current), [])
   );
@@ -243,13 +241,12 @@ export const useBridge = (scene: Scene2D | null) => {
 
         // If the removed overlay is the one being edited, close the sidebar
         if (currentLabel?.overlay?.id === payload.id) {
-          setEditing(null);
-          setSavedLabel(null);
+          clear();
         }
 
         removeLabelFromSidebar(payload.id);
       },
-      [getCurrentLabel, removeLabelFromSidebar, setEditing, setSavedLabel]
+      [clear, getCurrentLabel, removeLabelFromSidebar]
     )
   );
 

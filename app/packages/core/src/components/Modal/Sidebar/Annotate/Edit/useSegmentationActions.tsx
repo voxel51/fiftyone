@@ -18,10 +18,9 @@ import {
   Remove,
   Timeline,
 } from "@mui/icons-material";
-import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import styled from "styled-components";
-import { editing } from "./useAnnotationContext/atoms";
+import { useAnnotationContext } from "./useAnnotationContext";
 import useExit from "./useExit";
 import {
   MAX_CURSOR_SIZE,
@@ -178,7 +177,7 @@ export const useSegmentationActions = (): {
     mergeTool,
   } = useSegmentationMode();
 
-  const editingValue = useAtomValue(editing);
+  const { selected } = useAnnotationContext();
   const onExit = useExit();
 
   // Three-tier Escape behaviour, mirroring the right-click flow in
@@ -187,7 +186,7 @@ export const useSegmentationActions = (): {
   //   2. switch to the Select tool
   //   3. exit segmentation mode entirely
   const handleEscape = useCallback(() => {
-    if (editingValue !== null) {
+    if (selected.isEditing) {
       onExit();
       return;
     }
@@ -198,7 +197,13 @@ export const useSegmentationActions = (): {
     }
 
     deactivateSegmentationMode();
-  }, [editingValue, tool, onExit, switchTool, deactivateSegmentationMode]);
+  }, [
+    selected.isEditing,
+    tool,
+    onExit,
+    switchTool,
+    deactivateSegmentationMode,
+  ]);
 
   const brushCursor = useMemo(() => {
     const cursorSize = Math.min(

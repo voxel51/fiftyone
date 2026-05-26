@@ -1,4 +1,4 @@
-import { editing as editingAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
+import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import useExit from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useExit";
 import { Close, Delete, Edit, OpenWith, Straighten } from "@mui/icons-material";
 import AddBoxIcon from "@mui/icons-material/AddBox";
@@ -7,7 +7,6 @@ import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import ThreeSixtyIcon from "@mui/icons-material/ThreeSixty";
 import PolylineIcon from "@mui/icons-material/Timeline";
 import { Typography } from "@mui/material";
-import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import * as THREE from "three";
@@ -83,7 +82,7 @@ export const useAnnotationActions = () => {
   const [snapCloseAutomatically, setSnapCloseAutomatically] = useRecoilState(
     snapCloseAutomaticallyAtom
   );
-  const editing = useAtomValue(editingAtom);
+  const editing = useAnnotationContext().selected.isEditing;
   const [editSegmentsMode, setEditSegmentsMode] =
     useRecoilState(editSegmentsModeAtom);
   const [annotationPlane, setAnnotationPlane] =
@@ -289,7 +288,7 @@ export const useAnnotationActions = () => {
             shortcut: "Esc",
             tooltip: "Exit edit mode and deselect label",
             isActive: false,
-            isVisible: selectedLabelForAnnotation !== null || editing !== null,
+            isVisible: selectedLabelForAnnotation !== null || editing,
             onClick: onExit,
           },
         ],

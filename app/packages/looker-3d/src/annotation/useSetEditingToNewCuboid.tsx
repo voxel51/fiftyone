@@ -1,5 +1,8 @@
-import { editing as editingAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
-import { savedLabel } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext/atoms";
+import {
+  editingLabelAtom,
+  pendingNewTypeAtom,
+  savedLabel,
+} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext/atoms";
 import { current } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext/selectors";
 import * as fos from "@fiftyone/state";
 import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
@@ -20,7 +23,8 @@ export const currentEditingCuboidAtom =
  * Hook to set editing atom for new cuboids
  */
 export const useSetEditingToNewCuboid = () => {
-  const setEditing = useSetAtom(editingAtom);
+  const setEditingLabel = useSetAtom(editingLabelAtom);
+  const setPendingNewType = useSetAtom(pendingNewTypeAtom);
   const resetCurrentEditing = useResetAtom(currentEditingCuboidAtom);
   const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
   const currentSampleId = useRecoilValue(fos.currentSampleId);
@@ -33,7 +37,8 @@ export const useSetEditingToNewCuboid = () => {
   useEffect(() => {
     return () => {
       resetCurrentEditing();
-      setEditing(null);
+      setEditingLabel(null);
+      setPendingNewType(null);
     };
   }, [resetCurrentEditing]);
 
@@ -50,7 +55,8 @@ export const useSetEditingToNewCuboid = () => {
       }
 
       // Needs a reset...otherwise sometimes gets contaminated by the previous label
-      setEditing(null);
+      setEditingLabel(null);
+      setPendingNewType(null);
 
       const rotation: [number, number, number] = transformData.quaternion
         ? quaternionToRadians(transformData.quaternion)
@@ -94,7 +100,8 @@ export const useSetEditingToNewCuboid = () => {
         },
       } as any);
 
-      setEditing(currentEditingCuboidAtom as any);
+      setEditingLabel(currentEditingCuboidAtom as any);
+      setPendingNewType(null);
 
       (jotaiStore as any).set(savedLabel, defaultCuboidLabelData);
     },

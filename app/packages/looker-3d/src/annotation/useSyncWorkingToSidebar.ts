@@ -1,4 +1,7 @@
-import { editing as editingAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
+import {
+  editingLabelAtom,
+  pendingNewTypeAtom,
+} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext/atoms";
 import type { AnnotationLabel } from "@fiftyone/state";
 import type { WritableAtom } from "jotai";
 import { getDefaultStore } from "jotai";
@@ -55,17 +58,18 @@ export function useSyncWorkingToSidebar() {
           data: { ...editingData.data, ...workingLabel },
         } as AnnotationLabel;
         store.set(editingAtomRef, restoredEditing);
-        store.set(editingAtom, editingAtomRef);
+        store.set(editingLabelAtom, editingAtomRef);
+        store.set(pendingNewTypeAtom, null);
         clearedEditingRef.current = null;
         lastSyncedWorkingLabelRef.current = workingLabel;
         return;
       }
     }
 
-    const editingValue = store.get(editingAtom);
+    const editingValue = store.get(editingLabelAtom);
 
     // Only sync for 3D editing atoms
-    if (!editingValue || typeof editingValue === "string") return;
+    if (!editingValue) return;
     if (
       editingValue !== currentEditingCuboidAtom &&
       editingValue !== currentEditingPolylineAtom
@@ -87,7 +91,8 @@ export function useSyncWorkingToSidebar() {
         editingData: currentEditing,
       };
       store.set(editingValue, null);
-      store.set(editingAtom, null);
+      store.set(editingLabelAtom, null);
+      store.set(pendingNewTypeAtom, null);
       lastSyncedWorkingLabelRef.current = null;
       return;
     }

@@ -1,5 +1,8 @@
-import { editing as editingAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
-import { savedLabel } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext/atoms";
+import {
+  editingLabelAtom,
+  pendingNewTypeAtom,
+  savedLabel,
+} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext/atoms";
 import { current } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext/selectors";
 import * as fos from "@fiftyone/state";
 import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
@@ -20,7 +23,8 @@ export const currentEditingPolylineAtom =
  * Hook to set editing atom for new polylines
  */
 export const useSetEditingToNewPolyline = () => {
-  const setEditing = useSetAtom(editingAtom);
+  const setEditingLabel = useSetAtom(editingLabelAtom);
+  const setPendingNewType = useSetAtom(pendingNewTypeAtom);
   const resetCurrentEditing = useResetAtom(currentEditingPolylineAtom);
   const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
   const currentSampleId = useRecoilValue(fos.currentSampleId);
@@ -34,7 +38,8 @@ export const useSetEditingToNewPolyline = () => {
   useEffect(() => {
     return () => {
       resetCurrentEditing();
-      setEditing(null);
+      setEditingLabel(null);
+      setPendingNewType(null);
     };
   }, [resetCurrentEditing]);
 
@@ -52,7 +57,8 @@ export const useSetEditingToNewPolyline = () => {
       }
 
       // Needs a reset...otherwise sometimes gets contaminated by the previous label
-      setEditing(null);
+      setEditingLabel(null);
+      setPendingNewType(null);
 
       // Only process transforms for the current sample
       if (transformData.sampleId !== currentSampleId) return;
@@ -99,7 +105,8 @@ export const useSetEditingToNewPolyline = () => {
         },
       });
 
-      setEditing(currentEditingPolylineAtom);
+      setEditingLabel(currentEditingPolylineAtom);
+      setPendingNewType(null);
 
       jotaiStore.set(savedLabel, defaultPolylineLabelData);
     },

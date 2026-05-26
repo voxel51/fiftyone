@@ -3,8 +3,11 @@ import { isGeneratedView } from "@fiftyone/state";
 import { getDefaultStore } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
-import { editing } from "./Edit";
-import { savedLabel } from "./Edit/useAnnotationContext/atoms";
+import {
+  editingLabelAtom,
+  pendingNewTypeAtom,
+  savedLabel,
+} from "./Edit/useAnnotationContext/atoms";
 import { current } from "./Edit/useAnnotationContext/selectors";
 import useExit from "./Edit/useExit";
 import { labelMap } from "./useLabels";
@@ -38,7 +41,12 @@ export default function useFocus(): FocusController {
     (id: string, options?: FocusOptions) => {
       if (options?.ignoreSideEffects) return;
 
-      if (STORE.get(editing)) {
+      // Something is already being edited (either a label or a pending
+      // new-type schema flow) — cancel the new selection.
+      if (
+        STORE.get(editingLabelAtom) !== null ||
+        STORE.get(pendingNewTypeAtom) !== null
+      ) {
         const currentLabel = STORE.get(current);
 
         if (currentLabel?.isNew) return;
@@ -57,7 +65,8 @@ export default function useFocus(): FocusController {
       if (!label) return;
 
       STORE.set(savedLabel, STORE.get(label)?.data);
-      STORE.set(editing, label);
+      STORE.set(editingLabelAtom, label);
+      STORE.set(pendingNewTypeAtom, null);
       scene?.selectOverlay(id, { ignoreSideEffects: true });
     },
     [scene]

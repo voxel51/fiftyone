@@ -1,5 +1,8 @@
-import { editing as editingAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
-import { savedLabel } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext/atoms";
+import {
+  editingLabelAtom,
+  pendingNewTypeAtom,
+  savedLabel,
+} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext/atoms";
 import * as fos from "@fiftyone/state";
 import { DETECTION, POLYLINE } from "@fiftyone/utilities";
 import { getDefaultStore, useSetAtom } from "jotai";
@@ -38,8 +41,8 @@ export function useSetEditingToExisting3dLabel(type: AnnotationType) {
     : currentEditingPolylineAtom;
   const labelType = isCuboid ? DETECTION : POLYLINE;
 
-  const setEditing = useSetAtom(editingAtom);
-  const resetEditing = useResetAtom(editingAtom);
+  const setEditingLabel = useSetAtom(editingLabelAtom);
+  const setPendingNewType = useSetAtom(pendingNewTypeAtom);
   const resetCurrentEditing = useResetAtom(currentEditingAtom);
   const setCurrentEditing = useSetAtom(currentEditingAtom);
   const workingDoc = useWorkingDoc();
@@ -47,7 +50,8 @@ export function useSetEditingToExisting3dLabel(type: AnnotationType) {
   useEffect(() => {
     return () => {
       resetCurrentEditing();
-      resetEditing();
+      setEditingLabel(null);
+      setPendingNewType(null);
     };
   }, []);
 
@@ -98,7 +102,8 @@ export function useSetEditingToExisting3dLabel(type: AnnotationType) {
         },
       } as fos.AnnotationLabel);
 
-      setEditing(currentEditingAtom);
+      setEditingLabel(currentEditingAtom);
+      setPendingNewType(null);
 
       jotaiStore.set(savedLabel, effectiveLabel);
     },
