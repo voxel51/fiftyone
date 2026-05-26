@@ -48,6 +48,7 @@ import fiftyone.core.runs as fors
 import fiftyone.core.sample as fosa
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
+from fiftyone.internal.docs import hide_from_docs
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 fos = fou.lazy_import("fiftyone.core.stages")
@@ -370,6 +371,7 @@ class SampleCollection(object):
         return self.concat(samples)
 
     @property
+    @hide_from_docs
     def temporal_tags(self):
         """The multimodal temporal tags for this collection."""
         import fiftyone.multimodal as fomm
@@ -7196,6 +7198,7 @@ class SampleCollection(object):
         """
         return self._add_view_stage(fos.MatchTags(tags, bool=bool, all=all))
 
+    @hide_from_docs
     def match_temporal_tags(
         self,
         tags=None,
