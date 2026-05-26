@@ -1,17 +1,6 @@
 import type { AnnotationLabel } from "@fiftyone/state";
-import {
-  CLASSIFICATION,
-  DETECTION,
-  KEYPOINT,
-  POLYLINE,
-} from "@fiftyone/utilities";
 import { atom, type PrimitiveAtom } from "jotai";
-
-export type LabelType =
-  | typeof CLASSIFICATION
-  | typeof DETECTION
-  | typeof POLYLINE
-  | typeof KEYPOINT;
+import type { LabelType } from "./types";
 
 export const savedLabel = atom<AnnotationLabel["data"] | null>(
   null

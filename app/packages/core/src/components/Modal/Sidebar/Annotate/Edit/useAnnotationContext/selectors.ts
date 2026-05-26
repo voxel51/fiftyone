@@ -24,10 +24,10 @@ import { buildNewLabelData } from "./createNew";
 import {
   currentEditingMaskAtom,
   editingLabelAtom,
-  type LabelType,
   pendingNewTypeAtom,
   savedLabel,
 } from "./atoms";
+import type { LabelType } from "./types";
 
 const IS_CLASSIFICATION = new Set([CLASSIFICATION, CLASSIFICATIONS]);
 const IS_DETECTION = new Set([DETECTION, DETECTIONS]);

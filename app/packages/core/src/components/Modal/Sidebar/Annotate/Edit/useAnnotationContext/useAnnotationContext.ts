@@ -10,11 +10,10 @@ import { activePrimitiveAtom } from "../useActivePrimitive";
 import {
   currentEditingMaskAtom,
   editingLabelAtom,
-  type LabelType,
   pendingNewTypeAtom,
   savedLabel,
 } from "./atoms";
-import { type CreateOptions, createNewLabel } from "./createNew";
+import { createNewLabel } from "./createNew";
 import {
   current,
   currentData,
@@ -30,8 +29,11 @@ import {
   isEditingMask as isEditingMaskSelector,
   isNew as isNewSelector,
 } from "./selectors";
-
-export type { CreateOptions };
+import type {
+  AnnotationContext,
+  AnnotationContextSelected,
+  LabelType,
+} from "./types";
 
 // Per-type memory: each label type remembers its last-used field
 // independently so switching between modes doesn't clobber the others.
@@ -45,53 +47,6 @@ const lastUsedLabelAtom = atomFamily(
   (_field: string) =>
     atom<string | null>(null) as PrimitiveAtom<string | null>
 );
-
-export interface AnnotationContextSelected {
-  label: AnnotationLabel | null;
-  data: AnnotationLabel["data"] | null;
-  field: string | null;
-  type: LabelType | null;
-  overlay: AnnotationLabel["overlay"] | undefined;
-  schema: ReturnType<typeof currentSchema.read> | null;
-  savedData: AnnotationLabel["data"] | null;
-  isEditing: boolean;
-  isEditingMask: boolean;
-  isNew: boolean;
-  hasChanges: boolean;
-  isFieldReadOnly: boolean;
-  /** Non-null when no schema field exists for the requested new type. */
-  pendingNewType: LabelType | null;
-}
-
-export interface AnnotationContext {
-  selected: AnnotationContextSelected;
-
-  setData: (
-    data: Partial<AnnotationLabel["data"]>,
-    options?: { replace?: boolean }
-  ) => void;
-  setField: (path: string) => void;
-  /** Update savedData without touching the editing pointer (3D flows). */
-  setSavedData: (data: AnnotationLabel["data"] | null) => void;
-  /** No-op if `id` isn't the current label's id. */
-  setEditingMask: (id: string, hasMask: boolean) => void;
-
-  select: (labelAtom: PrimitiveAtom<AnnotationLabel>) => void;
-  createNew: (
-    type: LabelType,
-    overrides?: CreateOptions
-  ) => AnnotationLabel | null;
-  clear: () => void;
-  /** Fresh comparison at call time — safe inside `useEffect`. */
-  isEditingAtom: (labelAtom: PrimitiveAtom<AnnotationLabel>) => boolean;
-
-  lastUsed: {
-    fieldFor: (type: LabelType) => string | null;
-    labelFor: (fieldPath: string) => string | null;
-    recordField: (type: LabelType, path: string) => void;
-    recordLabel: (path: string, label: string) => void;
-  };
-}
 
 export const useAnnotationContext = (): AnnotationContext => {
   const { scene, addOverlay, overlayFactory } = useLighter();

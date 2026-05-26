@@ -1,11 +1,10 @@
-export type { LabelType } from "./atoms";
-export type { CreateOptions } from "./createNew";
-export {
-  type AnnotationContext,
-  type AnnotationContextSelected,
-  useAnnotationContext,
-} from "./useAnnotationContext";
-export {
-  type AnnotationFields,
-  useAnnotationFields,
-} from "./useAnnotationFields";
+export type {
+  AnnotationContext,
+  AnnotationContextSelected,
+  AnnotationFields,
+  CreateOptions,
+  LabelSchema,
+  LabelType,
+} from "./types";
+export { useAnnotationContext } from "./useAnnotationContext";
+export { useAnnotationFields } from "./useAnnotationFields";

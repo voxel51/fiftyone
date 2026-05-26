@@ -1,15 +1,12 @@
 import type {
-  BaseOverlay,
   ClassificationOptions,
   ClassificationOverlay,
   DetectionLabel,
   DetectionOverlayOptions,
   DetectionOverlay,
-  OverlayFactory,
   PolylineLabel,
   PolylineOptions,
   PolylineOverlay,
-  Scene2D,
 } from "@fiftyone/lighter";
 import { InteractiveDetectionHandler } from "@fiftyone/lighter";
 import type { ClassificationLabel } from "@fiftyone/looker";
@@ -22,22 +19,8 @@ import {
 } from "@fiftyone/utilities";
 import { getDefaultStore } from "jotai";
 import { isFieldReadOnly, labelSchemaData } from "../../state";
-import { type LabelType } from "./atoms";
 import { defaultField } from "./selectors";
-
-export interface CreateOptions {
-  id?: string;
-  field?: string;
-  labelValue?: string;
-  /** Polyline only: first-vertex seed. Ignored for other types. */
-  origin?: [number, number];
-}
-
-export interface CreateDeps {
-  scene: Scene2D | null;
-  addOverlay: (overlay: BaseOverlay, withUndo?: boolean) => void;
-  overlayFactory: OverlayFactory;
-}
+import type { CreateDeps, CreateOptions, LabelType } from "./types";
 
 /**
  * Build a new annotation label and attach its overlay to the scene.
