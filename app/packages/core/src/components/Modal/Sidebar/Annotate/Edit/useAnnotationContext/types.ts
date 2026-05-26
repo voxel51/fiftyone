@@ -60,6 +60,12 @@ export interface AnnotationContextSelected {
 
 export interface AnnotationContext {
   selected: AnnotationContextSelected;
+  /**
+   * Fresh snapshot of {@link selected}. Use inside synchronous event chains
+   * (e.g. lighter event handlers) where closure-captured `selected` may be
+   * stale because React hasn't re-rendered yet.
+   */
+  readSelected: () => AnnotationContextSelected;
 
   setData: (
     data: Partial<AnnotationLabel["data"]>,

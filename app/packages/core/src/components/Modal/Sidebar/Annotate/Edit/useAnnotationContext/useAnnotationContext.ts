@@ -98,6 +98,27 @@ export const useAnnotationContext = (): AnnotationContext => {
     ]
   );
 
+  const readSelected = useAtomCallback(
+    useCallback((get): AnnotationContextSelected => {
+      const isNewValue = get(isNewSelector);
+      return {
+        label: get(current),
+        data: get(currentData),
+        field: get(currentField) ?? null,
+        type: get(currentType),
+        overlay: get(currentOverlay),
+        schema: get(currentSchema),
+        savedData: get(savedLabel),
+        isEditing: get(isEditingSelector),
+        isEditingMask: get(isEditingMaskSelector),
+        isNew: Boolean(isNewValue),
+        hasChanges: get(hasChanges),
+        isFieldReadOnly: get(currentFieldIsReadOnlyAtom),
+        pendingNewType: get(pendingNewTypeAtom),
+      };
+    }, [])
+  );
+
   const writeData = useSetAtom(currentData);
   const writeField = useSetAtom(currentField);
   const setEditingLabel = useSetAtom(editingLabelAtom);
@@ -311,6 +332,7 @@ export const useAnnotationContext = (): AnnotationContext => {
   return useMemo<AnnotationContext>(
     () => ({
       selected,
+      readSelected,
       setData,
       setField,
       setSavedData,
@@ -326,6 +348,7 @@ export const useAnnotationContext = (): AnnotationContext => {
       createNew,
       isEditingAtom,
       lastUsed,
+      readSelected,
       select,
       selected,
       setData,

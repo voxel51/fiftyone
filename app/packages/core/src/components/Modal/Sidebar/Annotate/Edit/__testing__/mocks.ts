@@ -23,6 +23,7 @@ export interface MockAnnotationContextSelected {
 
 export interface MockAnnotationContext {
   selected: MockAnnotationContextSelected;
+  readSelected: ReturnType<typeof vi.fn>;
   setData: ReturnType<typeof vi.fn>;
   setField: ReturnType<typeof vi.fn>;
   setSavedData: ReturnType<typeof vi.fn>;
@@ -58,6 +59,7 @@ const defaultSelected: MockAnnotationContextSelected = {
 /** Stubbed AnnotationContext. All actions are `vi.fn()` for assertion. */
 export const createMockAnnotationContext = (overrides?: {
   selected?: Partial<MockAnnotationContextSelected>;
+  readSelected?: ReturnType<typeof vi.fn>;
   setData?: ReturnType<typeof vi.fn>;
   setField?: ReturnType<typeof vi.fn>;
   setSavedData?: ReturnType<typeof vi.fn>;
@@ -66,23 +68,27 @@ export const createMockAnnotationContext = (overrides?: {
   createNew?: ReturnType<typeof vi.fn>;
   clear?: ReturnType<typeof vi.fn>;
   isEditingAtom?: ReturnType<typeof vi.fn>;
-}): MockAnnotationContext => ({
-  selected: { ...defaultSelected, ...overrides?.selected },
-  setData: overrides?.setData ?? vi.fn(),
-  setField: overrides?.setField ?? vi.fn(),
-  setSavedData: overrides?.setSavedData ?? vi.fn(),
-  setEditingMask: overrides?.setEditingMask ?? vi.fn(),
-  select: overrides?.select ?? vi.fn(),
-  createNew: overrides?.createNew ?? vi.fn(),
-  clear: overrides?.clear ?? vi.fn(),
-  isEditingAtom: overrides?.isEditingAtom ?? vi.fn().mockReturnValue(false),
-  lastUsed: {
-    fieldFor: vi.fn().mockReturnValue(null),
-    labelFor: vi.fn().mockReturnValue(null),
-    recordField: vi.fn(),
-    recordLabel: vi.fn(),
-  },
-});
+}): MockAnnotationContext => {
+  const selected = { ...defaultSelected, ...overrides?.selected };
+  return {
+    selected,
+    readSelected: overrides?.readSelected ?? vi.fn().mockReturnValue(selected),
+    setData: overrides?.setData ?? vi.fn(),
+    setField: overrides?.setField ?? vi.fn(),
+    setSavedData: overrides?.setSavedData ?? vi.fn(),
+    setEditingMask: overrides?.setEditingMask ?? vi.fn(),
+    select: overrides?.select ?? vi.fn(),
+    createNew: overrides?.createNew ?? vi.fn(),
+    clear: overrides?.clear ?? vi.fn(),
+    isEditingAtom: overrides?.isEditingAtom ?? vi.fn().mockReturnValue(false),
+    lastUsed: {
+      fieldFor: vi.fn().mockReturnValue(null),
+      labelFor: vi.fn().mockReturnValue(null),
+      recordField: vi.fn(),
+      recordLabel: vi.fn(),
+    },
+  };
+};
 
 // ---- lighter scene stub -----------------------------------------------------
 
