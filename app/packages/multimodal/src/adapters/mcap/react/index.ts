@@ -18,17 +18,3 @@ export type {
   UseMcapTopicsOptions,
 } from "./use-mcap-topics";
 export { useStableMcapSource } from "./use-stable-mcap-source";
-
-/**
- * POC playback state hook for MCAP-backed renderers.
- */
-export { useMcapPlayback } from "./playback-poc";
-export type {
-  McapLoadStatus,
-  McapPlaybackMessagesByTopic,
-  McapPlaybackState,
-  McapTimelineBufferKind,
-  McapTimelineBufferSegment,
-  McapTimelineBufferStatus,
-  UseMcapPlaybackOptions,
-} from "./playback-poc";
