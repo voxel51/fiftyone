@@ -69,6 +69,17 @@ export function useRegisterMcapDataStream({
   const lastFrameRef = useRef<Map<string, unknown>>(new Map());
   const indexRef = useRef<McapTimelineIndex | null>(null);
   indexRef.current = index;
+  // Hold the most recent `allTopics` / `streamPolicies` in refs so the
+  // stable callbacks below read fresh values without listing them as
+  // deps (which would invalidate the registered stream every render).
+  const allTopicsRef = useRef(allTopics);
+  const streamPoliciesRef = useRef(streamPolicies);
+  useEffect(() => {
+    allTopicsRef.current = allTopics;
+  }, [allTopics]);
+  useEffect(() => {
+    streamPoliciesRef.current = streamPolicies;
+  }, [streamPolicies]);
 
   // Pending helpers — wrap the per-tick topic sets so call sites read
   // like simple predicates instead of repeating the get/has dance.
@@ -110,8 +121,17 @@ export function useRegisterMcapDataStream({
     }
   }, [allTopics]);
 
-  // Load the timeline range once the source is available.
+  // Load the timeline range once the source is available. On source
+  // change, reset every piece of cached state synchronously so we
+  // don't run fetches/lookups against the new source with old ticks
+  // or stale frames while the async range load is in flight.
   useEffect(() => {
+    setIndex(null);
+    pendingTicksRef.current.clear();
+    lastFrameRef.current.clear();
+    for (const cache of topicCachesRef.current.values()) {
+      cache.clear();
+    }
     if (!source) return;
     let cancelled = false;
     client
@@ -130,9 +150,9 @@ export function useRegisterMcapDataStream({
 
   const getActiveTopics = useCallback(
     (): string[] =>
-      allTopics.filter((t) => topicCachesRef.current.get(t)?.isActive),
-    // allTopics is mount-time config — filtered against caches at call time.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      allTopicsRef.current.filter(
+        (t) => topicCachesRef.current.get(t)?.isActive
+      ),
     []
   );
 
@@ -161,7 +181,7 @@ export function useRegisterMcapDataStream({
         .readSynchronizedMessageBatch({
           activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
           source,
-          streamPolicies,
+          streamPolicies: streamPoliciesRef.current,
           timeNs: toFetch,
           topics: activeTopics,
         })
@@ -187,8 +207,6 @@ export function useRegisterMcapDataStream({
           clearTopicsPending(keys, activeTopics);
         });
     },
-    // streamPolicies is mount-time config — read fresh on every call.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [client, source, store]
   );
 
@@ -204,9 +222,13 @@ export function useRegisterMcapDataStream({
       const caches = topicCachesRef.current;
       const startNs = currentIndex.secToNs(startSec);
       const endNs = currentIndex.secToNs(endSec);
+      // Binary-search to the first tick >= startNs so this runs in
+      // O(log n + window) instead of O(n) per RAF prefetch.
+      const ticks = currentIndex.ticks;
+      const startIdx = lowerBoundBigInt(ticks, startNs);
       const toFetch: bigint[] = [];
-      for (const tick of currentIndex.ticks) {
-        if (tick < startNs) continue;
+      for (let i = startIdx; i < ticks.length; i++) {
+        const tick = ticks[i];
         if (tick > endNs) break;
         const tickKey = tick.toString();
         const needsFetch = activeTopics.some(
@@ -395,7 +417,21 @@ function pushTickToStore(
     const msg = cache.get(tick);
     const viz = msg?.decoded.output.visualization ?? null;
     if (viz !== null) lastFrame.set(topic, viz);
+    // Write unconditionally — including `null` — so re-subscribing to a
+    // topic that previously held data doesn't briefly show the prior
+    // session's last frame before a fresh fetch lands.
     const toWrite = lastFrame.get(topic) ?? null;
-    if (toWrite !== null) store.set(streamValueAtom(topic), toWrite);
+    store.set(streamValueAtom(topic), toWrite);
   }
+}
+
+function lowerBoundBigInt(arr: readonly bigint[], target: bigint): number {
+  let lo = 0;
+  let hi = arr.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (arr[mid] < target) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
 }

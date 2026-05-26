@@ -11,8 +11,16 @@ const McapLidarTile: React.FC = () => {
   const lidars = useSceneSourcesByType("lidar");
 
   useEffect(() => {
-    if (topic !== null || lidars.length === 0) return;
-    setTopic(lidars[0]?.id ?? null);
+    // Re-bind when the inventory changes — covers both "no selection
+    // yet" and "previous selection disappeared after a source/file
+    // change". Without this, a stale topic keeps the tile in loading.
+    if (lidars.length === 0) {
+      if (topic !== null) setTopic(null);
+      return;
+    }
+    if (topic === null || !lidars.some((l) => l.id === topic)) {
+      setTopic(lidars[0].id);
+    }
   }, [lidars, topic]);
 
   const frame = useMcapTopicStream<PointCloudVisualization>(topic ?? "");

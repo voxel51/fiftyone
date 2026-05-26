@@ -11,8 +11,16 @@ const McapCameraTile: React.FC = () => {
   const cameras = useSceneSourcesByType("camera");
 
   useEffect(() => {
-    if (topic !== null || cameras.length === 0) return;
-    setTopic(cameras[0]?.id ?? null);
+    // Re-bind when the inventory changes — covers both "no selection
+    // yet" and "previous selection disappeared after a source/file
+    // change". Without this, a stale topic keeps the tile in loading.
+    if (cameras.length === 0) {
+      if (topic !== null) setTopic(null);
+      return;
+    }
+    if (topic === null || !cameras.some((c) => c.id === topic)) {
+      setTopic(cameras[0].id);
+    }
   }, [cameras, topic]);
 
   const frame = useMcapTopicStream<EncodedImageVisualization>(topic ?? "");

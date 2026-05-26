@@ -31,8 +31,14 @@ export class McapTopicCache {
 
   subscribe(): () => void {
     this._subscriberCount++;
+    let released = false;
     return () => {
-      this._subscriberCount--;
+      // Guard against double-release: React StrictMode / effect race
+      // conditions can fire cleanup twice, which would otherwise underflow
+      // the subscriber count and confuse `isActive` for the next subscribe.
+      if (released) return;
+      released = true;
+      this._subscriberCount = Math.max(0, this._subscriberCount - 1);
       // Last subscriber gone — drop everything. Holding decoded frames
       // for a topic no tile is rendering is pure memory pressure, and a
       // future re-subscribe should start from a clean slate so it can't
@@ -51,5 +57,13 @@ export class McapTopicCache {
 
   set(tick: bigint, msg: McapDecodedMessage | null): void {
     this.cache.set(tick.toString(), { msg });
+  }
+
+  /** Drop every cached entry without touching subscriptions. Used when
+   *  the source changes — the active topics stay subscribed but their
+   *  previously-cached frames are now from a different recording and
+   *  must not be reused. */
+  clear(): void {
+    this.cache.clear();
   }
 }

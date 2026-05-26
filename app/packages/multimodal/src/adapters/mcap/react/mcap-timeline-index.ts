@@ -16,8 +16,13 @@ export function createMcapTimelineIndex(
   range: McapTimelineRange
 ): McapTimelineIndex {
   const startTimeNs = range.startTimeNs;
+  // Split the bigint nanosecond delta into whole seconds + sub-second
+  // remainder before casting to `number` — keeps full precision even for
+  // multi-day recordings where the raw delta exceeds `Number.MAX_SAFE_INTEGER`.
+  const durationNs = range.endTimeNs - range.startTimeNs;
   const durationSec =
-    Number(range.endTimeNs - range.startTimeNs) / 1_000_000_000;
+    Number(durationNs / 1_000_000_000n) +
+    Number(durationNs % 1_000_000_000n) / 1_000_000_000;
   const ticks = createMcapTimelineTicks(range, {
     tickRateHz: DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ,
   });
