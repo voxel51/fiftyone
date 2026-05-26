@@ -17,7 +17,9 @@ type RendererWithDreiCompat = THREE.WebGPURenderer & {
   }>;
 };
 
-const DEFAULT_DPR: Dpr = [1, 2];
+// Playback canvases redraw frequently; default to CSS pixel density and let
+// inspection surfaces opt into higher DPR explicitly when they need it.
+const DEFAULT_DPR: Dpr = 1;
 const OPAQUE_CLEAR_ALPHA = 1;
 const DEFAULT_MAX_ANISOTROPY = 1;
 
