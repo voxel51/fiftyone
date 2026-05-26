@@ -46,10 +46,8 @@ export function useMcapTiles({ presentTypes }: UseMcapTilesOptions): void {
       const entry = TILE_BY_TYPE[type];
       return [
         registerTile({
-          streamId: type,
           type,
           typeLabel: entry.typeLabel,
-          title: entry.typeLabel,
           icon: entry.icon,
           Tile: entry.Tile,
         }),
