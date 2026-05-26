@@ -1,0 +1,460 @@
+"""
+Multimodal temporal tag route unit tests.
+
+| Copyright 2017-2026, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
+import json
+from unittest.mock import AsyncMock, MagicMock
+
+from bson import ObjectId
+import pytest
+from starlette.datastructures import QueryParams
+from starlette.exceptions import HTTPException
+
+import fiftyone as fo
+import fiftyone.core.odm as foo
+import fiftyone.multimodal.server.routes as fomr
+import fiftyone.multimodal.tags as fomt
+
+
+@pytest.fixture(autouse=True)
+def clean_temporal_tags():
+    """Ensures each test starts with an empty temporal tag collection."""
+    foo.get_db_conn().drop_collection(fomt.TEMPORAL_TAGS_COLLECTION_NAME)
+
+    yield
+
+    foo.get_db_conn().drop_collection(fomt.TEMPORAL_TAGS_COLLECTION_NAME)
+
+
+@pytest.fixture(name="dataset")
+def fixture_dataset():
+    """Creates a dataset with a few multimodal samples."""
+    dataset = fo.Dataset()
+    dataset.add_samples(
+        [
+            fo.Sample(filepath="/tmp/temporal-tags-1.mp4"),
+            fo.Sample(filepath="/tmp/temporal-tags-2.mp4"),
+            fo.Sample(filepath="/tmp/temporal-tags-3.mp4"),
+        ]
+    )
+
+    try:
+        yield dataset
+    finally:
+        if fo.dataset_exists(dataset.name):
+            fo.delete_dataset(dataset.name)
+
+
+@pytest.fixture(name="dataset_id")
+def fixture_dataset_id(dataset):
+    """Returns the dataset ID as it appears in route paths."""
+    # pylint: disable-next=protected-access
+    return str(dataset._doc.id)
+
+
+@pytest.fixture(name="sample_ids")
+def fixture_sample_ids(dataset):
+    """Returns sample IDs in deterministic insertion order."""
+    return [str(sample.id) for sample in dataset.iter_samples()]
+
+
+@pytest.fixture(name="sample_temporal_tags_endpoint")
+def fixture_sample_temporal_tags_endpoint():
+    """Returns the sample temporal tags endpoint instance."""
+    return fomr.SampleTemporalTagsEndpoint(
+        scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
+    )
+
+
+@pytest.fixture(name="temporal_tags_endpoint")
+def fixture_temporal_tags_endpoint():
+    """Returns the dataset temporal tags endpoint instance."""
+    return fomr.TemporalTagsEndpoint(
+        scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
+    )
+
+
+@pytest.fixture(name="temporal_tag_counts_endpoint")
+def fixture_temporal_tag_counts_endpoint():
+    """Returns the temporal tag counts endpoint instance."""
+    return fomr.TemporalTagCountsEndpoint(
+        scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
+    )
+
+
+def _make_request(dataset_id, sample_id=None, query_params=None, body=None):
+    request = MagicMock()
+    request.path_params = {"dataset_id": dataset_id}
+    if sample_id is not None:
+        request.path_params["sample_id"] = sample_id
+
+    request.query_params = QueryParams(query_params or {})
+    payload = {} if body is None else body
+    request.body = AsyncMock(return_value=json.dumps(payload).encode())
+    return request
+
+
+def _json_body(response):
+    return json.loads(response.body.decode("utf-8"))
+
+
+class TestMultimodalTemporalTagsRoute:
+    """Tests for the multimodal temporal tag collection route."""
+
+    @pytest.mark.asyncio
+    async def test_sample_scoped_create_list_and_delete_temporal_tags(
+        self,
+        sample_temporal_tags_endpoint,
+        dataset_id,
+        sample_ids,
+    ):
+        request = _make_request(
+            dataset_id,
+            sample_id=sample_ids[0],
+            body={
+                "start": 0,
+                "end": 10,
+                "tag": "review",
+                "anchor": "camera_front",
+            },
+        )
+
+        response = await sample_temporal_tags_endpoint.post(request)
+        created = _json_body(response)["temporal_tags"]
+
+        assert len(created) == 1
+        assert created[0]["id"]
+        assert created[0]["sample_id"] == sample_ids[0]
+        assert created[0]["tag"] == "review"
+        assert created[0]["anchor"] == "camera_front"
+
+        request = _make_request(
+            dataset_id,
+            sample_id=sample_ids[0],
+            query_params={
+                "anchor": "camera_front",
+            },
+        )
+        response = await sample_temporal_tags_endpoint.get(request)
+        listed = _json_body(response)["temporal_tags"]
+
+        assert listed == created
+
+        request = _make_request(
+            dataset_id,
+            sample_id=sample_ids[0],
+            body={"ids": [created[0]["id"]]},
+        )
+        response = await sample_temporal_tags_endpoint.delete(request)
+
+        assert _json_body(response) == {"deleted": 1}
+
+        request = _make_request(dataset_id, sample_id=sample_ids[0])
+        response = await sample_temporal_tags_endpoint.get(request)
+
+        assert _json_body(response)["temporal_tags"] == []
+
+    @pytest.mark.asyncio
+    async def test_lists_sample_temporal_tags_with_optional_range(
+        self,
+        sample_temporal_tags_endpoint,
+        dataset,
+        dataset_id,
+        sample_ids,
+    ):
+        fomt.add_temporal_tags(
+            dataset,
+            [
+                fomt.TemporalTag(sample_ids[0], 0, 10, "clip"),
+                fomt.TemporalTag(sample_ids[0], 30, 40, "outside"),
+                fomt.TemporalTag(sample_ids[1], 5, 15, "other-sample"),
+            ],
+        )
+
+        request = _make_request(
+            dataset_id,
+            sample_id=sample_ids[0],
+            query_params={"start": "5", "end": "15"},
+        )
+        response = await sample_temporal_tags_endpoint.get(request)
+        temporal_tags = _json_body(response)["temporal_tags"]
+
+        assert len(temporal_tags) == 1
+        assert temporal_tags[0]["sample_id"] == sample_ids[0]
+        assert temporal_tags[0]["tag"] == "clip"
+
+    @pytest.mark.asyncio
+    async def test_lists_scene_temporal_tags_with_optional_range(
+        self,
+        temporal_tags_endpoint,
+        temporal_tag_counts_endpoint,
+        dataset,
+        dataset_id,
+        sample_ids,
+    ):
+        fomt.add_temporal_tags(
+            dataset,
+            [
+                fomt.TemporalTag(sample_ids[0], 0, 10, "clip"),
+                fomt.TemporalTag(sample_ids[1], 10, 20, "clip"),
+                fomt.TemporalTag(sample_ids[2], 30, 40, "outside"),
+            ],
+        )
+
+        request = _make_request(
+            dataset_id,
+            query_params={"start": "5", "end": "15"},
+        )
+        response = await temporal_tags_endpoint.get(request)
+        temporal_tags = _json_body(response)["temporal_tags"]
+
+        assert [tag["sample_id"] for tag in temporal_tags] == sample_ids[:2]
+        assert [tag["tag"] for tag in temporal_tags] == ["clip", "clip"]
+
+        request = _make_request(
+            dataset_id,
+            query_params={"start": "5", "end": "15"},
+        )
+        response = await temporal_tag_counts_endpoint.get(request)
+
+        assert _json_body(response)["counts"] == {"clip": 2}
+
+    @pytest.mark.asyncio
+    async def test_lists_tag_hits_across_samples_and_counts_all_tags(
+        self,
+        temporal_tags_endpoint,
+        temporal_tag_counts_endpoint,
+        dataset,
+        dataset_id,
+        sample_ids,
+    ):
+        fomt.add_temporal_tags(
+            dataset,
+            [
+                fomt.TemporalTag(sample_ids[0], 0, 10, "candidate"),
+                fomt.TemporalTag(sample_ids[1], 10, 20, "candidate"),
+                fomt.TemporalTag(sample_ids[2], 20, 30, "review"),
+                fomt.TemporalTag(sample_ids[2], 30, 40, "other"),
+            ],
+        )
+
+        request = _make_request(
+            dataset_id,
+            query_params={"tags": "candidate,review"},
+        )
+        response = await temporal_tags_endpoint.get(request)
+        temporal_tags = _json_body(response)["temporal_tags"]
+
+        assert [
+            (tag["sample_id"], tag["start"], tag["end"], tag["tag"])
+            for tag in temporal_tags
+        ] == [
+            (sample_ids[0], 0, 10, "candidate"),
+            (sample_ids[1], 10, 20, "candidate"),
+            (sample_ids[2], 20, 30, "review"),
+        ]
+
+        request = _make_request(dataset_id)
+        response = await temporal_tag_counts_endpoint.get(request)
+
+        assert _json_body(response)["counts"] == {
+            "candidate": 2,
+            "other": 1,
+            "review": 1,
+        }
+
+    @pytest.mark.asyncio
+    async def test_bulk_create_and_delete_by_filter(
+        self, sample_temporal_tags_endpoint, dataset_id, sample_ids
+    ):
+        request = _make_request(
+            dataset_id,
+            sample_id=sample_ids[0],
+            body={
+                "temporal_tags": [
+                    {
+                        "start": 0,
+                        "end": 10,
+                        "tag": "candidate",
+                        "anchor": "camera_front",
+                    },
+                    {
+                        "start": 0,
+                        "end": 10,
+                        "tag": "candidate",
+                        "anchor": "camera_rear",
+                    },
+                ]
+            },
+        )
+
+        response = await sample_temporal_tags_endpoint.post(request)
+
+        assert len(_json_body(response)["temporal_tags"]) == 2
+
+        request = _make_request(
+            dataset_id,
+            sample_id=sample_ids[0],
+            body={
+                "filter": {
+                    "anchors": "camera_front",
+                }
+            },
+        )
+        response = await sample_temporal_tags_endpoint.delete(request)
+
+        assert _json_body(response) == {"deleted": 1}
+
+        request = _make_request(dataset_id, sample_id=sample_ids[0])
+        response = await sample_temporal_tags_endpoint.get(request)
+        remaining = _json_body(response)["temporal_tags"]
+
+        assert len(remaining) == 1
+        assert remaining[0]["sample_id"] == sample_ids[0]
+        assert remaining[0]["anchor"] == "camera_rear"
+
+    @pytest.mark.asyncio
+    async def test_validation_errors_return_400(
+        self,
+        sample_temporal_tags_endpoint,
+        temporal_tags_endpoint,
+        temporal_tag_counts_endpoint,
+        dataset_id,
+        sample_ids,
+    ):
+        cases = [
+            (
+                sample_temporal_tags_endpoint.post,
+                _make_request(
+                    dataset_id,
+                    sample_id=sample_ids[0],
+                    body={"temporal_tags": []},
+                ),
+            ),
+            (
+                sample_temporal_tags_endpoint.post,
+                _make_request(
+                    dataset_id,
+                    sample_id=str(ObjectId()),
+                    body={
+                        "start": 0,
+                        "end": 10,
+                        "tag": "missing-sample",
+                    },
+                ),
+            ),
+            (
+                sample_temporal_tags_endpoint.post,
+                _make_request(
+                    dataset_id,
+                    sample_id=sample_ids[0],
+                    body={
+                        "start": 10,
+                        "end": 10,
+                        "tag": "bad-range",
+                    },
+                ),
+            ),
+            (
+                sample_temporal_tags_endpoint.post,
+                _make_request(
+                    dataset_id,
+                    sample_id=sample_ids[0],
+                    body={
+                        "index_type": 0,
+                        "start": 0,
+                        "end": 10,
+                        "tag": "bad-index-type",
+                    },
+                ),
+            ),
+            (
+                sample_temporal_tags_endpoint.post,
+                _make_request(
+                    dataset_id,
+                    sample_id=sample_ids[0],
+                    body={
+                        "sample_id": sample_ids[1],
+                        "start": 0,
+                        "end": 10,
+                        "tag": "wrong-sample",
+                    },
+                ),
+            ),
+            (
+                sample_temporal_tags_endpoint.delete,
+                _make_request(dataset_id, sample_id=sample_ids[0]),
+            ),
+            (
+                temporal_tags_endpoint.get,
+                _make_request(dataset_id, query_params={"start": "soon"}),
+            ),
+            (
+                sample_temporal_tags_endpoint.get,
+                _make_request(
+                    dataset_id,
+                    sample_id=sample_ids[0],
+                    query_params={"sample_id": sample_ids[1]},
+                ),
+            ),
+            (
+                temporal_tag_counts_endpoint.get,
+                _make_request(
+                    dataset_id, query_params={"sample_id": sample_ids[0]}
+                ),
+            ),
+        ]
+
+        for endpoint, request in cases:
+            with pytest.raises(HTTPException) as exc_info:
+                await endpoint(request)
+
+            assert exc_info.value.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_dataset_not_found_returns_404(self, temporal_tags_endpoint):
+        request = _make_request("missing-dataset")
+
+        with pytest.raises(HTTPException) as exc_info:
+            await temporal_tags_endpoint.get(request)
+
+        assert exc_info.value.status_code == 404
+        assert "Dataset 'missing-dataset' not found" in exc_info.value.detail
+
+    def test_multimodal_routes_register_temporal_tag_endpoints(self):
+        routes = dict(fomr.MultimodalRoutes)
+        temporal_routes = [
+            (path, endpoint)
+            for path, endpoint in fomr.MultimodalRoutes
+            if "temporal-tags" in path
+        ]
+
+        assert temporal_routes == [
+            (
+                "/dataset/{dataset_id}/sample/{sample_id}/multimodal/temporal-tags",
+                fomr.SampleTemporalTagsEndpoint,
+            ),
+            (
+                "/dataset/{dataset_id}/multimodal/temporal-tags/counts",
+                fomr.TemporalTagCountsEndpoint,
+            ),
+            (
+                "/dataset/{dataset_id}/multimodal/temporal-tags",
+                fomr.TemporalTagsEndpoint,
+            ),
+        ]
+        assert (
+            routes["/dataset/{dataset_id}/multimodal/temporal-tags"]
+            is fomr.TemporalTagsEndpoint
+        )
+        assert (
+            routes["/dataset/{dataset_id}/multimodal/temporal-tags/counts"]
+            is fomr.TemporalTagCountsEndpoint
+        )
+        assert not hasattr(fomr.TemporalTagsEndpoint, "post")
+        assert not hasattr(fomr.TemporalTagsEndpoint, "delete")
+        assert not hasattr(fomr.TemporalTagCountsEndpoint, "post")
