@@ -506,7 +506,7 @@ describe("MCAP resources", () => {
               createChannel({
                 id: 10,
                 schemaId: 10,
-                topic: "/tf_static",
+                topic: "/example/transforms",
               }),
             ],
           ]),

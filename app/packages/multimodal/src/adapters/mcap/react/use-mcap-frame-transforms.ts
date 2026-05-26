@@ -8,8 +8,8 @@ import { McapFrameTransformStore } from "../frame-transforms";
 import { mcapErrorMessage } from "../errors";
 import type { McapActiveTimeline, McapResourceClient } from "../types";
 
-// Keep demand-driven `/tf` reads small and idle-priority; this gives the
-// resolver a little temporal slack without letting dense transform channels
+// Keep demand-driven dynamic transform reads small and idle-priority; this gives
+// the resolver a little temporal slack without letting dense transform channels
 // chase every playback tick.
 const DYNAMIC_TRANSFORM_LOOKBACK_NS = 500_000_000n;
 const DYNAMIC_TRANSFORM_LOOKAHEAD_NS = 500_000_000n;
@@ -67,6 +67,10 @@ export function useMcapFrameTransforms({
   const inFlightRangesRef = useRef<readonly McapFrameTransformTimeRange[]>([]);
   const sourceGenerationRef = useRef(0);
 
+  /**
+   * Resets transform state when the source changes and loads the initial
+   * source-wide transform bootstrap before dynamic windows are requested.
+   */
   useEffect(() => {
     inFlightRangesRef.current = [];
     sourceGenerationRef.current += 1;
@@ -123,6 +127,10 @@ export function useMcapFrameTransforms({
     };
   }, [client, source]);
 
+  /**
+   * Requests the dynamic transform window around the active playback time when
+   * the resolver has not already indexed that time for the current source.
+   */
   useEffect(() => {
     const store = storeRef.current;
     if (!source || !store || state.status !== "ready" || timeNs === undefined) {
