@@ -22,9 +22,73 @@ import type { McapTimelineIndex } from "./mcap-timeline-index";
 import { createMcapTimelineIndex } from "./mcap-timeline-index";
 import { McapTopicCache } from "./mcap-topic-cache";
 
+// One engine stream owns all MCAP topics so camera/lidar tiles stay on the
+// same synchronized timeline and fetch in shared batches.
 const STREAM_ID = "mcap-data-stream";
-const LOOKAHEAD_SECONDS = 15;
-const MAX_PREFETCH_BATCH = 32;
+
+interface McapPlaybackPolicy {
+  /**
+   * Target buffer horizon. This should be long enough to hide normal worker
+   * decode latency and short enough that a seek/topic switch does not overfetch
+   * a large part of the file.
+   */
+  readonly lookaheadSeconds: number;
+
+  /**
+   * Per-worker-request time cap. A single full-lookahead request can decode too
+   * much at once and create a large response, so the lookahead is filled by
+   * multiple bounded requests.
+   */
+  readonly prefetchBatchSeconds: number;
+
+  /**
+   * Cadence for topping up lookahead while playback advances. This should be
+   * much slower than RAF but comfortably faster than the buffer can drain.
+   */
+  readonly prefetchRefreshSeconds: number;
+
+  /**
+   * Cache room relative to one full lookahead window. Values above 1 leave room
+   * for overlap during refreshes, seeks, and in-flight batch completion, so
+   * future prefetches do not evict near-playhead ticks before playback reaches
+   * them.
+   */
+  readonly topicCacheLookaheadMultiplier: number;
+}
+
+/**
+ * Playback policy after converting human-scale seconds/multipliers into the
+ * concrete tick counts used by the prefetch loop and per-topic caches.
+ */
+interface DerivedMcapPlaybackPolicy extends McapPlaybackPolicy {
+  /**
+   * Maximum number of timeline ticks to request in one worker batch, derived
+   * from the timeline tick rate and `prefetchBatchSeconds`.
+   */
+  readonly maxPrefetchBatch: number;
+
+  /**
+   * Number of bounded worker batches needed to cover one full lookahead window,
+   * derived from `lookaheadSeconds / prefetchBatchSeconds`.
+   */
+  readonly prefetchBatchesPerLookahead: number;
+
+  /**
+   * Maximum entries retained per topic cache, derived from tick rate,
+   * lookahead window, and `topicCacheLookaheadMultiplier`.
+   */
+  readonly topicCacheMaxEntries: number;
+}
+
+const DEFAULT_MCAP_PLAYBACK_POLICY: McapPlaybackPolicy = {
+  lookaheadSeconds: 15,
+  prefetchBatchSeconds: 5,
+  prefetchRefreshSeconds: 1,
+  topicCacheLookaheadMultiplier: 2,
+} as const;
+
+const PLAYBACK_POLICY = deriveMcapPlaybackPolicy(DEFAULT_MCAP_PLAYBACK_POLICY);
+
 const noop = (): void => undefined;
 
 export interface UseMcapDataStreamOptions {
@@ -67,6 +131,7 @@ export function useRegisterMcapDataStream({
   // topic doesn't make collectMissingTicks think that topic is in flight.
   const pendingTicksRef = useRef<Map<string, Set<string>>>(new Map());
   const lastFrameRef = useRef<Map<string, unknown>>(new Map());
+  const nextLookaheadRefreshTimeRef = useRef(0);
   const indexRef = useRef<McapTimelineIndex | null>(null);
   const sourceEpochRef = useRef(0);
   indexRef.current = index;
@@ -117,7 +182,10 @@ export function useRegisterMcapDataStream({
   useEffect(() => {
     for (const topic of allTopics) {
       if (!topicCachesRef.current.has(topic)) {
-        topicCachesRef.current.set(topic, new McapTopicCache());
+        topicCachesRef.current.set(
+          topic,
+          new McapTopicCache(PLAYBACK_POLICY.topicCacheMaxEntries)
+        );
       }
     }
   }, [allTopics]);
@@ -132,6 +200,7 @@ export function useRegisterMcapDataStream({
     setIndex(null);
     pendingTicksRef.current.clear();
     lastFrameRef.current.clear();
+    nextLookaheadRefreshTimeRef.current = 0;
     for (const cache of topicCachesRef.current.values()) {
       cache.clear();
     }
@@ -170,7 +239,9 @@ export function useRegisterMcapDataStream({
   // tiles render their first frame as soon as the network resolves.
   const fetchBatch = useCallback(
     (ticks: bigint[], activeTopics: string[]) => {
-      if (ticks.length === 0 || activeTopics.length === 0 || !source) return;
+      if (ticks.length === 0 || activeTopics.length === 0 || !source) {
+        return false;
+      }
       const sourceEpoch = sourceEpochRef.current;
       const caches = topicCachesRef.current;
 
@@ -181,10 +252,20 @@ export function useRegisterMcapDataStream({
         const tickKey = tick.toString();
         return activeTopics.some((t) => !isTopicPending(tickKey, t));
       });
-      if (toFetch.length === 0) return;
+      if (toFetch.length === 0) return false;
 
       const keys = toFetch.map((t) => t.toString());
-      markTopicsPending(keys, activeTopics);
+      const topicsToFetch = activeTopics.filter((topic) =>
+        toFetch.some((tick) => {
+          const tickKey = tick.toString();
+          return (
+            !caches.get(topic)?.has(tick) && !isTopicPending(tickKey, topic)
+          );
+        })
+      );
+      if (topicsToFetch.length === 0) return false;
+
+      markTopicsPending(keys, topicsToFetch);
 
       client
         .readSynchronizedMessageBatch({
@@ -192,13 +273,13 @@ export function useRegisterMcapDataStream({
           source,
           streamPolicies: streamPoliciesRef.current,
           timeNs: toFetch,
-          topics: activeTopics,
+          topics: topicsToFetch,
         })
         .then((windows) => {
           if (sourceEpochRef.current !== sourceEpoch) return;
 
           for (const window of windows) {
-            distributeWindowToCaches(window, caches, activeTopics);
+            distributeWindowToCaches(window, caches, topicsToFetch);
           }
           const currentIndex = indexRef.current;
           if (!currentIndex) return;
@@ -217,15 +298,17 @@ export function useRegisterMcapDataStream({
         .finally(() => {
           if (sourceEpochRef.current !== sourceEpoch) return;
 
-          clearTopicsPending(keys, activeTopics);
+          clearTopicsPending(keys, topicsToFetch);
         });
+
+      return true;
     },
     [client, source, store]
   );
 
   // Collect ticks in [startSec, endSec] where at least one active topic
   // still needs the data — i.e. not cached and not already pending for
-  // that specific topic. Capped at MAX_PREFETCH_BATCH.
+  // that specific topic. Capped by the resolved playback policy.
   const collectMissingTicks = useCallback(
     (startSec: number, endSec: number): bigint[] => {
       const currentIndex = indexRef.current;
@@ -248,7 +331,7 @@ export function useRegisterMcapDataStream({
           (t) => !caches.get(t)?.has(tick) && !isTopicPending(tickKey, t)
         );
         if (needsFetch) toFetch.push(tick);
-        if (toFetch.length >= MAX_PREFETCH_BATCH) break;
+        if (toFetch.length >= PLAYBACK_POLICY.maxPrefetchBatch) break;
       }
       return toFetch;
     },
@@ -257,13 +340,14 @@ export function useRegisterMcapDataStream({
 
   // Push cached current frame for the active set AND kick off a batch
   // prefetch of [timeSec, timeSec+LOOKAHEAD] so the buffer starts filling
-  // immediately (mount, tile subscribe, seek, every playhead tick).
+  // immediately (mount, tile subscribe, seek).
   const prefetchLookaheadFrom = useCallback(
     (timeSec: number) => {
       const currentIndex = indexRef.current;
       if (!currentIndex) return;
       const activeTopics = getActiveTopics();
       if (activeTopics.length === 0) return;
+      nextLookaheadRefreshTimeRef.current = timeSec;
 
       const tick = currentIndex.nearestTick(timeSec);
       if (tick) {
@@ -276,8 +360,13 @@ export function useRegisterMcapDataStream({
         );
       }
 
-      const missing = collectMissingTicks(timeSec, timeSec + LOOKAHEAD_SECONDS);
-      if (missing.length > 0) fetchBatch(missing, activeTopics);
+      fillMissingLookaheadFrom({
+        activeTopics,
+        collectMissingTicks,
+        fetchBatch,
+        policy: PLAYBACK_POLICY,
+        timeSec,
+      });
     },
     [collectMissingTicks, fetchBatch, getActiveTopics, store]
   );
@@ -289,13 +378,14 @@ export function useRegisterMcapDataStream({
     const nativeStep = 1 / DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ;
     const caches = topicCachesRef.current;
     const lastFrame = lastFrameRef.current;
+    let lastCommittedTickKey: string | null = null;
 
     const stream: PlaybackStream = {
       id: STREAM_ID,
       blocking: true,
       duration: index.durationSec,
       nativeStepSeconds: nativeStep,
-      lookaheadSeconds: LOOKAHEAD_SECONDS,
+      lookaheadSeconds: PLAYBACK_POLICY.lookaheadSeconds,
 
       bufferState: (timeSec) => {
         const tick = index.nearestTick(timeSec);
@@ -325,6 +415,9 @@ export function useRegisterMcapDataStream({
       onCommit: (timeSec, commitStore) => {
         const tick = index.nearestTick(timeSec);
         if (!tick) return;
+        const tickKey = tick.toString();
+        if (lastCommittedTickKey === tickKey) return;
+        lastCommittedTickKey = tickKey;
         pushTickToStore(
           getActiveTopics(),
           tick,
@@ -340,10 +433,24 @@ export function useRegisterMcapDataStream({
     // per-topic via McapTopicCache, not at the engine stream level.
     const unsubscribe = subscribeStream(STREAM_ID);
 
-    // Proactive lookahead: fill the buffer ahead of the playhead on every
-    // RAF tick so subsequent frames are ready before the engine needs them.
+    // Proactive lookahead: fill the buffer ahead of the playhead in larger
+    // chunks instead of creating one tiny worker request per source tick.
     const unsubPlayhead = store.sub(playheadAtom, () => {
-      prefetchLookaheadFrom(store.get(playheadAtom));
+      const timeSec = store.get(playheadAtom);
+      if (timeSec < nextLookaheadRefreshTimeRef.current) return;
+      nextLookaheadRefreshTimeRef.current =
+        timeSec + PLAYBACK_POLICY.prefetchRefreshSeconds;
+      const activeTopics = getActiveTopics();
+      if (activeTopics.length === 0) return;
+      // Periodic top-up only fills missing lookahead; current-frame publication
+      // stays in prefetchLookaheadFrom for mount, seek, and subscription paths.
+      fillMissingLookaheadFrom({
+        activeTopics,
+        collectMissingTicks,
+        fetchBatch,
+        policy: PLAYBACK_POLICY,
+        timeSec,
+      });
     });
 
     return () => {
@@ -360,7 +467,6 @@ export function useRegisterMcapDataStream({
     fetchBatch,
     collectMissingTicks,
     getActiveTopics,
-    prefetchLookaheadFrom,
   ]);
 
   // Paused-seek: scrub while paused → push or fetch the seeked tick + window.
@@ -409,6 +515,45 @@ export function useRegisterMcapDataStream({
 // Module-level helpers (no React dependency)
 // ---------------------------------------------------------------------------
 
+function deriveMcapPlaybackPolicy(
+  policy: McapPlaybackPolicy,
+  tickRateHz = DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ
+): DerivedMcapPlaybackPolicy {
+  return {
+    ...policy,
+    maxPrefetchBatch: Math.ceil(tickRateHz * policy.prefetchBatchSeconds),
+    prefetchBatchesPerLookahead: Math.ceil(
+      policy.lookaheadSeconds / policy.prefetchBatchSeconds
+    ),
+    topicCacheMaxEntries: Math.ceil(
+      tickRateHz *
+        policy.lookaheadSeconds *
+        policy.topicCacheLookaheadMultiplier
+    ),
+  };
+}
+
+function fillMissingLookaheadFrom({
+  activeTopics,
+  collectMissingTicks,
+  fetchBatch,
+  policy,
+  timeSec,
+}: {
+  activeTopics: string[];
+  collectMissingTicks: (startSec: number, endSec: number) => bigint[];
+  fetchBatch: (ticks: bigint[], activeTopics: string[]) => boolean;
+  policy: DerivedMcapPlaybackPolicy;
+  timeSec: number;
+}): void {
+  const endSec = timeSec + policy.lookaheadSeconds;
+  for (let i = 0; i < policy.prefetchBatchesPerLookahead; i++) {
+    const missing = collectMissingTicks(timeSec, endSec);
+    if (missing.length === 0) return;
+    if (!fetchBatch(missing, activeTopics)) return;
+  }
+}
+
 function distributeWindowToCaches(
   window: McapSynchronizedMessageWindow,
   caches: Map<string, McapTopicCache>,
@@ -436,11 +581,12 @@ function pushTickToStore(
     const msg = cache.get(tick);
     const viz = msg?.decoded.output.visualization ?? null;
     if (viz !== null) lastFrame.set(topic, viz);
-    // Write unconditionally — including `null` — so re-subscribing to a
-    // topic that previously held data doesn't briefly show the prior
-    // session's last frame before a fresh fetch lands.
+    // Still publish `null` when the current atom holds data, but avoid
+    // waking subscribers when the selected source tick hasn't changed.
     const toWrite = lastFrame.get(topic) ?? null;
-    store.set(streamValueAtom(topic), toWrite);
+    const atom = streamValueAtom(topic);
+    if (store.get(atom) === toWrite) continue;
+    store.set(atom, toWrite);
   }
 }
 
