@@ -128,7 +128,7 @@ describe("useMcapFrameTransforms", () => {
       }),
     });
 
-    render(
+    const { rerender } = render(
       <FrameTransformsHarness
         client={client}
         label="frames"
@@ -157,6 +157,18 @@ describe("useMcapFrameTransforms", () => {
 
     await runNextTimer();
     expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(4);
+
+    rerender(
+      <FrameTransformsHarness
+        client={client}
+        label="frames"
+        source={source}
+        timeNs={200n}
+      />
+    );
+
+    await flushReactWork();
+    expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(5);
   });
 });
 

@@ -193,6 +193,9 @@ export function useMcapFrameTransforms({
           error: mcapErrorMessage(caughtError),
         }));
         if (retryCount >= DYNAMIC_TRANSFORM_WINDOW_MAX_RETRIES) {
+          inFlightRangesRef.current = inFlightRangesRef.current.filter(
+            (candidate) => candidate !== requestedRange
+          );
           return;
         }
 
