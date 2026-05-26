@@ -1,4 +1,5 @@
 import type { McapTypes } from "@mcap/core";
+import { Quaternion, Vector3 } from "three";
 import { decodeProtobufMessage } from "../decoders/foxglove/protobuf";
 import {
   asRecord,
@@ -13,8 +14,12 @@ import type { McapTimelineStrategy } from "../timeline";
 import type {
   McapFrameTransformSample,
   McapFrameTransformSet,
-  McapReadFrameTransformWindowRequest,
-} from "../types";
+} from "../frame-transform-types";
+import {
+  compareFrameTransformSamplesByTime,
+  frameTransformEdgeKey,
+} from "../frame-transforms";
+import type { McapReadFrameTransformWindowRequest } from "../types";
 
 const TF_STATIC_TOPIC = "/tf_static";
 const TF_DYNAMIC_TOPIC = "/tf";
@@ -195,20 +200,20 @@ function normalizeFrameTransformRecord({
   return {
     childFrameId,
     parentFrameId,
-    rotation: {
-      w: requiredNumber(rotation, "w"),
-      x: requiredNumber(rotation, "x"),
-      y: requiredNumber(rotation, "y"),
-      z: requiredNumber(rotation, "z"),
-    },
+    rotation: new Quaternion(
+      requiredNumber(rotation, "x"),
+      requiredNumber(rotation, "y"),
+      requiredNumber(rotation, "z"),
+      requiredNumber(rotation, "w")
+    ).normalize(),
     ...(fallbackTimeNs !== undefined
       ? { timeNs: transformTimeNs ?? fallbackTimeNs }
       : {}),
-    translation: {
-      x: requiredNumber(translation, "x"),
-      y: requiredNumber(translation, "y"),
-      z: requiredNumber(translation, "z"),
-    },
+    translation: new Vector3(
+      requiredNumber(translation, "x"),
+      requiredNumber(translation, "y"),
+      requiredNumber(translation, "z")
+    ),
   };
 }
 
@@ -247,19 +252,5 @@ function compareFrameTransformSamples(
     return edgeOrder;
   }
 
-  if (left.timeNs === right.timeNs) {
-    return 0;
-  }
-  if (left.timeNs === undefined) {
-    return -1;
-  }
-  if (right.timeNs === undefined) {
-    return 1;
-  }
-
-  return left.timeNs < right.timeNs ? -1 : 1;
-}
-
-function frameTransformEdgeKey(sample: McapFrameTransformSample) {
-  return `${sample.parentFrameId}\0${sample.childFrameId}`;
+  return compareFrameTransformSamplesByTime(left, right);
 }

@@ -1,9 +1,13 @@
 import type { Quaternion, Vector3 } from "three";
 
 /**
- * Hydrated transform sample used by the runtime resolver.
+ * Transform sample from a child frame into its parent frame.
+ *
+ * The rotation/translation use THREE math types. Note: when a set crosses a
+ * worker boundary, structured clone strips THREE prototypes — receivers must
+ * `hydrateMcapFrameTransformSet` to re-wrap before reading instance methods.
  */
-export interface McapHydratedFrameTransformSample {
+export interface McapFrameTransformSample {
   readonly childFrameId: string;
   readonly parentFrameId: string;
   readonly rotation: Quaternion;
@@ -12,10 +16,10 @@ export interface McapHydratedFrameTransformSample {
 }
 
 /**
- * Hydrated frame transform samples returned by resource clients.
+ * Frame transform samples returned by one MCAP resource read.
  */
-export interface McapHydratedFrameTransformSet {
-  readonly samples: readonly McapHydratedFrameTransformSample[];
+export interface McapFrameTransformSet {
+  readonly samples: readonly McapFrameTransformSample[];
 }
 
 /**
@@ -44,3 +48,11 @@ export type McapFrameTransformResolution = {
       readonly transform?: undefined;
     }
 );
+
+/**
+ * Inclusive dynamic timeline range already attempted by the transform hook.
+ */
+export interface McapFrameTransformTimeRange {
+  readonly endTimeNs: bigint;
+  readonly startTimeNs: bigint;
+}

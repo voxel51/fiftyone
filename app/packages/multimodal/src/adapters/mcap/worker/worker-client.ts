@@ -13,9 +13,9 @@ import {
   type McapPlaybackWorkerUnaryType,
 } from "./playback-worker-types";
 import { mcapError, mcapErrorMessage } from "../errors";
+import type { McapFrameTransformSet } from "../frame-transform-types";
 import type {
   McapDecodedMessage,
-  McapHydratedFrameTransformSet,
   McapReadDecodedMessagesRequest,
   McapReadFrameTransformBootstrapRequest,
   McapReadFrameTransformWindowRequest,
@@ -91,7 +91,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
 
   readFrameTransformBootstrap(
     request: McapReadFrameTransformBootstrapRequest
-  ): Promise<McapHydratedFrameTransformSet> {
+  ): Promise<McapFrameTransformSet> {
     return this.request("readFrameTransformBootstrap", request).then(
       hydrateMcapFrameTransformSet
     );
@@ -99,7 +99,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
 
   readFrameTransformWindow(
     request: McapReadFrameTransformWindowRequest
-  ): Promise<McapHydratedFrameTransformSet> {
+  ): Promise<McapFrameTransformSet> {
     return this.request("readFrameTransformWindow", request).then(
       hydrateMcapFrameTransformSet
     );

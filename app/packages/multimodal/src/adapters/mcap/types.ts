@@ -1,14 +1,7 @@
 import type { ByteSourceDescriptor } from "../../query/bytes";
 import type { DecodeResult } from "../../query/decode";
 import type { PlaybackSyncMode, StreamInventory } from "../../schemas/v1";
-import type { McapHydratedFrameTransformSet } from "./frame-transform-types";
-
-export type {
-  McapComposedFrameTransform,
-  McapFrameTransformResolution,
-  McapHydratedFrameTransformSample,
-  McapHydratedFrameTransformSet,
-} from "./frame-transform-types";
+import type { McapFrameTransformSet } from "./frame-transform-types";
 
 /**
  * MCAP timeline selected as the playback clock/time track.
@@ -174,43 +167,6 @@ export interface McapReadFrameTransformWindowRequest {
    * Inclusive lower timeline bound for dynamic transform messages.
    */
   readonly startTimeNs: bigint;
-}
-
-/**
- * Serializable transform vector.
- */
-export interface McapFrameTransformVector3 {
-  readonly x: number;
-  readonly y: number;
-  readonly z: number;
-}
-
-/**
- * Serializable transform quaternion.
- */
-export interface McapFrameTransformQuaternion {
-  readonly w: number;
-  readonly x: number;
-  readonly y: number;
-  readonly z: number;
-}
-
-/**
- * Serializable transform sample from a child frame into its parent frame.
- */
-export interface McapFrameTransformSample {
-  readonly childFrameId: string;
-  readonly parentFrameId: string;
-  readonly rotation: McapFrameTransformQuaternion;
-  readonly timeNs?: bigint;
-  readonly translation: McapFrameTransformVector3;
-}
-
-/**
- * Serializable frame transform samples returned by one MCAP resource read.
- */
-export interface McapFrameTransformSet {
-  readonly samples: readonly McapFrameTransformSample[];
 }
 
 /**
@@ -404,14 +360,14 @@ export interface McapResourceClient {
    */
   readFrameTransformBootstrap(
     request: McapReadFrameTransformBootstrapRequest
-  ): Promise<McapHydratedFrameTransformSet>;
+  ): Promise<McapFrameTransformSet>;
 
   /**
    * Reads dynamic frame transforms in a playback timeline window.
    */
   readFrameTransformWindow(
     request: McapReadFrameTransformWindowRequest
-  ): Promise<McapHydratedFrameTransformSet>;
+  ): Promise<McapFrameTransformSet>;
 
   /**
    * Reads one synchronized decoded message window around a playback time.

@@ -4,21 +4,14 @@ import { nonEmpty } from "./strings";
 import type {
   McapComposedFrameTransform,
   McapFrameTransformResolution,
-  McapHydratedFrameTransformSample,
-  McapHydratedFrameTransformSet,
+  McapFrameTransformSample,
+  McapFrameTransformSet,
+  McapFrameTransformTimeRange,
 } from "./frame-transform-types";
-import type { McapFrameTransformSet } from "./types";
+import { compareBigInt } from "./sync";
 
 const IDENTITY_QUATERNION = new Quaternion();
 const ZERO_VECTOR = new Vector3();
-
-/**
- * Dynamic timeline range already attempted by the transform hook.
- */
-export interface McapFrameTransformTimeRange {
-  readonly endTimeNs: bigint;
-  readonly startTimeNs: bigint;
-}
 
 /**
  * Mutable frame transform index for static and dynamic MCAP transform samples.
@@ -26,27 +19,30 @@ export interface McapFrameTransformTimeRange {
 export class McapFrameTransformStore {
   private readonly dynamicSamplesByEdge = new Map<
     string,
-    McapHydratedFrameTransformSample[]
+    McapFrameTransformSample[]
   >();
   private dynamicRanges: readonly McapFrameTransformTimeRange[] = [];
   private readonly frameIdsById = new Set<string>();
   private readonly staticSamplesByEdge = new Map<
     string,
-    McapHydratedFrameTransformSample
+    McapFrameTransformSample
   >();
 
-  addStatic(samples: readonly McapHydratedFrameTransformSample[]): void {
+  addStatic(samples: readonly McapFrameTransformSample[]): void {
     for (const sample of samples) {
       const normalized = cleanSample(sample);
       if (normalized) {
-        this.staticSamplesByEdge.set(edgeKey(normalized), normalized);
+        this.staticSamplesByEdge.set(
+          frameTransformEdgeKey(normalized),
+          normalized
+        );
         this.addFrameIds(normalized);
       }
     }
   }
 
   addDynamic(
-    samples: readonly McapHydratedFrameTransformSample[],
+    samples: readonly McapFrameTransformSample[],
     range: McapFrameTransformTimeRange
   ): void {
     const touchedEdges = new Set<string>();
@@ -57,7 +53,7 @@ export class McapFrameTransformStore {
         continue;
       }
 
-      const key = edgeKey(normalized);
+      const key = frameTransformEdgeKey(normalized);
       const edgeSamples = this.dynamicSamplesByEdge.get(key) ?? [];
       edgeSamples.push(normalized);
       this.dynamicSamplesByEdge.set(key, edgeSamples);
@@ -66,7 +62,9 @@ export class McapFrameTransformStore {
     }
 
     for (const key of touchedEdges) {
-      this.dynamicSamplesByEdge.get(key)?.sort(compareSamplesByTime);
+      this.dynamicSamplesByEdge
+        .get(key)
+        ?.sort(compareFrameTransformSamplesByTime);
     }
 
     this.dynamicRanges = sortAndMergeTimeRanges([...this.dynamicRanges, range]);
@@ -167,7 +165,7 @@ export class McapFrameTransformStore {
   }
 
   private effectiveSamplesForTime(timeNs: bigint | undefined) {
-    const samples = new Map<string, McapHydratedFrameTransformSample>(
+    const samples = new Map<string, McapFrameTransformSample>(
       this.staticSamplesByEdge
     );
 
@@ -185,18 +183,20 @@ export class McapFrameTransformStore {
     return [...samples.values()];
   }
 
-  private addFrameIds(sample: McapHydratedFrameTransformSample): void {
+  private addFrameIds(sample: McapFrameTransformSample): void {
     this.frameIdsById.add(sample.parentFrameId);
     this.frameIdsById.add(sample.childFrameId);
   }
 }
 
 /**
- * Hydrates serializable frame transform samples for resolver use.
+ * Re-wraps a frame transform set in fresh THREE instances. Required after a
+ * postMessage hop because structured clone strips THREE prototypes; safe to
+ * call on already-hydrated input since it reads structurally.
  */
 export function hydrateMcapFrameTransformSet(
   set: McapFrameTransformSet
-): McapHydratedFrameTransformSet {
+): McapFrameTransformSet {
   return {
     samples: set.samples.map((sample) => ({
       ...sample,
@@ -267,12 +267,12 @@ function resolveComposedTransform({
 }
 
 function latestSampleAtOrBefore(
-  samples: readonly McapHydratedFrameTransformSample[],
+  samples: readonly McapFrameTransformSample[],
   timeNs: bigint
 ) {
   let low = 0;
   let high = samples.length - 1;
-  let match: McapHydratedFrameTransformSample | undefined;
+  let match: McapFrameTransformSample | undefined;
 
   while (low <= high) {
     const middle = Math.floor((low + high) / 2);
@@ -294,7 +294,7 @@ function latestSampleAtOrBefore(
   return match;
 }
 
-function cleanSample(sample: McapHydratedFrameTransformSample) {
+function cleanSample(sample: McapFrameTransformSample) {
   const parentFrameId = nonEmpty(sample.parentFrameId);
   const childFrameId = nonEmpty(sample.childFrameId);
   if (!parentFrameId || !childFrameId) {
@@ -310,9 +310,24 @@ function cleanSample(sample: McapHydratedFrameTransformSample) {
   };
 }
 
-function compareSamplesByTime(
-  left: McapHydratedFrameTransformSample,
-  right: McapHydratedFrameTransformSample
+/**
+ * Stable edge key for a frame-transform sample. Accepts wire and hydrated
+ * shapes so reader and store can share one definition.
+ */
+export function frameTransformEdgeKey(sample: {
+  readonly childFrameId: string;
+  readonly parentFrameId: string;
+}) {
+  return `${sample.parentFrameId}\0${sample.childFrameId}`;
+}
+
+/**
+ * Stable order for frame-transform samples by time, treating undefined as
+ * before any concrete timestamp.
+ */
+export function compareFrameTransformSamplesByTime(
+  left: { readonly timeNs?: bigint },
+  right: { readonly timeNs?: bigint }
 ) {
   if (left.timeNs === right.timeNs) {
     return 0;
@@ -398,18 +413,6 @@ function invertFrameTransform(
       .negate()
       .applyQuaternion(inverseRotation),
   };
-}
-
-function edgeKey(sample: McapHydratedFrameTransformSample) {
-  return `${sample.parentFrameId}\0${sample.childFrameId}`;
-}
-
-function compareBigInt(left: bigint, right: bigint) {
-  if (left === right) {
-    return 0;
-  }
-
-  return left < right ? -1 : 1;
 }
 
 function maxBigInt(left: bigint, right: bigint) {

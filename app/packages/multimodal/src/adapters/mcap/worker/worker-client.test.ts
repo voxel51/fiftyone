@@ -7,7 +7,7 @@ import {
   type McapPlaybackWorkerResponse,
 } from "./playback-worker-types";
 import { createWorkerMcapResourceClient } from "./worker-client";
-import type { McapFrameTransformSet } from "../types";
+import type { McapFrameTransformSet } from "../frame-transform-types";
 
 vi.mock("@fiftyone/utilities", () => ({
   getFetchParameters: () => ({

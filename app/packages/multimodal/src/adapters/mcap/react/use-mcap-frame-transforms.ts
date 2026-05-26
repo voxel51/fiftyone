@@ -1,15 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
-import {
-  McapFrameTransformStore,
-  type McapFrameTransformTimeRange,
-} from "../frame-transforms";
-import { mcapErrorMessage } from "../errors";
 import type {
-  McapActiveTimeline,
   McapFrameTransformResolution,
-  McapResourceClient,
-} from "../types";
+  McapFrameTransformTimeRange,
+} from "../frame-transform-types";
+import { McapFrameTransformStore } from "../frame-transforms";
+import { mcapErrorMessage } from "../errors";
+import type { McapActiveTimeline, McapResourceClient } from "../types";
 
 // Keep demand-driven `/tf` reads small and idle-priority; this gives the
 // resolver a little temporal slack without letting dense transform channels
@@ -183,30 +180,27 @@ export function useMcapFrameTransforms({
     return undefined;
   }, [activeTimeline, client, source, state.status, state.version, timeNs]);
 
-  const frameTransformVersion = state.version;
-  const frameIds = useMemo(() => {
-    void frameTransformVersion;
-
-    return storeRef.current?.frameIds() ?? [];
-  }, [frameTransformVersion]);
+  // The store is mutated in place; `state.version` is the cache-busting signal
+  // that tells memoized consumers (frameIds, resolve, downstream renderers) to
+  // recompute. eslint can't see the version inside `storeRef.current`.
+  const frameIds = useMemo(
+    () => storeRef.current?.frameIds() ?? [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [state.version]
+  );
   const resolve = useCallback<McapFrameTransformResolver>(
-    (sourceFrameId, targetFrameId, requestTimeNs) => {
-      // Capture the store version so memoized consumers recompute after loads.
-      void frameTransformVersion;
-
-      return (
-        storeRef.current?.resolve({
-          sourceFrameId,
-          targetFrameId,
-          timeNs: requestTimeNs,
-        }) ?? {
-          sourceFrameId,
-          status: "missing",
-          targetFrameId,
-        }
-      );
-    },
-    [frameTransformVersion]
+    (sourceFrameId, targetFrameId, requestTimeNs) =>
+      storeRef.current?.resolve({
+        sourceFrameId,
+        targetFrameId,
+        timeNs: requestTimeNs,
+      }) ?? {
+        sourceFrameId,
+        status: "missing",
+        targetFrameId,
+      },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [state.version]
   );
 
   return useMemo(

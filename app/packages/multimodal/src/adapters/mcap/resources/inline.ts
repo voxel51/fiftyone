@@ -11,15 +11,14 @@ import {
 import { mcapTimelineRangeFromReader } from "./read-timeline-range";
 import { readMcapSynchronizedMessageBatch } from "./read-synchronized-message-batch";
 import { resolveMcapTimelineStrategy } from "../timeline";
-import { hydrateMcapFrameTransformSet } from "../frame-transforms";
 import {
   readMcapFrameTransformBootstrap,
   readMcapFrameTransformWindow,
 } from "./read-frame-transforms";
 import { readMcapTopics } from "./read-topics";
+import type { McapFrameTransformSet } from "../frame-transform-types";
 import {
   type McapDecodedMessage,
-  type McapHydratedFrameTransformSet,
   type McapReadDecodedMessagesRequest,
   type McapReadFrameTransformBootstrapRequest,
   type McapReadFrameTransformWindowRequest,
@@ -61,11 +60,11 @@ export function createInlineMcapResourceClient(
   const topicReads = new Map<string, Promise<readonly StreamInventory[]>>();
   const frameTransformBootstrapReads = new Map<
     string,
-    Promise<McapHydratedFrameTransformSet>
+    Promise<McapFrameTransformSet>
   >();
   const frameTransformWindowReads = new Map<
     string,
-    Promise<McapHydratedFrameTransformSet>
+    Promise<McapFrameTransformSet>
   >();
 
   const client: McapResourceClient = {
@@ -118,7 +117,7 @@ export function createInlineMcapResourceClient(
 
     async readFrameTransformBootstrap(
       request: McapReadFrameTransformBootstrapRequest
-    ): Promise<McapHydratedFrameTransformSet> {
+    ): Promise<McapFrameTransformSet> {
       const sourceKey = byteSourceAccessKey(request.source);
       const cached = frameTransformBootstrapReads.get(sourceKey);
       if (cached) {
@@ -128,7 +127,6 @@ export function createInlineMcapResourceClient(
       const read = readerStore
         .get(request.source)
         .then((reader) => readMcapFrameTransformBootstrap(reader))
-        .then(hydrateMcapFrameTransformSet)
         .catch((error) => {
           frameTransformBootstrapReads.delete(sourceKey);
           throw error;
@@ -140,7 +138,7 @@ export function createInlineMcapResourceClient(
 
     async readFrameTransformWindow(
       request: McapReadFrameTransformWindowRequest
-    ): Promise<McapHydratedFrameTransformSet> {
+    ): Promise<McapFrameTransformSet> {
       const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
       const sourceKey = byteSourceAccessKey(request.source);
       const windowKey = `${sourceKey}\0${timeline.id}\0${request.startTimeNs}\0${request.endTimeNs}`;
@@ -154,7 +152,6 @@ export function createInlineMcapResourceClient(
         .then((reader) =>
           readMcapFrameTransformWindow({ reader, request, timeline })
         )
-        .then(hydrateMcapFrameTransformSet)
         .catch((error) => {
           frameTransformWindowReads.delete(windowKey);
           throw error;

@@ -1,7 +1,7 @@
 import { Quaternion, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 import { McapFrameTransformStore } from "./frame-transforms";
-import type { McapHydratedFrameTransformSample } from "./types";
+import type { McapFrameTransformSample } from "./frame-transform-types";
 
 describe("MCAP frame transform store", () => {
   it("resolves static-only frame paths", () => {
@@ -168,8 +168,8 @@ function createStore({
     readonly endTimeNs: bigint;
     readonly startTimeNs: bigint;
   };
-  readonly dynamicSamples?: readonly McapHydratedFrameTransformSample[];
-  readonly staticSamples?: readonly McapHydratedFrameTransformSample[];
+  readonly dynamicSamples?: readonly McapFrameTransformSample[];
+  readonly staticSamples?: readonly McapFrameTransformSample[];
 }) {
   const store = new McapFrameTransformStore();
   store.addStatic(staticSamples);
@@ -191,7 +191,7 @@ function sample(
         readonly z: number;
       } = new Vector3(),
   timeNs?: bigint
-): McapHydratedFrameTransformSample {
+): McapFrameTransformSample {
   return {
     childFrameId,
     parentFrameId,

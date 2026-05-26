@@ -1,6 +1,6 @@
+import type { McapFrameTransformSet } from "../frame-transform-types";
 import type {
   McapDecodedMessage,
-  McapFrameTransformSet,
   McapReadDecodedMessagesRequest,
   McapReadFrameTransformBootstrapRequest,
   McapReadFrameTransformWindowRequest,

@@ -4,10 +4,10 @@ import { Quaternion, Vector3 } from "three";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
 import type {
-  McapHydratedFrameTransformSample,
-  McapHydratedFrameTransformSet,
-  McapResourceClient,
-} from "../types";
+  McapFrameTransformSample,
+  McapFrameTransformSet,
+} from "../frame-transform-types";
+import type { McapResourceClient } from "../types";
 import {
   useMcapFrameTransforms,
   type McapFrameTransformsState,
@@ -81,7 +81,7 @@ describe("useMcapFrameTransforms", () => {
 
   it("keeps one in-flight dynamic window when playback advances inside it", async () => {
     const source = createSource("moving-time");
-    const windowRead = deferred<McapHydratedFrameTransformSet>();
+    const windowRead = deferred<McapFrameTransformSet>();
     const client = createFrameTransformClient({
       readFrameTransformWindow: vi.fn(() => windowRead.promise),
     });
@@ -151,9 +151,9 @@ function createFrameTransformClient({
   readFrameTransformWindow,
   windowSamples = [],
 }: {
-  readonly bootstrapSamples?: readonly McapHydratedFrameTransformSample[];
+  readonly bootstrapSamples?: readonly McapFrameTransformSample[];
   readonly readFrameTransformWindow?: McapResourceClient["readFrameTransformWindow"];
-  readonly windowSamples?: readonly McapHydratedFrameTransformSample[];
+  readonly windowSamples?: readonly McapFrameTransformSample[];
 } = {}): McapResourceClient {
   return {
     dispose: vi.fn(),
@@ -206,14 +206,14 @@ function sample(
   parentFrameId: string,
   childFrameId: string,
   translation:
-    | McapHydratedFrameTransformSample["translation"]
+    | McapFrameTransformSample["translation"]
     | {
         readonly x: number;
         readonly y: number;
         readonly z: number;
       } = new Vector3(),
   timeNs?: bigint
-): McapHydratedFrameTransformSample {
+): McapFrameTransformSample {
   return {
     childFrameId,
     parentFrameId,
