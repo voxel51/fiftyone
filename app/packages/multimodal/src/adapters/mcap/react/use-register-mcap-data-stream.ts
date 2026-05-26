@@ -68,6 +68,7 @@ export function useRegisterMcapDataStream({
   const pendingTicksRef = useRef<Map<string, Set<string>>>(new Map());
   const lastFrameRef = useRef<Map<string, unknown>>(new Map());
   const indexRef = useRef<McapTimelineIndex | null>(null);
+  const sourceEpochRef = useRef(0);
   indexRef.current = index;
   // Hold the most recent `allTopics` / `streamPolicies` in refs so the
   // stable callbacks below read fresh values without listing them as
@@ -126,18 +127,25 @@ export function useRegisterMcapDataStream({
   // don't run fetches/lookups against the new source with old ticks
   // or stale frames while the async range load is in flight.
   useEffect(() => {
+    sourceEpochRef.current += 1;
+    const sourceEpoch = sourceEpochRef.current;
     setIndex(null);
     pendingTicksRef.current.clear();
     lastFrameRef.current.clear();
     for (const cache of topicCachesRef.current.values()) {
       cache.clear();
     }
+    for (const topic of topicCachesRef.current.keys()) {
+      store.set(streamValueAtom(topic), null);
+    }
     if (!source) return;
     let cancelled = false;
     client
       .readTimelineRange({ source, activeTimeline: MCAP_ACTIVE_TIMELINE.LOG })
       .then((range) => {
-        if (!cancelled) setIndex(createMcapTimelineIndex(range));
+        if (!cancelled && sourceEpochRef.current === sourceEpoch) {
+          setIndex(createMcapTimelineIndex(range));
+        }
       })
       .catch(noop);
     return () => {
@@ -146,7 +154,7 @@ export function useRegisterMcapDataStream({
     // client is a stable singleton — re-running on its identity would
     // discard the loaded timeline range for no benefit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [source]);
+  }, [source, store]);
 
   const getActiveTopics = useCallback(
     (): string[] =>
@@ -163,6 +171,7 @@ export function useRegisterMcapDataStream({
   const fetchBatch = useCallback(
     (ticks: bigint[], activeTopics: string[]) => {
       if (ticks.length === 0 || activeTopics.length === 0 || !source) return;
+      const sourceEpoch = sourceEpochRef.current;
       const caches = topicCachesRef.current;
 
       // Only include a tick if at least one active topic needs it (not
@@ -186,6 +195,8 @@ export function useRegisterMcapDataStream({
           topics: activeTopics,
         })
         .then((windows) => {
+          if (sourceEpochRef.current !== sourceEpoch) return;
+
           for (const window of windows) {
             distributeWindowToCaches(window, caches, activeTopics);
           }
@@ -204,6 +215,8 @@ export function useRegisterMcapDataStream({
         })
         .catch(noop)
         .finally(() => {
+          if (sourceEpochRef.current !== sourceEpoch) return;
+
           clearTopicsPending(keys, activeTopics);
         });
     },
@@ -312,7 +325,13 @@ export function useRegisterMcapDataStream({
       onCommit: (timeSec, commitStore) => {
         const tick = index.nearestTick(timeSec);
         if (!tick) return;
-        pushTickToStore(getActiveTopics(), tick, caches, lastFrame, commitStore);
+        pushTickToStore(
+          getActiveTopics(),
+          tick,
+          caches,
+          lastFrame,
+          commitStore
+        );
       },
     };
 

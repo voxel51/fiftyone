@@ -135,7 +135,7 @@ export function useMcapFrameTransforms({
       active = false;
       clearRetryTimeouts(retryTimeouts);
     };
-  }, [client, source]);
+  }, [activeTimeline, client, source]);
 
   /**
    * Requests the dynamic transform window around the active playback time when
@@ -193,6 +193,7 @@ export function useMcapFrameTransforms({
           error: mcapErrorMessage(caughtError),
         }));
         if (retryCount >= DYNAMIC_TRANSFORM_WINDOW_MAX_RETRIES) {
+          retryCountRef.current.delete(requestedRangeKey);
           inFlightRangesRef.current = inFlightRangesRef.current.filter(
             (candidate) => candidate !== requestedRange
           );

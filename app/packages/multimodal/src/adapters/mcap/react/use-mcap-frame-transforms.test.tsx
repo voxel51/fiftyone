@@ -7,7 +7,11 @@ import type {
   McapFrameTransformSample,
   McapFrameTransformSet,
 } from "../frame-transform-types";
-import type { McapResourceClient } from "../types";
+import {
+  MCAP_ACTIVE_TIMELINE,
+  type McapActiveTimeline,
+  type McapResourceClient,
+} from "../types";
 import {
   useMcapFrameTransforms,
   type McapFrameTransformsState,
@@ -77,6 +81,53 @@ describe("useMcapFrameTransforms", () => {
     });
     await waitFor(() => {
       expect(screen.getByTestId("frames").textContent).toBe("ready:resolved:");
+    });
+  });
+
+  it("rebuilds transform cache when the active timeline changes", async () => {
+    const source = createSource("timeline-switch");
+    const client = createFrameTransformClient({
+      bootstrapSamples: [sample("base_link", "lidar")],
+      windowSamples: [sample("map", "base_link", { x: 1, y: 0, z: 0 }, 100n)],
+    });
+
+    const { rerender } = render(
+      <FrameTransformsHarness
+        client={client}
+        label="frames"
+        source={source}
+        timeNs={100n}
+      />
+    );
+
+    await waitFor(() => {
+      expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(1);
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("frames").textContent).toBe("ready:resolved:");
+    });
+
+    rerender(
+      <FrameTransformsHarness
+        activeTimeline={MCAP_ACTIVE_TIMELINE.LOG}
+        client={client}
+        label="frames"
+        source={source}
+        timeNs={100n}
+      />
+    );
+
+    await waitFor(() => {
+      expect(client.readFrameTransformBootstrap).toHaveBeenCalledTimes(2);
+    });
+    await waitFor(() => {
+      expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(2);
+    });
+    expect(client.readFrameTransformWindow).toHaveBeenLastCalledWith({
+      activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+      endTimeNs: 500_000_100n,
+      source,
+      startTimeNs: 0n,
     });
   });
 
@@ -173,19 +224,26 @@ describe("useMcapFrameTransforms", () => {
 });
 
 function FrameTransformsHarness({
+  activeTimeline,
   client,
   label,
   onState,
   source,
   timeNs,
 }: {
+  readonly activeTimeline?: McapActiveTimeline;
   readonly client: McapResourceClient;
   readonly label: string;
   readonly onState?: (state: McapFrameTransformsState) => void;
   readonly source: ByteSourceDescriptor | null;
   readonly timeNs?: bigint;
 }) {
-  const state = useMcapFrameTransforms({ client, source, timeNs });
+  const state = useMcapFrameTransforms({
+    activeTimeline,
+    client,
+    source,
+    timeNs,
+  });
   const resolution = state.resolve("lidar", "base_link", timeNs ?? 0n);
 
   useEffect(() => {
