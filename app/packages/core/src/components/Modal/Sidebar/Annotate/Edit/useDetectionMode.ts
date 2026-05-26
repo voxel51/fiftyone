@@ -8,12 +8,11 @@ import { DETECTION } from "@fiftyone/utilities";
 import useExit from "./useExit";
 
 import { isPatchesView } from "@fiftyone/state";
+import { current } from "./useAnnotationContext/selectors";
 import {
-  current,
-  currentType,
-  fieldsOfType,
-} from "./useAnnotationContext/selectors";
-import { useAnnotationContext } from "./useAnnotationContext";
+  useAnnotationContext,
+  useAnnotationFields,
+} from "./useAnnotationContext";
 
 /**
  * Flag to track if detection mode is active.
@@ -45,13 +44,13 @@ export const useDetectionMode = () => {
   const [detectionModeActive, setDetectionModeActive] = useAtom(
     detectionModeActiveAtom
   );
-  const editingLabelType = useAtomValue(currentType);
   const isPatchView = useRecoilValue(isPatchesView);
   const { scene } = useLighter();
   const annotationContext = useAnnotationContext();
   const { selected } = annotationContext;
+  const editingLabelType = selected.type;
   const onExit = useExit();
-  const fields = useAtomValue(fieldsOfType(DETECTION));
+  const { fields } = useAnnotationFields(DETECTION);
 
   // Using refs to prevent shared closure contexts from retaining old Scene2D instances.
   const sceneRef = useRef(scene);

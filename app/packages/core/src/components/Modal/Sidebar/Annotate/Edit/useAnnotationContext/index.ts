@@ -4,3 +4,7 @@ export {
   type AnnotationContextSelected,
   useAnnotationContext,
 } from "./useAnnotationContext";
+export {
+  type AnnotationFields,
+  useAnnotationFields,
+} from "./useAnnotationFields";

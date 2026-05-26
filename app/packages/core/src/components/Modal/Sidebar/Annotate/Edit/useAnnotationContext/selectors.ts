@@ -68,8 +68,6 @@ export const currentData = atom(
   }
 );
 
-export const currentFields = atom((get) => get(fieldsOfType(get(currentType))));
-
 export const currentField = atom(
   (get) => get(current)?.path,
   (get, set, path: string) => {
@@ -126,13 +124,10 @@ export const currentSchema = atom((get) => {
   return get(labelSchemaData(field))?.label_schema ?? null;
 });
 
-export const currentDisabledFields = atom((get) =>
-  get(disabledFields(get(currentType)))
-);
-
-export const disabledFields = atomFamily((type: LabelType) =>
+export const disabledFields = atomFamily((type: LabelType | null) =>
   atom((get) => {
     const disabled = new Set<string>();
+    if (!type) return disabled;
     const map = get(labelsByPath);
 
     for (const path of get(fieldsOfType(type))) {
@@ -191,8 +186,9 @@ export const fieldsOfType = atomFamily((type: LabelType | null) =>
   })
 );
 
-export const defaultField = atomFamily((type: LabelType) =>
+export const defaultField = atomFamily((type: LabelType | null) =>
   atom((get) => {
+    if (!type) return null;
     const disabled = get(disabledFields(type));
     for (const path of get(fieldsOfType(type))) {
       if (!disabled.has(path)) {

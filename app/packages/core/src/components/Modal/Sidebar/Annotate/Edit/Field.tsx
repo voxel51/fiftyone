@@ -16,12 +16,13 @@ import { useCallback, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import AddSchema from "./AddSchema";
-import { useAnnotationContext } from "./useAnnotationContext";
+import {
+  useAnnotationContext,
+  useAnnotationFields,
+} from "./useAnnotationContext";
 import {
   current,
-  currentDisabledFields,
   currentField,
-  currentFields,
 } from "./useAnnotationContext/selectors";
 
 const createSchema = (
@@ -54,8 +55,7 @@ const createSchema = (
 });
 
 const Field = () => {
-  const fields = useAtomValue(currentFields);
-  const disabled = useAtomValue(currentDisabledFields);
+  const { fields, disabledFields: disabled } = useAnnotationFields();
   const [currentFieldValue, setCurrentField] = useAtom(currentField);
   const isPatches = useRecoilValue(isPatchesView);
   const currentLabel = useAtomValue(current);

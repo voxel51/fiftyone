@@ -16,12 +16,11 @@ import {
 import { isPatchesView } from "@fiftyone/state";
 import { DETECTION } from "@fiftyone/utilities";
 
+import { current } from "./useAnnotationContext/selectors";
 import {
-  current,
-  currentType,
-  fieldsOfType,
-} from "./useAnnotationContext/selectors";
-import { useAnnotationContext } from "./useAnnotationContext";
+  useAnnotationContext,
+  useAnnotationFields,
+} from "./useAnnotationContext";
 import { useAIAnnotationMode } from "./useAIAnnotationMode";
 import useExit from "./useExit";
 import {
@@ -84,7 +83,7 @@ export const useSegmentationMode = () => {
   const { selected, createNew } = useAnnotationContext();
   const onExit = useExit();
   const isPatchView = useRecoilValue(isPatchesView);
-  const fields = useAtomValue(fieldsOfType(DETECTION));
+  const { fields } = useAnnotationFields(DETECTION);
   const isEditingMask = useAtomValue(isEditingMaskAtom);
   const setEditingMaskIds = useSetAtom(editingMaskLabelIdsAtom);
   const [segmentationModeActive, setSegmentationModeActive] = useAtom(
@@ -113,7 +112,7 @@ export const useSegmentationMode = () => {
   const aiMode = useAIAnnotationMode();
   const mergeTool = useMergeTool();
 
-  const editingLabelType = useAtomValue(currentType);
+  const editingLabelType = selected.type;
 
   const sceneRef = useRef(scene);
   sceneRef.current = scene;

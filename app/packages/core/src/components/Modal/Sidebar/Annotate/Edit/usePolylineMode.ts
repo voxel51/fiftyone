@@ -14,13 +14,13 @@ import {
   PolylineAnnotationLabel,
 } from "@fiftyone/state";
 import { POLYLINE } from "@fiftyone/utilities";
-import { atom, useAtom, useAtomValue } from "jotai";
+import { atom, useAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
-import { fieldsOfType } from "./useAnnotationContext/selectors";
 import {
   type CreateOptions,
   useAnnotationContext,
+  useAnnotationFields,
 } from "./useAnnotationContext";
 
 /**
@@ -82,7 +82,7 @@ export const usePolylineMode = () => {
   const { scene } = useLighter();
   const { selected, createNew } = useAnnotationContext();
   const isPatchView = useRecoilValue(isPatchesView);
-  const fields = useAtomValue(fieldsOfType(POLYLINE));
+  const { fields } = useAnnotationFields(POLYLINE);
 
   // The handler currently installed via scene.enterInteractiveMode, or null
   // when the mode is off. Holds either an `InteractivePolylineHandler` (when

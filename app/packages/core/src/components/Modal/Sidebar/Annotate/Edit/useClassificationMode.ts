@@ -1,11 +1,12 @@
 import { useReset3dAnnotationMode } from "@fiftyone/looker-3d/src/state/accessors";
 import { isPatchesView } from "@fiftyone/state";
 import { CLASSIFICATION } from "@fiftyone/utilities";
-import { useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
-import { currentType, fieldsOfType } from "./useAnnotationContext/selectors";
-import { useAnnotationContext } from "./useAnnotationContext";
+import {
+  useAnnotationContext,
+  useAnnotationFields,
+} from "./useAnnotationContext";
 import useExit from "./useExit";
 
 /**
@@ -19,8 +20,9 @@ export const useClassificationMode = () => {
   const onExit = useExit();
   const isPatchView = useRecoilValue(isPatchesView);
   const reset3dAnnotationMode = useReset3dAnnotationMode();
-  const fields = useAtomValue(fieldsOfType(CLASSIFICATION));
-  const classificationModeActive = useAtomValue(currentType) === CLASSIFICATION;
+  const { fields } = useAnnotationFields(CLASSIFICATION);
+  const classificationModeActive =
+    annotationContext.selected.type === CLASSIFICATION;
 
   const noActiveFields = fields.length === 0;
   const disabled = isPatchView || noActiveFields;
