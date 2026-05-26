@@ -15,8 +15,10 @@ const mockState = vi.hoisted(() => ({
     gridPage: 0,
     config: { gridPagination: true, gridPageSize: 20 },
     datasetSampleCount: 45,
+    gridPaginationOption: true,
   },
   setCurrentPage: vi.fn(),
+  setGridPagination: vi.fn(),
 }));
 
 const pageMock = vi.fn(() =>
@@ -48,6 +50,9 @@ vi.mock("@fiftyone/spotlight", () => ({
 vi.mock("@fiftyone/state", () => ({
   config: { key: "config" },
   datasetSampleCount: { key: "datasetSampleCount" },
+  appConfigOption: ({ modal, key }: { modal: boolean; key: string }) => ({
+    key: `appConfigOptions-${modal}-${key}`,
+  }),
   useExpandSample: () => vi.fn(),
 }));
 
@@ -55,6 +60,13 @@ vi.mock("recoil", () => ({
   useRecoilState: (node: { key: string }) => {
     if (node.key === "gridPage") {
       return [mockState.values.gridPage, mockState.setCurrentPage];
+    }
+
+    if (node.key.startsWith("appConfigOptions")) {
+      return [
+        mockState.values.gridPaginationOption,
+        mockState.setGridPagination,
+      ];
     }
 
     throw new Error(`Unexpected recoil state: ${node.key}`);
@@ -146,8 +158,10 @@ describe("Grid pagination", () => {
       gridPage: 0,
       config: { gridPagination: true, gridPageSize: 20 },
       datasetSampleCount: 45,
+      gridPaginationOption: true,
     };
     mockState.setCurrentPage.mockReset();
+    mockState.setGridPagination.mockReset();
     pageMock.mockClear();
     useSpotlightPagerMock.mockClear();
     window.history.pushState({}, "", "/");
@@ -160,6 +174,7 @@ describe("Grid pagination", () => {
   it("renders the pagination bar when enabled", () => {
     render(<Grid />);
 
+    expect(screen.getByText("Disable pagination")).toBeTruthy();
     expect(screen.getByText("Prev")).toBeTruthy();
     expect(screen.getByText("Next")).toBeTruthy();
     expect(screen.getByText(/Showing 1.*20 of 45/)).toBeTruthy();
@@ -272,6 +287,7 @@ describe("Grid pagination", () => {
   });
 
   it("ignores URL sync when pagination is disabled", () => {
+    mockState.values.gridPaginationOption = false;
     mockState.values.config = { gridPagination: false, gridPageSize: 20 };
     window.history.pushState({}, "", "/?page=3");
     const pushStateSpy = vi.spyOn(window.history, "pushState");
@@ -290,14 +306,26 @@ describe("Grid pagination", () => {
   });
 
   it("hides the pagination bar when disabled", () => {
+    mockState.values.gridPaginationOption = false;
     mockState.values.config = { gridPagination: false, gridPageSize: 30 };
 
     render(<Grid />);
 
+    expect(screen.getByText("Enable pagination")).toBeTruthy();
     expect(screen.queryByText("Prev")).toBeNull();
     expect(useSpotlightPagerMock.mock.calls[0][0]).toMatchObject({
       pagination: false,
       pageSize: 30,
     });
+  });
+
+  it("toggles pagination from the grid", () => {
+    render(<Grid />);
+
+    fireEvent.click(screen.getByText("Disable pagination"));
+
+    expect(mockState.setGridPagination).toHaveBeenCalledWith(false);
+    expect(mockState.setCurrentPage).toHaveBeenCalledWith(0);
+    expect(window.location.search).toBe("");
   });
 });

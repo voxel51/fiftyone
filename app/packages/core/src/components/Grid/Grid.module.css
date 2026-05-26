@@ -113,3 +113,10 @@
   color: var(--fo-palette-text-primary);
   font-size: 13px;
 }
+
+.paginationToggle {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  z-index: 10;
+}

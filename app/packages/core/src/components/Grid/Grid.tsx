@@ -65,6 +65,9 @@ function Grid() {
   const pixels = useMemoOne(() => uuid(), []);
   const spacing = useRecoilValue(gridSpacing);
   const config = useRecoilValue(fos.config);
+  const [paginationEnabled, setPaginationEnabled] = useRecoilState(
+    fos.appConfigOption({ modal: false, key: "gridPagination" })
+  );
   const total = useRecoilValue(fos.datasetSampleCount);
   const [currentPage, setCurrentPage] = useRecoilState(gridPage);
   const { pageReset, reset } = useRefreshers();
@@ -85,8 +88,19 @@ function Grid() {
 
   const pageSizeFromConfig = config?.gridPageSize ?? 20;
 
+  const handlePaginationToggle = () => {
+    const nextEnabled = !paginationEnabled;
+
+    setPaginationEnabled(nextEnabled);
+    setCurrentPage(0);
+
+    if (typeof window !== "undefined") {
+      setPageInLocation(0);
+    }
+  };
+
   useEffect(() => {
-    if (!config?.gridPagination || typeof window === "undefined") {
+    if (!paginationEnabled || typeof window === "undefined") {
       return undefined;
     }
 
@@ -100,20 +114,20 @@ function Grid() {
     return () => {
       window.removeEventListener("popstate", syncPageFromUrl);
     };
-  }, [config?.gridPagination, setCurrentPage]);
+  }, [paginationEnabled, setCurrentPage]);
 
   useEffect(() => {
-    if (!config?.gridPagination || typeof window === "undefined") {
+    if (!paginationEnabled || typeof window === "undefined") {
       return undefined;
     }
 
     setPageInLocation(currentPage);
-  }, [config?.gridPagination, currentPage]);
+  }, [paginationEnabled, currentPage]);
 
   const { page, store } = useSpotlightPager({
     clearRecords: reset,
     pageSelector: pageParameters,
-    pagination: config?.gridPagination,
+    pagination: paginationEnabled,
     pageSize: pageSizeFromConfig,
     records,
     zoomSelector: gridCrop,
@@ -141,8 +155,6 @@ function Grid() {
 
     cache.freeze();
 
-    const paginationEnabled = config?.gridPagination;
-
     return new Spotlight<number, fos.Sample>({
       ...get(),
       ...renderer,
@@ -157,7 +169,6 @@ function Grid() {
   }, [
     autosizing,
     cache,
-    config?.gridPagination,
     currentPage,
     get,
     maxBytes,
@@ -181,9 +192,14 @@ function Grid() {
 
   return (
     <div className={styles.gridContainer}>
+      <div className={styles.paginationToggle}>
+        <Button color="secondary" onClick={handlePaginationToggle}>
+          {paginationEnabled ? "Disable pagination" : "Enable pagination"}
+        </Button>
+      </div>
       <div id={id} className={styles.spotlightGrid} data-cy="fo-grid" />
       <div id={pixels} className={styles.fallingPixels} />
-      {config?.gridPagination ? (
+      {paginationEnabled ? (
         <div className={styles.paginationBar}>
           <Button
             color="secondary"
