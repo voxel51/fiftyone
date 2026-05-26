@@ -33,11 +33,12 @@ reviews:
   auto_review:
     enabled: true
     ignore_title_keywords:
-      - "WIP"
+      - "AUTOMATED MERGE"
       - "DO NOT MERGE"
       - "DRAFT"
       - "MERGE OSS"
       - "OSS MERGE"
+      - "WIP"
     drafts: false
     base_branches:
       - "develop"
