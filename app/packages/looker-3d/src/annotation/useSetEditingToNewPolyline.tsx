@@ -1,11 +1,7 @@
-import {
-  editingLabelAtom,
-  pendingNewTypeAtom,
-  savedLabel,
-} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext/atoms";
+import { annotationContextBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import { current } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext/selectors";
 import * as fos from "@fiftyone/state";
-import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { atomWithReset, useResetAtom } from "jotai/utils";
 import { useCallback, useEffect } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -23,8 +19,6 @@ export const currentEditingPolylineAtom =
  * Hook to set editing atom for new polylines
  */
 export const useSetEditingToNewPolyline = () => {
-  const setEditingLabel = useSetAtom(editingLabelAtom);
-  const setPendingNewType = useSetAtom(pendingNewTypeAtom);
   const resetCurrentEditing = useResetAtom(currentEditingPolylineAtom);
   const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
   const currentSampleId = useRecoilValue(fos.currentSampleId);
@@ -38,12 +32,9 @@ export const useSetEditingToNewPolyline = () => {
   useEffect(() => {
     return () => {
       resetCurrentEditing();
-      setEditingLabel(null);
-      setPendingNewType(null);
+      annotationContextBridge.clear();
     };
   }, [resetCurrentEditing]);
-
-  const jotaiStore = getDefaultStore();
 
   return useCallback(
     (labelId: string, transformData: PolylinePointTransformData) => {
@@ -57,8 +48,7 @@ export const useSetEditingToNewPolyline = () => {
       }
 
       // Needs a reset...otherwise sometimes gets contaminated by the previous label
-      setEditingLabel(null);
-      setPendingNewType(null);
+      annotationContextBridge.clear();
 
       // Only process transforms for the current sample
       if (transformData.sampleId !== currentSampleId) return;
@@ -105,10 +95,13 @@ export const useSetEditingToNewPolyline = () => {
         },
       });
 
-      setEditingLabel(currentEditingPolylineAtom);
-      setPendingNewType(null);
-
-      jotaiStore.set(savedLabel, defaultPolylineLabelData);
+      annotationContextBridge.select(currentEditingPolylineAtom);
+      // The staged data includes the in-progress points3d; the "clean" saved
+      // snapshot is the base label without them, so dirty tracking starts
+      // from "fresh polyline with no vertices".
+      annotationContextBridge.setSavedData(
+        defaultPolylineLabelData as unknown as fos.AnnotationLabel["data"]
+      );
     },
     [
       currentSampleId,

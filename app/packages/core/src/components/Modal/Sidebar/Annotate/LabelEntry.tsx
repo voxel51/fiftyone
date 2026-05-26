@@ -9,7 +9,6 @@ import { useMemo } from "react";
 import styled from "styled-components";
 import { Column } from "./Components";
 import { useAnnotationContext } from "./Edit/useAnnotationContext";
-import { savedLabel } from "./Edit/useAnnotationContext/atoms";
 import { ICONS } from "./Icons";
 import { fieldType } from "./state";
 import useColor from "./useColor";
@@ -57,7 +56,7 @@ const Line = styled.div<{ fill: string }>`
 const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
   const label = useAtomValue(atom);
   const type = useAtomValue(fieldType(label.path ?? ""));
-  const { select } = useAnnotationContext();
+  const { select, setSavedData } = useAnnotationContext();
   const Icon = ICONS[type] ?? (() => null);
   const hoveringLabelIdsList = useAtomValue(hoveringLabelIds);
   const { scene } = useLighter();
@@ -111,7 +110,10 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
         if (!is3DLabel) {
           select(atom);
         } else {
-          store.set(savedLabel, store.get(atom).data);
+          // 3D-specific: editing pointer is set by the looker-3d hooks
+          // (useSetEditingToExisting3dLabel etc.); we only sync the
+          // savedLabel snapshot to start dirty-tracking from this label.
+          setSavedData(store.get(atom).data);
         }
       }}
       className={isHovering ? "hovering" : ""}

@@ -1,11 +1,7 @@
-import {
-  editingLabelAtom,
-  pendingNewTypeAtom,
-  savedLabel,
-} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext/atoms";
+import { annotationContextBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import { current } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext/selectors";
 import * as fos from "@fiftyone/state";
-import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { atomWithReset, useResetAtom } from "jotai/utils";
 import { useCallback, useEffect } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -23,8 +19,6 @@ export const currentEditingCuboidAtom =
  * Hook to set editing atom for new cuboids
  */
 export const useSetEditingToNewCuboid = () => {
-  const setEditingLabel = useSetAtom(editingLabelAtom);
-  const setPendingNewType = useSetAtom(pendingNewTypeAtom);
   const resetCurrentEditing = useResetAtom(currentEditingCuboidAtom);
   const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
   const currentSampleId = useRecoilValue(fos.currentSampleId);
@@ -37,12 +31,9 @@ export const useSetEditingToNewCuboid = () => {
   useEffect(() => {
     return () => {
       resetCurrentEditing();
-      setEditingLabel(null);
-      setPendingNewType(null);
+      annotationContextBridge.clear();
     };
   }, [resetCurrentEditing]);
-
-  const jotaiStore = getDefaultStore();
 
   return useCallback(
     (labelId: string, transformData: CuboidTransformData, labelClass = "") => {
@@ -55,8 +46,7 @@ export const useSetEditingToNewCuboid = () => {
       }
 
       // Needs a reset...otherwise sometimes gets contaminated by the previous label
-      setEditingLabel(null);
-      setPendingNewType(null);
+      annotationContextBridge.clear();
 
       const rotation: [number, number, number] = transformData.quaternion
         ? quaternionToRadians(transformData.quaternion)
@@ -100,10 +90,11 @@ export const useSetEditingToNewCuboid = () => {
         },
       } as any);
 
-      setEditingLabel(currentEditingCuboidAtom as any);
-      setPendingNewType(null);
-
-      (jotaiStore as any).set(savedLabel, defaultCuboidLabelData);
+      // setCurrentEditing above populated the cuboid atom; select() snapshots
+      // its data into savedLabel — the prior explicit set(savedLabel, ...) is
+      // redundant since defaultCuboidLabelData and stagedCuboidLabelData are
+      // structurally equal.
+      annotationContextBridge.select(currentEditingCuboidAtom as any);
     },
     [currentSampleId, currentActiveField, currentAnnotationSidebar]
   );

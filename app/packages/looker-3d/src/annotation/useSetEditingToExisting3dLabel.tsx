@@ -1,11 +1,7 @@
-import {
-  editingLabelAtom,
-  pendingNewTypeAtom,
-  savedLabel,
-} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext/atoms";
+import { annotationContextBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import * as fos from "@fiftyone/state";
 import { DETECTION, POLYLINE } from "@fiftyone/utilities";
-import { getDefaultStore, useSetAtom } from "jotai";
+import { useSetAtom } from "jotai";
 import { useResetAtom } from "jotai/utils";
 import { useCallback, useEffect } from "react";
 import { useSetRecoilState } from "recoil";
@@ -41,8 +37,6 @@ export function useSetEditingToExisting3dLabel(type: AnnotationType) {
     : currentEditingPolylineAtom;
   const labelType = isCuboid ? DETECTION : POLYLINE;
 
-  const setEditingLabel = useSetAtom(editingLabelAtom);
-  const setPendingNewType = useSetAtom(pendingNewTypeAtom);
   const resetCurrentEditing = useResetAtom(currentEditingAtom);
   const setCurrentEditing = useSetAtom(currentEditingAtom);
   const workingDoc = useWorkingDoc();
@@ -50,14 +44,11 @@ export function useSetEditingToExisting3dLabel(type: AnnotationType) {
   useEffect(() => {
     return () => {
       resetCurrentEditing();
-      setEditingLabel(null);
-      setPendingNewType(null);
+      annotationContextBridge.clear();
     };
   }, []);
 
   const clearTransformState = useSetRecoilState(clearTransformStateSelector);
-
-  const jotaiStore = getDefaultStore();
 
   return useCallback(
     (label: CuboidLabelData | PolylineLabelData) => {
@@ -102,10 +93,14 @@ export function useSetEditingToExisting3dLabel(type: AnnotationType) {
         },
       } as fos.AnnotationLabel);
 
-      setEditingLabel(currentEditingAtom);
-      setPendingNewType(null);
-
-      jotaiStore.set(savedLabel, effectiveLabel);
+      // setCurrentEditing above populated the atom with effectiveLabel, so
+      // select()'s implicit savedLabel snapshot matches what the original
+      // explicit set(savedLabel, effectiveLabel) wrote.
+      annotationContextBridge.select(
+        currentEditingAtom as unknown as Parameters<
+          typeof annotationContextBridge.select
+        >[0]
+      );
     },
     [workingDoc]
   );

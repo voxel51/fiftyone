@@ -82,6 +82,14 @@ export interface AnnotationContext {
     options?: { replace?: boolean }
   ) => void;
   setField: (path: string) => void;
+  /**
+   * Update the saved-label snapshot independently of the editing pointer.
+   * Use {@link AnnotationContext.select} when you also want to set the
+   * editing pointer; this method is for flows where the pointer is managed
+   * elsewhere (e.g. 3D label selection where looker-3d owns the editing
+   * atom).
+   */
+  setSavedData: (data: AnnotationLabel["data"] | null) => void;
 
   select: (labelAtom: PrimitiveAtom<AnnotationLabel>) => void;
   createNew: (
@@ -308,6 +316,11 @@ export const useAnnotationContext = (): AnnotationContext => {
     [writeField]
   );
 
+  const setSavedData = useCallback<AnnotationContext["setSavedData"]>(
+    (data) => setSaved(data),
+    [setSaved]
+  );
+
   const lastUsed = useMemo<AnnotationContext["lastUsed"]>(
     () => ({
       fieldFor: (t) => computeFieldFor(t),
@@ -323,11 +336,21 @@ export const useAnnotationContext = (): AnnotationContext => {
       selected,
       setData,
       setField,
+      setSavedData,
       select,
       createNew,
       clear,
       lastUsed,
     }),
-    [clear, createNew, lastUsed, select, selected, setData, setField]
+    [
+      clear,
+      createNew,
+      lastUsed,
+      select,
+      selected,
+      setData,
+      setField,
+      setSavedData,
+    ]
   );
 };
