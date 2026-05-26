@@ -37,10 +37,8 @@ export function useSampleTemporalTags({
   const temporalTagsClient = client ?? getDefaultTemporalTagsClient();
   const filterKey = temporalTagFilterKey(filter);
   const [state, setState] = useState<TemporalTagsState>(IDLE_STATE);
-  const filterRef = useRef(filter);
   const mountedRef = useRef(true);
   const requestIdRef = useRef(0);
-  filterRef.current = filter;
 
   const reload = useCallback(async () => {
     if (!datasetId || !sampleId) {
@@ -62,10 +60,9 @@ export function useSampleTemporalTags({
     }
 
     try {
-      const currentFilter = filterKey ? filterRef.current : undefined;
       const temporalTags = await temporalTagsClient.listSampleTemporalTags({
         datasetId,
-        filter: currentFilter,
+        filter,
         sampleId,
       });
       if (mountedRef.current && requestIdRef.current === requestId) {
@@ -86,6 +83,9 @@ export function useSampleTemporalTags({
       }
       throw error;
     }
+    // `filterKey` captures filter content changes while avoiding callback churn
+    // when callers pass a new object with the same filter values.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasetId, filterKey, sampleId, temporalTagsClient]);
 
   useEffect(() => {

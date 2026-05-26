@@ -287,7 +287,7 @@ function filterDto(filter: TemporalTagFilter) {
 }
 
 function temporalTagFromDto(dto: TemporalTagDto): TemporalTag {
-  return stripUndefined({
+  return {
     anchor: dto.anchor,
     createdAt: dto.created_at,
     createdBy: dto.created_by,
@@ -299,7 +299,7 @@ function temporalTagFromDto(dto: TemporalTagDto): TemporalTag {
     sampleId: dto.sample_id,
     start: dto.start,
     tag: dto.tag,
-  }) as TemporalTag;
+  };
 }
 
 function stripUndefined<T extends Record<string, unknown>>(value: T) {
