@@ -1,5 +1,4 @@
 import type { TilingTile } from "@fiftyone/tiling";
-import { useMemo } from "react";
 import type { SceneSource } from "../../../scene-inventory";
 import { PlaybackSyncMode } from "../../../schemas/v1";
 import type { McapStreamSyncPolicies } from "../types";
@@ -13,12 +12,36 @@ import McapLidarTile from "./McapLidarTile";
 // ---------------------------------------------------------------------------
 
 const NUSCENES_SOURCES: readonly SceneSource[] = [
-  { id: "/CAM_FRONT/image_rect_compressed", type: "camera", label: "Front camera" },
-  { id: "/CAM_FRONT_LEFT/image_rect_compressed", type: "camera", label: "Front-left camera" },
-  { id: "/CAM_FRONT_RIGHT/image_rect_compressed", type: "camera", label: "Front-right camera" },
-  { id: "/CAM_BACK/image_rect_compressed", type: "camera", label: "Back camera" },
-  { id: "/CAM_BACK_LEFT/image_rect_compressed", type: "camera", label: "Back-left camera" },
-  { id: "/CAM_BACK_RIGHT/image_rect_compressed", type: "camera", label: "Back-right camera" },
+  {
+    id: "/CAM_FRONT/image_rect_compressed",
+    type: "camera",
+    label: "Front camera",
+  },
+  {
+    id: "/CAM_FRONT_LEFT/image_rect_compressed",
+    type: "camera",
+    label: "Front-left camera",
+  },
+  {
+    id: "/CAM_FRONT_RIGHT/image_rect_compressed",
+    type: "camera",
+    label: "Front-right camera",
+  },
+  {
+    id: "/CAM_BACK/image_rect_compressed",
+    type: "camera",
+    label: "Back camera",
+  },
+  {
+    id: "/CAM_BACK_LEFT/image_rect_compressed",
+    type: "camera",
+    label: "Back-left camera",
+  },
+  {
+    id: "/CAM_BACK_RIGHT/image_rect_compressed",
+    type: "camera",
+    label: "Back-right camera",
+  },
   { id: "/LIDAR_TOP", type: "lidar", label: "Top lidar" },
 ];
 
@@ -55,14 +78,14 @@ const NUSCENES_INITIAL_TILES: Record<string, TilingTile> = {
 export function useMcapSceneInventory(
   _fileName: string
 ): readonly SceneSource[] {
-  return useMemo(() => NUSCENES_SOURCES, []);
+  return NUSCENES_SOURCES;
 }
 
 /** Per-topic synchronization policies for the file. POC: fixed NuScenes set. */
 export function useMcapStreamPolicies(
   _fileName: string
 ): McapStreamSyncPolicies {
-  return useMemo(() => NUSCENES_STREAM_POLICIES, []);
+  return NUSCENES_STREAM_POLICIES;
 }
 
 /**
@@ -72,5 +95,5 @@ export function useMcapStreamPolicies(
 export function useMcapInitialTiles(
   _fileName: string
 ): Record<string, TilingTile> {
-  return useMemo(() => NUSCENES_INITIAL_TILES, []);
+  return NUSCENES_INITIAL_TILES;
 }

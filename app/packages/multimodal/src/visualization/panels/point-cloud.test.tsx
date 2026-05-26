@@ -6,7 +6,8 @@ import { VISUALIZATION_KIND } from "../visualization-registry";
 import { PointCloudPanel } from "./point-cloud";
 
 vi.mock("@react-three/fiber", () => ({
-  useThree: () => vi.fn(),
+  useThree: (selector: (state: { invalidate: () => void }) => unknown) =>
+    selector({ invalidate: vi.fn() }),
 }));
 
 vi.mock("./base-3d-scene", () => ({
@@ -43,7 +44,7 @@ describe("PointCloudPanel", () => {
           positions: new Float32Array([1, 2, 3]),
         }}
         frameTransform={{
-          rotation: new THREE.Quaternion(0, 0, 0, 2),
+          rotation: new THREE.Quaternion(0, 0, 0, 1),
           sourceFrameId: "lidar",
           targetFrameId: "map",
           translation: new THREE.Vector3(10, 0, 0),

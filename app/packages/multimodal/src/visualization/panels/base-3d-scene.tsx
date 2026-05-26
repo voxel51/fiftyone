@@ -23,9 +23,10 @@ export interface Base3DSceneProps {
  * Base 3D R3F scene with reusable navigation, axes, and Z-up coordinates.
  */
 export function Base3DScene({ children }: Base3DSceneProps) {
+  useZUpSceneCoordinates();
+
   return (
     <>
-      <ZUpSceneCoordinates />
       <color
         args={[VISUALIZATION_PANEL_BACKGROUND_COLOR]}
         attach="background"
@@ -44,7 +45,7 @@ export function Base3DScene({ children }: Base3DSceneProps) {
   );
 }
 
-function ZUpSceneCoordinates() {
+function useZUpSceneCoordinates() {
   const camera = useThree((state) => state.camera);
   const invalidate = useThree((state) => state.invalidate);
 
@@ -61,6 +62,4 @@ function ZUpSceneCoordinates() {
       invalidate();
     };
   }, [camera, invalidate]);
-
-  return null;
 }
