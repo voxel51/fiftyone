@@ -287,15 +287,22 @@ export function useRegisterMcapDataStream({
         .then((windows) => {
           if (sourceEpochRef.current !== sourceEpoch) return;
 
+          const activeFetchedTopics = activeTopicsInCaches(
+            caches,
+            topicsToFetch
+          );
+          if (activeFetchedTopics.length === 0) return;
+
           for (const window of windows) {
-            distributeWindowToCaches(window, caches, topicsToFetch);
+            distributeWindowToCaches(window, caches, activeFetchedTopics);
           }
           const currentIndex = indexRef.current;
           if (!currentIndex) return;
           const tick = currentIndex.nearestTick(store.get(playheadAtom));
+          const stillActiveTopics = activeTopicsInCaches(caches, activeTopics);
           if (tick) {
             pushTickToStore(
-              activeTopics,
+              stillActiveTopics,
               tick,
               caches,
               lastFrameRef.current,
@@ -324,6 +331,7 @@ export function useRegisterMcapDataStream({
         return false;
       }
 
+      const sourceEpoch = sourceEpochRef.current;
       const caches = topicCachesRef.current;
       const tickKey = tick.toString();
       const topicsToFetch = activeTopics.filter(
@@ -343,9 +351,17 @@ export function useRegisterMcapDataStream({
           topics: topicsToFetch,
         })
         .then((window) => {
-          distributeWindowToCaches(window, caches, topicsToFetch);
+          if (sourceEpochRef.current !== sourceEpoch) return;
+
+          const activeFetchedTopics = activeTopicsInCaches(
+            caches,
+            topicsToFetch
+          );
+          if (activeFetchedTopics.length === 0) return;
+
+          distributeWindowToCaches(window, caches, activeFetchedTopics);
           pushTickToStore(
-            activeTopics,
+            activeTopicsInCaches(caches, activeTopics),
             tick,
             caches,
             lastFrameRef.current,
@@ -354,6 +370,8 @@ export function useRegisterMcapDataStream({
         })
         .catch(noop)
         .finally(() => {
+          if (sourceEpochRef.current !== sourceEpoch) return;
+
           clearTopicsPending([tickKey], topicsToFetch);
         });
 
@@ -617,6 +635,13 @@ function fillMissingLookaheadFrom({
     if (missing.length === 0) return;
     if (!fetchBatch(missing, activeTopics)) return;
   }
+}
+
+function activeTopicsInCaches(
+  caches: Map<string, McapTopicCache>,
+  topics: readonly string[]
+): string[] {
+  return topics.filter((topic) => caches.get(topic)?.isActive);
 }
 
 function distributeWindowToCaches(

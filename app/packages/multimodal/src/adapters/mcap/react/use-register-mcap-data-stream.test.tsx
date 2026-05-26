@@ -101,16 +101,69 @@ describe("useRegisterMcapDataStream", () => {
     });
     expect(playbackStore?.get(streamValueAtom(TOPIC))).toBeNull();
   });
+
+  it("ignores in-flight batch results after topic unsubscribe", async () => {
+    const source = createSource("source");
+    const oldBatch = deferred<readonly McapSynchronizedMessageWindow[]>();
+    let playbackStore: PlaybackStore | undefined;
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(() => oldBatch.promise),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+    });
+
+    const { rerender } = render(
+      <Harness
+        client={client}
+        onStore={(store) => {
+          playbackStore = store;
+        }}
+        source={source}
+      />,
+      { wrapper: TestProviders }
+    );
+
+    await waitFor(() => {
+      expect(client.readSynchronizedMessageBatch).toHaveBeenCalledTimes(1);
+    });
+
+    rerender(
+      <Harness
+        client={client}
+        onStore={(store) => {
+          playbackStore = store;
+        }}
+        source={source}
+        subscribe={false}
+      />
+    );
+
+    await act(async () => {
+      oldBatch.resolve([
+        createWindow({
+          timeNs: 0n,
+          visualization: {
+            bytes: new Uint8Array([1, 2, 3]),
+            kind: VISUALIZATION_KIND.ENCODED_IMAGE,
+          },
+        }),
+      ]);
+      await Promise.resolve();
+    });
+
+    expect(playbackStore?.get(streamValueAtom(TOPIC))).toBeNull();
+  });
 });
 
 function Harness({
   client,
   onStore,
   source,
+  subscribe = true,
 }: {
   readonly client: McapResourceClient;
   readonly onStore: (store: PlaybackStore) => void;
   readonly source: ByteSourceDescriptor | null;
+  readonly subscribe?: boolean;
 }) {
   const dataStream = useMcapDataStream();
   const store = usePlaybackStore();
@@ -126,8 +179,10 @@ function Harness({
   }, [onStore, store]);
 
   useEffect(() => {
+    if (!subscribe) return undefined;
+
     return dataStream?.subscribeToTopic(TOPIC);
-  }, [dataStream]);
+  }, [dataStream, subscribe]);
 
   return null;
 }
