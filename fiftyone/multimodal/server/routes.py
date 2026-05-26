@@ -84,7 +84,7 @@ class SampleTemporalTagsEndpoint(HTTPEndpoint):
             ]
         }
 
-    @decorators.route(parse_body=True)
+    @decorators.route(parse_body=True)  # pyright: ignore[reportCallIssue]
     async def delete(self, request: Request, data: dict) -> dict:
         """Deletes temporal tags for the sample."""
 
