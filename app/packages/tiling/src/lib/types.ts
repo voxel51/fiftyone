@@ -57,4 +57,7 @@ export interface TilingContextValue {
   // Portal target for the focused tile's settings UI.
   settingsSlotEl: HTMLElement | null;
   setSettingsSlotEl: (el: HTMLElement | null) => void;
+
+  /** Update the title of an existing tile by id. */
+  setTileTitle: (tileId: string, title: string) => void;
 }

@@ -166,6 +166,14 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
     []
   );
 
+  const setTileTitle = useCallback((tileId: string, title: string) => {
+    setTiles((prev) => {
+      const tile = prev[tileId];
+      if (!tile || tile.title === title) return prev;
+      return { ...prev, [tileId]: { ...tile, title } };
+    });
+  }, []);
+
   const autoLayout = useCallback(() => {
     // Derive from the tiles map, not from the layout tree — a tile
     // entry can exist in `tiles` without being placed in the tree
@@ -188,6 +196,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       autoLayout,
       settingsSlotEl,
       setSettingsSlotEl,
+      setTileTitle,
     }),
     [
       layout,
@@ -198,6 +207,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       removeTile,
       autoLayout,
       settingsSlotEl,
+      setTileTitle,
     ]
   );
 
