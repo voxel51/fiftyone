@@ -1,4 +1,4 @@
-import { annotationContextBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
+import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import { current } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext/selectors";
 import * as fos from "@fiftyone/state";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -25,13 +25,14 @@ export const useSetEditingToNewCuboid = () => {
 
   const setCurrentEditing = useSetAtom(currentEditingCuboidAtom);
   const currentAnnotationSidebar = useAtomValue(current);
+  const { clear, select } = useAnnotationContext();
 
   const clearTransformState = useSetRecoilState(clearTransformStateSelector);
 
   useEffect(() => {
     return () => {
       resetCurrentEditing();
-      annotationContextBridge.clear();
+      clear();
     };
   }, [resetCurrentEditing]);
 
@@ -46,7 +47,7 @@ export const useSetEditingToNewCuboid = () => {
       }
 
       // Needs a reset...otherwise sometimes gets contaminated by the previous label
-      annotationContextBridge.clear();
+      clear();
 
       const rotation: [number, number, number] = transformData.quaternion
         ? quaternionToRadians(transformData.quaternion)
@@ -94,7 +95,7 @@ export const useSetEditingToNewCuboid = () => {
       // its data into savedLabel — the prior explicit set(savedLabel, ...) is
       // redundant since defaultCuboidLabelData and stagedCuboidLabelData are
       // structurally equal.
-      annotationContextBridge.select(currentEditingCuboidAtom as any);
+      select(currentEditingCuboidAtom as any);
     },
     [currentSampleId, currentActiveField, currentAnnotationSidebar]
   );

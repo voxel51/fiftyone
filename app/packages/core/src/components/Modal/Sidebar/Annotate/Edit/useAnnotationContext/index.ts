@@ -1,4 +1,3 @@
-export { annotationContextBridge } from "./bridge";
 export type { CreateOptions } from "./createNew";
 export {
   type AnnotationContext,

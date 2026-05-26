@@ -1,4 +1,4 @@
-import { annotationContextBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
+import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import { current } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext/selectors";
 import * as fos from "@fiftyone/state";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -26,13 +26,14 @@ export const useSetEditingToNewPolyline = () => {
 
   const setCurrentEditing = useSetAtom(currentEditingPolylineAtom);
   const currentAnnotationSidebar = useAtomValue(current);
+  const { clear, select, setSavedData } = useAnnotationContext();
 
   const clearTransformState = useSetRecoilState(clearTransformStateSelector);
 
   useEffect(() => {
     return () => {
       resetCurrentEditing();
-      annotationContextBridge.clear();
+      clear();
     };
   }, [resetCurrentEditing]);
 
@@ -48,7 +49,7 @@ export const useSetEditingToNewPolyline = () => {
       }
 
       // Needs a reset...otherwise sometimes gets contaminated by the previous label
-      annotationContextBridge.clear();
+      clear();
 
       // Only process transforms for the current sample
       if (transformData.sampleId !== currentSampleId) return;
@@ -95,11 +96,11 @@ export const useSetEditingToNewPolyline = () => {
         },
       });
 
-      annotationContextBridge.select(currentEditingPolylineAtom);
+      select(currentEditingPolylineAtom);
       // The staged data includes the in-progress points3d; the "clean" saved
       // snapshot is the base label without them, so dirty tracking starts
       // from "fresh polyline with no vertices".
-      annotationContextBridge.setSavedData(
+      setSavedData(
         defaultPolylineLabelData as unknown as fos.AnnotationLabel["data"]
       );
     },

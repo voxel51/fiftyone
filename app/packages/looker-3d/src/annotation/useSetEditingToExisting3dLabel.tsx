@@ -1,4 +1,4 @@
-import { annotationContextBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
+import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import * as fos from "@fiftyone/state";
 import { DETECTION, POLYLINE } from "@fiftyone/utilities";
 import { useSetAtom } from "jotai";
@@ -40,11 +40,12 @@ export function useSetEditingToExisting3dLabel(type: AnnotationType) {
   const resetCurrentEditing = useResetAtom(currentEditingAtom);
   const setCurrentEditing = useSetAtom(currentEditingAtom);
   const workingDoc = useWorkingDoc();
+  const { clear, select } = useAnnotationContext();
 
   useEffect(() => {
     return () => {
       resetCurrentEditing();
-      annotationContextBridge.clear();
+      clear();
     };
   }, []);
 
@@ -96,10 +97,8 @@ export function useSetEditingToExisting3dLabel(type: AnnotationType) {
       // setCurrentEditing above populated the atom with effectiveLabel, so
       // select()'s implicit savedLabel snapshot matches what the original
       // explicit set(savedLabel, effectiveLabel) wrote.
-      annotationContextBridge.select(
-        currentEditingAtom as unknown as Parameters<
-          typeof annotationContextBridge.select
-        >[0]
+      select(
+        currentEditingAtom as unknown as Parameters<typeof select>[0]
       );
     },
     [workingDoc]
