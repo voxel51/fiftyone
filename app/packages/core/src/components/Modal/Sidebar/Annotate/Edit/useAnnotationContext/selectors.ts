@@ -60,9 +60,6 @@ export const currentData = atom(
     const labelAtom = get(editingLabelAtom);
     if (labelAtom) {
       const c = get(labelAtom);
-      // The patched data always matches `c.data`'s sub-type at runtime —
-      // consumers only ever patch fields valid for the current label —
-      // but TS can't narrow the discriminated union across the spread.
       const nextData = replace ? data : { ...c.data, ...data };
       return set(labelAtom, { ...c, data: nextData } as AnnotationLabel);
     }
@@ -77,21 +74,15 @@ export const currentField = atom(
       return;
     }
 
-    // `_id` and `bounding_box` live on label data at runtime (Mongo ObjectId
-    // and detection bbox), but neither is declared in the looker TS types.
-    // Cast through the known runtime shape to access them safely.
+    // _id and bounding_box exist at runtime but aren't in the looker types.
     type WithRuntimeFields = { _id?: string; bounding_box?: number[] };
     const oldData = currentLabel.data as AnnotationLabel["data"] &
       WithRuntimeFields;
     const data = buildNewLabelData(path, currentLabel.type, {
       id: oldData._id,
     }) as AnnotationLabel["data"] & WithRuntimeFields;
-
-    // Carry bbox across field swaps (no-op for non-Detection types).
     data.bounding_box = oldData.bounding_box;
 
-    // Overlay shape varies per label type; the intersection collapses to
-    // `never` for updateLabel's parameter. Cast at the call site.
     const overlay = currentLabel.overlay as
       | {
           updateField?(path: string): void;
@@ -113,12 +104,7 @@ export const currentFieldIsReadOnlyAtom = atom((get) => {
 
 export const currentOverlay = atom((get) => get(current)?.overlay);
 
-/**
- * The label schema for the current field, or `null` when no field is active.
- *
- * Null-safe: callers can read this unconditionally rather than guarding on
- * `currentField` first.
- */
+/** Label schema for the current field, or `null` when no field is active. */
 export const currentSchema = atom((get) => {
   const field = get(currentField);
   if (!field) return null;
@@ -169,11 +155,6 @@ export const isNew = atom(
   (get) => get(pendingNewTypeAtom) !== null || get(current)?.isNew
 );
 
-/**
- * True when the currently-edited label is mid-mask-authoring. Read-only
- * projection of {@link currentEditingMaskAtom}; storage and write semantics
- * live in `useAnnotationContext`'s `clear` / `select` / `setEditingMask`.
- */
 export const isEditingMask = atom((get) => get(currentEditingMaskAtom));
 
 export const fieldsOfType = atomFamily((type: LabelType | null) =>

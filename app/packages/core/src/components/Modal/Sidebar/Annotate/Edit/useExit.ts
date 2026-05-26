@@ -22,11 +22,8 @@ export default function useExit() {
       }
     }
 
-    // Records last-used into useAnnotationContext memory and resets
-    // editing/savedLabel/activePrimitive atoms. The atom transition is
-    // picked up by looker-3d's `useReset3dOnEditExit` hook, which owns the
-    // 3D-specific selection/transform cleanup — keeping this file in the
-    // editing-state layer rather than reaching across packages.
+    // 3D state cleanup happens in looker-3d's useReset3dOnEditExit, which
+    // reacts to the atom transition this clear() produces.
     annotationContext.clear();
   }, [annotationContext, label, overlay, removeOverlay, scene]);
 }

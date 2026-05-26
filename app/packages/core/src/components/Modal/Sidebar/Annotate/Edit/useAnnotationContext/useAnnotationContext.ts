@@ -33,24 +33,14 @@ import {
 
 export type { CreateOptions };
 
-/**
- * Per-type memory of the last field the user annotated into.
- *
- * Why: when a user creates several detections in a row, we want each new
- * detection to default to the same field they used last; same for
- * segmentation, polyline, etc.
- */
+// Per-type memory: each label type remembers its last-used field
+// independently so switching between modes doesn't clobber the others.
 const lastUsedFieldAtom = atomFamily(
   (_type: LabelType) =>
     atom<string | null>(null) as PrimitiveAtom<string | null>
 );
 
-/**
- * Per-field memory of the last class the user assigned.
- *
- * Why: separate atoms per field so switching between `ground_truth.detections`
- * and `predictions.detections` doesn't clobber each field's last-used class.
- */
+// Per-field memory: each field remembers its last-used class independently.
 const lastUsedLabelAtom = atomFamily(
   (_field: string) =>
     atom<string | null>(null) as PrimitiveAtom<string | null>
@@ -65,16 +55,11 @@ export interface AnnotationContextSelected {
   schema: ReturnType<typeof currentSchema.read> | null;
   savedData: AnnotationLabel["data"] | null;
   isEditing: boolean;
-  /** True when the current label is mid-mask-authoring. */
   isEditingMask: boolean;
   isNew: boolean;
   hasChanges: boolean;
   isFieldReadOnly: boolean;
-  /**
-   * Set internally by {@link AnnotationContext.createNew} when no schema
-   * fields exist for the requested type — surfaces the "string-form" of the
-   * underlying `editing` atom so the AddSchema UI can mount.
-   */
+  /** Non-null when no schema field exists for the requested new type. */
   pendingNewType: LabelType | null;
 }
 
@@ -86,19 +71,9 @@ export interface AnnotationContext {
     options?: { replace?: boolean }
   ) => void;
   setField: (path: string) => void;
-  /**
-   * Update the saved-label snapshot independently of the editing pointer.
-   * Use {@link AnnotationContext.select} when you also want to set the
-   * editing pointer; this method is for flows where the pointer is managed
-   * elsewhere (e.g. 3D label selection where looker-3d owns the editing
-   * atom).
-   */
+  /** Update savedData without touching the editing pointer (3D flows). */
   setSavedData: (data: AnnotationLabel["data"] | null) => void;
-  /**
-   * Mark a label id as mid-mask-authoring (when `hasMask` is true) or clear
-   * that mark (when false). `selected.isEditingMask` reflects whether the
-   * currently-edited label's id is in this set.
-   */
+  /** No-op if `id` isn't the current label's id. */
   setEditingMask: (id: string, hasMask: boolean) => void;
 
   select: (labelAtom: PrimitiveAtom<AnnotationLabel>) => void;
@@ -107,15 +82,7 @@ export interface AnnotationContext {
     overrides?: CreateOptions
   ) => AnnotationLabel | null;
   clear: () => void;
-  /**
-   * Returns true when the supplied atom is the one currently being edited.
-   * Compares against the editing pointer at call time (no stale snapshot),
-   * so it's safe inside `useEffect` callbacks that don't list the editing
-   * state in their deps.
-   *
-   * Use this to ask "is THIS label atom the active one?" without leaking
-   * the underlying atom pointer through the public API.
-   */
+  /** Fresh comparison at call time — safe inside `useEffect`. */
   isEditingAtom: (labelAtom: PrimitiveAtom<AnnotationLabel>) => boolean;
 
   lastUsed: {
@@ -181,8 +148,7 @@ export const useAnnotationContext = (): AnnotationContext => {
   const setEditingLabel = useSetAtom(editingLabelAtom);
   const setPendingNewType = useSetAtom(pendingNewTypeAtom);
   const setSaved = useSetAtom(savedLabel);
-  // activePrimitiveAtom is `atom<string | null>(null)` and jotai's inference
-  // loses the WritableAtom shape — cast at the use site.
+  // jotai loses the WritableAtom shape on plain `atom<T>(initial)` — cast.
   const setActivePrimitive = useSetAtom(
     activePrimitiveAtom as PrimitiveAtom<string | null>
   );
@@ -214,8 +180,7 @@ export const useAnnotationContext = (): AnnotationContext => {
     )
   );
 
-  // Auto-assign chain: remembered → most-populated field of `type` →
-  // defaultField(type). Skip a remembered field that is now read-only.
+  // remembered → most-populated → defaultField; skip if remembered is read-only.
   const computeFieldFor = useAtomCallback(
     useCallback((get, _set, t: LabelType): string | null => {
       const remembered = get(lastUsedFieldAtom(t));
@@ -240,8 +205,7 @@ export const useAnnotationContext = (): AnnotationContext => {
     }, [])
   );
 
-  // Auto-assign chain: remembered → most-common label in the field → first
-  // class in the field's schema.
+  // remembered → most-common in field → first class in schema.
   const computeLabelFor = useAtomCallback(
     useCallback((get, _set, path: string): string | null => {
       const remembered = get(lastUsedLabelAtom(path));
@@ -266,10 +230,12 @@ export const useAnnotationContext = (): AnnotationContext => {
       set(savedLabel, data);
       set(editingLabelAtom, labelAtom);
       set(pendingNewTypeAtom, null);
-      // Initialize the mid-mask flag from the just-selected label's data
-      // so the flag is correct even when no lighter event has fired yet.
+      // Seed mask flag from committed data — no lighter event has fired yet.
       const maskFields = data as { mask?: unknown; mask_path?: unknown };
-      set(currentEditingMaskAtom, Boolean(maskFields.mask || maskFields.mask_path));
+      set(
+        currentEditingMaskAtom,
+        Boolean(maskFields.mask || maskFields.mask_path)
+      );
     }, [])
   );
   const select = useCallback<AnnotationContext["select"]>(
@@ -285,8 +251,7 @@ export const useAnnotationContext = (): AnnotationContext => {
     )
   );
   const isEditingAtom = useCallback<AnnotationContext["isEditingAtom"]>(
-    // useAtomCallback's signature widens the return to `Result | Promise<Result>`;
-    // our callback is synchronous so this is always boolean.
+    // useAtomCallback widens to `Result | Promise<Result>`; we're sync.
     (labelAtom) => compareEditingAtom(labelAtom) as boolean,
     [compareEditingAtom]
   );
@@ -333,8 +298,7 @@ export const useAnnotationContext = (): AnnotationContext => {
         return built;
       }
 
-      // No schema fields exist — set pendingNewType to trigger the
-      // AddSchema flow.
+      // No schema fields — trigger the AddSchema flow.
       setPendingNewType(createType);
       return null;
     },

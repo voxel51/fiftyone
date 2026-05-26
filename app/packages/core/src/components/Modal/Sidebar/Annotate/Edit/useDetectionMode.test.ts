@@ -3,9 +3,8 @@ import { act, renderHook } from "@testing-library/react";
 import { atom, getDefaultStore } from "jotai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// `vi.mock` calls are hoisted above imports, so factories can't close over
-// imported helpers. Shared mutable state lives in `vi.hoisted(...)` which
-// also runs before imports.
+// vi.mock factories run before imports, so shared mutable state lives in
+// vi.hoisted() — also pre-import.
 const refs = vi.hoisted(() => ({
   annotationContext: null as unknown,
   scene: null as unknown,
@@ -51,7 +50,7 @@ const { useDetectionMode, _unsafeDetectionModeActiveAtom } = await import(
 
 const store = getDefaultStore();
 
-// Typed accessors so individual tests can read `context().clear` / `scene().exitInteractiveMode` etc.
+// Typed accessors so tests read `annotationContext().clear` etc.
 const annotationContext = () => refs.annotationContext as MockAnnotationContext;
 const scene = () => refs.scene as MockScene;
 const onExit = () => refs.onExit as ReturnType<typeof vi.fn>;

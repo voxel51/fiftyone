@@ -29,11 +29,7 @@ export interface CreateOptions {
   id?: string;
   field?: string;
   labelValue?: string;
-  /**
-   * Polyline only: relative-coordinate of the first vertex. Ignored for
-   * detection (geometry comes from InteractiveDetectionHandler) and
-   * classification (no geometry).
-   */
+  /** Polyline only: first-vertex seed. Ignored for other types. */
   origin?: [number, number];
 }
 
@@ -44,12 +40,9 @@ export interface CreateDeps {
 }
 
 /**
- * Build a new annotation label of the given type and attach its overlay to
- * the scene. Returns the built label, or `null` when no schema field is
- * available — the caller is responsible for the AddSchema fallback.
- *
- * Pure with respect to Jotai: this function does not read or write any
- * annotation atoms. The caller owns `editing` and `savedLabel`.
+ * Build a new annotation label and attach its overlay to the scene.
+ * Returns `null` when no schema field is available — caller handles the
+ * AddSchema fallback. Does not touch editing/savedLabel atoms.
  */
 export function createNewLabel(
   type: LabelType,
@@ -91,8 +84,7 @@ export function createNewLabel(
     >("detection", {
       field,
       id,
-      // buildNewLabelData returns a minimal seed; lighter's DetectionLabel
-      // expects fields populated by the user (bbox, etc.) at create time.
+      // Seed only; bbox etc. get populated by InteractiveDetectionHandler.
       label: data as unknown as DetectionLabel,
       draggable: !readOnly,
       resizeable: !readOnly,
@@ -108,8 +100,7 @@ export function createNewLabel(
       "polyline",
       { field, id, label: polylineData, selectable: true }
     );
-    // withUndo=true so the first-point placement is undoable; the overlay
-    // otherwise wouldn't exist in the store until the first click lands.
+    // withUndo=true so first-point placement is undoable.
     addOverlay(overlay, true);
     scene?.selectOverlay(id, { ignoreSideEffects: true });
     return {
@@ -124,14 +115,9 @@ export function createNewLabel(
 }
 
 /**
- * Build the initial label data payload for a new label of the given type.
- *
- * Pulls default values from the label schema (top-level `default` and per-
- * attribute defaults), seeds `label` from `labelValue` or the first declared
- * class, and (for polylines) seeds the first vertex from `origin`.
- *
- * Exported so {@link currentField}'s field-swap writer in `state.ts` can
- * rebuild the data payload when the user reassigns a label's field.
+ * Build the initial label-data payload: schema-default → labelValue → first
+ * class for `label`, per-attribute defaults, and polyline `points` seeded
+ * from `origin`. Reused by selectors.ts when the user swaps a label's field.
  */
 export function buildNewLabelData(
   field: string,

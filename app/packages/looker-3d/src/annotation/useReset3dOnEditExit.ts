@@ -7,13 +7,8 @@ import {
 } from "../state";
 
 /**
- * Clears 3D-specific selection and transform state whenever the annotation
- * editing pointer transitions to null.
- *
- * Why: the editing pointer lives in core's annotation context. Without this
- * hook, the cleanup of 3D-only recoil state has to live in `useExit`, which
- * couples core to looker-3d. Subscribing here lets `useExit` stay in the
- * editing-state layer while 3D state stays in 3D.
+ * Resets 3D-specific selection/transform state when editing exits. Lives in
+ * looker-3d so core's useExit doesn't reach across packages.
  */
 export function useReset3dOnEditExit() {
   const { selected } = useAnnotationContext();

@@ -1,34 +1,6 @@
-/**
- * Shared test helpers for annotation-edit hook tests.
- *
- * Test files still need to declare their own `vi.mock(...)` calls (vitest
- * hoists those per-file and they can't live in a helper), but the *bodies*
- * of those mocks — the stub shapes, factories, and the recoil partial-mock
- * pattern — can be shared.
- *
- * Typical usage:
- *
- * ```ts
- * // @vitest-environment jsdom
- * import { vi } from "vitest";
- * import {
- *   createMockAnnotationContext,
- *   createMockScene,
- *   recoilPartialMock,
- * } from "./__testing__/mocks";
- *
- * let annotationContext = createMockAnnotationContext();
- * const scene = createMockScene();
- *
- * vi.mock("recoil", recoilPartialMock);
- * vi.mock("@fiftyone/lighter", () => ({ useLighter: () => ({ scene }) }));
- * vi.mock("./useAnnotationContext", () => ({
- *   useAnnotationContext: () => annotationContext,
- *   useAnnotationFields: () => ({ fields: [] }),
- * }));
- * ```
- */
-
+// Stub factories for annotation-edit hook tests. The vi.mock declarations
+// themselves still live in each test file (vitest hoists them per-file),
+// but the shapes they return come from here.
 import { vi } from "vitest";
 
 // ---- annotationContext stub -------------------------------------------------
@@ -83,11 +55,7 @@ const defaultSelected: MockAnnotationContextSelected = {
   pendingNewType: null,
 };
 
-/**
- * Factory for a fully-stubbed AnnotationContext value. All actions are
- * `vi.fn()` so individual tests can assert on calls. Pass `overrides.selected`
- * to override individual selected fields without restating the whole object.
- */
+/** Stubbed AnnotationContext. All actions are `vi.fn()` for assertion. */
 export const createMockAnnotationContext = (overrides?: {
   selected?: Partial<MockAnnotationContextSelected>;
   setData?: ReturnType<typeof vi.fn>;
@@ -126,11 +94,7 @@ export interface MockScene {
   [key: string]: unknown;
 }
 
-/**
- * Factory for a stub lighter scene. Override any field via `overrides`; the
- * remainder fall through to sensible defaults (alive, render-loop active,
- * stable event channel).
- */
+/** Stub lighter scene with sensible defaults (alive, render-loop active). */
 export const createMockScene = (overrides?: Partial<MockScene>): MockScene => ({
   exitInteractiveMode: vi.fn(),
   isDestroyed: false,
@@ -142,22 +106,14 @@ export const createMockScene = (overrides?: Partial<MockScene>): MockScene => ({
 // ---- recoil partial-mock factory --------------------------------------------
 
 /**
- * Use as the second argument to `vi.mock("recoil", ...)`. Preserves the
- * real recoil exports (most importantly `atom`, which the analytics package
- * imports at module-load time) while stubbing `useRecoilValue` to a no-op
- * returning `false`. Override `useRecoilValue` per-test by re-mocking it
- * via vi.mocked(...) if needed.
- *
- * Required because a bare `vi.mock("recoil", () => ({ useRecoilValue }))`
- * strips `atom` and breaks anything in the transitive graph that imports it
- * — most notably `@fiftyone/analytics`.
+ * Partial mock for `vi.mock("recoil", ...)`. Preserves the real exports
+ * (notably `atom`, which `@fiftyone/analytics` imports at module-load time)
+ * while stubbing `useRecoilValue` to return `false`. Without this, a bare
+ * mock that strips `atom` crashes anything analytics-adjacent.
  */
 export const recoilPartialMock = async (
   importOriginal: () => Promise<typeof import("recoil")>
-) => {
-  const actual = await importOriginal();
-  return {
-    ...actual,
-    useRecoilValue: () => false,
-  };
-};
+) => ({
+  ...(await importOriginal()),
+  useRecoilValue: () => false,
+});
