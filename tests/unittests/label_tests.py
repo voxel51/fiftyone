@@ -730,8 +730,7 @@ class LabelUtilsTests(unittest.TestCase):
         foul.index_to_instance(
             dataset_frames,
             "ground_truth",
-            id_field="sample_id",
-            clear_index=False,
+            clear_index=True,
         )
 
         instances_sample_id_wise = dataset_frames.count_values(
@@ -752,34 +751,21 @@ class LabelUtilsTests(unittest.TestCase):
             {cat1: 3, cat2: 2, cat3: 1, dog1: 2, dog2: 2, None: 3},
         )
 
-        foul.index_to_instance(
-            dataset_frames,
-            "ground_truth",
-            id_field="sample_id_nonexistent",  # this will cause fallback to "id"
-            clear_index=True,
-        )
-        instances_id_wise = dataset_frames.count_values(
-            "ground_truth.detections.instance._id"
-        )
-        indexes = dataset_frames.count_values("ground_truth.detections.index")
-
-        for inst_id, count in instances_id_wise.items():
-            if inst_id is not None:
-                self.assertEqual(count, 1)
-
         self.assertDictEqual(indexes, {None: 13})
 
     @drop_datasets
     def test_label_to_instance_dynamic_grouped_frames(self):
         dataset_frames = _make_video_dataset().to_frames(sample_frames=True)
+        dataset_frames.set_values(
+            "cloned_sample_id", dataset_frames.values("sample_id")
+        )
         dataset_grouped = dataset_frames.group_by(
-            "sample_id", order_by="frame_number"
+            "cloned_sample_id", order_by="frame_number"
         )
 
         foul.index_to_instance(
             dataset_grouped,
             "ground_truth",
-            id_field="sample_id",
             clear_index=True,
         )
 
@@ -903,7 +889,6 @@ class LabelUtilsTests(unittest.TestCase):
         foul.index_to_instance(
             dataset_grouped,
             "ground_truth",
-            id_field="sequence_index",
             clear_index=False,
         )
 
@@ -946,7 +931,6 @@ class LabelUtilsTests(unittest.TestCase):
         foul.index_to_instance(
             dataset_grouped,
             "ground_truth",
-            id_field="sequence_index",  # this will cause fallback to "id"
             clear_index=True,
         )
 
