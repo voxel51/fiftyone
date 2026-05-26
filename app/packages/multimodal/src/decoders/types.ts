@@ -37,6 +37,10 @@ export interface PointCloudField {
  * Positions extracted from a point cloud into an interleaved x/y/z array.
  */
 export interface PointCloudVisualization {
+  /**
+   * Per-message source coordinate frame decoded from the point cloud payload.
+   */
+  readonly coordinateFrameId?: string;
   readonly kind: typeof VISUALIZATION_KIND.POINT_CLOUD;
   readonly fields: readonly PointCloudField[];
   readonly pointCount: number;

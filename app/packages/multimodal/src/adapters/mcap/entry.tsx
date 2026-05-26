@@ -1,10 +1,11 @@
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
-import { GridRenderer, ModalRenderer } from "./react";
+import McapModalRenderer from "./react/McapModalRenderer";
+import { GridRenderer } from "./react";
 
 registerComponent({
   name: "McapRenderer",
   label: "Mcap Renderer",
-  component: ModalRenderer,
+  component: McapModalRenderer,
   type: PluginComponentType.SampleRenderer,
   activator: () => true,
   sampleRendererOptions: {

@@ -8,6 +8,22 @@ import { VISUALIZATION_KIND } from "../../../visualization";
 import { createInlineMcapResourceClient } from "./inline";
 import { MCAP_ACTIVE_TIMELINE } from "../types";
 
+const FRAME_TRANSFORM_SCHEMA_DATA = bytes(
+  "CmcKH2dvb2dsZS9wcm90b2J1Zi90aW1lc3RhbXAucHJvdG8SD2dvb2dsZS5wcm90b2J1ZiIrCglUaW1lc3RhbXASDwoHc2Vjb25kcxgBIAEoAxINCgVuYW5vcxgCIAEoBWIGcHJvdG8zClYKFmZveGdsb3ZlL1ZlY3RvcjMucHJvdG8SCGZveGdsb3ZlIioKB1ZlY3RvcjMSCQoBeBgBIAEoARIJCgF5GAIgASgBEgkKAXoYAyABKAFiBnByb3RvMwpnChlmb3hnbG92ZS9RdWF0ZXJuaW9uLnByb3RvEghmb3hnbG92ZSI4CgpRdWF0ZXJuaW9uEgkKAXgYASABKAESCQoBeRgCIAEoARIJCgF6GAMgASgBEgkKAXcYBCABKAFiBnByb3RvMwrIAgodZm94Z2xvdmUvRnJhbWVUcmFuc2Zvcm0ucHJvdG8SCGZveGdsb3ZlGh9nb29nbGUvcHJvdG9idWYuVGltZXN0YW1wLnByb3RvGhZmb3hnbG92ZS9WZWN0b3IzLnByb3RvGhlmb3hnbG92ZS9RdWF0ZXJuaW9uLnByb3RvIsABCg5GcmFtZVRyYW5zZm9ybRItCgl0aW1lc3RhbXAYASABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhcKD3BhcmVudF9mcmFtZV9pZBgCIAEoCRIWCg5jaGlsZF9mcmFtZV9pZBgDIAEoCRImCgt0cmFuc2xhdGlvbhgEIAEoCzIRLmZveGdsb3ZlLlZlY3RvcjMSJgoIcm90YXRpb24YBSABKAsyFC5mb3hnbG92ZS5RdWF0ZXJuaW9uYgZwcm90bzM="
+);
+const FRAME_TRANSFORMS_SCHEMA_DATA = bytes(
+  "CmcKH2dvb2dsZS9wcm90b2J1Zi90aW1lc3RhbXAucHJvdG8SD2dvb2dsZS5wcm90b2J1ZiIrCglUaW1lc3RhbXASDwoHc2Vjb25kcxgBIAEoAxINCgVuYW5vcxgCIAEoBWIGcHJvdG8zClYKFmZveGdsb3ZlL1ZlY3RvcjMucHJvdG8SCGZveGdsb3ZlIioKB1ZlY3RvcjMSCQoBeBgBIAEoARIJCgF5GAIgASgBEgkKAXoYAyABKAFiBnByb3RvMwpnChlmb3hnbG92ZS9RdWF0ZXJuaW9uLnByb3RvEghmb3hnbG92ZSI4CgpRdWF0ZXJuaW9uEgkKAXgYASABKAESCQoBeRgCIAEoARIJCgF6GAMgASgBEgkKAXcYBCABKAFiBnByb3RvMwrIAgodZm94Z2xvdmUvRnJhbWVUcmFuc2Zvcm0ucHJvdG8SCGZveGdsb3ZlGh9nb29nbGUvcHJvdG9idWYuVGltZXN0YW1wLnByb3RvGhZmb3hnbG92ZS9WZWN0b3IzLnByb3RvGhlmb3hnbG92ZS9RdWF0ZXJuaW9uLnByb3RvIsABCg5GcmFtZVRyYW5zZm9ybRItCgl0aW1lc3RhbXAYASABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhcKD3BhcmVudF9mcmFtZV9pZBgCIAEoCRIWCg5jaGlsZF9mcmFtZV9pZBgDIAEoCRImCgt0cmFuc2xhdGlvbhgEIAEoCzIRLmZveGdsb3ZlLlZlY3RvcjMSJgoIcm90YXRpb24YBSABKAsyFC5mb3hnbG92ZS5RdWF0ZXJuaW9uYgZwcm90bzMKkgEKHmZveGdsb3ZlL0ZyYW1lVHJhbnNmb3Jtcy5wcm90bxIIZm94Z2xvdmUaHWZveGdsb3ZlL0ZyYW1lVHJhbnNmb3JtLnByb3RvIj8KD0ZyYW1lVHJhbnNmb3JtcxIsCgp0cmFuc2Zvcm1zGAEgAygLMhguZm94Z2xvdmUuRnJhbWVUcmFuc2Zvcm1iBnByb3RvMw=="
+);
+const FRAME_TRANSFORM_MESSAGE = bytes(
+  "CgQIBxAUEgNtYXAaBWxpZGFyIhsJAAAAAAAA8D8RAAAAAAAAAEAZAAAAAAAACEAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPw=="
+);
+const FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP = bytes(
+  "EgNtYXAaBWxpZGFyIhsJAAAAAAAA8D8RAAAAAAAAAEAZAAAAAAAACEAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPw=="
+);
+const FRAME_TRANSFORMS_MESSAGE_WITHOUT_TIMESTAMP = bytes(
+  "ClMSA21hcBoJYmFzZV9saW5rIhsJAAAAAAAA8D8RAAAAAAAAAAAZAAAAAAAAAAAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPwpVEgliYXNlX2xpbmsaBWxpZGFyIhsJAAAAAAAAAAARAAAAAAAAAEAZAAAAAAAAAAAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPw=="
+);
+
 describe("MCAP resources", () => {
   it("reads topic inventory from summary channels without scanning messages", async () => {
     const source = createMcapSourceDescriptor();
@@ -90,6 +106,9 @@ describe("MCAP resources", () => {
         schemaEncoding: "protobuf",
       },
     });
+    expect(topics[1]?.metadata["mcap.channel_metadata.frame_id"]).toBe(
+      "cam-left"
+    );
     expect(topics[2]).toMatchObject({
       displayName: "/lidar",
       payload: {
@@ -101,6 +120,66 @@ describe("MCAP resources", () => {
     });
     expect(readMessages).not.toHaveBeenCalled();
     expect(decodeClient.decode).not.toHaveBeenCalled();
+  });
+
+  it("mirrors channel frame_id metadata without a typed stream frame", async () => {
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              7,
+              createChannel({
+                id: 7,
+                metadata: new Map([["frame_id", "raw-camera-front"]]),
+                topic: "/camera",
+              }),
+            ],
+            [
+              8,
+              createChannel({
+                id: 8,
+                metadata: new Map([["frame_id", "lidar-top"]]),
+                topic: "/lidar",
+              }),
+            ],
+          ]),
+        })
+      ),
+    });
+
+    const topics = await client.readTopics({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(topics[0]?.metadata["mcap.channel_metadata.frame_id"]).toBe(
+      "raw-camera-front"
+    );
+    expect(topics[1]?.metadata["mcap.channel_metadata.frame_id"]).toBe(
+      "lidar-top"
+    );
+  });
+
+  it("caches topic reads by source", async () => {
+    const source = createMcapSourceDescriptor();
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [7, createChannel({ id: 7, topic: "/camera" })],
+          ]),
+        })
+      ),
+    });
+
+    const first = await client.readTopics({ source });
+    const second = await client.readTopics({ source });
+
+    expect(second).toBe(first);
   });
 
   it("matches MCAP adapter topic fallbacks for missing schema and stats", async () => {
@@ -165,6 +244,455 @@ describe("MCAP resources", () => {
     expect(topics[0]?.payload?.schemaEncoding).toBeUndefined();
     expect(topics[1]?.payload?.schema).toBeUndefined();
     expect(topics[1]?.payload?.schemaEncoding).toBeUndefined();
+  });
+
+  it("returns an empty frame transform bootstrap when no transform-schema channels exist", async () => {
+    const readMessages = vi.fn(async function* () {
+      for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
+        yield message;
+      }
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          readMessages,
+        })
+      ),
+    });
+
+    const set = await client.readFrameTransformBootstrap({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(set).toEqual({ samples: [] });
+    expect(readMessages).not.toHaveBeenCalled();
+  });
+
+  it("discovers foxglove.FrameTransform channels by schema regardless of topic name", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
+        channelId: 10,
+      });
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/sensor_calibration",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+                id: 10,
+                name: "foxglove.FrameTransform",
+              }),
+            ],
+          ]),
+          statistics: createStatistics({
+            channelMessageCounts: new Map([[10, 1n]]),
+          }),
+        })
+      ),
+    });
+
+    const set = await client.readFrameTransformBootstrap({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(readMessages).toHaveBeenCalledWith({
+      topics: ["/sensor_calibration"],
+    });
+    expect(set.samples).toHaveLength(1);
+    expect(set.samples[0]).toMatchObject({
+      childFrameId: "lidar",
+      parentFrameId: "map",
+    });
+    expect(set.samples[0]?.timeNs).toBeUndefined();
+    expect(set.samples[0]?.rotation.toArray()).toEqual([0, 0, 0, 1]);
+    expect(set.samples[0]?.translation.toArray()).toEqual([1, 2, 3]);
+  });
+
+  it("includes bootstrap transform channels when summary stats are unavailable", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
+        channelId: 10,
+      });
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/tf_static",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+                id: 10,
+                name: "foxglove.FrameTransform",
+              }),
+            ],
+          ]),
+        })
+      ),
+    });
+
+    const set = await client.readFrameTransformBootstrap({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(readMessages).toHaveBeenCalledWith({
+      topics: ["/tf_static"],
+    });
+    expect(set.samples).toHaveLength(1);
+    expect(set.samples[0]).toMatchObject({
+      childFrameId: "lidar",
+      parentFrameId: "map",
+    });
+  });
+
+  it("flattens foxglove.FrameTransforms bootstrap messages and caches reads", async () => {
+    const source = createMcapSourceDescriptor();
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(FRAME_TRANSFORMS_MESSAGE_WITHOUT_TIMESTAMP, {
+        channelId: 10,
+      });
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/calibration_bundle",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(FRAME_TRANSFORMS_SCHEMA_DATA, {
+                id: 10,
+                name: "foxglove.FrameTransforms",
+              }),
+            ],
+          ]),
+          statistics: createStatistics({
+            channelMessageCounts: new Map([[10, 1n]]),
+          }),
+        })
+      ),
+    });
+
+    const first = await client.readFrameTransformBootstrap({ source });
+    const second = await client.readFrameTransformBootstrap({ source });
+
+    expect(second).toBe(first);
+    expect(readMessages).toHaveBeenCalledTimes(1);
+    expect(first.samples.map((sample) => sample.timeNs)).toEqual([
+      undefined,
+      undefined,
+    ]);
+    expect(first.samples.map((sample) => sample.childFrameId)).toEqual([
+      "lidar",
+      "base_link",
+    ]);
+    expect(first.samples.map((sample) => sample.parentFrameId)).toEqual([
+      "base_link",
+      "map",
+    ]);
+  });
+
+  it("reads dynamic frame transform windows from any schema-discovered topic", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(FRAME_TRANSFORM_MESSAGE, {
+        channelId: 10,
+        logTime: 7_000_000_020n,
+      });
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/robot_transforms",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+                id: 10,
+                name: "foxglove.FrameTransform",
+              }),
+            ],
+          ]),
+        })
+      ),
+    });
+
+    const set = await client.readFrameTransformWindow({
+      endTimeNs: 7_000_000_020n,
+      source: createMcapSourceDescriptor(),
+      startTimeNs: 7_000_000_020n,
+    });
+
+    expect(readMessages).toHaveBeenCalledWith({
+      endTime: 7_000_000_020n,
+      startTime: 7_000_000_020n,
+      topics: ["/robot_transforms"],
+    });
+    expect(set.samples).toHaveLength(1);
+    expect(set.samples[0]).toMatchObject({
+      childFrameId: "lidar",
+      parentFrameId: "map",
+      timeNs: 7_000_000_020n,
+    });
+    expect(set.samples[0]?.rotation.toArray()).toEqual([0, 0, 0, 1]);
+    expect(set.samples[0]?.translation.toArray()).toEqual([1, 2, 3]);
+  });
+
+  it("keeps dynamic frame transform window reads in a bounded LRU cache", async () => {
+    const source = createMcapSourceDescriptor();
+    const readMessages = vi.fn(async function* () {
+      for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
+        yield message;
+      }
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/tf",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+                id: 10,
+                name: "foxglove.FrameTransform",
+              }),
+            ],
+          ]),
+        })
+      ),
+    });
+
+    await client.readFrameTransformWindow({
+      endTimeNs: 0n,
+      source,
+      startTimeNs: 0n,
+    });
+    await client.readFrameTransformWindow({
+      endTimeNs: 0n,
+      source,
+      startTimeNs: 0n,
+    });
+
+    expect(readMessages).toHaveBeenCalledTimes(1);
+
+    for (let index = 1; index <= 32; index += 1) {
+      await client.readFrameTransformWindow({
+        endTimeNs: BigInt(index),
+        source,
+        startTimeNs: BigInt(index),
+      });
+    }
+    await client.readFrameTransformWindow({
+      endTimeNs: 0n,
+      source,
+      startTimeNs: 0n,
+    });
+
+    expect(readMessages).toHaveBeenCalledTimes(34);
+  });
+
+  it("treats window samples without a message timestamp as static (no timeNs)", async () => {
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/robot_transforms",
+              }),
+            ],
+          ]),
+          messages: [
+            createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
+              channelId: 10,
+              logTime: 100n,
+            }),
+          ],
+          schemasById: new Map([
+            [
+              10,
+              createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+                id: 10,
+                name: "foxglove.FrameTransform",
+              }),
+            ],
+          ]),
+        })
+      ),
+    });
+
+    const set = await client.readFrameTransformWindow({
+      endTimeNs: 100n,
+      source: createMcapSourceDescriptor(),
+      startTimeNs: 100n,
+    });
+
+    expect(set.samples).toHaveLength(1);
+    expect(set.samples[0]?.timeNs).toBeUndefined();
+    expect(set.samples[0]).toMatchObject({
+      childFrameId: "lidar",
+      parentFrameId: "map",
+    });
+  });
+
+  it("skips channels whose schema is not a Foxglove frame transform", async () => {
+    const readMessages = vi.fn(async function* () {
+      for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
+        yield message;
+      }
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/example/transforms",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(new Uint8Array([9]), {
+                id: 10,
+                name: "example.Transform",
+              }),
+            ],
+          ]),
+          statistics: createStatistics({
+            channelMessageCounts: new Map([[10, 1n]]),
+          }),
+        })
+      ),
+    });
+
+    const set = await client.readFrameTransformBootstrap({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(set.samples).toEqual([]);
+    expect(readMessages).not.toHaveBeenCalled();
+  });
+
+  it("defers bootstrap scans of channels with message counts above the cap", async () => {
+    const readMessages = vi.fn(async function* () {
+      for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
+        yield message;
+      }
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/dense_tf",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+                id: 10,
+                name: "foxglove.FrameTransform",
+              }),
+            ],
+          ]),
+          statistics: createStatistics({
+            channelMessageCounts: new Map([[10, 10_000n]]),
+          }),
+        })
+      ),
+    });
+
+    const set = await client.readFrameTransformBootstrap({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(set.samples).toEqual([]);
+    expect(readMessages).not.toHaveBeenCalled();
   });
 
   it("decodes log-timeline messages through the generic decode client", async () => {
@@ -790,4 +1318,8 @@ function createMessage(
     sequence: options.sequence ?? 2,
     type: "Message",
   };
+}
+
+function bytes(base64: string): Uint8Array {
+  return Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
 }

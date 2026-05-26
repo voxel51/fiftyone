@@ -55,6 +55,21 @@ interface PointCloudRenderData {
   readonly renderedPointCount: number;
 }
 
+interface PointCloudObjectTransform {
+  readonly position: [number, number, number];
+  readonly quaternion: [number, number, number, number];
+}
+
+/**
+ * Transform from a point-cloud frame into the panel's fixed frame.
+ */
+export interface PointCloudFrameTransform {
+  readonly rotation: THREE.Quaternion;
+  readonly sourceFrameId: string;
+  readonly targetFrameId: string;
+  readonly translation: THREE.Vector3;
+}
+
 /**
  * Props for rendering one decoded point-cloud visualization frame.
  */
@@ -62,10 +77,12 @@ export interface PointCloudPanelProps {
   readonly className?: string;
   readonly fit?: "initial" | "frame" | "never";
   readonly frame: PointCloudVisualization;
+  readonly frameTransform?: PointCloudFrameTransform;
   readonly maxRenderedPoints?: number;
   readonly pointSize?: number;
   readonly showHud?: boolean;
   readonly style?: CSSProperties;
+  readonly warning?: string | null;
 }
 
 /**
@@ -75,10 +92,12 @@ export function PointCloudPanel({
   className,
   fit = "initial",
   frame,
+  frameTransform,
   maxRenderedPoints = DEFAULT_MAX_RENDERED_POINTS,
   pointSize = DEFAULT_POINT_SIZE,
   showHud = true,
   style,
+  warning = null,
 }: PointCloudPanelProps) {
   const [canvasError, setCanvasError] = useState<string | null>(null);
   const [finitePointCount, setFinitePointCount] = useState(0);
@@ -90,9 +109,10 @@ export function PointCloudPanel({
         onFinitePointCount={setFinitePointCount}
         pointSize={pointSize}
         positions={frame.positions}
+        transform={frameTransform}
       />
     ),
-    [fit, frame.positions, maxRenderedPoints, pointSize]
+    [fit, frame.positions, frameTransform, maxRenderedPoints, pointSize]
   );
 
   return (
@@ -115,6 +135,7 @@ export function PointCloudPanel({
           {pointCountLabel(finitePointCount, frame.pointCount)}
         </div>
       ) : null}
+      {warning ? <div style={styles.warning}>{warning}</div> : null}
     </div>
   );
 }
@@ -125,25 +146,41 @@ function PointCloudSceneContent({
   onFinitePointCount,
   pointSize,
   positions,
+  transform,
 }: {
   readonly fit: "initial" | "frame" | "never";
   readonly maxRenderedPoints: number;
   readonly onFinitePointCount: (count: number) => void;
   readonly pointSize: number;
   readonly positions: Float32Array;
+  readonly transform: PointCloudFrameTransform | undefined;
 }) {
+  const invalidate = useThree((state) => state.invalidate);
   const data = useMemo(
     () => buildPointCloudRenderData(positions, maxRenderedPoints),
     [maxRenderedPoints, positions]
+  );
+  const objectTransform = useMemo(
+    () => pointCloudObjectTransform(transform),
+    [transform]
   );
 
   useEffect(() => {
     onFinitePointCount(data.finitePointCount);
   }, [data.finitePointCount, onFinitePointCount]);
 
+  useEffect(() => {
+    invalidate();
+  }, [invalidate, objectTransform]);
+
   return (
     <Base3DScene>
-      <PointCloudPoints data={data} pointSize={pointSize} />
+      <group
+        position={objectTransform.position}
+        quaternion={objectTransform.quaternion}
+      >
+        <PointCloudPoints data={data} pointSize={pointSize} />
+      </group>
     </Base3DScene>
   );
 }
@@ -164,7 +201,8 @@ function PointCloudPoints({
   }, [geometry, invalidate]);
 
   return (
-    <points frustumCulled={false} geometry={geometry}>
+    <points frustumCulled={false}>
+      <primitive attach="geometry" object={geometry} />
       <pointsMaterial size={pointSize} sizeAttenuation={false} vertexColors />
     </points>
   );
@@ -235,8 +273,8 @@ function buildPointCloudRenderData(
 
     const targetOffset = renderedPointCount * POINT_COMPONENT_COUNT;
     positions[targetOffset + X_COMPONENT_INDEX] = x;
-    positions[targetOffset + Y_COMPONENT_INDEX] = z;
-    positions[targetOffset + Z_COMPONENT_INDEX] = -y;
+    positions[targetOffset + Y_COMPONENT_INDEX] = y;
+    positions[targetOffset + Z_COMPONENT_INDEX] = z;
     writeHeightColor(
       colors,
       targetOffset,
@@ -298,6 +336,37 @@ function computeSourceHeightBounds(sourcePositions: Float32Array) {
     finitePointCount,
     maxHeight: finitePointCount > 0 ? maxHeight : 0,
     minHeight: finitePointCount > 0 ? minHeight : 0,
+  };
+}
+
+function pointCloudObjectTransform(
+  frameTransform: PointCloudFrameTransform | undefined
+): PointCloudObjectTransform {
+  if (!frameTransform) {
+    return {
+      position: [0, 0, 0],
+      quaternion: [0, 0, 0, 1],
+    };
+  }
+
+  const { rotation, translation } = frameTransform;
+  const length = Math.hypot(rotation.w, rotation.x, rotation.y, rotation.z);
+  if (length === 0) {
+    return {
+      position: [translation.x, translation.y, translation.z],
+      quaternion: [0, 0, 0, 1],
+    };
+  }
+
+  const normalizedRotation = rotation.clone().normalize();
+  return {
+    position: [translation.x, translation.y, translation.z],
+    quaternion: [
+      normalizedRotation.x,
+      normalizedRotation.y,
+      normalizedRotation.z,
+      normalizedRotation.w,
+    ],
   };
 }
 
@@ -381,5 +450,18 @@ const styles: Record<string, CSSProperties> = {
     padding: STATUS_PADDING_PX,
     position: "absolute",
     textAlign: "center",
+  },
+  warning: {
+    background: VISUALIZATION_HUD_BACKGROUND_COLOR,
+    border: `1px solid ${VISUALIZATION_HUD_BORDER_COLOR}`,
+    borderRadius: HUD_BORDER_RADIUS_PX,
+    bottom: HUD_OFFSET_PX,
+    color: VISUALIZATION_HUD_TEXT_COLOR,
+    fontSize: HUD_FONT_SIZE_PX,
+    left: HUD_OFFSET_PX,
+    lineHeight: 1.2,
+    maxWidth: "calc(100% - 16px)",
+    padding: "5px 7px",
+    position: "absolute",
   },
 };

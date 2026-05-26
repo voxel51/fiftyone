@@ -8,6 +8,7 @@ import {
   type McapPlaybackWorkerStreamType,
   type McapPlaybackWorkerUnaryType,
 } from "./playback-worker-types";
+import { dehydrateMcapFrameTransformSet } from "../frame-transforms";
 import type { McapResourceClient } from "../types";
 
 /**
@@ -44,6 +45,14 @@ export const MCAP_PLAYBACK_WORKER_OPERATIONS: McapPlaybackWorkerOperationMap = {
   readDecodedMessages: {
     kind: "stream",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+  },
+  readFrameTransformBootstrap: {
+    kind: "unary",
+    priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+  },
+  readFrameTransformWindow: {
+    kind: "unary",
+    priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
   },
   readSynchronizedMessageBatch: {
     kind: "unary",
@@ -89,6 +98,14 @@ export function runMcapPlaybackWorkerUnaryRequest(
   message: McapPlaybackWorkerRpcRequest<McapPlaybackWorkerUnaryType>
 ): Promise<McapPlaybackWorkerResultByType[McapPlaybackWorkerUnaryType]> {
   switch (message.type) {
+    case "readFrameTransformBootstrap":
+      return client
+        .readFrameTransformBootstrap(message.payload)
+        .then(dehydrateMcapFrameTransformSet);
+    case "readFrameTransformWindow":
+      return client
+        .readFrameTransformWindow(message.payload)
+        .then(dehydrateMcapFrameTransformSet);
     case "readSynchronizedMessageBatch":
       return client.readSynchronizedMessageBatch(message.payload);
     case "readSynchronizedMessages":

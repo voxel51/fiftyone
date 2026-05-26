@@ -1,6 +1,7 @@
 import type { ByteSourceDescriptor } from "../../query/bytes";
 import type { DecodeResult } from "../../query/decode";
 import type { PlaybackSyncMode, StreamInventory } from "../../schemas/v1";
+import type { McapFrameTransformSet } from "./frame-transform-types";
 
 /**
  * MCAP timeline selected as the playback clock/time track.
@@ -131,6 +132,41 @@ export interface McapReadTopicsRequest {
    * MCAP source to inspect for summary channel metadata.
    */
   readonly source: ByteSourceDescriptor;
+}
+
+/**
+ * Request for frame transforms needed before a 3D panel can render.
+ */
+export interface McapReadFrameTransformBootstrapRequest {
+  /**
+   * MCAP source to inspect for eager transform messages.
+   */
+  readonly source: ByteSourceDescriptor;
+}
+
+/**
+ * Request for dynamic frame transforms in a playback timeline window.
+ */
+export interface McapReadFrameTransformWindowRequest {
+  /**
+   * Timeline used to interpret request bounds; defaults to MCAP log time.
+   */
+  readonly activeTimeline?: McapActiveTimeline;
+
+  /**
+   * Inclusive upper timeline bound for dynamic transform messages.
+   */
+  readonly endTimeNs: bigint;
+
+  /**
+   * MCAP source to inspect for dynamic transform messages.
+   */
+  readonly source: ByteSourceDescriptor;
+
+  /**
+   * Inclusive lower timeline bound for dynamic transform messages.
+   */
+  readonly startTimeNs: bigint;
 }
 
 /**
@@ -318,6 +354,20 @@ export interface McapResourceClient {
   readTopics(
     request: McapReadTopicsRequest
   ): Promise<readonly StreamInventory[]>;
+
+  /**
+   * Reads eager frame transforms needed for initial 3D placement.
+   */
+  readFrameTransformBootstrap(
+    request: McapReadFrameTransformBootstrapRequest
+  ): Promise<McapFrameTransformSet>;
+
+  /**
+   * Reads dynamic frame transforms in a playback timeline window.
+   */
+  readFrameTransformWindow(
+    request: McapReadFrameTransformWindowRequest
+  ): Promise<McapFrameTransformSet>;
 
   /**
    * Reads one synchronized decoded message window around a playback time.

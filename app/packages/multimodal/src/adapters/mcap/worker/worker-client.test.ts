@@ -1,4 +1,5 @@
 import { create } from "@bufbuild/protobuf";
+import { Quaternion, Vector3 } from "three";
 import { describe, expect, it, vi } from "vitest";
 import { StreamInventorySchema } from "../../../schemas/v1";
 import {
@@ -7,6 +8,8 @@ import {
   type McapPlaybackWorkerResponse,
 } from "./playback-worker-types";
 import { createWorkerMcapResourceClient } from "./worker-client";
+import { dehydrateMcapFrameTransformSet } from "../frame-transforms";
+import type { McapFrameTransformSet } from "../frame-transform-types";
 
 vi.mock("@fiftyone/utilities", () => ({
   getFetchParameters: () => ({
@@ -70,6 +73,75 @@ describe("worker-backed MCAP resource client", () => {
     worker.respond({ id: 1, ok: true, result });
 
     await expect(topics).resolves.toEqual(result);
+  });
+
+  it("sends frame transform bootstrap reads at current-frame priority", async () => {
+    const { client, workers } = createClientHarness();
+    const request = {
+      source: createSource("source:1"),
+    };
+    // What the worker actually produces — real THREE instances. The worker's
+    // RPC layer dehydrates these before postMessage; the test simulates that
+    // and the structuredClone hop so the receiver exercises real serialization.
+    const workerResult: McapFrameTransformSet = {
+      samples: [
+        {
+          childFrameId: "lidar",
+          parentFrameId: "map",
+          rotation: new Quaternion(0, 0, 0, 1),
+          translation: new Vector3(1, 2, 3),
+        },
+      ],
+    };
+
+    const bootstrap = client.readFrameTransformBootstrap(request);
+    const worker = workers[0];
+
+    expect(worker.messages[1]).toMatchObject({
+      id: 1,
+      payload: request,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+      type: "readFrameTransformBootstrap",
+    });
+
+    worker.respond({
+      id: 1,
+      ok: true,
+      result: structuredClone(dehydrateMcapFrameTransformSet(workerResult)),
+    });
+
+    const set = await bootstrap;
+    expect(set.samples[0]?.rotation).toBeInstanceOf(Quaternion);
+    expect(set.samples[0]?.translation).toBeInstanceOf(Vector3);
+    expect(set.samples[0]?.translation.toArray()).toEqual([1, 2, 3]);
+  });
+
+  it("sends frame transform windows at idle-prefetch priority", async () => {
+    const { client, workers } = createClientHarness();
+    const request = {
+      endTimeNs: 20n,
+      source: createSource("source:1"),
+      startTimeNs: 10n,
+    };
+    const workerResult: McapFrameTransformSet = { samples: [] };
+
+    const window = client.readFrameTransformWindow(request);
+    const worker = workers[0];
+
+    expect(worker.messages[1]).toMatchObject({
+      id: 1,
+      payload: request,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
+      type: "readFrameTransformWindow",
+    });
+
+    worker.respond({
+      id: 1,
+      ok: true,
+      result: structuredClone(dehydrateMcapFrameTransformSet(workerResult)),
+    });
+
+    await expect(window).resolves.toEqual(workerResult);
   });
 
   it("sends playback batches at playback priority", async () => {

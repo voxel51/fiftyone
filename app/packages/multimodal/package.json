@@ -73,6 +73,6 @@
         "three": "^0.182.0"
     },
     "devDependencies": {
-        "@types/three": "^0.176.0"
+        "@types/three": "^0.182.0"
     }
 }

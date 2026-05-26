@@ -32,26 +32,20 @@ function RegisterTiles() {
   useEffect(() => {
     const disposes = [
       registerTile({
-        streamId: "camera_front",
         type: "camera",
         typeLabel: "Camera",
-        title: "Camera front",
         icon: IconName.GridView,
         Tile: DummyTile,
       }),
       registerTile({
-        streamId: "lidar_top",
         type: "lidar",
         typeLabel: "Lidar",
-        title: "Lidar top",
         icon: IconName.Embeddings,
         Tile: DummyTile,
       }),
       registerTile({
-        streamId: "imu",
         type: "graph",
         typeLabel: "Graph",
-        title: "IMU",
         icon: IconName.Logs,
         Tile: DummyTile,
       }),

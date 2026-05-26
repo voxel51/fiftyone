@@ -124,6 +124,7 @@ describe("Foxglove decoders", () => {
     expect(Array.from(output.visualization.positions)).toEqual([
       1, 2, 3, 4, 5, 6,
     ]);
+    expect(output.visualization.coordinateFrameId).toBe("LIDAR_TEST");
     expect(output.visualization.pointCount).toBe(2);
     expect(output.attributes).toMatchObject({
       frameId: "LIDAR_TEST",
