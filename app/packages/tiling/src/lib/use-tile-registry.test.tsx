@@ -81,6 +81,27 @@ describe("useTileRegistry", () => {
     expect(result.current.tiles).toEqual([]);
   });
 
+  it("disposing the older registration leaves the replacement intact", () => {
+    const { result } = renderHook(
+      () => ({ registry: useTileRegistry(), tiles: useRegisteredTiles() }),
+      { wrapper: makeWrapper() }
+    );
+    let disposeA = () => {};
+    act(() => {
+      disposeA = result.current.registry.registerTile(makeEntry("camera", "A"));
+      result.current.registry.registerTile(makeEntry("camera", "B"));
+    });
+    expect(result.current.tiles).toHaveLength(1);
+    expect(result.current.tiles[0].typeLabel).toBe("B");
+
+    act(() => {
+      disposeA();
+    });
+    // Stale disposer must not strip the newer same-type entry.
+    expect(result.current.tiles).toHaveLength(1);
+    expect(result.current.tiles[0].typeLabel).toBe("B");
+  });
+
   it("supports multiple distinct types", () => {
     const { result } = renderHook(
       () => ({ registry: useTileRegistry(), tiles: useRegisteredTiles() }),

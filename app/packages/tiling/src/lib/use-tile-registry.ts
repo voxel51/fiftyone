@@ -14,13 +14,19 @@ export function useTileRegistry(): {
   const store = useStore();
   const registerTile = useCallback(
     (entry: RegisteredTile) => {
-      store.set(registeredTilesAtom, (prev) => [
-        ...prev.filter((t) => t.type !== entry.type),
-        entry,
-      ]);
+      store.set(registeredTilesAtom, (prev) => {
+        const index = prev.findIndex((t) => t.type === entry.type);
+        if (index === -1) return [...prev, entry];
+        const next = [...prev];
+        next[index] = entry;
+        return next;
+      });
+      // Filter by identity, not by type — otherwise an older disposer
+      // could remove a newer same-type registration that has since
+      // replaced this one.
       return () => {
         store.set(registeredTilesAtom, (prev) =>
-          prev.filter((t) => t.type !== entry.type)
+          prev.filter((t) => t !== entry)
         );
       };
     },

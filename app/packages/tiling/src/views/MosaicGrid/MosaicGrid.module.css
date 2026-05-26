@@ -53,6 +53,7 @@
    real tile body as a "ghost" layer. We don't use the drag preview —
    hide it. */
 /* Blueprint-styled drag preview leaks through as a ghost — hide it. */
+/* stylelint-disable-next-line selector-pseudo-class-no-unknown */
 .root :global(.mosaic .mosaic-preview) {
   display: none;
 }
