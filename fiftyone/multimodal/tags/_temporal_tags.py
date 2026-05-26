@@ -24,7 +24,8 @@ import os
 from typing import Iterable
 
 from bson import ObjectId
-from pymongo import ASCENDING, InsertOne, UpdateMany, UpdateOne
+from pymongo import ASCENDING, InsertOne, ReturnDocument, UpdateMany, UpdateOne
+from pymongo.errors import DuplicateKeyError
 
 import eta.core.utils as etau
 
@@ -177,6 +178,10 @@ class TemporalTag(object):
             d["id"] = self.id
 
         return d
+
+
+class TemporalTagNotFoundError(ValueError):
+    """Raised when a temporal tag ID is not found in the current scope."""
 
 
 @dataclass(frozen=True)
@@ -401,6 +406,89 @@ class TemporalTags(object):
 
         return [_from_storage_doc(docs_by_key[key]) for key in keys]
 
+    def update(
+        self,
+        id,
+        *,
+        start=None,
+        end=None,
+        tag=None,
+        last_modified_by=None,
+    ) -> TemporalTag:
+        """Updates a persisted temporal tag by ID.
+
+        Args:
+            id: the temporal tag ID
+            start (None): an optional updated start value
+            end (None): an optional updated end value
+            tag (None): an optional updated tag value
+            last_modified_by (None): an optional actor that last modified the
+                temporal tag
+
+        Returns:
+            the updated :class:`TemporalTag`
+        """
+        tag_id = _ensure_object_id(id, "id")
+        collection = _get_existing_collection()
+        if collection is None:
+            raise TemporalTagNotFoundError(
+                "Temporal tag not found: %s" % tag_id
+            )
+
+        query = {"_dataset_id": self._dataset._doc.id, "_id": tag_id}
+        if self._sample_ids is not None:
+            query["_sample_id"] = _build_in_query(list(self._sample_ids))
+
+        existing_doc = collection.find_one(query)
+        if existing_doc is None:
+            raise TemporalTagNotFoundError(
+                "Temporal tag not found: %s" % tag_id
+            )
+
+        update_fields = _build_update_fields(
+            existing_doc,
+            start=start,
+            end=end,
+            tag=tag,
+            last_modified_by=last_modified_by,
+        )
+        now = _utcnow()
+        update_fields["last_modified_at"] = now
+
+        updated_doc = {**existing_doc, **update_fields}
+        duplicate = collection.find_one(
+            {
+                **_unique_query(updated_doc),
+                "_id": {"$ne": existing_doc["_id"]},
+            }
+        )
+        if duplicate is not None:
+            raise ValueError(
+                "Temporal tag update would duplicate an existing temporal tag"
+            )
+
+        try:
+            persisted_doc = collection.find_one_and_update(
+                query,
+                {"$set": update_fields},
+                return_document=ReturnDocument.AFTER,
+            )
+        except DuplicateKeyError as e:
+            raise ValueError(
+                "Temporal tag update would duplicate an existing temporal tag"
+            ) from e
+
+        if persisted_doc is None:
+            raise TemporalTagNotFoundError(
+                "Temporal tag not found: %s" % tag_id
+            )
+
+        _touch_parent_last_modified_at(
+            self._dataset, [persisted_doc["_sample_id"]], now
+        )
+
+        return _from_storage_doc(persisted_doc)
+
     def delete(
         self,
         *,
@@ -559,6 +647,42 @@ def delete_temporal_tags(
 
     return TemporalTags(dataset).delete(
         ids=ids, tags=tags, filter=filter, delete_all=delete_all
+    )
+
+
+def update_temporal_tag(
+    dataset,
+    id,
+    *,
+    start=None,
+    end=None,
+    tag=None,
+    last_modified_by=None,
+) -> TemporalTag:
+    """Updates a temporal tag in a dataset.
+
+    If a view is provided, the temporal tag ID must belong to the view.
+
+    Args:
+        dataset: a :class:`fiftyone.Dataset` or
+            :class:`fiftyone.core.view.DatasetView`
+        id: the temporal tag ID
+        start (None): an optional updated start value
+        end (None): an optional updated end value
+        tag (None): an optional updated tag value
+        last_modified_by (None): an optional actor that last modified the
+            temporal tag
+
+    Returns:
+        the updated :class:`TemporalTag`
+    """
+
+    return TemporalTags(dataset).update(
+        id,
+        start=start,
+        end=end,
+        tag=tag,
+        last_modified_by=last_modified_by,
     )
 
 
@@ -884,6 +1008,39 @@ def _to_storage_doc(tag: TemporalTag, dataset_id, sample_id):
         "tag": _ensure_tag(tag.tag),
         **_to_storage_provenance(tag),
     }
+
+
+def _build_update_fields(
+    doc, *, start=None, end=None, tag=None, last_modified_by=None
+):
+    fields = {}
+
+    if start is not None:
+        fields["start"] = _ensure_integer(start, "start")
+
+    if end is not None:
+        fields["end"] = _ensure_integer(end, "end")
+
+    if tag is not None:
+        fields["tag"] = _ensure_tag(tag)
+
+    if last_modified_by is not None:
+        fields["last_modified_by"] = _ensure_non_empty_string(
+            last_modified_by, "last_modified_by"
+        )
+
+    if not fields:
+        raise ValueError(
+            "Temporal tag update must include start, end, tag, or "
+            "last_modified_by"
+        )
+
+    updated_start = fields.get("start", doc["start"])
+    updated_end = fields.get("end", doc["end"])
+    if updated_start >= updated_end:
+        raise ValueError("Temporal tag ranges must satisfy start < end")
+
+    return fields
 
 
 def _from_storage_doc(doc) -> TemporalTag:
@@ -1309,4 +1466,5 @@ __all__ = [
     "count_temporal_tags",
     "delete_temporal_tags",
     "list_temporal_tags",
+    "update_temporal_tag",
 ]

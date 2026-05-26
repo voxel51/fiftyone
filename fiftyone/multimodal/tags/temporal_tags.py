@@ -2,8 +2,9 @@
 Temporal tagging support for multimodal samples.
 
 Use :func:`add_temporal_tags`, :func:`list_temporal_tags`,
-:func:`delete_temporal_tags`, and :func:`count_temporal_tags` for common SDK
-workflows. These helpers accept a dataset or view and delegate to
+:func:`update_temporal_tag`, :func:`delete_temporal_tags`, and
+:func:`count_temporal_tags` for common SDK workflows. These helpers accept a
+dataset or view and delegate to
 :class:`TemporalTags`, a small collection facade for ordered iteration and
 bulk operations.
 
@@ -39,6 +40,7 @@ from ._temporal_tags import (
     count_temporal_tags,
     delete_temporal_tags,
     list_temporal_tags,
+    update_temporal_tag,
 )
 
 for _public_obj in (
@@ -49,6 +51,7 @@ for _public_obj in (
     count_temporal_tags,
     delete_temporal_tags,
     list_temporal_tags,
+    update_temporal_tag,
 ):
     _public_obj.__module__ = __name__
 
@@ -66,4 +69,5 @@ __all__ = [
     "count_temporal_tags",
     "delete_temporal_tags",
     "list_temporal_tags",
+    "update_temporal_tag",
 ]

@@ -12,6 +12,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 import fiftyone.multimodal.tags as fomt
+from fiftyone.multimodal.tags._temporal_tags import TemporalTagNotFoundError
 from fiftyone.multimodal.query import (
     resolve_playback_plan,
     resolve_scene_inventory,
@@ -102,6 +103,38 @@ class SampleTemporalTagsEndpoint(HTTPEndpoint):
                     tags=delete_request["tags"],
                     filter=delete_request["filter"],
                     delete_all=delete_request["delete_all"],
+                )
+            )
+        }
+
+
+class SampleTemporalTagEndpoint(HTTPEndpoint):
+    """Multimodal sample temporal tag item endpoint."""
+
+    @decorators.route
+    async def patch(self, request: Request, data: dict) -> dict:
+        """Updates a temporal tag for the sample."""
+
+        dataset = _get_dataset_from_request(request)
+        sample_id = _get_required_path_param(request, "sample_id")
+        temporal_tag_id = _get_required_path_param(request, "temporal_tag_id")
+        update = _temporal_tag_update_from_payload(
+            data,
+            sample_id=sample_id,
+            temporal_tag_id=temporal_tag_id,
+        )
+
+        return {
+            "temporal_tag": _serialize_temporal_tag(
+                _handle_temporal_tag_errors(
+                    lambda: fomt.update_temporal_tag(
+                        dataset.select([sample_id]),
+                        temporal_tag_id,
+                        start=update["start"],
+                        end=update["end"],
+                        tag=update["tag"],
+                        last_modified_by=update["last_modified_by"],
+                    )
                 )
             )
         }
@@ -270,6 +303,32 @@ def _delete_request_from_payload(data, sample_id: str) -> dict:
     }
 
 
+def _temporal_tag_update_from_payload(
+    data, *, sample_id: str, temporal_tag_id: str
+) -> dict:
+    _require_dict(data, "request body")
+    _reject_temporal_tag_update_fields(data)
+    _ensure_matching_sample_id(data.get("sample_id", None), sample_id)
+    _ensure_matching_temporal_tag_id(data.get("id", None), temporal_tag_id)
+
+    update = {
+        "start": data.get("start", None),
+        "end": data.get("end", None),
+        "tag": data.get("tag", None),
+        "last_modified_by": data.get("last_modified_by", None),
+    }
+    if all(value is None for value in update.values()):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Temporal tag update must include start, end, tag, or "
+                "last_modified_by"
+            ),
+        )
+
+    return update
+
+
 def _temporal_tag_filter_from_query(
     request: Request, sample_id: str | None = None
 ) -> fomt.TemporalTagFilter:
@@ -305,6 +364,8 @@ def _serialize_temporal_tag(tag: fomt.TemporalTag) -> dict:
 def _handle_temporal_tag_errors(callback):
     try:
         return callback()
+    except TemporalTagNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except (TypeError, ValueError) as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -366,6 +427,17 @@ def _ensure_matching_sample_id(value, sample_id: str) -> None:
         )
 
 
+def _ensure_matching_temporal_tag_id(value, temporal_tag_id: str) -> None:
+    if value is None:
+        return
+
+    if str(value) != temporal_tag_id:
+        raise HTTPException(
+            status_code=400,
+            detail="'id' must match the path temporal_tag_id",
+        )
+
+
 def _optional_query_int(params, field: str) -> int | None:
     value = params.get(field, None)
     if value is None or value == "":
@@ -405,23 +477,54 @@ def _reject_temporal_tag_timestamps(record: dict) -> None:
         )
 
 
+def _reject_temporal_tag_update_fields(record: dict) -> None:
+    fields = {
+        "anchor",
+        "created_at",
+        "created_by",
+        "index_type",
+        "last_modified_at",
+    } & set(record)
+    if fields:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Temporal tag %s %s not mutable through this route"
+                % (
+                    ", ".join(sorted(fields)),
+                    "is" if len(fields) == 1 else "are",
+                )
+            ),
+        )
+
+
 MultimodalRoutes = [
+    # Update one temporal tag scoped by sample.
+    (
+        "/dataset/{dataset_id}/sample/{sample_id}/multimodal/temporal-tags/{temporal_tag_id}",
+        SampleTemporalTagEndpoint,
+    ),
+    # Create, list, and delete temporal tags for one sample.
     (
         "/dataset/{dataset_id}/sample/{sample_id}/multimodal/temporal-tags",
         SampleTemporalTagsEndpoint,
     ),
+    # Count temporal tag values across a dataset.
     (
         "/dataset/{dataset_id}/multimodal/temporal-tags/counts",
         TemporalTagCountsEndpoint,
     ),
+    # List temporal tags across a dataset.
     (
         "/dataset/{dataset_id}/multimodal/temporal-tags",
         TemporalTagsEndpoint,
     ),
+    # Resolve playback timing for a scene inventory.
     (
         "/multimodal/playback-plan/{inventory_id}",
         PlaybackPlanEndpoint,
     ),
+    # Resolve multimodal scene inventory for one sample.
     (
         "/dataset/{dataset_id}/sample/{sample_id}/multimodal/scene-inventory",
         SceneInventoryEndpoint,

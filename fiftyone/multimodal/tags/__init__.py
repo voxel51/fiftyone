@@ -20,6 +20,7 @@ from .temporal_tags import (
     count_temporal_tags,
     delete_temporal_tags,
     list_temporal_tags,
+    update_temporal_tag,
 )
 
 TimeTrackType = foms.TimeTrackType
@@ -37,4 +38,5 @@ __all__ = [
     "count_temporal_tags",
     "delete_temporal_tags",
     "list_temporal_tags",
+    "update_temporal_tag",
 ]

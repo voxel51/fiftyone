@@ -71,6 +71,14 @@ def fixture_sample_temporal_tags_endpoint():
     )
 
 
+@pytest.fixture(name="sample_temporal_tag_endpoint")
+def fixture_sample_temporal_tag_endpoint():
+    """Returns the sample temporal tag item endpoint instance."""
+    return fomr.SampleTemporalTagEndpoint(
+        scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
+    )
+
+
 @pytest.fixture(name="temporal_tags_endpoint")
 def fixture_temporal_tags_endpoint():
     """Returns the dataset temporal tags endpoint instance."""
@@ -87,11 +95,19 @@ def fixture_temporal_tag_counts_endpoint():
     )
 
 
-def _make_request(dataset_id, sample_id=None, query_params=None, body=None):
+def _make_request(
+    dataset_id,
+    sample_id=None,
+    temporal_tag_id=None,
+    query_params=None,
+    body=None,
+):
     request = MagicMock()
     request.path_params = {"dataset_id": dataset_id}
     if sample_id is not None:
         request.path_params["sample_id"] = sample_id
+    if temporal_tag_id is not None:
+        request.path_params["temporal_tag_id"] = temporal_tag_id
 
     request.query_params = QueryParams(query_params or {})
     payload = {} if body is None else body
@@ -223,6 +239,59 @@ class TestMultimodalTemporalTagsRoute:
         assert len(temporal_tags) == 1
         assert temporal_tags[0]["sample_id"] == sample_ids[0]
         assert temporal_tags[0]["tag"] == "clip"
+
+    @pytest.mark.asyncio
+    async def test_updates_sample_temporal_tag(
+        self,
+        sample_temporal_tag_endpoint,
+        sample_temporal_tags_endpoint,
+        dataset,
+        dataset_id,
+        sample_ids,
+    ):
+        created = fomt.add_temporal_tags(
+            dataset,
+            fomt.TemporalTag(
+                sample_ids[0], 0, 10, "review", created_by="alice"
+            ),
+        )[0]
+        before_patch = _modified_timestamps(dataset, sample_ids[0])
+
+        time.sleep(0.05)
+        request = _make_request(
+            dataset_id,
+            sample_id=sample_ids[0],
+            temporal_tag_id=created.id,
+            body={
+                "id": created.id,
+                "start": 5,
+                "end": 15,
+                "tag": "accepted",
+                "last_modified_by": "bob",
+            },
+        )
+        response = await sample_temporal_tag_endpoint.patch(request)
+        updated = _json_body(response)["temporal_tag"]
+        after_patch = _modified_timestamps(dataset, sample_ids[0])
+
+        assert updated["id"] == created.id
+        assert updated["sample_id"] == sample_ids[0]
+        assert updated["start"] == 5
+        assert updated["end"] == 15
+        assert updated["tag"] == "accepted"
+        assert updated["created_by"] == "alice"
+        assert updated["last_modified_by"] == "bob"
+        assert updated["created_at"] == created.created_at.isoformat()
+        assert (
+            updated["last_modified_at"] > created.last_modified_at.isoformat()
+        )
+        assert after_patch[0] > before_patch[0]
+        assert after_patch[1] > before_patch[1]
+
+        request = _make_request(dataset_id, sample_id=sample_ids[0])
+        response = await sample_temporal_tags_endpoint.get(request)
+
+        assert _json_body(response)["temporal_tags"] == [updated]
 
     @pytest.mark.asyncio
     async def test_lists_scene_temporal_tags_with_optional_range(
@@ -395,11 +464,17 @@ class TestMultimodalTemporalTagsRoute:
     async def test_validation_errors_return_400(
         self,
         sample_temporal_tags_endpoint,
+        sample_temporal_tag_endpoint,
         temporal_tags_endpoint,
         temporal_tag_counts_endpoint,
+        dataset,
         dataset_id,
         sample_ids,
     ):
+        temporal_tag = fomt.add_temporal_tags(
+            dataset,
+            fomt.TemporalTag(sample_ids[0], 0, 10, "review"),
+        )[0]
         cases = [
             (
                 sample_temporal_tags_endpoint.post,
@@ -477,6 +552,62 @@ class TestMultimodalTemporalTagsRoute:
                 _make_request(dataset_id, sample_id=sample_ids[0]),
             ),
             (
+                sample_temporal_tag_endpoint.patch,
+                _make_request(
+                    dataset_id,
+                    sample_id=sample_ids[0],
+                    temporal_tag_id=temporal_tag.id,
+                ),
+            ),
+            (
+                sample_temporal_tag_endpoint.patch,
+                _make_request(
+                    dataset_id,
+                    sample_id=sample_ids[0],
+                    temporal_tag_id=temporal_tag.id,
+                    body={
+                        "id": str(ObjectId()),
+                        "start": 1,
+                    },
+                ),
+            ),
+            (
+                sample_temporal_tag_endpoint.patch,
+                _make_request(
+                    dataset_id,
+                    sample_id=sample_ids[0],
+                    temporal_tag_id=temporal_tag.id,
+                    body={
+                        "sample_id": sample_ids[1],
+                        "start": 1,
+                    },
+                ),
+            ),
+            (
+                sample_temporal_tag_endpoint.patch,
+                _make_request(
+                    dataset_id,
+                    sample_id=sample_ids[0],
+                    temporal_tag_id=temporal_tag.id,
+                    body={
+                        "created_by": "alice",
+                        "start": 1,
+                    },
+                ),
+            ),
+            (
+                sample_temporal_tag_endpoint.patch,
+                _make_request(
+                    dataset_id,
+                    sample_id=sample_ids[0],
+                    temporal_tag_id=temporal_tag.id,
+                    body={
+                        "anchor": "camera_front",
+                        "start": 1,
+                    },
+                ),
+            ),
+            (
                 temporal_tags_endpoint.get,
                 _make_request(dataset_id, query_params={"start": "soon"}),
             ),
@@ -503,6 +634,41 @@ class TestMultimodalTemporalTagsRoute:
             assert exc_info.value.status_code == 400
 
     @pytest.mark.asyncio
+    async def test_temporal_tag_update_not_found_returns_404(
+        self, sample_temporal_tag_endpoint, dataset, dataset_id, sample_ids
+    ):
+        temporal_tag = fomt.add_temporal_tags(
+            dataset,
+            fomt.TemporalTag(sample_ids[0], 0, 10, "review"),
+        )[0]
+
+        cases = [
+            _make_request(
+                dataset_id,
+                sample_id=sample_ids[0],
+                temporal_tag_id=str(ObjectId()),
+                body={"start": 1},
+            ),
+            _make_request(
+                dataset_id,
+                sample_id=sample_ids[1],
+                temporal_tag_id=temporal_tag.id,
+                body={"start": 1},
+            ),
+        ]
+
+        for request in cases:
+            with pytest.raises(HTTPException) as exc_info:
+                await sample_temporal_tag_endpoint.patch(request)
+
+            assert exc_info.value.status_code == 404
+
+        persisted = fomt.list_temporal_tags(dataset)
+        assert [(tag.start, tag.end, tag.tag) for tag in persisted] == [
+            (0, 10, "review")
+        ]
+
+    @pytest.mark.asyncio
     async def test_dataset_not_found_returns_404(self, temporal_tags_endpoint):
         request = _make_request("missing-dataset")
 
@@ -521,6 +687,10 @@ class TestMultimodalTemporalTagsRoute:
         ]
 
         assert temporal_routes == [
+            (
+                "/dataset/{dataset_id}/sample/{sample_id}/multimodal/temporal-tags/{temporal_tag_id}",
+                fomr.SampleTemporalTagEndpoint,
+            ),
             (
                 "/dataset/{dataset_id}/sample/{sample_id}/multimodal/temporal-tags",
                 fomr.SampleTemporalTagsEndpoint,

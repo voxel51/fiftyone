@@ -276,6 +276,106 @@ class TemporalTagTests(unittest.TestCase):
 
     @drop_temporal_tags
     @drop_datasets
+    def test_updates_preserve_identity_and_touch_parents(self):
+        dataset, sample_ids = _make_dataset(2)
+        first_id, second_id = sample_ids
+
+        inserted = fomm.add_temporal_tags(
+            dataset,
+            fomm.TemporalTag(first_id, 0, 10, "review", created_by="alice"),
+        )[0]
+        fomm.add_temporal_tags(
+            dataset,
+            fomm.TemporalTag(second_id, 0, 10, "other"),
+        )
+        before_dataset, before_first = _modified_timestamps(dataset, first_id)
+        _, before_second = _modified_timestamps(dataset, second_id)
+
+        time.sleep(0.05)
+        updated = fomm.update_temporal_tag(
+            dataset,
+            inserted.id,
+            start=2,
+            end=12,
+            tag="accepted",
+            last_modified_by="bob",
+        )
+        after_update_dataset, after_update_first = _modified_timestamps(
+            dataset, first_id
+        )
+        _, after_update_second = _modified_timestamps(dataset, second_id)
+
+        self.assertEqual(updated.id, inserted.id)
+        self.assertEqual(updated.sample_id, first_id)
+        self.assertEqual(updated.start, 2)
+        self.assertEqual(updated.end, 12)
+        self.assertEqual(updated.tag, "accepted")
+        self.assertEqual(updated.created_by, "alice")
+        self.assertEqual(updated.created_at, inserted.created_at)
+        self.assertEqual(updated.last_modified_by, "bob")
+        self.assertGreater(updated.last_modified_at, inserted.last_modified_at)
+        self.assertEqual(
+            fomm.count_temporal_tags(dataset), {"accepted": 1, "other": 1}
+        )
+        self.assertEqual(len(fomm.list_temporal_tags(dataset)), 2)
+        self.assertGreater(after_update_dataset, before_dataset)
+        self.assertGreater(after_update_first, before_first)
+        self.assertEqual(after_update_second, before_second)
+
+        time.sleep(0.05)
+        resized = fomm.TemporalTags(dataset).update(updated.id, end=14)
+
+        self.assertEqual(resized.id, inserted.id)
+        self.assertEqual(resized.start, 2)
+        self.assertEqual(resized.end, 14)
+        self.assertEqual(resized.created_at, inserted.created_at)
+        self.assertEqual(resized.last_modified_by, "bob")
+        self.assertGreater(resized.last_modified_at, updated.last_modified_at)
+
+    @drop_temporal_tags
+    @drop_datasets
+    def test_update_validation_and_scoping(self):
+        dataset, sample_ids = _make_dataset(2)
+        first_id, second_id = sample_ids
+
+        first = fomm.add_temporal_tags(
+            dataset, fomm.TemporalTag(first_id, 0, 10, "review")
+        )[0]
+        second = fomm.add_temporal_tags(
+            dataset, fomm.TemporalTag(first_id, 20, 30, "other")
+        )[0]
+
+        invalid_updates = [
+            {},
+            {"start": 10},
+            {"end": 0},
+            {"tag": ""},
+            {"last_modified_by": "   "},
+        ]
+        for update in invalid_updates:
+            with self.assertRaises(ValueError):
+                fomm.update_temporal_tag(dataset, first.id, **update)
+
+        with self.assertRaises(ValueError):
+            fomm.update_temporal_tag(dataset, str(ObjectId()), start=1)
+
+        with self.assertRaises(ValueError):
+            fomm.update_temporal_tag(
+                dataset, second.id, start=0, end=10, tag="review"
+            )
+
+        view = dataset.select([second_id])
+        with self.assertRaises(ValueError):
+            fomm.update_temporal_tag(view, first.id, start=1)
+
+        persisted = fomm.list_temporal_tags(dataset)
+        self.assertEqual(
+            [(tag.start, tag.end, tag.tag) for tag in persisted],
+            [(0, 10, "review"), (20, 30, "other")],
+        )
+
+    @drop_temporal_tags
+    @drop_datasets
     def test_storage_filtering_counts_and_deletion(self):
         dataset, sample_ids = _make_dataset(2)
         first = fomm.TemporalTag(sample_ids[0], 0, 10, "review")
