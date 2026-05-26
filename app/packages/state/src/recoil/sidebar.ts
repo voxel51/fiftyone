@@ -1,6 +1,7 @@
+import { OpType } from "@fiftyone/annotation/src/types";
 import type {
-  DetectionOverlay,
   ClassificationOverlay,
+  DetectionOverlay,
   KeypointLabel,
   KeypointOverlay,
   PolylineOverlay,
@@ -55,14 +56,13 @@ import { collapseFields, getCurrentEnvironment } from "../utils";
 import * as atoms from "./atoms";
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { activeModalSidebarSample } from "./groups";
+import { isLargeVideo } from "./options";
+import { cumulativeValues, values } from "./pathData";
 import {
   active3dSlices,
   active3dSlicesToSampleMap,
   is3dPinned,
-  pinned3DSampleSlice,
 } from "./renderConfig3d.atoms";
-import { isLargeVideo } from "./options";
-import { cumulativeValues, values } from "./pathData";
 import {
   buildSchema,
   field,
@@ -88,7 +88,6 @@ import {
   unsupportedMatcher,
 } from "./utils";
 import * as viewAtoms from "./view";
-import { OpType } from "@fiftyone/annotation/src/types";
 
 export enum EntryKind {
   EMPTY = "EMPTY",

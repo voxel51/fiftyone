@@ -1,9 +1,10 @@
 export * from "./3d";
 export * from "./dynamicGroups";
+export * from "./use-active-modal-sample-value";
 
 import type { Schema } from "@fiftyone/utilities";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useRecoilState, useRecoilValue, useRecoilValueLoadable } from "recoil";
 import { ModalMode, modalMode } from "../../jotai";
 import { preferredGroupAnnotationSliceAtom } from "../../jotai/group-annotation";
@@ -19,6 +20,7 @@ import {
   modalSample,
   selectedMediaField,
 } from "../../recoil";
+import { GroupSampleNotFound } from "../../recoil/modal";
 
 /**
  * Hook which provides the modal's current active paths,
@@ -82,6 +84,30 @@ export const useModalSample = (): ModalSample | undefined => {
   }
 
   return undefined;
+};
+
+/**
+ * Like {@link useModalSample} but holds the last settled value across loading
+ * transitions so consumers don't lose the sample mid-navigation. Returns
+ * `undefined` before the first value settles. Treats `GroupSampleNotFound` as
+ * a non-error (sparse groups legitimately lack a sample on the active slice);
+ * all other errors still bubble.
+ */
+export const useStableModalSample = (): ModalSample | undefined => {
+  const loadable = useRecoilValueLoadable(modalSample);
+  const ref = useRef<ModalSample | undefined>(
+    loadable.state === "hasValue" ? loadable.contents : undefined
+  );
+  if (loadable.state === "hasValue") {
+    ref.current = loadable.contents;
+  }
+  if (
+    loadable.state === "hasError" &&
+    !(loadable.contents instanceof GroupSampleNotFound)
+  ) {
+    throw loadable.contents;
+  }
+  return ref.current;
 };
 
 /**

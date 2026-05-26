@@ -17,6 +17,7 @@ export class SelectorValidationError extends Error {}
 
 export interface SelectorProps<T> {
   id?: string;
+  disabled?: boolean;
   value?: string;
   onSelect: (search: string, v?: T) => Promise<string> | void;
   placeholder: string;
@@ -38,6 +39,7 @@ export interface SelectorProps<T> {
 function Selector<T>(props: SelectorProps<T>) {
   const {
     id,
+    disabled,
     value,
     onSelect,
     placeholder,
@@ -135,6 +137,7 @@ function Selector<T>(props: SelectorProps<T>) {
       title={editing && search.length ? search : placeholder}
     >
       <Input
+        disabled={disabled}
         inputStyle={editing ? { ...inputStyle } : inputStyle}
         inputClassName={inputClassName}
         spellCheck={false}
