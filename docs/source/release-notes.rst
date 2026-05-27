@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Enterprise 2.19.0
 --------------------------
-*Released May 26, 2026*
+*Released May 27, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.16.0 <release-notes-v1.16.0>`, plus:
 
