@@ -1,7 +1,5 @@
-import { getSampleSrc } from "@fiftyone/state";
-import { type Stage } from "@fiftyone/utilities";
+import { getFetchParameters, type Stage } from "@fiftyone/utilities";
 import { LRUCache } from "lru-cache";
-import { getFrames, type FrameDoc } from "../../core/src/client/framesClient";
 import { streamValueAtom } from "../../playback/src/lib/playback/atoms";
 import { PlaybackStreamBase } from "../../playback/src/lib/playback/stream-base";
 import type {
@@ -9,25 +7,33 @@ import type {
   PlaybackStore,
 } from "../../playback/src/lib/playback/types";
 import { frameAt } from "../../playback/src/lib/playback/utils";
+import type {
+  ChunkDoneMessage,
+  ChunkFailedMessage,
+  FrameReadyMessage,
+  OutboundMessage,
+} from "./framesWorker";
 
 /**
- * What the stream publishes per tick. Consumers (the ImaVid tile)
- * bind `<img src={value.src}>`; `sampleId` and `frameNumber` are exposed
- * for commands / persistence that need to know which frame this is.
+ * What the stream publishes per tick. Consumers (the ImaVid tile) draw
+ * `bitmap` into a canvas; `sampleId` and `frameNumber` are exposed for
+ * commands / persistence that need to know which frame this is. `src`
+ * is kept for debugging / dev-tools inspection — production rendering
+ * does not use it.
  */
 export interface ImaVidImageFrame {
+  bitmap: ImageBitmap;
   src: string;
   sampleId: string;
   frameNumber: number;
 }
 
 /**
- * What we keep in the LRU. We hold the decoded `HTMLImageElement` alive
- * (not just the src) so a frame reuse doesn't trigger a fresh network
- * + decode.
+ * What we keep in the LRU. Decoded `ImageBitmap`s are sized by pixel
+ * bytes; on eviction we call `.close()` to free the underlying GPU /
+ * native memory immediately rather than waiting on GC.
  */
 interface CachedFrame extends ImaVidImageFrame {
-  image: HTMLImageElement;
   sizeBytes: number;
 }
 
@@ -68,12 +74,16 @@ const DEFAULT_MAX_BYTES = 1e9;
 /**
  * Image stream backed by `POST /frames` for ImaVid-style playback
  * (i.e. `to_frames(sample_frames=True)` data, one materialized image
- * per frame). Reads `filepath` off each per-frame doc, resolves it
- * via `getSampleSrc`, decodes via `new Image()`, and caches the
- * decoded image in an LRU sized by pixel bytes.
+ * per frame).
  *
- * `bufferState` returns `ready` only after a frame has fully decoded,
- * so the engine never tries to render half-loaded frames.
+ * Both the JSON fetch and the per-image fetch+decode run inside a
+ * `framesWorker` so the main thread never has to parse a `/frames`
+ * response or decode an image. The worker transfers `ImageBitmap`s
+ * back zero-copy; the tile renders them via `<canvas>` + `drawImage`.
+ *
+ * `bufferState` reports `ready` only after a frame's bitmap has landed
+ * in the cache — so the engine never tries to render a half-decoded
+ * frame.
  */
 export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
   private readonly sampleId: string;
@@ -85,9 +95,14 @@ export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
   private readonly chunkSize: number;
 
   private readonly cache: LRUCache<number, CachedFrame>;
-  /** Per-frame decode promises — one slot per frame, shared across callers. */
-  private readonly inflight = new Map<number, Promise<void>>();
+  private readonly inflight = new Map<number, InflightEntry>();
+  /** reqId → frame numbers that request asked for. */
+  private readonly requestFrames = new Map<number, number[]>();
   private readonly fetchedRanges: Array<[number, number]> = [];
+
+  private readonly worker: Worker;
+  private nextReqId = 1;
+  private destroyed = false;
 
   constructor(opts: ImaVidImageStreamOptions) {
     super(opts.id, {
@@ -111,13 +126,37 @@ export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
     this.cache = new LRUCache<number, CachedFrame>({
       maxSize: opts.maxBytes ?? DEFAULT_MAX_BYTES,
       sizeCalculation: (entry) => entry.sizeBytes,
+      dispose: (entry) => {
+        // Free the underlying decoded pixels immediately. Without
+        // .close(), the bitmap sits in GPU / native memory until GC
+        // runs, which can push us well past the byte cap before
+        // memory is actually reclaimed.
+        entry.bitmap.close();
+      },
+    });
+
+    this.worker = new Worker(new URL("./framesWorker.ts", import.meta.url), {
+      type: "module",
+    });
+    this.worker.addEventListener("message", this.handleWorkerMessage);
+
+    // Hand the worker the same fetch context the main thread uses.
+    // Normalize HeadersInit → Record<string, string> so it's structured-
+    // cloneable (Headers objects and arrays both serialize fine, but
+    // the worker side is simpler if it can spread headers verbatim).
+    const params = getFetchParameters();
+    this.worker.postMessage({
+      type: "init",
+      origin: params.origin,
+      pathPrefix: params.pathPrefix,
+      headers: normalizeHeaders(params.headers),
     });
   }
 
   /**
-   * Resolve once the frame containing `time` has been fetched and decoded.
-   * Use in tandem with `seek(time)` on mount so the first paint isn't a
-   * blank `<img>` waiting for the network.
+   * Resolve once the frame containing `time` has been fetched and
+   * decoded. Use in tandem with `seek(time)` on mount so the first
+   * paint isn't a blank tile waiting for the network.
    */
   async warmup(time = 0): Promise<void> {
     const frame = this.timeToFrame(time);
@@ -125,13 +164,37 @@ export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
       return;
     }
 
-    const inflight = this.inflight.get(frame);
-    if (inflight) {
-      await inflight;
+    const existing = this.inflight.get(frame);
+    if (existing) {
+      await existing.promise;
       return;
     }
 
-    await this.fetchAndDecodeChunk(frame);
+    this.requestChunkStartingAt(frame);
+    const entry = this.inflight.get(frame);
+    if (entry) {
+      await entry.promise;
+    }
+  }
+
+  /** Terminate the worker. Call when the stream is being replaced. */
+  destroy(): void {
+    if (this.destroyed) {
+      return;
+    }
+
+    this.destroyed = true;
+
+    this.worker.removeEventListener("message", this.handleWorkerMessage);
+    this.worker.terminate();
+
+    // Settle anyone awaiting a frame that will never arrive.
+    for (const entry of this.inflight.values()) {
+      entry.resolve();
+    }
+    this.inflight.clear();
+    this.requestFrames.clear();
+    this.cache.clear();
   }
 
   /** Total frames in the clip. */
@@ -170,7 +233,7 @@ export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
         continue;
       }
 
-      void this.fetchAndDecodeChunk(f);
+      this.requestChunkStartingAt(f);
       return;
     }
   }
@@ -183,6 +246,7 @@ export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
     }
 
     return {
+      bitmap: entry.bitmap,
       src: entry.src,
       sampleId: entry.sampleId,
       frameNumber: entry.frameNumber,
@@ -220,7 +284,9 @@ export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
     return frameAt(time, this.frameRate, this.frameCount);
   }
 
-  private async fetchAndDecodeChunk(startFrame: number): Promise<void> {
+  private requestChunkStartingAt(startFrame: number): void {
+    if (this.destroyed) return;
+
     const numFrames = Math.min(
       this.chunkSize,
       this.frameCount - startFrame + 1
@@ -229,28 +295,31 @@ export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
       return;
     }
 
-    // One Promise covers fetch + decode for every frame in the chunk.
-    // Each frame's `inflight` slot points at this same promise so
-    // bufferState reports "loading" uniformly across the range.
-    const promise = this.runChunk(startFrame, numFrames).finally(() => {
-      for (let f = startFrame; f < startFrame + numFrames; f++) {
-        if (this.inflight.get(f) === promise) {
-          this.inflight.delete(f);
-        }
-      }
-    });
-
+    const reqId = this.nextReqId++;
+    const frames: number[] = [];
     for (let f = startFrame; f < startFrame + numFrames; f++) {
-      this.inflight.set(f, promise);
+      // Skip frames the cache already has or another request is fetching;
+      // the worker doesn't dedupe so we have to.
+      if (this.cache.has(f) || this.inflight.has(f)) {
+        continue;
+      }
+
+      const entry = createInflightEntry();
+
+      this.inflight.set(f, entry);
+      frames.push(f);
     }
 
-    return promise;
-  }
+    if (frames.length === 0) {
+      return;
+    }
 
-  private async runChunk(startFrame: number, numFrames: number): Promise<void> {
-    let result: Awaited<ReturnType<typeof getFrames>>;
-    try {
-      result = await getFrames({
+    this.requestFrames.set(reqId, frames);
+
+    this.worker.postMessage({
+      type: "fetchChunk",
+      reqId,
+      request: {
         frameNumber: startFrame,
         numFrames,
         frameCount: this.frameCount,
@@ -258,62 +327,125 @@ export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
         dataset: this.dataset,
         view: this.view,
         slice: this.groupSlice ?? undefined,
-      });
-    } catch (error) {
-      // Subsequent prefetch calls retry the same range; leaving the
-      // cache untouched lets that happen naturally.
-      console.error(
-        `[ImaVidImageStream] fetch failed for [${startFrame}, +${numFrames})`,
-        error
-      );
-      return;
-    }
-
-    mergeRange(this.fetchedRanges, result.range);
-
-    // Decode in parallel; one slow image shouldn't block the rest of
-    // the chunk from becoming ready.
-    await Promise.all(result.frames.map((frame) => this.decodeAndCache(frame)));
-  }
-
-  private async decodeAndCache(frame: FrameDoc): Promise<void> {
-    if (!frame.filepath || typeof frame.filepath !== "string") {
-      return;
-    }
-
-    const src = getSampleSrc(frame.filepath);
-    const image = new Image();
-
-    try {
-      await new Promise<void>((resolve, reject) => {
-        image.addEventListener("load", () => resolve(), { once: true });
-        image.addEventListener(
-          "error",
-          () => reject(new Error(`image load failed: ${src}`)),
-          { once: true }
-        );
-        image.src = src;
-      });
-    } catch (error) {
-      console.error(
-        `[ImaVidImageStream] decode failed for frame ${frame.frame_number}`,
-        error
-      );
-      return;
-    }
-
-    // RGBA pixel bytes — close enough for LRU sizing without holding
-    // an offscreen canvas open to count exact decoded bytes.
-    const sizeBytes = Math.max(1, image.naturalWidth * image.naturalHeight * 4);
-
-    this.cache.set(frame.frame_number, {
-      src,
-      sampleId: this.sampleId,
-      frameNumber: frame.frame_number,
-      image,
-      sizeBytes,
+      },
     });
   }
+
+  private handleWorkerMessage = (
+    event: MessageEvent<OutboundMessage>
+  ): void => {
+    const msg = event.data;
+    switch (msg.type) {
+      case "frameReady":
+        this.onFrameReady(msg);
+        break;
+      case "chunkDone":
+        this.onChunkDone(msg);
+        break;
+      case "chunkFailed":
+        this.onChunkFailed(msg);
+        break;
+    }
+  };
+
+  private onFrameReady(msg: FrameReadyMessage): void {
+    // If the stream was destroyed between request and reply, the bitmap
+    // would leak — close it explicitly.
+    if (this.destroyed) {
+      msg.bitmap.close();
+      return;
+    }
+
+    const sizeBytes = Math.max(1, msg.width * msg.height * 4);
+    this.cache.set(msg.frameNumber, {
+      bitmap: msg.bitmap,
+      src: msg.src,
+      sampleId: this.sampleId,
+      frameNumber: msg.frameNumber,
+      sizeBytes,
+    });
+
+    const entry = this.inflight.get(msg.frameNumber);
+    if (entry) {
+      entry.resolve();
+      this.inflight.delete(msg.frameNumber);
+    }
+  }
+
+  private onChunkDone(msg: ChunkDoneMessage): void {
+    mergeRange(this.fetchedRanges, msg.range);
+    this.resolveOutstandingFrames(msg.reqId);
+  }
+
+  private onChunkFailed(msg: ChunkFailedMessage): void {
+    console.error(
+      `[ImaVidImageStream] worker chunk ${msg.reqId} failed: ${msg.error}`
+    );
+    this.resolveOutstandingFrames(msg.reqId);
+  }
+
+  /**
+   * Settle any in-flight frames from this request that never received
+   * a `frameReady` (e.g. missing filepath, decode error, top-level
+   * fetch failure). They drop from `loading` → `missing` so the engine
+   * re-prefetches on the next tick. Anyone awaiting `warmup` unblocks
+   * (the cache miss is observable via `bufferState`).
+   */
+  private resolveOutstandingFrames(reqId: number): void {
+    const frames = this.requestFrames.get(reqId);
+    if (!frames) {
+      return;
+    }
+
+    this.requestFrames.delete(reqId);
+
+    for (const f of frames) {
+      const entry = this.inflight.get(f);
+      if (!entry) {
+        continue;
+      }
+
+      entry.resolve();
+      this.inflight.delete(f);
+    }
+  }
+}
+
+interface InflightEntry {
+  promise: Promise<void>;
+  resolve: () => void;
+}
+
+function createInflightEntry(): InflightEntry {
+  let resolve!: () => void;
+  const promise = new Promise<void>((r) => {
+    resolve = r;
+  });
+
+  return { promise, resolve };
+}
+
+function normalizeHeaders(
+  headers: HeadersInit | undefined
+): Record<string, string> {
+  if (!headers) {
+    return {};
+  }
+
+  if (headers instanceof Headers) {
+    const out: Record<string, string> = {};
+    headers.forEach((value, key) => {
+      out[key] = value;
+    });
+
+    return out;
+  }
+
+  if (Array.isArray(headers)) {
+    return Object.fromEntries(headers);
+  }
+
+  return { ...(headers as Record<string, string>) };
 }
 
 /**

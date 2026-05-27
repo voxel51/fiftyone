@@ -31,8 +31,13 @@ export interface ImaVidLighterTileProps {
 }
 
 /**
- * ImaVid tile — renders an `<img>` bound to `ImaVidImageStream`'s
- * current frame and overlays Lighter on top.
+ * ImaVid tile — draws each frame's `ImageBitmap` (decoded off-main in
+ * `framesWorker`) into a `<canvas>` and overlays Lighter on top.
+ *
+ * The bitmap is rendered via 2D `drawImage` rather than transferred
+ * via a `bitmaprenderer` context, because the LRU may serve the same
+ * bitmap multiple times (a frame revisited after scrub) and
+ * `transferFromImageBitmap` would consume it.
  */
 export const ImaVidLighterTile: React.FC<ImaVidLighterTileProps> = ({
   field,
@@ -42,13 +47,14 @@ export const ImaVidLighterTile: React.FC<ImaVidLighterTileProps> = ({
   const sourceId = useTileSource() ?? IMAVID_STREAM_ID;
 
   const lighterHostRef = useRef<HTMLDivElement | null>(null);
+  const frameCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const [imageDims, setImageDims] = useState<{ w: number; h: number } | null>(
     null
   );
 
   // Latest decoded frame from the playback engine. Each tick republishes
-  // the new {src, frameNumber, sampleId}; the image stream dedupes on
+  // the new {bitmap, frameNumber, sampleId}; the image stream dedupes on
   // frameNumber so this only changes when the frame actually changes.
   const frame = useStream<ImaVidImageFrame>(sourceId);
 
@@ -141,36 +147,48 @@ export const ImaVidLighterTile: React.FC<ImaVidLighterTileProps> = ({
   const snapshot = useStream<FrameLabelSnapshot>(LABELS_STREAM_ID);
   useFrameOverlaySync(scene, snapshot, field, canonicalMediaReady);
 
-  // Capture intrinsic image dimensions once. Subsequent frames are
-  // assumed to share the same dimensions (true for to_frames
-  // materialized clips) — if a frame's natural size differs from the
-  // canonical, the letterbox stays valid but the overlay coordinate
-  // space could subtly drift. Revisit if we ever support mixed-size
-  // imagery in one stream.
-  const onImgLoad = useCallback(
-    (e: React.SyntheticEvent<HTMLImageElement>) => {
-      if (imageDims !== null) {
-        return;
-      }
-      const img = e.currentTarget;
-      if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-        setImageDims({ w: img.naturalWidth, h: img.naturalHeight });
-      }
-    },
-    [imageDims]
-  );
+  // Paint the current frame's bitmap into the canvas. Sets the canvas
+  // drawing buffer to the bitmap's intrinsic dimensions on first paint
+  // (and on any dimension change — shouldn't happen for to_frames
+  // materialized clips, but harmless if it does). CSS sizing keeps the
+  // displayed element fitting the host with `object-fit: contain`.
+  useEffect(() => {
+    if (!frame) {
+      return;
+    }
+
+    const canvasEl = frameCanvasRef.current;
+    if (!canvasEl) {
+      return;
+    }
+
+    const w = frame.bitmap.width;
+    const h = frame.bitmap.height;
+    if (canvasEl.width !== w) {
+      canvasEl.width = w;
+    }
+    if (canvasEl.height !== h) {
+      canvasEl.height = h;
+    }
+
+    const ctx = canvasEl.getContext("2d");
+    if (!ctx) {
+      return;
+    }
+
+    const priorImageSmoothing = ctx.imageSmoothingEnabled;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(frame.bitmap, 0, 0);
+    ctx.imageSmoothingEnabled = priorImageSmoothing;
+
+    if (imageDims === null || imageDims.w !== w || imageDims.h !== h) {
+      setImageDims({ w, h });
+    }
+  }, [frame, imageDims]);
 
   return (
     <div className={styles.body}>
-      {frame ? (
-        <img
-          className={styles.frame}
-          src={frame.src}
-          alt=""
-          draggable={false}
-          onLoad={onImgLoad}
-        />
-      ) : null}
+      <canvas ref={frameCanvasRef} className={styles.frame} />
       <div ref={lighterHostRef} className={styles.lighterHost} />
     </div>
   );

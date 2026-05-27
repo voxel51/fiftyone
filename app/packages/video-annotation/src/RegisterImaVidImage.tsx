@@ -134,6 +134,18 @@ const ImaVidImageRegistration: React.FC<ImaVidImageRegistrationProps> = ({
     });
   }
 
+  // Tear down the worker on unmount. The effect is declared BEFORE
+  // `usePlaybackStream` so React runs its cleanup AFTER the playback
+  // registration's cleanup (LIFO order): the engine unregisters the
+  // stream first, then we terminate the worker.
+  useEffect(() => {
+    const stream = streamRef.current;
+
+    return () => {
+      stream?.destroy();
+    };
+  }, []);
+
   usePlaybackStream(streamRef.current);
 
   // Pre-warm the first chunk and seek to t=0 so the first paint isn't
