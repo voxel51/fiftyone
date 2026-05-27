@@ -338,6 +338,65 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
     def test_per_frame_indexing_vectorized(self):
         self._per_frame_indexing_impl(vectorize=True)
 
+    def _sibling_branch_broadcast_impl(self, vectorize):
+        """``index_field`` and a mapped field live on disjoint list branches.
+
+        Concretely: index per-frame, but also map a sample-level
+        ``ground_truth.detections.label``. The LCA is the sample dim, so
+        the entire detections list of each sample must broadcast to every
+        frame row of that sample (no positional fan-out across branches).
+        """
+        n_frames_per_sample = (2, 3)
+        n_dets_per_sample = (2, 1)
+
+        dataset = fo.Dataset()
+        samples = []
+        for i, (nf, nd) in enumerate(
+            zip(n_frames_per_sample, n_dets_per_sample)
+        ):
+            sample = fo.Sample(filepath=f"video{i}.mp4")
+            sample["ground_truth"] = fo.Detections(
+                detections=[
+                    fo.Detection(label=f"v{i}_obj{j}") for j in range(nd)
+                ]
+            )
+            for f in range(1, nf + 1):
+                sample.frames[f] = fo.Frame(frame_label=f"v{i}_f{f}")
+            samples.append(sample)
+        dataset.add_samples(samples)
+
+        get_item = IdentityGetItem(
+            ["frame_label", "det_labels"],
+            field_mapping={
+                "frame_label": "frames.frame_label",
+                "det_labels": "ground_truth.detections.label",
+            },
+        )
+        td = dataset.to_torch(
+            get_item, index_field="frames.id", vectorize=vectorize
+        )
+
+        det_labels_per_sample = dataset.values(
+            "ground_truth.detections.label"
+        )
+        frame_labels = dataset.values("frames.frame_label")
+
+        row = 0
+        for sidx, nf in enumerate(n_frames_per_sample):
+            for j in range(nf):
+                item = td[row]
+                # Frame-level field walks both dims: per-frame value.
+                self.assertEqual(item[0], frame_labels[sidx][j])
+                # Sibling-branch field: whole sample's list broadcast.
+                self.assertEqual(item[1], det_labels_per_sample[sidx])
+                row += 1
+
+    def test_sibling_branch_broadcast_db(self):
+        self._sibling_branch_broadcast_impl(vectorize=False)
+
+    def test_sibling_branch_broadcast_vectorized(self):
+        self._sibling_branch_broadcast_impl(vectorize=True)
+
     def test_vectorized_vs_db_parity_per_detection(self):
         n_per_sample = (2, 3, 2)
         with ShortLivedDetectionDataset(n_per_sample) as dataset:

@@ -1848,34 +1848,41 @@ def _is_string_array(targets):
         return False
 
 
-def _field_depth(samples, path):
-    """Returns the nesting depth of ``samples.values(path)``.
+def _list_dims(samples, path):
+    """Returns the list-typed dimensions traversed by ``samples.values(path)``.
 
-    The outer per-sample iteration always contributes one level. Each list-
-    typed component along ``path`` contributes another. For example:
+    Each entry names one list-typed dimension along ``path`` (the implicit
+    per-sample dimension is named ``""``). Examples:
 
-    -  ``"filepath"`` -> 1
-    -  ``"frames.id"`` -> 2
-    -  ``"ground_truth.detections"`` -> 2
-    -  ``"ground_truth.detections.bounding_box"`` -> 3
+    -  ``"filepath"`` -> ``("",)``
+    -  ``"frames.id"`` -> ``("", "frames")``
+    -  ``"ground_truth.detections.label"`` -> ``("", "ground_truth.detections")``
+
+    The names let us identify the **shared** list prefix between two paths
+    via :func:`_shared_list_prefix_len`; cf. ``index_field`` semantics in
+    :class:`FiftyOneTorchDataset`.
     """
-    depth = 1
+    dims = [""]
     keys = path.split(".")
 
     if keys[0] == "frames" and samples._has_frame_fields():
-        depth += 1
+        dims.append("frames")
         keys = keys[1:]
         schema = samples.get_frame_field_schema()
+        prefix = "frames"
     else:
         schema = samples.get_field_schema()
+        prefix = ""
 
     for key in keys:
         field = schema.get(key)
         if field is None:
             break
 
+        full = f"{prefix}.{key}" if prefix else key
+
         if isinstance(field, fof.ListField):
-            depth += 1
+            dims.append(full)
             field = field.field
 
         if isinstance(field, fof.EmbeddedDocumentField):
@@ -1883,7 +1890,19 @@ def _field_depth(samples, path):
         else:
             schema = {}
 
-    return depth
+        prefix = full
+
+    return tuple(dims)
+
+
+def _shared_list_prefix_len(dims_a, dims_b):
+    """Length of the longest common prefix of two :func:`_list_dims` results."""
+    n = 0
+    for a, b in zip(dims_a, dims_b):
+        if a != b:
+            break
+        n += 1
+    return n
 
 
 def _flatten_with_coords(nested, prefix=()):
@@ -2002,10 +2021,17 @@ class FiftyOneTorchDataset(Dataset):
         self.get_item = get_item
         self.skip_failures = skip_failures
 
-        # Precompute the nesting depth of `samples.values(field)` for each
-        # field we will resolve; used by the per-row walk
-        self._field_depths = {
-            field: _field_depth(samples, field)
+        # For each mapped field, precompute the length of the list-typed
+        # prefix it shares with ``index_field``. ``_resolve_row`` consumes
+        # exactly this many leading coord components, so on-branch fields
+        # walk down to the row's leaf, parent fields stop at the LCA and
+        # broadcast, and sibling-branch fields stop at the shared ancestor
+        # (the whole sibling subtree is broadcast intact).
+        index_dims = _list_dims(samples, index_field)
+        self._coord_prefix_lens = {
+            field: _shared_list_prefix_len(
+                index_dims, _list_dims(samples, field)
+            )
             for field in self.field_mapping.values()
         }
 
@@ -2154,11 +2180,10 @@ class FiftyOneTorchDataset(Dataset):
         d = {}
         for key, field in self.field_mapping.items():
             try:
-                depth = self._field_depths[field]
                 d[key] = _walk_value(
                     nested_by_field[field],
                     coord,
-                    min(len(coord), depth),
+                    self._coord_prefix_lens[field],
                 )
             except Exception as e:
                 error = ValueError(
