@@ -26,7 +26,7 @@ interface RawDetectionsField {
 }
 
 /**
- * Shape callers pass to {@link VideoFrameLabelsStream.upsertDetection}.
+ * Shape callers pass to {@link VideoFrameLabelsStream.updateLabel}.
  * Lines up with the `Detection` wire format — `bounding_box` is required
  * since a Detection with no bbox is meaningless for a video overlay.
  */
@@ -281,7 +281,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
    * and republish so subscribers re-render at the current playhead. No-op
    * if the frame isn't cached.
    */
-  upsertDetection(frameNumber: number, detection: LocalDetection): void {
+  updateLabel(frameNumber: number, detection: LocalDetection): void {
     const existing = this.cache.get(frameNumber);
     if (!existing) return;
     const id = detection._id ?? detection.id;
@@ -305,7 +305,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
    * Remove a detection from the local cache for the given frame and
    * republish. No-op if the frame isn't cached or the id isn't present.
    */
-  removeDetection(frameNumber: number, detectionId: string): void {
+  deleteLabel(frameNumber: number, detectionId: string): void {
     const existing = this.cache.get(frameNumber);
     if (!existing) return;
 

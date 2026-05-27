@@ -21,10 +21,10 @@ import type { LocalDetection } from "./VideoFrameLabelsStream";
  * Persistence to the server is the eventual delta supplier's job; this
  * hook only keeps the local cache aligned with what the user sees on
  * the canvas:
- *   - **Draw**: `lighter:overlay-establish` → `upsertDetection`.
+ *   - **Draw**: `lighter:overlay-establish` → `updateLabel`.
  *   - **Drag / resize**: `lighter:overlay-drag-end` /
- *     `overlay-resize-end` → `upsertDetection` with the new bounds.
- *   - **Delete**: `lighter:overlay-removed` → `removeDetection`.
+ *     `overlay-resize-end` → `updateLabel` with the new bounds.
+ *   - **Delete**: `lighter:overlay-removed` → `deleteLabel`.
  *
  * Synthetic-label mode has no stream to write to — the hook is a no-op
  * when `useFrameLabelsStream()` returns `null`.
@@ -47,7 +47,7 @@ export const useSyncLighterLabelStream = (scene: Scene2D | null): void => {
       if (!(overlay instanceof DetectionOverlay)) return;
 
       const frame = stream.timeToFrame(currentTime);
-      stream.upsertDetection(frame, toLocalDetection(overlay));
+      stream.updateLabel(frame, toLocalDetection(overlay));
     },
     [stream, scene, currentTime]
   );
@@ -73,7 +73,7 @@ export const useSyncLighterLabelStream = (scene: Scene2D | null): void => {
       (payload) => {
         if (!stream) return;
         const frame = stream.timeToFrame(currentTime);
-        stream.removeDetection(frame, payload.id);
+        stream.deleteLabel(frame, payload.id);
       },
       [stream, currentTime]
     )
