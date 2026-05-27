@@ -19,9 +19,12 @@ export type {
 // --- Per-tile state -------------------------------------------------------
 export { registeredTilesAtom, tileSelectionAtom } from "./lib/atoms";
 export {
-  useTileSelection,
   useSetTileSelection,
+  useSetTileTitle,
+  useTileSelection,
   useTileSelectionFor,
+  useTileTitle,
+  useTileTitleFor,
   useTileTypes,
 } from "./lib/use-tile-state";
 export { useRegisteredTiles } from "./lib/use-registered-tiles";
