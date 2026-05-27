@@ -150,6 +150,29 @@ export type AnnotationEventGroup = {
   "annotation:exitAnnotationMode": void;
 
   /**
+   * Notification event emitted when the user finishes a drag-resize /
+   * drag-move on a `TemporalDetection` interval in the timeline. The
+   * payload carries the *requested* new support (1-indexed inclusive
+   * frame numbers); persistence is the responsibility of a downstream
+   * subscriber (the video-annotation delta supplier in the demo plan,
+   * §4.4 commands/agents/persistence).
+   *
+   * No upstream commit is performed by the emitter — the timeline shows
+   * the dragged position locally during the drag, but reverts to the
+   * underlying sample's value after release until someone writes back.
+   */
+  "annotation:temporalDetectionSupportChanged": {
+    /** Field path on the sample (e.g. `"events"`). */
+    fieldPath: string;
+    /** `_id` (or `id` fallback) of the TD being edited. */
+    detectionId: string;
+    /** Original support, for undo / diffing. */
+    previousSupport: [number, number];
+    /** New 1-indexed inclusive `[first, last]`. */
+    newSupport: [number, number];
+  };
+
+  /**
    * Notification event emitted when a label edit occurs.
    */
   "annotation:labelEdit": { label: Partial<AnnotationLabel["data"]> };
