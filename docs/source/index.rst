@@ -29,12 +29,12 @@ FiftyOne
 .. raw:: html
 
   <div class="responsive-banner">
-    <a href="https://link.voxel51.com/docs-search-sales" target="_blank" aria-label="Learn more about FiftyOne Enterprise">
+    <a href="https://voxel51.com/whitepapers/state-of-physical-ai-2026?utm_source=docs&utm_medium=referral&utm_campaign=SoVPAI_Launch&utm_content=docs_banner" target="_blank" aria-label="2026 State of Visual and Physical AI">
       <video class="banner-mobile" autoplay loop muted playsinline aria-hidden="true">
-        <source src="https://cdn.voxel51.com/banner/cta_sales_1200x200.webm" type="video/webm">
+        <source src="https://cdn.voxel51.com/banner/StateOfVisualPhysicalAI-A_1200x200.webm" type="video/webm">
       </video>
       <video class="banner-desktop" autoplay loop muted playsinline aria-hidden="true">
-        <source src="https://cdn.voxel51.com/banner/cta_sales_2400x400.webm" type="video/webm">
+        <source src="https://cdn.voxel51.com/banner/StateOfVisualPhysicalAI-A_2400x400.webm" type="video/webm">
       </video>
     </a>
   </div>
