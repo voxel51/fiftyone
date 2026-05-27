@@ -3628,7 +3628,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/utilities@npm:*, @fiftyone/utilities@workspace:^, @fiftyone/utilities@workspace:packages/utilities":
+"@fiftyone/utilities@npm:*, @fiftyone/utilities@workspace:*, @fiftyone/utilities@workspace:^, @fiftyone/utilities@workspace:packages/utilities":
   version: 0.0.0-use.local
   resolution: "@fiftyone/utilities@workspace:packages/utilities"
   dependencies:
@@ -3655,9 +3655,11 @@ __metadata:
     "@fiftyone/playback": "workspace:*"
     "@fiftyone/state": "workspace:*"
     "@fiftyone/tiling": "workspace:*"
+    "@fiftyone/utilities": "workspace:*"
     "@voxel51/voodo": "npm:^0.0.30"
     clsx: "npm:^2.1.0"
     jotai: "npm:^2.9.3"
+    lru-cache: "npm:^11.0.1"
     vite: "npm:^7.3.2"
   languageName: unknown
   linkType: soft
