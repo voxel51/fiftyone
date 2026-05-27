@@ -1,4 +1,4 @@
-import { createContext, useContext } from "react";
+import { createContext, useCallback, useContext, useSyncExternalStore } from "react";
 import type { VideoFrameLabelsStream } from "./VideoFrameLabelsStream";
 
 /**
@@ -16,4 +16,26 @@ export const FrameLabelsContext = createContext<VideoFrameLabelsStream | null>(
 
 export function useFrameLabelsStream(): VideoFrameLabelsStream | null {
   return useContext(FrameLabelsContext);
+}
+
+/**
+ * Reactive view of the active labels stream's edit version. Returns a
+ * monotonically increasing counter that bumps on every cache mutation
+ * (fetch landing, local insert / update / remove).
+ *
+ * Use as a `useEffect` / `useMemo` dependency when deriving cross-frame
+ * state (e.g. timeline track rows from {@link buildPerInstanceTracks}).
+ * Single-frame consumers should keep reading the published snapshot via
+ * `useStream(LABELS_STREAM_ID)` instead.
+ *
+ * Returns `0` when no stream is mounted (e.g. synthetic-labels mode).
+ */
+export function useFrameLabelsEditVersion(): number {
+  const stream = useFrameLabelsStream();
+  const subscribe = useCallback(
+    (notify: () => void) => stream?.subscribeToEdits(notify) ?? (() => {}),
+    [stream]
+  );
+  const getSnapshot = useCallback(() => stream?.getEditVersion() ?? 0, [stream]);
+  return useSyncExternalStore(subscribe, getSnapshot);
 }

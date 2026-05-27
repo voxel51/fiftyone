@@ -2,10 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import {
-  type DetectionLabel,
-  DetectionOverlay,
-} from "@fiftyone/lighter";
+import { type DetectionLabel, DetectionOverlay } from "@fiftyone/lighter";
 import type { SyntheticBox } from "../SyntheticLabelStream";
 import type { OverlayAdapter } from "./types";
 

@@ -54,7 +54,10 @@ export function useFrameOverlaySync(
         if (existing) {
           adapter.update(existing, data as never);
         } else {
-          const overlay = overlayFactory.create(adapter.factoryKey, result.props);
+          const overlay = overlayFactory.create(
+            adapter.factoryKey,
+            result.props
+          );
           scene.addOverlay(overlay);
         }
         // Track every snapshot-backed overlay, not just ones we created.

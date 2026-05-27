@@ -109,6 +109,11 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   // Cached on each `onCommit` so local-edit republishes can write to
   // the same atom store the engine drives. Null until first commit.
   private lastStore: PlaybackStore | null = null;
+  // Monotonic counter bumped on every cache mutation (fetch lands,
+  // local edit). Consumers that need to re-derive cross-frame state
+  // (e.g. timeline track rows) subscribe via `subscribeToEdits`.
+  private editVersion = 0;
+  private readonly editListeners = new Set<() => void>();
 
   constructor(opts: VideoFrameLabelsStreamOptions) {
     super(opts.id, {
@@ -293,6 +298,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     this.cache.set(frameNumber, next);
     this.dirty.add(frameNumber);
     this.republish();
+    this.bumpEditVersion();
   }
 
   /**
@@ -310,11 +316,34 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     this.cache.set(frameNumber, next);
     this.dirty.add(frameNumber);
     this.republish();
+    this.bumpEditVersion();
   }
 
   /** Whether the given frame has unsaved local edits. */
   isDirty(frameNumber: number): boolean {
     return this.dirty.has(frameNumber);
+  }
+
+  /**
+   * Subscribe to cache-mutation events (fetches landing, local edits).
+   * Returns an unsubscribe function. Pair with `getEditVersion` and
+   * React's `useSyncExternalStore` to re-derive cross-frame state.
+   */
+  subscribeToEdits(listener: () => void): () => void {
+    this.editListeners.add(listener);
+    return () => {
+      this.editListeners.delete(listener);
+    };
+  }
+
+  /** Current cache-mutation version. Increases on every mutation. */
+  getEditVersion(): number {
+    return this.editVersion;
+  }
+
+  private bumpEditVersion(): void {
+    this.editVersion++;
+    for (const listener of this.editListeners) listener();
   }
 
   private republish(): void {
@@ -387,6 +416,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       }
 
       mergeRange(this.fetchedRanges, result.range);
+      if (result.frames.length > 0) this.bumpEditVersion();
     } catch (error) {
       // Surface but don't crash — the engine will keep asking; subsequent
       // prefetch calls will retry the missing frames.

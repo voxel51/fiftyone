@@ -54,26 +54,17 @@ export const useSyncLighterLabelStream = (scene: Scene2D | null): void => {
 
   useEventHandler(
     "lighter:overlay-establish",
-    useCallback(
-      (payload) => upsertFromOverlay(payload.id),
-      [upsertFromOverlay]
-    )
+    useCallback((payload) => upsertFromOverlay(payload.id), [upsertFromOverlay])
   );
 
   useEventHandler(
     "lighter:overlay-drag-end",
-    useCallback(
-      (payload) => upsertFromOverlay(payload.id),
-      [upsertFromOverlay]
-    )
+    useCallback((payload) => upsertFromOverlay(payload.id), [upsertFromOverlay])
   );
 
   useEventHandler(
     "lighter:overlay-resize-end",
-    useCallback(
-      (payload) => upsertFromOverlay(payload.id),
-      [upsertFromOverlay]
-    )
+    useCallback((payload) => upsertFromOverlay(payload.id), [upsertFromOverlay])
   );
 
   useEventHandler(
