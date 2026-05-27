@@ -3,6 +3,7 @@
     "main": "./index.ts",
     "packageManager": "yarn@4.9.1",
     "dependencies": {
+        "@fiftyone/annotation": "workspace:*",
         "@fiftyone/lighter": "workspace:*",
         "@fiftyone/playback": "workspace:*",
         "@fiftyone/state": "workspace:*",

@@ -79,7 +79,7 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
         {mode === "synthetic" ? (
           <SyntheticTrackTimeline />
         ) : (
-          <FrameLabelsTracks />
+          <FrameLabelsTracks sample={sample} />
         )}
       </div>
     </div>

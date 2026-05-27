@@ -1,3 +1,4 @@
+import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { getLabelColorFromContext } from "@fiftyone/lighter";
 import {
   colorScheme,
@@ -29,6 +30,11 @@ import { FrameLabelsContext, useFrameLabelsStream } from "./FrameLabelsContext";
 import { buildPerInstanceTracks, type PerInstanceLabel } from "./frameTracks";
 import { LABELS_STREAM_ID } from "./ids";
 import { useLinkedTrackDecorator } from "./linkedTracks";
+import {
+  buildTemporalDetectionTracks,
+  type TemporalDetectionEventData,
+  type TemporalDetectionLabelLike,
+} from "./temporalDetectionTracks";
 import { VideoFrameLabelsStream } from "./VideoFrameLabelsStream";
 
 // todo - hardcoded for demo
@@ -149,10 +155,12 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
 
 /**
  * Labels track timeline — one row per tracked instance observed in
- * the clip (grouped by `index`), with intervals showing when
- * that instance is present. Untracked labels still paint as overlays
- * but don't get rows. Triggers a one-shot `warmupAll` so the cache covers
- * every frame, then walks it to build the tracks.
+ * the clip (grouped by `index`), plus one row per `TemporalDetection`
+ * on the sample (rendered as an interval spanning `support`). Untracked
+ * labels still paint as overlays but don't get rows. Triggers a one-shot
+ * `warmupAll` so the cache covers every frame, then walks it to build
+ * the frame-derived tracks; TD tracks are derived synchronously from
+ * the sample dict and merged in.
  *
  * Rebuilds (and re-broadcasts through `TrackProvider`) whenever the
  * color scheme or seed changes so row colors stay in lock-step with the
@@ -164,7 +172,9 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
  * track list. Subsequent recolors update through the live `tracks`
  * prop and don't trip the key, so the user's pin state is preserved.
  */
-export const FrameLabelsTracks: React.FC = () => {
+export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
+  sample,
+}) => {
   const stream = useFrameLabelsStream();
   const scheme = useRecoilValue(colorScheme);
   const seed = useRecoilValue(colorSeed);
@@ -172,7 +182,7 @@ export const FrameLabelsTracks: React.FC = () => {
   // useState so we can re-render once warmupAll resolves, but keep the
   // build deterministic in the deps (stream identity changes when the
   // sample changes, which is the trigger we care about).
-  const [tracks, setTracks] = useState<Track[]>([]);
+  const [frameTracks, setFrameTracks] = useState<Track[]>([]);
 
   const resolveColor = useCallback(
     (label: PerInstanceLabel) =>
@@ -183,9 +193,18 @@ export const FrameLabelsTracks: React.FC = () => {
     [scheme, seed]
   );
 
+  const resolveTemporalDetectionColor = useCallback(
+    (path: string, label: TemporalDetectionLabelLike) =>
+      getLabelColorFromContext(path, label, {
+        colorScheme: scheme,
+        seed,
+      }),
+    [scheme, seed]
+  );
+
   useEffect(() => {
     if (!stream) {
-      setTracks([]);
+      setFrameTracks([]);
       return;
     }
 
@@ -196,7 +215,7 @@ export const FrameLabelsTracks: React.FC = () => {
         return;
       }
 
-      setTracks(buildPerInstanceTracks({ stream, resolveColor }));
+      setFrameTracks(buildPerInstanceTracks({ stream, resolveColor }));
     });
 
     return () => {
@@ -204,9 +223,81 @@ export const FrameLabelsTracks: React.FC = () => {
     };
   }, [stream, resolveColor]);
 
+  const temporalDetectionTracks = useMemo(() => {
+    if (!sample?.sample) {
+      return [];
+    }
+    // `sample.frameRate` is the canonical fps for the clip; same source
+    // `RegisterFrameLabels` consumes for the labels-stream constructor.
+    const fps = sample.frameRate;
+    if (!Number.isFinite(fps) || fps <= 0) {
+      return [];
+    }
+    return buildTemporalDetectionTracks({
+      sample: sample.sample as Record<string, unknown>,
+      fps,
+      resolveColor: resolveTemporalDetectionColor,
+    });
+  }, [sample, resolveTemporalDetectionColor]);
+
+  const tracks = useMemo(
+    () => [...frameTracks, ...temporalDetectionTracks],
+    [frameTracks, temporalDetectionTracks]
+  );
   const pinned = useMemo(() => tracks.map((t) => t.id), [tracks]);
   const ready = tracks.length > 0;
-  const decorateTrack = useLinkedTrackDecorator();
+  const linkDecorate = useLinkedTrackDecorator();
+  const annotationEventBus = useAnnotationEventBus();
+  const fps = sample?.frameRate;
+  const snapStepSec =
+    Number.isFinite(fps) && fps && fps > 0 ? 1 / fps : undefined;
+
+  // Compose: keep the linked-overlay wiring (hover / select / scroll)
+  // and layer TD-specific resize wiring on top for TD rows. TD rows
+  // have no Lighter overlay, so the linked-overlay calls are no-ops on
+  // them — they don't break, just don't do anything visible.
+  const decorateTrack = useCallback(
+    (track: Track) => {
+      const base = linkDecorate(track);
+      const tdEvent = track.events[0]?.data as
+        | TemporalDetectionEventData
+        | undefined;
+      const isTemporalDetection =
+        track.id.startsWith("td-") && tdEvent !== undefined;
+      if (!isTemporalDetection || !fps) {
+        return base;
+      }
+      return {
+        ...base,
+        snapStepSec,
+        onEventResize: (
+          _eventIndex: number,
+          newStartSec: number,
+          newEndSec: number
+        ) => {
+          // Convert seconds back to 1-indexed inclusive frame numbers
+          // using the same mapping the build does in reverse:
+          //   startSec = (firstFrame - 1) / fps  ⇒  firstFrame = round(startSec * fps) + 1
+          //   endSec   = lastFrame / fps         ⇒  lastFrame  = round(endSec * fps)
+          // Floor would be more conservative, but the snap above
+          // already lands the values on the frame grid; rounding is a
+          // small belt-and-suspenders for FP error.
+          const firstFrame = Math.max(1, Math.round(newStartSec * fps) + 1);
+          const lastFrame = Math.max(firstFrame, Math.round(newEndSec * fps));
+          annotationEventBus.dispatch(
+            "annotation:temporalDetectionSupportChanged",
+            {
+              fieldPath: tdEvent.fieldPath,
+              detectionId: tdEvent.detectionId,
+              previousSupport: tdEvent.support,
+              newSupport: [firstFrame, lastFrame],
+            }
+          );
+        },
+      };
+    },
+    [linkDecorate, fps, snapStepSec, annotationEventBus]
+  );
 
   return (
     <TrackProvider
