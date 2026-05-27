@@ -1,0 +1,24 @@
+# robots.txt for https://docs.voxel51.com/
+# Generated: 2026-05-26
+# -----------------------------------------------
+# Allow all crawlers including AI bots
+# -----------------------------------------------
+User-agent: *
+Allow: /
+Sitemap: https://docs.voxel51.com/sitemap.xml
+# Disallow static assets and build artifacts
+Disallow: /_static/
+Disallow: /_sources/
+Disallow: /.doctrees/
+Disallow: /searchindex.js
+# Disallow noisy internal API submodules
+Disallow: /api/fiftyone.brain.internal/
+Disallow: /api/fiftyone.core.odm/
+Disallow: /api/fiftyone.core.session/
+Disallow: /api/fiftyone.factory.repos/
+Disallow: /api/fiftyone.operators.cache/
+Disallow: /api/fiftyone.operators.store/
+# -----------------------------------------------
+# Sitemap
+# -----------------------------------------------
+Sitemap: https://docs.voxel51.com/sitemap.xml

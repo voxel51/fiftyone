@@ -39,3 +39,4 @@ sphinx-pushfeedback==0.1.8
 sphinx-docsearch==0.3.0
 sphinx-remove-toctrees==1.0.0.post1
 sphinx-autoapi==3.8.0
+sphinx-sitemap==2.6.0
