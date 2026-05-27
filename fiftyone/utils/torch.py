@@ -1994,6 +1994,7 @@ class FiftyOneTorchDataset(Dataset):
         self,
         samples,
         get_item,
+        *,
         index_field="id",
         vectorize=False,
         skip_failures=False,

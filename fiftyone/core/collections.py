@@ -10361,6 +10361,7 @@ class SampleCollection(object):
     def to_torch(
         self,
         get_item,
+        *,
         index_field="id",
         vectorize=False,
         skip_failures=False,
