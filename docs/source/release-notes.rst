@@ -9,6 +9,23 @@ FiftyOne Enterprise 2.19.0
 
 Includes all updates from :ref:`FiftyOne 1.16.0 <release-notes-v1.16.0>`, plus:
 
+FiftyOne Agent
+
+- Added the :ref:`FiftyOne Agent <enterprise-agent>`: an AI-powered assistant
+  built into the FiftyOne Enterprise App that lets you work with your datasets
+  using natural language, including data import, model inference, duplicate
+  detection, model evaluation, and annotation, all from a conversational
+  interface
+  `#7569 <https://github.com/voxel51/fiftyone/pull/7569>`_
+- The Agent supports 100+ LLM providers, including Anthropic, OpenAI, and
+  Google. Configure providers and API keys directly from the Agent settings
+  panel
+- Ships with a set of built-in :ref:`skills <enterprise-agent-skills>`
+  covering the most common computer vision workflows, including data import,
+  enrichment, quality checks, model evaluation, and annotation. You can also
+  build your own custom skills with the
+  :ref:`plugin skills framework <plugins-design-skills>`
+
 App
 
 - Upgraded the :ref:`Run page <enterprise-run-page>` of delegated operations
@@ -20,8 +37,6 @@ App
   operation execution is now powered by a sidecar that captures `stdout` and
   `stderr` and surfaces in-progress logs, progress bars, and package versions
   directly in the UI
-- Added the FiftyOne MCP server and `litellm` to the `fiftyone-app` container
-  in support of AI agent capabilities
 - The Database panel on the live runs metrics page is now collapsed by default
   and hidden entirely for non-admin users
 - Fixed a bug where the Next.js loading bar could remain visible indefinitely,
@@ -82,9 +97,11 @@ In-App Annotation
 Plugins and Operators
 
 - Added :ref:`plugin skills <plugins-design-skills>`: plugins can now bundle
-  agent-discoverable skills that are surfaced via a new top-level
+  agent-discoverable skills that are surfaced via the
+  :ref:`FiftyOne Agent <enterprise-agent>` and a new top-level
   `fiftyone skills` CLI command. Skills are first-class in the plugin
   framework and resolved by name rather than path
+  `#7568 <https://github.com/voxel51/fiftyone/pull/7568>`_
 - Added several new built-in operators, including operators to get and
   set view filters, list and open panels, get and set panel state and data,
   list brain runs, list evaluations, list model-evaluation scenarios, get
@@ -142,6 +159,10 @@ Documentation
   `#7556 <https://github.com/voxel51/fiftyone/pull/7556>`_
 - Documented the new :ref:`plugin skills <plugins-design-skills>` framework
   and updated the plugin development guide accordingly
+- Added a new :ref:`Agent Ecosystem <agents-ecosystem>` section to the docs
+  covering the FiftyOne MCP server, the Skills Ecosystem, and guides for
+  developing custom skills
+  `#7509 <https://github.com/voxel51/fiftyone/pull/7509>`_
 
 
 FiftyOne Enterprise 2.18.1
