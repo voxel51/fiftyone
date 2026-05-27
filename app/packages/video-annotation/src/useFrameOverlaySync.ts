@@ -5,6 +5,7 @@ import {
   overlayFactory,
   useLighterSetupWithPixi,
 } from "@fiftyone/lighter";
+import { useIsPlaying } from "../../playback/src/lib/playback/use-playback-state";
 import { useEffect, useRef } from "react";
 import type { FrameLabelSnapshot, SyntheticBox } from "./SyntheticLabelStream";
 
@@ -26,6 +27,10 @@ export function useFrameOverlaySync(
   canonicalMediaReady: boolean
 ) {
   const trackedRef = useRef<Set<string>>(new Set());
+
+  // Disable drag/resize while the stream is playing
+  const isPlaying = useIsPlaying();
+  const editable = !isPlaying;
 
   useEffect(() => {
     // Skip the diff until the current scene has its canonical media —
@@ -56,9 +61,8 @@ export function useFrameOverlaySync(
           label: toDetectionLabel(det),
           relativeBounds: bounds,
           field,
-          draggable: false,
-          resizeable: false,
-          selectable: false,
+          draggable: editable,
+          resizeable: editable,
         });
         scene.addOverlay(overlay);
         trackedRef.current.add(det.id);
@@ -71,7 +75,19 @@ export function useFrameOverlaySync(
         trackedRef.current.delete(id);
       }
     }
-  }, [scene, snapshot, field, canonicalMediaReady]);
+  }, [scene, snapshot, field, canonicalMediaReady, editable]);
+
+  useEffect(() => {
+    if (!scene) return;
+
+    for (const id of trackedRef.current) {
+      const overlay = scene.getOverlay(id);
+      if (overlay instanceof DetectionOverlay) {
+        overlay.setDraggable(editable);
+        overlay.setResizeable(editable);
+      }
+    }
+  }, [scene, editable]);
 
   useEffect(() => {
     return () => {

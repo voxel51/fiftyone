@@ -1,6 +1,5 @@
 import { getSampleSrc } from "@fiftyone/state";
 import type { ModalSample } from "@fiftyone/state";
-import { TilingProvider } from "@fiftyone/tiling";
 import React, { useMemo, useState } from "react";
 import { PlaybackProvider } from "../../playback/src/lib/playback/PlaybackProvider";
 import {
@@ -150,9 +149,9 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
       labels
     );
 
-  return (
-    <PlaybackProvider>
-      <TilingProvider initialTiles={{}}>{registered}</TilingProvider>
-    </PlaybackProvider>
-  );
+  // No TilingProvider: it mounts an isolated jotai store, which would
+  // shadow modal-scoped atoms the sidebar writes to (lighterSceneAtom,
+  // detection-mode, label list). Reintroducing multi-tile here requires
+  // first pinning those atoms to the modal-default store explicitly.
+  return <PlaybackProvider>{registered}</PlaybackProvider>;
 };
