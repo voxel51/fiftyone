@@ -403,7 +403,7 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
         for i in indices:
             self.assertEqual(td_db[i], td_vec[i])
 
-    def test_skip_failures_per_detection(self):
+    def _skip_failures_per_detection_impl(self, vectorize):
         # Add a sample whose detections lack the requested field to trigger
         # an error when calling get_item.
         n_per_sample = (2, 2)
@@ -434,6 +434,7 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
         td = dataset.to_torch(
             gi,
             index_field="ground_truth.detections.id",
+            vectorize=vectorize,
             skip_failures=False,
         )
         with self.assertRaises(ValueError):
@@ -444,6 +445,7 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
         td = dataset.to_torch(
             gi,
             index_field="ground_truth.detections.id",
+            vectorize=vectorize,
             skip_failures=True,
         )
         self.assertEqual(len(td), sum(n_per_sample))
@@ -453,6 +455,12 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
         self.assertIsInstance(results[0], ValueError)
         for i in range(1, len(results)):
             self.assertIsInstance(results[i], str)
+
+    def test_skip_failures_per_detection_db(self):
+        self._skip_failures_per_detection_impl(vectorize=False)
+
+    def test_skip_failures_per_detection_vectorized(self):
+        self._skip_failures_per_detection_impl(vectorize=True)
 
 
 if __name__ == "__main__":
