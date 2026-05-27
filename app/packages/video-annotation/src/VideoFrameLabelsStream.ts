@@ -7,7 +7,11 @@ import type {
   BufferReadiness,
   PlaybackStore,
 } from "../../playback/src/lib/playback/types";
-import type { FrameLabelSnapshot, SyntheticBox } from "./SyntheticLabelStream";
+import type {
+  FrameLabelSnapshot,
+  PropagationBlob,
+  SyntheticBox,
+} from "./SyntheticLabelStream";
 
 // todo - adapter pattern for other label types
 interface RawDetection {
@@ -17,6 +21,8 @@ interface RawDetection {
   label?: string;
   bounding_box?: [number, number, number, number];
   instance?: { _cls: "Instance"; _id?: string } | null;
+  keyframe?: boolean;
+  propagation?: PropagationBlob | null;
 }
 
 interface RawDetectionsField {
@@ -368,6 +374,8 @@ function extractDetections(
       bounding_box: det.bounding_box,
       index: det.index,
       instance: det.instance ?? undefined,
+      keyframe: det.keyframe ?? false,
+      propagation: det.propagation ?? null,
     });
   }
 

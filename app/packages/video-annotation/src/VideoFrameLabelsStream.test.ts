@@ -33,3 +33,22 @@ describe("VideoFrameLabelsStream fetched-empty", () => {
     });
   });
 });
+
+describe("VideoFrameLabelsStream extractDetections", () => {
+  it("defaults missing keyframe to false and propagation to null", () => {
+    const stream = buildStream();
+    // @ts-expect-error — test-only: populate the private cache
+    stream.cache.set(10, {
+      frame_number: 10,
+      detections: {
+        detections: [
+          { _id: "a", label: "car", bounding_box: [0, 0, 0.1, 0.1] },
+        ],
+      },
+    });
+
+    const value = stream.getValue(timeOfFrame(10, 30));
+    expect(value?.detections[0].keyframe).toBe(false);
+    expect(value?.detections[0].propagation).toBeNull();
+  });
+});
