@@ -1,4 +1,9 @@
-import { createContext, useCallback, useContext, useSyncExternalStore } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useSyncExternalStore,
+} from "react";
 import type { VideoFrameLabelsStream } from "./VideoFrameLabelsStream";
 
 /**
@@ -36,6 +41,9 @@ export function useFrameLabelsEditVersion(): number {
     (notify: () => void) => stream?.subscribeToEdits(notify) ?? (() => {}),
     [stream]
   );
-  const getSnapshot = useCallback(() => stream?.getEditVersion() ?? 0, [stream]);
+  const getSnapshot = useCallback(
+    () => stream?.getEditVersion() ?? 0,
+    [stream]
+  );
   return useSyncExternalStore(subscribe, getSnapshot);
 }
