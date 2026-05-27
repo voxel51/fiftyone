@@ -131,6 +131,8 @@ export type LighterEventGroup = {
   "lighter:overlay-paint-end": {
     id: string;
     paintStrokeData: PaintStrokeData | undefined;
+    /** True when this stroke is the first of a brand-new overlay */
+    isEstablishing?: boolean;
   };
   /** Emitted when user clicks without dragging in detection mode to exit */
   "lighter:detection-mode-quit": { eventId: string };
