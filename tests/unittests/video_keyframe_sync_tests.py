@@ -24,6 +24,9 @@ class KeyframeSyncTests(unittest.TestCase):
                 ),
             ])
         )
+        sample["events"] = fo.TemporalDetections(detections=[
+            fo.TemporalDetection(label="action", support=[1, 3]),
+        ])
         self.dataset.add_sample(sample)
         self.sample: fo.Sample = sample
 
@@ -94,6 +97,43 @@ class KeyframeSyncTests(unittest.TestCase):
 
         roundtripped: fo.Detection = (
             self.dataset.first().frames[1].detections.detections[0]
+        )
+        self.assertIs(roundtripped.keyframe, False)
+        self.assertEqual(roundtripped.propagation["method"], "linear")
+        self.assertEqual(roundtripped.propagation["run_id"], run_id)
+        self.assertEqual(
+            roundtripped.propagation["parent_keyframes"],
+            [parent_a, parent_b],
+        )
+
+
+    def test_keyframe_dynamic_attr_persists_on_temporal_detection(self) -> None:
+        td: fo.TemporalDetection = self.sample.events.detections[0]
+        td.keyframe = True
+        td.propagation = None
+        self.sample.save()
+
+        roundtripped: fo.TemporalDetection = (
+            self.dataset.first().events.detections[0]
+        )
+        self.assertIs(roundtripped.keyframe, True)
+        self.assertIsNone(getattr(roundtripped, "propagation", None))
+
+    def test_propagation_blob_persists_on_temporal_detection(self) -> None:
+        run_id: ObjectId = ObjectId()
+        parent_a: ObjectId = ObjectId()
+        parent_b: ObjectId = ObjectId()
+        td: fo.TemporalDetection = self.sample.events.detections[0]
+        td.keyframe = False
+        td.propagation = {
+            "method": "linear",
+            "run_id": run_id,
+            "parent_keyframes": [parent_a, parent_b],
+        }
+        self.sample.save()
+
+        roundtripped: fo.TemporalDetection = (
+            self.dataset.first().events.detections[0]
         )
         self.assertIs(roundtripped.keyframe, False)
         self.assertEqual(roundtripped.propagation["method"], "linear")
