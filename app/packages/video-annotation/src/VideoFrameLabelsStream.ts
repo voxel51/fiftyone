@@ -183,6 +183,10 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       return "loading";
     }
 
+    if (this.isInFetchedRange(frame)) {
+      return "ready";
+    }
+
     return "missing";
   }
 
@@ -209,6 +213,11 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     const frame = this.timeToFrame(time);
     const sample = this.cache.get(frame);
     if (!sample) {
+      // Chunk fetched, this frame had no labels — return an empty
+      // snapshot so consumers can tell "no labels here" from "not fetched".
+      if (this.isInFetchedRange(frame)) {
+        return { frameNumber: frame, detections: [] };
+      }
       return null;
     }
 
@@ -258,6 +267,15 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
 
   private isInflight(frame: number): boolean {
     return this.inflight.has(frame);
+  }
+
+  private isInFetchedRange(frame: number): boolean {
+    for (const [start, end] of this.fetchedRanges) {
+      if (frame >= start && frame <= end) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private async fetchChunk(startFrame: number): Promise<void> {
