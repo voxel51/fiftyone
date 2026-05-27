@@ -1,6 +1,30 @@
 import type { StreamLookupPolicy } from "./types";
 
 /**
+ * Convert a continuous playback time to a 1-indexed frame number. When
+ * `frameCount` is provided, clamps the result to `[1, frameCount]`;
+ * otherwise returns the raw `floor(time * fps) + 1`.
+ *
+ * Shared by streams, server-query helpers, and (eventually) hotkeys so
+ * everyone agrees on which frame a given `time` belongs to. 1-indexed
+ * because that is the convention `/frames` uses and the labels coming
+ * back from the server are keyed on.
+ */
+export function frameAt(
+  time: number,
+  fps: number,
+  frameCount?: number
+): number {
+  const raw = Math.floor(time * fps) + 1;
+  if (frameCount === undefined) {
+    return raw;
+  }
+  if (raw < 1) return 1;
+  if (raw > frameCount) return frameCount;
+  return raw;
+}
+
+/**
  * Resolves the best cached entry for a given time from a Map<number, T>.
  *
  * "nearest"         — closest entry in either direction within threshold.

@@ -8,7 +8,9 @@ import {
   FrameLabelsTracks,
   RegisterFrameLabels,
 } from "./FrameLabels";
+import { ImaVidLighterTile } from "./ImaVidLighterTile";
 import { LinkedOverlayStateBridge } from "./linkedTracks";
+import { RegisterImaVidImage } from "./RegisterImaVidImage";
 import {
   RegisterSyntheticLabels,
   SYNTHETIC_FIELD,
@@ -28,6 +30,17 @@ import styles from "./VideoAnnotationSurface.module.css";
  */
 type LabelsMode = "real" | "synthetic";
 
+/**
+ * Switch between the ImaVid (image-per-frame) tile and the native
+ * `<video>` tile.
+ *
+ * - default: imavid (the demo's locked-in target — `to_frames(sample_frames=True)` data)
+ * - `?tile=video`: native video tile (kept around for the existing path)
+ *
+ * Read once at mount; flipping requires reopening the modal.
+ */
+type TileMode = "imavid" | "video";
+
 function useLabelsMode(): LabelsMode {
   const [mode] = useState<LabelsMode>(() => {
     if (typeof window === "undefined") {
@@ -36,6 +49,19 @@ function useLabelsMode(): LabelsMode {
 
     const param = new URLSearchParams(window.location.search).get("labels");
     return param === "synthetic" ? "synthetic" : "real";
+  });
+
+  return mode;
+}
+
+function useTileMode(): TileMode {
+  const [mode] = useState<TileMode>(() => {
+    if (typeof window === "undefined") {
+      return "imavid";
+    }
+
+    const param = new URLSearchParams(window.location.search).get("tile");
+    return param === "video" ? "video" : "imavid";
   });
 
   return mode;
@@ -51,32 +77,48 @@ export interface VideoAnnotationSurfaceProps {
  * stream (real `/frames` by default; synthetic when `?labels=synthetic`),
  * and renders media (top) + timeline (bottom).
  *
+ * Tile mode (`?tile=imavid|video`) picks between an ImaVid tile (default,
+ * one materialized image per frame via `to_frames(sample_frames=True)`)
+ * and the native `<video>` tile.
+ *
  * Lives inside the modal's media region — the existing right-side
  * annotation sidebar continues to render outside this component.
  */
 export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
   sample,
 }) => {
-  const mode = useLabelsMode();
+  const labelsMode = useLabelsMode();
+  const tileMode = useTileMode();
+
+  // The native-video tile binds to a single top-level URL. The ImaVid
+  // tile resolves a per-frame URL through the image stream, so it does
+  // not need (and ignores) this value.
   const videoSrc = useMemo(() => {
+    if (tileMode !== "video") {
+      return null;
+    }
+
     const url = sample.urls?.[0]?.url;
     return url ? getSampleSrc(url) : null;
-  }, [sample]);
+  }, [sample, tileMode]);
 
-  const field = mode === "synthetic" ? SYNTHETIC_FIELD : FRAME_FIELD;
+  const field = labelsMode === "synthetic" ? SYNTHETIC_FIELD : FRAME_FIELD;
+
+  const media =
+    tileMode === "imavid" ? (
+      <ImaVidLighterTile field={field} />
+    ) : videoSrc ? (
+      <VideoLighterTile videoSrc={videoSrc} field={field} />
+    ) : (
+      <div className={styles.empty}>No media URL on this sample.</div>
+    );
 
   const layout = (
     <div className={styles.root}>
       <LinkedOverlayStateBridge />
-      <div className={styles.media}>
-        {videoSrc ? (
-          <VideoLighterTile videoSrc={videoSrc} field={field} />
-        ) : (
-          <div className={styles.empty}>No media URL on this sample.</div>
-        )}
-      </div>
+      <div className={styles.media}>{media}</div>
       <div className={styles.timeline}>
-        {mode === "synthetic" ? (
+        {labelsMode === "synthetic" ? (
           <SyntheticTrackTimeline />
         ) : (
           <FrameLabelsTracks />
@@ -85,18 +127,32 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
     </div>
   );
 
+  // Both registrars run against the same PlaybackProvider. In the ImaVid
+  // path the image stream is the timeline's duration source (analogous to
+  // `<video>` in the native tile), so it has to mount OUTSIDE the labels
+  // registrar — `RegisterFrameLabels` gates on `useDuration() > 0` and
+  // swaps its wrapper component when it flips ready, which would otherwise
+  // remount whatever's nested inside it.
+  const labels =
+    labelsMode === "synthetic" ? (
+      <>
+        <RegisterSyntheticLabels />
+        {layout}
+      </>
+    ) : (
+      <RegisterFrameLabels sample={sample}>{layout}</RegisterFrameLabels>
+    );
+
+  const registered =
+    tileMode === "imavid" ? (
+      <RegisterImaVidImage sample={sample}>{labels}</RegisterImaVidImage>
+    ) : (
+      labels
+    );
+
   return (
     <PlaybackProvider>
-      <TilingProvider initialTiles={{}}>
-        {mode === "synthetic" ? (
-          <>
-            <RegisterSyntheticLabels />
-            {layout}
-          </>
-        ) : (
-          <RegisterFrameLabels sample={sample}>{layout}</RegisterFrameLabels>
-        )}
-      </TilingProvider>
+      <TilingProvider initialTiles={{}}>{registered}</TilingProvider>
     </PlaybackProvider>
   );
 };
