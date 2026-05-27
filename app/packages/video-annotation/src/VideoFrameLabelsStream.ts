@@ -1,7 +1,10 @@
 import { type Stage } from "@fiftyone/utilities";
 import { getFrames, type FrameDoc } from "../../core/src/client/framesClient";
 import { PlaybackStreamBase } from "../../playback/src/lib/playback/stream-base";
-import { streamValueAtom } from "../../playback/src/lib/playback/atoms";
+import {
+  currentTimeAtom,
+  streamValueAtom,
+} from "../../playback/src/lib/playback/atoms";
 import { frameAt } from "../../playback/src/lib/playback/utils";
 import type {
   BufferReadiness,
@@ -9,7 +12,6 @@ import type {
 } from "../../playback/src/lib/playback/types";
 import type { FrameLabelSnapshot, SyntheticBox } from "./SyntheticLabelStream";
 
-// todo - adapter pattern for other label types
 interface RawDetection {
   _id?: string;
   id?: string;
@@ -21,6 +23,20 @@ interface RawDetection {
 
 interface RawDetectionsField {
   detections?: RawDetection[];
+}
+
+/**
+ * Shape callers pass to {@link VideoFrameLabelsStream.upsertDetection}.
+ * Lines up with the `Detection` wire format — `bounding_box` is required
+ * since a Detection with no bbox is meaningless for a video overlay.
+ */
+export interface LocalDetection {
+  _id?: string;
+  id?: string;
+  index?: number;
+  label?: string;
+  bounding_box: [number, number, number, number];
+  instance?: { _cls: "Instance"; _id?: string } | null;
 }
 
 export interface VideoFrameLabelsStreamOptions {
@@ -82,8 +98,17 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   private readonly chunkSize: number;
 
   private readonly cache = new Map<number, FrameDoc>();
+  // Server-original snapshots, populated from `/frames` and never
+  // mutated. The eventual delta supplier diffs `cache` against this to
+  // compute server PATCHes.
+  private readonly baseline = new Map<number, FrameDoc>();
+  // Frames with local edits that haven't been persisted to the server.
+  private readonly dirty = new Set<number>();
   private readonly inflight = new Map<number, Promise<void>>();
   private readonly fetchedRanges: Array<[number, number]> = [];
+  // Cached on each `onCommit` so local-edit republishes can write to
+  // the same atom store the engine drives. Null until first commit.
+  private lastStore: PlaybackStore | null = null;
 
   constructor(opts: VideoFrameLabelsStreamOptions) {
     super(opts.id, {
@@ -229,6 +254,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
    * miss → hit when a chunk lands).
    */
   override onCommit(time: number, store: PlaybackStore): void {
+    this.lastStore = store;
     const next = this.getValue(time);
     const prev = store.get(
       streamValueAtom(this.id)
@@ -245,6 +271,58 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     store.set(streamValueAtom(this.id), next);
   }
 
+  /**
+   * Insert or replace a detection in the local cache for the given frame
+   * and republish so subscribers re-render at the current playhead. No-op
+   * if the frame isn't cached.
+   */
+  upsertDetection(frameNumber: number, detection: LocalDetection): void {
+    const existing = this.cache.get(frameNumber);
+    if (!existing) return;
+    const id = detection._id ?? detection.id;
+    if (!id) return;
+
+    const next = withDetectionList(existing, this.frameField, (list) => {
+      const idx = list.findIndex((d) => (d._id ?? d.id) === id);
+      if (idx < 0) return [...list, detection];
+      const copy = list.slice();
+      copy[idx] = { ...list[idx], ...detection };
+      return copy;
+    });
+
+    this.cache.set(frameNumber, next);
+    this.dirty.add(frameNumber);
+    this.republish();
+  }
+
+  /**
+   * Remove a detection from the local cache for the given frame and
+   * republish. No-op if the frame isn't cached or the id isn't present.
+   */
+  removeDetection(frameNumber: number, detectionId: string): void {
+    const existing = this.cache.get(frameNumber);
+    if (!existing) return;
+
+    const next = withDetectionList(existing, this.frameField, (list) =>
+      list.filter((d) => (d._id ?? d.id) !== detectionId)
+    );
+
+    this.cache.set(frameNumber, next);
+    this.dirty.add(frameNumber);
+    this.republish();
+  }
+
+  /** Whether the given frame has unsaved local edits. */
+  isDirty(frameNumber: number): boolean {
+    return this.dirty.has(frameNumber);
+  }
+
+  private republish(): void {
+    if (!this.lastStore) return;
+    const time = this.lastStore.get(currentTimeAtom);
+    this.lastStore.set(streamValueAtom(this.id), this.getValue(time));
+  }
+
   bufferedRanges(): Array<[number, number]> {
     return this.fetchedRanges.map(
       ([start, end]) =>
@@ -252,7 +330,8 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     );
   }
 
-  private timeToFrame(time: number): number {
+  /** Map a stream time to the 1-indexed frame number. */
+  timeToFrame(time: number): number {
     return frameAt(time, this.frameRate, this.frameCount);
   }
 
@@ -298,7 +377,13 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       });
 
       for (const frame of result.frames) {
+        // Local edits made before the fetch landed are discarded — the
+        // server response is the new source of truth. (Once the delta
+        // supplier exists, in-flight edits will be tracked separately
+        // and reconciled on persistence success.)
         this.cache.set(frame.frame_number, frame);
+        this.baseline.set(frame.frame_number, frame);
+        this.dirty.delete(frame.frame_number);
       }
 
       mergeRange(this.fetchedRanges, result.range);
@@ -354,6 +439,24 @@ function extractDetections(
   }
 
   return out;
+}
+
+/**
+ * Return a shallow copy of `frame` with the `detections` list under
+ * `frameField` replaced by `fn(list)`. Preserves the original `frame`
+ * object so the baseline map keeps pointing at it.
+ */
+function withDetectionList(
+  frame: FrameDoc,
+  frameField: string,
+  fn: (list: RawDetection[]) => RawDetection[]
+): FrameDoc {
+  const existing = frame[frameField] as RawDetectionsField | undefined;
+  const list = existing?.detections ?? [];
+  return {
+    ...frame,
+    [frameField]: { ...existing, detections: fn(list) },
+  } as FrameDoc;
 }
 
 /**

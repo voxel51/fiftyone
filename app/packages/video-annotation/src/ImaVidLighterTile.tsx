@@ -21,6 +21,7 @@ import type { ImaVidImageFrame } from "./ImaVidImageStream";
 import type { FrameLabelSnapshot } from "./SyntheticLabelStream";
 import { useFrameOverlaySync } from "./useFrameOverlaySync";
 import { useSyncLighterAnnotation } from "./useSyncLighterAnnotation";
+import { useSyncLighterLabelStream } from "./useSyncLighterLabelStream";
 import styles from "./ImaVidLighterTile.module.css";
 
 export interface ImaVidLighterTileProps {
@@ -149,6 +150,7 @@ export const ImaVidLighterTile: React.FC<ImaVidLighterTileProps> = ({
   useFrameOverlaySync(scene, snapshot, field, canonicalMediaReady);
 
   useSyncLighterAnnotation(scene);
+  useSyncLighterLabelStream(scene);
 
   // Paint the current frame's bitmap into the canvas. Sets the canvas
   // drawing buffer to the bitmap's intrinsic dimensions on first paint
