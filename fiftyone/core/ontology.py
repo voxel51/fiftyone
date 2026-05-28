@@ -95,9 +95,22 @@ class Ontology(abc.ABC):
         """Whether this ontology is a taxonomy."""
         return self._TYPE == OntologyType.TAXONOMY.value
 
-    def save(self) -> None:
-        """Saves this ontology to the database."""
+    def save(self, overwrite: bool = False) -> None:
+        """Saves this ontology to the database.
+
+        Args:
+            overwrite: if True and an ontology with this name already exists
+                in the database, adopt its lineage and append a new version.
+                Enables JSON/git-driven workflows where an instance built via
+                :meth:`from_dict` is saved without first calling
+                :func:`load_ontology`. With the default ``False``, saving an
+                in-memory instance whose slug collides with a persisted
+                ontology is rejected.
+        """
         self._validate()
+        if self._doc is None and overwrite:
+            self._doc = self._find_latest_doc()
+
         if self._doc is None:
             self._doc = OntologyDocument(
                 name=self.name,
@@ -111,6 +124,14 @@ class Ontology(abc.ABC):
             self._doc.root = self._get_root()
 
         self._doc.save()
+
+    def _find_latest_doc(self) -> Optional[OntologyDocument]:
+        slug = fou.to_slug(self.name)
+        return (
+            OntologyDocument.objects(slug=slug, type=self._TYPE)
+            .order_by("-version")
+            .first()
+        )
 
     def reload(self) -> None:
         """Reloads this ontology from the database."""
@@ -439,6 +460,19 @@ def _objects_by_slug(name: str):
     return OntologyDocument.objects(  # pylint: disable=no-member
         slug=fou.to_slug(name)
     )
+
+
+def save_ontology(ontology: Ontology, overwrite: bool = False) -> None:
+    """Saves the given ontology to the database.
+
+    Module-level mirror of :meth:`Ontology.save`, paired with
+    :func:`load_ontology` and :func:`delete_ontology`.
+
+    Args:
+        ontology: an :class:`Ontology` to save
+        overwrite: see :meth:`Ontology.save`
+    """
+    ontology.save(overwrite=overwrite)
 
 
 def load_ontology(name: str) -> Ontology:

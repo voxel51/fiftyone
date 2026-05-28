@@ -76,6 +76,7 @@ from .core.ontology import (
     list_ontologies,
     load_ontology,
     ontology_exists,
+    save_ontology,
 )
 from .core.fields import (
     flatten_schema,
