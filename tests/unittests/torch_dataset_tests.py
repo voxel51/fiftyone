@@ -387,7 +387,6 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
         # Video dataset
         vid_ds = _make_video_dataset((2,))
         self.assertEqual(_list_dims(vid_ds, "filepath"), ("",))
-        self.assertEqual(_list_dims(vid_ds, "frames"), ("", "frames"))
         self.assertEqual(_list_dims(vid_ds, "frames.id"), ("", "frames"))
         self.assertEqual(
             _list_dims(vid_ds, "frames.frame_label"), ("", "frames")

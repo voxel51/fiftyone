@@ -25,7 +25,6 @@ import eta.core.learning as etal
 import eta.core.utils as etau
 
 import fiftyone.core.config as foc
-import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.models as fom
 import fiftyone.core.media as fomd
@@ -1870,49 +1869,13 @@ def _list_dims(samples, path, allow_missing=True):
             row must have a key); ``True`` is used for mapped fields where
             a missing field resolves to ``None`` per row downstream
     """
-    dims = [""]
-    if not path:
-        return tuple(dims)
-
-    # Strip group prefix, then frame prefix — same order the rest of the
-    # codebase uses (see SampleCollection._parse_field_name).
-    rest, _ = samples._handle_group_field(path)
-    rest, is_frame_field = samples._handle_frame_field(rest)
-
-    if is_frame_field:
-        dims.append("frames")
-        schema = samples.get_frame_field_schema()
-        prefix = "frames"
-    else:
-        schema = samples.get_field_schema()
-        prefix = ""
-
-    if not rest:
-        return tuple(dims)
-
-    for key in rest.split("."):
-        field = schema.get(key)
-        if field is None:
-            if not allow_missing:
-                raise ValueError(
-                    f"Collection has no field '{path}'"
-                )
-            break
-
-        full = f"{prefix}.{key}" if prefix else key
-
-        if isinstance(field, fof.ListField):
-            dims.append(full)
-            field = field.field
-
-        if isinstance(field, fof.EmbeddedDocumentField):
-            schema = field.get_field_schema()
-        else:
-            schema = {}
-
-        prefix = full
-
-    return tuple(dims)
+    _, _, unwind, other, _ = samples._parse_field_name(
+        path,
+        auto_unwind=False,
+        omit_terminal_lists=False,
+        allow_missing=allow_missing,
+    )
+    return ("",) + tuple(sorted(set(unwind + other)))
 
 
 def _shared_list_prefix_len(dims_a, dims_b):
