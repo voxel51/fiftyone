@@ -44,6 +44,18 @@ export interface LocalDetection {
   label?: string;
   bounding_box: [number, number, number, number];
   instance?: { _cls: "Instance"; _id?: string } | null;
+  /**
+   * Auto-promote-on-edit: callers handling user-initiated edits (draw,
+   * drag, resize) should pass `keyframe: true` so an interpolated label
+   * is promoted to a keyframe on touch. Omit to preserve the existing
+   * value through `updateLabel`'s shallow merge.
+   */
+  keyframe?: boolean;
+  /**
+   * Propagation provenance. User edits clear this (`null`); leave
+   * undefined to preserve the existing value through the shallow merge.
+   */
+  propagation?: PropagationBlob | null;
 }
 
 export interface VideoFrameLabelsStreamOptions {

@@ -95,11 +95,17 @@ function toLocalDetection(overlay: DetectionOverlay): LocalDetection {
   // upserts match the existing baseline entry. `overlay.id` is the
   // synthetic `track-<n>` id used for cross-frame identity and won't
   // match anything in the baseline detections array.
+  // Any overlay event reaching this helper came from a user action
+  // (draw / drag-end / resize-end). Promote to a keyframe and clear any
+  // propagation provenance — the label is now user-authoritative for
+  // this frame, regardless of how it got here.
   const det: LocalDetection = {
     _cls: "Detection",
     _id: label._id ?? overlay.id,
     label: label.label,
     bounding_box: [bounds.x, bounds.y, bounds.width, bounds.height],
+    keyframe: true,
+    propagation: null,
   };
 
   if (label.index !== undefined) {
