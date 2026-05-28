@@ -150,17 +150,6 @@ export type AnnotationEventGroup = {
   "annotation:exitAnnotationMode": void;
 
   /**
-   * Notification event emitted when the user finishes a drag-resize /
-   * drag-move on a `TemporalDetection` interval in the timeline.
-   */
-  "annotation:temporalDetectionSupportChanged": {
-    fieldPath: string;
-    detectionId: string;
-    previousSupport: [number, number];
-    newSupport: [number, number];
-  };
-
-  /**
    * Notification event emitted when a label edit occurs.
    */
   "annotation:labelEdit": { label: Partial<AnnotationLabel["data"]> };

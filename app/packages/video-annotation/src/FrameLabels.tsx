@@ -1,4 +1,3 @@
-import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { getLabelColorFromContext } from "@fiftyone/lighter";
 import {
   colorScheme,
@@ -247,7 +246,6 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   const pinned = useMemo(() => tracks.map((t) => t.id), [tracks]);
   const ready = tracks.length > 0;
   const linkDecorate = useLinkedTrackDecorator();
-  const annotationEventBus = useAnnotationEventBus();
   const fps = sample?.frameRate;
   const snapStepSec =
     Number.isFinite(fps) && fps && fps > 0 ? 1 / fps : undefined;
@@ -281,24 +279,20 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
           // using the same mapping the build does in reverse:
           //   startSec = (firstFrame - 1) / fps  ⇒  firstFrame = round(startSec * fps) + 1
           //   endSec   = lastFrame / fps         ⇒  lastFrame  = round(endSec * fps)
-          // Floor would be more conservative, but the snap above
-          // already lands the values on the frame grid; rounding is a
-          // small belt-and-suspenders for FP error.
           const firstFrame = Math.max(1, Math.round(newStartSec * fps) + 1);
           const lastFrame = Math.max(firstFrame, Math.round(newEndSec * fps));
-          annotationEventBus.dispatch(
-            "annotation:temporalDetectionSupportChanged",
-            {
-              fieldPath: tdEvent.fieldPath,
-              detectionId: tdEvent.detectionId,
-              previousSupport: tdEvent.support,
-              newSupport: [firstFrame, lastFrame],
-            }
-          );
+
+          // TODO: route through the command bus for undo/redo
+          console.log("[TODO undo/redo] TemporalDetection support edit", {
+            fieldPath: tdEvent.fieldPath,
+            detectionId: tdEvent.detectionId,
+            previousSupport: tdEvent.support,
+            newSupport: [firstFrame, lastFrame],
+          });
         },
       };
     },
-    [linkDecorate, fps, snapStepSec, annotationEventBus]
+    [linkDecorate, fps, snapStepSec]
   );
 
   return (

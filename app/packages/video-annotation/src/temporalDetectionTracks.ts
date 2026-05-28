@@ -146,9 +146,8 @@ export function buildTemporalDetectionTracks({
       };
 
       // `resizable: true` opts the interval into in-place edit via the
-      // TimelineTrack's drag handles. The actual edit is delivered as an
-      // `annotation:temporalDetectionSupportChanged` event; see
-      // {@link FrameLabelsTracks} for the wiring.
+      // TimelineTrack's drag handles. The drag-end callback is wired up
+      // in {@link FrameLabelsTracks}.
       const event: TrackEvent & { resizable: true } = {
         startSec,
         endSec,

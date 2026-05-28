@@ -2996,7 +2996,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/annotation@workspace:*, @fiftyone/annotation@workspace:packages/annotation":
+"@fiftyone/annotation@workspace:packages/annotation":
   version: 0.0.0-use.local
   resolution: "@fiftyone/annotation@workspace:packages/annotation"
   dependencies:
@@ -3651,7 +3651,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/video-annotation@workspace:packages/video-annotation"
   dependencies:
-    "@fiftyone/annotation": "workspace:*"
     "@fiftyone/lighter": "workspace:*"
     "@fiftyone/playback": "workspace:*"
     "@fiftyone/state": "workspace:*"
