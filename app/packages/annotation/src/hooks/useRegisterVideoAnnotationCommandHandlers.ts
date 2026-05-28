@@ -5,7 +5,14 @@ import {
 } from "@fiftyone/video-annotation";
 import { useCallback } from "react";
 import { frameAt } from "../../../playback/src/lib/playback/utils";
-import { MarkKeyframeCommand } from "../commands";
+import { useAgentRegistry } from "../agents/hooks/useAgentRegistry";
+import { useApplyPropagationResult } from "../agents/hooks/useApplyPropagationResult";
+import { useSampleDescriptor } from "../agents/hooks/useSampleDescriptor";
+import {
+  AgentTaskType,
+  type PropagationContext,
+} from "../agents/types";
+import { MarkKeyframeCommand, PropagateCommand } from "../commands";
 
 /**
  * Registers video-specific annotation command handlers. Mount inside
@@ -15,6 +22,9 @@ import { MarkKeyframeCommand } from "../commands";
  */
 export const useRegisterVideoAnnotationCommandHandlers = () => {
   const stream = useFrameLabelsStream();
+  const registry = useAgentRegistry();
+  const sampleDescriptor = useSampleDescriptor();
+  const applyPropagation = useApplyPropagationResult();
 
   useRegisterCommandHandler(
     MarkKeyframeCommand,
@@ -63,6 +73,50 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
         return updated;
       },
       [stream]
+    )
+  );
+
+  useRegisterCommandHandler(
+    PropagateCommand,
+    useCallback(
+      async (cmd) => {
+        if (!stream) return false;
+        if (cmd.fromFrame >= cmd.toFrame) return false;
+
+        const fromTime = (cmd.fromFrame - 1) / stream.fps;
+        const toTime = (cmd.toFrame - 1) / stream.fps;
+        const fromSnapshot = stream.getValue(fromTime);
+        const toSnapshot = stream.getValue(toTime);
+        if (!fromSnapshot || !toSnapshot) return false;
+
+        const matchesInstance = (
+          d: { instance?: { _cls: "Instance"; _id?: string }; keyframe: boolean }
+        ): boolean =>
+          d.keyframe === true && d.instance?._id === cmd.instanceId;
+
+        const leftKeyframe = fromSnapshot.detections.find(matchesInstance);
+        const rightKeyframe = toSnapshot.detections.find(matchesInstance);
+        if (!leftKeyframe || !rightKeyframe) return false;
+
+        const agentId = `propagate-${cmd.method}`;
+        const agents = await registry.listAgents();
+        const descriptor = agents.find((a) => a.id === agentId);
+        if (!descriptor) return false;
+
+        const context: PropagationContext = {
+          sampleDescriptor,
+          taskType: AgentTaskType.PROPAGATE,
+          instanceId: cmd.instanceId,
+          fromFrame: cmd.fromFrame,
+          toFrame: cmd.toFrame,
+          parentKeyframes: [leftKeyframe, rightKeyframe],
+        };
+
+        const result = await descriptor.agent.infer(context);
+        applyPropagation(result);
+        return true;
+      },
+      [stream, registry, sampleDescriptor, applyPropagation]
     )
   );
 };
