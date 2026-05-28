@@ -1,9 +1,11 @@
 import { useCommandBus } from "@fiftyone/command-bus";
 import { KnownContexts, useKeyBindings } from "@fiftyone/commands";
 import { useLighter } from "@fiftyone/lighter";
-import { useFrameLabelsStream } from "@fiftyone/video-annotation";
+import {
+  resolvePropagationTarget,
+  useFrameLabelsStream,
+} from "@fiftyone/video-annotation";
 import { useRef } from "react";
-import { frameAt } from "../../../playback/src/lib/playback/utils";
 import { usePlayhead } from "../../../playback/src/lib/playback/use-playback-state";
 import { MarkKeyframeCommand, PropagateCommand } from "../commands";
 
@@ -40,9 +42,7 @@ export const useRegisterVideoAnnotationKeybindings = () => {
           if (!scene) return;
           const ids = scene.getSelectedOverlayIds();
           if (ids.length === 0) return;
-          void bus.execute(
-            new MarkKeyframeCommand(playheadRef.current, ids)
-          );
+          void bus.execute(new MarkKeyframeCommand(playheadRef.current, ids));
         },
         label: "Mark keyframe",
         description:
@@ -56,44 +56,20 @@ export const useRegisterVideoAnnotationKeybindings = () => {
           const s = streamRef.current;
           if (!s) return;
           const ids = scene.getSelectedOverlayIds();
-          if (ids.length === 0) return;
 
-          const currentFrame = frameAt(
-            playheadRef.current,
-            s.fps,
-            s.totalFrames
-          );
-          const currentSnapshot = s.getValue(playheadRef.current);
-          if (!currentSnapshot) return;
-
-          const selected = currentSnapshot.detections.find((d) =>
-            ids.includes(d.id)
-          );
-          const instanceId = selected?.instance?._id;
-          if (!instanceId) return;
-
-          // Walk the cached frames to locate the bracketing keyframes:
-          // the most recent keyframe at or before the playhead, and the
-          // next keyframe strictly after.
-          let leftFrame: number | null = null;
-          let rightFrame: number | null = null;
-          for (let f = 1; f <= s.totalFrames; f++) {
-            const snap = s.getValue((f - 1) / s.fps);
-            if (!snap) continue;
-            const det = snap.detections.find(
-              (d) => d.keyframe && d.instance?._id === instanceId
-            );
-            if (!det) continue;
-            if (f <= currentFrame) leftFrame = f;
-            if (f > currentFrame && rightFrame === null) {
-              rightFrame = f;
-              break;
-            }
-          }
-          if (leftFrame === null || rightFrame === null) return;
+          // Shared with the timeline toolbar so the two can't disagree
+          // about when propagation is eligible or which keyframes bracket
+          // the playhead.
+          const target = resolvePropagationTarget(s, ids, playheadRef.current);
+          if (!target.ok) return;
 
           void bus.execute(
-            new PropagateCommand(instanceId, leftFrame, rightFrame, "linear")
+            new PropagateCommand(
+              target.instanceId,
+              target.fromFrame,
+              target.toFrame,
+              "linear"
+            )
           );
         },
         label: "Propagate",

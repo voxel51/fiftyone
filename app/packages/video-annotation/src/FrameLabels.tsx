@@ -46,6 +46,7 @@ import {
   type TemporalDetectionLabelLike,
 } from "./temporalDetectionTracks";
 import { VideoFrameLabelsStream } from "./VideoFrameLabelsStream";
+import { VideoAnnotationToolbar } from "./VideoAnnotationToolbar";
 
 const DEFAULT_FRAME_FIELD = "frames.detections";
 
@@ -365,7 +366,10 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
       tracks={tracks}
       initialPinnedIds={pinned}
     >
-      <TimelineWithTracks decorateTrack={decorateTrack} />
+      <TimelineWithTracks
+        decorateTrack={decorateTrack}
+        controlsSlot={<VideoAnnotationToolbar />}
+      />
     </TrackProvider>
   );
 };

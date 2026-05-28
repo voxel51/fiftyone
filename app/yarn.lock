@@ -3112,7 +3112,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/components@npm:*, @fiftyone/components@workspace:packages/components":
+"@fiftyone/components@npm:*, @fiftyone/components@workspace:*, @fiftyone/components@workspace:packages/components":
   version: 0.0.0-use.local
   resolution: "@fiftyone/components@workspace:packages/components"
   dependencies:
@@ -3653,6 +3653,7 @@ __metadata:
   dependencies:
     "@fiftyone/annotation": "workspace:*"
     "@fiftyone/command-bus": "workspace:*"
+    "@fiftyone/components": "workspace:*"
     "@fiftyone/lighter": "workspace:*"
     "@fiftyone/playback": "workspace:*"
     "@fiftyone/state": "workspace:*"
