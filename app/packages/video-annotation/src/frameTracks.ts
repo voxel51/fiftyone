@@ -21,6 +21,8 @@ interface InstanceState {
   currentStart: number | null;
   /** Closed presence intervals. */
   intervals: Array<{ start: number; end: number }>;
+  /** Frame start times (sec) where this instance has `keyframe: true`. */
+  keyframeTimes: number[];
 }
 
 /**
@@ -101,6 +103,7 @@ export function buildPerInstanceTracks({
             inFrame: false,
             currentStart: null,
             intervals: [],
+            keyframeTimes: [],
           };
 
           states.set(det.id, state);
@@ -108,6 +111,9 @@ export function buildPerInstanceTracks({
         if (!state.inFrame) {
           state.currentStart = frameStartSec;
           state.inFrame = true;
+        }
+        if (det.keyframe) {
+          state.keyframeTimes.push(frameStartSec);
         }
       }
     }
@@ -132,11 +138,19 @@ export function buildPerInstanceTracks({
       continue;
     }
 
-    const events: TrackEvent[] = state.intervals.map(({ start, end }) => ({
-      startSec: start,
-      endSec: end,
-      label: "in frame",
-    }));
+    const events: TrackEvent[] = [
+      ...state.intervals.map(({ start, end }) => ({
+        startSec: start,
+        endSec: end,
+        label: "in frame",
+      })),
+      // Point events for each keyframe — render as diamond markers on top
+      // of the presence bar via `TimelineTrack`'s no-`endSec` branch.
+      ...state.keyframeTimes.map((startSec) => ({
+        startSec,
+        label: "Keyframe",
+      })),
+    ];
 
     const suffix = id.slice(TRACK_ID_PREFIX.length);
     tracks.push({
