@@ -1,6 +1,7 @@
 import { useRegisterCommandHandler } from "@fiftyone/command-bus";
 import {
   useFrameLabelsStream,
+  useStageTemporalDetectionSupport,
   type LocalDetection,
 } from "@fiftyone/video-annotation";
 import { useCallback } from "react";
@@ -14,7 +15,11 @@ import {
   type PropagationContext,
   type PropagationInferenceResult,
 } from "../agents/types";
-import { MarkKeyframeCommand, PropagateCommand } from "../commands";
+import {
+  EditTemporalDetectionSupportCommand,
+  MarkKeyframeCommand,
+  PropagateCommand,
+} from "../commands";
 
 /**
  * Registers video-specific annotation command handlers. Mount inside
@@ -24,9 +29,24 @@ import { MarkKeyframeCommand, PropagateCommand } from "../commands";
  */
 export const useRegisterVideoAnnotationCommandHandlers = () => {
   const stream = useFrameLabelsStream();
+  const stageTemporalDetectionSupport = useStageTemporalDetectionSupport();
   const registry = useAgentRegistry();
   const sampleDescriptor = useSampleDescriptor();
   const applyPropagation = useApplyPropagationResult();
+
+  useRegisterCommandHandler(
+    EditTemporalDetectionSupportCommand,
+    useCallback(
+      async (cmd) => {
+        stageTemporalDetectionSupport(cmd.fieldPath, cmd.detectionId, [
+          cmd.support[0],
+          cmd.support[1],
+        ]);
+        return true;
+      },
+      [stageTemporalDetectionSupport]
+    )
+  );
 
   useRegisterCommandHandler(
     MarkKeyframeCommand,
@@ -91,9 +111,10 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
         const toSnapshot = stream.getValue(toTime);
         if (!fromSnapshot || !toSnapshot) return false;
 
-        const matchesInstance = (
-          d: { instance?: { _cls: "Instance"; _id?: string }; keyframe: boolean }
-        ): boolean =>
+        const matchesInstance = (d: {
+          instance?: { _cls: "Instance"; _id?: string };
+          keyframe: boolean;
+        }): boolean =>
           d.keyframe === true && d.instance?._id === cmd.instanceId;
 
         const leftKeyframe = fromSnapshot.detections.find(matchesInstance);

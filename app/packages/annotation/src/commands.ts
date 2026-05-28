@@ -43,6 +43,21 @@ export class MarkKeyframeCommand extends Command<boolean> {
 }
 
 /**
+ * Edit a `TemporalDetection.support` frame range. Fired on drag-end
+ * of a timeline interval bar. `support` is the post-edit value;
+ * the supplier resolves the array index on the sample at flush time.
+ */
+export class EditTemporalDetectionSupportCommand extends Command<boolean> {
+  constructor(
+    public readonly fieldPath: string,
+    public readonly detectionId: string,
+    public readonly support: readonly [number, number]
+  ) {
+    super();
+  }
+}
+
+/**
  * Propagate a tracked object's bounding box between two bracketing
  * keyframes via the registered propagation agent (linear interp for the
  * demo). Resolves to `true` when at least one in-between frame was
