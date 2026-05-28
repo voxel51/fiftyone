@@ -40,33 +40,50 @@ export const useTemporalDetectionDeltaSupplier = (): DeltaSupplier => {
       return { deltas: [], metadata: undefined };
     }
 
-    const sample = modalSample.sample as Record<string, unknown>;
-    const deltas: JSONDeltas = [];
-
-    for (const [key, support] of pending) {
-      const { fieldPath, detectionId } = parseTemporalDetectionEditKey(key);
-      const field = sample[fieldPath] as RawTemporalDetectionsField | undefined;
-
-      const detections = field?.detections;
-      if (!Array.isArray(detections)) {
-        continue;
-      }
-
-      const index = detections.findIndex(
-        (d) => (d._id ?? d.id) === detectionId
-      );
-
-      if (index < 0) {
-        continue;
-      }
-
-      deltas.push({
-        op: "replace",
-        path: `/${fieldPath}/detections/${index}/support`,
-        value: support,
-      });
-    }
-
-    return { deltas, metadata: undefined };
+    return {
+      deltas: buildTemporalDetectionSupportDeltas(
+        modalSample.sample as Record<string, unknown>,
+        pending
+      ),
+      metadata: undefined,
+    };
   }, [isVideo, modalSample, pending]);
 };
+
+/**
+ * Walk the pending TD support edits and emit one replace op per edit
+ * whose target TD still exists on the sample. Edits where the field
+ * is missing or the TD has been removed are silently dropped.
+ *
+ * Exported for direct unit testing; production callers use the supplier
+ * above.
+ */
+export function buildTemporalDetectionSupportDeltas(
+  sample: Record<string, unknown>,
+  pending: ReadonlyMap<string, [number, number]>
+): JSONDeltas {
+  const deltas: JSONDeltas = [];
+
+  for (const [key, support] of pending) {
+    const { fieldPath, detectionId } = parseTemporalDetectionEditKey(key);
+    const field = sample[fieldPath] as RawTemporalDetectionsField | undefined;
+
+    const detections = field?.detections;
+    if (!Array.isArray(detections)) {
+      continue;
+    }
+
+    const index = detections.findIndex((d) => (d._id ?? d.id) === detectionId);
+    if (index < 0) {
+      continue;
+    }
+
+    deltas.push({
+      op: "replace",
+      path: `/${fieldPath}/detections/${index}/support`,
+      value: support,
+    });
+  }
+
+  return deltas;
+}

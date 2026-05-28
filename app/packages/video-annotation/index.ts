@@ -26,6 +26,7 @@ export type {
 export {
   applyTemporalDetectionEdits,
   parseTemporalDetectionEditKey,
+  temporalDetectionEditKey,
   useClearTemporalDetectionEdits,
   useStageTemporalDetectionSupport,
   useTemporalDetectionPendingEdits,
