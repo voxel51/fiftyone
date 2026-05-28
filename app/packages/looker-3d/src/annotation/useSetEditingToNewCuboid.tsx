@@ -74,7 +74,7 @@ export const useSetEditingToNewCuboid = () => {
       };
 
       // Note: We use 'as any' here because the 3D cuboid overlay structure differs
-      // from the 2D BoundingBoxOverlay class. The 3D annotation system uses a simpler
+      // from the 2D DetectionOverlay class. The 3D annotation system uses a simpler
       // object-based overlay pattern similar to polylines.
       setCurrentEditing({
         isNew: true,

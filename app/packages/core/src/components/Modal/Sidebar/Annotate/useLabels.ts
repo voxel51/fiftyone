@@ -1,4 +1,4 @@
-import { BoundingBoxOverlay, useLighter } from "@fiftyone/lighter";
+import { DetectionOverlay, useLighter } from "@fiftyone/lighter";
 import {
   activeFields,
   AnnotationLabel,
@@ -9,11 +9,13 @@ import {
   useCurrentSampleId,
   useModalSample,
 } from "@fiftyone/state";
+import { getNormalizedUrls } from "@fiftyone/state/src/utils";
+import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
 import { DETECTION } from "@fiftyone/utilities";
 import { atom, getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { splitAtom, useAtomCallback } from "jotai/utils";
 import { get } from "lodash";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { selector, useRecoilCallback, useRecoilValue } from "recoil";
 import type { LabelType } from "./Edit/state";
 import {
@@ -24,7 +26,6 @@ import {
 import { useAddAnnotationLabelToRenderer } from "./useAddAnnotationLabelToRenderer";
 import { useSetActiveLabelId } from "./useAnnotationContextManager";
 import { useCreateAnnotationLabel } from "./useCreateAnnotationLabel";
-import useFocus from "./useFocus";
 import useHover from "./useHover";
 
 /**
@@ -36,22 +37,99 @@ const LABEL_LIST_INFO: Record<string, { listKey: string; type: LabelType }> = {
   Detections: { listKey: "detections", type: "Detection" },
   Classifications: { listKey: "classifications", type: "Classification" },
   Polylines: { listKey: "polylines", type: "Polyline" },
+  Keypoints: { listKey: "keypoints", type: "Keypoint" },
+};
+
+/**
+ * Pulls fulfilled values out of a `Promise.allSettled` batch and logs
+ * rejected ones. Used so one bad label decode doesn't abort the entire
+ * sample's label hydration.
+ */
+const collectFulfilled = <T>(
+  results: PromiseSettledResult<T>[],
+  context: string
+): T[] => {
+  const values: T[] = [];
+
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      values.push(result.value);
+    } else {
+      console.warn(
+        `Skipping label in ${context}: failed to create annotation label`,
+        result.reason
+      );
+    }
+  }
+
+  return values;
+};
+
+/**
+ * Builds a per-label URL resolver that maps sub-field names (e.g.
+ * `"mask_path"`) to fetchable media URLs.
+ *
+ * Resolution order:
+ *   1. Look up the sub-field's structural key (e.g.
+ *      `"ground_truth.detections[0].mask_path"`) in the sample's `sources`
+ *      map. Mirrors looker's key construction in
+ *      `app/packages/looker/src/worker/disk-overlay-decoder.ts`.
+ *   2. Fall back to `getSampleSrc(rawValue)` on the sub-field's raw value.
+ *
+ * Returns `undefined` if neither path produces a usable URL.
+ *
+ * The closure captures the label's structural context — the expanded
+ * sample path, whether the label is a list item, and its index — so the
+ * downstream factory can just ask by sub-field name without knowing where
+ * its label lives in the sample tree.
+ */
+const buildLabelResolveUrl = (
+  sources: { [key: string]: string },
+  expandedPath: string,
+  isList: boolean,
+  idx: number,
+  item: unknown
+): ((subField: string) => string | undefined) => {
+  return (subField: string) => {
+    const key = isList
+      ? `${expandedPath}[${idx}].${subField}`
+      : `${expandedPath}.${subField}`;
+
+    // Resolve the raw value: sources[key] takes precedence (server-provided,
+    // structurally keyed), falling back to the label's own sub-field.
+    const raw = sources[key] ?? get(item, subField);
+    if (typeof raw !== "string") {
+      return undefined;
+    }
+
+    // `getSampleSrc` rewrites local-style paths into a `/media`-shaped URL
+    // and returns URL-shaped values unchanged
+    return getSampleSrc(raw);
+  };
 };
 
 const handleSample = async ({
   createLabel,
   getFieldType,
+  hasExistingOverlay,
   paths,
   sample,
   schemas,
 }: {
   createLabel: ReturnType<typeof useCreateAnnotationLabel>;
   getFieldType: (path: string) => Promise<LabelType>;
+  /**
+   * Returns true if the scene already holds an overlay for the given
+   * label id. Used to skip redundant `mask_path` decodes during refresh —
+   * the existing overlay's mask is reused.
+   */
+  hasExistingOverlay: (id: string) => boolean;
   paths: { [key: string]: string };
   sample: ModalSample;
   schemas: string[];
 }) => {
   const data = sample.sample;
+  const sources = getNormalizedUrls(sample.urls ?? {});
   const labels: AnnotationLabel[] = [];
 
   for (const path in paths) {
@@ -72,9 +150,28 @@ const handleSample = async ({
     }
     const result = get(data, paths[path]);
 
-    const array = Array.isArray(result) ? result : result ? [result] : [];
+    const isList = Array.isArray(result);
+    const array = isList ? result : result ? [result] : [];
+    const expandedPath = paths[path];
 
-    labels.push(...array.map((data) => createLabel(path, type, data)));
+    const settled = await Promise.allSettled(
+      array.map((item, idx) =>
+        createLabel(path, type, item, {
+          resolveUrl: buildLabelResolveUrl(
+            sources,
+            expandedPath,
+            isList,
+            idx,
+            item
+          ),
+          skipMaskDecode: hasExistingOverlay(
+            (item as { _id?: string })?._id ?? ""
+          ),
+        })
+      )
+    );
+
+    labels.push(...collectFulfilled(settled, `path "${path}"`));
   }
 
   // Process fields in activeLabelSchemas that aren't in Recoil's activeFields
@@ -83,6 +180,7 @@ const handleSample = async ({
     "Classification",
     "Detection",
     "Polyline",
+    "Keypoint",
   ]);
 
   for (const schemaPath of schemas) {
@@ -101,12 +199,48 @@ const handleSample = async ({
       ] as unknown[];
 
       if (Array.isArray(items)) {
-        labels.push(
-          ...items.map((item) => createLabel(schemaPath, listInfo.type, item))
+        const expandedPath = `${schemaPath}.${listInfo.listKey}`;
+        const settled = await Promise.allSettled(
+          items.map((item, idx) =>
+            createLabel(schemaPath, listInfo.type, item, {
+              resolveUrl: buildLabelResolveUrl(
+                sources,
+                expandedPath,
+                true,
+                idx,
+                item
+              ),
+              skipMaskDecode: hasExistingOverlay(
+                (item as { _id?: string })?._id ?? ""
+              ),
+            })
+          )
         );
+
+        labels.push(...collectFulfilled(settled, `schema "${schemaPath}"`));
       }
     } else if (KNOWN_SINGULAR_TYPES.has(cls)) {
-      labels.push(createLabel(schemaPath, cls as LabelType, fieldData));
+      try {
+        labels.push(
+          await createLabel(schemaPath, cls as LabelType, fieldData, {
+            resolveUrl: buildLabelResolveUrl(
+              sources,
+              schemaPath,
+              false,
+              0,
+              fieldData
+            ),
+            skipMaskDecode: hasExistingOverlay(
+              (fieldData as { _id?: string })?._id ?? ""
+            ),
+          })
+        );
+      } catch (err) {
+        console.warn(
+          `Skipping label at "${schemaPath}": failed to create annotation label`,
+          err
+        );
+      }
     } else {
       console.warn(`Unsupported label _cls "${cls}" for field "${schemaPath}"`);
     }
@@ -300,7 +434,7 @@ const useSyncOverlayReadOnly = () => {
       if (label.type !== DETECTION) continue;
 
       const overlay = label.overlay;
-      if (!(overlay instanceof BoundingBoxOverlay)) continue;
+      if (!(overlay instanceof DetectionOverlay)) continue;
 
       const readOnly = isFieldReadOnly(schemas[label.path]);
       overlay.setDraggable(!readOnly);
@@ -324,6 +458,8 @@ export default function useLabels() {
   const updateLabelAtom = useUpdateLabelAtom();
   const isPatches = useRecoilValue(isPatchesView);
   const setActiveLabelId = useSetActiveLabelId();
+  const [initialOverlayIds, setInitialOverlayIds] =
+    useState<Set<string> | null>(null);
 
   // Use a ref for the loading state machine to avoid having it as an effect
   // dependency. When loadingState was both a dep and mutated inside the effect,
@@ -378,6 +514,7 @@ export default function useLabels() {
           sample: modalSample,
           getFieldType,
           schemas: active,
+          hasExistingOverlay: (id) => !!id && !!scene?.getOverlay(id),
         });
 
       if (loadingRef.current === LabelsState.UNSET) {
@@ -389,10 +526,16 @@ export default function useLabels() {
             return;
           }
 
+          // Attach overlays to the scene before exposing them to the app.
+          // This ensures that geometry is grounded in some frame of reference.
+          const initialOverlayIds = new Set<string>();
+          for (const annotationLabel of result) {
+            addLabelToRenderer(annotationLabel);
+            initialOverlayIds.add(annotationLabel.data._id);
+          }
+
           setLabels(result);
-          result.forEach((annotationLabel) =>
-            addLabelToRenderer(annotationLabel)
-          );
+          setInitialOverlayIds(initialOverlayIds);
 
           // In patches view with a single label, activate it for editing
           // via the entranceLabelId mechanism (reuses the quick-edit flow)
@@ -409,10 +552,15 @@ export default function useLabels() {
           if (stale) return;
 
           result.forEach((annotationLabel) => {
-            // update overlays
-            if (scene?.hasOverlay(annotationLabel.data._id)) {
-              scene.getOverlay(annotationLabel.data._id)!.label =
-                annotationLabel.data;
+            const existingOverlay = scene?.getOverlay(annotationLabel.data._id);
+
+            // use existing overlay if available
+            if (existingOverlay) {
+              // refresh data
+              existingOverlay.label = annotationLabel.data;
+              // reuse overlay
+              annotationLabel.overlay =
+                existingOverlay as AnnotationLabel["overlay"];
             }
 
             // update sidebar, or add if this is a new label
@@ -421,10 +569,12 @@ export default function useLabels() {
               annotationLabel.data
             );
 
-            // new label, add it
+            // new label, add it. Attach to the scene first so the overlay
+            // has its coordinate system before any sidebar subscriber tries
+            // to read bounds off it.
             if (!updated) {
-              addLabelToStore(annotationLabel);
               addLabelToRenderer(annotationLabel);
+              addLabelToStore(annotationLabel);
             }
           });
         });
@@ -465,5 +615,6 @@ export default function useLabels() {
 
   useSyncOverlayReadOnly();
   useHover();
-  useFocus();
+
+  return initialOverlayIds;
 }

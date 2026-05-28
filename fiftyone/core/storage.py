@@ -5,7 +5,7 @@ File storage utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from contextlib import contextmanager
+
 from datetime import datetime
 import enum
 import json
@@ -26,7 +26,6 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.utils as fou
-
 
 logger = logging.getLogger(__name__)
 
@@ -923,6 +922,7 @@ def _run(fcn, tasks, return_results=True, num_workers=None, progress=None):
     num_workers = fou.recommend_thread_pool_workers(num_workers)
     kwargs = dict(total=num_tasks, iters_str="files", progress=progress)
 
+    results = None
     if num_workers <= 1:
         with fou.ProgressBar(**kwargs) as pb:
             if return_results:

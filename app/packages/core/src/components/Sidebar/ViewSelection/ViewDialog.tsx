@@ -1,12 +1,4 @@
-import {
-  COLOR_OPTIONS,
-  COLOR_OPTIONS_MAP,
-  DEFAULT_COLOR,
-  DEFAULT_COLOR_OPTION,
-  DatasetViewOption,
-  Selection,
-  useTheme,
-} from "@fiftyone/components";
+import { DatasetViewOption, Selection, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { extendedStages } from "@fiftyone/state";
 import { toSlug } from "@fiftyone/utilities";
@@ -18,7 +10,7 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import IconButton from "@mui/material/IconButton";
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   atom,
   useRecoilState,
@@ -45,6 +37,13 @@ interface Props {
   onDeleteSuccess: (slug: string) => void;
   canEdit?: boolean;
 }
+
+const {
+  COLOR_OPTIONS,
+  COLOR_OPTIONS_MAP,
+  DEFAULT_COLOR,
+  DEFAULT_COLOR_OPTION,
+} = fos.constants;
 
 export const viewDialogContent = atom({
   key: "viewDialogContent",

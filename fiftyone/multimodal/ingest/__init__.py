@@ -5,3 +5,38 @@ Ingest scaffolding for multimodal workflows.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
+from fiftyone.core import storage
+
+
+def _get_scene_inventories(filepaths, *, adapter):
+    """
+    Reads the given scene files using the given adapter class, and returns
+    a list of scene inventories.
+
+    Args:
+        filepaths: an iterable of strings representing the locations of the
+            scene files to ingest
+        adapter: a subclass of
+            :class:`fiftyone.multimodal.adapters.MultimodalAdapter` that
+            determines how the given sources are ingested
+
+    Returns:
+        a list of :class:`fiftyone.multimodal.SceneInventory` instances
+    """
+    inventories = []
+
+    for filepath in filepaths:
+        if storage.isdir(filepath):
+            for path in storage.list_files(
+                filepath, abs_paths=True, recursive=True
+            ):
+                if adapter.can_read(path):
+                    inventories.append(adapter.get_scene_inventory(path))
+        elif storage.exists(filepath) and adapter.can_read(filepath):
+            inventories.append(adapter.get_scene_inventory(filepath))
+
+    return inventories
+
+
+__all__ = ["_get_scene_inventories"]

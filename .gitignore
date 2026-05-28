@@ -34,3 +34,5 @@ coverage.xml
 pyvenv.cfg
 
 .env
+
+.playwright-mcp

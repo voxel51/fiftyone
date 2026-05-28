@@ -11,17 +11,23 @@ import {
 } from "@fiftyone/events";
 import { AddOverlayCommand } from "../commands/AddOverlayCommand";
 import { MoveOverlayCommand } from "../commands/MoveOverlayCommand";
+import { PaintStrokeCommand } from "../commands/PaintStrokeCommand";
 import { RemoveOverlayCommand } from "../commands/RemoveOverlayCommand";
+import { DetectionOverlay } from "../overlay/DetectionOverlay";
 import {
   TransformOptions,
   TransformOverlayCommand,
 } from "../commands/TransformOverlayCommand";
 import { STROKE_WIDTH } from "../constants";
+import type { ViewportState } from "../types";
 import type { LighterEventGroup } from "../events";
-import type { InteractionHandler } from "../interaction/InteractionManager";
+import type {
+  EmptyCanvasClickHandler,
+  InteractionHandler,
+} from "../interaction/InteractionManager";
 import { InteractionManager } from "../interaction/InteractionManager";
 import type { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
-import type { BaseOverlay } from "../overlay/BaseOverlay";
+import { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Selectable } from "../selection/Selectable";
 import type { SelectionOptions } from "../selection/SelectionManager";
 import { SelectionManager } from "../selection/SelectionManager";
@@ -73,6 +79,17 @@ export const TypeGuards = {
     typeof (value as { containsPoint: unknown }).containsPoint === "function" &&
     "markDirty" in value &&
     typeof (value as { markDirty: unknown }).markDirty === "function",
+};
+
+/**
+ * Type guard that narrows `Rect | undefined` to `Rect` and confirms the rect
+ * has non-zero area.
+ */
+const isUsableBounds = (bounds: Rect | undefined): bounds is Rect => {
+  if (!bounds) return false;
+  return (
+    BaseOverlay.validBounds(bounds) && bounds.width !== 0 && bounds.height !== 0
+  );
 };
 
 /**
@@ -274,6 +291,33 @@ export class Scene2D {
         }
       }
     });
+
+    // Listen for paint stroke end events to push undo/redo commands
+    this.registerEventHandler(
+      "lighter:overlay-paint-end",
+      ({ id, paintStrokeData }) => {
+        if (!id || !paintStrokeData) return;
+
+        const overlay = this.getOverlay(id);
+        const { beforeBounds, beforeSnapshot, afterBounds, afterSnapshot } =
+          paintStrokeData;
+
+        if (overlay && overlay instanceof DetectionOverlay) {
+          const command = new PaintStrokeCommand(
+            overlay,
+            id,
+            beforeSnapshot,
+            beforeBounds,
+            afterSnapshot,
+            afterBounds
+          );
+
+          CommandContextManager.instance()
+            .getActiveContext()
+            .pushUndoable(command);
+        }
+      }
+    );
 
     // Listen for DO_OVERLAY_HOVER events to force hover state
     this.registerEventHandler("lighter:do-overlay-hover", (event) => {
@@ -616,6 +660,69 @@ export class Scene2D {
    */
   setCursor(cursor: string): void {
     this.config.canvas.style.cursor = cursor;
+  }
+
+  /**
+   * Returns the current zoom and pan state of the scene's renderer.
+   * Use this to snapshot the viewport before unmounting the scene.
+   */
+  getViewportState(): ViewportState {
+    return this.config.renderer.getViewportState();
+  }
+
+  /**
+   * Restores a previously captured zoom and pan state to the scene's renderer.
+   * Call this after the renderer is initialized and the render loop has started.
+   */
+  setViewportState(state: ViewportState): void {
+    this.config.renderer.setViewportState(state);
+  }
+
+  /**
+   * Computes the smallest rectangle in world coordinates that
+   * contains all `Spatial` overlays in the scene (excluding canonical media).
+   * Only overlays with non-zero area bounds are included.
+   *
+   * @returns The union bounding rect, or `null` if no qualifying overlays exist.
+   */
+  getContentBounds(): Rect | null {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    let found = false;
+
+    this.overlays.forEach((overlay, id) => {
+      if (id === this.canonicalMediaId) return;
+      if (!TypeGuards.isSpatial(overlay)) return;
+
+      const bounds = overlay.bounds;
+      if (!isUsableBounds(bounds)) return;
+
+      minX = Math.min(minX, bounds.x);
+      minY = Math.min(minY, bounds.y);
+      maxX = Math.max(maxX, bounds.x + bounds.width);
+      maxY = Math.max(maxY, bounds.y + bounds.height);
+      found = true;
+    });
+
+    if (!found) return null;
+
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+  }
+
+  /**
+   * Adjusts the viewport so all `Spatial` overlays are centered and fully
+   * visible. A no-op when there are no qualifying overlays.
+   *
+   * @param padding - Fraction of the viewport to keep as empty space on each
+   *   side (0–1). Passed directly to `Renderer2D.fitToRect`. Defaults to 0.
+   */
+  fitToContent(padding?: number): void {
+    const bounds = this.getContentBounds();
+    if (bounds) {
+      this.config.renderer.fitToRect(bounds, padding);
+    }
   }
 
   /**
@@ -991,6 +1098,7 @@ export class Scene2D {
     overlay.setRenderer(this.config.renderer);
     overlay.setResourceLoader(this.config.resourceLoader);
     overlay.setEventChannel(this.eventChannel);
+    overlay.rehydrateMask?.();
 
     // Add to internal tracking
     this.overlays.set(overlay.id, overlay);
@@ -1594,6 +1702,50 @@ export class Scene2D {
     this.eventBus.dispatch("lighter:scene-interactive-mode-changed", {
       interactiveMode: false,
     });
+  }
+
+  /**
+   * Registers a handler invoked when a pointer-down event lands on the
+   * empty canvas (no overlay, or only the canonical media). Returning `true`
+   * from the handler claims the click — the scene skips its default
+   * empty-canvas behavior. Pass `null` to clear.
+   *
+   * Used by consumers to seed a new overlay at the click position without
+   * coupling lighter to the consumer's identity.
+   */
+  public setEmptyCanvasClickHandler(
+    handler: EmptyCanvasClickHandler | null
+  ): void {
+    this.interactionManager.setEmptyCanvasClickHandler(handler);
+  }
+
+  /**
+   * Converts an absolute (world-space) point to relative coordinates using
+   * the scene's coordinate system. Useful for consumers that receive world
+   * points (e.g. via {@link setEmptyCanvasClickHandler}) and need to seed a
+   * new overlay with relative-coordinate label data.
+   */
+  public absolutePointToRelative(point: { x: number; y: number }): {
+    x: number;
+    y: number;
+  } {
+    const t = this.coordinateSystem.getTransform();
+    return {
+      x: (point.x - t.offsetX) / t.scaleX,
+      y: (point.y - t.offsetY) / t.scaleY,
+    };
+  }
+
+  /**
+   * Converts a screen-space (canvas-local) pixel point to world-space using
+   * the scene's renderer transform. Inverse of the renderer's internal
+   * world→screen pipeline.
+   */
+  public screenToWorld(point: { x: number; y: number }): {
+    x: number;
+    y: number;
+  } {
+    return this.config.renderer.screenToWorld(point);
   }
 
   /**

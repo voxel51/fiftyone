@@ -11,6 +11,7 @@ import { useApplyInferenceResult } from "./useApplyInferenceResult";
 import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
 import useCreate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useCreate";
 import { useRegisterPointSelectionEventHandlers } from "./useRegisterPointSelectionEventHandlers";
+import { useRegisterAgentLifecycleEvents } from "./useRegisterAgentLifecycleEvents";
 
 const isToolsContextValid = (context: ToolsContext): boolean => {
   return (
@@ -40,19 +41,27 @@ export const useRegisterAnnotationToolEventHandlers = () => {
   // register handlers for specific tools
   useRegisterPointSelectionEventHandlers();
 
+  // bridge agent lifecycle → annotation event bus + inference status atoms
+  useRegisterAgentLifecycleEvents();
+
   // inference trigger
   useEffect(
     () => {
       let cancelled = false;
 
-      if (isToolsContextValid(toolsContext)) {
+      if (isToolsContextValid(toolsContext) && agent) {
         const labelId = selectedLabel?.overlay?.id ?? uuidv4();
 
-        agent?.infer(labelId).then((res) => {
-          if (res && !cancelled) {
-            applyInferenceResult(res);
-          }
-        });
+        agent
+          .infer(labelId)
+          .then((res) => {
+            if (cancelled) return;
+            if (res) applyInferenceResult(res);
+          })
+          .catch(() => {
+            // Status transitions are driven by the agent's lifecycle events;
+            // nothing to do here on rejection.
+          });
       }
 
       return () => {

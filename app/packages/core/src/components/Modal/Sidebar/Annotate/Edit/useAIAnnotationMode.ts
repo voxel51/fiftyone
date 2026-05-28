@@ -6,7 +6,7 @@ import {
   useToolsState,
 } from "@fiftyone/annotation/src/agents";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { atom, useAtom } from "jotai";
+import { atom, getDefaultStore, useAtom, useAtomValue } from "jotai";
 import { useAnnotationContext } from "./state";
 
 export interface AIAnnotationMode {
@@ -19,6 +19,14 @@ export interface AIAnnotationMode {
  * Maintains the activation status of AI annotation mode.
  */
 const isActiveAtom = atom(false);
+
+/**
+ * Read-only hook for AI annotation mode activation. Safe to call from
+ * components that should not trigger the side effects of
+ * {@link useAIAnnotationMode} (e.g. default agent bootstrap, label reset).
+ */
+export const useIsAIAnnotationModeActive = (): boolean =>
+  useAtomValue(isActiveAtom);
 
 /**
  * Helper hook which configures a default {@link AnnotationAgent}.
@@ -43,12 +51,9 @@ const useDefaultAgent = () => {
  */
 const useLabelReset = (isActive: boolean, reset: () => void) => {
   const { selectedLabel } = useAnnotationContext();
-  const selectedLabelRef = useRef(selectedLabel);
   const previousSelectedLabelIdRef = useRef<string | null>(
     selectedLabel?.overlay?.id ?? null
   );
-
-  selectedLabelRef.current = selectedLabel;
 
   // When the selected label changes,
   // reset state to ensure a clean starting point for the next label
@@ -82,33 +87,35 @@ export const useAIAnnotationMode = (): AIAnnotationMode => {
   // bootstrap AI annotation capabilities
   useDefaultAgent();
 
+  // Clears prompt state without tearing down point selection. Used on
+  // label change — we stay in AI mode for the next label.
   const resetTools = useCallback(() => {
-    pointSelection.deactivate();
     pointSelection.clearPoints();
     resetToolsState();
   }, [pointSelection, resetToolsState]);
 
   useLabelReset(isActive, resetTools);
 
+  // Guards read fresh from the jotai store so back-to-back deactivate /
+  // activate calls (e.g. AI right-click finalize) don't no-op on a stale
+  // closure value of `isActive`.
   const activate = useCallback(() => {
-    if (isActive) {
-      return;
-    }
+    if (getDefaultStore().get(isActiveAtom)) return;
 
-    setIsActive(true);
     setActiveTask(AgentTaskType.SEGMENT);
-  }, [isActive, setActiveTask, setIsActive]);
+    setIsActive(true);
+    pointSelection.activate();
+  }, [pointSelection, setActiveTask, setIsActive]);
 
   const deactivate = useCallback(() => {
-    if (!isActive) {
-      return;
-    }
+    if (!getDefaultStore().get(isActiveAtom)) return;
 
+    pointSelection.deactivate();
     resetTools();
 
     setActiveTask(null);
     setIsActive(false);
-  }, [isActive, resetTools, setActiveTask, setIsActive]);
+  }, [resetTools, pointSelection, setActiveTask, setIsActive]);
 
   return useMemo(
     () => ({

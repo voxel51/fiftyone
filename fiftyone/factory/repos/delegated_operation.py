@@ -53,7 +53,6 @@ class DelegatedOperationRepo(object):
         run_state: Optional[ExecutionRunState],
         result: Optional[ExecutionResult] = None,
         run_link: Optional[str] = None,
-        log_path: Optional[str] = None,
         progress: Optional[ExecutionProgress] = None,
         required_state: Optional[ExecutionRunState] = None,
         monitored: bool = False,
@@ -141,20 +140,6 @@ class DelegatedOperationRepo(object):
         """Sets the label for the delegated operation."""
         raise NotImplementedError("subclass must implement set_label()")
 
-    def set_log_upload_error(
-        self, _id: ObjectId, log_upload_error: str
-    ) -> DelegatedOperationDocument:
-        """Sets the log upload error for the delegated operation."""
-        raise NotImplementedError(
-            "subclass must implement set_log_upload_error()"
-        )
-
-    def set_log_size(
-        self, _id: ObjectId, log_size: int
-    ) -> DelegatedOperationDocument:
-        """Sets the log size for the delegated operation."""
-        raise NotImplementedError("subclass must implement set_log_size()")
-
     def get(self, _id: ObjectId) -> DelegatedOperationDocument:
         """Get an operation by id."""
         raise NotImplementedError("subclass must implement get()")
@@ -163,13 +148,11 @@ class DelegatedOperationRepo(object):
         """Count all operations."""
         raise NotImplementedError("subclass must implement count()")
 
-    def ping(self, _id: ObjectId, log_tail: str = None):
+    def ping(self, _id: ObjectId):
         """Updates the updated_at field of an operation to keep it alive.
 
         Args:
             _id: the operation ID
-            log_tail: optional log tail to include. This should be capped to a
-            reasonable length and should not take the place of a log file
         """
         raise NotImplementedError("subclass must implement ping()")
 
@@ -298,26 +281,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         )
         return DelegatedOperationDocument().from_pymongo(doc)
 
-    def set_log_upload_error(
-        self, _id: ObjectId, log_upload_error: str
-    ) -> DelegatedOperationDocument:
-        doc = self._collection.find_one_and_update(
-            filter={"_id": _id},
-            update={"$set": {"log_upload_error": log_upload_error}},
-            return_document=pymongo.ReturnDocument.AFTER,
-        )
-        return DelegatedOperationDocument().from_pymongo(doc)
-
-    def set_log_size(
-        self, _id: ObjectId, log_size: int
-    ) -> DelegatedOperationDocument:
-        doc = self._collection.find_one_and_update(
-            filter={"_id": _id},
-            update={"$set": {"log_size": log_size}},
-            return_document=pymongo.ReturnDocument.AFTER,
-        )
-        return DelegatedOperationDocument().from_pymongo(doc)
-
     def add_child_error(
         self,
         parent_id: Union[ObjectId, str],
@@ -339,7 +302,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         run_state: Optional[ExecutionRunState],
         result: Optional[ExecutionResult] = None,
         run_link: Optional[str] = None,
-        log_path: Optional[str] = None,
         progress: Optional[ExecutionProgress] = None,
         required_state: Optional[ExecutionRunState] = None,
         monitored: bool = False,
@@ -416,9 +378,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
         if run_link is not None:
             update["$set"]["run_link"] = run_link
-
-        if log_path is not None:
-            update["$set"]["log_path"] = log_path
 
         if update is None:
             raise ValueError("Invalid run_state: {}".format(run_state))
@@ -613,13 +572,10 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
         return self._collection.count_documents(filter=query)
 
-    def ping(self, _id: ObjectId, log_tail: str = None):
-        updates = {"updated_at": datetime.utcnow()}
-        if log_tail and isinstance(log_tail, str):
-            updates["log_tail"] = log_tail
+    def ping(self, _id: ObjectId):
         self._collection.update_one(
             filter={"_id": _id},
-            update={"$set": updates},
+            update={"$set": {"updated_at": datetime.utcnow()}},
         )
 
     def _extract_search_query(self, search):

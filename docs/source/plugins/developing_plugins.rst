@@ -17,7 +17,7 @@ This page describes how to write your own FiftyOne plugins.
 Design overview
 _______________
 
-Plugins are composed of one or more panels, operators, and components.
+Plugins are composed of one or more panels, operators, skills, and components.
 
 Together these building blocks enable you to build full-featured interactive
 data applications that tailor FiftyOne to your specific use case and workflow.
@@ -37,10 +37,10 @@ FiftyOne plugins can be written in Python or JavaScript (JS), or a combination
 of both.
 
 Python plugins are built using the `fiftyone` package, pip packages, and your
-own Python. They can consist of panels and operators.
+own Python. They can consist of panels, operators, and skills.
 
 JS plugins are built using the `@fiftyone` TypeScript packages, npm packages,
-and your own TypeScript. They can consist of panels, operators, and custom
+and your own TypeScript. They can consist of panels, operators, skills, and custom
 components.
 
 .. _plugins-design-panels:
@@ -95,6 +95,21 @@ plugin use.
 
     Jump to :ref:`this section <developing-operators>` for more information
     about developing operators.
+
+.. _plugins-design-skills:
+
+Skills
+------
+
+Skills are Markdown files that teach AI agents how to perform complex
+FiftyOne workflows using natural language. Each skill describes a task that
+an agent can be asked to perform, providing step-by-step guidance that the
+agent follows to complete the workflow autonomously.
+
+.. note::
+
+    Jump to :ref:`this section <developing-plugins-skills>` for more
+    information about developing skills.
 
 .. _plugins-design-components:
 
@@ -254,6 +269,9 @@ The following fields are available:
     | `operators`                  |           | A list of operator names registered by the plugin, if any                   |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
     | `panels`                     |           | A list of panel names registered by the plugin, if any                      |
+    +------------------------------+-----------+-----------------------------------------------------------------------------+
+    | `skills`                     |           | A list of :ref:`skill <developing-plugins-skills>` names registered by |
+    |                              |           | the plugin, if any                                                          |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
     | `secrets`                    |           | A list of secret keys that may be used by the plugin, if any                |
     +------------------------------+-----------+-----------------------------------------------------------------------------+
@@ -2708,6 +2726,94 @@ performing a cleanup action:
 
         # ... normal stage logic
 
+.. _pipeline-request-params-overrides:
+
+Overriding request parameters per stage
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, each stage in a pipeline inherits the same execution context as the
+top-level pipeline operator — including its ``view``, ``view_name``, and other
+request parameters.
+
+Use ``request_params_overrides`` on a :class:`PipelineStage
+<fiftyone.operators.types.PipelineStage>` to give a specific stage a different
+execution context. Any key you include in ``request_params_overrides`` will
+shadow the corresponding value from the top-level request for that stage only;
+all other stages are unaffected.
+
+Commonly overridden parameters include:
+
+- ``view`` — a :class:`DatasetView <fiftyone.core.view.DatasetView>` to apply
+  (serialized automatically), or ``None`` to clear any active view
+- ``view_name`` — the name of a saved view to use
+- ``selected`` — a list of selected sample IDs
+- ``group_slice`` — the group slice to use
+
+.. note::
+
+    Do **not** include ``params`` inside ``request_params_overrides``. Use the
+    ``params`` field of :class:`PipelineStage
+    <fiftyone.operators.types.PipelineStage>` directly for operator parameters.
+
+.. note::
+
+    The following parameters cannot be overridden per stage and will be ignored
+    if included: ``dataset_id``, ``dataset_name``, ``delegated``,
+    ``delegation_target``, ``request_delegation``, ``results``.
+
+.. code-block:: python
+
+    import fiftyone.operators as foo
+    import fiftyone.operators.types as types
+
+    class MultiViewPipeline(foo.PipelineOperator):
+        @property
+        def config(self):
+            return foo.OperatorConfig(
+                name="multi_view_pipeline",
+                label="Multi-View Pipeline",
+                allow_delegated_execution=True,
+                allow_immediate_execution=False,
+            )
+
+        def resolve_pipeline(self, ctx):
+            pipeline = types.Pipeline()
+
+            # Stage 1 runs against the view the user has open
+            pipeline.stage(
+                operator_uri="@my-plugin/compute_stats",
+                name="Stats on current view",
+                params={"field": "predictions"},
+            )
+
+            # Stage 2 runs against a different saved view
+            pipeline.stage(
+                operator_uri="@my-plugin/compute_stats",
+                name="Stats on val split",
+                params={"field": "predictions"},
+                request_params_overrides={"view_name": "val_split"},
+            )
+
+            # Stage 3 runs against the full dataset (no view applied)
+            pipeline.stage(
+                operator_uri="@my-plugin/compute_stats",
+                name="Stats on full dataset",
+                params={"field": "predictions"},
+                request_params_overrides={"view": None, "view_name": None},
+            )
+
+            # Stage 4 runs against a programmatic slice of the current view,
+            # useful for manual batching
+            batch = ctx.view[:100]
+            pipeline.stage(
+                operator_uri="@my-plugin/compute_stats",
+                name="Stats on first 100 samples",
+                params={"field": "predictions"},
+                request_params_overrides={"view": batch},
+            )
+
+            return pipeline
+
 .. _operator-secrets:
 
 Accessing secrets
@@ -3067,7 +3173,7 @@ subsequent sections.
                 allow_multiple=False,
 
                 # Whether the panel should be available in the grid, modal, or both
-                # Possible values: "grid", "modal", "grid modal"       
+                # Possible values: "grid", "modal", "grid modal"
                 surfaces="grid",  # default = "grid"
 
                 # Markdown-formatted text that describes the panel. This is
@@ -3301,7 +3407,7 @@ subsequent sections.
             }
             ctx.panel.set_state("event", "on_change_extended_selection")
             ctx.panel.set_data("event_data", event)
-        
+
         def on_change_group_slice(self, ctx):
             """Implement this method to set panel state/data when the current
             group slice changes.
@@ -4003,7 +4109,7 @@ On the JavaScript side, register a component whose ``name`` matches the
         type: PluginComponentType.Component,
         activator: () => true,
     });
-    
+
 .. note::
 
     Check out the `Hybrid Panel Plugin <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/hybrid-panel>`_
@@ -4031,7 +4137,7 @@ and programmatically modify the current state.
 
 .. warning::
 
-    The return value of all panel events—including builtin events (such as 
+    The return value of all panel events—including builtin events (such as
     `on_load`, `on_unload`, `on_change_ctx`, etc.) and custom events (such as
     `on_change_brain_key`, `on_click_start`, etc.)—must be JSON-serializable.
 
@@ -4627,6 +4733,31 @@ you to reveal all of its available methods during development:
         ctx.
         ...
 
+.. _developing-plugins-skills:
+
+Developing skills
+_________________
+
+Skills are Markdown files that teach AI agents how to perform complex
+FiftyOne workflows using natural language. A skill describes a task that
+an agent can be asked to perform — such as importing a dataset, running
+inference, or finding duplicates — and provides step-by-step guidance
+that the agent follows to complete the workflow autonomously.
+
+You can bundle skills inside any FiftyOne plugin by placing them in a
+`skills/` subdirectory and declaring their names in your `fiftyone.yml`:
+
+.. code-block:: yaml
+
+    skills:
+      - my-skill-name
+
+.. note::
+
+    See :ref:`Developing skills <developing-skills-authoring>` for a full
+    guide on authoring skills, including the required file structure, YAML
+    frontmatter fields, and how to contribute skills to the community.
+
 .. _developing-js-plugins:
 
 Developing JS plugins
@@ -4637,13 +4768,13 @@ This section describes how to develop JS-specific plugin components.
 Getting Started
 ---------------
 
-To start building your own JS plugin, refer to the 
-`hello-world-plugin-js <https://github.com/voxel51/hello-world-plugin-js>`_ 
-repository. This repo serves as a starting point, providing examples of a build 
+To start building your own JS plugin, refer to the
+`hello-world-plugin-js <https://github.com/voxel51/hello-world-plugin-js>`_
+repository. This repo serves as a starting point, providing examples of a build
 process, a JS panel, and a JS operator.
 
-The `fiftyone-js-plugin-build <https://github.com/voxel51/fiftyone-js-plugin-build>`_ 
-package offers a utility for configuring `vite <https://vite.dev>`_ to build your 
+The `fiftyone-js-plugin-build <https://github.com/voxel51/fiftyone-js-plugin-build>`_
+package offers a utility for configuring `vite <https://vite.dev>`_ to build your
 JS plugin bundle.
 
 Component types

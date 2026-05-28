@@ -17,6 +17,8 @@ import {
 import {
   getAttributeFormErrors,
   hasAttributeFormError,
+  type AttributeCondition,
+  type AttributeConditionLeaf,
   type AttributeFormData,
 } from "../../utils";
 
@@ -30,6 +32,8 @@ interface UseAttributeFormResult {
   isNumericType: boolean;
   isIntegerType: boolean;
   isListType: boolean;
+  isFromOntology: boolean;
+  whenPreview: { condition: string; suffix: string | null } | null;
   supportsDefault: boolean;
   componentOptions: Array<{ id: string; label: string; icon: IconName }>;
 
@@ -63,6 +67,46 @@ export default function useAttributeForm({
   const isIntegerType =
     formState.type === "int" || formState.type === "list<int>";
   const isListType = LIST_TYPES.includes(formState.type);
+  const isFromOntology = !!formState._source;
+  const whenPreview = useMemo(() => {
+    const when = formState.when;
+    if (!when) return null;
+
+    const formatValue = (v: unknown): string =>
+      typeof v === "string" ? v : JSON.stringify(v);
+
+    // Recursively collect all leaf conditions from the condition tree.
+    const collectLeaves = (
+      cond: AttributeCondition
+    ): AttributeConditionLeaf[] => {
+      if (cond.operator === "and" || cond.operator === "or") {
+        if (!Array.isArray(cond.conditions)) return [];
+        return cond.conditions.flatMap(collectLeaves);
+      }
+      return [cond];
+    };
+
+    const leaves = collectLeaves(when);
+    if (leaves.length === 0) return null;
+
+    const first = leaves[0];
+    const condition =
+      first.operator === "in" && Array.isArray(first.value)
+        ? `${first.field} in [${(first.value as unknown[])
+            .map(formatValue)
+            .join(", ")}]`
+        : `${first.field} = ${formatValue(first.value)}`;
+
+    if (leaves.length === 1) return { condition, suffix: null };
+
+    const remaining = leaves.length - 1;
+    const suffix = `, +${remaining} more condition${
+      remaining !== 1 ? "s" : ""
+    }`;
+
+    return { condition, suffix };
+  }, [formState.when]);
+
   const supportsDefault = !NO_DEFAULT_TYPES.includes(formState.type);
   const componentOptions = COMPONENT_OPTIONS[formState.type] || [];
 
@@ -161,6 +205,8 @@ export default function useAttributeForm({
     isNumericType,
     isIntegerType,
     isListType,
+    isFromOntology,
+    whenPreview,
     supportsDefault,
     componentOptions,
 

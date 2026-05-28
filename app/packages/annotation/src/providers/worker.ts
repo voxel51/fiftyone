@@ -1,3 +1,7 @@
+import {
+  getFetchFunction,
+  setFetchFunction,
+} from "@fiftyone/utilities";
 import * as ort from "onnxruntime-web";
 import type {
   DownloadProgress,
@@ -64,16 +68,37 @@ function postError(id: number, type: string, error: string): void {
 const IMAGE_MEAN = [0.485, 0.456, 0.406];
 const IMAGE_STD = [0.229, 0.224, 0.225];
 
-// SAM2 Tiny model weights (pre-optimized ONNX)
-const HF_BASE = "https://models-cdn.voxel51.com/sam2";
-const ENCODER_URL = `${HF_BASE}/encoder.with_runtime_opt.ort`;
-const DECODER_URL = `${HF_BASE}/decoder.onnx`;
+// SAM2 model family + Tiny variant file names
+const FAMILY = "sam2";
+const ENCODER_FILE = "encoder.with_runtime_opt.ort";
+const DECODER_FILE = "decoder.onnx";
+
+// Stable cache keys (independent of URL which may vary per deployment)
+const ENCODER_CACHE_KEY = `${FAMILY}:${ENCODER_FILE}`;
+const DECODER_CACHE_KEY = `${FAMILY}:${DECODER_FILE}`;
 
 /**
  * Prefix embedding cache keys with the encoder contract so stale entries
  * are ignored if/when the model or preprocessing changes.
  */
-const CACHE_PREFIX = `${ENCODER_URL}:${SAM2_INPUT_SIZE}:`;
+const CACHE_PREFIX = `${ENCODER_CACHE_KEY}:${SAM2_INPUT_SIZE}:`;
+
+/**
+ * Resolve the download URL for a model weights file via the backend.
+ *
+ * Uses the shared fetch function so the path prefix configured by the main
+ * thread is applied. Throws on non-2xx responses.
+ */
+async function resolveModelUrl(
+  family: string,
+  file: string,
+): Promise<string> {
+  const data = await getFetchFunction()<undefined, { url: string }>(
+    "GET",
+    `/runtime-assets/models/${family}/${file}`,
+  );
+  return data.url;
+}
 
 const isCOI = typeof crossOriginIsolated !== "undefined" && crossOriginIsolated;
 ort.env.wasm.numThreads = isCOI ? navigator.hardwareConcurrency || 4 : 1;
@@ -128,25 +153,20 @@ async function loadImageData(url: string): Promise<ImageData> {
  */
 function preprocessImage(imageData: ImageData): ProcessedImage {
   const { width, height } = imageData;
-  const scale = Math.min(SAM2_INPUT_SIZE / width, SAM2_INPUT_SIZE / height);
-  const scaledWidth = Math.round(width * scale);
-  const scaledHeight = Math.round(height * scale);
-  const padX = Math.floor((SAM2_INPUT_SIZE - scaledWidth) / 2);
-  const padY = Math.floor((SAM2_INPUT_SIZE - scaledHeight) / 2);
 
+  // SAM2 reference preprocessing is a direct (non-aspect-preserving) resize
+  // to 1024x1024. No padding; just stretch the image to fill the input.
   const canvas = new OffscreenCanvas(SAM2_INPUT_SIZE, SAM2_INPUT_SIZE);
   const ctx = canvas.getContext("2d");
   if (!ctx)
     throw new Error("Failed to get 2d context");
-  ctx.fillStyle = "black";
-  ctx.fillRect(0, 0, SAM2_INPUT_SIZE, SAM2_INPUT_SIZE);
 
   const tmp = new OffscreenCanvas(width, height);
   const tmpCtx = tmp.getContext("2d");
   if (!tmpCtx)
     throw new Error("Failed to get 2d context");
   tmpCtx.putImageData(imageData, 0, 0);
-  ctx.drawImage(tmp, padX, padY, scaledWidth, scaledHeight);
+  ctx.drawImage(tmp, 0, 0, SAM2_INPUT_SIZE, SAM2_INPUT_SIZE);
 
   const pixels = ctx.getImageData(0, 0, SAM2_INPUT_SIZE, SAM2_INPUT_SIZE).data;
   const N = SAM2_INPUT_SIZE * SAM2_INPUT_SIZE;
@@ -158,7 +178,7 @@ function preprocessImage(imageData: ImageData): ProcessedImage {
     tensor[i + 2 * N] = (pixels[j + 2] / 255 - IMAGE_MEAN[2]) / IMAGE_STD[2];
   }
 
-  return { tensor, originalWidth: width, originalHeight: height, scale, padX, padY };
+  return { tensor, originalWidth: width, originalHeight: height };
 }
 
 /**
@@ -169,14 +189,18 @@ async function loadModel(): Promise<void> {
   const opts: ort.InferenceSession.SessionOptions = { executionProviders: ["wasm"] };
 
   async function loadSession(
-    url: string,
+    family: string,
+    file: string,
+    cacheKey: string,
     name: "encoder" | "decoder",
     failureKind: "encoder_failure" | "decoder_failure",
   ): Promise<ort.InferenceSession> {
     let buf: ArrayBuffer;
     try {
+      const url = await resolveModelUrl(family, file);
       buf = await loadModelWeights(
         url,
+        cacheKey,
         (loaded, total) => postProgressNotification({ file: name, loaded, total }),
         postWarningNotification
       );
@@ -195,10 +219,10 @@ async function loadModel(): Promise<void> {
   }
 
   if (!encoderSession)
-    encoderSession = await loadSession(ENCODER_URL, "encoder", "encoder_failure");
+    encoderSession = await loadSession(FAMILY, ENCODER_FILE, ENCODER_CACHE_KEY, "encoder", "encoder_failure");
 
   if (!decoderSession)
-    decoderSession = await loadSession(DECODER_URL, "decoder", "decoder_failure");
+    decoderSession = await loadSession(FAMILY, DECODER_FILE, DECODER_CACHE_KEY, "decoder", "decoder_failure");
 }
 
 /**
@@ -260,9 +284,6 @@ async function embedAndDecode(
       processedImage: {
         originalWidth: geometry.originalWidth,
         originalHeight: geometry.originalHeight,
-        scale: geometry.scale,
-        padX: geometry.padX,
-        padY: geometry.padY,
       },
     }, postWarningNotification);
   }
@@ -272,7 +293,7 @@ async function embedAndDecode(
   const coords = new Float32Array(n * 2);
   const labels = new Float32Array(n);
   for (let i = 0; i < n; i++) {
-    const [sx, sy] = transformPoint(points[i].x, points[i].y, geometry);
+    const [sx, sy] = transformPoint(points[i].x, points[i].y);
     coords[i * 2] = sx;
     coords[i * 2 + 1] = sy;
     labels[i] = points[i].label;
@@ -316,6 +337,13 @@ self.onmessage = async (e: MessageEvent) => {
   const { id, type, payload } = e.data;
 
   try {
+    if (type === "init") {
+      // Mirror main-thread fetch params (origin, headers, pathPrefix) so
+      // getFetchFunction() routes through the right backend path.
+      const { origin, headers, pathPrefix } = payload;
+      setFetchFunction(origin, headers, pathPrefix);
+      return;
+    }
     if (type === "loadModel") {
       await loadModel();
       postResponse(id, "loadModel", undefined as void);

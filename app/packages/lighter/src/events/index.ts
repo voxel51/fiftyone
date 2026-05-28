@@ -2,10 +2,11 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import type { Command } from "../commands/Command";
+import type { Undoable } from "@fiftyone/commands";
 import type { InteractionHandler } from "../interaction/InteractionManager";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
-import type { Point, Rect } from "../types";
+import type { PaintStrokeData } from "../overlay/MaskCanvas";
+import type { Point, RawLookerLabel, Rect } from "../types";
 
 /**
  * Event type definitions for lighter events.
@@ -27,6 +28,17 @@ export type LighterEventGroup = {
     id: string;
     bounds: Rect;
   };
+  /**
+   * Emitted when an overlay's label is updated, or when an overlay's
+   * editing state changes in a way subscribers need to observe (e.g.
+   * `DetectionOverlay.initMask`/`removeMask` flipping mask-canvas state
+   * without changing label data).
+   */
+  "lighter:overlay-label-updated": {
+    id: string;
+    label: RawLookerLabel;
+    hasMask: boolean;
+  };
 
   // ============================================================================
   // COMMAND & UNDO/REDO EVENTS
@@ -35,7 +47,7 @@ export type LighterEventGroup = {
   "lighter:command-executed": {
     commandId: string;
     isUndoable: boolean;
-    command: Command;
+    command: Undoable;
   };
   /** Emitted when a command is undone (reversed) */
   "lighter:undo": { commandId: string };
@@ -115,8 +127,23 @@ export type LighterEventGroup = {
   "lighter:overlay-all-unhover": { point: Point };
   /** Emitted when the mouse moves while hovering over an overlay */
   "lighter:overlay-hover-move": { id: string; point: Point };
+  /** Emitted when a paint stroke (brush/eraser) ends */
+  "lighter:overlay-paint-end": {
+    id: string;
+    paintStrokeData: PaintStrokeData | undefined;
+  };
   /** Emitted when user clicks without dragging in detection mode to exit */
   "lighter:detection-mode-quit": { eventId: string };
+  /** Emitted when user clicks without dragging in segmentation mode to close out the current detection */
+  "lighter:segmentation-mode-quit": { eventId: string };
+  /**
+   * Generic "quit the active annotation mode" request, fired by global gestures
+   * (e.g. right-click on empty canvas). Listeners are expected to no-op unless
+   * their own mode is active, in which case they deactivate it.
+   */
+  "lighter:active-mode-quit-requested": { eventId: string };
+  /** Emitted when the AI mask should be established and point selection ended (e.g. right-click). */
+  "lighter:point-selection-finalize": { eventId: string };
 
   // ============================================================================
   // KEYPOINT EVENTS
@@ -192,6 +219,10 @@ export type LighterEventGroup = {
   "lighter:zoomed": { scale: number };
   /** Emitted when the viewport is panned/moved */
   "lighter:viewport-moved": { x: number; y: number; scale: number };
+  /** Emitted by useViewport once the initial viewport has been applied (or no action was needed) */
+  "lighter:viewport-init-complete": Record<string, never>;
+  /** Emitted after PixiJS initialization completes and the render loop starts */
+  "lighter:renderer-ready": Record<string, never>;
 
   // ============================================================================
   // "DO" EVENTS USERS CAN EMIT TO FORCE STATE CHANGES OR ACTIONS

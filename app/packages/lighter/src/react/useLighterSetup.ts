@@ -35,10 +35,11 @@ export const useLighterSetupWithPixi = (
   sceneId: string
 ) => {
   const [scene, setScene] = useAtom(lighterSceneAtom);
-  const eventChannel = scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID;
-  const eventBus = useLighterEventBus(eventChannel);
 
   const rendererRef = useRef<PixiRenderer2D | null>(null);
+
+  const eventChannel = scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID;
+  const eventBus = useLighterEventBus(eventChannel);
 
   useEffect(() => {
     if (!stableCanvas || !sceneId) return;
@@ -46,7 +47,6 @@ export const useLighterSetupWithPixi = (
     const renderer = new PixiRenderer2D(stableCanvas);
     rendererRef.current = renderer;
 
-    // Extract only the options we need for Scene2D
     const sceneOptions = {
       activePaths: options.activePaths,
       showOverlays: options.showOverlays,
@@ -72,6 +72,7 @@ export const useLighterSetupWithPixi = (
 
     rendererRef.current?.initializePixiJS().then(() => {
       scene.startRenderLoop();
+      eventBus.dispatch("lighter:renderer-ready", {});
     });
 
     return () => {

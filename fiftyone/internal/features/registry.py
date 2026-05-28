@@ -6,6 +6,7 @@ FiftyOne feature flag registry.
 |
 """
 
+import functools
 from typing import get_args, List
 
 from .environment_manager import EnvironmentFeatureManager
@@ -64,3 +65,34 @@ def is_feature_enabled(feature: FeatureFlag) -> bool:
         True if the feature is enabled, else False
     """
     return get_feature_manager().is_feature_enabled(feature)
+
+
+def require_feature(feature: FeatureFlag):
+    """Decorator that gates a callable behind a feature flag.
+
+    Raises ``RuntimeError`` when the flag is disabled, naming the flag so
+    users know which env var to set.
+
+    Args:
+        feature: the feature name
+
+    Example::
+
+        @require_feature("VFF_MY_FEATURE")
+        def do_thing():
+            ...
+    """
+
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            if not is_feature_enabled(feature):
+                raise RuntimeError(
+                    f"This feature is gated behind the {feature} feature "
+                    f"flag; set the {feature} env var to enable"
+                )
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator

@@ -122,14 +122,10 @@ export class SidebarPom {
   }
 
   // apply a filter to a field
-  async applyLabelFromList(
-    field: string,
-    labels: string[],
-    targetModeId: string
-  ) {
-    labels.forEach((label) => {
-      this.applyFilter(label);
-    });
+  async applyLabelFromList(labels: string[], targetModeId: string) {
+    for (const label of labels) {
+      await this.applyFilter(label);
+    }
 
     const currentMode = this.sidebar.getByTestId("filter-mode-div");
     await currentMode.waitFor();
@@ -293,13 +289,16 @@ class SidebarAsserter {
     );
   }
 
-  async assertCannotDragField(fieldName: string) {
-    const draggableSidebarFieldArea =
-      this.sb.sidebarEntryDraggableArea(fieldName);
-
-    await expect(draggableSidebarFieldArea).toHaveAttribute(
+  async assertCanDragField(fieldName: string) {
+    await expect(this.sb.sidebarEntryDraggableArea(fieldName)).toHaveAttribute(
       "data-draggable",
-      "false"
+      "true"
     );
+  }
+
+  async assertCannotDragField(fieldName: string) {
+    await expect(
+      this.sb.sidebarEntryDraggableArea(fieldName)
+    ).not.toHaveAttribute("data-draggable", "true");
   }
 }

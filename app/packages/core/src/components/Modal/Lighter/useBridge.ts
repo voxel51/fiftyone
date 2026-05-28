@@ -11,7 +11,7 @@ import {
 } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
 import {
-  BoundingBoxOverlay,
+  DetectionOverlay,
   type LighterEventGroup,
   type Scene2D,
   UNDEFINED_LIGHTER_SCENE_ID,
@@ -23,7 +23,7 @@ import type { DetectionLabel } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { useSetAtom } from "jotai";
 import { useAtomCallback } from "jotai/utils";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { editing } from "../Sidebar/Annotate/Edit";
 import {
@@ -31,7 +31,14 @@ import {
   currentData,
   savedLabel,
 } from "../Sidebar/Annotate/Edit/state";
+import { useDetectionMode } from "../Sidebar/Annotate/Edit/useDetectionMode";
+import { usePolylineMode } from "../Sidebar/Annotate/Edit/usePolylineMode";
+import {
+  SegmentationTool,
+  useSegmentationMode,
+} from "../Sidebar/Annotate/Edit/useSegmentationMode";
 import { coerceStringBooleans, useLabelsContext } from "../Sidebar/Annotate";
+import useFocus from "../Sidebar/Annotate/useFocus";
 import useColorMappingContext from "./useColorMappingContext";
 import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
 
@@ -67,6 +74,11 @@ export const useBridge = (scene: Scene2D | null) => {
   const fieldSchema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
+
+  const segmentationMode = useSegmentationMode();
+  const detectionMode = useDetectionMode();
+  const polylineMode = usePolylineMode();
+  const focus = useFocus();
 
   useAnnotationEventHandler(
     "annotation:sidebarValueUpdated",
@@ -135,7 +147,7 @@ export const useBridge = (scene: Scene2D | null) => {
         // Only route detection overlays into the detection establish path.
         // Non-detection overlays (e.g. keypoints) fire the same event but
         // should not enter the detection sidebar flow.
-        if (!(payload.handler.overlay instanceof BoundingBoxOverlay)) {
+        if (!(payload.handler.overlay instanceof DetectionOverlay)) {
           return;
         }
 
@@ -149,6 +161,77 @@ export const useBridge = (scene: Scene2D | null) => {
       },
       [annotationEventBus]
     )
+  );
+
+  // Maintain refs so we don't miss events as useEventHandler
+  // is torn down and reinstantiated.
+  const segmentationModeRef = useRef(segmentationMode);
+  const focusRef = useRef(focus);
+  const sceneRef = useRef(scene);
+  segmentationModeRef.current = segmentationMode;
+  focusRef.current = focus;
+  sceneRef.current = scene;
+
+  // Route overlay selection into the focus controller (sets the editing
+  // label in the sidebar) and, when the Merge tool is active, into the
+  // merge tool's click handler.
+  useEventHandler(
+    "lighter:overlay-select",
+    useCallback((payload) => {
+      const sm = segmentationModeRef.current;
+      const f = focusRef.current;
+      const s = sceneRef.current;
+
+      if (sm.segmentationModeActive && sm.tool === SegmentationTool.Merge) {
+        const overlay = s?.getOverlay(payload.id);
+        if (overlay instanceof DetectionOverlay) {
+          // Merge tool consumes the click; `true` means we should skip the
+          // normal focus routing (re-click of target, or source-click that
+          // performed a merge). `false` means it was a first-click that
+          // adopted a new target — fall through so focus loads it.
+          if (sm.mergeTool.handleOverlayClick(overlay)) {
+            return;
+          }
+        }
+      }
+
+      f.selectOverlay(payload.id, {
+        ignoreSideEffects: payload.ignoreSideEffects,
+      });
+    }, [])
+  );
+
+  // Route overlay deselection into the focus controller (exits edit mode
+  // unless we're in a generated view).
+  useEventHandler(
+    "lighter:overlay-deselect",
+    useCallback((payload) => {
+      const sm = segmentationModeRef.current;
+
+      if (sm.segmentationModeActive && sm.tool === SegmentationTool.Merge) {
+        return;
+      }
+
+      focusRef.current.deselectOverlay({
+        ignoreSideEffects: payload.ignoreSideEffects,
+      });
+    }, [])
+  );
+
+  // Merge tool: when selection clears (e.g. right-click deselect), drop
+  // the merge-target reference and exit edit mode.
+  useEventHandler(
+    "lighter:selection-cleared",
+    useCallback((payload) => {
+      const sm = segmentationModeRef.current;
+
+      if (sm.segmentationModeActive && sm.tool === SegmentationTool.Merge) {
+        sm.mergeTool.clearMergeTarget();
+        focusRef.current.deselectOverlay({
+          ignoreSideEffects: payload.ignoreSideEffects,
+        });
+      }
+    }, [])
   );
 
   useEventHandler(
@@ -175,7 +258,7 @@ export const useBridge = (scene: Scene2D | null) => {
     useCallback(
       (payload) => {
         if (
-          payload.overlay instanceof BoundingBoxOverlay &&
+          payload.overlay instanceof DetectionOverlay &&
           payload.overlay.field
         ) {
           addLabelToSidebar({
@@ -244,13 +327,95 @@ export const useBridge = (scene: Scene2D | null) => {
       );
 
       if (newLabel) {
-        save(newLabel);
+        save(newLabel, true);
       }
     },
     [save]
   );
 
   useEventHandler("lighter:command-executed", handleCommandEvent);
+
+  // Sync sidebar/edit state when an overlay's label is mutated outside the
+  // command stack (e.g. AI inference applying a new mask via updateLabel).
+  useEventHandler(
+    "lighter:overlay-label-updated",
+    useCallback(
+      (payload) => {
+        if (!payload.label) return;
+
+        const newLabel = coerceStringBooleans(
+          payload.label as Record<string, unknown>
+        );
+
+        if (newLabel) {
+          save(newLabel);
+        }
+
+        segmentationMode.setEditingMask(payload.id, payload.hasMask);
+        detectionMode.setEditingMask(payload.id, payload.hasMask);
+      },
+      [detectionMode, save, segmentationMode]
+    )
+  );
+
+  useEventHandler(
+    "lighter:overlay-create",
+    useCallback(() => {
+      if (segmentationMode.segmentationModeActive) {
+        segmentationMode.create();
+      } else if (detectionMode.detectionModeActive) {
+        detectionMode.create();
+      }
+    }, [detectionMode, segmentationMode])
+  );
+
+  useEventHandler(
+    "lighter:segmentation-mode-quit",
+    useCallback(() => {
+      if (segmentationMode.segmentationModeActive) {
+        segmentationMode.deactivateSegmentationMode();
+      }
+    }, [segmentationMode])
+  );
+
+  useEventHandler(
+    "lighter:detection-mode-quit",
+    useCallback(() => {
+      detectionMode.deactivateDetectionMode();
+    }, [detectionMode])
+  );
+
+  // Generic "quit the active mode" request from global gestures (e.g.
+  // right-click on empty canvas). Each mode self-filters on its own active
+  // state so InteractionManager doesn't need to know about modes.
+  useEventHandler(
+    "lighter:active-mode-quit-requested",
+    useCallback(() => {
+      if (detectionMode.detectionModeActive) {
+        detectionMode.deactivateDetectionMode();
+        return;
+      }
+
+      if (segmentationMode.segmentationModeActive) {
+        segmentationMode.deactivateSegmentationMode();
+        return;
+      }
+
+      if (polylineMode.polylineModeActive) {
+        polylineMode.deactivatePolylineMode();
+        return;
+      }
+    }, [detectionMode, polylineMode, segmentationMode])
+  );
+
+  useEventHandler(
+    "lighter:point-selection-finalize",
+    useCallback(() => {
+      if (segmentationMode.segmentationModeActive) {
+        segmentationMode.finalizePointSelection();
+      }
+    }, [segmentationMode])
+  );
 
   const context = useColorMappingContext();
 

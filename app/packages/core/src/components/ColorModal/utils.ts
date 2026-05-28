@@ -5,22 +5,7 @@ import {
   MaskColorInput,
 } from "@fiftyone/relay";
 import colorString from "color-string";
-import { inRange, isEmpty, xor } from "lodash";
-
-// Masataka Okabe and Kei Ito have proposed a palette of 8 colors on their
-// website Color Universal Design (CUD). This palette is a “Set of colors that
-// is unambiguous both to colorblinds and non-colorblinds”.
-//
-// https://jfly.uni-koeln.de/color/
-export const colorBlindFriendlyPalette = [
-  "#E69F00", // orange
-  "#56b4e9", // skyblue
-  "#009e74", // bluegreen
-  "#f0e442", // yellow
-  "#0072b2", // blue
-  "#d55e00", // vermillion
-  "#cc79a7", // reddish purple
-];
+import { isEmpty, xor } from "lodash";
 
 export enum ACTIVE_FIELD {
   JSON = "JSON editor",

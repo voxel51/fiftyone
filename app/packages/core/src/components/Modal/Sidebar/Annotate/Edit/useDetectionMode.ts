@@ -5,11 +5,7 @@ import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import type { PrimitiveAtom } from "jotai";
 import { useRecoilValue } from "recoil";
 
-import {
-  UNDEFINED_LIGHTER_SCENE_ID,
-  useLighter,
-  useLighterEventHandler,
-} from "@fiftyone/lighter";
+import { useLighter } from "@fiftyone/lighter";
 import { DETECTION } from "@fiftyone/utilities";
 
 import { labelsByPath } from "../useLabels";
@@ -19,6 +15,7 @@ import useExit from "./useExit";
 import { isPatchesView } from "@fiftyone/state";
 import { fieldType, isFieldReadOnly, labelSchemaData } from "../state";
 import {
+  current,
   currentType,
   defaultField,
   fieldsOfType,
@@ -52,14 +49,20 @@ const lastUsedLabelAtom = atomFamily(
   (_field: string) => atom<string | null>(null) as PrimitiveAtom<string | null>
 );
 
-const detectionTypes = new Set(["Detection", "Detections"]);
+// Set of label ids currently being authored as masks. Updated by
+// `useBridge` via the public `setEditingMask` action.
+const editingMaskLabelIdsAtom = atom<ReadonlySet<string>>(new Set<string>());
 
-/**
- * Tracks the last processed event ID for each event type so that only one
- * `useDetectionMode` instance handles each event, even though the hook is
- * called in multiple components.
- */
-const claimedEventsAtom = atom<Map<string, string>>(new Map());
+// Derived: does the currently-edited label have a mask?
+const isEditingMaskAtom = atom((get) => {
+  const ids = get(editingMaskLabelIdsAtom);
+  if (ids.size === 0) return false;
+
+  const data = get(current)?.data as { _id?: string } | undefined;
+  return data?._id !== undefined && ids.has(data._id);
+});
+
+const detectionTypes = new Set(["Detection", "Detections"]);
 
 /**
  * Centralized hook for managing detection mode state and operations.
@@ -69,7 +72,6 @@ export const useDetectionMode = () => {
     detectionModeActiveAtom
   );
   const editingLabelType = useAtomValue(currentType);
-  const isEditingDetection = editingLabelType === DETECTION;
   const isPatchView = useRecoilValue(isPatchesView);
   const setLastUsedField = useSetAtom(lastUsedFieldAtom);
   const labelsMap = useAtomValue(labelsByPath);
@@ -80,16 +82,38 @@ export const useDetectionMode = () => {
   const onExit = useExit();
   const fields = useAtomValue(fieldsOfType(DETECTION));
 
-  const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
-  );
-
   // Using refs to prevent shared closure contexts from retaining old Scene2D instances.
   const sceneRef = useRef(scene);
   sceneRef.current = scene;
 
   const selectedLabelRef = useRef(selectedLabel);
   selectedLabelRef.current = selectedLabel;
+
+  const isEditingMask = useAtomValue(isEditingMaskAtom);
+  const setEditingMaskIds = useSetAtom(editingMaskLabelIdsAtom);
+
+  // Mark `id` as mid-mask authoring (when `hasMask`) or clear that
+  const setEditingMask = useCallback(
+    (id: string, hasMask: boolean) => {
+      setEditingMaskIds((prev) => {
+        const has = prev.has(id);
+        if (hasMask === has) return prev;
+
+        const next = new Set(prev);
+        if (hasMask) next.add(id);
+        else next.delete(id);
+
+        return next;
+      });
+    },
+    [setEditingMaskIds]
+  );
+
+  const isEditingDetection =
+    editingLabelType === DETECTION &&
+    !selectedLabel?.data?.mask &&
+    !selectedLabel?.data?.mask_path &&
+    !isEditingMask;
 
   const noActiveFields = fields.length === 0;
   const disabled = isPatchView || noActiveFields;
@@ -170,8 +194,8 @@ export const useDetectionMode = () => {
     setDetectionModeActive(false);
   }, [finalizeCurrentDetection, setDetectionModeActive]);
 
-  // Auto-enable detection mode when a detection is being edited,
-  // auto-disable when a different label type is selected.
+  // Auto-activate detection mode when a pre-existing bbox detection is selected,
+  // auto-deactivate when a pre-existing label of a different type is selected.
   useEffect(() => {
     if (isEditingDetection && !detectionModeActive) {
       setDetectionModeActive(true);
@@ -179,14 +203,14 @@ export const useDetectionMode = () => {
       setDetectionModeActive(false);
     }
   }, [
+    detectionModeActive,
     editingLabelType,
     isEditingDetection,
-    detectionModeActive,
     setDetectionModeActive,
   ]);
 
   /**
-   * Get the auto-assigned detection field path.
+   * Determine field path to use.
    *
    * Auto-assignment priority:
    * 1. Last-used detection field (if in detection mode and previously set)
@@ -199,7 +223,7 @@ export const useDetectionMode = () => {
    * a field set by `trackLastUsedDetection` in the same synchronous call-stack
    * is visible immediately (avoids stale closure).
    */
-  const getDetectionModeField = useAtomCallback(
+  const getLastField = useAtomCallback(
     useCallback(
       (get): string | null => {
         const lastField = get(lastUsedFieldAtom);
@@ -250,7 +274,7 @@ export const useDetectionMode = () => {
    *
    * Returns null if no label value can be determined.
    */
-  const getDetectionModeLabel = useCallback(
+  const getLastLabel = useCallback(
     (fieldPath: string): string | null => {
       const lastUsedLabel = getLastUsedLabel(fieldPath);
 
@@ -289,24 +313,8 @@ export const useDetectionMode = () => {
     [getLabelSchema, getLastUsedLabel, labelsMap]
   );
 
-  const claimEvent = useAtomCallback(
-    useCallback((get, set, eventType: string, eventId: string) => {
-      const claimedEvents = get(claimedEventsAtom);
-      if (claimedEvents.get(eventType) === eventId) {
-        return false;
-      }
-
-      const updatedEvents = new Map(claimedEvents);
-      updatedEvents.set(eventType, eventId);
-      set(claimedEventsAtom, updatedEvents);
-
-      return true;
-    }, [])
-  );
-
   /**
-   * Toggle detection mode. When exiting, deactivateDetectionMode handles
-   * finalization (caches field/label, exits interactive mode, closes edit form).
+   * Toggle detection mode.
    */
   const toggleDetectionMode = useCallback(() => {
     if (detectionModeActive) {
@@ -317,53 +325,17 @@ export const useDetectionMode = () => {
   }, [detectionModeActive, deactivateDetectionMode, activateDetectionMode]);
 
   /**
-   * Cache field/label for auto-assignment
-   * Close out previous label
-   * Create the next detection.
+   * Finalize the previous detection and create the next one with auto-
+   * assigned field/label.
    */
-  useEventHandler(
-    "lighter:overlay-create",
-    useCallback(
-      (payload) => {
-        if (!claimEvent("overlay-create", payload.eventId)) {
-          return;
-        }
+  const create = useCallback(() => {
+    finalizeCurrentDetection();
 
-        finalizeCurrentDetection();
+    const field = getLastField() ?? undefined;
+    const labelValue = field ? getLastLabel(field) ?? undefined : undefined;
 
-        const field = getDetectionModeField() ?? undefined;
-        const labelValue = field
-          ? getDetectionModeLabel(field) ?? undefined
-          : undefined;
-
-        createDetection({ field, labelValue });
-      },
-      [
-        claimEvent,
-        createDetection,
-        finalizeCurrentDetection,
-        getDetectionModeField,
-        getDetectionModeLabel,
-      ]
-    )
-  );
-
-  /**
-   * Exit detection mode (triggered when user clicks without dragging).
-   */
-  useEventHandler(
-    "lighter:detection-mode-quit",
-    useCallback(
-      (payload) => {
-        if (!claimEvent("detection-mode-quit", payload.eventId)) {
-          return;
-        }
-
-        deactivateDetectionMode();
-      },
-      [claimEvent, deactivateDetectionMode]
-    )
-  );
+    createDetection({ field, labelValue });
+  }, [createDetection, finalizeCurrentDetection, getLastField, getLastLabel]);
 
   return useMemo(
     () => ({
@@ -376,6 +348,10 @@ export const useDetectionMode = () => {
       activateDetectionMode,
       deactivateDetectionMode,
       toggleDetectionMode,
+
+      // Bridge actions (wired to Lighter events by `useBridge`)
+      create,
+      setEditingMask,
     }),
     [
       activateDetectionMode,
@@ -384,6 +360,8 @@ export const useDetectionMode = () => {
       disabled,
       toggleDetectionMode,
       tooltip,
+      create,
+      setEditingMask,
     ]
   );
 };

@@ -19,7 +19,13 @@ import {
   TAB_GAP_DEFAULT,
 } from "../constants";
 import type { LighterEventGroup } from "../events";
-import type { DrawStyle, Point, Rect, TextOptions } from "../types";
+import type {
+  DrawStyle,
+  Point,
+  Rect,
+  TextOptions,
+  ViewportState,
+} from "../types";
 import { parseColorWithAlpha } from "../utils/color";
 import type { ImageOptions, ImageSource, Renderer2D } from "./Renderer2D";
 import { sharedPixiApp } from "./SharedPixiApplication";
@@ -608,6 +614,49 @@ export class PixiRenderer2D implements Renderer2D {
     this.addToContainer(graphics, containerId);
   }
 
+  drawPolygon(points: Point[], style: DrawStyle, containerId: string): void {
+    if (points.length < 3) return;
+
+    const graphics = new PIXI.Graphics();
+
+    const fillParsed = style.fillStyle
+      ? parseColorWithAlpha(style.fillStyle)
+      : undefined;
+    const strokeParsed = style.strokeStyle
+      ? parseColorWithAlpha(style.strokeStyle)
+      : undefined;
+
+    const tracePath = () => {
+      graphics.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) {
+        graphics.lineTo(points[i].x, points[i].y);
+      }
+      graphics.closePath();
+    };
+
+    // PixiJS v8: fill() consumes the current path, so fill and stroke each
+    // need their own trace.
+    if (fillParsed) {
+      tracePath();
+      graphics.fill({
+        color: fillParsed.color,
+        alpha: fillParsed.alpha * (style.opacity ?? 1),
+      });
+    }
+
+    if (strokeParsed) {
+      tracePath();
+      graphics.setStrokeStyle({
+        width: (style.lineWidth || 1) / this.getScale(),
+        color: strokeParsed.color,
+        alpha: strokeParsed.alpha * (style.opacity ?? 1),
+      });
+      graphics.stroke();
+    }
+
+    this.addToContainer(graphics, containerId);
+  }
+
   drawLines(
     segments: Array<[Point, Point]>,
     style: DrawStyle,
@@ -619,17 +668,30 @@ export class PixiRenderer2D implements Renderer2D {
       style.strokeStyle || "#000000"
     );
 
-    graphics.setStrokeStyle({
-      width: (style.lineWidth || 1) / this.getScale(),
-      color: color,
-      alpha: alpha * (style.opacity ?? 1),
-    });
+    if (style.dashPattern && style.dashPattern.length > 0) {
+      const dashLine = new DashLine(graphics, {
+        dash: style.dashPattern,
+        width: (style.lineWidth || 1) / this.getScale(),
+        color: color,
+        alpha: alpha * (style.opacity ?? 1),
+      });
+      for (const [start, end] of segments) {
+        dashLine.moveTo(start.x, start.y);
+        dashLine.lineTo(end.x, end.y);
+      }
+    } else {
+      graphics.setStrokeStyle({
+        width: (style.lineWidth || 1) / this.getScale(),
+        color: color,
+        alpha: alpha * (style.opacity ?? 1),
+      });
 
-    for (const [start, end] of segments) {
-      graphics.moveTo(start.x, start.y);
-      graphics.lineTo(end.x, end.y);
+      for (const [start, end] of segments) {
+        graphics.moveTo(start.x, start.y);
+        graphics.lineTo(end.x, end.y);
+      }
+      graphics.stroke();
     }
-    graphics.stroke();
 
     this.addToContainer(graphics, containerId);
   }
@@ -687,6 +749,8 @@ export class PixiRenderer2D implements Renderer2D {
       case "canvas":
         if (image.canvas) {
           const texture = PIXI.Texture.from(image.canvas);
+          texture.source.update();
+          texture.source.scaleMode = "nearest";
           sprite = new PIXI.Sprite(texture);
         } else {
           return;
@@ -782,6 +846,82 @@ export class PixiRenderer2D implements Renderer2D {
   resetZoomPan(): void {
     this.viewport?.setZoom(PixiRenderer2D.BASELINE_SCALE);
     this.viewport?.moveCorner(0, 0);
+
+    this.emitViewportZoomed();
+    this.emitViewportMoved();
+  }
+
+  /**
+   * Returns the current zoom and pan state of the pixi-viewport.
+   */
+  getViewportState(): ViewportState {
+    return {
+      scale: this.viewport?.scaled ?? 1,
+      panX: this.viewport?.x ?? 0,
+      panY: this.viewport?.y ?? 0,
+    };
+  }
+
+  /**
+   * Restores a previously captured zoom and pan state to the pixi-viewport.
+   * When the incoming scale exceeds this renderer's zoom bounds the pan is
+   * recomputed so the same world-space center point stays on screen.
+   */
+  setViewportState({ scale, panX, panY }: ViewportState): void {
+    if (!this.viewport || this.viewport.destroyed) return;
+    if (!scale || !isFinite(scale)) return;
+
+    const clampedScale = Math.min(
+      Math.max(scale, PixiRenderer2D.ZOOM_MIN),
+      PixiRenderer2D.ZOOM_MAX
+    );
+
+    if (clampedScale !== scale) {
+      const cx = this.canvas.clientWidth / 2;
+      const cy = this.canvas.clientHeight / 2;
+
+      const worldCenterX = (cx - panX) / scale;
+      const worldCenterY = (cy - panY) / scale;
+
+      panX = cx - worldCenterX * clampedScale;
+      panY = cy - worldCenterY * clampedScale;
+    }
+
+    this.viewport.setZoom(clampedScale);
+    this.viewport.x = panX;
+    this.viewport.y = panY;
+
+    this.emitViewportZoomed();
+    this.emitViewportMoved();
+  }
+
+  /**
+   * Adjusts the viewport zoom and pan so that the given world-space rectangle
+   * is centered and fully visible, with optional padding.
+   */
+  fitToRect(worldRect: Rect, padding: number = 0): void {
+    if (!this.viewport || this.viewport.destroyed) return;
+    if (!worldRect.width || !worldRect.height) return;
+
+    const { width: canvasW, height: canvasH } = this.getContainerDimensions();
+    if (!canvasW || !canvasH) return;
+
+    const squeeze = 1 - padding * 2;
+    const scaleX = (canvasW * squeeze) / worldRect.width;
+    const scaleY = (canvasH * squeeze) / worldRect.height;
+    const scale = Math.min(
+      Math.max(Math.min(scaleX, scaleY), PixiRenderer2D.ZOOM_MIN),
+      PixiRenderer2D.ZOOM_MAX
+    );
+
+    const rectCenterX = worldRect.x + worldRect.width / 2;
+    const rectCenterY = worldRect.y + worldRect.height / 2;
+    const panX = canvasW / 2 - rectCenterX * scale;
+    const panY = canvasH / 2 - rectCenterY * scale;
+
+    this.viewport.setZoom(scale);
+    this.viewport.x = panX;
+    this.viewport.y = panY;
 
     this.emitViewportZoomed();
     this.emitViewportMoved();
