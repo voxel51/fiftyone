@@ -270,7 +270,7 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
       return {
         ...base,
         snapStepSec,
-        onEventResize: (
+        onEventEdit: (
           _eventIndex: number,
           newStartSec: number,
           newEndSec: number

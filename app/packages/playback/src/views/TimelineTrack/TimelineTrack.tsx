@@ -23,7 +23,7 @@ import styles from "./TimelineTrack.module.css";
  * One event on a track. A `number` is shorthand for a point at that
  * time; an object with an `endSec` renders as an interval bar, without
  * one as a point. Object events with `endSec` may opt into in-place edit via
- * `resizable: true`; combined with {@link TimelineTrackProps.onEventResize}
+ * `resizable: true`; combined with {@link TimelineTrackProps.onEventEdit}
  * the bar renders left/right drag handles and a draggable body.
  */
 export type TimelineTrackEvent =
@@ -36,7 +36,7 @@ export type TimelineTrackEvent =
        * Opt into interval edit (drag handles + draggable body). Only
        * meaningful on interval events (`endSec` set) and only when
        * the parent track provides
-       * {@link TimelineTrackProps.onEventResize}.
+       * {@link TimelineTrackProps.onEventEdit}.
        */
       resizable?: boolean;
     };
@@ -119,7 +119,7 @@ export interface TimelineTrackProps {
    * Only events with `resizable: true` participate; without this prop
    * the resizable flag is a no-op and the bar renders as before.
    */
-  onEventResize?: (
+  onEventEdit?: (
     eventIndex: number,
     newStartSec: number,
     newEndSec: number
@@ -150,7 +150,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   onMouseEnter,
   onMouseLeave,
   onTrackClick,
-  onEventResize,
+  onEventEdit,
   snapStepSec,
 }) => {
   const viewStart = useViewStart();
@@ -205,7 +205,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
     origEnd: number,
     mode: DragMode
   ): void => {
-    if (!onEventResize) return;
+    if (!onEventEdit) return;
 
     // Only respond to the primary button. Right-click should fall
     // through to the existing ContextMenu wrapper, not begin a drag.
@@ -294,7 +294,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
         setTimeout(() => {
           justDraggedRef.current = false;
         }, 0);
-        onEventResize(drag.index, drag.latestStart, drag.latestEnd);
+        onEventEdit(drag.index, drag.latestStart, drag.latestEnd);
       }
 
       setDragOverride(null);
@@ -432,7 +432,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
             };
             const isInterval = event.endSec !== undefined;
             const isResizable = Boolean(
-              isInterval && event.resizable && onEventResize
+              isInterval && event.resizable && onEventEdit
             );
 
             // While a drag is in progress, render with the override
