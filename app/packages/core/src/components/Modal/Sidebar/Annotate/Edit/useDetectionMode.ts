@@ -65,6 +65,15 @@ const isEditingMaskAtom = atom((get) => {
 const detectionTypes = new Set(["Detection", "Detections"]);
 
 /**
+ * Reactive view of the detection field where a *new* detection would land.
+ */
+export const useActiveDetectionField = (): string | null => {
+  const lastUsedField = useAtomValue(lastUsedFieldAtom);
+  const defaultDetectionField = useAtomValue(defaultField(DETECTION));
+  return lastUsedField ?? defaultDetectionField;
+};
+
+/**
  * Centralized hook for managing detection mode state and operations.
  */
 export const useDetectionMode = () => {

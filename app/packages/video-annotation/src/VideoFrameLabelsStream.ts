@@ -31,6 +31,7 @@ interface RawDetectionsField {
  * since a Detection with no bbox is meaningless for a video overlay.
  */
 export interface LocalDetection {
+  _cls?: "Detection";
   _id?: string;
   id?: string;
   index?: number;
@@ -104,6 +105,10 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   private readonly baseline = new Map<number, FrameDoc>();
   // Frames with local edits that haven't been persisted to the server.
   private readonly dirty = new Set<number>();
+  // Cache refs captured at delta-build time. On persistence success, these
+  // become the new baseline; on failure they're discarded. Null when no
+  // patch is in flight.
+  private pendingCommit: Map<number, FrameDoc> | null = null;
   private readonly inflight = new Map<number, Promise<void>>();
   private readonly fetchedRanges: Array<[number, number]> = [];
   // Cached on each `onCommit` so local-edit republishes can write to
@@ -200,6 +205,11 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   /** Frame rate the stream was constructed with, in fps. */
   get fps(): number {
     return this.frameRate;
+  }
+
+  /** Per-frame field that carries the labels (e.g. `"detections"`). */
+  get labelsField(): string {
+    return this.frameField;
   }
 
   bufferState(time: number): BufferReadiness {
@@ -322,6 +332,76 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   /** Whether the given frame has unsaved local edits. */
   isDirty(frameNumber: number): boolean {
     return this.dirty.has(frameNumber);
+  }
+
+  /**
+   * Snapshots for every frame with unsaved local edits. Each entry pairs the
+   * server-original baseline with the current cache state — translation to a
+   * wire format (JSON Patch, GraphQL mutation, …) is the caller's concern.
+   *
+   * Returns an empty array when no frames are dirty.
+   */
+  getDirtyFrameSnapshots(): Array<{
+    frameNumber: number;
+    baseline: FrameDoc;
+    cache: FrameDoc;
+  }> {
+    const out: Array<{
+      frameNumber: number;
+      baseline: FrameDoc;
+      cache: FrameDoc;
+    }> = [];
+
+    for (const frameNumber of this.dirty) {
+      const baseline = this.baseline.get(frameNumber);
+      const cache = this.cache.get(frameNumber);
+
+      if (!baseline || !cache) continue;
+
+      out.push({ frameNumber, baseline, cache });
+    }
+
+    return out;
+  }
+
+  /**
+   * Stash the cache refs that were just translated into a persistence
+   * payload. Paired with {@link commitPending} on success and
+   * {@link discardPending} on failure. Overwrites any prior pending state
+   * — the persistence layer guarantees only one in-flight save at a time.
+   */
+  markCommitPending(
+    snapshots: ReadonlyArray<{ frameNumber: number; cache: FrameDoc }>
+  ): void {
+    this.pendingCommit = new Map(
+      snapshots.map((s) => [s.frameNumber, s.cache])
+    );
+  }
+
+  /**
+   * Advance baseline for every pending frame to the cache ref that was
+   * captured at {@link markCommitPending} time. A frame stays dirty if the
+   * cache has moved since (the user kept editing during the save) — that
+   * way the next save sends only the *incremental* delta against the
+   * just-saved state.
+   */
+  commitPending(): void {
+    if (!this.pendingCommit) return;
+
+    for (const [frameNumber, frameDoc] of this.pendingCommit) {
+      this.baseline.set(frameNumber, frameDoc);
+      if (this.cache.get(frameNumber) === frameDoc) {
+        this.dirty.delete(frameNumber);
+      }
+    }
+
+    this.pendingCommit = null;
+    this.bumpEditVersion();
+  }
+
+  /** Drop the pending snapshot without touching baseline or dirty. */
+  discardPending(): void {
+    this.pendingCommit = null;
   }
 
   /**
@@ -461,6 +541,7 @@ function extractDetections(
 
     out.push({
       id,
+      _id: detId ?? undefined,
       label: det.label ?? "",
       bounding_box: det.bounding_box,
       index: det.index,
