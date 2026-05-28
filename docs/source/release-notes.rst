@@ -28,6 +28,8 @@ FiftyOne Agent
 
 App
 
+- Added new Observability page allowing admin users to monitor current and
+  historical metrics and logs for deployed services
 - Upgraded the :ref:`Run page <enterprise-run-page>` of delegated operations
   with a full :ref:`metrics dashboard <enterprise-run-page-metrics>` that
   surfaces live system, database, and delegated-operation telemetry. The
@@ -37,10 +39,9 @@ App
   operation execution is now powered by a sidecar that captures `stdout` and
   `stderr` and surfaces in-progress logs, progress bars, and package versions
   directly in the UI
-- The Database panel on the live runs metrics page is now collapsed by default
-  and hidden entirely for non-admin users
-- Fixed a bug where the Next.js loading bar could remain visible indefinitely,
-  and improved the performance of target selection on slower deployments
+- Added a new Database panel on the live runs metrics page which is available
+  to admin users
+- Fixed a bug where the app loading bar could remain visible indefinitely
 - Fixed a bug where the Cloud credentials "Groups" tab could show global
   credentials when no groups existed
 - Fixed a bug where cloud credentials were unnecessarily queried when no group
