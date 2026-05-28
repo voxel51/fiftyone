@@ -428,23 +428,43 @@ export const useLabelsContext = (): LabelsContext => {
 /**
  * Syncs overlay draggable/resizeable flags when label schema read-only state
  * changes (e.g. user toggles read-only in Schema Manager).
+ *
+ * Edge-triggered per overlay: only writes when the resolved `readOnly` state
+ * actually changes for a given overlay. Allows external control over draggable
+ * and resizable properties after initial construction.
  */
 const useSyncOverlayReadOnly = () => {
   const currentLabels = useAtomValue(labels);
   const schemas = useAtomValue(labelSchemasData);
+  const lastReadOnlyRef = useRef<Map<string, boolean>>(new Map());
 
   useEffect(() => {
     if (!schemas) return;
 
+    const seen = new Set<string>();
     for (const label of currentLabels) {
       if (label.type !== DETECTION) continue;
 
       const overlay = label.overlay;
       if (!(overlay instanceof DetectionOverlay)) continue;
 
+      seen.add(overlay.id);
       const readOnly = isFieldReadOnly(schemas[label.path]);
+      if (lastReadOnlyRef.current.get(overlay.id) === readOnly) {
+        continue;
+      }
+
       overlay.setDraggable(!readOnly);
       overlay.setResizeable(!readOnly);
+      lastReadOnlyRef.current.set(overlay.id, readOnly);
+    }
+
+    // Drop entries for overlays that no longer exist so the map doesn't
+    // grow without bound as labels churn in/out of frame.
+    for (const id of Array.from(lastReadOnlyRef.current.keys())) {
+      if (!seen.has(id)) {
+        lastReadOnlyRef.current.delete(id);
+      }
     }
   }, [currentLabels, schemas]);
 };
