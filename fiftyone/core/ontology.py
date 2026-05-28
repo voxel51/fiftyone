@@ -203,21 +203,26 @@ class AnnotationOntology(Ontology):
     """Ontology for defining annotation structures.
 
     Bundles typed attributes (with optional conditional display logic) and
-    taxonomy references into a single document that gets connected to a
-    label schema on a field.
+    an optional taxonomy reference into a single document that gets
+    connected to a label schema on a field.
 
     Args:
         name: the ontology name
         description: optional description
-        taxonomies: list of taxonomy names referenced by this ontology
+        taxonomy: optional :class:`Taxonomy` instance to bundle with this
+            ontology. Stored internally as the taxonomy's slug.
         attributes: list of :class:`AttributeSpec` instances
 
     Example::
 
+        vehicle_classes = Taxonomy(
+            name="vehicle_classes",
+            root=Node(name="root", values=[Node(name="car")]),
+        )
         AnnotationOntology(
             name="vehicle_damage_ontology",
             description="Vehicle damage annotation",
-            taxonomies=["vehicle_classes"],
+            taxonomy=vehicle_classes,
             attributes=[
                 AttributeSpec(
                     name="damage_present",
@@ -241,12 +246,25 @@ class AnnotationOntology(Ontology):
         self,
         name: str,
         description: Optional[str] = None,
-        taxonomies: Optional[list[str]] = None,
+        taxonomy: Optional["Taxonomy"] = None,
         attributes: Optional[list[AttributeSpec]] = None,
     ):
         super().__init__(name=name, description=description)
-        self.taxonomies = taxonomies or []
+        self.taxonomy = self._extract_taxonomy_slug(taxonomy)
         self.attributes = attributes or []
+
+    @staticmethod
+    def _extract_taxonomy_slug(
+        taxonomy: Optional["Taxonomy"],
+    ) -> Optional[str]:
+        if taxonomy is None:
+            return None
+        if not isinstance(taxonomy, Taxonomy):
+            raise TypeError(
+                f"taxonomy must be a Taxonomy instance, got "
+                f"{type(taxonomy).__name__}"
+            )
+        return fou.to_slug(taxonomy.name)
 
     def _validate(self) -> None:
         # Lazy import — ``ontology_validation`` imports
@@ -260,14 +278,14 @@ class AnnotationOntology(Ontology):
 
     def _get_root(self) -> dict:
         return {
-            "taxonomies": self.taxonomies,
+            "taxonomy": self.taxonomy,
             "attributes": [attr.to_dict() for attr in self.attributes],
         }
 
     def _apply_doc(self, doc: OntologyDocument) -> None:
         self.name = doc.name
         self.description = doc.description
-        self.taxonomies = doc.root.get("taxonomies", [])
+        self.taxonomy = doc.root.get("taxonomy")
         self.attributes = [
             AttributeSpec.from_dict(a) for a in doc.root.get("attributes", [])
         ]
@@ -293,14 +311,17 @@ class AnnotationOntology(Ontology):
             an :class:`AnnotationOntology`
         """
         root = d.get("root") or {}
-        return cls(
+        ao = cls(
             name=d["name"],
             description=d.get("description"),
-            taxonomies=root.get("taxonomies", []),
             attributes=[
                 AttributeSpec.from_dict(a) for a in root.get("attributes", [])
             ],
         )
+        # Dict stores the already-resolved slug; assign past the
+        # Taxonomy-instance type check at construction.
+        ao.taxonomy = root.get("taxonomy")
+        return ao
 
 
 class Taxonomy(Ontology):
@@ -590,8 +611,6 @@ def delete_ontology(name: str, force: bool = False) -> None:
             "affected schema and delete."
         )
 
-    # Phase 1: inline every affected schema. The ontology is deleted
-    # below only if every save here succeeds.
     for ref in affected:
         # pylint: disable-next=no-member
         dataset_doc = DatasetDocument.objects.get(id=ref.dataset_id)
@@ -602,9 +621,6 @@ def delete_ontology(name: str, force: bool = False) -> None:
             )
         dataset_doc.save()
 
-    # Phase 2: delete the ontology last. On mid-inline failure the
-    # ontology survives, leaving the system recoverable — re-running
-    # the call is idempotent.
     _objects_by_slug(name).delete()
 
 
