@@ -12,6 +12,7 @@ import logging
 import logging.handlers
 import multiprocessing
 import os
+import sys
 import traceback
 
 import psutil
@@ -19,6 +20,7 @@ import psutil
 from fiftyone.core.logging import _get_loggers
 from fiftyone.factory import DelegatedOperationPagingParams
 from fiftyone.factory.repo_factory import RepositoryFactory
+from fiftyone.operators.logging_utils import LineFlushedStdio
 from fiftyone.operators.executor import (
     ExecutionResult,
     ExecutionRunState,
@@ -35,38 +37,76 @@ logger = logging.getLogger(__name__)
 logging_context = contextlib.nullcontext
 
 
-def _init_stdout_capture(stdout_capture):
-    """Initializes the stdout capture context manager, falling back to
-    a no-op context if the capture callable fails."""
-    if not stdout_capture:
-        return contextlib.nullcontext()
+@contextlib.contextmanager
+def _capture_child_output(queue):
+    """Route child logger records through ``queue`` and wrap stdio so
+    tqdm-style \\r updates surface as \\n-terminated lines."""
+    if queue is not None:
+        queue_handler = logging.handlers.QueueHandler(queue)
+        for lgr in _get_loggers():
+            lgr.handlers.clear()
+            lgr.addHandler(queue_handler)
+            # prevent duplicate logs in the parent process
+            lgr.propagate = False
+
+    orig_stdout, orig_stderr = sys.stdout, sys.stderr
+    if not orig_stderr.isatty():
+        sys.stderr = LineFlushedStdio(orig_stderr)
+    if not orig_stdout.isatty():
+        sys.stdout = LineFlushedStdio(orig_stdout)
     try:
-        return stdout_capture()
-    except Exception:
-        logger.debug("Failed to initialize stdout capture", exc_info=True)
-        return contextlib.nullcontext()
+        yield
+    finally:
+        for stream in (sys.stdout, sys.stderr):
+            if isinstance(stream, LineFlushedStdio):
+                stream.drain()
+        sys.stdout, sys.stderr = orig_stdout, orig_stderr
 
 
-def _configure_child_logging(queue):
-    """Configures logging in a child process to send logs to a queue.
+def _terminate_worker_process(operation_id, log_queue=None):
+    """Cleanup hook run after the worker's terminal state is in Mongo.
 
-    This function should be called at the start of the target function
-    for any new process.  It replaces the stream handlers on every
-    logger that FiftyOne normally configures with a single
-    :class:`~logging.handlers.QueueHandler` so that log records
-    are forwarded to the parent process.
+    Drains the multiprocessing log queue so the feeder thread can flush
+    buffered records (otherwise the tail of the run's logs is lost),
+    then walks this process's descendants and kills each so leaked
+    subprocesses (DataLoader workers, asyncio tasks, mp resource
+    trackers, etc.) don't outlive the operation.
     """
-    queue_handler = logging.handlers.QueueHandler(queue)
+    try:
+        sys.stdout.flush()
+        sys.stderr.flush()
+    except Exception as exc:
+        logger.debug(
+            "telemetry: pre-exit stdio flush failed: %s: %s",
+            type(exc).__name__,
+            exc,
+        )
 
-    for lgr in _get_loggers():
-        lgr.handlers.clear()
-        lgr.addHandler(queue_handler)
-        # prevent duplicate logs in the parent process
-        lgr.propagate = False
+    if log_queue is not None:
+        try:
+            log_queue.close()
+            log_queue.join_thread()
+        except Exception as exc:
+            logger.debug(
+                "telemetry: log_queue drain failed: %s: %s",
+                type(exc).__name__,
+                exc,
+            )
+
+    try:
+        for descendant in psutil.Process().children(recursive=True):
+            try:
+                descendant.kill()
+            except psutil.NoSuchProcess:
+                pass
+    except psutil.NoSuchProcess:
+        pass
+
+    os._exit(0)
 
 
 def _execute_operator_in_child_process(
-    operation_id, log=False, log_queue=None, stdout_capture=None
+    operation_id, log=False, log_queue=None
 ):
     """Worker function to be run in a separate 'spawned' process.
 
@@ -75,12 +115,9 @@ def _execute_operator_in_child_process(
     fresh resources and then fetches the operation document from the database.
 
     Args:
-        operation_id: the string ID of the operation to execute
+        operation_id: the Object ID of the operation to execute
         log (False): the optional boolean flag to log the execution
         log_queue (None): a multiprocessing queue to send log records to
-        stdout_capture (None): an optional callable returning a context
-            manager that captures stdout/stderr into logging. Must be
-            picklable (e.g. a top-level function) for spawn context.
     """
     # On POSIX systems, become the session leader to take control of any
     # subprocesses. This allows the parent to terminate the entire process
@@ -90,21 +127,13 @@ def _execute_operator_in_child_process(
             os.setsid()
         except Exception:
             pass
+    try:
 
-    if log_queue:
-        _configure_child_logging(log_queue)
-
-    logger = logging.getLogger(__name__)
-    service = DelegatedOperationService()
-    operation = None
-
-    with logging_context(
-        {
-            "delegated_operation_id": str(operation_id),
-        }
-    ):
-        try:
-            with _init_stdout_capture(stdout_capture):
+        with _capture_child_output(log_queue), logging_context(
+            {"delegated_operation_id": str(operation_id)}
+        ):
+            service = DelegatedOperationService()
+            try:
                 operation = service.get(operation_id)
                 if not operation:
                     logger.error(
@@ -135,22 +164,26 @@ def _execute_operator_in_child_process(
                             "Operation %s was not marked as COMPLETED because its state changed externally.",
                             operation.id,
                         )
-        except Exception:
-            result = ExecutionResult(error=traceback.format_exc())
-            updated_doc = service.set_failed(
-                doc_id=operation_id,
-                result=result,
-                update_pipeline=operation.parent_id if operation else None,
-                required_state=ExecutionRunState.RUNNING,
-            )
-            if log:
-                if updated_doc:
-                    logger.exception("Operation %s failed", operation_id)
-                else:
-                    logger.info(
-                        "Operation %s was not marked as FAILED because its state changed externally.",
-                        operation_id,
-                    )
+            except Exception:
+                result = ExecutionResult(error=traceback.format_exc())
+                updated_doc = service.set_failed(
+                    doc_id=operation_id,
+                    result=result,
+                    update_pipeline=operation.parent_id if operation else None,
+                    required_state=ExecutionRunState.RUNNING,
+                )
+                if log:
+                    if updated_doc:
+                        logger.exception("Operation %s failed", operation_id)
+                    else:
+                        logger.info(
+                            "Operation %s was not marked as FAILED because its state changed externally.",
+                            operation_id,
+                        )
+    finally:
+        # Unconditional — sidecar finalization waits on this process
+        # actually exiting, and the terminal state is already in Mongo.
+        _terminate_worker_process(operation_id, log_queue=log_queue)
 
 
 class DelegatedOperationService(object):
@@ -579,8 +612,6 @@ class DelegatedOperationService(object):
         log=False,
         monitor=False,
         check_interval_seconds=60,
-        stdout_capture=None,
-        on_monitor_ping=None,
         **kwargs,
     ):
         """Executes queued delegated operations matching the given criteria.
@@ -598,11 +629,6 @@ class DelegatedOperationService(object):
                 delegated operations
             monitor (False): if we should monitor the state of the operator in a subprocess.
             check_interval_seconds (60): how many seconds to wait between polling operator status.
-            stdout_capture (None): an optional callable returning a context
-                manager that captures stdout/stderr into logging. Must be
-                picklable (e.g. a top-level function) for spawn context.
-            on_monitor_ping (None): an optional callback ``fn(child_pid)``
-                invoked on each monitor ping
         """
         results = []
         if limit is not None:
@@ -626,8 +652,6 @@ class DelegatedOperationService(object):
                     log=log,
                     monitor=monitor,
                     check_interval_seconds=check_interval_seconds,
-                    stdout_capture=stdout_capture,
-                    on_monitor_ping=on_monitor_ping,
                 )
             )
         return results
@@ -651,8 +675,6 @@ class DelegatedOperationService(object):
         run_link=None,
         monitor=False,
         check_interval_seconds=60,
-        stdout_capture=None,
-        on_monitor_ping=None,
     ):
         """Executes the given delegated operation.
 
@@ -665,18 +687,13 @@ class DelegatedOperationService(object):
                 information about the operation
             monitor (False): if we should monitor the state of the operator in a subprocess.
             check_interval_seconds (60): how many seconds to wait between polling operator status.
-            stdout_capture (None): an optional callable returning a context
-                manager that captures stdout/stderr into logging. Must be
-                picklable (e.g. a top-level function) for spawn context.
-            on_monitor_ping (None): an optional callback ``fn(child_pid)``
-                invoked on each monitor ping
         """
         with logging_context(
             {
                 "delegated_operation_id": str(operation.id),
                 "operator_uri": operation.operator,
             }
-        ), _init_stdout_capture(stdout_capture):
+        ):
             try:
                 succeeded = (
                     self.set_running(
@@ -709,8 +726,6 @@ class DelegatedOperationService(object):
                         operation,
                         log,
                         check_interval_seconds,
-                        stdout_capture=stdout_capture,
-                        on_monitor_ping=on_monitor_ping,
                     )
                 return self._execute_operation_sync(operation, log)
             except Exception as e:
@@ -780,8 +795,6 @@ class DelegatedOperationService(object):
         operation,
         log=False,
         check_interval_seconds=60,
-        stdout_capture=None,
-        on_monitor_ping=None,
     ):
         """Executes an operation in a separate process and monitors it."""
         ctx = multiprocessing.get_context("spawn")
@@ -792,13 +805,16 @@ class DelegatedOperationService(object):
             log_queue, *root_logger.handlers
         )
         listener.start()
+        # Listener already re-emits via root's handlers; propagate would dup.
+        prev_propagate = root_logger.propagate
+        root_logger.propagate = False
 
         result = None
         child_process = None
         try:
             child_process = ctx.Process(
                 target=_execute_operator_in_child_process,
-                args=(operation.id, log, log_queue, stdout_capture),
+                args=(operation.id, log, log_queue),
             )
             child_process.start()
 
@@ -806,7 +822,6 @@ class DelegatedOperationService(object):
                 child_process,
                 operation.id,
                 check_interval_seconds,
-                on_monitor_ping=on_monitor_ping,
             )
 
             if not result:
@@ -818,24 +833,48 @@ class DelegatedOperationService(object):
                         operation.id,
                     )
                     return ExecutionResult(error=f"Finalization error: {e}")
-                raw = final_doc.result if final_doc else None
-                if isinstance(raw, ExecutionResult):
-                    result = raw
-                elif isinstance(raw, dict):
-                    result = ExecutionResult(
-                        result=raw.get("result"),
-                        error=raw.get("error"),
-                        error_message=raw.get("error_message"),
-                        delegated=raw.get("delegated", False),
-                        outputs_schema=raw.get("outputs_schema"),
-                    )
+                run_state = getattr(final_doc, "run_state", None)
+                if run_state in (
+                    ExecutionRunState.COMPLETED,
+                    ExecutionRunState.FAILED,
+                ):
+                    # Worker reached a terminal state — trust what it persisted.
+                    raw = final_doc.result if final_doc else None
+                    if isinstance(raw, ExecutionResult):
+                        result = raw
+                    elif isinstance(raw, dict):
+                        result = ExecutionResult(
+                            result=raw.get("result"),
+                            error=raw.get("error"),
+                            error_message=raw.get("error_message"),
+                            delegated=raw.get("delegated", False),
+                            outputs_schema=raw.get("outputs_schema"),
+                        )
+                    else:
+                        result = ExecutionResult()
                 else:
-                    result = ExecutionResult()
+                    # Child died without writing a terminal state — surface
+                    # the exit code (SIGBUS, SIGSEGV, OOM kill, etc.) so the
+                    # failure isn't silently relabeled as success.
+                    code = child_process.exitcode if child_process else None
+                    err = (
+                        f"Operation ended without terminal state "
+                        f"(exit code {code}, run_state={run_state})"
+                    )
+                    logger.error("Operation %s — %s", operation.id, err)
+                    result = ExecutionResult(error=err)
         finally:
             listener.stop()
+            root_logger.propagate = prev_propagate
             if child_process and child_process.is_alive():
                 self._terminate_child_process(
                     child_process, operation.id, "Executor shutting down"
+                )
+            if child_process is not None:
+                logger.info(
+                    "Child process for operation %s exited with code %s",
+                    operation.id,
+                    child_process.exitcode,
                 )
 
         return result
@@ -845,15 +884,23 @@ class DelegatedOperationService(object):
         child_process,
         operation_id,
         check_interval_seconds=60,
-        on_monitor_ping=None,
     ):
-        """
-        Monitors the child_process and operation state for failures.
+        """Monitors the child_process and operation state for failures.
+
+        Exit-code logging happens in the caller's ``finally`` so it
+        covers every termination path uniformly.
+
+        Args:
+            child_process: the child process to monitor
+            operation_id: the ID of the operation being monitored
+            check_interval_seconds (60): seconds between monitor pings
         """
         while child_process.is_alive():
             child_process.join(timeout=check_interval_seconds)
-
             if not child_process.is_alive():
+                # Exit code alone can't tell success from failure (the worker
+                # self-SIGKILLs on the happy path to reap leaked descendants).
+                # The caller resolves the verdict from Mongo run_state.
                 return None
 
             try:
@@ -876,16 +923,6 @@ class DelegatedOperationService(object):
                     )
                     return ExecutionResult(error=reason)
                 else:
-                    logger.debug("Pinging operation %s", operation_id)
-                    if on_monitor_ping:
-                        try:
-                            on_monitor_ping(child_process.pid)
-                        except Exception as e:
-                            logger.debug(
-                                "Error in on_monitor_ping callback for operation %s: %s",
-                                operation_id,
-                                e,
-                            )
                     self._repo.ping(operation_id)
             except Exception as e:
                 reason = f"Error in monitoring loop: {e}"
@@ -897,7 +934,7 @@ class DelegatedOperationService(object):
                 self._terminate_child_process(
                     child_process, operation_id, reason
                 )
-                return ExecutionResult(error=reason)
+                raise Exception(reason) from e
 
     def _terminate_child_process(self, child_process, operation_id, reason):
         """
