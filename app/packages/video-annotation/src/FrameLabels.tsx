@@ -9,6 +9,7 @@ import {
 } from "@fiftyone/state";
 import type { ModalSample } from "@fiftyone/state";
 import type { Stage } from "@fiftyone/utilities";
+import { useActiveDetectionField } from "../../core/src/components/Modal/Sidebar/Annotate/Edit/useDetectionMode";
 import React, {
   useCallback,
   useEffect,
@@ -25,7 +26,11 @@ import {
   type Track,
 } from "../../playback/src/lib/tracks/TrackProvider";
 import TimelineWithTracks from "../../playback/src/views/TimelineWithTracks/TimelineWithTracks";
-import { FrameLabelsContext, useFrameLabelsStream } from "./FrameLabelsContext";
+import {
+  useFrameLabelsEditVersion,
+  useFrameLabelsStream,
+  usePublishFrameLabelsStream,
+} from "./frameLabelsStream";
 import { buildPerInstanceTracks, type PerInstanceLabel } from "./frameTracks";
 import { LABELS_STREAM_ID } from "./ids";
 import { useLinkedTrackDecorator } from "./linkedTracks";
@@ -36,20 +41,29 @@ import {
 } from "./temporalDetectionTracks";
 import { VideoFrameLabelsStream } from "./VideoFrameLabelsStream";
 
-// todo - hardcoded for demo
-export const FRAME_FIELD = "frames.detections";
+const DEFAULT_FRAME_FIELD = "frames.detections";
+
+/**
+ * Strip the `frames.` prefix from a sample-schema field path to get the
+ * per-frame field name the `/frames` endpoint returns. Falls back to the
+ * raw value if no prefix is present (defensive — caller already filters
+ * to detection fields, which on videos always live under `frames.`).
+ */
+const toPerFrameField = (field: string): string =>
+  field.startsWith("frames.") ? field.slice("frames.".length) : field;
 
 /**
  * Reads the params needed to construct a real `/frames`-backed labels
  * stream from recoil + the modal sample, waits until duration is known
  * (so we can derive `frameCount`), then mounts the registration child
- * with a key that changes if the underlying sample / view changes — so
- * a fresh stream cleanly replaces the old one through usePlaybackStream's
- * standard lifecycle.
+ * with a key that changes if the underlying sample / view / active
+ * detection field changes — so a fresh stream cleanly replaces the old
+ * one through usePlaybackStream's standard lifecycle.
  *
- * Wraps its children in a `FrameLabelsContext.Provider` so downstream
- * consumers (e.g. {@link FrameLabelsTracks}) can read the same stream
- * without issuing duplicate fetches.
+ * The active stream is published via {@link usePublishFrameLabelsStream} so
+ * downstream consumers (track builder, persistence supplier mounted above
+ * the surface) can read it via {@link useFrameLabelsStream} without being
+ * tied to the registrar's React subtree.
  */
 export const RegisterFrameLabels: React.FC<{
   sample: ModalSample;
@@ -60,29 +74,32 @@ export const RegisterFrameLabels: React.FC<{
   const view = useRecoilValue(viewAtom);
   const slice = useRecoilValue(groupSlice);
   const sampleId = useRecoilValue(modalSampleId);
+  // Active detection field is the source of truth for which per-frame
+  // list this stream reads from and which list new edits patch into.
+  // Defaults to `frames.detections` while the schema is still resolving
+  // so the registrar doesn't repeatedly tear down and re-mount on first
+  // render.
+  const activeField = useActiveDetectionField() ?? DEFAULT_FRAME_FIELD;
 
   const frameRate = sample.frameRate;
   const ready =
     duration > 0 && !!sampleId && !!dataset && Number.isFinite(frameRate);
 
   if (!ready) {
-    // Stream params aren't all available yet; expose a null stream so
-    // consumers render their loading/placeholder state.
-    return (
-      <FrameLabelsContext.Provider value={null}>
-        {children}
-      </FrameLabelsContext.Provider>
-    );
+    // Stream params aren't all available yet; consumers read the atom and
+    // see `null` until FrameLabelsRegistration mounts.
+    return <>{children}</>;
   }
 
   const frameCount = Math.max(1, Math.round(duration * frameRate));
+  const frameField = toPerFrameField(activeField);
 
   // Include every input that affects the stream's identity in the key so
-  // changing sample / view re-mounts the registrar with a fresh stream
-  // and `usePlaybackStream`'s effect cleanup unregisters the old one.
+  // changing sample / view / field re-mounts the registrar with a fresh
+  // stream and `usePlaybackStream`'s effect cleanup unregisters the old one.
   const key = `${sampleId}|${dataset}|${
     slice ?? ""
-  }|${frameRate}|${frameCount}`;
+  }|${frameRate}|${frameCount}|${frameField}`;
 
   return (
     <FrameLabelsRegistration
@@ -93,6 +110,7 @@ export const RegisterFrameLabels: React.FC<{
       groupSlice={slice ?? null}
       frameCount={frameCount}
       frameRate={frameRate}
+      frameField={frameField}
     >
       {children}
     </FrameLabelsRegistration>
@@ -106,6 +124,7 @@ interface FrameLabelsRegistrationProps {
   groupSlice: string | null;
   frameCount: number;
   frameRate: number;
+  frameField: string;
   children: React.ReactNode;
 }
 
@@ -125,9 +144,15 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
       groupSlice: props.groupSlice,
       frameCount: props.frameCount,
       frameRate: props.frameRate,
+      frameField: props.frameField,
     });
   }
   usePlaybackStream(streamRef.current);
+
+  // Publish the active stream so consumers above the surface (e.g. the
+  // annotation persistence supplier mounted on <Modal>) can reach it
+  // through `useFrameLabelsStream()`. The hook handles clear-on-unmount.
+  usePublishFrameLabelsStream(streamRef.current);
 
   // Prefetch the chunk containing t=0 and then seek(0). The engine's
   // `seek` only commits when every blocking stream is already ready, so
@@ -145,11 +170,7 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
     };
   }, [seek]);
 
-  return (
-    <FrameLabelsContext.Provider value={streamRef.current}>
-      {children}
-    </FrameLabelsContext.Provider>
-  );
+  return <>{children}</>;
 };
 
 /**
@@ -175,8 +196,10 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   sample,
 }) => {
   const stream = useFrameLabelsStream();
+  const editVersion = useFrameLabelsEditVersion();
   const scheme = useRecoilValue(colorScheme);
   const seed = useRecoilValue(colorSeed);
+  const activeField = useActiveDetectionField() ?? DEFAULT_FRAME_FIELD;
 
   // useState so we can re-render once warmupAll resolves, but keep the
   // build deterministic in the deps (stream identity changes when the
@@ -185,11 +208,11 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
 
   const resolveColor = useCallback(
     (label: PerInstanceLabel) =>
-      getLabelColorFromContext(FRAME_FIELD, label, {
+      getLabelColorFromContext(activeField, label, {
         colorScheme: scheme,
         seed,
       }),
-    [scheme, seed]
+    [activeField, scheme, seed]
   );
 
   const resolveTemporalDetectionColor = useCallback(
@@ -220,7 +243,7 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
     return () => {
       cancelled = true;
     };
-  }, [stream, resolveColor]);
+  }, [stream, resolveColor, editVersion]);
 
   const temporalDetectionTracks = useMemo(() => {
     if (!sample?.sample) {

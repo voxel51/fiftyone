@@ -1,7 +1,28 @@
 import { PlaybackStreamBase } from "../../playback/src/lib/playback/stream-base";
 
+/** ObjectId hex string. */
+export type ObjectIdHex = string;
+
+export type PropagationMethod = "linear";
+
+/** Provenance written on labels created by a propagation run. */
+export interface PropagationBlob {
+  method: PropagationMethod;
+  run_id: ObjectIdHex;
+  parent_keyframes: [ObjectIdHex, ObjectIdHex];
+}
+
 export interface SyntheticBox {
   id: string;
+  /**
+   * Real MongoDB `_id` of the source detection when one exists. The
+   * overlay-facing {@link id} is synthesized from the track index for
+   * tracked detections (so cross-frame identity for color/highlight
+   * matches the timeline track), but persistence needs the original
+   * `_id` to upsert the right element in the baseline detections list.
+   * Undefined for freshly-drawn boxes that haven't been persisted yet.
+   */
+  _id?: string;
   label: string;
   /** Normalized [x, y, w, h] in [0, 1]. */
   bounding_box: [number, number, number, number];
@@ -19,6 +40,10 @@ export interface SyntheticBox {
    * numeric index).
    */
   instance?: { _cls: "Instance"; _id?: string };
+  /** `true` for user-authored / propagation source; `false` for interpolated. */
+  keyframe: boolean;
+  /** Provenance for propagation-created labels; `null` for keyframes. */
+  propagation: PropagationBlob | null;
 }
 
 export interface FrameLabelSnapshot {
@@ -217,6 +242,8 @@ function snapshotAtTime(
       // colors per synthetic actor (the index path doesn't apply here
       // — synthetic actors have no numeric index by design).
       instance: { _cls: "Instance", _id: actor.id },
+      keyframe: true,
+      propagation: null,
     });
   }
   return { frameNumber, detections };

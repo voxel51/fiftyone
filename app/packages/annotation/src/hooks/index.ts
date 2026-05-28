@@ -7,4 +7,7 @@ export * from "./usePatchSample";
 export * from "./useRegisterAnnotationCommandHandlers";
 export * from "./useRegisterAnnotationEventHandlers";
 export * from "./useRegisterAnnotationKeyBindings";
+export * from "./useRegisterVideoAnnotationCommandHandlers";
+export * from "./useRegisterVideoAnnotationEventHandlers";
+export * from "./useRegisterVideoAnnotationKeybindings";
 export * from "./useRegisterRendererEventHandlers";

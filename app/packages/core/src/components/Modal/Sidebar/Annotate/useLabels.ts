@@ -364,17 +364,20 @@ export interface LabelsContext {
   /**
    * Remove a label from the annotation sidebar.
    *
-   * @param labelId ID of label to remove
+   * @param overlayId The label's `overlay.id` (synthetic id for video,
+   *   raw `_id` for image — same value in either case for one overlay)
    */
-  removeLabelFromSidebar: (labelId: string) => void;
+  removeLabelFromSidebar: (overlayId: string) => void;
 
   /**
    * Update the label data for the specified label ID.
    *
    * @param labelId ID of label to update
    * @param data Label data
+   * @returns `true` if a label with the given ID was found and updated,
+   *   `false` if no such label exists in the sidebar.
    */
-  updateLabelData: (labelId: string, data: AnnotationLabelData) => void;
+  updateLabelData: (labelId: string, data: AnnotationLabelData) => boolean;
 }
 
 /**
@@ -402,9 +405,12 @@ export const useLabelsContext = (): LabelsContext => {
     )
   );
 
+  // Keyed on `overlay.id` to match `addLabel` / `labelMap` / `updateLabelAtom`.
   const removeLabelFromSidebar = useCallback(
-    (labelId: string) =>
-      setLabels((prev) => prev.filter((label) => label.data._id !== labelId)),
+    (overlayId: string) =>
+      setLabels((prev) =>
+        prev.filter((label) => label.overlay.id !== overlayId)
+      ),
     [setLabels]
   );
 
@@ -422,23 +428,43 @@ export const useLabelsContext = (): LabelsContext => {
 /**
  * Syncs overlay draggable/resizeable flags when label schema read-only state
  * changes (e.g. user toggles read-only in Schema Manager).
+ *
+ * Edge-triggered per overlay: only writes when the resolved `readOnly` state
+ * actually changes for a given overlay. Allows external control over draggable
+ * and resizable properties after initial construction.
  */
 const useSyncOverlayReadOnly = () => {
   const currentLabels = useAtomValue(labels);
   const schemas = useAtomValue(labelSchemasData);
+  const lastReadOnlyRef = useRef<Map<string, boolean>>(new Map());
 
   useEffect(() => {
     if (!schemas) return;
 
+    const seen = new Set<string>();
     for (const label of currentLabels) {
       if (label.type !== DETECTION) continue;
 
       const overlay = label.overlay;
       if (!(overlay instanceof DetectionOverlay)) continue;
 
+      seen.add(overlay.id);
       const readOnly = isFieldReadOnly(schemas[label.path]);
+      if (lastReadOnlyRef.current.get(overlay.id) === readOnly) {
+        continue;
+      }
+
       overlay.setDraggable(!readOnly);
       overlay.setResizeable(!readOnly);
+      lastReadOnlyRef.current.set(overlay.id, readOnly);
+    }
+
+    // Drop entries for overlays that no longer exist so the map doesn't
+    // grow without bound as labels churn in/out of frame.
+    for (const id of Array.from(lastReadOnlyRef.current.keys())) {
+      if (!seen.has(id)) {
+        lastReadOnlyRef.current.delete(id);
+      }
     }
   }, [currentLabels, schemas]);
 };

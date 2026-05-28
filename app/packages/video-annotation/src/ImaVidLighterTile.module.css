@@ -1,0 +1,25 @@
+.body {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: black;
+  overflow: hidden;
+}
+
+.frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  z-index: 0;
+  user-select: none;
+  pointer-events: none;
+}
+
+.lighterHost {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+}

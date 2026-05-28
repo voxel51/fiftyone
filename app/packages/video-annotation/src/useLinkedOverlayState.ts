@@ -1,15 +1,20 @@
+import { useAnnotationEventHandler } from "@fiftyone/annotation";
 import {
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
+  useLighterEventBus,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
 import { atom, useStore } from "jotai";
 import { useCallback } from "react";
+import { editing } from "../../core/src/components/Modal/Sidebar/Annotate/Edit";
 
 /**
- * IDs of overlays currently in hover state on the live Lighter scene.
- * Reflects the set of `lighter:overlay-hover` / `:overlay-unhover`
- * events; cleared in bulk by `lighter:overlay-all-unhover`.
+ * IDs of overlays currently considered hovered.
+ * Union of all hover signals: pointer-driven canvas hover
+ * (`lighter:overlay-hover` / `:overlay-unhover`, bulk-cleared by
+ * `:overlay-all-unhover`) plus programmatic sidebar-row hover
+ * (`annotation:sidebarLabelHover` / `:sidebarLabelUnhover`).
  */
 export const hoveredOverlayIds = atom<Set<string>>(new Set<string>());
 
@@ -42,44 +47,48 @@ export const selectedOverlayIds = atom<Set<string>>(new Set<string>());
 export function useLinkedOverlayState(): void {
   const { scene } = useLighter();
   const store = useStore();
-  const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+  const channel = scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID;
+  const useEventHandler = useLighterEventHandler(channel);
+  const eventBus = useLighterEventBus(channel);
+
+  const addHovered = useCallback(
+    (id: string) => {
+      const current = store.get(hoveredOverlayIds);
+      if (current.has(id)) {
+        return;
+      }
+
+      const next = new Set(current);
+      next.add(id);
+
+      store.set(hoveredOverlayIds, next);
+    },
+    [store]
+  );
+
+  const removeHovered = useCallback(
+    (id: string) => {
+      const current = store.get(hoveredOverlayIds);
+      if (!current.has(id)) {
+        return;
+      }
+
+      const next = new Set(current);
+      next.delete(id);
+
+      store.set(hoveredOverlayIds, next);
+    },
+    [store]
   );
 
   useEventHandler(
     "lighter:overlay-hover",
-    useCallback(
-      (payload) => {
-        const current = store.get(hoveredOverlayIds);
-        if (current.has(payload.id)) {
-          return;
-        }
-
-        const next = new Set(current);
-        next.add(payload.id);
-
-        store.set(hoveredOverlayIds, next);
-      },
-      [store]
-    )
+    useCallback((payload) => addHovered(payload.id), [addHovered])
   );
 
   useEventHandler(
     "lighter:overlay-unhover",
-    useCallback(
-      (payload) => {
-        const current = store.get(hoveredOverlayIds);
-        if (!current.has(payload.id)) {
-          return;
-        }
-
-        const next = new Set(current);
-        next.delete(payload.id);
-
-        store.set(hoveredOverlayIds, next);
-      },
-      [store]
-    )
+    useCallback((payload) => removeHovered(payload.id), [removeHovered])
   );
 
   useEventHandler(
@@ -91,6 +100,47 @@ export function useLinkedOverlayState(): void {
 
       store.set(hoveredOverlayIds, new Set<string>());
     }, [store])
+  );
+
+  // Sidebar-row hover propagates to both the canvas (via `do-overlay-hover`,
+  // so the overlay visually reacts) and the cross-decoration atom (so the
+  // matching timeline track row lights up via `linkHovered`). We can't route
+  // this through `lighter:overlay-hover` — that path is observed by the
+  // tooltip handler, which would pop a stale-positioned tooltip on every
+  // sidebar mouseover.
+  useAnnotationEventHandler(
+    "annotation:sidebarLabelHover",
+    useCallback(
+      (payload) => {
+        if (!scene) {
+          return;
+        }
+
+        eventBus.dispatch("lighter:do-overlay-hover", {
+          id: payload.id,
+          tooltip: payload.tooltip ?? false,
+        });
+
+        addHovered(payload.id);
+      },
+      [scene, eventBus, addHovered]
+    )
+  );
+
+  useAnnotationEventHandler(
+    "annotation:sidebarLabelUnhover",
+    useCallback(
+      (payload) => {
+        if (!scene) {
+          return;
+        }
+
+        eventBus.dispatch("lighter:do-overlay-unhover", { id: payload.id });
+
+        removeHovered(payload.id);
+      },
+      [scene, eventBus, removeHovered]
+    )
   );
 
   useEventHandler(
@@ -143,6 +193,36 @@ export function useLinkedOverlayState(): void {
         store.set(selectedOverlayIds, new Set<string>());
       },
       [store]
+    )
+  );
+
+  // Restore selection when a previously-selected overlay re-enters the
+  // scene
+  useEventHandler(
+    "lighter:overlay-added",
+    useCallback(
+      (payload) => {
+        if (!scene) {
+          return;
+        }
+
+        if (!store.get(selectedOverlayIds).has(payload.id)) {
+          return;
+        }
+
+        const editingValue = store.get(editing);
+        if (!editingValue || typeof editingValue === "string") {
+          return;
+        }
+
+        const editingLabel = store.get(editingValue);
+        if (editingLabel?.overlay?.id !== payload.id) {
+          return;
+        }
+
+        scene.selectOverlay(payload.id);
+      },
+      [scene, store]
     )
   );
 }

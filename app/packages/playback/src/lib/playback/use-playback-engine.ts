@@ -26,6 +26,37 @@ const clamp = (v: number, lo: number, hi: number) =>
   Math.min(hi, Math.max(lo, v));
 
 /**
+ * Snap a continuous playhead time onto a frame-boundary multiple of
+ * `step`, then advance or retreat exactly one displayed frame. Used by
+ * stepForward / stepBack so the frame stepper always lands on a
+ * boundary regardless of where in a frame's time range the playhead
+ * sits — naïvely adding `±step` to a mid-frame playhead would never
+ * align (every press just shifts the offset along).
+ *
+ * "Displayed frame" K is the half-open range `[K*step, (K+1)*step)`.
+ * `forward` returns the *next* frame's start, `back` returns the
+ * *previous* frame's start — both relative to the currently displayed
+ * frame, never to mid-frame fractions.
+ *
+ * The `eps` tolerance absorbs floating-point error so a playhead set
+ * to exactly `K * step` doesn't get misread as `K * step - epsilon`.
+ */
+function frameBoundaryStep(
+  time: number,
+  step: number,
+  direction: "forward" | "back"
+): number {
+  if (!(step > 0)) {
+    return direction === "forward" ? time + step : time - step;
+  }
+  const eps = step * 1e-6;
+  const currentFrameK = Math.floor((time + eps) / step);
+  const targetK =
+    direction === "forward" ? currentFrameK + 1 : currentFrameK - 1;
+  return targetK * step;
+}
+
+/**
  * Cap on per-tick `dt` (sec) in the engine's wallclock-driven advance.
  * When the main thread is blocked (memory pressure, GC pause, throttled
  * tab) RAF callbacks pile up and the next `timestamp - lastTimestamp`
@@ -331,7 +362,11 @@ export function usePlaybackEngine({
       },
       stepBack: () => {
         const next = clamp(
-          store.get(playheadAtom) - store.get(stepIntervalAtom),
+          frameBoundaryStep(
+            store.get(playheadAtom),
+            store.get(stepIntervalAtom),
+            "back"
+          ),
           0,
           store.get(durationAtom)
         );
@@ -341,7 +376,11 @@ export function usePlaybackEngine({
       },
       stepForward: () => {
         const next = clamp(
-          store.get(playheadAtom) + store.get(stepIntervalAtom),
+          frameBoundaryStep(
+            store.get(playheadAtom),
+            store.get(stepIntervalAtom),
+            "forward"
+          ),
           0,
           store.get(durationAtom)
         );
