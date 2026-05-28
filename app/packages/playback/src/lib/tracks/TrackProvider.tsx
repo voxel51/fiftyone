@@ -3,7 +3,6 @@ import React, {
   useCallback,
   useContext,
   useMemo,
-  useRef,
   useState,
 } from "react";
 
@@ -90,10 +89,9 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
   initialPinnedIds = [],
   children,
 }) => {
-  // Tracks are mount-time config — no setter exposed. Capture in a ref so
-  // a parent passing a fresh `initialTracks` array on every render doesn't
-  // bust the context's memoization.
-  const tracksRef = useRef(initialTracks);
+  // Tracks are reactive — the caller is responsible for passing a stable
+  // reference (e.g. via useMemo) so the context value only updates when
+  // the track list genuinely changes. No internal state needed.
   const [pinnedIds, setPinnedSet] = useState<Set<string>>(
     () => new Set(initialPinnedIds)
   );
@@ -121,13 +119,12 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
 
   const value = useMemo<TrackContextValue>(
     () => ({
-      tracks: tracksRef.current,
+      tracks: initialTracks,
       pinnedIds,
       togglePin,
       setPinned,
     }),
-    // togglePin / setPinned are useCallback([]) — referentially stable.
-    [pinnedIds]
+    [initialTracks, pinnedIds, togglePin, setPinned]
   );
 
   return (

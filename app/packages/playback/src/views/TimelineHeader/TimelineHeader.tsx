@@ -18,6 +18,14 @@ export interface TimelineHeaderProps {
    */
   onToggle?: () => void;
   /**
+   * Overlay rendered on top of the ruler row (position:relative wrapper).
+   * Used by TemporalTagRangeOverlay to capture pointer events for range
+   * selection — sits only over the ruler, not the controls row above.
+   */
+  rulerOverlay?: ReactNode;
+  /** Injected into the controls row — use for feature-specific action buttons. */
+  extraActions?: ReactNode;
+  /**
    * Content rendered below the ruler, still inside the always-visible
    * header region. Used by `TimelineWithTracks` to keep pinned tracks
    * on-screen even when the drawer body is collapsed.
@@ -35,12 +43,18 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
   labelWidth,
   zoomRef,
   onToggle,
+  rulerOverlay,
+  extraActions,
   children,
 }) => {
   return (
     <div className={styles.root} data-testid="timeline-header-root">
-      <TimelineControls onToggle={onToggle} />
-      <TimelineRuler labelWidth={labelWidth} zoomRef={zoomRef} />
+      <TimelineControls onToggle={onToggle} extraActions={extraActions} />
+      {/* position:relative so rulerOverlay can anchor to just this row */}
+      <div className={styles.rulerRow}>
+        <TimelineRuler labelWidth={labelWidth} zoomRef={zoomRef} />
+        {rulerOverlay}
+      </div>
       {children ? <div className={styles.belowRuler}>{children}</div> : null}
     </div>
   );

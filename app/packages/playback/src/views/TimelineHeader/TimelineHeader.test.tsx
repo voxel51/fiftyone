@@ -80,6 +80,9 @@ describe("TimelineHeader", () => {
     const children = Array.from(root.children);
     expect(children).toHaveLength(2);
     expect(children[0].querySelector('[aria-label="Play"]')).not.toBeNull();
-    expect(children[1]).toBe(screen.getByTestId("timeline-ruler"));
+    // Ruler is now wrapped in a position:relative rulerRow div.
+    expect(
+      children[1].querySelector('[data-testid="timeline-ruler"]')
+    ).not.toBeNull();
   });
 });

@@ -4,8 +4,10 @@ import React, { useMemo, useRef, useState } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import {
   TIMELINE_DEFAULT_DRAWER_SIZE,
+  TIMELINE_DRAWER_HANDLE_SIZE,
   TIMELINE_DRAWER_MAX_SIZE,
   TIMELINE_LABEL_WIDTH,
+  TIMELINE_TRACK_HEIGHT,
 } from "../../lib/constants";
 import {
   useTrackPinning,
@@ -32,6 +34,10 @@ export interface TimelineWithTracksProps {
    */
   maxSize?: number;
   className?: string;
+  /** Overlay rendered on top of the ruler row in each TimelineHeader. */
+  rulerOverlay?: React.ReactNode;
+  /** Injected into the controls row of each TimelineHeader. */
+  extraActions?: React.ReactNode;
 }
 
 /**
@@ -51,12 +57,14 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   defaultSize = TIMELINE_DEFAULT_DRAWER_SIZE,
   maxSize = TIMELINE_DRAWER_MAX_SIZE,
   className,
+  rulerOverlay,
+  extraActions,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const tracks = useTracks();
   const { pinnedIds, togglePin } = useTrackPinning();
   const { seek } = usePlayback();
-  const [drawerOpen, setDrawerOpen] = useState(true);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // No tracks → no label column. The ruler/playhead/overlays span the
   // full width so the timeline doesn't look oddly off-center with a
@@ -73,25 +81,36 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
     return { pinned: p, unpinned: u };
   }, [tracks, pinnedIds]);
 
-  // pinnedSectionRef is attached to whichever DOM node currently holds
-  // the pinned tracks (header when closed, body when open) so the height
-  // measurement stays accurate across both states.
+  // pinnedSectionRef is attached to whichever DOM node currently holds the
+  // pinned tracks so playhead/loop overlays can anchor to the visible rows.
   const { ref: pinnedSectionRef, height: pinnedHeight } = useElementSize();
   const { ref: unpinnedSectionRef, height: unpinnedHeight } = useElementSize();
+  // headerMeasureRef measures the real chrome height (controls + ruler) so
+  // the Drawer's total-height calculations stay accurate if the chrome ever
+  // changes size (e.g. extra controls added).
+  const { ref: headerMeasureRef, height: headerMeasuredHeight } =
+    useElementSize();
 
-  // When open, minSize = pinned section height so the user can't drag
-  // below the pinned rows. Total content caps the open size so the drawer
-  // doesn't have dead space.
-  const minDrawerSize = pinnedHeight;
-  const totalContent = pinnedHeight + unpinnedHeight;
+  // Deterministic size: derived from track count × fixed row height so the
+  // drawer opens at the right size the very first time — no async-measurement
+  // race conditions. Falls back to the measured values once they arrive.
+  const CHROME =
+    headerMeasuredHeight > 0
+      ? headerMeasuredHeight + TIMELINE_DRAWER_HANDLE_SIZE
+      : 0;
+  const trackBodyHeight =
+    pinnedHeight + unpinnedHeight > 0
+      ? pinnedHeight + unpinnedHeight
+      : tracks.length * TIMELINE_TRACK_HEIGHT;
+  const totalDrawerHeight = CHROME + trackBodyHeight;
+
+  const minDrawerSize = 0;
   const effectiveMaxSize =
-    totalContent > 0
-      ? Math.max(minDrawerSize, Math.min(totalContent, maxSize))
-      : maxSize;
-  const effectiveDefaultSize = Math.max(
-    minDrawerSize,
-    Math.min(defaultSize, effectiveMaxSize)
-  );
+    totalDrawerHeight > 0 ? Math.min(totalDrawerHeight, maxSize) : maxSize;
+  const effectiveDefaultSize =
+    totalDrawerHeight > 0
+      ? Math.min(defaultSize, effectiveMaxSize)
+      : defaultSize;
 
   const renderPinnedTrack = (track: Track) => (
     <TimelineTrack
@@ -118,7 +137,12 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
         ref={containerRef}
         className={clsx(styles.root, styles.noTracks, className)}
       >
-        <TimelineHeader labelWidth={labelWidth} zoomRef={containerRef} />
+        <TimelineHeader
+          labelWidth={labelWidth}
+          zoomRef={containerRef}
+          rulerOverlay={rulerOverlay}
+          extraActions={extraActions}
+        />
       </div>
     );
   }
@@ -134,29 +158,36 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
         maxSize={effectiveMaxSize}
         mode="push"
         header={({ toggle }) => (
-          <TimelineHeader
-            labelWidth={labelWidth}
-            zoomRef={containerRef}
-            onToggle={toggle}
-          >
-            {/* Pinned tracks live here when the drawer is closed so they
+          <div ref={headerMeasureRef}>
+            <TimelineHeader
+              labelWidth={labelWidth}
+              zoomRef={containerRef}
+              onToggle={toggle}
+              rulerOverlay={rulerOverlay}
+              extraActions={extraActions}
+            >
+              {/* Pinned tracks live here when the drawer is closed so they
                 stay on-screen. The host div is position:relative so the
                 PlayheadLine and LoopOverlays anchor to it and cover the
                 visible tracks. */}
-            {!drawerOpen && pinned.length > 0 && (
-              <div ref={pinnedSectionRef} className={styles.pinnedOverlayHost}>
-                {pinned.map(renderPinnedTrack)}
-                <LoopOverlays labelWidth={labelWidth} />
-                <PlayheadLine labelWidth={labelWidth} />
-              </div>
-            )}
-          </TimelineHeader>
+              {!drawerOpen && pinned.length > 0 && (
+                <div
+                  ref={pinnedSectionRef}
+                  className={styles.pinnedOverlayHost}
+                >
+                  {pinned.map(renderPinnedTrack)}
+                  <LoopOverlays labelWidth={labelWidth} />
+                  <PlayheadLine labelWidth={labelWidth} />
+                </div>
+              )}
+            </TimelineHeader>
+          </div>
         )}
       >
         <div className={styles.tracksOuter}>
           <div className={styles.tracksArea}>
             {/* When the drawer is open, pinned tracks move into the body
-                so they scroll together with the unpinned section below. */}
+              so they scroll together with the unpinned section below. */}
             <div
               ref={drawerOpen ? pinnedSectionRef : undefined}
               className={styles.pinnedTracks}
@@ -182,8 +213,8 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
           </div>
 
           {/* Overlays sit on the non-scrolling outer wrapper so they
-              anchor to the visible height and don't scroll with the
-              tracks. */}
+            anchor to the visible height and don't scroll with the
+            tracks. */}
           <LoopOverlays labelWidth={labelWidth} />
           <PlayheadLine labelWidth={labelWidth} />
         </div>

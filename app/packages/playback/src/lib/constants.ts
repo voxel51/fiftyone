@@ -14,6 +14,10 @@ export const SEEK_BAR_DEBOUNCE = 10;
 
 /** Width of the label column shared between ruler and tracks (px). */
 export const TIMELINE_LABEL_WIDTH = 140;
+/** Default track row height in px — matches TimelineTrack's `height` prop default. */
+export const TIMELINE_TRACK_HEIGHT = 28;
+/** Height of the Drawer handle in px — matches Drawer.module.css. */
+export const TIMELINE_DRAWER_HANDLE_SIZE = 4;
 /** Initial open size of the timeline drawer in px. Capped by content height. */
 export const TIMELINE_DEFAULT_DRAWER_SIZE = 220;
 /** Hard ceiling on the timeline drawer height in px (independent of content). */

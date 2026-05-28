@@ -20,9 +20,13 @@ export interface TimelineControlsProps {
    * acts as a "show / hide tracks" affordance.
    */
   onToggle?: () => void;
+  extraActions?: React.ReactNode;
 }
 
-const TimelineControls: React.FC<TimelineControlsProps> = ({ onToggle }) => {
+const TimelineControls: React.FC<TimelineControlsProps> = ({
+  onToggle,
+  extraActions,
+}) => {
   const isPlaying = useIsPlaying();
   const { play, pause, stepBack, stepForward } = usePlayback();
 
@@ -109,6 +113,12 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({ onToggle }) => {
       />
       <PlayheadTime />
       <LoopBounds />
+      {extraActions ? <><span
+        className={styles.divider}
+        data-testid="timeline-controls-divider"
+        aria-hidden
+      /> {extraActions}</>: null}
+      
     </div>
   );
 };
