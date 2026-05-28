@@ -4,6 +4,7 @@ import {
   useRegisterAnnotationEventHandlers,
   useRegisterAnnotationKeybindings,
   useRegisterRendererEventHandlers,
+  useRegisterVideoAnnotationEventHandlers,
 } from "@fiftyone/annotation";
 import {
   KnownCommands,
@@ -90,6 +91,7 @@ const SpacesContainer = styled.div`
 const AnnotationHandlerRegistration = () => {
   useRegisterAnnotationCommandHandlers();
   useRegisterAnnotationEventHandlers();
+  useRegisterVideoAnnotationEventHandlers();
   useRegisterAnnotationKeybindings();
   useRegisterRendererEventHandlers();
   useAnnotationTracking();
