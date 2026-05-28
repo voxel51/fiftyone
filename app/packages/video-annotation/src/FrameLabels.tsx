@@ -35,6 +35,11 @@ import { buildPerInstanceTracks, type PerInstanceLabel } from "./frameTracks";
 import { LABELS_STREAM_ID } from "./ids";
 import { useLinkedTrackDecorator } from "./linkedTracks";
 import {
+  applyTemporalDetectionEdits,
+  useStageTemporalDetectionSupport,
+  useTemporalDetectionPendingEdits,
+} from "./pendingTemporalDetectionEdits";
+import {
   buildTemporalDetectionTracks,
   type TemporalDetectionEventData,
   type TemporalDetectionLabelLike,
@@ -205,6 +210,13 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   // build deterministic in the deps (stream identity changes when the
   // sample changes, which is the trigger we care about).
   const [frameTracks, setFrameTracks] = useState<Track[]>([]);
+  // Tracked separately from `frameTracks` because an empty list after
+  // warmup (clip has no tracked detections) is a legitimately resolved
+  // state. We need this signal to drive the one-shot `initialPinnedIds`
+  // bootstrap — otherwise a sync-resolved TD list would trip the
+  // empty→ready key flip before frame tracks land, and frame tracks
+  // would arrive unpinned.
+  const [frameTracksResolved, setFrameTracksResolved] = useState(false);
 
   const resolveColor = useCallback(
     (label: PerInstanceLabel) =>
@@ -227,6 +239,7 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   useEffect(() => {
     if (!stream) {
       setFrameTracks([]);
+      setFrameTracksResolved(false);
       return;
     }
 
@@ -238,12 +251,16 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
       }
 
       setFrameTracks(buildPerInstanceTracks({ stream, resolveColor }));
+      setFrameTracksResolved(true);
     });
 
     return () => {
       cancelled = true;
     };
   }, [stream, resolveColor, editVersion]);
+
+  const pendingTemporalDetectionEdits = useTemporalDetectionPendingEdits();
+  const stageTemporalDetectionSupport = useStageTemporalDetectionSupport();
 
   const temporalDetectionTracks = useMemo(() => {
     if (!sample?.sample) {
@@ -255,19 +272,37 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
     if (!Number.isFinite(fps) || fps <= 0) {
       return [];
     }
+
+    // Apply staged TD-support edits as overrides before building so the
+    // bar stays where the user dropped it through the server round-trip.
+    // Cleared by `useRegisterVideoAnnotationEventHandlers` on
+    // `annotation:persistenceSuccess` / `persistenceError`.
+    const baseSample = sample.sample as Record<string, unknown>;
+    const overlaidSample =
+      pendingTemporalDetectionEdits.size === 0
+        ? baseSample
+        : applyTemporalDetectionEdits(
+            baseSample,
+            pendingTemporalDetectionEdits
+          );
+
     return buildTemporalDetectionTracks({
-      sample: sample.sample as Record<string, unknown>,
+      sample: overlaidSample,
       fps,
       resolveColor: resolveTemporalDetectionColor,
     });
-  }, [sample, resolveTemporalDetectionColor]);
+  }, [sample, resolveTemporalDetectionColor, pendingTemporalDetectionEdits]);
 
   const tracks = useMemo(
     () => [...frameTracks, ...temporalDetectionTracks],
     [frameTracks, temporalDetectionTracks]
   );
   const pinned = useMemo(() => tracks.map((t) => t.id), [tracks]);
-  const ready = tracks.length > 0;
+  // Bootstrap on frame-tracks-resolved, not on `tracks.length`. TD
+  // tracks resolve synchronously from the sample; without this gate,
+  // they'd trip the empty→ready flip before frame tracks land and
+  // frame tracks would arrive unpinned.
+  const ready = frameTracksResolved;
   const linkDecorate = useLinkedTrackDecorator();
   const fps = sample?.frameRate;
   const snapStepSec =
@@ -305,17 +340,19 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
           const firstFrame = Math.max(1, Math.round(newStartSec * fps) + 1);
           const lastFrame = Math.max(firstFrame, Math.round(newEndSec * fps));
 
-          // TODO: route through the command bus for undo/redo
-          console.log("[TODO undo/redo] TemporalDetection support edit", {
-            fieldPath: tdEvent.fieldPath,
-            detectionId: tdEvent.detectionId,
-            previousSupport: tdEvent.support,
-            newSupport: [firstFrame, lastFrame],
-          });
+          // Stage the edit; the next autosave tick picks it up via
+          // `useTemporalDetectionDeltaSupplier` and the persistence event
+          // handler clears it on success/error. Undo/redo still TODO —
+          // would wrap this in a command on the annotation bus.
+          stageTemporalDetectionSupport(
+            tdEvent.fieldPath,
+            tdEvent.detectionId,
+            [firstFrame, lastFrame]
+          );
         },
       };
     },
-    [linkDecorate, fps, snapStepSec]
+    [linkDecorate, fps, snapStepSec, stageTemporalDetectionSupport]
   );
 
   return (
