@@ -22,6 +22,7 @@ from fiftyone.core.annotation.attributes import (
 )
 from fiftyone.core.annotation.nodes import Node
 from fiftyone.core.ontology import AnnotationOntology, Taxonomy, load_ontology
+from fiftyone.core.ontology_validation import validate_taxonomy
 
 
 class WhenTests(unittest.TestCase):
@@ -1157,6 +1158,107 @@ class TaxonomySDKTests(unittest.TestCase):
         self.assertTrue(ontology_exists("original"))
         self.assertTrue(ontology_exists("cloned"))
         self.assertEqual(cloned.root.name, "vehicles")
+
+
+class ValidateTaxonomyTests(unittest.TestCase):
+    def test_valid_passes(self):
+        t = Taxonomy(
+            name="vehicles",
+            root=Node(
+                name="root",
+                values=[Node(name="car"), Node(name="truck")],
+            ),
+        )
+        validate_taxonomy(t)
+
+    def test_single_node_passes(self):
+        t = Taxonomy(name="solo", root=Node(name="only_node"))
+        validate_taxonomy(t)
+
+    def test_deeply_nested_passes(self):
+        t = Taxonomy(
+            name="deep",
+            root=Node(
+                name="root",
+                values=[
+                    Node(
+                        name="vehicles",
+                        values=[
+                            Node(
+                                name="cars",
+                                values=[
+                                    Node(name="sedan"),
+                                    Node(name="coupe"),
+                                ],
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+        )
+        validate_taxonomy(t)
+
+    def test_duplicate_sibling_names_fail(self):
+        t = Taxonomy(
+            name="dup",
+            root=Node(
+                name="root",
+                values=[Node(name="car"), Node(name="car")],
+            ),
+        )
+        with self.assertRaises(ValueError) as ctx:
+            validate_taxonomy(t)
+        self.assertIn("duplicate node name(s)", str(ctx.exception))
+        self.assertIn("car", str(ctx.exception))
+
+    def test_duplicate_across_subtrees_fail(self):
+        t = Taxonomy(
+            name="dup_across",
+            root=Node(
+                name="root",
+                values=[
+                    Node(name="vehicles", values=[Node(name="x")]),
+                    Node(name="animals", values=[Node(name="x")]),
+                ],
+            ),
+        )
+        with self.assertRaises(ValueError) as ctx:
+            validate_taxonomy(t)
+        self.assertIn("x", str(ctx.exception))
+
+    def test_root_name_collides_with_descendant_fails(self):
+        t = Taxonomy(
+            name="root_collides",
+            root=Node(
+                name="root",
+                values=[Node(name="root")],
+            ),
+        )
+        with self.assertRaises(ValueError) as ctx:
+            validate_taxonomy(t)
+        self.assertIn("root", str(ctx.exception))
+
+    def test_cycle_detected(self):
+        a = Node(name="a")
+        b = Node(name="b", values=[a])
+        a.values = [b]
+        t = Taxonomy(name="cyclic", root=a)
+        with self.assertRaises(ValueError) as ctx:
+            validate_taxonomy(t)
+        self.assertIn("cycle detected", str(ctx.exception))
+
+    def test_save_invokes_validation(self):
+        # Auto-validate hook in Ontology.save() — invalid taxonomies
+        # raise before any DB interaction.
+        t = Taxonomy(
+            name="bad",
+            root=Node(
+                name="root",
+                values=[Node(name="dup"), Node(name="dup")],
+            ),
+        )
+        with self.assertRaises(ValueError):
+            t.save()
 
 
 if __name__ == "__main__":
