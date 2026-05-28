@@ -1858,10 +1858,6 @@ def _list_dims(samples, path, allow_missing=True):
     -  ``"frames.id"`` -> ``("", "frames")``
     -  ``"ground_truth.detections.label"`` -> ``("", "ground_truth.detections")``
 
-    Group and frame prefixes are detected via ``samples._handle_group_field``
-    and ``samples._handle_frame_field`` (the canonical helpers used
-    throughout the codebase) rather than reimplemented locally.
-
     The names let us identify the **shared** list prefix between two paths
     via :func:`_shared_list_prefix_len`; cf. ``index_field`` semantics in
     :class:`FiftyOneTorchDataset`.
