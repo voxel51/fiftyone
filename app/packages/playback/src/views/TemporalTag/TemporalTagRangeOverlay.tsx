@@ -1,6 +1,7 @@
 /* eslint-disable react/no-unknown-property */
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import {
   useViewEnd,
   useViewStart,
@@ -28,6 +29,7 @@ const TemporalTagRangeOverlay: React.FC<TemporalTagRangeOverlayProps> = ({
   labelWidth,
 }) => {
   const ctx = useTemporalTagContext();
+  const { seek } = usePlayback();
   const viewStart = useViewStart();
   const viewEnd = useViewEnd();
 
@@ -108,8 +110,9 @@ const TemporalTagRangeOverlay: React.FC<TemporalTagRangeOverlayProps> = ({
       // internally, so stale-closure checks here would misfire if the
       // phase state update from startDrag hasn't committed yet.
       ctx?.actions.updateDrag(time);
+      if (ctx?.state.phase === "selecting") seek(time);
     },
-    [ctx, pixelToTime]
+    [ctx, pixelToTime, seek]
   );
 
   const handlePointerUp = useCallback(
