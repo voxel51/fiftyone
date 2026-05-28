@@ -3,7 +3,6 @@ import type {
   AnnotationAgentLifecycle,
   AnnotationAgentLifecycleListener,
   AnnotationAgentLifecycleStatus,
-  AnnotationContext,
   InferenceResult,
   ModelMetadata,
   PropagatedDetection,
@@ -70,34 +69,33 @@ export class PropagationBrowserAgent
   private readonly listeners = new Set<AnnotationAgentLifecycleListener>();
 
   async infer(
-    context: AnnotationContext
+    context: PropagationContext
   ): Promise<InferenceResult<PropagationInferenceResult>> {
-    const propContext = context as PropagationContext;
-    if (propContext.fromFrame >= propContext.toFrame) {
+    if (context.fromFrame >= context.toFrame) {
       throw new Error(
-        `fromFrame (${propContext.fromFrame}) must be less than toFrame (${propContext.toFrame})`
+        `fromFrame (${context.fromFrame}) must be less than toFrame (${context.toFrame})`
       );
     }
 
     this.setStatus("inferring");
 
     try {
-      const [leftKeyframe, rightKeyframe] = propContext.parentKeyframes;
+      const [leftKeyframe, rightKeyframe] = context.parentKeyframes;
       const left: Bbox = leftKeyframe.bounding_box;
       const right: Bbox = rightKeyframe.bounding_box;
-      const span: number = propContext.toFrame - propContext.fromFrame;
+      const span: number = context.toFrame - context.fromFrame;
       const runId: string = generateObjectIdHex();
 
       const perFrame: PropagationInferenceResult["perFrame"] = [];
-      range(propContext.fromFrame + 1, propContext.toFrame).forEach((n) => {
-        const t: number = (n - propContext.fromFrame) / span;
+      range(context.fromFrame + 1, context.toFrame).forEach((n) => {
+        const t: number = (n - context.fromFrame) / span;
         const detection: PropagatedDetection = {
           _id: generateObjectIdHex(),
           _cls: "Detection",
           bounding_box: lerpBbox(left, right, t),
           label: leftKeyframe.label,
           index: leftKeyframe.index,
-          instance: { _cls: "Instance", _id: propContext.instanceId },
+          instance: { _cls: "Instance", _id: context.instanceId },
           keyframe: false,
           propagation: {
             method: "linear",
@@ -109,7 +107,7 @@ export class PropagationBrowserAgent
       });
 
       return {
-        labelId: propContext.instanceId,
+        labelId: context.instanceId,
         type: "sync",
         taskType: AgentTaskType.PROPAGATE,
         response: { perFrame },

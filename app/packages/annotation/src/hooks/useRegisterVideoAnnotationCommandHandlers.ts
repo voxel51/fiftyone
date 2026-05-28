@@ -10,7 +10,9 @@ import { useApplyPropagationResult } from "../agents/hooks/useApplyPropagationRe
 import { useSampleDescriptor } from "../agents/hooks/useSampleDescriptor";
 import {
   AgentTaskType,
+  type AnnotationAgent,
   type PropagationContext,
+  type PropagationInferenceResult,
 } from "../agents/types";
 import { MarkKeyframeCommand, PropagateCommand } from "../commands";
 
@@ -112,7 +114,12 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
           parentKeyframes: [leftKeyframe, rightKeyframe],
         };
 
-        const result = await descriptor.agent.infer(context);
+        // Registry stores agents under the broad `InferenceResultProxy`
+        // type; narrow to the propagation agent's specific result type so
+        // the downstream apply hook is typed end-to-end.
+        const agent =
+          descriptor.agent as AnnotationAgent<PropagationInferenceResult>;
+        const result = await agent.infer(context);
         applyPropagation(result);
         return true;
       },

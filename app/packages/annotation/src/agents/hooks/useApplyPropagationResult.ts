@@ -2,9 +2,7 @@ import { useFrameLabelsStream } from "@fiftyone/video-annotation";
 import { useCallback } from "react";
 
 import {
-  AgentTaskType,
   type InferenceResult,
-  type InferenceResultProxy,
   type PropagationInferenceResult,
 } from "../types";
 
@@ -14,7 +12,7 @@ import {
  * `stream.updateLabel`, which the auto-save pipeline picks up.
  */
 export type PropagationResultHandler = (
-  result: InferenceResult<InferenceResultProxy>
+  result: InferenceResult<PropagationInferenceResult>
 ) => void;
 
 /**
@@ -27,13 +25,11 @@ export const useApplyPropagationResult = (): PropagationResultHandler => {
   const stream = useFrameLabelsStream();
 
   return useCallback(
-    (result: InferenceResult<InferenceResultProxy>) => {
+    (result: InferenceResult<PropagationInferenceResult>) => {
       if (!stream) return;
       if (result.type !== "sync") return;
-      if (result.taskType !== AgentTaskType.PROPAGATE) return;
 
-      const propResult = result.response as PropagationInferenceResult;
-      propResult.perFrame.forEach(({ frameNumber, detection }) => {
+      result.response.perFrame.forEach(({ frameNumber, detection }) => {
         stream.updateLabel(frameNumber, detection);
       });
     },
