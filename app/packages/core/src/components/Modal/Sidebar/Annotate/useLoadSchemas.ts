@@ -1,6 +1,6 @@
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { useSetAtom } from "jotai";
-import { useCallback, useEffect } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
+import { useCallback, useEffect, useRef } from "react";
 import { useSchemaManagerModal } from "./SchemaManager/hooks";
 import {
   activeLabelSchemas,
@@ -14,6 +14,10 @@ export default function useLoadSchemas() {
   const setActivePathsOrder = useSetAtom(activePathsOrder);
   const { closeSchemaManager } = useSchemaManagerModal();
   const get = useOperatorExecutor("get_label_schemas");
+
+  const schemasData = useAtomValue(labelSchemasData);
+  const schemasDataRef = useRef(schemasData);
+  schemasDataRef.current = schemasData;
 
   useEffect(() => {
     if (!get.result) {
@@ -29,6 +33,11 @@ export default function useLoadSchemas() {
   // Note: UI state (currentField, selection, JSON editor) is reset on
   // SchemaManager Modal unmount via useSchemaManagerCleanup hook
   return useCallback(() => {
+    // Skip the reset-then-refetch when the atom is already populated by
+    // `useEnsureSchemasLoaded` — the brief null window flakes click handlers
+    // that read `fieldsOfType(...)` (e.g. classification activation).
+    if (schemasDataRef.current !== null) return;
+
     // Reset schema data to trigger loading state
     setData(null);
     setActive(null);

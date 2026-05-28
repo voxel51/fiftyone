@@ -15,37 +15,63 @@
 
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { activeLabelSchemas, labelSchemasData } from "./state";
+import {
+  operatorAsPromise,
+  type ListSchemasRequest,
+  type ListSchemasResponse,
+  type Operator,
+} from "./useSchemaManager";
 
 export const useEnsureSchemasLoaded = (enabled: boolean): void => {
   const schemasData = useAtomValue(labelSchemasData);
   const setData = useSetAtom(labelSchemasData);
   const setActive = useSetAtom(activeLabelSchemas);
-  const get = useOperatorExecutor("get_label_schemas");
+  const get = useOperatorExecutor("get_label_schemas") as unknown as Operator<
+    ListSchemasRequest,
+    ListSchemasResponse
+  > & { isExecuting: boolean; hasExecuted: boolean };
 
-  // Trigger a fetch only when:
-  //   - the caller is enabled (e.g. user can manage schemas),
-  //   - the atom is null (nobody else has loaded it),
-  //   - the executor isn't already in-flight or done for this mount.
-  //
-  // We gate on `isExecuting || hasExecuted` (stable booleans) rather than
-  // `get.result` because `result` is null during the in-flight window and
-  // also because `useOperatorExecutor` returns a new object reference each
-  // render — making `get` an unsuitable dependency. Excluding `get` from the
-  // deps is intentional.
+  // Mirror the latest atom value into a ref so the in-flight request's
+  // resolve callback can re-check synchronously: if another loader (e.g.
+  // the modal's `useLoadSchemas`) populated the atoms while we were
+  // waiting, we don't want to clobber their data with our stale fetch.
+  const schemasDataRef = useRef(schemasData);
+  schemasDataRef.current = schemasData;
+
+  // Gate on `isExecuting || hasExecuted` (stable booleans) rather than
+  // `get.result` — `useOperatorExecutor` returns a new object reference
+  // each render, so excluding `get` from the deps is intentional.
   useEffect(() => {
-    if (!enabled) return;
-    if (schemasData !== null) return;
-    if (get.isExecuting || get.hasExecuted) return;
-    get.execute({});
+    if (
+      !enabled ||
+      schemasData !== null ||
+      get.isExecuting ||
+      get.hasExecuted
+    ) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    operatorAsPromise(get, {})
+      .then((result) => {
+        if (cancelled) return;
+        // Re-check: another loader may have populated the atoms while
+        // our request was in flight; preserve their data instead of
+        // overwriting it with ours.
+        if (schemasDataRef.current !== null) return;
+        setData(result.label_schemas);
+        setActive(result.active_label_schemas);
+      })
+      .catch(() => {
+        // `useOperatorExecutor`'s built-in error toast surfaces the
+        // failure to the user; nothing further to do here.
+      });
+
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, schemasData]);
-
-  // Mirror operator result → atoms when it lands.
-  useEffect(() => {
-    if (!get.result) return;
-    setData(get.result.label_schemas);
-    setActive(get.result.active_label_schemas);
-  }, [get.result, setData, setActive]);
 };
