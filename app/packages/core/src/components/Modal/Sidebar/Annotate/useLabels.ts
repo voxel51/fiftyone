@@ -364,17 +364,20 @@ export interface LabelsContext {
   /**
    * Remove a label from the annotation sidebar.
    *
-   * @param labelId ID of label to remove
+   * @param overlayId The label's `overlay.id` (synthetic id for video,
+   *   raw `_id` for image — same value in either case for one overlay)
    */
-  removeLabelFromSidebar: (labelId: string) => void;
+  removeLabelFromSidebar: (overlayId: string) => void;
 
   /**
    * Update the label data for the specified label ID.
    *
    * @param labelId ID of label to update
    * @param data Label data
+   * @returns `true` if a label with the given ID was found and updated,
+   *   `false` if no such label exists in the sidebar.
    */
-  updateLabelData: (labelId: string, data: AnnotationLabelData) => void;
+  updateLabelData: (labelId: string, data: AnnotationLabelData) => boolean;
 }
 
 /**
@@ -402,9 +405,12 @@ export const useLabelsContext = (): LabelsContext => {
     )
   );
 
+  // Keyed on `overlay.id` to match `addLabel` / `labelMap` / `updateLabelAtom`.
   const removeLabelFromSidebar = useCallback(
-    (labelId: string) =>
-      setLabels((prev) => prev.filter((label) => label.data._id !== labelId)),
+    (overlayId: string) =>
+      setLabels((prev) =>
+        prev.filter((label) => label.overlay.id !== overlayId)
+      ),
     [setLabels]
   );
 
