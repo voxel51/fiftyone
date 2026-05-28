@@ -14,3 +14,4 @@ export { ImaVidImageStream } from "./src/ImaVidImageStream";
 export type { ImaVidImageFrame } from "./src/ImaVidImageStream";
 export { useFrameLabelsStream } from "./src/frameLabelsStream";
 export { VideoFrameLabelsStream } from "./src/VideoFrameLabelsStream";
+export type { LocalDetection } from "./src/VideoFrameLabelsStream";
