@@ -78,7 +78,7 @@ Build
 
 FiftyOne 1.16.0
 ---------------
-*Released May 26, 2026*
+*Released May 28, 2026*
 
 In-App Annotation
 
