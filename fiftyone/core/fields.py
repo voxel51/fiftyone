@@ -20,6 +20,8 @@ import pytz
 import eta.core.utils as etau
 
 import fiftyone.core.frame_utils as fofu
+import fiftyone.core.odm as foo
+import fiftyone.core.utils as fou
 
 
 def validate_constraints(
@@ -72,18 +74,16 @@ def validate_constraints(
     if embedded_doc_type is not None:
         has_contraints = True
 
-        from fiftyone.core.odm.embedded_document import BaseEmbeddedDocument
-
         if etau.is_container(embedded_doc_type):
             embedded_doc_type = tuple(embedded_doc_type)
         else:
             embedded_doc_type = (embedded_doc_type,)
 
         for _embedded_doc_type in embedded_doc_type:
-            if not issubclass(_embedded_doc_type, BaseEmbeddedDocument):
+            if not issubclass(_embedded_doc_type, foo.BaseEmbeddedDocument):
                 raise ValueError(
                     "Embedded doc type %s is not a subclass of %s"
-                    % (_embedded_doc_type, BaseEmbeddedDocument)
+                    % (_embedded_doc_type, foo.BaseEmbeddedDocument)
                 )
 
     if subfield is not None:
@@ -165,8 +165,6 @@ def matches_constraints(
             return False
 
     if embedded_doc_type is not None:
-        from fiftyone.core.odm.embedded_document import BaseEmbeddedDocument
-
         if etau.is_container(embedded_doc_type):
             embedded_doc_type = tuple(embedded_doc_type)
 
@@ -1027,10 +1025,8 @@ class ColorField(StringField):
     """
 
     def validate(self, value):
-        from fiftyone.core.utils import validate_color
-
         try:
-            validate_color(value)
+            fou.validate_color(value)
         except ValueError as e:
             self.error(str(e))
 
@@ -1462,9 +1458,7 @@ class VectorField(mongoengine.fields.BinaryField, Field):
         if value is None:
             return None
 
-        from fiftyone.core.utils import serialize_numpy_array
-
-        bytes = serialize_numpy_array(value)
+        bytes = fou.serialize_numpy_array(value)
         return super().to_mongo(bytes)
 
     def to_python(self, value):
@@ -1474,9 +1468,7 @@ class VectorField(mongoengine.fields.BinaryField, Field):
         if isinstance(value, (list, tuple)):
             return np.array(value)
 
-        from fiftyone.core.utils import deserialize_numpy_array
-
-        return deserialize_numpy_array(value)
+        return fou.deserialize_numpy_array(value)
 
     def validate(self, value):
         if isinstance(value, np.ndarray):
@@ -1522,13 +1514,9 @@ class ArrayField(mongoengine.fields.BinaryField, Field):
             return None
 
         if isinstance(value, str):
-            from fiftyone.core.utils import deserialize_numpy_array
+            value = fou.deserialize_numpy_array(value, ascii=True)
 
-            value = deserialize_numpy_array(value, ascii=True)
-
-        from fiftyone.core.utils import serialize_numpy_array
-
-        bytes = serialize_numpy_array(value)
+        bytes = fou.serialize_numpy_array(value)
         return super().to_mongo(bytes)
 
     def to_python(self, value):
@@ -1536,9 +1524,7 @@ class ArrayField(mongoengine.fields.BinaryField, Field):
             return value
 
         is_str = isinstance(value, str)
-        from fiftyone.core.utils import deserialize_numpy_array
-
-        return deserialize_numpy_array(value, ascii=is_str)
+        return fou.deserialize_numpy_array(value, ascii=is_str)
 
     def validate(self, value):
         if not isinstance(value, (np.ndarray, Binary)):
@@ -2014,9 +2000,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         overwrite=False,
     ):
         if validate:
-            from fiftyone.core.odm.utils import validate_fields_match
-
-            validate_fields_match(path, field, self)
+            foo.validate_fields_match(path, field, self)
 
         if not isinstance(field, EmbeddedDocumentField):
             return None, None
@@ -2031,9 +2015,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
 
             if _existing_field is not None:
                 if validate:
-                    from fiftyone.core.odm.utils import validate_fields_match
-
-                    validate_fields_match(_path, _field, _existing_field)
+                    foo.validate_fields_match(_path, _field, _existing_field)
 
                 if overwrite:
                     new_metadata[_path] = get_field_metadata(_field)
@@ -2069,9 +2051,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         return new_schema, new_metadata
 
     def _declare_field(self, dataset, path, field_or_doc):
-        from fiftyone.core.odm.dataset import SampleFieldDocument
-
-        if isinstance(field_or_doc, SampleFieldDocument):
+        if isinstance(field_or_doc, foo.SampleFieldDocument):
             field = field_or_doc.to_field()
         else:
             field = field_or_doc

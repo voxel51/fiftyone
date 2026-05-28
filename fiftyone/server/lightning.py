@@ -6,8 +6,6 @@ FiftyOne Server lightning queries
 |
 """
 
-from __future__ import annotations
-
 from dataclasses import asdict, dataclass
 from datetime import date, datetime
 import math
@@ -20,7 +18,6 @@ from motor.motor_asyncio import AsyncIOMotorCollection
 import strawberry as gql
 
 import fiftyone as fo
-import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 from fiftyone.core.utils import run_sync_task
 
@@ -182,7 +179,7 @@ class DistinctQuery:
 
 
 def _resolve_lightning_path_queries(
-    path: LightningPathInput, dataset: fod.Dataset, info: Info
+    path: LightningPathInput, dataset: fo.Dataset, info: Info
 ) -> t.Tuple[
     AsyncIOMotorCollection,
     t.Union[DistinctQuery, t.List[t.Dict]],
@@ -340,7 +337,7 @@ def _resolve_lightning_path_queries(
 
 
 async def _do_async_pooled_queries(
-    dataset: fod.Dataset,
+    dataset: fo.Dataset,
     queries: t.List[
         t.Tuple[
             AsyncIOMotorCollection,
@@ -365,7 +362,7 @@ async def _do_async_pooled_queries(
 
 
 async def _do_async_query(
-    dataset: fod.Dataset,
+    dataset: fo.Dataset,
     collection: AsyncIOMotorCollection,
     query: t.Union[DistinctQuery, t.List[t.Dict]],
     match_filter: t.Optional[t.Mapping[str, str]],
@@ -383,7 +380,7 @@ async def _do_async_query(
 
 
 async def _do_distinct_queries(
-    dataset: fod.Dataset,
+    dataset: fo.Dataset,
     collection: AsyncIOMotorCollection,
     query: t.Union[DistinctQuery, t.List[t.Dict]],
     match_filter: t.Optional[t.Mapping[str, str]],
@@ -442,7 +439,7 @@ async def _do_list_distinct_query(
 
 
 async def _do_distinct_lazy_pipeline(
-    dataset: fod.Dataset,
+    dataset: fo.Dataset,
     collection: AsyncIOMotorCollection,
     query: DistinctQuery,
     match_filter: t.Optional[t.Mapping[str, str]],
@@ -465,7 +462,7 @@ async def _do_distinct_lazy_pipeline(
 
 
 async def _do_distinct_grouped_pipeline(
-    dataset: fod.Dataset,
+    dataset: fo.Dataset,
     collection: AsyncIOMotorCollection,
     query: DistinctQuery,
     match_filter: t.Optional[t.Mapping[str, str]],
@@ -505,7 +502,7 @@ def _add_search(query: DistinctQuery):
 
 def _first(
     path: str,
-    dataset: fod.Dataset,
+    dataset: fo.Dataset,
     sort: t.Union[t.Literal[-1], t.Literal[1]],
     is_frame_field: bool,
     limit=None,
@@ -572,10 +569,10 @@ def _first(
 
 def _filter_result(dataset, path, sort):
     field = dataset.get_field(path)
-    while isinstance(field, fof.ListField):
+    while isinstance(field, fo.ListField):
         field = field.field
 
-    if isinstance(field, (fof.DateField, fof.DateTimeField)):
+    if isinstance(field, (fo.DateField, fo.DateTimeField)):
         return [{"$match": {"_id": {"$ne": None}}}]
 
     return _handle_nonfinites(sort)
@@ -597,7 +594,7 @@ def _handle_nonfinites(sort: t.Union[t.Literal[-1], t.Literal[1]]):
 
 async def _handle_pipeline(
     pipeline,
-    dataset: fod.Dataset,
+    dataset: fo.Dataset,
     collection: AsyncIOMotorCollection,
     query: DistinctQuery,
     is_frames: bool,
@@ -640,7 +637,7 @@ async def _handle_pipeline(
     return list(sorted(values))
 
 
-def _has_list(dataset: fod.Dataset, path: str, is_frame_field: bool):
+def _has_list(dataset: fo.Dataset, path: str, is_frame_field: bool):
     keys = path.split(".")
     path = None
 
@@ -670,7 +667,7 @@ def _match(path: str, value: t.Union[str, float, int, bool], limit=None):
     ]
 
 
-def _match_arrays(dataset: fod.Dataset, path: str, is_frame_field: bool):
+def _match_arrays(dataset: fo.Dataset, path: str, is_frame_field: bool):
     keys = path.split(".")
     path = None
 
@@ -688,7 +685,7 @@ def _match_arrays(dataset: fod.Dataset, path: str, is_frame_field: bool):
     return []
 
 
-def _is_list_of_lists(dataset: fod.Dataset, path: str, is_frame_field: bool):
+def _is_list_of_lists(dataset: fo.Dataset, path: str, is_frame_field: bool):
     keys = path.split(".")
     path = None
 
@@ -718,7 +715,7 @@ def _parse_result(data):
     return None
 
 
-def _unwind(dataset: fod.Dataset, path: str, is_frame_field: bool):
+def _unwind(dataset: fo.Dataset, path: str, is_frame_field: bool):
     keys = path.split(".")
     path = None
     pipeline = []

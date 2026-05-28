@@ -13,6 +13,7 @@ from bson import DBRef, ObjectId
 from mongoengine.errors import ValidationError
 
 import fiftyone.core.utils as fou
+from fiftyone.core.camera import CameraIntrinsics, StaticTransform
 from fiftyone.core.fields import (
     BooleanField,
     ClassesField,
@@ -939,8 +940,8 @@ class DatasetDocument(Document):
     default_mask_targets = MaskTargetsField()
     skeletons = DictField(EmbeddedDocumentField(KeypointSkeleton))
     default_skeleton = EmbeddedDocumentField(KeypointSkeleton)
-    camera_intrinsics = DictField(EmbeddedDocumentField("CameraIntrinsics"))
-    static_transforms = DictField(EmbeddedDocumentField("StaticTransform"))
+    camera_intrinsics = DictField(EmbeddedDocumentField(CameraIntrinsics))
+    static_transforms = DictField(EmbeddedDocumentField(StaticTransform))
     sample_fields = EmbeddedDocumentListField(SampleFieldDocument)
     frame_fields = EmbeddedDocumentListField(SampleFieldDocument)
     saved_views = ListField(ReferenceField(SavedViewDocument))

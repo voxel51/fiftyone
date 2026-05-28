@@ -17,7 +17,6 @@ import traceback
 from typing import Optional
 
 import fiftyone as fo
-import fiftyone.core.config as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
@@ -43,10 +42,6 @@ logger = logging.getLogger(__name__)
 
 # This is for reduced code conflicts with enterprise logging
 logging_context = contextlib.nullcontext
-
-
-def _get_operator_timeout():
-    return foc.load_config().operator_timeout
 
 
 class ExecutionRunState(object):
@@ -237,7 +232,7 @@ def _parse_ctx(ctx=None, **kwargs):
     return dict(dataset_name=dataset_name, view=view, **ctx)
 
 
-@coroutine_timeout(seconds=_get_operator_timeout())
+@coroutine_timeout(seconds=fo.config.operator_timeout)
 async def execute_or_delegate_operator(
     operator_uri, request_params, exhaust=False
 ):

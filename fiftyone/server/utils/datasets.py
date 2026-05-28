@@ -6,8 +6,6 @@ Dataset and sample helper utilities for FiftyOne server routes.
 |
 """
 
-from __future__ import annotations
-
 from typing import Any, Union
 import logging
 from starlette.exceptions import HTTPException
