@@ -1,14 +1,18 @@
-import React from "react";
+import { useSetTileSelection } from "@fiftyone/tiling";
+import React, { useCallback, useEffect, useState } from "react";
 
-import type { ImageAnnotationsVisualization } from "../../../decoders";
-import { ImageAnnotationsOverlay } from "../../../visualization/panels/ImageAnnotationsOverlay";
-import { useMcapTopicStream } from "./use-mcap-topic-stream";
+import {
+  ImageAnnotationsOverlay,
+  type ImageAnnotationPickedPrimitive,
+} from "../../../visualization/panels/ImageAnnotationsOverlay";
+import { useInterpolatedImageAnnotations } from "./use-interpolated-image-annotations";
 
 export interface McapCameraAnnotationOverlayProps {
   readonly topic: string;
   readonly imageWidth: number;
   readonly imageHeight: number;
   readonly fit?: "contain" | "cover";
+  readonly interpolate?: boolean;
 }
 
 /**
@@ -19,8 +23,37 @@ export interface McapCameraAnnotationOverlayProps {
  */
 const McapCameraAnnotationOverlay: React.FC<
   McapCameraAnnotationOverlayProps
-> = ({ topic, imageWidth, imageHeight, fit = "contain" }) => {
-  const frame = useMcapTopicStream<ImageAnnotationsVisualization>(topic);
+> = ({
+  topic,
+  imageWidth,
+  imageHeight,
+  fit = "contain",
+  interpolate = true,
+}) => {
+  const frame = useInterpolatedImageAnnotations(topic, { interpolate });
+  const setSelection = useSetTileSelection();
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelectedKey(null);
+  }, [topic]);
+
+  const handleSelect = useCallback(
+    (picked: ImageAnnotationPickedPrimitive) => {
+      setSelectedKey(picked.key);
+      setSelection({
+        kind: "image-annotation",
+        topic,
+        primitiveKind: picked.primitive.kind,
+        primitiveIndex: picked.primitiveIndex,
+        color: picked.color,
+        label: picked.label,
+        data: picked.primitive.value,
+      });
+    },
+    [setSelection, topic]
+  );
+
   if (!frame) return null;
   return (
     <ImageAnnotationsOverlay
@@ -28,6 +61,8 @@ const McapCameraAnnotationOverlay: React.FC<
       imageWidth={imageWidth}
       imageHeight={imageHeight}
       fit={fit}
+      selectedKey={selectedKey}
+      onSelectPrimitive={handleSelect}
     />
   );
 };

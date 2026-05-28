@@ -1,5 +1,6 @@
+import clsx from "clsx";
 import type { CSSProperties } from "react";
-import { Fragment, useEffect, useRef, useState } from "react";
+import React, { Fragment, useEffect, useRef, useState } from "react";
 
 import type {
   ImageAnnotationCircle,
@@ -8,25 +9,49 @@ import type {
   ImageAnnotationsVisualization,
   RgbaColor,
 } from "../../decoders";
+import styles from "./image-annotations-overlay.module.css";
+
+export type ImageAnnotationPrimitive =
+  | { readonly kind: "circle"; readonly value: ImageAnnotationCircle }
+  | { readonly kind: "points"; readonly value: ImageAnnotationPoints }
+  | { readonly kind: "text"; readonly value: ImageAnnotationText };
+
+export interface ImageAnnotationPickedPrimitive {
+  readonly key: string;
+  readonly setIndex: number;
+  readonly primitiveIndex: number;
+  readonly primitive: ImageAnnotationPrimitive;
+  readonly color: string;
+  readonly label: string | null;
+}
 
 export interface ImageAnnotationsOverlayProps {
   readonly annotations: readonly ImageAnnotationsVisualization[];
   readonly imageWidth: number;
   readonly imageHeight: number;
   readonly fit: "contain" | "cover";
+  readonly selectedKey?: string | null;
+  readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
 }
 
 /**
  * SVG overlay that renders decoded Foxglove image-annotation primitives over
- * the image panel. Coordinates are image pixels; the SVG `viewBox` matches
- * the natural image dimensions so the same fit strategy used by the panel
- * applies to the overlay.
+ * the image panel. Coordinates are image pixels; the SVG is positioned over
+ * the image's display rect so a `preserveAspectRatio="none"` viewBox maps
+ * cleanly.
+ *
+ * LINE_LIST primitives are split into per-object groups via connected
+ * components on shared endpoints so each cuboid gets its own hover scope
+ * and interior hit target — Foxglove encodes a whole frame's cuboid edges
+ * as one big LINE_LIST.
  */
 export function ImageAnnotationsOverlay({
   annotations,
   imageWidth,
   imageHeight,
   fit,
+  selectedKey,
+  onSelectPrimitive,
 }: ImageAnnotationsOverlayProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [containerSize, setContainerSize] = useState<{
@@ -72,15 +97,12 @@ export function ImageAnnotationsOverlay({
         >
           {annotations.map((set, i) => (
             <Fragment key={i}>
-              {set.points.map((p, j) => (
-                <PointsPrimitive key={`p-${i}-${j}`} primitive={p} />
-              ))}
-              {set.circles.map((c, j) => (
-                <CirclePrimitive key={`c-${i}-${j}`} primitive={c} />
-              ))}
-              {set.texts.map((t, j) => (
-                <TextPrimitive key={`t-${i}-${j}`} primitive={t} />
-              ))}
+              <SetPrimitives
+                set={set}
+                setIndex={i}
+                selectedKey={selectedKey ?? null}
+                onSelectPrimitive={onSelectPrimitive}
+              />
             </Fragment>
           ))}
         </svg>
@@ -89,6 +111,364 @@ export function ImageAnnotationsOverlay({
   );
 }
 
+interface SetPrimitivesProps {
+  readonly set: ImageAnnotationsVisualization;
+  readonly setIndex: number;
+  readonly selectedKey: string | null;
+  readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
+}
+
+function SetPrimitives({
+  set,
+  setIndex,
+  selectedKey,
+  onSelectPrimitive,
+}: SetPrimitivesProps) {
+  return (
+    <>
+      {set.points.map((p, j) =>
+        p.type === "line-list" ? (
+          <LineListGroups
+            key={`p-${setIndex}-${j}`}
+            primitive={p}
+            primitiveIndex={j}
+            setIndex={setIndex}
+            texts={set.texts}
+            selectedKey={selectedKey}
+            onSelectPrimitive={onSelectPrimitive}
+          />
+        ) : (
+          <PolylinePrimitive
+            key={`p-${setIndex}-${j}`}
+            primitive={p}
+            primitiveIndex={j}
+            setIndex={setIndex}
+            texts={set.texts}
+            selectedKey={selectedKey}
+            onSelectPrimitive={onSelectPrimitive}
+          />
+        )
+      )}
+      {set.circles.map((c, j) => (
+        <CirclePrimitive
+          key={`c-${setIndex}-${j}`}
+          primitive={c}
+          primitiveIndex={j}
+          setIndex={setIndex}
+          texts={set.texts}
+          selectedKey={selectedKey}
+          onSelectPrimitive={onSelectPrimitive}
+        />
+      ))}
+      {set.texts.map((t, j) => (
+        <TextPrimitive
+          key={`t-${setIndex}-${j}`}
+          primitive={t}
+          primitiveIndex={j}
+          setIndex={setIndex}
+          selectedKey={selectedKey}
+          onSelectPrimitive={onSelectPrimitive}
+        />
+      ))}
+    </>
+  );
+}
+
+interface CirclePrimitiveProps {
+  readonly primitive: ImageAnnotationCircle;
+  readonly primitiveIndex: number;
+  readonly setIndex: number;
+  readonly texts: readonly ImageAnnotationText[];
+  readonly selectedKey: string | null;
+  readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
+}
+
+function CirclePrimitive({
+  primitive,
+  primitiveIndex,
+  setIndex,
+  texts,
+  selectedKey,
+  onSelectPrimitive,
+}: CirclePrimitiveProps) {
+  const [x, y] = primitive.position;
+  const radius = Math.max(0, primitive.diameter / 2);
+  const label = nearestLabel(texts, [x, y]);
+  const color = colorForLabel(label);
+  const key = `c-${setIndex}-${primitiveIndex}`;
+  const onClick = pickHandler(onSelectPrimitive, {
+    key,
+    setIndex,
+    primitiveIndex,
+    primitive: { kind: "circle", value: primitive },
+    color,
+    label,
+  });
+  const isSelected = selectedKey === key;
+  return (
+    <g
+      className={clsx(
+        styles.primitive,
+        onClick && styles.selectable,
+        isSelected && styles.selected
+      )}
+      style={primitiveStyle(color, INTERIOR_FILL)}
+      onClick={onClick}
+    >
+      <circle cx={x} cy={y} r={radius} className={styles.fillInterior} />
+      <circle
+        cx={x}
+        cy={y}
+        r={radius}
+        strokeWidth={lineWidth(primitive.thickness)}
+        vectorEffect="non-scaling-stroke"
+        fill="none"
+      />
+    </g>
+  );
+}
+
+interface PolylinePrimitiveProps {
+  readonly primitive: ImageAnnotationPoints;
+  readonly primitiveIndex: number;
+  readonly setIndex: number;
+  readonly texts: readonly ImageAnnotationText[];
+  readonly selectedKey: string | null;
+  readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
+}
+
+function PolylinePrimitive({
+  primitive,
+  primitiveIndex,
+  setIndex,
+  texts,
+  selectedKey,
+  onSelectPrimitive,
+}: PolylinePrimitiveProps) {
+  const thickness = lineWidth(primitive.thickness);
+  const centroid = pointsCentroid(primitive.points);
+  const label = centroid ? nearestLabel(texts, centroid) : null;
+  const color = colorForLabel(label);
+  const key = `p-${setIndex}-${primitiveIndex}`;
+  const onClick = pickHandler(onSelectPrimitive, {
+    key,
+    setIndex,
+    primitiveIndex,
+    primitive: { kind: "points", value: primitive },
+    color,
+    label,
+  });
+  const isSelected = selectedKey === key;
+
+  if (primitive.type === "points") {
+    return (
+      <g
+        className={clsx(
+          styles.primitive,
+          onClick && styles.selectable,
+          isSelected && styles.selected
+        )}
+        style={primitiveStyle(color, undefined)}
+        onClick={onClick}
+      >
+        {primitive.points.map(([x, y], i) => (
+          <circle
+            key={i}
+            cx={x}
+            cy={y}
+            r={thickness}
+            className={styles.primitiveDot}
+          />
+        ))}
+      </g>
+    );
+  }
+
+  const closed = primitive.type === "line-loop";
+  const pointsAttr = primitive.points.map(([x, y]) => `${x},${y}`).join(" ");
+  return (
+    <g
+      className={clsx(
+        styles.primitive,
+        onClick && styles.selectable,
+        isSelected && styles.selected
+      )}
+      style={primitiveStyle(color, closed ? INTERIOR_FILL : undefined)}
+      onClick={onClick}
+    >
+      {closed ? (
+        <polygon points={pointsAttr} className={styles.fillInterior} />
+      ) : null}
+      {closed ? (
+        <polygon
+          points={pointsAttr}
+          strokeWidth={thickness}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          vectorEffect="non-scaling-stroke"
+          fill="none"
+        />
+      ) : (
+        <polyline
+          points={pointsAttr}
+          strokeWidth={thickness}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          vectorEffect="non-scaling-stroke"
+          fill="none"
+        />
+      )}
+    </g>
+  );
+}
+
+interface LineListGroupsProps {
+  readonly primitive: ImageAnnotationPoints;
+  readonly primitiveIndex: number;
+  readonly setIndex: number;
+  readonly texts: readonly ImageAnnotationText[];
+  readonly selectedKey: string | null;
+  readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
+}
+
+function LineListGroups({
+  primitive,
+  primitiveIndex,
+  setIndex,
+  texts,
+  selectedKey,
+  onSelectPrimitive,
+}: LineListGroupsProps) {
+  const thickness = lineWidth(primitive.thickness);
+  const groups = groupLineListByLabel(primitive.points, texts);
+
+  return (
+    <>
+      {groups.map((group, gi) => {
+        const color = colorForLabel(group.label);
+        const key = `pg-${setIndex}-${primitiveIndex}-${gi}-${boundsKey(
+          group.bounds
+        )}`;
+        const onClick = pickHandler(onSelectPrimitive, {
+          key,
+          setIndex,
+          primitiveIndex,
+          primitive: {
+            kind: "points",
+            value: {
+              ...primitive,
+              points: group.segments.flatMap((s) => [s[0], s[1]]),
+            },
+          },
+          color,
+          label: group.label,
+        });
+        const isSelected = selectedKey === key;
+        const b = group.bounds;
+        return (
+          <g
+            key={gi}
+            className={clsx(
+              styles.primitive,
+              onClick && styles.selectable,
+              isSelected && styles.selected
+            )}
+            style={primitiveStyle(color, INTERIOR_FILL)}
+            onClick={onClick}
+          >
+            <rect
+              x={b.minX}
+              y={b.minY}
+              width={b.maxX - b.minX}
+              height={b.maxY - b.minY}
+              className={styles.fillInterior}
+            />
+            {group.segments.map(([[x1, y1], [x2, y2]], si) => (
+              <line
+                key={si}
+                x1={x1}
+                y1={y1}
+                x2={x2}
+                y2={y2}
+                strokeWidth={thickness}
+                strokeLinecap="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+          </g>
+        );
+      })}
+    </>
+  );
+}
+
+interface TextPrimitiveProps {
+  readonly primitive: ImageAnnotationText;
+  readonly primitiveIndex: number;
+  readonly setIndex: number;
+  readonly selectedKey: string | null;
+  readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
+}
+
+function TextPrimitive({
+  primitive,
+  primitiveIndex,
+  setIndex,
+  selectedKey,
+  onSelectPrimitive,
+}: TextPrimitiveProps) {
+  const [x, y] = primitive.position;
+  const fontSize = Math.max(1, primitive.fontSize);
+  const background = rgbaToCss(primitive.backgroundColor);
+  const label = primitive.text || null;
+  const color = colorForLabel(label);
+  const key = `t-${setIndex}-${primitiveIndex}`;
+  const onClick = pickHandler(onSelectPrimitive, {
+    key,
+    setIndex,
+    primitiveIndex,
+    primitive: { kind: "text", value: primitive },
+    color,
+    label,
+  });
+  const isSelected = selectedKey === key;
+
+  return (
+    <g
+      className={clsx(
+        onClick && styles.selectable,
+        isSelected && styles.selected
+      )}
+      style={{ ["--ann-stroke" as never]: color } as CSSProperties}
+      onClick={onClick}
+    >
+      {background ? (
+        <rect
+          x={x - 2}
+          y={y - fontSize}
+          width={primitive.text.length * fontSize * 0.6 + 4}
+          height={fontSize + 4}
+          fill={background}
+        />
+      ) : null}
+      <text
+        x={x}
+        y={y}
+        fill={isSelected ? HOVER_STROKE : color}
+        fontSize={fontSize}
+        fontFamily="system-ui, sans-serif"
+        dominantBaseline="alphabetic"
+      >
+        {primitive.text}
+      </text>
+    </g>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 interface Rect {
   readonly x: number;
   readonly y: number;
@@ -96,11 +476,182 @@ interface Rect {
   readonly height: number;
 }
 
+interface Bounds {
+  readonly minX: number;
+  readonly minY: number;
+  readonly maxX: number;
+  readonly maxY: number;
+}
+
+type Point2 = readonly [number, number];
+
+interface LineListGroup {
+  readonly label: string | null;
+  readonly segments: readonly [Point2, Point2][];
+  readonly bounds: Bounds;
+}
+
 /**
- * Letterbox/pillarbox the image's natural dimensions into the container,
- * matching the `ImageTexturePlane` scale strategy so the SVG overlay
- * sits exactly over the rendered image rather than the container box.
+ * Each annotation message encodes N objects with cuboid edges and
+ * labels paired by index: `points` is `N * segmentsPerObject * 2`
+ * long, `texts.length === N`, and the Nth chunk of segments is
+ * labeled by the Nth text. Use that pairing directly rather than
+ * spatially guessing. Falls back to one big group when the data
+ * doesn't divide cleanly (other producers might encode differently).
  */
+function groupLineListByLabel(
+  points: readonly Point2[],
+  texts: readonly ImageAnnotationText[]
+): readonly LineListGroup[] {
+  const segmentCount = Math.floor(points.length / 2);
+  if (segmentCount === 0) return [];
+  if (texts.length === 0 || segmentCount % texts.length !== 0) {
+    const segments: [Point2, Point2][] = [];
+    for (let i = 0; i < segmentCount; i++) {
+      segments.push([points[i * 2], points[i * 2 + 1]]);
+    }
+    return [{ label: null, segments, bounds: segmentsBounds(segments) }];
+  }
+  const segmentsPerObject = segmentCount / texts.length;
+  const groups: LineListGroup[] = [];
+  for (let i = 0; i < texts.length; i++) {
+    const segments: [Point2, Point2][] = [];
+    const start = i * segmentsPerObject;
+    for (let j = 0; j < segmentsPerObject; j++) {
+      const seg = start + j;
+      segments.push([points[seg * 2], points[seg * 2 + 1]]);
+    }
+    groups.push({
+      label: texts[i]?.text ?? null,
+      segments,
+      bounds: segmentsBounds(segments),
+    });
+  }
+  return groups;
+}
+
+function segmentsBounds(segments: readonly [Point2, Point2][]): Bounds {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const [[x1, y1], [x2, y2]] of segments) {
+    if (x1 < minX) minX = x1;
+    if (x2 < minX) minX = x2;
+    if (x1 > maxX) maxX = x1;
+    if (x2 > maxX) maxX = x2;
+    if (y1 < minY) minY = y1;
+    if (y2 < minY) minY = y2;
+    if (y1 > maxY) maxY = y1;
+    if (y2 > maxY) maxY = y2;
+  }
+  return { minX, minY, maxX, maxY };
+}
+
+function nearestTextIndex(
+  texts: readonly ImageAnnotationText[],
+  point: Point2
+): number {
+  let bestIdx = -1;
+  let bestDist = Infinity;
+  const maxSq = MAX_LABEL_DIST_PX * MAX_LABEL_DIST_PX;
+  for (let i = 0; i < texts.length; i++) {
+    const t = texts[i];
+    if (!t.text) continue;
+    const dx = t.position[0] - point[0];
+    const dy = t.position[1] - point[1];
+    const d = dx * dx + dy * dy;
+    if (d < bestDist && d <= maxSq) {
+      bestDist = d;
+      bestIdx = i;
+    }
+  }
+  return bestIdx;
+}
+
+function nearestLabel(
+  texts: readonly ImageAnnotationText[],
+  point: Point2
+): string | null {
+  const idx = nearestTextIndex(texts, point);
+  return idx === -1 ? null : texts[idx]?.text ?? null;
+}
+
+function pointsCentroid(points: readonly Point2[]): Point2 | null {
+  if (points.length === 0) return null;
+  let sx = 0;
+  let sy = 0;
+  for (const [x, y] of points) {
+    sx += x;
+    sy += y;
+  }
+  return [sx / points.length, sy / points.length];
+}
+
+// Subset of `@fiftyone/utilities`' default app color pool with the orange
+// and orange-leaning entries pulled out — those collide with the orange
+// hover / selected highlight (#ff7a18).
+const MAX_LABEL_DIST_PX = 200;
+
+const DEFAULT_COLOR_POOL: readonly string[] = [
+  "#ee0000",
+  "#999900",
+  "#009900",
+  "#003300",
+  "#009999",
+  "#000099",
+  "#0066ff",
+  "#6600ff",
+  "#cc33cc",
+  "#777799",
+];
+
+const DEFAULT_LABEL_KEY = "__no-label__";
+
+function colorForLabel(label: string | null): string {
+  const key = label ?? DEFAULT_LABEL_KEY;
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  }
+  return DEFAULT_COLOR_POOL[hash % DEFAULT_COLOR_POOL.length];
+}
+
+function boundsKey(b: Bounds): string {
+  const r = (v: number) => Math.round(v / 20);
+  return `${r(b.minX)}|${r(b.minY)}|${r(b.maxX - b.minX)}|${r(
+    b.maxY - b.minY
+  )}`;
+}
+
+function primitiveStyle(
+  color: string,
+  interior: string | undefined
+): CSSProperties {
+  const out: Record<string, string> = { "--ann-stroke": color };
+  if (interior) out["--ann-interior"] = interior;
+  return out as CSSProperties;
+}
+
+function pickHandler(
+  onSelectPrimitive:
+    | ((picked: ImageAnnotationPickedPrimitive) => void)
+    | undefined,
+  picked: ImageAnnotationPickedPrimitive
+): ((e: React.MouseEvent) => void) | undefined {
+  if (!onSelectPrimitive) return undefined;
+  return (e) => {
+    e.stopPropagation();
+    onSelectPrimitive(picked);
+  };
+}
+
+function lineWidth(thickness: number): number {
+  // Source thickness is conservative; bump it ~1.5x for readability while
+  // keeping the look light.
+  return Math.max(1.5, thickness * 1.5);
+}
+
 function displayRect(
   container: { width: number; height: number },
   imageWidth: number,
@@ -125,116 +676,6 @@ function displayRect(
   };
 }
 
-function CirclePrimitive({ primitive }: { primitive: ImageAnnotationCircle }) {
-  const [x, y] = primitive.position;
-  const radius = Math.max(0, primitive.diameter / 2);
-  return (
-    <circle
-      cx={x}
-      cy={y}
-      r={radius}
-      fill={rgbaToCss(primitive.fillColor) ?? "none"}
-      stroke={rgbaToCss(primitive.outlineColor) ?? DEFAULT_STROKE}
-      strokeWidth={Math.max(1, primitive.thickness)}
-      vectorEffect="non-scaling-stroke"
-    />
-  );
-}
-
-function PointsPrimitive({ primitive }: { primitive: ImageAnnotationPoints }) {
-  const stroke = rgbaToCss(primitive.outlineColor) ?? DEFAULT_STROKE;
-  const fill = rgbaToCss(primitive.fillColor);
-  const thickness = Math.max(1, primitive.thickness);
-
-  switch (primitive.type) {
-    case "points":
-      return (
-        <g>
-          {primitive.points.map(([x, y], i) => (
-            <circle
-              key={i}
-              cx={x}
-              cy={y}
-              r={thickness}
-              fill={rgbaToCss(primitive.outlineColors[i]) ?? fill ?? stroke}
-            />
-          ))}
-        </g>
-      );
-
-    case "line-loop":
-    case "line-strip": {
-      const pts =
-        primitive.type === "line-loop" && primitive.points.length > 1
-          ? [...primitive.points, primitive.points[0]]
-          : primitive.points;
-      return (
-        <polyline
-          points={pts.map(([x, y]) => `${x},${y}`).join(" ")}
-          fill={primitive.type === "line-loop" ? fill ?? "none" : "none"}
-          stroke={stroke}
-          strokeWidth={thickness}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-          vectorEffect="non-scaling-stroke"
-        />
-      );
-    }
-
-    case "line-list": {
-      const segments = [];
-      for (let i = 0; i + 1 < primitive.points.length; i += 2) {
-        const [x1, y1] = primitive.points[i];
-        const [x2, y2] = primitive.points[i + 1];
-        segments.push(
-          <line
-            key={i}
-            x1={x1}
-            y1={y1}
-            x2={x2}
-            y2={y2}
-            stroke={stroke}
-            strokeWidth={thickness}
-            strokeLinecap="round"
-            vectorEffect="non-scaling-stroke"
-          />
-        );
-      }
-      return <g>{segments}</g>;
-    }
-  }
-}
-
-function TextPrimitive({ primitive }: { primitive: ImageAnnotationText }) {
-  const [x, y] = primitive.position;
-  const fill = rgbaToCss(primitive.textColor) ?? DEFAULT_TEXT_FILL;
-  const fontSize = Math.max(1, primitive.fontSize);
-  const background = rgbaToCss(primitive.backgroundColor);
-
-  return (
-    <g>
-      {background ? (
-        <rect
-          x={x - 2}
-          y={y - fontSize}
-          width={primitive.text.length * fontSize * 0.6 + 4}
-          height={fontSize + 4}
-          fill={background}
-        />
-      ) : null}
-      <text
-        x={x}
-        y={y}
-        fill={fill}
-        fontSize={fontSize}
-        fontFamily="system-ui, sans-serif"
-        dominantBaseline="alphabetic"
-      >
-        {primitive.text}
-      </text>
-    </g>
-  );
-}
 
 function rgbaToCss(color: RgbaColor | null | undefined): string | undefined {
   if (!color) return undefined;
@@ -254,8 +695,8 @@ function clamp01(v: number): number {
   return v;
 }
 
-const DEFAULT_STROKE = "rgba(255, 122, 24, 0.95)";
-const DEFAULT_TEXT_FILL = "rgba(255, 255, 255, 0.95)";
+const HOVER_STROKE = "#ff7a18";
+const INTERIOR_FILL = "rgba(0, 0, 0, 0.001)";
 
 const containerStyle: CSSProperties = {
   inset: 0,

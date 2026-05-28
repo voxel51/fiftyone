@@ -80,6 +80,14 @@ const CAMERA_SYNC_POLICY = {
   toleranceBeforeNs: 120_000_000n,
 } as const;
 
+// Annotations arrive at ~2 Hz against ~12 Hz camera images. A 120ms
+// tolerance leaves most ticks unresolved; widen the lookback so every
+// tick has a current annotation message available for interpolation.
+const ANNOTATION_SYNC_POLICY = {
+  mode: PlaybackSyncMode.LATEST,
+  toleranceBeforeNs: 1_500_000_000n,
+} as const;
+
 const NUSCENES_STREAM_POLICIES: McapStreamSyncPolicies = {
   "/CAM_FRONT/image_rect_compressed": CAMERA_SYNC_POLICY,
   "/CAM_FRONT_LEFT/image_rect_compressed": CAMERA_SYNC_POLICY,
@@ -87,12 +95,12 @@ const NUSCENES_STREAM_POLICIES: McapStreamSyncPolicies = {
   "/CAM_BACK/image_rect_compressed": CAMERA_SYNC_POLICY,
   "/CAM_BACK_LEFT/image_rect_compressed": CAMERA_SYNC_POLICY,
   "/CAM_BACK_RIGHT/image_rect_compressed": CAMERA_SYNC_POLICY,
-  "/CAM_FRONT/annotations": CAMERA_SYNC_POLICY,
-  "/CAM_FRONT_LEFT/annotations": CAMERA_SYNC_POLICY,
-  "/CAM_FRONT_RIGHT/annotations": CAMERA_SYNC_POLICY,
-  "/CAM_BACK/annotations": CAMERA_SYNC_POLICY,
-  "/CAM_BACK_LEFT/annotations": CAMERA_SYNC_POLICY,
-  "/CAM_BACK_RIGHT/annotations": CAMERA_SYNC_POLICY,
+  "/CAM_FRONT/annotations": ANNOTATION_SYNC_POLICY,
+  "/CAM_FRONT_LEFT/annotations": ANNOTATION_SYNC_POLICY,
+  "/CAM_FRONT_RIGHT/annotations": ANNOTATION_SYNC_POLICY,
+  "/CAM_BACK/annotations": ANNOTATION_SYNC_POLICY,
+  "/CAM_BACK_LEFT/annotations": ANNOTATION_SYNC_POLICY,
+  "/CAM_BACK_RIGHT/annotations": ANNOTATION_SYNC_POLICY,
   "/LIDAR_TOP": {
     mode: PlaybackSyncMode.LATEST,
     toleranceBeforeNs: 200_000_000n,

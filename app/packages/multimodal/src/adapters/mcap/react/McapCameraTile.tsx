@@ -1,5 +1,6 @@
 import { TileSettingsContent, useSetTileTitle } from "@fiftyone/tiling";
 import {
+  Checkbox,
   Dropdown,
   DropdownAnchor,
   DropdownTrigger,
@@ -24,6 +25,7 @@ const McapCameraTile: React.FC = () => {
     width: number;
     height: number;
   } | null>(null);
+  const [interpolateAnnotations, setInterpolateAnnotations] = useState(true);
   const cameras = useSceneSourcesByType("camera");
   const setTileTitle = useSetTileTitle();
   const [topic, setTopic] = useState<string>(cameras[0]?.id ?? "");
@@ -78,6 +80,16 @@ const McapCameraTile: React.FC = () => {
               ))}
             </Dropdown>
           </div>
+          <div className={settingsStyles.field}>
+            <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+              Annotations
+            </Text>
+            <Checkbox
+              label="Interpolate between annotations"
+              checked={interpolateAnnotations}
+              onChange={setInterpolateAnnotations}
+            />
+          </div>
         </div>
       </TileSettingsContent>
       {frame ? (
@@ -98,6 +110,7 @@ const McapCameraTile: React.FC = () => {
               topic={annotationTopic}
               imageWidth={imageDims.width}
               imageHeight={imageDims.height}
+              interpolate={interpolateAnnotations}
             />
           ) : null}
         </div>
