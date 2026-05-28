@@ -936,6 +936,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         mock_process = mock.MagicMock()
 
         mock_process.is_alive.side_effect = [True, True, True, False, False]
+        mock_process.exitcode = 0
 
         mock_context = mock.MagicMock()
         mock_context.Process.return_value = mock_process
@@ -1128,6 +1129,57 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertIsNotNone(result.error)
         self.assertIn("Operation FAILED (detected by monitor):", result.error)
         self.assertIn("MockOperator failed internally", result.error)
+
+    @patch("logging.handlers.QueueListener")
+    @patch("multiprocessing.get_context")
+    def test_execute_operation_monitor_unclean_exit(
+        self,
+        mock_get_context,
+        _mock_listener,
+        _mock_get_operator,
+    ):
+        mock_process = mock.MagicMock()
+        # Child appears dead at every is_alive() check: the monitor's while
+        # loop exits immediately, the caller's finally block sees a dead
+        # child with a non-zero exitcode, and surfaces the failure.
+        mock_process.is_alive.return_value = False
+        mock_process.exitcode = 1
+        mock_process.pid = 12345
+
+        mock_context = mock.MagicMock()
+        mock_context.Process.return_value = mock_process
+        mock_context.Queue.return_value = mock.MagicMock()
+        mock_get_context.return_value = mock_context
+
+        doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/monitor_unclean_exit",
+            context=ExecutionContext(
+                request_params={"dataset_id": str(ObjectId())}
+            ),
+        )
+        self.docs_to_delete.append(doc)
+
+        with patch(
+            "fiftyone.operators.delegated._execute_operator_in_child_process"
+        ), patch.object(self.svc, "set_failed") as mock_set_failed:
+            result = self.svc.execute_operation(
+                operation=doc, log=False, monitor=True
+            )
+        self.assertIsNotNone(result)
+        self.assertIsNotNone(result.error)
+        self.assertIn("exited unexpectedly", result.error)
+        # Exit code should be included in the error message
+        self.assertIn("code 1", result.error)
+
+        # Doc must be transitioned out of RUNNING so it doesn't sit orphaned
+        mock_set_failed.assert_called_once()
+        call_kwargs = mock_set_failed.call_args.kwargs
+        self.assertEqual(call_kwargs["doc_id"], doc.id)
+        self.assertEqual(
+            call_kwargs["required_state"], ExecutionRunState.RUNNING
+        )
+        self.assertIsInstance(call_kwargs["result"], ExecutionResult)
+        self.assertIn("code 1", call_kwargs["result"].error)
 
     @patch("logging.handlers.QueueListener")
     @patch("multiprocessing.get_context")
