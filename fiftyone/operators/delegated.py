@@ -77,7 +77,7 @@ def _terminate_worker_process(operation_id, log_queue=None):
         sys.stderr.flush()
     except Exception as exc:
         logger.debug(
-            "telemetry: pre-exit stdio flush failed: %s: %s",
+            "Failed to flush stdio before worker exit: %s: %s",
             type(exc).__name__,
             exc,
         )
@@ -88,7 +88,7 @@ def _terminate_worker_process(operation_id, log_queue=None):
             log_queue.join_thread()
         except Exception as exc:
             logger.debug(
-                "telemetry: log_queue drain failed: %s: %s",
+                "Failed to drain log queue before worker exit: %s: %s",
                 type(exc).__name__,
                 exc,
             )
@@ -119,9 +119,7 @@ def _execute_operator_in_child_process(
         log (False): the optional boolean flag to log the execution
         log_queue (None): a multiprocessing queue to send log records to
     """
-    # On POSIX systems, become the session leader to take control of any
-    # subprocesses. This allows the parent to terminate the entire process
-    # group reliably.
+    # Become session leader so the parent can terminate the whole process group
     if hasattr(os, "setsid"):
         try:
             os.setsid()
@@ -181,8 +179,7 @@ def _execute_operator_in_child_process(
                             operation_id,
                         )
     finally:
-        # Unconditional — sidecar finalization waits on this process
-        # actually exiting, and the terminal state is already in Mongo.
+        # Unconditional clea
         _terminate_worker_process(operation_id, log_queue=log_queue)
 
 
