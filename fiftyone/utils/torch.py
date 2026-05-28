@@ -1848,7 +1848,7 @@ def _is_string_array(targets):
         return False
 
 
-def _list_dims(samples, path):
+def _list_dims(samples, path, allow_missing=True):
     """Returns the list-typed dimensions traversed by ``samples.values(path)``.
 
     Each entry names one list-typed dimension along ``path`` (the implicit
@@ -1858,25 +1858,49 @@ def _list_dims(samples, path):
     -  ``"frames.id"`` -> ``("", "frames")``
     -  ``"ground_truth.detections.label"`` -> ``("", "ground_truth.detections")``
 
+    Group and frame prefixes are detected via ``samples._handle_group_field``
+    and ``samples._handle_frame_field`` (the canonical helpers used
+    throughout the codebase) rather than reimplemented locally.
+
     The names let us identify the **shared** list prefix between two paths
     via :func:`_shared_list_prefix_len`; cf. ``index_field`` semantics in
     :class:`FiftyOneTorchDataset`.
+
+    Args:
+        samples: a :class:`fiftyone.core.collections.SampleCollection`
+        path: a dotted field path
+        allow_missing (True): whether to tolerate a missing intermediate
+            schema component. ``False`` is used for ``index_field`` (every
+            row must have a key); ``True`` is used for mapped fields where
+            a missing field resolves to ``None`` per row downstream
     """
     dims = [""]
-    keys = path.split(".")
+    if not path:
+        return tuple(dims)
 
-    if keys[0] == "frames" and samples._has_frame_fields():
+    # Strip group prefix, then frame prefix — same order the rest of the
+    # codebase uses (see SampleCollection._parse_field_name).
+    rest, _ = samples._handle_group_field(path)
+    rest, is_frame_field = samples._handle_frame_field(rest)
+
+    if is_frame_field:
         dims.append("frames")
-        keys = keys[1:]
         schema = samples.get_frame_field_schema()
         prefix = "frames"
     else:
         schema = samples.get_field_schema()
         prefix = ""
 
-    for key in keys:
+    if not rest:
+        return tuple(dims)
+
+    for key in rest.split("."):
         field = schema.get(key)
         if field is None:
+            if not allow_missing:
+                raise ValueError(
+                    f"Collection has no field '{path}'"
+                )
             break
 
         full = f"{prefix}.{key}" if prefix else key
@@ -1976,8 +2000,12 @@ class FiftyOneTorchDataset(Dataset):
         ``"ground_truth.detections.id"``).
     -   Intermediate path components must be list-typed (a ListField or the
         special ``frames`` field).
+    -   The path must resolve cleanly against the collection's schema —
+        every row needs a key, so a missing or invalid ``index_field``
+        raises ``ValueError`` at construction.
 
-    These constraints are documented but not enforced.
+    Other field-mapping paths are permissive: a missing field resolves to
+    ``None`` per row downstream.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
@@ -2036,11 +2064,13 @@ class FiftyOneTorchDataset(Dataset):
         # exactly this many leading coord components, so on-branch fields
         # walk down to the row's leaf, parent fields stop at the LCA and
         # broadcast, and sibling-branch fields stop at the shared ancestor
-        # (the whole sibling subtree is broadcast intact).
-        index_dims = _list_dims(samples, index_field)
+        # (the whole sibling subtree is broadcast intact). ``index_field``
+        # is strict (must exist in schema — every row needs a key); mapped
+        # fields are permissive (a missing field resolves to ``None``).
+        index_dims = _list_dims(samples, index_field, allow_missing=False)
         self._coord_prefix_lens = {
             field: _shared_list_prefix_len(
-                index_dims, _list_dims(samples, field)
+                index_dims, _list_dims(samples, field, allow_missing=True)
             )
             for field in self.field_mapping.values()
         }

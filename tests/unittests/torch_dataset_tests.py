@@ -9,7 +9,7 @@ import os
 import unittest
 
 import fiftyone as fo
-from fiftyone.utils.torch import GetItem, _walk_value
+from fiftyone.utils.torch import GetItem, _list_dims, _walk_value
 
 
 class IdentityGetItem(GetItem):
@@ -369,6 +369,35 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
 
     def test_sibling_branch_broadcast_vectorized(self):
         self._sibling_branch_broadcast_impl(vectorize=True)
+
+    def test_list_dims_canonical_paths(self):
+        # Image dataset
+        img_ds = _make_detection_dataset((2, 1))
+        self.assertEqual(_list_dims(img_ds, "id"), ("",))
+        self.assertEqual(_list_dims(img_ds, "filepath"), ("",))
+        self.assertEqual(
+            _list_dims(img_ds, "ground_truth.detections"),
+            ("", "ground_truth.detections"),
+        )
+        self.assertEqual(
+            _list_dims(img_ds, "ground_truth.detections.label"),
+            ("", "ground_truth.detections"),
+        )
+
+        # Video dataset
+        vid_ds = _make_video_dataset((2,))
+        self.assertEqual(_list_dims(vid_ds, "filepath"), ("",))
+        self.assertEqual(_list_dims(vid_ds, "frames"), ("", "frames"))
+        self.assertEqual(_list_dims(vid_ds, "frames.id"), ("", "frames"))
+        self.assertEqual(
+            _list_dims(vid_ds, "frames.frame_label"), ("", "frames")
+        )
+
+    def test_missing_index_field_raises(self):
+        ds = _make_detection_dataset((2, 1))
+        get_item = IdentityGetItem(["filepath"])
+        with self.assertRaises(ValueError):
+            ds.to_torch(get_item, index_field="not.a.real.field")
 
     def test_walk_value_rejects_non_list_overflow(self):
         # Positive case: at the correct depth the walk returns the right value.
