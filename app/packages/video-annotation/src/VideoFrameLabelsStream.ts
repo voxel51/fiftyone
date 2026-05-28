@@ -569,7 +569,15 @@ function extractDetections(
     }
 
     const detId = det._id ?? det.id ?? null;
-    const id = det.index !== undefined ? `track-${det.index}` : detId;
+    // Prefer `instance._id` as the cross-frame identity. `track-${index}` is
+    // kept as a fallback for legacy data that has only the numeric index, and
+    // `_id` is the last-resort per-frame identifier for untracked,
+    // un-instanced detections
+    const id = det.instance?._id
+      ? `instance-${det.instance._id}`
+      : det.index !== undefined
+      ? `track-${det.index}`
+      : detId;
 
     if (!id) {
       continue;

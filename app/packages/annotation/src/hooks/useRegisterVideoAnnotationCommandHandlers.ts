@@ -33,6 +33,8 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
           const det = snapshot.detections.find((d) => d.id === id);
           if (!det) continue;
 
+          const willBeKeyframe = !det.keyframe;
+
           // Minimal update — `bounding_box` is required by LocalDetection
           // but matches the existing cache entry, so the structural diff
           // sees only the fields that actually changed. Avoid setting
@@ -44,13 +46,13 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
             _cls: "Detection",
             _id: det._id ?? id,
             bounding_box: det.bounding_box,
-            keyframe: !det.keyframe,
+            keyframe: willBeKeyframe,
           };
 
           // Promotion to keyframe semantically clears propagation. Only
           // write the field when there's something to clear — otherwise
           // we'd emit a no-op `add propagation: null` patch op.
-          if (!det.keyframe && det.propagation) {
+          if (willBeKeyframe && det.propagation) {
             update.propagation = null;
           }
 
