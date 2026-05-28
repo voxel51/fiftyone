@@ -9,7 +9,7 @@ import os
 import unittest
 
 import fiftyone as fo
-from fiftyone.utils.torch import GetItem, _list_dims, _walk_value
+from fiftyone.utils.torch import GetItem, _walk_value
 
 
 class IdentityGetItem(GetItem):
@@ -120,9 +120,6 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
                     f"Cached field {cf} not found in cached fields",
                 )
 
-                # `cached_fields[field]` is per-sample (length = n_samples). For
-                # a top-level scalar field on an `id`-indexed dataset, that
-                # equals `len(torch_dataset)`.
                 self.assertEqual(
                     [
                         torch_dataset.cached_fields[cf][i]
@@ -210,11 +207,7 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
                 else:
                     self.assertTrue(isinstance(res[i], Exception))
 
-    # -------------------------------------------------------------------------
-    # Tests for non-default `index_field` (per-detection / per-frame rows)
-    # -------------------------------------------------------------------------
-
-    def _per_detection_indexing_impl(self, vectorize):
+    def test_per_detection_indexing(self):
         n_per_sample = (2, 3, 2)
         total = sum(n_per_sample)
         dataset = _make_detection_dataset(n_per_sample)
@@ -229,28 +222,21 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
         torch_dataset = dataset.to_torch(
             get_item,
             index_field="ground_truth.detections.id",
-            vectorize=vectorize,
         )
 
         self.assertEqual(len(torch_dataset), total)
 
-        # Expected per-row data
         filepaths = dataset.values("filepath")
         labels = dataset.values("ground_truth.detections.label")
         bboxes = dataset.values("ground_truth.detections.bounding_box")
         det_ids = dataset.values("ground_truth.detections.id")
 
-        # Verify keys match the flattened detection IDs
-        flat_det_ids = [
-            did for sample_dets in det_ids for did in sample_dets
-        ]
+        flat_det_ids = [did for sample_dets in det_ids for did in sample_dets]
         self.assertEqual(
             [torch_dataset.keys[i] for i in range(len(torch_dataset))],
             flat_det_ids,
         )
 
-        # Each row: [parent filepath (broadcast), per-detection label,
-        # per-detection bbox]
         row = 0
         for sidx, n in enumerate(n_per_sample):
             for j in range(n):
@@ -260,13 +246,7 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
                 self.assertEqual(item[2], bboxes[sidx][j])
                 row += 1
 
-    def test_per_detection_indexing_db(self):
-        self._per_detection_indexing_impl(vectorize=False)
-
-    def test_per_detection_indexing_vectorized(self):
-        self._per_detection_indexing_impl(vectorize=True)
-
-    def _per_frame_indexing_impl(self, vectorize):
+    def test_per_frame_indexing(self):
         n_frames_per_sample = (2, 3)
         total = sum(n_frames_per_sample)
         dataset = _make_video_dataset(n_frames_per_sample)
@@ -280,7 +260,6 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
         torch_dataset = dataset.to_torch(
             get_item,
             index_field="frames.id",
-            vectorize=vectorize,
         )
 
         self.assertEqual(len(torch_dataset), total)
@@ -305,13 +284,7 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
                 self.assertEqual(item[1], frame_labels[sidx][j])
                 row += 1
 
-    def test_per_frame_indexing_db(self):
-        self._per_frame_indexing_impl(vectorize=False)
-
-    def test_per_frame_indexing_vectorized(self):
-        self._per_frame_indexing_impl(vectorize=True)
-
-    def _sibling_branch_broadcast_impl(self, vectorize):
+    def test_sibling_branch_broadcast(self):
         """``index_field`` and a mapped field live on disjoint list branches.
 
         Concretely: index per-frame, but also map a sample-level
@@ -345,52 +318,18 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
                 "det_labels": "ground_truth.detections.label",
             },
         )
-        td = dataset.to_torch(
-            get_item, index_field="frames.id", vectorize=vectorize
-        )
+        td = dataset.to_torch(get_item, index_field="frames.id")
 
-        det_labels_per_sample = dataset.values(
-            "ground_truth.detections.label"
-        )
+        det_labels_per_sample = dataset.values("ground_truth.detections.label")
         frame_labels = dataset.values("frames.frame_label")
 
         row = 0
         for sidx, nf in enumerate(n_frames_per_sample):
             for j in range(nf):
                 item = td[row]
-                # Frame-level field walks both dims: per-frame value.
                 self.assertEqual(item[0], frame_labels[sidx][j])
-                # Sibling-branch field: whole sample's list broadcast.
                 self.assertEqual(item[1], det_labels_per_sample[sidx])
                 row += 1
-
-    def test_sibling_branch_broadcast_db(self):
-        self._sibling_branch_broadcast_impl(vectorize=False)
-
-    def test_sibling_branch_broadcast_vectorized(self):
-        self._sibling_branch_broadcast_impl(vectorize=True)
-
-    def test_list_dims_canonical_paths(self):
-        # Image dataset
-        img_ds = _make_detection_dataset((2, 1))
-        self.assertEqual(_list_dims(img_ds, "id"), ("",))
-        self.assertEqual(_list_dims(img_ds, "filepath"), ("",))
-        self.assertEqual(
-            _list_dims(img_ds, "ground_truth.detections"),
-            ("", "ground_truth.detections"),
-        )
-        self.assertEqual(
-            _list_dims(img_ds, "ground_truth.detections.label"),
-            ("", "ground_truth.detections"),
-        )
-
-        # Video dataset
-        vid_ds = _make_video_dataset((2,))
-        self.assertEqual(_list_dims(vid_ds, "filepath"), ("",))
-        self.assertEqual(_list_dims(vid_ds, "frames.id"), ("", "frames"))
-        self.assertEqual(
-            _list_dims(vid_ds, "frames.frame_label"), ("", "frames")
-        )
 
     def test_missing_index_field_raises(self):
         ds = _make_detection_dataset((2, 1))
@@ -399,18 +338,15 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
             ds.to_torch(get_item, index_field="not.a.real.field")
 
     def test_walk_value_rejects_non_list_overflow(self):
-        # Positive case: at the correct depth the walk returns the right value.
         nested = [["a", "b"], ["c"]]
         self.assertEqual(_walk_value(nested, (0, 1), 2), "b")
         self.assertEqual(_walk_value(nested, (1, 0), 2), "c")
         self.assertEqual(_walk_value(nested, (0, 1), 1), ["a", "b"])
 
-        # Short-circuit on None.
         self.assertIsNone(_walk_value([None, ["x"]], (0, 0), 2))
 
-        # Negative case: depth=2 over a list-of-strings would index into the
-        # string and silently return a character. The guard turns it into a
-        # loud TypeError so a depth/schema mismatch can't corrupt outputs.
+        # Depth=2 over a list-of-strings would silently index into the string
+        # and return a character; the guard turns this into a loud TypeError.
         with self.assertRaises(TypeError):
             _walk_value(["abc", "def"], (0, 1), 2)
 
@@ -447,13 +383,10 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
         for i in indices:
             self.assertEqual(td_db[i], td_vec[i])
 
-    def _skip_failures_per_detection_impl(self, vectorize):
-        # Add a sample whose detections lack the requested field to trigger
-        # an error when calling get_item.
+    def test_skip_failures_per_detection(self):
         n_per_sample = (2, 2)
         dataset = _make_detection_dataset(n_per_sample)
 
-        # Clear the `label` on the first detection of the first sample
         sample = dataset.first()
         sample["ground_truth"].detections[0].label = None
         sample.save()
@@ -472,39 +405,25 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
             field_mapping={"label": "ground_truth.detections.label"}
         )
 
-        # Without skip_failures, the failing row raises. ``get_item``'s raw
-        # ``ValueError`` is what bubbles up from ``_get_item``; no extra
-        # wrapping happens for this code path.
         td = dataset.to_torch(
             gi,
             index_field="ground_truth.detections.id",
-            vectorize=vectorize,
             skip_failures=False,
         )
         with self.assertRaises(ValueError):
             _ = td[0]
 
-        # With skip_failures, the failing row returns the same ValueError,
-        # others return their label.
         td = dataset.to_torch(
             gi,
             index_field="ground_truth.detections.id",
-            vectorize=vectorize,
             skip_failures=True,
         )
         self.assertEqual(len(td), sum(n_per_sample))
 
         results = td.__getitems__(list(range(len(td))))
-        # Row 0 is the one with `None` label
         self.assertIsInstance(results[0], ValueError)
         for i in range(1, len(results)):
             self.assertIsInstance(results[i], str)
-
-    def test_skip_failures_per_detection_db(self):
-        self._skip_failures_per_detection_impl(vectorize=False)
-
-    def test_skip_failures_per_detection_vectorized(self):
-        self._skip_failures_per_detection_impl(vectorize=True)
 
 
 if __name__ == "__main__":

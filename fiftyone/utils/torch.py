@@ -1850,24 +1850,11 @@ def _is_string_array(targets):
 def _list_dims(samples, path, allow_missing=True):
     """Returns the list-typed dimensions traversed by ``samples.values(path)``.
 
-    Each entry names one list-typed dimension along ``path`` (the implicit
-    per-sample dimension is named ``""``). Examples:
+    The implicit per-sample dimension is named ``""``. Examples:
 
     -  ``"filepath"`` -> ``("",)``
     -  ``"frames.id"`` -> ``("", "frames")``
     -  ``"ground_truth.detections.label"`` -> ``("", "ground_truth.detections")``
-
-    The names let us identify the **shared** list prefix between two paths
-    via :func:`_shared_list_prefix_len`; cf. ``index_field`` semantics in
-    :class:`FiftyOneTorchDataset`.
-
-    Args:
-        samples: a :class:`fiftyone.core.collections.SampleCollection`
-        path: a dotted field path
-        allow_missing (True): whether to tolerate a missing intermediate
-            schema component. ``False`` is used for ``index_field`` (every
-            row must have a key); ``True`` is used for mapped fields where
-            a missing field resolves to ``None`` per row downstream
     """
     _, _, unwind, other, _ = samples._parse_field_name(
         path,
@@ -1906,12 +1893,8 @@ def _flatten_with_coords(nested, prefix=()):
 def _walk_value(nested, coord, depth):
     """Indexes into ``nested`` using the first ``depth`` elements of ``coord``.
 
-    Parent fields stop short of the row's coord length; child fields walk the
-    full depth and return whatever subtree remains. Raises ``TypeError`` if
-    a non-list value is reached before consuming ``depth`` elements — this
-    indicates a depth/schema mismatch (e.g., trying to index into a leaf
-    scalar) which would otherwise silently corrupt results (Python strings,
-    in particular, are indexable and would return a single character).
+    Raises ``TypeError`` if a non-list value is reached before consuming
+    ``depth`` elements (a depth/schema mismatch).
     """
     value = nested
     for i in range(depth):
@@ -2001,8 +1984,6 @@ class FiftyOneTorchDataset(Dataset):
         self.field_mapping = get_item.field_mapping.copy()
         self.index_field = index_field
 
-        # Optimization: only select fields needed for `get_item` plus the
-        # index field
         fields_to_select = list(
             set(self.field_mapping.values()) | {index_field}
         )
@@ -2018,14 +1999,6 @@ class FiftyOneTorchDataset(Dataset):
         self.get_item = get_item
         self.skip_failures = skip_failures
 
-        # For each mapped field, precompute the length of the list-typed
-        # prefix it shares with ``index_field``. ``_resolve_row`` consumes
-        # exactly this many leading coord components, so on-branch fields
-        # walk down to the row's leaf, parent fields stop at the LCA and
-        # broadcast, and sibling-branch fields stop at the shared ancestor
-        # (the whole sibling subtree is broadcast intact). ``index_field``
-        # is strict (must exist in schema — every row needs a key); mapped
-        # fields are permissive (a missing field resolves to ``None``).
         index_dims = _list_dims(samples, index_field, allow_missing=False)
         self._coord_prefix_lens = {
             field: _shared_list_prefix_len(
@@ -2047,6 +2020,7 @@ class FiftyOneTorchDataset(Dataset):
             for value, coord in _flatten_with_coords(nested):
                 keys.append(value)
                 coords.append(coord)
+            # Avoid double-fetching when the index already is the sample id
             sample_ids = keys if index_field == "id" else samples.values("id")
         else:
             keys = []
@@ -2176,24 +2150,14 @@ class FiftyOneTorchDataset(Dataset):
         per-batch select view). The outer index ``coord[0]`` selects the
         sample within that collection.
         """
-        d = {}
-        for key, field in self.field_mapping.items():
-            try:
-                d[key] = _walk_value(
-                    nested_by_field[field],
-                    coord,
-                    self._coord_prefix_lens[field],
-                )
-            except Exception as e:
-                error = ValueError(
-                    f"Error loading field {field} assigned to key {key}: {e}"
-                )
-                if not self.skip_failures:
-                    raise error from e
-
-                return error
-
-        return d
+        return {
+            key: _walk_value(
+                nested_by_field[field],
+                coord,
+                self._coord_prefix_lens[field],
+            )
+            for key, field in self.field_mapping.items()
+        }
 
     def _prepare_batch_db(self, indices):
         # Find unique sample indices in batch, preserving first-seen order
@@ -2208,11 +2172,7 @@ class FiftyOneTorchDataset(Dataset):
 
         # Fetch all required fields in a single aggregation
         fields = list(set(self.field_mapping.values()))
-        if len(fields) == 1:
-            results = [view.values(fields[0])]
-        else:
-            results = view.values(fields)
-        nested_by_field = dict(zip(fields, results))
+        nested_by_field = dict(zip(fields, view.values(fields)))
 
         # Remap global sample idx -> position within the batch view
         idx_remap = {gi: li for li, gi in enumerate(unique_sample_idxs)}
