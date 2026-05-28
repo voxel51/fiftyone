@@ -5,6 +5,19 @@
   width: 100%;
 }
 
+.tracksShadow {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  width: 100%;
+  z-index: -1;
+}
+
+/* Invisible measurement shadow — always in the DOM at natural height so
+   ResizeObserver can report the true full track-stack height regardless of
+   whether the Drawer is open or closed. Must never participate in layout
+   (position:absolute) and must never receive pointer events or focus. */
+
 /* Non-scrolling wrapper that acts as the positioning context for the
    PlayheadLine and LoopOverlays. Keeping them here (rather than inside
    tracksArea) means they always cover the full visible height regardless
