@@ -18,6 +18,13 @@ export interface TimelineHeaderProps {
    */
   onToggle?: () => void;
   /**
+   * Optional content forwarded to {@link TimelineControls}' `controlsSlot`
+   * slot — rendered between the playback control buttons and the playhead
+   * time display. The video annotation surface slots its action toolbar
+   * (Mark Keyframe / Propagate) here, per the mocks.
+   */
+  controlsSlot?: ReactNode;
+  /**
    * Content rendered below the ruler, still inside the always-visible
    * header region. Used by `TimelineWithTracks` to keep pinned tracks
    * on-screen even when the drawer body is collapsed.
@@ -35,11 +42,12 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
   labelWidth,
   zoomRef,
   onToggle,
+  controlsSlot,
   children,
 }) => {
   return (
     <div className={styles.root} data-testid="timeline-header-root">
-      <TimelineControls onToggle={onToggle} />
+      <TimelineControls onToggle={onToggle} controlsSlot={controlsSlot} />
       <TimelineRuler labelWidth={labelWidth} zoomRef={zoomRef} />
       {children ? <div className={styles.belowRuler}>{children}</div> : null}
     </div>
