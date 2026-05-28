@@ -22,9 +22,7 @@ import styles from "./TimelineTrack.module.css";
 /**
  * One event on a track. A `number` is shorthand for a point at that
  * time; an object with an `endSec` renders as an interval bar, without
- * one as a point.
- *
- * Object events with `endSec` may opt into in-place edit via
+ * one as a point. Object events with `endSec` may opt into in-place edit via
  * `resizable: true`; combined with {@link TimelineTrackProps.onEventResize}
  * the bar renders left/right drag handles and a draggable body.
  */
@@ -69,16 +67,10 @@ interface DragState {
   origEnd: number;
   mode: DragMode;
   moved: boolean;
-  /**
-   * Most recently computed `[start, end]` from pointermove. Stored on
-   * the ref (not just in React state) so pointerup can read the final
-   * position synchronously without waiting for a state flush.
-   */
   latestStart: number;
   latestEnd: number;
 }
 
-/** Min movement (px) before a pointerdown is treated as a drag, not a click. */
 const DRAG_THRESHOLD_PX = 3;
 
 export interface TimelineTrackProps {
@@ -119,10 +111,10 @@ export interface TimelineTrackProps {
    */
   onTrackClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
   /**
-   * Commits an interval-event edit. Fires on pointer-up after a drag
-   * has crossed {@link DRAG_THRESHOLD_PX}, never during the drag
-   * itself. Receives the event's index in the {@link events} array and
-   * the final clamped + snapped `[start, end]` (seconds).
+   * Fires on pointer-up after a drag has crossed{@link DRAG_THRESHOLD_PX},
+   * never during the drag itself. Receives the event's index in the
+   * {@link events} array and the final clamped + snapped `[start, end]`
+   * (seconds).
    *
    * Only events with `resizable: true` participate; without this prop
    * the resizable flag is a no-op and the bar renders as before.
@@ -176,8 +168,8 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
 
   /**
    * Local visual override applied while the user is dragging an
-   * interval bar. `null` outside a drag; cleared on pointerup. Render
-   * reads this so the bar tracks the cursor without committing
+   * interval bar. `null` when not dragging; cleared on pointerup.
+   * Render reads this so the bar tracks the cursor without committing
    * anything until the user lets go.
    */
   const [dragOverride, setDragOverride] = useState<{
@@ -213,18 +205,14 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
     origEnd: number,
     mode: DragMode
   ): void => {
-    if (!onEventResize) {
-      return;
-    }
+    if (!onEventResize) return;
+
     // Only respond to the primary button. Right-click should fall
     // through to the existing ContextMenu wrapper, not begin a drag.
-    if (mouseEvent.button !== 0) {
-      return;
-    }
+    if (mouseEvent.button !== 0) return;
+
     const lane = laneRef.current;
-    if (!lane) {
-      return;
-    }
+    if (!lane) return;
 
     mouseEvent.preventDefault();
     mouseEvent.stopPropagation();
@@ -374,10 +362,12 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
           // Suppress the synthetic click the browser fires immediately
           // after a real drag so the drop point doesn't double as a seek.
           if (justDraggedRef.current) return;
+
           // Portal-rendered context-menu items bubble through the React tree
           // but live outside this element's DOM subtree — ignore them so
           // dismissing the menu doesn't fire an unintended seek.
           if (!e.currentTarget.contains(e.target as Node)) return;
+
           const target = e.target as HTMLElement;
           // Event markers / bars own their own click — don't seek twice.
           if (
@@ -386,6 +376,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
             target.classList.contains(styles.resizeHandle)
           )
             return;
+
           const rect = e.currentTarget.getBoundingClientRect();
           seek(
             viewStart +
@@ -405,21 +396,22 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
           />
         )}
         {events
-          .map((raw, originalIndex) => ({
-            event: normalizeEvent(raw),
+          .map((event, originalIndex) => ({
+            event: normalizeEvent(event),
             originalIndex,
           }))
-          .filter(({ event: e }) =>
-            e.endSec !== undefined
-              ? e.endSec >= viewStart && e.startSec <= viewEnd
-              : e.startSec >= viewStart && e.startSec <= viewEnd
+          .filter(({ event }) =>
+            event.endSec !== undefined
+              ? event.endSec >= viewStart && event.startSec <= viewEnd
+              : event.startSec >= viewStart && event.startSec <= viewEnd
           )
-          .map(({ event: e, originalIndex }) => {
+          .map(({ event, originalIndex }) => {
             const handleClick = (ev: React.MouseEvent) => {
               // Suppress the synthetic click that pointerup fires
               // right after a resize / move drag — otherwise the drop
               // point seeks unexpectedly.
               if (justDraggedRef.current) return;
+
               // Deliberately no stopPropagation. The click bubbles to
               // the row root so `onTrackClick` fires for marker / interval-bar
               // clicks too. The lane's onClick filters by target class so seek
@@ -436,11 +428,11 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                     viewDuration;
                 seek(t);
               }
-              onEventClick?.(e);
+              onEventClick?.(event);
             };
-            const isInterval = e.endSec !== undefined;
+            const isInterval = event.endSec !== undefined;
             const isResizable = Boolean(
-              isInterval && e.resizable && onEventResize
+              isInterval && event.resizable && onEventResize
             );
 
             // While a drag is in progress, render with the override
@@ -450,26 +442,28 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
               dragOverride && dragOverride.index === originalIndex
                 ? dragOverride
                 : null;
-            const displayStart = override ? override.startSec : e.startSec;
+            const displayStart = override ? override.startSec : event.startSec;
             const displayEnd = override
               ? override.endSec
-              : (e.endSec as number);
+              : (event.endSec as number);
 
             const menu = (
               <>
-                <MenuTextItem onClick={() => seek(e.startSec)}>
+                <MenuTextItem onClick={() => seek(event.startSec)}>
                   Move to start
                 </MenuTextItem>
                 <MenuTextItem
                   disabled={!isInterval}
-                  onClick={() => isInterval && seek(e.endSec!)}
+                  onClick={() => isInterval && seek(event.endSec!)}
                 >
                   Move to end
                 </MenuTextItem>
                 <MenuSeparator />
                 <MenuTextItem
                   disabled={!isInterval}
-                  onClick={() => isInterval && setLoop(e.startSec, e.endSec!)}
+                  onClick={() =>
+                    isInterval && setLoop(event.startSec, event.endSec!)
+                  }
                 >
                   Shrink window to fit
                 </MenuTextItem>
@@ -495,13 +489,13 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                       cursor: isResizable ? "grab" : "pointer",
                     }}
                     title={
-                      e.label
-                        ? `${e.label}  (${displayStart.toFixed(
+                      event.label
+                        ? `${event.label}  (${displayStart.toFixed(
                             2
-                          )}–${displayEnd.toFixed(2)}s)`
+                          )}-${displayEnd.toFixed(2)}s)`
                         : `${labelText}  (${displayStart.toFixed(
                             2
-                          )}–${displayEnd.toFixed(2)}s)`
+                          )}-${displayEnd.toFixed(2)}s)`
                     }
                     onClick={handleClick}
                     onMouseDown={
@@ -510,8 +504,8 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                             beginIntervalDrag(
                               ev,
                               originalIndex,
-                              e.startSec,
-                              e.endSec!,
+                              event.startSec,
+                              event.endSec!,
                               "move"
                             )
                         : undefined
@@ -532,8 +526,8 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                             beginIntervalDrag(
                               ev,
                               originalIndex,
-                              e.startSec,
-                              e.endSec!,
+                              event.startSec,
+                              event.endSec!,
                               "resize-start"
                             )
                           }
@@ -551,8 +545,8 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                             beginIntervalDrag(
                               ev,
                               originalIndex,
-                              e.startSec,
-                              e.endSec!,
+                              event.startSec,
+                              event.endSec!,
                               "resize-end"
                             )
                           }
@@ -567,11 +561,11 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
               <ContextMenu key={originalIndex} menu={menu}>
                 <div
                   className={styles.event}
-                  style={{ left: pct(e.startSec), background: color }}
+                  style={{ left: pct(event.startSec), background: color }}
                   title={
-                    e.label
-                      ? `${e.label}  @ ${e.startSec.toFixed(3)}s`
-                      : `${labelText} @ ${e.startSec.toFixed(3)}s`
+                    event.label
+                      ? `${event.label}  @ ${event.startSec.toFixed(3)}s`
+                      : `${labelText} @ ${event.startSec.toFixed(3)}s`
                   }
                   onClick={handleClick}
                 />

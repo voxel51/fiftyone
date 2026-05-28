@@ -264,9 +264,11 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
         | undefined;
       const isTemporalDetection =
         track.id.startsWith("td-") && tdEvent !== undefined;
+
       if (!isTemporalDetection || !fps) {
         return base;
       }
+
       return {
         ...base,
         snapStepSec,
