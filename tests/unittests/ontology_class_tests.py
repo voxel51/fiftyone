@@ -20,7 +20,8 @@ from fiftyone.core.annotation.attributes import (
     WhenOr,
     collect_leaf_conditions,
 )
-from fiftyone.core.ontology import AnnotationOntology
+from fiftyone.core.annotation.nodes import Node
+from fiftyone.core.ontology import AnnotationOntology, Taxonomy, load_ontology
 
 
 class WhenTests(unittest.TestCase):
@@ -993,6 +994,169 @@ class OntologySDKTests(unittest.TestCase):
 
         original = load_ontology("original")
         self.assertEqual(original.name, "original")
+
+
+class NodeTests(unittest.TestCase):
+    def test_create_leaf(self):
+        n = Node(name="car")
+        self.assertEqual(n.name, "car")
+        self.assertIsNone(n.description)
+        self.assertTrue(n.can_select)
+        self.assertFalse(n.deprecated)
+        self.assertIsNone(n.values)
+
+    def test_create_with_children(self):
+        n = Node(
+            name="vehicles",
+            description="any vehicle",
+            can_select=False,
+            values=[Node(name="car"), Node(name="truck")],
+        )
+        self.assertEqual(len(n.values), 2)
+        self.assertFalse(n.can_select)
+
+    def test_empty_name_raises(self):
+        with self.assertRaises(ValueError):
+            Node(name="")
+
+    def test_round_trip_leaf(self):
+        n = Node(name="car")
+        round_tripped = Node.from_dict(n.to_dict())
+        self.assertEqual(round_tripped.to_dict(), n.to_dict())
+        self.assertNotIn("values", n.to_dict())
+
+    def test_round_trip_nested(self):
+        n = Node(
+            name="vehicles",
+            description="anything that moves",
+            can_select=False,
+            values=[
+                Node(name="car"),
+                Node(
+                    name="truck",
+                    values=[
+                        Node(name="pickup"),
+                        Node(name="semi", deprecated=True),
+                    ],
+                ),
+            ],
+        )
+        d = n.to_dict()
+        round_tripped = Node.from_dict(d)
+        self.assertEqual(round_tripped.to_dict(), d)
+
+    def test_default_flags_omitted_from_dict(self):
+        d = Node(name="car").to_dict()
+        self.assertNotIn("can_select", d)
+        self.assertNotIn("deprecated", d)
+        self.assertNotIn("description", d)
+
+
+class TaxonomyTests(unittest.TestCase):
+    def _tree(self):
+        return Node(
+            name="vehicles",
+            can_select=False,
+            values=[Node(name="car"), Node(name="truck")],
+        )
+
+    def test_create(self):
+        t = Taxonomy(name="vehicle_classes", root=self._tree())
+        self.assertEqual(t.name, "vehicle_classes")
+        self.assertEqual(t.root.name, "vehicles")
+        self.assertTrue(t.is_taxonomy)
+        self.assertFalse(t.is_annotation_ontology)
+
+    def test_root_must_be_node(self):
+        with self.assertRaises(ValueError):
+            Taxonomy(name="x", root={"name": "vehicles"})
+
+    def test_round_trip(self):
+        t = Taxonomy(
+            name="vehicle_classes",
+            description="cars and trucks",
+            root=self._tree(),
+        )
+        d = t.to_dict()
+        round_tripped = Taxonomy.from_dict(d)
+        self.assertEqual(round_tripped.to_dict(), d)
+
+
+class TaxonomySDKTests(unittest.TestCase):
+    """Integration tests for Taxonomy CRUD against MongoDB."""
+
+    def setUp(self):
+        import fiftyone.core.odm as foo
+
+        db = foo.get_db_conn()
+        db.drop_collection("ontologies")
+
+        from fiftyone.core.odm.ontology import OntologyDocument
+
+        OntologyDocument.ensure_indexes()
+
+    def tearDown(self):
+        import fiftyone.core.odm as foo
+
+        db = foo.get_db_conn()
+        db.drop_collection("ontologies")
+
+    def _make_taxonomy(self, name: str = "test_taxonomy") -> Taxonomy:
+        return Taxonomy(
+            name=name,
+            description="Test taxonomy",
+            root=Node(
+                name="vehicles",
+                can_select=False,
+                values=[
+                    Node(name="car"),
+                    Node(name="truck", values=[Node(name="pickup")]),
+                ],
+            ),
+        )
+
+    def test_save_and_load(self):
+        t = self._make_taxonomy()
+        t.save()
+
+        self.assertIsNotNone(t.version)
+        self.assertIsNotNone(t.created_at)
+
+        loaded = load_ontology("test_taxonomy")
+        self.assertIsInstance(loaded, Taxonomy)
+        self.assertEqual(loaded.name, "test_taxonomy")
+        self.assertEqual(loaded.root.name, "vehicles")
+        self.assertEqual(loaded.root.values[1].values[0].name, "pickup")
+
+    def test_save_and_reload(self):
+        t = self._make_taxonomy()
+        t.save()
+
+        t.description = "updated"
+        t.reload()
+        self.assertEqual(t.description, "Test taxonomy")
+
+    def test_delete(self):
+        from fiftyone.core.ontology import ontology_exists
+
+        t = self._make_taxonomy()
+        t.save()
+        t.delete()
+
+        self.assertIsNone(t._doc)
+        self.assertFalse(ontology_exists("test_taxonomy"))
+
+    def test_clone(self):
+        from fiftyone.core.ontology import ontology_exists
+
+        t = self._make_taxonomy("original")
+        t.save()
+
+        cloned = t.clone("cloned")
+        self.assertIsInstance(cloned, Taxonomy)
+        self.assertTrue(ontology_exists("original"))
+        self.assertTrue(ontology_exists("cloned"))
+        self.assertEqual(cloned.root.name, "vehicles")
 
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ import abc
 import copy
 import fnmatch
 from datetime import datetime
-from typing import Any, NamedTuple, Optional
+from typing import Any, ClassVar, NamedTuple, Optional
 
 import fiftyone.core.annotation.constants as foac
 import fiftyone.core.utils as fou
@@ -18,6 +18,7 @@ from fiftyone.core.annotation.attributes import (
     AttributeSpec,
     attr_insert_to_dict,
 )
+from fiftyone.core.annotation.nodes import Node
 from fiftyone.core.odm.ontology import OntologyDocument, OntologyType
 
 
@@ -34,7 +35,7 @@ class Ontology(abc.ABC):
         description: optional description
     """
 
-    _TYPE: Optional[str] = None
+    _TYPE: ClassVar[Optional[str]] = None
 
     def __init__(
         self,
@@ -302,10 +303,89 @@ class AnnotationOntology(Ontology):
         )
 
 
+class Taxonomy(Ontology):
+    """Ontology for defining a hierarchical class structure.
+
+    A taxonomy is a named, versioned, self-contained class hierarchy.
+    Label schema fields reference a taxonomy by ``name`` instead of
+    inlining a flat class list, so the same hierarchy can be shared
+    across multiple datasets.
+
+    Args:
+        name: the taxonomy name
+        description: optional description
+        root: the root :class:`Node` of the hierarchy. Required.
+
+    Example::
+
+        Taxonomy(
+            name="vehicle_classes",
+            root=Node(
+                name="vehicles",
+                can_select=False,
+                values=[
+                    Node(name="car"),
+                    Node(name="truck"),
+                    Node(name="motorcycle"),
+                ],
+            ),
+        )
+    """
+
+    _TYPE = OntologyType.TAXONOMY.value
+
+    def __init__(
+        self,
+        name: str,
+        root: Node,
+        description: Optional[str] = None,
+    ):
+        super().__init__(name=name, description=description)
+        if not isinstance(root, Node):
+            raise ValueError("Taxonomy.root must be a Node instance")
+        self.root = root
+
+    def _get_root(self) -> dict:
+        return self.root.to_dict()
+
+    def _apply_doc(self, doc: OntologyDocument) -> None:
+        self.name = doc.name
+        self.description = doc.description
+        self.root = Node.from_dict(doc.root)
+
+    def to_dict(self) -> dict:
+        """Serializes this taxonomy to a dict.
+
+        Returns:
+            a dict
+        """
+        d = super().to_dict()
+        d["root"] = self._get_root()
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Taxonomy":
+        """Creates a :class:`Taxonomy` from a dict.
+
+        Args:
+            d: a taxonomy dict
+
+        Returns:
+            a :class:`Taxonomy`
+        """
+        root = d.get("root") or {}
+        return cls(
+            name=d["name"],
+            description=d.get("description"),
+            root=Node.from_dict(root),
+        )
+
+
 # ---- Type dispatch --------------------------------------------------------
 
 _TYPE_TO_CLS: dict[str, type[Ontology]] = {
     OntologyType.ANNOTATION_ONTOLOGY.value: AnnotationOntology,
+    OntologyType.TAXONOMY.value: Taxonomy,
 }
 
 
