@@ -57,14 +57,31 @@ export const useSyncLighterLabelStream = (scene: Scene2D | null): void => {
     useCallback((payload) => upsertFromOverlay(payload.id), [upsertFromOverlay])
   );
 
+  // Lighter flips `interactionState` to `"DRAGGING"` on every pointer-down
+  // over an overlay, so a click-to-select fires `overlay-drag-end` with
+  // `startBounds === bounds`. Filter those out — selection is not an edit
+  // and writing the cache would (a) churn the dirty set and (b) auto-
+  // promote the label to a keyframe via `toLocalDetection`.
   useEventHandler(
     "lighter:overlay-drag-end",
-    useCallback((payload) => upsertFromOverlay(payload.id), [upsertFromOverlay])
+    useCallback(
+      (payload) => {
+        if (rectsEqual(payload.startBounds, payload.bounds)) return;
+        upsertFromOverlay(payload.id);
+      },
+      [upsertFromOverlay]
+    )
   );
 
   useEventHandler(
     "lighter:overlay-resize-end",
-    useCallback((payload) => upsertFromOverlay(payload.id), [upsertFromOverlay])
+    useCallback(
+      (payload) => {
+        if (rectsEqual(payload.startBounds, payload.bounds)) return;
+        upsertFromOverlay(payload.id);
+      },
+      [upsertFromOverlay]
+    )
   );
 
   useEventHandler(
@@ -96,16 +113,20 @@ function toLocalDetection(overlay: DetectionOverlay): LocalDetection {
   // synthetic `track-<n>` id used for cross-frame identity and won't
   // match anything in the baseline detections array.
   // Any overlay event reaching this helper came from a user action
-  // (draw / drag-end / resize-end). Promote to a keyframe and clear any
-  // propagation provenance — the label is now user-authoritative for
-  // this frame, regardless of how it got here.
+  // (draw / drag-end / resize-end with real movement). Promote to a
+  // keyframe — the label is now user-authoritative for this frame.
+  // Propagation is intentionally not cleared here: the cache's shallow
+  // merge preserves it from the existing entry, and unconditionally
+  // writing `propagation: null` produces noisy `add value: null` patch
+  // ops against baselines that have no propagation field at all.
+  // Clearing-on-edit becomes a separate concern once we have a way to
+  // condition on the cache state without a layering violation.
   const det: LocalDetection = {
     _cls: "Detection",
     _id: label._id ?? overlay.id,
     label: label.label,
     bounding_box: [bounds.x, bounds.y, bounds.width, bounds.height],
     keyframe: true,
-    propagation: null,
   };
 
   if (label.index !== undefined) {
@@ -117,4 +138,14 @@ function toLocalDetection(overlay: DetectionOverlay): LocalDetection {
   }
 
   return det;
+}
+
+/** Strict equality on the four bbox dimensions. */
+function rectsEqual(
+  a: { x: number; y: number; width: number; height: number },
+  b: { x: number; y: number; width: number; height: number }
+): boolean {
+  return (
+    a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height
+  );
 }
