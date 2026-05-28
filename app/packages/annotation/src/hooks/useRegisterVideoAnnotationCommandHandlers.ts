@@ -1,11 +1,15 @@
 import { useRegisterCommandHandler } from "@fiftyone/command-bus";
 import {
   useFrameLabelsStream,
+  useStageTemporalDetectionSupport,
   type LocalDetection,
 } from "@fiftyone/video-annotation";
 import { useCallback } from "react";
 import { frameAt } from "../../../playback/src/lib/playback/utils";
-import { MarkKeyframeCommand } from "../commands";
+import {
+  EditTemporalDetectionSupportCommand,
+  MarkKeyframeCommand,
+} from "../commands";
 
 /**
  * Registers video-specific annotation command handlers. Mount inside
@@ -15,6 +19,21 @@ import { MarkKeyframeCommand } from "../commands";
  */
 export const useRegisterVideoAnnotationCommandHandlers = () => {
   const stream = useFrameLabelsStream();
+  const stageTemporalDetectionSupport = useStageTemporalDetectionSupport();
+
+  useRegisterCommandHandler(
+    EditTemporalDetectionSupportCommand,
+    useCallback(
+      async (cmd) => {
+        stageTemporalDetectionSupport(cmd.fieldPath, cmd.detectionId, [
+          cmd.support[0],
+          cmd.support[1],
+        ]);
+        return true;
+      },
+      [stageTemporalDetectionSupport]
+    )
+  );
 
   useRegisterCommandHandler(
     MarkKeyframeCommand,

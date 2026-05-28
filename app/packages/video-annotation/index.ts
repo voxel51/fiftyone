@@ -23,3 +23,11 @@ export type {
   TemporalDetectionEventData,
   BuildTemporalDetectionTracksInput,
 } from "./src/temporalDetectionTracks";
+export {
+  applyTemporalDetectionEdits,
+  parseTemporalDetectionEditKey,
+  temporalDetectionEditKey,
+  useClearTemporalDetectionEdits,
+  useStageTemporalDetectionSupport,
+  useTemporalDetectionPendingEdits,
+} from "./src/pendingTemporalDetectionEdits";
