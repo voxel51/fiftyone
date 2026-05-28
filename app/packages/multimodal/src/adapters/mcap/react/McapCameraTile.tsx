@@ -1,6 +1,5 @@
 import { TileSettingsContent, useSetTileTitle } from "@fiftyone/tiling";
 import {
-  Checkbox,
   Dropdown,
   DropdownAnchor,
   DropdownTrigger,
@@ -15,15 +14,18 @@ import React, { useEffect, useState } from "react";
 import type { EncodedImageVisualization } from "../../../decoders";
 import { useSceneSourcesByType } from "../../../scene-inventory";
 import { ImagePanel } from "../../../visualization/panels/image";
+import McapCameraAnnotationOverlay from "./McapCameraAnnotationOverlay";
 import settingsStyles from "./McapTile.settings.module.css";
 import styles from "./McapTile.module.css";
 import { useMcapTopicStream } from "./use-mcap-topic-stream";
 
 const McapCameraTile: React.FC = () => {
+  const [imageDims, setImageDims] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
   const cameras = useSceneSourcesByType("camera");
   const setTileTitle = useSetTileTitle();
-  // Initialize from the first available source.
-  // State lets the user swap via the dropdown.
   const [topic, setTopic] = useState<string>(cameras[0]?.id ?? "");
 
   // If cameras populated after the initial render (or the selected topic
@@ -40,7 +42,14 @@ const McapCameraTile: React.FC = () => {
     if (label) setTileTitle(label);
   }, [topic, cameras, setTileTitle]);
 
+  // Reset stale dims when the camera source changes so the overlay cannot
+  // briefly use the previous camera's dimensions before onImageLoaded fires.
+  useEffect(() => {
+    setImageDims(null);
+  }, [topic]);
+
   const frame = useMcapTopicStream<EncodedImageVisualization>(topic);
+  const annotationTopic = topic ? annotationsTopicFor(topic) : null;
   const currentLabel =
     cameras.find((c) => c.id === topic)?.label ?? "Select source";
 
@@ -69,13 +78,29 @@ const McapCameraTile: React.FC = () => {
               ))}
             </Dropdown>
           </div>
-          <Checkbox label="Show overlays" defaultChecked />
-          <Checkbox label="Show bounding boxes" />
-          <Checkbox label="Show track ids" />
         </div>
       </TileSettingsContent>
       {frame ? (
-        <ImagePanel frame={frame} className={styles.panel} />
+        <div className={styles.imageStack}>
+          <ImagePanel
+            frame={frame}
+            className={styles.panel}
+            onImageLoaded={(width, height) =>
+              setImageDims((prev) =>
+                prev?.width === width && prev?.height === height
+                  ? prev
+                  : { width, height }
+              )
+            }
+          />
+          {imageDims && annotationTopic ? (
+            <McapCameraAnnotationOverlay
+              topic={annotationTopic}
+              imageWidth={imageDims.width}
+              imageHeight={imageDims.height}
+            />
+          ) : null}
+        </div>
       ) : (
         <div className={styles.loading}>
           <Spinner size={Size.Lg} />
@@ -84,5 +109,12 @@ const McapCameraTile: React.FC = () => {
     </>
   );
 };
+
+// `/CAM_FRONT/image_rect_compressed` → `/CAM_FRONT/annotations`.
+function annotationsTopicFor(cameraTopic: string): string | null {
+  const idx = cameraTopic.indexOf("/", 1);
+  if (idx <= 0) return null;
+  return `${cameraTopic.slice(0, idx)}/annotations`;
+}
 
 export default McapCameraTile;

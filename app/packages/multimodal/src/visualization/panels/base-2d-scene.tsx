@@ -11,6 +11,8 @@ import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "./style-tokens";
  */
 export interface ImageTextureHandle {
   readonly aspectRatio: number;
+  readonly imageWidth: number;
+  readonly imageHeight: number;
   readonly dispose: () => void;
   readonly texture: THREE.Texture;
 }

@@ -6,6 +6,12 @@
   width: 100%;
 }
 
+.imageStack {
+  height: 100%;
+  position: relative;
+  width: 100%;
+}
+
 .loading {
   align-items: center;
   display: flex;
