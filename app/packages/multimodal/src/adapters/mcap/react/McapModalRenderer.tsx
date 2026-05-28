@@ -25,7 +25,15 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
   const fileName = source?.sourceId.split("/").pop() ?? "recording.mcap";
   const sceneSources = useMcapSceneInventory(fileName);
   const initialTiles = useMcapInitialTiles(fileName);
-  const { create, temporalTags } = useSampleRendererTemporalTags(ctx);
+  const { create, delete: deleteTags, temporalTags } = useSampleRendererTemporalTags(ctx);
+
+  const onTagDelete = useCallback(
+    async (event: { data?: unknown }) => {
+      const id = event.data;
+      if (typeof id === "string") await deleteTags([id]);
+    },
+    [deleteTags]
+  );
 
   const onTagCreate = useCallback(
     (tag: TemporalTagCreatePayload) =>
@@ -45,7 +53,7 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
     if (temporalTags.length === 0) return NO_TRACKS;
 
     const TAG_COLORS = [
-      "var(--color-brand-primary, #f97316)",
+      "#f97316",
       "#3b82f6",
       "#10b981",
       "#8b5cf6",
@@ -62,12 +70,20 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
       byLabel.set(t.tag, group);
     }
 
-    return Array.from(byLabel.entries()).map(([label, events], i) => ({
+    // Sort label groups newest-first so recently created tags appear at the
+    // top of the pinned section.
+    const sorted = Array.from(byLabel.entries()).sort(([, a], [, b]) => {
+      const tA = Math.max(...a.map((t) => t.createdAt ? Date.parse(t.createdAt) : 0));
+      const tB = Math.max(...b.map((t) => t.createdAt ? Date.parse(t.createdAt) : 0));
+      return tB - tA;
+    });
+
+    return sorted.map(([label, events]) => ({
       id: `temporal-tag::${label}`,
       label,
-      color: TAG_COLORS[i % TAG_COLORS.length],
+      color: TAG_COLORS[hashLabel(label) % TAG_COLORS.length],
       events: events.map((t) => ({
-        id: t.id,
+        data: t.id,
         label: t.tag,
         startSec: t.start / 1_000_000_000,
         endSec: t.end / 1_000_000_000,
@@ -82,7 +98,7 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
         sceneSources={sceneSources}
         initialTiles={initialTiles}
         tracks={tagTracks.length > 0 ? tagTracks : undefined}
-        defaultPinnedTrackIds={tagTracks.length > 0 ? tagTracks.map((t) => t.id) : undefined}
+        onTagDelete={onTagDelete}
         defaultLeftOpen={false}
         defaultRightOpen={false}
         onTagCreate={onTagCreate}
@@ -94,3 +110,11 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
 };
 
 export default McapModalRenderer;
+
+function hashLabel(label: string): number {
+  let hash = 0;
+  for (let i = 0; i < label.length; i++) {
+    hash = (hash * 31 + label.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+}

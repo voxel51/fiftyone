@@ -61,6 +61,8 @@ export interface MultiModalPlaybackProps {
    * hotkey, Shift+drag).
    */
   onTagCreate?: TemporalTagTimelineProps["onTagCreate"];
+  /** Callback that deletes an existing temporal tag by its backend id. */
+  onTagDelete?: TemporalTagTimelineProps["onEventDelete"];
 
   /**
    * Rendered inside the providers this component owns. Use it for
@@ -115,6 +117,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   defaultLeftOpen = true,
   defaultRightOpen = true,
   onTagCreate,
+  onTagDelete,
   children,
   className,
 }) => {
@@ -134,6 +137,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
               defaultLeftOpen={defaultLeftOpen}
               defaultRightOpen={defaultRightOpen}
               onTagCreate={onTagCreate}
+              onTagDelete={onTagDelete}
               className={className}
             />
           </TilingProvider>
@@ -150,6 +154,7 @@ interface LayoutProps {
   defaultLeftOpen: boolean;
   defaultRightOpen: boolean;
   onTagCreate?: MultiModalPlaybackProps["onTagCreate"];
+  onTagDelete?: MultiModalPlaybackProps["onTagDelete"];
   className?: string;
 }
 
@@ -160,6 +165,7 @@ function Layout({
   defaultLeftOpen,
   defaultRightOpen,
   onTagCreate,
+  onTagDelete,
   className,
 }: LayoutProps) {
   const { layout, tiles, focusedTileId, setLayout, setFocusedTileId } =
@@ -213,7 +219,7 @@ function Layout({
         </Drawer>
       </div>
 
-      <TemporalTagTimeline onTagCreate={onTagCreate} />
+      <TemporalTagTimeline onTagCreate={onTagCreate} onEventDelete={onTagDelete} />
     </div>
   );
 }

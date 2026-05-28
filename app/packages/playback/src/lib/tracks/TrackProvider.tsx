@@ -2,7 +2,9 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -95,6 +97,40 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
   const [pinnedIds, setPinnedSet] = useState<Set<string>>(
     () => new Set(initialPinnedIds)
   );
+
+  // Auto-pin tracks added one-at-a-time after the initial load (e.g. a
+  // newly created temporal tag). We distinguish "initial hydration" from
+  // "incremental addition" using a ref: the first time initialTracks
+  // becomes non-empty we mark all IDs as seen without pinning them (they
+  // are pre-existing tags the user hasn't explicitly pinned). Any ID that
+  // appears after that initial hydration is a new creation and gets pinned.
+  const hydratedRef = useRef(initialTracks.length > 0);
+  const seenTrackIdsRef = useRef<Set<string>>(
+    new Set(initialTracks.map((t) => t.id))
+  );
+  useEffect(() => {
+    if (!hydratedRef.current) {
+      // Still waiting for the first non-empty batch — don't advance
+      // hydratedRef yet or seenTrackIdsRef would stay empty and every
+      // track in the real load would look "new" and get auto-pinned.
+      if (initialTracks.length === 0) return;
+      // First non-empty initialTracks — record all IDs as seen so they
+      // are not treated as new creations, but do not pin them.
+      hydratedRef.current = true;
+      for (const t of initialTracks) seenTrackIdsRef.current.add(t.id);
+      return;
+    }
+    const unseen = initialTracks
+      .map((t) => t.id)
+      .filter((id) => !seenTrackIdsRef.current.has(id));
+    if (unseen.length === 0) return;
+    for (const id of unseen) seenTrackIdsRef.current.add(id);
+    setPinnedSet((prev) => {
+      const next = new Set(prev);
+      for (const id of unseen) next.add(id);
+      return next;
+    });
+  }, [initialTracks]);
 
   const togglePin = useCallback((id: string) => {
     setPinnedSet((prev) => {
