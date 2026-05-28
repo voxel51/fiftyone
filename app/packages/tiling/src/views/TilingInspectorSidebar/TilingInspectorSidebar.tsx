@@ -20,25 +20,36 @@ const TilingInspectorSidebar: React.FC = () => {
     <div className={styles.root}>
       <div className={styles.tabs} role="tablist">
         <button
+          id="inspector-tab-explore"
           type="button"
           role="tab"
           aria-selected={tab === "explore"}
+          aria-controls="inspector-panel-explore"
+          tabIndex={tab === "explore" ? 0 : -1}
           className={clsx(styles.tab, tab === "explore" && styles.tabActive)}
           onClick={() => setTab("explore")}
         >
           Explore
         </button>
         <button
+          id="inspector-tab-annotate"
           type="button"
           role="tab"
           aria-selected={tab === "annotate"}
+          aria-controls="inspector-panel-annotate"
+          tabIndex={tab === "annotate" ? 0 : -1}
           className={clsx(styles.tab, tab === "annotate" && styles.tabActive)}
           onClick={() => setTab("annotate")}
         >
           Annotate
         </button>
       </div>
-      <div className={styles.body}>
+      <div
+        className={styles.body}
+        role="tabpanel"
+        id={`inspector-panel-${tab}`}
+        aria-labelledby={`inspector-tab-${tab}`}
+      >
         {tab === "explore" ? <ExplorePanel /> : <AnnotatePanel />}
       </div>
     </div>

@@ -1,9 +1,11 @@
 import { useSetTileSelection } from "@fiftyone/tiling";
 import React, { useCallback, useState } from "react";
 
-import type { ImageAnnotationsVisualization } from "../../../decoders";
-import { ImageAnnotationsOverlay } from "../../../visualization/panels/ImageAnnotationsOverlay";
-import { useMcapTopicStream } from "./use-mcap-topic-stream";
+import {
+  ImageAnnotationsOverlay,
+  type ImageAnnotationPickedPrimitive,
+} from "../../../visualization/panels/ImageAnnotationsOverlay";
+import { useInterpolatedImageAnnotations } from "./use-interpolated-image-annotations";
 
 export interface McapCameraAnnotationOverlayProps {
   readonly topic: string;

@@ -285,6 +285,7 @@ function PolylinePrimitive({
   }
 
   const closed = primitive.type === "line-loop";
+  const pointsAttr = primitive.points.map(([x, y]) => `${x},${y}`).join(" ");
   return (
     <g
       className={clsx(
@@ -296,19 +297,27 @@ function PolylinePrimitive({
       onClick={onClick}
     >
       {closed ? (
-        <polygon
-          points={primitive.points.map(([x, y]) => `${x},${y}`).join(" ")}
-          className={styles.fillInterior}
-        />
+        <polygon points={pointsAttr} className={styles.fillInterior} />
       ) : null}
-      <polyline
-        points={primitive.points.map(([x, y]) => `${x},${y}`).join(" ")}
-        strokeWidth={thickness}
-        strokeLinejoin="round"
-        strokeLinecap="round"
-        vectorEffect="non-scaling-stroke"
-        fill="none"
-      />
+      {closed ? (
+        <polygon
+          points={pointsAttr}
+          strokeWidth={thickness}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          vectorEffect="non-scaling-stroke"
+          fill="none"
+        />
+      ) : (
+        <polyline
+          points={pointsAttr}
+          strokeWidth={thickness}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          vectorEffect="non-scaling-stroke"
+          fill="none"
+        />
+      )}
     </g>
   );
 }
@@ -337,7 +346,7 @@ function LineListGroups({
     <>
       {groups.map((group, gi) => {
         const color = colorForLabel(group.label);
-        const key = `pg-${setIndex}-${primitiveIndex}-${boundsKey(
+        const key = `pg-${setIndex}-${primitiveIndex}-${gi}-${boundsKey(
           group.bounds
         )}`;
         const onClick = pickHandler(onSelectPrimitive, {
@@ -598,19 +607,14 @@ const DEFAULT_COLOR_POOL: readonly string[] = [
 ];
 
 const DEFAULT_LABEL_KEY = "__no-label__";
-const labelColorAssignments = new Map<string, string>();
 
 function colorForLabel(label: string | null): string {
   const key = label ?? DEFAULT_LABEL_KEY;
-  let color = labelColorAssignments.get(key);
-  if (!color) {
-    color =
-      DEFAULT_COLOR_POOL[
-        labelColorAssignments.size % DEFAULT_COLOR_POOL.length
-      ];
-    labelColorAssignments.set(key, color);
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
   }
-  return color;
+  return DEFAULT_COLOR_POOL[hash % DEFAULT_COLOR_POOL.length];
 }
 
 function boundsKey(b: Bounds): string {
@@ -672,116 +676,6 @@ function displayRect(
   };
 }
 
-function CirclePrimitive({ primitive }: { primitive: ImageAnnotationCircle }) {
-  const [x, y] = primitive.position;
-  const radius = Math.max(0, primitive.diameter / 2);
-  return (
-    <circle
-      cx={x}
-      cy={y}
-      r={radius}
-      fill={rgbaToCss(primitive.fillColor) ?? "none"}
-      stroke={rgbaToCss(primitive.outlineColor) ?? DEFAULT_STROKE}
-      strokeWidth={Math.max(1, primitive.thickness)}
-      vectorEffect="non-scaling-stroke"
-    />
-  );
-}
-
-function PointsPrimitive({ primitive }: { primitive: ImageAnnotationPoints }) {
-  const stroke = rgbaToCss(primitive.outlineColor) ?? DEFAULT_STROKE;
-  const fill = rgbaToCss(primitive.fillColor);
-  const thickness = Math.max(1, primitive.thickness);
-
-  switch (primitive.type) {
-    case "points":
-      return (
-        <g>
-          {primitive.points.map(([x, y], i) => (
-            <circle
-              key={i}
-              cx={x}
-              cy={y}
-              r={thickness}
-              fill={rgbaToCss(primitive.outlineColors[i]) ?? fill ?? stroke}
-            />
-          ))}
-        </g>
-      );
-
-    case "line-loop":
-    case "line-strip": {
-      const pts =
-        primitive.type === "line-loop" && primitive.points.length > 1
-          ? [...primitive.points, primitive.points[0]]
-          : primitive.points;
-      return (
-        <polyline
-          points={pts.map(([x, y]) => `${x},${y}`).join(" ")}
-          fill={primitive.type === "line-loop" ? fill ?? "none" : "none"}
-          stroke={stroke}
-          strokeWidth={thickness}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-          vectorEffect="non-scaling-stroke"
-        />
-      );
-    }
-
-    case "line-list": {
-      const segments = [];
-      for (let i = 0; i + 1 < primitive.points.length; i += 2) {
-        const [x1, y1] = primitive.points[i];
-        const [x2, y2] = primitive.points[i + 1];
-        segments.push(
-          <line
-            key={i}
-            x1={x1}
-            y1={y1}
-            x2={x2}
-            y2={y2}
-            stroke={stroke}
-            strokeWidth={thickness}
-            strokeLinecap="round"
-            vectorEffect="non-scaling-stroke"
-          />
-        );
-      }
-      return <g>{segments}</g>;
-    }
-  }
-}
-
-function TextPrimitive({ primitive }: { primitive: ImageAnnotationText }) {
-  const [x, y] = primitive.position;
-  const fill = rgbaToCss(primitive.textColor) ?? DEFAULT_TEXT_FILL;
-  const fontSize = Math.max(1, primitive.fontSize);
-  const background = rgbaToCss(primitive.backgroundColor);
-
-  return (
-    <g>
-      {background ? (
-        <rect
-          x={x - 2}
-          y={y - fontSize}
-          width={primitive.text.length * fontSize * 0.6 + 4}
-          height={fontSize + 4}
-          fill={background}
-        />
-      ) : null}
-      <text
-        x={x}
-        y={y}
-        fill={fill}
-        fontSize={fontSize}
-        fontFamily="system-ui, sans-serif"
-        dominantBaseline="alphabetic"
-      >
-        {primitive.text}
-      </text>
-    </g>
-  );
-}
 
 function rgbaToCss(color: RgbaColor | null | undefined): string | undefined {
   if (!color) return undefined;

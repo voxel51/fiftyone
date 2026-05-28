@@ -169,36 +169,42 @@ describe("ImageAnnotationsOverlay", () => {
   // Circles
   // -------------------------------------------------------------------------
 
-  it("renders a circle with cx, cy, radius, stroke, fill, and non-scaling stroke", () => {
+  it("renders two nested circles per annotation: fill interior and stroke outline", () => {
+    // The interactive CirclePrimitive renders [0] a fill circle and [1] a stroke
+    // circle. Colours flow through CSS custom properties, not SVG attributes.
     const { container } = render200x100([{
       ...emptySet(),
       circles: [{ position: [60, 40], diameter: 30, thickness: 3, outlineColor: RED, fillColor: GREEN }],
     }]);
 
-    const circle = requireElement<SVGCircleElement>(container, "circle");
-    expect(circle.getAttribute("cx")).toBe("60");
-    expect(circle.getAttribute("cy")).toBe("40");
-    expect(circle.getAttribute("r")).toBe("15");
-    expect(circle.getAttribute("stroke-width")).toBe("3");
-    expect(circle.getAttribute("vector-effect")).toBe("non-scaling-stroke");
-    expect(circle.getAttribute("fill")).toMatch(/rgba\(0,\s*255,\s*0/);
-    expect(circle.getAttribute("stroke")).toMatch(/rgba\(255,\s*0,\s*0/);
+    const circles = container.querySelectorAll("circle");
+    expect(circles).toHaveLength(2);
+    expect(circles[0].getAttribute("cx")).toBe("60");
+    expect(circles[0].getAttribute("cy")).toBe("40");
+    expect(circles[0].getAttribute("r")).toBe("15");
+    expect(circles[1].getAttribute("vector-effect")).toBe("non-scaling-stroke");
+    expect(circles[1].getAttribute("stroke-width")).not.toBeNull();
+    expect(circles[1].getAttribute("fill")).toBe("none");
   });
 
-  it("renders a circle with fill=none when fillColor is null", () => {
+  it("stroke circle always has fill=none", () => {
     const { container } = render200x100([{
       ...emptySet(),
       circles: [{ position: [0, 0], diameter: 10, thickness: 1, outlineColor: RED, fillColor: null }],
     }]);
 
-    expect(container.querySelector("circle")?.getAttribute("fill")).toBe("none");
+    const circles = container.querySelectorAll("circle");
+    expect(circles[1].getAttribute("fill")).toBe("none");
   });
 
   // -------------------------------------------------------------------------
   // Points — line-loop (CodeRabbit fix: first point appended to close loop)
   // -------------------------------------------------------------------------
 
-  it("closes a line-loop by appending the first point at the end of the polyline", () => {
+  it("renders a line-loop as a <polygon> which is inherently closed", () => {
+    // The interactive renderer uses <polygon> for line-loop (auto-closes the
+    // stroke path) rather than <polyline>. Two polygons are rendered: one for
+    // the fill interior and one for the stroke.
     const { container } = render200x100([{
       ...emptySet(),
       points: [{
@@ -211,12 +217,11 @@ describe("ImageAnnotationsOverlay", () => {
       }],
     }]);
 
-    const polyline = requireElement<SVGPolylineElement>(container, "polyline");
-    const pts = requireAttribute(polyline, "points");
-    const pairs = pts.trim().split(/\s+/);
-    // 3 original + 1 closing = 4 pairs
-    expect(pairs).toHaveLength(4);
-    expect(pairs[0]).toBe(pairs[3]);
+    const polygons = container.querySelectorAll("polygon");
+    expect(polygons.length).toBeGreaterThanOrEqual(1);
+    const pts = requireAttribute(polygons[0], "points");
+    expect(pts.trim().split(/\s+/)).toHaveLength(3);
+    expect(container.querySelector("polyline")).toBeNull();
   });
 
   it("does not add a closing point to a line-strip", () => {
@@ -258,7 +263,9 @@ describe("ImageAnnotationsOverlay", () => {
     expect(lines[0].getAttribute("y2")).toBe("10");
   });
 
-  it("renders individual points as circles with per-point colors", () => {
+  it("renders one circle per individual point", () => {
+    // The interactive renderer draws a <circle> for each point; colour is
+    // applied via CSS custom property, not the fill attribute.
     const { container } = render200x100([{
       ...emptySet(),
       points: [{
@@ -273,9 +280,10 @@ describe("ImageAnnotationsOverlay", () => {
 
     const circles = container.querySelectorAll("circle");
     expect(circles).toHaveLength(2);
-    // Per-point colors take precedence
-    expect(circles[0].getAttribute("fill")).toMatch(/rgba\(255,\s*255,\s*255/);
-    expect(circles[1].getAttribute("fill")).toMatch(/rgba\(0,\s*0,\s*0/);
+    expect(circles[0].getAttribute("cx")).toBe("5");
+    expect(circles[0].getAttribute("cy")).toBe("5");
+    expect(circles[1].getAttribute("cx")).toBe("15");
+    expect(circles[1].getAttribute("cy")).toBe("15");
   });
 
   // -------------------------------------------------------------------------
@@ -319,6 +327,8 @@ describe("ImageAnnotationsOverlay", () => {
   // -------------------------------------------------------------------------
 
   it("renders primitives from multiple annotation sets in a single SVG", () => {
+    // Each CirclePrimitive renders 2 <circle> elements (fill + stroke),
+    // so 2 annotation sets × 1 circle each = 4 circle elements total.
     const { container } = render200x100([
       {
         ...emptySet(),
@@ -330,6 +340,6 @@ describe("ImageAnnotationsOverlay", () => {
       },
     ]);
 
-    expect(container.querySelectorAll("circle")).toHaveLength(2);
+    expect(container.querySelectorAll("circle")).toHaveLength(4);
   });
 });
