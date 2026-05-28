@@ -5,6 +5,7 @@ import {
   ImageAnnotationsOverlay,
   type ImageAnnotationPickedPrimitive,
 } from "../../../visualization/panels/ImageAnnotationsOverlay";
+import { useMcapAnnotationSelection } from "./mcap-annotation-selection-context";
 import { useInterpolatedImageAnnotations } from "./use-interpolated-image-annotations";
 
 export interface McapCameraAnnotationOverlayProps {
