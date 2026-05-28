@@ -1,7 +1,7 @@
 import React from "react";
 
 import type { ImageAnnotationsVisualization } from "../../../decoders";
-import { ImageAnnotationsOverlay } from "../../../visualization/panels/image-annotations-overlay";
+import { ImageAnnotationsOverlay } from "../../../visualization/panels/ImageAnnotationsOverlay";
 import { useMcapTopicStream } from "./use-mcap-topic-stream";
 
 export interface McapCameraAnnotationOverlayProps {
