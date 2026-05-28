@@ -9,33 +9,36 @@ import {
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import type { DetectionLabel } from "@fiftyone/looker";
 import { useCallback } from "react";
 import { useLabelsContext } from "../../core/src/components/Modal/Sidebar/Annotate";
 import useFocus from "../../core/src/components/Modal/Sidebar/Annotate/useFocus";
 import { useDetectionMode } from "../../core/src/components/Modal/Sidebar/Annotate/Edit/useDetectionMode";
 
 /**
- * Bridges Lighter overlay events into the annotation / sidebar systems
- * for the video surface.
+ * Bridges Lighter overlay events into the annotation systems for the video
+ * surface.
  *
  * Event-handler-only: state changes flow through public hook interfaces
- * (`useLabelsContext`, `useDetectionMode`, `useFocus`) rather than direct
- * atom access, so this stays decoupled from those modules' internals.
+ * (`useDetectionMode`, `useFocus`) rather than direct atom access, so this
+ * stays decoupled from those modules' internals.
  *
  * Wires the following bridges:
  *   - **Draw**: `lighter:overlay-create` → `detectionMode.create()`.
  *   - **Establish**: `lighter:overlay-establish` →
  *     `annotation:canvasDetectionOverlayEstablish` so the modal-level
  *     handler can open the sidebar inspector for the new label.
- *   - **Scene ↔ sidebar membership**: `lighter:overlay-added` /
- *     `removed` → `addLabelToSidebar` / `removeLabelFromSidebar`.
  *   - **Selection**: `lighter:overlay-select` / `deselect` →
  *     `focus.selectOverlay` / `deselectOverlay`.
  *   - **Mode quit**: `lighter:detection-mode-quit` and
  *     `lighter:active-mode-quit-requested` (right-click / Esc) →
  *     `detectionMode.deactivateDetectionMode()`.
+ *   - **Transient sidebar cleanup**: `lighter:overlay-removed` →
+ *     `removeLabelFromSidebar`. Snapshot-driven membership lives in
+ *     {@link useSyncSidebarFromSnapshot}.
  *
+ * Sidebar membership and per-frame data freshness are otherwise owned by
+ * {@link useSyncSidebarFromSnapshot}, which reconciles against the current
+ * `FrameLabelSnapshot`.
  * @param scene - The scene to bridge, or `null` while it's still being
  *   set up. When `null`, handlers attach to an inert sentinel channel
  *   and re-bind once the real scene becomes available.
@@ -45,7 +48,7 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
   const annotationEventBus = useAnnotationEventBus();
-  const { addLabelToSidebar, removeLabelFromSidebar } = useLabelsContext();
+  const { removeLabelFromSidebar } = useLabelsContext();
   const detectionMode = useDetectionMode();
   const focus = useFocus();
 
@@ -71,26 +74,6 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
         );
       },
       [annotationEventBus]
-    )
-  );
-
-  useEventHandler(
-    "lighter:overlay-added",
-    useCallback(
-      (payload) => {
-        if (
-          payload.overlay instanceof DetectionOverlay &&
-          payload.overlay.field
-        ) {
-          addLabelToSidebar({
-            data: payload.overlay.label as DetectionLabel,
-            overlay: payload.overlay,
-            path: payload.overlay.field,
-            type: "Detection",
-          });
-        }
-      },
-      [addLabelToSidebar]
     )
   );
 
