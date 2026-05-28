@@ -10,7 +10,11 @@ import type {
   BufferReadiness,
   PlaybackStore,
 } from "../../playback/src/lib/playback/types";
-import type { FrameLabelSnapshot, SyntheticBox } from "./SyntheticLabelStream";
+import type {
+  FrameLabelSnapshot,
+  PropagationBlob,
+  SyntheticBox,
+} from "./SyntheticLabelStream";
 
 interface RawDetection {
   _id?: string;
@@ -19,6 +23,8 @@ interface RawDetection {
   label?: string;
   bounding_box?: [number, number, number, number];
   instance?: { _cls: "Instance"; _id?: string } | null;
+  keyframe?: boolean;
+  propagation?: PropagationBlob | null;
 }
 
 interface RawDetectionsField {
@@ -223,6 +229,10 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       return "loading";
     }
 
+    if (this.isInFetchedRange(frame)) {
+      return "ready";
+    }
+
     return "missing";
   }
 
@@ -249,6 +259,11 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     const frame = this.timeToFrame(time);
     const sample = this.cache.get(frame);
     if (!sample) {
+      // Chunk fetched, this frame had no labels — return an empty
+      // snapshot so consumers can tell "no labels here" from "not fetched".
+      if (this.isInFetchedRange(frame)) {
+        return { frameNumber: frame, detections: [] };
+      }
       return null;
     }
 
@@ -448,6 +463,15 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     return this.inflight.has(frame);
   }
 
+  private isInFetchedRange(frame: number): boolean {
+    for (const [start, end] of this.fetchedRanges) {
+      if (frame >= start && frame <= end) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private async fetchChunk(startFrame: number): Promise<void> {
     const numFrames = Math.min(
       this.chunkSize,
@@ -546,6 +570,8 @@ function extractDetections(
       bounding_box: det.bounding_box,
       index: det.index,
       instance: det.instance ?? undefined,
+      keyframe: det.keyframe ?? false,
+      propagation: det.propagation ?? null,
     });
   }
 
