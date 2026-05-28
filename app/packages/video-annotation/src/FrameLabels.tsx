@@ -34,9 +34,10 @@ import {
 import { buildPerInstanceTracks, type PerInstanceLabel } from "./frameTracks";
 import { LABELS_STREAM_ID } from "./ids";
 import { useLinkedTrackDecorator } from "./linkedTracks";
+import { EditTemporalDetectionSupportCommand } from "@fiftyone/annotation";
+import { useCommandBus } from "@fiftyone/command-bus";
 import {
   applyTemporalDetectionEdits,
-  useStageTemporalDetectionSupport,
   useTemporalDetectionPendingEdits,
 } from "./pendingTemporalDetectionEdits";
 import {
@@ -260,7 +261,7 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   }, [stream, resolveColor, editVersion]);
 
   const pendingTemporalDetectionEdits = useTemporalDetectionPendingEdits();
-  const stageTemporalDetectionSupport = useStageTemporalDetectionSupport();
+  const commandBus = useCommandBus();
 
   const temporalDetectionTracks = useMemo(() => {
     if (!sample?.sample) {
@@ -340,19 +341,22 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
           const firstFrame = Math.max(1, Math.round(newStartSec * fps) + 1);
           const lastFrame = Math.max(firstFrame, Math.round(newEndSec * fps));
 
-          // Stage the edit; the next autosave tick picks it up via
-          // `useTemporalDetectionDeltaSupplier` and the persistence event
-          // handler clears it on success/error. Undo/redo still TODO —
-          // would wrap this in a command on the annotation bus.
-          stageTemporalDetectionSupport(
-            tdEvent.fieldPath,
-            tdEvent.detectionId,
-            [firstFrame, lastFrame]
+          // Goes through the command bus (same shape as
+          // `MarkKeyframeCommand`) so the dispatch path is uniform and
+          // future undo/redo subscribers see this edit on the bus.
+          // The handler stages into the same pending-edits store the
+          // delta supplier reads.
+          void commandBus.execute(
+            new EditTemporalDetectionSupportCommand(
+              tdEvent.fieldPath,
+              tdEvent.detectionId,
+              [firstFrame, lastFrame]
+            )
           );
         },
       };
     },
-    [linkDecorate, fps, snapStepSec, stageTemporalDetectionSupport]
+    [linkDecorate, fps, snapStepSec, commandBus]
   );
 
   return (
