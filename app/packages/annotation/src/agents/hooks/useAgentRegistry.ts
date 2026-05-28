@@ -2,6 +2,7 @@ import { AgentDescriptor, AgentRegistry } from "../registry";
 import { atom, useAtom } from "jotai";
 import { useCallback, useMemo } from "react";
 import { AnnotationAgent, InferenceResultProxy } from "../types";
+import { PropagationBrowserAgent } from "../PropagationBrowserAgent";
 import { SAM2BrowserAnnotationAgent } from "../SAM2BrowserAnnotationAgent";
 
 /** Maps agent IDs to their {@link AgentDescriptor} entries. */
@@ -13,6 +14,11 @@ const registryAtom = atom<RegistryMap>({
     id: "sam2-tiny-onnx",
     label: "SAM2",
     agent: new SAM2BrowserAnnotationAgent(),
+  },
+  "propagate-linear": {
+    id: "propagate-linear",
+    label: "Linear interpolation",
+    agent: new PropagationBrowserAgent(),
   },
 });
 

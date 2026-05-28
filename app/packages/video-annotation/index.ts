@@ -2,6 +2,8 @@ export { VideoAnnotationSurface } from "./src/VideoAnnotationSurface";
 export { SyntheticLabelStream } from "./src/SyntheticLabelStream";
 export type {
   FrameLabelSnapshot,
+  PropagationBlob,
+  PropagationMethod,
   SyntheticBox,
 } from "./src/SyntheticLabelStream";
 export {

@@ -53,10 +53,14 @@ const useSchema = (readOnly: boolean) => {
 
   // Reruns only when the visible attribute set changes.
   return useMemo(() => {
+    // An empty class list would emit a 0-item JSON-Schema enum, which RJSF
+    // rejects. Fall back to a free-form text input until the dataset has a
+    // configured class list.
+    const hasClasses = (config?.classes?.length ?? 0) > 0;
     const properties: Record<string, SchemaType | undefined> = {
       label: generatePrimitiveSchema("label", {
         type: "str",
-        component: config?.component || "dropdown",
+        component: hasClasses ? config?.component || "dropdown" : undefined,
         values: config?.classes || [],
         readOnly: effectiveReadOnly,
       }),

@@ -6,9 +6,19 @@ import {
 } from "@fiftyone/video-annotation";
 import { useCallback } from "react";
 import { frameAt } from "../../../playback/src/lib/playback/utils";
+import { useAgentRegistry } from "../agents/hooks/useAgentRegistry";
+import { useApplyPropagationResult } from "../agents/hooks/useApplyPropagationResult";
+import { useSampleDescriptor } from "../agents/hooks/useSampleDescriptor";
+import {
+  AgentTaskType,
+  type AnnotationAgent,
+  type PropagationContext,
+  type PropagationInferenceResult,
+} from "../agents/types";
 import {
   EditTemporalDetectionSupportCommand,
   MarkKeyframeCommand,
+  PropagateCommand,
 } from "../commands";
 
 /**
@@ -20,6 +30,9 @@ import {
 export const useRegisterVideoAnnotationCommandHandlers = () => {
   const stream = useFrameLabelsStream();
   const stageTemporalDetectionSupport = useStageTemporalDetectionSupport();
+  const registry = useAgentRegistry();
+  const sampleDescriptor = useSampleDescriptor();
+  const applyPropagation = useApplyPropagationResult();
 
   useRegisterCommandHandler(
     EditTemporalDetectionSupportCommand,
@@ -82,6 +95,56 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
         return updated;
       },
       [stream]
+    )
+  );
+
+  useRegisterCommandHandler(
+    PropagateCommand,
+    useCallback(
+      async (cmd) => {
+        if (!stream) return false;
+        if (cmd.fromFrame >= cmd.toFrame) return false;
+
+        const fromTime = (cmd.fromFrame - 1) / stream.fps;
+        const toTime = (cmd.toFrame - 1) / stream.fps;
+        const fromSnapshot = stream.getValue(fromTime);
+        const toSnapshot = stream.getValue(toTime);
+        if (!fromSnapshot || !toSnapshot) return false;
+
+        const matchesInstance = (d: {
+          instance?: { _cls: "Instance"; _id?: string };
+          keyframe: boolean;
+        }): boolean =>
+          d.keyframe === true && d.instance?._id === cmd.instanceId;
+
+        const leftKeyframe = fromSnapshot.detections.find(matchesInstance);
+        const rightKeyframe = toSnapshot.detections.find(matchesInstance);
+        if (!leftKeyframe || !rightKeyframe) return false;
+
+        const agentId = `propagate-${cmd.method}`;
+        const agents = await registry.listAgents();
+        const descriptor = agents.find((a) => a.id === agentId);
+        if (!descriptor) return false;
+
+        const context: PropagationContext = {
+          sampleDescriptor,
+          taskType: AgentTaskType.PROPAGATE,
+          instanceId: cmd.instanceId,
+          fromFrame: cmd.fromFrame,
+          toFrame: cmd.toFrame,
+          parentKeyframes: [leftKeyframe, rightKeyframe],
+        };
+
+        // Registry stores agents under the broad `InferenceResultProxy`
+        // type; narrow to the propagation agent's specific result type so
+        // the downstream apply hook is typed end-to-end.
+        const agent =
+          descriptor.agent as AnnotationAgent<PropagationInferenceResult>;
+        const result = await agent.infer(context);
+        applyPropagation(result);
+        return true;
+      },
+      [stream, registry, sampleDescriptor, applyPropagation]
     )
   );
 };

@@ -56,3 +56,21 @@ export class EditTemporalDetectionSupportCommand extends Command<boolean> {
     super();
   }
 }
+
+/**
+ * Propagate a tracked object's bounding box between two bracketing
+ * keyframes via the registered propagation agent (linear interp for the
+ * demo). Resolves to `true` when at least one in-between frame was
+ * written, `false` when prerequisites are missing (no stream, no
+ * bracketing keyframes, no registered agent for the method).
+ */
+export class PropagateCommand extends Command<boolean> {
+  constructor(
+    public readonly instanceId: string,
+    public readonly fromFrame: number,
+    public readonly toFrame: number,
+    public readonly method: string
+  ) {
+    super();
+  }
+}
