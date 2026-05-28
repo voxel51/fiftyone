@@ -11,10 +11,12 @@ import {
 
 function keyframe(
   id: string,
-  bbox: [number, number, number, number]
+  bbox: [number, number, number, number],
+  _id?: string
 ): SyntheticBox {
   return {
     id,
+    _id,
     label: "car",
     bounding_box: bbox,
     keyframe: true,
@@ -31,8 +33,14 @@ const baseContext = {
 describe("PropagationBrowserAgent.infer", () => {
   it("lerps a bbox between two keyframes and emits one Detection per in-between frame", async () => {
     const agent = new PropagationBrowserAgent();
-    const left = keyframe("k1", [0.0, 0.0, 0.1, 0.1]);
-    const right = keyframe("k2", [1.0, 1.0, 0.1, 0.1]);
+    // For a tracked object both keyframes share one synthetic overlay id
+    // (`instance-<...>`); provenance must record their distinct mongo `_id`s.
+    const left = keyframe("instance-inst-1", [0.0, 0.0, 0.1, 0.1], "oid-left");
+    const right = keyframe(
+      "instance-inst-1",
+      [1.0, 1.0, 0.1, 0.1],
+      "oid-right"
+    );
 
     const context: PropagationContext = {
       ...baseContext,
@@ -41,18 +49,16 @@ describe("PropagationBrowserAgent.infer", () => {
       parentKeyframes: [left, right],
     };
 
-    const result = (await agent.infer(context)) as SyncInferenceResult<
-      PropagationInferenceResult
-    > & { labelId: string };
+    const result = (await agent.infer(
+      context
+    )) as SyncInferenceResult<PropagationInferenceResult> & { labelId: string };
 
     expect(result.type).toBe("sync");
     expect(result.taskType).toBe(AgentTaskType.PROPAGATE);
     expect(result.labelId).toBe("inst-1");
     expect(result.response.perFrame).toHaveLength(9);
 
-    const midpoint = result.response.perFrame.find(
-      (e) => e.frameNumber === 10
-    );
+    const midpoint = result.response.perFrame.find((e) => e.frameNumber === 10);
     expect(midpoint?.detection.bounding_box).toEqual([0.5, 0.5, 0.1, 0.1]);
     expect(midpoint?.detection.keyframe).toBe(false);
     expect(midpoint?.detection.instance).toEqual({
@@ -61,7 +67,7 @@ describe("PropagationBrowserAgent.infer", () => {
     });
     expect(midpoint?.detection.propagation).toMatchObject({
       method: "linear",
-      parent_keyframes: ["k1", "k2"],
+      parent_keyframes: ["oid-left", "oid-right"],
     });
   });
 });
