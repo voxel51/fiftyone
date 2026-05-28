@@ -18,6 +18,7 @@ from starlette.exceptions import HTTPException
 from starlette.requests import Request
 
 import fiftyone as fo
+import fiftyone.core.frame as fof
 from fiftyone.server import decorators, utils
 from fiftyone.server.exceptions import DbVersionMismatchError
 from fiftyone.server.utils.datasets import (
@@ -277,8 +278,10 @@ def ensure_sample_field(sample: fo.Sample, field: str):
     for idx, part in enumerate(field_parts):
         field_path = ".".join(field_parts[: idx + 1])
 
+        key = int(part) if isinstance(current, fof.Frames) else part
+
         try:
-            current_part = current[part]
+            current_part = current[key]
         except (KeyError, TypeError, IndexError):
             current_part = None
 
@@ -303,7 +306,7 @@ def ensure_sample_field(sample: fo.Sample, field: str):
                 sample.set_field(field_path, field_type())
 
         # recurse
-        current = current[part]
+        current = current[key]
 
 
 def save_sample(
@@ -342,6 +345,13 @@ def save_sample(
             raise DbVersionMismatchError(
                 sample, etag=generate_sample_etag(sample)
             )
+
+        # `replace_one` writes the sample doc only — for video samples,
+        # frame mutations live in a separate collection and would be lost
+        # by the subsequent `reload(hard=True)`. Flush them explicitly so
+        # the ETag-protected path matches `sample.save()`'s behavior.
+        if sample.media_type == "video":
+            sample.frames.save()
     else:
         sample.save()
 
@@ -462,9 +472,24 @@ class Sample(HTTPEndpoint):
 
         etag = save_sample(sample, if_last_modified_at)
 
-        return utils.json.JSONResponse(
-            utils.json.serialize(sample), headers={"ETag": etag}
-        )
+        response_body = utils.json.serialize(sample)
+
+        # Video sample responses must carry the first frame so the grid's
+        # video tile keeps its `sample.frames[0]` contract after a patch
+        # refresh propagates the new sample. `to_dict` drops `frames` by
+        # default; reconstruct just the head frame to match the grid's
+        # initial-load shape (a single-element list).
+        if sample.media_type == "video" and isinstance(response_body, dict):
+            try:
+                head_frame = sample.frames.first()
+            except Exception:
+                head_frame = None
+            if head_frame is not None:
+                response_body["frames"] = [
+                    head_frame.to_dict(include_private=True)
+                ]
+
+        return utils.json.JSONResponse(response_body, headers={"ETag": etag})
 
     def _handle_patch(self, sample: fo.Sample, data: dict) -> fo.Sample:
         errors = {}
@@ -724,9 +749,7 @@ class CommitMask(HTTPEndpoint):
         mask_path = detection.mask_path
 
         try:
-            detection.export_mask(
-                mask_path, update=True, overwrite_path=True
-            )
+            detection.export_mask(mask_path, update=True, overwrite_path=True)
             etag = save_sample(sample, if_last_modified_at)
         except DbVersionMismatchError:
             raise
