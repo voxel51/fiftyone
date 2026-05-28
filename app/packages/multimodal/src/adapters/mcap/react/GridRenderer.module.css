@@ -1,0 +1,72 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  height: 100%;
+  padding: 8px 10px;
+  box-sizing: border-box;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.72) 0%,
+    rgba(0, 0, 0, 0.32) 55%,
+    transparent 100%
+  );
+  color: #fff;
+  gap: 6px;
+}
+
+.filename {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #fff;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  white-space: nowrap;
+  backdrop-filter: blur(2px);
+  cursor: pointer;
+}
+
+.chip.camera {
+  background: rgba(14, 165, 233, 0.35);
+}
+
+.chip.lidar {
+  background: rgba(34, 197, 94, 0.35);
+}
+
+.chip.annotation {
+  background: rgba(251, 146, 60, 0.35);
+}
+
+.meta {
+  font-size: 0.6875rem;
+  color: rgba(255, 255, 255, 0.65);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 8px 10px;
+}
