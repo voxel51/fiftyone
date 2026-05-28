@@ -1924,12 +1924,21 @@ def _walk_value(nested, coord, depth):
     """Indexes into ``nested`` using the first ``depth`` elements of ``coord``.
 
     Parent fields stop short of the row's coord length; child fields walk the
-    full depth and return whatever subtree remains.
+    full depth and return whatever subtree remains. Raises ``TypeError`` if
+    a non-list value is reached before consuming ``depth`` elements — this
+    indicates a depth/schema mismatch (e.g., trying to index into a leaf
+    scalar) which would otherwise silently corrupt results (Python strings,
+    in particular, are indexable and would return a single character).
     """
     value = nested
     for i in range(depth):
         if value is None:
             return None
+        if not isinstance(value, (list, NumpySerializedList)):
+            raise TypeError(
+                f"Expected list at coord depth {i}, "
+                f"got {type(value).__name__}"
+            )
         value = value[coord[i]]
     return value
 

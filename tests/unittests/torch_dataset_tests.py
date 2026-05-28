@@ -9,7 +9,7 @@ import os
 import unittest
 
 import fiftyone as fo
-from fiftyone.utils.torch import GetItem
+from fiftyone.utils.torch import GetItem, _walk_value
 
 
 class IdentityGetItem(GetItem):
@@ -369,6 +369,22 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
 
     def test_sibling_branch_broadcast_vectorized(self):
         self._sibling_branch_broadcast_impl(vectorize=True)
+
+    def test_walk_value_rejects_non_list_overflow(self):
+        # Positive case: at the correct depth the walk returns the right value.
+        nested = [["a", "b"], ["c"]]
+        self.assertEqual(_walk_value(nested, (0, 1), 2), "b")
+        self.assertEqual(_walk_value(nested, (1, 0), 2), "c")
+        self.assertEqual(_walk_value(nested, (0, 1), 1), ["a", "b"])
+
+        # Short-circuit on None.
+        self.assertIsNone(_walk_value([None, ["x"]], (0, 0), 2))
+
+        # Negative case: depth=2 over a list-of-strings would index into the
+        # string and silently return a character. The guard turns it into a
+        # loud TypeError so a depth/schema mismatch can't corrupt outputs.
+        with self.assertRaises(TypeError):
+            _walk_value(["abc", "def"], (0, 1), 2)
 
     def test_vectorized_vs_db_parity_per_detection(self):
         n_per_sample = (2, 3, 2)
