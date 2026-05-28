@@ -5,7 +5,6 @@
 # -----------------------------------------------
 User-agent: *
 Allow: /
-Sitemap: https://docs.voxel51.com/sitemap.xml
 # Disallow static assets and build artifacts
 Disallow: /_static/
 Disallow: /_sources/
