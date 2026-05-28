@@ -13,7 +13,11 @@ import {
   viewEndAtom,
   viewStartAtom,
 } from "./atoms";
-import { PlaybackProvider, usePlayback, usePlaybackStore } from "./PlaybackProvider";
+import {
+  PlaybackProvider,
+  usePlayback,
+  usePlaybackStore,
+} from "./PlaybackProvider";
 import type { PlaybackStream } from "./types";
 
 interface RenderOpts {
@@ -163,6 +167,20 @@ describe("PlaybackProvider engine actions", () => {
       const { result } = renderEngine({ duration: 10 });
       act(() => result.current.api.stepBack());
       expect(result.current.playhead).toBe(0);
+    });
+
+    it("snaps to frame boundaries from a mid-frame playhead", () => {
+      const { result } = renderEngine({ duration: 10 });
+      // Land between frame 30 (start 29/30) and frame 31 (start 30/30 = 1).
+      act(() => result.current.api.seek(0.99));
+      act(() => result.current.api.stepForward());
+      // Displayed frame at t=0.99 is 30 (zero-indexed K=29); forward → K=30.
+      expect(result.current.playhead).toBeCloseTo(30 / 30, 5);
+
+      act(() => result.current.api.seek(0.99));
+      act(() => result.current.api.stepBack());
+      // back from displayed frame 30 → frame 29 (K=28).
+      expect(result.current.playhead).toBeCloseTo(28 / 30, 5);
     });
   });
 
@@ -423,14 +441,11 @@ describe("PlaybackProvider engine actions", () => {
     });
 
     it("falls back to 1/30 when neither prop nor stream provides a step", () => {
-      const { result } = renderHook(
-        () => ({ store: usePlaybackStore() }),
-        {
-          wrapper: ({ children }) => (
-            <PlaybackProvider>{children}</PlaybackProvider>
-          ),
-        }
-      );
+      const { result } = renderHook(() => ({ store: usePlaybackStore() }), {
+        wrapper: ({ children }) => (
+          <PlaybackProvider>{children}</PlaybackProvider>
+        ),
+      });
       expect(result.current.store.get(stepIntervalAtom)).toBeCloseTo(1 / 30, 6);
     });
 
@@ -444,7 +459,10 @@ describe("PlaybackProvider engine actions", () => {
           bufferState: () => "ready",
         });
       });
-      expect(result.current.store.get(stepIntervalAtom)).toBeCloseTo(1 / 100, 6);
+      expect(result.current.store.get(stepIntervalAtom)).toBeCloseTo(
+        1 / 100,
+        6
+      );
     });
 
     it("picks the smallest nativeStepSeconds across streams", () => {
