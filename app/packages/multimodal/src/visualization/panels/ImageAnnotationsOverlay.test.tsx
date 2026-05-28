@@ -32,8 +32,8 @@ beforeEach(() => {
         this
       );
     }
-    disconnect() {}
-    unobserve() {}
+    disconnect() { return undefined; }
+    unobserve() { return undefined; }
   };
 });
 
@@ -45,6 +45,20 @@ const RED: RgbaColor = [1, 0, 0, 1];
 const GREEN: RgbaColor = [0, 1, 0, 0.5];
 const WHITE: RgbaColor = [1, 1, 1, 1];
 const BLACK: RgbaColor = [0, 0, 0, 1];
+
+function requireElement<T extends Element>(container: HTMLElement, selector: string): T {
+  const el = container.querySelector<T>(selector);
+  expect(el, `Expected element matching selector: ${selector}`).toBeTruthy();
+  if (!el) throw new Error(`Missing element: ${selector}`);
+  return el;
+}
+
+function requireAttribute(el: Element, attr: string): string {
+  const val = el.getAttribute(attr);
+  expect(val, `Expected attribute "${attr}" on <${el.tagName.toLowerCase()}>`).not.toBeNull();
+  if (val === null) throw new Error(`Missing attribute: ${attr}`);
+  return val;
+}
 
 function emptySet(): ImageAnnotationsVisualization {
   return { kind: VISUALIZATION_KIND.IMAGE_ANNOTATIONS, circles: [], points: [], texts: [] };
@@ -110,7 +124,7 @@ describe("ImageAnnotationsOverlay", () => {
       circles: [{ position: [100, 50], diameter: 20, thickness: 1, outlineColor: RED, fillColor: null }],
     }]);
 
-    const svg = container.querySelector("svg")!;
+    const svg = requireElement<SVGSVGElement>(container, "svg");
     expect(svg.style.left).toBe("0px");
     expect(svg.style.top).toBe("50px");
     expect(svg.style.width).toBe("400px");
@@ -133,7 +147,7 @@ describe("ImageAnnotationsOverlay", () => {
       />
     );
 
-    const svg = container.querySelector("svg")!;
+    const svg = requireElement<SVGSVGElement>(container, "svg");
     expect(svg.style.left).toBe("125px");
     expect(svg.style.top).toBe("0px");
     expect(svg.style.width).toBe("150px");
@@ -161,7 +175,7 @@ describe("ImageAnnotationsOverlay", () => {
       circles: [{ position: [60, 40], diameter: 30, thickness: 3, outlineColor: RED, fillColor: GREEN }],
     }]);
 
-    const circle = container.querySelector("circle")!;
+    const circle = requireElement<SVGCircleElement>(container, "circle");
     expect(circle.getAttribute("cx")).toBe("60");
     expect(circle.getAttribute("cy")).toBe("40");
     expect(circle.getAttribute("r")).toBe("15");
@@ -197,8 +211,8 @@ describe("ImageAnnotationsOverlay", () => {
       }],
     }]);
 
-    const polyline = container.querySelector("polyline")!;
-    const pts = polyline.getAttribute("points")!;
+    const polyline = requireElement<SVGPolylineElement>(container, "polyline");
+    const pts = requireAttribute(polyline, "points");
     const pairs = pts.trim().split(/\s+/);
     // 3 original + 1 closing = 4 pairs
     expect(pairs).toHaveLength(4);
@@ -218,8 +232,8 @@ describe("ImageAnnotationsOverlay", () => {
       }],
     }]);
 
-    const polyline = container.querySelector("polyline")!;
-    const pairs = polyline.getAttribute("points")!.trim().split(/\s+/);
+    const polyline = requireElement<SVGPolylineElement>(container, "polyline");
+    const pairs = requireAttribute(polyline, "points").trim().split(/\s+/);
     expect(pairs).toHaveLength(3);
   });
 
@@ -274,7 +288,7 @@ describe("ImageAnnotationsOverlay", () => {
       texts: [{ position: [50, 30], text: "hello", fontSize: 12, textColor: WHITE, backgroundColor: null }],
     }]);
 
-    const text = container.querySelector("text")!;
+    const text = requireElement<SVGTextElement>(container, "text");
     expect(text.getAttribute("x")).toBe("50");
     expect(text.getAttribute("y")).toBe("30");
     expect(text.textContent).toBe("hello");

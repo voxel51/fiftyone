@@ -85,7 +85,13 @@ const McapCameraTile: React.FC = () => {
           <ImagePanel
             frame={frame}
             className={styles.panel}
-            onImageLoaded={(width, height) => setImageDims({ width, height })}
+            onImageLoaded={(width, height) =>
+              setImageDims((prev) =>
+                prev?.width === width && prev?.height === height
+                  ? prev
+                  : { width, height }
+              )
+            }
           />
           {imageDims && annotationTopic ? (
             <McapCameraAnnotationOverlay

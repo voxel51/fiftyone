@@ -23,7 +23,7 @@ function color(r: number, g: number, b: number, a: number) {
   return { r, g, b, a };
 }
 
-function timestamp(seconds: bigint, nanos: bigint = 0n) {
+function timestamp(seconds: bigint, nanos = 0n) {
   return { seconds, nanos };
 }
 
@@ -91,7 +91,10 @@ describe("foxgloveImageAnnotationsDecoder", () => {
     );
 
     expect(visualization?.kind).toBe(VISUALIZATION_KIND.IMAGE_ANNOTATIONS);
-    if (visualization?.kind !== VISUALIZATION_KIND.IMAGE_ANNOTATIONS) return;
+    expect(visualization?.kind).toBe(VISUALIZATION_KIND.IMAGE_ANNOTATIONS);
+    if (visualization?.kind !== VISUALIZATION_KIND.IMAGE_ANNOTATIONS) {
+      throw new Error("Expected IMAGE_ANNOTATIONS visualization");
+    }
 
     const [c] = visualization.circles;
     expect(c.position).toEqual([100, 200]);
@@ -121,7 +124,10 @@ describe("foxgloveImageAnnotationsDecoder", () => {
       {}
     );
 
-    if (visualization?.kind !== VISUALIZATION_KIND.IMAGE_ANNOTATIONS) return;
+    expect(visualization?.kind).toBe(VISUALIZATION_KIND.IMAGE_ANNOTATIONS);
+    if (visualization?.kind !== VISUALIZATION_KIND.IMAGE_ANNOTATIONS) {
+      throw new Error("Expected IMAGE_ANNOTATIONS visualization");
+    }
     expect(visualization.circles[0].outlineColor).toEqual([0, 0, 1, 1]);
     expect(visualization.circles[0].fillColor).toEqual([1, 0, 0, 0.5]);
   });
@@ -138,7 +144,10 @@ describe("foxgloveImageAnnotationsDecoder", () => {
       {}
     );
 
-    if (visualization?.kind !== VISUALIZATION_KIND.IMAGE_ANNOTATIONS) return;
+    expect(visualization?.kind).toBe(VISUALIZATION_KIND.IMAGE_ANNOTATIONS);
+    if (visualization?.kind !== VISUALIZATION_KIND.IMAGE_ANNOTATIONS) {
+      throw new Error("Expected IMAGE_ANNOTATIONS visualization");
+    }
     expect(visualization.circles[0].outlineColor).toBeNull();
     expect(visualization.circles[0].fillColor).toBeNull();
   });
@@ -159,7 +168,10 @@ describe("foxgloveImageAnnotationsDecoder", () => {
       {}
     );
 
-    if (visualization?.kind !== VISUALIZATION_KIND.IMAGE_ANNOTATIONS) return;
+    expect(visualization?.kind).toBe(VISUALIZATION_KIND.IMAGE_ANNOTATIONS);
+    if (visualization?.kind !== VISUALIZATION_KIND.IMAGE_ANNOTATIONS) {
+      throw new Error("Expected IMAGE_ANNOTATIONS visualization");
+    }
     expect(visualization.points[0].type).toBe("line-strip");
   });
 
@@ -175,7 +187,10 @@ describe("foxgloveImageAnnotationsDecoder", () => {
       {}
     );
 
-    if (visualization?.kind !== VISUALIZATION_KIND.IMAGE_ANNOTATIONS) return;
+    expect(visualization?.kind).toBe(VISUALIZATION_KIND.IMAGE_ANNOTATIONS);
+    if (visualization?.kind !== VISUALIZATION_KIND.IMAGE_ANNOTATIONS) {
+      throw new Error("Expected IMAGE_ANNOTATIONS visualization");
+    }
     expect(visualization.points[0].type).toBe("line-loop");
   });
 
@@ -197,7 +212,10 @@ describe("foxgloveImageAnnotationsDecoder", () => {
         {}
       );
 
-      if (visualization?.kind !== VISUALIZATION_KIND.IMAGE_ANNOTATIONS) return;
+      expect(visualization?.kind).toBe(VISUALIZATION_KIND.IMAGE_ANNOTATIONS);
+    if (visualization?.kind !== VISUALIZATION_KIND.IMAGE_ANNOTATIONS) {
+      throw new Error("Expected IMAGE_ANNOTATIONS visualization");
+    }
       expect(visualization.points[0].type).toBe(expected);
     }
   });
@@ -214,7 +232,10 @@ describe("foxgloveImageAnnotationsDecoder", () => {
       {}
     );
 
-    if (visualization?.kind !== VISUALIZATION_KIND.IMAGE_ANNOTATIONS) return;
+    expect(visualization?.kind).toBe(VISUALIZATION_KIND.IMAGE_ANNOTATIONS);
+    if (visualization?.kind !== VISUALIZATION_KIND.IMAGE_ANNOTATIONS) {
+      throw new Error("Expected IMAGE_ANNOTATIONS visualization");
+    }
     expect(visualization.points[0].type).toBe("points");
   });
 
@@ -236,7 +257,10 @@ describe("foxgloveImageAnnotationsDecoder", () => {
       {}
     );
 
-    if (visualization?.kind !== VISUALIZATION_KIND.IMAGE_ANNOTATIONS) return;
+    expect(visualization?.kind).toBe(VISUALIZATION_KIND.IMAGE_ANNOTATIONS);
+    if (visualization?.kind !== VISUALIZATION_KIND.IMAGE_ANNOTATIONS) {
+      throw new Error("Expected IMAGE_ANNOTATIONS visualization");
+    }
     const p = visualization.points[0];
     expect(p.points).toEqual([[5, 10], [15, 20]]);
     expect(p.outlineColors).toEqual([[1, 0, 0, 1], [0, 1, 0, 1]]);
@@ -258,7 +282,10 @@ describe("foxgloveImageAnnotationsDecoder", () => {
       {}
     );
 
-    if (visualization?.kind !== VISUALIZATION_KIND.IMAGE_ANNOTATIONS) return;
+    expect(visualization?.kind).toBe(VISUALIZATION_KIND.IMAGE_ANNOTATIONS);
+    if (visualization?.kind !== VISUALIZATION_KIND.IMAGE_ANNOTATIONS) {
+      throw new Error("Expected IMAGE_ANNOTATIONS visualization");
+    }
     const t = visualization.texts[0];
     expect(t.position).toEqual([50, 80]);
     expect(t.text).toBe("label");
@@ -279,7 +306,10 @@ describe("foxgloveImageAnnotationsDecoder", () => {
       {}
     );
 
-    if (visualization?.kind !== VISUALIZATION_KIND.IMAGE_ANNOTATIONS) return;
+    expect(visualization?.kind).toBe(VISUALIZATION_KIND.IMAGE_ANNOTATIONS);
+    if (visualization?.kind !== VISUALIZATION_KIND.IMAGE_ANNOTATIONS) {
+      throw new Error("Expected IMAGE_ANNOTATIONS visualization");
+    }
     expect(visualization.texts[0].fontSize).toBe(20);
   });
 
