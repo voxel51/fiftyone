@@ -54,11 +54,11 @@ export const foxgloveImageAnnotationsDecoder: Decoder = {
     const points = rawPoints.map(decodePoints);
     const texts = rawTexts.map(decodeText);
 
-    const messageTimestamp = firstAnnotationTimestamp(
-      rawCircles,
-      rawPoints,
-      rawTexts
-    );
+    // Per Foxglove schema: top-level timestamp overrides individual annotation timestamps.
+    const topLevelTs = optionalRecord(message, "timestamp");
+    const messageTimestamp = topLevelTs
+      ? timestampNs(topLevelTs)
+      : firstAnnotationTimestamp(rawCircles, rawPoints, rawTexts);
 
     const visualization: ImageAnnotationsVisualization = {
       kind: VISUALIZATION_KIND.IMAGE_ANNOTATIONS,

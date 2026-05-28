@@ -4,7 +4,6 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import type {
   ImageAnnotationCircle,
   ImageAnnotationPoints,
-  ImageAnnotationPointsKind,
   ImageAnnotationText,
   ImageAnnotationsVisualization,
   RgbaColor,
@@ -164,22 +163,25 @@ function PointsPrimitive({ primitive }: { primitive: ImageAnnotationPoints }) {
       );
 
     case "line-loop":
-    case "line-strip":
+    case "line-strip": {
+      const pts =
+        primitive.type === "line-loop" && primitive.points.length > 1
+          ? [...primitive.points, primitive.points[0]]
+          : primitive.points;
       return (
         <polyline
-          points={primitive.points.map(([x, y]) => `${x},${y}`).join(" ")}
+          points={pts.map(([x, y]) => `${x},${y}`).join(" ")}
           fill={primitive.type === "line-loop" ? fill ?? "none" : "none"}
           stroke={stroke}
           strokeWidth={thickness}
           strokeLinejoin="round"
           strokeLinecap="round"
           vectorEffect="non-scaling-stroke"
-          {...closeIfLoop(primitive.type)}
         />
       );
+    }
 
     case "line-list": {
-      // Pairs of consecutive points form independent line segments.
       const segments = [];
       for (let i = 0; i + 1 < primitive.points.length; i += 2) {
         const [x1, y1] = primitive.points[i];
@@ -234,15 +236,9 @@ function TextPrimitive({ primitive }: { primitive: ImageAnnotationText }) {
   );
 }
 
-function closeIfLoop(kind: ImageAnnotationPointsKind) {
-  // SVG <polyline> doesn't close the path; for line-loop emulate via marker.
-  return kind === "line-loop" ? { strokeLinejoin: "round" as const } : {};
-}
-
 function rgbaToCss(color: RgbaColor | null | undefined): string | undefined {
   if (!color) return undefined;
   const [r, g, b, a] = color;
-  // Foxglove colors are 0..1; convert to 0..255.
   const r255 = clamp01(r) * 255;
   const g255 = clamp01(g) * 255;
   const b255 = clamp01(b) * 255;

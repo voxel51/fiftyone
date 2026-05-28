@@ -26,8 +26,6 @@ const McapCameraTile: React.FC = () => {
   } | null>(null);
   const cameras = useSceneSourcesByType("camera");
   const setTileTitle = useSetTileTitle();
-  // Initialize from the first available source.
-  // State lets the user swap via the dropdown.
   const [topic, setTopic] = useState<string>(cameras[0]?.id ?? "");
 
   // If cameras populated after the initial render (or the selected topic
@@ -43,6 +41,12 @@ const McapCameraTile: React.FC = () => {
     const label = cameras.find((c) => c.id === topic)?.label;
     if (label) setTileTitle(label);
   }, [topic, cameras, setTileTitle]);
+
+  // Reset stale dims when the camera source changes so the overlay cannot
+  // briefly use the previous camera's dimensions before onImageLoaded fires.
+  useEffect(() => {
+    setImageDims(null);
+  }, [topic]);
 
   const frame = useMcapTopicStream<EncodedImageVisualization>(topic);
   const annotationTopic = topic ? annotationsTopicFor(topic) : null;
