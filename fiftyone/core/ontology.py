@@ -638,7 +638,13 @@ def delete_ontology(name: str, force: bool = False) -> None:
     elif ontology.is_taxonomy:
         _delete_taxonomy(ontology, force=force)
     else:
-        _objects_by_slug(name).delete()
+        # Defensive: load_ontology only returns known types today, but a
+        # new OntologyType added without a cascade handler must not fall
+        # through to a silent delete.
+        raise ValueError(
+            f"Cannot delete ontology {name!r}: no cascade handler for "
+            f"type {type(ontology).__name__}"
+        )
 
 
 def _delete_annotation_ontology(

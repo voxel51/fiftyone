@@ -11,8 +11,10 @@ import unittest
 import fiftyone as fo
 import fiftyone.core.odm as foo
 from fiftyone.core.annotation.attributes import AttributeSpec
+from fiftyone.core.annotation.nodes import Node
 from fiftyone.core.ontology import (
     AnnotationOntology,
+    Taxonomy,
     _find_annotation_ontology_refs_by_taxonomy,
     _find_label_schema_refs_by_ontology,
     delete_ontology,
@@ -352,9 +354,6 @@ _TAXONOMY_SLUG = "test-taxonomy"
 
 
 def _make_taxonomy(name: str = _TAXONOMY_NAME) -> None:
-    from fiftyone.core.annotation.nodes import Node
-    from fiftyone.core.ontology import Taxonomy
-
     Taxonomy(
         name=name,
         root=Node(name="root", values=[Node(name="a"), Node(name="b")]),
@@ -408,6 +407,19 @@ class DeleteTaxonomyTests(unittest.TestCase):
         # AO survives without its bundled taxonomy.
         self.assertIsNone(load_ontology("my_ao").taxonomy)
 
+    def test_force_delete_taxonomy_unsets_ref_on_all_bundling_aos(
+        self,
+    ) -> None:
+        _make_taxonomy()
+        _make_ao_bundling_taxonomy("ao_one")
+        _make_ao_bundling_taxonomy("ao_two")
+
+        delete_ontology(_TAXONOMY_NAME, force=True)
+
+        self.assertFalse(fo.ontology_exists(_TAXONOMY_NAME))
+        self.assertIsNone(load_ontology("ao_one").taxonomy)
+        self.assertIsNone(load_ontology("ao_two").taxonomy)
+
     def test_force_delete_taxonomy_unsets_via_new_ao_version(self) -> None:
         # Append-only: the unset is an appended version, not an in-place
         # mutation. The latest AO version no longer carries the ref;
@@ -426,13 +438,16 @@ class DeleteTaxonomyTests(unittest.TestCase):
         self,
     ) -> None:
         # applied_taxonomy is a hydration-time output, never persisted.
-        # The cascade scans AOs, not label schemas.
+        # The cascade scans AOs, not label schemas: even when a label
+        # schema points at an AO whose taxonomy is being cascade-unset,
+        # the schema entry itself must stay byte-identical.
         _make_taxonomy()
+        _make_ao_bundling_taxonomy("my_ao")
         ds = fo.Dataset()
         ds._doc.label_schemas = {
             "ground_truth": {
                 "type": "detections",
-                "applied_ontology": "some_ao",
+                "applied_ontology": "my_ao",
             }
         }
         ds._doc.save()
@@ -440,6 +455,9 @@ class DeleteTaxonomyTests(unittest.TestCase):
 
         delete_ontology(_TAXONOMY_NAME, force=True)
 
+        # Cascade actually ran: AO's taxonomy ref is gone.
+        self.assertIsNone(load_ontology("my_ao").taxonomy)
+        # But the label schema dict is untouched.
         ds.reload()
         self.assertEqual(dict(ds._doc.label_schemas), snapshot)
 
