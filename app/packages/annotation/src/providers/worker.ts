@@ -65,6 +65,23 @@ function postError(id: number, type: string, error: string): void {
 const IMAGE_MEAN = [0.485, 0.456, 0.406];
 const IMAGE_STD = [0.229, 0.224, 0.225];
 
+// Temporary perf instrumentation for the video-propagation tuning effort.
+// Logs are tagged "[sam2-perf]" — filter the console on that. The encode vs.
+// decode split is the key signal: encoder embeddings are prompt-independent
+// and could be precomputed server-side; the decoder needs interactive points
+// and must stay client-side. Flip to false (or strip this block) once the
+// server-side-precompute decision is made.
+const SAM2_PERF_LOG = true;
+
+function perfLog(label: string, marks: Record<string, number>): void {
+  if (!SAM2_PERF_LOG) return;
+  const parts = Object.entries(marks)
+    .map(([k, v]) => `${k}=${v.toFixed(1)}ms`)
+    .join(" ");
+  // eslint-disable-next-line no-console
+  console.debug(`[sam2-perf] ${label} ${parts}`);
+}
+
 // SAM2 model family + Tiny variant file names
 const FAMILY = "sam2";
 const ENCODER_FILE = "encoder.with_runtime_opt.ort";
@@ -106,6 +123,21 @@ ort.env.wasm.simd = true;
 const WEBGPU_AVAILABLE =
   typeof navigator !== "undefined" &&
   !!(navigator as Navigator & { gpu?: unknown }).gpu;
+
+if (SAM2_PERF_LOG) {
+  // One-time execution-mode report. If crossOriginIsolated is false the WASM
+  // backend is pinned to a single thread (see numThreads above) — usually the
+  // dominant reason per-frame encode is slow. `webgpuAvailable` says whether
+  // the GPU path will even be attempted; `loadSession` logs what each model
+  // actually ran on.
+  // eslint-disable-next-line no-console
+  console.debug(
+    `[sam2-perf] config crossOriginIsolated=${isCOI} ` +
+      `numThreads=${ort.env.wasm.numThreads} simd=${ort.env.wasm.simd} ` +
+      `hardwareConcurrency=${navigator.hardwareConcurrency} ` +
+      `webgpuAvailable=${WEBGPU_AVAILABLE}`
+  );
+}
 
 // Dev: optimizeDeps.exclude lets ort use its embedded WASM bundle.
 // Prod: worker bundling strips the embedded WASM, so point to the emitted files.
@@ -242,9 +274,27 @@ async function loadModel(): Promise<void> {
           };
         }
         const session = await ort.InferenceSession.create(buf, sessionOptions);
+        if (SAM2_PERF_LOG) {
+          // eslint-disable-next-line no-console
+          console.debug(
+            `[sam2-perf] session ${name} ep=${
+              (executionProviders as string[])[0]
+            }`
+          );
+        }
         return session;
       } catch (err) {
         lastErr = err;
+        if (SAM2_PERF_LOG) {
+          // eslint-disable-next-line no-console
+          console.debug(
+            `[sam2-perf] session ${name} ep=${
+              (executionProviders as string[])[0]
+            } FAILED, trying next: ${
+              err instanceof Error ? err.message : String(err)
+            }`
+          );
+        }
       }
     }
 
@@ -285,6 +335,7 @@ async function loadModel(): Promise<void> {
  */
 async function prewarmSessions(): Promise<void> {
   if (!encoderSession || !decoderSession) return;
+  const t0 = performance.now();
   try {
     const enc = await encoderSession.run({
       image: new ort.Tensor(
@@ -310,6 +361,7 @@ async function prewarmSessions(): Promise<void> {
       ),
       has_mask_input: new ort.Tensor("float32", new Float32Array([0]), [1]),
     });
+    perfLog("prewarm", { ms: performance.now() - t0 });
   } catch (err) {
     postWarningNotification(
       `Prewarm failed (non-fatal): ${
@@ -360,7 +412,12 @@ async function embedAndDecodeBitmap(
   cacheKey: string,
   points: PromptPoint[]
 ): Promise<InferenceResult> {
+  const tDecodeBitmap = performance.now();
   const imageData = bitmapToImageData(bitmap);
+  perfLog("bitmapToImageData", {
+    ms: performance.now() - tDecodeBitmap,
+    px: bitmap.width * bitmap.height,
+  });
   // Propagation runs the GPU-resident path: each frame's embedding is used
   // exactly once (encode → decode same frame), so we skip the embedding cache
   // entirely. That keeps the encoder outputs on the GPU (no per-frame readback)
@@ -457,6 +514,11 @@ async function embedAndDecodeFromImageData(
   if (points.length === 0)
     throw new Error("At least one prompt point is required");
 
+  const tStart = performance.now();
+  let preprocessMs = 0;
+  let encodeMs = 0;
+  let cacheLookupMs = 0;
+
   let encResults: Record<string, ort.Tensor>;
   let geometry: ImageGeometry;
   let cacheHit = false;
@@ -466,7 +528,9 @@ async function embedAndDecodeFromImageData(
   const gpuTensors: ort.Tensor[] = [];
 
   if (useEmbeddingCache) {
+    const tCache = performance.now();
     const cached = await getEmbedding(cacheKey, postWarningNotification);
+    cacheLookupMs = performance.now() - tCache;
 
     if (cached) {
       try {
@@ -498,9 +562,12 @@ async function embedAndDecodeFromImageData(
   try {
     if (!cacheHit) {
       postStatusNotification("encoding");
+      const tPreprocess = performance.now();
       const processed = preprocessImage(imageData);
       geometry = processed;
+      preprocessMs = performance.now() - tPreprocess;
 
+      const tEncode = performance.now();
       encResults = await encoderSession.run({
         image: new ort.Tensor("float32", processed.tensor, [
           1,
@@ -510,7 +577,9 @@ async function embedAndDecodeFromImageData(
         ]),
       });
       // With GPU-resident outputs, run() resolves without downloading the
-      // ~16MB of embeddings; the decoder reads them in place below.
+      // ~16MB of embeddings — so this is now encode COMPUTE, not compute+readback.
+      encodeMs = performance.now() - tEncode;
+
       const encoderOutputs = [
         encResults["image_embed"],
         encResults["high_res_feats_0"],
@@ -519,6 +588,21 @@ async function embedAndDecodeFromImageData(
       for (const t of encoderOutputs) {
         if (t.location !== "cpu") gpuTensors.push(t);
       }
+
+      // Embedding payload size (element counts via dims — works whether the
+      // tensor is on CPU or GPU). The deciding factor for a server-side
+      // precompute that would ship these instead of encoding client-side.
+      const elems = (t: ort.Tensor) => t.dims.reduce((a, b) => a * b, 1);
+      perfLog("embedding-size", {
+        mb:
+          (elems(encResults["image_embed"]) +
+            elems(encResults["high_res_feats_0"]) +
+            elems(encResults["high_res_feats_1"])) *
+          (Float32Array.BYTES_PER_ELEMENT / (1024 * 1024)),
+        imageEmbed: elems(encResults["image_embed"]),
+        highRes0: elems(encResults["high_res_feats_0"]),
+        highRes1: elems(encResults["high_res_feats_1"]),
+      });
 
       if (useEmbeddingCache) {
         // Caching needs CPU copies, so download explicitly here (getData on a
@@ -571,6 +655,7 @@ async function embedAndDecodeFromImageData(
 
     // Decode — outputs: "masks", "iou_predictions". The encoder embeddings may
     // be GPU-resident here; the decoder reads them in place (same WebGPU device).
+    const tDecode = performance.now();
     const decResults = await decoderSession.run({
       image_embed: encResults["image_embed"],
       high_res_feats_0: encResults["high_res_feats_0"],
@@ -584,6 +669,9 @@ async function embedAndDecodeFromImageData(
       ),
       has_mask_input: new ort.Tensor("float32", new Float32Array([0]), [1]),
     });
+    const decodeMs = performance.now() - tDecode;
+
+    const tPost = performance.now();
 
     // Pick best mask by IoU (Intersection over Union) confidence score
     const masks = decResults["masks"].data as Float32Array;
@@ -601,6 +689,16 @@ async function embedAndDecodeFromImageData(
     if (!bbox) throw new Error("Model returned an empty mask");
 
     const finalMask = postprocessMask(bestMask, geometry, bbox);
+    const postMs = performance.now() - tPost;
+
+    perfLog(cacheHit ? "infer(cache-hit)" : "infer(cache-miss)", {
+      total: performance.now() - tStart,
+      cacheLookup: cacheLookupMs,
+      preprocess: preprocessMs,
+      encode: encodeMs,
+      decode: decodeMs,
+      post: postMs,
+    });
 
     return {
       mask: finalMask,
