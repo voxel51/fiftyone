@@ -1846,16 +1846,12 @@ def _is_string_array(targets):
 def _list_dims(samples, path):
     """Returns the list-typed dimensions traversed by ``samples.values(path)``.
 
-    Each entry names one list-typed dimension along ``path`` (the implicit
-    per-sample dimension is named ``""``). Examples:
+    The implicit per-sample dimension is named ``""``. Examples:
 
     -  ``"filepath"`` -> ``("",)``
     -  ``"frames.id"`` -> ``("", "frames")``
     -  ``"ground_truth.detections.label"`` -> ``("", "ground_truth.detections")``
 
-    The names let us identify the **shared** list prefix between two paths
-    via :func:`_shared_list_prefix_len`; cf. ``index_field`` semantics in
-    :class:`FiftyOneTorchDataset`.
     """
     return ("",) + tuple(samples._parse_field_name(path, auto_unwind=False)[3])
 
@@ -1902,6 +1898,11 @@ def _serialize_list(values, local_process_group):
 def _load_columns(samples, agg_fields, on_master):
     """Loads each field's per-sample values in a single aggregation, keyed by
     field.
+
+    One call rather than one per field keeps the columns aligned and lets
+    ``values()`` apply its own optimizations.
+
+    Non-master ranks request nothing and read from shared memory instead.
     """
     if not on_master:
         return {field: [] for field in agg_fields}
@@ -1976,12 +1977,6 @@ class FiftyOneTorchDataset(Dataset):
         self.get_item = get_item
         self.skip_failures = skip_failures
 
-        # For each mapped field, precompute the length of the list-typed
-        # prefix it shares with ``index_field``. ``_build_batch`` consumes
-        # exactly this many leading coord components, so on-branch fields
-        # walk down to the row's leaf, parent fields stop at the LCA and
-        # broadcast, and sibling-branch fields stop at the shared ancestor
-        # (the whole sibling subtree is broadcast intact).
         index_dims = _list_dims(samples, index_field)
         self._coord_prefix_lens = {
             field: _shared_list_prefix_len(
@@ -1996,7 +1991,6 @@ class FiftyOneTorchDataset(Dataset):
             local_process_group is None
             or get_local_rank(local_process_group) == 0
         )
-        # Load all required fields in the same values call when vectorize is True.
         fields = list(dict.fromkeys(self.field_mapping.values()))
         agg_fields = list(
             dict.fromkeys(["id", index_field, *(fields if vectorize else ())])
@@ -2152,21 +2146,18 @@ class FiftyOneTorchDataset(Dataset):
         # Read each row's coord once; reused for sample grouping and the build
         coords = [self._coords[i] for i in indices]
 
-        # Find unique sample indices in batch, preserving first-seen order
+        # The batch's unique samples, in first-seen order
         unique_sample_idxs = list(dict.fromkeys(c[0] for c in coords))
         sample_ids = [self._sample_ids[s] for s in unique_sample_idxs]
 
         view = fov.make_optimized_select_view(
             self.samples, sample_ids, ordered=True
         )
-
-        # Fetch all required fields' per-sample values in a single aggregation
         fields = list(dict.fromkeys(self.field_mapping.values()))
         columns = dict(zip(fields, view.values(fields)))
 
-        # Remap global sample idx -> position within the batch view
+        # Global sample idx -> its row position in the (ordered) columns
         idx_remap = {gi: li for li, gi in enumerate(unique_sample_idxs)}
-
         return self._build_batch(columns, coords, idx_remap.__getitem__)
 
     def _prepare_batch_vectorized(self, indices):
