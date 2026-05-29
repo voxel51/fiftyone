@@ -23,7 +23,7 @@ const test = base.extend<{
 
 test.beforeAll(async ({ annotateSDK, datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await datasetFactory.createBlankDataset({
+  await datasetFactory.createDataset({
     datasetName,
     schema: {
       detections: "Detections",

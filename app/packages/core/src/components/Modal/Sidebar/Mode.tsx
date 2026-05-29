@@ -1,8 +1,9 @@
 import { useAnnotationController } from "@fiftyone/annotation";
 import { useTheme } from "@fiftyone/components";
-import { ModalMode, useModalMode } from "@fiftyone/state";
-import React from "react";
+import { ModalMode, useIsGroupDataset, useModalMode } from "@fiftyone/state";
 import styled from "styled-components";
+import useCanAnnotate from "./Annotate/useCanAnnotate";
+import { useGroupAnnotationModeController } from "./Annotate/useGroupAnnotationModeController";
 
 const Container = styled.div`
   padding: 0.5rem 1rem;
@@ -29,40 +30,53 @@ const Item = styled.div`
   height: 100%;
 `;
 
+const GroupsController = (): null => {
+  useGroupAnnotationModeController();
+  return null;
+};
+
 const Mode = () => {
   const mode = useModalMode();
   const { enterAnnotationMode, exitAnnotationMode } = useAnnotationController();
   const theme = useTheme();
   const background = { background: theme.background.level1 };
   const text = { color: theme.text.secondary };
+  const isGroupDataset = useIsGroupDataset();
+  const { disabledReason, showAnnotationTab } = useCanAnnotate();
+
+  const showTransitionManager =
+    showAnnotationTab && isGroupDataset && !disabledReason;
 
   return (
-    <Container>
-      <Items>
-        <Item
-          data-cy={ModalMode.EXPLORE}
-          style={mode === ModalMode.EXPLORE ? background : text}
-          onClick={() => {
-            if (mode === ModalMode.ANNOTATE) {
-              exitAnnotationMode();
-            }
-          }}
-        >
-          Explore
-        </Item>
-        <Item
-          data-cy={ModalMode.ANNOTATE}
-          style={mode === ModalMode.ANNOTATE ? background : text}
-          onClick={() => {
-            if (mode !== ModalMode.ANNOTATE) {
-              enterAnnotationMode();
-            }
-          }}
-        >
-          Annotate
-        </Item>
-      </Items>
-    </Container>
+    <>
+      {showTransitionManager && <GroupsController />}
+      <Container>
+        <Items>
+          <Item
+            data-cy={ModalMode.EXPLORE}
+            style={mode === ModalMode.EXPLORE ? background : text}
+            onClick={() => {
+              if (mode === ModalMode.ANNOTATE) {
+                exitAnnotationMode();
+              }
+            }}
+          >
+            Explore
+          </Item>
+          <Item
+            data-cy={ModalMode.ANNOTATE}
+            style={mode === ModalMode.ANNOTATE ? background : text}
+            onClick={() => {
+              if (mode !== ModalMode.ANNOTATE) {
+                enterAnnotationMode();
+              }
+            }}
+          >
+            Annotate
+          </Item>
+        </Items>
+      </Container>
+    </>
   );
 };
 

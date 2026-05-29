@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import {
   setSampleSelectionStyle,
   type setSampleSelectionStyleMutation,
@@ -13,10 +17,7 @@ const onSetSampleSelectionStyle: RegisteredWriter<"sampleSelectionStyle"> =
     commitMutation<setSampleSelectionStyleMutation>(environment, {
       mutation: setSampleSelectionStyle,
       variables: {
-        style:
-          style instanceof DefaultValue
-            ? DEFAULT_SELECTION_STYLE
-            : style,
+        style: style instanceof DefaultValue ? DEFAULT_SELECTION_STYLE : style,
         subscription,
       },
     });

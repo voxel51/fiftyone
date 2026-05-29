@@ -48,7 +48,7 @@ export class ModalImaAsVideoControlsPom {
     );
   }
 
-  private async togglePlay() {
+  public async togglePlay() {
     await this.waitUntilBufferingIsFinished();
 
     let currentPlayHeadStatus = await this.playPauseButton.getAttribute(

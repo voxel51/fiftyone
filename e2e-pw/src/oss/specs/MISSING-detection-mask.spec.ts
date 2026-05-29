@@ -35,7 +35,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
       goodDetectionMaskPathSampleImage,
     ].map((img, index) => {
       const fillColor = colors[index];
-      mediaFactory.createBlankImage({
+      mediaFactory.createImage({
         outputPath: img,
         width: 25,
         height: 25,
