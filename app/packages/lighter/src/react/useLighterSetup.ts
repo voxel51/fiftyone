@@ -3,7 +3,7 @@
  */
 
 import { useLookerOptions } from "@fiftyone/state";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { useEffect, useRef } from "react";
 import {
   PixiRenderer2D,
@@ -36,7 +36,7 @@ export const useLighterSetupWithPixi = (
   sceneId: string
 ) => {
   const [scene, setScene] = useAtom(lighterSceneAtom);
-  const [, setInitError] = useAtom(lighterInitErrorAtom);
+  const setInitError = useSetAtom(lighterInitErrorAtom);
 
   const rendererRef = useRef<PixiRenderer2D | null>(null);
 
@@ -90,7 +90,7 @@ export const useLighterSetupWithPixi = (
     return () => {
       scene.destroy();
     };
-  }, [scene, setInitError]);
+  }, [scene]);
 
   useEffect(() => {
     if (scene && !scene.isDestroyed) {
