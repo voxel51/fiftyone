@@ -1,4 +1,4 @@
-import { Drawer, useElementSize } from "@voxel51/voodo";
+import { Drawer } from "@voxel51/voodo";
 import clsx from "clsx";
 import React, { useMemo, useRef, useState } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
@@ -54,7 +54,6 @@ export interface TimelineWithTracksProps {
  */
 const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   labelWidth: requestedLabelWidth = TIMELINE_LABEL_WIDTH,
-  defaultSize = TIMELINE_DEFAULT_DRAWER_SIZE,
   maxSize = TIMELINE_DRAWER_MAX_SIZE,
   className,
   rulerOverlay,
@@ -65,7 +64,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   const tracks = useTracks();
   const { pinnedIds, togglePin } = useTrackPinning();
   const { seek } = usePlayback();
-  const [drawerOpen, setDrawerOpen] = useState(true);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const labelWidth = tracks.length === 0 ? 0 : requestedLabelWidth;
 
@@ -78,20 +77,6 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
     }
     return { pinned: p, unpinned: u };
   }, [tracks, pinnedIds]);
-
-  const { ref: pinnedSectionRef, height: pinnedHeight } = useElementSize();
-  const { ref: unpinnedSectionRef, height: unpinnedHeight } = useElementSize();
-
-  const minDrawerSize = pinnedHeight;
-  const totalContent = pinnedHeight + unpinnedHeight;
-  const effectiveMaxSize =
-    totalContent > 0
-      ? Math.max(minDrawerSize, Math.min(totalContent, maxSize))
-      : maxSize;
-  const effectiveDefaultSize = Math.max(
-    minDrawerSize,
-    Math.min(defaultSize, effectiveMaxSize)
-  );
 
   const renderPinnedTrack = (track: Track) => (
     <TimelineTrack
@@ -130,9 +115,9 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
         side="bottom"
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
-        defaultSize={effectiveDefaultSize}
-        minSize={minDrawerSize}
-        maxSize={effectiveMaxSize}
+        defaultSize={TIMELINE_DEFAULT_DRAWER_SIZE}
+        minSize={0}
+        maxSize={maxSize}
         mode="push"
         header={({ toggle }) => (
           <TimelineHeader
@@ -142,25 +127,17 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
             rulerOverlay={rulerOverlay}
             extraActions={extraActions}
           >
-            {!drawerOpen && pinned.length > 0 && (
-              <div ref={pinnedSectionRef} className={styles.pinnedOverlayHost}>
-                {pinned.map(renderPinnedTrack)}
-                <LoopOverlays labelWidth={labelWidth} />
-                <PlayheadLine labelWidth={labelWidth} />
-              </div>
-            )}
+            <div className={styles.pinnedOverlayHost}>
+              {pinned.map(renderPinnedTrack)}
+              <LoopOverlays labelWidth={labelWidth} />
+              <PlayheadLine labelWidth={labelWidth} />
+            </div>
           </TimelineHeader>
         )}
       >
         <div className={styles.tracksOuter}>
           <div className={styles.tracksArea}>
-            <div
-              ref={drawerOpen ? pinnedSectionRef : undefined}
-              className={styles.pinnedTracks}
-            >
-              {pinned.map(renderPinnedTrack)}
-            </div>
-            <div ref={unpinnedSectionRef}>
+            <div>
               {unpinned.map((track) => (
                 <TimelineTrack
                   key={track.id}
