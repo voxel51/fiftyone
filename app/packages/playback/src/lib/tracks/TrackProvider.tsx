@@ -5,7 +5,6 @@ import React, {
   useMemo,
   useRef,
   useState,
-  useEffect
 } from "react";
 
 /**
@@ -98,23 +97,6 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
   const [pinnedIds, setPinnedSet] = useState<Set<string>>(
     () => new Set(initialPinnedIds)
   );
-
-  // Reactively pick up IDs added to initialPinnedIds after mount so
-  // callers can explicitly pin a track (e.g. a freshly created tag)
-  // without relying on remount-sensitive ref heuristics.
-  const seenPinnedRef = useRef(new Set(initialPinnedIds));
-  useEffect(() => {
-    const next = initialPinnedIds.filter(
-      (id) => !seenPinnedRef.current.has(id)
-    );
-    if (next.length === 0) return;
-    for (const id of next) seenPinnedRef.current.add(id);
-    setPinnedSet((prev) => {
-      const s = new Set(prev);
-      for (const id of next) s.add(id);
-      return s;
-    });
-  }, [initialPinnedIds]);
 
   const togglePin = useCallback((id: string) => {
     setPinnedSet((prev) => {
