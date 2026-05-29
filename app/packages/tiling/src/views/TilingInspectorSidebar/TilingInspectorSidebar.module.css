@@ -60,7 +60,7 @@
   background: var(--color-content-bg-card-2);
   border: 1px solid var(--color-content-border-subtle);
   font-family: monospace;
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   line-height: 1.4;
   color: var(--color-content-text-primary);
   white-space: pre-wrap;

@@ -77,6 +77,10 @@ export class KeySequence {
       }
       if (this.key === " ") {
         ret += "space";
+      } else if (this.key === ",") {
+        // "," is the reserved sequence delimiter, so it must be re-escaped
+        // here to survive the parseBinding round-trip in KeyManager.
+        ret += "\\,";
       } else {
         ret += this.key;
       }
