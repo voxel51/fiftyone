@@ -2,6 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { useAnnotationEventBus } from "@fiftyone/annotation";
 import {
   DetectionOverlay,
   type Scene2D,
@@ -36,6 +37,7 @@ import type { LocalDetection } from "./VideoFrameLabelsStream";
 export const useSyncLighterLabelStream = (scene: Scene2D | null): void => {
   const stream = useFrameLabelsStream();
   const currentTime = useCurrentTime();
+  const eventBus = useAnnotationEventBus();
 
   const useEventHandler = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
@@ -67,6 +69,20 @@ export const useSyncLighterLabelStream = (scene: Scene2D | null): void => {
       const frame = stream.timeToFrame(currentTime);
       stream.updateLabel(frame, detection);
 
+      // Edits (drag / resize) and fresh draws both promote the touched
+      // frame to a keyframe via `toLocalDetection`. Mirror the same
+      // event MarkKeyframeCommand emits so the auto-interpolate hook
+      // re-lerps adjacent segments after the user nudges a box.
+      const instanceId = detection.instance?._id ?? null;
+      if (instanceId) {
+        eventBus.dispatch("annotation:keyframeChanged", {
+          trackId: `instance-${instanceId}`,
+          instanceId,
+          frame,
+          kind: "set",
+        });
+      }
+
       // The synthetic id just changed (`<overlayId>` → `instance-<...>`)
       // because we minted the Instance. Evict Lighter's draw-mode
       // overlay so the next sync pass adds the canonical one without
@@ -83,7 +99,7 @@ export const useSyncLighterLabelStream = (scene: Scene2D | null): void => {
         scene.removeOverlay(overlayId);
       }
     },
-    [stream, scene, currentTime]
+    [stream, scene, currentTime, eventBus]
   );
 
   useEventHandler(
