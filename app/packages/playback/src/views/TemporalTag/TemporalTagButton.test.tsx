@@ -120,6 +120,18 @@ describe("TemporalTagButton", () => {
   });
 
   describe("T hotkey", () => {
+    it("does NOT register T hotkey when onTagCreate is absent", () => {
+      const actions = makeActions();
+      const ctx: TemporalTagContextValue = {
+        state: idleState,
+        actions,
+        // no onTagCreate
+      };
+      renderButton(ctx);
+      fireEvent.keyDown(window, { key: "t" });
+      expect(actions.enterTagMode).not.toHaveBeenCalled();
+    });
+
     it("calls enterTagMode on T keydown when idle", () => {
       const actions = makeActions();
       const ctx: TemporalTagContextValue = {
@@ -158,7 +170,7 @@ describe("TemporalTagButton", () => {
         </TemporalTagProvider>
       );
       const input = screen.getByTestId("text-input");
-      fireEvent.keyDown(input, { key: "t", target: input });
+      fireEvent.keyDown(input, { key: "t" });
       expect(actions.enterTagMode).not.toHaveBeenCalled();
     });
 

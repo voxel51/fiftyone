@@ -169,7 +169,7 @@ const TemporalTagRangeOverlay: React.FC<TemporalTagRangeOverlayProps> = ({
         ref={overlayRef}
         className={[
           styles.overlay,
-          (phase === "ready" || (phase === "idle" && shiftHeld)) ? styles.overlayActive : "",
+          (phase === "ready" || phase === "selected" || (phase === "idle" && shiftHeld)) ? styles.overlayActive : "",
           phase === "ready" ? styles.overlayReady : "",
           phase === "selecting" ? styles.overlaySelecting : "",
         ]

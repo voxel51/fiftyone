@@ -55,6 +55,8 @@ const TemporalTagPopup: React.FC = () => {
   useEffect(() => {
     if (state?.phase !== "selected") return;
     setIsNewTag(true);
+    setError(null);
+    setSubmitting(false);
     actions?.setLabel("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state?.phase]);
@@ -71,7 +73,7 @@ const TemporalTagPopup: React.FC = () => {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") actions?.cancel();
+      if (e.key === "Escape") actions?.exitTagMode();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);

@@ -33,7 +33,13 @@ const TemporalTagTimeline: React.FC<TemporalTagTimelineProps> = ({
   // Mirror TimelineWithTracks's own labelWidth logic so the overlay aligns.
   const labelWidth = tracks.length === 0 ? 0 : requestedLabelWidth;
 
-  const existingTags = useMemo(() => tracks.map((t) => t.label), [tracks]);
+  const existingTags = useMemo(
+    () =>
+      tracks
+        .filter((t) => t.id.startsWith("temporal-tag::"))
+        .map((t) => t.label),
+    [tracks]
+  );
   const tagContextValue = { state, actions, onTagCreate, existingTags };
 
   return (

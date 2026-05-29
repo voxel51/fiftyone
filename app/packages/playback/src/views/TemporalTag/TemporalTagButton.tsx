@@ -12,7 +12,7 @@ const TemporalTagButton: React.FC = () => {
   const ctx = useTemporalTagContext();
 
   useEffect(() => {
-    if (!ctx) return undefined;
+    if (!ctx?.onTagCreate) return undefined;
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore when focus is inside a text input.
       const tag = (e.target as HTMLElement)?.tagName;
