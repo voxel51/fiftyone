@@ -4,7 +4,9 @@ import {
   useFrameLabelsStream,
   useStageTemporalDetectionSupport,
   type LocalDetection,
+  type SyntheticBox,
 } from "@fiftyone/video-annotation";
+import { objectId } from "@fiftyone/utilities";
 import { useCallback } from "react";
 import { frameAt } from "../../../playback/src/lib/playback/utils";
 import { useAgentRegistry } from "../agents/hooks/useAgentRegistry";
@@ -18,9 +20,42 @@ import {
 } from "../agents/types";
 import {
   EditTemporalDetectionSupportCommand,
+  ExtendTrackCommand,
   MarkKeyframeCommand,
   PropagateCommand,
+  ShiftTrackCommand,
+  TrimTrackCommand,
 } from "../commands";
+
+/** Read this track's detection on a given frame, or `undefined`. */
+const detectionAt = (
+  stream: { getValue: (t: number) => { detections: SyntheticBox[] } | null },
+  frame: number,
+  fps: number,
+  trackId: string
+): SyntheticBox | undefined =>
+  stream.getValue((frame - 1) / fps)?.detections.find((d) => d.id === trackId);
+
+/**
+ * Project a snapshot detection into a fresh-`_id` copy for writing onto
+ * another frame. Cross-frame identity (`instance` / track `index`) is
+ * preserved; the `_id` is new so each frame gets its own detection doc.
+ * Per-field spreads avoid writing `undefined`/`null` keys the baseline
+ * lacks (which would emit spurious patch ops).
+ */
+const copyDetection = (
+  det: SyntheticBox,
+  overrides: Pick<LocalDetection, "keyframe"> &
+    Partial<Pick<LocalDetection, "propagation">>
+): LocalDetection => ({
+  _cls: "Detection",
+  _id: objectId(),
+  label: det.label,
+  bounding_box: det.bounding_box,
+  ...(det.index !== undefined ? { index: det.index } : {}),
+  ...(det.instance ? { instance: det.instance } : {}),
+  ...overrides,
+});
 
 /**
  * Registers video-specific annotation command handlers. Mount inside
@@ -154,6 +189,125 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
         return true;
       },
       [stream, registry, sampleDescriptor, applyPropagation]
+    )
+  );
+
+  useRegisterCommandHandler(
+    ExtendTrackCommand,
+    useCallback(
+      async (cmd) => {
+        if (!stream) {
+          return false;
+        }
+
+        if (cmd.targetFrames.length === 0) {
+          return false;
+        }
+
+        const source = detectionAt(
+          stream,
+          cmd.sourceFrame,
+          stream.fps,
+          cmd.trackId
+        );
+        if (!source) {
+          return false;
+        }
+
+        let written = false;
+        for (const frame of cmd.targetFrames) {
+          if (frame < 1 || frame > stream.totalFrames) {
+            continue;
+          }
+
+          // Non-keyframe filler — a later Propagate overwrites these in
+          // place once the far end becomes a keyframe.
+          stream.updateLabel(frame, copyDetection(source, { keyframe: false }));
+          written = true;
+        }
+
+        return written;
+      },
+      [stream]
+    )
+  );
+
+  useRegisterCommandHandler(
+    TrimTrackCommand,
+    useCallback(
+      async (cmd) => {
+        if (!stream) {
+          return false;
+        }
+
+        let removed = false;
+        for (const frame of cmd.frames) {
+          const det = detectionAt(stream, frame, stream.fps, cmd.trackId);
+          if (!det) {
+            continue;
+          }
+
+          stream.deleteLabel(frame, det._id ?? det.id);
+          removed = true;
+        }
+
+        return removed;
+      },
+      [stream]
+    )
+  );
+
+  useRegisterCommandHandler(
+    ShiftTrackCommand,
+    useCallback(
+      async (cmd) => {
+        if (!stream) {
+          return false;
+        }
+
+        if (cmd.delta === 0 || cmd.frames.length === 0) {
+          return false;
+        }
+
+        // Read the whole segment up front, before any mutation, so the
+        // delete/write passes below operate on a stable snapshot.
+        const sources: Array<{ frame: number; det: SyntheticBox }> = [];
+        for (const frame of cmd.frames) {
+          const det = detectionAt(stream, frame, stream.fps, cmd.trackId);
+
+          if (det) {
+            sources.push({ frame, det });
+          }
+        }
+        if (sources.length === 0) {
+          return false;
+        }
+
+        // Clear the originals, then re-lay the boxes at the shifted
+        // frames with fresh ids. Keyframe flags + propagation provenance
+        // travel with each label so a shifted track keeps its anchors.
+        for (const { frame, det } of sources) {
+          stream.deleteLabel(frame, det._id ?? det.id);
+        }
+
+        for (const { frame, det } of sources) {
+          const target = frame + cmd.delta;
+          if (target < 1 || target > stream.totalFrames) {
+            continue;
+          }
+
+          stream.updateLabel(
+            target,
+            copyDetection(det, {
+              keyframe: det.keyframe,
+              ...(det.propagation ? { propagation: det.propagation } : {}),
+            })
+          );
+        }
+
+        return true;
+      },
+      [stream]
     )
   );
 };
