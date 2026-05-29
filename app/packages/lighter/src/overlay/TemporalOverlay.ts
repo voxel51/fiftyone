@@ -17,6 +17,8 @@ import {
 
 /** A `TemporalDetection` label, with the support range driving the gate. */
 export type TemporalLabel = NonNullable<RawLookerLabel> & {
+  _id: string;
+  _cls: "TemporalDetection";
   /** 1-indexed inclusive `[first, last]` frame range. */
   support: [number, number];
   label?: string;

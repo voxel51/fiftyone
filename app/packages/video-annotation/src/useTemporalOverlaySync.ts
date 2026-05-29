@@ -41,6 +41,8 @@ interface RawTemporalDetectionsField {
 interface SceneLike {
   addOverlay(overlay: TemporalOverlay): void;
   removeOverlay(id: string): void;
+  /** Used to adopt an overlay another code path created at the same id. */
+  getOverlay(id: string): unknown;
 }
 
 export interface SyncTemporalOverlaysInput {
@@ -126,14 +128,19 @@ export function syncTemporalOverlays({
 
       const label: TemporalLabel = { ...td, support };
 
-      const existing = overlays.get(id);
-      if (existing) {
-        // Setter marks dirty + re-gates internally.
-        existing.label = label;
+      // Adopt an existing overlay (ours or one `useCreateAnnotationLabel`
+      // added) so concurrent paths don't double-add at the same id.
+      const adopted =
+        overlays.get(id) ??
+        (scene.getOverlay(id) as TemporalOverlay | undefined);
+
+      if (adopted) {
+        adopted.label = label;
+        overlays.set(id, adopted);
       } else {
-        const overlay = create({ id, field: fieldPath, label });
-        scene.addOverlay(overlay);
-        overlays.set(id, overlay);
+        const created = create({ id, field: fieldPath, label });
+        scene.addOverlay(created);
+        overlays.set(id, created);
       }
     }
   }

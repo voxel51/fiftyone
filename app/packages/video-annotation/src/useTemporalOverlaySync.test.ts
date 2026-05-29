@@ -21,15 +21,20 @@ class FakeOverlay {
 const makeScene = () => {
   const added: FakeOverlay[] = [];
   const removed: string[] = [];
+  const byId = new Map<string, FakeOverlay>();
   return {
     added,
     removed,
+    byId,
     addOverlay: vi.fn((o: FakeOverlay) => {
       added.push(o);
+      byId.set(o.opts.id, o);
     }),
     removeOverlay: vi.fn((id: string) => {
       removed.push(id);
+      byId.delete(id);
     }),
+    getOverlay: vi.fn((id: string) => byId.get(id)),
   };
 };
 
@@ -83,6 +88,34 @@ describe("syncTemporalOverlays", () => {
       expect(overlays.size).toBe(2);
       expect(overlays.get("td-events-a")).toBeDefined();
       expect(overlays.get("td-events-b")).toBeDefined();
+    });
+
+    it("adopts an overlay already present on the scene under the same id (avoids double-add collision)", () => {
+      const scene = makeScene();
+      const overlays = new Map();
+
+      // Pre-seed the scene with an overlay at our expected id — as if
+      // useCreateAnnotationLabel created it first.
+      const pre = new FakeOverlay({
+        id: "td-events-a",
+        field: "events",
+        label: { support: [1, 10], label: "running" },
+      });
+      scene.byId.set("td-events-a", pre);
+
+      syncTemporalOverlays({
+        scene,
+        sample: { events: field(td("a", [1, 10], { label: "running" })) },
+        pendingEdits: EMPTY_EDITS,
+        activePaths: ALL_ACTIVE,
+        overlays,
+        create: createFake as never,
+      });
+
+      // No new overlay added — adopted the pre-existing one.
+      expect(scene.addOverlay).not.toHaveBeenCalled();
+      // But we tracked it locally and refreshed its label.
+      expect(overlays.get("td-events-a")).toBe(pre);
     });
 
     it("does not re-add an overlay that already exists", () => {

@@ -5,6 +5,7 @@ import {
   DETECTION,
   KEYPOINT,
   POLYLINE,
+  TEMPORAL_DETECTION,
 } from "@fiftyone/utilities";
 import {
   DetectionOverlayOptions,
@@ -15,6 +16,8 @@ import {
   KeypointOverlay,
   PolylineOptions,
   PolylineOverlay,
+  TemporalOptions,
+  TemporalOverlay,
   decodeMaskPath,
   useLighter,
 } from "@fiftyone/lighter";
@@ -27,7 +30,7 @@ import { isFieldReadOnly, labelSchemaData } from "./state";
  * Hook which provides a method for creating an {@link AnnotationLabel}.
  */
 export const useCreateAnnotationLabel = () => {
-  const { overlayFactory } = useLighter();
+  const { overlayFactory, scene } = useLighter();
 
   // Getter for resolving keypoint skeletons by field
   const getSkeletonForField = useGetKeypointSkeleton();
@@ -140,6 +143,28 @@ export const useCreateAnnotationLabel = () => {
         );
 
         return { data: polylineLabel, overlay, path: field, type };
+      }
+
+      if (type === TEMPORAL_DETECTION) {
+        const tdLabel = data as TemporalOptions["label"];
+        // Shared id format with `useTemporalOverlaySync` + timeline tracks.
+        const overlayId = `td-${field}-${data._id}`;
+
+        const existing = scene?.getOverlay(overlayId);
+        const overlay =
+          existing instanceof TemporalOverlay
+            ? existing
+            : overlayFactory.create<TemporalOptions, TemporalOverlay>(
+                "temporal",
+                { id: overlayId, field, label: tdLabel }
+              );
+
+        if (existing instanceof TemporalOverlay) {
+          // Refresh label on the adopted overlay after a sample refetch.
+          overlay.label = tdLabel;
+        }
+
+        return { data: tdLabel, overlay, path: field, type };
       }
 
       if (type === KEYPOINT) {
