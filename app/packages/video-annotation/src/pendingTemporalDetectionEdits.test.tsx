@@ -136,6 +136,17 @@ describe("pending TD edits store", () => {
     expect(m.get("highlights|a")).toEqual({ support: [22, 28] });
   });
 
+  it("merges first/last individually on re-stage", () => {
+    const { handles } = renderHost();
+    act(() => {
+      handles().stage("events", "a", { first: 3 });
+    });
+    act(() => {
+      handles().stage("events", "a", { last: 8 });
+    });
+    expect(handles().read().get("events|a")).toEqual({ first: 3, last: 8 });
+  });
+
   it("clear drops every staged edit", () => {
     const { handles } = renderHost();
     act(() => {
@@ -412,6 +423,72 @@ describe("applyTemporalDetectionEdits", () => {
       );
       expect((out as typeof sample).events).toBe(sample.events);
       expect((out as typeof sample).other).toBe(sample.other);
+    });
+  });
+
+  describe("first / last reconstitution into support", () => {
+    it("folds `first` over the baseline `support` last", () => {
+      const sample = { events: field(td("a", [1, 10])) };
+      const out = applyTemporalDetectionEdits(
+        sample,
+        new Map([["events|a", { first: 5 }]])
+      ) as { events: { detections: { support: [number, number] }[] } };
+      expect(out.events.detections[0].support).toEqual([5, 10]);
+    });
+
+    it("folds `last` over the baseline `support` first", () => {
+      const sample = { events: field(td("a", [1, 10])) };
+      const out = applyTemporalDetectionEdits(
+        sample,
+        new Map([["events|a", { last: 20 }]])
+      ) as { events: { detections: { support: [number, number] }[] } };
+      expect(out.events.detections[0].support).toEqual([1, 20]);
+    });
+
+    it("uses both endpoints when both are staged", () => {
+      const sample = { events: field(td("a", [1, 10])) };
+      const out = applyTemporalDetectionEdits(
+        sample,
+        new Map([["events|a", { first: 3, last: 8 }]])
+      ) as { events: { detections: { support: [number, number] }[] } };
+      expect(out.events.detections[0].support).toEqual([3, 8]);
+    });
+
+    it("first/last take precedence over a staged support", () => {
+      const sample = { events: field(td("a", [1, 10])) };
+      const out = applyTemporalDetectionEdits(
+        sample,
+        new Map([
+          [
+            "events|a",
+            { support: [100, 200] as [number, number], first: 3 },
+          ],
+        ])
+      ) as { events: { detections: { support: [number, number] }[] } };
+      expect(out.events.detections[0].support).toEqual([3, 200]);
+    });
+
+    it("appends a synthetic TD when both first and last are staged", () => {
+      const sample = { events: field(td("a", [1, 5])) };
+      const out = applyTemporalDetectionEdits(
+        sample,
+        new Map([["events|new-id", { first: 10, last: 20, label: "fresh" }]])
+      ) as { events: { detections: Record<string, unknown>[] } };
+      expect(out.events.detections).toHaveLength(2);
+      expect(out.events.detections[1]).toMatchObject({
+        _id: "new-id",
+        support: [10, 20],
+        label: "fresh",
+      });
+    });
+
+    it("skips a synthetic TD when only one endpoint is staged (no baseline)", () => {
+      const sample = { events: field(td("a", [1, 5])) };
+      const out = applyTemporalDetectionEdits(
+        sample,
+        new Map([["events|new-id", { first: 10, label: "incomplete" }]])
+      ) as { events: { detections: unknown[] } };
+      expect(out.events.detections).toHaveLength(1);
     });
   });
 });

@@ -2,9 +2,19 @@ import { atom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import type { RawTemporalDetectionsField } from "./temporalDetectionTracks";
 
-/** Field-keyed partial for a single TD edit. `null` attribute removes it. */
+/**
+ * Field-keyed partial for a single TD edit. `null` attribute removes it.
+ *
+ * `support` is the underlying `[first, last]` frame range; `first`/`last`
+ * are the sidebar-editable endpoints that fold back into `support` at
+ * apply/persist time. Timeline drag writes `support` directly; sidebar
+ * form changes write `first`/`last`. Either pathway converges on a
+ * single `support: [first, last]` value when reaching the document.
+ */
 export interface TemporalDetectionEditFields {
   support?: [number, number];
+  first?: number;
+  last?: number;
   label?: string;
   confidence?: number;
   attributes?: Record<string, unknown | null>;
@@ -154,6 +164,8 @@ function mergeEdit(
   if (!existing) return { ...update };
   const merged: TemporalDetectionEditFields = { ...existing };
   if (update.support !== undefined) merged.support = update.support;
+  if (update.first !== undefined) merged.first = update.first;
+  if (update.last !== undefined) merged.last = update.last;
   if (update.label !== undefined) merged.label = update.label;
   if (update.confidence !== undefined) merged.confidence = update.confidence;
   if (update.attributes !== undefined) {
@@ -167,7 +179,10 @@ function applyFields(
   update: TemporalDetectionEditFields
 ): Record<string, unknown> {
   const next = { ...detection };
-  if (update.support !== undefined) next.support = update.support;
+  const support = resolveSupport(update, next.support as
+    | [number, number]
+    | undefined);
+  if (support !== undefined) next.support = support;
   if (update.label !== undefined) next.label = update.label;
   if (update.confidence !== undefined) next.confidence = update.confidence;
   if (update.attributes) {
@@ -183,19 +198,40 @@ function applyFields(
 }
 
 /**
+ * Fold `support` / `first` / `last` into a single `[first, last]` pair.
+ * `first`/`last` take precedence over `support` when both are present.
+ * Returns `undefined` when nothing about the range changed.
+ */
+export function resolveSupport(
+  update: TemporalDetectionEditFields,
+  baseline: [number, number] | undefined
+): [number, number] | undefined {
+  const hasEndpoint = update.first !== undefined || update.last !== undefined;
+  if (!hasEndpoint) return update.support;
+
+  const fallback = update.support ?? baseline;
+  const first = update.first ?? fallback?.[0];
+  const last = update.last ?? fallback?.[1];
+  if (first === undefined || last === undefined) return undefined;
+  return [first, last];
+}
+
+/**
  * Build the BSON-shaped detection from a staged entry for a TD that
- * doesn't exist on the sample yet. Requires `support` — without it the
- * TD is malformed; skip rather than emit garbage.
+ * doesn't exist on the sample yet. Requires a resolvable `[first, last]`
+ * support range — without it the TD is malformed; skip rather than emit
+ * garbage.
  */
 function buildSyntheticDetection(
   detectionId: string,
   update: TemporalDetectionEditFields
 ): Record<string, unknown> | null {
-  if (!update.support) return null;
+  const support = resolveSupport(update, undefined);
+  if (!support) return null;
   const out: Record<string, unknown> = {
     _cls: "TemporalDetection",
     _id: detectionId,
-    support: update.support,
+    support,
   };
   if (update.label !== undefined) out.label = update.label;
   if (update.confidence !== undefined) out.confidence = update.confidence;

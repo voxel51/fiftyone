@@ -44,6 +44,7 @@ export {
   applyTemporalDetectionEdits,
   firstTemporalDetectionFieldPath,
   parseTemporalDetectionEditKey,
+  resolveSupport,
   temporalDetectionEditKey,
   useClearTemporalDetectionEdits,
   useStageTemporalDetectionEdit,

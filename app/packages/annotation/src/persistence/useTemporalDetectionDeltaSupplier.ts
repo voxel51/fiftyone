@@ -2,6 +2,7 @@ import type { JSONDeltas } from "@fiftyone/core/src/client";
 import { useIsVideo, useModalSample } from "@fiftyone/state";
 import {
   parseTemporalDetectionEditKey,
+  resolveSupport,
   type TemporalDetectionEditFields,
   useTemporalDetectionPendingEdits,
 } from "@fiftyone/video-annotation";
@@ -66,13 +67,16 @@ export function buildTemporalDetectionDeltas(
     );
 
     // Not on the sample → this is a create. Emit one `add /-` with the
-    // full doc. Skip if `support` is missing (malformed).
+    // full doc. Skip if a `[first, last]` support range can't be resolved
+    // (no baseline to merge against, so both endpoints must arrive
+    // together — partial first/last alone is malformed).
     if (index < 0) {
-      if (!update.support) continue;
+      const supportValue = resolveSupport(update, undefined);
+      if (!supportValue) continue;
       const value: Record<string, unknown> = {
         _cls: "TemporalDetection",
         _id: detectionId,
-        support: update.support,
+        support: supportValue,
       };
       if (update.label !== undefined) value.label = update.label;
       if (update.confidence !== undefined) value.confidence = update.confidence;
@@ -92,8 +96,12 @@ export function buildTemporalDetectionDeltas(
     const detection = detections[index] as Record<string, unknown>;
     const basePath = `/${fieldPath}/detections/${index}`;
 
-    if (update.support !== undefined) {
-      pushScalar(deltas, basePath, "support", detection, update.support);
+    const supportValue = resolveSupport(
+      update,
+      detection.support as [number, number] | undefined
+    );
+    if (supportValue !== undefined) {
+      pushScalar(deltas, basePath, "support", detection, supportValue);
     }
     if (update.label !== undefined) {
       pushScalar(deltas, basePath, "label", detection, update.label);

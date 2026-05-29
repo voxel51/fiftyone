@@ -486,7 +486,16 @@ def _validate_attribute(
             f"'{parent_field_name}'"
         )
 
-    if allow_new_attrs is False and attribute not in subfields:
+    is_td_support_endpoint = (
+        class_name in {_TEMPORAL_DETECTION, _TEMPORAL_DETECTIONS}
+        and attribute in {"first", "last"}
+    )
+
+    if (
+        allow_new_attrs is False
+        and attribute not in subfields
+        and not is_td_support_endpoint
+    ):
         raise ValueError(
             f"'{attribute}' attribute does not exist on {class_name} field"
             f" '{parent_field_name}'"
@@ -516,8 +525,19 @@ def _validate_attribute(
             f"'{parent_field_name}'"
         )
 
+    # `first`/`last` are virtual int attributes on TemporalDetection that
+    # back the underlying `support: [first, last]` FrameSupportField;
+    # validate them as IntField rather than looking up a non-existent
+    # subfield on the doc.
+    if is_td_support_endpoint:
+        field = fof.IntField()
+    elif parent_field:
+        field = parent_field.get_field(attribute)
+    else:
+        field = None
+
     _validate_field_label_schema(
-        parent_field.get_field(attribute) if parent_field else None,
+        field,
         f"{path}.{attribute}",
         label_schema,
         allow_default=True,
@@ -721,6 +741,8 @@ _DETECTION = "detection"
 _DETECTIONS = "detections"
 _POLYLINE = "polyline"
 _POLYLINES = "polylines"
+_TEMPORAL_DETECTION = "temporaldetection"
+_TEMPORAL_DETECTIONS = "temporaldetections"
 
 _ALL_LABEL_TYPES = {
     _CLASSIFICATION,
@@ -729,4 +751,6 @@ _ALL_LABEL_TYPES = {
     _DETECTIONS,
     _POLYLINE,
     _POLYLINES,
+    _TEMPORAL_DETECTION,
+    _TEMPORAL_DETECTIONS,
 }
