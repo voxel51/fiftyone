@@ -9,8 +9,14 @@ import { useMcapTemporalTags } from "./use-mcap-temporal-tags";
 // Module mock — controls what useSampleRendererTemporalTags returns per test.
 // ---------------------------------------------------------------------------
 
+// The hook result type is intentionally readonly; tests swap out
+// `temporalTags` between cases, so the mock uses a mutable view of it.
+type MutableTemporalTagsResult = {
+  -readonly [K in keyof UseSampleTemporalTagsResult]: UseSampleTemporalTagsResult[K];
+};
+
 const mockResult = vi.hoisted(
-  (): UseSampleTemporalTagsResult => ({
+  (): MutableTemporalTagsResult => ({
     status: "ready",
     error: null,
     temporalTags: [],
