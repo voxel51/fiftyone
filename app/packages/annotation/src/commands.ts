@@ -112,10 +112,12 @@ export class ShiftTrackCommand extends Command<boolean> {
 
 /**
  * Propagate a tracked object's bounding box between two bracketing
- * keyframes via the registered propagation agent (linear interp for the
- * demo). Resolves to `true` when at least one in-between frame was
- * written, `false` when prerequisites are missing (no stream, no
- * bracketing keyframes, no registered agent for the method).
+ * keyframes via the registered propagation agent selected by `method`
+ * (`"linear"` → `propagate-linear` lerp; `"sam2"` → `propagate-sam2`
+ * per-frame SAM2 tracking, which streams results as inference lands).
+ * Resolves to `true` when at least one in-between frame was written,
+ * `false` when prerequisites are missing (no stream, no bracketing
+ * keyframes, no registered agent / frame source for the method).
  */
 export class PropagateCommand extends Command<boolean> {
   constructor(
