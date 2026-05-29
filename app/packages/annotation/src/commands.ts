@@ -58,6 +58,59 @@ export class EditTemporalDetectionSupportCommand extends Command<boolean> {
 }
 
 /**
+ * Extend a tracked object's presence by copying a source frame's box onto
+ * the frames a timeline drag grew the bar over. Fired on drag-out of an
+ * object track bar's edge. `trackId` is the synthetic overlay id
+ * (`instance-…` / `track-…`) the stream and timeline agree on;
+ * `sourceFrame` is the existing endpoint whose box is copied; the copies
+ * land on `targetFrames` as non-keyframe filler (so a later Propagate can
+ * overwrite them in place). Resolves `true` when at least one frame was
+ * written.
+ */
+export class ExtendTrackCommand extends Command<boolean> {
+  constructor(
+    public readonly trackId: string,
+    public readonly sourceFrame: number,
+    public readonly targetFrames: readonly number[]
+  ) {
+    super();
+  }
+}
+
+/**
+ * Trim a tracked object's presence by deleting its detection on each of
+ * `frames` — the frames a timeline drag pulled the bar edge past. Fired on
+ * drag-in of an object track bar's edge. Resolves `true` when at least one
+ * detection was removed.
+ */
+export class TrimTrackCommand extends Command<boolean> {
+  constructor(
+    public readonly trackId: string,
+    public readonly frames: readonly number[]
+  ) {
+    super();
+  }
+}
+
+/**
+ * Rigidly shift a tracked object's detections by `delta` frames over the
+ * dragged segment `frames` — e.g. to correct labels that are off by a
+ * frame. Fired on drag of an object track bar's body. Boxes, keyframe
+ * flags, and propagation provenance travel with each label; frames vacated
+ * at the trailing edge are cleared. Resolves `true` when the shift was
+ * applied.
+ */
+export class ShiftTrackCommand extends Command<boolean> {
+  constructor(
+    public readonly trackId: string,
+    public readonly frames: readonly number[],
+    public readonly delta: number
+  ) {
+    super();
+  }
+}
+
+/**
  * Propagate a tracked object's bounding box between two bracketing
  * keyframes via the registered propagation agent (linear interp for the
  * demo). Resolves to `true` when at least one in-between frame was

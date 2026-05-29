@@ -189,11 +189,17 @@ export function buildPerInstanceTracks({
     }
 
     const events: TrackEvent[] = [
-      ...state.intervals.map(({ start, end }) => ({
-        startSec: start,
-        endSec: end,
-        label: "in frame",
-      })),
+      // `resizable: true` opts each presence bar into in-place edit —
+      // drag handles to extend/trim the track, drag the body to shift it
+      // Inert without an `onEventEdit`, so non-object timelines are unaffected.
+      ...state.intervals.map(
+        ({ start, end }): TrackEvent & { resizable: true } => ({
+          startSec: start,
+          endSec: end,
+          label: "in frame",
+          resizable: true,
+        })
+      ),
       // Point events for each keyframe — render as diamond markers on top
       // of the presence bar via `TimelineTrack`'s no-`endSec` branch.
       ...state.keyframeTimes.map((startSec) => ({

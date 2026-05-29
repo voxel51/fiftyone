@@ -33,8 +33,14 @@ import {
 } from "./frameLabelsStream";
 import { buildPerInstanceTracks, type PerInstanceLabel } from "./frameTracks";
 import { LABELS_STREAM_ID } from "./ids";
+import { resolveTrackExtentEdit } from "./trackExtentEdit";
 import { useLinkedTrackDecorator } from "./linkedTracks";
-import { EditTemporalDetectionSupportCommand } from "@fiftyone/annotation";
+import {
+  EditTemporalDetectionSupportCommand,
+  ExtendTrackCommand,
+  ShiftTrackCommand,
+  TrimTrackCommand,
+} from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
 import {
   applyTemporalDetectionEdits,
@@ -317,13 +323,90 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   const decorateTrack = useCallback(
     (track: Track) => {
       const base = linkDecorate(track);
+      if (!fps) {
+        return base;
+      }
+
       const tdEvent = track.events[0]?.data as
         | TemporalDetectionEventData
         | undefined;
       const isTemporalDetection =
         track.id.startsWith("td-") && tdEvent !== undefined;
 
-      if (!isTemporalDetection || !fps) {
+      // Object tracks: drag a presence bar to extend / trim /
+      // shift the track's per-frame labels. Identified by the synthetic
+      // overlay-id prefixes `extractDetections` emits.
+      const isObjectTrack =
+        track.id.startsWith("instance-") || track.id.startsWith("track-");
+
+      if (isObjectTrack && stream) {
+        const totalFrames = stream.totalFrames;
+
+        return {
+          ...base,
+          snapStepSec,
+          onEventEdit: (
+            eventIndex: number,
+            newStartSec: number,
+            newEndSec: number,
+            mode: "resize-start" | "resize-end" | "move"
+          ) => {
+            const dragged = track.events[eventIndex];
+            if (!dragged || dragged.endSec === undefined) {
+              return;
+            }
+
+            // Other presence bars of this same track — used to clamp a
+            // move so it can't overrun a neighbouring segment.
+            const neighborSegments = track.events
+              .filter((e, i) => i !== eventIndex && e.endSec !== undefined)
+              .map(
+                (e) =>
+                  [
+                    Math.round(e.startSec * fps) + 1,
+                    Math.round((e.endSec as number) * fps),
+                  ] as const
+              );
+
+            const edit = resolveTrackExtentEdit({
+              mode,
+              origStartSec: dragged.startSec,
+              origEndSec: dragged.endSec,
+              newStartSec,
+              newEndSec,
+              fps,
+              totalFrames,
+              neighborSegments,
+            });
+
+            switch (edit.op) {
+              case "extend":
+                void commandBus.execute(
+                  new ExtendTrackCommand(
+                    track.id,
+                    edit.sourceFrame,
+                    edit.targetFrames
+                  )
+                );
+                break;
+              case "trim":
+                void commandBus.execute(
+                  new TrimTrackCommand(track.id, edit.frames)
+                );
+                break;
+              case "shift":
+                void commandBus.execute(
+                  new ShiftTrackCommand(track.id, edit.frames, edit.delta)
+                );
+                break;
+              default:
+                break;
+            }
+          },
+        };
+      }
+
+      if (!isTemporalDetection) {
         return base;
       }
 
@@ -357,7 +440,7 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
         },
       };
     },
-    [linkDecorate, fps, snapStepSec, commandBus]
+    [linkDecorate, fps, snapStepSec, commandBus, stream]
   );
 
   return (
