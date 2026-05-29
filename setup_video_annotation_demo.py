@@ -233,6 +233,11 @@ def configure_label_schema(ds):
             },
             {"name": "tags", "type": "list<str>", "component": "text"},
             {"name": "confidence", "type": "float", "component": "text"},
+            # `first`/`last` are virtual endpoints on the underlying
+            # `support: [first, last]` FrameSupportField; the persistence
+            # layer folds them back into `support` on flush.
+            {"name": "first", "type": "int", "component": "text"},
+            {"name": "last", "type": "int", "component": "text"},
         ],
         "classes": evt_classes,
     }

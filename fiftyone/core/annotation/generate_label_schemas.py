@@ -383,12 +383,10 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
             f.name == "support"
             and field.document_type is fol.TemporalDetection
         ):
-            # support is a FrameSupportField ([first, last]); expose the
-            # endpoints as two editable int attributes so the sidebar can
-            # render/edit them. The persistence layer folds them back into
-            # `support: [first, last]` on flush.
-            attributes["first"] = {"type": foac.INT, "component": foac.TEXT}
-            attributes["last"] = {"type": foac.INT, "component": foac.TEXT}
+            # support is a FrameSupportField ([first, last]); user-provided
+            # schemas configure `first`/`last` as int attributes if desired,
+            # and the sidebar form translates the `[first, last]` range at
+            # the form boundary.
             continue
 
         try:

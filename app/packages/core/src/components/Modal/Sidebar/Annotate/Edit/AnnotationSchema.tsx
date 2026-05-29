@@ -157,7 +157,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         )
       );
 
-      const value = { ...data, ...result };
+      const value = collapseTemporalSupport({ ...data, ...result });
 
       const allAttributes = Array.isArray(config?.attributes)
         ? config.attributes
@@ -218,9 +218,10 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
   if (!overlay) throw new Error("no overlay");
 
   const displayData = useMemo(() => {
-    if (!readOnly) return data;
+    const expanded = expandTemporalSupport(data);
+    if (!readOnly) return expanded;
     return Object.fromEntries(
-      Object.entries(data || {}).map(([key, value]) => [
+      Object.entries(expanded || {}).map(([key, value]) => [
         key,
         Array.isArray(value) ? value.join(", ") : value,
       ])
@@ -239,6 +240,43 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
       />
     </div>
   );
+};
+
+/**
+ * TemporalDetection sidebar I/O lives entirely at the form boundary: the
+ * doc carries `support: [first, last]`, but user-configured schemas put
+ * `first` / `last` as separate int attributes so they can be edited as
+ * primitives. Expand on read, collapse on write — nothing else needs to
+ * know.
+ */
+const isTemporalDetectionData = (
+  data: unknown
+): data is { _cls: "TemporalDetection"; support?: [number, number] } =>
+  !!data &&
+  typeof data === "object" &&
+  (data as { _cls?: unknown })._cls === "TemporalDetection";
+
+const expandTemporalSupport = <T extends Record<string, unknown> | null>(
+  data: T
+): T => {
+  if (!isTemporalDetectionData(data)) return data;
+  const support = data.support;
+  if (!Array.isArray(support) || support.length !== 2) return data;
+  return { ...data, first: support[0], last: support[1] } as T;
+};
+
+const collapseTemporalSupport = (
+  value: Record<string, unknown>
+): Record<string, unknown> => {
+  if (!isTemporalDetectionData(value)) return value;
+  const hasEndpoint = "first" in value || "last" in value;
+  if (!hasEndpoint) return value;
+  const baseline = Array.isArray(value.support) ? value.support : undefined;
+  const first = (value.first as number | undefined) ?? baseline?.[0];
+  const last = (value.last as number | undefined) ?? baseline?.[1];
+  const { first: _f, last: _l, ...rest } = value;
+  if (typeof first !== "number" || typeof last !== "number") return rest;
+  return { ...rest, support: [first, last] };
 };
 
 export default AnnotationSchema;
