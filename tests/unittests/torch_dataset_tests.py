@@ -120,9 +120,6 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
                     f"Cached field {cf} not found in cached fields",
                 )
 
-                # `cached_fields[field]` is per-sample (length = n_samples). For
-                # a top-level scalar field on an `id`-indexed dataset, that
-                # equals `len(torch_dataset)`.
                 self.assertEqual(
                     [
                         torch_dataset.cached_fields[cf][i]
@@ -209,10 +206,6 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
                     self.assertEqual(res[i], 1)
                 else:
                     self.assertTrue(isinstance(res[i], Exception))
-
-    # -------------------------------------------------------------------------
-    # Tests for non-default `index_field` (per-detection / per-frame rows)
-    # -------------------------------------------------------------------------
 
     def _per_detection_indexing_impl(self, vectorize):
         n_per_sample = (2, 3, 2)
