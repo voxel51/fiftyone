@@ -3,7 +3,7 @@ import {
   PropagationStatusItem,
   useFrameLabelsStream,
   useImaVidImageStream,
-  useStageTemporalDetectionSupport,
+  useStageTemporalDetectionEdit,
   useVideoAnnotationStatus,
   type LocalDetection,
   type SyntheticBox,
@@ -25,7 +25,7 @@ import {
   type PropagationInferenceResult,
 } from "../agents/types";
 import {
-  EditTemporalDetectionSupportCommand,
+  EditTemporalDetectionCommand,
   ExtendTrackCommand,
   MarkKeyframeCommand,
   PropagateCommand,
@@ -72,7 +72,7 @@ const copyDetection = (
 export const useRegisterVideoAnnotationCommandHandlers = () => {
   const stream = useFrameLabelsStream();
   const imageStream = useImaVidImageStream();
-  const stageTemporalDetectionSupport = useStageTemporalDetectionSupport();
+  const stageTemporalDetectionEdit = useStageTemporalDetectionEdit();
   const registry = useAgentRegistry();
   const sampleDescriptor = useSampleDescriptor();
   const applyPropagation = useApplyPropagationResult();
@@ -80,16 +80,13 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
   const { setContent: setStatusContent } = useVideoAnnotationStatus();
 
   useRegisterCommandHandler(
-    EditTemporalDetectionSupportCommand,
+    EditTemporalDetectionCommand,
     useCallback(
       async (cmd) => {
-        stageTemporalDetectionSupport(cmd.fieldPath, cmd.detectionId, [
-          cmd.support[0],
-          cmd.support[1],
-        ]);
+        stageTemporalDetectionEdit(cmd.fieldPath, cmd.detectionId, cmd.update);
         return true;
       },
-      [stageTemporalDetectionSupport]
+      [stageTemporalDetectionEdit]
     )
   );
 

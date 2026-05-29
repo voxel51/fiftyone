@@ -45,9 +45,10 @@ export {
   parseTemporalDetectionEditKey,
   temporalDetectionEditKey,
   useClearTemporalDetectionEdits,
-  useStageTemporalDetectionSupport,
+  useStageTemporalDetectionEdit,
   useTemporalDetectionPendingEdits,
 } from "./src/pendingTemporalDetectionEdits";
+export type { TemporalDetectionEditFields } from "./src/pendingTemporalDetectionEdits";
 export {
   syncTemporalOverlays,
   useTemporalOverlaySync,

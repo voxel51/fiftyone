@@ -3,32 +3,22 @@ import { useIsVideo, useModalSample } from "@fiftyone/state";
 import {
   parseTemporalDetectionEditKey,
   type RawTemporalDetectionsField,
+  type TemporalDetectionEditFields,
   useTemporalDetectionPendingEdits,
 } from "@fiftyone/video-annotation";
 import { useCallback } from "react";
 import type { DeltaSupplier } from "./deltaSupplier";
 
 /**
- * Provides a {@link DeltaSupplier} for `TemporalDetection.support` edits
- * staged from the video annotation timeline.
+ * Provides a {@link DeltaSupplier} for edits to `TemporalDetection`
+ * fields staged from the video annotation surface (timeline drag or
+ * sidebar form). Resolves the array index by `_id` at supply time so
+ * concurrent inserts/removes don't desync.
  *
- * TDs live at sample level on a video sample (not under `frames.`), so
- * they don't flow through the video-labels delta paths. They also don't have
- * overlays, so they don't flow through the Lighter delta path.
- *
- * Pending edits are read from {@link useTemporalDetectionPendingEdits},
- * the TD's current array index is looked up live against the modal sample,
- * and one `replace /<fieldPath>/detections/<index>/support` op is emitted per
- * staged edit.
- *
- * Index is resolved at supply time (not capture time) so a concurrent
- * unrelated insert/remove on the same field doesn't break the patch.
- * If the targeted TD has disappeared from the sample, the edit is
- * silently dropped.
- *
- * No-op for non-video samples and when no edits are pending. Pending
- * edits are cleared on `annotation:persistenceSuccess` /
- * `persistenceError` by {@link useRegisterVideoAnnotationEventHandlers}.
+ * Top-level fields (`support`/`label`/`confidence`) emit `replace` ops
+ * (or `add` when the field doesn't exist on the baseline). Each
+ * `attributes` entry maps to a top-level field on the TD doc; a `null`
+ * value emits `remove`.
  */
 export const useTemporalDetectionDeltaSupplier = (): DeltaSupplier => {
   const modalSample = useModalSample();
@@ -41,7 +31,7 @@ export const useTemporalDetectionDeltaSupplier = (): DeltaSupplier => {
     }
 
     return {
-      deltas: buildTemporalDetectionSupportDeltas(
+      deltas: buildTemporalDetectionDeltas(
         modalSample.sample as Record<string, unknown>,
         pending
       ),
@@ -51,20 +41,17 @@ export const useTemporalDetectionDeltaSupplier = (): DeltaSupplier => {
 };
 
 /**
- * Walk the pending TD support edits and emit one replace op per edit
- * whose target TD still exists on the sample. Edits where the field
- * is missing or the TD has been removed are silently dropped.
- *
- * Exported for direct unit testing; production callers use the supplier
- * above.
+ * Walk the pending TD edits and emit JSON-Patch ops per defined field.
+ * Edits where the field/detection is gone are dropped. Exported for
+ * direct unit testing.
  */
-export function buildTemporalDetectionSupportDeltas(
+export function buildTemporalDetectionDeltas(
   sample: Record<string, unknown>,
-  pending: ReadonlyMap<string, [number, number]>
+  pending: ReadonlyMap<string, TemporalDetectionEditFields>
 ): JSONDeltas {
   const deltas: JSONDeltas = [];
 
-  for (const [key, support] of pending) {
+  for (const [key, update] of pending) {
     const { fieldPath, detectionId } = parseTemporalDetectionEditKey(key);
     const field = sample[fieldPath] as RawTemporalDetectionsField | undefined;
 
@@ -78,12 +65,48 @@ export function buildTemporalDetectionSupportDeltas(
       continue;
     }
 
-    deltas.push({
-      op: "replace",
-      path: `/${fieldPath}/detections/${index}/support`,
-      value: support,
-    });
+    const detection = detections[index] as Record<string, unknown>;
+    const basePath = `/${fieldPath}/detections/${index}`;
+
+    if (update.support !== undefined) {
+      pushScalar(deltas, basePath, "support", detection, update.support);
+    }
+    if (update.label !== undefined) {
+      pushScalar(deltas, basePath, "label", detection, update.label);
+    }
+    if (update.confidence !== undefined) {
+      pushScalar(deltas, basePath, "confidence", detection, update.confidence);
+    }
+    if (update.attributes) {
+      for (const [attrKey, value] of Object.entries(update.attributes)) {
+        if (value === null) {
+          if (attrKey in detection) {
+            deltas.push({ op: "remove", path: `${basePath}/${attrKey}` });
+          }
+        } else {
+          deltas.push({
+            op: attrKey in detection ? "replace" : "add",
+            path: `${basePath}/${attrKey}`,
+            value,
+          });
+        }
+      }
+    }
   }
 
   return deltas;
+}
+
+function pushScalar(
+  deltas: JSONDeltas,
+  basePath: string,
+  key: string,
+  detection: Record<string, unknown>,
+  value: unknown
+): void {
+  deltas.push({
+    op: key in detection ? "replace" : "add",
+    path: `${basePath}/${key}`,
+    value,
+  });
 }

@@ -2,26 +2,16 @@ import { atom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import type { RawTemporalDetectionsField } from "./temporalDetectionTracks";
 
-/**
- * Pending edits to `TemporalDetection.support` made through the timeline's
- * interval drag handles. Keyed by `${fieldPath}|${detectionId}` so a
- * given TD has at most one outstanding staged edit; later drags overwrite
- * earlier ones.
- *
- * Two roles:
- *   1. Optimistic display — {@link FrameLabelsTracks} reads this and
- *      overlays staged support values onto the sample-derived TD list
- *      before building tracks, so the bar stays where the user dropped
- *      it through the server round-trip.
- *   2. Delta source — `useTemporalDetectionDeltaSupplier` walks the map
- *      and emits one `replace /<fieldPath>/detections/<index>/support`
- *      patch op per pending edit on the next autosave tick.
- *
- * Cleared on `annotation:persistenceSuccess` and
- * `annotation:persistenceError` by {@link useRegisterVideoAnnotationEventHandlers}.
- */
+/** Field-keyed partial for a single TD edit. `null` attribute removes it. */
+export interface TemporalDetectionEditFields {
+  support?: [number, number];
+  label?: string;
+  confidence?: number;
+  attributes?: Record<string, unknown | null>;
+}
+
 const pendingTemporalDetectionEditsAtom = atom<
-  ReadonlyMap<string, [number, number]>
+  ReadonlyMap<string, TemporalDetectionEditFields>
 >(new Map());
 
 export const temporalDetectionEditKey = (
@@ -39,31 +29,30 @@ export const parseTemporalDetectionEditKey = (
   };
 };
 
-/**
- * Reactive view of all currently-pending TD support edits.
- */
 export const useTemporalDetectionPendingEdits = (): ReadonlyMap<
   string,
-  [number, number]
+  TemporalDetectionEditFields
 > => useAtomValue(pendingTemporalDetectionEditsAtom);
 
 /**
- * Stage (or overwrite) a `support` edit for a single TD. The next
- * autosave tick will turn it into a JSON-Patch op via the delta supplier.
+ * Merge an edit onto any prior staged entry for the same TD. Per-field
+ * merge so a label change doesn't drop a previously-staged support, and
+ * vice versa. `attributes` deep-merges by key.
  */
-export const useStageTemporalDetectionSupport = (): ((
+export const useStageTemporalDetectionEdit = (): ((
   fieldPath: string,
   detectionId: string,
-  support: [number, number]
+  update: TemporalDetectionEditFields
 ) => void) => {
   const set = useSetAtom(pendingTemporalDetectionEditsAtom);
 
   return useCallback(
-    (fieldPath, detectionId, support) => {
+    (fieldPath, detectionId, update) => {
       set((prev) => {
         const next = new Map(prev);
-        next.set(temporalDetectionEditKey(fieldPath, detectionId), support);
-
+        const key = temporalDetectionEditKey(fieldPath, detectionId);
+        const existing = prev.get(key);
+        next.set(key, mergeEdit(existing, update));
         return next;
       });
     },
@@ -71,46 +60,39 @@ export const useStageTemporalDetectionSupport = (): ((
   );
 };
 
-/**
- * Clear every staged TD support edit. Called by the persistence event
- * handler on both success (sample is about to refresh with the new
- * values) and error (revert the optimistic visual; user can re-drag).
- */
 export const useClearTemporalDetectionEdits = (): (() => void) => {
   const set = useSetAtom(pendingTemporalDetectionEditsAtom);
-
   return useCallback(() => {
     set(new Map());
   }, [set]);
 };
 
 /**
- * Return a shallow-cloned copy of `sample` with staged TD support edits
- * applied to the matching detections. Top-level fields and the
- * `detections` array of any field touched by an edit are cloned; the
- * untouched fields stay referentially stable. Edits whose field /
- * detection no longer exist on the sample are silently skipped.
+ * Shallow-cloned `sample` with staged TD edits applied. Per-field
+ * override (`support`/`label`/`confidence`) plus attribute merge
+ * (`null` removes). Edits whose field / detection no longer exist
+ * are silently skipped.
  */
 export const applyTemporalDetectionEdits = (
   sample: Record<string, unknown>,
-  edits: ReadonlyMap<string, [number, number]>
+  edits: ReadonlyMap<string, TemporalDetectionEditFields>
 ): Record<string, unknown> => {
   if (edits.size === 0) {
     return sample;
   }
 
-  // Group by field path so we clone each `detections` array at most once
-  // even when multiple TDs in the same field have pending edits.
-  const editsByField = new Map<string, Map<string, [number, number]>>();
-  for (const [key, support] of edits) {
+  const editsByField = new Map<
+    string,
+    Map<string, TemporalDetectionEditFields>
+  >();
+  for (const [key, fields] of edits) {
     const { fieldPath, detectionId } = parseTemporalDetectionEditKey(key);
     let fieldEdits = editsByField.get(fieldPath);
     if (!fieldEdits) {
       fieldEdits = new Map();
       editsByField.set(fieldPath, fieldEdits);
     }
-
-    fieldEdits.set(detectionId, support);
+    fieldEdits.set(detectionId, fields);
   }
 
   const next = { ...sample };
@@ -125,11 +107,46 @@ export const applyTemporalDetectionEdits = (
       ...field,
       detections: detections.map((d) => {
         const id = d._id ?? d.id;
-        const support = id ? fieldEdits.get(id) : undefined;
-        return support ? { ...d, support } : d;
+        const update = id ? fieldEdits.get(id) : undefined;
+        return update ? applyFields(d, update) : d;
       }),
     };
   }
 
   return next;
 };
+
+function mergeEdit(
+  existing: TemporalDetectionEditFields | undefined,
+  update: TemporalDetectionEditFields
+): TemporalDetectionEditFields {
+  if (!existing) return { ...update };
+  const merged: TemporalDetectionEditFields = { ...existing };
+  if (update.support !== undefined) merged.support = update.support;
+  if (update.label !== undefined) merged.label = update.label;
+  if (update.confidence !== undefined) merged.confidence = update.confidence;
+  if (update.attributes !== undefined) {
+    merged.attributes = { ...existing.attributes, ...update.attributes };
+  }
+  return merged;
+}
+
+function applyFields(
+  detection: Record<string, unknown>,
+  update: TemporalDetectionEditFields
+): Record<string, unknown> {
+  const next = { ...detection };
+  if (update.support !== undefined) next.support = update.support;
+  if (update.label !== undefined) next.label = update.label;
+  if (update.confidence !== undefined) next.confidence = update.confidence;
+  if (update.attributes) {
+    for (const [key, value] of Object.entries(update.attributes)) {
+      if (value === null) {
+        delete next[key];
+      } else {
+        next[key] = value;
+      }
+    }
+  }
+  return next;
+}

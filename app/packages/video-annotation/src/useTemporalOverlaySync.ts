@@ -17,6 +17,7 @@ import { usePlayhead } from "../../playback/src/lib/playback/use-playback-state"
 import {
   parseTemporalDetectionEditKey,
   useTemporalDetectionPendingEdits,
+  type TemporalDetectionEditFields,
 } from "./pendingTemporalDetectionEdits";
 
 interface RawTemporalDetection {
@@ -48,7 +49,7 @@ interface SceneLike {
 export interface SyncTemporalOverlaysInput {
   scene: SceneLike;
   sample: Record<string, unknown> | null | undefined;
-  pendingEdits: ReadonlyMap<string, [number, number]>;
+  pendingEdits: ReadonlyMap<string, TemporalDetectionEditFields>;
   activePaths: ReadonlySet<string>;
   /** Map<overlayId, overlay> — mutated in place to track surviving overlays. */
   overlays: Map<string, TemporalOverlay>;
@@ -87,13 +88,11 @@ export function syncTemporalOverlays({
     return;
   }
 
-  // Index pending edits by `${fieldPath}|${detectionId}` for O(1) lookup
-  // during the sample walk. Use the existing decoder so the key format
-  // stays canonical.
-  const editsByFieldId = new Map<string, [number, number]>();
-  for (const [key, support] of pendingEdits) {
+  // Index pending edits by `${fieldPath}|${detectionId}` for O(1) lookup.
+  const editsByFieldId = new Map<string, TemporalDetectionEditFields>();
+  for (const [key, update] of pendingEdits) {
     const { fieldPath, detectionId } = parseTemporalDetectionEditKey(key);
-    editsByFieldId.set(`${fieldPath}|${detectionId}`, support);
+    editsByFieldId.set(`${fieldPath}|${detectionId}`, update);
   }
 
   const next = new Set<string>();
@@ -122,11 +121,23 @@ export function syncTemporalOverlays({
       next.add(id);
 
       const override = editsByFieldId.get(`${fieldPath}|${detId}`);
-      const support: [number, number] = override
-        ? [override[0], override[1]]
+      const support: [number, number] = override?.support
+        ? [override.support[0], override.support[1]]
         : [rawSupport[0], rawSupport[1]];
 
-      const label: TemporalLabel = { ...td, support };
+      const label: TemporalLabel = { ...td, support } as TemporalLabel;
+      if (override?.label !== undefined) label.label = override.label;
+      if (override?.confidence !== undefined)
+        label.confidence = override.confidence;
+      if (override?.attributes) {
+        for (const [k, v] of Object.entries(override.attributes)) {
+          if (v === null) {
+            delete (label as Record<string, unknown>)[k];
+          } else {
+            (label as Record<string, unknown>)[k] = v;
+          }
+        }
+      }
 
       // Adopt an existing overlay (ours or one `useCreateAnnotationLabel`
       // added) so concurrent paths don't double-add at the same id.

@@ -36,7 +36,7 @@ import { LABELS_STREAM_ID } from "./ids";
 import { resolveTrackExtentEdit } from "./trackExtentEdit";
 import { useLinkedTrackDecorator } from "./linkedTracks";
 import {
-  EditTemporalDetectionSupportCommand,
+  EditTemporalDetectionCommand,
   ExtendTrackCommand,
   ShiftTrackCommand,
   TrimTrackCommand,
@@ -425,16 +425,11 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
           const firstFrame = Math.max(1, Math.round(newStartSec * fps) + 1);
           const lastFrame = Math.max(firstFrame, Math.round(newEndSec * fps));
 
-          // Goes through the command bus (same shape as
-          // `MarkKeyframeCommand`) so the dispatch path is uniform and
-          // future undo/redo subscribers see this edit on the bus.
-          // The handler stages into the same pending-edits store the
-          // delta supplier reads.
           void commandBus.execute(
-            new EditTemporalDetectionSupportCommand(
+            new EditTemporalDetectionCommand(
               tdEvent.fieldPath,
               tdEvent.detectionId,
-              [firstFrame, lastFrame]
+              { support: [firstFrame, lastFrame] }
             )
           );
         },

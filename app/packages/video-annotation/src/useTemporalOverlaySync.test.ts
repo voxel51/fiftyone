@@ -59,7 +59,8 @@ const createFake = (opts: TemporalOptions): FakeOverlay =>
   new FakeOverlay(opts);
 
 const ALL_ACTIVE = new Set(["events", "highlights"]);
-const EMPTY_EDITS: ReadonlyMap<string, [number, number]> = new Map();
+const EMPTY_EDITS: ReadonlyMap<string, { support?: [number, number] }> =
+  new Map();
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -288,7 +289,9 @@ describe("syncTemporalOverlays", () => {
       syncTemporalOverlays({
         scene,
         sample: { events: field(td("a", [1, 10])) },
-        pendingEdits: new Map([["events|a", [5, 15] as [number, number]]]),
+        pendingEdits: new Map([
+          ["events|a", { support: [5, 15] as [number, number] }],
+        ]),
         activePaths: ALL_ACTIVE,
         overlays,
         create: createFake as never,
@@ -315,7 +318,9 @@ describe("syncTemporalOverlays", () => {
       syncTemporalOverlays({
         scene,
         sample: { events: field(td("a", [1, 10])) },
-        pendingEdits: new Map([["events|a", [5, 15] as [number, number]]]),
+        pendingEdits: new Map([
+          ["events|a", { support: [5, 15] as [number, number] }],
+        ]),
         activePaths: ALL_ACTIVE,
         overlays,
         create: createFake as never,
@@ -331,7 +336,9 @@ describe("syncTemporalOverlays", () => {
       syncTemporalOverlays({
         scene,
         sample: { events: field(td("a", [1, 10])) },
-        pendingEdits: new Map([["events|ghost", [5, 15] as [number, number]]]),
+        pendingEdits: new Map([
+          ["events|ghost", { support: [5, 15] as [number, number] }],
+        ]),
         activePaths: ALL_ACTIVE,
         overlays,
         create: createFake as never,

@@ -5,6 +5,7 @@
 import { Command } from "@fiftyone/command-bus";
 import { AnnotationLabel } from "@fiftyone/state";
 import { Field } from "@fiftyone/utilities";
+import type { TemporalDetectionEditFields } from "@fiftyone/video-annotation";
 
 /**
  * Command to delete an annotation label.
@@ -43,15 +44,15 @@ export class MarkKeyframeCommand extends Command<boolean> {
 }
 
 /**
- * Edit a `TemporalDetection.support` frame range. Fired on drag-end
- * of a timeline interval bar. `support` is the post-edit value;
- * the supplier resolves the array index on the sample at flush time.
+ * Edit one or more fields on a `TemporalDetection`. The supplier
+ * resolves the array index on the sample at flush time and emits one
+ * patch op per defined field.
  */
-export class EditTemporalDetectionSupportCommand extends Command<boolean> {
+export class EditTemporalDetectionCommand extends Command<boolean> {
   constructor(
     public readonly fieldPath: string,
     public readonly detectionId: string,
-    public readonly support: readonly [number, number]
+    public readonly update: TemporalDetectionEditFields
   ) {
     super();
   }
