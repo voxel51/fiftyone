@@ -96,6 +96,18 @@ export class ExtendTrackCommand extends Command<boolean> {
 }
 
 /**
+ * Delete every detection belonging to a tracked object across the clip.
+ * `trackId` is the synthetic overlay id (`instance-…` / `track-…`) the
+ * stream and timeline agree on. Resolves `true` when at least one
+ * detection was removed.
+ */
+export class DeleteTrackCommand extends Command<boolean> {
+  constructor(public readonly trackId: string) {
+    super();
+  }
+}
+
+/**
  * Trim a tracked object's presence by deleting its detection on each of
  * `frames` — the frames a timeline drag pulled the bar edge past. Fired on
  * drag-in of an object track bar's edge. Resolves `true` when at least one

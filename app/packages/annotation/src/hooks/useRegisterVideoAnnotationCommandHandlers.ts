@@ -31,6 +31,7 @@ import {
 } from "../agents/types";
 import {
   CreateTemporalDetectionCommand,
+  DeleteTrackCommand,
   EditTemporalDetectionCommand,
   ExtendTrackCommand,
   MarkKeyframeCommand,
@@ -380,6 +381,31 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
 
         let removed = false;
         for (const frame of cmd.frames) {
+          const det = detectionAt(stream, frame, stream.fps, cmd.trackId);
+          if (!det) {
+            continue;
+          }
+
+          stream.deleteLabel(frame, det._id ?? det.id);
+          removed = true;
+        }
+
+        return removed;
+      },
+      [stream]
+    )
+  );
+
+  useRegisterCommandHandler(
+    DeleteTrackCommand,
+    useCallback(
+      async (cmd) => {
+        if (!stream) {
+          return false;
+        }
+
+        let removed = false;
+        for (let frame = 1; frame <= stream.totalFrames; frame++) {
           const det = detectionAt(stream, frame, stream.fps, cmd.trackId);
           if (!det) {
             continue;

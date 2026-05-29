@@ -42,6 +42,7 @@ import { LABELS_STREAM_ID } from "./ids";
 import { resolveTrackExtentEdit } from "./trackExtentEdit";
 import { useLinkedTrackDecorator } from "./linkedTracks";
 import {
+  DeleteTrackCommand,
   EditTemporalDetectionCommand,
   ExtendTrackCommand,
   ShiftTrackCommand,
@@ -387,6 +388,14 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
         return {
           ...base,
           snapStepSec,
+          onContextMenu: (e: React.MouseEvent<HTMLDivElement>) => {
+            e.preventDefault();
+            const name = track.label ?? track.id;
+            if (!window.confirm(`Delete track "${name}"?`)) {
+              return;
+            }
+            void commandBus.execute(new DeleteTrackCommand(track.id));
+          },
           onEventEdit: (
             eventIndex: number,
             newStartSec: number,
