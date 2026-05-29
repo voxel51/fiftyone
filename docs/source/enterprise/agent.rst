@@ -113,3 +113,8 @@ agent exactly how to perform a task, step by step.
     You can also build and add your own custom skills to extend the agent's
     capabilities. See :ref:`Developing skills <agents-developing>` for full
     instructions.
+
+.. customanimatedcta::
+    :button_text: Browse Enterprise Skills
+    :button_link: ../agents/index.html?tag=Enterprise
+    :align: right
