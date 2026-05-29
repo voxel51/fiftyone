@@ -37,6 +37,9 @@ INTERNAL_SKILLS_GITHUB_BASE = (
     "https://github.com/voxel51/fiftyone-internal-skills/blob/main/"
 )
 
+_FRONTMATTER_RE = re.compile(r"^---\s*$", re.MULTILINE)
+_SAFE_SKILL_NAME_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
+
 
 @dataclass
 class Skill:
@@ -68,7 +71,7 @@ def _fetch(url: str, parse_json: bool = False, token: Optional[str] = None):
 
 def _parse_skill_frontmatter(content: str) -> dict:
     """Parse YAML frontmatter from a SKILL.md file."""
-    parts = re.split(r"^---\s*$", content, maxsplit=2, flags=re.MULTILINE)
+    parts = _FRONTMATTER_RE.split(content, maxsplit=2)
     if len(parts) < 3:
         return {}
     try:
@@ -126,7 +129,7 @@ def _fetch_enterprise_skills() -> List[Skill]:
 
     skills = []
     for skill_name in declared:
-        if not re.match(r"^[a-zA-Z0-9_-]+$", skill_name):
+        if not _SAFE_SKILL_NAME_RE.match(skill_name):
             logger.warning(f"Skipping skill with unsafe name: '{skill_name}'")
             continue
 
