@@ -50,11 +50,7 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
   return (
     <div className={styles.root} data-testid="timeline-header-root">
       <TimelineControls onToggle={onToggle} extraActions={extraActions} />
-      {/* position:relative so rulerOverlay can anchor to just this row */}
-      <div className={styles.rulerRow}>
-        <TimelineRuler labelWidth={labelWidth} zoomRef={zoomRef} />
-        {rulerOverlay}
-      </div>
+      <TimelineRuler labelWidth={labelWidth} zoomRef={zoomRef} overlay={rulerOverlay} />
       {children ? <div className={styles.belowRuler}>{children}</div> : null}
     </div>
   );

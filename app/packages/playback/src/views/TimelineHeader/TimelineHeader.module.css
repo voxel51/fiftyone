@@ -3,10 +3,6 @@
   flex-direction: column;
 }
 
-.rulerRow {
-  position: relative;
-}
-
 /* Slot rendered below the ruler but still inside the always-visible
    header. TimelineWithTracks puts pinned tracks here so they stay on
    screen when the drawer body is collapsed. */
