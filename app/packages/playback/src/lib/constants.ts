@@ -18,6 +18,8 @@ export const TIMELINE_LABEL_WIDTH = 140;
 export const TIMELINE_DEFAULT_DRAWER_SIZE = 220;
 /** Hard ceiling on the timeline drawer height in px (independent of content). */
 export const TIMELINE_DRAWER_MAX_SIZE = 600;
+/** Height of the voodo Drawer resize handle in px (bottom-side drawer). */
+export const TIMELINE_DRAWER_HANDLE_SIZE = 4;
 
 export const PLAYHEAD_STATE_PLAYING = "playing";
 export const PLAYHEAD_STATE_PAUSED = "paused";

@@ -4,6 +4,7 @@ import React, { useMemo, useRef, useState } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import {
   TIMELINE_DEFAULT_DRAWER_SIZE,
+  TIMELINE_DRAWER_HANDLE_SIZE,
   TIMELINE_DRAWER_MAX_SIZE,
   TIMELINE_LABEL_WIDTH,
 } from "../../lib/constants";
@@ -145,7 +146,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
                 <PlayheadLine labelWidth={labelWidth} />
               </div>
             )}
-          </TimelineHeader>
+          </>
         )}
       >
         {unpinned.length > 0 && (
@@ -162,18 +163,15 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
                   pinned={false}
                   onPinClick={() => togglePin(track.id)}
                   onEventClick={(e) => seek(e.startSec)}
+                  onEventDelete={onEventDelete}
                   className={styles.unpinnedTrack}
                 />
               ))}
             </div>
+            <LoopOverlays labelWidth={labelWidth} />
+            <PlayheadLine labelWidth={labelWidth} />
           </div>
-
-          {/* Overlays sit on the non-scrolling outer wrapper so they
-              anchor to the visible height and don't scroll with the
-              tracks. */}
-          <LoopOverlays labelWidth={labelWidth} />
-          <PlayheadLine labelWidth={labelWidth} />
-        </div>
+        )}
       </Drawer>
     </div>
   );
