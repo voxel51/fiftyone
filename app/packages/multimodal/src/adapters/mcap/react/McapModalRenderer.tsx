@@ -63,7 +63,7 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
       "#ec4899",
     ];
 
-    const byLabel = new Map<string, typeof temporalTags>();
+    const byLabel = new Map<string, (typeof temporalTags)[number][]>();
     for (const t of temporalTags) {
       const group = byLabel.get(t.tag) ?? [];
       group.push(t);
