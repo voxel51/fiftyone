@@ -702,6 +702,58 @@
             "date_added": "2026-01-30"
         },
         {
+            "base_name": "segment-anything-3-video-torch",
+            "base_filename": "sam3_video.pt",
+            "version": null,
+            "description": "Open-vocabulary video segmentation that finds, segments, and tracks all objects matching a text concept across video frames",
+            "source": "https://github.com/facebookresearch/sam3",
+            "author": "Nicolas Carion, Laura Gustafson, Yuan-Ting Hu, et al.",
+            "license": "SAM License",
+            "size_bytes": 3704365056,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {}
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.sam3.SegmentAnything3VideoModel",
+                "config": {
+                    "entrypoint_fcn": "sam3.model_builder.build_sam3_video_model",
+                    "entrypoint_args": {}
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "sam3"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "segmentation",
+                "instance-segmentation",
+                "video",
+                "tracking",
+                "zero-shot",
+                "open-vocabulary",
+                "text-prompted",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "SA-1B",
+                    "url": "https://ai.meta.com/datasets/segment-anything/"
+                },
+                {
+                    "name": "SA-Co",
+                    "url": "https://github.com/facebookresearch/sam3"
+                }
+            ],
+            "date_added": "2026-01-30"
+        },
+        {
             "base_name": "med-sam-2-video-torch",
             "base_filename": "med-sam-2_pretrain.pth",
             "version": null,
@@ -7461,7 +7513,14 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "torch", "yolo", "zero-shot", "prompt-free", "official"],
+            "tags": [
+                "instances",
+                "torch",
+                "yolo",
+                "zero-shot",
+                "prompt-free",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "Objects365v1",
@@ -7519,7 +7578,14 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "torch", "yolo", "zero-shot", "prompt-free", "official"],
+            "tags": [
+                "instances",
+                "torch",
+                "yolo",
+                "zero-shot",
+                "prompt-free",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "Objects365v1",
@@ -7577,7 +7643,14 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "torch", "yolo", "zero-shot", "prompt-free", "official"],
+            "tags": [
+                "instances",
+                "torch",
+                "yolo",
+                "zero-shot",
+                "prompt-free",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "Objects365v1",
@@ -7635,7 +7708,14 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "torch", "yolo", "zero-shot", "prompt-free", "official"],
+            "tags": [
+                "instances",
+                "torch",
+                "yolo",
+                "zero-shot",
+                "prompt-free",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "Objects365v1",
@@ -7693,7 +7773,14 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "torch", "yolo", "zero-shot", "prompt-free", "official"],
+            "tags": [
+                "instances",
+                "torch",
+                "yolo",
+                "zero-shot",
+                "prompt-free",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "Objects365v1",
