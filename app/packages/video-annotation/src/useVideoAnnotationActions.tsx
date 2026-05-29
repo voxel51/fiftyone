@@ -68,7 +68,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
           {
             id: "propagate",
             label: "Propagate",
-            icon: <Icon name={IconName.AI} size={Size.Sm} />,
+            icon: <Icon name={IconName.ContentCopy} size={Size.Sm} />,
             shortcut: "-",
             tooltip: target.ok
               ? `Interpolate frames ${target.fromFrame}–${target.toFrame}`
@@ -89,6 +89,26 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
                   target.fromFrame,
                   target.toFrame,
                   "linear"
+                )
+              );
+            },
+          },
+          {
+            id: "propagate-sam2",
+            label: "Track (SAM2)",
+            icon: <Icon name={IconName.AI} size={Size.Sm} />,
+            tooltip: target.ok
+              ? `Track frames ${target.fromFrame}–${target.toFrame} with SAM2`
+              : target.reason,
+            isDisabled: !target.ok,
+            onClick: () => {
+              if (!target.ok) return;
+              void bus.execute(
+                new PropagateCommand(
+                  target.instanceId,
+                  target.fromFrame,
+                  target.toFrame,
+                  "sam2"
                 )
               );
             },

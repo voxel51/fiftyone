@@ -15,6 +15,11 @@ export {
 export { ImaVidImageStream } from "./src/ImaVidImageStream";
 export type { ImaVidImageFrame } from "./src/ImaVidImageStream";
 export { useFrameLabelsStream } from "./src/frameLabelsStream";
+export {
+  useImaVidImageStream,
+  usePublishImaVidImageStream,
+} from "./src/imaVidImageStreamHandle";
+export { PropagationStatusItem } from "./src/PropagationStatusItem";
 export { useVideoAnnotationStatus } from "./src/videoAnnotationStatus";
 export type { VideoAnnotationStatusContent } from "./src/videoAnnotationStatus";
 export { resolvePropagationTarget } from "./src/propagationTarget";
