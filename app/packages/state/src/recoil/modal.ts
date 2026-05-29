@@ -15,12 +15,12 @@ import {
   hasGroupSlices,
   modalGroupSlice,
 } from "./groups";
+import { RelayEnvironmentKey } from "./relay";
 import {
   interaction3dSample,
-  pinned3DSampleSlice,
   is3dPinned,
+  pinned3DSampleSlice,
 } from "./renderConfig3d.atoms";
-import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
 import { mapSampleResponse } from "./utils";
 import { view } from "./view";
@@ -190,6 +190,57 @@ export const modalSample = graphQLSelector<
         group: slice
           ? { slice, slices: [sliceSelect], id: get(groupId) }
           : null,
+      },
+    };
+  },
+});
+
+/**
+ * Same as {@link modalSample} but always pinned to the dataset's main
+ * `groupSlice` for both the active slice and the requested slices. Used by
+ * `groupByFieldValue` so the dynamic group value is always read from the
+ * main slice's sample regardless of which slice the modal is currently
+ * displaying. Has its own Relay cache key so it can resolve independently.
+ */
+export const groupSampleAtMainSlice = graphQLSelector<
+  VariablesOf<mainSampleQuery>,
+  ModalSample
+>({
+  environment: RelayEnvironmentKey,
+  key: "groupSampleAtMainSlice",
+  query: mainSample,
+  mapResponse: (data: ModalSampleResponse, { variables }) => {
+    if (!data.sample) {
+      if (variables.filter.group) {
+        throw new GroupSampleNotFound(
+          `sample with group id ${variables.filter.id} and slice ${variables.filter.group.slices[0]} not found`
+        );
+      }
+
+      throw new SampleNotFound(
+        `sample with id ${variables.filter.id} not found`
+      );
+    }
+
+    return mapSampleResponse(data.sample) as ModalSample;
+  },
+  variables: ({ get }) => {
+    const current = get(modalSelector);
+
+    if (current === null) return null;
+
+    const slice = get(groupSlice);
+
+    if (get(hasGroupSlices) && !slice) {
+      return null;
+    }
+
+    return {
+      dataset: get(datasetName),
+      view: get(view),
+      filter: {
+        id: current.id,
+        group: slice ? { slice, slices: [slice], id: get(groupId) } : null,
       },
     };
   },

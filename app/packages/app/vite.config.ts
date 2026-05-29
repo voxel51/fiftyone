@@ -25,23 +25,33 @@ async function loadConfig() {
       // Vite's worker bundling breaks ort's WASM resolution and emits hashed
       // copies that ort can't find by name. Emit unhashed copies and clean up.
       (() => {
-        const ortWasmFiles = ["ort-wasm-simd-threaded.jsep.wasm", "ort-wasm-simd-threaded.jsep.mjs"];
+        const ortWasmFiles = [
+          "ort-wasm-simd-threaded.jsep.wasm",
+          "ort-wasm-simd-threaded.jsep.mjs",
+        ];
         let assetsDir = "";
         return {
           name: "copy-ort-wasm",
           apply: "build",
           configResolved(config) {
-            assetsDir = path.resolve(config.root, config.build.outDir, "assets");
+            assetsDir = path.resolve(
+              config.root,
+              config.build.outDir,
+              "assets"
+            );
           },
           buildStart() {
             const ortDist = path.dirname(require.resolve("onnxruntime-web"));
             for (const f of ortWasmFiles) {
-              this.emitFile({ type: "asset", fileName: `assets/${f}`, source: fs.readFileSync(path.join(ortDist, f)) });
+              this.emitFile({
+                type: "asset",
+                fileName: `assets/${f}`,
+                source: fs.readFileSync(path.join(ortDist, f)),
+              });
             }
           },
           closeBundle() {
-            if (!fs.existsSync(assetsDir))
-              return;
+            if (!fs.existsSync(assetsDir)) return;
             const keep = new Set(ortWasmFiles);
             for (const f of fs.readdirSync(assetsDir)) {
               if (f.includes("ort-wasm") && !keep.has(f)) {

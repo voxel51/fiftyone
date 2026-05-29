@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import * as fos from "@fiftyone/state";
 import { Alert, AlertTitle } from "@mui/material";
 import { useLayoutEffect } from "react";
