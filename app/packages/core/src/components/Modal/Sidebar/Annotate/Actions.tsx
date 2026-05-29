@@ -16,7 +16,7 @@ import {
   useCurrent3dAnnotationMode,
   useSetCurrent3dAnnotationMode,
 } from "@fiftyone/looker-3d/src/state/accessors";
-import { is3DDataset, useRenderConfig3dState } from "@fiftyone/state";
+import { is3DDataset, useIs3dPinned } from "@fiftyone/state";
 import {
   DETECTION,
   DETECTIONS,
@@ -25,6 +25,7 @@ import {
 } from "@fiftyone/utilities";
 import PolylineIcon from "@mui/icons-material/Timeline";
 import CuboidIcon from "@mui/icons-material/ViewInAr";
+import { Anchor, Text, Tooltip } from "@voxel51/voodo";
 import { useAtomValue, useSetAtom } from "jotai";
 import { createContext, useCallback, useContext } from "react";
 import { useRecoilValue } from "recoil";
@@ -34,9 +35,9 @@ import { editing } from "./Edit";
 import { fieldsOfType } from "./Edit/state";
 import { useClassificationMode } from "./Edit/useClassificationMode";
 import { useDetectionMode } from "./Edit/useDetectionMode";
+import { usePolylineMode } from "./Edit/usePolylineMode";
 import { useSegmentationMode } from "./Edit/useSegmentationMode";
-import { Anchor, Text, Tooltip } from "@voxel51/voodo";
-import { FeatureFlag, FeatureFlagged } from "@fiftyone/feature-flags";
+import { useDeactivateAllModes } from "./useDeactivateAllModes";
 
 const ActionsDiv = styled.div`
   align-items: center;
@@ -199,12 +200,8 @@ const Classification = () => {
 };
 
 const Detection = () => {
-  const {
-    activateDetectionMode,
-    detectionModeActive,
-    disabled,
-    tooltip,
-  } = useDetectionMode();
+  const { activateDetectionMode, detectionModeActive, disabled, tooltip } =
+    useDetectionMode();
   const deactivateAll = useDeactivateAll();
 
   return (
@@ -252,6 +249,36 @@ const Segmentation = () => {
         }}
       >
         <SegmentationIcon />
+      </Square>
+    </Tooltip>
+  );
+};
+
+const Polyline = () => {
+  const { activatePolylineMode, polylineModeActive, disabled, tooltip } =
+    usePolylineMode();
+  const deactivateAll = useDeactivateAll();
+
+  return (
+    <Tooltip anchor={Anchor.Top} content={<Text>{tooltip}</Text>} portal>
+      <Square
+        $active={polylineModeActive}
+        className={disabled ? "disabled" : ""}
+        data-cy="polyline-mode"
+        data-cy-active={polylineModeActive}
+        onClick={() => {
+          if (disabled) {
+            return;
+          }
+
+          deactivateAll();
+
+          if (!polylineModeActive) {
+            activatePolylineMode();
+          }
+        }}
+      >
+        <PolylineIcon sx={{ transform: "rotate(90deg)" }} />
       </Square>
     </Tooltip>
   );
@@ -404,38 +431,23 @@ const Actions = () => {
   // This checks if media type of the dataset resolved to 3d
   const is3dDataset = useRecoilValue(is3DDataset);
   // This checks if a 3d sample is pinned - is true when media type is `group` with a 3d slice pinned
-  const { isPinned: is3dSamplePinned } = useRenderConfig3dState();
+  const is3dSamplePinned = useIs3dPinned();
 
-  const {
-    classificationModeActive,
-    deactivateClassificationMode,
-  } = useClassificationMode();
-  const { detectionModeActive, deactivateDetectionMode } = useDetectionMode();
-  const {
-    segmentationModeActive,
-    deactivateSegmentationMode,
-  } = useSegmentationMode();
+  const { classificationModeActive } = useClassificationMode();
+  const { detectionModeActive } = useDetectionMode();
+  const { segmentationModeActive } = useSegmentationMode();
+  const { polylineModeActive } = usePolylineMode();
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
-  const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
 
   const noActiveActions =
     !classificationModeActive &&
     !detectionModeActive &&
     !segmentationModeActive &&
+    !polylineModeActive &&
     !current3dAnnotationMode;
   const areThreeDActionsVisible = is3dDataset || is3dSamplePinned;
 
-  const deactivateAll = useCallback(() => {
-    deactivateClassificationMode();
-    deactivateDetectionMode();
-    deactivateSegmentationMode();
-    setCurrent3dAnnotationMode(null);
-  }, [
-    deactivateClassificationMode,
-    deactivateDetectionMode,
-    deactivateSegmentationMode,
-    setCurrent3dAnnotationMode,
-  ]);
+  const deactivateAll = useDeactivateAllModes();
 
   return (
     <DeactivateAllContext.Provider value={deactivateAll}>
@@ -452,9 +464,8 @@ const Actions = () => {
             ) : (
               <>
                 <Detection />
-                <FeatureFlagged feature={FeatureFlag.VFF_AI_SEGMENTATION}>
-                  <Segmentation />
-                </FeatureFlagged>
+                <Segmentation />
+                <Polyline />
               </>
             )}
           </ItemLeft>

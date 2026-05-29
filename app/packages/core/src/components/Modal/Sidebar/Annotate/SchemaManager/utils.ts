@@ -44,13 +44,30 @@ export interface RichListItemOptions {
   className?: string;
 }
 
-// Conditional visibility rule for an attribute from an applied ontology.
-// Describes a condition under which the attribute should be shown.
-export interface AttributeCondition {
+// Leaf condition: a single field comparison (equals / in).
+export interface AttributeConditionLeaf {
   operator: "equals" | "in";
   field: string;
   value: unknown;
 }
+
+// Group condition: satisfied when ALL child conditions are met.
+export interface AttributeConditionAnd {
+  operator: "and";
+  conditions: AttributeCondition[];
+}
+
+// Group condition: satisfied when ANY child condition is met.
+export interface AttributeConditionOr {
+  operator: "or";
+  conditions: AttributeCondition[];
+}
+
+// Discriminated union over all condition node shapes.
+export type AttributeCondition =
+  | AttributeConditionLeaf
+  | AttributeConditionAnd
+  | AttributeConditionOr;
 
 // Attribute configuration (matches API)
 // Note: When stored in schema, attributes include 'name' field
@@ -60,9 +77,9 @@ export interface AttributeConfig {
   component?: string;
   values?: (string | number)[];
   range?: [number, number];
-  default?: string | number | (string | number)[]; // Array for list types
+  default?: string | number | boolean | (string | number)[]; // Array for list types
   read_only?: boolean;
-  when?: AttributeCondition[];
+  when?: AttributeCondition;
   _source?: string;
 }
 
@@ -95,7 +112,7 @@ export interface AttributeFormData {
   default: string;
   listDefault: (string | number)[]; // For list types
   read_only: boolean;
-  when?: AttributeCondition[];
+  when?: AttributeCondition;
   _source?: string;
 }
 
@@ -291,7 +308,7 @@ export const toFormData = (config: AttributeConfig): AttributeFormData => {
   if (config.default !== undefined) {
     if (Array.isArray(config.default)) {
       listDefault = config.default;
-    } else if (isListType) {
+    } else if (isListType && typeof config.default !== "boolean") {
       // Single value for list type - wrap in array
       listDefault = [config.default];
     } else {
@@ -343,12 +360,16 @@ export const toAttributeConfig = (data: AttributeFormData): AttributeConfig => {
   }
 
   // Convert default to appropriate type
-  let defaultValue: string | number | (string | number)[] | undefined;
+  let defaultValue: string | number | boolean | (string | number)[] | undefined;
   if (isListType) {
     // For list types, use listDefault array
     if (data.listDefault && data.listDefault.length > 0) {
       defaultValue = data.listDefault;
     }
+  } else if (data.type === "bool") {
+    // For bool, map the tri-state form value to a real boolean (or undefined)
+    if (data.default === "true") defaultValue = true;
+    else if (data.default === "false") defaultValue = false;
   } else if (data.default) {
     // For non-list types, convert to number if numeric
     defaultValue = isNumeric ? parseFloat(data.default) : data.default;

@@ -1,30 +1,120 @@
-import type { RenderArchetypeKind } from "../archetypes";
+import { VISUALIZATION_KIND } from "../visualization";
 import type { PayloadDescriptor as ContractPayloadDescriptor } from "../schemas/v1";
 
 /**
- * Broad decoded value shape until renderer-specific field contracts are
- * finalized.
+ * Scalar/object metadata emitted by decoders for inspection, filtering, and
+ * lightweight renderer labels. Large binary payloads belong in `visualization`.
  */
-export type DecodedFieldValue =
+export type DecodedAttributeValue =
   | string
   | number
   | boolean
   | bigint
   | null
-  | Uint8Array
-  | Float32Array
-  | ArrayBuffer
-  | readonly DecodedFieldValue[]
-  | { readonly [field: string]: DecodedFieldValue };
+  | readonly DecodedAttributeValue[]
+  | { readonly [field: string]: DecodedAttributeValue };
 
 /**
- * Decoder-owned render data passed to format-agnostic renderers.
+ * Encoded image bytes decoded from a message but still compressed as an image
+ * format the browser can render directly.
  */
-export interface RenderBuffers {
-  readonly kind: RenderArchetypeKind;
-  readonly data: Uint8Array | Float32Array | ArrayBuffer;
-  readonly metadata?: Record<string, DecodedFieldValue>;
+export interface EncodedImageVisualization {
+  readonly kind: typeof VISUALIZATION_KIND.ENCODED_IMAGE;
+  readonly bytes: Uint8Array;
+  readonly mimeType?: string;
 }
+
+/**
+ * Structured metadata for one source field packed into a point cloud message.
+ */
+export interface PointCloudField {
+  readonly name: string;
+  readonly offset: number;
+  readonly type: number;
+}
+
+/**
+ * Positions extracted from a point cloud into an interleaved x/y/z array.
+ */
+export interface PointCloudVisualization {
+  /**
+   * Per-message source coordinate frame decoded from the point cloud payload.
+   */
+  readonly coordinateFrameId?: string;
+  readonly kind: typeof VISUALIZATION_KIND.POINT_CLOUD;
+  readonly fields: readonly PointCloudField[];
+  readonly pointCount: number;
+  readonly positions: Float32Array;
+}
+
+/**
+ * RGBA color in 0–1 components. Decoders normalize source colors into this
+ * form so renderers do not need source-format awareness.
+ */
+export type RgbaColor = readonly [number, number, number, number];
+
+/**
+ * Filled circle annotation drawn in image pixel coordinates.
+ */
+export interface ImageAnnotationCircle {
+  readonly position: readonly [number, number];
+  readonly diameter: number;
+  readonly thickness: number;
+  readonly outlineColor: RgbaColor | null;
+  readonly fillColor: RgbaColor | null;
+}
+
+/**
+ * Polyline primitive kind packed into one Foxglove PointsAnnotation message.
+ */
+export type ImageAnnotationPointsKind =
+  | "points"
+  | "line-strip"
+  | "line-loop"
+  | "line-list";
+
+/**
+ * Points / line annotation in image pixel coordinates.
+ */
+export interface ImageAnnotationPoints {
+  readonly type: ImageAnnotationPointsKind;
+  readonly points: readonly (readonly [number, number])[];
+  readonly thickness: number;
+  readonly outlineColor: RgbaColor | null;
+  readonly outlineColors: readonly RgbaColor[];
+  readonly fillColor: RgbaColor | null;
+}
+
+/**
+ * Text label drawn at a fixed image pixel position.
+ */
+export interface ImageAnnotationText {
+  readonly position: readonly [number, number];
+  readonly text: string;
+  readonly fontSize: number;
+  readonly textColor: RgbaColor | null;
+  readonly backgroundColor: RgbaColor | null;
+}
+
+/**
+ * Renderer-neutral 2D overlays for an image panel, decoded from a
+ * foxglove.ImageAnnotations message.
+ */
+export interface ImageAnnotationsVisualization {
+  readonly kind: typeof VISUALIZATION_KIND.IMAGE_ANNOTATIONS;
+  readonly circles: readonly ImageAnnotationCircle[];
+  readonly points: readonly ImageAnnotationPoints[];
+  readonly texts: readonly ImageAnnotationText[];
+}
+
+/**
+ * Decoder-owned visual artifact. Decoders may omit this for messages that only
+ * contribute metadata, transforms, annotations, or other nonvisual state.
+ */
+export type DecodedVisualization =
+  | EncodedImageVisualization
+  | ImageAnnotationsVisualization
+  | PointCloudVisualization;
 
 /**
  * Encoded payload identity used by frontend decoder selection.
@@ -48,6 +138,18 @@ export interface DecodedTimeRange {
 export type DecodedSourceTimestamps = Readonly<Record<string, bigint>>;
 
 /**
+ * Runtime context passed to decoders by source adapters.
+ */
+export interface DecodeContext {
+  readonly schemaData?: Uint8Array;
+  readonly sourceTimestamps?: DecodedSourceTimestamps;
+  readonly streamId?: string;
+  readonly timeRangeStartKey?: string;
+  readonly timeRangeStartNs?: bigint;
+  readonly [key: string]: unknown;
+}
+
+/**
  * Generic timing metadata for playback, synchronization, and provenance.
  */
 export interface DecodedTiming {
@@ -56,27 +158,30 @@ export interface DecodedTiming {
 }
 
 /**
- * Structured decoder output for downstream playback and rendering.
+ * Decoder-provided resource metadata used by generic caches and worker transfer.
  */
-export interface DecodedOutput {
-  readonly fields: Record<string, DecodedFieldValue>;
-  readonly render: RenderBuffers;
-  readonly timing?: DecodedTiming;
+export interface DecodedResourceHints {
+  readonly sizeBytes?: number;
+  readonly transferables?: readonly Transferable[];
 }
 
 /**
- * Context supplied to decoder implementations at decode time.
+ * Structured decoder output for downstream playback and visualization.
  */
-export interface DecodeContext {
-  readonly streamId: string;
-  readonly coordinateFrameId?: string;
+export interface DecodedOutput {
+  readonly attributes?: Record<string, DecodedAttributeValue>;
+  readonly resourceHints?: DecodedResourceHints;
+  readonly timing?: DecodedTiming;
+  readonly visualization?: DecodedVisualization;
 }
 
 /**
  * Frontend decoder implementation for a specific encoded payload.
  */
 export interface Decoder {
+  readonly id: string;
   readonly payload: PayloadDescriptor;
+  readonly version: string;
 
   decode(bytes: Uint8Array, ctx: DecodeContext): DecodedOutput;
 }

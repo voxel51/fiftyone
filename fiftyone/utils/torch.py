@@ -1140,6 +1140,26 @@ class ToPILImage(object):
         return F.to_pil_image(img)
 
 
+def to_rgb_pil(img):
+    """Converts image-like input to an RGB PIL image."""
+    if isinstance(img, (str, os.PathLike)):
+        return _load_image(os.fspath(img), use_numpy=False, force_rgb=True)
+
+    return ToPILImage()(img).convert("RGB")
+
+
+def imgs_to_rgb_pil(imgs):
+    """Converts a batch of image-like inputs to RGB PIL images."""
+    pil_images = []
+    sizes = []
+    for img in imgs:
+        pil = to_rgb_pil(img)
+        pil_images.append(pil)
+        sizes.append((pil.width, pil.height))
+
+    return pil_images, sizes
+
+
 class MinResize(object):
     """Transform that resizes the PIL image or torch Tensor, if necessary, so
     that its minimum dimensions are at least the specified size.

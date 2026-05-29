@@ -30,8 +30,9 @@ class OntologyType(str, Enum):  # TODO - update to StrEnum
     ontologies can reference the same taxonomy by name.
 
     ``ANNOTATION_ONTOLOGY`` — a container that defines classes, attributes
-    (with optional conditional display logic), and references to taxonomies.
-    This is the document that gets connected to a label schema on a field.
+    (with optional conditional display logic), and an optional reference to
+    a bundled taxonomy. This is the document that gets connected to a
+    label schema on a field.
     """
 
     TAXONOMY = "taxonomy"
@@ -102,6 +103,17 @@ class OntologyDocument(Document):
             self.reload()
             return self
 
+        # First-save defense: refuse to silently append to an existing
+        # lineage. Updates must go through the in_db path (load the
+        # existing doc, mutate, save), which exercises append-only
+        # versioning explicitly.
+        self._reject_if_slug_exists()
+
+        # version is internal bookkeeping; a caller-supplied value is
+        # discarded. We've just verified the slug has no lineage, so the
+        # first version is always 1.
+        self.version = 1
+
         if self.created_at is None:
             self.created_at = now
 
@@ -130,21 +142,47 @@ class OntologyDocument(Document):
 
     # pylint disable: mongoengine's ``objects`` queryset manager is attached
     # dynamically and not introspectable by pylint.
-    def _save_as_new_version(  # pylint: disable=no-member
-        self, now: datetime, *args: Any, **kwargs: Any
-    ) -> OntologyDocument:
-        # Append-only versioning: create a new document instead of updating
-        # the existing one.
+    def _reject_if_slug_exists(  # pylint: disable=no-member
+        self,
+    ) -> None:
+        """Raises if any document with this slug is already persisted.
+
+        First-save defense: an unpersisted document whose slug already
+        exists indicates the caller is trying to recreate an ontology
+        that exists. Updates must go through the loaded-doc path, which
+        appends a new version explicitly.
+        """
+        if (
+            OntologyDocument.objects(slug=self.slug).only("id").first()
+            is not None
+        ):
+            raise ValueError(
+                f"Ontology '{self.name}' already exists. To update it, "
+                f"load the existing ontology and save the loaded "
+                f"instance to create a new version."
+            )
+
+    # pylint disable: mongoengine's ``objects`` queryset manager is attached
+    # dynamically and not introspectable by pylint.
+    def _next_version(  # pylint: disable=no-member
+        self,
+    ) -> int:
+        """Returns the next version number for this slug's lineage."""
         latest = (
             OntologyDocument.objects(slug=self.slug)
             .order_by("-version")
             .only("version")
             .first()
         )
-        next_version = (latest.version + 1) if latest else 1
+        return (latest.version + 1) if latest else 1
 
+    def _save_as_new_version(
+        self, now: datetime, *args: Any, **kwargs: Any
+    ) -> OntologyDocument:
+        # Append-only versioning: create a new document instead of updating
+        # the existing one.
         new_doc = self.copy_with_new_id()
-        new_doc.version = next_version
+        new_doc.version = self._next_version()
         new_doc.schema_version = CURRENT_SCHEMA_VERSION
         new_doc.created_at = now
         new_doc.last_modified_at = now

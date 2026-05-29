@@ -22,6 +22,23 @@ logger = logging.getLogger(__name__)
 _SOURCE = "_source"
 
 
+def attributes_with_source(ontology: Any) -> list[dict[str, Any]]:
+    """Returns ontology attributes as dicts tagged with a ``_source`` marker.
+
+    Args:
+        ontology: an ontology object whose ``.attributes`` are attribute specs
+            with a ``.to_dict()`` method and whose ``.name`` identifies the
+            ontology
+
+    Returns:
+        a list of attribute dicts, each carrying ``_source: ontology.name``
+    """
+    return [
+        {**attr_spec.to_dict(), _SOURCE: ontology.name}
+        for attr_spec in ontology.attributes
+    ]
+
+
 def hydrate_applied_ontology(label_schema: dict) -> dict:
     """Merges a referenced annotation ontology's attributes into a label
     schema.
@@ -30,7 +47,9 @@ def hydrate_applied_ontology(label_schema: dict) -> dict:
     annotation ontology, returns a new dict with the ontology's attributes
     merged into the ``attributes`` list. Each merged attribute carries a
     ``_source: <ontology_name>`` marker. Attributes are matched by ``name``
-    and ontology values win on collision.
+    and ontology values win on collision. When the ontology has a bundled
+    taxonomy, an ``applied_taxonomy`` key is also surfaced on the response;
+    it is never persisted on the schema itself.
 
     If the schema has no ``applied_ontology`` reference, the schema is
     returned unchanged. If the reference is dangling (deleted ontology)
@@ -72,7 +91,10 @@ def hydrate_applied_ontology(label_schema: dict) -> dict:
         )
         return _strip_applied_ontology(label_schema)
 
-    return _merge(label_schema, ontology)
+    hydrated = _merge(label_schema, ontology)
+    if ontology.taxonomy is not None:
+        hydrated[foac.APPLIED_TAXONOMY] = ontology.taxonomy
+    return hydrated
 
 
 def _strip_applied_ontology(label_schema: dict) -> dict:
@@ -86,8 +108,10 @@ def dehydrate_applied_ontology(label_schema: dict) -> dict:
 
     Companion to :func:`hydrate_applied_ontology`. When the schema has an
     ``applied_ontology`` that resolves to an annotation ontology, drops
-    any attribute whose ``name`` matches an ontology-owned attribute and
-    strips the ``_source`` marker from the remaining attributes.
+    any attribute whose ``name`` matches an ontology-owned attribute,
+    strips the ``_source`` marker from the remaining attributes, and
+    drops the ``applied_taxonomy`` key (surfaced at hydrate time, never
+    persisted).
 
     Otherwise (no reference, dangling reference, or non-annotation
     reference) the schema is returned unchanged — the validator will
@@ -119,6 +143,11 @@ def dehydrate_applied_ontology(label_schema: dict) -> dict:
     ontology_owned_names = {a.name for a in ontology.attributes}
 
     cleaned = copy.deepcopy(label_schema)
+    # ``applied_taxonomy`` is surfaced at hydrate time from the bundled
+    # ontology's ``taxonomy`` field; the canonical store lives on the
+    # ontology, not the label schema. Drop it so a round-tripped schema
+    # doesn't persist a stale copy.
+    cleaned.pop(foac.APPLIED_TAXONOMY, None)
     kept = []
     for attr in cleaned.get(foac.ATTRIBUTES, []):
         # ontology-owned attrs get dropped entirely, so their _source goes
@@ -171,9 +200,7 @@ def _merge(label_schema: dict, ontology: Any) -> dict:
     by_name: dict = {a.get(foac.NAME): a for a in existing}
     ordered_names = [a.get(foac.NAME) for a in existing]
 
-    for attr_spec in ontology.attributes:
-        attr_dict = attr_spec.to_dict()
-        attr_dict[_SOURCE] = ontology.name
+    for attr_dict in attributes_with_source(ontology):
         name = attr_dict.get(foac.NAME)
         if name not in by_name:
             ordered_names.append(name)

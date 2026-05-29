@@ -17,19 +17,18 @@ sys.path.insert(0, os.path.abspath("."))
 sys.path.insert(0, os.path.abspath("../extensions"))
 
 from custom_directives import (
+    CustomAnimatedCTADirective,
     CustomButtonDirective,
     CustomCalloutItemDirective,
     CustomCardItemDirective,
-    CustomImageLinkDirective,
     CustomGuidesCardDirective,
-    CustomAnimatedCTADirective,
+    CustomImageLinkDirective,
     CustomUseCaseCardDirective,
 )
 from fiftyone.internal.docs import is_hidden_from_docs
-from redirects import generate_redirects, generate_api_redirects
+from redirects import generate_api_redirects, generate_redirects
 
 import fiftyone.constants as foc
-
 
 with open("../../setup.py") as f:
     setup_version = re.search(r'VERSION = "(.+?)"', f.read()).group(1)
@@ -79,6 +78,7 @@ extensions = [
     "llms_txt",
     "sphinx_remove_toctrees",
     "sphinx_markdown_builder",
+    "sphinx_sitemap",
 ]
 
 teams_dir = os.environ.get("FIFTYONE_TEAMS_DIR")
@@ -202,6 +202,7 @@ html_sidebars = {"**": ["algolia.html", "sidebar-nav"]}
 remove_from_toctrees = [
     "plugins/plugins_ecosystem/*",
     "labs/labs_ecosystem/*",
+    "agents/skills_ecosystem/*",
     "model_zoo/models/*",
     "dataset_zoo/datasets/*",
     "dataset_zoo/datasets_hf/*",
@@ -213,7 +214,7 @@ html_favicon = "_static/favicon/favicon.ico"
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
-html_extra_path = ["404.html"]
+html_extra_path = ["404.html", "robots.txt"]
 
 # These paths are either relative to html_static_path
 # or fully qualified paths (eg. https://...)
@@ -228,6 +229,15 @@ html_js_files = [
 # Prevent RST source files from being included in output
 html_copy_source = False
 
+# Required by sphinx-sitemap to generate absolute URLs
+html_baseurl = "https://docs.voxel51.com/"
+
+# -- Options for sphinx-sitemap ----------------------------------------------
+sitemap_url_scheme = "{link}"
+sitemap_excludes = [
+    "search.html",
+    "genindex.html",
+]
 
 # -- Options for pushfeedback extension ---------------------------------------
 pushfeedback_project = "1nx7ekqhts"

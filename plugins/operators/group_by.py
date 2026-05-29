@@ -20,6 +20,7 @@ class GroupBy(foo.Operator):
             label="Group by",
             dynamic=True,
             icon="merge",
+            risk_level=types.RiskLevel.LOW,
         )
 
     def resolve_placement(self, ctx):

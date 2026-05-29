@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { setSpaces, type setSpacesMutation } from "@fiftyone/relay";
 import { commitMutation } from "relay-runtime";
 import type { LocationState } from "../routing";

@@ -1,0 +1,104 @@
+.ruler {
+  display: flex;
+  position: relative;
+  height: 24px;
+  border-bottom: 1px solid var(--color-content-border-default);
+  flex-shrink: 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.labelSpacer {
+  flex-shrink: 0;
+  border-right: 1px solid var(--color-content-border-default);
+}
+
+/* Tick lane is overflow:hidden and pointer-events:none so it never
+   clips or intercepts the absolutely-positioned handles above it. */
+.lane {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  padding-left: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.65rem;
+  color: var(--color-content-text-tertiary);
+  border-left: 1px solid var(--color-content-border-subtle);
+  user-select: none;
+  white-space: nowrap;
+}
+
+/* Handles are siblings of the lane (not inside it), so overflow:hidden
+   on the lane never clips them. */
+
+.loopHandle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  transform: translateX(-50%);
+  background: rgba(255, 200, 0, 0.85);
+  cursor: ew-resize;
+  z-index: 3;
+}
+
+/* Wrapper for the playhead triangle + line segment. Sized to the lane
+   (label column → right edge) so translateX(%) moves children by a
+   fraction of the lane width. Composited (translate3d) so per-tick
+   updates avoid layout work. */
+.playheadGroup {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+  will-change: transform;
+  /* Above the yellow loop handles (z-index 3) so the triangle/line
+     paints in front when they overlap. */
+  z-index: 5;
+}
+
+.playheadHandle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 12px;
+  transform: translateX(-50%);
+  pointer-events: auto;
+  cursor: grab;
+  z-index: 4;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.playheadTriangle {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 8px solid var(--color-brand-primary);
+  pointer-events: none;
+}
+
+/* Playhead line segment inside the ruler. TimelineWithTracks renders a
+   second matching segment in the tracks body so the line appears continuous
+   from the triangle handle all the way down through every track. */
+.playheadLine {
+  position: absolute;
+  top: 8px;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  background: var(--color-brand-primary);
+  z-index: 3;
+}

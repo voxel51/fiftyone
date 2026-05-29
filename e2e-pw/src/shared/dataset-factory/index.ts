@@ -5,14 +5,16 @@
 import os from "os";
 import path from "path";
 import { OssLoader } from "src/oss/fixtures/loader";
-import { createBlankImage } from "../media-factory/image";
+import { createImage } from "../media-factory/image";
+import { createFo3d } from "../media-factory/fo3d";
+import { createPly } from "../media-factory/ply";
 import { createId, ensureDirExists, indexToId } from "../utils";
 
 /**
  * Represents a minimal, unpopulated dataset sample scaffold.
  * Passed to {@link DatasetOptions.withSampleData} to be enriched with field data.
  */
-interface BlankSample {
+interface SampleScaffold {
   /** The sample's unique identifier, encoded as a 24-character hex string. */
   _id: string;
 
@@ -46,7 +48,12 @@ type Label = "Classification" | "Classifications" | "Detection" | "Detections";
  * All supported field types for dataset schema definitions.
  * Includes both primitive scalar types and FiftyOne {@link Label} types.
  */
-type FieldType = Label | "IntField" | "FloatField" | "StringField";
+type FieldType =
+  | Label
+  | "IntField"
+  | "FloatField"
+  | "StringField"
+  | "DictField";
 
 /**
  * A recursive type representing any valid JSON value.
@@ -159,30 +166,33 @@ interface DatasetOptions {
   };
 
   /**
-   * A factory function that populates a blank sample with data.
-   * Receives an empty `BlankSample` and should return a `JSONObject`
+   * A factory function that populates a sample with data.
+   * Receives an empty `SampleScaffold` and should return a `JSONObject`
    * representing the fully populated sample.
    *
-   * @param blankSample - The unpopulated sample scaffold.
+   * @param sampleScaffold - The unpopulated sample scaffold.
    * @returns A `JSONObject` containing the sample's field values.
    *
    * @example
-   * withSampleData: (blankSample) => ({
-   *   ...blankSample,
+   * withSampleData: (sampleScaffold) => ({
+   *   ...sampleScaffold,
    *   label: "cat",
    *   uniqueness: 0.97,
    * })
    */
-  withSampleData?: (blankSample: BlankSample, helpers: Helpers) => JSONObject;
+  withSampleData?: (
+    sampleScaffold: SampleScaffold,
+    helpers: Helpers
+  ) => JSONObject;
 }
 
 /**
- * Creates a blank FiftyOne dataset with generated image samples.
+ * Creates a FiftyOne dataset with generated image samples.
  *
  * This is an IIFE-initialized async function that holds a shared {@link OssLoader}
  * instance across calls. It:
  *
- * 1. Generates `numSamples` blank PNG images in a temporary directory.
+ * 1. Generates `numSamples` PNG images in a temporary directory.
  * 2. Builds a FiftyOne dataset via embedded Python code, inserting samples
  *    directly into the underlying MongoDB collection for performance.
  * 3. Applies any additional schema fields and saved views.
@@ -192,7 +202,7 @@ interface DatasetOptions {
  * @throws {Error} If `numSamples` is less than 1 or not an integer.
  *
  * @example
- * await DatasetFactory.createBlankDataset({
+ * await DatasetFactory.createDataset({
  *   datasetName: "my-dataset",
  *   numSamples: 10,
  *   numbered: true,
@@ -201,7 +211,7 @@ interface DatasetOptions {
  *   withSampleData: ({ index }, { createId }) => ({ _id: createId(indexToId(index)), hello: "world"  }),
  * });
  */
-const createBlankDataset = (() => {
+const createDataset = (() => {
   const loader = new OssLoader();
   return async ({
     datasetName,
@@ -236,21 +246,21 @@ const createBlankDataset = (() => {
     for (let index = 0; index < numSamples; index++) {
       const filepath = path.join(outputDir, `${index}.png`);
       promises.push(
-        createBlankImage({
+        createImage({
           outputPath: filepath,
           watermarkString: numbered ? index.toString() : undefined,
           ...imageOptions,
         })
       );
       const _id = indexToId(index);
-      const blankSample = {
+      const sampleScaffold = {
         _id,
         filepath,
         index,
       };
       sampleData.push(
         `sample_data.append(json_util.loads('${JSON.stringify(
-          withSampleData(blankSample, { createId })
+          withSampleData(sampleScaffold, { createId })
         )}'))`
       );
     }
@@ -331,13 +341,155 @@ const createBlankDataset = (() => {
 })();
 
 /**
+ * A single slice in a group dataset: a name and its media type.
+ */
+export interface GroupSliceConfig {
+  name: string;
+  mediaType: "image" | "3d";
+}
+
+const DEFAULT_GROUP_SLICES: GroupSliceConfig[] = [
+  { name: "left", mediaType: "image" },
+  { name: "right", mediaType: "image" },
+  { name: "3d", mediaType: "3d" },
+];
+
+/**
+ * Creates a FiftyOne group dataset with configurable slices.
+ *
+ * Image slices are backed by generated PNGs. 3D slices are backed by a
+ * PLY mesh wrapped in a `.fo3d` scene file. The default slice layout is
+ * `left` (image), `right` (image), and `3d` (fo3d).
+ *
+ * @example
+ * await DatasetFactory.createGroupDataset({
+ *   datasetName: "my-groups",
+ *   numGroups: 4,
+ *   slices: [
+ *     { name: "left", mediaType: "image" },
+ *     { name: "pcd", mediaType: "3d" },
+ *   ],
+ * });
+ */
+const createGroupDataset = (() => {
+  const loader = new OssLoader();
+  return async ({
+    datasetName,
+    numGroups = 3,
+    slices = DEFAULT_GROUP_SLICES,
+  }: {
+    datasetName: string;
+    numGroups?: number;
+    slices?: GroupSliceConfig[];
+  }) => {
+    const outputDir = path.join(os.tmpdir(), datasetName);
+    await ensureDirExists(outputDir);
+
+    // Generate media files for each group × slice combination
+    const imagePromises: Promise<void>[] = [];
+    for (let i = 0; i < numGroups; i++) {
+      for (const slice of slices) {
+        if (slice.mediaType === "image") {
+          imagePromises.push(
+            createImage({
+              outputPath: path.join(outputDir, `${slice.name}-${i}.png`),
+              fillColor: "#22577a",
+              width: 128,
+              height: 128,
+              hideLogs: true,
+            })
+          );
+        } else {
+          const plyPath = path.join(outputDir, `${slice.name}-${i}.ply`);
+          createPly({
+            outputPath: plyPath,
+            shape: "cube",
+            color: [96, 208, 255],
+          });
+          createFo3d({
+            outputPath: path.join(outputDir, `${slice.name}-${i}.fo3d`),
+            plyPath,
+          });
+        }
+      }
+    }
+    await Promise.all(imagePromises);
+
+    // Build spec list for Python
+    const groupSpecs = Array.from({ length: numGroups }, (_, i) => ({
+      index: i,
+      samples: slices.map((slice) => ({
+        name: slice.name,
+        mediaType: slice.mediaType,
+        filepath:
+          slice.mediaType === "image"
+            ? path.join(outputDir, `${slice.name}-${i}.png`)
+            : path.join(outputDir, `${slice.name}-${i}.fo3d`),
+      })),
+    }));
+
+    const has3dSlices = slices.some((s) => s.mediaType === "3d");
+    const seedMediaTypes = slices
+      .map((s) =>
+        s.mediaType === "3d"
+          ? `"${s.name}": fom.THREE_D`
+          : `"${s.name}": fom.IMAGE`
+      )
+      .join(", ");
+    const defaultSlice = slices[0]?.name ?? "left";
+
+    await loader.executePythonCode(`
+import json
+import fiftyone as fo
+${has3dSlices ? "import fiftyone.core.media as fom" : ""}
+
+specs = json.loads(r'''${JSON.stringify(groupSpecs)}''')
+
+dataset = fo.Dataset("${datasetName}")
+dataset.add_group_field("group", default="${defaultSlice}")
+dataset.persistent = True
+
+${
+  has3dSlices
+    ? `
+def seed_group_media_types(dataset, group_media_types):
+    current = dict(dataset._doc.group_media_types or {})
+    current.update(group_media_types)
+    dataset._doc.group_media_types = current
+    dataset.save()
+
+seed_group_media_types(dataset, {${seedMediaTypes}})
+`
+    : ""
+}
+
+samples = []
+for spec in specs:
+    group = fo.Group()
+    for sample_spec in spec["samples"]:
+        kwargs = dict(
+            filepath=sample_spec["filepath"],
+            group=group.element(sample_spec["name"]),
+        )
+        if sample_spec["mediaType"] == "3d":
+            kwargs["media_type"] = "3d"
+        samples.append(fo.Sample(**kwargs))
+
+dataset.add_samples(samples)
+    `);
+  };
+})();
+
+/**
  * Factory for creating FiftyOne datasets in test and fixture contexts.
  *
  * @example
  * import { DatasetFactory } from "./dataset-factory";
  *
- * await DatasetFactory.createBlankDataset({ datasetName: "test-dataset" });
+ * await DatasetFactory.createDataset({ datasetName: "test-dataset" });
+ * await DatasetFactory.createGroupDataset({ datasetName: "my-groups" });
  */
 export const DatasetFactory = {
-  createBlankDataset,
+  createDataset,
+  createGroupDataset,
 };

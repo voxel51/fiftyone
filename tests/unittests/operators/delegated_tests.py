@@ -974,13 +974,12 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                 on_monitor_ping=on_ping,
             )
 
-            mock_ping.assert_called_once_with(doc.id, log_tail="some log")
+            mock_ping.assert_called_once_with(doc.id)
 
         self.assertIsNotNone(result)
         self.assertIsNone(result.error)
         self.assertEqual(result.result, {"executed": True})
 
-        # Verify empty string log_tail is forwarded as-is
         mock_process.is_alive.side_effect = [True, True, False]
         with patch.object(
             self.svc, "get", return_value=running_doc
@@ -991,7 +990,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                 check_interval_seconds=0,
                 on_monitor_ping=lambda pid: "",
             )
-            mock_ping.assert_called_once_with(doc.id, log_tail="")
+            mock_ping.assert_called_once_with(doc.id)
 
     @patch("psutil.Process")
     @patch("logging.handlers.QueueListener")
@@ -1051,7 +1050,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             )
 
             # This assertion will now pass
-            mock_ping.assert_called_once_with(doc.id, log_tail=None)
+            mock_ping.assert_called_once_with(doc.id)
 
         mock_psutil_process.assert_called_once_with(mock_process.pid)
         mock_psutil_parent.children.assert_called_once_with(recursive=True)
@@ -1123,7 +1122,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             )
 
             # Verify ping was called with the operation ID (before failure detected)
-            mock_ping.assert_called_once_with(doc.id, log_tail=None)
+            mock_ping.assert_called_once_with(doc.id)
 
         self.assertIsNotNone(result)
         self.assertIsNotNone(result.error)

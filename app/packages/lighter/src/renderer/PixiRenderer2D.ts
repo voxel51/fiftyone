@@ -19,7 +19,13 @@ import {
   TAB_GAP_DEFAULT,
 } from "../constants";
 import type { LighterEventGroup } from "../events";
-import type { DrawStyle, Point, Rect, TextOptions, ViewportState } from "../types";
+import type {
+  DrawStyle,
+  Point,
+  Rect,
+  TextOptions,
+  ViewportState,
+} from "../types";
 import { parseColorWithAlpha } from "../utils/color";
 import type { ImageOptions, ImageSource, Renderer2D } from "./Renderer2D";
 import { sharedPixiApp } from "./SharedPixiApplication";
@@ -597,6 +603,49 @@ export class PixiRenderer2D implements Renderer2D {
       for (const center of centers) {
         graphics.circle(center.x, center.y, scaledRadius);
       }
+      graphics.setStrokeStyle({
+        width: (style.lineWidth || 1) / this.getScale(),
+        color: strokeParsed.color,
+        alpha: strokeParsed.alpha * (style.opacity ?? 1),
+      });
+      graphics.stroke();
+    }
+
+    this.addToContainer(graphics, containerId);
+  }
+
+  drawPolygon(points: Point[], style: DrawStyle, containerId: string): void {
+    if (points.length < 3) return;
+
+    const graphics = new PIXI.Graphics();
+
+    const fillParsed = style.fillStyle
+      ? parseColorWithAlpha(style.fillStyle)
+      : undefined;
+    const strokeParsed = style.strokeStyle
+      ? parseColorWithAlpha(style.strokeStyle)
+      : undefined;
+
+    const tracePath = () => {
+      graphics.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) {
+        graphics.lineTo(points[i].x, points[i].y);
+      }
+      graphics.closePath();
+    };
+
+    // PixiJS v8: fill() consumes the current path, so fill and stroke each
+    // need their own trace.
+    if (fillParsed) {
+      tracePath();
+      graphics.fill({
+        color: fillParsed.color,
+        alpha: fillParsed.alpha * (style.opacity ?? 1),
+      });
+    }
+
+    if (strokeParsed) {
+      tracePath();
       graphics.setStrokeStyle({
         width: (style.lineWidth || 1) / this.getScale(),
         color: strokeParsed.color,

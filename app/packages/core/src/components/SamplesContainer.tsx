@@ -1,4 +1,5 @@
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
+import { PANEL_AREA, PanelArea } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
 import type { Controller } from "@react-spring/web";
 import React, { useCallback } from "react";
@@ -8,6 +9,7 @@ import MainSpace from "./MainSpace";
 import SchemaSettings from "./Schema/SchemaSettings";
 import { Entries, default as RenderSidebar } from "./Sidebar";
 import { Filter } from "./Sidebar/Entries";
+import { createExploreIsDisabled } from "./Sidebar/InteractiveSidebar";
 import SidebarContainer from "./Sidebar/SidebarContainer";
 import ViewSelection from "./Sidebar/ViewSelection";
 
@@ -74,7 +76,9 @@ const Sidebar = () => {
                 key={key}
                 name={entry.name}
                 modal={false}
-                mutable={!["other", "tags"].includes(entry.name)}
+                mutable={
+                  ![fos.OTHER_GROUP, fos.TAGS_FIELD].includes(entry.name)
+                }
                 trigger={trigger}
               />
             ),
@@ -120,7 +124,7 @@ const Sidebar = () => {
       </TopContainer>
 
       <RenderSidebar
-        isDisabled={() => false}
+        isDisabled={createExploreIsDisabled(disabled)}
         useEntries={fos.useGridEntries}
         render={renderGridEntry}
         modal={false}
@@ -144,6 +148,10 @@ function SamplesContainer() {
       {!isModalOpen && (
         <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
       )}
+      <PanelArea
+        id={PANEL_AREA.GRID_SIDEBAR_RIGHT}
+        resize={{ direction: "left" }}
+      />
     </Container>
   );
 }

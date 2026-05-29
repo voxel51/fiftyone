@@ -28,6 +28,13 @@
    config format, so you might have to update your eslint extension to support
    that.
 
+### Spec Organization
+
+All specs live directly in `e2e-pw/src/oss/specs/` with no subdirectories and
+are named `<ticket>-<short-description>.spec.ts`, e.g.
+`FOEPD-1234-my-regression-test.spec.ts`. Specs without a known ticket use
+`MISSING` as the placeholder.
+
 ### Patterns
 
 -   Use POMs where applicable, e.g. for pages, or for common components like

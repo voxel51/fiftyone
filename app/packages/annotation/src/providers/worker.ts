@@ -153,25 +153,20 @@ async function loadImageData(url: string): Promise<ImageData> {
  */
 function preprocessImage(imageData: ImageData): ProcessedImage {
   const { width, height } = imageData;
-  const scale = Math.min(SAM2_INPUT_SIZE / width, SAM2_INPUT_SIZE / height);
-  const scaledWidth = Math.round(width * scale);
-  const scaledHeight = Math.round(height * scale);
-  const padX = Math.floor((SAM2_INPUT_SIZE - scaledWidth) / 2);
-  const padY = Math.floor((SAM2_INPUT_SIZE - scaledHeight) / 2);
 
+  // SAM2 reference preprocessing is a direct (non-aspect-preserving) resize
+  // to 1024x1024. No padding; just stretch the image to fill the input.
   const canvas = new OffscreenCanvas(SAM2_INPUT_SIZE, SAM2_INPUT_SIZE);
   const ctx = canvas.getContext("2d");
   if (!ctx)
     throw new Error("Failed to get 2d context");
-  ctx.fillStyle = "black";
-  ctx.fillRect(0, 0, SAM2_INPUT_SIZE, SAM2_INPUT_SIZE);
 
   const tmp = new OffscreenCanvas(width, height);
   const tmpCtx = tmp.getContext("2d");
   if (!tmpCtx)
     throw new Error("Failed to get 2d context");
   tmpCtx.putImageData(imageData, 0, 0);
-  ctx.drawImage(tmp, padX, padY, scaledWidth, scaledHeight);
+  ctx.drawImage(tmp, 0, 0, SAM2_INPUT_SIZE, SAM2_INPUT_SIZE);
 
   const pixels = ctx.getImageData(0, 0, SAM2_INPUT_SIZE, SAM2_INPUT_SIZE).data;
   const N = SAM2_INPUT_SIZE * SAM2_INPUT_SIZE;
@@ -183,7 +178,7 @@ function preprocessImage(imageData: ImageData): ProcessedImage {
     tensor[i + 2 * N] = (pixels[j + 2] / 255 - IMAGE_MEAN[2]) / IMAGE_STD[2];
   }
 
-  return { tensor, originalWidth: width, originalHeight: height, scale, padX, padY };
+  return { tensor, originalWidth: width, originalHeight: height };
 }
 
 /**
@@ -289,9 +284,6 @@ async function embedAndDecode(
       processedImage: {
         originalWidth: geometry.originalWidth,
         originalHeight: geometry.originalHeight,
-        scale: geometry.scale,
-        padX: geometry.padX,
-        padY: geometry.padY,
       },
     }, postWarningNotification);
   }
@@ -301,7 +293,7 @@ async function embedAndDecode(
   const coords = new Float32Array(n * 2);
   const labels = new Float32Array(n);
   for (let i = 0; i < n; i++) {
-    const [sx, sy] = transformPoint(points[i].x, points[i].y, geometry);
+    const [sx, sy] = transformPoint(points[i].x, points[i].y);
     coords[i * 2] = sx;
     coords[i * 2 + 1] = sy;
     labels[i] = points[i].label;

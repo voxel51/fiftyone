@@ -6,7 +6,21 @@ Tests for fiftyone/utils/sharp.py Apple SHARP model wrapper.
 |
 """
 
+import unittest.mock as _mock
+
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def _stub_lazy_sharp(monkeypatch):
+    """Replace the lazy_import sentinels so mock.patch("...sharp_utils.X")
+    doesn't trigger _ensure_sharp → pip install (Windows libheif DLL lock).
+    _ensure_sharp itself is covered by TestEnsureSharp below.
+    """
+    import fiftyone.utils.sharp as _fou_sharp
+
+    monkeypatch.setattr(_fou_sharp, "sharp_utils", _mock.MagicMock())
+    monkeypatch.setattr(_fou_sharp, "sharp_models", _mock.MagicMock())
 
 
 class TestAppleSharpModelConfig:
@@ -459,6 +473,32 @@ class TestAppleSharpPredictAll:
         assert isinstance(result[0], fol.Classification)
         assert result[0].label == "3d_gaussians"
         assert hasattr(result[0], "splat_path")
+
+
+class TestEnsureSharp:
+    """Verify _ensure_sharp wires fou.{ensure,install}_package correctly."""
+
+    def test_installs_when_missing(self):
+        from fiftyone.utils.sharp import _ensure_sharp, _SHARP_REQ
+
+        with _mock.patch("fiftyone.utils.sharp.fou.ensure_package",
+                         return_value=False) as ep, \
+             _mock.patch("fiftyone.utils.sharp.fou.install_package") as ip:
+            _ensure_sharp()
+
+        ep.assert_called_once_with(_SHARP_REQ, error_level=2)
+        ip.assert_called_once_with(_SHARP_REQ)
+
+    def test_skips_when_already_installed(self):
+        from fiftyone.utils.sharp import _ensure_sharp, _SHARP_REQ
+
+        with _mock.patch("fiftyone.utils.sharp.fou.ensure_package",
+                         return_value=True) as ep, \
+             _mock.patch("fiftyone.utils.sharp.fou.install_package") as ip:
+            _ensure_sharp()
+
+        ep.assert_called_once_with(_SHARP_REQ, error_level=2)
+        ip.assert_not_called()
 
 
 if __name__ == "__main__":

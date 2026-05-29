@@ -49,6 +49,7 @@ STR_LIST = "list<str>"
 
 
 APPLIED_ONTOLOGY = "applied_ontology"
+APPLIED_TAXONOMY = "applied_taxonomy"
 ATTRIBUTES = "attributes"
 CLASSES = "classes"
 COMPONENT = "component"
@@ -201,8 +202,8 @@ SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE = {
     fom.IMAGE: {
         fol.Detection,
         fol.Detections,
-        fol.Keypoint,
-        fol.Keypoints,
+        fol.Polyline,
+        fol.Polylines,
     },
     fom.THREE_D: {fol.Detection, fol.Detections, fol.Polyline, fol.Polylines},
 }

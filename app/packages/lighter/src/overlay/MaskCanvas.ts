@@ -7,6 +7,7 @@ import {
   SegmentationToolShape,
   type SegmentationToolState,
 } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
+import type { OverlayMask } from "@fiftyone/looker/src/numpy";
 import type { SerializedMask } from "@fiftyone/utilities";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { DrawStyle, Point, Rect } from "../types";
@@ -53,10 +54,14 @@ export interface PaintStrokeData {
  * ```
  */
 export class MaskCanvas {
-  // Cached decoded mask bitmap, keyed by the raw mask string to detect changes.
+  // Cached decoded mask bitmap, keyed by the raw mask source to detect changes.
   private maskBitmap?: ImageBitmap;
-  /** Raw mask data awaiting decode (deferred until color is known). */
-  private rawMaskData?: string;
+  /**
+   * Raw mask source awaiting decode (deferred until color is known). Either
+   * a base64-encoded numpy string (inline `mask` field) or a pre-decoded
+   * {@link OverlayMask} produced from a `mask_path` fetch.
+   */
+  private rawMaskData?: string | OverlayMask;
   /** True while an async decode is in flight. */
   private decoding = false;
   /** The color used for the current decoded bitmap, so we can re-decode on color change. */
@@ -81,18 +86,22 @@ export class MaskCanvas {
   private postStrokeSnapshot?: MaskSnapshot;
   private postStrokeBounds?: Rect;
 
-  constructor(maskData?: SerializedMask) {
-    this.rawMaskData = MaskCanvas.extractB64(maskData);
+  constructor(maskData?: SerializedMask | OverlayMask) {
+    this.rawMaskData = MaskCanvas.extractSource(maskData);
   }
 
   /**
-   * Extracts the base64 string from a SerializedMask, which may be a plain
-   * string or a `{ $binary: { base64: string } }` wrapper.
+   * Normalizes the input mask source to either a base64 string (for inline
+   * `mask` data) or a pre-decoded {@link OverlayMask} (for `mask_path` data).
+   * Plain `undefined` and `{ $binary: { base64 } }` wrappers are unwrapped.
    */
-  private static extractB64(mask?: SerializedMask): string | undefined {
+  private static extractSource(
+    mask?: SerializedMask | OverlayMask
+  ): string | OverlayMask | undefined {
     if (!mask) return undefined;
     if (typeof mask === "string") return mask;
-    return mask.$binary.base64;
+    if ("$binary" in mask) return mask.$binary.base64;
+    return mask;
   }
 
   /**
@@ -101,12 +110,12 @@ export class MaskCanvas {
    * bitmap, raw pixels, editing canvas, undo snapshots — so that subsequent
    * renders / hit-tests reflect the new source rather than a stale canvas.
    */
-  updateSource(mask?: SerializedMask): boolean {
-    const b64 = MaskCanvas.extractB64(mask);
-    if (b64 === this.rawMaskData) return false;
+  updateSource(mask?: SerializedMask | OverlayMask): boolean {
+    const source = MaskCanvas.extractSource(mask);
+    if (source === this.rawMaskData) return false;
 
     this.reset();
-    this.rawMaskData = b64;
+    this.rawMaskData = source;
     return true;
   }
 
@@ -255,7 +264,11 @@ export class MaskCanvas {
     this.context = maskContext;
 
     if (this.maskBitmap) {
+      // Disable image smoothing to prevent feathering on fractional pixels
+      const prevSmoothing = this.context.imageSmoothingEnabled;
+      this.context.imageSmoothingEnabled = false;
       this.context.drawImage(this.maskBitmap, 0, 0, width, height);
+      this.context.imageSmoothingEnabled = prevSmoothing;
       this.maskBitmap.close();
       this.maskBitmap = undefined;
     }
@@ -492,16 +505,76 @@ export class MaskCanvas {
     return updatedBounds;
   }
 
-  paintEnd(bounds: Rect, onEncoded?: () => void) {
-    if (!this.canvas) return;
+  /**
+   * Composites another mask's pixels onto this one (binary OR), expanding
+   * bounds to the union AABB if needed. Frames the work as a paint operation
+   * so the existing pre/post snapshot machinery picks it up — call
+   * {@link getPaintStrokeData} after to retrieve before/after for undo.
+   *
+   * `otherSource` is the source's drawable mask (canvas or bitmap, typically
+   * obtained via {@link getPreviewSource}). The recolor/threshold pass at
+   * the end of {@link paintEnd} snaps composited pixels to this overlay's
+   * current color, so source pixels lose their original color.
+   */
+  mergeFrom(
+    otherSource: HTMLCanvasElement | ImageBitmap,
+    otherBounds: Rect,
+    ourBounds: Rect,
+    onEncoded?: (encoded: string) => void
+  ): Rect {
+    this.ensureCanvas(ourBounds);
+    this.paintStart(ourBounds);
+
+    const minX = Math.min(ourBounds.x, otherBounds.x);
+    const minY = Math.min(ourBounds.y, otherBounds.y);
+    const maxX = Math.max(
+      ourBounds.x + ourBounds.width,
+      otherBounds.x + otherBounds.width
+    );
+    const maxY = Math.max(
+      ourBounds.y + ourBounds.height,
+      otherBounds.y + otherBounds.height
+    );
+
+    const newBounds =
+      this.updateBounds(ourBounds, { minX, minY, maxX, maxY }) ?? ourBounds;
+
+    if (this.context && this.canvas) {
+      const dx =
+        ((otherBounds.x - newBounds.x) / newBounds.width) * this.canvas.width;
+      const dy =
+        ((otherBounds.y - newBounds.y) / newBounds.height) * this.canvas.height;
+      const dw = (otherBounds.width / newBounds.width) * this.canvas.width;
+      const dh = (otherBounds.height / newBounds.height) * this.canvas.height;
+
+      // Disable smoothing so the source's binary edge pixels don't get
+      // bilinear-spread across two destination pixels at fractional offsets.
+      // updateCanvas thresholds any non-zero alpha to fully opaque, so without
+      // this the anti-aliased fringe would be promoted to solid pixels and
+      // the mask would grow by ~1 pixel on each edge.
+      const prevSmoothing = this.context.imageSmoothingEnabled;
+      this.context.imageSmoothingEnabled = false;
+      this.context.globalCompositeOperation = "source-over";
+      this.context.drawImage(otherSource, dx, dy, dw, dh);
+      this.context.imageSmoothingEnabled = prevSmoothing;
+    }
+
+    return this.paintEnd(newBounds, onEncoded);
+  }
+
+  paintEnd(bounds: Rect, onEncoded?: (encoded: string) => void): Rect {
+    if (!this.canvas) return bounds;
 
     this.lastPoint = undefined;
 
     // Rebuild the canvas to recolor + threshold anti-aliased edge pixels
-    // before the snapshot and encode.
+    // before computing tight bounds and snapshotting.
     this.updateCanvas(this.canvas.width, this.canvas.height);
 
-    this.postStrokeBounds = { ...bounds };
+    // Snap bounds down to the painted region.
+    const finalBounds = this.cropToContent(bounds) ?? bounds;
+
+    this.postStrokeBounds = { ...finalBounds };
     this.postStrokeSnapshot = this.takeSnapshot();
 
     // Refresh single-channel mask data so hit-testing reflects the edit.
@@ -512,11 +585,13 @@ export class MaskCanvas {
       .then((encoded) => {
         if (this.canvas !== capturedCanvas) return;
         this.pendingMask = encoded;
-        onEncoded?.();
+        onEncoded?.(encoded);
       })
       .catch((err) => {
         console.error("[MaskCanvas] paintEnd encode failed:", err);
       });
+
+    return finalBounds;
   }
 
   getPaintStrokeData(): PaintStrokeData {
@@ -651,11 +726,58 @@ export class MaskCanvas {
 
     this.updateCanvas(newWidth, newHeight, offsetX, offsetY);
 
+    // Existing pixels were shifted by (offsetX, offsetY); the cached lastPoint
+    // is in canvas-pixel coords and must be shifted in lockstep so paintLine
+    // continues to interpolate from the correct origin after a resize.
+    if (this.lastPoint) {
+      this.lastPoint = {
+        x: this.lastPoint.x + offsetX,
+        y: this.lastPoint.y + offsetY,
+      };
+    }
+
     return {
       x: minX,
       y: minY,
       width: newWidth,
       height: newHeight,
+    };
+  }
+
+  /**
+   * Crops the editing canvas to the tight bbox of opaque pixels and returns
+   * the corresponding world-space bounds. Returns `undefined` when the canvas
+   * is already tight, or when it is fully transparent (nothing to crop to).
+   */
+  private cropToContent(bounds: Rect): Rect | undefined {
+    if (!this.canvas || !this.context) return undefined;
+
+    const tight = this.getBounds();
+    if (!tight) return undefined;
+
+    const { width, height } = this.canvas;
+    const tightW = tight.maxX - tight.minX + 1;
+    const tightH = tight.maxY - tight.minY + 1;
+
+    if (
+      tight.minX === 0 &&
+      tight.minY === 0 &&
+      tightW === width &&
+      tightH === height
+    ) {
+      return undefined;
+    }
+
+    const pxW = bounds.width / width;
+    const pxH = bounds.height / height;
+
+    this.updateCanvas(tightW, tightH, -tight.minX, -tight.minY);
+
+    return {
+      x: bounds.x + tight.minX * pxW,
+      y: bounds.y + tight.minY * pxH,
+      width: tightW * pxW,
+      height: tightH * pxH,
     };
   }
 
@@ -703,9 +825,13 @@ export class MaskCanvas {
   /**
    * Replaces the current canvas contents with a previously captured snapshot.
    * If `snapshot` is `undefined`, clears the canvas entirely (restoring the
-   * "no mask" state). Kicks off `encodeMask` so `pendingMask` stays in sync.
+   * "no mask" state). Kicks off `encodeMask` so `pendingMask` stays in sync;
+   * `onEncoded` fires once with the encoded payload when that completes.
    */
-  restoreSnapshot(snapshot: MaskSnapshot | undefined): void {
+  restoreSnapshot(
+    snapshot: MaskSnapshot | undefined,
+    onEncoded?: (encoded: string) => void
+  ): void {
     if (!snapshot) {
       this.canvas = undefined;
       this.context = undefined;
@@ -733,6 +859,7 @@ export class MaskCanvas {
       .then((encoded) => {
         if (this.canvas !== capturedCanvas) return;
         this.pendingMask = encoded;
+        onEncoded?.(encoded);
       })
       .catch((err) => {
         console.error("[MaskCanvas] restoreSnapshot encode failed:", err);

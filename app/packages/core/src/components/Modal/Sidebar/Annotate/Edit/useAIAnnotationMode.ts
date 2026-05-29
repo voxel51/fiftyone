@@ -6,7 +6,7 @@ import {
   useToolsState,
 } from "@fiftyone/annotation/src/agents";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { atom, useAtom } from "jotai";
+import { atom, getDefaultStore, useAtom, useAtomValue } from "jotai";
 import { useAnnotationContext } from "./state";
 
 export interface AIAnnotationMode {
@@ -19,6 +19,14 @@ export interface AIAnnotationMode {
  * Maintains the activation status of AI annotation mode.
  */
 const isActiveAtom = atom(false);
+
+/**
+ * Read-only hook for AI annotation mode activation. Safe to call from
+ * components that should not trigger the side effects of
+ * {@link useAIAnnotationMode} (e.g. default agent bootstrap, label reset).
+ */
+export const useIsAIAnnotationModeActive = (): boolean =>
+  useAtomValue(isActiveAtom);
 
 /**
  * Helper hook which configures a default {@link AnnotationAgent}.
@@ -88,27 +96,26 @@ export const useAIAnnotationMode = (): AIAnnotationMode => {
 
   useLabelReset(isActive, resetTools);
 
+  // Guards read fresh from the jotai store so back-to-back deactivate /
+  // activate calls (e.g. AI right-click finalize) don't no-op on a stale
+  // closure value of `isActive`.
   const activate = useCallback(() => {
-    if (isActive) {
-      return;
-    }
+    if (getDefaultStore().get(isActiveAtom)) return;
 
     setActiveTask(AgentTaskType.SEGMENT);
     setIsActive(true);
     pointSelection.activate();
-  }, [isActive, pointSelection, setActiveTask, setIsActive]);
+  }, [pointSelection, setActiveTask, setIsActive]);
 
   const deactivate = useCallback(() => {
-    if (!isActive) {
-      return;
-    }
+    if (!getDefaultStore().get(isActiveAtom)) return;
 
     pointSelection.deactivate();
     resetTools();
 
     setActiveTask(null);
     setIsActive(false);
-  }, [resetTools, isActive, pointSelection, setActiveTask, setIsActive]);
+  }, [resetTools, pointSelection, setActiveTask, setIsActive]);
 
   return useMemo(
     () => ({

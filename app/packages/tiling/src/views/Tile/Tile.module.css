@@ -1,0 +1,41 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-content-bg-card-2);
+  border: 1px solid var(--color-content-border-default);
+  overflow: hidden;
+}
+
+.header {
+  height: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  background: var(--color-content-bg-secondary);
+  border-bottom: 1px solid var(--color-content-border-default);
+  padding: 0 4px 0 8px;
+  gap: 2px;
+}
+
+.title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  font-size: 0.8125rem;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}

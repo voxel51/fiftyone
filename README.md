@@ -62,7 +62,7 @@ pip install fiftyone
 
 ### Installation options
 
-FiftyOne supports Python 3.9 - 3.12.
+FiftyOne supports Python 3.10 - 3.12.
 
 For most users, we recommend installing the latest release version of FiftyOne
 via `pip` as shown above.
@@ -96,7 +96,7 @@ App.
 
 You'll need the following tools installed:
 
--   [Python](https://www.python.org) (3.9 - 3.12)
+-   [Python](https://www.python.org) (3.10 - 3.12)
 -   [Node.js](https://nodejs.org) - on Linux, we recommend using
     [nvm](https://github.com/nvm-sh/nvm) to install an up-to-date version.
 -   [Yarn](https://yarnpkg.com) - once Node.js is installed, you can
@@ -295,7 +295,7 @@ complete the Homebrew installation.
 #### 3. Install Python
 
 ```shell
-brew install python@3.9
+brew install python@3.10
 brew install protobuf
 ```
 
@@ -327,7 +327,7 @@ brew install ffmpeg
 ⚠️ The version of Python that is available in the Microsoft Store is **not
 recommended** ⚠️
 
-Download a Python 3.9 - 3.12 installer from
+Download a Python 3.10 - 3.12 installer from
 [python.org](https://www.python.org/downloads/). Make sure to pick a 64-bit
 version. For example, this
 [Python 3.10.11 installer](https://www.python.org/ftp/python/3.10.11/python-3.10.11-amd64.exe).

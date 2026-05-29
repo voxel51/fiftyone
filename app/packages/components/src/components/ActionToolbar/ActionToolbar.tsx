@@ -9,17 +9,22 @@
  * those concerns.
  */
 
-import { Box, Typography, styled } from "@mui/material";
+import { styled, Typography } from "@mui/material";
 import {
+  Align,
   Anchor,
   Orientation,
+  Spacing,
+  Stack,
+  Text,
+  TextColor,
   Toolbar,
   ToolbarAction,
   ToolbarGroup,
   Tooltip,
   ZIndex,
 } from "@voxel51/voodo";
-import type { ToolbarActionItem, ToolbarActionGroup } from "./types";
+import type { ToolbarActionGroup, ToolbarActionItem } from "./types";
 
 const GroupLabel = styled(Typography)(({ theme }) => ({
   fontSize: "9px",
@@ -30,6 +35,13 @@ const GroupLabel = styled(Typography)(({ theme }) => ({
   textTransform: "uppercase",
   letterSpacing: "0.3px",
 }));
+
+const StyledToolbarAction = styled(ToolbarAction)({
+  cursor: "pointer",
+  "&:disabled": {
+    cursor: "default",
+  },
+});
 
 export interface ActionToolbarProps {
   groups: ToolbarActionGroup[];
@@ -45,14 +57,14 @@ export interface ActionToolbarProps {
 
 const ActionButton = ({ action }: { action: ToolbarActionItem }) => {
   const button = (
-    <ToolbarAction
+    <StyledToolbarAction
       active={action.isActive}
       disabled={action.isDisabled}
       onClick={action.onClick}
       aria-label={action.label}
     >
       {action.icon}
-    </ToolbarAction>
+    </StyledToolbarAction>
   );
 
   if (!action.tooltip && !action.shortcut) return button;
@@ -61,18 +73,22 @@ const ActionButton = ({ action }: { action: ToolbarActionItem }) => {
     <Tooltip
       portal
       content={
-        <Box>
+        <Stack
+          orientation={Orientation.Row}
+          spacing={Spacing.Sm}
+          align={Align.Center}
+        >
+          {action.shortcut && (
+            <Text color={TextColor.Tertiary} style={{ fontWeight: 600 }}>
+              ({action.shortcut})
+            </Text>
+          )}
           {typeof action.tooltip === "string" ? (
-            <Typography variant="body2">{action.tooltip}</Typography>
+            <Text color={TextColor.Secondary}>{action.tooltip}</Text>
           ) : (
             action.tooltip
           )}
-          {action.shortcut && (
-            <Typography variant="caption" sx={{ opacity: 0.7 }}>
-              {action.shortcut}
-            </Typography>
-          )}
-        </Box>
+        </Stack>
       }
       anchor={Anchor.Right}
     >

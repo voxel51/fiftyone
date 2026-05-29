@@ -129,6 +129,12 @@ pages on this site apply to Enterprise deployments as well.
     :button_link: query_performance.html
 
 .. customcalloutitem::
+    :header: FiftyOne Agent  __SUB_NEW__
+    :description: Use the AI-powered FiftyOne Agent to work with your data using natural language.
+    :button_text: Get started with the Agent
+    :button_link: agent.html
+
+.. customcalloutitem::
     :header: Plugins
     :description: Learn how to install and manage shared plugins for your Enterprise deployment.
     :button_text: Get plugins for FiftyOne Enterprise
@@ -183,6 +189,7 @@ pages on this site apply to Enterprise deployments as well.
     Data Lens __SUB_NEW__ <data_lens>
     Data Quality __SUB_NEW__ <data_quality>
     Query Performance __SUB_NEW__ <query_performance>
+    FiftyOne Agent __SUB_NEW__ <agent>
     Plugins <plugins>
     Secrets <secrets>
     Management SDK <management_sdk>

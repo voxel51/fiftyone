@@ -290,7 +290,7 @@ interface PathGroupProps {
 export const PathGroupEntry = React.memo(
   ({ entryKey, name, modal, mutable = true, trigger }: PathGroupProps) => {
     const [expanded, setExpanded] = useShown(name, modal);
-    const renameGroup = useRenameGroup(!modal, name);
+    const renameGroup = useRenameGroup(!modal && mutable, name);
     const onDelete = useDeleteGroup(!modal && mutable, name);
 
     return (
@@ -340,7 +340,7 @@ export const PathGroupEntry = React.memo(
               }))}
           />
         }
-        trigger={trigger}
+        trigger={mutable ? trigger : undefined}
       />
     );
   }

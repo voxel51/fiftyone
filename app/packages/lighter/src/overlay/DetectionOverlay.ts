@@ -39,6 +39,7 @@ import type { MaskSnapshot, PaintStrokeData } from "./MaskCanvas";
 import { MaskKeypoints } from "./MaskKeypoints";
 import type { SerializedMask } from "@fiftyone/utilities";
 import { BASE_ALPHA } from "@fiftyone/looker/src/constants";
+import type { OverlayMask } from "@fiftyone/looker/src/numpy";
 
 export type DetectionLabel = RawLookerLabel & {
   label: string;
@@ -60,6 +61,12 @@ export interface DetectionOverlayOptions {
   draggable?: boolean;
   resizeable?: boolean;
   selectable?: boolean;
+  /**
+   * A mask decoded out-of-band — typically from `label.mask_path` — that
+   * seeds the editing canvas without touching `label.mask`. When set, this
+   * takes precedence over `label.mask` for the initial mask source.
+   */
+  preDecodedMask?: OverlayMask;
 }
 
 export type ResizeRegion =
@@ -104,6 +111,14 @@ export class DetectionOverlay
   private textBounds?: Rect;
 
   private mask?: MaskCanvas;
+  /**
+   * The mask source picked at construction time — inline `SerializedMask`
+   * if present, otherwise a pre-decoded `OverlayMask` from `mask_path`.
+   * Retained so {@link rehydrateMask} can reseed `MaskCanvas` after a
+   * destroy/re-add cycle (e.g. undoing a deletion) without depending on
+   * `label.mask`, which is `undefined` for `mask_path`-sourced overlays.
+   */
+  private maskSource?: SerializedMask | OverlayMask;
   private segmentationTool?: SegmentationToolState;
 
   // Pen tool state
@@ -118,8 +133,16 @@ export class DetectionOverlay
     this.isResizeable = options.resizeable !== false;
     this.#relativeBounds = options.relativeBounds || NO_BOUNDS;
 
-    if (this.label.mask) {
-      this.mask = new MaskCanvas(this.label.mask);
+    this.maskSource = options.preDecodedMask ?? this.label.mask;
+    if (this.maskSource) {
+      this.mask = new MaskCanvas(this.maskSource);
+    } else if (this.label.mask_path) {
+      // `mask_path` was present on the label but the caller didn't supply
+      // a decoded source (e.g. the URL couldn't be resolved). Construct an
+      // empty placeholder so `hasMask()` correctly reports "yes" — without
+      // it, the save flow would treat the missing canvas as a user
+      // deletion and wipe the mask_path on the backend.
+      this.mask = new MaskCanvas();
     }
   }
 
@@ -141,14 +164,20 @@ export class DetectionOverlay
     }
 
     if (label.mask) {
+      // Inline mask takes precedence over any `mask_path`-sourced
+      // `OverlayMask` we may have been carrying.
+      this.maskSource = label.mask;
       if (this.mask) {
         this.mask.updateSource(label.mask);
       } else {
         this.mask = new MaskCanvas(label.mask);
       }
       this.markDirty();
-    } else {
+    } else if (label.mask === null) {
+      // null — explicit removal
+      // `undefined` can be cases when mask has not been saved yet - leave it alone
       const hadMask = !!this.mask;
+      this.maskSource = undefined;
       this.mask?.destroy();
       this.mask = undefined;
       if (hadMask) this.markDirty();
@@ -827,9 +856,13 @@ export class DetectionOverlay
     const wasPainting = this.interactionState === "PAINTING";
 
     this.interactionState = "NONE";
-    this.mask?.paintEnd(this.bounds, () => {
+    const croppedBounds = this.mask?.paintEnd(this.bounds, (encoded) => {
+      this.maskSource = encoded;
       this.markDirty();
     });
+    if (croppedBounds) {
+      this.bounds = croppedBounds;
+    }
     this.moveStartPoint = undefined;
     this.moveStartPosition = undefined;
     this.moveStartBounds = undefined;
@@ -850,6 +883,12 @@ export class DetectionOverlay
    * @returns True if current bounds are valid
    */
   hasValidBounds(): boolean {
+    // An overlay without a coordinate system isn't attached to a scene yet
+    // (or has been detached); no way to validate bounds.
+    if (!this.coordinateSystem) {
+      return false;
+    }
+
     return BaseOverlay.validBounds(this.bounds);
   }
 
@@ -1098,6 +1137,7 @@ export class DetectionOverlay
    */
   removeMask(): void {
     const hadMask = !!this.mask;
+    this.maskSource = undefined;
     this.mask?.destroy();
     this.mask = undefined;
     this.markDirty();
@@ -1119,6 +1159,53 @@ export class DetectionOverlay
    */
   hasPenPolygon(): boolean {
     return this.maskKeypoints?.hasValidBounds();
+  }
+
+  /**
+   * Adds a point to the in-progress pen polygon. Lazily constructs the
+   * `MaskKeypoints` overlay on the first call. Returns the new point id, or
+   * `null` if the dragging-throttle rejected the placement.
+   */
+  addMaskKeypoint(
+    worldPoint: Point,
+    options?: { id?: string; variant?: string; dragging?: boolean }
+  ): string | null {
+    this.maskKeypoints ??= new MaskKeypoints({
+      coordinateSystem: this.coordinateSystem,
+      renderer: this.renderer,
+    });
+
+    const pointId = this.maskKeypoints.addPoint({ ...worldPoint }, options);
+    if (pointId !== null) {
+      this.interactionState = "PAINTING";
+      this.markDirty();
+    }
+    return pointId;
+  }
+
+  /**
+   * Removes a pen-polygon point by id. Disposes the in-progress polygon when
+   * the last point is removed so a subsequent click starts a fresh ring.
+   */
+  removeMaskKeypointById(pointId: string): void {
+    if (!this.maskKeypoints) return;
+
+    this.maskKeypoints.removePointById(pointId);
+
+    if (this.maskKeypoints.getAbsolutePoints().length === 0) {
+      this.maskKeypoints.destroy();
+      this.maskKeypoints = undefined;
+      this.interactionState = "NONE";
+    }
+
+    this.markDirty();
+  }
+
+  /**
+   * Number of points currently in the in-progress pen polygon.
+   */
+  getMaskKeypointCount(): number {
+    return this.maskKeypoints?.getAbsolutePoints().length ?? 0;
   }
 
   /**
@@ -1152,7 +1239,8 @@ export class DetectionOverlay
       this.bounds = updatedBounds;
     }
 
-    this.mask.paintEnd(this.bounds, () => {
+    this.bounds = this.mask.paintEnd(this.bounds, (encoded) => {
+      this.maskSource = encoded;
       this.markDirty();
     });
 
@@ -1179,7 +1267,10 @@ export class DetectionOverlay
    * Updates the pen cursor position for live preview rendering.
    */
   updatePenMousePosition(worldPoint: Point | null): void {
-    this.maskKeypoints?.setPreviewPoint(worldPoint);
+    if (!this.maskKeypoints) return;
+
+    this.maskKeypoints.setPreviewPoint(worldPoint);
+    this.markDirty();
   }
 
   /**
@@ -1210,6 +1301,52 @@ export class DetectionOverlay
   }
 
   // ---------------------------------------------------------------------------
+  // Merging mask detections
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Merges another detection's mask into this one. Expands this overlay's
+   * bounds to the union AABB and composites the source mask's pixels (binary
+   * OR). Captures pre/post snapshots — call {@link getPaintStrokeData} after
+   * to retrieve them for undo.
+   *
+   * Returns `true` on success, `false` if the source has no decoded mask
+   * (e.g. still loading).
+   */
+  mergeFrom(source: DetectionOverlay): boolean {
+    const sourceSource = source.mask?.getPreviewSource();
+    if (!this.mask || !sourceSource) return false;
+
+    const newBounds = this.mask.mergeFrom(
+      sourceSource,
+      source.bounds,
+      this.bounds,
+      (encoded) => {
+        this.maskSource = encoded;
+      }
+    );
+
+    this.bounds = newBounds;
+    this.markDirty();
+
+    const [x, y, w, h] = [
+      this.relativeBounds.x,
+      this.relativeBounds.y,
+      this.relativeBounds.width,
+      this.relativeBounds.height,
+    ];
+    const updatedLabel = { ...this.label, bounding_box: [x, y, w, h] };
+
+    this.eventBus.dispatch("lighter:overlay-label-updated", {
+      id: this.id,
+      label: updatedLabel,
+      hasMask: this.hasMask(),
+    });
+
+    return true;
+  }
+
+  // ---------------------------------------------------------------------------
   // Segmentation undo/redo support
   // ---------------------------------------------------------------------------
 
@@ -1223,14 +1360,40 @@ export class DetectionOverlay
   ): void {
     this.mask ??= new MaskCanvas();
 
-    this.mask.restoreSnapshot(snapshot);
+    if (snapshot) {
+      this.mask.restoreSnapshot(snapshot, (encoded) => {
+        this.maskSource = encoded;
+      });
+    } else {
+      // Clearing to "no mask" — drop the rehydration source too so a later
+      // destroy/re-add doesn't resurrect a stale serialized payload.
+      this.mask.restoreSnapshot(undefined);
+      this.maskSource = undefined;
+    }
     this.bounds = bounds;
+    this.markDirty();
+  }
+
+  /**
+   * Re-creates the mask canvas from {@link label}.mask after a destroy/re-add
+   * cycle (e.g. undoing a deletion). No-op if the mask is already present or
+   * if the label has no mask data.
+   */
+  rehydrateMask(): void {
+    if (this.mask) return;
+    if (!this.maskSource) return;
+
+    this.mask = new MaskCanvas(this.maskSource);
+
+    this.forceHoverLeave();
     this.markDirty();
   }
 
   override destroy(): void {
     this.mask?.destroy();
+    this.mask = undefined;
     this.maskKeypoints?.destroy();
+    this.maskKeypoints = undefined;
     super.destroy();
   }
 }

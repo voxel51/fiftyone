@@ -7,14 +7,10 @@ FiftyOne Server ontology route unit tests.
 """
 
 import json
-import os
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
-# Ontology SDK is gated by VFF_ONTOLOGY_CA; enable for the whole module.
-os.environ.setdefault("VFF_ONTOLOGY_CA", "1")
 
 import fiftyone.core.odm as foo
 from fiftyone.core.odm.ontology import OntologyDocument, OntologyType
@@ -99,10 +95,12 @@ class TestOntologiesRoute:
 
     @pytest.mark.asyncio
     async def test_only_latest_version_per_name(self, endpoint, mock_request):
-        for v in (1, 2, 3):
-            OntologyDocument(
-                name="foo", version=v, type=OntologyType.ANNOTATION_ONTOLOGY
-            ).save()
+        doc = OntologyDocument(
+            name="foo", type=OntologyType.ANNOTATION_ONTOLOGY
+        )
+        doc.save()
+        for _ in range(2):
+            doc.save()
 
         response = await endpoint.get(mock_request())
 

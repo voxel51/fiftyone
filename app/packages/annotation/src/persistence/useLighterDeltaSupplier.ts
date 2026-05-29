@@ -4,10 +4,12 @@ import {
   ClassificationOverlay,
   KeypointOverlay,
   type KeypointLabel,
+  PolylineOverlay,
   useLighter,
 } from "@fiftyone/lighter";
 import type { DetectionLabel } from "@fiftyone/looker";
 import type { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
+import type { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
 import { BoundingBox } from "@fiftyone/looker/src/state";
 import { isPatchesView } from "@fiftyone/state";
 import { hasValidBounds } from "@fiftyone/utilities";
@@ -47,6 +49,10 @@ const buildAnnotationLabel = (overlay: BaseOverlay): LabelProxy | undefined => {
         ? {
             ...(_mask && { mask: _mask }),
             ...(pendingMask && { mask: pendingMask }),
+            // Edits to a `mask_path`-sourced detection are persisted as an
+            // inline `mask`; null the path so the backend doesn't end up
+            // with both fields pointing at divergent data.
+            ...(pendingMask && _maskPath && { mask_path: null }),
           }
         : hadMask
         ? { mask: null, mask_path: null }
@@ -72,6 +78,20 @@ const buildAnnotationLabel = (overlay: BaseOverlay): LabelProxy | undefined => {
         path: overlay.field,
       };
     }
+  } else if (overlay instanceof PolylineOverlay) {
+    // Must be checked before KeypointOverlay, since PolylineOverlay extends it.
+    const label = overlay.label as unknown as PolylineLabel;
+
+    return {
+      type: "Polyline",
+      data: {
+        ...label,
+        points: overlay.getNestedPoints(),
+        closed: overlay.getClosed(),
+        filled: overlay.getFilled(),
+      } as PolylineLabel,
+      path: overlay.field,
+    };
   } else if (overlay instanceof KeypointOverlay) {
     const label = overlay.label as KeypointLabel;
 

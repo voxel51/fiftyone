@@ -64,7 +64,7 @@ The FiftyOne command-line interface.
 .. code-block:: text
 
     fiftyone [-h] [-v] [--all-help]
-             {quickstart,annotation,brain,evaluation,app,config,constants,convert,datasets,migrate,operators,delegated,plugins,utils,zoo,labs}
+             {quickstart,annotation,brain,evaluation,app,config,constants,convert,datasets,migrate,operators,skills,delegated,plugins,utils,zoo,labs}
              ...
 
 **Arguments**
@@ -77,7 +77,8 @@ The FiftyOne command-line interface.
       --all-help            show help recursively and exit
 
     available commands:
-      {quickstart,annotation,brain,evaluation,app,config,constants,convert,datasets,migrate,operators,delegated,plugins,utils,zoo,labs}
+      {quickstart,annotation,brain,evaluation,app,config,constants,convert,datasets,migrate,operators,skills,delegated,plugins,utils,zoo,labs}
+
         quickstart          Launch a FiftyOne quickstart.
         annotation          Tools for working with the FiftyOne annotation API.
         brain               Tools for working with the FiftyOne Brain.
@@ -88,7 +89,8 @@ The FiftyOne command-line interface.
         convert             Convert datasets on disk between supported formats.
         datasets            Tools for working with FiftyOne datasets.
         migrate             Tools for migrating the FiftyOne database.
-        operators           Tools for working with FiftyOne operators.
+        operators           Tools for working with FiftyOne operators and panels.
+        skills              Tools for working with FiftyOne skills.
         delegated           Tools for working with FiftyOne delegated operations.
         plugins             Tools for working with FiftyOne plugins.
         utils               FiftyOne utilities.
@@ -921,6 +923,81 @@ Prints information about operators and panels that are installed locally.
 
     # Prints information about an operator or panel
     fiftyone operators info <uri>
+
+.. _cli-fiftyone-skills:
+
+FiftyOne skills
+------------------
+
+Tools for working with FiftyOne skills.
+
+.. code-block:: text
+
+    fiftyone skills [-h] [--all-help] {list} ...
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help   show this help message and exit
+      --all-help   show help recursively and exit
+
+    available commands:
+      {list}
+        list      List skills provided by installed plugins.
+
+.. _cli-fiftyone-skills-list:
+
+List skills
+~~~~~~~~~~~
+
+List skills provided by installed plugins.
+
+.. code-block:: text
+
+    fiftyone skills list [-h] [-p PLUGIN [PLUGIN ...]] [-c CATEGORY [CATEGORY ...]] [-e] [-d] [-n]
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -p PLUGIN [PLUGIN ...], --plugin PLUGIN [PLUGIN ...]
+                            only show skills from this plugin(s)
+      -c CATEGORY [CATEGORY ...], --category CATEGORY [CATEGORY ...]
+                            only show skills in this category(s)
+      -e, --enabled         only show skills from enabled plugins
+      -d, --disabled        only show skills from disabled plugins
+      -n, --names-only      only show names
+
+**Examples**
+
+.. code-block:: shell
+
+    # List all available skills
+    fiftyone skills list
+
+.. code-block:: shell
+
+    # List skills from a specific plugin
+    fiftyone skills list --plugin @voxel51/my-plugin
+
+.. code-block:: shell
+
+    # List skills in a specific category
+    fiftyone skills list --category data-ingestion
+
+.. code-block:: shell
+
+    # List enabled skills
+    fiftyone skills list --enabled
+
+.. code-block:: shell
+
+    # List skill names only
+    fiftyone skills list --names-only
 
 .. _cli-fiftyone-delegated:
 

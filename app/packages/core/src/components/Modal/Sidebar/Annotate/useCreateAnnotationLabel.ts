@@ -13,6 +13,9 @@ import {
   ClassificationOverlay,
   KeypointOptions,
   KeypointOverlay,
+  PolylineOptions,
+  PolylineOverlay,
+  decodeMaskPath,
   useLighter,
 } from "@fiftyone/lighter";
 import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
@@ -30,11 +33,24 @@ export const useCreateAnnotationLabel = () => {
   const getSkeletonForField = useGetKeypointSkeleton();
 
   return useCallback(
-    (
+    async (
       field: string,
       type: LabelType,
-      data: AnnotationLabel["data"]
-    ): AnnotationLabel => {
+      data: AnnotationLabel["data"],
+      options?: {
+        /**
+         * Callback to resolve media URLs for a sub-field of this label
+         * (e.g. `mask_path`).
+         */
+        resolveUrl?: (subField: string) => string | undefined;
+        /**
+         * When true, skip the `mask_path` pre-decode. Used by the refresh
+         * path in `useLabels`, where the existing scene overlay is reused
+         * and any newly-decoded mask would be discarded.
+         */
+        skipMaskDecode?: boolean;
+      }
+    ): Promise<AnnotationLabel> => {
       if (type === CLASSIFICATION) {
         const overlay = overlayFactory.create<
           ClassificationOptions,
@@ -57,6 +73,35 @@ export const useCreateAnnotationLabel = () => {
         const fieldSchema = store.get(labelSchemaData(field));
         const isReadOnly = isFieldReadOnly(fieldSchema);
 
+        // Pre-decode `mask_path` masks. The caller-provided resolver maps
+        // the structural path to a fetchable URL; we don't fetch
+        // `label.mask_path` directly because the raw value is not always
+        // a fetchable URL on its own.
+        const maskUrl = options?.skipMaskDecode
+          ? undefined
+          : options?.resolveUrl?.("mask_path");
+        if (
+          !options?.skipMaskDecode &&
+          label?.mask_path &&
+          !label?.mask &&
+          !maskUrl
+        ) {
+          console.warn(
+            `[mask-path] detection ${data._id} in field "${field}" has ` +
+              "mask_path but the caller did not provide a resolvable URL"
+          );
+        }
+        const preDecodedMask =
+          !label?.mask && label?.mask_path && maskUrl
+            ? await decodeMaskPath(maskUrl, field, DETECTION)
+            : undefined;
+        if (label?.mask_path && !label?.mask && maskUrl && !preDecodedMask) {
+          console.warn(
+            `[mask-path] decode failed for detection ${data._id} in field ` +
+              `"${field}" (url=${maskUrl})`
+          );
+        }
+
         const overlay = overlayFactory.create<
           DetectionOverlayOptions,
           DetectionOverlay
@@ -73,22 +118,28 @@ export const useCreateAnnotationLabel = () => {
             width: boundingBox[2],
             height: boundingBox[3],
           },
+          preDecodedMask,
         });
 
         return { data, overlay, path: field, type };
       }
 
       if (type === POLYLINE) {
-        return {
-          data: data as PolylineLabel,
-          overlay: {
+        const polylineLabel = data as PolylineLabel;
+
+        const overlay = overlayFactory.create<PolylineOptions, PolylineOverlay>(
+          "polyline",
+          {
             id: data._id,
             field,
-            label: data as PolylineLabel,
-          },
-          type,
-          path: field,
-        };
+            label: polylineLabel as PolylineOptions["label"],
+            draggable: false,
+            deletable: false,
+            selectable: true,
+          }
+        );
+
+        return { data: polylineLabel, overlay, path: field, type };
       }
 
       if (type === KEYPOINT) {

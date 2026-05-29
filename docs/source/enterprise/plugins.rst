@@ -816,65 +816,76 @@ display the error message and stack trace that occurred:
 Logs
 ^^^^
 
-The Logs tab on the Run page allows you to view available logs associated with
-a delegated operation:
+The Logs tab on the Run page allows you to view logs for a delegated operation.
 
-.. image:: /images/plugins/operators/runs/logs_general.png
+.. image:: /images/plugins/operators/runs/logs_completed.png
+
+.. note::
+
+    Logs are only available for delegated operations that were executed on the
+    builtin FiftyOne Orchestrator. If you are using an external orchestrator,
+    log availability depends on your specific integration and configuration.
 
 **Viewing logs**
 
-Once log storage is configured, logs will automatically appear in the Logs tab
-of a run once they are available:
+Logs are stored in MongoDB and are available in the Logs tab both while a run
+is in progress and after it completes.
+
+.. image:: /images/plugins/operators/runs/logs_in_progress.png
+
+Logs are displayed in a tabular format. You can click the icons to toggle the visibility
+of columns, show timestamps in your local timezone, filter logs by severity.
+You can also search for specific keywords or limit the logs to a custom time range.
+
+.. image:: /images/plugins/operators/runs/logs_action_bar.png
+
+
+**Log retention and archival**
+
+By default, delegated operation logs are retained in MongoDB for 30 days. After
+the retention period expires, logs are either uploaded to a cloud bucket or
+deleted.
+
+The following environment variables can be set on your API pod to configure
+log retention behavior:
+
+-   ``FIFTYONE_DO_LOG_RETENTION_DAYS``: the number of days to retain logs in
+    MongoDB before archiving or deleting them. Default is ``30``.
+-   ``FIFTYONE_DO_LOG_BUCKET_PATH``: a cloud bucket prefix where logs are
+    uploaded after the retention period expires, e.g.
+    ``gs://my-bucket/do-logs`` or ``s3://my-bucket/do-logs``. If unset, logs
+    are deleted without being uploaded. Default is ``None``.
+
+Once archived, you can access the logs for a particular run by clicking the
+"Download logs" option from the Run page:
+
+.. image:: /images/plugins/operators/runs/logs_menu_download.png
 
 .. note::
 
-    Logs are currently only available *after* the run completes.
-
-.. image:: /images/plugins/operators/runs/logs_not_available_pre_completion.png
-
-.. image:: /images/plugins/operators/runs/logs_now_available_post_completion.png
-
-**Logs structure**
-
-Logs are displayed in a tabular format as pictured below, including the
-timestamp, severity, and message associated with each log entry:
-
-.. image:: /images/plugins/operators/runs/logs_general_with_columns.png
-
-For logs that exceed 1MB, no content will be shown and instead a
-"Download logs" button will appear:
-
-.. image:: /images/plugins/operators/runs/logs_too_large.png
-
-**Downloading logs**
-
-You can directly download the logs for a delegated operation from both the Runs
-table and the operation's Run page:
-
-.. image:: /images/plugins/operators/runs/logs_download_runs_list_kebab.png
-
-.. image:: /images/plugins/operators/runs/logs_download_preview_pane.png
-
-**Logs setup**
-
-Viewing run logs for delegated operations requires some one-time
-deployment-level configuration.
-
-A deployment admin on your team will need to explicitly define log generation
-behavior for your orchestrator(s). We provide simple setup instructions for the
-two deployment configurations we support for the
-:ref:`builtin orchestrator <enterprise-delegated-orchestrator>`:
-
--   `Helm instructions <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/helm/docs/configuring-delegated-operators.md>`_
--   `Docker instructions <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docker/docs/configuring-delegated-operators.md>`_
-
-.. image:: /images/plugins/operators/runs/logs_configure_not_setup.png
-
-.. note::
-
-    If you are using a third-party orchestrator, it can be configured
-    similarly to upload logs, in addition to a ``run_link`` that can be
+    If you are using a third-party orchestrator, a ``run_link`` can be
     added to each run to link back to the external run details page.
+
+.. _enterprise-run-page-metrics:
+
+Metrics
+^^^^^^^
+
+The Metrics tab on the Run page allows you to view any metrics that were
+collected during the execution of the delegated operation. These include
+system metrics such as CPU and memory usage, network io, and sampled profiling data.
+
+.. image:: /images/plugins/operators/runs/metrics_overview.png
+
+If the run was executed on a gpu-enabled cluster, you can also see gpu-specific metrics
+such as gpu utilization and gpu memory usage.
+
+.. image:: /images/plugins/operators/runs/metrics_gpu.png
+
+While an operation is running, admins also have access to a Database panel that allows
+them to monitor MongoDB system metrics and query performance in real time.
+
+.. image:: /images/plugins/operators/runs/metrics_database.png
 
 .. _enterprise-run-page-view:
 

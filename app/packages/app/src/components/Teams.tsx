@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { Button, ExternalLink, useTheme } from "@fiftyone/components";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import {
@@ -220,7 +224,7 @@ export default function Teams({
     const hasSeenTooltip = window.localStorage.getItem(ENTERPRISE_TOOLTIP_LS);
 
     // don't show intro popoverif we're in playwright
-    const isPlaywright = window["IS_PLAYWRIGHT"];
+    const isPlaywright = window.IS_PLAYWRIGHT;
 
     if (!hasSeenTooltip && !isPlaywright) {
       setShowPopover(true);

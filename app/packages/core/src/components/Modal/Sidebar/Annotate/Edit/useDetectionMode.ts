@@ -111,8 +111,8 @@ export const useDetectionMode = () => {
 
   const isEditingDetection =
     editingLabelType === DETECTION &&
-    !selectedLabel?.isNew &&
     !selectedLabel?.data?.mask &&
+    !selectedLabel?.data?.mask_path &&
     !isEditingMask;
 
   const noActiveFields = fields.length === 0;
@@ -196,10 +196,7 @@ export const useDetectionMode = () => {
 
   // Auto-activate detection mode when a pre-existing bbox detection is selected,
   // auto-deactivate when a pre-existing label of a different type is selected.
-  // New labels are ignored — the mode was set intentionally via the toolbar button.
   useEffect(() => {
-    if (selectedLabel?.isNew) return;
-
     if (isEditingDetection && !detectionModeActive) {
       setDetectionModeActive(true);
     } else if (editingLabelType && !isEditingDetection && detectionModeActive) {
@@ -209,7 +206,6 @@ export const useDetectionMode = () => {
     detectionModeActive,
     editingLabelType,
     isEditingDetection,
-    selectedLabel?.isNew,
     setDetectionModeActive,
   ]);
 

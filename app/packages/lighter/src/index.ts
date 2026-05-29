@@ -21,6 +21,7 @@ export type {
   DetectionLabel,
   DetectionOverlayOptions,
 } from "./overlay/DetectionOverlay";
+export type { MaskSnapshot, PaintStrokeData } from "./overlay/MaskCanvas";
 export { ClassificationOverlay } from "./overlay/ClassificationOverlay";
 export type { ClassificationOptions } from "./overlay/ClassificationOverlay";
 export { ImageOverlay } from "./overlay/ImageOverlay";
@@ -36,6 +37,8 @@ export type {
 export { drawRippleRings } from "./overlay/rippleRing";
 export type { DrawRippleRingsArgs } from "./overlay/rippleRing";
 export { RIPPLE_VISIBLE_MS } from "./constants";
+export { PolylineOverlay } from "./overlay/PolylineOverlay";
+export type { PolylineLabel, PolylineOptions } from "./overlay/PolylineOverlay";
 export { OverlayFactory } from "./overlay/OverlayFactory";
 export type { OverlayConstructor } from "./overlay/OverlayFactory";
 
@@ -53,8 +56,9 @@ export type { LighterEventGroup } from "./events";
 
 // Interaction exports
 export { buildBrushCursor } from "./interaction/buildBrushCursor";
-export type { BrushCursorOptions } from "./interaction/buildBrushCursor";
 export { InteractionManager } from "./interaction/InteractionManager";
+export { InteractiveCreationHandler } from "./interaction/InteractiveCreationHandler";
+export type { InteractiveCreationHandlerOptions } from "./interaction/InteractiveCreationHandler";
 export type {
   InteractionHandler,
   OverlayEvent,
@@ -65,6 +69,16 @@ export {
   KeypointPointHitAction,
 } from "./interaction/InteractiveKeypointHandler";
 export type { KeypointPointHitContext } from "./interaction/InteractiveKeypointHandler";
+export { InteractivePenHandler } from "./interaction/InteractivePenHandler";
+export {
+  InteractivePolylineHandler,
+  PolylineEdgeHitAction,
+  PolylineEmptyHitAction,
+} from "./interaction/InteractivePolylineHandler";
+export type {
+  PolylineEdgeHitContext,
+  PolylineEmptyHitContext,
+} from "./interaction/InteractivePolylineHandler";
 
 // Selection exports
 export type { Selectable } from "./selection/Selectable";
@@ -73,11 +87,15 @@ export type { SelectionOptions } from "./selection/SelectionManager";
 
 // Command exports
 export { AddKeypointPointCommand } from "./commands/AddKeypointPointCommand";
+export { AddMaskKeypointCommand } from "./commands/AddMaskKeypointCommand";
+export { AddOverlayCommand } from "./commands/AddOverlayCommand";
+export { MergeDetectionsCommand } from "./commands/MergeDetectionsCommand";
 export { MoveKeypointPointCommand } from "./commands/MoveKeypointPointCommand";
 export { MoveOverlayCommand } from "./commands/MoveOverlayCommand";
 export { RemoveKeypointPointCommand } from "./commands/RemoveKeypointPointCommand";
 export { TransformOverlayCommand } from "./commands/TransformOverlayCommand";
 export { UpdateLabelCommand } from "./commands/UpdateLabelCommand";
+export type { MergeDetectionsCommandDeps } from "./commands/MergeDetectionsCommand";
 
 // Plugin exports
 // TODO: PluginRegistry is currently unused - this needs to be hooked with fiftyone plugins
@@ -104,6 +122,7 @@ export type {
 } from "./types";
 
 export { getOverlayColor } from "./utils/colorMapping";
+export { decodeMaskPath } from "./utils/maskPathDecoding";
 
 // Constants
 export { DEFAULT_ZOOM_PAD } from "./constants";
