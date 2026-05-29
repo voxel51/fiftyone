@@ -117,6 +117,84 @@ def test_sam2_video():
     )
 
 
+def test_sam3_image_concept():
+    models = ["segment-anything-3-image-torch"]
+    _apply_models(
+        models,
+        max_samples=3,
+        model_kwargs=dict(classes=["person"], operation_mode="concept"),
+    )
+
+
+def test_sam3_image_concept_multi_prompt():
+    models = ["segment-anything-3-image-torch"]
+    _apply_models(
+        models,
+        max_samples=3,
+        model_kwargs=dict(classes=["person", "car"], operation_mode="concept"),
+    )
+
+
+def test_sam3_image_visual_boxes():
+    models = ["segment-anything-3-image-torch"]
+    _apply_models(
+        models,
+        max_samples=3,
+        model_kwargs=dict(operation_mode="visual"),
+        apply_kwargs={_SAM_PROMPT_FIELD: "ground_truth"},
+    )
+
+
+def test_sam3_image_visual_points():
+    models = ["segment-anything-3-image-torch"]
+    _apply_models(
+        models,
+        max_samples=3,
+        model_kwargs=dict(operation_mode="visual"),
+        apply_kwargs={_SAM_PROMPT_FIELD: "ground_truth"},
+        prompt_type="keypoints",
+    )
+
+
+def test_sam3_video_concept():
+    _apply_video_models(
+        ["segment-anything-3-video-torch"],
+        max_samples=2,
+        max_frames=5,
+        model_kwargs=dict(classes=["person"], operation_mode="concept"),
+    )
+
+
+def test_sam3_video_concept_multi_prompt():
+    _apply_video_models(
+        ["segment-anything-3-video-torch"],
+        max_samples=2,
+        max_frames=5,
+        model_kwargs=dict(classes=["person", "car"], operation_mode="concept"),
+    )
+
+
+def test_sam3_video_visual_boxes():
+    _apply_video_models(
+        ["segment-anything-3-video-torch"],
+        max_samples=2,
+        max_frames=5,
+        model_kwargs=dict(operation_mode="visual"),
+        apply_kwargs={_SAM_PROMPT_FIELD: "frames.detections"},
+    )
+
+
+def test_sam3_video_visual_points():
+    _apply_video_models(
+        ["segment-anything-3-video-torch"],
+        max_samples=2,
+        max_frames=5,
+        model_kwargs=dict(operation_mode="visual", prompt_frame_indices=[1]),
+        apply_kwargs={_SAM_PROMPT_FIELD: "frames.detections"},
+        prompt_type="keypoints",
+    )
+
+
 def test_keypoint_models():
     models = _get_models_with_tag("keypoints")
     _apply_person_keypoint_models(models)
@@ -247,6 +325,7 @@ def _apply_video_models(
     pass_confidence_thresh=False,
     max_samples=10,
     max_frames=10,
+    prompt_type=None,
     model_kwargs=None,
     apply_kwargs=None,
 ):
@@ -266,9 +345,21 @@ def _apply_video_models(
     dataset.match_frames(F("frame_number") <= max_frames).keep_frames()
 
     if _SAM_PROMPT_FIELD in kwargs:
-        dataset.match_frames(F("frame_number") > 1).set_field(
-            kwargs[_SAM_PROMPT_FIELD], None
-        ).save()
+        if prompt_type == "keypoints":
+            frame_field = kwargs[_SAM_PROMPT_FIELD][len("frames.") :]
+            kp_field = frame_field + "_points"
+            for sample in dataset:
+                first_frame = sample.frames.get(1)
+                if first_frame is not None and first_frame[frame_field]:
+                    first_frame[kp_field] = _detections_to_keypoints(
+                        first_frame[frame_field].detections
+                    )
+                    sample.save()
+            kwargs[_SAM_PROMPT_FIELD] = f"frames.{kp_field}"
+        else:
+            dataset.match_frames(F("frame_number") > 1).set_field(
+                kwargs[_SAM_PROMPT_FIELD], None
+            ).save()
 
     for idx, model_name in enumerate(model_names, 1):
         print(
