@@ -1,4 +1,5 @@
 import { useRegisterCommandHandler } from "@fiftyone/command-bus";
+import { useAnnotationEventBus } from "./useAnnotationEventBus";
 import {
   PropagationStatusItem,
   useFrameLabelsStream,
@@ -79,6 +80,7 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
   const applyPropagation = useApplyPropagationResult();
   const applyPropagatedDetection = useApplyPropagatedDetection();
   const { setContent: setStatusContent } = useVideoAnnotationStatus();
+  const eventBus = useAnnotationEventBus();
 
   useRegisterCommandHandler(
     EditTemporalDetectionSupportCommand,
@@ -136,11 +138,18 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
 
           stream.updateLabel(frame, update);
           updated = true;
+
+          eventBus.dispatch("annotation:keyframeChanged", {
+            trackId: det.id,
+            instanceId: det.instance?._id ?? null,
+            frame,
+            kind: willBeKeyframe ? "set" : "removed",
+          });
         }
 
         return updated;
       },
-      [stream]
+      [stream, eventBus]
     )
   );
 
@@ -148,6 +157,9 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
     PropagateCommand,
     useCallback(
       async (cmd) => {
+        console.log(
+          `[propagate] method=${cmd.method} instance=${cmd.instanceId} frames=[${cmd.fromFrame}, ${cmd.toFrame}]`
+        );
         if (!stream) return false;
         if (cmd.fromFrame >= cmd.toFrame) return false;
 
