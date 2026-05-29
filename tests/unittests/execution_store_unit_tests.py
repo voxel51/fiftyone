@@ -80,17 +80,54 @@ class ExecutionStoreServiceIntegrationTests(unittest.TestCase):
 
         self.assertEqual(update["$set"]["value"], value)
         self.assertIsInstance(update["$set"]["updated_at"], datetime)
+        # ``expires_at`` is written via ``$set`` on every call so re-setting a
+        # key refreshes its TTL
+        self.assertIsInstance(update["$set"]["expires_at"], datetime)
 
         insert = update["$setOnInsert"]
         self.assertEqual(insert["store_name"], store)
         self.assertEqual(insert["key"], key)
         self.assertIsInstance(insert["created_at"], datetime)
-        self.assertIsInstance(insert["expires_at"], datetime)
+        # ``expires_at`` must NOT also be in ``$setOnInsert``: a field present
+        # in both ``$set`` and ``$setOnInsert`` makes MongoDB raise a conflict.
+        self.assertNotIn("expires_at", insert)
         self.assertIsNone(insert["dataset_id"])
         self.assertEqual(insert["policy"], "evict")
 
         # Options
         self.assertEqual(kwargs, {"upsert": True})
+
+    def test_set_key_refreshes_ttl_on_update(self):
+        # ``expires_at`` must be written via ``$set`` (not ``$setOnInsert``) so
+        # that re-setting a key advances its expiration rather than leaving it
+        # pinned to the first write.
+        store, key, ttl = "widgets", "widget_1", 60
+
+        self.store_repo.set_key(store, key, {"n": 1}, ttl=ttl)
+        first = self.mock_collection.update_one.call_args[0][1]
+        first_expires_at = first["$set"]["expires_at"]
+
+        time.sleep(0.01)
+
+        self.store_repo.set_key(store, key, {"n": 2}, ttl=ttl)
+        second = self.mock_collection.update_one.call_args[0][1]
+        second_expires_at = second["$set"]["expires_at"]
+
+        self.assertIsInstance(first_expires_at, datetime)
+        self.assertIsInstance(second_expires_at, datetime)
+        self.assertGreater(second_expires_at, first_expires_at)
+        # never duplicated into $setOnInsert (else MongoDB raises a conflict)
+        self.assertNotIn("expires_at", first["$setOnInsert"])
+        self.assertNotIn("expires_at", second["$setOnInsert"])
+
+    def test_set_key_without_ttl_clears_expiration(self):
+        # A ``set`` with no TTL writes ``expires_at=None`` via ``$set`` so a
+        # previously set TTL is cleared.
+        self.store_repo.set_key("widgets", "widget_1", {"n": 1})
+        update = self.mock_collection.update_one.call_args[0][1]
+        self.assertIn("expires_at", update["$set"])
+        self.assertIsNone(update["$set"]["expires_at"])
+        self.assertNotIn("expires_at", update["$setOnInsert"])
 
     def test_get_key(self):
         self.mock_collection.find_one.return_value = {
@@ -213,12 +250,14 @@ class TestExecutionStoreIntegration(unittest.TestCase):
 
         self.assertEqual(update["$set"]["value"], value)
         self.assertIsInstance(update["$set"]["updated_at"], datetime)
+        # ``expires_at`` is written via ``$set`` so re-sets refresh the TTL
+        self.assertIsInstance(update["$set"]["expires_at"], datetime)
 
         insert = update["$setOnInsert"]
         self.assertEqual(insert["store_name"], "mock_store")
         self.assertEqual(insert["key"], key)
         self.assertIsInstance(insert["created_at"], datetime)
-        self.assertIsInstance(insert["expires_at"], datetime)
+        self.assertNotIn("expires_at", insert)
         self.assertIsNone(insert["dataset_id"])
 
         # Options
@@ -295,12 +334,14 @@ class ExecutionStoreServiceDatasetIdTests(unittest.TestCase):
 
         self.assertEqual(update["$set"]["value"], value)
         self.assertIsInstance(update["$set"]["updated_at"], datetime)
+        # ``expires_at`` is written via ``$set`` so re-sets refresh the TTL
+        self.assertIsInstance(update["$set"]["expires_at"], datetime)
 
         insert = update["$setOnInsert"]
         self.assertEqual(insert["store_name"], store)
         self.assertEqual(insert["key"], key)
         self.assertIsInstance(insert["created_at"], datetime)
-        self.assertIsInstance(insert["expires_at"], datetime)
+        self.assertNotIn("expires_at", insert)
         self.assertEqual(insert["dataset_id"], self.dataset_id)
         self.assertEqual(insert["policy"], "evict")
 

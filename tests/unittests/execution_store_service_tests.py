@@ -347,6 +347,37 @@ def test_set_key_with_ttl_and_update(svc):
 
 @drop_datasets
 @drop_collection(TEST_COLLECTION_NAME)
+def test_set_key_refreshes_ttl(svc):
+    # Re-setting an existing key with a TTL must refresh ``expires_at`` rather
+    # than leaving it pinned to the first write, which previously let the Mongo
+    # TTL index reap still-active heartbeat/cache keys.
+    NAME = "test_store"
+    KEY = "ttl_key"
+    svc.set_key(NAME, KEY, "v1", ttl=100)
+    original_expiry = svc.get_key(NAME, KEY).expires_at
+    assert original_expiry is not None
+
+    svc.set_key(NAME, KEY, "v2", ttl=500)
+    refreshed = svc.get_key(NAME, KEY)
+    assert refreshed.value == "v2"
+    assert refreshed.expires_at > original_expiry
+
+
+@drop_datasets
+@drop_collection(TEST_COLLECTION_NAME)
+def test_set_key_without_ttl_clears_expiration(svc):
+    # Re-setting a key without a TTL must clear a previously set expiration.
+    NAME = "test_store"
+    KEY = "ttl_key"
+    svc.set_key(NAME, KEY, "v1", ttl=100)
+    assert svc.get_key(NAME, KEY).expires_at is not None
+
+    svc.set_key(NAME, KEY, "v2")
+    assert svc.get_key(NAME, KEY).expires_at is None
+
+
+@drop_datasets
+@drop_collection(TEST_COLLECTION_NAME)
 def test_set_key_with_dict_value(svc):
     NAME = "test_store"
     KEY = "dict_key"

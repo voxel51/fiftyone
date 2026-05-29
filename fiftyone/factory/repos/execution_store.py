@@ -527,11 +527,15 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
             )
         )
 
+        # ``expires_at`` is written via ``$set`` (not ``$setOnInsert``) so that
+        # re-setting a key refreshes its TTL instead of pinning it to the first
+        # write; the value is ``None`` when ``ttl is None``, which clears it. A
+        # field cannot appear in both ``$set`` and ``$setOnInsert`` in one
+        # update, so it is omitted from ``on_insert_fields``.
         on_insert_fields = {
             "store_name": store_name,
             "key": key,
             "created_at": now,
-            "expires_at": expiration if ttl else None,
             "dataset_id": self._dataset_id,
             "policy": policy,
         }
@@ -543,7 +547,6 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
                 not in {
                     "_id",
                     "created_at",
-                    "expires_at",
                     "store_name",
                     "key",
                     "dataset_id",
