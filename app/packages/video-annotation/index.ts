@@ -48,3 +48,7 @@ export {
   useStageTemporalDetectionSupport,
   useTemporalDetectionPendingEdits,
 } from "./src/pendingTemporalDetectionEdits";
+export {
+  syncTemporalOverlays,
+  useTemporalOverlaySync,
+} from "./src/useTemporalOverlaySync";
