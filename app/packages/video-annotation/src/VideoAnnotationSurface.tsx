@@ -1,4 +1,5 @@
 import {
+  useAutoInterpolate,
   useRegisterVideoAnnotationCommandHandlers,
   useRegisterVideoAnnotationKeybindings,
 } from "@fiftyone/annotation";
@@ -180,5 +181,6 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
 const VideoAnnotationHandlerRegistration: React.FC = () => {
   useRegisterVideoAnnotationCommandHandlers();
   useRegisterVideoAnnotationKeybindings();
+  useAutoInterpolate();
   return null;
 };

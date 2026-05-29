@@ -1,4 +1,5 @@
 import { useRegisterCommandHandler } from "@fiftyone/command-bus";
+import { useAnnotationEventBus } from "./useAnnotationEventBus";
 import {
   useFrameLabelsStream,
   useStageTemporalDetectionSupport,
@@ -33,6 +34,7 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
   const registry = useAgentRegistry();
   const sampleDescriptor = useSampleDescriptor();
   const applyPropagation = useApplyPropagationResult();
+  const eventBus = useAnnotationEventBus();
 
   useRegisterCommandHandler(
     EditTemporalDetectionSupportCommand,
@@ -90,11 +92,18 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
 
           stream.updateLabel(frame, update);
           updated = true;
+
+          eventBus.dispatch("annotation:keyframeChanged", {
+            trackId: det.id,
+            instanceId: det.instance?._id ?? null,
+            frame,
+            kind: willBeKeyframe ? "set" : "removed",
+          });
         }
 
         return updated;
       },
-      [stream]
+      [stream, eventBus]
     )
   );
 
