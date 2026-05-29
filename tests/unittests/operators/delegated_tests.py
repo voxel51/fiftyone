@@ -524,13 +524,14 @@ class DelegatedOperationServiceTests(unittest.TestCase):
     def test_set_failed_null_context(self, mock_get_operator):
         operator = mock.MagicMock()
         mock_get_operator.return_value = operator
-        op = self.svc.queue_operation(
+        doc = self.svc.queue_operation(
             operator=f"{TEST_DO_PREFIX}/operator/foo",
             delegation_target="test_target",
         )
+        self.docs_to_delete.append(doc)
 
         # Check that we can set failed on an operation with no context
-        self.svc.set_failed(op.id)
+        self.svc.set_failed(doc.id)
 
     @patch("fiftyone.core.odm.load_dataset")
     def test_sets_progress(self, mock_load_dataset, mock_get_operator):

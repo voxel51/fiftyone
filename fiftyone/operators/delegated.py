@@ -125,6 +125,7 @@ def _execute_operator_in_child_process(
             os.setsid()
         except Exception:
             pass
+    operation = None
     try:
 
         with _capture_child_output(log_queue), logging_context(
