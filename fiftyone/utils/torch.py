@@ -27,11 +27,8 @@ import eta.core.utils as etau
 import fiftyone.core.config as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.models as fom
-import fiftyone.core.media as fomd
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
-import fiftyone.utils.image as foui
-import fiftyone.core.collections as focol
 import fiftyone.core.view as fov
 
 fou.ensure_torch()
@@ -1846,6 +1843,48 @@ def _is_string_array(targets):
         return False
 
 
+def _list_dims(samples, path):
+    """Returns the list-typed dimensions traversed by ``samples.values(path)``.
+
+    Each entry names one list-typed dimension along ``path`` (the implicit
+    per-sample dimension is named ``""``). Examples:
+
+    -  ``"filepath"`` -> ``("",)``
+    -  ``"frames.id"`` -> ``("", "frames")``
+    -  ``"ground_truth.detections.label"`` -> ``("", "ground_truth.detections")``
+
+    The names let us identify the **shared** list prefix between two paths
+    via :func:`_shared_list_prefix_len`; cf. ``index_field`` semantics in
+    :class:`FiftyOneTorchDataset`.
+    """
+    return ("",) + tuple(samples._parse_field_name(path, auto_unwind=False)[3])
+
+
+def _shared_list_prefix_len(dims_a, dims_b):
+    """Length of the longest common prefix of two :func:`_list_dims` results."""
+    n = 0
+    for a, b in zip(dims_a, dims_b):
+        if a != b:
+            break
+        n += 1
+    return n
+
+
+def _flatten_with_coords(nested, prefix=()):
+    """Yields ``(value, coord)`` pairs by recursively descending ``nested``.
+
+    Recursion stops at non-list values. ``None`` entries (missing list fields)
+    yield no rows.
+    """
+    if nested is None:
+        return
+    if not isinstance(nested, list):
+        yield nested, prefix
+        return
+    for i, sub in enumerate(nested):
+        yield from _flatten_with_coords(sub, prefix + (i,))
+
+
 def _serialize_list(values, local_process_group):
     """Wraps ``values`` in a serialized list backed by the right storage for
     the current process group.
@@ -1858,29 +1897,6 @@ def _serialize_list(values, local_process_group):
 
     # Non-master ranks read from shared memory; data is broadcast by rank 0
     return TorchShmSerializedList([], local_process_group)
-
-
-def _shared_depth(index_dims, field_dims):
-    """Number of leading list dimensions ``field_dims`` shares with
-    ``index_dims``, plus one for the per-sample dimension all fields share.
-    """
-    shared = 1
-    for a, b in zip(index_dims, field_dims):
-        if a != b:
-            break
-        shared += 1
-    return shared
-
-
-def _flatten(node, coord):
-    """Yields ``(leaf, coord)`` for each non-``None`` leaf under ``node``,
-    recording the index taken into every list along the way.
-    """
-    if isinstance(node, list):
-        for i, child in enumerate(node):
-            yield from _flatten(child, coord + (i,))
-    elif node is not None:
-        yield node, coord
 
 
 def _load_columns(samples, agg_fields, on_master):
@@ -1908,21 +1924,12 @@ class FiftyOneTorchDataset(Dataset):
     from an arbitrary :class:`fiftyone.core.collections.SampleCollection` via
     the provided :class:`GetItem` instance.
 
-    The dataset is a flat table with one row per ``index_field`` leaf. When
-    ``index_field`` traverses one or more list-typed fields, the dataset fans
-    out: each frame, detection, polyline, etc. (to arbitrary nesting depth)
-    becomes its own row. Fields in ``get_item.field_mapping`` are resolved per
-    row by descending into the sample's value along the coordinate it shares
-    with ``index_field``:
-
-    -   a field on the same list branch (e.g. ``ground_truth.detections.label``
-        when indexing ``ground_truth.detections.id``) yields its per-row value
-    -   a shallower or sibling field (e.g. the parent ``filepath``, or
-        ``ground_truth.detections.label`` when indexing ``frames.id``) shares
-        its value across all rows of the sample
-
-    Field values are kept once per sample and resolved lazily per row, so a
-    parent's data is never duplicated in memory across the rows beneath it.
+    The dataset is a flat table with one row per ``index_field`` value. When
+    ``index_field`` traverses a list-typed field, the dataset fans out: each
+    frame, detection, polyline, etc. becomes its own row. Fields in
+    ``get_item.field_mapping`` are resolved per row — child fields (at or
+    below the index path) yield their per-row value, while parent fields
+    (above) are shared by every row under the same parent.
 
     The contract on ``index_field`` is:
 
@@ -1930,7 +1937,9 @@ class FiftyOneTorchDataset(Dataset):
         across the collection (e.g. ``"id"``, ``"frames.id"``,
         ``"ground_truth.detections.id"``).
     -   Intermediate path components must be list-typed (a ListField or the
-        special ``frames`` field). Arbitrarily nested list paths are supported.
+        special ``frames`` field).
+
+    These constraints are documented but not enforced.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
@@ -1966,9 +1975,6 @@ class FiftyOneTorchDataset(Dataset):
 
         self.field_mapping = get_item.field_mapping.copy()
         self.index_field = index_field
-        self.get_item = get_item
-        self.skip_failures = skip_failures
-        self.vectorize = vectorize
 
         self.dataset_name = samples._root_dataset.name
         self.stages = (
@@ -1977,42 +1983,39 @@ class FiftyOneTorchDataset(Dataset):
             else None
         )
 
-        fields = list(dict.fromkeys(self.field_mapping.values()))
+        self.get_item = get_item
+        self.skip_failures = skip_failures
 
-        # How far ``_build_batch`` descends each field per row: the number of
-        # leading list dimensions it shares with ``index_field`` (+1 for the
-        # per-sample dim). A same-branch field reaches its own leaf; a
-        # shallower/sibling field stops early and is broadcast.
-        index_dims = samples._parse_field_name(index_field, auto_unwind=False)[
-            3
-        ]
-        self._prefix_lens = {
-            field: _shared_depth(
-                index_dims,
-                samples._parse_field_name(field, auto_unwind=False)[3],
+        # For each mapped field, precompute the length of the list-typed
+        # prefix it shares with ``index_field``. ``_build_batch`` consumes
+        # exactly this many leading coord components, so on-branch fields
+        # walk down to the row's leaf, parent fields stop at the LCA and
+        # broadcast, and sibling-branch fields stop at the shared ancestor
+        # (the whole sibling subtree is broadcast intact).
+        index_dims = _list_dims(samples, index_field)
+        self._coord_prefix_lens = {
+            field: _shared_list_prefix_len(
+                index_dims, _list_dims(samples, field)
             )
-            for field in fields
+            for field in self.field_mapping.values()
         }
 
-        # One aggregation, nested by sample (the common ancestor): the sample
-        # ``id``, the ``index_field``, and -- when vectorizing -- every mapped
-        # field. Nesting stores each parent once; ``_build_batch`` broadcasts
-        # it by reference (never copied) across its rows. Only the master rank
-        # hits the db; other ranks read from shared memory.
+        # Build keys, coords, and sample ids on the master rank only; other
+        # ranks read from shared memory.
         on_master = (
             local_process_group is None
             or get_local_rank(local_process_group) == 0
         )
+        # Load all required fields in the same aggregation when vectorize is True.
+        fields = list(dict.fromkeys(self.field_mapping.values()))
         agg_fields = list(
             dict.fromkeys(["id", index_field, *(fields if vectorize else ())])
         )
         columns = _load_columns(samples, agg_fields, on_master)
 
-        # Flatten ``index_field`` into one row per leaf: its outer (per-sample)
-        # list becomes ``coord[0]`` and each nested list adds a component.
         keys, coords = [], []
-        for key, coord in _flatten(columns[index_field], ()):
-            keys.append(key)
+        for value, coord in _flatten_with_coords(columns[index_field]):
+            keys.append(value)
             coords.append(coord)
 
         self._coords = _serialize_list(coords, local_process_group)
@@ -2023,6 +2026,8 @@ class FiftyOneTorchDataset(Dataset):
             if index_field == "id"
             else _serialize_list(keys, local_process_group)
         )
+
+        self.vectorize = vectorize
         self.cached_fields = (
             {
                 field: _serialize_list(columns[field], local_process_group)
@@ -2143,7 +2148,7 @@ class FiftyOneTorchDataset(Dataset):
                     if ckey not in cache:
                         cache[ckey] = columns[field][sample_pos(s)]
                     value = cache[ckey]
-                    for c in coord[1 : self._prefix_lens[field]]:
+                    for c in coord[1 : self._coord_prefix_lens[field]]:
                         if value is None:
                             break
                         value = value[c]
