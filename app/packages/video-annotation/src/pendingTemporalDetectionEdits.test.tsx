@@ -3,6 +3,7 @@ import { Provider } from "jotai";
 import { describe, expect, it } from "vitest";
 import {
   applyTemporalDetectionEdits,
+  firstTemporalDetectionFieldPath,
   parseTemporalDetectionEditKey,
   temporalDetectionEditKey,
   useClearTemporalDetectionEdits,
@@ -294,17 +295,6 @@ describe("applyTemporalDetectionEdits", () => {
     expect((out as typeof sample).events).toBe(sample.events);
   });
 
-  it("silently skips edits for missing detections within a field", () => {
-    const sample = { events: field(td("a", [1, 5])) };
-    const out = applyTemporalDetectionEdits(
-      sample,
-      new Map([["events|ghost", { support: [99, 100] }]])
-    ) as {
-      events: { detections: { support: [number, number] }[] };
-    };
-    expect(out.events.detections[0].support).toEqual([1, 5]);
-  });
-
   it("falls back to `id` when `_id` is missing on the detection", () => {
     const sample = {
       events: {
@@ -323,5 +313,131 @@ describe("applyTemporalDetectionEdits", () => {
       new Map([["events|x", { support: [3, 7] }]])
     ) as { events: { detections: { support: [number, number] }[] } };
     expect(out.events.detections[0].support).toEqual([3, 7]);
+  });
+
+  describe("create-via-edit: appending synthetic TDs", () => {
+    it("appends a synthetic TD when the staged `_id` isn't on the sample", () => {
+      const sample = { events: field(td("a", [1, 5])) };
+      const out = applyTemporalDetectionEdits(
+        sample,
+        new Map([
+          [
+            "events|new-id",
+            { support: [20, 40] as [number, number], label: "fresh" },
+          ],
+        ])
+      ) as {
+        events: {
+          detections: {
+            _id: string;
+            support: [number, number];
+            label: string;
+          }[];
+        };
+      };
+
+      expect(out.events.detections).toHaveLength(2);
+      expect(out.events.detections[1]).toMatchObject({
+        _cls: "TemporalDetection",
+        _id: "new-id",
+        support: [20, 40],
+        label: "fresh",
+      });
+    });
+
+    it("skips an append when the staged entry has no support", () => {
+      const sample = { events: field(td("a", [1, 5])) };
+      const out = applyTemporalDetectionEdits(
+        sample,
+        new Map([["events|new-id", { label: "label-only" }]])
+      ) as { events: { detections: unknown[] } };
+      // Existing TD untouched; synthetic skipped (malformed).
+      expect(out.events.detections).toHaveLength(1);
+    });
+
+    it("includes optional fields + attributes on the synthetic TD", () => {
+      const sample = { events: field(td("a", [1, 5])) };
+      const out = applyTemporalDetectionEdits(
+        sample,
+        new Map([
+          [
+            "events|new-id",
+            {
+              support: [10, 20] as [number, number],
+              confidence: 0.7,
+              attributes: { reviewed: true, dropped: null },
+            },
+          ],
+        ])
+      ) as { events: { detections: Record<string, unknown>[] } };
+
+      expect(out.events.detections[1]).toMatchObject({
+        confidence: 0.7,
+        reviewed: true,
+      });
+      // null attributes are not present on the synthetic doc.
+      expect("dropped" in out.events.detections[1]).toBe(false);
+    });
+
+    it("can append AND edit existing TDs in the same field in one pass", () => {
+      const sample = { events: field(td("a", [1, 5])) };
+      const out = applyTemporalDetectionEdits(
+        sample,
+        new Map([
+          ["events|a", { support: [2, 6] as [number, number] }],
+          ["events|new-id", { support: [50, 60] as [number, number] }],
+        ])
+      ) as {
+        events: {
+          detections: { _id: string; support: [number, number] }[];
+        };
+      };
+
+      expect(out.events.detections).toHaveLength(2);
+      expect(out.events.detections[0].support).toEqual([2, 6]);
+      expect(out.events.detections[1]._id).toBe("new-id");
+    });
+
+    it("skips appends targeting a missing or non-TD field", () => {
+      const sample = {
+        events: field(td("a", [1, 5])),
+        other: { _cls: "Detections", detections: [] },
+      };
+      const out = applyTemporalDetectionEdits(
+        sample,
+        new Map([
+          ["ghost|n1", { support: [1, 2] as [number, number] }],
+          ["other|n2", { support: [3, 4] as [number, number] }],
+        ])
+      );
+      expect((out as typeof sample).events).toBe(sample.events);
+      expect((out as typeof sample).other).toBe(sample.other);
+    });
+  });
+});
+
+describe("firstTemporalDetectionFieldPath", () => {
+  it("returns null for an empty / null / undefined sample", () => {
+    expect(firstTemporalDetectionFieldPath(null)).toBeNull();
+    expect(firstTemporalDetectionFieldPath(undefined)).toBeNull();
+    expect(firstTemporalDetectionFieldPath({})).toBeNull();
+  });
+
+  it("returns the first key whose value is a TemporalDetections wrapper", () => {
+    const sample = {
+      foo: "string",
+      events: { _cls: "TemporalDetections", detections: [] },
+      highlights: { _cls: "TemporalDetections", detections: [] },
+    };
+    expect(firstTemporalDetectionFieldPath(sample)).toBe("events");
+  });
+
+  it("ignores Detections / Classifications / plain objects", () => {
+    const sample = {
+      detections: { _cls: "Detections", detections: [] },
+      classifications: { _cls: "Classifications", classifications: [] },
+      metadata: { width: 100 },
+    };
+    expect(firstTemporalDetectionFieldPath(sample)).toBeNull();
   });
 });

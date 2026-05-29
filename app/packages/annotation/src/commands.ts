@@ -59,6 +59,22 @@ export class EditTemporalDetectionCommand extends Command<boolean> {
 }
 
 /**
+ * Create a new `TemporalDetection`. Handler stages an optimistic doc
+ * with a client-generated `_id` and resolves to that id; the supplier
+ * emits an `add /<fieldPath>/detections/-` op on the next autosave.
+ * Server-assigned `_id` lands on the sample refetch.
+ */
+export class CreateTemporalDetectionCommand extends Command<string | null> {
+  constructor(
+    public readonly fieldPath: string,
+    public readonly support: readonly [number, number],
+    public readonly label?: string
+  ) {
+    super();
+  }
+}
+
+/**
  * Extend a tracked object's presence by copying a source frame's box onto
  * the frames a timeline drag grew the bar over. Fired on drag-out of an
  * object track bar's edge. `trackId` is the synthetic overlay id

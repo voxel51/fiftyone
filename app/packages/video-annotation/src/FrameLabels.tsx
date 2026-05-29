@@ -274,25 +274,17 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
     if (!sample?.sample) {
       return [];
     }
-    // `sample.frameRate` is the canonical fps for the clip; same source
-    // `RegisterFrameLabels` consumes for the labels-stream constructor.
     const fps = sample.frameRate;
     if (!Number.isFinite(fps) || fps <= 0) {
       return [];
     }
 
-    // Apply staged TD-support edits as overrides before building so the
-    // bar stays where the user dropped it through the server round-trip.
-    // Cleared by `useRegisterVideoAnnotationEventHandlers` on
-    // `annotation:persistenceSuccess` / `persistenceError`.
-    const baseSample = sample.sample as Record<string, unknown>;
-    const overlaidSample =
-      pendingTemporalDetectionEdits.size === 0
-        ? baseSample
-        : applyTemporalDetectionEdits(
-            baseSample,
-            pendingTemporalDetectionEdits
-          );
+    // Optimistic overlay — creates appear as appended TDs, edits as
+    // overrides. Cleared on `annotation:persistenceSuccess`.
+    const overlaidSample = applyTemporalDetectionEdits(
+      sample.sample as Record<string, unknown>,
+      pendingTemporalDetectionEdits
+    );
 
     return buildTemporalDetectionTracks({
       sample: overlaidSample,

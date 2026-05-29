@@ -15,9 +15,8 @@ import { useRecoilValue } from "recoil";
 import { frameAt } from "../../playback/src/lib/playback/utils";
 import { usePlayhead } from "../../playback/src/lib/playback/use-playback-state";
 import {
-  parseTemporalDetectionEditKey,
+  applyTemporalDetectionEdits,
   useTemporalDetectionPendingEdits,
-  type TemporalDetectionEditFields,
 } from "./pendingTemporalDetectionEdits";
 
 interface RawTemporalDetection {
@@ -48,8 +47,12 @@ interface SceneLike {
 
 export interface SyncTemporalOverlaysInput {
   scene: SceneLike;
+  /**
+   * Sample with staged edits already applied — the caller layers
+   * `applyTemporalDetectionEdits` so creates appear as appended TDs
+   * and edits as overridden ones.
+   */
   sample: Record<string, unknown> | null | undefined;
-  pendingEdits: ReadonlyMap<string, TemporalDetectionEditFields>;
   activePaths: ReadonlySet<string>;
   /** Map<overlayId, overlay> — mutated in place to track surviving overlays. */
   overlays: Map<string, TemporalOverlay>;
@@ -58,41 +61,27 @@ export interface SyncTemporalOverlaysInput {
 }
 
 /**
- * Diff the modal sample's `TemporalDetections` fields against an
- * existing overlay map. Adds new TDs, updates changed ones in place
- * (preserving Lighter selection state), removes TDs no longer present
- * on the sample.
- *
- * Pending support edits override the sample's value so an in-progress
- * drag shows immediately. Edits whose target field/detection is gone
- * are silently skipped (matches the delta supplier's behavior).
+ * Diff the sample's `TemporalDetections` fields against an existing
+ * overlay map. Adds new TDs, updates changed ones in place (preserving
+ * Lighter selection state), removes TDs no longer present.
  *
  * Pure-ish: mutates `overlays` and calls `scene.addOverlay` /
- * `removeOverlay`. Returns nothing; the caller reads `overlays` after.
+ * `removeOverlay`. Returns nothing.
  */
 export function syncTemporalOverlays({
   scene,
   sample,
-  pendingEdits,
   activePaths,
   overlays,
   create = (opts) =>
     overlayFactory.create<TemporalOptions, TemporalOverlay>("temporal", opts),
 }: SyncTemporalOverlaysInput): void {
   if (!sample) {
-    // No sample → remove anything we had.
     for (const id of Array.from(overlays.keys())) {
       scene.removeOverlay(id);
       overlays.delete(id);
     }
     return;
-  }
-
-  // Index pending edits by `${fieldPath}|${detectionId}` for O(1) lookup.
-  const editsByFieldId = new Map<string, TemporalDetectionEditFields>();
-  for (const [key, update] of pendingEdits) {
-    const { fieldPath, detectionId } = parseTemporalDetectionEditKey(key);
-    editsByFieldId.set(`${fieldPath}|${detectionId}`, update);
   }
 
   const next = new Set<string>();
@@ -106,38 +95,20 @@ export function syncTemporalOverlays({
       const detId = td._id ?? td.id;
       if (!detId) continue;
 
-      const rawSupport = td.support;
+      const support = td.support;
       if (
-        !Array.isArray(rawSupport) ||
-        rawSupport.length !== 2 ||
-        !Number.isFinite(rawSupport[0]) ||
-        !Number.isFinite(rawSupport[1]) ||
-        rawSupport[1] < rawSupport[0]
+        !Array.isArray(support) ||
+        support.length !== 2 ||
+        !Number.isFinite(support[0]) ||
+        !Number.isFinite(support[1]) ||
+        support[1] < support[0]
       ) {
         continue;
       }
 
       const id = `td-${fieldPath}-${detId}`;
       next.add(id);
-
-      const override = editsByFieldId.get(`${fieldPath}|${detId}`);
-      const support: [number, number] = override?.support
-        ? [override.support[0], override.support[1]]
-        : [rawSupport[0], rawSupport[1]];
-
-      const label: TemporalLabel = { ...td, support } as TemporalLabel;
-      if (override?.label !== undefined) label.label = override.label;
-      if (override?.confidence !== undefined)
-        label.confidence = override.confidence;
-      if (override?.attributes) {
-        for (const [k, v] of Object.entries(override.attributes)) {
-          if (v === null) {
-            delete (label as Record<string, unknown>)[k];
-          } else {
-            (label as Record<string, unknown>)[k] = v;
-          }
-        }
-      }
+      const label = td as unknown as TemporalLabel;
 
       // Adopt an existing overlay (ours or one `useCreateAnnotationLabel`
       // added) so concurrent paths don't double-add at the same id.
@@ -156,9 +127,6 @@ export function syncTemporalOverlays({
     }
   }
 
-  // Sweep — remove overlays that no longer correspond to a TD on the
-  // active sample. Lighter's `removeOverlay` triggers the overlay's
-  // `destroy()`, which clears it from the channel registry.
   for (const id of Array.from(overlays.keys())) {
     if (!next.has(id)) {
       scene.removeOverlay(id);
@@ -199,15 +167,17 @@ export function useTemporalOverlaySync(
     activeFields({ modal: true, expanded: false })
   );
 
-  // Diff effect — add / update / remove on every sample/edits/active-field change.
   useEffect(() => {
     if (!scene || !canonicalMediaReady) return;
 
     const activePaths = new Set(activePathsList);
+    const baseSample = (sample?.sample as Record<string, unknown>) ?? null;
+    const overlaidSample = baseSample
+      ? applyTemporalDetectionEdits(baseSample, pendingEdits)
+      : null;
     syncTemporalOverlays({
       scene,
-      sample: (sample?.sample as Record<string, unknown>) ?? null,
-      pendingEdits,
+      sample: overlaidSample,
       activePaths,
       overlays: overlaysRef.current,
     });

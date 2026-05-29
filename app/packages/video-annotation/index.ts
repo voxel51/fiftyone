@@ -42,6 +42,7 @@ export type {
 } from "./src/temporalDetectionTracks";
 export {
   applyTemporalDetectionEdits,
+  firstTemporalDetectionFieldPath,
   parseTemporalDetectionEditKey,
   temporalDetectionEditKey,
   useClearTemporalDetectionEdits,

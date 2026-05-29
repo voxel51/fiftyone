@@ -162,6 +162,74 @@ describe("buildTemporalDetectionDeltas", () => {
     });
   });
 
+  describe("create-via-edit: appending new TDs", () => {
+    it("emits a single `add /-` op with the full doc when `_id` isn't on the sample", () => {
+      const sample = { events: field(td("a", [1, 10])) };
+      const deltas = buildTemporalDetectionDeltas(
+        sample,
+        pendingMap([
+          "events|new-id",
+          { support: [20, 40], label: "fresh", confidence: 0.5 },
+        ])
+      );
+      expect(deltas).toEqual([
+        {
+          op: "add",
+          path: "/events/detections/-",
+          value: {
+            _cls: "TemporalDetection",
+            _id: "new-id",
+            support: [20, 40],
+            label: "fresh",
+            confidence: 0.5,
+          },
+        },
+      ]);
+    });
+
+    it("emits attribute values (but not null ones) on the appended doc", () => {
+      const sample = { events: field(td("a", [1, 10])) };
+      const deltas = buildTemporalDetectionDeltas(
+        sample,
+        pendingMap([
+          "events|new-id",
+          {
+            support: [1, 5],
+            attributes: { reviewed: true, dropped: null },
+          },
+        ])
+      );
+      const value = (deltas[0] as { value: Record<string, unknown> }).value;
+      expect(value.reviewed).toBe(true);
+      expect("dropped" in value).toBe(false);
+    });
+
+    it("skips an append when the staged entry has no support", () => {
+      const sample = { events: field(td("a", [1, 10])) };
+      expect(
+        buildTemporalDetectionDeltas(
+          sample,
+          pendingMap(["events|new-id", { label: "label-only" }])
+        )
+      ).toEqual([]);
+    });
+
+    it("can emit a replace + an append for the same field in one flush", () => {
+      const sample = { events: field(td("a", [1, 10])) };
+      const deltas = buildTemporalDetectionDeltas(
+        sample,
+        pendingMap(
+          ["events|a", { support: [2, 12] }],
+          ["events|new-id", { support: [50, 60] }]
+        )
+      ) as { op: string; path: string }[];
+      expect(deltas).toHaveLength(2);
+      const ops = deltas.map((d) => `${d.op} ${d.path}`);
+      expect(ops).toContain("replace /events/detections/0/support");
+      expect(ops).toContain("add /events/detections/-");
+    });
+  });
+
   describe("filtering", () => {
     it("skips edits whose field doesn't exist on the sample", () => {
       const sample = { events: field(td("a", [1, 10])) };
@@ -183,32 +251,9 @@ describe("buildTemporalDetectionDeltas", () => {
       ).toEqual([]);
     });
 
-    it("skips edits whose TD has disappeared from the array", () => {
-      const sample = { events: field(td("a", [1, 10])) };
-      expect(
-        buildTemporalDetectionDeltas(
-          sample,
-          pendingMap(["events|ghost", { support: [5, 15] }])
-        )
-      ).toEqual([]);
-    });
-
     it("returns an empty array when no edits are pending", () => {
       const sample = { events: field(td("a", [1, 10])) };
       expect(buildTemporalDetectionDeltas(sample, new Map())).toEqual([]);
-    });
-
-    it("drops the bad edit and keeps the good one in the same flush", () => {
-      const sample = { events: field(td("a", [1, 10])) };
-      const deltas = buildTemporalDetectionDeltas(
-        sample,
-        pendingMap(
-          ["events|ghost", { support: [99, 100] }],
-          ["events|a", { support: [5, 15] }]
-        )
-      );
-      expect(deltas).toHaveLength(1);
-      expect((deltas[0] as { value: [number, number] }).value).toEqual([5, 15]);
     });
   });
 });

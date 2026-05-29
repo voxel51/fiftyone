@@ -68,10 +68,12 @@ export const useClearTemporalDetectionEdits = (): (() => void) => {
 };
 
 /**
- * Shallow-cloned `sample` with staged TD edits applied. Per-field
- * override (`support`/`label`/`confidence`) plus attribute merge
- * (`null` removes). Edits whose field / detection no longer exist
- * are silently skipped.
+ * Shallow-cloned `sample` with staged TD edits applied. Existing TDs
+ * get per-field override (`support`/`label`/`confidence` plus attr
+ * merge, `null` removes). Staged entries whose `_id` isn't on the
+ * sample (i.e. newly-created TDs) are appended as synthetic docs.
+ * Entries targeting a missing field, or missing `support` for a
+ * synthetic doc, are skipped.
  */
 export const applyTemporalDetectionEdits = (
   sample: Record<string, unknown>,
@@ -98,22 +100,51 @@ export const applyTemporalDetectionEdits = (
   const next = { ...sample };
   for (const [fieldPath, fieldEdits] of editsByField) {
     const field = next[fieldPath] as RawTemporalDetectionsField | undefined;
-    const detections = field?.detections;
-    if (!Array.isArray(detections)) {
+    if (!field || field._cls !== "TemporalDetections") {
       continue;
+    }
+    const detections = Array.isArray(field.detections) ? field.detections : [];
+
+    const seenIds = new Set<string>();
+    const overlaid = detections.map((d) => {
+      const id = d._id ?? d.id;
+      if (!id) return d;
+      seenIds.add(id);
+      const update = fieldEdits.get(id);
+      return update ? applyFields(d, update) : d;
+    });
+
+    const appended: Record<string, unknown>[] = [];
+    for (const [detectionId, update] of fieldEdits) {
+      if (seenIds.has(detectionId)) continue;
+      const synthetic = buildSyntheticDetection(detectionId, update);
+      if (synthetic) appended.push(synthetic);
     }
 
     next[fieldPath] = {
       ...field,
-      detections: detections.map((d) => {
-        const id = d._id ?? d.id;
-        const update = id ? fieldEdits.get(id) : undefined;
-        return update ? applyFields(d, update) : d;
-      }),
+      detections: [...overlaid, ...appended],
     };
   }
 
   return next;
+};
+
+/** First sample-level field whose `_cls` is `TemporalDetections`. */
+export const firstTemporalDetectionFieldPath = (
+  sample: Record<string, unknown> | null | undefined
+): string | null => {
+  if (!sample) return null;
+  for (const [path, value] of Object.entries(sample)) {
+    if (
+      value &&
+      typeof value === "object" &&
+      (value as { _cls?: unknown })._cls === "TemporalDetections"
+    ) {
+      return path;
+    }
+  }
+  return null;
 };
 
 function mergeEdit(
@@ -149,4 +180,29 @@ function applyFields(
     }
   }
   return next;
+}
+
+/**
+ * Build the BSON-shaped detection from a staged entry for a TD that
+ * doesn't exist on the sample yet. Requires `support` — without it the
+ * TD is malformed; skip rather than emit garbage.
+ */
+function buildSyntheticDetection(
+  detectionId: string,
+  update: TemporalDetectionEditFields
+): Record<string, unknown> | null {
+  if (!update.support) return null;
+  const out: Record<string, unknown> = {
+    _cls: "TemporalDetection",
+    _id: detectionId,
+    support: update.support,
+  };
+  if (update.label !== undefined) out.label = update.label;
+  if (update.confidence !== undefined) out.confidence = update.confidence;
+  if (update.attributes) {
+    for (const [k, v] of Object.entries(update.attributes)) {
+      if (v !== null) out[k] = v;
+    }
+  }
+  return out;
 }

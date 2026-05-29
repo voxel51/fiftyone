@@ -59,8 +59,6 @@ const createFake = (opts: TemporalOptions): FakeOverlay =>
   new FakeOverlay(opts);
 
 const ALL_ACTIVE = new Set(["events", "highlights"]);
-const EMPTY_EDITS: ReadonlyMap<string, { support?: [number, number] }> =
-  new Map();
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -79,7 +77,6 @@ describe("syncTemporalOverlays", () => {
       syncTemporalOverlays({
         scene,
         sample: { events: field(td("a", [1, 10]), td("b", [20, 30])) },
-        pendingEdits: EMPTY_EDITS,
         activePaths: ALL_ACTIVE,
         overlays,
         create: createFake as never,
@@ -107,7 +104,6 @@ describe("syncTemporalOverlays", () => {
       syncTemporalOverlays({
         scene,
         sample: { events: field(td("a", [1, 10], { label: "running" })) },
-        pendingEdits: EMPTY_EDITS,
         activePaths: ALL_ACTIVE,
         overlays,
         create: createFake as never,
@@ -128,7 +124,6 @@ describe("syncTemporalOverlays", () => {
       syncTemporalOverlays({
         scene,
         sample,
-        pendingEdits: EMPTY_EDITS,
         activePaths: ALL_ACTIVE,
         overlays,
         create: createFake as never,
@@ -138,7 +133,6 @@ describe("syncTemporalOverlays", () => {
       syncTemporalOverlays({
         scene,
         sample,
-        pendingEdits: EMPTY_EDITS,
         activePaths: ALL_ACTIVE,
         overlays,
         create: createFake as never,
@@ -154,7 +148,6 @@ describe("syncTemporalOverlays", () => {
       syncTemporalOverlays({
         scene,
         sample: { events: field(td("a", [1, 10])) },
-        pendingEdits: EMPTY_EDITS,
         activePaths: ALL_ACTIVE,
         overlays,
         create: createFake as never,
@@ -164,7 +157,6 @@ describe("syncTemporalOverlays", () => {
       syncTemporalOverlays({
         scene,
         sample: { events: field(td("a", [5, 25], { label: "renamed" })) },
-        pendingEdits: EMPTY_EDITS,
         activePaths: ALL_ACTIVE,
         overlays,
         create: createFake as never,
@@ -183,7 +175,6 @@ describe("syncTemporalOverlays", () => {
       syncTemporalOverlays({
         scene,
         sample: { events: field(td("a", [1, 10]), td("b", [20, 30])) },
-        pendingEdits: EMPTY_EDITS,
         activePaths: ALL_ACTIVE,
         overlays,
         create: createFake as never,
@@ -193,7 +184,6 @@ describe("syncTemporalOverlays", () => {
       syncTemporalOverlays({
         scene,
         sample: { events: field(td("a", [1, 10])) },
-        pendingEdits: EMPTY_EDITS,
         activePaths: ALL_ACTIVE,
         overlays,
         create: createFake as never,
@@ -211,7 +201,6 @@ describe("syncTemporalOverlays", () => {
       syncTemporalOverlays({
         scene,
         sample: { events: field(td("a", [1, 10]), td("b", [20, 30])) },
-        pendingEdits: EMPTY_EDITS,
         activePaths: ALL_ACTIVE,
         overlays,
         create: createFake as never,
@@ -221,7 +210,6 @@ describe("syncTemporalOverlays", () => {
       syncTemporalOverlays({
         scene,
         sample: null,
-        pendingEdits: EMPTY_EDITS,
         activePaths: ALL_ACTIVE,
         overlays,
         create: createFake as never,
@@ -243,7 +231,6 @@ describe("syncTemporalOverlays", () => {
           events: field(td("a", [1, 10])),
           highlights: field(td("b", [20, 30])),
         },
-        pendingEdits: EMPTY_EDITS,
         activePaths: new Set(["events"]),
         overlays,
         create: createFake as never,
@@ -260,7 +247,6 @@ describe("syncTemporalOverlays", () => {
       syncTemporalOverlays({
         scene,
         sample: { events: field(td("a", [1, 10])) },
-        pendingEdits: EMPTY_EDITS,
         activePaths: new Set(["events"]),
         overlays,
         create: createFake as never,
@@ -270,7 +256,6 @@ describe("syncTemporalOverlays", () => {
       syncTemporalOverlays({
         scene,
         sample: { events: field(td("a", [1, 10])) },
-        pendingEdits: EMPTY_EDITS,
         activePaths: new Set(),
         overlays,
         create: createFake as never,
@@ -278,74 +263,6 @@ describe("syncTemporalOverlays", () => {
 
       expect(scene.removeOverlay).toHaveBeenCalledWith("td-events-a");
       expect(overlays.has("td-events-a")).toBe(false);
-    });
-  });
-
-  describe("pending edit overrides", () => {
-    it("uses the override support when one is staged for a TD", () => {
-      const scene = makeScene();
-      const overlays = new Map();
-
-      syncTemporalOverlays({
-        scene,
-        sample: { events: field(td("a", [1, 10])) },
-        pendingEdits: new Map([
-          ["events|a", { support: [5, 15] as [number, number] }],
-        ]),
-        activePaths: ALL_ACTIVE,
-        overlays,
-        create: createFake as never,
-      });
-
-      const overlay = overlays.get("td-events-a") as FakeOverlay;
-      expect(overlay.label.support).toEqual([5, 15]);
-    });
-
-    it("re-applies the override on subsequent diffs (label setter is called)", () => {
-      const scene = makeScene();
-      const overlays = new Map();
-
-      syncTemporalOverlays({
-        scene,
-        sample: { events: field(td("a", [1, 10])) },
-        pendingEdits: EMPTY_EDITS,
-        activePaths: ALL_ACTIVE,
-        overlays,
-        create: createFake as never,
-      });
-      const overlay = overlays.get("td-events-a") as FakeOverlay;
-
-      syncTemporalOverlays({
-        scene,
-        sample: { events: field(td("a", [1, 10])) },
-        pendingEdits: new Map([
-          ["events|a", { support: [5, 15] as [number, number] }],
-        ]),
-        activePaths: ALL_ACTIVE,
-        overlays,
-        create: createFake as never,
-      });
-
-      expect(overlay.label.support).toEqual([5, 15]);
-    });
-
-    it("ignores override entries whose TD is no longer on the sample", () => {
-      const scene = makeScene();
-      const overlays = new Map();
-
-      syncTemporalOverlays({
-        scene,
-        sample: { events: field(td("a", [1, 10])) },
-        pendingEdits: new Map([
-          ["events|ghost", { support: [5, 15] as [number, number] }],
-        ]),
-        activePaths: ALL_ACTIVE,
-        overlays,
-        create: createFake as never,
-      });
-
-      expect(overlays.size).toBe(1);
-      expect(overlays.has("td-events-a")).toBe(true);
     });
   });
 
@@ -365,7 +282,6 @@ describe("syncTemporalOverlays", () => {
         sample: {
           events: { _cls: "TemporalDetections", detections: [td] },
         },
-        pendingEdits: EMPTY_EDITS,
         activePaths: ALL_ACTIVE,
         overlays,
         create: createFake as never,
@@ -403,7 +319,6 @@ describe("syncTemporalOverlays", () => {
             ],
           },
         },
-        pendingEdits: EMPTY_EDITS,
         activePaths: ALL_ACTIVE,
         overlays,
         create: createFake as never,
@@ -423,7 +338,6 @@ describe("syncTemporalOverlays", () => {
           metadata: { frame_rate: 30 },
           some_string: "hi",
         },
-        pendingEdits: EMPTY_EDITS,
         activePaths: new Set(["detections", "metadata", "some_string"]),
         overlays,
         create: createFake as never,
@@ -444,7 +358,6 @@ describe("syncTemporalOverlays", () => {
           events: field(td("a", [1, 10])),
           highlights: field(td("b", [20, 30])),
         },
-        pendingEdits: EMPTY_EDITS,
         activePaths: ALL_ACTIVE,
         overlays,
         create: createFake as never,
@@ -465,7 +378,6 @@ describe("syncTemporalOverlays", () => {
           events: field(td("a", [1, 10])),
           highlights: field(td("a", [20, 30])),
         },
-        pendingEdits: EMPTY_EDITS,
         activePaths: ALL_ACTIVE,
         overlays,
         create: createFake as never,

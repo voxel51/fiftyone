@@ -25,6 +25,7 @@ import {
   type PropagationInferenceResult,
 } from "../agents/types";
 import {
+  CreateTemporalDetectionCommand,
   EditTemporalDetectionCommand,
   ExtendTrackCommand,
   MarkKeyframeCommand,
@@ -85,6 +86,21 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
       async (cmd) => {
         stageTemporalDetectionEdit(cmd.fieldPath, cmd.detectionId, cmd.update);
         return true;
+      },
+      [stageTemporalDetectionEdit]
+    )
+  );
+
+  useRegisterCommandHandler(
+    CreateTemporalDetectionCommand,
+    useCallback(
+      async (cmd) => {
+        const detectionId = objectId();
+        stageTemporalDetectionEdit(cmd.fieldPath, detectionId, {
+          support: [cmd.support[0], cmd.support[1]],
+          ...(cmd.label !== undefined ? { label: cmd.label } : {}),
+        });
+        return detectionId;
       },
       [stageTemporalDetectionEdit]
     )

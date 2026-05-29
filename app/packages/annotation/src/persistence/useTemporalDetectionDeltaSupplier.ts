@@ -2,7 +2,6 @@ import type { JSONDeltas } from "@fiftyone/core/src/client";
 import { useIsVideo, useModalSample } from "@fiftyone/state";
 import {
   parseTemporalDetectionEditKey,
-  type RawTemporalDetectionsField,
   type TemporalDetectionEditFields,
   useTemporalDetectionPendingEdits,
 } from "@fiftyone/video-annotation";
@@ -53,15 +52,40 @@ export function buildTemporalDetectionDeltas(
 
   for (const [key, update] of pending) {
     const { fieldPath, detectionId } = parseTemporalDetectionEditKey(key);
-    const field = sample[fieldPath] as RawTemporalDetectionsField | undefined;
-
-    const detections = field?.detections;
-    if (!Array.isArray(detections)) {
+    const field = sample[fieldPath] as
+      | { _cls?: string; detections?: unknown }
+      | undefined;
+    if (!field || field._cls !== "TemporalDetections") {
       continue;
     }
+    const detections = Array.isArray(field.detections) ? field.detections : [];
+    const index = detections.findIndex(
+      (d) =>
+        (d as { _id?: string; id?: string })._id === detectionId ||
+        (d as { _id?: string; id?: string }).id === detectionId
+    );
 
-    const index = detections.findIndex((d) => (d._id ?? d.id) === detectionId);
+    // Not on the sample → this is a create. Emit one `add /-` with the
+    // full doc. Skip if `support` is missing (malformed).
     if (index < 0) {
+      if (!update.support) continue;
+      const value: Record<string, unknown> = {
+        _cls: "TemporalDetection",
+        _id: detectionId,
+        support: update.support,
+      };
+      if (update.label !== undefined) value.label = update.label;
+      if (update.confidence !== undefined) value.confidence = update.confidence;
+      if (update.attributes) {
+        for (const [k, v] of Object.entries(update.attributes)) {
+          if (v !== null) value[k] = v;
+        }
+      }
+      deltas.push({
+        op: "add",
+        path: `/${fieldPath}/detections/-`,
+        value,
+      });
       continue;
     }
 
