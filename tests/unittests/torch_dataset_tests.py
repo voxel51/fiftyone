@@ -9,7 +9,7 @@ import os
 import unittest
 
 import fiftyone as fo
-from fiftyone.utils.torch import GetItem, _walk_value
+from fiftyone.utils.torch import GetItem
 
 
 class IdentityGetItem(GetItem):
@@ -241,9 +241,7 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
         det_ids = dataset.values("ground_truth.detections.id")
 
         # Verify keys match the flattened detection IDs
-        flat_det_ids = [
-            did for sample_dets in det_ids for did in sample_dets
-        ]
+        flat_det_ids = [did for sample_dets in det_ids for did in sample_dets]
         self.assertEqual(
             [torch_dataset.keys[i] for i in range(len(torch_dataset))],
             flat_det_ids,
@@ -349,9 +347,7 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
             get_item, index_field="frames.id", vectorize=vectorize
         )
 
-        det_labels_per_sample = dataset.values(
-            "ground_truth.detections.label"
-        )
+        det_labels_per_sample = dataset.values("ground_truth.detections.label")
         frame_labels = dataset.values("frames.frame_label")
 
         row = 0
@@ -370,21 +366,70 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
     def test_sibling_branch_broadcast_vectorized(self):
         self._sibling_branch_broadcast_impl(vectorize=True)
 
-    def test_walk_value_rejects_non_list_overflow(self):
-        # Positive case: at the correct depth the walk returns the right value.
-        nested = [["a", "b"], ["c"]]
-        self.assertEqual(_walk_value(nested, (0, 1), 2), "b")
-        self.assertEqual(_walk_value(nested, (1, 0), 2), "c")
-        self.assertEqual(_walk_value(nested, (0, 1), 1), ["a", "b"])
+    def _nested_list_indexing_impl(self, vectorize):
+        # ``index_field`` traverses two list levels: frames + per-frame
+        # detections. Each row is one detection within one frame; the
+        # per-detection label is resolved per row while the parent ``filepath``
+        # is shared across all rows of the sample.
+        n_dets_per_frame = ((1, 2), (3,))  # sample 0: 2 frames, sample 1: 1
 
-        # Short-circuit on None.
-        self.assertIsNone(_walk_value([None, ["x"]], (0, 0), 2))
+        dataset = fo.Dataset()
+        samples = []
+        for i, frame_counts in enumerate(n_dets_per_frame):
+            sample = fo.Sample(filepath=f"video{i}.mp4")
+            for f, nd in enumerate(frame_counts, start=1):
+                sample.frames[f] = fo.Frame(
+                    ground_truth=fo.Detections(
+                        detections=[
+                            fo.Detection(label=f"v{i}_f{f}_d{j}")
+                            for j in range(nd)
+                        ]
+                    )
+                )
+            samples.append(sample)
+        dataset.add_samples(samples)
 
-        # Negative case: depth=2 over a list-of-strings would index into the
-        # string and silently return a character. The guard turns it into a
-        # loud TypeError so a depth/schema mismatch can't corrupt outputs.
-        with self.assertRaises(TypeError):
-            _walk_value(["abc", "def"], (0, 1), 2)
+        get_item = IdentityGetItem(
+            ["filepath", "label"],
+            field_mapping={
+                "label": "frames.ground_truth.detections.label",
+            },
+        )
+        td = dataset.to_torch(
+            get_item,
+            index_field="frames.ground_truth.detections.id",
+            vectorize=vectorize,
+        )
+
+        # Expectations derived from FiftyOne's own (fully unwound) values
+        flat_ids = dataset.values(
+            "frames.ground_truth.detections.id", unwind=True
+        )
+        flat_labels = dataset.values(
+            "frames.ground_truth.detections.label", unwind=True
+        )
+        self.assertEqual(len(td), len(flat_ids))
+        self.assertEqual([td.keys[i] for i in range(len(td))], flat_ids)
+
+        filepaths = dataset.values("filepath")
+        # Map each row to its sample to check the broadcast parent
+        nested_ids = dataset.values("frames.ground_truth.detections.id")
+        sample_of_row = []
+        for sidx, per_frame in enumerate(nested_ids):
+            for frame_dets in per_frame or []:
+                for _ in frame_dets or []:
+                    sample_of_row.append(sidx)
+
+        items = td.__getitems__(list(range(len(td))))
+        for row, item in enumerate(items):
+            self.assertEqual(item[0], filepaths[sample_of_row[row]])
+            self.assertEqual(item[1], flat_labels[row])
+
+    def test_nested_list_indexing_db(self):
+        self._nested_list_indexing_impl(vectorize=False)
+
+    def test_nested_list_indexing_vectorized(self):
+        self._nested_list_indexing_impl(vectorize=True)
 
     def test_vectorized_vs_db_parity_per_detection(self):
         n_per_sample = (2, 3, 2)
