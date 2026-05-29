@@ -228,7 +228,7 @@ function pointsFromMask(
  */
 export function pointsFromBox(
   bbox: [number, number, number, number],
-  count: 1 | 3 | 5 = 1
+  count: 1 | 3 | 5 = 5
 ): PromptPoint[] {
   const [x, y, w, h] = bbox;
   const cx = x + w / 2;
