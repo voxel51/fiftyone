@@ -379,6 +379,14 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
             # the App
             continue
 
+        if (
+            f.name == "support"
+            and field.document_type is fol.TemporalDetection
+        ):
+            # support is a FrameSupportField ([first, last]) edited via the
+            # timeline drag handles, not as a sidebar primitive
+            continue
+
         try:
             attributes[f.name] = _generate_field_label_schema(
                 collection, f"{field_name}.{f.name}", scan_samples

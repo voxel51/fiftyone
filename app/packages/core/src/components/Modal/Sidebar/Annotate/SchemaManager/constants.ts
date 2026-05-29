@@ -19,7 +19,7 @@ import { IconName } from "@voxel51/voodo";
 export const TAB_GUI = "gui" as const;
 export const TAB_JSON = "json" as const;
 export const TAB_IDS = [TAB_GUI, TAB_JSON] as const;
-export type TabId = typeof TAB_IDS[number];
+export type TabId = (typeof TAB_IDS)[number];
 
 // System read-only fields that cannot be edited or scanned
 const SYSTEM_READ_ONLY_FIELDS_ARRAY = [
@@ -32,7 +32,8 @@ const SYSTEM_READ_ONLY_FIELDS_ARRAY = [
 
 export const SYSTEM_READ_ONLY_FIELD_NAME = "system";
 
-export type SystemReadOnlyField = typeof SYSTEM_READ_ONLY_FIELDS_ARRAY[number];
+export type SystemReadOnlyField =
+  (typeof SYSTEM_READ_ONLY_FIELDS_ARRAY)[number];
 
 // Use Set for O(1) lookup
 const SYSTEM_READ_ONLY_FIELDS_SET = new Set<string>(
@@ -58,6 +59,14 @@ export const LABEL_TYPE_OPTIONS_3D = [
   { id: "detections", data: { label: "3D Detections" } },
   { id: "polylines", data: { label: "3D Polylines" } },
   { id: "classification", data: { label: "Classification" } },
+];
+
+// Label type options for video datasets
+export const LABEL_TYPE_OPTIONS_VIDEO = [
+  { id: "detections", data: { label: "Detections" } },
+  { id: "classification", data: { label: "Classification" } },
+  { id: "polylines", data: { label: "Polylines" } },
+  { id: "temporaldetections", data: { label: "Temporal Detections" } },
 ];
 
 // =============================================================================
@@ -121,6 +130,11 @@ export const getDefaultAttributesForType = (
         : DEFAULT_DETECTION_ATTRIBUTES_2D;
     case "polylines":
       return DEFAULT_POLYLINE_ATTRIBUTES;
+    case "temporaldetections":
+      // `support` is edited via the timeline drag handles, not as a
+      // primitive sidebar component. Keep it off the schema's editable
+      // attribute list.
+      return BASE_LABEL_ATTRIBUTES;
     case "classification":
     default:
       return DEFAULT_CLASSIFICATION_ATTRIBUTES;

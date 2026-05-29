@@ -122,6 +122,6 @@ export const ICONS = {
   polylines: Polyline,
   keypoint: Keypoint,
   keypoints: Keypoint,
-  temporal_detection: TemporalDetection,
-  temporal_detections: TemporalDetection,
+  temporaldetection: TemporalDetection,
+  temporaldetections: TemporalDetection,
 };
