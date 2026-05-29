@@ -1902,21 +1902,11 @@ def _serialize_list(values, local_process_group):
 def _load_columns(samples, agg_fields, on_master):
     """Loads each field's per-sample values in a single aggregation, keyed by
     field.
-
-    Sorting is skipped (``_enforce_natural_order=False``) since row order is
-    internal; a lone ``id``/``filepath`` request is then served straight from
-    its index as a covered query, avoiding a collection scan. Non-master ranks
-    request nothing and read from shared memory instead.
     """
     if not on_master:
         return {field: [] for field in agg_fields}
 
-    if len(agg_fields) == 1:
-        field = agg_fields[0]
-        return {field: samples.values(field, _enforce_natural_order=False)}
-
-    results = samples.values(agg_fields, _enforce_natural_order=False)
-    return dict(zip(agg_fields, results))
+    return dict(zip(agg_fields, samples.values(agg_fields)))
 
 
 class FiftyOneTorchDataset(Dataset):
@@ -2006,7 +1996,7 @@ class FiftyOneTorchDataset(Dataset):
             local_process_group is None
             or get_local_rank(local_process_group) == 0
         )
-        # Load all required fields in the same aggregation when vectorize is True.
+        # Load all required fields in the same values call when vectorize is True.
         fields = list(dict.fromkeys(self.field_mapping.values()))
         agg_fields = list(
             dict.fromkeys(["id", index_field, *(fields if vectorize else ())])
@@ -2020,7 +2010,6 @@ class FiftyOneTorchDataset(Dataset):
 
         self._coords = _serialize_list(coords, local_process_group)
         self._sample_ids = _serialize_list(columns["id"], local_process_group)
-        # When indexing by sample id, the keys *are* the sample ids
         self.keys = (
             self._sample_ids
             if index_field == "id"
@@ -2127,15 +2116,8 @@ class FiftyOneTorchDataset(Dataset):
             return e
 
     def _build_batch(self, columns, coords, sample_pos):
-        """Builds one ``get_item`` input dict per row by unwinding the
-        per-sample field values along each row's coord.
-
-        ``columns[field]`` holds a field's per-sample values (the cached
-        upfront values, or a per-batch select view). Each field's per-sample
-        value is deserialized at most once per sample here and then shared
-        across that sample's rows: a same-branch field descends to its own
-        leaf, while a parent/sibling field is broadcast as-is -- the same
-        object, never copied -- so a parent shared by 10k rows is read once.
+        """Builds per-row batches keyed by ``index_field`` from the per-sample
+        ``columns``.
         """
         batch = []
         cache = {}  # (field, sample idx) -> deserialized per-sample value
@@ -2188,7 +2170,6 @@ class FiftyOneTorchDataset(Dataset):
         return self._build_batch(columns, coords, idx_remap.__getitem__)
 
     def _prepare_batch_vectorized(self, indices):
-        # Coords are consumed once here, so stream them lazily (no temp list)
         coords = (self._coords[i] for i in indices)
         return self._build_batch(self.cached_fields, coords, lambda s: s)
 

@@ -401,7 +401,6 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
             vectorize=vectorize,
         )
 
-        # Expectations derived from FiftyOne's own (fully unwound) values
         flat_ids = dataset.values(
             "frames.ground_truth.detections.id", unwind=True
         )
