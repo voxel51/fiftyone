@@ -98,6 +98,15 @@ const isCOI = typeof crossOriginIsolated !== "undefined" && crossOriginIsolated;
 ort.env.wasm.numThreads = isCOI ? navigator.hardwareConcurrency || 4 : 1;
 ort.env.wasm.simd = true;
 
+// WebGPU experiment: the SAM2 encoder is a heavy ViT and dominates per-frame
+// time (~96%) under single-threaded WASM. Try the WebGPU execution provider
+// when the runtime exposes it, falling back to WASM per-session if WebGPU
+// can't load the model (the encoder ships as a runtime-optimized `.ort` file,
+// which may be pinned to the WASM EP — `loadSession` reports the actual EP).
+const WEBGPU_AVAILABLE =
+  typeof navigator !== "undefined" &&
+  !!(navigator as Navigator & { gpu?: unknown }).gpu;
+
 // Dev: optimizeDeps.exclude lets ort use its embedded WASM bundle.
 // Prod: worker bundling strips the embedded WASM, so point to the emitted files.
 if (!import.meta.env?.DEV && import.meta.env?.ORT_WASM_PATH) {
@@ -179,9 +188,13 @@ function preprocessImage(imageData: ImageData): ProcessedImage {
  * Posts progress and warning notifications back to the main thread during download.
  */
 async function loadModel(): Promise<void> {
-  const opts: ort.InferenceSession.SessionOptions = {
-    executionProviders: ["wasm"],
-  };
+  // Prefer WebGPU when available, but fall back to WASM per-session: the
+  // runtime-optimized `.ort` encoder may refuse the GPU EP, while the plain
+  // `.onnx` decoder is portable. Ordering an EP list as ["webgpu", "wasm"]
+  // does NOT fall back if model load fails on the first EP, so we try them
+  // as separate create() attempts and report which one stuck.
+  const epCandidates: ort.InferenceSession.SessionOptions["executionProviders"][] =
+    WEBGPU_AVAILABLE ? [["webgpu"], ["wasm"]] : [["wasm"]];
 
   async function loadSession(
     family: string,
@@ -208,16 +221,39 @@ async function loadModel(): Promise<void> {
       });
       throw err;
     }
-    try {
-      return await ort.InferenceSession.create(buf, opts);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      postErrorNotification({
-        kind: failureKind,
-        message: `${name} init failed: ${msg}`,
-      });
-      throw err;
+
+    let lastErr: unknown;
+    for (const executionProviders of epCandidates) {
+      try {
+        const onWebGpu = (executionProviders as string[])[0] === "webgpu";
+        const sessionOptions: ort.InferenceSession.SessionOptions = {
+          executionProviders,
+        };
+        // Keep the encoder's large embedding outputs resident on the GPU so
+        // the decoder can read them in place — avoids a ~16MB GPU→CPU readback
+        // per frame, which `run()` would otherwise bundle into encode time.
+        // Only meaningful on WebGPU; the cache-store path downloads explicitly
+        // via getData() when it needs CPU copies.
+        if (onWebGpu && name === "encoder") {
+          sessionOptions.preferredOutputLocation = {
+            image_embed: "gpu-buffer",
+            high_res_feats_0: "gpu-buffer",
+            high_res_feats_1: "gpu-buffer",
+          };
+        }
+        const session = await ort.InferenceSession.create(buf, sessionOptions);
+        return session;
+      } catch (err) {
+        lastErr = err;
+      }
     }
+
+    const msg = lastErr instanceof Error ? lastErr.message : String(lastErr);
+    postErrorNotification({
+      kind: failureKind,
+      message: `${name} init failed (all EPs): ${msg}`,
+    });
+    throw lastErr;
   }
 
   if (!encoderSession)
@@ -237,6 +273,50 @@ async function loadModel(): Promise<void> {
       "decoder",
       "decoder_failure"
     );
+
+  if (WEBGPU_AVAILABLE) await prewarmSessions();
+}
+
+/**
+ * Run one throwaway encode+decode on a zero image so WebGPU compiles its
+ * compute pipelines at load time rather than on the user's first frame
+ * (observed ~2.2s cold-start vs ~0.45s steady-state). Best-effort: a warmup
+ * failure is logged but never blocks model init.
+ */
+async function prewarmSessions(): Promise<void> {
+  if (!encoderSession || !decoderSession) return;
+  try {
+    const enc = await encoderSession.run({
+      image: new ort.Tensor(
+        "float32",
+        new Float32Array(3 * SAM2_INPUT_SIZE * SAM2_INPUT_SIZE),
+        [1, 3, SAM2_INPUT_SIZE, SAM2_INPUT_SIZE]
+      ),
+    });
+    await decoderSession.run({
+      image_embed: enc["image_embed"],
+      high_res_feats_0: enc["high_res_feats_0"],
+      high_res_feats_1: enc["high_res_feats_1"],
+      point_coords: new ort.Tensor(
+        "float32",
+        new Float32Array([0, 0]),
+        [1, 1, 2]
+      ),
+      point_labels: new ort.Tensor("float32", new Float32Array([1]), [1, 1]),
+      mask_input: new ort.Tensor(
+        "float32",
+        new Float32Array(SAM2_OUTPUT_SIZE * SAM2_OUTPUT_SIZE),
+        [1, 1, SAM2_OUTPUT_SIZE, SAM2_OUTPUT_SIZE]
+      ),
+      has_mask_input: new ort.Tensor("float32", new Float32Array([0]), [1]),
+    });
+  } catch (err) {
+    postWarningNotification(
+      `Prewarm failed (non-fatal): ${
+        err instanceof Error ? err.message : String(err)
+      }`
+    );
+  }
 }
 
 /**
@@ -281,10 +361,16 @@ async function embedAndDecodeBitmap(
   points: PromptPoint[]
 ): Promise<InferenceResult> {
   const imageData = bitmapToImageData(bitmap);
+  // Propagation runs the GPU-resident path: each frame's embedding is used
+  // exactly once (encode → decode same frame), so we skip the embedding cache
+  // entirely. That keeps the encoder outputs on the GPU (no per-frame readback)
+  // and avoids ~16MB/frame of pointless IndexedDB writes. Trade-off: re-running
+  // propagation over the same frames re-encodes instead of hitting the cache.
   return embedAndDecodeFromImageData(
     imageData,
     CACHE_PREFIX + cacheKey,
-    points
+    points,
+    /* useEmbeddingCache */ false
   );
 }
 
@@ -318,20 +404,33 @@ async function encodeBitmap(
     ]),
   });
 
+  // Capture dims before getData(true) releases the GPU buffer.
+  const imageEmbedDims = [...encResults["image_embed"].dims];
+  const highResFeats0Dims = [...encResults["high_res_feats_0"].dims];
+  const highResFeats1Dims = [...encResults["high_res_feats_1"].dims];
+
+  // getData downloads gpu-buffer outputs (no-op for cpu tensors); release=true
+  // frees the GPU buffer since this encode-only path has no decoder to feed.
+  const [imageEmbed, highResFeats0, highResFeats1] = (await Promise.all([
+    encResults["image_embed"].getData(true),
+    encResults["high_res_feats_0"].getData(true),
+    encResults["high_res_feats_1"].getData(true),
+  ])) as Float32Array[];
+
   await putEmbedding(
     fullKey,
     {
       imageEmbed: {
-        data: encResults["image_embed"].data as Float32Array,
-        dims: [...encResults["image_embed"].dims],
+        data: imageEmbed,
+        dims: imageEmbedDims,
       },
       highResFeats0: {
-        data: encResults["high_res_feats_0"].data as Float32Array,
-        dims: [...encResults["high_res_feats_0"].dims],
+        data: highResFeats0,
+        dims: highResFeats0Dims,
       },
       highResFeats1: {
-        data: encResults["high_res_feats_1"].data as Float32Array,
-        dims: [...encResults["high_res_feats_1"].dims],
+        data: highResFeats1,
+        dims: highResFeats1Dims,
       },
       processedImage: {
         originalWidth: processed.originalWidth,
@@ -350,7 +449,8 @@ async function encodeBitmap(
 async function embedAndDecodeFromImageData(
   imageData: ImageData,
   cacheKey: string,
-  points: PromptPoint[]
+  points: PromptPoint[],
+  useEmbeddingCache = true
 ): Promise<InferenceResult> {
   if (!encoderSession || !decoderSession) throw new Error("Model not loaded");
 
@@ -359,127 +459,159 @@ async function embedAndDecodeFromImageData(
 
   let encResults: Record<string, ort.Tensor>;
   let geometry: ImageGeometry;
-
-  const cached = await getEmbedding(cacheKey, postWarningNotification);
   let cacheHit = false;
 
-  if (cached) {
-    try {
-      encResults = {
-        image_embed: new ort.Tensor(
-          "float32",
-          cached.imageEmbed.data,
-          cached.imageEmbed.dims
-        ),
-        high_res_feats_0: new ort.Tensor(
-          "float32",
-          cached.highResFeats0.data,
-          cached.highResFeats0.dims
-        ),
-        high_res_feats_1: new ort.Tensor(
-          "float32",
-          cached.highResFeats1.data,
-          cached.highResFeats1.dims
-        ),
-      };
-      geometry = cached.processedImage;
-      cacheHit = true;
-    } catch {
-      postWarningNotification("Corrupt embedding cache entry, re-encoding");
+  // Encoder outputs may be GPU-resident (preferredOutputLocation). Those must
+  // be released after the decoder reads them; collect them for a finally.
+  const gpuTensors: ort.Tensor[] = [];
+
+  if (useEmbeddingCache) {
+    const cached = await getEmbedding(cacheKey, postWarningNotification);
+
+    if (cached) {
+      try {
+        encResults = {
+          image_embed: new ort.Tensor(
+            "float32",
+            cached.imageEmbed.data,
+            cached.imageEmbed.dims
+          ),
+          high_res_feats_0: new ort.Tensor(
+            "float32",
+            cached.highResFeats0.data,
+            cached.highResFeats0.dims
+          ),
+          high_res_feats_1: new ort.Tensor(
+            "float32",
+            cached.highResFeats1.data,
+            cached.highResFeats1.dims
+          ),
+        };
+        geometry = cached.processedImage;
+        cacheHit = true;
+      } catch {
+        postWarningNotification("Corrupt embedding cache entry, re-encoding");
+      }
     }
   }
 
-  if (!cacheHit) {
-    postStatusNotification("encoding");
-    const processed = preprocessImage(imageData);
-    geometry = processed;
+  try {
+    if (!cacheHit) {
+      postStatusNotification("encoding");
+      const processed = preprocessImage(imageData);
+      geometry = processed;
 
-    encResults = await encoderSession.run({
-      image: new ort.Tensor("float32", processed.tensor, [
-        1,
-        3,
-        SAM2_INPUT_SIZE,
-        SAM2_INPUT_SIZE,
-      ]),
+      encResults = await encoderSession.run({
+        image: new ort.Tensor("float32", processed.tensor, [
+          1,
+          3,
+          SAM2_INPUT_SIZE,
+          SAM2_INPUT_SIZE,
+        ]),
+      });
+      // With GPU-resident outputs, run() resolves without downloading the
+      // ~16MB of embeddings; the decoder reads them in place below.
+      const encoderOutputs = [
+        encResults["image_embed"],
+        encResults["high_res_feats_0"],
+        encResults["high_res_feats_1"],
+      ];
+      for (const t of encoderOutputs) {
+        if (t.location !== "cpu") gpuTensors.push(t);
+      }
+
+      if (useEmbeddingCache) {
+        // Caching needs CPU copies, so download explicitly here (getData on a
+        // gpu-buffer tensor reads it back; on a cpu tensor it returns .data).
+        // releaseData=false keeps the buffer alive for the decoder below.
+        const [imageEmbed, highResFeats0, highResFeats1] = (await Promise.all([
+          encResults["image_embed"].getData(false),
+          encResults["high_res_feats_0"].getData(false),
+          encResults["high_res_feats_1"].getData(false),
+        ])) as Float32Array[];
+
+        // Fire-and-forget: IDB write runs in background while decoder proceeds.
+        putEmbedding(
+          cacheKey,
+          {
+            // Key names are defined by the ONNX model and must match exactly.
+            // Encode — input: "image"; outputs: "image_embed", "high_res_feats_0", "high_res_feats_1"
+            imageEmbed: {
+              data: imageEmbed,
+              dims: [...encResults["image_embed"].dims],
+            },
+            highResFeats0: {
+              data: highResFeats0,
+              dims: [...encResults["high_res_feats_0"].dims],
+            },
+            highResFeats1: {
+              data: highResFeats1,
+              dims: [...encResults["high_res_feats_1"].dims],
+            },
+            processedImage: {
+              originalWidth: geometry.originalWidth,
+              originalHeight: geometry.originalHeight,
+            },
+          },
+          postWarningNotification
+        );
+      }
+    }
+
+    // Build decoder inputs
+    const n = points.length;
+    const coords = new Float32Array(n * 2);
+    const labels = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const [sx, sy] = transformPoint(points[i].x, points[i].y);
+      coords[i * 2] = sx;
+      coords[i * 2 + 1] = sy;
+      labels[i] = points[i].label;
+    }
+
+    // Decode — outputs: "masks", "iou_predictions". The encoder embeddings may
+    // be GPU-resident here; the decoder reads them in place (same WebGPU device).
+    const decResults = await decoderSession.run({
+      image_embed: encResults["image_embed"],
+      high_res_feats_0: encResults["high_res_feats_0"],
+      high_res_feats_1: encResults["high_res_feats_1"],
+      point_coords: new ort.Tensor("float32", coords, [1, n, 2]),
+      point_labels: new ort.Tensor("float32", labels, [1, n]),
+      mask_input: new ort.Tensor(
+        "float32",
+        new Float32Array(SAM2_OUTPUT_SIZE * SAM2_OUTPUT_SIZE),
+        [1, 1, SAM2_OUTPUT_SIZE, SAM2_OUTPUT_SIZE]
+      ),
+      has_mask_input: new ort.Tensor("float32", new Float32Array([0]), [1]),
     });
 
-    // Fire-and-forget: IDB write runs in background while decoder proceeds.
-    // Memory LRU is updated synchronously inside putEmbedding before the first await.
-    putEmbedding(
-      cacheKey,
-      {
-        // Key names are defined by the ONNX model and must match exactly.
-        // Encode — input: "image"; outputs: "image_embed", "high_res_feats_0", "high_res_feats_1"
-        imageEmbed: {
-          data: encResults["image_embed"].data as Float32Array,
-          dims: [...encResults["image_embed"].dims],
-        },
-        highResFeats0: {
-          data: encResults["high_res_feats_0"].data as Float32Array,
-          dims: [...encResults["high_res_feats_0"].dims],
-        },
-        highResFeats1: {
-          data: encResults["high_res_feats_1"].data as Float32Array,
-          dims: [...encResults["high_res_feats_1"].dims],
-        },
-        processedImage: {
-          originalWidth: geometry.originalWidth,
-          originalHeight: geometry.originalHeight,
-        },
-      },
-      postWarningNotification
-    );
+    // Pick best mask by IoU (Intersection over Union) confidence score
+    const masks = decResults["masks"].data as Float32Array;
+    const ious = decResults["iou_predictions"].data as Float32Array;
+    const sz = SAM2_OUTPUT_SIZE * SAM2_OUTPUT_SIZE;
+
+    let bestIdx = 0;
+    for (let i = 1; i < ious.length; i++) {
+      if (ious[i] > ious[bestIdx]) bestIdx = i;
+    }
+
+    const bestMask = masks.slice(bestIdx * sz, (bestIdx + 1) * sz);
+    const bbox = computeMaskBbox(bestMask, geometry);
+
+    if (!bbox) throw new Error("Model returned an empty mask");
+
+    const finalMask = postprocessMask(bestMask, geometry, bbox);
+
+    return {
+      mask: finalMask,
+      maskWidth: bbox.w,
+      maskHeight: bbox.h,
+      bbox: normalizeBbox(bbox, geometry),
+    };
+  } finally {
+    // Release GPU-resident encoder outputs (no-op for cached/CPU tensors).
+    for (const t of gpuTensors) t.dispose();
   }
-
-  // Build decoder inputs
-  const n = points.length;
-  const coords = new Float32Array(n * 2);
-  const labels = new Float32Array(n);
-  for (let i = 0; i < n; i++) {
-    const [sx, sy] = transformPoint(points[i].x, points[i].y);
-    coords[i * 2] = sx;
-    coords[i * 2 + 1] = sy;
-    labels[i] = points[i].label;
-  }
-
-  // Decode — outputs: "masks", "iou_predictions"
-  const decResults = await decoderSession.run({
-    image_embed: encResults["image_embed"],
-    high_res_feats_0: encResults["high_res_feats_0"],
-    high_res_feats_1: encResults["high_res_feats_1"],
-    point_coords: new ort.Tensor("float32", coords, [1, n, 2]),
-    point_labels: new ort.Tensor("float32", labels, [1, n]),
-    mask_input: new ort.Tensor(
-      "float32",
-      new Float32Array(SAM2_OUTPUT_SIZE * SAM2_OUTPUT_SIZE),
-      [1, 1, SAM2_OUTPUT_SIZE, SAM2_OUTPUT_SIZE]
-    ),
-    has_mask_input: new ort.Tensor("float32", new Float32Array([0]), [1]),
-  });
-
-  // Pick best mask by IoU (Intersection over Union) confidence score
-  const masks = decResults["masks"].data as Float32Array;
-  const ious = decResults["iou_predictions"].data as Float32Array;
-  const sz = SAM2_OUTPUT_SIZE * SAM2_OUTPUT_SIZE;
-
-  let bestIdx = 0;
-  for (let i = 1; i < ious.length; i++) {
-    if (ious[i] > ious[bestIdx]) bestIdx = i;
-  }
-
-  const bestMask = masks.slice(bestIdx * sz, (bestIdx + 1) * sz);
-  const bbox = computeMaskBbox(bestMask, geometry);
-
-  if (!bbox) throw new Error("Model returned an empty mask");
-
-  const finalMask = postprocessMask(bestMask, geometry, bbox);
-
-  return {
-    mask: finalMask,
-    maskWidth: bbox.w,
-    maskHeight: bbox.h,
-    bbox: normalizeBbox(bbox, geometry),
-  };
 }
 
 // Worker message handler
