@@ -5,6 +5,9 @@ import { useFrameLabelsStream } from "@fiftyone/video-annotation";
 import { useCallback } from "react";
 import type { DeltaSupplier } from "./deltaSupplier";
 
+/** Wrapper shape FiftyOne uses for label-list fields (e.g. `Detections`). */
+type LabelsField = { detections?: object[] };
+
 /**
  * Provides a {@link DeltaSupplier} for per-frame label edits made through the
  * video annotation surface.
@@ -29,36 +32,25 @@ export const useVideoLabelsDeltaSupplier = (): DeltaSupplier => {
     const deltas: JSONDeltas = [];
 
     for (const { frameNumber, baseline, cache } of snapshots) {
-      const baselineField = baseline[frameField] as
-        | Record<string, unknown>
-        | undefined;
-      const cacheField = cache[frameField] as
-        | Record<string, unknown>
-        | undefined;
+      const baselineField = baseline[frameField] as LabelsField | undefined;
+      const cacheField = cache[frameField] as LabelsField | undefined;
+      const pathPrefix = `/frames/${frameNumber}/${frameField}`;
 
       // Baseline is missing the field, or the wrapper is present but
       // missing its inner detections array. Either way the structural
       // diff produces `add /<frameField>/detections ...`, which the
       // server-side `apply_jsonpatch` rejects because that path doesn't
       // resolve on the document. Emit a single op for the whole wrapper.
-      const baselineHasInner =
-        baselineField !== undefined &&
-        typeof baselineField === "object" &&
-        "detections" in baselineField;
-      if (!baselineHasInner && cacheField !== undefined) {
+      if (cacheField !== undefined && baselineField?.detections === undefined) {
         deltas.push({
           op: baselineField === undefined ? "add" : "replace",
-          path: `/frames/${frameNumber}/${frameField}`,
+          path: pathPrefix,
           value: cacheField,
         });
         continue;
       }
 
-      const from = baselineField ?? {};
-      const to = cacheField ?? {};
-      const subDeltas = generateJsonPatch(from, to);
-      const pathPrefix = `/frames/${frameNumber}/${frameField}`;
-
+      const subDeltas = generateJsonPatch(baselineField ?? {}, cacheField ?? {});
       for (const op of subDeltas) {
         deltas.push({ ...op, path: `${pathPrefix}${op.path}` });
       }
