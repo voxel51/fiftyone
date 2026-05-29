@@ -18,6 +18,7 @@ import { usePreloadedQuery } from "react-relay";
 import {
   useRecoilCallback,
   useRecoilState,
+  useRecoilTransaction_UNSTABLE,
   useRecoilValue,
   useSetRecoilState,
 } from "recoil";
@@ -80,6 +81,16 @@ export const GroupElementsLinkBar = React.memo(() => {
     [groupByFieldValue]
   );
 
+  const populateSampleCache = useRecoilTransaction_UNSTABLE(
+    ({ set }) =>
+      (samples: fos.ModalSample[]) => {
+        for (const sample of samples) {
+          set(fos.cachedSampleById(sample.sample._id as string), sample);
+        }
+      },
+    []
+  );
+
   const map = useMemo(() => {
     if (data?.samples?.edges?.length) {
       for (const { cursor, node } of data.samples.edges) {
@@ -88,6 +99,11 @@ export const GroupElementsLinkBar = React.memo(() => {
     }
     return new Map(mapRef);
   }, [data, mapRef]);
+
+  useEffect(() => {
+    if (map.size === 0) return;
+    populateSampleCache(Array.from(map.values()));
+  }, [map, populateSampleCache]);
 
   useEffect(() => {
     if (map.size === 0) {
