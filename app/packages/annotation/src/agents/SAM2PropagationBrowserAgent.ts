@@ -125,7 +125,7 @@ export class SAM2PropagationBrowserAgent
           points: pointsFromBox(args.endKeyframe.bounding_box),
         },
         videoKey: args.videoKey,
-        strategy: args.strategy ?? "centroid-1",
+        strategy: args.strategy ?? "centroid-5",
         shouldAbort: args.shouldAbort,
         onProgress: args.onProgress,
         onFrame: (frameIdx, result) => {
