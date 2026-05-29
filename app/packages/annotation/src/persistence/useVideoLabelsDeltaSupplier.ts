@@ -29,8 +29,33 @@ export const useVideoLabelsDeltaSupplier = (): DeltaSupplier => {
     const deltas: JSONDeltas = [];
 
     for (const { frameNumber, baseline, cache } of snapshots) {
-      const from = (baseline[frameField] ?? {}) as Record<string, unknown>;
-      const to = (cache[frameField] ?? {}) as Record<string, unknown>;
+      const baselineField = baseline[frameField] as
+        | Record<string, unknown>
+        | undefined;
+      const cacheField = cache[frameField] as
+        | Record<string, unknown>
+        | undefined;
+
+      // Baseline is missing the field, or the wrapper is present but
+      // missing its inner detections array. Either way the structural
+      // diff produces `add /<frameField>/detections ...`, which the
+      // server-side `apply_jsonpatch` rejects because that path doesn't
+      // resolve on the document. Emit a single op for the whole wrapper.
+      const baselineHasInner =
+        baselineField !== undefined &&
+        typeof baselineField === "object" &&
+        "detections" in baselineField;
+      if (!baselineHasInner && cacheField !== undefined) {
+        deltas.push({
+          op: baselineField === undefined ? "add" : "replace",
+          path: `/frames/${frameNumber}/${frameField}`,
+          value: cacheField,
+        });
+        continue;
+      }
+
+      const from = baselineField ?? {};
+      const to = cacheField ?? {};
       const subDeltas = generateJsonPatch(from, to);
       const pathPrefix = `/frames/${frameNumber}/${frameField}`;
 

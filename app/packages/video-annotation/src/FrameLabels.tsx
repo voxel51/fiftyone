@@ -37,6 +37,7 @@ import { resolveTrackExtentEdit } from "./trackExtentEdit";
 import { useLinkedTrackDecorator } from "./linkedTracks";
 import {
   EditTemporalDetectionSupportCommand,
+  DeleteTrackCommand,
   ExtendTrackCommand,
   ShiftTrackCommand,
   TrimTrackCommand,
@@ -345,6 +346,14 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
         return {
           ...base,
           snapStepSec,
+          onContextMenu: (e: React.MouseEvent<HTMLDivElement>) => {
+            e.preventDefault();
+            const name = track.label ?? track.id;
+            if (!window.confirm(`Delete track "${name}"?`)) {
+              return;
+            }
+            void commandBus.execute(new DeleteTrackCommand(track.id));
+          },
           onEventEdit: (
             eventIndex: number,
             newStartSec: number,
