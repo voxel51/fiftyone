@@ -12,6 +12,7 @@ import {
 } from "@voxel51/voodo";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import { fmtBound } from "../TimelineControls/timeline-controls-utils";
 import { useTemporalTagContext } from "./TemporalTagContext";
 import styles from "./TemporalTag.module.css";
@@ -40,6 +41,7 @@ function pickTopLeft(
  */
 const TemporalTagPopup: React.FC = () => {
   const ctx = useTemporalTagContext();
+  const { seek } = usePlayback();
   const inputRef = useRef<HTMLInputElement>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -116,12 +118,18 @@ const TemporalTagPopup: React.FC = () => {
   const nudgeStart = (delta: number) => {
     if (!selection) return;
     const next = Math.max(0, selection.start + delta);
-    if (next < selection.end) actions?.setAnchorHandle(next, selection.end);
+    if (next < selection.end) {
+      actions?.setAnchorHandle(next, selection.end);
+      seek(next);
+    }
   };
   const nudgeEnd = (delta: number) => {
     if (!selection) return;
     const next = selection.end + delta;
-    if (next > selection.start) actions?.setAnchorHandle(selection.start, next);
+    if (next > selection.start) {
+      actions?.setAnchorHandle(selection.start, next);
+      seek(next);
+    }
   };
 
   const handleDropdownChange = (value: string) => {
