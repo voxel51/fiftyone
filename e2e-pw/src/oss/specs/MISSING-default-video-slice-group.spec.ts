@@ -30,7 +30,7 @@ test.afterAll(async ({ foWebServer }) => {
 
 test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
   await foWebServer.startWebServer();
-  await mediaFactory.createBlankVideo({
+  await mediaFactory.createVideo({
     outputPath: testVideoPath,
     duration: 2,
     width: 50,
@@ -39,13 +39,13 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
     color: "#000000",
   });
 
-  await mediaFactory.createBlankImage({
+  await mediaFactory.createImage({
     outputPath: testImgPath,
     width: 50,
     height: 50,
   });
 
-  await mediaFactory.createBlankImage({
+  await mediaFactory.createImage({
     outputPath: testImgPath2,
     width: 50,
     height: 50,

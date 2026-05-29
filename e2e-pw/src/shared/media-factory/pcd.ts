@@ -84,7 +84,7 @@ export const createPcd = (options: {
   const { outputPath, numPoints, imputeNaN } = options;
 
   const startTime = performance.now();
-  console.log(`Creating blank pcd with options: ${JSON.stringify(options)}`);
+  console.log(`Creating pcd with options: ${JSON.stringify(options)}`);
   const pythonCode = `
   import open3d as o3d
   pcd = o3d.geometry.PointCloud()

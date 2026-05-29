@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { type Session, useSession } from "@fiftyone/state";
 import { env } from "@fiftyone/utilities";
 import type { MutableRefObject } from "react";
