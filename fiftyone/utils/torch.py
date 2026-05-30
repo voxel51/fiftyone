@@ -27,11 +27,8 @@ import eta.core.utils as etau
 import fiftyone.core.config as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.models as fom
-import fiftyone.core.media as fomd
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
-import fiftyone.utils.image as foui
-import fiftyone.core.collections as focol
 import fiftyone.core.view as fov
 
 fou.ensure_torch()
@@ -138,7 +135,6 @@ def find_torch_hub_requirements(repo_or_dir, source="github"):
             repo_or_dir,
             False,
             True,
-            "",
             verbose=False,
             skip_validation=True,
         )
@@ -1847,7 +1843,7 @@ def _is_string_array(targets):
         return False
 
 
-def _list_dims(samples, path, allow_missing=True):
+def _list_dims(samples, path):
     """Returns the list-typed dimensions traversed by ``samples.values(path)``.
 
     The implicit per-sample dimension is named ``""``. Examples:
@@ -1855,14 +1851,9 @@ def _list_dims(samples, path, allow_missing=True):
     -  ``"filepath"`` -> ``("",)``
     -  ``"frames.id"`` -> ``("", "frames")``
     -  ``"ground_truth.detections.label"`` -> ``("", "ground_truth.detections")``
+
     """
-    _, _, unwind, other, _ = samples._parse_field_name(
-        path,
-        auto_unwind=False,
-        omit_terminal_lists=False,
-        allow_missing=allow_missing,
-    )
-    return ("",) + tuple(sorted(set(unwind + other)))
+    return ("",) + tuple(samples._parse_field_name(path, auto_unwind=False)[3])
 
 
 def _shared_list_prefix_len(dims_a, dims_b):
@@ -1890,25 +1881,6 @@ def _flatten_with_coords(nested, prefix=()):
         yield from _flatten_with_coords(sub, prefix + (i,))
 
 
-def _walk_value(nested, coord, depth):
-    """Indexes into ``nested`` using the first ``depth`` elements of ``coord``.
-
-    Raises ``TypeError`` if a non-list value is reached before consuming
-    ``depth`` elements (a depth/schema mismatch).
-    """
-    value = nested
-    for i in range(depth):
-        if value is None:
-            return None
-        if not isinstance(value, (list, NumpySerializedList)):
-            raise TypeError(
-                f"Expected list at coord depth {i}, "
-                f"got {type(value).__name__}"
-            )
-        value = value[coord[i]]
-    return value
-
-
 def _serialize_list(values, local_process_group):
     """Wraps ``values`` in a serialized list backed by the right storage for
     the current process group.
@@ -1921,6 +1893,21 @@ def _serialize_list(values, local_process_group):
 
     # Non-master ranks read from shared memory; data is broadcast by rank 0
     return TorchShmSerializedList([], local_process_group)
+
+
+def _load_columns(samples, agg_fields, on_master):
+    """Loads each field's per-sample values in a single aggregation, keyed by
+    field.
+
+    One call rather than one per field keeps the columns aligned and lets
+    ``values()`` apply its own optimizations.
+
+    Non-master ranks request nothing and read from shared memory instead.
+    """
+    if not on_master:
+        return {field: [] for field in agg_fields}
+
+    return dict(zip(agg_fields, samples.values(agg_fields)))
 
 
 class FiftyOneTorchDataset(Dataset):
@@ -1942,12 +1929,8 @@ class FiftyOneTorchDataset(Dataset):
         ``"ground_truth.detections.id"``).
     -   Intermediate path components must be list-typed (a ListField or the
         special ``frames`` field).
-    -   The path must resolve cleanly against the collection's schema —
-        every row needs a key, so a missing or invalid ``index_field``
-        raises ``ValueError`` at construction.
 
-    Other field-mapping paths are permissive: a missing field resolves to
-    ``None`` per row downstream.
+    These constraints are documented but not enforced.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
@@ -1984,11 +1967,6 @@ class FiftyOneTorchDataset(Dataset):
         self.field_mapping = get_item.field_mapping.copy()
         self.index_field = index_field
 
-        fields_to_select = list(
-            set(self.field_mapping.values()) | {index_field}
-        )
-        samples = samples.select_fields(fields_to_select)
-
         self.dataset_name = samples._root_dataset.name
         self.stages = (
             samples._serialize()
@@ -1999,63 +1977,52 @@ class FiftyOneTorchDataset(Dataset):
         self.get_item = get_item
         self.skip_failures = skip_failures
 
-        index_dims = _list_dims(samples, index_field, allow_missing=False)
+        index_dims = _list_dims(samples, index_field)
         self._coord_prefix_lens = {
             field: _shared_list_prefix_len(
-                index_dims, _list_dims(samples, field, allow_missing=True)
+                index_dims, _list_dims(samples, field)
             )
             for field in self.field_mapping.values()
         }
 
         # Build keys, coords, and sample ids on the master rank only; other
-        # ranks read from shared memory
+        # ranks read from shared memory.
         on_master = (
             local_process_group is None
             or get_local_rank(local_process_group) == 0
         )
-        if on_master:
-            nested = samples.values(index_field)
-            keys = []
-            coords = []
-            for value, coord in _flatten_with_coords(nested):
-                keys.append(value)
-                coords.append(coord)
-            # Avoid double-fetching when the index already is the sample id
-            sample_ids = keys if index_field == "id" else samples.values("id")
-        else:
-            keys = []
-            coords = []
-            sample_ids = []
+        fields = list(dict.fromkeys(self.field_mapping.values()))
+        agg_fields = list(
+            dict.fromkeys(["id", index_field, *(fields if vectorize else ())])
+        )
+        columns = _load_columns(samples, agg_fields, on_master)
 
-        self.keys = _serialize_list(keys, local_process_group)
+        keys, coords = [], []
+        for value, coord in _flatten_with_coords(columns[index_field]):
+            keys.append(value)
+            coords.append(coord)
+
         self._coords = _serialize_list(coords, local_process_group)
-        self._sample_ids = _serialize_list(sample_ids, local_process_group)
+        self._sample_ids = _serialize_list(columns["id"], local_process_group)
+        self.keys = (
+            self._sample_ids
+            if index_field == "id"
+            else _serialize_list(keys, local_process_group)
+        )
 
         self.vectorize = vectorize
-        self.cached_fields = None
-        if vectorize:
-            self._cache_fields(
-                samples, local_process_group=local_process_group
-            )
+        self.cached_fields = (
+            {
+                field: _serialize_list(columns[field], local_process_group)
+                for field in fields
+            }
+            if vectorize
+            else None
+        )
 
         # initialized in worker
         self._dataset = None
         self._samples = None
-
-    def _cache_fields(self, samples, local_process_group=None):
-        self.cached_fields = {}
-
-        on_master = (
-            local_process_group is None
-            or get_local_rank(local_process_group) == 0
-        )
-
-        # @todo load all fields via a single `values()` call
-        for field in self.field_mapping.values():
-            values = samples.values(field) if on_master else []
-            self.cached_fields[field] = _serialize_list(
-                values, local_process_group
-            )
 
     @property
     def samples(self):
@@ -2142,57 +2109,60 @@ class FiftyOneTorchDataset(Dataset):
 
             return e
 
-    def _resolve_row(self, nested_by_field, coord):
-        """Extracts one row's field values from per-field nested structures.
-
-        ``nested_by_field[field]`` is the value of ``samples.values(field)``
-        for some collection (either the cached upfront view, or the
-        per-batch select view). The outer index ``coord[0]`` selects the
-        sample within that collection.
+    def _build_batch(self, columns, coords, sample_pos):
+        """Builds per-row batches keyed by ``index_field`` from the per-sample
+        ``columns``.
         """
-        return {
-            key: _walk_value(
-                nested_by_field[field],
-                coord,
-                self._coord_prefix_lens[field],
-            )
-            for key, field in self.field_mapping.items()
-        }
+        batch = []
+        cache = {}  # (field, sample idx) -> deserialized per-sample value
+        for coord in coords:
+            s = coord[0]
+            d = {}
+            try:
+                for key, field in self.field_mapping.items():
+                    ckey = (field, s)
+                    if ckey not in cache:
+                        cache[ckey] = columns[field][sample_pos(s)]
+                    value = cache[ckey]
+                    for c in coord[1 : self._coord_prefix_lens[field]]:
+                        if value is None:
+                            break
+                        value = value[c]
+                    d[key] = value
+            except Exception as e:
+                error = ValueError(
+                    f"Error loading field {field} assigned to key {key}: {e}"
+                )
+                if not self.skip_failures:
+                    raise error from e
+
+                d = error
+
+            batch.append(d)
+
+        return batch
 
     def _prepare_batch_db(self, indices):
-        # Find unique sample indices in batch, preserving first-seen order
-        unique_sample_idxs = list(
-            dict.fromkeys(self._coords[i][0] for i in indices)
-        )
+        # Read each row's coord once; reused for sample grouping and the build
+        coords = [self._coords[i] for i in indices]
+
+        # The batch's unique samples, in first-seen order
+        unique_sample_idxs = list(dict.fromkeys(c[0] for c in coords))
         sample_ids = [self._sample_ids[s] for s in unique_sample_idxs]
 
         view = fov.make_optimized_select_view(
             self.samples, sample_ids, ordered=True
         )
+        fields = list(dict.fromkeys(self.field_mapping.values()))
+        columns = dict(zip(fields, view.values(fields)))
 
-        # Fetch all required fields in a single aggregation
-        fields = list(set(self.field_mapping.values()))
-        nested_by_field = dict(zip(fields, view.values(fields)))
-
-        # Remap global sample idx -> position within the batch view
+        # Global sample idx -> its row position in the (ordered) columns
         idx_remap = {gi: li for li, gi in enumerate(unique_sample_idxs)}
-
-        batch = []
-        for i in indices:
-            coord = self._coords[i]
-            local_coord = (idx_remap[coord[0]],) + tuple(coord[1:])
-            batch.append(self._resolve_row(nested_by_field, local_coord))
-
-        return batch
+        return self._build_batch(columns, coords, idx_remap.__getitem__)
 
     def _prepare_batch_vectorized(self, indices):
-        batch = []
-        for i in indices:
-            batch.append(
-                self._resolve_row(self.cached_fields, self._coords[i])
-            )
-
-        return batch
+        coords = (self._coords[i] for i in indices)
+        return self._build_batch(self.cached_fields, coords, lambda s: s)
 
     def __getitem__(self, idx):
         return self.__getitems__([idx])[0]
