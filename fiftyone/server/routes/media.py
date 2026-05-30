@@ -17,12 +17,6 @@ from starlette.responses import FileResponse, Response
 
 _MEDIA_HEADERS = {
     "Accept-Ranges": "bytes",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
-    "Access-Control-Allow-Headers": "Range, Content-Type, Authorization",
-    "Access-Control-Expose-Headers": (
-        "Accept-Ranges, Content-Range, Content-Length"
-    ),
 }
 MEDIA_FILE_RESPONSE_CHUNK_SIZE = 256 * 1024
 

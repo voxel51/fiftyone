@@ -117,28 +117,47 @@ schema = gql.Schema(
 )
 
 mtypes = (  # ensure mimetypes for Windows
-    ('application/javascript', '.js'),
-    ('text/css', '.css'),
-    ('application/wasm', '.wasm'),
+    ("application/javascript", ".js"),
+    ("text/css", ".css"),
+    ("application/wasm", ".wasm"),
 )
 for mtype, ext in mtypes:
     mimetypes.add_type(mtype, ext)
 
-app = Starlette(
-    middleware=[
+_middleware = [Middleware(HeadersMiddleware)]
+
+_allowed_origins = [
+    o.strip()
+    for o in (fo.config.allowed_origins or "").split(",")
+    if o.strip()
+]
+if _allowed_origins:
+    _middleware.append(
         Middleware(
             CORSMiddleware,
-            allow_origins=["*"],
+            allow_origins=_allowed_origins,
             allow_methods=["GET", "PATCH", "POST", "HEAD", "OPTIONS"],
             allow_headers=[
-                "access-control-allow-origin",
                 "authorization",
                 "content-type",
                 "if-match",
+                "range",
             ],
-        ),
-        Middleware(HeadersMiddleware),
-    ],
+            expose_headers=[
+                "accept-ranges",
+                "content-range",
+                "content-length",
+            ],
+        )
+    )
+    if "*" in _allowed_origins:
+        logger.warning(
+            "FIFTYONE_ALLOWED_ORIGINS contains '*', so all cross-origin "
+            "requests are allowed."
+        )
+
+app = Starlette(
+    middleware=_middleware,
     debug=True,
     routes=[Route(route, endpoint) for route, endpoint in routes]
     + [
