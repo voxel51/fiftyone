@@ -34,7 +34,7 @@ test.afterAll(async ({ foWebServer }) => {
 test.beforeAll(
   async ({ fiftyoneLoader, datasetFactory, mediaFactory, foWebServer }) => {
     await foWebServer.startWebServer();
-    await datasetFactory.createBlankDataset({
+    await datasetFactory.createDataset({
       datasetName,
       schema: {
         classification: "Classification",
@@ -44,7 +44,7 @@ test.beforeAll(
       }),
     });
 
-    await datasetFactory.createBlankDataset({
+    await datasetFactory.createDataset({
       datasetName: detectionDatasetName,
       schema: {
         predictions: "Detections",
@@ -70,7 +70,7 @@ test.beforeAll(
       savedViews: { patches: "dataset.to_patches('predictions')" },
     });
 
-    await mediaFactory.createBlankVideo({
+    await mediaFactory.createVideo({
       outputPath: "/tmp/blank-video.webm",
       duration: 1,
       width: 50,

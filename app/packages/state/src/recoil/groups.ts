@@ -27,6 +27,7 @@ import {
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { dataset } from "./dataset";
 import {
+  groupByFieldValue,
   imaVidLookerState,
   isDynamicGroup,
   isNestedDynamicGroup,
@@ -36,14 +37,15 @@ import { ModalSample, modalLooker, modalSample, modalSelector } from "./modal";
 import { RelayEnvironmentKey } from "./relay";
 import {
   active3dSlices,
+  active3dSlicesToSampleMap,
   allNon3dSlices,
   has3dSlice,
+  hasFo3dSlice,
   interaction3dSample,
   is3dPinned,
   pinned3DSampleSlice,
 } from "./renderConfig3d.atoms";
 import { datasetName, parentMediaTypeSelector } from "./selectors";
-import { State } from "./types";
 import { mapSampleResponse } from "./utils";
 import * as viewAtoms from "./view";
 
@@ -349,18 +351,24 @@ export const groupSamples = graphQLSelectorFamily<
       return {
         count,
         dataset: get(datasetName),
-        view: get(groupView),
+        view: get(viewAtoms.view),
+        dynamicGroup: get(groupByFieldValue),
         filter: {
           group: {
             slice: get(groupSlice),
             id: groupIdValue,
-            slices,
+            slices: slices ?? [],
           },
         },
         paginationData,
       };
     },
   mapResponse: (data: ResponseFrom<foq.paginateSamplesQuery>) => {
+    if (!foq.isPaginateSamplesConnection(data.samples)) {
+      throw new Error(
+        `groupSamples: unexpected samples response __typename ${data.samples.__typename}`
+      );
+    }
     return data.samples.edges.map((edge) => {
       return mapSampleResponse(edge.node as ModalSample);
     });
@@ -391,7 +399,8 @@ export const groupHasSampleOnSlice = graphQLSelectorFamily<
       return {
         count: 1,
         dataset: get(datasetName),
-        view: get(groupView),
+        view: get(viewAtoms.view),
+        dynamicGroup: get(groupByFieldValue),
         filter: {
           group: {
             slice,
@@ -403,6 +412,11 @@ export const groupHasSampleOnSlice = graphQLSelectorFamily<
       };
     },
   mapResponse: (data: ResponseFrom<foq.paginateSamplesQuery>) => {
+    if (!foq.isPaginateSamplesConnection(data.samples)) {
+      throw new Error(
+        `groupHasSampleOnSlice: unexpected samples response __typename ${data.samples.__typename}`
+      );
+    }
     return data.samples.edges.length > 0;
   },
 });
@@ -411,7 +425,13 @@ export const activeModalSample = selector({
   key: "activeModalSample",
   get: ({ get }) => {
     if (get(is3dPinned)) {
-      return get(interaction3dSample).sample;
+      if (get(hasFo3dSlice)) {
+        return get(interaction3dSample).sample;
+      }
+
+      const slices = get(active3dSlices);
+      const key = slices.length === 1 ? slices[0] : get(pinned3DSampleSlice);
+      return get(active3dSlicesToSampleMap)[key]?.sample;
     }
 
     return get(modalSample).sample;
@@ -446,16 +466,4 @@ export const activeModalSidebarSample = selector({
 export const groupStatistics = atomFamily<"group" | "slice", boolean>({
   key: "groupStatistics",
   default: "slice",
-});
-
-/**
- * A group view, i.e. all slices of a group, can potentially be of a dynamic
- * group. The GroupBy stage is filtered to accommodate this
- */
-export const groupView = selector<State.Stage[]>({
-  key: "groupView",
-  get: ({ get }) =>
-    get(viewAtoms.view).filter(
-      (stage) => stage._cls !== viewAtoms.GROUP_BY_VIEW_STAGE
-    ),
 });

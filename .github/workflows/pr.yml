@@ -2,7 +2,7 @@ name: Pull Request
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, reopened, closed, ready_for_review]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -46,12 +46,19 @@ jobs:
 
   build:
     needs: modified-files
-    if: ${{ needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true' }}
+    if: >-
+      github.event.action != 'closed' && (
+      needs.modified-files.outputs.app-changes == 'true' ||
+      needs.modified-files.outputs.fiftyone-changes == 'true')
     uses: ./.github/workflows/build.yml
 
   e2e:
     needs: modified-files
-    if: ${{ needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.e2e-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true' }}
+    if: >-
+      github.event.action != 'closed' && (
+      needs.modified-files.outputs.app-changes == 'true' ||
+      needs.modified-files.outputs.e2e-changes == 'true' ||
+      needs.modified-files.outputs.fiftyone-changes == 'true')
     uses: ./.github/workflows/e2e.yml
     secrets:
       docker-username: ${{ secrets.RO_DOCKERHUB_USERNAME }}
@@ -59,40 +66,51 @@ jobs:
 
   lint:
     needs: modified-files
-    if: ${{ needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true' }}
+    if: >-
+      github.event.action != 'closed' && (
+      needs.modified-files.outputs.app-changes == 'true' ||
+      needs.modified-files.outputs.fiftyone-changes == 'true')
     uses: ./.github/workflows/lint-app.yml
 
-  teams:
+  enterprise-sync:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository && (
+      github.event.action == 'closed' ||
+      github.event.pull_request.draft != true)
     runs-on: ubuntu-latest
-    if: false && github.base_ref == 'develop' # temporarily disabled
     steps:
-      - uses: convictional/trigger-workflow-and-wait@v1.6.5
+      - uses: actions/github-script@v7
         with:
-          owner: voxel51
-          repo: fiftyone-teams
-          github_token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
-          github_user: voxel51-bot
-          workflow_file_name: merge-oss.yml
-          ref: develop
-          wait_interval: 20
-          client_payload: |
-            {
-              "author": "${{ github.event.pull_request.user.login }}",
-              "branch": "${{ github.head_ref || github.ref_name }}",
-              "pr": ${{ github.event.pull_request.number }}
-            }
-          propagate_failure: true
-          trigger_workflow: true
-          wait_workflow: true
+          github-token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          script: |
+            await github.rest.repos.createDispatchEvent({
+              owner: 'voxel51',
+              repo: 'fiftyone-teams',
+              event_type: 'oss-pr-sync',
+              client_payload: {
+                action: context.payload.action,
+                branch: context.payload.pull_request.head.ref,
+                author: context.payload.pull_request.user.login,
+                pr_number: context.payload.pull_request.number,
+                commit_sha: context.payload.pull_request.head.sha,
+                base: context.payload.pull_request.base.ref,
+                merged: context.payload.pull_request.merged ?? false,
+              }
+            });
 
   test:
     needs: modified-files
-    if: ${{ needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true' }}
+    if: >-
+      github.event.action != 'closed' && (
+      needs.modified-files.outputs.app-changes == 'true' ||
+      needs.modified-files.outputs.fiftyone-changes == 'true')
     uses: ./.github/workflows/test.yml
 
   test-windows:
     needs: modified-files
-    if: ${{ needs.modified-files.outputs.fiftyone-changes == 'true' }}
+    if: >-
+      github.event.action != 'closed' &&
+      needs.modified-files.outputs.fiftyone-changes == 'true'
     uses: ./.github/workflows/windows-test.yml
 
   all-tests:

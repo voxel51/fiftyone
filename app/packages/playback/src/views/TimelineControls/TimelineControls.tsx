@@ -1,3 +1,8 @@
+import {
+  KnownCommands,
+  KnownContexts,
+  useKeyBindings,
+} from "@fiftyone/commands";
 import { Button, IconName, Size, Variant } from "@voxel51/voodo";
 import clsx from "clsx";
 import React from "react";
@@ -20,6 +25,25 @@ export interface TimelineControlsProps {
 const TimelineControls: React.FC<TimelineControlsProps> = ({ onToggle }) => {
   const isPlaying = useIsPlaying();
   const { play, pause, stepBack, stepForward } = usePlayback();
+
+  useKeyBindings(KnownContexts.Modal, [
+    {
+      commandId: KnownCommands.ModalStepForward,
+      // "." advances a single frame.
+      sequence: ".",
+      handler: stepForward,
+      label: "Step forward",
+      description: "Advance one frame",
+    },
+    {
+      commandId: KnownCommands.ModalStepBack,
+      // "," steps back a single frame ("\\," escapes the reserved delimiter).
+      sequence: "\\,",
+      handler: stepBack,
+      label: "Step back",
+      description: "Go back one frame",
+    },
+  ]);
 
   const handleClick = onToggle
     ? (e: React.MouseEvent<HTMLDivElement>) => {
