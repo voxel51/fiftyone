@@ -2,7 +2,8 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { useAnnotationEventBus } from "@fiftyone/annotation";
+import { ExtendTrackCommand, useAnnotationEventBus } from "@fiftyone/annotation";
+import { useCommandBus } from "@fiftyone/command-bus";
 import {
   DetectionOverlay,
   type Scene2D,
@@ -15,6 +16,13 @@ import { useCallback, useRef } from "react";
 import { useCurrentTime } from "../../playback/src/lib/playback/use-playback-state";
 import { useFrameLabelsStream } from "./frameLabelsStream";
 import type { LocalDetection } from "./VideoFrameLabelsStream";
+
+/**
+ * Frames a freshly-drawn box auto-extends forward as non-keyframe filler,
+ * so a single drawn box immediately becomes a short track (matching a
+ * manual drag-to-extend). Clamped at the clip end.
+ */
+const AUTO_EXTEND_FRAMES = 30;
 
 /**
  * Mirrors user-driven Lighter overlay edits into the label-stream cache
@@ -38,6 +46,7 @@ export const useSyncLighterLabelStream = (scene: Scene2D | null): void => {
   const stream = useFrameLabelsStream();
   const currentTime = useCurrentTime();
   const eventBus = useAnnotationEventBus();
+  const commandBus = useCommandBus();
 
   const useEventHandler = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
@@ -95,11 +104,35 @@ export const useSyncLighterLabelStream = (scene: Scene2D | null): void => {
       // against the canonical synthetic id; the `overlay-added` handler
       // claims it once the sync places the canonical overlay in scene.
       if (minted) {
-        pendingSelectRef.current = `instance-${detection.instance!._id}`;
+        const trackId = `instance-${detection.instance!._id}`;
+        pendingSelectRef.current = trackId;
         scene.removeOverlay(overlayId);
+
+        // Auto-extend the fresh track forward as non-keyframe filler
+        // (`ExtendTrackCommand` semantics: same `instance`/`index`, fresh
+        // `_id` per frame, `keyframe: false`), so one drawn box becomes a
+        // short track without a manual drag. The source detection was just
+        // written above, so the handler resolves it off the stream snapshot.
+        // Leaves a single keyframe, so auto-lerp has no second bracket yet —
+        // intended; it lights up once a downstream keyframe is marked/edited.
+        const lastFrame = Math.min(
+          frame + AUTO_EXTEND_FRAMES,
+          stream.totalFrames
+        );
+
+        const targetFrames: number[] = [];
+        for (let f = frame + 1; f <= lastFrame; f++) {
+          targetFrames.push(f);
+        }
+
+        if (targetFrames.length > 0) {
+          void commandBus.execute(
+            new ExtendTrackCommand(trackId, frame, targetFrames)
+          );
+        }
       }
     },
-    [stream, scene, currentTime, eventBus]
+    [stream, scene, currentTime, commandBus, eventBus]
   );
 
   useEventHandler(
