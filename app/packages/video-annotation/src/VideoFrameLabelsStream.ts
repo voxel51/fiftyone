@@ -1,25 +1,13 @@
-import { getFetchFunction, type Stage } from "@fiftyone/utilities";
+import { type Stage } from "@fiftyone/utilities";
+import { getFrames, type FrameDoc } from "../../core/src/client/framesClient";
 import { PlaybackStreamBase } from "../../playback/src/lib/playback/stream-base";
 import { streamValueAtom } from "../../playback/src/lib/playback/atoms";
+import { frameAt } from "../../playback/src/lib/playback/utils";
 import type {
   BufferReadiness,
   PlaybackStore,
 } from "../../playback/src/lib/playback/types";
 import type { FrameLabelSnapshot, SyntheticBox } from "./SyntheticLabelStream";
-
-/**
- * One per-frame document returned by `POST /frames`. We only model the
- * shape we touch; everything else is read through the dynamic indexer.
- */
-interface FrameSample {
-  frame_number: number;
-  [key: string]: unknown;
-}
-
-interface FrameChunkResponse {
-  frames: FrameSample[];
-  range: [number, number];
-}
 
 // todo - adapter pattern for other label types
 interface RawDetection {
@@ -93,7 +81,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   private readonly frameField: string;
   private readonly chunkSize: number;
 
-  private readonly cache = new Map<number, FrameSample>();
+  private readonly cache = new Map<number, FrameDoc>();
   private readonly inflight = new Map<number, Promise<void>>();
   private readonly fetchedRanges: Array<[number, number]> = [];
 
@@ -265,18 +253,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   }
 
   private timeToFrame(time: number): number {
-    // Mirror @fiftyone/looker's getFrameNumber semantics: 1-indexed,
-    // clamped to [1, frameCount].
-    const frame = Math.floor(time * this.frameRate) + 1;
-    if (frame < 1) {
-      return 1;
-    }
-
-    if (frame > this.frameCount) {
-      return this.frameCount;
-    }
-
-    return frame;
+    return frameAt(time, this.frameRate, this.frameCount);
   }
 
   private isInflight(frame: number): boolean {
@@ -310,21 +287,15 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
 
   private async doFetch(startFrame: number, numFrames: number): Promise<void> {
     try {
-      const result = (await getFetchFunction()(
-        "POST",
-        "/frames",
-        {
-          frameNumber: startFrame,
-          numFrames,
-          frameCount: this.frameCount,
-          sampleId: this.sampleId,
-          dataset: this.dataset,
-          view: this.view,
-          slice: this.groupSlice ?? undefined,
-        },
-        "json",
-        2
-      )) as FrameChunkResponse;
+      const result = await getFrames({
+        frameNumber: startFrame,
+        numFrames,
+        frameCount: this.frameCount,
+        sampleId: this.sampleId,
+        dataset: this.dataset,
+        view: this.view,
+        slice: this.groupSlice ?? undefined,
+      });
 
       for (const frame of result.frames) {
         this.cache.set(frame.frame_number, frame);
@@ -351,7 +322,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
  * that they will churn add/remove on every frame).
  */
 function extractDetections(
-  sample: FrameSample,
+  sample: FrameDoc,
   frameField: string
 ): SyntheticBox[] {
   const raw = sample[frameField] as RawDetectionsField | undefined;

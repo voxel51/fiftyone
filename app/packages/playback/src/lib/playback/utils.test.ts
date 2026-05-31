@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveAtTime } from "./utils";
+import { frameAt, resolveAtTime } from "./utils";
 
 const NEAREST = { type: "nearest" as const, thresholdSeconds: 0.1 };
 const NEAREST_PREVIOUS = {
@@ -65,9 +65,9 @@ describe("resolveAtTime", () => {
       [1.5, "after"],
     ]);
     // Both within 0.5s — but "after" is past `time` and should be skipped.
-    expect(resolveAtTime(cache, 1, { ...NEAREST_PREVIOUS, thresholdSeconds: 0.5 })).toBe(
-      "before"
-    );
+    expect(
+      resolveAtTime(cache, 1, { ...NEAREST_PREVIOUS, thresholdSeconds: 0.5 })
+    ).toBe("before");
   });
 
   it("returns null for nearestPrevious when only future entries exist", () => {
@@ -100,5 +100,28 @@ describe("resolveAtTime", () => {
     const cache = new Map([[1, "v"]]);
     // |1.05 - 1| = 0.05 < 0.1 threshold → hit.
     expect(resolveAtTime(cache, 1.05, NEAREST)).toBe("v");
+  });
+});
+
+describe("frameAt", () => {
+  it("returns 1 at time 0 (1-indexed)", () => {
+    expect(frameAt(0, 30)).toBe(1);
+  });
+
+  it("floors to the nearest preceding frame boundary", () => {
+    // 1/30s exactly → frame 2; just under → still frame 1.
+    expect(frameAt(1 / 30, 30)).toBe(2);
+    expect(frameAt(1 / 30 - 1e-9, 30)).toBe(1);
+  });
+
+  it("returns the raw frame when no frameCount is provided", () => {
+    // 100s @ 30fps → 3001 — no clamping without an upper bound.
+    expect(frameAt(100, 30)).toBe(3001);
+  });
+
+  it("clamps to [1, frameCount] when frameCount is provided", () => {
+    expect(frameAt(-1, 30, 100)).toBe(1);
+    expect(frameAt(1000, 30, 100)).toBe(100);
+    expect(frameAt(1, 30, 100)).toBe(31);
   });
 });

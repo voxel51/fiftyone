@@ -7,25 +7,28 @@ import type {
 import { BaseOverlay } from "@fiftyone/lighter/src/overlay/BaseOverlay";
 
 /**
- * Minimal CanonicalMedia for the video tile. Provides coordinate-space
- * bounds (intrinsic video dimensions + container-fitted rendered bounds)
- * so Lighter overlays can position themselves correctly, but draws no
- * pixels of its own — the <video> element behind the Lighter canvas
- * supplies the visible image.
+ * Minimal CanonicalMedia for tiles whose visible pixels come from a
+ * non-Lighter element layered behind the canvas — a `<video>` for the
+ * native-video tile, an `<img>` for the ImaVid (image-per-frame) tile.
+ * Provides coordinate-space bounds (intrinsic media dimensions +
+ * container-fitted rendered bounds) so Lighter overlays position
+ * correctly, but draws no pixels of its own.
  *
  * We don't use `ImageOverlay` as a stand-in for two reasons:
  *  - It sizes itself from the loaded image's natural dimensions. A
  *    transparent stand-in would collapse every overlay's coordinate
  *    space to whatever 1×1 placeholder we fed it; here we want the
- *    canonical dimensions to be the video's intrinsic resolution.
+ *    canonical dimensions to be the media's intrinsic resolution.
  *  - `renderImpl` decodes and paints a sprite every frame. We don't
- *    need that — the `<video>` element behind the canvas is the
- *    visible media.
+ *    need that — the element behind the canvas is the visible media.
  *
- * The right long-term fix is a `VideoOverlay` (or generic
- * `MediaCanonicalMedia`) upstream in `@fiftyone/lighter`.
+ * The right long-term fix is for `@fiftyone/lighter` to ship a
+ * first-class no-pixel canonical of its own.
  */
-export class VideoCanonicalMedia extends BaseOverlay implements CanonicalMedia {
+export class ExternalCanonicalMedia
+  extends BaseOverlay
+  implements CanonicalMedia
+{
   private originalDimensions: Dimensions;
   private currentBounds: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private resizeObserver?: ResizeObserver;
@@ -33,7 +36,9 @@ export class VideoCanonicalMedia extends BaseOverlay implements CanonicalMedia {
 
   constructor(opts: { width: number; height: number }) {
     super(
-      `video-canonical-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      `external-canonical-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 7)}`,
       "",
       null as never
     );
@@ -41,7 +46,7 @@ export class VideoCanonicalMedia extends BaseOverlay implements CanonicalMedia {
   }
 
   override getOverlayType(): string {
-    return "VideoCanonicalMedia";
+    return "ExternalCanonicalMedia";
   }
 
   override setRenderer(renderer: Renderer2D): void {
@@ -69,7 +74,7 @@ export class VideoCanonicalMedia extends BaseOverlay implements CanonicalMedia {
   }
 
   protected renderImpl(): void {
-    // No-op: the <video> element drawn behind the Lighter canvas is the
+    // No-op: the element drawn behind the Lighter canvas is the
     // visible media. We exist only to anchor the coordinate system.
   }
 
