@@ -90,3 +90,27 @@
 .event:hover {
   filter: brightness(1.15);
 }
+
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 6px;
+  cursor: ew-resize;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.25);
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.intervalBar:hover .resizeHandle {
+  opacity: 1;
+}
+
+.resizeHandleStart {
+  left: 0;
+}
+
+.resizeHandleEnd {
+  right: 0;
+}

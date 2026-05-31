@@ -1,4 +1,5 @@
 import {
+  useAutoInterpolate,
   useRegisterVideoAnnotationCommandHandlers,
   useRegisterVideoAnnotationKeybindings,
 } from "@fiftyone/annotation";
@@ -130,7 +131,7 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
         {labelsMode === "synthetic" ? (
           <SyntheticTrackTimeline />
         ) : (
-          <FrameLabelsTracks />
+          <FrameLabelsTracks sample={sample} />
         )}
       </div>
     </div>
@@ -180,5 +181,6 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
 const VideoAnnotationHandlerRegistration: React.FC = () => {
   useRegisterVideoAnnotationCommandHandlers();
   useRegisterVideoAnnotationKeybindings();
+  useAutoInterpolate();
   return null;
 };

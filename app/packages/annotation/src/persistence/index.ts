@@ -8,3 +8,4 @@ export * from "./usePersistenceEventHandler";
 export * from "./usePersistenceRetryController";
 export * from "./useSampleMutationManager";
 export * from "./useSidebarDeltaSupplier";
+export * from "./useTemporalDetectionDeltaSupplier";
