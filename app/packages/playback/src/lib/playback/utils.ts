@@ -9,13 +9,20 @@ import type { StreamLookupPolicy } from "./types";
  * everyone agrees on which frame a given `time` belongs to. 1-indexed
  * because that is the convention `/frames` uses and the labels coming
  * back from the server are keyed on.
+ *
+ * The `1e-6` epsilon absorbs floating-point error in the
+ * `frame → (frame - 1) / fps → frameAt` round-trip: at a non-integer fps,
+ * `(n - 1) / fps * fps` can land just below `n - 1`
+ * (e.g. `15.999999999999998` at 30.007 fps), which would otherwise floor
+ * down a frame and report the *previous* frame. Mirrors the `eps` guard
+ * in {@link frameBoundaryStep} / {@link displayedFrameStart}.
  */
 export function frameAt(
   time: number,
   fps: number,
   frameCount?: number
 ): number {
-  const raw = Math.floor(time * fps) + 1;
+  const raw = Math.floor(time * fps + 1e-6) + 1;
   if (frameCount === undefined) {
     return raw;
   }

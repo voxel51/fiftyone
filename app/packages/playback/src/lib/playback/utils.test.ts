@@ -109,9 +109,21 @@ describe("frameAt", () => {
   });
 
   it("floors to the nearest preceding frame boundary", () => {
-    // 1/30s exactly → frame 2; just under → still frame 1.
+    // 1/30s exactly → frame 2; a meaningful amount under → still frame 1.
+    // ("Meaningful" = larger than the sub-frame FP tolerance baked into
+    // frameAt; a fractional-frame scrub position is the realistic case.)
     expect(frameAt(1 / 30, 30)).toBe(2);
-    expect(frameAt(1 / 30 - 1e-9, 30)).toBe(1);
+    expect(frameAt(0.9 / 30, 30)).toBe(1);
+  });
+
+  it("round-trips frame → (frame - 1) / fps → frameAt at non-integer fps", () => {
+    // At a non-integer fps, (n - 1) / fps * fps can land just
+    // below n - 1 (e.g. 15.999999999999998 at 30.007 fps), which without an
+    // FP tolerance floors down and reports the *previous* frame.
+    const fps = 30.007001633714534;
+    for (let n = 1; n <= 1000; n++) {
+      expect(frameAt((n - 1) / fps, fps)).toBe(n);
+    }
   });
 
   it("returns the raw frame when no frameCount is provided", () => {
