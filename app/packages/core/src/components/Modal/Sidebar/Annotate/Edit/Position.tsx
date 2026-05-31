@@ -66,9 +66,10 @@ export default function Position({ readOnly = false }: PositionProps) {
 
   const toImagePixels = useCallback(
     (relative: Parameters<typeof relativeToImagePixels>[0]) => {
-      const dims = scene
-        ?.getCanonicalMedia()
-        ?.getOriginalDimensions() ?? { width: 1, height: 1 };
+      const dims = scene?.getCanonicalMedia()?.getOriginalDimensions() ?? {
+        width: 1,
+        height: 1,
+      };
       return relativeToImagePixels(relative, dims);
     },
     [scene]
@@ -77,8 +78,16 @@ export default function Position({ readOnly = false }: PositionProps) {
   const toCanvasPixels = useCallback(
     (imageRect: Parameters<typeof imagePixelsToCanvasPixels>[0]) => {
       const canonicalMedia = scene?.getCanonicalMedia();
-      const dims = canonicalMedia?.getOriginalDimensions() ?? { width: 1, height: 1 };
-      const rendered = canonicalMedia?.getRenderedBounds() ?? { x: 0, y: 0, width: 1, height: 1 };
+      const dims = canonicalMedia?.getOriginalDimensions() ?? {
+        width: 1,
+        height: 1,
+      };
+      const rendered = canonicalMedia?.getRenderedBounds() ?? {
+        x: 0,
+        y: 0,
+        width: 1,
+        height: 1,
+      };
       return imagePixelsToCanvasPixels(imageRect, dims, rendered);
     },
     [scene]
@@ -102,7 +111,7 @@ export default function Position({ readOnly = false }: PositionProps) {
       if (
         !(overlay instanceof DetectionOverlay) ||
         !overlay.hasValidBounds() ||
-        payload.id !== data?._id
+        payload.id !== overlay.id
       ) {
         return;
       }
@@ -119,7 +128,7 @@ export default function Position({ readOnly = false }: PositionProps) {
         bounding_box: [relative.x, relative.y, relative.width, relative.height],
       });
     },
-    [data?._id, overlay, toImagePixels, setData]
+    [overlay, toImagePixels, setData]
   );
 
   useEventHandler("lighter:overlay-bounds-changed", handleBoundsChange);
@@ -179,7 +188,12 @@ export default function Position({ readOnly = false }: PositionProps) {
           };
           const newCanvasBounds = toCanvasPixels(newImagePixels);
           scene?.executeCommand(
-            new TransformOverlayCommand(overlay, overlay.id, oldBounds, newCanvasBounds)
+            new TransformOverlayCommand(
+              overlay,
+              overlay.id,
+              oldBounds,
+              newCanvasBounds
+            )
           );
         }}
       />

@@ -30,8 +30,11 @@ export const detectionAdapter: OverlayAdapter<"detection"> = {
   },
 
   update(overlay, data) {
-    if (!(overlay instanceof DetectionOverlay)) return;
-    overlay.relativeBounds = toRect(data.bounding_box);
+    if (!(overlay instanceof DetectionOverlay)) {
+      return;
+    }
+
+    overlay.updateLabel(toDetectionLabel(data));
   },
 };
 
@@ -57,7 +60,7 @@ function toRect(bbox: SyntheticBox["bounding_box"]): {
  * every detection of the same class collapses to a single color in
  * instance-color mode.
  */
-function toDetectionLabel(box: SyntheticBox): DetectionLabel {
+export function toDetectionLabel(box: SyntheticBox): DetectionLabel {
   return {
     _id: box._id,
     label: box.label,
