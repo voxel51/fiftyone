@@ -1,3 +1,7 @@
+import {
+  useRegisterVideoAnnotationCommandHandlers,
+  useRegisterVideoAnnotationKeybindings,
+} from "@fiftyone/annotation";
 import { getSampleSrc } from "@fiftyone/state";
 import type { ModalSample } from "@fiftyone/state";
 import React, { useMemo, useState } from "react";
@@ -159,5 +163,22 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
   // shadow modal-scoped atoms the sidebar writes to (lighterSceneAtom,
   // detection-mode, label list). Reintroducing multi-tile here requires
   // first pinning those atoms to the modal-default store explicitly.
-  return <PlaybackProvider>{registered}</PlaybackProvider>;
+  return (
+    <PlaybackProvider>
+      <VideoAnnotationHandlerRegistration />
+      {registered}
+    </PlaybackProvider>
+  );
+};
+
+/**
+ * Mounts video-specific command + keybinding registrars inside the
+ * surface's `<PlaybackProvider>` so they can read `useCurrentTime`.
+ * The handlers no-op when there's no active selection or frame-labels
+ * stream, so it's safe to render unconditionally.
+ */
+const VideoAnnotationHandlerRegistration: React.FC = () => {
+  useRegisterVideoAnnotationCommandHandlers();
+  useRegisterVideoAnnotationKeybindings();
+  return null;
 };

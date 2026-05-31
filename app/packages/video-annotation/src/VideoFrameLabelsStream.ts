@@ -10,7 +10,11 @@ import type {
   BufferReadiness,
   PlaybackStore,
 } from "../../playback/src/lib/playback/types";
-import type { FrameLabelSnapshot, SyntheticBox } from "./SyntheticLabelStream";
+import type {
+  FrameLabelSnapshot,
+  PropagationBlob,
+  SyntheticBox,
+} from "./SyntheticLabelStream";
 
 interface RawDetection {
   _id?: string;
@@ -19,6 +23,8 @@ interface RawDetection {
   label?: string;
   bounding_box?: [number, number, number, number];
   instance?: { _cls: "Instance"; _id?: string } | null;
+  keyframe?: boolean;
+  propagation?: PropagationBlob | null;
 }
 
 interface RawDetectionsField {
@@ -38,6 +44,18 @@ export interface LocalDetection {
   label?: string;
   bounding_box: [number, number, number, number];
   instance?: { _cls: "Instance"; _id?: string } | null;
+  /**
+   * Auto-promote-on-edit: callers handling user-initiated edits (draw,
+   * drag, resize) should pass `keyframe: true` so an interpolated label
+   * is promoted to a keyframe on touch. Omit to preserve the existing
+   * value through `updateLabel`'s shallow merge.
+   */
+  keyframe?: boolean;
+  /**
+   * Propagation provenance. User edits clear this (`null`); leave
+   * undefined to preserve the existing value through the shallow merge.
+   */
+  propagation?: PropagationBlob | null;
 }
 
 export interface VideoFrameLabelsStreamOptions {
@@ -223,6 +241,10 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       return "loading";
     }
 
+    if (this.isInFetchedRange(frame)) {
+      return "ready";
+    }
+
     return "missing";
   }
 
@@ -249,6 +271,11 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     const frame = this.timeToFrame(time);
     const sample = this.cache.get(frame);
     if (!sample) {
+      // Chunk fetched, this frame had no labels — return an empty
+      // snapshot so consumers can tell "no labels here" from "not fetched".
+      if (this.isInFetchedRange(frame)) {
+        return { frameNumber: frame, detections: [] };
+      }
       return null;
     }
 
@@ -448,6 +475,15 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     return this.inflight.has(frame);
   }
 
+  private isInFetchedRange(frame: number): boolean {
+    for (const [start, end] of this.fetchedRanges) {
+      if (frame >= start && frame <= end) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private async fetchChunk(startFrame: number): Promise<void> {
     const numFrames = Math.min(
       this.chunkSize,
@@ -533,7 +569,15 @@ function extractDetections(
     }
 
     const detId = det._id ?? det.id ?? null;
-    const id = det.index !== undefined ? `track-${det.index}` : detId;
+    // Prefer `instance._id` as the cross-frame identity. `track-${index}` is
+    // kept as a fallback for legacy data that has only the numeric index, and
+    // `_id` is the last-resort per-frame identifier for untracked,
+    // un-instanced detections
+    const id = det.instance?._id
+      ? `instance-${det.instance._id}`
+      : det.index !== undefined
+      ? `track-${det.index}`
+      : detId;
 
     if (!id) {
       continue;
@@ -546,6 +590,8 @@ function extractDetections(
       bounding_box: det.bounding_box,
       index: det.index,
       instance: det.instance ?? undefined,
+      keyframe: det.keyframe ?? false,
+      propagation: det.propagation ?? null,
     });
   }
 
