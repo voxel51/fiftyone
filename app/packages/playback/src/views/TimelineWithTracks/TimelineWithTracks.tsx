@@ -35,6 +35,12 @@ export interface TimelineWithTracksProps {
   maxSize?: number;
   className?: string;
   /**
+   * Optional content rendered between the playback control buttons and the
+   * playhead time display. Forwarded to {@link TimelineHeader}'s
+   * `controlsSlot`; renders in both the empty-timeline and drawer layouts.
+   */
+  controlsSlot?: React.ReactNode;
+  /**
    * Per-row prop override. Returned partial is merged onto the props
    * passed to each {@link TimelineTrack}.
    */
@@ -61,6 +67,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   defaultSize = TIMELINE_DEFAULT_DRAWER_SIZE,
   maxSize = TIMELINE_DRAWER_MAX_SIZE,
   className,
+  controlsSlot,
   decorateTrack,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -130,7 +137,11 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
         ref={containerRef}
         className={clsx(styles.root, styles.noTracks, className)}
       >
-        <TimelineHeader labelWidth={labelWidth} zoomRef={containerRef} />
+        <TimelineHeader
+          labelWidth={labelWidth}
+          zoomRef={containerRef}
+          controlsSlot={controlsSlot}
+        />
       </div>
     );
   }
@@ -150,6 +161,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
             labelWidth={labelWidth}
             zoomRef={containerRef}
             onToggle={toggle}
+            controlsSlot={controlsSlot}
           >
             {/* Pinned tracks live here when the drawer is closed so they
                 stay on-screen. The host div is position:relative so the

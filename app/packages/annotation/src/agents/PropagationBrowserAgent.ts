@@ -86,6 +86,15 @@ export class PropagationBrowserAgent
       const span: number = context.toFrame - context.fromFrame;
       const runId: string = generateObjectIdHex();
 
+      // Provenance records the *mongo* `_id`s of the two source keyframes,
+      // not their cross-frame-stable synthetic overlay ids (`instance-<...>`,
+      // identical for both ends of a tracked object). Fall back to the
+      // synthetic id only if a keyframe somehow lacks a persisted `_id`.
+      const parentKeyframeIds: [string, string] = [
+        leftKeyframe._id ?? leftKeyframe.id,
+        rightKeyframe._id ?? rightKeyframe.id,
+      ];
+
       const perFrame: PropagationInferenceResult["perFrame"] = [];
       range(context.fromFrame + 1, context.toFrame).forEach((n) => {
         const t: number = (n - context.fromFrame) / span;
@@ -100,7 +109,7 @@ export class PropagationBrowserAgent
           propagation: {
             method: "linear",
             run_id: runId,
-            parent_keyframes: [leftKeyframe.id, rightKeyframe.id],
+            parent_keyframes: parentKeyframeIds,
           },
         };
         perFrame.push({ frameNumber: n, detection });

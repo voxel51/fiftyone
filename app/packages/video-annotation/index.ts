@@ -15,6 +15,10 @@ export {
 export { ImaVidImageStream } from "./src/ImaVidImageStream";
 export type { ImaVidImageFrame } from "./src/ImaVidImageStream";
 export { useFrameLabelsStream } from "./src/frameLabelsStream";
+export { useVideoAnnotationStatus } from "./src/videoAnnotationStatus";
+export type { VideoAnnotationStatusContent } from "./src/videoAnnotationStatus";
+export { resolvePropagationTarget } from "./src/propagationTarget";
+export type { PropagationTarget } from "./src/propagationTarget";
 export { VideoFrameLabelsStream } from "./src/VideoFrameLabelsStream";
 export type { LocalDetection } from "./src/VideoFrameLabelsStream";
 export { buildTemporalDetectionTracks } from "./src/temporalDetectionTracks";

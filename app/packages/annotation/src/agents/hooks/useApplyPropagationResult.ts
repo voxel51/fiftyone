@@ -30,7 +30,23 @@ export const useApplyPropagationResult = (): PropagationResultHandler => {
       if (result.type !== "sync") return;
 
       result.response.perFrame.forEach(({ frameNumber, detection }) => {
-        stream.updateLabel(frameNumber, detection);
+        // The agent mints a fresh `_id` per interpolated frame, but the
+        // in-between frames of a tracked object usually already carry a
+        // detection for this instance. `updateLabel` matches by `_id`, so a
+        // fresh id would append a duplicate (collapsed in rendering by the
+        // shared `instance._id`, but doubled in the data and persisted as an
+        // `add`). Reuse the existing detection's `_id` when one is present so
+        // the propagation overwrites it in place (a `replace`); fall back to
+        // the minted id only for genuine gaps in the track (a correct `add`).
+        const snapshot = stream.getValue((frameNumber - 1) / stream.fps);
+        const existing = snapshot?.detections.find(
+          (d) => d.instance?._id === detection.instance?._id
+        );
+
+        stream.updateLabel(
+          frameNumber,
+          existing?._id ? { ...detection, _id: existing._id } : detection
+        );
       });
     },
     [stream]

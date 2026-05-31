@@ -17,6 +17,7 @@ import {
   SYNTHETIC_FIELD,
   SyntheticTrackTimeline,
 } from "./SyntheticLabels";
+import { VideoAnnotationTopBar } from "./VideoAnnotationTopBar";
 import { VideoLighterTile } from "./VideoLighterTile";
 import styles from "./VideoAnnotationSurface.module.css";
 
@@ -126,6 +127,7 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
   const layout = (
     <div className={styles.root}>
       <LinkedOverlayStateBridge />
+      <VideoAnnotationTopBar sample={sample} />
       <div className={styles.media}>{media}</div>
       <div className={styles.timeline}>
         {labelsMode === "synthetic" ? (
