@@ -31,7 +31,9 @@ function PlaybackContextHost({
     [baseContext, liveDuration, liveStepInterval]
   );
   return (
-    <PlaybackContext.Provider value={value}>{children}</PlaybackContext.Provider>
+    <PlaybackContext.Provider value={value}>
+      {children}
+    </PlaybackContext.Provider>
   );
 }
 
@@ -42,6 +44,7 @@ export function PlaybackProvider({
   defaultLoopStart,
   defaultLoopEnd,
   defaultSpeed = 1.0,
+  snapToFrameOnSettle,
 }: PlaybackConfig & { children: React.ReactNode }) {
   const { store, contextValue } = usePlaybackEngine({
     duration,
@@ -49,6 +52,7 @@ export function PlaybackProvider({
     defaultLoopStart,
     defaultLoopEnd,
     defaultSpeed,
+    snapToFrameOnSettle,
   });
 
   // We deliberately do NOT mount a Jotai `<Provider>` here. Every reactive
@@ -76,7 +80,8 @@ export function PlaybackProvider({
  */
 export function usePlayback(): PlaybackContextValue {
   const ctx = useContext(PlaybackContext);
-  if (!ctx) throw new Error("usePlayback must be used inside <PlaybackProvider>");
+  if (!ctx)
+    throw new Error("usePlayback must be used inside <PlaybackProvider>");
   return ctx;
 }
 

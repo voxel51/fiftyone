@@ -57,6 +57,23 @@ function frameBoundaryStep(
 }
 
 /**
+ * Snap a continuous playhead time onto the START of the displayed frame it
+ * falls within — `floor(time / step) * step`. Unlike {@link frameBoundaryStep}
+ * this never advances a frame; it just aligns a mid-frame playhead onto the
+ * boundary of the frame currently on screen, so a settle-snap keeps the user
+ * on the frame they were looking at. The `eps` tolerance keeps a playhead
+ * already at `K * step` from being read as the previous frame.
+ */
+function displayedFrameStart(time: number, step: number): number {
+  if (!(step > 0)) {
+    return time;
+  }
+
+  const eps = step * 1e-6;
+  return Math.floor((time + eps) / step) * step;
+}
+
+/**
  * Cap on per-tick `dt` (sec) in the engine's wallclock-driven advance.
  * When the main thread is blocked (memory pressure, GC pause, throttled
  * tab) RAF callbacks pile up and the next `timestamp - lastTimestamp`
@@ -82,6 +99,7 @@ export function usePlaybackEngine({
   defaultLoopStart,
   defaultLoopEnd,
   defaultSpeed = 1.0,
+  snapToFrameOnSettle = false,
 }: PlaybackConfig = {}): {
   store: PlaybackStore;
   contextValue: PlaybackContextValue;
@@ -93,6 +111,8 @@ export function usePlaybackEngine({
   fallbackDurationRef.current = duration;
   const fallbackStepIntervalRef = useRef(stepInterval);
   fallbackStepIntervalRef.current = stepInterval;
+  const snapToFrameRef = useRef(snapToFrameOnSettle);
+  snapToFrameRef.current = snapToFrameOnSettle;
 
   const store = useMemo(() => {
     const s = createStore();
@@ -339,8 +359,43 @@ export function usePlaybackEngine({
     [isActive]
   );
 
-  const actions = useMemo(
-    () => ({
+  const actions = useMemo(() => {
+    // Settle-snap: align the playhead to the displayed frame's start. No-op
+    // unless `snapToFrameOnSettle` is configured, so general playback keeps
+    // continuous scrubbing — only the resting position after pause / drag-end
+    // is snapped, never the mid-drag `seek`s. Mirrors `seek`'s set →
+    // fireSeekEvent → commit-if-ready flow so buffering is respected.
+    const snapPlayheadToFrame = () => {
+      if (!snapToFrameRef.current) {
+        return;
+      }
+
+      const step = store.get(stepIntervalAtom);
+      if (!(step > 0)) {
+        return;
+      }
+
+      const current = store.get(playheadAtom);
+      const snapped = clamp(
+        displayedFrameStart(current, step),
+        0,
+        store.get(durationAtom)
+      );
+
+      if (Math.abs(snapped - current) < step * 1e-6) {
+        return;
+      }
+
+      store.set(playheadAtom, snapped);
+      fireSeekEvent(snapped, true);
+
+      if (checkAllReady(snapped)) {
+        doCommit(snapped);
+      }
+    };
+
+    return {
+      snapPlayheadToFrame,
       seek: (time: number) => {
         const clamped = clamp(time, 0, store.get(durationAtom));
         store.set(playheadAtom, clamped);
@@ -359,6 +414,7 @@ export function usePlaybackEngine({
       },
       pause: () => {
         store.set(isPlayingAtom, false);
+        snapPlayheadToFrame();
       },
       stepBack: () => {
         const next = clamp(
@@ -467,16 +523,15 @@ export function usePlaybackEngine({
           }
         };
       },
-    }),
-    [
-      store,
-      fireSeekEvent,
-      doCommit,
-      checkAllReady,
-      recomputeDuration,
-      recomputeStepInterval,
-    ]
-  );
+    };
+  }, [
+    store,
+    fireSeekEvent,
+    doCommit,
+    checkAllReady,
+    recomputeDuration,
+    recomputeStepInterval,
+  ]);
 
   const contextValue = useMemo<PlaybackContextValue>(
     () => ({ duration, stepInterval, ...actions }),
