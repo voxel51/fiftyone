@@ -1,12 +1,12 @@
 import {
-  type DetectionLabel,
-  type DetectionOverlayOptions,
   DetectionOverlay,
   overlayFactory,
   useLighterSetupWithPixi,
 } from "@fiftyone/lighter";
+import { useIsPlaying } from "../../playback/src/lib/playback/use-playback-state";
 import { useEffect, useRef } from "react";
-import type { FrameLabelSnapshot, SyntheticBox } from "./SyntheticLabelStream";
+import { overlayAdapters } from "./overlayAdapters";
+import type { FrameLabelSnapshot } from "./SyntheticLabelStream";
 
 /**
  * Diff the latest snapshot into Lighter overlays. Add unseen
@@ -27,6 +27,10 @@ export function useFrameOverlaySync(
 ) {
   const trackedRef = useRef<Set<string>>(new Set());
 
+  // Disable drag/resize while the stream is playing
+  const isPlaying = useIsPlaying();
+  const editable = !isPlaying;
+
   useEffect(() => {
     // Skip the diff until the current scene has its canonical media —
     // overlays added before then get burned in with a bad coordinate
@@ -34,34 +38,33 @@ export function useFrameOverlaySync(
     // fix them. The effect re-runs once `canonicalMediaReady` flips.
     if (!scene || !snapshot || !canonicalMediaReady) return;
 
+    const ctx = { field, editable };
     const next = new Set<string>();
-    // todo - adapter pattern for other label types
-    for (const det of snapshot.detections) {
-      next.add(det.id);
-      const existing = scene.getOverlay(det.id) as DetectionOverlay | undefined;
-      const bounds = {
-        x: det.bounding_box[0],
-        y: det.bounding_box[1],
-        width: det.bounding_box[2],
-        height: det.bounding_box[3],
-      };
-      if (existing) {
-        existing.relativeBounds = bounds;
-      } else {
-        const overlay = overlayFactory.create<
-          DetectionOverlayOptions,
-          DetectionOverlay
-        >("detection", {
-          id: det.id,
-          label: toDetectionLabel(det),
-          relativeBounds: bounds,
-          field,
-          draggable: false,
-          resizeable: false,
-          selectable: false,
-        });
-        scene.addOverlay(overlay);
-        trackedRef.current.add(det.id);
+
+    for (const adapter of Object.values(overlayAdapters)) {
+      const labels = snapshot[adapter.snapshotKey] as unknown[] | undefined;
+      if (!labels) continue;
+
+      for (const data of labels) {
+        const result = adapter.extract(data as never, ctx);
+        if (!result) continue;
+        next.add(result.id);
+
+        const existing = scene.getOverlay(result.id);
+        if (existing) {
+          adapter.update(existing, data as never);
+        } else {
+          const overlay = overlayFactory.create(
+            adapter.factoryKey,
+            result.props
+          );
+          scene.addOverlay(overlay);
+        }
+        // Track every snapshot-backed overlay, not just ones we created.
+        // External adds (e.g. detectionMode.create) must enter the
+        // cleanup set too — otherwise the diff loop never removes them
+        // when the user scrubs off their frame.
+        trackedRef.current.add(result.id);
       }
     }
 
@@ -71,7 +74,19 @@ export function useFrameOverlaySync(
         trackedRef.current.delete(id);
       }
     }
-  }, [scene, snapshot, field, canonicalMediaReady]);
+  }, [scene, snapshot, field, canonicalMediaReady, editable]);
+
+  useEffect(() => {
+    if (!scene) return;
+
+    for (const id of trackedRef.current) {
+      const overlay = scene.getOverlay(id);
+      if (overlay instanceof DetectionOverlay) {
+        overlay.setDraggable(editable);
+        overlay.setResizeable(editable);
+      }
+    }
+  }, [scene, editable]);
 
   useEffect(() => {
     return () => {
@@ -86,16 +101,4 @@ export function useFrameOverlaySync(
       trackedRef.current.clear();
     };
   }, [scene]);
-}
-
-function toDetectionLabel(box: SyntheticBox): DetectionLabel {
-  return {
-    label: box.label,
-    bounding_box: box.bounding_box,
-    // `index` and `instance` are what `COLOR_BY.INSTANCE` hashes on —
-    // without them every detection of the same class would collapse to
-    // a single color in instance mode.
-    index: box.index,
-    instance: box.instance,
-  } as DetectionLabel;
 }

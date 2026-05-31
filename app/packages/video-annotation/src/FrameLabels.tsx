@@ -25,7 +25,11 @@ import {
   type Track,
 } from "../../playback/src/lib/tracks/TrackProvider";
 import TimelineWithTracks from "../../playback/src/views/TimelineWithTracks/TimelineWithTracks";
-import { FrameLabelsContext, useFrameLabelsStream } from "./FrameLabelsContext";
+import {
+  FrameLabelsContext,
+  useFrameLabelsEditVersion,
+  useFrameLabelsStream,
+} from "./FrameLabelsContext";
 import { buildPerInstanceTracks, type PerInstanceLabel } from "./frameTracks";
 import { LABELS_STREAM_ID } from "./ids";
 import { useLinkedTrackDecorator } from "./linkedTracks";
@@ -166,6 +170,7 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
  */
 export const FrameLabelsTracks: React.FC = () => {
   const stream = useFrameLabelsStream();
+  const editVersion = useFrameLabelsEditVersion();
   const scheme = useRecoilValue(colorScheme);
   const seed = useRecoilValue(colorSeed);
 
@@ -202,7 +207,7 @@ export const FrameLabelsTracks: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [stream, resolveColor]);
+  }, [stream, resolveColor, editVersion]);
 
   const pinned = useMemo(() => tracks.map((t) => t.id), [tracks]);
   const ready = tracks.length > 0;
