@@ -65,14 +65,20 @@
   border-radius: 2px;
 }
 
+/* Keyframe diamond. Sits on a presence bar of the same track color, so it
+   needs a contrasting outline + its own stacking context to read clearly —
+   especially on dimmed (unpinned) rows. The theme-adaptive border tracks
+   the foreground color; the shadow separates it from light-colored bars. */
 .event {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%) rotate(45deg);
-  width: 8px;
-  height: 8px;
-  z-index: 1;
+  width: 11px;
+  height: 11px;
+  z-index: 3;
   cursor: pointer;
+  border: 1.5px solid var(--color-content-text-primary);
+  box-shadow: 0 0 2px 1px rgba(0, 0, 0, 0.45);
 }
 
 /* Interval bar — one segment of a semantic track, click-to-seek. */
