@@ -3,7 +3,7 @@ import { PlaybackStreamBase } from "../../playback/src/lib/playback/stream-base"
 /** ObjectId hex string. */
 export type ObjectIdHex = string;
 
-export type PropagationMethod = "linear";
+export type PropagationMethod = "linear" | "sam2";
 
 /** Provenance written on labels created by a propagation run. */
 export interface PropagationBlob {

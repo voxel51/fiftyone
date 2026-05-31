@@ -12,6 +12,7 @@ import { usePlayback } from "../../playback/src/lib/playback/PlaybackProvider";
 import { usePlaybackStream } from "../../playback/src/lib/playback/use-playback-stream";
 import { IMAVID_STREAM_ID } from "./ids";
 import { ImaVidImageStream } from "./ImaVidImageStream";
+import { usePublishImaVidImageStream } from "./imaVidImageStreamHandle";
 
 /**
  * Construct and register `ImaVidImageStream` as soon as the sample's
@@ -147,6 +148,10 @@ const ImaVidImageRegistration: React.FC<ImaVidImageRegistrationProps> = ({
   }, []);
 
   usePlaybackStream(streamRef.current);
+
+  // Publish the stream instance so off-tile consumers
+  // can pull arbitrary frame bitmaps by index via warmup/getValue.
+  usePublishImaVidImageStream(streamRef.current);
 
   // Pre-warm the first chunk and seek to t=0 so the first paint isn't
   // a blank tile waiting on the network + decode.

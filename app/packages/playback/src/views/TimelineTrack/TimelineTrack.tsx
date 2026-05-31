@@ -55,9 +55,11 @@ function normalizeEvent(e: TimelineTrackEvent): NormalizedEvent {
 /**
  * Drag mode for an in-progress interval edit. `move` shifts both start
  * and end by the same delta; `resize-start` / `resize-end` move only
- * one boundary.
+ * one boundary. Reported to {@link TimelineTrackProps.onEventEdit} so
+ * consumers can react differently per mode (e.g. extend vs. shift a
+ * tracked object).
  */
-type DragMode = "resize-start" | "resize-end" | "move";
+export type DragMode = "resize-start" | "resize-end" | "move";
 
 interface DragState {
   index: number;
@@ -113,8 +115,9 @@ export interface TimelineTrackProps {
   /**
    * Fires on pointer-up after a drag has crossed{@link DRAG_THRESHOLD_PX},
    * never during the drag itself. Receives the event's index in the
-   * {@link events} array and the final clamped + snapped `[start, end]`
-   * (seconds).
+   * {@link events} array, the final clamped + snapped `[start, end]`
+   * (seconds), and the {@link DragMode} that produced the edit (so a
+   * consumer can tell an edge extend/trim from a whole-bar move).
    *
    * Only events with `resizable: true` participate; without this prop
    * the resizable flag is a no-op and the bar renders as before.
@@ -122,7 +125,8 @@ export interface TimelineTrackProps {
   onEventEdit?: (
     eventIndex: number,
     newStartSec: number,
-    newEndSec: number
+    newEndSec: number,
+    mode: DragMode
   ) => void;
   /**
    * Snap step (seconds) for drag-driven edits. Typically `1 / fps`,
@@ -170,12 +174,17 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
    * Local visual override applied while the user is dragging an
    * interval bar. `null` when not dragging; cleared on pointerup.
    * Render reads this so the bar tracks the cursor without committing
-   * anything until the user lets go.
+   * anything until the user lets go. `mode` + the original bounds let a
+   * `move` drag also offset the point events (e.g. keyframe diamonds)
+   * sitting inside the bar, so they stay attached to it during the drag.
    */
   const [dragOverride, setDragOverride] = useState<{
     index: number;
     startSec: number;
     endSec: number;
+    mode: DragMode;
+    origStartSec: number;
+    origEndSec: number;
   } | null>(null);
 
   /**
@@ -277,6 +286,9 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
         index: drag.index,
         startSec: newStart,
         endSec: newEnd,
+        mode: drag.mode,
+        origStartSec: drag.origStart,
+        origEndSec: drag.origEnd,
       });
     };
 
@@ -294,7 +306,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
         setTimeout(() => {
           justDraggedRef.current = false;
         }, 0);
-        onEventEdit(drag.index, drag.latestStart, drag.latestEnd);
+        onEventEdit(drag.index, drag.latestStart, drag.latestEnd, drag.mode);
       }
 
       setDragOverride(null);
@@ -311,6 +323,21 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   const barVisible = hasBackground && clippedStart < clippedEnd;
 
   const labelText = label ?? id;
+
+  // While moving an interval, point events (e.g. keyframe diamonds) that
+  // live inside the dragged bar's *original* span should travel with it.
+  // The bar follows the cursor via `dragOverride`; mirror the same offset
+  // onto those points so they stay attached until drag-end commits the
+  // shift. Resize drags don't move points (extend adds filler, trim
+  // deletes frames) — so this only applies to `move`.
+  const movePointShift =
+    dragOverride && dragOverride.mode === "move"
+      ? {
+          delta: dragOverride.startSec - dragOverride.origStartSec,
+          fromSec: dragOverride.origStartSec,
+          toSec: dragOverride.origEndSec,
+        }
+      : null;
 
   return (
     <div
@@ -557,11 +584,20 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                 </ContextMenu>
               );
             }
+            // Offset points inside the dragged bar's original span by the
+            // live move delta so they track the bar. `1e-6` absorbs float
+            // drift; original event/interval bounds are otherwise exact.
+            const pointSec =
+              movePointShift &&
+              event.startSec >= movePointShift.fromSec - 1e-6 &&
+              event.startSec <= movePointShift.toSec + 1e-6
+                ? event.startSec + movePointShift.delta
+                : event.startSec;
             return (
               <ContextMenu key={originalIndex} menu={menu}>
                 <div
                   className={styles.event}
-                  style={{ left: pct(event.startSec), background: color }}
+                  style={{ left: pct(pointSec), background: color }}
                   title={
                     event.label
                       ? `${event.label}  @ ${event.startSec.toFixed(3)}s`
