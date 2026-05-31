@@ -59,6 +59,7 @@ function toRect(bbox: SyntheticBox["bounding_box"]): {
  */
 function toDetectionLabel(box: SyntheticBox): DetectionLabel {
   return {
+    _id: box._id,
     label: box.label,
     bounding_box: box.bounding_box,
     index: box.index,

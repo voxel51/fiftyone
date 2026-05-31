@@ -1,12 +1,9 @@
 import { getSampleSrc } from "@fiftyone/state";
 import type { ModalSample } from "@fiftyone/state";
 import React, { useMemo, useState } from "react";
+import { useActiveDetectionField } from "../../core/src/components/Modal/Sidebar/Annotate/Edit/useDetectionMode";
 import { PlaybackProvider } from "../../playback/src/lib/playback/PlaybackProvider";
-import {
-  FRAME_FIELD,
-  FrameLabelsTracks,
-  RegisterFrameLabels,
-} from "./FrameLabels";
+import { FrameLabelsTracks, RegisterFrameLabels } from "./FrameLabels";
 import { ImaVidLighterTile } from "./ImaVidLighterTile";
 import { LinkedOverlayStateBridge } from "./linkedTracks";
 import { RegisterImaVidImage } from "./RegisterImaVidImage";
@@ -101,7 +98,16 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
     return url ? getSampleSrc(url) : null;
   }, [sample, tileMode]);
 
-  const field = labelsMode === "synthetic" ? SYNTHETIC_FIELD : FRAME_FIELD;
+  // Tracks the detection field the sidebar is currently configured to annotate
+  // into so newly-drawn overlays paint with the right color and persist to the
+  // right list. `null` means no detection field is available (e.g. schema
+  // has none, or all are read-only) — the surface still renders, but
+  // overlay extraction will see a missing per-frame key and emit nothing.
+  const activeDetectionField = useActiveDetectionField();
+  const field =
+    labelsMode === "synthetic"
+      ? SYNTHETIC_FIELD
+      : activeDetectionField ?? "frames.detections";
 
   const media =
     tileMode === "imavid" ? (

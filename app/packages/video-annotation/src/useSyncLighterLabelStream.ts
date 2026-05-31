@@ -11,7 +11,7 @@ import {
 import type { DetectionLabel } from "@fiftyone/looker";
 import { useCallback } from "react";
 import { useCurrentTime } from "../../playback/src/lib/playback/use-playback-state";
-import { useFrameLabelsStream } from "./FrameLabelsContext";
+import { useFrameLabelsStream } from "./frameLabelsStream";
 import type { LocalDetection } from "./VideoFrameLabelsStream";
 
 /**
@@ -91,11 +91,24 @@ export const useSyncLighterLabelStream = (scene: Scene2D | null): void => {
 function toLocalDetection(overlay: DetectionOverlay): LocalDetection {
   const bounds = overlay.relativeBounds;
   const label = overlay.label as DetectionLabel;
-  return {
-    _id: overlay.id,
+  // Prefer the real MongoDB `_id` from the underlying label so cache
+  // upserts match the existing baseline entry. `overlay.id` is the
+  // synthetic `track-<n>` id used for cross-frame identity and won't
+  // match anything in the baseline detections array.
+  const det: LocalDetection = {
+    _cls: "Detection",
+    _id: label._id ?? overlay.id,
     label: label.label,
     bounding_box: [bounds.x, bounds.y, bounds.width, bounds.height],
-    index: label.index,
-    instance: label.instance ?? null,
   };
+
+  if (label.index !== undefined) {
+    det.index = label.index;
+  }
+
+  if (label.instance) {
+    det.instance = label.instance;
+  }
+
+  return det;
 }

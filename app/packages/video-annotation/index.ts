@@ -12,3 +12,5 @@ export {
 } from "./src/ids";
 export { ImaVidImageStream } from "./src/ImaVidImageStream";
 export type { ImaVidImageFrame } from "./src/ImaVidImageStream";
+export { useFrameLabelsStream } from "./src/frameLabelsStream";
+export { VideoFrameLabelsStream } from "./src/VideoFrameLabelsStream";

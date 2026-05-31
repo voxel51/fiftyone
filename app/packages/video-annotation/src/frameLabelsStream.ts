@@ -1,26 +1,37 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useSyncExternalStore,
-} from "react";
+import { atom, useAtomValue, useSetAtom } from "jotai";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 import type { VideoFrameLabelsStream } from "./VideoFrameLabelsStream";
 
 /**
- * Shares the active frame-labels stream from the registrar component
- * down to downstream consumers (e.g. the per-class track builder) so we
- * don't issue duplicate `/frames` fetches against the same sample.
+ * Active frame-labels stream; publication goes through
+ * {@link usePublishFrameLabelsStream} so external code can't write arbitrary
+ * values.
  *
- * Value is `null` while the stream's params (sampleId, duration, etc.)
- * aren't all available yet — consumers should treat that as "no data
- * available; render placeholder."
+ * `null` while the stream's params (sampleId, duration, etc.) aren't all
+ * available yet — consumers should treat that as "no data available; render
+ * placeholder."
  */
-export const FrameLabelsContext = createContext<VideoFrameLabelsStream | null>(
-  null
-);
+const frameLabelsStreamAtom = atom<VideoFrameLabelsStream | null>(null);
 
 export function useFrameLabelsStream(): VideoFrameLabelsStream | null {
-  return useContext(FrameLabelsContext);
+  return useAtomValue(frameLabelsStreamAtom);
+}
+
+/**
+ * Publishes `stream` as the active frame-labels stream for the lifetime of
+ * the calling component, clearing on unmount. Intended for the labels
+ * registrar; nothing else should be publishing.
+ */
+export function usePublishFrameLabelsStream(
+  stream: VideoFrameLabelsStream | null
+): void {
+  const setStream = useSetAtom(frameLabelsStreamAtom);
+
+  useEffect(() => {
+    setStream(stream);
+
+    return () => setStream(null);
+  }, [setStream, stream]);
 }
 
 /**
@@ -37,13 +48,16 @@ export function useFrameLabelsStream(): VideoFrameLabelsStream | null {
  */
 export function useFrameLabelsEditVersion(): number {
   const stream = useFrameLabelsStream();
+
   const subscribe = useCallback(
     (notify: () => void) => stream?.subscribeToEdits(notify) ?? (() => {}),
     [stream]
   );
+
   const getSnapshot = useCallback(
     () => stream?.getEditVersion() ?? 0,
     [stream]
   );
+
   return useSyncExternalStore(subscribe, getSnapshot);
 }

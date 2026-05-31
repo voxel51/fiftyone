@@ -2,6 +2,15 @@ import { PlaybackStreamBase } from "../../playback/src/lib/playback/stream-base"
 
 export interface SyntheticBox {
   id: string;
+  /**
+   * Real MongoDB `_id` of the source detection when one exists. The
+   * overlay-facing {@link id} is synthesized from the track index for
+   * tracked detections (so cross-frame identity for color/highlight
+   * matches the timeline track), but persistence needs the original
+   * `_id` to upsert the right element in the baseline detections list.
+   * Undefined for freshly-drawn boxes that haven't been persisted yet.
+   */
+  _id?: string;
   label: string;
   /** Normalized [x, y, w, h] in [0, 1]. */
   bounding_box: [number, number, number, number];
