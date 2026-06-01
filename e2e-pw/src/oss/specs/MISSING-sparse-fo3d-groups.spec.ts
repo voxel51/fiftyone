@@ -4,8 +4,8 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-const datasetName = getUniqueDatasetNameWithPrefix("jagged-fo3d-groups");
-const sharedMeshPath = `/tmp/jagged-fo3d-groups-${datasetName}-mesh.ply`;
+const datasetName = getUniqueDatasetNameWithPrefix("sparse-fo3d-groups");
+const sharedMeshPath = `/tmp/sparse-fo3d-groups-${datasetName}-mesh.ply`;
 const groupSpecs = [
   { scene: "group-1", slices: ["x", "y", "z"] },
   { scene: "group-2", slices: ["y", "z"] },
@@ -16,7 +16,7 @@ const groupSpecs = [
   samples: spec.slices.map((slice, sliceIndex) => ({
     slice,
     name: `${spec.scene}-${slice}`,
-    path: `/tmp/jagged-fo3d-groups-${datasetName}-${spec.scene}-${slice}.fo3d`,
+    path: `/tmp/sparse-fo3d-groups-${datasetName}-${spec.scene}-${slice}.fo3d`,
     position: [groupIndex * 0.45, sliceIndex * 0.25, slice === "z" ? 0.2 : 0],
     scale: 0.85 + sliceIndex * 0.1,
   })),
@@ -123,13 +123,13 @@ if fo.dataset_exists("${datasetName}"):
   });
 });
 
-test.describe.serial("jagged grouped fo3d", () => {
+test.describe.serial("sparse grouped fo3d", () => {
   test.beforeEach(async ({ page, fiftyoneLoader, grid }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
     await grid.selectSlice("z");
   });
 
-  test("keeps jagged 3d modal navigation stable", async ({ grid, modal }) => {
+  test("keeps sparse 3d modal navigation stable", async ({ grid, modal }) => {
     const assertSingleSliceState = async (
       index: number,
       expectedSlice: "x" | "y" | "z"

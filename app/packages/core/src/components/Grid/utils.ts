@@ -1,9 +1,6 @@
-import type { paginateSamplesQuery } from "@fiftyone/relay";
-import type { ResponseFrom } from "@fiftyone/state";
+import type { PaginateSamplesNode } from "@fiftyone/relay";
 
-export const handleNode = (
-  node: ResponseFrom<paginateSamplesQuery>["samples"]["edges"][0]["node"]
-) => {
+export const handleNode = (node: PaginateSamplesNode) => {
   if (node.__typename === "%other") {
     throw new Error("unexpected sample type");
   }
