@@ -167,6 +167,8 @@ export const usePointSelection = (): PointSelection => {
           variantStyles: POINT_SELECTION_VARIANT_STYLES,
         }
       );
+      // UI scaffolding; exclude from persistence
+      overlay.isPersistent = false;
 
       setKeypointOverlayId(overlay.id);
       scene.addOverlay(overlay);
