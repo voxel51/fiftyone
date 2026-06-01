@@ -13,8 +13,24 @@ import { frameAt } from "../../playback/src/lib/playback/utils";
 import { usePlayhead } from "../../playback/src/lib/playback/use-playback-state";
 import { useFrameLabelsStream } from "./frameLabelsStream";
 import { resolvePropagationTarget } from "./propagationTarget";
-import { firstTemporalDetectionFieldPath } from "./pendingTemporalDetectionEdits";
 import { selectedOverlayIds } from "./useLinkedOverlayState";
+
+/** First sample-level field whose `_cls` is `TemporalDetections`. */
+const firstTemporalDetectionFieldPath = (
+  sample: Record<string, unknown> | null | undefined
+): string | null => {
+  if (!sample) return null;
+  for (const [path, value] of Object.entries(sample)) {
+    if (
+      value &&
+      typeof value === "object" &&
+      (value as { _cls?: unknown })._cls === "TemporalDetections"
+    ) {
+      return path;
+    }
+  }
+  return null;
+};
 
 /**
  * Builds the data-driven config for the video annotation toolbar, mirroring

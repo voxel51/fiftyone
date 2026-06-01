@@ -43,10 +43,6 @@ import {
 } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
 import {
-  applyTemporalDetectionEdits,
-  useTemporalDetectionPendingEdits,
-} from "./pendingTemporalDetectionEdits";
-import {
   buildTemporalDetectionTracks,
   type TemporalDetectionEventData,
   type TemporalDetectionLabelLike,
@@ -267,9 +263,13 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
     };
   }, [stream, resolveColor, editVersion]);
 
-  const pendingTemporalDetectionEdits = useTemporalDetectionPendingEdits();
   const commandBus = useCommandBus();
 
+  // TD overlays are the source of truth (see useTemporalDetectionDeltaSupplier);
+  // bars rebuild from the sample after each autosave round-trip. There's a
+  // brief lag between an edit and the next refetch where the bar may sit at
+  // the previous range — acceptable for now; if it becomes a UX issue we can
+  // subscribe to scene TD overlay state here instead of reading the sample.
   const temporalDetectionTracks = useMemo(() => {
     if (!sample?.sample) {
       return [];
@@ -279,19 +279,12 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
       return [];
     }
 
-    // Optimistic overlay — creates appear as appended TDs, edits as
-    // overrides. Cleared on `annotation:persistenceSuccess`.
-    const overlaidSample = applyTemporalDetectionEdits(
-      sample.sample as Record<string, unknown>,
-      pendingTemporalDetectionEdits
-    );
-
     return buildTemporalDetectionTracks({
-      sample: overlaidSample,
+      sample: sample.sample as Record<string, unknown>,
       fps,
       resolveColor: resolveTemporalDetectionColor,
     });
-  }, [sample, resolveTemporalDetectionColor, pendingTemporalDetectionEdits]);
+  }, [sample, resolveTemporalDetectionColor]);
 
   const tracks = useMemo(
     () => [...frameTracks, ...temporalDetectionTracks],

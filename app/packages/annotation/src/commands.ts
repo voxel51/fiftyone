@@ -3,9 +3,9 @@
  */
 
 import { Command } from "@fiftyone/command-bus";
+import type { TemporalLabel } from "@fiftyone/lighter";
 import { AnnotationLabel } from "@fiftyone/state";
 import { Field } from "@fiftyone/utilities";
-import type { TemporalDetectionEditFields } from "@fiftyone/video-annotation";
 
 /**
  * Command to delete an annotation label.
@@ -44,25 +44,26 @@ export class MarkKeyframeCommand extends Command<boolean> {
 }
 
 /**
- * Edit one or more fields on a `TemporalDetection`. The supplier
- * resolves the array index on the sample at flush time and emits one
- * patch op per defined field.
+ * Edit one or more fields on a `TemporalDetection`. Handler resolves
+ * the field/id pair to the corresponding scene `TemporalOverlay` and
+ * merges `update` into `overlay.label`; persistence picks the change
+ * up by walking scene overlays at autosave time.
  */
 export class EditTemporalDetectionCommand extends Command<boolean> {
   constructor(
     public readonly fieldPath: string,
     public readonly detectionId: string,
-    public readonly update: TemporalDetectionEditFields
+    public readonly update: Partial<TemporalLabel>
   ) {
     super();
   }
 }
 
 /**
- * Create a new `TemporalDetection`. Handler stages an optimistic doc
- * with a client-generated `_id` and resolves to that id; the supplier
- * emits an `add /<fieldPath>/detections/-` op on the next autosave.
- * Server-assigned `_id` lands on the sample refetch.
+ * Create a new `TemporalDetection`. Handler mints a client-side `_id`,
+ * instantiates a `TemporalOverlay`, adds it to the scene, and resolves
+ * to the id. The autosave delta walk emits an `add /-` for any overlay
+ * not yet on the sample.
  */
 export class CreateTemporalDetectionCommand extends Command<string | null> {
   constructor(

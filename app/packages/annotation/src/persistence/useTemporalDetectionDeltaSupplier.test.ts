@@ -1,8 +1,8 @@
-import type { TemporalDetectionEditFields } from "@fiftyone/video-annotation";
+import type { TemporalLabel, TemporalOverlay } from "@fiftyone/lighter";
 import { describe, expect, it } from "vitest";
-import { buildTemporalDetectionDeltas } from "./useTemporalDetectionDeltaSupplier";
+import { buildTemporalDetectionOverlayDeltas } from "./useTemporalDetectionDeltaSupplier";
 
-const td = (
+const tdBaseline = (
   id: string,
   support: [number, number],
   extra: Record<string, unknown> = {}
@@ -14,52 +14,77 @@ const td = (
   ...extra,
 });
 
-const field = (...detections: ReturnType<typeof td>[]) => ({
+const field = (...detections: ReturnType<typeof tdBaseline>[]) => ({
   _cls: "TemporalDetections" as const,
   detections,
 });
 
-const pendingMap = (
-  ...entries: Array<[string, TemporalDetectionEditFields]>
-): ReadonlyMap<string, TemporalDetectionEditFields> => new Map(entries);
+// Build a thin TemporalOverlay stand-in. The supplier only touches
+// `.field` and `.label`; casting through `unknown` keeps the test free
+// of full overlay scaffolding.
+const overlay = (
+  fieldPath: string,
+  id: string,
+  support: [number, number],
+  extra: Partial<TemporalLabel> = {}
+): TemporalOverlay =>
+  ({
+    field: fieldPath,
+    label: {
+      _cls: "TemporalDetection",
+      _id: id,
+      support,
+      ...extra,
+    } as TemporalLabel,
+  } as unknown as TemporalOverlay);
 
-describe("buildTemporalDetectionDeltas", () => {
+describe("buildTemporalDetectionOverlayDeltas", () => {
   describe("support", () => {
-    it("emits a replace op when support already exists on the baseline", () => {
-      const sample = { events: field(td("a", [1, 10])) };
-      const deltas = buildTemporalDetectionDeltas(
-        sample,
-        pendingMap(["events|a", { support: [5, 15] }])
-      );
+    it("emits a replace when the overlay's support differs from baseline", () => {
+      const sample = { events: field(tdBaseline("a", [1, 10])) };
+      const deltas = buildTemporalDetectionOverlayDeltas(sample, [
+        overlay("events", "a", [5, 15], { label: "x" }),
+      ]);
       expect(deltas).toEqual([
         { op: "replace", path: "/events/detections/0/support", value: [5, 15] },
       ]);
     });
 
-    it("resolves index by detection _id, not by edit order", () => {
+    it("emits nothing when the overlay matches the baseline", () => {
+      const sample = { events: field(tdBaseline("a", [1, 10])) };
+      const deltas = buildTemporalDetectionOverlayDeltas(sample, [
+        overlay("events", "a", [1, 10], { label: "x" }),
+      ]);
+      expect(deltas).toEqual([]);
+    });
+
+    it("resolves index by detection _id, not by overlay order", () => {
       const sample = {
-        events: field(td("a", [1, 10]), td("b", [20, 30]), td("c", [40, 50])),
+        events: field(
+          tdBaseline("a", [1, 10]),
+          tdBaseline("b", [20, 30]),
+          tdBaseline("c", [40, 50])
+        ),
       };
-      const deltas = buildTemporalDetectionDeltas(
-        sample,
-        pendingMap(["events|c", { support: [42, 60] }])
-      );
-      expect(deltas).toHaveLength(1);
-      expect(deltas[0]).toMatchObject({
-        path: "/events/detections/2/support",
-      });
+      const deltas = buildTemporalDetectionOverlayDeltas(sample, [
+        overlay("events", "c", [42, 60], { label: "x" }),
+        overlay("events", "a", [1, 10], { label: "x" }),
+        overlay("events", "b", [20, 30], { label: "x" }),
+      ]);
+      expect(deltas).toEqual([
+        { op: "replace", path: "/events/detections/2/support", value: [42, 60] },
+      ]);
     });
   });
 
   describe("label / confidence", () => {
-    it("emits replace ops for label and confidence when the keys exist", () => {
+    it("emits replace ops for label and confidence when they differ", () => {
       const sample = {
-        events: field(td("a", [1, 10], { confidence: 0.5 })),
+        events: field(tdBaseline("a", [1, 10], { confidence: 0.5 })),
       };
-      const deltas = buildTemporalDetectionDeltas(
-        sample,
-        pendingMap(["events|a", { label: "renamed", confidence: 0.9 }])
-      );
+      const deltas = buildTemporalDetectionOverlayDeltas(sample, [
+        overlay("events", "a", [1, 10], { label: "renamed", confidence: 0.9 }),
+      ]);
       const paths = (deltas as { op: string; path: string }[]).map(
         (d) => `${d.op} ${d.path}`
       );
@@ -67,13 +92,11 @@ describe("buildTemporalDetectionDeltas", () => {
       expect(paths).toContain("replace /events/detections/0/confidence");
     });
 
-    it("emits an add op for a field missing on the baseline", () => {
-      // td here has no `confidence` key on the baseline doc.
-      const sample = { events: field(td("a", [1, 10])) };
-      const deltas = buildTemporalDetectionDeltas(
-        sample,
-        pendingMap(["events|a", { confidence: 0.42 }])
-      );
+    it("emits an add op for a confidence missing on the baseline", () => {
+      const sample = { events: field(tdBaseline("a", [1, 10])) };
+      const deltas = buildTemporalDetectionOverlayDeltas(sample, [
+        overlay("events", "a", [1, 10], { label: "x", confidence: 0.42 }),
+      ]);
       expect(deltas).toEqual([
         {
           op: "add",
@@ -84,94 +107,59 @@ describe("buildTemporalDetectionDeltas", () => {
     });
   });
 
-  describe("attributes", () => {
-    it("emits an add op for a new attribute", () => {
-      const sample = { events: field(td("a", [1, 10])) };
-      const deltas = buildTemporalDetectionDeltas(
-        sample,
-        pendingMap(["events|a", { attributes: { reviewed: true } }])
-      );
+  describe("dynamic attributes", () => {
+    it("emits an add op for a new attribute on the overlay", () => {
+      const sample = { events: field(tdBaseline("a", [1, 10])) };
+      const deltas = buildTemporalDetectionOverlayDeltas(sample, [
+        overlay("events", "a", [1, 10], {
+          label: "x",
+          reviewed: true,
+        } as Partial<TemporalLabel>),
+      ]);
       expect(deltas).toEqual([
-        {
-          op: "add",
-          path: "/events/detections/0/reviewed",
-          value: true,
-        },
+        { op: "add", path: "/events/detections/0/reviewed", value: true },
       ]);
     });
 
-    it("emits a replace op for an existing attribute", () => {
+    it("emits a replace op for an existing attribute on baseline", () => {
       const sample = {
-        events: field(td("a", [1, 10], { reviewed: false })),
+        events: field(tdBaseline("a", [1, 10], { reviewed: false })),
       };
-      const deltas = buildTemporalDetectionDeltas(
-        sample,
-        pendingMap(["events|a", { attributes: { reviewed: true } }])
-      );
+      const deltas = buildTemporalDetectionOverlayDeltas(sample, [
+        overlay("events", "a", [1, 10], {
+          label: "x",
+          reviewed: true,
+        } as Partial<TemporalLabel>),
+      ]);
       expect(deltas).toEqual([
-        {
-          op: "replace",
-          path: "/events/detections/0/reviewed",
-          value: true,
-        },
+        { op: "replace", path: "/events/detections/0/reviewed", value: true },
       ]);
     });
 
-    it("emits a remove op for a null-valued attribute that exists", () => {
+    it("emits a remove op for an attribute the overlay no longer carries", () => {
       const sample = {
-        events: field(td("a", [1, 10], { reviewed: false })),
+        events: field(tdBaseline("a", [1, 10], { reviewed: false })),
       };
-      const deltas = buildTemporalDetectionDeltas(
-        sample,
-        pendingMap(["events|a", { attributes: { reviewed: null } }])
-      );
+      const deltas = buildTemporalDetectionOverlayDeltas(sample, [
+        // overlay label lacks `reviewed`
+        overlay("events", "a", [1, 10], { label: "x" }),
+      ]);
       expect(deltas).toEqual([
         { op: "remove", path: "/events/detections/0/reviewed" },
       ]);
     });
-
-    it("skips a null-valued attribute that's already absent (idempotent)", () => {
-      const sample = { events: field(td("a", [1, 10])) };
-      expect(
-        buildTemporalDetectionDeltas(
-          sample,
-          pendingMap(["events|a", { attributes: { reviewed: null } }])
-        )
-      ).toEqual([]);
-    });
   });
 
-  describe("multi-field edit", () => {
-    it("emits one op per defined field in a single edit", () => {
-      const sample = {
-        events: field(td("a", [1, 10], { confidence: 0.5 })),
-      };
-      const deltas = buildTemporalDetectionDeltas(
-        sample,
-        pendingMap([
-          "events|a",
-          {
-            support: [5, 15],
-            label: "renamed",
-            confidence: 0.9,
-            attributes: { reviewed: true },
-          },
-        ])
-      );
-      expect(deltas).toHaveLength(4);
-    });
-  });
-
-  describe("create-via-edit: appending new TDs", () => {
-    it("emits a single `add /-` op with the full doc when `_id` isn't on the sample", () => {
-      const sample = { events: field(td("a", [1, 10])) };
-      const deltas = buildTemporalDetectionDeltas(
-        sample,
-        pendingMap([
-          "events|new-id",
-          { support: [20, 40], label: "fresh", confidence: 0.5 },
-        ])
-      );
+  describe("create / delete", () => {
+    it("emits `add /-` when the overlay isn't on the sample", () => {
+      const sample = { events: field(tdBaseline("a", [1, 10])) };
+      const deltas = buildTemporalDetectionOverlayDeltas(sample, [
+        overlay("events", "a", [1, 10], { label: "x" }),
+        overlay("events", "new-id", [20, 40], {
+          label: "fresh",
+          confidence: 0.5,
+        }),
+      ]);
       expect(deltas).toEqual([
         {
           op: "add",
@@ -187,73 +175,44 @@ describe("buildTemporalDetectionDeltas", () => {
       ]);
     });
 
-    it("emits attribute values (but not null ones) on the appended doc", () => {
-      const sample = { events: field(td("a", [1, 10])) };
-      const deltas = buildTemporalDetectionDeltas(
-        sample,
-        pendingMap([
-          "events|new-id",
-          {
-            support: [1, 5],
-            attributes: { reviewed: true, dropped: null },
-          },
-        ])
-      );
-      const value = (deltas[0] as { value: Record<string, unknown> }).value;
-      expect(value.reviewed).toBe(true);
-      expect("dropped" in value).toBe(false);
-    });
-
-    it("skips an append when the staged entry has no support", () => {
-      const sample = { events: field(td("a", [1, 10])) };
-      expect(
-        buildTemporalDetectionDeltas(
-          sample,
-          pendingMap(["events|new-id", { label: "label-only" }])
-        )
-      ).toEqual([]);
-    });
-
-    it("can emit a replace + an append for the same field in one flush", () => {
-      const sample = { events: field(td("a", [1, 10])) };
-      const deltas = buildTemporalDetectionDeltas(
-        sample,
-        pendingMap(
-          ["events|a", { support: [2, 12] }],
-          ["events|new-id", { support: [50, 60] }]
-        )
-      ) as { op: string; path: string }[];
-      expect(deltas).toHaveLength(2);
-      const ops = deltas.map((d) => `${d.op} ${d.path}`);
-      expect(ops).toContain("replace /events/detections/0/support");
-      expect(ops).toContain("add /events/detections/-");
+    it("emits `remove /N` when a baseline entry has no matching overlay", () => {
+      const sample = {
+        events: field(tdBaseline("a", [1, 10]), tdBaseline("b", [20, 30])),
+      };
+      const deltas = buildTemporalDetectionOverlayDeltas(sample, [
+        overlay("events", "a", [1, 10], { label: "x" }),
+      ]);
+      expect(deltas).toEqual([
+        { op: "remove", path: "/events/detections/1" },
+      ]);
     });
   });
 
   describe("filtering", () => {
-    it("skips edits whose field doesn't exist on the sample", () => {
-      const sample = { events: field(td("a", [1, 10])) };
+    it("skips overlays whose field doesn't exist on the sample", () => {
+      const sample = { events: field(tdBaseline("a", [1, 10])) };
       expect(
-        buildTemporalDetectionDeltas(
-          sample,
-          pendingMap(["ghost|a", { support: [5, 15] }])
+        buildTemporalDetectionOverlayDeltas(sample, [
+          overlay("ghost", "a", [5, 15], { label: "x" }),
+        ])
+      ).toEqual([]);
+    });
+
+    it("skips overlays whose field isn't a TemporalDetections wrapper", () => {
+      const sample = {
+        events: { _cls: "Detections", detections: [] },
+      };
+      expect(
+        buildTemporalDetectionOverlayDeltas(
+          sample as unknown as Record<string, unknown>,
+          [overlay("events", "a", [5, 15], { label: "x" })]
         )
       ).toEqual([]);
     });
 
-    it("skips edits whose field isn't a TemporalDetections wrapper", () => {
-      const sample = { events: { _cls: "Detections", detections: [] } };
-      expect(
-        buildTemporalDetectionDeltas(
-          sample,
-          pendingMap(["events|a", { support: [5, 15] }])
-        )
-      ).toEqual([]);
-    });
-
-    it("returns an empty array when no edits are pending", () => {
-      const sample = { events: field(td("a", [1, 10])) };
-      expect(buildTemporalDetectionDeltas(sample, new Map())).toEqual([]);
+    it("returns an empty array when there are no overlays", () => {
+      const sample = { events: field(tdBaseline("a", [1, 10])) };
+      expect(buildTemporalDetectionOverlayDeltas(sample, [])).toEqual([]);
     });
   });
 });

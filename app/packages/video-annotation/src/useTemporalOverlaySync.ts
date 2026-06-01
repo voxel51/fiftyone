@@ -14,10 +14,6 @@ import { useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { frameAt } from "../../playback/src/lib/playback/utils";
 import { usePlayhead } from "../../playback/src/lib/playback/use-playback-state";
-import {
-  applyTemporalDetectionEdits,
-  useTemporalDetectionPendingEdits,
-} from "./pendingTemporalDetectionEdits";
 
 interface RawTemporalDetection {
   _id?: string;
@@ -48,9 +44,12 @@ interface SceneLike {
 export interface SyncTemporalOverlaysInput {
   scene: SceneLike;
   /**
-   * Sample with staged edits already applied — the caller layers
-   * `applyTemporalDetectionEdits` so creates appear as appended TDs
-   * and edits as overridden ones.
+   * Sample from the server-side store. Scene-side overlay edits are
+   * not reflected here — overlays own their state until autosave
+   * round-trips. Overlays added directly to the scene by other code
+   * (e.g. `CreateTemporalDetectionCommand`) aren't in `overlays`, so
+   * the eviction pass leaves them alone; they're adopted on the next
+   * sync once the refetched sample carries their `_id`.
    */
   sample: Record<string, unknown> | null | undefined;
   activePaths: ReadonlySet<string>;
@@ -117,7 +116,10 @@ export function syncTemporalOverlays({
         (scene.getOverlay(id) as TemporalOverlay | undefined);
 
       if (adopted) {
-        adopted.label = label;
+        // Overlay owns its label state post-creation — don't clobber
+        // local edits with re-rendered sample data. The persistence
+        // layer flushes the overlay's state at autosave; sample data
+        // here is only used to determine which TDs exist.
         overlays.set(id, adopted);
       } else {
         const created = create({ id, field: fieldPath, label });
@@ -151,9 +153,10 @@ function isTemporalDetectionsField(
  * Mirrors {@link useFrameOverlaySync}'s shape: pass `scene` +
  * `canonicalMediaReady` from the host tile; the hook owns the diff
  * lifecycle. Cleans up every tracked overlay on scene change /
- * unmount. Pending support edits (from a timeline drag) are layered
- * on top of the sample so the bar shows the new range immediately,
- * before persistence catches up.
+ * unmount. Locally-edited overlays are the source of truth — the
+ * persistence layer ({@link useTemporalDetectionDeltaSupplier}) walks
+ * scene overlays at autosave time, so unsynced edits stay in place
+ * until the sample re-fetch lands.
  */
 export function useTemporalOverlaySync(
   scene: ReturnType<typeof useLighterSetupWithPixi>["scene"],
@@ -162,7 +165,6 @@ export function useTemporalOverlaySync(
   const overlaysRef = useRef<Map<string, TemporalOverlay>>(new Map());
 
   const sample = useModalSample();
-  const pendingEdits = useTemporalDetectionPendingEdits();
   const activePathsList = useRecoilValue(
     activeFields({ modal: true, expanded: false })
   );
@@ -172,16 +174,13 @@ export function useTemporalOverlaySync(
 
     const activePaths = new Set(activePathsList);
     const baseSample = (sample?.sample as Record<string, unknown>) ?? null;
-    const overlaidSample = baseSample
-      ? applyTemporalDetectionEdits(baseSample, pendingEdits)
-      : null;
     syncTemporalOverlays({
       scene,
-      sample: overlaidSample,
+      sample: baseSample,
       activePaths,
       overlays: overlaysRef.current,
     });
-  }, [scene, sample, canonicalMediaReady, pendingEdits, activePathsList]);
+  }, [scene, sample, canonicalMediaReady, activePathsList]);
 
   // Push the playhead frame into each tracked overlay. fps comes from
   // the sample (same source the TD track build uses).

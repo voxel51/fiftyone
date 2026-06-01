@@ -141,7 +141,7 @@ describe("syncTemporalOverlays", () => {
       expect(scene.addOverlay).not.toHaveBeenCalled();
     });
 
-    it("updates an existing overlay's label in place when the TD's data changes", () => {
+    it("preserves an existing overlay's label across sync passes (overlay owns its state)", () => {
       const scene = makeScene();
       const overlays = new Map();
 
@@ -153,16 +153,24 @@ describe("syncTemporalOverlays", () => {
         create: createFake as never,
       });
       const overlay = overlays.get("td-events-a") as FakeOverlay;
+      // Simulate a local edit landing on the overlay between sync passes.
+      overlay.label = {
+        ...overlay.label,
+        support: [5, 25],
+        label: "renamed",
+      } as TemporalLabel;
 
+      // A subsequent sync sees the original baseline on the sample but
+      // must not clobber the local edit — the persistence supplier reads
+      // overlay state, and is responsible for flushing it.
       syncTemporalOverlays({
         scene,
-        sample: { events: field(td("a", [5, 25], { label: "renamed" })) },
+        sample: { events: field(td("a", [1, 10])) },
         activePaths: ALL_ACTIVE,
         overlays,
         create: createFake as never,
       });
 
-      // Same overlay instance; label re-assigned with the new values.
       expect(overlays.get("td-events-a")).toBe(overlay);
       expect(overlay.label.support).toEqual([5, 25]);
       expect(overlay.label.label).toBe("renamed");

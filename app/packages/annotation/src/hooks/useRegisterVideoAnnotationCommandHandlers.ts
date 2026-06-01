@@ -1,9 +1,13 @@
 import { useRegisterCommandHandler } from "@fiftyone/command-bus";
 import {
+  TemporalOverlay,
+  useLighter,
+  type TemporalLabel,
+} from "@fiftyone/lighter";
+import {
   PropagationStatusItem,
   useFrameLabelsStream,
   useImaVidImageStream,
-  useStageTemporalDetectionEdit,
   useVideoAnnotationStatus,
   type LocalDetection,
   type SyntheticBox,
@@ -73,7 +77,7 @@ const copyDetection = (
 export const useRegisterVideoAnnotationCommandHandlers = () => {
   const stream = useFrameLabelsStream();
   const imageStream = useImaVidImageStream();
-  const stageTemporalDetectionEdit = useStageTemporalDetectionEdit();
+  const { scene } = useLighter();
   const registry = useAgentRegistry();
   const sampleDescriptor = useSampleDescriptor();
   const applyPropagation = useApplyPropagationResult();
@@ -84,10 +88,15 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
     EditTemporalDetectionCommand,
     useCallback(
       async (cmd) => {
-        stageTemporalDetectionEdit(cmd.fieldPath, cmd.detectionId, cmd.update);
+        if (!scene) return false;
+        const overlayId = `td-${cmd.fieldPath}-${cmd.detectionId}`;
+        const overlay = scene.getOverlay(overlayId);
+        if (!(overlay instanceof TemporalOverlay)) return false;
+        // Mutate via the typed setter so the overlay re-gates / marks dirty.
+        overlay.label = { ...overlay.label, ...cmd.update } as TemporalLabel;
         return true;
       },
-      [stageTemporalDetectionEdit]
+      [scene]
     )
   );
 
@@ -95,14 +104,23 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
     CreateTemporalDetectionCommand,
     useCallback(
       async (cmd) => {
+        if (!scene) return null;
         const detectionId = objectId();
-        stageTemporalDetectionEdit(cmd.fieldPath, detectionId, {
-          support: [cmd.support[0], cmd.support[1]],
-          ...(cmd.label !== undefined ? { label: cmd.label } : {}),
+        const overlayId = `td-${cmd.fieldPath}-${detectionId}`;
+        const overlay = new TemporalOverlay({
+          id: overlayId,
+          field: cmd.fieldPath,
+          label: {
+            _cls: "TemporalDetection",
+            _id: detectionId,
+            support: [cmd.support[0], cmd.support[1]],
+            ...(cmd.label !== undefined ? { label: cmd.label } : {}),
+          },
         });
+        scene.addOverlay(overlay);
         return detectionId;
       },
-      [stageTemporalDetectionEdit]
+      [scene]
     )
   );
 
