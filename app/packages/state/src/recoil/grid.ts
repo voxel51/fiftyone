@@ -1,8 +1,6 @@
 import { DefaultValue, atomFamily, selector } from "recoil";
 import { getBrowserStorageEffectForKey } from "./customEffects";
-import { isDynamicGroup } from "./dynamicGroups";
 import { filters } from "./filters";
-import { isGroup } from "./groups";
 import { bounds } from "./pathData/numeric";
 import { queryPerformance, validIndexes } from "./queryPerformance";
 import { fieldPath, fields, isNumericField } from "./schema";
@@ -66,13 +64,10 @@ export const gridSortBy = selector<null | {
   },
 });
 
-/**
- * Per-dataset persisted toggle for the grid's right-edge scrubber. The
- * scrubber is only rendered when {@link gridScrubberAvailable} is also true.
- */
+/** Per-dataset persisted toggle for the grid's right-edge scrubber. Defaults to enabled. */
 export const gridScrubberStore = atomFamily<boolean, string>({
   key: "gridScrubberStore",
-  default: false,
+  default: true,
   effects: (datasetId) => [
     getBrowserStorageEffectForKey(`gridScrubber-${datasetId}`, {
       valueClass: "boolean",
@@ -88,23 +83,8 @@ export const gridScrubber = selector<boolean>({
     const id = get(datasetId) ?? "";
     set(
       gridScrubberStore(id),
-      value instanceof DefaultValue ? false : Boolean(value)
+      value instanceof DefaultValue ? true : Boolean(value)
     );
-  },
-});
-
-/**
- * Whether the scrubber gate is satisfied for the current dataset state:
- * query performance is active, a sort field is selected, and that field is
- * numeric (so we can compute meaningful min/max bounds).
- */
-export const gridScrubberAvailable = selector<boolean>({
-  key: "gridScrubberAvailable",
-  get: ({ get }) => {
-    if (!get(queryPerformance)) return false;
-    const sort = get(gridSortBy);
-    if (!sort) return false;
-    return get(isNumericField(sort.field));
   },
 });
 
@@ -124,14 +104,10 @@ export const gridSortFieldBounds = selector<[number, number] | null>({
   },
 });
 
-/**
- * Per-dataset persisted toggle for the grid's swimlanes view (one row per
- * group / dynamic-group entry). Only rendered when
- * {@link gridSwimlanesAvailable} is also true.
- */
+/** Per-dataset persisted toggle for the grid's swimlanes view. Defaults to enabled. */
 export const gridSwimlanesStore = atomFamily<boolean, string>({
   key: "gridSwimlanesStore",
-  default: false,
+  default: true,
   effects: (datasetId) => [
     getBrowserStorageEffectForKey(`gridSwimlanes-${datasetId}`, {
       valueClass: "boolean",
@@ -147,15 +123,9 @@ export const gridSwimlanes = selector<boolean>({
     const id = get(datasetId) ?? "";
     set(
       gridSwimlanesStore(id),
-      value instanceof DefaultValue ? false : Boolean(value)
+      value instanceof DefaultValue ? true : Boolean(value)
     );
   },
-});
-
-/** Swimlanes is offered only when the active dataset is grouped or dynamic-grouped. */
-export const gridSwimlanesAvailable = selector<boolean>({
-  key: "gridSwimlanesAvailable",
-  get: ({ get }) => get(isGroup) || get(isDynamicGroup),
 });
 
 export const gridSortFields = selector({
