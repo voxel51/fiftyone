@@ -2,7 +2,7 @@
 
 numpy
 pydicom>=2.2.0
-shapely>=1.7.1
+shapely>=2.1.2
 tensorflow
 tensorflow-datasets
 torch
