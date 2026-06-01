@@ -10607,6 +10607,270 @@
             "date_added": "2026-01-22 12:00:00"
         },
         {
+            "base_name": "rfdetr-nano-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Nano real-time object detector trained on COCO. Ultra-fast, suitable for edge devices.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 122000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRDetectionModel",
+                "config": {
+                    "model_type": "RFDETRNano"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["detection", "coco", "torch", "transformer", "rfdetr", "official"],
+            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-small-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Small real-time object detector trained on COCO. Fast with good accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 128000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRDetectionModel",
+                "config": {
+                    "model_type": "RFDETRSmall"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["detection", "coco", "torch", "transformer", "rfdetr", "official"],
+            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-medium-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Medium real-time object detector trained on COCO. Balanced speed and accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 135000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRDetectionModel",
+                "config": {
+                    "model_type": "RFDETRMedium"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["detection", "coco", "torch", "transformer", "rfdetr", "official"],
+            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-base-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Base real-time object detector trained on COCO. High accuracy for general use.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 116000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRDetectionModel",
+                "config": {
+                    "model_type": "RFDETRBase"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["detection", "coco", "torch", "transformer", "rfdetr", "official"],
+            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-large-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Large real-time object detector trained on COCO. Maximum detection accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 136000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRDetectionModel",
+                "config": {
+                    "model_type": "RFDETRLarge"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["detection", "coco", "torch", "transformer", "rfdetr", "official"],
+            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-seg-nano-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Seg Nano instance segmentation model trained on COCO. Ultra-fast, suitable for edge devices.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 134000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRSegmentationModel",
+                "config": {
+                    "model_type": "RFDETRSegNano"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["instances", "coco", "torch", "transformer", "rfdetr", "official"],
+            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-seg-small-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Seg Small instance segmentation model trained on COCO. Fast with good accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 135000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRSegmentationModel",
+                "config": {
+                    "model_type": "RFDETRSegSmall"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["instances", "coco", "torch", "transformer", "rfdetr", "official"],
+            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-seg-medium-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Seg Medium instance segmentation model trained on COCO. Balanced speed and accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 143000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRSegmentationModel",
+                "config": {
+                    "model_type": "RFDETRSegMedium"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["instances", "coco", "torch", "transformer", "rfdetr", "official"],
+            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-seg-large-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Seg Large instance segmentation model trained on COCO. High accuracy segmentation.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 145000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRSegmentationModel",
+                "config": {
+                    "model_type": "RFDETRSegLarge"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["instances", "coco", "torch", "transformer", "rfdetr", "official"],
+            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-seg-xlarge-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Seg XLarge instance segmentation model trained on COCO. Very high accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 152000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRSegmentationModel",
+                "config": {
+                    "model_type": "RFDETRSegXLarge"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["instances", "coco", "torch", "transformer", "rfdetr", "official"],
+            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-seg-2xlarge-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Seg 2XLarge instance segmentation model trained on COCO. Maximum segmentation accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 154000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRSegmentationModel",
+                "config": {
+                    "model_type": "RFDETRSeg2XLarge"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["instances", "coco", "torch", "transformer", "rfdetr", "official"],
+            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
             "base_name": "apple-sharp-torch",
             "base_filename": null,
             "version": null,

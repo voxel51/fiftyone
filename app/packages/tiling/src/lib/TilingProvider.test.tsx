@@ -1,11 +1,11 @@
 import { act, cleanup, render, renderHook } from "@testing-library/react";
-import React, { useState } from "react";
+import React from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  TileIdScope,
+  TileSettingsContent,
   TilingProvider,
   TilingTile,
-  TileIdScope,
-  useTileSettings,
   useTiling,
 } from "./TilingProvider";
 
@@ -262,122 +262,86 @@ describe("TilingProvider", () => {
     });
   });
 
-  describe("settings registry", () => {
-    function Camera() {
-      return <span data-testid="camera-settings">camera-settings</span>;
-    }
-    function Lidar() {
-      return <span data-testid="lidar-settings">lidar-settings</span>;
+  describe("settings portal", () => {
+    function Host({
+      initialFocus,
+    }: {
+      initialFocus?: string;
+    }) {
+      const tiling = useTiling();
+      // Bind the slot DOM element on mount so TileSettingsContent
+      // has somewhere to portal into.
+      React.useEffect(() => {
+        if (initialFocus) tiling.setFocusedTileId(initialFocus);
+      }, [tiling, initialFocus]);
+      return (
+        <>
+          <div data-testid="slot" ref={tiling.setSettingsSlotEl} />
+          <TileIdScope tileId="cam-1">
+            <TileSettingsContent>
+              <span data-testid="cam-settings">cam</span>
+            </TileSettingsContent>
+          </TileIdScope>
+          <TileIdScope tileId="lid-1">
+            <TileSettingsContent>
+              <span data-testid="lid-settings">lid</span>
+            </TileSettingsContent>
+          </TileIdScope>
+          <button
+            data-testid="focus-cam"
+            onClick={() => tiling.setFocusedTileId("cam-1")}
+          />
+          <button
+            data-testid="focus-lid"
+            onClick={() => tiling.setFocusedTileId("lid-1")}
+          />
+        </>
+      );
     }
 
-    it("exposes nothing when no tile is focused", () => {
-      const { result } = renderHook(() => useTiling(), { wrapper: Wrapper });
-      expect(result.current.FocusedTileSettings).toBeNull();
+    it("does not portal anything when no tile is focused", () => {
+      const utils = render(
+        <TilingProvider>
+          <Host />
+        </TilingProvider>
+      );
+      expect(utils.queryByTestId("cam-settings")).toBeNull();
+      expect(utils.queryByTestId("lid-settings")).toBeNull();
     });
 
-    it("returns the settings component for the focused tile", () => {
-      function TilePanel() {
-        useTileSettings(Camera);
-        return null;
-      }
-
-      const { result } = renderHook(() => useTiling(), {
-        wrapper: ({ children }) => (
-          <Wrapper initialTiles={{ "cam-1": makeTile("cam") }}>
-            <TileIdScope tileId="cam-1">
-              <TilePanel />
-            </TileIdScope>
-            {children}
-          </Wrapper>
-        ),
-      });
-
-      act(() => {
-        result.current.setFocusedTileId("cam-1");
-      });
-      expect(result.current.FocusedTileSettings).toBe(Camera);
-    });
-
-    it("clears its entry when the panel unmounts (effect cleanup runs)", () => {
-      function TilePanel() {
-        useTileSettings(Camera);
-        return null;
-      }
-
-      // Render a stateful wrapper that can toggle the panel on/off so
-      // we can verify the cleanup function deregisters the settings.
-      let setShow!: (v: boolean) => void;
-      function Host() {
-        const [show, set] = useState(true);
-        setShow = set;
-        const tiling = useTiling();
-        return (
-          <>
-            {show ? (
-              <TileIdScope tileId="cam-1">
-                <TilePanel />
-              </TileIdScope>
-            ) : null}
-            <button
-              data-testid="focus"
-              onClick={() => tiling.setFocusedTileId("cam-1")}
-            />
-            <span data-testid="settings">
-              {tiling.FocusedTileSettings ? "yes" : "no"}
-            </span>
-          </>
-        );
-      }
-
+    it("portals the focused tile's settings into the slot", () => {
       const utils = render(
         <TilingProvider initialTiles={{ "cam-1": makeTile("cam") }}>
           <Host />
         </TilingProvider>
       );
-      // Focus the tile — settings should resolve to "yes".
       act(() => {
-        utils.getByTestId("focus").click();
+        utils.getByTestId("focus-cam").click();
       });
-      expect(utils.getByTestId("settings").textContent).toBe("yes");
-
-      // Unmount the panel — registry should drop the entry.
-      act(() => setShow(false));
-      expect(utils.getByTestId("settings").textContent).toBe("no");
+      expect(utils.getByTestId("slot").contains(
+        utils.getByTestId("cam-settings")
+      )).toBe(true);
+      expect(utils.queryByTestId("lid-settings")).toBeNull();
     });
 
-    it("swapping the registered component replaces the entry", () => {
-      let setKind!: (k: "camera" | "lidar") => void;
-      function MultiPanel() {
-        const [kind, set] = useState<"camera" | "lidar">("camera");
-        setKind = set;
-        useTileSettings(kind === "camera" ? Camera : Lidar);
-        return null;
-      }
-      function FocusedReader({
-        onReady,
-      }: {
-        onReady: (r: ReturnType<typeof useTiling>) => void;
-      }) {
-        const t = useTiling();
-        onReady(t);
-        return null;
-      }
-
-      let api: ReturnType<typeof useTiling> | null = null;
-      render(
-        <TilingProvider initialTiles={{ "cam-1": makeTile("cam") }}>
-          <TileIdScope tileId="cam-1">
-            <MultiPanel />
-          </TileIdScope>
-          <FocusedReader onReady={(r) => (api = r)} />
+    it("swapping focus swaps which settings render in the slot", () => {
+      const utils = render(
+        <TilingProvider
+          initialTiles={{
+            "cam-1": makeTile("cam"),
+            "lid-1": makeTile("lid"),
+          }}
+        >
+          <Host />
         </TilingProvider>
       );
+      act(() => utils.getByTestId("focus-cam").click());
+      expect(utils.queryByTestId("cam-settings")).not.toBeNull();
+      expect(utils.queryByTestId("lid-settings")).toBeNull();
 
-      act(() => api!.setFocusedTileId("cam-1"));
-      expect(api!.FocusedTileSettings).toBe(Camera);
-
-      act(() => setKind("lidar"));
-      expect(api!.FocusedTileSettings).toBe(Lidar);
+      act(() => utils.getByTestId("focus-lid").click());
+      expect(utils.queryByTestId("cam-settings")).toBeNull();
+      expect(utils.queryByTestId("lid-settings")).not.toBeNull();
     });
   });
 });

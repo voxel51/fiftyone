@@ -9,6 +9,8 @@ const workerHarness = vi.hoisted(() => {
         yield item;
       }
     }),
+    readFrameTransformBootstrap: vi.fn(),
+    readFrameTransformWindow: vi.fn(),
     readSynchronizedMessageBatch: vi.fn(),
     readSynchronizedMessages: vi.fn(),
     readTopics: vi.fn(),

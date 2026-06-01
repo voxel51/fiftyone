@@ -1,5 +1,5 @@
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { useSchemaManagerModal } from "./SchemaManager/hooks";
 import {
@@ -15,37 +15,29 @@ export default function useLoadSchemas() {
   const { closeSchemaManager } = useSchemaManagerModal();
   const get = useOperatorExecutor("get_label_schemas");
 
-  const schemasData = useAtomValue(labelSchemasData);
-  const schemasDataRef = useRef(schemasData);
-  schemasDataRef.current = schemasData;
-
   useEffect(() => {
     if (!get.result) {
       return;
     }
-
-    // Set new schema data
     setData(get.result.label_schemas);
     setActive(get.result.active_label_schemas);
   }, [get.result, setData, setActive]);
 
-  // Reset schema data and close modal, then fetch new data
-  // Note: UI state (currentField, selection, JSON editor) is reset on
-  // SchemaManager Modal unmount via useSchemaManagerCleanup hook
+  // `get.execute` identity can change across renders (its
+  // `useRecoilCallback` deps include `currentSample` / `context`).
+  // Mirror it through a ref so the returned callback uses the latest
+  // `execute` without churning its own identity — Sidebar.tsx consumes
+  // this callback as an effect dep.
+  const executeRef = useRef(get.execute);
+  executeRef.current = get.execute;
+
+  // Refetch without pre-clearing the schema atoms: the `get.result`
+  // effect above swaps them atomically once the response lands, so
+  // consumers (`useLabels`, `useFocus.selectOverlay`'s `labelMap`
+  // lookup) never see a transient null mid-refetch.
   return useCallback(() => {
-    // Skip the reset-then-refetch when the atom is already populated by
-    // `useEnsureSchemasLoaded` — the brief null window flakes click handlers
-    // that read `fieldsOfType(...)` (e.g. classification activation).
-    if (schemasDataRef.current !== null) return;
-
-    // Reset schema data to trigger loading state
-    setData(null);
-    setActive(null);
-
-    // Reset paths order and close modal
     setActivePathsOrder(null);
     closeSchemaManager();
-
-    get.execute({});
-  }, []);
+    executeRef.current({});
+  }, [setActivePathsOrder, closeSchemaManager]);
 }

@@ -34,6 +34,7 @@ export interface ImagePanelProps {
   readonly className?: string;
   readonly fit?: "contain" | "cover";
   readonly frame: EncodedImageVisualization;
+  readonly onImageLoaded?: (width: number, height: number) => void;
   readonly style?: CSSProperties;
 }
 
@@ -45,10 +46,13 @@ export function ImagePanel({
   className,
   fit = "contain",
   frame,
+  onImageLoaded,
   style,
 }: ImagePanelProps) {
   const textureHandleRef = useRef<ImageTextureHandle | null>(null);
   const hasVisibleImageRef = useRef(false);
+  const onImageLoadedRef = useRef(onImageLoaded);
+  onImageLoadedRef.current = onImageLoaded;
   const [canvasError, setCanvasError] = useState<string | null>(null);
   const [status, setStatus] = useState<ImageLoadStatus>("loading");
   const [textureHandle, setTextureHandle] = useState<ImageTextureHandle | null>(
@@ -93,6 +97,7 @@ export function ImagePanel({
         replaceTextureHandle(handle, textureHandleRef, setTextureHandle);
         hasVisibleImageRef.current = true;
         setStatus("loaded");
+        onImageLoadedRef.current?.(handle.imageWidth, handle.imageHeight);
       })
       .catch(() => {
         if (cancelled) {
@@ -159,6 +164,8 @@ async function createImageTexture(
 
     return {
       aspectRatio: image.width / Math.max(1, image.height),
+      imageWidth: image.width,
+      imageHeight: image.height,
       dispose: () => {
         texture.dispose();
         image.close();
@@ -172,6 +179,8 @@ async function createImageTexture(
 
   return {
     aspectRatio: image.naturalWidth / Math.max(1, image.naturalHeight),
+    imageWidth: image.naturalWidth,
+    imageHeight: image.naturalHeight,
     dispose: () => texture.dispose(),
     texture,
   };

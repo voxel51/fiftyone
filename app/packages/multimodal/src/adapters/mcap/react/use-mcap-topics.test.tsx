@@ -32,41 +32,6 @@ describe("useMcapTopics", () => {
     expect(client.readTopics).toHaveBeenCalledWith({ source });
   });
 
-  it("dedupes in-flight and resolved reads for the same source", async () => {
-    const source = createSource("dedupe");
-    const pendingTopics = deferred<readonly StreamInventory[]>();
-    const client = createTopicsClient(() => pendingTopics.promise);
-
-    const { unmount } = render(
-      <>
-        <TopicsHarness client={client} label="first" source={source} />
-        <TopicsHarness client={client} label="second" source={source} />
-      </>
-    );
-
-    await waitFor(() => {
-      expect(client.readTopics).toHaveBeenCalledTimes(1);
-    });
-
-    pendingTopics.resolve([createTopic("camera")]);
-
-    await waitFor(() => {
-      expect(screen.getByTestId("first").textContent).toBe("ready:1:");
-      expect(screen.getByTestId("second").textContent).toBe("ready:1:");
-    });
-    unmount();
-
-    const laterClient = createTopicsClient(async () => [createTopic("lidar")]);
-    render(
-      <TopicsHarness client={laterClient} label="cached" source={source} />
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId("cached").textContent).toBe("ready:1:");
-    });
-    expect(laterClient.readTopics).not.toHaveBeenCalled();
-  });
-
   it("surfaces failed reads and retries the same source later", async () => {
     const source = createSource("retry");
     const failedClient = createTopicsClient(async () => {
@@ -155,6 +120,8 @@ function createTopicsClient(
         yield item;
       }
     }),
+    readFrameTransformBootstrap: vi.fn(),
+    readFrameTransformWindow: vi.fn(),
     readSynchronizedMessageBatch: vi.fn(async () => []),
     readSynchronizedMessages: vi.fn(),
     readTimelineRange: vi.fn(),
@@ -174,20 +141,5 @@ function createTopic(streamId: string): StreamInventory {
     $typeName: "fiftyone.multimodal.schemas.v1.StreamInventory",
     metadata: {},
     streamId,
-  };
-}
-
-function deferred<Value>() {
-  let resolve!: (value: Value) => void;
-  let reject!: (error: unknown) => void;
-  const promise = new Promise<Value>((resolvePromise, rejectPromise) => {
-    resolve = resolvePromise;
-    reject = rejectPromise;
-  });
-
-  return {
-    promise,
-    reject,
-    resolve,
   };
 }

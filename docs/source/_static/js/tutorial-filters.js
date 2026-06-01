@@ -94,7 +94,8 @@ $(document).ready(function () {
           (
             document.getElementById("plugin-search") ||
             document.getElementById("model-search") ||
-            document.getElementById("dataset-search")
+            document.getElementById("dataset-search") ||
+            document.getElementById("skill-search")
           )?.value || ""
         )
           .toLowerCase()
@@ -171,7 +172,8 @@ $(document).ready(function () {
       var searchInput =
         document.getElementById("plugin-search") ||
         document.getElementById("model-search") ||
-        document.getElementById("dataset-search");
+        document.getElementById("dataset-search") ||
+        document.getElementById("skill-search");
       if (searchInput) {
         searchInput.addEventListener("input", function () {
           updateList();

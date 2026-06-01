@@ -8,13 +8,14 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import type { MosaicNode } from "react-mosaic-component";
 import {
   addTileToLayout,
   autoLayout as autoLayoutFn,
   collectTileIds,
 } from "../views/MosaicGrid/MosaicGrid";
-import { tileSelectionAtom, tileSourceAtom } from "./atoms";
+import { tileSelectionAtom } from "./atoms";
 import type {
   AddTileOptions,
   TilingContextValue,
@@ -70,9 +71,11 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
   // Per-instance Jotai store so multiple <TilingProvider>s on the same
   // page each get isolated atom state (sources, selections, registry).
   const jotaiStore = useMemo(() => createStore(), []);
-  const [settings, setSettings] = useState<
-    Record<string, React.ComponentType>
-  >({});
+  // Portal target the settings sidebar registers; `<TileSettingsContent>`
+  // children render here when their tile is focused.
+  const [settingsSlotEl, setSettingsSlotEl] = useState<HTMLElement | null>(
+    null
+  );
   // Seed the counter past any `<prefix>-<n>` suffix in the initial tiles,
   // so the first `addTile("camera", ...)` against `{ "camera-1": ... }`
   // produces `camera-2` instead of colliding with `camera-1`. Walks every
@@ -83,6 +86,10 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       return m ? Math.max(max, Number(m[1])) : max;
     }, 0) + 1
   );
+  // Always-current ref so autoLayout stays referentially stable — avoids
+  // stale captures in useMemo dependency-suppressed consumers (TilingHeader).
+  const tilesRef = useRef(tiles);
+  tilesRef.current = tiles;
 
   /**
    * Layout setter that also reconciles the entries map (drops orphans
@@ -108,7 +115,6 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
         // Free per-tile atomFamily entries so dynamic tile ids don't
         // accumulate in the store across long sessions.
         for (const id of idsToRemove) {
-          tileSourceAtom.remove(id);
           tileSelectionAtom.remove(id);
         }
       }
@@ -153,42 +159,30 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
         return stripped;
       });
       setFocusedTileId((current) => (current === id ? null : current));
-      // Release the per-tile atomFamily entries so the store doesn't
+      // Release the per-tile atomFamily entry so the store doesn't
       // grow unbounded across long sessions.
-      tileSourceAtom.remove(id);
       tileSelectionAtom.remove(id);
     },
     []
   );
+
+  const setTileTitle = useCallback((tileId: string, title: string) => {
+    setTiles((prev) => {
+      const tile = prev[tileId];
+      if (!tile || tile.title === title) return prev;
+      return { ...prev, [tileId]: { ...tile, title } };
+    });
+  }, []);
 
   const autoLayout = useCallback(() => {
     // Derive from the tiles map, not from the layout tree — a tile
     // entry can exist in `tiles` without being placed in the tree
     // yet (e.g. when `initialLayout` is null or partial), and we
     // don't want auto-layout to silently drop it.
-    setLayoutState(autoLayoutFn(Object.keys(tiles)));
-  }, [tiles]);
-
-  const registerSettings = useCallback(
-    (tileId: string, Component: React.ComponentType) => {
-      setSettings((prev) =>
-        prev[tileId] === Component ? prev : { ...prev, [tileId]: Component }
-      );
-      return () => {
-        setSettings((prev) => {
-          if (!(tileId in prev)) return prev;
-          const next = { ...prev };
-          delete next[tileId];
-          return next;
-        });
-      };
-    },
-    []
-  );
-
-  const FocusedTileSettings = focusedTileId
-    ? (settings[focusedTileId] ?? null)
-    : null;
+    // Read from ref so this callback stays stable across tile additions,
+    // avoiding stale captures in useMemo consumers that suppress deps.
+    setLayoutState(autoLayoutFn(Object.keys(tilesRef.current)));
+  }, []);
 
   const value = useMemo<TilingContextValue>(
     () => ({
@@ -200,8 +194,9 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       addTile,
       removeTile,
       autoLayout,
-      FocusedTileSettings,
-      registerSettings,
+      settingsSlotEl,
+      setSettingsSlotEl,
+      setTileTitle,
     }),
     [
       layout,
@@ -211,8 +206,8 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       addTile,
       removeTile,
       autoLayout,
-      FocusedTileSettings,
-      registerSettings,
+      settingsSlotEl,
+      setTileTitle,
     ]
   );
 
@@ -267,19 +262,15 @@ export function useTileId(): string | null {
 }
 
 /**
- * Register a settings component for the surrounding tile. The component
- * is rendered (as `<Component />`) in the settings panel whenever this
- * tile is focused. Pass a module-level component reference, not an
- * inline JSX element — element identity changes every render and would
- * thrash the registry.
+ * Portals its children into the settings sidebar when the surrounding
+ * tile is focused. State flows through normal React props from the
+ * tile body — no shared store needed.
  */
-export function useTileSettings(Component: React.ComponentType): void {
+export const TileSettingsContent: React.FC<{
+  children: React.ReactNode;
+}> = ({ children }) => {
   const tileId = useTileId();
-  const { registerSettings } = useTiling();
-  useEffect(() => {
-    if (!tileId) return undefined;
-    return registerSettings(tileId, Component);
-    // registerSettings is a useCallback([]) — stable across renders.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tileId, Component]);
-}
+  const { focusedTileId, settingsSlotEl } = useTiling();
+  if (!tileId || tileId !== focusedTileId || !settingsSlotEl) return null;
+  return createPortal(children, settingsSlotEl);
+};

@@ -5,6 +5,7 @@
  */
 export const VISUALIZATION_KIND = Object.freeze({
   ENCODED_IMAGE: "encoded-image",
+  IMAGE_ANNOTATIONS: "image-annotations",
   POINT_CLOUD: "point-cloud",
 } as const);
 
@@ -22,12 +23,12 @@ export const PANEL_TYPE = Object.freeze({
  * Union of visualization kind ids.
  */
 export type VisualizationKind =
-  typeof VISUALIZATION_KIND[keyof typeof VISUALIZATION_KIND];
+  (typeof VISUALIZATION_KIND)[keyof typeof VISUALIZATION_KIND];
 
 /**
  * Union of panel family ids.
  */
-export type PanelType = typeof PANEL_TYPE[keyof typeof PANEL_TYPE];
+export type PanelType = (typeof PANEL_TYPE)[keyof typeof PANEL_TYPE];
 
 /**
  * Visualization-to-panel registry.
@@ -36,5 +37,6 @@ export const VISUALIZATION_PANEL_REGISTRY: Readonly<
   Record<VisualizationKind, PanelType>
 > = Object.freeze({
   [VISUALIZATION_KIND.ENCODED_IMAGE]: PANEL_TYPE.IMAGE,
+  [VISUALIZATION_KIND.IMAGE_ANNOTATIONS]: PANEL_TYPE.IMAGE,
   [VISUALIZATION_KIND.POINT_CLOUD]: PANEL_TYPE.THREE_D,
 });

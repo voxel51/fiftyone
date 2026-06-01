@@ -1,8 +1,11 @@
 /**
- * React helper for MCAP renderer client lifecycle.
+ * React helpers for MCAP renderer client lifecycle.
  */
-export { useMcapResourceClient } from "./react";
-export type { UseMcapResourceClientOptions } from "./react";
+export { useMcapFrameTransforms, useMcapResourceClient } from "./react";
+export type {
+  McapFrameTransformResolver,
+  UseMcapResourceClientOptions,
+} from "./react";
 
 /**
  * Public MCAP resource client factory.
@@ -30,11 +33,21 @@ export type { CreateMcapResourceClientOptions } from "./resource-client";
 export type { McapIndexedReaderLike, McapReaderFactory } from "./reader";
 
 /**
+ * Frame-transform domain types used by 3D renderers.
+ */
+export type {
+  McapComposedFrameTransform,
+  McapFrameTransformResolution,
+} from "./frame-transform-types";
+
+/**
  * Public MCAP resource, playback, and sync policy contracts.
  */
 export type {
   McapDecodedMessage,
   McapReadDecodedMessagesRequest,
+  McapReadFrameTransformBootstrapRequest,
+  McapReadFrameTransformWindowRequest,
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
   McapReadTopicsRequest,

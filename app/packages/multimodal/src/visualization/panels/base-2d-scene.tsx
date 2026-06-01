@@ -11,6 +11,8 @@ import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "./style-tokens";
  */
 export interface ImageTextureHandle {
   readonly aspectRatio: number;
+  readonly imageWidth: number;
+  readonly imageHeight: number;
   readonly dispose: () => void;
   readonly texture: THREE.Texture;
 }
@@ -79,10 +81,11 @@ export function ImageTexturePlane({
       <meshBasicMaterial
         depthTest={false}
         depthWrite={false}
-        map={textureHandle.texture}
         toneMapped={false}
         transparent
-      />
+      >
+        <primitive attach="map" object={textureHandle.texture} />
+      </meshBasicMaterial>
     </mesh>
   );
 }

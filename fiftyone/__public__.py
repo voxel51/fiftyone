@@ -65,13 +65,18 @@ from .core.annotation.attributes import (
     WhenOperator,
     WhenOr,
 )
+from .core.annotation.nodes import (
+    Node,
+)
 from .core.ontology import (
     AnnotationOntology,
+    Taxonomy,
     apply_ontology,
     delete_ontology,
     list_ontologies,
     load_ontology,
     ontology_exists,
+    save_ontology,
 )
 from .core.fields import (
     flatten_schema,
