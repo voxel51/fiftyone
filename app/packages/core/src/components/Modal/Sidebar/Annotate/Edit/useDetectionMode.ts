@@ -175,7 +175,7 @@ export const useDetectionMode = () => {
     const scene = sceneRef.current;
     const currentLabel = selectedLabelRef.current;
 
-    if (currentLabel) {
+    if (currentLabel && currentLabel.type === DETECTION) {
       setLastUsedField(currentLabel.path);
 
       if (currentLabel.data.label) {
