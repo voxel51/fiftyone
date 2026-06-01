@@ -12,8 +12,6 @@ import useDelete from "./Edit/useDelete";
 import GroupAnnotation from "./GroupAnnotation";
 import ImportSchema, { useShowImportSchema } from "./ImportSchema";
 import LabelList from "./LabelList";
-import SchemaManager from "./SchemaManager";
-import { useSchemaManagerModal } from "./SchemaManager/hooks";
 import { labelSchemasData } from "./state";
 import { useAnnotationContextManager } from "./useAnnotationContextManager";
 import type { AnnotationDisabledReason } from "./useCanAnnotate";
@@ -112,7 +110,6 @@ const Annotate = ({ disabledReason, loadSchemas }: AnnotateProps) => {
   useRegisterAIAnnotationEventHandlers();
   useRegisterPolylineSidebarSyncHandlers();
 
-  const { schemaManagerDisplayed } = useSchemaManagerModal();
   const loading = useAtomValue(labelSchemasData) === null;
 
   const contextManager = useAnnotationContextManager();
@@ -143,7 +140,6 @@ const Annotate = ({ disabledReason, loadSchemas }: AnnotateProps) => {
         key="body"
         loadSchemas={loadSchemas}
       />
-      {schemaManagerDisplayed && <SchemaManager key="manage" />}
     </>
   );
 };
