@@ -2,6 +2,7 @@ import { LoadingDots, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { isGroup as isGroupAtom } from "@fiftyone/state";
 import { Apps, ImageAspectRatio } from "@mui/icons-material";
+import { Toggle } from "@voxel51/voodo";
 import React, { Suspense, useMemo } from "react";
 import { constSelector, useRecoilValue, useResetRecoilState } from "recoil";
 import { Slider } from "../../Common/RangeSlider";
@@ -75,6 +76,38 @@ const Zoom = () => {
   );
 };
 
+const ScrubberToggle = () => {
+  const available = fos.useGridScrubberAvailable();
+  const [enabled, setEnabled] = fos.useGridScrubber();
+  if (!available) return null;
+  return (
+    <RightDiv>
+      <Toggle
+        checked={enabled}
+        onChange={setEnabled}
+        label="Scrubber"
+        aria-label="Toggle grid scrubber"
+      />
+    </RightDiv>
+  );
+};
+
+const SwimlanesToggle = () => {
+  const available = fos.useGridSwimlanesAvailable();
+  const [enabled, setEnabled] = fos.useGridSwimlanes();
+  if (!available) return null;
+  return (
+    <RightDiv>
+      <Toggle
+        checked={enabled}
+        onChange={setEnabled}
+        label="Swimlanes"
+        aria-label="Toggle grid swimlanes"
+      />
+    </RightDiv>
+  );
+};
+
 const Header = () => {
   const isGroup = useRecoilValue(isGroupAtom);
   const groupSlices = useRecoilValue(fos.groupSlices);
@@ -104,6 +137,8 @@ const Header = () => {
         <Sort />
         <Spacing />
         <Zoom />
+        <SwimlanesToggle />
+        <ScrubberToggle />
       </RightContainer>
     </SamplesHeader>
   );
