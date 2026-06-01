@@ -43,6 +43,8 @@ export const foxglovePointCloudDecoder: Decoder = {
     const pointStride = requiredNumber(message, "pointStride", "point_stride");
     const fields = packedFields(requiredArray(message, "fields"));
     const positions = extractPositions(data, pointStride, fields);
+    // Per-message Foxglove frame_id carried by this point cloud payload. This
+    // is separate from the MCAP channel frame_id metadata fallback.
     const frameId = optionalString(message, "frameId", "frame_id");
     const messageTimestamp = timestampNs(optionalRecord(message, "timestamp"));
     const pointCount = positions.length / POINT_COMPONENT_COUNT;
@@ -66,6 +68,7 @@ export const foxglovePointCloudDecoder: Decoder = {
       resourceHints: resourceHintsForArrayBufferViews(positions),
       timing: timingFromContext(context, messageTimestamp),
       visualization: {
+        ...(frameId ? { coordinateFrameId: frameId } : {}),
         fields: packedFieldMetadata,
         kind: VISUALIZATION_KIND.POINT_CLOUD,
         pointCount,

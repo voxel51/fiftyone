@@ -20,7 +20,7 @@ const test = base.extend<{
 
 test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await datasetFactory.createBlankDataset({
+  await datasetFactory.createDataset({
     datasetName: DATASET_NAME,
     numSamples: 1,
     numbered: true,

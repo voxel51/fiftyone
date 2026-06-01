@@ -23,7 +23,7 @@ Jinja2==3.1.6
 MarkupSafe==3.0.3
 jsx-lexer==2.0.1
 libsass==0.23.0
-myst-parser==5.0.0
+myst-parser==5.1.0
 nbsphinx==0.9.8
 pydata-sphinx-theme==0.18.0
 sphinx-autobuild==2025.8.25
@@ -39,3 +39,4 @@ sphinx-pushfeedback==0.1.8
 sphinx-docsearch==0.3.0
 sphinx-remove-toctrees==1.0.0.post1
 sphinx-autoapi==3.8.0
+sphinx-sitemap==2.6.0

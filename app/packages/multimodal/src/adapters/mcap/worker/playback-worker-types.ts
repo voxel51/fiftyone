@@ -1,6 +1,9 @@
+import type { McapFrameTransformSetWire } from "../frame-transform-types";
 import type {
   McapDecodedMessage,
   McapReadDecodedMessagesRequest,
+  McapReadFrameTransformBootstrapRequest,
+  McapReadFrameTransformWindowRequest,
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
   McapReadTopicsRequest,
@@ -14,8 +17,17 @@ import type { StreamInventory } from "../../../schemas/v1";
  * Priority levels used by the MCAP playback worker scheduler.
  */
 export const MCAP_PLAYBACK_WORKER_PRIORITY = Object.freeze({
+  /**
+   * Work needed to render the frame at the active playback time.
+   */
   CURRENT_FRAME: 0,
+  /**
+   * Work needed to keep playback batches ready around the active time window.
+   */
   PLAYBACK_BATCH: 1,
+  /**
+   * Opportunistic background work that can wait behind interactive playback.
+   */
   IDLE_PREFETCH: 2,
 } as const);
 
@@ -39,6 +51,8 @@ export type McapPlaybackWorkerFetchParameters = {
  */
 export type McapPlaybackWorkerRequestPayloadByType = {
   readonly readDecodedMessages: McapReadDecodedMessagesRequest;
+  readonly readFrameTransformBootstrap: McapReadFrameTransformBootstrapRequest;
+  readonly readFrameTransformWindow: McapReadFrameTransformWindowRequest;
   readonly readSynchronizedMessageBatch: McapReadSynchronizedMessageBatchRequest;
   readonly readSynchronizedMessages: McapReadSynchronizedMessagesRequest;
   readonly readTimelineRange: McapReadTimelineRangeRequest;
@@ -49,6 +63,8 @@ export type McapPlaybackWorkerRequestPayloadByType = {
  * Unary result payloads returned by worker RPC calls.
  */
 export type McapPlaybackWorkerResultByType = {
+  readonly readFrameTransformBootstrap: McapFrameTransformSetWire;
+  readonly readFrameTransformWindow: McapFrameTransformSetWire;
   readonly readSynchronizedMessageBatch: readonly McapSynchronizedMessageWindow[];
   readonly readSynchronizedMessages: McapSynchronizedMessageWindow;
   readonly readTimelineRange: McapTimelineRange;

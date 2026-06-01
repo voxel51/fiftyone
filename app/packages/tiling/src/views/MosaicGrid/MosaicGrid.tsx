@@ -11,6 +11,7 @@ import {
 } from "react-mosaic-component";
 import "react-mosaic-component/react-mosaic-component.css";
 import { TileIdScope } from "../../lib/TilingProvider";
+import { useTileTitle } from "../../lib/use-tile-state";
 import { TileHeader } from "../Tile/Tile";
 import styles from "./MosaicGrid.module.css";
 
@@ -41,6 +42,51 @@ export interface MosaicGridProps {
   onFocusTile?: (id: string) => void;
   className?: string;
 }
+
+interface TileWindowProps {
+  path: MosaicBranch[];
+  tile: MosaicTileConfig;
+  isFocused: boolean;
+  onFocus: () => void;
+  onClose: () => void;
+  onFullscreen: () => void;
+}
+
+const TileWindow: React.FC<TileWindowProps> = ({
+  path,
+  tile,
+  isFocused,
+  onFocus,
+  onClose,
+  onFullscreen,
+}) => {
+  const titleOverride = useTileTitle();
+  const title = titleOverride ?? tile.title;
+  return (
+    <MosaicWindow<string>
+      path={path}
+      title={title}
+      toolbarControls={[]}
+      className={isFocused ? styles.focused : undefined}
+      renderToolbar={() => (
+        // react-mosaic's react-dnd integration needs a native DOM node at
+        // the toolbar root to attach the drag source ref. TileHeader is a
+        // React FC, so we wrap it in a plain div the connector can grab.
+        <div className={styles.toolbarHeader}>
+          <TileHeader
+            title={title}
+            onClose={onClose}
+            onFullscreen={onFullscreen}
+          />
+        </div>
+      )}
+    >
+      <div className={styles.bodyWrapper} onPointerDown={onFocus}>
+        {tile.render()}
+      </div>
+    </MosaicWindow>
+  );
+};
 
 /**
  * Draggable, resizable grid layout wrapping `react-mosaic-component`.
@@ -129,30 +175,16 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
     };
 
     return (
-      <MosaicWindow<string>
-        path={path}
-        title={tile.title}
-        toolbarControls={[]}
-        className={isFocused ? styles.focused : undefined}
-        renderToolbar={() => (
-          // react-mosaic's react-dnd integration needs a native DOM node at
-          // the toolbar root to attach the drag source ref. TileHeader is a
-          // React FC, so we wrap it in a plain div the connector can grab.
-          <div className={styles.toolbarHeader}>
-            <TileHeader
-              title={tile.title}
-              onClose={handleClose}
-              onFullscreen={handleFullscreen}
-            />
-          </div>
-        )}
-      >
-        <TileIdScope tileId={id}>
-          <div className={styles.bodyWrapper} onPointerDown={focus}>
-            {tile.render()}
-          </div>
-        </TileIdScope>
-      </MosaicWindow>
+      <TileIdScope tileId={id}>
+        <TileWindow
+          path={path}
+          tile={tile}
+          isFocused={isFocused}
+          onFocus={focus}
+          onClose={handleClose}
+          onFullscreen={handleFullscreen}
+        />
+      </TileIdScope>
     );
   };
 

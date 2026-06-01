@@ -7134,6 +7134,586 @@
             "date_added": "2025-04-10 12:24:41"
         },
         {
+            "base_name": "yoloe26n-seg-torch",
+            "base_filename": "yoloe-26n-seg.pt",
+            "description": "Open-vocabulary nano segmentation with text/visual prompts",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 11463019,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26n-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOEVPModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26n-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.YOLOEVPSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
+            "base_name": "yoloe26s-seg-torch",
+            "base_filename": "yoloe-26s-seg.pt",
+            "description": "Open-vocabulary small segmentation with text/visual prompts",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 30759531,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26s-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOEVPModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26s-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.YOLOEVPSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
+            "base_name": "yoloe26m-seg-torch",
+            "base_filename": "yoloe-26m-seg.pt",
+            "description": "Open-vocabulary medium segmentation with text/visual prompts",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 70048027,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26m-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOEVPModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26m-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.YOLOEVPSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
+            "base_name": "yoloe26l-seg-torch",
+            "base_filename": "yoloe-26l-seg.pt",
+            "description": "Open-vocabulary large segmentation with text/visual prompts",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 78909291,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26l-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOEVPModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26l-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.YOLOEVPSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
+            "base_name": "yoloe26x-seg-torch",
+            "base_filename": "yoloe-26x-seg.pt",
+            "description": "Open-vocabulary extra-large segmentation with text/visual prompts",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 171013099,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26x-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOEVPModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26x-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.YOLOEVPSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
+            "base_name": "yoloe26n-seg-pf-torch",
+            "base_filename": "yoloe-26n-seg-pf.pt",
+            "description": "Prompt-free nano segmentation with 4,585 built-in classes",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 15748710,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26n-seg-pf.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26n-seg-pf.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "yolo", "zero-shot", "prompt-free", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
+            "base_name": "yoloe26s-seg-pf-torch",
+            "base_filename": "yoloe-26s-seg-pf.pt",
+            "description": "Prompt-free small segmentation with 4,585 built-in classes",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 35163686,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26s-seg-pf.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26s-seg-pf.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "yolo", "zero-shot", "prompt-free", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
+            "base_name": "yoloe26m-seg-pf-torch",
+            "base_filename": "yoloe-26m-seg-pf.pt",
+            "description": "Prompt-free medium segmentation with 4,585 built-in classes",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 75324434,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26m-seg-pf.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26m-seg-pf.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "yolo", "zero-shot", "prompt-free", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
+            "base_name": "yoloe26l-seg-pf-torch",
+            "base_filename": "yoloe-26l-seg-pf.pt",
+            "description": "Prompt-free large segmentation with 4,585 built-in classes",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 84185830,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26l-seg-pf.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26l-seg-pf.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "yolo", "zero-shot", "prompt-free", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
+            "base_name": "yoloe26x-seg-pf-torch",
+            "base_filename": "yoloe-26x-seg-pf.pt",
+            "description": "Prompt-free extra-large segmentation with 4,585 built-in classes",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 175571686,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26x-seg-pf.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26x-seg-pf.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "yolo", "zero-shot", "prompt-free", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
             "base_name": "rtdetr-l-coco-torch",
             "base_filename": "rtdetr-l-coco.pt",
             "description": "Modern real-time object detector that finds items without complex post-processing for responsive applications",
@@ -10025,6 +10605,270 @@
             "tags": ["embeddings", "vlm", "torch", "transformer"],
             "training_data": [],
             "date_added": "2026-01-22 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-nano-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Nano real-time object detector trained on COCO. Ultra-fast, suitable for edge devices.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 122000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRDetectionModel",
+                "config": {
+                    "model_type": "RFDETRNano"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["detection", "coco", "torch", "transformer", "rfdetr", "official"],
+            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-small-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Small real-time object detector trained on COCO. Fast with good accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 128000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRDetectionModel",
+                "config": {
+                    "model_type": "RFDETRSmall"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["detection", "coco", "torch", "transformer", "rfdetr", "official"],
+            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-medium-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Medium real-time object detector trained on COCO. Balanced speed and accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 135000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRDetectionModel",
+                "config": {
+                    "model_type": "RFDETRMedium"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["detection", "coco", "torch", "transformer", "rfdetr", "official"],
+            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-base-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Base real-time object detector trained on COCO. High accuracy for general use.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 116000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRDetectionModel",
+                "config": {
+                    "model_type": "RFDETRBase"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["detection", "coco", "torch", "transformer", "rfdetr", "official"],
+            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-large-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Large real-time object detector trained on COCO. Maximum detection accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 136000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRDetectionModel",
+                "config": {
+                    "model_type": "RFDETRLarge"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["detection", "coco", "torch", "transformer", "rfdetr", "official"],
+            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-seg-nano-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Seg Nano instance segmentation model trained on COCO. Ultra-fast, suitable for edge devices.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 134000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRSegmentationModel",
+                "config": {
+                    "model_type": "RFDETRSegNano"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["instances", "coco", "torch", "transformer", "rfdetr", "official"],
+            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-seg-small-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Seg Small instance segmentation model trained on COCO. Fast with good accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 135000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRSegmentationModel",
+                "config": {
+                    "model_type": "RFDETRSegSmall"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["instances", "coco", "torch", "transformer", "rfdetr", "official"],
+            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-seg-medium-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Seg Medium instance segmentation model trained on COCO. Balanced speed and accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 143000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRSegmentationModel",
+                "config": {
+                    "model_type": "RFDETRSegMedium"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["instances", "coco", "torch", "transformer", "rfdetr", "official"],
+            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-seg-large-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Seg Large instance segmentation model trained on COCO. High accuracy segmentation.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 145000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRSegmentationModel",
+                "config": {
+                    "model_type": "RFDETRSegLarge"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["instances", "coco", "torch", "transformer", "rfdetr", "official"],
+            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-seg-xlarge-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Seg XLarge instance segmentation model trained on COCO. Very high accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 152000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRSegmentationModel",
+                "config": {
+                    "model_type": "RFDETRSegXLarge"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["instances", "coco", "torch", "transformer", "rfdetr", "official"],
+            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-seg-2xlarge-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Seg 2XLarge instance segmentation model trained on COCO. Maximum segmentation accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 154000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRSegmentationModel",
+                "config": {
+                    "model_type": "RFDETRSeg2XLarge"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["instances", "coco", "torch", "transformer", "rfdetr", "official"],
+            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "date_added": "2026-03-06 12:00:00"
         },
         {
             "base_name": "apple-sharp-torch",

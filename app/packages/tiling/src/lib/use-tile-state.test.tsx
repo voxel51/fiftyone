@@ -1,17 +1,15 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
+import { IconName } from "@voxel51/voodo";
 import { Provider as JotaiProvider, createStore } from "jotai";
 import React from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { TileIdScope, TilingProvider } from "./TilingProvider";
+import type { RegisteredTile } from "./types";
 import { useTileRegistry } from "./use-tile-registry";
 import {
   useSetTileSelection,
-  useSetTileSource,
-  useSetTileSourceFor,
   useTileSelection,
   useTileSelectionFor,
-  useTileSource,
-  useTileSourcesByType,
   useTileTypes,
 } from "./use-tile-state";
 
@@ -39,65 +37,11 @@ const makePlainWrap = () => {
 
 const DummyTile: React.FC = () => null;
 
-describe("useTileSource / useSetTileSource", () => {
-  afterEach(() => cleanup());
-
-  it("returns null until a source is set", () => {
-    const { result } = renderHook(() => useTileSource(), {
-      wrapper: wrap("camera-1"),
-    });
-    expect(result.current).toBeNull();
-  });
-
-  it("updates when useSetTileSource writes a new value", () => {
-    const { result } = renderHook(
-      () => ({ value: useTileSource(), set: useSetTileSource() }),
-      { wrapper: wrap("camera-1") }
-    );
-    act(() => {
-      result.current.set("camera_front");
-    });
-    expect(result.current.value).toBe("camera_front");
-    act(() => {
-      result.current.set(null);
-    });
-    expect(result.current.value).toBeNull();
-  });
-});
-
-describe("useSetTileSourceFor", () => {
-  afterEach(() => cleanup());
-
-  it("writes are visible to a scoped useTileSource reader for the same id", () => {
-    // Setter probe: captures the setter via a callback ref so the assertion
-    // can call it from outside the React tree.
-    function SourceWriter({
-      onReady,
-    }: {
-      onReady: (set: (id: string, src: string | null) => void) => void;
-    }) {
-      const set = useSetTileSourceFor();
-      React.useEffect(() => onReady(set), [onReady, set]);
-      return null;
-    }
-    let captured: (id: string, src: string | null) => void = () => {};
-    const store = createStore();
-    const { result } = renderHook(() => useTileSource(), {
-      wrapper: ({ children }) => (
-        <JotaiProvider store={store}>
-          <TilingProvider>
-            <SourceWriter onReady={(s) => (captured = s)} />
-            <TileIdScope tileId="lidar-1">{children}</TileIdScope>
-          </TilingProvider>
-        </JotaiProvider>
-      ),
-    });
-    expect(result.current).toBeNull();
-    act(() => {
-      captured("lidar-1", "lidar_top");
-    });
-    expect(result.current).toBe("lidar_top");
-  });
+const makeEntry = (type: string): RegisteredTile => ({
+  type,
+  typeLabel: type.charAt(0).toUpperCase() + type.slice(1),
+  icon: IconName.GridView,
+  Tile: DummyTile,
 });
 
 describe("useTileSelection / useTileSelectionFor / useSetTileSelection", () => {
@@ -166,7 +110,7 @@ describe("useTileSelection / useTileSelectionFor / useSetTileSelection", () => {
   });
 });
 
-describe("useTileTypes / useTileSourcesByType", () => {
+describe("useTileTypes", () => {
   afterEach(() => cleanup());
 
   function setup() {
@@ -174,40 +118,16 @@ describe("useTileTypes / useTileSourcesByType", () => {
       () => ({
         registry: useTileRegistry(),
         types: useTileTypes(),
-        cameras: useTileSourcesByType("camera"),
-        lidars: useTileSourcesByType("lidar"),
       }),
       { wrapper: makePlainWrap() }
     );
   }
 
-  const makeEntry = (streamId: string, type: string) => ({
-    streamId,
-    type,
-    typeLabel: type.charAt(0).toUpperCase() + type.slice(1),
-    title: streamId,
-    icon: "icon",
-    Tile: DummyTile,
-  });
-
-  it("dedupes types so each distinct type appears once", () => {
+  it("exposes registered tiles in registration order", () => {
     const { result } = setup();
     act(() => {
-      result.current.registry.registerTile(makeEntry("a", "camera"));
-      result.current.registry.registerTile(makeEntry("b", "camera"));
-      result.current.registry.registerTile(makeEntry("c", "lidar"));
-    });
-    expect(result.current.types.map((t) => t.type)).toEqual([
-      "camera",
-      "lidar",
-    ]);
-  });
-
-  it("preserves registration order in useTileTypes", () => {
-    const { result } = setup();
-    act(() => {
-      result.current.registry.registerTile(makeEntry("c", "lidar"));
-      result.current.registry.registerTile(makeEntry("a", "camera"));
+      result.current.registry.registerTile(makeEntry("lidar"));
+      result.current.registry.registerTile(makeEntry("camera"));
     });
     expect(result.current.types.map((t) => t.type)).toEqual([
       "lidar",
@@ -215,17 +135,17 @@ describe("useTileTypes / useTileSourcesByType", () => {
     ]);
   });
 
-  it("filters useTileSourcesByType to entries with the matching type", () => {
+  it("replacing a type keeps a single entry", () => {
     const { result } = setup();
     act(() => {
-      result.current.registry.registerTile(makeEntry("front", "camera"));
-      result.current.registry.registerTile(makeEntry("back", "camera"));
-      result.current.registry.registerTile(makeEntry("top", "lidar"));
+      result.current.registry.registerTile(makeEntry("camera"));
+      result.current.registry.registerTile(makeEntry("camera"));
+      result.current.registry.registerTile(makeEntry("lidar"));
     });
-    expect(result.current.cameras.map((c) => c.streamId)).toEqual([
-      "front",
-      "back",
+    expect(result.current.types).toHaveLength(2);
+    expect(result.current.types.map((t) => t.type)).toEqual([
+      "camera",
+      "lidar",
     ]);
-    expect(result.current.lidars.map((l) => l.streamId)).toEqual(["top"]);
   });
 });

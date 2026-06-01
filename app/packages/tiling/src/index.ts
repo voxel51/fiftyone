@@ -4,9 +4,9 @@
 export {
   TilingProvider,
   TileIdScope,
+  TileSettingsContent,
   useTiling,
   useTileId,
-  useTileSettings,
 } from "./lib/TilingProvider";
 export type { TilingProviderProps } from "./lib/TilingProvider";
 export type {
@@ -17,20 +17,15 @@ export type {
 } from "./lib/types";
 
 // --- Per-tile state -------------------------------------------------------
+export { registeredTilesAtom, tileSelectionAtom } from "./lib/atoms";
 export {
-  registeredTilesAtom,
-  tileSourceAtom,
-  tileSelectionAtom,
-} from "./lib/atoms";
-export {
-  useTileSource,
-  useSetTileSource,
-  useSetTileSourceFor,
-  useTileSelection,
   useSetTileSelection,
+  useSetTileTitle,
+  useTileSelection,
   useTileSelectionFor,
+  useTileTitle,
+  useTileTitleFor,
   useTileTypes,
-  useTileSourcesByType,
 } from "./lib/use-tile-state";
 export { useRegisteredTiles } from "./lib/use-registered-tiles";
 export { useTileRegistry } from "./lib/use-tile-registry";

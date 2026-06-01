@@ -24,9 +24,11 @@ export function asRecord(value: unknown): Record<string, unknown> {
  */
 export function optionalRecord(
   record: Record<string, unknown>,
-  field: string
+  field: string,
+  fallbackField?: string
 ): Record<string, unknown> | undefined {
-  const value = record[field];
+  const value =
+    record[field] ?? (fallbackField ? record[fallbackField] : undefined);
   if (value === undefined || value === null) {
     return undefined;
   }

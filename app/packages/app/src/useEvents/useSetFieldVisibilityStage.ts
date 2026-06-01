@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { subscribeBefore } from "@fiftyone/relay";
 import { useSessionRef, useSessionSetter } from "@fiftyone/state";
 import { useRecoilCallback } from "recoil";
