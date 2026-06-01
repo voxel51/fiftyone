@@ -55,8 +55,10 @@ export default function Support({ readOnly = false }: SupportProps) {
 
   const syncFromOverlay = useCallback(() => {
     if (!(overlay instanceof TemporalOverlay)) return;
+
     const support = overlay.label?.support;
     if (!Array.isArray(support) || support.length !== 2) return;
+
     setState({ first: support[0], last: support[1] });
   }, [overlay]);
 

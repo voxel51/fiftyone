@@ -147,23 +147,20 @@ export const useCreateAnnotationLabel = () => {
 
       if (type === TEMPORAL_DETECTION) {
         const tdLabel = data as TemporalOptions["label"];
-        // Shared id format with `useTemporalOverlaySync` + timeline tracks.
         const overlayId = `td-${field}-${data._id}`;
-
         const existing = scene?.getOverlay(overlayId);
-        const overlay =
-          existing instanceof TemporalOverlay
-            ? existing
-            : overlayFactory.create<TemporalOptions, TemporalOverlay>(
-                "temporal",
-                { id: overlayId, field, label: tdLabel }
-              );
 
         if (existing instanceof TemporalOverlay) {
-          // Refresh label on the adopted overlay after a sample refetch.
-          overlay.label = tdLabel;
+          existing.label = tdLabel;
+          return { data: tdLabel, overlay: existing, path: field, type };
         }
 
+        const overlay = overlayFactory.create<TemporalOptions, TemporalOverlay>(
+          "temporal",
+          { id: overlayId, field, label: tdLabel }
+        );
+
+        scene?.addOverlay(overlay);
         return { data: tdLabel, overlay, path: field, type };
       }
 
@@ -189,6 +186,6 @@ export const useCreateAnnotationLabel = () => {
 
       throw new Error(`unable to create label of type '${type}'`);
     },
-    [getSkeletonForField, overlayFactory]
+    [getSkeletonForField, overlayFactory, scene]
   );
 };
