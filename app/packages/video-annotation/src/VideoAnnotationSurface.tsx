@@ -167,7 +167,10 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
   // detection-mode, label list). Reintroducing multi-tile here requires
   // first pinning those atoms to the modal-default store explicitly.
   return (
-    <PlaybackProvider>
+    // Annotation wants the playhead to rest on a real frame after a pause or
+    // scrub-drag, so the labels snapshot and any keyframe op align to a frame.
+    // Scrubbing stays continuous — only the settle position snaps.
+    <PlaybackProvider snapToFrameOnSettle>
       <VideoAnnotationHandlerRegistration />
       {registered}
     </PlaybackProvider>

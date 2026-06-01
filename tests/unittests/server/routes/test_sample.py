@@ -974,9 +974,7 @@ class TestCommitMask:
             scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
         )
 
-    def _make_commit_request(
-        self, dataset_id, sample_id, field, detection_id
-    ):
+    def _make_commit_request(self, dataset_id, sample_id, field, detection_id):
         """Build a mock POST request for the commit-mask endpoint."""
         mock_request = MagicMock()
         mock_request.headers = {}
@@ -1090,16 +1088,22 @@ class TestCommitMask:
         "setup, status, description",
         [
             (
-                {"field": "ground_truth", "det_kwargs": {
-                    "mask": np.ones((5, 5), dtype=np.uint8),
-                }},
+                {
+                    "field": "ground_truth",
+                    "det_kwargs": {
+                        "mask": np.ones((5, 5), dtype=np.uint8),
+                    },
+                },
                 400,
                 "mask but no mask_path",
             ),
             (
-                {"field": "ground_truth", "det_kwargs": {
-                    "mask_path": "/tmp/_placeholder.png",
-                }},
+                {
+                    "field": "ground_truth",
+                    "det_kwargs": {
+                        "mask_path": "/tmp/_placeholder.png",
+                    },
+                },
                 400,
                 "mask_path but no in-database mask",
             ),
@@ -1136,9 +1140,7 @@ class TestCommitMask:
                 field_name=setup["field"],
                 **det_kwargs,
             )
-            det_id = str(
-                sample[setup["field"]].detections[0].id
-            )
+            det_id = str(sample[setup["field"]].detections[0].id)
 
         request = self._make_commit_request(
             dataset_id, sample.id, setup["field"], det_id
@@ -1967,3 +1969,54 @@ class TestEnsureSampleField:
 
         with pytest.raises(AttributeError):
             sample.get_field("nonexistent")
+
+    def test_initializes_unset_frame_detections_field(self):
+        """Tests that ensure_sample_field initializes a frame-level Detections
+        field. Frame fields live in a separate schema owned by the frame
+        document, so the sample-schema lookup can't see them — the function
+        must rebase onto the frame and use the frame schema."""
+        dataset = fo.Dataset()
+        dataset.media_type = "video"
+        dataset.add_frame_field(
+            "detections", fo.EmbeddedDocumentField, fol.Detections
+        )
+        try:
+            sample = fo.Sample(filepath="/tmp/test_ensure_frame.mp4")
+            sample.frames[2]  # materialize a frame with null detections
+            dataset.add_sample(sample)
+            sample.reload()
+
+            assert sample.frames[2].get_field("detections") is None
+
+            fors.ensure_sample_field(
+                sample, "frames.2.detections.detections.0"
+            )
+
+            val = sample.frames[2].get_field("detections")
+            assert isinstance(val, fol.Detections)
+            assert val.detections == []
+        finally:
+            dataset.delete()
+
+    def test_initializes_frame_detections_on_docless_frame(self):
+        """Tests that ensure_sample_field materializes a frame that has no
+        document yet and initializes its Detections field (drawing on a
+        previously-unlabeled frame)."""
+        dataset = fo.Dataset()
+        dataset.media_type = "video"
+        dataset.add_frame_field(
+            "detections", fo.EmbeddedDocumentField, fol.Detections
+        )
+        try:
+            sample = fo.Sample(filepath="/tmp/test_ensure_docless.mp4")
+            sample.frames[1]
+            dataset.add_sample(sample)
+            sample.reload()
+
+            fors.ensure_sample_field(sample, "frames.7.detections.detections")
+
+            val = sample.frames[7].get_field("detections")
+            assert isinstance(val, fol.Detections)
+            assert val.detections == []
+        finally:
+            dataset.delete()

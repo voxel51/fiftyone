@@ -16,7 +16,7 @@ import type {
   SyntheticBox,
 } from "./SyntheticLabelStream";
 
-interface RawDetection {
+export interface RawDetection {
   _id?: string;
   id?: string;
   index?: number;
@@ -27,7 +27,7 @@ interface RawDetection {
   propagation?: PropagationBlob | null;
 }
 
-interface RawDetectionsField {
+export interface RawDetectionsField {
   detections?: RawDetection[];
 }
 

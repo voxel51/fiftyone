@@ -208,6 +208,15 @@ export interface PlaybackConfig {
   defaultLoopEnd?: number;
   /** Initial playback speed multiplier. @default 1.0 */
   defaultSpeed?: number;
+  /**
+   * When `true`, the playhead snaps to the start of the displayed frame at
+   * settle points — pausing and the end of a scrub drag. Scrubbing itself
+   * stays continuous (mid-drag `seek`s are never snapped); only the final
+   * resting position aligns to a frame boundary. Opt-in so general playback
+   * keeps fully continuous scrubbing.
+   * @default false
+   */
+  snapToFrameOnSettle?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -222,6 +231,12 @@ export interface PlaybackContextValue {
   play: () => void;
   pause: () => void;
   seek: (time: number) => void;
+  /**
+   * Snap the playhead to the start of the displayed frame. No-op unless the
+   * provider was configured with `snapToFrameOnSettle`. Call at scrub
+   * settle points (e.g. a playhead drag-end) — pausing snaps automatically.
+   */
+  snapPlayheadToFrame: () => void;
   stepBack: () => void;
   stepForward: () => void;
   setView: (start: number, end: number) => void;

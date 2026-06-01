@@ -23,6 +23,7 @@ import { useFrameOverlaySync } from "./useFrameOverlaySync";
 import { useSyncLighterAnnotation } from "./useSyncLighterAnnotation";
 import { useSyncSidebarFromSnapshot } from "./useSyncSidebarFromSnapshot";
 import { useSyncLighterLabelStream } from "./useSyncLighterLabelStream";
+import { useSyncMediaTransform } from "./useSyncMediaTransform";
 import styles from "./ImaVidLighterTile.module.css";
 
 export interface ImaVidLighterTileProps {
@@ -153,6 +154,10 @@ export const ImaVidLighterTile: React.FC<ImaVidLighterTileProps> = ({
 
   useSyncLighterAnnotation(scene);
   useSyncLighterLabelStream(scene);
+
+  // Keep the frame canvas zoomed/panned with the Lighter viewport so
+  // scroll-zoom scales the picture, not just the overlays.
+  useSyncMediaTransform(scene, frameCanvasRef);
 
   // Paint the current frame's bitmap into the canvas. Sets the canvas
   // drawing buffer to the bitmap's intrinsic dimensions on first paint
