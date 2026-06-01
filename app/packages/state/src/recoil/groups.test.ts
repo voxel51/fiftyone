@@ -30,33 +30,6 @@ describe("hasGroupSlices handles nested dynamic groups", () => {
   });
 });
 
-describe("groupView  does not contain GroupBy stage", () => {
-  it("filters the GroupBy stage", () => {
-    const testGroupView = <TestSelector<typeof groups.groupView>>(
-      (<unknown>groups.groupView)
-    );
-    setMockAtoms({
-      //  _NAME_setter syntax due to graphQLSyncFrangmentImplementation
-      _view__setter: [
-        {
-          _cls: "fiftyone.core.stages.GroupBy",
-          kwargs: [
-            ["field_or_expr", "scene_id"],
-            ["order_by", "timestamp"],
-            ["reverse", false],
-            ["flat", false],
-            ["match_expr", null],
-            ["sort_expr", null],
-            ["create_index", true],
-          ],
-        },
-      ],
-    });
-
-    expect(testGroupView()).toStrictEqual([]);
-  });
-});
-
 describe("groupHasSampleOnSlice", () => {
   const testGroupHasSampleOnSlice = <
     TestGraphQLSelectorFamily<
@@ -83,7 +56,7 @@ describe("groupHasSampleOnSlice", () => {
     setMockAtoms({
       datasetName: "dataset",
       groupSlice: "global-slice",
-      groupView: [],
+      _view__setter: [],
     });
 
     expect(
