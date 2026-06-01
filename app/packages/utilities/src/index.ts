@@ -675,16 +675,44 @@ export const formatPrimitive = ({
   switch (ftype) {
     case FRAME_SUPPORT_FIELD:
       return `[${value[0]}, ${value[1]}]`;
-    case DATE_FIELD:
-      // @ts-ignore
-      return formatDate(value?.datetime as number);
-    case DATE_TIME_FIELD:
-      // @ts-ignore
-      return formatDateTime(value?.datetime as number, timeZone);
+    case DATE_FIELD: {
+      const ms = toEpochMs(value);
+      return ms === undefined ? null : formatDate(ms);
+    }
+    case DATE_TIME_FIELD: {
+      const ms = toEpochMs(value);
+      return ms === undefined ? null : formatDateTime(ms, timeZone);
+    }
   }
 
   // @ts-ignore
   return prettify(value);
+};
+
+/**
+ * Coerce a date-like value to an epoch-ms number, or undefined if it can't
+ * be interpreted. Accepts the MongoDB `{_cls, datetime}` wrapper, an ISO
+ * string, or a raw number.
+ *
+ * Without this, passing `undefined` through to `Intl.DateTimeFormat.format`
+ * silently formats the current time — leaking a "now" flash into the UI.
+ */
+const toEpochMs = (value: unknown): number | undefined => {
+  if (typeof value === "number") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const parsed = new Date(value).getTime();
+    return Number.isNaN(parsed) ? undefined : parsed;
+  }
+
+  if (value && typeof value === "object" && "datetime" in value) {
+    const ms = (value as { datetime: unknown }).datetime;
+    return typeof ms === "number" ? ms : undefined;
+  }
+
+  return undefined;
 };
 
 export const makePseudoField = (path: string): Field => ({

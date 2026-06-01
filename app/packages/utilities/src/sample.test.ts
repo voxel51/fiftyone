@@ -394,6 +394,70 @@ describe("Sample", () => {
       expect(s.getJsonPatch()).toEqual([]);
     });
 
+    describe("DateTime normalization", () => {
+      // MongoDB serializes datetimes as { _cls: "DateTime", datetime: <ms> };
+      // sidebar edits arrive as ISO strings. The two must compare equal so we
+      // don't emit a `replace` op every flush after an autosave roundtrip.
+      const iso = "2026-02-11T00:00:00.000Z";
+      const ms = new Date(iso).getTime();
+
+      it("treats a {_cls,datetime} source as equal to an ISO transient of the same instant", () => {
+        const s = new Sample({
+          schema: detectionsSchema,
+          data: { actual_date_field: { _cls: "DateTime", datetime: ms } },
+        });
+        s.setField("actual_date_field", iso);
+        expect(s.getJsonPatch()).toEqual([]);
+      });
+
+      it("still emits a replace when the ISO transient is a different instant", () => {
+        const s = new Sample({
+          schema: detectionsSchema,
+          data: { actual_date_field: { _cls: "DateTime", datetime: ms } },
+        });
+        const newIso = "2026-03-15T12:00:00.000Z";
+        s.setField("actual_date_field", newIso);
+        expect(s.getJsonPatch()).toEqual([
+          { op: "replace", path: "/actual_date_field", value: newIso },
+        ]);
+      });
+
+      it("gc clears the transient once the server roundtrip reseeds source as a DateTime object", () => {
+        const s = new Sample({ schema: detectionsSchema });
+        s.setField("actual_date_field", iso);
+        // server applied the patch and returned the field as a DateTime wrapper
+        s.setData({ actual_date_field: { _cls: "DateTime", datetime: ms } });
+        expect(s.getJsonPatch()).toEqual([]);
+      });
+
+      it("normalizes nested DateTime fields inside label structural diffs", () => {
+        const labelSchema: Schema = {
+          ground_truth: field("fiftyone.core.labels.Detections", {
+            detections: field(null),
+          }),
+        };
+        const s = new Sample({
+          schema: labelSchema,
+          data: {
+            ground_truth: {
+              _cls: "Detections",
+              detections: [
+                {
+                  _id: "d1",
+                  _cls: "Detection",
+                  label: "cat",
+                  when: { _cls: "DateTime", datetime: ms },
+                },
+              ],
+            },
+          },
+        });
+        // re-set the same label with the date already normalized to ISO
+        s.updateLabel("ground_truth", { _id: "d1", when: iso });
+        expect(s.getJsonPatch()).toEqual([]);
+      });
+    });
+
     it("dispatches to a custom supplier when one is registered", () => {
       const custom = vi.fn().mockReturnValue([{ op: "test", path: "" }]);
       const s = new Sample({

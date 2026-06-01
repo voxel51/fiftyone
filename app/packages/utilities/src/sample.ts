@@ -1,6 +1,6 @@
 import * as jsonpatch from "fast-json-patch";
 import { isEqual } from "lodash";
-import { Field, Schema, getFieldInfo } from "./schema";
+import { Field, getFieldInfo, Schema } from "./schema";
 import { JSONDeltas, JSONDeltaSupplier } from "./types";
 
 export enum LabelType {
@@ -361,7 +361,7 @@ export class Sample {
 
     for (const [path, transientValue] of Object.entries(this.transientData)) {
       const sourceValue = getNestedField(this.sourceData, path);
-      if (isEqual(sourceValue, transientValue)) {
+      if (equalsNormalized(sourceValue, transientValue)) {
         continue;
       }
 
@@ -400,7 +400,7 @@ export class Sample {
       const type = this.getLabelType(path);
       const sourceValue = getNestedField(this.sourceData, path);
 
-      if (isEqual(sourceValue, transientValue)) {
+      if (equalsNormalized(sourceValue, transientValue)) {
         continue;
       }
 
@@ -429,7 +429,7 @@ export class Sample {
             continue;
           }
 
-          if (!isEqual(label, sourceById.get(label._id))) {
+          if (!equalsNormalized(label, sourceById.get(label._id))) {
             return {
               labelId: label._id,
               labelPath: isGenerated ? `${path}.${child}` : path,
@@ -455,7 +455,7 @@ export class Sample {
     for (const path of Object.keys(this.transientData)) {
       const source = getNestedField(this.sourceData, path);
 
-      if (isEqual(source, this.transientData[path])) {
+      if (equalsNormalized(source, this.transientData[path])) {
         delete this.transientData[path];
       }
     }
@@ -516,6 +516,38 @@ const embeddedDocTypeToLabelType = (
   return EMBEDDED_DOC_TYPE_TO_LABEL_TYPE[embeddedDocType] ?? LabelType.Unknown;
 };
 
+/**
+ * Recursively normalize a value for comparison. Currently collapses MongoDB
+ * `{_cls: "DateTime", datetime: <ms>}` wrappers to ISO strings so a transient
+ * ISO-string edit compares equal to a server-side DateTime value representing
+ * the same instant. Mirrors `normalizeData` in `core/src/utils/json.ts`.
+ */
+const normalizeForCompare = (data: unknown): unknown => {
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    const obj = data as Record<string, unknown>;
+
+    if (obj._cls === "DateTime" && typeof obj.datetime === "number") {
+      const date = new Date(obj.datetime);
+      if (!Number.isNaN(date.getTime())) {
+        return date.toISOString();
+      }
+    }
+
+    return Object.fromEntries(
+      Object.entries(obj).map(([k, v]) => [k, normalizeForCompare(v)])
+    );
+  }
+
+  if (Array.isArray(data)) {
+    return data.map(normalizeForCompare);
+  }
+
+  return data;
+};
+
+const equalsNormalized = (a: unknown, b: unknown): boolean =>
+  isEqual(normalizeForCompare(a), normalizeForCompare(b));
+
 // ---- delta suppliers ----
 
 /**
@@ -524,8 +556,12 @@ const embeddedDocTypeToLabelType = (
  * parents (the transient already carries the upserted/filtered list).
  */
 const structuralSupplier: JSONDeltaSupplier = (a, b) => {
-  const from = (a ?? {}) as Record<string, unknown> | unknown[];
-  const to = (b ?? {}) as Record<string, unknown> | unknown[];
+  const from = normalizeForCompare(a ?? {}) as
+    | Record<string, unknown>
+    | unknown[];
+  const to = normalizeForCompare(b ?? {}) as
+    | Record<string, unknown>
+    | unknown[];
 
   return jsonpatch.compare(from, to);
 };
@@ -535,27 +571,31 @@ const structuralSupplier: JSONDeltaSupplier = (a, b) => {
  * primitive and object/array values.
  */
 const unknownSupplier: JSONDeltaSupplier = (a, b) => {
-  if (isEqual(a, b)) return [];
+  if (equalsNormalized(a, b)) return [];
 
-  const aIsObj = a !== null && typeof a === "object";
-  const bIsObj = b !== null && typeof b === "object";
+  // Re-evaluate object-ness *after* normalization so DateTime wrappers (which
+  // collapse to ISO strings) are routed through the primitive branch below.
+  const aNorm = normalizeForCompare(a);
+  const bNorm = normalizeForCompare(b);
+  const aIsObj = aNorm !== null && typeof aNorm === "object";
+  const bIsObj = bNorm !== null && typeof bNorm === "object";
 
   if (aIsObj && bIsObj) {
     return jsonpatch.compare(
-      a as Record<string, unknown> | unknown[],
-      b as Record<string, unknown> | unknown[]
+      aNorm as Record<string, unknown> | unknown[],
+      bNorm as Record<string, unknown> | unknown[]
     );
   }
 
-  if (b === undefined || b === null) {
-    return a === undefined ? [] : [{ op: "remove", path: "" }];
+  if (bNorm === undefined || bNorm === null) {
+    return aNorm === undefined ? [] : [{ op: "remove", path: "" }];
   }
 
-  if (a === undefined) {
-    return [{ op: "add", path: "", value: b as never }];
+  if (aNorm === undefined) {
+    return [{ op: "add", path: "", value: bNorm as never }];
   }
 
-  return [{ op: "replace", path: "", value: b as never }];
+  return [{ op: "replace", path: "", value: bNorm as never }];
 };
 
 const defaultDeltaSuppliers = (): Record<LabelType, JSONDeltaSupplier> => ({
