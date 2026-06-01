@@ -3,7 +3,7 @@ import { zoomAspectRatio } from "@fiftyone/looker";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { Schema } from "@fiftyone/utilities";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { VariablesOf, fetchQuery, useRelayEnvironment } from "react-relay";
 import { RecoilValueReadOnly, selector, useRecoilValue } from "recoil";
@@ -100,7 +100,7 @@ const useFlashlightPager = (
   return {
     isEmpty,
     reset: page,
-    page: (page: number) => ref.current(page),
+    page: useCallback((page: number) => ref.current(page), []),
   };
 };
 

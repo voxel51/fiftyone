@@ -86,7 +86,6 @@ export type RenderConfig3dImperativeState = {
   /** Resolves the latest pinned status */
   getIsPinned: () => Promise<boolean>;
 };
-
 /**
  * Suspense-compatible 3D render state for React rendering.
  */

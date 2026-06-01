@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import React, { useCallback } from "react";
 import ReactGA from "react-ga4";
 import { graphql, useFragment } from "react-relay";
@@ -48,7 +52,7 @@ export default function Analytics({ fragment }: { fragment: Analytics$key }) {
   // waiting for analytics to show up before we can dismiss it is a pain
   // and adds significant time to the tests.
   // we should usually _never_ have any divergence between tests and prod.
-  if (window["IS_PLAYWRIGHT"]) {
+  if (window.IS_PLAYWRIGHT) {
     console.log("Analytics component is disabled in playwright");
     return null;
   }

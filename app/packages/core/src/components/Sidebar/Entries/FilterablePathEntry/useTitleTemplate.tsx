@@ -71,14 +71,52 @@ const Hidden = ({ path }: { path: string }) => {
   ) : null;
 };
 
+const Title = ({
+  hovering,
+  modal,
+  hoverTarget,
+  path,
+  hoverHandlers,
+}: {
+  hovering: boolean;
+  modal: boolean;
+  hoverTarget: React.RefObject<HTMLSpanElement>;
+  path: string;
+  hoverHandlers: React.HTMLAttributes<HTMLSpanElement>;
+}) => {
+  return (
+    <span key="path" data-cy={`sidebar-field-${path}`}>
+      <span ref={hoverTarget} {...hoverHandlers}>
+        {modal ? (
+          <QuickEditEntry enabled={hovering} path={path}>
+            {PATH_OVERRIDES[path] || path}
+          </QuickEditEntry>
+        ) : (
+          PATH_OVERRIDES[path] || path
+        )}
+      </span>
+    </span>
+  );
+};
+
+type TitleTemplateProps = {
+  hoverHandlers: React.HTMLAttributes<HTMLSpanElement>;
+  hoverTarget: React.RefObject<HTMLSpanElement>;
+  container: React.RefObject<HTMLDivElement>;
+};
+
 const useTitleTemplate = ({
   modal,
   path,
 }: {
   modal: boolean;
   path: string;
-}) => {
-  return function useTitleTemplate({ hoverHandlers, hoverTarget, container }) {
+}): ((props: TitleTemplateProps) => JSX.Element) => {
+  return function useTitleTemplate({
+    hoverHandlers,
+    hoverTarget,
+    container,
+  }: TitleTemplateProps) {
     const enabled = !useRecoilValue(fos.isDisabledCheckboxPath(path));
     const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
     const expandedPath = useRecoilValue(fos.expandPath(path));
@@ -91,13 +129,13 @@ const useTitleTemplate = ({
         onMouseEnter={() => setHovering(true)}
         onMouseLeave={() => setHovering(false)}
       >
-        <span key="path" data-cy={`sidebar-field-${path}`}>
-          <span ref={hoverTarget} {...hoverHandlers}>
-            <QuickEditEntry enabled={hovering && modal} path={path}>
-              {PATH_OVERRIDES[path] || path}
-            </QuickEditEntry>
-          </span>
-        </span>
+        <Title
+          hovering={hovering}
+          hoverHandlers={hoverHandlers}
+          hoverTarget={hoverTarget}
+          modal={modal}
+          path={path}
+        />
         {modal && (
           <Suspense>
             <Hidden path={path} />

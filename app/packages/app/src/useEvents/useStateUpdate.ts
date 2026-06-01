@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import type { EventHandlerHook } from "./registerEvent";
 
 import { env } from "@fiftyone/utilities";
