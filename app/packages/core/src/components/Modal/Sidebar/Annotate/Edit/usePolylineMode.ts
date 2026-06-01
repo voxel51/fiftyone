@@ -14,7 +14,7 @@ import {
   PolylineAnnotationLabel,
 } from "@fiftyone/state";
 import { POLYLINE } from "@fiftyone/utilities";
-import { atom, useAtom, useAtomValue } from "jotai";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { fieldsOfType, useAnnotationContext } from "./state";
@@ -53,41 +53,22 @@ const resolveEmptyHit = (ctx: PolylineEmptyHitContext) =>
   ctx.modifiers.shiftKey ? PolylineEmptyHitAction.NEW_SEGMENT : undefined;
 
 /**
- * Centralized hook for 2D polyline annotation mode.
+ * Read-only consumer hook for 2D polyline annotation mode.
  *
- * Two paths activate the mode:
+ * Returns the active flag, tooltip/disabled state, and the public
+ * activate/deactivate/toggle methods. Safe to call from any number of
+ * components — it has no side effects of its own.
  *
- * 1. **Toolbar toggle** — primes the UX for creating a new polyline. No
- *    overlay is selected yet.
- * 2. **Selection of a 2D polyline** — auto-activates the mode (if not
- *    already) and installs an {@link InteractivePolylineHandler} on the
- *    selected overlay via `scene.enterInteractiveMode`.
- *
- * The mode exits when:
- *
- * - The deactivation function is called explicitly (toolbar toggle, generic
- *   mode-quit gesture, etc.), or
- * - Selection moves from a 2D polyline to a different (non-polyline) label.
- *
- * Deselecting entirely does NOT exit the mode — the user is still in polyline
- * mode, just without an active edit target, ready to draw a new one.
+ * The actual install/teardown of the {@link InteractivePolylineHandler} lives
+ * in {@link usePolylineModeInstaller}, which must be called exactly once in
+ * the modal tree.
  */
 export const usePolylineMode = () => {
   const [polylineModeActive, setPolylineModeActive] = useAtom(
     polylineModeActiveAtom
   );
-  const { scene } = useLighter();
-  const { selectedLabel } = useAnnotationContext();
   const isPatchView = useRecoilValue(isPatchesView);
   const fields = useAtomValue(fieldsOfType(POLYLINE));
-
-  // The handler currently installed via scene.enterInteractiveMode, or null
-  // when the mode is off. Holds either an `InteractivePolylineHandler` (when
-  // a polyline is selected) or an `InteractiveCreationHandler` (when polyline
-  // mode is active and a new polyline is being created).
-  const installedHandlerRef = useRef<
-    InteractivePolylineHandler | InteractiveCreationHandler | null
-  >(null);
 
   const noActiveFields = fields.length === 0;
   const disabled = isPatchView || noActiveFields;
@@ -99,6 +80,76 @@ export const usePolylineMode = () => {
     : polylineModeActive
     ? "Exit polyline mode"
     : "Create new polylines";
+
+  const activatePolylineMode = useCallback(
+    () => setPolylineModeActive(true),
+    [setPolylineModeActive]
+  );
+
+  const deactivatePolylineMode = useCallback(
+    () => setPolylineModeActive(false),
+    [setPolylineModeActive]
+  );
+
+  const togglePolylineMode = useCallback(() => {
+    setPolylineModeActive((prev) => !prev);
+  }, [setPolylineModeActive]);
+
+  return useMemo(
+    () => ({
+      polylineModeActive,
+      disabled,
+      tooltip,
+      activatePolylineMode,
+      deactivatePolylineMode,
+      togglePolylineMode,
+    }),
+    [
+      polylineModeActive,
+      disabled,
+      tooltip,
+      activatePolylineMode,
+      deactivatePolylineMode,
+      togglePolylineMode,
+    ]
+  );
+};
+
+/**
+ * Owner hook for the 2D polyline annotation handler lifecycle. Must be called
+ * exactly once per modal scene — typically from `useBridge`.
+ *
+ * Two paths activate the mode:
+ *
+ * 1. **Toolbar toggle** — primes the UX for creating a new polyline. No
+ *    overlay is selected yet; an {@link InteractiveCreationHandler} is
+ *    installed.
+ * 2. **Selection of a 2D polyline** — auto-activates the mode (if not
+ *    already) and installs an {@link InteractivePolylineHandler} on the
+ *    selected overlay via `scene.enterInteractiveMode`.
+ *
+ * The mode exits when:
+ *
+ * - The deactivation function (from {@link usePolylineMode}) is called
+ *   explicitly (toolbar toggle, generic mode-quit gesture, etc.), or
+ * - Selection moves from a 2D polyline to a different (non-polyline) label.
+ *
+ * Deselecting entirely does NOT exit the mode — the user is still in polyline
+ * mode, just without an active edit target, ready to draw a new one.
+ */
+export const usePolylineModeInstaller = (): void => {
+  const polylineModeActive = useAtomValue(polylineModeActiveAtom);
+  const setPolylineModeActive = useSetAtom(polylineModeActiveAtom);
+  const { scene } = useLighter();
+  const { selectedLabel } = useAnnotationContext();
+
+  // The handler currently installed via scene.enterInteractiveMode, or null
+  // when the mode is off. Holds either an `InteractivePolylineHandler` (when
+  // a polyline is selected) or an `InteractiveCreationHandler` (when polyline
+  // mode is active and a new polyline is being created).
+  const installedHandlerRef = useRef<
+    InteractivePolylineHandler | InteractiveCreationHandler | null
+  >(null);
 
   const exitInstalledHandler = useCallback(() => {
     if (!installedHandlerRef.current) {
@@ -213,37 +264,4 @@ export const usePolylineMode = () => {
       exitInstalledHandler();
     };
   }, [exitInstalledHandler]);
-
-  const activatePolylineMode = useCallback(
-    () => setPolylineModeActive(true),
-    [setPolylineModeActive]
-  );
-
-  const deactivatePolylineMode = useCallback(
-    () => setPolylineModeActive(false),
-    [setPolylineModeActive]
-  );
-
-  const togglePolylineMode = useCallback(() => {
-    setPolylineModeActive((prev) => !prev);
-  }, [setPolylineModeActive]);
-
-  return useMemo(
-    () => ({
-      polylineModeActive,
-      disabled,
-      tooltip,
-      activatePolylineMode,
-      deactivatePolylineMode,
-      togglePolylineMode,
-    }),
-    [
-      polylineModeActive,
-      disabled,
-      tooltip,
-      activatePolylineMode,
-      deactivatePolylineMode,
-      togglePolylineMode,
-    ]
-  );
 };
