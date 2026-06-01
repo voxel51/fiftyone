@@ -15,6 +15,11 @@
   z-index: 0;
   user-select: none;
   pointer-events: none;
+  /* Mirrors the Lighter viewport transform (see useSyncMediaTransform): the
+     origin must be the container's top-left so `translate(pan) scale()` lines
+     up with the overlays' pan + scale·world mapping. */
+  transform-origin: 0 0;
+  will-change: transform;
 }
 
 .lighterHost {

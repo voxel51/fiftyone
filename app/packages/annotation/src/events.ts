@@ -160,6 +160,26 @@ export type AnnotationEventGroup = {
   "annotation:undoLabelEdit": { label: Partial<AnnotationLabel["data"]> };
 
   /**
+   * Notification event emitted when a label's `keyframe` attribute changes
+   * on a tracked instance. Consumers (e.g. auto-interpolate) use this to
+   * re-propagate between bracketing keyframes after a change.
+   *
+   * - `kind: "set"` — keyframe just became `true`, either by mark-keyframe
+   *   gesture or by an edit (draw / drag / resize) that promotes the label.
+   * - `kind: "removed"` — keyframe was `true` and no longer is, either by
+   *   unmarking or by deleting the underlying detection.
+   */
+  "annotation:keyframeChanged": {
+    /** Synthetic overlay id (`instance-…` / `track-…`). */
+    trackId: string;
+    /** Cross-frame identity, when the label has an `fo.Instance`. */
+    instanceId: string | null;
+    /** 1-indexed frame number where the change happened. */
+    frame: number;
+    kind: "set" | "removed";
+  };
+
+  /**
    * Notification event emitted when the active annotation agent transitions
    * between lifecycle states (e.g. `"initializing"` → `"inferring"`).
    */

@@ -22,6 +22,14 @@
 import type { BrowserAnnotationProvider } from "./BrowserAnnotationProvider";
 import { PointLabel, type InferenceResult, type PromptPoint } from "./types";
 
+// Temporary perf instrumentation for the video-propagation tuning effort.
+// Logs are tagged "[sam2-perf]" — filter the console on that. Engine-side
+// timings (bitmap fetch / infer round-trip / point sampling) pair with the
+// worker-side encode/decode breakdown; the gap between the engine's `infer`
+// time and the worker's `total` is postMessage + structured-clone overhead.
+// Flip to false (or strip) once the server-side-precompute decision is made.
+const SAM2_PERF_LOG = true;
+
 export interface Keyframe {
   /** Frame index in the caller's chosen base (the ImaVid agent uses the
    *  1-based frame number). */
@@ -87,6 +95,12 @@ export async function propagate(
 
   let prevResult: InferenceResult | null = null;
 
+  const runStart = performance.now();
+  let bitmapTotalMs = 0;
+  let inferTotalMs = 0;
+  let pointsTotalMs = 0;
+  let framesDone = 0;
+
   for (let i = 0; i < total; i++) {
     if (options.shouldAbort?.()) {
       break;
@@ -94,20 +108,54 @@ export async function propagate(
 
     const frameIdx = start + i;
     const t = span === 0 ? 0 : i / span;
+    const tPoints = performance.now();
     const points = nextPoints(strategy, prevResult, keyframeA, keyframeB, t);
+    const pointsMs = performance.now() - tPoints;
+
     if (!points) {
       // centroid found nothing — bail rather than mis-prompt
       break;
     }
 
+    const tBitmap = performance.now();
     const bitmap = await getFrameBitmap(frameIdx);
+    const bitmapMs = performance.now() - tBitmap;
+
     const cacheKey = `${videoKey}#frame=${frameIdx}`;
+    const tInfer = performance.now();
     const result = await provider.inferBitmap({ bitmap, cacheKey, points });
+    const inferMs = performance.now() - tInfer;
+
+    if (SAM2_PERF_LOG) {
+      // eslint-disable-next-line no-console
+      console.debug(
+        `[sam2-perf] frame=${frameIdx} bitmap=${bitmapMs.toFixed(
+          1
+        )}ms infer=${inferMs.toFixed(1)}ms points=${pointsMs.toFixed(1)}ms`
+      );
+    }
+    bitmapTotalMs += bitmapMs;
+    inferTotalMs += inferMs;
+    pointsTotalMs += pointsMs;
+    framesDone++;
 
     prevResult = result;
     results.set(frameIdx, result);
     options.onFrame?.(frameIdx, result);
     options.onProgress?.(i + 1, total);
+  }
+
+  if (SAM2_PERF_LOG && framesDone > 0) {
+    const wall = performance.now() - runStart;
+    // eslint-disable-next-line no-console
+    console.debug(
+      `[sam2-perf] run done frames=${framesDone} wall=${wall.toFixed(0)}ms (${(
+        wall / framesDone
+      ).toFixed(1)}ms/frame) ` +
+        `bitmap=${bitmapTotalMs.toFixed(0)}ms infer=${inferTotalMs.toFixed(
+          0
+        )}ms points=${pointsTotalMs.toFixed(0)}ms strategy=${strategy}`
+    );
   }
 
   return results;

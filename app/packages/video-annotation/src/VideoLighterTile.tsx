@@ -27,6 +27,7 @@ import { useTemporalOverlaySync } from "./useTemporalOverlaySync";
 import { useSyncLighterAnnotation } from "./useSyncLighterAnnotation";
 import { useSyncSidebarFromSnapshot } from "./useSyncSidebarFromSnapshot";
 import { useSyncLighterLabelStream } from "./useSyncLighterLabelStream";
+import { useSyncMediaTransform } from "./useSyncMediaTransform";
 import styles from "./VideoLighterTile.module.css";
 
 export interface VideoLighterTileProps {
@@ -178,6 +179,10 @@ export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
 
   useSyncLighterAnnotation(scene);
   useSyncLighterLabelStream(scene);
+
+  // Keep the <video> zoomed/panned with the Lighter viewport so scroll-zoom
+  // scales the picture, not just the overlays.
+  useSyncMediaTransform(scene, videoRef);
 
   return (
     <div className={styles.body}>

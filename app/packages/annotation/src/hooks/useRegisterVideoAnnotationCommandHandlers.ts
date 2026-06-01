@@ -1,4 +1,5 @@
 import { useRegisterCommandHandler } from "@fiftyone/command-bus";
+import { useAnnotationEventBus } from "./useAnnotationEventBus";
 import {
   TemporalOverlay,
   useLighter,
@@ -8,6 +9,7 @@ import {
   PropagationStatusItem,
   useFrameLabelsStream,
   useImaVidImageStream,
+  useStageTemporalDetectionSupport,
   useVideoAnnotationStatus,
   type LocalDetection,
   type SyntheticBox,
@@ -69,6 +71,36 @@ const copyDetection = (
   ...overrides,
 });
 
+/** Read this track's detection on a given frame, or `undefined`. */
+const detectionAt = (
+  stream: { getValue: (t: number) => { detections: SyntheticBox[] } | null },
+  frame: number,
+  fps: number,
+  trackId: string
+): SyntheticBox | undefined =>
+  stream.getValue((frame - 1) / fps)?.detections.find((d) => d.id === trackId);
+
+/**
+ * Project a snapshot detection into a fresh-`_id` copy for writing onto
+ * another frame. Cross-frame identity (`instance` / track `index`) is
+ * preserved; the `_id` is new so each frame gets its own detection doc.
+ * Per-field spreads avoid writing `undefined`/`null` keys the baseline
+ * lacks (which would emit spurious patch ops).
+ */
+const copyDetection = (
+  det: SyntheticBox,
+  overrides: Pick<LocalDetection, "keyframe"> &
+    Partial<Pick<LocalDetection, "propagation">>
+): LocalDetection => ({
+  _cls: "Detection",
+  _id: objectId(),
+  label: det.label,
+  bounding_box: det.bounding_box,
+  ...(det.index !== undefined ? { index: det.index } : {}),
+  ...(det.instance ? { instance: det.instance } : {}),
+  ...overrides,
+});
+
 /**
  * Registers video-specific annotation command handlers. Mount inside
  * the video annotation surface's `<PlaybackProvider>` so dispatchers
@@ -84,7 +116,7 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
   const applyPropagation = useApplyPropagationResult();
   const applyPropagatedDetection = useApplyPropagatedDetection();
   const { setContent: setStatusContent } = useVideoAnnotationStatus();
-  const annotationEventBus = useAnnotationEventBus();
+  const eventBus = useAnnotationEventBus();
 
   useRegisterCommandHandler(
     EditTemporalDetectionCommand,
@@ -102,12 +134,12 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
         overlay.label = nextLabel;
         // Live signal for sample-stale consumers (timeline track, sidebar
         // form) — they rebuild off this rather than waiting for autosave.
-        annotationEventBus.dispatch("annotation:labelEdit", {
+        eventBus.dispatch("annotation:labelEdit", {
           label: nextLabel,
         });
         return true;
       },
-      [scene, annotationEventBus]
+      [scene, eventBus]
     )
   );
 
@@ -177,11 +209,18 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
 
           stream.updateLabel(frame, update);
           updated = true;
+
+          eventBus.dispatch("annotation:keyframeChanged", {
+            trackId: det.id,
+            instanceId: det.instance?._id ?? null,
+            frame,
+            kind: willBeKeyframe ? "set" : "removed",
+          });
         }
 
         return updated;
       },
-      [stream]
+      [stream, eventBus]
     )
   );
 

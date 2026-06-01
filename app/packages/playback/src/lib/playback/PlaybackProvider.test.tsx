@@ -24,10 +24,16 @@ interface RenderOpts {
   duration?: number;
   defaultLoopStart?: number;
   defaultLoopEnd?: number;
+  snapToFrameOnSettle?: boolean;
 }
 
 function renderEngine(opts: RenderOpts = {}) {
-  const { duration = 10, defaultLoopStart, defaultLoopEnd } = opts;
+  const {
+    duration = 10,
+    defaultLoopStart,
+    defaultLoopEnd,
+    snapToFrameOnSettle,
+  } = opts;
   return renderHook(
     () => {
       const store = usePlaybackStore();
@@ -49,6 +55,7 @@ function renderEngine(opts: RenderOpts = {}) {
           stepInterval={1 / 30}
           defaultLoopStart={defaultLoopStart}
           defaultLoopEnd={defaultLoopEnd}
+          snapToFrameOnSettle={snapToFrameOnSettle}
         >
           {children}
         </PlaybackProvider>
@@ -219,6 +226,51 @@ describe("PlaybackProvider engine actions", () => {
       act(() => result.current.api.seek(5));
       act(() => result.current.api.play());
       expect(result.current.playhead).toBe(5);
+    });
+  });
+
+  describe("snapToFrameOnSettle", () => {
+    // stepInterval = 1/30; frame K starts at K/30. 0.52s sits inside frame 15
+    // ([0.5, 0.5333)), so the displayed-frame start is 0.5.
+    const MID_FRAME = 0.52;
+    const FRAME_START = 0.5;
+
+    it("pause snaps the playhead to the displayed frame start when enabled", () => {
+      const { result } = renderEngine({ snapToFrameOnSettle: true });
+      act(() => result.current.api.seek(MID_FRAME));
+      expect(result.current.playhead).toBe(MID_FRAME);
+      act(() => result.current.api.pause());
+      expect(result.current.playhead).toBeCloseTo(FRAME_START, 5);
+      // The committed time follows so per-frame consumers re-read the frame.
+      expect(result.current.currentTime).toBeCloseTo(FRAME_START, 5);
+    });
+
+    it("pause leaves a mid-frame playhead untouched when disabled (continuous)", () => {
+      const { result } = renderEngine();
+      act(() => result.current.api.seek(MID_FRAME));
+      act(() => result.current.api.pause());
+      expect(result.current.playhead).toBe(MID_FRAME);
+    });
+
+    it("snapPlayheadToFrame is a no-op when disabled", () => {
+      const { result } = renderEngine();
+      act(() => result.current.api.seek(MID_FRAME));
+      act(() => result.current.api.snapPlayheadToFrame());
+      expect(result.current.playhead).toBe(MID_FRAME);
+    });
+
+    it("snapPlayheadToFrame aligns the playhead when enabled", () => {
+      const { result } = renderEngine({ snapToFrameOnSettle: true });
+      act(() => result.current.api.seek(MID_FRAME));
+      act(() => result.current.api.snapPlayheadToFrame());
+      expect(result.current.playhead).toBeCloseTo(FRAME_START, 5);
+    });
+
+    it("leaves an already-aligned playhead exactly in place (no drift)", () => {
+      const { result } = renderEngine({ snapToFrameOnSettle: true });
+      act(() => result.current.api.seek(FRAME_START));
+      act(() => result.current.api.pause());
+      expect(result.current.playhead).toBe(FRAME_START);
     });
   });
 
