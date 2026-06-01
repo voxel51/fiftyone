@@ -3,6 +3,36 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.19.1
+--------------------------
+*Released TBD*
+
+Includes all updates from :ref:`FiftyOne 1.16.1 <release-notes-v1.16.1>`. No
+additional Enterprise-specific changes in this release.
+
+
+.. _release-notes-v1.16.1:
+
+FiftyOne 1.16.1
+---------------
+*Released TBD*
+
+App
+
+- Fixed a bug where the global "Pixelating…" loading screen could re-appear
+  when opening the modal or navigating between samples in explore mode
+  `#7526 <https://github.com/voxel51/fiftyone/pull/7526>`_
+- Fixed the same loading-screen flicker for grouped datasets when opening
+  the modal, switching slices, or navigating between groups in the modal
+  `#7551 <https://github.com/voxel51/fiftyone/pull/7551>`_
+- Fixed a bug where the 3D viewer could fail to render when a grouped
+  dataset's active slice had no sample (sparse / pcd-only groups)
+  `#7288 <https://github.com/voxel51/fiftyone/pull/7288>`_
+- Fixed value tearing in the dynamic-groups pagination bar during slice
+  transitions
+  `#7599 <https://github.com/voxel51/fiftyone/pull/7599>`_
+
+
 FiftyOne Enterprise 2.19.0
 --------------------------
 *Released May 28, 2026*
