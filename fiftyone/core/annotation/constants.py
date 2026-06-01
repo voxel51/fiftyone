@@ -33,7 +33,6 @@ TOGGLE = "toggle"
 
 
 BOOL = "bool"
-BOOL_LIST = "list<bool>"
 DATE = "date"
 DATETIME = "datetime"
 DICT = "dict"
@@ -67,7 +66,6 @@ VALUES = "values"
 
 
 BOOL_COMPONENTS = {CHECKBOX, TOGGLE}
-BOOL_LIST_COMPONENTS = {CHECKBOXES, DROPDOWN}
 DATE_DATETIME_COMPONENTS = {DATEPICKER}
 DICT_COMPONENTS = {JSON}
 FLOAT_INT_COMPONENTS = {DROPDOWN, RADIO, SLIDER, TEXT}
@@ -82,7 +80,6 @@ STR_LIST_COMPONENTS = {CHECKBOXES, DROPDOWN, TEXT}
 
 ALL_TYPES_SETTINGS = {COMPONENT, READ_ONLY, TYPE}
 BOOL_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
-BOOL_LIST_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
 DATE_DATETIME_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
 DICT_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
 FLOAT_INT_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
@@ -102,7 +99,6 @@ VALUES_COMPONENTS = {CHECKBOXES, DROPDOWN, RADIO}
 
 TYPE_TO_COMPONENTS = {
     BOOL: BOOL_COMPONENTS,
-    BOOL_LIST: BOOL_LIST_COMPONENTS,
     DATE: DATE_DATETIME_COMPONENTS,
     DATETIME: DATE_DATETIME_COMPONENTS,
     DICT: DICT_COMPONENTS,
@@ -121,7 +117,6 @@ TYPE_TO_COMPONENTS = {
 
 DEFAULT_COMPONENTS = {
     BOOL: TOGGLE,
-    BOOL_LIST: CHECKBOXES,
     DATE: DATEPICKER,
     DATETIME: DATEPICKER,
     DICT: JSON,
@@ -157,7 +152,6 @@ FIELD_TYPE_TO_TYPES = {
     fof.IntField: INT,
     fol.Label: LABEL,
     fof.ListField: {
-        fof.BooleanField: BOOL_LIST,
         fof.FloatField: FLOAT_LIST,
         fof.IntField: INT_LIST,
         fof.StringField: STR_LIST,
@@ -175,7 +169,6 @@ FIELD_TYPE_TO_TYPES = {
 # Note: List types map to their subfield class (e.g., FLOAT_LIST -> FloatField)
 TYPE_TO_FIELD = {
     BOOL: fof.BooleanField,
-    BOOL_LIST: fof.BooleanField,
     DATE: fof.DateField,
     DATETIME: fof.DateTimeField,
     DICT: fof.DictField,
@@ -215,7 +208,6 @@ SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE = {
     fom.THREE_D: {fol.Detection, fol.Detections, fol.Polyline, fol.Polylines},
 }
 SUPPORTED_LISTS_OF_PRIMITIVES = (
-    fof.BooleanField,
     fof.FloatField,
     fof.IntField,
     fof.StringField,
