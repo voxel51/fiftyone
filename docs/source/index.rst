@@ -29,12 +29,12 @@ FiftyOne
 .. raw:: html
 
   <div class="responsive-banner">
-    <a href="https://link.voxel51.com/docs-search-sales" target="_blank" aria-label="Learn more about FiftyOne Enterprise">
+    <a href="https://voxel51.com/whitepapers/state-of-physical-ai-2026?utm_source=docs&utm_medium=referral&utm_campaign=SoVPAI_Launch&utm_content=docs_banner" target="_blank" aria-label="2026 State of Visual and Physical AI">
       <video class="banner-mobile" autoplay loop muted playsinline aria-hidden="true">
-        <source src="https://cdn.voxel51.com/banner/cta_sales_1200x200.webm" type="video/webm">
+        <source src="https://cdn.voxel51.com/banner/StateOfVisualPhysicalAI-A_1200x200.webm" type="video/webm">
       </video>
       <video class="banner-desktop" autoplay loop muted playsinline aria-hidden="true">
-        <source src="https://cdn.voxel51.com/banner/cta_sales_2400x400.webm" type="video/webm">
+        <source src="https://cdn.voxel51.com/banner/StateOfVisualPhysicalAI-A_2400x400.webm" type="video/webm">
       </video>
     </a>
   </div>
@@ -293,17 +293,17 @@ ____________
     :image_title: Ultralytics
 
 .. customimagelink::
-    :image_link: https://platform.openai.com/
+    :image_link: agents/index.html
     :image_src: https://cdn.voxel51.com/images/integrations/openai-128.png
     :image_title: OpenAI
 
 .. customimagelink::
-    :image_link: https://docs.anthropic.com/
+    :image_link: agents/index.html
     :image_src: https://cdn.voxel51.com/images/integrations/anthropic-128.png
     :image_title: Anthropic
 
 .. customimagelink::
-    :image_link: https://github.com/features/copilot
+    :image_link: agents/index.html
     :image_src: https://cdn.voxel51.com/images/integrations/github-copilot-128.png
     :image_title: GitHub Copilot
 
@@ -536,6 +536,7 @@ _________
    Model Zoo <model_zoo/index>
    FiftyOne Brain <brain>
    FiftyOne Labs <labs/index>
+   Agents <agents/index>
    Plugins <plugins/index>
    Integrations <integrations/index>
    CLI <cli/index>

@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { getEnvironment, setCurrentEnvironment } from "@fiftyone/state";
 import { useMemo, useRef } from "react";
 

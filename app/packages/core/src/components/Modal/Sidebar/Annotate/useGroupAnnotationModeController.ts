@@ -5,18 +5,67 @@ import {
   useModalMode,
 } from "@fiftyone/state";
 import { useCallback, useEffect, useRef } from "react";
-import { useRecoilState } from "recoil";
+import {
+  useRecoilCallback,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
+import { useApplyAnnotationSliceVisibility } from "./useApplyAnnotationSliceVisibility";
+import { useGroupAnnotationSlices } from "./useGroupAnnotationSlices";
+
+const useApplySlice = () => {
+  const { request } = useGroupAnnotationSlices();
+  const modalGroupSlice = useRecoilValue(fos.modalGroupSlice);
+  const [preferredSlice, setPreferredSlice] =
+    fos.usePreferredGroupAnnotationSlice();
+
+  const resolveSlice = useRecoilCallback(
+    () => async () => {
+      const allSlices = await request();
+      const available = allSlices
+        .filter(({ isMissing, isSupported }) => isSupported && !isMissing)
+        .map(({ name }) => name);
+
+      if (preferredSlice && available.includes(preferredSlice)) {
+        return preferredSlice;
+      }
+
+      if (modalGroupSlice && available.includes(modalGroupSlice)) {
+        return modalGroupSlice;
+      }
+
+      return available.length > 0 ? available[0] : null;
+    },
+    [modalGroupSlice, preferredSlice, request]
+  );
+
+  const setModalGroupSlice = useSetRecoilState(fos.modalGroupSlice);
+  const applyVisibilityForSlice = useApplyAnnotationSliceVisibility();
+  return useCallback(async () => {
+    const slice = await resolveSlice();
+
+    setPreferredSlice(slice);
+    setModalGroupSlice(slice);
+    applyVisibilityForSlice(slice);
+  }, [
+    applyVisibilityForSlice,
+    resolveSlice,
+    setModalGroupSlice,
+    setPreferredSlice,
+  ]);
+};
 
 /**
  * Hook that manages visibility settings when transitioning between
- * Explore and Annotate modes for grouped datasets.
+ * Explore and Annotate modes for group datasets.
  *
  * - Captures visibility settings when entering Annotate mode
  * - Restores visibility settings when returning to Explore mode
  */
 export function useGroupAnnotationModeController() {
   const mode = useModalMode();
-  const { is3dVisibleSetting: threeDVisible } = fos.useRenderConfig3dState();
+  const threeDVisible = fos.useIs3dVisibleSetting();
   const { setVisible } = fos.useRenderConfig3dActions();
   const [modalGroupSliceValue, setModalGroupSliceValue] = useRecoilState(
     fos.modalGroupSlice
@@ -28,21 +77,31 @@ export function useGroupAnnotationModeController() {
   const [carouselVisible, setCarouselVisible] = useRecoilState(
     fos.groupMediaIsCarouselVisibleSetting
   );
-  // Track the previous mode for detecting transitions
-  const prevModeRef = useRef(mode);
+  // Always initialize to EXPLORE so that a modal opening directly in ANNOTATE
+  // mode (e.g. after close/reopen with modalMode persisted) is treated as an
+  // EXPLORE → ANNOTATE transition.
+  const prevModeRef = useRef(ModalMode.EXPLORE);
 
   const visibilitySnapshotRef = useRef<GroupVisibilityConfigSnapshot | null>(
     null
   );
 
+  const applySlice = useApplySlice();
   const captureVisibility = useCallback((): GroupVisibilityConfigSnapshot => {
+    applySlice();
     return {
       main: mainVisible,
       carousel: carouselVisible,
       threeDViewer: threeDVisible,
       slice: modalGroupSliceValue,
     };
-  }, [mainVisible, carouselVisible, threeDVisible, modalGroupSliceValue]);
+  }, [
+    applySlice,
+    mainVisible,
+    carouselVisible,
+    threeDVisible,
+    modalGroupSliceValue,
+  ]);
 
   const restoreVisibility = useCallback(
     (snapshot: GroupVisibilityConfigSnapshot | null) => {
@@ -59,7 +118,7 @@ export function useGroupAnnotationModeController() {
 
   // This effect handles mode transitions
   useEffect(() => {
-    const prevMode = prevModeRef.current;
+    const prevMode = prevModeRef.current ?? ModalMode.EXPLORE;
 
     if (prevMode === ModalMode.EXPLORE && mode === ModalMode.ANNOTATE) {
       // Entering Annotate mode: capture current visibility

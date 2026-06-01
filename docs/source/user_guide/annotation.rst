@@ -20,7 +20,7 @@ Basics
 Supported Media and Label Types
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To perform in-App annotation, your dataset must contain at least one of the following media and label types:
+In-App annotation within FiftyOne supports datasets containing the following media and label types:
 
 * :ref:`media_type <dataset-media-type>`
 
@@ -31,6 +31,8 @@ To perform in-App annotation, your dataset must contain at least one of the foll
 
   * ``Classification``
   * ``Detections``
+  * ``Instance segmentations``
+  * ``2D Polylines and Polygons``
   * ``3D Polylines``
   * ``3D Cuboids``
 
@@ -39,7 +41,7 @@ Annotation UI: Sample Visualizer
 
 All in-App annotation controls now live in the :ref:`expanded view for samples <app-sample-view>`. Open a sample in the expanded view, and find the new "Annotate" tab in the right sidebar.
 
-.. image:: /_static/images/annotation/image1.gif
+.. image:: /_static/images/annotation/annotate_tab_grid.gif
    :alt: Annotate tab location
 
 Saving and Reverting Changes
@@ -49,13 +51,13 @@ When you make changes to sample metadata with FiftyOne's in-App annotation, your
 
 You can tell whether your changes are saved or are in the process of being saved thanks to this indicator:
 
-.. image:: /_static/images/annotation/auto_save.png
+.. image:: /_static/images/annotation/auto_save_indicator.png
    :alt: Auto-save indicator
 
 Undo/Redo
 ^^^^^^^^^
 
-.. image:: /_static/images/annotation/image2.png
+.. image:: /_static/images/annotation/undo_redo_buttons.png
    :alt: Undo/Redo buttons
 
 While editing metadata, you can undo and redo actions using the buttons in the upper-right corner of the "Annotate" panel, or via ``Ctrl+``/``Cmd+z`` and ``Ctrl+``/``Cmd+y``. Your changes included in the undo stack are limited to your active annotation session, i.e., while the expanded view remains open.
@@ -75,7 +77,7 @@ To perform in-App annotation, your dataset must first have an "Annotation Schema
 .. warning::
    Only users with :ref:`"Can manage" access <enterprise-can-manage>` to a dataset may import and manage the Annotation Schema on that dataset.
 
-.. image:: /_static/images/annotation/image3.png
+.. image:: /_static/images/annotation/create_annotation_schema.png
    :alt: Create Annotation Schema button
 
 When accessing the "Annotate" tab in the expanded view on a dataset for the first time, you'll see a button to create the Annotation Schema. By default, **no** :ref:`fields in the dataset schema <using-fields>` are included automatically in the Annotation Schema; you'll need to explicitly add fields, attributes, and values.
@@ -187,6 +189,89 @@ You'll then see different sections depending on your choices. Once you are satis
 
 To cancel at any time while configuring your new field, click the "Discard" button.
 
+.. _annotation-ontologies:
+
+Ontologies
+^^^^^^^^^^
+
+An Annotation Ontology is a global, named, versioned resource that bundles a
+reusable set of typed attributes — with optional
+:ref:`conditional display logic <annotation-conditional-attributes>` — into a
+single document that can be attached to a label schema field. Ontologies live
+outside any dataset, so multiple datasets and fields can reference the same
+ontology by name.
+
+Create and save an ontology with the SDK:
+
+.. code-block:: python
+
+   import fiftyone as fo
+
+   ontology = fo.AnnotationOntology(
+       name="vehicle_damage_ontology",
+       attributes=[
+           fo.AttributeSpec(name="damage_present", type="bool", component="toggle"),
+       ],
+   )
+   ontology.save()
+
+Attach the ontology to a field on a dataset's label schema:
+
+.. code-block:: python
+
+   import fiftyone as fo
+
+   dataset = fo.load_dataset("my_dataset")
+   label_schemas = fo.apply_ontology(
+       dataset.label_schemas,
+       field_name="detections",
+       ontology_name="vehicle_damage_ontology",
+   )
+   dataset.set_label_schemas(label_schemas)
+
+Pass ``ontology_name=None`` to ``apply_ontology()`` to unset an existing
+reference on a field.
+
+.. _annotation-conditional-attributes:
+
+Conditional Attributes
+^^^^^^^^^^^^^^^^^^^^^^
+
+Attributes in an :ref:`Annotation Ontology <annotation-ontologies>` can be shown
+conditionally based on other values on the same label. Pass a ``when``
+condition to ``AttributeSpec`` — the ``field`` may reference any attribute on
+the parent, including ``label`` itself.
+
+.. code-block:: python
+
+   import fiftyone as fo
+
+   fo.AnnotationOntology(
+       name="vehicles",
+       attributes=[
+           fo.AttributeSpec(
+               name="num_doors",
+               type="int",
+               component="text",
+               when=fo.WhenEquals(field="label", value="car"),
+           ),
+           fo.AttributeSpec(
+               name="cargo_capacity",
+               type="float",
+               component="text",
+               when=fo.WhenEquals(field="label", value="truck"),
+           ),
+       ],
+   ).save()
+
+``num_doors`` is editable only when the label's class is ``car``, and
+``cargo_capacity`` only when it is ``truck``. Hidden attributes are not
+written to the label.
+
+Once this ontology is attached to a label field, annotators will see
+these conditional attributes in the right sidebar of the in-App
+annotation UI as they annotate.
+
 Bypassing Schema Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -195,8 +280,8 @@ If you do not see a field or its contents in the "Annotate" tab of the sample ex
 .. warning::
    Like the above features in :ref:`the "Schema Import / Management" section <schema-import-management>`, this bypass feature is only available to users with :ref:`"Can manage" access <enterprise-can-manage>` on a dataset.
 
-.. image:: /_static/images/annotation/quick_edit.gif
-   :alt: Explore tab field selection
+.. image:: /_static/images/annotation/bypass_schema_quick_edit.gif
+   :alt: Quick-edit pencil icon on the Explore tab
 
 While on the "Explore" tab of the sample expanded view, hover over the field with objects/values you wish to edit via in-App annotation, and you'll see a ✏️ icon. When you click the ✏️ icon, if no valid schema exists yet for that field–and the field does not exist in the Annotation Schema, the following happens:
 
@@ -209,8 +294,8 @@ Getting Started with Annotation
 
 To access fields in the "Annotate" tab, first check the box next to the field in the "Explore" tab. Only those labels you are visualizing in the "Explore" tab will be available for in-App annotation in the "Annotate" tab.
 
-.. image:: /_static/images/annotation/image4.png
-   :alt: Explore tab field selection
+.. image:: /_static/images/annotation/annotate_tab_overview.png
+   :alt: Annotate tab overview with Canvas, Toolbar, and Labels list
 
 While in the "Annotate" tab, the sample expanded view consists of three parts:
 
@@ -254,7 +339,7 @@ How to: 2D Label Annotation
 Creating a Classification label
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. image:: /_static/images/annotation/image5.png
+.. image:: /_static/images/annotation/create_classification_button.png
    :alt: Creating a classification
 
 Click the "Create new classification" icon in the annotation actions toolbar to display the classification editor in the right sidebar. A field and label are required to save the new classification label. Only fields available in your schema will be displayed as options in the dropdown boxes.
@@ -264,49 +349,107 @@ Click the "Create new classification" icon in the annotation actions toolbar to 
 Creating a Detection label
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. image:: /_static/images/annotation/image6.png
+.. image:: /_static/images/annotation/create_detection_button.png
    :alt: Create detection icon
 
 Click the "Create new detection" icon in the annotation actions toolbar to enable the crosshair mouse cursor on the Annotation Canvas and display the detection editor in the right sidebar. Position the cursor at one corner of the new detection, then click and hold the mouse button while dragging diagonally to create a bounding box.
 
-.. image:: /_static/images/annotation/bounding_box.gif
+.. image:: /_static/images/annotation/draw_bounding_box.gif
    :alt: Drawing a bounding box
 
 Once a bounding box has been created, it can be resized and repositioned as desired by clicking and holding any edge or corner drag handle while moving the mouse cursor. For finer adjustments, first zoom in on the image. To maintain the aspect ratio of the selection, hold down the shift key while dragging.
 
 A field and label are required to save the new detection label. Only fields available in your schema will be displayed as options in the dropdown boxes.
 
-Editing on the Annotation Canvas
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+A detection label's size and shape can be adjusted directly in the annotation canvas by clicking on the detection to select it, then dragging an edge or corner drag handle:
 
-A detection label's size and shape can be adjusted directly in the annotation canvas by clicking on the detection to select it, then dragging an edge or corner drag handle.
-
-.. image:: /_static/images/annotation/image8.gif
+.. image:: /_static/images/annotation/edit_bounding_box_canvas.gif
    :alt: Editing detection on canvas
+
+Creating a Segmentation label
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. image:: /_static/images/annotation/create_mask_button.png
+   :alt: Create new mask button
+
+Click the "Create new mask" icon in the annotation actions toolbar to enable the mask annotation toolbar displayed on the left side of the Annotation Canvas. Select the paintbrush, polyline, or AI tool to begin drawing masks.
+
+.. image:: /_static/images/annotation/mask_toolbar.png
+   :alt: Mask annotation toolbar
+
+When drawing segmentation masks, the mask toolbar is shown on the left of the Annotation Canvas. From top to bottom of the image above, the icons depict the Selection tool to select specific label instances, the Brush tool, Polygon tool, or AI assistance tool for drawing new masks, the Merge tool to combine mask instances, and Close to stop editing the current label instance.
+
+A field and label are required to save new mask labels. Only fields available in your schema will be displayed as options in the dropdown boxes. Instance segmentations fall under the ``Detections`` label field type, allowing for detection labels either with or without masks.
+
+.. image:: /_static/images/annotation/mask_field_schema.png
+   :alt: Configuring a mask field schema
+
+.. image:: /_static/images/annotation/detection_kebab_remove_mask.png
+   :alt: Kebab menu to add or remove a mask
+
+The kebab menu on an existing detection label in the right sidebar allows you to either add or remove the mask from that label instance.
+
+.. image:: /_static/images/annotation/mask_ai_assistance.gif
+   :alt: AI assistance tool
+
+The AI assistance tool allows you to use mask segmentation models to draw masks. This tool allows you to click any number of positive and negative points per object as prompts to the model to refine the mask boundaries. For FiftyOne Enterprise customers, ask your Voxel51 Customer Success representative about bringing your own finetuned models for AI assisted segmentation.
+
+.. image:: /_static/images/annotation/mask_brush_tool.gif
+   :alt: Brush tool
+
+The Brush tool allows for pixel-level precision to create masks. By selecting the ``-`` Mode, you can use the brush tool to remove pixels from existing masks. The Brush tool also allows you to configure the size and shape of the brush.
+
+.. image:: /_static/images/annotation/mask_polygon_tool.gif
+   :alt: Polygon tool
+
+Similar to the brush tool, the Polygon tool allows you to create or remove masks from detection instances. Click the canvas to place points on the polygon, then right click to confirm your selection.
+
+.. image:: /_static/images/annotation/mask_merge_tool.gif
+   :alt: Merge tool
+
+If multiple masks have been created for the same object, the Merge tool allows you to select one object instance and merge the mask of another instance into it.
+
+Creating Polyline and Polygon labels
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. image:: /_static/images/annotation/create_polylines_button.png
+   :alt: Create new polylines button
+
+Click the "Create new polylines" icon in the annotation actions toolbar to enable the crosshair mouse cursor on the Annotation Canvas and display the polylines editor in the right sidebar.
+
+.. image:: /_static/images/annotation/draw_polyline.gif
+   :alt: Drawing a polyline
+
+Click the canvas to begin placing vertices of the new polyline, with successive clicks connecting the vertices with line segments. Right click to finish editing the current polyline label instance. To add additional vertices onto an existing polyline, click the polyline segment at the desired location to place the new vertex.
+
+.. image:: /_static/images/annotation/draw_polygon.gif
+   :alt: Drawing a polygon
+
+:ref:`Polygon labels in FiftyOne <polylines>` are simply polylines with the ``closed`` and ``filled`` attributes set to ``True``. Configure the label schema to use default values for these attributes if desired, or configure these values for each label instance. Similar to polylines, edit polygons by clicking the canvas to place vertices defining the boundary of the polygon. Clicking an existing boundary segment allows you to add new vertices into an existing polygon. Right click the canvas to finish editing the current polygon.
 
 Editing in the Right Sidebar
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Select a label by clicking on it on the Annotation Canvas, or by its representation in the list of label instances. As you hover over labels, you'll notice the corresponding object (either on the Annotation Canvas or in the list of label instances) appear highlighted. When you select a label, you can edit its properties via the right sidebar.
+Labels can be selected by clicking on its bounding box or on the item in the list in the right sidebar, which will highlight the associated bounding box on the annotation canvas if the label is a detection, then clicking the chosen row. This will open the editing panel in the right sidebar.
 
-.. image:: /_static/images/annotation/bounding_box2.gif
+.. image:: /_static/images/annotation/edit_bounding_box_sidebar.gif
    :alt: Right sidebar editor
 
 Spatial Properties
 ^^^^^^^^^^^^^^^^^^
 
-.. image:: /_static/images/annotation/image10.png
-   :alt: Spatial properties editor
+.. image:: /_static/images/annotation/detection_spatial_properties.png
+   :alt: Detection spatial properties editor
 
-Within the editing panel the x/y coordinates, width, and height can be adjusted. Editing the x/y coordinates and/or the width/height will display the changes in the annotation canvas. This allows finite adjustments that could be difficult with a mouse.
+.. image:: /_static/images/annotation/cuboid_spatial_properties.png
+   :alt: 3D cuboid spatial properties editor
+
+Within the editing panel spatial coordinates of the label are displayed. For example, for detection type labels the x/y coordinates, width, and height can be adjusted. Editing the x/y coordinates and/or the width/height will display the changes in the annotation canvas. This allows finite adjustments that could be difficult with a mouse.
 
 Attributes
 ^^^^^^^^^^
 
 The editing panel also enables editing the label, tags, confidence, index properties, and custom properties depending on the configured annotation schema.
-
-.. image:: /_static/images/annotation/editing_panel.png
-   :alt: Editing panel
 
 ----
 
@@ -326,7 +469,7 @@ Supported 3D Datasets
 
 For grouped datasets, you can use the slice selector within the Annotate tab to select the image or 3d slice you wish to annotate.
 
-.. image:: /_static/images/annotation/image11.png
+.. image:: /_static/images/annotation/3d_slice_selector.png
    :alt: Slice selector
 
 Camera Projections
@@ -334,7 +477,7 @@ Camera Projections
 
 **Pointcloud projections**
 
-.. image:: /_static/images/annotation/image12.png
+.. image:: /_static/images/annotation/pointcloud_projections.png
    :alt: Pointcloud projections
 
 Projection surfaces allow you to flatten a 3D point cloud onto a 2D plane for easier annotation. You can toggle between different projection views using the dropdown menus.
@@ -343,12 +486,12 @@ Projection surfaces allow you to flatten a 3D point cloud onto a 2D plane for ea
 
 If your dataset contains :ref:`groups <groups>`, where at least one group slice contains 2D images, you'll also see those slices available for visualization in the dropdown menu.
 
-.. image:: /_static/images/annotation/image13.png
+.. image:: /_static/images/annotation/image_projection_slices.png
    :alt: 2D image projections
 
 If you have defined the necessary :ref:`camera intrinsic and extrinsic parameters <camera-intrinsics-extrinsics>`, then you will also be able to project the 3D labels onto the 2D images in real time.
 
-.. image:: /_static/images/annotation/projection.gif
+.. image:: /_static/images/annotation/labels_projected_on_image.gif
    :alt: 3D image projections
 
 
@@ -358,17 +501,17 @@ If you have defined the necessary :ref:`camera intrinsic and extrinsic parameter
 Annotation Plane
 ^^^^^^^^^^^^^^^^
 
-.. image:: /_static/images/annotation/image14.gif
+.. image:: /_static/images/annotation/annotation_plane_concept.gif
    :alt: Annotation plane concept
 
 3D annotation mode in FiftyOne provides the concept of an "annotation plane". When a new point is created (for example the vertex of a polyline or cuboid), it gets placed at the location of the mouse pointer. However, the depth of the point would be ambiguous and so this annotation plane is used to define the point depth. By default, the annotation plane is set to be the XY plane.
 
-.. image:: /_static/images/annotation/image15.gif
+.. image:: /_static/images/annotation/reposition_annotation_plane.gif
    :alt: Annotation plane positioning
 
 The annotation plane can be repositioned by clicking the annotation plane icon in the left toolbar. Iteratively moving the annotation plane and placing vertices is an efficient way to annotate complex 3D shapes.
 
-.. image:: /_static/images/annotation/image16.gif
+.. image:: /_static/images/annotation/annotation_plane_workflow.gif
    :alt: Moving annotation plane
 
 Visualizer Controls
@@ -378,37 +521,37 @@ The 3D annotation toolbar on the left side of the screen contains all options fo
 
 * Cancel the annotation of the current label, presenting the option to either save or discard changes
 
-.. image:: /_static/images/annotation/cancel.png
+.. image:: /_static/images/annotation/control_cancel_icon.png
    :alt: Cancel annotation button
 
 * Begin annotation of a new cuboid
 
-.. image:: /_static/images/annotation/begin_cuboid.png
+.. image:: /_static/images/annotation/control_new_cuboid_icon.png
    :alt: Begin annotation of a new cuboid
 
 * Begin annotation of a new polyline or segment
 
-.. image:: /_static/images/annotation/begin_polyline.png
+.. image:: /_static/images/annotation/control_new_polyline_icon.png
    :alt: Begin annotation of a new polyline or segment
 
 * Add a new vertex to the selected polyline
 
-.. image:: /_static/images/annotation/add_vertex.png
+.. image:: /_static/images/annotation/control_add_vertex_icon.png
    :alt: Add a new vertex to the selected polyline
 
 * Enable a mode where double clicking automatically closes the polyline
 
-.. image:: /_static/images/annotation/enable_mode.png
+.. image:: /_static/images/annotation/control_auto_close_icon.png
    :alt: Enable a mode where double clicking automatically closes the polyline
 
 * Enable visualization and manipulation of the annotation plane
 
-.. image:: /_static/images/annotation/enable_visualization.png
+.. image:: /_static/images/annotation/control_show_plane_icon.png
    :alt: Enable visualization and manipulation of the annotation plane
 
 The camera position can be manipulated to snap to the X,Y,Z directions or to the annotation plane with the keyboard shortcuts. The number keys 1-4 and CTRL+1-4 correspond to the top/bottom, right/left, front/back, and annotation plane respectively as shown in the video below.
 
-.. image:: /_static/images/annotation/image19.gif
+.. image:: /_static/images/annotation/camera_snap_shortcuts.gif
    :alt: Camera controls
 
 How to: 3D Cuboid Annotation
@@ -416,7 +559,7 @@ How to: 3D Cuboid Annotation
 
 To begin creating and editing 3D cuboids, enter polyline annotation mode by clicking on the cuboid icon in the annotate actions toolbar. When in cuboid annotation mode, the 3D cuboid toolbar becomes available on the left side of the Annotation Canvas.
 
-.. image:: /_static/images/annotation/image20.png
+.. image:: /_static/images/annotation/cuboid_toolbar.png
    :alt: 3D cuboid toolbar
 
 Creating 3D Cuboids
@@ -424,7 +567,7 @@ Creating 3D Cuboids
 
 After entering cuboid annotation mode, create a new 3D cuboid by clicking on the cuboid icon in the cuboid toolbar on the left side, then click the 3D scene to place the first corner of the cuboid. Click a second time to define the opposite corner of the base (XY plane) of the cuboid. This second click finishes the creation of the cuboid, always defaulting to a height of 1.0 in the lz direction.
 
-.. image:: /_static/images/annotation/image21.gif
+.. image:: /_static/images/annotation/create_3d_cuboid.gif
    :alt: Creating a 3D cuboid
 
 Newly created cuboids are oriented based on the current annotation plane. The depth of the first two clicks in the 3D scene is dictated by the location of the annotation plane which is described above (defaulting to the XY plane).
@@ -436,21 +579,21 @@ After selecting a cuboid, the left toolbar provides new actions to transform the
 
 **Translation**
 
-.. image:: /_static/images/annotation/image22.gif
+.. image:: /_static/images/annotation/cuboid_translate.gif
    :alt: Translation mode
 
 Click the translation icon in the left toolbar to enable translation mode. In this mode, the cuboid can be translated (moved) along the x, y, or z axes by clicking and dragging the corresponding directional arrow on the cuboid. Additionally, you can move the cuboid within a plane (XY, XZ, or YZ) by clicking and dragging the corresponding colored plane handle. For 3D translation in all directions, click and drag the white cube at the center of the cuboid.
 
 **Rotation**
 
-.. image:: /_static/images/annotation/image23.gif
+.. image:: /_static/images/annotation/cuboid_rotate.gif
    :alt: Rotation mode
 
 After selecting a cuboid, click the rotation icon in the left toolbar to enable rotation mode. In this mode, the cuboid can be rotated about the x, y, or z axes by clicking and dragging the corresponding colored circle on the cuboid. You can also rotate about the plane orthogonal to the current camera view using the outermost yellow circle.
 
 **Scaling**
 
-.. image:: /_static/images/annotation/image24.gif
+.. image:: /_static/images/annotation/cuboid_scale.gif
    :alt: Scaling mode
 
 After selecting a cuboid, click the scaling icon in the left toolbar to enable scaling mode. In this mode, the cuboid can be scaled (resized) along the x, y, or z axes by clicking and dragging the corresponding directional arrow on the cuboid. In addition to scaling along an axis, you can scale the cuboid within a plane (XY, XZ, or YZ) by clicking and dragging the corresponding colored plane handle.
@@ -458,7 +601,7 @@ After selecting a cuboid, click the scaling icon in the left toolbar to enable s
 Attribute Editing
 ^^^^^^^^^^^^^^^^^
 
-.. image:: /_static/images/annotation/image25.png
+.. image:: /_static/images/annotation/cuboid_attributes_panel.png
    :alt: Cuboid attributes panel
 
 Cuboid attributes can be edited in the right sidebar when a given cuboid is selected. Custom attributes in this panel are defined by the :ref:`Schema Manager <schema-manager>`.
@@ -466,13 +609,13 @@ Cuboid attributes can be edited in the right sidebar when a given cuboid is sele
 How to: 3D Polyline Annotation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. image:: /_static/images/annotation/image26.gif
+.. image:: /_static/images/annotation/polyline_annotation_intro.gif
    :alt: 3D polyline annotation
 
 To begin creating and editing 3D polylines, enter polyline annotation mode by clicking on the polyline icon in the annotate actions toolbar. When in polyline annotation mode, the 3D polyline toolbar becomes available on the left side of the Annotation Canvas.
 
 
-.. image:: /_static/images/annotation/image27.png
+.. image:: /_static/images/annotation/polyline_toolbar.png
    :alt: Polyline toolbar
 
 .. _creating-3d-polylines:
@@ -482,7 +625,7 @@ Creating Polylines
 
 After entering polyline annotation mode, create a new 3D polyline by clicking on the polyline icon in the polyline toolbar on the left side, then click the 3D scene to create the first vertex of the polyline. After placing the final vertex of your polyline, double click anywhere on the 3D scene to finish creation of the polyline segment.
 
-.. image:: /_static/images/annotation/image28.gif
+.. image:: /_static/images/annotation/create_3d_polyline.gif
    :alt: Creating a polyline
 
 
@@ -501,7 +644,7 @@ The points of a single :ref:`Polyline in FiftyOne <3d-polylines>` are represente
 
 This allows for the possibility of multiple disjointed segments within a single polyline as shown in the code example above. This may be useful, for example, if you are annotating a dashed lane marking where each dash is a disjointed segment of the same polyline, allowing all of the segments to share the same attributes.
 
-.. image:: /_static/images/annotation/image29.png
+.. image:: /_static/images/annotation/polyline_segments_diagram.png
    :alt: Polyline segments
 
 In the right Annotate sidebar, you can see the number of segments and vertices in the current Polyline.
@@ -509,7 +652,7 @@ In the right Annotate sidebar, you can see the number of segments and vertices i
 Adding New Segments
 ^^^^^^^^^^^^^^^^^^^
 
-.. image:: /_static/images/annotation/image30.gif
+.. image:: /_static/images/annotation/add_polyline_segment.gif
    :alt: Adding new segments
 
 To add a new segment to an existing polyline, first select the polyline to be edited, then select the new polyline segment button in the left toolbar and finally click to annotate the new segment.
@@ -519,13 +662,13 @@ Vertex Manipulation
 
 When positioning a vertex in 3D space, the vertex controls become available when you click to select a given vertex (or the polyline centroid). These controls allow you to click either the 3 RGB directional arrows to move the vertex along the given axis, 3 CMY planes to move the vertex in the given plane, and a clickable center to position the vertex in 3D space.
 
-.. image:: /_static/images/annotation/image31.gif
+.. image:: /_static/images/annotation/polyline_vertex_controls.gif
    :alt: Vertex manipulation controls
 
 Adding and Deleting Vertices
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. image:: /_static/images/annotation/image32.gif
+.. image:: /_static/images/annotation/add_delete_polyline_vertex.gif
    :alt: Adding and deleting vertices
 
 
@@ -533,32 +676,32 @@ Vertices can also be added to and deleted from existing polylines. To add a new 
 
 A selected vertex can be deleted by pressing the trash can icon in the left toolbar (or by pressing the delete key).
 
-.. image:: /_static/images/annotation/image33.png
+.. image:: /_static/images/annotation/delete_vertex_icon.png
    :alt: Delete vertex icon
 
 Attribute Editing
 ^^^^^^^^^^^^^^^^^
 
-.. image:: /_static/images/annotation/image34.png
+.. image:: /_static/images/annotation/polyline_attributes_panel.png
    :alt: Polyline attributes panel
 
 Polyline attributes can be edited in the right sidebar when a given polyline is selected. Custom attributes in this panel are defined by the :ref:`Schema Manager <schema-manager>`.
 
 In addition to custom attributes, the attribute sidebar for 3D polylines also shows the number of segments and vertices in the selected polyline, as well as the polyline-specific "closed" and "filled" attributes which affect how the polyline is rendered. Setting the "closed" attribute to True will automatically render a line segment from the first vertex of a polyline to the last vertex to close the shape. Setting the "filled" attribute to True will show the region enclosed by the polyline as filled.
 
-.. image:: /_static/images/annotation/image35.png
+.. image:: /_static/images/annotation/polyline_closed_example.png
    :alt: Closed polyline example
 
-.. image:: /_static/images/annotation/image36.png
+.. image:: /_static/images/annotation/polyline_filled_example.png
    :alt: Filled polyline example
 
-.. image:: /_static/images/annotation/image37.png
+.. image:: /_static/images/annotation/polyline_closed_filled_example.png
    :alt: Closed and filled polyline
 
 
 Additionally, you can select the icon to the left to enter a mode that will automatically close the polyline when the annotation canvas is double clicked.
 
-.. image:: /_static/images/annotation/image38.png
+.. image:: /_static/images/annotation/polyline_auto_close_icon.png
    :alt: Auto-close mode icon
 
 
@@ -572,5 +715,5 @@ Editing in the Right Sidebar
 
 Clicking on a primitive field in the "Annotate" tab will open the editing panel in the right sidebar. Like editing a label's attributes, you can edit the primitive's values per the Annotation Schema.
 
-.. image:: /_static/images/annotation/primitive_editing.png
+.. image:: /_static/images/annotation/primitive_editing_panel.png
    :alt: Editing primitives in the right sidebar

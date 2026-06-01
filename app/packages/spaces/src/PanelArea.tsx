@@ -3,7 +3,7 @@ import { usePanelAreaRenderer } from "./hooks";
 import { PanelAreaProps } from "./types";
 import { useState } from "react";
 
-const DEFAULT_WIDTH = 300;
+const DEFAULT_WIDTH = 440;
 const DEFAULT_MIN_WIDTH = 300;
 const DEFAULT_MAX_WIDTH = 600;
 

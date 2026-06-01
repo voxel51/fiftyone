@@ -36,13 +36,13 @@ test.afterAll(async ({ foWebServer }) => {
 test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
   await foWebServer.startWebServer();
 
-  await mediaFactory.createBlankImage({
+  await mediaFactory.createImage({
     outputPath: testImgPath,
     width: 50,
     height: 50,
   });
 
-  await mediaFactory.createBlankImage({
+  await mediaFactory.createImage({
     outputPath: testImgPath2,
     width: 50,
     height: 50,
