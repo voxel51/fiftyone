@@ -1,4 +1,10 @@
-import { getLabelColorFromContext } from "@fiftyone/lighter";
+import {
+  getLabelColorFromContext,
+  TemporalOverlay,
+  UNDEFINED_LIGHTER_SCENE_ID,
+  useLighter,
+  useLighterEventHandler,
+} from "@fiftyone/lighter";
 import {
   colorScheme,
   colorSeed,
@@ -40,6 +46,7 @@ import {
   ExtendTrackCommand,
   ShiftTrackCommand,
   TrimTrackCommand,
+  useAnnotationEventHandler,
 } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
 import {
@@ -265,26 +272,76 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
 
   const commandBus = useCommandBus();
 
-  // TD overlays are the source of truth (see useTemporalDetectionDeltaSupplier);
-  // bars rebuild from the sample after each autosave round-trip. There's a
-  // brief lag between an edit and the next refetch where the bar may sit at
-  // the previous range — acceptable for now; if it becomes a UX issue we can
-  // subscribe to scene TD overlay state here instead of reading the sample.
+  // Live-derived TD tracks: walk the scene's `TemporalOverlay` set rather
+  // than the sample (which lags one autosave round-trip behind local
+  // edits). Overlays are the source of truth — `useTemporalOverlaySync`
+  // primes them from the sample on first load and `useTemporalDetectionDeltaSupplier`
+  // walks them at autosave time.
+  const { scene } = useLighter();
+  const [tdVersion, setTdVersion] = useState(0);
+  const bumpTdVersion = useCallback(() => setTdVersion((v) => v + 1), []);
+
+  const useLighterEvent = useLighterEventHandler(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
+  useLighterEvent(
+    "lighter:overlay-added",
+    useCallback(
+      (payload) => {
+        if (payload.overlay instanceof TemporalOverlay) bumpTdVersion();
+      },
+      [bumpTdVersion]
+    )
+  );
+  useLighterEvent(
+    "lighter:overlay-removed",
+    useCallback(
+      (payload) => {
+        if (payload.id?.startsWith("td-")) bumpTdVersion();
+      },
+      [bumpTdVersion]
+    )
+  );
+  useAnnotationEventHandler(
+    "annotation:labelEdit",
+    useCallback(
+      (payload) => {
+        const cls = (payload.label as { _cls?: string } | null)?._cls;
+        if (cls === "TemporalDetection") bumpTdVersion();
+      },
+      [bumpTdVersion]
+    )
+  );
+  // One-shot resync after scene becomes available — `useTemporalOverlaySync`
+  // may have added TDs in its effect before our handlers registered.
+  useEffect(() => {
+    if (scene) bumpTdVersion();
+  }, [scene, bumpTdVersion]);
+
   const temporalDetectionTracks = useMemo(() => {
-    if (!sample?.sample) {
-      return [];
+    if (!scene) return [];
+    const fps = sample?.frameRate;
+    if (!Number.isFinite(fps) || fps <= 0) return [];
+
+    const byField = new Map<string, unknown[]>();
+    for (const overlay of scene.getAllOverlays()) {
+      if (!(overlay instanceof TemporalOverlay)) continue;
+      const detections = byField.get(overlay.field) ?? [];
+      detections.push(overlay.label);
+      byField.set(overlay.field, detections);
     }
-    const fps = sample.frameRate;
-    if (!Number.isFinite(fps) || fps <= 0) {
-      return [];
+    const virtualSample: Record<string, unknown> = {};
+    for (const [field, detections] of byField) {
+      virtualSample[field] = { _cls: "TemporalDetections", detections };
     }
 
     return buildTemporalDetectionTracks({
-      sample: sample.sample as Record<string, unknown>,
+      sample: virtualSample,
       fps,
       resolveColor: resolveTemporalDetectionColor,
     });
-  }, [sample, resolveTemporalDetectionColor]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- tdVersion is the invalidation signal
+  }, [scene, sample?.frameRate, resolveTemporalDetectionColor, tdVersion]);
 
   const tracks = useMemo(
     () => [...frameTracks, ...temporalDetectionTracks],

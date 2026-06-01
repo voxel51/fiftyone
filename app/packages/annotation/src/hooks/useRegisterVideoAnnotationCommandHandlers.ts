@@ -37,6 +37,7 @@ import {
   ShiftTrackCommand,
   TrimTrackCommand,
 } from "../commands";
+import { useAnnotationEventBus } from "./useAnnotationEventBus";
 
 /** Read this track's detection on a given frame, or `undefined`. */
 const detectionAt = (
@@ -83,6 +84,7 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
   const applyPropagation = useApplyPropagationResult();
   const applyPropagatedDetection = useApplyPropagatedDetection();
   const { setContent: setStatusContent } = useVideoAnnotationStatus();
+  const annotationEventBus = useAnnotationEventBus();
 
   useRegisterCommandHandler(
     EditTemporalDetectionCommand,
@@ -93,10 +95,19 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
         const overlay = scene.getOverlay(overlayId);
         if (!(overlay instanceof TemporalOverlay)) return false;
         // Mutate via the typed setter so the overlay re-gates / marks dirty.
-        overlay.label = { ...overlay.label, ...cmd.update } as TemporalLabel;
+        const nextLabel = {
+          ...overlay.label,
+          ...cmd.update,
+        } as TemporalLabel;
+        overlay.label = nextLabel;
+        // Live signal for sample-stale consumers (timeline track, sidebar
+        // form) — they rebuild off this rather than waiting for autosave.
+        annotationEventBus.dispatch("annotation:labelEdit", {
+          label: nextLabel,
+        });
         return true;
       },
-      [scene]
+      [scene, annotationEventBus]
     )
   );
 
