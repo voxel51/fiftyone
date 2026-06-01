@@ -1,8 +1,9 @@
-name: Push Release
+name: Develop Back-Merge
 
 on:
   push:
     branches:
+      - main
       - release/v[0-9]+.[0-9]+.[0-9]+
   workflow_dispatch:
     inputs:
