@@ -1,4 +1,10 @@
-import { getLabelColorFromContext } from "@fiftyone/lighter";
+import {
+  getLabelColorFromContext,
+  TemporalOverlay,
+  UNDEFINED_LIGHTER_SCENE_ID,
+  useLighter,
+  useLighterEventHandler,
+} from "@fiftyone/lighter";
 import {
   colorScheme,
   colorSeed,
@@ -36,16 +42,13 @@ import { LABELS_STREAM_ID } from "./ids";
 import { resolveTrackExtentEdit } from "./trackExtentEdit";
 import { useLinkedTrackDecorator } from "./linkedTracks";
 import {
-  EditTemporalDetectionSupportCommand,
+  EditTemporalDetectionCommand,
   ExtendTrackCommand,
   ShiftTrackCommand,
   TrimTrackCommand,
+  useAnnotationEventHandler,
 } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
-import {
-  applyTemporalDetectionEdits,
-  useTemporalDetectionPendingEdits,
-} from "./pendingTemporalDetectionEdits";
 import {
   buildTemporalDetectionTracks,
   type TemporalDetectionEventData,
@@ -267,39 +270,78 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
     };
   }, [stream, resolveColor, editVersion]);
 
-  const pendingTemporalDetectionEdits = useTemporalDetectionPendingEdits();
   const commandBus = useCommandBus();
 
-  const temporalDetectionTracks = useMemo(() => {
-    if (!sample?.sample) {
-      return [];
-    }
-    // `sample.frameRate` is the canonical fps for the clip; same source
-    // `RegisterFrameLabels` consumes for the labels-stream constructor.
-    const fps = sample.frameRate;
-    if (!Number.isFinite(fps) || fps <= 0) {
-      return [];
-    }
+  // Live-derived TD tracks: walk the scene's `TemporalOverlay` set rather
+  // than the sample (which lags one autosave round-trip behind local
+  // edits). Overlays are the source of truth — `useTemporalOverlaySync`
+  // primes them from the sample on first load and `useTemporalDetectionDeltaSupplier`
+  // walks them at autosave time.
+  const { scene } = useLighter();
+  const [tdVersion, setTdVersion] = useState(0);
+  const bumpTdVersion = useCallback(() => setTdVersion((v) => v + 1), []);
 
-    // Apply staged TD-support edits as overrides before building so the
-    // bar stays where the user dropped it through the server round-trip.
-    // Cleared by `useRegisterVideoAnnotationEventHandlers` on
-    // `annotation:persistenceSuccess` / `persistenceError`.
-    const baseSample = sample.sample as Record<string, unknown>;
-    const overlaidSample =
-      pendingTemporalDetectionEdits.size === 0
-        ? baseSample
-        : applyTemporalDetectionEdits(
-            baseSample,
-            pendingTemporalDetectionEdits
-          );
+  const useLighterEvent = useLighterEventHandler(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
+  useLighterEvent(
+    "lighter:overlay-added",
+    useCallback(
+      (payload) => {
+        if (payload.overlay instanceof TemporalOverlay) bumpTdVersion();
+      },
+      [bumpTdVersion]
+    )
+  );
+  useLighterEvent(
+    "lighter:overlay-removed",
+    useCallback(
+      (payload) => {
+        if (payload.id?.startsWith("td-")) bumpTdVersion();
+      },
+      [bumpTdVersion]
+    )
+  );
+  useAnnotationEventHandler(
+    "annotation:labelEdit",
+    useCallback(
+      (payload) => {
+        const cls = (payload.label as { _cls?: string } | null)?._cls;
+        if (cls === "TemporalDetection") bumpTdVersion();
+      },
+      [bumpTdVersion]
+    )
+  );
+  // One-shot resync after scene becomes available — `useTemporalOverlaySync`
+  // may have added TDs in its effect before our handlers registered.
+  useEffect(() => {
+    if (scene) bumpTdVersion();
+  }, [scene, bumpTdVersion]);
+
+  const temporalDetectionTracks = useMemo(() => {
+    if (!scene) return [];
+    const fps = sample?.frameRate;
+    if (!Number.isFinite(fps) || fps <= 0) return [];
+
+    const byField = new Map<string, unknown[]>();
+    for (const overlay of scene.getAllOverlays()) {
+      if (!(overlay instanceof TemporalOverlay)) continue;
+      const detections = byField.get(overlay.field) ?? [];
+      detections.push(overlay.label);
+      byField.set(overlay.field, detections);
+    }
+    const virtualSample: Record<string, unknown> = {};
+    for (const [field, detections] of byField) {
+      virtualSample[field] = { _cls: "TemporalDetections", detections };
+    }
 
     return buildTemporalDetectionTracks({
-      sample: overlaidSample,
+      sample: virtualSample,
       fps,
       resolveColor: resolveTemporalDetectionColor,
     });
-  }, [sample, resolveTemporalDetectionColor, pendingTemporalDetectionEdits]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- tdVersion is the invalidation signal
+  }, [scene, sample?.frameRate, resolveTemporalDetectionColor, tdVersion]);
 
   const tracks = useMemo(
     () => [...frameTracks, ...temporalDetectionTracks],
@@ -425,16 +467,11 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
           const firstFrame = Math.max(1, Math.round(newStartSec * fps) + 1);
           const lastFrame = Math.max(firstFrame, Math.round(newEndSec * fps));
 
-          // Goes through the command bus (same shape as
-          // `MarkKeyframeCommand`) so the dispatch path is uniform and
-          // future undo/redo subscribers see this edit on the bus.
-          // The handler stages into the same pending-edits store the
-          // delta supplier reads.
           void commandBus.execute(
-            new EditTemporalDetectionSupportCommand(
+            new EditTemporalDetectionCommand(
               tdEvent.fieldPath,
               tdEvent.detectionId,
-              [firstFrame, lastFrame]
+              { support: [firstFrame, lastFrame] }
             )
           );
         },

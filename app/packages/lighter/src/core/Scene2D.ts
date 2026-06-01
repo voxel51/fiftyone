@@ -28,6 +28,8 @@ import type {
 import { InteractionManager } from "../interaction/InteractionManager";
 import type { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
 import { BaseOverlay } from "../overlay/BaseOverlay";
+import { CONTAINS } from "./containment";
+export { CONTAINS };
 import type { Selectable } from "../selection/Selectable";
 import type { SelectionOptions } from "../selection/SelectionManager";
 import { SelectionManager } from "../selection/SelectionManager";
@@ -91,15 +93,6 @@ const isUsableBounds = (bounds: Rect | undefined): bounds is Rect => {
     BaseOverlay.validBounds(bounds) && bounds.width !== 0 && bounds.height !== 0
   );
 };
-
-/**
- * Const enum for point containment levels.
- */
-export const enum CONTAINS {
-  NONE = 0,
-  CONTENT = 1,
-  BORDER = 2,
-}
 
 /**
  * Interface for overlay ordering state.

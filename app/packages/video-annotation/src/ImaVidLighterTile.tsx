@@ -20,6 +20,7 @@ import { IMAVID_STREAM_ID, LABELS_STREAM_ID } from "./ids";
 import type { ImaVidImageFrame } from "./ImaVidImageStream";
 import type { FrameLabelSnapshot } from "./SyntheticLabelStream";
 import { useFrameOverlaySync } from "./useFrameOverlaySync";
+import { useTemporalOverlaySync } from "./useTemporalOverlaySync";
 import { useSyncLighterAnnotation } from "./useSyncLighterAnnotation";
 import { useSyncSidebarFromSnapshot } from "./useSyncSidebarFromSnapshot";
 import { useSyncLighterLabelStream } from "./useSyncLighterLabelStream";
@@ -150,6 +151,7 @@ export const ImaVidLighterTile: React.FC<ImaVidLighterTileProps> = ({
   // Overlay diff — same hook the video tile uses.
   const snapshot = useStream<FrameLabelSnapshot>(LABELS_STREAM_ID);
   useFrameOverlaySync(scene, snapshot, field, canonicalMediaReady);
+  useTemporalOverlaySync(scene, canonicalMediaReady);
   useSyncSidebarFromSnapshot(scene, snapshot, field, canonicalMediaReady);
 
   useSyncLighterAnnotation(scene);

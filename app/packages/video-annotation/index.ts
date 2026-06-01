@@ -45,10 +45,6 @@ export type {
   BuildTemporalDetectionTracksInput,
 } from "./src/temporalDetectionTracks";
 export {
-  applyTemporalDetectionEdits,
-  parseTemporalDetectionEditKey,
-  temporalDetectionEditKey,
-  useClearTemporalDetectionEdits,
-  useStageTemporalDetectionSupport,
-  useTemporalDetectionPendingEdits,
-} from "./src/pendingTemporalDetectionEdits";
+  syncTemporalOverlays,
+  useTemporalOverlaySync,
+} from "./src/useTemporalOverlaySync";

@@ -205,6 +205,14 @@ SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE = {
         fol.Polylines,
     },
     fom.THREE_D: {fol.Detection, fol.Detections, fol.Polyline, fol.Polylines},
+    fom.VIDEO: {
+        fol.Detection,
+        fol.Detections,
+        fol.Polyline,
+        fol.Polylines,
+        fol.TemporalDetection,
+        fol.TemporalDetections,
+    },
 }
 SUPPORTED_LISTS_OF_PRIMITIVES = (
     fof.BooleanField,
@@ -236,10 +244,8 @@ SUPPORTED_PRIMITIVES = (
     fof.UUIDField,
 )
 # label types whose subfields cannot yet be represented by a type/component in
-# annotation, e.g. the TemporalDetection.support field
+# annotation.
 UNSUPPORTED_LABEL_TYPES = {
     fol.GeoLocation,
     fol.GeoLocations,
-    fol.TemporalDetection,
-    fol.TemporalDetections,
 }

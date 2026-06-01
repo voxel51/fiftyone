@@ -379,6 +379,16 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
             # the App
             continue
 
+        if (
+            f.name == "support"
+            and field.document_type is fol.TemporalDetection
+        ):
+            # support is a FrameSupportField ([first, last]); user-provided
+            # schemas configure `first`/`last` as int attributes if desired,
+            # and the sidebar form translates the `[first, last]` range at
+            # the form boundary.
+            continue
+
         try:
             attributes[f.name] = _generate_field_label_schema(
                 collection, f"{field_name}.{f.name}", scan_samples
