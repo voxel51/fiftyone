@@ -4,7 +4,7 @@ import {
   extractNestedField,
   generateJsonPatch,
 } from "@fiftyone/core/src/utils/json";
-import type { KeypointLabel } from "@fiftyone/lighter";
+import type { KeypointLabel, TemporalLabel } from "@fiftyone/lighter";
 import type { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
 import type { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
 import type { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
@@ -48,6 +48,13 @@ export type ClassificationsParent = {
 };
 
 /**
+ * Helper type representing a `fo.TemporalDetections`-like element.
+ */
+export type TemporalDetectionsParent = {
+  detections: TemporalLabel[];
+};
+
+/**
  * Types of "native" labels which support delta calculation.
  */
 type FieldType =
@@ -58,7 +65,9 @@ type FieldType =
   | "Polyline"
   | "Polylines"
   | "Keypoint"
-  | "Keypoints";
+  | "Keypoints"
+  | "TemporalDetection"
+  | "TemporalDetections";
 
 const isFieldType = (field: Field, fieldType: FieldType): boolean => {
   return field?.embeddedDocType === `fiftyone.core.labels.${fieldType}`;
@@ -90,7 +99,11 @@ export const buildAnnotationPath = (
 type LabelMetadata<T> = {
   type: Extract<
     FieldType,
-    "Detection" | "Classification" | "Polyline" | "Keypoint"
+    | "Detection"
+    | "Classification"
+    | "Polyline"
+    | "Keypoint"
+    | "TemporalDetection"
   >;
   path: string;
   data: T;
@@ -111,7 +124,11 @@ type Detection2DMetadata = LabelMetadata<DetectionLabel> & {
  */
 export type LabelProxy =
   | LabelMetadata<
-      ClassificationLabel | DetectionLabel | PolylineLabel | KeypointLabel
+      | ClassificationLabel
+      | DetectionLabel
+      | PolylineLabel
+      | KeypointLabel
+      | TemporalLabel
     >
   | Detection2DMetadata
   | PrimitiveValue;
@@ -336,6 +353,28 @@ export const buildDeletionDeltas = (
         ),
       });
     } else if (isFieldType(schema, "Keypoint")) {
+      return [{ op: "remove", path: "/" }];
+    }
+  } else if (label.type === "TemporalDetection") {
+    if (isFieldType(schema, "TemporalDetections")) {
+      const existingLabel = <TemporalDetectionsParent>(
+        extractNestedField(sample, label.path)
+      );
+
+      if (!existingLabel || !Array.isArray(existingLabel.detections)) {
+        console.warn(
+          `can't delete label; no temporal detections found at ${label.path}`
+        );
+        return [];
+      }
+
+      return generateJsonPatch(existingLabel, {
+        ...existingLabel,
+        detections: existingLabel.detections.filter(
+          (td) => td._id !== label.data._id
+        ),
+      });
+    } else if (isFieldType(schema, "TemporalDetection")) {
       return [{ op: "remove", path: "/" }];
     }
   }
