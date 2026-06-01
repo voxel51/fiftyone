@@ -21,32 +21,34 @@ export type SampleStore = WeakMap<ID, { sample: fos.Sample; index: number }>;
 const processSamplePageData = (
   page: number,
   store: WeakMap<ID, object>,
-  data: fos.ResponseFrom<foq.paginateSamplesQuery>,
+  connection: foq.PaginateSamplesConnection,
   schema: Schema,
   zoom: boolean,
   records: Map<string, number>
 ) => {
-  if (data.samples.__typename !== "SampleItemStrConnection") {
-    throw new Error(
-      `unexepcted typename ${data.samples.__typename}, expected 'SampleItemStrConnection'`
-    );
-  }
+  return connection.edges.flatMap((edge, i) => {
+    // Filter out unknown union variants so `handleNode` only ever sees the
+    // known sample types. `PaginateSamplesNode` excludes `%other`; the cast
+    // below is safe by the typeguard, but TS can't narrow `edge.node` through
+    // the function boundary without the explicit early-return.
+    if (edge.node.__typename === "%other") return [];
 
-  return data.samples.edges.map((edge, i) => {
     const node = handleNode(edge.node);
     const id = { description: node.id };
 
     store.set(id, node);
     records.set(node.id, page * PAGE_SIZE + i);
 
-    return {
-      key: page,
-      aspectRatio: zoom
-        ? zoomAspectRatio(node.sample, schema, node.aspectRatio)
-        : node.aspectRatio,
-      id,
-      data: node as fos.Sample,
-    };
+    return [
+      {
+        key: page,
+        aspectRatio: zoom
+          ? zoomAspectRatio(node.sample, schema, node.aspectRatio)
+          : node.aspectRatio,
+        id,
+        data: node as fos.Sample,
+      },
+    ];
   });
 };
 
@@ -105,20 +107,23 @@ const useSpotlightPager = ({
             }
           ).subscribe({
             next: (data) => {
-              if (data.samples.__typename !== "SampleItemStrConnection") {
+              if (!foq.isPaginateSamplesConnection(data.samples)) {
                 resolve({
                   items: [],
                   next: null,
                   previous: null,
                 });
-                data.samples.__typename === "QueryTimeout" &&
+                if (data.samples.__typename === "QueryTimeout") {
                   handleTimeout(data.samples.queryTime);
+                }
                 return;
               }
+
+              const connection = data.samples;
               const items = processSamplePageData(
                 pageNumber,
                 store,
-                data,
+                connection,
                 schema,
                 zoom,
                 records
@@ -127,7 +132,7 @@ const useSpotlightPager = ({
 
               resolve({
                 items,
-                next: data.samples.pageInfo.hasNextPage ? pageNumber + 1 : null,
+                next: connection.pageInfo.hasNextPage ? pageNumber + 1 : null,
                 previous: pageNumber > 0 ? pageNumber - 1 : null,
               });
             },
