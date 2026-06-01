@@ -4,32 +4,37 @@
 
 /**
  * Abstracts the two scroll orientations so layout code stays axis-agnostic.
+ * Layout code refers only to the **primary** (scroll) axis and **cross**
+ * (cross) axis; this module is the only place that maps those to concrete
+ * CSS properties and `DOMRect` dimensions.
  *
- * In **vertical** mode (the default) items tile into rows that stack downward;
- * the container scrolls via `scrollTop`. In **horizontal** mode items are placed
- * side-by-side and the container scrolls via `scrollLeft`, with each item filling
- * the full cross (height) dimension at a width proportional to its aspect ratio.
+ * In **vertical** mode (the default) the primary axis runs top-to-bottom and
+ * the container scrolls via `scrollTop`. In **horizontal** mode the primary
+ * axis runs left-to-right and the container scrolls via `scrollLeft`.
  */
 export interface Axis {
   scrollPos(el: HTMLElement): number;
   scrollTo(el: HTMLElement, pos: number): void;
-  primarySize(rect: DOMRect): number;
-  crossSize(rect: DOMRect): number;
+  /** Primary-axis size of a `DOMRect` (height in vertical mode, width in horizontal mode). */
+  primaryExtent(rect: DOMRect): number;
+  /** Cross-axis size of a `DOMRect` (width in vertical mode, height in horizontal mode). */
+  crossExtent(rect: DOMRect): number;
   /** CSS property used to position a section or row at its leading edge (e.g. `"top"` / `"left"`). */
   startAttr: "top" | "left";
   /** CSS property used to position a section or row at its trailing edge. */
   endAttr: "bottom" | "right";
-  /** CSS property that sets the row's extent in the scroll direction (`"height"` / `"width"`). */
-  primarySizeAttr: "height" | "width";
-  /** CSS property that sets the row's extent perpendicular to scroll. */
-  crossSizeAttr: "width" | "height";
+  /** CSS property that sets the row's extent along the primary axis (`"height"` / `"width"`). */
+  primaryExtentAttr: "height" | "width";
+  /** CSS property that sets the row's extent along the cross axis. */
+  crossExtentAttr: "width" | "height";
   /** CSS property used to offset items along the cross axis within a row. */
   itemCrossAttr: "left" | "top";
   /** CSS property set to zero for items along the primary axis within a row. */
   itemPrimaryAttr: "top" | "left";
   /**
-   * Size of a single item in the cross direction given the row's primary extent and the item's
-   * aspect ratio. In vertical mode this is the item's width; in horizontal mode it is the height.
+   * Size of a single item along the cross axis given the row's primary
+   * extent and the item's aspect ratio. In vertical mode this is the item's
+   * pixel width; in horizontal mode it is the pixel height.
    */
   itemCrossExtent(rowExtent: number, ar: number): number;
   /**
@@ -48,12 +53,12 @@ export interface Axis {
 export const verticalAxis: Axis = {
   scrollPos: (el) => el.scrollTop,
   scrollTo: (el, n) => el.scrollTo(0, n),
-  primarySize: (r) => r.height,
-  crossSize: (r) => r.width,
+  primaryExtent: (r) => r.height,
+  crossExtent: (r) => r.width,
   startAttr: "top",
   endAttr: "bottom",
-  primarySizeAttr: "height",
-  crossSizeAttr: "width",
+  primaryExtentAttr: "height",
+  crossExtentAttr: "width",
   itemCrossAttr: "left",
   itemPrimaryAttr: "top",
   itemCrossExtent: (rowExtent, ar) => rowExtent * ar,
@@ -64,12 +69,12 @@ export const verticalAxis: Axis = {
 export const horizontalAxis: Axis = {
   scrollPos: (el) => el.scrollLeft,
   scrollTo: (el, n) => el.scrollTo(n, 0),
-  primarySize: (r) => r.width,
-  crossSize: (r) => r.height,
+  primaryExtent: (r) => r.width,
+  crossExtent: (r) => r.height,
   startAttr: "left",
   endAttr: "right",
-  primarySizeAttr: "width",
-  crossSizeAttr: "height",
+  primaryExtentAttr: "width",
+  crossExtentAttr: "height",
   itemCrossAttr: "top",
   itemPrimaryAttr: "left",
   // item height = columnWidth / AR

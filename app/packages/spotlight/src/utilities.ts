@@ -57,7 +57,7 @@ export const findTop = <K, V>({
   if (at) {
     const row = forward.find(at.description);
     if (row) {
-      top = backward.height + row.from - at.offset;
+      top = backward.primaryExtent + row.from - at.offset;
     }
   }
   return top;
@@ -143,12 +143,13 @@ export const scrollToPosition = <K, V>({
   if (at) {
     let row = forward.find(at.description);
     if (row) {
-      scrollTo(el, backward.height + row.from - at.offset);
+      scrollTo(el, backward.primaryExtent + row.from - at.offset);
       return;
     }
 
     row = backward.find(at.description);
-    row && scrollTo(el, backward.height - row.from - row.height);
+    row &&
+      scrollTo(el, backward.primaryExtent - row.from - row.primaryExtent);
     return;
   }
 

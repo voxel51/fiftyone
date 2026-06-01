@@ -83,30 +83,30 @@ export default class Section<K, V> {
    * @param config - Shared grid configuration.
    * @param direction - Initial scroll direction for this section.
    * @param edge - Starting cursor and any remainder items carried over from a sibling section.
-   * @param width - Container width (px) used for layout.
+   * @param crossExtent - Container size (px) along the cross axis, used for layout.
    */
   constructor({
     config,
     direction,
     edge,
-    width,
+    crossExtent,
   }: {
     at?: string;
     config: SpotlightConfig<K, V>;
     direction: DIRECTION;
     edge: Edge<K, V>;
-    width: number;
+    crossExtent: number;
   }) {
     this.#axis = createAxis(config.horizontal);
     this.#config = config;
     this.#direction = direction;
     this.#end = edge;
-    this.#crossExtent = width;
+    this.#crossExtent = crossExtent;
 
     this.#container.classList.add(styles.spotlightContainer);
     this.#container.setAttribute(DATA_CY, DATA_CY_SECTION[this.#direction]);
     // set the fixed cross dimension once; the primary dimension is updated each render pass
-    this.#container.style[this.#axis.crossSizeAttr] = `${this.#crossExtent}px`;
+    this.#container.style[this.#axis.crossExtentAttr] = `${this.#crossExtent}px`;
 
     this.#section.classList.add(styles.spotlightSection);
     this.#section.classList.add(direction);
@@ -126,7 +126,7 @@ export default class Section<K, V> {
     return this.#end?.key === null;
   }
 
-  /** Total pixel height of all rows in this section. */
+  /** Total primary-axis extent (px) of all rows in this section. */
   get primaryExtent() {
     return this.#primaryExtent;
   }
@@ -279,7 +279,7 @@ export default class Section<K, V> {
       requestMore = true;
     }
 
-    this.#container.style[this.#axis.primarySizeAttr] = `${this.primaryExtent}px`;
+    this.#container.style[this.#axis.primaryExtentAttr] = `${this.primaryExtent}px`;
     return {
       match: pageRow ? { row: pageRow, delta } : undefined,
       more: requestMore && this.ready,
@@ -441,21 +441,21 @@ export default class Section<K, V> {
           : { key: null };
       this.#rows.push(...rows);
 
-      const height = rows.reduce(
+      const addedExtent = rows.reduce(
         (acc, cur) => acc + cur.primaryExtent + this.#config.spacing,
         ZERO
       );
 
       if (this.#rows.length < this.#maxRows) {
         this.#end = newEnd;
-        return { section: null, offset: height };
+        return { section: null, offset: addedExtent };
       }
 
       const section = new Section({
         config: this.#config,
         direction: this.#direction,
         edge: newEnd,
-        width: this.#crossExtent,
+        crossExtent: this.#crossExtent,
       });
 
       this.#end = this.#start;
@@ -465,14 +465,14 @@ export default class Section<K, V> {
 
       return {
         section,
-        offset: height,
+        offset: addedExtent,
       };
     });
 
     return true;
   }
 
-  /** Total height of all rows including inter-row spacing. */
+  /** Total primary-axis extent of all rows including inter-row spacing. */
   get #primaryExtent() {
     if (!this.#rows.length) return ZERO;
     const row = this.#rows[this.length - ONE];
@@ -606,7 +606,7 @@ export default class Section<K, V> {
         from: from + offset,
         iter: new Iter(focus, request, renderer, this, sibling),
         items: rowItems,
-        width: this.#crossExtent,
+        crossExtent: this.#crossExtent,
       });
       rows.push(row);
       offset += row.primaryExtent + this.#config.spacing;

@@ -12,11 +12,12 @@ import type { Focus, ID, ItemData, Measure, SpotlightConfig } from "./types";
 import { create, pixels } from "./utilities";
 
 /**
- * A single horizontal row of items within a {@link Section}.
+ * A single row of items within a {@link Section}.
  *
- * The row lays out its items side-by-side at a height derived from the container
- * width and the combined aspect ratio of its items. Item elements are sized and
- * positioned in the constructor; visibility is managed via {@link show} / {@link hide}.
+ * The row lays out its items along the cross axis at a primary-axis extent
+ * derived from the container's cross extent and the combined aspect ratio
+ * of its items. Item elements are sized and positioned in the constructor;
+ * visibility is managed via {@link show} / {@link hide}.
  */
 export default class Row<K, V> {
   #from: number;
@@ -34,10 +35,10 @@ export default class Row<K, V> {
    * @param config - Shared grid configuration.
    * @param dangle - `true` for the final row of the last page; triggers special aspect-ratio handling.
    * @param focus - Sets the focused item when clicked.
-   * @param from - Top offset (px) of this row within its section container.
+   * @param from - Primary-axis offset (px) of this row within its section container.
    * @param items - The items that belong to this row.
    * @param iter - Iterator passed to `onItemClick` so handlers can navigate to adjacent items.
-   * @param width - Container width (px) used to compute item dimensions.
+   * @param crossExtent - Container size (px) along the cross axis, used to compute item dimensions.
    */
   constructor({
     config,
@@ -46,7 +47,7 @@ export default class Row<K, V> {
     focus,
     items,
     iter,
-    width,
+    crossExtent,
   }: {
     config: SpotlightConfig<K, V>;
     dangle: boolean;
@@ -54,14 +55,14 @@ export default class Row<K, V> {
     from: number;
     items: ItemData<K, V>[];
     iter: Iter<K, V>;
-    width: number;
+    crossExtent: number;
   }) {
     this.#axis = createAxis(config.horizontal);
     this.#config = config;
     this.#dangle = dangle;
     this.#container.classList.add(styles.spotlightRow);
     this.#from = from;
-    this.#crossExtent = width;
+    this.#crossExtent = crossExtent;
 
     this.#row = items.map((item) => {
       const element = create(DIV);
@@ -103,15 +104,17 @@ export default class Row<K, V> {
     } of this.#row) {
       const itemCross = this.#axis.itemCrossExtent(extent, aspectRatio);
 
-      element.style[this.#axis.primarySizeAttr] = pixels(extent);
-      element.style[this.#axis.crossSizeAttr] = pixels(itemCross);
+      element.style[this.#axis.primaryExtentAttr] = pixels(extent);
+      element.style[this.#axis.crossExtentAttr] = pixels(itemCross);
       element.style[this.#axis.itemCrossAttr] = pixels(crossOffset);
 
       crossOffset += itemCross + config.spacing;
     }
 
-    this.#container.style[this.#axis.primarySizeAttr] = pixels(extent);
-    this.#container.style[this.#axis.crossSizeAttr] = pixels(this.#crossExtent);
+    this.#container.style[this.#axis.primaryExtentAttr] = pixels(extent);
+    this.#container.style[this.#axis.crossExtentAttr] = pixels(
+      this.#crossExtent
+    );
   }
 
   /** True when the row container is currently in the DOM. */
@@ -124,7 +127,7 @@ export default class Row<K, V> {
     return this.#row[ZERO].item.id;
   }
 
-  /** Top offset (px) of this row within its section container. */
+  /** Primary-axis offset (px) of this row within its section container. */
   get from() {
     return this.#from;
   }
@@ -135,7 +138,7 @@ export default class Row<K, V> {
 
   /** Extent of this row along the primary (scroll) axis — row height in vertical mode, column width in horizontal. */
   get primaryExtent() {
-    return this.#cleanWidth / this.#cleanAspectRatio;
+    return this.#cleanCrossExtent / this.#cleanAspectRatio;
   }
 
   /** ID of the last item in this row. */
@@ -267,12 +270,15 @@ export default class Row<K, V> {
   }
 
   /**
-   * Effective width available to items, accounting for spacing gaps.
-   * Dangle rows with uniform items use the virtual extended item count.
+   * Effective cross-axis extent available to items, accounting for the
+   * spacing gaps between them. Dangle rows with uniform items use the virtual
+   * extended item count instead of the actual row length.
    */
-  get #cleanWidth() {
+  get #cleanCrossExtent() {
     if (!this.#dangle || this.#singleAspectRatio === null) {
-      return this.#crossExtent - (this.#row.length - ONE) * this.#config.spacing;
+      return (
+        this.#crossExtent - (this.#row.length - ONE) * this.#config.spacing
+      );
     }
 
     return (

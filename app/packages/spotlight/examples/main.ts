@@ -84,6 +84,13 @@ function mount(mode: Mode) {
     // Inner spotlights are created once per lane item and reused across show/hide cycles
     // because the outer Spotlight reuses the same element div each time.
     const innerSpotlights = new Map<string, Spotlight<Cursor, Data>>();
+    // Track the wheel handler attached to each lane element so we can remove
+    // it on detach. Without this, lane elements that get reused stack
+    // duplicate handlers and multiply scroll deltas over time.
+    const laneWheelBindings = new Map<
+      string,
+      { element: HTMLElement; handler: (e: WheelEvent) => void }
+    >();
 
     spotlight = new Spotlight<Cursor, Data>({
       key: 0,
@@ -100,19 +107,17 @@ function mount(mode: Mode) {
       },
       showItem({ id, element }) {
         if (!innerSpotlights.has(id.description)) {
-          element.addEventListener(
-            "wheel",
-            (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) {
-                (element.firstElementChild as HTMLElement)?.scrollBy(e.deltaX, 0);
-              } else {
-                (container.firstElementChild as HTMLElement)?.scrollBy(0, e.deltaY);
-              }
-            },
-            { passive: false }
-          );
+          const wheelHandler = (e: WheelEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) {
+              (element.firstElementChild as HTMLElement)?.scrollBy(e.deltaX, 0);
+            } else {
+              (container.firstElementChild as HTMLElement)?.scrollBy(0, e.deltaY);
+            }
+          };
+          element.addEventListener("wheel", wheelHandler, { passive: false });
+          laneWheelBindings.set(id.description, { element, handler: wheelHandler });
 
           const li = parseInt(id.description.split("-")[1]);
           const { items, index } = laneData[li];
@@ -148,6 +153,11 @@ function mount(mode: Mode) {
       },
       hideItem() {},
       detachItem(id) {
+        const binding = laneWheelBindings.get(id.description);
+        if (binding) {
+          binding.element.removeEventListener("wheel", binding.handler);
+          laneWheelBindings.delete(id.description);
+        }
         innerSpotlights.get(id.description)?.destroy();
         innerSpotlights.delete(id.description);
       },

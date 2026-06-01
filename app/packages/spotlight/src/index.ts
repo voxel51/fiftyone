@@ -172,7 +172,7 @@ export default class Spotlight<K, V> extends EventTarget {
         this.#rect = this.#element.getBoundingClientRect();
 
         // wait for the primary dimension (height in vertical, width in horizontal)
-        if (this.#axis.primarySize(this.#rect)) {
+        if (this.#axis.primaryExtent(this.#rect)) {
           this.#fill();
           return;
         }
@@ -233,15 +233,25 @@ export default class Spotlight<K, V> extends EventTarget {
   }
 
   /**
-   * Creates an iterator for programmatic item navigation starting from the current forward section.
+   * Creates an iterator for programmatic item navigation, seeded from
+   * whichever section currently contains the focused item. Falls back to
+   * `#forward` if no focus is set or the focused item is not in either
+   * loaded section. The `Request` / `Renderer` are direction-aware so the
+   * iter loads more data correctly when walking off either end of its
+   * starting section.
+   *
    * @returns An {@link Iter} bound to the current focus and section state.
    */
   createIter(): Iter {
-    const ref = { section: this.#forward };
+    const focused = this.#focused;
+    const inBackward = Boolean(
+      focused && this.#backward?.find(focused.description)
+    );
+    const ref = { section: inBackward ? this.#backward : this.#forward };
     return new IterImpl(
       this.#focus,
-      this.#createRequest(false),
-      this.#createRenderer(false, true),
+      this.#createRequest(inBackward),
+      this.#createRenderer(inBackward, true),
       ref.section,
       this.#createSibling(ref)
     );
@@ -268,9 +278,45 @@ export default class Spotlight<K, V> extends EventTarget {
    * @returns A Renderer for use with {@link Section.next}.
    */
   #createRenderer(reverse: boolean, render: boolean): Renderer<K, V> {
+    const applyResult = (result: ReturnType<Parameters<Renderer<K, V>>[0]>) => {
+      let offset: false | number;
+      if (reverse) {
+        offset = typeof result.offset === "number" ? -result.offset : false;
+        if (result.section) {
+          const forward = this.#backward;
+          this.#backward = result.section;
+          this.#backward.attach(this.#element);
+          this.#forward.destroy();
+          this.#forward = forward;
+        }
+      } else {
+        const before = this.#containerHeight;
+        offset = false;
+        if (result.section) {
+          const backward = this.#forward;
+          this.#forward = result.section;
+          this.#forward.attach(this.#element);
+          this.#backward.destroy();
+          this.#backward = backward;
+          offset = before - this.#containerHeight + this.#config.spacing;
+        }
+      }
+
+      this.#render({
+        go: false,
+        offset,
+        zooming: false,
+        ...this.#measure(),
+      });
+    };
+
     return (runner) => {
       if (!render) {
-        runner();
+        // Synchronous path used during the initial fill. The runner can still
+        // swap sections internally once cumulative rows cross `maxRows / 2`;
+        // applying its result here keeps `#forward`/`#backward` in sync with
+        // that swap before the first real render runs.
+        applyResult(runner());
         return;
       }
 
@@ -286,37 +332,7 @@ export default class Spotlight<K, V> extends EventTarget {
             return;
           }
 
-          const result = runner();
-
-          let offset: false | number;
-          if (reverse) {
-            offset = typeof result.offset === "number" ? -result.offset : false;
-            if (result.section) {
-              const forward = this.#backward;
-              this.#backward = result.section;
-              this.#backward.attach(this.#element);
-              this.#forward.destroy();
-              this.#forward = forward;
-            }
-          } else {
-            const before = this.#containerHeight;
-            offset = false;
-            if (result.section) {
-              const backward = this.#forward;
-              this.#forward = result.section;
-              this.#forward.attach(this.#element);
-              this.#backward.destroy();
-              this.#backward = backward;
-              offset = before - this.#containerHeight + this.#config.spacing;
-            }
-          }
-
-          this.#render({
-            go: false,
-            offset,
-            zooming: false,
-            ...this.#measure(),
-          });
+          applyResult(runner());
         });
 
       run();
@@ -349,15 +365,20 @@ export default class Spotlight<K, V> extends EventTarget {
    */
   get #focus() {
     return (id?: ID) => {
-      if (id) {
-        this.#focused = id;
+      // Reads (no argument) are side-effect free. The accessor can be
+      // invoked before any focus has been set — guarding here avoids a
+      // crash on `#focused.description` and prevents a spurious re-render
+      // on every navigation read.
+      if (!id) {
+        return this.#focused;
       }
 
+      this.#focused = id;
       this.#render({
-        at: { description: this.#focused.description, offset: ZERO },
+        at: { description: id.description, offset: ZERO },
         ...this.#measure(),
       });
-      return this.#focused;
+      return id;
     };
   }
 
@@ -376,7 +397,7 @@ export default class Spotlight<K, V> extends EventTarget {
   }
 
   get #height() {
-    return this.#axis.primarySize(this.#rect);
+    return this.#axis.primaryExtent(this.#rect);
   }
 
   get #padding() {
@@ -441,7 +462,7 @@ export default class Spotlight<K, V> extends EventTarget {
   }
 
   get #crossExtent() {
-    return this.#axis.crossSize(this.#rect) - SCROLLBAR_WIDTH * TWO;
+    return this.#axis.crossExtent(this.#rect) - SCROLLBAR_WIDTH * TWO;
   }
 
   #attachScrollReader() {
@@ -630,7 +651,7 @@ export default class Spotlight<K, V> extends EventTarget {
       config: this.#config,
       direction: DIRECTION.FORWARD,
       edge: { key: this.#config.key, remainder: [] },
-      width: this.#crossExtent,
+      crossExtent: this.#crossExtent,
     });
     this.#forward.attach(this.#element);
 
@@ -680,7 +701,7 @@ export default class Spotlight<K, V> extends EventTarget {
           result.previous !== null
             ? { key: result.previous, remainder }
             : { key: null, remainder },
-        width: this.#crossExtent,
+        crossExtent: this.#crossExtent,
       });
       this.#backward.attach(this.#element);
     }
