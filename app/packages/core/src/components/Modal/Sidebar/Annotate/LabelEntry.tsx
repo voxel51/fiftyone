@@ -122,7 +122,7 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
         <Column>
           <Icon fill={color} />
           <div style={!label.data.label ? { color } : { paddingLeft: "8px" }}>
-            {label.data.label ?? "None"}
+            {label.data.label || "None"}
           </div>
         </Column>
 

@@ -2,10 +2,17 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { useAnnotationEventBus } from "@fiftyone/annotation";
+import {
+  EditTemporalDetectionCommand,
+  useAnnotationEventBus,
+  useAnnotationEventHandler,
+} from "@fiftyone/annotation";
+import { useCommandBus } from "@fiftyone/command-bus";
 import {
   DetectionOverlay,
   type Scene2D,
+  TemporalOverlay,
+  type TemporalLabel,
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
@@ -48,9 +55,50 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
   const annotationEventBus = useAnnotationEventBus();
-  const { removeLabelFromSidebar } = useLabelsContext();
+  const commandBus = useCommandBus();
+  const { getLabelById, removeLabelFromSidebar, updateLabelData } =
+    useLabelsContext();
   const detectionMode = useDetectionMode();
   const focus = useFocus();
+
+  useAnnotationEventHandler(
+    "annotation:sidebarValueUpdated",
+    useCallback(
+      (payload) => {
+        if (!scene) return;
+        const overlay = scene.getOverlay(payload.overlayId);
+        if (!(overlay instanceof TemporalOverlay)) return;
+        const detectionId = overlay.label?._id;
+        if (!detectionId) return;
+        void commandBus.execute(
+          new EditTemporalDetectionCommand(
+            overlay.field,
+            detectionId,
+            payload.value as Partial<TemporalLabel>
+          )
+        );
+      },
+      [commandBus, scene]
+    )
+  );
+
+  useAnnotationEventHandler(
+    "annotation:labelEdit",
+    useCallback(
+      (payload) => {
+        const label = payload.label as {
+          _cls?: string;
+          _id?: string;
+        } | null;
+        if (label?._cls !== "TemporalDetection") return;
+        if (!label._id) return;
+        const annotationLabel = getLabelById(label._id);
+        if (!annotationLabel) return;
+        updateLabelData(annotationLabel.overlay.id, payload.label as never);
+      },
+      [getLabelById, updateLabelData]
+    )
+  );
 
   useEventHandler(
     "lighter:overlay-create",
