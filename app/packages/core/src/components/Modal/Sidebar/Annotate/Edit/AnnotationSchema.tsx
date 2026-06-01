@@ -140,8 +140,6 @@ const useHandleSchemaChange = (readOnly: boolean) => {
 
   return useCallback(
     async (changes: Record<string, unknown>) => {
-      console.log("::: CHANGES :::");
-      console.log(changes);
       const config = configRef.current;
       const data = dataRef.current;
       const overlay = overlayRef.current;
