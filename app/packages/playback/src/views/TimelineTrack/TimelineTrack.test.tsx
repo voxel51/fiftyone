@@ -284,6 +284,34 @@ describe("TimelineTrack", () => {
     });
   });
 
+  describe("onDeleteTrack", () => {
+    const interval = { startSec: 4, endSec: 6 };
+
+    it("adds a Delete track item to the event menu that fires onDeleteTrack", () => {
+      const onDeleteTrack = vi.fn();
+      const { container } = renderTrack({
+        track: { start: 0, end: 10, events: [interval], onDeleteTrack },
+      });
+      const bar = container.querySelector(
+        `.${styles.intervalBar}`
+      ) as HTMLElement;
+      fireEvent.contextMenu(bar);
+      fireEvent.click(screen.getByText("Delete track"));
+      expect(onDeleteTrack).toHaveBeenCalledTimes(1);
+    });
+
+    it("omits the Delete track item when onDeleteTrack is not provided", () => {
+      const { container } = renderTrack({
+        track: { start: 0, end: 10, events: [interval] },
+      });
+      const bar = container.querySelector(
+        `.${styles.intervalBar}`
+      ) as HTMLElement;
+      fireEvent.contextMenu(bar);
+      expect(screen.queryByText("Delete track")).toBeNull();
+    });
+  });
+
   describe("color + bg props", () => {
     it("uses the `bg` prop verbatim for the bar background when provided", () => {
       const { container } = renderTrack({

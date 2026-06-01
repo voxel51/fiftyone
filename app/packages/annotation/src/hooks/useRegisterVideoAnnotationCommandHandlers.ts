@@ -415,9 +415,18 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
           removed = true;
         }
 
+        // Let selection/editing consumers drop any state still bound to
+        // this track's overlay (e.g. close the sidebar editor) — the
+        // per-frame deletes alone leave that lingering.
+        if (removed) {
+          eventBus.dispatch("annotation:trackDeleted", {
+            trackId: cmd.trackId,
+          });
+        }
+
         return removed;
       },
-      [stream]
+      [stream, eventBus]
     )
   );
 

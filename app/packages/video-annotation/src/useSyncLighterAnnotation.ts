@@ -2,7 +2,10 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { useAnnotationEventBus } from "@fiftyone/annotation";
+import {
+  useAnnotationEventBus,
+  useAnnotationEventHandler,
+} from "@fiftyone/annotation";
 import {
   DetectionOverlay,
   type Scene2D,
@@ -124,6 +127,15 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
       if (detectionMode.detectionModeActive) {
         detectionMode.deactivateDetectionMode();
       }
+    }, [detectionMode])
+  );
+
+  // Deleting a track leaves no useful edit/draw state to keep open, so tear
+  // detection mode down.
+  useAnnotationEventHandler(
+    "annotation:trackDeleted",
+    useCallback(() => {
+      detectionMode.deactivateDetectionMode();
     }, [detectionMode])
   );
 };
