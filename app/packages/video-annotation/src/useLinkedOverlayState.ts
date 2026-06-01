@@ -147,6 +147,15 @@ export function useLinkedOverlayState(): void {
     "lighter:selection-changed",
     useCallback(
       (payload) => {
+        // Explicit user pick → replace the atom. Otherwise stale
+        // "remembered intent" entries (kept across transient overlay
+        // removals) accumulate, because Lighter's auto-deselect only
+        // sees what's currently in scene.
+        if (!payload.ignoreSideEffects && payload.selectedIds.length > 0) {
+          store.set(selectedOverlayIds, new Set(payload.selectedIds));
+          return;
+        }
+
         const prev = store.get(selectedOverlayIds);
         let mutated = false;
         const next = new Set(prev);
