@@ -1,18 +1,19 @@
 import { Loading } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { useEffect, useMemo } from "react";
+import { Suspense, useEffect, useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { SampleWrapper } from "../Sample2D";
 import { Sample3d } from "../Sample3d";
 import { GroupSampleWrapper } from "./GroupSampleWrapper";
-import { GroupSuspense } from "./GroupSuspense";
 
 const Sample3dWrapper = () => {
-  const { interactionSample, isPinned } = fos.useRenderConfig3dState();
+  const interactionSample = fos.useStableInteraction3dSample();
+  const isPinned = fos.useIs3dPinned();
   const actions = fos.useRenderConfig3dActions();
-
-  const hover = fos.useHoveredSample(interactionSample.sample);
+  const hover = fos.useHoveredSample(interactionSample?.sample);
   const hasGroupView = !useRecoilValue(fos.only3d);
+
+  if (!interactionSample) return null;
 
   return hasGroupView ? (
     <GroupSampleWrapper
@@ -31,8 +32,9 @@ const Sample3dWrapper = () => {
 };
 
 export default () => {
-  const { activeSlices, allSampleMap, pinnedSlice } =
-    fos.useRenderConfig3dState();
+  const activeSlices = fos.useActive3dSlices();
+  const allSampleMap = fos.useStableAll3dSamplesMap();
+  const pinnedSlice = fos.usePinned3dSlice();
   const actions = fos.useRenderConfig3dActions();
   const modalId = useRecoilValue(fos.modalSampleId);
   const sampleMapKey = useMemo(
@@ -45,16 +47,16 @@ export default () => {
   }, [actions, activeSlices, modalId, pinnedSlice, sampleMapKey]);
 
   if (!Object.keys(allSampleMap).length) {
-    return <Loading>No 3D slices</Loading>;
+    return <Loading>Pixelating...</Loading>;
   }
 
-  if (!allSampleMap[pinnedSlice ?? ""]) {
+  if (pinnedSlice && !allSampleMap[pinnedSlice]) {
     return <Loading>Pixelating...</Loading>;
   }
 
   return (
-    <GroupSuspense>
+    <Suspense fallback={<Loading>Pixelating...</Loading>}>
       <Sample3dWrapper />
-    </GroupSuspense>
+    </Suspense>
   );
 };

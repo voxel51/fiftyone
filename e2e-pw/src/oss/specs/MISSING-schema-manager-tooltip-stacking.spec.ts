@@ -24,7 +24,7 @@ test.afterAll(async ({ foWebServer }) => {
 
 test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await datasetFactory.createBlankDataset({
+  await datasetFactory.createDataset({
     datasetName,
     schema: { detections: "Detections" },
     withSampleData: () => {
