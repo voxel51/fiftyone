@@ -5,10 +5,13 @@ import {
 } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
 import type { ToolbarActionGroup } from "@fiftyone/components";
+import { TemporalOverlay, useLighter } from "@fiftyone/lighter";
 import { useModalSample } from "@fiftyone/state";
 import { Icon, IconName, Size } from "@voxel51/voodo";
-import { useAtomValue } from "jotai";
+import { atom, useAtomValue, useSetAtom } from "jotai";
 import { useMemo } from "react";
+import { useLabelsContext } from "../../core/src/components/Modal/Sidebar/Annotate";
+import { editing } from "../../core/src/components/Modal/Sidebar/Annotate/Edit";
 import { frameAt } from "../../playback/src/lib/playback/utils";
 import { usePlayhead } from "../../playback/src/lib/playback/use-playback-state";
 import { useFrameLabelsStream } from "./frameLabelsStream";
@@ -52,6 +55,9 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
   const playhead = usePlayhead();
   const selected = useAtomValue(selectedOverlayIds);
   const modalSample = useModalSample();
+  const { scene } = useLighter();
+  const { addLabelToSidebar } = useLabelsContext();
+  const setEditing = useSetAtom(editing);
 
   const tdFieldPath = useMemo(
     () =>
@@ -108,17 +114,32 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
               ? `Create a TemporalDetection on \`${tdFieldPath}\``
               : "No TemporalDetections field on this sample",
             isDisabled: !canCreateTd,
-            onClick: () => {
+            onClick: async () => {
               if (!canCreateTd || !tdFieldPath || !fps) return;
               // Default: 1-second window starting at the playhead frame.
               const startFrame = frameAt(playhead, fps);
               const endFrame = startFrame + Math.round(fps);
-              void bus.execute(
+              const detectionId = await bus.execute(
                 new CreateTemporalDetectionCommand(tdFieldPath, [
                   startFrame,
                   endFrame,
                 ])
               );
+              if (!detectionId || !scene) return;
+              // Mirror useCreate: register the new label with the sidebar and
+              // open the edit form so the user can fill in label/attrs.
+              const overlay = scene.getOverlay(
+                `td-${tdFieldPath}-${detectionId}`
+              );
+              if (!(overlay instanceof TemporalOverlay)) return;
+              const annotationLabel = {
+                data: overlay.label,
+                overlay,
+                path: tdFieldPath,
+                type: "TemporalDetection" as const,
+              };
+              addLabelToSidebar(annotationLabel);
+              setEditing(atom(annotationLabel));
             },
           },
           {

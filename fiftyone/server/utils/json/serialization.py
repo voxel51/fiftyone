@@ -52,6 +52,8 @@ def deserialize(value: Any) -> Any:
                         fol.Detections,
                         fol.Polyline,
                         fol.Polylines,
+                        fol.TemporalDetection,
+                        fol.TemporalDetections,
                     )
                     if cls.__name__ == cls_name
                 ),
