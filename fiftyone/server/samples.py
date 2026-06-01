@@ -101,7 +101,23 @@ async def paginate_samples(
     hint: t.Optional[str] = None,
     dynamic_group: t.Optional[BSON] = None,
     max_query_time: t.Optional[int] = None,
+    cursor_pagination: t.Optional[bool] = False,
 ) -> Connection[t.Union[ImageSample, VideoSample], str]:
+    """Paginates samples in the given view.
+
+    Two cursor strategies are supported:
+
+    -   **Skip-based** (default, ``cursor_pagination=False``): ``after`` is
+        the 0-based index of the last sample returned on the prior page,
+        and the next page is fetched via ``$skip``. Used by the grid's
+        infinite scroll.
+    -   **Cursor-based** (``cursor_pagination=True``): ``after`` is the
+        sort-field value of the last sample on the prior page, serialized
+        as a string, and the next page is fetched via
+        ``$match {field: {$gt: value}}`` (or ``$lt`` when ``desc``). Used
+        by the grid scrubber to seek to a target sort-field value without
+        counting the rows before it. Requires ``sort_by`` to be set.
+    """
     run = lambda: fosv.get_view(
         dataset,
         stages=stages,
@@ -118,7 +134,13 @@ async def paginate_samples(
     if after is None:
         after = "-1"
 
-    if int(after) > -1:
+    if cursor_pagination and sort_by and after != "-1":
+        # Value-cursor strategy: `after` is the previous page's last
+        # sort-field value, encoded as a string. Filter rather than skip.
+        op = "$lt" if desc else "$gt"
+        value = _decode_cursor_value(after)
+        view = view.match({sort_by: {op: value}})
+    elif not cursor_pagination and int(after) > -1:
         view = view.skip(int(after) + 1)
 
     pipeline = await get_samples_pipeline(view, sample_filter)
@@ -156,12 +178,13 @@ async def paginate_samples(
 
     edges = []
     for idx, node in enumerate(nodes):
-        edges.append(
-            Edge(
-                node=node,
-                cursor=str(idx + int(after) + 1),
-            )
-        )
+        if cursor_pagination and sort_by:
+            # Encode the sort-field value of this sample as the cursor so
+            # subsequent pages can seek past it.
+            cursor = _encode_cursor_value(samples[idx].get(sort_by))
+        else:
+            cursor = str(idx + int(after) + 1)
+        edges.append(Edge(node=node, cursor=cursor))
 
     return Connection(
         page_info=PageInfo(
@@ -172,6 +195,33 @@ async def paginate_samples(
         ),
         edges=edges,
     )
+
+
+def _encode_cursor_value(value: t.Any) -> str:
+    """Encodes a sort-field value as a stable string cursor. Numerics use
+    their string repr; everything else falls back to ``str()`` and the
+    decoder mirrors that."""
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "1" if value else "0"
+    return str(value)
+
+
+def _decode_cursor_value(cursor: str) -> t.Any:
+    """Inverse of {@link _encode_cursor_value}. Tries numeric parsing
+    first; falls back to the raw string."""
+    if cursor == "":
+        return None
+    try:
+        return int(cursor)
+    except ValueError:
+        pass
+    try:
+        return float(cursor)
+    except ValueError:
+        pass
+    return cursor
 
 
 async def _create_sample_item(
