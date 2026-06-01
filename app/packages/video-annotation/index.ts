@@ -31,7 +31,11 @@ export type {
   TrackExtentEdit,
 } from "./src/trackExtentEdit";
 export { VideoFrameLabelsStream } from "./src/VideoFrameLabelsStream";
-export type { LocalDetection } from "./src/VideoFrameLabelsStream";
+export type {
+  LocalDetection,
+  RawDetection,
+  RawDetectionsField,
+} from "./src/VideoFrameLabelsStream";
 export { buildTemporalDetectionTracks } from "./src/temporalDetectionTracks";
 export type {
   RawTemporalDetection,
