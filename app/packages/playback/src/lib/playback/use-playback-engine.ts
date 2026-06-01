@@ -152,6 +152,11 @@ export function usePlaybackEngine({
   const clockSourceRef = useRef<PlaybackClockSource | null>(null);
   const seekDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seekSeqRef = useRef(0);
+  // A seek/step/snap target that couldn't commit immediately because a
+  // blocking stream was still buffering. The settle loop (below) polls
+  // the barrier for this time while paused and commits once ready.
+  const pendingCommitRef = useRef<number | null>(null);
+  const settleRafRef = useRef<number | null>(null);
 
   // A stream is "active" when registered AND has at least one subscriber.
   // Dormant streams (registered but no subscribers) are skipped entirely.
@@ -229,6 +234,52 @@ export function usePlaybackEngine({
   );
 
   /**
+   * Readiness barrier for `targetTime`. Every blocking, subscribed
+   * stream must be ready before the engine commits; streams reporting
+   * `missing` get a prefetch nudge, `loading` is already in flight.
+   * Publishes `isBufferingAtom` and returns whether all are ready.
+   *
+   * Shared by the playing RAF tick and the paused settle loop so a seek
+   * while paused gets the same prefetch nudge that playback would give
+   * it — otherwise streams that fetch only via this nudge would
+   * never request the seeked frame until the user hit play.
+   */
+  const runBarrier = useCallback(
+    (targetTime: number): boolean => {
+      const duration = store.get(durationAtom);
+      let isBuffering = false;
+
+      for (const s of streamsRef.current.values()) {
+        if (!s.blocking) {
+          continue;
+        }
+
+        if (!isActive(s.id)) {
+          continue;
+        }
+
+        const state = s.bufferState(targetTime);
+        if (state === "ready") {
+          continue;
+        }
+
+        isBuffering = true;
+        if (state === "missing") {
+          s.prefetch?.([
+            targetTime,
+            Math.min(duration, targetTime + (s.lookaheadSeconds ?? 3)),
+          ]);
+        }
+      }
+
+      store.set(isBufferingAtom, isBuffering);
+
+      return !isBuffering;
+    },
+    [store, isActive]
+  );
+
+  /**
    * Engine RAF tick. Two modes, chosen per tick based on whether a
    * `PlaybackClockSource` has been registered via `setClockSource`:
    *
@@ -268,7 +319,6 @@ export function usePlaybackEngine({
       const currentTime = store.get(playheadAtom);
       const loopStart = store.get(loopStartAtom);
       const loopEnd = store.get(loopEndAtom);
-      const duration = store.get(durationAtom);
 
       const externalTime = clockSourceRef.current?.read() ?? null;
 
@@ -289,27 +339,7 @@ export function usePlaybackEngine({
       const willWrap = rawNext >= loopEnd;
       const targetTime = willWrap ? loopStart : rawNext;
 
-      // Barrier: every blocking, subscribed stream must be ready at
-      // `targetTime` before we commit. Streams that report `missing`
-      // get a prefetch nudge; `loading` is already in flight.
-      let isBuffering = false;
-      for (const s of streamsRef.current.values()) {
-        if (!s.blocking) continue;
-        if (!isActive(s.id)) continue;
-        const state = s.bufferState(targetTime);
-        if (state === "ready") continue;
-        isBuffering = true;
-        if (state === "missing") {
-          s.prefetch?.([
-            targetTime,
-            Math.min(duration, targetTime + (s.lookaheadSeconds ?? 3)),
-          ]);
-        }
-      }
-
-      store.set(isBufferingAtom, isBuffering);
-
-      if (!isBuffering) {
+      if (runBarrier(targetTime)) {
         store.set(playheadAtom, targetTime);
         doCommit(targetTime);
         // Loop-wrap is a discontinuous jump — fire immediately so
@@ -319,7 +349,7 @@ export function usePlaybackEngine({
 
       rafIdRef.current = requestAnimationFrame(tick);
     },
-    [store, fireSeekEvent, doCommit, isActive]
+    [store, fireSeekEvent, doCommit, runBarrier]
   );
 
   useEffect(() => {
@@ -338,6 +368,12 @@ export function usePlaybackEngine({
     return () => {
       unsub();
       if (rafIdRef.current !== null) cancelAnimationFrame(rafIdRef.current);
+
+      if (settleRafRef.current !== null) {
+        cancelAnimationFrame(settleRafRef.current);
+        settleRafRef.current = null;
+      }
+
       // A queued seek-event timeout could otherwise fire after unmount and
       // touch an orphaned store.
       if (seekDebounceRef.current !== null) {
@@ -347,16 +383,50 @@ export function usePlaybackEngine({
     };
   }, [store, tick]);
 
-  const checkAllReady = useCallback(
-    (time: number): boolean => {
-      for (const s of streamsRef.current.values()) {
-        if (!s.blocking) continue;
-        if (!isActive(s.id)) continue; // dormant — no subscribers
-        if (s.bufferState(time) !== "ready") return false;
+  /**
+   * Paused settle loop. A `seek`/`step`/snap into an unbuffered region
+   * can't commit immediately, and the RAF tick that re-runs the barrier
+   * only runs while playing — so without this the playhead would move
+   * but `currentTimeAtom` would never advance: streams keep showing the
+   * old frame. This polls the barrier for the pending target while paused and
+   * commits once it's ready. Playing hands the duty back to the RAF tick.
+   */
+  const settleTick = useCallback(() => {
+    settleRafRef.current = null;
+    const time = pendingCommitRef.current;
+
+    if (time === null || store.get(isPlayingAtom)) {
+      return;
+    }
+
+    if (runBarrier(time)) {
+      pendingCommitRef.current = null;
+      doCommit(time);
+      return;
+    }
+
+    settleRafRef.current = requestAnimationFrame(settleTick);
+  }, [store, runBarrier, doCommit]);
+
+  /**
+   * Commit `time` now if the barrier is satisfied, else remember it and
+   * let {@link settleTick} commit it once streams finish buffering.
+   */
+  const commitWhenReady = useCallback(
+    (time: number) => {
+      pendingCommitRef.current = time;
+
+      if (runBarrier(time)) {
+        pendingCommitRef.current = null;
+        doCommit(time);
+        return;
       }
-      return true;
+
+      if (settleRafRef.current === null) {
+        settleRafRef.current = requestAnimationFrame(settleTick);
+      }
     },
-    [isActive]
+    [runBarrier, doCommit, settleTick]
   );
 
   const actions = useMemo(() => {
@@ -388,10 +458,7 @@ export function usePlaybackEngine({
 
       store.set(playheadAtom, snapped);
       fireSeekEvent(snapped, true);
-
-      if (checkAllReady(snapped)) {
-        doCommit(snapped);
-      }
+      commitWhenReady(snapped);
     };
 
     return {
@@ -400,7 +467,7 @@ export function usePlaybackEngine({
         const clamped = clamp(time, 0, store.get(durationAtom));
         store.set(playheadAtom, clamped);
         fireSeekEvent(clamped);
-        if (checkAllReady(clamped)) doCommit(clamped);
+        commitWhenReady(clamped);
       },
       play: () => {
         const current = store.get(playheadAtom);
@@ -428,7 +495,7 @@ export function usePlaybackEngine({
         );
         store.set(playheadAtom, next);
         fireSeekEvent(next, true);
-        if (checkAllReady(next)) doCommit(next);
+        commitWhenReady(next);
       },
       stepForward: () => {
         const next = clamp(
@@ -442,7 +509,7 @@ export function usePlaybackEngine({
         );
         store.set(playheadAtom, next);
         fireSeekEvent(next, true);
-        if (checkAllReady(next)) doCommit(next);
+        commitWhenReady(next);
       },
       setView: (start: number, end: number) => {
         // Apply the same validation as setLoop so the visible window
@@ -528,7 +595,7 @@ export function usePlaybackEngine({
     store,
     fireSeekEvent,
     doCommit,
-    checkAllReady,
+    commitWhenReady,
     recomputeDuration,
     recomputeStepInterval,
   ]);

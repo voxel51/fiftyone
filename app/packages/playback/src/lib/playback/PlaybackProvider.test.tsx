@@ -148,6 +148,92 @@ describe("PlaybackProvider engine actions", () => {
     });
   });
 
+  describe("paused settle loop", () => {
+    // Drive requestAnimationFrame manually so the settle loop is
+    // deterministic. flushFrame() runs whatever the engine has queued.
+    function withManualRaf(body: (flushFrame: () => void) => void): void {
+      const queue: FrameRequestCallback[] = [];
+      const rafSpy = vi
+        .spyOn(globalThis, "requestAnimationFrame")
+        .mockImplementation((cb) => {
+          queue.push(cb);
+          return queue.length;
+        });
+      const cafSpy = vi
+        .spyOn(globalThis, "cancelAnimationFrame")
+        .mockImplementation(() => {});
+      const flushFrame = () => {
+        const cbs = queue.splice(0, queue.length);
+        act(() => cbs.forEach((cb) => cb(0)));
+      };
+      try {
+        body(flushFrame);
+      } finally {
+        rafSpy.mockRestore();
+        cafSpy.mockRestore();
+      }
+    }
+
+    it("commits a paused seek once a buffering stream becomes ready (no play needed)", () => {
+      withManualRaf((flushFrame) => {
+        const { result } = renderEngine({ duration: 10 });
+        let state: "missing" | "ready" = "missing";
+        act(() => {
+          result.current.api.registerStream({
+            id: "cam",
+            blocking: true,
+            bufferState: () => state,
+            prefetch: () => {},
+          });
+          result.current.api.subscribeStream("cam");
+        });
+
+        // Seek into an unbuffered region while paused: playhead moves, but
+        // the frame can't commit yet.
+        act(() => result.current.api.seek(4));
+        expect(result.current.playhead).toBe(4);
+        expect(result.current.currentTime).toBe(0);
+        expect(result.current.isPlaying).toBe(false);
+
+        // Settle loop keeps polling while the stream is still missing.
+        flushFrame();
+        expect(result.current.currentTime).toBe(0);
+
+        // Stream finishes buffering → the next settle frame commits,
+        // without the user ever hitting play.
+        state = "ready";
+        flushFrame();
+        expect(result.current.currentTime).toBe(4);
+      });
+    });
+
+    it("prefetch-nudges the buffering stream while paused", () => {
+      withManualRaf((flushFrame) => {
+        const { result } = renderEngine({ duration: 10 });
+        const prefetch = vi.fn();
+        act(() => {
+          result.current.api.registerStream({
+            id: "cam",
+            blocking: true,
+            bufferState: () => "missing",
+            prefetch,
+          });
+          result.current.api.subscribeStream("cam");
+        });
+
+        // A paused seek must kick the stream to fetch — otherwise a stream
+        // that only fetches via this nudge (e.g. the ImaVid image stream)
+        // would never load the seeked frame until play.
+        act(() => result.current.api.seek(4));
+        expect(prefetch).toHaveBeenCalled();
+
+        prefetch.mockClear();
+        flushFrame();
+        expect(prefetch).toHaveBeenCalled();
+      });
+    });
+  });
+
   describe("stepForward / stepBack", () => {
     it("stepForward advances the playhead by stepInterval", () => {
       const { result } = renderEngine({ duration: 10 });
