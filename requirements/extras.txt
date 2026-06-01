@@ -1,4 +1,4 @@
-google-api-python-client>=2.196.0
+google-api-python-client>=2.197.0
 google-cloud-storage>=3.10.1
 httplib2>=0.31.2
 ipywidgets>=8.1.8
