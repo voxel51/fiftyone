@@ -79,12 +79,18 @@ const Zoom = () => {
 const ScrubberToggle = () => {
   const available = fos.useGridScrubberAvailable();
   const [enabled, setEnabled] = fos.useGridScrubber();
-  if (!available) return null;
   return (
-    <RightDiv>
+    <RightDiv
+      title={
+        available
+          ? undefined
+          : "Available when query performance is on and a numeric sort field is selected"
+      }
+    >
       <Toggle
-        checked={enabled}
+        checked={enabled && available}
         onChange={setEnabled}
+        disabled={!available}
         label="Scrubber"
         aria-label="Toggle grid scrubber"
       />
@@ -95,12 +101,18 @@ const ScrubberToggle = () => {
 const SwimlanesToggle = () => {
   const available = fos.useGridSwimlanesAvailable();
   const [enabled, setEnabled] = fos.useGridSwimlanes();
-  if (!available) return null;
   return (
-    <RightDiv>
+    <RightDiv
+      title={
+        available
+          ? undefined
+          : "Available for grouped or dynamic-grouped datasets"
+      }
+    >
       <Toggle
-        checked={enabled}
+        checked={enabled && available}
         onChange={setEnabled}
+        disabled={!available}
         label="Swimlanes"
         aria-label="Toggle grid swimlanes"
       />
