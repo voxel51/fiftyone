@@ -32,6 +32,19 @@ App
   transitions
   `#7599 <https://github.com/voxel51/fiftyone/pull/7599>`_
 
+In-App Annotation
+
+- Allowed persisting labels that have no `label` attribute set
+  `#7639 <https://github.com/voxel51/fiftyone/pull/7639>`_
+- Fixed a crash when changing the field of a polylines label
+  `#7638 <https://github.com/voxel51/fiftyone/pull/7638>`_
+- Fixed a bug where click-to-segment stopped working after navigating between
+  samples in the modal
+  `#7637 <https://github.com/voxel51/fiftyone/pull/7637>`_
+- Improved annotation performance by coalescing hover handling via
+  ``requestAnimationFrame`` and fixing duplicate polyline handler creation
+  `#7597 <https://github.com/voxel51/fiftyone/pull/7597>`_
+
 
 FiftyOne Enterprise 2.19.0
 --------------------------
