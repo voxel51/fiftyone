@@ -10043,7 +10043,10 @@ def _clone_collection(
             raise ValueError("Cloning mixed views is not allowed")
 
         if view._is_dynamic_groups:
-            raise ValueError("Cloning dynamic grouped views is not allowed")
+            raise ValueError(
+                "Cloning dynamic grouped views is not allowed. "
+                "Please flatten() the view first"
+            )
     else:
         dataset = sample_collection
         view = None
