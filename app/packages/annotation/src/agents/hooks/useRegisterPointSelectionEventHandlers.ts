@@ -5,7 +5,11 @@ import {
   useLighterEventHandler,
 } from "@fiftyone/lighter";
 import { useToolsState } from "./useToolsContext";
-import { NEGATIVE_POINT_VARIANT, usePointSelection } from "./usePointSelection";
+import {
+  NEGATIVE_POINT_VARIANT,
+  usePointSelection,
+  useSyncPointSelectionWithScene,
+} from "./usePointSelection";
 import { useCallback } from "react";
 import { useKeypointRippleEffect } from "./useKeypointRippleEffect";
 
@@ -32,6 +36,10 @@ export const useRegisterPointSelectionEventHandlers = () => {
   const { isActive: isPointSelectionActive } = usePointSelection();
   const { add: addRipple, remove: removeRipple } =
     useKeypointRippleEffect(getOverlay);
+
+  // Keep overlay + interactive handler bound to the current scene across
+  // sample navigation so the tool keeps working after the user moves on.
+  useSyncPointSelectionWithScene();
 
   useEventHandler(
     "lighter:keypoint-point-added",
