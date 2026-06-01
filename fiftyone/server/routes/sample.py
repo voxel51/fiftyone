@@ -270,18 +270,33 @@ def ensure_sample_field(sample: fo.Sample, field: str):
 
     logger.info("Missing sample field %s, attempting to initialize", field)
 
-    schema = sample.dataset.get_field_schema()
-
-    # track our current place in the hierarchy
-    current = sample
     field_parts = field.split(".")
-    for idx, part in enumerate(field_parts):
-        field_path = ".".join(field_parts[: idx + 1])
 
-        key = int(part) if isinstance(current, fof.Frames) else part
+    # `root`/`schema`/`base` describe whose fields we're initializing: the
+    # document that owns `set_field` (`root`), the schema its paths resolve
+    # against, and the index in `field_parts` where those paths begin. They
+    # start at the sample and switch to a frame the moment the walk crosses
+    # into the `frames` collection — frame fields live in their own schema,
+    # owned by the frame document, so the sample schema can't describe them.
+    root = sample
+    schema = sample.dataset.get_field_schema()
+    base = 0
+
+    current = sample
+    for idx, part in enumerate(field_parts):
+        if isinstance(current, fof.Frames):
+            # Cross into a frame. `frames[N]` materializes an empty frame if
+            # one doesn't exist yet, which is what we want when initializing
+            # a field on it. The frame number isn't a field to initialize.
+            current = root = current[int(part)]
+            schema = sample.dataset.get_frame_field_schema()
+            base = idx + 1
+            continue
+
+        field_path = ".".join(field_parts[base : idx + 1])
 
         try:
-            current_part = current[key]
+            current_part = current[part]
         except (KeyError, TypeError, IndexError):
             current_part = None
 
@@ -303,10 +318,10 @@ def ensure_sample_field(sample: fo.Sample, field: str):
                 logger.info(
                     "Initializing %s field at %s", field_type, field_path
                 )
-                sample.set_field(field_path, field_type())
+                root.set_field(field_path, field_type())
 
         # recurse
-        current = current[key]
+        current = current[part]
 
 
 def save_sample(
