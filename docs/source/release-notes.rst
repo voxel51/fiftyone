@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Enterprise 2.19.1
 --------------------------
-*Released TBD*
+*Released June 2, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.16.1 <release-notes-v1.16.1>`. No
 additional Enterprise-specific changes in this release.
@@ -15,7 +15,7 @@ additional Enterprise-specific changes in this release.
 
 FiftyOne 1.16.1
 ---------------
-*Released TBD*
+*Released June 2, 2026*
 
 App
 
