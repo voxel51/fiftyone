@@ -80,7 +80,11 @@ function Grid() {
 
     cache.freeze();
 
-    return new Spotlight<number, fos.Sample>({
+    // `spotlight` is captured by `onItemClick` so the click handler can
+    // mint a fresh navigation iterator via `spotlight.createIter()`. The
+    // closure is evaluated only when the user clicks, so by that time
+    // `spotlight` is fully constructed.
+    const spotlight = new Spotlight<number, fos.Sample>({
       ...get(),
       ...renderer,
 
@@ -90,9 +94,10 @@ function Grid() {
       spacing,
 
       get: (next) => page(next),
-      onItemClick: setSample,
+      onItemClick: (args) => setSample(args, () => spotlight.createIter()),
       rowAspectRatioThreshold: zoom,
     });
+    return spotlight;
   }, [
     cache,
     autosizing,
