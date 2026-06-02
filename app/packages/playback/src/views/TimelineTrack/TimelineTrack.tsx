@@ -101,6 +101,11 @@ export interface TimelineTrackProps {
   pinned?: boolean;
   onPinClick?: () => void;
   onContextMenu?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  /**
+   * When set, the event context menu gains a destructive "Delete track"
+   * item. Hidden when not provided.
+   */
+  onDeleteTrack?: () => void;
   className?: string;
   /** Fired on the row root. Used for cross-component hover linking. */
   onMouseEnter?: (e: React.MouseEvent<HTMLDivElement>) => void;
@@ -150,6 +155,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   pinned = false,
   onPinClick,
   onContextMenu,
+  onDeleteTrack,
   className,
   onMouseEnter,
   onMouseLeave,
@@ -494,6 +500,22 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                 >
                   Shrink window to fit
                 </MenuTextItem>
+                {onDeleteTrack && (
+                  <>
+                    <MenuSeparator />
+                    <MenuTextItem
+                      destructive
+                      onClick={(e) => {
+                        // Stop the click bubbling to the row's `onClick`
+                        // (`onTrackClick`)
+                        e.stopPropagation();
+                        onDeleteTrack();
+                      }}
+                    >
+                      Delete track
+                    </MenuTextItem>
+                  </>
+                )}
               </>
             );
             if (isInterval) {

@@ -1,9 +1,20 @@
-import { MarkKeyframeCommand, PropagateCommand } from "@fiftyone/annotation";
+import {
+  CreateTemporalDetectionCommand,
+  MarkKeyframeCommand,
+  PropagateCommand,
+} from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
 import type { ToolbarActionGroup } from "@fiftyone/components";
+import { fieldPaths, useModalSample } from "@fiftyone/state";
+import {
+  EMBEDDED_DOCUMENT_FIELD,
+  TEMPORAL_DETECTIONS_FIELD,
+} from "@fiftyone/utilities";
 import { Icon, IconName, Size } from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
+import { useRecoilValue } from "recoil";
+import { frameAt } from "../../playback/src/lib/playback/utils";
 import { usePlayhead } from "../../playback/src/lib/playback/use-playback-state";
 import { useFrameLabelsStream } from "./frameLabelsStream";
 import { resolvePropagationTarget } from "./propagationTarget";
@@ -28,6 +39,25 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
   const stream = useFrameLabelsStream();
   const playhead = usePlayhead();
   const selected = useAtomValue(selectedOverlayIds);
+  const modalSample = useModalSample();
+
+  // Resolve from the dataset schema
+  const tdFieldPaths = useRecoilValue(
+    fieldPaths({
+      ftype: EMBEDDED_DOCUMENT_FIELD,
+      embeddedDocType: TEMPORAL_DETECTIONS_FIELD,
+    })
+  );
+
+  const tdFieldPath = useMemo(
+    // Sample-level only — temporal detections are video-level; the create
+    // command targets a top-level field path.
+    () => tdFieldPaths.find((p) => !p.startsWith("frames.")) ?? null,
+    [tdFieldPaths]
+  );
+  const fps = modalSample?.frameRate;
+  const canCreateTd =
+    !!tdFieldPath && Number.isFinite(fps) && fps !== undefined && fps > 0;
 
   // Selection atom is keyed on the synthetic overlay id, the same id the
   // stream snapshot and command handlers agree on.
@@ -63,6 +93,27 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             onClick: () => {
               if (!hasSelection) return;
               void bus.execute(new MarkKeyframeCommand(playhead, selectedIds));
+            },
+          },
+          {
+            id: "create-temporal-detection",
+            label: "New TD",
+            icon: <Icon name={IconName.Add} size={Size.Sm} />,
+            tooltip: canCreateTd
+              ? `Create a TemporalDetection on \`${tdFieldPath}\``
+              : "No TemporalDetections field on this dataset",
+            isDisabled: !canCreateTd,
+            onClick: () => {
+              if (!canCreateTd || !tdFieldPath || !fps) return;
+              // Default: 1-second window starting at the playhead frame.
+              const startFrame = frameAt(playhead, fps);
+              const endFrame = startFrame + Math.round(fps);
+              void bus.execute(
+                new CreateTemporalDetectionCommand(tdFieldPath, [
+                  startFrame,
+                  endFrame,
+                ])
+              );
             },
           },
           {
@@ -116,6 +167,15 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
         ],
       },
     ],
-    [bus, hasSelection, playhead, selectedIds, target]
+    [
+      bus,
+      canCreateTd,
+      fps,
+      hasSelection,
+      playhead,
+      selectedIds,
+      target,
+      tdFieldPath,
+    ]
   );
 };

@@ -23,8 +23,10 @@ import { useRecoilValue } from "recoil";
 import { LABELS_STREAM_ID, VIDEO_STREAM_ID } from "./ids";
 import type { FrameLabelSnapshot } from "./SyntheticLabelStream";
 import { useFrameOverlaySync } from "./useFrameOverlaySync";
+import { useTemporalOverlaySync } from "./useTemporalOverlaySync";
 import { useSyncLighterAnnotation } from "./useSyncLighterAnnotation";
 import { useSyncSidebarFromSnapshot } from "./useSyncSidebarFromSnapshot";
+import { useSyncSidebarFromTemporalOverlays } from "./useSyncSidebarFromTemporalOverlays";
 import { useSyncLighterLabelStream } from "./useSyncLighterLabelStream";
 import { useSyncMediaTransform } from "./useSyncMediaTransform";
 import styles from "./VideoLighterTile.module.css";
@@ -173,7 +175,9 @@ export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
   // on the current scene — see `canonicalMediaReady` above.
   const snapshot = useStream<FrameLabelSnapshot>(LABELS_STREAM_ID);
   useFrameOverlaySync(scene, snapshot, field, canonicalMediaReady);
+  useTemporalOverlaySync(scene, canonicalMediaReady);
   useSyncSidebarFromSnapshot(scene, snapshot, field, canonicalMediaReady);
+  useSyncSidebarFromTemporalOverlays(scene, canonicalMediaReady);
 
   useSyncLighterAnnotation(scene);
   useSyncLighterLabelStream(scene);

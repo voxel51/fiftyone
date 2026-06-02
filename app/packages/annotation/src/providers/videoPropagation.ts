@@ -111,6 +111,7 @@ export async function propagate(
     const tPoints = performance.now();
     const points = nextPoints(strategy, prevResult, keyframeA, keyframeB, t);
     const pointsMs = performance.now() - tPoints;
+
     if (!points) {
       // centroid found nothing — bail rather than mis-prompt
       break;

@@ -180,6 +180,14 @@ export type AnnotationEventGroup = {
   };
 
   /**
+   * Notification event emitted when an entire object track is deleted.
+   */
+  "annotation:trackDeleted": {
+    /** Synthetic overlay id (`instance-…` / `track-…`) of the deleted track. */
+    trackId: string;
+  };
+
+  /**
    * Notification event emitted when the active annotation agent transitions
    * between lifecycle states (e.g. `"initializing"` → `"inferring"`).
    */

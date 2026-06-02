@@ -2,17 +2,25 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { ExtendTrackCommand, useAnnotationEventBus } from "@fiftyone/annotation";
+import {
+  ExtendTrackCommand,
+  UpdateTrackAttributesCommand,
+  useAnnotationEventBus,
+  useAnnotationEventHandler,
+} from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
 import {
   DetectionOverlay,
   type Scene2D,
   UNDEFINED_LIGHTER_SCENE_ID,
+  UpdateLabelCommand,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
 import type { DetectionLabel } from "@fiftyone/looker";
+import { type AnnotationLabelData } from "@fiftyone/state";
 import { objectId } from "@fiftyone/utilities";
 import { useCallback, useRef } from "react";
+import { useLabelsContext } from "../../core/src/components/Modal/Sidebar/Annotate";
 import { useCurrentTime } from "../../playback/src/lib/playback/use-playback-state";
 import { useFrameLabelsStream } from "./frameLabelsStream";
 import type { LocalDetection } from "./VideoFrameLabelsStream";
@@ -23,6 +31,21 @@ import type { LocalDetection } from "./VideoFrameLabelsStream";
  * manual drag-to-extend). Clamped at the clip end.
  */
 const AUTO_EXTEND_FRAMES = 30;
+
+/**
+ * Detection fields that are per-frame and must NOT propagate across a track
+ * when a sidebar edit is applied to the whole object. Everything else on the
+ * label (label / confidence / index / tags / custom attributes) describes the
+ * object and is shared across its frames.
+ */
+const PER_FRAME_DETECTION_FIELDS = new Set([
+  "_id",
+  "_cls",
+  "bounding_box",
+  "keyframe",
+  "propagation",
+  "instance",
+]);
 
 /**
  * Mirrors user-driven Lighter overlay edits into the label-stream cache
@@ -47,6 +70,7 @@ export const useSyncLighterLabelStream = (scene: Scene2D | null): void => {
   const currentTime = useCurrentTime();
   const eventBus = useAnnotationEventBus();
   const commandBus = useCommandBus();
+  const { updateLabelData } = useLabelsContext();
 
   const useEventHandler = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
@@ -207,6 +231,88 @@ export const useSyncLighterLabelStream = (scene: Scene2D | null): void => {
         stream.deleteLabel(frame, target._id);
       },
       [stream, currentTime]
+    )
+  );
+
+  // Synchronize sidebar field edits
+  useAnnotationEventHandler(
+    "annotation:sidebarValueUpdated",
+    useCallback(
+      (payload) => {
+        if (!scene) {
+          return;
+        }
+
+        const overlay = scene.getOverlay(payload.overlayId);
+        if (!overlay) {
+          return;
+        }
+
+        // Apply to the overlay so the canvas updates immediately — while
+        // paused there's no frame tick to re-sync it from the cache. The
+        // base `updateLabel` routes through each overlay type's label
+        // setter, so this covers both Detection and Temporal overlays.
+        scene.executeCommand(
+          new UpdateLabelCommand(
+            overlay,
+            payload.currentLabel,
+            payload.value,
+            eventBus
+          )
+        );
+
+        // Refresh the sidebar entry's stored data so the collapsed row shows
+        // the new value immediately. The snapshot / TD-membership hooks only
+        // do this on a frame tick, so a paused edit would otherwise leave the
+        // collapsed entry stale after deselect. `payload.value` is the full
+        // post-edit label, and `updateLabelData` keys on the overlay id.
+        updateLabelData(
+          payload.overlayId,
+          payload.value as unknown as AnnotationLabelData
+        );
+
+        // DetectionOverlays persist through the per-frame label cache, not
+        // the overlay, so mirror the edit there for the video-labels
+        // supplier. `updateLabel` merges by `_id`, preserving instance /
+        // propagation / keyframe that the edit doesn't carry. Temporal
+        // overlays persist straight off `overlay.label` via the TD
+        // supplier, so they need no cache write.
+        if (overlay instanceof DetectionOverlay && stream) {
+          const frame = stream.timeToFrame(currentTime);
+          stream.updateLabel(frame, payload.value as unknown as LocalDetection);
+
+          // Track-level attributes (label / confidence / index / tags /
+          // custom) describe the object, not one frame, so propagate them
+          // across the whole track. Per-frame geometry is excluded so each
+          // frame keeps its own box / keyframe / propagation.
+          const trackAttributes: Record<string, unknown> = {};
+          for (const [key, value] of Object.entries(payload.value)) {
+            if (PER_FRAME_DETECTION_FIELDS.has(key)) {
+              continue;
+            }
+
+            trackAttributes[key] = value;
+          }
+
+          if (Object.keys(trackAttributes).length > 0) {
+            void commandBus.execute(
+              new UpdateTrackAttributesCommand(
+                payload.overlayId,
+                trackAttributes
+              )
+            );
+          }
+        }
+
+        // Notify derived views that a label changed. The TD timeline tracks
+        // rebuild off this (their only invalidation signal — a TemporalOverlay
+        // label set fires no lighter event). Dispatched after the overlay is
+        // updated so consumers reading `overlay.label` see the new value.
+        // `UpdateLabelCommand` only emits this on redo, which never re-runs
+        // this handler, so there's no double-dispatch.
+        eventBus.dispatch("annotation:labelEdit", { label: payload.value });
+      },
+      [scene, stream, currentTime, eventBus, updateLabelData, commandBus]
     )
   );
 };

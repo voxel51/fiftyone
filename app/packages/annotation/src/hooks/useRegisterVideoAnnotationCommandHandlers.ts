@@ -1,10 +1,14 @@
 import { useRegisterCommandHandler } from "@fiftyone/command-bus";
 import { useAnnotationEventBus } from "./useAnnotationEventBus";
 import {
+  TemporalOverlay,
+  useLighter,
+  type TemporalLabel,
+} from "@fiftyone/lighter";
+import {
   PropagationStatusItem,
   useFrameLabelsStream,
   useImaVidImageStream,
-  useStageTemporalDetectionSupport,
   useVideoAnnotationStatus,
   type LocalDetection,
   type SyntheticBox,
@@ -26,12 +30,15 @@ import {
   type PropagationInferenceResult,
 } from "../agents/types";
 import {
-  EditTemporalDetectionSupportCommand,
+  CreateTemporalDetectionCommand,
+  DeleteTrackCommand,
+  EditTemporalDetectionCommand,
   ExtendTrackCommand,
   MarkKeyframeCommand,
   PropagateCommand,
   ShiftTrackCommand,
   TrimTrackCommand,
+  UpdateTrackAttributesCommand,
 } from "../commands";
 
 /** Read this track's detection on a given frame, or `undefined`. */
@@ -73,7 +80,7 @@ const copyDetection = (
 export const useRegisterVideoAnnotationCommandHandlers = () => {
   const stream = useFrameLabelsStream();
   const imageStream = useImaVidImageStream();
-  const stageTemporalDetectionSupport = useStageTemporalDetectionSupport();
+  const { scene } = useLighter();
   const registry = useAgentRegistry();
   const sampleDescriptor = useSampleDescriptor();
   const applyPropagation = useApplyPropagationResult();
@@ -82,16 +89,51 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
   const eventBus = useAnnotationEventBus();
 
   useRegisterCommandHandler(
-    EditTemporalDetectionSupportCommand,
+    EditTemporalDetectionCommand,
     useCallback(
       async (cmd) => {
-        stageTemporalDetectionSupport(cmd.fieldPath, cmd.detectionId, [
-          cmd.support[0],
-          cmd.support[1],
-        ]);
+        if (!scene) return false;
+        const overlayId = `td-${cmd.fieldPath}-${cmd.detectionId}`;
+        const overlay = scene.getOverlay(overlayId);
+        if (!(overlay instanceof TemporalOverlay)) return false;
+        // Mutate via the typed setter so the overlay re-gates / marks dirty.
+        const nextLabel = {
+          ...overlay.label,
+          ...cmd.update,
+        } as TemporalLabel;
+        overlay.label = nextLabel;
+        // Live signal for sample-stale consumers (timeline track, sidebar
+        // form) — they rebuild off this rather than waiting for autosave.
+        eventBus.dispatch("annotation:labelEdit", {
+          label: nextLabel,
+        });
         return true;
       },
-      [stageTemporalDetectionSupport]
+      [scene, eventBus]
+    )
+  );
+
+  useRegisterCommandHandler(
+    CreateTemporalDetectionCommand,
+    useCallback(
+      async (cmd) => {
+        if (!scene) return null;
+        const detectionId = objectId();
+        const overlayId = `td-${cmd.fieldPath}-${detectionId}`;
+        const overlay = new TemporalOverlay({
+          id: overlayId,
+          field: cmd.fieldPath,
+          label: {
+            _cls: "TemporalDetection",
+            _id: detectionId,
+            support: [cmd.support[0], cmd.support[1]],
+            ...(cmd.label !== undefined ? { label: cmd.label } : {}),
+          },
+        });
+        scene.addOverlay(overlay);
+        return detectionId;
+      },
+      [scene]
     )
   );
 
@@ -350,6 +392,77 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
         }
 
         return removed;
+      },
+      [stream]
+    )
+  );
+
+  useRegisterCommandHandler(
+    DeleteTrackCommand,
+    useCallback(
+      async (cmd) => {
+        if (!stream) {
+          return false;
+        }
+
+        let removed = false;
+        for (let frame = 1; frame <= stream.totalFrames; frame++) {
+          const det = detectionAt(stream, frame, stream.fps, cmd.trackId);
+          if (!det) {
+            continue;
+          }
+
+          stream.deleteLabel(frame, det._id ?? det.id);
+          removed = true;
+        }
+
+        // Let selection/editing consumers drop any state still bound to
+        // this track's overlay (e.g. close the sidebar editor) — the
+        // per-frame deletes alone leave that lingering.
+        if (removed) {
+          eventBus.dispatch("annotation:trackDeleted", {
+            trackId: cmd.trackId,
+          });
+        }
+
+        return removed;
+      },
+      [stream, eventBus]
+    )
+  );
+
+  useRegisterCommandHandler(
+    UpdateTrackAttributesCommand,
+    useCallback(
+      async (cmd) => {
+        if (!stream) {
+          return false;
+        }
+
+        const keys = Object.keys(cmd.attributes);
+        if (keys.length === 0) {
+          return false;
+        }
+
+        // Merge the track-level attributes onto this track's detection on
+        // every frame it appears, leaving per-frame geometry (`bounding_box`,
+        // `keyframe`, `propagation`) and each frame's own `_id` intact.
+        let updated = false;
+        for (let frame = 1; frame <= stream.totalFrames; frame++) {
+          const det = detectionAt(stream, frame, stream.fps, cmd.trackId);
+          if (!det) {
+            continue;
+          }
+
+          stream.updateLabel(frame, {
+            _cls: "Detection",
+            _id: det._id ?? det.id,
+            ...cmd.attributes,
+          } as LocalDetection);
+          updated = true;
+        }
+
+        return updated;
       },
       [stream]
     )
