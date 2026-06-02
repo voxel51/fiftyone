@@ -24,7 +24,14 @@ const processSamplePageData = (
   connection: foq.PaginateSamplesConnection,
   schema: Schema,
   zoom: boolean,
-  records: Map<string, number>
+  records: Map<string, number>,
+  // When set, every item's `aspectRatio` is replaced with this value
+  // before being handed to Spotlight. The native ratio is preserved on
+  // the stored sample for downstream consumers (e.g. the swimlane
+  // renderer reads it back to size the cover). Used by swimlanes to
+  // make each row uniformly short instead of taking the cover's full
+  // image height.
+  aspectRatioOverride?: number
 ) => {
   return connection.edges.flatMap((edge, i) => {
     // Filter out unknown union variants so `handleNode` only ever sees the
@@ -39,12 +46,14 @@ const processSamplePageData = (
     store.set(id, node);
     records.set(node.id, page * PAGE_SIZE + i);
 
+    const nativeAspectRatio = zoom
+      ? zoomAspectRatio(node.sample, schema, node.aspectRatio)
+      : node.aspectRatio;
+
     return [
       {
         key: page,
-        aspectRatio: zoom
-          ? zoomAspectRatio(node.sample, schema, node.aspectRatio)
-          : node.aspectRatio,
+        aspectRatio: aspectRatioOverride ?? nativeAspectRatio,
         id,
         data: node as fos.Sample,
       },
@@ -57,6 +66,7 @@ const useSpotlightPager = ({
   pageSelector,
   records,
   zoomSelector,
+  aspectRatioOverride,
 }: {
   clearRecords: string;
   pageSelector: RecoilValueReadOnly<
@@ -64,6 +74,8 @@ const useSpotlightPager = ({
   >;
   records: Records;
   zoomSelector: RecoilValueReadOnly<boolean>;
+  /** See {@link processSamplePageData}. */
+  aspectRatioOverride?: number;
 }) => {
   const environment = useRelayEnvironment();
   const pager = useRecoilValue(pageSelector);
@@ -195,7 +207,8 @@ const useSpotlightPager = ({
                 connection,
                 schema,
                 zoom,
-                records
+                records,
+                aspectRatioOverride
               );
               for (const item of items) keys.current.add(item.id.description);
 
@@ -245,6 +258,7 @@ const useSpotlightPager = ({
       };
     },
     [
+      aspectRatioOverride,
       environment,
       handleError,
       handleTimeout,
