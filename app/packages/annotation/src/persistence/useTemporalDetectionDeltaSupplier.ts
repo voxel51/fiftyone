@@ -4,8 +4,13 @@ import {
   useLighter,
   type TemporalLabel,
 } from "@fiftyone/lighter";
-import { useIsVideo, useModalSample } from "@fiftyone/state";
+import { fieldPaths, useIsVideo, useModalSample } from "@fiftyone/state";
+import {
+  EMBEDDED_DOCUMENT_FIELD,
+  TEMPORAL_DETECTIONS_FIELD,
+} from "@fiftyone/utilities";
 import { useCallback } from "react";
+import { useRecoilValue } from "recoil";
 import type { DeltaSupplier } from "./deltaSupplier";
 
 /**
@@ -26,6 +31,14 @@ export const useTemporalDetectionDeltaSupplier = (): DeltaSupplier => {
   const modalSample = useModalSample();
   const isVideo = useIsVideo();
 
+  // Sample-level fields the schema declares as TemporalDetections
+  const declaredTdFields = useRecoilValue(
+    fieldPaths({
+      ftype: EMBEDDED_DOCUMENT_FIELD,
+      embeddedDocType: TEMPORAL_DETECTIONS_FIELD,
+    })
+  );
+
   return useCallback(() => {
     if (!isVideo || !scene || !modalSample?.sample) {
       return { deltas: [], metadata: undefined };
@@ -38,11 +51,12 @@ export const useTemporalDetectionDeltaSupplier = (): DeltaSupplier => {
     return {
       deltas: buildTemporalDetectionOverlayDeltas(
         modalSample.sample as Record<string, unknown>,
-        overlays
+        overlays,
+        declaredTdFields
       ),
       metadata: undefined,
     };
-  }, [isVideo, modalSample, scene]);
+  }, [isVideo, modalSample, scene, declaredTdFields]);
 };
 
 /**
@@ -50,10 +64,14 @@ export const useTemporalDetectionDeltaSupplier = (): DeltaSupplier => {
  * sample baseline, and emit JSON-Patch ops. Overlays without a baseline
  * entry are emitted as `add /-`; baseline entries with no matching
  * overlay are emitted as `remove /N`. Exported for direct unit testing.
+ *
+ * `declaredFields` are the sample-level field paths the dataset schema
+ * declares as `TemporalDetections`.
  */
 export function buildTemporalDetectionOverlayDeltas(
   sample: Record<string, unknown>,
-  overlays: readonly TemporalOverlay[]
+  overlays: readonly TemporalOverlay[],
+  declaredFields?: readonly string[]
 ): JSONDeltas {
   const deltas: JSONDeltas = [];
 
@@ -68,14 +86,17 @@ export function buildTemporalDetectionOverlayDeltas(
     const field = sample[fieldPath] as
       | { _cls?: string; detections?: unknown }
       | undefined;
-    if (!field || field._cls !== "TemporalDetections") {
-      // Field doesn't exist yet on the sample — every overlay is a
-      // create. The patch's `add /-` only works once the parent list
-      // exists; backend handles the initial materialization elsewhere,
-      // so skip until then rather than emit ops the server can't apply.
+    const isPopulated = !!field && field._cls === "TemporalDetections";
+    const isDeclared = declaredFields?.includes(fieldPath) ?? false;
+    if (!isPopulated && !isDeclared) {
+      // Neither populated as a TemporalDetections wrapper nor a known
+      // schema field — emitting `add /-` here would target a path the
+      // server can't materialize, so skip.
       continue;
     }
-    const baseline = Array.isArray(field.detections) ? field.detections : [];
+    // Declared-but-unpopulated → no baseline; every overlay is a create.
+    const baseline =
+      isPopulated && Array.isArray(field.detections) ? field.detections : [];
 
     const seenIds = new Set<string>();
     for (const overlay of fieldOverlays) {

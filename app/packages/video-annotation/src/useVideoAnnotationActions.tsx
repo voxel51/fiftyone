@@ -5,32 +5,20 @@ import {
 } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
 import type { ToolbarActionGroup } from "@fiftyone/components";
-import { useModalSample } from "@fiftyone/state";
+import { fieldPaths, useModalSample } from "@fiftyone/state";
+import {
+  EMBEDDED_DOCUMENT_FIELD,
+  TEMPORAL_DETECTIONS_FIELD,
+} from "@fiftyone/utilities";
 import { Icon, IconName, Size } from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
+import { useRecoilValue } from "recoil";
 import { frameAt } from "../../playback/src/lib/playback/utils";
 import { usePlayhead } from "../../playback/src/lib/playback/use-playback-state";
 import { useFrameLabelsStream } from "./frameLabelsStream";
 import { resolvePropagationTarget } from "./propagationTarget";
 import { selectedOverlayIds } from "./useLinkedOverlayState";
-
-/** First sample-level field whose `_cls` is `TemporalDetections`. */
-const firstTemporalDetectionFieldPath = (
-  sample: Record<string, unknown> | null | undefined
-): string | null => {
-  if (!sample) return null;
-  for (const [path, value] of Object.entries(sample)) {
-    if (
-      value &&
-      typeof value === "object" &&
-      (value as { _cls?: unknown })._cls === "TemporalDetections"
-    ) {
-      return path;
-    }
-  }
-  return null;
-};
 
 /**
  * Builds the data-driven config for the video annotation toolbar, mirroring
@@ -53,12 +41,19 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
   const selected = useAtomValue(selectedOverlayIds);
   const modalSample = useModalSample();
 
+  // Resolve from the dataset schema
+  const tdFieldPaths = useRecoilValue(
+    fieldPaths({
+      ftype: EMBEDDED_DOCUMENT_FIELD,
+      embeddedDocType: TEMPORAL_DETECTIONS_FIELD,
+    })
+  );
+
   const tdFieldPath = useMemo(
-    () =>
-      firstTemporalDetectionFieldPath(
-        (modalSample?.sample as Record<string, unknown>) ?? null
-      ),
-    [modalSample?.sample]
+    // Sample-level only — temporal detections are video-level; the create
+    // command targets a top-level field path.
+    () => tdFieldPaths.find((p) => !p.startsWith("frames.")) ?? null,
+    [tdFieldPaths]
   );
   const fps = modalSample?.frameRate;
   const canCreateTd =
@@ -106,7 +101,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             icon: <Icon name={IconName.Add} size={Size.Sm} />,
             tooltip: canCreateTd
               ? `Create a TemporalDetection on \`${tdFieldPath}\``
-              : "No TemporalDetections field on this sample",
+              : "No TemporalDetections field on this dataset",
             isDisabled: !canCreateTd,
             onClick: () => {
               if (!canCreateTd || !tdFieldPath || !fps) return;

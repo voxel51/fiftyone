@@ -188,6 +188,41 @@ describe("buildTemporalDetectionOverlayDeltas", () => {
       ]);
       expect(deltas).toEqual([{ op: "remove", path: "/events/detections/1" }]);
     });
+
+    it("emits `add /-` for a declared field not yet populated on the sample", () => {
+      // The field is in the schema (`declaredFields`) but absent on the
+      // sample — creating the first event on a fresh dataset. The server
+      // materializes the parent TemporalDetections before the add applies.
+      const sample = { events: null };
+      const deltas = buildTemporalDetectionOverlayDeltas(
+        sample as unknown as Record<string, unknown>,
+        [overlay("events", "first", [1, 30], { label: "fresh" })],
+        ["events"]
+      );
+      expect(deltas).toEqual([
+        {
+          op: "add",
+          path: "/events/detections/-",
+          value: {
+            _cls: "TemporalDetection",
+            _id: "first",
+            support: [1, 30],
+            label: "fresh",
+          },
+        },
+      ]);
+    });
+
+    it("still skips an undeclared field even when declaredFields is supplied", () => {
+      const sample = { events: field(tdBaseline("a", [1, 10])) };
+      expect(
+        buildTemporalDetectionOverlayDeltas(
+          sample,
+          [overlay("ghost", "a", [5, 15], { label: "x" })],
+          ["events"]
+        )
+      ).toEqual([]);
+    });
   });
 
   describe("filtering", () => {
