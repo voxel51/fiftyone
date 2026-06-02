@@ -24,12 +24,18 @@ interface InstanceState {
    */
   persistedIndex?: number;
   /**
-   * Display ordinal used for the row label and color hash. Equals
+   * Display ordinal used for the row label text. Equals
    * `persistedIndex` when set; otherwise assigned at build time as the
    * next free integer above the per-class max so the demo UI always
    * has a readable "person 3" / "person 4" label.
    */
   displayIndex: number;
+  /**
+   * The underlying detection's `Instance` reference, when present. Carried
+   * so the row color hashes on the same `instance._id` the overlay does
+   * under color-by-instance.
+   */
+  instance?: { _cls: "Instance"; _id?: string } | null;
   /** Whether the instance was present in the most recent frame. */
   inFrame: boolean;
   /** Start time (sec) of the currently-open interval, if any. */
@@ -43,11 +49,17 @@ interface InstanceState {
 /**
  * Minimal label-shape passed to {@link BuildPerInstanceTracksInput.resolveColor}.
  * Mirrors the fields `getLabelColorFromContext` reads, so the color resolves
- * the same way it would for the matching label.
+ * the same way it would for the matching overlay.
+ *
+ * `index` and `instance` must be the *underlying detection's* values (not a
+ * synthetic display ordinal), because color-by-instance hashes on
+ * `${label}-${index}-${instance._id}` — passing the display ordinal or
+ * dropping the instance would desync the row color from the bbox overlay.
  */
 export interface PerInstanceLabel {
   label: string;
-  index: number;
+  index?: number;
+  instance?: { _cls: "Instance"; _id?: string } | null;
 }
 
 export interface BuildPerInstanceTracksInput {
@@ -115,6 +127,7 @@ export function buildPerInstanceTracks({
           state = {
             classLabel: det.label || "unknown",
             persistedIndex: det.index,
+            instance: det.instance,
             // Placeholder — overwritten after the main loop once all
             // states are known and per-class display ordinals can be
             // computed.
@@ -214,7 +227,8 @@ export function buildPerInstanceTracks({
       description: `Tracked "${state.classLabel}" (track ${state.displayIndex})`,
       color: resolveColor({
         label: state.classLabel,
-        index: state.displayIndex,
+        index: state.persistedIndex,
+        instance: state.instance,
       }),
       events,
     });
