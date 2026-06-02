@@ -147,13 +147,6 @@ const Header = () => {
     [isGroup, groupSlices]
   );
 
-  // Voodo vertical divider between each top-right control group. The
-  // dividers used to live as a `border-right` on every RightDiv, which
-  // forced every consumer of RightDiv to inherit the separator whether
-  // it wanted one or not. Explicit Divider elements between sections
-  // are easier to compose and use voodo's color tokens.
-  const sep = <Divider orientation={Orientation.Column} />;
-
   return (
     <SamplesHeader data-cy={"fo-grid-actions"}>
       <Actions key={"actions"} />
@@ -167,23 +160,19 @@ const Header = () => {
         >
           <ResourceCount />
         </Suspense>
-        {sep}
         {shouldShowSliceSelector && (
-          <>
-            <RightDiv>
-              <GroupSlice />
-            </RightDiv>
-            {sep}
-          </>
+          <RightDiv>
+            <GroupSlice />
+          </RightDiv>
         )}
+        {/* Single vertical separator: marks the boundary between the
+            resource-count / slice selector and the actionable sort +
+            view controls. */}
+        <Divider orientation={Orientation.Column} />
         <Sort />
-        {sep}
         <Spacing />
-        {sep}
         <Zoom />
-        {sep}
         <SwimlanesToggle />
-        {sep}
         <ScrubberToggle />
       </RightContainer>
     </SamplesHeader>
