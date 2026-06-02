@@ -26,7 +26,7 @@ these commands:
    $ python --version
    Python 2.7.17
    $ python3 --version
-   Python 3.10.18
+   Python 3.10.20
 
 In this case, `python3` should be used in the next step.
 
