@@ -3,17 +3,17 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
-FiftyOne Enterprise 2.19.1
+FiftyOne Enterprise 2.20.0
 --------------------------
 *Released June 2, 2026*
 
-Includes all updates from :ref:`FiftyOne 1.16.1 <release-notes-v1.16.1>`. No
+Includes all updates from :ref:`FiftyOne 1.17.0 <release-notes-v1.17.0>`. No
 additional Enterprise-specific changes in this release.
 
 
-.. _release-notes-v1.16.1:
+.. _release-notes-v1.17.0:
 
-FiftyOne 1.16.1
+FiftyOne 1.17.0
 ---------------
 *Released June 2, 2026*
 
@@ -44,6 +44,22 @@ In-App Annotation
 - Improved annotation performance by coalescing hover handling via
   ``requestAnimationFrame`` and fixing duplicate polyline handler creation
   `#7597 <https://github.com/voxel51/fiftyone/pull/7597>`_
+
+Security
+
+- Updated ``Pillow`` to ``>=12.2`` to resolve CVE-2026-40192
+  `#7694 <https://github.com/voxel51/fiftyone/pull/7694>`_
+- Updated ``strawberry-graphql`` to ``>=0.312.3`` to resolve CVE-2026-35523
+  `#7694 <https://github.com/voxel51/fiftyone/pull/7694>`_
+- Updated App dependencies to resolve vulnerabilities: ``minimatch`` (9.0.7,
+  CVE-2026-27904), ``protobufjs`` (>=7.6, CVE-2026-41242), and
+  ``brace-expansion`` (>=5.0.6, CVE-2026-33750)
+  `#7694 <https://github.com/voxel51/fiftyone/pull/7694>`_
+
+General
+
+- Removed support for Python 3.9; FiftyOne now requires Python 3.10 or later
+  `#7585 <https://github.com/voxel51/fiftyone/pull/7585>`_
 
 
 FiftyOne Enterprise 2.19.0
