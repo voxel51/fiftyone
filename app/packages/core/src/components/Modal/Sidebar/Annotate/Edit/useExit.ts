@@ -5,6 +5,7 @@ import { useAnnotationContext } from "./useAnnotationContext";
 
 export default function useExit() {
   const annotationContext = useAnnotationContext();
+  const { clear } = annotationContext;
   const { scene, removeOverlay } = useLighter();
   const { label, overlay } = annotationContext.selected;
 
@@ -24,6 +25,6 @@ export default function useExit() {
 
     // 3D state cleanup happens in looker-3d's useReset3dOnEditExit, which
     // reacts to the atom transition this clear() produces.
-    annotationContext.clear();
-  }, [annotationContext, label, overlay, removeOverlay, scene]);
+    clear();
+  }, [clear, label, overlay, removeOverlay, scene]);
 }
