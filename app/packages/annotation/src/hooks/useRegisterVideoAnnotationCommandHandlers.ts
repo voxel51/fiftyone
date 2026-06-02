@@ -202,10 +202,10 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
         if (cmd.fromFrame >= cmd.toFrame) return false;
 
         const fromTime = (cmd.fromFrame - 1) / stream.fps;
-        const toTime = (cmd.toFrame - 1) / stream.fps;
         const fromSnapshot = stream.getValue(fromTime);
-        const toSnapshot = stream.getValue(toTime);
-        if (!fromSnapshot || !toSnapshot) return false;
+        if (!fromSnapshot) {
+          return false;
+        }
 
         const matchesInstance = (d: {
           instance?: { _cls: "Instance"; _id?: string };
@@ -214,19 +214,30 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
           d.keyframe === true && d.instance?._id === cmd.instanceId;
 
         const leftKeyframe = fromSnapshot.detections.find(matchesInstance);
-        const rightKeyframe = toSnapshot.detections.find(matchesInstance);
-        if (!leftKeyframe || !rightKeyframe) return false;
+        if (!leftKeyframe) {
+          return false;
+        }
+
+        const toTime = (cmd.toFrame - 1) / stream.fps;
+        const rightKeyframe = stream
+          .getValue(toTime)
+          ?.detections.find(matchesInstance);
 
         // SAM2 tracking runs asynchronously over the decoded ImaVid frames
         // and streams a detection per frame as inference lands. It needs the
         // image stream as a frame source; bail cleanly on surfaces that have
         // none (e.g. native video).
         if (cmd.method === "sam2") {
-          if (!imageStream) return false;
+          if (!imageStream) {
+            return false;
+          }
 
           const agents = await registry.listAgents();
           const descriptor = agents.find((a) => a.id === "propagate-sam2");
-          if (!descriptor) return false;
+          if (!descriptor) {
+            return false;
+          }
+
           // Registry stores agents under the broad `AnnotationAgent` type;
           // this one is driven through its dedicated `propagate()` (which
           // carries the frame source), not the generic `infer`.
@@ -295,6 +306,11 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
           } finally {
             setStatusContent(null);
           }
+        }
+
+        // Linear interpolation needs both endpoints to lerp between
+        if (!rightKeyframe) {
+          return false;
         }
 
         const agentId = `propagate-${cmd.method}`;

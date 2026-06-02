@@ -125,7 +125,10 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
               : target.reason,
             isDisabled: !target.ok,
             onClick: () => {
-              if (!target.ok) return;
+              if (!target.ok) {
+                return;
+              }
+
               void bus.execute(
                 new PropagateCommand(
                   target.instanceId,
