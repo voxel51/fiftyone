@@ -2,11 +2,14 @@ import { LoadingDots } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { isGroup as isGroupAtom } from "@fiftyone/state";
 import {
+  Divider,
   Icon,
   IconName,
+  Orientation,
   SingleValueSlider,
   Size,
   Toggle,
+  Tooltip,
 } from "@voxel51/voodo";
 import React, { Suspense, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
@@ -30,32 +33,35 @@ import Sort from "./Sort";
 // Hover: scale up subtly to signal interactivity. Press: scale down for
 // the click moment.
 const PRESS_CLASS =
-  "cursor-pointer flex hover:scale-[1.1] active:scale-[0.92] transition-transform duration-[150ms] ease-out";
+  "cursor-pointer flex items-center justify-center p-1.5 hover:scale-[1.1] active:scale-[0.92] transition-transform duration-[150ms] ease-out";
 
 const Spacing = () => {
   const [value, setValue] = useRecoilState(gridSpacing);
   const resetSpacing = useResetRecoilState(gridSpacing);
   return (
     <SliderContainer>
-      <div style={{ flexGrow: 1 }} title={"Spacing"}>
-        <SingleValueSlider
-          bare
-          debounceDelay={0}
-          min={0}
-          max={64}
-          step={1}
-          value={value}
-          onChange={setValue}
-        />
-      </div>
-      <div
-        title={"Reset spacing"}
-        onClick={resetSpacing}
-        onKeyDown={() => null}
-        className={PRESS_CLASS}
-      >
-        <Icon name={IconName.Resize} size={Size.Xl} />
-      </div>
+      <Tooltip content="Grid spacing">
+        <div style={{ flexGrow: 1 }}>
+          <SingleValueSlider
+            bare
+            debounceDelay={0}
+            min={0}
+            max={64}
+            step={1}
+            value={value}
+            onChange={setValue}
+          />
+        </div>
+      </Tooltip>
+      <Tooltip content="Reset spacing">
+        <div
+          onClick={resetSpacing}
+          onKeyDown={() => null}
+          className={PRESS_CLASS}
+        >
+          <Icon name={IconName.Resize} size={Size.Xl} />
+        </div>
+      </Tooltip>
     </SliderContainer>
   );
 };
@@ -65,25 +71,24 @@ const Zoom = () => {
   const resetZoom = useResetRecoilState(gridZoom);
   return (
     <SliderContainer>
-      <div style={{ flexGrow: 1 }} title={"Zoom"}>
-        <SingleValueSlider
-          bare
-          debounceDelay={0}
-          min={ZOOM_RANGE[0]}
-          max={ZOOM_RANGE[1]}
-          step={0.01}
-          value={value}
-          onChange={setValue}
-        />
-      </div>
-      <div
-        title={"Reset zoom"}
-        onClick={resetZoom}
-        onKeyDown={() => null}
-        className={PRESS_CLASS}
-      >
-        <Icon name={IconName.Zoom} size={Size.Xl} />
-      </div>
+      <Tooltip content="Grid zoom">
+        <div style={{ flexGrow: 1 }}>
+          <SingleValueSlider
+            bare
+            debounceDelay={0}
+            min={ZOOM_RANGE[0]}
+            max={ZOOM_RANGE[1]}
+            step={0.01}
+            value={value}
+            onChange={setValue}
+          />
+        </div>
+      </Tooltip>
+      <Tooltip content="Reset zoom">
+        <div onClick={resetZoom} onKeyDown={() => null} className={PRESS_CLASS}>
+          <Icon name={IconName.Zoom} size={Size.Xl} />
+        </div>
+      </Tooltip>
     </SliderContainer>
   );
 };
@@ -103,14 +108,16 @@ const ScrubberToggle = () => {
   const [enabled, setEnabled] = fos.useGridScrubber();
   if (!available) return null;
   return (
-    <RightDiv style={TOGGLE_ROW_STYLE} title="Toggle grid scrubber">
-      <Toggle
-        checked={enabled}
-        onChange={setEnabled}
-        aria-label="Toggle grid scrubber"
-      />
-      <Icon name={IconName.Scrubber} size={Size.Xl} />
-    </RightDiv>
+    <Tooltip content={enabled ? "Hide scrubber" : "Show scrubber"}>
+      <RightDiv style={TOGGLE_ROW_STYLE}>
+        <Toggle
+          checked={enabled}
+          onChange={setEnabled}
+          aria-label="Toggle grid scrubber"
+        />
+        <Icon name={IconName.Scrubber} size={Size.Xl} />
+      </RightDiv>
+    </Tooltip>
   );
 };
 
@@ -119,14 +126,16 @@ const SwimlanesToggle = () => {
   const [enabled, setEnabled] = fos.useGridSwimlanes();
   if (!available) return null;
   return (
-    <RightDiv style={TOGGLE_ROW_STYLE} title="Toggle grid swimlanes">
-      <Toggle
-        checked={enabled}
-        onChange={setEnabled}
-        aria-label="Toggle grid swimlanes"
-      />
-      <Icon name={IconName.Swimlanes} size={Size.Xl} />
-    </RightDiv>
+    <Tooltip content={enabled ? "Hide swimlanes" : "Show swimlanes"}>
+      <RightDiv style={TOGGLE_ROW_STYLE}>
+        <Toggle
+          checked={enabled}
+          onChange={setEnabled}
+          aria-label="Toggle grid swimlanes"
+        />
+        <Icon name={IconName.Swimlanes} size={Size.Xl} />
+      </RightDiv>
+    </Tooltip>
   );
 };
 
@@ -137,6 +146,13 @@ const Header = () => {
     () => isGroup && groupSlices.length > 1,
     [isGroup, groupSlices]
   );
+
+  // Voodo vertical divider between each top-right control group. The
+  // dividers used to live as a `border-right` on every RightDiv, which
+  // forced every consumer of RightDiv to inherit the separator whether
+  // it wanted one or not. Explicit Divider elements between sections
+  // are easier to compose and use voodo's color tokens.
+  const sep = <Divider orientation={Orientation.Column} />;
 
   return (
     <SamplesHeader data-cy={"fo-grid-actions"}>
@@ -151,15 +167,23 @@ const Header = () => {
         >
           <ResourceCount />
         </Suspense>
+        {sep}
         {shouldShowSliceSelector && (
-          <RightDiv>
-            <GroupSlice />
-          </RightDiv>
+          <>
+            <RightDiv>
+              <GroupSlice />
+            </RightDiv>
+            {sep}
+          </>
         )}
         <Sort />
+        {sep}
         <Spacing />
+        {sep}
         <Zoom />
+        {sep}
         <SwimlanesToggle />
+        {sep}
         <ScrubberToggle />
       </RightContainer>
     </SamplesHeader>

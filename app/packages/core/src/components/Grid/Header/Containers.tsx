@@ -23,11 +23,8 @@ export const RightDiv = styled.div`
   justify-content: center;
   align-content: center;
   flex-direction: column;
-  border-color: ${({ theme }) => theme.primary.plainBorder};
-  border-right-style: solid;
-  border-right-width: 1px;
   margin: 0 0.25rem;
-  padding-right: 1rem;
+  padding-right: 0.5rem;
   font-weight: bold;
 `;
 
