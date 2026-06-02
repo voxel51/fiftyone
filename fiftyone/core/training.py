@@ -5,6 +5,8 @@ Training runs framework.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import copy
+
 from fiftyone.core.runs import (
     BaseRun,
     BaseRunInfo,
@@ -155,10 +157,149 @@ class TrainingMethod(BaseRun):
 
 
 class TrainingResults(BaseRunResults):
-    """Live recorder + read handle for a training run.
+    """Live recorder + read handle for a training run."""
 
-    The recorder behavior (init/finish/evaluate/log_predictions/apply_model)
-    is added in a later task; this is the framework stub.
-    """
+    # --- read-only convenience properties (expose self.config.XXX) ---
+    @property
+    def status(self):
+        return self.config.status
 
-    pass
+    @property
+    def train_key(self):
+        return self.config.train_key
+
+    @property
+    def eval_key(self):
+        return self.config.eval_key
+
+    @property
+    def checkpoint_uri(self):
+        return self.config.checkpoint_uri
+
+    @checkpoint_uri.setter
+    def checkpoint_uri(self, value):
+        if self.config.status in ("completed", "failed"):
+            raise RuntimeError("cannot set checkpoint_uri after finish()")
+        self.config.checkpoint_uri = value
+        self.save_config()
+
+    @property
+    def project_url(self):
+        return self.config.project_url
+
+    @property
+    def auto_eval(self):
+        return self.config.auto_eval
+
+    @property
+    def train_config(self):
+        return copy.deepcopy(self.config.train_config)
+
+    # --- live views (RD7): delegate to the _dataset-backed config props ---
+    @property
+    def train_view(self):
+        return self.config.train_view
+
+    @property
+    def val_view(self):
+        return self.config.val_view
+
+    @property
+    def test_view(self):
+        return self.config.test_view
+
+    @property
+    def eval_results(self):
+        key = self.config.eval_key
+        return self.samples.load_evaluation_results(key) if key else None
+
+    @property
+    def eval_view(self):
+        key = self.config.eval_key
+        return self.samples.load_evaluation_view(key) if key else None
+
+    # --- internals ---
+    def _all_view_ids(self):
+        """Union of ALL provided view snapshots (train + val + test), dedup
+        preserving order. Train is eligible for evaluation."""
+        ids = list(self.config.train_view_ids or [])
+        ids += list(self.config.val_view_ids or [])
+        ids += list(self.config.test_view_ids or [])
+        return list(dict.fromkeys(ids))
+
+    def _data_driven_view(self):
+        """The union of all provided snapshots restricted to samples that
+        actually have predictions in pred_field."""
+        return self.samples.select(self._all_view_ids()).exists(
+            self.config.pred_field
+        )
+
+    def evaluate(self, samples=None, eval_key=None, **eval_kwargs):
+        """Run a single FO evaluation and link it back to this run.
+
+        ``samples`` given -> evaluate exactly that view (manual path).
+        ``samples=None`` -> data-driven: the union of all provided
+        snapshots restricted to populated predictions (train included iff
+        populated). ``eval_key`` defaults to ``train_key``. Evaluated
+        samples are recoverable via ``dataset.load_evaluation_view(eval_key)``.
+        """
+        import fiftyone.utils.training as fout
+
+        if self.config.gt_field is None or self.config.pred_field is None:
+            raise ValueError(
+                "gt_field and pred_field are required to evaluate a "
+                "training run"
+            )
+
+        view = samples if samples is not None else self._data_driven_view()
+        kind = fout.resolve_eval_kind(view, self.config.gt_field)
+        eval_key = eval_key or self.config.train_key
+        results = fout._EVAL_DISPATCH[kind](
+            view,
+            self.config.pred_field,
+            gt_field=self.config.gt_field,
+            eval_key=eval_key,
+            # back-pointer: a future eval-module refactor MUST preserve this
+            # train_key attribute on the produced EvaluationConfig.
+            train_key=self.config.train_key,
+            **eval_kwargs,
+        )
+        self.config.eval_key = eval_key
+        self.save_config()
+        return results
+
+    def finish(self, checkpoint_uri=None, eval_kwargs=None):
+        """Finalize: optionally set checkpoint, run data-driven eval if
+        auto_eval and not already evaluated and predictions exist, stamp
+        status=completed.
+
+        Each split's evaluate_* persists its results before we touch
+        status, so a completed eval survives. On eval failure, mark failed,
+        store the full (never-truncated) traceback, persist, and re-raise.
+        """
+        from datetime import datetime, timezone
+
+        if checkpoint_uri is not None:
+            self.config.checkpoint_uri = checkpoint_uri
+
+        results = None
+        if (
+            self.config.auto_eval
+            and self.config.eval_key is None
+            and self._data_driven_view().count() > 0
+        ):
+            try:
+                results = self.evaluate(samples=None, **(eval_kwargs or {}))
+            except Exception:
+                import traceback
+
+                self.config.status = "failed"
+                self.config.error = traceback.format_exc()
+                self.config.finished_at = datetime.now(timezone.utc)
+                self.save_config()
+                raise
+
+        self.config.status = "completed"
+        self.config.finished_at = datetime.now(timezone.utc)
+        self.save_config()
+        return results

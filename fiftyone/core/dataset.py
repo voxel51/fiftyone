@@ -5281,6 +5281,77 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if _reload:
             self.reload()
 
+    def init_training_run(
+        self,
+        train_key,
+        train_view,
+        val_view=None,
+        test_view=None,
+        gt_field=None,
+        pred_field=None,
+        auto_eval=None,
+        project_url=None,
+        train_config=None,
+        overwrite=False,
+    ):
+        """Registers a new training run on this dataset and returns a live
+        :class:`fiftyone.core.training.TrainingResults` recorder.
+        """
+        import copy
+
+        import fiftyone.core.training as fotr
+        import fiftyone.utils.training as fout
+
+        # RD1: NO slugging. The key is passed verbatim to register_run
+        # (below), which validates it exactly like every other FO run type:
+        # a non-identifier key raises ValueError. The user always reads back
+        # the exact key they provided.
+
+        train_view = fout.resolve_view(self, train_view)
+        val_view = fout.resolve_view(self, val_view)
+        test_view = fout.resolve_view(self, test_view)
+
+        has_eval_split = val_view is not None or test_view is not None
+        if has_eval_split and (gt_field is None or pred_field is None):
+            raise ValueError(
+                "gt_field and pred_field are required when val_view or "
+                "test_view is provided"
+            )
+
+        if auto_eval is None:
+            auto_eval = test_view is not None
+
+        config = fotr.TrainingMethodConfig(
+            train_key=train_key,
+            train_view_ids=fout.capture_view_ids(train_view),
+            val_view_ids=(
+                fout.capture_view_ids(val_view)
+                if val_view is not None
+                else None
+            ),
+            test_view_ids=(
+                fout.capture_view_ids(test_view)
+                if test_view is not None
+                else None
+            ),
+            gt_field=gt_field,
+            pred_field=pred_field,
+            auto_eval=auto_eval,
+            project_url=project_url,
+            train_config=copy.deepcopy(train_config),
+            status="in_progress",
+        )
+
+        # register_run is an INSTANCE method on the run; build the method
+        # then register. config.run_cls strips "Config" =>
+        # TrainingMethodConfig -> TrainingMethod. register_run validates
+        # train_key here (a bad key raises ValueError).
+        method = config.build()
+        method.register_run(self, train_key, overwrite=overwrite)
+
+        config._dataset = self  # back the live *_view properties
+        return fotr.TrainingResults(self, config, train_key)
+
     @property
     def has_saved_views(self):
         """Whether this dataset has any saved views."""

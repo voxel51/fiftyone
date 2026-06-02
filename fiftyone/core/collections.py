@@ -4849,6 +4849,12 @@ class SampleCollection(object):
         info.config._dataset = self
         return info
 
+    def load_training_run(self, training_key):
+        """Loads the :class:`fiftyone.core.training.TrainingResults` for the
+        given training key, reconstructed from its persisted config."""
+        info = self.get_training_info(training_key)
+        return fotr.TrainingResults(self, info.config, training_key)
+
     def delete_training_run(self, training_key):
         """Deletes the training run associated with the given training key from
         this collection.
