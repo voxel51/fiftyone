@@ -5,12 +5,16 @@ import {
   queryPerformance,
   similarityParameters,
 } from "@fiftyone/state";
-import { ArrowDownward, ArrowUpward } from "@mui/icons-material";
+import { Icon, IconName, Size } from "@voxel51/voodo";
 import React from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { ActionOption } from "../../Actions/Common";
 import { SORT_BY_INDEXED_FIELDS } from "../../../utils/links";
 import { RightDiv, SliderContainer } from "./Containers";
+
+// Same hover/press class used by the Spacing / Zoom reset affordances.
+const PRESS_CLASS =
+  "cursor-pointer flex hover:scale-[1.1] active:scale-[0.92] transition-transform duration-[150ms] ease-out";
 
 const Field = ({ value }: { className?: string; value: string }) => {
   return <>{value}</>;
@@ -78,9 +82,12 @@ export default function Sort() {
               descending: !current.descending,
             }))
           }
-          style={{ cursor: "pointer", display: "flex" }}
+          className={PRESS_CLASS}
         >
-          {value?.descending ? <ArrowDownward /> : <ArrowUpward />}
+          <Icon
+            name={value?.descending ? IconName.ArrowDown : IconName.ArrowUp}
+            size={Size.Xl}
+          />
         </div>
       )}
     </SliderContainer>

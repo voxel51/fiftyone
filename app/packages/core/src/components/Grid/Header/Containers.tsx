@@ -39,6 +39,10 @@ export const RightContainer = styled.div`
 export const SliderContainer = styled.div`
   display: flex;
   align-items: center;
-  width: 7.375rem;
+  /* Snug width — wide enough to manipulate, narrow enough that the
+     header doesn't dedicate disproportionate horizontal real estate to
+     two sliders. */
+  width: 5.5rem;
+  gap: 0.5rem;
   padding-right: 0.375rem;
 `;

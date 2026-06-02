@@ -1,8 +1,13 @@
 import { LoadingDots } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { isGroup as isGroupAtom } from "@fiftyone/state";
-import { Apps, ImageAspectRatio } from "@mui/icons-material";
-import { SingleValueSlider, Toggle } from "@voxel51/voodo";
+import {
+  Icon,
+  IconName,
+  SingleValueSlider,
+  Size,
+  Toggle,
+} from "@voxel51/voodo";
 import React, { Suspense, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import ResourceCount from "../../ResourceCount";
@@ -17,6 +22,15 @@ import {
 } from "./Containers";
 import GroupSlice from "./GroupSlice";
 import Sort from "./Sort";
+
+// Tactile feedback for the small icon affordances next to the
+// spacing/zoom sliders and on the feature toggles. Pure CSS — Tailwind
+// `hover:`/`active:` only fire on the element itself, so the classes
+// must be applied to the click target, not nested children.
+// Hover: scale up subtly to signal interactivity. Press: scale down for
+// the click moment.
+const PRESS_CLASS =
+  "cursor-pointer flex hover:scale-[1.1] active:scale-[0.92] transition-transform duration-[150ms] ease-out";
 
 const Spacing = () => {
   const [value, setValue] = useRecoilState(gridSpacing);
@@ -38,9 +52,9 @@ const Spacing = () => {
         title={"Reset spacing"}
         onClick={resetSpacing}
         onKeyDown={() => null}
-        style={{ cursor: "pointer", display: "flex" }}
+        className={PRESS_CLASS}
       >
-        <Apps />
+        <Icon name={IconName.Resize} size={Size.Xl} />
       </div>
     </SliderContainer>
   );
@@ -66,9 +80,9 @@ const Zoom = () => {
         title={"Reset zoom"}
         onClick={resetZoom}
         onKeyDown={() => null}
-        style={{ cursor: "pointer", display: "flex" }}
+        className={PRESS_CLASS}
       >
-        <ImageAspectRatio />
+        <Icon name={IconName.Zoom} size={Size.Xl} />
       </div>
     </SliderContainer>
   );
@@ -89,13 +103,13 @@ const ScrubberToggle = () => {
   const [enabled, setEnabled] = fos.useGridScrubber();
   if (!available) return null;
   return (
-    <RightDiv style={TOGGLE_ROW_STYLE}>
+    <RightDiv style={TOGGLE_ROW_STYLE} title="Toggle grid scrubber">
       <Toggle
         checked={enabled}
         onChange={setEnabled}
         aria-label="Toggle grid scrubber"
       />
-      <span>Scrubber</span>
+      <Icon name={IconName.Scrubber} size={Size.Xl} />
     </RightDiv>
   );
 };
@@ -105,13 +119,13 @@ const SwimlanesToggle = () => {
   const [enabled, setEnabled] = fos.useGridSwimlanes();
   if (!available) return null;
   return (
-    <RightDiv style={TOGGLE_ROW_STYLE}>
+    <RightDiv style={TOGGLE_ROW_STYLE} title="Toggle grid swimlanes">
       <Toggle
         checked={enabled}
         onChange={setEnabled}
         aria-label="Toggle grid swimlanes"
       />
-      <span>Swimlanes</span>
+      <Icon name={IconName.Swimlanes} size={Size.Xl} />
     </RightDiv>
   );
 };
