@@ -56,7 +56,7 @@ setup(
         "async_lru>=2,<3",
         "beautifulsoup4>=2,<5",  # BS4 will only have 4.x versions
         "boto3>=1,<2",
-        "cachetools>=5,<7",
+        "cachetools>=5,<8",
         "dacite>=1.6.0,<2",
         "dill>=0.1,<0.5",
         "exceptiongroup>=1,<2",
@@ -67,10 +67,10 @@ setup(
         "jsonpatch>=1,<2",
         "mongoengine~=0.29.1",  # Keep small bounds on mongo-related libraries
         "motor~=3.6.0",  # Keep small bounds on mongo-related libraries
-        "Pillow>=6.2,!=11.2.*",  # Pillow 11.2.0 introduced CVE 2025-48379 that is fixed in 11.3.0
+        "Pillow>=12.2",
         "plotly>=6.1.1,<7",
         "pprintpp>=0.1,<0.5",
-        "protobuf==6.33.6",
+        "protobuf==7.35.0",
         "psutil>=5,<8",
         "pydash>=6,<9",
         "pymongo~=4.9.2",  # Keep small bounds on mongo-related libraries
@@ -80,9 +80,9 @@ setup(
         "retrying>=1,<2",
         "sseclient-py>=1.7.2,<2",
         "sse-starlette>=0.10.3,<4",
-        "starlette>=0.49.1,<0.53",
-        "strawberry-graphql>=0.262.4,<0.292.0",
-        "tabulate>=0.7,<0.10",
+        "starlette>=0.49.1,<1.1",
+        "strawberry-graphql>=0.312.3,<0.317.0",
+        "tabulate>=0.7,<0.11",
         "tqdm>=2,<5",
         "xmltodict>=1,<2",
         "universal-analytics-python3>=1.0.1,<2",

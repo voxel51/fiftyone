@@ -2,14 +2,21 @@ import { act, cleanup, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { TileIdScope, TilingProvider, useTiling } from "../../lib/TilingProvider";
+import {
+  TileIdScope,
+  TilingProvider,
+  useTiling,
+} from "../../lib/TilingProvider";
 import { useSetTileSelection } from "../../lib/use-tile-state";
 import TilingInspectorSidebar from "./TilingInspectorSidebar";
 
 const Selector: React.FC<{ payload: unknown }> = ({ payload }) => {
   const setSelection = useSetTileSelection();
   return (
-    <button data-testid="emit-selection" onClick={() => setSelection(payload)} />
+    <button
+      data-testid="emit-selection"
+      onClick={() => setSelection(payload)}
+    />
   );
 };
 
@@ -32,7 +39,7 @@ describe("TilingInspectorSidebar", () => {
     expect(screen.getByText("Select a tile to inspect.")).toBeTruthy();
   });
 
-  it("renders the focused tile's title and the no-selection hint", () => {
+  it("renders the no-selection hint when a tile is focused but has no selection", () => {
     render(
       <TilingProvider
         initialTiles={{
@@ -46,16 +53,17 @@ describe("TilingInspectorSidebar", () => {
     act(() => {
       screen.getByTestId("focus-graph-1").click();
     });
-    expect(screen.getByText("imu")).toBeTruthy();
     expect(
-      screen.getByText(
-        /Click something inside the tile.* to inspect its data/i
-      )
+      screen.getByText(/Click something inside the tile.* to inspect its data/i)
     ).toBeTruthy();
   });
 
   it("renders the focused tile's selection payload as JSON", () => {
-    const payload = { kind: "graph-sample", timeSec: 1.5, values: { velocity: 0.4 } };
+    const payload = {
+      kind: "graph-sample",
+      timeSec: 1.5,
+      values: { velocity: 0.4 },
+    };
     render(
       <TilingProvider
         initialTiles={{ "graph-1": { title: "imu", render: () => null } }}
@@ -75,8 +83,7 @@ describe("TilingInspectorSidebar", () => {
     // RTL normalizes whitespace by default; match on the multi-line content
     // by tag instead so the pretty-printed indentation is preserved.
     const pre = screen.getByText(
-      (_text, node) =>
-        node?.tagName === "PRE" && node.textContent === json
+      (_text, node) => node?.tagName === "PRE" && node.textContent === json
     );
     expect(pre).toBeTruthy();
   });

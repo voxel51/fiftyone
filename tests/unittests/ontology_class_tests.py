@@ -20,7 +20,9 @@ from fiftyone.core.annotation.attributes import (
     WhenOr,
     collect_leaf_conditions,
 )
-from fiftyone.core.ontology import AnnotationOntology
+from fiftyone.core.annotation.nodes import Node
+from fiftyone.core.ontology import AnnotationOntology, Taxonomy, load_ontology
+from fiftyone.core.ontology_validation import validate_taxonomy
 
 
 class WhenTests(unittest.TestCase):
@@ -700,10 +702,14 @@ class AttributeSpecTests(unittest.TestCase):
 
 class AnnotationOntologyTests(unittest.TestCase):
     def test_create(self):
+        tax = Taxonomy(
+            name="vehicle classes",
+            root=Node(name="root", values=[Node(name="car")]),
+        )
         ao = AnnotationOntology(
             name="vehicle_damage_ontology",
             description="Vehicle damage annotation",
-            taxonomies=["vehicle_classes"],
+            taxonomy=tax,
             attributes=[
                 AttributeSpec(
                     name="damage_present",
@@ -721,14 +727,19 @@ class AnnotationOntologyTests(unittest.TestCase):
         )
         self.assertEqual(ao.name, "vehicle_damage_ontology")
         self.assertEqual(ao.description, "Vehicle damage annotation")
-        self.assertEqual(ao.taxonomies, ["vehicle_classes"])
+        # Stored as the taxonomy's slug.
+        self.assertEqual(ao.taxonomy, "vehicle-classes")
         self.assertEqual(len(ao.attributes), 2)
         self.assertEqual(ao._TYPE, "annotation_ontology")
 
     def test_create_empty(self):
         ao = AnnotationOntology(name="empty")
-        self.assertEqual(ao.taxonomies, [])
+        self.assertIsNone(ao.taxonomy)
         self.assertEqual(ao.attributes, [])
+
+    def test_taxonomy_string_rejected(self):
+        with self.assertRaises(TypeError):
+            AnnotationOntology(name="ao", taxonomy="vehicle_classes")
 
     def test_none_name_raises(self):
         with self.assertRaises(ValueError):
@@ -747,10 +758,11 @@ class AnnotationOntologyTests(unittest.TestCase):
         self.assertEqual(ao.name, "padded")
 
     def test_to_dict(self):
+        tax = Taxonomy(name="tax1", root=Node(name="root"))
         ao = AnnotationOntology(
             name="test_ao",
             description="A test",
-            taxonomies=["tax1"],
+            taxonomy=tax,
             attributes=[
                 AttributeSpec(
                     name="attr1",
@@ -763,7 +775,7 @@ class AnnotationOntologyTests(unittest.TestCase):
         self.assertEqual(d["name"], "test_ao")
         self.assertEqual(d["type"], "annotation_ontology")
         self.assertEqual(d["description"], "A test")
-        self.assertEqual(d["root"]["taxonomies"], ["tax1"])
+        self.assertEqual(d["root"]["taxonomy"], "tax1")
         self.assertEqual(len(d["root"]["attributes"]), 1)
         self.assertEqual(d["root"]["attributes"][0]["name"], "attr1")
 
@@ -773,7 +785,7 @@ class AnnotationOntologyTests(unittest.TestCase):
             "type": "annotation_ontology",
             "description": "A test",
             "root": {
-                "taxonomies": ["tax1", "tax2"],
+                "taxonomy": "tax1",
                 "attributes": [
                     {
                         "name": "attr1",
@@ -797,7 +809,7 @@ class AnnotationOntologyTests(unittest.TestCase):
         ao = AnnotationOntology.from_dict(d)
         self.assertEqual(ao.name, "test_ao")
         self.assertEqual(ao.description, "A test")
-        self.assertEqual(ao.taxonomies, ["tax1", "tax2"])
+        self.assertEqual(ao.taxonomy, "tax1")
         self.assertEqual(len(ao.attributes), 2)
         self.assertEqual(ao.attributes[1].when.field, "attr1")
 
@@ -805,21 +817,25 @@ class AnnotationOntologyTests(unittest.TestCase):
         ao = AnnotationOntology.from_dict(
             {"name": "test_ao", "type": "annotation_ontology", "root": None}
         )
-        self.assertEqual(ao.taxonomies, [])
+        self.assertIsNone(ao.taxonomy)
         self.assertEqual(ao.attributes, [])
 
     def test_from_dict_with_missing_root(self):
         ao = AnnotationOntology.from_dict(
             {"name": "test_ao", "type": "annotation_ontology"}
         )
-        self.assertEqual(ao.taxonomies, [])
+        self.assertIsNone(ao.taxonomy)
         self.assertEqual(ao.attributes, [])
 
     def test_roundtrip(self):
+        tax = Taxonomy(
+            name="vehicle_classes",
+            root=Node(name="root", values=[Node(name="car")]),
+        )
         original = AnnotationOntology(
             name="vehicle_damage_ontology",
             description="Vehicle damage annotation",
-            taxonomies=["vehicle_classes"],
+            taxonomy=tax,
             attributes=[
                 AttributeSpec(
                     name="damage_present",
@@ -844,7 +860,7 @@ class AnnotationOntologyTests(unittest.TestCase):
         restored = AnnotationOntology.from_dict(original.to_dict())
         self.assertEqual(restored.name, original.name)
         self.assertEqual(restored.description, original.description)
-        self.assertEqual(restored.taxonomies, original.taxonomies)
+        self.assertEqual(restored.taxonomy, original.taxonomy)
         self.assertEqual(len(restored.attributes), 3)
         self.assertEqual(restored.attributes[2].when.field, "damage_location")
 
@@ -874,7 +890,6 @@ class OntologySDKTests(unittest.TestCase):
         return AnnotationOntology(
             name=name,
             description="Test annotation ontology",
-            taxonomies=["vehicle_classes"],
             attributes=[
                 AttributeSpec(
                     name="damage_present",
@@ -903,7 +918,7 @@ class OntologySDKTests(unittest.TestCase):
         loaded = load_ontology("test_ontology")
         self.assertEqual(loaded.name, "test_ontology")
         self.assertEqual(loaded.description, "Test annotation ontology")
-        self.assertEqual(loaded.taxonomies, ["vehicle_classes"])
+        self.assertIsNone(loaded.taxonomy)
         self.assertEqual(len(loaded.attributes), 2)
         self.assertEqual(loaded.attributes[0].name, "damage_present")
         self.assertEqual(loaded.attributes[1].when.field, "damage_present")
@@ -993,6 +1008,330 @@ class OntologySDKTests(unittest.TestCase):
 
         original = load_ontology("original")
         self.assertEqual(original.name, "original")
+
+    def test_save_overwrite_appends_new_version(self):
+        from fiftyone.core.ontology import load_ontology
+
+        self._make_ontology("versioned").save()
+
+        fresh = AnnotationOntology(
+            name="versioned",
+            description="rev 2",
+            attributes=[
+                AttributeSpec(name="x", type="bool", component="checkbox"),
+            ],
+        )
+        fresh.save(overwrite=True)
+
+        self.assertEqual(fresh.version, 2)
+
+        loaded = load_ontology("versioned")
+        self.assertEqual(loaded.version, 2)
+        self.assertEqual(loaded.description, "rev 2")
+        self.assertEqual(len(loaded.attributes), 1)
+        self.assertEqual(loaded.attributes[0].name, "x")
+
+    def test_save_without_overwrite_rejects_collision(self):
+        self._make_ontology("collide").save()
+
+        with self.assertRaises(ValueError):
+            self._make_ontology("collide").save()
+
+    def test_save_overwrite_no_existing_doc_creates_version_1(self):
+        fresh = self._make_ontology("brand_new")
+        fresh.save(overwrite=True)
+
+        self.assertEqual(fresh.version, 1)
+
+    def test_save_ontology_function_mirrors_instance_save(self):
+        from fiftyone.core.ontology import load_ontology, save_ontology
+
+        ao = self._make_ontology("via_module_fn")
+        save_ontology(ao)
+
+        self.assertEqual(ao.version, 1)
+        self.assertEqual(load_ontology("via_module_fn").name, "via_module_fn")
+
+    def test_save_ontology_function_forwards_overwrite(self):
+        from fiftyone.core.ontology import load_ontology, save_ontology
+
+        save_ontology(self._make_ontology("forwarded"))
+
+        fresh = AnnotationOntology(
+            name="forwarded",
+            description="rev 2",
+            attributes=[
+                AttributeSpec(name="x", type="bool", component="checkbox"),
+            ],
+        )
+        save_ontology(fresh, overwrite=True)
+
+        self.assertEqual(fresh.version, 2)
+        self.assertEqual(load_ontology("forwarded").description, "rev 2")
+
+
+class NodeTests(unittest.TestCase):
+    def test_create_leaf(self):
+        n = Node(name="car")
+        self.assertEqual(n.name, "car")
+        self.assertIsNone(n.description)
+        self.assertTrue(n.can_select)
+        self.assertFalse(n.deprecated)
+        self.assertIsNone(n.values)
+
+    def test_create_with_children(self):
+        n = Node(
+            name="vehicles",
+            description="any vehicle",
+            can_select=False,
+            values=[Node(name="car"), Node(name="truck")],
+        )
+        self.assertEqual(len(n.values), 2)
+        self.assertFalse(n.can_select)
+
+    def test_empty_name_raises(self):
+        with self.assertRaises(ValueError):
+            Node(name="")
+
+    def test_round_trip_leaf(self):
+        n = Node(name="car")
+        round_tripped = Node.from_dict(n.to_dict())
+        self.assertEqual(round_tripped.to_dict(), n.to_dict())
+        self.assertNotIn("values", n.to_dict())
+
+    def test_round_trip_nested(self):
+        n = Node(
+            name="vehicles",
+            description="anything that moves",
+            can_select=False,
+            values=[
+                Node(name="car"),
+                Node(
+                    name="truck",
+                    values=[
+                        Node(name="pickup"),
+                        Node(name="semi", deprecated=True),
+                    ],
+                ),
+            ],
+        )
+        d = n.to_dict()
+        round_tripped = Node.from_dict(d)
+        self.assertEqual(round_tripped.to_dict(), d)
+
+    def test_default_flags_omitted_from_dict(self):
+        d = Node(name="car").to_dict()
+        self.assertNotIn("can_select", d)
+        self.assertNotIn("deprecated", d)
+        self.assertNotIn("description", d)
+
+
+class TaxonomyTests(unittest.TestCase):
+    def _tree(self):
+        return Node(
+            name="vehicles",
+            can_select=False,
+            values=[Node(name="car"), Node(name="truck")],
+        )
+
+    def test_create(self):
+        t = Taxonomy(name="vehicle_classes", root=self._tree())
+        self.assertEqual(t.name, "vehicle_classes")
+        self.assertEqual(t.root.name, "vehicles")
+        self.assertTrue(t.is_taxonomy)
+        self.assertFalse(t.is_annotation_ontology)
+
+    def test_root_must_be_node(self):
+        with self.assertRaises(ValueError):
+            Taxonomy(name="x", root={"name": "vehicles"})
+
+    def test_round_trip(self):
+        t = Taxonomy(
+            name="vehicle_classes",
+            description="cars and trucks",
+            root=self._tree(),
+        )
+        d = t.to_dict()
+        round_tripped = Taxonomy.from_dict(d)
+        self.assertEqual(round_tripped.to_dict(), d)
+
+
+class TaxonomySDKTests(unittest.TestCase):
+    """Integration tests for Taxonomy CRUD against MongoDB."""
+
+    def setUp(self):
+        import fiftyone.core.odm as foo
+
+        db = foo.get_db_conn()
+        db.drop_collection("ontologies")
+
+        from fiftyone.core.odm.ontology import OntologyDocument
+
+        OntologyDocument.ensure_indexes()
+
+    def tearDown(self):
+        import fiftyone.core.odm as foo
+
+        db = foo.get_db_conn()
+        db.drop_collection("ontologies")
+
+    def _make_taxonomy(self, name: str = "test_taxonomy") -> Taxonomy:
+        return Taxonomy(
+            name=name,
+            description="Test taxonomy",
+            root=Node(
+                name="vehicles",
+                can_select=False,
+                values=[
+                    Node(name="car"),
+                    Node(name="truck", values=[Node(name="pickup")]),
+                ],
+            ),
+        )
+
+    def test_save_and_load(self):
+        t = self._make_taxonomy()
+        t.save()
+
+        self.assertIsNotNone(t.version)
+        self.assertIsNotNone(t.created_at)
+
+        loaded = load_ontology("test_taxonomy")
+        self.assertIsInstance(loaded, Taxonomy)
+        self.assertEqual(loaded.name, "test_taxonomy")
+        self.assertEqual(loaded.root.name, "vehicles")
+        self.assertEqual(loaded.root.values[1].values[0].name, "pickup")
+
+    def test_save_and_reload(self):
+        t = self._make_taxonomy()
+        t.save()
+
+        t.description = "updated"
+        t.reload()
+        self.assertEqual(t.description, "Test taxonomy")
+
+    def test_delete(self):
+        from fiftyone.core.ontology import ontology_exists
+
+        t = self._make_taxonomy()
+        t.save()
+        t.delete()
+
+        self.assertIsNone(t._doc)
+        self.assertFalse(ontology_exists("test_taxonomy"))
+
+    def test_clone(self):
+        from fiftyone.core.ontology import ontology_exists
+
+        t = self._make_taxonomy("original")
+        t.save()
+
+        cloned = t.clone("cloned")
+        self.assertIsInstance(cloned, Taxonomy)
+        self.assertTrue(ontology_exists("original"))
+        self.assertTrue(ontology_exists("cloned"))
+        self.assertEqual(cloned.root.name, "vehicles")
+
+
+class ValidateTaxonomyTests(unittest.TestCase):
+    def test_valid_passes(self):
+        t = Taxonomy(
+            name="vehicles",
+            root=Node(
+                name="root",
+                values=[Node(name="car"), Node(name="truck")],
+            ),
+        )
+        validate_taxonomy(t)
+
+    def test_single_node_passes(self):
+        t = Taxonomy(name="solo", root=Node(name="only_node"))
+        validate_taxonomy(t)
+
+    def test_deeply_nested_passes(self):
+        t = Taxonomy(
+            name="deep",
+            root=Node(
+                name="root",
+                values=[
+                    Node(
+                        name="vehicles",
+                        values=[
+                            Node(
+                                name="cars",
+                                values=[
+                                    Node(name="sedan"),
+                                    Node(name="coupe"),
+                                ],
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+        )
+        validate_taxonomy(t)
+
+    def test_duplicate_sibling_names_fail(self):
+        t = Taxonomy(
+            name="dup",
+            root=Node(
+                name="root",
+                values=[Node(name="car"), Node(name="car")],
+            ),
+        )
+        with self.assertRaises(ValueError) as ctx:
+            validate_taxonomy(t)
+        self.assertIn("duplicate node name(s)", str(ctx.exception))
+        self.assertIn("car", str(ctx.exception))
+
+    def test_duplicate_across_subtrees_fail(self):
+        t = Taxonomy(
+            name="dup_across",
+            root=Node(
+                name="root",
+                values=[
+                    Node(name="vehicles", values=[Node(name="x")]),
+                    Node(name="animals", values=[Node(name="x")]),
+                ],
+            ),
+        )
+        with self.assertRaises(ValueError) as ctx:
+            validate_taxonomy(t)
+        self.assertIn("x", str(ctx.exception))
+
+    def test_root_name_collides_with_descendant_fails(self):
+        t = Taxonomy(
+            name="root_collides",
+            root=Node(
+                name="root",
+                values=[Node(name="root")],
+            ),
+        )
+        with self.assertRaises(ValueError) as ctx:
+            validate_taxonomy(t)
+        self.assertIn("root", str(ctx.exception))
+
+    def test_cycle_detected(self):
+        a = Node(name="a")
+        b = Node(name="b", values=[a])
+        a.values = [b]
+        t = Taxonomy(name="cyclic", root=a)
+        with self.assertRaises(ValueError) as ctx:
+            validate_taxonomy(t)
+        self.assertIn("cycle detected", str(ctx.exception))
+
+    def test_save_invokes_validation(self):
+        # Auto-validate hook in Ontology.save() — invalid taxonomies
+        # raise before any DB interaction.
+        t = Taxonomy(
+            name="bad",
+            root=Node(
+                name="root",
+                values=[Node(name="dup"), Node(name="dup")],
+            ),
+        )
+        with self.assertRaises(ValueError):
+            t.save()
 
 
 if __name__ == "__main__":

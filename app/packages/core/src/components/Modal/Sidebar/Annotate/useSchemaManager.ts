@@ -293,7 +293,7 @@ type OperatorExecuteOptions = {
  * This type is an incomplete definition and exists for type-safety of
  * logic in this file.
  */
-type Operator<T, R> = {
+export type Operator<T, R> = {
   execute: (
     request: T,
     options: { callback?: OperatorCallback<R> } & OperatorExecuteOptions
@@ -311,7 +311,7 @@ type Operator<T, R> = {
  * @param request Request body
  * @param options Extra options forwarded to the operator executor
  */
-const operatorAsPromise = <T, R>(
+export const operatorAsPromise = <T, R>(
   operator: Operator<T, R>,
   request: T,
   options?: OperatorExecuteOptions

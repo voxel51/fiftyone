@@ -155,6 +155,43 @@ class HydrateLabelSchemasTests(unittest.TestCase):
         self.assertNotIn("applied_ontology", result)
         self.assertEqual(schema["applied_ontology"], "some_taxonomy")
 
+    @drop_datasets
+    @drop_ontologies
+    def test_applied_taxonomy_surfaces_when_ao_bundles_taxonomy(self):
+        from fiftyone.core.annotation.nodes import Node
+        from fiftyone.core.ontology import Taxonomy
+
+        tax = Taxonomy(
+            name="vehicle_classes",
+            root=Node(name="root", values=[Node(name="car")]),
+        )
+        tax.save()
+        AnnotationOntology(name="my_ontology", taxonomy=tax).save()
+
+        schema = {
+            "type": "detections",
+            "applied_ontology": "my_ontology",
+            "attributes": [],
+        }
+        result = hydrate_applied_ontology(schema)
+        # Surfaced as the taxonomy's slug.
+        self.assertEqual(result["applied_taxonomy"], "vehicle-classes")
+        # Not persisted on the input.
+        self.assertNotIn("applied_taxonomy", schema)
+
+    @drop_datasets
+    @drop_ontologies
+    def test_applied_taxonomy_omitted_when_ao_has_no_taxonomy(self):
+        AnnotationOntology(name="my_ontology").save()
+
+        schema = {
+            "type": "detections",
+            "applied_ontology": "my_ontology",
+            "attributes": [],
+        }
+        result = hydrate_applied_ontology(schema)
+        self.assertNotIn("applied_taxonomy", result)
+
 
 class DehydrateLabelSchemasTests(unittest.TestCase):
     @drop_datasets
@@ -243,6 +280,22 @@ class DehydrateLabelSchemasTests(unittest.TestCase):
         }
         result = dehydrate_applied_ontology(schema)
         self.assertEqual(result, schema)
+
+    @drop_datasets
+    @drop_ontologies
+    def test_applied_taxonomy_stripped_on_dehydrate(self):
+        AnnotationOntology(name="my_ontology").save()
+
+        schema = {
+            "type": "detections",
+            "applied_ontology": "my_ontology",
+            "applied_taxonomy": "vehicle_classes",
+            "attributes": [
+                {"name": "local", "type": "str", "component": "text"},
+            ],
+        }
+        result = dehydrate_applied_ontology(schema)
+        self.assertNotIn("applied_taxonomy", result)
 
     @drop_datasets
     @drop_ontologies

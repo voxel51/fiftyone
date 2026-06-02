@@ -58,7 +58,8 @@
         "vite": "^7.3.2",
         "vite-plugin-relay": "^1.0.7",
         "vite-plugin-rewrite-all": "^1.0.2",
-        "vite-plugin-svgr": "^4.2.0"
+        "vite-plugin-svgr": "^4.2.0",
+        "vite-plugin-wasm": "^3.6.0"
     },
     "peerDependencies": {
         "@mui/icons-material": "*",
