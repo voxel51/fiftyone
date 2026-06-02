@@ -16,17 +16,22 @@ export type StatusContent = ReactElement | null;
 const initialContent: StatusContent = null;
 const statusContentAtom: PrimitiveAtom<StatusContent> = atom(initialContent);
 
+// Overlay anchored to the top of the sample pane. `position: absolute` keeps
+// it out of the flex flow so it never shrinks the sample canvas (which would
+// change canvas dimensions and break e2e screenshots). `pointer-events: none`
+// lets clicks pass through to the canvas during annotation.
 const Container = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
   display: flex;
-  align-items: center;
-  flex: 0 0 auto;
-  width: 100%;
-  min-width: 0;
-  padding: 2px 8px;
+  align-items: flex-start;
   user-select: none;
   white-space: nowrap;
   overflow-x: auto;
   overflow-y: hidden;
+  pointer-events: none;
   z-index: 1502;
 `;
 
