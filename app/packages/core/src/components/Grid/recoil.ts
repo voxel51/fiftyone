@@ -264,28 +264,23 @@ export const pageParameters = selector({
 });
 
 /**
- * Per-slice variant of {@link pageParameters} for the swimlanes view.
- * Each lane fetches a single slice's samples, so the slice in
- * `filter.group` is taken from the lane's identity (the family key)
- * rather than the global `groupSlice` atom. All other parameters
- * (view, filters, sort, cursor, extended stages) follow the global
- * grid state — every lane shares the same view-level state, just
- * scoped to its own slice.
+ * Per-group "siblings" pager used by the swimlane row next to each
+ * grid sample. Returns the other slices of the same group; the cover
+ * (default-slice sample from the main grid query) renders separately.
  *
- * Note that the scrubber's `gridScrubCursor` and `cursorPagination`
- * are intentionally NOT included here. Cursor-mode pagination is
- * per-collection; combining it with per-slice filtering would
- * require the server to seek inside each lane independently, which
- * the current `paginate_samples` doesn't support and isn't part of
- * the swimlanes V1.
+ * The lane is keyed by `groupId` so each row in the swimlane view has
+ * its own pager. The view itself is left untouched — same `view`,
+ * `filters`, `extendedStages` as the main grid — but `filter.group`
+ * is set to match this one group's id across all dataset slices, so
+ * the server returns the group's per-slice samples.
  */
-export const swimlanePageParameters = selectorFamily<
+export const groupSiblingsPageParameters = selectorFamily<
   (page: number, pageSize: number) => Record<string, unknown>,
   string
 >({
-  key: "swimlanePageParameters",
+  key: "groupSiblingsPageParameters",
   get:
-    (slice) =>
+    (groupId) =>
     ({ get }) => {
       const dataset = get(fos.datasetName);
       if (!dataset) throw new Error("dataset is not defined");
@@ -295,27 +290,20 @@ export const swimlanePageParameters = selectorFamily<
         ? get(fos.extendedStagesNoSort)
         : get(fos.extendedStages);
 
-      const sort = get(fos.gridSortBy);
-      const extra =
-        queryPerformance &&
-        !extendedStages["fiftyone.core.stages.SortBySimilarity"]
-          ? {
-              sortBy: sort?.field,
-              desc: sort?.descending,
-              hint: get(gridIndex),
-            }
-          : {};
-
       const params = {
         dataset,
         view: get(fos.view),
         filters: get(fos.filters),
         filter: {
-          group: { slice, slices: [slice] },
+          // Selecting by group id flattens the collection to a
+          // single group's per-slice samples (no slice constraint).
+          // The row's renderer is responsible for hiding the
+          // default-slice entry so it doesn't visually duplicate
+          // the cover.
+          group: { id: groupId, slices: null, slice: null },
         },
         extendedStages,
         maxQueryTime: queryPerformance ? get(fos.config).maxQueryTime : null,
-        ...extra,
       };
 
       return (page: number, pageSize: number) => ({

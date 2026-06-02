@@ -2,10 +2,8 @@ import { LoadingDots } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { isGroup as isGroupAtom } from "@fiftyone/state";
 import {
-  Divider,
   Icon,
   IconName,
-  Orientation,
   SingleValueSlider,
   Size,
   Toggle,
@@ -73,7 +71,7 @@ const Spacing = () => {
           in between and doesn't propagate the grow. Without this the
           slider has no width to render into and renders squished. */}
       <Tooltip
-        content="Grid spacing"
+        content="Spacing"
         className={TOOLTIP_CLASS}
         portal
         style={{ flexGrow: 1, minWidth: 0 }}
@@ -111,7 +109,7 @@ const Zoom = () => {
   return (
     <SliderContainer>
       <Tooltip
-        content="Grid zoom"
+        content="Zoom"
         className={TOOLTIP_CLASS}
         portal
         style={{ flexGrow: 1, minWidth: 0 }}
@@ -150,17 +148,9 @@ const ScrubberToggle = () => {
   const [enabled, setEnabled] = fos.useGridScrubber();
   if (!available) return null;
   return (
-    <Tooltip
-      content={enabled ? "Hide scrubber" : "Show scrubber"}
-      className={TOOLTIP_CLASS}
-      portal
-    >
+    <Tooltip content="Scrubber" className={TOOLTIP_CLASS} portal>
       <RightDiv style={TOGGLE_ROW_STYLE}>
-        <Toggle
-          checked={enabled}
-          onChange={setEnabled}
-          aria-label="Toggle grid scrubber"
-        />
+        <Toggle checked={enabled} onChange={setEnabled} aria-label="Scrubber" />
         <Icon name={IconName.Scrubber} size={Size.Xl} />
       </RightDiv>
     </Tooltip>
@@ -172,16 +162,12 @@ const SwimlanesToggle = () => {
   const [enabled, setEnabled] = fos.useGridSwimlanes();
   if (!available) return null;
   return (
-    <Tooltip
-      content={enabled ? "Hide swimlanes" : "Show swimlanes"}
-      className={TOOLTIP_CLASS}
-      portal
-    >
+    <Tooltip content="Swimlanes" className={TOOLTIP_CLASS} portal>
       <RightDiv style={TOGGLE_ROW_STYLE}>
         <Toggle
           checked={enabled}
           onChange={setEnabled}
-          aria-label="Toggle grid swimlanes"
+          aria-label="Swimlanes"
         />
         <Icon name={IconName.Swimlanes} size={Size.Xl} />
       </RightDiv>
@@ -215,8 +201,6 @@ const Header = () => {
             <GroupSlice />
           </RightDiv>
         )}
-
-        <Divider orientation={Orientation.Column} />
         <Sort />
         <Spacing />
         <Zoom />

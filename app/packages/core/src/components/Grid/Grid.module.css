@@ -95,49 +95,110 @@
   width: 100%;
 }
 
-/* Swimlanes view — stacked horizontal Spotlight lanes, one per group
- * slice. The container scrolls vertically when lanes overflow; each
- * lane scrolls horizontally on its own (Spotlight `scrollbar: true`). */
-.swimlanes {
+/* Swimlanes row layout — when swimlanes mode is on, each Spotlight
+ * row becomes a horizontal strip of [cover | divider | siblings]. The
+ * cover (default-slice sample) loads via the main grid query and
+ * paints first; the siblings strip fills in once the per-group
+ * sub-Spotlight resolves its first page. */
+.swimlaneRow {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  /* Leave room for the header gradient and the bottom edge. */
-  padding: 48px 0 0.5rem 0;
-  height: 100%;
+  flex-direction: row;
+  align-items: stretch;
   width: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
-  box-sizing: border-box;
+  height: 100%;
+  overflow: hidden;
 }
 
-.swimlane {
-  display: flex;
-  flex-direction: column;
-  /* Each lane is a fixed-height strip; viewport vertical scroll moves
-   * between lanes. Tuned so a default-sized sample image plus the lane
-   * label fits cleanly. */
-  height: 200px;
-  flex-shrink: 0;
+.swimlaneCover {
+  /* Fixed cross-axis ratio — width equal to the row height. The
+   * default-slice sample renders into this box at native aspect. */
+  flex: 0 0 auto;
+  aspect-ratio: 1 / 1;
   position: relative;
 }
 
-.swimlaneLabel {
-  flex-shrink: 0;
-  font-size: 0.85rem;
-  font-weight: 600;
-  padding: 0.25rem 0.75rem;
-  color: var(--fo-palette-text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.swimlaneSeparator {
+  flex: 0 0 auto;
+  /* Vertical voodo Divider is rendered inside; we just give it a
+   * little horizontal breathing room. */
+  padding: 0 0.5rem;
 }
 
-.swimlaneTrack {
+.swimlaneSiblings {
+  /* Eats the remaining horizontal real estate; the inner horizontal
+   * Spotlight attaches into it. */
   flex: 1 1 auto;
   position: relative;
-  width: 100%;
-  min-height: 0;
+  min-width: 0;
+}
+
+/* Bouncing-pixels loader — horizontal analog of `.fallingPixels`.
+ * Three parallax layers (back/mid/front) drift left → right at
+ * different speeds: small dim squares back, medium muted in the
+ * middle, large colorful chips up front. Sits over
+ * `.swimlaneSiblings` until the inner Spotlight finishes its first
+ * fill. */
+@keyframes bouncingBack {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 20000px 0;
+  }
+}
+
+@keyframes bouncingMid {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 20000px 0;
+  }
+}
+
+@keyframes bouncingFront {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 20000px 0;
+  }
+}
+
+.bouncingPixels {
+  position: absolute;
+  inset: 0;
+  background-color: var(--fo-palette-background-level2);
+  background-repeat: repeat-x;
+  background-size: auto 100%;
+  /* Back layer — small dim squares, slowest drift. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1267 200'%3E%3Crect fill='%234a4b4d' opacity='0.25' x='95' y='45' width='16' height='16'/%3E%3Crect fill='%234a4b4d' opacity='0.22' x='340' y='90' width='16' height='16'/%3E%3Crect fill='%234a4b4d' opacity='0.28' x='590' y='45' width='16' height='16'/%3E%3Crect fill='%234a4b4d' opacity='0.20' x='845' y='135' width='16' height='16'/%3E%3Crect fill='%234a4b4d' opacity='0.24' x='1095' y='90' width='16' height='16'/%3E%3Crect fill='%234a4b4d' opacity='0.26' x='195' y='160' width='16' height='16'/%3E%3Crect fill='%234a4b4d' opacity='0.21' x='745' y='180' width='16' height='16'/%3E%3Crect fill='%234a4b4d' opacity='0.23' x='995' y='20' width='16' height='16'/%3E%3Crect fill='%234a4b4d' opacity='0.27' x='495' y='110' width='16' height='16'/%3E%3Crect fill='%234a4b4d' opacity='0.19' x='1195' y='150' width='16' height='16'/%3E%3C/svg%3E");
+  animation: bouncingBack 120s linear infinite;
+}
+
+.bouncingPixels::before,
+.bouncingPixels::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-repeat: repeat-x;
+  background-size: auto 100%;
+}
+
+/* Mid layer — medium lighter pixels, moderate speed. */
+.bouncingPixels::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1267 200'%3E%3Crect fill='%23a6a7a9' opacity='0.2' x='1203' y='18' width='36' height='36'/%3E%3Crect fill='%236c757d' opacity='0.24' x='27' y='100' width='36' height='36'/%3E%3Crect fill='%236c757d' opacity='0.34' x='73' y='35' width='36' height='36'/%3E%3Crect fill='%23a6a7a9' opacity='0.1' x='189' y='150' width='36' height='36'/%3E%3Crect fill='%23a6a7a9' opacity='0.2' x='523' y='175' width='36' height='36'/%3E%3Crect fill='%236c757d' opacity='0.24' x='782' y='120' width='36' height='36'/%3E%3Crect fill='%236c757d' opacity='0.08' x='938' y='165' width='36' height='36'/%3E%3Crect fill='%23a6a7a9' opacity='0.25' x='351' y='55' width='36' height='36'/%3E%3Crect fill='%236c757d' opacity='0.2' x='641' y='13' width='36' height='36'/%3E%3Crect fill='%23a6a7a9' opacity='0.05' x='1067' y='70' width='36' height='36'/%3E%3C/svg%3E");
+  animation: bouncingMid 90s linear infinite;
+}
+
+/* Front layer — large colorful chips, fastest drift. */
+.bouncingPixels::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1267 200'%3E%3Crect fill='%23499cef' opacity='0.7' x='547' y='130' width='26' height='26' rx='2'/%3E%3Crect fill='%23ff6d04' opacity='0.7' x='1173' y='40' width='26' height='26' rx='2'/%3E%3Crect fill='%236d04ff' opacity='0.7' x='52' y='80' width='26' height='26' rx='2'/%3E%3Crect fill='%23499cef' opacity='0.55' x='283' y='170' width='26' height='26' rx='2'/%3E%3Crect fill='%23ff6d04' opacity='0.55' x='891' y='75' width='26' height='26' rx='2'/%3E%3Crect fill='%236d04ff' opacity='0.6' x='734' y='30' width='26' height='26' rx='2'/%3E%3Crect fill='%23499cef' opacity='0.5' x='1081' y='150' width='26' height='26' rx='2'/%3E%3C/svg%3E");
+  animation: bouncingFront 60s linear infinite;
+}
+
+.bouncingPixels.hidden {
+  display: none;
 }
 
 .gridScrubber {

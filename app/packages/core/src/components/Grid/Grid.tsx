@@ -25,6 +25,7 @@ import useRenderer from "./useRenderer";
 import useResize from "./useResize";
 import useScrollLocation from "./useScrollLocation";
 import useSpotlightPager from "./useSpotlightPager";
+import useSwimlaneRenderer from "./useSwimlaneRenderer";
 import useUpdates from "./useUpdates";
 import useZoomSetting from "./useZoomSetting";
 
@@ -60,12 +61,25 @@ function Grid() {
     zoomSelector: gridCrop,
   });
 
-  const { getFontSize, lookerOptions, renderer } = useRenderer({
+  // Both renderer hooks must be called every render (React's rules
+  // of hooks). The active one is selected per the swimlanes toggle.
+  // When swimlanes is on, the renderer wraps each Spotlight row in
+  // `[ cover | divider | siblings ]` and creates an inner horizontal
+  // Spotlight per row; see `useSwimlaneRenderer`.
+  const [swimlanesEnabled] = fos.useGridSwimlanes();
+  const swimlanesAvailable = fos.useGridSwimlanesAvailable();
+  const useSwimlanes = swimlanesEnabled && swimlanesAvailable;
+
+  const standardRenderer = useRenderer({ cache, id, records, store });
+  const swimlaneRenderer = useSwimlaneRenderer({
     cache,
     id,
     records,
     store,
   });
+  const { getFontSize, lookerOptions, renderer } = useSwimlanes
+    ? swimlaneRenderer
+    : standardRenderer;
   const { get, set } = useScrollLocation(pageReset);
 
   const setSample = fos.useExpandSample(store);

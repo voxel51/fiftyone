@@ -40,7 +40,10 @@ export default function Sort() {
 
   return (
     <SliderContainer style={{ width: "auto" }}>
-      <RightDiv style={{ paddingRight: 0 }}>
+      {/* Constrain the Sort selector to a fixed width so it doesn't
+          eat into the spacing/zoom slider area. `flexShrink: 0` keeps
+          it from collapsing under flex pressure. */}
+      <RightDiv style={{ paddingRight: 0, width: 140, flexShrink: 0 }}>
         <Select
           exclusive
           portal
@@ -57,7 +60,7 @@ export default function Sort() {
               descending: Boolean(current?.descending),
             }));
           }}
-          style={{ margin: "0 0.5rem", minWidth: 160 }}
+          style={{ width: "100%" }}
         />
       </RightDiv>
       {value !== null && (
