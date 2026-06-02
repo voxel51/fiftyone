@@ -303,3 +303,71 @@ class TrainingResults(BaseRunResults):
         self.config.finished_at = datetime.now(timezone.utc)
         self.save_config()
         return results
+
+    def log_predictions(self, predictions, metrics=None):
+        """Write a batch of predictions (dict[sample_id, fo.Label]) to
+        ``pred_field``, last-write-wins per sample. ``metrics`` is an
+        optional dict[sample_id, dict[metric_key, value]] stored as
+        top-level fields ``<train_key>_<metric_key>``."""
+        if self.config.status in ("completed", "failed"):
+            raise RuntimeError("log_predictions() cannot be called after finish()")
+
+        if self.config.pred_field is None:
+            raise ValueError("pred_field must be set to log predictions")
+
+        # predictions may target any provided view (train/val/test)
+        allowed = set(self._all_view_ids())
+        bad = next((sid for sid in predictions if sid not in allowed), None)
+        if bad is not None:
+            raise ValueError(
+                f"sample_id {bad!r} is not in any provided view "
+                "(train/val/test)"
+            )
+
+        self.samples.set_values(
+            self.config.pred_field, dict(predictions), key_field="id"
+        )
+
+        if metrics:
+            # top-level <train_key>_<metric_key> fields (train_key is already
+            # a valid identifier; no slugging). Invert {sid: {mk: v}} ->
+            # per metric_key {sid: v}.
+            metric_keys = {mk for d in metrics.values() for mk in d}
+            for mk in metric_keys:
+                field = f"{self.config.train_key}_{mk}"
+                values = {
+                    sid: d[mk] for sid, d in metrics.items() if mk in d
+                }
+                self.samples.set_values(field, values, key_field="id")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        from datetime import datetime, timezone
+
+        if exc_type is None:
+            # Only finalize if not already finalized (the user may have
+            # called finish() manually inside the with-block).
+            if self.config.status not in ("completed", "failed"):
+                self.finish()
+            return False
+
+        import traceback
+
+        self.config.status = "failed"
+        self.config.error = "".join(
+            traceback.format_exception(exc_type, exc_val, exc_tb)
+        )
+        self.config.finished_at = datetime.now(timezone.utc)
+        try:
+            self.save_config()
+        except Exception:
+            # Intentionally broad: a persistence failure here must not
+            # replace the user's original exception that __exit__ re-raises.
+            import logging
+
+            logging.getLogger(__name__).exception(
+                "failed to persist failed-run status for %r", self.train_key
+            )
+        return False  # re-raise
