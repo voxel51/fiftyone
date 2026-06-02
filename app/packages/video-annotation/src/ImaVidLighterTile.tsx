@@ -23,6 +23,7 @@ import { useFrameOverlaySync } from "./useFrameOverlaySync";
 import { useTemporalOverlaySync } from "./useTemporalOverlaySync";
 import { useSyncLighterAnnotation } from "./useSyncLighterAnnotation";
 import { useSyncSidebarFromSnapshot } from "./useSyncSidebarFromSnapshot";
+import { useSyncSidebarFromTemporalOverlays } from "./useSyncSidebarFromTemporalOverlays";
 import { useSyncLighterLabelStream } from "./useSyncLighterLabelStream";
 import { useSyncMediaTransform } from "./useSyncMediaTransform";
 import styles from "./ImaVidLighterTile.module.css";
@@ -153,6 +154,7 @@ export const ImaVidLighterTile: React.FC<ImaVidLighterTileProps> = ({
   useFrameOverlaySync(scene, snapshot, field, canonicalMediaReady);
   useTemporalOverlaySync(scene, canonicalMediaReady);
   useSyncSidebarFromSnapshot(scene, snapshot, field, canonicalMediaReady);
+  useSyncSidebarFromTemporalOverlays(scene, canonicalMediaReady);
 
   useSyncLighterAnnotation(scene);
   useSyncLighterLabelStream(scene);
