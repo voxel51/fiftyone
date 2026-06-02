@@ -10,7 +10,6 @@ Installs FiftyOne.
 import os
 from setuptools import setup, find_packages
 
-
 VERSION = "1.17.0"
 
 
@@ -68,7 +67,7 @@ setup(
         "jsonpatch>=1,<2",
         "mongoengine~=0.29.1",  # Keep small bounds on mongo-related libraries
         "motor~=3.6.0",  # Keep small bounds on mongo-related libraries
-        "Pillow>=6.2,!=11.2.*",  # Pillow 11.2.0 introduced CVE 2025-48379 that is fixed in 11.3.0
+        "Pillow>=12.2",
         "plotly>=6.1.1,<7",
         "pprintpp>=0.1,<0.5",
         "protobuf==6.33.6",
@@ -82,7 +81,7 @@ setup(
         "sseclient-py>=1.7.2,<2",
         "sse-starlette>=0.10.3,<4",
         "starlette>=0.49.1,<0.53",
-        "strawberry-graphql>=0.262.4,<0.292.0",
+        "strawberry-graphql>=0.312.3,<0.317.0",
         "tabulate>=0.7,<0.10",
         "tqdm>=2,<5",
         "xmltodict>=1,<2",
@@ -116,11 +115,10 @@ setup(
         "Operating System :: POSIX :: Linux",
         "Operating System :: Microsoft :: Windows",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
-    python_requires=">=3.9",
+    python_requires=">=3.10",
 )
