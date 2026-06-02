@@ -10,7 +10,7 @@ Installs FiftyOne.
 import os
 from setuptools import setup, find_packages
 
-VERSION = "1.17.0"
+VERSION = "1.18.0"
 
 
 def get_version():
