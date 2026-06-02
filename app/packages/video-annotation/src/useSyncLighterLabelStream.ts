@@ -174,8 +174,11 @@ export const useSyncLighterLabelStream = (scene: Scene2D | null): void => {
     useCallback(
       (payload) => {
         if (!scene || pendingSelectRef.current !== payload.id) return;
+        const { id } = payload;
         pendingSelectRef.current = null;
-        scene.selectOverlay(payload.id);
+
+        // Defer to the next tick to let this event chain settle
+        queueMicrotask(() => scene.selectOverlay(id));
       },
       [scene]
     )
