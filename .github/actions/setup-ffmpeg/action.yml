@@ -12,23 +12,14 @@ runs:
       if: runner.os == 'Linux'
       shell: bash
       run: |
-        for i in 1 2 3; do
-          sudo apt-get update && sudo apt-get install -y ffmpeg && break
-          echo "apt-get attempt $i failed; retrying in $((i * 5))s"
-          sleep $((i * 5))
-        done
+        sudo apt-get update && sudo apt-get install -y ffmpeg
         ffmpeg -version
 
     - name: Install ffmpeg (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
-        for ($i = 1; $i -le 3; $i++) {
-          choco install ffmpeg -y --no-progress
-          if ($LASTEXITCODE -eq 0) { break }
-          Write-Host "choco attempt $i failed; retrying in $($i * 5)s"
-          Start-Sleep -Seconds ($i * 5)
-        }
+        choco install ffmpeg -y --no-progress
         # ensure the choco shim dir is on PATH for this and subsequent steps
         "C:\ProgramData\chocolatey\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         $env:PATH = "C:\ProgramData\chocolatey\bin;$env:PATH"
