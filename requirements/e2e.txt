@@ -1,4 +1,4 @@
 -r github.txt
 
-umap-learn>=0.5.3
+umap-learn>=0.5.12
 numpy<3

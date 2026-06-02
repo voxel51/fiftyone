@@ -582,12 +582,18 @@ export function useRegisterMcapDataStream({
     [prefetchLookaheadFrom, store]
   );
 
+  const getTopicCache = useCallback(
+    (topic: string) => topicCachesRef.current.get(topic),
+    []
+  );
+  const getTimelineIndex = useCallback(() => indexRef.current, []);
+
   useEffect(() => {
-    setDataStream({ subscribeToTopic });
+    setDataStream({ subscribeToTopic, getTopicCache, getTimelineIndex });
     return () => {
       setDataStream(null);
     };
-  }, [setDataStream, subscribeToTopic]);
+  }, [setDataStream, subscribeToTopic, getTopicCache, getTimelineIndex]);
 }
 
 // ---------------------------------------------------------------------------

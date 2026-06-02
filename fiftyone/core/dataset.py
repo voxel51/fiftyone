@@ -54,6 +54,7 @@ fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
 food = fou.lazy_import("fiftyone.operators.delegated")
 foos = fou.lazy_import("fiftyone.operators.store")
+fommtt = fou.lazy_import("fiftyone.multimodal.tags._temporal_tags")
 
 
 _SUMMARY_FIELD_KEY = "_summary_field"
@@ -6010,6 +6011,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ops.append(DeleteMany({}))
 
         foo.bulk_write(ops, self._sample_collection)
+
+        if sample_ids is None:
+            fommtt.delete_for_dataset_id(self._doc.id)
+        else:
+            fommtt.delete_for_sample_ids(self._doc.id, sample_ids)
+
         self._update_last_deletion_at(now)
 
         fos.Sample._reset_docs(
@@ -10015,6 +10022,8 @@ def _delete_dataset_extras(dataset):
     svc = foos.ExecutionStoreService(dataset_id=dataset_id)
     svc.cleanup()
 
+    fommtt.delete_for_dataset_id(dataset_id)
+
 
 def _clone_collection(
     sample_collection,
@@ -10024,6 +10033,9 @@ def _clone_collection(
 ):
     slug = _validate_dataset_name(name)
 
+    if sample_collection._is_dynamic_groups:
+        sample_collection = sample_collection.flatten()
+
     contains_videos = sample_collection._contains_videos(any_slice=True)
 
     if isinstance(sample_collection, fov.DatasetView):
@@ -10032,9 +10044,6 @@ def _clone_collection(
 
         if view.media_type == fom.MIXED:
             raise ValueError("Cloning mixed views is not allowed")
-
-        if view._is_dynamic_groups:
-            raise ValueError("Cloning dynamic grouped views is not allowed")
     else:
         dataset = sample_collection
         view = None
@@ -10138,6 +10147,10 @@ def _clone_collection(
         foo.aggregate(coll, pipeline)
 
     clone_dataset = load_dataset(name)
+
+    fommtt.clone_tags(
+        dataset, clone_dataset, sample_collection=sample_collection, now=now
+    )
 
     # Clone extras (full datasets only)
     if view is None and (

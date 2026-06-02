@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import type { ColorSchemeInput } from "@fiftyone/relay";
 import { subscribeBefore } from "@fiftyone/relay";
 import type { SpaceNodeJSON } from "@fiftyone/spaces";

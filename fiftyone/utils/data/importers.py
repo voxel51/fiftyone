@@ -5,6 +5,7 @@ Dataset importers.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from datetime import datetime
 import inspect
 import itertools
@@ -37,6 +38,7 @@ from fiftyone.core.sample import Sample
 import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.migrations as fomi
+import fiftyone.multimodal.tags._temporal_tags as fommtt
 import fiftyone.types as fot
 
 from .parsers import (
@@ -46,7 +48,6 @@ from .parsers import (
     FiftyOneImageLabelsSampleParser,
     FiftyOneVideoLabelsSampleParser,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -1818,6 +1819,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._metadata_path = None
         self._samples_path = None
         self._frames_path = None
+        self._temporal_tags_path = None
         self._has_frames = None
         self._media_fields = None
 
@@ -1829,6 +1831,9 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._eval_dir = os.path.join(self.dataset_dir, "evaluations")
         self._runs_dir = os.path.join(self.dataset_dir, "runs")
         self._metadata_path = os.path.join(self.dataset_dir, "metadata.json")
+        self._temporal_tags_path = os.path.join(
+            self.dataset_dir, fommtt.TEMPORAL_TAGS_EXPORT_FILENAME
+        )
 
         if os.path.isdir(self._fields_dir):
             self._media_fields = {
@@ -1869,11 +1874,19 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             finally:
                 tmp_dataset.delete()
 
-            return sample_ids
+        else:
+            sample_ids = self._import_samples(
+                dataset, dataset_dict, tags=tags, progress=progress
+            )
 
-        return self._import_samples(
-            dataset, dataset_dict, tags=tags, progress=progress
+        fommtt.import_tags(
+            dataset,
+            self._temporal_tags_path,
+            sample_ids=sample_ids if self.max_samples is not None else None,
+            progress=progress,
         )
+
+        return sample_ids
 
     def _import_samples(self, dataset, dataset_dict, tags=None, progress=None):
         name = dataset.name

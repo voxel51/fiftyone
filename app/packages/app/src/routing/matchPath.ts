@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import type { SpaceNodeJSON } from "@fiftyone/spaces";
 import type { ModalSelector, State } from "@fiftyone/state";
 import { pathToRegexp } from "path-to-regexp";

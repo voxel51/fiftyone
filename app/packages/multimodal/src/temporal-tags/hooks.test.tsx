@@ -1,0 +1,341 @@
+import type { SampleRendererProps } from "@fiftyone/plugins";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { useEffect } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { useSampleRendererTemporalTags, useSampleTemporalTags } from "./hooks";
+import type {
+  TemporalTag,
+  TemporalTagCreate,
+  TemporalTagsClient,
+  UseSampleTemporalTagsOptions,
+  UseSampleTemporalTagsResult,
+} from "./types";
+
+afterEach(() => {
+  cleanup();
+});
+
+describe("useSampleTemporalTags", () => {
+  it("stays idle without a sample scope", () => {
+    const client = createTemporalTagsClient();
+
+    render(
+      <TemporalTagsHarness
+        options={{ client, datasetId: "dataset-id", sampleId: undefined }}
+      />
+    );
+
+    expect(screen.getByTestId("temporal-tags").textContent).toBe("idle::");
+    expect(client.listSampleTemporalTags).not.toHaveBeenCalled();
+  });
+
+  it("loads sample temporal tags", async () => {
+    const client = createTemporalTagsClient({
+      listSampleTemporalTags: vi.fn(async () => [createTemporalTag("tag-a")]),
+    });
+
+    render(
+      <TemporalTagsHarness
+        options={{
+          client,
+          datasetId: "dataset-id",
+          sampleId: "sample-id",
+        }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("temporal-tags").textContent).toBe(
+        "ready:tag-a:"
+      );
+    });
+    expect(client.listSampleTemporalTags).toHaveBeenCalledWith({
+      datasetId: "dataset-id",
+      filter: undefined,
+      sampleId: "sample-id",
+    });
+  });
+
+  it("refetches when the sample id or filter changes", async () => {
+    const client = createTemporalTagsClient({
+      listSampleTemporalTags: vi.fn(async ({ filter, sampleId }) => [
+        createTemporalTag(`${sampleId}-${filter?.start ?? 0}`),
+      ]),
+    });
+
+    const { rerender } = render(
+      <TemporalTagsHarness
+        options={{
+          client,
+          datasetId: "dataset-id",
+          filter: { start: 1 },
+          sampleId: "sample-a",
+        }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("temporal-tags").textContent).toBe(
+        "ready:sample-a-1:"
+      );
+    });
+
+    rerender(
+      <TemporalTagsHarness
+        options={{
+          client,
+          datasetId: "dataset-id",
+          filter: { start: 2 },
+          sampleId: "sample-b",
+        }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("temporal-tags").textContent).toBe(
+        "ready:sample-b-2:"
+      );
+    });
+    expect(client.listSampleTemporalTags).toHaveBeenCalledTimes(2);
+  });
+
+  it("ignores stale async responses after a rerender", async () => {
+    const first = deferred<readonly TemporalTag[]>();
+    const second = deferred<readonly TemporalTag[]>();
+    const client = createTemporalTagsClient({
+      listSampleTemporalTags: vi.fn(({ sampleId }) =>
+        sampleId === "sample-a" ? first.promise : second.promise
+      ),
+    });
+
+    const { rerender } = render(
+      <TemporalTagsHarness
+        options={{
+          client,
+          datasetId: "dataset-id",
+          sampleId: "sample-a",
+        }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(client.listSampleTemporalTags).toHaveBeenCalledTimes(1);
+    });
+
+    rerender(
+      <TemporalTagsHarness
+        options={{
+          client,
+          datasetId: "dataset-id",
+          sampleId: "sample-b",
+        }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(client.listSampleTemporalTags).toHaveBeenCalledTimes(2);
+    });
+
+    await act(async () => {
+      second.resolve([createTemporalTag("sample-b")]);
+      await second.promise;
+    });
+    expect(screen.getByTestId("temporal-tags").textContent).toBe(
+      "ready:sample-b:"
+    );
+
+    await act(async () => {
+      first.resolve([createTemporalTag("sample-a")]);
+      await first.promise;
+    });
+    expect(screen.getByTestId("temporal-tags").textContent).toBe(
+      "ready:sample-b:"
+    );
+  });
+
+  it("exposes mutation helpers and reloads after successful mutations", async () => {
+    const client = createTemporalTagsClient();
+    const createInput: TemporalTagCreate = {
+      end: 2,
+      start: 1,
+      tag: "review",
+    };
+    let latest!: UseSampleTemporalTagsResult;
+
+    render(
+      <TemporalTagsHarness
+        onState={(state) => {
+          latest = state;
+        }}
+        options={{
+          client,
+          datasetId: "dataset-id",
+          sampleId: "sample-id",
+        }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(latest.status).toBe("ready");
+    });
+
+    await act(async () => {
+      await latest.create([createInput]);
+    });
+    expect(client.createSampleTemporalTags).toHaveBeenCalledWith({
+      datasetId: "dataset-id",
+      sampleId: "sample-id",
+      temporalTags: [createInput],
+    });
+    expect(client.listSampleTemporalTags).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      await latest.update("temporal-tag-id", { end: 3 });
+    });
+    expect(client.updateSampleTemporalTag).toHaveBeenCalledWith({
+      datasetId: "dataset-id",
+      sampleId: "sample-id",
+      temporalTagId: "temporal-tag-id",
+      update: { end: 3 },
+    });
+    expect(client.listSampleTemporalTags).toHaveBeenCalledTimes(3);
+
+    await act(async () => {
+      await latest.delete(["temporal-tag-id"]);
+    });
+    expect(client.deleteSampleTemporalTags).toHaveBeenCalledWith({
+      datasetId: "dataset-id",
+      ids: ["temporal-tag-id"],
+      sampleId: "sample-id",
+    });
+    expect(client.listSampleTemporalTags).toHaveBeenCalledTimes(4);
+
+    await act(async () => {
+      await latest.clear({ tags: ["review"] });
+    });
+    expect(client.clearSampleTemporalTags).toHaveBeenCalledWith({
+      datasetId: "dataset-id",
+      filter: { tags: ["review"] },
+      sampleId: "sample-id",
+    });
+    expect(client.listSampleTemporalTags).toHaveBeenCalledTimes(5);
+  });
+
+  it("surfaces client errors", async () => {
+    const client = createTemporalTagsClient({
+      listSampleTemporalTags: vi.fn(async () => {
+        throw new Error("boom");
+      }),
+    });
+
+    render(
+      <TemporalTagsHarness
+        options={{
+          client,
+          datasetId: "dataset-id",
+          sampleId: "sample-id",
+        }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("temporal-tags").textContent).toBe(
+        "error::boom"
+      );
+    });
+  });
+});
+
+describe("useSampleRendererTemporalTags", () => {
+  it("derives the sample scope from a sample renderer context", async () => {
+    const client = createTemporalTagsClient();
+    const ctx = {
+      dataset: { datasetId: "dataset-id" },
+      sample: { sample: { _id: "sample-id" } },
+    } as SampleRendererProps["ctx"];
+
+    render(<SampleRendererTemporalTagsHarness client={client} ctx={ctx} />);
+
+    await waitFor(() => {
+      expect(client.listSampleTemporalTags).toHaveBeenCalledWith({
+        datasetId: "dataset-id",
+        filter: undefined,
+        sampleId: "sample-id",
+      });
+    });
+  });
+});
+
+function TemporalTagsHarness({
+  onState,
+  options,
+}: {
+  readonly onState?: (state: UseSampleTemporalTagsResult) => void;
+  readonly options: UseSampleTemporalTagsOptions;
+}) {
+  const state = useSampleTemporalTags(options);
+
+  useEffect(() => {
+    onState?.(state);
+  }, [onState, state]);
+
+  return (
+    <div data-testid="temporal-tags">
+      {state.status}:{state.temporalTags.map((tag) => tag.id).join(",")}:
+      {state.error ?? ""}
+    </div>
+  );
+}
+
+function SampleRendererTemporalTagsHarness({
+  client,
+  ctx,
+}: {
+  readonly client: TemporalTagsClient;
+  readonly ctx: SampleRendererProps["ctx"];
+}) {
+  useSampleRendererTemporalTags(ctx, { client });
+
+  return null;
+}
+
+function createTemporalTagsClient(
+  overrides: Partial<TemporalTagsClient> = {}
+): TemporalTagsClient {
+  return {
+    clearSampleTemporalTags: vi.fn(async () => 1),
+    countDatasetTemporalTags: vi.fn(async () => ({})),
+    createSampleTemporalTags: vi.fn(async () => [createTemporalTag("created")]),
+    deleteSampleTemporalTags: vi.fn(async () => 1),
+    listDatasetTemporalTags: vi.fn(async () => []),
+    listSampleTemporalTags: vi.fn(async () => []),
+    updateSampleTemporalTag: vi.fn(async () => createTemporalTag("updated")),
+    ...overrides,
+  };
+}
+
+function createTemporalTag(id: string): TemporalTag {
+  return {
+    end: 2,
+    id,
+    indexType: 2,
+    sampleId: "sample-id",
+    start: 1,
+    tag: "review",
+  };
+}
+
+function deferred<Value>() {
+  let resolve!: (value: Value) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<Value>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+
+  return {
+    promise,
+    reject,
+    resolve,
+  };
+}

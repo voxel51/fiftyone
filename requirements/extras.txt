@@ -1,7 +1,7 @@
-google-api-python-client>=1.7.12
-google-cloud-storage>=1.36
-httplib2>=0.19
-ipywidgets>=7.5
-notebook>=5.3
+google-api-python-client>=2.196.0
+google-cloud-storage>=3.10.1
+httplib2>=0.31.2
+ipywidgets>=8.1.8
+notebook>=7.5.6
 pydicom>=2.2.0
-shapely>=1.7.1
+shapely>=2.1.2

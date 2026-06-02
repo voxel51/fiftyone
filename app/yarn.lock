@@ -3496,6 +3496,7 @@ __metadata:
   resolution: "@fiftyone/playback@workspace:packages/playback"
   dependencies:
     "@eslint/compat": "npm:^1.1.1"
+    "@fiftyone/commands": "workspace:^"
     "@fiftyone/tiling": "npm:*"
     "@voxel51/voodo": "npm:^0.0.30"
     eslint: "npm:9.7.0"

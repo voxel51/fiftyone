@@ -16,7 +16,7 @@ import {
   useCurrent3dAnnotationMode,
   useSetCurrent3dAnnotationMode,
 } from "@fiftyone/looker-3d/src/state/accessors";
-import { is3DDataset, useRenderConfig3dState } from "@fiftyone/state";
+import { is3DDataset, useIs3dPinned } from "@fiftyone/state";
 import {
   DETECTION,
   DETECTIONS,
@@ -26,6 +26,7 @@ import {
 import PolylineIcon from "@mui/icons-material/Timeline";
 import CuboidIcon from "@mui/icons-material/ViewInAr";
 import { useAtomValue } from "jotai";
+import { Anchor, Text, Tooltip } from "@voxel51/voodo";
 import { createContext, useCallback, useContext } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -37,7 +38,6 @@ import { useDetectionMode } from "./Edit/useDetectionMode";
 import { usePolylineMode } from "./Edit/usePolylineMode";
 import { useSegmentationMode } from "./Edit/useSegmentationMode";
 import { useDeactivateAllModes } from "./useDeactivateAllModes";
-import { Anchor, Text, Tooltip } from "@voxel51/voodo";
 
 const ActionsDiv = styled.div`
   align-items: center;
@@ -200,8 +200,12 @@ const Classification = () => {
 };
 
 const Detection = () => {
-  const { activateDetectionMode, detectionModeActive, disabled, tooltip } =
-    useDetectionMode();
+  const {
+    activateDetectionMode,
+    detectionModeActive,
+    disabled,
+    tooltip,
+  } = useDetectionMode();
   const deactivateAll = useDeactivateAll();
 
   return (
@@ -255,8 +259,12 @@ const Segmentation = () => {
 };
 
 const Polyline = () => {
-  const { activatePolylineMode, polylineModeActive, disabled, tooltip } =
-    usePolylineMode();
+  const {
+    activatePolylineMode,
+    polylineModeActive,
+    disabled,
+    tooltip,
+  } = usePolylineMode();
   const deactivateAll = useDeactivateAll();
 
   return (
@@ -431,7 +439,7 @@ const Actions = () => {
   // This checks if media type of the dataset resolved to 3d
   const is3dDataset = useRecoilValue(is3DDataset);
   // This checks if a 3d sample is pinned - is true when media type is `group` with a 3d slice pinned
-  const { isPinned: is3dSamplePinned } = useRenderConfig3dState();
+  const is3dSamplePinned = useIs3dPinned();
 
   const { classificationModeActive } = useClassificationMode();
   const { detectionModeActive } = useDetectionMode();

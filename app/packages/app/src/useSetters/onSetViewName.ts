@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { setView, type setViewMutation } from "@fiftyone/relay";
 import {
   DEFAULT_SELECTION_STYLE,

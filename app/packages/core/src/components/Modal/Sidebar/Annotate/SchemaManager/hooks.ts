@@ -84,10 +84,18 @@ export const useSetCurrentField = () => {
  * Hook to control the schema manager modal visibility
  */
 export const useSchemaManagerModal = () => {
-  const [schemaManagerDisplayed, setSchemaManagerDisplayed] = useAtom(schemaManagerDisplayedAtom);
+  const [schemaManagerDisplayed, setSchemaManagerDisplayed] = useAtom(
+    schemaManagerDisplayedAtom
+  );
 
-  const openSchemaManager = useCallback(() => setSchemaManagerDisplayed(true), [setSchemaManagerDisplayed]);
-  const closeSchemaManager = useCallback(() => setSchemaManagerDisplayed(false), [setSchemaManagerDisplayed]);
+  const openSchemaManager = useCallback(
+    () => setSchemaManagerDisplayed(true),
+    [setSchemaManagerDisplayed]
+  );
+  const closeSchemaManager = useCallback(
+    () => setSchemaManagerDisplayed(false),
+    [setSchemaManagerDisplayed]
+  );
 
   return { schemaManagerDisplayed, openSchemaManager, closeSchemaManager };
 };

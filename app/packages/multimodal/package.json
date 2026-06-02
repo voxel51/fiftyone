@@ -10,6 +10,7 @@
         "./query/bytes": "./src/query/bytes/index.ts",
         "./query/decode": "./src/query/decode/index.ts",
         "./decoders": "./src/decoders/index.ts",
+        "./temporal-tags": "./src/temporal-tags/index.ts",
         "./inject": "./src/inject/index.ts",
         "./adapters/mcap": "./src/adapters/mcap/index.ts",
         "./schemas/v1": "./src/schemas/v1/index.ts",
@@ -21,6 +22,9 @@
         "*": {
             "decoders": [
                 "src/decoders/index.ts"
+            ],
+            "temporal-tags": [
+                "src/temporal-tags/index.ts"
             ],
             "query": [
                 "src/query/index.ts"

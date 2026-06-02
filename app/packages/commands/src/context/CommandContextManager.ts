@@ -25,6 +25,8 @@ export enum KnownCommands {
   ModalNextSample = "fo.modal.next.sample",
   ModalPreviousSample = "fo.modal.previous.sample",
   ModalDeleteAnnotation = "fo.modal.delete.annotation",
+  ModalStepForward = "fo.modal.step.forward",
+  ModalStepBack = "fo.modal.step.back",
 }
 //callback for context changes
 export type CommandContextListener = (newId: string) => void;

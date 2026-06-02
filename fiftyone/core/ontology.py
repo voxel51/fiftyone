@@ -10,7 +10,7 @@ import abc
 import copy
 import fnmatch
 from datetime import datetime
-from typing import Any, NamedTuple, Optional
+from typing import Any, ClassVar, NamedTuple, Optional
 
 import fiftyone.core.annotation.constants as foac
 import fiftyone.core.utils as fou
@@ -18,6 +18,7 @@ from fiftyone.core.annotation.attributes import (
     AttributeSpec,
     attr_insert_to_dict,
 )
+from fiftyone.core.annotation.nodes import Node
 from fiftyone.core.odm.ontology import OntologyDocument, OntologyType
 
 
@@ -34,7 +35,13 @@ class Ontology(abc.ABC):
         description: optional description
     """
 
-    _TYPE: Optional[str] = None
+    _TYPE: ClassVar[Optional[str]] = None
+
+    def _validate(self) -> None:
+        """Hook called by :meth:`save` to validate the ontology before
+        persisting. Default is a no-op; subclasses override to call
+        their type-specific validator.
+        """
 
     def __init__(
         self,
@@ -88,9 +95,22 @@ class Ontology(abc.ABC):
         """Whether this ontology is a taxonomy."""
         return self._TYPE == OntologyType.TAXONOMY.value
 
-    def save(self) -> None:
-        """Saves this ontology to the database."""
+    def save(self, overwrite: bool = False) -> None:
+        """Saves this ontology to the database.
+
+        Args:
+            overwrite: if True and an ontology with this name already exists
+                in the database, adopt its lineage and append a new version.
+                Enables JSON/git-driven workflows where an instance built via
+                :meth:`from_dict` is saved without first calling
+                :func:`load_ontology`. With the default ``False``, saving an
+                in-memory instance whose slug collides with a persisted
+                ontology is rejected.
+        """
         self._validate()
+        if self._doc is None and overwrite:
+            self._doc = self._find_latest_doc()
+
         if self._doc is None:
             self._doc = OntologyDocument(
                 name=self.name,
@@ -104,6 +124,14 @@ class Ontology(abc.ABC):
             self._doc.root = self._get_root()
 
         self._doc.save()
+
+    def _find_latest_doc(self) -> Optional[OntologyDocument]:
+        slug = fou.to_slug(self.name)
+        return (
+            OntologyDocument.objects(slug=slug, type=self._TYPE)
+            .order_by("-version")
+            .first()
+        )
 
     def reload(self) -> None:
         """Reloads this ontology from the database."""
@@ -139,12 +167,6 @@ class Ontology(abc.ABC):
         cloned._doc = None
         cloned.save()
         return cloned
-
-    def _validate(self) -> None:
-        """Hook called by :meth:`save` to validate the ontology before
-        persisting. Default is a no-op; subclasses override to call
-        their type-specific validator.
-        """
 
     def _get_root(self) -> Any:
         """Returns the serialized root data for storage.
@@ -202,21 +224,26 @@ class AnnotationOntology(Ontology):
     """Ontology for defining annotation structures.
 
     Bundles typed attributes (with optional conditional display logic) and
-    taxonomy references into a single document that gets connected to a
-    label schema on a field.
+    an optional taxonomy reference into a single document that gets
+    connected to a label schema on a field.
 
     Args:
         name: the ontology name
         description: optional description
-        taxonomies: list of taxonomy names referenced by this ontology
+        taxonomy: optional :class:`Taxonomy` instance to bundle with this
+            ontology. Stored internally as the taxonomy's slug.
         attributes: list of :class:`AttributeSpec` instances
 
     Example::
 
+        vehicle_classes = Taxonomy(
+            name="vehicle_classes",
+            root=Node(name="root", values=[Node(name="car")]),
+        )
         AnnotationOntology(
             name="vehicle_damage_ontology",
             description="Vehicle damage annotation",
-            taxonomies=["vehicle_classes"],
+            taxonomy=vehicle_classes,
             attributes=[
                 AttributeSpec(
                     name="damage_present",
@@ -240,12 +267,25 @@ class AnnotationOntology(Ontology):
         self,
         name: str,
         description: Optional[str] = None,
-        taxonomies: Optional[list[str]] = None,
+        taxonomy: Optional["Taxonomy"] = None,
         attributes: Optional[list[AttributeSpec]] = None,
     ):
         super().__init__(name=name, description=description)
-        self.taxonomies = taxonomies or []
+        self.taxonomy = self._extract_taxonomy_slug(taxonomy)
         self.attributes = attributes or []
+
+    @staticmethod
+    def _extract_taxonomy_slug(
+        taxonomy: Optional["Taxonomy"],
+    ) -> Optional[str]:
+        if taxonomy is None:
+            return None
+        if not isinstance(taxonomy, Taxonomy):
+            raise TypeError(
+                f"taxonomy must be a Taxonomy instance, got "
+                f"{type(taxonomy).__name__}"
+            )
+        return fou.to_slug(taxonomy.name)
 
     def _validate(self) -> None:
         # Lazy import — ``ontology_validation`` imports
@@ -259,14 +299,14 @@ class AnnotationOntology(Ontology):
 
     def _get_root(self) -> dict:
         return {
-            "taxonomies": self.taxonomies,
+            "taxonomy": self.taxonomy,
             "attributes": [attr.to_dict() for attr in self.attributes],
         }
 
     def _apply_doc(self, doc: OntologyDocument) -> None:
         self.name = doc.name
         self.description = doc.description
-        self.taxonomies = doc.root.get("taxonomies", [])
+        self.taxonomy = doc.root.get("taxonomy")
         self.attributes = [
             AttributeSpec.from_dict(a) for a in doc.root.get("attributes", [])
         ]
@@ -292,13 +332,101 @@ class AnnotationOntology(Ontology):
             an :class:`AnnotationOntology`
         """
         root = d.get("root") or {}
-        return cls(
+        ao = cls(
             name=d["name"],
             description=d.get("description"),
-            taxonomies=root.get("taxonomies", []),
             attributes=[
                 AttributeSpec.from_dict(a) for a in root.get("attributes", [])
             ],
+        )
+        # Dict stores the already-resolved slug; assign past the
+        # Taxonomy-instance type check at construction.
+        ao.taxonomy = root.get("taxonomy")
+        return ao
+
+
+class Taxonomy(Ontology):
+    """Ontology for defining a hierarchical class structure.
+
+    A taxonomy is a named, versioned, self-contained class hierarchy.
+    Label schema fields reference a taxonomy by ``name`` instead of
+    inlining a flat class list, so the same hierarchy can be shared
+    across multiple datasets.
+
+    Args:
+        name: the taxonomy name
+        description: optional description
+        root: the root :class:`Node` of the hierarchy. Required.
+
+    Example::
+
+        Taxonomy(
+            name="vehicle_classes",
+            root=Node(
+                name="vehicles",
+                can_select=False,
+                values=[
+                    Node(name="car"),
+                    Node(name="truck"),
+                    Node(name="motorcycle"),
+                ],
+            ),
+        )
+    """
+
+    _TYPE = OntologyType.TAXONOMY.value
+
+    def __init__(
+        self,
+        name: str,
+        root: Node,
+        description: Optional[str] = None,
+    ):
+        super().__init__(name=name, description=description)
+        if not isinstance(root, Node):
+            raise ValueError("Taxonomy.root must be a Node instance")
+        self.root = root
+
+    def _validate(self) -> None:
+        # Lazy import — ``ontology_validation`` imports ``Taxonomy`` for
+        # type hints, so a top-level import here would be circular.
+        from fiftyone.core.ontology_validation import validate_taxonomy
+
+        validate_taxonomy(self)
+
+    def _get_root(self) -> dict:
+        return self.root.to_dict()
+
+    def _apply_doc(self, doc: OntologyDocument) -> None:
+        self.name = doc.name
+        self.description = doc.description
+        self.root = Node.from_dict(doc.root)
+
+    def to_dict(self) -> dict:
+        """Serializes this taxonomy to a dict.
+
+        Returns:
+            a dict
+        """
+        d = super().to_dict()
+        d["root"] = self._get_root()
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Taxonomy":
+        """Creates a :class:`Taxonomy` from a dict.
+
+        Args:
+            d: a taxonomy dict
+
+        Returns:
+            a :class:`Taxonomy`
+        """
+        root = d.get("root") or {}
+        return cls(
+            name=d["name"],
+            description=d.get("description"),
+            root=Node.from_dict(root),
         )
 
 
@@ -306,6 +434,7 @@ class AnnotationOntology(Ontology):
 
 _TYPE_TO_CLS: dict[str, type[Ontology]] = {
     OntologyType.ANNOTATION_ONTOLOGY.value: AnnotationOntology,
+    OntologyType.TAXONOMY.value: Taxonomy,
 }
 
 
@@ -331,6 +460,19 @@ def _objects_by_slug(name: str):
     return OntologyDocument.objects(  # pylint: disable=no-member
         slug=fou.to_slug(name)
     )
+
+
+def save_ontology(ontology: Ontology, overwrite: bool = False) -> None:
+    """Saves the given ontology to the database.
+
+    Module-level mirror of :meth:`Ontology.save`, paired with
+    :func:`load_ontology` and :func:`delete_ontology`.
+
+    Args:
+        ontology: an :class:`Ontology` to save
+        overwrite: see :meth:`Ontology.save`
+    """
+    ontology.save(overwrite=overwrite)
 
 
 def load_ontology(name: str) -> Ontology:
@@ -503,8 +645,6 @@ def delete_ontology(name: str, force: bool = False) -> None:
             "affected schema and delete."
         )
 
-    # Phase 1: inline every affected schema. The ontology is deleted
-    # below only if every save here succeeds.
     for ref in affected:
         # pylint: disable-next=no-member
         dataset_doc = DatasetDocument.objects.get(id=ref.dataset_id)
@@ -515,9 +655,6 @@ def delete_ontology(name: str, force: bool = False) -> None:
             )
         dataset_doc.save()
 
-    # Phase 2: delete the ontology last. On mid-inline failure the
-    # ontology survives, leaving the system recoverable — re-running
-    # the call is idempotent.
     _objects_by_slug(name).delete()
 
 
