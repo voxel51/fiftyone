@@ -93,6 +93,7 @@ async def paginate_samples(
     filters: JSON,
     first: int,
     after: t.Optional[str] = None,
+    before: t.Optional[str] = None,
     extended_stages: t.Optional[BSON] = None,
     sample_filter: t.Optional[SampleFilter] = None,
     pagination_data: t.Optional[bool] = False,
@@ -134,7 +135,20 @@ async def paginate_samples(
     if after is None:
         after = "-1"
 
-    if cursor_pagination and sort_by and after != "-1":
+    # Backward cursor seek: `before` is the next-page-going-backward
+    # cursor (encoded sort-field value). We invert the comparison and the
+    # view's sort direction, fetch the same way, then reverse the
+    # in-memory result so the caller still sees ascending (or `desc`)
+    # ordering. Mutually exclusive with `after`.
+    backward = cursor_pagination and bool(sort_by) and before is not None
+    if backward:
+        op = "$gt" if desc else "$lt"
+        value = _decode_cursor_value(before)
+        view = view.match({sort_by: {op: value}})
+        # Re-sort opposite to the user-requested direction so the
+        # nearest-to-cursor samples come first; we'll reverse at the end.
+        view = view.sort_by(sort_by, reverse=not desc)
+    elif cursor_pagination and sort_by and after != "-1":
         # Value-cursor strategy: `after` is the previous page's last
         # sort-field value, encoded as a string. Filter rather than skip.
         op = "$lt" if desc else "$gt"
@@ -156,6 +170,11 @@ async def paginate_samples(
     if len(samples) > first:
         samples = samples[:first]
         more = True
+
+    if backward:
+        # Restore the caller-facing sort order (the matched set was
+        # fetched reverse-sorted to put the nearest-cursor samples first).
+        samples = list(reversed(samples))
 
     metadata_cache = {}
     url_cache = {}
@@ -188,10 +207,16 @@ async def paginate_samples(
 
     return Connection(
         page_info=PageInfo(
-            has_previous_page=False,
-            has_next_page=more,
+            # For a backward fetch, `more` describes whether more rows
+            # exist on the still-earlier side (the cursor seek's
+            # "previous"). Forward fetches don't know — the client uses
+            # the field's `[min, max]` bounds to decide whether to walk
+            # backward from the seeked origin, so we report False here
+            # rather than making an extra query just to guess.
+            has_previous_page=more if backward else False,
+            has_next_page=False if backward else more,
             start_cursor=edges[0].cursor if edges else None,
-            end_cursor=edges[-1].cursor if len(edges) > 1 else None,
+            end_cursor=edges[-1].cursor if edges else None,
         ),
         edges=edges,
     )
