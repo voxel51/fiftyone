@@ -12,6 +12,7 @@ import {
   gridAutosizing,
   gridCrop,
   gridSpacing,
+  gridZoom,
   maxGridItemsSizeBytes,
   pageParameters,
 } from "./recoil";
@@ -54,21 +55,27 @@ function Grid() {
     ...useLabelVisibility(),
   });
 
+  // Swimlanes mode: the renderer wraps each Spotlight row in
+  // `[ cover | divider | siblings ]` (see `useSwimlaneRenderer`), and
+  // the row's aspect ratio is overridden uniformly so every row is
+  // the same height regardless of the underlying image's native
+  // ratio. The zoom slider repurposes as a row-height control —
+  // `-1` (right of slider) ≈ square row, `-15` (left) ≈ very short.
+  const [swimlanesEnabled] = fos.useGridSwimlanes();
+  const swimlanesAvailable = fos.useGridSwimlanesAvailable();
+  const useSwimlanes = swimlanesEnabled && swimlanesAvailable;
+  const zoomValue = useRecoilValue(gridZoom);
+  const swimlaneAspect = useSwimlanes
+    ? Math.max(1, -(zoomValue ?? -3))
+    : undefined;
+
   const { page, store } = useSpotlightPager({
     clearRecords: reset,
     pageSelector: pageParameters,
     records,
     zoomSelector: gridCrop,
+    aspectRatioOverride: swimlaneAspect,
   });
-
-  // Both renderer hooks must be called every render (React's rules
-  // of hooks). The active one is selected per the swimlanes toggle.
-  // When swimlanes is on, the renderer wraps each Spotlight row in
-  // `[ cover | divider | siblings ]` and creates an inner horizontal
-  // Spotlight per row; see `useSwimlaneRenderer`.
-  const [swimlanesEnabled] = fos.useGridSwimlanes();
-  const swimlanesAvailable = fos.useGridSwimlanesAvailable();
-  const useSwimlanes = swimlanesEnabled && swimlanesAvailable;
 
   const standardRenderer = useRenderer({ cache, id, records, store });
   const swimlaneRenderer = useSwimlaneRenderer({
@@ -110,7 +117,10 @@ function Grid() {
       maxRows: MAX_ROWS,
       maxItemsSizeBytes: autosizing ? maxBytes : undefined,
       scrollbar: !scrubberEnabled,
-      spacing,
+      // No vertical gap between swimlane rows — rows abut each other
+      // so the view reads as a continuous stack. Standard grid mode
+      // still uses the user's spacing setting.
+      spacing: useSwimlanes ? 0 : spacing,
       // Use Spotlight's DEFAULT_OFFSET (48px) so the first row sits
       // below the transparent header. The header is rendered as an
       // absolute overlay with a gradient that fades over the grid's
@@ -118,7 +128,11 @@ function Grid() {
       // the chrome and is hard to read through the gradient.
       get: (next) => page(next),
       onItemClick: (args) => setSample(args, () => spotlight.createIter()),
-      rowAspectRatioThreshold: zoom,
+      // Swimlane mode: force one item per row so each grid row
+      // becomes one swimlane (cover + divider + siblings strip).
+      // Threshold 0 always breaks the row at every item; default
+      // `zoom` tiles per the aspect-ratio budget.
+      rowAspectRatioThreshold: useSwimlanes ? () => 0 : zoom,
     });
     return spotlight;
   }, [
@@ -133,6 +147,7 @@ function Grid() {
     scrubberEnabled,
     setSample,
     spacing,
+    useSwimlanes,
     zoom,
   ]);
 

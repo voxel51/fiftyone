@@ -95,109 +95,92 @@
   width: 100%;
 }
 
-/* Swimlanes row layout — when swimlanes mode is on, each Spotlight
- * row becomes a horizontal strip of [cover | divider | siblings]. The
- * cover (default-slice sample) loads via the main grid query and
- * paints first; the siblings strip fills in once the per-group
- * sub-Spotlight resolves its first page. */
+/* Swimlanes view: each outer-grid row is `[ cover | divider |
+ * siblings ]`. The cover renders via the standard looker into
+ * `.swimlaneCover` at the sample's native aspect ratio. The
+ * siblings strip hosts an inner horizontal Spotlight that fetches
+ * the group's other slices on its own request. A shimmer overlay
+ * covers the siblings strip until the inner Spotlight fires `load`. */
 .swimlaneRow {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
+  /* Host for the per-row inner Spotlight. The Spotlight attaches its
+   * `width: 100%; height: 100%` element into this container, so we
+   * just need a positioned, sized box. */
   width: 100%;
   height: 100%;
-  overflow: hidden;
+  position: relative;
 }
 
 .swimlaneCover {
-  /* Fixed cross-axis ratio — width equal to the row height. The
-   * default-slice sample renders into this box at native aspect. */
   flex: 0 0 auto;
-  aspect-ratio: 1 / 1;
   position: relative;
 }
 
 .swimlaneSeparator {
   flex: 0 0 auto;
-  /* Vertical voodo Divider is rendered inside; we just give it a
-   * little horizontal breathing room. */
-  padding: 0 0.5rem;
+  width: 1px;
+  margin: 0 0.5rem;
+  background: var(--fo-palette-text-placeholder);
 }
 
 .swimlaneSiblings {
-  /* Eats the remaining horizontal real estate; the inner horizontal
-   * Spotlight attaches into it. */
   flex: 1 1 auto;
   position: relative;
   min-width: 0;
 }
 
-/* Bouncing-pixels loader — horizontal analog of `.fallingPixels`.
- * Three parallax layers (back/mid/front) drift left → right at
- * different speeds: small dim squares back, medium muted in the
- * middle, large colorful chips up front. Sits over
- * `.swimlaneSiblings` until the inner Spotlight finishes its first
- * fill. */
-@keyframes bouncingBack {
-  0% {
-    background-position: 0 0;
+/* Loading shimmer — single overlay sitting behind cover + siblings,
+ * with a sheen that sweeps strictly left → right via transform
+ * (background-position math is finicky once a mask is in play). The
+ * mask fades the sheen near the cover so the area next to the image
+ * stays visually quiet. */
+@keyframes swimlaneShimmerSheen {
+  from {
+    transform: translateX(-100%);
   }
-  100% {
-    background-position: 20000px 0;
-  }
-}
-
-@keyframes bouncingMid {
-  0% {
-    background-position: 0 0;
-  }
-  100% {
-    background-position: 20000px 0;
+  to {
+    transform: translateX(100%);
   }
 }
 
-@keyframes bouncingFront {
-  0% {
-    background-position: 0 0;
-  }
-  100% {
-    background-position: 20000px 0;
-  }
-}
-
-.bouncingPixels {
+.swimlaneShimmer {
   position: absolute;
   inset: 0;
+  pointer-events: none;
+  overflow: hidden;
   background-color: var(--fo-palette-background-level2);
-  background-repeat: repeat-x;
-  background-size: auto 100%;
-  /* Back layer — small dim squares, slowest drift. */
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1267 200'%3E%3Crect fill='%234a4b4d' opacity='0.25' x='95' y='45' width='16' height='16'/%3E%3Crect fill='%234a4b4d' opacity='0.22' x='340' y='90' width='16' height='16'/%3E%3Crect fill='%234a4b4d' opacity='0.28' x='590' y='45' width='16' height='16'/%3E%3Crect fill='%234a4b4d' opacity='0.20' x='845' y='135' width='16' height='16'/%3E%3Crect fill='%234a4b4d' opacity='0.24' x='1095' y='90' width='16' height='16'/%3E%3Crect fill='%234a4b4d' opacity='0.26' x='195' y='160' width='16' height='16'/%3E%3Crect fill='%234a4b4d' opacity='0.21' x='745' y='180' width='16' height='16'/%3E%3Crect fill='%234a4b4d' opacity='0.23' x='995' y='20' width='16' height='16'/%3E%3Crect fill='%234a4b4d' opacity='0.27' x='495' y='110' width='16' height='16'/%3E%3Crect fill='%234a4b4d' opacity='0.19' x='1195' y='150' width='16' height='16'/%3E%3C/svg%3E");
-  animation: bouncingBack 120s linear infinite;
+  /* Visibility profile: invisible at the cover (left) edge, ramping
+   * up but never exceeding 20% even at the center of the row. The
+   * shimmer is a subtle hint of activity, not a dominant block. */
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.1) 25%,
+    rgba(0, 0, 0, 0.2) 50%,
+    rgba(0, 0, 0, 0.2) 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.1) 25%,
+    rgba(0, 0, 0, 0.2) 50%,
+    rgba(0, 0, 0, 0.2) 100%
+  );
 }
 
-.bouncingPixels::before,
-.bouncingPixels::after {
+.swimlaneShimmer::after {
   content: "";
   position: absolute;
   inset: 0;
-  background-repeat: repeat-x;
-  background-size: auto 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: swimlaneShimmerSheen 1.4s linear infinite;
 }
 
-/* Mid layer — medium lighter pixels, moderate speed. */
-.bouncingPixels::before {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1267 200'%3E%3Crect fill='%23a6a7a9' opacity='0.2' x='1203' y='18' width='36' height='36'/%3E%3Crect fill='%236c757d' opacity='0.24' x='27' y='100' width='36' height='36'/%3E%3Crect fill='%236c757d' opacity='0.34' x='73' y='35' width='36' height='36'/%3E%3Crect fill='%23a6a7a9' opacity='0.1' x='189' y='150' width='36' height='36'/%3E%3Crect fill='%23a6a7a9' opacity='0.2' x='523' y='175' width='36' height='36'/%3E%3Crect fill='%236c757d' opacity='0.24' x='782' y='120' width='36' height='36'/%3E%3Crect fill='%236c757d' opacity='0.08' x='938' y='165' width='36' height='36'/%3E%3Crect fill='%23a6a7a9' opacity='0.25' x='351' y='55' width='36' height='36'/%3E%3Crect fill='%236c757d' opacity='0.2' x='641' y='13' width='36' height='36'/%3E%3Crect fill='%23a6a7a9' opacity='0.05' x='1067' y='70' width='36' height='36'/%3E%3C/svg%3E");
-  animation: bouncingMid 90s linear infinite;
-}
-
-/* Front layer — large colorful chips, fastest drift. */
-.bouncingPixels::after {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1267 200'%3E%3Crect fill='%23499cef' opacity='0.7' x='547' y='130' width='26' height='26' rx='2'/%3E%3Crect fill='%23ff6d04' opacity='0.7' x='1173' y='40' width='26' height='26' rx='2'/%3E%3Crect fill='%236d04ff' opacity='0.7' x='52' y='80' width='26' height='26' rx='2'/%3E%3Crect fill='%23499cef' opacity='0.55' x='283' y='170' width='26' height='26' rx='2'/%3E%3Crect fill='%23ff6d04' opacity='0.55' x='891' y='75' width='26' height='26' rx='2'/%3E%3Crect fill='%236d04ff' opacity='0.6' x='734' y='30' width='26' height='26' rx='2'/%3E%3Crect fill='%23499cef' opacity='0.5' x='1081' y='150' width='26' height='26' rx='2'/%3E%3C/svg%3E");
-  animation: bouncingFront 60s linear infinite;
-}
-
-.bouncingPixels.hidden {
+.swimlaneShimmer.hidden {
   display: none;
 }
 
