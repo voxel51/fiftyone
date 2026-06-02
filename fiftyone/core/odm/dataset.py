@@ -38,6 +38,7 @@ from .database import (
     patch_evaluations,
     patch_runs,
     patch_saved_views,
+    patch_training_runs,
     patch_workspaces,
 )
 from .document import Document
@@ -944,6 +945,7 @@ class DatasetDocument(Document):
     brain_methods = DictField(ReferenceField(RunDocument))
     evaluations = DictField(ReferenceField(RunDocument))
     runs = DictField(ReferenceField(RunDocument))
+    training_runs = DictField(ReferenceField(RunDocument))
     active_label_schemas = ListField(StringField())
     label_schemas = DictField()
 
@@ -1037,6 +1039,21 @@ class DatasetDocument(Document):
 
         return runs
 
+    def get_training_runs(self):
+        training_runs = {}
+        for key, run_doc in self.training_runs.items():
+            if not isinstance(run_doc, DBRef):
+                training_runs[key] = run_doc
+            else:
+                logger.warning(
+                    "This dataset's training run references are corrupted. "
+                    "Run %s('%s') and dataset.reload() to resolve",
+                    etau.get_function_name(patch_training_runs),
+                    self.name,
+                )
+
+        return training_runs
+
     def to_dict(self, *args, no_dereference=False, **kwargs):
         d = super().to_dict(*args, **kwargs)
 
@@ -1054,5 +1071,8 @@ class DatasetDocument(Document):
                 k: v.to_dict() for k, v in self.get_evaluations().items()
             }
             d["runs"] = {k: v.to_dict() for k, v in self.get_runs().items()}
+            d["training_runs"] = {
+                k: v.to_dict() for k, v in self.get_training_runs().items()
+            }
 
         return d

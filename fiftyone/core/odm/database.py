@@ -45,6 +45,7 @@ fob = fou.lazy_import("fiftyone.core.brain")
 fod = fou.lazy_import("fiftyone.core.dataset")
 foe = fou.lazy_import("fiftyone.core.evaluation")
 fors = fou.lazy_import("fiftyone.core.runs")
+fotr = fou.lazy_import("fiftyone.core.training")
 fommtt = fou.lazy_import("fiftyone.multimodal.tags._temporal_tags")
 
 
@@ -1318,6 +1319,24 @@ def patch_evaluations(dataset_name, dry_run=False):
     )
 
 
+def patch_training_runs(dataset_name, dry_run=False):
+    """Ensures that the training runs in the ``runs`` collection for the given
+    dataset exactly match the values in its dataset document.
+
+    Args:
+        dataset_name: the name of the dataset
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    _patch_runs(
+        dataset_name,
+        "training_runs",
+        fotr.TrainingMethod,
+        "training run",
+        dry_run=dry_run,
+    )
+
+
 def patch_runs(dataset_name, dry_run=False):
     """Ensures that the runs in the ``runs`` collection for the given dataset
     exactly match the values in its dataset document.
@@ -1861,6 +1880,59 @@ def delete_evaluations(name, dry_run=False):
         name,
         "evaluations",
         "evaluation",
+        dry_run=dry_run,
+    )
+
+
+def delete_training_run(name, train_key, dry_run=False):
+    """Deletes the training run with the given key from the dataset with the
+    given name.
+
+    This is a low-level implementation of deletion that does not call
+    :meth:`fiftyone.core.dataset.load_dataset` or
+    :meth:`fiftyone.core.collections.SampleCollection.delete_training_run`,
+    which is helpful if a dataset's backing document or collections are
+    corrupted and cannot be loaded via the normal pathways.
+
+    Note that, as this method does not load :class:`fiftyone.core.runs.Run`
+    instances, it does not call :meth:`fiftyone.core.runs.Run.cleanup`.
+
+    Args:
+        name: the name of the dataset
+        train_key: the training run key
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    _delete_run(
+        name,
+        train_key,
+        "training_runs",
+        "training run",
+        dry_run=dry_run,
+    )
+
+
+def delete_training_runs(name, dry_run=False):
+    """Deletes all training runs from the dataset with the given name.
+
+    This is a low-level implementation of deletion that does not call
+    :meth:`fiftyone.core.dataset.load_dataset` or
+    :meth:`fiftyone.core.collections.SampleCollection.delete_training_runs`,
+    which is helpful if a dataset's backing document or collections are
+    corrupted and cannot be loaded via the normal pathways.
+
+    Note that, as this method does not load :class:`fiftyone.core.runs.Run`
+    instances, it does not call :meth:`fiftyone.core.runs.Run.cleanup`.
+
+    Args:
+        name: the name of the dataset
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    _delete_runs(
+        name,
+        "training_runs",
+        "training run",
         dry_run=dry_run,
     )
 

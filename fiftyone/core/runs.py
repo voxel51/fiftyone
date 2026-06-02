@@ -160,6 +160,7 @@ class BaseRunConfig(Config):
         import fiftyone.core.annotation as foa
         import fiftyone.core.brain as fob
         import fiftyone.core.evaluation as foe
+        import fiftyone.core.training as fot
         import fiftyone.utils.eval as foue
 
         # pylint: disable=import-error,no-name-in-module
@@ -175,6 +176,8 @@ class BaseRunConfig(Config):
             return fob.BrainMethodConfig
         if type == "evaluation":
             return foe.EvaluationMethodConfig
+        if type == "training":
+            return fot.TrainingMethodConfig
         if type == "run":
             return RunConfig
 
@@ -1037,6 +1040,7 @@ class BaseRunResults(etas.Serializable):
         import fiftyone.core.annotation as foa
         import fiftyone.core.brain as fob
         import fiftyone.core.evaluation as foe
+        import fiftyone.core.training as fot
         import fiftyone.utils.eval as foue
 
         # pylint: disable=import-error,no-name-in-module
@@ -1049,6 +1053,8 @@ class BaseRunResults(etas.Serializable):
             return fob.BrainResults
         if type == "evaluation":
             return foe.EvaluationResults
+        if type == "training":
+            return fot.TrainingResults
         if type == "run":
             return RunResults
 
