@@ -303,6 +303,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         "_brain_cache",
         "_evaluation_cache",
         "_run_cache",
+        "_training_cache",
         "_deleted",
     )
 
@@ -341,6 +342,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._brain_cache = cachetools.LRUCache(5)
         self._evaluation_cache = cachetools.LRUCache(5)
         self._run_cache = cachetools.LRUCache(5)
+        self._training_cache = cachetools.LRUCache(5)
 
         self._deleted = False
 
@@ -9276,6 +9278,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._brain_cache.clear()
         self._evaluation_cache.clear()
         self._run_cache.clear()
+        self._training_cache.clear()
 
     def _reload(self, hard=False):
         if not hard:
@@ -10016,6 +10019,15 @@ def _delete_dataset_extras(dataset):
 
         run_doc.delete()
 
+    for run_doc in dataset_doc.training_runs.values():
+        if isinstance(run_doc, DBRef):
+            continue
+
+        if run_doc.results is not None:
+            run_doc.results.delete()
+
+        run_doc.delete()
+
     svc = food.DelegatedOperationService()
     svc.delete_for_dataset(dataset_id=dataset_id)
 
@@ -10095,6 +10107,7 @@ def _clone_collection(
     dataset_doc.brain_methods.clear()
     dataset_doc.evaluations.clear()
     dataset_doc.runs.clear()
+    dataset_doc.training_runs.clear()
 
     if view is not None:
         # Respect filtered sample fields, if any
@@ -10160,6 +10173,7 @@ def _clone_collection(
         or dataset.has_brain_runs
         or dataset.has_evaluations
         or dataset.has_runs
+        or dataset.has_training_runs
     ):
         _clone_extras(dataset, clone_dataset, now)
 
@@ -10594,6 +10608,15 @@ def _clone_extras(src_dataset, dst_dataset, now):
         run_doc.save(upsert=True)
 
         dst_doc.runs[run_key] = run_doc
+
+    # Clone training runs
+    for train_key, _run_doc in src_doc.get_training_runs().items():
+        run_doc = _clone_run(_run_doc)
+        run_doc.dataset_id = dst_doc.id
+        run_doc.timestamp = now
+        run_doc.save(upsert=True)
+
+        dst_doc.training_runs[train_key] = run_doc
 
     dst_doc.save()
 
