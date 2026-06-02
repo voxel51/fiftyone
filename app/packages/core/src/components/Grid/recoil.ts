@@ -1,6 +1,12 @@
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { DefaultValue, atom, atomFamily, selector } from "recoil";
+import {
+  DefaultValue,
+  atom,
+  atomFamily,
+  selector,
+  selectorFamily,
+} from "recoil";
 import { MANAGING_GRID_MEMORY } from "../../utils/links";
 
 /**
@@ -255,6 +261,69 @@ export const pageParameters = selector({
       };
     };
   },
+});
+
+/**
+ * Per-slice variant of {@link pageParameters} for the swimlanes view.
+ * Each lane fetches a single slice's samples, so the slice in
+ * `filter.group` is taken from the lane's identity (the family key)
+ * rather than the global `groupSlice` atom. All other parameters
+ * (view, filters, sort, cursor, extended stages) follow the global
+ * grid state — every lane shares the same view-level state, just
+ * scoped to its own slice.
+ *
+ * Note that the scrubber's `gridScrubCursor` and `cursorPagination`
+ * are intentionally NOT included here. Cursor-mode pagination is
+ * per-collection; combining it with per-slice filtering would
+ * require the server to seek inside each lane independently, which
+ * the current `paginate_samples` doesn't support and isn't part of
+ * the swimlanes V1.
+ */
+export const swimlanePageParameters = selectorFamily<
+  (page: number, pageSize: number) => Record<string, unknown>,
+  string
+>({
+  key: "swimlanePageParameters",
+  get:
+    (slice) =>
+    ({ get }) => {
+      const dataset = get(fos.datasetName);
+      if (!dataset) throw new Error("dataset is not defined");
+
+      const queryPerformance = get(fos.queryPerformance);
+      const extendedStages = queryPerformance
+        ? get(fos.extendedStagesNoSort)
+        : get(fos.extendedStages);
+
+      const sort = get(fos.gridSortBy);
+      const extra =
+        queryPerformance &&
+        !extendedStages["fiftyone.core.stages.SortBySimilarity"]
+          ? {
+              sortBy: sort?.field,
+              desc: sort?.descending,
+              hint: get(gridIndex),
+            }
+          : {};
+
+      const params = {
+        dataset,
+        view: get(fos.view),
+        filters: get(fos.filters),
+        filter: {
+          group: { slice, slices: [slice] },
+        },
+        extendedStages,
+        maxQueryTime: queryPerformance ? get(fos.config).maxQueryTime : null,
+        ...extra,
+      };
+
+      return (page: number, pageSize: number) => ({
+        ...params,
+        after: page ? String(page * pageSize - 1) : null,
+        first: pageSize,
+      });
+    },
 });
 
 export const recommendedGridZoom = atom<number | null>({

@@ -7,6 +7,7 @@ import { useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 import Grid from "../components/Grid";
 import Header from "../components/Grid/Header";
+import Swimlanes from "../components/Grid/Swimlanes";
 
 const Container = styled.div`
   position: relative;
@@ -15,17 +16,26 @@ const Container = styled.div`
   overflow-y: hidden;
 `;
 
+const SamplesView = () => {
+  // Swap between the single-grid and per-slice-lane views. Toggle is
+  // gated on `gridSwimlanesAvailable` (group datasets only), so on
+  // non-group datasets `enabled` resolves to its default but the
+  // availability check ensures we never render lanes without slices.
+  const [enabled] = fos.useGridSwimlanes();
+  const available = fos.useGridSwimlanesAvailable();
+  const showLanes = enabled && available;
+  return (
+    <Container>
+      {showLanes ? <Swimlanes key="swimlanes" /> : <Grid key="grid" />}
+      <Header key="header" />
+    </Container>
+  );
+};
+
 registerComponent({
   name: "Samples",
   label: "Samples",
-  component: () => {
-    return (
-      <Container>
-        <Grid key={"grid"} />
-        <Header key={"header"} />
-      </Container>
-    );
-  },
+  component: SamplesView,
   type: PluginComponentType.Panel,
   Icon: AppsIcon,
   activator: () => true,
