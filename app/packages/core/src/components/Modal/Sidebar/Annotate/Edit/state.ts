@@ -121,10 +121,10 @@ export const currentField = atom(
     }
 
     const currentData = currentLabel.data;
-    const data = buildNewLabelData(path, currentData._cls, {
-      id: currentData?._id,
-    });
-    data.bounding_box = currentData?.bounding_box;
+    const data = {
+      ...buildNewLabelData(path, currentData._cls, { id: currentData?._id }),
+      ...currentData,
+    };
 
     currentLabel.overlay?.updateField(path);
     currentLabel.overlay?.updateLabel(data);
