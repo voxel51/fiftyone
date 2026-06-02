@@ -71,7 +71,7 @@ of this guide. For example:
 .. code-block:: text
 
    $ python --version
-   Python 3.10.18
+   Python 3.10.20
 
 Also note that `python` and `pip` live inside the `env` folder (in this output,
 the path to the current folder is replaced with `...`):
