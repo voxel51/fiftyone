@@ -95,10 +95,55 @@
   width: 100%;
 }
 
+/* Swimlanes view — stacked horizontal Spotlight lanes, one per group
+ * slice. The container scrolls vertically when lanes overflow; each
+ * lane scrolls horizontally on its own (Spotlight `scrollbar: true`). */
+.swimlanes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  /* Leave room for the header gradient and the bottom edge. */
+  padding: 48px 0 0.5rem 0;
+  height: 100%;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.swimlane {
+  display: flex;
+  flex-direction: column;
+  /* Each lane is a fixed-height strip; viewport vertical scroll moves
+   * between lanes. Tuned so a default-sized sample image plus the lane
+   * label fits cleanly. */
+  height: 200px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.swimlaneLabel {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  color: var(--fo-palette-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.swimlaneTrack {
+  flex: 1 1 auto;
+  position: relative;
+  width: 100%;
+  min-height: 0;
+}
+
 .gridScrubber {
   position: absolute;
-  /* Match Spotlight's top offset (DEFAULT_OFFSET = 48px) so the
-   * scrubber's value-space lines up with the grid's first row. */
+  /* Leave the top 48px clear so the header's controls remain clickable.
+   * The scrubber doesn't overlap the header chrome. */
   top: 48px;
   right: 0;
   /* Bottom gutter so the last tick label has room to render below the

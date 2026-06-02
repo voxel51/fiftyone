@@ -30,6 +30,10 @@ export const RightDiv = styled.div`
 
 export const RightContainer = styled.div`
   display: flex;
+  /* Vertically center each control (slider, toggle, divider, etc.) so
+     the toggle+icon pair lines up with the spacing/zoom sliders and the
+     sort arrow regardless of their differing intrinsic heights. */
+  align-items: center;
   color: ${({ theme }) => theme.text.secondary};
 `;
 

@@ -3,27 +3,28 @@ import {
   gridSortFields,
   similarityParameters,
 } from "@fiftyone/state";
-import { Icon, IconName, Select, Size } from "@voxel51/voodo";
+import { Icon, IconName, Select, Size, Tooltip } from "@voxel51/voodo";
 import React, { useMemo } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { RightDiv, SliderContainer } from "./Containers";
 
-// Sentinel option used to clear the sort selection — voodo Select
-// requires every choice to have an option entry, so "no sort" needs an
-// explicit row.
+// Sentinel option used to clear the sort selection. voodo Select needs
+// every choice to be an option entry, so "no sort" gets an explicit row.
 const CLEAR_ID = "__sort_clear__";
 
 // Same hover/press class used by the Spacing / Zoom reset affordances.
 const PRESS_CLASS =
   "cursor-pointer flex items-center justify-center p-1.5 hover:scale-[1.1] active:scale-[0.92] transition-transform duration-[150ms] ease-out";
 
+// Match the header's tooltip surface: translucent so grid samples stay
+// partly visible behind the label.
+const TOOLTIP_CLASS =
+  "!bg-black/70 !text-white backdrop-blur-sm whitespace-nowrap";
+
 export default function Sort() {
   const fields = useRecoilValue(gridSortFields);
   const [value, select] = useRecoilState(gridSortBy);
   const similarity = useRecoilValue(similarityParameters);
-  if (!fields.length || similarity) {
-    return null;
-  }
 
   const options = useMemo(
     () => [
@@ -33,9 +34,13 @@ export default function Sort() {
     [fields]
   );
 
+  if (!fields.length || similarity) {
+    return null;
+  }
+
   return (
     <SliderContainer style={{ width: "auto" }}>
-      <RightDiv style={{ paddingRight: 0, border: "unset" }}>
+      <RightDiv style={{ paddingRight: 0 }}>
         <Select
           exclusive
           portal
@@ -56,21 +61,26 @@ export default function Sort() {
         />
       </RightDiv>
       {value !== null && (
-        <div
-          title={value?.descending ? "Descending" : "Ascending"}
-          onClick={() =>
-            select((current) => ({
-              ...current,
-              descending: !current.descending,
-            }))
-          }
-          className={PRESS_CLASS}
+        <Tooltip
+          content={value?.descending ? "Descending" : "Ascending"}
+          className={TOOLTIP_CLASS}
+          portal
         >
-          <Icon
-            name={value?.descending ? IconName.ArrowDown : IconName.ArrowUp}
-            size={Size.Xl}
-          />
-        </div>
+          <div
+            onClick={() =>
+              select((current) => ({
+                ...current,
+                descending: !current.descending,
+              }))
+            }
+            className={PRESS_CLASS}
+          >
+            <Icon
+              name={value?.descending ? IconName.ArrowDown : IconName.ArrowUp}
+              size={Size.Xl}
+            />
+          </div>
+        </Tooltip>
       )}
     </SliderContainer>
   );

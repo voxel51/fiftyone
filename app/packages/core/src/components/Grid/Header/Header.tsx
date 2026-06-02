@@ -35,27 +35,60 @@ import Sort from "./Sort";
 const PRESS_CLASS =
   "cursor-pointer flex items-center justify-center p-1.5 hover:scale-[1.1] active:scale-[0.92] transition-transform duration-[150ms] ease-out";
 
+// Atom defaults — used as fallbacks when the stored value is NaN or
+// otherwise non-finite. The storage effect clears bad entries (see
+// `customEffects.ts`), so this guard is the one-frame safety net for
+// legacy bad data already in users' browsers.
+const SPACING_DEFAULT = 3;
+const ZOOM_DEFAULT = ZOOM_RANGE[0];
+
+const safeNumber = (v: unknown, fallback: number): number =>
+  typeof v === "number" && Number.isFinite(v) ? v : fallback;
+
+// Semi-transparent tooltip surface so grid samples stay partially
+// visible behind the label. `!` enforces precedence over voodo Tooltip's
+// solid Card2 background. `backdrop-blur-sm` adds a subtle blur so the
+// text reads cleanly against busy content. `whitespace-nowrap` keeps
+// short labels ("Hide scrubber") on a single line — voodo wraps tooltip
+// content in `break-words` which can split on internal spaces under
+// certain layouts.
+const TOOLTIP_CLASS =
+  "!bg-black/70 !text-white backdrop-blur-sm whitespace-nowrap";
+
 const Spacing = () => {
   const [value, setValue] = useRecoilState(gridSpacing);
   const resetSpacing = useResetRecoilState(gridSpacing);
+  // Without these guards, a `NaN` left in localStorage from an earlier
+  // session feeds the slider, which emits onChange(NaN), the atom
+  // round-trips NaN, and the component re-renders forever.
+  const safeValue = safeNumber(value, SPACING_DEFAULT);
+  const handleChange = (next: number) => {
+    if (Number.isFinite(next)) setValue(next);
+  };
   return (
     <SliderContainer>
-      {/* Native `title` for the slider — wrapping SingleValueSlider in
-          voodo's Popover-based Tooltip destabilizes the slider's
-          internal measurements and causes an infinite re-render loop.
-          Hover tooltip on the icon button alone is enough signposting. */}
-      <div style={{ flexGrow: 1 }} title="Grid spacing">
+      {/* `flexGrow: 1` must live on the Tooltip itself — it becomes the
+          flex child of SliderContainer. Putting it on an inner div has
+          no effect because the Tooltip's outer (Popover) wrapper sits
+          in between and doesn't propagate the grow. Without this the
+          slider has no width to render into and renders squished. */}
+      <Tooltip
+        content="Grid spacing"
+        className={TOOLTIP_CLASS}
+        portal
+        style={{ flexGrow: 1, minWidth: 0 }}
+      >
         <SingleValueSlider
           bare
           debounceDelay={0}
           min={0}
           max={64}
           step={1}
-          value={value}
-          onChange={setValue}
+          value={safeValue}
+          onChange={handleChange}
         />
-      </div>
-      <Tooltip content="Reset spacing">
+      </Tooltip>
+      <Tooltip content="Reset spacing" className={TOOLTIP_CLASS} portal>
         <div
           onClick={resetSpacing}
           onKeyDown={() => null}
@@ -71,20 +104,29 @@ const Spacing = () => {
 const Zoom = () => {
   const [value, setValue] = useRecoilState(gridZoom);
   const resetZoom = useResetRecoilState(gridZoom);
+  const safeValue = safeNumber(value, ZOOM_DEFAULT);
+  const handleChange = (next: number) => {
+    if (Number.isFinite(next)) setValue(next);
+  };
   return (
     <SliderContainer>
-      <div style={{ flexGrow: 1 }} title="Grid zoom">
+      <Tooltip
+        content="Grid zoom"
+        className={TOOLTIP_CLASS}
+        portal
+        style={{ flexGrow: 1, minWidth: 0 }}
+      >
         <SingleValueSlider
           bare
           debounceDelay={0}
           min={ZOOM_RANGE[0]}
           max={ZOOM_RANGE[1]}
           step={0.01}
-          value={value}
-          onChange={setValue}
+          value={safeValue}
+          onChange={handleChange}
         />
-      </div>
-      <Tooltip content="Reset zoom">
+      </Tooltip>
+      <Tooltip content="Reset zoom" className={TOOLTIP_CLASS} portal>
         <div onClick={resetZoom} onKeyDown={() => null} className={PRESS_CLASS}>
           <Icon name={IconName.Zoom} size={Size.Xl} />
         </div>
@@ -108,7 +150,11 @@ const ScrubberToggle = () => {
   const [enabled, setEnabled] = fos.useGridScrubber();
   if (!available) return null;
   return (
-    <Tooltip content={enabled ? "Hide scrubber" : "Show scrubber"}>
+    <Tooltip
+      content={enabled ? "Hide scrubber" : "Show scrubber"}
+      className={TOOLTIP_CLASS}
+      portal
+    >
       <RightDiv style={TOGGLE_ROW_STYLE}>
         <Toggle
           checked={enabled}
@@ -126,7 +172,11 @@ const SwimlanesToggle = () => {
   const [enabled, setEnabled] = fos.useGridSwimlanes();
   if (!available) return null;
   return (
-    <Tooltip content={enabled ? "Hide swimlanes" : "Show swimlanes"}>
+    <Tooltip
+      content={enabled ? "Hide swimlanes" : "Show swimlanes"}
+      className={TOOLTIP_CLASS}
+      portal
+    >
       <RightDiv style={TOGGLE_ROW_STYLE}>
         <Toggle
           checked={enabled}
@@ -165,9 +215,7 @@ const Header = () => {
             <GroupSlice />
           </RightDiv>
         )}
-        {/* Single vertical separator: marks the boundary between the
-            resource-count / slice selector and the actionable sort +
-            view controls. */}
+
         <Divider orientation={Orientation.Column} />
         <Sort />
         <Spacing />

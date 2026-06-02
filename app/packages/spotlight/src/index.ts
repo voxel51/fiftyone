@@ -661,6 +661,18 @@ export default class Spotlight<K, V> extends EventTarget {
     }
 
     await this.#previous(false);
+    // Fill backward too. If a seek lands near the end of the dataset
+    // (e.g., cursor-mode pagination), the forward section may exhaust
+    // before the viewport is covered. Keep pulling backward pages until
+    // either the combined extent fills the viewport or we run out of
+    // earlier rows. Without this loop the grid renders a half-empty
+    // page when scrubbing near the tail.
+    while (
+      !this.#backward.finished &&
+      this.#forward.primaryExtent + this.#backward.primaryExtent < this.#height
+    ) {
+      await this.#previous(false);
+    }
     this.#render({
       at: this.#config.at,
       offset: -this.#pivot,

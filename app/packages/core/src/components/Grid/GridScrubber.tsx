@@ -96,14 +96,34 @@ const GridScrubberContent = () => {
   // cursor changes `pageReset` in `useRefreshers`, which remounts
   // Spotlight at the new AT (a `match({sort_field: {$gt|$lt: value}})`
   // server-side seek under `cursor_pagination=true`).
+  //
+  // Clamp the committed cursor to just inside the upper bound (or lower
+  // bound when descending). At an exact boundary, the server's strict
+  // inequality (`$gt: max` / `$lt: min`) matches zero rows and the grid
+  // breaks. Pulling in by a fraction of the range guarantees the seek
+  // always lands at least one sample, giving the user the tail (or
+  // head) of the dataset instead of an empty page.
   const commit = useCallback(
     (next: number) => {
-      _setValue(next);
+      let value = next;
+      if (bounds) {
+        const [bMin, bMax] = bounds;
+        const range = bMax - bMin;
+        // Tiny epsilon — small enough not to skew the visual position,
+        // large enough to clear floating-point comparison noise.
+        const eps = range > 0 ? range * 1e-6 : 0;
+        if (sort?.descending) {
+          if (value <= bMin) value = bMin + eps;
+        } else {
+          if (value >= bMax) value = bMax - eps;
+        }
+      }
+      _setValue(value);
       setScrubbing(false);
       resetScrollAtoms();
-      commitCursor(String(next));
+      commitCursor(String(value));
     },
-    [commitCursor, resetScrollAtoms, setScrubbing]
+    [bounds, commitCursor, resetScrollAtoms, setScrubbing, sort?.descending]
   );
 
   // Wheel → scrubber: when the user is NOT actively scrubbing, follow the

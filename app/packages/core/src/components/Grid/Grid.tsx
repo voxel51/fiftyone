@@ -7,6 +7,7 @@ import { useRecoilValue } from "recoil";
 import { useMemoOne } from "use-memo-one";
 import { v4 as uuid } from "uuid";
 import { useSyncLabelsRenderingStatus } from "../../hooks";
+import GridScrubber from "./GridScrubber";
 import {
   gridAutosizing,
   gridCrop,
@@ -14,7 +15,6 @@ import {
   maxGridItemsSizeBytes,
   pageParameters,
 } from "./recoil";
-import GridScrubber from "./GridScrubber";
 import useEscape from "./useEscape";
 import useEvents from "./useEvents";
 import useLabelVisibility from "./useLabelVisibility";
@@ -35,6 +35,7 @@ function Grid() {
   const id = useMemoOne(() => uuid(), []);
   const pixels = useMemoOne(() => uuid(), []);
   const spacing = useRecoilValue(gridSpacing);
+
   const { pageReset, reset } = useRefreshers();
   const [resizing, setResizing] = useState(false);
   const zoom = useZoomSetting();
@@ -96,7 +97,11 @@ function Grid() {
       maxItemsSizeBytes: autosizing ? maxBytes : undefined,
       scrollbar: !scrubberEnabled,
       spacing,
-
+      // Use Spotlight's DEFAULT_OFFSET (48px) so the first row sits
+      // below the transparent header. The header is rendered as an
+      // absolute overlay with a gradient that fades over the grid's
+      // top edge; without the offset, the first row collides with
+      // the chrome and is hard to read through the gradient.
       get: (next) => page(next),
       onItemClick: (args) => setSample(args, () => spotlight.createIter()),
       rowAspectRatioThreshold: zoom,
