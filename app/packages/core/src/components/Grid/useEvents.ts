@@ -4,8 +4,8 @@ import { freeVideos } from "@fiftyone/looker";
 import type Spotlight from "@fiftyone/spotlight";
 import type { Rejected } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import { useLayoutEffect } from "react";
-import { useSetRecoilState } from "recoil";
+import { useEffect, useLayoutEffect } from "react";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import { MANAGING_GRID_MEMORY } from "../../utils/links";
 import { QP_WAIT, QueryPerformanceToastEvent } from "../QueryPerformanceToast";
 import { recommendedGridZoom } from "./recoil";
@@ -29,6 +29,21 @@ export default ({
 }) => {
   const handleAutosize = useSetRecoilState(fos.snackbarLink);
   const setRecommendedZoom = useSetRecoilState(recommendedGridZoom);
+  const scrubbing = useRecoilValue(fos.gridScrubbing);
+
+  // While the user is actively dragging the scrubber thumb, reveal the
+  // falling-pixels overlay so the grid visibly stops tracking real data.
+  //
+  // The release transition (`scrubbing` → false) is intentionally a no-op
+  // here: it doesn't mean "hide pixels", it means "commit the cursor and
+  // build the next Spotlight at the new AT". Pixels stay revealed until
+  // that next Spotlight fires `load` and the mount handler below hides
+  // them.
+  useEffect(() => {
+    if (!scrubbing) return;
+    const node = document.getElementById(pixels);
+    node?.classList.remove(styles.hidden);
+  }, [pixels, scrubbing]);
 
   useLayoutEffect(() => {
     if (resizing || !spotlight) {

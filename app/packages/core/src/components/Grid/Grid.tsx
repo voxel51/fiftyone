@@ -14,6 +14,7 @@ import {
   maxGridItemsSizeBytes,
   pageParameters,
 } from "./recoil";
+import GridScrubber from "./GridScrubber";
 import useEscape from "./useEscape";
 import useEvents from "./useEvents";
 import useLabelVisibility from "./useLabelVisibility";
@@ -68,6 +69,9 @@ function Grid() {
 
   const setSample = fos.useExpandSample(store);
   const autosizing = useRecoilValue(gridAutosizing);
+  // When the scrubber is on it owns the grid's right edge; turn off
+  // Spotlight's built-in scrollbar so the two don't fight for the gutter.
+  const [scrubberEnabled] = fos.useGridScrubber();
 
   const spotlight = useMemoOne(() => {
     /** SPOTLIGHT REFRESHER */
@@ -90,7 +94,7 @@ function Grid() {
 
       maxRows: MAX_ROWS,
       maxItemsSizeBytes: autosizing ? maxBytes : undefined,
-      scrollbar: true,
+      scrollbar: !scrubberEnabled,
       spacing,
 
       get: (next) => page(next),
@@ -107,6 +111,7 @@ function Grid() {
     renderer,
     reset,
     resizing,
+    scrubberEnabled,
     setSample,
     spacing,
     zoom,
@@ -121,6 +126,7 @@ function Grid() {
     <div className={styles.gridContainer}>
       <div id={id} className={styles.spotlightGrid} data-cy="fo-grid" />
       <div id={pixels} className={styles.fallingPixels} />
+      <GridScrubber />
     </div>
   );
 }

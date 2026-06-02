@@ -7,8 +7,8 @@
  * @module accessors/grid/swimlanes
  */
 
-import { useRecoilState } from "recoil";
-import { gridSwimlanes } from "../../recoil/grid";
+import { useRecoilState, useRecoilValue } from "recoil";
+import { gridSwimlanes, gridSwimlanesAvailable } from "../../recoil/grid";
 
 /**
  * Returns the current swimlanes-enabled state and a setter. Persisted per
@@ -16,3 +16,11 @@ import { gridSwimlanes } from "../../recoil/grid";
  */
 export const useGridSwimlanes = (): [boolean, (next: boolean) => void] =>
   useRecoilState(gridSwimlanes);
+
+/**
+ * Whether the swimlanes feature should be offered. Drives toggle
+ * visibility in the header — only available on "group" media-type
+ * datasets.
+ */
+export const useGridSwimlanesAvailable = (): boolean =>
+  useRecoilValue(gridSwimlanesAvailable);

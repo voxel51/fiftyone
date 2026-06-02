@@ -1,7 +1,8 @@
-import { DefaultValue, atomFamily, selector } from "recoil";
+import { DefaultValue, atom, atomFamily, selector } from "recoil";
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { filters } from "./filters";
-import { bounds } from "./pathData/numeric";
+import { isGroup } from "./groups";
+import { lightningBounds } from "./pathData/lightningNumeric";
 import { queryPerformance, validIndexes } from "./queryPerformance";
 import { fieldPath, fields, isNumericField } from "./schema";
 import { datasetId } from "./selectors";
@@ -89,10 +90,34 @@ export const gridScrubber = selector<boolean>({
 });
 
 /**
- * `[min, max]` bounds for the current sort field, or `null` when no field is
- * selected, the field isn't numeric, or the bounds aggregation hasn't yet
- * resolved. Wraps `pathData.bounds` so consumers don't need to know the
- * aggregation params.
+ * Whether the grid scrubber should be offered to the user. The scrubber
+ * is only meaningful when the grid is sorting (which is itself only
+ * possible in query performance mode), so the toggle and the right-edge
+ * chrome are both hidden otherwise.
+ */
+export const gridScrubberAvailable = selector<boolean>({
+  key: "gridScrubberAvailable",
+  get: ({ get }) => get(gridSortBy) !== null,
+});
+
+/**
+ * Whether the swimlanes view should be offered to the user — only on
+ * "group" media-type datasets.
+ */
+export const gridSwimlanesAvailable = selector<boolean>({
+  key: "gridSwimlanesAvailable",
+  get: ({ get }) => get(isGroup),
+});
+
+/**
+ * `[min, max]` bounds for the current sort field. Consumers must already
+ * have ensured query performance is on and a numeric sort field is
+ * selected (the selector returns `null` only if its caller wires it up
+ * outside that contract).
+ *
+ * Reads from the standard `pathData.bounds` aggregation, which under
+ * query performance is served from the lightning data flow without a
+ * separate full-collection scan.
  */
 export const gridSortFieldBounds = selector<[number, number] | null>({
   key: "gridSortFieldBounds",
@@ -100,8 +125,41 @@ export const gridSortFieldBounds = selector<[number, number] | null>({
     const sort = get(gridSortBy);
     if (!sort) return null;
     if (!get(isNumericField(sort.field))) return null;
-    return get(bounds({ path: sort.field, modal: false, extended: false }));
+    // In query-performance mode the standard `pathData.bounds`
+    // aggregation doesn't materialize min/max; the QP data flow
+    // exposes them via `lightningBounds` instead (same `pathData/`
+    // module, populated from indexed-field metadata). Returns
+    // `[null, null]` when the field isn't indexed under QP — guard.
+    const result = get(lightningBounds(sort.field));
+    const [min, max] = result;
+    if (typeof min !== "number" || typeof max !== "number") return null;
+    return [min, max];
   },
+});
+
+/**
+ * Active scrub cursor (the sort-field value the user has dragged the
+ * scrubber thumb to). `null` means the scrubber is idle or unmounted.
+ * Transient — not persisted; the grid resets it on view / sort changes.
+ *
+ * Consumed by `pageParameters` to send `cursor_pagination=true` with
+ * `after=value` so the grid's next mount seeks to this value instead of
+ * starting at page 0.
+ */
+export const gridScrubCursor = atomFamily<string | null, string>({
+  key: "gridScrubCursor",
+  default: null,
+});
+
+/**
+ * `true` while the user is actively dragging the scrubber thumb. Drives
+ * the grid's falling-pixels overlay so the underlying view visibly stops
+ * tracking real data for the duration of the drag, then resumes on
+ * release (when the new "AT" location loads).
+ */
+export const gridScrubbing = atom<boolean>({
+  key: "gridScrubbing",
+  default: false,
 });
 
 /** Per-dataset persisted toggle for the grid's swimlanes view. Defaults to enabled. */

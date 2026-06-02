@@ -94,3 +94,16 @@
   top: 0;
   width: 100%;
 }
+
+.gridScrubber {
+  position: absolute;
+  /* Match Spotlight's top offset (DEFAULT_OFFSET = 48px) so the
+   * scrubber's value-space lines up with the grid's first row. */
+  top: 48px;
+  right: 0;
+  /* Bottom gutter so the last tick label has room to render below the
+   * end of the track without being clipped by the container. */
+  bottom: 24px;
+  z-index: 5;
+  pointer-events: auto;
+}

@@ -1,11 +1,10 @@
-import { LoadingDots, useTheme } from "@fiftyone/components";
+import { LoadingDots } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { isGroup as isGroupAtom } from "@fiftyone/state";
 import { Apps, ImageAspectRatio } from "@mui/icons-material";
-import { Toggle } from "@voxel51/voodo";
+import { SingleValueSlider, Toggle } from "@voxel51/voodo";
 import React, { Suspense, useMemo } from "react";
-import { constSelector, useRecoilValue, useResetRecoilState } from "recoil";
-import { Slider } from "../../Common/RangeSlider";
+import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import ResourceCount from "../../ResourceCount";
 import Actions from "../Actions";
 import { gridSpacing, gridZoom } from "../recoil";
@@ -20,19 +19,19 @@ import GroupSlice from "./GroupSlice";
 import Sort from "./Sort";
 
 const Spacing = () => {
-  const theme = useTheme();
+  const [value, setValue] = useRecoilState(gridSpacing);
   const resetSpacing = useResetRecoilState(gridSpacing);
   return (
     <SliderContainer>
       <div style={{ flexGrow: 1 }} title={"Spacing"}>
-        <Slider
-          valueAtom={gridSpacing}
-          boundsAtom={constSelector([0, 64])}
-          color={theme.primary.plainColor}
-          showBounds={false}
-          persistValue={false}
-          showValue={false}
-          style={{ padding: 0, margin: 0 }}
+        <SingleValueSlider
+          bare
+          debounceDelay={0}
+          min={0}
+          max={64}
+          step={1}
+          value={value}
+          onChange={setValue}
         />
       </div>
       <div
@@ -48,20 +47,19 @@ const Spacing = () => {
 };
 
 const Zoom = () => {
+  const [value, setValue] = useRecoilState(gridZoom);
   const resetZoom = useResetRecoilState(gridZoom);
-
-  const theme = useTheme();
   return (
     <SliderContainer>
       <div style={{ flexGrow: 1 }} title={"Zoom"}>
-        <Slider
-          valueAtom={gridZoom}
-          boundsAtom={constSelector(ZOOM_RANGE)}
-          color={theme.primary.plainColor}
-          showBounds={false}
-          persistValue={false}
-          showValue={false}
-          style={{ padding: 0, margin: 0 }}
+        <SingleValueSlider
+          bare
+          debounceDelay={0}
+          min={ZOOM_RANGE[0]}
+          max={ZOOM_RANGE[1]}
+          step={0.01}
+          value={value}
+          onChange={setValue}
         />
       </div>
       <div
@@ -76,30 +74,44 @@ const Zoom = () => {
   );
 };
 
+// RightDiv defaults to `flex-direction: column`; override to row so the
+// switch and its label sit side-by-side (switch on the left, label on
+// the right).
+const TOGGLE_ROW_STYLE: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 8,
+};
+
 const ScrubberToggle = () => {
+  const available = fos.useGridScrubberAvailable();
   const [enabled, setEnabled] = fos.useGridScrubber();
+  if (!available) return null;
   return (
-    <RightDiv>
+    <RightDiv style={TOGGLE_ROW_STYLE}>
       <Toggle
         checked={enabled}
         onChange={setEnabled}
-        label="Scrubber"
         aria-label="Toggle grid scrubber"
       />
+      <span>Scrubber</span>
     </RightDiv>
   );
 };
 
 const SwimlanesToggle = () => {
+  const available = fos.useGridSwimlanesAvailable();
   const [enabled, setEnabled] = fos.useGridSwimlanes();
+  if (!available) return null;
   return (
-    <RightDiv>
+    <RightDiv style={TOGGLE_ROW_STYLE}>
       <Toggle
         checked={enabled}
         onChange={setEnabled}
-        label="Swimlanes"
         aria-label="Toggle grid swimlanes"
       />
+      <span>Swimlanes</span>
     </RightDiv>
   );
 };
