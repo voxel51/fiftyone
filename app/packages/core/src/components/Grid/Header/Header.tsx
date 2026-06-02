@@ -40,19 +40,21 @@ const Spacing = () => {
   const resetSpacing = useResetRecoilState(gridSpacing);
   return (
     <SliderContainer>
-      <Tooltip content="Grid spacing">
-        <div style={{ flexGrow: 1 }}>
-          <SingleValueSlider
-            bare
-            debounceDelay={0}
-            min={0}
-            max={64}
-            step={1}
-            value={value}
-            onChange={setValue}
-          />
-        </div>
-      </Tooltip>
+      {/* Native `title` for the slider — wrapping SingleValueSlider in
+          voodo's Popover-based Tooltip destabilizes the slider's
+          internal measurements and causes an infinite re-render loop.
+          Hover tooltip on the icon button alone is enough signposting. */}
+      <div style={{ flexGrow: 1 }} title="Grid spacing">
+        <SingleValueSlider
+          bare
+          debounceDelay={0}
+          min={0}
+          max={64}
+          step={1}
+          value={value}
+          onChange={setValue}
+        />
+      </div>
       <Tooltip content="Reset spacing">
         <div
           onClick={resetSpacing}
@@ -71,19 +73,17 @@ const Zoom = () => {
   const resetZoom = useResetRecoilState(gridZoom);
   return (
     <SliderContainer>
-      <Tooltip content="Grid zoom">
-        <div style={{ flexGrow: 1 }}>
-          <SingleValueSlider
-            bare
-            debounceDelay={0}
-            min={ZOOM_RANGE[0]}
-            max={ZOOM_RANGE[1]}
-            step={0.01}
-            value={value}
-            onChange={setValue}
-          />
-        </div>
-      </Tooltip>
+      <div style={{ flexGrow: 1 }} title="Grid zoom">
+        <SingleValueSlider
+          bare
+          debounceDelay={0}
+          min={ZOOM_RANGE[0]}
+          max={ZOOM_RANGE[1]}
+          step={0.01}
+          value={value}
+          onChange={setValue}
+        />
+      </div>
       <Tooltip content="Reset zoom">
         <div onClick={resetZoom} onKeyDown={() => null} className={PRESS_CLASS}>
           <Icon name={IconName.Zoom} size={Size.Xl} />
