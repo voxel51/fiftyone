@@ -138,6 +138,11 @@ class TestSampleRoutes:
         dataset.add_sample_field(
             "empty_polylines", fo.EmbeddedDocumentField, fol.Polylines
         )
+        dataset.add_sample_field(
+            "empty_temporal_detections",
+            fo.EmbeddedDocumentField,
+            fol.TemporalDetections,
+        )
 
         dataset.add_sample_field(
             "empty_primitive",
@@ -566,6 +571,49 @@ class TestSampleRoutes:
         assert len(sample.ground_truth.detections) == 2
         assert isinstance(sample.ground_truth.detections[1], fol.Detection)
         assert sample.ground_truth.detections[1].label == "dog"
+
+    @pytest.mark.asyncio
+    async def test_patch_add_temporal_detection_to_uninitialized_field(
+        self, mutator, mock_request, sample
+    ):
+        """'add' a TemporalDetection to a declared-but-unpopulated field.
+
+        Exercises both the TemporalDetection(s) deserializer registration and
+        ensure_sample_field materializing the parent TemporalDetections — the
+        path that lets a user create the first temporal event on a sample
+        whose TD field has no value yet.
+        """
+        new_td = {
+            "_cls": "TemporalDetection",
+            "label": "approach",
+            "support": [1, 31],
+        }
+        patch_payload = [
+            {
+                "op": "add",
+                "path": "/empty_temporal_detections/detections/-",
+                "value": new_td,
+            }
+        ]
+        mock_request.body.return_value = json_payload(patch_payload)
+        mock_request.headers["Content-Type"] = "application/json-patch+json"
+
+        #####
+        response = await mutator.patch(mock_request)
+        #####
+
+        sample.reload()
+
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
+
+        tds = sample.empty_temporal_detections
+        assert tds is not None
+        assert len(tds.detections) == 1
+        assert isinstance(tds.detections[0], fol.TemporalDetection)
+        assert tds.detections[0].label == "approach"
+        assert list(tds.detections[0].support) == [1, 31]
 
     @pytest.mark.asyncio
     async def test_patch_rmv_detect_list(self, mutator, mock_request, sample):
