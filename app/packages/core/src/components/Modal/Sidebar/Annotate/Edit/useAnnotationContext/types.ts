@@ -41,24 +41,42 @@ export interface CreateDeps {
   overlayFactory: OverlayFactory;
 }
 
+/** Reactive snapshot of the editing label and its derived state. */
 export interface AnnotationContextSelected {
+  /** Wrapper { data, overlay, path, type, isNew? } or null when nothing is being edited. */
   label: AnnotationLabel | null;
+  /** Convenience accessor for `label.data`. */
   data: AnnotationLabel["data"] | null;
+  /** Field path the current label belongs to. */
   field: string | null;
+  /** Canonical type of the current label or pending new-type. */
   type: LabelType | null;
+  /** Convenience accessor for `label.overlay`. */
   overlay: AnnotationLabel["overlay"] | undefined;
+  /** Label-schema for `field`, or null when no field is active. */
   schema: LabelSchema | null;
+  /** Snapshot of `data` at select/create time — baseline for dirty tracking. */
   savedData: AnnotationLabel["data"] | null;
+  /** True if a label is being edited or any primitive editor is open. */
   isEditing: boolean;
+  /** True while a mask is mid-authoring (paint/eraser/pen). */
   isEditingMask: boolean;
+  /** True for labels created in-session and not yet persisted. */
   isNew: boolean;
+  /** True when `data` differs from `savedData`. */
   hasChanges: boolean;
+  /** True when the current field's schema is marked read-only. */
   isFieldReadOnly: boolean;
   /** Non-null when no schema field exists for the requested new type. */
   pendingNewType: LabelType | null;
 }
 
+/**
+ * Public API for the annotation editing pointer. Encapsulates the underlying
+ * atoms — consumers should never touch them directly.
+ */
 export interface AnnotationContext {
+  /** Reactive snapshot, updated on each React render. */
   selected: AnnotationContextSelected;
   /**
    * Fresh snapshot of {@link selected}. Use inside synchronous event chains
@@ -67,29 +85,53 @@ export interface AnnotationContext {
    */
   readSelected: () => AnnotationContextSelected;
 
+  /**
+   * Update the current label's data. Defaults to a shallow merge; pass
+   * `{ replace: true }` to swap the data object wholesale.
+   */
   setData: (
     data: Partial<AnnotationLabel["data"]>,
     options?: { replace?: boolean }
   ) => void;
+  /** Move the current label to a different schema field. */
   setField: (path: string) => void;
   /** Update savedData without touching the editing pointer (3D flows). */
   setSavedData: (data: AnnotationLabel["data"] | null) => void;
-  /** No-op if `id` isn't the current label's id. */
+  /**
+   * Set the mid-mask-authoring flag for the given label id. No-op if `id`
+   * isn't the current label's id — filters out events from other overlays.
+   */
   setEditingMask: (id: string, hasMask: boolean) => void;
 
+  /**
+   * Point editing at an existing label atom. Snapshots `savedData`, clears
+   * any pending new-type flow, and seeds `isEditingMask` from `data.mask` /
+   * `data.mask_path`.
+   */
   select: (labelAtom: PrimitiveAtom<AnnotationLabel>) => void;
+  /**
+   * Build a new label of `type` and make it the editing target. Resolves
+   * field/class from `overrides` or last-used memory. Returns null and
+   * surfaces `pendingNewType` when no schema field is available.
+   */
   createNew: (
     type: LabelType,
     overrides?: CreateOptions
   ) => AnnotationLabel | null;
+  /** Drop the editing pointer and reset all derived state. */
   clear: () => void;
   /** Fresh comparison at call time — safe inside `useEffect`. */
   isEditingAtom: (labelAtom: PrimitiveAtom<AnnotationLabel>) => boolean;
 
+  /** Per-type field memory and per-field class memory, populated by `clear`. */
   lastUsed: {
+    /** Best-guess field for `type`: remembered → most-populated → schema default. */
     fieldFor: (type: LabelType) => string | null;
+    /** Best-guess class for `fieldPath`: remembered → most-common → first class. */
     labelFor: (fieldPath: string) => string | null;
+    /** Override the remembered field for `type`. */
     recordField: (type: LabelType, path: string) => void;
+    /** Override the remembered class for `path`. */
     recordLabel: (path: string, label: string) => void;
   };
 }

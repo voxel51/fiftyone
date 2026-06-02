@@ -48,6 +48,12 @@ const lastUsedLabelAtom = atomFamily(
     atom<string | null>(null) as PrimitiveAtom<string | null>
 );
 
+/**
+ * Hook fronting the annotation editing pointer. Returns the
+ * {@link AnnotationContext} API — see the interface for per-method docs.
+ * `select` accepts any `PrimitiveAtom<AnnotationLabel>`, including atoms
+ * managed externally (e.g. looker-3d's cuboid/polyline editing atoms).
+ */
 export const useAnnotationContext = (): AnnotationContext => {
   const { scene, addOverlay, overlayFactory } = useLighter();
 
