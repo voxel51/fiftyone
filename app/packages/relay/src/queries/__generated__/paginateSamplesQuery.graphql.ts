@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<1d5f0e4bd707aa4c7a16723c29e7847f>>
+ * @generated SignedSource<<01ff69d2c9fa6ca5f8e610ba1e34d374>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -20,7 +20,9 @@ export type GroupElementFilter = {
 };
 export type paginateSamplesQuery$variables = {
   after?: string | null;
+  before?: string | null;
   count?: number | null;
+  cursorPagination?: boolean | null;
   dataset: string;
   desc?: boolean | null;
   dynamicGroup?: object | null;
@@ -95,7 +97,10 @@ export type paginateSamplesQuery$data = {
       };
     }>;
     readonly pageInfo: {
+      readonly endCursor: string | null;
       readonly hasNextPage: boolean;
+      readonly hasPreviousPage: boolean;
+      readonly startCursor: string | null;
     };
   } | {
     // This will never be '%other', but we need some
@@ -115,94 +120,104 @@ var v0 = {
   "name": "after"
 },
 v1 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
+  "name": "before"
+},
+v2 = {
   "defaultValue": 20,
   "kind": "LocalArgument",
   "name": "count"
 },
-v2 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "dataset"
-},
 v3 = {
-  "defaultValue": null,
+  "defaultValue": false,
   "kind": "LocalArgument",
-  "name": "desc"
+  "name": "cursorPagination"
 },
 v4 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "dynamicGroup"
+  "name": "dataset"
 },
 v5 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "extendedStages"
+  "name": "desc"
 },
 v6 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "filter"
+  "name": "dynamicGroup"
 },
 v7 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "filters"
+  "name": "extendedStages"
 },
 v8 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "hint"
+  "name": "filter"
 },
 v9 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "maxQueryTime"
+  "name": "filters"
 },
 v10 = {
-  "defaultValue": true,
+  "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "paginationData"
+  "name": "hint"
 },
 v11 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "sortBy"
+  "name": "maxQueryTime"
 },
 v12 = {
+  "defaultValue": true,
+  "kind": "LocalArgument",
+  "name": "paginationData"
+},
+v13 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
+  "name": "sortBy"
+},
+v14 = {
   "defaultValue": null,
   "kind": "LocalArgument",
   "name": "view"
 },
-v13 = {
+v15 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "__typename",
   "storageKey": null
 },
-v14 = {
+v16 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "id",
   "storageKey": null
 },
-v15 = {
+v17 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "aspectRatio",
   "storageKey": null
 },
-v16 = {
+v18 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "sample",
   "storageKey": null
 },
-v17 = {
+v19 = {
   "alias": null,
   "args": null,
   "concreteType": "MediaURL",
@@ -227,13 +242,13 @@ v17 = {
   ],
   "storageKey": null
 },
-v18 = [
-  (v14/*: any*/),
-  (v15/*: any*/),
+v20 = [
   (v16/*: any*/),
-  (v17/*: any*/)
+  (v17/*: any*/),
+  (v18/*: any*/),
+  (v19/*: any*/)
 ],
-v19 = [
+v21 = [
   {
     "alias": null,
     "args": [
@@ -241,6 +256,16 @@ v19 = [
         "kind": "Variable",
         "name": "after",
         "variableName": "after"
+      },
+      {
+        "kind": "Variable",
+        "name": "before",
+        "variableName": "before"
+      },
+      {
+        "kind": "Variable",
+        "name": "cursorPagination",
+        "variableName": "cursorPagination"
       },
       {
         "kind": "Variable",
@@ -308,7 +333,7 @@ v19 = [
     "name": "samples",
     "plural": false,
     "selections": [
-      (v13/*: any*/),
+      (v15/*: any*/),
       {
         "kind": "InlineFragment",
         "selections": [
@@ -340,6 +365,27 @@ v19 = [
                 "kind": "ScalarField",
                 "name": "hasNextPage",
                 "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "hasPreviousPage",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "endCursor",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "startCursor",
+                "storageKey": null
               }
             ],
             "storageKey": null
@@ -367,20 +413,20 @@ v19 = [
                 "name": "node",
                 "plural": false,
                 "selections": [
-                  (v13/*: any*/),
+                  (v15/*: any*/),
                   {
                     "kind": "InlineFragment",
-                    "selections": (v18/*: any*/),
+                    "selections": (v20/*: any*/),
                     "type": "ImageSample",
                     "abstractKey": null
                   },
                   {
                     "kind": "InlineFragment",
                     "selections": [
-                      (v15/*: any*/),
-                      (v14/*: any*/),
+                      (v17/*: any*/),
                       (v16/*: any*/),
-                      (v17/*: any*/)
+                      (v18/*: any*/),
+                      (v19/*: any*/)
                     ],
                     "type": "PointCloudSample",
                     "abstractKey": null
@@ -388,8 +434,8 @@ v19 = [
                   {
                     "kind": "InlineFragment",
                     "selections": [
-                      (v14/*: any*/),
-                      (v15/*: any*/),
+                      (v16/*: any*/),
+                      (v17/*: any*/),
                       {
                         "alias": null,
                         "args": null,
@@ -404,21 +450,21 @@ v19 = [
                         "name": "frameNumber",
                         "storageKey": null
                       },
-                      (v16/*: any*/),
-                      (v17/*: any*/)
+                      (v18/*: any*/),
+                      (v19/*: any*/)
                     ],
                     "type": "VideoSample",
                     "abstractKey": null
                   },
                   {
                     "kind": "InlineFragment",
-                    "selections": (v18/*: any*/),
+                    "selections": (v20/*: any*/),
                     "type": "ThreeDSample",
                     "abstractKey": null
                   },
                   {
                     "kind": "InlineFragment",
-                    "selections": (v18/*: any*/),
+                    "selections": (v20/*: any*/),
                     "type": "UnknownSample",
                     "abstractKey": null
                   }
@@ -451,47 +497,51 @@ return {
       (v9/*: any*/),
       (v10/*: any*/),
       (v11/*: any*/),
-      (v12/*: any*/)
+      (v12/*: any*/),
+      (v13/*: any*/),
+      (v14/*: any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
     "name": "paginateSamplesQuery",
-    "selections": (v19/*: any*/),
+    "selections": (v21/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
-      (v1/*: any*/),
-      (v0/*: any*/),
       (v2/*: any*/),
-      (v12/*: any*/),
-      (v6/*: any*/),
+      (v0/*: any*/),
+      (v1/*: any*/),
+      (v4/*: any*/),
+      (v14/*: any*/),
+      (v8/*: any*/),
+      (v9/*: any*/),
       (v7/*: any*/),
+      (v12/*: any*/),
+      (v13/*: any*/),
       (v5/*: any*/),
       (v10/*: any*/),
+      (v6/*: any*/),
       (v11/*: any*/),
-      (v3/*: any*/),
-      (v8/*: any*/),
-      (v4/*: any*/),
-      (v9/*: any*/)
+      (v3/*: any*/)
     ],
     "kind": "Operation",
     "name": "paginateSamplesQuery",
-    "selections": (v19/*: any*/)
+    "selections": (v21/*: any*/)
   },
   "params": {
-    "cacheID": "327f1451aa00efae6ee9906f4cd8796c",
+    "cacheID": "029222f8b9bca924eef74862f1fd3f6c",
     "id": null,
     "metadata": {},
     "name": "paginateSamplesQuery",
     "operationKind": "query",
-    "text": "query paginateSamplesQuery(\n  $count: Int = 20\n  $after: String = null\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $filters: BSON = null\n  $extendedStages: BSON\n  $paginationData: Boolean = true\n  $sortBy: String\n  $desc: Boolean\n  $hint: String\n  $dynamicGroup: BSON = null\n  $maxQueryTime: Int\n) {\n  samples(dataset: $dataset, view: $view, first: $count, after: $after, filter: $filter, filters: $filters, extendedStages: $extendedStages, paginationData: $paginationData, sortBy: $sortBy, desc: $desc, hint: $hint, dynamicGroup: $dynamicGroup, maxQueryTime: $maxQueryTime) {\n    __typename\n    ... on QueryTimeout {\n      queryTime\n    }\n    ... on SampleItemStrConnection {\n      pageInfo {\n        hasNextPage\n      }\n      edges {\n        cursor\n        node {\n          __typename\n          ... on ImageSample {\n            id\n            aspectRatio\n            sample\n            urls {\n              field\n              url\n            }\n          }\n          ... on PointCloudSample {\n            aspectRatio\n            id\n            sample\n            urls {\n              field\n              url\n            }\n          }\n          ... on VideoSample {\n            id\n            aspectRatio\n            frameRate\n            frameNumber\n            sample\n            urls {\n              field\n              url\n            }\n          }\n          ... on ThreeDSample {\n            id\n            aspectRatio\n            sample\n            urls {\n              field\n              url\n            }\n          }\n          ... on UnknownSample {\n            id\n            aspectRatio\n            sample\n            urls {\n              field\n              url\n            }\n          }\n        }\n      }\n    }\n  }\n}\n"
+    "text": "query paginateSamplesQuery(\n  $count: Int = 20\n  $after: String = null\n  $before: String = null\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $filters: BSON = null\n  $extendedStages: BSON\n  $paginationData: Boolean = true\n  $sortBy: String\n  $desc: Boolean\n  $hint: String\n  $dynamicGroup: BSON = null\n  $maxQueryTime: Int\n  $cursorPagination: Boolean = false\n) {\n  samples(dataset: $dataset, view: $view, first: $count, after: $after, before: $before, filter: $filter, filters: $filters, extendedStages: $extendedStages, paginationData: $paginationData, sortBy: $sortBy, desc: $desc, hint: $hint, dynamicGroup: $dynamicGroup, maxQueryTime: $maxQueryTime, cursorPagination: $cursorPagination) {\n    __typename\n    ... on QueryTimeout {\n      queryTime\n    }\n    ... on SampleItemStrConnection {\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n        endCursor\n        startCursor\n      }\n      edges {\n        cursor\n        node {\n          __typename\n          ... on ImageSample {\n            id\n            aspectRatio\n            sample\n            urls {\n              field\n              url\n            }\n          }\n          ... on PointCloudSample {\n            aspectRatio\n            id\n            sample\n            urls {\n              field\n              url\n            }\n          }\n          ... on VideoSample {\n            id\n            aspectRatio\n            frameRate\n            frameNumber\n            sample\n            urls {\n              field\n              url\n            }\n          }\n          ... on ThreeDSample {\n            id\n            aspectRatio\n            sample\n            urls {\n              field\n              url\n            }\n          }\n          ... on UnknownSample {\n            id\n            aspectRatio\n            sample\n            urls {\n              field\n              url\n            }\n          }\n        }\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "27c8837ebe0d3500c0910bfaa58b66c0";
+(node as any).hash = "e14105f3be81a714fbf3a8962832c673";
 
 export default node;
