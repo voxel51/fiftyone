@@ -78,11 +78,8 @@ export function useSyncWorkingToSidebar() {
     if (!editingCuboid && !editingPolyline) return;
 
     const currentEditing = selected.label;
-    // `_id` exists at runtime but isn't declared on the union label types.
-    const editingData = currentEditing?.data as { _id?: string } | undefined;
-    if (!editingData?._id) return;
-
-    const labelId = editingData._id;
+    const labelId = currentEditing?.data._id;
+    if (!labelId) return;
 
     // The 3D atom backing the editing pointer — narrowed by the guards above.
     const editingValue = editingCuboid

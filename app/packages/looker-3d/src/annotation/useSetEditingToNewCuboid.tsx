@@ -40,10 +40,7 @@ export const useSetEditingToNewCuboid = () => {
 
       // If what we already have in sidebar is same as the new label, don't do anything
       // Because it'll be handled by reverse sync
-      const currentData = readSelected().label?.data as
-        | { _id?: string }
-        | undefined;
-      if (currentData?._id === labelId) {
+      if (readSelected().label?.data._id === labelId) {
         return;
       }
 

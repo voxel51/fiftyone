@@ -308,7 +308,7 @@ export const useAnnotationContext = (): AnnotationContext => {
 
   const writeEditingMask = useAtomCallback(
     useCallback((get, set, id: string, hasMask: boolean) => {
-      const currentId = (get(current)?.data as { _id?: string } | undefined)?._id;
+      const currentId = get(current)?.data._id;
       if (currentId === id) {
         set(currentEditingMaskAtom, hasMask);
       }
