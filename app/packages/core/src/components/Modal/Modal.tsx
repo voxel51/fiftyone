@@ -77,16 +77,6 @@ const SpacesContainer = styled.div`
   z-index: 1501;
 `;
 
-// Fills the remaining height under the status row. `min-height: 0` lets the
-// flex child shrink properly so the inner Space (height: 100%) doesn't push
-// past the parent.
-const SpaceFill = styled.div`
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  width: 100%;
-`;
-
 const AnnotationHandlerRegistration = () => {
   // Sparse groups can have no sample on the active slice; the annotation
   // hooks below read modalSample and would throw GroupSampleNotFound. Skip
@@ -354,10 +344,8 @@ const Modal = () => {
             <ModalNavigation closePanels={closePanels} />
             <SegmentationToolbar />
             <SpacesContainer>
+              <ModalSpace />
               <ModalStatusBar />
-              <SpaceFill>
-                <ModalSpace />
-              </SpaceFill>
             </SpacesContainer>
             {isSidebarVisible && <Sidebar />}
             <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
