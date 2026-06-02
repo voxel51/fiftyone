@@ -1,10 +1,9 @@
 import { Selector } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useRecoilState } from "recoil";
 import styled from "styled-components";
-import { isEditing } from "./Edit";
+import { useAnnotationContext } from "./Edit/useAnnotationContext";
 import { useApplyAnnotationSliceVisibility } from "./useApplyAnnotationSliceVisibility";
 import type { AnnotationSliceInfo } from "./useGroupAnnotationSlices";
 import { useGroupAnnotationSlices } from "./useGroupAnnotationSlices";
@@ -66,7 +65,7 @@ export default function GroupAnnotation({
   const isLoading = resolved === "loading";
   const slices = isLoading ? [] : resolved;
 
-  const isEditing_ = useAtomValue(isEditing);
+  const isEditing_ = useAnnotationContext().selected.isEditing;
   const [modalGroupSlice, setModalGroupSlice] = useRecoilState(
     fos.modalGroupSlice
   );
