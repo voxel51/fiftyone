@@ -656,22 +656,31 @@ export default class Spotlight<K, V> extends EventTarget {
     this.#forward.attach(this.#element);
 
     await this.#next(false);
-    while (!this.#forward.finished && this.#forward.primaryExtent < this.#height) {
-      await this.#next(false);
-    }
+    // `fill: false` short-circuits both auto-fill loops. We still
+    // load page 0 above so the consumer renders something immediately;
+    // subsequent pages arrive only via user-driven scroll.
+    if (this.#config.fill !== false) {
+      while (
+        !this.#forward.finished &&
+        this.#forward.primaryExtent < this.#height
+      ) {
+        await this.#next(false);
+      }
 
-    await this.#previous(false);
-    // Fill backward too. If a seek lands near the end of the dataset
-    // (e.g., cursor-mode pagination), the forward section may exhaust
-    // before the viewport is covered. Keep pulling backward pages until
-    // either the combined extent fills the viewport or we run out of
-    // earlier rows. Without this loop the grid renders a half-empty
-    // page when scrubbing near the tail.
-    while (
-      !this.#backward.finished &&
-      this.#forward.primaryExtent + this.#backward.primaryExtent < this.#height
-    ) {
       await this.#previous(false);
+      // Fill backward too. If a seek lands near the end of the dataset
+      // (e.g., cursor-mode pagination), the forward section may exhaust
+      // before the viewport is covered. Keep pulling backward pages until
+      // either the combined extent fills the viewport or we run out of
+      // earlier rows. Without this loop the grid renders a half-empty
+      // page when scrubbing near the tail.
+      while (
+        !this.#backward.finished &&
+        this.#forward.primaryExtent + this.#backward.primaryExtent <
+          this.#height
+      ) {
+        await this.#previous(false);
+      }
     }
     this.#render({
       at: this.#config.at,

@@ -113,6 +113,15 @@ export interface SpotlightConfig<K, V> {
   offset?: number;
   /** Show the native scrollbar. */
   scrollbar?: boolean;
+  /**
+   * When `false`, the initial fill loads exactly one forward page and
+   * does not auto-pull additional pages to cover the viewport.
+   * Subsequent pages still load on user scroll. Defaults to `true`
+   * (auto-fill until the viewport is covered in both directions).
+   * Used by swimlane inner rows to immediately show the local cover
+   * sample and defer sibling-slice fetches to a separate request.
+   */
+  fill?: boolean;
   /** Pixel gap between items and rows. Defaults to {@link DEFAULT_SPACING}. */
   spacing?: number;
 
