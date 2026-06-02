@@ -1,0 +1,862 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ *
+ * Clean-room rewrite of the dataset view bar. Built only against
+ * the Relay `stageDefinitions` fragment (which mirrors the server's
+ * {@link fiftyone/core/stages.py}) — does not borrow design or
+ * behavior from the legacy xstate-based `ViewBar.tsx`.
+ *
+ * Render contract: horizontal `Stack` of stage cards, each with a
+ * dynamic form keyed by the stage's parameter definitions. An
+ * appendable "+ Stage" picker at the end opens a voodo `Select`
+ * over the available stage names. Local React state owns the
+ * in-progress edit; on submit (Enter on a field, or the apply
+ * button) the entire view is serialized and pushed via
+ * `fos.useSetView`.
+ *
+ * Param `type` strings (from `ParameterDefinition`) are
+ * pipe-delimited alternatives — see {@link pickInput} for how each
+ * type token maps to a voodo input. `NoneType` in the alternative
+ * set marks the field as optional (clearable).
+ */
+
+import * as fos from "@fiftyone/state";
+import {
+  Align,
+  Button,
+  Card,
+  CardBackground,
+  Icon,
+  IconName,
+  Input,
+  Orientation,
+  Select,
+  Size,
+  Spacing,
+  Stack,
+  Toggle,
+  Variant,
+} from "@voxel51/voodo";
+import React, { useCallback, useEffect, useMemo, useReducer } from "react";
+import { createPortal } from "react-dom";
+import { useRecoilValue } from "recoil";
+
+/**
+ * Anchor-rect hook for portaled dropdowns. Returns the trigger
+ * element's viewport rect (top/left/width), recomputed on scroll
+ * and resize so the portaled overlay tracks its anchor.
+ */
+const useAnchorRect = (ref: React.RefObject<HTMLElement>, active: boolean) => {
+  const [rect, setRect] = React.useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
+  React.useEffect(() => {
+    if (!active || !ref.current) {
+      setRect(null);
+      return;
+    }
+    const measure = () => {
+      const r = ref.current?.getBoundingClientRect();
+      if (r) setRect({ top: r.bottom, left: r.left, width: r.width });
+    };
+    measure();
+    window.addEventListener("scroll", measure, true);
+    window.addEventListener("resize", measure);
+    return () => {
+      window.removeEventListener("scroll", measure, true);
+      window.removeEventListener("resize", measure);
+    };
+  }, [active, ref]);
+  return rect;
+};
+
+// ---------------------------------------------------------------
+// Param type → input kind resolver
+// ---------------------------------------------------------------
+
+/**
+ * Highest-priority input "kind" for a stage parameter, derived from
+ * the param's pipe-delimited `type` string. We prefer the most
+ * specific UI we can offer for any alternative the param accepts —
+ * `"field|str"` becomes a field picker (server still receives a
+ * string), `"list<field>|field"` becomes a multi-select field
+ * picker, etc.
+ *
+ * Order matters: pickers further down in the precedence table
+ * lose to the ones above when both apply.
+ */
+type InputKind =
+  | "bool"
+  | "field"
+  | "fieldList"
+  | "numeric"
+  | "string"
+  | "stringList"
+  | "json"
+  | "id"
+  | "idList";
+
+export const pickInput = (typeString: string): InputKind => {
+  const tokens = typeString.split("|").map((t) => t.trim());
+  const has = (t: string) => tokens.includes(t);
+
+  // Highest specificity first.
+  if (has("list<field>")) return "fieldList";
+  if (has("field")) return "field";
+  if (has("bool")) return "bool";
+  if (has("int") || has("float")) return "numeric";
+  if (has("list<id>")) return "idList";
+  if (has("id")) return "id";
+  if (has("list<str>")) return "stringList";
+  if (has("str")) return "string";
+  // `json` is the catch-all — Mongo expressions, arbitrary BSON, etc.
+  return "json";
+};
+
+/** `true` when the param accepts `NoneType` — i.e. is clearable. */
+export const isNullable = (typeString: string): boolean =>
+  typeString
+    .split("|")
+    .map((t) => t.trim())
+    .includes("NoneType");
+
+// ---------------------------------------------------------------
+// Bar-level state
+// ---------------------------------------------------------------
+
+/** In-progress stage being composed in the bar (not yet applied). */
+interface WorkingStage {
+  /** Stable id for React keys + reducer addressing. */
+  id: string;
+  /** Stage class name, e.g. `"Match"`, `"SortBy"`. */
+  cls: string;
+  /** Mutable kwargs keyed by param name; values are whatever the
+   *  user has typed/picked so far, not yet serialized. */
+  kwargs: Record<string, unknown>;
+}
+
+interface BarState {
+  stages: WorkingStage[];
+}
+
+type BarAction =
+  | { type: "hydrate"; stages: WorkingStage[] }
+  /** Insert a new stage at a position in the bar. `index` may be
+   *  0 (head), `stages.length` (tail), or any in-between slot.
+   *  Caller pre-mints `id` so it can subsequently address the new
+   *  stage (e.g., to auto-open its editing popover). */
+  | { type: "insertStage"; index: number; cls: string; id: string }
+  | { type: "removeStage"; id: string }
+  | { type: "setKwarg"; id: string; name: string; value: unknown }
+  /** Reorder existing stages to match the given id ordering.
+   *  Used by the RichList drag-reorder callback. */
+  | { type: "reorderStages"; ids: string[] };
+
+const initialState: BarState = { stages: [] };
+
+const makeId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const reducer = (state: BarState, action: BarAction): BarState => {
+  switch (action.type) {
+    case "hydrate":
+      return { stages: action.stages };
+    case "insertStage": {
+      const stages = [...state.stages];
+      const insertAt = Math.max(0, Math.min(action.index, stages.length));
+      stages.splice(insertAt, 0, {
+        id: action.id,
+        cls: action.cls,
+        kwargs: {},
+      });
+      return { stages };
+    }
+    case "removeStage":
+      return { stages: state.stages.filter((s) => s.id !== action.id) };
+    case "setKwarg":
+      return {
+        stages: state.stages.map((s) =>
+          s.id === action.id
+            ? { ...s, kwargs: { ...s.kwargs, [action.name]: action.value } }
+            : s
+        ),
+      };
+    case "reorderStages": {
+      const byId = new Map(state.stages.map((s) => [s.id, s]));
+      const reordered = action.ids
+        .map((id) => byId.get(id))
+        .filter((s): s is WorkingStage => s !== undefined);
+      return { stages: reordered };
+    }
+    default:
+      return state;
+  }
+};
+
+// ---------------------------------------------------------------
+// Dynamic form for a single stage's params
+// ---------------------------------------------------------------
+
+interface ParamDef {
+  name: string;
+  type: string;
+  default: string | null | undefined;
+  placeholder: string | null | undefined;
+}
+
+interface ParamInputProps {
+  param: ParamDef;
+  value: unknown;
+  onChange: (next: unknown) => void;
+  fieldOptions: { id: string; data: { label: string } }[];
+}
+
+const ParamInput: React.FC<ParamInputProps> = ({
+  param,
+  value,
+  onChange,
+  fieldOptions,
+}) => {
+  const kind = pickInput(param.type);
+  const placeholder = param.placeholder ?? param.name;
+
+  switch (kind) {
+    case "bool":
+      return (
+        <Toggle
+          checked={Boolean(value)}
+          onChange={(v) => onChange(v)}
+          aria-label={param.name}
+        />
+      );
+
+    case "field":
+      return (
+        <Select
+          exclusive
+          portal
+          value={typeof value === "string" ? value : undefined}
+          options={fieldOptions}
+          onChange={(v) => {
+            if (typeof v === "string") onChange(v);
+          }}
+          style={{ minWidth: 160 }}
+        />
+      );
+
+    case "fieldList":
+      return (
+        <Select
+          portal
+          value={Array.isArray(value) ? (value as string[]) : []}
+          options={fieldOptions}
+          onChange={(v) => onChange(Array.isArray(v) ? v : v ? [v] : [])}
+          style={{ minWidth: 160 }}
+        />
+      );
+
+    case "numeric":
+      return (
+        <Input
+          size={Size.Sm}
+          value={value == null ? "" : String(value)}
+          placeholder={placeholder}
+          onChange={(e) => {
+            const raw = e.target.value;
+            const parsed = Number.parseFloat(raw);
+            onChange(Number.isFinite(parsed) ? parsed : raw);
+          }}
+        />
+      );
+
+    case "stringList":
+      // Comma-separated entry; trimmed on parse. For multi-select
+      // typeahead we'd need a known options set — strings are
+      // free-form so a textual list is the simplest honest input.
+      return (
+        <Input
+          size={Size.Sm}
+          value={Array.isArray(value) ? (value as string[]).join(", ") : ""}
+          placeholder={`${placeholder} (comma separated)`}
+          onChange={(e) =>
+            onChange(
+              e.target.value
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
+            )
+          }
+        />
+      );
+
+    case "id":
+    case "string":
+      return (
+        <Input
+          size={Size.Sm}
+          value={value == null ? "" : String(value)}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      );
+
+    case "idList":
+      return (
+        <Input
+          size={Size.Sm}
+          value={Array.isArray(value) ? (value as string[]).join(", ") : ""}
+          placeholder={`${placeholder} (id, id, …)`}
+          onChange={(e) =>
+            onChange(
+              e.target.value
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
+            )
+          }
+        />
+      );
+
+    case "json":
+    default:
+      return (
+        <Input
+          size={Size.Sm}
+          value={
+            value == null
+              ? ""
+              : typeof value === "string"
+              ? value
+              : JSON.stringify(value)
+          }
+          placeholder={`${placeholder} (JSON)`}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      );
+  }
+};
+
+// ---------------------------------------------------------------
+// Stage card
+// ---------------------------------------------------------------
+
+interface StageCardProps {
+  stage: WorkingStage;
+  definition: { name: string; params: ParamDef[] };
+  fieldOptions: { id: string; data: { label: string } }[];
+  expanded: boolean;
+  onToggle: () => void;
+  onChange: (name: string, value: unknown) => void;
+  onRemove: () => void;
+}
+
+/**
+ * Render the value of `param` as a short preview string for the
+ * collapsed stage card. Keeps strings under ~24 chars; lists show
+ * the first item with a `+N` tail; numbers/booleans show as-is.
+ */
+const previewValue = (param: ParamDef, value: unknown): string => {
+  if (value == null || value === "") return "—";
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "number") return String(value);
+  if (Array.isArray(value)) {
+    const head = String(value[0] ?? "");
+    return value.length > 1 ? `${head} +${value.length - 1}` : head;
+  }
+  const s = String(value);
+  return s.length > 24 ? `${s.slice(0, 21)}…` : s;
+};
+
+const StageCard: React.FC<StageCardProps> = ({
+  stage,
+  definition,
+  fieldOptions,
+  expanded,
+  onToggle,
+  onChange,
+  onRemove,
+}) => {
+  const firstParam = definition.params[0];
+  const triggerRef = React.useRef<HTMLDivElement | null>(null);
+  const popoverContentRef = React.useRef<HTMLDivElement | null>(null);
+  const rect = useAnchorRect(triggerRef, expanded);
+
+  // Outside-click closes the editing popover. Must check BOTH the
+  // trigger (so re-clicking the card doesn't close-then-immediately-
+  // reopen) and the portaled popover content (so interacting with
+  // form fields inside doesn't close the popover).
+  React.useEffect(() => {
+    if (!expanded) return;
+    const onClick = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (
+        !triggerRef.current?.contains(t) &&
+        !popoverContentRef.current?.contains(t)
+      ) {
+        onToggle();
+      }
+    };
+    window.addEventListener("mousedown", onClick);
+    return () => window.removeEventListener("mousedown", onClick);
+  }, [expanded, onToggle]);
+
+  return (
+    <div ref={triggerRef} style={{ position: "relative" }}>
+      <Card background={CardBackground.Primary} outlined compact>
+        <Stack
+          orientation={Orientation.Row}
+          spacing={Spacing.Sm}
+          align={Align.Center}
+        >
+          {/* Always-visible compact preview: name + first-arg value.
+              Click opens the editing popover below. */}
+          <div
+            onClick={onToggle}
+            style={{ cursor: "pointer", display: "inline-flex", gap: 6 }}
+            title={expanded ? "Close editor" : "Edit stage"}
+          >
+            <span style={{ fontWeight: 600, fontSize: 13 }}>
+              {definition.name}
+            </span>
+            {firstParam && (
+              <span
+                style={{
+                  fontSize: 12,
+                  color: "var(--fo-palette-text-secondary)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {previewValue(firstParam, stage.kwargs[firstParam.name])}
+              </span>
+            )}
+          </div>
+
+          <div
+            onClick={onRemove}
+            title="Remove stage"
+            style={{ cursor: "pointer", display: "inline-flex", padding: 2 }}
+          >
+            <Icon name={IconName.Close} size={Size.Sm} />
+          </div>
+        </Stack>
+      </Card>
+
+      {/* Editing popover — portaled to document.body so it escapes
+          the bar's overflow clipping. Surface matches the stage
+          pill (voodo `Card.Primary` = Card1 token) so the popover
+          reads as a continuation of the clicked pill, not a
+          separate lighter overlay. */}
+      {expanded &&
+        rect &&
+        createPortal(
+          <div
+            ref={popoverContentRef}
+            style={{
+              position: "fixed",
+              top: rect.top + 6,
+              left: rect.left,
+              zIndex: 10000,
+              minWidth: 360,
+              boxShadow: "0 8px 24px rgba(0, 0, 0, 0.45)",
+              borderRadius: 6,
+            }}
+          >
+            <Card background={CardBackground.Primary} outlined compact>
+              <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
+                {definition.params.map((p) => (
+                  <Stack
+                    key={p.name}
+                    orientation={Orientation.Row}
+                    spacing={Spacing.Sm}
+                    align={Align.Center}
+                  >
+                    <span
+                      style={{
+                        fontSize: 12,
+                        color: "var(--fo-palette-text-primary)",
+                        fontWeight: 500,
+                        minWidth: 80,
+                      }}
+                    >
+                      {p.name}
+                    </span>
+                    <ParamInput
+                      param={p}
+                      value={stage.kwargs[p.name]}
+                      onChange={(v) => onChange(p.name, v)}
+                      fieldOptions={fieldOptions}
+                    />
+                  </Stack>
+                ))}
+              </Stack>
+            </Card>
+          </div>,
+          document.body
+        )}
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------
+// New ViewBar
+// ---------------------------------------------------------------
+
+const NewViewBar: React.FC = () => {
+  const stageDefs = useRecoilValue(fos.stageDefinitions);
+  const fieldPaths = useRecoilValue(fos.fieldPaths({}));
+  const currentView = useRecoilValue(fos.view);
+  const setView = fos.useSetView();
+
+  const [state, dispatch] = useReducer(reducer, initialState);
+  // Which stage's editor popover is open, by stage id. Only one at
+  // a time; clicking another collapses the previous.
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+
+  // Hydrate working stages from the applied view on every change.
+  // Stage definitions provide the param schema; the view itself
+  // carries kwargs as an ordered `kwargs: [[name, value], ...]` list.
+  useEffect(() => {
+    const hydrated: WorkingStage[] = currentView.map(
+      (s: { _cls: string; kwargs: [string, unknown][] }, i) => ({
+        id: `view-${i}-${s._cls}`,
+        cls: classNameFromCls(s._cls),
+        kwargs: Object.fromEntries(s.kwargs ?? []),
+      })
+    );
+    dispatch({ type: "hydrate", stages: hydrated });
+  }, [currentView]);
+
+  const defsByName = useMemo(
+    () =>
+      new Map(
+        stageDefs.map((d) => [
+          d.name,
+          d as { name: string; params: ParamDef[] },
+        ])
+      ),
+    [stageDefs]
+  );
+
+  const fieldOptions = useMemo(
+    () =>
+      fieldPaths.map((path) => ({
+        id: path,
+        data: { label: path },
+      })),
+    [fieldPaths]
+  );
+
+  const stageOptions = useMemo(
+    () =>
+      stageDefs.map((d) => ({
+        id: d.name,
+        data: { label: d.name },
+      })),
+    [stageDefs]
+  );
+
+  /**
+   * Re-serialize working stages, dropping kwargs the user hasn't
+   * filled. Sending `null` for unfilled numeric/typed kwargs (e.g.
+   * `Limit(count=None)`) crashes the server's aggregation pipeline
+   * with errors like
+   * `'<=' not supported between instances of 'NoneType' and 'int'`.
+   * Omitting them lets the Python stage class use its own default.
+   */
+  const serializeWorking = useCallback(() => {
+    const isEmpty = (v: unknown) =>
+      v === undefined ||
+      v === null ||
+      v === "" ||
+      (Array.isArray(v) && v.length === 0);
+    return state.stages.map((s) => {
+      const def = defsByName.get(s.cls);
+      const kwargs: [string, unknown][] = (def?.params ?? [])
+        .filter((p) => !isEmpty(s.kwargs[p.name]))
+        .map((p) => [p.name, s.kwargs[p.name]]);
+      return { _cls: `fiftyone.core.stages.${s.cls}`, kwargs };
+    });
+  }, [state.stages, defsByName]);
+
+  const apply = useCallback(() => {
+    setView(serializeWorking());
+  }, [serializeWorking, setView]);
+
+  /**
+   * Pending changes detector: whether the working state differs
+   * from what's currently applied to the view. The Apply button
+   * only animates in when this is true — when the user has nothing
+   * to apply, the button stays hidden so the bar isn't cluttered
+   * by a no-op affordance.
+   *
+   * Comparison is on the SERIALIZED shape (the same payload Apply
+   * would push), so kwarg-order differences and dropped-empty
+   * kwargs don't cause false positives.
+   */
+  const hasPendingChanges = useMemo(() => {
+    const working = serializeWorking();
+    // Strip `_uuid` from currentView entries (the view atom may
+    // carry it; our working stages don't) so the comparison is
+    // payload-only.
+    const applied = currentView.map((s: { _cls: string; kwargs: unknown }) => ({
+      _cls: s._cls,
+      kwargs: s.kwargs ?? [],
+    }));
+    return JSON.stringify(working) !== JSON.stringify(applied);
+  }, [serializeWorking, currentView]);
+
+  /**
+   * Insertion slot styled as a typeahead {@link Input} — same shape
+   * as the dataset selector. The user types to filter stage names;
+   * picking one inserts that stage at this slot's index and
+   * auto-opens its editing popover so the kwargs form is the next
+   * thing they interact with.
+   *
+   * Collapsed by default to a single "+" icon to keep the bar
+   * compact; expands inline to a full text input on focus/click.
+   */
+  const InsertSlot: React.FC<{ index: number }> = ({ index }) => {
+    const [open, setOpen] = React.useState(false);
+    const [query, setQuery] = React.useState("");
+    const containerRef = React.useRef<HTMLDivElement | null>(null);
+    const rect = useAnchorRect(containerRef, open);
+
+    React.useEffect(() => {
+      if (!open) return;
+      const onClick = (e: MouseEvent) => {
+        if (!containerRef.current?.contains(e.target as Node)) {
+          setOpen(false);
+          setQuery("");
+        }
+      };
+      window.addEventListener("mousedown", onClick);
+      return () => window.removeEventListener("mousedown", onClick);
+    }, [open]);
+
+    const filtered = React.useMemo(() => {
+      const q = query.trim().toLowerCase();
+      if (!q) return stageDefs.map((d) => d.name);
+      return stageDefs
+        .map((d) => d.name)
+        .filter((n) => n.toLowerCase().includes(q));
+    }, [query]);
+
+    const insert = (cls: string) => {
+      // Mint the id here so we can dispatch AND immediately set
+      // the bar's `editingId` to the same id — the next render
+      // will render the new stage card with its editing popover
+      // already open, ready for kwargs entry.
+      const id = makeId();
+      dispatch({ type: "insertStage", index, cls, id });
+      setEditingId(id);
+      setOpen(false);
+      setQuery("");
+    };
+
+    if (!open) {
+      return (
+        <div
+          onClick={() => setOpen(true)}
+          title="Insert stage"
+          style={{
+            cursor: "pointer",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 24,
+            height: 24,
+            borderRadius: 12,
+            color: "var(--fo-palette-text-secondary)",
+            flexShrink: 0,
+          }}
+        >
+          <Icon name={IconName.Add} size={Size.Sm} />
+        </div>
+      );
+    }
+
+    return (
+      <div
+        ref={containerRef}
+        style={{
+          position: "relative",
+          width: 200,
+          flexShrink: 0,
+          background: "var(--fo-palette-background-level2)",
+          borderRadius: 4,
+          border: "1px solid var(--fo-palette-text-placeholder)",
+        }}
+      >
+        <Input
+          size={Size.Sm}
+          value={query}
+          placeholder="Add stage…"
+          autoFocus
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setOpen(false);
+              setQuery("");
+            } else if (e.key === "Enter" && filtered[0]) {
+              insert(filtered[0]);
+            }
+          }}
+          style={{ background: "transparent", border: "none" }}
+        />
+        {filtered.length > 0 &&
+          rect &&
+          createPortal(
+            <div
+              // Portaled to body — avoids being clipped by the bar's
+              // overflow rules. Width follows the trigger; top sits
+              // 4px below the trigger's bottom edge.
+              style={{
+                position: "fixed",
+                top: rect.top + 4,
+                left: rect.left,
+                width: rect.width,
+                background: "var(--fo-palette-background-level3)",
+                border: "1px solid var(--fo-palette-primary-plainBorder)",
+                borderRadius: 4,
+                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.25)",
+                maxHeight: 280,
+                overflowY: "auto",
+                zIndex: 10000,
+              }}
+              role="listbox"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              {filtered.map((name) => (
+                <div
+                  key={name}
+                  role="option"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    insert(name);
+                  }}
+                  style={{
+                    padding: "6px 10px",
+                    cursor: "pointer",
+                    color: "var(--fo-palette-text-primary)",
+                    whiteSpace: "nowrap",
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLDivElement).style.background =
+                      "var(--fo-palette-background-level2)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLDivElement).style.background = "";
+                  }}
+                >
+                  {name}
+                </div>
+              ))}
+            </div>,
+            document.body
+          )}
+      </div>
+    );
+  };
+
+  return (
+    <Stack
+      orientation={Orientation.Row}
+      spacing={Spacing.Xs}
+      align={Align.Center}
+      style={{
+        width: "100%",
+        height: 36,
+        // No `overflow` on this container — CSS forces overflowY to
+        // clip whenever any axis has `auto/hidden/scroll`, which
+        // would chop the InsertSlot's dropdown of stage names.
+        // Horizontal scroll for long stage chains is a follow-up
+        // (likely portal the dropdown via createPortal so the
+        // scroll container can clip safely).
+        padding: "0 6px",
+        // Darker / cooler surface than level-2 — pulls from the
+        // header background token (the same dark navy the nav uses)
+        // with a slightly cool overlay so the bar reads as
+        // "form builder canvas" distinct from the chrome around it.
+        // Border uses the primary plain border for the same cool
+        // palette family as the rest of the chrome.
+        background: "var(--fo-palette-background-level1)",
+        border: "1px solid var(--fo-palette-primary-plainBorder)",
+        borderRadius: 4,
+        boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.02)",
+      }}
+      data-cy="view-bar-new"
+    >
+      <InsertSlot index={0} />
+      {state.stages.map((stage, i) => {
+        const def = defsByName.get(stage.cls);
+        if (!def) return null;
+        return (
+          <React.Fragment key={stage.id}>
+            <StageCard
+              stage={stage}
+              definition={def}
+              fieldOptions={fieldOptions}
+              expanded={editingId === stage.id}
+              onToggle={() =>
+                setEditingId((id) => (id === stage.id ? null : stage.id))
+              }
+              onChange={(name, value) =>
+                dispatch({ type: "setKwarg", id: stage.id, name, value })
+              }
+              onRemove={() => {
+                if (editingId === stage.id) setEditingId(null);
+                dispatch({ type: "removeStage", id: stage.id });
+              }}
+            />
+            <InsertSlot index={i + 1} />
+          </React.Fragment>
+        );
+      })}
+
+      {/* Apply — only animates in when the working state diverges
+          from the applied view. Always occupies the right edge via
+          `marginLeft: auto` on its wrapper so other items don't
+          shift sideways when Apply appears/disappears. */}
+      <div
+        style={{
+          marginLeft: "auto",
+          flexShrink: 0,
+          // Animated reveal: clip + fade + slide. `width` collapses
+          // to 0 when there's nothing to apply so the row stays
+          // tight; `opacity` and `transform` ramp for a soft entry.
+          overflow: "hidden",
+          maxWidth: hasPendingChanges ? 120 : 0,
+          opacity: hasPendingChanges ? 1 : 0,
+          transform: hasPendingChanges ? "translateX(0)" : "translateX(8px)",
+          transition:
+            "max-width 200ms ease-out, opacity 200ms ease-out, transform 200ms ease-out",
+          pointerEvents: hasPendingChanges ? "auto" : "none",
+        }}
+        aria-hidden={!hasPendingChanges}
+      >
+        <Button
+          variant={Variant.Primary}
+          size={Size.Xs}
+          onClick={apply}
+          title="Apply view"
+          data-cy="view-bar-new-apply"
+        >
+          Apply
+        </Button>
+      </div>
+    </Stack>
+  );
+};
+
+/**
+ * Strip the `fiftyone.core.stages.` prefix off a serialized stage
+ * class name to get the short name that {@link stageDefinitions}
+ * keys by (e.g. `"fiftyone.core.stages.SortBy"` → `"SortBy"`).
+ */
+const classNameFromCls = (cls: string): string => {
+  const idx = cls.lastIndexOf(".");
+  return idx >= 0 ? cls.slice(idx + 1) : cls;
+};
+
+export default NewViewBar;

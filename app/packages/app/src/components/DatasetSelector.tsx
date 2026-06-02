@@ -2,43 +2,206 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { Selector, type UseSearch } from "@fiftyone/components";
+import { type UseSearch } from "@fiftyone/components";
 import { datasetName, useSetDataset } from "@fiftyone/state";
-import React from "react";
+import { Input, Size } from "@voxel51/voodo";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRecoilValue } from "recoil";
 
-const DatasetLink: React.FC<{ value: string; className?: string }> = ({
-  className,
-  value,
-}) => {
-  return (
-    <span className={className} title={value}>
-      {value}
-    </span>
-  );
+/**
+ * Hook: returns viewport-coords `{top, left, width}` of an
+ * element ref, recomputed on scroll/resize. Used to anchor a
+ * portaled dropdown directly below its trigger without being
+ * clipped by ancestor `overflow` rules.
+ */
+const useAnchorRect = (
+  ref: React.RefObject<HTMLElement>,
+  active: boolean
+) => {
+  const [rect, setRect] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!active || !ref.current) {
+      setRect(null);
+      return;
+    }
+    const measure = () => {
+      const r = ref.current?.getBoundingClientRect();
+      if (r) {
+        setRect({ top: r.bottom, left: r.left, width: r.width });
+      }
+    };
+    measure();
+    window.addEventListener("scroll", measure, true);
+    window.addEventListener("resize", measure);
+    return () => {
+      window.removeEventListener("scroll", measure, true);
+      window.removeEventListener("resize", measure);
+    };
+  }, [active, ref]);
+
+  return rect;
 };
 
+/**
+ * Dataset typeahead. Skinned with voodo `Input` for visual
+ * consistency, but the option list is driven by the parent's
+ * `useSearch` hook so server-side dataset search / pagination
+ * continues to work for large installs (voodo `Select`'s built-in
+ * Combobox only does client-side filtering).
+ */
 const DatasetSelector: React.FC<{
   useSearch: UseSearch<string>;
 }> = ({ useSearch }) => {
   const setDataset = useSetDataset();
   const dataset = useRecoilValue(datasetName) as string;
 
+  // Visible text in the input. Decoupled from the *applied* dataset
+  // so the user can type a search without losing the active dataset
+  // name; the input snaps back on blur if nothing was picked.
+  const [query, setQuery] = useState<string>(dataset ?? "");
+  const [open, setOpen] = useState(false);
+
+  // `useSearch` debounces internally — re-runs the server query as
+  // `query` changes. Returns the current visible result set.
+  const { values } = useSearch(open ? query : "");
+
+  // Snap input text back to the applied dataset name when the
+  // dataset selection changes (e.g., via URL or external setter).
+  useEffect(() => {
+    if (!open) setQuery(dataset ?? "");
+  }, [dataset, open]);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const rect = useAnchorRect(containerRef, open);
+
+  // Close on outside click.
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (!containerRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+        setQuery(dataset ?? "");
+      }
+    };
+    window.addEventListener("mousedown", onClick);
+    return () => window.removeEventListener("mousedown", onClick);
+  }, [open, dataset]);
+
+  const pick = useCallback(
+    (name: string) => {
+      setDataset(name);
+      setQuery(name);
+      setOpen(false);
+    },
+    [setDataset]
+  );
+
   return (
-    <Selector<string>
-      cy={"dataset"}
-      component={DatasetLink}
-      placeholder={"Select dataset"}
-      inputStyle={{ height: 40, maxWidth: 300 }}
-      containerStyle={{ position: "relative" }}
-      onSelect={async (name) => {
-        setDataset(name);
-        return name;
+    <div
+      ref={containerRef}
+      style={{
+        position: "relative",
+        // Snug width — the previous 240-300px range pushed into the
+        // view bar's flex space. 180px fits a typical dataset name
+        // and leaves the bar room to grow.
+        width: 180,
+        flexShrink: 0,
+        // Darker / cooler than level-2 so the selector reads as
+        // part of the dark nav chrome rather than a pale grey
+        // overlay. Border picks up the primary plain border token
+        // to match the bar's frame styling.
+        background: "var(--fo-palette-background-level1)",
+        borderRadius: 4,
+        border: "1px solid var(--fo-palette-primary-plainBorder)",
       }}
-      overflow={true}
-      useSearch={useSearch}
-      value={dataset}
-    />
+      data-cy="dataset"
+    >
+      <Input
+        size={Size.Sm}
+        value={query}
+        placeholder="Select dataset"
+        onFocus={() => setOpen(true)}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          if (!open) setOpen(true);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            setOpen(false);
+            setQuery(dataset ?? "");
+          } else if (e.key === "Enter" && values.length > 0) {
+            pick(values[0]);
+          }
+        }}
+        aria-label="Dataset"
+        style={{ background: "transparent", border: "none" }}
+      />
+      {open && values.length > 0 && rect && createPortal(
+        <div
+          // Portaled to document.body so ancestor `overflow:auto`
+          // rules can't clip the dropdown. Position is computed
+          // from the trigger's bounding rect via `useAnchorRect`.
+          style={{
+            position: "fixed",
+            top: rect.top + 4,
+            left: rect.left,
+            width: rect.width,
+            background: "var(--fo-palette-background-level3)",
+            border: "1px solid var(--fo-palette-primary-plainBorder)",
+            borderRadius: 4,
+            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.25)",
+            maxHeight: 280,
+            overflowY: "auto",
+            zIndex: 10000,
+          }}
+          role="listbox"
+        >
+          {values.map((name) => (
+            <div
+              key={name}
+              role="option"
+              aria-selected={name === dataset}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                pick(name);
+              }}
+              style={{
+                padding: "6px 10px",
+                cursor: "pointer",
+                background:
+                  name === dataset
+                    ? "var(--fo-palette-background-level2)"
+                    : undefined,
+                color: "var(--fo-palette-text-primary)",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+              title={name}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLDivElement).style.background =
+                  "var(--fo-palette-background-level2)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLDivElement).style.background =
+                  name === dataset
+                    ? "var(--fo-palette-background-level2)"
+                    : "";
+              }}
+            >
+              {name}
+            </div>
+          ))}
+        </div>,
+        document.body
+      )}
+    </div>
   );
 };
 
