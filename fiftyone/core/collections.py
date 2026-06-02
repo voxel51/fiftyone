@@ -47,6 +47,7 @@ import fiftyone.core.odm as foo
 import fiftyone.core.runs as fors
 import fiftyone.core.sample as fosa
 import fiftyone.core.storage as fost
+import fiftyone.core.training as fotr
 import fiftyone.core.utils as fou
 from fiftyone.internal.docs import hide_from_docs
 
@@ -4783,6 +4784,83 @@ class SampleCollection(object):
     def delete_evaluations(self):
         """Deletes all evaluation results from this collection."""
         foev.EvaluationMethod.delete_runs(self)
+
+    @property
+    def has_training_runs(self):
+        """Whether this collection has any training runs."""
+        return bool(self.list_training_runs())
+
+    def has_training_run(self, training_key):
+        """Whether this collection has a training run with the given key.
+
+        Args:
+            training_key: a training key
+
+        Returns:
+            True/False
+        """
+        return training_key in self.list_training_runs()
+
+    def list_training_runs(self, type=None, method=None, **kwargs):
+        """Returns a list of training keys on this collection.
+
+        Args:
+            type (None): a specific training type to match, which can be:
+
+                -   a string
+                    :attr:`fiftyone.core.training.TrainingMethodConfig.type`
+                -   a :class:`fiftyone.core.training.TrainingMethod` class
+                    or its fully-qualified class name string
+
+            method (None): a specific
+                :attr:`fiftyone.core.training.TrainingMethodConfig.method`
+                string to match
+            **kwargs: optional config parameters to match
+
+        Returns:
+            a list of training keys
+        """
+        return fotr.TrainingMethod.list_runs(
+            self, type=type, method=method, **kwargs
+        )
+
+    def rename_training_run(self, training_key, new_training_key):
+        """Replaces the key for the given training run with a new key.
+
+        Args:
+            training_key: a training key
+            new_training_key: a new training key
+        """
+        return fotr.TrainingMethod.update_run_key(
+            self, training_key, new_training_key
+        )
+
+    def get_training_info(self, training_key):
+        """Returns information about the training run with the given key on
+        this collection.
+
+        Args:
+            training_key: a training key
+
+        Returns:
+            a :class:`fiftyone.core.training.TrainingInfo`
+        """
+        info = fotr.TrainingMethod.get_run_info(self, training_key)
+        info.config._dataset = self
+        return info
+
+    def delete_training_run(self, training_key):
+        """Deletes the training run associated with the given training key from
+        this collection.
+
+        Args:
+            training_key: a training key
+        """
+        fotr.TrainingMethod.delete_run(self, training_key)
+
+    def delete_training_runs(self):
+        """Deletes all training runs from this collection."""
+        fotr.TrainingMethod.delete_runs(self)
 
     @property
     def has_brain_runs(self):
