@@ -5,6 +5,7 @@ Training-run framework tests (minimal, experimental).
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import unittest
 
 import fiftyone as fo
@@ -36,7 +37,9 @@ class TrainingRunTests(unittest.TestCase):
             pred_field="preds",
         )
         self.assertEqual(run.status, "in_progress")  # spec UD4
-        self.assertTrue(ds.has_training_runs)  # property (mirrors has_evaluations)
+        self.assertTrue(
+            ds.has_training_runs
+        )  # property (mirrors has_evaluations)
         self.assertIn("run_one", ds.list_training_runs())
         self.assertEqual(run.train_view.count(), 4)
         self.assertEqual(run.val_view.count(), 2)
@@ -103,7 +106,9 @@ class TrainingRunTests(unittest.TestCase):
             ds.list_training_runs(status="in_progress"), ["lineage_only"]
         )
         ds.delete_training_run("lineage_only")
-        self.assertFalse(ds.has_training_runs)  # property (mirrors has_evaluations)
+        self.assertFalse(
+            ds.has_training_runs
+        )  # property (mirrors has_evaluations)
 
 
 if __name__ == "__main__":

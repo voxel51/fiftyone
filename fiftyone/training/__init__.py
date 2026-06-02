@@ -6,6 +6,8 @@ Global training namespace.
 |
 """
 
+__all__ = ["init", "list_runs"]
+
 
 def init(dataset, **kwargs):
     """Global form of

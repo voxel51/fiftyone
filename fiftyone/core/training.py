@@ -5,6 +5,7 @@ Training runs framework.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import copy
 
 from fiftyone.core.runs import (
@@ -283,13 +284,14 @@ class TrainingResults(BaseRunResults):
             self.config.checkpoint_uri = checkpoint_uri
 
         results = None
+        view = self._data_driven_view()
         if (
             self.config.auto_eval
             and self.config.eval_key is None
-            and self._data_driven_view().count() > 0
+            and view.count() > 0
         ):
             try:
-                results = self.evaluate(samples=None, **(eval_kwargs or {}))
+                results = self.evaluate(samples=view, **(eval_kwargs or {}))
             except Exception:
                 import traceback
 
@@ -310,7 +312,9 @@ class TrainingResults(BaseRunResults):
         optional dict[sample_id, dict[metric_key, value]] stored as
         top-level fields ``<train_key>_<metric_key>``."""
         if self.config.status in ("completed", "failed"):
-            raise RuntimeError("log_predictions() cannot be called after finish()")
+            raise RuntimeError(
+                "log_predictions() cannot be called after finish()"
+            )
 
         if self.config.pred_field is None:
             raise ValueError("pred_field must be set to log predictions")
@@ -335,9 +339,7 @@ class TrainingResults(BaseRunResults):
             metric_keys = {mk for d in metrics.values() for mk in d}
             for mk in metric_keys:
                 field = f"{self.config.train_key}_{mk}"
-                values = {
-                    sid: d[mk] for sid, d in metrics.items() if mk in d
-                }
+                values = {sid: d[mk] for sid, d in metrics.items() if mk in d}
                 self.samples.set_values(field, values, key_field="id")
 
     def apply_model(self, model, samples=None, **kwargs):
@@ -356,6 +358,11 @@ class TrainingResults(BaseRunResults):
         if samples is None:
             eval_ids = list(self.config.val_view_ids or [])
             eval_ids += list(self.config.test_view_ids or [])
+            if not eval_ids:
+                raise ValueError(
+                    "no val/test views to apply the model to; pass an "
+                    "explicit samples view (e.g. samples=run.train_view)"
+                )
             samples = self.samples.select(list(dict.fromkeys(eval_ids)))
 
         fomo.apply_model(
