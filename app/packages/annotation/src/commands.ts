@@ -141,6 +141,21 @@ export class ShiftTrackCommand extends Command<boolean> {
 }
 
 /**
+ * Apply track-level attribute edits to every frame of a tracked object.
+ * `trackId` is the synthetic overlay id (`instance-…` / `track-…`) the stream
+ * and timeline agree on. Resolves `true` when at least one frame's detection
+ * was updated.
+ */
+export class UpdateTrackAttributesCommand extends Command<boolean> {
+  constructor(
+    public readonly trackId: string,
+    public readonly attributes: Record<string, unknown>
+  ) {
+    super();
+  }
+}
+
+/**
  * Propagate a tracked object's bounding box between two bracketing
  * keyframes via the registered propagation agent selected by `method`
  * (`"linear"` → `propagate-linear` lerp; `"sam2"` → `propagate-sam2`

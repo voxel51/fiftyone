@@ -38,6 +38,7 @@ import {
   PropagateCommand,
   ShiftTrackCommand,
   TrimTrackCommand,
+  UpdateTrackAttributesCommand,
 } from "../commands";
 
 /** Read this track's detection on a given frame, or `undefined`. */
@@ -427,6 +428,43 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
         return removed;
       },
       [stream, eventBus]
+    )
+  );
+
+  useRegisterCommandHandler(
+    UpdateTrackAttributesCommand,
+    useCallback(
+      async (cmd) => {
+        if (!stream) {
+          return false;
+        }
+
+        const keys = Object.keys(cmd.attributes);
+        if (keys.length === 0) {
+          return false;
+        }
+
+        // Merge the track-level attributes onto this track's detection on
+        // every frame it appears, leaving per-frame geometry (`bounding_box`,
+        // `keyframe`, `propagation`) and each frame's own `_id` intact.
+        let updated = false;
+        for (let frame = 1; frame <= stream.totalFrames; frame++) {
+          const det = detectionAt(stream, frame, stream.fps, cmd.trackId);
+          if (!det) {
+            continue;
+          }
+
+          stream.updateLabel(frame, {
+            _cls: "Detection",
+            _id: det._id ?? det.id,
+            ...cmd.attributes,
+          } as LocalDetection);
+          updated = true;
+        }
+
+        return updated;
+      },
+      [stream]
     )
   );
 
