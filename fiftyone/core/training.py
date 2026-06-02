@@ -340,6 +340,48 @@ class TrainingResults(BaseRunResults):
                 }
                 self.samples.set_values(field, values, key_field="id")
 
+    def apply_model(self, model, samples=None, **kwargs):
+        """Populate ``pred_field`` using ``fiftyone.core.models.apply_model``.
+        ``samples`` defaults to ``val_view`` ∪ ``test_view`` (the
+        conventional eval sets); pass e.g. ``samples=run.train_view`` to
+        populate elsewhere. If ``model`` implements ``compute_sample_metrics``,
+        per-sample metrics are stored as top-level ``<train_key>_<metric_key>``
+        fields. Does not finalize; call ``finish()`` (or rely on
+        ``auto_eval``)."""
+        import fiftyone.core.models as fomo
+
+        if self.config.pred_field is None:
+            raise ValueError("pred_field must be set to apply a model")
+
+        if samples is None:
+            eval_ids = list(self.config.val_view_ids or [])
+            eval_ids += list(self.config.test_view_ids or [])
+            samples = self.samples.select(list(dict.fromkeys(eval_ids)))
+
+        fomo.apply_model(
+            samples, model, label_field=self.config.pred_field, **kwargs
+        )
+
+        if (
+            type(model).compute_sample_metrics
+            is not fomo.Model.compute_sample_metrics
+        ):
+            metrics = {}
+            for sample in samples:
+                m = model.compute_sample_metrics(
+                    sample, sample[self.config.pred_field]
+                )
+                if isinstance(m, dict) and m:
+                    metrics[sample.id] = m
+
+            metric_keys = {mk for d in metrics.values() for mk in d}
+            for mk in metric_keys:
+                self.samples.set_values(
+                    f"{self.config.train_key}_{mk}",
+                    {sid: d[mk] for sid, d in metrics.items() if mk in d},
+                    key_field="id",
+                )
+
     def __enter__(self):
         return self
 

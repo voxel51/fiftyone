@@ -2307,6 +2307,14 @@ class Model(etal.Model):
         """
         return False
 
+    def compute_sample_metrics(self, sample, prediction):
+        """Optionally compute per-sample metrics for the given sample and
+        prediction. Returns a ``dict[str, scalar]`` or ``None`` (default).
+
+        Used by :meth:`fiftyone.core.training.TrainingResults.apply_model`.
+        """
+        return None
+
     @property
     def can_embed_prompts(self):
         """Whether this model can generate prompt embeddings.
