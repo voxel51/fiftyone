@@ -136,6 +136,7 @@ BOUNDING_BOX = "bounding_box"
 FILEPATH = "filepath"
 LABEL = "label"
 POINTS = "points"
+SUPPORT = "support"
 
 
 ### Field type to label schema type

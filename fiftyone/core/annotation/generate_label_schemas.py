@@ -380,7 +380,7 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
             continue
 
         if (
-            f.name == "support"
+            f.name == foac.SUPPORT
             and field.document_type is fol.TemporalDetection
         ):
             # support is a FrameSupportField ([first, last]); user-provided
