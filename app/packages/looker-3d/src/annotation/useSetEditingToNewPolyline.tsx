@@ -1,7 +1,6 @@
 import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
-import { current } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext/selectors";
 import * as fos from "@fiftyone/state";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useSetAtom } from "jotai";
 import { atomWithReset, useResetAtom } from "jotai/utils";
 import { useCallback, useEffect } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -25,8 +24,7 @@ export const useSetEditingToNewPolyline = () => {
   const shouldDefaultToClosed = useRecoilValue(snapCloseAutomaticallyAtom);
 
   const setCurrentEditing = useSetAtom(currentEditingPolylineAtom);
-  const currentAnnotationSidebar = useAtomValue(current);
-  const { clear, select, setSavedData } = useAnnotationContext();
+  const { clear, readSelected, select, setSavedData } = useAnnotationContext();
 
   const clearTransformState = useSetRecoilState(clearTransformStateSelector);
 
@@ -44,7 +42,10 @@ export const useSetEditingToNewPolyline = () => {
 
       // If what we already have in sidebar is same as the new label, don't do anything
       // Because it'll be handled by reverse sync and useSetEditingToExisting3dLabel
-      if (currentAnnotationSidebar?.data._id === labelId) {
+      const currentData = readSelected().label?.data as
+        | { _id?: string }
+        | undefined;
+      if (currentData?._id === labelId) {
         return;
       }
 
@@ -105,10 +106,15 @@ export const useSetEditingToNewPolyline = () => {
       );
     },
     [
-      currentSampleId,
+      clear,
+      clearTransformState,
       currentActiveField,
+      currentSampleId,
+      readSelected,
+      select,
+      setCurrentEditing,
+      setSavedData,
       shouldDefaultToClosed,
-      currentAnnotationSidebar,
     ]
   );
 };

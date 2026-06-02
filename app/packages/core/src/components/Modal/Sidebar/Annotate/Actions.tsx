@@ -25,14 +25,15 @@ import {
 } from "@fiftyone/utilities";
 import PolylineIcon from "@mui/icons-material/Timeline";
 import CuboidIcon from "@mui/icons-material/ViewInAr";
-import { useAtomValue } from "jotai";
 import { Anchor, Text, Tooltip } from "@voxel51/voodo";
 import { createContext, useCallback, useContext } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
-import { useAnnotationContext } from "./Edit/useAnnotationContext";
-import { fieldsOfType } from "./Edit/useAnnotationContext/selectors";
+import {
+  useAnnotationContext,
+  useAnnotationFields,
+} from "./Edit/useAnnotationContext";
 import { useClassificationMode } from "./Edit/useClassificationMode";
 import { useDetectionMode } from "./Edit/useDetectionMode";
 import { usePolylineMode } from "./Edit/usePolylineMode";
@@ -329,7 +330,7 @@ export const ThreeDPolylines = () => {
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
   const deactivateAll = useDeactivateAll();
-  const visibleFields = useAtomValue(fieldsOfType(POLYLINE));
+  const { fields } = useAnnotationFields(POLYLINE);
 
   const polylineFields = use3dAnnotationFields(
     useCallback(
@@ -341,7 +342,7 @@ export const ThreeDPolylines = () => {
   );
 
   const hasPolylineFieldsInSchema = polylineFields && polylineFields.length > 0;
-  const disabled = visibleFields.length === 0;
+  const disabled = fields.length === 0;
   const isPolylineAnnotateActive =
     current3dAnnotationMode === ANNOTATION_POLYLINE;
 
@@ -385,7 +386,7 @@ export const ThreeDCuboids = () => {
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
   const deactivateAll = useDeactivateAll();
-  const visibleFields = useAtomValue(fieldsOfType(DETECTION));
+  const { fields } = useAnnotationFields(DETECTION);
 
   const cuboidFields = use3dAnnotationFields(
     useCallback(
@@ -397,7 +398,7 @@ export const ThreeDCuboids = () => {
   );
 
   const hasCuboidFieldsInSchema = cuboidFields && cuboidFields.length > 0;
-  const disabled = visibleFields.length === 0;
+  const disabled = fields.length === 0;
   const isCuboidAnnotateActive = current3dAnnotationMode === ANNOTATION_CUBOID;
 
   return (

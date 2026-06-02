@@ -1,7 +1,6 @@
 import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
-import { current } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext/selectors";
 import * as fos from "@fiftyone/state";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useSetAtom } from "jotai";
 import { atomWithReset, useResetAtom } from "jotai/utils";
 import { useCallback, useEffect } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -24,8 +23,7 @@ export const useSetEditingToNewCuboid = () => {
   const currentSampleId = useRecoilValue(fos.currentSampleId);
 
   const setCurrentEditing = useSetAtom(currentEditingCuboidAtom);
-  const currentAnnotationSidebar = useAtomValue(current);
-  const { clear, select } = useAnnotationContext();
+  const { clear, readSelected, select } = useAnnotationContext();
 
   const clearTransformState = useSetRecoilState(clearTransformStateSelector);
 
@@ -42,7 +40,10 @@ export const useSetEditingToNewCuboid = () => {
 
       // If what we already have in sidebar is same as the new label, don't do anything
       // Because it'll be handled by reverse sync
-      if (currentAnnotationSidebar?.data._id === labelId) {
+      const currentData = readSelected().label?.data as
+        | { _id?: string }
+        | undefined;
+      if (currentData?._id === labelId) {
         return;
       }
 
@@ -97,6 +98,14 @@ export const useSetEditingToNewCuboid = () => {
       // structurally equal.
       select(currentEditingCuboidAtom as any);
     },
-    [currentSampleId, currentActiveField, currentAnnotationSidebar]
+    [
+      clear,
+      clearTransformState,
+      currentActiveField,
+      currentSampleId,
+      readSelected,
+      select,
+      setCurrentEditing,
+    ]
   );
 };
