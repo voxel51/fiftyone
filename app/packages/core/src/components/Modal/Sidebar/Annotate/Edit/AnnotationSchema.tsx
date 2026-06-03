@@ -157,7 +157,16 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         )
       );
 
-      const value = { ...data, ...result };
+      // Merge onto the live overlay label, which can be fresher than the
+      // form's `data` snapshot. Discard fields which are owned elsewhere.
+      const { support: _formSupport, ...formResult } = result as Record<
+        string,
+        unknown
+      >;
+      const value = {
+        ...(overlay.label as Record<string, unknown>),
+        ...formResult,
+      };
 
       const allAttributes = Array.isArray(config?.attributes)
         ? config.attributes
