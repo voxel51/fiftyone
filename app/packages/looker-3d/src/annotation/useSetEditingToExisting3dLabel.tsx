@@ -47,7 +47,7 @@ export function useSetEditingToExisting3dLabel(type: AnnotationType) {
       resetCurrentEditing();
       clear();
     };
-  }, []);
+  }, [resetCurrentEditing]);
 
   const clearTransformState = useSetRecoilState(clearTransformStateSelector);
 
