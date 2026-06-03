@@ -12,7 +12,7 @@ import { useState } from "react";
 import { useConfirmDisconnectOntology } from "../../Confirmation/useConfirmDisconnectOntology";
 import OntologyPicker from "./OntologyPicker";
 import { useAppliedOntology } from "./useLabelSchema";
-import { ONTOLOGY_TYPE_ANNOTATION, useOntologies } from "./useOntologies";
+import { ONTOLOGY_TYPE_ONTOLOGY, useOntologies } from "./useOntologies";
 
 interface ApplyOntologySectionProps {
   field: string;
@@ -22,7 +22,7 @@ const ApplyOntologySection = ({ field }: ApplyOntologySectionProps) => {
   const { appliedOntology, ontologyAttributes, applyOntology, clearOntology } =
     useAppliedOntology(field);
   const { ontologies, isFetching, error } = useOntologies(
-    ONTOLOGY_TYPE_ANNOTATION
+    ONTOLOGY_TYPE_ONTOLOGY
   );
   const [pickerArmed, setPickerArmed] = useState(false);
 
@@ -73,6 +73,7 @@ const ApplyOntologySection = ({ field }: ApplyOntologySectionProps) => {
 
       {expanded && !appliedOntology && (
         <OntologyPicker
+          type={ONTOLOGY_TYPE_ONTOLOGY}
           ontologies={ontologies}
           isFetching={isFetching}
           error={error}
