@@ -81,6 +81,7 @@ export interface AttributeConfig {
   read_only?: boolean;
   when?: AttributeCondition;
   _source?: string;
+  taxonomy?: string;
 }
 
 // Class configuration
@@ -114,6 +115,8 @@ export interface AttributeFormData {
   read_only: boolean;
   when?: AttributeCondition;
   _source?: string;
+  valuesMode: "simple" | "taxonomy";
+  taxonomy?: string;
 }
 
 // =============================================================================
@@ -294,6 +297,7 @@ export const createDefaultFormData = (): AttributeFormData => ({
   default: "",
   listDefault: [],
   read_only: false,
+  valuesMode: "simple",
 });
 
 /**
@@ -330,6 +334,8 @@ export const toFormData = (config: AttributeConfig): AttributeFormData => {
     read_only: config.read_only || false,
     when: config.when,
     _source: config._source,
+    valuesMode: config.taxonomy ? "taxonomy" : "simple",
+    taxonomy: config.taxonomy,
   };
 };
 
@@ -378,6 +384,18 @@ export const toAttributeConfig = (data: AttributeFormData): AttributeConfig => {
     }
   }
 
+  if (data.valuesMode === "taxonomy") {
+    return {
+      name: data.name.trim(),
+      type: data.type,
+      component: data.component || undefined,
+      range,
+      default: defaultValue,
+      read_only: data.read_only || undefined,
+      taxonomy: data.taxonomy,
+    };
+  }
+
   return {
     name: data.name.trim(),
     type: data.type,
@@ -396,6 +414,7 @@ export interface AttributeFormErrors {
   values: string | null;
   range: string | null;
   default: string | null;
+  taxonomy: string | null;
 }
 
 // =============================================================================
@@ -571,9 +590,18 @@ export const getAttributeFormErrors = (
   const needsRange = isNumeric && componentNeedsRange(data.component);
   const isListType = LIST_TYPES.includes(data.type);
 
-  const valuesError = needsValues
-    ? validateValues(data.values, isNumeric)
-    : null;
+  const isTaxonomyMode = data.valuesMode === "taxonomy";
+
+  // In taxonomy mode, skip values validation and instead require a taxonomy selection.
+  const valuesError =
+    needsValues && !isTaxonomyMode
+      ? validateValues(data.values, isNumeric)
+      : null;
+
+  const taxonomyError =
+    needsValues && isTaxonomyMode && !data.taxonomy
+      ? "Select a taxonomy"
+      : null;
 
   const rangeError = needsRange ? validateRange(data.range) : null;
 
@@ -584,13 +612,13 @@ export const getAttributeFormErrors = (
       isNumeric,
       data.range,
       rangeError,
-      data.values,
+      isTaxonomyMode ? [] : data.values,
       valuesError,
       needsRange,
-      needsValues
+      needsValues && !isTaxonomyMode
     );
   }
-  if (!defaultError && isListType) {
+  if (!defaultError && isListType && !isTaxonomyMode) {
     defaultError = validateListDefault(
       data.listDefault,
       isNumeric,
@@ -605,6 +633,7 @@ export const getAttributeFormErrors = (
     values: valuesError,
     range: rangeError,
     default: defaultError,
+    taxonomy: taxonomyError,
   };
 };
 
@@ -612,7 +641,7 @@ export const getAttributeFormErrors = (
  * Check if form has any validation errors
  */
 export const hasAttributeFormError = (errors: AttributeFormErrors): boolean =>
-  !!(errors.values || errors.range || errors.default);
+  !!(errors.values || errors.range || errors.default || errors.taxonomy);
 
 // =============================================================================
 // Component Reconciliation
