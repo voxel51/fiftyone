@@ -96,9 +96,9 @@ setup(
         "scikit-image<1",
         "scipy<2",
         # internal packages
-        "fiftyone-brain>=0.21.6,<0.22",
+        "fiftyone-brain>=0.22.0,<0.23",
         "fiftyone-db>=0.4,<2.0",
-        "voxel51-eta>=0.15.3,<0.16",
+        "voxel51-eta>=0.16.0,<0.17",
     ],
     include_package_data=True,
     classifiers=[
