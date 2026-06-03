@@ -31,9 +31,7 @@ App
 - Fixed value tearing in the dynamic-groups pagination bar during slice
   transitions
   `#7599 <https://github.com/voxel51/fiftyone/pull/7599>`_
-- Fixed a bug where mask and looker decode workers could run on the main
-  thread under non-Vite bundlers (e.g. webpack/Next.js), triggering a runaway
-  message loop that pegged CPU usage
+- Improved performance of image and mask decoding in the App
   `#7711 <https://github.com/voxel51/fiftyone/pull/7711>`_
 
 In-App Annotation
