@@ -197,7 +197,7 @@ export const useSegmentationMode = () => {
 
         if (hasMask && overlayId) {
           mergeTool.setMergeTarget(overlayId);
-        } else if (selected) {
+        } else if (target) {
           onExit();
         }
       }
