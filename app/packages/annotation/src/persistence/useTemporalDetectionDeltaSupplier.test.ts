@@ -218,7 +218,12 @@ describe("buildTemporalDetectionOverlayDeltas", () => {
       expect(
         buildTemporalDetectionOverlayDeltas(
           sample,
-          [overlay("ghost", "a", [5, 15], { label: "x" })],
+          [
+            // The declared `events` baseline has a matching overlay (no change),
+            // so the only field under test is the undeclared `ghost`.
+            overlay("events", "a", [1, 10], { label: "x" }),
+            overlay("ghost", "a", [5, 15], { label: "x" }),
+          ],
           ["events"]
         )
       ).toEqual([]);
@@ -230,6 +235,9 @@ describe("buildTemporalDetectionOverlayDeltas", () => {
       const sample = { events: field(tdBaseline("a", [1, 10])) };
       expect(
         buildTemporalDetectionOverlayDeltas(sample, [
+          // The `events` baseline has a matching overlay (no change), leaving
+          // only the `ghost` overlay — whose field isn't on the sample — to skip.
+          overlay("events", "a", [1, 10], { label: "x" }),
           overlay("ghost", "a", [5, 15], { label: "x" }),
         ])
       ).toEqual([]);
@@ -247,9 +255,21 @@ describe("buildTemporalDetectionOverlayDeltas", () => {
       ).toEqual([]);
     });
 
-    it("returns an empty array when there are no overlays", () => {
-      const sample = { events: field(tdBaseline("a", [1, 10])) };
-      expect(buildTemporalDetectionOverlayDeltas(sample, [])).toEqual([]);
+    it("removes every baseline entry when all overlays are gone", () => {
+      // Deleting the last TD(s) in a field leaves a populated baseline with no
+      // matching overlays; each orphaned entry is diffed out (descending so the
+      // earlier indices don't shift).
+      const sample = {
+        events: field(tdBaseline("a", [1, 10]), tdBaseline("b", [20, 30])),
+      };
+      expect(buildTemporalDetectionOverlayDeltas(sample, [])).toEqual([
+        { op: "remove", path: "/events/detections/1" },
+        { op: "remove", path: "/events/detections/0" },
+      ]);
+    });
+
+    it("returns an empty array when the sample has no temporal detections", () => {
+      expect(buildTemporalDetectionOverlayDeltas({}, [])).toEqual([]);
     });
   });
 });
