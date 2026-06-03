@@ -37,6 +37,15 @@ vi.mock("@fiftyone/components", () => ({
   ),
 }));
 
+vi.mock("@voxel51/voodo", () => ({
+  Size: { Md: "md" },
+  Toggle: ({ label, checked, onChange }: { label: string; checked: boolean; onChange: (next: boolean) => void }) => (
+    <button type="button" onClick={() => onChange(!checked)}>
+      {label}
+    </button>
+  ),
+}));
+
 vi.mock("@fiftyone/spotlight", () => ({
   default: class Spotlight {
     options: Record<string, unknown>;
@@ -174,7 +183,7 @@ describe("Grid pagination", () => {
   it("renders the pagination bar when enabled", () => {
     render(<Grid />);
 
-    expect(screen.getByText("Disable pagination")).toBeTruthy();
+    expect(screen.getByText("Pagination")).toBeTruthy();
     expect(screen.getByText("Prev")).toBeTruthy();
     expect(screen.getByText("Next")).toBeTruthy();
     expect(screen.getByText(/Showing 1.*20 of 45/)).toBeTruthy();
@@ -311,18 +320,18 @@ describe("Grid pagination", () => {
 
     render(<Grid />);
 
-    expect(screen.getByText("Enable pagination")).toBeTruthy();
+    expect(screen.getByText("Pagination")).toBeTruthy();
     expect(screen.queryByText("Prev")).toBeNull();
     expect(useSpotlightPagerMock.mock.calls[0][0]).toMatchObject({
       pagination: false,
-      pageSize: 30,
+      pageSize: undefined,
     });
   });
 
   it("toggles pagination from the grid", () => {
     render(<Grid />);
 
-    fireEvent.click(screen.getByText("Disable pagination"));
+    fireEvent.click(screen.getByText("Pagination"));
 
     expect(mockState.setGridPagination).toHaveBeenCalledWith(false);
     expect(mockState.setCurrentPage).toHaveBeenCalledWith(0);

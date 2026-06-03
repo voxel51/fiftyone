@@ -3,7 +3,8 @@ import styles from "./Grid.module.css";
 import { Button } from "@fiftyone/components";
 import Spotlight from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import React, { useEffect, useState } from "react";
+import { Size, Toggle } from "@voxel51/voodo";
+import React, { useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { useMemoOne } from "use-memo-one";
 import { v4 as uuid } from "uuid";
@@ -25,41 +26,13 @@ import useRefreshers from "./useRefreshers";
 import useRenderer from "./useRenderer";
 import useResize from "./useResize";
 import useScrollLocation from "./useScrollLocation";
+import usePagination from "./usePagination";
 import useSpotlightPager from "./useSpotlightPager";
 import useUpdates from "./useUpdates";
 import useZoomSetting from "./useZoomSetting";
 
 const MAX_INSTANCES = 200;
 const MAX_ROWS = 200;
-const GRID_PAGE_PARAM = "page";
-
-const getPageFromSearch = (search: string) => {
-  const value = new URLSearchParams(search).get(GRID_PAGE_PARAM);
-  const page = Number.parseInt(value ?? "", 10);
-
-  return Number.isFinite(page) && page > 0 ? page - 1 : 0;
-};
-
-const setPageInLocation = (page: number) => {
-  const searchParams = new URLSearchParams(window.location.search);
-
-  if (page > 0) {
-    searchParams.set(GRID_PAGE_PARAM, String(page + 1));
-  } else {
-    searchParams.delete(GRID_PAGE_PARAM);
-  }
-
-  const search = searchParams.toString();
-  const nextUrl = `${window.location.pathname}${
-    search.length ? `?${search}` : ""
-  }${window.location.hash}`;
-  const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-
-  if (nextUrl !== currentUrl) {
-    window.history.pushState(window.history.state, "", nextUrl);
-  }
-};
-
 function Grid() {
   const id = useMemoOne(() => uuid(), []);
   const pixels = useMemoOne(() => uuid(), []);
@@ -88,47 +61,21 @@ function Grid() {
 
   const pageSizeFromConfig = config?.gridPageSize ?? 20;
 
-  const handlePaginationToggle = () => {
-    const nextEnabled = !paginationEnabled;
-
-    setPaginationEnabled(nextEnabled);
-    setCurrentPage(0);
-
-    if (typeof window !== "undefined") {
-      setPageInLocation(0);
-    }
-  };
-
-  useEffect(() => {
-    if (!paginationEnabled || typeof window === "undefined") {
-      return undefined;
-    }
-
-    const syncPageFromUrl = () => {
-      setCurrentPage(getPageFromSearch(window.location.search));
-    };
-
-    syncPageFromUrl();
-    window.addEventListener("popstate", syncPageFromUrl);
-
-    return () => {
-      window.removeEventListener("popstate", syncPageFromUrl);
-    };
-  }, [paginationEnabled, setCurrentPage]);
-
-  useEffect(() => {
-    if (!paginationEnabled || typeof window === "undefined") {
-      return undefined;
-    }
-
-    setPageInLocation(currentPage);
-  }, [paginationEnabled, currentPage]);
+  const { handlePaginationToggle, maxPage, safePage, start, end } =
+    usePagination({
+      paginationEnabled,
+      setPaginationEnabled,
+      currentPage,
+      setCurrentPage,
+      total,
+      pageSize: pageSizeFromConfig,
+    });
 
   const { page, store } = useSpotlightPager({
     clearRecords: reset,
     pageSelector: pageParameters,
     pagination: paginationEnabled,
-    pageSize: pageSizeFromConfig,
+    pageSize: paginationEnabled ? pageSizeFromConfig : undefined,
     records,
     zoomSelector: gridCrop,
   });
@@ -162,20 +109,21 @@ function Grid() {
       maxItemsSizeBytes: autosizing ? maxBytes : undefined,
       scrollbar: true,
       spacing,
-      get: (next) => (paginationEnabled ? page(currentPage) : page(next)),
+      get: (next) => (paginationEnabled ? page(safePage) : page(next)),
       onItemClick: setSample,
       rowAspectRatioThreshold: zoom,
     });
   }, [
     autosizing,
     cache,
-    currentPage,
     get,
     maxBytes,
     page,
+    paginationEnabled,
     renderer,
     reset,
     resizing,
+    safePage,
     setSample,
     spacing,
     zoom,
@@ -186,16 +134,19 @@ function Grid() {
   useUpdates({ cache, getFontSize, options: lookerOptions, spotlight });
   useResize(id, setResizing);
 
-  const maxPage = Math.max(0, Math.ceil(total / pageSizeFromConfig) - 1);
-  const start = total === 0 ? 0 : currentPage * pageSizeFromConfig + 1;
-  const end = total === 0 ? 0 : Math.min((currentPage + 1) * pageSizeFromConfig, total);
-
   return (
     <div className={styles.gridContainer}>
       <div className={styles.paginationToggle}>
-        <Button color="secondary" onClick={handlePaginationToggle}>
-          {paginationEnabled ? "Disable pagination" : "Enable pagination"}
-        </Button>
+        <Toggle
+          size={Size.Md}
+          label="Pagination"
+          checked={paginationEnabled}
+          onChange={(checked) => {
+            if (checked !== paginationEnabled) {
+              handlePaginationToggle();
+            }
+          }}
+        />
       </div>
       <div id={id} className={styles.spotlightGrid} data-cy="fo-grid" />
       <div id={pixels} className={styles.fallingPixels} />
@@ -204,11 +155,11 @@ function Grid() {
           <Button
             color="secondary"
             onClick={async () => {
-              const next = Math.max(0, currentPage - 1);
+              const next = Math.max(0, safePage - 1);
               setCurrentPage(next);
               await page(next);
             }}
-            disabled={currentPage === 0}
+            disabled={safePage === 0}
           >
             Prev
           </Button>
@@ -218,11 +169,11 @@ function Grid() {
           <Button
             color="secondary"
             onClick={async () => {
-              const next = Math.min(maxPage, currentPage + 1);
+              const next = Math.min(maxPage, safePage + 1);
               setCurrentPage(next);
               await page(next);
             }}
-            disabled={currentPage >= maxPage}
+            disabled={safePage >= maxPage}
           >
             Next
           </Button>

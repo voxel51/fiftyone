@@ -269,6 +269,8 @@ type DatasetAppConfig {
   disableFrameFiltering: Boolean
   dynamicGroupsTargetFrameRate: Int!
   gridMediaField: String!
+  gridPagination: Boolean
+  gridPageSize: Int
   mediaFields: [String!]
   modalMediaField: String!
   mediaFallback: Boolean!
