@@ -106,20 +106,20 @@ describe("LoopOverlays", () => {
     expect(withRight).toHaveLength(1);
   });
 
-  it("treats bounds within LOOP_EDGE_EPSILON (0.001) of the view edges as at the edge", () => {
+  it("treats bounds within LOOP_EDGE_EPSILON (0.02) of the view edges as at the edge", () => {
     const { container } = renderOverlays({
       duration: 10,
-      defaultLoopStart: 0.0005,
-      defaultLoopEnd: 9.9995,
+      defaultLoopStart: 0.01,
+      defaultLoopEnd: 9.99,
     });
     expect(container.querySelectorAll(maskClass)).toHaveLength(0);
   });
 
   it("renders the left mask when loop start is just past epsilon", () => {
-    // 0.002 > 0.001 epsilon → left mask should render.
+    // 0.03 > 0.02 epsilon → left mask should render.
     const { container } = renderOverlays({
       duration: 10,
-      defaultLoopStart: 0.002,
+      defaultLoopStart: 0.03,
     });
     expect(container.querySelectorAll(maskClass)).toHaveLength(1);
   });

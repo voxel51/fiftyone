@@ -14,6 +14,7 @@ import {
   viewEndAtom,
   viewStartAtom,
 } from "./atoms";
+import { SEEK_BAR_DEBOUNCE } from "../constants";
 import type {
   PlaybackConfig,
   PlaybackContextValue,
@@ -132,7 +133,7 @@ export function usePlaybackEngine({
         fire();
       } else {
         // Debounced so streams don't thrash their caches during rapid scrubbing.
-        seekDebounceRef.current = setTimeout(fire, 50);
+        seekDebounceRef.current = setTimeout(fire, SEEK_BAR_DEBOUNCE);
       }
     },
     [store]
