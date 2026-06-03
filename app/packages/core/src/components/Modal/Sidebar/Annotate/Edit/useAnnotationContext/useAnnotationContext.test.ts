@@ -35,8 +35,14 @@ vi.mock("../../state", () => ({
   isFieldReadOnly: () => false,
   fieldType: (field: string) =>
     atom((refs.schemas[field] as { type?: string })?.type ?? "Detection"),
-  visibleLabelSchemas: atom<string[]>([]),
+  visibleLabelSchemas: atom((get) => {
+    get(visibleSchemasTrigger);
+    return refs.visibleSchemas;
+  }),
 }));
+
+// Trigger atom invalidates jotai-cached derived atoms when refs.visibleSchemas mutates.
+const visibleSchemasTrigger = atom(0);
 
 vi.mock("../../useLabels", () => ({
   labelsByPath: atom<Record<string, unknown>>({}),
@@ -93,10 +99,15 @@ const resetAtoms = () => {
   store.set(currentEditingMaskAtom, false);
 };
 
+const setVisible = (paths: string[]) => {
+  refs.visibleSchemas = paths;
+  store.set(visibleSchemasTrigger, (n) => n + 1);
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   for (const k of Object.keys(refs.schemas)) delete refs.schemas[k];
-  refs.visibleSchemas.length = 0;
+  setVisible([]);
   for (const k of Object.keys(refs.labelsByPath)) delete refs.labelsByPath[k];
   refs.lighter = {
     scene: null,
@@ -182,6 +193,9 @@ describe("useAnnotationContext.clear", () => {
   });
 
   it("records the cleared label's field+class into lastUsed memory", () => {
+    // `fieldFor` validates the remembered field is still in the schema, so
+    // register `predictions` as a visible Detection field.
+    setVisible(["predictions"]);
     const labelAtom = makeLabelAtom(
       makeLabel({ path: "predictions", data: { label: "dog" } })
     );
@@ -305,6 +319,12 @@ describe("useAnnotationContext.readEditing", () => {
 
 describe("useAnnotationContext.lastUsed", () => {
   it("recordField + fieldFor round-trip per type", () => {
+    // `fieldFor` validates remembered fields against the live schema, so
+    // register both fields with their respective types.
+    refs.schemas.ground_truth = { type: "Detection" };
+    refs.schemas.lines = { type: "Polyline" };
+    setVisible(["ground_truth", "lines"]);
+
     const { result } = renderHook(() => useAnnotationContext());
     act(() => {
       result.current.lastUsed.recordField("Detection", "ground_truth");
@@ -313,6 +333,23 @@ describe("useAnnotationContext.lastUsed", () => {
 
     expect(result.current.lastUsed.fieldFor("Detection")).toBe("ground_truth");
     expect(result.current.lastUsed.fieldFor("Polyline")).toBe("lines");
+  });
+
+  it("fieldFor falls through when the remembered field is no longer in the schema", () => {
+    // Register a remembered field, then remove it from the schema (simulating
+    // a schema edit or visibility change).
+    refs.schemas.ground_truth = { type: "Detection" };
+    refs.schemas.fallback = { type: "Detection" };
+    setVisible(["ground_truth", "fallback"]);
+
+    const { result } = renderHook(() => useAnnotationContext());
+    act(() => result.current.lastUsed.recordField("Detection", "ground_truth"));
+    expect(result.current.lastUsed.fieldFor("Detection")).toBe("ground_truth");
+
+    // Remove ground_truth from the schema — fieldFor should fall through
+    // rather than return the stale remembered value.
+    setVisible(["fallback"]);
+    expect(result.current.lastUsed.fieldFor("Detection")).toBe("fallback");
   });
 
   it("recordLabel + labelFor round-trip per field", () => {

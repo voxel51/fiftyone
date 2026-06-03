@@ -4,7 +4,7 @@ import { atom, type PrimitiveAtom, useAtomValue, useSetAtom } from "jotai";
 import { atomFamily, useAtomCallback } from "jotai/utils";
 import { countBy, maxBy } from "lodash";
 import { useCallback, useMemo } from "react";
-import { isFieldReadOnly, labelSchemaData } from "../../state";
+import { labelSchemaData } from "../../state";
 import { labelsByPath } from "../../useLabels";
 import { activePrimitiveAtom } from "../useActivePrimitive";
 import {
@@ -169,19 +169,17 @@ export const useAnnotationContext = (): AnnotationContext => {
     )
   );
 
-  // remembered → most-populated → defaultField; skip if remembered is read-only.
+  // remembered → most-populated → defaultField
   const computeFieldFor = useAtomCallback(
     useCallback((get, _set, t: LabelType): string | null => {
+      const valid = get(fieldsOfType(t));
       const remembered = get(lastUsedFieldAtom(t));
-      if (remembered) {
-        const s = get(labelSchemaData(remembered));
-        if (!isFieldReadOnly(s)) return remembered;
-      }
+      if (remembered && valid.includes(remembered)) return remembered;
 
       const byPath = get(labelsByPath);
       let bestPath: string | null = null;
       let bestCount = 0;
-      for (const path of get(fieldsOfType(t))) {
+      for (const path of valid) {
         const count = byPath[path]?.length ?? 0;
         if (count > bestCount) {
           bestCount = count;
