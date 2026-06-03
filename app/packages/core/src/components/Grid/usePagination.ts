@@ -19,17 +19,27 @@ type UsePaginationResult = {
 
 const GRID_PAGE_PARAM = "page";
 
-const clampPage = (page: number, maxPage: number) =>
-  Math.max(0, Math.min(page, maxPage));
+/**
+ * Clamps a page index into the valid zero-based page range.
+ */
+function clampPage(page: number, maxPage: number) {
+  return Math.max(0, Math.min(page, maxPage));
+}
 
-const getPageFromSearch = (search: string) => {
+/**
+ * Reads the page query parameter from the current URL search string.
+ */
+function getPageFromSearch(search: string) {
   const value = new URLSearchParams(search).get(GRID_PAGE_PARAM);
   const page = Number.parseInt(value ?? "", 10);
 
   return Number.isFinite(page) && page > 0 ? page - 1 : 0;
-};
+}
 
-const setPageInLocation = (page: number) => {
+/**
+ * Writes the current page to the browser location if it differs.
+ */
+function setPageInLocation(page: number) {
   const searchParams = new URLSearchParams(window.location.search);
 
   if (page > 0) {
@@ -47,8 +57,11 @@ const setPageInLocation = (page: number) => {
   if (nextUrl !== currentUrl) {
     window.history.pushState(window.history.state, "", nextUrl);
   }
-};
+}
 
+/**
+ * Keeps grid pagination state, URL state, and derived page ranges in sync.
+ */
 export default function usePagination({
   paginationEnabled,
   setPaginationEnabled,
@@ -57,10 +70,14 @@ export default function usePagination({
   total,
   pageSize,
 }: UsePaginationOptions): UsePaginationResult {
-  const maxPage = Math.max(0, Math.ceil(total / pageSize) - 1);
+  const safePageSize = Math.max(1, pageSize);
+  const maxPage = Math.max(0, Math.ceil(total / safePageSize) - 1);
   const safePage = clampPage(currentPage, maxPage);
 
-  const handlePaginationToggle = useCallback(() => {
+  /**
+   * Toggles pagination and resets the visible page to the first page.
+   */
+  function handlePaginationToggle() {
     const nextEnabled = !paginationEnabled;
 
     setPaginationEnabled(nextEnabled);
@@ -69,7 +86,12 @@ export default function usePagination({
     if (typeof window !== "undefined") {
       setPageInLocation(0);
     }
-  }, [paginationEnabled, setCurrentPage, setPaginationEnabled]);
+  }
+
+  const handlePaginationToggleCallback = useCallback(
+    handlePaginationToggle,
+    [paginationEnabled, setCurrentPage, setPaginationEnabled]
+  );
 
   useEffect(() => {
     if (!paginationEnabled || typeof window === "undefined") {
@@ -102,12 +124,12 @@ export default function usePagination({
     setPageInLocation(safePage);
   }, [paginationEnabled, currentPage, safePage, setCurrentPage]);
 
-  const start = total === 0 ? 0 : safePage * pageSize + 1;
+  const start = total === 0 ? 0 : safePage * safePageSize + 1;
   const end =
-    total === 0 ? 0 : Math.min((safePage + 1) * pageSize, total);
+    total === 0 ? 0 : Math.min((safePage + 1) * safePageSize, total);
 
   return {
-    handlePaginationToggle,
+    handlePaginationToggle: handlePaginationToggleCallback,
     maxPage,
     safePage,
     start,
