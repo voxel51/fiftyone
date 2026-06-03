@@ -694,7 +694,12 @@ type Method =
   | ResolveColorMethod
   | SetStreamMethod;
 
-if (typeof onmessage !== "undefined") {
+// Register only inside a real worker scope.
+const workerScope = globalThis as { WorkerGlobalScope?: new () => unknown };
+if (
+  typeof workerScope.WorkerGlobalScope !== "undefined" &&
+  self instanceof workerScope.WorkerGlobalScope
+) {
   onmessage = ({ data: { method, ...args } }: MessageEvent<Method>) => {
     switch (method) {
       case "init":
