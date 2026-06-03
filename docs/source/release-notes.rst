@@ -31,6 +31,8 @@ App
 - Fixed value tearing in the dynamic-groups pagination bar during slice
   transitions
   `#7599 <https://github.com/voxel51/fiftyone/pull/7599>`_
+- Improved performance of image and mask decoding
+  `#7711 <https://github.com/voxel51/fiftyone/pull/7711>`_
 
 In-App Annotation
 
