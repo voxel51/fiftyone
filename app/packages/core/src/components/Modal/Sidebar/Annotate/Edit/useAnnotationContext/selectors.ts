@@ -11,7 +11,6 @@ import {
 } from "@fiftyone/utilities";
 import { atom } from "jotai";
 import { atomFamily } from "jotai/utils";
-import { capitalize } from "lodash";
 import {
   fieldType,
   isFieldReadOnly,
@@ -118,9 +117,7 @@ export const disabledFields = atomFamily((type: LabelType | null) =>
     const map = get(labelsByPath);
 
     for (const path of get(fieldsOfType(type))) {
-      const rawType = get(labelSchemaData(path)).type;
-      const schemaType = capitalize(rawType);
-      const isListType = IS_LIST.has(schemaType);
+      const isListType = IS_LIST.has(get(fieldType(path)));
       const hasLabels = map[path]?.length > 0;
 
       if (isListType || !hasLabels) continue;
