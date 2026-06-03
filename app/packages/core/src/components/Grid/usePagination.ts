@@ -77,20 +77,18 @@ export default function usePagination({
   /**
    * Toggles pagination and resets the visible page to the first page.
    */
-  function handlePaginationToggle() {
-    const nextEnabled = !paginationEnabled;
-
-    setPaginationEnabled(nextEnabled);
-    setCurrentPage(0);
-
-    if (typeof window !== "undefined") {
-      setPageInLocation(0);
-    }
-  }
-
   const handlePaginationToggleCallback = useCallback(
-    handlePaginationToggle,
-    [paginationEnabled, setCurrentPage, setPaginationEnabled]
+    () => {
+      const nextEnabled = !paginationEnabled;
+
+      setPaginationEnabled(nextEnabled);
+      setCurrentPage(0);
+
+      if (typeof window !== "undefined") {
+        setPageInLocation(0);
+      }
+    },
+    [paginationEnabled, setCurrentPage, setPaginationEnabled, setPageInLocation]
   );
 
   useEffect(() => {
@@ -121,8 +119,10 @@ export default function usePagination({
       setCurrentPage(safePage);
     }
 
-    setPageInLocation(safePage);
-  }, [paginationEnabled, currentPage, safePage, setCurrentPage]);
+    if (total > 0) {
+      setPageInLocation(safePage);
+    }
+  }, [paginationEnabled, currentPage, safePage, setCurrentPage, total]);
 
   const start = total === 0 ? 0 : safePage * safePageSize + 1;
   const end =

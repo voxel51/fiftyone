@@ -7,6 +7,9 @@ import { savedWorkspacesAtom } from "../../state";
 import { LIST_WORKSPACES_OPERATOR, LOAD_WORKSPACE_OPERATOR } from "./constants";
 import { operatorsInitializedAtom } from "@fiftyone/operators/src/state";
 
+/**
+ * Manages workspace loading, listing, and cached workspace state.
+ */
 export function useWorkspaces() {
   const [state, setState] = useRecoilState(savedWorkspacesAtom);
   const resetState = useResetRecoilState(savedWorkspacesAtom);
@@ -14,6 +17,9 @@ export function useWorkspaces() {
   const currentDataset = useRecoilValue(datasetName);
   const operatorsInitialized = useRecoilValue(operatorsInitializedAtom);
 
+  /**
+   * Requests the current dataset's saved workspaces from the backend.
+   */
   const listWorkspace = useCallback(() => {
     if (listWorkspaceExecuting || !operatorsInitialized) return;
     setListWorkspaceExecuting(true);
@@ -22,11 +28,15 @@ export function useWorkspaces() {
       {},
       {
         callback: (result) => {
-          setState((state) => {
+          const workspaces = (
+            result?.result as { workspaces?: typeof state.workspaces }
+          )?.workspaces || [];
+
+          setState((currentState: typeof state) => {
             return {
-              ...state,
+              ...currentState,
               initialized: true,
-              workspaces: result?.result?.workspaces || [],
+              workspaces,
               dataset: currentDataset,
             };
           });
@@ -40,6 +50,9 @@ export function useWorkspaces() {
     );
   }, [listWorkspaceExecuting, setState, currentDataset, operatorsInitialized]);
 
+  /**
+   * Opens a saved workspace by name.
+   */
   const loadWorkspace = useCallback((name: string) => {
     executeOperator(LOAD_WORKSPACE_OPERATOR, { name }, { skipOutput: true });
   }, []);

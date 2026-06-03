@@ -18,6 +18,9 @@ export const DEFAULT_PAGE_SIZE = 20;
 
 export type SampleStore = WeakMap<ID, { sample: fos.Sample; index: number }>;
 
+/**
+ * Converts a Relay sample page into spotlight response items and records.
+ */
 const processSamplePageData = (
   page: number,
   store: WeakMap<ID, object>,
@@ -51,6 +54,9 @@ const processSamplePageData = (
   });
 };
 
+/**
+ * Provides the paging callback used by Spotlight to fetch sample pages.
+ */
 const useSpotlightPager = ({
   clearRecords,
   pageSelector,
