@@ -1,7 +1,12 @@
 import { getFetchFunction } from "@fiftyone/utilities";
 import { useEffect, useState } from "react";
 
-export type OntologyType = "annotation_ontology" | "taxonomy";
+export const ONTOLOGY_TYPE_ANNOTATION = "annotation_ontology" as const;
+export const ONTOLOGY_TYPE_TAXONOMY = "taxonomy" as const;
+
+export type OntologyType =
+  | typeof ONTOLOGY_TYPE_ANNOTATION
+  | typeof ONTOLOGY_TYPE_TAXONOMY;
 
 export interface OntologySummary {
   name: string;
@@ -20,7 +25,7 @@ export interface UseOntologiesResult {
   error: string | null;
 }
 
-export const useOntologies = (): UseOntologiesResult => {
+export const useOntologies = (type?: OntologyType): UseOntologiesResult => {
   const [ontologies, setOntologies] = useState<OntologySummary[] | null>(null);
   const [isFetching, setIsFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +34,8 @@ export const useOntologies = (): UseOntologiesResult => {
     let cancelled = false;
     setIsFetching(true);
     setError(null);
-    getFetchFunction()("GET", "/ontologies?type=annotation_ontology")
+    const path = type ? `/ontologies?type=${type}` : "/ontologies";
+    getFetchFunction()("GET", path)
       .then((result) => {
         if (!cancelled)
           setOntologies((result as OntologiesResponse).ontologies);
@@ -43,7 +49,7 @@ export const useOntologies = (): UseOntologiesResult => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [type]);
 
   return { ontologies, isFetching, error };
 };
