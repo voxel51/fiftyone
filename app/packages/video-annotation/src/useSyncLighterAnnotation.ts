@@ -12,10 +12,13 @@ import {
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
+import { useAtomValue } from "jotai";
 import { useCallback } from "react";
 import { useLabelsContext } from "../../core/src/components/Modal/Sidebar/Annotate";
 import useFocus from "../../core/src/components/Modal/Sidebar/Annotate/useFocus";
 import { useDetectionMode } from "../../core/src/components/Modal/Sidebar/Annotate/Edit/useDetectionMode";
+import useExit from "../../core/src/components/Modal/Sidebar/Annotate/Edit/useExit";
+import { currentOverlay } from "../../core/src/components/Modal/Sidebar/Annotate/Edit/state";
 
 /**
  * Bridges Lighter overlay events into the annotation systems for the video
@@ -54,6 +57,8 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
   const { removeLabelFromSidebar } = useLabelsContext();
   const detectionMode = useDetectionMode();
   const focus = useFocus();
+  const exit = useExit();
+  const editingOverlay = useAtomValue(currentOverlay);
 
   useEventHandler(
     "lighter:overlay-create",
@@ -85,8 +90,19 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
     useCallback(
       (payload) => {
         removeLabelFromSidebar(payload.id);
+        // A TemporalDetection deleted from the timeline context menu removes
+        // its overlay directly; if it was the one open in the editor, tear
+        // the now-dangling edit panel down. Scoped to `td-` ids so the
+        // fresh-draw overlay swap (which also removes an overlay mid-edit,
+        // then re-selects its replacement) is left untouched.
+        if (
+          payload.id?.startsWith("td-") &&
+          editingOverlay?.id === payload.id
+        ) {
+          exit();
+        }
       },
-      [removeLabelFromSidebar]
+      [removeLabelFromSidebar, exit, editingOverlay]
     )
   );
 

@@ -4,6 +4,7 @@
 
 import { useAnnotationEventBus, useDeleteLabel } from "@fiftyone/annotation";
 import { useRegisterCommandHandler } from "@fiftyone/command-bus";
+import { useLighter } from "@fiftyone/lighter";
 import { useCallback } from "react";
 import { DeleteAnnotationCommand } from "../commands";
 
@@ -14,13 +15,29 @@ import { DeleteAnnotationCommand } from "../commands";
 export const useRegisterAnnotationCommandHandlers = () => {
   const eventBus = useAnnotationEventBus();
   const deleteLabel = useDeleteLabel();
+  const { removeOverlay } = useLighter();
 
   useRegisterCommandHandler(
     DeleteAnnotationCommand,
     useCallback(
       async (cmd) => {
+        const labelId = cmd.label.data._id;
+
+        // TD deletions are handled on each save tick; remove the overlay to
+        // mark it for deletion, but skip the explicit deleteLabel
+        if (cmd.label.type === "TemporalDetection") {
+          removeOverlay(cmd.label.overlay.id, false);
+
+          eventBus.dispatch("annotation:deleteSuccess", {
+            labelId,
+            type: "delete",
+            labelType: cmd.label.type,
+          });
+
+          return true;
+        }
+
         try {
-          const labelId = cmd.label.data._id;
           const success = await deleteLabel(cmd.label, cmd.schema);
 
           if (success) {
@@ -45,7 +62,7 @@ export const useRegisterAnnotationCommandHandlers = () => {
           throw error;
         }
       },
-      [deleteLabel, eventBus]
+      [deleteLabel, eventBus, removeOverlay]
     )
   );
 };

@@ -82,7 +82,18 @@ export function buildTemporalDetectionOverlayDeltas(
     byField.set(overlay.field, list);
   }
 
-  for (const [fieldPath, fieldOverlays] of byField) {
+  // Union of fields with overlays and fields with a sample baseline. The
+  // baseline side matters for deletions: a field whose last overlay was
+  // removed has no entry in `byField` but still needs its baseline diffed out.
+  const fieldPaths = new Set<string>(byField.keys());
+  for (const [fieldPath, value] of Object.entries(sample)) {
+    if (!!value && (value as { _cls?: string })._cls === "TemporalDetections") {
+      fieldPaths.add(fieldPath);
+    }
+  }
+
+  for (const fieldPath of fieldPaths) {
+    const fieldOverlays = byField.get(fieldPath) ?? [];
     const field = sample[fieldPath] as
       | { _cls?: string; detections?: unknown }
       | undefined;
@@ -128,8 +139,9 @@ export function buildTemporalDetectionOverlayDeltas(
       diffOverlayLabel(label, base, basePath, deltas);
     }
 
-    // Removals: baseline entries with no matching overlay
-    for (let i = 0; i < baseline.length; i++) {
+    // Removals: baseline entries with no matching overlay. Descending so each
+    // `remove` doesn't shift the indices of the ones still to come.
+    for (let i = baseline.length - 1; i >= 0; i--) {
       const baseId =
         (baseline[i] as { _id?: string; id?: string })._id ??
         (baseline[i] as { _id?: string; id?: string }).id;

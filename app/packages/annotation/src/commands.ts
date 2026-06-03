@@ -60,6 +60,22 @@ export class EditTemporalDetectionCommand extends Command<boolean> {
 }
 
 /**
+ * Delete a `TemporalDetection`. The handler resolves the `field`/`id` pair
+ * to its scene `TemporalOverlay` and removes it. Unlike an object track this
+ * is sample-level — there's no per-frame work; removing the overlay drops the
+ * timeline row and, at autosave, `useTemporalDetectionDeltaSupplier` emits the
+ * matching `remove` JSON-Patch op. Resolves `true` when an overlay was removed.
+ */
+export class DeleteTemporalDetectionCommand extends Command<boolean> {
+  constructor(
+    public readonly fieldPath: string,
+    public readonly detectionId: string
+  ) {
+    super();
+  }
+}
+
+/**
  * Create a new `TemporalDetection`. Handler mints a client-side `_id`,
  * instantiates a `TemporalOverlay`, adds it to the scene, and resolves
  * to the id. The autosave delta walk emits an `add /-` for any overlay

@@ -31,6 +31,7 @@ import {
 } from "../agents/types";
 import {
   CreateTemporalDetectionCommand,
+  DeleteTemporalDetectionCommand,
   DeleteTrackCommand,
   EditTemporalDetectionCommand,
   ExtendTrackCommand,
@@ -110,6 +111,31 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
         return true;
       },
       [scene, eventBus]
+    )
+  );
+
+  useRegisterCommandHandler(
+    DeleteTemporalDetectionCommand,
+    useCallback(
+      async (cmd) => {
+        if (!scene) {
+          return false;
+        }
+
+        const overlayId = `td-${cmd.fieldPath}-${cmd.detectionId}`;
+        const overlay = scene.getOverlay(overlayId);
+        if (!(overlay instanceof TemporalOverlay)) {
+          return false;
+        }
+
+        // TD persistence does a tick-time comparison of overlays and sample TDs
+        // to generate diffs; removing the overlay will delete the TD on the
+        // next tick.
+        scene.removeOverlay(overlayId);
+
+        return true;
+      },
+      [scene]
     )
   );
 
