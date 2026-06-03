@@ -82,7 +82,7 @@ export const useAnnotationActions = () => {
   const [snapCloseAutomatically, setSnapCloseAutomatically] = useRecoilState(
     snapCloseAutomaticallyAtom
   );
-  const editing = useAnnotationContext().selected.isEditing;
+  const editing = useAnnotationContext().isEditing;
   const [editSegmentsMode, setEditSegmentsMode] =
     useRecoilState(editSegmentsModeAtom);
   const [annotationPlane, setAnnotationPlane] =

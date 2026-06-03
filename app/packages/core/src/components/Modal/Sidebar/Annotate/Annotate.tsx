@@ -75,7 +75,7 @@ const AnnotationBody = ({
   disabledReason: AnnotationDisabledReason;
   loadSchemas: () => void;
 }) => {
-  const isEditingValue = useAnnotationContext().selected.isEditing;
+  const isEditingValue = useAnnotationContext().isEditing;
   const requiredField = useSourceFieldToActivate();
   const isGroupDataset = useIsGroupDataset();
   const disabledMessage = useDisabledMessage(disabledReason);

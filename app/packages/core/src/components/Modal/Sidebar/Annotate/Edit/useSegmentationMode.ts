@@ -67,7 +67,7 @@ const segmentationModeActiveAtom = atom<boolean>(false);
 export const useSegmentationMode = () => {
   const { scene, addOverlay } = useLighter();
   const { selected, createNew } = useAnnotationContext();
-  const isEditingMask = selected.isEditingMask;
+  const isEditingMask = selected?.isEditingMask ?? false;
   const onExit = useExit();
   const isPatchView = useRecoilValue(isPatchesView);
   const { fields } = useAnnotationFields(DETECTION);
@@ -79,17 +79,17 @@ export const useSegmentationMode = () => {
   const aiMode = useAIAnnotationMode();
   const mergeTool = useMergeTool();
 
-  const editingLabelType = selected.type;
+  const editingLabelType = selected?.type ?? null;
 
   const sceneRef = useRef(scene);
   sceneRef.current = scene;
 
-  const selectedLabelRef = useRef(selected.label);
-  selectedLabelRef.current = selected.label;
+  const selectedLabelRef = useRef(selected?.label ?? null);
+  selectedLabelRef.current = selected?.label ?? null;
 
   // `mask` and `mask_path` are Detection-only fields; cast at the access
   // site since the union narrows them out.
-  const labelData = selected.label?.data as
+  const labelData = selected?.label.data as
     | { mask?: unknown; mask_path?: unknown }
     | undefined;
   const isEditingSegmentation =
@@ -214,7 +214,7 @@ export const useSegmentationMode = () => {
     scene,
     segmentationModeActive,
     tool: manualMode.tool,
-    selectedOverlay: selected.label?.overlay,
+    selectedOverlay: selected?.label.overlay,
   });
 
   // Auto-enable segmentation mode when a pre-existing mask detection is selected,
@@ -230,7 +230,7 @@ export const useSegmentationMode = () => {
       setSegmentationModeActive(false);
     }
   }, [
-    selected.label?.overlay,
+    selected?.label.overlay,
     editingLabelType,
     isEditingSegmentation,
     segmentationModeActive,

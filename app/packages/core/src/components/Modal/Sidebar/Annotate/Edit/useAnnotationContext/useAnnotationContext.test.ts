@@ -138,7 +138,7 @@ describe("useAnnotationContext.select", () => {
     const { result } = renderHook(() => useAnnotationContext());
     act(() => result.current.select(labelAtom));
 
-    expect(result.current.selected.isEditingMask).toBe(true);
+    expect(result.current.selected?.isEditingMask).toBe(true);
   });
 
   it("seeds isEditingMask=true when the label has a mask_path", () => {
@@ -149,7 +149,7 @@ describe("useAnnotationContext.select", () => {
     const { result } = renderHook(() => useAnnotationContext());
     act(() => result.current.select(labelAtom));
 
-    expect(result.current.selected.isEditingMask).toBe(true);
+    expect(result.current.selected?.isEditingMask).toBe(true);
   });
 
   it("seeds isEditingMask=false when the label has neither mask nor mask_path", () => {
@@ -160,7 +160,7 @@ describe("useAnnotationContext.select", () => {
     const { result } = renderHook(() => useAnnotationContext());
     act(() => result.current.select(labelAtom));
 
-    expect(result.current.selected.isEditingMask).toBe(false);
+    expect(result.current.selected?.isEditingMask).toBe(false);
   });
 });
 
@@ -276,17 +276,19 @@ describe("useAnnotationContext.isEditingAtom", () => {
   });
 });
 
-describe("useAnnotationContext.readSelected", () => {
+describe("useAnnotationContext.readEditing", () => {
   it("returns a fresh snapshot reflecting writes after the hook rendered", () => {
     const { result } = renderHook(() => useAnnotationContext());
-    expect(result.current.readSelected().label).toBe(null);
+    expect(result.current.readEditing().selected).toBe(null);
 
     const labelAtom = makeLabelAtom(makeLabel({ id: "fresh" }));
     act(() => {
       store.set(editingLabelAtom, labelAtom);
     });
 
-    expect(result.current.readSelected().label?.data._id).toBe("fresh");
+    expect(result.current.readEditing().selected?.label.data._id).toBe(
+      "fresh"
+    );
   });
 
   it("reflects pendingNewType when it's the only thing set", () => {
@@ -294,7 +296,10 @@ describe("useAnnotationContext.readSelected", () => {
     act(() => {
       store.set(pendingNewTypeAtom, "Polyline");
     });
-    expect(result.current.readSelected().pendingNewType).toBe("Polyline");
+    const snap = result.current.readEditing();
+    expect(snap.pendingNewType).toBe("Polyline");
+    expect(snap.selected).toBe(null);
+    expect(snap.isEditing).toBe(true);
   });
 });
 

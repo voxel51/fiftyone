@@ -61,7 +61,7 @@ export function useShowImportSchema(
   requiredField: RequiredField | null
 ): boolean {
   const noActiveSchemas = !useAtomValue(activeLabelSchemas)?.length;
-  const isEditingValue = useAnnotationContext().selected.isEditing;
+  const isEditingValue = useAnnotationContext().isEditing;
   return (
     noActiveSchemas || disabled || (requiredField != null && !isEditingValue)
   );

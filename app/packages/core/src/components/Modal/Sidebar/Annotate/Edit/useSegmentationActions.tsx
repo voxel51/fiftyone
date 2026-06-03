@@ -177,7 +177,7 @@ export const useSegmentationActions = (): {
     mergeTool,
   } = useSegmentationMode();
 
-  const { selected } = useAnnotationContext();
+  const { isEditing } = useAnnotationContext();
   const onExit = useExit();
 
   // Three-tier Escape behaviour, mirroring the right-click flow in
@@ -186,7 +186,7 @@ export const useSegmentationActions = (): {
   //   2. switch to the Select tool
   //   3. exit segmentation mode entirely
   const handleEscape = useCallback(() => {
-    if (selected.isEditing) {
+    if (isEditing) {
       onExit();
       return;
     }
@@ -197,13 +197,7 @@ export const useSegmentationActions = (): {
     }
 
     deactivateSegmentationMode();
-  }, [
-    selected.isEditing,
-    tool,
-    onExit,
-    switchTool,
-    deactivateSegmentationMode,
-  ]);
+  }, [isEditing, tool, onExit, switchTool, deactivateSegmentationMode]);
 
   const brushCursor = useMemo(() => {
     const cursorSize = Math.min(

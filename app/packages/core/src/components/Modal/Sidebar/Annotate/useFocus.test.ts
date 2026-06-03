@@ -108,25 +108,26 @@ describe("useFocus.selectOverlay", () => {
     expect(sceneMock().selectOverlay).not.toHaveBeenCalled();
   });
 
-  // REGRESSION: useFocus.selectOverlay used to read `selected.label` from
-  // the closure, which is stale when this fires from a synchronous lighter
-  // event chain that ran after `createNew` updated `editingLabelAtom` but
-  // before React re-rendered. The stale closure saw `label === null`, fell
-  // through to `select(label)`, and clobbered the just-set mask flag —
-  // briefly flipping Detection Mode on during brush paint.
+  // REGRESSION: useFocus.selectOverlay used to read `selected` from the
+  // closure, which is stale when this fires from a synchronous lighter
+  // event chain that ran after `createNew` updated atoms but before React
+  // re-rendered. The stale closure saw the pre-create state, fell through
+  // to `select(label)`, and clobbered the just-set mask flag — briefly
+  // flipping Detection Mode on during brush paint.
   it("reads selection state fresh from the store, not the stale closure", () => {
     const editingLabel = {
       isNew: false,
       overlay: { id: "ov-currently-editing" },
     };
 
-    // Mount with a context whose render-time `selected.label` is null
-    // (mimicking the pre-render state) but whose `readSelected()` returns
-    // the post-createNew state with a label set.
+    // Mount with a context whose render-time `selected` is null (mimicking
+    // the pre-render state) but whose `readEditing()` returns the
+    // post-createNew state with a label set.
     refs.annotationContext = createMockAnnotationContext({
-      selected: { label: null },
-      readSelected: vi.fn().mockReturnValue({
-        label: editingLabel,
+      selected: null,
+      readEditing: vi.fn().mockReturnValue({
+        selected: { label: editingLabel },
+        isEditing: true,
         pendingNewType: null,
       }),
     });
@@ -143,7 +144,7 @@ describe("useFocus.selectOverlay", () => {
     expect(sceneMock().deselectOverlay).toHaveBeenCalledWith("ov-new", {
       ignoreSideEffects: true,
     });
-    expect(annotationContext().readSelected).toHaveBeenCalled();
+    expect(annotationContext().readEditing).toHaveBeenCalled();
   });
 
   it("bails silently when the currently-editing label is `isNew` (mid-create)", () => {
@@ -153,9 +154,10 @@ describe("useFocus.selectOverlay", () => {
     store.set(labelMapAtom, { "ov-new": labelAtom });
 
     refs.annotationContext = createMockAnnotationContext({
-      selected: { label: null },
-      readSelected: vi.fn().mockReturnValue({
-        label: { isNew: true, overlay: { id: "ov-other" } },
+      selected: null,
+      readEditing: vi.fn().mockReturnValue({
+        selected: { label: { isNew: true, overlay: { id: "ov-other" } } },
+        isEditing: true,
         pendingNewType: null,
       }),
     });
@@ -173,9 +175,10 @@ describe("useFocus.selectOverlay", () => {
     store.set(labelMapAtom, { "ov-1": labelAtom });
 
     refs.annotationContext = createMockAnnotationContext({
-      selected: { label: null },
-      readSelected: vi.fn().mockReturnValue({
-        label: { isNew: false, overlay: { id: "ov-1" } },
+      selected: null,
+      readEditing: vi.fn().mockReturnValue({
+        selected: { label: { isNew: false, overlay: { id: "ov-1" } } },
+        isEditing: true,
         pendingNewType: null,
       }),
     });
@@ -194,9 +197,10 @@ describe("useFocus.selectOverlay", () => {
     store.set(labelMapAtom, { "ov-1": labelAtom });
 
     refs.annotationContext = createMockAnnotationContext({
-      selected: { label: null, pendingNewType: null },
-      readSelected: vi.fn().mockReturnValue({
-        label: null,
+      selected: null,
+      readEditing: vi.fn().mockReturnValue({
+        selected: null,
+        isEditing: true,
         pendingNewType: "Detection",
       }),
     });

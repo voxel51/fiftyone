@@ -6,24 +6,24 @@ import { vi } from "vitest";
 // ---- annotationContext stub -------------------------------------------------
 
 export interface MockAnnotationContextSelected {
-  label: { type: string; data: Record<string, unknown> } | null;
-  data: Record<string, unknown> | null;
+  label: { type: string; data: Record<string, unknown> };
+  data: Record<string, unknown>;
   field: string | null;
   type: string | null;
   overlay: unknown;
   schema: unknown;
   savedData: Record<string, unknown> | null;
-  isEditing: boolean;
   isEditingMask: boolean;
   isNew: boolean;
   hasChanges: boolean;
   isFieldReadOnly: boolean;
-  pendingNewType: string | null;
 }
 
 export interface MockAnnotationContext {
-  selected: MockAnnotationContextSelected;
-  readSelected: ReturnType<typeof vi.fn>;
+  selected: MockAnnotationContextSelected | null;
+  readEditing: ReturnType<typeof vi.fn>;
+  isEditing: boolean;
+  pendingNewType: string | null;
   setData: ReturnType<typeof vi.fn>;
   setField: ReturnType<typeof vi.fn>;
   setSavedData: ReturnType<typeof vi.fn>;
@@ -40,26 +40,12 @@ export interface MockAnnotationContext {
   };
 }
 
-const defaultSelected: MockAnnotationContextSelected = {
-  label: null,
-  data: null,
-  field: null,
-  type: null,
-  overlay: undefined,
-  schema: null,
-  savedData: null,
-  isEditing: false,
-  isEditingMask: false,
-  isNew: false,
-  hasChanges: false,
-  isFieldReadOnly: false,
-  pendingNewType: null,
-};
-
 /** Stubbed AnnotationContext. All actions are `vi.fn()` for assertion. */
 export const createMockAnnotationContext = (overrides?: {
-  selected?: Partial<MockAnnotationContextSelected>;
-  readSelected?: ReturnType<typeof vi.fn>;
+  selected?: MockAnnotationContextSelected | null;
+  isEditing?: boolean;
+  pendingNewType?: string | null;
+  readEditing?: ReturnType<typeof vi.fn>;
   setData?: ReturnType<typeof vi.fn>;
   setField?: ReturnType<typeof vi.fn>;
   setSavedData?: ReturnType<typeof vi.fn>;
@@ -69,10 +55,19 @@ export const createMockAnnotationContext = (overrides?: {
   clear?: ReturnType<typeof vi.fn>;
   isEditingAtom?: ReturnType<typeof vi.fn>;
 }): MockAnnotationContext => {
-  const selected = { ...defaultSelected, ...overrides?.selected };
+  const selected =
+    overrides?.selected === undefined ? null : overrides.selected;
+  const isEditing =
+    overrides?.isEditing ??
+    (selected !== null || overrides?.pendingNewType != null);
+  const pendingNewType = overrides?.pendingNewType ?? null;
   return {
     selected,
-    readSelected: overrides?.readSelected ?? vi.fn().mockReturnValue(selected),
+    isEditing,
+    pendingNewType,
+    readEditing:
+      overrides?.readEditing ??
+      vi.fn().mockReturnValue({ selected, isEditing, pendingNewType }),
     setData: overrides?.setData ?? vi.fn(),
     setField: overrides?.setField ?? vi.fn(),
     setSavedData: overrides?.setSavedData ?? vi.fn(),

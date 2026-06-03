@@ -23,7 +23,7 @@ export const useSetEditingToNewCuboid = () => {
   const currentSampleId = useRecoilValue(fos.currentSampleId);
 
   const setCurrentEditing = useSetAtom(currentEditingCuboidAtom);
-  const { clear, readSelected, select } = useAnnotationContext();
+  const { clear, readEditing, select } = useAnnotationContext();
 
   const clearTransformState = useSetRecoilState(clearTransformStateSelector);
 
@@ -40,7 +40,7 @@ export const useSetEditingToNewCuboid = () => {
 
       // If what we already have in sidebar is same as the new label, don't do anything
       // Because it'll be handled by reverse sync
-      if (readSelected().label?.data._id === labelId) {
+      if (readEditing().selected?.label.data._id === labelId) {
         return;
       }
 
@@ -100,7 +100,7 @@ export const useSetEditingToNewCuboid = () => {
       clearTransformState,
       currentActiveField,
       currentSampleId,
-      readSelected,
+      readEditing,
       select,
       setCurrentEditing,
     ]

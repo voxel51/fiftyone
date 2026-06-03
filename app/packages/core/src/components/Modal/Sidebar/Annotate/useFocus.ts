@@ -31,21 +31,21 @@ export default function useFocus(): FocusController {
   const { scene } = useLighter();
   const onExit = useExit();
   const isGenerated = useRecoilValue(isGeneratedView);
-  const { readSelected, select } = useAnnotationContext();
+  const { readEditing, select } = useAnnotationContext();
 
   const selectOverlay = useCallback(
     (id: string, options?: FocusOptions) => {
       if (options?.ignoreSideEffects) return;
 
-      // Read fresh: closure-captured `selected` is stale when this fires
-      // from a synchronous lighter event chain that ran after `createNew`
-      // updated atoms but before React re-rendered.
-      const current = readSelected();
+      // Read fresh: closure-captured `selected` / `pendingNewType` are stale
+      // when this fires from a synchronous lighter event chain that ran
+      // after `createNew` updated atoms but before React re-rendered.
+      const editing = readEditing();
 
       // Something is already being edited (either a label or a pending
       // new-type schema flow) — cancel the new selection.
-      if (current.label !== null || current.pendingNewType !== null) {
-        const currentLabel = current.label;
+      if (editing.selected !== null || editing.pendingNewType !== null) {
+        const currentLabel = editing.selected?.label;
 
         if (currentLabel?.isNew) return;
 
@@ -65,7 +65,7 @@ export default function useFocus(): FocusController {
       select(label);
       scene?.selectOverlay(id, { ignoreSideEffects: true });
     },
-    [readSelected, scene, select]
+    [readEditing, scene, select]
   );
 
   const deselectOverlay = useCallback(

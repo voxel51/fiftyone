@@ -30,7 +30,7 @@ const EmptyLabelsContainer = styled.div`
 
 export default function AnnotateSidebar() {
   usePrimitivesCount();
-  const isEditingValue = useAnnotationContext().selected.isEditing;
+  const isEditingValue = useAnnotationContext().isEditing;
   const isGenerated = useRecoilValue(isGeneratedView);
   const { openSchemaManager } = useSchemaManagerModal();
   const canManage = useCanManageSchema();

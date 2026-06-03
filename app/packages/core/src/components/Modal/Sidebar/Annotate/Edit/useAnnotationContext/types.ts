@@ -41,24 +41,27 @@ export interface CreateDeps {
   overlayFactory: OverlayFactory;
 }
 
-/** Reactive snapshot of the editing label and its derived state. */
+/**
+ * Snapshot of the currently-editing label. `null` on the parent context's
+ * `selected` field when no label is being edited — for non-label editing
+ * states (pending new-type schema flow, primitive editors), see
+ * {@link AnnotationContext.isEditing} and {@link AnnotationContext.pendingNewType}.
+ */
 export interface AnnotationContextSelected {
-  /** Wrapper { data, overlay, path, type, isNew? } or null when nothing is being edited. */
-  label: AnnotationLabel | null;
+  /** The wrapper { data, overlay, path, type, isNew? }. */
+  label: AnnotationLabel;
   /** Convenience accessor for `label.data`. */
-  data: AnnotationLabel["data"] | null;
+  data: AnnotationLabel["data"];
   /** Field path the current label belongs to. */
   field: string | null;
-  /** Canonical type of the current label or pending new-type. */
+  /** Canonical type of the current label. */
   type: LabelType | null;
   /** Convenience accessor for `label.overlay`. */
-  overlay: AnnotationLabel["overlay"] | undefined;
+  overlay: AnnotationLabel["overlay"];
   /** Label-schema for `field`, or null when no field is active. */
   schema: LabelSchema | null;
   /** Snapshot of `data` at select/create time — baseline for dirty tracking. */
   savedData: AnnotationLabel["data"] | null;
-  /** True if a label is being edited or any primitive editor is open. */
-  isEditing: boolean;
   /** True while a mask is mid-authoring (paint/eraser/pen). */
   isEditingMask: boolean;
   /** True for labels created in-session and not yet persisted. */
@@ -67,23 +70,36 @@ export interface AnnotationContextSelected {
   hasChanges: boolean;
   /** True when the current field's schema is marked read-only. */
   isFieldReadOnly: boolean;
-  /** Non-null when no schema field exists for the requested new type. */
-  pendingNewType: LabelType | null;
 }
 
 /**
  * Public API for the annotation editing pointer. Encapsulates the underlying
  * atoms — consumers should never touch them directly.
  */
+/** Fresh-snapshot bundle of all editing state — what `readEditing` returns. */
+export interface AnnotationEditingState {
+  selected: AnnotationContextSelected | null;
+  isEditing: boolean;
+  pendingNewType: LabelType | null;
+}
+
 export interface AnnotationContext {
-  /** Reactive snapshot, updated on each React render. */
-  selected: AnnotationContextSelected;
   /**
-   * Fresh snapshot of {@link selected}. Use inside synchronous event chains
-   * (e.g. lighter event handlers) where closure-captured `selected` may be
-   * stale because React hasn't re-rendered yet.
+   * Reactive snapshot of the editing label, or null when no label is being
+   * edited. Updated on each React render. Use `isEditing` / `pendingNewType`
+   * to detect non-label editing states (primitive editor or schema flow).
    */
-  readSelected: () => AnnotationContextSelected;
+  selected: AnnotationContextSelected | null;
+  /**
+   * Fresh snapshot of `selected` + `isEditing` + `pendingNewType`. Use
+   * inside synchronous event chains (e.g. lighter event handlers) where
+   * closure-captured values may be stale because React hasn't re-rendered yet.
+   */
+  readEditing: () => AnnotationEditingState;
+  /** True if a label is being edited, a primitive editor is open, or a pending-new-type schema flow is active. */
+  isEditing: boolean;
+  /** Non-null when no schema field exists for the requested new type. */
+  pendingNewType: LabelType | null;
 
   /**
    * Update the current label's data. Defaults to a shallow merge; pass

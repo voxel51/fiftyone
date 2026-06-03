@@ -68,7 +68,7 @@ export default function GroupAnnotation({
     resolved,
   ]);
 
-  const isEditing_ = useAnnotationContext().selected.isEditing;
+  const isEditing_ = useAnnotationContext().isEditing;
   const [modalGroupSlice, setModalGroupSlice] = useRecoilState(
     fos.modalGroupSlice
   );

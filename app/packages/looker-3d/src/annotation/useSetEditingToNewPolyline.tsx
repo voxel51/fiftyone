@@ -24,7 +24,7 @@ export const useSetEditingToNewPolyline = () => {
   const shouldDefaultToClosed = useRecoilValue(snapCloseAutomaticallyAtom);
 
   const setCurrentEditing = useSetAtom(currentEditingPolylineAtom);
-  const { clear, readSelected, select, setSavedData } = useAnnotationContext();
+  const { clear, readEditing, select, setSavedData } = useAnnotationContext();
 
   const clearTransformState = useSetRecoilState(clearTransformStateSelector);
 
@@ -42,7 +42,7 @@ export const useSetEditingToNewPolyline = () => {
 
       // If what we already have in sidebar is same as the new label, don't do anything
       // Because it'll be handled by reverse sync and useSetEditingToExisting3dLabel
-      if (readSelected().label?.data._id === labelId) {
+      if (readEditing().selected?.label.data._id === labelId) {
         return;
       }
 
@@ -107,7 +107,7 @@ export const useSetEditingToNewPolyline = () => {
       clearTransformState,
       currentActiveField,
       currentSampleId,
-      readSelected,
+      readEditing,
       select,
       setCurrentEditing,
       setSavedData,

@@ -32,6 +32,7 @@ import {
 import type {
   AnnotationContext,
   AnnotationContextSelected,
+  AnnotationEditingState,
   LabelType,
 } from "./types";
 
@@ -71,55 +72,61 @@ export const useAnnotationContext = (): AnnotationContext => {
   const fieldReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
   const pendingNewType = useAtomValue(pendingNewTypeAtom);
 
-  const selected = useMemo<AnnotationContextSelected>(
-    () => ({
-      label,
-      data,
-      field: field ?? null,
-      type,
-      overlay,
-      schema,
-      savedData,
-      isEditing,
-      isEditingMask,
-      isNew: Boolean(isNew),
-      hasChanges: dirty,
-      isFieldReadOnly: fieldReadOnly,
-      pendingNewType,
-    }),
+  const selected = useMemo<AnnotationContextSelected | null>(
+    () =>
+      label && data
+        ? {
+            label,
+            data,
+            field: field ?? null,
+            type,
+            overlay,
+            schema,
+            savedData,
+            isEditingMask,
+            isNew: Boolean(isNew),
+            hasChanges: dirty,
+            isFieldReadOnly: fieldReadOnly,
+          }
+        : null,
     [
       data,
       dirty,
       field,
       fieldReadOnly,
-      isEditing,
       isEditingMask,
       isNew,
       label,
       overlay,
-      pendingNewType,
       savedData,
       schema,
       type,
     ]
   );
 
-  const readSelected = useAtomCallback(
-    useCallback((get): AnnotationContextSelected => {
-      const isNewValue = get(isNewSelector);
+  const readEditing = useAtomCallback(
+    useCallback((get): AnnotationEditingState => {
+      const labelValue = get(current);
+      const dataValue = get(currentData);
+      const selectedSnapshot: AnnotationContextSelected | null =
+        labelValue && dataValue
+          ? {
+              label: labelValue,
+              data: dataValue,
+              field: get(currentField) ?? null,
+              type: get(currentType),
+              overlay: get(currentOverlay),
+              schema: get(currentSchema),
+              savedData: get(savedLabel),
+              isEditingMask: get(isEditingMaskSelector),
+              isNew: Boolean(get(isNewSelector)),
+              hasChanges: get(hasChanges),
+              isFieldReadOnly: get(currentFieldIsReadOnlyAtom),
+            }
+          : null;
       return {
-        label: get(current),
-        data: get(currentData),
-        field: get(currentField) ?? null,
-        type: get(currentType),
-        overlay: get(currentOverlay),
-        schema: get(currentSchema),
-        savedData: get(savedLabel),
+        selected: selectedSnapshot,
         isEditing: get(isEditingSelector),
-        isEditingMask: get(isEditingMaskSelector),
-        isNew: Boolean(isNewValue),
-        hasChanges: get(hasChanges),
-        isFieldReadOnly: get(currentFieldIsReadOnlyAtom),
         pendingNewType: get(pendingNewTypeAtom),
       };
     }, [])
@@ -338,7 +345,9 @@ export const useAnnotationContext = (): AnnotationContext => {
   return useMemo<AnnotationContext>(
     () => ({
       selected,
-      readSelected,
+      readEditing,
+      isEditing,
+      pendingNewType,
       setData,
       setField,
       setSavedData,
@@ -352,9 +361,11 @@ export const useAnnotationContext = (): AnnotationContext => {
     [
       clear,
       createNew,
+      isEditing,
       isEditingAtom,
       lastUsed,
-      readSelected,
+      pendingNewType,
+      readEditing,
       select,
       selected,
       setData,

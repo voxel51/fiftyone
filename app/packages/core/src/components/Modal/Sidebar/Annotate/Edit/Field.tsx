@@ -51,16 +51,15 @@ const createSchema = (
 
 const Field = () => {
   const { fields, disabledFields: disabled } = useAnnotationFields();
-  const { selected, setField } = useAnnotationContext();
-  const currentFieldValue = selected.field;
+  const { selected, setField, pendingNewType } = useAnnotationContext();
+  const currentFieldValue = selected?.field ?? null;
   const setCurrentField = setField;
   const isPatches = useRecoilValue(isPatchesView);
-  const currentLabel = selected.label;
+  const currentLabel = selected?.label ?? null;
   const schema = useMemo(
     () => createSchema(fields, disabled, isPatches),
     [disabled, fields, isPatches]
   );
-  const pendingNewType = selected.pendingNewType;
   const modalSampleSchema = useModalSampleSchema();
   const commandBus = useCommandBus();
   const nextFieldValue = useRef(currentFieldValue);
