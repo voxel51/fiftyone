@@ -25,5 +25,5 @@ export function useReset3dOnEditExit() {
       setSelectedLabel(null);
       clearTransformState(null);
     }
-  }, [editingLabel, setSelectedLabel, clearTransformState]);
+  }, [editingLabel]);
 }
