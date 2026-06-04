@@ -1,0 +1,17 @@
+{
+    "name": "@fiftyone/tiling",
+    "version": "0.1.0",
+    "main": "./src/index.ts",
+    "types": "./src/index.ts",
+    "packageManager": "yarn@4.9.1",
+    "dependencies": {
+        "@voxel51/voodo": "^0.0.30",
+        "clsx": "^2.1.1",
+        "jotai": "^2.9.3",
+        "react-mosaic-component": "^6.1.1"
+    },
+    "peerDependencies": {
+        "react": "*",
+        "react-dom": "*"
+    }
+}

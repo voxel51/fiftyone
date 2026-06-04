@@ -6,9 +6,8 @@ Multimodal scaffolding for shared contracts and extension points.
 |
 """
 
-from . import adapters, decoders, resolver, server
+from . import decoders, resolver, server, tags
 from . import schemas
-from .adapters import MultimodalAdapter
 from .decoders import (
     DecodedIngestFields,
     DecodedIngestValue,
@@ -21,22 +20,41 @@ from .decoders import (
     register_decoder,
 )
 from .resolver import PlaybackPlanBuilder
+from .tags import (
+    TemporalTag,
+    TemporalTagFilter,
+    TemporalTags,
+    TimeTrackType,
+    add_temporal_tags,
+    count_temporal_tags,
+    delete_temporal_tags,
+    list_temporal_tags,
+    update_temporal_tag,
+)
 
 __all__ = [
     "DecodedIngestFields",
     "DecodedIngestValue",
-    "MultimodalAdapter",
     "MultimodalDecoder",
     "MultimodalPayload",
     "PayloadDescriptorKey",
     "PlaybackPlanBuilder",
-    "adapters",
+    "TemporalTag",
+    "TemporalTagFilter",
+    "TemporalTags",
+    "TimeTrackType",
+    "add_temporal_tags",
     "clear_decoders",
+    "count_temporal_tags",
     "decoders",
+    "delete_temporal_tags",
     "get_decoder",
+    "list_temporal_tags",
     "list_decoders",
     "register_decoder",
     "resolver",
     "schemas",
     "server",
+    "tags",
+    "update_temporal_tag",
 ]

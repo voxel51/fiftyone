@@ -1,0 +1,99 @@
+.root {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+}
+
+.mosaic {
+  flex: 1;
+  min-height: 0;
+}
+
+.empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: var(--color-content-text-muted);
+  pointer-events: none;
+}
+
+.root :global(.mosaic) {
+  background: transparent;
+}
+
+.root :global(.mosaic .mosaic-window) {
+  box-shadow: none;
+  border-radius: 0;
+  border: 1px solid var(--color-content-border-default);
+  background: var(--color-content-bg-card-2);
+}
+
+.root :global(.mosaic .mosaic-window-toolbar) {
+  padding: 0;
+  background: transparent;
+  border-bottom: none;
+  box-shadow: none;
+  height: auto;
+}
+
+.root :global(.mosaic .mosaic-window-body) {
+  background: transparent;
+}
+
+/* react-mosaic ships a `.mosaic-preview` drag thumbnail styled with
+   Blueprint icon classes (`bp3-icon-*`). Blueprint isn't loaded here,
+   so the icon is empty and the bare title + h4 show through under the
+   real tile body as a "ghost" layer. We don't use the drag preview —
+   hide it. */
+/* Blueprint-styled drag preview leaks through as a ghost — hide it. */
+/* stylelint-disable-next-line selector-pseudo-class-no-unknown */
+.root :global(.mosaic .mosaic-preview) {
+  display: none;
+}
+
+/* Pull the per-tile margin in (react-mosaic defaults to 3px on each
+   side → 6px gap + 2px window borders ≈ 8px between tile contents).
+   2px gives 4px gap + 2px borders ≈ 6px — visibly slim without making
+   adjacent borders feel like one continuous line. */
+.root :global(.mosaic .mosaic-tile) {
+  margin: 2px;
+}
+
+.root :global(.mosaic .mosaic-split) {
+  background: transparent;
+}
+
+.root :global(.mosaic .mosaic-split.-row) {
+  width: 4px;
+  margin-left: -2px;
+}
+
+.root :global(.mosaic .mosaic-split.-column) {
+  height: 4px;
+  margin-top: -2px;
+}
+
+.root :global(.mosaic .mosaic-split:hover) {
+  background: var(--color-brand-primary);
+}
+
+.toolbarHeader {
+  width: 100%;
+}
+
+.bodyWrapper {
+  width: 100%;
+  height: 100%;
+}
+
+.focused {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: -2px;
+}

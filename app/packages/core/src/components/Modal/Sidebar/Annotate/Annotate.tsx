@@ -1,5 +1,7 @@
+import { useRegisterAIAnnotationEventHandlers } from "@fiftyone/annotation/src/agents/hooks/useRegisterAIAnnotationEventHandlers";
 import { KnownContexts, useUndoRedo } from "@fiftyone/commands";
 import { LoadingSpinner } from "@fiftyone/components";
+import { useIsGroupDataset } from "@fiftyone/state";
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
 import React, { useEffect } from "react";
@@ -7,17 +9,15 @@ import styled from "styled-components";
 import Actions from "./Actions";
 import Edit, { isEditing } from "./Edit";
 import useDelete from "./Edit/useDelete";
+import GroupAnnotation from "./GroupAnnotation";
 import ImportSchema, { useShowImportSchema } from "./ImportSchema";
-import SchemaManager from "./SchemaManager";
-import { useSchemaManagerModal } from "./SchemaManager/hooks";
+import LabelList from "./LabelList";
 import { labelSchemasData } from "./state";
 import { useAnnotationContextManager } from "./useAnnotationContextManager";
 import type { AnnotationDisabledReason } from "./useCanAnnotate";
 import useLabels from "./useLabels";
 import { useRegisterPolylineSidebarSyncHandlers } from "./Edit/useRegisterPolylineSidebarSyncHandlers";
 import useSourceFieldToActivate from "./useSourceFieldToActivate";
-import LabelList from "./LabelList";
-import { useRegisterAIAnnotationEventHandlers } from "@fiftyone/annotation/src/agents/hooks/useRegisterAIAnnotationEventHandlers";
 
 const DISABLED_MESSAGES: Record<
   Exclude<AnnotationDisabledReason, null>,
@@ -28,9 +28,9 @@ const DISABLED_MESSAGES: Record<
       Annotation isn&rsquo;t supported for frames, clips, or materialized views.
     </p>
   ),
-  groupedDatasetNoSupportedSlices: (
+  groupDatasetNoSupportedSlices: (
     <p>
-      This grouped dataset has no slices that support annotation. Only image and
+      This group dataset has no slices that support annotation. Only image and
       3D slices can be annotated.
     </p>
   ),
@@ -61,24 +61,61 @@ const Loading = () => {
   );
 };
 
+const useDisabledMessage = (disabledReason: AnnotationDisabledReason) => {
+  return disabledReason !== null
+    ? DISABLED_MESSAGES[disabledReason]
+    : undefined;
+};
+
+const AnnotationBody = ({
+  disabledReason,
+  loadSchemas,
+}: {
+  disabledReason: AnnotationDisabledReason;
+  loadSchemas: () => void;
+}) => {
+  const isEditingValue = useAtomValue(isEditing);
+  const requiredField = useSourceFieldToActivate();
+  const isGroupDataset = useIsGroupDataset();
+  const disabledMessage = useDisabledMessage(disabledReason);
+  const showSetup = useShowImportSchema(!!disabledReason, requiredField);
+
+  return (
+    <>
+      {isGroupDataset && !disabledReason && (
+        <GroupAnnotation onSliceSelected={loadSchemas} />
+      )}
+      {!showSetup && <Actions key="actions" />}
+      {isEditingValue && <Edit key="edit" />}
+      {showSetup ? (
+        <ImportSchema
+          key="import"
+          disabled={!!disabledReason}
+          disabledMsg={disabledMessage}
+          requiredField={requiredField}
+        />
+      ) : (
+        <LabelList key="annotate" />
+      )}
+    </>
+  );
+};
+
 interface AnnotateProps {
   disabledReason: AnnotationDisabledReason;
+  loadSchemas: () => void;
 }
 
-const Annotate = ({ disabledReason }: AnnotateProps) => {
+const Annotate = ({ disabledReason, loadSchemas }: AnnotateProps) => {
   useRegisterAIAnnotationEventHandlers();
   useRegisterPolylineSidebarSyncHandlers();
 
-  const { schemaManagerDisplayed } = useSchemaManagerModal();
   const loading = useAtomValue(labelSchemasData) === null;
-  const isEditingValue = useAtomValue(isEditing);
 
   const contextManager = useAnnotationContextManager();
   const { clear: clearUndo } = useUndoRedo(KnownContexts.ModalAnnotate);
 
   const isDisabled = disabledReason !== null;
-  const requiredField = useSourceFieldToActivate();
-  const showSetup = useShowImportSchema(isDisabled, requiredField);
 
   useLabels();
   useDelete();
@@ -92,28 +129,17 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
     };
   }, []);
 
-  const disabledMsg =
-    disabledReason !== null ? DISABLED_MESSAGES[disabledReason] : undefined;
-
   if (!isDisabled && loading) {
     return <Loading />;
   }
 
   return (
     <>
-      {!showSetup && <Actions key="actions" />}
-      {isEditingValue && <Edit key="edit" />}
-      {showSetup ? (
-        <ImportSchema
-          key="import"
-          disabled={isDisabled}
-          disabledMsg={disabledMsg}
-          requiredField={requiredField}
-        />
-      ) : (
-        <LabelList key="annotate" />
-      )}
-      {schemaManagerDisplayed && <SchemaManager key="manage" />}
+      <AnnotationBody
+        disabledReason={disabledReason}
+        key="body"
+        loadSchemas={loadSchemas}
+      />
     </>
   );
 };

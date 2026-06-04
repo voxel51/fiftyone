@@ -111,7 +111,7 @@ export function useSelectedFile(currentPath, chooseMode) {
   return { selectedFile, handleSelectFile, showOpenButton, enableChooseButton };
 }
 
-export function useFileExplorer(fsInfo, chooseMode, onChoose) {
+export function useFileExplorer(fsInfo, chooseMode, onChoose, initialPath?) {
   const [open, setOpen] = useState(false);
   const {
     abort,
@@ -124,12 +124,14 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose) {
     loading,
     nextPage,
     hasNextPage,
-  } = useCurrentFiles(fsInfo.defaultFile?.absolute_path);
+  } = useCurrentFiles(initialPath ?? fsInfo.defaultFile?.absolute_path);
   const { selectedFile, handleSelectFile, showOpenButton, enableChooseButton } =
     useSelectedFile(currentPath, chooseMode);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chosenFile, setChosenFile] = useState(null);
-  const [customPath, setCustomPath] = useState<string | null>(null);
+  const [customPath, setCustomPath] = useState<string | null>(
+    initialPath ?? null
+  );
   const [initialized, setInitialized] = useState(false);
   const [customPathChanged, setCustomPathChanged] = useState(false);
 

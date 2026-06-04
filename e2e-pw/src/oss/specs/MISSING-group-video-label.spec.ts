@@ -25,7 +25,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
 
   await Promise.all(
     [testVideoPath1, testVideoPath2].map(async (outputPath) => {
-      mediaFactory.createBlankVideo({
+      mediaFactory.createVideo({
         outputPath,
         duration: 3,
         width: 100,

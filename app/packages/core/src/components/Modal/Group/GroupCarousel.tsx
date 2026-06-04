@@ -35,7 +35,7 @@ const pageParams = selector({
   get: ({ get }) => {
     const params = {
       dataset: get(fos.datasetName) as string,
-      view: get(fos.groupView),
+      view: get(fos.view),
       filter: {
         group: {
           slice: get(fos.groupSlice),
@@ -175,7 +175,7 @@ const Column: React.FC = () => {
 
   return (
     <>
-      {isEmpty && <Loading>No data</Loading>}
+      {isEmpty && <Loading>No samples</Loading>}
       <div
         style={{
           display: "block",
