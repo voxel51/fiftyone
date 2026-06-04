@@ -29,6 +29,15 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
   readonly id: string;
   readonly cursor?: string;
 
+  /**
+   * Whether this overlay represents real annotation data that should be
+   * saved. Set to `false` for UI scaffolding (e.g. the point-selection
+   * keypoint overlay) that lives in the scene but must not be picked up by
+   * persistence. Consumers walking `scene.getAllOverlays()` for save deltas
+   * should skip overlays where this is `false`.
+   */
+  public isPersistent = true;
+
   protected isHoveredState = false;
 
   /** Whether the overlay needs to be re-rendered. The render loop will check this and re-render the overlay if it is dirty.

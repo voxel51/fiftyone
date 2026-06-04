@@ -92,6 +92,13 @@ FiftyOne supports the configuration options described below:
 |                                          |                                                 |                               | will only listen on the local interface. See :ref:`this page <restricting-app-address>`|
 |                                          |                                                 |                               | for more information.                                                                  |
 +------------------------------------------+-------------------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `allowed_origins`                        | `FIFTYONE_ALLOWED_ORIGINS`                      | `None`                        | Comma-separated list of origins (e.g. `https://app.example.com,http://localhost:3000`) |
+|                                          |                                                 |                               | that may make cross-origin requests to the App server. Empty (default) is same-origin  |
+|                                          |                                                 |                               | only, which covers local desktop usage and the supported notebook integrations, since  |
+|                                          |                                                 |                               | each serves the App through a same-origin proxy or iframe. Set this only for           |
+|                                          |                                                 |                               | cross-origin embeds. The literal value `*` restores the legacy wildcard. Please be     |
+|                                          |                                                 |                               | aware of the security implications of setting this to `*`.                             |
++------------------------------------------+-------------------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `delegated_operation_monitor_interval`   | `FIFTYONE_DELEGATED_OPERATION_MONITOR_INTERVAL` | `60`                          | Interval to monitor delegated operation (DO) state in seconds. If the DO has failed we |
 |                                          |                                                 |                               | will terminate execution, otherwise we will update the DO to confirm the worker is     |
 |                                          |                                                 |                               | still alive and executing.                                                             |
@@ -188,6 +195,7 @@ and the CLI:
             "database_validation": true,
             "dataset_zoo_dir": "~/fiftyone",
             "dataset_zoo_manifest_paths": null,
+            "allowed_origins": null,
             "default_app_address": null,
             "default_app_port": 5151,
             "default_batch_size": null,
@@ -242,6 +250,7 @@ and the CLI:
             "database_validation": true,
             "dataset_zoo_dir": "~/fiftyone",
             "dataset_zoo_manifest_paths": null,
+            "allowed_origins": null,
             "default_app_address": null,
             "default_app_port": 5151,
             "default_batch_size": null,
