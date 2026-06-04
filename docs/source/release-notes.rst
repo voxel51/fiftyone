@@ -57,6 +57,9 @@ Security
   CVE-2026-27904), ``protobufjs`` (>=7.6, CVE-2026-41242), and
   ``brace-expansion`` (>=5.0.6, CVE-2026-33750)
   `#7694 <https://github.com/voxel51/fiftyone/pull/7694>`_
+- Made the App server's CORS policy configurable via ``allowed_origins`` and
+  changed the default to same-origin
+  `GHSA-q78p-hj9h-5466 <https://github.com/advisories/GHSA-q78p-hj9h-5466>`_
 
 General
 
