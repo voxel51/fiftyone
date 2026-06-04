@@ -9,7 +9,7 @@ import {
   useViewEnd,
   useViewStart,
 } from "../../lib/playback/use-playback-state";
-import { clamp } from "../utils/timeline-utils";
+import { clamp } from "../../lib/playback/utils";
 import styles from "./TimelineRuler.module.css";
 
 const MIN_VIEW = 0.25;

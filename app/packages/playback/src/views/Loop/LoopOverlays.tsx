@@ -6,7 +6,8 @@ import {
   useViewStart,
 } from "../../lib/playback/use-playback-state";
 import styles from "./LoopOverlays.module.css";
-import { clamp, laneLeftCalc } from "../utils/timeline-utils";
+import { clamp } from "../../lib/playback/utils";
+import { laneLeftCalc } from "../utils/timeline-utils";
 import { LOOP_EDGE_EPSILON } from "../TimelineControls/timeline-controls-utils";
 
 export interface LoopOverlaysProps {
