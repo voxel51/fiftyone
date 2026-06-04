@@ -24,8 +24,11 @@ const MAX_HIGHLIGHTS = 3;
 
 function isInsideAny(t: number, intervals: PresenceInterval[]): boolean {
   for (const { startSec, endSec } of intervals) {
-    if (t >= startSec && t <= endSec) return true;
+    if (t >= startSec && t <= endSec) {
+      return true;
+    }
   }
+
   return false;
 }
 
@@ -47,10 +50,17 @@ function maximaTimes(
   const firstN = Math.ceil(phase - 0.25);
   for (let n = firstN; out.length < limit; n++) {
     const t = periodSec * (0.25 - phase + n);
-    if (t < 0) continue;
-    if (t > duration) break;
+    if (t < 0) {
+      continue;
+    }
+
+    if (t > duration) {
+      break;
+    }
+
     out.push(t);
   }
+
   return out;
 }
 
@@ -70,7 +80,9 @@ export function buildSyntheticTracks(
   duration: number,
   resolveColor: (label: SyntheticActorLabel) => string
 ): Track[] {
-  if (!(duration > 0)) return [];
+  if (!(duration > 0)) {
+    return [];
+  }
 
   return actors.map((actor) => {
     const intervals = getPresenceIntervals(actor, duration);

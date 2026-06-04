@@ -116,18 +116,12 @@ export function buildTemporalDetectionTracks({
 
     for (let i = 0; i < detections.length; i++) {
       const td = detections[i];
-      const support = td.support;
 
-      if (
-        !Array.isArray(support) ||
-        support.length !== 2 ||
-        !Number.isFinite(support[0]) ||
-        !Number.isFinite(support[1]) ||
-        support[1] < support[0]
-      ) {
+      if (!isValidSupport(td.support)) {
         continue;
       }
 
+      const support = td.support;
       const detectionId = td._id ?? td.id;
       if (!detectionId) {
         continue;
@@ -184,6 +178,7 @@ export function buildTemporalDetectionTracks({
       if (a.firstFrame !== b.firstFrame) {
         return a.firstFrame - b.firstFrame;
       }
+
       return a.track.id.localeCompare(b.track.id);
     });
 
@@ -193,6 +188,20 @@ export function buildTemporalDetectionTracks({
   }
 
   return tracks;
+}
+
+/**
+ * A valid TD support is a 2-tuple `[first, last]` of finite frame numbers
+ * with `last >= first`.
+ */
+function isValidSupport(support: unknown): support is [number, number] {
+  return (
+    Array.isArray(support) &&
+    support.length === 2 &&
+    Number.isFinite(support[0]) &&
+    Number.isFinite(support[1]) &&
+    support[1] >= support[0]
+  );
 }
 
 function isTemporalDetectionsField(

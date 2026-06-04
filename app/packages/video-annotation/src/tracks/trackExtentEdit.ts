@@ -54,7 +54,10 @@ const lastFrameOf = (sec: number, fps: number): number => Math.round(sec * fps);
 
 const inclusiveRange = (from: number, to: number): number[] => {
   const out: number[] = [];
-  for (let f = from; f <= to; f++) out.push(f);
+  for (let f = from; f <= to; f++) {
+    out.push(f);
+  }
+
   return out;
 };
 

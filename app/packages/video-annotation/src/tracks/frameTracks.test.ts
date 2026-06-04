@@ -71,4 +71,47 @@ describe("buildPerInstanceTracks", () => {
       instance: undefined,
     });
   });
+
+  it("assigns instance-only ordinals as the next free integer above the per-class max", () => {
+    const tracked: Partial<SyntheticBox> = {
+      id: "track-3",
+      label: "person",
+      index: 3,
+      bounding_box: [0, 0, 0.1, 0.1],
+    };
+    const drawn: Partial<SyntheticBox> = {
+      id: "instance-fresh",
+      label: "person",
+      instance: { _cls: "Instance", _id: "fresh" },
+      bounding_box: [0, 0, 0.1, 0.1],
+    };
+    const stream = makeStream(1, { 1: [tracked, drawn] });
+
+    const tracks = buildPerInstanceTracks({
+      stream,
+      resolveColor: () => "#fff",
+    });
+
+    // Sorted by ordinal: persisted 3, then the next free (4).
+    expect(tracks.map((t) => t.label)).toEqual(["person 3", "person 4"]);
+  });
+
+  it("emits one presence interval per contiguous run", () => {
+    const det: Partial<SyntheticBox> = {
+      id: "track-1",
+      label: "person",
+      index: 1,
+      bounding_box: [0, 0, 0.1, 0.1],
+    };
+    // Present 1-2, absent 3, present 4-5.
+    const stream = makeStream(5, { 1: [det], 2: [det], 4: [det], 5: [det] });
+
+    const tracks = buildPerInstanceTracks({
+      stream,
+      resolveColor: () => "#fff",
+    });
+
+    const intervals = tracks[0].events.filter((e) => e.endSec !== undefined);
+    expect(intervals).toHaveLength(2);
+  });
 });
