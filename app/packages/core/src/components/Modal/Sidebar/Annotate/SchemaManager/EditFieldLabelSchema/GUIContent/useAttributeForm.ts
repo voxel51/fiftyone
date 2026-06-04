@@ -112,8 +112,11 @@ export default function useAttributeForm({
   }, [formState.when]);
 
   const isTaxonomyEligible =
-    formState.type === "list<str>" && formState.component === "dropdown";
-  const supportsDefault = !NO_DEFAULT_TYPES.includes(formState.type);
+    (formState.type === "str" || formState.type === "list<str>") &&
+    formState.component === "dropdown";
+  const supportsDefault =
+    !NO_DEFAULT_TYPES.includes(formState.type) &&
+    formState.valuesMode === "simple";
   const componentOptions = COMPONENT_OPTIONS[formState.type] || [];
 
   // Visibility flags
@@ -139,7 +142,8 @@ export default function useAttributeForm({
       const newSupportsDefault = !NO_DEFAULT_TYPES.includes(newType);
       const newComponent = getDefaultComponent(newType);
       const stillEligible =
-        newType === "list<str>" && newComponent === "dropdown";
+        (newType === "str" || newType === "list<str>") &&
+        newComponent === "dropdown";
       onFormStateChange({
         ...formState,
         type: newType,
@@ -164,7 +168,8 @@ export default function useAttributeForm({
 
       const preserveValues = oldNeedsValues && newNeedsValues;
       const stillEligible =
-        formState.type === "list<str>" && newComponent === "dropdown";
+        (formState.type === "str" || formState.type === "list<str>") &&
+        newComponent === "dropdown";
 
       onFormStateChange({
         ...formState,

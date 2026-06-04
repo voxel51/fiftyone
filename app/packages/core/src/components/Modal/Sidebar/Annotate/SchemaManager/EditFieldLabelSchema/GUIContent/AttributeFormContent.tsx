@@ -16,6 +16,7 @@ import {
   TextColor,
   TextVariant,
   Toggle,
+  ToggleSwitch,
 } from "@voxel51/voodo";
 import {
   ATTRIBUTE_TYPE_LABELS,
@@ -23,6 +24,8 @@ import {
   BOOL_DEFAULT_OPTIONS,
 } from "../../constants";
 import { type AttributeFormData } from "../../utils";
+import OntologyPicker from "../OntologyPicker";
+import { ONTOLOGY_TYPE_TAXONOMY, useOntologies } from "../useOntologies";
 import ComponentTypeButton from "./ComponentTypeButton";
 import ListDefaultInput from "./ListDefaultInput";
 import RangeInput from "./RangeInput";
@@ -49,6 +52,7 @@ const AttributeFormContent = ({
     isIntegerType,
     isListType,
     isFromOntology,
+    // isTaxonomyEligible — available when per-tab disabled is added to ToggleSwitch
     whenPreview,
     supportsDefault,
     componentOptions,
@@ -61,6 +65,7 @@ const AttributeFormContent = ({
     valuesError,
     rangeError,
     defaultError,
+    taxonomyError,
 
     // Handlers
     handleNameChange,
@@ -71,7 +76,20 @@ const AttributeFormContent = ({
     handleDefaultChange,
     handleListDefaultChange,
     handleReadOnlyChange,
+    handleValuesModeChange,
+    handleTaxonomyChange,
   } = useAttributeForm({ formState, onFormStateChange });
+
+  const {
+    ontologies: taxonomies,
+    isFetching: isFetchingTaxonomies,
+    error: taxonomiesFetchError,
+  } = useOntologies(ONTOLOGY_TYPE_TAXONOMY);
+
+  const valuesModeTabs = [
+    { id: "simple", data: { label: "Simple", content: null } },
+    { id: "taxonomy", data: { label: "Taxonomy", content: null } },
+  ];
 
   return (
     <Stack orientation={Orientation.Column} spacing={Spacing.Xl}>
@@ -229,19 +247,50 @@ const AttributeFormContent = ({
       {(showValues || showRange || supportsDefault) && (
         <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
           {showValues && (
-            <ValuesList
-              values={formState.values}
-              onValuesChange={handleValuesChange}
-              isNumeric={isNumericType}
-              isInteger={isIntegerType}
-              error={valuesError}
-              readOnly={isFromOntology}
-              subtitle={
-                isFromOntology
-                  ? "Showing a preview of values, additional values may exist in the ontology"
-                  : undefined
-              }
-            />
+            <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
+              <ToggleSwitch
+                key={formState.valuesMode}
+                size={Size.Sm}
+                defaultIndex={formState.valuesMode === "taxonomy" ? 1 : 0}
+                onChange={(index) =>
+                  handleValuesModeChange(index === 0 ? "simple" : "taxonomy")
+                }
+                tabs={valuesModeTabs}
+              />
+              {formState.valuesMode === "simple" ? (
+                <ValuesList
+                  values={formState.values}
+                  onValuesChange={handleValuesChange}
+                  isNumeric={isNumericType}
+                  isInteger={isIntegerType}
+                  error={valuesError}
+                  readOnly={isFromOntology}
+                  subtitle={
+                    isFromOntology
+                      ? "Showing a preview of values, additional values may exist in the ontology"
+                      : undefined
+                  }
+                />
+              ) : (
+                <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+                  <OntologyPicker
+                    type={ONTOLOGY_TYPE_TAXONOMY}
+                    ontologies={taxonomies}
+                    isFetching={isFetchingTaxonomies}
+                    error={taxonomiesFetchError}
+                    onPick={handleTaxonomyChange}
+                  />
+                  {taxonomyError && (
+                    <Text
+                      variant={TextVariant.Sm}
+                      color={TextColor.Destructive}
+                    >
+                      {taxonomyError}
+                    </Text>
+                  )}
+                </Stack>
+              )}
+            </Stack>
           )}
           {showRange && (
             <RangeInput
