@@ -184,7 +184,9 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
   useEffect(() => {
     let cancelled = false;
     void streamRef.current!.warmup(0).then(() => {
-      if (!cancelled) seek(0);
+      if (!cancelled) {
+        seek(0);
+      }
     });
     return () => {
       cancelled = true;
@@ -283,65 +285,24 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   // primes them from the sample on first load and `useTemporalDetectionDeltaSupplier`
   // walks them at autosave time.
   const { scene } = useLighter();
-  const [tdVersion, setTdVersion] = useState(0);
-  const bumpTdVersion = useCallback(() => setTdVersion((v) => v + 1), []);
-
-  const useLighterEvent = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
-  );
-  useLighterEvent(
-    "lighter:overlay-added",
-    useCallback(
-      (payload) => {
-        if (payload.overlay instanceof TemporalOverlay) bumpTdVersion();
-      },
-      [bumpTdVersion]
-    )
-  );
-  useLighterEvent(
-    "lighter:overlay-removed",
-    useCallback(
-      (payload) => {
-        if (payload.id?.startsWith("td-")) bumpTdVersion();
-      },
-      [bumpTdVersion]
-    )
-  );
-  useAnnotationEventHandler(
-    "annotation:labelEdit",
-    useCallback(
-      (payload) => {
-        const cls = (payload.label as { _cls?: string } | null)?._cls;
-        if (cls === "TemporalDetection") bumpTdVersion();
-      },
-      [bumpTdVersion]
-    )
-  );
-  // One-shot resync after scene becomes available — `useTemporalOverlaySync`
-  // may have added TDs in its effect before our handlers registered.
-  useEffect(() => {
-    if (scene) bumpTdVersion();
-  }, [scene, bumpTdVersion]);
+  const tdVersion = useTemporalDetectionTrackVersion(scene);
 
   const temporalDetectionTracks = useMemo(() => {
-    if (!scene) return [];
-    const fps = sample?.frameRate;
-    if (!Number.isFinite(fps) || fps <= 0) return [];
+    if (!scene) {
+      return [];
+    }
 
-    const byField = new Map<string, unknown[]>();
-    for (const overlay of scene.getAllOverlays()) {
-      if (!(overlay instanceof TemporalOverlay)) continue;
-      const detections = byField.get(overlay.field) ?? [];
-      detections.push(overlay.label);
-      byField.set(overlay.field, detections);
+    const fps = sample?.frameRate;
+    if (!Number.isFinite(fps) || fps <= 0) {
+      return [];
     }
-    const virtualSample: Record<string, unknown> = {};
-    for (const [field, detections] of byField) {
-      virtualSample[field] = { _cls: "TemporalDetections", detections };
-    }
+
+    const temporalOverlays = scene
+      .getAllOverlays()
+      .filter((o): o is TemporalOverlay => o instanceof TemporalOverlay);
 
     return buildTemporalDetectionTracks({
-      sample: virtualSample,
+      sample: buildVirtualTemporalSample(temporalOverlays),
       fps,
       resolveColor: resolveTemporalDetectionColor,
     });
@@ -374,15 +335,9 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
         return base;
       }
 
-      const tdEvent = track.events[0]?.data as
-        | TemporalDetectionEventData
-        | undefined;
-      const isTemporalDetection =
-        track.id.startsWith("td-") && tdEvent !== undefined;
-
-      // Object tracks: drag a presence bar to extend / trim /
-      // shift the track's per-frame labels. Identified by the synthetic
-      // overlay-id prefixes `extractDetections` emits.
+      // Object tracks: drag a presence bar to extend / trim / shift the
+      // track's per-frame labels. Identified by the synthetic overlay-id
+      // prefixes `extractDetections` emits.
       const isObjectTrack =
         track.id.startsWith("instance-") || track.id.startsWith("track-");
 
@@ -399,62 +354,25 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
             newStartSec: number,
             newEndSec: number,
             mode: "resize-start" | "resize-end" | "move"
-          ) => {
-            const dragged = track.events[eventIndex];
-            if (!dragged || dragged.endSec === undefined) {
-              return;
-            }
-
-            // Other presence bars of this same track — used to clamp a
-            // move so it can't overrun a neighbouring segment.
-            const neighborSegments = track.events
-              .filter((e, i) => i !== eventIndex && e.endSec !== undefined)
-              .map(
-                (e) =>
-                  [
-                    Math.round(e.startSec * fps) + 1,
-                    Math.round((e.endSec as number) * fps),
-                  ] as const
-              );
-
-            const edit = resolveTrackExtentEdit({
-              mode,
-              origStartSec: dragged.startSec,
-              origEndSec: dragged.endSec,
+          ) =>
+            applyObjectTrackEdit({
+              track,
+              eventIndex,
               newStartSec,
               newEndSec,
+              mode,
               fps,
               totalFrames,
-              neighborSegments,
-            });
-
-            switch (edit.op) {
-              case "extend":
-                void commandBus.execute(
-                  new ExtendTrackCommand(
-                    track.id,
-                    edit.sourceFrame,
-                    edit.targetFrames
-                  )
-                );
-                break;
-              case "trim":
-                void commandBus.execute(
-                  new TrimTrackCommand(track.id, edit.frames)
-                );
-                break;
-              case "shift":
-                void commandBus.execute(
-                  new ShiftTrackCommand(track.id, edit.frames, edit.delta)
-                );
-                break;
-              default:
-                break;
-            }
-          },
+              commandBus,
+            }),
         };
       }
 
+      const tdEvent = track.events[0]?.data as
+        | TemporalDetectionEventData
+        | undefined;
+      const isTemporalDetection =
+        track.id.startsWith("td-") && tdEvent !== undefined;
       if (!isTemporalDetection) {
         return base;
       }
@@ -473,22 +391,14 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
           _eventIndex: number,
           newStartSec: number,
           newEndSec: number
-        ) => {
-          // Convert seconds back to 1-indexed inclusive frame numbers
-          // using the same mapping the build does in reverse:
-          //   startSec = (firstFrame - 1) / fps  ⇒  firstFrame = round(startSec * fps) + 1
-          //   endSec   = lastFrame / fps         ⇒  lastFrame  = round(endSec * fps)
-          const firstFrame = Math.max(1, Math.round(newStartSec * fps) + 1);
-          const lastFrame = Math.max(firstFrame, Math.round(newEndSec * fps));
-
-          void commandBus.execute(
-            new EditTemporalDetectionCommand(
-              tdEvent.fieldPath,
-              tdEvent.detectionId,
-              { support: [firstFrame, lastFrame] }
-            )
-          );
-        },
+        ) =>
+          applyTemporalDetectionEdit({
+            tdEvent,
+            newStartSec,
+            newEndSec,
+            fps,
+            commandBus,
+          }),
       };
     },
     [linkDecorate, fps, snapStepSec, commandBus, stream]
@@ -507,3 +417,187 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
     </TrackProvider>
   );
 };
+
+/**
+ * A counter that bumps whenever the scene's `TemporalDetection` set could
+ * have changed — a TemporalOverlay added / a `td-` overlay removed / a TD
+ * label edited — plus a one-shot bump once the scene is available (so TDs
+ * `useTemporalOverlaySync` added before our handlers registered are picked
+ * up). Used as the TD-track rebuild signal.
+ */
+function useTemporalDetectionTrackVersion(
+  scene: ReturnType<typeof useLighter>["scene"]
+): number {
+  const [version, setVersion] = useState(0);
+  const bump = useCallback(() => setVersion((v) => v + 1), []);
+
+  const useLighterEvent = useLighterEventHandler(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
+  useLighterEvent(
+    "lighter:overlay-added",
+    useCallback(
+      (payload) => {
+        if (payload.overlay instanceof TemporalOverlay) {
+          bump();
+        }
+      },
+      [bump]
+    )
+  );
+  useLighterEvent(
+    "lighter:overlay-removed",
+    useCallback(
+      (payload) => {
+        if (payload.id?.startsWith("td-")) {
+          bump();
+        }
+      },
+      [bump]
+    )
+  );
+  useAnnotationEventHandler(
+    "annotation:labelEdit",
+    useCallback(
+      (payload) => {
+        const cls = (payload.label as { _cls?: string } | null)?._cls;
+        if (cls === "TemporalDetection") {
+          bump();
+        }
+      },
+      [bump]
+    )
+  );
+
+  useEffect(() => {
+    if (scene) {
+      bump();
+    }
+  }, [scene, bump]);
+
+  return version;
+}
+
+/**
+ * Project a set of scene `TemporalOverlay`s into a sample-shaped dict
+ * (`{ [field]: { _cls: "TemporalDetections", detections } }`) so
+ * {@link buildTemporalDetectionTracks} can consume the live overlay state
+ * the same way it consumes a server sample.
+ */
+function buildVirtualTemporalSample(
+  overlays: TemporalOverlay[]
+): Record<string, unknown> {
+  const byField = new Map<string, unknown[]>();
+  for (const overlay of overlays) {
+    const detections = byField.get(overlay.field) ?? [];
+    detections.push(overlay.label);
+    byField.set(overlay.field, detections);
+  }
+
+  const virtualSample: Record<string, unknown> = {};
+  for (const [field, detections] of byField) {
+    virtualSample[field] = { _cls: "TemporalDetections", detections };
+  }
+
+  return virtualSample;
+}
+
+/**
+ * Apply an object-track presence-bar drag: resolve it to an extend / trim /
+ * shift edit and dispatch the matching command. No-op for a degenerate drag.
+ */
+function applyObjectTrackEdit({
+  track,
+  eventIndex,
+  newStartSec,
+  newEndSec,
+  mode,
+  fps,
+  totalFrames,
+  commandBus,
+}: {
+  track: Track;
+  eventIndex: number;
+  newStartSec: number;
+  newEndSec: number;
+  mode: "resize-start" | "resize-end" | "move";
+  fps: number;
+  totalFrames: number;
+  commandBus: ReturnType<typeof useCommandBus>;
+}): void {
+  const dragged = track.events[eventIndex];
+  if (!dragged || dragged.endSec === undefined) {
+    return;
+  }
+
+  // Other presence bars of this same track — used to clamp a move so it
+  // can't overrun a neighbouring segment.
+  const neighborSegments = track.events
+    .filter((e, i) => i !== eventIndex && e.endSec !== undefined)
+    .map(
+      (e) =>
+        [
+          Math.round(e.startSec * fps) + 1,
+          Math.round((e.endSec as number) * fps),
+        ] as const
+    );
+
+  const edit = resolveTrackExtentEdit({
+    mode,
+    origStartSec: dragged.startSec,
+    origEndSec: dragged.endSec,
+    newStartSec,
+    newEndSec,
+    fps,
+    totalFrames,
+    neighborSegments,
+  });
+
+  switch (edit.op) {
+    case "extend":
+      void commandBus.execute(
+        new ExtendTrackCommand(track.id, edit.sourceFrame, edit.targetFrames)
+      );
+      break;
+    case "trim":
+      void commandBus.execute(new TrimTrackCommand(track.id, edit.frames));
+      break;
+    case "shift":
+      void commandBus.execute(
+        new ShiftTrackCommand(track.id, edit.frames, edit.delta)
+      );
+      break;
+    default:
+      break;
+  }
+}
+
+/**
+ * Apply a TD interval drag: convert the dragged seconds back to a 1-indexed
+ * inclusive frame `support` and dispatch the edit.
+ *
+ * Inverts the build's mapping: `startSec = (firstFrame - 1) / fps` and
+ * `endSec = lastFrame / fps`.
+ */
+function applyTemporalDetectionEdit({
+  tdEvent,
+  newStartSec,
+  newEndSec,
+  fps,
+  commandBus,
+}: {
+  tdEvent: TemporalDetectionEventData;
+  newStartSec: number;
+  newEndSec: number;
+  fps: number;
+  commandBus: ReturnType<typeof useCommandBus>;
+}): void {
+  const firstFrame = Math.max(1, Math.round(newStartSec * fps) + 1);
+  const lastFrame = Math.max(firstFrame, Math.round(newEndSec * fps));
+
+  void commandBus.execute(
+    new EditTemporalDetectionCommand(tdEvent.fieldPath, tdEvent.detectionId, {
+      support: [firstFrame, lastFrame],
+    })
+  );
+}

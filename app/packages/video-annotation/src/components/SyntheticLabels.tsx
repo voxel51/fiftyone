@@ -41,7 +41,10 @@ export const RegisterSyntheticLabels: React.FC = () => {
   usePlaybackStream(streamRef.current);
 
   useEffect(() => {
-    if (duration <= 0) return;
+    if (duration <= 0) {
+      return;
+    }
+
     const actors = DEFAULT_ACTOR_SPECS.map((spec) =>
       resolveActor(spec, duration)
     );

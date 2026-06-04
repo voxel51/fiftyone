@@ -85,7 +85,10 @@ export const RegisterImaVidImage: React.FC<{
  * persists `total_frame_count` and `duration` at runtime — we
  * loose-cast through.
  */
-function resolveFrameCount(sample: ModalSample, frameRate: number): number {
+export function resolveFrameCount(
+  sample: ModalSample,
+  frameRate: number
+): number {
   const metadata = (sample.sample as { metadata?: Record<string, unknown> })
     ?.metadata;
 
@@ -160,7 +163,9 @@ const ImaVidImageRegistration: React.FC<ImaVidImageRegistrationProps> = ({
   useEffect(() => {
     let cancelled = false;
     void streamRef.current!.warmup(0).then(() => {
-      if (!cancelled) seek(0);
+      if (!cancelled) {
+        seek(0);
+      }
     });
 
     return () => {
