@@ -47,6 +47,34 @@ const PER_FRAME_DETECTION_FIELDS = new Set([
   "instance",
 ]);
 
+/** Minimal snapshot shape the removal resolver needs. */
+interface RemovalSnapshot {
+  detections: ReadonlyArray<{ id: string; _id?: string }>;
+}
+
+/**
+ * Decide whether a `lighter:overlay-removed` event should delete a detection
+ * from the per-frame cache, and if so, which detection `_id`.
+ *
+ * Returns `null` (no cache delete) when:
+ *  - the removal is a `lifecycle` teardown / sync eviction, not a user delete
+ *  - the removed overlay id resolves to no detection in the current snapshot
+ *    (e.g. a draw-mode overlay evicted after we mint an `Instance`).
+ *
+ * Otherwise returns the resolved detection `_id` (the cache keys by `_id`, not
+ * by the synthetic overlay id we render under).
+ *
+ * Exported for unit testing — the hook itself needs a live Scene2D.
+ */
+export function resolveOverlayRemovalTarget(
+  payload: { id: string; lifecycle?: boolean },
+  snapshot: RemovalSnapshot | null
+): string | null {
+  if (payload.lifecycle) return null;
+  const target = snapshot?.detections.find((d) => d.id === payload.id);
+  return target?._id ?? null;
+}
+
 /**
  * Mirrors user-driven Lighter overlay edits into the label-stream cache
  * so they survive frame scrubs.
@@ -216,22 +244,18 @@ export const useSyncLighterLabelStream = (scene: Scene2D | null): void => {
     useCallback(
       (payload) => {
         if (!stream) return;
-        // Resolve the synthetic overlay id back to the underlying
-        // detection `_id` via the current snapshot. Two reasons:
-        //   1. The cache keys detections by `_id`, not by the synthetic
-        //      id we render under, so a direct `deleteLabel(payload.id)`
-        //      misses tracked detections (synthetic id `instance-<...>`
-        //      or `track-<n>`).
-        //   2. Swap-removes initiated by our own draw flow (Lighter's
-        //      draw-mode overlay being evicted after we mint an
-        //      Instance) carry an id that no longer maps to any cache
-        //      entry — skipping them prevents the just-minted
-        //      detection from being deleted out from under the sync.
-        const snapshot = stream.getValue(currentTime);
-        const target = snapshot?.detections.find((d) => d.id === payload.id);
-        if (!target?._id) return;
+        // A `lifecycle` removal (scene teardown / scrub-off eviction) is not
+        // a user delete; `resolveOverlayRemovalTarget` returns null for it
+        const target = resolveOverlayRemovalTarget(
+          payload,
+          stream.getValue(currentTime)
+        );
+        if (!target) {
+          return;
+        }
+
         const frame = stream.timeToFrame(currentTime);
-        stream.deleteLabel(frame, target._id);
+        stream.deleteLabel(frame, target);
       },
       [stream, currentTime]
     )

@@ -70,7 +70,9 @@ export function useFrameOverlaySync(
 
     for (const id of Array.from(trackedRef.current)) {
       if (!next.has(id)) {
-        scene.removeOverlay(id);
+        // Lifecycle removal (scrubbed off this overlay's frame), not a user
+        // delete — must not propagate to a cache deletion.
+        scene.removeOverlay(id, false, true);
         trackedRef.current.delete(id);
       }
     }
@@ -95,7 +97,9 @@ export function useFrameOverlaySync(
       }
 
       for (const id of trackedRef.current) {
-        scene.removeOverlay(id);
+        // Scene teardown / unmount — a lifecycle removal, never a user
+        // delete.
+        scene.removeOverlay(id, false, true);
       }
 
       trackedRef.current.clear();

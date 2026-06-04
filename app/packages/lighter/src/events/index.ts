@@ -19,8 +19,13 @@ export type LighterEventGroup = {
   "lighter:overlay-added": { id: string; overlay: BaseOverlay };
   /** Emitted when an overlay has finished loading resources and is ready */
   "lighter:overlay-loaded": { id: string };
-  /** Emitted when an overlay is removed from the scene */
-  "lighter:overlay-removed": { id: string };
+  /**
+   * Emitted when an overlay is removed from the scene. `lifecycle` is set
+   * when the removal is a teardown / sync eviction (scene reset, scrub-off,
+   * unmount) rather than a user-initiated delete — consumers that persist
+   * deletions must ignore lifecycle removals.
+   */
+  "lighter:overlay-removed": { id: string; lifecycle?: boolean };
   /** Emitted when an overlay encounters an error during loading or rendering */
   "lighter:overlay-error": { id: string; error: Error };
   /** Emitted when an overlay's bounds change */
