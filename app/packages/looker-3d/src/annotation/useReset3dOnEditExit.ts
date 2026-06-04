@@ -12,7 +12,7 @@ import {
  */
 export function useReset3dOnEditExit() {
   const { selected } = useAnnotationContext();
-  const editingLabel = selected.label;
+  const editingLabel = selected?.label;
   const previousRef = useRef(editingLabel);
   const setSelectedLabel = useSetRecoilState(selectedLabelForAnnotationAtom);
   const clearTransformState = useSetRecoilState(clearTransformStateSelector);

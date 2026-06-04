@@ -24,7 +24,7 @@ const createSchema = () => ({
 });
 
 const Id = () => {
-  const overlay = useAnnotationContext().selected.overlay;
+  const overlay = useAnnotationContext().selected?.overlay;
   if (!overlay) {
     return null;
   }

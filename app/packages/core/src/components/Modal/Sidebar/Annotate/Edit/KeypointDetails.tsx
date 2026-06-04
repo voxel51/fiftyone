@@ -37,16 +37,16 @@ const ConditionalTooltip = ({
 
 export const KeypointDetails = () => {
   const { selected } = useAnnotationContext();
-  const currentData = selected.label?.data as KeypointAnnotationLabel["data"];
+  const currentData = selected?.label?.data as KeypointAnnotationLabel["data"];
   const getKeypointSkeleton = useGetKeypointSkeleton();
 
   const keypointSkeleton = useMemo(() => {
-    if (selected.label?.path) {
+    if (selected?.label?.path) {
       return getKeypointSkeleton(selected.label.path);
     }
 
     return undefined;
-  }, [getKeypointSkeleton, selected.label?.path]);
+  }, [getKeypointSkeleton, selected?.label?.path]);
 
   const pointCount = currentData?.points?.length ?? 0;
 

@@ -25,11 +25,11 @@ export const useRegisterPolylineSidebarSyncHandlers = () => {
 
   const syncFromOverlay = useCallback(
     (payload: { id: string }) => {
-      const overlay = selected.label?.overlay;
+      const overlay = selected?.label?.overlay;
       if (
         !(overlay instanceof PolylineOverlay) ||
         payload.id !== overlay.id ||
-        selected.label?.type !== POLYLINE
+        selected?.label?.type !== POLYLINE
       ) {
         return;
       }
@@ -41,7 +41,7 @@ export const useRegisterPolylineSidebarSyncHandlers = () => {
         filled: overlay.getFilled(),
       });
     },
-    [selected.label, setData]
+    [selected?.label, setData]
   );
 
   useEventHandler("lighter:keypoint-point-added", syncFromOverlay);

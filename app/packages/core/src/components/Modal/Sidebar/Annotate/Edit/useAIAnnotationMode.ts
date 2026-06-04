@@ -52,26 +52,26 @@ const useDefaultAgent = () => {
 const useLabelReset = (isActive: boolean, reset: () => void) => {
   const { selected } = useAnnotationContext();
   const previousSelectedLabelIdRef = useRef<string | null>(
-    selected.label?.overlay?.id ?? null
+    selected?.label?.overlay?.id ?? null
   );
 
   // When the selected label changes,
   // reset state to ensure a clean starting point for the next label
   useEffect(() => {
     if (!isActive) {
-      previousSelectedLabelIdRef.current = selected.label?.overlay?.id ?? null;
+      previousSelectedLabelIdRef.current = selected?.label?.overlay?.id ?? null;
       return;
     }
 
     const previousId = previousSelectedLabelIdRef.current;
-    const currentId = selected.label?.overlay?.id ?? null;
+    const currentId = selected?.label?.overlay?.id ?? null;
 
     if (previousId && previousId !== currentId) {
       reset();
     }
 
     previousSelectedLabelIdRef.current = currentId;
-  }, [selected.label]);
+  }, [selected?.label]);
 };
 
 /**

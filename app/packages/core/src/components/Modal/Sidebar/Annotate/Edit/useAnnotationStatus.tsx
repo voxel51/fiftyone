@@ -55,7 +55,7 @@ export const useAnnotationStatus = () => {
   } = useInferenceStatus();
   const { positivePoints, negativePoints } = useToolsContext();
   const { selected } = useAnnotationContext();
-  const polylineData = selected.data as
+  const polylineData = (selected?.data ?? null) as
     | PolylineAnnotationLabel["data"]
     | null;
 

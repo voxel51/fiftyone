@@ -7,7 +7,10 @@ export default function useExit() {
   const annotationContext = useAnnotationContext();
   const { clear } = annotationContext;
   const { scene, removeOverlay } = useLighter();
-  const { label, overlay } = annotationContext.selected;
+  const { label, overlay } = annotationContext.selected ?? {
+    label: null,
+    overlay: undefined,
+  };
 
   return useCallback(() => {
     // If this is an uncommitted dummy label with no value, remove it from the scene

@@ -43,11 +43,11 @@ const Content = styled.div`
 
 export default function Edit() {
   const { selected } = useAnnotationContext();
-  const field = selected.field;
-  const overlay = selected.overlay;
-  const type = selected.type;
-  const data = selected.data;
-  const isReadOnly = selected.isFieldReadOnly;
+  const field = selected?.field ?? null;
+  const overlay = selected?.overlay;
+  const type = selected?.type ?? null;
+  const data = selected?.data;
+  const isReadOnly = selected?.isFieldReadOnly ?? false;
   const { isEditingMask } = useSegmentationMode();
   // `mask` and `mask_path` exist only on DetectionLabel; the union narrows
   // them out. Cast at the access site rather than type-guarding the whole

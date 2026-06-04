@@ -22,7 +22,7 @@ export const useClassificationMode = () => {
   const reset3dAnnotationMode = useReset3dAnnotationMode();
   const { fields } = useAnnotationFields(CLASSIFICATION);
   const classificationModeActive =
-    annotationContext.selected.type === CLASSIFICATION;
+    annotationContext.selected?.type === CLASSIFICATION;
 
   const noActiveFields = fields.length === 0;
   const disabled = isPatchView || noActiveFields;

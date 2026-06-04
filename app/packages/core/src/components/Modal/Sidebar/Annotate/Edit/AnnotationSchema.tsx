@@ -18,8 +18,8 @@ import { useAnnotationContext } from "./useAnnotationContext";
 
 const useSchema = (readOnly: boolean) => {
   const { selected } = useAnnotationContext();
-  const config = selected.schema;
-  const data = selected.data;
+  const config = selected?.schema ?? null;
+  const data = selected?.data;
   const isLabelReadOnly = config?.read_only;
   const effectiveReadOnly = readOnly || isLabelReadOnly;
 
@@ -115,12 +115,12 @@ const useParseFieldValue = () => {
  */
 const useHandleSchemaChange = (readOnly: boolean) => {
   const { selected } = useAnnotationContext();
-  const config = selected.schema;
-  const data = selected.data;
-  const overlay = selected.overlay;
+  const config = selected?.schema ?? null;
+  const data = selected?.data;
+  const overlay = selected?.overlay;
   const eventBus = useAnnotationEventBus();
   const parseFieldValue = useParseFieldValue();
-  const field = selected.field;
+  const field = selected?.field ?? null;
 
   const configRef = useRef(config);
   const dataRef = useRef(data);
@@ -202,9 +202,9 @@ export interface AnnotationSchemaProps {
 const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
   const schema = useSchema(readOnly);
   const { selected } = useAnnotationContext();
-  const data = selected.data;
-  const overlay = selected.overlay;
-  const field = selected.field;
+  const data = selected?.data;
+  const overlay = selected?.overlay;
+  const field = selected?.field ?? null;
   const onChange = useHandleSchemaChange(readOnly);
 
   if (!field) throw new Error("no field");

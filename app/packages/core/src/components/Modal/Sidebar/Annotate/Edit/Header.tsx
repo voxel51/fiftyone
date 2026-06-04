@@ -37,14 +37,14 @@ const LabelHamburgerMenu = () => {
   // Permission and read-only state
   const canEditLabels = useRecoilValue(fos.canEditLabels);
   const { selected, setData } = useAnnotationContext();
-  const currentFieldIsReadOnly = selected.isFieldReadOnly;
+  const currentFieldIsReadOnly = selected?.isFieldReadOnly ?? false;
   const { openSchemaManager } = useSchemaManagerModal();
   const isGenerated = useRecoilValue(isGeneratedView);
 
   // Mask state
-  const type = selected.type;
-  const data = selected.data;
-  const overlay = selected.overlay;
+  const type = selected?.type ?? null;
+  const data = selected?.data;
+  const overlay = selected?.overlay;
   const { isEditingMask } = useSegmentationMode();
 
   // `mask`/`mask_path` are Detection-only fields; the union narrows them
@@ -129,15 +129,15 @@ const LabelHamburgerMenu = () => {
 const Header = () => {
   const annotationContext = useAnnotationContext();
   const { selected } = annotationContext;
-  const type = selected.type;
+  const type = selected?.type ?? null;
   const Icon = ICONS[type?.toLowerCase() ?? ""];
-  const color = useColor(selected.overlay ?? undefined);
+  const color = useColor(selected?.overlay ?? undefined);
 
   const { exitAnnotationMode } = useAnnotationController();
   const onExit = useExit();
   const { scene } = useLighter();
   const { deactivateDetectionMode } = useDetectionMode();
-  const currentFieldIsReadOnly = selected.isFieldReadOnly;
+  const currentFieldIsReadOnly = selected?.isFieldReadOnly ?? false;
 
   // In patches view with single label, clicking back should go to explore mode
   const isPatches = useRecoilValue(fos.isPatchesView);
@@ -171,7 +171,7 @@ const Header = () => {
       {currentFieldIsReadOnly && <span>Read-only</span>}
       <ItemRight>
         <Stack direction="row" alignItems="center">
-          {annotationContext.selected.label !== null && <LabelHamburgerMenu />}
+          {annotationContext.selected?.label != null && <LabelHamburgerMenu />}
         </Stack>
       </ItemRight>
     </Row>

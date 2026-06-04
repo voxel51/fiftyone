@@ -77,7 +77,7 @@ export function useSyncWorkingToSidebar() {
     );
     if (!editingCuboid && !editingPolyline) return;
 
-    const currentEditing = selected.label;
+    const currentEditing = selected?.label;
     const labelId = currentEditing?.data._id;
     if (!labelId) return;
 
@@ -130,5 +130,5 @@ export function useSyncWorkingToSidebar() {
     store.set(editingValue, updatedEditing);
 
     lastSyncedWorkingLabelRef.current = workingLabel;
-  }, [workingDoc, selected.label, store, clear, select, isEditingAtom]);
+  }, [workingDoc, selected?.label, store, clear, select, isEditingAtom]);
 }

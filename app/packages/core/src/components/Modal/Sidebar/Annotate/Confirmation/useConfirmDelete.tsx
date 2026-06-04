@@ -23,7 +23,7 @@ const Row = styled.div`
 
 function DeleteModal({ deleteAnnotation }: { deleteAnnotation: () => void }) {
   const [shown, show] = useAtom(showDeleteConfirmation);
-  const type = useAnnotationContext().selected.type;
+  const type = useAnnotationContext().selected?.type ?? null;
   const [askAgain, setAskAgain] = useAtom(askForDeleteConfirmation);
 
   const close = useCallback(() => show(false), [show]);

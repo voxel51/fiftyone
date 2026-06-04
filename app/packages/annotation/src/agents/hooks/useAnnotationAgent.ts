@@ -126,7 +126,7 @@ const useAgentContext = (): AnnotationContext | null => {
 
   return useMemo(() => {
     const labelOverride =
-      selected.label && "bounding_box" in selected.label.data
+      selected?.label && "bounding_box" in selected.label.data
         ? {
             textPrompt: selected.label.data.label,
             regionsOfInterest: [
@@ -145,5 +145,5 @@ const useAgentContext = (): AnnotationContext | null => {
       ...labelOverride,
       sampleDescriptor,
     };
-  }, [sampleDescriptor, selected.label, toolsContext]);
+  }, [sampleDescriptor, selected?.label, toolsContext]);
 };

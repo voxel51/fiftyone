@@ -21,7 +21,7 @@ export default function useDelete() {
   const commandBus = useCommandBus();
   const { scene, removeOverlay } = useLighter();
   const { selected } = useAnnotationContext();
-  const label = selected.label;
+  const label = selected?.label;
   const schema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );

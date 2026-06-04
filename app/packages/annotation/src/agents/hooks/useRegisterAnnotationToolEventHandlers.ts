@@ -53,7 +53,7 @@ export const useRegisterAnnotationToolEventHandlers = () => {
       let cancelled = false;
 
       if (isToolsContextValid(toolsContext) && agent) {
-        const labelId = selected.label?.overlay?.id ?? uuidv4();
+        const labelId = selected?.label?.overlay?.id ?? uuidv4();
 
         agent
           .infer(labelId)

@@ -57,8 +57,8 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
     rotation: {},
   });
   const { selected } = useAnnotationContext();
-  const data = selected.data as DetectionLabel | null;
-  const overlay = selected.overlay;
+  const data = selected?.data as DetectionLabel | null;
+  const overlay = selected?.overlay;
   const eventBus = useAnnotationEventBus();
   const labelId = data?._id ?? "";
 

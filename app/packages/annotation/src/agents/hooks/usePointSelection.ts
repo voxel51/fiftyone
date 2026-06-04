@@ -137,8 +137,8 @@ export const usePointSelection = (): PointSelection => {
   );
 
   const { selected } = useAnnotationContext();
-  const selectedLabelRef = useRef(selected.label);
-  selectedLabelRef.current = selected.label;
+  const selectedLabelRef = useRef(selected?.label);
+  selectedLabelRef.current = selected?.label;
 
   // Closure around currently-selected label
   const resolveVariant = useCallback(

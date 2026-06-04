@@ -91,7 +91,7 @@ function drawPreview(
  * - The overlay finishes rendering (async mask decode completes)
  */
 export default function MaskPreview() {
-  const overlay = useAnnotationContext().selected.overlay;
+  const overlay = useAnnotationContext().selected?.overlay;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const theme = useTheme();
   const isDark = theme.themeMode === "dark";

@@ -56,8 +56,8 @@ export default function Position({ readOnly = false }: PositionProps) {
   });
 
   const { selected, setData } = useAnnotationContext();
-  const overlay = selected.overlay;
-  const data = selected.data;
+  const overlay = selected?.overlay;
+  const data = selected?.data;
 
   const { scene } = useLighter();
   const useEventHandler = useLighterEventHandler(
