@@ -125,15 +125,18 @@ const useAgentContext = (): AnnotationContext | null => {
   const toolsContext = useToolsContext();
 
   return useMemo(() => {
+    // Gate on the `type` discriminator and an actual array — Detection3D
+    // shares `type: "Detection"` but has no 2D `bounding_box`, so a
+    // structural test alone would feed `undefined` into `bboxToRoi`.
+    const bbox =
+      selectedLabel?.type === "Detection"
+        ? (selectedLabel as DetectionAnnotationLabel).data.bounding_box
+        : undefined;
     const labelOverride =
-      selectedLabel && "bounding_box" in selectedLabel.data
+      selectedLabel?.type === "Detection" && Array.isArray(bbox)
         ? {
             textPrompt: selectedLabel.data.label,
-            regionsOfInterest: [
-              bboxToRoi(
-                (selectedLabel as DetectionAnnotationLabel).data.bounding_box
-              ),
-            ],
+            regionsOfInterest: [bboxToRoi(bbox)],
           }
         : {};
 

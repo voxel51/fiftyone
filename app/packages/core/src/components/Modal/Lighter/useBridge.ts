@@ -32,7 +32,10 @@ import {
   savedLabel,
 } from "../Sidebar/Annotate/Edit/state";
 import { useDetectionMode } from "../Sidebar/Annotate/Edit/useDetectionMode";
-import { usePolylineMode } from "../Sidebar/Annotate/Edit/usePolylineMode";
+import {
+  usePolylineMode,
+  usePolylineModeInstaller,
+} from "../Sidebar/Annotate/Edit/usePolylineMode";
 import {
   SegmentationTool,
   useSegmentationMode,
@@ -79,6 +82,8 @@ export const useBridge = (scene: Scene2D | null) => {
   const detectionMode = useDetectionMode();
   const polylineMode = usePolylineMode();
   const focus = useFocus();
+
+  usePolylineModeInstaller();
 
   useAnnotationEventHandler(
     "annotation:sidebarValueUpdated",

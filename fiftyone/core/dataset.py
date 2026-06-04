@@ -10033,6 +10033,9 @@ def _clone_collection(
 ):
     slug = _validate_dataset_name(name)
 
+    if sample_collection._is_dynamic_groups:
+        sample_collection = sample_collection.flatten()
+
     contains_videos = sample_collection._contains_videos(any_slice=True)
 
     if isinstance(sample_collection, fov.DatasetView):
@@ -10041,9 +10044,6 @@ def _clone_collection(
 
         if view.media_type == fom.MIXED:
             raise ValueError("Cloning mixed views is not allowed")
-
-        if view._is_dynamic_groups:
-            raise ValueError("Cloning dynamic grouped views is not allowed")
     else:
         dataset = sample_collection
         view = None
