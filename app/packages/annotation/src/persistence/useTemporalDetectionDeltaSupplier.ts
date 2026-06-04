@@ -9,9 +9,14 @@ import {
   EMBEDDED_DOCUMENT_FIELD,
   TEMPORAL_DETECTIONS_FIELD,
 } from "@fiftyone/utilities";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import type { DeltaSupplier } from "./deltaSupplier";
+import {
+  useResetTemporalDetectionTombstones,
+  useTemporalDetectionTombstones,
+  type TemporalDetectionTombstone,
+} from "./temporalDetectionTombstones";
 
 /**
  * Persistence path for `TemporalDetection` edits. The Lighter `TemporalOverlay`
@@ -39,6 +44,17 @@ export const useTemporalDetectionDeltaSupplier = (): DeltaSupplier => {
     })
   );
 
+  const tombstones = useTemporalDetectionTombstones();
+  const resetTombstones = useResetTemporalDetectionTombstones();
+
+  // Tombstones are per-sample: drop them when the modal sample changes so a
+  // deletion recorded on one sample can never resolve against another's
+  // baseline.
+  const sampleId = (modalSample?.sample as { _id?: string } | undefined)?._id;
+  useEffect(() => {
+    resetTombstones();
+  }, [sampleId, resetTombstones]);
+
   return useCallback(() => {
     if (!isVideo || !scene || !modalSample?.sample) {
       return { deltas: [], metadata: undefined };
@@ -52,18 +68,27 @@ export const useTemporalDetectionDeltaSupplier = (): DeltaSupplier => {
       deltas: buildTemporalDetectionOverlayDeltas(
         modalSample.sample as Record<string, unknown>,
         overlays,
+        tombstones,
         declaredTdFields
       ),
       metadata: undefined,
     };
-  }, [isVideo, modalSample, scene, declaredTdFields]);
+  }, [isVideo, modalSample, scene, declaredTdFields, tombstones]);
 };
 
 /**
  * Walk TD overlays grouped by field path, diff against the matching
- * sample baseline, and emit JSON-Patch ops. Overlays without a baseline
- * entry are emitted as `add /-`; baseline entries with no matching
- * overlay are emitted as `remove /N`. Exported for direct unit testing.
+ * sample baseline, and emit JSON-Patch ops. Exported for direct unit
+ * testing.
+ *
+ * - **Adds / updates** come from scene overlays: an overlay with no
+ *   baseline entry is an `add /-`, one that matches is diffed in place.
+ *   Only fields that actually have overlays are walked.
+ * - **Removals** come from explicit `tombstones` — TDs the user deleted —
+ *   resolved to the current baseline index by `_id`. A tombstone whose id
+ *   is no longer in the baseline (already persisted + refetched, or never
+ *   present) is skipped, so a `remove` is emitted at most once per
+ *   deletion and never against an index-shifted array.
  *
  * `declaredFields` are the sample-level field paths the dataset schema
  * declares as `TemporalDetections`.
@@ -71,9 +96,25 @@ export const useTemporalDetectionDeltaSupplier = (): DeltaSupplier => {
 export function buildTemporalDetectionOverlayDeltas(
   sample: Record<string, unknown>,
   overlays: readonly TemporalOverlay[],
+  tombstones: readonly TemporalDetectionTombstone[] = [],
   declaredFields?: readonly string[]
 ): JSONDeltas {
   const deltas: JSONDeltas = [];
+
+  const findById = (detections: readonly unknown[], id: string): number =>
+    detections.findIndex(
+      (d) =>
+        (d as { _id?: string; id?: string })._id === id ||
+        (d as { _id?: string; id?: string }).id === id
+    );
+
+  // field path -> set of tombstoned detection ids
+  const tombstonedByField = new Map<string, Set<string>>();
+  for (const { field, id } of tombstones) {
+    const ids = tombstonedByField.get(field) ?? new Set<string>();
+    ids.add(id);
+    tombstonedByField.set(field, ids);
+  }
 
   const byField = new Map<string, TemporalOverlay[]>();
   for (const overlay of overlays) {
@@ -82,18 +123,8 @@ export function buildTemporalDetectionOverlayDeltas(
     byField.set(overlay.field, list);
   }
 
-  // Union of fields with overlays and fields with a sample baseline. The
-  // baseline side matters for deletions: a field whose last overlay was
-  // removed has no entry in `byField` but still needs its baseline diffed out.
-  const fieldPaths = new Set<string>(byField.keys());
-  for (const [fieldPath, value] of Object.entries(sample)) {
-    if (!!value && (value as { _cls?: string })._cls === "TemporalDetections") {
-      fieldPaths.add(fieldPath);
-    }
-  }
-
-  for (const fieldPath of fieldPaths) {
-    const fieldOverlays = byField.get(fieldPath) ?? [];
+  // Adds / updates from scene overlays.
+  for (const [fieldPath, fieldOverlays] of byField) {
     const field = sample[fieldPath] as
       | { _cls?: string; detections?: unknown }
       | undefined;
@@ -109,19 +140,20 @@ export function buildTemporalDetectionOverlayDeltas(
     const baseline =
       isPopulated && Array.isArray(field.detections) ? field.detections : [];
 
-    const seenIds = new Set<string>();
     for (const overlay of fieldOverlays) {
       const label = overlay.label;
       const id = label?._id;
-      if (!id) continue;
-      seenIds.add(id);
+      if (!id) {
+        continue;
+      }
 
-      const index = baseline.findIndex(
-        (d) =>
-          (d as { _id?: string; id?: string })._id === id ||
-          (d as { _id?: string; id?: string }).id === id
-      );
+      // A tombstoned overlay still lingering in the scene must not emit an
+      // add/update that fights its pending removal.
+      if (tombstonedByField.get(fieldPath)?.has(id)) {
+        continue;
+      }
 
+      const index = findById(baseline, id);
       if (index < 0) {
         // New TD — append the full doc.
         const value = serializeOverlayLabel(label);
@@ -135,19 +167,46 @@ export function buildTemporalDetectionOverlayDeltas(
       }
 
       const base = baseline[index] as Record<string, unknown>;
-      const basePath = `/${fieldPath}/detections/${index}`;
-      diffOverlayLabel(label, base, basePath, deltas);
+      diffOverlayLabel(
+        label,
+        base,
+        `/${fieldPath}/detections/${index}`,
+        deltas
+      );
+    }
+  }
+
+  // Removals from explicit tombstones, resolved to the current baseline
+  // index by `_id`. Descending per field so each `remove` doesn't shift the
+  // indices of the ones still to come.
+  const removalsByField = new Map<string, number[]>();
+  for (const { field: fieldPath, id } of tombstones) {
+    const field = sample[fieldPath] as
+      | { _cls?: string; detections?: unknown }
+      | undefined;
+
+    if (!field || field._cls !== "TemporalDetections") {
+      continue;
     }
 
-    // Removals: baseline entries with no matching overlay. Descending so each
-    // `remove` doesn't shift the indices of the ones still to come.
-    for (let i = baseline.length - 1; i >= 0; i--) {
-      const baseId =
-        (baseline[i] as { _id?: string; id?: string })._id ??
-        (baseline[i] as { _id?: string; id?: string }).id;
-      if (baseId && !seenIds.has(baseId)) {
-        deltas.push({ op: "remove", path: `/${fieldPath}/detections/${i}` });
-      }
+    if (!Array.isArray(field.detections)) {
+      continue;
+    }
+
+    const index = findById(field.detections, id);
+    if (index < 0) {
+      continue;
+    }
+
+    const list = removalsByField.get(fieldPath) ?? [];
+    list.push(index);
+    removalsByField.set(fieldPath, list);
+  }
+
+  for (const [fieldPath, indices] of removalsByField) {
+    indices.sort((a, b) => b - a);
+    for (const index of indices) {
+      deltas.push({ op: "remove", path: `/${fieldPath}/detections/${index}` });
     }
   }
 

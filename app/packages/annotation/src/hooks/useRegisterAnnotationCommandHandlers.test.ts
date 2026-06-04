@@ -23,6 +23,11 @@ vi.mock("@fiftyone/lighter", () => ({
   useLighter: () => ({ removeOverlay: mockRemoveOverlay }),
 }));
 
+const { mockTombstone } = vi.hoisted(() => ({ mockTombstone: vi.fn() }));
+vi.mock("../persistence/temporalDetectionTombstones", () => ({
+  useTombstoneTemporalDetection: () => mockTombstone,
+}));
+
 import { useAnnotationEventBus, useDeleteLabel } from "@fiftyone/annotation";
 import { useRegisterCommandHandler } from "@fiftyone/command-bus";
 import { useRegisterAnnotationCommandHandlers } from "./useRegisterAnnotationCommandHandlers";
@@ -79,7 +84,7 @@ describe("useRegisterAnnotationCommandHandlers", () => {
         type: "TemporalDetection",
         path: "events",
         data: { _id: "td-1" },
-        overlay: { id: "td-events-td-1" },
+        overlay: { id: "td-events-td-1", field: "events" },
       },
       schema: { name: "events" },
     } as unknown as ReturnType<typeof makeCommand>;
@@ -89,6 +94,8 @@ describe("useRegisterAnnotationCommandHandlers", () => {
     expect(result).toBe(true);
     // TD persistence is overlay-diff based — the per-label patch must not run.
     expect(mockDeleteLabel).not.toHaveBeenCalled();
+    // The deletion is recorded as a tombstone so the delta supplier persists it.
+    expect(mockTombstone).toHaveBeenCalledWith("events", "td-1");
     expect(mockRemoveOverlay).toHaveBeenCalledWith("td-events-td-1", false);
     expect(mockDispatch).toHaveBeenCalledWith("annotation:deleteSuccess", {
       labelId: "td-1",

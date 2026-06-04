@@ -22,6 +22,7 @@ import {
   useApplyPropagationResult,
 } from "../agents/hooks/useApplyPropagationResult";
 import { useSampleDescriptor } from "../agents/hooks/useSampleDescriptor";
+import { useTombstoneTemporalDetection } from "../persistence/temporalDetectionTombstones";
 import type { SAM2PropagationBrowserAgent } from "../agents/SAM2PropagationBrowserAgent";
 import {
   AgentTaskType,
@@ -88,6 +89,7 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
   const applyPropagatedDetection = useApplyPropagatedDetection();
   const { setContent: setStatusContent } = useVideoAnnotationStatus();
   const eventBus = useAnnotationEventBus();
+  const tombstoneTemporalDetection = useTombstoneTemporalDetection();
 
   useRegisterCommandHandler(
     EditTemporalDetectionCommand,
@@ -128,14 +130,14 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
           return false;
         }
 
-        // TD persistence does a tick-time comparison of overlays and sample TDs
-        // to generate diffs; removing the overlay will delete the TD on the
-        // next tick.
+        // Record the deletion for the next tick. Removing the overlay drops
+        // the timeline row immediately.
+        tombstoneTemporalDetection(cmd.fieldPath, cmd.detectionId);
         scene.removeOverlay(overlayId);
 
         return true;
       },
-      [scene]
+      [scene, tombstoneTemporalDetection]
     )
   );
 

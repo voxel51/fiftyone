@@ -179,13 +179,15 @@ describe("buildTemporalDetectionOverlayDeltas", () => {
       ]);
     });
 
-    it("emits `remove /N` when a baseline entry has no matching overlay", () => {
+    it("emits `remove /N` for a tombstoned detection, resolved by _id", () => {
       const sample = {
         events: field(tdBaseline("a", [1, 10]), tdBaseline("b", [20, 30])),
       };
-      const deltas = buildTemporalDetectionOverlayDeltas(sample, [
-        overlay("events", "a", [1, 10], { label: "x" }),
-      ]);
+      const deltas = buildTemporalDetectionOverlayDeltas(
+        sample,
+        [overlay("events", "a", [1, 10], { label: "x" })],
+        [{ field: "events", id: "b" }]
+      );
       expect(deltas).toEqual([{ op: "remove", path: "/events/detections/1" }]);
     });
 
@@ -197,6 +199,7 @@ describe("buildTemporalDetectionOverlayDeltas", () => {
       const deltas = buildTemporalDetectionOverlayDeltas(
         sample as unknown as Record<string, unknown>,
         [overlay("events", "first", [1, 30], { label: "fresh" })],
+        [],
         ["events"]
       );
       expect(deltas).toEqual([
@@ -218,12 +221,8 @@ describe("buildTemporalDetectionOverlayDeltas", () => {
       expect(
         buildTemporalDetectionOverlayDeltas(
           sample,
-          [
-            // The declared `events` baseline has a matching overlay (no change),
-            // so the only field under test is the undeclared `ghost`.
-            overlay("events", "a", [1, 10], { label: "x" }),
-            overlay("ghost", "a", [5, 15], { label: "x" }),
-          ],
+          [overlay("ghost", "a", [5, 15], { label: "x" })],
+          [],
           ["events"]
         )
       ).toEqual([]);
@@ -235,9 +234,6 @@ describe("buildTemporalDetectionOverlayDeltas", () => {
       const sample = { events: field(tdBaseline("a", [1, 10])) };
       expect(
         buildTemporalDetectionOverlayDeltas(sample, [
-          // The `events` baseline has a matching overlay (no change), leaving
-          // only the `ghost` overlay — whose field isn't on the sample — to skip.
-          overlay("events", "a", [1, 10], { label: "x" }),
           overlay("ghost", "a", [5, 15], { label: "x" }),
         ])
       ).toEqual([]);
@@ -255,21 +251,68 @@ describe("buildTemporalDetectionOverlayDeltas", () => {
       ).toEqual([]);
     });
 
-    it("removes every baseline entry when all overlays are gone", () => {
-      // Deleting the last TD(s) in a field leaves a populated baseline with no
-      // matching overlays; each orphaned entry is diffed out (descending so the
-      // earlier indices don't shift).
+    it("does NOT remove baseline entries when overlays are absent without a tombstone", () => {
+      // The first-load / navigation case: the sample baseline is populated but
+      // its TD overlays haven't hydrated into the scene yet. Without an explicit
+      // tombstone this must emit nothing — inferring deletion from absence here
+      // would silently delete every TD on a navigation autosave tick.
       const sample = {
         events: field(tdBaseline("a", [1, 10]), tdBaseline("b", [20, 30])),
       };
-      expect(buildTemporalDetectionOverlayDeltas(sample, [])).toEqual([
+      expect(buildTemporalDetectionOverlayDeltas(sample, [])).toEqual([]);
+    });
+
+    it("returns an empty array when the sample has no temporal detections", () => {
+      expect(buildTemporalDetectionOverlayDeltas({}, [])).toEqual([]);
+    });
+  });
+
+  describe("tombstone removals", () => {
+    it("removes every tombstoned detection, descending, when all overlays are gone", () => {
+      // Deleting the last TD(s) in a field leaves no overlays, but the explicit
+      // tombstones still drive the removals (descending so indices don't shift).
+      const sample = {
+        events: field(tdBaseline("a", [1, 10]), tdBaseline("b", [20, 30])),
+      };
+      expect(
+        buildTemporalDetectionOverlayDeltas(
+          sample,
+          [],
+          [
+            { field: "events", id: "a" },
+            { field: "events", id: "b" },
+          ]
+        )
+      ).toEqual([
         { op: "remove", path: "/events/detections/1" },
         { op: "remove", path: "/events/detections/0" },
       ]);
     });
 
-    it("returns an empty array when the sample has no temporal detections", () => {
-      expect(buildTemporalDetectionOverlayDeltas({}, [])).toEqual([]);
+    it("skips a tombstone whose id is no longer in the baseline (idempotent)", () => {
+      // Post-save refetch dropped the deleted TD — the lingering tombstone
+      // resolves to nothing, so no `remove` is re-emitted against a shifted array.
+      const sample = { events: field(tdBaseline("a", [1, 10])) };
+      expect(
+        buildTemporalDetectionOverlayDeltas(
+          sample,
+          [],
+          [{ field: "events", id: "gone" }]
+        )
+      ).toEqual([]);
+    });
+
+    it("does not emit an add/update for a tombstoned overlay still in the scene", () => {
+      // If the deleted overlay momentarily lingers, its tombstone wins: only a
+      // single `remove`, no competing add/update.
+      const sample = { events: field(tdBaseline("a", [1, 10])) };
+      expect(
+        buildTemporalDetectionOverlayDeltas(
+          sample,
+          [overlay("events", "a", [5, 15], { label: "renamed" })],
+          [{ field: "events", id: "a" }]
+        )
+      ).toEqual([{ op: "remove", path: "/events/detections/0" }]);
     });
   });
 });
