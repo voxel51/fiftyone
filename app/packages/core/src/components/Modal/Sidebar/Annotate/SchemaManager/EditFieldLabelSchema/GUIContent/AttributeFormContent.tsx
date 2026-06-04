@@ -279,6 +279,7 @@ const AttributeFormContent = ({
                     isFetching={isFetchingTaxonomies}
                     error={taxonomiesFetchError}
                     onPick={handleTaxonomyChange}
+                    value={formState.taxonomy}
                   />
                   {taxonomyError && (
                     <Text
