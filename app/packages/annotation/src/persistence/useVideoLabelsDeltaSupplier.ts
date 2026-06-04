@@ -94,8 +94,10 @@ const addOps = (
  *
  * Special case: baseline missing the inner array → one `add` of the whole
  * wrapper, since detection-level paths don't resolve without it.
+ *
+ * Exported for direct unit testing.
  */
-const buildDetectionsDelta = (
+export const buildDetectionsDelta = (
   from: RawDetectionsField,
   to: RawDetectionsField,
   pathPrefix: string
