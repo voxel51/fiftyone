@@ -1,0 +1,21 @@
+/* Shared layout for MCAP tile bodies — the panel fills its parent and
+   the loading state centers a spinner in the same area. */
+
+.panel {
+  height: 100%;
+  width: 100%;
+}
+
+.imageStack {
+  height: 100%;
+  position: relative;
+  width: 100%;
+}
+
+.loading {
+  align-items: center;
+  display: flex;
+  height: 100%;
+  justify-content: center;
+  width: 100%;
+}

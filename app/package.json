@@ -50,6 +50,7 @@
         "vite": "^7.3.2",
         "vite-plugin-eslint": "^1.8.1",
         "vite-plugin-relay": "^2.0.0",
+        "vite-plugin-wasm": "^3.6.0",
         "vitest": "^3.2.4"
     },
     "workspaces": [

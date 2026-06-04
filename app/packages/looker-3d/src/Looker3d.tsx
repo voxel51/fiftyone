@@ -32,16 +32,19 @@ export const Looker3d = () => {
     fos.groupMediaIsMain2DViewerVisible
   );
   const parentMediaType = useRecoilValue(fos.parentMediaTypeSelector);
-  const sample = useRecoilValue(fos.modalSample);
+  const sample = fos.useStableSceneSample3d();
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
   const mediaPath = useMemo(
-    () => getMediaPathForFo3dSample(sample, mediaField),
+    () => (sample ? getMediaPathForFo3dSample(sample, mediaField) : null),
     [sample, mediaField]
   );
   const hasDirect3dPath = useMemo(
     () =>
-      isDirect3dSamplePath(mediaPath) ||
-      isDirect3dSamplePath(sample.sample.filepath),
+      Boolean(
+        mediaPath &&
+          (isDirect3dSamplePath(mediaPath) ||
+            isDirect3dSamplePath(sample?.sample?.filepath))
+      ),
     [mediaPath, sample]
   );
 
@@ -70,8 +73,8 @@ export const Looker3d = () => {
     [mediaType, hasDirect3dPath, has3dSlices, isDynamicGroup, parentMediaType]
   );
 
-  const { activeSampleMap: sampleMap, activeFo3dSlice } =
-    fos.useRenderConfig3dState();
+  const sampleMap = fos.useStableActive3dSamplesMap();
+  const activeFo3dSlice = fos.useStableActiveFo3dSlice();
   const renderContext =
     modalMode === fos.ModalMode.ANNOTATE && !(isGroup && isMain2DViewerVisible)
       ? "annotate-focused"
@@ -182,6 +185,8 @@ export const Looker3d = () => {
       timeout.current && clearTimeout(timeout.current);
     };
   }, [clear, isHovering]);
+
+  if (!sample) return null;
 
   if (!shouldRenderFo3dComponent) {
     return <div>Unsupported media type: {mediaType}</div>;

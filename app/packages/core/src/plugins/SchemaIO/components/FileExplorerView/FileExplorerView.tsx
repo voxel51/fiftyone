@@ -31,6 +31,7 @@ export default function FileExplorerView(props) {
           chooseButtonLabel={choose_button_label}
           chooseMode={chooseMode}
           onChoose={handleChoose}
+          initialPath={data?.absolute_path}
         />
       )}
     </FieldWrapper>

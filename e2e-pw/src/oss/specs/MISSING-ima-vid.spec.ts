@@ -4,7 +4,7 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
-import { createBlankImage } from "src/shared/media-factory/image";
+import { createImage } from "src/shared/media-factory/image";
 
 const NUM_VIDEOS = 2;
 const FRAME_COLORS = ["#ff0000", "#00ff00"];
@@ -37,7 +37,7 @@ const writeFrames = async () => {
   for (let i = 1; i <= NUM_VIDEOS; ++i) {
     for (let j = 1; j <= NUM_FRAMES_PER_VIDEO; ++j) {
       createPromises.push(
-        createBlankImage({
+        createImage({
           outputPath: `/tmp/ima-vid-${i}-${j}.png`,
           width: 50,
           height: 50,

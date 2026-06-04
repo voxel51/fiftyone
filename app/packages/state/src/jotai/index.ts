@@ -96,5 +96,11 @@ export const currentModalUniqueIdJotaiAtom = atom<string>("");
 
 export type { GroupVisibilityConfigSnapshot } from "./group-annotation";
 export * from "./jotai-store";
-export { ANNOTATE, EXPLORE, ModalMode, modalMode, type ModalViewportState } from "./modal";
+export {
+  ANNOTATE,
+  EXPLORE,
+  modalMode,
+  ModalMode,
+  type ModalViewportState,
+} from "./modal";
 export { modalBridge } from "./modalBridge";

@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import { useEffect } from "react";
 

@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ObjectSchemaType, ViewPropsType } from "../utils/types";
+import { ViewPropsType } from "../utils/types";
 import { DEFAULT_FRAME_NUMBER } from "@fiftyone/playback/src/lib/constants";
 import { BufferManager, BufferRange } from "@fiftyone/utilities";
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId, useSetPanelStateById } from "@fiftyone/spaces";
-import { useTimeline } from "@fiftyone/playback/src/lib/use-timeline";
+import { useTimeline } from "@fiftyone/playback/src/lib/timeline/use-timeline";
 import _ from "lodash";
 
 const FRAME_LOADED_EVENT = "frames-loaded";
@@ -66,7 +66,7 @@ export default function FrameLoaderView(props: ViewPropsType) {
     [triggerEvent, on_load_range, localIdRef.current]
   );
 
-  const [currentFrame, setCurrentFrame] = useState(DEFAULT_FRAME_NUMBER);
+  const [_currentFrame, setCurrentFrame] = useState(DEFAULT_FRAME_NUMBER);
 
   const myRenderFrame = React.useCallback(
     (frameNumber: number) => {
