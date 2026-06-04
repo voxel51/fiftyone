@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { IconName } from "@voxel51/voodo";
 import React, { useEffect } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TilingProvider, useTiling } from "../../lib/TilingProvider";
 import type { RegisteredTile } from "../../lib/types";
@@ -31,7 +31,19 @@ const RegisterTiles: React.FC<{ entries: RegisteredTile[] }> = ({
 };
 
 describe("TilingHeader", () => {
-  afterEach(() => cleanup());
+  beforeEach(() => {
+    // voodo's Dropdown (headlessui Menu) uses ResizeObserver internally.
+    global.ResizeObserver = vi.fn().mockImplementation(() => ({
+      observe: vi.fn(),
+      unobserve: vi.fn(),
+      disconnect: vi.fn(),
+    }));
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
 
   it("renders the filename and no add-tile menu when nothing is registered", () => {
     render(
