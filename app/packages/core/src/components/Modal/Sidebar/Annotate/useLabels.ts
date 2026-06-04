@@ -518,7 +518,11 @@ export default function useLabels() {
   useEffect(() => {
     const resetOverlays = () => {
       currentLabels.forEach((label) => {
-        removeOverlay(label.overlay.id, false);
+        // Lifecycle removal — overlays are being torn down to reload on a
+        // schema-active change, not deleted by the user. Without the flag the
+        // video label-stream sync treats each `overlay-removed` as a delete
+        // and the autosave wipes the current frame's detections.
+        removeOverlay(label.overlay.id, false, true);
       });
 
       setLabels([]);

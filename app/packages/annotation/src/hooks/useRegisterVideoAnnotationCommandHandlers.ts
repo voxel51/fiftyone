@@ -163,7 +163,18 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
             ...(cmd.label !== undefined ? { label: cmd.label } : {}),
           },
         });
+        // Seed the time gate to the creation frame (== support start, the
+        // current playhead) so the canvas chip renders immediately. Until the
+        // TD is persisted + refetched it isn't tracked by `useTemporalOverlaySync`,
+        // so nothing else would push a frame into it.
+        overlay.setCurrentFrame(cmd.support[0]);
         scene.addOverlay(overlay);
+        // Select immediately so the new TD opens in the sidebar for editing,
+        // consistent with other creation modes. This mirrors a TD-bar click
+        // (`linkedTracks` → `scene.selectOverlay`); the overlay-added bump in
+        // `useSyncSidebarFromTemporalOverlays` lists it this tick and its
+        // selected-but-newly-listed retry opens the editor.
+        scene.selectOverlay(overlayId);
         return detectionId;
       },
       [scene]

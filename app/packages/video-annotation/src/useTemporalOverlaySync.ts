@@ -169,6 +169,18 @@ export function useTemporalOverlaySync(
     activeFields({ modal: true, expanded: false })
   );
 
+  // Current playhead frame. fps comes from the sample (same source the TD
+  // track build uses). Held in a ref so the sync effect can seed newly-added
+  // overlays without re-running on every playhead tick.
+  const playheadSec = usePlayhead();
+  const frameRate = sample?.frameRate;
+  const currentFrame =
+    frameRate && Number.isFinite(frameRate) && frameRate > 0
+      ? frameAt(playheadSec, frameRate)
+      : null;
+  const currentFrameRef = useRef(currentFrame);
+  currentFrameRef.current = currentFrame;
+
   useEffect(() => {
     if (!scene || !canonicalMediaReady) return;
 
@@ -180,19 +192,25 @@ export function useTemporalOverlaySync(
       activePaths,
       overlays: overlaysRef.current,
     });
+
+    // Seed the time gate on freshly-added overlays so a TD in range at the
+    // initial frame renders on first load. The playhead-push effect below
+    // only fires on *subsequent* playhead changes, so without this a TD in
+    // range stays hidden until the first scrub.
+    if (currentFrameRef.current !== null) {
+      for (const overlay of overlaysRef.current.values()) {
+        overlay.setCurrentFrame(currentFrameRef.current);
+      }
+    }
   }, [scene, sample, canonicalMediaReady, activePathsList]);
 
-  // Push the playhead frame into each tracked overlay. fps comes from
-  // the sample (same source the TD track build uses).
-  const playheadSec = usePlayhead();
-  const frameRate = sample?.frameRate;
+  // Push the playhead frame into each tracked overlay on playhead changes.
   useEffect(() => {
-    if (!frameRate || !Number.isFinite(frameRate) || frameRate <= 0) return;
-    const frame = frameAt(playheadSec, frameRate);
+    if (currentFrame === null) return;
     for (const overlay of overlaysRef.current.values()) {
-      overlay.setCurrentFrame(frame);
+      overlay.setCurrentFrame(currentFrame);
     }
-  }, [playheadSec, frameRate]);
+  }, [currentFrame]);
 
   // Cleanup — remove every tracked overlay on scene change / unmount.
   // Owning scene reference, not the overlays, because Lighter's

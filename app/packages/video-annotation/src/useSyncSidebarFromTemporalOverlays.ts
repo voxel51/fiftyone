@@ -2,9 +2,14 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { type Scene2D, TemporalOverlay } from "@fiftyone/lighter";
+import {
+  type Scene2D,
+  TemporalOverlay,
+  UNDEFINED_LIGHTER_SCENE_ID,
+  useLighterEventHandler,
+} from "@fiftyone/lighter";
 import { type AnnotationLabelData, useModalSample } from "@fiftyone/state";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   useGetSidebarLabels,
   useLabelsContext,
@@ -63,6 +68,39 @@ export const useSyncSidebarFromTemporalOverlays = (
     .map((l) => l.overlay.id)
     .sort()
     .join(",");
+
+  // The signature above is sidebar-derived, so it doesn't change when a TD
+  // overlay is added straight to the *scene* (e.g. `CreateTemporalDetectionCommand`)
+  // — that overlay isn't in the sidebar yet. Without a scene-side trigger the
+  // reconcile below wouldn't run until the next playhead tick, so a freshly
+  // created TD never enters the sidebar. Mirror `FrameLabels`' TD-track
+  // invalidation: bump on scene TD overlay add/remove.
+  const useLighterEvent = useLighterEventHandler(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
+  const [sceneTdVersion, setSceneTdVersion] = useState(0);
+  const bumpSceneTdVersion = useCallback(
+    () => setSceneTdVersion((v) => v + 1),
+    []
+  );
+  useLighterEvent(
+    "lighter:overlay-added",
+    useCallback(
+      (payload) => {
+        if (payload.overlay instanceof TemporalOverlay) bumpSceneTdVersion();
+      },
+      [bumpSceneTdVersion]
+    )
+  );
+  useLighterEvent(
+    "lighter:overlay-removed",
+    useCallback(
+      (payload) => {
+        if (payload.id?.startsWith("td-")) bumpSceneTdVersion();
+      },
+      [bumpSceneTdVersion]
+    )
+  );
 
   useEffect(() => {
     if (!scene || !canonicalMediaReady || frame === null) {
@@ -134,6 +172,7 @@ export const useSyncSidebarFromTemporalOverlays = (
     getSidebarLabels,
     removeLabelFromSidebar,
     scene,
+    sceneTdVersion,
     temporalDetectionIds,
     updateLabelData,
   ]);
