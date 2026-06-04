@@ -22,6 +22,7 @@ import {
   useApplyPropagationResult,
 } from "../agents/hooks/useApplyPropagationResult";
 import { useSampleDescriptor } from "../agents/hooks/useSampleDescriptor";
+import { useTombstoneTemporalDetection } from "../persistence/temporalDetectionTombstones";
 import type { SAM2PropagationBrowserAgent } from "../agents/SAM2PropagationBrowserAgent";
 import {
   AgentTaskType,
@@ -31,6 +32,7 @@ import {
 } from "../agents/types";
 import {
   CreateTemporalDetectionCommand,
+  DeleteTemporalDetectionCommand,
   DeleteTrackCommand,
   EditTemporalDetectionCommand,
   ExtendTrackCommand,
@@ -87,6 +89,7 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
   const applyPropagatedDetection = useApplyPropagatedDetection();
   const { setContent: setStatusContent } = useVideoAnnotationStatus();
   const eventBus = useAnnotationEventBus();
+  const tombstoneTemporalDetection = useTombstoneTemporalDetection();
 
   useRegisterCommandHandler(
     EditTemporalDetectionCommand,
@@ -114,6 +117,31 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
   );
 
   useRegisterCommandHandler(
+    DeleteTemporalDetectionCommand,
+    useCallback(
+      async (cmd) => {
+        if (!scene) {
+          return false;
+        }
+
+        const overlayId = `td-${cmd.fieldPath}-${cmd.detectionId}`;
+        const overlay = scene.getOverlay(overlayId);
+        if (!(overlay instanceof TemporalOverlay)) {
+          return false;
+        }
+
+        // Record the deletion for the next tick. Removing the overlay drops
+        // the timeline row immediately.
+        tombstoneTemporalDetection(cmd.fieldPath, cmd.detectionId);
+        scene.removeOverlay(overlayId);
+
+        return true;
+      },
+      [scene, tombstoneTemporalDetection]
+    )
+  );
+
+  useRegisterCommandHandler(
     CreateTemporalDetectionCommand,
     useCallback(
       async (cmd) => {
@@ -127,10 +155,26 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
             _cls: "TemporalDetection",
             _id: detectionId,
             support: [cmd.support[0], cmd.support[1]],
+            // Mirror the server-materialized default so the overlay carries
+            // `tags` from the first frame: gives tag edits a real array to
+            // mutate, and keeps the persistence diff from seeing an absent
+            // key on the next refetch.
+            tags: [],
             ...(cmd.label !== undefined ? { label: cmd.label } : {}),
           },
         });
+        // Seed the time gate to the creation frame (== support start, the
+        // current playhead) so the canvas chip renders immediately. Until the
+        // TD is persisted + refetched it isn't tracked by `useTemporalOverlaySync`,
+        // so nothing else would push a frame into it.
+        overlay.setCurrentFrame(cmd.support[0]);
         scene.addOverlay(overlay);
+        // Select immediately so the new TD opens in the sidebar for editing,
+        // consistent with other creation modes. This mirrors a TD-bar click
+        // (`linkedTracks` → `scene.selectOverlay`); the overlay-added bump in
+        // `useSyncSidebarFromTemporalOverlays` lists it this tick and its
+        // selected-but-newly-listed retry opens the editor.
+        scene.selectOverlay(overlayId);
         return detectionId;
       },
       [scene]
@@ -202,10 +246,10 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
         if (cmd.fromFrame >= cmd.toFrame) return false;
 
         const fromTime = (cmd.fromFrame - 1) / stream.fps;
-        const toTime = (cmd.toFrame - 1) / stream.fps;
         const fromSnapshot = stream.getValue(fromTime);
-        const toSnapshot = stream.getValue(toTime);
-        if (!fromSnapshot || !toSnapshot) return false;
+        if (!fromSnapshot) {
+          return false;
+        }
 
         const matchesInstance = (d: {
           instance?: { _cls: "Instance"; _id?: string };
@@ -214,19 +258,30 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
           d.keyframe === true && d.instance?._id === cmd.instanceId;
 
         const leftKeyframe = fromSnapshot.detections.find(matchesInstance);
-        const rightKeyframe = toSnapshot.detections.find(matchesInstance);
-        if (!leftKeyframe || !rightKeyframe) return false;
+        if (!leftKeyframe) {
+          return false;
+        }
+
+        const toTime = (cmd.toFrame - 1) / stream.fps;
+        const rightKeyframe = stream
+          .getValue(toTime)
+          ?.detections.find(matchesInstance);
 
         // SAM2 tracking runs asynchronously over the decoded ImaVid frames
         // and streams a detection per frame as inference lands. It needs the
         // image stream as a frame source; bail cleanly on surfaces that have
         // none (e.g. native video).
         if (cmd.method === "sam2") {
-          if (!imageStream) return false;
+          if (!imageStream) {
+            return false;
+          }
 
           const agents = await registry.listAgents();
           const descriptor = agents.find((a) => a.id === "propagate-sam2");
-          if (!descriptor) return false;
+          if (!descriptor) {
+            return false;
+          }
+
           // Registry stores agents under the broad `AnnotationAgent` type;
           // this one is driven through its dedicated `propagate()` (which
           // carries the frame source), not the generic `infer`.
@@ -295,6 +350,11 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
           } finally {
             setStatusContent(null);
           }
+        }
+
+        // Linear interpolation needs both endpoints to lerp between
+        if (!rightKeyframe) {
+          return false;
         }
 
         const agentId = `propagate-${cmd.method}`;

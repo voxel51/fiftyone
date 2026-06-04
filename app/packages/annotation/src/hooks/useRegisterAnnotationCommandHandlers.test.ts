@@ -7,13 +7,26 @@ vi.mock("@fiftyone/annotation", () => ({
 }));
 
 vi.mock("@fiftyone/command-bus", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@fiftyone/command-bus")>();
+  const actual = await importOriginal<typeof import("@fiftyone/command-bus")>();
   return {
     ...actual,
     useRegisterCommandHandler: vi.fn(),
   };
 });
+
+// Stable `removeOverlay` so the hook's useCallback identity (and thus the
+// single command registration) doesn't churn across renders.
+const { mockRemoveOverlay } = vi.hoisted(() => ({
+  mockRemoveOverlay: vi.fn(),
+}));
+vi.mock("@fiftyone/lighter", () => ({
+  useLighter: () => ({ removeOverlay: mockRemoveOverlay }),
+}));
+
+const { mockTombstone } = vi.hoisted(() => ({ mockTombstone: vi.fn() }));
+vi.mock("../persistence/temporalDetectionTombstones", () => ({
+  useTombstoneTemporalDetection: () => mockTombstone,
+}));
 
 import { useAnnotationEventBus, useDeleteLabel } from "@fiftyone/annotation";
 import { useRegisterCommandHandler } from "@fiftyone/command-bus";
@@ -62,6 +75,33 @@ describe("useRegisterAnnotationCommandHandlers", () => {
     renderHook(() => useRegisterAnnotationCommandHandlers());
 
     expect(useRegisterCommandHandler).toHaveBeenCalledTimes(1);
+  });
+
+  it("deletes a TemporalDetection by removing its overlay, skipping deleteLabel", async () => {
+    const handler = getRegisteredHandler();
+    const cmd = {
+      label: {
+        type: "TemporalDetection",
+        path: "events",
+        data: { _id: "td-1" },
+        overlay: { id: "td-events-td-1", field: "events" },
+      },
+      schema: { name: "events" },
+    } as unknown as ReturnType<typeof makeCommand>;
+
+    const result = await handler(cmd);
+
+    expect(result).toBe(true);
+    // TD persistence is overlay-diff based — the per-label patch must not run.
+    expect(mockDeleteLabel).not.toHaveBeenCalled();
+    // The deletion is recorded as a tombstone so the delta supplier persists it.
+    expect(mockTombstone).toHaveBeenCalledWith("events", "td-1");
+    expect(mockRemoveOverlay).toHaveBeenCalledWith("td-events-td-1", false);
+    expect(mockDispatch).toHaveBeenCalledWith("annotation:deleteSuccess", {
+      labelId: "td-1",
+      type: "delete",
+      labelType: "TemporalDetection",
+    });
   });
 
   it("dispatches deleteSuccess with label metadata when deleteLabel returns true", async () => {

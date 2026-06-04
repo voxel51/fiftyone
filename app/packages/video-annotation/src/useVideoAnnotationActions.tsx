@@ -117,34 +117,6 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             },
           },
           {
-            id: "propagate",
-            label: "Propagate",
-            icon: <Icon name={IconName.ContentCopy} size={Size.Sm} />,
-            shortcut: "-",
-            tooltip: target.ok
-              ? `Interpolate frames ${target.fromFrame}–${target.toFrame}`
-              : target.reason,
-            isDisabled: !target.ok,
-            onClick: () => {
-              if (!target.ok) return;
-              // Dispatch echo — the visible counterpart to debugging the
-              // silent keybinding path.
-              console.debug("[va-toolbar] propagate", {
-                instanceId: target.instanceId,
-                fromFrame: target.fromFrame,
-                toFrame: target.toFrame,
-              });
-              void bus.execute(
-                new PropagateCommand(
-                  target.instanceId,
-                  target.fromFrame,
-                  target.toFrame,
-                  "linear"
-                )
-              );
-            },
-          },
-          {
             id: "propagate-sam2",
             label: "Track (SAM2)",
             icon: <Icon name={IconName.AI} size={Size.Sm} />,
@@ -153,7 +125,10 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
               : target.reason,
             isDisabled: !target.ok,
             onClick: () => {
-              if (!target.ok) return;
+              if (!target.ok) {
+                return;
+              }
+
               void bus.execute(
                 new PropagateCommand(
                   target.instanceId,

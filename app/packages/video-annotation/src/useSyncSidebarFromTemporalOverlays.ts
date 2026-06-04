@@ -2,13 +2,19 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { type Scene2D, TemporalOverlay } from "@fiftyone/lighter";
+import {
+  type Scene2D,
+  TemporalOverlay,
+  UNDEFINED_LIGHTER_SCENE_ID,
+  useLighterEventHandler,
+} from "@fiftyone/lighter";
 import { type AnnotationLabelData, useModalSample } from "@fiftyone/state";
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   useGetSidebarLabels,
   useLabelsContext,
 } from "../../core/src/components/Modal/Sidebar/Annotate";
+import useFocus from "../../core/src/components/Modal/Sidebar/Annotate/useFocus";
 import { frameAt } from "../../playback/src/lib/playback/utils";
 import { usePlayhead } from "../../playback/src/lib/playback/use-playback-state";
 
@@ -41,6 +47,11 @@ export const useSyncSidebarFromTemporalOverlays = (
   const { addLabelToSidebar, removeLabelFromSidebar, updateLabelData } =
     useLabelsContext();
   const getSidebarLabels = useGetSidebarLabels();
+  // Ref, not an effect dep: this effect writes `current` (via updateLabelData)
+  // and `focus`'s identity tracks `current`, so depending on it would loop.
+  const focus = useFocus();
+  const selectOverlayRef = useRef(focus.selectOverlay);
+  selectOverlayRef.current = focus.selectOverlay;
 
   const sample = useModalSample();
   const frameRate = sample?.frameRate;
@@ -51,12 +62,55 @@ export const useSyncSidebarFromTemporalOverlays = (
       ? frameAt(playheadSec, frameRate)
       : null;
 
+  // Re-trigger effect when temporal detection labels are added/removed
+  const temporalDetectionIds = getSidebarLabels()
+    .filter((l) => l.type === TEMPORAL_DETECTION)
+    .map((l) => l.overlay.id)
+    .sort()
+    .join(",");
+
+  // The signature above is sidebar-derived, so it doesn't change when a TD
+  // overlay is added straight to the *scene* (e.g. `CreateTemporalDetectionCommand`)
+  // — that overlay isn't in the sidebar yet. Without a scene-side trigger the
+  // reconcile below wouldn't run until the next playhead tick, so a freshly
+  // created TD never enters the sidebar. Mirror `FrameLabels`' TD-track
+  // invalidation: bump on scene TD overlay add/remove.
+  const useLighterEvent = useLighterEventHandler(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
+  const [sceneTdVersion, setSceneTdVersion] = useState(0);
+  const bumpSceneTdVersion = useCallback(
+    () => setSceneTdVersion((v) => v + 1),
+    []
+  );
+  useLighterEvent(
+    "lighter:overlay-added",
+    useCallback(
+      (payload) => {
+        if (payload.overlay instanceof TemporalOverlay) bumpSceneTdVersion();
+      },
+      [bumpSceneTdVersion]
+    )
+  );
+  useLighterEvent(
+    "lighter:overlay-removed",
+    useCallback(
+      (payload) => {
+        if (payload.id?.startsWith("td-")) bumpSceneTdVersion();
+      },
+      [bumpSceneTdVersion]
+    )
+  );
+
   useEffect(() => {
     if (!scene || !canonicalMediaReady || frame === null) {
       return;
     }
 
     const inRange = new Set<string>();
+    // TDs listed this tick that are already selected in the scene — their
+    // editor needs (re)opening (see below).
+    const newlyAddedSelected: string[] = [];
 
     for (const overlay of scene.getAllOverlays()) {
       if (!(overlay instanceof TemporalOverlay)) continue;
@@ -84,6 +138,22 @@ export const useSyncSidebarFromTemporalOverlays = (
         path: overlay.field,
         type: TEMPORAL_DETECTION,
       });
+
+      if (scene.isOverlaySelected(overlay.id)) {
+        newlyAddedSelected.push(overlay.id);
+      }
+    }
+
+    // Clicking a TD bar off the current frame selects the overlay and seeks
+    // into range, but `selectOverlay` ran before this hook listed the TD, so
+    // it bailed (not yet in labelMap) and the editor never opened. Retry now
+    // that it's listed; deferred so the addLabelToSidebar write has flushed.
+    if (newlyAddedSelected.length > 0) {
+      queueMicrotask(() => {
+        for (const id of newlyAddedSelected) {
+          selectOverlayRef.current(id);
+        }
+      });
     }
 
     // Evict TD rows whose support no longer contains the frame. Reading the
@@ -96,12 +166,14 @@ export const useSyncSidebarFromTemporalOverlays = (
       }
     }
   }, [
-    scene,
-    frame,
-    canonicalMediaReady,
     addLabelToSidebar,
-    removeLabelFromSidebar,
-    updateLabelData,
+    canonicalMediaReady,
+    frame,
     getSidebarLabels,
+    removeLabelFromSidebar,
+    scene,
+    sceneTdVersion,
+    temporalDetectionIds,
+    updateLabelData,
   ]);
 };

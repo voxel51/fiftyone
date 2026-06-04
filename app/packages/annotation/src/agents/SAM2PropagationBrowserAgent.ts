@@ -30,18 +30,26 @@ const DEFAULT_FACTORY: BrowserAnnotationProviderFactory = (options) =>
   new BrowserAnnotationProvider(options);
 
 /**
- * Inputs for a SAM2 tracking run between two bracketing keyframes. Frame
- * numbers are 1-based (matching the labels stream / mongo frame numbers);
- * `getFrameBitmap` resolves a 1-based frame number to its decoded bitmap
- * (the ImaVid image stream serves these from cache — no `<video>` element).
+ * Inputs for a SAM2 tracking run. Frame numbers are 1-based (matching the
+ * labels stream / mongo frame numbers); `getFrameBitmap` resolves a 1-based
+ * frame number to its decoded bitmap (the ImaVid image stream serves these
+ * from cache — no `<video>` element).
+ *
+ * Two modes: a *bracketed* run between two keyframes (pass `endKeyframe`), or
+ * a *forward* run from a single seed keyframe to a horizon (omit it; the
+ * caller sets `toFrame` to the clip end).
  */
 export interface Sam2PropagateArgs {
   /** Cross-frame `Instance._id` stamped on every emitted detection. */
   instanceId: string;
-  /** Left bracket — the keyframe at/before the playhead; seeds the track. */
+  /** The keyframe at/before the playhead; seeds the track. */
   seedKeyframe: SyntheticBox;
-  /** Right bracket — the keyframe after the playhead; caps the run. */
-  endKeyframe: SyntheticBox;
+  /**
+   * Bracketed mode only — the keyframe at `toFrame` that caps the run and is
+   * left untouched. Omit for a forward run, where `toFrame` is a tracked
+   * frame (the clip end) that should be written like any other.
+   */
+  endKeyframe?: SyntheticBox;
   fromFrame: number;
   toFrame: number;
   /** Stable per-video id; prefixes the per-frame encoder-embedding cache. */
@@ -106,10 +114,13 @@ export class SAM2PropagationBrowserAgent
     // Provenance records the source keyframes' mongo `_id`s (not the
     // cross-frame-stable synthetic overlay id, which is identical for both
     // ends of a track); fall back to the synthetic id only if unpersisted.
-    const parentKeyframes: [string, string] = [
-      args.seedKeyframe._id ?? args.seedKeyframe.id,
-      args.endKeyframe._id ?? args.endKeyframe.id,
-    ];
+    // A forward run has a single parent (the seed); a bracketed run has two.
+    const parentKeyframes: [string, ...string[]] = args.endKeyframe
+      ? [
+          args.seedKeyframe._id ?? args.seedKeyframe.id,
+          args.endKeyframe._id ?? args.endKeyframe.id,
+        ]
+      : [args.seedKeyframe._id ?? args.seedKeyframe.id];
 
     this.setStatus("inferring");
 
@@ -122,15 +133,24 @@ export class SAM2PropagationBrowserAgent
         },
         keyframeB: {
           frameIdx: args.toFrame,
-          points: pointsFromBox(args.endKeyframe.bounding_box),
+          // Points are unused beyond the first frame
+          points: [],
         },
         videoKey: args.videoKey,
         strategy: args.strategy ?? "centroid-5",
         shouldAbort: args.shouldAbort,
         onProgress: args.onProgress,
         onFrame: (frameIdx, result) => {
-          // Don't overwrite the user's bracket keyframes.
-          if (frameIdx === args.fromFrame || frameIdx === args.toFrame) return;
+          // Don't overwrite the seed keyframe
+          if (frameIdx === args.fromFrame) {
+            return;
+          }
+
+          // In bracketed mode, the end frame is also a user keyframe,
+          // so skip it too
+          if (args.endKeyframe && frameIdx === args.toFrame) {
+            return;
+          }
 
           const detection: PropagatedDetection = {
             _id: objectId(),
@@ -151,6 +171,7 @@ export class SAM2PropagationBrowserAgent
               parent_keyframes: parentKeyframes,
             },
           };
+
           args.onDetection(frameIdx, detection);
         },
       });

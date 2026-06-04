@@ -70,8 +70,13 @@ export function useLinkedTrackDecorator(): (track: Track) => Partial<{
           return;
         }
 
-        scene.selectOverlay(payload.id);
+        const { id } = payload;
         pendingSelectRef.current = null;
+
+        // If a seek was involved, the overlay/label state may not be fully
+        // initialized yet; defer this to the next tick to allow the event
+        // chain to settle
+        queueMicrotask(() => scene.selectOverlay(id));
       },
       [scene]
     )

@@ -42,6 +42,7 @@ import { LABELS_STREAM_ID } from "./ids";
 import { resolveTrackExtentEdit } from "./trackExtentEdit";
 import { useLinkedTrackDecorator } from "./linkedTracks";
 import {
+  DeleteTemporalDetectionCommand,
   DeleteTrackCommand,
   EditTemporalDetectionCommand,
   ExtendTrackCommand,
@@ -458,6 +459,13 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
       return {
         ...base,
         snapStepSec,
+        onDeleteTrack: () =>
+          void commandBus.execute(
+            new DeleteTemporalDetectionCommand(
+              tdEvent.fieldPath,
+              tdEvent.detectionId
+            )
+          ),
         onEventEdit: (
           _eventIndex: number,
           newStartSec: number,

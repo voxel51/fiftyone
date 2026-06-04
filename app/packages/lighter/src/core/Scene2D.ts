@@ -1115,8 +1115,13 @@ export class Scene2D {
    * Removes an overlay from the scene.
    * @param id - The ID of the overlay to remove.
    * @param withUndo - Whether to track this operation for undo/redo.
+   * @param lifecycle - Whether this is a lifecycle event (not user-driven)
    */
-  removeOverlay(id: string, withUndo: boolean = false): void {
+  removeOverlay(
+    id: string,
+    withUndo: boolean = false,
+    lifecycle: boolean = false
+  ): void {
     if (withUndo) {
       const overlay = this.overlays.get(id);
       if (overlay) {
@@ -1144,7 +1149,7 @@ export class Scene2D {
       this.renderingState.clear(id);
     }
 
-    this.eventBus.dispatch("lighter:overlay-removed", { id });
+    this.eventBus.dispatch("lighter:overlay-removed", { id, lifecycle });
   }
 
   /**

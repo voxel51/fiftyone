@@ -13,25 +13,36 @@ export type PropagationTarget =
       ok: true;
       /** `Instance._id` shared by the selected detection's keyframes. */
       instanceId: string;
-      /** Frame of the bracketing keyframe at or before the playhead. */
+      /** Frame of the seed keyframe at or before the playhead. */
       fromFrame: number;
-      /** Frame of the first keyframe strictly after the playhead. */
+      /**
+       * Last frame of the run. The first keyframe strictly after the playhead
+       * (a *bracket* run), or — when there's no downstream keyframe — the end
+       * of the track's contiguous presence run containing the playhead (a
+       * *forward* run, filling the extended track). The command handler tells
+       * the two apart by whether a keyframe sits at this frame, so no extra
+       * flag is needed here.
+       */
       toFrame: number;
     }
   | { ok: false; reason: string };
 
 /**
  * Given the active stream, the currently-selected overlay ids, and the
- * visual playhead time, work out whether a linear-interpolation
- * propagation can run and, if so, between which keyframes.
+ * visual playhead time, work out whether a SAM2 tracking run can start and,
+ * if so, over which frame span.
  *
- * Shared by the `-` keybinding and the timeline toolbar so the two can't
- * disagree about eligibility. Pure (no React, no atoms) so it's trivially
- * unit-testable and callable from either a key handler or a render pass.
+ * Two shapes of run:
+ *   - **Bracket** — the playhead sits between two keyframes of the selected
+ *     object; tracks the seed (left) keyframe up to the next (right) one.
+ *   - **Forward** — there's a seed keyframe at/before the playhead but none
+ *     after it; tracks forward to the end of the track's presence run (the
+ *     extended-but-unfilled frames), matching the timeline bar. The user can
+ *     halt early via the Stop control. SAM2's natural strength. Drawing then
+ *     extending a track and triggering this fills the extension.
  *
- * Mirrors the bracketing-keyframe walk that previously lived inline in the
- * keybinding: the most recent keyframe at or before the playhead is the
- * left bracket, the first keyframe strictly after it is the right bracket.
+ * Pure (no React, no atoms) so it's trivially unit-testable and callable
+ * from a render pass. Used by the timeline toolbar's "Track (SAM2)" action.
  */
 export function resolvePropagationTarget(
   stream: VideoFrameLabelsStream,
@@ -89,15 +100,39 @@ export function resolvePropagationTarget(
   if (leftFrame === null && rightFrame === null) {
     return {
       ok: false,
-      reason: "No keyframes on this object yet — mark at least two (press K).",
+      reason: "Mark a keyframe to seed propagation",
     };
   }
   if (leftFrame === null) {
     return { ok: false, reason: "Need a keyframe at or before this frame." };
   }
-  if (rightFrame === null) {
-    return { ok: false, reason: "Need a keyframe after this frame." };
+
+  // Bracketed run: a keyframe exists on both sides of the playhead.
+  if (rightFrame !== null) {
+    return { ok: true, instanceId, fromFrame: leftFrame, toFrame: rightFrame };
   }
 
-  return { ok: true, instanceId, fromFrame: leftFrame, toFrame: rightFrame };
+  // Forward run: only the seed keyframe exists. Fill forward to the end of
+  // the track's contiguous presence run containing the playhead.
+  let endFrame = currentFrame;
+  for (let f = currentFrame + 1; f <= stream.totalFrames; f++) {
+    const present = stream
+      .getValue((f - 1) / stream.fps)
+      ?.detections.some((d) => d.instance?._id === instanceId);
+
+    if (!present) {
+      break;
+    }
+
+    endFrame = f;
+  }
+
+  if (endFrame <= leftFrame) {
+    return {
+      ok: false,
+      reason: "Extend the track past this frame to fill it with SAM2.",
+    };
+  }
+
+  return { ok: true, instanceId, fromFrame: leftFrame, toFrame: endFrame };
 }

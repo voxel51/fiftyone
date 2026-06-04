@@ -9,7 +9,12 @@ export type PropagationMethod = "linear" | "sam2";
 export interface PropagationBlob {
   method: PropagationMethod;
   run_id: ObjectIdHex;
-  parent_keyframes: [ObjectIdHex, ObjectIdHex];
+  /**
+   * Source keyframes' `_id`s. Two for a bracketed run (linear interp,
+   * or SAM2 between two keyframes); one for a SAM2 forward run that tracks
+   * from a single seed keyframe to the end of the clip.
+   */
+  parent_keyframes: [ObjectIdHex, ...ObjectIdHex[]];
 }
 
 export interface SyntheticBox {
