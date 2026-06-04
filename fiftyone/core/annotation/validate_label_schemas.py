@@ -355,7 +355,22 @@ def _validate_str_field_label_schema(
     settings = foac.STR_SETTINGS
     component = label_schema.get(foac.COMPONENT, None)
     values = label_schema.get(foac.VALUES, None)
-    if component in foac.VALUES_COMPONENTS:
+    taxonomy = label_schema.get(foac.TAXONOMY, None)
+
+    if taxonomy is not None:
+        if component != foac.DROPDOWN:
+            raise ValueError(
+                f"'{foac.TAXONOMY}' requires a '{foac.DROPDOWN}' "
+                f"'{foac.COMPONENT}' for field '{field_name}'"
+            )
+        if values is not None:
+            raise ValueError(
+                f"'{foac.TAXONOMY}' and '{foac.VALUES}' are mutually exclusive "
+                f"settings for field '{field_name}'"
+            )
+        _validate_taxonomy_setting(field_name, taxonomy)
+        settings = settings.union({foac.TAXONOMY})
+    elif component in foac.VALUES_COMPONENTS:
         _validate_values_setting(field_name, values, str)
         settings = settings.union({foac.VALUES})
 
@@ -381,7 +396,22 @@ def _validate_str_list_field_label_schema(
     settings = foac.STR_LIST_SETTINGS
     component = label_schema.get(foac.COMPONENT, None)
     values = label_schema.get(foac.VALUES, None)
-    if component in foac.VALUES_COMPONENTS:
+    taxonomy = label_schema.get(foac.TAXONOMY, None)
+
+    if taxonomy is not None:
+        if component != foac.DROPDOWN:
+            raise ValueError(
+                f"'{foac.TAXONOMY}' requires a '{foac.DROPDOWN}' "
+                f"'{foac.COMPONENT}' for field '{field_name}'"
+            )
+        if values is not None:
+            raise ValueError(
+                f"'{foac.TAXONOMY}' and '{foac.VALUES}' are incompatible "
+                f"settings for field '{field_name}'"
+            )
+        _validate_taxonomy_setting(field_name, taxonomy)
+        settings = settings.union({foac.TAXONOMY})
+    elif component in foac.VALUES_COMPONENTS:
         _validate_values_setting(field_name, values, str)
         settings = settings.union({foac.VALUES})
 
@@ -694,6 +724,14 @@ def _validate_values_setting(field_name, value, _type, key=foac.VALUES):
                 f"invalid value '{v}' in '{key}' setting for field "
                 f"'{field_name}'"
             )
+
+
+def _validate_taxonomy_setting(field_name, taxonomy):
+    if not isinstance(taxonomy, str) or not taxonomy:
+        raise ValueError(
+            f"'{foac.TAXONOMY}' setting for field '{field_name}' must be a "
+            f"non-empty string"
+        )
 
 
 def _validate_applied_ontology(field_name: str, value: str) -> None:
