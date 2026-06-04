@@ -14,6 +14,7 @@ import React from "react";
 import ReactDOM from "react-dom";
 import * as recoil from "recoil";
 import styled from "styled-components";
+import * as three from "three";
 
 declare global {
   interface Window {
@@ -33,6 +34,7 @@ declare global {
     __fof__: typeof fof;
     __mui__: typeof mui;
     __styled__: typeof styled;
+    __three__: typeof three;
 
     // todo: the following cannot be externalized because of unknown reason
     // __focore__: typeof focore;
@@ -61,6 +63,7 @@ if (typeof window !== "undefined") {
   window.__fosl__ = fosl;
   window.__fof__ = fof;
   window.__styled__ = styled;
+  window.__three__ = three;
   // todo: the following cannot be externalized because of unknown reason
   // window.__fol3d__ = fol3d;
   // window.__foe__ = foe;
