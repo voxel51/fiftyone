@@ -140,6 +140,38 @@ describe("buildTemporalDetectionOverlayDeltas", () => {
       ]);
     });
 
+    it("emits nothing when an array attribute is value-equal but a different instance", () => {
+      // `tags` (and any list/dict attribute) round-trips as a fresh array on
+      // every post-save refetch, so the baseline and overlay arrays are never
+      // the same reference.
+      const sample = {
+        events: field(tdBaseline("a", [1, 10], { tags: [] })),
+      };
+      const deltas = buildTemporalDetectionOverlayDeltas(sample, [
+        // a distinct, value-equal array instance
+        overlay("events", "a", [1, 10], {
+          label: "x",
+          tags: [],
+        } as Partial<TemporalLabel>),
+      ]);
+      expect(deltas).toEqual([]);
+    });
+
+    it("emits a replace when an array attribute's value actually changes", () => {
+      const sample = {
+        events: field(tdBaseline("a", [1, 10], { tags: ["old"] })),
+      };
+      const deltas = buildTemporalDetectionOverlayDeltas(sample, [
+        overlay("events", "a", [1, 10], {
+          label: "x",
+          tags: ["new"],
+        } as Partial<TemporalLabel>),
+      ]);
+      expect(deltas).toEqual([
+        { op: "replace", path: "/events/detections/0/tags", value: ["new"] },
+      ]);
+    });
+
     it("emits a remove op for an attribute the overlay no longer carries", () => {
       const sample = {
         events: field(tdBaseline("a", [1, 10], { reviewed: false })),

@@ -9,6 +9,7 @@ import {
   EMBEDDED_DOCUMENT_FIELD,
   TEMPORAL_DETECTIONS_FIELD,
 } from "@fiftyone/utilities";
+import { isEqual } from "lodash";
 import { useCallback, useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import type { DeltaSupplier } from "./deltaSupplier";
@@ -296,7 +297,8 @@ function diffOverlayLabel(
       }
       continue;
     }
-    if (v !== baseline[k]) {
+
+    if (!isEqual(v, baseline[k])) {
       deltas.push({
         op: k in baseline ? "replace" : "add",
         path: `${basePath}/${k}`,
