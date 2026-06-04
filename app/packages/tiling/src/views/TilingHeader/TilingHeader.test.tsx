@@ -3,10 +3,16 @@ import { IconName } from "@voxel51/voodo";
 import React, { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { TilingProvider } from "../../lib/TilingProvider";
+import { TilingProvider, useTiling } from "../../lib/TilingProvider";
 import type { RegisteredTile } from "../../lib/types";
 import { useTileRegistry } from "../../lib/use-tile-registry";
 import TilingHeader from "./TilingHeader";
+
+// Reads the current tile count so tests can assert addTile was called.
+const TileCount: React.FC = () => {
+  const { tiles } = useTiling();
+  return <span data-testid="tile-count">{Object.keys(tiles).length}</span>;
+};
 
 const CameraTile: React.FC = () => <div data-testid="camera-body" />;
 const LidarTile: React.FC = () => <div data-testid="lidar-body" />;
@@ -98,5 +104,31 @@ describe("TilingHeader", () => {
       </TilingProvider>
     );
     expect(screen.getByTestId("tiling-header-add-tile")).toBeTruthy();
+  });
+
+  it("clicking a menu item calls addTile with the registered tile type", () => {
+    render(
+      <TilingProvider>
+        <RegisterTiles
+          entries={[
+            {
+              type: "camera",
+              typeLabel: "Camera",
+              icon: IconName.GridView,
+              Tile: CameraTile,
+            },
+          ]}
+        />
+        <TilingHeader fileName="x" />
+        <TileCount />
+      </TilingProvider>
+    );
+    expect(screen.getByTestId("tile-count").textContent).toBe("0");
+
+    // Open the dropdown and click the Camera menu item.
+    fireEvent.click(screen.getByTestId("tiling-header-add-tile"));
+    fireEvent.click(screen.getByText("Camera"));
+
+    expect(screen.getByTestId("tile-count").textContent).toBe("1");
   });
 });
