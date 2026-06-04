@@ -77,10 +77,13 @@ export const currentField = atom(
     type WithRuntimeFields = { _id?: string; bounding_box?: number[] };
     const oldData = currentLabel.data as AnnotationLabel["data"] &
       WithRuntimeFields;
-    const data = buildNewLabelData(path, currentLabel.type, {
+    const newData = buildNewLabelData(path, currentLabel.type, {
       id: oldData._id,
     }) as AnnotationLabel["data"] & WithRuntimeFields;
-    data.bounding_box = oldData.bounding_box;
+    const data = {
+      ...newData,
+      ...oldData,
+    };
 
     const overlay = currentLabel.overlay as
       | {
@@ -188,5 +191,7 @@ export const defaultField = atomFamily((type: LabelType | null) =>
 export const hasChanges = atom((get) => {
   const data = get(currentData);
   const saved = get(savedLabel);
-  return saved === null ? false : JSON.stringify(data) !== JSON.stringify(saved);
+  return saved === null
+    ? false
+    : JSON.stringify(data) !== JSON.stringify(saved);
 });

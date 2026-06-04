@@ -20,6 +20,7 @@
         "lint:prettify": "prettier --config ../.prettierrc.js --ignore-path ../.prettierignore  --write \"packages/**/*.(ts|js|jsx|tsx|json|css|scss)\"",
         "start": "yarn workspace @fiftyone/app start",
         "test": "yarn vitest run --no-coverage",
+        "test:coverage": "yarn vitest run --coverage",
         "test-ui": "yarn vitest --ui --coverage",
         "gen:schema": "strawberry export-schema fiftyone.server.app:schema > schema.graphql"
     },
@@ -68,8 +69,10 @@
         "react-plotly.js": "^2.6.0"
     },
     "resolutions": {
-        "brace-expansion": "^2.0.3",
+        "brace-expansion": "^5.0.6",
         "three-stdlib": "^2.36.1",
-        "@types/react": "18.2.0"
+        "@types/react": "18.2.0",
+        "minimatch": "9.0.7",
+        "protobufjs": "^7.6.0"
     }
 }

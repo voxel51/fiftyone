@@ -10,7 +10,6 @@ import type { OverlayMask } from "@fiftyone/looker/src/numpy";
 import { LRUCache } from "lru-cache";
 import { v4 as uuidv4 } from "uuid";
 
-import MaskPathDecodeWorker from "./maskPathDecodeWorker?worker&inline";
 import type { DecodeResponse } from "./maskPathDecodeWorker";
 
 // Minimum of 1 worker, maximum of 4 workers
@@ -61,16 +60,13 @@ const cache = new LRUCache<string, OverlayMask>({
 const supportsWorkers = (): boolean =>
   typeof Worker !== "undefined" && typeof window !== "undefined";
 
-/** Worker factory. */
-const spawnWorker = (): Worker => {
-  try {
-    return new MaskPathDecodeWorker();
-  } catch {
-    return new Worker(new URL("./maskPathDecodeWorker.ts", import.meta.url), {
-      type: "module",
-    });
-  }
-};
+/**
+ * Worker factory.
+ */
+const spawnWorker = (): Worker =>
+  new Worker(new URL("./maskPathDecodeWorker.ts", import.meta.url), {
+    type: "module",
+  });
 
 const bindWorker = (slot: Slot, worker: Worker): void => {
   slot.worker = worker;
@@ -131,7 +127,18 @@ const ensurePool = (): Slot[] | undefined => {
     return undefined;
   }
 
-  slots = Array.from({ length: MAX_WORKERS }, () => createSlot());
+  try {
+    slots = Array.from({ length: MAX_WORKERS }, () => createSlot());
+  } catch (err) {
+    // `new Worker(...)` can throw synchronously (e.g. CSP blocking
+    // `worker-src`). Leave the pool unset so callers fall back to the
+    // main-thread decode path instead of rejecting.
+    console.error(
+      "[decodeMaskPath] worker pool unavailable; using main-thread decode:",
+      err
+    );
+    return undefined;
+  }
   return slots;
 };
 
