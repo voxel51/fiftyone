@@ -270,6 +270,13 @@ export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
       return;
     }
 
+    // We're advancing to a new committed frame; proactively pull the next
+    // chunk into flight so it lands before the playhead reaches it. The engine
+    // only gives us a 1-frame warning, so we want to get ahead of that.
+    if (next) {
+      this.prefetch([time, time + this.lookaheadSeconds]);
+    }
+
     store.set(streamValueAtom(this.id), next);
   }
 
