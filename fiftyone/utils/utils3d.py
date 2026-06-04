@@ -31,8 +31,6 @@ import fiftyone.core.validation as fov
 import fiftyone.utils.data as foud
 import fiftyone.utils.image as foui
 
-o3d = fou.lazy_import("open3d", callback=lambda: fou.ensure_package("open3d"))
-
 logger = logging.getLogger(__name__)
 
 DEFAULT_SHADING_GRADIENT_MAP = {
@@ -1065,6 +1063,31 @@ def _get_pcd_filepath_from_scene(scene_path: str):
     return pcd_path
 
 
+def _read_point_cloud(filepath):
+    """Reads a ``.pcd`` file into ``(points, colors)`` numpy arrays.
+
+    ``points`` is an ``(n, 3)`` array of XYZ coordinates and ``colors`` is an
+    ``(n, 3)`` array of RGB values in ``[0, 1]``, or an empty ``(0, 3)`` array
+    when the file has no color channel.
+    """
+    from pypcd4 import PointCloud
+
+    pc = PointCloud.from_path(filepath)
+
+    points = pc.numpy(("x", "y", "z")).astype(float)
+
+    if "rgb" in pc.fields:
+        colors = PointCloud.decode_rgb(pc.numpy(("rgb",))).astype(float) / 255.0
+    elif "rgba" in pc.fields:
+        colors = (
+            PointCloud.decode_rgb(pc.numpy(("rgba",))).astype(float) / 255.0
+        )
+    else:
+        colors = np.zeros((0, 3))
+
+    return points, colors
+
+
 def _parse_point_cloud(
     filepath,
     size=None,
@@ -1073,7 +1096,7 @@ def _parse_point_cloud(
     projection_normal=None,
     subsampling_rate=None,
 ):
-    pc = o3d.io.read_point_cloud(filepath)
+    points, colors = _read_point_cloud(filepath)
 
     if projection_normal is not None and not np.array_equal(
         projection_normal, np.array([0, 0, 1])
@@ -1100,7 +1123,9 @@ def _parse_point_cloud(
             R = sp.transform.Rotation.align_vectors([[0, 0, 1]], normal)[
                 0
             ].as_matrix()
-        pc = pc.rotate(R, center=[0, 0, 0])
+
+        # Rotate points about the origin: p' = (R @ p.T).T = p @ R.T
+        points = points @ R.T
 
     if projection_normal is None:
         projection_normal = [0, 0, 1]
@@ -1111,12 +1136,10 @@ def _parse_point_cloud(
         min_bound, max_bound = bounds
 
     if _contains_none(min_bound):
-        _min_bound = pc.get_min_bound()
-        min_bound = _fill_none(min_bound, _min_bound)
+        min_bound = _fill_none(min_bound, points.min(axis=0))
 
     if _contains_none(max_bound):
-        _max_bound = pc.get_max_bound()
-        max_bound = _fill_none(max_bound, _max_bound)
+        max_bound = _fill_none(max_bound, points.max(axis=0))
 
     min_bound = np.asarray(min_bound, dtype=float)
     max_bound = np.asarray(max_bound, dtype=float)
@@ -1130,18 +1153,16 @@ def _parse_point_cloud(
     # and min_bound are close to each other
     max_bound += 1e-6 * np.isclose(max_bound - min_bound, 0)
 
-    bbox = o3d.geometry.AxisAlignedBoundingBox(
-        min_bound=min_bound, max_bound=max_bound
-    )
+    # Crop to bounds and translate so that the min bound is at the origin
+    in_bounds = np.all((points >= min_bound) & (points <= max_bound), axis=1)
+    points = points[in_bounds] - min_bound
+    if len(colors) == len(in_bounds):
+        colors = colors[in_bounds]
 
-    # Crop bounds and translate so that min bound is at the origin
-    pc = pc.crop(bbox).translate(-min_bound)
-
+    # Uniformly subsample by selecting every `subsampling_rate`-th point
     if subsampling_rate is not None and subsampling_rate > 0:
-        pc = pc.uniform_down_sample(subsampling_rate)
-
-    points = np.asarray(pc.points)
-    colors = np.asarray(pc.colors)
+        points = points[::subsampling_rate]
+        colors = colors[::subsampling_rate]
 
     if size is not None:
         width, height = _parse_size(size, (min_bound, max_bound))
