@@ -9,12 +9,11 @@ import {
   useViewEnd,
   useViewStart,
 } from "../../lib/playback/use-playback-state";
+import { clamp } from "../utils/timeline-utils";
 import styles from "./TimelineRuler.module.css";
 
 const MIN_VIEW = 0.25;
 const CLICK_PX_THRESHOLD = 3;
-const clamp = (v: number, lo: number, hi: number) =>
-  Math.min(hi, Math.max(lo, v));
 
 function tickLabel(t: number): string {
   const s = Math.floor(t);

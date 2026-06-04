@@ -15,15 +15,13 @@ import {
   viewStartAtom,
 } from "./atoms";
 import { SEEK_BAR_DEBOUNCE } from "../constants";
+import { clamp, clampAndValidateBounds } from "./utils";
 import type {
   PlaybackConfig,
   PlaybackContextValue,
   PlaybackStore,
   PlaybackStream,
 } from "./types";
-
-const clamp = (v: number, lo: number, hi: number) =>
-  Math.min(hi, Math.max(lo, v));
 
 export function usePlaybackEngine({
   duration = 0,
@@ -279,24 +277,16 @@ export function usePlaybackEngine({
         if (checkAllReady(next)) doCommit(next);
       },
       setView: (start: number, end: number) => {
-        // Apply the same validation as setLoop so the visible window
-        // can't end up inverted, collapsed, or outside [0, duration].
-        const dur = store.get(durationAtom);
-        const vs = clamp(start, 0, dur);
-        const ve = clamp(end, 0, dur);
-        if (ve <= vs) return;
-        store.set(viewStartAtom, vs);
-        store.set(viewEndAtom, ve);
+        const bounds = clampAndValidateBounds(start, end, store.get(durationAtom));
+        if (!bounds) return;
+        store.set(viewStartAtom, bounds.start);
+        store.set(viewEndAtom, bounds.end);
       },
       setLoop: (start: number, end: number) => {
-        const dur = store.get(durationAtom);
-        const ls = clamp(start, 0, dur);
-        const le = clamp(end, 0, dur);
-        // Reject inverted / collapsed windows so the RAF wrap path can't
-        // get trapped in a zero-width loop.
-        if (le <= ls) return;
-        store.set(loopStartAtom, ls);
-        store.set(loopEndAtom, le);
+        const bounds = clampAndValidateBounds(start, end, store.get(durationAtom));
+        if (!bounds) return;
+        store.set(loopStartAtom, bounds.start);
+        store.set(loopEndAtom, bounds.end);
       },
       setSpeed: (speed: number) => {
         // NaN / Infinity / non-positive values would corrupt `dt` in the
