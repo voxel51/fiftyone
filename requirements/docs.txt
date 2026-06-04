@@ -12,10 +12,10 @@ jupyter-client==8.8.0
 
 # docs requirements
 autodocsumm==0.2.15
-docutils==0.22.4
+docutils==0.23
 pypandoc>=1.17
 sphinx-markdown-builder==0.6.10
-huggingface_hub>=1.15.0
+huggingface_hub>=1.17.0
 requests>=2.34.2
 ipykernel==7.2.0
 ipython_genutils==0.2.0
@@ -39,4 +39,4 @@ sphinx-pushfeedback==0.1.8
 sphinx-docsearch==0.3.0
 sphinx-remove-toctrees==1.0.0.post1
 sphinx-autoapi==3.8.0
-sphinx-sitemap==2.6.0
+sphinx-sitemap==2.9.0
