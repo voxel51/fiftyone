@@ -3,7 +3,7 @@
  */
 
 import { type DetectionLabel, DetectionOverlay } from "@fiftyone/lighter";
-import type { SyntheticBox } from "../SyntheticLabelStream";
+import type { SyntheticBox } from "../streams/SyntheticLabelStream";
 import type { OverlayAdapter } from "./types";
 
 /**
