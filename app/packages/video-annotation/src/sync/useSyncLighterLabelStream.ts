@@ -19,7 +19,7 @@ import {
 import type { DetectionLabel } from "@fiftyone/looker";
 import { type AnnotationLabelData } from "@fiftyone/state";
 import { objectId } from "@fiftyone/utilities";
-import { useCallback, useRef } from "react";
+import { type MutableRefObject, useCallback, useRef } from "react";
 import { useLabelsContext } from "../../../core/src/components/Modal/Sidebar/Annotate";
 import { useCurrentTime } from "../../../playback/src/lib/playback/use-playback-state";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
@@ -75,6 +75,12 @@ export function resolveOverlayRemovalTarget(
   return target?._id ?? null;
 }
 
+/** Lighter event-handler registrar bound to a specific scene channel. */
+type LighterEventRegistrar = ReturnType<typeof useLighterEventHandler>;
+
+/** Stream returned by {@link useFrameLabelsStream}, or `null` in synthetic mode. */
+type LabelStream = ReturnType<typeof useFrameLabelsStream>;
+
 /**
  * Mirrors user-driven Lighter overlay edits into the label-stream cache
  * so they survive frame scrubs.
@@ -86,8 +92,12 @@ export function resolveOverlayRemovalTarget(
  *   - **Drag / resize**: `lighter:overlay-drag-end` /
  *     `overlay-resize-end` → `updateLabel` with the new bounds.
  *   - **Delete**: `lighter:overlay-removed` → `deleteLabel`.
+ *   - **Sidebar field edits**: `annotation:sidebarValueUpdated`.
  *
- * Synthetic-label mode has no stream to write to — the hook is a no-op
+ * Binding agent: it resolves the shared dependencies and the per-frame
+ * `upsert` writer, then hands them to one small registrar hook per event.
+ *
+ * Synthetic-label mode has no stream to write to — the sub-hooks no-op
  * when `useFrameLabelsStream()` returns `null`.
  *
  * @param scene - The scene whose overlay events are mirrored, or `null`
@@ -105,12 +115,55 @@ export const useSyncLighterLabelStream = (scene: Scene2D | null): void => {
   );
 
   // Synthetic id we want selected once `useFrameOverlaySync` lands the
-  // post-mint canonical overlay. Set by `upsertFromOverlay` when it
-  // evicts a draw-mode overlay; consumed by the `overlay-added` handler
-  // below.
+  // post-mint canonical overlay. Set by `upsert` when it evicts a
+  // draw-mode overlay; consumed by `usePendingSelectClaim`.
   const pendingSelectRef = useRef<string | null>(null);
 
-  const upsertFromOverlay = useCallback(
+  const upsert = useUpsertFromOverlay({
+    scene,
+    stream,
+    currentTime,
+    eventBus,
+    commandBus,
+    pendingSelectRef,
+  });
+
+  useOverlayEstablishSync({ useEventHandler, upsert });
+  usePendingSelectClaim({ useEventHandler, scene, pendingSelectRef });
+  useOverlayEditEndSync({ useEventHandler, upsert });
+  useOverlayRemovedSync({ useEventHandler, stream, currentTime });
+  useSidebarValueSync({
+    scene,
+    stream,
+    currentTime,
+    eventBus,
+    commandBus,
+    updateLabelData,
+  });
+};
+
+/**
+ * Build the writer that projects an overlay into the per-frame cache. On a
+ * fresh draw it mints an `Instance` (stable cross-frame identity), evicts
+ * the draw-mode overlay, registers a pending select for the canonical one,
+ * and auto-extends the new box forward as non-keyframe filler.
+ */
+function useUpsertFromOverlay({
+  scene,
+  stream,
+  currentTime,
+  eventBus,
+  commandBus,
+  pendingSelectRef,
+}: {
+  scene: Scene2D | null;
+  stream: LabelStream;
+  currentTime: number;
+  eventBus: ReturnType<typeof useAnnotationEventBus>;
+  commandBus: ReturnType<typeof useCommandBus>;
+  pendingSelectRef: MutableRefObject<string | null>;
+}): (overlayId: string, isFreshDraw?: boolean) => void {
+  return useCallback(
     (overlayId: string, isFreshDraw = false) => {
       if (!stream || !scene) return;
       const overlay = scene.getOverlay(overlayId);
@@ -148,12 +201,12 @@ export const useSyncLighterLabelStream = (scene: Scene2D | null): void => {
       // because we minted the Instance. Evict Lighter's draw-mode
       // overlay so the next sync pass adds the canonical one without
       // leaving the original drawn copy behind. The `overlay-removed`
-      // event this triggers is safe — the removed-handler below
-      // resolves payload ids against the current snapshot and skips
-      // ones that no longer map to a cache entry.
+      // event this triggers is safe — the removed-handler resolves
+      // payload ids against the current snapshot and skips ones that no
+      // longer map to a cache entry.
       //
       // Removal also drops selection, so register a pending select
-      // against the canonical synthetic id; the `overlay-added` handler
+      // against the canonical synthetic id; `usePendingSelectClaim`
       // claims it once the sync places the canonical overlay in scene.
       if (minted) {
         const trackId = `instance-${detection.instance!._id}`;
@@ -184,19 +237,34 @@ export const useSyncLighterLabelStream = (scene: Scene2D | null): void => {
         }
       }
     },
-    [stream, scene, currentTime, commandBus, eventBus]
+    [stream, scene, currentTime, commandBus, eventBus, pendingSelectRef]
   );
+}
 
+/** Draw finalize → mirror the new box into the cache (mints the Instance). */
+function useOverlayEstablishSync({
+  useEventHandler,
+  upsert,
+}: {
+  useEventHandler: LighterEventRegistrar;
+  upsert: (overlayId: string, isFreshDraw?: boolean) => void;
+}): void {
   useEventHandler(
     "lighter:overlay-establish",
-    useCallback(
-      (payload) => upsertFromOverlay(payload.id, true),
-      [upsertFromOverlay]
-    )
+    useCallback((payload) => upsert(payload.id, true), [upsert])
   );
+}
 
-  // Claim a pending select once the sync adds the canonical post-mint
-  // overlay
+/** Select the canonical post-mint overlay once the sync lands it in scene. */
+function usePendingSelectClaim({
+  useEventHandler,
+  scene,
+  pendingSelectRef,
+}: {
+  useEventHandler: LighterEventRegistrar;
+  scene: Scene2D | null;
+  pendingSelectRef: MutableRefObject<string | null>;
+}): void {
   useEventHandler(
     "lighter:overlay-added",
     useCallback(
@@ -208,23 +276,35 @@ export const useSyncLighterLabelStream = (scene: Scene2D | null): void => {
         // Defer to the next tick to let this event chain settle
         queueMicrotask(() => scene.selectOverlay(id));
       },
-      [scene]
+      [scene, pendingSelectRef]
     )
   );
+}
 
-  // Lighter flips `interactionState` to `"DRAGGING"` on every pointer-down
-  // over an overlay, so a click-to-select fires `overlay-drag-end` with
-  // `startBounds === bounds`. Filter those out — selection is not an edit
-  // and writing the cache would (a) churn the dirty set and (b) auto-
-  // promote the label to a keyframe via `toLocalDetection`.
+/**
+ * Drag / resize finalize → mirror the moved box into the cache.
+ *
+ * Lighter flips `interactionState` to `"DRAGGING"` on every pointer-down
+ * over an overlay, so a click-to-select fires `overlay-drag-end` with
+ * `startBounds === bounds`. Filter those out — selection is not an edit and
+ * writing the cache would churn the dirty set and auto-promote the label to
+ * a keyframe via `toLocalDetection`.
+ */
+function useOverlayEditEndSync({
+  useEventHandler,
+  upsert,
+}: {
+  useEventHandler: LighterEventRegistrar;
+  upsert: (overlayId: string, isFreshDraw?: boolean) => void;
+}): void {
   useEventHandler(
     "lighter:overlay-drag-end",
     useCallback(
       (payload) => {
         if (rectsEqual(payload.startBounds, payload.bounds)) return;
-        upsertFromOverlay(payload.id);
+        upsert(payload.id);
       },
-      [upsertFromOverlay]
+      [upsert]
     )
   );
 
@@ -233,12 +313,23 @@ export const useSyncLighterLabelStream = (scene: Scene2D | null): void => {
     useCallback(
       (payload) => {
         if (rectsEqual(payload.startBounds, payload.bounds)) return;
-        upsertFromOverlay(payload.id);
+        upsert(payload.id);
       },
-      [upsertFromOverlay]
+      [upsert]
     )
   );
+}
 
+/** Overlay removed → delete from the cache (skips lifecycle removals). */
+function useOverlayRemovedSync({
+  useEventHandler,
+  stream,
+  currentTime,
+}: {
+  useEventHandler: LighterEventRegistrar;
+  stream: LabelStream;
+  currentTime: number;
+}): void {
   useEventHandler(
     "lighter:overlay-removed",
     useCallback(
@@ -260,8 +351,27 @@ export const useSyncLighterLabelStream = (scene: Scene2D | null): void => {
       [stream, currentTime]
     )
   );
+}
 
-  // Synchronize sidebar field edits
+/**
+ * Sidebar field edit → apply to the overlay, refresh the sidebar row, mirror
+ * to the per-frame cache, and propagate track-level attributes across frames.
+ */
+function useSidebarValueSync({
+  scene,
+  stream,
+  currentTime,
+  eventBus,
+  commandBus,
+  updateLabelData,
+}: {
+  scene: Scene2D | null;
+  stream: LabelStream;
+  currentTime: number;
+  eventBus: ReturnType<typeof useAnnotationEventBus>;
+  commandBus: ReturnType<typeof useCommandBus>;
+  updateLabelData: ReturnType<typeof useLabelsContext>["updateLabelData"];
+}): void {
   useAnnotationEventHandler(
     "annotation:sidebarValueUpdated",
     useCallback(
@@ -342,7 +452,7 @@ export const useSyncLighterLabelStream = (scene: Scene2D | null): void => {
       [scene, stream, currentTime, eventBus, updateLabelData, commandBus]
     )
   );
-};
+}
 
 /**
  * Project a Lighter `DetectionOverlay` onto the

@@ -86,13 +86,20 @@ export function syncTemporalOverlays({
   const next = new Set<string>();
 
   for (const [fieldPath, value] of Object.entries(sample)) {
-    if (!isTemporalDetectionsField(value)) continue;
-    if (!activePaths.has(fieldPath)) continue;
+    if (!isTemporalDetectionsField(value)) {
+      continue;
+    }
+
+    if (!activePaths.has(fieldPath)) {
+      continue;
+    }
 
     const detections = value.detections ?? [];
     for (const td of detections) {
       const detId = td._id ?? td.id;
-      if (!detId) continue;
+      if (!detId) {
+        continue;
+      }
 
       const support = td.support;
       if (
@@ -140,7 +147,10 @@ export function syncTemporalOverlays({
 function isTemporalDetectionsField(
   value: unknown
 ): value is RawTemporalDetectionsField {
-  if (!value || typeof value !== "object") return false;
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
   const v = value as { _cls?: unknown; detections?: unknown };
   return v._cls === "TemporalDetections" && Array.isArray(v.detections);
 }
@@ -182,7 +192,9 @@ export function useTemporalOverlaySync(
   currentFrameRef.current = currentFrame;
 
   useEffect(() => {
-    if (!scene || !canonicalMediaReady) return;
+    if (!scene || !canonicalMediaReady) {
+      return;
+    }
 
     const activePaths = new Set(activePathsList);
     const baseSample = (sample?.sample as Record<string, unknown>) ?? null;
@@ -206,7 +218,10 @@ export function useTemporalOverlaySync(
 
   // Push the playhead frame into each tracked overlay on playhead changes.
   useEffect(() => {
-    if (currentFrame === null) return;
+    if (currentFrame === null) {
+      return;
+    }
+
     for (const overlay of overlaysRef.current.values()) {
       overlay.setCurrentFrame(currentFrame);
     }
@@ -217,10 +232,14 @@ export function useTemporalOverlaySync(
   // `destroy()` runs through `removeOverlay`.
   useEffect(() => {
     return () => {
-      if (!scene) return;
+      if (!scene) {
+        return;
+      }
+
       for (const id of overlaysRef.current.keys()) {
         scene.removeOverlay(id);
       }
+
       overlaysRef.current.clear();
     };
   }, [scene]);

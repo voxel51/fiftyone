@@ -75,32 +75,7 @@ export const useSyncSidebarFromTemporalOverlays = (
   // reconcile below wouldn't run until the next playhead tick, so a freshly
   // created TD never enters the sidebar. Mirror `FrameLabels`' TD-track
   // invalidation: bump on scene TD overlay add/remove.
-  const useLighterEvent = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
-  );
-  const [sceneTdVersion, setSceneTdVersion] = useState(0);
-  const bumpSceneTdVersion = useCallback(
-    () => setSceneTdVersion((v) => v + 1),
-    []
-  );
-  useLighterEvent(
-    "lighter:overlay-added",
-    useCallback(
-      (payload) => {
-        if (payload.overlay instanceof TemporalOverlay) bumpSceneTdVersion();
-      },
-      [bumpSceneTdVersion]
-    )
-  );
-  useLighterEvent(
-    "lighter:overlay-removed",
-    useCallback(
-      (payload) => {
-        if (payload.id?.startsWith("td-")) bumpSceneTdVersion();
-      },
-      [bumpSceneTdVersion]
-    )
-  );
+  const sceneTdVersion = useSceneTemporalOverlayVersion(scene);
 
   useEffect(() => {
     if (!scene || !canonicalMediaReady || frame === null) {
@@ -113,7 +88,9 @@ export const useSyncSidebarFromTemporalOverlays = (
     const newlyAddedSelected: string[] = [];
 
     for (const overlay of scene.getAllOverlays()) {
-      if (!(overlay instanceof TemporalOverlay)) continue;
+      if (!(overlay instanceof TemporalOverlay)) {
+        continue;
+      }
 
       const support = overlay.label?.support;
       if (
@@ -160,7 +137,10 @@ export const useSyncSidebarFromTemporalOverlays = (
     // live sidebar (rather than tracking only our own adds) lets us also
     // remove entries the sample hydration added on load.
     for (const label of getSidebarLabels()) {
-      if (label.type !== TEMPORAL_DETECTION) continue;
+      if (label.type !== TEMPORAL_DETECTION) {
+        continue;
+      }
+
       if (!inRange.has(label.overlay.id)) {
         removeLabelFromSidebar(label.overlay.id);
       }
@@ -177,3 +157,42 @@ export const useSyncSidebarFromTemporalOverlays = (
     updateLabelData,
   ]);
 };
+
+/**
+ * A counter that bumps whenever a `TemporalOverlay` is added to, or a `td-`
+ * overlay removed from, the scene. Lets the reconcile effect re-run on
+ * scene-only TD changes that the sidebar-derived signature can't observe.
+ */
+function useSceneTemporalOverlayVersion(scene: Scene2D | null): number {
+  const useLighterEvent = useLighterEventHandler(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
+  const [version, setVersion] = useState(0);
+  const bump = useCallback(() => setVersion((v) => v + 1), []);
+
+  useLighterEvent(
+    "lighter:overlay-added",
+    useCallback(
+      (payload) => {
+        if (payload.overlay instanceof TemporalOverlay) {
+          bump();
+        }
+      },
+      [bump]
+    )
+  );
+
+  useLighterEvent(
+    "lighter:overlay-removed",
+    useCallback(
+      (payload) => {
+        if (payload.id?.startsWith("td-")) {
+          bump();
+        }
+      },
+      [bump]
+    )
+  );
+
+  return version;
+}

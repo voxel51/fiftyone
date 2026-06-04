@@ -36,18 +36,25 @@ export function useFrameOverlaySync(
     // overlays added before then get burned in with a bad coordinate
     // context, and a later in-place `relativeBounds` mutation doesn't
     // fix them. The effect re-runs once `canonicalMediaReady` flips.
-    if (!scene || !snapshot || !canonicalMediaReady) return;
+    if (!scene || !snapshot || !canonicalMediaReady) {
+      return;
+    }
 
     const ctx = { field, editable };
     const next = new Set<string>();
 
     for (const adapter of Object.values(overlayAdapters)) {
       const labels = snapshot[adapter.snapshotKey] as unknown[] | undefined;
-      if (!labels) continue;
+      if (!labels) {
+        continue;
+      }
 
       for (const data of labels) {
         const result = adapter.extract(data as never, ctx);
-        if (!result) continue;
+        if (!result) {
+          continue;
+        }
+
         next.add(result.id);
 
         const existing = scene.getOverlay(result.id);
@@ -79,7 +86,9 @@ export function useFrameOverlaySync(
   }, [scene, snapshot, field, canonicalMediaReady, editable]);
 
   useEffect(() => {
-    if (!scene) return;
+    if (!scene) {
+      return;
+    }
 
     for (const id of trackedRef.current) {
       const overlay = scene.getOverlay(id);
