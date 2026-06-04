@@ -3,6 +3,10 @@ version: 2
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
+    # Dependabot is not a member, so its PRs go to the community branch (see
+    # community-base-policy.yml). Version updates open here directly; security
+    # updates open against the default branch and are auto-retargeted.
+    target-branch: "community"
     schedule:
       interval: "weekly"
 
@@ -16,6 +20,7 @@ updates:
   # ---------------------------------------------------------------------------
   - package-ecosystem: "pip"
     directory: "/"
+    target-branch: "community"
     schedule:
       interval: "weekly"
       day: "wednesday"
