@@ -15,7 +15,10 @@ import fiftyone.core.fields as fof
 from fiftyone.core.annotation import validate_label_schemas
 from fiftyone.core.ontology import AnnotationOntology
 
-from decorators import drop_datasets, drop_ontologies
+from decorators import (  # pylint: disable=import-error
+    drop_datasets,
+    drop_ontologies,
+)
 
 
 class LabelSchemaValidationTests(unittest.TestCase):
@@ -1069,6 +1072,208 @@ class LabelSchemaValidationTests(unittest.TestCase):
                 fields="str_field",
             )
 
+
+class TaxonomySettingValidationTests(unittest.TestCase):
+    """Tests for the ``taxonomy`` setting on str / list<str> dropdown
+    attributes in :func:`validate_label_schemas`."""
+
+    # -- str field --
+
+    @drop_datasets
+    def test_str_dropdown_with_taxonomy_passes(self):
+        dataset = fo.Dataset()
+        dataset.add_sample_field("str_field", fo.StringField)
+        validate_label_schemas(
+            dataset,
+            {
+                "type": "str",
+                "component": "dropdown",
+                "taxonomy": "vehicle_type",
+            },
+            fields="str_field",
+        )
+
+    @drop_datasets
+    def test_str_radio_with_taxonomy_rejected(self):
+        dataset = fo.Dataset()
+        dataset.add_sample_field("str_field", fo.StringField)
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "type": "str",
+                    "component": "radio",
+                    "taxonomy": "vehicle_type",
+                },
+                fields="str_field",
+            )
+
+    @drop_datasets
+    def test_str_dropdown_taxonomy_and_values_rejected(self):
+        dataset = fo.Dataset()
+        dataset.add_sample_field("str_field", fo.StringField)
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "type": "str",
+                    "component": "dropdown",
+                    "taxonomy": "vehicle_type",
+                    "values": ["a", "b"],
+                },
+                fields="str_field",
+            )
+
+    @drop_datasets
+    def test_str_dropdown_taxonomy_empty_string_rejected(self):
+        dataset = fo.Dataset()
+        dataset.add_sample_field("str_field", fo.StringField)
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {"type": "str", "component": "dropdown", "taxonomy": ""},
+                fields="str_field",
+            )
+
+    @drop_datasets
+    def test_str_dropdown_taxonomy_non_string_rejected(self):
+        dataset = fo.Dataset()
+        dataset.add_sample_field("str_field", fo.StringField)
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {"type": "str", "component": "dropdown", "taxonomy": 123},
+                fields="str_field",
+            )
+
+    # -- list<str> field --
+
+    @drop_datasets
+    def test_str_list_dropdown_with_taxonomy_passes(self):
+        dataset = fo.Dataset()
+        dataset.add_sample_field(
+            "str_list_field", fo.ListField, subfield=fo.StringField
+        )
+        validate_label_schemas(
+            dataset,
+            {
+                "type": "list<str>",
+                "component": "dropdown",
+                "taxonomy": "vehicle_type",
+            },
+            fields="str_list_field",
+        )
+
+    @drop_datasets
+    def test_str_list_checkboxes_with_taxonomy_rejected(self):
+        dataset = fo.Dataset()
+        dataset.add_sample_field(
+            "str_list_field", fo.ListField, subfield=fo.StringField
+        )
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "type": "list<str>",
+                    "component": "checkboxes",
+                    "taxonomy": "vehicle_type",
+                },
+                fields="str_list_field",
+            )
+
+    @drop_datasets
+    def test_str_list_dropdown_taxonomy_and_values_rejected(self):
+        dataset = fo.Dataset()
+        dataset.add_sample_field(
+            "str_list_field", fo.ListField, subfield=fo.StringField
+        )
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "type": "list<str>",
+                    "component": "dropdown",
+                    "taxonomy": "vehicle_type",
+                    "values": ["a", "b"],
+                },
+                fields="str_list_field",
+            )
+
+    @drop_datasets
+    def test_str_list_dropdown_taxonomy_empty_string_rejected(self):
+        dataset = fo.Dataset()
+        dataset.add_sample_field(
+            "str_list_field", fo.ListField, subfield=fo.StringField
+        )
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "type": "list<str>",
+                    "component": "dropdown",
+                    "taxonomy": "",
+                },
+                fields="str_list_field",
+            )
+
+    # -- attribute-level (nested under a label field) --
+
+    @drop_datasets
+    def test_label_attribute_with_taxonomy_passes(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath="image.png",
+                detections=fo.Detections(
+                    detections=[fo.Detection(label="one")]
+                ),
+            )
+        )
+        validate_label_schemas(
+            dataset,
+            {
+                "type": "detections",
+                "attributes": [
+                    {
+                        "name": "vehicle_make",
+                        "type": "str",
+                        "component": "dropdown",
+                        "taxonomy": "vehicle_type",
+                    },
+                ],
+            },
+            fields="detections",
+            allow_new_attrs=True,
+        )
+
+    @drop_datasets
+    def test_label_attribute_with_taxonomy_wrong_component_rejected(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath="image.png",
+                detections=fo.Detections(
+                    detections=[fo.Detection(label="one")]
+                ),
+            )
+        )
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "type": "detections",
+                    "attributes": [
+                        {
+                            "name": "vehicle_make",
+                            "type": "str",
+                            "component": "radio",
+                            "taxonomy": "vehicle_type",
+                        },
+                    ],
+                },
+                fields="detections",
+                allow_new_attrs=True,
+            )
 
 
 def _make_applied_ontology_test_dataset(ontology_name: str = "my_ontology"):
