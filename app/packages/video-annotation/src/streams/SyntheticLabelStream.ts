@@ -202,7 +202,9 @@ export function getPresenceIntervals(
   actor: SyntheticActor,
   duration: number
 ): PresenceInterval[] {
-  if (!(duration > 0)) return [];
+  if (!(duration > 0)) {
+    return [];
+  }
 
   const {
     presenceCycleSec: cycle,
@@ -216,12 +218,19 @@ export function getPresenceIntervals(
   // duration, including n=-1 so a cycle straddling t=0 is captured.
   for (let n = -1; ; n++) {
     const cycleStart = cycle * (n - phase);
-    if (cycleStart >= duration) break;
+    if (cycleStart >= duration) {
+      break;
+    }
+
     const intervalEnd = cycleStart + intervalLen;
     const start = Math.max(0, cycleStart);
     const end = Math.min(duration, intervalEnd);
-    if (end > start) out.push({ startSec: start, endSec: end });
+
+    if (end > start) {
+      out.push({ startSec: start, endSec: end });
+    }
   }
+
   return out;
 }
 
@@ -233,7 +242,10 @@ function snapshotAtTime(
   const frameNumber = Math.max(0, Math.floor(time * fps));
   const detections: SyntheticBox[] = [];
   for (const actor of actors) {
-    if (!isPresent(time, actor)) continue;
+    if (!isPresent(time, actor)) {
+      continue;
+    }
+
     // Position the bbox top-left so the whole box stays inside [0, 1].
     const maxX = 1 - actor.width;
     const maxY = 1 - actor.height;

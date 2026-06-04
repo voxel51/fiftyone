@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { VideoFrameLabelsStream } from "./VideoFrameLabelsStream";
+import {
+  resolveSyntheticId,
+  VideoFrameLabelsStream,
+} from "./VideoFrameLabelsStream";
 
 function buildStream(): VideoFrameLabelsStream {
   return new VideoFrameLabelsStream({
@@ -50,5 +53,34 @@ describe("VideoFrameLabelsStream extractDetections", () => {
     const value = stream.getValue(timeOfFrame(10, 30));
     expect(value?.detections[0].keyframe).toBe(false);
     expect(value?.detections[0].propagation).toBeNull();
+  });
+});
+
+describe("resolveSyntheticId", () => {
+  it("prefers instance._id over index and _id", () => {
+    expect(
+      resolveSyntheticId({
+        instance: { _cls: "Instance", _id: "i1" },
+        index: 3,
+        _id: "d1",
+      })
+    ).toBe("instance-i1");
+  });
+
+  it("falls back to track-${index} when there is no instance id", () => {
+    expect(resolveSyntheticId({ index: 3, _id: "d1" })).toBe("track-3");
+  });
+
+  it("treats index 0 as a valid track id", () => {
+    expect(resolveSyntheticId({ index: 0, _id: "d1" })).toBe("track-0");
+  });
+
+  it("falls back to _id (then id) for untracked detections", () => {
+    expect(resolveSyntheticId({ _id: "d1" })).toBe("d1");
+    expect(resolveSyntheticId({ id: "d2" })).toBe("d2");
+  });
+
+  it("returns null when no usable identifier is present", () => {
+    expect(resolveSyntheticId({ label: "car" })).toBeNull();
   });
 });

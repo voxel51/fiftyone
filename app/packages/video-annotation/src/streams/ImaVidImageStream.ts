@@ -292,7 +292,9 @@ export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
   }
 
   private requestChunkStartingAt(startFrame: number): void {
-    if (this.destroyed) return;
+    if (this.destroyed) {
+      return;
+    }
 
     const numFrames = Math.min(
       this.chunkSize,

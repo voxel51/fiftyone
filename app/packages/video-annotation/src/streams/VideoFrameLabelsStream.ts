@@ -323,13 +323,21 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
    */
   updateLabel(frameNumber: number, detection: LocalDetection): void {
     const existing = this.cache.get(frameNumber);
-    if (!existing) return;
+    if (!existing) {
+      return;
+    }
+
     const id = detection._id ?? detection.id;
-    if (!id) return;
+    if (!id) {
+      return;
+    }
 
     const next = withDetectionList(existing, this.frameField, (list) => {
       const idx = list.findIndex((d) => (d._id ?? d.id) === id);
-      if (idx < 0) return [...list, detection];
+      if (idx < 0) {
+        return [...list, detection];
+      }
+
       const copy = list.slice();
       copy[idx] = { ...list[idx], ...detection };
       return copy;
@@ -347,7 +355,9 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
    */
   deleteLabel(frameNumber: number, detectionId: string): void {
     const existing = this.cache.get(frameNumber);
-    if (!existing) return;
+    if (!existing) {
+      return;
+    }
 
     const next = withDetectionList(existing, this.frameField, (list) =>
       list.filter((d) => (d._id ?? d.id) !== detectionId)
@@ -386,7 +396,9 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       const baseline = this.baseline.get(frameNumber);
       const cache = this.cache.get(frameNumber);
 
-      if (!baseline || !cache) continue;
+      if (!baseline || !cache) {
+        continue;
+      }
 
       out.push({ frameNumber, baseline, cache });
     }
@@ -416,7 +428,9 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
    * just-saved state.
    */
   commitPending(): void {
-    if (!this.pendingCommit) return;
+    if (!this.pendingCommit) {
+      return;
+    }
 
     for (const [frameNumber, frameDoc] of this.pendingCommit) {
       this.baseline.set(frameNumber, frameDoc);
@@ -453,11 +467,17 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
 
   private bumpEditVersion(): void {
     this.editVersion++;
-    for (const listener of this.editListeners) listener();
+
+    for (const listener of this.editListeners) {
+      listener();
+    }
   }
 
   private republish(): void {
-    if (!this.lastStore) return;
+    if (!this.lastStore) {
+      return;
+    }
+
     const time = this.lastStore.get(currentTimeAtom);
     this.lastStore.set(streamValueAtom(this.id), this.getValue(time));
   }
@@ -535,7 +555,10 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       }
 
       mergeRange(this.fetchedRanges, result.range);
-      if (result.frames.length > 0) this.bumpEditVersion();
+
+      if (result.frames.length > 0) {
+        this.bumpEditVersion();
+      }
     } catch (error) {
       // Surface but don't crash — the engine will keep asking; subsequent
       // prefetch calls will retry the missing frames.
@@ -571,24 +594,14 @@ function extractDetections(
       continue;
     }
 
-    const detId = det._id ?? det.id ?? null;
-    // Prefer `instance._id` as the cross-frame identity. `track-${index}` is
-    // kept as a fallback for legacy data that has only the numeric index, and
-    // `_id` is the last-resort per-frame identifier for untracked,
-    // un-instanced detections
-    const id = det.instance?._id
-      ? `instance-${det.instance._id}`
-      : det.index !== undefined
-      ? `track-${det.index}`
-      : detId;
-
+    const id = resolveSyntheticId(det);
     if (!id) {
       continue;
     }
 
     out.push({
       id,
-      _id: detId ?? undefined,
+      _id: det._id ?? det.id ?? undefined,
       label: det.label ?? "",
       bounding_box: det.bounding_box,
       index: det.index,
@@ -599,6 +612,25 @@ function extractDetections(
   }
 
   return out;
+}
+
+/**
+ * Derive a detection's cross-frame overlay id. Prefers `instance._id` so
+ * tracked instances keep one identity across frames; falls back to
+ * `track-${index}` for legacy data carrying only a numeric index, then to
+ * the per-frame `_id` for untracked, un-instanced detections. `null` when
+ * the detection carries no usable identifier.
+ */
+export function resolveSyntheticId(det: RawDetection): string | null {
+  if (det.instance?._id) {
+    return `instance-${det.instance._id}`;
+  }
+
+  if (det.index !== undefined) {
+    return `track-${det.index}`;
+  }
+
+  return det._id ?? det.id ?? null;
 }
 
 /**

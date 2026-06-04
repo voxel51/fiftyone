@@ -181,6 +181,7 @@ function resolveMediaSrc(filepath: string): string {
   if (/^\w+:\/\//.test(filepath) || /^(data|blob):/.test(filepath)) {
     return filepath;
   }
+
   return `${joinUrl(
     origin,
     pathPrefix,
@@ -206,6 +207,9 @@ function postFailed(reqId: number, error: string): void {
 }
 
 function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
+  if (error instanceof Error) {
+    return error.message;
+  }
+
   return String(error);
 }
