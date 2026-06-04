@@ -12,7 +12,7 @@ jupyter-client==8.8.0
 
 # docs requirements
 autodocsumm==0.2.15
-docutils==0.23
+docutils==0.22.4
 pypandoc>=1.17
 sphinx-markdown-builder==0.6.10
 huggingface_hub>=1.17.0
