@@ -14,6 +14,7 @@ interface OntologyPickerProps {
   error: string | null;
   onPick: (value: string) => void;
   type?: OntologyType;
+  value?: string;
 }
 
 const OntologyPicker = ({
@@ -22,6 +23,7 @@ const OntologyPicker = ({
   error,
   onPick,
   type = "annotation_ontology",
+  value,
 }: OntologyPickerProps) => {
   const label = type === "taxonomy" ? "taxonomies" : "ontologies";
 
@@ -52,6 +54,7 @@ const OntologyPicker = ({
     <Select
       exclusive
       portal
+      value={value}
       options={options}
       onChange={(v) => onPick(v as string)}
     />
