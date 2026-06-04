@@ -3,6 +3,7 @@ import {
   DEFAULT_LOCAL_BYTE_CACHE_BLOCK_SIZE_BYTES,
   DEFAULT_REMOTE_BYTE_CACHE_BLOCK_SIZE_BYTES,
 } from "./constants";
+import { safeNumber } from "./bigint-utils";
 import { serializeCacheKey } from "../cache-utils";
 import { byteSourceAccessKey } from "./cache";
 import { parseByteSize } from "./byte-size";
@@ -144,12 +145,3 @@ function sliceByteRangeResult(
   };
 }
 
-function safeNumber(value: bigint): number {
-  if (value > BigInt(Number.MAX_SAFE_INTEGER)) {
-    throw new Error(
-      `Byte length ${value.toString()} exceeds safe number range`
-    );
-  }
-
-  return Number(value);
-}

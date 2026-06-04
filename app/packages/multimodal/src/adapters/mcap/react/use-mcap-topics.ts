@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
 import type { StreamInventory } from "../../../schemas/v1";
+import type { LoadStatus } from "../../../load-status";
 import { mcapErrorMessage } from "../errors";
 import type { McapResourceClient } from "../types";
 
-export type McapTopicsStatus = "idle" | "loading" | "ready" | "error";
+export type McapTopicsStatus = LoadStatus;
 
 export interface McapTopicsState {
   readonly error: string | null;
