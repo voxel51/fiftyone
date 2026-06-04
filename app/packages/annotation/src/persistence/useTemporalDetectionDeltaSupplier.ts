@@ -223,6 +223,17 @@ const RESERVED_LABEL_KEYS = new Set([
   "confidence",
 ]);
 
+/**
+ * Built-in label fields the server always materializes (a `TemporalDetection`
+ * gets `tags: []` by default) but a freshly-created overlay doesn't carry. The
+ * "baseline key not on overlay → remove" rule must skip these: a new TD has no
+ * `tags`, so it would emit `remove /tags` on every tick, the server re-defaults
+ * `tags: []` on the next refetch, and the diff never converges — an infinite
+ * save loop. Edits still persist via the add/replace path (a hydrated overlay
+ * carries `tags`, compared with `isEqual`).
+ */
+const SERVER_DEFAULT_LABEL_KEYS = new Set(["tags"]);
+
 function serializeOverlayLabel(
   label: TemporalLabel | null | undefined
 ): Record<string, unknown> | null {
@@ -310,6 +321,9 @@ function diffOverlayLabel(
   // Detect removals: keys on the baseline that aren't on the overlay.
   for (const k of Object.keys(baseline)) {
     if (RESERVED_LABEL_KEYS.has(k)) continue;
+    // Server-default fields (e.g. `tags`) are always on the baseline but
+    // absent from a freshly-created overlay — removing them loops forever.
+    if (SERVER_DEFAULT_LABEL_KEYS.has(k)) continue;
     if (!(k in overlayLabel)) {
       deltas.push({ op: "remove", path: `${basePath}/${k}` });
     }

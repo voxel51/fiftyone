@@ -184,6 +184,24 @@ describe("buildTemporalDetectionOverlayDeltas", () => {
         { op: "remove", path: "/events/detections/0/reviewed" },
       ]);
     });
+
+    it("does NOT emit a remove for `tags` when the overlay lacks it but the baseline has it", () => {
+      // New-TD create case: the overlay was built fresh in the browser with no
+      // `tags` key, but the server materializes `tags: []` on save. The
+      // "baseline key not on overlay → remove" rule must skip `tags` — else it
+      // emits `remove /tags` every tick, the server re-defaults it, and the
+      // diff never converges (infinite save loop). Only reproduces where the
+      // baseline carries a materialized `tags` (e.g. cloned real data like
+      // va-demo), not on freshly-built datasets (va-demo-bare).
+      const sample = {
+        events: field(tdBaseline("a", [1, 10], { tags: [] })),
+      };
+      const deltas = buildTemporalDetectionOverlayDeltas(sample, [
+        // overlay label lacks `tags`
+        overlay("events", "a", [1, 10], { label: "x" }),
+      ]);
+      expect(deltas).toEqual([]);
+    });
   });
 
   describe("create / delete", () => {

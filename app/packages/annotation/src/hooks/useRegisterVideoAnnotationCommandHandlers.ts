@@ -155,6 +155,11 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
             _cls: "TemporalDetection",
             _id: detectionId,
             support: [cmd.support[0], cmd.support[1]],
+            // Mirror the server-materialized default so the overlay carries
+            // `tags` from the first frame: gives tag edits a real array to
+            // mutate, and keeps the persistence diff from seeing an absent
+            // key on the next refetch.
+            tags: [],
             ...(cmd.label !== undefined ? { label: cmd.label } : {}),
           },
         });
