@@ -406,7 +406,7 @@ def _validate_str_list_field_label_schema(
             )
         if values is not None:
             raise ValueError(
-                f"'{foac.TAXONOMY}' and '{foac.VALUES}' are incompatible "
+                f"'{foac.TAXONOMY}' and '{foac.VALUES}' are mutually exclusive "
                 f"settings for field '{field_name}'"
             )
         _validate_taxonomy_setting(field_name, taxonomy)
@@ -734,7 +734,7 @@ def _validate_taxonomy_setting(field_name, taxonomy):
         )
 
 
-def _validate_applied_ontology(field_name: str, value: str) -> None:
+def _validate_applied_ontology(field_name: str, value: str):
     # Late import to avoid a circular import with the ontology SDK.
     from fiftyone.core.ontology import load_ontology
 
