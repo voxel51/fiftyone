@@ -135,14 +135,6 @@ development environment:
 
         # Open a PR targeting the develop branch on github.com...
 
-    .. note::
-
-        If you are not a Voxel51 team member, open your PR against the
-        ``community`` branch. PRs opened against ``develop`` are automatically
-        retargeted there. See the
-        `contributing guide <https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md#community-pull-requests>`_
-        for details.
-
     Refer to the
     `contributing guide <https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md>`_
     and `style guide <https://github.com/voxel51/fiftyone/blob/develop/STYLE_GUIDE.md>`_
@@ -226,14 +218,6 @@ development environment:
 
         # Open a PR targeting the develop branch on github.com...
 
-    .. note::
-
-        If you are not a Voxel51 team member, open your PR against the
-        ``community`` branch. PRs opened against ``develop`` are automatically
-        retargeted there. See the
-        `contributing guide <https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md#community-pull-requests>`_
-        for details.
-
     Refer to the
     `App contributing guide <https://github.com/voxel51/fiftyone/blob/develop/app/CONTRIBUTING.md>`_
     for more information.
@@ -298,14 +282,6 @@ development environment:
         git push -u origin docs/my-docs-branch
 
         # Open a PR targeting the develop branch on github.com...
-
-    .. note::
-
-        If you are not a Voxel51 team member, open your PR against the
-        ``community`` branch. PRs opened against ``develop`` are automatically
-        retargeted there. See the
-        `contributing guide <https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md#community-pull-requests>`_
-        for details.
 
     Refer to the
     `Docs README <https://github.com/voxel51/fiftyone/blob/develop/docs/README.md>`_
