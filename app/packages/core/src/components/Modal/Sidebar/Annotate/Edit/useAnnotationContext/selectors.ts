@@ -25,6 +25,7 @@ import {
   editingLabelAtom,
   pendingNewTypeAtom,
   savedLabel,
+  savedLabelPath,
 } from "./atoms";
 import type { LabelType } from "./types";
 
@@ -189,9 +190,11 @@ export const defaultField = atomFamily((type: LabelType | null) =>
 );
 
 export const hasChanges = atom((get) => {
-  const data = get(currentData);
   const saved = get(savedLabel);
-  return saved === null
-    ? false
-    : JSON.stringify(data) !== JSON.stringify(saved);
+  if (saved === null) return false;
+  const data = get(currentData);
+  const path = get(currentField) ?? null;
+  const savedPath = get(savedLabelPath);
+  if (path !== savedPath) return true;
+  return JSON.stringify(data) !== JSON.stringify(saved);
 });

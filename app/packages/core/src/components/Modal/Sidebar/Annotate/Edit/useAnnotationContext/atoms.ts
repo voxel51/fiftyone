@@ -6,6 +6,16 @@ export const savedLabel = atom<AnnotationLabel["data"] | null>(
   null
 ) as PrimitiveAtom<AnnotationLabel["data"] | null>;
 
+/**
+ * Field path captured alongside {@link savedLabel} at select/create time.
+ * Read in tandem with `savedLabel` by {@link hasChanges} so moving a label
+ * to a new field counts as dirty even when the merged data is structurally
+ * unchanged.
+ */
+export const savedLabelPath = atom<string | null>(
+  null
+) as PrimitiveAtom<string | null>;
+
 export const currentEditingMaskAtom = atom<boolean>(
   false
 ) as PrimitiveAtom<boolean>;
