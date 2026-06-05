@@ -83,7 +83,7 @@ export const currentField = atom(
     const data = {
       ...newData,
       ...oldData,
-    };
+    } as AnnotationLabel["data"] & WithRuntimeFields;
 
     const overlay = currentLabel.overlay as
       | {
