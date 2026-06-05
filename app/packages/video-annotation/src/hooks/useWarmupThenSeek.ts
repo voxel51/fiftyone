@@ -3,7 +3,7 @@
  */
 
 import { useEffect } from "react";
-import { usePlayback } from "../../../playback/src/lib/playback/PlaybackProvider";
+import { usePlayback } from "@fiftyone/playback";
 
 /** A stream that can prefetch the chunk containing a given stream time. */
 interface Warmupable {

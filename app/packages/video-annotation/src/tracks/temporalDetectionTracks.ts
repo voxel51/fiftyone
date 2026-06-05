@@ -4,10 +4,7 @@ import {
   type RawTemporalDetection,
   type RawTemporalDetectionsField,
 } from "@fiftyone/utilities";
-import type {
-  Track,
-  TrackEvent,
-} from "../../../playback/src/lib/tracks/TrackProvider";
+import type { Track, TrackEvent } from "@fiftyone/playback";
 
 // The raw TD shapes + predicates now live in `@fiftyone/utilities` (below both
 // annotation packages). Re-exported here for back-compat with the package

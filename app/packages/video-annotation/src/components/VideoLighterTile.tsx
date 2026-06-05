@@ -1,8 +1,6 @@
 import { useTileSource } from "@fiftyone/tiling";
 import React, { useRef, useState } from "react";
-import { usePlayback } from "../../../playback/src/lib/playback/PlaybackProvider";
-import { useVideoStream } from "../../../playback/src/lib/playback/use-video-stream";
-import { useVideoSync } from "../../../playback/src/lib/playback/use-video-sync";
+import { usePlayback, useVideoStream, useVideoSync } from "@fiftyone/playback";
 import { useLighterTileScene } from "../hooks/useLighterTileScene";
 import { useVfcClockSource } from "../hooks/useVfcClockSource";
 import { useVideoAnnotationSyncBundle } from "../hooks/useVideoAnnotationSyncBundle";

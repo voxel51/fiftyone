@@ -6,7 +6,7 @@ import { useRegisterVideoAnnotationCommandHandlers } from "../hooks/useRegisterV
 import { useRegisterVideoAnnotationKeybindings } from "../hooks/useRegisterVideoAnnotationKeybindings";
 import { useRegisterVideoLabelsDeltaSupplier } from "../persistence/useVideoLabelsDeltaSupplier";
 import { useActiveDetectionField } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useDetectionMode";
-import { PlaybackProvider } from "../../../playback/src/lib/playback/PlaybackProvider";
+import { PlaybackProvider } from "@fiftyone/playback";
 import { FrameLabelsTracks, RegisterFrameLabels } from "./FrameLabels";
 import { ImaVidLighterTile } from "./ImaVidLighterTile";
 import { LinkedOverlayStateBridge } from "../tracks/linkedTracks";

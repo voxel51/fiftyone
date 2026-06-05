@@ -12,8 +12,7 @@ import {
 import { useModalSample } from "@fiftyone/state";
 import { isTemporalDetectionsField } from "@fiftyone/utilities";
 import { useEffect, useRef } from "react";
-import { frameAt } from "../../../playback/src/lib/playback/utils";
-import { usePlayhead } from "../../../playback/src/lib/playback/use-playback-state";
+import { frameAt, usePlayhead } from "@fiftyone/playback";
 import { useActiveModalPaths } from "../state/accessors";
 import { getModalSampleFrameRate } from "../utils/modalSample";
 

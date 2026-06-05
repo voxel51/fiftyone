@@ -20,7 +20,7 @@ import { type AnnotationLabelData } from "@fiftyone/state";
 import { objectId } from "@fiftyone/utilities";
 import { type MutableRefObject, useCallback, useRef } from "react";
 import { useLabelsContext } from "../../../core/src/components/Modal/Sidebar/Annotate";
-import { useCurrentTime } from "../../../playback/src/lib/playback/use-playback-state";
+import { useCurrentTime } from "@fiftyone/playback";
 import type { VideoDetectionLabel } from "../overlayAdapters/types";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 import type { LocalDetection } from "../streams/VideoFrameLabelsStream";

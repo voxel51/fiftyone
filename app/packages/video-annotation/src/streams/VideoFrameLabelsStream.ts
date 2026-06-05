@@ -10,16 +10,12 @@ import {
   getFrames,
   type FrameDoc,
 } from "../../../core/src/client/framesClient";
-import { PlaybackStreamBase } from "../../../playback/src/lib/playback/stream-base";
 import {
-  currentTimeAtom,
-  streamValueAtom,
-} from "../../../playback/src/lib/playback/atoms";
-import { frameAt } from "../../../playback/src/lib/playback/utils";
-import type {
-  BufferReadiness,
-  PlaybackStore,
-} from "../../../playback/src/lib/playback/types";
+  frameAt,
+  PlaybackStreamBase,
+  type BufferReadiness,
+  type PlaybackStore,
+} from "@fiftyone/playback";
 import { isInFetchedRange, mergeRange, toSecondRanges } from "./fetchedRanges";
 
 // `RawDetection`, `RawDetectionsField`, and `LocalDetection` now live in
@@ -267,9 +263,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   override onCommit(time: number, store: PlaybackStore): void {
     this.lastStore = store;
     const next = this.getValue(time);
-    const prev = store.get(
-      streamValueAtom(this.id)
-    ) as FrameLabelSnapshot | null;
+    const prev = this.readPublished(store);
 
     if (prev && next && prev.frameNumber === next.frameNumber) {
       return;
@@ -279,7 +273,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       return;
     }
 
-    store.set(streamValueAtom(this.id), next);
+    this.publish(store, next);
   }
 
   /**
@@ -444,8 +438,8 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       return;
     }
 
-    const time = this.lastStore.get(currentTimeAtom);
-    this.lastStore.set(streamValueAtom(this.id), this.getValue(time));
+    const time = this.readCurrentTime(this.lastStore);
+    this.publish(this.lastStore, this.getValue(time));
   }
 
   bufferedRanges(): Array<[number, number]> {

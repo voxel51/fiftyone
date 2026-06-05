@@ -1,6 +1,6 @@
 import { useTileSource } from "@fiftyone/tiling";
 import React, { useEffect, useRef, useState } from "react";
-import { useStream } from "../../../playback/src/lib/playback/use-stream";
+import { useStream } from "@fiftyone/playback";
 import { useLighterTileScene } from "../hooks/useLighterTileScene";
 import { useVideoAnnotationSyncBundle } from "../hooks/useVideoAnnotationSyncBundle";
 import { IMAVID_STREAM_ID } from "../utils/ids";

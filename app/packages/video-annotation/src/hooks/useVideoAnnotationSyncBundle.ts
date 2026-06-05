@@ -4,7 +4,7 @@
 
 import { useLighterSetupWithPixi } from "@fiftyone/lighter";
 import type { RefObject } from "react";
-import { useStream } from "../../../playback/src/lib/playback/use-stream";
+import { useStream } from "@fiftyone/playback";
 import type { FrameLabelSnapshot } from "../streams/SyntheticLabelStream";
 import { useFrameOverlaySync } from "../sync/useFrameOverlaySync";
 import { useSyncLighterAnnotation } from "../sync/useSyncLighterAnnotation";

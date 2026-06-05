@@ -23,13 +23,13 @@ import {
 } from "../state/accessors";
 import { useTemporalOverlayVersion } from "../hooks/useTemporalOverlayVersion";
 import { useWarmupThenSeek } from "../hooks/useWarmupThenSeek";
-import { useDuration } from "../../../playback/src/lib/playback/use-playback-state";
-import { usePlaybackStream } from "../../../playback/src/lib/playback/use-playback-stream";
 import {
+  TimelineWithTracks,
   TrackProvider,
   type Track,
-} from "../../../playback/src/lib/tracks/TrackProvider";
-import TimelineWithTracks from "../../../playback/src/views/TimelineWithTracks/TimelineWithTracks";
+  useDuration,
+  usePlaybackStream,
+} from "@fiftyone/playback";
 import {
   useFrameLabelsEditVersion,
   useFrameLabelsStream,

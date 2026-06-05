@@ -3,7 +3,7 @@ import {
   overlayFactory,
   useLighterSetupWithPixi,
 } from "@fiftyone/lighter";
-import { useIsPlaying } from "../../../playback/src/lib/playback/use-playback-state";
+import { useIsPlaying } from "@fiftyone/playback";
 import { useEffect, useRef } from "react";
 import { overlayAdapters } from "../overlayAdapters";
 import type { FrameLabelSnapshot } from "../streams/SyntheticLabelStream";

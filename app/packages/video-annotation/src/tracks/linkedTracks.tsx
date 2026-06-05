@@ -6,7 +6,7 @@ import {
 } from "@fiftyone/lighter";
 import clsx from "clsx";
 import React, { useCallback, useRef } from "react";
-import { type Track } from "../../../playback/src/lib/tracks/TrackProvider";
+import { type Track } from "@fiftyone/playback";
 import {
   useHoveredOverlayIds,
   useLinkedOverlayState,

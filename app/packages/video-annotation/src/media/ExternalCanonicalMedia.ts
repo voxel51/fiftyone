@@ -4,6 +4,9 @@ import type {
   Rect,
   Renderer2D,
 } from "@fiftyone/lighter";
+// Deep import (not the `@fiftyone/lighter` barrel): `ExternalCanonicalMedia`
+// extends `BaseOverlay`, and pulling the base class through the barrel triggers
+// a circular-init failure (the class is `undefined` at `extends` time).
 import { BaseOverlay } from "@fiftyone/lighter/src/overlay/BaseOverlay";
 
 /**

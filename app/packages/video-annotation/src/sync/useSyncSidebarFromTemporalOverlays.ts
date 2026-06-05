@@ -15,8 +15,7 @@ import {
   useLabelsContext,
 } from "../../../core/src/components/Modal/Sidebar/Annotate";
 import useFocus from "../../../core/src/components/Modal/Sidebar/Annotate/useFocus";
-import { frameAt } from "../../../playback/src/lib/playback/utils";
-import { usePlayhead } from "../../../playback/src/lib/playback/use-playback-state";
+import { frameAt, usePlayhead } from "@fiftyone/playback";
 import { useTemporalOverlayVersion } from "../hooks/useTemporalOverlayVersion";
 import { getModalSampleFrameRate } from "../utils/modalSample";
 

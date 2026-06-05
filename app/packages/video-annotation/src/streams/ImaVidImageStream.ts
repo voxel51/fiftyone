@@ -1,12 +1,11 @@
 import { getFetchParameters, type Stage } from "@fiftyone/utilities";
 import { LRUCache } from "lru-cache";
-import { streamValueAtom } from "../../../playback/src/lib/playback/atoms";
-import { PlaybackStreamBase } from "../../../playback/src/lib/playback/stream-base";
-import type {
-  BufferReadiness,
-  PlaybackStore,
-} from "../../../playback/src/lib/playback/types";
-import { frameAt } from "../../../playback/src/lib/playback/utils";
+import {
+  frameAt,
+  PlaybackStreamBase,
+  type BufferReadiness,
+  type PlaybackStore,
+} from "@fiftyone/playback";
 import { mergeRange, toSecondRanges } from "./fetchedRanges";
 import type {
   ChunkDoneMessage,
@@ -261,7 +260,7 @@ export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
    */
   override onCommit(time: number, store: PlaybackStore): void {
     const next = this.getValue(time);
-    const prev = store.get(streamValueAtom(this.id)) as ImaVidImageFrame | null;
+    const prev = this.readPublished(store);
 
     if (prev && next && prev.frameNumber === next.frameNumber) {
       return;
@@ -278,7 +277,7 @@ export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
       this.prefetch([time, time + this.lookaheadSeconds]);
     }
 
-    store.set(streamValueAtom(this.id), next);
+    this.publish(store, next);
   }
 
   bufferedRanges(): Array<[number, number]> {

@@ -8,9 +8,8 @@ import type { ToolbarActionGroup } from "@fiftyone/components";
 import { useModalSample } from "@fiftyone/state";
 import { Icon, IconName, Size } from "@voxel51/voodo";
 import { useMemo } from "react";
-import { frameAt } from "../../../playback/src/lib/playback/utils";
+import { frameAt, usePlayhead } from "@fiftyone/playback";
 import { getModalSampleFrameRate } from "../utils/modalSample";
-import { usePlayhead } from "../../../playback/src/lib/playback/use-playback-state";
 import { useTemporalDetectionFieldPaths } from "../state/accessors";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 import {

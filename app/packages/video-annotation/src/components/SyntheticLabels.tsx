@@ -1,11 +1,13 @@
 import { getLabelColorFromContext } from "@fiftyone/lighter";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { useColorScheme, useColorSeed } from "../state/accessors";
-import { usePlayback } from "../../../playback/src/lib/playback/PlaybackProvider";
-import { useDuration } from "../../../playback/src/lib/playback/use-playback-state";
-import { usePlaybackStream } from "../../../playback/src/lib/playback/use-playback-stream";
-import { TrackProvider } from "../../../playback/src/lib/tracks/TrackProvider";
-import TimelineWithTracks from "../../../playback/src/views/TimelineWithTracks/TimelineWithTracks";
+import {
+  TimelineWithTracks,
+  TrackProvider,
+  useDuration,
+  usePlayback,
+  usePlaybackStream,
+} from "@fiftyone/playback";
 import { LABELS_STREAM_ID } from "../utils/ids";
 import { useLinkedTrackDecorator } from "../tracks/linkedTracks";
 import {

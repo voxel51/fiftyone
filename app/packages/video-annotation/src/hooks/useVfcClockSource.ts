@@ -1,6 +1,5 @@
 import { useEffect, type RefObject } from "react";
-import { usePlayback } from "../../../playback/src/lib/playback/PlaybackProvider";
-import { usePresentedMediaTime } from "../../../playback/src/lib/playback/use-video-stream";
+import { usePlayback, usePresentedMediaTime } from "@fiftyone/playback";
 
 /**
  * Register a `<video>` element's vfc-reported presentation time as

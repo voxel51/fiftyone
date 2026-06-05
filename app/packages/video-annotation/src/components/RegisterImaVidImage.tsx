@@ -1,7 +1,7 @@
 import type { ModalSample } from "@fiftyone/state";
 import type { Stage } from "@fiftyone/utilities";
 import React, { useEffect, useRef } from "react";
-import { usePlaybackStream } from "../../../playback/src/lib/playback/use-playback-stream";
+import { usePlaybackStream } from "@fiftyone/playback";
 import { useWarmupThenSeek } from "../hooks/useWarmupThenSeek";
 import {
   useDatasetName,

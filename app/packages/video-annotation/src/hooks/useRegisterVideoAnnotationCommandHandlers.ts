@@ -31,7 +31,7 @@ import {
   type SyntheticBox,
 } from "@fiftyone/utilities";
 import { createElement, useCallback } from "react";
-import { frameAt } from "../../../playback/src/lib/playback/utils";
+import { frameAt } from "@fiftyone/playback";
 import { PropagationStatusItem } from "../components/PropagationStatusItem";
 import {
   useApplyPropagatedDetection,
