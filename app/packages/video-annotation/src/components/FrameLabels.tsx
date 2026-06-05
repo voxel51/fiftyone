@@ -1,9 +1,7 @@
 import {
   getLabelColorFromContext,
   TemporalOverlay,
-  UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
-  useLighterEventHandler,
 } from "@fiftyone/lighter";
 import type { ModalSample } from "@fiftyone/state";
 import type { Stage } from "@fiftyone/utilities";
@@ -23,6 +21,7 @@ import {
   useModalSampleId,
   useView,
 } from "../state/accessors";
+import { useTemporalOverlayVersion } from "../hooks/useTemporalOverlayVersion";
 import { useWarmupThenSeek } from "../hooks/useWarmupThenSeek";
 import { useDuration } from "../../../playback/src/lib/playback/use-playback-state";
 import { usePlaybackStream } from "../../../playback/src/lib/playback/use-playback-stream";
@@ -51,7 +50,6 @@ import {
   ExtendTrackCommand,
   ShiftTrackCommand,
   TrimTrackCommand,
-  useAnnotationEventHandler,
 } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
 import {
@@ -275,7 +273,10 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   // primes them from the sample on first load and `useTemporalDetectionDeltaSupplier`
   // walks them at autosave time.
   const { scene } = useLighter();
-  const tdVersion = useTemporalDetectionTrackVersion(scene);
+  const tdVersion = useTemporalOverlayVersion(scene, {
+    listenLabelEdit: true,
+    bumpOnSceneReady: true,
+  });
   const frameRate = getModalSampleFrameRate(sample);
 
   const temporalDetectionTracks = useMemo(() => {
@@ -411,66 +412,6 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
     </TrackProvider>
   );
 };
-
-/**
- * A counter that bumps whenever the scene's `TemporalDetection` set could
- * have changed — a TemporalOverlay added / a `td-` overlay removed / a TD
- * label edited — plus a one-shot bump once the scene is available (so TDs
- * `useTemporalOverlaySync` added before our handlers registered are picked
- * up). Used as the TD-track rebuild signal.
- */
-function useTemporalDetectionTrackVersion(
-  scene: ReturnType<typeof useLighter>["scene"]
-): number {
-  const [version, setVersion] = useState(0);
-  const bump = useCallback(() => setVersion((v) => v + 1), []);
-
-  const useLighterEvent = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
-  );
-  useLighterEvent(
-    "lighter:overlay-added",
-    useCallback(
-      (payload) => {
-        if (payload.overlay instanceof TemporalOverlay) {
-          bump();
-        }
-      },
-      [bump]
-    )
-  );
-  useLighterEvent(
-    "lighter:overlay-removed",
-    useCallback(
-      (payload) => {
-        if (payload.id?.startsWith("td-")) {
-          bump();
-        }
-      },
-      [bump]
-    )
-  );
-  useAnnotationEventHandler(
-    "annotation:labelEdit",
-    useCallback(
-      (payload) => {
-        const cls = (payload.label as { _cls?: string } | null)?._cls;
-        if (cls === "TemporalDetection") {
-          bump();
-        }
-      },
-      [bump]
-    )
-  );
-
-  useEffect(() => {
-    if (scene) {
-      bump();
-    }
-  }, [scene, bump]);
-
-  return version;
-}
 
 /**
  * Project a set of scene `TemporalOverlay`s into a sample-shaped dict
