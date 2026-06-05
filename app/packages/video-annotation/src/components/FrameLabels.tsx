@@ -23,7 +23,7 @@ import {
   useModalSampleId,
   useView,
 } from "../state/accessors";
-import { usePlayback } from "../../../playback/src/lib/playback/PlaybackProvider";
+import { useWarmupThenSeek } from "../hooks/useWarmupThenSeek";
 import { useDuration } from "../../../playback/src/lib/playback/use-playback-state";
 import { usePlaybackStream } from "../../../playback/src/lib/playback/use-playback-stream";
 import {
@@ -179,23 +179,9 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
   // through `useFrameLabelsStream()`. The hook handles clear-on-unmount.
   usePublishFrameLabelsStream(streamRef.current);
 
-  // Prefetch the chunk containing t=0 and then seek(0). The engine's
-  // `seek` only commits when every blocking stream is already ready, so
-  // without the warmup the engine queues the seek silently and overlays
-  // stay blank until the user presses play. With it, overlays paint as
-  // soon as the first chunk lands.
-  const { seek } = usePlayback();
-  useEffect(() => {
-    let cancelled = false;
-    void streamRef.current!.warmup(0).then(() => {
-      if (!cancelled) {
-        seek(0);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [seek]);
+  // Prefetch the chunk containing t=0 and seek there, so overlays paint on
+  // first load instead of staying blank until the user presses play.
+  useWarmupThenSeek(streamRef.current);
 
   return <>{children}</>;
 };

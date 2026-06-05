@@ -1,31 +1,10 @@
-import {
-  UNDEFINED_LIGHTER_SCENE_ID,
-  useLighterEventHandler,
-  useLighterSetupWithPixi,
-} from "@fiftyone/lighter";
-import { useModalLookerOptions } from "@fiftyone/state";
 import { useTileSource } from "@fiftyone/tiling";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { singletonCanvas } from "../../../core/src/components/Modal/Lighter/SharedCanvas";
+import React, { useEffect, useRef, useState } from "react";
 import { useStream } from "../../../playback/src/lib/playback/use-stream";
-import { ExternalCanonicalMedia } from "../media/ExternalCanonicalMedia";
-import { useColorScheme, useColorSeed } from "../state/accessors";
-import { IMAVID_STREAM_ID, LABELS_STREAM_ID } from "../utils/ids";
+import { useLighterTileScene } from "../hooks/useLighterTileScene";
+import { useVideoAnnotationSyncBundle } from "../hooks/useVideoAnnotationSyncBundle";
+import { IMAVID_STREAM_ID } from "../utils/ids";
 import type { ImaVidImageFrame } from "../streams/ImaVidImageStream";
-import type { FrameLabelSnapshot } from "../streams/SyntheticLabelStream";
-import { useFrameOverlaySync } from "../sync/useFrameOverlaySync";
-import { useTemporalOverlaySync } from "../sync/useTemporalOverlaySync";
-import { useSyncLighterAnnotation } from "../sync/useSyncLighterAnnotation";
-import { useSyncSidebarFromSnapshot } from "../sync/useSyncSidebarFromSnapshot";
-import { useSyncSidebarFromTemporalOverlays } from "../sync/useSyncSidebarFromTemporalOverlays";
-import { useSyncLighterLabelStream } from "../sync/useSyncLighterLabelStream";
-import { useSyncMediaTransform } from "../sync/useSyncMediaTransform";
 import styles from "./ImaVidLighterTile.module.css";
 
 export interface ImaVidLighterTileProps {
@@ -54,7 +33,6 @@ export const ImaVidLighterTile: React.FC<ImaVidLighterTileProps> = ({
 
   const lighterHostRef = useRef<HTMLDivElement | null>(null);
   const frameCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const [imageDims, setImageDims] = useState<{ w: number; h: number } | null>(
     null
   );
@@ -64,104 +42,24 @@ export const ImaVidLighterTile: React.FC<ImaVidLighterTileProps> = ({
   // frameNumber so this only changes when the frame actually changes.
   const frame = useStream<ImaVidImageFrame>(sourceId);
 
-  // Same singleton-canvas dance as the video tile. There is one
-  // SharedPixiApplication per page bound to the first canvas it ever
-  // sees; creating a fresh canvas here would leave Pixi rendering to
-  // the wrong one.
-  useEffect(() => {
-    const host = lighterHostRef.current;
-    if (!host) {
-      return undefined;
-    }
+  // Scene lifecycle (singleton canvas, pixi setup, color scheme, canonical
+  // media, viewport fit). A once-per-mount scene; `dims` from the decoded
+  // bitmap's intrinsic resolution (discovered in the paint effect below).
+  const { scene, canonicalMediaReady } = useLighterTileScene({
+    hostRef: lighterHostRef,
+    dims: imageDims,
+    sceneIdPrefix: "imavid-anno",
+  });
 
-    setCanvas(singletonCanvas.getCanvas(host));
-
-    return () => {
-      singletonCanvas.detach();
-    };
-  }, []);
-
-  const options = useModalLookerOptions();
-  const sceneId = useMemo(
-    () => `imavid-anno-${Math.random().toString(36).slice(2, 9)}`,
-    []
-  );
-  const { scene } = useLighterSetupWithPixi(canvas!, options, sceneId);
-
-  // FiftyOne color scheme → Lighter coordinator.
-  const scheme = useColorScheme();
-  const seed = useColorSeed();
-  useEffect(() => {
-    if (!scene || scene.getSceneId() !== sceneId) {
-      return;
-    }
-
-    scene.updateColorMappingContext({ colorScheme: scheme, seed });
-  }, [scene, sceneId, scheme, seed]);
-
-  // Canonical-media installation gate — see VideoLighterTile for the
-  // why. Reset on sceneId change; flip true once installed.
-  const [canonicalMediaReady, setCanonicalMediaReady] = useState(false);
-  useEffect(() => {
-    setCanonicalMediaReady(false);
-  }, [sceneId]);
-
-  useEffect(() => {
-    if (!scene || !imageDims) {
-      return;
-    }
-
-    if (scene.getSceneId() !== sceneId) {
-      return;
-    }
-
-    const media = new ExternalCanonicalMedia({
-      width: imageDims.w,
-      height: imageDims.h,
-    });
-
-    scene.addOverlay(media);
-    scene.setCanonicalMedia(media);
-    setCanonicalMediaReady(true);
-  }, [scene, sceneId, imageDims]);
-
-  // Viewport init.
-  const [rendererReady, setRendererReady] = useState(false);
-  const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
-  );
-
-  useEventHandler(
-    "lighter:renderer-ready",
-    useCallback(() => setRendererReady(true), []),
-    { once: true }
-  );
-
-  useEffect(() => {
-    if (!scene || !rendererReady || !imageDims) {
-      return;
-    }
-
-    if (scene.getSceneId() !== sceneId) {
-      return;
-    }
-
-    scene.fitToContent();
-  }, [scene, sceneId, rendererReady, imageDims]);
-
-  // Overlay diff — same hook the video tile uses.
-  const snapshot = useStream<FrameLabelSnapshot>(LABELS_STREAM_ID);
-  useFrameOverlaySync(scene, snapshot, field, canonicalMediaReady);
-  useTemporalOverlaySync(scene, canonicalMediaReady);
-  useSyncSidebarFromSnapshot(scene, snapshot, field, canonicalMediaReady);
-  useSyncSidebarFromTemporalOverlays(scene, canonicalMediaReady);
-
-  useSyncLighterAnnotation(scene);
-  useSyncLighterLabelStream(scene);
-
-  // Keep the frame canvas zoomed/panned with the Lighter viewport so
-  // scroll-zoom scales the picture, not just the overlays.
-  useSyncMediaTransform(scene, frameCanvasRef);
+  // Overlay / sidebar sync. `frameCanvasRef` keeps the frame canvas
+  // zoomed/panned with the Lighter viewport so scroll-zoom scales the
+  // picture, not just the overlays.
+  useVideoAnnotationSyncBundle({
+    scene,
+    field,
+    canonicalMediaReady,
+    mediaRef: frameCanvasRef,
+  });
 
   // Paint the current frame's bitmap into the canvas. Sets the canvas
   // drawing buffer to the bitmap's intrinsic dimensions on first paint

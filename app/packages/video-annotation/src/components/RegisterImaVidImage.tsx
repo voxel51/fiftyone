@@ -1,8 +1,8 @@
 import type { ModalSample } from "@fiftyone/state";
 import type { Stage } from "@fiftyone/utilities";
 import React, { useEffect, useRef } from "react";
-import { usePlayback } from "../../../playback/src/lib/playback/PlaybackProvider";
 import { usePlaybackStream } from "../../../playback/src/lib/playback/use-playback-stream";
+import { useWarmupThenSeek } from "../hooks/useWarmupThenSeek";
 import {
   useDatasetName,
   useGroupSlice,
@@ -158,20 +158,7 @@ const ImaVidImageRegistration: React.FC<ImaVidImageRegistrationProps> = ({
 
   // Pre-warm the first chunk and seek to t=0 so the first paint isn't
   // a blank tile waiting on the network + decode.
-  const { seek } = usePlayback();
-
-  useEffect(() => {
-    let cancelled = false;
-    void streamRef.current!.warmup(0).then(() => {
-      if (!cancelled) {
-        seek(0);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [seek]);
+  useWarmupThenSeek(streamRef.current);
 
   return <>{children}</>;
 };
