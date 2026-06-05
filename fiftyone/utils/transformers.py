@@ -1109,7 +1109,7 @@ class FiftyOneTransformerForPoseEstimationConfig(FiftyOneTransformerConfig):
         self.dataset_index = self.parse_int(d, "dataset_index", default=0)
 
 
-class PoseEstimationGetItem(fout.GetItem):
+class PoseEstimationGetItem(fout.MediaGetItem):
     """A :class:`GetItem` that loads images and bounding boxes to feed to
     :class:`FiftyOneTransformerForPoseEstimation` instances.
 
@@ -1131,11 +1131,7 @@ class PoseEstimationGetItem(fout.GetItem):
         self.use_numpy = use_numpy
 
     def __call__(self, d):
-        img = fout._load_image(
-            d["filepath"],
-            use_numpy=self.use_numpy,
-            force_rgb=True,
-        )
+        img = self._load_media(d)
 
         height, width = _get_image_size(img)
         detections = d["prompt_field"]
@@ -1155,6 +1151,13 @@ class PoseEstimationGetItem(fout.GetItem):
                 "images": img,
                 "boxes": [img_boxes],
             }
+        )
+
+    def _load_media(self, d):
+        return fout._load_image(
+            d["filepath"],
+            use_numpy=self.use_numpy,
+            force_rgb=True,
         )
 
     @property

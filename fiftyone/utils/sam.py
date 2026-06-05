@@ -247,7 +247,7 @@ class SAMPromptMode(Enum):
     box_point_combo = 4
 
 
-class SegmentAnythingImageGetItem(fout.GetItem):
+class SegmentAnythingImageGetItem(fout.MediaGetItem):
     """A :class:`GetItem` that loads images, bounding boxes and/or keypoints to feed to
     :class:`SegmentAnythingModel` instances.
 
@@ -341,11 +341,8 @@ class SegmentAnythingImageGetItem(fout.GetItem):
             the model input
         """
         item_dict = {}
-        img = fout._load_image(
-            d["filepath"],
-            use_numpy=self.use_numpy,
-            force_rgb=True,
-        )
+        img = self._load_media(d)
+
         if self.mode != SAMPromptMode.auto:
             if self.transform is None:
                 raise ValueError(
@@ -361,6 +358,13 @@ class SegmentAnythingImageGetItem(fout.GetItem):
         item_dict.update(prompts)
 
         return item_dict
+
+    def _load_media(self, d):
+        return fout._load_image(
+            d["filepath"],
+            use_numpy=self.use_numpy,
+            force_rgb=True,
+        )
 
     def _preprocess_prompts(self, d, img_hw):
         """Pre-processes prompts for SAM model input.
