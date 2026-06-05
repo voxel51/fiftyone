@@ -9,11 +9,11 @@ import {
   type TemporalOptions,
   useLighterSetupWithPixi,
 } from "@fiftyone/lighter";
-import { activeFields, useModalSample } from "@fiftyone/state";
+import { useModalSample } from "@fiftyone/state";
 import { useEffect, useRef } from "react";
-import { useRecoilValue } from "recoil";
 import { frameAt } from "../../../playback/src/lib/playback/utils";
 import { usePlayhead } from "../../../playback/src/lib/playback/use-playback-state";
+import { useActiveModalPaths } from "../state/accessors";
 import { getModalSampleFrameRate } from "../utils/modalSample";
 
 interface RawTemporalDetection {
@@ -176,9 +176,7 @@ export function useTemporalOverlaySync(
   const overlaysRef = useRef<Map<string, TemporalOverlay>>(new Map());
 
   const sample = useModalSample();
-  const activePathsList = useRecoilValue(
-    activeFields({ modal: true, expanded: false })
-  );
+  const activePathsList = useActiveModalPaths();
 
   // Current playhead frame. fps comes from the sample (same source the TD
   // track build uses). Held in a ref so the sync effect can seed newly-added

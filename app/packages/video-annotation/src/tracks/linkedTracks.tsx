@@ -5,14 +5,13 @@ import {
   useLighterEventHandler,
 } from "@fiftyone/lighter";
 import clsx from "clsx";
-import { useAtomValue } from "jotai";
 import React, { useCallback, useRef } from "react";
 import { type Track } from "../../../playback/src/lib/tracks/TrackProvider";
 import {
-  hoveredOverlayIds,
-  selectedOverlayIds,
+  useHoveredOverlayIds,
   useLinkedOverlayState,
   useScrollTrackOnSelect,
+  useSelectedOverlayIds,
 } from "../hooks/useLinkedOverlayState";
 import styles from "../components/VideoAnnotationSurface.module.css";
 
@@ -45,8 +44,8 @@ export function useLinkedTrackDecorator(): (track: Track) => Partial<{
   onMouseLeave: () => void;
   onTrackClick: () => void;
 }> {
-  const hovered = useAtomValue(hoveredOverlayIds);
-  const selected = useAtomValue(selectedOverlayIds);
+  const hovered = useHoveredOverlayIds();
+  const selected = useSelectedOverlayIds();
   const { scene } = useLighter();
   const eventBus = useLighterEventBus(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID

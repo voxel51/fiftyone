@@ -3,7 +3,7 @@ import {
   useLighterEventHandler,
   useLighterSetupWithPixi,
 } from "@fiftyone/lighter";
-import { colorScheme, colorSeed, useModalLookerOptions } from "@fiftyone/state";
+import { useModalLookerOptions } from "@fiftyone/state";
 import { useTileSource } from "@fiftyone/tiling";
 import React, {
   useCallback,
@@ -12,10 +12,10 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useRecoilValue } from "recoil";
 import { singletonCanvas } from "../../../core/src/components/Modal/Lighter/SharedCanvas";
 import { useStream } from "../../../playback/src/lib/playback/use-stream";
 import { ExternalCanonicalMedia } from "../media/ExternalCanonicalMedia";
+import { useColorScheme, useColorSeed } from "../state/accessors";
 import { IMAVID_STREAM_ID, LABELS_STREAM_ID } from "../utils/ids";
 import type { ImaVidImageFrame } from "../streams/ImaVidImageStream";
 import type { FrameLabelSnapshot } from "../streams/SyntheticLabelStream";
@@ -89,8 +89,8 @@ export const ImaVidLighterTile: React.FC<ImaVidLighterTileProps> = ({
   const { scene } = useLighterSetupWithPixi(canvas!, options, sceneId);
 
   // FiftyOne color scheme → Lighter coordinator.
-  const scheme = useRecoilValue(colorScheme);
-  const seed = useRecoilValue(colorSeed);
+  const scheme = useColorScheme();
+  const seed = useColorSeed();
   useEffect(() => {
     if (!scene || scene.getSceneId() !== sceneId) {
       return;

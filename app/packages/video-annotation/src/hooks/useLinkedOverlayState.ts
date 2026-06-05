@@ -5,7 +5,7 @@ import {
   useLighterEventBus,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import { atom, useStore } from "jotai";
+import { atom, useAtomValue, useStore } from "jotai";
 import { useCallback } from "react";
 import { editing } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit";
 
@@ -16,7 +16,7 @@ import { editing } from "../../../core/src/components/Modal/Sidebar/Annotate/Edi
  * `:overlay-all-unhover`) plus programmatic sidebar-row hover
  * (`annotation:sidebarLabelHover` / `:sidebarLabelUnhover`).
  */
-export const hoveredOverlayIds = atom<Set<string>>(new Set<string>());
+const hoveredOverlayIds = atom<Set<string>>(new Set<string>());
 
 /**
  * IDs the user has *intentionally* selected. Mirrors the scene's
@@ -28,7 +28,13 @@ export const hoveredOverlayIds = atom<Set<string>>(new Set<string>());
  * set by `SelectionManager.removeSelectable`, which we treat as "the
  * overlay went away, not a user action".
  */
-export const selectedOverlayIds = atom<Set<string>>(new Set<string>());
+const selectedOverlayIds = atom<Set<string>>(new Set<string>());
+
+/** Reads the union of hovered overlay ids (canvas + sidebar). */
+export const useHoveredOverlayIds = () => useAtomValue(hoveredOverlayIds);
+
+/** Reads the user-intent selection set (removal-driven deselects filtered). */
+export const useSelectedOverlayIds = () => useAtomValue(selectedOverlayIds);
 
 /**
  * Link hover and selection states between overlays and object tracks.

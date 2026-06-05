@@ -5,14 +5,6 @@ import {
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import {
-  colorScheme,
-  colorSeed,
-  datasetName,
-  groupSlice,
-  modalSampleId,
-  view as viewAtom,
-} from "@fiftyone/state";
 import type { ModalSample } from "@fiftyone/state";
 import type { Stage } from "@fiftyone/utilities";
 import { useActiveDetectionField } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useDetectionMode";
@@ -23,7 +15,14 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useRecoilValue } from "recoil";
+import {
+  useColorScheme,
+  useColorSeed,
+  useDatasetName,
+  useGroupSlice,
+  useModalSampleId,
+  useView,
+} from "../state/accessors";
 import { usePlayback } from "../../../playback/src/lib/playback/PlaybackProvider";
 import { useDuration } from "../../../playback/src/lib/playback/use-playback-state";
 import { usePlaybackStream } from "../../../playback/src/lib/playback/use-playback-stream";
@@ -92,10 +91,10 @@ export const RegisterFrameLabels: React.FC<{
   children: React.ReactNode;
 }> = ({ sample, children }) => {
   const duration = useDuration();
-  const dataset = useRecoilValue(datasetName);
-  const view = (useRecoilValue(viewAtom) ?? []) as Stage[];
-  const slice = useRecoilValue(groupSlice);
-  const sampleId = useRecoilValue(modalSampleId);
+  const dataset = useDatasetName();
+  const view = useView();
+  const slice = useGroupSlice();
+  const sampleId = useModalSampleId();
   // Active detection field is the source of truth for which per-frame
   // list this stream reads from and which list new edits patch into.
   // Defaults to `frames.detections` while the schema is still resolving
@@ -225,8 +224,8 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
 }) => {
   const stream = useFrameLabelsStream();
   const editVersion = useFrameLabelsEditVersion();
-  const scheme = useRecoilValue(colorScheme);
-  const seed = useRecoilValue(colorSeed);
+  const scheme = useColorScheme();
+  const seed = useColorSeed();
   const activeField = useActiveDetectionField() ?? DEFAULT_FRAME_FIELD;
 
   // useState so we can re-render once warmupAll resolves, but keep the

@@ -1,15 +1,14 @@
 import type { ModalSample } from "@fiftyone/state";
-import {
-  datasetName,
-  groupSlice,
-  modalSampleId,
-  view as viewAtom,
-} from "@fiftyone/state";
 import type { Stage } from "@fiftyone/utilities";
 import React, { useEffect, useRef } from "react";
-import { useRecoilValue } from "recoil";
 import { usePlayback } from "../../../playback/src/lib/playback/PlaybackProvider";
 import { usePlaybackStream } from "../../../playback/src/lib/playback/use-playback-stream";
+import {
+  useDatasetName,
+  useGroupSlice,
+  useModalSampleId,
+  useView,
+} from "../state/accessors";
 import { IMAVID_STREAM_ID } from "../utils/ids";
 import { getModalSampleFrameRate } from "../utils/modalSample";
 import { ImaVidImageStream } from "../streams/ImaVidImageStream";
@@ -37,10 +36,10 @@ export const RegisterImaVidImage: React.FC<{
   sample: ModalSample;
   children: React.ReactNode;
 }> = ({ sample, children }) => {
-  const dataset = useRecoilValue(datasetName);
-  const view = (useRecoilValue(viewAtom) ?? []) as Stage[];
-  const slice = useRecoilValue(groupSlice);
-  const sampleId = useRecoilValue(modalSampleId);
+  const dataset = useDatasetName();
+  const view = useView();
+  const slice = useGroupSlice();
+  const sampleId = useModalSampleId();
 
   const frameRate = getModalSampleFrameRate(sample);
   if (frameRate === undefined) {

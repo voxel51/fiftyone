@@ -1,7 +1,6 @@
 import { getLabelColorFromContext } from "@fiftyone/lighter";
-import { colorScheme, colorSeed } from "@fiftyone/state";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { useColorScheme, useColorSeed } from "../state/accessors";
 import { usePlayback } from "../../../playback/src/lib/playback/PlaybackProvider";
 import { useDuration } from "../../../playback/src/lib/playback/use-playback-state";
 import { usePlaybackStream } from "../../../playback/src/lib/playback/use-playback-stream";
@@ -64,8 +63,8 @@ export const RegisterSyntheticLabels: React.FC = () => {
  */
 export const SyntheticTrackTimeline: React.FC = () => {
   const duration = useDuration();
-  const scheme = useRecoilValue(colorScheme);
-  const seed = useRecoilValue(colorSeed);
+  const scheme = useColorScheme();
+  const seed = useColorSeed();
 
   const resolveColor = useCallback(
     (label: SyntheticActorLabel) =>

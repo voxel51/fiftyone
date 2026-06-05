@@ -4,7 +4,8 @@ import {
   useLighterSetupWithPixi,
 } from "@fiftyone/lighter";
 import { ExternalCanonicalMedia } from "../media/ExternalCanonicalMedia";
-import { colorScheme, colorSeed, useModalLookerOptions } from "@fiftyone/state";
+import { useModalLookerOptions } from "@fiftyone/state";
+import { useColorScheme, useColorSeed } from "../state/accessors";
 import { singletonCanvas } from "../../../core/src/components/Modal/Lighter/SharedCanvas";
 import { usePlayback } from "../../../playback/src/lib/playback/PlaybackProvider";
 import { useStream } from "../../../playback/src/lib/playback/use-stream";
@@ -19,7 +20,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useRecoilValue } from "recoil";
 import { LABELS_STREAM_ID, VIDEO_STREAM_ID } from "../utils/ids";
 import type { FrameLabelSnapshot } from "../streams/SyntheticLabelStream";
 import { useFrameOverlaySync } from "../sync/useFrameOverlaySync";
@@ -105,8 +105,8 @@ export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
   const { scene } = useLighterSetupWithPixi(canvas!, options, sceneId);
 
   // Wire the FiftyOne color scheme so overlays match the rest of the UI.
-  const scheme = useRecoilValue(colorScheme);
-  const seed = useRecoilValue(colorSeed);
+  const scheme = useColorScheme();
+  const seed = useColorSeed();
   useEffect(() => {
     if (!scene || scene.getSceneId() !== sceneId) {
       return;

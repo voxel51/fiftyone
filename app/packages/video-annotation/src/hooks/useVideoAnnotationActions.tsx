@@ -5,24 +5,19 @@ import {
 } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
 import type { ToolbarActionGroup } from "@fiftyone/components";
-import { fieldPaths, useModalSample } from "@fiftyone/state";
-import {
-  EMBEDDED_DOCUMENT_FIELD,
-  TEMPORAL_DETECTIONS_FIELD,
-} from "@fiftyone/utilities";
+import { useModalSample } from "@fiftyone/state";
 import { Icon, IconName, Size } from "@voxel51/voodo";
-import { useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
 import { frameAt } from "../../../playback/src/lib/playback/utils";
 import { getModalSampleFrameRate } from "../utils/modalSample";
 import { usePlayhead } from "../../../playback/src/lib/playback/use-playback-state";
+import { useTemporalDetectionFieldPaths } from "../state/accessors";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 import {
   resolvePropagationTarget,
   type PropagationTarget,
 } from "../propagation/propagationTarget";
-import { selectedOverlayIds } from "./useLinkedOverlayState";
+import { useSelectedOverlayIds } from "./useLinkedOverlayState";
 
 /**
  * Builds the data-driven config for the video annotation toolbar, mirroring
@@ -42,16 +37,11 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
   const bus = useCommandBus();
   const stream = useFrameLabelsStream();
   const playhead = usePlayhead();
-  const selected = useAtomValue(selectedOverlayIds);
+  const selected = useSelectedOverlayIds();
   const modalSample = useModalSample();
 
   // Resolve from the dataset schema
-  const tdFieldPaths = useRecoilValue(
-    fieldPaths({
-      ftype: EMBEDDED_DOCUMENT_FIELD,
-      embeddedDocType: TEMPORAL_DETECTIONS_FIELD,
-    })
-  );
+  const tdFieldPaths = useTemporalDetectionFieldPaths();
 
   const tdFieldPath = useMemo(
     // Sample-level only — temporal detections are video-level; the create

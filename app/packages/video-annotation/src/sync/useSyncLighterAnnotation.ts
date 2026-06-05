@@ -12,13 +12,12 @@ import {
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import { useAtomValue } from "jotai";
 import { useCallback } from "react";
 import { useLabelsContext } from "../../../core/src/components/Modal/Sidebar/Annotate";
 import useFocus from "../../../core/src/components/Modal/Sidebar/Annotate/useFocus";
 import { useDetectionMode } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useDetectionMode";
 import useExit from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useExit";
-import { currentOverlay } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/state";
+import { useCurrentEditingOverlay } from "../state/accessors";
 
 /**
  * Bridges Lighter overlay events into the annotation systems for the video
@@ -58,7 +57,7 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
   const detectionMode = useDetectionMode();
   const focus = useFocus();
   const exit = useExit();
-  const editingOverlay = useAtomValue(currentOverlay);
+  const editingOverlay = useCurrentEditingOverlay();
 
   useEventHandler(
     "lighter:overlay-create",
