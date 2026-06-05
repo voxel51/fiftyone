@@ -28,7 +28,7 @@ describe("VideoFrameLabelsStream fetched-empty", () => {
 
   it("getValue returns an empty snapshot for frames in a fetched range with no cached doc", () => {
     const stream = buildStream();
-    // @ts-expect-error
+    // @ts-expect-error - poke the private fetchedRanges to set up the test
     stream.fetchedRanges.push([1, 60]);
     expect(stream.getValue(timeOfFrame(10, 30))).toEqual({
       frameNumber: 10,

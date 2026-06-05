@@ -71,7 +71,7 @@ export const ImaVidLighterTile: React.FC<ImaVidLighterTileProps> = ({
   useEffect(() => {
     const host = lighterHostRef.current;
     if (!host) {
-      return;
+      return undefined;
     }
 
     setCanvas(singletonCanvas.getCanvas(host));

@@ -8,7 +8,11 @@ import {
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import { type AnnotationLabelData, useModalSample } from "@fiftyone/state";
+import {
+  type AnnotationLabel,
+  type AnnotationLabelData,
+  useModalSample,
+} from "@fiftyone/state";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   useGetSidebarLabels,
@@ -17,6 +21,7 @@ import {
 import useFocus from "../../../core/src/components/Modal/Sidebar/Annotate/useFocus";
 import { frameAt } from "../../../playback/src/lib/playback/utils";
 import { usePlayhead } from "../../../playback/src/lib/playback/use-playback-state";
+import { getModalSampleFrameRate } from "../utils/modalSample";
 
 const TEMPORAL_DETECTION = "TemporalDetection" as const;
 
@@ -54,7 +59,7 @@ export const useSyncSidebarFromTemporalOverlays = (
   selectOverlayRef.current = focus.selectOverlay;
 
   const sample = useModalSample();
-  const frameRate = sample?.frameRate;
+  const frameRate = getModalSampleFrameRate(sample);
   const playheadSec = usePlayhead();
   // Same frame mapping the TemporalOverlay time-gate uses.
   const frame =
@@ -114,7 +119,7 @@ export const useSyncSidebarFromTemporalOverlays = (
         overlay,
         path: overlay.field,
         type: TEMPORAL_DETECTION,
-      });
+      } as AnnotationLabel);
 
       if (scene.isOverlaySelected(overlay.id)) {
         newlyAddedSelected.push(overlay.id);

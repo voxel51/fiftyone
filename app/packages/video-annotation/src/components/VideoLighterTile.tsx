@@ -81,7 +81,7 @@ export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
   useEffect(() => {
     const host = lighterHostRef.current;
     if (!host) {
-      return;
+      return undefined;
     }
 
     setCanvas(singletonCanvas.getCanvas(host));
@@ -94,8 +94,12 @@ export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
   // Modal options so activePaths / showOverlays / alpha match the
   // sidebar and overlays.
   const options = useModalLookerOptions();
+  // Mint a fresh scene id whenever the source video changes, so a new
+  // source gets its own Lighter scene. `videoSrc` isn't read in the body —
+  // it's the intended recompute trigger.
   const sceneId = useMemo(
     () => `video-anno-${Math.random().toString(36).slice(2, 9)}`,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [videoSrc]
   );
   const { scene } = useLighterSetupWithPixi(canvas!, options, sceneId);

@@ -15,9 +15,13 @@ import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { frameAt } from "../../../playback/src/lib/playback/utils";
+import { getModalSampleFrameRate } from "../utils/modalSample";
 import { usePlayhead } from "../../../playback/src/lib/playback/use-playback-state";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
-import { resolvePropagationTarget } from "../propagation/propagationTarget";
+import {
+  resolvePropagationTarget,
+  type PropagationTarget,
+} from "../propagation/propagationTarget";
 import { selectedOverlayIds } from "./useLinkedOverlayState";
 
 /**
@@ -55,7 +59,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
     () => tdFieldPaths.find((p) => !p.startsWith("frames.")) ?? null,
     [tdFieldPaths]
   );
-  const fps = modalSample?.frameRate;
+  const fps = getModalSampleFrameRate(modalSample);
   const canCreateTd =
     !!tdFieldPath && Number.isFinite(fps) && fps !== undefined && fps > 0;
 
@@ -68,12 +72,18 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
   // affordance reflects the current frame's bracketing keyframes. When
   // disabled, `reason` becomes the tooltip — the "why can't I propagate?"
   // diagnostic.
-  const target = useMemo(() => {
+  const target = useMemo<PropagationTarget>(() => {
     if (!stream) {
-      return { ok: false as const, reason: "No active video stream." };
+      return { ok: false, reason: "No active video stream." };
     }
     return resolvePropagationTarget(stream, selectedIds, playhead);
   }, [stream, selectedIds, playhead]);
+
+  // When propagation can't run, `reason` is the disabled-tooltip diagnostic.
+  const propagateTooltip =
+    target.ok === false
+      ? target.reason
+      : `Track frames ${target.fromFrame}–${target.toFrame} with SAM2`;
 
   return useMemo<ToolbarActionGroup[]>(
     () => [
@@ -120,9 +130,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             id: "propagate-sam2",
             label: "Track (SAM2)",
             icon: <Icon name={IconName.AI} size={Size.Sm} />,
-            tooltip: target.ok
-              ? `Track frames ${target.fromFrame}–${target.toFrame} with SAM2`
-              : target.reason,
+            tooltip: propagateTooltip,
             isDisabled: !target.ok,
             onClick: () => {
               if (!target.ok) {
@@ -148,6 +156,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
       fps,
       hasSelection,
       playhead,
+      propagateTooltip,
       selectedIds,
       target,
       tdFieldPath,

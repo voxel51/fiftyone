@@ -1,4 +1,4 @@
-import { atom, useAtomValue, useSetAtom } from "jotai";
+import { atom, type PrimitiveAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 import type { VideoFrameLabelsStream } from "./VideoFrameLabelsStream";
 
@@ -11,7 +11,9 @@ import type { VideoFrameLabelsStream } from "./VideoFrameLabelsStream";
  * available yet — consumers should treat that as "no data available; render
  * placeholder."
  */
-const frameLabelsStreamAtom = atom<VideoFrameLabelsStream | null>(null);
+const frameLabelsStreamAtom = atom<VideoFrameLabelsStream | null>(
+  null
+) as PrimitiveAtom<VideoFrameLabelsStream | null>;
 
 export function useFrameLabelsStream(): VideoFrameLabelsStream | null {
   return useAtomValue(frameLabelsStreamAtom);

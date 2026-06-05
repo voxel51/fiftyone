@@ -11,6 +11,7 @@ import {
 import React, { useMemo } from "react";
 import styles from "./VideoAnnotationTopBar.module.css";
 import { useVideoAnnotationStatusContent } from "../state/videoAnnotationStatus";
+import { getModalSampleFrameRate } from "../utils/modalSample";
 
 /**
  * Media facts shown at the top-left of the bar. Resolution and codec are
@@ -53,7 +54,7 @@ const useMediaInfo = (sample: ModalSample): MediaInfo => {
 
     const width = finitePositive(metadata?.frame_width);
     const height = finitePositive(metadata?.frame_height);
-    const fps = finitePositive(sample.frameRate);
+    const fps = finitePositive(getModalSampleFrameRate(sample));
     const codec =
       typeof metadata?.encoding_str === "string" && metadata.encoding_str
         ? metadata.encoding_str

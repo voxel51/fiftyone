@@ -14,6 +14,7 @@ import { useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { frameAt } from "../../../playback/src/lib/playback/utils";
 import { usePlayhead } from "../../../playback/src/lib/playback/use-playback-state";
+import { getModalSampleFrameRate } from "../utils/modalSample";
 
 interface RawTemporalDetection {
   _id?: string;
@@ -183,7 +184,7 @@ export function useTemporalOverlaySync(
   // track build uses). Held in a ref so the sync effect can seed newly-added
   // overlays without re-running on every playhead tick.
   const playheadSec = usePlayhead();
-  const frameRate = sample?.frameRate;
+  const frameRate = getModalSampleFrameRate(sample);
   const currentFrame =
     frameRate && Number.isFinite(frameRate) && frameRate > 0
       ? frameAt(playheadSec, frameRate)
@@ -236,6 +237,9 @@ export function useTemporalOverlaySync(
         return;
       }
 
+      // Read the live tracked overlays at teardown — we remove whatever is
+      // currently tracked, not the set captured when the effect ran.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       for (const id of overlaysRef.current.keys()) {
         scene.removeOverlay(id);
       }

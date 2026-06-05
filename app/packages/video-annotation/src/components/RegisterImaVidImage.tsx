@@ -11,6 +11,7 @@ import { useRecoilValue } from "recoil";
 import { usePlayback } from "../../../playback/src/lib/playback/PlaybackProvider";
 import { usePlaybackStream } from "../../../playback/src/lib/playback/use-playback-stream";
 import { IMAVID_STREAM_ID } from "../utils/ids";
+import { getModalSampleFrameRate } from "../utils/modalSample";
 import { ImaVidImageStream } from "../streams/ImaVidImageStream";
 import { usePublishImaVidImageStream } from "../streams/imaVidImageStreamHandle";
 
@@ -37,12 +38,12 @@ export const RegisterImaVidImage: React.FC<{
   children: React.ReactNode;
 }> = ({ sample, children }) => {
   const dataset = useRecoilValue(datasetName);
-  const view = useRecoilValue(viewAtom);
+  const view = (useRecoilValue(viewAtom) ?? []) as Stage[];
   const slice = useRecoilValue(groupSlice);
   const sampleId = useRecoilValue(modalSampleId);
 
-  const frameRate = sample.frameRate;
-  if (frameRate === undefined || frameRate === null) {
+  const frameRate = getModalSampleFrameRate(sample);
+  if (frameRate === undefined) {
     throw new Error(
       "ImaVid playback requires VideoMetadata.frame_rate to be set on the sample"
     );
@@ -69,7 +70,7 @@ export const RegisterImaVidImage: React.FC<{
       key={key}
       sampleId={sampleId}
       dataset={dataset}
-      view={view ?? []}
+      view={view}
       groupSlice={slice ?? null}
       frameCount={frameCount}
       frameRate={frameRate}

@@ -2,9 +2,9 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { type DetectionLabel, DetectionOverlay } from "@fiftyone/lighter";
+import { DetectionOverlay } from "@fiftyone/lighter";
 import type { SyntheticBox } from "../streams/SyntheticLabelStream";
-import type { OverlayAdapter } from "./types";
+import type { OverlayAdapter, VideoDetectionLabel } from "./types";
 
 /**
  * {@link OverlayAdapter} for FiftyOne `Detection` labels (axis-aligned
@@ -54,18 +54,18 @@ function toRect(bbox: SyntheticBox["bounding_box"]): {
 }
 
 /**
- * Project a {@link SyntheticBox} onto a {@link DetectionLabel} for the
+ * Project a {@link SyntheticBox} onto a {@link VideoDetectionLabel} for the
  * overlay's `label` field. `index` and `instance` are preserved
  * verbatim — `COLOR_BY.INSTANCE` hashes on them, and without them
  * every detection of the same class collapses to a single color in
  * instance-color mode.
  */
-export function toDetectionLabel(box: SyntheticBox): DetectionLabel {
+export function toDetectionLabel(box: SyntheticBox): VideoDetectionLabel {
   return {
     _id: box._id,
     label: box.label,
     bounding_box: box.bounding_box,
     index: box.index,
     instance: box.instance,
-  } as DetectionLabel;
+  };
 }

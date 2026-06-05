@@ -1,4 +1,4 @@
-import { atom, useAtomValue, useSetAtom } from "jotai";
+import { atom, type PrimitiveAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect } from "react";
 import type { ImaVidImageStream } from "./ImaVidImageStream";
 
@@ -13,7 +13,9 @@ import type { ImaVidImageStream } from "./ImaVidImageStream";
  * values; `null` until the imavid registrar mounts (e.g. the native-video
  * surface, which has no image stream).
  */
-const imaVidImageStreamAtom = atom<ImaVidImageStream | null>(null);
+const imaVidImageStreamAtom = atom<ImaVidImageStream | null>(
+  null
+) as PrimitiveAtom<ImaVidImageStream | null>;
 
 export function useImaVidImageStream(): ImaVidImageStream | null {
   return useAtomValue(imaVidImageStreamAtom);

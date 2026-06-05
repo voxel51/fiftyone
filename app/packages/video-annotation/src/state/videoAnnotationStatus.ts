@@ -11,8 +11,9 @@ export type VideoAnnotationStatusContent = ReactElement | null;
  * modal-default jotai store — see the "No TilingProvider" note in
  * {@link VideoAnnotationSurface}.
  */
-const statusContentAtom: PrimitiveAtom<VideoAnnotationStatusContent> =
-  atom<VideoAnnotationStatusContent>(null);
+const statusContentAtom = atom<VideoAnnotationStatusContent>(
+  null
+) as PrimitiveAtom<VideoAnnotationStatusContent>;
 
 /**
  * Programmatic control over the top bar's status slot. Call

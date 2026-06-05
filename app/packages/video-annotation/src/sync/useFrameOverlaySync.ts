@@ -105,6 +105,9 @@ export function useFrameOverlaySync(
         return;
       }
 
+      // Read the live tracked set at teardown — we remove whatever is
+      // currently tracked, not the set captured when the effect ran.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       for (const id of trackedRef.current) {
         // Scene teardown / unmount — a lifecycle removal, never a user
         // delete.

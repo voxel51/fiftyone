@@ -16,12 +16,12 @@ import {
   UpdateLabelCommand,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import type { DetectionLabel } from "@fiftyone/looker";
 import { type AnnotationLabelData } from "@fiftyone/state";
 import { objectId } from "@fiftyone/utilities";
 import { type MutableRefObject, useCallback, useRef } from "react";
 import { useLabelsContext } from "../../../core/src/components/Modal/Sidebar/Annotate";
 import { useCurrentTime } from "../../../playback/src/lib/playback/use-playback-state";
+import type { VideoDetectionLabel } from "../overlayAdapters/types";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 import type { LocalDetection } from "../streams/VideoFrameLabelsStream";
 
@@ -464,7 +464,11 @@ function useSidebarValueSync({
  */
 function toLocalDetection(overlay: DetectionOverlay): LocalDetection {
   const bounds = overlay.relativeBounds;
-  const label = overlay.label as DetectionLabel;
+  // The overlay was built from a raw `/frames` detection doc, so its label
+  // carries the persisted `_id` lighter's `DetectionLabel` type omits — read
+  // it as the {@link VideoDetectionLabel} the adapter actually produces. A
+  // freshly-drawn overlay has no `_id` yet (hence the `?? overlay.id` below).
+  const label = overlay.label as VideoDetectionLabel;
   // Prefer the real MongoDB `_id` from the underlying label so cache
   // upserts match the existing baseline entry. `overlay.id` is the
   // synthetic `track-<n>` id used for cross-frame identity and won't

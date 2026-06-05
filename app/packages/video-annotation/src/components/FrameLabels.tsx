@@ -42,6 +42,7 @@ import {
   type PerInstanceLabel,
 } from "../tracks/frameTracks";
 import { LABELS_STREAM_ID } from "../utils/ids";
+import { getModalSampleFrameRate } from "../utils/modalSample";
 import { resolveTrackExtentEdit } from "../tracks/trackExtentEdit";
 import { useLinkedTrackDecorator } from "../tracks/linkedTracks";
 import {
@@ -92,7 +93,7 @@ export const RegisterFrameLabels: React.FC<{
 }> = ({ sample, children }) => {
   const duration = useDuration();
   const dataset = useRecoilValue(datasetName);
-  const view = useRecoilValue(viewAtom);
+  const view = (useRecoilValue(viewAtom) ?? []) as Stage[];
   const slice = useRecoilValue(groupSlice);
   const sampleId = useRecoilValue(modalSampleId);
   // Active detection field is the source of truth for which per-frame
@@ -102,9 +103,13 @@ export const RegisterFrameLabels: React.FC<{
   // render.
   const activeField = useActiveDetectionField() ?? DEFAULT_FRAME_FIELD;
 
-  const frameRate = sample.frameRate;
+  const frameRate = getModalSampleFrameRate(sample);
   const ready =
-    duration > 0 && !!sampleId && !!dataset && Number.isFinite(frameRate);
+    duration > 0 &&
+    !!sampleId &&
+    !!dataset &&
+    frameRate !== undefined &&
+    Number.isFinite(frameRate);
 
   if (!ready) {
     // Stream params aren't all available yet; consumers read the atom and
@@ -127,7 +132,7 @@ export const RegisterFrameLabels: React.FC<{
       key={key}
       sampleId={sampleId}
       dataset={dataset}
-      view={view ?? []}
+      view={view}
       groupSlice={slice ?? null}
       frameCount={frameCount}
       frameRate={frameRate}
@@ -258,7 +263,7 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
     if (!stream) {
       setFrameTracks([]);
       setFrameTracksResolved(false);
-      return;
+      return undefined;
     }
 
     let cancelled = false;
@@ -286,14 +291,18 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   // walks them at autosave time.
   const { scene } = useLighter();
   const tdVersion = useTemporalDetectionTrackVersion(scene);
+  const frameRate = getModalSampleFrameRate(sample);
 
   const temporalDetectionTracks = useMemo(() => {
     if (!scene) {
       return [];
     }
 
-    const fps = sample?.frameRate;
-    if (!Number.isFinite(fps) || fps <= 0) {
+    if (
+      frameRate === undefined ||
+      !Number.isFinite(frameRate) ||
+      frameRate <= 0
+    ) {
       return [];
     }
 
@@ -303,11 +312,11 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
 
     return buildTemporalDetectionTracks({
       sample: buildVirtualTemporalSample(temporalOverlays),
-      fps,
+      fps: frameRate,
       resolveColor: resolveTemporalDetectionColor,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- tdVersion is the invalidation signal
-  }, [scene, sample?.frameRate, resolveTemporalDetectionColor, tdVersion]);
+  }, [scene, frameRate, resolveTemporalDetectionColor, tdVersion]);
 
   const tracks = useMemo(
     () => [...frameTracks, ...temporalDetectionTracks],
@@ -320,7 +329,7 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   // frame tracks would arrive unpinned.
   const ready = frameTracksResolved;
   const linkDecorate = useLinkedTrackDecorator();
-  const fps = sample?.frameRate;
+  const fps = getModalSampleFrameRate(sample);
   const snapStepSec =
     Number.isFinite(fps) && fps && fps > 0 ? 1 / fps : undefined;
 
