@@ -1,5 +1,5 @@
 import type { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
-import type { PropagationBlob, SyntheticBox } from "@fiftyone/video-annotation";
+import type { PropagationBlob, SyntheticBox } from "@fiftyone/utilities";
 
 import {
   ClassificationsParent,

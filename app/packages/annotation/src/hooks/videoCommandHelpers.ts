@@ -1,8 +1,8 @@
 import {
   type LocalDetection,
+  objectId,
   type SyntheticBox,
-} from "@fiftyone/video-annotation";
-import { objectId } from "@fiftyone/utilities";
+} from "@fiftyone/utilities";
 
 /** Minimal stream shape the frame reader needs — a per-time snapshot getter. */
 interface FrameSnapshotSource {

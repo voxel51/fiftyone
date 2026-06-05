@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { RawDetectionsField } from "@fiftyone/video-annotation";
+import type { RawDetectionsField } from "@fiftyone/utilities";
 import { buildDetectionsDelta } from "./useVideoLabelsDeltaSupplier";
 
 const PREFIX = "/frames/5/gt";

@@ -1,60 +1,15 @@
+import type { FrameLabelSnapshot, SyntheticBox } from "@fiftyone/utilities";
 import { PlaybackStreamBase } from "../../../playback/src/lib/playback/stream-base";
 
-/** ObjectId hex string. */
-export type ObjectIdHex = string;
-
-export type PropagationMethod = "linear" | "sam2";
-
-/** Provenance written on labels created by a propagation run. */
-export interface PropagationBlob {
-  method: PropagationMethod;
-  run_id: ObjectIdHex;
-  /**
-   * Source keyframes' `_id`s. Two for a bracketed run (linear interp,
-   * or SAM2 between two keyframes); one for a SAM2 forward run that tracks
-   * from a single seed keyframe to the end of the clip.
-   */
-  parent_keyframes: [ObjectIdHex, ...ObjectIdHex[]];
-}
-
-export interface SyntheticBox {
-  id: string;
-  /**
-   * Real MongoDB `_id` of the source detection when one exists. The
-   * overlay-facing {@link id} is synthesized from the track index for
-   * tracked detections (so cross-frame identity for color/highlight
-   * matches the timeline track), but persistence needs the original
-   * `_id` to upsert the right element in the baseline detections list.
-   * Undefined for freshly-drawn boxes that haven't been persisted yet.
-   */
-  _id?: string;
-  label: string;
-  /** Normalized [x, y, w, h] in [0, 1]. */
-  bounding_box: [number, number, number, number];
-  /**
-   * FiftyOne track index, when present. Carried so downstream color-
-   * mapping can use `COLOR_BY.INSTANCE`'s `${label}-${index}-...` hash
-   * (otherwise instance mode would collapse tracked detections of the
-   * same class to one color).
-   */
-  index?: number;
-  /**
-   * Mirrors {@link BaseLabel.instance} from `@fiftyone/looker`. Used as
-   * the fallback `COLOR_BY.INSTANCE` hash seed for untracked detections,
-   * and as a stable instance id for the synthetic stream (which has no
-   * numeric index).
-   */
-  instance?: { _cls: "Instance"; _id?: string };
-  /** `true` for user-authored / propagation source; `false` for interpolated. */
-  keyframe: boolean;
-  /** Provenance for propagation-created labels; `null` for keyframes. */
-  propagation: PropagationBlob | null;
-}
-
-export interface FrameLabelSnapshot {
-  frameNumber: number;
-  detections: SyntheticBox[];
-}
+// These label leaf types now live in `@fiftyone/utilities` (below both
+// annotation packages). Re-exported here for back-compat with the package
+// barrel.
+export type {
+  FrameLabelSnapshot,
+  PropagationBlob,
+  PropagationMethod,
+  SyntheticBox,
+} from "@fiftyone/utilities";
 
 export interface SyntheticActor {
   id: string;

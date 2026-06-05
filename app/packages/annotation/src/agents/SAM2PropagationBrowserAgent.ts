@@ -1,5 +1,4 @@
-import { objectId } from "@fiftyone/utilities";
-import type { SyntheticBox } from "@fiftyone/video-annotation";
+import { objectId, type SyntheticBox } from "@fiftyone/utilities";
 import {
   BrowserAnnotationProvider,
   type BrowserAnnotationProviderOptions,

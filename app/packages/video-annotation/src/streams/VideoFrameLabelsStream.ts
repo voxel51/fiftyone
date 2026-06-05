@@ -1,4 +1,11 @@
-import { type Stage } from "@fiftyone/utilities";
+import {
+  type FrameLabelSnapshot,
+  type LocalDetection,
+  type RawDetection,
+  type RawDetectionsField,
+  type Stage,
+  type SyntheticBox,
+} from "@fiftyone/utilities";
 import {
   getFrames,
   type FrameDoc,
@@ -14,53 +21,11 @@ import type {
   PlaybackStore,
 } from "../../../playback/src/lib/playback/types";
 import { isInFetchedRange, mergeRange, toSecondRanges } from "./fetchedRanges";
-import type {
-  FrameLabelSnapshot,
-  PropagationBlob,
-  SyntheticBox,
-} from "./SyntheticLabelStream";
 
-export interface RawDetection {
-  _id?: string;
-  id?: string;
-  index?: number;
-  label?: string;
-  bounding_box?: [number, number, number, number];
-  instance?: { _cls: "Instance"; _id?: string } | null;
-  keyframe?: boolean;
-  propagation?: PropagationBlob | null;
-}
-
-export interface RawDetectionsField {
-  detections?: RawDetection[];
-}
-
-/**
- * Shape callers pass to {@link VideoFrameLabelsStream.updateLabel}.
- * Lines up with the `Detection` wire format — `bounding_box` is required
- * since a Detection with no bbox is meaningless for a video overlay.
- */
-export interface LocalDetection {
-  _cls?: "Detection";
-  _id?: string;
-  id?: string;
-  index?: number;
-  label?: string;
-  bounding_box: [number, number, number, number];
-  instance?: { _cls: "Instance"; _id?: string } | null;
-  /**
-   * Auto-promote-on-edit: callers handling user-initiated edits (draw,
-   * drag, resize) should pass `keyframe: true` so an interpolated label
-   * is promoted to a keyframe on touch. Omit to preserve the existing
-   * value through `updateLabel`'s shallow merge.
-   */
-  keyframe?: boolean;
-  /**
-   * Propagation provenance. User edits clear this (`null`); leave
-   * undefined to preserve the existing value through the shallow merge.
-   */
-  propagation?: PropagationBlob | null;
-}
+// `RawDetection`, `RawDetectionsField`, and `LocalDetection` now live in
+// `@fiftyone/utilities` (below both annotation packages). Re-exported here for
+// back-compat with the package barrel.
+export type { LocalDetection, RawDetection, RawDetectionsField };
 
 export interface VideoFrameLabelsStreamOptions {
   id: string;

@@ -10,10 +10,12 @@ import {
   useFrameLabelsStream,
   useImaVidImageStream,
   useVideoAnnotationStatus,
-  type LocalDetection,
-  type SyntheticBox,
 } from "@fiftyone/video-annotation";
-import { objectId } from "@fiftyone/utilities";
+import {
+  type LocalDetection,
+  objectId,
+  type SyntheticBox,
+} from "@fiftyone/utilities";
 import { createElement, useCallback } from "react";
 import { frameAt } from "../../../playback/src/lib/playback/utils";
 import { useAgentRegistry } from "../agents/hooks/useAgentRegistry";

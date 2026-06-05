@@ -1,11 +1,8 @@
 import type { JSONDeltas } from "@fiftyone/core/src/client";
 import { generateJsonPatch } from "@fiftyone/core/src/utils/json";
 import { useIsVideo } from "@fiftyone/state";
-import {
-  useFrameLabelsStream,
-  type RawDetection,
-  type RawDetectionsField,
-} from "@fiftyone/video-annotation";
+import type { RawDetection, RawDetectionsField } from "@fiftyone/utilities";
+import { useFrameLabelsStream } from "@fiftyone/video-annotation";
 import { useCallback } from "react";
 import type { DeltaSupplier } from "./deltaSupplier";
 

@@ -24,6 +24,7 @@ export * from "./temporal";
 export * from "./type-check";
 export * from "./types";
 export * from "./validation";
+export * from "./videoLabels";
 
 interface O {
   [key: string]: O | any;
