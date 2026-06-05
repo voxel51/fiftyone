@@ -1,12 +1,12 @@
 import { getFetchFunction } from "@fiftyone/utilities";
 import { useEffect, useState } from "react";
 
-export const ONTOLOGY_TYPE_ONTOLOGY = "annotation_ontology" as const;
-export const ONTOLOGY_TYPE_TAXONOMY = "taxonomy" as const;
+export const ONTOLOGY_TYPE = {
+  ontology: "annotation_ontology",
+  taxonomy: "taxonomy",
+} as const;
 
-export type OntologyType =
-  | typeof ONTOLOGY_TYPE_ONTOLOGY
-  | typeof ONTOLOGY_TYPE_TAXONOMY;
+export type OntologyType = typeof ONTOLOGY_TYPE[keyof typeof ONTOLOGY_TYPE];
 
 export interface OntologySummary {
   name: string;
