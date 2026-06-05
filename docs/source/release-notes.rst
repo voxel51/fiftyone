@@ -3,6 +3,70 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.20.0
+--------------------------
+*Released June 4, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.17.0 <release-notes-v1.17.0>`. No
+additional Enterprise-specific changes in this release.
+
+
+.. _release-notes-v1.17.0:
+
+FiftyOne 1.17.0
+---------------
+*Released June 4, 2026*
+
+App
+
+- Fixed a bug where the global "Pixelating…" loading screen could re-appear
+  when opening the modal or navigating between samples in explore mode
+  `#7526 <https://github.com/voxel51/fiftyone/pull/7526>`_
+- Fixed the same loading-screen flicker for grouped datasets when opening
+  the modal, switching slices, or navigating between groups in the modal
+  `#7551 <https://github.com/voxel51/fiftyone/pull/7551>`_
+- Fixed a bug where the 3D viewer could fail to render when a grouped
+  dataset's active slice had no sample (sparse / pcd-only groups)
+  `#7288 <https://github.com/voxel51/fiftyone/pull/7288>`_
+- Fixed value tearing in the dynamic-groups pagination bar during slice
+  transitions
+  `#7599 <https://github.com/voxel51/fiftyone/pull/7599>`_
+- Improved performance of image and mask decoding
+  `#7711 <https://github.com/voxel51/fiftyone/pull/7711>`_
+
+In-App Annotation
+
+- Allowed persisting labels that have no `label` attribute set
+  `#7639 <https://github.com/voxel51/fiftyone/pull/7639>`_
+- Fixed a crash when changing the field of a polylines label
+  `#7638 <https://github.com/voxel51/fiftyone/pull/7638>`_
+- Fixed a bug where click-to-segment stopped working after navigating between
+  samples in the modal
+  `#7637 <https://github.com/voxel51/fiftyone/pull/7637>`_
+- Improved annotation performance by coalescing hover handling via
+  ``requestAnimationFrame`` and fixing duplicate polyline handler creation
+  `#7597 <https://github.com/voxel51/fiftyone/pull/7597>`_
+
+Security
+
+- Updated ``Pillow`` to ``>=12.2`` to resolve CVE-2026-40192
+  `#7694 <https://github.com/voxel51/fiftyone/pull/7694>`_
+- Updated ``strawberry-graphql`` to ``>=0.312.3`` to resolve CVE-2026-35523
+  `#7694 <https://github.com/voxel51/fiftyone/pull/7694>`_
+- Updated App dependencies to resolve vulnerabilities: ``minimatch`` (9.0.7,
+  CVE-2026-27904), ``protobufjs`` (>=7.6, CVE-2026-41242), and
+  ``brace-expansion`` (>=5.0.6, CVE-2026-33750)
+  `#7694 <https://github.com/voxel51/fiftyone/pull/7694>`_
+- Made the App server's CORS policy configurable via ``allowed_origins`` and
+  changed the default to same-origin
+  `GHSA-q78p-hj9h-5466 <https://github.com/advisories/GHSA-q78p-hj9h-5466>`_
+
+General
+
+- Removed support for Python 3.9; FiftyOne now requires Python 3.10 or later
+  `#7585 <https://github.com/voxel51/fiftyone/pull/7585>`_
+
+
 FiftyOne Enterprise 2.19.0
 --------------------------
 *Released May 28, 2026*

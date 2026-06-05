@@ -43,7 +43,13 @@ import type { LabelProxy } from "../deltas";
 export const buildAnnotationLabel = (
   overlay: BaseOverlay
 ): LabelProxy | undefined => {
-  if (overlay instanceof DetectionOverlay && overlay.label.label) {
+  // Non-persistent overlays live in the scene for UX only and must never
+  // reach the persistence pipeline.
+  if (!overlay.isPersistent) {
+    return undefined;
+  }
+
+  if (overlay instanceof DetectionOverlay) {
     const bounds = overlay.relativeBounds;
     const boundingBox: BoundingBox = [
       bounds.x,
@@ -66,6 +72,10 @@ export const buildAnnotationLabel = (
         ? {
             ...(_mask && { mask: _mask }),
             ...(pendingMask && { mask: pendingMask }),
+            // Edits to a `mask_path`-sourced detection are persisted as an
+            // inline `mask`; null the path so the backend doesn't end up
+            // with both fields pointing at divergent data.
+            ...(pendingMask && _maskPath && { mask_path: null }),
           }
         : hadMask
         ? { mask: null, mask_path: null }
@@ -84,13 +94,11 @@ export const buildAnnotationLabel = (
   } else if (overlay instanceof ClassificationOverlay) {
     const label = overlay.label as ClassificationLabel;
 
-    if (label.label) {
-      return {
-        type: "Classification",
-        data: label,
-        path: overlay.field,
-      };
-    }
+    return {
+      type: "Classification",
+      data: label,
+      path: overlay.field,
+    };
   } else if (overlay instanceof PolylineOverlay) {
     // Must be checked before KeypointOverlay, since PolylineOverlay extends it.
     const label = overlay.label as unknown as PolylineLabel;
@@ -108,13 +116,11 @@ export const buildAnnotationLabel = (
   } else if (overlay instanceof KeypointOverlay) {
     const label = overlay.label as KeypointLabel;
 
-    if (label.label) {
-      return {
-        type: "Keypoint",
-        data: label,
-        path: overlay.field,
-      };
-    }
+    return {
+      type: "Keypoint",
+      data: label,
+      path: overlay.field,
+    };
   }
 
   return undefined;

@@ -26,7 +26,7 @@ these commands:
    $ python --version
    Python 2.7.17
    $ python3 --version
-   Python 3.10.18
+   Python 3.10.20
 
 In this case, `python3` should be used in the next step.
 
@@ -71,7 +71,11 @@ of this guide. For example:
 .. code-block:: text
 
    $ python --version
+<<<<<<< HEAD
    Python 3.10.18
+=======
+   Python 3.10.20
+>>>>>>> release/v1.17.0
 
 Also note that `python` and `pip` live inside the `env` folder (in this output,
 the path to the current folder is replaced with `...`):

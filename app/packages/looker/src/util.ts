@@ -22,7 +22,6 @@ import {
   ServerError,
   getFetchParameters,
 } from "@fiftyone/utilities";
-import LookerWorker from "./worker/index.ts?worker&inline";
 
 /**
  * Shallow data-object comparison for equality
@@ -450,9 +449,15 @@ export const createWorker = (
     : undefined;
 
   try {
-    worker = new LookerWorker();
-  } catch {
-    worker = new Worker(new URL("./worker/index.ts", import.meta.url));
+    worker = new Worker(new URL("./worker/index.ts", import.meta.url), {
+      type: "module",
+    });
+  } catch (err) {
+    // `new Worker(...)` can throw synchronously (e.g. CSP blocking
+    // `worker-src`). Match the no-worker-support contract and return null
+    // rather than leaving listeners unwired.
+    console.error("[looker] worker unavailable:", err);
+    return null;
   }
 
   worker.addEventListener(
