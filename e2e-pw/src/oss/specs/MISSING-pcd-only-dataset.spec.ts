@@ -64,12 +64,9 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
     dataset.add_samples([sample1, sample2])
 
     # TODO: fix the underlying NaN handling in fiftyone.utils.utils3d.
-    try:
-        fou3d.compute_orthographic_projection_images(
-            dataset, (-1, 64), "/tmp/ortho"
-        )
-    except Exception as exc:
-        print(f"orthographic projection partially succeeded: {exc}")
+    fou3d.compute_orthographic_projection_images(
+        dataset, (-1, 64), "/tmp/ortho", skip_failures=True
+    )
     `
   );
 });

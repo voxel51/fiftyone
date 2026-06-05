@@ -7,8 +7,8 @@
  */
 
 import { DetectionOverlay, type Point } from "@fiftyone/lighter";
-import { AnnotationLabel } from "@fiftyone/state";
-import { ClickEventModifiers } from "@fiftyone/utilities";
+import type { AnnotationLabel } from "@fiftyone/state";
+import type { ClickEventModifiers } from "@fiftyone/utilities";
 
 /** Positive points are explicitly *included* in inference results. */
 export const POSITIVE_POINT_VARIANT = "positive" as const;
@@ -37,7 +37,7 @@ export type PointSelectionVariant =
 export const resolvePointVariant = (
   relativePoint: Point,
   { shiftKey }: ClickEventModifiers,
-  label: AnnotationLabel
+  label: AnnotationLabel | null
 ): PointSelectionVariant => {
   const onMask =
     label && label.overlay instanceof DetectionOverlay
