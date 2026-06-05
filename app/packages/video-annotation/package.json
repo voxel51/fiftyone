@@ -10,6 +10,7 @@
     "dependencies": {
         "@fiftyone/annotation": "workspace:*",
         "@fiftyone/command-bus": "workspace:*",
+        "@fiftyone/commands": "workspace:*",
         "@fiftyone/components": "workspace:*",
         "@fiftyone/lighter": "workspace:*",
         "@fiftyone/playback": "workspace:*",

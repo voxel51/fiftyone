@@ -1,11 +1,11 @@
-import { useCommandBus } from "@fiftyone/command-bus";
 import {
-  useFrameLabelsStream,
-  type VideoFrameLabelsStream,
-} from "@fiftyone/video-annotation";
+  PropagateCommand,
+  useAnnotationEventHandler,
+} from "@fiftyone/annotation";
+import { useCommandBus } from "@fiftyone/command-bus";
 import { useCallback } from "react";
-import { PropagateCommand } from "../commands";
-import { useAnnotationEventHandler } from "./useAnnotationEventHandler";
+import { type VideoFrameLabelsStream } from "../streams/VideoFrameLabelsStream";
+import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 
 /** Inclusive `[fromFrame, toFrame]` segment to re-propagate. */
 export type FrameRange = [number, number];

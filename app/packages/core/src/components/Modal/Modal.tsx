@@ -4,8 +4,8 @@ import {
   useRegisterAnnotationEventHandlers,
   useRegisterAnnotationKeybindings,
   useRegisterRendererEventHandlers,
-  useRegisterVideoAnnotationEventHandlers,
 } from "@fiftyone/annotation";
+import { useRegisterVideoAnnotationEventHandlers } from "@fiftyone/video-annotation";
 import {
   KnownCommands,
   KnownContexts,

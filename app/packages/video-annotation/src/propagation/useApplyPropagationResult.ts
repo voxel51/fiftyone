@@ -1,11 +1,11 @@
-import { useFrameLabelsStream } from "@fiftyone/video-annotation";
-import { useCallback } from "react";
-
 import {
   type InferenceResult,
   type PropagatedDetection,
   type PropagationInferenceResult,
-} from "../types";
+} from "@fiftyone/annotation";
+import { useCallback } from "react";
+
+import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 
 /**
  * Method which applies a {@link PropagationInferenceResult} to the

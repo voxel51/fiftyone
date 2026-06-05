@@ -1,10 +1,13 @@
+import {
+  useRegisterDeltaSupplier,
+  type DeltaSupplier,
+} from "@fiftyone/annotation";
 import type { JSONDeltas } from "@fiftyone/core/src/client";
 import { generateJsonPatch } from "@fiftyone/core/src/utils/json";
 import { useIsVideo } from "@fiftyone/state";
 import type { RawDetection, RawDetectionsField } from "@fiftyone/utilities";
-import { useFrameLabelsStream } from "@fiftyone/video-annotation";
 import { useCallback } from "react";
-import type { DeltaSupplier } from "./deltaSupplier";
+import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 
 /** Detection paired with its array-slot index for path-building. */
 interface DetInfo {
@@ -153,4 +156,13 @@ export const useVideoLabelsDeltaSupplier = (): DeltaSupplier => {
 
     return { deltas, metadata: undefined };
   }, [isVideo, stream]);
+};
+
+/**
+ * Registers the per-frame video-label {@link DeltaSupplier} with annotation's
+ * aggregator for the lifetime of the caller, so video deltas flow into the
+ * autosave pipeline without annotation importing this package.
+ */
+export const useRegisterVideoLabelsDeltaSupplier = (): void => {
+  useRegisterDeltaSupplier(useVideoLabelsDeltaSupplier());
 };

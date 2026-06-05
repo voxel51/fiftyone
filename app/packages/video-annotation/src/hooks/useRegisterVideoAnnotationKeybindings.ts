@@ -1,9 +1,9 @@
+import { MarkKeyframeCommand } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
 import { KnownContexts, useKeyBindings } from "@fiftyone/commands";
 import { useLighter } from "@fiftyone/lighter";
 import { useRef } from "react";
 import { usePlayhead } from "../../../playback/src/lib/playback/use-playback-state";
-import { MarkKeyframeCommand } from "../commands";
 
 /**
  * Registers video-only keybindings into the modal-annotate context.
