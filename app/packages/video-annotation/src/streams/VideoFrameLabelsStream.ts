@@ -13,6 +13,7 @@ import type {
   BufferReadiness,
   PlaybackStore,
 } from "../../../playback/src/lib/playback/types";
+import { isInFetchedRange, mergeRange, toSecondRanges } from "./fetchedRanges";
 import type {
   FrameLabelSnapshot,
   PropagationBlob,
@@ -244,7 +245,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       return "loading";
     }
 
-    if (this.isInFetchedRange(frame)) {
+    if (isInFetchedRange(this.fetchedRanges, frame)) {
       return "ready";
     }
 
@@ -276,7 +277,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     if (!sample) {
       // Chunk fetched, this frame had no labels — return an empty
       // snapshot so consumers can tell "no labels here" from "not fetched".
-      if (this.isInFetchedRange(frame)) {
+      if (isInFetchedRange(this.fetchedRanges, frame)) {
         return { frameNumber: frame, detections: [] };
       }
       return null;
@@ -483,10 +484,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   }
 
   bufferedRanges(): Array<[number, number]> {
-    return this.fetchedRanges.map(
-      ([start, end]) =>
-        [(start - 1) / this.frameRate, end / this.frameRate] as [number, number]
-    );
+    return toSecondRanges(this.fetchedRanges, this.frameRate);
   }
 
   /** Map a stream time to the 1-indexed frame number. */
@@ -496,15 +494,6 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
 
   private isInflight(frame: number): boolean {
     return this.inflight.has(frame);
-  }
-
-  private isInFetchedRange(frame: number): boolean {
-    for (const [start, end] of this.fetchedRanges) {
-      if (frame >= start && frame <= end) {
-        return true;
-      }
-    }
-    return false;
   }
 
   private async fetchChunk(startFrame: number): Promise<void> {
@@ -649,26 +638,4 @@ function withDetectionList(
     ...frame,
     [frameField]: { ...existing, detections: fn(list) },
   } as FrameDoc;
-}
-
-/**
- * Merge a newly-fetched `[start, end]` range into a sorted, disjoint list
- * of contiguous ranges.
- */
-function mergeRange(
-  ranges: Array<[number, number]>,
-  add: [number, number]
-): void {
-  ranges.push(add);
-  ranges.sort((a, b) => a[0] - b[0]);
-
-  for (let i = ranges.length - 1; i > 0; i--) {
-    const prev = ranges[i - 1];
-    const cur = ranges[i];
-
-    if (cur[0] <= prev[1] + 1) {
-      prev[1] = Math.max(prev[1], cur[1]);
-      ranges.splice(i, 1);
-    }
-  }
 }

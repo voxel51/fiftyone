@@ -7,6 +7,7 @@ import type {
   PlaybackStore,
 } from "../../../playback/src/lib/playback/types";
 import { frameAt } from "../../../playback/src/lib/playback/utils";
+import { mergeRange, toSecondRanges } from "./fetchedRanges";
 import type {
   ChunkDoneMessage,
   ChunkFailedMessage,
@@ -281,10 +282,7 @@ export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
   }
 
   bufferedRanges(): Array<[number, number]> {
-    return this.fetchedRanges.map(
-      ([start, end]) =>
-        [(start - 1) / this.frameRate, end / this.frameRate] as [number, number]
-    );
+    return toSecondRanges(this.fetchedRanges, this.frameRate);
   }
 
   private timeToFrame(time: number): number {
@@ -455,26 +453,4 @@ function normalizeHeaders(
   }
 
   return { ...(headers as Record<string, string>) };
-}
-
-/**
- * Merge a newly-fetched `[start, end]` range into a sorted, disjoint
- * list of contiguous ranges.
- */
-function mergeRange(
-  ranges: Array<[number, number]>,
-  add: [number, number]
-): void {
-  ranges.push(add);
-  ranges.sort((a, b) => a[0] - b[0]);
-
-  for (let i = ranges.length - 1; i > 0; i--) {
-    const prev = ranges[i - 1];
-    const cur = ranges[i];
-
-    if (cur[0] <= prev[1] + 1) {
-      prev[1] = Math.max(prev[1], cur[1]);
-      ranges.splice(i, 1);
-    }
-  }
 }
