@@ -52,7 +52,7 @@ const AttributeFormContent = ({
     isIntegerType,
     isListType,
     isFromOntology,
-    // isTaxonomyEligible — available when per-tab disabled is added to ToggleSwitch
+    isTaxonomyEligible,
     whenPreview,
     supportsDefault,
     componentOptions,
@@ -88,7 +88,17 @@ const AttributeFormContent = ({
 
   const valuesModeTabs = [
     { id: "simple", data: { label: "Simple", content: null } },
-    { id: "taxonomy", data: { label: "Taxonomy", content: null } },
+    {
+      id: "taxonomy",
+      data: {
+        label: "Taxonomy",
+        content: null,
+        disabled: !isTaxonomyEligible,
+        tooltip: !isTaxonomyEligible
+          ? "Taxonomies are only available on String or String List Dropdown inputs"
+          : undefined,
+      },
+    },
   ];
 
   return (
