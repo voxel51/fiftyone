@@ -1,15 +1,12 @@
 name: Community base policy
 
 # Non-members may only contribute via the `community` branch. When an author
-# without write access (external contributor or a bot such as Dependabot —
-# including security PRs, which can't be redirected via dependabot.yml) opens a
-# PR against develop/release, this moves the PR's base to `community`
-# automatically and leaves a one-time explanatory comment. Members, and PRs
-# already targeting `community`, are left alone.
+# without write access opens a PR against develop/release, this moves the PR's
+# base to `community` automatically and leaves a one-time explanatory comment.
+# Members, and PRs already targeting `community`, are left alone.
 #
 # Uses pull_request_target so it can edit the base of fork PRs. It only reads PR
-# metadata and calls the API — it never checks out PR head code — so running in
-# the privileged context is safe.
+# metadata and calls the API — it never checks out PR head code.
 
 on:
   pull_request_target:
@@ -33,8 +30,6 @@ jobs:
             const pr = context.payload.pull_request;
             const author = pr.user.login;
 
-            // Already on community — nothing to do. (Also stops the rerun that
-            // the base-change `edited` event below triggers.)
             if (pr.base.ref === 'community') return;
 
             // Members (write/maintain/admin) may target develop/release directly.
@@ -51,7 +46,7 @@ jobs:
             }
             if (hasPush) return;
 
-            // Non-member (incl. bots): move the PR onto the community branch.
+            // Non-member: move the PR onto the community branch.
             const from = pr.base.ref;
             await github.rest.pulls.update({
               owner: context.repo.owner,
@@ -61,10 +56,11 @@ jobs:
             });
 
             const marker = '<!-- community-base-policy -->';
-            const { data: comments } = await github.rest.issues.listComments({
+            const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: pr.number,
+              per_page: 100,
             });
             if (!comments.some(c => (c.body || '').includes(marker))) {
               await github.rest.issues.createComment({

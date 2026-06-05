@@ -2,13 +2,6 @@ name: Sync develop to community
 
 # Keeps the long-lived `community` branch current with `develop`.
 #
-# Non-member contributions are auto-retargeted onto `community`
-# (community-base-policy.yml). Their branches are cut from `develop`, so unless
-# `community` tracks `develop` the retargeted PRs show a noisy `develop`-vs-
-# `community` diff and merge conflicts pile up. This merges `develop` into
-# `community` on every push to `develop` (creating `community` on first run) so
-# the only delta on `community` is the pending community changes themselves.
-#
 # The reverse direction — `community` → `develop` — is the standing
 # `AUTOMATED MERGE community to develop` PR maintained by develop-back-merge.yml.
 
@@ -21,6 +14,9 @@ on:
 concurrency:
   group: sync-develop-to-community
   cancel-in-progress: true
+
+permissions:
+  contents: write
 
 jobs:
   sync:
@@ -46,8 +42,6 @@ jobs:
           git fetch origin community
           git checkout community
 
-          # Already contains develop's tip — nothing to do (avoids no-op pushes
-          # that would needlessly retrigger develop-back-merge).
           if git merge-base --is-ancestor origin/develop community; then
             echo "community already contains develop; nothing to sync."
             exit 0
