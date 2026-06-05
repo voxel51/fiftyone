@@ -10,25 +10,12 @@ import {
   useLighterSetupWithPixi,
 } from "@fiftyone/lighter";
 import { useModalSample } from "@fiftyone/state";
+import { isTemporalDetectionsField } from "@fiftyone/utilities";
 import { useEffect, useRef } from "react";
 import { frameAt } from "../../../playback/src/lib/playback/utils";
 import { usePlayhead } from "../../../playback/src/lib/playback/use-playback-state";
 import { useActiveModalPaths } from "../state/accessors";
 import { getModalSampleFrameRate } from "../utils/modalSample";
-
-interface RawTemporalDetection {
-  _id?: string;
-  id?: string;
-  label?: string;
-  support?: [number, number];
-  confidence?: number;
-  [key: string]: unknown;
-}
-
-interface RawTemporalDetectionsField {
-  _cls: "TemporalDetections";
-  detections?: RawTemporalDetection[];
-}
 
 /**
  * Minimal scene surface the diff needs — typed against the lighter
@@ -143,17 +130,6 @@ export function syncTemporalOverlays({
       overlays.delete(id);
     }
   }
-}
-
-function isTemporalDetectionsField(
-  value: unknown
-): value is RawTemporalDetectionsField {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-
-  const v = value as { _cls?: unknown; detections?: unknown };
-  return v._cls === "TemporalDetections" && Array.isArray(v.detections);
 }
 
 /**

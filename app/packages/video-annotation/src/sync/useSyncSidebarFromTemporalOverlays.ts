@@ -13,6 +13,7 @@ import {
   type AnnotationLabelData,
   useModalSample,
 } from "@fiftyone/state";
+import { isFrameInSupport } from "@fiftyone/utilities";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   useGetSidebarLabels,
@@ -97,13 +98,7 @@ export const useSyncSidebarFromTemporalOverlays = (
         continue;
       }
 
-      const support = overlay.label?.support;
-      if (
-        !Array.isArray(support) ||
-        support.length !== 2 ||
-        frame < support[0] ||
-        frame > support[1]
-      ) {
+      if (!isFrameInSupport(overlay.label?.support, frame)) {
         continue;
       }
       inRange.add(overlay.id);
