@@ -25,7 +25,7 @@ import {
 } from "../../constants";
 import { type AttributeFormData } from "../../utils";
 import OntologyPicker from "../OntologyPicker";
-import { ONTOLOGY_TYPE_TAXONOMY, useOntologies } from "../useOntologies";
+import { ONTOLOGY_TYPE, useOntologies } from "../useOntologies";
 import ComponentTypeButton from "./ComponentTypeButton";
 import ListDefaultInput from "./ListDefaultInput";
 import RangeInput from "./RangeInput";
@@ -84,7 +84,7 @@ const AttributeFormContent = ({
     ontologies: taxonomies,
     isFetching: isFetchingTaxonomies,
     error: taxonomiesFetchError,
-  } = useOntologies(ONTOLOGY_TYPE_TAXONOMY);
+  } = useOntologies(ONTOLOGY_TYPE.taxonomy);
 
   const valuesModeTabs = [
     { id: "simple", data: { label: "Simple", content: null } },
@@ -284,7 +284,7 @@ const AttributeFormContent = ({
               ) : (
                 <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
                   <OntologyPicker
-                    type={ONTOLOGY_TYPE_TAXONOMY}
+                    type={ONTOLOGY_TYPE.taxonomy}
                     ontologies={taxonomies}
                     isFetching={isFetchingTaxonomies}
                     error={taxonomiesFetchError}
