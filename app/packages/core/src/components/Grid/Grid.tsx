@@ -33,6 +33,10 @@ import useZoomSetting from "./useZoomSetting";
 
 const MAX_INSTANCES = 200;
 const MAX_ROWS = 200;
+
+/**
+ * Renders the sample grid with optional pagination and scroll state.
+ */
 function Grid() {
   const id = useMemoOne(() => uuid(), []);
   const pixels = useMemoOne(() => uuid(), []);

@@ -141,7 +141,7 @@ const useSpotlightPager = ({
               resolve({
                 items,
                 next:
-                  pagination && pageSize
+                  pagination
                     ? null
                     : data.samples.pageInfo.hasNextPage
                       ? pageNumber + 1

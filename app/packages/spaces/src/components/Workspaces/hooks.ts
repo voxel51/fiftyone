@@ -21,7 +21,9 @@ export function useWorkspaces() {
    * Requests the current dataset's saved workspaces from the backend.
    */
   const listWorkspace = useCallback(() => {
-    if (listWorkspaceExecuting || !operatorsInitialized) return;
+    if (listWorkspaceExecuting || !operatorsInitialized || !currentDataset) {
+      return;
+    }
     setListWorkspaceExecuting(true);
     executeOperator(
       LIST_WORKSPACES_OPERATOR,
@@ -32,13 +34,10 @@ export function useWorkspaces() {
             result?.result as { workspaces?: typeof state.workspaces }
           )?.workspaces || [];
 
-          setState((currentState: typeof state) => {
-            return {
-              ...currentState,
-              initialized: true,
-              workspaces,
-              dataset: currentDataset,
-            };
+          setState({
+            initialized: true,
+            workspaces,
+            dataset: currentDataset,
           });
           setListWorkspaceExecuting(false);
           if (result.error) {

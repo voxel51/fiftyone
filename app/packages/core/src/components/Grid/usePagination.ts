@@ -88,7 +88,7 @@ export default function usePagination({
         setPageInLocation(0);
       }
     },
-    [paginationEnabled, setCurrentPage, setPaginationEnabled, setPageInLocation]
+    [paginationEnabled, setCurrentPage, setPaginationEnabled]
   );
 
   useEffect(() => {
