@@ -3,7 +3,6 @@ import styles from "./Grid.module.css";
 import { Button } from "@fiftyone/components";
 import Spotlight from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import { Size, Toggle } from "@voxel51/voodo";
 import React, { useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { useMemoOne } from "use-memo-one";
@@ -65,8 +64,7 @@ function Grid() {
 
   const pageSizeFromConfig = config?.gridPageSize ?? 20;
 
-  const { handlePaginationToggle, maxPage, safePage, start, end } =
-    usePagination({
+  const { maxPage, safePage, start, end } = usePagination({
       paginationEnabled,
       setPaginationEnabled,
       currentPage,
@@ -140,18 +138,6 @@ function Grid() {
 
   return (
     <div className={styles.gridContainer}>
-      <div className={styles.paginationToggle}>
-        <Toggle
-          size={Size.Md}
-          label="Pagination"
-          checked={paginationEnabled}
-          onChange={(checked) => {
-            if (checked !== paginationEnabled) {
-              handlePaginationToggle();
-            }
-          }}
-        />
-      </div>
       <div id={id} className={styles.spotlightGrid} data-cy="fo-grid" />
       <div id={pixels} className={styles.fallingPixels} />
       {paginationEnabled ? (

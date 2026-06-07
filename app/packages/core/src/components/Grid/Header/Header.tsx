@@ -16,6 +16,7 @@ import {
   SliderContainer,
 } from "./Containers";
 import GroupSlice from "./GroupSlice";
+import PaginationToggle from "./PaginationToggle";
 import Sort from "./Sort";
 
 const Spacing = () => {
@@ -101,6 +102,7 @@ const Header = () => {
             <GroupSlice />
           </RightDiv>
         )}
+        <PaginationToggle />
         <Sort />
         <Spacing />
         <Zoom />
