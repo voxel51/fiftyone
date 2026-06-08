@@ -222,6 +222,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DEFAULT_APP_ADDRESS",
             default="localhost",
         )
+        self.allowed_origins = self.parse_string(
+            d,
+            "allowed_origins",
+            env_var="FIFTYONE_ALLOWED_ORIGINS",
+            default=None,
+        )
         self.logging_destination = self.parse_string(
             d,
             "logging_destination",
