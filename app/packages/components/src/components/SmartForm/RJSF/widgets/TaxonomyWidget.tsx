@@ -8,6 +8,13 @@ import {
 } from "@voxel51/voodo";
 import { useCallback, useMemo } from "react";
 
+function buildFallbackTree(names: string[], rootName: string): TreeNode {
+  return {
+    name: rootName,
+    values: names.map((n) => ({ name: n })),
+  };
+}
+
 function buildLeafNameIndex(root: TreeNode): Map<string, TreePath> {
   const index = new Map<string, TreePath>();
 
@@ -81,59 +88,89 @@ export default function TaxonomyWidget(props: WidgetProps) {
     [onChange]
   );
 
-  const fieldError =
-    rawErrors[0] ??
-    (fetchError ? `Failed to load taxonomy: ${fetchError}` : undefined);
+  // RJSF validation errors take priority. Taxonomy-state errors (missing config,
+  // failed fetch) are only relevant in the fallback path when the tree isn't loaded.
+  const validationError = rawErrors[0] ?? undefined;
+  const taxonomyStateError = !taxonomy
+    ? "No taxonomy configured"
+    : fetchError
+    ? "Failed to load taxonomy"
+    : undefined;
+
+  const existingNames = useMemo(() => {
+    if (multiSelect && Array.isArray(value)) {
+      return value.filter(
+        (v): v is string => typeof v === "string" && v !== ""
+      );
+    }
+    if (!multiSelect && typeof value === "string" && value !== "") {
+      return [value];
+    }
+    return [];
+  }, [value, multiSelect]);
+
+  let treeRoot: TreeNode;
+  let selectValue: TreePath | readonly TreePath[] | undefined;
+  let selectDisabled: boolean;
+  let displayError: string | undefined;
+  let placeholder: string | undefined;
+  let handleChange:
+    | ((path: TreePath | null) => void)
+    | ((paths: TreePath[]) => void)
+    | undefined;
 
   if (!tree) {
-    return (
-      <FormField
-        label={label || schema.title}
-        control={
-          <TreeSelect
-            root={{ name: "", values: [] }}
-            disabled
-            placeholder={isFetching ? "Loading taxonomy..." : "No taxonomy"}
-            portal
-          />
-        }
-        error={fieldError}
-      />
-    );
+    selectDisabled = true;
+
+    if (isFetching) {
+      treeRoot = { name: "", values: [] };
+      placeholder = "Loading taxonomy...";
+      displayError = undefined;
+    } else if (existingNames.length > 0) {
+      treeRoot = buildFallbackTree(existingNames, taxonomy || "values");
+      selectValue = multiSelect
+        ? existingNames.map((n) => [treeRoot.name, n] as TreePath)
+        : ([treeRoot.name, existingNames[0]] as TreePath);
+      displayError = validationError ?? taxonomyStateError;
+    } else {
+      treeRoot = { name: "", values: [] };
+      placeholder = "No taxonomy applied";
+      displayError = validationError ?? taxonomyStateError;
+    }
+  } else {
+    treeRoot = tree;
+    selectValue = treeValue;
+    selectDisabled = !!(disabled || readonly);
+    displayError = validationError;
+    handleChange = multiSelect ? handleMultiChange : handleSingleChange;
   }
 
-  if (multiSelect) {
-    return (
-      <FormField
-        label={label || schema.title}
-        control={
-          <TreeSelect
-            root={tree}
-            multiSelect
-            value={treeValue as readonly TreePath[]}
-            onChange={handleMultiChange}
-            disabled={disabled || readonly}
-            portal
-          />
-        }
-        error={fieldError}
-      />
-    );
-  }
+  const treeSelect = multiSelect ? (
+    <TreeSelect
+      root={treeRoot}
+      multiSelect
+      value={selectValue as readonly TreePath[] | undefined}
+      onChange={handleChange as ((paths: TreePath[]) => void) | undefined}
+      disabled={selectDisabled}
+      placeholder={placeholder}
+      portal
+    />
+  ) : (
+    <TreeSelect
+      root={treeRoot}
+      value={selectValue as TreePath | undefined}
+      onChange={handleChange as ((path: TreePath | null) => void) | undefined}
+      disabled={selectDisabled}
+      placeholder={placeholder}
+      portal
+    />
+  );
 
   return (
     <FormField
       label={label || schema.title}
-      control={
-        <TreeSelect
-          root={tree}
-          value={treeValue as TreePath | undefined}
-          onChange={handleSingleChange}
-          disabled={disabled || readonly}
-          portal
-        />
-      }
-      error={fieldError}
+      control={treeSelect}
+      error={displayError}
     />
   );
 }
