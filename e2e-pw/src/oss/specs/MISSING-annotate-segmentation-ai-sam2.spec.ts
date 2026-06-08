@@ -44,7 +44,7 @@ const schema: Record<string, unknown> = {
 
 test.beforeAll(async ({ annotateSDK, datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await datasetFactory.createBlankDataset({
+  await datasetFactory.createDataset({
     datasetName,
     imageOptions: { fillColor: "white", width: 640, height: 480 },
     schema: {

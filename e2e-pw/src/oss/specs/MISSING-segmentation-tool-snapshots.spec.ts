@@ -54,7 +54,7 @@ const test = base.extend<{
       `seg-snap-${testInfo.title.replace(/\s+/g, "-")}`
     );
 
-    await datasetFactory.createBlankDataset({
+    await datasetFactory.createDataset({
       datasetName: name,
       imageOptions: { fillColor: "white", width: 640, height: 480 },
       schema: { instances: "Detections" },
