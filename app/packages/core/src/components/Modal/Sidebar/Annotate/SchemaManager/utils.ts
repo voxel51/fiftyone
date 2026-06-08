@@ -390,7 +390,6 @@ export const toAttributeConfig = (data: AttributeFormData): AttributeConfig => {
       type: data.type,
       component: data.component || undefined,
       range,
-      default: defaultValue,
       read_only: data.read_only || undefined,
       taxonomy: data.taxonomy,
     };
