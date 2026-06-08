@@ -14,6 +14,7 @@ from starlette.requests import Request
 
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
+from fiftyone.core.annotation.nodes import find_in_dict, truncate_dict
 from fiftyone.server.utils.json import JSONResponse
 
 
@@ -31,6 +32,53 @@ class Ontologies(HTTPEndpoint):
                 )
             }
         )
+
+
+class OntologyTaxonomy(HTTPEndpoint):
+    """Returns the tree for a taxonomy.
+
+    ``GET /ontologies/{name}/taxonomy`` — path parameter ``name`` is a
+    :class:`fiftyone.core.ontology.Taxonomy`'s human-readable name.
+
+    Optional query parameters:
+        node: if set, root the response at this named node. 404 when no
+            node with that name exists in the taxonomy.
+        depth: if set, limit the response to this many levels below the
+            response root. ``depth=0`` returns the root node with no
+            children; truncated branches that had children in the source
+            are serialized with ``"values": []`` so the caller can
+            distinguish them from real leaves (no ``values`` key).
+
+    Returns 404 when the named ontology does not exist or is not a
+    taxonomy.
+    """
+
+    async def get(self, request: Request) -> JSONResponse:
+        name = request.path_params["name"]
+        node_name = request.query_params.get("node") or None
+
+        depth_str = request.query_params.get("depth")
+        if depth_str is None:
+            depth = None
+        else:
+            try:
+                depth = int(depth_str)
+            except ValueError as e:
+                raise HTTPException(
+                    status_code=400,
+                    detail="'depth' must be a non-negative integer",
+                ) from e
+            if depth < 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="'depth' must be a non-negative integer",
+                )
+
+        body, error = await _load_taxonomy_response(name, node_name, depth)
+        if error is not None:
+            raise HTTPException(status_code=404, detail=error)
+
+        return JSONResponse({"taxonomy": body})
 
 
 class OntologyAttributes(HTTPEndpoint):
@@ -100,6 +148,93 @@ async def _list_ontology_summaries(
         dt = s.get("last_modified_at")
         s["last_modified_at"] = dt.isoformat() if dt is not None else None
     return summaries
+
+
+def _select_subtree(
+    root_dict: dict[str, Any],
+    taxonomy_name: str,
+    node_name: Optional[str],
+    depth: Optional[int],
+) -> tuple[Optional[dict[str, Any]], Optional[str]]:
+    """Applies the ``?node=`` and ``?depth=`` filters to a taxonomy root.
+
+    Order matters: subtree selection happens before depth truncation so
+    ``depth`` counts levels below the requested node, not below the
+    original root.
+
+    Returns a ``(subtree, error)`` pair with exactly one ``None``.
+    """
+    if node_name is not None:
+        subtree = find_in_dict(root_dict, node_name)
+        if subtree is None:
+            return (
+                None,
+                f"Node '{node_name}' not found in taxonomy "
+                f"'{taxonomy_name}'",
+            )
+    else:
+        subtree = root_dict
+
+    if depth is not None:
+        subtree = truncate_dict(subtree, depth)
+
+    return subtree, None
+
+
+async def _load_taxonomy_doc(
+    name: str,
+) -> tuple[Optional[dict[str, Any]], Optional[str]]:
+    """Fetches the latest version of a Taxonomy ontology document by
+    name. Returns a ``(doc, error)`` pair with exactly one ``None``.
+    """
+    collection = foo.get_async_db_conn()["ontologies"]
+    pipeline = [
+        {"$match": {"slug": fou.to_slug(name)}},
+        {"$sort": {"version": -1}},
+        {"$limit": 1},
+    ]
+    docs = await foo.aggregate(collection, pipeline).to_list(1)
+    if not docs:
+        return None, f"Taxonomy '{name}' not found"
+
+    doc = docs[0]
+    if doc.get("type") != "taxonomy":
+        return None, f"Ontology '{name}' is not a taxonomy"
+
+    return doc, None
+
+
+async def _load_taxonomy_response(
+    name: str, node_name: Optional[str], depth: Optional[int]
+) -> tuple[Optional[dict[str, Any]], Optional[str]]:
+    """Resolves a taxonomy name and serializes the requested subtree.
+
+    Returns a ``(body, error)`` pair with exactly one ``None``.
+    """
+    doc, error = await _load_taxonomy_doc(name)
+    if error is not None:
+        return None, error
+
+    root_dict = doc.get("root") or {}
+    subtree, error = _select_subtree(
+        root_dict, doc["name"], node_name, depth
+    )
+    if error is not None:
+        return None, error
+
+    body: dict[str, Any] = {
+        "name": doc["name"],
+        "type": doc["type"],
+        "version": doc.get("version"),
+    }
+    if doc.get("description") is not None:
+        body["description"] = doc["description"]
+    for field_name in ("created_at", "last_modified_at"):
+        dt = doc.get(field_name)
+        if dt is not None:
+            body[field_name] = dt.isoformat()
+    body["root"] = subtree
+    return body, None
 
 
 def _load_attributes(name: str) -> Optional[list[dict[str, Any]]]:
