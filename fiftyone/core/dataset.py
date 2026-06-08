@@ -18,7 +18,6 @@ import os
 import random
 import string
 from datetime import datetime
-from typing import Optional
 
 import cachetools
 import eta.core.serial as etas
@@ -9388,6 +9387,7 @@ def _create_dataset(
     obj,
     name,
     persistent=False,
+    media_type=None,
     _patches=False,
     _frames=False,
     _clips=False,
@@ -9427,7 +9427,7 @@ def _create_dataset(
         version=focn.VERSION,
         created_at=now,
         last_modified_at=now,
-        media_type=None,  # will be inferred when first sample is added
+        media_type=media_type,
         sample_collection_name=sample_collection_name,
         frame_collection_name=frame_collection_name,
         persistent=persistent,

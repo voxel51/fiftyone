@@ -4898,6 +4898,15 @@ class DatasetTests(unittest.TestCase):
                 dataset3.static_transforms, dataset.static_transforms
             )
 
+    @drop_datasets
+    def test_media_type(self):
+        dataset = fo.Dataset("test_media_type", media_type="custom_media_type")
+        assert dataset.media_type == "custom_media_type"
+
+        del fo.Dataset._instances["test_media_type"]
+        dataset2 = fo.load_dataset("test_media_type")
+        assert dataset2.media_type == "custom_media_type"
+
     def _assert_camera_intrinsics_equal(self, actual, expected):
         self.assertEqual(set(actual.keys()), set(expected.keys()))
 
