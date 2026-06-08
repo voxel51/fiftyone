@@ -45,10 +45,22 @@ export const PenStatus = (): ReactElement => (
 );
 
 export const PolylineEntryStatus = (): ReactElement => (
-  <StatusItem
-    icon={<Timeline fontSize="small" />}
-    label="Click to start a new polyline"
-  />
+  <Stack
+    orientation={Orientation.Row}
+    align={Align.Center}
+    spacing={Spacing.Md}
+  >
+    <StatusItem
+      icon={<Timeline fontSize="small" />}
+      label="Click to start a new polyline"
+    />
+
+    <Separator />
+
+    <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+      Right click to exit
+    </Text>
+  </Stack>
 );
 
 export const PolylineProgressStatus = ({
@@ -82,8 +94,8 @@ export const MergeInitialStatus = (): ReactElement => (
     icon={<CallMerge fontSize="small" />}
     label={
       <>
-        Click the <strong>primary</strong> polygon first · its properties will
-        be kept
+        Click the <strong>primary</strong> mask first · its properties will be
+        kept
       </>
     }
   />
@@ -174,9 +186,21 @@ const AIErrorStatus = ({ error }: { error: InferenceError }): ReactElement => (
 );
 
 const AIFirstClickStatus = (): ReactElement => (
-  <Text variant={TextVariant.Md} color={TextColor.Secondary}>
-    Click on an object to segment it
-  </Text>
+  <Stack
+    orientation={Orientation.Row}
+    align={Align.Center}
+    spacing={Spacing.Md}
+  >
+    <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+      Click on an object to segment it
+    </Text>
+
+    <Separator />
+
+    <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+      Right click to exit
+    </Text>
+  </Stack>
 );
 
 const Marker = ({ color, label }: { color: TextColor; label: string }) => (
@@ -215,6 +239,10 @@ const AIPromptStatus = (): ReactElement => (
     <Separator />
     <Text variant={TextVariant.Md} color={TextColor.Secondary}>
       Click marker to remove
+    </Text>
+    <Separator />
+    <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+      Right click to exit
     </Text>
   </Stack>
 );
