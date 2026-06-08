@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Enterprise 2.20.0
 --------------------------
-*Released June 4, 2026*
+*Released June 8, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.17.0 <release-notes-v1.17.0>`. No
 additional Enterprise-specific changes in this release.
@@ -15,7 +15,7 @@ additional Enterprise-specific changes in this release.
 
 FiftyOne 1.17.0
 ---------------
-*Released June 4, 2026*
+*Released June 8, 2026*
 
 App
 
