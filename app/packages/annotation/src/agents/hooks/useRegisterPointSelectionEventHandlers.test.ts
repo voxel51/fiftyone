@@ -63,6 +63,7 @@ vi.mock("./usePointSelection", async () => {
       deactivate: vi.fn(),
       clearPoints: vi.fn(),
     }),
+    useSyncPointSelectionWithScene: vi.fn(),
   };
 });
 
