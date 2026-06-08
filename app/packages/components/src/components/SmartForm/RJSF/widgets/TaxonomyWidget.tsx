@@ -109,6 +109,7 @@ export default function TaxonomyWidget(props: WidgetProps) {
     return [];
   }, [value, multiSelect]);
 
+  // Values to render the TreeSelect component in various states
   let treeRoot: TreeNode;
   let selectValue: TreePath | readonly TreePath[] | undefined;
   let selectDisabled: boolean;
