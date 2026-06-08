@@ -13,7 +13,11 @@ concurrency:
 
 jobs:
   enterprise-sync:
+    # Only the OSS repo dispatches to Enterprise. The Enterprise repo carries an
+    # identical copy of this file (via OSS sync) where this guard makes it inert,
+    # so the file never diverges and never produces a sync conflict.
     if: >-
+      github.repository == 'voxel51/fiftyone' &&
       github.event.pull_request.head.repo.full_name == github.repository && (
       github.event.action == 'closed' ||
       github.event.pull_request.draft != true)
