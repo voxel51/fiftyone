@@ -3,6 +3,9 @@ name: Enterprise Sync
 on:
   pull_request:
     types: [opened, synchronize, reopened, closed, ready_for_review]
+    branches:
+      - develop
+      - release/*
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -11,9 +14,7 @@ concurrency:
 jobs:
   enterprise-sync:
     if: >-
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      (github.event.pull_request.head.ref == 'develop' ||
-      startsWith(github.event.pull_request.head.ref, 'release/')) && (
+      github.event.pull_request.head.repo.full_name == github.repository && (
       github.event.action == 'closed' ||
       github.event.pull_request.draft != true)
     runs-on: ubuntu-latest
