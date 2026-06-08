@@ -67,8 +67,10 @@
         "react-plotly.js": "^2.6.0"
     },
     "resolutions": {
-        "brace-expansion": "^2.0.3",
+        "brace-expansion": "^5.0.6",
         "three-stdlib": "^2.36.1",
-        "@types/react": "18.2.0"
+        "@types/react": "18.2.0",
+        "minimatch": "9.0.7",
+        "protobufjs": "^7.6.0"
     }
 }

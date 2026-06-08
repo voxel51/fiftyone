@@ -1,6 +1,6 @@
+import type { ViewportState } from "@fiftyone/lighter";
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
-import type { ViewportState } from "@fiftyone/lighter";
 import { createDatasetKeyedStorage, parseDatasetNameFromUrl } from "./utils";
 
 export const ANNOTATE = "annotate";
@@ -28,8 +28,8 @@ export const modalMode = atomWithStorage<ModalMode>(
 );
 
 /**
- * Extends the base ViewportState with a `sampleId` so stale state from 
- * a previous sample is never mistakenly applied when switching between 
+ * Extends the base ViewportState with a `sampleId` so stale state from
+ * a previous sample is never mistakenly applied when switching between
  * modes (EXPLORE vs ANNOTATE).
  */
 export interface ModalViewportState extends ViewportState {

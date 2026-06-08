@@ -5,6 +5,7 @@ import {
 } from "./useToolsContext";
 import { useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
+import { useLighter } from "@fiftyone/lighter";
 import { useAnnotationAgent } from "./useAnnotationAgent";
 import { useAgentSelector } from "./useAgentSelector";
 import { useApplyInferenceResult } from "./useApplyInferenceResult";
@@ -34,6 +35,7 @@ export const useRegisterAnnotationToolEventHandlers = () => {
   const toolsContext = useToolsContext();
   const { reset: resetToolsState } = useToolsState();
   const { selectedLabel } = useAnnotationContext();
+  const { scene } = useLighter();
 
   const agent = useAnnotationAgent(useAgentSelector().activeAgent?.agent);
   const applyInferenceResult = useApplyInferenceResult(useCreate("Detection"));
@@ -72,10 +74,12 @@ export const useRegisterAnnotationToolEventHandlers = () => {
     [toolsContext]
   );
 
-  // reset tools state on mount and unmount
+  // Reset tools state on mount, unmount, and whenever the lighter scene is
+  // rebuilt (sample navigation) so prompts from a previous sample don't leak
+  // into inference on the new one.
   useEffect(() => {
     resetToolsState();
 
     return resetToolsState;
-  }, []);
+  }, [scene]);
 };

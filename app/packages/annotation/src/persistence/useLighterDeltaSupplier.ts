@@ -26,7 +26,13 @@ import { useGetLabelDelta } from "./useGetLabelDelta";
  * @param overlay Lighter overlay
  */
 const buildAnnotationLabel = (overlay: BaseOverlay): LabelProxy | undefined => {
-  if (overlay instanceof DetectionOverlay && overlay.label.label) {
+  // Non-persistent overlays live in the scene for UX only and must never
+  // reach the persistence pipeline.
+  if (!overlay.isPersistent) {
+    return undefined;
+  }
+
+  if (overlay instanceof DetectionOverlay) {
     const bounds = overlay.relativeBounds;
     const boundingBox: BoundingBox = [
       bounds.x,
@@ -71,13 +77,11 @@ const buildAnnotationLabel = (overlay: BaseOverlay): LabelProxy | undefined => {
   } else if (overlay instanceof ClassificationOverlay) {
     const label = overlay.label as ClassificationLabel;
 
-    if (label.label) {
-      return {
-        type: "Classification",
-        data: label,
-        path: overlay.field,
-      };
-    }
+    return {
+      type: "Classification",
+      data: label,
+      path: overlay.field,
+    };
   } else if (overlay instanceof PolylineOverlay) {
     // Must be checked before KeypointOverlay, since PolylineOverlay extends it.
     const label = overlay.label as unknown as PolylineLabel;
@@ -95,13 +99,11 @@ const buildAnnotationLabel = (overlay: BaseOverlay): LabelProxy | undefined => {
   } else if (overlay instanceof KeypointOverlay) {
     const label = overlay.label as KeypointLabel;
 
-    if (label.label) {
-      return {
-        type: "Keypoint",
-        data: label,
-        path: overlay.field,
-      };
-    }
+    return {
+      type: "Keypoint",
+      data: label,
+      path: overlay.field,
+    };
   }
 };
 

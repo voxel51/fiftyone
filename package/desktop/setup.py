@@ -6,6 +6,7 @@ Installs the ``fiftyone-desktop`` package.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import glob
 import os
 import shutil
@@ -14,7 +15,6 @@ from wheel.bdist_wheel import bdist_wheel
 
 import os
 import shutil
-
 
 VERSION = "0.35.0"
 
@@ -187,10 +187,9 @@ setup(
         "Operating System :: POSIX :: Linux",
         "Operating System :: Microsoft :: Windows",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
     ],
-    python_requires=">=3.9",
+    python_requires=">=3.10",
     cmdclass=cmdclass,
 )

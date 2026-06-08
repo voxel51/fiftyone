@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { useCallback } from "react";
