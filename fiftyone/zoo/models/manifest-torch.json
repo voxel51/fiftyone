@@ -10903,6 +10903,162 @@
             ],
             "training_data": [],
             "date_added": "2026-01-28 12:00:00"
+        },
+        {
+            "base_name": "sapiens2-0.4b-pose-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Sapiens2 0.4B (fastest) top-down whole-body pose estimation producing 308 keypoints across body, face, hands, and feet, pretrained on 1 billion human images. Requires Python 3.12+ and person box prompts via prompt_field",
+            "source": "https://huggingface.co/facebook/sapiens2-pose-0.4b",
+            "author": "Rawal Khirodkar, et al.",
+            "license": "Sapiens2 License",
+            "size_bytes": 1702754120,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.sapiens.Sapiens2PoseModel",
+                "config": {
+                    "hf_repo": "facebook/sapiens2-pose-0.4b"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "huggingface_hub",
+                    "sapiens @ git+https://github.com/facebookresearch/sapiens2.git"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "keypoints",
+                "pose",
+                "human-centric",
+                "torch",
+                "transformer"
+            ],
+            "training_data": [],
+            "date_added": "2026-05-21 12:00:00"
+        },
+        {
+            "base_name": "sapiens2-0.8b-pose-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Sapiens2 0.8B top-down whole-body pose estimation producing 308 keypoints across body, face, hands, and feet, pretrained on 1 billion human images. Requires Python 3.12+ and person box prompts via prompt_field",
+            "source": "https://huggingface.co/facebook/sapiens2-pose-0.8b",
+            "author": "Rawal Khirodkar, et al.",
+            "license": "Sapiens2 License",
+            "size_bytes": 3394878784,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.sapiens.Sapiens2PoseModel",
+                "config": {
+                    "hf_repo": "facebook/sapiens2-pose-0.8b"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "huggingface_hub",
+                    "sapiens @ git+https://github.com/facebookresearch/sapiens2.git"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "keypoints",
+                "pose",
+                "human-centric",
+                "torch",
+                "transformer"
+            ],
+            "training_data": [],
+            "date_added": "2026-05-21 12:00:00"
+        },
+        {
+            "base_name": "sapiens2-1b-pose-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Sapiens2 1B top-down whole-body pose estimation producing 308 keypoints across body, face, hands, and feet, pretrained on 1 billion human images. Requires Python 3.12+ and person box prompts via prompt_field",
+            "source": "https://huggingface.co/facebook/sapiens2-pose-1b",
+            "author": "Rawal Khirodkar, et al.",
+            "license": "Sapiens2 License",
+            "size_bytes": 6079194752,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.sapiens.Sapiens2PoseModel",
+                "config": {
+                    "hf_repo": "facebook/sapiens2-pose-1b"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "huggingface_hub",
+                    "sapiens @ git+https://github.com/facebookresearch/sapiens2.git"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "keypoints",
+                "pose",
+                "human-centric",
+                "torch",
+                "transformer"
+            ],
+            "training_data": [],
+            "date_added": "2026-05-21 12:00:00"
+        },
+        {
+            "base_name": "sapiens2-5b-pose-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Sapiens2 5B (highest accuracy) top-down whole-body pose estimation producing 308 keypoints across body, face, hands, and feet, pretrained on 1 billion human images. Requires Python 3.12+ and person box prompts via prompt_field",
+            "source": "https://huggingface.co/facebook/sapiens2-pose-5b",
+            "author": "Rawal Khirodkar, et al.",
+            "license": "Sapiens2 License",
+            "size_bytes": 20480899148,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.sapiens.Sapiens2PoseModel",
+                "config": {
+                    "hf_repo": "facebook/sapiens2-pose-5b"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "huggingface_hub",
+                    "sapiens @ git+https://github.com/facebookresearch/sapiens2.git"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "keypoints",
+                "pose",
+                "human-centric",
+                "torch",
+                "transformer"
+            ],
+            "training_data": [],
+            "date_added": "2026-05-21 12:00:00"
         }
     ]
 }
