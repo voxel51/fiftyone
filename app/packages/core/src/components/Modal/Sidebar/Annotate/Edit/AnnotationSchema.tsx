@@ -68,6 +68,7 @@ const useSchema = (readOnly: boolean) => {
         type: attr.type as FieldType,
         component: attr.component as ComponentType | undefined,
         values: attr.values as string[] | number[] | undefined,
+        taxonomy: attr.taxonomy,
         readOnly: effectiveReadOnly || attr.read_only,
       });
     }
