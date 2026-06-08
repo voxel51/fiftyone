@@ -67,22 +67,12 @@ const test = base.extend<{
   },
 });
 
-let originalVffAiSegmentation: string | undefined;
-
 test.beforeAll(async ({ foWebServer }) => {
-  // Both segmentation + AI entry points are flagged.
-  originalVffAiSegmentation = process.env.VFF_AI_SEGMENTATION;
-  process.env.VFF_AI_SEGMENTATION = "true";
   await foWebServer.startWebServer();
 });
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
-  if (originalVffAiSegmentation === undefined) {
-    delete process.env.VFF_AI_SEGMENTATION;
-  } else {
-    process.env.VFF_AI_SEGMENTATION = originalVffAiSegmentation;
-  }
 });
 
 const waitForPatch = (page: import("@playwright/test").Page) =>

@@ -43,10 +43,6 @@ const schema: Record<string, unknown> = {
 };
 
 test.beforeAll(async ({ annotateSDK, datasetFactory, foWebServer }) => {
-  // Both the Segmentation entry point and the AI tool button live behind
-  // VFF_AI_SEGMENTATION. The spawned Python server inherits this from env.
-  process.env.VFF_AI_SEGMENTATION = "true";
-
   await foWebServer.startWebServer();
   await datasetFactory.createBlankDataset({
     datasetName,

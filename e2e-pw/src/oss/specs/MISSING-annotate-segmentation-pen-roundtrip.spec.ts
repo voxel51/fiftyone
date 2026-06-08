@@ -43,15 +43,7 @@ const schema: Record<string, unknown> = {
   component: "dropdown",
 };
 
-let originalVffAiSegmentation: string | undefined;
-
 test.beforeAll(async ({ annotateSDK, datasetFactory, foWebServer }) => {
-  // The Segmentation entry point in the annotate sidebar is gated behind
-  // VFF_AI_SEGMENTATION on the server side. Enable it for this spec so
-  // `segmentation-mode` renders. The Python server inherits this from our env.
-  originalVffAiSegmentation = process.env.VFF_AI_SEGMENTATION;
-  process.env.VFF_AI_SEGMENTATION = "true";
-
   await foWebServer.startWebServer();
   await datasetFactory.createBlankDataset({
     datasetName,
@@ -67,11 +59,6 @@ test.beforeAll(async ({ annotateSDK, datasetFactory, foWebServer }) => {
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
-  if (originalVffAiSegmentation === undefined) {
-    delete process.env.VFF_AI_SEGMENTATION;
-  } else {
-    process.env.VFF_AI_SEGMENTATION = originalVffAiSegmentation;
-  }
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
