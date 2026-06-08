@@ -12,6 +12,7 @@ const hoisted = vi.hoisted(() => {
   class MockDetectionOverlay {
     public field = "predictions";
     public id = "ov-1";
+    public isPersistent = true;
     public relativeBounds = { x: 0.1, y: 0.1, width: 0.2, height: 0.2 };
     public label: Record<string, unknown> = { label: "cat" };
     public hasMask = () => false;

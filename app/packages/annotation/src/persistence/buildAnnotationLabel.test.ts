@@ -13,7 +13,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // resolves to the mock here.
 
 const hoisted = vi.hoisted(() => {
-  class MockBaseOverlay {}
+  class MockBaseOverlay {
+    public isPersistent = true;
+  }
   class MockDetectionOverlay extends MockBaseOverlay {
     public field = "predictions";
     public id = "ov-1";
@@ -230,11 +232,11 @@ describe("buildAnnotationLabel — Detection envelope", () => {
     });
   });
 
-  it("returns undefined when label.label is empty (still being created)", () => {
+  it("persists Detection even when label.label is empty (no label-text gate)", () => {
     const overlay = detection();
     overlay.label = { label: "" };
 
-    expect(buildAnnotationLabel(overlay as never)).toBeUndefined();
+    expect(buildAnnotationLabel(overlay as never)?.type).toBe("Detection");
   });
 
   it("returns undefined when bounds are not valid (no committed bbox yet)", () => {
@@ -258,11 +260,11 @@ describe("buildAnnotationLabel — non-Detection types", () => {
     });
   });
 
-  it("Classification: returns undefined when label.label is empty", () => {
+  it("Classification: persists even when label.label is empty (no label-text gate)", () => {
     const overlay = new hoisted.MockClassificationOverlay();
     overlay.label = { label: "" };
 
-    expect(buildAnnotationLabel(overlay as never)).toBeUndefined();
+    expect(buildAnnotationLabel(overlay as never)?.type).toBe("Classification");
   });
 
   it("Polyline: emits points, closed, filled from getters; always returns (no label gate)", () => {
@@ -293,11 +295,11 @@ describe("buildAnnotationLabel — non-Detection types", () => {
     });
   });
 
-  it("Keypoint: returns undefined when label.label is empty", () => {
+  it("Keypoint: persists even when label.label is empty (no label-text gate)", () => {
     const overlay = new hoisted.MockKeypointOverlay();
     overlay.label = { label: "" };
 
-    expect(buildAnnotationLabel(overlay as never)).toBeUndefined();
+    expect(buildAnnotationLabel(overlay as never)?.type).toBe("Keypoint");
   });
 
   it("unknown overlay (BaseOverlay only): returns undefined", () => {
