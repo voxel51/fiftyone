@@ -73,8 +73,12 @@ jobs:
     uses: ./.github/workflows/lint-app.yml
 
   enterprise-sync:
+    # `community` PRs are non-member contributions; they sync to Enterprise only
+    # once batched into develop (via the standing AUTOMATED MERGE PR), never
+    # per-PR — so skip the dispatch for them.
     if: >-
-      github.event.pull_request.head.repo.full_name == github.repository && (
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.base.ref != 'community' && (
       github.event.action == 'closed' ||
       github.event.pull_request.draft != true)
     runs-on: ubuntu-latest
