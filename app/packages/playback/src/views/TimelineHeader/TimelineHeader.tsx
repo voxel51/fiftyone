@@ -23,15 +23,19 @@ export interface TimelineHeaderProps {
    * selection — sits only over the ruler, not the controls row above.
    */
   rulerOverlay?: ReactNode;
-  /** Injected into the controls row — use for feature-specific action buttons. */
-  extraActions?: ReactNode;
   /**
-   * Optional content forwarded to {@link TimelineControls}' `controlsSlot`
-   * slot — rendered between the playback control buttons and the playhead
-   * time display. The video annotation surface slots its action toolbar
-   * (Mark Keyframe / Propagate) here, per the mocks.
+   * Optional content forwarded to {@link TimelineControls}' `extraControls` —
+   * rendered inline between the playback control buttons and the playhead time
+   * display. Feature toolbars slot here (video annotation's Mark Keyframe /
+   * Propagate actions).
    */
-  controlsSlot?: ReactNode;
+  extraControls?: ReactNode;
+  /**
+   * Optional content forwarded to {@link TimelineControls}' `extraActions` —
+   * rendered far-right after the playhead time, preceded by a divider (e.g.
+   * the temporal tag-mode button).
+   */
+  extraActions?: ReactNode;
   /**
    * Content rendered below the ruler, still inside the always-visible
    * header region. Used by `TimelineWithTracks` to keep pinned tracks
@@ -51,16 +55,16 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
   zoomRef,
   onToggle,
   rulerOverlay,
+  extraControls,
   extraActions,
-  controlsSlot,
   children,
 }) => {
   return (
     <div className={styles.root} data-testid="timeline-header-root">
       <TimelineControls
         onToggle={onToggle}
+        extraControls={extraControls}
         extraActions={extraActions}
-        controlsSlot={controlsSlot}
       />
       <TimelineRuler
         labelWidth={labelWidth}

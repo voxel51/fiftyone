@@ -407,7 +407,7 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
     >
       <TimelineWithTracks
         decorateTrack={decorateTrack}
-        controlsSlot={<VideoAnnotationToolbar />}
+        extraControls={<VideoAnnotationToolbar />}
       />
     </TrackProvider>
   );

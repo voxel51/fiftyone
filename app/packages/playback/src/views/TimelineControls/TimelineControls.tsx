@@ -20,19 +20,24 @@ export interface TimelineControlsProps {
    * acts as a "show / hide tracks" affordance.
    */
   onToggle?: () => void;
-  extraActions?: React.ReactNode;
   /**
-   * Optional content rendered between the playback control buttons and
-   * the playhead time display. The video annotation surface slots its
-   * Mark Keyframe / Propagate toolbar here.
+   * Optional content rendered inline between the playback control buttons and
+   * the playhead time display, with no divider. Feature toolbars slot here —
+   * e.g. the video annotation surface's Mark Keyframe / Propagate actions.
    */
-  controlsSlot?: ReactNode;
+  extraControls?: ReactNode;
+  /**
+   * Optional content rendered far-right, after the playhead time / loop
+   * bounds, preceded by its own divider. Use for trailing actions that read
+   * as a separate group — e.g. the temporal tag-mode button.
+   */
+  extraActions?: ReactNode;
 }
 
 const TimelineControls: React.FC<TimelineControlsProps> = ({
   onToggle,
+  extraControls,
   extraActions,
-  controlsSlot,
 }) => {
   const isPlaying = useIsPlaying();
   const { play, pause, stepBack, stepForward } = usePlayback();
@@ -113,7 +118,7 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
         onClick={stepForward}
       />
 
-      {controlsSlot}
+      {extraControls}
 
       <span
         className={styles.divider}
@@ -122,12 +127,16 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
       />
       <PlayheadTime />
       <LoopBounds />
-      {extraActions ? <><span
-        className={styles.divider}
-        data-testid="timeline-controls-divider"
-        aria-hidden
-      /> {extraActions}</>: null}
-      
+      {extraActions ? (
+        <>
+          <span
+            className={styles.divider}
+            data-testid="timeline-controls-divider"
+            aria-hidden
+          />
+          {extraActions}
+        </>
+      ) : null}
     </div>
   );
 };

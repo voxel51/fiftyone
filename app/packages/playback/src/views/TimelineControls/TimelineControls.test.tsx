@@ -110,13 +110,17 @@ describe("TimelineControls", () => {
   it("applies the .clickable class only when onToggle is provided", () => {
     renderControls({ onToggle: vi.fn() });
     expect(
-      screen.getByTestId("timeline-controls-root").classList.contains(styles.clickable)
+      screen
+        .getByTestId("timeline-controls-root")
+        .classList.contains(styles.clickable)
     ).toBe(true);
 
     cleanup();
     renderControls({});
     expect(
-      screen.getByTestId("timeline-controls-root").classList.contains(styles.clickable)
+      screen
+        .getByTestId("timeline-controls-root")
+        .classList.contains(styles.clickable)
     ).toBe(false);
   });
 
@@ -126,31 +130,60 @@ describe("TimelineControls", () => {
     expect(() => fireEvent.click(row)).not.toThrow();
   });
 
-  describe("extraActions", () => {
-    it("renders extra action content when provided", () => {
+  describe("extraControls", () => {
+    it("renders slotted content when provided", () => {
       render(
         <PlaybackProvider duration={10} stepInterval={1 / 30}>
-          <TimelineControls extraActions={<button>Custom Action</button>} />
+          <TimelineControls extraControls={<button>Custom Action</button>} />
         </PlaybackProvider>
       );
-      expect(screen.getByRole("button", { name: "Custom Action" })).toBeTruthy();
+      expect(
+        screen.getByRole("button", { name: "Custom Action" })
+      ).toBeTruthy();
     });
 
-    it("renders a second divider alongside the extra actions", () => {
+    it("renders the slot without introducing an extra divider", () => {
       render(
         <PlaybackProvider duration={10} stepInterval={1 / 30}>
-          <TimelineControls extraActions={<span data-testid="extra">hi</span>} />
+          <TimelineControls
+            extraControls={<span data-testid="slot">hi</span>}
+          />
         </PlaybackProvider>
       );
-      // The first divider always exists; a second one appears only with extraActions.
+      // extraControls sits between the transport buttons and the time display;
+      // unlike extraActions it does not add its own divider.
       const dividers = screen.getAllByTestId("timeline-controls-divider");
-      expect(dividers).toHaveLength(2);
+      expect(dividers).toHaveLength(1);
     });
 
-    it("does not render a second divider when extraActions is absent", () => {
+    it("renders a single divider when no slot is provided", () => {
       renderControls({});
       const dividers = screen.getAllByTestId("timeline-controls-divider");
       expect(dividers).toHaveLength(1);
+    });
+  });
+
+  describe("extraActions", () => {
+    it("renders slotted content when provided", () => {
+      render(
+        <PlaybackProvider duration={10} stepInterval={1 / 30}>
+          <TimelineControls extraActions={<button>Trailing Action</button>} />
+        </PlaybackProvider>
+      );
+      expect(
+        screen.getByRole("button", { name: "Trailing Action" })
+      ).toBeTruthy();
+    });
+
+    it("introduces its own leading divider", () => {
+      render(
+        <PlaybackProvider duration={10} stepInterval={1 / 30}>
+          <TimelineControls extraActions={<span data-testid="slot">hi</span>} />
+        </PlaybackProvider>
+      );
+      // extraActions renders far-right, preceded by a second divider.
+      const dividers = screen.getAllByTestId("timeline-controls-divider");
+      expect(dividers).toHaveLength(2);
     });
   });
 });

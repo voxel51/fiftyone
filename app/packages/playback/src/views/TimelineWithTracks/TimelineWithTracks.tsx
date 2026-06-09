@@ -37,16 +37,20 @@ export interface TimelineWithTracksProps {
   className?: string;
   /** Overlay rendered on top of the ruler row in each TimelineHeader. */
   rulerOverlay?: React.ReactNode;
-  /** Injected into the controls row of each TimelineHeader. */
-  extraActions?: React.ReactNode;
   /** Fired when the user chooses "Delete" from an event's context menu. */
   onEventDelete?: (event: NormalizedEvent) => void;
   /**
-   * Optional content rendered between the playback control buttons and the
-   * playhead time display. Forwarded to {@link TimelineHeader}'s
-   * `controlsSlot`; renders in both the empty-timeline and drawer layouts.
+   * Optional content rendered inline between the playback control buttons and
+   * the playhead time display. Forwarded to {@link TimelineHeader}'s
+   * `extraControls`; renders in both the empty-timeline and drawer layouts.
    */
-  controlsSlot?: React.ReactNode;
+  extraControls?: React.ReactNode;
+  /**
+   * Optional content rendered far-right after the playhead time, preceded by a
+   * divider. Forwarded to {@link TimelineHeader}'s `extraActions`; renders in
+   * both the empty-timeline and drawer layouts.
+   */
+  extraActions?: React.ReactNode;
   /**
    * Per-row prop override. Returned partial is merged onto the props
    * passed to each {@link TimelineTrack}.
@@ -65,18 +69,15 @@ export interface TimelineWithTracksProps {
  * the controls and ruler. When the drawer is **open**, all tracks —
  * pinned at the top, unpinned below — live in the drawer body and
  * scroll together as one unit.
- *
- * The drawer's minimum drag size equals the pinned section height, so
- * the user can never drag below the pinned rows while the drawer is open.
  */
 const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   labelWidth: requestedLabelWidth = TIMELINE_LABEL_WIDTH,
   maxSize = TIMELINE_DRAWER_MAX_SIZE,
   className,
   rulerOverlay,
-  extraActions,
   onEventDelete,
-  controlsSlot,
+  extraControls,
+  extraActions,
   decorateTrack,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -123,8 +124,8 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
           labelWidth={labelWidth}
           zoomRef={containerRef}
           rulerOverlay={rulerOverlay}
+          extraControls={extraControls}
           extraActions={extraActions}
-          controlsSlot={controlsSlot}
         />
       </div>
     );
@@ -146,8 +147,8 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
             zoomRef={containerRef}
             onToggle={toggle}
             rulerOverlay={rulerOverlay}
+            extraControls={extraControls}
             extraActions={extraActions}
-            controlsSlot={controlsSlot}
           >
             <div className={styles.pinnedOverlayHost}>
               {pinned.map(renderPinnedTrack)}
