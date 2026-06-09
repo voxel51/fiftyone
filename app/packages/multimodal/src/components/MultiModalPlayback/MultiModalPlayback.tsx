@@ -187,11 +187,9 @@ function Layout({
         <Drawer
           side="left"
           mode="push"
-          defaultSize={280}
-          minSize={200}
           maxSize={500}
           open={leftOpen}
-          onOpenChange={setLeftOpen}
+          onOpenChange={(v) => setLeftOpen(v)}
         >
           {leftSidebar}
         </Drawer>
@@ -209,17 +207,18 @@ function Layout({
         <Drawer
           side="right"
           mode="push"
-          defaultSize={280}
-          minSize={200}
           maxSize={500}
           open={rightOpen}
-          onOpenChange={setRightOpen}
+          onOpenChange={(v) => setRightOpen(v)}
         >
           {rightSidebar}
         </Drawer>
       </div>
 
-      <TemporalTagTimeline onTagCreate={onTagCreate} onEventDelete={onTagDelete} />
+      <TemporalTagTimeline
+        onTagCreate={onTagCreate}
+        onEventDelete={onTagDelete}
+      />
     </div>
   );
 }
