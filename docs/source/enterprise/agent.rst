@@ -110,6 +110,11 @@ of the currently logged-in user. Gateways can use this header to attribute
 requests to individual users rather than a shared system account, which is
 useful for enforcing per-user quotas or audit logging.
 
+.. note::
+
+    Admins are responsible for ensuring that the configured endpoint's data
+    handling and retention align with their organization's privacy policy.
+
 .. _enterprise-agent-using:
 
 Using the agent
