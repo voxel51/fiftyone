@@ -46,7 +46,8 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
   const viewEnd = useViewEnd();
   const loopStart = useLoopStart();
   const loopEnd = useLoopEnd();
-  const { duration, seek, setView, setLoop } = usePlayback();
+  const { duration, seek, setView, setLoop, snapPlayheadToFrame } =
+    usePlayback();
 
   const rulerRef = useRef<HTMLDivElement>(null);
 
@@ -88,6 +89,9 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       );
       seek(clamp(startValue + (delta / laneWidth) * vd, 0, duration));
     },
+    // Continuous while dragging (above); snap to a frame boundary only once
+    // the drag settles. No-op unless the provider opted into snapping.
+    onDragEnd: () => snapPlayheadToFrame(),
   });
 
   const loopStartDrag = useDragDelta({
@@ -158,6 +162,9 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       const vs = dragRef.current.startVs;
       const ve = dragRef.current.startVe;
       seek(clamp(vs + (laneX / laneWidth) * (ve - vs), 0, duration));
+      // Land a click-to-seek on a frame boundary too (no-op unless snapping
+      // is enabled); reads the playhead `seek` just set.
+      snapPlayheadToFrame();
     },
   });
 
@@ -220,11 +227,9 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
   const loopStartRatio = clamp((loopStart - viewStart) / viewDuration, 0, 1);
   const loopEndRatio = clamp((loopEnd - viewStart) / viewDuration, 0, 1);
 
-  const tickInterval =
-    viewDuration <= 1 ? 0.1 : viewDuration <= 3 ? 0.5 : 1;
+  const tickInterval = viewDuration <= 1 ? 0.1 : viewDuration <= 3 ? 0.5 : 1;
   const ticks: number[] = [];
-  const firstTick =
-    Math.ceil(viewStart / tickInterval - 1e-9) * tickInterval;
+  const firstTick = Math.ceil(viewStart / tickInterval - 1e-9) * tickInterval;
   for (
     let t = Math.round(firstTick * 1e4) / 1e4;
     t <= viewEnd + 1e-9;
@@ -253,8 +258,8 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
   const cursor = playheadDrag.isDragging
     ? "grabbing"
     : loopStartDrag.isDragging || loopEndDrag.isDragging
-      ? "ew-resize"
-      : undefined;
+    ? "ew-resize"
+    : undefined;
 
   return (
     <div

@@ -721,6 +721,8 @@ _DETECTION = "detection"
 _DETECTIONS = "detections"
 _POLYLINE = "polyline"
 _POLYLINES = "polylines"
+_TEMPORAL_DETECTION = "temporaldetection"
+_TEMPORAL_DETECTIONS = "temporaldetections"
 
 _ALL_LABEL_TYPES = {
     _CLASSIFICATION,
@@ -729,4 +731,6 @@ _ALL_LABEL_TYPES = {
     _DETECTIONS,
     _POLYLINE,
     _POLYLINES,
+    _TEMPORAL_DETECTION,
+    _TEMPORAL_DETECTIONS,
 }

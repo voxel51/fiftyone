@@ -1,6 +1,8 @@
 import { getFetchParameters, mergeHeaders } from "@fiftyone/utilities";
 import type {
   AnnotationProvider,
+  BitmapEncodeRequest,
+  BitmapInferenceRequest,
   DownloadProgress,
   DownloadProgressCallback,
   ErrorCallback,
@@ -28,21 +30,27 @@ function checkBrowserCompatibility(): { errors: string[]; warnings: string[] } {
   // WASM SIMD: same byte sequence used by onnxruntime-web to detect SIMD support.
   // Source: https://github.com/microsoft/onnxruntime/blob/main/js/web/lib/wasm/wasm-factory.ts
   try {
-    if (!WebAssembly.validate(new Uint8Array([
-      0, 97, 115, 109, 1, 0, 0, 0, 1, 4, 1, 96, 0, 0, 3, 2, 1, 0, 10, 30, 1, 28, 0, 65, 0, 253, 15, 253, 12, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 253, 186, 1, 26, 11,
-    ])))
+    if (
+      !WebAssembly.validate(
+        new Uint8Array([
+          0, 97, 115, 109, 1, 0, 0, 0, 1, 4, 1, 96, 0, 0, 3, 2, 1, 0, 10, 30, 1,
+          28, 0, 65, 0, 253, 15, 253, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 253, 186, 1, 26, 11,
+        ])
+      )
+    )
       errors.push("WASM SIMD");
   } catch {
     errors.push("WASM SIMD");
   }
 
-  if (typeof OffscreenCanvas === "undefined")
-    errors.push("OffscreenCanvas");
+  if (typeof OffscreenCanvas === "undefined") errors.push("OffscreenCanvas");
 
   // SharedArrayBuffer: enables multi-threaded WASM. Without it, falls back to single-threaded.
   if (typeof SharedArrayBuffer === "undefined")
-    warnings.push("SharedArrayBuffer unavailable. Falling back to single-threaded WASM");
+    warnings.push(
+      "SharedArrayBuffer unavailable. Falling back to single-threaded WASM"
+    );
 
   return { errors, warnings };
 }
@@ -78,14 +86,16 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
     const { errors, warnings } = checkBrowserCompatibility();
 
     if (errors.length > 0) {
-      const err: ProviderError = { kind: "unsupported", message: `Missing browser APIs: ${errors.join(", ")}` };
+      const err: ProviderError = {
+        kind: "unsupported",
+        message: `Missing browser APIs: ${errors.join(", ")}`,
+      };
       this.onError?.(err);
       this.onStatus?.("failure");
       throw new Error(err.message);
     }
 
-    for (const w of warnings)
-      this.onWarning?.(w);
+    for (const w of warnings) this.onWarning?.(w);
 
     this.onStatus?.("loading");
 
@@ -101,8 +111,7 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
     this.worker.onmessage = (e: MessageEvent) => {
       const { id, type, success, result, error } = e.data;
 
-      if (type === "ready")
-        return;
+      if (type === "ready") return;
 
       if (type === "status") {
         this.onStatus?.(result as ProviderStatus);
@@ -125,19 +134,19 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
       }
 
       const entry = this.pending.get(id);
-      if (!entry)
-        return;
+      if (!entry) return;
 
       this.pending.delete(id);
 
-      success ? entry.resolve(result) : entry.reject(new Error(error ?? "Worker error"));
+      success
+        ? entry.resolve(result)
+        : entry.reject(new Error(error ?? "Worker error"));
     };
 
     this.worker.onerror = (e: ErrorEvent) => {
       const msg = e.message || "Worker error";
       this.onStatus?.("failure");
-      for (const entry of this.pending.values())
-        entry.reject(new Error(msg));
+      for (const entry of this.pending.values()) entry.reject(new Error(msg));
       this.pending.clear();
       this.worker?.terminate();
       this.worker = null;
@@ -166,11 +175,37 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
     return promise;
   }
 
+  /**
+   * Run SAM2 against an already-decoded frame bitmap (e.g. an ImaVid video
+   * frame). Used by video propagation; see `videoPropagation.ts`.
+   *
+   * The bitmap is passed by structured clone, NOT as a transferable —
+   * Firefox rejects a payload that both contains a bitmap and lists it in
+   * the transfer list ("invalid transferable array for structured clone").
+   * Cloning a single bitmap is cheap (a handle, not a pixel copy), and it
+   * leaves the caller's bitmap intact — important when the source is a
+   * frame-cache entry the stream still owns.
+   */
+  async inferBitmap(request: BitmapInferenceRequest): Promise<InferenceResult> {
+    const { id, promise } = this.send("embedAndDecodeBitmap", request);
+    this.lastInferenceId = id;
+    return promise;
+  }
+
+  /**
+   * Encode-only — run SAM2's image encoder on a frame and cache the
+   * embedding keyed on `cacheKey`. No decoder, no result. A later
+   * {@link inferBitmap} with the same key then runs the decoder only.
+   */
+  async encodeBitmap(request: BitmapEncodeRequest): Promise<void> {
+    const { promise } = this.send("encodeBitmap", request);
+    return promise;
+  }
+
   // Client-side only: rejects the pending promise but the worker keeps computing.
   // Only aborts the most recent inference. Earlier in-flight requests are not cancelled.
   abort(): void {
-    if (this.lastInferenceId === null)
-      return;
+    if (this.lastInferenceId === null) return;
 
     const entry = this.pending.get(this.lastInferenceId);
     if (entry) {
@@ -199,10 +234,12 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
   ): { id: number; promise: Promise<WorkerResponse<T>> } {
     const id = this.nextId++;
     const promise = new Promise<WorkerResponse<T>>((resolve, reject) => {
-      if (!this.worker)
-        return reject(new Error("Worker not initialized"));
+      if (!this.worker) return reject(new Error("Worker not initialized"));
 
-      this.pending.set(id, { resolve: resolve as (value: unknown) => void, reject });
+      this.pending.set(id, {
+        resolve: resolve as (value: unknown) => void,
+        reject,
+      });
       this.worker.postMessage({ id, type, payload });
     });
     return { id, promise };

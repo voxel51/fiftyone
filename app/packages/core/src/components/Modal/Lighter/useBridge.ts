@@ -418,6 +418,9 @@ export const useBridge = (scene: Scene2D | null) => {
     useCallback(() => {
       if (segmentationMode.segmentationModeActive) {
         segmentationMode.finalizePointSelection();
+        // Deselect the committed label so the next click starts a fresh
+        // detection
+        focusRef.current.deselectOverlay();
       }
     }, [segmentationMode])
   );

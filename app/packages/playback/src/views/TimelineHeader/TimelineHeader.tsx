@@ -18,6 +18,7 @@ export interface TimelineHeaderProps {
    */
   onToggle?: () => void;
   /**
+<<<<<<< HEAD
    * Overlay rendered on top of the ruler row (position:relative wrapper).
    * Used by TemporalTagRangeOverlay to capture pointer events for range
    * selection — sits only over the ruler, not the controls row above.
@@ -25,6 +26,14 @@ export interface TimelineHeaderProps {
   rulerOverlay?: ReactNode;
   /** Injected into the controls row — use for feature-specific action buttons. */
   extraActions?: ReactNode;
+=======
+   * Optional content forwarded to {@link TimelineControls}' `controlsSlot`
+   * slot — rendered between the playback control buttons and the playhead
+   * time display. The video annotation surface slots its action toolbar
+   * (Mark Keyframe / Propagate) here, per the mocks.
+   */
+  controlsSlot?: ReactNode;
+>>>>>>> chore/va-hook-tests
   /**
    * Content rendered below the ruler, still inside the always-visible
    * header region. Used by `TimelineWithTracks` to keep pinned tracks
@@ -43,14 +52,23 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
   labelWidth,
   zoomRef,
   onToggle,
+<<<<<<< HEAD
   rulerOverlay,
   extraActions,
+=======
+  controlsSlot,
+>>>>>>> chore/va-hook-tests
   children,
 }) => {
   return (
     <div className={styles.root} data-testid="timeline-header-root">
+<<<<<<< HEAD
       <TimelineControls onToggle={onToggle} extraActions={extraActions} />
       <TimelineRuler labelWidth={labelWidth} zoomRef={zoomRef} overlay={rulerOverlay} />
+=======
+      <TimelineControls onToggle={onToggle} controlsSlot={controlsSlot} />
+      <TimelineRuler labelWidth={labelWidth} zoomRef={zoomRef} />
+>>>>>>> chore/va-hook-tests
       {children ? <div className={styles.belowRuler}>{children}</div> : null}
     </div>
   );

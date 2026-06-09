@@ -145,6 +145,44 @@ export interface PlaybackStream {
 }
 
 // ---------------------------------------------------------------------------
+// Pluggable clock source
+// ---------------------------------------------------------------------------
+
+/**
+ * An override for the engine's RAF tick: when registered (via
+ * `setClockSource`), the engine consults `read()` each tick and, if
+ * it returns a number, uses that as the next target time instead of
+ * computing `playhead + dt` from wallclock.
+ *
+ * Use this when a specific data source already has the authoritative
+ * clock for the timeline — the canonical case is a single `<video>`
+ * whose `requestVideoFrameCallback` reports the actually-presented
+ * frame's mediaTime. Letting that drive the engine sidesteps the
+ * two-clock race between the engine's wallclock RAF and the video's
+ * decoder pace.
+ *
+ * For label-only timelines, image-sequence playback, sensor data,
+ * and multi-stream coordinated playback, do *not* register a clock
+ * source. The engine's wallclock-driven barrier sync is the right
+ * model there: streams gate the engine via `bufferState`, and the
+ * engine advances `dt`-by-`dt` regardless of any single source.
+ *
+ * Multi-video: register a clock source whose `read()` returns
+ * the *minimum* presented mediaTime across the participating videos,
+ * so the engine waits for the slowest. The clock-source contract is
+ * deliberately a single number rather than a per-stream presented
+ * time so the coordination strategy is the integrator's choice.
+ *
+ * `read()` may return `null` to mean "no opinion this tick" — the
+ * engine then falls through to its `dt` advance. Use this for the
+ * pre-first-frame window where a video stream hasn't reported any
+ * presented frame yet.
+ */
+export interface PlaybackClockSource {
+  read: () => number | null;
+}
+
+// ---------------------------------------------------------------------------
 // Config passed to PlaybackProvider
 // ---------------------------------------------------------------------------
 
@@ -170,6 +208,15 @@ export interface PlaybackConfig {
   defaultLoopEnd?: number;
   /** Initial playback speed multiplier. @default 1.0 */
   defaultSpeed?: number;
+  /**
+   * When `true`, the playhead snaps to the start of the displayed frame at
+   * settle points — pausing and the end of a scrub drag. Scrubbing itself
+   * stays continuous (mid-drag `seek`s are never snapped); only the final
+   * resting position aligns to a frame boundary. Opt-in so general playback
+   * keeps fully continuous scrubbing.
+   * @default false
+   */
+  snapToFrameOnSettle?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -184,6 +231,12 @@ export interface PlaybackContextValue {
   play: () => void;
   pause: () => void;
   seek: (time: number) => void;
+  /**
+   * Snap the playhead to the start of the displayed frame. No-op unless the
+   * provider was configured with `snapToFrameOnSettle`. Call at scrub
+   * settle points (e.g. a playhead drag-end) — pausing snaps automatically.
+   */
+  snapPlayheadToFrame: () => void;
   stepBack: () => void;
   stepForward: () => void;
   setView: (start: number, end: number) => void;
@@ -211,4 +264,17 @@ export interface PlaybackContextValue {
    * directly — the hook handles subscribe/unsubscribe in a useEffect.
    */
   subscribeStream: (id: string) => () => void;
+
+  /**
+   * Install (or remove with `null`) a clock source that overrides the
+   * engine's RAF `dt` advance. See {@link PlaybackClockSource}. Only
+   * one clock source is active at a time; setting a new one replaces
+   * any prior installation.
+   *
+   * Returns a teardown function for ergonomic use inside a useEffect:
+   * ```ts
+   * useEffect(() => setClockSource({ read: () => ref.current }), [setClockSource]);
+   * ```
+   */
+  setClockSource: (source: PlaybackClockSource | null) => () => void;
 }

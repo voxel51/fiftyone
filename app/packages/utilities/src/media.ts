@@ -8,7 +8,7 @@ import { PathType, determinePathType, getBasename } from "./paths";
 export const isAnnotationSupported = (
   mediaType: string | null | undefined
 ): boolean => {
-  return !!mediaType && !["video", "group"].includes(mediaType);
+  return !!mediaType && !["group"].includes(mediaType);
 };
 
 const DIRECT_3D_SAMPLE_EXTENSIONS = new Set([

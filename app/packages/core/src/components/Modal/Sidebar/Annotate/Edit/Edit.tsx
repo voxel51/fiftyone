@@ -1,6 +1,11 @@
 import { DetectionLabel } from "@fiftyone/looker";
 import { useClearModal } from "@fiftyone/state";
-import { DETECTION, KEYPOINT, POLYLINE } from "@fiftyone/utilities";
+import {
+  DETECTION,
+  KEYPOINT,
+  POLYLINE,
+  TEMPORAL_DETECTION,
+} from "@fiftyone/utilities";
 import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 import styled from "styled-components";
@@ -14,6 +19,7 @@ import { KeypointDetails } from "./KeypointDetails";
 import { PolylineDetails } from "./PolylineDetails";
 import Position from "./Position";
 import Position3d from "./Position3d";
+import Support from "./Support";
 import {
   currentData,
   currentField,
@@ -107,6 +113,9 @@ export default function Edit() {
         )}
         {type === POLYLINE && <PolylineDetails />}
         {type === KEYPOINT && <KeypointDetails />}
+        {type === TEMPORAL_DETECTION && overlay && (
+          <Support readOnly={isReadOnly} />
+        )}
         {field && <AnnotationSchema readOnly={isReadOnly} />}
         {isMaskDetection && <MaskPreview />}
       </Content>

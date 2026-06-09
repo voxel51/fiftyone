@@ -4,7 +4,6 @@ import React, {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 
@@ -61,11 +60,17 @@ export interface TrackContextValue {
 const TrackContext = createContext<TrackContextValue | null>(null);
 
 export interface TrackProviderProps {
-  /** Tracks to broadcast. Treated as mount-time config (no churn). */
-  initialTracks?: Track[];
+  /**
+   * Tracks to broadcast. Reactive; callers should provide a stable reference
+   * so a new identity is a signal that the track list changed.
+   */
+  tracks?: Track[];
   /**
    * Track ids that should start pinned to the timeline. Anything else
-   * sits in the "unpinned" pool, browsable but not rendered.
+   * sits in the "unpinned" pool, browsable but not rendered. **Mount-time
+   * only** — captured into local state on the first render and never read
+   * again. To mutate pin state after mount, call `togglePin` / `setPinned`
+   * from `useTrackPinning()`.
    */
   initialPinnedIds?: string[];
   children: React.ReactNode;
@@ -87,13 +92,16 @@ export interface TrackProviderProps {
  * provider when the user opens that recording.
  */
 export const TrackProvider: React.FC<TrackProviderProps> = ({
-  initialTracks = [],
+  tracks = [],
   initialPinnedIds = [],
   children,
 }) => {
+<<<<<<< HEAD
   // Tracks are reactive — the caller is responsible for passing a stable
   // reference (e.g. via useMemo) so the context value only updates when
   // the track list genuinely changes. No internal state needed.
+=======
+>>>>>>> chore/va-hook-tests
   const [pinnedIds, setPinnedSet] = useState<Set<string>>(
     () => new Set(initialPinnedIds)
   );
@@ -155,12 +163,21 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
 
   const value = useMemo<TrackContextValue>(
     () => ({
+<<<<<<< HEAD
       tracks: initialTracks,
+=======
+      tracks,
+>>>>>>> chore/va-hook-tests
       pinnedIds,
       togglePin,
       setPinned,
     }),
+<<<<<<< HEAD
     [initialTracks, pinnedIds, togglePin, setPinned]
+=======
+    // togglePin / setPinned are useCallback([]) — referentially stable.
+    [tracks, pinnedIds]
+>>>>>>> chore/va-hook-tests
   );
 
   return (

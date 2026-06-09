@@ -1,3 +1,6 @@
+import type { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
+import type { PropagationBlob, SyntheticBox } from "@fiftyone/utilities";
+
 import {
   ClassificationsParent,
   DetectionsParent,
@@ -18,6 +21,7 @@ export enum AgentTaskType {
   DETECT = "detect",
   SEGMENT = "segment",
   INFER = "infer",
+  PROPAGATE = "propagate",
 }
 
 /**
@@ -91,6 +95,20 @@ export type AnnotationContext = {
 };
 
 /**
+ * Inputs for a single propagation run: which track, what range to fill,
+ * and the two bracketing keyframe labels to interpolate between.
+ */
+export type PropagationContext = AnnotationContext & {
+  /** Track identity to propagate within (cross-frame `instance.id`). */
+  instanceId: string;
+  /** Inclusive frame range to fill between the two bracketing keyframes. */
+  fromFrame: number;
+  toFrame: number;
+  /** The two bracketing keyframe labels the propagator interpolates between. */
+  parentKeyframes: [SyntheticBox, SyntheticBox];
+};
+
+/**
  * Display information about the underlying model powering an agent or task.
  */
 export type ModelMetadata = {
@@ -153,13 +171,33 @@ export type PolylinesInferenceResult = PolylinesParent;
 export type SegmentationInferenceResult = DetectionsParent;
 
 /**
+ * A `DetectionLabel` carrying the video-annotation dynamic attrs the
+ * propagator writes on each emitted label. `bounding_box` is required —
+ * propagation always emits 2D detections.
+ */
+export type PropagatedDetection = DetectionLabel & {
+  bounding_box: [number, number, number, number];
+  keyframe: boolean;
+  propagation: PropagationBlob | null;
+};
+
+/**
+ * Response type for propagation tasks: a flat list of per-frame Detection
+ * labels the propagator wants written into the frame-labels stream cache.
+ */
+export type PropagationInferenceResult = {
+  perFrame: Array<{ frameNumber: number; detection: PropagatedDetection }>;
+};
+
+/**
  * Union of all supported inference result types.
  */
 export type InferenceResultProxy =
   | ClassificationInferenceResult
   | DetectionInferenceResult
   | PolylinesInferenceResult
-  | SegmentationInferenceResult;
+  | SegmentationInferenceResult
+  | PropagationInferenceResult;
 
 /**
  * Coarse lifecycle states an {@link AnnotationAgent} may transition through.

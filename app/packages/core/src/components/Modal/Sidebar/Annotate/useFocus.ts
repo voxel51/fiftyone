@@ -37,19 +37,33 @@ export default function useFocus(): FocusController {
     (id: string, options?: FocusOptions) => {
       if (options?.ignoreSideEffects) return;
 
-      if (STORE.get(editing)) {
+      const editingValue = STORE.get(editing);
+      if (editingValue) {
         const currentLabel = STORE.get(current);
+        const currentOverlayId = currentLabel?.overlay?.id;
 
-        if (currentLabel?.isNew) return;
+        // If the overlay being edited is no longer in the scene, the edit
+        // target is stale and must not block selecting its replacement.
+        // A string `editing` value (add-schema flow) has no overlay, so it's
+        // never stale.
+        const editingStale =
+          typeof editingValue !== "string" &&
+          !!currentOverlayId &&
+          !!scene &&
+          !scene.getOverlay(currentOverlayId);
 
-        // Re-clicking the overlay that's already being edited — needed
-        // for drag/resize interactions in patches view auto-edit.
-        if (currentLabel?.overlay?.id === id) return;
+        if (!editingStale) {
+          if (currentLabel?.isNew) return;
 
-        // Another label is already open for editing; cancel the new
-        // selection and keep editing the current one.
-        scene?.deselectOverlay(id, { ignoreSideEffects: true });
-        return;
+          // Re-clicking the overlay that's already being edited — needed
+          // for drag/resize interactions in patches view auto-edit.
+          if (currentOverlayId === id) return;
+
+          // Another label is already open for editing; cancel the new
+          // selection and keep editing the current one.
+          scene?.deselectOverlay(id, { ignoreSideEffects: true });
+          return;
+        }
       }
 
       const label = STORE.get(labelMap)[id];
@@ -75,8 +89,8 @@ export default function useFocus(): FocusController {
     [isGenerated, onExit]
   );
 
-  return useMemo(() => ({ selectOverlay, deselectOverlay }), [
-    selectOverlay,
-    deselectOverlay,
-  ]);
+  return useMemo(
+    () => ({ selectOverlay, deselectOverlay }),
+    [selectOverlay, deselectOverlay]
+  );
 }

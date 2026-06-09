@@ -20,9 +20,11 @@ export * from "./Resource";
 export * from "./schema";
 export { default as sizeBytesEstimate } from "./size-bytes-estimate";
 export * as styles from "./styles";
+export * from "./temporal";
 export * from "./type-check";
 export * from "./types";
 export * from "./validation";
+export * from "./videoLabels";
 
 interface O {
   [key: string]: O | any;

@@ -10,6 +10,7 @@ from unittest import mock
 
 import pytest
 
+import fiftyone.core.frame as fof
 from fiftyone.server.utils.json.jsonpatch import RootDeleteError
 from fiftyone.server.utils.json.jsonpatch.methods import (
     get,
@@ -403,3 +404,67 @@ def test_replace():
 
     assert res is src
     assert src["a"]["b"]["c"] == "new"
+
+
+class _StubFrames(fof.Frames):
+    """Minimal fof.Frames stub.
+
+    fof.Frames keys by integer frame number and rejects string keys via
+    validate_frame_number. The jsonpatch traversal must coerce path parts
+    to int when stepping through a Frames instance; this stub avoids the
+    need for a real fo.Sample / DB connection.
+    """
+
+    def __init__(self):
+        self._data: dict[int, Any] = {}
+
+    def __getitem__(self, frame_number):
+        return self._data[frame_number]
+
+    def __setitem__(self, frame_number, value):
+        self._data[frame_number] = value
+
+    def __delitem__(self, frame_number):
+        del self._data[frame_number]
+
+    def __contains__(self, frame_number):
+        return frame_number in self._data
+
+
+class TestFramesTraversal:
+    """Traversal through fof.Frames should coerce numeric path parts to int."""
+
+    @staticmethod
+    def test_get_through_frames():
+        frames = _StubFrames()
+        frames[42] = {"detections": {"detections": ["box"]}}
+        src = {"frames": frames}
+
+        assert get(src, "/frames/42/detections/detections/0") == "box"
+
+    @staticmethod
+    def test_add_through_frames():
+        frames = _StubFrames()
+        src = {"frames": frames}
+
+        add(src, "/frames/7", {"label": "hello"})
+
+        assert frames[7] == {"label": "hello"}
+
+    @staticmethod
+    def test_remove_through_frames():
+        frames = _StubFrames()
+        frames[3] = {"label": "bye"}
+        src = {"frames": frames}
+
+        remove(src, "/frames/3")
+
+        assert 3 not in frames
+
+    @staticmethod
+    def test_get_into_field_inside_frame():
+        frames = _StubFrames()
+        frames[1] = {"detections": {"detections": [{"label": "car"}]}}
+        src = {"frames": frames}
+
+        assert get(src, "/frames/1/detections/detections/0/label") == "car"

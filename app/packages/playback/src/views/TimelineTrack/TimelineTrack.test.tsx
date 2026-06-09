@@ -284,6 +284,7 @@ describe("TimelineTrack", () => {
     });
   });
 
+<<<<<<< HEAD
   describe("onEventDelete", () => {
     it("renders interval events with a label column and no crash when onEventDelete is absent", () => {
       // Smoke-test: component renders without onEventDelete — no delete entry shown.
@@ -310,6 +311,33 @@ describe("TimelineTrack", () => {
         },
       });
       expect(container.querySelector(`.${styles.intervalBar}`)).not.toBeNull();
+=======
+  describe("onDeleteTrack", () => {
+    const interval = { startSec: 4, endSec: 6 };
+
+    it("adds a Delete track item to the event menu that fires onDeleteTrack", () => {
+      const onDeleteTrack = vi.fn();
+      const { container } = renderTrack({
+        track: { start: 0, end: 10, events: [interval], onDeleteTrack },
+      });
+      const bar = container.querySelector(
+        `.${styles.intervalBar}`
+      ) as HTMLElement;
+      fireEvent.contextMenu(bar);
+      fireEvent.click(screen.getByText("Delete track"));
+      expect(onDeleteTrack).toHaveBeenCalledTimes(1);
+    });
+
+    it("omits the Delete track item when onDeleteTrack is not provided", () => {
+      const { container } = renderTrack({
+        track: { start: 0, end: 10, events: [interval] },
+      });
+      const bar = container.querySelector(
+        `.${styles.intervalBar}`
+      ) as HTMLElement;
+      fireEvent.contextMenu(bar);
+      expect(screen.queryByText("Delete track")).toBeNull();
+>>>>>>> chore/va-hook-tests
     });
   });
 
@@ -329,6 +357,251 @@ describe("TimelineTrack", () => {
       expect(inlineStyle(bar).toLowerCase()).toMatch(
         /background:\s*(#ff000055|rgba\(255,\s*0,\s*0,\s*0\.33)/
       );
+    });
+  });
+
+  describe("resizable interval events", () => {
+    /**
+     * Fire a pointer-down on the element via React's synthetic-event
+     * path so onPointerDown handlers run, then dispatch document-level
+     * pointermove / pointerup that the drag handler listens for.
+     */
+    const dragOnElement = (el: HTMLElement, from: number, to: number) => {
+      fireEvent.mouseDown(el, { clientX: from, button: 0 });
+      const move = new MouseEvent("mousemove", {
+        clientX: to,
+        bubbles: true,
+      });
+      document.dispatchEvent(move);
+      const up = new MouseEvent("mouseup", { clientX: to, bubbles: true });
+      document.dispatchEvent(up);
+    };
+
+    const baseInterval = {
+      startSec: 4,
+      endSec: 6,
+      resizable: true as const,
+    };
+
+    it("renders both resize handles on a resizable interval when onEventEdit is provided", () => {
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [baseInterval],
+          onEventEdit: vi.fn(),
+        },
+      });
+      const handles = container.querySelectorAll(`.${styles.resizeHandle}`);
+      expect(handles).toHaveLength(2);
+      expect(
+        container.querySelector(`.${styles.resizeHandleStart}`)
+      ).not.toBeNull();
+      expect(
+        container.querySelector(`.${styles.resizeHandleEnd}`)
+      ).not.toBeNull();
+    });
+
+    it("does not render handles when resizable is true but onEventEdit is missing", () => {
+      const { container } = renderTrack({
+        track: { start: 0, end: 10, events: [baseInterval] },
+      });
+      expect(
+        container.querySelectorAll(`.${styles.resizeHandle}`)
+      ).toHaveLength(0);
+    });
+
+    it("does not render handles when the event opts out of resizable", () => {
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [{ startSec: 4, endSec: 6 }],
+          onEventEdit: vi.fn(),
+        },
+      });
+      expect(
+        container.querySelectorAll(`.${styles.resizeHandle}`)
+      ).toHaveLength(0);
+    });
+
+    it("commits a resize-end drag with the new endSec", () => {
+      const onEventEdit = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [baseInterval],
+          onEventEdit,
+        },
+      });
+      const endHandle = container.querySelector(
+        `.${styles.resizeHandleEnd}`
+      ) as HTMLElement;
+      // Lane is 1000px wide for view [0, 10] → 100px per second.
+      // Drag end handle right by 200px → +2s on endSec (4→6 becomes 4→8).
+      dragOnElement(endHandle, 600, 800);
+      expect(onEventEdit).toHaveBeenCalledTimes(1);
+      const [idx, newStart, newEnd] = onEventEdit.mock.calls[0];
+      expect(idx).toBe(0);
+      expect(newStart).toBeCloseTo(4);
+      expect(newEnd).toBeCloseTo(8);
+    });
+
+    it("commits a resize-start drag with the new startSec", () => {
+      const onEventEdit = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [baseInterval],
+          onEventEdit,
+        },
+      });
+      const startHandle = container.querySelector(
+        `.${styles.resizeHandleStart}`
+      ) as HTMLElement;
+      // Drag start handle left by 100px → -1s on startSec (4→6 becomes 3→6).
+      dragOnElement(startHandle, 400, 300);
+      expect(onEventEdit).toHaveBeenCalledTimes(1);
+      const [idx, newStart, newEnd] = onEventEdit.mock.calls[0];
+      expect(idx).toBe(0);
+      expect(newStart).toBeCloseTo(3);
+      expect(newEnd).toBeCloseTo(6);
+    });
+
+    it("commits a body-drag (move) with both endpoints shifted by the same delta", () => {
+      const onEventEdit = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [baseInterval],
+          onEventEdit,
+        },
+      });
+      const bar = container.querySelector(
+        `.${styles.intervalBar}`
+      ) as HTMLElement;
+      // Drag bar right by 100px → +1s on both endpoints (4→6 becomes 5→7).
+      dragOnElement(bar, 500, 600);
+      expect(onEventEdit).toHaveBeenCalledTimes(1);
+      const [idx, newStart, newEnd] = onEventEdit.mock.calls[0];
+      expect(idx).toBe(0);
+      expect(newStart).toBeCloseTo(5);
+      expect(newEnd).toBeCloseTo(7);
+    });
+
+    it("snaps drag results to snapStepSec when provided", () => {
+      const onEventEdit = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [baseInterval],
+          onEventEdit,
+          // 5 fps → step 0.2s. View [0,10] over 1000px → 100px/s → 20px/step.
+          snapStepSec: 0.2,
+        },
+      });
+      const endHandle = container.querySelector(
+        `.${styles.resizeHandleEnd}`
+      ) as HTMLElement;
+      // 175px right of pointer-down clientX 600 → 1.75s raw delta; new
+      // endSec ≈ 7.75; rounded to nearest 0.2 → 7.8.
+      dragOnElement(endHandle, 600, 775);
+      const [, , newEnd] = onEventEdit.mock.calls[0];
+      expect(newEnd).toBeCloseTo(7.8);
+    });
+
+    it("clamps resize-end to a minimum width of snapStepSec", () => {
+      const onEventEdit = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [baseInterval],
+          onEventEdit,
+          snapStepSec: 0.2,
+        },
+      });
+      const endHandle = container.querySelector(
+        `.${styles.resizeHandleEnd}`
+      ) as HTMLElement;
+      // Drag end handle far left past start (4) → should clamp to start+0.2.
+      dragOnElement(endHandle, 600, 0);
+      const [, newStart, newEnd] = onEventEdit.mock.calls[0];
+      expect(newStart).toBeCloseTo(4);
+      expect(newEnd).toBeCloseTo(4.2);
+    });
+
+    it("clamps resize-start to a minimum width of snapStepSec", () => {
+      const onEventEdit = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [baseInterval],
+          onEventEdit,
+          snapStepSec: 0.2,
+        },
+      });
+      const startHandle = container.querySelector(
+        `.${styles.resizeHandleStart}`
+      ) as HTMLElement;
+      // Drag start handle far right past end (6) → should clamp to end-0.2.
+      dragOnElement(startHandle, 400, 1000);
+      const [, newStart, newEnd] = onEventEdit.mock.calls[0];
+      expect(newStart).toBeCloseTo(5.8);
+      expect(newEnd).toBeCloseTo(6);
+    });
+
+    it("does not commit when the pointer never moves past the drag threshold", () => {
+      const onEventEdit = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [baseInterval],
+          onEventEdit,
+        },
+      });
+      const endHandle = container.querySelector(
+        `.${styles.resizeHandleEnd}`
+      ) as HTMLElement;
+      // Move by 2px (under DRAG_THRESHOLD_PX = 3).
+      dragOnElement(endHandle, 600, 602);
+      expect(onEventEdit).not.toHaveBeenCalled();
+    });
+
+    it("suppresses the lane seek-click that follows a real drag", () => {
+      const onEventEdit = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [baseInterval],
+          onEventEdit,
+        },
+      });
+      const bar = container.querySelector(
+        `.${styles.intervalBar}`
+      ) as HTMLElement;
+      // Simulate drag + the synthetic click that mouseup triggers.
+      fireEvent.mouseDown(bar, { clientX: 500 });
+      document.dispatchEvent(
+        new MouseEvent("mousemove", { clientX: 600, bubbles: true })
+      );
+      document.dispatchEvent(
+        new MouseEvent("mouseup", { clientX: 600, bubbles: true })
+      );
+      // Browser would then fire click on the bar (and bubble to lane).
+      fireEvent.click(bar, { clientX: 600 });
+
+      // onEventEdit captured the drag; the playhead should NOT have moved
+      // to clientX 600 (which would be 6s).
+      expect(onEventEdit).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId("playhead").textContent).toBe("0.000");
     });
   });
 });

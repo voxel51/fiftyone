@@ -5,7 +5,7 @@ import {
 } from "@fiftyone/commands";
 import { Button, IconName, Size, Variant } from "@voxel51/voodo";
 import clsx from "clsx";
-import React from "react";
+import React, { type ReactNode } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import { useIsPlaying } from "../../lib/playback/use-playback-state";
 import LoopBounds from "../Loop/LoopBounds";
@@ -20,12 +20,25 @@ export interface TimelineControlsProps {
    * acts as a "show / hide tracks" affordance.
    */
   onToggle?: () => void;
+<<<<<<< HEAD
   extraActions?: React.ReactNode;
+=======
+  /**
+   * Optional content rendered between the playback control buttons and
+   * the playhead time display. The video annotation surface slots its
+   * Mark Keyframe / Propagate toolbar here.
+   */
+  controlsSlot?: ReactNode;
+>>>>>>> chore/va-hook-tests
 }
 
 const TimelineControls: React.FC<TimelineControlsProps> = ({
   onToggle,
+<<<<<<< HEAD
   extraActions,
+=======
+  controlsSlot,
+>>>>>>> chore/va-hook-tests
 }) => {
   const isPlaying = useIsPlaying();
   const { play, pause, stepBack, stepForward } = usePlayback();
@@ -105,6 +118,8 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
         aria-label="Step forward"
         onClick={stepForward}
       />
+
+      {controlsSlot}
 
       <span
         className={styles.divider}

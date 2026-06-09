@@ -66,7 +66,7 @@ export default function useDelete() {
             new DeleteAnnotationCommand(label, fieldSchema)
           );
 
-          removeLabelFromSidebar(label.data._id);
+          removeLabelFromSidebar(label.overlay.id);
           removeOverlay(label.overlay.id, false);
           setNotification({
             msg: `Label "${label.data.label}" successfully deleted.`,

@@ -15,6 +15,7 @@ import {
   viewStartAtom,
 } from "./atoms";
 import type {
+  PlaybackClockSource,
   PlaybackConfig,
   PlaybackContextValue,
   PlaybackStore,
@@ -24,12 +25,81 @@ import type {
 const clamp = (v: number, lo: number, hi: number) =>
   Math.min(hi, Math.max(lo, v));
 
+/**
+ * Snap a continuous playhead time onto a frame-boundary multiple of
+ * `step`, then advance or retreat exactly one displayed frame. Used by
+ * stepForward / stepBack so the frame stepper always lands on a
+ * boundary regardless of where in a frame's time range the playhead
+ * sits — naïvely adding `±step` to a mid-frame playhead would never
+ * align (every press just shifts the offset along).
+ *
+ * "Displayed frame" K is the half-open range `[K*step, (K+1)*step)`.
+ * `forward` returns the *next* frame's start, `back` returns the
+ * *previous* frame's start — both relative to the currently displayed
+ * frame, never to mid-frame fractions.
+ *
+ * The `eps` tolerance absorbs floating-point error so a playhead set
+ * to exactly `K * step` doesn't get misread as `K * step - epsilon`.
+ */
+function frameBoundaryStep(
+  time: number,
+  step: number,
+  direction: "forward" | "back"
+): number {
+  if (!(step > 0)) {
+    return direction === "forward" ? time + step : time - step;
+  }
+  const eps = step * 1e-6;
+  const currentFrameK = Math.floor((time + eps) / step);
+  const targetK =
+    direction === "forward" ? currentFrameK + 1 : currentFrameK - 1;
+  return targetK * step;
+}
+
+/**
+ * Snap a continuous playhead time onto the START of the displayed frame it
+ * falls within — `floor(time / step) * step`. Unlike {@link frameBoundaryStep}
+ * this never advances a frame; it just aligns a mid-frame playhead onto the
+ * boundary of the frame currently on screen, so a settle-snap keeps the user
+ * on the frame they were looking at. The `eps` tolerance keeps a playhead
+ * already at `K * step` from being read as the previous frame.
+ */
+function displayedFrameStart(time: number, step: number): number {
+  if (!(step > 0)) {
+    return time;
+  }
+
+  const eps = step * 1e-6;
+  return Math.floor((time + eps) / step) * step;
+}
+
+/**
+ * Cap on per-tick `dt` (sec) in the engine's wallclock-driven advance.
+ * When the main thread is blocked (memory pressure, GC pause, throttled
+ * tab) RAF callbacks pile up and the next `timestamp - lastTimestamp`
+ * can be huge. Without a cap, the engine teleports `targetTime`
+ * forward by seconds in a single tick — past where any blocking stream
+ * has caught up to. The cap turns that into "advance one cap-step,
+ * then wait for the barrier to refresh."
+ *
+ * 0.133s ≈ 4 frames at 30fps. Generous enough to absorb a 100ms GC
+ * pause without throttling smooth playback; tight enough that a
+ * post-stall tick doesn't overshoot beyond what `bufferState` could
+ * meaningfully gate.
+ *
+ * Only applies in the dt-driven path. When a clock source is
+ * registered (e.g. video-anchored playback), the cap is irrelevant
+ * because `targetTime` comes from the source directly.
+ */
+const MAX_TICK_DT_S = 0.133;
+
 export function usePlaybackEngine({
   duration = 0,
   stepInterval = 1 / 30,
   defaultLoopStart,
   defaultLoopEnd,
   defaultSpeed = 1.0,
+  snapToFrameOnSettle = false,
 }: PlaybackConfig = {}): {
   store: PlaybackStore;
   contextValue: PlaybackContextValue;
@@ -41,6 +111,8 @@ export function usePlaybackEngine({
   fallbackDurationRef.current = duration;
   const fallbackStepIntervalRef = useRef(stepInterval);
   fallbackStepIntervalRef.current = stepInterval;
+  const snapToFrameRef = useRef(snapToFrameOnSettle);
+  snapToFrameRef.current = snapToFrameOnSettle;
 
   const store = useMemo(() => {
     const s = createStore();
@@ -70,9 +142,21 @@ export function usePlaybackEngine({
   const streamsRef = useRef<Map<string, PlaybackStream>>(new Map());
   const subscribersRef = useRef<Map<string, number>>(new Map());
   const rafIdRef = useRef<number | null>(null);
+  // Wallclock at the previous tick. Used for `dt`-driven advance when
+  // no clock source is registered. Reset to `null` on play() so the
+  // first tick after pause doesn't see a huge gap.
   const lastTimestampRef = useRef<number | null>(null);
+  // Optional override for the engine's wallclock advance. When non-null and
+  // `read()` returns a number, the engine uses that as the next target time;
+  // when `null` or `read()` returns `null`, the engine falls back to dt.
+  const clockSourceRef = useRef<PlaybackClockSource | null>(null);
   const seekDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seekSeqRef = useRef(0);
+  // A seek/step/snap target that couldn't commit immediately because a
+  // blocking stream was still buffering. The settle loop (below) polls
+  // the barrier for this time while paused and commits once ready.
+  const pendingCommitRef = useRef<number | null>(null);
+  const settleRafRef = useRef<number | null>(null);
 
   // A stream is "active" when registered AND has at least one subscriber.
   // Dormant streams (registered but no subscribers) are skipped entirely.
@@ -149,54 +233,123 @@ export function usePlaybackEngine({
     [store, isActive]
   );
 
+  /**
+   * Readiness barrier for `targetTime`. Every blocking, subscribed
+   * stream must be ready before the engine commits; streams reporting
+   * `missing` get a prefetch nudge, `loading` is already in flight.
+   * Publishes `isBufferingAtom` and returns whether all are ready.
+   *
+   * Shared by the playing RAF tick and the paused settle loop so a seek
+   * while paused gets the same prefetch nudge that playback would give
+   * it — otherwise streams that fetch only via this nudge would
+   * never request the seeked frame until the user hit play.
+   */
+  const runBarrier = useCallback(
+    (targetTime: number): boolean => {
+      const duration = store.get(durationAtom);
+      let isBuffering = false;
+
+      for (const s of streamsRef.current.values()) {
+        if (!s.blocking) {
+          continue;
+        }
+
+        if (!isActive(s.id)) {
+          continue;
+        }
+
+        const state = s.bufferState(targetTime);
+        if (state === "ready") {
+          continue;
+        }
+
+        isBuffering = true;
+        if (state === "missing") {
+          s.prefetch?.([
+            targetTime,
+            Math.min(duration, targetTime + (s.lookaheadSeconds ?? 3)),
+          ]);
+        }
+      }
+
+      store.set(isBufferingAtom, isBuffering);
+
+      return !isBuffering;
+    },
+    [store, isActive]
+  );
+
+  /**
+   * Engine RAF tick. Two modes, chosen per tick based on whether a
+   * `PlaybackClockSource` has been registered via `setClockSource`:
+   *
+   * - **Default (wallclock-driven, no clock source)**: advance
+   *   `playhead` by capped `dt`. Gate the commit on all blocking
+   *   subscribed streams reporting ready at `targetTime`. This is the
+   *   general-purpose model — label-only timelines, image-sequence
+   *   playback, sensor data, multi-stream coordinated playback all
+   *   live here. The engine is the authority on time; streams
+   *   contribute readiness.
+   *
+   * - **External clock (with registered clock source)**: `targetTime`
+   *   comes from `clockSourceRef.current.read()`. The engine doesn't
+   *   compute `dt`; it observes whatever time the source reports and
+   *   commits gated on the same barrier check. Use this for the
+   *   video-anchored case where the `<video>` element's actual
+   *   presentation time should drive the timeline (avoids the
+   *   wallclock-vs-decoder race).
+   *
+   * If a registered clock source returns `null` (no opinion this
+   * tick — e.g. video hasn't presented a first frame yet), we fall
+   * back to the dt path for that tick. So the modes compose: the
+   * presence of a source doesn't disable dt; only an actual value
+   * does.
+   */
   const tick = useCallback(
     (timestamp: number) => {
-      // Capture first timestamp to avoid a large dt spike on the first frame.
+      // Capture first timestamp so the first tick after a pause/seek
+      // doesn't see a huge dt spike.
       if (lastTimestampRef.current === null) {
         lastTimestampRef.current = timestamp;
         rafIdRef.current = requestAnimationFrame(tick);
         return;
       }
 
-      const dt = ((timestamp - lastTimestampRef.current) / 1000) * store.get(speedAtom);
-      lastTimestampRef.current = timestamp;
-
+      const speed = store.get(speedAtom);
       const currentTime = store.get(playheadAtom);
       const loopStart = store.get(loopStartAtom);
       const loopEnd = store.get(loopEndAtom);
 
-      const rawNext = currentTime + dt;
+      const externalTime = clockSourceRef.current?.read() ?? null;
+
+      let rawNext: number;
+      if (externalTime !== null) {
+        // External clock owns the timeline
+        rawNext = externalTime;
+        lastTimestampRef.current = timestamp;
+      } else {
+        // dt-driven advance. Cap to absorb main-thread blocks.
+        const rawDt = (timestamp - lastTimestampRef.current) / 1000;
+        const cappedDt = Math.min(rawDt, MAX_TICK_DT_S);
+        const dt = cappedDt * speed;
+        lastTimestampRef.current = timestamp;
+        rawNext = currentTime + dt;
+      }
+
       const willWrap = rawNext >= loopEnd;
       const targetTime = willWrap ? loopStart : rawNext;
 
-      const duration = store.get(durationAtom);
-      let isBuffering = false;
-
-      for (const s of streamsRef.current.values()) {
-        if (!s.blocking) continue;
-        if (!isActive(s.id)) continue; // dormant — no subscribers
-        const state = s.bufferState(targetTime);
-        if (state === "ready") continue;
-        isBuffering = true;
-        // "loading" means fetch already in flight — don't re-request.
-        if (state === "missing") {
-          s.prefetch?.([targetTime, Math.min(duration, targetTime + (s.lookaheadSeconds ?? 3))]);
-        }
-      }
-
-      store.set(isBufferingAtom, isBuffering);
-
-      if (!isBuffering) {
+      if (runBarrier(targetTime)) {
         store.set(playheadAtom, targetTime);
         doCommit(targetTime);
-        // Loop-wrap is a discontinuous jump — fire immediately so streams
-        // can flush their cache and buffer around loopStart.
+        // Loop-wrap is a discontinuous jump — fire immediately so
+        // streams can flush their cache and buffer around loopStart.
         if (willWrap) fireSeekEvent(loopStart, true);
       }
 
       rafIdRef.current = requestAnimationFrame(tick);
     },
-    [store, fireSeekEvent, doCommit, isActive]
+    [store, fireSeekEvent, doCommit, runBarrier]
   );
 
   useEffect(() => {
@@ -215,6 +368,12 @@ export function usePlaybackEngine({
     return () => {
       unsub();
       if (rafIdRef.current !== null) cancelAnimationFrame(rafIdRef.current);
+
+      if (settleRafRef.current !== null) {
+        cancelAnimationFrame(settleRafRef.current);
+        settleRafRef.current = null;
+      }
+
       // A queued seek-event timeout could otherwise fire after unmount and
       // touch an orphaned store.
       if (seekDebounceRef.current !== null) {
@@ -224,25 +383,91 @@ export function usePlaybackEngine({
     };
   }, [store, tick]);
 
-  const checkAllReady = useCallback(
-    (time: number): boolean => {
-      for (const s of streamsRef.current.values()) {
-        if (!s.blocking) continue;
-        if (!isActive(s.id)) continue; // dormant — no subscribers
-        if (s.bufferState(time) !== "ready") return false;
+  /**
+   * Paused settle loop. A `seek`/`step`/snap into an unbuffered region
+   * can't commit immediately, and the RAF tick that re-runs the barrier
+   * only runs while playing — so without this the playhead would move
+   * but `currentTimeAtom` would never advance: streams keep showing the
+   * old frame. This polls the barrier for the pending target while paused and
+   * commits once it's ready. Playing hands the duty back to the RAF tick.
+   */
+  const settleTick = useCallback(() => {
+    settleRafRef.current = null;
+    const time = pendingCommitRef.current;
+
+    if (time === null || store.get(isPlayingAtom)) {
+      return;
+    }
+
+    if (runBarrier(time)) {
+      pendingCommitRef.current = null;
+      doCommit(time);
+      return;
+    }
+
+    settleRafRef.current = requestAnimationFrame(settleTick);
+  }, [store, runBarrier, doCommit]);
+
+  /**
+   * Commit `time` now if the barrier is satisfied, else remember it and
+   * let {@link settleTick} commit it once streams finish buffering.
+   */
+  const commitWhenReady = useCallback(
+    (time: number) => {
+      pendingCommitRef.current = time;
+
+      if (runBarrier(time)) {
+        pendingCommitRef.current = null;
+        doCommit(time);
+        return;
       }
-      return true;
+
+      if (settleRafRef.current === null) {
+        settleRafRef.current = requestAnimationFrame(settleTick);
+      }
     },
-    [isActive]
+    [runBarrier, doCommit, settleTick]
   );
 
-  const actions = useMemo(
-    () => ({
+  const actions = useMemo(() => {
+    // Settle-snap: align the playhead to the displayed frame's start. No-op
+    // unless `snapToFrameOnSettle` is configured, so general playback keeps
+    // continuous scrubbing — only the resting position after pause / drag-end
+    // is snapped, never the mid-drag `seek`s. Mirrors `seek`'s set →
+    // fireSeekEvent → commit-if-ready flow so buffering is respected.
+    const snapPlayheadToFrame = () => {
+      if (!snapToFrameRef.current) {
+        return;
+      }
+
+      const step = store.get(stepIntervalAtom);
+      if (!(step > 0)) {
+        return;
+      }
+
+      const current = store.get(playheadAtom);
+      const snapped = clamp(
+        displayedFrameStart(current, step),
+        0,
+        store.get(durationAtom)
+      );
+
+      if (Math.abs(snapped - current) < step * 1e-6) {
+        return;
+      }
+
+      store.set(playheadAtom, snapped);
+      fireSeekEvent(snapped, true);
+      commitWhenReady(snapped);
+    };
+
+    return {
+      snapPlayheadToFrame,
       seek: (time: number) => {
         const clamped = clamp(time, 0, store.get(durationAtom));
         store.set(playheadAtom, clamped);
         fireSeekEvent(clamped);
-        if (checkAllReady(clamped)) doCommit(clamped);
+        commitWhenReady(clamped);
       },
       play: () => {
         const current = store.get(playheadAtom);
@@ -256,26 +481,35 @@ export function usePlaybackEngine({
       },
       pause: () => {
         store.set(isPlayingAtom, false);
+        snapPlayheadToFrame();
       },
       stepBack: () => {
         const next = clamp(
-          store.get(playheadAtom) - store.get(stepIntervalAtom),
+          frameBoundaryStep(
+            store.get(playheadAtom),
+            store.get(stepIntervalAtom),
+            "back"
+          ),
           0,
           store.get(durationAtom)
         );
         store.set(playheadAtom, next);
         fireSeekEvent(next, true);
-        if (checkAllReady(next)) doCommit(next);
+        commitWhenReady(next);
       },
       stepForward: () => {
         const next = clamp(
-          store.get(playheadAtom) + store.get(stepIntervalAtom),
+          frameBoundaryStep(
+            store.get(playheadAtom),
+            store.get(stepIntervalAtom),
+            "forward"
+          ),
           0,
           store.get(durationAtom)
         );
         store.set(playheadAtom, next);
         fireSeekEvent(next, true);
-        if (checkAllReady(next)) doCommit(next);
+        commitWhenReady(next);
       },
       setView: (start: number, end: number) => {
         // Apply the same validation as setLoop so the visible window
@@ -298,10 +532,14 @@ export function usePlaybackEngine({
         store.set(loopEndAtom, le);
       },
       setSpeed: (speed: number) => {
-        // NaN / Infinity / non-positive values would corrupt `dt` in the
-        // RAF tick and produce invalid playhead progression.
+        // NaN / Infinity / non-positive values would corrupt `dt` in
+        // the RAF tick and produce invalid playhead progression.
         if (!Number.isFinite(speed) || speed <= 0) return;
         store.set(speedAtom, speed);
+        // When a clock source is registered, the engine's `dt` arithmetic
+        // isn't running — the source already paces the timeline. Speed in that
+        // mode has to be applied at the source (e.g. `v.playbackRate` for a
+        // video clock source).
       },
       registerStream: (stream: PlaybackStream) => {
         streamsRef.current.set(stream.id, stream);
@@ -318,7 +556,10 @@ export function usePlaybackEngine({
         };
       },
       subscribeStream: (id: string) => {
-        subscribersRef.current.set(id, (subscribersRef.current.get(id) ?? 0) + 1);
+        subscribersRef.current.set(
+          id,
+          (subscribersRef.current.get(id) ?? 0) + 1
+        );
         // One-shot cleanup. StrictMode's setup→cleanup→setup cycle (and
         // any consumer that retains a stale cleanup) would otherwise
         // double-decrement and drop a still-mounted stream.
@@ -334,16 +575,30 @@ export function usePlaybackEngine({
           }
         };
       },
-    }),
-    [
-      store,
-      fireSeekEvent,
-      doCommit,
-      checkAllReady,
-      recomputeDuration,
-      recomputeStepInterval,
-    ]
-  );
+      setClockSource: (source: PlaybackClockSource | null) => {
+        clockSourceRef.current = source;
+        // Reset the dt anchor so a switch back to wallclock mode
+        // doesn't see a huge gap accumulated while the source was
+        // driving.
+        lastTimestampRef.current = null;
+        return () => {
+          // Identity guard: a stale cleanup from a previous source
+          // shouldn't yank out a newer one.
+          if (clockSourceRef.current === source) {
+            clockSourceRef.current = null;
+            lastTimestampRef.current = null;
+          }
+        };
+      },
+    };
+  }, [
+    store,
+    fireSeekEvent,
+    doCommit,
+    commitWhenReady,
+    recomputeDuration,
+    recomputeStepInterval,
+  ]);
 
   const contextValue = useMemo<PlaybackContextValue>(
     () => ({ duration, stepInterval, ...actions }),

@@ -24,6 +24,8 @@ export type {
 export type { MaskSnapshot, PaintStrokeData } from "./overlay/MaskCanvas";
 export { ClassificationOverlay } from "./overlay/ClassificationOverlay";
 export type { ClassificationOptions } from "./overlay/ClassificationOverlay";
+export { TemporalOverlay } from "./overlay/TemporalOverlay";
+export type { TemporalLabel, TemporalOptions } from "./overlay/TemporalOverlay";
 export { ImageOverlay } from "./overlay/ImageOverlay";
 export type { ImageOptions } from "./overlay/ImageOverlay";
 export { KeypointOverlay } from "./overlay/KeypointOverlay";
@@ -121,7 +123,12 @@ export type {
   ViewportState,
 } from "./types";
 
-export { getOverlayColor } from "./utils/colorMapping";
+// Utilities
+export {
+  getLabelColorFromContext,
+  getOverlayColor,
+  type ColorMappingContext,
+} from "./utils/colorMapping";
 export { decodeMaskPath } from "./utils/maskPathDecoding";
 
 // Constants

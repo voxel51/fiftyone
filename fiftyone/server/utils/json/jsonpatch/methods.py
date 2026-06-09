@@ -10,6 +10,8 @@ from typing import TypeVar, Union
 
 import jsonpointer
 
+import fiftyone.core.frame as fof
+
 from fiftyone.server.utils.json.jsonpatch import RootDeleteError
 
 T = TypeVar("T")
@@ -54,6 +56,12 @@ def get(src: T, path: Union[str, jsonpointer.JsonPointer]) -> V:
 
         value = src
         for name in pointer.parts:
+            # fo.Frames keys by integer frame number — coerce up-front
+            # rather than rely on FrameError's exception message.
+            if isinstance(value, fof.Frames):
+                value = value[int(name)]
+                continue
+
             try:
                 value = getattr(value, name)
                 continue
@@ -126,7 +134,9 @@ def add(
     name = pointer.parts[-1]
 
     try:
-        if hasattr(target, "__setitem__"):
+        if isinstance(target, fof.Frames):
+            target[int(name)] = value
+        elif hasattr(target, "__setitem__"):
             try:
                 target[name] = value
             except TypeError as type_err:
@@ -235,7 +245,9 @@ def remove(src: T, path: Union[str, jsonpointer.JsonPointer]) -> T:
     get(target, jsonpointer.JsonPointer.from_parts([name]))
 
     try:
-        if hasattr(target, "__delitem__"):
+        if isinstance(target, fof.Frames):
+            del target[int(name)]
+        elif hasattr(target, "__delitem__"):
             try:
                 del target[name]
             except TypeError as err:

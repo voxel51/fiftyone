@@ -4,8 +4,10 @@
 
 import { useAnnotationEventBus, useDeleteLabel } from "@fiftyone/annotation";
 import { useRegisterCommandHandler } from "@fiftyone/command-bus";
+import { useLighter } from "@fiftyone/lighter";
 import { useCallback } from "react";
 import { DeleteAnnotationCommand } from "../commands";
+import { useTombstoneTemporalDetection } from "../persistence/temporalDetectionTombstones";
 
 /**
  * Hook that registers command handlers for annotation persistence.
@@ -14,13 +16,31 @@ import { DeleteAnnotationCommand } from "../commands";
 export const useRegisterAnnotationCommandHandlers = () => {
   const eventBus = useAnnotationEventBus();
   const deleteLabel = useDeleteLabel();
+  const { removeOverlay } = useLighter();
+  const tombstoneTemporalDetection = useTombstoneTemporalDetection();
 
   useRegisterCommandHandler(
     DeleteAnnotationCommand,
     useCallback(
       async (cmd) => {
+        const labelId = cmd.label.data._id;
+
+        if (cmd.label.type === "TemporalDetection") {
+          // Mark the TD for deletion; defer to save tick
+          tombstoneTemporalDetection(cmd.label.overlay.field, labelId);
+          // Optimistic removal
+          removeOverlay(cmd.label.overlay.id, false);
+
+          eventBus.dispatch("annotation:deleteSuccess", {
+            labelId,
+            type: "delete",
+            labelType: cmd.label.type,
+          });
+
+          return true;
+        }
+
         try {
-          const labelId = cmd.label.data._id;
           const success = await deleteLabel(cmd.label, cmd.schema);
 
           if (success) {
@@ -45,7 +65,7 @@ export const useRegisterAnnotationCommandHandlers = () => {
           throw error;
         }
       },
-      [deleteLabel, eventBus]
+      [deleteLabel, eventBus, removeOverlay, tombstoneTemporalDetection]
     )
   );
 };
