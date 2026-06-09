@@ -2,21 +2,22 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { type Scene2D, TemporalOverlay } from "@fiftyone/lighter";
 import {
-  type Scene2D,
-  TemporalOverlay,
-  UNDEFINED_LIGHTER_SCENE_ID,
-  useLighterEventHandler,
-} from "@fiftyone/lighter";
-import { type AnnotationLabelData, useModalSample } from "@fiftyone/state";
-import { useCallback, useEffect, useRef, useState } from "react";
+  type AnnotationLabel,
+  type AnnotationLabelData,
+  useModalSample,
+} from "@fiftyone/state";
+import { isFrameInSupport } from "@fiftyone/utilities";
+import { useEffect, useRef } from "react";
 import {
   useGetSidebarLabels,
   useLabelsContext,
 } from "../../../core/src/components/Modal/Sidebar/Annotate";
 import useFocus from "../../../core/src/components/Modal/Sidebar/Annotate/useFocus";
-import { frameAt } from "../../../playback/src/lib/playback/utils";
-import { usePlayhead } from "../../../playback/src/lib/playback/use-playback-state";
+import { frameAt, usePlayhead } from "@fiftyone/playback";
+import { useTemporalOverlayVersion } from "../hooks/useTemporalOverlayVersion";
+import { getModalSampleFrameRate } from "../utils/modalSample";
 
 const TEMPORAL_DETECTION = "TemporalDetection" as const;
 
@@ -54,7 +55,7 @@ export const useSyncSidebarFromTemporalOverlays = (
   selectOverlayRef.current = focus.selectOverlay;
 
   const sample = useModalSample();
-  const frameRate = sample?.frameRate;
+  const frameRate = getModalSampleFrameRate(sample);
   const playheadSec = usePlayhead();
   // Same frame mapping the TemporalOverlay time-gate uses.
   const frame =
@@ -75,7 +76,7 @@ export const useSyncSidebarFromTemporalOverlays = (
   // reconcile below wouldn't run until the next playhead tick, so a freshly
   // created TD never enters the sidebar. Mirror `FrameLabels`' TD-track
   // invalidation: bump on scene TD overlay add/remove.
-  const sceneTdVersion = useSceneTemporalOverlayVersion(scene);
+  const sceneTdVersion = useTemporalOverlayVersion(scene);
 
   useEffect(() => {
     if (!scene || !canonicalMediaReady || frame === null) {
@@ -92,13 +93,7 @@ export const useSyncSidebarFromTemporalOverlays = (
         continue;
       }
 
-      const support = overlay.label?.support;
-      if (
-        !Array.isArray(support) ||
-        support.length !== 2 ||
-        frame < support[0] ||
-        frame > support[1]
-      ) {
+      if (!isFrameInSupport(overlay.label?.support, frame)) {
         continue;
       }
       inRange.add(overlay.id);
@@ -114,7 +109,7 @@ export const useSyncSidebarFromTemporalOverlays = (
         overlay,
         path: overlay.field,
         type: TEMPORAL_DETECTION,
-      });
+      } as AnnotationLabel);
 
       if (scene.isOverlaySelected(overlay.id)) {
         newlyAddedSelected.push(overlay.id);
@@ -157,42 +152,3 @@ export const useSyncSidebarFromTemporalOverlays = (
     updateLabelData,
   ]);
 };
-
-/**
- * A counter that bumps whenever a `TemporalOverlay` is added to, or a `td-`
- * overlay removed from, the scene. Lets the reconcile effect re-run on
- * scene-only TD changes that the sidebar-derived signature can't observe.
- */
-function useSceneTemporalOverlayVersion(scene: Scene2D | null): number {
-  const useLighterEvent = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
-  );
-  const [version, setVersion] = useState(0);
-  const bump = useCallback(() => setVersion((v) => v + 1), []);
-
-  useLighterEvent(
-    "lighter:overlay-added",
-    useCallback(
-      (payload) => {
-        if (payload.overlay instanceof TemporalOverlay) {
-          bump();
-        }
-      },
-      [bump]
-    )
-  );
-
-  useLighterEvent(
-    "lighter:overlay-removed",
-    useCallback(
-      (payload) => {
-        if (payload.id?.startsWith("td-")) {
-          bump();
-        }
-      },
-      [bump]
-    )
-  );
-
-  return version;
-}

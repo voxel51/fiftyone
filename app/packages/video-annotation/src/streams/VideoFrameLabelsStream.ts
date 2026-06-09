@@ -1,65 +1,27 @@
-import { type Stage } from "@fiftyone/utilities";
+import {
+  type FrameLabelSnapshot,
+  type LocalDetection,
+  type RawDetection,
+  type RawDetectionsField,
+  type Stage,
+  type SyntheticBox,
+} from "@fiftyone/utilities";
 import {
   getFrames,
   type FrameDoc,
 } from "../../../core/src/client/framesClient";
-import { PlaybackStreamBase } from "../../../playback/src/lib/playback/stream-base";
 import {
-  currentTimeAtom,
-  streamValueAtom,
-} from "../../../playback/src/lib/playback/atoms";
-import { frameAt } from "../../../playback/src/lib/playback/utils";
-import type {
-  BufferReadiness,
-  PlaybackStore,
-} from "../../../playback/src/lib/playback/types";
-import type {
-  FrameLabelSnapshot,
-  PropagationBlob,
-  SyntheticBox,
-} from "./SyntheticLabelStream";
+  frameAt,
+  PlaybackStreamBase,
+  type BufferReadiness,
+  type PlaybackStore,
+} from "@fiftyone/playback";
+import { isInFetchedRange, mergeRange, toSecondRanges } from "./fetchedRanges";
 
-export interface RawDetection {
-  _id?: string;
-  id?: string;
-  index?: number;
-  label?: string;
-  bounding_box?: [number, number, number, number];
-  instance?: { _cls: "Instance"; _id?: string } | null;
-  keyframe?: boolean;
-  propagation?: PropagationBlob | null;
-}
-
-export interface RawDetectionsField {
-  detections?: RawDetection[];
-}
-
-/**
- * Shape callers pass to {@link VideoFrameLabelsStream.updateLabel}.
- * Lines up with the `Detection` wire format — `bounding_box` is required
- * since a Detection with no bbox is meaningless for a video overlay.
- */
-export interface LocalDetection {
-  _cls?: "Detection";
-  _id?: string;
-  id?: string;
-  index?: number;
-  label?: string;
-  bounding_box: [number, number, number, number];
-  instance?: { _cls: "Instance"; _id?: string } | null;
-  /**
-   * Auto-promote-on-edit: callers handling user-initiated edits (draw,
-   * drag, resize) should pass `keyframe: true` so an interpolated label
-   * is promoted to a keyframe on touch. Omit to preserve the existing
-   * value through `updateLabel`'s shallow merge.
-   */
-  keyframe?: boolean;
-  /**
-   * Propagation provenance. User edits clear this (`null`); leave
-   * undefined to preserve the existing value through the shallow merge.
-   */
-  propagation?: PropagationBlob | null;
-}
+// `RawDetection`, `RawDetectionsField`, and `LocalDetection` now live in
+// `@fiftyone/utilities` (below both annotation packages). Re-exported here for
+// back-compat with the package barrel.
+export type { LocalDetection, RawDetection, RawDetectionsField };
 
 export interface VideoFrameLabelsStreamOptions {
   id: string;
@@ -244,7 +206,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       return "loading";
     }
 
-    if (this.isInFetchedRange(frame)) {
+    if (isInFetchedRange(this.fetchedRanges, frame)) {
       return "ready";
     }
 
@@ -276,7 +238,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     if (!sample) {
       // Chunk fetched, this frame had no labels — return an empty
       // snapshot so consumers can tell "no labels here" from "not fetched".
-      if (this.isInFetchedRange(frame)) {
+      if (isInFetchedRange(this.fetchedRanges, frame)) {
         return { frameNumber: frame, detections: [] };
       }
       return null;
@@ -301,9 +263,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   override onCommit(time: number, store: PlaybackStore): void {
     this.lastStore = store;
     const next = this.getValue(time);
-    const prev = store.get(
-      streamValueAtom(this.id)
-    ) as FrameLabelSnapshot | null;
+    const prev = this.readPublished(store);
 
     if (prev && next && prev.frameNumber === next.frameNumber) {
       return;
@@ -313,7 +273,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       return;
     }
 
-    store.set(streamValueAtom(this.id), next);
+    this.publish(store, next);
   }
 
   /**
@@ -478,15 +438,12 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       return;
     }
 
-    const time = this.lastStore.get(currentTimeAtom);
-    this.lastStore.set(streamValueAtom(this.id), this.getValue(time));
+    const time = this.readCurrentTime(this.lastStore);
+    this.publish(this.lastStore, this.getValue(time));
   }
 
   bufferedRanges(): Array<[number, number]> {
-    return this.fetchedRanges.map(
-      ([start, end]) =>
-        [(start - 1) / this.frameRate, end / this.frameRate] as [number, number]
-    );
+    return toSecondRanges(this.fetchedRanges, this.frameRate);
   }
 
   /** Map a stream time to the 1-indexed frame number. */
@@ -496,15 +453,6 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
 
   private isInflight(frame: number): boolean {
     return this.inflight.has(frame);
-  }
-
-  private isInFetchedRange(frame: number): boolean {
-    for (const [start, end] of this.fetchedRanges) {
-      if (frame >= start && frame <= end) {
-        return true;
-      }
-    }
-    return false;
   }
 
   private async fetchChunk(startFrame: number): Promise<void> {
@@ -649,26 +597,4 @@ function withDetectionList(
     ...frame,
     [frameField]: { ...existing, detections: fn(list) },
   } as FrameDoc;
-}
-
-/**
- * Merge a newly-fetched `[start, end]` range into a sorted, disjoint list
- * of contiguous ranges.
- */
-function mergeRange(
-  ranges: Array<[number, number]>,
-  add: [number, number]
-): void {
-  ranges.push(add);
-  ranges.sort((a, b) => a[0] - b[0]);
-
-  for (let i = ranges.length - 1; i > 0; i--) {
-    const prev = ranges[i - 1];
-    const cur = ranges[i];
-
-    if (cur[0] <= prev[1] + 1) {
-      prev[1] = Math.max(prev[1], cur[1]);
-      ranges.splice(i, 1);
-    }
-  }
 }

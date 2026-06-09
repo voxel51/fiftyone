@@ -1,36 +1,6 @@
-import { useRegisterCommandHandler } from "@fiftyone/command-bus";
-import { useAnnotationEventBus } from "./useAnnotationEventBus";
-import {
-  TemporalOverlay,
-  useLighter,
-  type TemporalLabel,
-} from "@fiftyone/lighter";
-import {
-  PropagationStatusItem,
-  useFrameLabelsStream,
-  useImaVidImageStream,
-  useVideoAnnotationStatus,
-  type LocalDetection,
-  type SyntheticBox,
-} from "@fiftyone/video-annotation";
-import { objectId } from "@fiftyone/utilities";
-import { createElement, useCallback } from "react";
-import { frameAt } from "../../../playback/src/lib/playback/utils";
-import { useAgentRegistry } from "../agents/hooks/useAgentRegistry";
-import {
-  useApplyPropagatedDetection,
-  useApplyPropagationResult,
-} from "../agents/hooks/useApplyPropagationResult";
-import { useSampleDescriptor } from "../agents/hooks/useSampleDescriptor";
-import { useTombstoneTemporalDetection } from "../persistence/temporalDetectionTombstones";
-import type { SAM2PropagationBrowserAgent } from "../agents/SAM2PropagationBrowserAgent";
 import {
   AgentTaskType,
   type AnnotationAgent,
-  type PropagationContext,
-  type PropagationInferenceResult,
-} from "../agents/types";
-import {
   CreateTemporalDetectionCommand,
   DeleteTemporalDetectionCommand,
   DeleteTrackCommand,
@@ -38,10 +8,38 @@ import {
   ExtendTrackCommand,
   MarkKeyframeCommand,
   PropagateCommand,
+  type PropagationContext,
+  type PropagationInferenceResult,
+  type SAM2PropagationBrowserAgent,
   ShiftTrackCommand,
   TrimTrackCommand,
   UpdateTrackAttributesCommand,
-} from "../commands";
+  useAgentRegistry,
+  useAnnotationEventBus,
+  useSampleDescriptor,
+  useTombstoneTemporalDetection,
+} from "@fiftyone/annotation";
+import { useRegisterCommandHandler } from "@fiftyone/command-bus";
+import {
+  TemporalOverlay,
+  useLighter,
+  type TemporalLabel,
+} from "@fiftyone/lighter";
+import {
+  type LocalDetection,
+  objectId,
+  type SyntheticBox,
+} from "@fiftyone/utilities";
+import { createElement, useCallback } from "react";
+import { frameAt } from "@fiftyone/playback";
+import { PropagationStatusItem } from "../components/PropagationStatusItem";
+import {
+  useApplyPropagatedDetection,
+  useApplyPropagationResult,
+} from "../propagation/useApplyPropagationResult";
+import { useVideoAnnotationStatus } from "../state/videoAnnotationStatus";
+import { useFrameLabelsStream } from "../streams/frameLabelsStream";
+import { useImaVidImageStream } from "../streams/imaVidImageStreamHandle";
 import { copyDetection, detectionAt } from "./videoCommandHelpers";
 
 // Shared dependency types — acquired once in the umbrella hook and threaded

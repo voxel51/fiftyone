@@ -1,13 +1,12 @@
-import {
-  useAutoInterpolate,
-  useRegisterVideoAnnotationCommandHandlers,
-  useRegisterVideoAnnotationKeybindings,
-} from "@fiftyone/annotation";
 import { getSampleSrc } from "@fiftyone/state";
 import type { ModalSample } from "@fiftyone/state";
 import React, { useMemo, useState } from "react";
+import { useAutoInterpolate } from "../hooks/useAutoInterpolate";
+import { useRegisterVideoAnnotationCommandHandlers } from "../hooks/useRegisterVideoAnnotationCommandHandlers";
+import { useRegisterVideoAnnotationKeybindings } from "../hooks/useRegisterVideoAnnotationKeybindings";
+import { useRegisterVideoLabelsDeltaSupplier } from "../persistence/useVideoLabelsDeltaSupplier";
 import { useActiveDetectionField } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useDetectionMode";
-import { PlaybackProvider } from "../../../playback/src/lib/playback/PlaybackProvider";
+import { PlaybackProvider } from "@fiftyone/playback";
 import { FrameLabelsTracks, RegisterFrameLabels } from "./FrameLabels";
 import { ImaVidLighterTile } from "./ImaVidLighterTile";
 import { LinkedOverlayStateBridge } from "../tracks/linkedTracks";
@@ -187,5 +186,6 @@ const VideoAnnotationHandlerRegistration: React.FC = () => {
   useRegisterVideoAnnotationCommandHandlers();
   useRegisterVideoAnnotationKeybindings();
   useAutoInterpolate();
+  useRegisterVideoLabelsDeltaSupplier();
   return null;
 };

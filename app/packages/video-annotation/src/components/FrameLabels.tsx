@@ -1,18 +1,8 @@
 import {
   getLabelColorFromContext,
   TemporalOverlay,
-  UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
-  useLighterEventHandler,
 } from "@fiftyone/lighter";
-import {
-  colorScheme,
-  colorSeed,
-  datasetName,
-  groupSlice,
-  modalSampleId,
-  view as viewAtom,
-} from "@fiftyone/state";
 import type { ModalSample } from "@fiftyone/state";
 import type { Stage } from "@fiftyone/utilities";
 import { useActiveDetectionField } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useDetectionMode";
@@ -23,15 +13,23 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useRecoilValue } from "recoil";
-import { usePlayback } from "../../../playback/src/lib/playback/PlaybackProvider";
-import { useDuration } from "../../../playback/src/lib/playback/use-playback-state";
-import { usePlaybackStream } from "../../../playback/src/lib/playback/use-playback-stream";
 import {
+  useColorScheme,
+  useColorSeed,
+  useDatasetName,
+  useGroupSlice,
+  useModalSampleId,
+  useView,
+} from "../state/accessors";
+import { useTemporalOverlayVersion } from "../hooks/useTemporalOverlayVersion";
+import { useWarmupThenSeek } from "../hooks/useWarmupThenSeek";
+import {
+  TimelineWithTracks,
   TrackProvider,
   type Track,
-} from "../../../playback/src/lib/tracks/TrackProvider";
-import TimelineWithTracks from "../../../playback/src/views/TimelineWithTracks/TimelineWithTracks";
+  useDuration,
+  usePlaybackStream,
+} from "@fiftyone/playback";
 import {
   useFrameLabelsEditVersion,
   useFrameLabelsStream,
@@ -42,6 +40,7 @@ import {
   type PerInstanceLabel,
 } from "../tracks/frameTracks";
 import { LABELS_STREAM_ID } from "../utils/ids";
+import { getModalSampleFrameRate } from "../utils/modalSample";
 import { resolveTrackExtentEdit } from "../tracks/trackExtentEdit";
 import { useLinkedTrackDecorator } from "../tracks/linkedTracks";
 import {
@@ -51,7 +50,6 @@ import {
   ExtendTrackCommand,
   ShiftTrackCommand,
   TrimTrackCommand,
-  useAnnotationEventHandler,
 } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
 import {
@@ -91,10 +89,10 @@ export const RegisterFrameLabels: React.FC<{
   children: React.ReactNode;
 }> = ({ sample, children }) => {
   const duration = useDuration();
-  const dataset = useRecoilValue(datasetName);
-  const view = useRecoilValue(viewAtom);
-  const slice = useRecoilValue(groupSlice);
-  const sampleId = useRecoilValue(modalSampleId);
+  const dataset = useDatasetName();
+  const view = useView();
+  const slice = useGroupSlice();
+  const sampleId = useModalSampleId();
   // Active detection field is the source of truth for which per-frame
   // list this stream reads from and which list new edits patch into.
   // Defaults to `frames.detections` while the schema is still resolving
@@ -102,9 +100,13 @@ export const RegisterFrameLabels: React.FC<{
   // render.
   const activeField = useActiveDetectionField() ?? DEFAULT_FRAME_FIELD;
 
-  const frameRate = sample.frameRate;
+  const frameRate = getModalSampleFrameRate(sample);
   const ready =
-    duration > 0 && !!sampleId && !!dataset && Number.isFinite(frameRate);
+    duration > 0 &&
+    !!sampleId &&
+    !!dataset &&
+    frameRate !== undefined &&
+    Number.isFinite(frameRate);
 
   if (!ready) {
     // Stream params aren't all available yet; consumers read the atom and
@@ -127,7 +129,7 @@ export const RegisterFrameLabels: React.FC<{
       key={key}
       sampleId={sampleId}
       dataset={dataset}
-      view={view ?? []}
+      view={view}
       groupSlice={slice ?? null}
       frameCount={frameCount}
       frameRate={frameRate}
@@ -175,23 +177,9 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
   // through `useFrameLabelsStream()`. The hook handles clear-on-unmount.
   usePublishFrameLabelsStream(streamRef.current);
 
-  // Prefetch the chunk containing t=0 and then seek(0). The engine's
-  // `seek` only commits when every blocking stream is already ready, so
-  // without the warmup the engine queues the seek silently and overlays
-  // stay blank until the user presses play. With it, overlays paint as
-  // soon as the first chunk lands.
-  const { seek } = usePlayback();
-  useEffect(() => {
-    let cancelled = false;
-    void streamRef.current!.warmup(0).then(() => {
-      if (!cancelled) {
-        seek(0);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [seek]);
+  // Prefetch the chunk containing t=0 and seek there, so overlays paint on
+  // first load instead of staying blank until the user presses play.
+  useWarmupThenSeek(streamRef.current);
 
   return <>{children}</>;
 };
@@ -220,8 +208,8 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
 }) => {
   const stream = useFrameLabelsStream();
   const editVersion = useFrameLabelsEditVersion();
-  const scheme = useRecoilValue(colorScheme);
-  const seed = useRecoilValue(colorSeed);
+  const scheme = useColorScheme();
+  const seed = useColorSeed();
   const activeField = useActiveDetectionField() ?? DEFAULT_FRAME_FIELD;
 
   // useState so we can re-render once warmupAll resolves, but keep the
@@ -258,7 +246,7 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
     if (!stream) {
       setFrameTracks([]);
       setFrameTracksResolved(false);
-      return;
+      return undefined;
     }
 
     let cancelled = false;
@@ -285,15 +273,22 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   // primes them from the sample on first load and `useTemporalDetectionDeltaSupplier`
   // walks them at autosave time.
   const { scene } = useLighter();
-  const tdVersion = useTemporalDetectionTrackVersion(scene);
+  const tdVersion = useTemporalOverlayVersion(scene, {
+    listenLabelEdit: true,
+    bumpOnSceneReady: true,
+  });
+  const frameRate = getModalSampleFrameRate(sample);
 
   const temporalDetectionTracks = useMemo(() => {
     if (!scene) {
       return [];
     }
 
-    const fps = sample?.frameRate;
-    if (!Number.isFinite(fps) || fps <= 0) {
+    if (
+      frameRate === undefined ||
+      !Number.isFinite(frameRate) ||
+      frameRate <= 0
+    ) {
       return [];
     }
 
@@ -303,11 +298,11 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
 
     return buildTemporalDetectionTracks({
       sample: buildVirtualTemporalSample(temporalOverlays),
-      fps,
+      fps: frameRate,
       resolveColor: resolveTemporalDetectionColor,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- tdVersion is the invalidation signal
-  }, [scene, sample?.frameRate, resolveTemporalDetectionColor, tdVersion]);
+  }, [scene, frameRate, resolveTemporalDetectionColor, tdVersion]);
 
   const tracks = useMemo(
     () => [...frameTracks, ...temporalDetectionTracks],
@@ -320,7 +315,7 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   // frame tracks would arrive unpinned.
   const ready = frameTracksResolved;
   const linkDecorate = useLinkedTrackDecorator();
-  const fps = sample?.frameRate;
+  const fps = getModalSampleFrameRate(sample);
   const snapStepSec =
     Number.isFinite(fps) && fps && fps > 0 ? 1 / fps : undefined;
 
@@ -417,66 +412,6 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
     </TrackProvider>
   );
 };
-
-/**
- * A counter that bumps whenever the scene's `TemporalDetection` set could
- * have changed — a TemporalOverlay added / a `td-` overlay removed / a TD
- * label edited — plus a one-shot bump once the scene is available (so TDs
- * `useTemporalOverlaySync` added before our handlers registered are picked
- * up). Used as the TD-track rebuild signal.
- */
-function useTemporalDetectionTrackVersion(
-  scene: ReturnType<typeof useLighter>["scene"]
-): number {
-  const [version, setVersion] = useState(0);
-  const bump = useCallback(() => setVersion((v) => v + 1), []);
-
-  const useLighterEvent = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
-  );
-  useLighterEvent(
-    "lighter:overlay-added",
-    useCallback(
-      (payload) => {
-        if (payload.overlay instanceof TemporalOverlay) {
-          bump();
-        }
-      },
-      [bump]
-    )
-  );
-  useLighterEvent(
-    "lighter:overlay-removed",
-    useCallback(
-      (payload) => {
-        if (payload.id?.startsWith("td-")) {
-          bump();
-        }
-      },
-      [bump]
-    )
-  );
-  useAnnotationEventHandler(
-    "annotation:labelEdit",
-    useCallback(
-      (payload) => {
-        const cls = (payload.label as { _cls?: string } | null)?._cls;
-        if (cls === "TemporalDetection") {
-          bump();
-        }
-      },
-      [bump]
-    )
-  );
-
-  useEffect(() => {
-    if (scene) {
-      bump();
-    }
-  }, [scene, bump]);
-
-  return version;
-}
 
 /**
  * Project a set of scene `TemporalOverlay`s into a sample-shaped dict

@@ -1,31 +1,15 @@
-import type {
-  Track,
-  TrackEvent,
-} from "../../../playback/src/lib/tracks/TrackProvider";
+import {
+  isTemporalDetectionsField,
+  isValidSupport,
+  type RawTemporalDetection,
+  type RawTemporalDetectionsField,
+} from "@fiftyone/utilities";
+import type { Track, TrackEvent } from "@fiftyone/playback";
 
-/**
- * Shape of a single `TemporalDetection` as it arrives on the modal sample
- * dict. We only model the fields the track build reads; everything else
- * (dynamic attrs, etc.) is preserved on `data` for downstream consumers.
- */
-export interface RawTemporalDetection {
-  _cls?: "TemporalDetection";
-  _id?: string;
-  id?: string;
-  label?: string;
-  /** 1-indexed inclusive frame range `[first, last]`. */
-  support?: [number, number];
-  confidence?: number;
-  [key: string]: unknown;
-}
-
-/**
- * Shape of a `TemporalDetections` wrapper field on the modal sample dict.
- */
-export interface RawTemporalDetectionsField {
-  _cls: "TemporalDetections";
-  detections?: RawTemporalDetection[];
-}
+// The raw TD shapes + predicates now live in `@fiftyone/utilities` (below both
+// annotation packages). Re-exported here for back-compat with the package
+// barrel.
+export type { RawTemporalDetection, RawTemporalDetectionsField };
 
 /**
  * Minimal label shape passed to {@link BuildTemporalDetectionTracksInput.resolveColor}.
@@ -188,33 +172,6 @@ export function buildTemporalDetectionTracks({
   }
 
   return tracks;
-}
-
-/**
- * A valid TD support is a 2-tuple `[first, last]` of finite frame numbers
- * with `last >= first`.
- */
-function isValidSupport(support: unknown): support is [number, number] {
-  return (
-    Array.isArray(support) &&
-    support.length === 2 &&
-    Number.isFinite(support[0]) &&
-    Number.isFinite(support[1]) &&
-    support[1] >= support[0]
-  );
-}
-
-function isTemporalDetectionsField(
-  value: unknown
-): value is RawTemporalDetectionsField {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-
-  return (
-    (value as { _cls?: unknown })._cls === "TemporalDetections" &&
-    Array.isArray((value as { detections?: unknown }).detections)
-  );
 }
 
 function truncateId(id: string): string {

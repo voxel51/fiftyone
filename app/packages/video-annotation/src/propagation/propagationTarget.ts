@@ -1,4 +1,4 @@
-import { frameAt } from "../../../playback/src/lib/playback/utils";
+import { frameAt } from "@fiftyone/playback";
 import type { VideoFrameLabelsStream } from "../streams/VideoFrameLabelsStream";
 
 /**

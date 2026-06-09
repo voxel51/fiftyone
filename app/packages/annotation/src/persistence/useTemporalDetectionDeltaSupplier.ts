@@ -1,4 +1,5 @@
 import type { JSONDeltas } from "@fiftyone/core/src/client";
+import { idAlignedDetectionsDelta } from "@fiftyone/core/src/utils/json";
 import {
   TemporalOverlay,
   useLighter,
@@ -100,16 +101,7 @@ export function buildTemporalDetectionOverlayDeltas(
   tombstones: readonly TemporalDetectionTombstone[] = [],
   declaredFields?: readonly string[]
 ): JSONDeltas {
-  const deltas: JSONDeltas = [];
-
-  const findById = (detections: readonly unknown[], id: string): number =>
-    detections.findIndex(
-      (d) =>
-        (d as { _id?: string; id?: string })._id === id ||
-        (d as { _id?: string; id?: string }).id === id
-    );
-
-  // field path -> set of tombstoned detection ids
+  // field path -> tombstoned detection ids
   const tombstonedByField = new Map<string, Set<string>>();
   for (const { field, id } of tombstones) {
     const ids = tombstonedByField.get(field) ?? new Set<string>();
@@ -117,97 +109,70 @@ export function buildTemporalDetectionOverlayDeltas(
     tombstonedByField.set(field, ids);
   }
 
-  const byField = new Map<string, TemporalOverlay[]>();
+  const overlaysByField = new Map<string, TemporalOverlay[]>();
   for (const overlay of overlays) {
-    const list = byField.get(overlay.field) ?? [];
+    const list = overlaysByField.get(overlay.field) ?? [];
     list.push(overlay);
-    byField.set(overlay.field, list);
+    overlaysByField.set(overlay.field, list);
   }
 
-  // Adds / updates from scene overlays.
-  for (const [fieldPath, fieldOverlays] of byField) {
+  const deltas: JSONDeltas = [];
+  const fields = new Set<string>([
+    ...overlaysByField.keys(),
+    ...tombstonedByField.keys(),
+  ]);
+
+  for (const fieldPath of fields) {
     const field = sample[fieldPath] as
       | { _cls?: string; detections?: unknown }
       | undefined;
     const isPopulated = !!field && field._cls === "TemporalDetections";
     const isDeclared = declaredFields?.includes(fieldPath) ?? false;
+
+    // Neither a populated TemporalDetections wrapper nor a known schema field:
+    // `add /-` would target a path the server can't materialize, and there's
+    // no baseline array to update or remove against. Skip.
     if (!isPopulated && !isDeclared) {
-      // Neither populated as a TemporalDetections wrapper nor a known
-      // schema field — emitting `add /-` here would target a path the
-      // server can't materialize, so skip.
       continue;
     }
-    // Declared-but-unpopulated → no baseline; every overlay is a create.
+
+    // Declared-but-unpopulated → empty baseline; every overlay is a create.
     const baseline =
-      isPopulated && Array.isArray(field.detections) ? field.detections : [];
+      isPopulated && Array.isArray(field.detections)
+        ? (field.detections as Record<string, unknown>[])
+        : [];
+    const tombstonedIds = tombstonedByField.get(fieldPath) ?? new Set<string>();
 
-    for (const overlay of fieldOverlays) {
-      const label = overlay.label;
-      const id = label?._id;
-      if (!id) {
-        continue;
+    // A tombstoned overlay still lingering in the scene must not emit an
+    // add/update that fights its pending removal; an overlay with no id can
+    // be neither matched nor serialized.
+    const fieldOverlays = (overlaysByField.get(fieldPath) ?? []).filter(
+      (overlay) => {
+        const id = overlay.label?._id;
+        return !!id && !tombstonedIds.has(id);
       }
+    );
 
-      // A tombstoned overlay still lingering in the scene must not emit an
-      // add/update that fights its pending removal.
-      if (tombstonedByField.get(fieldPath)?.has(id)) {
-        continue;
-      }
+    const fieldDeltas = idAlignedDetectionsDelta<
+      TemporalOverlay,
+      Record<string, unknown>
+    >(fieldOverlays, baseline, `/${fieldPath}`, {
+      currentId: (overlay) => overlay.label?._id,
+      baselineId: (entry) => {
+        const e = entry as { _id?: string; id?: string };
+        return e._id ?? e.id;
+      },
+      diffMatched: (overlay, base, path) => {
+        const ops: JSONDeltas = [];
+        diffOverlayLabel(overlay.label as TemporalLabel, base, path, ops);
+        return ops;
+      },
+      serializeAdd: (overlay) => serializeOverlayLabel(overlay.label),
+      removalIds: tombstonedIds,
+    });
 
-      const index = findById(baseline, id);
-      if (index < 0) {
-        // New TD — append the full doc.
-        const value = serializeOverlayLabel(label);
-        if (!value) continue;
-        deltas.push({
-          op: "add",
-          path: `/${fieldPath}/detections/-`,
-          value,
-        });
-        continue;
-      }
-
-      const base = baseline[index] as Record<string, unknown>;
-      diffOverlayLabel(
-        label,
-        base,
-        `/${fieldPath}/detections/${index}`,
-        deltas
-      );
-    }
-  }
-
-  // Removals from explicit tombstones, resolved to the current baseline
-  // index by `_id`. Descending per field so each `remove` doesn't shift the
-  // indices of the ones still to come.
-  const removalsByField = new Map<string, number[]>();
-  for (const { field: fieldPath, id } of tombstones) {
-    const field = sample[fieldPath] as
-      | { _cls?: string; detections?: unknown }
-      | undefined;
-
-    if (!field || field._cls !== "TemporalDetections") {
-      continue;
-    }
-
-    if (!Array.isArray(field.detections)) {
-      continue;
-    }
-
-    const index = findById(field.detections, id);
-    if (index < 0) {
-      continue;
-    }
-
-    const list = removalsByField.get(fieldPath) ?? [];
-    list.push(index);
-    removalsByField.set(fieldPath, list);
-  }
-
-  for (const [fieldPath, indices] of removalsByField) {
-    indices.sort((a, b) => b - a);
-    for (const index of indices) {
-      deltas.push({ op: "remove", path: `/${fieldPath}/detections/${index}` });
+    for (const op of fieldDeltas) {
+      deltas.push(op);
     }
   }
 

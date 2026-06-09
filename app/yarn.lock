@@ -3094,7 +3094,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/commands@workspace:^, @fiftyone/commands@workspace:packages/commands":
+"@fiftyone/commands@workspace:*, @fiftyone/commands@workspace:^, @fiftyone/commands@workspace:packages/commands":
   version: 0.0.0-use.local
   resolution: "@fiftyone/commands@workspace:packages/commands"
   dependencies:
@@ -3229,6 +3229,7 @@ __metadata:
     xstate: "npm:^4.14.0"
   peerDependencies:
     "@fiftyone/annotation": "*"
+    "@fiftyone/video-annotation": "*"
     "@mui/icons-material": "*"
     "@mui/material": "*"
     "@react-spring/web": "*"
@@ -3651,8 +3652,10 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/video-annotation@workspace:packages/video-annotation"
   dependencies:
+    "@eslint/compat": "npm:^1.1.1"
     "@fiftyone/annotation": "workspace:*"
     "@fiftyone/command-bus": "workspace:*"
+    "@fiftyone/commands": "workspace:*"
     "@fiftyone/components": "workspace:*"
     "@fiftyone/lighter": "workspace:*"
     "@fiftyone/playback": "workspace:*"
@@ -3661,8 +3664,13 @@ __metadata:
     "@fiftyone/utilities": "workspace:*"
     "@voxel51/voodo": "npm:^0.0.30"
     clsx: "npm:^2.1.0"
+    eslint: "npm:9.7.0"
+    eslint-plugin-react: "npm:^7.35.0"
+    eslint-plugin-react-hooks: "npm:rc"
+    globals: "npm:^15.8.0"
     jotai: "npm:^2.9.3"
     lru-cache: "npm:^11.0.1"
+    typescript-eslint: "npm:^7.17.0"
     vite: "npm:^7.3.2"
   languageName: unknown
   linkType: soft

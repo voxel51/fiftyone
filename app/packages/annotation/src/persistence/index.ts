@@ -1,4 +1,5 @@
 export * from "./deltaSupplier";
+export * from "./deltaSupplierRegistry";
 export * from "./use3dDeltaSupplier";
 export * from "./useAnnotationDeltaSupplier";
 export * from "./useAutoSave";
@@ -9,3 +10,4 @@ export * from "./usePersistenceRetryController";
 export * from "./useSampleMutationManager";
 export * from "./useSidebarDeltaSupplier";
 export * from "./useTemporalDetectionDeltaSupplier";
+export * from "./temporalDetectionTombstones";

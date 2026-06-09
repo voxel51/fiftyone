@@ -9,25 +9,12 @@ import {
   type TemporalOptions,
   useLighterSetupWithPixi,
 } from "@fiftyone/lighter";
-import { activeFields, useModalSample } from "@fiftyone/state";
+import { useModalSample } from "@fiftyone/state";
+import { isTemporalDetectionsField } from "@fiftyone/utilities";
 import { useEffect, useRef } from "react";
-import { useRecoilValue } from "recoil";
-import { frameAt } from "../../../playback/src/lib/playback/utils";
-import { usePlayhead } from "../../../playback/src/lib/playback/use-playback-state";
-
-interface RawTemporalDetection {
-  _id?: string;
-  id?: string;
-  label?: string;
-  support?: [number, number];
-  confidence?: number;
-  [key: string]: unknown;
-}
-
-interface RawTemporalDetectionsField {
-  _cls: "TemporalDetections";
-  detections?: RawTemporalDetection[];
-}
+import { frameAt, usePlayhead } from "@fiftyone/playback";
+import { useActiveModalPaths } from "../state/accessors";
+import { getModalSampleFrameRate } from "../utils/modalSample";
 
 /**
  * Minimal scene surface the diff needs — typed against the lighter
@@ -144,17 +131,6 @@ export function syncTemporalOverlays({
   }
 }
 
-function isTemporalDetectionsField(
-  value: unknown
-): value is RawTemporalDetectionsField {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-
-  const v = value as { _cls?: unknown; detections?: unknown };
-  return v._cls === "TemporalDetections" && Array.isArray(v.detections);
-}
-
 /**
  * Keep the Lighter scene's `TemporalOverlay` set in sync with the
  * modal sample's `TemporalDetections` fields, and push the playhead
@@ -175,15 +151,13 @@ export function useTemporalOverlaySync(
   const overlaysRef = useRef<Map<string, TemporalOverlay>>(new Map());
 
   const sample = useModalSample();
-  const activePathsList = useRecoilValue(
-    activeFields({ modal: true, expanded: false })
-  );
+  const activePathsList = useActiveModalPaths();
 
   // Current playhead frame. fps comes from the sample (same source the TD
   // track build uses). Held in a ref so the sync effect can seed newly-added
   // overlays without re-running on every playhead tick.
   const playheadSec = usePlayhead();
-  const frameRate = sample?.frameRate;
+  const frameRate = getModalSampleFrameRate(sample);
   const currentFrame =
     frameRate && Number.isFinite(frameRate) && frameRate > 0
       ? frameAt(playheadSec, frameRate)
@@ -236,6 +210,9 @@ export function useTemporalOverlaySync(
         return;
       }
 
+      // Read the live tracked overlays at teardown — we remove whatever is
+      // currently tracked, not the set captured when the effect ran.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       for (const id of overlaysRef.current.keys()) {
         scene.removeOverlay(id);
       }

@@ -3,6 +3,7 @@
  */
 
 import { DetectionOverlay, type Scene2D } from "@fiftyone/lighter";
+import type { AnnotationLabel, AnnotationLabelData } from "@fiftyone/state";
 import { useEffect, useRef } from "react";
 import { useLabelsContext } from "../../../core/src/components/Modal/Sidebar/Annotate";
 import { toDetectionLabel } from "../overlayAdapters/detection";
@@ -51,7 +52,9 @@ export const useSyncSidebarFromSnapshot = (
     for (const det of snapshot.detections) {
       next.add(det.id);
 
-      const data = toDetectionLabel(det);
+      // The looker-shaped detection label feeds the sidebar's state-typed
+      // label data; the two label hierarchies don't structurally overlap.
+      const data = toDetectionLabel(det) as unknown as AnnotationLabelData;
 
       if (updateLabelData(det.id, data)) {
         continue;
@@ -67,7 +70,7 @@ export const useSyncSidebarFromSnapshot = (
         overlay,
         path: field,
         type: "Detection",
-      });
+      } as AnnotationLabel);
     }
 
     for (const id of Array.from(trackedRef.current)) {

@@ -1,6 +1,6 @@
-import { useFrameLabelsStream } from "@fiftyone/video-annotation";
+import { useAnnotationEventHandler } from "@fiftyone/annotation";
 import { useCallback } from "react";
-import { useAnnotationEventHandler } from "./useAnnotationEventHandler";
+import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 
 /**
  * Video-specific annotation event handlers. Bridges persistence outcomes to the

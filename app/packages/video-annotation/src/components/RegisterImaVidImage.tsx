@@ -1,16 +1,16 @@
 import type { ModalSample } from "@fiftyone/state";
-import {
-  datasetName,
-  groupSlice,
-  modalSampleId,
-  view as viewAtom,
-} from "@fiftyone/state";
 import type { Stage } from "@fiftyone/utilities";
 import React, { useEffect, useRef } from "react";
-import { useRecoilValue } from "recoil";
-import { usePlayback } from "../../../playback/src/lib/playback/PlaybackProvider";
-import { usePlaybackStream } from "../../../playback/src/lib/playback/use-playback-stream";
+import { usePlaybackStream } from "@fiftyone/playback";
+import { useWarmupThenSeek } from "../hooks/useWarmupThenSeek";
+import {
+  useDatasetName,
+  useGroupSlice,
+  useModalSampleId,
+  useView,
+} from "../state/accessors";
 import { IMAVID_STREAM_ID } from "../utils/ids";
+import { getModalSampleFrameRate } from "../utils/modalSample";
 import { ImaVidImageStream } from "../streams/ImaVidImageStream";
 import { usePublishImaVidImageStream } from "../streams/imaVidImageStreamHandle";
 
@@ -36,13 +36,13 @@ export const RegisterImaVidImage: React.FC<{
   sample: ModalSample;
   children: React.ReactNode;
 }> = ({ sample, children }) => {
-  const dataset = useRecoilValue(datasetName);
-  const view = useRecoilValue(viewAtom);
-  const slice = useRecoilValue(groupSlice);
-  const sampleId = useRecoilValue(modalSampleId);
+  const dataset = useDatasetName();
+  const view = useView();
+  const slice = useGroupSlice();
+  const sampleId = useModalSampleId();
 
-  const frameRate = sample.frameRate;
-  if (frameRate === undefined || frameRate === null) {
+  const frameRate = getModalSampleFrameRate(sample);
+  if (frameRate === undefined) {
     throw new Error(
       "ImaVid playback requires VideoMetadata.frame_rate to be set on the sample"
     );
@@ -69,7 +69,7 @@ export const RegisterImaVidImage: React.FC<{
       key={key}
       sampleId={sampleId}
       dataset={dataset}
-      view={view ?? []}
+      view={view}
       groupSlice={slice ?? null}
       frameCount={frameCount}
       frameRate={frameRate}
@@ -158,20 +158,7 @@ const ImaVidImageRegistration: React.FC<ImaVidImageRegistrationProps> = ({
 
   // Pre-warm the first chunk and seek to t=0 so the first paint isn't
   // a blank tile waiting on the network + decode.
-  const { seek } = usePlayback();
-
-  useEffect(() => {
-    let cancelled = false;
-    void streamRef.current!.warmup(0).then(() => {
-      if (!cancelled) {
-        seek(0);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [seek]);
+  useWarmupThenSeek(streamRef.current);
 
   return <>{children}</>;
 };

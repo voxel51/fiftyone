@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { SyntheticBox } from "@fiftyone/video-annotation";
+import type { SyntheticBox } from "@fiftyone/utilities";
 
 import { PropagationBrowserAgent } from "./PropagationBrowserAgent";
 import {

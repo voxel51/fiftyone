@@ -1,12 +1,12 @@
 import { getFetchParameters, type Stage } from "@fiftyone/utilities";
 import { LRUCache } from "lru-cache";
-import { streamValueAtom } from "../../../playback/src/lib/playback/atoms";
-import { PlaybackStreamBase } from "../../../playback/src/lib/playback/stream-base";
-import type {
-  BufferReadiness,
-  PlaybackStore,
-} from "../../../playback/src/lib/playback/types";
-import { frameAt } from "../../../playback/src/lib/playback/utils";
+import {
+  frameAt,
+  PlaybackStreamBase,
+  type BufferReadiness,
+  type PlaybackStore,
+} from "@fiftyone/playback";
+import { mergeRange, toSecondRanges } from "./fetchedRanges";
 import type {
   ChunkDoneMessage,
   ChunkFailedMessage,
@@ -260,7 +260,7 @@ export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
    */
   override onCommit(time: number, store: PlaybackStore): void {
     const next = this.getValue(time);
-    const prev = store.get(streamValueAtom(this.id)) as ImaVidImageFrame | null;
+    const prev = this.readPublished(store);
 
     if (prev && next && prev.frameNumber === next.frameNumber) {
       return;
@@ -277,14 +277,11 @@ export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
       this.prefetch([time, time + this.lookaheadSeconds]);
     }
 
-    store.set(streamValueAtom(this.id), next);
+    this.publish(store, next);
   }
 
   bufferedRanges(): Array<[number, number]> {
-    return this.fetchedRanges.map(
-      ([start, end]) =>
-        [(start - 1) / this.frameRate, end / this.frameRate] as [number, number]
-    );
+    return toSecondRanges(this.fetchedRanges, this.frameRate);
   }
 
   private timeToFrame(time: number): number {
@@ -455,26 +452,4 @@ function normalizeHeaders(
   }
 
   return { ...(headers as Record<string, string>) };
-}
-
-/**
- * Merge a newly-fetched `[start, end]` range into a sorted, disjoint
- * list of contiguous ranges.
- */
-function mergeRange(
-  ranges: Array<[number, number]>,
-  add: [number, number]
-): void {
-  ranges.push(add);
-  ranges.sort((a, b) => a[0] - b[0]);
-
-  for (let i = ranges.length - 1; i > 0; i--) {
-    const prev = ranges[i - 1];
-    const cur = ranges[i];
-
-    if (cur[0] <= prev[1] + 1) {
-      prev[1] = Math.max(prev[1], cur[1]);
-      ranges.splice(i, 1);
-    }
-  }
 }

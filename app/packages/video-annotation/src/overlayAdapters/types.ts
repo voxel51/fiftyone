@@ -2,11 +2,27 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import type { BaseOverlay } from "@fiftyone/lighter";
+import type { BaseOverlay, DetectionLabel } from "@fiftyone/lighter";
 import type {
   FrameLabelSnapshot,
   SyntheticBox,
 } from "../streams/SyntheticLabelStream";
+
+/**
+ * A lighter {@link DetectionLabel} sourced from a raw `/frames` detection
+ * document, which carries the persisted Mongo `_id`.
+ *
+ * Lighter's own `DetectionLabel` models a looker-*serialized* label, exposing
+ * the string `id` it inherits from `BaseLabel` — not the raw `_id`. But the
+ * video surface feeds raw frame docs straight into the overlays, and the
+ * per-frame label cache upserts against that `_id` (see
+ * `VideoFrameLabelsStream`), so the field has to ride along on the overlay's
+ * label. `_id` is absent only for a freshly-drawn box that hasn't been
+ * persisted to the backend yet.
+ */
+export type VideoDetectionLabel = NonNullable<DetectionLabel> & {
+  _id?: string;
+};
 
 /**
  * Kinds of FiftyOne labels the video surface knows how to render.

@@ -7,3 +7,30 @@ export * from "./src/lib/timeline/use-timeline";
 export * from "./src/lib/timeline/use-timeline-viz-utils";
 export * from "./src/lib/timeline/utils";
 export * from "./src/views/Timeline/Timeline";
+
+// Continuous-time playback runtime surface consumed by feature packages
+// (e.g. @fiftyone/video-annotation) — exposed here so consumers don't reach
+// into `src/lib/...` directly.
+export {
+  PlaybackProvider,
+  usePlayback,
+} from "./src/lib/playback/PlaybackProvider";
+export {
+  useCurrentTime,
+  useDuration,
+  useIsPlaying,
+  usePlayhead,
+} from "./src/lib/playback/use-playback-state";
+export { usePlaybackStream } from "./src/lib/playback/use-playback-stream";
+export {
+  usePresentedMediaTime,
+  useVideoStream,
+} from "./src/lib/playback/use-video-stream";
+export { useVideoSync } from "./src/lib/playback/use-video-sync";
+export { useStream } from "./src/lib/playback/use-stream";
+export { frameAt } from "./src/lib/playback/utils";
+export { PlaybackStreamBase } from "./src/lib/playback/stream-base";
+export type { BufferReadiness, PlaybackStore } from "./src/lib/playback/types";
+export { TrackProvider } from "./src/lib/tracks/TrackProvider";
+export type { Track, TrackEvent } from "./src/lib/tracks/TrackProvider";
+export { default as TimelineWithTracks } from "./src/views/TimelineWithTracks/TimelineWithTracks";

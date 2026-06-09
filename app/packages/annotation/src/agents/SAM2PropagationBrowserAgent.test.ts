@@ -1,4 +1,4 @@
-import type { SyntheticBox } from "@fiftyone/video-annotation";
+import type { SyntheticBox } from "@fiftyone/utilities";
 import { describe, expect, it, vi } from "vitest";
 import type { BrowserAnnotationProvider } from "../providers";
 import { SAM2PropagationBrowserAgent } from "./SAM2PropagationBrowserAgent";

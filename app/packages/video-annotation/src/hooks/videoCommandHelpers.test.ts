@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { SyntheticBox } from "@fiftyone/video-annotation";
+import type { SyntheticBox } from "@fiftyone/utilities";
 import { copyDetection, detectionAt } from "./videoCommandHelpers";
 
 const box = (overrides: Partial<SyntheticBox> = {}): SyntheticBox => ({

@@ -149,7 +149,6 @@ async function decodeAndDispatch(
   } catch (error) {
     // Skip — main-thread treats this frame as missing and the engine
     // re-requests on the next prefetch tick.
-    // eslint-disable-next-line no-console
     console.error(
       `[framesWorker] decode failed for frame ${frame.frame_number}`,
       error

@@ -5,20 +5,18 @@ import {
 } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
 import type { ToolbarActionGroup } from "@fiftyone/components";
-import { fieldPaths, useModalSample } from "@fiftyone/state";
-import {
-  EMBEDDED_DOCUMENT_FIELD,
-  TEMPORAL_DETECTIONS_FIELD,
-} from "@fiftyone/utilities";
+import { useModalSample } from "@fiftyone/state";
 import { Icon, IconName, Size } from "@voxel51/voodo";
-import { useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
-import { frameAt } from "../../../playback/src/lib/playback/utils";
-import { usePlayhead } from "../../../playback/src/lib/playback/use-playback-state";
+import { frameAt, usePlayhead } from "@fiftyone/playback";
+import { getModalSampleFrameRate } from "../utils/modalSample";
+import { useTemporalDetectionFieldPaths } from "../state/accessors";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
-import { resolvePropagationTarget } from "../propagation/propagationTarget";
-import { selectedOverlayIds } from "./useLinkedOverlayState";
+import {
+  resolvePropagationTarget,
+  type PropagationTarget,
+} from "../propagation/propagationTarget";
+import { useSelectedOverlayIds } from "./useLinkedOverlayState";
 
 /**
  * Builds the data-driven config for the video annotation toolbar, mirroring
@@ -38,16 +36,11 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
   const bus = useCommandBus();
   const stream = useFrameLabelsStream();
   const playhead = usePlayhead();
-  const selected = useAtomValue(selectedOverlayIds);
+  const selected = useSelectedOverlayIds();
   const modalSample = useModalSample();
 
   // Resolve from the dataset schema
-  const tdFieldPaths = useRecoilValue(
-    fieldPaths({
-      ftype: EMBEDDED_DOCUMENT_FIELD,
-      embeddedDocType: TEMPORAL_DETECTIONS_FIELD,
-    })
-  );
+  const tdFieldPaths = useTemporalDetectionFieldPaths();
 
   const tdFieldPath = useMemo(
     // Sample-level only — temporal detections are video-level; the create
@@ -55,7 +48,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
     () => tdFieldPaths.find((p) => !p.startsWith("frames.")) ?? null,
     [tdFieldPaths]
   );
-  const fps = modalSample?.frameRate;
+  const fps = getModalSampleFrameRate(modalSample);
   const canCreateTd =
     !!tdFieldPath && Number.isFinite(fps) && fps !== undefined && fps > 0;
 
@@ -68,12 +61,18 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
   // affordance reflects the current frame's bracketing keyframes. When
   // disabled, `reason` becomes the tooltip — the "why can't I propagate?"
   // diagnostic.
-  const target = useMemo(() => {
+  const target = useMemo<PropagationTarget>(() => {
     if (!stream) {
-      return { ok: false as const, reason: "No active video stream." };
+      return { ok: false, reason: "No active video stream." };
     }
     return resolvePropagationTarget(stream, selectedIds, playhead);
   }, [stream, selectedIds, playhead]);
+
+  // When propagation can't run, `reason` is the disabled-tooltip diagnostic.
+  const propagateTooltip =
+    target.ok === false
+      ? target.reason
+      : `Track frames ${target.fromFrame}–${target.toFrame} with SAM2`;
 
   return useMemo<ToolbarActionGroup[]>(
     () => [
@@ -120,9 +119,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             id: "propagate-sam2",
             label: "Track (SAM2)",
             icon: <Icon name={IconName.AI} size={Size.Sm} />,
-            tooltip: target.ok
-              ? `Track frames ${target.fromFrame}–${target.toFrame} with SAM2`
-              : target.reason,
+            tooltip: propagateTooltip,
             isDisabled: !target.ok,
             onClick: () => {
               if (!target.ok) {
@@ -148,6 +145,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
       fps,
       hasSelection,
       playhead,
+      propagateTooltip,
       selectedIds,
       target,
       tdFieldPath,

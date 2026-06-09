@@ -2,7 +2,11 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import type { TemporalLabel, TemporalOptions } from "@fiftyone/lighter";
+import type {
+  TemporalLabel,
+  TemporalOptions,
+  TemporalOverlay,
+} from "@fiftyone/lighter";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { syncTemporalOverlays } from "./useTemporalOverlaySync";
 
@@ -26,9 +30,12 @@ const makeScene = () => {
     added,
     removed,
     byId,
-    addOverlay: vi.fn((o: FakeOverlay) => {
-      added.push(o);
-      byId.set(o.opts.id, o);
+    // Signature matches SceneLike (TemporalOverlay); the fakes flowing
+    // through are FakeOverlays, cast back to read their construction opts.
+    addOverlay: vi.fn((o: TemporalOverlay) => {
+      const fake = o as unknown as FakeOverlay;
+      added.push(fake);
+      byId.set(fake.opts.id, fake);
     }),
     removeOverlay: vi.fn((id: string) => {
       removed.push(id);
@@ -97,7 +104,12 @@ describe("syncTemporalOverlays", () => {
       const pre = new FakeOverlay({
         id: "td-events-a",
         field: "events",
-        label: { support: [1, 10], label: "running" },
+        label: {
+          _cls: "TemporalDetection",
+          _id: "a",
+          support: [1, 10],
+          label: "running",
+        } as TemporalLabel,
       });
       scene.byId.set("td-events-a", pre);
 

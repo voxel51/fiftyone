@@ -1,7 +1,4 @@
-import type {
-  Track,
-  TrackEvent,
-} from "../../../playback/src/lib/tracks/TrackProvider";
+import type { Track, TrackEvent } from "@fiftyone/playback";
 import type { VideoFrameLabelsStream } from "../streams/VideoFrameLabelsStream";
 
 /**

@@ -2,9 +2,15 @@
     "name": "@fiftyone/video-annotation",
     "main": "./index.ts",
     "packageManager": "yarn@4.9.1",
+    "scripts": {
+        "lint": "eslint src index.ts",
+        "lint:fix": "eslint src index.ts --fix",
+        "typecheck": "tsc --noEmit -p tsconfig.json"
+    },
     "dependencies": {
         "@fiftyone/annotation": "workspace:*",
         "@fiftyone/command-bus": "workspace:*",
+        "@fiftyone/commands": "workspace:*",
         "@fiftyone/components": "workspace:*",
         "@fiftyone/lighter": "workspace:*",
         "@fiftyone/playback": "workspace:*",
@@ -17,6 +23,12 @@
         "lru-cache": "^11.0.1"
     },
     "devDependencies": {
+        "@eslint/compat": "^1.1.1",
+        "eslint": "9.7.0",
+        "eslint-plugin-react": "^7.35.0",
+        "eslint-plugin-react-hooks": "rc",
+        "globals": "^15.8.0",
+        "typescript-eslint": "^7.17.0",
         "vite": "^7.3.2"
     }
 }

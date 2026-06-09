@@ -1,6 +1,9 @@
-import { atom, useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
+import { createStreamHandle } from "./createStreamHandle";
 import type { VideoFrameLabelsStream } from "./VideoFrameLabelsStream";
+
+const { useStream, usePublishStream } =
+  createStreamHandle<VideoFrameLabelsStream>();
 
 /**
  * Active frame-labels stream; publication goes through
@@ -11,28 +14,14 @@ import type { VideoFrameLabelsStream } from "./VideoFrameLabelsStream";
  * available yet — consumers should treat that as "no data available; render
  * placeholder."
  */
-const frameLabelsStreamAtom = atom<VideoFrameLabelsStream | null>(null);
-
-export function useFrameLabelsStream(): VideoFrameLabelsStream | null {
-  return useAtomValue(frameLabelsStreamAtom);
-}
+export const useFrameLabelsStream = useStream;
 
 /**
  * Publishes `stream` as the active frame-labels stream for the lifetime of
  * the calling component, clearing on unmount. Intended for the labels
  * registrar; nothing else should be publishing.
  */
-export function usePublishFrameLabelsStream(
-  stream: VideoFrameLabelsStream | null
-): void {
-  const setStream = useSetAtom(frameLabelsStreamAtom);
-
-  useEffect(() => {
-    setStream(stream);
-
-    return () => setStream(null);
-  }, [setStream, stream]);
-}
+export const usePublishFrameLabelsStream = usePublishStream;
 
 /**
  * Reactive view of the active labels stream's edit version. Returns a

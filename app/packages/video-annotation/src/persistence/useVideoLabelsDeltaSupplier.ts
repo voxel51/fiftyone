@@ -1,89 +1,22 @@
-import type { JSONDeltas } from "@fiftyone/core/src/client";
-import { generateJsonPatch } from "@fiftyone/core/src/utils/json";
-import { useIsVideo } from "@fiftyone/state";
 import {
-  useFrameLabelsStream,
-  type RawDetection,
-  type RawDetectionsField,
-} from "@fiftyone/video-annotation";
+  useRegisterDeltaSupplier,
+  type DeltaSupplier,
+} from "@fiftyone/annotation";
+import type { JSONDeltas } from "@fiftyone/core/src/client";
+import {
+  generateJsonPatch,
+  idAlignedDetectionsDelta,
+} from "@fiftyone/core/src/utils/json";
+import { useIsVideo } from "@fiftyone/state";
+import type { RawDetectionsField } from "@fiftyone/utilities";
 import { useCallback } from "react";
-import type { DeltaSupplier } from "./deltaSupplier";
-
-/** Detection paired with its array-slot index for path-building. */
-interface DetInfo {
-  id: string;
-  det: RawDetection;
-  index: number;
-}
-
-/** Index a detections list by `_id`. Entries lacking `_id` are skipped. */
-const indexById = (list: RawDetection[]): Map<string, DetInfo> => {
-  const map = new Map<string, DetInfo>();
-  list.forEach((det, index) => {
-    if (det._id !== undefined) map.set(det._id, { id: det._id, det, index });
-  });
-  return map;
-};
-
-/** Per-field replaces for `_id`s present in both sides. */
-const updateOps = (
-  baseById: Map<string, DetInfo>,
-  cacheById: Map<string, DetInfo>,
-  pathPrefix: string
-): JSONDeltas => {
-  const ops: JSONDeltas = [];
-  baseById.forEach(({ id, det: baseDet, index }) => {
-    const cache = cacheById.get(id);
-    if (!cache) return;
-    const sub = generateJsonPatch(
-      baseDet as unknown as Record<string, unknown>,
-      cache.det as unknown as Record<string, unknown>
-    );
-    sub.forEach((op) =>
-      ops.push({ ...op, path: `${pathPrefix}/detections/${index}${op.path}` })
-    );
-  });
-  return ops;
-};
-
-/**
- * Removes for `_id`s in baseline but not cache. Descending index so an
- * earlier remove doesn't shift later indices it would have referenced.
- */
-const removeOps = (
-  baseById: Map<string, DetInfo>,
-  cacheById: Map<string, DetInfo>,
-  pathPrefix: string
-): JSONDeltas =>
-  Array.from(baseById.values())
-    .filter((info) => !cacheById.has(info.id))
-    .sort((a, b) => b.index - a.index)
-    .map(({ index }) => ({
-      op: "remove" as const,
-      path: `${pathPrefix}/detections/${index}`,
-    }));
-
-/** Adds for `_id`s in cache but not baseline. Appended with `/-`. */
-const addOps = (
-  baseById: Map<string, DetInfo>,
-  cacheById: Map<string, DetInfo>,
-  pathPrefix: string
-): JSONDeltas => {
-  const ops: JSONDeltas = [];
-  cacheById.forEach(({ id, det }) => {
-    if (baseById.has(id)) return;
-    ops.push({
-      op: "add" as const,
-      path: `${pathPrefix}/detections/-`,
-      value: det,
-    });
-  });
-  return ops;
-};
+import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 
 /**
  * Build a JSON-Patch delta for one frame's detections wrapper, aligning
- * baseline ↔ cache by `_id` instead of by array index.
+ * baseline ↔ cache by `_id` (via {@link idAlignedDetectionsDelta}) instead of
+ * by array index. A whole detection is the unit: matched ids diff in place,
+ * cache-only ids append, baseline-only ids are removed.
  *
  * `fast-json-patch.compare` aligns arrays by index, so a shifted detections
  * list (e.g. `ShiftTrackCommand` removes a slot, every later slot slides
@@ -105,13 +38,21 @@ export const buildDetectionsDelta = (
   if (from.detections === undefined) {
     return [{ op: "add", path: pathPrefix, value: to }];
   }
-  const baseById = indexById(from.detections);
-  const cacheById = indexById(to.detections ?? []);
-  return [
-    ...updateOps(baseById, cacheById, pathPrefix),
-    ...removeOps(baseById, cacheById, pathPrefix),
-    ...addOps(baseById, cacheById, pathPrefix),
-  ];
+  return idAlignedDetectionsDelta(
+    to.detections ?? [],
+    from.detections,
+    pathPrefix,
+    {
+      currentId: (det) => det._id,
+      baselineId: (det) => det._id,
+      diffMatched: (cache, base, path) =>
+        generateJsonPatch(
+          base as unknown as Record<string, unknown>,
+          cache as unknown as Record<string, unknown>
+        ).map((op) => ({ ...op, path: `${path}${op.path}` })),
+      serializeAdd: (det) => det,
+    }
+  );
 };
 
 /**
@@ -156,4 +97,13 @@ export const useVideoLabelsDeltaSupplier = (): DeltaSupplier => {
 
     return { deltas, metadata: undefined };
   }, [isVideo, stream]);
+};
+
+/**
+ * Registers the per-frame video-label {@link DeltaSupplier} with annotation's
+ * aggregator for the lifetime of the caller, so video deltas flow into the
+ * autosave pipeline without annotation importing this package.
+ */
+export const useRegisterVideoLabelsDeltaSupplier = (): void => {
+  useRegisterDeltaSupplier(useVideoLabelsDeltaSupplier());
 };
