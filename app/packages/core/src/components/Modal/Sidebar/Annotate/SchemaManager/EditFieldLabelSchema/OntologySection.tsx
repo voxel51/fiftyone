@@ -10,10 +10,10 @@ import {
 } from "@voxel51/voodo";
 import { useState } from "react";
 import { useConfirmDisconnectOntology } from "../../Confirmation/useConfirmDisconnectOntology";
-import OntologyPicker from "../EditFieldLabelSchema/OntologyPicker";
-import { ONTOLOGY_TYPE, useOntologies } from "../EditFieldLabelSchema/useOntologies";
+import OntologyPicker from "./OntologyPicker";
+import { ONTOLOGY_TYPE, useOntologies } from "./useOntologies";
 
-interface NewFieldOntologySectionProps {
+interface OntologySectionProps {
   appliedOntology?: string;
   // Names of the ontology-owned attributes, shown in the disconnect modal.
   ontologyAttributes: string[];
@@ -22,19 +22,19 @@ interface NewFieldOntologySectionProps {
 }
 
 /**
- * Ontology picker for the new-field flow.
+ * Presentational ontology picker shared by the create and edit flows.
  *
- * A props-driven sibling of {@link ApplyOntologySection}: it owns no schema
- * state (the create form keeps that in local React state), and instead reports
- * picks/clears up to the parent. The picker, ontology list, and disconnect
- * confirmation are all shared with the edit flow.
+ * Owns no schema state: it reports picks/clears up to the caller, which wires
+ * in whatever state source it uses (local React state for the create form,
+ * the schema atom via {@link useAppliedOntology} for the edit form). The
+ * picker, ontology list, and disconnect confirmation are shared.
  */
-const NewFieldOntologySection = ({
+const OntologySection = ({
   appliedOntology,
   ontologyAttributes,
   onPick,
   onClear,
-}: NewFieldOntologySectionProps) => {
+}: OntologySectionProps) => {
   const { ontologies, isFetching, error } = useOntologies(
     ONTOLOGY_TYPE.ontology
   );
@@ -99,4 +99,4 @@ const NewFieldOntologySection = ({
   );
 };
 
-export default NewFieldOntologySection;
+export default OntologySection;

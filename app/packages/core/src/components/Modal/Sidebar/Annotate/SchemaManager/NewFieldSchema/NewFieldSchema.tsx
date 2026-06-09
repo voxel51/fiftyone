@@ -46,7 +46,7 @@ import {
   getLabelTypeOptions,
   validateFieldName,
 } from "../utils";
-import NewFieldOntologySection from "./NewFieldOntologySection";
+import OntologySection from "../EditFieldLabelSchema/OntologySection";
 
 import {
   ATTRIBUTE_TYPE_OPTIONS,
@@ -404,7 +404,7 @@ const NewFieldSchema = () => {
           {/* Label field config: Ontology, Classes and Attributes */}
           {category === "label" && (
             <>
-              <NewFieldOntologySection
+              <OntologySection
                 appliedOntology={appliedOntology}
                 ontologyAttributes={ontologyAttributes}
                 onPick={handleApplyOntology}
