@@ -6,10 +6,11 @@ import {
   useViewEnd,
   useViewStart,
 } from "../../lib/playback/use-playback-state";
-import { clamp, laneLeftCalc } from "../utils/timeline-utils";
+import { laneLeftCalc } from "../utils/timeline-utils";
 import { fmtBound } from "../TimelineControls/timeline-controls-utils";
 import { useTemporalTagContext } from "./TemporalTagContext";
 import styles from "./TemporalTag.module.css";
+import { clamp } from "../../lib/playback/utils";
 
 export interface TemporalTagRangeOverlayProps {
   labelWidth: number;
