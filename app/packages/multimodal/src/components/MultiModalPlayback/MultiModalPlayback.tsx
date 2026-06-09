@@ -12,8 +12,9 @@ import clsx from "clsx";
 import React, { useState, type ReactNode } from "react";
 import {
   PlaybackProvider,
-  TimelineWithTracks,
+  TemporalTagTimeline,
   TrackProvider,
+  type TemporalTagTimelineProps,
   type Track,
 } from "@fiftyone/playback";
 import {
@@ -53,6 +54,15 @@ export interface MultiModalPlaybackProps {
   defaultLeftOpen?: boolean;
   /** Whether the right sidebar starts open. @default true */
   defaultRightOpen?: boolean;
+
+  /**
+   * Callback that persists a newly-created temporal tag.  When provided,
+   * the temporal-tag workflow is enabled in the timeline (button, `T`
+   * hotkey, Shift+drag).
+   */
+  onTagCreate?: TemporalTagTimelineProps["onTagCreate"];
+  /** Callback that deletes an existing temporal tag by its backend id. */
+  onTagDelete?: TemporalTagTimelineProps["onEventDelete"];
 
   /**
    * Rendered inside the providers this component owns. Use it for
@@ -106,6 +116,8 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   rightSidebar = <TilingInspectorSidebar />,
   defaultLeftOpen = true,
   defaultRightOpen = true,
+  onTagCreate,
+  onTagDelete,
   children,
   className,
 }) => {
@@ -124,6 +136,8 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
               rightSidebar={rightSidebar}
               defaultLeftOpen={defaultLeftOpen}
               defaultRightOpen={defaultRightOpen}
+              onTagCreate={onTagCreate}
+              onTagDelete={onTagDelete}
               className={className}
             />
           </TilingProvider>
@@ -139,6 +153,8 @@ interface LayoutProps {
   rightSidebar: ReactNode;
   defaultLeftOpen: boolean;
   defaultRightOpen: boolean;
+  onTagCreate?: MultiModalPlaybackProps["onTagCreate"];
+  onTagDelete?: MultiModalPlaybackProps["onTagDelete"];
   className?: string;
 }
 
@@ -148,6 +164,8 @@ function Layout({
   rightSidebar,
   defaultLeftOpen,
   defaultRightOpen,
+  onTagCreate,
+  onTagDelete,
   className,
 }: LayoutProps) {
   const { layout, tiles, focusedTileId, setLayout, setFocusedTileId } =
@@ -201,7 +219,7 @@ function Layout({
         </Drawer>
       </div>
 
-      <TimelineWithTracks />
+      <TemporalTagTimeline onTagCreate={onTagCreate} onEventDelete={onTagDelete} />
     </div>
   );
 }

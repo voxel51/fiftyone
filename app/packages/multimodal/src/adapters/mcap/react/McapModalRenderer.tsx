@@ -8,6 +8,7 @@ import {
   useMcapSceneInventory,
 } from "./use-mcap-scene-inventory";
 import { useStableMcapSource } from "./use-stable-mcap-source";
+import { useMcapTemporalTags } from "./use-mcap-temporal-tags";
 
 /**
  * SampleRenderer for `.mcap` files. Composes the playback shell, the
@@ -20,6 +21,7 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
   const fileName = source?.sourceId.split("/").pop() ?? "recording.mcap";
   const sceneSources = useMcapSceneInventory(fileName);
   const initialTiles = useMcapInitialTiles(fileName);
+  const { tracks, onTagCreate, onTagDelete } = useMcapTemporalTags(ctx);
 
   return (
     <McapDataStreamProvider>
@@ -27,8 +29,11 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
         fileName={fileName}
         sceneSources={sceneSources}
         initialTiles={initialTiles}
-        defaultLeftOpen
-        defaultRightOpen
+        tracks={tracks.length > 0 ? tracks : undefined}
+        onTagDelete={onTagDelete}
+        defaultLeftOpen={false}
+        defaultRightOpen={false}
+        onTagCreate={onTagCreate}
       >
         <McapStreams ctx={ctx} />
       </MultiModalPlayback>
