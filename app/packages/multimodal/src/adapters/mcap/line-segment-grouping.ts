@@ -42,7 +42,7 @@ export function groupLineSegmentsByLabel(
       const seg = start + j;
       segments.push([points[seg * 2], points[seg * 2 + 1]]);
     }
-    groups.push({ label: texts[i]?.text ?? null, segments });
+    groups.push({ label: texts[i]?.text || null, segments });
   }
   return groups;
 }

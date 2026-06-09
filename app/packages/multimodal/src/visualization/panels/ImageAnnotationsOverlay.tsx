@@ -9,7 +9,7 @@ import type {
   ImageAnnotationsVisualization,
   RgbaColor,
 } from "../../decoders";
-import { groupLineSegmentsByLabel } from "./line-list-grouping";
+import { groupLineSegmentsByLabel } from "../../adapters/mcap/line-segment-grouping";
 import styles from "./image-annotations-overlay.module.css";
 
 export type ImageAnnotationPrimitive =

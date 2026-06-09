@@ -8,7 +8,7 @@ import type {
   ImageAnnotationText,
   ImageAnnotationsVisualization,
 } from "../../../decoders";
-import { groupLineSegmentsByLabel } from "../../../visualization/panels/line-list-grouping";
+import { groupLineSegmentsByLabel } from "../line-segment-grouping";
 import type { McapDecodedMessage } from "../types";
 import { useMcapDataStream } from "./mcap-data-stream-context";
 
