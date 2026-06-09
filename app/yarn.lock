@@ -3094,7 +3094,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/commands@workspace:^, @fiftyone/commands@workspace:packages/commands":
+"@fiftyone/commands@workspace:*, @fiftyone/commands@workspace:^, @fiftyone/commands@workspace:packages/commands":
   version: 0.0.0-use.local
   resolution: "@fiftyone/commands@workspace:packages/commands"
   dependencies:
@@ -3229,6 +3229,7 @@ __metadata:
     xstate: "npm:^4.14.0"
   peerDependencies:
     "@fiftyone/annotation": "*"
+    "@fiftyone/video-annotation": "*"
     "@mui/icons-material": "*"
     "@mui/material": "*"
     "@react-spring/web": "*"
@@ -3654,6 +3655,7 @@ __metadata:
     "@eslint/compat": "npm:^1.1.1"
     "@fiftyone/annotation": "workspace:*"
     "@fiftyone/command-bus": "workspace:*"
+    "@fiftyone/commands": "workspace:*"
     "@fiftyone/components": "workspace:*"
     "@fiftyone/lighter": "workspace:*"
     "@fiftyone/playback": "workspace:*"
