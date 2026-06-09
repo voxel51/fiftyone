@@ -10501,6 +10501,8 @@ class SampleCollection(object):
     def to_torch(
         self,
         get_item,
+        *,
+        index_field="id",
         vectorize=False,
         skip_failures=False,
         local_process_group=None,
@@ -10511,6 +10513,11 @@ class SampleCollection(object):
 
         Args:
             get_item: a :class:`fiftyone.utils.torch.GetItem`
+            index_field ("id"): the dotted field path that defines the
+                dataset's rows. The default ``"id"`` yields one row per
+                sample. Use a list-valued path such as ``"frames.id"`` or
+                ``"ground_truth.detections.id"`` to fan out into one row per
+                frame, detection, etc.
             vectorize (False): whether to load and cache the required fields
                 from the sample collection upfront (True) or lazily load the
                 values from each sample when items are retrieved (False).
@@ -10533,6 +10540,7 @@ class SampleCollection(object):
         return FiftyOneTorchDataset(
             self,
             get_item,
+            index_field=index_field,
             vectorize=vectorize,
             skip_failures=skip_failures,
             local_process_group=local_process_group,

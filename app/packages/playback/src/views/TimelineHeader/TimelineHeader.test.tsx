@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { useRef } from "react";
+import React, { useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
 import TimelineHeader from "./TimelineHeader";
@@ -12,10 +12,16 @@ function HeaderHarness({
   onToggle,
   labelWidth = 100,
   duration = 10,
+  rulerOverlay,
+  extraActions,
+  children,
 }: {
   onToggle?: () => void;
   labelWidth?: number;
   duration?: number;
+  rulerOverlay?: React.ReactNode;
+  extraActions?: React.ReactNode;
+  children?: React.ReactNode;
 }) {
   const zoomRef = useRef<HTMLDivElement>(null);
   return (
@@ -25,7 +31,11 @@ function HeaderHarness({
           labelWidth={labelWidth}
           zoomRef={zoomRef}
           onToggle={onToggle}
-        />
+          rulerOverlay={rulerOverlay}
+          extraActions={extraActions}
+        >
+          {children}
+        </TimelineHeader>
       </div>
     </PlaybackProvider>
   );
@@ -80,6 +90,43 @@ describe("TimelineHeader", () => {
     const children = Array.from(root.children);
     expect(children).toHaveLength(2);
     expect(children[0].querySelector('[aria-label="Play"]')).not.toBeNull();
-    expect(children[1]).toBe(screen.getByTestId("timeline-ruler"));
+    expect(children[1].getAttribute("data-testid")).toBe("timeline-ruler");
+  });
+
+  it("renders rulerOverlay inside the ruler's DOM node", () => {
+    render(
+      <HeaderHarness
+        rulerOverlay={<div data-testid="my-overlay">overlay</div>}
+      />
+    );
+    const ruler = screen.getByTestId("timeline-ruler");
+    expect(ruler.querySelector('[data-testid="my-overlay"]')).not.toBeNull();
+  });
+
+  it("forwards extraActions to the controls row", () => {
+    render(
+      <HeaderHarness
+        extraActions={<button>Tag Mode</button>}
+      />
+    );
+    expect(screen.getByRole("button", { name: "Tag Mode" })).toBeTruthy();
+  });
+
+  it("renders children in the belowRuler slot when provided", () => {
+    render(
+      <HeaderHarness>
+        <div data-testid="pinned-section">pinned tracks</div>
+      </HeaderHarness>
+    );
+    expect(screen.getByTestId("pinned-section")).toBeTruthy();
+    // The root should gain a third child (the belowRuler wrapper).
+    const root = screen.getByTestId("timeline-header-root");
+    expect(root.children).toHaveLength(3);
+  });
+
+  it("does not render the belowRuler slot when children is absent", () => {
+    render(<HeaderHarness />);
+    const root = screen.getByTestId("timeline-header-root");
+    expect(root.children).toHaveLength(2);
   });
 });

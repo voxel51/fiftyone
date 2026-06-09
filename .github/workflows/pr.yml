@@ -72,32 +72,6 @@ jobs:
       needs.modified-files.outputs.fiftyone-changes == 'true')
     uses: ./.github/workflows/lint-app.yml
 
-  enterprise-sync:
-    if: >-
-      github.event.pull_request.head.repo.full_name == github.repository && (
-      github.event.action == 'closed' ||
-      github.event.pull_request.draft != true)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
-          script: |
-            await github.rest.repos.createDispatchEvent({
-              owner: 'voxel51',
-              repo: 'fiftyone-teams',
-              event_type: 'oss-pr-sync',
-              client_payload: {
-                action: context.payload.action,
-                branch: context.payload.pull_request.head.ref,
-                author: context.payload.pull_request.user.login,
-                pr_number: context.payload.pull_request.number,
-                commit_sha: context.payload.pull_request.head.sha,
-                base: context.payload.pull_request.base.ref,
-                merged: context.payload.pull_request.merged ?? false,
-              }
-            });
-
   test:
     needs: modified-files
     if: >-
