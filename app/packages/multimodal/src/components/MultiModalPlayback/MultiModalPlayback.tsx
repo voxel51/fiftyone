@@ -123,11 +123,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
 }) => {
   return (
     <PlaybackProvider>
-<<<<<<< HEAD
-      <TrackProvider
-        initialTracks={tracks}
-        initialPinnedIds={defaultPinnedTrackIds}
-      >
+      <TrackProvider tracks={tracks} initialPinnedIds={defaultPinnedTrackIds}>
         <SceneInventoryProvider sources={sceneSources}>
           <TilingProvider initialTiles={initialTiles}>
             {children}
@@ -143,20 +139,6 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
             />
           </TilingProvider>
         </SceneInventoryProvider>
-=======
-      <TrackProvider tracks={tracks} initialPinnedIds={defaultPinnedTrackIds}>
-        <TilingProvider initialTiles={initialTiles}>
-          {children}
-          <Layout
-            fileName={fileName}
-            leftSidebar={leftSidebar}
-            rightSidebar={rightSidebar}
-            defaultLeftOpen={defaultLeftOpen}
-            defaultRightOpen={defaultRightOpen}
-            className={className}
-          />
-        </TilingProvider>
->>>>>>> chore/va-hook-tests
       </TrackProvider>
     </PlaybackProvider>
   );

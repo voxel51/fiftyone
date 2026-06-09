@@ -15,13 +15,10 @@ import {
 import LoopOverlays from "../Loop/LoopOverlays";
 import PlayheadLine from "../Playhead/PlayheadLine";
 import TimelineHeader from "../TimelineHeader/TimelineHeader";
-<<<<<<< HEAD
-import TimelineTrack, { type NormalizedEvent } from "../TimelineTrack/TimelineTrack";
-=======
 import TimelineTrack, {
+  type NormalizedEvent,
   type TimelineTrackProps,
 } from "../TimelineTrack/TimelineTrack";
->>>>>>> chore/va-hook-tests
 import styles from "./TimelineWithTracks.module.css";
 
 export interface TimelineWithTracksProps {
@@ -38,14 +35,12 @@ export interface TimelineWithTracksProps {
    */
   maxSize?: number;
   className?: string;
-<<<<<<< HEAD
   /** Overlay rendered on top of the ruler row in each TimelineHeader. */
   rulerOverlay?: React.ReactNode;
   /** Injected into the controls row of each TimelineHeader. */
   extraActions?: React.ReactNode;
   /** Fired when the user chooses "Delete" from an event's context menu. */
   onEventDelete?: (event: NormalizedEvent) => void;
-=======
   /**
    * Optional content rendered between the playback control buttons and the
    * playhead time display. Forwarded to {@link TimelineHeader}'s
@@ -60,7 +55,6 @@ export interface TimelineWithTracksProps {
     track: Track,
     pinned: boolean
   ) => Partial<TimelineTrackProps>;
->>>>>>> chore/va-hook-tests
 }
 
 /**
@@ -79,14 +73,11 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   labelWidth: requestedLabelWidth = TIMELINE_LABEL_WIDTH,
   maxSize = TIMELINE_DRAWER_MAX_SIZE,
   className,
-<<<<<<< HEAD
   rulerOverlay,
   extraActions,
   onEventDelete,
-=======
   controlsSlot,
   decorateTrack,
->>>>>>> chore/va-hook-tests
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const tracks = useTracks();
@@ -117,11 +108,8 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
       pinned
       onPinClick={() => togglePin(track.id)}
       onEventClick={(e) => seek(e.startSec)}
-<<<<<<< HEAD
       onEventDelete={onEventDelete}
-=======
       {...(decorateTrack ? decorateTrack(track, true) : null)}
->>>>>>> chore/va-hook-tests
     />
   );
 
@@ -134,12 +122,9 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
         <TimelineHeader
           labelWidth={labelWidth}
           zoomRef={containerRef}
-<<<<<<< HEAD
           rulerOverlay={rulerOverlay}
           extraActions={extraActions}
-=======
           controlsSlot={controlsSlot}
->>>>>>> chore/va-hook-tests
         />
       </div>
     );
@@ -160,12 +145,9 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
             labelWidth={labelWidth}
             zoomRef={containerRef}
             onToggle={toggle}
-<<<<<<< HEAD
             rulerOverlay={rulerOverlay}
             extraActions={extraActions}
-=======
             controlsSlot={controlsSlot}
->>>>>>> chore/va-hook-tests
           >
             <div className={styles.pinnedOverlayHost}>
               {pinned.map(renderPinnedTrack)}
@@ -177,33 +159,12 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
       >
         <div className={styles.tracksOuter}>
           <div className={styles.tracksArea}>
-<<<<<<< HEAD
-            <div>
-              {unpinned.map((track) => (
-                <TimelineTrack
-                  key={track.id}
-                  id={track.id}
-                  label={track.label}
-                  color={track.color}
-                  events={track.events}
-                  labelWidth={labelWidth}
-                  pinned={false}
-                  onPinClick={() => togglePin(track.id)}
-                  onEventClick={(e) => seek(e.startSec)}
-                  onEventDelete={onEventDelete}
-                  className={styles.unpinnedTrack}
-                />
-              ))}
-=======
             {/* When the drawer is open, pinned tracks move into the body
                 so they scroll together with the unpinned section below. */}
-            <div
-              ref={drawerOpen ? pinnedSectionRef : undefined}
-              className={styles.pinnedTracks}
-            >
+            <div className={styles.pinnedTracks}>
               {pinned.map(renderPinnedTrack)}
             </div>
-            <div ref={unpinnedSectionRef}>
+            <div>
               {unpinned.map((track) => {
                 const extra = decorateTrack
                   ? decorateTrack(track, false)
@@ -219,12 +180,12 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
                     pinned={false}
                     onPinClick={() => togglePin(track.id)}
                     onEventClick={(e) => seek(e.startSec)}
+                    onEventDelete={onEventDelete}
                     {...extra}
                     className={clsx(styles.unpinnedTrack, extra?.className)}
                   />
                 );
               })}
->>>>>>> chore/va-hook-tests
             </div>
           </div>
           <LoopOverlays labelWidth={labelWidth} />

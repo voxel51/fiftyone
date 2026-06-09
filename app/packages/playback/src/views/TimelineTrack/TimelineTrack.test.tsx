@@ -284,7 +284,6 @@ describe("TimelineTrack", () => {
     });
   });
 
-<<<<<<< HEAD
   describe("onEventDelete", () => {
     it("renders interval events with a label column and no crash when onEventDelete is absent", () => {
       // Smoke-test: component renders without onEventDelete — no delete entry shown.
@@ -311,7 +310,9 @@ describe("TimelineTrack", () => {
         },
       });
       expect(container.querySelector(`.${styles.intervalBar}`)).not.toBeNull();
-=======
+    });
+  });
+
   describe("onDeleteTrack", () => {
     const interval = { startSec: 4, endSec: 6 };
 
@@ -337,7 +338,6 @@ describe("TimelineTrack", () => {
       ) as HTMLElement;
       fireEvent.contextMenu(bar);
       expect(screen.queryByText("Delete track")).toBeNull();
->>>>>>> chore/va-hook-tests
     });
   });
 

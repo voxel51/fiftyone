@@ -20,25 +20,19 @@ export interface TimelineControlsProps {
    * acts as a "show / hide tracks" affordance.
    */
   onToggle?: () => void;
-<<<<<<< HEAD
   extraActions?: React.ReactNode;
-=======
   /**
    * Optional content rendered between the playback control buttons and
    * the playhead time display. The video annotation surface slots its
    * Mark Keyframe / Propagate toolbar here.
    */
   controlsSlot?: ReactNode;
->>>>>>> chore/va-hook-tests
 }
 
 const TimelineControls: React.FC<TimelineControlsProps> = ({
   onToggle,
-<<<<<<< HEAD
   extraActions,
-=======
   controlsSlot,
->>>>>>> chore/va-hook-tests
 }) => {
   const isPlaying = useIsPlaying();
   const { play, pause, stepBack, stepForward } = usePlayback();

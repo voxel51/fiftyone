@@ -28,13 +28,12 @@ import styles from "./TimelineTrack.module.css";
  */
 export type TimelineTrackEvent =
   | number
-<<<<<<< HEAD
-  | { startSec: number; endSec?: number; label?: string; data?: unknown };
-=======
   | {
       startSec: number;
       endSec?: number;
       label?: string;
+      /** Free-form payload — anything the source produced about this event. */
+      data?: unknown;
       /**
        * Opt into interval edit (drag handles + draggable body). Only
        * meaningful on interval events (`endSec` set) and only when
@@ -43,17 +42,13 @@ export type TimelineTrackEvent =
        */
       resizable?: boolean;
     };
->>>>>>> chore/va-hook-tests
 
 export interface NormalizedEvent {
   startSec: number;
   endSec?: number;
   label?: string;
-<<<<<<< HEAD
   data?: unknown;
-=======
   resizable?: boolean;
->>>>>>> chore/va-hook-tests
 }
 
 function normalizeEvent(e: TimelineTrackEvent): NormalizedEvent {
@@ -511,13 +506,14 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                 >
                   Shrink window to fit
                 </MenuTextItem>
-<<<<<<< HEAD
                 {onEventDelete && (
                   <>
                     <MenuSeparator />
                     <MenuTextItem onClick={() => onEventDelete(e)}>
                       Delete tag
-=======
+                    </MenuTextItem>
+                  </>
+                )}
                 {onDeleteTrack && (
                   <>
                     <MenuSeparator />
@@ -531,7 +527,6 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                       }}
                     >
                       Delete track
->>>>>>> chore/va-hook-tests
                     </MenuTextItem>
                   </>
                 )}
