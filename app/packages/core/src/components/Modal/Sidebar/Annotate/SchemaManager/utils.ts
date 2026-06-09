@@ -93,6 +93,11 @@ export interface ClassConfig {
 // Ontology attributes
 // =============================================================================
 
+// Response shape of `GET /ontologies/{name}/attributes`.
+export interface OntologyAttributesResponse {
+  attributes: AttributeConfig[];
+}
+
 /**
  * Fetch an annotation ontology's attributes and merge them into an existing
  * attribute list, returning the merged result.
@@ -106,18 +111,18 @@ export const fetchAndMergeOntologyAttributes = async (
   existing: AttributeConfig[],
   name: string
 ): Promise<AttributeConfig[]> => {
-  const result = await getFetchFunction()(
+  const result: OntologyAttributesResponse = await getFetchFunction()(
     "GET",
     `/ontologies/${encodeURIComponent(name)}/attributes`
   );
 
-  const incoming = (result as { attributes: AttributeConfig[] }).attributes;
-  if (!incoming?.length) return existing;
+  const incomingAttributes = result.attributes;
+  if (!incomingAttributes?.length) return existing;
 
   const byName = new Map(existing.map((a) => [a.name, a]));
   const orderedNames = existing.map((a) => a.name);
 
-  incoming.forEach((attr) => {
+  incomingAttributes.forEach((attr) => {
     if (!byName.has(attr.name)) orderedNames.push(attr.name);
     byName.set(attr.name, attr);
   });
