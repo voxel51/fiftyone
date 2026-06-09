@@ -1,6 +1,6 @@
 import { useDragDelta } from "@voxel51/voodo";
 import clsx from "clsx";
-import React, { useEffect, useRef } from "react";
+import React, { type ReactNode, useEffect, useRef } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import {
   useLoopEnd,
@@ -31,12 +31,15 @@ export interface TimelineRulerProps {
    */
   zoomRef?: React.RefObject<HTMLElement | null>;
   className?: string;
+  /** Optional overlay rendered inside the ruler's positioned context. */
+  overlay?: ReactNode;
 }
 
 const TimelineRuler: React.FC<TimelineRulerProps> = ({
   labelWidth = 0,
   zoomRef,
   className,
+  overlay,
 }) => {
   const playhead = usePlayhead();
   const viewStart = useViewStart();
@@ -341,6 +344,8 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
           <div className={styles.playheadTriangle} />
         </div>
       </div>
+
+      {overlay}
     </div>
   );
 };

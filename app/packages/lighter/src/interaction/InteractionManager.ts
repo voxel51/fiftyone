@@ -10,6 +10,7 @@ import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
 import {
   SegmentationTool,
+  SegmentationToolMode,
   type SegmentationToolState,
 } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
 import { DetectionOverlay } from "../overlay/DetectionOverlay";
@@ -532,9 +533,18 @@ export class InteractionManager {
     const pending = this.pendingAction;
     this.pendingAction = undefined;
 
+    const hasSelection = this.selectionManager.getSelectionCount() > 0;
     const editingSegmentation =
+      segmentationModeBridge.isActive() && hasSelection;
+
+    // Erase with nothing selected is a no-op
+    if (
       segmentationModeBridge.isActive() &&
-      this.selectionManager.getSelectionCount() > 0;
+      !hasSelection &&
+      segmentationModeBridge.getToolMode() === SegmentationToolMode.Remove
+    ) {
+      return true;
+    }
 
     if (!editingSegmentation) {
       this.eventBus.dispatch("lighter:overlay-create", {
