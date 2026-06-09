@@ -37,8 +37,15 @@ export interface TimelineWithTracksProps {
   className?: string;
   /** Overlay rendered on top of the ruler row in each TimelineHeader. */
   rulerOverlay?: React.ReactNode;
-  /** Fired when the user chooses "Delete" from an event's context menu. */
-  onEventDelete?: (event: NormalizedEvent) => void;
+  /**
+   * Adds a destructive delete item to every track's event context menu. Per-row
+   * overrides can still be supplied via {@link decorateTrack}. See
+   * {@link TimelineTrackProps.eventDeleteConfig}.
+   */
+  eventDeleteConfig?: {
+    label: string;
+    onDelete: (event: NormalizedEvent) => void;
+  };
   /**
    * Optional content rendered inline between the playback control buttons and
    * the playhead time display. Forwarded to {@link TimelineHeader}'s
@@ -75,7 +82,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   maxSize = TIMELINE_DRAWER_MAX_SIZE,
   className,
   rulerOverlay,
-  onEventDelete,
+  eventDeleteConfig,
   extraControls,
   extraActions,
   decorateTrack,
@@ -109,7 +116,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
       pinned
       onPinClick={() => togglePin(track.id)}
       onEventClick={(e) => seek(e.startSec)}
-      onEventDelete={onEventDelete}
+      eventDeleteConfig={eventDeleteConfig}
       {...(decorateTrack ? decorateTrack(track, true) : null)}
     />
   );
@@ -181,7 +188,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
                     pinned={false}
                     onPinClick={() => togglePin(track.id)}
                     onEventClick={(e) => seek(e.startSec)}
-                    onEventDelete={onEventDelete}
+                    eventDeleteConfig={eventDeleteConfig}
                     {...extra}
                     className={clsx(styles.unpinnedTrack, extra?.className)}
                   />

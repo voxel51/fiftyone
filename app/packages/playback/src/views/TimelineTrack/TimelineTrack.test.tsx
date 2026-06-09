@@ -284,60 +284,57 @@ describe("TimelineTrack", () => {
     });
   });
 
-  describe("onEventDelete", () => {
-    it("renders interval events with a label column and no crash when onEventDelete is absent", () => {
-      // Smoke-test: component renders without onEventDelete — no delete entry shown.
-      const { container } = renderTrack({
-        track: {
-          start: 0,
-          end: 10,
-          events: [{ startSec: 2, endSec: 5 }],
-          labelWidth: 100,
-        },
-      });
-      expect(container.querySelector(`.${styles.intervalBar}`)).not.toBeNull();
-    });
-
-    it("does not crash when onEventDelete is provided alongside interval events", () => {
-      const onEventDelete = vi.fn();
-      const { container } = renderTrack({
-        track: {
-          start: 0,
-          end: 10,
-          events: [{ startSec: 2, endSec: 5, label: "tag-a" }],
-          labelWidth: 100,
-          onEventDelete,
-        },
-      });
-      expect(container.querySelector(`.${styles.intervalBar}`)).not.toBeNull();
-    });
-  });
-
-  describe("onDeleteTrack", () => {
+  describe("eventDeleteConfig", () => {
     const interval = { startSec: 4, endSec: 6 };
 
-    it("adds a Delete track item to the event menu that fires onDeleteTrack", () => {
-      const onDeleteTrack = vi.fn();
+    it("omits the delete item (and renders fine) when eventDeleteConfig is absent", () => {
       const { container } = renderTrack({
-        track: { start: 0, end: 10, events: [interval], onDeleteTrack },
+        track: { start: 0, end: 10, events: [interval], labelWidth: 100 },
+      });
+      const bar = container.querySelector(
+        `.${styles.intervalBar}`
+      ) as HTMLElement;
+      expect(bar).not.toBeNull();
+      fireEvent.contextMenu(bar);
+      expect(screen.queryByText("Delete track")).toBeNull();
+    });
+
+    it("adds a destructive item with the supplied label that fires onDelete with the event", () => {
+      const onDelete = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [interval],
+          eventDeleteConfig: { label: "Delete track", onDelete },
+        },
       });
       const bar = container.querySelector(
         `.${styles.intervalBar}`
       ) as HTMLElement;
       fireEvent.contextMenu(bar);
       fireEvent.click(screen.getByText("Delete track"));
-      expect(onDeleteTrack).toHaveBeenCalledTimes(1);
+      expect(onDelete).toHaveBeenCalledTimes(1);
+      expect(onDelete.mock.calls[0][0]).toMatchObject({
+        startSec: 4,
+        endSec: 6,
+      });
     });
 
-    it("omits the Delete track item when onDeleteTrack is not provided", () => {
+    it("uses the supplied label verbatim (e.g. the temporal-tag 'Delete tag')", () => {
       const { container } = renderTrack({
-        track: { start: 0, end: 10, events: [interval] },
+        track: {
+          start: 0,
+          end: 10,
+          events: [interval],
+          eventDeleteConfig: { label: "Delete tag", onDelete: vi.fn() },
+        },
       });
       const bar = container.querySelector(
         `.${styles.intervalBar}`
       ) as HTMLElement;
       fireEvent.contextMenu(bar);
-      expect(screen.queryByText("Delete track")).toBeNull();
+      expect(screen.getByText("Delete tag")).toBeTruthy();
     });
   });
 

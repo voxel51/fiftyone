@@ -342,8 +342,11 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
         return {
           ...base,
           snapStepSec,
-          onDeleteTrack: () =>
-            void commandBus.execute(new DeleteTrackCommand(track.id)),
+          eventDeleteConfig: {
+            label: "Delete track",
+            onDelete: () =>
+              void commandBus.execute(new DeleteTrackCommand(track.id)),
+          },
           onEventEdit: (
             eventIndex: number,
             newStartSec: number,
@@ -375,13 +378,16 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
       return {
         ...base,
         snapStepSec,
-        onDeleteTrack: () =>
-          void commandBus.execute(
-            new DeleteTemporalDetectionCommand(
-              tdEvent.fieldPath,
-              tdEvent.detectionId
-            )
-          ),
+        eventDeleteConfig: {
+          label: "Delete track",
+          onDelete: () =>
+            void commandBus.execute(
+              new DeleteTemporalDetectionCommand(
+                tdEvent.fieldPath,
+                tdEvent.detectionId
+              )
+            ),
+        },
         onEventEdit: (
           _eventIndex: number,
           newStartSec: number,

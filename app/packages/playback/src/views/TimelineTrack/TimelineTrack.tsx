@@ -97,8 +97,18 @@ export interface TimelineTrackProps {
   events?: TimelineTrackEvent[];
   /** Fired when an event marker / bar is clicked. Typically seeks. */
   onEventClick?: (event: NormalizedEvent) => void;
-  /** Fired when the user chooses "Delete" from the event context menu. */
-  onEventDelete?: (event: NormalizedEvent) => void;
+  /**
+   * Adds a destructive item to an event's context menu. `label` is the menu
+   * text (e.g. "Delete tag" or "Delete track") and `onDelete` receives the
+   * event the menu was opened on — the handler decides whether that means
+   * deleting the single event or the whole track. Hidden when not provided.
+   * Supply per-row via `decorateTrack` or uniformly via
+   * {@link TimelineWithTracksProps.eventDeleteConfig}.
+   */
+  eventDeleteConfig?: {
+    label: string;
+    onDelete: (event: NormalizedEvent) => void;
+  };
   /** Override the label column text. Defaults to `id`. */
   label?: string;
   height?: number;
@@ -106,11 +116,6 @@ export interface TimelineTrackProps {
   pinned?: boolean;
   onPinClick?: () => void;
   onContextMenu?: (e: React.MouseEvent<HTMLDivElement>) => void;
-  /**
-   * When set, the event context menu gains a destructive "Delete track"
-   * item. Hidden when not provided.
-   */
-  onDeleteTrack?: () => void;
   className?: string;
   /** Fired on the row root. Used for cross-component hover linking. */
   onMouseEnter?: (e: React.MouseEvent<HTMLDivElement>) => void;
@@ -154,14 +159,13 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   end,
   events = [],
   onEventClick,
-  onEventDelete,
+  eventDeleteConfig,
   label,
   height = 28,
   labelWidth = 0,
   pinned = false,
   onPinClick,
   onContextMenu,
-  onDeleteTrack,
   className,
   onMouseEnter,
   onMouseLeave,
@@ -506,27 +510,19 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                 >
                   Shrink window to fit
                 </MenuTextItem>
-                {onEventDelete && (
-                  <>
-                    <MenuSeparator />
-                    <MenuTextItem onClick={() => onEventDelete(e)}>
-                      Delete tag
-                    </MenuTextItem>
-                  </>
-                )}
-                {onDeleteTrack && (
+                {eventDeleteConfig && (
                   <>
                     <MenuSeparator />
                     <MenuTextItem
                       destructive
-                      onClick={(e) => {
+                      onClick={(ev) => {
                         // Stop the click bubbling to the row's `onClick`
-                        // (`onTrackClick`)
-                        e.stopPropagation();
-                        onDeleteTrack();
+                        // (`onTrackClick`).
+                        ev.stopPropagation();
+                        eventDeleteConfig.onDelete(event);
                       }}
                     >
-                      Delete track
+                      {eventDeleteConfig.label}
                     </MenuTextItem>
                   </>
                 )}
