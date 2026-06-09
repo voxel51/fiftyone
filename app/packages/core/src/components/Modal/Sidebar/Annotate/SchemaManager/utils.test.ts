@@ -1,10 +1,18 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  fetchAndMergeOntologyAttributes,
   formatAttributeCount,
   formatSchemaCount,
   getAttributeTypeLabel,
   getClassNameError,
+  type AttributeConfig,
 } from "./utils";
+
+const mockFetch = vi.fn();
+vi.mock("@fiftyone/utilities", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@fiftyone/utilities")>();
+  return { ...actual, getFetchFunction: () => mockFetch };
+});
 
 describe("getAttributeTypeLabel", () => {
   it("should return human-readable label for known components", () => {
@@ -107,5 +115,52 @@ describe("formatSchemaCount", () => {
     expect(formatSchemaCount(0)).toBe("0 schemas");
     expect(formatSchemaCount(2)).toBe("2 schemas");
     expect(formatSchemaCount(5)).toBe("5 schemas");
+  });
+});
+
+describe("fetchAndMergeOntologyAttributes", () => {
+  const attr = (name: string, extra: Partial<AttributeConfig> = {}) =>
+    ({ name, type: "str", ...extra } as AttributeConfig);
+
+  beforeEach(() => {
+    mockFetch.mockReset();
+  });
+
+  it("appends new ontology attributes after existing ones", async () => {
+    mockFetch.mockResolvedValue({
+      attributes: [attr("size", { _source: "vehicles" })],
+    });
+
+    const merged = await fetchAndMergeOntologyAttributes(
+      [attr("color")],
+      "vehicles"
+    );
+
+    expect(merged.map((a) => a.name)).toEqual(["color", "size"]);
+    expect(merged.find((a) => a.name === "size")?._source).toBe("vehicles");
+  });
+
+  it("overrides same-named attributes in place, preserving order", async () => {
+    mockFetch.mockResolvedValue({
+      attributes: [attr("color", { _source: "vehicles", component: "radio" })],
+    });
+
+    const merged = await fetchAndMergeOntologyAttributes(
+      [attr("color"), attr("year")],
+      "vehicles"
+    );
+
+    expect(merged.map((a) => a.name)).toEqual(["color", "year"]);
+    expect(merged[0]._source).toBe("vehicles");
+    expect(merged[0].component).toBe("radio");
+  });
+
+  it("returns the existing list unchanged when the ontology has no attributes", async () => {
+    mockFetch.mockResolvedValue({ attributes: [] });
+
+    const existing = [attr("color")];
+    const merged = await fetchAndMergeOntologyAttributes(existing, "empty");
+
+    expect(merged).toBe(existing);
   });
 });

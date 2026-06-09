@@ -41,7 +41,12 @@ import ClassesSection from "../EditFieldLabelSchema/GUIContent/ClassesSection";
 import PrimitiveFieldContent from "../EditFieldLabelSchema/GUIContent/PrimitiveFieldContent";
 import Footer from "../Footer";
 import { ListContainer } from "../styled";
-import { getLabelTypeOptions, validateFieldName } from "../utils";
+import {
+  fetchAndMergeOntologyAttributes,
+  getLabelTypeOptions,
+  validateFieldName,
+} from "../utils";
+import NewFieldOntologySection from "./NewFieldOntologySection";
 
 import {
   ATTRIBUTE_TYPE_OPTIONS,
@@ -73,6 +78,7 @@ const NewFieldSchema = () => {
     DEFAULT_DETECTION_ATTRIBUTES_2D
   );
   const [newAttributes, setNewAttributes] = useState<Set<string>>(new Set());
+  const [appliedOntology, setAppliedOntology] = useState<string>();
 
   const { createAndActivateField, listSchemas } = useSchemaManager();
   const setLabelSchemasData = useSetLabelSchemasData();
@@ -118,6 +124,9 @@ const NewFieldSchema = () => {
       setAttributes(getDefaultAttributesForType(newType, is3dMedia));
       setNewAttributes(new Set());
       setClasses([]);
+      // The reset above drops any ontology-sourced attributes, so clear the
+      // applied ontology too rather than strand its name without its attrs.
+      setAppliedOntology(undefined);
     },
     [is3dMedia]
   );
@@ -198,6 +207,32 @@ const NewFieldSchema = () => {
     []
   );
 
+  // Ontology handlers. Mirror the edit flow: applying an ontology merges its
+  // attributes (marked `_source`) into the list for live preview; clearing
+  // drops them. The `_source` markers are stripped server-side on create.
+  const ontologyAttributes = useMemo(
+    () => attributes.filter((a) => a._source).map((a) => a.name),
+    [attributes]
+  );
+
+  const handleApplyOntology = useCallback(
+    (name: string) => {
+      setAppliedOntology(name);
+      fetchAndMergeOntologyAttributes(attributes, name)
+        .then(setAttributes)
+        .catch(() => {
+          // Preview failed; the name is set and attributes hydrate on create.
+          console.error(`Failed to fetch ontology attributes for ${name}`);
+        });
+    },
+    [attributes]
+  );
+
+  const handleClearOntology = useCallback(() => {
+    setAppliedOntology(undefined);
+    setAttributes((prev) => prev.filter((a) => !a._source));
+  }, []);
+
   const handleCreate = useCallback(async () => {
     if (!canCreate) return;
 
@@ -214,6 +249,7 @@ const NewFieldSchema = () => {
         classes,
         attributes,
         new_attributes: newAttrsArr.length > 0 ? newAttrsArr : undefined,
+        applied_ontology: appliedOntology,
       };
     }
 
@@ -255,6 +291,7 @@ const NewFieldSchema = () => {
     }
   }, [
     addToExploreActiveFields,
+    appliedOntology,
     attributes,
     canCreate,
     category,
@@ -364,9 +401,15 @@ const NewFieldSchema = () => {
             />
           )}
 
-          {/* Label field config: Classes and Attributes */}
+          {/* Label field config: Ontology, Classes and Attributes */}
           {category === "label" && (
             <>
+              <NewFieldOntologySection
+                appliedOntology={appliedOntology}
+                ontologyAttributes={ontologyAttributes}
+                onPick={handleApplyOntology}
+                onClear={handleClearOntology}
+              />
               <ClassesSection
                 classes={classes}
                 attributeCount={attributes.length}

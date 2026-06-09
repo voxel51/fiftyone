@@ -293,6 +293,7 @@ class CreateAndActivateField(foo.Operator):
         # Get label schema config from frontend
         label_schema_config = ctx.params.get("label_schema_config", {})
         classes = label_schema_config.get("classes")
+        applied_ontology = label_schema_config.get("applied_ontology")
 
         # Determine component based on number of classes
         if classes and len(classes) > foac.CHECKBOXES_OR_RADIO_THRESHOLD:
@@ -303,13 +304,21 @@ class CreateAndActivateField(foo.Operator):
         else:
             component = foac.RADIO
 
-        # Build label schema
-        return {
+        # Build label schema. Setting `applied_ontology` here routes through the
+        # same `update_label_schema` dehydrate/validate/persist path the edit
+        # flow uses, so a field can be created with an ontology attached in a
+        # single step.
+        label_schema = {
             "type": field_type,
             "component": component,
             "attributes": label_schema_config.get("attributes", []),
-            **({"classes": classes} if classes else {}),
         }
+        if classes:
+            label_schema["classes"] = classes
+        if applied_ontology:
+            label_schema["applied_ontology"] = applied_ontology
+
+        return label_schema
 
     def _create_primitive_field(self, ctx, field_name, field_type, read_only):
         """Create a primitive field and return its schema."""

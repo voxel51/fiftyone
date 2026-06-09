@@ -139,6 +139,7 @@ export type LabelSchemaConfig = {
   classes?: string[];
   attributes?: AttributeConfig[];
   new_attributes?: AttributeConfig[];
+  applied_ontology?: string;
 };
 
 export type CreateAndActivateFieldRequest = {

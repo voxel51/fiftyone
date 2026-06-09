@@ -14,6 +14,9 @@ import fiftyone as fo
 import fiftyone.core.labels as fol
 from fiftyone.core.annotation.attributes import AttributeSpec
 from fiftyone.core.ontology import AnnotationOntology, apply_ontology
+from fiftyone.operators.executor import ExecutionContext
+
+from plugins.operators.annotation import CreateAndActivateField
 
 from decorators import drop_datasets, drop_ontologies
 
@@ -512,3 +515,58 @@ def _make_applied_ontology_test_dataset(ontology_name: str = "my_ontology"):
     dataset.add_sample_field("str_field", fo.StringField)
 
     return dataset
+
+
+def _create_field_ctx(dataset, params):
+    return ExecutionContext(
+        operator_uri="@voxel51/operators/create_and_activate_field",
+        request_params={"dataset_name": dataset.name, "params": params},
+    )
+
+
+class CreateAndActivateFieldTests(unittest.TestCase):
+    """Unit tests for the `create_and_activate_field` operator."""
+
+    @drop_datasets
+    @drop_ontologies
+    def test_create_label_field_with_applied_ontology(self):
+        dataset = _make_applied_ontology_test_dataset()
+        ctx = _create_field_ctx(
+            dataset,
+            {
+                "field_name": "new_detections",
+                "field_category": "label",
+                "field_type": "detections",
+                "label_schema_config": {"applied_ontology": "my_ontology"},
+            },
+        )
+
+        result = CreateAndActivateField().execute(ctx)
+        self.assertNotIn("error", result)
+
+        dataset.reload()
+        self.assertEqual(
+            dataset.label_schemas["new_detections"]["applied_ontology"],
+            "my_ontology",
+        )
+
+    @drop_datasets
+    def test_create_label_field_without_applied_ontology(self):
+        dataset = fo.Dataset()
+        ctx = _create_field_ctx(
+            dataset,
+            {
+                "field_name": "new_detections",
+                "field_category": "label",
+                "field_type": "detections",
+                "label_schema_config": {},
+            },
+        )
+
+        result = CreateAndActivateField().execute(ctx)
+        self.assertNotIn("error", result)
+
+        dataset.reload()
+        self.assertNotIn(
+            "applied_ontology", dataset.label_schemas["new_detections"]
+        )
