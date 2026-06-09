@@ -1,4 +1,4 @@
-import type { ImageAnnotationText } from "../../decoders";
+import type { ImageAnnotationText } from "../decoders";
 
 type Point2 = readonly [number, number];
 
