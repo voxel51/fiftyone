@@ -42,42 +42,35 @@ import {
   TrimTrackCommand,
   UpdateTrackAttributesCommand,
 } from "../commands";
+import { copyDetection, detectionAt } from "./videoCommandHelpers";
 
-/** Read this track's detection on a given frame, or `undefined`. */
-const detectionAt = (
-  stream: { getValue: (t: number) => { detections: SyntheticBox[] } | null },
-  frame: number,
-  fps: number,
-  trackId: string
-): SyntheticBox | undefined =>
-  stream.getValue((frame - 1) / fps)?.detections.find((d) => d.id === trackId);
-
-/**
- * Project a snapshot detection into a fresh-`_id` copy for writing onto
- * another frame. Cross-frame identity (`instance` / track `index`) is
- * preserved; the `_id` is new so each frame gets its own detection doc.
- * Per-field spreads avoid writing `undefined`/`null` keys the baseline
- * lacks (which would emit spurious patch ops).
- */
-const copyDetection = (
-  det: SyntheticBox,
-  overrides: Pick<LocalDetection, "keyframe"> &
-    Partial<Pick<LocalDetection, "propagation">>
-): LocalDetection => ({
-  _cls: "Detection",
-  _id: objectId(),
-  label: det.label,
-  bounding_box: det.bounding_box,
-  ...(det.index !== undefined ? { index: det.index } : {}),
-  ...(det.instance ? { instance: det.instance } : {}),
-  ...overrides,
-});
+// Shared dependency types — acquired once in the umbrella hook and threaded
+// to the per-command registrar hooks below (module-private; not part of the
+// package's public surface).
+type Stream = ReturnType<typeof useFrameLabelsStream>;
+type ImageStream = ReturnType<typeof useImaVidImageStream>;
+type Scene = ReturnType<typeof useLighter>["scene"];
+type EventBus = ReturnType<typeof useAnnotationEventBus>;
+type SetStatusContent = ReturnType<
+  typeof useVideoAnnotationStatus
+>["setContent"];
+type AgentRegistry = ReturnType<typeof useAgentRegistry>;
+type SampleDescriptor = ReturnType<typeof useSampleDescriptor>;
+type ApplyPropagation = ReturnType<typeof useApplyPropagationResult>;
+type ApplyPropagatedDetection = ReturnType<typeof useApplyPropagatedDetection>;
+type TombstoneTemporalDetection = ReturnType<
+  typeof useTombstoneTemporalDetection
+>;
 
 /**
  * Registers video-specific annotation command handlers. Mount inside
  * the video annotation surface's `<PlaybackProvider>` so dispatchers
  * (keybinding handlers, toolbar buttons, …) can capture the playhead
  * and selection at the moment of user intent.
+ *
+ * Each command is registered by its own `use…Handler` hook below; this
+ * umbrella acquires the shared dependencies once and threads them down so
+ * a handler depends only on what it actually uses.
  */
 export const useRegisterVideoAnnotationCommandHandlers = () => {
   const stream = useFrameLabelsStream();
@@ -91,6 +84,33 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
   const eventBus = useAnnotationEventBus();
   const tombstoneTemporalDetection = useTombstoneTemporalDetection();
 
+  useEditTemporalDetectionHandler({ scene, eventBus });
+  useDeleteTemporalDetectionHandler({ scene, tombstoneTemporalDetection });
+  useCreateTemporalDetectionHandler({ scene });
+  useMarkKeyframeHandler({ stream, eventBus });
+  usePropagateHandler({
+    stream,
+    imageStream,
+    registry,
+    sampleDescriptor,
+    applyPropagation,
+    applyPropagatedDetection,
+    setStatusContent,
+  });
+  useExtendTrackHandler({ stream });
+  useTrimTrackHandler({ stream });
+  useDeleteTrackHandler({ stream, eventBus });
+  useUpdateTrackAttributesHandler({ stream });
+  useShiftTrackHandler({ stream });
+};
+
+function useEditTemporalDetectionHandler({
+  scene,
+  eventBus,
+}: {
+  scene: Scene;
+  eventBus: EventBus;
+}): void {
   useRegisterCommandHandler(
     EditTemporalDetectionCommand,
     useCallback(
@@ -115,7 +135,15 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
       [scene, eventBus]
     )
   );
+}
 
+function useDeleteTemporalDetectionHandler({
+  scene,
+  tombstoneTemporalDetection,
+}: {
+  scene: Scene;
+  tombstoneTemporalDetection: TombstoneTemporalDetection;
+}): void {
   useRegisterCommandHandler(
     DeleteTemporalDetectionCommand,
     useCallback(
@@ -140,7 +168,9 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
       [scene, tombstoneTemporalDetection]
     )
   );
+}
 
+function useCreateTemporalDetectionHandler({ scene }: { scene: Scene }): void {
   useRegisterCommandHandler(
     CreateTemporalDetectionCommand,
     useCallback(
@@ -180,7 +210,15 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
       [scene]
     )
   );
+}
 
+function useMarkKeyframeHandler({
+  stream,
+  eventBus,
+}: {
+  stream: Stream;
+  eventBus: EventBus;
+}): void {
   useRegisterCommandHandler(
     MarkKeyframeCommand,
     useCallback(
@@ -237,7 +275,25 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
       [stream, eventBus]
     )
   );
+}
 
+function usePropagateHandler({
+  stream,
+  imageStream,
+  registry,
+  sampleDescriptor,
+  applyPropagation,
+  applyPropagatedDetection,
+  setStatusContent,
+}: {
+  stream: Stream;
+  imageStream: ImageStream;
+  registry: AgentRegistry;
+  sampleDescriptor: SampleDescriptor;
+  applyPropagation: ApplyPropagation;
+  applyPropagatedDetection: ApplyPropagatedDetection;
+  setStatusContent: SetStatusContent;
+}): void {
   useRegisterCommandHandler(
     PropagateCommand,
     useCallback(
@@ -391,7 +447,9 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
       ]
     )
   );
+}
 
+function useExtendTrackHandler({ stream }: { stream: Stream }): void {
   useRegisterCommandHandler(
     ExtendTrackCommand,
     useCallback(
@@ -431,7 +489,9 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
       [stream]
     )
   );
+}
 
+function useTrimTrackHandler({ stream }: { stream: Stream }): void {
   useRegisterCommandHandler(
     TrimTrackCommand,
     useCallback(
@@ -456,7 +516,15 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
       [stream]
     )
   );
+}
 
+function useDeleteTrackHandler({
+  stream,
+  eventBus,
+}: {
+  stream: Stream;
+  eventBus: EventBus;
+}): void {
   useRegisterCommandHandler(
     DeleteTrackCommand,
     useCallback(
@@ -490,7 +558,9 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
       [stream, eventBus]
     )
   );
+}
 
+function useUpdateTrackAttributesHandler({ stream }: { stream: Stream }): void {
   useRegisterCommandHandler(
     UpdateTrackAttributesCommand,
     useCallback(
@@ -527,7 +597,9 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
       [stream]
     )
   );
+}
 
+function useShiftTrackHandler({ stream }: { stream: Stream }): void {
   useRegisterCommandHandler(
     ShiftTrackCommand,
     useCallback(
@@ -581,4 +653,4 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
       [stream]
     )
   );
-};
+}

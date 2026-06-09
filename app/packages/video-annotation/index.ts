@@ -1,50 +1,50 @@
-export { VideoAnnotationSurface } from "./src/VideoAnnotationSurface";
-export { SyntheticLabelStream } from "./src/SyntheticLabelStream";
+export { VideoAnnotationSurface } from "./src/components/VideoAnnotationSurface";
+export { SyntheticLabelStream } from "./src/streams/SyntheticLabelStream";
 export type {
   FrameLabelSnapshot,
   PropagationBlob,
   PropagationMethod,
   SyntheticBox,
-} from "./src/SyntheticLabelStream";
+} from "./src/streams/SyntheticLabelStream";
 export {
   IMAVID_STREAM_ID,
   LABELS_STREAM_ID,
   MAIN_TILE_ID,
   VIDEO_STREAM_ID,
-} from "./src/ids";
-export { ImaVidImageStream } from "./src/ImaVidImageStream";
-export type { ImaVidImageFrame } from "./src/ImaVidImageStream";
-export { useFrameLabelsStream } from "./src/frameLabelsStream";
+} from "./src/utils/ids";
+export { ImaVidImageStream } from "./src/streams/ImaVidImageStream";
+export type { ImaVidImageFrame } from "./src/streams/ImaVidImageStream";
+export { useFrameLabelsStream } from "./src/streams/frameLabelsStream";
 export {
   useImaVidImageStream,
   usePublishImaVidImageStream,
-} from "./src/imaVidImageStreamHandle";
-export { PropagationStatusItem } from "./src/PropagationStatusItem";
-export { useVideoAnnotationStatus } from "./src/videoAnnotationStatus";
-export type { VideoAnnotationStatusContent } from "./src/videoAnnotationStatus";
-export { resolvePropagationTarget } from "./src/propagationTarget";
-export type { PropagationTarget } from "./src/propagationTarget";
-export { resolveTrackExtentEdit } from "./src/trackExtentEdit";
+} from "./src/streams/imaVidImageStreamHandle";
+export { PropagationStatusItem } from "./src/components/PropagationStatusItem";
+export { useVideoAnnotationStatus } from "./src/state/videoAnnotationStatus";
+export type { VideoAnnotationStatusContent } from "./src/state/videoAnnotationStatus";
+export { resolvePropagationTarget } from "./src/propagation/propagationTarget";
+export type { PropagationTarget } from "./src/propagation/propagationTarget";
+export { resolveTrackExtentEdit } from "./src/tracks/trackExtentEdit";
 export type {
   ResolveTrackExtentEditInput,
   TrackDragMode,
   TrackExtentEdit,
-} from "./src/trackExtentEdit";
-export { VideoFrameLabelsStream } from "./src/VideoFrameLabelsStream";
+} from "./src/tracks/trackExtentEdit";
+export { VideoFrameLabelsStream } from "./src/streams/VideoFrameLabelsStream";
 export type {
   LocalDetection,
   RawDetection,
   RawDetectionsField,
-} from "./src/VideoFrameLabelsStream";
-export { buildTemporalDetectionTracks } from "./src/temporalDetectionTracks";
+} from "./src/streams/VideoFrameLabelsStream";
+export { buildTemporalDetectionTracks } from "./src/tracks/temporalDetectionTracks";
 export type {
   RawTemporalDetection,
   RawTemporalDetectionsField,
   TemporalDetectionLabelLike,
   TemporalDetectionEventData,
   BuildTemporalDetectionTracksInput,
-} from "./src/temporalDetectionTracks";
+} from "./src/tracks/temporalDetectionTracks";
 export {
   syncTemporalOverlays,
   useTemporalOverlaySync,
-} from "./src/useTemporalOverlaySync";
+} from "./src/sync/useTemporalOverlaySync";

@@ -3,7 +3,10 @@
  */
 
 import type { BaseOverlay } from "@fiftyone/lighter";
-import type { FrameLabelSnapshot, SyntheticBox } from "../SyntheticLabelStream";
+import type {
+  FrameLabelSnapshot,
+  SyntheticBox,
+} from "../streams/SyntheticLabelStream";
 
 /**
  * Kinds of FiftyOne labels the video surface knows how to render.
