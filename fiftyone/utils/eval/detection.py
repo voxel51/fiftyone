@@ -170,6 +170,7 @@ def evaluate_detections(
         is_temporal,
         iou=iou,
         classwise=classwise,
+        classes=classes,
         custom_metrics=custom_metrics,
         **kwargs,
     )
@@ -205,7 +206,7 @@ def evaluate_detections(
         sample_fp = 0
         sample_fn = 0
         for doc in docs:
-            doc_matches = eval_method.evaluate(doc, eval_key=eval_key)
+            doc_matches = eval_method.evaluate(doc, eval_key=eval_key, classes=config.classes)
             matches.extend(doc_matches)
             tp, fp, fn = _tally_matches(doc_matches)
             sample_tp += tp
@@ -266,6 +267,7 @@ class DetectionEvaluationConfig(BaseEvaluationMethodConfig):
         gt_field,
         iou=None,
         classwise=None,
+        classes=None,
         custom_metrics=None,
         **kwargs,
     ):
@@ -274,6 +276,7 @@ class DetectionEvaluationConfig(BaseEvaluationMethodConfig):
         self.gt_field = gt_field
         self.iou = iou
         self.classwise = classwise
+        self.classes = classes
         self.custom_metrics = custom_metrics
 
     @property
@@ -377,7 +380,7 @@ class DetectionEvaluation(BaseEvaluationMethod):
             dataset.add_sample_field(pred_id, fof.StringField)
             dataset.add_sample_field(pred_iou, fof.FloatField)
 
-    def evaluate(self, doc, eval_key=None):
+    def evaluate(self, doc, eval_key=None, classes=None):
         """Evaluates the ground truth and predictions in the given document.
 
         Args:

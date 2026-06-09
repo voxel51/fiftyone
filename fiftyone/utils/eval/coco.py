@@ -140,7 +140,7 @@ class COCOEvaluation(DetectionEvaluation):
                 "evaluation"
             )
 
-    def evaluate(self, sample_or_frame, eval_key=None):
+    def evaluate(self, sample_or_frame, eval_key=None, classes=None):
         """Performs COCO-style evaluation on the given image.
 
         Predicted objects are matched to ground truth objects in descending
@@ -174,7 +174,7 @@ class COCOEvaluation(DetectionEvaluation):
             gts = _copy_labels(gts)
             preds = _copy_labels(preds)
 
-        return _coco_evaluation_single_iou(gts, preds, eval_key, self.config)
+        return _coco_evaluation_single_iou(gts, preds, eval_key, self.config, classes=classes)
 
     def generate_results(
         self,
@@ -483,7 +483,7 @@ _NO_MATCH_ID = ""
 _NO_MATCH_IOU = None
 
 
-def _coco_evaluation_single_iou(gts, preds, eval_key, config):
+def _coco_evaluation_single_iou(gts, preds, eval_key, config, classes=None):
     iou_thresh = min(config.iou, 1 - 1e-10)
     id_key = "%s_id" % eval_key
     iou_key = "%s_iou" % eval_key
@@ -500,6 +500,7 @@ def _coco_evaluation_single_iou(gts, preds, eval_key, config):
         eval_key=eval_key,
         id_key=id_key,
         iou_key=iou_key,
+        classes=classes,
     )
 
     # omit iscrowd
@@ -524,6 +525,7 @@ def _coco_evaluation_iou_sweep(gts, preds, config):
             eval_key="_eval",
             id_key=id_key,
             iou_key=iou_key,
+            classes=config.classes,
         )
         for iou_thresh, id_key in zip(iou_threshs, id_keys)
     ]
@@ -595,7 +597,7 @@ def _coco_evaluation_setup(
 
 
 def _compute_matches(
-    cats, pred_ious, iou_thresh, iscrowd, eval_key, id_key, iou_key
+    cats, pred_ious, iou_thresh, iscrowd, eval_key, id_key, iou_key, classes=None
 ):
     matches = []
 
@@ -699,6 +701,8 @@ def _compute_matches(
         # Leftover GTs are false negatives
         for gt in objects["gts"]:
             if gt[id_key] == _NO_MATCH_ID:
+                if classes is not None and gt.label not in classes:
+                    continue
                 gt[eval_key] = "fn"
                 matches.append(
                     (gt.label, None, None, None, gt.id, None, iscrowd(gt))
