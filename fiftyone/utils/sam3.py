@@ -561,14 +561,14 @@ def _sam3_output_to_detections(
     frame_width,
     frame_height,
     label_map=None,
-    default_label="object",
+    default_label=None,
 ):
-    """Convert SAM 3 session API outputs to FiftyOne Detections.
+    """Convert SAM 3 video outputs to FiftyOne Detections.
 
     Args:
         out_binary_masks: (N, H, W) bool array of segmentation masks
         out_boxes_xywh: (N, 4) normalised [x, y, w, h] boxes
-        out_obj_ids: list/array of int object IDs
+        out_obj_ids: list of int object IDs
         out_probs: (N,) confidence scores
         frame_width: original frame width
         frame_height: original frame height
@@ -578,46 +578,45 @@ def _sam3_output_to_detections(
     Returns:
         list of :class:`fiftyone.core.labels.Detection`
     """
+    if len(out_obj_ids) == 0:
+        return []
+
+    boxes = np.asarray(out_boxes_xywh)
+    coords = np.round(
+        fosam._to_abs_boxes(boxes, frame_width, frame_height)
+    ).astype(int)
+    coords[:, [0, 2]] = np.clip(coords[:, [0, 2]], 0, frame_width)
+    coords[:, [1, 3]] = np.clip(coords[:, [1, 3]], 0, frame_height)
+
+    widths = coords[:, 2] - coords[:, 0]
+    heights = coords[:, 3] - coords[:, 1]
+    valid = (widths > 0) & (heights > 0)
+
     detections = []
     for i, obj_id in enumerate(out_obj_ids):
-        mask_full = out_binary_masks[i]  # (H, W)
-        bx, by, bw, bh = out_boxes_xywh[i]
-
-        # Convert normalised xywh to pixel coords
-        x1 = int(round(bx * frame_width))
-        y1 = int(round(by * frame_height))
-        x2 = int(round((bx + bw) * frame_width))
-        y2 = int(round((by + bh) * frame_height))
-        x1 = max(0, x1)
-        y1 = max(0, y1)
-        x2 = min(frame_width, x2)
-        y2 = min(frame_height, y2)
-
-        if x2 <= x1 or y2 <= y1:
+        if not valid[i]:
             continue
 
-        bounding_box = [
-            x1 / frame_width,
-            y1 / frame_height,
-            (x2 - x1) / frame_width,
-            (y2 - y1) / frame_height,
-        ]
-
-        cropped_mask = mask_full[y1:y2, x1:x2]
-
-        label = default_label
-        if label_map and obj_id in label_map:
-            label = label_map[obj_id]
+        x1, y1, x2, y2 = coords[i]
 
         detections.append(
             fol.Detection(
-                label=label,
-                bounding_box=bounding_box,
-                mask=cropped_mask,
+                label=(
+                    label_map.get(obj_id, default_label)
+                    if label_map
+                    else default_label
+                ),
+                bounding_box=[
+                    x1 / frame_width,
+                    y1 / frame_height,
+                    widths[i] / frame_width,
+                    heights[i] / frame_height,
+                ],
+                mask=out_binary_masks[i, y1:y2, x1:x2],
                 index=int(obj_id),
-                confidence=float(out_probs[i])
-                if out_probs is not None
-                else None,
+                confidence=(
+                    float(out_probs[i]) if out_probs is not None else None
+                ),
             )
         )
 
@@ -678,11 +677,11 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
 
         model = foz.load_zoo_model("segment-anything-3-video-torch")
 
-        # Segment and track all "person" instances across frames
+        # Segment and track "person" instances across frames
         dataset.apply_model(
             model,
             label_field="sam3_tracking",
-            classes="person",
+            classes=["person"],
         )
 
         session = fo.launch_app(dataset)
@@ -1159,8 +1158,8 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
 
                 points, labels = fosam._to_sam_points(
                     keypoint.points,
-                    width=self._curr_frame_width,
-                    height=self._curr_frame_height,
+                    width=1,
+                    height=1,
                     point_labels=fosam._get_sam_point_labels(keypoint),
                 )
 

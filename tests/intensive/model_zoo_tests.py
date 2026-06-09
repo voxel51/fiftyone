@@ -19,6 +19,7 @@ from fiftyone import ViewField as F
 
 
 _SAM_PROMPT_FIELD = "prompt_field"
+_APP_PORT = 5151
 
 
 def test_all_models():
@@ -161,7 +162,7 @@ def test_sam3_video_concept():
         ["segment-anything-3-video-torch"],
         max_samples=2,
         max_frames=5,
-        model_kwargs=dict(classes=["person"], operation_mode="concept"),
+        model_kwargs=dict(classes=["car"], operation_mode="concept"),
     )
 
 
@@ -314,7 +315,7 @@ def _apply_models(
             model, label_field=label_field, batch_size=batch_size, **kwargs
         )
 
-    session = fo.launch_app(dataset)
+    session = fo.launch_app(dataset, port=_APP_PORT)
     session.wait()
 
 
@@ -349,7 +350,9 @@ def _apply_video_models(
             frame_field = kwargs[_SAM_PROMPT_FIELD][len("frames.") :]
             kp_field = frame_field + "_points"
             for sample in dataset:
-                first_frame = sample.frames.get(1)
+                first_frame = None
+                if 1 in sample.frames:
+                    first_frame = sample.frames[1]
                 if first_frame is not None and first_frame[frame_field]:
                     first_frame[kp_field] = _detections_to_keypoints(
                         first_frame[frame_field].detections
@@ -380,7 +383,7 @@ def _apply_video_models(
                 assert last_frame[label_field] is not None
                 assert len(last_frame[label_field].detections) > 0
 
-    session = fo.launch_app(dataset)
+    session = fo.launch_app(dataset, port=_APP_PORT)
     session.wait()
 
 
@@ -497,7 +500,7 @@ def _apply_person_keypoint_models(model_names):
         label_field = model_name.lower().replace("-", "_").replace(".", "_")
         person_samples.apply_model(model, label_field=label_field)
 
-    session = fo.launch_app(view=person_samples)
+    session = fo.launch_app(view=person_samples, port=_APP_PORT)
     session.wait()
 
 
