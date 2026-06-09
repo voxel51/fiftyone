@@ -168,6 +168,7 @@ export const _INTERNAL_timelineConfigsLruCache = new LRUCache({
   dispose: (timelineName: string) => {
     // remove param from all "families"
     // make sure this is done for all atom families
+    _currentBufferingRange.remove(timelineName);
     _dataLoadedBuffers.remove(timelineName);
     _frameNumbers.remove(timelineName);
     _playHeadStates.remove(timelineName);
