@@ -16,15 +16,12 @@ import {
   useCurrent3dAnnotationMode,
   useSetCurrent3dAnnotationMode,
 } from "@fiftyone/looker-3d/src/state/accessors";
-<<<<<<< HEAD
-import { is3DDataset, useIs3dPinned } from "@fiftyone/state";
-=======
 import {
   is3DDataset,
   isVideoDataset,
+  useIs3dPinned,
   useRenderConfig3dState,
 } from "@fiftyone/state";
->>>>>>> chore/va-hook-tests
 import {
   DETECTION,
   DETECTIONS,
