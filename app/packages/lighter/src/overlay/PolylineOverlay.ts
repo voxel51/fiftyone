@@ -148,8 +148,11 @@ export class PolylineOverlay extends KeypointOverlay {
   }
 
   override updateLabel(label: PolylineLabel): void {
-    super.updateLabel(label as unknown as KeypointLabel);
-
+    // Apply polyline-specific state *before* `super.updateLabel`, which sets the
+    // label and dispatches `lighter:overlay-label-updated`. Listeners read
+    // overlay state (`getClosed`/`getFilled`/`getNestedPoints`), so it must be
+    // current at dispatch time — and the single dispatch must happen here, not
+    // mid-way through, to avoid a stale read.
     const { flatPoints, connections, segmentBoundaries } =
       flattenPolylinePoints(label.points ?? []);
 
@@ -160,6 +163,8 @@ export class PolylineOverlay extends KeypointOverlay {
     this.setRelativePoints(flatPoints);
     this.setConnections(connections);
     this.setClosed(this.polylineClosed);
+
+    super.updateLabel(label as unknown as KeypointLabel);
   }
 
   override getSelectionPriority(): number {

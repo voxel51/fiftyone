@@ -193,6 +193,35 @@ export class KeypointOverlay
     return "KeypointOverlay";
   }
 
+  /**
+   * Update the overlay's label and notify listeners.
+   *
+   * Emits `lighter:overlay-label-updated` (like {@link DetectionOverlay}) so
+   * label edits made outside the point-level events — e.g. attribute changes
+   * (a polyline's `closed`/`filled`, or a label/attribute value) pushed from
+   * the sidebar via `UpdateLabelCommand` — are observed by the sidebar bridge
+   * and the Sample sync. Subclasses that apply further state (see
+   * {@link PolylineOverlay.updateLabel}) set it before calling `super` so the
+   * overlay state read by listeners is current at dispatch time.
+   *
+   * Fieldless overlays (e.g. `MaskKeypoints`) are not persistable labels and do
+   * not emit.
+   */
+  override updateLabel(label: KeypointLabel): void {
+    super.updateLabel(label);
+
+    if (!this.field) {
+      return;
+    }
+
+    this.eventBus.dispatch("lighter:overlay-label-updated", {
+      id: this.id,
+      overlayId: this.id,
+      label: this.label as RawLookerLabel,
+      hasMask: false,
+    });
+  }
+
   // ---------------------------------------------------------------------------
   // Coordinate helpers
   // ---------------------------------------------------------------------------
