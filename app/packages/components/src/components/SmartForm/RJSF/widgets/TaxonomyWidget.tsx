@@ -1,4 +1,4 @@
-import { useTaxonomyTree } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/SchemaManager/EditFieldLabelSchema/useTaxonomyTree";
+import { useTaxonomyTree } from "./useTaxonomyTree";
 import type { WidgetProps } from "@rjsf/utils";
 import {
   FormField,
@@ -128,6 +128,9 @@ export default function TaxonomyWidget(props: WidgetProps) {
       placeholder = "Loading taxonomy...";
       displayError = undefined;
     } else if (existingNames.length > 0) {
+      // We use a fallback tree in the case where taxonomy no longer exists, but there are
+      // existing values on the field. Since the base TreeSelect component requires a root node,
+      // we use a dummy root node with the name "values" and the existing values as children.
       treeRoot = buildFallbackTree(existingNames, taxonomy || "values");
       selectValue = multiSelect
         ? existingNames.map((n) => [treeRoot.name, n] as TreePath)
