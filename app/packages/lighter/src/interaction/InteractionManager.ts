@@ -349,6 +349,13 @@ export class InteractionManager {
 
       if (isUnselectedOverlay) {
         this.selectionManager.select(handler!.id);
+
+        // Select an overlay before issuing any edits. The cursor at this point
+        // is a 'pointer' indicating selection, not painting/erasing/keypoint.
+        if (segmentationModeBridge.isActive()) {
+          event.preventDefault();
+          return;
+        }
       }
 
       // Detection mode: defer overlay creation until we confirm this is a drag.
