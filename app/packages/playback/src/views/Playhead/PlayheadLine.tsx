@@ -5,7 +5,7 @@ import {
   useViewStart,
 } from "../../lib/playback/use-playback-state";
 import styles from "./PlayheadLine.module.css";
-import { clamp } from "../utils/timeline-utils";
+import { clamp } from "../../lib/playback/utils";
 
 export interface PlayheadLineProps {
   /** Width of the label column shared between ruler and tracks. */

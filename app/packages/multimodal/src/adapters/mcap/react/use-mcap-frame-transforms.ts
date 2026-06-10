@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
+import type { LoadStatus } from "../../../load-status";
 import type {
   McapFrameTransformResolution,
   McapFrameTransformTimeRange,
@@ -16,7 +17,7 @@ const DYNAMIC_TRANSFORM_LOOKAHEAD_NS = 500_000_000n;
 const DYNAMIC_TRANSFORM_RETRY_BASE_DELAY_MS = 250;
 const DYNAMIC_TRANSFORM_WINDOW_MAX_RETRIES = 3;
 
-export type McapFrameTransformsStatus = "idle" | "loading" | "ready" | "error";
+export type McapFrameTransformsStatus = LoadStatus;
 
 /**
  * Resolves a frame transform at a playback time.

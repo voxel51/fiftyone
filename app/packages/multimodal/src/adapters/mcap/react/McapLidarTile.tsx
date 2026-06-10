@@ -1,6 +1,5 @@
 import { TileSettingsContent, useSetTileTitle } from "@fiftyone/tiling";
 import {
-  Checkbox,
   Dropdown,
   DropdownAnchor,
   DropdownTrigger,
@@ -69,10 +68,6 @@ const McapLidarTile: React.FC = () => {
               ))}
             </Dropdown>
           </div>
-          <Checkbox label="Color by height" defaultChecked />
-          <Checkbox label="Show ground plane" />
-          <Checkbox label="Show intensity overlay" />
-          <Checkbox label="Cull behind sensor" defaultChecked />
         </div>
       </TileSettingsContent>
       {frame ? (
