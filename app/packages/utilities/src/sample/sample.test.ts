@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { LabelData, LabelType, Sample } from "./sample";
-import { Field, Schema } from "./schema";
+import { LabelData, LabelType, Sample } from "./index";
+import { Field, Schema } from "../schema";
 
 const field = (
   embeddedDocType: string | null,
