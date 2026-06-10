@@ -1,0 +1,55 @@
+.root {
+  align-items: center;
+  background: #101114;
+  color: rgba(255, 255, 255, 0.78);
+  display: flex;
+  height: 100%;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.imagePanel {
+  inset: 0;
+  position: absolute;
+}
+
+.annotationLayer {
+  inset: 0;
+  opacity: 0.5;
+  pointer-events: none;
+  position: absolute;
+}
+
+/* Grid cells are small; thin annotation strokes read better than the
+   modal-scale defaults. */
+.annotationLayer svg [stroke-width] {
+  stroke-width: 1px !important;
+}
+
+.status {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  padding: 12px;
+  text-align: center;
+}
+
+.statusTitle {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.error {
+  color: rgba(255, 120, 120, 0.78);
+  font-size: 11px;
+  font-weight: 500;
+  margin-top: 4px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

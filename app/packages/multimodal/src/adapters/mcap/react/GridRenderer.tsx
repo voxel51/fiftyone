@@ -1,31 +1,109 @@
-/**
- * THIS IS POC CODE FOR DEMO COUPLED WITH NUSCENES.
- * TODO(FOEPD-3830): REPLACE THIS DECODE/FETCH SLICE WITH PRODUCTION CODE.
- */
 import type { SampleRendererProps } from "@fiftyone/plugins";
-import { useMcapSampleTopics } from "./use-mcap-sample-topics";
+import { useState } from "react";
+import { ImageAnnotationsOverlay } from "../../../visualization/panels/ImageAnnotationsOverlay";
+import { ImagePanel } from "../../../visualization/panels/image";
+import type { McapGridPreviewFrame } from "../grid-preview";
+import classes from "./GridRenderer.module.css";
+import { McapLoadingAscii } from "./McapLoadingAscii";
+import {
+  useMcapGridPreview,
+  type McapGridPreviewStatus,
+} from "./use-mcap-grid-preview";
+import { useStableMcapSource } from "./use-stable-mcap-source";
+
+const IMAGE_FIT = "cover";
 
 /**
- * Grid proof renderer for MCAP-backed multimodal samples.
+ * Grid renderer for MCAP-backed multimodal samples. Shows one camera
+ * preview frame and plays the stream while hovered.
  */
 export function GridRenderer({ ctx }: SampleRendererProps) {
-  const topicState = useMcapSampleTopics(ctx);
-
-  if (topicState.status === "ready") {
-    return <div>{topicState.topics.length} topics</div>;
-  }
-
-  const message =
-    topicState.status === "idle"
-      ? "MCAP source missing"
-      : topicState.status === "error"
-      ? "Topics unavailable"
-      : "Loading topics";
+  const source = useStableMcapSource(ctx);
+  const preview = useMcapGridPreview({ source });
 
   return (
-    <div>
-      <div>{message}</div>
-      {topicState.status === "error" && <div>{topicState.error}</div>}
+    <div
+      className={classes.root}
+      onPointerEnter={preview.play}
+      onPointerLeave={preview.pause}
+    >
+      {preview.frame ? (
+        <PreviewFrame
+          // Image dimensions are per camera stream; remount to drop stale
+          // dimensions when the source or selected topic changes.
+          key={`${source?.sourceId ?? ""}:${preview.imageTopic ?? ""}`}
+          frame={preview.frame}
+        />
+      ) : (
+        <PreviewStatus
+          error={preview.error}
+          hasImageTopics={preview.hasImageTopics}
+          status={preview.status}
+        />
+      )}
+    </div>
+  );
+}
+
+function PreviewFrame({ frame }: { readonly frame: McapGridPreviewFrame }) {
+  const [imageDims, setImageDims] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+
+  return (
+    <>
+      <ImagePanel
+        className={classes.imagePanel}
+        fit={IMAGE_FIT}
+        frame={frame.image}
+        onImageLoaded={(width, height) =>
+          setImageDims((prev) =>
+            prev?.width === width && prev?.height === height
+              ? prev
+              : { width, height }
+          )
+        }
+      />
+      {imageDims && frame.annotations ? (
+        <div className={classes.annotationLayer}>
+          <ImageAnnotationsOverlay
+            annotations={[frame.annotations]}
+            fit={IMAGE_FIT}
+            imageHeight={imageDims.height}
+            imageWidth={imageDims.width}
+          />
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+function PreviewStatus({
+  error,
+  hasImageTopics,
+  status,
+}: {
+  readonly error: string | null;
+  readonly hasImageTopics: boolean;
+  readonly status: McapGridPreviewStatus;
+}) {
+  const loading = status === "idle" || status === "loading";
+  const message = loading
+    ? null
+    : status === "error"
+    ? "Preview unavailable"
+    : hasImageTopics
+    ? "No preview frames"
+    : "No camera streams";
+
+  return (
+    <div className={classes.status}>
+      <div className={classes.statusTitle}>
+        {loading ? <McapLoadingAscii /> : null}
+        {message ? <span>{message}</span> : null}
+      </div>
+      {error ? <div className={classes.error}>{error}</div> : null}
     </div>
   );
 }
