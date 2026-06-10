@@ -1,21 +1,18 @@
-import { DeleteAnnotationCommand, getFieldSchema } from "@fiftyone/annotation";
-import { useCommandBus } from "@fiftyone/command-bus";
+import { useSampleInstance } from "@fiftyone/annotation";
 import {
   DelegatingUndoable,
   KnownContexts,
   useCreateCommand,
 } from "@fiftyone/commands";
 import { useIsWorkingInitialized } from "@fiftyone/looker-3d";
-import {
-  isPatchesView,
-  useModalSampleSchema,
-  useUnboundStateRef,
-} from "@fiftyone/state";
+import { isPatchesView, useUnboundStateRef } from "@fiftyone/state";
+import type { LabelData } from "@fiftyone/utilities";
 import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import AddSchema from "./AddSchema";
+import { buildNewLabelData } from "./useCreate";
 import {
   current,
   currentDisabledFields,
@@ -66,8 +63,7 @@ const Field = () => {
   );
   const type = useAtomValue(currentType);
   const state = useAtomValue(editing);
-  const modalSampleSchema = useModalSampleSchema();
-  const commandBus = useCommandBus();
+  const sample = useSampleInstance();
   const nextFieldValue = useRef(currentFieldValue);
   const labelId = currentLabel?.overlay?.id;
   const currentLabelRef = useUnboundStateRef(currentLabel);
@@ -78,40 +74,39 @@ const Field = () => {
     KnownContexts.ModalAnnotate,
     `update-${labelId}-field`,
     useCallback(() => {
-      const currentField = currentFieldValue as string;
+      const oldField = currentFieldValue as string;
       const newField = nextFieldValue.current as string;
+
+      // Capture the moved label up front so execute/undo don't depend on the
+      // live selection — the label may be deselected before an undo, which
+      // would otherwise leave `current` null and skip the re-add.
+      const movedLabel = currentLabelRef.current;
+      const id = movedLabel?.data?._id;
+      const source = movedLabel?.data;
+      const overlay = movedLabel?.overlay;
+
+      // Atomic move between fields, on Sample + the captured overlay only:
+      // remove from one field and add to the other in a single transaction, so
+      // one autosave tick emits a single remove+add patch. Re-home the overlay
+      // before the add so the read-half matches it at the new field.
+      const move = (from: string, to: string) => {
+        if (!id || !source) return;
+        sample.deleteLabel(from, id);
+        overlay?.updateField(to);
+        sample.updateLabel(to, {
+          ...buildNewLabelData(to, source._cls, { id }),
+          ...source,
+        } as LabelData);
+        // Best-effort sidebar sync; no-ops when the label isn't selected.
+        setCurrentField(to);
+      };
 
       return new DelegatingUndoable(
         `update-${labelId}-field-action`,
-        // stage mutation on execute
-        async () => {
-          const currentLabel = currentLabelRef.current;
-          const fieldSchema = getFieldSchema(modalSampleSchema, currentField);
-          if (!currentLabel || !fieldSchema) return;
-          await commandBus.execute(
-            new DeleteAnnotationCommand(currentLabel, fieldSchema)
-          );
-          setCurrentField(newField);
-        },
-        // restore original value on undo
-        async () => {
-          const currentLabel = currentLabelRef.current;
-          const fieldSchema = getFieldSchema(modalSampleSchema, newField);
-          if (!currentLabel || !fieldSchema) return;
-          await commandBus.execute(
-            new DeleteAnnotationCommand(currentLabel, fieldSchema)
-          );
-          setCurrentField(currentField);
-        }
+        () => move(oldField, newField),
+        () => move(newField, oldField)
       );
-    }, [
-      modalSampleSchema,
-      currentLabelRef,
-      commandBus,
-      setCurrentField,
-      labelId,
-      currentFieldValue,
-    ]),
+    }, [currentLabelRef, sample, setCurrentField, labelId, currentFieldValue]),
     () => true
   );
 

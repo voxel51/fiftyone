@@ -121,13 +121,14 @@ export const currentField = atom(
     }
 
     const currentData = currentLabel.data;
+    // Update the sidebar's editing state for the new field. Preserve the full
+    // label (spread currentData last) so geometry — polyline `points`,
+    // `closed`/`filled`, keypoint points, `bounding_box`, attributes — survives
+    // the re-home; rebuilding from `buildNewLabelData` alone drops it.
     const data = {
       ...buildNewLabelData(path, currentData._cls, { id: currentData?._id }),
       ...currentData,
     };
-
-    currentLabel.overlay?.updateField(path);
-    currentLabel.overlay?.updateLabel(data);
 
     set(current, { ...currentLabel, path, data });
   }
