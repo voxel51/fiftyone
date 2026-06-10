@@ -10,6 +10,7 @@ import { Fo3dBackground } from "./Background";
 import { useFo3dContext } from "./context";
 import { Fbx } from "./mesh/Fbx";
 import { Gltf } from "./mesh/Gltf";
+import { MirisStream } from "./mesh/MirisStream";
 import { Obj } from "./mesh/Obj";
 import { Ply } from "./mesh/Ply";
 import { Stl } from "./mesh/Stl";
@@ -21,6 +22,7 @@ import {
   type FoScene,
   type FoSceneNode,
   GltfAsset,
+  MirisStreamAsset,
   ObjAsset,
   PcdAsset,
   PlaneGeometryAsset,
@@ -175,6 +177,19 @@ const getAssetJsx = (node: FoSceneNode, children: React.ReactNode) => {
       >
         {children}
       </Plane>
+    );
+  } else if (node.asset instanceof MirisStreamAsset) {
+    return (
+      <MirisStream
+        key={key}
+        name={node.name}
+        asset={node.asset as MirisStreamAsset}
+        position={node.position}
+        quaternion={node.quaternion}
+        scale={node.scale}
+      >
+        {children}
+      </MirisStream>
     );
   }
 
