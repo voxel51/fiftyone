@@ -633,7 +633,7 @@ class SegmentAnything3VideoModelConfig(
 
     Args:
         operation_mode ("concept"): concept or visual mode of operation for inference
-        propagation_direction ("forward"): direction to propagate in video;
+        propagation_direction ("both"): direction to propagate in video;
             supported values are ``"forward"``, ``"backward"``, and ``"both"``
         prompt_frame_indices (None): 1-based frame indices for visual / exemplar prompts
         text_frame_idx (1): 1-based frame index for text concept prompts
@@ -652,7 +652,7 @@ class SegmentAnything3VideoModelConfig(
             d, "operation_mode", default="concept"
         )
         self.propagation_direction = self.parse_string(
-            d, "propagation_direction", default="forward"
+            d, "propagation_direction", default="both"
         )
         self.prompt_frame_indices = self.parse_array(
             d, "prompt_frame_indices", default=None
@@ -946,9 +946,14 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
         )
         session_id = response["session_id"]
 
-        try:
-            label_map = {}
+        sample_detections = {
+            i + 1: fol.Detections(detections=[])
+            for i in range(len(sample.frames))
+        }
 
+        try:
+            # Each add_prompt call resets model state, so we run a separate
+            # propagation pass per prompt and accumulate results across passes.
             if self.config.classes:
                 text_frame = self._get_text_frame_idx()
                 for text_prompt in self.config.classes:
@@ -956,18 +961,22 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
                         request=dict(
                             type="add_prompt",
                             session_id=session_id,
-                            frame_index=text_frame,
+                            frame_index=text_frame - 1,
                             text=text_prompt,
                         )
                     )
                     outputs = prompt_response.get("outputs", prompt_response)
-                    for oid in outputs.get("out_obj_ids", []):
-                        label_map[oid] = text_prompt
+                    label_map = {
+                        oid: text_prompt
+                        for oid in outputs.get("out_obj_ids", [])
+                    }
+                    self._accumulate_concept_propagation(
+                        session_id, label_map, text_prompt, sample_detections
+                    )
 
             for frame_idx, prompt_list in self._curr_exemplar_prompts.items():
                 for prompt_dict in prompt_list:
                     label = prompt_dict.get("_label", "object")
-
                     request = dict(
                         type="add_prompt",
                         session_id=session_id,
@@ -976,78 +985,16 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
                     request.update(
                         {k: v for k, v in prompt_dict.items() if k != "_label"}
                     )
-
                     prompt_response = self.concept_predictor.handle_request(
                         request=request
                     )
-
                     outputs = prompt_response.get("outputs", prompt_response)
-                    for oid in outputs.get("out_obj_ids", []):
-                        label_map[oid] = label
-
-            # Handle label assignment for detections.
-            unique_labels = list(dict.fromkeys(label_map.values()))
-            if len(unique_labels) == 1:
-                propagation_default_label = unique_labels[0]
-            else:
-                propagation_default_label = None
-                if len(unique_labels) > 1:
-                    logger.warning(
-                        "SAM3 video: new object instances discovered during "
-                        "propagation could not be assigned a label because "
-                        "multiple text prompts were used (%s). Those instances "
-                        "will not be labeled. To avoid this, run each "
-                        "prompt in a separate apply_model call.",
-                        unique_labels,
+                    label_map = {
+                        oid: label for oid in outputs.get("out_obj_ids", [])
+                    }
+                    self._accumulate_concept_propagation(
+                        session_id, label_map, label, sample_detections
                     )
-
-            sample_detections = {
-                i + 1: fol.Detections(detections=[])
-                for i in range(len(sample.frames))
-            }
-
-            for frame_result in self.concept_predictor.handle_stream_request(
-                request=dict(
-                    type="propagate_in_video",
-                    session_id=session_id,
-                    propagation_direction=self.config.propagation_direction,
-                )
-            ):
-                out_frame_idx = frame_result.get("frame_index", 0)
-                outputs = frame_result.get("outputs", frame_result)
-
-                out_obj_ids = outputs.get("out_obj_ids", [])
-                out_probs = outputs.get("out_probs")
-                out_boxes = outputs.get("out_boxes_xywh")
-                out_masks = outputs.get("out_binary_masks")
-
-                if out_masks is None or len(out_obj_ids) == 0:
-                    sample_detections[int(out_frame_idx) + 1] = fol.Detections(
-                        detections=[]
-                    )
-                    continue
-
-                if isinstance(out_masks, torch.Tensor):
-                    out_masks = out_masks.cpu().numpy()
-                if isinstance(out_probs, torch.Tensor):
-                    out_probs = out_probs.cpu().numpy()
-                if isinstance(out_boxes, torch.Tensor):
-                    out_boxes = out_boxes.cpu().numpy()
-
-                detections = _sam3_output_to_detections(
-                    out_binary_masks=out_masks,
-                    out_boxes_xywh=out_boxes,
-                    out_obj_ids=out_obj_ids,
-                    out_probs=out_probs,
-                    frame_width=self._curr_frame_width,
-                    frame_height=self._curr_frame_height,
-                    label_map=label_map,
-                    default_label=propagation_default_label,
-                )
-
-                sample_detections[int(out_frame_idx) + 1] = fol.Detections(
-                    detections=detections
-                )
 
         finally:
             self.concept_predictor.handle_request(
@@ -1058,6 +1005,56 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
             )
 
         return sample_detections
+
+    def _accumulate_concept_propagation(
+        self, session_id, label_map, default_label, sample_detections
+    ):
+        """Propagate the current session state and merge detections into
+        ``sample_detections``, using ``default_label`` for any object whose
+        ID is not in ``label_map`` (e.g. newly discovered instances)."""
+        for frame_result in self.concept_predictor.handle_stream_request(
+            request=dict(
+                type="propagate_in_video",
+                session_id=session_id,
+                propagation_direction=self.config.propagation_direction,
+            )
+        ):
+            out_frame_idx = frame_result.get("frame_index", 0)
+            outputs = frame_result.get("outputs", frame_result)
+
+            out_obj_ids = outputs.get("out_obj_ids", [])
+            out_probs = outputs.get("out_probs")
+            out_boxes = outputs.get("out_boxes_xywh")
+            out_masks = outputs.get("out_binary_masks")
+
+            if out_masks is None or len(out_obj_ids) == 0:
+                continue
+
+            if isinstance(out_masks, torch.Tensor):
+                out_masks = out_masks.cpu().numpy()
+            if isinstance(out_probs, torch.Tensor):
+                out_probs = out_probs.cpu().numpy()
+            if isinstance(out_boxes, torch.Tensor):
+                out_boxes = out_boxes.cpu().numpy()
+
+            new_dets = _sam3_output_to_detections(
+                out_binary_masks=out_masks,
+                out_boxes_xywh=out_boxes,
+                out_obj_ids=out_obj_ids,
+                out_probs=out_probs,
+                frame_width=self._curr_frame_width,
+                frame_height=self._curr_frame_height,
+                label_map=label_map,
+                default_label=default_label,
+            )
+
+            frame_num = int(out_frame_idx) + 1
+            existing = sample_detections.get(
+                frame_num, fol.Detections(detections=[])
+            )
+            sample_detections[frame_num] = fol.Detections(
+                detections=existing.detections + new_dets
+            )
 
     def _forward_pass_visual(self, video_reader, sample):
         field_name = self._get_frame_prompt_field()
