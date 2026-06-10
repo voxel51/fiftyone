@@ -8,6 +8,8 @@ import {
   KEYPOINTS,
   POLYLINE,
   POLYLINES,
+  TEMPORAL_DETECTION,
+  TEMPORAL_DETECTIONS,
 } from "@fiftyone/utilities";
 import { atom, PrimitiveAtom, useAtomValue, useSetAtom } from "jotai";
 import { atomFamily, atomWithReset } from "jotai/utils";
@@ -58,19 +60,31 @@ const IS_CLASSIFICIATION = new Set([CLASSIFICATION, CLASSIFICATIONS]);
 const IS_DETECTION = new Set([DETECTION, DETECTIONS]);
 const IS_POLYLINE = new Set([POLYLINE, POLYLINES]);
 const IS_KEYPOINT = new Set([KEYPOINT, KEYPOINTS]);
-const IS_LIST = new Set([CLASSIFICATIONS, DETECTIONS, POLYLINES, KEYPOINTS]);
+const IS_TEMPORAL_DETECTION = new Set([
+  TEMPORAL_DETECTION,
+  TEMPORAL_DETECTIONS,
+]);
+const IS_LIST = new Set([
+  CLASSIFICATIONS,
+  DETECTIONS,
+  POLYLINES,
+  KEYPOINTS,
+  TEMPORAL_DETECTIONS,
+]);
 const IS = {
   [CLASSIFICATION]: IS_CLASSIFICIATION,
   [DETECTION]: IS_DETECTION,
   [POLYLINE]: IS_POLYLINE,
   [KEYPOINT]: IS_KEYPOINT,
+  [TEMPORAL_DETECTION]: IS_TEMPORAL_DETECTION,
 };
 
 export type LabelType =
   | typeof CLASSIFICATION
   | typeof DETECTION
   | typeof POLYLINE
-  | typeof KEYPOINT;
+  | typeof KEYPOINT
+  | typeof TEMPORAL_DETECTION;
 
 export const current = atom(
   (get) => {

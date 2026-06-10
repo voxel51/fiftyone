@@ -19,8 +19,13 @@ export type LighterEventGroup = {
   "lighter:overlay-added": { id: string; overlay: BaseOverlay };
   /** Emitted when an overlay has finished loading resources and is ready */
   "lighter:overlay-loaded": { id: string };
-  /** Emitted when an overlay is removed from the scene */
-  "lighter:overlay-removed": { id: string };
+  /**
+   * Emitted when an overlay is removed from the scene. `lifecycle` is set
+   * when the removal is a teardown / sync eviction (scene reset, scrub-off,
+   * unmount) rather than a user-initiated delete — consumers that persist
+   * deletions must ignore lifecycle removals.
+   */
+  "lighter:overlay-removed": { id: string; lifecycle?: boolean };
   /** Emitted when an overlay encounters an error during loading or rendering */
   "lighter:overlay-error": { id: string; error: Error };
   /** Emitted when an overlay's bounds change */
@@ -193,6 +198,14 @@ export type LighterEventGroup = {
   "lighter:selection-changed": {
     selectedIds: string[];
     deselectedIds: string[];
+    /**
+     * True when the selection state change was driven by something other than
+     * a user gesture — currently set when an overlay is removed from the
+     * scene (its selection is dropped as a side effect of removal, not because
+     * the user picked something else). Listeners that care about user intent
+     * should skip deselect entries when this is true.
+     */
+    ignoreSideEffects?: boolean;
   };
   /** Emitted when all overlays are deselected */
   "lighter:selection-cleared": {

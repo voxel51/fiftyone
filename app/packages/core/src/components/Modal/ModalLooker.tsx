@@ -2,6 +2,7 @@ import { useTheme } from "@fiftyone/components";
 import type { ImageLooker } from "@fiftyone/looker";
 import { isNativeMediaType } from "@fiftyone/looker/src/util";
 import * as fos from "@fiftyone/state";
+import { VideoAnnotationSurface } from "@fiftyone/video-annotation";
 import { useAtomValue } from "jotai";
 import React from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
@@ -97,7 +98,11 @@ const ModalLookerContent = React.memo(
     }
 
     if (video) {
-      return <VideoLookerReact sample={sample} showControls={!isAnnotate} />;
+      return isAnnotate ? (
+        <VideoAnnotationSurface sample={sample} />
+      ) : (
+        <VideoLookerReact sample={sample} showControls />
+      );
     }
 
     if (isNative) {

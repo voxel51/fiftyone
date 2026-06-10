@@ -11,7 +11,7 @@ import type { DetectionLabel } from "@fiftyone/looker";
 import type { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
 import type { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
 import { BoundingBox } from "@fiftyone/looker/src/state";
-import { isPatchesView } from "@fiftyone/state";
+import { isPatchesView, useIsVideo } from "@fiftyone/state";
 import { hasValidBounds } from "@fiftyone/utilities";
 import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
@@ -115,8 +115,17 @@ export const useLighterDeltaSupplier = (): DeltaSupplier => {
   const { scene } = useLighter();
   const getLabelDelta = useGetLabelDelta(buildAnnotationLabel);
   const isPatches = useRecoilValue(isPatchesView);
+  // Video samples emit deltas via useVideoLabelsDeltaSupplier, which sources
+  // edits from the per-frame label cache. The lighter scene's overlays
+  // double-count those edits, so skip them here. Remove once the Sample
+  // mutation refactor consolidates edit ownership.
+  const isVideo = useIsVideo();
 
   return useCallback(() => {
+    if (isVideo) {
+      return { deltas: [], metadata: undefined };
+    }
+
     const overlays = scene?.getAllOverlays() ?? [];
     const allDeltas: ReturnType<typeof getLabelDelta> = [];
     let firstChangedOverlay: BaseOverlay | undefined;
@@ -148,5 +157,5 @@ export const useLighterDeltaSupplier = (): DeltaSupplier => {
     }
 
     return { deltas: allDeltas, metadata };
-  }, [getLabelDelta, isPatches, scene]);
+  }, [getLabelDelta, isPatches, isVideo, scene]);
 };

@@ -15,7 +15,10 @@ import {
 import LoopOverlays from "../Loop/LoopOverlays";
 import PlayheadLine from "../Playhead/PlayheadLine";
 import TimelineHeader from "../TimelineHeader/TimelineHeader";
-import TimelineTrack, { type NormalizedEvent } from "../TimelineTrack/TimelineTrack";
+import TimelineTrack, {
+  type NormalizedEvent,
+  type TimelineTrackProps,
+} from "../TimelineTrack/TimelineTrack";
 import styles from "./TimelineWithTracks.module.css";
 
 export interface TimelineWithTracksProps {
@@ -34,10 +37,35 @@ export interface TimelineWithTracksProps {
   className?: string;
   /** Overlay rendered on top of the ruler row in each TimelineHeader. */
   rulerOverlay?: React.ReactNode;
-  /** Injected into the controls row of each TimelineHeader. */
+  /**
+   * Adds a destructive delete item to every track's event context menu. Per-row
+   * overrides can still be supplied via {@link decorateTrack}. See
+   * {@link TimelineTrackProps.eventDeleteConfig}.
+   */
+  eventDeleteConfig?: {
+    label: string;
+    onDelete: (event: NormalizedEvent) => void;
+  };
+  /**
+   * Optional content rendered inline between the playback control buttons and
+   * the playhead time display. Forwarded to {@link TimelineHeader}'s
+   * `extraControls`; renders in both the empty-timeline and drawer layouts.
+   */
+  extraControls?: React.ReactNode;
+  /**
+   * Optional content rendered far-right after the playhead time, preceded by a
+   * divider. Forwarded to {@link TimelineHeader}'s `extraActions`; renders in
+   * both the empty-timeline and drawer layouts.
+   */
   extraActions?: React.ReactNode;
-  /** Fired when the user chooses "Delete" from an event's context menu. */
-  onEventDelete?: (event: NormalizedEvent) => void;
+  /**
+   * Per-row prop override. Returned partial is merged onto the props
+   * passed to each {@link TimelineTrack}.
+   */
+  decorateTrack?: (
+    track: Track,
+    pinned: boolean
+  ) => Partial<TimelineTrackProps>;
 }
 
 /**
@@ -48,17 +76,16 @@ export interface TimelineWithTracksProps {
  * the controls and ruler. When the drawer is **open**, all tracks —
  * pinned at the top, unpinned below — live in the drawer body and
  * scroll together as one unit.
- *
- * The drawer's minimum drag size equals the pinned section height, so
- * the user can never drag below the pinned rows while the drawer is open.
  */
 const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   labelWidth: requestedLabelWidth = TIMELINE_LABEL_WIDTH,
   maxSize = TIMELINE_DRAWER_MAX_SIZE,
   className,
   rulerOverlay,
+  eventDeleteConfig,
+  extraControls,
   extraActions,
-  onEventDelete,
+  decorateTrack,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const tracks = useTracks();
@@ -89,7 +116,8 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
       pinned
       onPinClick={() => togglePin(track.id)}
       onEventClick={(e) => seek(e.startSec)}
-      onEventDelete={onEventDelete}
+      eventDeleteConfig={eventDeleteConfig}
+      {...(decorateTrack ? decorateTrack(track, true) : null)}
     />
   );
 
@@ -103,6 +131,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
           labelWidth={labelWidth}
           zoomRef={containerRef}
           rulerOverlay={rulerOverlay}
+          extraControls={extraControls}
           extraActions={extraActions}
         />
       </div>
@@ -125,6 +154,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
             zoomRef={containerRef}
             onToggle={toggle}
             rulerOverlay={rulerOverlay}
+            extraControls={extraControls}
             extraActions={extraActions}
           >
             <div className={styles.pinnedOverlayHost}>
@@ -137,22 +167,33 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
       >
         <div className={styles.tracksOuter}>
           <div className={styles.tracksArea}>
+            {/* When the drawer is open, pinned tracks move into the body
+                so they scroll together with the unpinned section below. */}
+            <div className={styles.pinnedTracks}>
+              {pinned.map(renderPinnedTrack)}
+            </div>
             <div>
-              {unpinned.map((track) => (
-                <TimelineTrack
-                  key={track.id}
-                  id={track.id}
-                  label={track.label}
-                  color={track.color}
-                  events={track.events}
-                  labelWidth={labelWidth}
-                  pinned={false}
-                  onPinClick={() => togglePin(track.id)}
-                  onEventClick={(e) => seek(e.startSec)}
-                  onEventDelete={onEventDelete}
-                  className={styles.unpinnedTrack}
-                />
-              ))}
+              {unpinned.map((track) => {
+                const extra = decorateTrack
+                  ? decorateTrack(track, false)
+                  : null;
+                return (
+                  <TimelineTrack
+                    key={track.id}
+                    id={track.id}
+                    label={track.label}
+                    color={track.color}
+                    events={track.events}
+                    labelWidth={labelWidth}
+                    pinned={false}
+                    onPinClick={() => togglePin(track.id)}
+                    onEventClick={(e) => seek(e.startSec)}
+                    eventDeleteConfig={eventDeleteConfig}
+                    {...extra}
+                    className={clsx(styles.unpinnedTrack, extra?.className)}
+                  />
+                );
+              })}
             </div>
           </div>
           <LoopOverlays labelWidth={labelWidth} />
