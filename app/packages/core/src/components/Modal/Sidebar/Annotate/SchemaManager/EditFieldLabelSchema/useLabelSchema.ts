@@ -163,6 +163,7 @@ export const useAppliedOntology = (field: string) => {
 
   return {
     appliedOntology: schema?.applied_ontology,
+    appliedTaxonomy: schema?.applied_taxonomy,
     ontologyAttributes,
     applyOntology: (name: string) => {
       const draft = { ...(schema as FieldSchema), applied_ontology: name };

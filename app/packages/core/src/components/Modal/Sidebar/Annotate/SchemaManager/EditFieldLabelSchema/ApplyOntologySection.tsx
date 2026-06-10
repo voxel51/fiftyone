@@ -19,8 +19,13 @@ interface ApplyOntologySectionProps {
 }
 
 const ApplyOntologySection = ({ field }: ApplyOntologySectionProps) => {
-  const { appliedOntology, ontologyAttributes, applyOntology, clearOntology } =
-    useAppliedOntology(field);
+  const {
+    appliedOntology,
+    appliedTaxonomy,
+    ontologyAttributes,
+    applyOntology,
+    clearOntology,
+  } = useAppliedOntology(field);
   const { ontologies, isFetching, error } = useOntologies(
     ONTOLOGY_TYPE.ontology
   );
@@ -70,6 +75,11 @@ const ApplyOntologySection = ({ field }: ApplyOntologySectionProps) => {
           ? `Chosen ontology: ${appliedOntology}`
           : "When enabled, your schema will use attributes defined in the ontology."}
       </Text>
+      {appliedTaxonomy && (
+        <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
+          Taxonomy: {appliedTaxonomy}
+        </Text>
+      )}
 
       {expanded && !appliedOntology && (
         <OntologyPicker

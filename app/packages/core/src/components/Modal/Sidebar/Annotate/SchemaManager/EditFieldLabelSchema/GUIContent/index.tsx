@@ -16,6 +16,7 @@ import { PRIMITIVE_FIELD_TYPES } from "../../constants";
 import { useFieldType } from "../../hooks";
 import { EditSectionHeader, EmptyStateBox, Section } from "../../styled";
 import type { AttributeConfig, SchemaConfigType } from "../../utils";
+import { useAppliedOntology } from "../useLabelSchema";
 import AttributesSection from "./AttributesSection";
 import ClassesSection from "./ClassesSection";
 import PrimitiveFieldContent from "./PrimitiveFieldContent";
@@ -44,6 +45,7 @@ const GUIContent = ({
 }: GUIContentProps) => {
   const fType = useFieldType(field);
   const isPrimitive = fType ? PRIMITIVE_FIELD_TYPES.has(fType) : false;
+  const { appliedTaxonomy } = useAppliedOntology(field);
 
   const classes = useMemo(() => config?.classes || [], [config?.classes]);
   const attributes = useMemo(
@@ -180,14 +182,16 @@ const GUIContent = ({
 
   return (
     <>
-      <ClassesSection
-        classes={classes}
-        attributeCount={attributes.length}
-        onAddClass={handleAddClass}
-        onEditClass={handleEditClass}
-        onDeleteClass={handleDeleteClass}
-        onOrderChange={handleClassOrderChange}
-      />
+      {!appliedTaxonomy && (
+        <ClassesSection
+          classes={classes}
+          attributeCount={attributes.length}
+          onAddClass={handleAddClass}
+          onEditClass={handleEditClass}
+          onDeleteClass={handleDeleteClass}
+          onOrderChange={handleClassOrderChange}
+        />
+      )}
       <AttributesSection
         attributes={attributes}
         onAddAttribute={handleAddAttribute}
