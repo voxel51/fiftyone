@@ -14,7 +14,7 @@ type Story = StoryObj<typeof TilingInspectorSidebar>;
 
 function AutoFocus({ id }: { id: string }) {
   const { setFocusedTileId } = useTiling();
-  // setFocusedTileId is a stable Jotai setter; not in deps by design.
+  // setFocusedTileId is a stable useState setter; omitted from deps per project convention.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => setFocusedTileId(id), [id]);
   return null;
@@ -22,7 +22,7 @@ function AutoFocus({ id }: { id: string }) {
 
 function EmitSelection({ payload }: { payload: unknown }) {
   const setSelection = useSetTileSelection();
-  // setSelection is a stable Jotai setter; not in deps by design.
+  // setSelection is stable (useCallback with empty deps); omitted per project convention.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => setSelection(payload), [payload]);
   return null;
