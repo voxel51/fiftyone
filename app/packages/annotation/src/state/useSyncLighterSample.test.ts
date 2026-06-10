@@ -94,6 +94,40 @@ describe("applyChangeToOverlay (Lighter read-half)", () => {
     );
   });
 
+  it("reconciles every element on a list-field reset with no labelId", () => {
+    // reconcilePersisted releases a server-owned field keyed by the parent list
+    // path, so the change has no labelId. Each element must be applied to its
+    // own overlay — never the Detections container to a single overlay.
+    const sample = new Sample({
+      schema,
+      data: {
+        ground_truth: {
+          _cls: "Detections",
+          detections: [det("d1"), det("d2")],
+        },
+      },
+    });
+    const o1 = makeOverlay({ id: "d1", field: "ground_truth" });
+    const o2 = makeOverlay({ id: "d2", field: "ground_truth" });
+    const { scene } = makeScene([o1, o2]);
+
+    applyChangeToOverlay(scene, sample, {
+      path: "ground_truth",
+      kind: SampleChangeKind.Reset,
+    });
+
+    expect(o1.applyLabel).toHaveBeenCalledWith(
+      expect.objectContaining({ _id: "d1" })
+    );
+    expect(o2.applyLabel).toHaveBeenCalledWith(
+      expect.objectContaining({ _id: "d2" })
+    );
+    // Never the parent container.
+    expect(o1.applyLabel).not.toHaveBeenCalledWith(
+      expect.objectContaining({ detections: expect.anything() })
+    );
+  });
+
   it("resolves a single label by path when there is no labelId", () => {
     const sample = new Sample({
       schema,

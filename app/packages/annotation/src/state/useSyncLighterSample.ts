@@ -120,10 +120,40 @@ const findOverlay = (
     );
 };
 
+/** Apply a resolved label to the overlay backing (path, labelId), if any. */
+const applyLabelToOverlay = (
+  scene: Scene2D,
+  path: string,
+  labelId: string | undefined,
+  label: LabelData | undefined
+): void => {
+  if (!label) {
+    return;
+  }
+
+  const overlay = findOverlay(scene, path, labelId);
+  if (!overlay) {
+    return;
+  }
+
+  // Defensive: never apply over a live gesture.
+  const interactive = overlay as { isInteracting?: () => boolean };
+  if (interactive.isInteracting?.()) {
+    return;
+  }
+
+  overlay.applyLabel(label as Parameters<BaseOverlay["applyLabel"]>[0]);
+};
+
 /**
- * Reconcile one Sample change onto its overlay (the read-half). Applies via the
- * silent {@link BaseOverlay.applyLabel} so it never re-enters the
+ * Reconcile one Sample change onto its overlay(s) (the read-half). Applies via
+ * the silent {@link BaseOverlay.applyLabel} so it never re-enters the
  * overlay→Sample write path.
+ *
+ * A list-label change with no `labelId` addresses the whole field — e.g.
+ * `reconcilePersisted` releasing a server-owned mask, keyed by the parent field
+ * (`ground_truth`), not an element. Those reconcile each element by `_id`;
+ * resolving the parent path would yield the `Detections` container, not a label.
  */
 export const applyChangeToOverlay = (
   scene: Scene2D,
@@ -134,24 +164,17 @@ export const applyChangeToOverlay = (
     return;
   }
 
-  const overlay = findOverlay(scene, change.path, change.labelId);
-  if (!overlay) {
-    return;
-  }
-
-  // Defensive: never apply over a live gesture
-  const interactive = overlay as { isInteracting?: () => boolean };
-  if (interactive.isInteracting?.()) {
+  if (!change.labelId && sample.isListLabel(change.path)) {
+    for (const label of sample.listLabels(change.path)) {
+      applyLabelToOverlay(scene, change.path, label._id, label);
+    }
     return;
   }
 
   const label = change.labelId
     ? sample.getLabel(change.path, change.labelId)
     : sample.getResolved<LabelData>(change.path);
-
-  if (label) {
-    overlay.applyLabel(label as Parameters<BaseOverlay["applyLabel"]>[0]);
-  }
+  applyLabelToOverlay(scene, change.path, change.labelId, label);
 };
 
 /**
