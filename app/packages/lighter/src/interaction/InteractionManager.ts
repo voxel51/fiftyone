@@ -872,6 +872,9 @@ export class InteractionManager {
       if (TypeGuards.isSpatial(handler) && startBounds && startPosition) {
         const detail = {
           id: handler.id,
+          // `handler` is the overlay itself when moving/resizing an existing
+          // overlay; a creation proxy exposes the overlay via `.overlay`.
+          overlayId: handler.overlay?.id ?? handler.id,
           startBounds,
           startPosition,
           endPosition: handler.bounds,
@@ -1151,6 +1154,8 @@ export class InteractionManager {
           this.removeHandler(interactiveHandler);
           this.eventBus.dispatch("lighter:overlay-establish", {
             id: handler.id,
+            // `handler` is the freshly-created overlay here (see above).
+            overlayId: handler.overlay?.id ?? handler.id,
             handler: interactiveHandler,
             startBounds: handler.bounds,
             startPosition: { x: handler.bounds.x, y: handler.bounds.y },

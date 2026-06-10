@@ -185,6 +185,7 @@ export class DetectionOverlay
 
     this.eventBus.dispatch("lighter:overlay-label-updated", {
       id: this.id,
+      overlayId: this.id,
       label,
       hasMask: !!this.mask,
     });
@@ -871,6 +872,7 @@ export class DetectionOverlay
     if (wasPainting) {
       this.eventBus.dispatch("lighter:overlay-paint-end", {
         id: this.id,
+        overlayId: this.id,
         paintStrokeData: this.mask?.getPaintStrokeData(),
       });
     }
@@ -1126,6 +1128,7 @@ export class DetectionOverlay
       this.markDirty();
       this.eventBus.dispatch("lighter:overlay-label-updated", {
         id: this.id,
+        overlayId: this.id,
         label: this.label,
         hasMask: true,
       });
@@ -1144,6 +1147,7 @@ export class DetectionOverlay
     if (hadMask) {
       this.eventBus.dispatch("lighter:overlay-label-updated", {
         id: this.id,
+        overlayId: this.id,
         label: this.label,
         hasMask: false,
       });
@@ -1246,6 +1250,7 @@ export class DetectionOverlay
 
     this.eventBus.dispatch("lighter:overlay-paint-end", {
       id: this.id,
+      overlayId: this.id,
       paintStrokeData: this.mask?.getPaintStrokeData(),
     });
 
@@ -1339,6 +1344,7 @@ export class DetectionOverlay
 
     this.eventBus.dispatch("lighter:overlay-label-updated", {
       id: this.id,
+      overlayId: this.id,
       label: updatedLabel,
       hasMask: this.hasMask(),
     });

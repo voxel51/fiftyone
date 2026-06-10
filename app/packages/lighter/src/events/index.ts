@@ -16,7 +16,12 @@ export type LighterEventGroup = {
   // OVERLAY LIFECYCLE EVENTS
   // ============================================================================
   /** Emitted when an overlay is added to the scene */
-  "lighter:overlay-added": { id: string; overlay: BaseOverlay };
+  "lighter:overlay-added": {
+    id: string;
+    /** ID of the overlay this event refers to. */
+    overlayId: string;
+    overlay: BaseOverlay;
+  };
   /** Emitted when an overlay has finished loading resources and is ready */
   "lighter:overlay-loaded": { id: string };
   /** Emitted when an overlay is removed from the scene */
@@ -36,6 +41,8 @@ export type LighterEventGroup = {
    */
   "lighter:overlay-label-updated": {
     id: string;
+    /** ID of the overlay this event refers to. */
+    overlayId: string;
     label: RawLookerLabel;
     hasMask: boolean;
   };
@@ -69,7 +76,13 @@ export type LighterEventGroup = {
   "lighter:overlay-create": { eventId: string };
   /** Emitted when an overlay finishes being established */
   "lighter:overlay-establish": {
+    /**
+     * Event id — note this may be the interaction handler's id rather than the
+     * overlay's. Use {@link overlayId} to identify the established overlay.
+     */
     id: string;
+    /** ID of the overlay that was established. */
+    overlayId: string;
     handler: InteractionHandler;
     startBounds: Rect;
     startPosition: Point;
@@ -90,7 +103,13 @@ export type LighterEventGroup = {
   };
   /** Emitted when an overlay drag ends */
   "lighter:overlay-drag-end": {
+    /**
+     * Event id — may be the interaction handler's id. Use {@link overlayId} to
+     * identify the dragged overlay.
+     */
     id: string;
+    /** ID of the overlay that was dragged. */
+    overlayId: string;
     startPosition: Point;
     endPosition: Point;
     startBounds: Rect;
@@ -109,7 +128,13 @@ export type LighterEventGroup = {
   };
   /** Emitted when an overlay resize ends */
   "lighter:overlay-resize-end": {
+    /**
+     * Event id — may be the interaction handler's id. Use {@link overlayId} to
+     * identify the resized overlay.
+     */
     id: string;
+    /** ID of the overlay that was resized. */
+    overlayId: string;
     startPosition: Point;
     endPosition: Point;
     startBounds: Rect;
@@ -130,6 +155,8 @@ export type LighterEventGroup = {
   /** Emitted when a paint stroke (brush/eraser) ends */
   "lighter:overlay-paint-end": {
     id: string;
+    /** ID of the overlay this event refers to. */
+    overlayId: string;
     paintStrokeData: PaintStrokeData | undefined;
   };
   /** Emitted when user clicks without dragging in detection mode to exit */
@@ -151,6 +178,8 @@ export type LighterEventGroup = {
   /** Emitted when a keypoint is added during interactive creation */
   "lighter:keypoint-point-added": {
     id: string;
+    /** ID of the overlay this event refers to. */
+    overlayId: string;
     pointId: string;
     /** Relative coordinates of the added point */
     point: Point;
@@ -160,6 +189,8 @@ export type LighterEventGroup = {
   /** Emitted when a keypoint is moved via drag */
   "lighter:keypoint-point-moved": {
     id: string;
+    /** ID of the overlay this event refers to. */
+    overlayId: string;
     pointId: string;
     /** Relative coordinates before the move */
     from: Point;
@@ -169,6 +200,8 @@ export type LighterEventGroup = {
   /** Emitted when a keypoint is deleted */
   "lighter:keypoint-point-deleted": {
     id: string;
+    /** ID of the overlay this event refers to. */
+    overlayId: string;
     pointId: string;
     /** Optional keypoint variant. */
     variant?: string;
