@@ -4,11 +4,11 @@
  * `./normalize`) are internal — import them directly for tests/reuse; only the
  * public surface below is re-exported from `@fiftyone/utilities`.
  */
-export { LabelData, LabelType } from "./labels";
-export {
-  Sample,
+export { LabelType } from "./labels";
+export type { LabelData } from "./labels";
+export { Sample, SampleChangeKind } from "./sample";
+export type {
   SampleChange,
-  SampleChangeKind,
   SampleChangeListener,
   SampleOptions,
 } from "./sample";
