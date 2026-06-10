@@ -117,7 +117,9 @@ export class ToggleOverlaysButtonElement<
       this.element.classList.remove(lookerControlActive);
 
       if (this.element.firstChild) this.element.firstChild.remove();
-      this.element.appendChild(showOverlays ? overlaysHidden : overlaysVisible);
+      this.element.appendChild(
+        (showOverlays ? overlaysHidden : overlaysVisible)()
+      );
     }
 
     return this.element;
@@ -145,7 +147,7 @@ export class PlusElement<State extends BaseState> extends BaseElement<
     element.style.display = "flex";
     element.title = "Zoom in (+)";
     element.style.gridArea = "2 / 10 / 2 / 10";
-    element.appendChild(plus);
+    element.appendChild(plus());
     return element;
   }
 
@@ -175,7 +177,7 @@ export class MinusElement<State extends BaseState> extends BaseElement<
     element.style.display = "flex";
     element.title = "Zoom out (-)";
     element.style.gridArea = "2 / 9 / 2 / 9";
-    element.appendChild(minus);
+    element.appendChild(minus());
     return element;
   }
 
@@ -207,7 +209,7 @@ export class HelpButtonElement<
     element.title = "Help (?)";
     element.style.gridArea = "2 / 16 / 2 / 16";
     element.setAttribute("data-for-panel", "help");
-    element.appendChild(helpIcon);
+    element.appendChild(helpIcon());
     return element;
   }
 
@@ -246,7 +248,7 @@ export class OptionsButtonElement<
     element.style.display = "flex";
     element.title = "Preferences (p)";
     element.style.gridArea = "2 / 15 / 2 / 15";
-    element.appendChild(options);
+    element.appendChild(options());
     return element;
   }
 
@@ -283,7 +285,7 @@ export class CropToContentButtonElement<
     element.style.display = "flex";
     element.title = `${cropToContent.title} (${cropToContent.shortcut})`;
     element.style.gridArea = "2 / 11 / 2 / 11";
-    element.appendChild(crop);
+    element.appendChild(crop());
     return element;
   }
 
@@ -321,7 +323,7 @@ export class JSONButtonElement<
     element.title = `${json.title} (${json.shortcut})`;
     element.style.gridArea = "2 / 13 / 2 / 13";
     element.setAttribute("data-for-panel", "json");
-    element.appendChild(jsonIcon);
+    element.appendChild(jsonIcon());
     return element;
   }
 

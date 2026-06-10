@@ -119,7 +119,7 @@ class PlaybackRateIconElement extends BaseElement<ImaVidState, HTMLDivElement> {
     element.style.padding = "2px";
     element.style.display = "flex";
     element.title = "Reset playback rate (p)";
-    element.appendChild(playbackRate);
+    element.appendChild(playbackRate());
     return element;
   }
 
