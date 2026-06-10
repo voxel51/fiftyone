@@ -6,8 +6,10 @@ import {
   AnnotationEventGroup,
   DeleteAnnotationCommand,
   getFieldSchema,
+  UpdateSampleLabelCommand,
   useAnnotationEventBus,
   useAnnotationEventHandler,
+  useSampleInstance,
 } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
 import {
@@ -15,7 +17,6 @@ import {
   type LighterEventGroup,
   type Scene2D,
   UNDEFINED_LIGHTER_SCENE_ID,
-  UpdateLabelCommand,
   useLighterEventBus,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
@@ -55,6 +56,7 @@ import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
 export const useBridge = (scene: Scene2D | null) => {
   useLighterTooltipEventHandler(scene);
   const annotationEventBus = useAnnotationEventBus();
+  const sample = useSampleInstance();
   const commandBus = useCommandBus();
   const eventBus = useLighterEventBus(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
@@ -95,20 +97,28 @@ export const useBridge = (scene: Scene2D | null) => {
 
         const overlay = scene.getOverlay(payload.overlayId);
 
-        if (!overlay) {
+        if (!overlay || !overlay.field) {
           return;
         }
 
+        const labelId =
+          (payload.currentLabel as { _id?: string })?._id ?? overlay.id;
+
+        // Inversion: write the edit into the shared Sample (single source of
+        // truth) and let the useSyncLighterSample read-half reconcile the
+        // overlay. Stays on Lighter's command stack for undo/redo.
         scene.executeCommand(
-          new UpdateLabelCommand(
-            overlay,
-            payload.currentLabel,
+          new UpdateSampleLabelCommand(
+            sample,
+            overlay.field,
+            labelId,
             payload.value,
+            payload.currentLabel,
             annotationEventBus
           )
         );
       },
-      [annotationEventBus, scene]
+      [annotationEventBus, sample, scene]
     )
   );
 
@@ -310,12 +320,35 @@ export const useBridge = (scene: Scene2D | null) => {
         | AnnotationEventGroup["annotation:labelEdit"]
         | AnnotationEventGroup["annotation:undoLabelEdit"]
     ) => {
-      // sync data with the sidebar
-      if (payload.label) {
-        updateLabelData(payload.label._id ?? payload.label.id, payload.label);
+      if (!payload.label) {
+        return;
+      }
+
+      // sync data with the sidebar list
+      const id = payload.label._id ?? payload.label.id;
+      updateLabelData(id, payload.label);
+
+      // Refresh the open edit form too. The inverted sidebar write applies the
+      // overlay silently (no lighter:overlay-label-updated), so the form
+      // (currentData) is no longer refreshed via the save() bridge on
+      // undo/redo. updateLabelData covers the form only when
+      // overlay.id === label._id (labelMap is keyed by overlay.id); for
+      // freshly-created labels those differ, so write currentData directly when
+      // the undone/redone label is the one being edited.
+      const currentLabel = getCurrentLabel();
+      if (
+        currentLabel &&
+        (currentLabel.data?._id === id || currentLabel.overlay?.id === id)
+      ) {
+        const next = coerceStringBooleans(
+          payload.label as Record<string, unknown>
+        );
+        if (next) {
+          save(next, true);
+        }
       }
     },
-    [updateLabelData]
+    [getCurrentLabel, save, updateLabelData]
   );
 
   useAnnotationEventHandler("annotation:labelEdit", handleUndoRedo);
