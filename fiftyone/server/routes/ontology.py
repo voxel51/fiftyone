@@ -131,6 +131,7 @@ async def _list_ontology_summaries(
                 "type": {"$first": "$type"},
                 "version": {"$first": "$version"},
                 "last_modified_at": {"$first": "$last_modified_at"},
+                "taxonomy": {"$first": "$root.taxonomy"},
             }
         },
         {"$sort": {"last_modified_at": -1}},
@@ -216,9 +217,7 @@ async def _load_taxonomy_response(
         return None, error
 
     root_dict = doc.get("root") or {}
-    subtree, error = _select_subtree(
-        root_dict, doc["name"], node_name, depth
-    )
+    subtree, error = _select_subtree(root_dict, doc["name"], node_name, depth)
     if error is not None:
         return None, error
 

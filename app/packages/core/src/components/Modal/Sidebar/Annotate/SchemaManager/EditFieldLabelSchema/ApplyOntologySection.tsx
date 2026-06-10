@@ -52,7 +52,8 @@ const ApplyOntologySection = ({ field }: ApplyOntologySectionProps) => {
   };
 
   const handlePick = (value: string): void => {
-    applyOntology(value);
+    const taxonomy = ontologies?.find((o) => o.name === value)?.taxonomy;
+    applyOntology(value, taxonomy);
     setPickerArmed(false);
   };
 

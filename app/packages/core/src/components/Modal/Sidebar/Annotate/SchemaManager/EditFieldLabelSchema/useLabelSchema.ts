@@ -165,11 +165,14 @@ export const useAppliedOntology = (field: string) => {
     appliedOntology: schema?.applied_ontology,
     appliedTaxonomy: schema?.applied_taxonomy,
     ontologyAttributes,
-    applyOntology: (name: string) => {
-      const draft = { ...(schema as FieldSchema), applied_ontology: name };
+    applyOntology: (name: string, taxonomy?: string) => {
+      const draft: FieldSchema = {
+        ...(schema as FieldSchema),
+        applied_ontology: name,
+        applied_taxonomy: taxonomy,
+      };
       setCurrent(draft);
       fetchAndMergeOntologyAttributes(draft, name, setCurrent).catch(() => {
-        // Preview failed. The name is already set, attributes will hydrate after save
         console.error(`Failed to fetch ontology attributes for ${name}`);
       });
     },
