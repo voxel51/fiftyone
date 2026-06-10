@@ -98,6 +98,47 @@ type GridItemOptions = {
   inSelectionMode?: boolean;
 };
 
+const BYTES_PER_PIXEL = 4;
+const MIN_GRID_RENDERER_SIZE_BYTES = 1;
+const MULTIMODAL_SOURCE_SIZE_FALLBACK_BYTES = 10 * 1024 * 1024;
+// Large custom-rendered media should influence autosizing, but one giant source
+// file should not force the grid straight to maximum zoom by itself.
+const SOURCE_SIZE_HINT_CAP_BYTES = 50 * 1024 * 1024;
+
+function getFiniteSizeBytes(value: unknown) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    return 0;
+  }
+
+  return Math.trunc(value);
+}
+
+function getPixelSizeBytes(width: number, height: number) {
+  if (!Number.isFinite(width) || !Number.isFinite(height)) {
+    return 0;
+  }
+
+  return Math.max(0, width * height * BYTES_PER_PIXEL);
+}
+
+function getSourceSizeHintBytes(
+  sourceSizeBytes: number,
+  mediaType: string | null
+) {
+  if (sourceSizeBytes > 0) {
+    return Math.min(sourceSizeBytes, SOURCE_SIZE_HINT_CAP_BYTES);
+  }
+
+  if (mediaType === "multimodal") {
+    // Multimodal files often decode expensive container data even when metadata
+    // has not populated size_bytes yet, so bias autosizing as though each item
+    // has a modest source-size hint.
+    return MULTIMODAL_SOURCE_SIZE_FALLBACK_BYTES;
+  }
+
+  return 0;
+}
+
 type GridCustomRendererWrapperProps = React.PropsWithChildren<{
   selected: boolean;
   onOpenModal: React.MouseEventHandler<HTMLButtonElement>;
@@ -167,6 +208,7 @@ export class GridCustomRendererItem {
   private destroyed = false;
   private selected = false;
   private inSelectionMode = false;
+  private dimensions: GridItemDimensions | null = null;
 
   constructor(private readonly config: GridCustomRendererItemConfig) {
     Object.assign(this.hostElement.style, HOST_ELEMENT_STYLES);
@@ -322,6 +364,7 @@ export class GridCustomRendererItem {
     }
 
     this.mountedElement = resolvedElement;
+    this.dimensions = dimensions ?? null;
 
     if (this.hostElement.parentElement !== resolvedElement) {
       // Replace all children of the target element with the host element.
@@ -388,6 +431,31 @@ export class GridCustomRendererItem {
   }
 
   getSizeBytesEstimate() {
-    return 1;
+    const renderedSizeBytes = (() => {
+      const dimensions = this.dimensions;
+      if (dimensions) {
+        const [width, height] = dimensions;
+        return getPixelSizeBytes(width, height);
+      }
+
+      const rect = this.hostElement.getBoundingClientRect();
+      return getPixelSizeBytes(rect.width, rect.height);
+    })();
+
+    const sample = this.config.ctx.sample.sample;
+    const isSampleFile =
+      this.config.ctx.media.field === "filepath" ||
+      this.config.ctx.media.path === sample.filepath;
+    const sourceSizeBytes = isSampleFile
+      ? getFiniteSizeBytes(sample.metadata?.size_bytes)
+      : 0;
+    const sourceSizeHintBytes = getSourceSizeHintBytes(
+      sourceSizeBytes,
+      this.config.ctx.media.mediaType
+    );
+
+    return Math.ceil(
+      MIN_GRID_RENDERER_SIZE_BYTES + renderedSizeBytes + sourceSizeHintBytes
+    );
   }
 }
