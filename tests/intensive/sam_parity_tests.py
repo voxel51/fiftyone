@@ -12,15 +12,21 @@ Usage:
     pytest sam_parity_tests.py -v --timeout=500
 """
 
+import gc
+
 import cv2
 import numpy as np
 import torch
 import unittest
 
+import eta.core.video as etav
+
 import fiftyone as fo
 import fiftyone.zoo as foz
 from fiftyone.core.labels import Detection, Detections, Keypoint, Keypoints
 from fiftyone import ViewField as F
+import fiftyone.utils.sam as fosam
+import fiftyone.utils.sam3 as fosam3
 
 MASK_IOU = 0.95  # change for more/less aggressive mask parity testing
 MASK_THRESH = 0.5
@@ -28,7 +34,8 @@ PLACEHOLDER_LABEL = "mask"
 MIN_METRIC = 1.0
 
 # Default text prompts for concept-mode tests
-TEXT_PROMPTS = ["person"]
+TEXT_PROMPTS = ["car"]
+SAM3_VIDEO_MODEL_NAME = "segment-anything-3-video-torch"
 
 
 def _create_test_dataset(num_samples=5, seed=51):
@@ -40,6 +47,20 @@ def _create_test_dataset(num_samples=5, seed=51):
         max_samples=num_samples,
         shuffle=True,
         seed=seed,
+        dataset_name=name,
+    )
+    dataset.persistent = True
+    dataset.compute_metadata()
+    return dataset
+
+
+def _create_video_dataset(num_samples=2, seed=51):
+    name = f"sam3-video-test-{seed}"
+    if name in fo.list_datasets():
+        fo.delete_dataset(name)
+    dataset = foz.load_zoo_dataset(
+        "quickstart-video",
+        max_samples=num_samples,
         dataset_name=name,
     )
     dataset.persistent = True
@@ -151,6 +172,25 @@ def _assert_parity(
         MIN_METRIC,
         f"[{eval_key}] Fscore {metrics['fscore']:.4f} < {MIN_METRIC}",
     )
+
+
+def _assert_video_parity(test_case, dataset, pred_field, gt_field, eval_key):
+    """Run frame-level evaluate_detections and assert near-perfect agreement."""
+    results = dataset.evaluate_detections(
+        f"frames.{pred_field}",
+        gt_field=f"frames.{gt_field}",
+        eval_key=eval_key,
+        iou=MASK_IOU,
+        use_masks=True,
+        classwise=False,
+    )
+    metrics = results.metrics()
+    for metric_name in ("accuracy", "precision", "recall", "fscore"):
+        test_case.assertGreaterEqual(
+            metrics[metric_name],
+            MIN_METRIC,
+            f"[{eval_key}] {metric_name} {metrics[metric_name]:.4f} < {MIN_METRIC}",
+        )
 
 
 class TestSAMParity(unittest.TestCase):
@@ -1697,6 +1737,445 @@ class TestSAM3VisualParity(unittest.TestCase):
             fo_field,
             direct_field,
             eval_key="eval_sam3_combo",
+        )
+
+
+class TestSAM3VideoConceptParity(unittest.TestCase):
+    """Compare FiftyOne SAM3 video concept-mode output against direct
+    concept_predictor (handle_request) inference."""
+
+    @classmethod
+    def setUpClass(cls):
+        from sam3.model_builder import build_sam3_video_predictor
+
+        cls.fo_model = foz.load_zoo_model(
+            SAM3_VIDEO_MODEL_NAME,
+            classes=TEXT_PROMPTS,
+            operation_mode="concept",
+        )
+
+        device_idx = (
+            cls.fo_model._device.index
+            if cls.fo_model._device.index is not None
+            else 0
+        )
+        cls.direct_predictor = build_sam3_video_predictor(
+            gpus_to_use=[device_idx]
+        )
+        cls.dataset = _create_video_dataset(num_samples=2, seed=31)
+
+    @classmethod
+    def tearDownClass(cls):
+        del cls.fo_model
+        del cls.direct_predictor
+        gc.collect()
+        torch.cuda.empty_cache()
+
+    def tearDown(self):
+        gc.collect()
+        torch.cuda.empty_cache()
+
+    def _run_direct_concept(self, sample, text_prompts, text_frame_idx=0):
+        """Run concept_predictor directly and return {frame_number: Detections}.
+
+        Mirrors FO's per-prompt propagation: each add_prompt resets model
+        state, so we run one propagation pass per prompt and accumulate."""
+        video_path = sample.filepath
+        w = sample.metadata.frame_width
+        h = sample.metadata.frame_height
+
+        response = self.direct_predictor.handle_request(
+            request=dict(type="start_session", resource_path=video_path)
+        )
+        session_id = response["session_id"]
+
+        result = {
+            i + 1: Detections(detections=[]) for i in range(len(sample.frames))
+        }
+
+        try:
+            for text_prompt in text_prompts:
+                prompt_response = self.direct_predictor.handle_request(
+                    request=dict(
+                        type="add_prompt",
+                        session_id=session_id,
+                        frame_index=text_frame_idx,
+                        text=text_prompt,
+                    )
+                )
+                outputs = prompt_response.get("outputs", prompt_response)
+                label_map = {
+                    oid: text_prompt for oid in outputs.get("out_obj_ids", [])
+                }
+
+                for (
+                    frame_result
+                ) in self.direct_predictor.handle_stream_request(
+                    request=dict(
+                        type="propagate_in_video",
+                        session_id=session_id,
+                        propagation_direction="forward",
+                    )
+                ):
+                    out_frame_idx = frame_result.get("frame_index", 0)
+                    out = frame_result.get("outputs", frame_result)
+
+                    out_obj_ids = out.get("out_obj_ids", [])
+                    out_probs = out.get("out_probs")
+                    out_boxes = out.get("out_boxes_xywh")
+                    out_masks = out.get("out_binary_masks")
+
+                    if out_masks is None or len(out_obj_ids) == 0:
+                        continue
+
+                    if isinstance(out_masks, torch.Tensor):
+                        out_masks = out_masks.cpu().numpy()
+                    if isinstance(out_probs, torch.Tensor):
+                        out_probs = out_probs.cpu().numpy()
+                    if isinstance(out_boxes, torch.Tensor):
+                        out_boxes = out_boxes.cpu().numpy()
+
+                    new_dets = fosam3._sam3_output_to_detections(
+                        out_binary_masks=out_masks,
+                        out_boxes_xywh=out_boxes,
+                        out_obj_ids=out_obj_ids,
+                        out_probs=out_probs,
+                        frame_width=w,
+                        frame_height=h,
+                        label_map=label_map,
+                        default_label=text_prompt,
+                    )
+                    frame_num = int(out_frame_idx) + 1
+                    existing = result.get(frame_num, Detections(detections=[]))
+                    result[frame_num] = Detections(
+                        detections=existing.detections + new_dets
+                    )
+
+        finally:
+            self.direct_predictor.handle_request(
+                request=dict(type="close_session", session_id=session_id)
+            )
+
+        return result
+
+    def test_concept_single_prompt_parity(self):
+        """FO apply_model concept output matches direct concept predictor (single text prompt)."""
+        fo_field = "sam3v_concept_fo"
+        direct_field = "sam3v_concept_direct"
+
+        self.dataset.apply_model(self.fo_model, label_field=fo_field)
+
+        for sample in self.dataset.iter_samples(progress=False, autosave=True):
+            direct_result = self._run_direct_concept(sample, TEXT_PROMPTS)
+            for frame_number, dets in direct_result.items():
+                sample.frames[frame_number][direct_field] = dets
+
+        _assert_video_parity(
+            self,
+            self.dataset,
+            fo_field,
+            direct_field,
+            eval_key="eval_sam3v_concept",
+        )
+
+    def test_concept_multi_prompt_parity(self):
+        """Multiple text prompts: FO output matches direct concept predictor."""
+        multi_prompts = ["person", "car"]
+        fo_model_multi = foz.load_zoo_model(
+            SAM3_VIDEO_MODEL_NAME,
+            classes=multi_prompts,
+            operation_mode="concept",
+        )
+
+        fo_field = "sam3v_concept_multi_fo"
+        direct_field = "sam3v_concept_multi_direct"
+
+        self.dataset.apply_model(fo_model_multi, label_field=fo_field)
+
+        for sample in self.dataset.iter_samples(progress=False, autosave=True):
+            direct_result = self._run_direct_concept(sample, multi_prompts)
+            for frame_number, dets in direct_result.items():
+                sample.frames[frame_number][direct_field] = dets
+
+        _assert_video_parity(
+            self,
+            self.dataset,
+            fo_field,
+            direct_field,
+            eval_key="eval_sam3v_concept_multi",
+        )
+
+
+class TestSAM3VideoVisualParity(unittest.TestCase):
+    """Compare FiftyOne SAM3 video visual-mode output against direct
+    visual_predictor (tracker) inference."""
+
+    @classmethod
+    def setUpClass(cls):
+        from sam3.model_builder import build_sam3_video_model
+
+        cls.fo_model = foz.load_zoo_model(
+            SAM3_VIDEO_MODEL_NAME,
+            operation_mode="visual",
+            prompt_frame_indices=[1],
+        )
+
+        sam3_model = build_sam3_video_model()
+        cls.direct_predictor = sam3_model.tracker
+        cls.direct_predictor.backbone = sam3_model.detector.backbone
+
+        cls.ctx = fosam3._load_video_frames_monkey_patch_sam3()
+        cls.dataset = _create_video_dataset(num_samples=2, seed=21)
+
+    @classmethod
+    def tearDownClass(cls):
+        del cls.fo_model
+        del cls.direct_predictor
+        gc.collect()
+        torch.cuda.empty_cache()
+
+    def tearDown(self):
+        gc.collect()
+        torch.cuda.empty_cache()
+
+    def _run_direct_visual_boxes(self, sample):
+        """Run visual_predictor directly with box prompts from frames.detections."""
+        w = sample.metadata.frame_width
+        h = sample.metadata.frame_height
+
+        with etav.FFmpegVideoReader(sample.filepath) as video_reader:
+            with self.ctx:
+                inference_state = self.direct_predictor.init_state(
+                    video_path=(sample, video_reader)
+                )
+
+        classes_obj_id_map = {}
+        current_obj_idx = 0
+
+        first_frame = next(iter(sample.frames.values()))
+        dets = first_frame.get_field("detections")
+        if dets is not None:
+            for detection in dets.detections:
+                ann_obj_id = current_obj_idx
+                current_obj_idx += 1
+                classes_obj_id_map[ann_obj_id] = detection.label
+
+                rx, ry, rw, rh = detection.bounding_box
+                box = np.array([rx, ry, rx + rw, ry + rh], dtype=np.float32)
+
+                self.direct_predictor.add_new_points_or_box(
+                    inference_state=inference_state,
+                    frame_idx=0,
+                    obj_id=ann_obj_id,
+                    box=box,
+                )
+
+        result = {}
+
+        for (
+            out_frame_idx,
+            out_obj_ids,
+            _low_res_masks,
+            out_mask_logits,
+            _obj_scores,
+        ) in self.direct_predictor.propagate_in_video(
+            inference_state,
+            start_frame_idx=None,
+            max_frame_num_to_track=None,
+            reverse=False,
+            propagate_preflight=True,
+        ):
+            detections = []
+            for i, out_obj_id in enumerate(out_obj_ids):
+                mask = np.squeeze(
+                    (out_mask_logits[i] > 0.0).cpu().numpy(), axis=0
+                )
+                box = fosam._mask_to_box(mask)
+                if box is None:
+                    continue
+
+                label = classes_obj_id_map.get(out_obj_id, "object")
+                x1, y1, x2, y2 = box
+                bounding_box = [
+                    x1 / w,
+                    y1 / h,
+                    (x2 - x1) / w,
+                    (y2 - y1) / h,
+                ]
+                cropped_mask = mask[
+                    int(round(y1)) : int(round(y2)),
+                    int(round(x1)) : int(round(x2)),
+                ]
+                detections.append(
+                    Detection(
+                        label=label,
+                        bounding_box=bounding_box,
+                        mask=cropped_mask,
+                        index=out_obj_id,
+                    )
+                )
+
+            result[int(out_frame_idx) + 1] = Detections(detections=detections)
+
+        return result
+
+    def _run_direct_visual_points(self, sample, kp_field):
+        """Run visual_predictor directly with point prompts from a Keypoints frame field."""
+        w = sample.metadata.frame_width
+        h = sample.metadata.frame_height
+
+        with etav.FFmpegVideoReader(sample.filepath) as video_reader:
+            with self.ctx:
+                inference_state = self.direct_predictor.init_state(
+                    video_path=(sample, video_reader)
+                )
+
+        classes_obj_id_map = {}
+        current_obj_idx = 0
+
+        for frame_idx, (_, frame) in enumerate(sample.frames.items()):
+            kps = frame.get_field(kp_field)
+            if kps is None or not kps.keypoints:
+                continue
+
+            for keypoint in kps.keypoints:
+                ann_obj_id = current_obj_idx
+                current_obj_idx += 1
+                classes_obj_id_map[ann_obj_id] = keypoint.label
+
+                points, labels = fosam._to_sam_points(
+                    keypoint.points,
+                    width=1,
+                    height=1,
+                    point_labels=fosam._get_sam_point_labels(keypoint),
+                )
+
+                self.direct_predictor.add_new_points_or_box(
+                    inference_state=inference_state,
+                    frame_idx=frame_idx,
+                    obj_id=ann_obj_id,
+                    points=points,
+                    labels=labels,
+                )
+
+        result = {}
+
+        for (
+            out_frame_idx,
+            out_obj_ids,
+            _low_res_masks,
+            out_mask_logits,
+            _obj_scores,
+        ) in self.direct_predictor.propagate_in_video(
+            inference_state,
+            start_frame_idx=None,
+            max_frame_num_to_track=None,
+            reverse=False,
+            propagate_preflight=True,
+        ):
+            detections = []
+            for i, out_obj_id in enumerate(out_obj_ids):
+                mask = np.squeeze(
+                    (out_mask_logits[i] > 0.0).cpu().numpy(), axis=0
+                )
+                box = fosam._mask_to_box(mask)
+                if box is None:
+                    continue
+
+                label = classes_obj_id_map.get(out_obj_id, "object")
+                x1, y1, x2, y2 = box
+                bounding_box = [
+                    x1 / w,
+                    y1 / h,
+                    (x2 - x1) / w,
+                    (y2 - y1) / h,
+                ]
+                cropped_mask = mask[
+                    int(round(y1)) : int(round(y2)),
+                    int(round(x1)) : int(round(x2)),
+                ]
+                detections.append(
+                    Detection(
+                        label=label,
+                        bounding_box=bounding_box,
+                        mask=cropped_mask,
+                        index=out_obj_id,
+                    )
+                )
+
+            result[int(out_frame_idx) + 1] = Detections(detections=detections)
+
+        del inference_state
+        return result
+
+    def test_visual_box_parity(self):
+        """FO apply_model visual-box output matches direct visual predictor."""
+        fo_field = "sam3v_vis_box_fo"
+        direct_field = "sam3v_vis_box_direct"
+
+        self.dataset.apply_model(
+            self.fo_model,
+            label_field=fo_field,
+            prompt_field="frames.detections",
+        )
+
+        for sample in self.dataset.iter_samples(progress=False, autosave=True):
+            direct_result = self._run_direct_visual_boxes(sample)
+            for frame_number, dets in direct_result.items():
+                if frame_number in sample.frames:
+                    sample.frames[frame_number][direct_field] = dets
+
+        _assert_video_parity(
+            self,
+            self.dataset,
+            fo_field,
+            direct_field,
+            eval_key="eval_sam3v_vis_box",
+        )
+
+    def test_visual_keypoint_parity(self):
+        """FO apply_model visual-keypoint output matches direct visual predictor."""
+        kp_field = "sam3v_vis_kps"
+        fo_field = "sam3v_vis_kp_fo"
+        direct_field = "sam3v_vis_kp_direct"
+
+        for sample in self.dataset.iter_samples(progress=False, autosave=True):
+            first_frame = next(iter(sample.frames.values()))
+            dets = first_frame.get_field("detections")
+            if dets is not None and dets.detections:
+                first_frame[kp_field] = Keypoints(
+                    keypoints=[
+                        Keypoint(
+                            label=d.label,
+                            points=[
+                                (
+                                    d.bounding_box[0] + d.bounding_box[2] / 2,
+                                    d.bounding_box[1] + d.bounding_box[3] / 2,
+                                )
+                            ],
+                        )
+                        for d in dets.detections
+                    ]
+                )
+
+        self.dataset.apply_model(
+            self.fo_model,
+            label_field=fo_field,
+            prompt_field=f"frames.{kp_field}",
+        )
+
+        for sample in self.dataset.iter_samples(progress=False, autosave=True):
+            direct_result = self._run_direct_visual_points(sample, kp_field)
+            for frame_number, dets in direct_result.items():
+                if frame_number in sample.frames:
+                    sample.frames[frame_number][direct_field] = dets
+
+        _assert_video_parity(
+            self,
+            self.dataset,
+            fo_field,
+            direct_field,
+            eval_key="eval_sam3v_vis_kp",
         )
 
 
