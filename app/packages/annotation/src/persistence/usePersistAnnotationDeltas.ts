@@ -3,6 +3,7 @@ import { useRecoilValue } from "recoil";
 import { isGeneratedView } from "@fiftyone/state";
 import { useAnnotationDeltaSupplier } from "./useAnnotationDeltaSupplier";
 import { useAnnotationEventBus, usePatchSample } from "../hooks";
+import { useSampleInstance } from "../state";
 
 /**
  * @returns `true` if persistence was successful
@@ -24,6 +25,7 @@ export const usePersistAnnotationDeltas =
     const supplyAnnotationDeltas = useAnnotationDeltaSupplier();
     const patchSample = usePatchSample();
     const eventBus = useAnnotationEventBus();
+    const sample = useSampleInstance();
     const isGenerated = useRecoilValue(isGeneratedView);
 
     return useCallback(async () => {
@@ -35,6 +37,7 @@ export const usePersistAnnotationDeltas =
 
       eventBus.dispatch("annotation:persistenceInFlight");
 
+      let success: boolean;
       if (isGenerated) {
         if (!metadata) {
           console.warn(
@@ -44,13 +47,22 @@ export const usePersistAnnotationDeltas =
           return false;
         }
 
-        return await patchSample(deltas, {
+        success = await patchSample(deltas, {
           labelId: metadata.labelId,
           labelPath: metadata.labelPath,
           opType: "mutate",
         });
+      } else {
+        success = await patchSample(deltas);
       }
 
-      return await patchSample(deltas);
-    }, [eventBus, isGenerated, patchSample, supplyAnnotationDeltas]);
+      if (success) {
+        // Release server-owned fields (e.g. masks) the backend now owns, so the
+        // frozen transient copy isn't re-emitted against the server's
+        // re-encoded/relocated value on the next autosave tick.
+        sample.reconcilePersisted(deltas);
+      }
+
+      return success;
+    }, [eventBus, isGenerated, patchSample, sample, supplyAnnotationDeltas]);
   };

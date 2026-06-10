@@ -18,7 +18,7 @@ import type { AnnotationDisabledReason } from "./useCanAnnotate";
 import useLabels from "./useLabels";
 import { useRegisterPolylineSidebarSyncHandlers } from "./Edit/useRegisterPolylineSidebarSyncHandlers";
 import useSourceFieldToActivate from "./useSourceFieldToActivate";
-import { useSyncModalSample } from "@fiftyone/annotation";
+import { useSyncLighterSample, useSyncModalSample } from "@fiftyone/annotation";
 
 const DISABLED_MESSAGES: Record<
   Exclude<AnnotationDisabledReason, null>,
@@ -109,6 +109,7 @@ interface AnnotateProps {
 
 const Annotate = ({ disabledReason, loadSchemas }: AnnotateProps) => {
   useSyncModalSample();
+  useSyncLighterSample();
   useRegisterAIAnnotationEventHandlers();
   useRegisterPolylineSidebarSyncHandlers();
 
