@@ -5,4 +5,10 @@
  * public surface below is re-exported from `@fiftyone/utilities`.
  */
 export { LabelData, LabelType } from "./labels";
-export { Sample, SampleOptions } from "./sample";
+export {
+  Sample,
+  SampleChange,
+  SampleChangeKind,
+  SampleChangeListener,
+  SampleOptions,
+} from "./sample";

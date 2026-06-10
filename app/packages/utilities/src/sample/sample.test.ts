@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { LabelData, LabelType, Sample } from "./index";
+import { LabelData, LabelType, Sample, SampleChangeKind } from "./index";
 import { Field, Schema } from "../schema";
 
 const field = (
@@ -1011,6 +1011,177 @@ describe("Sample", () => {
       s.reconcilePersisted(s.getJsonPatch());
       s.setData(detData({ embedding: "e1-server" }));
       expect(s.getJsonPatch()).toEqual([]);
+    });
+  });
+
+  describe("subscribeChanges", () => {
+    it("emits an update change for setField", () => {
+      const s = new Sample({ schema: detectionsSchema, data: { uuid: "a" } });
+      const listener = vi.fn();
+      s.subscribeChanges(listener);
+
+      s.setField("uuid", "b");
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener).toHaveBeenCalledWith([
+        { path: "uuid", kind: SampleChangeKind.Update },
+      ]);
+    });
+
+    it("emits a delete change for deleteField", () => {
+      const s = new Sample({ schema: detectionsSchema, data: { uuid: "a" } });
+      const listener = vi.fn();
+      s.subscribeChanges(listener);
+
+      s.deleteField("uuid");
+
+      expect(listener).toHaveBeenCalledWith([
+        { path: "uuid", kind: SampleChangeKind.Delete },
+      ]);
+    });
+
+    it("tags list-label edits with the element id", () => {
+      const s = new Sample({
+        schema: detectionsSchema,
+        data: { ground_truth: { detections: [makeDet("d1", "cat")] } },
+      });
+      const listener = vi.fn();
+      s.subscribeChanges(listener);
+
+      s.updateLabel("ground_truth", { _id: "d1", label: "dog" });
+
+      expect(listener).toHaveBeenCalledWith([
+        { path: "ground_truth", labelId: "d1", kind: SampleChangeKind.Update },
+      ]);
+    });
+
+    it("omits the element id for single-label edits", () => {
+      const s = new Sample({
+        schema: detectionsSchema,
+        data: { detection: makeDet("d1", "cat") },
+      });
+      const listener = vi.fn();
+      s.subscribeChanges(listener);
+
+      s.updateLabel("detection", { _id: "d1", label: "dog" });
+
+      expect(listener).toHaveBeenCalledWith([
+        { path: "detection", kind: SampleChangeKind.Update },
+      ]);
+    });
+
+    it("tags list-label deletions with the element id", () => {
+      const s = new Sample({
+        schema: detectionsSchema,
+        data: { ground_truth: { detections: [makeDet("d1", "cat")] } },
+      });
+      const listener = vi.fn();
+      s.subscribeChanges(listener);
+
+      s.deleteLabel("ground_truth", "d1");
+
+      expect(listener).toHaveBeenCalledWith([
+        { path: "ground_truth", labelId: "d1", kind: SampleChangeKind.Delete },
+      ]);
+    });
+
+    it("emits the whole-sample reset sentinel for clear() and setData()", () => {
+      const s = new Sample({ schema: detectionsSchema, data: { uuid: "a" } });
+      const listener = vi.fn();
+      s.subscribeChanges(listener);
+
+      s.setData({ uuid: "b" });
+      s.clear();
+
+      expect(listener).toHaveBeenNthCalledWith(1, [
+        { path: "", kind: SampleChangeKind.Reset },
+      ]);
+      expect(listener).toHaveBeenNthCalledWith(2, [
+        { path: "", kind: SampleChangeKind.Reset },
+      ]);
+    });
+
+    it("does not emit a change for a schema-only update, but bumps version", () => {
+      const s = new Sample({ data: { uuid: "a" } });
+      const listener = vi.fn();
+      s.subscribeChanges(listener);
+      const before = s.getVersion();
+
+      s.setSchema(detectionsSchema);
+
+      expect(listener).not.toHaveBeenCalled();
+      expect(s.getVersion()).toBe(before + 1);
+    });
+
+    it("emits a per-path reset when reconcilePersisted releases a field", () => {
+      const s = new Sample({
+        schema: detectionsSchema,
+        data: { detection: makeDet("d1", "cat") },
+      });
+      s.updateLabel("detection", { _id: "d1", mask: "m1" });
+      const listener = vi.fn();
+      s.subscribeChanges(listener);
+
+      s.reconcilePersisted(s.getJsonPatch());
+
+      expect(listener).toHaveBeenCalledWith([
+        { path: "detection", kind: SampleChangeKind.Reset },
+      ]);
+    });
+
+    it("stops delivering after unsubscribe", () => {
+      const s = new Sample({ schema: detectionsSchema, data: { uuid: "a" } });
+      const listener = vi.fn();
+      const unsubscribe = s.subscribeChanges(listener);
+
+      s.setField("uuid", "b");
+      unsubscribe();
+      s.setField("uuid", "c");
+
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it("still notifies bare display subscribers alongside change subscribers", () => {
+      const s = new Sample({ schema: detectionsSchema, data: { uuid: "a" } });
+      const display = vi.fn();
+      const change = vi.fn();
+      s.subscribe(display);
+      s.subscribeChanges(change);
+
+      s.setField("uuid", "b");
+
+      expect(display).toHaveBeenCalledTimes(1);
+      expect(change).toHaveBeenCalledTimes(1);
+    });
+
+    it("throws if a change subscriber writes back to Sample", () => {
+      const s = new Sample({ schema: detectionsSchema, data: { uuid: "a" } });
+      s.subscribeChanges(() => {
+        s.setField("uuid", "from-subscriber");
+      });
+
+      expect(() => s.setField("uuid", "x")).toThrow(/never write back/);
+    });
+
+    it("throws if a display subscriber writes back to Sample", () => {
+      const s = new Sample({ schema: detectionsSchema, data: { uuid: "a" } });
+      s.subscribe(() => {
+        s.setField("uuid", "from-display-subscriber");
+      });
+
+      expect(() => s.setField("uuid", "x")).toThrow(/never write back/);
+    });
+
+    it("recovers after a thrown reentrant write (dispatch flag reset)", () => {
+      const s = new Sample({ schema: detectionsSchema, data: { uuid: "a" } });
+      const unsubscribe = s.subscribeChanges(() => {
+        throw new Error("boom");
+      });
+
+      expect(() => s.setField("uuid", "x")).toThrow("boom");
+      unsubscribe();
+      // The finally in notify() must have cleared `dispatching`.
+      expect(() => s.setField("uuid", "y")).not.toThrow();
     });
   });
 });

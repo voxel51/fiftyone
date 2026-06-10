@@ -19,6 +19,48 @@ import { getNestedField } from "./pointer";
 import { reconcilePersisted } from "./reconcile";
 
 /**
+ * The nature of a {@link SampleChange}: `Update`/`Delete` for in-session edits;
+ * `Reset` for a rebuild (whole-sample via the `""` path sentinel, or per-path
+ * after `reconcilePersisted` releases a server-owned field).
+ */
+export enum SampleChangeKind {
+  Update = "update",
+  Delete = "delete",
+  Reset = "reset",
+}
+
+/**
+ * A single field-level mutation, delivered to {@link Sample.subscribeChanges}
+ * subscribers so they can reconcile their own view of the sample without
+ * re-diffing the whole thing.
+ *
+ * - `path` — the dot-delimited field path that changed (e.g. `ground_truth`,
+ *   `metadata.size_bytes`). The empty string `""` is the **whole-sample reset
+ *   sentinel**: the entire sample was replaced (`setData`) or all edits dropped
+ *   (`clear`), so subscribers should rebuild from a fresh snapshot.
+ * - `labelId` — for a list label (Detections, etc.), the `_id` of the element
+ *   that changed; absent for single labels and primitives.
+ * - `kind` — see {@link SampleChangeKind}.
+ */
+export interface SampleChange {
+  path: string;
+  labelId?: string;
+  kind: SampleChangeKind;
+}
+
+/** Subscriber to {@link Sample} mutations; receives the batch of changes. */
+export type SampleChangeListener = (changes: readonly SampleChange[]) => void;
+
+/**
+ * Whether the dev-time reentrancy guard is active. Enabled outside production
+ * builds so a change subscriber that illegally writes back to Sample (the
+ * Phase 5 acyclic-dataflow violation) fails loudly in dev and test, but never
+ * throws in a shipped build.
+ */
+const REENTRANCY_CHECK_ENABLED =
+  typeof process === "undefined" || process.env?.NODE_ENV !== "production";
+
+/**
  * Label sub-fields whose persisted value is owned by the server: large /
  * out-of-band payloads the backend may re-encode or relocate on save (e.g. a
  * mask written to disk as `mask_path`, or a heatmap `map`/`map_path`).
@@ -87,7 +129,9 @@ export class Sample {
   private deltaSuppliers: Record<LabelType, JSONDeltaSupplier>;
   private serverOwnedFields: Set<string>;
   private listeners: Set<() => void> = new Set();
+  private changeListeners: Set<SampleChangeListener> = new Set();
   private version = 0;
+  private dispatching = false;
 
   constructor(opts: SampleOptions = {}) {
     if (opts.data) {
@@ -111,13 +155,37 @@ export class Sample {
   // ---- subscriptions ----
 
   /**
-   * Subscribe to mutations. The listener is invoked after every state change.
-   * Returns an unsubscribe function. Designed to feed `useSyncExternalStore`.
+   * Display channel — pair with {@link getVersion} for `useSyncExternalStore`.
+   *
+   * Level-triggered and lossy: emissions coalesce, so the listener is *not*
+   * guaranteed to fire once per change — only that state eventually converges.
+   * Re-read current state on each fire (`getResolved`/`getSnapshot`); never do
+   * per-change work here (use {@link subscribeChanges}). Returns unsubscribe.
    */
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
     return () => {
       this.listeners.delete(listener);
+    };
+  };
+
+  /**
+   * Reconcile channel — for consumers that apply changes incrementally.
+   *
+   * Edge-triggered: every mutation is delivered once, in order, synchronously.
+   * The {@link SampleChange} batch is an invalidation signal (path/labelId/
+   * kind), not data — read the value via {@link getResolved}/{@link getLabel}.
+   * Returns unsubscribe.
+   *
+   * Invariant (throws in dev, see {@link assertNotDispatching}): subscribers
+   * are sinks and must never write back to Sample — that keeps the dataflow
+   * acyclic, so there is no echo guard to converge. Writers are user-gesture
+   * finalizers and the server-reconcile path only.
+   */
+  subscribeChanges = (listener: SampleChangeListener): (() => void) => {
+    this.changeListeners.add(listener);
+    return () => {
+      this.changeListeners.delete(listener);
     };
   };
 
@@ -128,19 +196,52 @@ export class Sample {
    */
   getVersion = (): number => this.version;
 
-  private notify(): void {
+  private notify(changes: SampleChange[]): void {
     this.version++;
-    for (const listener of this.listeners) {
-      listener();
+
+    // Both subscriber kinds are sinks: a write from within either would
+    // re-enter notify (recursing and inflating the version), so the reentrancy
+    // guard spans both loops. See assertNotDispatching.
+    this.dispatching = true;
+    try {
+      for (const listener of this.listeners) {
+        listener();
+      }
+
+      // A schema-only change (or any version-only bump) carries no
+      // SampleChange: display subscribers re-render, reconcilers have no work.
+      if (changes.length > 0) {
+        for (const listener of this.changeListeners) {
+          listener(changes);
+        }
+      }
+    } finally {
+      this.dispatching = false;
+    }
+  }
+
+  /**
+   * Guard the acyclic-dataflow invariant: throw if a mutator is called while a
+   * change batch is being dispatched, i.e. from within a change subscriber.
+   * Dev/test only (see {@link REENTRANCY_CHECK_ENABLED}).
+   */
+  private assertNotDispatching(op: string): void {
+    if (REENTRANCY_CHECK_ENABLED && this.dispatching) {
+      throw new Error(
+        `Sample.${op}() was called from within a subscriber. Subscribers ` +
+          `(display and change) must be sinks and never write back to Sample ` +
+          `route the write through a user-gesture or reconcile path instead.`
+      );
     }
   }
 
   // ---- source data / schema ----
 
   setData(data: Record<string, unknown>): void {
+    this.assertNotDispatching("setData");
     this.sourceData = data;
     this.gc();
-    this.notify();
+    this.notify([{ path: "", kind: SampleChangeKind.Reset }]);
   }
 
   getData(): Record<string, unknown> {
@@ -148,8 +249,10 @@ export class Sample {
   }
 
   setSchema(schema: Schema): void {
+    this.assertNotDispatching("setSchema");
     this.schema = schema;
-    this.notify();
+    // Schema affects type resolution, not values: bump display, no reconcile.
+    this.notify([]);
   }
 
   getSchema(): Schema {
@@ -180,9 +283,10 @@ export class Sample {
    * prior transient value at the same path and clears any pending deletion.
    */
   setField<T>(path: string, data: T): void {
+    this.assertNotDispatching("setField");
     this.transientData[path] = data;
     this.transientDeletes.delete(path);
-    this.notify();
+    this.notify([{ path, kind: SampleChangeKind.Update }]);
   }
 
   /**
@@ -258,12 +362,15 @@ export class Sample {
    * exists, otherwise appended).
    */
   updateLabel(path: string, data: Partial<LabelData>): void {
+    this.assertNotDispatching("updateLabel");
     const type = this.getLabelType(path);
+    let labelId: string | undefined;
 
     if (isListLabelType(type)) {
       if (!data._id) {
         throw new Error(`list label update at '${path}' requires an _id`);
       }
+      labelId = data._id;
 
       const child = LIST_LABEL_CHILD[type]!;
       const existing =
@@ -288,7 +395,7 @@ export class Sample {
     }
 
     this.transientDeletes.delete(path);
-    this.notify();
+    this.notify([{ path, labelId, kind: SampleChangeKind.Update }]);
   }
 
   /**
@@ -304,9 +411,10 @@ export class Sample {
    * emit a `remove` op for it if the source has a value at this path.
    */
   deleteField(path: string): void {
+    this.assertNotDispatching("deleteField");
     delete this.transientData[path];
     this.transientDeletes.add(path);
-    this.notify();
+    this.notify([{ path, kind: SampleChangeKind.Delete }]);
   }
 
   /**
@@ -318,6 +426,7 @@ export class Sample {
    *   from the parent list.
    */
   deleteLabel(path: string, id?: string): void {
+    this.assertNotDispatching("deleteLabel");
     const type = this.getLabelType(path);
 
     if (isListLabelType(type)) {
@@ -340,7 +449,7 @@ export class Sample {
         [child]: prior.filter((l) => l._id !== id),
       };
 
-      this.notify();
+      this.notify([{ path, labelId: id, kind: SampleChangeKind.Delete }]);
 
       return;
     }
@@ -352,9 +461,10 @@ export class Sample {
 
   /** Drop all pending transient state. */
   clear(): void {
+    this.assertNotDispatching("clear");
     this.transientData = {};
     this.transientDeletes.clear();
-    this.notify();
+    this.notify([{ path: "", kind: SampleChangeKind.Reset }]);
   }
 
   // ---- persistence (delegated to pure ./diff and ./reconcile) ----
@@ -382,6 +492,7 @@ export class Sample {
    * See {@link reconcilePersisted}.
    */
   reconcilePersisted(deltas: JSONDeltas): void {
+    this.assertNotDispatching("reconcilePersisted");
     const result = reconcilePersisted(
       this.snapshot(),
       deltas,
@@ -392,8 +503,22 @@ export class Sample {
       return;
     }
 
-    this.transientData = result.transientData;
-    this.notify();
+    // A released/dropped path has a new (or absent) reference vs. before;
+    // emit a per-path reset so reconcilers re-read just those from source.
+    const before = this.transientData;
+    const after = result.transientData;
+    const changes: SampleChange[] = [];
+    for (const path of new Set([
+      ...Object.keys(before),
+      ...Object.keys(after),
+    ])) {
+      if (before[path] !== after[path]) {
+        changes.push({ path, kind: SampleChangeKind.Reset });
+      }
+    }
+
+    this.transientData = after;
+    this.notify(changes);
   }
 
   /**
