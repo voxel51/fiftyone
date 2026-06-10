@@ -208,8 +208,12 @@ export class KeypointOverlay
    * not emit.
    */
   override updateLabel(label: KeypointLabel): void {
-    super.updateLabel(label);
+    this.applyLabel(label);
+    this.emitLabelUpdated();
+  }
 
+  /** Dispatch `lighter:overlay-label-updated` from current overlay state. */
+  protected emitLabelUpdated(): void {
     if (!this.field) {
       return;
     }

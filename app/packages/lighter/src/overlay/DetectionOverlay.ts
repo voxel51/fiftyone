@@ -150,8 +150,8 @@ export class DetectionOverlay
     return "DetectionOverlay";
   }
 
-  updateLabel(label: DetectionLabel) {
-    super.updateLabel(label);
+  applyLabel(label: DetectionLabel) {
+    super.applyLabel(label);
 
     if (label.bounding_box) {
       const [x, y, w, h] = label.bounding_box;
@@ -182,6 +182,10 @@ export class DetectionOverlay
       this.mask = undefined;
       if (hadMask) this.markDirty();
     }
+  }
+
+  updateLabel(label: DetectionLabel) {
+    this.applyLabel(label);
 
     this.eventBus.dispatch("lighter:overlay-label-updated", {
       id: this.id,

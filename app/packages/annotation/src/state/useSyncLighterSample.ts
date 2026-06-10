@@ -5,14 +5,21 @@ import {
   KeypointOverlay,
   type KeypointLabel,
   PolylineOverlay,
+  type Scene2D,
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
 import type { DetectionLabel } from "@fiftyone/looker";
 import type { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
 import type { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
-import { hasValidBounds, type LabelData } from "@fiftyone/utilities";
-import { useCallback } from "react";
+import {
+  hasValidBounds,
+  type LabelData,
+  type Sample,
+  type SampleChange,
+  SampleChangeKind,
+} from "@fiftyone/utilities";
+import { useCallback, useEffect, useRef } from "react";
 import { useSampleInstance } from "./useSample";
 
 /**
@@ -89,22 +96,88 @@ const buildOverlayLabel = (overlay: BaseOverlay): LabelData | undefined => {
   return undefined;
 };
 
+/** Find the overlay backing a (field, labelId) address, if one is mounted. */
+const findOverlay = (
+  scene: Scene2D,
+  path: string,
+  labelId: string | undefined
+): BaseOverlay | undefined => {
+  if (labelId) {
+    // Overlays loaded from the sample carry their label `_id` as their id.
+    const direct = scene.getOverlay(labelId);
+    if (direct && direct.field === path) {
+      return direct;
+    }
+  }
+
+  return scene
+    .getAllOverlays()
+    .find(
+      (o) =>
+        o.field === path &&
+        (labelId === undefined ||
+          (o.label as { _id?: string })?._id === labelId)
+    );
+};
+
 /**
- * Mirror Lighter (2D) overlay edits onto the shared {@link Sample} instance.
+ * Reconcile one Sample change onto its overlay (the read-half). Applies via the
+ * silent {@link BaseOverlay.applyLabel} so it never re-enters the
+ * overlay→Sample write path.
+ */
+export const applyChangeToOverlay = (
+  scene: Scene2D,
+  sample: Sample,
+  change: SampleChange
+): void => {
+  if (change.kind === SampleChangeKind.Delete || change.path === "") {
+    return;
+  }
+
+  const overlay = findOverlay(scene, change.path, change.labelId);
+  if (!overlay) {
+    return;
+  }
+
+  // Defensive: never apply over a live gesture
+  const interactive = overlay as { isInteracting?: () => boolean };
+  if (interactive.isInteracting?.()) {
+    return;
+  }
+
+  const label = change.labelId
+    ? sample.getLabel(change.path, change.labelId)
+    : sample.getResolved<LabelData>(change.path);
+
+  if (label) {
+    overlay.applyLabel(label as Parameters<BaseOverlay["applyLabel"]>[0]);
+  }
+};
+
+/**
+ * Bidirectional bridge between Lighter (2D) overlays and the shared
+ * {@link Sample}. Mount once at the annotation root.
  *
- * On every edit-finalize event, the affected overlay is re-read from the scene
- * and written into Sample via `updateLabel` (which upserts list-label elements
- * by `_id` and structural-diffs the parent on persistence).
- *
- * Deletions are intentionally not handled here — 2D deletions flow through their
- * own command/persistence path, unchanged.
- *
- * Mount once at the annotation root.
+ * - **Write-half:** on each edit-finalize event the affected overlay is re-read
+ *   and written into Sample via `updateLabel` (upserts list-label elements by
+ *   `_id`, structural-diffs the parent on persistence). Deletions flow through
+ *   their own command path, unchanged.
+ * - **Read-half:** Sample changes are reconciled back onto overlays via the
+ *   silent `applyLabel`. The write itself is skipped (origin suppression): a
+ *   write-half `updateLabel` dispatches its change synchronously, so the
+ *   read-half runs inside the `writing` window and ignores it — the overlay
+ *   already holds that value. Non-overlay-origin changes (e.g.
+ *   `reconcilePersisted` releasing a server-owned mask) reconcile normally.
  */
 export const useSyncLighterSample = (): void => {
   const { scene } = useLighter();
   const sample = useSampleInstance();
   const handleLighterEvent = useLighterEventHandler(scene?.getEventChannel());
+
+  // Set while the write-half writes Sample. notify() dispatches synchronously,
+  // so the read-half runs inside this window and skips the change we authored —
+  // origin suppression by call stack, no value comparison (cf. echo guards).
+  const writing = useRef(false);
 
   const syncOverlay = useCallback(
     (evt: { overlayId: string }) => {
@@ -114,8 +187,15 @@ export const useSyncLighterSample = (): void => {
       }
 
       const data = buildOverlayLabel(overlay);
-      if (data) {
+      if (!data) {
+        return;
+      }
+
+      writing.current = true;
+      try {
         sample.updateLabel(overlay.field, data);
+      } finally {
+        writing.current = false;
       }
     },
     [scene, sample]
@@ -130,4 +210,20 @@ export const useSyncLighterSample = (): void => {
   handleLighterEvent("lighter:keypoint-point-added", syncOverlay);
   handleLighterEvent("lighter:keypoint-point-moved", syncOverlay);
   handleLighterEvent("lighter:keypoint-point-deleted", syncOverlay);
+
+  useEffect(() => {
+    if (!scene) {
+      return undefined;
+    }
+
+    return sample.subscribeChanges((changes) => {
+      if (writing.current) {
+        return;
+      }
+
+      for (const change of changes) {
+        applyChangeToOverlay(scene, sample, change);
+      }
+    });
+  }, [scene, sample]);
 };
