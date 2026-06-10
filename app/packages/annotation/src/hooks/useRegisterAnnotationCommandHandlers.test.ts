@@ -4,19 +4,34 @@ import { renderHook } from "@testing-library/react";
 vi.mock("@fiftyone/annotation", () => ({
   useAnnotationEventBus: vi.fn(),
   useDeleteLabel: vi.fn(),
+  usePersistAnnotationDeltas: vi.fn(),
+  useSampleInstance: vi.fn(),
+}));
+
+vi.mock("@fiftyone/state", () => ({
+  isGeneratedView: { key: "isGeneratedView" },
+}));
+
+vi.mock("recoil", () => ({
+  useRecoilValue: vi.fn(),
 }));
 
 vi.mock("@fiftyone/command-bus", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@fiftyone/command-bus")>();
+  const actual = await importOriginal<typeof import("@fiftyone/command-bus")>();
   return {
     ...actual,
     useRegisterCommandHandler: vi.fn(),
   };
 });
 
-import { useAnnotationEventBus, useDeleteLabel } from "@fiftyone/annotation";
+import {
+  useAnnotationEventBus,
+  useDeleteLabel,
+  usePersistAnnotationDeltas,
+  useSampleInstance,
+} from "@fiftyone/annotation";
 import { useRegisterCommandHandler } from "@fiftyone/command-bus";
+import { useRecoilValue } from "recoil";
 import { useRegisterAnnotationCommandHandlers } from "./useRegisterAnnotationCommandHandlers";
 import type { LabelProxy } from "../deltas";
 import type { Field } from "@fiftyone/utilities";
@@ -38,17 +53,27 @@ function makeCommand(
 
 describe("useRegisterAnnotationCommandHandlers", () => {
   let mockDeleteLabel: ReturnType<typeof vi.fn>;
+  let mockPersist: ReturnType<typeof vi.fn>;
+  let mockSampleDeleteLabel: ReturnType<typeof vi.fn>;
   let mockDispatch: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockDeleteLabel = vi.fn();
+    mockPersist = vi.fn().mockResolvedValue(true);
+    mockSampleDeleteLabel = vi.fn();
     mockDispatch = vi.fn();
 
     vi.mocked(useDeleteLabel).mockReturnValue(mockDeleteLabel);
+    vi.mocked(usePersistAnnotationDeltas).mockReturnValue(mockPersist);
+    vi.mocked(useSampleInstance).mockReturnValue({
+      deleteLabel: mockSampleDeleteLabel,
+    } as any);
     vi.mocked(useAnnotationEventBus).mockReturnValue({
       dispatch: mockDispatch,
     } as any);
+    // default: not a generated view
+    vi.mocked(useRecoilValue).mockReturnValue(false);
   });
 
   function getRegisteredHandler() {
@@ -64,76 +89,126 @@ describe("useRegisterAnnotationCommandHandlers", () => {
     expect(useRegisterCommandHandler).toHaveBeenCalledTimes(1);
   });
 
-  it("dispatches deleteSuccess with label metadata when deleteLabel returns true", async () => {
-    mockDeleteLabel.mockResolvedValue(true);
-    const handler = getRegisteredHandler();
-    const cmd = makeCommand({ labelId: "label-42", labelType: "Polyline" });
+  describe("non-generated views", () => {
+    it("removes the label from Sample and persists immediately (not the legacy path)", async () => {
+      const handler = getRegisteredHandler();
+      const cmd = makeCommand({ labelId: "label-42" });
 
-    await handler(cmd);
+      await handler(cmd);
 
-    expect(mockDeleteLabel).toHaveBeenCalledWith(cmd.label, cmd.schema);
-    expect(mockDispatch).toHaveBeenCalledWith("annotation:deleteSuccess", {
-      labelId: "label-42",
-      type: "delete",
-      labelType: "Polyline",
+      expect(mockSampleDeleteLabel).toHaveBeenCalledWith(
+        "predictions",
+        "label-42"
+      );
+      expect(mockPersist).toHaveBeenCalledTimes(1);
+      expect(mockDeleteLabel).not.toHaveBeenCalled();
+    });
+
+    it("dispatches deleteSuccess + persistenceSuccess when persistence succeeds", async () => {
+      mockPersist.mockResolvedValue(true);
+      const handler = getRegisteredHandler();
+
+      await handler(
+        makeCommand({ labelId: "label-42", labelType: "Polyline" })
+      );
+
+      expect(mockDispatch).toHaveBeenCalledWith(
+        "annotation:persistenceSuccess"
+      );
+      expect(mockDispatch).toHaveBeenCalledWith("annotation:deleteSuccess", {
+        labelId: "label-42",
+        type: "delete",
+        labelType: "Polyline",
+      });
+    });
+
+    it("dispatches deleteError + persistenceError when persistence fails", async () => {
+      mockPersist.mockResolvedValue(false);
+      const handler = getRegisteredHandler();
+
+      const result = await handler(makeCommand({ labelId: "label-7" }));
+
+      expect(result).toBe(false);
+      expect(mockDispatch).toHaveBeenCalledWith(
+        "annotation:persistenceError",
+        expect.objectContaining({ error: expect.any(Error) })
+      );
+      expect(mockDispatch).toHaveBeenCalledWith("annotation:deleteError", {
+        labelId: "label-7",
+        type: "delete",
+      });
+      expect(mockDispatch).not.toHaveBeenCalledWith(
+        "annotation:deleteSuccess",
+        expect.anything()
+      );
+    });
+
+    it("treats a null persistence result (no-op) as success", async () => {
+      mockPersist.mockResolvedValue(null);
+      const handler = getRegisteredHandler();
+
+      const result = await handler(makeCommand());
+
+      expect(result).toBe(true);
+    });
+
+    it("dispatches deleteError and re-throws when persistence throws", async () => {
+      const error = new Error("network down");
+      mockPersist.mockRejectedValue(error);
+      const handler = getRegisteredHandler();
+
+      await expect(
+        handler(makeCommand({ labelId: "label-99" }))
+      ).rejects.toThrow("network down");
+
+      expect(mockDispatch).toHaveBeenCalledWith(
+        "annotation:persistenceError",
+        expect.objectContaining({ error })
+      );
+      expect(mockDispatch).toHaveBeenCalledWith("annotation:deleteError", {
+        labelId: "label-99",
+        type: "delete",
+        error,
+      });
     });
   });
 
-  it("dispatches deleteError when deleteLabel returns false", async () => {
-    mockDeleteLabel.mockResolvedValue(false);
-    const handler = getRegisteredHandler();
-    const cmd = makeCommand({ labelId: "label-7" });
-
-    await handler(cmd);
-
-    expect(mockDispatch).toHaveBeenCalledWith("annotation:deleteError", {
-      labelId: "label-7",
-      type: "delete",
+  describe("generated views", () => {
+    beforeEach(() => {
+      vi.mocked(useRecoilValue).mockReturnValue(true);
     });
-  });
 
-  it("does not dispatch deleteSuccess when deleteLabel returns false", async () => {
-    mockDeleteLabel.mockResolvedValue(false);
-    const handler = getRegisteredHandler();
+    it("persists via the legacy delta path and clears the Sample transient", async () => {
+      mockDeleteLabel.mockResolvedValue(true);
+      const handler = getRegisteredHandler();
+      const cmd = makeCommand({ labelId: "label-3", labelType: "Detection" });
 
-    await handler(makeCommand());
+      await handler(cmd);
 
-    expect(mockDispatch).not.toHaveBeenCalledWith(
-      "annotation:deleteSuccess",
-      expect.anything()
-    );
-  });
-
-  it("dispatches deleteError and re-throws when deleteLabel throws", async () => {
-    const error = new Error("deletion failed");
-    mockDeleteLabel.mockRejectedValue(error);
-    const handler = getRegisteredHandler();
-    const cmd = makeCommand({ labelId: "label-99" });
-
-    await expect(handler(cmd)).rejects.toThrow("deletion failed");
-
-    expect(mockDispatch).toHaveBeenCalledWith("annotation:deleteError", {
-      labelId: "label-99",
-      type: "delete",
-      error,
+      expect(mockSampleDeleteLabel).toHaveBeenCalledWith(
+        "predictions",
+        "label-3"
+      );
+      expect(mockDeleteLabel).toHaveBeenCalledWith(cmd.label, cmd.schema);
+      expect(mockPersist).not.toHaveBeenCalled();
+      expect(mockDispatch).toHaveBeenCalledWith("annotation:deleteSuccess", {
+        labelId: "label-3",
+        type: "delete",
+        labelType: "Detection",
+      });
     });
-  });
 
-  it("returns the result of deleteLabel on success", async () => {
-    mockDeleteLabel.mockResolvedValue(true);
-    const handler = getRegisteredHandler();
+    it("dispatches deleteError when the legacy delete returns false", async () => {
+      mockDeleteLabel.mockResolvedValue(false);
+      const handler = getRegisteredHandler();
 
-    const result = await handler(makeCommand());
+      const result = await handler(makeCommand({ labelId: "label-7" }));
 
-    expect(result).toBe(true);
-  });
-
-  it("returns the result of deleteLabel on failure", async () => {
-    mockDeleteLabel.mockResolvedValue(false);
-    const handler = getRegisteredHandler();
-
-    const result = await handler(makeCommand());
-
-    expect(result).toBe(false);
+      expect(result).toBe(false);
+      expect(mockDispatch).toHaveBeenCalledWith("annotation:deleteError", {
+        labelId: "label-7",
+        type: "delete",
+      });
+    });
   });
 });

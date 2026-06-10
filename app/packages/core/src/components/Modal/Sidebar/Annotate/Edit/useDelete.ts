@@ -68,20 +68,13 @@ export default function useDelete() {
 
           removeLabelFromSidebar(label.data._id);
           removeOverlay(label.overlay.id, false);
-          setNotification({
-            msg: `Label "${label.data.label}" successfully deleted.`,
-            variant: "success",
-          });
 
           exit();
         } catch (error) {
+          // Persistence success/failure is surfaced by the shared annotation
+          // activity toast (annotation:persistenceSuccess / :persistenceError);
+          // don't show a duplicate legacy toast here.
           console.error(error);
-          setNotification({
-            msg: `Label "${
-              label.data.label ?? "Label"
-            }" not successfully deleted. Try again.`,
-            variant: "error",
-          });
         }
       },
       async () => {
