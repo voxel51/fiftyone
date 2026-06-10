@@ -176,6 +176,7 @@ export const useAppliedOntology = (field: string) => {
     clearOntology: () => {
       const next: FieldSchema = { ...(schema as FieldSchema) };
       delete next.applied_ontology;
+      delete next.applied_taxonomy;
       // Drop ontology-owned attributes (carry the `_source` marker). The
       // backend's dehydrate only strips them while `applied_ontology` is
       // still set, so we'd leave orphaned `when` clauses for the validator
