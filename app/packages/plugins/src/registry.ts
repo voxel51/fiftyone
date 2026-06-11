@@ -164,6 +164,23 @@ export enum Categories {
 
 export type PluginActivator = (props: any) => boolean;
 
+/**
+ * Stable component slots exposed by core surfaces.
+ */
+export const PLUGIN_COMPONENT_SLOT = {
+  GRID_HEADER_AFTER_RESOURCE_COUNT: "grid-header-after-resource-count",
+} as const;
+
+export type PluginComponentSlot =
+  typeof PLUGIN_COMPONENT_SLOT[keyof typeof PLUGIN_COMPONENT_SLOT];
+
+export type ComponentOptions = {
+  /**
+   * Named UI insertion points where this component can be rendered.
+   */
+  slots?: readonly PluginComponentSlot[];
+};
+
 export type PanelOptions = {
   /**
    * Whether to allow multiple instances of the plugin.
@@ -285,6 +302,7 @@ export type ComponentRegistration<T extends {} = {}> =
     PluginComponentType.Component,
     PluginComponentProps<T>
   > & {
+    componentOptions?: ComponentOptions;
     panelOptions?: never;
     sampleRendererOptions?: never;
   };
@@ -337,6 +355,16 @@ export function getCategoryForPanel(
   panel: PanelRegistration | PlotRegistration
 ) {
   return panel.panelOptions?.category || "custom";
+}
+
+/**
+ * Returns whether a generic component is registered for a named UI slot.
+ */
+export function componentHasSlot(
+  registration: ComponentRegistration,
+  slot: PluginComponentSlot
+) {
+  return registration.componentOptions?.slots?.includes(slot) === true;
 }
 
 const DEFAULT_ACTIVATOR = () => true;
