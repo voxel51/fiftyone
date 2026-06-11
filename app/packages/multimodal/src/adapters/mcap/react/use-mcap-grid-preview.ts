@@ -90,7 +90,7 @@ export function useMcapGridPreview({
         }
       })
       .catch((caughtError) => {
-        if (active && !controller.signal.aborted) {
+        if (!active || controller.signal.aborted) {
           return;
         }
 

@@ -189,7 +189,7 @@ function PreviewStatus({
 
 function previewStatusMessage(
   status: McapGridPreviewStatus,
-  hasImageTopics: boolean
+  hasPreviewTopics: boolean
 ): string | null {
   if (status === "loading") {
     return null;
@@ -199,5 +199,9 @@ function previewStatusMessage(
     return "Preview unavailable";
   }
 
-  return hasImageTopics ? "No preview frames" : "No camera streams";
+  if (status === "unavailable") {
+    return "No data available for this stream";
+  }
+
+  return hasPreviewTopics ? "No preview frames" : "No preview streams";
 }
