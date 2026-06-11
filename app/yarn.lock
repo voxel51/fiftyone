@@ -3119,6 +3119,7 @@ __metadata:
     "@emotion/styled": "npm:^11.10.4"
     "@fiftyone/commands": "workspace:^"
     "@fiftyone/state": "npm:*"
+    "@fiftyone/utilities": "npm:*"
     "@mdx-js/react": "npm:^1.6.22"
     "@mui/icons-material": "npm:^5.16.7"
     "@mui/material": "npm:^5.9.0"

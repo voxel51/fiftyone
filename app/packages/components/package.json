@@ -48,6 +48,7 @@
         "@emotion/styled": "^11.10.4",
         "@fiftyone/commands": "workspace:^",
         "@fiftyone/state": "*",
+        "@fiftyone/utilities": "*",
         "@mui/icons-material": "^5.16.7",
         "@mui/material": "^5.9.0",
         "@react-spring/web": "^9.7.3",

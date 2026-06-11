@@ -8,6 +8,7 @@ import LabelValueWidget from "./LabelValueWidget";
 import RadioWidget from "./RadioWidget";
 import SelectWidget from "./SelectWidget";
 import SliderWidget from "./SliderWidget";
+import TaxonomyWidget from "./TaxonomyWidget";
 import TextWidget from "./TextWidget";
 import ToggleWidget from "./ToggleWidget";
 
@@ -18,6 +19,7 @@ export default {
   JsonEditorWidget,
   LabelValueWidget,
   SelectWidget,
+  TaxonomyWidget,
   RangeWidget: SliderWidget,
   TextWidget,
   BooleanWidget: ToggleWidget,
