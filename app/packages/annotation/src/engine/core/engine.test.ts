@@ -1,0 +1,358 @@
+import { describe, expect, it, vi } from "vitest";
+
+import { makeDet, makeEngine, makeStore, ref } from "../testing/fixtures";
+import { isWholeSampleReset } from "../store/types";
+
+describe("engine routing", () => {
+  it("routes reads and writes by ref.sample", () => {
+    const { engine } = makeEngine("s1", {
+      ground_truth: { detections: [makeDet("d1", "cat")] },
+    });
+    const second = makeStore("s2", {
+      ground_truth: { detections: [makeDet("d1", "dog")] },
+    });
+    engine.registerStore(second.store);
+
+    // same (path, instanceId) in two samples — full-tuple identity routes
+    expect(engine.getLabel(ref("ground_truth", "d1", "s1"))?.label).toBe("cat");
+    expect(engine.getLabel(ref("ground_truth", "d1", "s2"))?.label).toBe("dog");
+
+    engine.updateLabel(ref("ground_truth", "d1", "s2"), { label: "bird" });
+    expect(engine.getLabel(ref("ground_truth", "d1", "s1"))?.label).toBe("cat");
+    expect(engine.getLabel(ref("ground_truth", "d1", "s2"))?.label).toBe(
+      "bird"
+    );
+  });
+
+  it("unregistering a store detaches it", () => {
+    const { engine, unregister } = makeEngine("s1");
+    const listener = vi.fn();
+    engine.subscribeChanges(listener);
+
+    unregister();
+    expect(engine.getLabel(ref("ground_truth", "d1", "s1"))).toBeUndefined();
+    expect(() =>
+      engine.updateLabel(ref("ground_truth", "d1", "s1"), { label: "x" })
+    ).toThrow(/no store/);
+  });
+
+  it("enumerates labels across stores", () => {
+    const { engine } = makeEngine("s1", {
+      ground_truth: { detections: [makeDet("d1", "cat")] },
+    });
+    const second = makeStore("s2", {
+      ground_truth: { detections: [makeDet("d9", "dog")] },
+    });
+    engine.registerStore(second.store);
+
+    const refs = engine.enumerateLabels(["Detections" as never]);
+    expect(refs).toHaveLength(2);
+    expect(refs.map((r) => r.sample).sort()).toEqual(["s1", "s2"]);
+  });
+});
+
+describe("engine transactions (§5.1)", () => {
+  it("coalesces all mutations into one ordered change dispatch", () => {
+    const { engine } = makeEngine();
+    const listener = vi.fn();
+    engine.subscribeChanges(listener);
+
+    engine.transaction(() => {
+      engine.updateLabel(ref("ground_truth", "d1"), { label: "cat" });
+      engine.updateLabel(ref("ground_truth", "d2"), { label: "dog" });
+      engine.deleteLabel(ref("ground_truth", "d1"));
+    });
+
+    expect(listener).toHaveBeenCalledTimes(1);
+    const changes = listener.mock.calls[0][0];
+    expect(changes.map((c: { kind: string }) => c.kind)).toEqual([
+      "update",
+      "update",
+      "delete",
+    ]);
+  });
+
+  it("rolls back on throw; subscribers never observe the abort", () => {
+    const { engine } = makeEngine("sample-1", {
+      ground_truth: { detections: [makeDet("d1", "cat")] },
+    });
+    const listener = vi.fn();
+    engine.subscribeChanges(listener);
+
+    expect(() =>
+      engine.transaction(() => {
+        engine.updateLabel(ref("ground_truth", "d1"), { label: "dog" });
+        engine.createLabel("ground_truth", { label: "bird" });
+        throw new Error("boom");
+      })
+    ).toThrow("boom");
+
+    expect(listener).not.toHaveBeenCalled();
+    expect(engine.getLabel(ref("ground_truth", "d1"))?.label).toBe("cat");
+    expect(
+      engine.listLabels({ sample: "sample-1", path: "ground_truth" })
+    ).toHaveLength(1);
+    expect(engine.isDirty()).toBe(false);
+    expect(engine.canUndo()).toBe(false);
+  });
+
+  it("nested transactions join the outermost", () => {
+    const { engine } = makeEngine();
+    const listener = vi.fn();
+    engine.subscribeChanges(listener);
+
+    engine.transaction(() => {
+      engine.updateLabel(ref("ground_truth", "d1"), { label: "cat" });
+
+      engine.transaction(() => {
+        engine.updateLabel(ref("ground_truth", "d2"), { label: "dog" });
+      });
+    });
+
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener.mock.calls[0][0]).toHaveLength(2);
+  });
+
+  it("an inner throw unwinds the whole outermost transaction", () => {
+    const { engine } = makeEngine();
+
+    expect(() =>
+      engine.transaction(() => {
+        engine.updateLabel(ref("ground_truth", "d1"), { label: "cat" });
+
+        engine.transaction(() => {
+          throw new Error("inner");
+        });
+      })
+    ).toThrow("inner");
+
+    expect(engine.isDirty()).toBe(false);
+  });
+
+  it("bare mutators are implicit one-op transactions", () => {
+    const { engine } = makeEngine();
+    const listener = vi.fn();
+    engine.subscribeChanges(listener);
+
+    engine.updateLabel(ref("ground_truth", "d1"), { label: "cat" });
+
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(engine.canUndo()).toBe(true);
+  });
+
+  it("throws on writes from within a change subscriber (§1.1)", () => {
+    const { engine } = makeEngine();
+    const errors: unknown[] = [];
+    engine.subscribeChanges(() => {
+      try {
+        engine.updateLabel(ref("ground_truth", "d2"), { label: "echo" });
+      } catch (error) {
+        errors.push(error);
+      }
+    });
+
+    engine.updateLabel(ref("ground_truth", "d1"), { label: "cat" });
+
+    expect(errors).toHaveLength(1);
+    expect(String(errors[0])).toMatch(/within a subscriber/);
+  });
+});
+
+describe("engine undo (§5.2 / D7)", () => {
+  it("undoes and redoes a value edit exactly (replace, not merge)", () => {
+    const { engine } = makeEngine("sample-1", {
+      ground_truth: { detections: [makeDet("d1", "cat")] },
+    });
+
+    engine.updateLabel(ref("ground_truth", "d1"), {
+      label: "dog",
+      confidence: 0.9,
+    });
+
+    engine.undo();
+    // the added `confidence` field must not survive the undo
+    expect(engine.getLabel(ref("ground_truth", "d1"))).toEqual(
+      makeDet("d1", "cat")
+    );
+
+    engine.redo();
+    expect(engine.getLabel(ref("ground_truth", "d1"))).toMatchObject({
+      label: "dog",
+      confidence: 0.9,
+    });
+  });
+
+  it("undoes a create as a delete, and a delete as a restore", () => {
+    const { engine } = makeEngine("sample-1", {
+      ground_truth: { detections: [makeDet("d1", "cat")] },
+    });
+
+    const created = engine.createLabel("ground_truth", {
+      _cls: "Detection",
+      label: "bird",
+    });
+    engine.deleteLabel(ref("ground_truth", "d1"));
+
+    engine.undo(); // restore d1
+    expect(engine.getLabel(ref("ground_truth", "d1"))?.label).toBe("cat");
+
+    engine.undo(); // delete the created label
+    expect(engine.getLabel(created)).toBeUndefined();
+
+    engine.redo();
+    expect(engine.getLabel(created)?.label).toBe("bird");
+  });
+
+  it("one transaction = one undo unit, inverses applied in reverse order", () => {
+    const { engine } = makeEngine("sample-1", {
+      ground_truth: { detections: [makeDet("d1", "cat")] },
+    });
+
+    engine.transaction(() => {
+      engine.updateLabel(ref("ground_truth", "d1"), { label: "dog" });
+      engine.createLabel("ground_truth", { label: "bird" });
+    });
+
+    engine.undo();
+    expect(engine.getLabel(ref("ground_truth", "d1"))?.label).toBe("cat");
+    expect(
+      engine.listLabels({ sample: "sample-1", path: "ground_truth" })
+    ).toHaveLength(1);
+  });
+
+  it("coalesces consecutive units sharing an undoKey", () => {
+    const { engine } = makeEngine("sample-1", {
+      ground_truth: { detections: [makeDet("d1", "cat")] },
+    });
+
+    for (const confidence of [0.1, 0.5, 0.9]) {
+      engine.transaction(
+        () => engine.updateLabel(ref("ground_truth", "d1"), { confidence }),
+        { undoKey: "confidence-slider" }
+      );
+    }
+
+    engine.undo();
+    expect(engine.getLabel(ref("ground_truth", "d1"))).toEqual(
+      makeDet("d1", "cat")
+    );
+    expect(engine.canUndo()).toBe(false);
+  });
+
+  it("does not record undo/redo replays or no-op transactions", () => {
+    const { engine } = makeEngine();
+
+    engine.transaction(() => undefined);
+    expect(engine.canUndo()).toBe(false);
+
+    engine.updateLabel(ref("ground_truth", "d1"), { label: "cat" });
+    engine.undo();
+    expect(engine.canUndo()).toBe(false);
+    expect(engine.canRedo()).toBe(true);
+  });
+
+  it("clears history on whole-sample reset", () => {
+    const { engine, store } = makeEngine();
+
+    engine.updateLabel(ref("ground_truth", "d1"), { label: "cat" });
+    expect(engine.canUndo()).toBe(true);
+
+    store.setData({});
+    expect(engine.canUndo()).toBe(false);
+  });
+
+  it("rollbackEntry applies and drops a specific entry (§9)", () => {
+    const { engine } = makeEngine("sample-1", {
+      ground_truth: { detections: [makeDet("d1", "cat")] },
+    });
+
+    engine.deleteLabel(ref("ground_truth", "d1"));
+    const entry = engine.lastUndoEntry();
+
+    engine.rollbackEntry(entry!);
+
+    expect(engine.getLabel(ref("ground_truth", "d1"))?.label).toBe("cat");
+    expect(engine.canUndo()).toBe(false);
+    expect(engine.canRedo()).toBe(false);
+  });
+});
+
+describe("engine scope (§5)", () => {
+  it("binds the sample and filters the change stream", () => {
+    const { engine } = makeEngine("s1");
+    const second = makeStore("s2");
+    engine.registerStore(second.store);
+
+    const scoped = engine.scope("s2");
+    const listener = vi.fn();
+    scoped.subscribeChanges(listener);
+
+    engine.updateLabel(ref("ground_truth", "d1", "s1"), { label: "cat" });
+    expect(listener).not.toHaveBeenCalled();
+
+    scoped.updateLabel(
+      { path: "ground_truth", instanceId: "d2" },
+      { label: "dog" }
+    );
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(engine.getLabel(ref("ground_truth", "d2", "s2"))?.label).toBe("dog");
+  });
+
+  it("createLabel requires scope when multiple stores are registered", () => {
+    const { engine } = makeEngine("s1");
+    engine.registerStore(makeStore("s2").store);
+
+    expect(() => engine.createLabel("ground_truth", { label: "x" })).toThrow(
+      /scope/
+    );
+
+    const created = engine.scope("s2").createLabel("ground_truth", {
+      label: "x",
+    });
+    expect(created.sample).toBe("s2");
+  });
+});
+
+describe("engine persistence aggregation", () => {
+  it("emits one patch entry per dirty sample", () => {
+    const { engine } = makeEngine("s1");
+    engine.registerStore(makeStore("s2").store);
+
+    engine.updateLabel(ref("ground_truth", "d1", "s2"), { label: "dog" });
+
+    const patches = engine.getJsonPatch();
+    expect(patches).toHaveLength(1);
+    expect(patches[0].sample).toBe("s2");
+    expect(engine.isDirty()).toBe(true);
+  });
+});
+
+describe("engine display channel", () => {
+  it("notifies once per transaction with a single version bump", () => {
+    const { engine } = makeEngine();
+    const listener = vi.fn();
+    engine.subscribe(listener);
+    const before = engine.getVersion();
+
+    engine.transaction(() => {
+      engine.updateLabel(ref("ground_truth", "d1"), { label: "cat" });
+      engine.updateLabel(ref("ground_truth", "d2"), { label: "dog" });
+    });
+
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(engine.getVersion()).toBe(before + 1);
+  });
+});
+
+describe("whole-sample reset propagation", () => {
+  it("relays the reset sentinel through the merged stream", () => {
+    const { engine, store } = makeEngine();
+    const listener = vi.fn();
+    engine.subscribeChanges(listener);
+
+    store.setData({ ground_truth: { detections: [makeDet("d1", "cat")] } });
+
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(isWholeSampleReset(listener.mock.calls[0][0][0])).toBe(true);
+  });
+});

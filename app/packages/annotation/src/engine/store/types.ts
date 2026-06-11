@@ -64,8 +64,13 @@ export interface LabelStore {
   enumerateLabels(kinds: readonly LabelType[]): LabelRef[];
 
   // mutation (upsert by instanceId for list labels) — the store stamps
-  // `_id = ref.instanceId`; callers never reconstruct arrays
-  updateLabel(ref: LabelRef, partial: Partial<LabelData>): void;
+  // `_id = ref.instanceId`; callers never reconstruct arrays. `replace`
+  // writes the exact value instead of merging (value-restoring writers: undo)
+  updateLabel(
+    ref: LabelRef,
+    partial: Partial<LabelData>,
+    opts?: { replace?: boolean }
+  ): void;
   deleteLabel(ref: LabelRef): void;
 
   // observability

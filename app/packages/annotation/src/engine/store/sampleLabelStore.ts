@@ -123,8 +123,16 @@ export class SampleLabelStore implements LabelStore {
 
   // ---- mutation ----
 
-  updateLabel(ref: LabelRef, partial: Partial<LabelData>): void {
-    this.source.updateLabel(ref.path, { ...partial, _id: ref.instanceId });
+  updateLabel(
+    ref: LabelRef,
+    partial: Partial<LabelData>,
+    opts: { replace?: boolean } = {}
+  ): void {
+    this.source.updateLabel(
+      ref.path,
+      { ...partial, _id: ref.instanceId },
+      opts
+    );
   }
 
   deleteLabel(ref: LabelRef): void {

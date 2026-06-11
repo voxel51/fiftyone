@@ -361,8 +361,16 @@ export class Sample {
    * For list labels, `data._id` is required and the label is upserted into
    * the parent list (merged with the prior element if one with the same `_id`
    * exists, otherwise appended).
+   *
+   * `opts.replace` skips the merge and writes `data` as the label's exact
+   * value — for value-restoring writers (undo), where a merge would leave
+   * fields behind that the restored value no longer has.
    */
-  updateLabel(path: string, data: Partial<LabelData>): void {
+  updateLabel(
+    path: string,
+    data: Partial<LabelData>,
+    opts: { replace?: boolean } = {}
+  ): void {
     this.assertNotDispatching("updateLabel");
     const type = this.getLabelType(path);
     let labelId: string | undefined;
@@ -382,16 +390,21 @@ export class Sample {
         : [];
       const next = [...prior];
       const idx = next.findIndex((l) => l._id === data._id);
+      const merged = (
+        idx >= 0 && !opts.replace ? { ...next[idx], ...data } : { ...data }
+      ) as LabelData;
 
       if (idx >= 0) {
-        next.splice(idx, 1, { ...next[idx], ...data } as LabelData);
+        next.splice(idx, 1, merged);
       } else {
-        next.push(data as LabelData);
+        next.push(merged);
       }
 
       this.transientData[path] = { ...existing, [child]: next };
     } else {
-      const existing = this.getResolved<LabelData>(path) ?? ({} as LabelData);
+      const existing = opts.replace
+        ? ({} as LabelData)
+        : this.getResolved<LabelData>(path) ?? ({} as LabelData);
       this.transientData[path] = { ...existing, ...data };
     }
 
