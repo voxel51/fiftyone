@@ -58,6 +58,12 @@ export {
 } from "./bridge/surfaceController";
 export { useSurfaceBridge } from "./react/useSurfaceBridge";
 
+// Lighter surface
+export type { LighterDescriptor } from "./surfaces/lighter/adapters";
+export { lighterAdapters } from "./surfaces/lighter/adapters";
+export { createLighterBridge } from "./surfaces/lighter/lighterBridge";
+export { useLighterEngineBridge } from "./surfaces/lighter/useLighterEngineBridge";
+
 // declarative integration
 export type {
   EngineReads,
