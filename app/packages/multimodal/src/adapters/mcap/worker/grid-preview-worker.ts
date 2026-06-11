@@ -112,12 +112,31 @@ function transferablesForResponse(
   }
 
   const frame = response.result.state.frame;
-  const buffer =
-    frame?.kind === "image"
-      ? frame.image.bytes.buffer
-      : frame?.kind === "point-cloud"
-      ? frame.pointCloud.positions.buffer
-      : null;
+  if (frame?.kind === "image") {
+    return transferableBuffers(frame.image.bytes);
+  }
 
-  return buffer instanceof ArrayBuffer ? [buffer] : [];
+  if (frame?.kind === "point-cloud") {
+    return transferableBuffers(
+      frame.pointCloud.positions,
+      frame.pointCloud.colors,
+      ...(frame.pointCloud.scalarFields?.map((field) => field.values) ?? [])
+    );
+  }
+
+  return [];
+}
+
+function transferableBuffers(
+  ...views: readonly (ArrayBufferView | undefined)[]
+): Transferable[] {
+  const buffers = new Set<ArrayBuffer>();
+
+  for (const view of views) {
+    if (view?.buffer instanceof ArrayBuffer) {
+      buffers.add(view.buffer);
+    }
+  }
+
+  return [...buffers];
 }
