@@ -439,6 +439,8 @@ def _make_match_stage(view, filters):
         queries.append(_make_query(path, path_field, args))
 
     if queries:
+        if len(queries) == 1:
+            return fosg.Match(queries[0])
         return fosg.Match({"$and": queries})
 
 
@@ -641,47 +643,32 @@ def _make_range_query(path: str, field: fof.Field, args):
         mn, mx = None, None
 
     exclude = args.get("exclude", False)
-
-    min_expr = {path: {"$gte": mn}} if mn is not None else None
-    max_expr = {path: {"$lte": mx}} if mx is not None else None
-    if not exclude and range_:
-        return {
-            "$and": [
-                e
-                for e in [
-                    min_expr,
-                    max_expr,
-                ]
-                if e
-            ]
-        }
-
-    min_expr = {path: {"$lt": mn}} if mn is not None else None
-    max_expr = {path: {"$gt": mx}} if mx is not None else None
+    ops = {}
+    if mn is not None:
+        ops["$gte"] = mn
+    if mx is not None:
+        ops["$lte"] = mx
     if range_:
+        if exclude:
+            return {
+                path: {"$not": ops},
+            }
         return {
-            "$or": [
-                e
-                for e in [
-                    min_expr,
-                    max_expr,
-                ]
-                if e
-            ]
+            path: ops,
         }
 
     if exclude:
         return {
-            "$and": [
-                {path: {"$eq": v}}
+            path: [
+                {"$eq": v}
                 for k, v in _NONFINITES.items()
                 if k in args and not args[k]
             ]
         }
 
     return {
-        "$and": [
-            {path: {"$ne": v}}
+        path: [
+            {"$ne": v}
             for k, v in _NONFINITES.items()
             if k in args and not args[k]
         ]
