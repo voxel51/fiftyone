@@ -57,7 +57,7 @@ export const LighterSampleRenderer = ({
     // sceneId should be deterministic, but unique for a given sample snapshot
     const sample = sampleRef.current;
     setSceneId(
-      `${sample?.sample?._id}-${sample?.sample?.last_modified_at?.datetime}`
+      `${sample?.sample?._id}-${sample?.sample?.last_modified_at?.datetime}`,
     );
   }, []);
 
@@ -112,7 +112,7 @@ const LighterSetupImpl = (props: {
       ...options,
       activePaths: jotaiActivePaths ?? options.activePaths,
     }),
-    [options, jotaiActivePaths]
+    [options, jotaiActivePaths],
   );
 
   const canvas = singletonCanvas.getCanvas(containerRef.current ?? undefined);
@@ -138,7 +138,8 @@ const LighterSetupImpl = (props: {
       {
         src: mediaUrl,
         maintainAspectRatio: true,
-      }
+        originalDimensions: sample.sample.metadata,
+      },
     );
     scene.addOverlay(mediaOverlay);
 
@@ -147,7 +148,7 @@ const LighterSetupImpl = (props: {
   }, [scene, sceneId]);
 
   const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
   useEventHandler("lighter:viewport-init-complete", onReveal, { once: true });
 

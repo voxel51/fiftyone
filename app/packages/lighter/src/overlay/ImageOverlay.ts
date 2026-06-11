@@ -8,6 +8,7 @@ import type { LighterEventGroup } from "../events";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { CanonicalMedia, Dimensions, Rect, RenderMeta } from "../types";
 import { BaseOverlay } from "./BaseOverlay";
+import { getImageOverlayDimensions } from "./imageDimensions";
 
 /**
  * Options for creating an image overlay.
@@ -18,6 +19,7 @@ export interface ImageOptions {
   opacity?: number;
   maintainAspectRatio?: boolean;
   field?: string;
+  originalDimensions?: Dimensions;
 }
 
 const isRectNonEmpty = (bounds: Rect | undefined): boolean => {
@@ -71,7 +73,7 @@ export class ImageOverlay extends BaseOverlay implements CanonicalMedia {
         "lighter:viewport-moved",
         (event) => {
           this.updateImageTransform(event.x, event.y, event.scale);
-        }
+        },
       );
     }
   }
@@ -174,10 +176,10 @@ export class ImageOverlay extends BaseOverlay implements CanonicalMedia {
         this.imgElement &&
         !this.isImageLoaded
       ) {
-        this.originalDimensions = {
-          width: this.imgElement.naturalWidth,
-          height: this.imgElement.naturalHeight,
-        };
+        this.originalDimensions = getImageOverlayDimensions(
+          this.imgElement,
+          this.options.originalDimensions,
+        );
         this.isImageLoaded = true;
 
         const dims = this.getContainerDimensionsFromDom();
@@ -216,7 +218,7 @@ export class ImageOverlay extends BaseOverlay implements CanonicalMedia {
   private updateImageTransform(
     viewportX: number,
     viewportY: number,
-    scale: number
+    scale: number,
   ): void {
     if (!this.imgElement || !this.isImageLoaded) return;
 
@@ -279,7 +281,7 @@ export class ImageOverlay extends BaseOverlay implements CanonicalMedia {
 
   protected async renderImpl(
     renderer: Renderer2D,
-    _renderMeta: RenderMeta
+    _renderMeta: RenderMeta,
   ): Promise<void> {
     // The image is rendered via the HTML <img> element, not through Pixi.
     if (
