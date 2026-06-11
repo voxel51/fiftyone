@@ -101,11 +101,10 @@ export const createSurfaceController = <Handle, Descriptor>({
   bridge,
   adapters,
 }: ControllerDeps<Handle, Descriptor>): SurfaceController<Handle> => {
-  const getSample = (): string => bridge.sample ?? engine.ambientSample();
   const actions = createSurfaceActions({
     engine,
     surface: bridge.surface,
-    getSample,
+    getSample: () => bridge.sample,
   });
 
   const toPartial = (handle: Handle): Partial<LabelData> | null => {

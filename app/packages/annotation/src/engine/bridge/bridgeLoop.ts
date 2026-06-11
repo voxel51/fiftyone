@@ -33,8 +33,7 @@ export const registerBridgeLoop = <Handle, Descriptor>(
   ): LabelKindAdapter<Handle, Descriptor> | undefined =>
     adapters[engine.getLabelType(path)];
 
-  const inScope = (ref: LabelRef): boolean =>
-    bridge.sample === undefined || ref.sample === bridge.sample;
+  const inScope = (ref: LabelRef): boolean => ref.sample === bridge.sample;
 
   /** Refs known to have a live handle — the reconcile ledger for resets.
    *  Stale entries are harmless: `resolveHandle` re-checks before unmount. */

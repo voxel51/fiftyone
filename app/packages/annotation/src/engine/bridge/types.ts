@@ -33,10 +33,15 @@ export interface SurfaceBridge<Handle, Descriptor> {
   temporal?: "frame-locked" | "pool";
 
   /**
-   * Bind the bridge to one sample (a Lighter scene shows one sample); the
-   * engine filters the change stream to it. Omit for cross-sample surfaces.
+   * The sample this bridge projects (a Lighter scene shows one sample) —
+   * REQUIRED. The loop filters every branch to it: the bridge boundary is
+   * where full-tuple identity (D1) would otherwise degrade to instanceId
+   * (`resolveHandle` is scene-side; scenes don't know samples), and absent
+   * handles mean "create", not "skip" (§6.1). Multi-sample retained surfaces
+   * need a wider contract (per-handle sample on `refOf`) — see the §10
+   * ledger; declarative surfaces already span samples without a bridge.
    */
-  sample?: string;
+  sample: string;
 
   resolveHandle(ref: LabelRef): Handle | undefined;
   refOf(handle: Handle): ScopedRef;

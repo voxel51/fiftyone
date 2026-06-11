@@ -23,6 +23,7 @@ const makeSurface = () => {
 
   const bridge: SurfaceBridge<Handle, Descriptor> = {
     surface: "fake",
+    sample: "sample-1",
     resolveHandle: (r) => handles.get(r.instanceId),
     refOf: (handle) => ({ path: handle.path, instanceId: handle.id }),
     mount: (descriptor) => {

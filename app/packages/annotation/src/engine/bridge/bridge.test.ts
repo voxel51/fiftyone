@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createSurfaceController } from "./surfaceController";
 import type { LabelKindAdapter, SurfaceBridge } from "./types";
-import { makeDet, makeEngine, ref } from "../testing/fixtures";
+import { makeDet, makeEngine, makeStore, ref } from "../testing/fixtures";
 
 /** A minimal retained-mode surface: handles in a map, flags applied silently. */
 interface FakeHandle {
@@ -18,7 +18,7 @@ interface FakeHandle {
 
 type FakeDescriptor = { id: string; path: string; label: LabelData };
 
-const makeFakeSurface = () => {
+const makeFakeSurface = (sample = "sample-1") => {
   const handles = new Map<string, FakeHandle>();
 
   const adapter: LabelKindAdapter<FakeHandle, FakeDescriptor> = {
@@ -31,6 +31,7 @@ const makeFakeSurface = () => {
 
   const bridge: SurfaceBridge<FakeHandle, FakeDescriptor> = {
     surface: "fake",
+    sample,
     resolveHandle: (r) => handles.get(r.instanceId),
     refOf: (handle) => ({ path: handle.path, instanceId: handle.id }),
     mount: (descriptor) => {
@@ -190,6 +191,44 @@ describe("bridge read-half (§6.1)", () => {
 
     engine.updateLabel(ref("classification", "c1"), { label: "rain" });
     expect(handles.size).toBe(0);
+  });
+
+  it("scopes the loop to the bridge's sample under federation (D1/D3)", () => {
+    const { engine } = makeEngine("left", {
+      ground_truth: {
+        detections: [{ ...makeDet("i123", "car"), bounding_box: [0, 0, 1, 1] }],
+      },
+    });
+    const right = makeStore("right", {
+      ground_truth: {
+        detections: [
+          { ...makeDet("i123", "car"), bounding_box: [0.5, 0.5, 0.1, 0.1] },
+        ],
+      },
+    });
+    engine.registerStore(right.store);
+
+    // the LEFT scene's bridge; both slices share the instanceId (fo.Instance)
+    const { handles, bridge, adapters } = makeFakeSurface("left");
+    engine.registerBridge(bridge, adapters);
+    expect(handles.get("i123")?.label.bounding_box).toEqual([0, 0, 1, 1]);
+
+    // an edit to the RIGHT slice's linked label must not touch the left
+    // scene's overlay (the instanceId collision), nor ghost-mount anything
+    engine.updateLabel(ref("ground_truth", "i123", "right"), {
+      bounding_box: [0.6, 0.6, 0.1, 0.1],
+    });
+
+    expect(handles.size).toBe(1);
+    expect(handles.get("i123")?.label.bounding_box).toEqual([0, 0, 1, 1]);
+
+    // an edit to the LEFT slice flows normally
+    engine.updateLabel(ref("ground_truth", "i123", "left"), {
+      bounding_box: [0.1, 0.1, 0.8, 0.8],
+    });
+    expect(handles.get("i123")?.label.bounding_box).toEqual([
+      0.1, 0.1, 0.8, 0.8,
+    ]);
   });
 
   it("unregister detaches the bridge", () => {
