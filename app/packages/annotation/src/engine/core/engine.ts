@@ -21,6 +21,8 @@ import type {
   LabelStore,
 } from "../store/types";
 import { isWholeSampleReset } from "../store/types";
+import { InteractionState } from "../interaction/interactionState";
+import { DispatchGuard } from "./dispatchGuard";
 import type { UndoEntry, UndoOp } from "./undoStack";
 import { UndoStack } from "./undoStack";
 
@@ -44,17 +46,18 @@ export interface ScopedEngine {
  */
 export type BookkeepingHook = (changes: readonly LabelChange[]) => void;
 
-/** Mirror of `Sample`'s dev-only reentrancy guard (§1.1). */
-const REENTRANCY_CHECK_ENABLED =
-  typeof process === "undefined" || process.env?.NODE_ENV !== "production";
-
 export class AnnotationEngine {
+  /** Ephemeral selection/hover/anchor state (§6.5); GC'd by the engine. */
+  readonly interaction: InteractionState;
+
   private stores = new Map<string, LabelStore>();
   private displayListeners = new Set<DisplayListener>();
   private changeListeners = new Set<ChangeListener>();
   private bookkeepingHooks = new Set<BookkeepingHook>();
   private version = 0;
-  private dispatching = false;
+
+  /** §1.1 keystone guard, shared with interaction state: one dispatch scope. */
+  private guard = new DispatchGuard();
 
   private undos = new UndoStack();
   private replaying = false;
@@ -69,6 +72,11 @@ export class AnnotationEngine {
   >();
   private txChanges: LabelChange[] = [];
   private txDisplayPending = false;
+
+  constructor() {
+    this.interaction = new InteractionState(this.guard);
+    this.registerBookkeeping((changes) => this.interaction.gc(changes));
+  }
 
   // ---- identity ----
 
@@ -464,15 +472,12 @@ export class AnnotationEngine {
 
   private notifyDisplay(): void {
     this.version++;
-    this.dispatching = true;
 
-    try {
+    this.guard.run(() => {
       for (const listener of this.displayListeners) {
         listener();
       }
-    } finally {
-      this.dispatching = false;
-    }
+    });
   }
 
   private dispatchChanges(changes: readonly LabelChange[]): void {
@@ -485,9 +490,7 @@ export class AnnotationEngine {
       this.undos.clear();
     }
 
-    this.dispatching = true;
-
-    try {
+    this.guard.run(() => {
       for (const hook of this.bookkeepingHooks) {
         hook(changes);
       }
@@ -495,18 +498,11 @@ export class AnnotationEngine {
       for (const listener of this.changeListeners) {
         listener(changes);
       }
-    } finally {
-      this.dispatching = false;
-    }
+    });
   }
 
   /** §1.1 keystone: change-subscribers are sinks; writes during dispatch throw. */
   private assertNotDispatching(op: string): void {
-    if (REENTRANCY_CHECK_ENABLED && this.dispatching) {
-      throw new Error(
-        `AnnotationEngine.${op}() was called from within a subscriber. ` +
-          `Subscribers are sinks and must never write back to the engine.`
-      );
-    }
+    this.guard.assert(`AnnotationEngine.${op}()`);
   }
 }
