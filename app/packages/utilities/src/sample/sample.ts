@@ -51,6 +51,19 @@ export interface SampleChange {
 export type SampleChangeListener = (changes: readonly SampleChange[]) => void;
 
 /**
+ * A captured copy of the transient edit state (pending data + pending
+ * deletions), for transaction atomicity: capture via
+ * {@link Sample.snapshotTransient}, roll back via
+ * {@link Sample.restoreTransient}. Source data is never part of a snapshot —
+ * only `setData`/`reconcilePersisted` write it, and those are not
+ * transactional mutations.
+ */
+export type TransientSnapshot = {
+  transientData: Record<string, unknown>;
+  transientDeletes: ReadonlySet<string>;
+};
+
+/**
  * Whether the dev-time reentrancy guard is active. Enabled outside production
  * builds so a change subscriber that illegally writes back to Sample (the
  * Phase 5 acyclic-dataflow violation) fails loudly in dev and test, but never
@@ -435,6 +448,75 @@ export class Sample {
     }
 
     this.deleteField(path);
+  }
+
+  // ---- transaction primitives ----
+
+  /**
+   * Capture the transient edit state. Mutators replace path entries rather
+   * than mutating them in place (copy-on-write), so a shallow capture is a
+   * faithful snapshot.
+   */
+  snapshotTransient(): TransientSnapshot {
+    return {
+      transientData: { ...this.transientData },
+      transientDeletes: new Set(this.transientDeletes),
+    };
+  }
+
+  /**
+   * Roll back the transient edit state to a prior snapshot. Emits a per-path
+   * reset for every path whose pending state differs, so subscribers re-read
+   * just those. The snapshot is copied in, so it may be restored again.
+   */
+  restoreTransient(snapshot: TransientSnapshot): void {
+    this.assertNotDispatching("restoreTransient");
+    const changes: SampleChange[] = [];
+    const paths = new Set([
+      ...Object.keys(this.transientData),
+      ...Object.keys(snapshot.transientData),
+      ...this.transientDeletes,
+      ...snapshot.transientDeletes,
+    ]);
+
+    for (const path of paths) {
+      const dataChanged =
+        this.transientData[path] !== snapshot.transientData[path];
+      const deleteChanged =
+        this.transientDeletes.has(path) !== snapshot.transientDeletes.has(path);
+
+      if (dataChanged || deleteChanged) {
+        changes.push({ path, kind: SampleChangeKind.Reset });
+      }
+    }
+
+    if (changes.length === 0) {
+      return;
+    }
+
+    this.transientData = { ...snapshot.transientData };
+    this.transientDeletes = new Set(snapshot.transientDeletes);
+    this.notify(changes);
+  }
+
+  // ---- dirty introspection ----
+
+  /** Paths with pending transient state (edits or deletions). */
+  pendingPaths(): readonly string[] {
+    return [
+      ...new Set([
+        ...Object.keys(this.transientData),
+        ...this.transientDeletes,
+      ]),
+    ];
+  }
+
+  /** True if any transient edit or deletion is pending. */
+  isDirty(): boolean {
+    return (
+      Object.keys(this.transientData).length > 0 ||
+      this.transientDeletes.size > 0
+    );
   }
 
   // ---- batch ops ----
