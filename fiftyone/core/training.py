@@ -63,6 +63,10 @@ class TrainingMethodConfig(BaseRunConfig):
         error (None): full traceback string if the run failed
         finished_at (None): UTC ``datetime`` when ``finish()`` ran
         do_id (None): delegated-operation id, if applicable
+        review_status ("new"): human review lifecycle
+            (``new``/``candidate``/``promoted``/``archived``); distinct from
+            the execution ``status``
+        note (None): freeform human note about the run
         **kwargs: any leftover keyword arguments
     """
 
@@ -89,6 +93,8 @@ class TrainingMethodConfig(BaseRunConfig):
         error=None,
         finished_at=None,
         do_id=None,
+        review_status="new",
+        note=None,
         **kwargs,
     ):
         # Must equal the registered run key (BaseRunInfo.key); kept on the config for recorder convenience and the eval back-pointer.
@@ -113,6 +119,10 @@ class TrainingMethodConfig(BaseRunConfig):
         self.error = error
         self.finished_at = finished_at
         self.do_id = do_id
+        # Human review lifecycle + note, written by the panel. Kept distinct
+        # from the execution `status` above (in_progress/completed/failed).
+        self.review_status = review_status
+        self.note = note
         # Runtime-only dataset back-reference; the "_" prefix excludes it
         # from attributes()/serialize (see runs.py BaseRunConfig.attributes).
         # Injected by Dataset.init_training_run() and
