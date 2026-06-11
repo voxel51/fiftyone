@@ -89,6 +89,17 @@ describe("GridCustomRendererItem", () => {
     const wrapper = renderer?.parentElement as HTMLElement | null;
     expect(wrapper).toBeTruthy();
 
+    const hostClickSpy = vi.fn();
+    const hostContextMenuSpy = vi.fn();
+    host.addEventListener("click", hostClickSpy);
+    host.addEventListener("contextmenu", hostContextMenuSpy);
+
+    fireEvent.click(renderer as HTMLElement);
+    fireEvent.contextMenu(renderer as HTMLElement);
+
+    expect(hostClickSpy).not.toHaveBeenCalled();
+    expect(hostContextMenuSpy).not.toHaveBeenCalled();
+
     fireEvent.mouseEnter(wrapper as HTMLElement);
 
     await waitFor(() => {
@@ -96,12 +107,10 @@ describe("GridCustomRendererItem", () => {
       expect(getSelectControl(host)).toBeTruthy();
     });
 
-    const hostClickSpy = vi.fn();
-    host.addEventListener("click", hostClickSpy);
     const openButton = getOpenModalButton(host) as HTMLElement | null;
     expect(openButton).toBeTruthy();
     openButton?.click();
-    expect(hostClickSpy).toHaveBeenCalled();
+    expect(hostClickSpy).toHaveBeenCalledTimes(1);
 
     const selectSpy = vi.fn();
     looker.addEventListener("selectthumbnail", selectSpy);

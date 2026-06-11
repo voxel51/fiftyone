@@ -158,6 +158,12 @@ type GridCustomRendererWrapperProps = React.PropsWithChildren<{
   onSelect: React.MouseEventHandler<HTMLButtonElement>;
 }>;
 
+const stopGridActivationPropagation: React.MouseEventHandler<HTMLElement> = (
+  event
+) => {
+  event.stopPropagation();
+};
+
 const GridCustomRendererWrapper = ({
   children,
   selected,
@@ -173,6 +179,8 @@ const GridCustomRendererWrapper = ({
       onMouseEnter={() => setHovering(true)}
       onMouseMove={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
+      onClick={stopGridActivationPropagation}
+      onContextMenu={stopGridActivationPropagation}
     >
       {children}
       {showSelectionControl && (
