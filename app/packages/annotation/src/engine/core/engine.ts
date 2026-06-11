@@ -21,7 +21,12 @@ import type {
   LabelStore,
 } from "../store/types";
 import { isWholeSampleReset } from "../store/types";
+import type { EntityId } from "../identity/entityId";
 import { InteractionState } from "../interaction/interactionState";
+import type { SignalHandler } from "../signals/signalPipe";
+import { SignalPipe } from "../signals/signalPipe";
+import { PoolTemporalView } from "../temporal/poolTemporalView";
+import type { TemporalView } from "../temporal/types";
 import { DispatchGuard } from "./dispatchGuard";
 import type { UndoEntry, UndoOp } from "./undoStack";
 import { UndoStack } from "./undoStack";
@@ -50,6 +55,11 @@ export class AnnotationEngine {
   /** Ephemeral selection/hover/anchor state (§6.5); GC'd by the engine. */
   readonly interaction: InteractionState;
 
+  /** Derived temporal presence over the pool (§4.1); ≡ pool when non-temporal. */
+  readonly temporal: TemporalView;
+
+  private signals: SignalPipe;
+
   private stores = new Map<string, LabelStore>();
   private displayListeners = new Set<DisplayListener>();
   private changeListeners = new Set<ChangeListener>();
@@ -75,6 +85,8 @@ export class AnnotationEngine {
 
   constructor() {
     this.interaction = new InteractionState(this.guard);
+    this.signals = new SignalPipe(this.guard);
+    this.temporal = new PoolTemporalView(this);
     this.registerBookkeeping((changes) => this.interaction.gc(changes));
   }
 
@@ -285,6 +297,20 @@ export class AnnotationEngine {
 
   getVersion(): number {
     return this.version;
+  }
+
+  // ---- signal pipe (§6.4) ----
+
+  publishSignal<T>(topic: string, key: EntityId, payload: T): void {
+    this.signals.publish(topic, key, payload);
+  }
+
+  subscribeSignal<T>(
+    topic: string,
+    key: EntityId | "*",
+    handler: SignalHandler<T>
+  ): () => void {
+    return this.signals.subscribe(topic, key, handler);
   }
 
   /** Engine-internal: pre-dispatch bookkeeping (interaction GC, §6.5). */
