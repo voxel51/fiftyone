@@ -1,15 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { JSONDeltas } from "../types";
 import {
   buildJsonPatch,
-  defaultDeltaSuppliers,
   fieldDeltas,
   firstEditedLabel,
   SampleSnapshot,
 } from "./diff";
 import { LabelType } from "./labels";
-
-const suppliers = defaultDeltaSuppliers();
 
 /** Build a SampleSnapshot with sensible defaults; override per test. */
 const snap = (o: Partial<SampleSnapshot> = {}): SampleSnapshot => ({
@@ -17,7 +13,6 @@ const snap = (o: Partial<SampleSnapshot> = {}): SampleSnapshot => ({
   transientData: {},
   transientDeletes: new Set<string>(),
   getLabelType: () => LabelType.Unknown,
-  getSupplier: (t) => suppliers[t],
   ...o,
 });
 
@@ -118,18 +113,14 @@ describe("buildJsonPatch — label fields", () => {
 });
 
 describe("fieldDeltas — supplier resolution", () => {
-  it("routes through the snapshot's getSupplier", () => {
-    const sentinel: JSONDeltas = [{ op: "replace", path: "/x", value: 1 }];
+  it("structurally diffs known label types, prefixed by the field path", () => {
     const deltas = fieldDeltas(
-      snap({
-        getLabelType: () => LabelType.Detection,
-        getSupplier: () => () => sentinel,
-      }),
+      snap({ getLabelType: () => LabelType.Detection }),
       "gt",
-      { a: 1 },
-      { a: 2 }
+      { label: "a" },
+      { label: "b" }
     );
-    expect(deltas).toEqual([{ op: "replace", path: "/gt/x", value: 1 }]);
+    expect(deltas).toEqual([{ op: "replace", path: "/gt/label", value: "b" }]);
   });
 
   it("uses the unknown supplier for primitive fields", () => {

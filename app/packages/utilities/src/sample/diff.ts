@@ -16,8 +16,6 @@ export interface SampleSnapshot {
   readonly transientDeletes: ReadonlySet<string>;
   /** Label type at a dot-delimited path (`Unknown` if not a label). */
   readonly getLabelType: (path: string) => LabelType;
-  /** Resolve the delta supplier for a label type (encapsulates the Unknown fallback). */
-  readonly getSupplier: (type: LabelType) => JSONDeltaSupplier;
 }
 
 /** A reference to an edited label, used to route generated-view persistence. */
@@ -104,9 +102,8 @@ export const fieldDeltas = (
   transientValue: unknown
 ): JSONDeltas => {
   const type = snapshot.getLabelType(path);
-  const supplier = snapshot.getSupplier(type);
 
-  return supplier(
+  return supplierFor(type)(
     sourceValue,
     mergedForDiff(type, sourceValue, transientValue)
   ).map((d) => ({ ...d, path: buildJsonPath(path, d.path) }));
@@ -342,17 +339,10 @@ export const unknownSupplier: JSONDeltaSupplier = (a, b) => {
   return [{ op: "replace", path: "", value: bNorm as never }];
 };
 
-export const defaultDeltaSuppliers = (): Record<
-  LabelType,
-  JSONDeltaSupplier
-> => ({
-  [LabelType.Classification]: structuralSupplier,
-  [LabelType.Classifications]: structuralSupplier,
-  [LabelType.Detection]: structuralSupplier,
-  [LabelType.Detections]: structuralSupplier,
-  [LabelType.Keypoint]: structuralSupplier,
-  [LabelType.Keypoints]: structuralSupplier,
-  [LabelType.Polyline]: structuralSupplier,
-  [LabelType.Polylines]: structuralSupplier,
-  [LabelType.Unknown]: unknownSupplier,
-});
+/**
+ * Resolve the delta supplier for a label type: every known label type diffs
+ * structurally (the transient already carries the merged target state); only
+ * the `Unknown` fallback (primitive / untyped fields) differs.
+ */
+export const supplierFor = (type: LabelType): JSONDeltaSupplier =>
+  type === LabelType.Unknown ? unknownSupplier : structuralSupplier;

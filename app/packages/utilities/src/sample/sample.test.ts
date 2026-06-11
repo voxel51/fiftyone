@@ -556,19 +556,6 @@ describe("Sample", () => {
         expect(s.getJsonPatch()).toEqual([]);
       });
     });
-
-    it("dispatches to a custom supplier when one is registered", () => {
-      const custom = vi.fn().mockReturnValue([{ op: "test", path: "" }]);
-      const s = new Sample({
-        schema: detectionsSchema,
-        data: { detection: makeDet("d1", "cat") },
-        suppliers: { [LabelType.Detection]: custom },
-      });
-      s.updateLabel("detection", { _id: "d1", label: "lion" });
-      const patch = s.getJsonPatch();
-      expect(custom).toHaveBeenCalledOnce();
-      expect(patch).toEqual([{ op: "test", path: "/detection" }]);
-    });
   });
 
   describe("getJsonPatch — generated views", () => {

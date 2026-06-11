@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { JSONDeltas } from "../types";
-import { defaultDeltaSuppliers, SampleSnapshot } from "./diff";
+import { SampleSnapshot } from "./diff";
 import { LabelType } from "./labels";
 import { reconcilePersisted } from "./reconcile";
 
-const suppliers = defaultDeltaSuppliers();
 const MASK = new Set(["mask", "mask_path"]);
 
 /** A snapshot whose `ai_seg` field is a Detections list. */
@@ -14,7 +13,6 @@ const snap = (o: Partial<SampleSnapshot> = {}): SampleSnapshot => ({
   transientDeletes: new Set<string>(),
   getLabelType: (p) =>
     p === "ai_seg" ? LabelType.Detections : LabelType.Unknown,
-  getSupplier: (t) => suppliers[t],
   ...o,
 });
 

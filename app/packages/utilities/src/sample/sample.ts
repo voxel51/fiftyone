@@ -1,8 +1,7 @@
 import { Field, getFieldInfo, Schema } from "../schema";
-import { JSONDeltas, JSONDeltaSupplier } from "../types";
+import { JSONDeltas } from "../types";
 import {
   buildJsonPatch,
-  defaultDeltaSuppliers,
   EditedLabel,
   firstEditedLabel,
   SampleSnapshot,
@@ -90,11 +89,6 @@ export type SampleOptions = {
   data?: Record<string, unknown>;
   schema?: Schema;
   /**
-   * Override the delta supplier for one or more label types. Any types not
-   * specified fall back to the built-in suppliers.
-   */
-  suppliers?: Partial<Record<LabelType, JSONDeltaSupplier>>;
-  /**
    * Label sub-field names whose persisted value is server-owned and released
    * from the transient after a successful persist (see
    * {@link Sample.reconcilePersisted} and {@link DEFAULT_SERVER_OWNED_FIELDS}).
@@ -126,7 +120,6 @@ export class Sample {
   private transientData: Record<string, unknown> = {};
   private transientDeletes: Set<string> = new Set();
   private schema: Schema = {};
-  private deltaSuppliers: Record<LabelType, JSONDeltaSupplier>;
   private serverOwnedFields: Set<string>;
   private listeners: Set<() => void> = new Set();
   private changeListeners: Set<SampleChangeListener> = new Set();
@@ -141,11 +134,6 @@ export class Sample {
     if (opts.schema) {
       this.schema = opts.schema;
     }
-
-    this.deltaSuppliers = {
-      ...defaultDeltaSuppliers(),
-      ...(opts.suppliers ?? {}),
-    } as Record<LabelType, JSONDeltaSupplier>;
 
     this.serverOwnedFields = new Set(
       opts.serverOwnedFields ?? DEFAULT_SERVER_OWNED_FIELDS
@@ -399,14 +387,6 @@ export class Sample {
   }
 
   /**
-   * Add a label. For list labels this is an upsert by `_id`; for single
-   * labels it behaves like {@link updateLabel}.
-   */
-  addLabel(path: string, data: LabelData): void {
-    this.updateLabel(path, data);
-  }
-
-  /**
    * Mark a non-label field for deletion. The next {@link getJsonPatch} will
    * emit a `remove` op for it if the source has a value at this path.
    */
@@ -523,8 +503,8 @@ export class Sample {
 
   /**
    * A read-only view of this sample's state for the pure diff/reconcile
-   * functions. `getLabelType`/`getSupplier` are bound so they can resolve
-   * against this instance's schema and supplier overrides.
+   * functions. `getLabelType` is bound so it can resolve against this
+   * instance's schema.
    */
   private snapshot(): SampleSnapshot {
     return {
@@ -532,8 +512,6 @@ export class Sample {
       transientData: this.transientData,
       transientDeletes: this.transientDeletes,
       getLabelType: (path) => this.getLabelType(path),
-      getSupplier: (type) =>
-        this.deltaSuppliers[type] ?? this.deltaSuppliers[LabelType.Unknown],
     };
   }
 
