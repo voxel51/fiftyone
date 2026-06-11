@@ -88,7 +88,7 @@ function PreviewStatus({
   readonly hasImageTopics: boolean;
   readonly status: McapGridPreviewStatus;
 }) {
-  const loading = status === "idle" || status === "loading";
+  const loading = status === "loading";
   const message = loading
     ? null
     : status === "error"

@@ -169,6 +169,34 @@ describe("GridCustomRendererItem", () => {
     host.remove();
   });
 
+  it("estimates size from raw sample shapes safely", () => {
+    const Renderer = () => <div data-testid="renderer">raw sample</div>;
+    const rawSampleCtx = {
+      ...BASE_CTX,
+      sample: {
+        id: "sample-id",
+        filepath: "/tmp/file.pdf",
+        metadata: { size_bytes: 123 },
+      },
+    };
+    const looker = new GridCustomRendererItem({
+      pluginName: "pdf-renderer",
+      Renderer,
+      RecoilBridge: TestBridge,
+      ctx: rawSampleCtx as any,
+      symbol: BASE_SYMBOL,
+    });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+
+    looker.attach(host, [10, 20], 12);
+
+    expect(looker.getSizeBytesEstimate()).toBe(10 * 20 * 4 + 123 + 1);
+
+    looker.destroy();
+    host.remove();
+  });
+
   it("avoids synchronously unmounting the plugin root", async () => {
     const Renderer = () => {
       throw new Error("render failed");

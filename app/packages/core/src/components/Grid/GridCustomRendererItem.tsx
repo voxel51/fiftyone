@@ -21,6 +21,13 @@ type GridCustomRendererItemConfig = {
 /** Dimensions as [width, height] in pixels. */
 type GridItemDimensions = [width: number, height: number];
 
+type GridSizeHintSample = {
+  filepath?: string;
+  metadata?: {
+    size_bytes?: unknown;
+  };
+};
+
 /** Error boundary for a sample renderer with fallback behavior. */
 class GridCustomRendererErrorBoundary extends React.Component<
   React.PropsWithChildren<{ onError: (error: Error) => void }>,
@@ -442,13 +449,21 @@ export class GridCustomRendererItem {
       return getPixelSizeBytes(rect.width, rect.height);
     })();
 
-    const sample = this.config.ctx.sample.sample;
+    const wrappedSample = this.config.ctx.sample as unknown as
+      | { sample?: GridSizeHintSample }
+      | null
+      | undefined;
+    const safeSample =
+      wrappedSample?.sample ??
+      (this.config.ctx.sample as unknown as GridSizeHintSample | undefined);
     const isSampleFile =
-      this.config.ctx.media.field === "filepath" ||
-      this.config.ctx.media.path === sample.filepath;
-    const sourceSizeBytes = isSampleFile
-      ? getFiniteSizeBytes(sample.metadata?.size_bytes)
-      : 0;
+      Boolean(safeSample) &&
+      (this.config.ctx.media.field === "filepath" ||
+        this.config.ctx.media.path === safeSample?.filepath);
+    const sourceSizeBytes =
+      isSampleFile && safeSample
+        ? getFiniteSizeBytes(safeSample.metadata?.size_bytes)
+        : 0;
     const sourceSizeHintBytes = getSourceSizeHintBytes(
       sourceSizeBytes,
       this.config.ctx.media.mediaType

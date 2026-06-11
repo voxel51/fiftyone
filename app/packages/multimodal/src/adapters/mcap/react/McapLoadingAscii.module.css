@@ -9,9 +9,9 @@
 }
 
 .fallingAsciiBoxInner {
-  animation: mcapAsciiFall 1.15s ease-in infinite;
+  animation: mcap-ascii-fall 1.15s ease-in infinite;
   display: block;
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-family: "SF Mono", Consolas, "Liberation Mono", monospace;
   font-size: 6px;
   font-weight: 800;
   line-height: 0.9;
@@ -20,7 +20,7 @@
   white-space: pre;
 }
 
-@keyframes mcapAsciiFall {
+@keyframes mcap-ascii-fall {
   0% {
     opacity: 0;
     transform: translateY(-14px);

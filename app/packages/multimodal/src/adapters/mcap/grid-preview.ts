@@ -410,16 +410,16 @@ function isCompressedImageStream(topic: StreamInventory): boolean {
     return true;
   }
 
-  const name = topicName(topic).toLowerCase();
-  return name.includes("compressed") && name.includes("image");
+  return false;
 }
 
 function isImageAnnotationsStream(topic: StreamInventory): boolean {
-  if (IMAGE_ANNOTATIONS_PATTERN.test(schemaIdentity(topic))) {
+  const identity = schemaIdentity(topic);
+  if (IMAGE_ANNOTATIONS_PATTERN.test(identity)) {
     return true;
   }
 
-  return topicName(topic).toLowerCase().includes("annotation");
+  return false;
 }
 
 /**
