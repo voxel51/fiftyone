@@ -6,10 +6,10 @@ import {
 import { Button, IconName, Size, Spinner, Variant } from "@voxel51/voodo";
 import clsx from "clsx";
 import React from "react";
-import { isPlayingAtom } from "../../lib/playback/atoms";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import { usePlaybackStore } from "../../lib/playback/playback-store-context";
 import {
+  getIsPlaying,
   useBufferingDetail,
   useIsBuffering,
   useIsPlaying,
@@ -48,7 +48,7 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
       // Read isPlaying from the store, not the render closure — the
       // command must observe the engine's current state even if a
       // re-render hasn't committed yet.
-      handler: () => (store.get(isPlayingAtom) ? pause() : play()),
+      handler: () => (getIsPlaying(store) ? pause() : play()),
       label: "Play / Pause",
       description: "Toggle playback",
     },
