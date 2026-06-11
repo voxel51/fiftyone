@@ -14,6 +14,7 @@ import type { MutableRefObject } from "react";
 import React, { Suspense, useLayoutEffect, useState } from "react";
 import type { RecoilState, RecoilValue } from "recoil";
 import {
+  atom,
   useRecoilCallback,
   useRecoilRefresher_UNSTABLE,
   useRecoilState,
@@ -423,17 +424,13 @@ const useLabelPlaceHolder = (
   return (): [number, string] => {
     const selectedSamples = useRecoilValue(fos.selectedSamples).size;
     const selectedLabels = useRecoilValue(fos.selectedLabelIds).size;
-    const selectedLabelCount = useRecoilValue(
+    const labelCount = useRecoilValue(
       numItemsInSelection({ labels: true, modal })
     );
-    const totalLabelCount = useRecoilValue(
-      fos.labelCount({ modal, extended: true })
-    );
     if (modal && selectedLabels) {
-      const labelCount = selectedLabels > 0 ? selectedLabels : totalLabelCount;
-      return [labelCount, labelsModalPlaceholder(selectedLabels, labelCount)];
+      const count = selectedLabels > 0 ? selectedLabels : labelCount;
+      return [count, labelsModalPlaceholder(selectedLabels, count)];
     }
-    const labelCount = selectedSamples ? selectedLabelCount : totalLabelCount;
     return [
       labelCount,
       labelsPlaceholder(selectedSamples, labelCount, null, elementNames),
@@ -474,6 +471,11 @@ const SuspenseLoading = () => {
   );
 };
 
+const lastTagTabAtom = atom<boolean | null>({
+  key: "lastTagTab",
+  default: null,
+});
+
 type TaggerProps = {
   modal: boolean;
   close: () => void;
@@ -482,7 +484,8 @@ type TaggerProps = {
 };
 
 const Tagger = ({ modal, close, lookerRef, anchorRef }: TaggerProps) => {
-  const [labels, setLabels] = useState(modal);
+  const [lastTab, setLastTab] = useRecoilState(lastTagTabAtom);
+  const [labels, setLabels] = useState(lastTab ?? modal);
   const elementNames = useRecoilValue(fos.elementNames);
   const theme = useTheme();
   const sampleProps = useSpring({
@@ -513,14 +516,24 @@ const Tagger = ({ modal, close, lookerRef, anchorRef }: TaggerProps) => {
         <SwitchDiv
           data-cy="tagger-switch-sample"
           style={sampleProps}
-          onClick={() => labels && setLabels(false)}
+          onClick={() => {
+            if (labels) {
+              setLabels(false);
+              setLastTab(false);
+            }
+          }}
         >
           {modal ? elementNames.singular : elementNames.plural}
         </SwitchDiv>
         <SwitchDiv
           data-cy="tagger-switch-label"
           style={labelProps}
-          onClick={() => !labels && setLabels(true)}
+          onClick={() => {
+            if (!labels) {
+              setLabels(true);
+              setLastTab(true);
+            }
+          }}
         >
           Labels
         </SwitchDiv>

@@ -9,12 +9,11 @@ vi.mock("recoil-relay");
 describe("Resolves tag counts", () => {
   it("resolves all", () => {
     setMockAtoms({
-      labelTagCounts: (params) => ({ one: 1, two: 1, three: 1 }),
-      sampleTagCounts: (params) => ({ one: 1, two: 1, three: 1 }),
       tagStatistics: (modal) => ({
         count: 2,
         items: 1,
         tags: { one: 1, two: 1 },
+        all_tags: ["one", "two", "three"],
       }),
     });
 
