@@ -348,7 +348,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._update_last_loaded_at()
 
         if doc.media_type:
-            self._set_media_type(doc.media_type)
+            self._configure_media_type(doc.media_type)
 
     def __eq__(self, other):
         return type(other) == type(self) and self.name == other.name
@@ -475,15 +475,28 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self._contains_videos(any_slice=True):
             self._init_frames()
 
+        should_reload = self._configure_media_type(media_type)
+        self.save()
+        if should_reload:
+            self.reload()
+
+    def _configure_media_type(self, media_type):
+        """
+        Return:
+            True/False whether when a save is done a reload should also be done
+        """
+        self._doc.media_type = media_type
+
+        if self._contains_videos(any_slice=True):
+            self._init_frames()
+
         if media_type == fom.GROUP:
             # The `metadata` field of group datasets always stays as the
             # generic `Metadata` type because slices may have different types
-            self.save()
+            return False
         else:
             self._update_metadata_field(media_type)
-
-            self.save()
-            self.reload()
+            return True
 
     def _update_metadata_field(self, media_type):
         idx = None
