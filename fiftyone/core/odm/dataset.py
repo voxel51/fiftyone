@@ -546,6 +546,10 @@ class DatasetAppConfig(EmbeddedDocument):
             menus
         modal_media_field ("filepath"): the default sample field from which to
             serve media in the App's modal view
+        grid_pagination (None): whether to enable pagination in the App's grid
+            view for this dataset
+        grid_page_size (None): the number of samples per page when
+            `grid_pagination` is enabled
         plugins ({}): an optional dict mapping plugin names to plugin
             configuration dicts. Builtin plugins include:
 
@@ -570,6 +574,8 @@ class DatasetAppConfig(EmbeddedDocument):
     media_fallback = BooleanField(default=False)
     media_fields = ListField(StringField(), default=["filepath"])
     modal_media_field = StringField(default="filepath")
+    grid_pagination = BooleanField(default=None)
+    grid_page_size = IntField(default=None)
     plugins = DictField()
     sidebar_groups = ListField(
         EmbeddedDocumentField(SidebarGroupDocument), default=None

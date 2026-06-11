@@ -94,3 +94,22 @@
   top: 0;
   width: 100%;
 }
+
+.paginationBar {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background: rgba(0,0,0,0.5);
+  padding: 6px 10px;
+  border-radius: 6px;
+  z-index: 10;
+}
+
+.paginationLabel {
+  color: var(--fo-palette-text-primary);
+  font-size: 13px;
+}

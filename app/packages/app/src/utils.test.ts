@@ -87,3 +87,15 @@ describe("resolves current", () => {
     ).toBe("/datasets/my-dataset?view=view");
   });
 });
+
+describe("preserves page routing", () => {
+  it("keeps page when resolving dataset urls", () => {
+    expect(
+      resolveURL({
+        currentPathname: "/datasets/my-dataset",
+        currentSearch: "?page=2",
+        nextDataset: "other-dataset",
+      })
+    ).toBe("/datasets/other-dataset?page=2");
+  });
+});

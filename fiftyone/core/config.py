@@ -425,6 +425,18 @@ class AppConfig(EnvConfig):
         self.grid_zoom = self.parse_int(
             d, "grid_zoom", env_var="FIFTYONE_APP_GRID_ZOOM", default=7
         )
+        self.grid_pagination = self.parse_bool(
+            d,
+            "grid_pagination",
+            env_var="FIFTYONE_APP_GRID_PAGINATION",
+            default=False,
+        )
+        self.grid_page_size = self.parse_int(
+            d,
+            "grid_page_size",
+            env_var="FIFTYONE_APP_GRID_PAGE_SIZE",
+            default=20,
+        )
         self.enable_query_performance = self.parse_bool(
             d,
             "enable_query_performance",
@@ -596,6 +608,13 @@ class AppConfig(EnvConfig):
                 "`grid_zoom` must be in [0, 10]; found %d", self.grid_zoom
             )
             self.grid_zoom = 5
+
+        if not isinstance(self.grid_page_size, int) or self.grid_page_size <= 0:
+            logger.warning(
+                "`grid_page_size` must be a positive integer; found %s",
+                str(self.grid_page_size),
+            )
+            self.grid_page_size = 20
 
         if "MAPBOX_TOKEN" in os.environ:
             try:

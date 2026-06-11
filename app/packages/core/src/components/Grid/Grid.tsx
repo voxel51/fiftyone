@@ -1,15 +1,17 @@
 import styles from "./Grid.module.css";
 
+import { Button } from "@fiftyone/components";
 import Spotlight from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import React, { useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { useMemoOne } from "use-memo-one";
 import { v4 as uuid } from "uuid";
 import { useSyncLabelsRenderingStatus } from "../../hooks";
 import {
   gridAutosizing,
   gridCrop,
+  gridPage,
   gridSpacing,
   maxGridItemsSizeBytes,
   pageParameters,
@@ -23,6 +25,7 @@ import useRefreshers from "./useRefreshers";
 import useRenderer from "./useRenderer";
 import useResize from "./useResize";
 import useScrollLocation from "./useScrollLocation";
+import usePagination from "./usePagination";
 import useSpotlightPager from "./useSpotlightPager";
 import useUpdates from "./useUpdates";
 import useZoomSetting from "./useZoomSetting";
@@ -30,10 +33,19 @@ import useZoomSetting from "./useZoomSetting";
 const MAX_INSTANCES = 200;
 const MAX_ROWS = 200;
 
+/**
+ * Renders the sample grid with optional pagination and scroll state.
+ */
 function Grid() {
   const id = useMemoOne(() => uuid(), []);
   const pixels = useMemoOne(() => uuid(), []);
   const spacing = useRecoilValue(gridSpacing);
+  const config = useRecoilValue(fos.config);
+  const [paginationEnabled, setPaginationEnabled] = useRecoilState(
+    fos.appConfigOption({ modal: false, key: "gridPagination" })
+  );
+  const total = useRecoilValue(fos.datasetSampleCount);
+  const [currentPage, setCurrentPage] = useRecoilState(gridPage);
   const { pageReset, reset } = useRefreshers();
   const [resizing, setResizing] = useState(false);
   const zoom = useZoomSetting();
@@ -42,7 +54,6 @@ function Grid() {
 
   const records = useRecords(pageReset);
 
-  // divide by two, half for the hidden cache and half for max shown
   const maxBytes = useRecoilValue(maxGridItemsSizeBytes) / 2;
   const cache = useLookerCache({
     maxHiddenItems: MAX_INSTANCES,
@@ -51,9 +62,22 @@ function Grid() {
     ...useLabelVisibility(),
   });
 
+  const pageSizeFromConfig = config?.gridPageSize ?? 20;
+
+  const { maxPage, safePage, start, end } = usePagination({
+      paginationEnabled,
+      setPaginationEnabled,
+      currentPage,
+      setCurrentPage,
+      total,
+      pageSize: pageSizeFromConfig,
+    });
+
   const { page, store } = useSpotlightPager({
     clearRecords: reset,
     pageSelector: pageParameters,
+    pagination: paginationEnabled,
+    pageSize: paginationEnabled ? pageSizeFromConfig : undefined,
     records,
     zoomSelector: gridCrop,
   });
@@ -83,25 +107,25 @@ function Grid() {
     return new Spotlight<number, fos.Sample>({
       ...get(),
       ...renderer,
-
       maxRows: MAX_ROWS,
       maxItemsSizeBytes: autosizing ? maxBytes : undefined,
       scrollbar: true,
       spacing,
-
-      get: (next) => page(next),
+      get: (next) => (paginationEnabled ? page(safePage) : page(next)),
       onItemClick: setSample,
       rowAspectRatioThreshold: zoom,
     });
   }, [
-    cache,
     autosizing,
+    cache,
     get,
     maxBytes,
     page,
+    paginationEnabled,
     renderer,
     reset,
     resizing,
+    safePage,
     setSample,
     spacing,
     zoom,
@@ -116,6 +140,35 @@ function Grid() {
     <div className={styles.gridContainer}>
       <div id={id} className={styles.spotlightGrid} data-cy="fo-grid" />
       <div id={pixels} className={styles.fallingPixels} />
+      {paginationEnabled ? (
+        <div className={styles.paginationBar}>
+          <Button
+            color="secondary"
+            onClick={async () => {
+              const next = Math.max(0, safePage - 1);
+              setCurrentPage(next);
+              await page(next);
+            }}
+            disabled={safePage === 0}
+          >
+            Prev
+          </Button>
+          <div className={styles.paginationLabel}>
+            {total === 0 ? "Showing 0 of 0" : `Showing ${start}–${end} of ${total}`}
+          </div>
+          <Button
+            color="secondary"
+            onClick={async () => {
+              const next = Math.min(maxPage, safePage + 1);
+              setCurrentPage(next);
+              await page(next);
+            }}
+            disabled={safePage >= maxPage}
+          >
+            Next
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

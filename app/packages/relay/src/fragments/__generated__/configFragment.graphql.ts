@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ef5889b53febd6a04edda592f5ef3b86>>
+ * @generated SignedSource<<76dbde31ca65ef52a90158b76e0a57d1>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -21,6 +21,8 @@ export type configFragment$data = {
     readonly defaultQueryPerformance: boolean;
     readonly disableFrameFiltering: boolean;
     readonly enableQueryPerformance: boolean;
+    readonly gridPageSize: number;
+    readonly gridPagination: boolean;
     readonly gridZoom: number;
     readonly loopVideos: boolean;
     readonly maxQueryTime: number | null;
@@ -93,6 +95,20 @@ return {
           "args": null,
           "kind": "ScalarField",
           "name": "gridZoom",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "gridPagination",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "gridPageSize",
           "storageKey": null
         },
         {
@@ -217,6 +233,6 @@ return {
 };
 })();
 
-(node as any).hash = "4f870401f70cf2ffe311e044193912b1";
+(node as any).hash = "d51a4f4f4c7ec6cc608d83197f263f04";
 
 export default node;

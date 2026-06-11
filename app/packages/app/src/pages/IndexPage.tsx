@@ -3,7 +3,6 @@
  */
 
 import { Snackbar, Starter } from "@fiftyone/core";
-import React from "react";
 import { usePreloadedQuery } from "react-relay";
 import { graphql } from "relay-runtime";
 import Nav from "../components/Nav";
@@ -17,6 +16,8 @@ const IndexPageQueryNode = graphql`
       colorBy
       colorPool
       colorscale
+      gridPagination
+      gridPageSize
       multicolorKeypoints
       showSkeletons
     }
@@ -26,6 +27,9 @@ const IndexPageQueryNode = graphql`
   }
 `;
 
+/**
+ * Renders the landing page that prompts the user to add or select a dataset.
+ */
 const IndexPage: Route<IndexPageQuery> = ({ prepared }) => {
   const queryRef = usePreloadedQuery(IndexPageQueryNode, prepared);
   const totalDatasets = queryRef.allDatasets;

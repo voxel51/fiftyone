@@ -221,6 +221,8 @@ class DatasetAppConfig:
     disable_frame_filtering: t.Optional[bool] = None
     dynamic_groups_target_frame_rate: int = 30
     grid_media_field: str = "filepath"
+    grid_pagination: t.Optional[bool] = None
+    grid_page_size: t.Optional[int] = None
     media_fields: t.Optional[t.List[str]]
     modal_media_field: str = "filepath"
     media_fallback: bool = False
@@ -371,6 +373,8 @@ class AppConfig:
     color_pool: t.List[str]
     colorscale: str
     grid_zoom: int
+    grid_pagination: bool
+    grid_page_size: int
     enable_query_performance: bool
     default_query_performance: bool
     loop_videos: bool

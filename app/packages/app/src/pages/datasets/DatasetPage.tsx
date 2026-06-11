@@ -40,6 +40,8 @@ const DatasetPageQueryNode = graphql`
       colorBy
       colorPool
       colorscale
+      gridPagination
+      gridPageSize
       multicolorKeypoints
       showSkeletons
     }
@@ -108,6 +110,9 @@ const DatasetPageQueryNode = graphql`
   }
 `;
 
+/**
+ * Renders the dataset page and switches between the starter and grid views.
+ */
 const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
   const data = usePreloadedQuery(DatasetPageQueryNode, prepared);
 
