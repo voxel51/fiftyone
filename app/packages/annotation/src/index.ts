@@ -1,5 +1,6 @@
 export * from "./commands";
 export * from "./deltas";
+export * from "./engine";
 export * from "./events";
 export * from "./hooks";
 export * from "./persistence";

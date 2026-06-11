@@ -14,6 +14,9 @@ import { toLabelRef } from "../identity/ref";
 import type { AdapterMap, SurfaceBridge } from "./types";
 
 export interface SurfaceActions {
+  /** Identifies the writer (debug/telemetry only, §6.6). */
+  readonly surface: string;
+
   /** Compound gestures (field-move, propagation): raw scoped ops, one atomic unit. */
   transaction<T>(fn: () => T, opts?: { undoKey?: string }): T;
   updateLabel(ref: ScopedRef, partial: Partial<LabelData>): void;
@@ -51,17 +54,20 @@ export interface SurfaceController<Handle> extends SurfaceActions {
 
 interface ActionDeps {
   engine: AnnotationEngine;
+  surface: string;
   /** Ambient sample scope; resolved per call so it tracks store registration. */
   getSample: () => string;
 }
 
 export const createSurfaceActions = ({
   engine,
+  surface,
   getSample,
 }: ActionDeps): SurfaceActions => {
   const bind = (ref: ScopedRef): LabelRef => toLabelRef(getSample(), ref);
 
   return {
+    surface,
     transaction: (fn, opts) => engine.transaction(fn, opts),
     updateLabel: (ref, partial) => engine.updateLabel(bind(ref), partial),
     createLabel: (path, label, frame) =>
@@ -96,7 +102,11 @@ export const createSurfaceController = <Handle, Descriptor>({
   adapters,
 }: ControllerDeps<Handle, Descriptor>): SurfaceController<Handle> => {
   const getSample = (): string => bridge.sample ?? engine.ambientSample();
-  const actions = createSurfaceActions({ engine, getSample });
+  const actions = createSurfaceActions({
+    engine,
+    surface: bridge.surface,
+    getSample,
+  });
 
   const toPartial = (handle: Handle): Partial<LabelData> | null => {
     const scoped = bridge.refOf(handle);
