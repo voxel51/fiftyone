@@ -1,10 +1,30 @@
 import type { BaseOverlay, OverlayFactory, Scene2D } from "@fiftyone/lighter";
-import { describe, expect, it, vi } from "vitest";
+import { decodeMaskPath } from "@fiftyone/lighter";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { detectionAdapter, polylineAdapter } from "./adapters";
 import { lighterAdapters } from "./adapters";
+import type { LighterBridgeDeps } from "./lighterBridge";
 import { createLighterBridge } from "./lighterBridge";
 import { makeDet, makeEngine, ref } from "../../testing/fixtures";
+
+// the bridge's only runtime lighter import — everything else is type-only
+vi.mock("@fiftyone/lighter", () => ({ decodeMaskPath: vi.fn() }));
+
+type DecodedMask = Awaited<ReturnType<typeof decodeMaskPath>>;
+
+const MASK = { shape: [2, 2] } as unknown as NonNullable<DecodedMask>;
+
+const deferred = () => {
+  let resolve!: (mask: DecodedMask) => void;
+  const promise = new Promise<DecodedMask>((r) => {
+    resolve = r;
+  });
+  return { promise, resolve };
+};
+
+/** Drain microtasks so a resolved gate's continuation runs. */
+const settle = () => new Promise<void>((r) => setTimeout(r, 0));
 
 /** Minimal overlay shim covering everything the adapters/bridge touch. */
 const makeOverlay = (
@@ -77,6 +97,25 @@ describe("lighter adapters", () => {
       width: 0.3,
       height: 0.4,
     });
+  });
+
+  it("buildHandle gates on mask_path only when no inline mask exists", () => {
+    const gated = detectionAdapter.buildHandle(ref("ground_truth", "d1"), {
+      _id: "d1",
+      bounding_box: [0.1, 0.2, 0.3, 0.4],
+      mask_path: "/m.png",
+    });
+
+    expect(gated.pendingMaskPath).toBe("/m.png");
+
+    const inline = detectionAdapter.buildHandle(ref("ground_truth", "d1"), {
+      _id: "d1",
+      bounding_box: [0.1, 0.2, 0.3, 0.4],
+      mask_path: "/m.png",
+      mask: "INLINE",
+    });
+
+    expect(inline.pendingMaskPath).toBeUndefined();
   });
 
   it("toLabel extracts bounds and strips _id (the ref owns identity)", () => {
@@ -173,6 +212,7 @@ describe("lighter bridge", () => {
       scene,
       overlayFactory,
       sample: "sample-1",
+      readLabel: () => undefined,
     });
 
     expect(bridge.resolveHandle(ref("ground_truth", "d1"))).toBeUndefined();
@@ -190,6 +230,7 @@ describe("lighter bridge", () => {
       scene,
       overlayFactory,
       sample: "sample-1",
+      readLabel: () => undefined,
     });
 
     bridge.clear();
@@ -212,6 +253,7 @@ describe("lighter bridge", () => {
       scene,
       overlayFactory,
       sample: "sample-1",
+      readLabel: (r) => engine.getLabel({ sample: "sample-1", ...r }),
     });
 
     const unregister = engine.registerBridge(bridge, lighterAdapters);
@@ -235,6 +277,201 @@ describe("lighter bridge", () => {
     // delete unmounts
     engine.deleteLabel(ref("ground_truth", "d1"));
     expect(overlays.has("d1")).toBe(false);
+
+    unregister();
+  });
+});
+
+describe("lighter bridge gated mounts (deferred mask_path decode)", () => {
+  beforeEach(() => {
+    vi.mocked(decodeMaskPath).mockReset();
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  });
+
+  const det = (id: string, extras: Record<string, unknown> = {}) => ({
+    _id: id,
+    label: "cat",
+    bounding_box: [0.1, 0.2, 0.3, 0.4],
+    mask_path: "/m.png",
+    ...extras,
+  });
+
+  const gatedDescriptor = (id = "d1", extras: Record<string, unknown> = {}) =>
+    detectionAdapter.buildHandle(ref("ground_truth", id), det(id, extras));
+
+  const makeGated = (overrides: Partial<LighterBridgeDeps> = {}) => {
+    const parts = makeScene();
+    const bridge = createLighterBridge({
+      scene: parts.scene,
+      overlayFactory: parts.overlayFactory,
+      sample: "sample-1",
+      readLabel: () => det("d1"),
+      resolveMediaUrl: ({ raw }) => `http://x${raw}`,
+      ...overrides,
+    });
+    return { ...parts, bridge };
+  };
+
+  it("defers the mount until the decode resolves — no maskless intermediate", async () => {
+    const gate = deferred();
+    vi.mocked(decodeMaskPath).mockReturnValue(gate.promise);
+    const { bridge, overlays, overlayFactory } = makeGated();
+    const onDeferredMount = vi.fn();
+    bridge.onDeferredMount = onDeferredMount;
+
+    const handle = bridge.mount(gatedDescriptor());
+
+    expect(handle).toBeUndefined();
+    expect(overlays.size).toBe(0);
+    expect(bridge.resolveHandle(ref("ground_truth", "d1"))).toBeUndefined();
+
+    gate.resolve(MASK);
+    await settle();
+
+    expect(overlays.get("d1")).toBeDefined();
+    expect(overlayFactory.create).toHaveBeenCalledWith(
+      "detection",
+      expect.objectContaining({ preDecodedMask: MASK })
+    );
+    expect(onDeferredMount).toHaveBeenCalledWith(overlays.get("d1"));
+  });
+
+  it("dedupes a re-fired mount while the decode is in flight", async () => {
+    const gate = deferred();
+    vi.mocked(decodeMaskPath).mockReturnValue(gate.promise);
+    const { bridge, overlays } = makeGated();
+
+    bridge.mount(gatedDescriptor());
+    bridge.mount(gatedDescriptor()); // routine reconcile re-fire
+
+    expect(decodeMaskPath).toHaveBeenCalledTimes(1);
+
+    gate.resolve(MASK);
+    await settle();
+
+    expect(overlays.size).toBe(1);
+  });
+
+  it("discards a resolve whose ref no longer reads back", async () => {
+    const gate = deferred();
+    vi.mocked(decodeMaskPath).mockReturnValue(gate.promise);
+    const { bridge, overlays } = makeGated({ readLabel: () => undefined });
+
+    bridge.mount(gatedDescriptor());
+    gate.resolve(MASK);
+    await settle();
+
+    expect(overlays.size).toBe(0);
+  });
+
+  it("clear() cancels in-flight gates (lifecycle teardown)", async () => {
+    const gate = deferred();
+    vi.mocked(decodeMaskPath).mockReturnValue(gate.promise);
+    const { bridge, overlays } = makeGated();
+
+    bridge.mount(gatedDescriptor());
+    bridge.clear();
+    gate.resolve(MASK);
+    await settle();
+
+    expect(overlays.size).toBe(0);
+  });
+
+  it("applies the freshest committed label at resolve time", async () => {
+    const gate = deferred();
+    vi.mocked(decodeMaskPath).mockReturnValue(gate.promise);
+    const { bridge, overlays } = makeGated({
+      // an update landed while the decode was in flight
+      readLabel: () => det("d1", { label: "dog" }),
+    });
+
+    bridge.mount(gatedDescriptor());
+    gate.resolve(MASK);
+    await settle();
+
+    const overlay = overlays.get("d1");
+    expect(overlay?.applyLabel).toHaveBeenCalled();
+    expect((overlay?.label as { label?: string }).label).toBe("dog");
+  });
+
+  it("re-decodes when the mask_path changes mid-flight", async () => {
+    const first = deferred();
+    const second = deferred();
+    vi.mocked(decodeMaskPath)
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+    const { bridge, overlays } = makeGated();
+
+    bridge.mount(gatedDescriptor());
+    bridge.mount(gatedDescriptor("d1", { mask_path: "/m2.png" }));
+
+    first.resolve(MASK);
+    await settle();
+
+    // the stale decode was thrown away; a new one is in flight
+    expect(overlays.size).toBe(0);
+    expect(decodeMaskPath).toHaveBeenLastCalledWith(
+      "http://x/m2.png",
+      "ground_truth",
+      expect.anything()
+    );
+
+    second.resolve(MASK);
+    await settle();
+
+    expect(overlays.size).toBe(1);
+  });
+
+  it("mounts without a mask when no URL resolves (terminal fallback)", () => {
+    const { bridge, overlays, overlayFactory } = makeGated({
+      resolveMediaUrl: () => undefined,
+    });
+
+    bridge.mount(gatedDescriptor());
+
+    expect(decodeMaskPath).not.toHaveBeenCalled();
+    expect(overlays.get("d1")).toBeDefined();
+    expect(overlayFactory.create).toHaveBeenCalledWith(
+      "detection",
+      expect.not.objectContaining({ preDecodedMask: expect.anything() })
+    );
+    expect(console.warn).toHaveBeenCalled();
+  });
+
+  it("engine read-half gates hydration and applies interaction on the late insert", async () => {
+    const { engine } = makeEngine("sample-1", {
+      ground_truth: { detections: [makeDet("d1", "cat")] },
+    });
+    engine.updateLabel(ref("ground_truth", "d1"), {
+      bounding_box: [0.1, 0.2, 0.3, 0.4],
+      mask_path: "/m.png",
+    });
+
+    const gate = deferred();
+    vi.mocked(decodeMaskPath).mockReturnValue(gate.promise);
+    const { scene, overlays, overlayFactory } = makeScene();
+    const bridge = createLighterBridge({
+      scene,
+      overlayFactory,
+      sample: "sample-1",
+      readLabel: (r) => engine.getLabel({ sample: "sample-1", ...r }),
+      resolveMediaUrl: ({ raw }) => `http://x${raw}`,
+    });
+
+    const unregister = engine.registerBridge(bridge, lighterAdapters);
+
+    // hydration is gated — nothing mounts until the decode lands
+    expect(overlays.size).toBe(0);
+
+    // selection arrives while the mount is in flight
+    engine.interaction.setActive([ref("ground_truth", "d1")]);
+
+    gate.resolve(MASK);
+    await settle();
+
+    const overlay = overlays.get("d1");
+    expect(overlay).toBeDefined();
+    expect(overlay?.setSelected).toHaveBeenCalledWith(true);
 
     unregister();
   });

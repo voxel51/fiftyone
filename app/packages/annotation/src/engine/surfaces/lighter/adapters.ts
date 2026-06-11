@@ -37,6 +37,14 @@ export interface LighterDescriptor {
     string,
     unknown
   >;
+
+  /**
+   * Raw `mask_path` value needing an async decode before a faithful overlay
+   * exists. The bridge gates the mount on it — never a
+   * maskless intermediate. Set by the detection adapter when the label has
+   * `mask_path` but no inline `mask`.
+   */
+  pendingMaskPath?: string;
 }
 
 export type LighterAdapter = LabelKindAdapter<BaseOverlay, LighterDescriptor>;
@@ -57,6 +65,9 @@ const withoutId = (label: Record<string, unknown>): Partial<LabelData> => {
 export const detectionAdapter: LighterAdapter = {
   buildHandle: (ref, label) => ({
     factoryKey: "detection",
+    ...(!label.mask && typeof label.mask_path === "string"
+      ? { pendingMaskPath: label.mask_path }
+      : {}),
     options: {
       id: ref.instanceId,
       field: ref.path,

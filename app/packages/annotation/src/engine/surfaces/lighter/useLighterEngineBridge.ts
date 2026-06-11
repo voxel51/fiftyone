@@ -15,16 +15,24 @@ import { useLighter, useLighterEventHandler } from "@fiftyone/lighter";
 import { useCallback, useMemo } from "react";
 
 import type { AnnotationEngine } from "../../core/engine";
+import { toLabelRef } from "../../identity/ref";
 import { useSurfaceBridge } from "../../react/useSurfaceBridge";
 import { lighterAdapters } from "./adapters";
+import type { LighterBridgeDeps } from "./lighterBridge";
 import { createLighterBridge } from "./lighterBridge";
 
 export const useLighterEngineBridge = ({
   engine,
   sample,
+  resolveMediaUrl,
 }: {
   engine: AnnotationEngine;
   sample: string;
+  /**
+   * Maps raw media sub-field values (e.g. `mask_path`) to fetchable URLs for
+   * gated mounts — the modal wiring owns the sample's `sources` map.
+   */
+  resolveMediaUrl?: LighterBridgeDeps["resolveMediaUrl"];
 }): void => {
   const { scene, overlayFactory } = useLighter();
   const on = useLighterEventHandler(scene?.getEventChannel());
@@ -32,9 +40,15 @@ export const useLighterEngineBridge = ({
   const bridge = useMemo(
     () =>
       scene
-        ? createLighterBridge({ scene, overlayFactory, sample })
+        ? createLighterBridge({
+            scene,
+            overlayFactory,
+            sample,
+            readLabel: (ref) => engine.getLabel(toLabelRef(sample, ref)),
+            resolveMediaUrl,
+          })
         : undefined,
-    [scene, overlayFactory, sample]
+    [engine, scene, overlayFactory, sample, resolveMediaUrl]
   );
 
   const surface = useSurfaceBridge({
