@@ -21,6 +21,8 @@ import type {
   LabelStore,
 } from "../store/types";
 import { isWholeSampleReset } from "../store/types";
+import { registerBridgeLoop } from "../bridge/bridgeLoop";
+import type { AdapterMap, SurfaceBridge } from "../bridge/types";
 import type { EntityId } from "../identity/entityId";
 import { InteractionState } from "../interaction/interactionState";
 import type { SignalHandler } from "../signals/signalPipe";
@@ -87,7 +89,9 @@ export class AnnotationEngine {
     this.interaction = new InteractionState(this.guard);
     this.signals = new SignalPipe(this.guard);
     this.temporal = new PoolTemporalView(this);
-    this.registerBookkeeping((changes) => this.interaction.gc(changes));
+    this.registerBookkeeping((changes) =>
+      this.interaction.gc(changes, (ref) => this.getLabel(ref) !== undefined)
+    );
   }
 
   // ---- identity ----
@@ -321,7 +325,29 @@ export class AnnotationEngine {
     };
   }
 
+  // ---- bridges (§6.1) ----
+
+  /**
+   * Register a retained-mode surface (mount-scoped). The engine derives the
+   * whole read-half: hydration, change reconciliation, presence merge, and
+   * silent interaction application. Returns unregister.
+   */
+  registerBridge<Handle, Descriptor>(
+    bridge: SurfaceBridge<Handle, Descriptor>,
+    adapters: AdapterMap<Handle, Descriptor>
+  ): () => void {
+    return registerBridgeLoop(this, bridge, adapters);
+  }
+
   // ---- scoping ----
+
+  /**
+   * The ambient sample for single-sample sessions (the modal case); throws
+   * when federation makes it ambiguous — pass an explicit scope instead.
+   */
+  ambientSample(): string {
+    return this.soleSample();
+  }
 
   scope(sample: string): ScopedEngine {
     return {
@@ -395,8 +421,8 @@ export class AnnotationEngine {
   private soleSample(): string {
     if (this.stores.size !== 1) {
       throw new Error(
-        `createLabel without a sample requires exactly one registered store ` +
-          `(have ${this.stores.size}); use scope(sample).createLabel`
+        `the ambient sample requires exactly one registered store ` +
+          `(have ${this.stores.size}); pass an explicit sample scope`
       );
     }
 

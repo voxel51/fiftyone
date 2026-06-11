@@ -151,19 +151,25 @@ export class InteractionState {
   /**
    * GC against the SEMANTIC change stream (D5 review amendment): a delete
    * prunes the ref from active/hover and promotes the anchor; a whole-sample
-   * reset prunes everything belonging to that sample. Runs inside the
-   * engine's dispatch (sanctioned bookkeeping), coalesced to one notify.
+   * reset prunes everything belonging to that sample. Read-through like every
+   * other subscriber (`isLive`): a ref that still resolves after the batch
+   * survives — delete + re-create in one transaction (and a data refresh that
+   * keeps ids) never destroys selection. Runs inside the engine's dispatch
+   * (sanctioned bookkeeping), coalesced to one notify.
    */
-  gc(changes: readonly LabelChange[]): void {
+  gc(
+    changes: readonly LabelChange[],
+    isLive: (ref: LabelRef) => boolean
+  ): void {
     let pruned = false;
 
     for (const change of changes) {
       if (isWholeSampleReset(change)) {
-        pruned = this.pruneSample(change.ref.sample) || pruned;
+        pruned = this.pruneSample(change.ref.sample, isLive) || pruned;
         continue;
       }
 
-      if (change.kind !== "delete") {
+      if (change.kind !== "delete" || isLive(change.ref)) {
         continue;
       }
 
@@ -205,11 +211,14 @@ export class InteractionState {
     return inActive || inHovered;
   }
 
-  private pruneSample(sample: string): boolean {
+  private pruneSample(
+    sample: string,
+    isLive: (ref: LabelRef) => boolean
+  ): boolean {
     let pruned = false;
 
     for (const [key, ref] of [...this.active]) {
-      if (ref.sample === sample) {
+      if (ref.sample === sample && !isLive(ref)) {
         this.active.delete(key);
         this.promoteAnchorIfWas(key);
         pruned = true;
@@ -217,7 +226,7 @@ export class InteractionState {
     }
 
     for (const [key, ref] of [...this.hovered]) {
-      if (ref.sample === sample) {
+      if (ref.sample === sample && !isLive(ref)) {
         this.hovered.delete(key);
         pruned = true;
       }
