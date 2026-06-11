@@ -9399,6 +9399,14 @@ def _create_dataset(
 ):
     slug = _validate_dataset_name(name)
 
+    if media_type is not None and (
+        not isinstance(media_type, str) or media_type not in fom.MEDIA_TYPES
+    ):
+        raise ValueError(
+            "Invalid media type '%s'. Must be one of %s"
+            % (media_type, sorted(fom.MEDIA_TYPES))
+        )
+
     _id = ObjectId()
     now = datetime.utcnow()
 

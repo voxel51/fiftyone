@@ -4901,12 +4901,12 @@ class DatasetTests(unittest.TestCase):
 
     @drop_datasets
     def test_media_type(self):
-        dataset = fo.Dataset("test_media_type", media_type="custom_media_type")
-        assert dataset.media_type == "custom_media_type"
+        dataset = fo.Dataset("test_media_type", media_type=fom.IMAGE)
+        assert dataset.media_type == fom.IMAGE
 
         del fo.Dataset._instances["test_media_type"]
         dataset2 = fo.load_dataset("test_media_type")
-        assert dataset2.media_type == "custom_media_type"
+        assert dataset2.media_type == fom.IMAGE
 
     @drop_datasets
     def test_media_type_side_effects(self):
@@ -4922,6 +4922,11 @@ class DatasetTests(unittest.TestCase):
             metadata.embedded_doc_type
             == "fiftyone.core.metadata.ImageMetadata"
         )
+
+    @drop_datasets
+    def test_media_type_validated(self):
+        with self.assertRaises(ValueError):
+            fo.Dataset("test_media_type", media_type="not_a_valid_media_type")
 
     def _assert_camera_intrinsics_equal(self, actual, expected):
         self.assertEqual(set(actual.keys()), set(expected.keys()))
