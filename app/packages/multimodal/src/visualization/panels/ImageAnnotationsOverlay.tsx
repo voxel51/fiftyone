@@ -31,6 +31,7 @@ export interface ImageAnnotationsOverlayProps {
   readonly imageWidth: number;
   readonly imageHeight: number;
   readonly fit: "contain" | "cover";
+  readonly strokeWidth?: number;
   readonly selectedKey?: string | null;
   readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
 }
@@ -51,6 +52,7 @@ export function ImageAnnotationsOverlay({
   imageWidth,
   imageHeight,
   fit,
+  strokeWidth,
   selectedKey,
   onSelectPrimitive,
 }: ImageAnnotationsOverlayProps) {
@@ -62,7 +64,7 @@ export function ImageAnnotationsOverlay({
 
   useEffect(() => {
     const el = containerRef.current;
-    if (!el) return;
+    if (!el) return undefined;
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
       if (!entry) return;
@@ -101,6 +103,7 @@ export function ImageAnnotationsOverlay({
               <SetPrimitives
                 set={set}
                 setIndex={i}
+                strokeWidth={strokeWidth}
                 selectedKey={selectedKey ?? null}
                 onSelectPrimitive={onSelectPrimitive}
               />
@@ -115,6 +118,7 @@ export function ImageAnnotationsOverlay({
 interface SetPrimitivesProps {
   readonly set: ImageAnnotationsVisualization;
   readonly setIndex: number;
+  readonly strokeWidth?: number;
   readonly selectedKey: string | null;
   readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
 }
@@ -122,6 +126,7 @@ interface SetPrimitivesProps {
 function SetPrimitives({
   set,
   setIndex,
+  strokeWidth,
   selectedKey,
   onSelectPrimitive,
 }: SetPrimitivesProps) {
@@ -135,6 +140,7 @@ function SetPrimitives({
             primitiveIndex={j}
             setIndex={setIndex}
             texts={set.texts}
+            strokeWidth={strokeWidth}
             selectedKey={selectedKey}
             onSelectPrimitive={onSelectPrimitive}
           />
@@ -145,6 +151,7 @@ function SetPrimitives({
             primitiveIndex={j}
             setIndex={setIndex}
             texts={set.texts}
+            strokeWidth={strokeWidth}
             selectedKey={selectedKey}
             onSelectPrimitive={onSelectPrimitive}
           />
@@ -157,6 +164,7 @@ function SetPrimitives({
           primitiveIndex={j}
           setIndex={setIndex}
           texts={set.texts}
+          strokeWidth={strokeWidth}
           selectedKey={selectedKey}
           onSelectPrimitive={onSelectPrimitive}
         />
@@ -180,6 +188,7 @@ interface CirclePrimitiveProps {
   readonly primitiveIndex: number;
   readonly setIndex: number;
   readonly texts: readonly ImageAnnotationText[];
+  readonly strokeWidth?: number;
   readonly selectedKey: string | null;
   readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
 }
@@ -189,6 +198,7 @@ function CirclePrimitive({
   primitiveIndex,
   setIndex,
   texts,
+  strokeWidth,
   selectedKey,
   onSelectPrimitive,
 }: CirclePrimitiveProps) {
@@ -221,7 +231,7 @@ function CirclePrimitive({
         cx={x}
         cy={y}
         r={radius}
-        strokeWidth={lineWidth(primitive.thickness)}
+        strokeWidth={lineWidth(primitive.thickness, strokeWidth)}
         vectorEffect="non-scaling-stroke"
         fill="none"
       />
@@ -234,6 +244,7 @@ interface PolylinePrimitiveProps {
   readonly primitiveIndex: number;
   readonly setIndex: number;
   readonly texts: readonly ImageAnnotationText[];
+  readonly strokeWidth?: number;
   readonly selectedKey: string | null;
   readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
 }
@@ -243,10 +254,11 @@ function PolylinePrimitive({
   primitiveIndex,
   setIndex,
   texts,
+  strokeWidth,
   selectedKey,
   onSelectPrimitive,
 }: PolylinePrimitiveProps) {
-  const thickness = lineWidth(primitive.thickness);
+  const thickness = lineWidth(primitive.thickness, strokeWidth);
   const centroid = pointsCentroid(primitive.points);
   const label = centroid ? nearestLabel(texts, centroid) : null;
   const color = colorForLabel(label);
@@ -328,6 +340,7 @@ interface LineListGroupsProps {
   readonly primitiveIndex: number;
   readonly setIndex: number;
   readonly texts: readonly ImageAnnotationText[];
+  readonly strokeWidth?: number;
   readonly selectedKey: string | null;
   readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
 }
@@ -337,10 +350,11 @@ function LineListGroups({
   primitiveIndex,
   setIndex,
   texts,
+  strokeWidth,
   selectedKey,
   onSelectPrimitive,
 }: LineListGroupsProps) {
-  const thickness = lineWidth(primitive.thickness);
+  const thickness = lineWidth(primitive.thickness, strokeWidth);
   const groups = groupLineListByLabel(primitive.points, texts);
 
   return (
@@ -619,7 +633,11 @@ function pickHandler(
   };
 }
 
-function lineWidth(thickness: number): number {
+function lineWidth(thickness: number, override?: number): number {
+  if (typeof override === "number" && Number.isFinite(override)) {
+    return Math.max(0, override);
+  }
+
   // Source thickness is conservative; bump it ~1.5x for readability while
   // keeping the look light.
   return Math.max(1.5, thickness * 1.5);
@@ -648,7 +666,6 @@ function displayRect(
     height,
   };
 }
-
 
 function rgbaToCss(color: RgbaColor | null | undefined): string | undefined {
   if (!color) return undefined;

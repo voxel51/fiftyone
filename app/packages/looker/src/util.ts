@@ -18,6 +18,10 @@ import {
 import {
   AppError,
   GraphQLError,
+  MEDIA_TYPE_3D,
+  MEDIA_TYPE_GROUP,
+  MEDIA_TYPE_IMAGE,
+  MEDIA_TYPE_VIDEO,
   NetworkError,
   ServerError,
   getFetchParameters,
@@ -603,21 +607,6 @@ function compareObjectArr(arr1: object[], arr2: object[]): boolean {
 
   return JSON.stringify(sortedArr1) === JSON.stringify(sortedArr2);
 }
-
-export const isNativeMediaType = (mediaType: string): boolean => {
-  return [
-    // undefined media_type is assumed to be an image
-    undefined,
-    "image",
-    "video",
-    "3d",
-    "three_d",
-    "pcd",
-    "point-cloud",
-    "point_cloud",
-    "group",
-  ].includes(mediaType);
-};
 
 // list of required attributes for arbitrary data to be "sample-like."
 const sampleTypeKeys = ["_id", "_media_type", "filepath"] as const;
