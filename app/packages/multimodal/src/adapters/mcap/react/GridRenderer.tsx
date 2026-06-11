@@ -1,10 +1,15 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ImageAnnotationsOverlay } from "../../../visualization/panels/ImageAnnotationsOverlay";
 import { ImagePanel } from "../../../visualization/panels/image";
 import type { McapGridPreviewFrame } from "../grid-preview";
 import classes from "./GridRenderer.module.css";
 import { McapLoadingAscii } from "./McapLoadingAscii";
+import {
+  MCAP_GRID_STREAM_AUTO,
+  registerMcapGridImageTopics,
+  useMcapGridSelectedImageTopic,
+} from "./mcap-grid-stream-state";
 import {
   useMcapGridPreview,
   type McapGridPreviewStatus,
@@ -20,7 +25,24 @@ const GRID_ANNOTATION_STROKE_WIDTH = 1;
  */
 export function GridRenderer({ ctx }: SampleRendererProps) {
   const source = useStableMcapSource(ctx);
-  const preview = useMcapGridPreview({ source });
+  const sampleId = useMemo(() => {
+    const sample = ctx.sample.sample as { _id?: string; id?: string };
+    return sample._id ?? sample.id;
+  }, [ctx.sample.sample]);
+  const [selectedImageTopic] = useMcapGridSelectedImageTopic(ctx.dataset.name);
+  const preview = useMcapGridPreview({
+    selectedImageTopic:
+      selectedImageTopic === MCAP_GRID_STREAM_AUTO ? null : selectedImageTopic,
+    source,
+  });
+
+  useEffect(() => {
+    return registerMcapGridImageTopics({
+      datasetName: ctx.dataset.name,
+      sampleId,
+      topics: preview.imageTopics,
+    });
+  }, [ctx.dataset.name, preview.imageTopics, sampleId]);
 
   return (
     <div

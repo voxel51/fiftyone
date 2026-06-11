@@ -152,6 +152,7 @@ function createResult() {
       frame: null,
       hasImageTopics: false,
       imageTopic: null,
+      imageTopics: [],
       status: "empty" as const,
     },
   };

@@ -3461,7 +3461,9 @@ __metadata:
   resolution: "@fiftyone/multimodal@workspace:packages/multimodal"
   dependencies:
     "@bufbuild/protobuf": "npm:^2.11.0"
+    "@fiftyone/components": "npm:*"
     "@fiftyone/plugins": "npm:*"
+    "@fiftyone/state": "npm:*"
     "@fiftyone/tiling": "npm:*"
     "@fiftyone/utilities": "npm:*"
     "@mcap/core": "npm:^2.2.1"

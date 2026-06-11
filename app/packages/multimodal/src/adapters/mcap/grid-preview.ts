@@ -92,6 +92,7 @@ export type McapGridPreviewStatus =
   | "loading"
   | "ready"
   | "empty"
+  | "unavailable"
   | "error";
 
 /**
@@ -102,6 +103,7 @@ export interface McapGridPreviewSnapshot {
   readonly frame: McapGridPreviewFrame | null;
   readonly hasImageTopics: boolean;
   readonly imageTopic: string | null;
+  readonly imageTopics: readonly string[];
   readonly status: McapGridPreviewStatus;
 }
 
@@ -119,13 +121,15 @@ export interface McapGridPreviewResult {
  */
 export interface McapGridPreviewEntry {
   readonly client: McapResourceClient;
-  selection?: McapGridCameraSelection | null;
+  autoSelection?: McapGridCameraSelection | null;
+  topics?: McapGridTopics;
 }
 
 /**
  * High-level grid preview decode request handled inside the shared worker pool.
  */
 export interface McapGridPreviewDecodeRequest {
+  readonly selectedImageTopic?: string | null;
   readonly source: ByteSourceDescriptor;
   readonly startTimeNs?: bigint;
 }
@@ -135,14 +139,33 @@ export interface McapGridPreviewDecodeRequest {
  */
 export async function decodeGridPreview(
   entry: McapGridPreviewEntry,
-  { source, startTimeNs }: McapGridPreviewDecodeRequest
+  { selectedImageTopic, source, startTimeNs }: McapGridPreviewDecodeRequest
 ): Promise<McapGridPreviewResult> {
-  if (entry.selection === undefined) {
-    const topics = streamTopics(await entry.client.readTopics({ source }));
-    entry.selection = chooseCameraSelection(topics);
+  if (entry.topics === undefined) {
+    entry.topics = streamTopics(await entry.client.readTopics({ source }));
   }
 
-  const selection = entry.selection;
+  const topics = entry.topics;
+  const imageTopics = topics.image;
+  const selection = chooseRequestedCameraSelection(
+    entry,
+    topics,
+    selectedImageTopic
+  );
+
+  if (selectedImageTopic && !selection) {
+    return {
+      state: {
+        error: null,
+        frame: null,
+        hasImageTopics: imageTopics.length > 0,
+        imageTopic: selectedImageTopic,
+        imageTopics,
+        status: "unavailable",
+      },
+    };
+  }
+
   if (!selection) {
     return {
       state: {
@@ -150,6 +173,7 @@ export async function decodeGridPreview(
         frame: null,
         hasImageTopics: false,
         imageTopic: null,
+        imageTopics,
         status: "empty",
       },
     };
@@ -169,6 +193,7 @@ export async function decodeGridPreview(
         frame: null,
         hasImageTopics: true,
         imageTopic: selection.imageTopic,
+        imageTopics,
         status: "empty",
       },
     };
@@ -182,9 +207,36 @@ export async function decodeGridPreview(
       frame: result.frame,
       hasImageTopics: true,
       imageTopic: selection.imageTopic,
+      imageTopics,
       status: "ready",
     },
   };
+}
+
+function chooseRequestedCameraSelection(
+  entry: McapGridPreviewEntry,
+  topics: McapGridTopics,
+  selectedImageTopic: string | null | undefined
+): McapGridCameraSelection | null {
+  if (selectedImageTopic) {
+    if (!topics.image.includes(selectedImageTopic)) {
+      return null;
+    }
+
+    return {
+      annotationTopic: chooseAnnotationTopic(
+        selectedImageTopic,
+        topics.annotations
+      ),
+      imageTopic: selectedImageTopic,
+    };
+  }
+
+  if (entry.autoSelection === undefined) {
+    entry.autoSelection = chooseCameraSelection(topics);
+  }
+
+  return entry.autoSelection;
 }
 
 /**

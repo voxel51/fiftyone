@@ -170,6 +170,69 @@ describe("MCAP grid preview", () => {
     });
   });
 
+  it("uses an explicit selected image topic when it is available", async () => {
+    const readDecodedMessages = vi.fn(async function* (
+      request: Parameters<McapResourceClient["readDecodedMessages"]>[0]
+    ) {
+      yield createImageMessage(request.topics?.[0] ?? "/camera", [8, 9], 40n);
+    });
+    const client = createClient({
+      readDecodedMessages,
+      readTopics: vi.fn(async () => [
+        createTopic("/camera/front"),
+        createTopic("/camera/back"),
+      ]),
+    });
+
+    const result = await decodeGridPreview(
+      { client },
+      {
+        selectedImageTopic: "/camera/back",
+        source: createSource(),
+      }
+    );
+
+    expect(result.state).toMatchObject({
+      imageTopic: "/camera/back",
+      imageTopics: ["/camera/front", "/camera/back"],
+      status: "ready",
+    });
+    expect(result.state.frame?.image.bytes[0]).toBe(8);
+    expect(readDecodedMessages).toHaveBeenCalledWith(
+      expect.objectContaining({ topics: ["/camera/back"] })
+    );
+  });
+
+  it("returns unavailable when an explicit selected image topic is missing", async () => {
+    const readDecodedMessages = vi.fn(async function* () {
+      for (const item of [] as never[]) {
+        yield item;
+      }
+    });
+    const client = createClient({
+      readDecodedMessages,
+      readTopics: vi.fn(async () => [createTopic("/camera/front")]),
+    });
+
+    const result = await decodeGridPreview(
+      { client },
+      {
+        selectedImageTopic: "/camera/back",
+        source: createSource(),
+      }
+    );
+
+    expect(result.state).toEqual({
+      error: null,
+      frame: null,
+      hasImageTopics: true,
+      imageTopic: "/camera/back",
+      imageTopics: ["/camera/front"],
+      status: "unavailable",
+    });
+    expect(readDecodedMessages).not.toHaveBeenCalled();
+  });
+
   it("classifies image and annotation topics from schema metadata", () => {
     expect(
       streamTopics([

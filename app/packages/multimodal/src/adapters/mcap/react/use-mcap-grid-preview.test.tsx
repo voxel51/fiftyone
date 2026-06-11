@@ -153,18 +153,60 @@ describe("useMcapGridPreview", () => {
     });
     expect(poolHarness.pool.release).not.toHaveBeenCalled();
   });
+
+  it("reloads and sends the selected image topic when it changes", async () => {
+    poolHarness.pool.request
+      .mockResolvedValueOnce(
+        readyResult({ bytes: [1], imageTopic: "/camera/front" })
+      )
+      .mockResolvedValueOnce(
+        readyResult({ bytes: [2], imageTopic: "/camera/back" })
+      );
+
+    const { rerender } = render(
+      <PreviewHarness
+        id="selected"
+        selectedImageTopic="/camera/front"
+        source={sourceForId("selected")}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("preview-selected").textContent).toBe(
+        "ready:1:frame:"
+      );
+    });
+
+    rerender(
+      <PreviewHarness
+        id="selected"
+        selectedImageTopic="/camera/back"
+        source={sourceForId("selected")}
+      />
+    );
+
+    await waitFor(() => {
+      expect(poolHarness.pool.request).toHaveBeenCalledTimes(2);
+    });
+    expect(poolHarness.pool.request.mock.calls[1]?.[0]).toMatchObject({
+      selectedImageTopic: "/camera/back",
+      source: sourceForId("selected"),
+    });
+  });
 });
 
 function PreviewHarness({
   id,
   onState,
+  selectedImageTopic,
   source,
 }: {
   readonly id: string;
   readonly onState?: (state: McapGridPreviewState) => void;
+  readonly selectedImageTopic?: string | null;
   readonly source: ByteSourceDescriptor | null;
 }) {
-  const state = useMcapGridPreview({ source });
+  const state = useMcapGridPreview({ selectedImageTopic, source });
 
   useEffect(() => {
     onState?.(state);
@@ -184,10 +226,12 @@ function formatState(state: McapGridPreviewState): string {
 
 function readyResult({
   bytes,
-  nextStartTimeNs,
+  imageTopic = "/camera/front",
+  nextStartTimeNs = 5n,
 }: {
   readonly bytes: readonly number[];
-  readonly nextStartTimeNs: bigint;
+  readonly imageTopic?: string;
+  readonly nextStartTimeNs?: bigint;
 }): McapGridPreviewResult {
   return {
     delayMs: 83,
@@ -199,7 +243,8 @@ function readyResult({
         image: createImage(bytes),
       },
       hasImageTopics: true,
-      imageTopic: "/camera/front",
+      imageTopic,
+      imageTopics: [imageTopic],
       status: "ready",
     },
   };
@@ -212,6 +257,7 @@ function emptyResult(hasImageTopics: boolean): McapGridPreviewResult {
       frame: null,
       hasImageTopics,
       imageTopic: hasImageTopics ? "/camera/front" : null,
+      imageTopics: hasImageTopics ? ["/camera/front"] : [],
       status: "empty",
     },
   };
