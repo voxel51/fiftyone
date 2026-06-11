@@ -110,6 +110,27 @@ describe("SampleLabelStore mutation", () => {
     });
   });
 
+  it("replaceLabel writes the exact value — absent keys end up absent", () => {
+    const { store } = makeStore({
+      ground_truth: {
+        detections: [{ ...makeDet("d1", "cat"), confidence: 0.9 }],
+      },
+    });
+
+    store.replaceLabel(ref("ground_truth", "d1"), makeDet("d1", "cat"));
+
+    expect(store.getLabel(ref("ground_truth", "d1"))).toEqual(
+      makeDet("d1", "cat")
+    );
+
+    // updateLabel by contrast merges
+    store.updateLabel(ref("ground_truth", "d1"), { confidence: 0.5 });
+    expect(store.getLabel(ref("ground_truth", "d1"))).toMatchObject({
+      label: "cat",
+      confidence: 0.5,
+    });
+  });
+
   it("deletes a list element by ref", () => {
     const { store } = makeStore({
       ground_truth: {

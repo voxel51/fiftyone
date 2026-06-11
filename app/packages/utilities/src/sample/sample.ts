@@ -356,22 +356,35 @@ export class Sample {
    *
    * For single labels, the provided fields are merged with the existing label
    * so server-enriched properties (`_cls`, `_id`, `tags`, ...) are preserved
-   * when only a partial update is supplied.
+   * when only a partial update is supplied. Unsetting an attribute is an
+   * explicit `null` write, never a key removal — the merge would otherwise
+   * resurrect the removed value.
    *
    * For list labels, `data._id` is required and the label is upserted into
    * the parent list (merged with the prior element if one with the same `_id`
    * exists, otherwise appended).
-   *
-   * `opts.replace` skips the merge and writes `data` as the label's exact
-   * value — for value-restoring writers (undo), where a merge would leave
-   * fields behind that the restored value no longer has.
    */
-  updateLabel(
+  updateLabel(path: string, data: Partial<LabelData>): void {
+    this.writeLabel(path, data, false);
+  }
+
+  /**
+   * Write a label's exact value at the given path — no merge with the
+   * existing label, so keys absent from `data` end up absent. For
+   * value-restoring writers (undo/redo replays), where a merge would leave
+   * fields behind that the restored value no longer has. Same upsert
+   * addressing as {@link updateLabel}.
+   */
+  replaceLabel(path: string, data: Partial<LabelData>): void {
+    this.writeLabel(path, data, true);
+  }
+
+  private writeLabel(
     path: string,
     data: Partial<LabelData>,
-    opts: { replace?: boolean } = {}
+    replace: boolean
   ): void {
-    this.assertNotDispatching("updateLabel");
+    this.assertNotDispatching(replace ? "replaceLabel" : "updateLabel");
     const type = this.getLabelType(path);
     let labelId: string | undefined;
 
@@ -390,19 +403,19 @@ export class Sample {
         : [];
       const next = [...prior];
       const idx = next.findIndex((l) => l._id === data._id);
-      const merged = (
-        idx >= 0 && !opts.replace ? { ...next[idx], ...data } : { ...data }
+      const value = (
+        idx >= 0 && !replace ? { ...next[idx], ...data } : { ...data }
       ) as LabelData;
 
       if (idx >= 0) {
-        next.splice(idx, 1, merged);
+        next.splice(idx, 1, value);
       } else {
-        next.push(merged);
+        next.push(value);
       }
 
       this.transientData[path] = { ...existing, [child]: next };
     } else {
-      const existing = opts.replace
+      const existing = replace
         ? ({} as LabelData)
         : this.getResolved<LabelData>(path) ?? ({} as LabelData);
       this.transientData[path] = { ...existing, ...data };

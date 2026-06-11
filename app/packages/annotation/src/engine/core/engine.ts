@@ -487,7 +487,7 @@ export class AnnotationEngine {
           if (value === undefined) {
             store.deleteLabel(op.ref);
           } else {
-            store.updateLabel(op.ref, value, { replace: true });
+            store.replaceLabel(op.ref, value);
           }
         }
       });
