@@ -19,27 +19,46 @@ import {
 } from "./protobuf/records";
 import { timingFromContext, timestampNs } from "./protobuf/timing";
 
-const FLOAT32_FIELD_TYPE = 7;
-const FLOAT32_BYTE_WIDTH = 4;
-const POINT_COMPONENT_COUNT = 3;
-const COLOR_COMPONENT_COUNT = 3;
-const X_COMPONENT_INDEX = 0;
-const Y_COMPONENT_INDEX = 1;
-const Z_COMPONENT_INDEX = 2;
+// Foxglove PointCloud numeric Field.type ids, kept in protobuf enum order.
 const UINT8_FIELD_TYPE = 1;
 const INT8_FIELD_TYPE = 2;
 const UINT16_FIELD_TYPE = 3;
 const INT16_FIELD_TYPE = 4;
 const UINT32_FIELD_TYPE = 5;
 const INT32_FIELD_TYPE = 6;
+const FLOAT32_FIELD_TYPE = 7;
 const FLOAT64_FIELD_TYPE = 8;
 
-const CANONICAL_SCALAR_FIELDS = [
+const UINT8_MAX_VALUE = 255;
+const INT8_MAX_VALUE = 127;
+const UINT16_MAX_VALUE = 65_535;
+const INT16_MAX_VALUE = 32_767;
+const UINT32_MAX_VALUE = 4_294_967_295;
+const INT32_MAX_VALUE = 2_147_483_647;
+
+const FLOAT32_BYTE_WIDTH = 4;
+
+const POINT_COMPONENT_COUNT = 3;
+const COLOR_COMPONENT_COUNT = 3;
+
+const X_COMPONENT_INDEX = 0;
+const Y_COMPONENT_INDEX = 1;
+const Z_COMPONENT_INDEX = 2;
+
+const CANONICAL_SCALAR_FIELDS = Object.freeze([
   "intensity",
   "reflectivity",
   "reflectance",
   "rcs",
-] as const;
+] as const);
+const CANONICAL_SCALAR_FIELD_NAMES: ReadonlySet<string> = new Set(
+  CANONICAL_SCALAR_FIELDS
+);
+
+const RED_COLOR_CHANNEL_NAMES = Object.freeze(["r", "red"] as const);
+const GREEN_COLOR_CHANNEL_NAMES = Object.freeze(["g", "green"] as const);
+const BLUE_COLOR_CHANNEL_NAMES = Object.freeze(["b", "blue"] as const);
+const PACKED_COLOR_FIELD_NAMES = Object.freeze(["color", "rgb", "rgba"]);
 
 /**
  * Decoder for Foxglove point cloud protobuf messages.
@@ -202,21 +221,27 @@ function extractScalarFields(
   fields: readonly PointCloudField[]
 ): readonly PointCloudScalarField[] {
   const scalarFields: PointCloudScalarField[] = [];
-  const usedFieldNames = new Set<string>();
+  const scalarFieldByName = new Map<string, PointCloudField>();
+
+  for (const field of fields) {
+    const scalarName = normalizedFieldName(field.name);
+    if (
+      !CANONICAL_SCALAR_FIELD_NAMES.has(scalarName) ||
+      scalarFieldByName.has(scalarName) ||
+      !canReadNumericField(field, pointStride)
+    ) {
+      continue;
+    }
+
+    scalarFieldByName.set(scalarName, field);
+  }
 
   for (const scalarName of CANONICAL_SCALAR_FIELDS) {
-    const field = fields.find(
-      (candidate) =>
-        !usedFieldNames.has(normalizedFieldName(candidate.name)) &&
-        normalizedFieldName(candidate.name) === scalarName &&
-        canReadNumericField(candidate, pointStride)
-    );
-
+    const field = scalarFieldByName.get(scalarName);
     if (!field) {
       continue;
     }
 
-    usedFieldNames.add(normalizedFieldName(field.name));
     scalarFields.push({
       name: field.name,
       values: extractNumericValues(data, pointStride, pointCount, field),
@@ -244,9 +269,13 @@ function extractSeparateColorChannels(
   pointCount: number,
   fields: readonly PointCloudField[]
 ): Float32Array | undefined {
-  const red = findColorChannel(fields, pointStride, "r", "red");
-  const green = findColorChannel(fields, pointStride, "g", "green");
-  const blue = findColorChannel(fields, pointStride, "b", "blue");
+  const red = findColorChannel(fields, pointStride, RED_COLOR_CHANNEL_NAMES);
+  const green = findColorChannel(
+    fields,
+    pointStride,
+    GREEN_COLOR_CHANNEL_NAMES
+  );
+  const blue = findColorChannel(fields, pointStride, BLUE_COLOR_CHANNEL_NAMES);
   if (!red || !green || !blue) {
     return undefined;
   }
@@ -282,7 +311,7 @@ function extractPackedColorField(
 ): Float32Array | undefined {
   const field = fields.find(
     (candidate) =>
-      ["color", "rgb", "rgba"].includes(normalizedFieldName(candidate.name)) &&
+      PACKED_COLOR_FIELD_NAMES.includes(normalizedFieldName(candidate.name)) &&
       canReadNumericField(candidate, pointStride) &&
       numericFieldByteWidth(candidate.type) === 4
   );
@@ -297,9 +326,9 @@ function extractPackedColorField(
     const colorOffset = index * COLOR_COMPONENT_COUNT;
     // Packed PCL-style rgb/rgba values are commonly stored as little-endian
     // 0xAARRGGBB bytes, even when the field type is FLOAT32.
-    colors[colorOffset] = data[byteOffset + 2] / 255;
-    colors[colorOffset + 1] = data[byteOffset + 1] / 255;
-    colors[colorOffset + 2] = data[byteOffset] / 255;
+    colors[colorOffset] = data[byteOffset + 2] / UINT8_MAX_VALUE;
+    colors[colorOffset + 1] = data[byteOffset + 1] / UINT8_MAX_VALUE;
+    colors[colorOffset + 2] = data[byteOffset] / UINT8_MAX_VALUE;
   }
 
   return colors;
@@ -308,7 +337,7 @@ function extractPackedColorField(
 function findColorChannel(
   fields: readonly PointCloudField[],
   pointStride: number,
-  ...names: readonly string[]
+  names: readonly string[]
 ): PointCloudField | undefined {
   return fields.find(
     (field) =>
@@ -411,17 +440,17 @@ function normalizeColorChannel(value: number, fieldType: number): number {
 function integerFieldMaxValue(fieldType: number): number {
   switch (fieldType) {
     case UINT16_FIELD_TYPE:
-      return 65535;
+      return UINT16_MAX_VALUE;
     case INT16_FIELD_TYPE:
-      return 32767;
+      return INT16_MAX_VALUE;
     case UINT32_FIELD_TYPE:
-      return 4294967295;
+      return UINT32_MAX_VALUE;
     case INT32_FIELD_TYPE:
-      return 2147483647;
+      return INT32_MAX_VALUE;
     case INT8_FIELD_TYPE:
-      return 127;
+      return INT8_MAX_VALUE;
     default:
-      return 255;
+      return UINT8_MAX_VALUE;
   }
 }
 

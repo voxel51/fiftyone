@@ -91,7 +91,9 @@ describe("mcap-grid-stream-state", () => {
   });
 
   it("uses auto when no dataset is available", () => {
-    const { result } = renderHook(() => useMcapGridSelectedStreamTopic(null));
+    const { result } = renderHook(() =>
+      useMcapGridSelectedStreamTopic(undefined)
+    );
 
     expect(result.current[0]).toBe(MCAP_GRID_STREAM_AUTO);
   });

@@ -6,7 +6,7 @@ import {
 } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import React, { useMemo } from "react";
-import { RightDiv } from "./Containers";
+import { RightDiv as GridHeaderSlotContainer } from "./Containers";
 
 const SLOT = PLUGIN_COMPONENT_SLOT.GRID_HEADER_AFTER_RESOURCE_COUNT;
 
@@ -33,9 +33,9 @@ const GridHeaderPluginSlot = () => {
   return (
     <>
       {components.map(({ component: Component, name }) => (
-        <RightDiv key={name}>
+        <GridHeaderSlotContainer key={name}>
           <Component />
-        </RightDiv>
+        </GridHeaderSlotContainer>
       ))}
     </>
   );

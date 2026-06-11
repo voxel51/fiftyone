@@ -57,21 +57,21 @@ export function topicName(topic: StreamInventory): string {
 }
 
 /**
- * Returns whether a stream inventory item is a supported compressed image.
+ * Returns whether a stream inventory item is a supported Foxglove compressed image.
  */
 export function isCompressedImageStream(topic: StreamInventory): boolean {
   return hasPayload(topic, FOXGLOVE_COMPRESSED_IMAGE_PAYLOAD);
 }
 
 /**
- * Returns whether a stream inventory item is a supported image annotation stream.
+ * Returns whether a stream inventory item is a supported Foxglove image annotation stream.
  */
 export function isImageAnnotationsStream(topic: StreamInventory): boolean {
   return hasPayload(topic, FOXGLOVE_IMAGE_ANNOTATIONS_PAYLOAD);
 }
 
 /**
- * Returns whether a stream inventory item is a supported point-cloud stream.
+ * Returns whether a stream inventory item is a supported Foxglove point-cloud stream.
  */
 export function isPointCloudStream(topic: StreamInventory): boolean {
   return hasPayload(topic, FOXGLOVE_POINT_CLOUD_PAYLOAD);

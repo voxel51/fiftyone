@@ -13,8 +13,8 @@ type StreamsByDataset = Map<string, Map<string, readonly string[]>>;
 type SelectedStreamByDataset = Map<string, string>;
 
 type StreamRegistration = {
-  readonly datasetName: string | null | undefined;
-  readonly sampleId: string | null | undefined;
+  readonly datasetName?: string;
+  readonly sampleId?: string;
   readonly topics: readonly string[];
 };
 
@@ -63,7 +63,7 @@ export function useMcapStreams() {
 /**
  * Returns the aggregate preview-stream set for mounted MCAP grid tiles.
  */
-export function useMcapStreamSnapshot(datasetName: string | null | undefined) {
+export function useMcapStreamSnapshot(datasetName?: string) {
   const streamsByDataset = useMcapStreams();
 
   return useMemo(() => {
@@ -126,16 +126,14 @@ export function useRegisterMcapGridStreamTopics() {
 /**
  * Subscribes to the aggregate preview-stream set for mounted MCAP grid tiles.
  */
-export function useMcapGridStreamTopics(
-  datasetName: string | null | undefined
-) {
+export function useMcapGridStreamTopics(datasetName?: string) {
   return useMcapStreamSnapshot(datasetName);
 }
 
 /**
  * Reads and updates the per-dataset MCAP grid preview stream override.
  */
-export function useSelectedStream(datasetName: string | null | undefined) {
+export function useSelectedStream(datasetName?: string) {
   const key = datasetName
     ? storageKey(datasetName)
     : "mcap-grid-preview-image-topic";
@@ -181,9 +179,7 @@ export function useSelectedStream(datasetName: string | null | undefined) {
 /**
  * Reads and updates the per-dataset MCAP grid preview stream override.
  */
-export function useMcapGridSelectedStreamTopic(
-  datasetName: string | null | undefined
-) {
+export function useMcapGridSelectedStreamTopic(datasetName?: string) {
   return useSelectedStream(datasetName);
 }
 
