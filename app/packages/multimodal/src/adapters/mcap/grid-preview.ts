@@ -4,18 +4,16 @@ import type {
   PointCloudVisualization,
 } from "../../decoders";
 import type { ByteSourceDescriptor } from "../../query/bytes";
-import { PlaybackSyncMode, type StreamInventory } from "../../schemas/v1";
+import { PlaybackSyncMode } from "../../schemas/v1";
 import { VISUALIZATION_KIND } from "../../visualization";
+import { chooseAnnotationTopic } from "./topic-matching";
+import { streamTopics, type McapPreviewTopics } from "./stream-topics";
 import type {
   McapDecodedMessage,
   McapResourceClient,
   McapStreamSyncPolicy,
 } from "./types";
 
-// Grid previews support schema-classified compressed images and point clouds.
-const COMPRESSED_IMAGE_PATTERN = /compressedimage/i;
-const IMAGE_ANNOTATIONS_PATTERN = /imageannotations/i;
-const POINT_CLOUD_PATTERN = /pointcloud|point_cloud/i;
 const IMAGE_SYNC_TOLERANCE_NS = 120_000_000n;
 const NEXT_FRAME_STEP_NS = 1n;
 
@@ -25,27 +23,8 @@ const IMAGE_SYNC_POLICY: McapStreamSyncPolicy = {
   toleranceBeforeNs: IMAGE_SYNC_TOLERANCE_NS,
 } as const;
 
-// Drop generic topic words before scoring image/annotation topic similarity so
-// camera-identifying tokens like "front" or "left" decide the best match.
-const IGNORED_TOPIC_TOKENS = new Set([
-  "annotation",
-  "annotations",
-  "cam",
-  "camera",
-  "compressed",
-  "image",
-  "rect",
-]);
-
-// Strip image-format suffix segments when deriving the camera topic prefix, so
-// "/camera/front/image_rect_compressed" pairs with "/camera/front/annotations".
-const IMAGE_TOPIC_SUFFIX_TOKENS = new Set([
-  "compressed",
-  "compressedimage",
-  "image",
-  "raw",
-  "rect",
-]);
+export { chooseAnnotationTopic } from "./topic-matching";
+export { streamTopics } from "./stream-topics";
 
 /**
  * Default playback speed for animated MCAP grid previews.
@@ -68,13 +47,9 @@ export const MCAP_GRID_PREVIEW_POINT_CLOUD_FRAME_DELAY_MS = 83;
 export const MCAP_GRID_PREVIEW_ANNOTATION_FRAME_DELAY_MS = 500;
 
 /**
- * Camera and annotation topic buckets used by grid preview selection.
+ * Supported stream topic buckets used by grid preview selection.
  */
-export interface McapGridTopics {
-  readonly annotations: readonly string[];
-  readonly image: readonly string[];
-  readonly pointCloud: readonly string[];
-}
+export type McapGridTopics = McapPreviewTopics;
 
 /**
  * Selected camera image topic plus its best matching annotation topic.
@@ -93,6 +68,9 @@ export interface McapGridPointCloudSelection {
   readonly streamTopic: string;
 }
 
+/**
+ * Selected stream descriptor for one MCAP grid preview.
+ */
 export type McapGridPreviewSelection =
   | McapGridCameraSelection
   | McapGridPointCloudSelection;
@@ -114,6 +92,9 @@ export interface McapGridPointCloudPreviewFrame {
   readonly pointCloud: PointCloudVisualization;
 }
 
+/**
+ * Render-ready preview frame shown by the MCAP grid renderer.
+ */
 export type McapGridPreviewFrame =
   | McapGridImagePreviewFrame
   | McapGridPointCloudPreviewFrame;
@@ -180,7 +161,7 @@ export async function decodeGridPreview(
   }
 
   const topics = entry.topics;
-  const previewTopics = previewableTopics(topics);
+  const previewTopics = topics.previewable;
   const selection = chooseRequestedCameraSelection(
     entry,
     topics,
@@ -535,140 +516,4 @@ function pointCloudFrame(
   return visualization?.kind === VISUALIZATION_KIND.POINT_CLOUD
     ? visualization
     : null;
-}
-
-/**
- * Splits stream inventory into image and annotation topics.
- */
-export function streamTopics(
-  topics: readonly StreamInventory[]
-): McapGridTopics {
-  const image: string[] = [];
-  const annotations: string[] = [];
-  const pointCloud: string[] = [];
-
-  for (const topic of topics) {
-    const name = topicName(topic);
-    if (!name) {
-      continue;
-    }
-
-    if (isCompressedImageStream(topic)) {
-      image.push(name);
-    } else if (isPointCloudStream(topic)) {
-      pointCloud.push(name);
-    } else if (isImageAnnotationsStream(topic)) {
-      annotations.push(name);
-    }
-  }
-
-  return { annotations, image, pointCloud };
-}
-
-function previewableTopics(topics: McapGridTopics): readonly string[] {
-  return [...topics.image, ...topics.pointCloud];
-}
-
-function topicName(topic: StreamInventory): string {
-  return topic.metadata["mcap.topic"] ?? topic.displayName ?? "";
-}
-
-function schemaIdentity(topic: StreamInventory): string {
-  return [topic.payload?.schema, topic.metadata["mcap.schema_name"]].join(" ");
-}
-
-function isCompressedImageStream(topic: StreamInventory): boolean {
-  return COMPRESSED_IMAGE_PATTERN.test(schemaIdentity(topic));
-}
-
-function isImageAnnotationsStream(topic: StreamInventory): boolean {
-  return IMAGE_ANNOTATIONS_PATTERN.test(schemaIdentity(topic));
-}
-
-function isPointCloudStream(topic: StreamInventory): boolean {
-  return POINT_CLOUD_PATTERN.test(schemaIdentity(topic));
-}
-
-/**
- * Chooses the annotation topic that best matches a selected camera topic.
- * Prefers the exact `<camera prefix>/annotations` sibling, then falls back
- * to the highest shared-token score.
- */
-export function chooseAnnotationTopic(
-  imageTopic: string,
-  annotationTopics: readonly string[]
-): string | null {
-  if (annotationTopics.length === 0) {
-    return null;
-  }
-
-  const cameraPrefix = topicPrefix(imageTopic);
-  const exactTopic = cameraPrefix ? `${cameraPrefix}/annotations` : "";
-  const exact = annotationTopics.find((topic) => topic === exactTopic);
-  if (exact) {
-    return exact;
-  }
-
-  let bestTopic: string | null = null;
-  let bestScore = 0;
-  const imageTokens = topicTokens(imageTopic);
-
-  for (const annotationTopic of annotationTopics) {
-    const annotationTokens = topicTokens(annotationTopic);
-    let score =
-      cameraPrefix && isTopicAtOrBelowPrefix(annotationTopic, cameraPrefix)
-        ? 10
-        : 0;
-    for (const token of imageTokens) {
-      if (annotationTokens.has(token)) {
-        score += 1;
-      }
-    }
-
-    if (score > bestScore) {
-      bestScore = score;
-      bestTopic = annotationTopic;
-    }
-  }
-
-  return bestTopic;
-}
-
-function topicPrefix(topic: string): string {
-  const normalized = topic.replace(/\/+$/, "");
-  const hasLeadingSlash = normalized.startsWith("/");
-  const parts = normalized.split("/").filter(Boolean);
-
-  while (parts.length > 0 && isImageTopicSuffix(parts[parts.length - 1])) {
-    parts.pop();
-  }
-
-  return parts.length > 0
-    ? `${hasLeadingSlash ? "/" : ""}${parts.join("/")}`
-    : "";
-}
-
-function isTopicAtOrBelowPrefix(topic: string, prefix: string): boolean {
-  return topic === prefix || topic.startsWith(`${prefix}/`);
-}
-
-function isImageTopicSuffix(segment: string): boolean {
-  const tokens = segment
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter(Boolean);
-
-  return (
-    tokens.length > 0 &&
-    tokens.every((token) => IMAGE_TOPIC_SUFFIX_TOKENS.has(token))
-  );
-}
-
-function topicTokens(topic: string): Set<string> {
-  return new Set(
-    topic
-      .toLowerCase()
-      .split(/[^a-z0-9]+/)
-      .filter((token) => token && !IGNORED_TOPIC_TOKENS.has(token))
-  );
 }

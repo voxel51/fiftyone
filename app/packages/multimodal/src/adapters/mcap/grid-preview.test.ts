@@ -9,12 +9,12 @@ import type { StreamInventory } from "../../schemas/v1";
 import { VISUALIZATION_KIND } from "../../visualization";
 import {
   MCAP_GRID_PREVIEW_ANNOTATION_FRAME_DELAY_MS,
-  chooseAnnotationTopic,
   chooseCameraSelection,
   decodeGridPreview,
-  streamTopics,
   type McapGridPreviewFrame,
 } from "./grid-preview";
+import { chooseAnnotationTopic } from "./topic-matching";
+import { streamTopics } from "./stream-topics";
 import type {
   McapDecodedMessage,
   McapResourceClient,
@@ -320,6 +320,27 @@ describe("MCAP grid preview", () => {
       annotations: ["/camera/front/annotations"],
       image: ["/camera/front"],
       pointCloud: ["/lidar/points"],
+      previewable: ["/camera/front", "/lidar/points"],
+    });
+  });
+
+  it("ignores point-cloud-like schemas without a supported decoder", () => {
+    expect(
+      streamTopics([
+        createTopic(
+          "/radar/points",
+          "sensor_msgs/msg/PointCloud2",
+          "cdr",
+          "ros2msg"
+        ),
+        createTopic("/radar/custom", "example.RadarPointCloud"),
+        createTopic("/tf", "foxglove.FrameTransform"),
+      ])
+    ).toEqual({
+      annotations: [],
+      image: [],
+      pointCloud: [],
+      previewable: [],
     });
   });
 
@@ -331,6 +352,10 @@ describe("MCAP grid preview", () => {
         "/CAM_BACK/image_rect_compressed",
       ],
       pointCloud: [],
+      previewable: [
+        "/CAM_FRONT/image_rect_compressed",
+        "/CAM_BACK/image_rect_compressed",
+      ],
     });
 
     expect(selection).toEqual({
@@ -387,7 +412,9 @@ function createSource(): ByteSourceDescriptor {
 
 function createTopic(
   topic: string,
-  schema = "foxglove.CompressedImage"
+  schema = "foxglove.CompressedImage",
+  encoding = "protobuf",
+  schemaEncoding = "protobuf"
 ): StreamInventory {
   return {
     $typeName: "fiftyone.multimodal.schemas.v1.StreamInventory",
@@ -398,9 +425,9 @@ function createTopic(
     },
     payload: {
       $typeName: "fiftyone.multimodal.schemas.v1.PayloadDescriptor",
-      encoding: "protobuf",
+      encoding,
       schema,
-      schemaEncoding: "protobuf",
+      schemaEncoding,
     },
     streamId: topic,
   };
