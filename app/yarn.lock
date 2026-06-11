@@ -3119,6 +3119,7 @@ __metadata:
     "@emotion/styled": "npm:^11.10.4"
     "@fiftyone/commands": "workspace:^"
     "@fiftyone/state": "npm:*"
+    "@fiftyone/utilities": "npm:*"
     "@mdx-js/react": "npm:^1.6.22"
     "@mui/icons-material": "npm:^5.16.7"
     "@mui/material": "npm:^5.9.0"
@@ -8799,29 +8800,6 @@ __metadata:
     loupe: "npm:^3.1.2"
     tinyrainbow: "npm:^1.2.0"
   checksum: 10/83d62d5703a3210a2f137c25dc4e797a7a1d74d5d2e14ecc33b274c7710304fa8b5099101c98bc8d66cc2bf18a14f88ebf21f0996a99d0ee1439ae23b49f3961
-  languageName: node
-  linkType: hard
-
-"@voxel51/voodo@npm:^0.0.34":
-  version: 0.0.34
-  resolution: "@voxel51/voodo@npm:0.0.34"
-  dependencies:
-    "@dnd-kit/core": "npm:^6.3.1"
-    "@dnd-kit/sortable": "npm:^10.0.0"
-    "@dnd-kit/utilities": "npm:^3.2.2"
-    "@floating-ui/react": "npm:^0.27.19"
-    "@headlessui/react": "npm:^2.2.9"
-    "@tanstack/react-virtual": "npm:^3.13.24"
-    clsx: "npm:^2.1.1"
-    date-fns-tz: "npm:^3.2.0"
-    lodash.debounce: "npm:^4.0.8"
-    react-datepicker: "npm:^9.1.0"
-    tailwind-merge: "npm:^3.4.0"
-  peerDependencies:
-    react: ^18.0.0
-    react-dom: ^18.0.0
-    react-is: ^18.0.0
-  checksum: 10/e7ca0e9d792182805891d8e4bf8e89356112f4cd78811613108634e803494e9695457eb5d48194518a75a1e41fded08ecd730c7eed3f16e23017ccf3529502fe
   languageName: node
   linkType: hard
 
