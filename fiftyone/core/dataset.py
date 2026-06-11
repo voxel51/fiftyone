@@ -347,6 +347,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if not _virtual:
             self._update_last_loaded_at()
 
+        if doc.media_type:
+            self._set_media_type(doc.media_type)
+
     def __eq__(self, other):
         return type(other) == type(self) and self.name == other.name
 
