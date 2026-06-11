@@ -29,6 +29,7 @@ import {
   viewStartAtom,
 } from "./atoms";
 import { usePlaybackStore } from "./playback-store-context";
+import type { PlaybackStore } from "./types";
 
 /** Visual playhead position in seconds — updates every RAF tick + on scrub. */
 export function usePlayhead(): number {
@@ -48,6 +49,15 @@ export function useCurrentTime(): number {
 export function useIsPlaying(): boolean {
   const store = usePlaybackStore();
   return useAtomValue(isPlayingAtom, { store });
+}
+
+/**
+ * Immediate non-reactive read of the current playback state. Use this in
+ * command/event handlers that need the latest value without subscribing
+ * the component body to an extra atom.
+ */
+export function getIsPlaying(store: PlaybackStore): boolean {
+  return store.get(isPlayingAtom);
 }
 
 export function useIsBuffering(): boolean {
