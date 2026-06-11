@@ -15,11 +15,13 @@ import {
   getDefaultComponent,
 } from "../../constants";
 import {
+  VALUES_MODE,
   getAttributeFormErrors,
   hasAttributeFormError,
   type AttributeCondition,
   type AttributeConditionLeaf,
   type AttributeFormData,
+  type ValuesMode,
 } from "../../utils";
 
 interface UseAttributeFormProps {
@@ -33,6 +35,7 @@ interface UseAttributeFormResult {
   isIntegerType: boolean;
   isListType: boolean;
   isFromOntology: boolean;
+  isTaxonomyEligible: boolean;
   whenPreview: { condition: string; suffix: string | null } | null;
   supportsDefault: boolean;
   componentOptions: Array<{ id: string; label: string; icon: IconName }>;
@@ -45,6 +48,7 @@ interface UseAttributeFormResult {
   valuesError: string | null;
   rangeError: string | null;
   defaultError: string | null;
+  taxonomyError: string | null;
   hasFormError: boolean;
 
   // Handlers
@@ -56,6 +60,8 @@ interface UseAttributeFormResult {
   handleDefaultChange: (defaultValue: string) => void;
   handleListDefaultChange: (values: (string | number)[]) => void;
   handleReadOnlyChange: (readOnly: boolean) => void;
+  handleValuesModeChange: (mode: ValuesMode) => void;
+  handleTaxonomyChange: (taxonomy: string) => void;
 }
 
 export default function useAttributeForm({
@@ -107,7 +113,12 @@ export default function useAttributeForm({
     return { condition, suffix };
   }, [formState.when]);
 
-  const supportsDefault = !NO_DEFAULT_TYPES.includes(formState.type);
+  const isTaxonomyEligible =
+    (formState.type === "str" || formState.type === "list<str>") &&
+    formState.component === "dropdown";
+  const supportsDefault =
+    !NO_DEFAULT_TYPES.includes(formState.type) &&
+    formState.valuesMode === VALUES_MODE.simple;
   const componentOptions = COMPONENT_OPTIONS[formState.type] || [];
 
   // Visibility flags
@@ -131,14 +142,21 @@ export default function useAttributeForm({
   const handleTypeChange = useCallback(
     (newType: string) => {
       const newSupportsDefault = !NO_DEFAULT_TYPES.includes(newType);
+      const newComponent = getDefaultComponent(newType);
+      const stillEligible =
+        (newType === "str" || newType === "list<str>") &&
+        newComponent === "dropdown";
       onFormStateChange({
         ...formState,
         type: newType,
-        component: getDefaultComponent(newType),
+        component: newComponent,
         values: [],
         range: null,
         default: newSupportsDefault ? formState.default : "",
         listDefault: [],
+        ...(stillEligible
+          ? {}
+          : { valuesMode: VALUES_MODE.simple, taxonomy: undefined }),
       });
     },
     [formState, onFormStateChange]
@@ -150,9 +168,10 @@ export default function useAttributeForm({
       const oldNeedsValues = componentNeedsValues(oldComponent);
       const newNeedsValues = componentNeedsValues(newComponent);
 
-      // Preserve values when switching between components that both use values
-      // (e.g., radio <-> dropdown <-> checkboxes)
       const preserveValues = oldNeedsValues && newNeedsValues;
+      const stillEligible =
+        (formState.type === "str" || formState.type === "list<str>") &&
+        newComponent === "dropdown";
 
       onFormStateChange({
         ...formState,
@@ -160,6 +179,9 @@ export default function useAttributeForm({
         values: preserveValues ? formState.values : [],
         range: null,
         listDefault: [],
+        ...(stillEligible
+          ? {}
+          : { valuesMode: VALUES_MODE.simple, taxonomy: undefined }),
       });
     },
     [formState, onFormStateChange]
@@ -200,12 +222,35 @@ export default function useAttributeForm({
     [formState, onFormStateChange]
   );
 
+  const handleValuesModeChange = useCallback(
+    (mode: ValuesMode) => {
+      if (mode === VALUES_MODE.taxonomy) {
+        onFormStateChange({ ...formState, valuesMode: mode, values: [] });
+      } else {
+        onFormStateChange({
+          ...formState,
+          valuesMode: mode,
+          taxonomy: undefined,
+        });
+      }
+    },
+    [formState, onFormStateChange]
+  );
+
+  const handleTaxonomyChange = useCallback(
+    (taxonomy: string) => {
+      onFormStateChange({ ...formState, taxonomy });
+    },
+    [formState, onFormStateChange]
+  );
+
   return {
     // Derived state
     isNumericType,
     isIntegerType,
     isListType,
     isFromOntology,
+    isTaxonomyEligible,
     whenPreview,
     supportsDefault,
     componentOptions,
@@ -218,6 +263,7 @@ export default function useAttributeForm({
     valuesError: formErrors.values,
     rangeError: formErrors.range,
     defaultError: formErrors.default,
+    taxonomyError: formErrors.taxonomy,
     hasFormError: hasAttributeFormError(formErrors),
 
     // Handlers
@@ -229,5 +275,7 @@ export default function useAttributeForm({
     handleDefaultChange,
     handleListDefaultChange,
     handleReadOnlyChange,
+    handleValuesModeChange,
+    handleTaxonomyChange,
   };
 }
