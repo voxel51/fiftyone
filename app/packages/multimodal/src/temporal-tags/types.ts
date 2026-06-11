@@ -1,5 +1,7 @@
+import type { LoadStatus } from "../load-status";
+
 /** Load state for temporal-tag React hooks. */
-export type TemporalTagsStatus = "idle" | "loading" | "ready" | "error";
+export type TemporalTagsStatus = LoadStatus;
 
 /** Filter for temporal-tag list/count/delete queries. */
 export interface TemporalTagFilter {

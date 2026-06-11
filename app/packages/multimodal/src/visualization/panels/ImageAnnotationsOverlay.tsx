@@ -9,6 +9,7 @@ import type {
   ImageAnnotationsVisualization,
   RgbaColor,
 } from "../../decoders";
+import { groupLineSegmentsByLabel } from "../../utils/line-segment-grouping";
 import styles from "./image-annotations-overlay.module.css";
 
 export type ImageAnnotationPrimitive =
@@ -491,43 +492,15 @@ interface LineListGroup {
   readonly bounds: Bounds;
 }
 
-/**
- * Each annotation message encodes N objects with cuboid edges and
- * labels paired by index: `points` is `N * segmentsPerObject * 2`
- * long, `texts.length === N`, and the Nth chunk of segments is
- * labeled by the Nth text. Use that pairing directly rather than
- * spatially guessing. Falls back to one big group when the data
- * doesn't divide cleanly (other producers might encode differently).
- */
 function groupLineListByLabel(
   points: readonly Point2[],
   texts: readonly ImageAnnotationText[]
 ): readonly LineListGroup[] {
-  const segmentCount = Math.floor(points.length / 2);
-  if (segmentCount === 0) return [];
-  if (texts.length === 0 || segmentCount % texts.length !== 0) {
-    const segments: [Point2, Point2][] = [];
-    for (let i = 0; i < segmentCount; i++) {
-      segments.push([points[i * 2], points[i * 2 + 1]]);
-    }
-    return [{ label: null, segments, bounds: segmentsBounds(segments) }];
-  }
-  const segmentsPerObject = segmentCount / texts.length;
-  const groups: LineListGroup[] = [];
-  for (let i = 0; i < texts.length; i++) {
-    const segments: [Point2, Point2][] = [];
-    const start = i * segmentsPerObject;
-    for (let j = 0; j < segmentsPerObject; j++) {
-      const seg = start + j;
-      segments.push([points[seg * 2], points[seg * 2 + 1]]);
-    }
-    groups.push({
-      label: texts[i]?.text ?? null,
-      segments,
-      bounds: segmentsBounds(segments),
-    });
-  }
-  return groups;
+  return groupLineSegmentsByLabel(points, texts).map(({ label, segments }) => ({
+    label,
+    segments,
+    bounds: segmentsBounds(segments),
+  }));
 }
 
 function segmentsBounds(segments: readonly [Point2, Point2][]): Bounds {

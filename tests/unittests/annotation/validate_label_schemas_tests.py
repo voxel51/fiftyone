@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 import fiftyone as fo
 import fiftyone.core.fields as fof
 from fiftyone.core.annotation import validate_label_schemas
-from fiftyone.core.ontology import AnnotationOntology
+from fiftyone.core.ontology import AnnotationOntology, Node, Taxonomy
 
 from decorators import (  # pylint: disable=import-error
     drop_datasets,
@@ -1080,9 +1080,9 @@ class TaxonomySettingValidationTests(unittest.TestCase):
     # -- str field --
 
     @drop_datasets
+    @drop_ontologies
     def test_str_dropdown_with_taxonomy_passes(self):
-        dataset = fo.Dataset()
-        dataset.add_sample_field("str_field", fo.StringField)
+        dataset = _make_taxonomy_test_dataset()
         validate_label_schemas(
             dataset,
             {
@@ -1149,11 +1149,9 @@ class TaxonomySettingValidationTests(unittest.TestCase):
     # -- list<str> field --
 
     @drop_datasets
+    @drop_ontologies
     def test_str_list_dropdown_with_taxonomy_passes(self):
-        dataset = fo.Dataset()
-        dataset.add_sample_field(
-            "str_list_field", fo.ListField, subfield=fo.StringField
-        )
+        dataset = _make_taxonomy_test_dataset()
         validate_label_schemas(
             dataset,
             {
@@ -1219,16 +1217,9 @@ class TaxonomySettingValidationTests(unittest.TestCase):
     # -- attribute-level (nested under a label field) --
 
     @drop_datasets
+    @drop_ontologies
     def test_label_attribute_with_taxonomy_passes(self):
-        dataset = fo.Dataset()
-        dataset.add_sample(
-            fo.Sample(
-                filepath="image.png",
-                detections=fo.Detections(
-                    detections=[fo.Detection(label="one")]
-                ),
-            )
-        )
+        dataset = _make_taxonomy_test_dataset()
         validate_label_schemas(
             dataset,
             {
@@ -1291,5 +1282,32 @@ def _make_applied_ontology_test_dataset(ontology_name: str = "my_ontology"):
         )
     )
     dataset.add_sample_field("str_field", fo.StringField)
+
+    return dataset
+
+
+def _make_taxonomy_test_dataset(taxonomy_name: str = "vehicle_type"):
+    """Dataset with `str_field`, `str_list_field`, and a `detections` label
+    field, with a real `Taxonomy` named ``taxonomy_name`` persisted to the
+    `ontologies` collection so the validator can resolve the reference.
+    """
+    Taxonomy(
+        name=taxonomy_name,
+        root=Node(
+            name="root", values=[Node(name="sedan"), Node(name="truck")]
+        ),
+    ).save()
+
+    dataset = fo.Dataset()
+    dataset.add_sample(
+        fo.Sample(
+            filepath="image.png",
+            detections=fo.Detections(detections=[fo.Detection(label="one")]),
+        )
+    )
+    dataset.add_sample_field("str_field", fo.StringField)
+    dataset.add_sample_field(
+        "str_list_field", fo.ListField, subfield=fo.StringField
+    )
 
     return dataset

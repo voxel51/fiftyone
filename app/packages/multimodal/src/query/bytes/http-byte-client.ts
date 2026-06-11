@@ -3,6 +3,7 @@ import {
   type FetchFunctionConfig,
   type FetchFunctionResult,
 } from "@fiftyone/utilities";
+import { safeNumber } from "./bigint-utils";
 import { parseByteSize } from "./byte-size";
 import type { ByteClient } from "./types";
 
@@ -174,12 +175,3 @@ function withHttpByteReadTimeout<Result>(
     });
 }
 
-function safeNumber(value: bigint): number {
-  if (value > BigInt(Number.MAX_SAFE_INTEGER)) {
-    throw new Error(
-      `Byte length ${value.toString()} exceeds safe number range`
-    );
-  }
-
-  return Number(value);
-}

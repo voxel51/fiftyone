@@ -23,7 +23,7 @@ import {
   ATTRIBUTE_TYPE_OPTIONS,
   BOOL_DEFAULT_OPTIONS,
 } from "../../constants";
-import { type AttributeFormData } from "../../utils";
+import { VALUES_MODE, type AttributeFormData } from "../../utils";
 import OntologyPicker from "../OntologyPicker";
 import { ONTOLOGY_TYPE, useOntologies } from "../useOntologies";
 import ComponentTypeButton from "./ComponentTypeButton";
@@ -87,9 +87,9 @@ const AttributeFormContent = ({
   } = useOntologies(ONTOLOGY_TYPE.taxonomy);
 
   const valuesModeTabs = [
-    { id: "simple", data: { label: "Simple", content: null } },
+    { id: VALUES_MODE.simple, data: { label: "Simple", content: null } },
     {
-      id: "taxonomy",
+      id: VALUES_MODE.taxonomy,
       data: {
         label: "Taxonomy",
         content: null,
@@ -261,13 +261,17 @@ const AttributeFormContent = ({
               <ToggleSwitch
                 key={formState.valuesMode}
                 size={Size.Sm}
-                defaultIndex={formState.valuesMode === "taxonomy" ? 1 : 0}
+                defaultIndex={
+                  formState.valuesMode === VALUES_MODE.taxonomy ? 1 : 0
+                }
                 onChange={(index) =>
-                  handleValuesModeChange(index === 0 ? "simple" : "taxonomy")
+                  handleValuesModeChange(
+                    index === 0 ? VALUES_MODE.simple : VALUES_MODE.taxonomy
+                  )
                 }
                 tabs={valuesModeTabs}
               />
-              {formState.valuesMode === "simple" ? (
+              {formState.valuesMode === VALUES_MODE.simple ? (
                 <ValuesList
                   values={formState.values}
                   onValuesChange={handleValuesChange}

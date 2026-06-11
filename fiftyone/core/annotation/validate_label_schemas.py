@@ -726,11 +726,22 @@ def _validate_values_setting(field_name, value, _type, key=foac.VALUES):
             )
 
 
-def _validate_taxonomy_setting(field_name, taxonomy):
-    if not isinstance(taxonomy, str) or not taxonomy:
+def _validate_taxonomy_setting(field_name: str, taxonomy_name: str):
+    # Late import to avoid a circular import with the ontology SDK.
+    from fiftyone.core.ontology import load_ontology
+
+    try:
+        taxonomy = load_ontology(taxonomy_name)
+    except ValueError:
         raise ValueError(
-            f"'{foac.TAXONOMY}' setting for field '{field_name}' must be a "
-            f"non-empty string"
+            f"'{foac.TAXONOMY}' references unknown taxonomy "
+            f"'{taxonomy_name}' for field '{field_name}'"
+        )
+
+    if not taxonomy.is_taxonomy:
+        raise ValueError(
+            f"'{foac.TAXONOMY}' references '{taxonomy_name}' which is not "
+            f"a taxonomy for field '{field_name}'"
         )
 
 

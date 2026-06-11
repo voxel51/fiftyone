@@ -15,14 +15,20 @@ import {
 } from "./style-tokens";
 import { WebGpuCanvas } from "./webgpu-canvas";
 
+// Initial camera pose: elevated and offset so the full scene is in view.
 const PERSPECTIVE_POINT_CAMERA = {
   far: 10000,
   fov: 50,
   near: 0.01,
   position: [8, 5, 8] as [number, number, number],
 };
+// Render budget: beyond ~120k points the GPU cost outweighs the visual gain
+// for typical LiDAR frames. Points are uniformly sampled down to this limit.
 const DEFAULT_MAX_RENDERED_POINTS = 120_000;
+// Default WebGL point sprite size in pixels.
 const DEFAULT_POINT_SIZE = 2;
+// Side length of the synthetic unit cube used when a cloud has no spread
+// (e.g. a single point), so the camera has a non-zero target to frame.
 const EMPTY_POINT_CLOUD_BOUNDS_SIZE = 1;
 const MIN_POINT_SAMPLE_COUNT = 1;
 const NORMALIZED_HEIGHT_MIN = 0;
@@ -31,7 +37,10 @@ const POINT_COMPONENT_COUNT = 3;
 const X_COMPONENT_INDEX = 0;
 const Y_COMPONENT_INDEX = 1;
 const Z_COMPONENT_INDEX = 2;
+// Height-to-colour mapping: points at the midpoint of the normalised height
+// range blend between the cool (blue) and warm (red/green) colour anchors.
 const HEIGHT_COLOR_MIDPOINT = 0.5;
+// Scale factor applied to the normalised height before the colour ramp lookup.
 const HEIGHT_COLOR_SCALE = 2;
 const HEIGHT_COLOR_RED_BASE = 0.25;
 const HEIGHT_COLOR_RED_RANGE = 0.75;

@@ -3499,7 +3499,7 @@ __metadata:
     "@eslint/compat": "npm:^1.1.1"
     "@fiftyone/commands": "workspace:^"
     "@fiftyone/tiling": "npm:*"
-    "@voxel51/voodo": "npm:^0.0.30"
+    "@voxel51/voodo": "npm:^0.0.34"
     eslint: "npm:9.7.0"
     eslint-plugin-react: "npm:^7.35.0"
     eslint-plugin-react-hooks: "npm:rc"
@@ -3552,11 +3552,11 @@ __metadata:
     "@fiftyone/plugins": "npm:*"
     "@fiftyone/spaces": "npm:*"
     "@fiftyone/state": "npm:*"
+    "@voxel51/voodo": "npm:^0.0.34"
     vite: "npm:^7.3.2"
     vite-plugin-externals: "npm:^0.5.0"
   peerDependencies:
     "@mui/icons-material": "*"
-    "@voxel51/voodo": "*"
     jotai: "*"
     recoil: "*"
   languageName: unknown
@@ -3600,13 +3600,13 @@ __metadata:
     "@fiftyone/utilities": "npm:*"
     "@microsoft/fetch-event-source": "npm:^2.0.1"
     "@testing-library/react-hooks": "npm:latest"
+    "@voxel51/voodo": "npm:^0.0.34"
     babel-plugin-relay: "npm:^14.1.0"
     html2canvas: "npm:1.0.0-rc.7"
     lodash: "npm:^4.18.1"
     prettier: "npm:^2.7.1"
     vite: "npm:^7.3.2"
   peerDependencies:
-    "@voxel51/voodo": "*"
     react: "*"
     react-error-boundary: "*"
     react-relay: "*"
@@ -3619,7 +3619,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/tiling@workspace:packages/tiling"
   dependencies:
-    "@voxel51/voodo": "npm:^0.0.30"
+    "@voxel51/voodo": "npm:^0.0.34"
     clsx: "npm:^2.1.1"
     jotai: "npm:^2.9.3"
     react-mosaic-component: "npm:^6.1.1"
@@ -8802,14 +8802,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@voxel51/voodo@npm:^0.0.30":
-  version: 0.0.30
-  resolution: "@voxel51/voodo@npm:0.0.30"
+"@voxel51/voodo@npm:^0.0.34":
+  version: 0.0.34
+  resolution: "@voxel51/voodo@npm:0.0.34"
   dependencies:
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
     "@dnd-kit/utilities": "npm:^3.2.2"
+    "@floating-ui/react": "npm:^0.27.19"
     "@headlessui/react": "npm:^2.2.9"
+    "@tanstack/react-virtual": "npm:^3.13.24"
     clsx: "npm:^2.1.1"
     date-fns-tz: "npm:^3.2.0"
     lodash.debounce: "npm:^4.0.8"
@@ -8819,7 +8821,7 @@ __metadata:
     react: ^18.0.0
     react-dom: ^18.0.0
     react-is: ^18.0.0
-  checksum: 10/0df87d1af8cd1ff80b01e194752f3387bdc0e931696e345141fc12af0e9c0b2860e3abba1f9187740d27cda198683415172d6cf1dfa8f18b9d74d17ef89dc0ff
+  checksum: 10/e7ca0e9d792182805891d8e4bf8e89356112f4cd78811613108634e803494e9695457eb5d48194518a75a1e41fded08ecd730c7eed3f16e23017ccf3529502fe
   languageName: node
   linkType: hard
 

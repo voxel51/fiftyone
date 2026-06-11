@@ -103,6 +103,13 @@ export interface SchemaConfigType {
   read_only?: boolean;
 }
 
+export const VALUES_MODE = {
+  simple: "simple",
+  taxonomy: "taxonomy",
+} as const;
+
+export type ValuesMode = typeof VALUES_MODE[keyof typeof VALUES_MODE];
+
 // Form state for attribute editing (uses strings for form inputs)
 export interface AttributeFormData {
   name: string;
@@ -115,7 +122,7 @@ export interface AttributeFormData {
   read_only: boolean;
   when?: AttributeCondition;
   _source?: string;
-  valuesMode: "simple" | "taxonomy";
+  valuesMode: ValuesMode;
   taxonomy?: string;
 }
 
@@ -297,7 +304,7 @@ export const createDefaultFormData = (): AttributeFormData => ({
   default: "",
   listDefault: [],
   read_only: false,
-  valuesMode: "simple",
+  valuesMode: VALUES_MODE.simple,
 });
 
 /**
@@ -334,7 +341,7 @@ export const toFormData = (config: AttributeConfig): AttributeFormData => {
     read_only: config.read_only || false,
     when: config.when,
     _source: config._source,
-    valuesMode: config.taxonomy ? "taxonomy" : "simple",
+    valuesMode: config.taxonomy ? VALUES_MODE.taxonomy : VALUES_MODE.simple,
     taxonomy: config.taxonomy,
   };
 };
@@ -384,7 +391,7 @@ export const toAttributeConfig = (data: AttributeFormData): AttributeConfig => {
     }
   }
 
-  if (data.valuesMode === "taxonomy") {
+  if (data.valuesMode === VALUES_MODE.taxonomy) {
     return {
       name: data.name.trim(),
       type: data.type,
@@ -589,7 +596,7 @@ export const getAttributeFormErrors = (
   const needsRange = isNumeric && componentNeedsRange(data.component);
   const isListType = LIST_TYPES.includes(data.type);
 
-  const isTaxonomyMode = data.valuesMode === "taxonomy";
+  const isTaxonomyMode = data.valuesMode === VALUES_MODE.taxonomy;
 
   // In taxonomy mode, skip values validation and instead require a taxonomy selection.
   const valuesError =

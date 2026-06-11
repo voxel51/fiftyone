@@ -152,6 +152,59 @@ describe("TilingProvider", () => {
     });
   });
 
+  describe("initialLayout prop", () => {
+    it("uses the provided initialLayout instead of auto-laying out", () => {
+      const initialTiles = {
+        "a-1": makeTile("a"),
+        "b-1": makeTile("b"),
+      };
+      const explicitLayout = "a-1";
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <TilingProvider
+            initialTiles={initialTiles}
+            initialLayout={explicitLayout}
+          >
+            {children}
+          </TilingProvider>
+        ),
+      });
+      expect(result.current.layout).toBe("a-1");
+    });
+  });
+
+  describe("setTileTitle", () => {
+    it("updates the title of a registered tile", () => {
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <Wrapper initialTiles={{ "cam-1": makeTile("Camera") }}>
+            {children}
+          </Wrapper>
+        ),
+      });
+      act(() => {
+        result.current.setTileTitle("cam-1", "Front Camera");
+      });
+      expect(result.current.tiles["cam-1"].title).toBe("Front Camera");
+    });
+
+    it("is a no-op when the title is unchanged", () => {
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <Wrapper initialTiles={{ "cam-1": makeTile("Camera") }}>
+            {children}
+          </Wrapper>
+        ),
+      });
+      const before = result.current.tiles["cam-1"];
+      act(() => {
+        result.current.setTileTitle("cam-1", "Camera");
+      });
+      // Reference-equal — no re-render triggered.
+      expect(result.current.tiles["cam-1"]).toBe(before);
+    });
+  });
+
   describe("removeTile", () => {
     it("drops the tile from the tiles map and the layout", () => {
       const { result } = renderHook(() => useTiling(), {
@@ -198,6 +251,43 @@ describe("TilingProvider", () => {
         result.current.removeTile("a-1");
       });
       expect(result.current.focusedTileId).toBe("b-1");
+    });
+
+    it("collapses the split when removing the second of two tiles", () => {
+      // Removing "b-1" from {row, "a-1", "b-1"} should collapse to just "a-1".
+      const initialTiles = { "a-1": makeTile("a"), "b-1": makeTile("b") };
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <Wrapper initialTiles={initialTiles}>{children}</Wrapper>
+        ),
+      });
+      act(() => {
+        result.current.removeTile("b-1");
+      });
+      expect(result.current.layout).toBe("a-1");
+      expect(result.current.tiles["b-1"]).toBeUndefined();
+    });
+
+    it("preserves the sibling subtree when removing a leaf from a deeper split", () => {
+      // 3-tile layout: {row, "a-1", {col, "b-1", "c-1"}}
+      // Removing "c-1" → {row, "a-1", "b-1"} — both children survive so the
+      // root split node is reconstructed (not collapsed).
+      const initialTiles = {
+        "a-1": makeTile("a"),
+        "b-1": makeTile("b"),
+        "c-1": makeTile("c"),
+      };
+      const { result } = renderHook(() => useTiling(), {
+        wrapper: ({ children }) => (
+          <Wrapper initialTiles={initialTiles}>{children}</Wrapper>
+        ),
+      });
+      act(() => {
+        result.current.removeTile("c-1");
+      });
+      expect(result.current.tiles["c-1"]).toBeUndefined();
+      expect(result.current.tiles["a-1"]).toBeDefined();
+      expect(result.current.tiles["b-1"]).toBeDefined();
     });
 
     it("is a no-op when removing an unknown id", () => {
@@ -259,6 +349,17 @@ describe("TilingProvider", () => {
       });
       expect(result.current.tiles).toEqual(initialTiles);
       expect(result.current.layout).not.toBeNull();
+    });
+  });
+
+  describe("useTiling guard", () => {
+    it("throws when called outside a TilingProvider", () => {
+      const consoleError = console.error;
+      console.error = () => {};
+      expect(() => renderHook(() => useTiling())).toThrow(
+        "useTiling must be used inside <TilingProvider>"
+      );
+      console.error = consoleError;
     });
   });
 

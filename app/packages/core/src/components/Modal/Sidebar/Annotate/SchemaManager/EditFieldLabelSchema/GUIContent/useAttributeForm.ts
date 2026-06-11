@@ -15,11 +15,13 @@ import {
   getDefaultComponent,
 } from "../../constants";
 import {
+  VALUES_MODE,
   getAttributeFormErrors,
   hasAttributeFormError,
   type AttributeCondition,
   type AttributeConditionLeaf,
   type AttributeFormData,
+  type ValuesMode,
 } from "../../utils";
 
 interface UseAttributeFormProps {
@@ -58,7 +60,7 @@ interface UseAttributeFormResult {
   handleDefaultChange: (defaultValue: string) => void;
   handleListDefaultChange: (values: (string | number)[]) => void;
   handleReadOnlyChange: (readOnly: boolean) => void;
-  handleValuesModeChange: (mode: "simple" | "taxonomy") => void;
+  handleValuesModeChange: (mode: ValuesMode) => void;
   handleTaxonomyChange: (taxonomy: string) => void;
 }
 
@@ -116,7 +118,7 @@ export default function useAttributeForm({
     formState.component === "dropdown";
   const supportsDefault =
     !NO_DEFAULT_TYPES.includes(formState.type) &&
-    formState.valuesMode === "simple";
+    formState.valuesMode === VALUES_MODE.simple;
   const componentOptions = COMPONENT_OPTIONS[formState.type] || [];
 
   // Visibility flags
@@ -154,7 +156,7 @@ export default function useAttributeForm({
         listDefault: [],
         ...(stillEligible
           ? {}
-          : { valuesMode: "simple" as const, taxonomy: undefined }),
+          : { valuesMode: VALUES_MODE.simple, taxonomy: undefined }),
       });
     },
     [formState, onFormStateChange]
@@ -179,7 +181,7 @@ export default function useAttributeForm({
         listDefault: [],
         ...(stillEligible
           ? {}
-          : { valuesMode: "simple" as const, taxonomy: undefined }),
+          : { valuesMode: VALUES_MODE.simple, taxonomy: undefined }),
       });
     },
     [formState, onFormStateChange]
@@ -221,8 +223,8 @@ export default function useAttributeForm({
   );
 
   const handleValuesModeChange = useCallback(
-    (mode: "simple" | "taxonomy") => {
-      if (mode === "taxonomy") {
+    (mode: ValuesMode) => {
+      if (mode === VALUES_MODE.taxonomy) {
         onFormStateChange({ ...formState, valuesMode: mode, values: [] });
       } else {
         onFormStateChange({
