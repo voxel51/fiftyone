@@ -131,7 +131,9 @@ async def _list_ontology_summaries(
                 "type": {"$first": "$type"},
                 "version": {"$first": "$version"},
                 "last_modified_at": {"$first": "$last_modified_at"},
-                "taxonomy": {"$first": "$root.taxonomy"},
+                "taxonomy": {
+                    "$first": {"$ifNull": ["$root.taxonomy", "$$REMOVE"]}
+                },
             }
         },
         {"$sort": {"last_modified_at": -1}},
