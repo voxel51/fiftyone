@@ -53,3 +53,7 @@ export type { SidebarPanelProps } from "./views/SidebarPanel/SidebarPanel";
 
 export { default as TileSettingsSidebar } from "./views/TileSettingsSidebar/TileSettingsSidebar";
 export { default as TilingInspectorSidebar } from "./views/TilingInspectorSidebar/TilingInspectorSidebar";
+
+// --- Layout persistence ----------------------------------------------------
+export { loadLayout, saveLayout } from "./lib/layout-storage";
+export { useTilingLayoutPersistence } from "./lib/use-tiling-layout-persistence";

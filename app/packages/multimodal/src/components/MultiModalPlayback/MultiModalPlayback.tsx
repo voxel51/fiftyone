@@ -1,10 +1,12 @@
 import {
+  loadLayout,
   MosaicGrid,
   TileSettingsSidebar,
   TilingHeader,
   TilingInspectorSidebar,
   TilingProvider,
   useTiling,
+  useTilingLayoutPersistence,
   type TilingTile,
 } from "@fiftyone/tiling";
 import { Drawer } from "@voxel51/voodo";
@@ -28,6 +30,13 @@ const EMPTY_SOURCES: readonly SceneSource[] = [];
 export interface MultiModalPlaybackProps {
   /** Filename rendered on the left of the top bar. */
   fileName: string;
+
+  /**
+   * Dataset identifier used to key the persisted mosaic layout in
+   * localStorage. When provided, the layout is restored on mount and
+   * saved on every change. Omit to disable persistence.
+   */
+  datasetId?: string;
 
   /** Tracks broadcast through the embedded TrackProvider. */
   tracks?: Track[];
@@ -108,6 +117,7 @@ export interface MultiModalPlaybackProps {
  */
 const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   fileName,
+  datasetId,
   tracks,
   defaultPinnedTrackIds,
   initialTiles,
@@ -121,6 +131,8 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   children,
   className,
 }) => {
+  const initialLayout = loadLayout(datasetId, initialTiles);
+
   return (
     <PlaybackProvider>
       <TrackProvider
@@ -128,10 +140,11 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
         initialPinnedIds={defaultPinnedTrackIds}
       >
         <SceneInventoryProvider sources={sceneSources}>
-          <TilingProvider initialTiles={initialTiles}>
+          <TilingProvider initialTiles={initialTiles} initialLayout={initialLayout}>
             {children}
             <Layout
               fileName={fileName}
+              datasetId={datasetId}
               leftSidebar={leftSidebar}
               rightSidebar={rightSidebar}
               defaultLeftOpen={defaultLeftOpen}
@@ -149,6 +162,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
 
 interface LayoutProps {
   fileName: string;
+  datasetId?: string;
   leftSidebar: ReactNode;
   rightSidebar: ReactNode;
   defaultLeftOpen: boolean;
@@ -160,6 +174,7 @@ interface LayoutProps {
 
 function Layout({
   fileName,
+  datasetId,
   leftSidebar,
   rightSidebar,
   defaultLeftOpen,
@@ -170,6 +185,7 @@ function Layout({
 }: LayoutProps) {
   const { layout, tiles, focusedTileId, setLayout, setFocusedTileId } =
     useTiling();
+  useTilingLayoutPersistence(datasetId);
   const [leftOpen, setLeftOpen] = useState(defaultLeftOpen);
   const [rightOpen, setRightOpen] = useState(defaultRightOpen);
 
