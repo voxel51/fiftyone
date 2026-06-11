@@ -54,6 +54,7 @@
         "onnxruntime-web": "^1.24.3",
         "relay-compiler": "^14.1.0",
         "rollup-plugin-polyfill-node": "^0.6.2",
+        "rollup-plugin-visualizer": "^7.0.1",
         "typescript-plugin-css-modules": "^5.0.2",
         "vite": "^7.3.2",
         "vite-plugin-relay": "^1.0.7",

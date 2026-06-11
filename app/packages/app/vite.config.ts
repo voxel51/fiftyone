@@ -10,6 +10,9 @@ import { basePlugins } from "../../vite.base.config";
 
 async function loadConfig() {
   const pluginRewriteAll = (await import("vite-plugin-rewrite-all")).default;
+  const visualizer = process.env.ANALYZE
+    ? (await import("rollup-plugin-visualizer")).visualizer
+    : null;
 
   return defineConfig({
     base: "",
@@ -25,6 +28,15 @@ async function loadConfig() {
       pluginRewriteAll(),
       foxgloveWasmAsUrl(),
       wasm(),
+      visualizer
+        ? visualizer({
+            filename: "dist/bundle-stats.html",
+            template: "treemap",
+            gzipSize: true,
+            brotliSize: true,
+            sourcemap: true,
+          })
+        : null,
       // Vite's worker bundling breaks ort's WASM resolution and emits hashed
       // copies that ort can't find by name. Emit unhashed copies and clean up.
       (() => {
@@ -86,6 +98,7 @@ async function loadConfig() {
       dedupe: ["react", "react-dom", "react/jsx-runtime"],
     },
     build: {
+      sourcemap: process.env.ANALYZE ? true : false,
       rollupOptions: {
         onwarn(warning, warn) {
           if (warning.code === "MODULE_LEVEL_DIRECTIVE") {

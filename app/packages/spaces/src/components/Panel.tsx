@@ -52,7 +52,9 @@ function Panel(props: PanelProps) {
       style={style}
     >
       <PanelContext.Provider value={{ node, scope }}>
-        <Component panelNode={node} dimensions={dimensions} />
+        <React.Suspense fallback={<PanelSkeleton />}>
+          <Component panelNode={node} dimensions={dimensions} />
+        </React.Suspense>
       </PanelContext.Provider>
     </StyledPanel>
   );

@@ -3,8 +3,9 @@ import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
 import { Box } from "@mui/material";
 import { merge, snakeCase } from "lodash";
-import React, { useEffect, useMemo } from "react";
-import Plot from "react-plotly.js";
+import React, { lazy, Suspense, useEffect, useMemo } from "react";
+
+const Plot = lazy(() => import("react-plotly.js"));
 import { HeaderView } from ".";
 import { getComponentProps } from "../utils";
 import { ViewPropsType } from "../utils/types";
@@ -220,15 +221,17 @@ export default function PlotlyView(props: ViewPropsType) {
       sx={{ height: "100%", width: "100%" }}
     >
       <HeaderView {...props} nested />
-      <Plot
-        revision={revision}
-        data={mergedData}
-        style={{ height: plotHeight, width: plotWidth, zIndex: 1 }}
-        config={mergedConfig}
-        layout={mergedLayout}
-        {...eventHandlers}
-        {...getComponentProps(props, "plotly")}
-      />
+      <Suspense fallback={null}>
+        <Plot
+          revision={revision}
+          data={mergedData}
+          style={{ height: plotHeight, width: plotWidth, zIndex: 1 }}
+          config={mergedConfig}
+          layout={mergedLayout}
+          {...eventHandlers}
+          {...getComponentProps(props, "plotly")}
+        />
+      </Suspense>
     </Box>
   );
 }
