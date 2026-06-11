@@ -11,6 +11,7 @@ import {
   registerMcapGridStreamTopics,
   useMcapGridSelectedStreamTopic,
 } from "./mcap-grid-stream-state";
+import { useMcapGridCameraPose } from "./mcap-grid-camera-state";
 import {
   useMcapGridPreview,
   type McapGridPreviewStatus,
@@ -86,10 +87,14 @@ function PointCloudPreviewFrame({
 }: {
   readonly frame: Extract<McapGridPreviewFrame, { kind: "point-cloud" }>;
 }) {
+  const [cameraPose, setCameraPose] = useMcapGridCameraPose();
+
   return (
     <PointCloudPanel
+      cameraPose={cameraPose}
       className={classes.imagePanel}
       frame={frame.pointCloud}
+      onCameraPoseChange={setCameraPose}
       showGizmo={false}
       showHud={false}
     />
