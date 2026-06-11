@@ -1,5 +1,9 @@
 import type { PaginateSamplesNode } from "@fiftyone/relay";
-import type { ID, SpotlightConfig } from "@fiftyone/spotlight";
+import type {
+  ID,
+  Iter as SpotlightIter,
+  SpotlightConfig,
+} from "@fiftyone/spotlight";
 
 import { get } from "lodash";
 import { useRecoilCallback } from "recoil";
@@ -10,17 +14,30 @@ import useSetModalState from "./useSetModalState";
 
 export type Sample = Exclude<PaginateSamplesNode, null>;
 
+/**
+ * Builds the click-to-expand handler for a Spotlight grid.
+ *
+ * The returned function takes the standard `onItemClick` payload plus a
+ * `getIter` callback that mints a fresh navigation iterator. `getIter` is
+ * only invoked when the click opens the modal (skipped for ctrl/meta
+ * multi-select clicks), and its result drives modal next/previous. The
+ * iter's current focus becomes the seed sample for `modalSelector`.
+ *
+ * @param store - Per-cursor sample cache populated by the pager.
+ */
 export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
   const setExpandedSample = useSetExpandedSample();
   const setModalState = useSetModalState();
 
   return useRecoilCallback(
     ({ snapshot, set }) =>
-      async ({
-        event,
-        item,
-        iter: cursor,
-      }: Parameters<SpotlightConfig<number, Sample>["onItemClick"]>["0"]) => {
+      async (
+        {
+          event,
+          item,
+        }: Parameters<SpotlightConfig<number, Sample>["onItemClick"]>["0"],
+        getIter: () => SpotlightIter
+      ) => {
         if (event.ctrlKey || event.metaKey) {
           set(atoms.selectedSamples, (selected) => {
             const newSelected = new Map(selected);
@@ -38,12 +55,17 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
           return;
         }
 
+        // Mint a fresh iterator anchored to the currently focused item.
+        // Spotlight's row handler already called `focus(item.id)` before
+        // invoking the click callback, so the iter inherits that focus.
+        const cursor = getIter();
+
         const hasGroupSlices = await snapshot.getPromise(
           groupAtoms.hasGroupSlices
         );
         const groupField = await snapshot.getPromise(groupAtoms.groupField);
 
-        const iter = async (request: Promise<ID | undefined>) => {
+        const resolve = async (request: Promise<ID | undefined>) => {
           const id = await request;
           const sample = store.get(id);
 
@@ -63,7 +85,7 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
           const nextId = await cursor.next(offset);
           const nextCheckId = await cursor.next(offset, true);
 
-          const result = await iter(Promise.resolve(nextId));
+          const result = await resolve(Promise.resolve(nextId));
           return {
             hasNext: Boolean(nextCheckId),
             hasPrevious: true,
@@ -75,7 +97,7 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
           const prevId = await cursor.next(-1 * offset);
           const prevCheckId = await cursor.next(-1 * offset, true);
 
-          const result = await iter(Promise.resolve(prevId));
+          const result = await resolve(Promise.resolve(prevId));
           return {
             hasNext: true,
             hasPrevious: Boolean(prevCheckId),
@@ -90,7 +112,7 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
           next,
           previous,
         })
-          .then(() => iter(Promise.resolve(item.id)))
+          .then(() => resolve(Promise.resolve(item.id)))
           .then((data) => setExpandedSample({ ...data, hasNext, hasPrevious }));
       },
     [setExpandedSample, setModalState]

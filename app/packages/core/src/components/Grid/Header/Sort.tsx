@@ -1,87 +1,89 @@
-import { Selector } from "@fiftyone/components";
 import {
   gridSortBy,
   gridSortFields,
-  queryPerformance,
   similarityParameters,
 } from "@fiftyone/state";
-import { ArrowDownward, ArrowUpward } from "@mui/icons-material";
-import React from "react";
+import { Icon, IconName, Select, Size, Tooltip } from "@voxel51/voodo";
+import React, { useMemo } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
-import { ActionOption } from "../../Actions/Common";
-import { SORT_BY_INDEXED_FIELDS } from "../../../utils/links";
 import { RightDiv, SliderContainer } from "./Containers";
 
-const Field = ({ value }: { className?: string; value: string }) => {
-  return <>{value}</>;
-};
+// Sentinel option used to clear the sort selection. voodo Select needs
+// every choice to be an option entry, so "no sort" gets an explicit row.
+const CLEAR_ID = "__sort_clear__";
+
+// Same hover/press class used by the Spacing / Zoom reset affordances.
+const PRESS_CLASS =
+  "cursor-pointer flex items-center justify-center p-1.5 hover:scale-[1.1] active:scale-[0.92] transition-transform duration-[150ms] ease-out";
+
+// Match the header's tooltip surface: translucent so grid samples stay
+// partly visible behind the label.
+const TOOLTIP_CLASS =
+  "!bg-black/70 !text-white backdrop-blur-sm whitespace-nowrap";
 
 export default function Sort() {
   const fields = useRecoilValue(gridSortFields);
   const [value, select] = useRecoilState(gridSortBy);
   const similarity = useRecoilValue(similarityParameters);
-  const isQPEnabled = useRecoilValue(queryPerformance);
+
+  const options = useMemo(
+    () => [
+      { id: CLEAR_ID, data: { label: "Clear sort" } },
+      ...fields.map((f) => ({ id: f, data: { label: f } })),
+    ],
+    [fields]
+  );
+
   if (!fields.length || similarity) {
     return null;
   }
 
-  const footer = isQPEnabled ? (
-    <ActionOption
-      text="Add additional fields"
-      href={SORT_BY_INDEXED_FIELDS}
-      title="More on sorting with Query Performance"
-      style={{ background: "unset", paddingTop: 0, paddingBottom: 0 }}
-      svgStyles={{ height: "1rem" }}
-    />
-  ) : undefined;
-
   return (
     <SliderContainer style={{ width: "auto" }}>
-      <RightDiv style={{ paddingRight: 0, border: "unset" }}>
-        <Selector
-          inputStyle={{ height: 28 }}
-          component={Field}
-          containerStyle={{
-            margin: "0 0.5rem",
-            position: "relative",
-          }}
-          value={value?.field}
-          onSelect={(_, v) => {
-            if (!v) {
-              return;
-            }
-            if (v === "-") {
+      {/* Constrain the Sort selector to a fixed width so it doesn't
+          eat into the spacing/zoom slider area. `flexShrink: 0` keeps
+          it from collapsing under flex pressure. */}
+      <RightDiv style={{ paddingRight: 0, width: 140, flexShrink: 0 }}>
+        <Select
+          exclusive
+          portal
+          value={value?.field ?? undefined}
+          options={options}
+          onChange={(v) => {
+            if (typeof v !== "string") return;
+            if (v === CLEAR_ID) {
               select(null);
               return;
             }
-
             select((current) => ({
               field: v,
               descending: Boolean(current?.descending),
             }));
           }}
-          useSearch={(v) => {
-            const values = fields.filter((field) => field.startsWith(v));
-            return { values: ["-", ...values] };
-          }}
-          overflow={true}
-          placeholder="Sort by"
-          footer={footer}
+          style={{ width: "100%" }}
         />
       </RightDiv>
       {value !== null && (
-        <div
-          title={value?.descending ? "Descending" : "Ascending"}
-          onClick={() =>
-            select((current) => ({
-              ...current,
-              descending: !current.descending,
-            }))
-          }
-          style={{ cursor: "pointer", display: "flex" }}
+        <Tooltip
+          content={value?.descending ? "Descending" : "Ascending"}
+          className={TOOLTIP_CLASS}
+          portal
         >
-          {value?.descending ? <ArrowDownward /> : <ArrowUpward />}
-        </div>
+          <div
+            onClick={() =>
+              select((current) => ({
+                ...current,
+                descending: !current.descending,
+              }))
+            }
+            className={PRESS_CLASS}
+          >
+            <Icon
+              name={value?.descending ? IconName.ArrowDown : IconName.ArrowUp}
+              size={Size.Xl}
+            />
+          </div>
+        </Tooltip>
       )}
     </SliderContainer>
   );

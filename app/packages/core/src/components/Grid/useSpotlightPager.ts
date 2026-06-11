@@ -21,32 +21,43 @@ export type SampleStore = WeakMap<ID, { sample: fos.Sample; index: number }>;
 const processSamplePageData = (
   page: number,
   store: WeakMap<ID, object>,
-  data: fos.ResponseFrom<foq.paginateSamplesQuery>,
+  connection: foq.PaginateSamplesConnection,
   schema: Schema,
   zoom: boolean,
-  records: Map<string, number>
+  records: Map<string, number>,
+  // When set, every item's `aspectRatio` is replaced with this value
+  // before being handed to Spotlight. The native ratio is preserved on
+  // the stored sample for downstream consumers (e.g. the swimlane
+  // renderer reads it back to size the cover). Used by swimlanes to
+  // make each row uniformly short instead of taking the cover's full
+  // image height.
+  aspectRatioOverride?: number
 ) => {
-  if (data.samples.__typename !== "SampleItemStrConnection") {
-    throw new Error(
-      `unexepcted typename ${data.samples.__typename}, expected 'SampleItemStrConnection'`
-    );
-  }
+  return connection.edges.flatMap((edge, i) => {
+    // Filter out unknown union variants so `handleNode` only ever sees the
+    // known sample types. `PaginateSamplesNode` excludes `%other`; the cast
+    // below is safe by the typeguard, but TS can't narrow `edge.node` through
+    // the function boundary without the explicit early-return.
+    if (edge.node.__typename === "%other") return [];
 
-  return data.samples.edges.map((edge, i) => {
     const node = handleNode(edge.node);
     const id = { description: node.id };
 
     store.set(id, node);
     records.set(node.id, page * PAGE_SIZE + i);
 
-    return {
-      key: page,
-      aspectRatio: zoom
-        ? zoomAspectRatio(node.sample, schema, node.aspectRatio)
-        : node.aspectRatio,
-      id,
-      data: node as fos.Sample,
-    };
+    const nativeAspectRatio = zoom
+      ? zoomAspectRatio(node.sample, schema, node.aspectRatio)
+      : node.aspectRatio;
+
+    return [
+      {
+        key: page,
+        aspectRatio: aspectRatioOverride ?? nativeAspectRatio,
+        id,
+        data: node as fos.Sample,
+      },
+    ];
   });
 };
 
@@ -55,6 +66,7 @@ const useSpotlightPager = ({
   pageSelector,
   records,
   zoomSelector,
+  aspectRatioOverride,
 }: {
   clearRecords: string;
   pageSelector: RecoilValueReadOnly<
@@ -62,6 +74,8 @@ const useSpotlightPager = ({
   >;
   records: Records;
   zoomSelector: RecoilValueReadOnly<boolean>;
+  /** See {@link processSamplePageData}. */
+  aspectRatioOverride?: number;
 }) => {
   const environment = useRelayEnvironment();
   const pager = useRecoilValue(pageSelector);
@@ -78,14 +92,83 @@ const useSpotlightPager = ({
     return new Set();
   }, [clearRecords]);
 
+  // Per-page cursor caches, used when `cursorPagination` is active so
+  // page N's request can seek from page N±1's boundary. Spotlight only
+  // knows about page numbers; the server's cursor-mode pagination needs
+  // the previous edge's sort-field value to seek correctly.
+  //
+  //   pageEndCursors[N]   = last sample's sort value in page N
+  //   pageStartCursors[N] = first sample's sort value in page N
+  //
+  // Forward fetch of page N (>0) uses pageEndCursors[N-1] as `after`;
+  // backward fetch of page N (<0) uses pageStartCursors[N+1] as `before`.
+  // Cleared alongside `pages` (same lifecycle).
+  const pageEndCursors = useMemo(() => {
+    clearRecords;
+    return new Map<number, string>();
+  }, [clearRecords]);
+  const pageStartCursors = useMemo(() => {
+    clearRecords;
+    return new Map<number, string>();
+  }, [clearRecords]);
+
   const page = useRecoilCallback(
     ({ snapshot }) => {
+      // Decides whether the seeked origin (cursor-pagination page 0) has
+      // any predecessors. We have the field's `[min, max]` bounds locally
+      // — there's room behind the cursor iff its value is strictly past
+      // the lower (ascending) or upper (descending) boundary. No extra
+      // query needed.
+      const canScrollBeforeCursor = async (vars: {
+        after: string | null;
+      }): Promise<boolean> => {
+        const cursorStr = vars.after;
+        if (cursorStr === null) return false;
+        const cursor = Number(cursorStr);
+        if (!Number.isFinite(cursor)) return false;
+        const bounds = await snapshot.getPromise(fos.gridSortFieldBounds);
+        if (!bounds) return false;
+        const sort = await snapshot.getPromise(fos.gridSortBy);
+        const [min, max] = bounds;
+        return sort?.descending ? cursor < max : cursor > min;
+      };
       return async (pageNumber: number) => {
         const variables = pager(pageNumber, PAGE_SIZE);
+        type CursorVars = {
+          cursorPagination?: boolean;
+          after: string | null;
+          before?: string | null;
+        };
+        const vars = variables as unknown as CursorVars;
+        if (vars.cursorPagination && pageNumber > 0) {
+          // Forward seek: thread the previous page's `endCursor` (a
+          // sort-field value encoded as a string) into this request's
+          // `after`. The default index-based encoding from
+          // `pageParameters` (`page * pageSize - 1`) would be
+          // misinterpreted by the server's cursor branch as a literal
+          // sort value, so we must override it here.
+          const prev = pageEndCursors.get(pageNumber - 1);
+          if (prev !== undefined) vars.after = prev;
+        } else if (vars.cursorPagination && pageNumber < 0) {
+          // Backward seek: clear `after` and pass the start-cursor of
+          // the page going-forward as `before`, so the server fetches
+          // the N rows immediately preceding it.
+          vars.after = null;
+          const nextStart = pageStartCursors.get(pageNumber + 1);
+          if (nextStart !== undefined) vars.before = nextStart;
+        }
         let subscription: Subscription;
         const schema = await snapshot.getPromise(
           fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
         );
+
+        // Resolve the seeked-origin "is there room backward?" check up
+        // front so the synchronous subscription callback below doesn't
+        // need to be async. Only meaningful for cursor page 0.
+        const seekedOriginHasPrev =
+          Boolean(vars.cursorPagination) && pageNumber === 0
+            ? await canScrollBeforeCursor(vars)
+            : false;
 
         // if a page has not been requested by this callback, require a network
         // request
@@ -105,30 +188,65 @@ const useSpotlightPager = ({
             }
           ).subscribe({
             next: (data) => {
-              if (data.samples.__typename !== "SampleItemStrConnection") {
+              if (!foq.isPaginateSamplesConnection(data.samples)) {
                 resolve({
                   items: [],
                   next: null,
                   previous: null,
                 });
-                data.samples.__typename === "QueryTimeout" &&
+                if (data.samples.__typename === "QueryTimeout") {
                   handleTimeout(data.samples.queryTime);
+                }
                 return;
               }
+
+              const connection = data.samples;
               const items = processSamplePageData(
                 pageNumber,
                 store,
-                data,
+                connection,
                 schema,
                 zoom,
-                records
+                records,
+                aspectRatioOverride
               );
               for (const item of items) keys.current.add(item.id.description);
 
+              // Cache this page's cursor boundaries so adjacent pages
+              // (in either direction) can seek from them.
+              if (connection.pageInfo.endCursor) {
+                pageEndCursors.set(pageNumber, connection.pageInfo.endCursor);
+              }
+              if (connection.pageInfo.startCursor) {
+                pageStartCursors.set(
+                  pageNumber,
+                  connection.pageInfo.startCursor
+                );
+              }
+
+              // Under cursor pagination, the server reports
+              // `hasPreviousPage` for backward fetches (negative pages).
+              // For the seeked origin (page 0), the server has no way to
+              // know without a second query — but the client already
+              // has the sort-field bounds, so we can decide locally:
+              // there's room behind the cursor iff the committed value
+              // is past the boundary (min for ascending, max for desc).
+              const cursorMode = Boolean(vars.cursorPagination);
+              let hasPrev: boolean;
+              if (!cursorMode) {
+                hasPrev = pageNumber > 0;
+              } else if (pageNumber === 0) {
+                hasPrev = seekedOriginHasPrev;
+              } else if (pageNumber > 0) {
+                hasPrev = true;
+              } else {
+                hasPrev = connection.pageInfo.hasPreviousPage;
+              }
+
               resolve({
                 items,
-                next: data.samples.pageInfo.hasNextPage ? pageNumber + 1 : null,
-                previous: pageNumber > 0 ? pageNumber - 1 : null,
+                next: connection.pageInfo.hasNextPage ? pageNumber + 1 : null,
+                previous: hasPrev ? pageNumber - 1 : null,
               });
             },
             complete: () => {
@@ -139,7 +257,17 @@ const useSpotlightPager = ({
         });
       };
     },
-    [environment, handleError, handleTimeout, pager, store, zoom]
+    [
+      aspectRatioOverride,
+      environment,
+      handleError,
+      handleTimeout,
+      pageEndCursors,
+      pageStartCursors,
+      pager,
+      store,
+      zoom,
+    ]
   );
 
   return { page, records, store };

@@ -9,7 +9,8 @@
         "url": "https://github.com/voxel51/fiftyone"
     },
     "scripts": {
-        "check": "biome check --write ./src README.md tsconfig.json vite.config.ts"
+        "check": "biome check --write ./src README.md tsconfig.json vite.config.ts",
+        "dev": "vite"
     },
     "main": "./src/index.ts",
     "private": true,
