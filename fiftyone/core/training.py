@@ -44,6 +44,14 @@ class TrainingMethodConfig(BaseRunConfig):
         train_view_ids: list of sample IDs frozen at ``init`` time
         val_view_ids (None): list of sample IDs, or ``None``
         test_view_ids (None): list of sample IDs, or ``None``
+        train_view_stages (None): serialized view stages frozen at ``init``
+            time (the recreatable view definition), or ``None``
+        val_view_stages (None): serialized view stages, or ``None``
+        test_view_stages (None): serialized view stages, or ``None``
+        train_view_name (None): the saved-view name the caller passed for
+            this split, if any (display breadcrumb; never derived)
+        val_view_name (None): the saved-view name, or ``None``
+        test_view_name (None): the saved-view name, or ``None``
         gt_field (None): ground-truth field name
         pred_field (None): predictions field name
         auto_eval (False): whether ``finish()`` runs evaluation
@@ -64,6 +72,12 @@ class TrainingMethodConfig(BaseRunConfig):
         train_view_ids,
         val_view_ids=None,
         test_view_ids=None,
+        train_view_stages=None,
+        val_view_stages=None,
+        test_view_stages=None,
+        train_view_name=None,
+        val_view_name=None,
+        test_view_name=None,
         gt_field=None,
         pred_field=None,
         auto_eval=False,
@@ -82,6 +96,12 @@ class TrainingMethodConfig(BaseRunConfig):
         self.train_view_ids = train_view_ids
         self.val_view_ids = val_view_ids
         self.test_view_ids = test_view_ids
+        self.train_view_stages = train_view_stages
+        self.val_view_stages = val_view_stages
+        self.test_view_stages = test_view_stages
+        self.train_view_name = train_view_name
+        self.val_view_name = val_view_name
+        self.test_view_name = test_view_name
         self.gt_field = gt_field
         self.pred_field = pred_field
         self.auto_eval = auto_eval
@@ -262,12 +282,106 @@ class TrainingResults(BaseRunResults):
             eval_key=eval_key,
             # back-pointer: a future eval-module refactor MUST preserve this
             # train_key attribute on the produced EvaluationConfig.
+            #
+            # SYNC: the back-pointer is also written post-hoc by
+            # link_evaluation() below. Not unified deliberately: this site
+            # stamps at eval CREATION (fresh eval, no prior owner possible),
+            # while link_evaluation() welds to an EXISTING eval and must
+            # enforce the 1:1 collision policy. If you change the attribute
+            # name or stamp format here, change it there too.
             train_key=self.config.train_key,
             **eval_kwargs,
         )
         self.config.eval_key = eval_key
         self.save_config()
         return results
+
+    def link_evaluation(self, eval_key, overwrite=False):
+        """Links an EXISTING evaluation on the dataset to this run.
+
+        The weld is 1:1 and bidirectionally consistent, or absent:
+        ``eval.config.train_key == run`` iff ``run.config.eval_key == eval``,
+        for at most one run. Accordingly:
+
+        -   re-linking the same pair is an idempotent no-op
+        -   an eval already claimed by a different run is REFUSED unless
+            ``overwrite=True``, which re-stamps the back-pointer and clears
+            the previous owner's forward link
+        -   if this run already links a different eval, that eval's
+            back-pointer is likewise cleared (with the same ``overwrite``
+            gate) so neither direction ever lies
+
+        Args:
+            eval_key: an existing evaluation key on the dataset
+            overwrite (False): whether to steal the weld from another run
+                (and/or unlink this run's current eval)
+
+        Raises:
+            ValueError: if the evaluation does not exist, or the weld would
+                break 1:1 consistency and ``overwrite`` is not set
+        """
+        import fiftyone.core.evaluation as foev
+
+        samples = self.samples
+
+        if eval_key not in samples.list_evaluations():
+            raise ValueError(
+                f"Dataset has no evaluation with key {eval_key!r}"
+            )
+
+        eval_info = samples.get_evaluation_info(eval_key)
+        owner = getattr(eval_info.config, "train_key", None)
+
+        if owner == self.train_key and self.config.eval_key == eval_key:
+            return  # idempotent
+
+        if owner is not None and owner != self.train_key:
+            if not overwrite:
+                raise ValueError(
+                    f"Evaluation {eval_key!r} is already linked to training "
+                    f"run {owner!r}; pass overwrite=True to relink it"
+                )
+
+            # clear the previous owner's forward link
+            if samples.has_training_run(owner):
+                owner_config = samples.get_training_info(owner).config
+                owner_config.eval_key = None
+                TrainingMethod.update_run_config(
+                    samples, owner, owner_config
+                )
+
+        old_eval_key = self.config.eval_key
+        if old_eval_key is not None and old_eval_key != eval_key:
+            if not overwrite:
+                raise ValueError(
+                    f"This run already links evaluation {old_eval_key!r}; "
+                    "pass overwrite=True to relink it"
+                )
+
+            # clear the old eval's back-pointer
+            if old_eval_key in samples.list_evaluations():
+                old_info = samples.get_evaluation_info(old_eval_key)
+                if getattr(old_info.config, "train_key", None) is not None:
+                    old_info.config.train_key = None
+                    foev.EvaluationMethod.update_run_config(
+                        samples, old_eval_key, old_info.config
+                    )
+
+        # stamp the back-pointer, then the forward link
+        #
+        # SYNC: the back-pointer is also written at eval creation by
+        # evaluate() above (smuggled as a train_key kwarg to evaluate_*).
+        # Not unified deliberately: that site can't collide (fresh eval),
+        # this one welds to an existing eval and enforces the 1:1 policy.
+        # If you change the attribute name or stamp format here, change it
+        # there too.
+        eval_info.config.train_key = self.train_key
+        foev.EvaluationMethod.update_run_config(
+            samples, eval_key, eval_info.config
+        )
+
+        self.config.eval_key = eval_key
+        self.save_config()
 
     def finish(self, checkpoint_uri=None, eval_kwargs=None):
         """Finalize: optionally set checkpoint, run data-driven eval if

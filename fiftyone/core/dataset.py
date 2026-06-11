@@ -5293,9 +5293,40 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         project_url=None,
         train_config=None,
         overwrite=False,
+        eval_key=None,
+        overwrite_eval_link=False,
     ):
         """Registers a new training run on this dataset and returns a live
         :class:`fiftyone.core.training.TrainingResults` recorder.
+
+        Pass ``eval_key`` to link an EXISTING evaluation to the run at
+        creation (see
+        :meth:`fiftyone.core.training.TrainingResults.link_evaluation`);
+        this is mutually exclusive with ``auto_eval=True``.
+
+        Args:
+            train_key: the run key; must be a valid identifier
+            train_view: the training view, saved-view name, or tag
+            val_view (None): the validation view, saved-view name, or tag
+            test_view (None): the test view, saved-view name, or tag
+            gt_field (None): ground-truth field name; required iff an
+                evaluation will be run (``auto_eval``)
+            pred_field (None): predictions field name; required iff an
+                evaluation will be run (``auto_eval``)
+            auto_eval (None): whether ``finish()`` runs an evaluation.
+                ``None`` defaults to ``True`` iff ``test_view`` is provided
+                and no existing ``eval_key`` is being linked
+            project_url (None): external experiment-tracker URL
+            train_config (None): opaque user metadata dict
+            overwrite (False): whether to overwrite an existing run with the
+                same key
+            eval_key (None): an EXISTING evaluation key to link to the run;
+                mutually exclusive with ``auto_eval=True``
+            overwrite_eval_link (False): whether to steal the eval link from
+                another run that already claims ``eval_key``
+
+        Returns:
+            a :class:`fiftyone.core.training.TrainingResults`
         """
         import copy
 
@@ -5307,33 +5338,62 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # a non-identifier key raises ValueError. The user always reads back
         # the exact key they provided.
 
+        # Display breadcrumb only: echo back the saved-view name the caller
+        # passed, iff they passed one. Tags and live views have no name.
+        def _view_name(arg):
+            if isinstance(arg, str) and self.has_saved_view(arg):
+                return arg
+            return None
+
+        train_view_name = _view_name(train_view)
+        val_view_name = _view_name(val_view)
+        test_view_name = _view_name(test_view)
+
         train_view = fout.resolve_view(self, train_view)
         val_view = fout.resolve_view(self, val_view)
         test_view = fout.resolve_view(self, test_view)
 
-        has_eval_split = val_view is not None or test_view is not None
-        if has_eval_split and (gt_field is None or pred_field is None):
+        if auto_eval is None:
+            auto_eval = test_view is not None and eval_key is None
+
+        # Linking an existing eval and running a new one are mutually
+        # exclusive branches with different required-field sets
+        if auto_eval and eval_key is not None:
             raise ValueError(
-                "gt_field and pred_field are required when val_view or "
-                "test_view is provided"
+                "Cannot both link an existing evaluation (eval_key) and "
+                "run a new one (auto_eval=True)"
             )
 
-        if auto_eval is None:
-            auto_eval = test_view is not None
+        # gt/pred are required iff THIS engine will run the evaluation
+        # (auto_eval). Association-only runs (auto_eval=False) may omit them;
+        # a later manual evaluate() retains its own lazy guard.
+        if auto_eval and (gt_field is None or pred_field is None):
+            raise ValueError(
+                "gt_field and pred_field are required when auto_eval is "
+                "enabled"
+            )
+
+        def _capture(view):
+            if view is None:
+                return None, None
+
+            return fout.capture_view_ids(view), fout.capture_view_stages(view)
+
+        train_view_ids, train_view_stages = _capture(train_view)
+        val_view_ids, val_view_stages = _capture(val_view)
+        test_view_ids, test_view_stages = _capture(test_view)
 
         config = fotr.TrainingMethodConfig(
             train_key=train_key,
-            train_view_ids=fout.capture_view_ids(train_view),
-            val_view_ids=(
-                fout.capture_view_ids(val_view)
-                if val_view is not None
-                else None
-            ),
-            test_view_ids=(
-                fout.capture_view_ids(test_view)
-                if test_view is not None
-                else None
-            ),
+            train_view_ids=train_view_ids,
+            val_view_ids=val_view_ids,
+            test_view_ids=test_view_ids,
+            train_view_stages=train_view_stages,
+            val_view_stages=val_view_stages,
+            test_view_stages=test_view_stages,
+            train_view_name=train_view_name,
+            val_view_name=val_view_name,
+            test_view_name=test_view_name,
             gt_field=gt_field,
             pred_field=pred_field,
             auto_eval=auto_eval,
@@ -5350,7 +5410,87 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         method.register_run(self, train_key, overwrite=overwrite)
 
         config._dataset = self  # back the live *_view properties
-        return fotr.TrainingResults(self, config, train_key)
+        results = fotr.TrainingResults(self, config, train_key)
+
+        if eval_key is not None:
+            try:
+                results.link_evaluation(
+                    eval_key, overwrite=overwrite_eval_link
+                )
+            except Exception:
+                # don't leave a half-created run behind on a refused weld
+                self.delete_training_run(train_key)
+                raise
+
+        return results
+
+    def add_training_run(
+        self,
+        train_key,
+        train_view,
+        val_view=None,
+        test_view=None,
+        gt_field=None,
+        pred_field=None,
+        auto_eval=None,
+        project_url=None,
+        train_config=None,
+        checkpoint_uri=None,
+        overwrite=False,
+        eval_key=None,
+        overwrite_eval_link=False,
+        eval_kwargs=None,
+    ):
+        """Records a completed training run in one call.
+
+        Equivalent to :meth:`init_training_run` followed immediately by
+        :meth:`fiftyone.core.training.TrainingResults.finish`. Intended for
+        associating runs that already happened elsewhere.
+
+        ``auto_eval`` is inferred identically to :meth:`init_training_run`:
+        ``None`` defaults to ``True`` iff ``test_view`` is provided and no
+        existing ``eval_key`` is being linked. Pass ``auto_eval=False``
+        explicitly to associate views without running an evaluation.
+
+        Args:
+            train_key: the run key; must be a valid identifier
+            train_view: the training view, saved-view name, or tag
+            val_view (None): the validation view, saved-view name, or tag
+            test_view (None): the test view, saved-view name, or tag
+            gt_field (None): ground-truth field name
+            pred_field (None): predictions field name
+            auto_eval (None): whether to run an evaluation now
+            project_url (None): external experiment-tracker URL
+            train_config (None): opaque user metadata dict
+            checkpoint_uri (None): primary checkpoint URI
+            overwrite (False): whether to overwrite an existing run with the
+                same key
+            eval_key (None): an EXISTING evaluation key to link to the run;
+                mutually exclusive with ``auto_eval=True``
+            overwrite_eval_link (False): whether to steal the eval link from
+                another run that already claims ``eval_key``
+            eval_kwargs (None): optional kwargs for the evaluation
+
+        Returns:
+            the completed
+            :class:`fiftyone.core.training.TrainingResults`
+        """
+        run = self.init_training_run(
+            train_key,
+            train_view,
+            val_view=val_view,
+            test_view=test_view,
+            gt_field=gt_field,
+            pred_field=pred_field,
+            auto_eval=auto_eval,
+            project_url=project_url,
+            train_config=train_config,
+            overwrite=overwrite,
+            eval_key=eval_key,
+            overwrite_eval_link=overwrite_eval_link,
+        )
+        run.finish(checkpoint_uri=checkpoint_uri, eval_kwargs=eval_kwargs)
+        return run
 
     @property
     def has_saved_views(self):
