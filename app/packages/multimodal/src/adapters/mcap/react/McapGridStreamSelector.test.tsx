@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { McapGridStreamSelector } from "./McapGridStreamSelector";
 import {
   __resetMcapGridStreamStateForTests,
-  registerMcapGridImageTopics,
+  registerMcapGridStreamTopics,
 } from "./mcap-grid-stream-state";
 
 const { storedValues, useCurrentDataset } = vi.hoisted(() => ({
@@ -81,12 +81,12 @@ describe("McapGridStreamSelector", () => {
     __resetMcapGridStreamStateForTests();
   });
 
-  it("shows auto and mounted MCAP image topics", async () => {
+  it("shows auto and mounted MCAP stream topics", async () => {
     act(() => {
-      registerMcapGridImageTopics({
+      registerMcapGridStreamTopics({
         datasetName: "dataset",
         sampleId: "sample",
-        topics: ["/camera/front", "/camera/back"],
+        topics: ["/camera/front", "/camera/back", "/lidar/points"],
       });
     });
 
@@ -96,5 +96,6 @@ describe("McapGridStreamSelector", () => {
     expect(screen.getByText("Stream: Auto")).toBeTruthy();
     expect(screen.getByText("/camera/back")).toBeTruthy();
     expect(screen.getByText("/camera/front")).toBeTruthy();
+    expect(screen.getByText("/lidar/points")).toBeTruthy();
   });
 });

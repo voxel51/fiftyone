@@ -3,9 +3,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   MCAP_GRID_STREAM_AUTO,
   __resetMcapGridStreamStateForTests,
-  registerMcapGridImageTopics,
-  useMcapGridImageTopics,
-  useMcapGridSelectedImageTopic,
+  registerMcapGridStreamTopics,
+  useMcapGridSelectedStreamTopic,
+  useMcapGridStreamTopics,
 } from "./mcap-grid-stream-state";
 
 describe("mcap-grid-stream-state", () => {
@@ -19,14 +19,14 @@ describe("mcap-grid-stream-state", () => {
     __resetMcapGridStreamStateForTests();
   });
 
-  it("aggregates image topics across mounted samples and removes them on cleanup", () => {
-    const { result } = renderHook(() => useMcapGridImageTopics("dataset"));
+  it("aggregates stream topics across mounted samples and removes them on cleanup", () => {
+    const { result } = renderHook(() => useMcapGridStreamTopics("dataset"));
 
     expect(result.current).toEqual([]);
 
     let cleanupFront: () => void = () => undefined;
     act(() => {
-      cleanupFront = registerMcapGridImageTopics({
+      cleanupFront = registerMcapGridStreamTopics({
         datasetName: "dataset",
         sampleId: "sample-front",
         topics: ["/camera/front", "/camera/front"],
@@ -36,18 +36,26 @@ describe("mcap-grid-stream-state", () => {
 
     let cleanupBack: () => void = () => undefined;
     act(() => {
-      cleanupBack = registerMcapGridImageTopics({
+      cleanupBack = registerMcapGridStreamTopics({
         datasetName: "dataset",
         sampleId: "sample-back",
-        topics: ["/camera/back", "/camera/front"],
+        topics: ["/camera/back", "/lidar/points", "/camera/front"],
       });
     });
-    expect(result.current).toEqual(["/camera/back", "/camera/front"]);
+    expect(result.current).toEqual([
+      "/camera/back",
+      "/camera/front",
+      "/lidar/points",
+    ]);
 
     act(() => {
       cleanupFront();
     });
-    expect(result.current).toEqual(["/camera/back", "/camera/front"]);
+    expect(result.current).toEqual([
+      "/camera/back",
+      "/camera/front",
+      "/lidar/points",
+    ]);
 
     act(() => {
       cleanupBack();
@@ -55,14 +63,14 @@ describe("mcap-grid-stream-state", () => {
     expect(result.current).toEqual([]);
   });
 
-  it("persists the selected image topic per dataset with auto as the default", async () => {
+  it("persists the selected stream topic per dataset with auto as the default", async () => {
     localStorage.setItem(
       "mcap-grid-preview-image-topic:dataset",
       JSON.stringify("/camera/front")
     );
 
     const { result } = renderHook(() =>
-      useMcapGridSelectedImageTopic("dataset")
+      useMcapGridSelectedStreamTopic("dataset")
     );
 
     await waitFor(() => {
@@ -80,7 +88,7 @@ describe("mcap-grid-stream-state", () => {
   });
 
   it("uses auto when no dataset is available", () => {
-    const { result } = renderHook(() => useMcapGridSelectedImageTopic(null));
+    const { result } = renderHook(() => useMcapGridSelectedStreamTopic(null));
 
     expect(result.current[0]).toBe(MCAP_GRID_STREAM_AUTO);
   });

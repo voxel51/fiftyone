@@ -17,12 +17,13 @@ const Z_UP_AXIS = { x: 0, y: 0, z: 1 } as const;
  */
 export interface Base3DSceneProps {
   readonly children?: ReactNode;
+  readonly showGizmo?: boolean;
 }
 
 /**
  * Base 3D R3F scene with reusable navigation, axes, and Z-up coordinates.
  */
-export function Base3DScene({ children }: Base3DSceneProps) {
+export function Base3DScene({ children, showGizmo = true }: Base3DSceneProps) {
   useZUpSceneCoordinates();
 
   return (
@@ -34,13 +35,18 @@ export function Base3DScene({ children }: Base3DSceneProps) {
       <ambientLight intensity={DEFAULT_AMBIENT_LIGHT_INTENSITY} />
       {children}
       <OrbitControls enableDamping={false} makeDefault />
-      <GizmoHelper
-        alignment="top-right"
-        margin={GIZMO_MARGIN_PIXELS}
-        renderPriority={GIZMO_RENDER_PRIORITY}
-      >
-        <GizmoViewport axisColors={AXIS_COLORS} labelColor={AXIS_LABEL_COLOR} />
-      </GizmoHelper>
+      {showGizmo ? (
+        <GizmoHelper
+          alignment="top-right"
+          margin={GIZMO_MARGIN_PIXELS}
+          renderPriority={GIZMO_RENDER_PRIORITY}
+        >
+          <GizmoViewport
+            axisColors={AXIS_COLORS}
+            labelColor={AXIS_LABEL_COLOR}
+          />
+        </GizmoHelper>
+      ) : null}
     </>
   );
 }

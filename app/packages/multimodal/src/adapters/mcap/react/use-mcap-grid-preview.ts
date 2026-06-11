@@ -18,19 +18,19 @@ export interface McapGridPreviewState extends McapGridPreviewSnapshot {
 }
 
 /**
- * Options for rendering one lightweight MCAP camera preview in the grid.
+ * Options for rendering one lightweight MCAP stream preview in the grid.
  */
 export interface UseMcapGridPreviewOptions {
-  readonly selectedImageTopic?: string | null;
+  readonly selectedStreamTopic?: string | null;
   readonly source: ByteSourceDescriptor | null;
 }
 
 const IDLE_PREVIEW_STATE: McapGridPreviewSnapshot = {
   error: null,
   frame: null,
-  hasImageTopics: false,
-  imageTopic: null,
-  imageTopics: [],
+  hasPreviewTopics: false,
+  streamTopic: null,
+  streamTopics: [],
   status: "idle",
 } as const;
 
@@ -40,7 +40,7 @@ const IDLE_PREVIEW_STATE: McapGridPreviewSnapshot = {
  * advance playback from the last rendered frame.
  */
 export function useMcapGridPreview({
-  selectedImageTopic,
+  selectedStreamTopic,
   source,
 }: UseMcapGridPreviewOptions): McapGridPreviewState {
   const [state, setState] =
@@ -69,14 +69,14 @@ export function useMcapGridPreview({
     setState({
       error: null,
       frame: null,
-      hasImageTopics: false,
-      imageTopic: null,
-      imageTopics: [],
+      hasPreviewTopics: false,
+      streamTopic: null,
+      streamTopics: [],
       status: "loading",
     });
 
-    const request = selectedImageTopic
-      ? { selectedImageTopic, source }
+    const request = selectedStreamTopic
+      ? { selectedStreamTopic, source }
       : { source };
     pool
       .request(request, { signal: controller.signal })
@@ -94,9 +94,9 @@ export function useMcapGridPreview({
         setState({
           error: mcapErrorMessage(caughtError),
           frame: null,
-          hasImageTopics: false,
-          imageTopic: null,
-          imageTopics: [],
+          hasPreviewTopics: false,
+          streamTopic: null,
+          streamTopics: [],
           status: "error",
         });
       });
@@ -106,7 +106,7 @@ export function useMcapGridPreview({
       controller.abort();
       pool.release();
     };
-  }, [selectedImageTopic, source]);
+  }, [selectedStreamTopic, source]);
 
   // This effect runs the hover playback loop: while playing, it keeps
   // requesting the next frame, wrapping back to the start when the
@@ -123,9 +123,9 @@ export function useMcapGridPreview({
     const run = async () => {
       try {
         while (active) {
-          const request = selectedImageTopic
+          const request = selectedStreamTopic
             ? {
-                selectedImageTopic,
+                selectedStreamTopic,
                 source,
                 startTimeNs: nextStartTimeNsRef.current,
               }
@@ -168,7 +168,7 @@ export function useMcapGridPreview({
       active = false;
       controller.abort();
     };
-  }, [playing, selectedImageTopic, source, state.status]);
+  }, [playing, selectedStreamTopic, source, state.status]);
 
   return { ...state, pause, play };
 }

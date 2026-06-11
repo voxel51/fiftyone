@@ -89,6 +89,7 @@ export interface PointCloudPanelProps {
   readonly frameTransform?: PointCloudFrameTransform;
   readonly maxRenderedPoints?: number;
   readonly pointSize?: number;
+  readonly showGizmo?: boolean;
   readonly showHud?: boolean;
   readonly style?: CSSProperties;
   readonly warning?: string | null;
@@ -104,6 +105,7 @@ export function PointCloudPanel({
   frameTransform,
   maxRenderedPoints = DEFAULT_MAX_RENDERED_POINTS,
   pointSize = DEFAULT_POINT_SIZE,
+  showGizmo = true,
   showHud = true,
   style,
   warning = null,
@@ -118,10 +120,18 @@ export function PointCloudPanel({
         onFinitePointCount={setFinitePointCount}
         pointSize={pointSize}
         positions={frame.positions}
+        showGizmo={showGizmo}
         transform={frameTransform}
       />
     ),
-    [fit, frame.positions, frameTransform, maxRenderedPoints, pointSize]
+    [
+      fit,
+      frame.positions,
+      frameTransform,
+      maxRenderedPoints,
+      pointSize,
+      showGizmo,
+    ]
   );
 
   return (
@@ -155,6 +165,7 @@ function PointCloudSceneContent({
   onFinitePointCount,
   pointSize,
   positions,
+  showGizmo,
   transform,
 }: {
   readonly fit: "initial" | "frame" | "never";
@@ -162,6 +173,7 @@ function PointCloudSceneContent({
   readonly onFinitePointCount: (count: number) => void;
   readonly pointSize: number;
   readonly positions: Float32Array;
+  readonly showGizmo: boolean;
   readonly transform: PointCloudFrameTransform | undefined;
 }) {
   const invalidate = useThree((state) => state.invalidate);
@@ -183,7 +195,7 @@ function PointCloudSceneContent({
   }, [invalidate, objectTransform]);
 
   return (
-    <Base3DScene>
+    <Base3DScene showGizmo={showGizmo}>
       <group
         position={objectTransform.position}
         quaternion={objectTransform.quaternion}

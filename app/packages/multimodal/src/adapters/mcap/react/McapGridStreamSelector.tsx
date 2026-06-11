@@ -3,8 +3,8 @@ import * as fos from "@fiftyone/state";
 import { useCallback, useMemo } from "react";
 import {
   MCAP_GRID_STREAM_AUTO,
-  useMcapGridImageTopics,
-  useMcapGridSelectedImageTopic,
+  useMcapGridSelectedStreamTopic,
+  useMcapGridStreamTopics,
 } from "./mcap-grid-stream-state";
 
 const AUTO_PLACEHOLDER = "Stream: Auto";
@@ -14,14 +14,14 @@ const StreamOption = ({ value }: { className?: string; value: string }) => (
 );
 
 /**
- * Grid-header control for choosing the image topic used by MCAP previews.
+ * Grid-header control for choosing the stream topic used by MCAP previews.
  */
 export function McapGridStreamSelector() {
   const dataset = fos.useCurrentDataset();
   const datasetName = dataset?.name;
-  const topics = useMcapGridImageTopics(datasetName);
+  const topics = useMcapGridStreamTopics(datasetName);
   const [selectedTopic, setSelectedTopic] =
-    useMcapGridSelectedImageTopic(datasetName);
+    useMcapGridSelectedStreamTopic(datasetName);
 
   const options = useMemo(() => [MCAP_GRID_STREAM_AUTO, ...topics], [topics]);
   const useSearch = useCallback(

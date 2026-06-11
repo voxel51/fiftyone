@@ -2,13 +2,14 @@ import type { SampleRendererProps } from "@fiftyone/plugins";
 import { useEffect, useMemo, useState } from "react";
 import { ImageAnnotationsOverlay } from "../../../visualization/panels/ImageAnnotationsOverlay";
 import { ImagePanel } from "../../../visualization/panels/image";
+import { PointCloudPanel } from "../../../visualization/panels/point-cloud";
 import type { McapGridPreviewFrame } from "../grid-preview";
 import classes from "./GridRenderer.module.css";
 import { McapLoadingAscii } from "./McapLoadingAscii";
 import {
   MCAP_GRID_STREAM_AUTO,
-  registerMcapGridImageTopics,
-  useMcapGridSelectedImageTopic,
+  registerMcapGridStreamTopics,
+  useMcapGridSelectedStreamTopic,
 } from "./mcap-grid-stream-state";
 import {
   useMcapGridPreview,
@@ -29,20 +30,24 @@ export function GridRenderer({ ctx }: SampleRendererProps) {
     const sample = ctx.sample.sample as { _id?: string; id?: string };
     return sample._id ?? sample.id;
   }, [ctx.sample.sample]);
-  const [selectedImageTopic] = useMcapGridSelectedImageTopic(ctx.dataset.name);
+  const [selectedStreamTopic] = useMcapGridSelectedStreamTopic(
+    ctx.dataset.name
+  );
   const preview = useMcapGridPreview({
-    selectedImageTopic:
-      selectedImageTopic === MCAP_GRID_STREAM_AUTO ? null : selectedImageTopic,
+    selectedStreamTopic:
+      selectedStreamTopic === MCAP_GRID_STREAM_AUTO
+        ? null
+        : selectedStreamTopic,
     source,
   });
 
   useEffect(() => {
-    return registerMcapGridImageTopics({
+    return registerMcapGridStreamTopics({
       datasetName: ctx.dataset.name,
       sampleId,
-      topics: preview.imageTopics,
+      topics: preview.streamTopics,
     });
-  }, [ctx.dataset.name, preview.imageTopics, sampleId]);
+  }, [ctx.dataset.name, preview.streamTopics, sampleId]);
 
   return (
     <div
@@ -54,13 +59,13 @@ export function GridRenderer({ ctx }: SampleRendererProps) {
         <PreviewFrame
           // Image dimensions are per camera stream; remount to drop stale
           // dimensions when the source or selected topic changes.
-          key={`${source?.sourceId ?? ""}:${preview.imageTopic ?? ""}`}
+          key={`${source?.sourceId ?? ""}:${preview.streamTopic ?? ""}`}
           frame={preview.frame}
         />
       ) : (
         <PreviewStatus
           error={preview.error}
-          hasImageTopics={preview.hasImageTopics}
+          hasPreviewTopics={preview.hasPreviewTopics}
           status={preview.status}
         />
       )}
@@ -69,6 +74,33 @@ export function GridRenderer({ ctx }: SampleRendererProps) {
 }
 
 function PreviewFrame({ frame }: { readonly frame: McapGridPreviewFrame }) {
+  return frame.kind === "point-cloud" ? (
+    <PointCloudPreviewFrame frame={frame} />
+  ) : (
+    <ImagePreviewFrame frame={frame} />
+  );
+}
+
+function PointCloudPreviewFrame({
+  frame,
+}: {
+  readonly frame: Extract<McapGridPreviewFrame, { kind: "point-cloud" }>;
+}) {
+  return (
+    <PointCloudPanel
+      className={classes.imagePanel}
+      frame={frame.pointCloud}
+      showGizmo={false}
+      showHud={false}
+    />
+  );
+}
+
+function ImagePreviewFrame({
+  frame,
+}: {
+  readonly frame: Extract<McapGridPreviewFrame, { kind: "image" }>;
+}) {
   const [imageDims, setImageDims] = useState<{
     width: number;
     height: number;
@@ -105,15 +137,15 @@ function PreviewFrame({ frame }: { readonly frame: McapGridPreviewFrame }) {
 
 function PreviewStatus({
   error,
-  hasImageTopics,
+  hasPreviewTopics,
   status,
 }: {
   readonly error: string | null;
-  readonly hasImageTopics: boolean;
+  readonly hasPreviewTopics: boolean;
   readonly status: McapGridPreviewStatus;
 }) {
   const loading = status === "loading";
-  const message = previewStatusMessage(status, hasImageTopics);
+  const message = previewStatusMessage(status, hasPreviewTopics);
 
   return (
     <div className={classes.status}>
