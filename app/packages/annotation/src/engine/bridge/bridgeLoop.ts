@@ -2,8 +2,14 @@
  * The engine-derived read-half (spec §6.1): one loop turns the semantic
  * change stream (+ temporal presence for frame-locked bridges) into silent
  * mount/update/unmount calls on a registered bridge. The surface writes none
- * of it. Initial registration performs the whole-sample-reset branch directly
- * (clear + hydrate), so first-mount hydration is the same code path.
+ * of it.
+ *
+ * A whole-sample reset RECONCILES — unmount refs gone from the refreshed
+ * data, reproject survivors onto their existing handles, mount newcomers.
+ * Resets are routine (`setData` follows every successful persist), so a
+ * teardown-and-rebuild would churn every handle once per autosave. Initial
+ * registration runs the same reconcile (no handles yet → mounts everything),
+ * so first-mount hydration is the same code path.
  */
 
 import type { LabelData, LabelType } from "@fiftyone/utilities";
@@ -30,6 +36,10 @@ export const registerBridgeLoop = <Handle, Descriptor>(
   const inScope = (ref: LabelRef): boolean =>
     bridge.sample === undefined || ref.sample === bridge.sample;
 
+  /** Refs known to have a live handle — the reconcile ledger for resets.
+   *  Stale entries are harmless: `resolveHandle` re-checks before unmount. */
+  const known = new Map<string, LabelRef>();
+
   /** Every mount path applies current interaction state to the fresh handle (§6.1). */
   const applyInteraction = (handle: Handle, ref: LabelRef): void => {
     const { interaction } = engine;
@@ -48,6 +58,16 @@ export const registerBridgeLoop = <Handle, Descriptor>(
     applyInteraction(handle, ref);
   };
 
+  const unmountRef = (ref: LabelRef): void => {
+    const handle = bridge.resolveHandle(ref);
+
+    if (handle !== undefined) {
+      bridge.unmount(handle);
+    }
+
+    known.delete(refKey(ref));
+  };
+
   /** Re-read current state and reconcile one ref onto the surface. */
   const reproject = (ref: LabelRef): void => {
     const adapter = adapterFor(ref.path);
@@ -61,12 +81,11 @@ export const registerBridgeLoop = <Handle, Descriptor>(
 
     if (!label) {
       // deleted or resolved away
-      if (handle !== undefined) {
-        bridge.unmount(handle);
-      }
-
+      unmountRef(ref);
       return;
     }
+
+    known.set(refKey(ref), ref);
 
     if (handle !== undefined) {
       adapter.updateHandle(handle, label);
@@ -77,8 +96,8 @@ export const registerBridgeLoop = <Handle, Descriptor>(
     mountFresh(ref, label, adapter);
   };
 
-  /** Hydrate by temporal posture: present subset vs. whole pool (§6.1). */
-  const hydrate = (): void => {
+  /** Current refs by temporal posture: present subset vs. whole pool (§6.1). */
+  const currentRefs = (): LabelRef[] => {
     const refs =
       bridge.temporal === "pool"
         ? engine.enumerateLabels(kinds)
@@ -86,17 +105,26 @@ export const registerBridgeLoop = <Handle, Descriptor>(
             .getPresent()
             .filter((ref) => kinds.includes(engine.getLabelType(ref.path)));
 
-    for (const ref of refs) {
-      if (!inScope(ref)) {
-        continue;
-      }
+    return refs.filter(inScope);
+  };
 
-      const adapter = adapterFor(ref.path);
-      const label = engine.getLabel(ref);
+  /**
+   * The whole-sample-reset branch (§6.1, amended): reconcile, don't rebuild.
+   * Survivors keep their handles (silent re-apply), so a post-persist
+   * `setData` refresh is visually a no-op.
+   */
+  const reconcile = (): void => {
+    const current = currentRefs();
+    const currentKeys = new Set(current.map(refKey));
 
-      if (adapter && label) {
-        mountFresh(ref, label, adapter);
+    for (const [key, ref] of [...known]) {
+      if (!currentKeys.has(key)) {
+        unmountRef(ref);
       }
+    }
+
+    for (const ref of current) {
+      reproject(ref);
     }
   };
 
@@ -111,18 +139,12 @@ export const registerBridgeLoop = <Handle, Descriptor>(
       }
 
       if (isWholeSampleReset(change)) {
-        bridge.clear();
-        hydrate();
+        reconcile();
         continue;
       }
 
       if (change.kind === "delete") {
-        const handle = bridge.resolveHandle(change.ref);
-
-        if (handle !== undefined) {
-          bridge.unmount(handle);
-        }
-
+        unmountRef(change.ref);
         continue;
       }
 
@@ -221,12 +243,7 @@ export const registerBridgeLoop = <Handle, Descriptor>(
             }
 
             if (event.kind === "exit") {
-              const handle = bridge.resolveHandle(event.ref);
-
-              if (handle !== undefined) {
-                bridge.unmount(handle);
-              }
-
+              unmountRef(event.ref);
               continue;
             }
 
@@ -234,9 +251,9 @@ export const registerBridgeLoop = <Handle, Descriptor>(
           }
         });
 
-  // initial registration = the whole-sample-reset branch, for this bridge only
-  bridge.clear();
-  hydrate();
+  // initial registration = the whole-sample-reset branch, for this bridge
+  // only: an empty ledger degenerates reconcile to mount-everything
+  reconcile();
   onInteraction();
 
   const unsubscribeChanges = engine.subscribeChanges(onChanges);

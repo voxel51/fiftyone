@@ -101,7 +101,7 @@ describe("bridge read-half (§6.1)", () => {
     expect(handles.has(created.instanceId)).toBe(false);
   });
 
-  it("whole-sample reset clears and rehydrates", () => {
+  it("whole-sample reset reconciles: gone unmounts, new mounts", () => {
     const { engine, store } = makeEngine("sample-1", {
       ground_truth: { detections: [makeDet("d1", "cat")] },
     });
@@ -114,6 +114,35 @@ describe("bridge read-half (§6.1)", () => {
 
     expect(handles.has("d1")).toBe(false);
     expect(handles.get("d9")?.label.label).toBe("fox");
+  });
+
+  it("a post-persist setData refresh keeps handles and selection", () => {
+    const { engine, store } = makeEngine("sample-1", {
+      ground_truth: {
+        detections: [makeDet("d1", "cat"), makeDet("d2", "dog")],
+      },
+    });
+    const { handles, bridge, adapters } = makeFakeSurface();
+    engine.registerBridge(bridge, adapters);
+    engine.interaction.setActive([ref("ground_truth", "d1")]);
+
+    const before = handles.get("d1")!;
+    expect(before.selected).toBe(true);
+
+    // the backend echoes the saved sample (same ids, refreshed values)
+    store.setData({
+      ground_truth: {
+        detections: [makeDet("d1", "cat"), makeDet("d2", "dog")],
+      },
+    });
+
+    // same handle object — survivors re-apply silently, no remount churn
+    expect(handles.get("d1")).toBe(before);
+    expect(before.label.label).toBe("cat");
+
+    // selection survived both the GC (read-through) and the handle
+    expect(engine.interaction.isActive(ref("ground_truth", "d1"))).toBe(true);
+    expect(handles.get("d1")?.selected).toBe(true);
   });
 
   it("a transaction reconciles once, atomically", () => {
