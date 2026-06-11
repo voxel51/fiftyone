@@ -53,9 +53,33 @@ export const isPlayingAtom = atom(false);
 
 /**
  * True when at least one blocking stream is not ready at the next target
- * time. The RAF loop sets this; UI components read it to show spinners.
+ * time. The RAF loop sets this while playing; seek/step set it while
+ * paused. UI components read it to show spinners.
+ *
+ * While paused, the engine has no tick to clear it — the stream that
+ * fulfils the pending data is expected to flip it back to `false` (the
+ * MCAP data stream does this when the playhead tick becomes covered).
  */
 export const isBufferingAtom = atom(false);
+
+/**
+ * Optional human-readable progress detail to render next to the buffering
+ * indicator (e.g. "3/7 streams"). Streams that can quantify their catch-up
+ * progress write it; `null` hides the detail.
+ */
+export const bufferingDetailAtom = atom<string | null>(null) as PrimitiveAtom<
+  string | null
+>;
+
+/**
+ * Time ranges (seconds, ascending, non-overlapping) where every blocking
+ * stream has data buffered and ready to play. Written by the data layer
+ * (e.g. the MCAP data stream, throttled); rendered as shading along the
+ * timeline's top edge so users can see how far ahead playback can run.
+ */
+export const bufferedRangesAtom = atom<
+  ReadonlyArray<readonly [number, number]>
+>([]);
 
 // View window (the visible time range in the ruler/track area)
 export const viewStartAtom = atom(0);

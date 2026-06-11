@@ -185,3 +185,108 @@ describe("CommandContextManager", () => {
     expect(undoFn).toBeCalledTimes(1);
   });
 });
+
+describe("CommandContextManager text-editing guard", () => {
+  beforeEach(() => {
+    CommandContextManager.instance().reset();
+    document.body.innerHTML = "";
+    // Re-anchor focus on body — a previous test's focused element would
+    // otherwise leak into document.activeElement.
+    (document.activeElement as HTMLElement | null)?.blur?.();
+  });
+
+  function bindSpace() {
+    const execFn = vi.fn(() => {
+      return;
+    });
+    const cmd = CommandContextManager.instance()
+      .getActiveContext()
+      .registerCommand("fo.test.space", execFn, () => true);
+    CommandContextManager.instance()
+      .getActiveContext()
+      .bindKey("space", cmd.id);
+    return execFn;
+  }
+
+  function spaceEvent(init: KeyboardEventInit = {}) {
+    return new KeyboardEvent("keydown", {
+      key: " ",
+      cancelable: true,
+      ...init,
+    });
+  }
+
+  it("skips commands while a text input is focused", async () => {
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    input.focus();
+    const execFn = bindSpace();
+    await CommandContextManager.instance().handleKeyDown(spaceEvent());
+    expect(execFn).not.toBeCalled();
+  });
+
+  it("skips commands while a textarea is focused", async () => {
+    const textarea = document.createElement("textarea");
+    document.body.appendChild(textarea);
+    textarea.focus();
+    const execFn = bindSpace();
+    await CommandContextManager.instance().handleKeyDown(spaceEvent());
+    expect(execFn).not.toBeCalled();
+  });
+
+  it("skips commands while a contenteditable element is focused", async () => {
+    const editor = document.createElement("div");
+    editor.tabIndex = -1;
+    // jsdom doesn't implement isContentEditable — emulate the browser.
+    Object.defineProperty(editor, "isContentEditable", { value: true });
+    document.body.appendChild(editor);
+    editor.focus();
+    const execFn = bindSpace();
+    await CommandContextManager.instance().handleKeyDown(spaceEvent());
+    expect(execFn).not.toBeCalled();
+  });
+
+  it("fires commands while a checkbox is focused and suppresses native activation", async () => {
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    document.body.appendChild(checkbox);
+    checkbox.focus();
+    const execFn = bindSpace();
+    const event = spaceEvent();
+    await CommandContextManager.instance().handleKeyDown(event);
+    expect(execFn).toBeCalledTimes(1);
+    // preventDefault on the keydown is what stops the browser from
+    // toggling the focused checkbox on key-up.
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it("fires commands while a button is focused", async () => {
+    const button = document.createElement("button");
+    document.body.appendChild(button);
+    button.focus();
+    const execFn = bindSpace();
+    const event = spaceEvent();
+    await CommandContextManager.instance().handleKeyDown(event);
+    expect(execFn).toBeCalledTimes(1);
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it("ignores modified variants of a bare binding", async () => {
+    const execFn = bindSpace();
+    await CommandContextManager.instance().handleKeyDown(
+      spaceEvent({ shiftKey: true })
+    );
+    await CommandContextManager.instance().handleKeyDown(
+      spaceEvent({ metaKey: true })
+    );
+    expect(execFn).not.toBeCalled();
+  });
+
+  it("ignores key repeats from a held key", async () => {
+    const execFn = bindSpace();
+    await CommandContextManager.instance().handleKeyDown(
+      spaceEvent({ repeat: true })
+    );
+    expect(execFn).not.toBeCalled();
+  });
+});

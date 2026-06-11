@@ -13,6 +13,8 @@
 
 import { useAtomValue } from "jotai";
 import {
+  bufferedRangesAtom,
+  bufferingDetailAtom,
   currentTimeAtom,
   durationAtom,
   isBufferingAtom,
@@ -51,6 +53,24 @@ export function useIsPlaying(): boolean {
 export function useIsBuffering(): boolean {
   const store = usePlaybackStore();
   return useAtomValue(isBufferingAtom, { store });
+}
+
+/**
+ * Optional progress detail for the buffering indicator (e.g. "3/7
+ * streams"), or `null` when no stream has published one.
+ */
+export function useBufferingDetail(): string | null {
+  const store = usePlaybackStore();
+  return useAtomValue(bufferingDetailAtom, { store });
+}
+
+/**
+ * Time ranges (seconds) buffered and ready to play across every blocking
+ * stream, as published by the data layer. Empty until a stream reports.
+ */
+export function useBufferedRanges(): ReadonlyArray<readonly [number, number]> {
+  const store = usePlaybackStore();
+  return useAtomValue(bufferedRangesAtom, { store });
 }
 
 /** Live duration (max of registered streams, or the provider's fallback). */
