@@ -640,7 +640,7 @@ class SegmentAnything3VideoModelConfig(
     """
 
     def __init__(self, cfg_dict):
-        """Initializes :class:`SegmentAnything3ImageModelConfig`
+        """Initializes :class:`SegmentAnything3VideoModelConfig`
 
         Args:
             cfg_dict: a dictionary with config parameters
@@ -657,7 +657,7 @@ class SegmentAnything3VideoModelConfig(
         self.prompt_frame_indices = self.parse_array(
             d, "prompt_frame_indices", default=None
         )
-        self.text_frame_idx = self.parse_array(d, "text_frame_idx", default=1)
+        self.text_frame_idx = self.parse_int(d, "text_frame_idx", default=1)
 
 
 class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
@@ -818,55 +818,54 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
             else range(1, len(sample.frames) + 1)
         )
 
-        if self.operation_mode == "concept":
-            prompts = {}
-            for frame_number in _frame_indices:
-                if frame_number > len(sample.frames):
-                    raise ValueError(
-                        f"Frame index {frame_number} not valid for {len(sample.frames)} sample frames."
+        prompts = {}
+        for frame_number in _frame_indices:
+            if frame_number > len(sample.frames):
+                raise ValueError(
+                    f"Frame index {frame_number} not valid for {len(sample.frames)} sample frames."
+                )
+
+            value = sample.frames[frame_number].get_field(frame_field_name)
+            frame_idx = int(frame_number - 1)
+            if isinstance(value, fol.Detections):
+                frame_prompts = []
+                for det in value.detections:
+                    rx, ry, rw, rh = det.bounding_box
+                    frame_prompts.append(
+                        {
+                            "box": [rx, ry, rx + rw, ry + rh],
+                            "_label": det.label,
+                        }
                     )
+                if frame_prompts:
+                    prompts[frame_idx] = frame_prompts
 
-                value = sample.frames[frame_number].get_field(frame_field_name)
-                frame_idx = int(frame_number - 1)
-                if isinstance(value, fol.Detections):
-                    frame_prompts = []
-                    for det in value.detections:
-                        rx, ry, rw, rh = det.bounding_box
-                        frame_prompts.append(
-                            {
-                                "box": [rx, ry, rx + rw, ry + rh],
-                                "_label": det.label,
-                            }
-                        )
-                    if frame_prompts:
-                        prompts[frame_idx] = frame_prompts
-
-                elif isinstance(value, fol.Keypoints):
-                    frame_prompts = []
-                    for kp in value.keypoints:
-                        points_norm, labels = fosam._to_sam_points(
-                            kp.points,
-                            width=1,
-                            height=1,
-                            point_labels=fosam._get_sam_point_labels(kp),
-                        )
-                        frame_prompts.append(
-                            {
-                                "points": points_norm.tolist(),
-                                "labels": labels.tolist(),
-                                "_label": kp.label,
-                            }
-                        )
-                    if frame_prompts:
-                        prompts[frame_idx] = frame_prompts
-
-                else:
-                    raise ValueError(
-                        f"Unsupported prompt type {type(value)} on frame "
-                        f"{frame_number}. Use Detections or Keypoints. "
+            elif isinstance(value, fol.Keypoints):
+                frame_prompts = []
+                for kp in value.keypoints:
+                    points_norm, labels = fosam._to_sam_points(
+                        kp.points,
+                        width=1,
+                        height=1,
+                        point_labels=fosam._get_sam_point_labels(kp),
                     )
+                    frame_prompts.append(
+                        {
+                            "points": points_norm.tolist(),
+                            "labels": labels.tolist(),
+                            "_label": kp.label,
+                        }
+                    )
+                if frame_prompts:
+                    prompts[frame_idx] = frame_prompts
 
-            return prompts
+            else:
+                raise ValueError(
+                    f"Unsupported prompt type {type(value)} on frame "
+                    f"{frame_number}. Use Detections or Keypoints. "
+                )
+
+        return prompts
 
     def _parse_visual_frame_prompts(
         self, sample, frame_field_name, frame_indices
@@ -1254,18 +1253,21 @@ def load_fiftyone_video_frames_sam3(
         num_frames, 3, image_size, image_size, dtype=torch.float32
     )
 
+    video_width, video_height = None, None
     for frame_number in range(num_frames):
         current_frame = video_reader.read()
+        if current_frame is None:
+            raise RuntimeError(
+                f"Video reader returned None at frame {frame_number}, "
+                f"expected {num_frames} frames"
+            )
+        if video_width is None:
+            video_height, video_width = current_frame.shape[:2]
         resized_frame = (
             cv2.resize(current_frame, (image_size, image_size)) / 255.0
         )
         img = torch.from_numpy(resized_frame).permute(2, 0, 1)
         images[frame_number] = img
-
-        video_width, video_height = (
-            current_frame.shape[1],
-            current_frame.shape[0],
-        )
 
     if not offload_video_to_cpu:
         images = images.to(compute_device)

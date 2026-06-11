@@ -33,8 +33,9 @@ MASK_THRESH = 0.5
 PLACEHOLDER_LABEL = "mask"
 MIN_METRIC = 1.0
 
-# Default text prompts for concept-mode tests
-TEXT_PROMPTS = ["car"]
+TEXT_PROMPTS = ["person"]
+VID_TEXT_PROMPTS = ["car"]
+
 SAM3_VIDEO_MODEL_NAME = "segment-anything-3-video-torch"
 
 
@@ -61,6 +62,8 @@ def _create_video_dataset(num_samples=2, seed=51):
     dataset = foz.load_zoo_dataset(
         "quickstart-video",
         max_samples=num_samples,
+        shuffle=True,
+        seed=seed,
         dataset_name=name,
     )
     dataset.persistent = True
@@ -215,6 +218,14 @@ class TestSAMParity(unittest.TestCase):
         cls.dataset = _create_test_dataset(num_samples=4, seed=12)
         cls.output_processor = fo.utils.sam.SAMSegmenterOutputProcessor()
 
+    @classmethod
+    def tearDownClass(cls):
+        del cls.fo_model
+        del cls.predictor
+        del cls.auto_gen
+        gc.collect()
+        torch.cuda.empty_cache()
+
     def test_automatic_segmentation_parity(self):
         fo_field = "sam_auto_fo"
         direct_field = "sam_auto_direct"
@@ -227,7 +238,8 @@ class TestSAMParity(unittest.TestCase):
 
         for sample in self.dataset.iter_samples(progress=False, autosave=True):
             image = _get_image_as_numpy(sample.filepath)
-            masks = self.auto_gen.generate(image)
+            with torch.amp.autocast("cuda", enabled=False):
+                masks = self.auto_gen.generate(image)
             sample[direct_field] = _auto_masks_to_detections(masks)
 
         _assert_parity(
@@ -260,16 +272,17 @@ class TestSAMParity(unittest.TestCase):
             dims_hw = (h, w)
             box_prompts = []
             labels = []
-            for gt_det in gt.detections:
-                box_abs = _box_to_sam_abs(gt_det.bounding_box, w, h)
-                _masks, _scores, _ = self.predictor.predict(
-                    box=box_abs,
-                    multimask_output=False,
-                )
-                masks.append(_masks[None, ...])
-                scores.append(_scores[None, ...])
-                box_prompts.append(box_abs)
-                labels.append(gt_det.label)
+            with torch.amp.autocast("cuda", enabled=False):
+                for gt_det in gt.detections:
+                    box_abs = _box_to_sam_abs(gt_det.bounding_box, w, h)
+                    _masks, _scores, _ = self.predictor.predict(
+                        box=box_abs,
+                        multimask_output=False,
+                    )
+                    masks.append(_masks[None, ...])
+                    scores.append(_scores[None, ...])
+                    box_prompts.append(box_abs)
+                    labels.append(gt_det.label)
 
             outputs = {
                 "masks": torch.as_tensor(np.concatenate(masks, axis=0)),
@@ -326,23 +339,24 @@ class TestSAMParity(unittest.TestCase):
             scores = []
             dims_hw = (h, w)
             labels = []
-            for kp in kps_label.keypoints:
-                pts = np.array(kp.points)
-                valid = (pts[:, 0] > 0) & (pts[:, 1] > 0)
-                if not valid.any():
-                    continue
+            with torch.amp.autocast("cuda", enabled=False):
+                for kp in kps_label.keypoints:
+                    pts = np.array(kp.points)
+                    valid = (pts[:, 0] > 0) & (pts[:, 1] > 0)
+                    if not valid.any():
+                        continue
 
-                pts_abs = pts[valid] * np.array([w, h])
-                pts_labels = np.ones(len(pts_abs), dtype=np.int32)
+                    pts_abs = pts[valid] * np.array([w, h])
+                    pts_labels = np.ones(len(pts_abs), dtype=np.int32)
 
-                _masks, _scores, _ = self.predictor.predict(
-                    point_coords=pts_abs,
-                    point_labels=pts_labels,
-                    multimask_output=True,
-                )
-                masks.append(_masks[None, ...])
-                scores.append(_scores[None, ...])
-                labels.append(PLACEHOLDER_LABEL)
+                    _masks, _scores, _ = self.predictor.predict(
+                        point_coords=pts_abs,
+                        point_labels=pts_labels,
+                        multimask_output=True,
+                    )
+                    masks.append(_masks[None, ...])
+                    scores.append(_scores[None, ...])
+                    labels.append(PLACEHOLDER_LABEL)
 
             if not masks:
                 sample[direct_field] = Detections()
@@ -395,6 +409,14 @@ class TestSAM2Parity(unittest.TestCase):
         cls.device = device
         cls.dataset = _create_test_dataset(num_samples=4, seed=21)
         cls.output_processor = fo.utils.sam.SAMSegmenterOutputProcessor()
+
+    @classmethod
+    def tearDownClass(cls):
+        del cls.fo_model
+        del cls.predictor
+        del cls.auto_gen
+        gc.collect()
+        torch.cuda.empty_cache()
 
     def test_automatic_segmentation_parity(self):
         fo_field = "sam2_auto_fo"
@@ -733,6 +755,14 @@ class TestSAMInteractiveParity(unittest.TestCase):
         cls.dataset = _create_test_dataset(num_samples=2, seed=7)
         cls.output_processor = fo.utils.sam.SAMSegmenterOutputProcessor()
 
+    @classmethod
+    def tearDownClass(cls):
+        del cls.fo_model
+        del cls.predictor
+        del cls.auto_gen
+        gc.collect()
+        torch.cuda.empty_cache()
+
     def test_interactive_auto_parity(self):
         interactive_field = "sam_inter_auto"
         direct_field = "sam_direct_auto"
@@ -745,7 +775,8 @@ class TestSAMInteractiveParity(unittest.TestCase):
 
             # Direct SAM auto
             image = _get_image_as_numpy(sample.filepath)
-            masks = self.auto_gen.generate(image)
+            with torch.amp.autocast("cuda", enabled=False):
+                masks = self.auto_gen.generate(image)
             sample[direct_field] = _auto_masks_to_detections(masks)
 
         self.dataset.set_field(
@@ -790,16 +821,17 @@ class TestSAMInteractiveParity(unittest.TestCase):
             scores = []
             box_prompts = []
             labels = []
-            for gt_det in gt.detections:
-                box_abs = _box_to_sam_abs(gt_det.bounding_box, w, h)
-                _masks, _scores, _ = self.predictor.predict(
-                    box=box_abs,
-                    multimask_output=False,
-                )
-                masks.append(_masks[None, ...])
-                scores.append(_scores[None, ...])
-                box_prompts.append(box_abs)
-                labels.append(gt_det.label)
+            with torch.amp.autocast("cuda", enabled=False):
+                for gt_det in gt.detections:
+                    box_abs = _box_to_sam_abs(gt_det.bounding_box, w, h)
+                    _masks, _scores, _ = self.predictor.predict(
+                        box=box_abs,
+                        multimask_output=False,
+                    )
+                    masks.append(_masks[None, ...])
+                    scores.append(_scores[None, ...])
+                    box_prompts.append(box_abs)
+                    labels.append(gt_det.label)
 
             outputs = {
                 "masks": torch.as_tensor(np.concatenate(masks, axis=0)),
@@ -863,23 +895,24 @@ class TestSAMInteractiveParity(unittest.TestCase):
             masks = []
             scores = []
             labels = []
-            for kp in kps_label.keypoints:
-                pts = np.array(kp.points)
-                valid = (pts[:, 0] > 0) & (pts[:, 1] > 0)
-                if not valid.any():
-                    continue
+            with torch.amp.autocast("cuda", enabled=False):
+                for kp in kps_label.keypoints:
+                    pts = np.array(kp.points)
+                    valid = (pts[:, 0] > 0) & (pts[:, 1] > 0)
+                    if not valid.any():
+                        continue
 
-                pts_abs = pts[valid] * np.array([w, h])
-                pts_labels = np.ones(len(pts_abs), dtype=np.int32)
+                    pts_abs = pts[valid] * np.array([w, h])
+                    pts_labels = np.ones(len(pts_abs), dtype=np.int32)
 
-                _masks, _scores, _ = self.predictor.predict(
-                    point_coords=pts_abs,
-                    point_labels=pts_labels,
-                    multimask_output=True,
-                )
-                masks.append(_masks[None, ...])
-                scores.append(_scores[None, ...])
-                labels.append(PLACEHOLDER_LABEL)
+                    _masks, _scores, _ = self.predictor.predict(
+                        point_coords=pts_abs,
+                        point_labels=pts_labels,
+                        multimask_output=True,
+                    )
+                    masks.append(_masks[None, ...])
+                    scores.append(_scores[None, ...])
+                    labels.append(PLACEHOLDER_LABEL)
 
             outputs = {
                 "masks": torch.as_tensor(np.concatenate(masks, axis=0)),
@@ -967,28 +1000,29 @@ class TestSAMInteractiveParity(unittest.TestCase):
             scores = []
             box_prompts = []
             labels = []
-            for i, gt_det in enumerate(gt.detections):
-                box_abs = _box_to_sam_abs(gt_det.bounding_box, w, h)
+            with torch.amp.autocast("cuda", enabled=False):
+                for i, gt_det in enumerate(gt.detections):
+                    box_abs = _box_to_sam_abs(gt_det.bounding_box, w, h)
 
-                point_coords = None
-                point_labels_arr = None
-                if combo_kps is not None and i < len(combo_kps.keypoints):
-                    pts = combo_kps.keypoints[i].points
-                    if pts:
-                        px, py = pts[0]
-                        point_coords = np.array([[px * w, py * h]])
-                        point_labels_arr = np.array([1])
+                    point_coords = None
+                    point_labels_arr = None
+                    if combo_kps is not None and i < len(combo_kps.keypoints):
+                        pts = combo_kps.keypoints[i].points
+                        if pts:
+                            px, py = pts[0]
+                            point_coords = np.array([[px * w, py * h]])
+                            point_labels_arr = np.array([1])
 
-                _masks, _scores, _ = self.predictor.predict(
-                    point_coords=point_coords,
-                    point_labels=point_labels_arr,
-                    box=box_abs,
-                    multimask_output=False,
-                )
-                masks.append(_masks[None, ...])
-                scores.append(_scores[None, ...])
-                box_prompts.append(box_abs)
-                labels.append(gt_det.label)
+                    _masks, _scores, _ = self.predictor.predict(
+                        point_coords=point_coords,
+                        point_labels=point_labels_arr,
+                        box=box_abs,
+                        multimask_output=False,
+                    )
+                    masks.append(_masks[None, ...])
+                    scores.append(_scores[None, ...])
+                    box_prompts.append(box_abs)
+                    labels.append(gt_det.label)
 
             outputs = {
                 "masks": torch.as_tensor(np.concatenate(masks, axis=0)),
@@ -1037,6 +1071,14 @@ class TestSAM2InteractiveParity(unittest.TestCase):
         cls.device = device
         cls.dataset = _create_test_dataset(num_samples=2, seed=7)
         cls.output_processor = fo.utils.sam.SAMSegmenterOutputProcessor()
+
+    @classmethod
+    def tearDownClass(cls):
+        del cls.fo_model
+        del cls.predictor
+        del cls.auto_gen
+        gc.collect()
+        torch.cuda.empty_cache()
 
     def test_interactive_auto_parity(self):
         interactive_field = "sam2_inter_auto"
@@ -1391,6 +1433,14 @@ class TestSAM3ConceptParity(unittest.TestCase):
         cls.device = "cuda" if torch.cuda.is_available() else "cpu"
         cls.dataset = _create_test_dataset(num_samples=4, seed=31)
 
+    @classmethod
+    def tearDownClass(cls):
+        del cls.fo_model
+        del cls.sam3_model
+        del cls.processor
+        gc.collect()
+        torch.cuda.empty_cache()
+
     def test_concept_text_prompt_parity(self):
         fo_field = "sam3_concept_fo"
         direct_field = "sam3_concept_direct"
@@ -1503,6 +1553,13 @@ class TestSAM3VisualParity(unittest.TestCase):
         cls.device = "cuda" if torch.cuda.is_available() else "cpu"
         cls.dataset = _create_test_dataset(num_samples=4, seed=21)
         cls.output_processor = fo.utils.sam.SAMSegmenterOutputProcessor()
+
+    @classmethod
+    def tearDownClass(cls):
+        del cls.fo_model
+        del cls.predictor
+        gc.collect()
+        torch.cuda.empty_cache()
 
     def test_box_prompt_parity(self):
         """Box prompts: FiftyOne apply_model vs. direct predictor."""
@@ -1744,7 +1801,7 @@ class TestSAM3VideoConceptParity(unittest.TestCase):
 
         cls.fo_model = foz.load_zoo_model(
             SAM3_VIDEO_MODEL_NAME,
-            classes=TEXT_PROMPTS,
+            classes=VID_TEXT_PROMPTS,
             operation_mode="concept",
         )
 
@@ -1860,7 +1917,7 @@ class TestSAM3VideoConceptParity(unittest.TestCase):
         self.dataset.apply_model(self.fo_model, label_field=fo_field)
 
         for sample in self.dataset.iter_samples(progress=False, autosave=True):
-            direct_result = self._run_direct_concept(sample, TEXT_PROMPTS)
+            direct_result = self._run_direct_concept(sample, VID_TEXT_PROMPTS)
             for frame_number, dets in direct_result.items():
                 sample.frames[frame_number][direct_field] = dets
 
