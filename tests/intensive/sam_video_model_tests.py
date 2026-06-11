@@ -172,21 +172,24 @@ class TestSAM3VideoVisualApplyModel(unittest.TestCase):
         for sample in self.dataset.iter_samples(progress=False, autosave=True):
             first_frame = next(iter(sample.frames.values()))
             dets = first_frame.get_field("detections")
-            if dets is not None and dets.detections:
-                first_frame[kp_field] = Keypoints(
-                    keypoints=[
-                        Keypoint(
-                            label=d.label,
-                            points=[
-                                (
-                                    d.bounding_box[0] + d.bounding_box[2] / 2,
-                                    d.bounding_box[1] + d.bounding_box[3] / 2,
-                                )
-                            ],
-                        )
-                        for d in dets.detections
-                    ]
-                )
+            self.assertTrue(
+                dets is not None and bool(dets.detections),
+                f"Missing first-frame detections required for keypoint prompts on sample {sample.id}",
+            )
+            first_frame[kp_field] = Keypoints(
+                keypoints=[
+                    Keypoint(
+                        label=d.label,
+                        points=[
+                            (
+                                d.bounding_box[0] + d.bounding_box[2] / 2,
+                                d.bounding_box[1] + d.bounding_box[3] / 2,
+                            )
+                        ],
+                    )
+                    for d in dets.detections
+                ]
+            )
 
         field = "sam3v_visual_kp"
         self.dataset.apply_model(
