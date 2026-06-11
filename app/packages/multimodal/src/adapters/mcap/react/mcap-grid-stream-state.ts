@@ -152,7 +152,8 @@ export function useSelectedStream(datasetName?: string) {
     setSelectedStreamByDataset((current) =>
       updateSelectedStream(current, datasetName, storedTopic)
     );
-  }, [datasetName, setSelectedStreamByDataset, storedTopic]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- setter is stable
+  }, [datasetName, storedTopic]);
 
   const selectedTopic = datasetName
     ? selectedStreamByDataset.get(datasetName) ?? MCAP_GRID_STREAM_AUTO
@@ -170,7 +171,8 @@ export function useSelectedStream(datasetName?: string) {
       );
       setStoredTopic(normalizedTopic);
     },
-    [datasetName, setSelectedStreamByDataset, setStoredTopic]
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- setters are stable
+    [datasetName]
   );
 
   return [selectedTopic, setSelected] as const;

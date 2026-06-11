@@ -162,11 +162,7 @@ export async function decodeGridPreview(
 
   const topics = entry.topics;
   const previewTopics = topics.previewable;
-  const selection = chooseRequestedCameraSelection(
-    entry,
-    topics,
-    selectedStreamTopic
-  );
+  const selection = chooseSelection(entry, topics, selectedStreamTopic);
 
   if (selectedStreamTopic && !selection) {
     return {
@@ -228,7 +224,7 @@ export async function decodeGridPreview(
   };
 }
 
-function chooseRequestedCameraSelection(
+function chooseSelection(
   entry: McapGridPreviewEntry,
   topics: McapGridTopics,
   selectedStreamTopic: string | null | undefined

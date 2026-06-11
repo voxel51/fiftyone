@@ -50,7 +50,8 @@ export function GridRenderer({ ctx }: SampleRendererProps) {
       sampleId,
       topics: stableStreamTopics.topics,
     });
-  }, [ctx.dataset.name, registerStreamTopics, sampleId, stableStreamTopics]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- registerStreamTopics is stable
+  }, [ctx.dataset.name, sampleId, stableStreamTopics]);
 
   return (
     <div
