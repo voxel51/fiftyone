@@ -1,11 +1,11 @@
 /**
- * The signal pipe (spec §6.4): high-frequency, NON-persistent cross-surface
+ * The signal pipe: high-frequency, NON-persistent cross-surface
  * observation of surface-owned transient state (mid-drag geometry, cursor).
  *
  * Pure firehose: no retention, no replay-on-subscribe — a late subscriber
  * sees only future events. Anything with a queryable current value is
- * interaction state (§6.5), not a signal. Topics are entity-scoped by
- * `EntityId` (full identity, D1). Observers render from signals and may not
+ * interaction state, not a signal. Topics are entity-scoped by
+ * `EntityId` (full identity). Observers render from signals and may not
  * write back (signals → render only — the shared dispatch guard enforces it).
  */
 

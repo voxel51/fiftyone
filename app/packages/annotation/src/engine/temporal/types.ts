@@ -1,5 +1,5 @@
 /**
- * Temporal contracts (spec §4.1): the pool/presence split. The pool is every
+ * Temporal contracts: the pool/presence split. The pool is every
  * entity in the stores, frame-agnostic; presence is the subset present at the
  * current time, derived from (pool × clock). Presence events never dirty
  * anything and never enter a patch — the change stream stays purely semantic.

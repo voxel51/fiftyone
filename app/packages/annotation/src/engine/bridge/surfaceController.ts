@@ -1,5 +1,5 @@
 /**
- * The shared write-half (spec §6 / D6): ref-addressed `SurfaceActions` used
+ * The shared write-half: ref-addressed `SurfaceActions` used
  * directly by declarative surfaces, and the bridge `SurfaceController` that
  * extends it with handle-bound conveniences (`commit`/`create`/`selectHandle`/
  * `hoverHandle`). Label mutations are transactional; interaction writes are
@@ -14,7 +14,7 @@ import { toLabelRef } from "../identity/ref";
 import type { AdapterMap, SurfaceBridge } from "./types";
 
 export interface SurfaceActions {
-  /** Identifies the writer (debug/telemetry only, §6.6). */
+  /** Identifies the writer (debug/telemetry only). */
   readonly surface: string;
 
   /** Compound gestures (field-move, propagation): raw scoped ops, one atomic unit. */
@@ -27,7 +27,7 @@ export interface SurfaceActions {
   ): LabelRef;
   deleteLabel(ref: ScopedRef): void;
 
-  /** Interaction write-half — maps select/hover gestures to engine state (§6.5). */
+  /** Interaction write-half — maps select/hover gestures to engine state. */
   setActive(refs: readonly ScopedRef[], opts?: { additive?: boolean }): void;
   toggleActive(ref: ScopedRef, on?: boolean): void;
   setHovered(ref: ScopedRef, on: boolean): void;

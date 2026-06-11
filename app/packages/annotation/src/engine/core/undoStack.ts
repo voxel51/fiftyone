@@ -1,5 +1,5 @@
 /**
- * The engine-owned undo stack (spec §5.2 / D7): value-based transaction
+ * The engine-owned undo stack: value-based transaction
  * inverses, captured per touched ref. Value-based (not transient restores) so
  * undo survives persistence — undoing an autosaved edit is a new, ordinary
  * transaction writing the before-values.
@@ -78,7 +78,7 @@ export class UndoStack {
   }
 
   /**
-   * Drop a specific entry wherever it sits — rollback reuse (§9): an
+   * Drop a specific entry wherever it sits — rollback reuse: an
    * await-and-rollback persist failure applies the transaction's own entry
    * and removes it from history.
    */
@@ -87,7 +87,7 @@ export class UndoStack {
     this.redos = this.redos.filter((e) => e !== entry);
   }
 
-  /** The most recently committed unit (rollback reuse, §9). */
+  /** The most recently committed unit (rollback reuse). */
   peekUndo(): UndoEntry | undefined {
     return this.undos[this.undos.length - 1];
   }

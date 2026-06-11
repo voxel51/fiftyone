@@ -32,7 +32,7 @@ describe("refsEqual", () => {
     expect(refsEqual(ref(), ref({ frame: 0 }))).toBe(false);
   });
 
-  it("shared instanceId across samples is NOT identity (D1 amendment)", () => {
+  it("shared instanceId across samples is NOT identity", () => {
     const sliceA = ref({ sample: "slice-a" });
     const sliceB = ref({ sample: "slice-b" });
 

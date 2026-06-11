@@ -43,7 +43,7 @@ describe("InteractionState active/anchor", () => {
     );
   });
 
-  it("treats the same instanceId in different samples as distinct (D1)", () => {
+  it("treats the same instanceId in different samples as distinct", () => {
     const state = new InteractionState();
 
     state.setActive([ref("ground_truth", "d1", "slice-a")]);
@@ -85,7 +85,7 @@ describe("InteractionState hover", () => {
     expect(state.isHovered(ref("ground_truth", "d1"))).toBe(false);
   });
 
-  it("presence exit prunes hover only — never selection (§4.1)", () => {
+  it("presence exit prunes hover only — never selection", () => {
     const state = new InteractionState();
     state.setActive([ref("ground_truth", "d1")]);
     state.setHovered(ref("ground_truth", "d1"), true);
@@ -164,7 +164,7 @@ describe("InteractionState GC (engine-wired)", () => {
   });
 });
 
-describe("InteractionState reentrancy (§1.1 extension)", () => {
+describe("InteractionState reentrancy", () => {
   it("rejects label writes from an interaction listener", () => {
     const { engine } = makeEngine();
     const errors: unknown[] = [];

@@ -1,6 +1,6 @@
 /**
  * EntityId — the canonical string form of a {@link LabelRef}, used ONLY at
- * string boundaries (signal-pipe topic keys, URLs, cross-process). Spec §2.
+ * string boundaries (signal-pipe topic keys, URLs, cross-process).
  *
  * Format: `v1:<dataset>:<sample>:<path>:<instanceId>[:<frame>]`, segments
  * escaped so the format can carry arbitrary values and evolve in one place.

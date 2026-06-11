@@ -5,7 +5,7 @@
  * hooks + SurfaceActions). Atoms stay module-private throughout.
  */
 
-// identity (§2)
+// identity
 export type { LabelRef, ScopedRef } from "./identity/ref";
 export { linkageKey, refKey, refsEqual, toLabelRef } from "./identity/ref";
 export type { EntityId, EntityIdentity } from "./identity/entityId";
@@ -15,7 +15,7 @@ export {
   MalformedEntityIdError,
 } from "./identity/entityId";
 
-// stores (§3/§4)
+// stores
 export type {
   ChangeListener,
   DisplayListener,
@@ -26,15 +26,15 @@ export type {
 export { isWholeSampleReset, wholeSampleReset } from "./store/types";
 export { SampleLabelStore } from "./store/sampleLabelStore";
 
-// engine facade (§5)
+// engine facade
 export type { ScopedEngine } from "./core/engine";
 export { AnnotationEngine } from "./core/engine";
 export type { UndoEntry, UndoOp } from "./core/undoStack";
 
-// interaction (§6.5)
+// interaction
 export type { InteractionState } from "./interaction/interactionState";
 
-// temporal (§4.1)
+// temporal
 export type {
   Clock,
   PresenceEvent,
@@ -42,7 +42,7 @@ export type {
   TemporalView,
 } from "./temporal/types";
 
-// retained-mode integration (§6 / D4)
+// retained-mode integration
 export type {
   AdapterMap,
   LabelKindAdapter,
@@ -58,7 +58,7 @@ export {
 } from "./bridge/surfaceController";
 export { useSurfaceBridge } from "./react/useSurfaceBridge";
 
-// declarative integration (§6.6 / D6)
+// declarative integration
 export type {
   EngineReads,
   Equals,

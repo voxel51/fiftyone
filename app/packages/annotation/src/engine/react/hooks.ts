@@ -1,10 +1,10 @@
 /**
- * The declarative-surface contract (spec §6.6 / D6): equality-checked
+ * The declarative-surface contract: equality-checked
  * selector hooks over `useSyncExternalStore` against read-only projections —
- * the type system enforces "subscribers are sinks" (§1.1) — plus the shared
+ * the type system enforces "subscribers are sinks" — plus the shared
  * ref-addressed write-half. No bridge, no handles, no exported atoms.
  *
- * Dependencies are injected (§11): the binding-agent hook supplies the
+ * Dependencies are injected: the binding-agent hook supplies the
  * engine.
  */
 
@@ -72,7 +72,7 @@ const useVersionedSelector = <T>(
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 };
 
-/** Select from committed label state (the merged display channel, §3). */
+/** Select from committed label state (the merged display channel). */
 export const useEngineSelector = <T>(
   engine: AnnotationEngine,
   selector: (reads: EngineReads) => T,
@@ -91,7 +91,7 @@ export const useEngineSelector = <T>(
   );
 };
 
-/** Select from interaction state (§6.5): active set, anchor, hover. */
+/** Select from interaction state: active set, anchor, hover. */
 export const useInteraction = <T>(
   engine: AnnotationEngine,
   selector: (reads: InteractionReads) => T,
@@ -110,7 +110,7 @@ export const useInteraction = <T>(
   );
 };
 
-/** Select from temporal presence (§4.1). Presence ≡ pool when non-temporal. */
+/** Select from temporal presence. Presence ≡ pool when non-temporal. */
 export const useTemporal = <T>(
   engine: AnnotationEngine,
   selector: (reads: TemporalReads) => T,
@@ -144,7 +144,7 @@ export const useTemporal = <T>(
   );
 };
 
-/** The shared ref-addressed write-half (§6), bound to the ambient sample. */
+/** The shared ref-addressed write-half, bound to the ambient sample. */
 export const useSurfaceActions = (
   engine: AnnotationEngine,
   surface: string

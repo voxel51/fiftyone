@@ -1,8 +1,8 @@
 /**
- * The annotation engine (spec §5): a thin coordinator over pluggable parts —
+ * The annotation engine: a thin coordinator over pluggable parts —
  * a registry of {@link LabelStore}s, a ref→store router, a change merger, a
- * transaction boundary (§5.1), and the undo stack (§5.2). Surfaces project
- * from it and write back into it; they never sync with each other (§1).
+ * transaction boundary, and the undo stack. Surfaces project
+ * from it and write back into it; they never sync with each other.
  */
 
 import type {
@@ -33,7 +33,7 @@ import { DispatchGuard } from "./dispatchGuard";
 import type { UndoEntry, UndoOp } from "./undoStack";
 import { UndoStack } from "./undoStack";
 
-/** Sample-bound facade — same API minus the `sample` field on refs (§5). */
+/** Sample-bound facade — same API minus the `sample` field on refs. */
 export interface ScopedEngine {
   getLabel(ref: ScopedRef): LabelData | undefined;
   updateLabel(ref: ScopedRef, partial: Partial<LabelData>): void;
@@ -48,16 +48,16 @@ export interface ScopedEngine {
 
 /**
  * Engine-internal change observer that runs before subscriber dispatch and
- * may update engine-owned ephemeral state (interaction GC, §6.5) — never a
+ * may update engine-owned ephemeral state (interaction GC) — never a
  * label write.
  */
 export type BookkeepingHook = (changes: readonly LabelChange[]) => void;
 
 export class AnnotationEngine {
-  /** Ephemeral selection/hover/anchor state (§6.5); GC'd by the engine. */
+  /** Ephemeral selection/hover/anchor state; GC'd by the engine. */
   readonly interaction: InteractionState;
 
-  /** Derived temporal presence over the pool (§4.1); ≡ pool when non-temporal. */
+  /** Derived temporal presence over the pool; ≡ pool when non-temporal. */
   readonly temporal: TemporalView;
 
   private signals: SignalPipe;
@@ -68,13 +68,13 @@ export class AnnotationEngine {
   private bookkeepingHooks = new Set<BookkeepingHook>();
   private version = 0;
 
-  /** §1.1 keystone guard, shared with interaction state: one dispatch scope. */
+  /** The keystone reentrancy guard, shared with interaction state: one dispatch scope. */
   private guard = new DispatchGuard();
 
   private undos = new UndoStack();
   private replaying = false;
 
-  // outermost-transaction state (§5.1): lazy store snapshots, per-ref
+  // outermost-transaction state: lazy store snapshots, per-ref
   // before-values for undo capture, and the buffered change stream
   private txDepth = 0;
   private txSnapshots = new Map<LabelStore, TransientSnapshot>();
@@ -149,7 +149,7 @@ export class AnnotationEngine {
     return this.stores.get(ref.sample)?.listLabels(ref.path, ref.frame) ?? [];
   }
 
-  /** Current labels across all stores, for hydration (§6.1). */
+  /** Current labels across all stores, for hydration. */
   enumerateLabels(kinds: readonly LabelType[]): LabelRef[] {
     const refs: LabelRef[] = [];
 
@@ -191,7 +191,7 @@ export class AnnotationEngine {
     return this.createLabelIn(this.soleSample(), path, label, frame);
   }
 
-  // ---- transactions (§5.1) ----
+  // ---- transactions ----
 
   /**
    * The only write boundary: atomic (lazy snapshot / rollback), one coalesced
@@ -216,7 +216,7 @@ export class AnnotationEngine {
     try {
       result = fn();
     } catch (error) {
-      // §5.1: restore touched stores, discard the buffered stream (including
+      // abort: restore touched stores, discard the buffered stream (including
       // the restores' own emissions) — subscribers never observe the abort
       for (const [store, snapshot] of this.txSnapshots) {
         store.restore(snapshot);
@@ -243,7 +243,7 @@ export class AnnotationEngine {
     return result;
   }
 
-  // ---- undo (§5.2 / D7) ----
+  // ---- undo ----
 
   undo(): void {
     this.assertNotDispatching("undo");
@@ -271,12 +271,12 @@ export class AnnotationEngine {
     return this.undos.canRedo();
   }
 
-  /** The most recently committed unit, for §9 await-and-rollback consumers. */
+  /** The most recently committed unit, for await-and-rollback persistence consumers. */
   lastUndoEntry(): UndoEntry | undefined {
     return this.undos.peekUndo();
   }
 
-  /** §9 rollback reuse: apply an entry's inverses and drop it from history. */
+  /** Persist-failure rollback: apply an entry's inverses and drop it from history. */
   rollbackEntry(entry: UndoEntry): void {
     this.assertNotDispatching("rollbackEntry");
     this.replay(entry, "undo");
@@ -303,7 +303,7 @@ export class AnnotationEngine {
     return this.version;
   }
 
-  // ---- signal pipe (§6.4) ----
+  // ---- signal pipe ----
 
   publishSignal<T>(topic: string, key: EntityId, payload: T): void {
     this.signals.publish(topic, key, payload);
@@ -317,7 +317,7 @@ export class AnnotationEngine {
     return this.signals.subscribe(topic, key, handler);
   }
 
-  /** Engine-internal: pre-dispatch bookkeeping (interaction GC, §6.5). */
+  /** Engine-internal: pre-dispatch bookkeeping (interaction GC). */
   registerBookkeeping(hook: BookkeepingHook): () => void {
     this.bookkeepingHooks.add(hook);
     return () => {
@@ -325,7 +325,7 @@ export class AnnotationEngine {
     };
   }
 
-  // ---- bridges (§6.1) ----
+  // ---- bridges ----
 
   /**
    * Register a retained-mode surface (mount-scoped). The engine derives the
@@ -429,7 +429,7 @@ export class AnnotationEngine {
     return this.stores.keys().next().value as string;
   }
 
-  /** First-touch capture (§5.1 lazy snapshot + §5.2 lazy before-values). */
+  /** First-touch capture: lazy store snapshot + lazy undo before-values. */
   private touch(store: LabelStore, ref: LabelRef): void {
     if (!this.txSnapshots.has(store)) {
       this.txSnapshots.set(store, store.snapshot());
@@ -537,7 +537,7 @@ export class AnnotationEngine {
       return;
     }
 
-    // history refers to entities a whole-sample reset replaced (§5.2)
+    // history refers to entities a whole-sample reset replaced
     if (changes.some(isWholeSampleReset)) {
       this.undos.clear();
     }
@@ -553,7 +553,7 @@ export class AnnotationEngine {
     });
   }
 
-  /** §1.1 keystone: change-subscribers are sinks; writes during dispatch throw. */
+  /** The keystone invariant: change-subscribers are sinks; writes during dispatch throw. */
   private assertNotDispatching(op: string): void {
     this.guard.assert(`AnnotationEngine.${op}()`);
   }

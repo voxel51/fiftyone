@@ -51,7 +51,7 @@ describe("engine routing", () => {
   });
 });
 
-describe("engine transactions (§5.1)", () => {
+describe("engine transactions", () => {
   it("coalesces all mutations into one ordered change dispatch", () => {
     const { engine } = makeEngine();
     const listener = vi.fn();
@@ -140,7 +140,7 @@ describe("engine transactions (§5.1)", () => {
     expect(engine.canUndo()).toBe(true);
   });
 
-  it("throws on writes from within a change subscriber (§1.1)", () => {
+  it("throws on writes from within a change subscriber", () => {
     const { engine } = makeEngine();
     const errors: unknown[] = [];
     engine.subscribeChanges(() => {
@@ -158,7 +158,7 @@ describe("engine transactions (§5.1)", () => {
   });
 });
 
-describe("engine undo (§5.2 / D7)", () => {
+describe("engine undo", () => {
   it("undoes and redoes a value edit exactly (replace, not merge)", () => {
     const { engine } = makeEngine("sample-1", {
       ground_truth: { detections: [makeDet("d1", "cat")] },
@@ -261,7 +261,7 @@ describe("engine undo (§5.2 / D7)", () => {
     expect(engine.canUndo()).toBe(false);
   });
 
-  it("rollbackEntry applies and drops a specific entry (§9)", () => {
+  it("rollbackEntry applies and drops a specific entry", () => {
     const { engine } = makeEngine("sample-1", {
       ground_truth: { detections: [makeDet("d1", "cat")] },
     });
@@ -277,7 +277,7 @@ describe("engine undo (§5.2 / D7)", () => {
   });
 });
 
-describe("engine scope (§5)", () => {
+describe("engine scope", () => {
   it("binds the sample and filters the change stream", () => {
     const { engine } = makeEngine("s1");
     const second = makeStore("s2");

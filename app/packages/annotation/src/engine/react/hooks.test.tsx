@@ -10,7 +10,7 @@ import {
 } from "./hooks";
 import { makeDet, makeEngine, ref } from "../testing/fixtures";
 
-describe("useEngineSelector (§6.6)", () => {
+describe("useEngineSelector", () => {
   it("re-renders when the selected value changes", () => {
     const { engine } = makeEngine("sample-1", {
       ground_truth: { detections: [makeDet("d1", "cat")] },
@@ -77,7 +77,7 @@ describe("useEngineSelector (§6.6)", () => {
   });
 });
 
-describe("useInteraction (§6.6)", () => {
+describe("useInteraction", () => {
   it("derives the anchor reactively", () => {
     const { engine } = makeEngine("sample-1", {
       ground_truth: { detections: [makeDet("d1", "cat")] },
@@ -111,7 +111,7 @@ describe("useInteraction (§6.6)", () => {
   });
 });
 
-describe("useTemporal (§6.6)", () => {
+describe("useTemporal", () => {
   it("derives presence (≡ pool when non-temporal)", () => {
     const { engine } = makeEngine("sample-1", {
       ground_truth: { detections: [makeDet("d1", "cat")] },
@@ -129,7 +129,7 @@ describe("useTemporal (§6.6)", () => {
   });
 });
 
-describe("useSurfaceActions (§6.6)", () => {
+describe("useSurfaceActions", () => {
   it("writes through the ambient sample scope", () => {
     const { engine } = makeEngine("sample-1", {
       ground_truth: { detections: [makeDet("d1", "cat")] },

@@ -6,7 +6,7 @@ import { makeDet, makeEngine, ref } from "../testing/fixtures";
 const key = (instanceId: string) =>
   encodeEntityId("dataset", ref("ground_truth", instanceId));
 
-describe("signal pipe (§6.4)", () => {
+describe("signal pipe", () => {
   it("routes by topic and entity key", () => {
     const { engine } = makeEngine();
     const onGeometry = vi.fn();
@@ -73,7 +73,7 @@ describe("signal pipe (§6.4)", () => {
   });
 });
 
-describe("pool temporal view (§4.1, non-temporal)", () => {
+describe("pool temporal view (non-temporal)", () => {
   it("presence equals the pool", () => {
     const { engine } = makeEngine("sample-1", {
       ground_truth: { detections: [makeDet("d1", "cat")] },

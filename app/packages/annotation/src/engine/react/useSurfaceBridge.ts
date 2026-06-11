@@ -1,8 +1,8 @@
 /**
- * The retained-mode integration entry point (spec §6): registers the bridge
- * on mount (driving the engine-derived read-half, §6.1) and returns a stable
+ * The retained-mode integration entry point: registers the bridge
+ * on mount (driving the engine-derived read-half) and returns a stable
  * {@link SurfaceController} so surface code carries only gesture vocabulary.
- * Dependencies are injected (§11) — the binding-agent hook supplies the
+ * Dependencies are injected — the binding-agent hook supplies the
  * engine.
  */
 

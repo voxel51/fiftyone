@@ -240,7 +240,7 @@ describe("SampleLabelStore change translation", () => {
   });
 });
 
-describe("SampleLabelStore snapshot/restore (§5.1)", () => {
+describe("SampleLabelStore snapshot/restore", () => {
   it("rolls back transient edits and emits per-path resets", () => {
     const { store } = makeStore({
       ground_truth: { detections: [makeDet("d1", "cat")] },

@@ -1,6 +1,6 @@
 /**
  * The non-temporal {@link TemporalView}: with no frame store registered,
- * presence ≡ pool and the clock is inert by absence (§4.1). The presence
+ * presence ≡ pool and the clock is inert by absence. The presence
  * stream never fires — non-temporal projection is driven entirely by the
  * semantic change stream.
  */

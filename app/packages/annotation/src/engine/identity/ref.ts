@@ -1,5 +1,5 @@
 /**
- * Canonical annotation-entity identity (spec §2 / D1).
+ * Canonical annotation-entity identity.
  *
  * Identity is the full tuple `(sample, instanceId, frame?)`. `instanceId`
  * alone is a LINKAGE key — `fo.Instance` spans group slices, so it is not
@@ -25,7 +25,7 @@ export interface LabelRef {
   frame?: number;
 }
 
-/** A ref within an ambient sample scope (`engine.scope(sample)`, §5). */
+/** A ref within an ambient sample scope (`engine.scope(sample)`). */
 export type ScopedRef = Omit<LabelRef, "sample">;
 
 /** Bind a scoped ref to its sample, producing a canonical ref. */
@@ -36,7 +36,7 @@ export const toLabelRef = (sample: string, ref: ScopedRef): LabelRef => ({
   frame: ref.frame,
 });
 
-/** Full-tuple identity equality (D1 amendment). */
+/** Full-tuple identity equality. */
 export const refsEqual = (a: LabelRef, b: LabelRef): boolean =>
   a.sample === b.sample &&
   a.path === b.path &&

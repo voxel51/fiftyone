@@ -1,5 +1,5 @@
 /**
- * The engine-derived read-half (spec §6.1): one loop turns the semantic
+ * The engine-derived read-half: one loop turns the semantic
  * change stream (+ temporal presence for frame-locked bridges) into silent
  * mount/update/unmount calls on a registered bridge. The surface writes none
  * of it.
@@ -39,7 +39,7 @@ export const registerBridgeLoop = <Handle, Descriptor>(
    *  Stale entries are harmless: `resolveHandle` re-checks before unmount. */
   const known = new Map<string, LabelRef>();
 
-  /** Every mount path applies current interaction state to the fresh handle (§6.1). */
+  /** Every mount path applies current interaction state to the fresh handle. */
   const applyInteraction = (handle: Handle, ref: LabelRef): void => {
     const { interaction } = engine;
     bridge.applySelected?.(handle, interaction.isActive(ref));
@@ -91,11 +91,11 @@ export const registerBridgeLoop = <Handle, Descriptor>(
       return;
     }
 
-    // create-from-engine falls out of the same branch (§6.1)
+    // create-from-engine falls out of the same branch
     mountFresh(ref, label, adapter);
   };
 
-  /** Current refs by temporal posture: present subset vs. whole pool (§6.1). */
+  /** Current refs by temporal posture: present subset vs. whole pool. */
   const currentRefs = (): LabelRef[] => {
     const refs =
       bridge.temporal === "pool"
@@ -108,7 +108,7 @@ export const registerBridgeLoop = <Handle, Descriptor>(
   };
 
   /**
-   * The whole-sample-reset branch (§6.1, amended): reconcile, don't rebuild.
+   * The whole-sample-reset branch: reconcile, don't rebuild.
    * Survivors keep their handles (silent re-apply), so a post-persist
    * `setData` refresh is visually a no-op.
    */
@@ -152,7 +152,7 @@ export const registerBridgeLoop = <Handle, Descriptor>(
     }
   };
 
-  // interaction read-half (§6.5): diff the sets, apply silently per handle
+  // interaction read-half: diff the sets, apply silently per handle
   let prevActive = new Map<string, LabelRef>();
   let prevHovered = new Map<string, LabelRef>();
   let prevAnchor: LabelRef | undefined;
@@ -226,7 +226,7 @@ export const registerBridgeLoop = <Handle, Descriptor>(
     prevAnchor = nextAnchor;
   };
 
-  // presence merge (§6.1, frame-locked only): enter → mount, exit → unmount,
+  // presence merge (frame-locked only): enter → mount, exit → unmount,
   // refresh → re-read + update. Inert when non-temporal (presence ≡ pool).
   const onPresence =
     bridge.temporal === "pool"

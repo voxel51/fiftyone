@@ -1,10 +1,10 @@
 /**
  * The sample-level {@link LabelStore}: an identity-addressed adapter over the
- * `Sample` model (D3 — `Sample` is one store implementation, not the center).
+ * `Sample` model (`Sample` is one store implementation, not the center).
  *
  * Responsibilities beyond delegation:
  * - ref addressing: `(path, instanceId)` ops onto `Sample`'s `(path, id?)`
- *   API, stamping `_id = ref.instanceId` on writes (D4 — refs own identity).
+ *   API, stamping `_id = ref.instanceId` on writes (refs own identity).
  * - change translation: `SampleChange` (path/labelId) → `LabelChange`
  *   (full {@link LabelRef}), expanding path-level changes into per-ref
  *   changes by diffing an instanceId index per label path.

@@ -69,7 +69,7 @@ const makeFakeSurface = (sample = "sample-1") => {
   return { handles, bridge, adapters };
 };
 
-describe("bridge read-half (§6.1)", () => {
+describe("bridge read-half", () => {
   it("hydrates current labels on registration", () => {
     const { engine } = makeEngine("sample-1", {
       ground_truth: {
@@ -193,7 +193,7 @@ describe("bridge read-half (§6.1)", () => {
     expect(handles.size).toBe(0);
   });
 
-  it("scopes the loop to the bridge's sample under federation (D1/D3)", () => {
+  it("scopes the loop to the bridge's sample under federation", () => {
     const { engine } = makeEngine("left", {
       ground_truth: {
         detections: [{ ...makeDet("i123", "car"), bounding_box: [0, 0, 1, 1] }],
@@ -243,7 +243,7 @@ describe("bridge read-half (§6.1)", () => {
   });
 });
 
-describe("bridge interaction read-half (§6.5)", () => {
+describe("bridge interaction read-half", () => {
   it("applies selection/hover/anchor silently to resolved handles", () => {
     const { engine } = makeEngine("sample-1", {
       ground_truth: {
@@ -303,7 +303,7 @@ describe("bridge interaction read-half (§6.5)", () => {
   });
 });
 
-describe("surface controller (§6 write-half)", () => {
+describe("surface controller (write-half)", () => {
   it("commit pulls the handle through the adapter into one transaction", () => {
     const { engine } = makeEngine("sample-1", {
       ground_truth: { detections: [makeDet("d1", "cat")] },

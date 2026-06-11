@@ -1,9 +1,9 @@
 /**
- * The keystone reentrancy guard (§1.1), shared across dispatch channels:
+ * The keystone reentrancy guard, shared across dispatch channels:
  * subscribers are sinks, so any guarded write attempted while ANY channel
  * (label changes, display, interaction) is dispatching throws in dev. One
  * instance spans the engine and its interaction state, so a label write from
- * an interaction listener is as illegal as one from a change listener (§6.5).
+ * an interaction listener is as illegal as one from a change listener.
  */
 
 const REENTRANCY_CHECK_ENABLED =

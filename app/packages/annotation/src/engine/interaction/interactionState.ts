@@ -1,9 +1,9 @@
 /**
- * Engine-owned ephemeral interaction state (spec §6.5 / D5): the active
+ * Engine-owned ephemeral interaction state: the active
  * (selection) set with its engine-owned anchor, and the hover set. NOT a
  * LabelStore — never persisted, never dirty, never patched. Singleton per
- * session; keyed on full identity (D1). GC'd against the semantic change
- * stream (engine bookkeeping); presence `exit` prunes hover only (§4.1).
+ * session; keyed on full identity. GC'd against the semantic change
+ * stream (engine bookkeeping); presence `exit` prunes hover only.
  */
 
 import type { LabelRef } from "../identity/ref";
@@ -133,7 +133,7 @@ export class InteractionState {
     this.notify();
   }
 
-  // ---- observability (level-triggered + coalesced, §6.5) ----
+  // ---- observability (level-triggered + coalesced) ----
 
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
@@ -149,7 +149,7 @@ export class InteractionState {
   // ---- engine-internal bookkeeping (not part of the public surface) ----
 
   /**
-   * GC against the SEMANTIC change stream (D5 review amendment): a delete
+   * GC against the SEMANTIC change stream: a delete
    * prunes the ref from active/hover and promotes the anchor; a whole-sample
    * reset prunes everything belonging to that sample. Read-through like every
    * other subscriber (`isLive`): a ref that still resolves after the batch
@@ -182,7 +182,7 @@ export class InteractionState {
   }
 
   /**
-   * Presence `exit` prunes hover ONLY (§4.1/§6.5): the overlay under the
+   * Presence `exit` prunes hover ONLY: the overlay under the
    * cursor vanished, but scrubbing never deselects — active/anchor survive.
    */
   pruneHovered(refs: readonly LabelRef[]): void {
