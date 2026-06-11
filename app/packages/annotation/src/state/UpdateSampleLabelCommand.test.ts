@@ -141,3 +141,77 @@ describe("UpdateSampleLabelCommand", () => {
     });
   });
 });
+
+// Integration test:
+// A sidebar label-attribute edit, routed through the command, must surface in
+// `Sample.getJsonPatch()` as the expected single op — and crucially NOT emit
+// spurious removes for server-managed fields the partial omits.
+describe("sidebar attribute-edit => getJsonPatch", () => {
+  it("emits a single replace for a detection attribute edit, no spurious removes", () => {
+    const sample = makeSample();
+    const { bus } = makeBus();
+
+    // The sidebar form hands back the full label with the one changed attr.
+    new UpdateSampleLabelCommand(
+      sample,
+      "ground_truth",
+      "d1",
+      { _id: "d1", _cls: "Detection", label: "dog", tags: ["seed"] },
+      { _id: "d1", _cls: "Detection", label: "cat", tags: ["seed"] },
+      bus
+    ).execute();
+
+    expect(sample.getJsonPatch()).toEqual([
+      { op: "replace", path: "/ground_truth/detections/0/label", value: "dog" },
+    ]);
+  });
+
+  it("persists a polyline closed/filled toggle", () => {
+    const polylinesSchema = {
+      poly: {
+        embeddedDocType: "fiftyone.core.labels.Polylines",
+        ftype: "fiftyone.core.fields.EmbeddedDocumentField",
+        fields: {
+          polylines: {
+            ftype: "fiftyone.core.fields.ListField",
+            subfield: "fiftyone.core.fields.EmbeddedDocumentField",
+          },
+        },
+      },
+    } as unknown as Schema;
+
+    const source = {
+      _id: "p1",
+      _cls: "Polyline",
+      label: "lane",
+      points: [
+        [
+          [0, 0],
+          [1, 1],
+        ],
+      ],
+      closed: false,
+      filled: false,
+      tags: [],
+    };
+
+    const sample = new Sample({
+      schema: polylinesSchema,
+      data: { poly: { _cls: "Polylines", polylines: [source] } },
+    });
+    const { bus } = makeBus();
+
+    new UpdateSampleLabelCommand(
+      sample,
+      "poly",
+      "p1",
+      { ...source, closed: true },
+      source,
+      bus
+    ).execute();
+
+    expect(sample.getJsonPatch()).toEqual([
+      { op: "replace", path: "/poly/polylines/0/closed", value: true },
+    ]);
+  });
+});
