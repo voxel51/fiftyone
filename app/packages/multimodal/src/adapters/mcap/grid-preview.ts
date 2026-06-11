@@ -406,20 +406,11 @@ function schemaIdentity(topic: StreamInventory): string {
 }
 
 function isCompressedImageStream(topic: StreamInventory): boolean {
-  if (COMPRESSED_IMAGE_PATTERN.test(schemaIdentity(topic))) {
-    return true;
-  }
-
-  return false;
+  return COMPRESSED_IMAGE_PATTERN.test(schemaIdentity(topic));
 }
 
 function isImageAnnotationsStream(topic: StreamInventory): boolean {
-  const identity = schemaIdentity(topic);
-  if (IMAGE_ANNOTATIONS_PATTERN.test(identity)) {
-    return true;
-  }
-
-  return false;
+  return IMAGE_ANNOTATIONS_PATTERN.test(schemaIdentity(topic));
 }
 
 /**

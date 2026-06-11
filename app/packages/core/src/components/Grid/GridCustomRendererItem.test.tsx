@@ -31,6 +31,9 @@ const BASE_CTX = {
 
 const BASE_SYMBOL = { description: "sample-id" } as const;
 
+const RGBA_BYTES_PER_PIXEL = 4;
+const MIN_GRID_RENDERER_SIZE_BYTES = 1;
+
 const TestBridge = ({ children }: React.PropsWithChildren) => <>{children}</>;
 
 const getOpenModalButton = (host: HTMLElement) =>
@@ -145,7 +148,9 @@ describe("GridCustomRendererItem", () => {
     const host = document.createElement("div");
     document.body.appendChild(host);
 
-    looker.attach(host, [320, 180], 14);
+    const tileWidthPx = 320;
+    const tileHeightPx = 180;
+    looker.attach(host, [tileWidthPx, tileHeightPx], 14);
 
     await waitFor(() => {
       expect(
@@ -163,7 +168,10 @@ describe("GridCustomRendererItem", () => {
 
     expect(Renderer.mock.calls.length).toBe(callsAfterFailure);
     expect(looker.getSampleOverlays()).toEqual([]);
-    expect(looker.getSizeBytesEstimate()).toBe(320 * 180 * 4 + 1);
+    expect(looker.getSizeBytesEstimate()).toBe(
+      tileWidthPx * tileHeightPx * RGBA_BYTES_PER_PIXEL +
+        MIN_GRID_RENDERER_SIZE_BYTES
+    );
 
     looker.destroy();
     host.remove();
@@ -171,12 +179,15 @@ describe("GridCustomRendererItem", () => {
 
   it("estimates size from raw sample shapes safely", () => {
     const Renderer = () => <div data-testid="renderer">raw sample</div>;
+    const tileWidthPx = 10;
+    const tileHeightPx = 20;
+    const sourceSizeBytes = 123;
     const rawSampleCtx = {
       ...BASE_CTX,
       sample: {
         id: "sample-id",
         filepath: "/tmp/file.pdf",
-        metadata: { size_bytes: 123 },
+        metadata: { size_bytes: sourceSizeBytes },
       },
     };
     const looker = new GridCustomRendererItem({
@@ -189,9 +200,13 @@ describe("GridCustomRendererItem", () => {
     const host = document.createElement("div");
     document.body.appendChild(host);
 
-    looker.attach(host, [10, 20], 12);
+    looker.attach(host, [tileWidthPx, tileHeightPx], 12);
 
-    expect(looker.getSizeBytesEstimate()).toBe(10 * 20 * 4 + 123 + 1);
+    expect(looker.getSizeBytesEstimate()).toBe(
+      tileWidthPx * tileHeightPx * RGBA_BYTES_PER_PIXEL +
+        sourceSizeBytes +
+        MIN_GRID_RENDERER_SIZE_BYTES
+    );
 
     looker.destroy();
     host.remove();

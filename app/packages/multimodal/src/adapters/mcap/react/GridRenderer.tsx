@@ -12,6 +12,7 @@ import {
 import { useStableMcapSource } from "./use-stable-mcap-source";
 
 const IMAGE_FIT = "cover";
+const GRID_ANNOTATION_STROKE_WIDTH = 1;
 
 /**
  * Grid renderer for MCAP-backed multimodal samples. Shows one camera
@@ -72,6 +73,7 @@ function PreviewFrame({ frame }: { readonly frame: McapGridPreviewFrame }) {
             fit={IMAGE_FIT}
             imageHeight={imageDims.height}
             imageWidth={imageDims.width}
+            strokeWidth={GRID_ANNOTATION_STROKE_WIDTH}
           />
         </div>
       ) : null}
@@ -89,13 +91,7 @@ function PreviewStatus({
   readonly status: McapGridPreviewStatus;
 }) {
   const loading = status === "loading";
-  const message = loading
-    ? null
-    : status === "error"
-    ? "Preview unavailable"
-    : hasImageTopics
-    ? "No preview frames"
-    : "No camera streams";
+  const message = previewStatusMessage(status, hasImageTopics);
 
   return (
     <div className={classes.status}>
@@ -106,4 +102,19 @@ function PreviewStatus({
       {error ? <div className={classes.error}>{error}</div> : null}
     </div>
   );
+}
+
+function previewStatusMessage(
+  status: McapGridPreviewStatus,
+  hasImageTopics: boolean
+): string | null {
+  if (status === "loading") {
+    return null;
+  }
+
+  if (status === "error") {
+    return "Preview unavailable";
+  }
+
+  return hasImageTopics ? "No preview frames" : "No camera streams";
 }

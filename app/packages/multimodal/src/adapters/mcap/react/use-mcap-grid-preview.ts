@@ -54,7 +54,7 @@ export function useMcapGridPreview({
       nextStartTimeNsRef.current = undefined;
       setPlaying(false);
       setState(IDLE_PREVIEW_STATE);
-      return;
+      return undefined;
     }
 
     let active = true;
@@ -74,25 +74,21 @@ export function useMcapGridPreview({
     pool
       .request({ source }, { signal: controller.signal })
       .then((result) => {
-        if (!active) {
-          return;
+        if (active) {
+          nextStartTimeNsRef.current = result.nextStartTimeNs;
+          setState(result.state);
         }
-
-        nextStartTimeNsRef.current = result.nextStartTimeNs;
-        setState(result.state);
       })
       .catch((caughtError) => {
-        if (!active || controller.signal.aborted) {
-          return;
+        if (active && !controller.signal.aborted) {
+          setState({
+            error: mcapErrorMessage(caughtError),
+            frame: null,
+            hasImageTopics: false,
+            imageTopic: null,
+            status: "error",
+          });
         }
-
-        setState({
-          error: mcapErrorMessage(caughtError),
-          frame: null,
-          hasImageTopics: false,
-          imageTopic: null,
-          status: "error",
-        });
       });
 
     return () => {
@@ -107,7 +103,7 @@ export function useMcapGridPreview({
   // source runs out of frames.
   useEffect(() => {
     if (!playing || !source || state.status !== "ready") {
-      return;
+      return undefined;
     }
 
     let active = true;
@@ -131,7 +127,7 @@ export function useMcapGridPreview({
 
           if (!result.state.frame) {
             nextStartTimeNsRef.current = undefined;
-            await delayMs(playbackDelayMs(undefined));
+            await delayMs(playbackDelayMs());
             continue;
           }
 
@@ -161,9 +157,10 @@ export function useMcapGridPreview({
   return { ...state, pause, play };
 }
 
-function playbackDelayMs(frameDelayMs: number | undefined): number {
-  const delay = frameDelayMs ?? MCAP_GRID_PREVIEW_IMAGE_FRAME_DELAY_MS;
-  return Math.max(0, delay / DEFAULT_MCAP_GRID_PREVIEW_PLAYBACK_RATE);
+function playbackDelayMs(
+  frameDelayMs = MCAP_GRID_PREVIEW_IMAGE_FRAME_DELAY_MS
+): number {
+  return Math.max(0, frameDelayMs / DEFAULT_MCAP_GRID_PREVIEW_PLAYBACK_RATE);
 }
 
 function delayMs(milliseconds: number): Promise<void> {

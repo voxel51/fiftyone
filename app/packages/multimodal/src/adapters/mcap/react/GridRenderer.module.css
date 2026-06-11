@@ -22,12 +22,6 @@
   position: absolute;
 }
 
-/* Grid cells are small; thin annotation strokes read better than the
-   modal-scale defaults. */
-.annotationLayer svg [stroke-width] {
-  stroke-width: 1px !important;
-}
-
 .status {
   font-size: 12px;
   font-weight: 600;

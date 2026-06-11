@@ -14,11 +14,12 @@ const MIN_GRID_PREVIEW_WORKERS = 1;
 
 // Also bound the grid preview pool small. Each worker may build/cache MCAP readers,
 // and the regular App still needs main-thread and network/decoder headroom.
-const MAX_GRID_PREVIEW_WORKERS = 4;
+const MAX_GRID_PREVIEW_WORKERS = 5;
+const RESERVED_GRID_PREVIEW_WORKER_CORES = 2;
 
 type McapGridPreviewWorkerSlot = {
   readonly transport: McapGridPreviewTransport;
-  worker: Worker | undefined;
+  worker?: Worker;
 };
 
 /**
@@ -49,7 +50,6 @@ export class McapGridPreviewWorkerPool {
     this.poolSize = normalizePoolSize(options.poolSize);
     this.slots = Array.from({ length: this.poolSize }, () => ({
       transport: new McapGridPreviewTransport(),
-      worker: undefined,
     }));
   }
 
@@ -142,7 +142,7 @@ export class McapGridPreviewWorkerPool {
 
   private resetSlot(slot: McapGridPreviewWorkerSlot, reason: string) {
     const worker = slot.worker;
-    slot.worker = undefined;
+    delete slot.worker;
 
     if (worker) {
       worker.onmessage = null;
@@ -204,10 +204,11 @@ function normalizePoolSize(poolSize: number | undefined): number {
   // Default to the browser's logical CPU count minus two, then clamp below.
   // This reserves room for the main thread and other App work when the machine
   // has enough cores. Small machines naturally collapse to a single worker.
+  const hardwareConcurrency = globalThis.navigator?.hardwareConcurrency;
   const defaultPoolSize =
-    typeof navigator === "object" &&
-    Number.isFinite(navigator.hardwareConcurrency)
-      ? navigator.hardwareConcurrency - 2
+    typeof hardwareConcurrency === "number" &&
+    Number.isFinite(hardwareConcurrency)
+      ? hardwareConcurrency - RESERVED_GRID_PREVIEW_WORKER_CORES
       : MIN_GRID_PREVIEW_WORKERS;
 
   const requested = poolSize ?? defaultPoolSize;
@@ -216,13 +217,18 @@ function normalizePoolSize(poolSize: number | undefined): number {
     return MIN_GRID_PREVIEW_WORKERS;
   }
 
-  // Clam to min, max
+  // Clamp to min/max:
   // - below 1: keep at least one decoder available
   // - above 4: avoid overloading the browser with MCAP readers/decoders
-  return Math.max(
+  return clamp(
+    Math.trunc(requested),
     MIN_GRID_PREVIEW_WORKERS,
-    Math.min(MAX_GRID_PREVIEW_WORKERS, Math.trunc(requested))
+    MAX_GRID_PREVIEW_WORKERS
   );
+}
+
+function clamp(value: number, minimum: number, maximum: number): number {
+  return Math.max(minimum, Math.min(maximum, value));
 }
 
 function disposeWorker(worker: Worker | undefined) {

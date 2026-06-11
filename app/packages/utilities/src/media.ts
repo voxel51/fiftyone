@@ -1,5 +1,23 @@
 import { PathType, determinePathType, getBasename } from "./paths";
 
+export const MEDIA_TYPE_IMAGE = "image";
+export const MEDIA_TYPE_VIDEO = "video";
+export const MEDIA_TYPE_POINT_CLOUD = "point-cloud";
+export const MEDIA_TYPE_3D = "3d";
+export const MEDIA_TYPE_GROUP = "group";
+export const MEDIA_TYPE_MULTIMODAL = "multimodal";
+
+export type NativeMediaType =
+  | typeof MEDIA_TYPE_3D
+  | typeof MEDIA_TYPE_GROUP
+  | typeof MEDIA_TYPE_IMAGE
+  | typeof MEDIA_TYPE_POINT_CLOUD
+  | typeof MEDIA_TYPE_VIDEO;
+
+export type RecognizedMediaType =
+  | NativeMediaType
+  | typeof MEDIA_TYPE_MULTIMODAL;
+
 /**
  * Returns true if annotation is supported for the provided media type.
  *
@@ -168,6 +186,22 @@ export const isPointCloud = (mediaType: string): boolean => {
  */
 export const is3d = (mediaType: string): boolean => {
   return isFo3d(mediaType) || isPointCloud(mediaType);
+};
+
+/**
+ * Returns true if the provided media type is handled by FiftyOne's built-in
+ * renderers.
+ */
+export const isNativeMediaType = (
+  mediaType: string | null | undefined
+): mediaType is NativeMediaType => {
+  return (
+    mediaType == null ||
+    mediaType === MEDIA_TYPE_IMAGE ||
+    mediaType === MEDIA_TYPE_VIDEO ||
+    mediaType === MEDIA_TYPE_GROUP ||
+    is3d(mediaType)
+  );
 };
 
 /**

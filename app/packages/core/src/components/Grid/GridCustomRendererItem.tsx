@@ -5,6 +5,7 @@ import {
 } from "@fiftyone/plugins";
 import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
+import { MEDIA_TYPE_MULTIMODAL } from "@fiftyone/utilities";
 import { Checkbox } from "@mui/material";
 import React from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -24,8 +25,13 @@ type GridItemDimensions = [width: number, height: number];
 type GridSizeHintSample = {
   filepath?: string;
   metadata?: {
-    size_bytes?: unknown;
-  };
+    size_bytes?: number | null;
+  } | null;
+};
+
+type GridSelectionSample = {
+  _id?: string;
+  id?: string;
 };
 
 /** Error boundary for a sample renderer with fallback behavior. */
@@ -112,15 +118,15 @@ const MULTIMODAL_SOURCE_SIZE_FALLBACK_BYTES = 10 * 1024 * 1024;
 // file should not force the grid straight to maximum zoom by itself.
 const SOURCE_SIZE_HINT_CAP_BYTES = 50 * 1024 * 1024;
 
-function getFiniteSizeBytes(value: unknown) {
-  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+function getFiniteSizeBytes(value: number | null | undefined): number {
+  if (value == null || !Number.isFinite(value) || value < 0) {
     return 0;
   }
 
   return Math.trunc(value);
 }
 
-function getPixelSizeBytes(width: number, height: number) {
+function getPixelSizeBytes(width: number, height: number): number {
   if (!Number.isFinite(width) || !Number.isFinite(height)) {
     return 0;
   }
@@ -131,12 +137,12 @@ function getPixelSizeBytes(width: number, height: number) {
 function getSourceSizeHintBytes(
   sourceSizeBytes: number,
   mediaType: string | null
-) {
+): number {
   if (sourceSizeBytes > 0) {
     return Math.min(sourceSizeBytes, SOURCE_SIZE_HINT_CAP_BYTES);
   }
 
-  if (mediaType === "multimodal") {
+  if (mediaType === MEDIA_TYPE_MULTIMODAL) {
     // Multimodal files often decode expensive container data even when metadata
     // has not populated size_bytes yet, so bias autosizing as though each item
     // has a modest source-size hint.
@@ -215,7 +221,7 @@ export class GridCustomRendererItem {
   private destroyed = false;
   private selected = false;
   private inSelectionMode = false;
-  private dimensions: GridItemDimensions | null = null;
+  private dimensions?: GridItemDimensions;
 
   constructor(private readonly config: GridCustomRendererItemConfig) {
     Object.assign(this.hostElement.style, HOST_ELEMENT_STYLES);
@@ -286,9 +292,9 @@ export class GridCustomRendererItem {
   }
 
   private getSelectionPayload(event: React.MouseEvent<HTMLButtonElement>) {
-    const sample = (this.config.ctx.sample as { sample?: fos.Sample })?.sample;
+    const sample = this.config.ctx.sample?.sample;
     const sampleId =
-      sample?.id ?? sample?._id ?? this.config.symbol.description;
+      sample?._id ?? sample?.["id"] ?? this.config.symbol.description;
 
     return buildThumbnailSelectionDetail({
       id: sampleId,
@@ -357,7 +363,7 @@ export class GridCustomRendererItem {
   attach(
     element: HTMLElement | string,
     dimensions?: GridItemDimensions,
-    fontSize?: number
+    _fontSize?: number
   ) {
     if (this.destroyed) {
       return;
@@ -371,7 +377,7 @@ export class GridCustomRendererItem {
     }
 
     this.mountedElement = resolvedElement;
-    this.dimensions = dimensions ?? null;
+    this.dimensions = dimensions;
 
     if (this.hostElement.parentElement !== resolvedElement) {
       // Replace all children of the target element with the host element.
@@ -437,7 +443,7 @@ export class GridCustomRendererItem {
     return [];
   }
 
-  getSizeBytesEstimate() {
+  getSizeBytesEstimate(): number {
     const renderedSizeBytes = (() => {
       const dimensions = this.dimensions;
       if (dimensions) {
