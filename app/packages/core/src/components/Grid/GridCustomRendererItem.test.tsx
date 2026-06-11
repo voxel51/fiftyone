@@ -163,7 +163,7 @@ describe("GridCustomRendererItem", () => {
 
     expect(Renderer.mock.calls.length).toBe(callsAfterFailure);
     expect(looker.getSampleOverlays()).toEqual([]);
-    expect(looker.getSizeBytesEstimate()).toBe(1);
+    expect(looker.getSizeBytesEstimate()).toBe(320 * 180 * 4 + 1);
 
     looker.destroy();
     host.remove();
