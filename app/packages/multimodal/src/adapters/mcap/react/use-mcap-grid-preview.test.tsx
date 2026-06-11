@@ -200,6 +200,53 @@ describe("useMcapGridPreview", () => {
       source: sourceForId("selected"),
     });
   });
+
+  it("does not play while a selected stream reload is still loading", async () => {
+    const latestState = { current: null as McapGridPreviewState | null };
+    const reload = deferred<McapGridPreviewResult>();
+    poolHarness.pool.request
+      .mockResolvedValueOnce(
+        readyResult({ bytes: [1], streamTopic: "/camera/front" })
+      )
+      .mockReturnValueOnce(reload.promise);
+
+    const { rerender } = render(
+      <PreviewHarness
+        id="reload-play"
+        onState={(state) => {
+          latestState.current = state;
+        }}
+        selectedStreamTopic="/camera/front"
+        source={sourceForId("reload-play")}
+      />
+    );
+
+    await waitFor(() => {
+      expect(latestState.current?.status).toBe("ready");
+    });
+
+    act(() => {
+      latestState.current?.play();
+      rerender(
+        <PreviewHarness
+          id="reload-play"
+          onState={(state) => {
+            latestState.current = state;
+          }}
+          selectedStreamTopic="/camera/back"
+          source={sourceForId("reload-play")}
+        />
+      );
+    });
+
+    await waitFor(() => {
+      expect(poolHarness.pool.request).toHaveBeenCalledTimes(2);
+    });
+    await act(async () => undefined);
+    expect(poolHarness.pool.request).toHaveBeenCalledTimes(2);
+
+    reload.resolve(readyResult({ bytes: [2], streamTopic: "/camera/back" }));
+  });
 });
 
 function PreviewHarness({

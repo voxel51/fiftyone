@@ -46,6 +46,7 @@ export function useMcapGridPreview({
   const [state, setState] =
     useState<McapGridPreviewSnapshot>(IDLE_PREVIEW_STATE);
   const [playing, setPlaying] = useState(false);
+  const initialLoadInFlightRef = useRef(false);
   const nextStartTimeNsRef = useRef<bigint | undefined>(undefined);
   const pause = useCallback(() => setPlaying(false), []);
   const play = useCallback(() => setPlaying(true), []);
@@ -54,6 +55,7 @@ export function useMcapGridPreview({
   // holds a pool reference for the lifetime of the grid cell.
   useEffect(() => {
     if (!source) {
+      initialLoadInFlightRef.current = false;
       nextStartTimeNsRef.current = undefined;
       setPlaying(false);
       setState(IDLE_PREVIEW_STATE);
@@ -64,6 +66,7 @@ export function useMcapGridPreview({
     const controller = new AbortController();
     const pool = getMcapGridPreviewPool();
     pool.acquire();
+    initialLoadInFlightRef.current = true;
     nextStartTimeNsRef.current = undefined;
     setPlaying(false);
     setState({
@@ -99,10 +102,16 @@ export function useMcapGridPreview({
           streamTopics: [],
           status: "error",
         });
+      })
+      .finally(() => {
+        if (active) {
+          initialLoadInFlightRef.current = false;
+        }
       });
 
     return () => {
       active = false;
+      initialLoadInFlightRef.current = false;
       controller.abort();
       pool.release();
     };
@@ -112,8 +121,13 @@ export function useMcapGridPreview({
   // requesting the next frame, wrapping back to the start when the
   // source runs out of frames.
   useEffect(() => {
-    if (!playing || !source || state.status !== "ready") {
-      return undefined;
+    if (
+      !playing ||
+      !source ||
+      state.status !== "ready" ||
+      initialLoadInFlightRef.current
+    ) {
+      return;
     }
 
     let active = true;
@@ -123,6 +137,10 @@ export function useMcapGridPreview({
     const run = async () => {
       try {
         while (active) {
+          if (initialLoadInFlightRef.current) {
+            break;
+          }
+
           const request = selectedStreamTopic
             ? {
                 selectedStreamTopic,

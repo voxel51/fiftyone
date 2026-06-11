@@ -176,7 +176,7 @@ describe("Foxglove decoders", () => {
     ).toEqual([10, 20]);
   });
 
-  it("ignores zero padding at the end of point cloud payloads", () => {
+  it("ignores only unaligned zero padding at the end of point cloud payloads", () => {
     const output = foxglovePointCloudDecoder.decode(
       pointCloudMessage(
         concatProtobufFields(
@@ -195,9 +195,9 @@ describe("Foxglove decoders", () => {
       throw new Error("Expected point cloud visualization");
     }
     expect(Array.from(output.visualization.positions)).toEqual([
-      1, 2, 3, 4, 5, 6,
+      1, 2, 3, 4, 5, 6, 0, 0, 0,
     ]);
-    expect(output.visualization.pointCount).toBe(2);
+    expect(output.visualization.pointCount).toBe(3);
   });
 
   it("rejects unaligned point cloud payloads with non-zero trailing data", () => {

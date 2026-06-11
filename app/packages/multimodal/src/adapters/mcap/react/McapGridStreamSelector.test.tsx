@@ -1,10 +1,10 @@
-import { act, render, screen } from "@testing-library/react";
-import type { ComponentType } from "react";
+import { render, screen } from "@testing-library/react";
+import { useEffect, type ComponentType } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { McapGridStreamSelector } from "./McapGridStreamSelector";
 import {
   __resetMcapGridStreamStateForTests,
-  registerMcapGridStreamTopics,
+  useRegisterMcapGridStreamTopics,
 } from "./mcap-grid-stream-state";
 
 const { storedValues, useCurrentDataset } = vi.hoisted(() => ({
@@ -82,15 +82,7 @@ describe("McapGridStreamSelector", () => {
   });
 
   it("shows auto and mounted MCAP stream topics", async () => {
-    act(() => {
-      registerMcapGridStreamTopics({
-        datasetName: "dataset",
-        sampleId: "sample",
-        topics: ["/camera/front", "/camera/back", "/lidar/points"],
-      });
-    });
-
-    render(<McapGridStreamSelector />);
+    render(<RegisteredSelector />);
 
     expect(screen.getByTestId("selected-stream").textContent).toBe("");
     expect(screen.getByText("Stream: Auto")).toBeTruthy();
@@ -99,3 +91,19 @@ describe("McapGridStreamSelector", () => {
     expect(screen.getByText("/lidar/points")).toBeTruthy();
   });
 });
+
+function RegisteredSelector() {
+  const register = useRegisterMcapGridStreamTopics();
+
+  useEffect(
+    () =>
+      register({
+        datasetName: "dataset",
+        sampleId: "sample",
+        topics: ["/camera/front", "/camera/back", "/lidar/points"],
+      }),
+    [register]
+  );
+
+  return <McapGridStreamSelector />;
+}

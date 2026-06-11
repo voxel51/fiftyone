@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   MCAP_GRID_STREAM_AUTO,
   __resetMcapGridStreamStateForTests,
-  registerMcapGridStreamTopics,
+  useRegisterMcapGridStreamTopics,
   useMcapGridSelectedStreamTopic,
   useMcapGridStreamTopics,
 } from "./mcap-grid-stream-state";
@@ -20,29 +20,32 @@ describe("mcap-grid-stream-state", () => {
   });
 
   it("aggregates stream topics across mounted samples and removes them on cleanup", () => {
-    const { result } = renderHook(() => useMcapGridStreamTopics("dataset"));
+    const { result } = renderHook(() => ({
+      register: useRegisterMcapGridStreamTopics(),
+      topics: useMcapGridStreamTopics("dataset"),
+    }));
 
-    expect(result.current).toEqual([]);
+    expect(result.current.topics).toEqual([]);
 
     let cleanupFront: () => void = () => undefined;
     act(() => {
-      cleanupFront = registerMcapGridStreamTopics({
+      cleanupFront = result.current.register({
         datasetName: "dataset",
         sampleId: "sample-front",
         topics: ["/camera/front", "/camera/front"],
       });
     });
-    expect(result.current).toEqual(["/camera/front"]);
+    expect(result.current.topics).toEqual(["/camera/front"]);
 
     let cleanupBack: () => void = () => undefined;
     act(() => {
-      cleanupBack = registerMcapGridStreamTopics({
+      cleanupBack = result.current.register({
         datasetName: "dataset",
         sampleId: "sample-back",
         topics: ["/camera/back", "/lidar/points", "/camera/front"],
       });
     });
-    expect(result.current).toEqual([
+    expect(result.current.topics).toEqual([
       "/camera/back",
       "/camera/front",
       "/lidar/points",
@@ -51,7 +54,7 @@ describe("mcap-grid-stream-state", () => {
     act(() => {
       cleanupFront();
     });
-    expect(result.current).toEqual([
+    expect(result.current.topics).toEqual([
       "/camera/back",
       "/camera/front",
       "/lidar/points",
@@ -60,7 +63,7 @@ describe("mcap-grid-stream-state", () => {
     act(() => {
       cleanupBack();
     });
-    expect(result.current).toEqual([]);
+    expect(result.current.topics).toEqual([]);
   });
 
   it("persists the selected stream topic per dataset with auto as the default", async () => {

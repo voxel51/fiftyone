@@ -176,26 +176,9 @@ function alignedPointDataByteLength(
     throw new Error("Point cloud data length is not aligned to point stride");
   }
 
-  // Some exports pad fixed-size radar buffers with trailing zero bytes and
-  // zero-valued records. Treat only all-zero unaligned tails as padding.
-  return trimTrailingZeroPointRecords(data, alignedByteLength, pointStride);
-}
-
-function trimTrailingZeroPointRecords(
-  data: Uint8Array,
-  byteLength: number,
-  pointStride: number
-): number {
-  let trimmedByteLength = byteLength;
-
-  while (
-    trimmedByteLength >= pointStride &&
-    isZeroRange(data, trimmedByteLength - pointStride, trimmedByteLength)
-  ) {
-    trimmedByteLength -= pointStride;
-  }
-
-  return trimmedByteLength;
+  // Some exports pad fixed-size radar buffers with trailing zero bytes. Treat
+  // only the unaligned tail as padding so valid zero-valued points survive.
+  return alignedByteLength;
 }
 
 function isZeroRange(

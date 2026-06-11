@@ -1,5 +1,5 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ImageAnnotationsOverlay } from "../../../visualization/panels/ImageAnnotationsOverlay";
 import { ImagePanel } from "../../../visualization/panels/image";
 import { PointCloudPanel } from "../../../visualization/panels/point-cloud";
@@ -8,7 +8,7 @@ import classes from "./GridRenderer.module.css";
 import { McapLoadingAscii } from "./McapLoadingAscii";
 import {
   MCAP_GRID_STREAM_AUTO,
-  registerMcapGridStreamTopics,
+  useRegisterMcapGridStreamTopics,
   useMcapGridSelectedStreamTopic,
 } from "./mcap-grid-stream-state";
 import { useMcapGridCameraPose } from "./mcap-grid-camera-state";
@@ -41,14 +41,16 @@ export function GridRenderer({ ctx }: SampleRendererProps) {
         : selectedStreamTopic,
     source,
   });
+  const registerStreamTopics = useRegisterMcapGridStreamTopics();
+  const stableStreamTopics = useStableGridStreamTopics(preview.streamTopics);
 
   useEffect(() => {
-    return registerMcapGridStreamTopics({
+    return registerStreamTopics({
       datasetName: ctx.dataset.name,
       sampleId,
-      topics: preview.streamTopics,
+      topics: stableStreamTopics.topics,
     });
-  }, [ctx.dataset.name, preview.streamTopics, sampleId]);
+  }, [ctx.dataset.name, registerStreamTopics, sampleId, stableStreamTopics]);
 
   return (
     <div
@@ -72,6 +74,28 @@ export function GridRenderer({ ctx }: SampleRendererProps) {
       )}
     </div>
   );
+}
+
+function useStableGridStreamTopics(topics: readonly string[]) {
+  const previous = useRef({
+    key: "",
+    topics: [] as readonly string[],
+  });
+
+  return useMemo(() => {
+    const normalizedTopics = Array.from(
+      new Set(
+        topics.map((topic) => topic.trim()).filter((topic) => topic.length > 0)
+      )
+    ).sort((a, b) => a.localeCompare(b));
+    const key = normalizedTopics.join("\0");
+
+    if (previous.current.key !== key) {
+      previous.current = { key, topics: normalizedTopics };
+    }
+
+    return previous.current;
+  }, [topics]);
 }
 
 function PreviewFrame({ frame }: { readonly frame: McapGridPreviewFrame }) {

@@ -1,18 +1,16 @@
 import { useBrowserStorage } from "@fiftyone/state";
-import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { atom, getDefaultStore, useAtomValue, useSetAtom } from "jotai";
+import { useCallback, useEffect, useMemo } from "react";
 
 /**
  * Stored value that preserves the existing first-image-topic preview behavior.
  */
 export const MCAP_GRID_STREAM_AUTO = "auto" as const;
 
-const EMPTY_STREAMS_SNAPSHOT = Object.freeze({
-  topics: [] as readonly string[],
-});
+const EMPTY_TOPICS: readonly string[] = Object.freeze([]);
 
-type McapGridStreamsSnapshot = {
-  readonly topics: readonly string[];
-};
+type StreamsByDataset = Map<string, Map<string, readonly string[]>>;
+type SelectedStreamByDataset = Map<string, string>;
 
 type StreamRegistration = {
   readonly datasetName: string | null | undefined;
@@ -20,12 +18,8 @@ type StreamRegistration = {
   readonly topics: readonly string[];
 };
 
-const streamsByDataset = new Map<string, Map<string, readonly string[]>>();
-const streamSnapshots = new Map<string, McapGridStreamsSnapshot>();
-const streamListeners = new Set<() => void>();
-
-const selectedStreamByDataset = new Map<string, string>();
-const selectedStreamListeners = new Set<() => void>();
+const streamsByDatasetAtom = atom<StreamsByDataset>(new Map());
+const selectedStreamByDatasetAtom = atom<SelectedStreamByDataset>(new Map());
 
 function storageKey(datasetName: string) {
   return `mcap-grid-preview-image-topic:${datasetName}`;
@@ -39,118 +33,94 @@ function normalizeStreams(topics: readonly string[]) {
   ).sort((a, b) => a.localeCompare(b));
 }
 
-function arraysEqual(a: readonly string[], b: readonly string[]) {
-  return a.length === b.length && a.every((value, index) => value === b[index]);
-}
-
-function buildStreamsSnapshot(datasetName: string): McapGridStreamsSnapshot {
-  const sampleTopics = streamsByDataset.get(datasetName);
-  const topics = sampleTopics
-    ? normalizeStreams(Array.from(sampleTopics.values()).flat())
-    : EMPTY_STREAMS_SNAPSHOT.topics;
-
-  return { topics };
-}
-
-function readStreamsSnapshot(
-  datasetName: string | null | undefined
-): McapGridStreamsSnapshot {
-  if (!datasetName) {
-    return EMPTY_STREAMS_SNAPSHOT;
-  }
-
-  let snapshot = streamSnapshots.get(datasetName);
-  if (!snapshot) {
-    snapshot = buildStreamsSnapshot(datasetName);
-    streamSnapshots.set(datasetName, snapshot);
-  }
-
-  return snapshot;
-}
-
-function updateStreamsSnapshot(datasetName: string) {
-  const previous = readStreamsSnapshot(datasetName);
-  const next = buildStreamsSnapshot(datasetName);
-
-  if (arraysEqual(previous.topics, next.topics)) {
-    return;
-  }
-
-  streamSnapshots.set(datasetName, next);
-  streamListeners.forEach((listener) => listener());
-}
-
-function subscribeToStreams(listener: () => void) {
-  streamListeners.add(listener);
-  return () => {
-    streamListeners.delete(listener);
-  };
-}
-
 function normalizeSelectedStream(topic: string | null | undefined) {
   const normalized = topic?.trim();
   return normalized ? normalized : MCAP_GRID_STREAM_AUTO;
 }
 
-function readSelectedStream(datasetName: string | null | undefined) {
-  if (!datasetName) {
-    return MCAP_GRID_STREAM_AUTO;
-  }
-
-  return selectedStreamByDataset.get(datasetName) ?? MCAP_GRID_STREAM_AUTO;
-}
-
-function setSelectedStream(datasetName: string, topic: string) {
+function updateSelectedStream(
+  current: SelectedStreamByDataset,
+  datasetName: string,
+  topic: string
+) {
   const normalizedTopic = normalizeSelectedStream(topic);
-  if (readSelectedStream(datasetName) === normalizedTopic) {
-    return;
+  if (current.get(datasetName) === normalizedTopic) {
+    return current;
   }
 
-  selectedStreamByDataset.set(datasetName, normalizedTopic);
-  selectedStreamListeners.forEach((listener) => listener());
-}
-
-function subscribeToSelectedStream(listener: () => void) {
-  selectedStreamListeners.add(listener);
-  return () => {
-    selectedStreamListeners.delete(listener);
-  };
+  const next = new Map(current);
+  next.set(datasetName, normalizedTopic);
+  return next;
 }
 
 /**
- * Registers previewable streams discovered by one mounted MCAP grid tile.
+ * Reads all mounted MCAP grid preview streams grouped by dataset and sample.
  */
-export function registerMcapGridStreamTopics({
-  datasetName,
-  sampleId,
-  topics,
-}: StreamRegistration) {
-  if (!datasetName || !sampleId) {
-    return () => undefined;
-  }
+export function useMcapStreams() {
+  return useAtomValue(streamsByDatasetAtom);
+}
 
-  let sampleTopics = streamsByDataset.get(datasetName);
-  if (!sampleTopics) {
-    sampleTopics = new Map();
-    streamsByDataset.set(datasetName, sampleTopics);
-  }
+/**
+ * Returns the aggregate preview-stream set for mounted MCAP grid tiles.
+ */
+export function useMcapStreamSnapshot(datasetName: string | null | undefined) {
+  const streamsByDataset = useMcapStreams();
 
-  sampleTopics.set(sampleId, normalizeStreams(topics));
-  updateStreamsSnapshot(datasetName);
-
-  return () => {
-    const currentSampleTopics = streamsByDataset.get(datasetName);
-    if (!currentSampleTopics) {
-      return;
+  return useMemo(() => {
+    if (!datasetName) {
+      return EMPTY_TOPICS;
     }
 
-    currentSampleTopics.delete(sampleId);
-    if (!currentSampleTopics.size) {
-      streamsByDataset.delete(datasetName);
-    }
+    const sampleTopics = streamsByDataset.get(datasetName);
+    return sampleTopics
+      ? normalizeStreams(Array.from(sampleTopics.values()).flat())
+      : EMPTY_TOPICS;
+  }, [datasetName, streamsByDataset]);
+}
 
-    updateStreamsSnapshot(datasetName);
-  };
+/**
+ * Returns a callback that registers streams discovered by one mounted grid tile.
+ */
+export function useRegisterMcapGridStreamTopics() {
+  const setStreamsByDataset = useSetAtom(streamsByDatasetAtom);
+
+  return useCallback(
+    ({ datasetName, sampleId, topics }: StreamRegistration) => {
+      if (!datasetName || !sampleId) {
+        return () => undefined;
+      }
+
+      const normalizedTopics = normalizeStreams(topics);
+      setStreamsByDataset((current) => {
+        const next = new Map(current);
+        const sampleTopics = new Map(next.get(datasetName));
+        sampleTopics.set(sampleId, normalizedTopics);
+        next.set(datasetName, sampleTopics);
+        return next;
+      });
+
+      return () => {
+        setStreamsByDataset((current) => {
+          const currentSampleTopics = current.get(datasetName);
+          if (!currentSampleTopics) {
+            return current;
+          }
+
+          const nextSampleTopics = new Map(currentSampleTopics);
+          nextSampleTopics.delete(sampleId);
+
+          const next = new Map(current);
+          if (nextSampleTopics.size) {
+            next.set(datasetName, nextSampleTopics);
+          } else {
+            next.delete(datasetName);
+          }
+          return next;
+        });
+      };
+    },
+    [setStreamsByDataset]
+  );
 }
 
 /**
@@ -159,24 +129,13 @@ export function registerMcapGridStreamTopics({
 export function useMcapGridStreamTopics(
   datasetName: string | null | undefined
 ) {
-  const getSnapshot = useCallback(
-    () => readStreamsSnapshot(datasetName).topics,
-    [datasetName]
-  );
-
-  return useSyncExternalStore(
-    subscribeToStreams,
-    getSnapshot,
-    () => EMPTY_STREAMS_SNAPSHOT.topics
-  );
+  return useMcapStreamSnapshot(datasetName);
 }
 
 /**
  * Reads and updates the per-dataset MCAP grid preview stream override.
  */
-export function useMcapGridSelectedStreamTopic(
-  datasetName: string | null | undefined
-) {
+export function useSelectedStream(datasetName: string | null | undefined) {
   const key = datasetName
     ? storageKey(datasetName)
     : "mcap-grid-preview-image-topic";
@@ -184,24 +143,22 @@ export function useMcapGridSelectedStreamTopic(
     key,
     MCAP_GRID_STREAM_AUTO
   );
+  const selectedStreamByDataset = useAtomValue(selectedStreamByDatasetAtom);
+  const setSelectedStreamByDataset = useSetAtom(selectedStreamByDatasetAtom);
 
   useEffect(() => {
     if (!datasetName) {
       return;
     }
 
-    setSelectedStream(datasetName, storedTopic);
-  }, [datasetName, storedTopic]);
+    setSelectedStreamByDataset((current) =>
+      updateSelectedStream(current, datasetName, storedTopic)
+    );
+  }, [datasetName, setSelectedStreamByDataset, storedTopic]);
 
-  const getSnapshot = useCallback(
-    () => readSelectedStream(datasetName),
-    [datasetName]
-  );
-  const selectedTopic = useSyncExternalStore(
-    subscribeToSelectedStream,
-    getSnapshot,
-    () => MCAP_GRID_STREAM_AUTO
-  );
+  const selectedTopic = datasetName
+    ? selectedStreamByDataset.get(datasetName) ?? MCAP_GRID_STREAM_AUTO
+    : MCAP_GRID_STREAM_AUTO;
 
   const setSelected = useCallback(
     (topic: string) => {
@@ -210,22 +167,31 @@ export function useMcapGridSelectedStreamTopic(
       }
 
       const normalizedTopic = normalizeSelectedStream(topic);
-      setSelectedStream(datasetName, normalizedTopic);
+      setSelectedStreamByDataset((current) =>
+        updateSelectedStream(current, datasetName, normalizedTopic)
+      );
       setStoredTopic(normalizedTopic);
     },
-    [datasetName, setStoredTopic]
+    [datasetName, setSelectedStreamByDataset, setStoredTopic]
   );
 
   return [selectedTopic, setSelected] as const;
 }
 
 /**
+ * Reads and updates the per-dataset MCAP grid preview stream override.
+ */
+export function useMcapGridSelectedStreamTopic(
+  datasetName: string | null | undefined
+) {
+  return useSelectedStream(datasetName);
+}
+
+/**
  * Clears in-memory MCAP grid stream state for tests.
  */
 export function __resetMcapGridStreamStateForTests() {
-  streamsByDataset.clear();
-  streamSnapshots.clear();
-  selectedStreamByDataset.clear();
-  streamListeners.forEach((listener) => listener());
-  selectedStreamListeners.forEach((listener) => listener());
+  const store = getDefaultStore();
+  store.set(streamsByDatasetAtom, new Map());
+  store.set(selectedStreamByDatasetAtom, new Map());
 }
