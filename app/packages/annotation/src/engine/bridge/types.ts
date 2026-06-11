@@ -45,8 +45,25 @@ export interface SurfaceBridge<Handle, Descriptor> {
 
   resolveHandle(ref: LabelRef): Handle | undefined;
   refOf(handle: Handle): ScopedRef;
-  mount(descriptor: Descriptor): Handle;
+
+  /**
+   * Construct the surface-native object. Returns `undefined` when the kind
+   * is async-sourced and the mount is gated on its source resolving — the
+   * bridge inserts the handle itself when the source lands and reports it
+   * via {@link onDeferredMount}. Gated bridges must dedupe in-flight mounts
+   * and discard a resolve whose ref has since been deleted or reconciled
+   * away.
+   */
+  mount(descriptor: Descriptor): Handle | undefined;
+
   unmount(handle: Handle): void;
+
+  /**
+   * Assigned by the read-half loop on registration. A bridge that gates
+   * mounts invokes it when a deferred handle actually inserts, so the loop
+   * can apply current interaction state (every mount path applies it).
+   */
+  onDeferredMount?: (handle: Handle) => void;
 
   /** Remove ALL handles (whole-sample reset). */
   clear(): void;

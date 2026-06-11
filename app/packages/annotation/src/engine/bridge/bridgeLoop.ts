@@ -16,7 +16,7 @@ import type { LabelData, LabelType } from "@fiftyone/utilities";
 
 import type { AnnotationEngine } from "../core/engine";
 import type { LabelRef } from "../identity/ref";
-import { refKey, refsEqual } from "../identity/ref";
+import { refKey, refsEqual, toLabelRef } from "../identity/ref";
 import type { LabelChange } from "../store/types";
 import { isWholeSampleReset } from "../store/types";
 import type { AdapterMap, LabelKindAdapter, SurfaceBridge } from "./types";
@@ -54,7 +54,12 @@ export const registerBridgeLoop = <Handle, Descriptor>(
     adapter: LabelKindAdapter<Handle, Descriptor>
   ): void => {
     const handle = bridge.mount(adapter.buildHandle(ref, label));
-    applyInteraction(handle, ref);
+
+    // undefined = gated on an async source; the bridge reports the late
+    // insert via onDeferredMount and interaction state applies then
+    if (handle !== undefined) {
+      applyInteraction(handle, ref);
+    }
   };
 
   const unmountRef = (ref: LabelRef): void => {
@@ -250,6 +255,12 @@ export const registerBridgeLoop = <Handle, Descriptor>(
           }
         });
 
+  // gated mounts insert after their async source resolves — apply
+  // interaction state to the late handle, as every other mount path does
+  bridge.onDeferredMount = (handle) => {
+    applyInteraction(handle, toLabelRef(bridge.sample, bridge.refOf(handle)));
+  };
+
   // initial registration = the whole-sample-reset branch, for this bridge
   // only: an empty ledger degenerates reconcile to mount-everything
   reconcile();
@@ -259,6 +270,7 @@ export const registerBridgeLoop = <Handle, Descriptor>(
   const unsubscribeInteraction = engine.interaction.subscribe(onInteraction);
 
   return () => {
+    bridge.onDeferredMount = undefined;
     unsubscribeChanges();
     unsubscribeInteraction();
     onPresence?.();
