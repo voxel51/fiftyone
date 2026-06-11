@@ -30,9 +30,8 @@ import { currentLabelSchema } from "../state";
 import { type AttributeConfig, reconcileComponent } from "../utils";
 
 const fetchAndMergeOntologyAttributes = async (
-  draft: FieldSchema,
   name: string,
-  setCurrent: (schema: FieldSchema) => void
+  setCurrent: (updater: (live: unknown) => unknown) => void
 ): Promise<void> => {
   const result = await getFetchFunction()(
     "GET",
@@ -42,18 +41,27 @@ const fetchAndMergeOntologyAttributes = async (
   const attrs = (result as { attributes: AttributeConfig[] }).attributes;
   if (!attrs?.length) return;
 
-  const existing = Array.isArray(draft.attributes) ? [...draft.attributes] : [];
-  const byName = new Map(existing.map((a) => [a.name, a]));
-  const orderedNames = existing.map((a) => a.name);
+  setCurrent((live) => {
+    const liveSchema = live as FieldSchema | undefined;
+    // If the ontology was cleared or switched while the fetch was in flight,
+    // discard the result rather than restoring stale data.
+    if (liveSchema?.applied_ontology !== name) return live;
 
-  for (const attr of attrs) {
-    if (!byName.has(attr.name)) orderedNames.push(attr.name);
-    byName.set(attr.name, attr);
-  }
+    const existing = Array.isArray(liveSchema.attributes)
+      ? [...liveSchema.attributes]
+      : [];
+    const byName = new Map(existing.map((a) => [a.name, a]));
+    const orderedNames = existing.map((a) => a.name);
 
-  setCurrent({
-    ...draft,
-    attributes: orderedNames.map((n) => byName.get(n)),
+    for (const attr of attrs) {
+      if (!byName.has(attr.name)) orderedNames.push(attr.name);
+      byName.set(attr.name, attr);
+    }
+
+    return {
+      ...liveSchema,
+      attributes: orderedNames.map((n) => byName.get(n)),
+    };
   });
 };
 
@@ -172,7 +180,7 @@ export const useAppliedOntology = (field: string) => {
         applied_taxonomy: taxonomy,
       };
       setCurrent(draft);
-      fetchAndMergeOntologyAttributes(draft, name, setCurrent).catch(() => {
+      fetchAndMergeOntologyAttributes(name, setCurrent).catch(() => {
         console.error(`Failed to fetch ontology attributes for ${name}`);
       });
     },
