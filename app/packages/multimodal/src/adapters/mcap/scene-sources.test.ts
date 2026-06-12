@@ -59,6 +59,18 @@ describe("mcapSceneSources", () => {
     ]);
   });
 
+  it("carries record counts through for layout ranking", () => {
+    const dense = createTopic("/cam/image_rect_compressed");
+    dense.recordCount = "120";
+    const single = createTopic("/cam/image_initial");
+    single.recordCount = "1";
+    const unknown = createTopic("/cam/image_other");
+
+    const sources = mcapSceneSources([dense, single, unknown]);
+
+    expect(sources.map((s) => s.recordCount)).toEqual([120, 1, undefined]);
+  });
+
   it("skips topics without a resolvable name", () => {
     const unnamed = createTopic("/camera/image_rect_compressed");
     unnamed.displayName = "";
