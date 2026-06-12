@@ -1,7 +1,7 @@
 import {
-  PLUGIN_COMPONENT_SLOT,
   PluginComponentType,
   registerComponent,
+  SAMPLE_RENDERER_GRID_SLOT,
 } from "@fiftyone/plugins";
 import McapModalRenderer from "./react/McapModalRenderer";
 import { GridRenderer, McapGridStreamSelector } from "./react";
@@ -11,23 +11,16 @@ registerComponent({
   label: "Mcap Renderer",
   component: McapModalRenderer,
   type: PluginComponentType.SampleRenderer,
-  activator: () => true,
+  activator: (ctx) => ctx.dataset?.mediaType === "multimodal",
   sampleRendererOptions: {
     supports: { extensions: ["mcap"] },
     grid: {
       enabled: true,
       overrideComponent: GridRenderer,
+      slots: {
+        [SAMPLE_RENDERER_GRID_SLOT.HEADER_AFTER_RESOURCE_COUNT]:
+          McapGridStreamSelector,
+      },
     },
-  },
-});
-
-registerComponent({
-  name: "McapGridStreamSelector",
-  label: "MCAP grid stream selector",
-  component: McapGridStreamSelector,
-  type: PluginComponentType.Component,
-  activator: (ctx) => ctx.dataset?.mediaType === "multimodal",
-  componentOptions: {
-    slots: [PLUGIN_COMPONENT_SLOT.GRID_HEADER_AFTER_RESOURCE_COUNT],
   },
 });
