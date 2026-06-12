@@ -6,22 +6,25 @@ vi.mock("../util", () => ({
 }));
 
 vi.mock("@fiftyone/state", () => ({
+  generatedDatasetName: { key: "generatedDatasetName" },
   isGeneratedView: { key: "isGeneratedView" },
+  useCurrentDatasetId: vi.fn(),
   useModalSample: vi.fn(),
+  useUpdateSamples: vi.fn(),
 }));
 
 vi.mock("recoil", () => ({
   useRecoilValue: vi.fn(),
 }));
 
-vi.mock("./usePatchSample", () => ({
-  usePatchSample: vi.fn(),
-}));
-
 import { handleLabelPersistence } from "../util";
-import { useModalSample, isGeneratedView } from "@fiftyone/state";
+import {
+  isGeneratedView,
+  useCurrentDatasetId,
+  useModalSample,
+  useUpdateSamples,
+} from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
-import { usePatchSample } from "./usePatchSample";
 import { useUpsertLabel, useDeleteLabel } from "./useLabelPersistence";
 import type { Field } from "@fiftyone/utilities";
 import type { LabelProxy } from "../deltas";
@@ -36,15 +39,13 @@ const LABEL: LabelProxy = {
 const SCHEMA: Field = { name: "detections" } as Field;
 
 describe("useUpsertLabel / useDeleteLabel", () => {
-  let mockApplyPatch: ReturnType<typeof vi.fn>;
-
   beforeEach(() => {
     vi.clearAllMocks();
-    mockApplyPatch = vi.fn().mockResolvedValue(true);
 
     vi.mocked(useRecoilValue).mockReturnValue(false);
     vi.mocked(useModalSample).mockReturnValue({ sample: SAMPLE } as any);
-    vi.mocked(usePatchSample).mockReturnValue(mockApplyPatch);
+    vi.mocked(useCurrentDatasetId).mockReturnValue("dataset-1");
+    vi.mocked(useUpdateSamples).mockReturnValue(vi.fn());
     vi.mocked(handleLabelPersistence).mockResolvedValue(true);
   });
 

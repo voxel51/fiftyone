@@ -4,6 +4,7 @@ import {
   saveAnnotationFieldUpdates,
   transformSampleData,
 } from "@fiftyone/core/src/client";
+import { extractNestedField } from "@fiftyone/core/src/utils/json";
 import type { Sample } from "@fiftyone/looker";
 import { type Field, isObject } from "@fiftyone/utilities";
 import {
@@ -58,14 +59,29 @@ export const buildUpdatesForChange = (
     ];
   }
 
+  // A generated save must address two documents — the patches sample and its
+  // source label. Both identifiers are required; without them we'd send a
+  // malformed request (datasetName: undefined) or silently skip the source
+  // write, leaving it out of sync. Fail loudly instead.
   const sourceSampleId = (ctx.sample as Sample & { _sample_id?: string })
     ._sample_id;
+  if (!ctx.generatedDatasetName || !sourceSampleId) {
+    throw new Error(
+      "Cannot persist a generated-view label without both a generated dataset " +
+        "name and the source sample id (_sample_id)"
+    );
+  }
+
   const updates: AnnotationFieldUpdate[] = [];
 
   // The patches sample stores this label either flattened (to_patches: the
   // sample IS the label) or as a list element (evaluation patches, where the
   // patch also holds e.g. predictions) — address it to match its own shape.
-  const patchField = (ctx.sample as Record<string, unknown>)[change.field];
+  // `change.field` may be a nested (dotted) path, so resolve it accordingly.
+  const patchField = extractNestedField<Record<string, unknown>>(
+    ctx.sample as unknown as Record<string, unknown>,
+    change.field
+  );
   const patchIsList =
     !!change.listKey &&
     isObject(patchField) &&
@@ -99,19 +115,42 @@ export const buildUpdatesForChange = (
     });
   }
 
-  // The source sample holds the same label inside a list field.
-  if (sourceSampleId) {
-    updates.push({
-      collection: `samples.${ctx.datasetId}`,
-      id: sourceSampleId,
-      lookupPath: sourceLookupPath,
-      labelId: change.labelId,
-      previousValue: change.previousValue,
-      newValue: change.newValue,
-    });
-  }
+  // The source sample holds the same label inside a list field (sourceSampleId
+  // is guaranteed present by the guard above).
+  updates.push({
+    collection: `samples.${ctx.datasetId}`,
+    id: sourceSampleId,
+    lookupPath: sourceLookupPath,
+    labelId: change.labelId,
+    previousValue: change.previousValue,
+    newValue: change.newValue,
+  });
 
   return updates;
+};
+
+/**
+ * Set (or delete, when `value === undefined`) a possibly-dotted `path` on a
+ * shallow copy, cloning intermediate objects so the original isn't mutated.
+ */
+const setNestedField = (
+  root: Record<string, unknown>,
+  path: string,
+  value: unknown
+): void => {
+  const parts = path.split(".");
+  const leaf = parts.pop() as string;
+  let cursor = root;
+  for (const part of parts) {
+    const child = cursor[part];
+    cursor[part] = isObject(child) ? { ...(child as object) } : {};
+    cursor = cursor[part] as Record<string, unknown>;
+  }
+  if (value === undefined) {
+    delete cursor[leaf];
+  } else {
+    cursor[leaf] = value;
+  }
 };
 
 /**
@@ -123,7 +162,11 @@ const applyChangeToSample = (
   sample: Record<string, unknown>,
   change: LabelFieldChange
 ): void => {
-  const fieldValue = sample[change.field];
+  // `change.field` may be a nested (dotted) path — read/write it accordingly.
+  const fieldValue = extractNestedField<Record<string, unknown>>(
+    sample,
+    change.field
+  );
   const isList =
     !!change.listKey &&
     isObject(fieldValue) &&
@@ -132,21 +175,20 @@ const applyChangeToSample = (
   // Flat label (to_patches) or a flat/primitive field: replace or delete it
   // wholesale.
   if (!isList) {
-    if (change.newValue === null) {
-      delete sample[change.field];
-    } else {
-      sample[change.field] = change.newValue;
-    }
+    setNestedField(
+      sample,
+      change.field,
+      change.newValue === null ? undefined : change.newValue
+    );
     return;
   }
 
   // List field (normal view or evaluation patches): replace/add/remove the
   // element by id.
-  const container = {
-    ...((sample[change.field] as Record<string, unknown>) ?? {}),
-  };
+  const listKey = change.listKey as string;
+  const container = { ...((fieldValue as Record<string, unknown>) ?? {}) };
   const list = [
-    ...((container[change.listKey] as Array<Record<string, unknown>>) ?? []),
+    ...((container[listKey] as Array<Record<string, unknown>>) ?? []),
   ];
   const idx = list.findIndex(
     (e) => (e as { _id?: string })._id === change.labelId
@@ -158,8 +200,8 @@ const applyChangeToSample = (
   } else {
     list.push(change.newValue as Record<string, unknown>);
   }
-  container[change.listKey] = list;
-  sample[change.field] = container;
+  container[listKey] = list;
+  setNestedField(sample, change.field, container);
 };
 
 /**
@@ -297,7 +339,9 @@ export const handleLabelPersistence = async ({
     isGenerated
   );
   if (!change) {
-    return false;
+    // Nothing actually changed — a no-op is success, not a failure (mirrors
+    // saveAnnotationChanges treating an empty batch as success).
+    return true;
   }
 
   return saveAnnotationChanges([change], {

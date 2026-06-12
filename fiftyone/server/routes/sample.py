@@ -5,30 +5,23 @@ FiftyOne Server sample endpoints.
 | `voxel51.com <https://voxel51.com/>`_
 |
 
-Annotation saves go through a single mechanism: a batch of **gated field
-updates**. Each update names its target ``collection`` (e.g.
-``samples.<dataset._id>``), the document ``id``, a ``lookupPath`` (and
-``labelId`` for a label inside a list field), the value the editor started from
-(``previousValue``), and the value to write (``newValue``).
+Annotation saves are a batch of gated field updates applied directly to Mongo
+(no sample is loaded), each carrying its target, the previous value to gate on,
+and the new value to write. A failed precondition returns ``409`` with the
+document's current state so the client can reconcile.
 
-The backend performs a direct, atomic ``update_one`` on the named collection:
+Non-obvious bits:
 
-  * it matches the document/element by identity,
-  * it gates on the *scalar fields that actually changed* still holding their
-    previous values, and
-  * it ``$set``/``$unset``/``$push``/``$pull``s only what changed.
-
-Because the write gates on (and only touches) the changed fields, concurrent
-edits to other fields, other labels, or other samples never collide and are
-never silently overwritten — a real conflict returns ``409`` and the client
-refetches. No dataset or sample is loaded or resolved on this path.
-
-A patches-view edit is still a single client request: its batch simply carries
-two updates (the source collection and the materialized patches collection).
-
-The only place that loads a sample and calls ``sample.save()`` is
-:class:`CommitMask`, which performs a server-side file write the gated path
-cannot express; it is intentionally a separate route.
+  * Writes to a generated (patches/clips) collection are **best-effort**: it is
+    an ephemeral view that regenerates from the source, so a stale write there
+    is skipped rather than failing the request. The permanent source write is
+    authoritative.
+  * Multiple permanent writes in one batch are prevalidated so a stale one
+    can't half-apply — FiftyOne's MongoDB may be standalone, so transactions
+    are not assumed.
+  * :class:`CommitMask` is deliberately separate: it is the only path that
+    loads a sample and calls ``sample.save()``, for a server-side file write
+    the gated path can't express.
 """
 
 import datetime
@@ -158,14 +151,29 @@ def _build_label_update(
 
     # ---- remove ----
     if new is None:
+        # Gate the delete on the label still holding the scalar values the
+        # editor saw, so a stale delete can't erase a label another editor just
+        # changed (it returns 409 and the client reconciles instead).
+        old_bson = _label_to_mongo(old) if old is not None else {}
+        gates = {
+            field: _gate(value)
+            for field, value in old_bson.items()
+            if field != "_id" and _gatable(value)
+        }
         if array:
-            filter_doc = {**doc_filter, f"{lookup_path}._id": label_oid}
+            filter_doc = {
+                **doc_filter,
+                lookup_path: {"$elemMatch": {"_id": label_oid, **gates}},
+            }
             update_doc = {
                 "$pull": {lookup_path: {"_id": label_oid}},
                 "$set": {"last_modified_at": now},
             }
         else:
-            filter_doc = dict(doc_filter)
+            filter_doc = {
+                **doc_filter,
+                **{f"{lookup_path}.{f}": v for f, v in gates.items()},
+            }
             update_doc = {
                 "$unset": {lookup_path: ""},
                 "$set": {"last_modified_at": now},
@@ -186,7 +194,9 @@ def _build_label_update(
                 "$set": {"last_modified_at": now},
             }
         else:
-            filter_doc = dict(doc_filter)
+            # Only create when the field is still absent/null, so a stale
+            # create can't clobber a value another editor inserted.
+            filter_doc = {**doc_filter, lookup_path: {"$in": [None]}}
             update_doc = {
                 "$set": {lookup_path: new_bson, "last_modified_at": now}
             }
@@ -275,17 +285,39 @@ def _resolve_collection(db, update: dict) -> str:
     )
 
 
-def apply_field_update(db, update: dict) -> Tuple[bool, Any]:
-    """Applies one gated field update.
+# Collections produced by generated views (patches/clips/frame-patches). A
+# request may target one in addition to the route dataset's own collections.
+_GENERATED_PREFIXES = ("patches.", "clips.")
 
-    Returns ``(matched, value)``. On success ``matched`` is ``True`` and
-    ``value`` is ``None``. On a precondition mismatch ``matched`` is ``False``
-    and ``value`` is the document's *full current state* (or ``None`` if it was
-    deleted concurrently), so the client can reconcile every field that changed
-    out from under it — not just the one it tried to write.
+
+def _allowed_collections(path_params: dict) -> set:
+    """The set of collections a request on this route may mutate.
+
+    A dataset's collections are deterministically named from its id
+    (``samples.<id>`` / ``frames.<id>``), so the route's ``dataset_id`` bounds
+    the writable source collections without a database lookup. A patches edit
+    additionally targets a materialized generated dataset's collection, which
+    :func:`_plan_update` allows only when reached via ``datasetName`` and only
+    if it is in fact a generated collection. This binds writes to the route
+    context so a request body can never redirect one to an unrelated *normal*
+    dataset's collection.
+    """
+    dataset_id = path_params.get("dataset_id")
+    if not dataset_id:
+        raise HTTPException(status_code=400, detail="Missing dataset id")
+    return {f"samples.{dataset_id}", f"frames.{dataset_id}"}
+
+
+def _plan_update(db, update: dict, allowed: set) -> dict:
+    """Resolves and builds one update *without writing*.
+
+    Returns a plan dict carrying the target ``collection`` handle, its
+    ``collection_name``, the ``doc_id``/``doc_filter``, and either
+    ``delete_document`` or a built (``filter``, ``update``) pair.
 
     Raises:
-        HTTPException: the update payload is malformed
+        HTTPException: the payload is malformed or its target collection is
+            outside ``allowed`` (bound to the route's dataset)
     """
     if not isinstance(update, dict):
         raise HTTPException(
@@ -293,17 +325,41 @@ def apply_field_update(db, update: dict) -> Tuple[bool, Any]:
         )
 
     collection_name = _resolve_collection(db, update)
-    collection = db[collection_name]
+    # Bind the write target to the route's dataset: an explicit ``collection``
+    # must be one of the route dataset's own collections, while a generated-view
+    # target (``datasetName``) must resolve to a generated collection — so a
+    # request body can never redirect a write to an unrelated normal dataset.
+    if update.get("collection"):
+        target_allowed = collection_name in allowed
+    else:
+        target_allowed = collection_name.startswith(_GENERATED_PREFIXES)
+    if not target_allowed:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Update targets disallowed collection '{collection_name}'",
+        )
 
     doc_id = update.get("id")
     if doc_id is None:
         raise HTTPException(status_code=400, detail="Update is missing 'id'")
     doc_filter = {"_id": _object_id(doc_id)}
 
+    plan = {
+        "collection": db[collection_name],
+        "collection_name": collection_name,
+        "doc_id": doc_id,
+        "doc_filter": doc_filter,
+        "lookup_path": None,
+    }
+
     # Whole-document deletion (e.g. a patches sample whose label was deleted).
+    # It has no precondition of its own; the gated source-collection update
+    # co-sent in the same batch is what guards it against a stale delete.
     if update.get("op") == "deleteDocument":
-        collection.delete_one(doc_filter)
-        return True, None
+        plan["delete_document"] = True
+        return plan
+
+    plan["delete_document"] = False
 
     lookup_path = update.get("lookupPath")
     if not isinstance(lookup_path, str) or not lookup_path:
@@ -343,38 +399,48 @@ def apply_field_update(db, update: dict) -> Tuple[bool, Any]:
             lookup_path, old, new, doc_filter=doc_filter
         )
 
-    result = collection.update_one(filter_doc, update_doc)
-    if result.matched_count == 0:
-        # Reconcile by returning the document's full current state — the
-        # editor's baseline may be stale in more than the one field it tried to
-        # write. ``None`` if the document was deleted concurrently. Only read on
-        # the (rare) conflict path.
-        current = collection.find_one(doc_filter)
-        logger.warning(
-            "Annotation save REJECTED (precondition mismatch): "
-            "collection=%s id=%s lookupPath=%s",
-            collection_name,
-            doc_id,
-            lookup_path,
-        )
-        return False, current
+    plan["filter"] = filter_doc
+    plan["update"] = update_doc
+    plan["lookup_path"] = lookup_path
+    return plan
 
-    logger.debug(
-        "Annotation save applied: collection=%s id=%s lookupPath=%s",
-        collection_name,
-        doc_id,
-        lookup_path,
-    )
-    return True, None
+
+def _current_document(plan: dict) -> Any:
+    """The plan document's full current state (``None`` if it no longer exists),
+    returned to the client so it can reconcile every concurrently-changed
+    field — not just the one it tried to write."""
+    return plan["collection"].find_one(plan["doc_filter"])
+
+
+def _is_generated_collection(name: str) -> bool:
+    return name.startswith(_GENERATED_PREFIXES)
+
+
+def _apply_plan(plan: dict) -> bool:
+    """Applies one plan; returns whether it matched (a delete always does)."""
+    if plan["delete_document"]:
+        plan["collection"].delete_one(plan["doc_filter"])
+        return True
+    result = plan["collection"].update_one(plan["filter"], plan["update"])
+    return result.matched_count > 0
 
 
 class SampleFields(HTTPEndpoint):
     """Applies a batch of gated annotation field updates.
 
-    A single request may target multiple collections — each update names its
-    own ``collection`` (or ``datasetName``) and ``id``. A patches-view edit, for
-    example, sends two updates in one batch: the source label (in its list) and
-    the materialized patches sample (flat).
+    Each update names its own ``collection`` (or ``datasetName``) and ``id``,
+    constrained to the route's dataset. A patches-view edit, for example, sends
+    two updates in one batch: the source label (in its list) and the
+    materialized patches sample.
+
+    The **permanent source collection is authoritative**: its gated writes are
+    what can conflict (409). Writes to a **generated** (patches/clips) collection
+    are **best-effort** — it is an ephemeral materialized view that regenerates
+    from the source, so a stale write there is logged and skipped, never failing
+    the request. When a batch carries more than one *permanent* write (a
+    multi-label edit), those are prevalidated together so a stale one can't
+    half-apply (FiftyOne's MongoDB may be standalone, so a transaction isn't
+    assumed).
     """
 
     @decorators.route
@@ -382,15 +448,15 @@ class SampleFields(HTTPEndpoint):
         """Applies a batch of gated field updates.
 
         Args:
-            request: Starlette request (path params are contextual only; each
-                update carries its own target collection/document)
+            request: Starlette request; ``dataset_id`` in the path bounds which
+                collections the batch may touch
             data: a list of updates, or ``{"updates": [...]}``
 
         Returns:
-            ``200 {"updated": n}`` if every update matched; otherwise ``409
-            {"conflicts": [{"index", "value"}, ...]}`` where ``value`` is the
-            full current state of the conflicting document, so the client can
-            reconcile every concurrently-changed field and retry.
+            ``200 {"updated": n}`` if every *permanent* write matched; otherwise
+            ``409 {"conflicts": [{"index", "value"}, ...]}`` where ``value`` is
+            the full current state of the conflicting document, so the client
+            can reconcile every concurrently-changed field and retry.
         """
         updates = data.get("updates") if isinstance(data, dict) else data
         if not isinstance(updates, list):
@@ -399,16 +465,76 @@ class SampleFields(HTTPEndpoint):
             )
 
         db = get_db_conn()
+        allowed = _allowed_collections(request.path_params)
+
+        # Resolve + build every update (validates payload and target). No writes.
+        plans = [_plan_update(db, update, allowed) for update in updates]
+
+        permanent = [
+            (i, p)
+            for i, p in enumerate(plans)
+            if not _is_generated_collection(p["collection_name"])
+        ]
+        generated = [
+            (i, p)
+            for i, p in enumerate(plans)
+            if _is_generated_collection(p["collection_name"])
+        ]
+
+        # When a batch carries several permanent writes (a multi-label edit),
+        # prevalidate them together so a stale one can't half-apply. A lone
+        # permanent write is atomic by itself and skips the extra read.
+        if len(permanent) > 1:
+            stale = [
+                {"index": i, "value": _current_document(p)}
+                for i, p in permanent
+                if not p["delete_document"]
+                and p["collection"].find_one(p["filter"], {"_id": 1}) is None
+            ]
+            if stale:
+                logger.warning(
+                    "Annotation batch REJECTED (precondition mismatch): "
+                    "%d of %d permanent writes conflicted",
+                    len(stale),
+                    len(permanent),
+                )
+                return JSONResponse({"conflicts": stale}, status_code=409)
+
+        # Apply the authoritative permanent writes; a stale gate here is a real
+        # conflict the client must reconcile.
         conflicts = []
-        for index, update in enumerate(updates):
-            matched, value = apply_field_update(db, update)
-            if not matched:
-                conflicts.append({"index": index, "value": value})
+        for index, plan in permanent:
+            if not _apply_plan(plan):
+                logger.warning(
+                    "Annotation save REJECTED (precondition mismatch): "
+                    "collection=%s id=%s lookupPath=%s",
+                    plan["collection_name"],
+                    plan["doc_id"],
+                    plan["lookup_path"],
+                )
+                conflicts.append(
+                    {"index": index, "value": _current_document(plan)}
+                )
 
         if conflicts:
+            # The authoritative edit was rejected; skip the now-pointless sync
+            # of the ephemeral generated view.
             return JSONResponse({"conflicts": conflicts}, status_code=409)
 
-        return JSONResponse({"updated": len(updates)})
+        # Best-effort sync of the ephemeral generated (patches/clips) view. Its
+        # collection is disposable and regenerates from the source, so a stale
+        # write here is logged but never fails the request.
+        for _index, plan in generated:
+            if not _apply_plan(plan):
+                logger.info(
+                    "Generated-view sync skipped (precondition mismatch): "
+                    "collection=%s id=%s",
+                    plan["collection_name"],
+                    plan["doc_id"],
+                )
+
+        logger.debug("Annotation batch applied: %d updates", len(plans))
+        return JSONResponse({"updated": len(plans)})
 
 
 class CommitMask(HTTPEndpoint):

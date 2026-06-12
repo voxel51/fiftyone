@@ -412,6 +412,126 @@ class TestSampleFields:
         assert exc.value.status_code == 400
 
     @pytest.mark.asyncio
+    async def test_rejects_collection_outside_route(
+        self, mutator, dataset_id, sample
+    ):
+        # A body targeting another dataset's collection is refused — the route's
+        # dataset_id bounds what may be written.
+        updates = [
+            {
+                "collection": "samples.000000000000000000000000",
+                "id": str(sample.id),
+                "lookupPath": "primitive_field",
+                "previousValue": "initial_value",
+                "newValue": "evil",
+            }
+        ]
+        with pytest.raises(HTTPException) as exc:
+            await mutator.patch(
+                self._request(dataset_id, str(sample.id), updates)
+            )
+        assert exc.value.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_batch_is_atomic_when_a_later_update_conflicts(
+        self, mutator, dataset_id, collection, sample
+    ):
+        # A valid primitive edit batched before a stale label edit. The conflict
+        # must reject the WHOLE batch — the earlier write must not be applied.
+        sample.ground_truth.detections[0].label = "changed_by_other"
+        sample.save()
+        sample.reload()
+
+        updates = [
+            {
+                "collection": collection,
+                "id": str(sample.id),
+                "lookupPath": "primitive_field",
+                "previousValue": "initial_value",
+                "newValue": "user_value",
+            },
+            {
+                "collection": collection,
+                "id": str(sample.id),
+                "lookupPath": "ground_truth.detections",
+                "labelId": str(self.DET_ID),
+                "previousValue": self._det(label="cat"),
+                "newValue": self._det(label="dog"),
+            },
+        ]
+        response = await mutator.patch(
+            self._request(dataset_id, str(sample.id), updates)
+        )
+
+        assert response.status_code == 409
+        body = json.loads(response.body)
+        assert [c["index"] for c in body["conflicts"]] == [1]
+
+        # the earlier, valid primitive update must NOT have been applied
+        sample.reload()
+        assert sample.primitive_field == "initial_value"
+
+    @pytest.mark.asyncio
+    async def test_stale_delete_conflicts(
+        self, mutator, dataset_id, collection, sample
+    ):
+        # The label changed out from under us; deleting our stale view of it
+        # must conflict rather than erase the other editor's change.
+        sample.ground_truth.detections[0].label = "changed_by_other"
+        sample.save()
+        sample.reload()
+
+        updates = [
+            {
+                "collection": collection,
+                "id": str(sample.id),
+                "lookupPath": "ground_truth.detections",
+                "labelId": str(self.DET_ID),
+                "previousValue": self._det(label="cat"),
+                "newValue": None,
+            }
+        ]
+        response = await mutator.patch(
+            self._request(dataset_id, str(sample.id), updates)
+        )
+
+        assert response.status_code == 409
+        sample.reload()
+        assert len(sample.ground_truth.detections) == 1
+        assert sample.ground_truth.detections[0].label == "changed_by_other"
+
+    @pytest.mark.asyncio
+    async def test_stale_flat_label_create_conflicts(
+        self, mutator, dataset_id, collection, sample
+    ):
+        # Another editor created the field first; our create must conflict
+        # rather than clobber it.
+        sample["scene"] = fol.Classification(label="other")
+        sample.save()
+        sample.reload()
+
+        updates = [
+            {
+                "collection": collection,
+                "id": str(sample.id),
+                "lookupPath": "scene",
+                "previousValue": None,
+                "newValue": {
+                    "_cls": "Classification",
+                    "_id": ObjectId(),
+                    "label": "mine",
+                },
+            }
+        ]
+        response = await mutator.patch(
+            self._request(dataset_id, str(sample.id), updates)
+        )
+
+        assert response.status_code == 409
+        sample.reload()
+        assert sample.scene.label == "other"
+
+    @pytest.mark.asyncio
     async def test_add_label_with_mask_persists_as_numpy(
         self, mutator, dataset_id, collection, sample
     ):
@@ -580,11 +700,12 @@ class TestSampleFieldsPatchesBatch:
         assert len(patches_dataset) == 0
 
     @pytest.mark.asyncio
-    async def test_patches_conflict_returns_current_field(
+    async def test_stale_generated_write_is_best_effort(
         self, mutator, dataset, dataset_id, sample
     ):
-        """A stale precondition against the patches collection returns 409 with
-        the patch field's current value."""
+        """A stale write against the (ephemeral) patches collection does NOT
+        fail the request — the generated view is disposable — and it must not
+        clobber the other editor's value."""
         patches_view = dataset.to_patches("ground_truth")
         patches_dataset = patches_view._patches_dataset
         patch_sample = patches_view.first()
@@ -609,11 +730,69 @@ class TestSampleFieldsPatchesBatch:
         response = await mutator.patch(
             make_request(dataset_id, str(sample.id), updates)
         )
-        assert response.status_code == 409
-        conflict = json.loads(response.body)["conflicts"][0]
-        assert conflict["index"] == 0
-        # the patch document's full current state comes back (flat ground_truth)
-        assert conflict["value"]["ground_truth"]["label"] == "changed_by_other"
+        # best-effort: no conflict surfaced, and the gate stopped the overwrite
+        assert response.status_code == 200
+        assert (
+            patches_dataset[str(patch_sample.id)].ground_truth.label
+            == "changed_by_other"
+        )
+
+    @pytest.mark.asyncio
+    async def test_source_succeeds_when_patch_write_is_stale(
+        self, mutator, dataset, dataset_id, sample
+    ):
+        """The permanent source write is authoritative: it still succeeds (200)
+        even if the ephemeral patch copy changed underneath and its best-effort
+        sync is skipped."""
+        patches_view = dataset.to_patches("ground_truth")
+        patches_dataset = patches_view._patches_dataset
+        patch_sample = patches_view.first()
+
+        # Someone else edits the (generated) patch copy independently.
+        other = patches_dataset[str(patch_sample.id)]
+        other.ground_truth.label = "patch_changed"
+        other.save()
+
+        # pylint: disable-next=protected-access
+        source_collection = dataset._sample_collection_name
+        old = {
+            "_cls": "Detection",
+            "_id": self.DET_ID,
+            "label": "cat",
+            "bounding_box": [0.1, 0.1, 0.2, 0.2],
+        }
+        new = {**old, "label": "dog"}
+        updates = [
+            {  # generated patch (now stale) — best-effort, must not block
+                "datasetName": patches_dataset.name,
+                "id": str(patch_sample.id),
+                "lookupPath": "ground_truth",
+                "previousValue": old,
+                "newValue": new,
+            },
+            {  # permanent source — authoritative
+                "collection": source_collection,
+                "id": str(sample.id),
+                "lookupPath": "ground_truth.detections",
+                "labelId": str(self.DET_ID),
+                "previousValue": old,
+                "newValue": new,
+            },
+        ]
+
+        response = await mutator.patch(
+            make_request(dataset_id, str(sample.id), updates)
+        )
+
+        assert response.status_code == 200
+        # the authoritative source write applied
+        sample.reload()
+        assert sample.ground_truth.detections[0].label == "dog"
+        # the independently-changed patch was left untouched (gate skipped it)
+        assert (
+            patches_dataset[str(patch_sample.id)].ground_truth.label
+            == "patch_changed"
+        )
 
 
 class TestSampleFieldsEvaluationPatches:

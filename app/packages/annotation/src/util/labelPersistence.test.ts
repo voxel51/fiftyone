@@ -173,6 +173,30 @@ describe("buildUpdatesForChange", () => {
     });
     expect(updates[0].op).toBeUndefined();
   });
+
+  it("throws (rather than half-saving) when a generated id is missing", () => {
+    // Missing generated dataset name → would send datasetName: undefined.
+    expect(() =>
+      buildUpdatesForChange(change, {
+        datasetId: "ds1",
+        sample: { _id: "patch1", _sample_id: "src1" } as unknown as Sample,
+        updateSample: vi.fn(),
+        isGenerated: true,
+        generatedDatasetName: undefined,
+      })
+    ).toThrow();
+
+    // Missing source sample id → would silently skip the source write.
+    expect(() =>
+      buildUpdatesForChange(change, {
+        datasetId: "ds1",
+        sample: { _id: "patch1" } as unknown as Sample,
+        updateSample: vi.fn(),
+        isGenerated: true,
+        generatedDatasetName: "pds",
+      })
+    ).toThrow();
+  });
 });
 
 describe("saveAnnotationChanges", () => {
@@ -198,6 +222,37 @@ describe("saveAnnotationChanges", () => {
     expect(updateSample).toHaveBeenCalledOnce();
     const updated = updateSample.mock.calls[0][0];
     expect(updated.ground_truth.detections[0].label).toBe("dog");
+  });
+
+  it("applies a nested (dotted) field change to the baseline", async () => {
+    vi.mocked(saveAnnotationFieldUpdates).mockResolvedValue(undefined);
+    const updateSample = vi.fn();
+    const sample = {
+      _id: "s1",
+      dynamic: {
+        ground_truth: { detections: [{ _id: "det-1", label: "cat" }] },
+      },
+    } as unknown as Sample;
+    const nested: LabelFieldChange = {
+      field: "dynamic.ground_truth",
+      listKey: "detections",
+      labelId: "det-1",
+      previousValue: { _id: "det-1", label: "cat" },
+      newValue: { _id: "det-1", label: "dog" },
+    };
+
+    const ok = await saveAnnotationChanges([nested], {
+      datasetId: "ds1",
+      sample,
+      updateSample,
+      isGenerated: false,
+    });
+
+    expect(ok).toBe(true);
+    const updated = updateSample.mock.calls[0][0];
+    // written at the real nested field, not under a literal dotted key
+    expect(updated.dynamic.ground_truth.detections[0].label).toBe("dog");
+    expect(updated["dynamic.ground_truth"]).toBeUndefined();
   });
 
   it("skips the request and does not refresh when there are no changes", async () => {
@@ -287,6 +342,39 @@ describe("handleLabelPersistence", () => {
       opType: "mutate",
     });
     expect(ok).toBe(false);
+    expect(saveAnnotationFieldUpdates).not.toHaveBeenCalled();
+  });
+
+  it("returns true (success) for a no-op edit and sends nothing", async () => {
+    // An unchanged label yields no change; that's an idempotent success, not a
+    // failure.
+    const sample = {
+      _id: "s1",
+      ground_truth: {
+        detections: [
+          { _id: "det-1", label: "cat", bounding_box: [0, 0, 1, 1] },
+        ],
+      },
+    } as unknown as Sample;
+    const annotationLabel = {
+      type: "Detection",
+      path: "ground_truth",
+      data: { _id: "det-1", label: "cat" },
+      boundingBox: [0, 0, 1, 1],
+    } as never;
+
+    const ok = await handleLabelPersistence({
+      sample,
+      datasetId: "ds1",
+      updateSample: vi.fn(),
+      annotationLabel,
+      schema: {
+        embeddedDocType: "fiftyone.core.labels.Detections",
+      } as never,
+      opType: "mutate",
+    });
+
+    expect(ok).toBe(true);
     expect(saveAnnotationFieldUpdates).not.toHaveBeenCalled();
   });
 });
