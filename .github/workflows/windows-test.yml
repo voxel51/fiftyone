@@ -50,7 +50,7 @@ jobs:
           uv pip install --system -r requirements/github.txt
       - name: Install fiftyone
         run: |
-          uv pip install --system . -r requirements/github.txt
+          uv pip install --system '.[multimodal]' -r requirements/github.txt
       - name: Configure
         id: test_config
         run: |
