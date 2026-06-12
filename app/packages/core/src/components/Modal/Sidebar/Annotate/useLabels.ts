@@ -5,7 +5,6 @@ import {
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import { isDetection3dOverlay, isPolyline3dOverlay } from "@fiftyone/looker-3d";
 import {
   AnnotationLabel,
   AnnotationLabelData,
@@ -217,28 +216,48 @@ const SINGULAR: Partial<Record<EngineLabelType, LabelType>> = {
 const byLabelName = (a: AnnotationLabel, b: AnnotationLabel) =>
   (a.data.label ?? "").localeCompare(b.data?.label ?? "");
 
-/** 3D rows enter through {@link useLabelsContext} from looker-3d, never
- *  from the engine mirror — the mirror must pass them through untouched. */
-const is3dEntry = (label: AnnotationLabel) =>
-  isDetection3dOverlay(label.data) || isPolyline3dOverlay(label.data);
+const sameData = (a: AnnotationLabelData, b: AnnotationLabelData) =>
+  a === b || JSON.stringify(a) === JSON.stringify(b);
 
 const sameEntry = (a: AnnotationLabel, b: AnnotationLabel) =>
   a.overlay === b.overlay &&
   a.path === b.path &&
   a.type === b.type &&
-  (a.data === b.data || JSON.stringify(a.data) === JSON.stringify(b.data));
+  sameData(a.data, b.data);
+
+/**
+ * Transitional row shape for an engine label with no mounted Lighter overlay
+ * (3D-shaped data, content-declined data, an in-flight gated mask decode):
+ * enough overlay surface for list rendering — id (entry identity), field +
+ * label (coloring). The same shape the 3D create path puts in rows; it dies
+ * with the mirror when rows derive per-component by ref.
+ */
+const stubOverlay = (
+  id: string,
+  field: string,
+  label: AnnotationLabelData
+): AnnotationLabel["overlay"] =>
+  ({ id, field, label } as unknown as AnnotationLabel["overlay"]);
 
 /**
  * The sidebar label list, derived from the annotation engine (the engine is
  * the source of truth; the Lighter bridge owns overlay hydration). This is a
  * TRANSITIONAL mirror onto the legacy `labels` atom: rows keep their
- * `AnnotationLabel` shape (data + live overlay handle) until the remaining
+ * `AnnotationLabel` shape (data + overlay handle) until the remaining
  * consumers (`Edit/state`, focus, 3D ops, agents) migrate to engine reads,
  * at which point the atoms delete and rows derive per-component by ref.
  *
+ * EVERY in-scope engine label gets a row — the list never asks another
+ * surface for permission. Rows carry the live Lighter overlay when the scene
+ * has one and a {@link stubOverlay} otherwise (3D-shaped or content-declined
+ * data, an in-flight gated mask decode). Rows the engine does NOT know pass
+ * through untouched (uncommitted creates from un-migrated surfaces — 3D ops
+ * add rows via {@link useLabelsContext}); once the engine learns a label, its
+ * derived row wins, which is what makes duplicates structurally impossible.
+ *
  * Re-derives on every engine display tick and on `lighter:overlay-added`
- * (gated mask mounts insert without an engine change). Entries whose overlay
- * has not mounted yet (an in-flight mask decode) appear when it lands.
+ * (gated mask mounts insert without an engine change — the stub upgrades to
+ * the live overlay when the decode lands).
  */
 export default function useLabels() {
   const engine = useAnnotationEngine();
@@ -251,15 +270,23 @@ export default function useLabels() {
 
   const sampleId = modalSample?.sample?._id;
 
+  // ids the mirror derived on its last pass, and for which sample — a row
+  // that WAS engine-derived and no longer is was deleted (drop it, don't
+  // pass it through); a sample switch starts from an empty list
+  const derivedIds = useRef<Set<string>>(new Set());
+  const derivedFor = useRef<string | null>(null);
+
   const reconcile = useCallback(() => {
     if (!sampleId || !active) {
       return;
     }
 
     const store = getDefaultStore();
-    const previous = store.get(labels);
+    const current = store.get(labels);
+    const previous = derivedFor.current === sampleId ? current : [];
     const previousById = new Map(previous.map((l) => [l.data._id, l]));
-    const next: AnnotationLabel[] = previous.filter(is3dEntry);
+    const engineIds = new Set<string>();
+    const next: AnnotationLabel[] = [];
 
     for (const path of active) {
       const type = SINGULAR[engine.getLabelType(path)];
@@ -269,28 +296,53 @@ export default function useLabels() {
       }
 
       for (const data of engine.listLabels({ sample: sampleId, path })) {
-        const overlay = scene?.getOverlay(data._id);
+        engineIds.add(data._id);
 
-        if (!overlay || overlay.field !== path) {
-          continue; // not mounted (yet) — e.g. a gated mask decode in flight
-        }
+        const prev = previousById.get(data._id);
+        const mounted = scene?.getOverlay(data._id);
+        const live = mounted && mounted.field === path ? mounted : undefined;
+
+        // keep stub identity across reconciles while the data is unchanged;
+        // a data change rebuilds the stub so its label never goes stale
+        const overlay = (live ??
+          (prev && sameData(prev.data, data as AnnotationLabelData)
+            ? prev.overlay
+            : stubOverlay(
+                data._id,
+                path,
+                data as AnnotationLabelData
+              ))) as AnnotationLabel["overlay"];
 
         const entry: AnnotationLabel = {
           data: data as AnnotationLabelData,
-          overlay: overlay as AnnotationLabel["overlay"],
+          overlay,
           path,
           type,
         };
-        const prev = previousById.get(data._id);
         next.push(prev && sameEntry(prev, entry) ? prev : entry);
       }
     }
 
+    // engine-unknown rows pass through (uncommitted creates from
+    // un-migrated surfaces) — unless the engine knew them last pass
+    // (deleted: the row must not resurrect)
+    for (const label of previous) {
+      if (
+        !engineIds.has(label.data._id) &&
+        !derivedIds.current.has(label.data._id)
+      ) {
+        next.push(label);
+      }
+    }
+
+    derivedIds.current = engineIds;
+    derivedFor.current = sampleId;
+
     next.sort(byLabelName);
 
     const unchanged =
-      next.length === previous.length &&
-      next.every((entry, index) => entry === previous[index]);
+      next.length === current.length &&
+      next.every((entry, index) => entry === current[index]);
 
     if (!unchanged) {
       store.set(labels, next);
