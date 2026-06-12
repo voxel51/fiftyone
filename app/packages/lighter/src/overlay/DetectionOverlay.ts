@@ -1342,6 +1342,17 @@ export class DetectionOverlay
       this.bounds,
       (encoded) => {
         this.maskSource = encoded;
+        // Mask encoding is async: `pendingMask` only becomes available here,
+        // after the synchronous `overlay-label-updated` dispatch below has
+        // already run (and read an empty pending mask). Re-emit so the
+        // write-half re-reads the overlay and captures the merged mask —
+        // the same dance as `onPointerUp`'s paint-end.
+        this.eventBus.dispatch("lighter:overlay-label-updated", {
+          id: this.id,
+          overlayId: this.id,
+          label: this.label,
+          hasMask: this.hasMask(),
+        });
       }
     );
 
@@ -1383,6 +1394,15 @@ export class DetectionOverlay
     if (snapshot) {
       this.mask.restoreSnapshot(snapshot, (encoded) => {
         this.maskSource = encoded;
+        // Mask encoding is async — same re-emit dance as `mergeFrom` and
+        // paint-end: the synchronous dispatch below reads an empty pending
+        // mask; re-emit so the write-half captures the restored mask.
+        this.eventBus.dispatch("lighter:overlay-label-updated", {
+          id: this.id,
+          overlayId: this.id,
+          label: this.label,
+          hasMask: this.hasMask(),
+        });
       });
     } else {
       // Clearing to "no mask" — drop the rehydration source too so a later
@@ -1392,6 +1412,16 @@ export class DetectionOverlay
     }
     this.bounds = bounds;
     this.markDirty();
+
+    // restores are edits too (undo/redo, failure rollback) — dispatch so the
+    // write-half commits the restored bounds now; the restored mask follows
+    // on the encode re-emit above
+    this.eventBus.dispatch("lighter:overlay-label-updated", {
+      id: this.id,
+      overlayId: this.id,
+      label: this.label,
+      hasMask: this.hasMask(),
+    });
   }
 
   /**
