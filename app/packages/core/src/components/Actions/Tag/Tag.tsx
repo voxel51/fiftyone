@@ -18,10 +18,14 @@ import {
   useRecoilRefresher_UNSTABLE,
   useRecoilState,
   useRecoilValue,
+  useRecoilValueLoadable,
   useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
 import AggregationGuard from "../../Common/AggregationGuard";
+import TimedOutCounts, {
+  isAggregationTimeout,
+} from "../../Common/TimedOutCounts";
 import { Button } from "../../utils";
 import Checker, { CheckState } from "../Checker";
 import Popout from "../Popout";
@@ -81,7 +85,7 @@ const Section = ({
   close,
   labels,
 }: SectionProps) => {
-  const items = useRecoilValue(itemsAtom);
+  const itemsLoadable = useRecoilValueLoadable(itemsAtom);
   const elementNames = useRecoilValue(fos.elementNames);
   const theme = useTheme();
   const [tagging, setTagging] = useRecoilState(taggingAtom);
@@ -121,9 +125,19 @@ const Section = ({
     setTagging(true);
   };
 
-  if (!items) {
+  if (itemsLoadable.state === "loading") {
     return <LoadingDots text="" style={{ color: theme.text.secondary }} />;
   }
+
+  // empty list on timeout is lossless: the save is an add/remove delta, never a replace
+  const itemsTimedOut =
+    itemsLoadable.state === "hasError" &&
+    isAggregationTimeout(itemsLoadable.contents);
+  if (itemsLoadable.state === "hasError" && !itemsTimedOut) {
+    throw itemsLoadable.contents;
+  }
+  const items =
+    itemsLoadable.state === "hasValue" ? itemsLoadable.contents : {};
 
   const hasChanges = Object.keys(changes).length > 0;
 
@@ -188,6 +202,18 @@ const Section = ({
             onBlur={({ target }) => target.focus()}
             type={"text"}
           />
+        )}
+        {itemsTimedOut && !isLoading && (
+          <span
+            style={{
+              position: "absolute",
+              right: 0,
+              top: "50%",
+              transform: "translateY(-50%)",
+            }}
+          >
+            <TimedOutCounts text="Existing tags timed out. You can still add a new tag." />
+          </span>
         )}
       </TaggingContainerInput>
       {count > 0 && (
@@ -475,8 +501,7 @@ const SuspenseLoading = () => {
   );
 };
 
-// a timed-out tag-count aggregation degrades to a message instead of erroring
-// the whole app; narrowing the view resets the guard and re-attempts
+// backstop for a timed-out count/tagging request: contain it instead of full-paging
 const TaggingTimedOut = () => {
   const theme = useTheme();
   return (

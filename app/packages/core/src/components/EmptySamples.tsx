@@ -39,8 +39,7 @@ const ActionContainer = styled(TextContainer)`
   position: relative;
 `;
 
-// a timed-out sample count can't tell us whether the view is empty; contain it
-// and render nothing rather than erroring the whole app
+// a timed-out count can't prove emptiness; render nothing rather than full-paging
 export default function EmptySamples() {
   return (
     <AggregationGuard fallback={null}>
