@@ -43,7 +43,9 @@ export type PropagationStrategy =
   | "centroid-5"
   | "centroid-3"
   | "centroid-1"
-  | "lerp";
+  | "lerp"
+  /** Native SAM2 ``propagate_in_video`` on the FiftyOne server (PyTorch). */
+  | "sam2-video";
 
 export interface PropagateOptions {
   /** Returns the decoded bitmap for a frame index (caller-defined base). */

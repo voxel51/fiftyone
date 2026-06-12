@@ -4,8 +4,10 @@ import {
   BrowserAnnotationProvider,
   type BrowserAnnotationProviderOptions,
   propagate,
+  propagateSam2Video,
   pointsFromBox,
   type PropagationStrategy,
+  type InferenceResult as ProviderInferenceResult,
   type ProviderError,
   type ProviderStatus,
 } from "../providers";
@@ -54,8 +56,15 @@ export interface Sam2PropagateArgs {
   onProgress?: (done: number, total: number) => void;
   /** Polled before each frame; return `true` to stop early. */
   shouldAbort?: () => boolean;
-  /** Next-frame prompt strategy; defaults to "centroid-1". */
+  /**
+   * Next-frame prompt strategy. Defaults to ``"sam2-video"`` (server
+   * ``propagate_in_video``). Browser ONNX centroid/lerp strategies remain
+   * available for offline / fallback use.
+   */
   strategy?: PropagationStrategy;
+  /** Required when ``strategy`` is ``"sam2-video"``. */
+  datasetName?: string;
+  sampleId?: string;
 }
 
 /**
@@ -100,7 +109,11 @@ export class SAM2PropagationBrowserAgent
       throw new Error("fromFrame must be less than toFrame");
     }
 
-    await this.ensureInitialized();
+    const strategy = args.strategy ?? "sam2-video";
+
+    if (strategy !== "sam2-video") {
+      await this.ensureInitialized();
+    }
 
     const runId = objectId();
     // Provenance records the source keyframes' mongo `_id`s (not the
@@ -113,47 +126,75 @@ export class SAM2PropagationBrowserAgent
 
     this.setStatus("inferring");
 
-    try {
-      await propagate(this.provider, {
-        getFrameBitmap: args.getFrameBitmap,
-        keyframeA: {
-          frameIdx: args.fromFrame,
-          points: pointsFromBox(args.seedKeyframe.bounding_box),
-        },
-        keyframeB: {
-          frameIdx: args.toFrame,
-          points: pointsFromBox(args.endKeyframe.bounding_box),
-        },
-        videoKey: args.videoKey,
-        strategy: args.strategy ?? "centroid-5",
-        shouldAbort: args.shouldAbort,
-        onProgress: args.onProgress,
-        onFrame: (frameIdx, result) => {
-          // Don't overwrite the user's bracket keyframes.
-          if (frameIdx === args.fromFrame || frameIdx === args.toFrame) return;
+    const emitDetection = (
+      frameIdx: number,
+      result: ProviderInferenceResult
+    ) => {
+      if (frameIdx === args.fromFrame || frameIdx === args.toFrame) return;
 
-          const detection: PropagatedDetection = {
-            _id: objectId(),
-            _cls: "Detection",
-            bounding_box: [
-              result.bbox.x,
-              result.bbox.y,
-              result.bbox.w,
-              result.bbox.h,
-            ],
-            label: args.seedKeyframe.label,
-            index: args.seedKeyframe.index,
-            instance: { _cls: "Instance", _id: args.instanceId },
-            keyframe: false,
-            propagation: {
-              method: "sam2",
-              run_id: runId,
-              parent_keyframes: parentKeyframes,
-            },
-          };
-          args.onDetection(frameIdx, detection);
+      const detection: PropagatedDetection = {
+        _id: objectId(),
+        _cls: "Detection",
+        bounding_box: [
+          result.bbox.x,
+          result.bbox.y,
+          result.bbox.w,
+          result.bbox.h,
+        ],
+        label: args.seedKeyframe.label,
+        index: args.seedKeyframe.index,
+        instance: { _cls: "Instance", _id: args.instanceId },
+        keyframe: false,
+        propagation: {
+          method: "sam2",
+          run_id: runId,
+          parent_keyframes: parentKeyframes,
         },
-      });
+      };
+      args.onDetection(frameIdx, detection);
+    };
+
+    try {
+      if (strategy === "sam2-video") {
+        if (!args.datasetName || !args.sampleId) {
+          throw new Error(
+            "datasetName and sampleId are required for sam2-video propagation"
+          );
+        }
+
+        const seedPoints = pointsFromBox(args.seedKeyframe.bounding_box);
+        const endPoints = pointsFromBox(args.endKeyframe.bounding_box);
+
+        await propagateSam2Video({
+          datasetName: args.datasetName,
+          sampleId: args.sampleId,
+          instanceId: args.instanceId,
+          fromFrame: args.fromFrame,
+          toFrame: args.toFrame,
+          seedPoints,
+          endPoints,
+          shouldAbort: args.shouldAbort,
+          onProgress: args.onProgress,
+          onFrame: (frameIdx, result) => emitDetection(frameIdx, result),
+        });
+      } else {
+        await propagate(this.provider, {
+          getFrameBitmap: args.getFrameBitmap,
+          keyframeA: {
+            frameIdx: args.fromFrame,
+            points: pointsFromBox(args.seedKeyframe.bounding_box),
+          },
+          keyframeB: {
+            frameIdx: args.toFrame,
+            points: pointsFromBox(args.endKeyframe.bounding_box),
+          },
+          videoKey: args.videoKey,
+          strategy,
+          shouldAbort: args.shouldAbort,
+          onProgress: args.onProgress,
+          onFrame: (frameIdx, result) => emitDetection(frameIdx, result),
+        });
+      }
 
       if (this.lifecycleStatus !== "error") {
         this.setStatus("idle");
@@ -183,7 +224,7 @@ export class SAM2PropagationBrowserAgent
 
   async getModelMetadata(task: AgentTaskType): Promise<ModelMetadata | null> {
     if (task === AgentTaskType.PROPAGATE) {
-      return { name: "SAM2 tracking", version: "hiera-tiny-onnx" };
+      return { name: "SAM2 video tracking", version: "hiera-tiny-video-torch" };
     }
     return null;
   }

@@ -229,6 +229,8 @@ export const useRegisterVideoAnnotationCommandHandlers = () => {
               fromFrame: cmd.fromFrame,
               toFrame: cmd.toFrame,
               videoKey: sampleDescriptor.sampleId,
+              datasetName: sampleDescriptor.datasetId,
+              sampleId: sampleDescriptor.sampleId,
               getFrameBitmap,
               onDetection: applyPropagatedDetection,
               onProgress: (done, runTotal) => {

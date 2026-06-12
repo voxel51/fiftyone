@@ -24,6 +24,7 @@ from .media import Media
 from .ontology import OntologyAttributes, Ontologies
 from .plugins import Plugins
 from .runtime_assets import RuntimeAssetRoutes
+from .sam2_video import Sam2VideoRoutes
 from .sample import SampleRoutes
 from .screenshot import Screenshot
 from .sort import Sort
@@ -39,6 +40,7 @@ routes = (
     + MultimodalRoutes
     + OperatorRoutes
     + RuntimeAssetRoutes
+    + Sam2VideoRoutes
     + SampleRoutes
     + [
         ("/aggregate", Aggregate),
