@@ -1,10 +1,6 @@
 import { useAnnotationEngine } from "@fiftyone/annotation";
 import { useLighter } from "@fiftyone/lighter";
 import { TypeGuards } from "@fiftyone/lighter/src/core/Scene2D";
-import {
-  clearTransformStateSelector,
-  selectedLabelForAnnotationAtom,
-} from "@fiftyone/looker-3d/src/state";
 import type { AnnotationLabel } from "@fiftyone/state";
 import {
   DETECTION,
@@ -14,9 +10,8 @@ import {
 } from "@fiftyone/utilities";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
-import { useSetRecoilState } from "recoil";
 import { editing } from ".";
-import { current, currentOverlay, savedLabel } from "./state";
+import { current, currentOverlay } from "./state";
 import useActivePrimitive from "./useActivePrimitive";
 
 /**
@@ -49,23 +44,9 @@ export default function useExit() {
   const engine = useAnnotationEngine();
   const setEditing = useSetAtom(editing);
   const [, setActivePrimitive] = useActivePrimitive();
-  const setSaved = useSetAtom(savedLabel);
   const { scene, removeOverlay } = useLighter();
   const overlay = useAtomValue(currentOverlay);
   const label = useAtomValue(current);
-
-  /**
-   * 3D SPECIFIC IMPORTS
-   * : TODO: CLEAN THIS UP. THIS FUNCTION SHOULDN'T BE
-   * COUPLED TO LIGHTER OR LOOKER-3D.
-   */
-  const setSelectedLabelForAnnotation = useSetRecoilState(
-    selectedLabelForAnnotationAtom
-  );
-  const clearTransformState = useSetRecoilState(clearTransformStateSelector);
-  /**
-   * 3D SPECIFIC IMPORTS ENDS HERE.
-   */
 
   return useCallback(() => {
     // If this is an uncommitted dummy label (e.g. create-button click with no
@@ -83,26 +64,15 @@ export default function useExit() {
       }
     }
 
-    /**
-     * 3D SPECIFIC LOGIC
-     * : TODO: CLEAN THIS UP. THIS FUNCTION SHOULDN'T BE
-     * COUPLED TO LIGHTER OR LOOKER-3D.
-     */
-    setSelectedLabelForAnnotation(null);
-    clearTransformState(null);
-    /**
-     * 3D SPECIFIC LOGIC ENDS HERE.
-     */
-
     // reset editing state
-    setSaved(null);
     setEditing(null);
     setActivePrimitive(null);
     // every exit path funnels through here — release the engine selection
-    // too (idempotent; no-op when the mirror's anchor-clear invoked us)
+    // too (idempotent; no-op when the anchor-clear invoked us). Surfaces
+    // clear their own scene state through their engine adapters (the 3D
+    // adapter watches the anchor — no direct looker-3d pokes here).
     engine.interaction.setActive([]);
   }, [
-    clearTransformState,
     engine,
     label,
     overlay,
@@ -110,6 +80,5 @@ export default function useExit() {
     scene,
     setActivePrimitive,
     setEditing,
-    setSaved,
   ]);
 }

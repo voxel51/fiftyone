@@ -3,21 +3,15 @@
  */
 
 import {
-  AnnotationEventGroup,
   DeleteAnnotationCommand,
   getFieldSchema,
-  UpdateSampleLabelCommand,
   useAnnotationEventBus,
-  useAnnotationEventHandler,
-  useSampleInstance,
 } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
 import {
   DetectionOverlay,
-  type LighterEventGroup,
   type Scene2D,
   UNDEFINED_LIGHTER_SCENE_ID,
-  useLighterEventBus,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
 import type { DetectionLabel } from "@fiftyone/looker";
@@ -27,11 +21,7 @@ import { useAtomCallback } from "jotai/utils";
 import { useCallback, useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { editing } from "../Sidebar/Annotate/Edit";
-import {
-  current,
-  currentData,
-  savedLabel,
-} from "../Sidebar/Annotate/Edit/state";
+import { current } from "../Sidebar/Annotate/Edit/state";
 import { useDetectionMode } from "../Sidebar/Annotate/Edit/useDetectionMode";
 import {
   usePolylineMode,
@@ -41,7 +31,7 @@ import {
   SegmentationTool,
   useSegmentationMode,
 } from "../Sidebar/Annotate/Edit/useSegmentationMode";
-import { coerceStringBooleans, useLabelsContext } from "../Sidebar/Annotate";
+import { useLabelsContext } from "../Sidebar/Annotate";
 import useFocus from "../Sidebar/Annotate/useFocus";
 import useColorMappingContext from "./useColorMappingContext";
 import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
@@ -56,26 +46,16 @@ import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
 export const useBridge = (scene: Scene2D | null) => {
   useLighterTooltipEventHandler(scene);
   const annotationEventBus = useAnnotationEventBus();
-  const sample = useSampleInstance();
   const commandBus = useCommandBus();
-  const eventBus = useLighterEventBus(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
-  );
   const useEventHandler = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
-  const save = useSetAtom(currentData);
   const setEditing = useSetAtom(editing);
-  const setSavedLabel = useSetAtom(savedLabel);
   const getCurrentLabel = useAtomCallback(
     useCallback((get) => get(current), [])
   );
-  const {
-    addLabelToSidebar,
-    getLabelById,
-    removeLabelFromSidebar,
-    updateLabelData,
-  } = useLabelsContext();
+  const { addLabelToSidebar, getLabelById, removeLabelFromSidebar } =
+    useLabelsContext();
   const fieldSchema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
@@ -86,74 +66,6 @@ export const useBridge = (scene: Scene2D | null) => {
   const focus = useFocus();
 
   usePolylineModeInstaller();
-
-  useAnnotationEventHandler(
-    "annotation:sidebarValueUpdated",
-    useCallback(
-      (payload) => {
-        if (!scene) {
-          return;
-        }
-
-        const overlay = scene.getOverlay(payload.overlayId);
-
-        if (!overlay || !overlay.field) {
-          return;
-        }
-
-        const labelId =
-          (payload.currentLabel as { _id?: string })?._id ?? overlay.id;
-
-        // Inversion: write the edit into the shared Sample (single source of
-        // truth) and let the engine's bridge loop reconcile the overlay.
-        // Stays on Lighter's command stack for undo/redo.
-        scene.executeCommand(
-          new UpdateSampleLabelCommand(
-            sample,
-            overlay.field,
-            labelId,
-            payload.value,
-            payload.currentLabel,
-            annotationEventBus
-          )
-        );
-      },
-      [annotationEventBus, sample, scene]
-    )
-  );
-
-  useAnnotationEventHandler(
-    "annotation:sidebarLabelHover",
-    useCallback(
-      (payload) => {
-        if (!scene) {
-          return;
-        }
-
-        eventBus.dispatch("lighter:do-overlay-hover", {
-          id: payload.id,
-          tooltip: payload.tooltip ?? false,
-        });
-      },
-      [scene, eventBus]
-    )
-  );
-
-  useAnnotationEventHandler(
-    "annotation:sidebarLabelUnhover",
-    useCallback(
-      (payload) => {
-        if (!scene) {
-          return;
-        }
-
-        eventBus.dispatch("lighter:do-overlay-unhover", {
-          id: payload.id,
-        });
-      },
-      [scene, eventBus]
-    )
-  );
 
   useEventHandler(
     "lighter:overlay-establish",
@@ -259,12 +171,11 @@ export const useBridge = (scene: Scene2D | null) => {
         // If the removed overlay is the one being edited, close the sidebar
         if (currentLabel?.overlay?.id === payload.id) {
           setEditing(null);
-          setSavedLabel(null);
         }
 
         removeLabelFromSidebar(payload.id);
       },
-      [getCurrentLabel, removeLabelFromSidebar, setEditing, setSavedLabel]
+      [getCurrentLabel, removeLabelFromSidebar, setEditing]
     )
   );
 
@@ -314,85 +225,18 @@ export const useBridge = (scene: Scene2D | null) => {
     )
   );
 
-  const handleUndoRedo = useCallback(
-    (
-      payload:
-        | AnnotationEventGroup["annotation:labelEdit"]
-        | AnnotationEventGroup["annotation:undoLabelEdit"]
-    ) => {
-      if (!payload.label) {
-        return;
-      }
-
-      // sync data with the sidebar list
-      const id = payload.label._id ?? payload.label.id;
-      updateLabelData(id, payload.label);
-
-      // Refresh the open edit form too. The inverted sidebar write applies the
-      // overlay silently (no lighter:overlay-label-updated), so the form
-      // (currentData) is no longer refreshed via the save() bridge on
-      // undo/redo. updateLabelData covers the form only when
-      // overlay.id === label._id (labelMap is keyed by overlay.id); for
-      // freshly-created labels those differ, so write currentData directly when
-      // the undone/redone label is the one being edited.
-      const currentLabel = getCurrentLabel();
-      if (
-        currentLabel &&
-        (currentLabel.data?._id === id || currentLabel.overlay?.id === id)
-      ) {
-        const next = coerceStringBooleans(
-          payload.label as Record<string, unknown>
-        );
-        if (next) {
-          save(next, true);
-        }
-      }
-    },
-    [getCurrentLabel, save, updateLabelData]
-  );
-
-  useAnnotationEventHandler("annotation:labelEdit", handleUndoRedo);
-  useAnnotationEventHandler("annotation:undoLabelEdit", handleUndoRedo);
-
-  const handleCommandEvent = useCallback(
-    (payload: LighterEventGroup["lighter:command-executed"]) => {
-      if (!payload.command.nextLabel) {
-        return;
-      }
-
-      const newLabel = coerceStringBooleans(
-        payload.command.nextLabel as Record<string, unknown>
-      );
-
-      if (newLabel) {
-        save(newLabel, true);
-      }
-    },
-    [save]
-  );
-
-  useEventHandler("lighter:command-executed", handleCommandEvent);
-
-  // Sync sidebar/edit state when an overlay's label is mutated outside the
-  // command stack (e.g. AI inference applying a new mask via updateLabel).
+  // Mode bookkeeping when an overlay's label is mutated outside the command
+  // stack (e.g. AI inference applying a new mask). Form/list data sync is
+  // the engine's: the wiring hook commits the overlay change, the read-half
+  // re-derives rows, and the form follows the anchor — no save-backs.
   useEventHandler(
     "lighter:overlay-label-updated",
     useCallback(
       (payload) => {
-        if (!payload.label) return;
-
-        const newLabel = coerceStringBooleans(
-          payload.label as Record<string, unknown>
-        );
-
-        if (newLabel) {
-          save(newLabel);
-        }
-
         segmentationMode.setEditingMask(payload.id, payload.hasMask);
         detectionMode.setEditingMask(payload.id, payload.hasMask);
       },
-      [detectionMode, save, segmentationMode]
+      [detectionMode, segmentationMode]
     )
   );
 

@@ -5,7 +5,7 @@ import { getDefaultStore } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { editing } from "./Edit";
-import { current, savedLabel } from "./Edit/state";
+import { current } from "./Edit/state";
 import useExit from "./Edit/useExit";
 import { labelMap } from "./useLabels";
 
@@ -39,26 +39,26 @@ export default function useFocus(): FocusController {
     (id: string, options?: FocusOptions) => {
       if (options?.ignoreSideEffects) return;
 
+      // the DRAFT lock: a pre-entity draft holds the form — cancel the new
+      // selection and keep the draft. Committed labels carry no lock: the
+      // anchor just moves (form follows it).
       if (STORE.get(editing)) {
         const currentLabel = STORE.get(current);
 
-        if (currentLabel?.isNew) return;
+        if (currentLabel?.isNew) {
+          scene?.deselectOverlay(id, { ignoreSideEffects: true });
+          return;
+        }
 
         // Re-clicking the overlay that's already being edited — needed
         // for drag/resize interactions in patches view auto-edit.
         if (currentLabel?.overlay?.id === id) return;
-
-        // Another label is already open for editing; cancel the new
-        // selection and keep editing the current one.
-        scene?.deselectOverlay(id, { ignoreSideEffects: true });
-        return;
       }
 
       const label = STORE.get(labelMap)[id];
       if (!label) return;
 
-      STORE.set(savedLabel, STORE.get(label)?.data);
-      // the interaction mirror sets `editing` from the anchor
+      // the form-anchor binding sets `editing` from the anchor
       engine.interaction.setActive([
         {
           sample: engine.ambientSample(),
@@ -66,7 +66,6 @@ export default function useFocus(): FocusController {
           instanceId: id,
         },
       ]);
-      scene?.selectOverlay(id, { ignoreSideEffects: true });
     },
     [engine, scene]
   );

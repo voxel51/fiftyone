@@ -1,5 +1,7 @@
-import { useAnnotationEventBus } from "@fiftyone/annotation";
+import { useAnnotationEngine } from "@fiftyone/annotation";
+import { usePushUndoable } from "@fiftyone/commands";
 import { expandPath, field } from "@fiftyone/state";
+import type { LabelData } from "@fiftyone/utilities";
 import { FLOAT_FIELD, INT_FIELD } from "@fiftyone/utilities";
 import { useAtom, useAtomValue } from "jotai";
 import { isEqual } from "lodash";
@@ -114,7 +116,11 @@ const useParseFieldValue = () => {
 
 /**
  * Handles form changes: parses field types, clears values for attributes
- * whose visible entry changed, and dispatches the update event.
+ * whose visible entry changed, and commits the edit to the engine — the
+ * read-half reconciles the overlay and the list row; no events. The undo
+ * inverse (previous value + explicit nulls for keys this edit introduced)
+ * goes on the shared command stack, so Ctrl-Z ordering with geometry edits
+ * is preserved.
  *
  * Volatile atoms (config, data, overlay, field) are read via refs so that
  * the returned callback keeps a stable identity across data changes.
@@ -123,7 +129,8 @@ const useHandleSchemaChange = (readOnly: boolean) => {
   const config = useAtomValue(currentSchema);
   const [data] = useAtom(currentData);
   const overlay = useAtomValue(currentOverlay);
-  const eventBus = useAnnotationEventBus();
+  const engine = useAnnotationEngine();
+  const { createPushAndExec } = usePushUndoable();
   const parseFieldValue = useParseFieldValue();
   const field = useAtomValue(currentField);
 
@@ -188,15 +195,31 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         }
       }
 
-      if (isEqual(value, overlay.label)) return;
+      if (isEqual(value, data)) return;
 
-      eventBus.dispatch("annotation:sidebarValueUpdated", {
-        overlayId: overlay.id,
-        currentLabel: overlay.label as any,
-        value,
-      });
+      const ref = {
+        sample: engine.ambientSample(),
+        path: field,
+        instanceId: (data as { _id?: string })?._id ?? overlay.id,
+      };
+      const previous = engine.getLabel(ref) ?? (data as LabelData);
+
+      // explicit nulls for keys this edit introduced — the merge mutator
+      // would otherwise resurrect them on undo
+      const inverse: Record<string, unknown> = { ...previous };
+      for (const key of Object.keys(value)) {
+        if (!(key in inverse)) {
+          inverse[key] = null;
+        }
+      }
+
+      createPushAndExec(
+        `update-label-${ref.instanceId}-${Date.now()}`,
+        () => engine.updateLabel(ref, value as Partial<LabelData>),
+        () => engine.updateLabel(ref, inverse as Partial<LabelData>)
+      );
     },
-    [eventBus, parseFieldValue, readOnly]
+    [createPushAndExec, engine, parseFieldValue, readOnly]
   );
 };
 

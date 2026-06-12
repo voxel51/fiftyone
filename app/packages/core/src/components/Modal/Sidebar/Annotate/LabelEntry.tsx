@@ -1,21 +1,14 @@
-import {
-  useAnnotationEngine,
-  useAnnotationEventBus,
-} from "@fiftyone/annotation";
-import { useLighter } from "@fiftyone/lighter";
-import { isDetection3dOverlay, isPolyline3dOverlay } from "@fiftyone/looker-3d";
+import { useAnnotationEngine, useInteraction } from "@fiftyone/annotation";
 import type { AnnotationLabel } from "@fiftyone/state";
 import { animated } from "@react-spring/web";
 import type { PrimitiveAtom } from "jotai";
-import { getDefaultStore, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import styled from "styled-components";
 import { Column } from "./Components";
-import { savedLabel } from "./Edit/state";
 import { ICONS } from "./Icons";
 import { fieldType } from "./state";
 import useColor from "./useColor";
-import { hoveringLabelIds } from "./useHover";
 
 const Container = animated(styled.div`
   display: flex;
@@ -61,70 +54,38 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
   const type = useAtomValue(fieldType(label.path ?? ""));
   const engine = useAnnotationEngine();
   const Icon = ICONS[type] ?? (() => null);
-  const hoveringLabelIdsList = useAtomValue(hoveringLabelIds);
-  const { scene } = useLighter();
 
-  const isHovering = hoveringLabelIdsList.includes(label.overlay.id);
+  const id = label.overlay.id;
+  const path = label.path;
+
+  // ref construction is EVENT-TIME only: `ambientSample()` requires a
+  // registered store, and rows can render before the engine lifecycle
+  // effect registers one (e.g. stale rows on the explore → annotate switch)
+  const toRef = useMemo(
+    () => () => ({
+      sample: engine.ambientSample(),
+      path,
+      instanceId: id,
+    }),
+    [engine, id, path]
+  );
+
+  const isHovering = useInteraction(engine, (i) =>
+    i.getHovered().some((ref) => ref.instanceId === id && ref.path === path)
+  );
 
   const color = useColor(label.overlay);
-
-  const annotationEventBus = useAnnotationEventBus();
-
-  const handleMouseEnter = useMemo(() => {
-    return () => {
-      annotationEventBus.dispatch("annotation:sidebarLabelHover", {
-        id: label.overlay.id,
-        tooltip: false,
-      });
-    };
-  }, [annotationEventBus, label.overlay.id]);
-
-  const handleMouseLeave = useMemo(() => {
-    return () => {
-      annotationEventBus.dispatch("annotation:sidebarLabelUnhover", {
-        id: label.overlay.id,
-      });
-    };
-  }, [annotationEventBus, label.overlay.id]);
-
-  const is3DLabel =
-    isDetection3dOverlay(label.data) || isPolyline3dOverlay(label.data);
 
   return (
     <Container
       onClick={() => {
-        const store = getDefaultStore();
-        scene?.selectOverlay(store.get(atom).overlay.id);
-
-        annotationEventBus.dispatch("annotation:sidebarLabelSelected", {
-          id: label.overlay.id,
-          type: label.type,
-          data: {
-            ...label.data,
-            path: label.path,
-            id: label.overlay.id,
-          },
-        });
-
-        // For 3D labels, select3DLabelForAnnotation handles setting the editing atom
-        // to the correct 3D-specific atom.
-        // We should not overwrite it here
-        if (!is3DLabel) {
-          // the interaction mirror sets `editing` from the anchor
-          engine.interaction.setActive([
-            {
-              sample: engine.ambientSample(),
-              path: label.path,
-              instanceId: label.overlay.id,
-            },
-          ]);
-        }
-
-        store.set(savedLabel, store.get(atom).data);
+        // the form follows the anchor; each surface (2D scene, 3D scene)
+        // projects the selection through its own engine adapter
+        engine.interaction.setActive([toRef()]);
       }}
       className={isHovering ? "hovering" : ""}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseEnter={() => engine.interaction.setHovered(toRef(), true)}
+      onMouseLeave={() => engine.interaction.setHovered(toRef(), false)}
     >
       <Line fill={color} />
       <Header>

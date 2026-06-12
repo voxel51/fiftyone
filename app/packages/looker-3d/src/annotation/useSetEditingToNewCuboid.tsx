@@ -1,10 +1,7 @@
 import { editing as editingAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
-import {
-  current,
-  savedLabel,
-} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
+import { current } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
 import * as fos from "@fiftyone/state";
-import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { atomWithReset, useResetAtom } from "jotai/utils";
 import { useCallback, useEffect } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -38,8 +35,6 @@ export const useSetEditingToNewCuboid = () => {
       setEditing(null);
     };
   }, [resetCurrentEditing]);
-
-  const jotaiStore = getDefaultStore();
 
   return useCallback(
     (labelId: string, transformData: CuboidTransformData, labelClass = "") => {
@@ -97,8 +92,6 @@ export const useSetEditingToNewCuboid = () => {
       } as any);
 
       setEditing(currentEditingCuboidAtom as any);
-
-      (jotaiStore as any).set(savedLabel, defaultCuboidLabelData);
     },
     [currentSampleId, currentActiveField, currentAnnotationSidebar]
   );

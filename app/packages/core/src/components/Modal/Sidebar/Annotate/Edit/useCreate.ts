@@ -20,7 +20,7 @@ import { atom, getDefaultStore, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { isFieldReadOnly, labelSchemaData } from "../state";
 import type { LabelType } from "./state";
-import { defaultField, editing, savedLabel } from "./state";
+import { defaultField, editing } from "./state";
 
 export interface CreateOptions {
   id?: string;
@@ -70,7 +70,6 @@ const useCreateAnnotationLabel = () => {
         });
         addOverlay(overlay);
         scene?.selectOverlay(id, { ignoreSideEffects: true });
-        store.set(savedLabel, data);
 
         return { data, overlay, path: field, type };
       }
@@ -92,7 +91,6 @@ const useCreateAnnotationLabel = () => {
 
         const handler = new InteractiveDetectionHandler(overlay);
         scene?.enterInteractiveMode(handler);
-        store.set(savedLabel, data);
         return { data, overlay, path: field, type };
       }
 
@@ -115,7 +113,6 @@ const useCreateAnnotationLabel = () => {
         // install an `InteractivePolylineHandler` for editing. Creation
         // itself doesn't `enterInteractiveMode` here.
         scene?.selectOverlay(id, { ignoreSideEffects: true });
-        store.set(savedLabel, polylineData);
         return { data: polylineData, overlay, path: field, type };
       }
 

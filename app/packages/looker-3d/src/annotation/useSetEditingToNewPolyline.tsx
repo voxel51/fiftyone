@@ -1,10 +1,7 @@
 import { editing as editingAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
-import {
-  current,
-  savedLabel,
-} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
+import { current } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
 import * as fos from "@fiftyone/state";
-import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { atomWithReset, useResetAtom } from "jotai/utils";
 import { useCallback, useEffect } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -40,15 +37,13 @@ export const useSetEditingToNewPolyline = () => {
     };
   }, [resetCurrentEditing]);
 
-  const jotaiStore = getDefaultStore();
-
   return useCallback(
     (labelId: string, transformData: PolylinePointTransformData) => {
       if (!transformData.segments || transformData.segments.length === 0)
         return;
 
-      // If what we already have in sidebar is same as the new label, don't do anything
-      // Because it'll be handled by reverse sync and useSetEditingToExisting3dLabel
+      // If what we already have in sidebar is same as the new label, don't do
+      // anything — the reverse sync and the anchor binding handle it
       if (currentAnnotationSidebar?.data._id === labelId) {
         return;
       }
@@ -102,8 +97,6 @@ export const useSetEditingToNewPolyline = () => {
       });
 
       setEditing(currentEditingPolylineAtom);
-
-      jotaiStore.set(savedLabel, defaultPolylineLabelData);
     },
     [
       currentSampleId,

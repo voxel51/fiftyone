@@ -7,16 +7,9 @@ import {
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import { atom, getDefaultStore } from "jotai";
+import { getDefaultStore } from "jotai";
 import { useCallback } from "react";
 import { labelMap } from "./useLabels";
-
-/**
- * Legacy hover ids, now written only by the interaction mirror — hover truth
- * lives in engine interaction state. Read by LabelEntry until it migrates to
- * the engine hooks.
- */
-export const hoveringLabelIds = atom<string[]>([]);
 
 export default function useHover() {
   const engine = useAnnotationEngine();

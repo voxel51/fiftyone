@@ -22,8 +22,6 @@ import { addLabel, labels, labelsByPath } from "../useLabels";
 import { activePrimitiveAtom } from "./useActivePrimitive";
 import { buildNewLabelData } from "./useCreate";
 
-export const savedLabel = atom<AnnotationLabel["data"] | null>(null);
-
 /**
  * Atom that tracks the current editing state for annotations.
  *
@@ -46,14 +44,6 @@ export const editing = atomWithReset<
   PrimitiveAtom<AnnotationLabel> | LabelType | null
 >(null);
 
-export const hasChanges = atom((get) => {
-  const label = get(currentData);
-  const saved = get(savedLabel);
-
-  return saved === null
-    ? false
-    : JSON.stringify(label) !== JSON.stringify(saved);
-});
 const IS_CLASSIFICIATION = new Set([CLASSIFICATION, CLASSIFICATIONS]);
 const IS_DETECTION = new Set([DETECTION, DETECTIONS]);
 const IS_POLYLINE = new Set([POLYLINE, POLYLINES]);
