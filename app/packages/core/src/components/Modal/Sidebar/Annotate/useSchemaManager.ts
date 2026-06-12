@@ -47,6 +47,7 @@ export type FieldSchema = {
   default?: unknown;
   attributes?: AttributeConfig[];
   applied_ontology?: string;
+  applied_taxonomy?: string;
 };
 
 /**

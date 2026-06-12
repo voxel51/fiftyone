@@ -1214,6 +1214,23 @@ class TaxonomySettingValidationTests(unittest.TestCase):
                 fields="str_list_field",
             )
 
+    @drop_datasets
+    def test_str_list_dropdown_taxonomy_non_string_rejected(self):
+        dataset = fo.Dataset()
+        dataset.add_sample_field(
+            "str_list_field", fo.ListField, subfield=fo.StringField
+        )
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "type": "list<str>",
+                    "component": "dropdown",
+                    "taxonomy": 123,
+                },
+                fields="str_list_field",
+            )
+
     # -- attribute-level (nested under a label field) --
 
     @drop_datasets

@@ -53,11 +53,13 @@ const useSchema = (readOnly: boolean) => {
 
   // Reruns only when the visible attribute set changes.
   return useMemo(() => {
+    const taxonomy = config?.applied_taxonomy;
     const properties: Record<string, SchemaType | undefined> = {
       label: generatePrimitiveSchema("label", {
         type: "str",
-        component: config?.component || "dropdown",
-        values: config?.classes || [],
+        component: taxonomy ? "dropdown" : config?.component || "dropdown",
+        values: taxonomy ? [] : config?.classes || [],
+        taxonomy,
         readOnly: effectiveReadOnly,
       }),
     };
