@@ -43,6 +43,16 @@ export interface SurfaceBridge<Handle, Descriptor> {
    */
   sample: string;
 
+  /**
+   * Partial-projection scope: when present, the loop filters every branch
+   * to these label paths — identity scoping like {@link sample}, for
+   * surfaces that project a subset of the sample (the annotate modal mounts
+   * only the active schema fields). The set is fixed for the bridge's
+   * lifetime: to change scope, register a new bridge (and `clear()` the old
+   * one) — registration hydrates the new scope by reconcile.
+   */
+  paths?: ReadonlySet<string>;
+
   resolveHandle(ref: LabelRef): Handle | undefined;
   refOf(handle: Handle): ScopedRef;
 

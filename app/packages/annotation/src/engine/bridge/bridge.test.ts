@@ -84,6 +84,34 @@ describe("bridge read-half", () => {
     expect(handles.get("d1")?.label.label).toBe("cat");
   });
 
+  it("a paths scope confines hydration, changes, and interaction applies", () => {
+    const { engine } = makeEngine("sample-1", {
+      ground_truth: { detections: [makeDet("d1", "cat")] },
+      predictions: { detections: [makeDet("p1", "dog")] },
+    });
+    const { handles, bridge, adapters } = makeFakeSurface();
+    bridge.paths = new Set(["ground_truth"]);
+
+    engine.registerBridge(bridge, adapters);
+
+    // hydration: only the scoped path mounts
+    expect([...handles.keys()]).toEqual(["d1"]);
+
+    // changes: out-of-scope updates never reach the surface
+    engine.updateLabel(ref("predictions", "p1"), { label: "wolf" });
+    expect(handles.has("p1")).toBe(false);
+
+    engine.updateLabel(ref("ground_truth", "d1"), { label: "lynx" });
+    expect(handles.get("d1")?.label.label).toBe("lynx");
+
+    // interaction: out-of-scope selection applies nothing here
+    engine.interaction.setActive([ref("predictions", "p1")]);
+    expect([...handles.values()].some((handle) => handle.selected)).toBe(false);
+
+    engine.interaction.setActive([ref("ground_truth", "d1")]);
+    expect(handles.get("d1")?.selected).toBe(true);
+  });
+
   it("mounts engine-side creates, updates silently, unmounts deletes", () => {
     const { engine } = makeEngine("sample-1");
     const { handles, bridge, adapters } = makeFakeSurface();
