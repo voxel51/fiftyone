@@ -18,6 +18,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getMcapTopicStatus,
+  setMcapTopicStartTimeSec,
   setMcapTopicStatus,
   type McapTopicStatus,
 } from "./mcap-stream-status";
@@ -125,6 +126,15 @@ const MAX_FETCH_FAILURE_STREAK = 3;
  * buffering stalls).
  */
 const BUFFERED_RANGES_PUBLISH_INTERVAL_MS = 500;
+
+/**
+ * Age past which a rendered frame counts as "stale": selection is
+ * latest-at-or-before with unbounded lookback, so a mid-recording
+ * sensor dropout keeps rendering the last frame — the status flips so
+ * a frozen frame can't read as live. Generous enough that normally
+ * sparse streams (keyframe-rate annotations) never trip it.
+ */
+const STALE_THRESHOLD_NS = 3_000_000_000n;
 
 const PLAYBACK_POLICY = deriveMcapPlaybackPolicy(DEFAULT_MCAP_PLAYBACK_POLICY);
 
@@ -257,6 +267,7 @@ export function useRegisterMcapDataStream({
     for (const topic of topicCachesRef.current.keys()) {
       setStreamValue(store, topic, null);
       setMcapTopicStatus(store, topic, "loading");
+      setMcapTopicStartTimeSec(store, topic, null);
     }
     setBufferingDetail(store, null);
     setBufferedRanges(store, []);
@@ -266,11 +277,33 @@ export function useRegisterMcapDataStream({
     }
     if (!source) return;
     let cancelled = false;
-    client
-      .readTimelineRange({ source, activeTimeline: MCAP_ACTIVE_TIMELINE.LOG })
+    const rangeRead = client.readTimelineRange({
+      source,
+      activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+    });
+    rangeRead
       .then((range) => {
         if (!cancelled && sourceEpochRef.current === sourceEpoch) {
           setIndex(createMcapTimelineIndex(range));
+        }
+      })
+      .catch(noop);
+    // Auxiliary: per-topic first-message times feed the "No data until
+    // 0:12" tile copy. Best-effort — failures never block playback.
+    rangeRead
+      .then(async (range) => {
+        const bounds = await client.readTopicTimeBounds({
+          activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+          source,
+          topics: allTopicsRef.current,
+        });
+        if (cancelled || sourceEpochRef.current !== sourceEpoch) return;
+        for (const bound of bounds) {
+          const startSec =
+            bound.firstMessageTimeNs === null
+              ? null
+              : nsToSeconds(bound.firstMessageTimeNs - range.startTimeNs);
+          setMcapTopicStartTimeSec(store, bound.topic, startSec);
         }
       })
       .catch(noop);
@@ -374,7 +407,18 @@ export function useRegisterMcapDataStream({
         if (failed.has(topic)) {
           status = "failed";
         } else {
-          status = cache.get(tick) ? "ready" : "gap";
+          const msg = cache.get(tick);
+          if (!msg) {
+            status = "gap";
+          } else {
+            // Latest-at-or-before selection holds the last frame through
+            // dropouts; flag it once the frame is older than the
+            // threshold so a frozen frame can't read as live.
+            status =
+              tick - msg.timelineTimeNs > STALE_THRESHOLD_NS
+                ? "stale"
+                : "ready";
+          }
         }
       }
       if (getMcapTopicStatus(store, topic) !== status) {
@@ -710,6 +754,9 @@ export function useRegisterMcapDataStream({
 
       bufferState: (timeSec) => {
         const tick = index.nearestTick(timeSec);
+        // Explicit undefined check — `0n` is falsy but a valid tick
+        // (files with relative log times start at exactly 0n, and a
+        // falsy check here wedges the engine at t=0 forever).
         if (tick === undefined) return "missing";
         const activeTopics = getActiveTopics();
         if (activeTopics.length === 0) return "ready";
@@ -904,6 +951,14 @@ function activeTopicsInCaches(
   topics: readonly string[]
 ): string[] {
   return topics.filter((topic) => caches.get(topic)?.isActive);
+}
+
+function nsToSeconds(deltaNs: bigint): number {
+  const clamped = deltaNs < 0n ? 0n : deltaNs;
+  return (
+    Number(clamped / 1_000_000_000n) +
+    Number(clamped % 1_000_000_000n) / 1_000_000_000
+  );
 }
 
 function distributeWindowToCaches(
