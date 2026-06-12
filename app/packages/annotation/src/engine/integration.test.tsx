@@ -214,9 +214,12 @@ describe("integration: cross-surface convergence", () => {
     expect(other.handle("d1")?.label.label).toBe("dog");
     // the declarative surface re-derived
     expect(sidebar.result.current.entries).toBe("d1:dog,d2:fish");
-    // exactly one application each — convergence, not an echo loop
+    // one application on the foreign surface; ZERO on the originator —
+    // its handle already shows the gesture, and an echo would regress
+    // handle state newer than the committed label (an in-flight mask
+    // encode). Origin suppression, not convergence-by-echo.
     expect(other.handle("d1")?.applied).toBe(1);
-    expect(retained.handle("d1")?.applied).toBe(1);
+    expect(retained.handle("d1")?.applied).toBe(0);
     // the committed store agrees
     expect(engine.getLabel(ref("ground_truth", "d1"))?.label).toBe("dog");
   });

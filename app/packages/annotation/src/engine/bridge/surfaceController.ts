@@ -132,7 +132,16 @@ export const createSurfaceController = <Handle, Descriptor>({
         return;
       }
 
-      actions.updateLabel(bridge.refOf(handle), partial);
+      // origin suppression: the loop must not echo this surface's own
+      // write back onto the handle — the handle may hold state newer than
+      // the committed label (e.g. a mask whose encode is still in flight)
+      bridge.isWriting = true;
+
+      try {
+        actions.updateLabel(bridge.refOf(handle), partial);
+      } finally {
+        bridge.isWriting = false;
+      }
     },
 
     create: (handle) => {
@@ -143,7 +152,13 @@ export const createSurfaceController = <Handle, Descriptor>({
       }
 
       const scoped = bridge.refOf(handle);
-      return actions.createLabel(scoped.path, partial, scoped.frame);
+      bridge.isWriting = true;
+
+      try {
+        return actions.createLabel(scoped.path, partial, scoped.frame);
+      } finally {
+        bridge.isWriting = false;
+      }
     },
 
     selectHandle: (handle, opts) => {
