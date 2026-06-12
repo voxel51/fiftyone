@@ -14,6 +14,7 @@ import ImportSchema, { useShowImportSchema } from "./ImportSchema";
 import LabelList from "./LabelList";
 import { labelSchemasData } from "./state";
 import { useAnnotationContextManager } from "./useAnnotationContextManager";
+import { useInteractionMirror } from "./useInteractionMirror";
 import type { AnnotationDisabledReason } from "./useCanAnnotate";
 import useLabels from "./useLabels";
 import { useRegisterPolylineSidebarSyncHandlers } from "./Edit/useRegisterPolylineSidebarSyncHandlers";
@@ -117,6 +118,7 @@ const Annotate = ({ disabledReason, loadSchemas }: AnnotateProps) => {
   useSyncAnnotationEngine();
   useSyncLighterSample();
   useSync3dSample();
+  useInteractionMirror();
   useRegisterAIAnnotationEventHandlers();
   useRegisterPolylineSidebarSyncHandlers();
 

@@ -1,3 +1,4 @@
+import { useAnnotationEngine } from "@fiftyone/annotation";
 import { useLighter } from "@fiftyone/lighter";
 import { isGeneratedView } from "@fiftyone/state";
 import { getDefaultStore } from "jotai";
@@ -30,6 +31,7 @@ export interface FocusController {
 
 export default function useFocus(): FocusController {
   const { scene } = useLighter();
+  const engine = useAnnotationEngine();
   const onExit = useExit();
   const isGenerated = useRecoilValue(isGeneratedView);
 
@@ -56,10 +58,17 @@ export default function useFocus(): FocusController {
       if (!label) return;
 
       STORE.set(savedLabel, STORE.get(label)?.data);
-      STORE.set(editing, label);
+      // the interaction mirror sets `editing` from the anchor
+      engine.interaction.setActive([
+        {
+          sample: engine.ambientSample(),
+          path: STORE.get(label).path,
+          instanceId: id,
+        },
+      ]);
       scene?.selectOverlay(id, { ignoreSideEffects: true });
     },
-    [scene]
+    [engine, scene]
   );
 
   const deselectOverlay = useCallback(
@@ -75,8 +84,8 @@ export default function useFocus(): FocusController {
     [isGenerated, onExit]
   );
 
-  return useMemo(() => ({ selectOverlay, deselectOverlay }), [
-    selectOverlay,
-    deselectOverlay,
-  ]);
+  return useMemo(
+    () => ({ selectOverlay, deselectOverlay }),
+    [selectOverlay, deselectOverlay]
+  );
 }

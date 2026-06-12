@@ -1,3 +1,4 @@
+import { useAnnotationEngine } from "@fiftyone/annotation";
 import { useLighter } from "@fiftyone/lighter";
 import { TypeGuards } from "@fiftyone/lighter/src/core/Scene2D";
 import {
@@ -45,6 +46,7 @@ const hasDrawnContent = (label: AnnotationLabel): boolean => {
 };
 
 export default function useExit() {
+  const engine = useAnnotationEngine();
   const setEditing = useSetAtom(editing);
   const [, setActivePrimitive] = useActivePrimitive();
   const setSaved = useSetAtom(savedLabel);
@@ -96,8 +98,12 @@ export default function useExit() {
     setSaved(null);
     setEditing(null);
     setActivePrimitive(null);
+    // every exit path funnels through here — release the engine selection
+    // too (idempotent; no-op when the mirror's anchor-clear invoked us)
+    engine.interaction.setActive([]);
   }, [
     clearTransformState,
+    engine,
     label,
     overlay,
     removeOverlay,

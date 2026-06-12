@@ -1,14 +1,16 @@
-import { useAnnotationEventBus } from "@fiftyone/annotation";
+import {
+  useAnnotationEngine,
+  useAnnotationEventBus,
+} from "@fiftyone/annotation";
 import { useLighter } from "@fiftyone/lighter";
 import { isDetection3dOverlay, isPolyline3dOverlay } from "@fiftyone/looker-3d";
 import type { AnnotationLabel } from "@fiftyone/state";
 import { animated } from "@react-spring/web";
 import type { PrimitiveAtom } from "jotai";
-import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
+import { getDefaultStore, useAtomValue } from "jotai";
 import { useMemo } from "react";
 import styled from "styled-components";
 import { Column } from "./Components";
-import { editing } from "./Edit";
 import { savedLabel } from "./Edit/state";
 import { ICONS } from "./Icons";
 import { fieldType } from "./state";
@@ -57,7 +59,7 @@ const Line = styled.div<{ fill: string }>`
 const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
   const label = useAtomValue(atom);
   const type = useAtomValue(fieldType(label.path ?? ""));
-  const setEditing = useSetAtom(editing);
+  const engine = useAnnotationEngine();
   const Icon = ICONS[type] ?? (() => null);
   const hoveringLabelIdsList = useAtomValue(hoveringLabelIds);
   const { scene } = useLighter();
@@ -108,7 +110,14 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
         // to the correct 3D-specific atom.
         // We should not overwrite it here
         if (!is3DLabel) {
-          setEditing(atom);
+          // the interaction mirror sets `editing` from the anchor
+          engine.interaction.setActive([
+            {
+              sample: engine.ambientSample(),
+              path: label.path,
+              instanceId: label.overlay.id,
+            },
+          ]);
         }
 
         store.set(savedLabel, store.get(atom).data);

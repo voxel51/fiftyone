@@ -1,4 +1,7 @@
-import { useAnnotationEventHandler } from "@fiftyone/annotation";
+import {
+  useAnnotationEngine,
+  useAnnotationEventHandler,
+} from "@fiftyone/annotation";
 import {
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
@@ -6,64 +9,78 @@ import {
 } from "@fiftyone/lighter";
 import { atom, getDefaultStore } from "jotai";
 import { useCallback } from "react";
+import { labelMap } from "./useLabels";
 
+/**
+ * Legacy hover ids, now written only by the interaction mirror — hover truth
+ * lives in engine interaction state. Read by LabelEntry until it migrates to
+ * the engine hooks.
+ */
 export const hoveringLabelIds = atom<string[]>([]);
 
 export default function useHover() {
+  const engine = useAnnotationEngine();
   const { scene } = useLighter();
   const useEventHandler = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
 
+  const hoverOn = useCallback(
+    (id: string) => {
+      const label = getDefaultStore().get(labelMap)[id];
+      if (!label) return;
+
+      engine.interaction.setHovered(
+        {
+          sample: engine.ambientSample(),
+          path: getDefaultStore().get(label).path,
+          instanceId: id,
+        },
+        true
+      );
+    },
+    [engine]
+  );
+
+  // resolve from the hovered set itself, so hover-off works even after the
+  // label has left the map
+  const hoverOff = useCallback(
+    (id: string) => {
+      const ref = engine.interaction
+        .getHovered()
+        .find((hovered) => hovered.instanceId === id);
+
+      if (ref) {
+        engine.interaction.setHovered(ref, false);
+      }
+    },
+    [engine]
+  );
+
   useEventHandler(
     "lighter:overlay-hover",
-    useCallback((payload) => {
-      const store = getDefaultStore();
-      const current = store.get(hoveringLabelIds);
-      if (!current.includes(payload.id)) {
-        store.set(hoveringLabelIds, [...current, payload.id]);
-      }
-    }, [])
+    useCallback((payload) => hoverOn(payload.id), [hoverOn])
   );
 
   useEventHandler(
     "lighter:overlay-unhover",
-    useCallback((payload) => {
-      const store = getDefaultStore();
-      store.set(
-        hoveringLabelIds,
-        store.get(hoveringLabelIds).filter((id) => id !== payload.id)
-      );
-    }, [])
+    useCallback((payload) => hoverOff(payload.id), [hoverOff])
   );
 
   useEventHandler(
     "lighter:overlay-all-unhover",
-    useCallback((_payload) => {
-      const store = getDefaultStore();
-      store.set(hoveringLabelIds, []);
-    }, [])
+    useCallback(() => {
+      engine.interaction.pruneHovered(engine.interaction.getHovered());
+    }, [engine])
   );
 
   useAnnotationEventHandler(
     "annotation:canvasOverlayHover",
-    useCallback((payload) => {
-      const store = getDefaultStore();
-      const current = store.get(hoveringLabelIds);
-      if (!current.includes(payload.id)) {
-        store.set(hoveringLabelIds, [...current, payload.id]);
-      }
-    }, [])
+    useCallback((payload) => hoverOn(payload.id), [hoverOn])
   );
 
   useAnnotationEventHandler(
     "annotation:canvasOverlayUnhover",
-    useCallback((payload) => {
-      const store = getDefaultStore();
-      store.set(
-        hoveringLabelIds,
-        store.get(hoveringLabelIds).filter((id) => id !== payload.id)
-      );
-    }, [])
+    useCallback((payload) => hoverOff(payload.id), [hoverOff])
   );
 }
