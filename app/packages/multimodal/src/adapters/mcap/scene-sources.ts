@@ -50,7 +50,11 @@ const SYNC_POLICY_BY_TYPE: Record<McapSourceType, McapStreamSyncPolicy> = {
 export function mcapSceneSources(
   topics: readonly StreamInventory[]
 ): readonly SceneSource[] {
-  const classified: Array<{ id: string; type: McapSourceType }> = [];
+  const classified: Array<{
+    id: string;
+    type: McapSourceType;
+    recordCount?: number;
+  }> = [];
   for (const topic of topics) {
     const id = topicName(topic);
     if (!id) {
@@ -60,7 +64,14 @@ export function mcapSceneSources(
     if (!type) {
       continue;
     }
-    classified.push({ id, type });
+    const recordCount = Number(topic.recordCount);
+    classified.push({
+      id,
+      type,
+      ...(Number.isFinite(recordCount) && recordCount > 0
+        ? { recordCount }
+        : {}),
+    });
   }
 
   const labelCounts = new Map<string, number>();
@@ -72,12 +83,13 @@ export function mcapSceneSources(
   // Prefer the short prefix-derived label; topics whose prefixes collide
   // (e.g. raw and rectified streams of one camera) keep their full topic
   // so source pickers stay unambiguous.
-  return classified.map(({ id, type }) => {
+  return classified.map(({ id, type, recordCount }) => {
     const short = shortTopicLabel(id);
     return {
       id,
       type,
       label: (labelCounts.get(short) ?? 0) > 1 ? displayTopic(id) : short,
+      ...(recordCount !== undefined ? { recordCount } : {}),
     };
   });
 }
