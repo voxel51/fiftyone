@@ -203,8 +203,11 @@ class ModalAnnotateSidebarAsserter {
    * @param expectedCount The expected number of active labels
    */
   async verifyActiveLabelsCount(expectedCount: number) {
-    const actualCount = await this.modalAnnotateSidebar.getActiveLabelsCount();
-    expect(actualCount).toBe(expectedCount);
+    await expect(
+      this.modalAnnotateSidebar.locator.getByTestId(
+        "sidebar-group-Labels-field-count"
+      )
+    ).toHaveText(expectedCount.toString());
   }
 
   /**
@@ -213,9 +216,11 @@ class ModalAnnotateSidebarAsserter {
    * @param expectedCount The expected number of active primitive fields
    */
   async verifyActivePrimitiveFieldsCount(expectedCount: number) {
-    const actualCount =
-      await this.modalAnnotateSidebar.getActivePrimitiveFieldsCount();
-    expect(actualCount).toBe(expectedCount);
+    await expect(
+      this.modalAnnotateSidebar.locator.getByTestId(
+        "sidebar-group-PRIMITIVES-field-count"
+      )
+    ).toHaveText(expectedCount.toString());
   }
 
   /**
