@@ -69,18 +69,23 @@ describe("PointCloudPanel", () => {
 
     const { container } = render(
       <PointCloudPanel
-        frame={{
-          fields: [],
-          kind: VISUALIZATION_KIND.POINT_CLOUD,
-          pointCount: 1,
-          positions: new Float32Array([1, 2, 3]),
-        }}
-        frameTransform={{
-          rotation: new THREE.Quaternion(0, 0, 0, 1),
-          sourceFrameId: "lidar",
-          targetFrameId: "map",
-          translation: new THREE.Vector3(10, 0, 0),
-        }}
+        layers={[
+          {
+            frame: {
+              fields: [],
+              kind: VISUALIZATION_KIND.POINT_CLOUD,
+              pointCount: 1,
+              positions: new Float32Array([1, 2, 3]),
+            },
+            frameTransform: {
+              rotation: new THREE.Quaternion(0, 0, 0, 1),
+              sourceFrameId: "lidar",
+              targetFrameId: "map",
+              translation: new THREE.Vector3(10, 0, 0),
+            },
+            id: "/points",
+          },
+        ]}
         showHud={false}
       />
     );
@@ -105,12 +110,17 @@ describe("PointCloudPanel", () => {
 
     render(
       <PointCloudPanel
-        frame={{
-          fields: [],
-          kind: VISUALIZATION_KIND.POINT_CLOUD,
-          pointCount: 1,
-          positions: new Float32Array([1, 2, 3]),
-        }}
+        layers={[
+          {
+            frame: {
+              fields: [],
+              kind: VISUALIZATION_KIND.POINT_CLOUD,
+              pointCount: 1,
+              positions: new Float32Array([1, 2, 3]),
+            },
+            id: "/points",
+          },
+        ]}
         showGizmo={false}
       />
     );
@@ -118,6 +128,57 @@ describe("PointCloudPanel", () => {
     expect(
       screen.getByTestId("base-3d-scene").getAttribute("data-show-gizmo")
     ).toBe("false");
+  });
+
+  it("renders every layer in one scene with its own transform", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const setAttribute = vi.spyOn(
+      THREE.BufferGeometry.prototype,
+      "setAttribute"
+    );
+
+    const { container } = render(
+      <PointCloudPanel
+        layers={[
+          {
+            frame: {
+              fields: [],
+              kind: VISUALIZATION_KIND.POINT_CLOUD,
+              pointCount: 1,
+              positions: new Float32Array([1, 2, 3]),
+            },
+            id: "/lidar/top",
+          },
+          {
+            frame: {
+              fields: [],
+              kind: VISUALIZATION_KIND.POINT_CLOUD,
+              pointCount: 1,
+              positions: new Float32Array([4, 5, 6]),
+            },
+            frameTransform: {
+              rotation: new THREE.Quaternion(0, 0, 0, 1),
+              sourceFrameId: "radar",
+              targetFrameId: "map",
+              translation: new THREE.Vector3(0, 7, 0),
+            },
+            id: "/radar/front",
+          },
+        ]}
+        showHud={false}
+      />
+    );
+
+    const positionCalls = setAttribute.mock.calls.filter(
+      ([attributeName]) => attributeName === "position"
+    );
+    expect(positionCalls).toHaveLength(2);
+
+    const groups = Array.from(container.querySelectorAll("group"));
+    expect(groups.map((g) => g.getAttribute("position"))).toEqual([
+      "0,0,0",
+      "0,7,0",
+    ]);
   });
 
   it("passes controlled camera pose through to the base scene", () => {
@@ -131,12 +192,17 @@ describe("PointCloudPanel", () => {
     render(
       <PointCloudPanel
         cameraPose={cameraPose}
-        frame={{
-          fields: [],
-          kind: VISUALIZATION_KIND.POINT_CLOUD,
-          pointCount: 1,
-          positions: new Float32Array([1, 2, 3]),
-        }}
+        layers={[
+          {
+            frame: {
+              fields: [],
+              kind: VISUALIZATION_KIND.POINT_CLOUD,
+              pointCount: 1,
+              positions: new Float32Array([1, 2, 3]),
+            },
+            id: "/points",
+          },
+        ]}
         onCameraPoseChange={onCameraPoseChange}
       />
     );
@@ -215,14 +281,19 @@ function renderPointCloudColors({
   render(
     <PointCloudPanel
       colorBy={colorBy}
-      frame={{
-        ...(colors ? { colors } : {}),
-        ...(scalarFields ? { scalarFields } : {}),
-        fields: [],
-        kind: VISUALIZATION_KIND.POINT_CLOUD,
-        pointCount: Math.floor(positions.length / 3),
-        positions,
-      }}
+      layers={[
+        {
+          frame: {
+            ...(colors ? { colors } : {}),
+            ...(scalarFields ? { scalarFields } : {}),
+            fields: [],
+            kind: VISUALIZATION_KIND.POINT_CLOUD,
+            pointCount: Math.floor(positions.length / 3),
+            positions,
+          },
+          id: "/points",
+        },
+      ]}
       showHud={false}
     />
   );

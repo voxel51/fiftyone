@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unknown-property */
 import { useThree } from "@react-three/fiber";
 import type { CSSProperties } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
 
 import type {
@@ -109,15 +109,26 @@ export interface PointCloudFrameTransform {
 export type PointCloudCameraPose = ThreeCameraPose;
 
 /**
- * Props for rendering one decoded point-cloud visualization frame.
+ * One point cloud rendered into the shared panel scene. `id` is the
+ * stable identity used for React reconciliation and per-layer point
+ * counting — use the source's topic/stream id.
+ */
+export interface PointCloudPanelLayer {
+  readonly frame: PointCloudVisualization;
+  readonly frameTransform?: PointCloudFrameTransform;
+  readonly id: string;
+}
+
+/**
+ * Props for rendering decoded point-cloud visualization frames. A panel
+ * renders one shared 3D scene; each layer contributes one cloud to it.
  */
 export interface PointCloudPanelProps {
   readonly cameraPose?: PointCloudCameraPose | null;
   readonly className?: string;
   readonly colorBy?: PointCloudColorBy;
   readonly fit?: "initial" | "frame" | "never";
-  readonly frame: PointCloudVisualization;
-  readonly frameTransform?: PointCloudFrameTransform;
+  readonly layers: readonly PointCloudPanelLayer[];
   readonly maxRenderedPoints?: number;
   readonly onCameraPoseChange?: (pose: PointCloudCameraPose) => void;
   readonly pointSize?: number;
@@ -128,15 +139,16 @@ export interface PointCloudPanelProps {
 }
 
 /**
- * Production point-cloud visualization panel backed by a stable Three.js canvas.
+ * Production point-cloud visualization panel backed by a stable Three.js
+ * canvas. All layers share one scene and one camera, so multiple sensor
+ * streams compose into a single fused view.
  */
 export function PointCloudPanel({
   cameraPose,
   className,
   colorBy,
-  fit = "initial",
-  frame,
-  frameTransform,
+  fit: _fit = "initial",
+  layers,
   maxRenderedPoints = DEFAULT_MAX_RENDERED_POINTS,
   onCameraPoseChange,
   pointSize = DEFAULT_POINT_SIZE,
@@ -146,37 +158,25 @@ export function PointCloudPanel({
   warning = null,
 }: PointCloudPanelProps) {
   const [canvasError, setCanvasError] = useState<string | null>(null);
-  const [finitePointCount, setFinitePointCount] = useState(0);
-  const scene = useMemo(
-    () => (
-      <PointCloudSceneContent
-        cameraPose={cameraPose}
-        colorBy={colorBy}
-        colors={frame.colors}
-        fit={fit}
-        maxRenderedPoints={maxRenderedPoints}
-        onCameraPoseChange={onCameraPoseChange}
-        onFinitePointCount={setFinitePointCount}
-        pointSize={pointSize}
-        positions={frame.positions}
-        scalarFields={frame.scalarFields}
-        showGizmo={showGizmo}
-        transform={frameTransform}
-      />
-    ),
-    [
-      cameraPose,
-      colorBy,
-      fit,
-      frame.colors,
-      frame.positions,
-      frame.scalarFields,
-      frameTransform,
-      maxRenderedPoints,
-      onCameraPoseChange,
-      pointSize,
-      showGizmo,
-    ]
+  const [finiteCounts, setFiniteCounts] = useState<Record<string, number>>({});
+  const onLayerFinitePointCount = useCallback(
+    (layerId: string, count: number) => {
+      setFiniteCounts((current) =>
+        current[layerId] === count ? current : { ...current, [layerId]: count }
+      );
+    },
+    []
+  );
+
+  // Sum over the *current* layers only — counts reported by since-removed
+  // layers linger in state but never reach the HUD.
+  const finitePointCount = layers.reduce(
+    (sum, layer) => sum + (finiteCounts[layer.id] ?? 0),
+    0
+  );
+  const declaredPointCount = layers.reduce(
+    (sum, layer) => sum + layer.frame.pointCount,
+    0
   );
 
   return (
@@ -187,7 +187,22 @@ export function PointCloudPanel({
         role="img"
         style={styles.canvas}
       >
-        {scene}
+        <Base3DScene
+          cameraPose={cameraPose}
+          onCameraPoseChange={onCameraPoseChange}
+          showGizmo={showGizmo}
+        >
+          {layers.map((layer) => (
+            <PointCloudSceneLayer
+              key={layer.id}
+              colorBy={colorBy}
+              layer={layer}
+              maxRenderedPoints={maxRenderedPoints}
+              onFinitePointCount={onLayerFinitePointCount}
+              pointSize={pointSize}
+            />
+          ))}
+        </Base3DScene>
       </WebGpuCanvas>
 
       {canvasError ? (
@@ -196,7 +211,7 @@ export function PointCloudPanel({
         <div style={styles.status}>No finite points</div>
       ) : showHud ? (
         <div style={styles.hud}>
-          {pointCountLabel(finitePointCount, frame.pointCount)}
+          {pointCountLabel(finitePointCount, declaredPointCount)}
         </div>
       ) : null}
       {warning ? <div style={styles.warning}>{warning}</div> : null}
@@ -204,69 +219,60 @@ export function PointCloudPanel({
   );
 }
 
-function PointCloudSceneContent({
-  cameraPose,
+function PointCloudSceneLayer({
   colorBy,
-  colors,
-  fit: _fit,
+  layer,
   maxRenderedPoints,
-  onCameraPoseChange,
   onFinitePointCount,
   pointSize,
-  positions,
-  scalarFields,
-  showGizmo,
-  transform,
 }: {
-  readonly cameraPose?: PointCloudCameraPose | null;
   readonly colorBy?: PointCloudColorBy;
-  readonly colors?: Float32Array;
-  readonly fit: "initial" | "frame" | "never";
+  readonly layer: PointCloudPanelLayer;
   readonly maxRenderedPoints: number;
-  readonly onCameraPoseChange?: (pose: PointCloudCameraPose) => void;
-  readonly onFinitePointCount: (count: number) => void;
+  readonly onFinitePointCount: (layerId: string, count: number) => void;
   readonly pointSize: number;
-  readonly positions: Float32Array;
-  readonly scalarFields?: readonly PointCloudScalarField[];
-  readonly showGizmo: boolean;
-  readonly transform: PointCloudFrameTransform | undefined;
 }) {
   const invalidate = useThree((state) => state.invalidate);
+  const { frame, frameTransform, id } = layer;
   const data = useMemo(
     () =>
-      buildPointCloudRenderData(positions, maxRenderedPoints, {
+      buildPointCloudRenderData(frame.positions, maxRenderedPoints, {
         colorBy,
-        colors,
-        scalarFields,
+        colors: frame.colors,
+        scalarFields: frame.scalarFields,
       }),
-    [colorBy, colors, maxRenderedPoints, positions, scalarFields]
+    [
+      colorBy,
+      frame.colors,
+      frame.positions,
+      frame.scalarFields,
+      maxRenderedPoints,
+    ]
   );
   const objectTransform = useMemo(
-    () => pointCloudObjectTransform(transform),
-    [transform]
+    () => pointCloudObjectTransform(frameTransform),
+    [frameTransform]
   );
 
+  // This effect reports the layer's finite point count up to the panel,
+  // which owns HUD totals across layers.
   useEffect(() => {
-    onFinitePointCount(data.finitePointCount);
-  }, [data.finitePointCount, onFinitePointCount]);
+    onFinitePointCount(id, data.finitePointCount);
+  }, [data.finitePointCount, id, onFinitePointCount]);
 
+  // This effect requests a frameloop-on-demand repaint when the layer's
+  // placement changes.
   useEffect(() => {
     invalidate();
   }, [invalidate, objectTransform]);
 
   return (
-    <Base3DScene
-      cameraPose={cameraPose}
-      onCameraPoseChange={onCameraPoseChange}
-      showGizmo={showGizmo}
+    <group
+      position={objectTransform.position}
+      quaternion={objectTransform.quaternion}
     >
-      <group
-        position={objectTransform.position}
-        quaternion={objectTransform.quaternion}
-      >
-        <PointCloudPoints data={data} pointSize={pointSize} />
-      </group>
-    </Base3DScene>
+      <PointCloudPoints data={data} pointSize={pointSize} />
+    </group>
   );
 }
 
