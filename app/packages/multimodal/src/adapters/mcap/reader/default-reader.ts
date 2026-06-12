@@ -2,10 +2,14 @@ import "../browser-node-globals";
 import { McapIndexedReader, type McapTypes } from "@mcap/core";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
 import { loadDecompressHandlers } from "../mcap-support";
+import { readLatestIndexedMessageTimesForReader } from "./latest-before";
 import { readIndexedMessageTimesForReader } from "./message-index";
+import { readTopicIndexedTimeBoundsForReader } from "./topic-time-bounds";
 import type {
   McapIndexedReaderLike,
   McapReadIndexedMessageTimesRequest,
+  McapReadLatestIndexedMessageTimesRequest,
+  McapReadTopicIndexedTimeBoundsRequest,
 } from "./types";
 
 const DEFAULT_MCAP_MESSAGE_INDEX_CACHE_SIZE_BYTES = 128 * 1024 * 1024;
@@ -31,6 +35,11 @@ export async function createDefaultMcapReader(
     chunkIndexes: reader.chunkIndexes,
     readIndexedMessageTimes: (args?: McapReadIndexedMessageTimesRequest) =>
       readIndexedMessageTimesForReader(reader, readable, args),
+    readLatestIndexedMessageTimes: (
+      args: McapReadLatestIndexedMessageTimesRequest
+    ) => readLatestIndexedMessageTimesForReader(reader, readable, args),
+    readTopicIndexedTimeBounds: (args: McapReadTopicIndexedTimeBoundsRequest) =>
+      readTopicIndexedTimeBoundsForReader(reader, readable, args),
     readMessages: reader.readMessages.bind(reader),
     schemasById: reader.schemasById,
     statistics: reader.statistics,
