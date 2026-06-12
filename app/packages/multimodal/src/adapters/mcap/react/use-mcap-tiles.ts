@@ -1,20 +1,23 @@
 import { useTileRegistry } from "@fiftyone/tiling";
 import { IconName } from "@voxel51/voodo";
 import { useEffect } from "react";
+import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import McapCameraTile from "./McapCameraTile";
 import McapLidarTile from "./McapLidarTile";
 
 /**
- * Tile catalog for the MCAP adapter. One entry per kind — adding a
- * new tile type is a single map entry, not N per-source registrations.
+ * Tile catalog for the MCAP adapter, keyed by scene-source type. One
+ * entry per kind — adding a new tile type is a single map entry, not N
+ * per-source registrations. (Annotation sources have no tile of their
+ * own; they render as overlays inside camera tiles.)
  */
 const TILE_BY_TYPE = {
-  camera: {
+  [MCAP_SOURCE_TYPE.CAMERA]: {
     typeLabel: "Camera",
     icon: IconName.GridView,
     Tile: McapCameraTile as unknown as React.ComponentType,
   },
-  lidar: {
+  [MCAP_SOURCE_TYPE.LIDAR]: {
     typeLabel: "Lidar",
     icon: IconName.Embeddings,
     Tile: McapLidarTile as unknown as React.ComponentType,
