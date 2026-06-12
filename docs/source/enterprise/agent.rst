@@ -47,9 +47,16 @@ To add a provider, fill in the following fields:
 
 - **Name**: a label for this provider configuration
 - **Provider**: select from the list of supported providers
-- **Endpoint** (optional): use this if your model is hosted at a custom URL
+- **Endpoint** (optional): use this to route requests to a custom URL, such
+  as an internal enterprise gateway or a self-hosted model server
 - **API key**: your provider's API key
 - **Models**: select one or more models to make available
+- **Custom model names** (optional): enter model identifiers that are not in
+  the standard picker, such as ``openai/aws:anthropic.claude-sonnet-4-6`` for
+  a custom gateway. When using a custom endpoint, prefix model names with
+  ``openai/`` so the Agent uses the OpenAI-compatible wire format
+- **Extra headers** (optional): static key-value HTTP headers sent with every
+  request (e.g. ``User-Agent``, project tokens required by your gateway)
 - **Default**: mark this provider as the default
 
 .. image:: https://cdn.voxel51.com/voxel-agent/enterprise/provider_more_details.webp
@@ -63,6 +70,50 @@ You can click **Test connection** to verify your credentials before saving.
     Need help configuring a provider? Contact your Customer Success
     representative, or see :ref:`Secrets <enterprise-secrets>` for how to
     store API keys securely in your deployment.
+
+.. _enterprise-agent-custom-gateway:
+
+Custom endpoints and enterprise gateways
+_________________________________________
+
+If your organization routes LLM traffic through an internal gateway or proxy
+(for example, an OpenAI-compatible service that enforces usage quotas or
+applies custom authentication), you can point the Agent at it using the
+**Endpoint** and **Extra headers** fields.
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/custom_gateway_screenshot.webp
+   :alt: fiftyone-agent-custom-gateway
+   :align: center
+
+A typical configuration looks like:
+
+- **Provider**: ``openai``
+- **Endpoint**: the base URL of your gateway, e.g.
+  ``https://gateway.internal/api/openai/v1``
+- **API key**: the credential your gateway expects in the
+  ``Authorization: Bearer`` header (OIDC token, service account key, or a
+  dummy value if the gateway handles auth via certificates or headers)
+- **Custom model names**: the model identifier your gateway uses, prefixed
+  with ``openai/``, e.g. ``openai/aws:anthropic.claude-sonnet-4-6``
+- **Extra headers**: any additional headers required by your gateway, such as
+  ``User-Agent: MyApp/1.0`` or ``X-Gateway-Project-Token: <token>``
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/custom_gateway_headers_screenshot.webp
+   :alt: fiftyone-agent-extra-headers
+   :align: center
+
+**Per-user attribution**
+
+When a custom endpoint is configured, the Agent automatically adds an
+``X-FiftyOne-User-Email`` header to every request containing the email address
+of the currently logged-in user. Gateways can use this header to attribute
+requests to individual users rather than a shared system account, which is
+useful for enforcing per-user quotas or audit logging.
+
+.. note::
+
+    Admins are responsible for ensuring that the configured endpoint's data
+    handling and retention align with their organization's privacy policy.
 
 .. _enterprise-agent-using:
 
