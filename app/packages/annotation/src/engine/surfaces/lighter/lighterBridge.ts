@@ -207,13 +207,18 @@ export const createLighterBridge = ({
       }
     },
 
-    // silent interaction application: overlay flags are render state;
-    // the engine's InteractionState is the cross-surface truth
+    // silent interaction application: engine InteractionState is the
+    // cross-surface truth; the scene's SelectionManager is render state.
+    // Route through the scene (flagged — handlers must not re-enter the
+    // engine) so the full selection affordance (drag/resize handles)
+    // activates, not just the overlay's selected flag.
     applySelected: (overlay, selected) => {
-      const selectable = overlay as BaseOverlay & {
-        setSelected?: (selected: boolean) => void;
-      };
-      selectable.setSelected?.(selected);
+      if (selected) {
+        scene.selectOverlay(overlay.id, { ignoreSideEffects: true });
+        return;
+      }
+
+      scene.deselectOverlay(overlay.id, { ignoreSideEffects: true });
     },
 
     applyHovered: (overlay, hovered) => {

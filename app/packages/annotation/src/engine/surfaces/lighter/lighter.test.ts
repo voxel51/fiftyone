@@ -54,6 +54,7 @@ type Shim = ReturnType<typeof makeOverlay>;
 const makeScene = () => {
   const overlays = new Map<string, Shim>();
   const deselectOverlay = vi.fn();
+  const selectOverlay = vi.fn();
 
   const scene = {
     getOverlay: (id: string) => overlays.get(id),
@@ -65,6 +66,7 @@ const makeScene = () => {
       overlays.delete(id);
     },
     deselectOverlay,
+    selectOverlay,
   } as unknown as Scene2D;
 
   const overlayFactory = {
@@ -79,7 +81,7 @@ const makeScene = () => {
     ),
   } as unknown as OverlayFactory;
 
-  return { scene, overlays, overlayFactory, deselectOverlay };
+  return { scene, overlays, overlayFactory, deselectOverlay, selectOverlay };
 };
 
 describe("lighter adapters", () => {
@@ -250,7 +252,7 @@ describe("lighter bridge", () => {
       bounding_box: [0.1, 0.2, 0.3, 0.4],
     });
 
-    const { scene, overlays, overlayFactory } = makeScene();
+    const { scene, overlays, overlayFactory, selectOverlay } = makeScene();
     const bridge = createLighterBridge({
       scene,
       overlayFactory,
@@ -268,9 +270,12 @@ describe("lighter bridge", () => {
     engine.updateLabel(ref("ground_truth", "d1"), { label: "dog" });
     expect(overlays.get("d1")?.applyLabel).toHaveBeenCalled();
 
-    // selection applies silently to the resolved overlay
+    // selection applies silently through the scene (flagged — real
+    // SelectionManager state, so drag/resize affordances activate)
     engine.interaction.setActive([ref("ground_truth", "d1")]);
-    expect(overlays.get("d1")?.setSelected).toHaveBeenCalledWith(true);
+    expect(selectOverlay).toHaveBeenCalledWith("d1", {
+      ignoreSideEffects: true,
+    });
 
     // hover
     engine.interaction.setHovered(ref("ground_truth", "d1"), true);
@@ -511,7 +516,7 @@ describe("lighter bridge gated mounts (deferred mask_path decode)", () => {
 
     const gate = deferred();
     vi.mocked(decodeMaskPath).mockReturnValue(gate.promise);
-    const { scene, overlays, overlayFactory } = makeScene();
+    const { scene, overlays, overlayFactory, selectOverlay } = makeScene();
     const bridge = createLighterBridge({
       scene,
       overlayFactory,
@@ -531,9 +536,10 @@ describe("lighter bridge gated mounts (deferred mask_path decode)", () => {
     gate.resolve(MASK);
     await settle();
 
-    const overlay = overlays.get("d1");
-    expect(overlay).toBeDefined();
-    expect(overlay?.setSelected).toHaveBeenCalledWith(true);
+    expect(overlays.get("d1")).toBeDefined();
+    expect(selectOverlay).toHaveBeenCalledWith("d1", {
+      ignoreSideEffects: true,
+    });
 
     unregister();
   });
