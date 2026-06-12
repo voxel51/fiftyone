@@ -21,6 +21,7 @@ import {
   useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
+import AggregationGuard from "../../Common/AggregationGuard";
 import { Button } from "../../utils";
 import Checker, { CheckState } from "../Checker";
 import Popout from "../Popout";
@@ -474,6 +475,19 @@ const SuspenseLoading = () => {
   );
 };
 
+// a timed-out tag-count aggregation degrades to a message instead of erroring
+// the whole app; narrowing the view resets the guard and re-attempts
+const TaggingTimedOut = () => {
+  const theme = useTheme();
+  return (
+    <TaggingContainerInput>
+      <span style={{ color: theme.text.secondary, fontSize: 14 }}>
+        Tag counts timed out. Narrow your view and reopen.
+      </span>
+    </TaggingContainerInput>
+  );
+};
+
 type TaggerProps = {
   modal: boolean;
   close: () => void;
@@ -526,28 +540,32 @@ const Tagger = ({ modal, close, lookerRef, anchorRef }: TaggerProps) => {
         </SwitchDiv>
       </SwitcherDiv>
       {labels && (
-        <Suspense fallback={<SuspenseLoading />} key={"labels"}>
-          <Section
-            countAndPlaceholder={labelPlaceholder}
-            submit={submit}
-            taggingAtom={fos.tagging({ modal, labels })}
-            itemsAtom={tagStats({ modal, labels })}
-            close={close}
-            labels={true}
-          />
-        </Suspense>
+        <AggregationGuard fallback={<TaggingTimedOut />}>
+          <Suspense fallback={<SuspenseLoading />} key={"labels"}>
+            <Section
+              countAndPlaceholder={labelPlaceholder}
+              submit={submit}
+              taggingAtom={fos.tagging({ modal, labels })}
+              itemsAtom={tagStats({ modal, labels })}
+              close={close}
+              labels={true}
+            />
+          </Suspense>
+        </AggregationGuard>
       )}
       {!labels && (
-        <Suspense fallback={<SuspenseLoading />} key={elementNames.plural}>
-          <Section
-            countAndPlaceholder={samplePlaceholder}
-            submit={submit}
-            taggingAtom={fos.tagging({ modal, labels })}
-            itemsAtom={tagStats({ modal, labels })}
-            close={close}
-            labels={false}
-          />
-        </Suspense>
+        <AggregationGuard fallback={<TaggingTimedOut />}>
+          <Suspense fallback={<SuspenseLoading />} key={elementNames.plural}>
+            <Section
+              countAndPlaceholder={samplePlaceholder}
+              submit={submit}
+              taggingAtom={fos.tagging({ modal, labels })}
+              itemsAtom={tagStats({ modal, labels })}
+              close={close}
+              labels={false}
+            />
+          </Suspense>
+        </AggregationGuard>
       )}
     </Popout>
   );

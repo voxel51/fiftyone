@@ -1,5 +1,6 @@
 import * as fou from "@fiftyone/utilities";
 import React from "react";
+import AggregationGuard from "../../../Common/AggregationGuard";
 import * as filters from "../../../Filters";
 
 interface FilterItem {
@@ -32,12 +33,16 @@ const FilterItem = ({
   title,
   ...rest
 }: FilterItem & { onBlur?: () => void; onFocus?: () => void }) => {
-  return React.createElement(FILTERS[ftype], {
-    key: path,
-    path,
-    title: title || (listField ? `${fou.LIST_FIELD}(${ftype})` : ftype),
-    ...rest,
-  });
+  return (
+    <AggregationGuard>
+      {React.createElement(FILTERS[ftype], {
+        key: path,
+        path,
+        title: title || (listField ? `${fou.LIST_FIELD}(${ftype})` : ftype),
+        ...rest,
+      })}
+    </AggregationGuard>
+  );
 };
 
 export default FilterItem;
