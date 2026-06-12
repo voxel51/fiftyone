@@ -9,50 +9,74 @@ import {
   TextColor,
   TextVariant,
 } from "@voxel51/voodo";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import type { EncodedImageVisualization } from "../../../decoders";
 import { useSceneSourcesByType } from "../../../scene-inventory";
+import { MCAP_SOURCE_TYPE } from "../scene-sources";
+import { chooseAnnotationTopic } from "../topic-matching";
 import { ImagePanel } from "../../../visualization/panels/image";
-import McapCameraAnnotationOverlay from "./McapCameraAnnotationOverlay";
+import McapImageAnnotationOverlay from "./McapImageAnnotationOverlay";
+import { rankImageSources } from "./playback-layout";
 import settingsStyles from "./McapTile.settings.module.css";
 import styles from "./McapTile.module.css";
 import { McapTileEmptyState, McapTileStatusBadge } from "./McapTileStreamState";
+import type { McapTileProps } from "./mcap-tile-types";
 import { useMcapTopicStream } from "./use-mcap-topic-stream";
 
-const McapCameraTile: React.FC = () => {
+const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   const [imageDims, setImageDims] = useState<{
     width: number;
     height: number;
   } | null>(null);
   const [interpolateAnnotations, setInterpolateAnnotations] = useState(true);
-  const cameras = useSceneSourcesByType("camera");
+  const images = useSceneSourcesByType(MCAP_SOURCE_TYPE.IMAGE);
+  const annotationSources = useSceneSourcesByType(
+    MCAP_SOURCE_TYPE.IMAGE_ANNOTATION
+  );
   const setTileTitle = useSetTileTitle();
-  const [topic, setTopic] = useState<string>(cameras[0]?.id ?? "");
+  // Open on the resolver-assigned source; tiles added by hand bind the
+  // densest stream instead of whatever happens to be first in the file.
+  const [topic, setTopic] = useState<string>(
+    () => initialSourceId ?? rankImageSources(images)[0]?.id ?? ""
+  );
 
-  // If cameras populated after the initial render (or the selected topic
-  // disappeared), bind to the first available source.
+  // If sources populated after the initial render (or the selected topic
+  // disappeared), bind to the best available source.
   useEffect(() => {
-    if (!topic && cameras[0]) {
-      setTopic(cameras[0].id);
+    if (!topic && images.length > 0) {
+      const ranked = rankImageSources(images);
+      if (ranked[0]) setTopic(ranked[0].id);
     }
-  }, [cameras, topic]);
+  }, [images, topic]);
 
   // Keep the tile title in sync whenever the selected topic resolves.
   useEffect(() => {
-    const label = cameras.find((c) => c.id === topic)?.label;
+    const label = images.find((s) => s.id === topic)?.label;
     if (label) setTileTitle(label);
-  }, [topic, cameras, setTileTitle]);
+  }, [topic, images, setTileTitle]);
 
-  // Reset stale dims when the camera source changes so the overlay cannot
-  // briefly use the previous camera's dimensions before onImageLoaded fires.
+  // Reset stale dims when the image source changes so the overlay cannot
+  // briefly use the previous source's dimensions before onImageLoaded fires.
   useEffect(() => {
     setImageDims(null);
   }, [topic]);
 
   const frame = useMcapTopicStream<EncodedImageVisualization>(topic);
-  const annotationTopic = topic ? annotationsTopicFor(topic) : null;
+  // Pair the image with the annotation stream that actually exists in
+  // the scene — exact `<prefix>/annotations` sibling first, fuzzy token
+  // match otherwise — instead of guessing a topic by convention.
+  const annotationTopic = useMemo(
+    () =>
+      topic
+        ? chooseAnnotationTopic(
+            topic,
+            annotationSources.map((s) => s.id)
+          )
+        : null,
+    [topic, annotationSources]
+  );
   const currentLabel =
-    cameras.find((c) => c.id === topic)?.label ?? "Select source";
+    images.find((s) => s.id === topic)?.label ?? "Select source";
 
   return (
     <>
@@ -66,15 +90,15 @@ const McapCameraTile: React.FC = () => {
               anchor={DropdownAnchor.BottomStart}
               trigger={<DropdownTrigger>{currentLabel}</DropdownTrigger>}
             >
-              {cameras.map((c) => (
+              {images.map((s) => (
                 <MenuTextItem
-                  key={c.id}
+                  key={s.id}
                   onClick={() => {
-                    setTopic(c.id);
-                    setTileTitle(c.label);
+                    setTopic(s.id);
+                    setTileTitle(s.label);
                   }}
                 >
-                  {c.label}
+                  {s.label}
                 </MenuTextItem>
               ))}
             </Dropdown>
@@ -105,27 +129,20 @@ const McapCameraTile: React.FC = () => {
             }
           />
           {imageDims && annotationTopic ? (
-            <McapCameraAnnotationOverlay
+            <McapImageAnnotationOverlay
               topic={annotationTopic}
               imageWidth={imageDims.width}
               imageHeight={imageDims.height}
               interpolate={interpolateAnnotations}
             />
           ) : null}
-          <McapTileStatusBadge topic={topic} />
+          <McapTileStatusBadge topics={topic ? [topic] : []} />
         </div>
       ) : (
-        <McapTileEmptyState topic={topic} />
+        <McapTileEmptyState topics={topic ? [topic] : []} />
       )}
     </>
   );
 };
 
-// `/CAM_FRONT/image_rect_compressed` → `/CAM_FRONT/annotations`.
-function annotationsTopicFor(cameraTopic: string): string | null {
-  const idx = cameraTopic.indexOf("/", 1);
-  if (idx <= 0) return null;
-  return `${cameraTopic.slice(0, idx)}/annotations`;
-}
-
-export default McapCameraTile;
+export default McapImageTile;

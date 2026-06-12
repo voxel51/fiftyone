@@ -8,7 +8,7 @@ afterEach(() => {
 
 describe("McapTileEmptyState", () => {
   it("shows a deterministic empty-source message for empty topics", () => {
-    render(<McapTileEmptyState topic="" />);
+    render(<McapTileEmptyState topics={[""]} />);
 
     expect(screen.getByTestId("mcap-tile-empty-state").textContent).toBe(
       "No source available"

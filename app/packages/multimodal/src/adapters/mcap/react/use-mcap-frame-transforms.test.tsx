@@ -285,6 +285,7 @@ function createFrameTransformClient({
     readSynchronizedMessages: vi.fn(),
     readTimelineRange: vi.fn(),
     readTopics: vi.fn(async () => []),
+    readTopicTimeBounds: vi.fn(async () => []),
   };
 }
 

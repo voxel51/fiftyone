@@ -464,6 +464,7 @@ function createClient({
     readSynchronizedMessages,
     readTimelineRange,
     readTopics: vi.fn(async () => []),
+    readTopicTimeBounds: vi.fn(async () => []),
   };
 }
 

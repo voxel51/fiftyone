@@ -7,7 +7,7 @@ import {
 } from "../../../visualization/panels/ImageAnnotationsOverlay";
 import { useInterpolatedImageAnnotations } from "./use-interpolated-image-annotations";
 
-export interface McapCameraAnnotationOverlayProps {
+export interface McapImageAnnotationOverlayProps {
   readonly topic: string;
   readonly imageWidth: number;
   readonly imageHeight: number;
@@ -18,12 +18,10 @@ export interface McapCameraAnnotationOverlayProps {
 /**
  * Subscribes to one MCAP image-annotations topic and overlays its decoded
  * primitives on top of the surrounding image panel. Mounting subscribes;
- * unmounting drops the subscription, so the camera tile's settings toggle
+ * unmounting drops the subscription, so the image tile's settings toggle
  * is just a render gate.
  */
-const McapCameraAnnotationOverlay: React.FC<
-  McapCameraAnnotationOverlayProps
-> = ({
+const McapImageAnnotationOverlay: React.FC<McapImageAnnotationOverlayProps> = ({
   topic,
   imageWidth,
   imageHeight,
@@ -67,4 +65,4 @@ const McapCameraAnnotationOverlay: React.FC<
   );
 };
 
-export default McapCameraAnnotationOverlay;
+export default McapImageAnnotationOverlay;

@@ -1,5 +1,5 @@
-import { useAtomValue } from "jotai";
-import { useEffect } from "react";
+import { atom, useAtomValue } from "jotai";
+import { useEffect, useMemo } from "react";
 import { usePlayback } from "./PlaybackProvider";
 import { usePlaybackStore } from "./playback-store-context";
 import { streamValueAtom } from "./atoms";
@@ -18,6 +18,24 @@ export function useStreamValue<T = unknown>(id: string): T | null {
   // Target the playback store explicitly — see `playback-store-context.ts`
   // for why we can't rely on Jotai's nearest-provider lookup.
   return useAtomValue(streamValueAtom(id), { store }) as T | null;
+}
+
+/**
+ * Reactive read of several streams' committed values, index-aligned with
+ * `ids` — one derived-atom subscription instead of N hook calls, since
+ * hooks can't be called in a loop over a dynamic id list. Same activation
+ * caveat as `useStreamValue`. Pass a referentially stable array — a new
+ * identity re-derives the combined atom.
+ */
+export function useStreamValues<T = unknown>(
+  ids: readonly string[]
+): readonly (T | null)[] {
+  const store = usePlaybackStore();
+  const valuesAtom = useMemo(
+    () => atom((get) => ids.map((id) => get(streamValueAtom(id)))),
+    [ids]
+  );
+  return useAtomValue(valuesAtom, { store }) as readonly (T | null)[];
 }
 
 /**
