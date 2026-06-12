@@ -46,7 +46,13 @@ export default function useFocus(): FocusController {
         const currentLabel = STORE.get(current);
 
         if (currentLabel?.isNew) {
-          scene?.deselectOverlay(id, { ignoreSideEffects: true });
+          // the draft's OWN overlay keeps its scene-native selection (the
+          // editing affordance on the box being drawn) — only foreign
+          // overlays get their selection cancelled
+          if (currentLabel?.overlay?.id !== id) {
+            scene?.deselectOverlay(id, { ignoreSideEffects: true });
+          }
+
           return;
         }
 
