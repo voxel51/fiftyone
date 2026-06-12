@@ -7,10 +7,7 @@ import { useGetLabelDelta } from "./useGetLabelDelta";
 import { OpType } from "../types";
 
 /**
- * Method for constructing a {@link LabelProxy} from a primitive value.
- *
- * @param data Primitive data
- * @param path Field path
+ * Construct a {@link LabelProxy} from a primitive value.
  */
 const buildLabelProxy = ({
   data,
@@ -28,18 +25,21 @@ const buildLabelProxy = ({
 });
 
 /**
- * Hook which provides a {@link DeltaSupplier} which captures changes isolated
- * to the annotation sidebar.
+ * Hook which provides a {@link DeltaSupplier} capturing changes isolated to
+ * the annotation sidebar (primitive field edits).
  */
 export const useSidebarDeltaSupplier = (): DeltaSupplier => {
   const { stagedMutations } = useSampleMutationManager();
   const getLabelDelta = useGetLabelDelta(buildLabelProxy);
 
-  return useCallback(() => {
-    return {
-      deltas: Object.entries(stagedMutations).flatMap(([path, mutation]) =>
-        getLabelDelta({ data: mutation.data, path, op: mutation.op }, path)
-      ),
-    };
-  }, [getLabelDelta, stagedMutations]);
+  return useCallback(
+    () => ({
+      deltas: Object.entries(stagedMutations)
+        .map(([path, mutation]) =>
+          getLabelDelta({ data: mutation.data, path, op: mutation.op }, path)
+        )
+        .filter((delta): delta is NonNullable<typeof delta> => !!delta),
+    }),
+    [getLabelDelta, stagedMutations]
+  );
 };

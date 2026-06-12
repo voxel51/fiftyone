@@ -57,7 +57,10 @@ export {
   default as useUnboundState,
   useUnboundStateRef,
 } from "./useUnboundState";
-export { default as useUpdateSamples } from "./useUpdateSamples";
+export {
+  default as useUpdateSamples,
+  SAMPLE_UPDATED_EVENT,
+} from "./useUpdateSamples";
 export { default as withSuspense } from "./withSuspense";
 
 // types

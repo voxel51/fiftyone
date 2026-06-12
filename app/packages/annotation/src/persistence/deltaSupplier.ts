@@ -1,19 +1,7 @@
-import type { JSONDeltas } from "@fiftyone/core";
+import type { LabelFieldChange } from "../deltas";
 
 /**
- * Metadata for generated views (patches/clips/frames).
- * Used to route the patch to the correct label on the source sample.
+ * A function which provides captured annotation deltas (the original value and
+ * the updated value for each edited label/field) when called.
  */
-export type DeltaMetadata = {
-  labelId?: string;
-  labelPath?: string;
-};
-
-/**
- * A function which provides annotation deltas when called.
- * Returns deltas and optional metadata for generated views.
- */
-export type DeltaSupplier = () => {
-  deltas: JSONDeltas;
-  metadata?: DeltaMetadata;
-};
+export type DeltaSupplier = () => { deltas: LabelFieldChange[] };

@@ -139,6 +139,18 @@ export const toExtendedJson = (data: unknown, fieldName?: string): unknown => {
     return { $oid: data };
   }
 
+  if (
+    isObject(data) &&
+    (data as { _cls?: unknown })._cls === "DateTime" &&
+    typeof (data as { datetime?: unknown }).datetime === "number"
+  ) {
+    // Reverse of {@link DateTimeTransformer} so the wire round-trips
+    // datetime values back into bson.datetime on the server.
+    return {
+      $date: new Date((data as { datetime: number }).datetime).toISOString(),
+    };
+  }
+
   if (Array.isArray(data)) {
     return data.map((item) => toExtendedJson(item));
   }

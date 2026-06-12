@@ -5,26 +5,21 @@ import { useSidebarDeltaSupplier } from "./useSidebarDeltaSupplier";
 import { use3dDeltaSupplier } from "./use3dDeltaSupplier";
 
 /**
- * Hook which provides a {@link DeltaSupplier} containing an aggregation of
- * deltas from all annotation sources.
+ * Hook which aggregates captured annotation deltas from all sources.
  */
 export const useAnnotationDeltaSupplier = (): DeltaSupplier => {
   const supply3dDeltas = use3dDeltaSupplier();
   const supplyLighterDeltas = useLighterDeltaSupplier();
   const supplySidebarDeltas = useSidebarDeltaSupplier();
 
-  return useCallback(() => {
-    const result3d = supply3dDeltas();
-    const resultLighter = supplyLighterDeltas();
-    const resultSidebar = supplySidebarDeltas();
-
-    const deltas = [
-      ...result3d.deltas,
-      ...resultLighter.deltas,
-      ...resultSidebar.deltas,
-    ];
-
-    // Metadata for generated views only comes from Lighter
-    return { deltas, metadata: resultLighter.metadata };
-  }, [supply3dDeltas, supplyLighterDeltas, supplySidebarDeltas]);
+  return useCallback(
+    () => ({
+      deltas: [
+        ...supply3dDeltas().deltas,
+        ...supplyLighterDeltas().deltas,
+        ...supplySidebarDeltas().deltas,
+      ],
+    }),
+    [supply3dDeltas, supplyLighterDeltas, supplySidebarDeltas]
+  );
 };

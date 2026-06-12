@@ -22,6 +22,7 @@ import useRecords from "./useRecords";
 import useRefreshers from "./useRefreshers";
 import useRenderer from "./useRenderer";
 import useResize from "./useResize";
+import useSampleUpdates from "./useSampleUpdates";
 import useScrollLocation from "./useScrollLocation";
 import useSpotlightPager from "./useSpotlightPager";
 import useUpdates from "./useUpdates";
@@ -110,6 +111,7 @@ function Grid() {
   useEscape();
   useEvents({ id, cache, pixels, resizing, set, spotlight });
   useUpdates({ cache, getFontSize, options: lookerOptions, spotlight });
+  useSampleUpdates(cache);
   useResize(id, setResizing);
 
   return (

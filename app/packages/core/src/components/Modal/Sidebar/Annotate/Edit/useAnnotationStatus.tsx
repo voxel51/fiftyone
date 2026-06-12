@@ -1,7 +1,5 @@
-import {
-  useInferenceStatus,
-  useToolsContext,
-} from "@fiftyone/annotation/src/agents";
+import { useInferenceStatus } from "@fiftyone/annotation/src/agents/hooks/useInferenceStatus";
+import { useToolsContext } from "@fiftyone/annotation/src/agents/hooks/useToolsContext";
 import type { PolylineAnnotationLabel } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";

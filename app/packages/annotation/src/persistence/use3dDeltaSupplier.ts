@@ -1,4 +1,3 @@
-import type { JSONDeltas } from "@fiftyone/core";
 import { DetectionLabel } from "@fiftyone/looker";
 import {
   ReconciledDetection3D,
@@ -11,15 +10,13 @@ import {
 import { isDetection, isPolyline } from "@fiftyone/looker-3d/src/types";
 import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
 import { useCallback } from "react";
-import { LabelProxy } from "../deltas";
+import type { LabelFieldChange, LabelProxy } from "../deltas";
 import type { DeltaSupplier } from "./deltaSupplier";
 import { useGetLabelDelta } from "./useGetLabelDelta";
 
 /**
- * List of attributes which are used for internal annotation functionality.
- *
- * These attributes should *not* be persisted to the sample and are stripped
- * before calculating a delta.
+ * Attributes used for internal annotation functionality that must not be
+ * persisted; they are stripped before capturing a change.
  */
 const reservedAttributes = [
   "color",
@@ -31,12 +28,6 @@ const reservedAttributes = [
   "type",
 ];
 
-/**
- * Omit a set of keys from an object.
- *
- * @param data Object to modify
- * @param keys List of keys to omit
- */
 const omit = <T, K extends keyof T>(data: T, ...keys: K[]): Omit<T, K> => {
   const result = { ...data };
   keys.forEach((key) => delete result[key]);
@@ -44,7 +35,7 @@ const omit = <T, K extends keyof T>(data: T, ...keys: K[]): Omit<T, K> => {
 };
 
 /**
- * Build a {@link LabelProxy} instance from a reconciled 3d label.
+ * Build a {@link LabelProxy} from a reconciled 3d label.
  */
 const buildAnnotationLabel = (
   label: ReconciledDetection3D | ReconciledPolyline3D
@@ -65,14 +56,8 @@ const buildAnnotationLabel = (
 };
 
 /**
- * Hook which provides a {@link DeltaSupplier} which captures changes isolated
- * to the 3D annotation context.
- *
- * The approach is:
- * - Read from the working store (committed edits) (See looker-3d/src/annotation/store/index.ts)
- * - Guard against computing deltas during active drag operations
- * - Compute mutation deltas for modified labels
- * - Compute deletion deltas for deleted labels (that existed in baseline)
+ * Hook which provides a {@link DeltaSupplier} capturing deltas isolated to
+ * the 3D annotation context.
  */
 export const use3dDeltaSupplier = (): DeltaSupplier => {
   const detections = useWorkingDetections();
@@ -87,32 +72,25 @@ export const use3dDeltaSupplier = (): DeltaSupplier => {
   });
 
   return useCallback(() => {
-    // Guard: don't compute deltas during active drag
-    // This prevents intermediate states from being persisted
+    // Don't capture intermediate state mid-drag.
     if (dragInProgress) {
       return { deltas: [] };
     }
 
-    const sampleDeltas: JSONDeltas = [];
+    const deltas: LabelFieldChange[] = [];
+    const push = (change: LabelFieldChange | null) => {
+      if (change) deltas.push(change);
+    };
 
-    // Generate mutation deltas for non-deleted labels
-    detections.forEach((detection) => {
-      sampleDeltas.push(...getLabelDelta(detection, detection.path));
-    });
-
-    polylines.forEach((polyline) => {
-      sampleDeltas.push(...getLabelDelta(polyline, polyline.path));
-    });
-
-    // Generate deletion deltas for deleted labels
-    // Only for labels that existed in baseline
+    detections.forEach((d) => push(getLabelDelta(d, d.path)));
+    polylines.forEach((p) => push(getLabelDelta(p, p.path)));
     deletedLabels.forEach((label) => {
       if (isDetection(label) || isPolyline(label)) {
-        sampleDeltas.push(...getLabelDeleteDelta(label, label.path));
+        push(getLabelDeleteDelta(label, label.path));
       }
     });
 
-    return { deltas: sampleDeltas };
+    return { deltas };
   }, [
     getLabelDelta,
     getLabelDeleteDelta,

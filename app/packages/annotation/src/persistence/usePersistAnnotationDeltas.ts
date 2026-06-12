@@ -1,56 +1,63 @@
 import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
-import { isGeneratedView } from "@fiftyone/state";
+import {
+  generatedDatasetName as generatedDatasetNameAtom,
+  isGeneratedView,
+  useCurrentDatasetId,
+  useModalSample,
+  useUpdateSamples,
+} from "@fiftyone/state";
+import type { Sample } from "@fiftyone/looker";
 import { useAnnotationDeltaSupplier } from "./useAnnotationDeltaSupplier";
-import { useAnnotationEventBus, usePatchSample } from "../hooks";
+import { useAnnotationEventBus } from "../hooks";
+import { saveAnnotationChanges } from "../util";
 
-/**
- * @returns `true` if persistence was successful
- * @returns `false` if persistence was unsuccessful
- * @returns `null` if no changes were pending
- */
 type PersistenceResult = boolean | null;
 
 /**
- * Hook which provides a callback to persist all pending annotation deltas.
- *
- * @returns A callback that persists annotation deltas and returns:
- *   - `true` if persistence was successful
- *   - `false` if persistence was unsuccessful
- *   - `null` if no changes were pending
+ * Returns a callback that flushes captured annotation changes (original value
+ * + updated value per change) to the server; resolves to `null` if there was
+ * nothing to persist.
  */
 export const usePersistAnnotationDeltas =
   (): (() => Promise<PersistenceResult>) => {
-    const supplyAnnotationDeltas = useAnnotationDeltaSupplier();
-    const patchSample = usePatchSample();
+    const supplyDeltas = useAnnotationDeltaSupplier();
     const eventBus = useAnnotationEventBus();
+    const datasetId = useCurrentDatasetId();
+    const sample = useModalSample()?.sample;
+    const updateSamples = useUpdateSamples();
     const isGenerated = useRecoilValue(isGeneratedView);
+    const generatedDatasetName = useRecoilValue(generatedDatasetNameAtom);
 
     return useCallback(async () => {
-      const { deltas, metadata } = supplyAnnotationDeltas();
+      const { deltas } = supplyDeltas();
 
       if (deltas.length === 0) {
         return null;
       }
 
-      eventBus.dispatch("annotation:persistenceInFlight");
-
-      if (isGenerated) {
-        if (!metadata) {
-          console.warn(
-            "Generated view persistence requires label metadata but none was provided.",
-            { deltaCount: deltas.length, deltas }
-          );
-          return false;
-        }
-
-        return await patchSample(deltas, {
-          labelId: metadata.labelId,
-          labelPath: metadata.labelPath,
-          opType: "mutate",
-        });
+      if (!datasetId || !sample?._id) {
+        return false;
       }
 
-      return await patchSample(deltas);
-    }, [eventBus, isGenerated, patchSample, supplyAnnotationDeltas]);
+      eventBus.dispatch("annotation:persistenceInFlight");
+
+      return saveAnnotationChanges(deltas, {
+        datasetId,
+        sample,
+        // In-place tile/modal update (no grid refresh).
+        updateSample: (updated: Sample) =>
+          updateSamples([[updated._id, updated]]),
+        isGenerated,
+        generatedDatasetName: generatedDatasetName ?? undefined,
+      });
+    }, [
+      supplyDeltas,
+      datasetId,
+      sample,
+      updateSamples,
+      isGenerated,
+      generatedDatasetName,
+      eventBus,
+    ]);
   };

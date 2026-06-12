@@ -1,74 +1,68 @@
 import type { Field } from "@fiftyone/utilities";
 import { useCallback } from "react";
-import { isGeneratedView, useModalSample } from "@fiftyone/state";
+import {
+  generatedDatasetName as generatedDatasetNameAtom,
+  isGeneratedView,
+  useCurrentDatasetId,
+  useModalSample,
+  useUpdateSamples,
+} from "@fiftyone/state";
+import type { Sample } from "@fiftyone/looker";
 import { useRecoilValue } from "recoil";
-import { usePatchSample } from "./usePatchSample";
-import { handleLabelPersistence, type LabelPersistenceArgs } from "../util";
+import { handleLabelPersistence } from "../util";
 import { LabelProxy } from "../deltas";
+import type { OpType } from "../types";
 
 /**
- * Hook which returns a callback to persist label updates for a sample.
- *
- * @param sample Sample against which to apply label update
- * @param applyPatch Function which handles the patch operation
- * @param opType Operation type
- * @param isGenerated Whether this is from a generated view
+ * Returns a callback that persists a single label edit (upsert or delete) by
+ * capturing its original and updated value and sending them to the server.
  */
-const useLabelPersistenceWith = ({
-  sample,
-  applyPatch,
-  opType,
-  isGenerated,
-}: Pick<
-  LabelPersistenceArgs,
-  "sample" | "applyPatch" | "opType" | "isGenerated"
->) => {
+const useLabelPersistenceWith = (
+  opType: OpType
+): ((annotationLabel: LabelProxy, schema: Field) => Promise<boolean>) => {
+  const sample = useModalSample()?.sample ?? null;
+  const datasetId = useCurrentDatasetId();
+  const updateSamples = useUpdateSamples();
+  const isGenerated = useRecoilValue(isGeneratedView);
+  const generatedDatasetName = useRecoilValue(generatedDatasetNameAtom);
+
   return useCallback(
-    (annotationLabel: LabelProxy, schema: Field): Promise<boolean> => {
-      return handleLabelPersistence({
+    (annotationLabel: LabelProxy, schema: Field): Promise<boolean> =>
+      handleLabelPersistence({
         sample,
-        applyPatch,
+        datasetId,
+        // In-place tile/modal update (no grid refresh).
+        updateSample: (updated: Sample) =>
+          updateSamples([[updated._id, updated]]),
         annotationLabel,
         schema,
         opType,
         isGenerated,
-      });
-    },
-    [applyPatch, isGenerated, opType, sample]
+        generatedDatasetName: generatedDatasetName ?? undefined,
+      }),
+    [
+      sample,
+      datasetId,
+      updateSamples,
+      isGenerated,
+      generatedDatasetName,
+      opType,
+    ]
   );
 };
 
 /**
- * Hook which returns a callback to upsert a label on the current modal sample.
+ * Hook returning a callback that upserts a label on the current modal sample.
  */
 export const useUpsertLabel = (): ((
   annotationLabel: LabelProxy,
   schema: Field
-) => Promise<boolean>) => {
-  const isGenerated = useRecoilValue(isGeneratedView);
-
-  return useLabelPersistenceWith({
-    sample: useModalSample()?.sample,
-    applyPatch: usePatchSample(),
-    opType: "mutate",
-    isGenerated,
-  });
-};
+) => Promise<boolean>) => useLabelPersistenceWith("mutate");
 
 /**
- * Hook which provides a callback to delete a label from the current modal
- * sample.
+ * Hook returning a callback that deletes a label from the current modal sample.
  */
 export const useDeleteLabel = (): ((
   annotationLabel: LabelProxy,
   schema: Field
-) => Promise<boolean>) => {
-  const isGenerated = useRecoilValue(isGeneratedView);
-
-  return useLabelPersistenceWith({
-    sample: useModalSample()?.sample,
-    applyPatch: usePatchSample(),
-    opType: "delete",
-    isGenerated,
-  });
-};
+) => Promise<boolean>) => useLabelPersistenceWith("delete");
