@@ -9,9 +9,11 @@ import {
   TextColor,
   TextVariant,
 } from "@voxel51/voodo";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import type { EncodedImageVisualization } from "../../../decoders";
 import { useSceneSourcesByType } from "../../../scene-inventory";
+import { MCAP_SOURCE_TYPE } from "../scene-sources";
+import { chooseAnnotationTopic } from "../topic-matching";
 import { ImagePanel } from "../../../visualization/panels/image";
 import McapCameraAnnotationOverlay from "./McapCameraAnnotationOverlay";
 import settingsStyles from "./McapTile.settings.module.css";
@@ -25,7 +27,10 @@ const McapCameraTile: React.FC = () => {
     height: number;
   } | null>(null);
   const [interpolateAnnotations, setInterpolateAnnotations] = useState(true);
-  const cameras = useSceneSourcesByType("camera");
+  const cameras = useSceneSourcesByType(MCAP_SOURCE_TYPE.CAMERA);
+  const annotationSources = useSceneSourcesByType(
+    MCAP_SOURCE_TYPE.IMAGE_ANNOTATION
+  );
   const setTileTitle = useSetTileTitle();
   const [topic, setTopic] = useState<string>(cameras[0]?.id ?? "");
 
@@ -50,7 +55,19 @@ const McapCameraTile: React.FC = () => {
   }, [topic]);
 
   const frame = useMcapTopicStream<EncodedImageVisualization>(topic);
-  const annotationTopic = topic ? annotationsTopicFor(topic) : null;
+  // Pair the camera with the annotation stream that actually exists in
+  // the scene — exact `<prefix>/annotations` sibling first, fuzzy token
+  // match otherwise — instead of guessing a topic by convention.
+  const annotationTopic = useMemo(
+    () =>
+      topic
+        ? chooseAnnotationTopic(
+            topic,
+            annotationSources.map((s) => s.id)
+          )
+        : null,
+    [topic, annotationSources]
+  );
   const currentLabel =
     cameras.find((c) => c.id === topic)?.label ?? "Select source";
 
@@ -120,12 +137,5 @@ const McapCameraTile: React.FC = () => {
     </>
   );
 };
-
-// `/CAM_FRONT/image_rect_compressed` → `/CAM_FRONT/annotations`.
-function annotationsTopicFor(cameraTopic: string): string | null {
-  const idx = cameraTopic.indexOf("/", 1);
-  if (idx <= 0) return null;
-  return `${cameraTopic.slice(0, idx)}/annotations`;
-}
 
 export default McapCameraTile;
