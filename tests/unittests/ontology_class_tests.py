@@ -1152,9 +1152,7 @@ class TruncateDictTests(unittest.TestCase):
     def test_zero_marks_branch_with_empty_values(self):
         from fiftyone.core.annotation.nodes import truncate_dict
 
-        out = truncate_dict(
-            {"name": "cars", "values": [{"name": "sedan"}]}, 0
-        )
+        out = truncate_dict({"name": "cars", "values": [{"name": "sedan"}]}, 0)
         self.assertEqual(out["values"], [])
 
     def test_zero_real_leaf_keeps_no_values_key(self):

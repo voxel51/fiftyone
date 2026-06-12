@@ -2,7 +2,10 @@ name: Enterprise Sync
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, closed, ready_for_review]
+    # `edited` covers base-branch changes — e.g. a stacked PR auto-retargeted
+    # to develop when its base PR merges. The head SHA doesn't change, so no
+    # `synchronize` fires; without `edited` the retargeted PR would never sync.
+    types: [opened, synchronize, reopened, closed, ready_for_review, edited]
     branches:
       - develop
       - release/*
@@ -16,9 +19,12 @@ jobs:
     # Only the OSS repo dispatches to Enterprise. The Enterprise repo carries an
     # identical copy of this file (via OSS sync) where this guard makes it inert,
     # so the file never diverges and never produces a sync conflict.
+    # On `edited`, only dispatch when the base branch changed (changes.base is
+    # only present then) — title/body edits don't need a re-sync.
     if: >-
       github.repository == 'voxel51/fiftyone' &&
-      github.event.pull_request.head.repo.full_name == github.repository && (
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (github.event.action != 'edited' || github.event.changes.base) && (
       github.event.action == 'closed' ||
       github.event.pull_request.draft != true)
     runs-on: ubuntu-latest

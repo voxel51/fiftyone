@@ -7,6 +7,12 @@
 // These are browser APIs that aren't available in jsdom but are required by
 // libraries like plotly.js/mapbox-gl
 if (typeof window !== "undefined") {
+  globalThis.ResizeObserver ??= class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+
   window.URL.createObjectURL = () => "mock-object-url";
   window.URL.revokeObjectURL = () => {};
 

@@ -363,4 +363,5 @@ describe("TimelineRuler", () => {
       expect(vs).toBeCloseTo(6, 2);
     });
   });
+
 });

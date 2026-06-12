@@ -67,8 +67,7 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
         />
       </>
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [types]);
+  }, [types, addTile, autoLayout]);
 
   return (
     <div className={styles.root}>
@@ -110,8 +109,7 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
             variant={Variant.Borderless}
             size={Size.Xs}
             data-testid="tiling-header-toggle-left-sidebar"
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            leadingIcon={SidebarLeftIcon as any}
+            leadingIcon={SidebarLeftIcon}
             aria-label={leftSidebarOpen ? "Hide settings" : "Show settings"}
             aria-pressed={!!leftSidebarOpen}
             title={leftSidebarOpen ? "Hide settings" : "Show settings"}
@@ -125,8 +123,7 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
             variant={Variant.Borderless}
             size={Size.Xs}
             data-testid="tiling-header-toggle-right-sidebar"
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            leadingIcon={SidebarRightIcon as any}
+            leadingIcon={SidebarRightIcon}
             aria-label={rightSidebarOpen ? "Hide inspector" : "Show inspector"}
             aria-pressed={!!rightSidebarOpen}
             title={rightSidebarOpen ? "Hide inspector" : "Show inspector"}
