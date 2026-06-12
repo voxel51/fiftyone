@@ -727,7 +727,7 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
         self.concept_predictor = self._load_concept_predictor()
 
         self._curr_exemplar_prompts = None
-        self._curr_visual_prompts = None
+        self._curr_visual_prompts = {}
         self._curr_frame_width = None
         self._curr_frame_height = None
 
@@ -824,16 +824,14 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
             {0: [{"points": [[x1, y1], [x2, y2]], "labels": [1, 0], _label": "dog"}], ...}
         """
         _frame_indices = (
-            frame_indices
-            if frame_indices
-            else range(1, len(sample.frames) + 1)
+            frame_indices if frame_indices else sorted(sample.frames.keys())
         )
 
         prompts = {}
         for frame_number in _frame_indices:
-            if frame_number > len(sample.frames):
+            if frame_number not in sample.frames:
                 raise ValueError(
-                    f"Frame index {frame_number} not valid for {len(sample.frames)} sample frames."
+                    f"Frame index {frame_number} not valid for sample with frame keys {sorted(sample.frames.keys())}."
                 )
 
             value = sample.frames[frame_number].get_field(frame_field_name)
@@ -885,21 +883,19 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
     ):
         """Read per-frame prompts for visual mode.
 
-        Returns a flat list of raw FiftyOne labels, one per frame:
-
-            [Detections(...), [], [], ...]
+        Returns a dict mapping 0-based SAM3 frame index to raw FiftyOne labels.
+        Frame number N (1-based FiftyOne) maps to SAM3 frame index N-1.
         """
         _frame_indices = (
-            frame_indices
-            if frame_indices
-            else range(1, len(sample.frames) + 1)
+            set(frame_indices) if frame_indices else set(sample.frames.keys())
         )
-        prompts = []
-        for f_idx, frame in sample.frames.items():
+        prompts = {}
+        for frame_number, frame in sample.frames.items():
+            if frame_number not in _frame_indices:
+                continue
             value = frame.get_field(frame_field_name)
-            prompts.append(
-                value if value is not None and f_idx in _frame_indices else []
-            )
+            if value is not None:
+                prompts[frame_number - 1] = value
         return prompts
 
     def _get_visual_prompt_type(self, sample, field_name):
@@ -937,7 +933,7 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
                 )
         else:
             self._curr_exemplar_prompts = {}
-            self._curr_visual_prompts = []
+            self._curr_visual_prompts = {}
 
         if self.operation_mode == "concept":
             outputs = self._forward_pass_concept(video_reader, sample)
@@ -948,6 +944,12 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
 
     def _forward_pass_concept(self, video_reader, sample):
         """Run video segmentation via the SAM 3 session API."""
+        if not self.config.classes and not self._curr_exemplar_prompts:
+            raise ValueError(
+                "Concept mode requires at least one text prompt (via 'classes') "
+                "or one exemplar prompt (via 'prompt_field')."
+            )
+
         video_path = sample.filepath
 
         response = self.concept_predictor.handle_request(
@@ -1095,9 +1097,7 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
         idx_obj_id_map = {}
         current_obj_idx = 0
 
-        for frame_idx, frame_detections in enumerate(
-            self._curr_visual_prompts
-        ):
+        for frame_idx, frame_detections in self._curr_visual_prompts.items():
             if (
                 not frame_detections
                 or not isinstance(frame_detections, fol.Detections)
@@ -1143,7 +1143,7 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
         idx_obj_id_map = {}
         current_obj_idx = 0
 
-        for frame_idx, frame_keypoints in enumerate(self._curr_visual_prompts):
+        for frame_idx, frame_keypoints in self._curr_visual_prompts.items():
             if (
                 not frame_keypoints
                 or not isinstance(frame_keypoints, fol.Keypoints)
@@ -1276,15 +1276,30 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
         return sample_detections
 
     def _merge_propagation_results(self, forward, backward):
-        """Merge forward and backward propagation results.
+        """Merge forward and backward propagation results per Detection.index.
 
-        Forward-pass detections take precedence; backward fills frames that
-        are absent or empty in the forward pass.
+        Detections are merged by their ``index`` field so that objects tracked
+        only in the backward pass are not discarded on frames where the forward
+        pass produced detections for different objects.
         """
-        merged = dict(forward)
-        for frame_num, dets in backward.items():
-            if frame_num not in merged or not merged[frame_num].detections:
-                merged[frame_num] = dets
+        all_frame_nums = set(forward) | set(backward)
+        merged = {}
+        for frame_num in all_frame_nums:
+            fwd_dets = forward.get(frame_num, fol.Detections(detections=[]))
+            bwd_dets = backward.get(frame_num, fol.Detections(detections=[]))
+
+            seen_indices = set()
+            combined = []
+            for det in fwd_dets.detections:
+                combined.append(det)
+                if det.index is not None:
+                    seen_indices.add(det.index)
+
+            for det in bwd_dets.detections:
+                if det.index is None or det.index not in seen_indices:
+                    combined.append(det)
+
+            merged[frame_num] = fol.Detections(detections=combined)
         return merged
 
 
@@ -1307,7 +1322,12 @@ def load_fiftyone_video_frames_sam3(
     img_mean = torch.tensor(img_mean, dtype=torch.float32)[:, None, None]
     img_std = torch.tensor(img_std, dtype=torch.float32)[:, None, None]
 
-    num_frames = len(sample.frames)
+    num_frames = (
+        sample.metadata.total_frame_count
+        if sample.metadata is not None
+        and sample.metadata.total_frame_count is not None
+        else len(sample.frames)
+    )
 
     images = torch.zeros(
         num_frames, 3, image_size, image_size, dtype=torch.float32

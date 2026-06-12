@@ -1791,6 +1791,7 @@ class TestSAM3VisualParity(unittest.TestCase):
         )
 
 
+@unittest.skipUnless(torch.cuda.is_available(), "requires CUDA")
 class TestSAM3VideoConceptParity(unittest.TestCase):
     """Compare FiftyOne SAM3 video concept-mode output against direct
     concept_predictor (handle_request) inference."""
@@ -1840,9 +1841,7 @@ class TestSAM3VideoConceptParity(unittest.TestCase):
         )
         session_id = response["session_id"]
 
-        result = {
-            i + 1: Detections(detections=[]) for i in range(len(sample.frames))
-        }
+        result = {fn: Detections(detections=[]) for fn in sample.frames.keys()}
 
         try:
             for text_prompt in text_prompts:
@@ -1957,6 +1956,7 @@ class TestSAM3VideoConceptParity(unittest.TestCase):
         )
 
 
+@unittest.skipUnless(torch.cuda.is_available(), "requires CUDA")
 class TestSAM3VideoVisualParity(unittest.TestCase):
     """Compare FiftyOne SAM3 video visual-mode output against direct
     visual_predictor (tracker) inference."""
@@ -1980,7 +1980,7 @@ class TestSAM3VideoVisualParity(unittest.TestCase):
 
         # Shared frame anchors for directional tests.
         # Use per-sample minimums so prompt_frame_indices is valid for all samples.
-        cls.last_frame_1based = min(len(s.frames) for s in cls.dataset)
+        cls.last_frame_1based = min(max(s.frames.keys()) for s in cls.dataset)
         cls.mid_frame_1based = max(1, cls.last_frame_1based // 2)
 
     @classmethod

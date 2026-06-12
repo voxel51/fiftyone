@@ -172,7 +172,7 @@ class TestSAM3VideoVisualApplyModel(unittest.TestCase):
         """Visual mode with Keypoints as prompts produces per-frame segmentations."""
         kp_field = "sam3v_visual_kps"
         for sample in self.dataset.iter_samples(progress=False, autosave=True):
-            first_frame = next(iter(sample.frames.values()))
+            first_frame = sample.frames[1]
             dets = first_frame.get_field("detections")
             self.assertTrue(
                 dets is not None and bool(dets.detections),
