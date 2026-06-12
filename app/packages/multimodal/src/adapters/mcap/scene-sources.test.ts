@@ -19,12 +19,12 @@ describe("mcapSceneSources", () => {
     expect(sources).toEqual([
       {
         id: "/CAM_FRONT/image_rect_compressed",
-        type: MCAP_SOURCE_TYPE.CAMERA,
+        type: MCAP_SOURCE_TYPE.IMAGE,
         label: "CAM_FRONT",
       },
       {
         id: "/LIDAR_TOP",
-        type: MCAP_SOURCE_TYPE.LIDAR,
+        type: MCAP_SOURCE_TYPE.POINT_CLOUD,
         label: "LIDAR_TOP",
       },
       {

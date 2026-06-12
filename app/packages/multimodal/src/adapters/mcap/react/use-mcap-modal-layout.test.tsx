@@ -13,12 +13,12 @@ import {
 
 // The tile bodies drag in WebGPU/Three at module load, which jsdom can't
 // evaluate. Layout restore only needs them to exist as components.
-vi.mock("./McapCameraTile", () => ({ default: () => null }));
-vi.mock("./McapLidarTile", () => ({ default: () => null }));
+vi.mock("./McapImageTile", () => ({ default: () => null }));
+vi.mock("./Mcap3dTile", () => ({ default: () => null }));
 
 const SCENE_SOURCES = [
-  { id: "/cam/image_rect_compressed", type: "camera", label: "cam" },
-  { id: "/lidar", type: "lidar", label: "lidar" },
+  { id: "/cam/image_rect_compressed", type: "image", label: "cam" },
+  { id: "/lidar", type: "point-cloud", label: "lidar" },
 ];
 
 describe("useMcapModalLayout", () => {
@@ -30,8 +30,8 @@ describe("useMcapModalLayout", () => {
   it("derives default tiles from the source types present", () => {
     const { result } = renderHook(() => useMcapModalLayout(SCENE_SOURCES));
     expect(Object.keys(result.current.initialTiles)).toEqual([
-      "camera-default",
-      "lidar-default",
+      "image-default",
+      "3d-default",
     ]);
     expect(result.current.initialLayout).toBeUndefined();
     expect(result.current.defaultLeftOpen).toBe(false);
@@ -40,9 +40,7 @@ describe("useMcapModalLayout", () => {
 
   it("omits default tiles for types absent from the scene", () => {
     const { result } = renderHook(() => useMcapModalLayout([SCENE_SOURCES[0]]));
-    expect(Object.keys(result.current.initialTiles)).toEqual([
-      "camera-default",
-    ]);
+    expect(Object.keys(result.current.initialTiles)).toEqual(["image-default"]);
   });
 
   it("restores persisted sidebar state and a valid tile arrangement", () => {
@@ -51,8 +49,8 @@ describe("useMcapModalLayout", () => {
       rightSidebarOpen: true,
       layout: {
         direction: "row",
-        first: "camera-default",
-        second: "lidar-7",
+        first: "image-default",
+        second: "3d-7",
         splitPercentage: 70,
       },
     });
@@ -61,47 +59,45 @@ describe("useMcapModalLayout", () => {
     expect(result.current.defaultRightOpen).toBe(true);
     expect(result.current.initialLayout).toEqual({
       direction: "row",
-      first: "camera-default",
-      second: "lidar-7",
+      first: "image-default",
+      second: "3d-7",
       splitPercentage: 70,
     });
     expect(Object.keys(result.current.initialTiles).sort()).toEqual([
-      "camera-default",
-      "lidar-7",
+      "3d-7",
+      "image-default",
     ]);
-    expect(result.current.initialTiles["camera-default"].title).toBe("Camera");
-    expect(result.current.initialTiles["lidar-7"].title).toBe("Lidar");
+    expect(result.current.initialTiles["image-default"].title).toBe("Image");
+    expect(result.current.initialTiles["3d-7"].title).toBe("3D");
   });
 
   it("discards the whole restore when any leaf has an unknown tile type", () => {
     writeMcapModalLayout({
       layout: {
         direction: "row",
-        first: "camera-default",
+        first: "image-default",
         second: "radar-2",
       },
     });
     const { result } = renderHook(() => useMcapModalLayout(SCENE_SOURCES));
     expect(result.current.initialLayout).toBeUndefined();
     expect(Object.keys(result.current.initialTiles)).toEqual([
-      "camera-default",
-      "lidar-default",
+      "image-default",
+      "3d-default",
     ]);
   });
 
-  it("discards the restore when a leaf's type has no source in the scene", () => {
+  it("discards the restore when a leaf's tile kind has no source in the scene", () => {
     writeMcapModalLayout({
       layout: {
         direction: "row",
-        first: "camera-default",
-        second: "lidar-default",
+        first: "image-default",
+        second: "3d-default",
       },
     });
     const { result } = renderHook(() => useMcapModalLayout([SCENE_SOURCES[0]]));
     expect(result.current.initialLayout).toBeUndefined();
-    expect(Object.keys(result.current.initialTiles)).toEqual([
-      "camera-default",
-    ]);
+    expect(Object.keys(result.current.initialTiles)).toEqual(["image-default"]);
   });
 
   it("persists sidebar toggles through the change callbacks", () => {

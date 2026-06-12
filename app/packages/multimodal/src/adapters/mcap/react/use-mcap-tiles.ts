@@ -1,32 +1,35 @@
 import { useTileRegistry } from "@fiftyone/tiling";
 import { IconName } from "@voxel51/voodo";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
-import McapCameraTile from "./McapCameraTile";
-import McapLidarTile from "./McapLidarTile";
+import Mcap3dTile from "./Mcap3dTile";
+import McapImageTile from "./McapImageTile";
 
 /**
- * Tile catalog for the MCAP adapter, keyed by scene-source type. One
- * entry per kind — adding a new tile type is a single map entry, not N
- * per-source registrations. (Annotation sources have no tile of their
- * own; they render as overlays inside camera tiles.)
+ * Tile catalog for the MCAP adapter, keyed by tile type. A tile kind is
+ * named for what it renders ("Image", "3D"), not for the sensor behind
+ * it; `sourceTypes` lists the scene-source types the tile can display,
+ * which gates when the kind is offered. (Annotation sources have no
+ * tile of their own; they render as overlays inside image tiles.)
  */
 const TILE_BY_TYPE = {
-  [MCAP_SOURCE_TYPE.CAMERA]: {
-    typeLabel: "Camera",
+  image: {
+    typeLabel: "Image",
     icon: IconName.GridView,
-    Tile: McapCameraTile as unknown as React.ComponentType,
+    Tile: McapImageTile as unknown as React.ComponentType,
+    sourceTypes: [MCAP_SOURCE_TYPE.IMAGE] as readonly string[],
   },
-  [MCAP_SOURCE_TYPE.LIDAR]: {
-    typeLabel: "Lidar",
+  "3d": {
+    typeLabel: "3D",
     icon: IconName.Embeddings,
-    Tile: McapLidarTile as unknown as React.ComponentType,
+    Tile: Mcap3dTile as unknown as React.ComponentType,
+    sourceTypes: [MCAP_SOURCE_TYPE.POINT_CLOUD] as readonly string[],
   },
 } as const;
 
-type KnownTileType = keyof typeof TILE_BY_TYPE;
+export type McapTileType = keyof typeof TILE_BY_TYPE;
 
-function isKnownTileType(type: string): type is KnownTileType {
+function isKnownTileType(type: string): type is McapTileType {
   return Object.hasOwn(TILE_BY_TYPE, type);
 }
 
@@ -41,32 +44,48 @@ export function getMcapTileDefinition(
   return isKnownTileType(type) ? TILE_BY_TYPE[type] : null;
 }
 
+/**
+ * Tile types that can render at least one of the given scene-source
+ * types, in catalog order. Drives tile registration, default layouts,
+ * and persisted-layout validation.
+ */
+export function mcapTileTypesFor(
+  sourceTypes: readonly string[]
+): readonly McapTileType[] {
+  return (Object.keys(TILE_BY_TYPE) as McapTileType[]).filter((tileType) =>
+    TILE_BY_TYPE[tileType].sourceTypes.some((sourceType) =>
+      sourceTypes.includes(sourceType)
+    )
+  );
+}
+
 export interface UseMcapTilesOptions {
-  /** Unique tile types present in the current scene. */
+  /** Unique scene-source types present in the current scene. */
   presentTypes: readonly string[];
 }
 
 /**
- * Registers one tile per unique source type present. The "Add tile"
- * menu shows one item per kind (Camera, Lidar, …); the initial-tiles
- * map threads a `topic` prop into each instance's render closure.
+ * Registers one tile kind per renderable source type present. The "Add
+ * tile" menu shows one item per kind (Image, 3D, …); each new instance
+ * discovers its sources through the scene inventory.
  */
 export function useMcapTiles({ presentTypes }: UseMcapTilesOptions): void {
   const { registerTile } = useTileRegistry();
+  const tileTypes = useMemo(
+    () => mcapTileTypesFor(presentTypes),
+    [presentTypes]
+  );
 
   useEffect(() => {
-    const cleanups = presentTypes.flatMap((type) => {
-      if (!isKnownTileType(type)) return [];
+    const cleanups = tileTypes.map((type) => {
       const entry = TILE_BY_TYPE[type];
-      return [
-        registerTile({
-          type,
-          typeLabel: entry.typeLabel,
-          icon: entry.icon,
-          Tile: entry.Tile,
-        }),
-      ];
+      return registerTile({
+        type,
+        typeLabel: entry.typeLabel,
+        icon: entry.icon,
+        Tile: entry.Tile,
+      });
     });
     return () => cleanups.forEach((c) => c());
-  }, [presentTypes, registerTile]);
+  }, [tileTypes, registerTile]);
 }

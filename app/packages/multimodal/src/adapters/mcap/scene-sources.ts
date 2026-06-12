@@ -10,42 +10,44 @@ import { topicPrefix } from "./topic-matching";
 import type { McapStreamSyncPolicies, McapStreamSyncPolicy } from "./types";
 
 /**
- * Scene-source types the MCAP adapter derives from a topic inventory.
- * The values double as tile types ("camera" → camera tile) and as the
- * keys tile settings use with `useSceneSourcesByType`.
+ * Scene-source types the MCAP adapter derives from a topic inventory,
+ * named for the payload they carry — not for the sensor that produced
+ * it (a point cloud may come from lidar, radar, or a depth camera).
+ * These are the keys tile settings use with `useSceneSourcesByType`;
+ * the tile catalog maps them to the tile kinds that can render them.
  */
 export const MCAP_SOURCE_TYPE = {
-  CAMERA: "camera",
-  LIDAR: "lidar",
+  IMAGE: "image",
   IMAGE_ANNOTATION: "image-annotation",
+  POINT_CLOUD: "point-cloud",
 } as const;
 
 export type McapSourceType =
   typeof MCAP_SOURCE_TYPE[keyof typeof MCAP_SOURCE_TYPE];
 
-const CAMERA_SYNC_POLICY: McapStreamSyncPolicy = {
+const IMAGE_SYNC_POLICY: McapStreamSyncPolicy = {
   mode: PlaybackSyncMode.LATEST,
   toleranceBeforeNs: 120_000_000n,
 };
 
-// Annotation streams typically arrive far slower than the camera frames
-// they decorate (keyframe-rate annotations against full-rate video). A
-// camera-sized tolerance leaves most ticks unresolved; widen the lookback
+// Annotation streams typically arrive far slower than the image frames
+// they decorate (keyframe-rate annotations against full-rate video). An
+// image-sized tolerance leaves most ticks unresolved; widen the lookback
 // so every tick has a current annotation message available.
 const IMAGE_ANNOTATION_SYNC_POLICY: McapStreamSyncPolicy = {
   mode: PlaybackSyncMode.LATEST,
   toleranceBeforeNs: 1_500_000_000n,
 };
 
-const LIDAR_SYNC_POLICY: McapStreamSyncPolicy = {
+const POINT_CLOUD_SYNC_POLICY: McapStreamSyncPolicy = {
   mode: PlaybackSyncMode.LATEST,
   toleranceBeforeNs: 200_000_000n,
 };
 
 const SYNC_POLICY_BY_TYPE: Record<McapSourceType, McapStreamSyncPolicy> = {
-  [MCAP_SOURCE_TYPE.CAMERA]: CAMERA_SYNC_POLICY,
+  [MCAP_SOURCE_TYPE.IMAGE]: IMAGE_SYNC_POLICY,
   [MCAP_SOURCE_TYPE.IMAGE_ANNOTATION]: IMAGE_ANNOTATION_SYNC_POLICY,
-  [MCAP_SOURCE_TYPE.LIDAR]: LIDAR_SYNC_POLICY,
+  [MCAP_SOURCE_TYPE.POINT_CLOUD]: POINT_CLOUD_SYNC_POLICY,
 };
 
 /**
@@ -110,10 +112,10 @@ export function mcapStreamPolicies(
 
 function sourceTypeFor(topic: StreamInventory): McapSourceType | null {
   if (isCompressedImageStream(topic)) {
-    return MCAP_SOURCE_TYPE.CAMERA;
+    return MCAP_SOURCE_TYPE.IMAGE;
   }
   if (isPointCloudStream(topic)) {
-    return MCAP_SOURCE_TYPE.LIDAR;
+    return MCAP_SOURCE_TYPE.POINT_CLOUD;
   }
   if (isImageAnnotationsStream(topic)) {
     return MCAP_SOURCE_TYPE.IMAGE_ANNOTATION;
