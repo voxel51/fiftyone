@@ -95,12 +95,14 @@ class TestSAM3VideoConceptApplyModel(unittest.TestCase):
         """All concept-mode detections should have instance masks."""
         field = "sam3v_concept_masks"
         self.dataset.apply_model(self.model, label_field=field)
-
         for sample in self.dataset.iter_samples(progress=False):
             for frame_number, frame in sample.frames.items():
                 dets = frame.get_field(field)
-                if dets is None:
-                    continue
+                self.assertIsNotNone(
+                    dets,
+                    f"No detections on frame {frame_number} "
+                    f"of sample {sample.id}",
+                )
                 for det in dets.detections:
                     self.assertIsNotNone(
                         det.mask,

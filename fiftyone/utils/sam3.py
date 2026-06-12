@@ -651,9 +651,20 @@ class SegmentAnything3VideoModelConfig(
         self.operation_mode = self.parse_string(
             d, "operation_mode", default="concept"
         )
+        if self.operation_mode not in {"concept", "visual"}:
+            raise ValueError("operation_mode must be 'concept' or 'visual'")
+
         self.propagation_direction = self.parse_string(
             d, "propagation_direction", default="both"
         )
+        if self.propagation_direction not in {
+            "forward",
+            "backward",
+            "both",
+        }:
+            raise ValueError(
+                "propagation_direction must be 'forward', 'backward', or 'both'"
+            )
         self.prompt_frame_indices = self.parse_array(
             d, "prompt_frame_indices", default=None
         )
@@ -826,6 +837,8 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
                 )
 
             value = sample.frames[frame_number].get_field(frame_field_name)
+            if value is None:
+                continue
             frame_idx = int(frame_number - 1)
             if isinstance(value, fol.Detections):
                 frame_prompts = []
@@ -975,7 +988,7 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
 
             for frame_idx, prompt_list in self._curr_exemplar_prompts.items():
                 for prompt_dict in prompt_list:
-                    label = prompt_dict.get("_label", "object")
+                    label = prompt_dict.get("_label", None)
                     request = dict(
                         type="add_prompt",
                         session_id=session_id,
@@ -1171,6 +1184,41 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
 
     def _propagate_visual(self, inference_state, classes_obj_id_map):
         """Shared propagation for visual mode."""
+        direction = self.config.propagation_direction
+
+        if direction == "forward":
+            return self._run_visual_propagation(
+                inference_state,
+                classes_obj_id_map,
+                reverse=False,
+                propagate_preflight=True,
+            )
+        elif direction == "backward":
+            return self._run_visual_propagation(
+                inference_state,
+                classes_obj_id_map,
+                reverse=True,
+                propagate_preflight=True,
+            )
+        else:
+            forward = self._run_visual_propagation(
+                inference_state,
+                classes_obj_id_map,
+                reverse=False,
+                propagate_preflight=True,
+            )
+            backward = self._run_visual_propagation(
+                inference_state,
+                classes_obj_id_map,
+                reverse=True,
+                propagate_preflight=False,
+            )
+            return self._merge_propagation_results(forward, backward)
+
+    def _run_visual_propagation(
+        self, inference_state, classes_obj_id_map, reverse, propagate_preflight
+    ):
+        """Run a single-direction propagation pass and return frame detections."""
         sample_detections = {}
 
         for (
@@ -1183,8 +1231,8 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
             inference_state,
             start_frame_idx=None,
             max_frame_num_to_track=None,
-            reverse=False,
-            propagate_preflight=True,
+            reverse=reverse,
+            propagate_preflight=propagate_preflight,
         ):
             detections = []
 
@@ -1197,7 +1245,7 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
                 if box is None:
                     continue
 
-                label = classes_obj_id_map.get(out_obj_id, "object")
+                label = classes_obj_id_map.get(out_obj_id, None)
                 x1, y1, x2, y2 = box
 
                 bounding_box = [
@@ -1226,6 +1274,18 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
             )
 
         return sample_detections
+
+    def _merge_propagation_results(self, forward, backward):
+        """Merge forward and backward propagation results.
+
+        Forward-pass detections take precedence; backward fills frames that
+        are absent or empty in the forward pass.
+        """
+        merged = dict(forward)
+        for frame_num, dets in backward.items():
+            if frame_num not in merged or not merged[frame_num].detections:
+                merged[frame_num] = dets
+        return merged
 
 
 def load_fiftyone_video_frames_sam3(
