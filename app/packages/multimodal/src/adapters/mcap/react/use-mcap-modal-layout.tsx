@@ -7,7 +7,7 @@ import {
   readMcapModalLayout,
   writeMcapModalLayout,
 } from "./mcap-layout-persistence";
-import { getMcapTileDefinition } from "./use-mcap-tiles";
+import { getMcapTileDefinition, mcapTileTypesFor } from "./use-mcap-tiles";
 
 export interface McapModalLayout {
   initialTiles: Record<string, TilingTile>;
@@ -65,19 +65,19 @@ export function useMcapModalLayout(
 }
 
 /**
- * One auto-binding tile per source type present in the scene. Each tile
- * binds to the first source of its type, so any recording opens with
- * something visible for every kind of data it contains.
+ * One tile per tile kind that can render the scene's sources, so any
+ * recording opens with something visible for every kind of data it
+ * contains. Each tile discovers its sources through the inventory.
  */
 function buildDefaultTiles(
   presentTypes: readonly string[]
 ): Record<string, TilingTile> {
   const tiles: Record<string, TilingTile> = {};
-  for (const type of presentTypes) {
-    const definition = getMcapTileDefinition(type);
+  for (const tileType of mcapTileTypesFor(presentTypes)) {
+    const definition = getMcapTileDefinition(tileType);
     if (!definition) continue;
     const Tile = definition.Tile;
-    tiles[`${type}-default`] = {
+    tiles[`${tileType}-default`] = {
       title: definition.typeLabel,
       render: () => <Tile />,
     };
@@ -87,10 +87,10 @@ function buildDefaultTiles(
 
 /**
  * Rebuild the tile entries a persisted mosaic tree references. All-or-
- * nothing: if any leaf id doesn't map to a known tile type — or its type
- * has no source in the current scene — the whole restore is discarded,
- * so a layout saved against a differently-shaped recording can't render
- * dead tiles.
+ * nothing: if any leaf id doesn't map to a known tile type — or no
+ * source in the current scene can feed that tile kind — the whole
+ * restore is discarded, so a layout saved against a differently-shaped
+ * recording can't render dead tiles.
  */
 function rebuildTilesFromLayout(
   layout: MosaicNode<string> | null | undefined,
@@ -100,10 +100,11 @@ function rebuildTilesFromLayout(
   const tileIds = collectTileIds(layout);
   if (tileIds.length === 0) return null;
 
+  const availableTypes = new Set<string>(mcapTileTypesFor(presentTypes));
   const tiles: Record<string, TilingTile> = {};
   for (const id of tileIds) {
     const type = mcapTileTypeFromId(id);
-    if (!type || !presentTypes.includes(type)) return null;
+    if (!type || !availableTypes.has(type)) return null;
     const definition = getMcapTileDefinition(type);
     if (!definition) return null;
     const Tile = definition.Tile;

@@ -18,7 +18,7 @@ export interface McapPersistedModalLayout {
   version: 1;
   leftSidebarOpen?: boolean;
   rightSidebarOpen?: boolean;
-  /** Mosaic tree whose leaves are tile ids (e.g. `camera-default`). */
+  /** Mosaic tree whose leaves are tile ids (e.g. `image-default`). */
   layout?: MosaicNode<string> | null;
 }
 
@@ -103,7 +103,7 @@ export function writeMcapModalLayout(
 
 /**
  * Tile type encoded in a tile id. Ids are `${type}-${suffix}` (e.g.
- * `camera-default`, `lidar-3`), so the type is everything before the
+ * `image-default`, `3d-2`), so the type is everything before the
  * final dash. Returns `null` for ids without a suffix.
  */
 export function mcapTileTypeFromId(tileId: string): string | null {
