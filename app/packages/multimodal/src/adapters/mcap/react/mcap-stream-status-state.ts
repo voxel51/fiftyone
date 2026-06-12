@@ -1,6 +1,7 @@
 import { usePlaybackStore, type PlaybackStore } from "@fiftyone/playback";
 import { atom, useAtomValue, type PrimitiveAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
+import { useMemo } from "react";
 
 /**
  * Per-topic playback readiness at the current playhead tick:
@@ -32,12 +33,21 @@ const mcapTopicStatusAtom = atomFamily(
 );
 
 /**
- * Reactive per-topic playback status for tile chrome (badges, empty
- * states). Resolves against the surrounding PlaybackProvider's store.
+ * Reactive statuses for the given topics, index-aligned with `topics`.
+ * Tile chrome (badges, empty states) reads these to summarize the
+ * streams behind a tile. Resolves against the surrounding
+ * PlaybackProvider's store. Pass a referentially stable array — a new
+ * identity re-derives the combined atom.
  */
-export function useMcapTopicStatus(topic: string): McapTopicStatus {
+export function useMcapTopicStatuses(
+  topics: readonly string[]
+): readonly McapTopicStatus[] {
   const store = usePlaybackStore();
-  return useAtomValue(mcapTopicStatusAtom(topic), { store });
+  const statusesAtom = useMemo(
+    () => atom((get) => topics.map((topic) => get(mcapTopicStatusAtom(topic)))),
+    [topics]
+  );
+  return useAtomValue(statusesAtom, { store });
 }
 
 /** Non-reactive read for the data stream and tests. */
