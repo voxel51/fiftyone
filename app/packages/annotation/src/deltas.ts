@@ -173,9 +173,11 @@ const isUnchanged = (previous: unknown, next: unknown): boolean => {
  * expressed (no schema / unknown type). Identifiers other than the field path
  * (collection, document id) are added by the persistence layer.
  *
- * In a generated (patches) view the modal sample is flat — a single label at
- * ``label.path`` — but the source it must also update is a list, so when
- * ``isGenerated`` we address the source list by the label's type and id.
+ * In a generated (patches) view the source it must also update is a list, so
+ * when ``isGenerated`` the source list key is derived from the label's type.
+ * The modal sample itself may store the label flat (``to_patches``) or as a
+ * list element (evaluation patches); the previous value is read from whichever
+ * shape is actually present.
  *
  * @param sample Sample containing the original (pre-edit) label data
  * @param label Current label state
@@ -217,21 +219,23 @@ export const buildLabelFieldChange = (
     ? listKeyForType(label.type)
     : listKeyFor(label, schema);
 
-  // Label inside a list field (e.g. ground_truth.detections). In a generated
-  // view the modal sample stores the label flat at `label.path`.
+  // Label inside a list field (e.g. ground_truth.detections). The modal sample
+  // stores it either as a list element (normal view, evaluation patches) or
+  // flattened to a single label (to_patches / to_clips) — read the previous
+  // value from whichever shape is present.
   if (listKey) {
-    let previousValue: unknown;
-    if (isGenerated) {
-      previousValue = extractNestedField(sample, label.path) ?? null;
-    } else {
-      const container = extractNestedField(sample, label.path) as
-        | Record<string, unknown>
-        | undefined;
-      const list =
-        (container?.[listKey] as Array<Record<string, unknown>>) ?? [];
-      previousValue =
-        list.find((e) => (e as { _id?: string })._id === labelId) ?? null;
-    }
+    const fieldValue = extractNestedField(sample, label.path);
+    const list =
+      isObject(fieldValue) &&
+      Array.isArray((fieldValue as Record<string, unknown>)[listKey])
+        ? ((fieldValue as Record<string, unknown>)[listKey] as Array<
+            Record<string, unknown>
+          >)
+        : null;
+
+    const previousValue = list
+      ? list.find((e) => (e as { _id?: string })._id === labelId) ?? null
+      : fieldValue ?? null;
 
     const newValue = isDelete
       ? null

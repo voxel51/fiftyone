@@ -191,4 +191,23 @@ describe("buildLabelFieldChange", () => {
     expect(change?.labelId).toBe("det-1");
     expect((change?.newValue as { label: string }).label).toBe("dog");
   });
+
+  it("reads the element by id for a generated array (evaluation patches)", () => {
+    // Eval patches keep the field as a Detections array (unlike to_patches'
+    // flat label), so the previous value is the matching element — not the
+    // whole container.
+    const change = buildLabelFieldChange(
+      makeSample(),
+      detectionLabel({ _id: "det-1", label: "dog" }),
+      detectionsSchema,
+      "mutate",
+      true
+    );
+
+    expect(change?.field).toBe("ground_truth");
+    expect(change?.listKey).toBe("detections");
+    expect(change?.labelId).toBe("det-1");
+    expect((change?.previousValue as { label: string }).label).toBe("cat");
+    expect((change?.newValue as { label: string }).label).toBe("dog");
+  });
 });

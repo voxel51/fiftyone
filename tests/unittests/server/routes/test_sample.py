@@ -28,6 +28,18 @@ def json_payload(payload) -> bytes:
     return json_util.dumps(payload).encode("utf-8")
 
 
+def make_request(dataset_id, sample_id, updates):
+    """Builds a mock ``SampleFields`` PATCH request for ``updates``."""
+    mock_request = MagicMock(spec=Request)
+    mock_request.path_params = {
+        "dataset_id": dataset_id,
+        "sample_id": sample_id,
+    }
+    mock_request.headers = {"Content-Type": "application/json"}
+    mock_request.body = AsyncMock(return_value=json_payload(updates))
+    return mock_request
+
+
 @pytest.fixture(name="dataset")
 def fixture_dataset():
     """Creates a persistent dataset for testing."""
@@ -203,6 +215,29 @@ class TestSampleFields:
         assert det.label == "dog"
         # sibling field untouched
         assert det.bounding_box == [0.1, 0.1, 0.2, 0.2]
+
+    @pytest.mark.asyncio
+    async def test_update_bumps_last_modified_at(
+        self, mutator, dataset_id, collection, sample
+    ):
+        before = sample.last_modified_at
+        updates = [
+            {
+                "collection": collection,
+                "id": str(sample.id),
+                "lookupPath": "primitive_field",
+                "previousValue": "initial_value",
+                "newValue": "bumped",
+            }
+        ]
+        response = await mutator.patch(
+            self._request(dataset_id, str(sample.id), updates)
+        )
+
+        assert response.status_code == 200
+        sample.reload()
+        # every gated write stamps the sample's last_modified_at
+        assert sample.last_modified_at > before
 
     @pytest.mark.asyncio
     async def test_update_primitive_field(
@@ -491,6 +526,193 @@ class TestSampleFieldsPatchesBatch:
         # patches sample updated (flat label)
         updated_patch = patches_dataset[str(patch_sample.id)]
         assert updated_patch.ground_truth.label == "dog"
+
+    @pytest.mark.asyncio
+    async def test_delete_label_removes_source_and_drops_patch(
+        self, mutator, dataset, dataset_id, sample
+    ):
+        """Deleting a patch pulls it from the source list AND deletes the
+        patches sample — both collections, one request."""
+        patches_view = dataset.to_patches("ground_truth")
+        patches_dataset = patches_view._patches_dataset
+        patch_sample = patches_view.first()
+        assert len(patches_dataset) == 1
+
+        # pylint: disable-next=protected-access
+        source_collection = dataset._sample_collection_name
+        old = {
+            "_cls": "Detection",
+            "_id": self.DET_ID,
+            "label": "cat",
+            "bounding_box": [0.1, 0.1, 0.2, 0.2],
+        }
+
+        updates = [
+            {
+                "collection": source_collection,
+                "id": str(sample.id),
+                "lookupPath": "ground_truth.detections",
+                "labelId": str(self.DET_ID),
+                "previousValue": old,
+                "newValue": None,
+            },
+            {
+                "datasetName": patches_dataset.name,
+                "id": str(patch_sample.id),
+                "op": "deleteDocument",
+            },
+        ]
+
+        response = await mutator.patch(
+            make_request(dataset_id, str(sample.id), updates)
+        )
+        assert response.status_code == 200
+
+        # source label pulled from the list
+        sample.reload()
+        assert len(sample.ground_truth.detections) == 0
+
+        # patches sample deleted
+        assert len(patches_dataset) == 0
+
+    @pytest.mark.asyncio
+    async def test_patches_conflict_returns_current_field(
+        self, mutator, dataset, dataset_id, sample
+    ):
+        """A stale precondition against the patches collection returns 409 with
+        the patch field's current value."""
+        patches_view = dataset.to_patches("ground_truth")
+        patches_dataset = patches_view._patches_dataset
+        patch_sample = patches_view.first()
+
+        # Someone else edits the patch's (flat) label first.
+        other = patches_dataset[str(patch_sample.id)]
+        other.ground_truth.label = "changed_by_other"
+        other.save()
+
+        old = {"_cls": "Detection", "_id": self.DET_ID, "label": "cat"}
+        new = {**old, "label": "dog"}
+        updates = [
+            {
+                "datasetName": patches_dataset.name,
+                "id": str(patch_sample.id),
+                "lookupPath": "ground_truth",
+                "previousValue": old,
+                "newValue": new,
+            }
+        ]
+
+        response = await mutator.patch(
+            make_request(dataset_id, str(sample.id), updates)
+        )
+        assert response.status_code == 409
+        conflict = json.loads(response.body)["conflicts"][0]
+        assert conflict["index"] == 0
+        # the touched field's current value (flat label) comes back
+        assert conflict["value"]["label"] == "changed_by_other"
+
+
+class TestSampleFieldsEvaluationPatches:
+    """Evaluation patches materialize ``ground_truth`` as an ARRAY (not the
+    flat label that ``to_patches`` produces), so the patches-collection update
+    must address it as a list element — exactly like the source. This guards
+    that distinction, which the flat-label patches path would silently break.
+    """
+
+    GT_ID = ObjectId()
+    PRED_ID = ObjectId()
+
+    @pytest.fixture(name="sample")
+    def fixture_sample(self, dataset):
+        sample = fo.Sample(filepath="/tmp/test_eval_patch.jpg")
+        sample["ground_truth"] = fol.Detections(
+            detections=[
+                fol.Detection(
+                    id=self.GT_ID,
+                    label="cat",
+                    bounding_box=[0.1, 0.1, 0.3, 0.3],
+                )
+            ]
+        )
+        sample["predictions"] = fol.Detections(
+            detections=[
+                fol.Detection(
+                    id=self.PRED_ID,
+                    label="cat",
+                    bounding_box=[0.1, 0.1, 0.3, 0.3],
+                    confidence=0.9,
+                )
+            ]
+        )
+        dataset.add_sample(sample)
+        sample.reload()
+        return sample
+
+    @pytest.fixture(name="eval_patches")
+    def fixture_eval_patches(self, dataset, sample):
+        dataset.evaluate_detections(
+            "predictions", gt_field="ground_truth", eval_key="eval"
+        )
+        return dataset.to_evaluation_patches("eval")
+
+    @pytest.fixture(name="mutator")
+    def fixture_mutator(self):
+        return fors.SampleFields(
+            scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
+        )
+
+    @pytest.mark.asyncio
+    async def test_update_gt_label_syncs_to_eval_patches(
+        self, mutator, dataset, dataset_id, sample, eval_patches
+    ):
+        # pylint: disable-next=protected-access
+        patches_dataset = eval_patches._patches_dataset
+        tp_patch_id = str(eval_patches.match({"type": "tp"}).first().id)
+
+        # pylint: disable-next=protected-access
+        source_collection = dataset._sample_collection_name
+        old = {
+            "_cls": "Detection",
+            "_id": self.GT_ID,
+            "label": "cat",
+            "bounding_box": [0.1, 0.1, 0.3, 0.3],
+        }
+        new = {**old, "label": "dog"}
+
+        updates = [
+            {
+                "collection": source_collection,
+                "id": str(sample.id),
+                "lookupPath": "ground_truth.detections",
+                "labelId": str(self.GT_ID),
+                "previousValue": old,
+                "newValue": new,
+            },
+            {
+                # eval patches store ground_truth as an array — address the
+                # element, not a flat label
+                "datasetName": patches_dataset.name,
+                "id": tp_patch_id,
+                "lookupPath": "ground_truth.detections",
+                "labelId": str(self.GT_ID),
+                "previousValue": old,
+                "newValue": new,
+            },
+        ]
+
+        response = await mutator.patch(
+            make_request(dataset_id, str(sample.id), updates)
+        )
+        assert response.status_code == 200
+
+        # source ground truth updated
+        sample.reload()
+        assert sample.ground_truth.detections[0].label == "dog"
+
+        # eval-patch ground truth (array) updated; predictions untouched
+        updated = patches_dataset[tp_patch_id]
+        assert updated.ground_truth.detections[0].label == "dog"
+        assert updated.predictions.detections[0].label == "cat"
 
 
 # ---------------------------------------------------------------------------

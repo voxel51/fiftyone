@@ -5,7 +5,7 @@ import {
   transformSampleData,
 } from "@fiftyone/core/src/client";
 import type { Sample } from "@fiftyone/looker";
-import type { Field } from "@fiftyone/utilities";
+import { type Field, isObject } from "@fiftyone/utilities";
 import {
   buildLabelFieldChange,
   type LabelFieldChange,
@@ -62,8 +62,27 @@ export const buildUpdatesForChange = (
     ._sample_id;
   const updates: AnnotationFieldUpdate[] = [];
 
-  // The patches sample IS the (flat) label. Deleting the label deletes it.
-  if (change.newValue === null) {
+  // The patches sample stores this label either flattened (to_patches: the
+  // sample IS the label) or as a list element (evaluation patches, where the
+  // patch also holds e.g. predictions) — address it to match its own shape.
+  const patchField = (ctx.sample as Record<string, unknown>)[change.field];
+  const patchIsList =
+    !!change.listKey &&
+    isObject(patchField) &&
+    Array.isArray((patchField as Record<string, unknown>)[change.listKey]);
+
+  if (patchIsList) {
+    // Add/modify/remove just this element of the patch sample's list.
+    updates.push({
+      datasetName: ctx.generatedDatasetName,
+      id: ctx.sample._id,
+      lookupPath: sourceLookupPath,
+      labelId: change.labelId,
+      previousValue: change.previousValue,
+      newValue: change.newValue,
+    });
+  } else if (change.newValue === null) {
+    // The flat patch sample IS the label — deleting it deletes the document.
     updates.push({
       datasetName: ctx.generatedDatasetName,
       id: ctx.sample._id,
@@ -102,11 +121,17 @@ export const buildUpdatesForChange = (
  */
 const applyChangeToSample = (
   sample: Record<string, unknown>,
-  change: LabelFieldChange,
-  isGenerated: boolean
+  change: LabelFieldChange
 ): void => {
-  // Generated (patches) modal samples store the label flat at `field`.
-  if (isGenerated || !change.listKey) {
+  const fieldValue = sample[change.field];
+  const isList =
+    !!change.listKey &&
+    isObject(fieldValue) &&
+    Array.isArray((fieldValue as Record<string, unknown>)[change.listKey]);
+
+  // Flat label (to_patches) or a flat/primitive field: replace or delete it
+  // wholesale.
+  if (!isList) {
     if (change.newValue === null) {
       delete sample[change.field];
     } else {
@@ -115,7 +140,8 @@ const applyChangeToSample = (
     return;
   }
 
-  // Normal list field: replace/add/remove the element by id.
+  // List field (normal view or evaluation patches): replace/add/remove the
+  // element by id.
   const container = {
     ...((sample[change.field] as Record<string, unknown>) ?? {}),
   };
@@ -197,7 +223,7 @@ export const saveAnnotationChanges = async (
     // and the grid tile in place — it does NOT refresh the grid.
     const next = { ...(ctx.sample as unknown as Record<string, unknown>) };
     for (const change of changes) {
-      applyChangeToSample(next, change, ctx.isGenerated ?? false);
+      applyChangeToSample(next, change);
     }
     ctx.updateSample(next as unknown as Sample);
 

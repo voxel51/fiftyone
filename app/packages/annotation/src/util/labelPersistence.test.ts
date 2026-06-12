@@ -95,10 +95,11 @@ describe("buildUpdatesForChange", () => {
     expect(updates[0].labelId).toBeNull();
   });
 
-  it("deletes the patches document on a generated delete", () => {
+  it("deletes the patches document on a flat (to_patches) generated delete", () => {
     const del: LabelFieldChange = { ...change, newValue: null };
     const updates = buildUpdatesForChange(del, {
       datasetId: "ds1",
+      // no array field on the patch sample → flat (to_patches)
       sample: { _id: "patch1", _sample_id: "src1" } as unknown as Sample,
       updateSample: vi.fn(),
       isGenerated: true,
@@ -114,6 +115,63 @@ describe("buildUpdatesForChange", () => {
       id: "src1",
       newValue: null,
     });
+  });
+
+  it("addresses an evaluation-patches sample as a list element", () => {
+    // The patch sample stores ground_truth as an array (it also holds e.g.
+    // predictions), so the patches update must target the element, not a flat
+    // label.
+    const evalSample = {
+      _id: "patch1",
+      _sample_id: "src1",
+      ground_truth: { detections: [{ _id: "det-1", label: "cat" }] },
+    } as unknown as Sample;
+
+    const updates = buildUpdatesForChange(change, {
+      datasetId: "ds1",
+      sample: evalSample,
+      updateSample: vi.fn(),
+      isGenerated: true,
+      generatedDatasetName: "pds",
+    });
+    expect(updates).toHaveLength(2);
+    expect(updates[0]).toMatchObject({
+      datasetName: "pds",
+      id: "patch1",
+      lookupPath: "ground_truth.detections",
+      labelId: "det-1",
+    });
+    expect(updates[1]).toMatchObject({
+      collection: "samples.ds1",
+      id: "src1",
+      lookupPath: "ground_truth.detections",
+      labelId: "det-1",
+    });
+  });
+
+  it("removes the element (not the document) on an eval-patches delete", () => {
+    const evalSample = {
+      _id: "patch1",
+      _sample_id: "src1",
+      ground_truth: { detections: [{ _id: "det-1", label: "cat" }] },
+    } as unknown as Sample;
+    const del: LabelFieldChange = { ...change, newValue: null };
+
+    const updates = buildUpdatesForChange(del, {
+      datasetId: "ds1",
+      sample: evalSample,
+      updateSample: vi.fn(),
+      isGenerated: true,
+      generatedDatasetName: "pds",
+    });
+    expect(updates[0]).toMatchObject({
+      datasetName: "pds",
+      id: "patch1",
+      lookupPath: "ground_truth.detections",
+      labelId: "det-1",
+      newValue: null,
+    });
+    expect(updates[0].op).toBeUndefined();
   });
 });
 

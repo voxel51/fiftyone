@@ -57,7 +57,10 @@ logger = logging.getLogger(__name__)
 
 
 def _now() -> datetime.datetime:
-    return datetime.datetime.now(datetime.timezone.utc)
+    # Naive UTC, matching how fiftyone stamps ``last_modified_at`` everywhere
+    # (``datetime.utcnow``). A tz-aware value would read back inconsistently and
+    # break naive/aware datetime comparisons in code that reads the field.
+    return datetime.datetime.utcnow()
 
 
 def _object_id(value: Any) -> ObjectId:
