@@ -311,6 +311,33 @@ describe("lighter bridge", () => {
       ignoreSideEffects: true,
     });
   });
+
+  it("declines 3D-shaped data (shared _cls, not 2D-renderable)", () => {
+    const { engine } = makeEngine("sample-1", {
+      ground_truth: {
+        detections: [
+          { ...makeDet("d2d", "cat"), bounding_box: [0.1, 0.2, 0.3, 0.4] },
+          {
+            ...makeDet("d3d", "car"),
+            location: [0, 0, 0],
+            dimensions: [1, 1, 1],
+          },
+        ],
+      },
+    });
+    const { scene, overlays, overlayFactory } = makeScene();
+    const bridge = createLighterBridge({
+      scene,
+      overlayFactory,
+      sample: "sample-1",
+      readLabel: (r) => engine.getLabel({ sample: "sample-1", ...r }),
+    });
+
+    engine.registerBridge(bridge, lighterAdapters);
+
+    expect(overlays.has("d2d")).toBe(true);
+    expect(overlays.has("d3d")).toBe(false);
+  });
 });
 
 describe("lighter bridge gated mounts (deferred mask_path decode)", () => {
