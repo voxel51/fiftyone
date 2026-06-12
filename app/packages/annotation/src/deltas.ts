@@ -80,7 +80,7 @@ export const buildAnnotationPath = (
 };
 
 /**
- * A single label/field change to persist: the value the editor started from
+ * A single label/field delta to persist: the value the editor started from
  * (``previousValue``) and the value to write (``newValue``), plus enough
  * addressing for the persistence layer to target the right collection(s).
  *
@@ -90,7 +90,7 @@ export const buildAnnotationPath = (
  * The backend diffs ``previousValue`` vs ``newValue`` and writes only the
  * fields that changed, gated on their previous values.
  */
-export type LabelFieldChange = {
+export type LabelFieldDelta = {
   /** Top-level field the label/value lives in, e.g. ``ground_truth``. */
   field: string;
   /** List key (``detections`` …) for a list label; ``null`` otherwise. */
@@ -169,7 +169,7 @@ const isUnchanged = (previous: unknown, next: unknown): boolean => {
 };
 
 /**
- * Build the {@link LabelFieldChange} for a label edit, or `null` if it can't be
+ * Build the {@link LabelFieldDelta} for a label edit, or `null` if it can't be
  * expressed (no schema / unknown type). Identifiers other than the field path
  * (collection, document id) are added by the persistence layer.
  *
@@ -185,13 +185,13 @@ const isUnchanged = (previous: unknown, next: unknown): boolean => {
  * @param opType Operation type ("mutate" or "delete")
  * @param isGenerated Whether this is a generated (patches) view
  */
-export const buildLabelFieldChange = (
+export const buildLabelFieldDelta = (
   sample: Sample,
   label: LabelProxy,
   schema: Field,
   opType: OpType,
   isGenerated = false
-): LabelFieldChange | null => {
+): LabelFieldDelta | null => {
   const isDelete = opType === "delete";
 
   // `null` when the edit is a no-op (nothing actually changed / nothing to

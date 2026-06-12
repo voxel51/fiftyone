@@ -10,13 +10,13 @@ import {
 import type { Sample } from "@fiftyone/looker";
 import { useAnnotationDeltaSupplier } from "./useAnnotationDeltaSupplier";
 import { useAnnotationEventBus } from "../hooks";
-import { saveAnnotationChanges } from "../util";
+import { saveAnnotationDeltas } from "../util";
 
 type PersistenceResult = boolean | null;
 
 /**
- * Returns a callback that flushes captured annotation changes (original value
- * + updated value per change) to the server; resolves to `null` if there was
+ * Returns a callback that flushes captured annotation deltas (original +
+ * updated value per edit) to the server; resolves to `null` if there was
  * nothing to persist.
  */
 export const usePersistAnnotationDeltas =
@@ -42,7 +42,7 @@ export const usePersistAnnotationDeltas =
 
       eventBus.dispatch("annotation:persistenceInFlight");
 
-      return saveAnnotationChanges(deltas, {
+      return saveAnnotationDeltas(deltas, {
         datasetId,
         sample,
         // In-place tile/modal update (no grid refresh).

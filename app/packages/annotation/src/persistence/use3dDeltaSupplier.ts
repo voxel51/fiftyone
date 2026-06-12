@@ -10,13 +10,13 @@ import {
 import { isDetection, isPolyline } from "@fiftyone/looker-3d/src/types";
 import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
 import { useCallback } from "react";
-import type { LabelFieldChange, LabelProxy } from "../deltas";
+import type { LabelFieldDelta, LabelProxy } from "../deltas";
 import type { DeltaSupplier } from "./deltaSupplier";
 import { useGetLabelDelta } from "./useGetLabelDelta";
 
 /**
  * Attributes used for internal annotation functionality that must not be
- * persisted; they are stripped before capturing a change.
+ * persisted; they are stripped before capturing a delta.
  */
 const reservedAttributes = [
   "color",
@@ -77,9 +77,9 @@ export const use3dDeltaSupplier = (): DeltaSupplier => {
       return { deltas: [] };
     }
 
-    const deltas: LabelFieldChange[] = [];
-    const push = (change: LabelFieldChange | null) => {
-      if (change) deltas.push(change);
+    const deltas: LabelFieldDelta[] = [];
+    const push = (delta: LabelFieldDelta | null) => {
+      if (delta) deltas.push(delta);
     };
 
     detections.forEach((d) => push(getLabelDelta(d, d.path)));

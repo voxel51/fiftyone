@@ -20,14 +20,14 @@ import {
   SaveConflictError,
 } from "@fiftyone/core/src/client";
 import {
-  buildUpdatesForChange,
-  saveAnnotationChanges,
+  buildUpdatesForDelta,
+  saveAnnotationDeltas,
   handleLabelPersistence,
 } from "./labelPersistence";
-import type { LabelFieldChange } from "../deltas";
+import type { LabelFieldDelta } from "../deltas";
 import type { Sample } from "@fiftyone/looker";
 
-const change: LabelFieldChange = {
+const delta: LabelFieldDelta = {
   field: "ground_truth",
   listKey: "detections",
   labelId: "det-1",
@@ -35,9 +35,9 @@ const change: LabelFieldChange = {
   newValue: { _id: "det-1", label: "dog" },
 };
 
-describe("buildUpdatesForChange", () => {
+describe("buildUpdatesForDelta", () => {
   it("builds a single source update for a normal view", () => {
-    const updates = buildUpdatesForChange(change, {
+    const updates = buildUpdatesForDelta(delta, {
       datasetId: "ds1",
       sample: { _id: "s1" } as Sample,
       updateSample: vi.fn(),
@@ -49,14 +49,14 @@ describe("buildUpdatesForChange", () => {
         id: "s1",
         lookupPath: "ground_truth.detections",
         labelId: "det-1",
-        previousValue: change.previousValue,
-        newValue: change.newValue,
+        previousValue: delta.previousValue,
+        newValue: delta.newValue,
       },
     ]);
   });
 
   it("builds patches + source updates for a generated view", () => {
-    const updates = buildUpdatesForChange(change, {
+    const updates = buildUpdatesForDelta(delta, {
       datasetId: "ds1",
       sample: { _id: "patch1", _sample_id: "src1" } as unknown as Sample,
       updateSample: vi.fn(),
@@ -79,14 +79,14 @@ describe("buildUpdatesForChange", () => {
   });
 
   it("uses the field path directly for a primitive change", () => {
-    const prim: LabelFieldChange = {
+    const prim: LabelFieldDelta = {
       field: "tags",
       listKey: null,
       labelId: null,
       previousValue: [],
       newValue: ["a"],
     };
-    const updates = buildUpdatesForChange(prim, {
+    const updates = buildUpdatesForDelta(prim, {
       datasetId: "ds1",
       sample: { _id: "s1" } as Sample,
       updateSample: vi.fn(),
@@ -96,8 +96,8 @@ describe("buildUpdatesForChange", () => {
   });
 
   it("deletes the patches document on a flat (to_patches) generated delete", () => {
-    const del: LabelFieldChange = { ...change, newValue: null };
-    const updates = buildUpdatesForChange(del, {
+    const del: LabelFieldDelta = { ...delta, newValue: null };
+    const updates = buildUpdatesForDelta(del, {
       datasetId: "ds1",
       // no array field on the patch sample → flat (to_patches)
       sample: { _id: "patch1", _sample_id: "src1" } as unknown as Sample,
@@ -127,7 +127,7 @@ describe("buildUpdatesForChange", () => {
       ground_truth: { detections: [{ _id: "det-1", label: "cat" }] },
     } as unknown as Sample;
 
-    const updates = buildUpdatesForChange(change, {
+    const updates = buildUpdatesForDelta(delta, {
       datasetId: "ds1",
       sample: evalSample,
       updateSample: vi.fn(),
@@ -155,9 +155,9 @@ describe("buildUpdatesForChange", () => {
       _sample_id: "src1",
       ground_truth: { detections: [{ _id: "det-1", label: "cat" }] },
     } as unknown as Sample;
-    const del: LabelFieldChange = { ...change, newValue: null };
+    const del: LabelFieldDelta = { ...delta, newValue: null };
 
-    const updates = buildUpdatesForChange(del, {
+    const updates = buildUpdatesForDelta(del, {
       datasetId: "ds1",
       sample: evalSample,
       updateSample: vi.fn(),
@@ -177,7 +177,7 @@ describe("buildUpdatesForChange", () => {
   it("throws (rather than half-saving) when a generated id is missing", () => {
     // Missing generated dataset name → would send datasetName: undefined.
     expect(() =>
-      buildUpdatesForChange(change, {
+      buildUpdatesForDelta(delta, {
         datasetId: "ds1",
         sample: { _id: "patch1", _sample_id: "src1" } as unknown as Sample,
         updateSample: vi.fn(),
@@ -188,7 +188,7 @@ describe("buildUpdatesForChange", () => {
 
     // Missing source sample id → would silently skip the source write.
     expect(() =>
-      buildUpdatesForChange(change, {
+      buildUpdatesForDelta(delta, {
         datasetId: "ds1",
         sample: { _id: "patch1" } as unknown as Sample,
         updateSample: vi.fn(),
@@ -199,7 +199,7 @@ describe("buildUpdatesForChange", () => {
   });
 });
 
-describe("saveAnnotationChanges", () => {
+describe("saveAnnotationDeltas", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("sends updates and syncs the local baseline (in place) on success", async () => {
@@ -210,7 +210,7 @@ describe("saveAnnotationChanges", () => {
       ground_truth: { detections: [{ _id: "det-1", label: "cat" }] },
     } as unknown as Sample;
 
-    const ok = await saveAnnotationChanges([change], {
+    const ok = await saveAnnotationDeltas([delta], {
       datasetId: "ds1",
       sample,
       updateSample,
@@ -233,7 +233,7 @@ describe("saveAnnotationChanges", () => {
         ground_truth: { detections: [{ _id: "det-1", label: "cat" }] },
       },
     } as unknown as Sample;
-    const nested: LabelFieldChange = {
+    const nested: LabelFieldDelta = {
       field: "dynamic.ground_truth",
       listKey: "detections",
       labelId: "det-1",
@@ -241,7 +241,7 @@ describe("saveAnnotationChanges", () => {
       newValue: { _id: "det-1", label: "dog" },
     };
 
-    const ok = await saveAnnotationChanges([nested], {
+    const ok = await saveAnnotationDeltas([nested], {
       datasetId: "ds1",
       sample,
       updateSample,
@@ -257,7 +257,7 @@ describe("saveAnnotationChanges", () => {
 
   it("skips the request and does not refresh when there are no changes", async () => {
     const updateSample = vi.fn();
-    const ok = await saveAnnotationChanges([], {
+    const ok = await saveAnnotationDeltas([], {
       datasetId: "ds1",
       sample: { _id: "s1" } as Sample,
       updateSample,
@@ -288,7 +288,7 @@ describe("saveAnnotationChanges", () => {
     } as unknown as Sample;
 
     await expect(
-      saveAnnotationChanges([change], {
+      saveAnnotationDeltas([delta], {
         datasetId: "ds1",
         sample,
         updateSample,
@@ -306,7 +306,7 @@ describe("saveAnnotationChanges", () => {
     vi.mocked(saveAnnotationFieldUpdates).mockRejectedValue(
       new Error("network")
     );
-    const ok = await saveAnnotationChanges([change], {
+    const ok = await saveAnnotationDeltas([delta], {
       datasetId: "ds1",
       sample: { _id: "s1" } as Sample,
       updateSample: vi.fn(),

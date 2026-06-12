@@ -8,14 +8,14 @@ import { extractNestedField } from "@fiftyone/core/src/utils/json";
 import type { Sample } from "@fiftyone/looker";
 import { type Field, isObject } from "@fiftyone/utilities";
 import {
-  buildLabelFieldChange,
-  type LabelFieldChange,
+  buildLabelFieldDelta,
+  type LabelFieldDelta,
   type LabelProxy,
 } from "../deltas";
 import type { OpType } from "../types";
 
 /**
- * Everything needed to address a change against the right collection(s).
+ * Everything needed to address a delta against the right collection(s).
  */
 export type SaveContext = {
   /** Source dataset `_id` → `samples.<datasetId>`. */
@@ -34,17 +34,16 @@ export type SaveContext = {
 };
 
 /**
- * Turn one captured change (what it was + what it is now) into the gated
- * update(s) to send. A normal edit is one update; a patches edit is two — the
- * patches sample (flat) and the source label (in its list).
+ * Turn one captured delta into the gated update(s) to send: one for a normal
+ * edit, two for a patches edit (the patches sample + the source label).
  */
-export const buildUpdatesForChange = (
-  change: LabelFieldChange,
+export const buildUpdatesForDelta = (
+  delta: LabelFieldDelta,
   ctx: SaveContext
 ): AnnotationFieldUpdate[] => {
-  const sourceLookupPath = change.listKey
-    ? `${change.field}.${change.listKey}`
-    : change.field;
+  const sourceLookupPath = delta.listKey
+    ? `${delta.field}.${delta.listKey}`
+    : delta.field;
 
   if (!ctx.isGenerated) {
     return [
@@ -52,17 +51,15 @@ export const buildUpdatesForChange = (
         collection: `samples.${ctx.datasetId}`,
         id: ctx.sample._id,
         lookupPath: sourceLookupPath,
-        labelId: change.labelId,
-        previousValue: change.previousValue,
-        newValue: change.newValue,
+        labelId: delta.labelId,
+        previousValue: delta.previousValue,
+        newValue: delta.newValue,
       },
     ];
   }
 
-  // A generated save must address two documents — the patches sample and its
-  // source label. Both identifiers are required; without them we'd send a
-  // malformed request (datasetName: undefined) or silently skip the source
-  // write, leaving it out of sync. Fail loudly instead.
+  // A generated save needs both ids; without them we'd send a malformed request
+  // or silently skip the source write. Fail loudly instead.
   const sourceSampleId = (ctx.sample as Sample & { _sample_id?: string })
     ._sample_id;
   if (!ctx.generatedDatasetName || !sourceSampleId) {
@@ -74,31 +71,29 @@ export const buildUpdatesForChange = (
 
   const updates: AnnotationFieldUpdate[] = [];
 
-  // The patches sample stores this label either flattened (to_patches: the
-  // sample IS the label) or as a list element (evaluation patches, where the
-  // patch also holds e.g. predictions) — address it to match its own shape.
-  // `change.field` may be a nested (dotted) path, so resolve it accordingly.
+  // The patches sample stores the label flat (to_patches) or as a list element
+  // (evaluation patches) — address it to match its own shape. `field` may be a
+  // nested (dotted) path.
   const patchField = extractNestedField<Record<string, unknown>>(
     ctx.sample as unknown as Record<string, unknown>,
-    change.field
+    delta.field
   );
   const patchIsList =
-    !!change.listKey &&
+    !!delta.listKey &&
     isObject(patchField) &&
-    Array.isArray((patchField as Record<string, unknown>)[change.listKey]);
+    Array.isArray((patchField as Record<string, unknown>)[delta.listKey]);
 
   if (patchIsList) {
-    // Add/modify/remove just this element of the patch sample's list.
     updates.push({
       datasetName: ctx.generatedDatasetName,
       id: ctx.sample._id,
       lookupPath: sourceLookupPath,
-      labelId: change.labelId,
-      previousValue: change.previousValue,
-      newValue: change.newValue,
+      labelId: delta.labelId,
+      previousValue: delta.previousValue,
+      newValue: delta.newValue,
     });
-  } else if (change.newValue === null) {
-    // The flat patch sample IS the label — deleting it deletes the document.
+  } else if (delta.newValue === null) {
+    // A flat patch sample IS the label — deleting it deletes the document.
     updates.push({
       datasetName: ctx.generatedDatasetName,
       id: ctx.sample._id,
@@ -108,22 +103,21 @@ export const buildUpdatesForChange = (
     updates.push({
       datasetName: ctx.generatedDatasetName,
       id: ctx.sample._id,
-      lookupPath: change.field,
+      lookupPath: delta.field,
       labelId: null,
-      previousValue: change.previousValue,
-      newValue: change.newValue,
+      previousValue: delta.previousValue,
+      newValue: delta.newValue,
     });
   }
 
-  // The source sample holds the same label inside a list field (sourceSampleId
-  // is guaranteed present by the guard above).
+  // The source sample holds the same label in a list field.
   updates.push({
     collection: `samples.${ctx.datasetId}`,
     id: sourceSampleId,
     lookupPath: sourceLookupPath,
-    labelId: change.labelId,
-    previousValue: change.previousValue,
-    newValue: change.newValue,
+    labelId: delta.labelId,
+    previousValue: delta.previousValue,
+    newValue: delta.newValue,
   });
 
   return updates;
@@ -154,54 +148,52 @@ const setNestedField = (
 };
 
 /**
- * Apply a saved change to the local modal sample so the baseline matches what
- * was persisted — otherwise the next auto-save flush would re-send the same
- * change (and spuriously conflict). Values are already in FE shape.
+ * Apply a saved delta to the local modal sample so the baseline matches what
+ * was persisted — otherwise the next auto-save flush would re-send it (and
+ * spuriously conflict). Values are already in FE shape.
  */
-const applyChangeToSample = (
+const applyDeltaToSample = (
   sample: Record<string, unknown>,
-  change: LabelFieldChange
+  delta: LabelFieldDelta
 ): void => {
-  // `change.field` may be a nested (dotted) path — read/write it accordingly.
+  // `field` may be a nested (dotted) path — read/write it accordingly.
   const fieldValue = extractNestedField<Record<string, unknown>>(
     sample,
-    change.field
+    delta.field
   );
   const isList =
-    !!change.listKey &&
+    !!delta.listKey &&
     isObject(fieldValue) &&
-    Array.isArray((fieldValue as Record<string, unknown>)[change.listKey]);
+    Array.isArray((fieldValue as Record<string, unknown>)[delta.listKey]);
 
-  // Flat label (to_patches) or a flat/primitive field: replace or delete it
-  // wholesale.
+  // Flat label (to_patches) or a flat/primitive field: replace or delete it.
   if (!isList) {
     setNestedField(
       sample,
-      change.field,
-      change.newValue === null ? undefined : change.newValue
+      delta.field,
+      delta.newValue === null ? undefined : delta.newValue
     );
     return;
   }
 
-  // List field (normal view or evaluation patches): replace/add/remove the
-  // element by id.
-  const listKey = change.listKey as string;
+  // List field (normal view or evaluation patches): replace/add/remove by id.
+  const listKey = delta.listKey as string;
   const container = { ...((fieldValue as Record<string, unknown>) ?? {}) };
   const list = [
     ...((container[listKey] as Array<Record<string, unknown>>) ?? []),
   ];
   const idx = list.findIndex(
-    (e) => (e as { _id?: string })._id === change.labelId
+    (e) => (e as { _id?: string })._id === delta.labelId
   );
-  if (change.newValue === null) {
+  if (delta.newValue === null) {
     if (idx >= 0) list.splice(idx, 1);
   } else if (idx >= 0) {
-    list[idx] = change.newValue as Record<string, unknown>;
+    list[idx] = delta.newValue as Record<string, unknown>;
   } else {
-    list.push(change.newValue as Record<string, unknown>);
+    list.push(delta.newValue as Record<string, unknown>);
   }
   container[listKey] = list;
-  setNestedField(sample, change.field, container);
+  setNestedField(sample, delta.field, container);
 };
 
 /**
@@ -246,26 +238,24 @@ const reconcileConflicts = (
 };
 
 /**
- * Persist a batch of captured changes (old value + new value per change).
+ * Persist a batch of captured deltas (old + new value per edit).
  *
  * @returns `true` on success, `false` on a non-conflict failure
  * @throws SaveConflictError after reconciling the modal sample, so callers can
  *   surface the conflict (and the retry controller can re-run)
  */
-export const saveAnnotationChanges = async (
-  changes: LabelFieldChange[],
+export const saveAnnotationDeltas = async (
+  deltas: LabelFieldDelta[],
   ctx: SaveContext
 ): Promise<boolean> => {
   if (!ctx.datasetId || !ctx.sample?._id) {
     return false;
   }
-  if (changes.length === 0) {
+  if (deltas.length === 0) {
     return true;
   }
 
-  const updates = changes.flatMap((change) =>
-    buildUpdatesForChange(change, ctx)
-  );
+  const updates = deltas.flatMap((delta) => buildUpdatesForDelta(delta, ctx));
   if (updates.length === 0) {
     return true;
   }
@@ -274,11 +264,11 @@ export const saveAnnotationChanges = async (
     await saveAnnotationFieldUpdates(ctx.datasetId, ctx.sample._id, updates);
 
     // Sync the local baseline to what we just persisted so subsequent flushes
-    // don't re-send (and conflict on) the same change. This updates the modal
-    // and the grid tile in place — it does NOT refresh the grid.
+    // don't re-send (and conflict on) it. Updates the modal and grid tile in
+    // place — it does NOT refresh the grid.
     const next = { ...(ctx.sample as unknown as Record<string, unknown>) };
-    for (const change of changes) {
-      applyChangeToSample(next, change);
+    for (const delta of deltas) {
+      applyDeltaToSample(next, delta);
     }
     ctx.updateSample(next as unknown as Sample);
 
@@ -331,20 +321,20 @@ export const handleLabelPersistence = async ({
     return false;
   }
 
-  const change = buildLabelFieldChange(
+  const delta = buildLabelFieldDelta(
     sample,
     annotationLabel,
     schema,
     opType,
     isGenerated
   );
-  if (!change) {
+  if (!delta) {
     // Nothing actually changed — a no-op is success, not a failure (mirrors
-    // saveAnnotationChanges treating an empty batch as success).
+    // saveAnnotationDeltas treating an empty batch as success).
     return true;
   }
 
-  return saveAnnotationChanges([change], {
+  return saveAnnotationDeltas([delta], {
     datasetId,
     sample,
     updateSample,

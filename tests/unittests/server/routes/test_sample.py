@@ -532,6 +532,43 @@ class TestSampleFields:
         assert sample.scene.label == "other"
 
     @pytest.mark.asyncio
+    async def test_flat_label_modify_gated_on_identity(
+        self, mutator, dataset_id, collection, sample
+    ):
+        # The flat label was replaced with a new _id (same label value); our
+        # edit must gate on identity and conflict rather than mutate the
+        # replacement.
+        sample["scene"] = fol.Classification(label="cat")
+        sample.save()
+        sample.reload()
+
+        stale_id = ObjectId()  # not the current scene's id
+        updates = [
+            {
+                "collection": collection,
+                "id": str(sample.id),
+                "lookupPath": "scene",
+                "previousValue": {
+                    "_cls": "Classification",
+                    "_id": stale_id,
+                    "label": "cat",
+                },
+                "newValue": {
+                    "_cls": "Classification",
+                    "_id": stale_id,
+                    "label": "dog",
+                },
+            }
+        ]
+        response = await mutator.patch(
+            self._request(dataset_id, str(sample.id), updates)
+        )
+
+        assert response.status_code == 409
+        sample.reload()
+        assert sample.scene.label == "cat"
+
+    @pytest.mark.asyncio
     async def test_add_label_with_mask_persists_as_numpy(
         self, mutator, dataset_id, collection, sample
     ):

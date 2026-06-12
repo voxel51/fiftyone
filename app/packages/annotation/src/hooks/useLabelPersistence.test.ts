@@ -19,12 +19,23 @@ vi.mock("recoil", () => ({
 
 import { handleLabelPersistence } from "../util";
 import {
+  generatedDatasetName,
   isGeneratedView,
   useCurrentDatasetId,
   useModalSample,
   useUpdateSamples,
 } from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
+
+// Mock the two distinct Recoil reads (isGeneratedView + the generated-dataset
+// name) by atom identity, so a test can't pass just because a blanket value
+// happens to satisfy both.
+const mockRecoil = (values: { generated: boolean; datasetName: unknown }) =>
+  vi.mocked(useRecoilValue).mockImplementation(((atom: unknown) => {
+    if (atom === isGeneratedView) return values.generated;
+    if (atom === generatedDatasetName) return values.datasetName;
+    return undefined;
+  }) as typeof useRecoilValue);
 import { useUpsertLabel, useDeleteLabel } from "./useLabelPersistence";
 import type { Field } from "@fiftyone/utilities";
 import type { LabelProxy } from "../deltas";
@@ -42,7 +53,7 @@ describe("useUpsertLabel / useDeleteLabel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    vi.mocked(useRecoilValue).mockReturnValue(false);
+    mockRecoil({ generated: false, datasetName: null });
     vi.mocked(useModalSample).mockReturnValue({ sample: SAMPLE } as any);
     vi.mocked(useCurrentDatasetId).mockReturnValue("dataset-1");
     vi.mocked(useUpdateSamples).mockReturnValue(vi.fn());
@@ -74,14 +85,17 @@ describe("useUpsertLabel / useDeleteLabel", () => {
       );
     });
 
-    it("passes isGenerated from recoil state", async () => {
-      vi.mocked(useRecoilValue).mockReturnValue(true);
+    it("forwards isGenerated and the generated dataset name", async () => {
+      mockRecoil({ generated: true, datasetName: "patches-ds" });
       const { result } = renderHook(() => useUpsertLabel());
 
       await result.current(LABEL, SCHEMA);
 
       expect(handleLabelPersistence).toHaveBeenCalledWith(
-        expect.objectContaining({ isGenerated: true })
+        expect.objectContaining({
+          isGenerated: true,
+          generatedDatasetName: "patches-ds",
+        })
       );
     });
 
@@ -125,14 +139,17 @@ describe("useUpsertLabel / useDeleteLabel", () => {
       );
     });
 
-    it("passes isGenerated from recoil state", async () => {
-      vi.mocked(useRecoilValue).mockReturnValue(true);
+    it("forwards isGenerated and the generated dataset name", async () => {
+      mockRecoil({ generated: true, datasetName: "patches-ds" });
       const { result } = renderHook(() => useDeleteLabel());
 
       await result.current(LABEL, SCHEMA);
 
       expect(handleLabelPersistence).toHaveBeenCalledWith(
-        expect.objectContaining({ isGenerated: true })
+        expect.objectContaining({
+          isGenerated: true,
+          generatedDatasetName: "patches-ds",
+        })
       );
     });
 

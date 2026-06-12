@@ -170,10 +170,14 @@ def _build_label_update(
                 "$set": {"last_modified_at": now},
             }
         else:
-            filter_doc = {
-                **doc_filter,
-                **{f"{lookup_path}.{f}": v for f, v in gates.items()},
-            }
+            filter_doc = {**doc_filter}
+            # Bind to the label's identity so a replacement document with the
+            # same scalar values but a new _id isn't mistaken for ours.
+            if "_id" in old_bson:
+                filter_doc[f"{lookup_path}._id"] = old_bson["_id"]
+            filter_doc.update(
+                {f"{lookup_path}.{f}": v for f, v in gates.items()}
+            )
             update_doc = {
                 "$unset": {lookup_path: ""},
                 "$set": {"last_modified_at": now},
@@ -217,10 +221,11 @@ def _build_label_update(
         elem_match = {"_id": label_oid, **gates}
         filter_doc = {**doc_filter, lookup_path: {"$elemMatch": elem_match}}
     else:
-        filter_doc = {
-            **doc_filter,
-            **{f"{lookup_path}.{f}": v for f, v in gates.items()},
-        }
+        filter_doc = {**doc_filter}
+        # Bind to the label's identity (see remove branch).
+        if "_id" in old_bson:
+            filter_doc[f"{lookup_path}._id"] = old_bson["_id"]
+        filter_doc.update({f"{lookup_path}.{f}": v for f, v in gates.items()})
 
     set_doc = {f"{prefix}{f}": v for f, v in set_fields.items()}
     set_doc["last_modified_at"] = now
@@ -291,16 +296,10 @@ _GENERATED_PREFIXES = ("patches.", "clips.")
 
 
 def _allowed_collections(path_params: dict) -> set:
-    """The set of collections a request on this route may mutate.
+    """The route dataset's own collections, derived from ``dataset_id`` alone.
 
-    A dataset's collections are deterministically named from its id
-    (``samples.<id>`` / ``frames.<id>``), so the route's ``dataset_id`` bounds
-    the writable source collections without a database lookup. A patches edit
-    additionally targets a materialized generated dataset's collection, which
-    :func:`_plan_update` allows only when reached via ``datasetName`` and only
-    if it is in fact a generated collection. This binds writes to the route
-    context so a request body can never redirect one to an unrelated *normal*
-    dataset's collection.
+    Their names are deterministic, so this needs no database lookup. Generated
+    (patches) collections are allowed separately in :func:`_plan_update`.
     """
     dataset_id = path_params.get("dataset_id")
     if not dataset_id:
@@ -325,10 +324,9 @@ def _plan_update(db, update: dict, allowed: set) -> dict:
         )
 
     collection_name = _resolve_collection(db, update)
-    # Bind the write target to the route's dataset: an explicit ``collection``
-    # must be one of the route dataset's own collections, while a generated-view
-    # target (``datasetName``) must resolve to a generated collection — so a
-    # request body can never redirect a write to an unrelated normal dataset.
+    # Bind writes to the route's dataset so a body can't redirect one elsewhere:
+    # an explicit collection must be the route's own; a datasetName target must
+    # resolve to a generated collection.
     if update.get("collection"):
         target_allowed = collection_name in allowed
     else:
@@ -352,9 +350,9 @@ def _plan_update(db, update: dict, allowed: set) -> dict:
         "lookup_path": None,
     }
 
-    # Whole-document deletion (e.g. a patches sample whose label was deleted).
-    # It has no precondition of its own; the gated source-collection update
-    # co-sent in the same batch is what guards it against a stale delete.
+    # Whole-document delete (a patches sample whose label was deleted). No
+    # precondition of its own — the gated source update in the same batch
+    # guards it against a stale delete.
     if update.get("op") == "deleteDocument":
         plan["delete_document"] = True
         return plan
@@ -428,19 +426,12 @@ def _apply_plan(plan: dict) -> bool:
 class SampleFields(HTTPEndpoint):
     """Applies a batch of gated annotation field updates.
 
-    Each update names its own ``collection`` (or ``datasetName``) and ``id``,
-    constrained to the route's dataset. A patches-view edit, for example, sends
-    two updates in one batch: the source label (in its list) and the
-    materialized patches sample.
-
-    The **permanent source collection is authoritative**: its gated writes are
-    what can conflict (409). Writes to a **generated** (patches/clips) collection
-    are **best-effort** — it is an ephemeral materialized view that regenerates
-    from the source, so a stale write there is logged and skipped, never failing
-    the request. When a batch carries more than one *permanent* write (a
-    multi-label edit), those are prevalidated together so a stale one can't
-    half-apply (FiftyOne's MongoDB may be standalone, so a transaction isn't
-    assumed).
+    The permanent source collection is authoritative — its gated writes are
+    what can conflict (409). Writes to a generated (patches/clips) collection are
+    best-effort: it is an ephemeral view that regenerates from the source, so a
+    stale write is skipped rather than failing the request. Several permanent
+    writes in one batch are prevalidated so a stale one can't half-apply
+    (FiftyOne's MongoDB may be standalone — no transactions assumed).
     """
 
     @decorators.route
@@ -467,7 +458,7 @@ class SampleFields(HTTPEndpoint):
         db = get_db_conn()
         allowed = _allowed_collections(request.path_params)
 
-        # Resolve + build every update (validates payload and target). No writes.
+        # Build every update (validates payload + target); no writes yet.
         plans = [_plan_update(db, update, allowed) for update in updates]
 
         permanent = [
@@ -481,9 +472,8 @@ class SampleFields(HTTPEndpoint):
             if _is_generated_collection(p["collection_name"])
         ]
 
-        # When a batch carries several permanent writes (a multi-label edit),
-        # prevalidate them together so a stale one can't half-apply. A lone
-        # permanent write is atomic by itself and skips the extra read.
+        # Several permanent writes (a multi-label edit) are prevalidated so a
+        # stale one can't half-apply; a lone write is atomic and skips the read.
         if len(permanent) > 1:
             stale = [
                 {"index": i, "value": _current_document(p)}
@@ -500,8 +490,7 @@ class SampleFields(HTTPEndpoint):
                 )
                 return JSONResponse({"conflicts": stale}, status_code=409)
 
-        # Apply the authoritative permanent writes; a stale gate here is a real
-        # conflict the client must reconcile.
+        # Permanent writes are authoritative — a stale gate is a real conflict.
         conflicts = []
         for index, plan in permanent:
             if not _apply_plan(plan):
@@ -517,13 +506,10 @@ class SampleFields(HTTPEndpoint):
                 )
 
         if conflicts:
-            # The authoritative edit was rejected; skip the now-pointless sync
-            # of the ephemeral generated view.
+            # Authoritative edit rejected — skip the now-pointless generated sync.
             return JSONResponse({"conflicts": conflicts}, status_code=409)
 
-        # Best-effort sync of the ephemeral generated (patches/clips) view. Its
-        # collection is disposable and regenerates from the source, so a stale
-        # write here is logged but never fails the request.
+        # Best-effort: a stale generated-view write is skipped, never failed.
         for _index, plan in generated:
             if not _apply_plan(plan):
                 logger.info(

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildAnnotationPath,
-  buildLabelFieldChange,
+  buildLabelFieldDelta,
   type LabelProxy,
 } from "./deltas";
 import type { AnnotationLabel } from "@fiftyone/state";
@@ -12,7 +12,7 @@ type LabelData = AnnotationLabel["data"];
 const makeField = (embeddedDocType: string): Field =>
   ({ embeddedDocType } as Field);
 
-type SampleArg = Parameters<typeof buildLabelFieldChange>[0];
+type SampleArg = Parameters<typeof buildLabelFieldDelta>[0];
 
 describe("buildAnnotationPath", () => {
   it("appends '.detections' for Detection labels in generated views", () => {
@@ -45,7 +45,7 @@ describe("buildAnnotationPath", () => {
   });
 });
 
-describe("buildLabelFieldChange", () => {
+describe("buildLabelFieldDelta", () => {
   const detectionsSchema = makeField("fiftyone.core.labels.Detections");
 
   const makeSample = (label = "cat") =>
@@ -73,7 +73,7 @@ describe("buildLabelFieldChange", () => {
     } as LabelProxy);
 
   it("captures a list-label mutation as old + new value", () => {
-    const change = buildLabelFieldChange(
+    const delta = buildLabelFieldDelta(
       makeSample(),
       detectionLabel({ _id: "det-1", label: "dog" }),
       detectionsSchema,
@@ -81,51 +81,51 @@ describe("buildLabelFieldChange", () => {
       false
     );
 
-    expect(change).not.toBeNull();
-    expect(change?.field).toBe("ground_truth");
-    expect(change?.listKey).toBe("detections");
-    expect(change?.labelId).toBe("det-1");
-    expect((change?.previousValue as { label: string }).label).toBe("cat");
-    expect((change?.newValue as { label: string }).label).toBe("dog");
+    expect(delta).not.toBeNull();
+    expect(delta?.field).toBe("ground_truth");
+    expect(delta?.listKey).toBe("detections");
+    expect(delta?.labelId).toBe("det-1");
+    expect((delta?.previousValue as { label: string }).label).toBe("cat");
+    expect((delta?.newValue as { label: string }).label).toBe("dog");
   });
 
   it("returns null when nothing changed (no phantom save)", () => {
-    const change = buildLabelFieldChange(
+    const delta = buildLabelFieldDelta(
       makeSample(),
       detectionLabel({ _id: "det-1", label: "cat" }),
       detectionsSchema,
       "mutate",
       false
     );
-    expect(change).toBeNull();
+    expect(delta).toBeNull();
   });
 
   it("captures an add (previousValue null) for a new element", () => {
-    const change = buildLabelFieldChange(
+    const delta = buildLabelFieldDelta(
       makeSample(),
       detectionLabel({ _id: "det-NEW", label: "bird" }),
       detectionsSchema,
       "mutate",
       false
     );
-    expect(change?.labelId).toBe("det-NEW");
-    expect(change?.previousValue).toBeNull();
-    expect((change?.newValue as { label: string }).label).toBe("bird");
+    expect(delta?.labelId).toBe("det-NEW");
+    expect(delta?.previousValue).toBeNull();
+    expect((delta?.newValue as { label: string }).label).toBe("bird");
   });
 
   it("captures a deletion (newValue null)", () => {
-    const change = buildLabelFieldChange(
+    const delta = buildLabelFieldDelta(
       makeSample(),
       detectionLabel({ _id: "det-1" }),
       detectionsSchema,
       "delete",
       false
     );
-    expect(change?.field).toBe("ground_truth");
-    expect(change?.listKey).toBe("detections");
-    expect(change?.labelId).toBe("det-1");
-    expect(change?.newValue).toBeNull();
-    expect((change?.previousValue as { label: string }).label).toBe("cat");
+    expect(delta?.field).toBe("ground_truth");
+    expect(delta?.listKey).toBe("detections");
+    expect(delta?.labelId).toBe("det-1");
+    expect(delta?.newValue).toBeNull();
+    expect((delta?.previousValue as { label: string }).label).toBe("cat");
   });
 
   it("captures a primitive field change", () => {
@@ -134,14 +134,14 @@ describe("buildLabelFieldChange", () => {
       path: "primitive_field",
       data: "updated",
     } as unknown as LabelProxy;
-    const change = buildLabelFieldChange(
+    const delta = buildLabelFieldDelta(
       makeSample(),
       label,
       makeField("fiftyone.core.fields.StringField"),
       "mutate",
       false
     );
-    expect(change).toEqual({
+    expect(delta).toEqual({
       field: "primitive_field",
       listKey: null,
       labelId: null,
@@ -156,14 +156,14 @@ describe("buildLabelFieldChange", () => {
       path: "primitive_field",
       data: "initial",
     } as unknown as LabelProxy;
-    const change = buildLabelFieldChange(
+    const delta = buildLabelFieldDelta(
       makeSample(),
       label,
       makeField("fiftyone.core.fields.StringField"),
       "mutate",
       false
     );
-    expect(change).toBeNull();
+    expect(delta).toBeNull();
   });
 
   it("addresses the source list for a generated (flat) view", () => {
@@ -178,7 +178,7 @@ describe("buildLabelFieldChange", () => {
       },
     } as unknown as SampleArg;
 
-    const change = buildLabelFieldChange(
+    const delta = buildLabelFieldDelta(
       flatSample,
       detectionLabel({ _id: "det-1", label: "dog" }),
       makeField("fiftyone.core.labels.Detection"),
@@ -186,17 +186,17 @@ describe("buildLabelFieldChange", () => {
       true
     );
 
-    expect(change?.field).toBe("ground_truth");
-    expect(change?.listKey).toBe("detections");
-    expect(change?.labelId).toBe("det-1");
-    expect((change?.newValue as { label: string }).label).toBe("dog");
+    expect(delta?.field).toBe("ground_truth");
+    expect(delta?.listKey).toBe("detections");
+    expect(delta?.labelId).toBe("det-1");
+    expect((delta?.newValue as { label: string }).label).toBe("dog");
   });
 
   it("reads the element by id for a generated array (evaluation patches)", () => {
     // Eval patches keep the field as a Detections array (unlike to_patches'
     // flat label), so the previous value is the matching element — not the
     // whole container.
-    const change = buildLabelFieldChange(
+    const delta = buildLabelFieldDelta(
       makeSample(),
       detectionLabel({ _id: "det-1", label: "dog" }),
       detectionsSchema,
@@ -204,10 +204,10 @@ describe("buildLabelFieldChange", () => {
       true
     );
 
-    expect(change?.field).toBe("ground_truth");
-    expect(change?.listKey).toBe("detections");
-    expect(change?.labelId).toBe("det-1");
-    expect((change?.previousValue as { label: string }).label).toBe("cat");
-    expect((change?.newValue as { label: string }).label).toBe("dog");
+    expect(delta?.field).toBe("ground_truth");
+    expect(delta?.listKey).toBe("detections");
+    expect(delta?.labelId).toBe("det-1");
+    expect((delta?.previousValue as { label: string }).label).toBe("cat");
+    expect((delta?.newValue as { label: string }).label).toBe("dog");
   });
 });

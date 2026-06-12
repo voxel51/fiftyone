@@ -7,8 +7,8 @@ import type { Field } from "@fiftyone/utilities";
 import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import {
-  buildLabelFieldChange,
-  type LabelFieldChange,
+  buildLabelFieldDelta,
+  type LabelFieldDelta,
   type LabelProxy,
 } from "../deltas";
 import { getFieldSchema } from "../util";
@@ -62,8 +62,8 @@ const inferFieldSchema = (labelProxy: LabelProxy): Field | null => {
 
 /**
  * Hook which provides a function that captures a label edit as a
- * {@link LabelFieldChange} — the original value and the updated value — for a
- * given label source. Returns `null` when the change can't be expressed.
+ * {@link LabelFieldDelta} — the original value and the updated value — for a
+ * given label source. Returns `null` when the delta can't be expressed.
  *
  * @param labelConstructor Builds a {@link LabelProxy} from the source data
  * @param options Optional config (opType defaults to "mutate")
@@ -71,7 +71,7 @@ const inferFieldSchema = (labelProxy: LabelProxy): Field | null => {
 export const useGetLabelDelta = <T>(
   labelConstructor: LabelConstructor<T>,
   options: UseGetLabelDeltaOptions = {}
-): ((labelSource: T, path: string) => LabelFieldChange | null) => {
+): ((labelSource: T, path: string) => LabelFieldDelta | null) => {
   const { opType = "mutate" } = options;
   const modalSample = useModalSample();
   const modalSampleSchema = useModalSampleSchema();
@@ -94,7 +94,7 @@ export const useGetLabelDelta = <T>(
         return null;
       }
 
-      return buildLabelFieldChange(
+      return buildLabelFieldDelta(
         modalSample.sample,
         labelProxy,
         schema,
