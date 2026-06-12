@@ -1,4 +1,4 @@
-import { useSampleInstance, type LabelRef } from "@fiftyone/annotation";
+import { type LabelRef } from "@fiftyone/annotation";
 import {
   type ContextManager,
   DefaultContextManager,
@@ -119,7 +119,6 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
   const canManageSchema = useCanManageSchema();
   const schemaResolver = useSchemaResolver();
   const { isPrimitive, setActivePrimitive } = usePrimitiveController();
-  const sample = useSampleInstance();
   // the modal's sample id — the same id the engine's store registers
   // under; the store itself isn't registered yet on explore-tab entry
   const modalSampleId = useModalSample()?.sample?._id;
@@ -247,11 +246,10 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
   const exit = useCallback(() => {
     if (contextManager.isActive()) {
       saveChanges();
-      sample.clear();
       deactivateAllModesRef.current();
       contextManager.exit();
     }
-  }, [contextManager, deactivateAllModesRef, sample, saveChanges]);
+  }, [contextManager, deactivateAllModesRef, saveChanges]);
 
   return useMemo(
     () => ({

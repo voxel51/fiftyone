@@ -10,6 +10,8 @@ import { useSampleInstance } from "./useSample";
  *   transient entries that have been incorporated into the new source — this
  *   is also the autosave-roundtrip reconciliation point).
  * - On schema change: updates the schema.
+ * - On unmount: discards pending transient edits — annotation exit paths
+ *   never touch the store; this lifecycle owns the clear.
  *
  * Mount once at the annotation root.
  */
@@ -24,6 +26,8 @@ export const useSyncModalSample = (): void => {
   useEffect(() => {
     sample.clear();
   }, [sample, sampleId]);
+
+  useEffect(() => () => sample.clear(), [sample]);
 
   useEffect(() => {
     if (sampleData) {
