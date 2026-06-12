@@ -60,6 +60,14 @@ export const createLighterBridge = ({
   /** Gated mounts in flight, by overlay id — the latest descriptor wins. */
   const pending = new Map<string, LighterDescriptor>();
 
+  /**
+   * Overlay ids this bridge manages: mounted (sync or gated insert) or
+   * adopted as handles via `resolveHandle`. `clear` removes exactly these —
+   * surface-owned transients sharing the scene (the image plane, uncommitted
+   * drafts, cursors) are not the bridge's to remove.
+   */
+  const managed = new Set<string>();
+
   const insert = (
     descriptor: LighterDescriptor,
     label: LabelData,
@@ -74,6 +82,7 @@ export const createLighterBridge = ({
       ...(mask ? { preDecodedMask: mask } : {}),
     });
     scene.addOverlay(overlay);
+    managed.add(overlay.id);
 
     // silent re-apply absorbs anything committed while the decode was in
     // flight (descriptor geometry was built from the request-time label)
@@ -150,6 +159,9 @@ export const createLighterBridge = ({
         return undefined;
       }
 
+      // the loop adopts pre-existing scene overlays as handles (e.g. a
+      // committed draft) — once resolved, the overlay is bridge-managed
+      managed.add(overlay.id);
       return overlay;
     },
 
@@ -168,6 +180,7 @@ export const createLighterBridge = ({
           BaseOverlay
         >(descriptor.factoryKey, descriptor.options);
         scene.addOverlay(overlay);
+        managed.add(overlay.id);
 
         return overlay;
       }
@@ -192,19 +205,24 @@ export const createLighterBridge = ({
       // selected.
       scene.deselectOverlay(overlay.id, { ignoreSideEffects: true });
       scene.removeOverlay(overlay.id);
+      managed.delete(overlay.id);
     },
 
     clear: () => {
       // cancel gated mounts (lifecycle teardown)
       pending.clear();
 
-      // Only engine-owned (persistable) overlays: UX-only overlays (the image
-      // plane, drafts, cursors) are surface-owned transients.
-      for (const overlay of scene.getAllOverlays()) {
-        if (overlay.isPersistent) {
-          scene.removeOverlay(overlay.id);
-        }
+      // exactly the overlays this bridge manages — surface-owned transients
+      // sharing the scene (the image plane, uncommitted drafts, cursors) are
+      // not the bridge's to remove. Deselect first, flagged, for the same
+      // reason as unmount — and so engine selection survives a bridge swap
+      // for the successor to reapply.
+      for (const id of managed) {
+        scene.deselectOverlay(id, { ignoreSideEffects: true });
+        scene.removeOverlay(id);
       }
+
+      managed.clear();
     },
 
     // silent interaction application: engine InteractionState is the

@@ -223,13 +223,17 @@ describe("lighter bridge", () => {
     expect(bridge.resolveHandle(ref("predictions", "d1"))).toBeDefined();
   });
 
-  it("clear removes only persistent overlays", () => {
+  it("clear removes only bridge-managed overlays", () => {
     const { scene, overlays, overlayFactory } = makeScene();
-    overlays.set("d1", makeOverlay("d1", "ground_truth", { _id: "d1" }));
+    // surface-owned transients the bridge never touched: the media image
+    // plane and an uncommitted draft sharing the scene
+    overlays.set("image", makeOverlay("image", "", {}));
     overlays.set(
-      "cursor",
-      makeOverlay("cursor", "", {}, { isPersistent: false })
+      "draft",
+      makeOverlay("draft", "ground_truth", { _id: "draft" })
     );
+    // a pre-existing committed overlay the loop adopts via resolveHandle
+    overlays.set("d1", makeOverlay("d1", "ground_truth", { _id: "d1" }));
     const bridge = createLighterBridge({
       scene,
       overlayFactory,
@@ -237,10 +241,20 @@ describe("lighter bridge", () => {
       readLabel: () => undefined,
     });
 
+    bridge.mount(
+      detectionAdapter.buildHandle(ref("ground_truth", "d2"), {
+        _id: "d2",
+        bounding_box: [0.1, 0.2, 0.3, 0.4],
+      })
+    );
+    bridge.resolveHandle(ref("ground_truth", "d1"));
+
     bridge.clear();
 
     expect(overlays.has("d1")).toBe(false);
-    expect(overlays.has("cursor")).toBe(true);
+    expect(overlays.has("d2")).toBe(false);
+    expect(overlays.has("image")).toBe(true);
+    expect(overlays.has("draft")).toBe(true);
   });
 
   it("drives the full engine read-half over a scene", () => {

@@ -113,6 +113,7 @@ export const detectionAdapter: LighterAdapter = {
     } = overlay.label as Record<string, unknown>;
     const pendingMask = overlay.getPendingMask();
     const hadMask = priorMask || priorMaskPath;
+
     const maskData = overlay.hasMask()
       ? {
           ...(priorMask ? { mask: priorMask } : {}),
