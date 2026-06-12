@@ -7,6 +7,7 @@ version of protobuf is installed.
 |
 """
 
+import os
 import subprocess
 import sys
 
@@ -21,11 +22,14 @@ def test_incompatible_protobuf():
     subprocess.check_call(
         [sys.executable, "-m", "pip", "install", "protobuf==4.25.9"]
     )
+
+    env = os.environ.copy()
+    env.pop("VFF_MULTIMODAL", None)
     result = subprocess.run(
         [sys.executable, "-c", f"import {', '.join(MODULES)}"],
         capture_output=True,
         check=False,
-        env={},  # VFF_MULTIMODAL not set
+        env=env,
     )
     if result.returncode != 0:
         print(result.stdout.decode())
