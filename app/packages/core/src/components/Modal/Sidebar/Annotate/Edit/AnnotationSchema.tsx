@@ -18,6 +18,7 @@ import {
 } from "./evaluateWhen";
 import { generatePrimitiveSchema } from "./schemaHelpers";
 import {
+  current,
   currentData,
   currentField,
   currentOverlay,
@@ -133,15 +134,18 @@ const useHandleSchemaChange = (readOnly: boolean) => {
   const { createPushAndExec } = usePushUndoable();
   const parseFieldValue = useParseFieldValue();
   const field = useAtomValue(currentField);
+  const [currentLabel, setCurrentLabel] = useAtom(current);
 
   const configRef = useRef(config);
   const dataRef = useRef(data);
   const overlayRef = useRef(overlay);
   const fieldRef = useRef(field);
+  const currentLabelRef = useRef(currentLabel);
   configRef.current = config;
   dataRef.current = data;
   overlayRef.current = overlay;
   fieldRef.current = field;
+  currentLabelRef.current = currentLabel;
 
   return useCallback(
     async (changes: Record<string, unknown>) => {
@@ -218,8 +222,17 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         () => engine.updateLabel(ref, value as Partial<LabelData>),
         () => engine.updateLabel(ref, inverse as Partial<LabelData>)
       );
+
+      // the anchor binding rewrites `editing` only for committed labels —
+      // a DRAFT's slot is surface-owned, so the form keeps it in sync
+      // itself (last-used-class tracking and exit policy read it)
+      const live = currentLabelRef.current;
+
+      if (live?.isNew) {
+        setCurrentLabel({ ...live, data: value as typeof live.data });
+      }
     },
-    [createPushAndExec, engine, parseFieldValue, readOnly]
+    [createPushAndExec, engine, parseFieldValue, readOnly, setCurrentLabel]
   );
 };
 
