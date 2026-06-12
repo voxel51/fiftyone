@@ -6,7 +6,6 @@ import {
   useNotification,
   useQueryPerformanceSampleLimit,
 } from "@fiftyone/state";
-import { getFetchFunction } from "@fiftyone/utilities";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -27,35 +26,7 @@ import {
   useSchemaManagerEventBus,
 } from "../events";
 import { currentLabelSchema } from "../state";
-import { type AttributeConfig, reconcileComponent } from "../utils";
-
-const fetchAndMergeOntologyAttributes = async (
-  draft: FieldSchema,
-  name: string,
-  setCurrent: (schema: FieldSchema) => void
-): Promise<void> => {
-  const result = await getFetchFunction()(
-    "GET",
-    `/ontologies/${encodeURIComponent(name)}/attributes`
-  );
-
-  const attrs = (result as { attributes: AttributeConfig[] }).attributes;
-  if (!attrs?.length) return;
-
-  const existing = Array.isArray(draft.attributes) ? [...draft.attributes] : [];
-  const byName = new Map(existing.map((a) => [a.name, a]));
-  const orderedNames = existing.map((a) => a.name);
-
-  for (const attr of attrs) {
-    if (!byName.has(attr.name)) orderedNames.push(attr.name);
-    byName.set(attr.name, attr);
-  }
-
-  setCurrent({
-    ...draft,
-    attributes: orderedNames.map((n) => byName.get(n)),
-  });
-};
+import { fetchAndMergeOntologyAttributes, reconcileComponent } from "../utils";
 
 // =============================================================================
 // Internal Hooks
@@ -167,10 +138,12 @@ export const useAppliedOntology = (field: string) => {
     applyOntology: (name: string) => {
       const draft = { ...(schema as FieldSchema), applied_ontology: name };
       setCurrent(draft);
-      fetchAndMergeOntologyAttributes(draft, name, setCurrent).catch(() => {
-        // Preview failed. The name is already set, attributes will hydrate after save
-        console.error(`Failed to fetch ontology attributes for ${name}`);
-      });
+      fetchAndMergeOntologyAttributes(draft.attributes ?? [], name)
+        .then((attributes) => setCurrent({ ...draft, attributes }))
+        .catch(() => {
+          // Preview failed. The name is already set, attributes will hydrate after save
+          console.error(`Failed to fetch ontology attributes for ${name}`);
+        });
     },
     clearOntology: () => {
       const next: FieldSchema = { ...(schema as FieldSchema) };

@@ -2,7 +2,7 @@
  * Utility functions for SchemaManager
  */
 
-import { is3d } from "@fiftyone/utilities";
+import { getFetchFunction, is3d } from "@fiftyone/utilities";
 import type { ListItemProps as BaseListItemProps } from "@voxel51/voodo";
 import type { ReactNode } from "react";
 import {
@@ -88,6 +88,47 @@ export interface AttributeConfig {
 export interface ClassConfig {
   attributes?: AttributeConfig[];
 }
+
+// =============================================================================
+// Ontology attributes
+// =============================================================================
+
+// Response shape of `GET /ontologies/{name}/attributes`.
+export interface OntologyAttributesResponse {
+  attributes: AttributeConfig[];
+}
+
+/**
+ * Fetch an annotation ontology's attributes and merge them into an existing
+ * attribute list, returning the merged result.
+ *
+ * Existing order is preserved; ontology attributes (which carry the `_source`
+ * marker) override same-named entries in place, and any new ones are appended.
+ * Used to preview ontology attributes in the schema editor for both the create
+ * and edit flows.
+ */
+export const fetchAndMergeOntologyAttributes = async (
+  existing: AttributeConfig[],
+  name: string
+): Promise<AttributeConfig[]> => {
+  const result: OntologyAttributesResponse = await getFetchFunction()(
+    "GET",
+    `/ontologies/${encodeURIComponent(name)}/attributes`
+  );
+
+  const incomingAttributes = result.attributes;
+  if (!incomingAttributes?.length) return existing;
+
+  const byName = new Map(existing.map((a) => [a.name, a]));
+  const orderedNames = existing.map((a) => a.name);
+
+  incomingAttributes.forEach((attr) => {
+    if (!byName.has(attr.name)) orderedNames.push(attr.name);
+    byName.set(attr.name, attr);
+  });
+
+  return orderedNames.map((n) => byName.get(n) as AttributeConfig);
+};
 
 // Schema configuration (for both label types and primitive fields)
 export interface SchemaConfigType {
