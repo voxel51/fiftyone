@@ -312,7 +312,9 @@ describe("lighter bridge", () => {
     });
   });
 
-  it("declines 3D-shaped data (shared _cls, not 2D-renderable)", () => {
+  it("content scope: only labels meeting the 2D requirements mount", () => {
+    // Detection3D shares `_cls` with Detection — the adapter's own
+    // requirement (a 2D bounding box) is what keeps it off this surface
     const { engine } = makeEngine("sample-1", {
       ground_truth: {
         detections: [
@@ -322,6 +324,7 @@ describe("lighter bridge", () => {
             location: [0, 0, 0],
             dimensions: [1, 1, 1],
           },
+          { ...makeDet("junk", "rat"), bounding_box: "not-a-box" },
         ],
       },
     });
@@ -337,6 +340,7 @@ describe("lighter bridge", () => {
 
     expect(overlays.has("d2d")).toBe(true);
     expect(overlays.has("d3d")).toBe(false);
+    expect(overlays.has("junk")).toBe(false);
   });
 });
 

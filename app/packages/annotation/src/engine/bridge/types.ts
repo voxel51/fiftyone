@@ -10,6 +10,16 @@ import type { LabelData, LabelType } from "@fiftyone/utilities";
 import type { LabelRef, ScopedRef } from "../identity/ref";
 
 export interface LabelKindAdapter<Handle, Descriptor> {
+  /**
+   * Content scope: can this surface represent this label's data?
+   * Default: yes. Frame it as the surface's OWN requirements (e.g. "a
+   * detection needs a 2D bounding box"), never another surface's identity.
+   * Re-evaluated on every change — a label moves in and out of scope as its
+   * data changes (in → mount, out → unmount); out-of-scope labels are never
+   * built or mounted.
+   */
+  renders?(label: LabelData): boolean;
+
   /** engine → surface (create), PURE: build the construction spec for a new handle. */
   buildHandle(ref: LabelRef, label: LabelData): Descriptor;
 

@@ -91,6 +91,13 @@ export const registerBridgeLoop = <Handle, Descriptor>(
       return;
     }
 
+    if (adapter.renders && !adapter.renders(label)) {
+      // out of content scope for this surface — unmount covers a label
+      // whose data just transitioned out; a no-op when it was never mounted
+      unmountRef(ref);
+      return;
+    }
+
     known.set(refKey(ref), ref);
 
     if (handle !== undefined) {

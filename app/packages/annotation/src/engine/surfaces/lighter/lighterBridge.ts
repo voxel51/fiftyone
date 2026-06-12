@@ -158,14 +158,6 @@ export const createLighterBridge = ({
     mount: (descriptor) => {
       const { id } = descriptor.options;
 
-      if (descriptor.unrenderable) {
-        // not representable on this surface (3D-shaped data) — decline;
-        // the 3D surface owns the handle
-        pending.delete(id);
-
-        return undefined;
-      }
-
       if (descriptor.pendingMaskPath === undefined) {
         // a sync mount supersedes any in-flight gate for the same id (the
         // label gained an inline mask, so there is nothing left to decode)

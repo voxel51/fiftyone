@@ -18,10 +18,14 @@ interface FakeHandle {
 
 type FakeDescriptor = { id: string; path: string; label: LabelData };
 
-const makeFakeSurface = (sample = "sample-1") => {
+const makeFakeSurface = (
+  sample = "sample-1",
+  renders?: (label: LabelData) => boolean
+) => {
   const handles = new Map<string, FakeHandle>();
 
   const adapter: LabelKindAdapter<FakeHandle, FakeDescriptor> = {
+    renders,
     buildHandle: (r, label) => ({ id: r.instanceId, path: r.path, label }),
     updateHandle: (handle, label) => {
       handle.label = label;
@@ -218,6 +222,50 @@ describe("bridge read-half", () => {
     expect(handles.size).toBe(0);
 
     engine.updateLabel(ref("classification", "c1"), { label: "rain" });
+    expect(handles.size).toBe(0);
+  });
+
+  it("content scope: labels failing the adapter's renders never mount", () => {
+    const { engine } = makeEngine("sample-1", {
+      ground_truth: {
+        detections: [
+          { ...makeDet("d1", "cat"), bounding_box: [0, 0, 1, 1] },
+          makeDet("d2", "dog"),
+        ],
+      },
+    });
+    const { handles, bridge, adapters } = makeFakeSurface("sample-1", (label) =>
+      Array.isArray(label.bounding_box)
+    );
+
+    engine.registerBridge(bridge, adapters);
+
+    expect([...handles.keys()]).toEqual(["d1"]);
+
+    // interaction on a declined label resolves no handle — applies nothing
+    engine.interaction.setActive([ref("ground_truth", "d2")]);
+    expect([...handles.values()].some((handle) => handle.selected)).toBe(false);
+  });
+
+  it("content scope is re-evaluated per change: labels move in and out", () => {
+    const { engine } = makeEngine("sample-1", {
+      ground_truth: { detections: [makeDet("d1", "cat")] },
+    });
+    const { handles, bridge, adapters } = makeFakeSurface("sample-1", (label) =>
+      Array.isArray(label.bounding_box)
+    );
+
+    engine.registerBridge(bridge, adapters);
+    expect(handles.size).toBe(0);
+
+    // gains the surface's requirement → mounts
+    engine.updateLabel(ref("ground_truth", "d1"), {
+      bounding_box: [0, 0, 1, 1],
+    });
+    expect(handles.get("d1")?.label.label).toBe("cat");
+
+    // loses it → unmounts
+    engine.updateLabel(ref("ground_truth", "d1"), { bounding_box: null });
     expect(handles.size).toBe(0);
   });
 

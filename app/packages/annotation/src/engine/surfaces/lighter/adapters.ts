@@ -45,14 +45,6 @@ export interface LighterDescriptor {
    * `mask_path` but no inline `mask`.
    */
   pendingMaskPath?: string;
-
-  /**
-   * Data this 2D surface cannot represent — the bridge declines the mount.
-   * The 3D twins (Detection3D/Polyline3D) share `_cls` with their 2D kinds,
-   * so kind dispatch alone cannot exclude them; the adapters shape-check the
-   * data. The 3D surface owns these labels.
-   */
-  unrenderable?: boolean;
 }
 
 export type LighterAdapter = LabelKindAdapter<BaseOverlay, LighterDescriptor>;
@@ -64,16 +56,6 @@ const toRect = (boundingBox: number[]) => ({
   height: boundingBox[3],
 });
 
-// shape checks mirroring looker-3d's isDetection3dOverlay/isPolyline3dOverlay
-// (not imported — that would invert the package dependency)
-const isDetection3d = (label: LabelData): boolean => {
-  const data = label as Record<string, unknown>;
-  return data.dimensions != null && data.location != null;
-};
-
-const isPolyline3d = (label: LabelData): boolean =>
-  (label as Record<string, unknown>).points3d != null;
-
 /** Strip identity — the store stamps `_id = ref.instanceId` on write. */
 const withoutId = (label: Record<string, unknown>): Partial<LabelData> => {
   const { _id, ...rest } = label;
@@ -81,31 +63,26 @@ const withoutId = (label: Record<string, unknown>): Partial<LabelData> => {
 };
 
 export const detectionAdapter: LighterAdapter = {
-  buildHandle: (ref, label) => {
-    if (isDetection3d(label) || !Array.isArray(label.bounding_box)) {
-      return {
-        factoryKey: "detection",
-        unrenderable: true,
-        options: { id: ref.instanceId, field: ref.path, label },
-      };
-    }
+  // a 2D box is what this surface draws — Detection3D (shared `_cls`) and
+  // box-less junk fall out of scope by failing the requirement
+  renders: (label) =>
+    Array.isArray(label.bounding_box) && label.bounding_box.length === 4,
 
-    return {
-      factoryKey: "detection",
-      ...(!label.mask && typeof label.mask_path === "string"
-        ? { pendingMaskPath: label.mask_path }
-        : {}),
-      options: {
-        id: ref.instanceId,
-        field: ref.path,
-        label: label as unknown as DetectionOverlayOptions["label"],
-        relativeBounds: toRect(label.bounding_box as number[]),
-        draggable: true,
-        resizeable: true,
-        selectable: true,
-      },
-    };
-  },
+  buildHandle: (ref, label) => ({
+    factoryKey: "detection",
+    ...(!label.mask && typeof label.mask_path === "string"
+      ? { pendingMaskPath: label.mask_path }
+      : {}),
+    options: {
+      id: ref.instanceId,
+      field: ref.path,
+      label: label as unknown as DetectionOverlayOptions["label"],
+      relativeBounds: toRect(label.bounding_box as number[]),
+      draggable: true,
+      resizeable: true,
+      selectable: true,
+    },
+  }),
 
   updateHandle: (overlay, label) => {
     overlay.applyLabel(label as unknown as DetectionLabel);
@@ -177,9 +154,13 @@ export const keypointAdapter: LighterAdapter = {
 };
 
 export const polylineAdapter: LighterAdapter = {
+  // 2D vertices are what this surface draws — Polyline3D (shared `_cls`,
+  // `points3d` only) fails the requirement
+  renders: (label) =>
+    Array.isArray(label.points) && (label.points as unknown[]).length > 0,
+
   buildHandle: (ref, label) => ({
     factoryKey: "polyline",
-    ...(isPolyline3d(label) ? { unrenderable: true } : {}),
     options: { id: ref.instanceId, field: ref.path, label },
   }),
 
