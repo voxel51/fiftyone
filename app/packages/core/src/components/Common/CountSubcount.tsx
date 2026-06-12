@@ -59,14 +59,22 @@ const EntryCountsContainer = ({
   const subResult = useRecoilValueLoadable(subcountAtom);
 
   // a timed-out count for this path shows a marker instead of erroring the page;
-  // other fields keep their counts
+  // other fields keep their counts. Surface non-timeout errors first so a timeout
+  // on one loadable can't mask a real error on the other; only fall back to the
+  // marker once every observed error is timeout-classified.
+  let timedOut = false;
   for (const result of [countResult, subResult]) {
     if (result.state === "hasError") {
       if (isAggregationTimeout(result.contents)) {
-        return <TimedOutCounts />;
+        timedOut = true;
+      } else {
+        throw result.contents;
       }
-      throw result.contents;
     }
+  }
+
+  if (timedOut) {
+    return <TimedOutCounts />;
   }
 
   return <EntryCounts countAtom={countAtom} subcountAtom={subcountAtom} />;

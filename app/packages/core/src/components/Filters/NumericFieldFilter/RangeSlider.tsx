@@ -3,7 +3,9 @@ import { formatPrimitive } from "@fiftyone/utilities";
 import React, { useRef } from "react";
 import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
-import { isAggregationTimeout } from "../../Common/TimedOutCounts";
+import TimedOutCounts, {
+  isAggregationTimeout,
+} from "../../Common/TimedOutCounts";
 import CommonRangeSlider from "../../Common/RangeSlider";
 import Box from "./Box";
 import FilterOption from "./FilterOption";
@@ -76,6 +78,10 @@ const RangeSlider = ({
         style={{ cursor: "default" }}
         data-cy={`numeric-slider-container-${key}`}
       >
+        {/* signal why the slider is absent; manual inputs still drive filtering */}
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <TimedOutCounts text="Range bounds timed out. Use the min/max inputs to filter this field." />
+        </div>
         <Inputs modal={modal} path={path} color={color} />
         <FilterOption color={color} modal={modal} path={path} />
         <Reset color={color} modal={modal} path={path} />
