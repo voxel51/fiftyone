@@ -470,10 +470,11 @@ class TrainingResults(BaseRunResults):
         """Populate ``pred_field`` using ``fiftyone.core.models.apply_model``.
         ``samples`` defaults to ``val_view`` ∪ ``test_view`` (the
         conventional eval sets); pass e.g. ``samples=run.train_view`` to
-        populate elsewhere. If ``model`` implements ``compute_sample_metrics``,
-        per-sample metrics are stored as top-level ``<train_key>_<metric_key>``
-        fields. Does not finalize; call ``finish()`` (or rely on
-        ``auto_eval``)."""
+        populate elsewhere. If ``model`` is an :class:`fiftyone.core.models.Model`
+        that overrides ``compute_sample_metrics``, per-sample metrics are stored
+        as top-level ``<train_key>_<metric_key>`` fields (models accepted via
+        conversion, e.g. ultralytics, skip this). Does not finalize; call
+        ``finish()`` (or rely on ``auto_eval``)."""
         import fiftyone.core.models as fomo
 
         if self.config.pred_field is None:
@@ -493,8 +494,13 @@ class TrainingResults(BaseRunResults):
             samples, model, label_field=self.config.pred_field, **kwargs
         )
 
+        # Optional per-sample metrics: only fo.Model subclasses can carry the
+        # compute_sample_metrics hook. Other models that fomo.apply_model
+        # accepts via internal conversion (e.g. a raw ultralytics YOLO) aren't
+        # fo.Models, so we skip rather than introspect an attribute they lack.
         if (
-            type(model).compute_sample_metrics
+            isinstance(model, fomo.Model)
+            and type(model).compute_sample_metrics
             is not fomo.Model.compute_sample_metrics
         ):
             metrics = {}
