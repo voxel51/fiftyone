@@ -1,13 +1,13 @@
 import { collectTileIds, useTiling, type TilingTile } from "@fiftyone/tiling";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import type { MosaicNode } from "react-mosaic-component";
+import type { SceneSource } from "../../../scene-inventory";
 import {
   mcapTileTypeFromId,
   readMcapModalLayout,
   writeMcapModalLayout,
 } from "./mcap-layout-persistence";
 import { getMcapTileDefinition } from "./use-mcap-tiles";
-import { useMcapInitialTiles } from "./use-mcap-scene-inventory";
 
 export interface McapModalLayout {
   initialTiles: Record<string, TilingTile>;
@@ -21,20 +21,30 @@ export interface McapModalLayout {
 
 /**
  * Mount-time layout state for the MCAP modal: the user's persisted
- * sidebar visibility and tile arrangement when one restores cleanly,
- * the built-in defaults otherwise. Pair with
+ * sidebar visibility and tile arrangement when one restores cleanly
+ * against the current scene, the inventory-derived defaults (one tile
+ * per source type present in the file) otherwise. Pair with
  * `<McapModalLayoutPersistence />` (inside the playback shell) to write
  * changes back.
  */
-export function useMcapModalLayout(fileName: string): McapModalLayout {
-  const defaultTiles = useMcapInitialTiles(fileName);
+export function useMcapModalLayout(
+  sources: readonly SceneSource[]
+): McapModalLayout {
+  const presentTypes = useMemo(
+    () => Array.from(new Set(sources.map((s) => s.type))),
+    [sources]
+  );
+  const defaultTiles = useMemo(
+    () => buildDefaultTiles(presentTypes),
+    [presentTypes]
+  );
   // Read storage once per modal mount — navigating samples remounts the
   // renderer and picks up whatever the previous sample persisted.
   const persisted = useMemo(readMcapModalLayout, []);
 
   const restored = useMemo(
-    () => rebuildTilesFromLayout(persisted?.layout),
-    [persisted]
+    () => rebuildTilesFromLayout(persisted?.layout, presentTypes),
+    [persisted, presentTypes]
   );
 
   const onLeftOpenChange = useCallback((open: boolean) => {
@@ -55,13 +65,36 @@ export function useMcapModalLayout(fileName: string): McapModalLayout {
 }
 
 /**
+ * One auto-binding tile per source type present in the scene. Each tile
+ * binds to the first source of its type, so any recording opens with
+ * something visible for every kind of data it contains.
+ */
+function buildDefaultTiles(
+  presentTypes: readonly string[]
+): Record<string, TilingTile> {
+  const tiles: Record<string, TilingTile> = {};
+  for (const type of presentTypes) {
+    const definition = getMcapTileDefinition(type);
+    if (!definition) continue;
+    const Tile = definition.Tile;
+    tiles[`${type}-default`] = {
+      title: definition.typeLabel,
+      render: () => <Tile />,
+    };
+  }
+  return tiles;
+}
+
+/**
  * Rebuild the tile entries a persisted mosaic tree references. All-or-
- * nothing: if any leaf id doesn't map to a known tile type the whole
- * restore is discarded, so a partially-recognized layout can't render
- * half a workspace.
+ * nothing: if any leaf id doesn't map to a known tile type — or its type
+ * has no source in the current scene — the whole restore is discarded,
+ * so a layout saved against a differently-shaped recording can't render
+ * dead tiles.
  */
 function rebuildTilesFromLayout(
-  layout: MosaicNode<string> | null | undefined
+  layout: MosaicNode<string> | null | undefined,
+  presentTypes: readonly string[]
 ): { layout: MosaicNode<string>; tiles: Record<string, TilingTile> } | null {
   if (layout === null || layout === undefined) return null;
   const tileIds = collectTileIds(layout);
@@ -70,7 +103,8 @@ function rebuildTilesFromLayout(
   const tiles: Record<string, TilingTile> = {};
   for (const id of tileIds) {
     const type = mcapTileTypeFromId(id);
-    const definition = type ? getMcapTileDefinition(type) : null;
+    if (!type || !presentTypes.includes(type)) return null;
+    const definition = getMcapTileDefinition(type);
     if (!definition) return null;
     const Tile = definition.Tile;
     tiles[id] = {
