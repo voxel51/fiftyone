@@ -3461,7 +3461,9 @@ __metadata:
   resolution: "@fiftyone/multimodal@workspace:packages/multimodal"
   dependencies:
     "@bufbuild/protobuf": "npm:^2.11.0"
+    "@fiftyone/components": "npm:*"
     "@fiftyone/plugins": "npm:*"
+    "@fiftyone/state": "npm:*"
     "@fiftyone/tiling": "npm:*"
     "@fiftyone/utilities": "npm:*"
     "@mcap/core": "npm:^2.2.1"
@@ -3469,6 +3471,7 @@ __metadata:
     "@react-three/drei": "npm:9.105.4"
     "@react-three/fiber": "npm:^8.18.0"
     "@types/three": "npm:^0.182.0"
+    "@voxel51/voodo": "npm:^0.0.34"
     buffer: "npm:^6.0.3"
     lru-cache: "npm:^11.0.1"
     protobufjs: "npm:^7.2.5"

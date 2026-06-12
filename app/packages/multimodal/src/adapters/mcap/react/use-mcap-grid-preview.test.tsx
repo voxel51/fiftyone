@@ -4,7 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EncodedImageVisualization } from "../../../decoders";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
 import { VISUALIZATION_KIND } from "../../../visualization";
-import type { McapGridPreviewResult } from "../grid-preview";
+import type {
+  McapGridPreviewFrame,
+  McapGridPreviewResult,
+} from "../grid-preview";
 import {
   useMcapGridPreview,
   type McapGridPreviewState,
@@ -128,7 +131,9 @@ describe("useMcapGridPreview", () => {
     await waitFor(() => {
       expect(latestState.current?.status).toBe("ready");
     });
-    expect(latestState.current?.frame?.image.bytes[0]).toBe(1);
+    expect(imageFrame(latestState.current?.frame ?? null)?.image.bytes[0]).toBe(
+      1
+    );
 
     act(() => {
       latestState.current?.play();
@@ -145,7 +150,9 @@ describe("useMcapGridPreview", () => {
     hover.resolve(readyResult({ bytes: [9, 8, 7], nextStartTimeNs: 20n }));
 
     await waitFor(() => {
-      expect(latestState.current?.frame?.image.bytes[0]).toBe(9);
+      expect(
+        imageFrame(latestState.current?.frame ?? null)?.image.bytes[0]
+      ).toBe(9);
     });
 
     act(() => {
@@ -153,18 +160,107 @@ describe("useMcapGridPreview", () => {
     });
     expect(poolHarness.pool.release).not.toHaveBeenCalled();
   });
+
+  it("reloads and sends the selected stream topic when it changes", async () => {
+    poolHarness.pool.request
+      .mockResolvedValueOnce(
+        readyResult({ bytes: [1], streamTopic: "/camera/front" })
+      )
+      .mockResolvedValueOnce(
+        readyResult({ bytes: [2], streamTopic: "/camera/back" })
+      );
+
+    const { rerender } = render(
+      <PreviewHarness
+        id="selected"
+        selectedStreamTopic="/camera/front"
+        source={sourceForId("selected")}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("preview-selected").textContent).toBe(
+        "ready:1:frame:"
+      );
+    });
+
+    rerender(
+      <PreviewHarness
+        id="selected"
+        selectedStreamTopic="/camera/back"
+        source={sourceForId("selected")}
+      />
+    );
+
+    await waitFor(() => {
+      expect(poolHarness.pool.request).toHaveBeenCalledTimes(2);
+    });
+    expect(poolHarness.pool.request.mock.calls[1]?.[0]).toMatchObject({
+      selectedStreamTopic: "/camera/back",
+      source: sourceForId("selected"),
+    });
+  });
+
+  it("does not play while a selected stream reload is still loading", async () => {
+    const latestState = { current: null as McapGridPreviewState | null };
+    const reload = deferred<McapGridPreviewResult>();
+    poolHarness.pool.request
+      .mockResolvedValueOnce(
+        readyResult({ bytes: [1], streamTopic: "/camera/front" })
+      )
+      .mockReturnValueOnce(reload.promise);
+
+    const { rerender } = render(
+      <PreviewHarness
+        id="reload-play"
+        onState={(state) => {
+          latestState.current = state;
+        }}
+        selectedStreamTopic="/camera/front"
+        source={sourceForId("reload-play")}
+      />
+    );
+
+    await waitFor(() => {
+      expect(latestState.current?.status).toBe("ready");
+    });
+
+    act(() => {
+      latestState.current?.play();
+      rerender(
+        <PreviewHarness
+          id="reload-play"
+          onState={(state) => {
+            latestState.current = state;
+          }}
+          selectedStreamTopic="/camera/back"
+          source={sourceForId("reload-play")}
+        />
+      );
+    });
+
+    await waitFor(() => {
+      expect(poolHarness.pool.request).toHaveBeenCalledTimes(2);
+    });
+    await act(async () => undefined);
+    expect(poolHarness.pool.request).toHaveBeenCalledTimes(2);
+
+    reload.resolve(readyResult({ bytes: [2], streamTopic: "/camera/back" }));
+  });
 });
 
 function PreviewHarness({
   id,
   onState,
+  selectedStreamTopic,
   source,
 }: {
   readonly id: string;
   readonly onState?: (state: McapGridPreviewState) => void;
+  readonly selectedStreamTopic?: string | null;
   readonly source: ByteSourceDescriptor | null;
 }) {
-  const state = useMcapGridPreview({ source });
+  const state = useMcapGridPreview({ selectedStreamTopic, source });
 
   useEffect(() => {
     onState?.(state);
@@ -176,7 +272,7 @@ function PreviewHarness({
 function formatState(state: McapGridPreviewState): string {
   return [
     state.status,
-    state.hasImageTopics ? "1" : "0",
+    state.hasPreviewTopics ? "1" : "0",
     state.frame ? "frame" : "no-frame",
     state.error ?? "",
   ].join(":");
@@ -184,10 +280,12 @@ function formatState(state: McapGridPreviewState): string {
 
 function readyResult({
   bytes,
-  nextStartTimeNs,
+  streamTopic = "/camera/front",
+  nextStartTimeNs = 5n,
 }: {
   readonly bytes: readonly number[];
-  readonly nextStartTimeNs: bigint;
+  readonly streamTopic?: string;
+  readonly nextStartTimeNs?: bigint;
 }): McapGridPreviewResult {
   return {
     delayMs: 83,
@@ -197,21 +295,24 @@ function readyResult({
       frame: {
         annotations: null,
         image: createImage(bytes),
+        kind: "image",
       },
-      hasImageTopics: true,
-      imageTopic: "/camera/front",
+      hasPreviewTopics: true,
+      streamTopic,
+      streamTopics: [streamTopic],
       status: "ready",
     },
   };
 }
 
-function emptyResult(hasImageTopics: boolean): McapGridPreviewResult {
+function emptyResult(hasPreviewTopics: boolean): McapGridPreviewResult {
   return {
     state: {
       error: null,
       frame: null,
-      hasImageTopics,
-      imageTopic: hasImageTopics ? "/camera/front" : null,
+      hasPreviewTopics,
+      streamTopic: hasPreviewTopics ? "/camera/front" : null,
+      streamTopics: hasPreviewTopics ? ["/camera/front"] : [],
       status: "empty",
     },
   };
@@ -222,6 +323,12 @@ function createImage(bytes: readonly number[]): EncodedImageVisualization {
     bytes: new Uint8Array(bytes),
     kind: VISUALIZATION_KIND.ENCODED_IMAGE,
   };
+}
+
+function imageFrame(
+  frame: McapGridPreviewFrame | null
+): Extract<McapGridPreviewFrame, { kind: "image" }> | null {
+  return frame?.kind === "image" ? frame : null;
 }
 
 const SOURCES_BY_ID = new Map<string, ByteSourceDescriptor>();

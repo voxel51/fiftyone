@@ -150,8 +150,9 @@ function createResult() {
     state: {
       error: null,
       frame: null,
-      hasImageTopics: false,
-      imageTopic: null,
+      hasPreviewTopics: false,
+      streamTopic: null,
+      streamTopics: [],
       status: "empty" as const,
     },
   };
