@@ -108,7 +108,7 @@ const LABEL_TYPE_TO_LIST_KEY: Record<string, string> = {
   Keypoint: "keypoints",
 };
 
-const listKeyForType = (type: string): string | null =>
+export const listKeyForType = (type: string): string | null =>
   LABEL_TYPE_TO_LIST_KEY[type] ?? null;
 
 const listKeyFor = (label: LabelProxy, schema: Field): string | null => {
@@ -131,14 +131,17 @@ const listKeyFor = (label: LabelProxy, schema: Field): string | null => {
 };
 
 /**
- * The complete new value of the edited label, as a plain object.
+ * The complete value of a label proxy, as a plain object (a 2D detection's
+ * bounding box is folded into its data).
  */
-const incomingLabel = (label: LabelProxy): unknown => {
+export const labelProxyValue = (label: LabelProxy): unknown => {
   if (label.type === "Detection") {
     return makeDetectionLabel(label as Detection2DMetadata);
   }
   return (label as { data: unknown }).data;
 };
+
+const incomingLabel = labelProxyValue;
 
 /**
  * Merge the editor's fields over the original label so fields the editor
@@ -156,7 +159,7 @@ const mergeOntoPrevious = (previous: unknown, incoming: unknown): unknown =>
  * untouched labels (whose overlay representation may differ only by key order
  * or float formatting) don't register as edits and trigger phantom saves.
  */
-const isUnchanged = (previous: unknown, next: unknown): boolean => {
+export const isUnchanged = (previous: unknown, next: unknown): boolean => {
   if (isObject(previous) && isObject(next)) {
     return (
       generateJsonPatch(
@@ -184,20 +187,26 @@ const isUnchanged = (previous: unknown, next: unknown): boolean => {
  * @param schema Field schema
  * @param opType Operation type ("mutate" or "delete")
  * @param isGenerated Whether this is a generated (patches) view
+ * @param includeUnchanged Return the delta even when it is a no-op. Callers
+ *   that record edits into the pending-edits store always record, and the
+ *   store resolves no-ops — so e.g. an edit moved back to its starting value
+ *   correctly supersedes the earlier recorded edit.
  */
 export const buildLabelFieldDelta = (
   sample: Sample,
   label: LabelProxy,
   schema: Field,
   opType: OpType,
-  isGenerated = false
+  isGenerated = false,
+  includeUnchanged = false
 ): LabelFieldDelta | null => {
   const isDelete = opType === "delete";
 
   // `null` when the edit is a no-op (nothing actually changed / nothing to
   // delete) so unchanged labels never produce a save.
   const skip = (previousValue: unknown, newValue: unknown): boolean =>
-    isDelete ? previousValue == null : isUnchanged(previousValue, newValue);
+    !includeUnchanged &&
+    (isDelete ? previousValue == null : isUnchanged(previousValue, newValue));
 
   // Primitive (non-label) sample field.
   if (label.type === "Primitive" || isPrimitiveFieldType(schema)) {
@@ -233,9 +242,20 @@ export const buildLabelFieldDelta = (
           >)
         : null;
 
+    // The flat fallback must be THIS label (a to_patches sample IS the label,
+    // matched by identity) — anything else at the field means the label has
+    // no previous value. Using a foreign object as the precondition would
+    // corrupt the save with another label's data.
+    const flatValue =
+      isObject(fieldValue) &&
+      labelId !== null &&
+      (fieldValue as { _id?: string })._id === labelId
+        ? fieldValue
+        : null;
+
     const previousValue = list
       ? list.find((e) => (e as { _id?: string })._id === labelId) ?? null
-      : fieldValue ?? null;
+      : flatValue;
 
     const newValue = isDelete
       ? null

@@ -1,5 +1,7 @@
 import {
+  useAnnotationEventBus,
   useAutoSave,
+  useRecordLabelEdits,
   useRegisterAnnotationCommandHandlers,
   useRegisterAnnotationEventHandlers,
   useRegisterAnnotationKeybindings,
@@ -97,6 +99,7 @@ const AnnotationHandlerRegistrationInner = () => {
   useRegisterAnnotationEventHandlers();
   useRegisterAnnotationKeybindings();
   useRegisterRendererEventHandlers();
+  useRecordLabelEdits();
   useAnnotationTracking();
 
   const modalMode = useModalMode();
@@ -147,6 +150,8 @@ const Modal = () => {
 
   const { jsonPanel, helpPanel } = useLookerHelpers();
 
+  const annotationEventBus = useAnnotationEventBus();
+
   const modalCloseHandler = useRecoilCallback(
     ({ snapshot, set }) =>
       async () => {
@@ -168,6 +173,11 @@ const Modal = () => {
           return;
         }
 
+        // Flush any pending annotation edits before teardown. The batch is
+        // snapshotted synchronously; only the network write continues in the
+        // background. A no-op when nothing is pending.
+        annotationEventBus.dispatch("annotation:persistenceRequested");
+
         clearModal();
         activeLookerRef.current?.removeEventListener(
           "close",
@@ -178,7 +188,7 @@ const Modal = () => {
 
         jotaiStore.set(currentModalUniqueIdJotaiAtom, "");
       },
-    [clearModal, jsonPanel, helpPanel]
+    [annotationEventBus, clearModal, jsonPanel, helpPanel]
   );
 
   const selectCallback = useRecoilCallback(

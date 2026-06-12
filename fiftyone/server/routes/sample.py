@@ -16,9 +16,11 @@ Non-obvious bits:
     an ephemeral view that regenerates from the source, so a stale write there
     is skipped rather than failing the request. The permanent source write is
     authoritative.
-  * Multiple permanent writes in one batch are prevalidated so a stale one
-    can't half-apply — FiftyOne's MongoDB may be standalone, so transactions
-    are not assumed.
+  * Permanent writes are applied independently — a stale gate on one update is
+    a conflict for that update only, never for the rest of the batch.
+  * A precondition miss whose target already holds the requested post-state is
+    an **idempotent retry** (e.g. the first attempt committed but its response
+    was lost) and counts as success, not a conflict.
   * :class:`CommitMask` is deliberately separate: it is the only path that
     loads a sample and calls ``sample.save()``, for a server-side file write
     the gated path can't express.
@@ -236,6 +238,68 @@ def _build_label_update(
     return filter_doc, update_doc
 
 
+def _scalar_gates(bson_doc: dict) -> Dict[str, Any]:
+    """Equality gates for every gatable (scalar) field of ``bson_doc``."""
+    return {
+        field: _gate(value)
+        for field, value in bson_doc.items()
+        if field != "_id" and _gatable(value)
+    }
+
+
+def _build_label_applied_filter(
+    lookup_path: str,
+    label_oid: Optional[ObjectId],
+    new: Optional[dict],
+    *,
+    array: bool,
+    doc_filter: Dict[str, Any],
+) -> Dict[str, Any]:
+    """A filter matching the document iff the label update already holds.
+
+    "Holds" is judged on label identity plus every gatable (scalar) field of
+    the new value; embedded documents and binary blobs are not compared, for
+    the same reasons they are not gated on.
+    """
+    # Delete: applied iff the label is gone (the document itself must exist —
+    # ``doc_filter`` ensures that).
+    if new is None:
+        if array:
+            return {**doc_filter, f"{lookup_path}._id": {"$ne": label_oid}}
+        return {**doc_filter, lookup_path: {"$in": [None]}}
+
+    new_bson = _label_to_mongo(new)
+    gates = _scalar_gates(new_bson)
+
+    # Add/modify: applied iff the label exists with all the new scalar values.
+    if array:
+        return {
+            **doc_filter,
+            lookup_path: {"$elemMatch": {"_id": label_oid, **gates}},
+        }
+
+    filter_doc = {**doc_filter}
+    if "_id" in new_bson:
+        filter_doc[f"{lookup_path}._id"] = new_bson["_id"]
+    filter_doc.update({f"{lookup_path}.{f}": v for f, v in gates.items()})
+    return filter_doc
+
+
+def _build_primitive_applied_filter(
+    field_path: str,
+    new: Any,
+    *,
+    doc_filter: Dict[str, Any],
+) -> Optional[Dict[str, Any]]:
+    """A filter matching iff the primitive update already holds, or ``None``
+    when the new value is not reliably comparable (non-scalar)."""
+    if new is None:
+        return {**doc_filter, field_path: {"$in": [None]}}
+    if _gatable(new):
+        return {**doc_filter, field_path: new}
+    return None
+
+
 def _build_primitive_update(
     field_path: str,
     old: Any,
@@ -375,13 +439,17 @@ def _plan_update(db, update: dict, allowed: set) -> dict:
 
     label_id = update.get("labelId")
     if label_id is not None:
+        label_oid = _object_id(label_id)
         filter_doc, update_doc = _build_label_update(
             lookup_path,
-            _object_id(label_id),
+            label_oid,
             old,
             new,
             array=True,
             doc_filter=doc_filter,
+        )
+        applied_filter = _build_label_applied_filter(
+            lookup_path, label_oid, new, array=True, doc_filter=doc_filter
         )
     elif _is_label(new) or _is_label(old):
         filter_doc, update_doc = _build_label_update(
@@ -392,22 +460,41 @@ def _plan_update(db, update: dict, allowed: set) -> dict:
             array=False,
             doc_filter=doc_filter,
         )
+        applied_filter = _build_label_applied_filter(
+            lookup_path, None, new, array=False, doc_filter=doc_filter
+        )
     else:
         filter_doc, update_doc = _build_primitive_update(
             lookup_path, old, new, doc_filter=doc_filter
+        )
+        applied_filter = _build_primitive_applied_filter(
+            lookup_path, new, doc_filter=doc_filter
         )
 
     plan["filter"] = filter_doc
     plan["update"] = update_doc
     plan["lookup_path"] = lookup_path
+    plan["applied_filter"] = applied_filter
     return plan
 
 
 def _current_document(plan: dict) -> Any:
-    """The plan document's full current state (``None`` if it no longer exists),
-    returned to the client so it can reconcile every concurrently-changed
-    field — not just the one it tried to write."""
-    return plan["collection"].find_one(plan["doc_filter"])
+    """The current state of the field this plan gated on (``None`` if the
+    document no longer exists), so the client can rebase the conflicting
+    delta without pulling the entire — often large — document.
+
+    Projects to the field's top-level container (e.g. ``manual`` for a
+    ``manual.detections`` write) plus ``last_modified_at``; ``_id`` is always
+    returned. Falls back to the whole document only when there is no field
+    path to scope to.
+    """
+    lookup_path = plan.get("lookup_path")
+    if not lookup_path:
+        return plan["collection"].find_one(plan["doc_filter"])
+    top_field = lookup_path.split(".", 1)[0]
+    return plan["collection"].find_one(
+        plan["doc_filter"], {top_field: 1, "last_modified_at": 1}
+    )
 
 
 def _is_generated_collection(name: str) -> bool:
@@ -423,15 +510,31 @@ def _apply_plan(plan: dict) -> bool:
     return result.matched_count > 0
 
 
+def _already_applied(plan: dict) -> bool:
+    """Whether the document already holds this plan's post-state.
+
+    A gated write that missed its precondition but whose requested post-state
+    already holds is an idempotent retry (e.g. the first attempt committed but
+    its response was lost) — a success, not a conflict.
+    """
+    applied_filter = plan.get("applied_filter")
+    if applied_filter is None:
+        return False
+    return plan["collection"].find_one(applied_filter, {"_id": 1}) is not None
+
+
 class SampleFields(HTTPEndpoint):
     """Applies a batch of gated annotation field updates.
 
     The permanent source collection is authoritative — its gated writes are
-    what can conflict (409). Writes to a generated (patches/clips) collection are
-    best-effort: it is an ephemeral view that regenerates from the source, so a
-    stale write is skipped rather than failing the request. Several permanent
-    writes in one batch are prevalidated so a stale one can't half-apply
-    (FiftyOne's MongoDB may be standalone — no transactions assumed).
+    what can conflict (409). Writes to a generated (patches/clips) collection
+    are best-effort: it is an ephemeral view that regenerates from the source,
+    so a stale write is skipped rather than failing the request.
+
+    Permanent writes are applied independently: a stale gate on one update is
+    a conflict for that update only, never for the rest of the batch. A miss
+    whose post-state already holds is an idempotent retry and counts as
+    success.
     """
 
     @decorators.route
@@ -444,10 +547,12 @@ class SampleFields(HTTPEndpoint):
             data: a list of updates, or ``{"updates": [...]}``
 
         Returns:
-            ``200 {"updated": n}`` if every *permanent* write matched; otherwise
-            ``409 {"conflicts": [{"index", "value"}, ...]}`` where ``value`` is
-            the full current state of the conflicting document, so the client
-            can reconcile every concurrently-changed field and retry.
+            ``200 {"updated": n}`` if every *permanent* write was applied (or
+            already held); otherwise ``409 {"conflicts": [{"index", "value"},
+            ...]}`` listing only the rejected updates, where ``value`` is the
+            conflicting document's current state (projected to the gated
+            field) so the client can rebase those deltas and retry. Updates
+            not listed in ``conflicts`` were applied.
         """
         updates = data.get("updates") if isinstance(data, dict) else data
         if not isinstance(updates, list):
@@ -472,44 +577,37 @@ class SampleFields(HTTPEndpoint):
             if _is_generated_collection(p["collection_name"])
         ]
 
-        # Several permanent writes (a multi-label edit) are prevalidated so a
-        # stale one can't half-apply; a lone write is atomic and skips the read.
-        if len(permanent) > 1:
-            stale = [
-                {"index": i, "value": _current_document(p)}
-                for i, p in permanent
-                if not p["delete_document"]
-                and p["collection"].find_one(p["filter"], {"_id": 1}) is None
-            ]
-            if stale:
-                logger.warning(
-                    "Annotation batch REJECTED (precondition mismatch): "
-                    "%d of %d permanent writes conflicted",
-                    len(stale),
-                    len(permanent),
-                )
-                return JSONResponse({"conflicts": stale}, status_code=409)
-
-        # Permanent writes are authoritative — a stale gate is a real conflict.
+        # Permanent writes are authoritative and applied independently — a
+        # stale gate on one update never blocks the others.
         conflicts = []
         for index, plan in permanent:
-            if not _apply_plan(plan):
-                logger.warning(
-                    "Annotation save REJECTED (precondition mismatch): "
+            if _apply_plan(plan):
+                continue
+
+            if _already_applied(plan):
+                logger.info(
+                    "Annotation update already applied (idempotent retry): "
                     "collection=%s id=%s lookupPath=%s",
                     plan["collection_name"],
                     plan["doc_id"],
                     plan["lookup_path"],
                 )
-                conflicts.append(
-                    {"index": index, "value": _current_document(plan)}
-                )
+                continue
 
-        if conflicts:
-            # Authoritative edit rejected — skip the now-pointless generated sync.
-            return JSONResponse({"conflicts": conflicts}, status_code=409)
+            logger.warning(
+                "Annotation save REJECTED (precondition mismatch): "
+                "collection=%s id=%s lookupPath=%s",
+                plan["collection_name"],
+                plan["doc_id"],
+                plan["lookup_path"],
+            )
+            conflicts.append(
+                {"index": index, "value": _current_document(plan)}
+            )
 
         # Best-effort: a stale generated-view write is skipped, never failed.
+        # Runs even when some permanent writes conflicted — the applied ones
+        # still want their generated view in sync.
         for _index, plan in generated:
             if not _apply_plan(plan):
                 logger.info(
@@ -518,6 +616,9 @@ class SampleFields(HTTPEndpoint):
                     plan["collection_name"],
                     plan["doc_id"],
                 )
+
+        if conflicts:
+            return JSONResponse({"conflicts": conflicts}, status_code=409)
 
         logger.debug("Annotation batch applied: %d updates", len(plans))
         return JSONResponse({"updated": len(plans)})

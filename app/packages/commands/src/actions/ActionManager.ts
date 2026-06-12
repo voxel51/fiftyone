@@ -11,7 +11,11 @@ export type UndoStateListener = (
   redoEnabled: boolean
 ) => void;
 
-export type ActionListener = (actionId: string, isUndo: boolean) => void;
+export type ActionListener = (
+  actionId: string,
+  isUndo: boolean,
+  action?: Action
+) => void;
 
 /**
  * Manages the execution of actions and supports
@@ -52,9 +56,18 @@ export class ActionManager {
 
   /**
    * Pushes an undoable action onto the undo stack.
+   *
+   * The action was executed outside the manager, so this also notifies action
+   * listeners — a recorded undoable is a user edit regardless of which code
+   * path applied it.
    * @param undoable - The undoable to push.
    */
   push(undoable: Undoable): void {
+    this.pushInternal(undoable);
+    this.fireActionListeners(undoable.id, false, undoable);
+  }
+
+  private pushInternal(undoable: Undoable): void {
     this.undoStack.push(undoable);
     this.redoStack = []; // Clear redo stack when new undoable is pushed
 
@@ -75,7 +88,7 @@ export class ActionManager {
       try {
         await undoable.undo();
         this.redoStack.push(undoable);
-        this.fireActionListeners(undoable.id, true);
+        this.fireActionListeners(undoable.id, true, undoable);
         this.fireUndoListeners();
         return true;
       } catch (error) {
@@ -100,7 +113,7 @@ export class ActionManager {
       try {
         await undoable.execute();
         this.undoStack.push(undoable);
-        this.fireActionListeners(undoable.id, false);
+        this.fireActionListeners(undoable.id, false, undoable);
         this.fireUndoListeners();
         return true;
       } catch (error) {
@@ -175,9 +188,10 @@ export class ActionManager {
   async execute(action: Action): Promise<void> {
     await action.execute();
     if (isUndoable(action)) {
-      this.push(action as Undoable);
+      // pushInternal: action listeners are notified exactly once below.
+      this.pushInternal(action as Undoable);
     }
-    this.fireActionListeners(action.id, false);
+    this.fireActionListeners(action.id, false, action);
   }
   /**
    * Gets the current redo stack size.
@@ -220,9 +234,9 @@ export class ActionManager {
     });
   }
 
-  private fireActionListeners(id: string, isUndo: boolean) {
+  private fireActionListeners(id: string, isUndo: boolean, action?: Action) {
     this.actionListeners.forEach((listener) => {
-      listener(id, isUndo);
+      listener(id, isUndo, action);
     });
   }
 }

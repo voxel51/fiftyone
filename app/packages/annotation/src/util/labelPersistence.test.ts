@@ -20,10 +20,12 @@ import {
   SaveConflictError,
 } from "@fiftyone/core/src/client";
 import {
+  applyDeltaToSample,
   buildUpdatesForDelta,
   saveAnnotationDeltas,
   handleLabelPersistence,
 } from "./labelPersistence";
+import { pendingEdits } from "../persistence/pendingEdits";
 import type { LabelFieldDelta } from "../deltas";
 import type { Sample } from "@fiftyone/looker";
 
@@ -199,10 +201,39 @@ describe("buildUpdatesForDelta", () => {
   });
 });
 
-describe("saveAnnotationDeltas", () => {
-  beforeEach(() => vi.clearAllMocks());
+describe("applyDeltaToSample", () => {
+  it("applies a nested (dotted) field change", () => {
+    const sample = {
+      dynamic: {
+        ground_truth: { detections: [{ _id: "det-1", label: "cat" }] },
+      },
+    } as Record<string, unknown>;
+    const nested: LabelFieldDelta = {
+      field: "dynamic.ground_truth",
+      listKey: "detections",
+      labelId: "det-1",
+      previousValue: { _id: "det-1", label: "cat" },
+      newValue: { _id: "det-1", label: "dog" },
+    };
 
-  it("sends updates and syncs the local baseline (in place) on success", async () => {
+    const next = { ...sample };
+    applyDeltaToSample(next, nested);
+
+    // written at the real nested field, not under a literal dotted key
+    expect((next as any).dynamic.ground_truth.detections[0].label).toBe("dog");
+    expect(next["dynamic.ground_truth"]).toBeUndefined();
+  });
+});
+
+describe("saveAnnotationDeltas", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    pendingEdits.reset();
+  });
+
+  it("sends updates and leaves display state alone on success", async () => {
+    // Every edit already wrote through to the canonical copy at record time —
+    // a clean save must not produce another display write.
     vi.mocked(saveAnnotationFieldUpdates).mockResolvedValue(undefined);
     const updateSample = vi.fn();
     const sample = {
@@ -219,40 +250,7 @@ describe("saveAnnotationDeltas", () => {
 
     expect(ok).toBe(true);
     expect(saveAnnotationFieldUpdates).toHaveBeenCalledOnce();
-    expect(updateSample).toHaveBeenCalledOnce();
-    const updated = updateSample.mock.calls[0][0];
-    expect(updated.ground_truth.detections[0].label).toBe("dog");
-  });
-
-  it("applies a nested (dotted) field change to the baseline", async () => {
-    vi.mocked(saveAnnotationFieldUpdates).mockResolvedValue(undefined);
-    const updateSample = vi.fn();
-    const sample = {
-      _id: "s1",
-      dynamic: {
-        ground_truth: { detections: [{ _id: "det-1", label: "cat" }] },
-      },
-    } as unknown as Sample;
-    const nested: LabelFieldDelta = {
-      field: "dynamic.ground_truth",
-      listKey: "detections",
-      labelId: "det-1",
-      previousValue: { _id: "det-1", label: "cat" },
-      newValue: { _id: "det-1", label: "dog" },
-    };
-
-    const ok = await saveAnnotationDeltas([nested], {
-      datasetId: "ds1",
-      sample,
-      updateSample,
-      isGenerated: false,
-    });
-
-    expect(ok).toBe(true);
-    const updated = updateSample.mock.calls[0][0];
-    // written at the real nested field, not under a literal dotted key
-    expect(updated.dynamic.ground_truth.detections[0].label).toBe("dog");
-    expect(updated["dynamic.ground_truth"]).toBeUndefined();
+    expect(updateSample).not.toHaveBeenCalled();
   });
 
   it("skips the request and does not refresh when there are no changes", async () => {
@@ -302,6 +300,57 @@ describe("saveAnnotationDeltas", () => {
     expect(updated.primitive_field).toBe("also_changed");
   });
 
+  it("re-applies still-pending edits on top of the server's conflict state", async () => {
+    // The user kept editing other labels while the save was on the wire; the
+    // reconciled document must show server truth for the conflicted label AND
+    // the user's unsaved intent for everything else.
+    const conflict = new SaveConflictError([
+      {
+        index: 0,
+        value: {
+          _id: "s1",
+          ground_truth: { detections: [{ _id: "det-1", label: "other" }] },
+        },
+      },
+    ]);
+    vi.mocked(saveAnnotationFieldUpdates).mockRejectedValue(conflict);
+    const updateSample = vi.fn();
+    const sample = {
+      _id: "s1",
+      ground_truth: {
+        detections: [
+          { _id: "det-1", label: "cat" },
+          { _id: "det-2", label: "bird" },
+        ],
+      },
+    } as unknown as Sample;
+
+    // A pending, unflushed edit to a different label.
+    pendingEdits.record("s1", {
+      field: "ground_truth",
+      listKey: "detections",
+      labelId: "det-2",
+      previousValue: { _id: "det-2", label: "bird" },
+      newValue: { _id: "det-2", label: "eagle" },
+    });
+
+    await expect(
+      saveAnnotationDeltas([delta], {
+        datasetId: "ds1",
+        sample,
+        updateSample,
+        isGenerated: false,
+      })
+    ).rejects.toBe(conflict);
+
+    const updated = updateSample.mock.calls[0][0];
+    const byId = Object.fromEntries(
+      updated.ground_truth.detections.map((d: { _id: string }) => [d._id, d])
+    );
+    expect(byId["det-1"].label).toBe("other"); // server truth
+    expect(byId["det-2"].label).toBe("eagle"); // unsaved intent preserved
+  });
+
   it("returns false on a non-conflict failure", async () => {
     vi.mocked(saveAnnotationFieldUpdates).mockRejectedValue(
       new Error("network")
@@ -317,7 +366,10 @@ describe("saveAnnotationDeltas", () => {
 });
 
 describe("handleLabelPersistence", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    pendingEdits.reset();
+  });
 
   it("returns false when the sample or dataset is missing", async () => {
     const ok = await handleLabelPersistence({

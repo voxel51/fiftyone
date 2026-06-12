@@ -12,7 +12,21 @@ import {
   type LabelFieldDelta,
   type LabelProxy,
 } from "../deltas";
+import { applyDeltaToSample } from "../persistence/applyDelta";
+import { debugLog, summarize } from "../persistence/debug";
+import { pendingEdits } from "../persistence/pendingEdits";
 import type { OpType } from "../types";
+
+export { applyDeltaToSample };
+
+/**
+ * A delta that failed its precondition, with the server's reported current
+ * state of the document (FE-shaped; `null` if the document was deleted).
+ */
+export type ConflictedDelta = {
+  delta: LabelFieldDelta;
+  serverDocument: unknown;
+};
 
 /**
  * Everything needed to address a delta against the right collection(s).
@@ -23,14 +37,33 @@ export type SaveContext = {
   /** The modal sample (the patches sample, when generated). */
   sample: Sample;
   /**
-   * Update the sample in place (modal + grid tile) — NOT a grid refresh. Backed
-   * by `useUpdateSamples`, which patches the looker for the tile directly so
-   * the edit shows without reloading the grid.
+   * Write a reconciled sample to the canonical store (which fans it out to the
+   * modal + grid tile in place — NOT a grid refresh). Only called on conflict:
+   * on success the canonical copy is already correct, because every edit wrote
+   * through at record time.
    */
   updateSample: (sample: Sample) => void;
+  /**
+   * The freshest canonical copy of the sample, as the base for conflict
+   * reconciliation (the user may have kept editing while the save was on the
+   * wire). Defaults to `sample`.
+   */
+  getCurrentSample?: () => Sample | undefined;
   isGenerated?: boolean;
   /** Generated (patches) dataset name; the backend resolves its collection. */
   generatedDatasetName?: string;
+  /**
+   * The deltas the server applied (all of them on a clean save; the
+   * non-conflicted ones on a 409). The pending-edits ledger advances its
+   * originals from this.
+   */
+  onApplied?: (deltas: LabelFieldDelta[]) => void;
+  /**
+   * The deltas that failed their precondition, each with the server's current
+   * document state. The pending-edits ledger rebases from this so the next
+   * flush retries with a correct precondition.
+   */
+  onConflict?: (conflicts: ConflictedDelta[]) => void;
 };
 
 /**
@@ -124,125 +157,46 @@ export const buildUpdatesForDelta = (
 };
 
 /**
- * Set (or delete, when `value === undefined`) a possibly-dotted `path` on a
- * shallow copy, cloning intermediate objects so the original isn't mutated.
+ * Map each conflicting update index back to its source delta, transforming the
+ * server's reported document state to FE shape. A generated-view delta fans
+ * out to two updates — keep whichever conflict carries a document.
  */
-const setNestedField = (
-  root: Record<string, unknown>,
-  path: string,
-  value: unknown
-): void => {
-  const parts = path.split(".");
-  const leaf = parts.pop() as string;
-  let cursor = root;
-  for (const part of parts) {
-    const child = cursor[part];
-    cursor[part] = isObject(child) ? { ...(child as object) } : {};
-    cursor = cursor[part] as Record<string, unknown>;
-  }
-  if (value === undefined) {
-    delete cursor[leaf];
-  } else {
-    cursor[leaf] = value;
-  }
-};
-
-/**
- * Apply a saved delta to the local modal sample so the baseline matches what
- * was persisted — otherwise the next auto-save flush would re-send it (and
- * spuriously conflict). Values are already in FE shape.
- */
-const applyDeltaToSample = (
-  sample: Record<string, unknown>,
-  delta: LabelFieldDelta
-): void => {
-  // `field` may be a nested (dotted) path — read/write it accordingly.
-  const fieldValue = extractNestedField<Record<string, unknown>>(
-    sample,
-    delta.field
-  );
-  const isList =
-    !!delta.listKey &&
-    isObject(fieldValue) &&
-    Array.isArray((fieldValue as Record<string, unknown>)[delta.listKey]);
-
-  // Flat label (to_patches) or a flat/primitive field: replace or delete it.
-  if (!isList) {
-    setNestedField(
-      sample,
-      delta.field,
-      delta.newValue === null ? undefined : delta.newValue
-    );
-    return;
-  }
-
-  // List field (normal view or evaluation patches): replace/add/remove by id.
-  const listKey = delta.listKey as string;
-  const container = { ...((fieldValue as Record<string, unknown>) ?? {}) };
-  const list = [
-    ...((container[listKey] as Array<Record<string, unknown>>) ?? []),
-  ];
-  const idx = list.findIndex(
-    (e) => (e as { _id?: string })._id === delta.labelId
-  );
-  if (delta.newValue === null) {
-    if (idx >= 0) list.splice(idx, 1);
-  } else if (idx >= 0) {
-    list[idx] = delta.newValue as Record<string, unknown>;
-  } else {
-    list.push(delta.newValue as Record<string, unknown>);
-  }
-  container[listKey] = list;
-  setNestedField(sample, delta.field, container);
-};
-
-/**
- * On a precondition conflict the editor's baseline may be stale in more than
- * the field it tried to write, so the server returns the conflicting document's
- * full current state. Reconcile the modal sample from it — overlaying every
- * server field while preserving FE-only fields (e.g. resolved media urls) —
- * so all concurrently-changed fields are brought up to date, no refetch.
- */
-const reconcileConflicts = (
+const mapConflictsToDeltas = (
   error: SaveConflictError,
-  updates: AnnotationFieldUpdate[],
-  ctx: SaveContext
-): void => {
-  let next = ctx.sample as unknown as Record<string, unknown>;
-  let changed = false;
-
+  updateDeltas: LabelFieldDelta[]
+): Map<LabelFieldDelta, unknown> => {
+  const conflicted = new Map<LabelFieldDelta, unknown>();
   for (const { index, value } of error.conflicts) {
-    const update = updates[index];
-    // Only reconcile the document the modal is actually showing; `value` is
-    // null when that document was deleted out from under us.
-    if (
-      !update ||
-      String(update.id) !== String(ctx.sample._id) ||
-      value == null
-    ) {
+    const delta = updateDeltas[index];
+    if (!delta) {
       continue;
     }
-    next = {
-      ...next,
-      ...(transformSampleData(value as Record<string, unknown>) as Record<
-        string,
-        unknown
-      >),
-    };
-    changed = true;
+    const doc =
+      value == null
+        ? null
+        : transformSampleData(value as Record<string, unknown>);
+    if (!conflicted.has(delta) || doc != null) {
+      conflicted.set(delta, doc);
+    }
   }
-
-  if (changed) {
-    ctx.updateSample(next as unknown as Sample);
-  }
+  return conflicted;
 };
 
 /**
  * Persist a batch of captured deltas (old + new value per edit).
  *
+ * Display state is NOT touched on success — the canonical sample copy already
+ * shows every edit (write-through at record time), so a clean save only
+ * advances the ledger via `ctx.onApplied`.
+ *
+ * On a 409 the server applied everything except the conflicted updates.
+ * `ctx.onConflict` rebases the ledger, then the canonical copy is rebuilt as
+ * `server-reported field state + every still-pending edit re-applied` and
+ * written back (as an external change, so the annotation scene re-reads it).
+ * No refetch, no refresh.
+ *
  * @returns `true` on success, `false` on a non-conflict failure
- * @throws SaveConflictError after reconciling the modal sample, so callers can
- *   surface the conflict (and the retry controller can re-run)
+ * @throws SaveConflictError so callers can surface the conflict
  */
 export const saveAnnotationDeltas = async (
   deltas: LabelFieldDelta[],
@@ -255,33 +209,98 @@ export const saveAnnotationDeltas = async (
     return true;
   }
 
-  const updates = deltas.flatMap((delta) => buildUpdatesForDelta(delta, ctx));
+  // Source delta per update index, for mapping 409 conflicts back to deltas.
+  const updates: AnnotationFieldUpdate[] = [];
+  const updateDeltas: LabelFieldDelta[] = [];
+  for (const delta of deltas) {
+    for (const update of buildUpdatesForDelta(delta, ctx)) {
+      updates.push(update);
+      updateDeltas.push(delta);
+    }
+  }
   if (updates.length === 0) {
     return true;
   }
 
+  debugLog("save request", {
+    sampleId: ctx.sample._id,
+    updates: updates.map((u) => ({
+      collection: u.collection ?? u.datasetName,
+      id: u.id,
+      lookupPath: u.lookupPath,
+      labelId: u.labelId,
+      op: u.op ?? "update",
+      previousValue: summarize(u.previousValue),
+      newValue: summarize(u.newValue),
+    })),
+  });
+
   try {
     await saveAnnotationFieldUpdates(ctx.datasetId, ctx.sample._id, updates);
 
-    // Sync the local baseline to what we just persisted so subsequent flushes
-    // don't re-send (and conflict on) it. Updates the modal and grid tile in
-    // place — it does NOT refresh the grid.
-    const next = { ...(ctx.sample as unknown as Record<string, unknown>) };
-    for (const delta of deltas) {
-      applyDeltaToSample(next, delta);
-    }
-    ctx.updateSample(next as unknown as Sample);
+    debugLog("save applied", {
+      sampleId: ctx.sample._id,
+      deltas: deltas.length,
+    });
+    ctx.onApplied?.(deltas);
 
     return true;
   } catch (error) {
     if (error instanceof SaveConflictError) {
-      reconcileConflicts(error, updates, ctx);
+      const conflicted = mapConflictsToDeltas(error, updateDeltas);
+      const applied = deltas.filter((delta) => !conflicted.has(delta));
+      debugLog("save conflict", {
+        sampleId: ctx.sample._id,
+        applied: applied.length,
+        conflicted: conflicted.size,
+      });
+      if (applied.length) {
+        ctx.onApplied?.(applied);
+      }
+      // Rebase the ledger first — pendingDeltas below must reflect it.
+      ctx.onConflict?.(
+        [...conflicted].map(([delta, serverDocument]) => ({
+          delta,
+          serverDocument,
+        }))
+      );
+
+      // Rebuild the canonical copy for the document the modal is showing:
+      // overlay the conflicting fields' current server state, then re-apply
+      // every still-pending edit so unsaved intent stays visible and retries
+      // next flush (`value` is null when the document was deleted under us).
+      const base = ctx.getCurrentSample?.() ?? ctx.sample;
+      const next = { ...(base as unknown as Record<string, unknown>) };
+      for (const { index, value } of error.conflicts) {
+        const update = updates[index];
+        if (
+          update &&
+          String(update.id) === String(ctx.sample._id) &&
+          value != null
+        ) {
+          Object.assign(
+            next,
+            transformSampleData(value as Record<string, unknown>)
+          );
+        }
+      }
+      for (const pending of pendingEdits.pendingDeltas(
+        String(ctx.sample._id)
+      )) {
+        applyDeltaToSample(next, pending);
+      }
+      ctx.updateSample(next as unknown as Sample);
+      debugLog("conflict reconciled into canonical copy", {
+        sampleId: ctx.sample._id,
+      });
+
       console.warn(
         "Annotation save conflict; reconciled affected fields from server",
         error.conflicts
       );
       throw error;
     }
+    debugLog("save failed (non-conflict)", { error: String(error) });
     console.error("Annotation save failed", error);
     return false;
   }
@@ -322,7 +341,7 @@ export const handleLabelPersistence = async ({
   }
 
   const delta = buildLabelFieldDelta(
-    sample,
+    sample as unknown as Parameters<typeof buildLabelFieldDelta>[0],
     annotationLabel,
     schema,
     opType,
@@ -334,11 +353,25 @@ export const handleLabelPersistence = async ({
     return true;
   }
 
-  return saveAnnotationDeltas([delta], {
+  // One pipeline for all saves: record the edit, flush the net change, ack.
+  const sampleId = sample._id;
+  pendingEdits.record(sampleId, delta);
+  const deltas = pendingEdits.take(sampleId);
+  if (deltas.length === 0) {
+    return true;
+  }
+
+  return saveAnnotationDeltas(deltas, {
     datasetId,
     sample,
     updateSample,
     isGenerated,
     generatedDatasetName,
+    onApplied: (applied) =>
+      applied.forEach((d) => pendingEdits.ackApplied(sampleId, d)),
+    onConflict: (conflicts) =>
+      conflicts.forEach(({ delta: d, serverDocument }) =>
+        pendingEdits.ackConflict(sampleId, d, serverDocument)
+      ),
   });
 };

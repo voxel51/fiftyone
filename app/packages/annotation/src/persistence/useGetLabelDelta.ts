@@ -1,4 +1,5 @@
 import {
+  getLocalSample,
   isGeneratedView,
   useModalSample,
   useModalSampleSchema,
@@ -24,6 +25,11 @@ export interface UseGetLabelDeltaOptions {
    * - "delete": deleting a label
    */
   opType?: DeltaOpType;
+  /**
+   * Return the delta even when it is a no-op. Callers that record edits into
+   * the pending-edits store always record; the store resolves no-ops.
+   */
+  includeUnchanged?: boolean;
 }
 
 /**
@@ -72,7 +78,7 @@ export const useGetLabelDelta = <T>(
   labelConstructor: LabelConstructor<T>,
   options: UseGetLabelDeltaOptions = {}
 ): ((labelSource: T, path: string) => LabelFieldDelta | null) => {
-  const { opType = "mutate" } = options;
+  const { opType = "mutate", includeUnchanged = false } = options;
   const modalSample = useModalSample();
   const modalSampleSchema = useModalSampleSchema();
   const isGenerated = useRecoilValue(isGeneratedView);
@@ -94,14 +100,32 @@ export const useGetLabelDelta = <T>(
         return null;
       }
 
+      // The previous value MUST come from the canonical store, read
+      // synchronously at call time — a React render snapshot races the
+      // save/ack cycle, and a stale snapshot here becomes a wrong save
+      // precondition (the historical source of single-user 409s). The render
+      // value is only the fallback for a sample that has never been edited.
+      const sample = (getLocalSample(modalSample.sample._id) ??
+        modalSample.sample) as unknown as Parameters<
+        typeof buildLabelFieldDelta
+      >[0];
+
       return buildLabelFieldDelta(
-        modalSample.sample,
+        sample,
         labelProxy,
         schema,
         opType,
-        isGenerated
+        isGenerated,
+        includeUnchanged
       );
     },
-    [isGenerated, labelConstructor, modalSample, modalSampleSchema, opType]
+    [
+      includeUnchanged,
+      isGenerated,
+      labelConstructor,
+      modalSample,
+      modalSampleSchema,
+      opType,
+    ]
   );
 };

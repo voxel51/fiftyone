@@ -53,11 +53,12 @@ const buildAnnotationLabel = (
       path: label.path,
     };
   }
+  return undefined;
 };
 
 /**
- * Hook which provides a {@link DeltaSupplier} capturing deltas isolated to
- * the 3D annotation context.
+ * Hook which provides a {@link DeltaSupplier} capturing per-label deltas
+ * isolated to the 3D annotation context (working sets + deletions).
  */
 export const use3dDeltaSupplier = (): DeltaSupplier => {
   const detections = useWorkingDetections();

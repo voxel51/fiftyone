@@ -1,6 +1,6 @@
 import { PointInfo, type Sample } from "@fiftyone/looker";
 import { mainSample, mainSampleQuery } from "@fiftyone/relay";
-import { atom, selector } from "recoil";
+import { atom, atomFamily, selector } from "recoil";
 import { graphQLSelector } from "recoil-relay";
 import { VariablesOf } from "relay-runtime";
 import type { Lookers } from "../hooks";
@@ -22,6 +22,7 @@ import {
   pinned3DSampleSlice,
 } from "./renderConfig3d.atoms";
 import { datasetName } from "./selectors";
+import { getLocalSample } from "../stores/sampleStore";
 import { mapSampleResponse } from "./utils";
 import { view } from "./view";
 
@@ -148,6 +149,28 @@ export const nullableModalSampleId = selector<string>({
   },
 });
 
+/**
+ * Bumped (by `useUpdateSamples`) whenever a sample's canonical local copy
+ * (see `stores/sampleStore`) changes, so selectors overlaying it re-evaluate.
+ */
+export const localSampleVersion = atomFamily<number, string>({
+  key: "localSampleVersion",
+  default: 0,
+});
+
+const overlayLocalSample = (
+  mapped: ModalSample,
+  get: (atom: ReturnType<typeof localSampleVersion>) => number
+): ModalSample => {
+  const id = (mapped.sample as { _id?: string } | undefined)?._id;
+  if (!id) {
+    return mapped;
+  }
+  get(localSampleVersion(id));
+  const local = getLocalSample(id);
+  return local ? { ...mapped, sample: local } : mapped;
+};
+
 export const modalSample = graphQLSelector<
   VariablesOf<mainSampleQuery>,
   ModalSample
@@ -155,7 +178,7 @@ export const modalSample = graphQLSelector<
   environment: RelayEnvironmentKey,
   key: "modalSample",
   query: mainSample,
-  mapResponse: (data: ModalSampleResponse, { variables }) => {
+  mapResponse: (data: ModalSampleResponse, { get, variables }) => {
     if (!data.sample) {
       if (variables.filter.group) {
         throw new GroupSampleNotFound(
@@ -168,7 +191,10 @@ export const modalSample = graphQLSelector<
       );
     }
 
-    return mapSampleResponse(data.sample) as ModalSample;
+    return overlayLocalSample(
+      mapSampleResponse(data.sample) as ModalSample,
+      get
+    );
   },
   variables: ({ get }) => {
     const current = get(modalSelector);
@@ -209,7 +235,7 @@ export const groupSampleAtMainSlice = graphQLSelector<
   environment: RelayEnvironmentKey,
   key: "groupSampleAtMainSlice",
   query: mainSample,
-  mapResponse: (data: ModalSampleResponse, { variables }) => {
+  mapResponse: (data: ModalSampleResponse, { get, variables }) => {
     if (!data.sample) {
       if (variables.filter.group) {
         throw new GroupSampleNotFound(
@@ -222,7 +248,10 @@ export const groupSampleAtMainSlice = graphQLSelector<
       );
     }
 
-    return mapSampleResponse(data.sample) as ModalSample;
+    return overlayLocalSample(
+      mapSampleResponse(data.sample) as ModalSample,
+      get
+    );
   },
   variables: ({ get }) => {
     const current = get(modalSelector);
