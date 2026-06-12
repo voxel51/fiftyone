@@ -2,15 +2,6 @@ import { cleanup, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-// The MCAP tile components transitively import three.js, which evaluates
-// WebGPU constants at module load and crashes in jsdom. Stub the
-// inventory hooks so the shell test doesn't drag those in.
-vi.mock("../../adapters/mcap/react/use-mcap-scene-inventory", () => ({
-  useMcapSceneInventory: () => [],
-  useMcapStreamPolicies: () => ({}),
-  useMcapInitialTiles: () => ({}),
-}));
-
 // react-mosaic-component uses react-dnd which needs a DnD context; in
 // jsdom we just need the layout to mount, so stub MosaicGrid to a
 // passthrough that renders each tile's body.

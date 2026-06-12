@@ -16,14 +16,19 @@ import {
 vi.mock("./McapCameraTile", () => ({ default: () => null }));
 vi.mock("./McapLidarTile", () => ({ default: () => null }));
 
+const SCENE_SOURCES = [
+  { id: "/cam/image_rect_compressed", type: "camera", label: "cam" },
+  { id: "/lidar", type: "lidar", label: "lidar" },
+];
+
 describe("useMcapModalLayout", () => {
   beforeEach(() => {
     localStorage.clear();
   });
   afterEach(() => cleanup());
 
-  it("falls back to the built-in defaults when nothing is persisted", () => {
-    const { result } = renderHook(() => useMcapModalLayout("scene.mcap"));
+  it("derives default tiles from the source types present", () => {
+    const { result } = renderHook(() => useMcapModalLayout(SCENE_SOURCES));
     expect(Object.keys(result.current.initialTiles)).toEqual([
       "camera-default",
       "lidar-default",
@@ -31,6 +36,13 @@ describe("useMcapModalLayout", () => {
     expect(result.current.initialLayout).toBeUndefined();
     expect(result.current.defaultLeftOpen).toBe(false);
     expect(result.current.defaultRightOpen).toBe(false);
+  });
+
+  it("omits default tiles for types absent from the scene", () => {
+    const { result } = renderHook(() => useMcapModalLayout([SCENE_SOURCES[0]]));
+    expect(Object.keys(result.current.initialTiles)).toEqual([
+      "camera-default",
+    ]);
   });
 
   it("restores persisted sidebar state and a valid tile arrangement", () => {
@@ -44,7 +56,7 @@ describe("useMcapModalLayout", () => {
         splitPercentage: 70,
       },
     });
-    const { result } = renderHook(() => useMcapModalLayout("scene.mcap"));
+    const { result } = renderHook(() => useMcapModalLayout(SCENE_SOURCES));
     expect(result.current.defaultLeftOpen).toBe(true);
     expect(result.current.defaultRightOpen).toBe(true);
     expect(result.current.initialLayout).toEqual({
@@ -69,7 +81,7 @@ describe("useMcapModalLayout", () => {
         second: "radar-2",
       },
     });
-    const { result } = renderHook(() => useMcapModalLayout("scene.mcap"));
+    const { result } = renderHook(() => useMcapModalLayout(SCENE_SOURCES));
     expect(result.current.initialLayout).toBeUndefined();
     expect(Object.keys(result.current.initialTiles)).toEqual([
       "camera-default",
@@ -77,8 +89,23 @@ describe("useMcapModalLayout", () => {
     ]);
   });
 
+  it("discards the restore when a leaf's type has no source in the scene", () => {
+    writeMcapModalLayout({
+      layout: {
+        direction: "row",
+        first: "camera-default",
+        second: "lidar-default",
+      },
+    });
+    const { result } = renderHook(() => useMcapModalLayout([SCENE_SOURCES[0]]));
+    expect(result.current.initialLayout).toBeUndefined();
+    expect(Object.keys(result.current.initialTiles)).toEqual([
+      "camera-default",
+    ]);
+  });
+
   it("persists sidebar toggles through the change callbacks", () => {
-    const { result } = renderHook(() => useMcapModalLayout("scene.mcap"));
+    const { result } = renderHook(() => useMcapModalLayout(SCENE_SOURCES));
     act(() => result.current.onLeftOpenChange(true));
     act(() => result.current.onRightOpenChange(true));
     const read = readMcapModalLayout();
