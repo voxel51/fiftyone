@@ -15,8 +15,10 @@ import type { DeltaSupplier } from "./deltaSupplier";
 import { useGetLabelDelta } from "./useGetLabelDelta";
 
 /**
- * Attributes used for internal annotation functionality that must not be
- * persisted; they are stripped before capturing a delta.
+ * List of attributes which are used for internal annotation functionality.
+ *
+ * These attributes should *not* be persisted to the sample and are stripped
+ * before calculating a delta.
  */
 const reservedAttributes = [
   "color",
@@ -28,6 +30,12 @@ const reservedAttributes = [
   "type",
 ];
 
+/**
+ * Omit a set of keys from an object.
+ *
+ * @param data Object to modify
+ * @param keys List of keys to omit
+ */
 const omit = <T, K extends keyof T>(data: T, ...keys: K[]): Omit<T, K> => {
   const result = { ...data };
   keys.forEach((key) => delete result[key]);
@@ -35,7 +43,7 @@ const omit = <T, K extends keyof T>(data: T, ...keys: K[]): Omit<T, K> => {
 };
 
 /**
- * Build a {@link LabelProxy} from a reconciled 3d label.
+ * Build a {@link LabelProxy} instance from a reconciled 3d label.
  */
 const buildAnnotationLabel = (
   label: ReconciledDetection3D | ReconciledPolyline3D
@@ -57,8 +65,14 @@ const buildAnnotationLabel = (
 };
 
 /**
- * Hook which provides a {@link DeltaSupplier} capturing per-label deltas
- * isolated to the 3D annotation context (working sets + deletions).
+ * Hook which provides a {@link DeltaSupplier} which captures changes isolated
+ * to the 3D annotation context.
+ *
+ * The approach is:
+ * - Read from the working store (committed edits) (See looker-3d/src/annotation/store/index.ts)
+ * - Guard against computing deltas during active drag operations
+ * - Compute mutation deltas for modified labels
+ * - Compute deletion deltas for deleted labels (that existed in baseline)
  */
 export const use3dDeltaSupplier = (): DeltaSupplier => {
   const detections = useWorkingDetections();
@@ -73,7 +87,8 @@ export const use3dDeltaSupplier = (): DeltaSupplier => {
   });
 
   return useCallback(() => {
-    // Don't capture intermediate state mid-drag.
+    // Guard: don't compute deltas during active drag
+    // This prevents intermediate states from being persisted
     if (dragInProgress) {
       return { deltas: [] };
     }

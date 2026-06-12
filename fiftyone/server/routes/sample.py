@@ -12,18 +12,21 @@ document's current state so the client can reconcile.
 
 Non-obvious bits:
 
-  * Writes to a generated (patches/clips) collection are **best-effort**: it is
-    an ephemeral view that regenerates from the source, so a stale write there
-    is skipped rather than failing the request. The permanent source write is
-    authoritative.
+  * Updates targeting a generated (patches/clips) dataset are best-effort end
+    to end — planning failures, stale gates, and database errors are logged
+    and skipped, never failing the request. Only permanent (source) failures
+    reach the client.
   * Permanent writes are applied independently — a stale gate on one update is
     a conflict for that update only, never for the rest of the batch.
-  * A precondition miss whose target already holds the requested post-state is
-    an **idempotent retry** (e.g. the first attempt committed but its response
-    was lost) and counts as success, not a conflict.
-  * :class:`CommitMask` is deliberately separate: it is the only path that
-    loads a sample and calls ``sample.save()``, for a server-side file write
-    the gated path can't express.
+  * The batch is one unordered ``bulk_write`` per target collection; no update
+    is ever issued twice. Per-update diagnosis is read-only and runs only when
+    a bulk result cannot confirm every gated update — never in the
+    single-writer case.
+  * A precondition miss whose post-state already holds is an idempotent retry
+    (e.g. the first attempt committed but its response was lost) and counts as
+    success, not a conflict.
+  * :class:`CommitMask` exists only because a gated update can't express a
+    server-side *file* write; its database write is the same gated primitive.
 """
 
 import datetime
@@ -31,35 +34,28 @@ import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 from bson import ObjectId
+from pymongo import DeleteOne, UpdateOne
+from pymongo.errors import PyMongoError
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 
+import fiftyone.core.labels as fol
+import fiftyone.core.utils as fou
 from fiftyone.core.odm.database import get_db_conn
 from fiftyone.server import decorators, utils
-from fiftyone.server.utils.datasets import (
-    get_dataset,
-    get_sample_from_dataset,
-)
 from fiftyone.server.utils.json.encoder import JSONResponse
 
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Gated field-update save path
-# ---------------------------------------------------------------------------
-
-
 def _now() -> datetime.datetime:
-    # Naive UTC, matching how fiftyone stamps ``last_modified_at`` everywhere
-    # (``datetime.utcnow``). A tz-aware value would read back inconsistently and
-    # break naive/aware datetime comparisons in code that reads the field.
+    # Naive UTC to match how fiftyone stamps ``last_modified_at``; a tz-aware
+    # value breaks naive/aware comparisons in code that reads the field.
     return datetime.datetime.utcnow()
 
 
 def _object_id(value: Any) -> ObjectId:
-    """Coerces a hex string (or an already-decoded ObjectId) to an ObjectId."""
     try:
         return ObjectId(value)
     except Exception as err:  # pylint: disable=broad-except
@@ -69,16 +65,15 @@ def _object_id(value: Any) -> ObjectId:
 
 
 def _is_label(value: Any) -> bool:
-    """A value is a label iff it is an embedded document carrying ``_cls``."""
     return isinstance(value, dict) and "_cls" in value
 
 
 def _label_to_mongo(value: dict) -> dict:
-    """Coerces a label dict to its stored BSON form, with no DB access.
+    """Coerces a label dict to its stored BSON form (pure CPU, no DB access).
 
-    Round-trips through the label class so masks (base64 -> ``Binary``),
-    datetimes, ObjectIds, etc. are stored exactly as fiftyone would persist
-    them. Pure CPU — never touches the database.
+    Round-trips through the label class so masks, datetimes, ObjectIds, etc.
+    are encoded exactly as fiftyone persists them — required for equality
+    gates to match.
     """
     try:
         return utils.json.deserialize(value).to_mongo()
@@ -91,10 +86,8 @@ def _label_to_mongo(value: dict) -> dict:
 def _gatable(value: Any) -> bool:
     """Whether ``value`` is safe to use as an equality precondition.
 
-    Scalars (and arrays of scalars) match reliably by value regardless of field
-    order. Embedded documents are order-sensitive and binary blobs (mask data)
-    may not re-serialize byte-for-byte, so for those we gate on element/document
-    identity only.
+    Embedded documents are field-order-sensitive and binary blobs may not
+    re-serialize byte-for-byte, so those gate on identity only.
     """
     if value is None:
         return True
@@ -106,18 +99,15 @@ def _gatable(value: Any) -> bool:
 
 
 def _gate(value: Any) -> Any:
-    # ``None`` means the field was absent or null in the document.
+    # ``$in: [None]`` matches both an absent field and an explicit null.
     return {"$in": [None]} if value is None else value
 
 
 def _changed_label_fields(
     old_bson: dict, new_bson: dict
 ) -> Tuple[Dict[str, Any], List[str]]:
-    """Returns ``(set_fields, unset_fields)`` for a label modification.
-
-    ``set_fields`` maps a changed field name to its new (coerced) value;
-    ``unset_fields`` lists fields removed entirely. ``_id`` is never touched.
-    """
+    """Returns ``(set_fields, unset_fields)`` for a label modification;
+    ``_id`` is never touched."""
     set_fields: Dict[str, Any] = {}
     unset_fields: List[str] = []
     for field in set(old_bson) | set(new_bson):
@@ -145,17 +135,14 @@ def _build_label_update(
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """Builds the (filter, update) for an add/remove/modify of one label.
 
-    ``array`` selects between a label inside a list field (matched by
-    ``$elemMatch`` + positional ``$``) and a flattened single label (matched
-    directly by path).
+    ``array`` selects between a label inside a list field (``$elemMatch`` +
+    positional ``$``) and a flattened single label (matched by path).
     """
     now = _now()
 
-    # ---- remove ----
     if new is None:
-        # Gate the delete on the label still holding the scalar values the
-        # editor saw, so a stale delete can't erase a label another editor just
-        # changed (it returns 409 and the client reconciles instead).
+        # Gate on the scalars the editor saw so a stale delete can't erase a
+        # label another editor just changed.
         old_bson = _label_to_mongo(old) if old is not None else {}
         gates = {
             field: _gate(value)
@@ -173,8 +160,8 @@ def _build_label_update(
             }
         else:
             filter_doc = {**doc_filter}
-            # Bind to the label's identity so a replacement document with the
-            # same scalar values but a new _id isn't mistaken for ours.
+            # Bind to identity so a replacement label with equal scalars but a
+            # new _id isn't mistaken for ours.
             if "_id" in old_bson:
                 filter_doc[f"{lookup_path}._id"] = old_bson["_id"]
             filter_doc.update(
@@ -188,7 +175,6 @@ def _build_label_update(
 
     new_bson = _label_to_mongo(new)
 
-    # ---- add ----
     if old is None:
         if array:
             filter_doc = {
@@ -200,15 +186,14 @@ def _build_label_update(
                 "$set": {"last_modified_at": now},
             }
         else:
-            # Only create when the field is still absent/null, so a stale
-            # create can't clobber a value another editor inserted.
+            # Create only while still absent/null so a stale create can't
+            # clobber a value another editor inserted.
             filter_doc = {**doc_filter, lookup_path: {"$in": [None]}}
             update_doc = {
                 "$set": {lookup_path: new_bson, "last_modified_at": now}
             }
         return filter_doc, update_doc
 
-    # ---- modify the fields that changed ----
     old_bson = _label_to_mongo(old)
     set_fields, unset_fields = _changed_label_fields(old_bson, new_bson)
 
@@ -224,7 +209,6 @@ def _build_label_update(
         filter_doc = {**doc_filter, lookup_path: {"$elemMatch": elem_match}}
     else:
         filter_doc = {**doc_filter}
-        # Bind to the label's identity (see remove branch).
         if "_id" in old_bson:
             filter_doc[f"{lookup_path}._id"] = old_bson["_id"]
         filter_doc.update({f"{lookup_path}.{f}": v for f, v in gates.items()})
@@ -239,7 +223,6 @@ def _build_label_update(
 
 
 def _scalar_gates(bson_doc: dict) -> Dict[str, Any]:
-    """Equality gates for every gatable (scalar) field of ``bson_doc``."""
     return {
         field: _gate(value)
         for field, value in bson_doc.items()
@@ -255,14 +238,8 @@ def _build_label_applied_filter(
     array: bool,
     doc_filter: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """A filter matching the document iff the label update already holds.
-
-    "Holds" is judged on label identity plus every gatable (scalar) field of
-    the new value; embedded documents and binary blobs are not compared, for
-    the same reasons they are not gated on.
-    """
-    # Delete: applied iff the label is gone (the document itself must exist —
-    # ``doc_filter`` ensures that).
+    """A filter matching the document iff the label update already holds —
+    judged on identity plus gatable (scalar) fields of the new value."""
     if new is None:
         if array:
             return {**doc_filter, f"{lookup_path}._id": {"$ne": label_oid}}
@@ -271,7 +248,6 @@ def _build_label_applied_filter(
     new_bson = _label_to_mongo(new)
     gates = _scalar_gates(new_bson)
 
-    # Add/modify: applied iff the label exists with all the new scalar values.
     if array:
         return {
             **doc_filter,
@@ -307,7 +283,6 @@ def _build_primitive_update(
     *,
     doc_filter: Dict[str, Any],
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-    """Builds the (filter, update) for a primitive (non-label) field."""
     now = _now()
     filter_doc = dict(doc_filter)
     if _gatable(old):
@@ -327,11 +302,8 @@ def _build_primitive_update(
 def _resolve_collection(db, update: dict) -> str:
     """Resolves the target collection name for an update.
 
-    The common path carries a concrete ``collection`` (e.g.
-    ``samples.<datasetId>``) so no lookup is needed. A generated (patches)
-    write may instead carry the generated dataset's ``datasetName``; we resolve
-    its sample collection from the ``datasets`` collection by name (one indexed
-    lookup) since the dataset ``_id`` is not available client-side.
+    A generated (patches) write carries the dataset's ``datasetName`` instead
+    of a concrete ``collection`` because the client has no dataset id for it.
     """
     collection_name = update.get("collection")
     if isinstance(collection_name, str) and collection_name:
@@ -354,17 +326,13 @@ def _resolve_collection(db, update: dict) -> str:
     )
 
 
-# Collections produced by generated views (patches/clips/frame-patches). A
-# request may target one in addition to the route dataset's own collections.
+# Collections produced by generated views (patches/clips/frame-patches)
 _GENERATED_PREFIXES = ("patches.", "clips.")
 
 
 def _allowed_collections(path_params: dict) -> set:
-    """The route dataset's own collections, derived from ``dataset_id`` alone.
-
-    Their names are deterministic, so this needs no database lookup. Generated
-    (patches) collections are allowed separately in :func:`_plan_update`.
-    """
+    """The route dataset's own collections — names are deterministic, so no
+    database lookup is needed."""
     dataset_id = path_params.get("dataset_id")
     if not dataset_id:
         raise HTTPException(status_code=400, detail="Missing dataset id")
@@ -373,10 +341,6 @@ def _allowed_collections(path_params: dict) -> set:
 
 def _plan_update(db, update: dict, allowed: set) -> dict:
     """Resolves and builds one update *without writing*.
-
-    Returns a plan dict carrying the target ``collection`` handle, its
-    ``collection_name``, the ``doc_id``/``doc_filter``, and either
-    ``delete_document`` or a built (``filter``, ``update``) pair.
 
     Raises:
         HTTPException: the payload is malformed or its target collection is
@@ -388,9 +352,9 @@ def _plan_update(db, update: dict, allowed: set) -> dict:
         )
 
     collection_name = _resolve_collection(db, update)
-    # Bind writes to the route's dataset so a body can't redirect one elsewhere:
-    # an explicit collection must be the route's own; a datasetName target must
-    # resolve to a generated collection.
+    # A body must not be able to redirect a write to another dataset: an
+    # explicit collection must be the route's own, and a datasetName target
+    # may only resolve to a generated collection.
     if update.get("collection"):
         target_allowed = collection_name in allowed
     else:
@@ -414,9 +378,8 @@ def _plan_update(db, update: dict, allowed: set) -> dict:
         "lookup_path": None,
     }
 
-    # Whole-document delete (a patches sample whose label was deleted). No
-    # precondition of its own — the gated source update in the same batch
-    # guards it against a stale delete.
+    # A document delete carries no precondition of its own; the gated source
+    # update in the same batch guards it against staleness.
     if update.get("op") == "deleteDocument":
         plan["delete_document"] = True
         return plan
@@ -480,14 +443,8 @@ def _plan_update(db, update: dict, allowed: set) -> dict:
 
 def _current_document(plan: dict) -> Any:
     """The current state of the field this plan gated on (``None`` if the
-    document no longer exists), so the client can rebase the conflicting
-    delta without pulling the entire — often large — document.
-
-    Projects to the field's top-level container (e.g. ``manual`` for a
-    ``manual.detections`` write) plus ``last_modified_at``; ``_id`` is always
-    returned. Falls back to the whole document only when there is no field
-    path to scope to.
-    """
+    document is gone), projected so the client can rebase without pulling the
+    entire — often large — document."""
     lookup_path = plan.get("lookup_path")
     if not lookup_path:
         return plan["collection"].find_one(plan["doc_filter"])
@@ -501,22 +458,73 @@ def _is_generated_collection(name: str) -> bool:
     return name.startswith(_GENERATED_PREFIXES)
 
 
-def _apply_plan(plan: dict) -> bool:
-    """Applies one plan; returns whether it matched (a delete always does)."""
+def _plan_op(plan: dict):
     if plan["delete_document"]:
-        plan["collection"].delete_one(plan["doc_filter"])
-        return True
-    result = plan["collection"].update_one(plan["filter"], plan["update"])
-    return result.matched_count > 0
+        return DeleteOne(plan["doc_filter"])
+    return UpdateOne(plan["filter"], plan["update"])
+
+
+def _is_generated_target(update: Any) -> bool:
+    """Whether an update addresses a generated (patches/clips) dataset,
+    judged from the payload alone — answerable even when planning failed."""
+    return (
+        isinstance(update, dict)
+        and not update.get("collection")
+        and bool(update.get("datasetName"))
+    )
+
+
+def _apply_plans_bulk(
+    indexed_plans: List[Tuple[int, dict]],
+    best_effort: bool = False,
+) -> List[Tuple[int, dict]]:
+    """Applies plans with one unordered ``bulk_write`` per target collection
+    — the only write pass; no update is ever issued twice.
+
+    A gated miss is not a write error, so the bulk result only exposes the
+    aggregate matched count per collection. A short count returns that
+    group's gated updates for read-only diagnosis; deletes carry no gate and
+    are never implicated.
+
+    Args:
+        indexed_plans: ``(index, plan)`` pairs to apply
+        best_effort: swallow database write errors (generated targets must
+            never fail the request)
+
+    Returns:
+        the ``(index, plan)`` pairs whose application is unconfirmed
+    """
+    groups: Dict[str, List[Tuple[int, dict]]] = {}
+    for index, plan in indexed_plans:
+        groups.setdefault(plan["collection_name"], []).append((index, plan))
+
+    suspect: List[Tuple[int, dict]] = []
+    for items in groups.values():
+        gated = [(i, p) for i, p in items if not p["delete_document"]]
+        collection = items[0][1]["collection"]
+        try:
+            result = collection.bulk_write(
+                [_plan_op(plan) for _, plan in items], ordered=False
+            )
+        except PyMongoError:
+            if not best_effort:
+                raise
+            logger.warning(
+                "Best-effort bulk write failed; %d update(s) skipped",
+                len(items),
+                exc_info=True,
+            )
+            suspect.extend(gated)
+            continue
+        if result.matched_count < len(gated):
+            suspect.extend(gated)
+    return suspect
 
 
 def _already_applied(plan: dict) -> bool:
-    """Whether the document already holds this plan's post-state.
-
-    A gated write that missed its precondition but whose requested post-state
-    already holds is an idempotent retry (e.g. the first attempt committed but
-    its response was lost) — a success, not a conflict.
-    """
+    """Whether the document already holds this plan's post-state — an
+    idempotent retry (e.g. a committed write whose response was lost) is a
+    success, not a conflict."""
     applied_filter = plan.get("applied_filter")
     if applied_filter is None:
         return False
@@ -526,15 +534,11 @@ def _already_applied(plan: dict) -> bool:
 class SampleFields(HTTPEndpoint):
     """Applies a batch of gated annotation field updates.
 
-    The permanent source collection is authoritative — its gated writes are
-    what can conflict (409). Writes to a generated (patches/clips) collection
-    are best-effort: it is an ephemeral view that regenerates from the source,
-    so a stale write is skipped rather than failing the request.
-
-    Permanent writes are applied independently: a stale gate on one update is
-    a conflict for that update only, never for the rest of the batch. A miss
-    whose post-state already holds is an idempotent retry and counts as
-    success.
+    Permanent (source) writes are authoritative: applied independently, their
+    gate misses conflict (409) and their errors are the only ones returned to
+    the client. Updates targeting a generated (patches/clips) dataset are
+    best-effort end to end — the view is ephemeral and regenerates from the
+    source.
     """
 
     @decorators.route
@@ -563,30 +567,36 @@ class SampleFields(HTTPEndpoint):
         db = get_db_conn()
         allowed = _allowed_collections(request.path_params)
 
-        # Build every update (validates payload + target); no writes yet.
-        plans = [_plan_update(db, update, allowed) for update in updates]
+        # A generated target that can't be planned (e.g. its dataset was
+        # deleted) is skipped rather than failing the request — otherwise the
+        # authoritative source write in the same batch would be lost with it.
+        permanent: List[Tuple[int, dict]] = []
+        generated: List[Tuple[int, dict]] = []
+        for index, update in enumerate(updates):
+            try:
+                plan = _plan_update(db, update, allowed)
+            except HTTPException as err:
+                if _is_generated_target(update):
+                    logger.info(
+                        "Skipping generated-view update %d (cannot plan): %s",
+                        index,
+                        err.detail,
+                    )
+                    continue
+                raise
+            if _is_generated_collection(plan["collection_name"]):
+                generated.append((index, plan))
+            else:
+                permanent.append((index, plan))
 
-        permanent = [
-            (i, p)
-            for i, p in enumerate(plans)
-            if not _is_generated_collection(p["collection_name"])
-        ]
-        generated = [
-            (i, p)
-            for i, p in enumerate(plans)
-            if _is_generated_collection(p["collection_name"])
-        ]
-
-        # Permanent writes are authoritative and applied independently — a
-        # stale gate on one update never blocks the others.
         conflicts = []
-        for index, plan in permanent:
-            if _apply_plan(plan):
-                continue
-
+        for index, plan in _apply_plans_bulk(permanent):
+            # Read-only diagnosis. An update that applied but was changed
+            # again by a concurrent writer before this read lands as a
+            # conflict too — reconciled identically by the client.
             if _already_applied(plan):
                 logger.info(
-                    "Annotation update already applied (idempotent retry): "
+                    "Annotation update applied/held (confirmed by read): "
                     "collection=%s id=%s lookupPath=%s",
                     plan["collection_name"],
                     plan["doc_id"],
@@ -605,31 +615,30 @@ class SampleFields(HTTPEndpoint):
                 {"index": index, "value": _current_document(plan)}
             )
 
-        # Best-effort: a stale generated-view write is skipped, never failed.
         # Runs even when some permanent writes conflicted — the applied ones
         # still want their generated view in sync.
-        for _index, plan in generated:
-            if not _apply_plan(plan):
-                logger.info(
-                    "Generated-view sync skipped (precondition mismatch): "
-                    "collection=%s id=%s",
-                    plan["collection_name"],
-                    plan["doc_id"],
-                )
+        unconfirmed = _apply_plans_bulk(generated, best_effort=True)
+        if unconfirmed:
+            logger.info(
+                "Generated-view sync unconfirmed for %d update(s) "
+                "(precondition mismatch)",
+                len(unconfirmed),
+            )
 
         if conflicts:
             return JSONResponse({"conflicts": conflicts}, status_code=409)
 
-        logger.debug("Annotation batch applied: %d updates", len(plans))
-        return JSONResponse({"updated": len(plans)})
+        applied = len(permanent) + len(generated)
+        logger.debug("Annotation batch applied: %d updates", applied)
+        return JSONResponse({"updated": applied})
 
 
 class CommitMask(HTTPEndpoint):
     """Commits an in-database mask back to its on-disk ``mask_path``.
 
-    This is the one route that loads a sample and calls ``sample.save()`` — it
-    performs a server-side file write that the gated field-update path cannot
-    express. It is intentionally kept separate from that path.
+    This route exists only because a gated field update cannot express a
+    server-side *file* write; its database write is the same gated primitive
+    as every other save, and no sample is ever loaded.
     """
 
     @decorators.route
@@ -658,30 +667,57 @@ class CommitMask(HTTPEndpoint):
                 detail="Both 'field' and 'detection_id' are required",
             )
 
-        dataset = get_dataset(dataset_id)
-        sample = get_sample_from_dataset(dataset, sample_id)
-
+        # An unparsable detection id reads as "not found" (404, after the
+        # field checks) rather than 400, like any other unknown id.
         try:
-            label_field = sample[field]
-        except KeyError as err:
+            det_oid = ObjectId(detection_id)
+        except Exception:  # pylint: disable=broad-except
+            det_oid = ObjectId()
+
+        lookup_path = f"{field}.detections"
+        collection = get_db_conn()[f"samples.{dataset_id}"]
+
+        # The matched element plus the field's _cls is enough to distinguish
+        # every error case below without fetching the sample.
+        doc = collection.find_one(
+            {"_id": _object_id(sample_id)},
+            {
+                lookup_path: {"$elemMatch": {"_id": det_oid}},
+                f"{field}._cls": 1,
+            },
+        )
+        if doc is None:
+            raise HTTPException(status_code=404, detail="Sample not found")
+
+        missing = object()
+        value: Any = doc
+        for part in field.split("."):
+            if not isinstance(value, dict) or part not in value:
+                value = missing
+                break
+            value = value[part]
+
+        if value is missing:
             raise HTTPException(
                 status_code=404, detail=f"Field '{field}' not found on sample"
-            ) from err
-
-        if label_field is None:
+            )
+        if value is None:
             raise HTTPException(
                 status_code=404, detail=f"Field '{field}' is empty on sample"
             )
-
-        detections = getattr(label_field, "detections", None)
-        if detections is None:
+        if not isinstance(value, dict) or value.get("_cls") != "Detections":
             raise HTTPException(
                 status_code=400,
                 detail=f"Field '{field}' is not a Detections field",
             )
 
         detection = next(
-            (d for d in detections if str(d.id) == detection_id), None
+            (
+                d
+                for d in value.get("detections") or []
+                if isinstance(d, dict) and d.get("_id") == det_oid
+            ),
+            None,
         )
         if detection is None:
             raise HTTPException(
@@ -689,29 +725,52 @@ class CommitMask(HTTPEndpoint):
                 detail=f"Detection '{detection_id}' not found in '{field}'",
             )
 
-        if detection.mask_path is None:
+        mask_path = detection.get("mask_path")
+        if mask_path is None:
             raise HTTPException(
                 status_code=400,
                 detail="Detection has no mask_path — nothing to commit",
             )
 
-        if detection.mask is None:
+        mask_bytes = detection.get("mask")
+        if mask_bytes is None:
             raise HTTPException(
                 status_code=400,
                 detail="Detection has no in-database mask to commit",
             )
 
-        mask_path = detection.mask_path
-
         try:
-            detection.export_mask(mask_path, update=True, overwrite_path=True)
-            sample.save()
-        except Exception as err:
+            # pylint: disable-next=protected-access
+            fol._write_mask(
+                fou.deserialize_numpy_array(bytes(mask_bytes)), mask_path
+            )
+        except Exception as err:  # pylint: disable=broad-except
             logger.exception("Failed to commit mask to %s", mask_path)
             raise HTTPException(
                 status_code=500,
                 detail=f"Failed to write mask to '{mask_path}': {err}",
             ) from err
+
+        # Gating the unset on the exact bytes just exported preserves a mask
+        # repainted while the file was being written.
+        result = collection.update_one(
+            {
+                "_id": _object_id(sample_id),
+                lookup_path: {
+                    "$elemMatch": {"_id": det_oid, "mask": mask_bytes}
+                },
+            },
+            {
+                "$unset": {f"{lookup_path}.$.mask": ""},
+                "$set": {"last_modified_at": _now()},
+            },
+        )
+        if result.matched_count == 0:
+            logger.info(
+                "Mask for detection %s changed during commit; in-database "
+                "mask preserved",
+                detection_id,
+            )
 
         logger.info(
             "Committed mask for detection %s to %s", detection_id, mask_path

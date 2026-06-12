@@ -433,11 +433,13 @@ class TestSampleFields:
         assert exc.value.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_batch_is_atomic_when_a_later_update_conflicts(
+    async def test_batch_applies_independently_when_one_update_conflicts(
         self, mutator, dataset_id, collection, sample
     ):
-        # A valid primitive edit batched before a stale label edit. The conflict
-        # must reject the WHOLE batch — the earlier write must not be applied.
+        # A valid primitive edit batched with a stale label edit. Updates are
+        # applied independently: the conflict rejects ONLY the stale update
+        # (reported by index), the valid one lands. Anything else would force
+        # the client to re-send the whole batch after every conflict.
         sample.ground_truth.detections[0].label = "changed_by_other"
         sample.save()
         sample.reload()
@@ -467,9 +469,10 @@ class TestSampleFields:
         body = json.loads(response.body)
         assert [c["index"] for c in body["conflicts"]] == [1]
 
-        # the earlier, valid primitive update must NOT have been applied
+        # the valid primitive update was applied — only the conflicted update
+        # was rejected ("Updates not listed in conflicts were applied")
         sample.reload()
-        assert sample.primitive_field == "initial_value"
+        assert sample.primitive_field == "user_value"
 
     @pytest.mark.asyncio
     async def test_stale_delete_conflicts(
@@ -831,6 +834,71 @@ class TestSampleFieldsPatchesBatch:
             == "patch_changed"
         )
 
+    @pytest.mark.asyncio
+    async def test_source_succeeds_when_patch_target_cannot_be_planned(
+        self, mutator, dataset, dataset_id, sample
+    ):
+        """Generated targets are best-effort even at the *planning* stage: a
+        patches update whose dataset no longer exists is skipped, and the
+        authoritative source write still lands — the request must not fail."""
+        # pylint: disable-next=protected-access
+        source_collection = dataset._sample_collection_name
+        old = {
+            "_cls": "Detection",
+            "_id": self.DET_ID,
+            "label": "cat",
+            "bounding_box": [0.1, 0.1, 0.2, 0.2],
+        }
+        new = {**old, "label": "dog"}
+        updates = [
+            {  # generated target that cannot be planned (dataset is gone)
+                "datasetName": "no-such-generated-dataset",
+                "id": str(ObjectId()),
+                "lookupPath": "ground_truth",
+                "previousValue": old,
+                "newValue": new,
+            },
+            {  # permanent source — authoritative
+                "collection": source_collection,
+                "id": str(sample.id),
+                "lookupPath": "ground_truth.detections",
+                "labelId": str(self.DET_ID),
+                "previousValue": old,
+                "newValue": new,
+            },
+        ]
+
+        response = await mutator.patch(
+            make_request(dataset_id, str(sample.id), updates)
+        )
+
+        assert response.status_code == 200
+        sample.reload()
+        assert sample.ground_truth.detections[0].label == "dog"
+
+    @pytest.mark.asyncio
+    async def test_source_planning_failure_still_errors(
+        self, mutator, dataset_id, sample
+    ):
+        """Source-collection failures are never downgraded: a permanent update
+        that cannot be planned aborts the request with its error."""
+        updates = [
+            {
+                # pylint: disable-next=protected-access
+                "collection": "samples.000000000000000000000000",
+                "id": str(sample.id),
+                "lookupPath": "ground_truth.detections",
+                "labelId": str(self.DET_ID),
+                "previousValue": None,
+                "newValue": {"_cls": "Detection", "_id": ObjectId()},
+            }
+        ]
+        with pytest.raises(HTTPException) as exc:
+            await mutator.patch(
+                make_request(dataset_id, str(sample.id), updates)
+            )
+        assert exc.value.status_code == 403
+
 
 class TestSampleFieldsEvaluationPatches:
     """Evaluation patches materialize ``ground_truth`` as an ARRAY (not the
@@ -1077,7 +1145,7 @@ class TestCommitMask:
         sample.save()
 
         with patch(
-            "fiftyone.core.labels.Detection.export_mask",
+            "fiftyone.core.labels._write_mask",
             side_effect=OSError("disk full"),
         ):
             with pytest.raises(HTTPException) as exc:
