@@ -20,7 +20,7 @@ import type {
   LabelChange,
   LabelStore,
 } from "../store/types";
-import { isWholeSampleReset } from "../store/types";
+import { isWholeSampleReset, wholeSampleReset } from "../store/types";
 import { registerBridgeLoop } from "../bridge/bridgeLoop";
 import type { AdapterMap, SurfaceBridge } from "../bridge/types";
 import type { EntityId } from "../identity/entityId";
@@ -106,6 +106,11 @@ export class AnnotationEngine {
    * Register a store (mount-scoped). The engine subscribes both channels:
    * display relays to the merged display channel; changes buffer inside a
    * transaction and dispatch ordered at commit.
+   *
+   * Unregistering emits no label changes, but engine-owned ephemera must not
+   * outlive the store: interaction refs to the departed sample are swept (a
+   * synthetic whole-sample-reset GC pass — nothing resolves anymore) and its
+   * undo history drops.
    */
   registerStore(store: LabelStore): () => void {
     if (this.stores.has(store.sample)) {
@@ -120,6 +125,11 @@ export class AnnotationEngine {
       this.stores.delete(store.sample);
       unsubscribeDisplay();
       unsubscribeChanges();
+      this.interaction.gc(
+        [wholeSampleReset(store.sample)],
+        (ref) => this.getLabel(ref) !== undefined
+      );
+      this.undos.dropSample(store.sample);
     };
   }
 

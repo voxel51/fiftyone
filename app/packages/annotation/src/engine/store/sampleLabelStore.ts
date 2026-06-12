@@ -69,6 +69,7 @@ export class SampleLabelStore implements LabelStore {
 
   private readonly source: Sample;
   private readonly changeListeners = new Set<ChangeListener>();
+  private readonly unsubscribeSource: () => void;
 
   /** instanceIds per label path as of the last dispatch — the "before" side
    *  when a path-level change must be expanded into per-ref changes. */
@@ -78,7 +79,17 @@ export class SampleLabelStore implements LabelStore {
     this.sample = sample;
     this.source = source;
     this.rebuildIndex();
-    this.source.subscribeChanges(this.relay);
+    this.unsubscribeSource = this.source.subscribeChanges(this.relay);
+  }
+
+  /**
+   * Detach from the source `Sample`. The instance is shared and outlives the
+   * store (sample switches re-key a new store over it) — a disposed store
+   * left subscribed would keep relaying the next sample's changes under the
+   * old sample id.
+   */
+  dispose(): void {
+    this.unsubscribeSource();
   }
 
   // ---- resolution ----

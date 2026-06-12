@@ -105,4 +105,16 @@ export class UndoStack {
     this.undos = [];
     this.redos = [];
   }
+
+  /**
+   * Store unregistration: drop every unit touching the departed sample. An
+   * entry goes whole — a mixed-sample transaction cannot half-replay.
+   */
+  dropSample(sample: string): void {
+    const touches = (entry: UndoEntry) =>
+      entry.ops.some((op) => op.ref.sample === sample);
+
+    this.undos = this.undos.filter((entry) => !touches(entry));
+    this.redos = this.redos.filter((entry) => !touches(entry));
+  }
 }

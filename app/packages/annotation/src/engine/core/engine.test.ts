@@ -356,3 +356,70 @@ describe("whole-sample reset propagation", () => {
     expect(isWholeSampleReset(listener.mock.calls[0][0][0])).toBe(true);
   });
 });
+
+describe("store unregistration sweep", () => {
+  it("prunes the departed sample's interaction refs and undo history", () => {
+    const { engine, unregister } = makeEngine("s1", {
+      ground_truth: { detections: [makeDet("d1", "cat")] },
+    });
+
+    engine.updateLabel(ref("ground_truth", "d1", "s1"), { label: "dog" });
+    engine.interaction.setActive([ref("ground_truth", "d1", "s1")]);
+    engine.interaction.setHovered(ref("ground_truth", "d1", "s1"), true);
+    expect(engine.canUndo()).toBe(true);
+
+    unregister();
+
+    expect(engine.interaction.getActive()).toEqual([]);
+    expect(engine.interaction.getAnchor()).toBeUndefined();
+    expect(engine.interaction.getHovered()).toEqual([]);
+    expect(engine.canUndo()).toBe(false);
+  });
+
+  it("sweeps only the departed sample — survivors keep selection and undo", () => {
+    const { engine } = makeEngine("s1", {
+      ground_truth: { detections: [makeDet("d1", "cat")] },
+    });
+    const second = makeStore("s2", {
+      ground_truth: { detections: [makeDet("d9", "dog")] },
+    });
+    const unregisterSecond = engine.registerStore(second.store);
+
+    engine.updateLabel(ref("ground_truth", "d1", "s1"), { label: "lynx" });
+    engine.updateLabel(ref("ground_truth", "d9", "s2"), { label: "wolf" });
+    engine.interaction.setActive([
+      ref("ground_truth", "d9", "s2"),
+      ref("ground_truth", "d1", "s1"),
+    ]);
+
+    unregisterSecond();
+
+    expect(engine.interaction.getActive()).toEqual([
+      ref("ground_truth", "d1", "s1"),
+    ]);
+    expect(engine.interaction.getAnchor()).toEqual(
+      ref("ground_truth", "d1", "s1")
+    );
+    expect(engine.canUndo()).toBe(true);
+    engine.undo();
+    expect(engine.getLabel(ref("ground_truth", "d1", "s1"))?.label).toBe("cat");
+    expect(engine.canUndo()).toBe(false);
+  });
+
+  it("dispatches no label changes and notifies interaction once", () => {
+    const { engine, unregister } = makeEngine("s1", {
+      ground_truth: { detections: [makeDet("d1", "cat")] },
+    });
+    engine.interaction.setActive([ref("ground_truth", "d1", "s1")]);
+
+    const changes = vi.fn();
+    const interaction = vi.fn();
+    engine.subscribeChanges(changes);
+    engine.interaction.subscribe(interaction);
+
+    unregister();
+
+    expect(changes).not.toHaveBeenCalled();
+    expect(interaction).toHaveBeenCalledTimes(1);
+  });
+});

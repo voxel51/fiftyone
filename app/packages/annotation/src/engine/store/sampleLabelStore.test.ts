@@ -298,3 +298,19 @@ describe("SampleLabelStore dirty introspection", () => {
     expect(store.pendingPaths()).toEqual(["ground_truth"]);
   });
 });
+
+describe("SampleLabelStore disposal", () => {
+  it("dispose detaches from the shared Sample", () => {
+    const { sample, store } = makeStore();
+    const listener = vi.fn();
+    store.subscribeChanges(listener);
+
+    sample.setData({ ground_truth: { detections: [makeDet("d1", "cat")] } });
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    store.dispose();
+
+    sample.setData({ ground_truth: { detections: [makeDet("d2", "dog")] } });
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+});
