@@ -229,8 +229,10 @@ export const useDetectionMode = () => {
         const lastField = get(lastUsedFieldAtom);
 
         if (lastField) {
+          // the atom is session-scoped and survives dataset switches — only
+          // trust it when the current dataset's schema actually has the field
           const schema = get(labelSchemaData(lastField));
-          if (!isFieldReadOnly(schema)) {
+          if (schema && !isFieldReadOnly(schema)) {
             return lastField;
           }
         }
