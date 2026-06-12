@@ -12,7 +12,7 @@
 
 import type { Scene2D } from "@fiftyone/lighter";
 import { useLighter, useLighterEventHandler } from "@fiftyone/lighter";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import type { AnnotationEngine } from "../../core/engine";
 import { toLabelRef } from "../../identity/ref";
@@ -24,15 +24,27 @@ import { createLighterBridge } from "./lighterBridge";
 export const useLighterEngineBridge = ({
   engine,
   sample,
+  paths,
   resolveMediaUrl,
+  interactionRoutes = true,
 }: {
   engine: AnnotationEngine;
   sample: string;
+  /** Active label paths — the bridge's partial-projection scope. A new set
+   *  re-creates the bridge: the outgoing one clears, registration rehydrates. */
+  paths?: ReadonlySet<string>;
   /**
    * Maps raw media sub-field values (e.g. `mask_path`) to fetchable URLs for
    * gated mounts — the modal wiring owns the sample's `sources` map.
    */
   resolveMediaUrl?: LighterBridgeDeps["resolveMediaUrl"];
+  /**
+   * TRANSITIONAL: when false, the select/hover gesture routes are not
+   * wired — legacy focus/hover handlers own interaction policy (the
+   * single-edit lock) until the sidebar form migrates. Finalize commits are
+   * always routed.
+   */
+  interactionRoutes?: boolean;
 }): void => {
   const { scene, overlayFactory } = useLighter();
   const on = useLighterEventHandler(scene?.getEventChannel());
@@ -44,11 +56,23 @@ export const useLighterEngineBridge = ({
             scene,
             overlayFactory,
             sample,
+            paths,
             readLabel: (ref) => engine.getLabel(toLabelRef(sample, ref)),
             resolveMediaUrl,
           })
         : undefined,
-    [engine, scene, overlayFactory, sample, resolveMediaUrl]
+    [engine, scene, overlayFactory, sample, paths, resolveMediaUrl]
+  );
+
+  // a replaced bridge (scope/scene/sample change) clears its overlays on the
+  // way out; the successor's registration mounts the new scope by reconcile
+  useEffect(
+    () => () => {
+      if (bridge && !scene?.isDestroyed) {
+        bridge.clear();
+      }
+    },
+    [bridge, scene]
   );
 
   const surface = useSurfaceBridge({
@@ -76,16 +100,18 @@ export const useLighterEngineBridge = ({
   // End state: the sidebar writes the engine directly and this retires.
   on("lighter:overlay-label-updated", commitOverlay);
 
-  // interaction write-half
+  // interaction write-half (skipped while legacy handlers own the policy)
   on(
     "lighter:overlay-select",
     useCallback(
       (event: { id: string; isShiftPressed?: boolean }) => {
+        if (!interactionRoutes) return;
+
         surface.selectHandle((scene as Scene2D).getOverlay(event.id), {
           additive: event.isShiftPressed,
         });
       },
-      [scene, surface]
+      [interactionRoutes, scene, surface]
     )
   );
 
@@ -93,6 +119,8 @@ export const useLighterEngineBridge = ({
     "lighter:overlay-deselect",
     useCallback(
       (event: { id: string }) => {
+        if (!interactionRoutes) return;
+
         const overlay = (scene as Scene2D).getOverlay(event.id);
 
         if (overlay) {
@@ -102,7 +130,7 @@ export const useLighterEngineBridge = ({
           );
         }
       },
-      [scene, surface]
+      [interactionRoutes, scene, surface]
     )
   );
 
@@ -110,13 +138,15 @@ export const useLighterEngineBridge = ({
     "lighter:overlay-hover",
     useCallback(
       (event: { id: string }) => {
+        if (!interactionRoutes) return;
+
         const overlay = (scene as Scene2D).getOverlay(event.id);
 
         if (overlay) {
           surface.hoverHandle(overlay, true);
         }
       },
-      [scene, surface]
+      [interactionRoutes, scene, surface]
     )
   );
 
@@ -124,13 +154,15 @@ export const useLighterEngineBridge = ({
     "lighter:overlay-unhover",
     useCallback(
       (event: { id: string }) => {
+        if (!interactionRoutes) return;
+
         const overlay = (scene as Scene2D).getOverlay(event.id);
 
         if (overlay) {
           surface.hoverHandle(overlay, false);
         }
       },
-      [scene, surface]
+      [interactionRoutes, scene, surface]
     )
   );
 };

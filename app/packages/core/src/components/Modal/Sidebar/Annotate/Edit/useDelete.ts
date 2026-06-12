@@ -1,4 +1,8 @@
-import { DeleteAnnotationCommand, getFieldSchema } from "@fiftyone/annotation";
+import {
+  DeleteAnnotationCommand,
+  getFieldSchema,
+  useSampleInstance,
+} from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
 import { useLighter } from "@fiftyone/lighter";
 import { isDetection3dOverlay, isPolyline3dOverlay } from "@fiftyone/looker-3d";
@@ -22,10 +26,11 @@ export default function useDelete() {
   const commandBus = useCommandBus();
   const { scene, removeOverlay } = useLighter();
   const label = useAtomValue(current);
+  const sample = useSampleInstance();
   const schema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
-  const { addLabelToSidebar, removeLabelFromSidebar } = useLabelsContext();
+  const { removeLabelFromSidebar } = useLabelsContext();
 
   const exit = useExit();
   const setNotification = fos.useNotification();
@@ -78,40 +83,24 @@ export default function useDelete() {
         }
       },
       async () => {
-        if (label) {
-          try {
-            const fieldSchema = getFieldSchema(schema, label?.path);
-            if (!fieldSchema) {
-              setNotification({
-                msg: `Error restoring deleted label. "${
-                  label?.path ?? "unknown"
-                }".`,
-                variant: "error",
-              });
-              return;
-            }
-
-            scene?.addOverlay(label.overlay);
-            addLabelToSidebar(label);
-          } catch (error) {
-            console.error(error);
-            setNotification({
-              msg: `Label "${
-                label.data.label ?? "Label"
-              }" not restored during undo. Try again.`,
-              variant: "error",
-            });
-          }
+        if (!label) {
+          return;
         }
+
+        // restore the captured label in the Sample — the engine's bridge
+        // loop remounts the overlay and the list mirror restores the row
+        // (legacy re-added the overlay and let the overlay-added handler
+        // write the Sample; that handler is gone)
+        sample.updateLabel(label.path, label.data);
       }
     );
   }, [
-    addLabelToSidebar,
     commandBus,
     exit,
     label,
     removeLabelFromSidebar,
     removeOverlay,
+    sample,
     scene,
     schema,
     setNotification,

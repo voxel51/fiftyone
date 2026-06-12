@@ -105,8 +105,8 @@ export const useBridge = (scene: Scene2D | null) => {
           (payload.currentLabel as { _id?: string })?._id ?? overlay.id;
 
         // Inversion: write the edit into the shared Sample (single source of
-        // truth) and let the useSyncLighterSample read-half reconcile the
-        // overlay. Stays on Lighter's command stack for undo/redo.
+        // truth) and let the engine's bridge loop reconcile the overlay.
+        // Stays on Lighter's command stack for undo/redo.
         scene.executeCommand(
           new UpdateSampleLabelCommand(
             sample,

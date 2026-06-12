@@ -3,5 +3,4 @@ export * from "./UpdateSampleLabelCommand";
 export * from "./useEngine";
 export * from "./useSample";
 export * from "./useSync3dSample";
-export * from "./useSyncLighterSample";
 export * from "./useSyncModalSample";

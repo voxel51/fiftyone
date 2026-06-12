@@ -23,6 +23,8 @@ export interface LighterBridgeDeps {
   overlayFactory: OverlayFactory;
   /** The sample the scene renders; scopes the engine change stream. */
   sample: string;
+  /** Active label paths; scopes the loop to the fields being annotated. */
+  paths?: ReadonlySet<string>;
   /**
    * Read the current committed label — the gated-mount discard probe:
    * a decode that resolves after its ref was deleted or reconciled away must
@@ -51,6 +53,7 @@ export const createLighterBridge = ({
   scene,
   overlayFactory,
   sample,
+  paths,
   readLabel,
   resolveMediaUrl,
 }: LighterBridgeDeps): SurfaceBridge<BaseOverlay, LighterDescriptor> => {
@@ -138,6 +141,7 @@ export const createLighterBridge = ({
   const bridge: SurfaceBridge<BaseOverlay, LighterDescriptor> = {
     surface: "lighter",
     sample,
+    paths,
 
     resolveHandle: (ref) => {
       const overlay = scene.getOverlay(ref.instanceId);

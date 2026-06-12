@@ -22,9 +22,9 @@ import useSourceFieldToActivate from "./useSourceFieldToActivate";
 import {
   useSync3dSample,
   useSyncAnnotationEngine,
-  useSyncLighterSample,
   useSyncModalSample,
 } from "@fiftyone/annotation";
+import { useLighterAnnotationBridge } from "./useLighterAnnotationBridge";
 
 const DISABLED_MESSAGES: Record<
   Exclude<AnnotationDisabledReason, null>,
@@ -116,7 +116,7 @@ interface AnnotateProps {
 const Annotate = ({ disabledReason, loadSchemas }: AnnotateProps) => {
   useSyncModalSample();
   useSyncAnnotationEngine();
-  useSyncLighterSample();
+  useLighterAnnotationBridge();
   useSync3dSample();
   useInteractionMirror();
   useRegisterAIAnnotationEventHandlers();

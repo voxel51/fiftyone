@@ -14,8 +14,8 @@ import type { AnnotationEventGroup } from "../events";
  *
  * This is the inversion of the legacy `UpdateLabelCommand` (which wrote the
  * overlay and let the overlay→Sample mirror catch up): here the command writes
- * Sample and the {@link useSyncLighterSample} read-half reconciles the overlay
- * as a consequence (silent `applyLabel`, no echo). Sidebar display stays in sync
+ * Sample and the engine's bridge loop reconciles the overlay as a
+ * consequence (silent `applyLabel`, no echo). Sidebar display stays in sync
  * via the existing `lighter:command-executed → save(nextLabel)` bridge, which
  * reads {@link nextLabel}.
  *
