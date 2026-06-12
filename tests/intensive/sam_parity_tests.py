@@ -185,7 +185,7 @@ def _assert_video_parity(test_case, dataset, pred_field, gt_field, eval_key):
         eval_key=eval_key,
         iou=MASK_IOU,
         use_masks=True,
-        classwise=False,
+        classwise=True,
     )
     metrics = results.metrics()
     for metric_name in ("accuracy", "precision", "recall", "fscore"):
@@ -1984,6 +1984,11 @@ class TestSAM3VideoVisualParity(unittest.TestCase):
         cls.ctx = fosam3._load_video_frames_monkey_patch_sam3()
         cls.dataset = _create_video_dataset(num_samples=2, seed=21)
 
+        # Shared frame anchors for directional tests.
+        # Use per-sample minimums so prompt_frame_indices is valid for all samples.
+        cls.last_frame_1based = min(len(s.frames) for s in cls.dataset)
+        cls.mid_frame_1based = max(1, cls.last_frame_1based // 2)
+
     @classmethod
     def tearDownClass(cls):
         del cls.fo_model
@@ -2188,6 +2193,202 @@ class TestSAM3VideoVisualParity(unittest.TestCase):
             fo_field,
             direct_field,
             eval_key="eval_sam3v_vis_box",
+        )
+
+    def _run_direct_visual_boxes_for_direction(
+        self, sample, propagation_direction, prompt_frame_0based
+    ):
+        """Run visual_predictor directly with box prompts from ``prompt_frame_0based``
+        using the specified propagation direction, mirroring FO's _propagate_visual."""
+        w = sample.metadata.frame_width
+        h = sample.metadata.frame_height
+
+        with etav.FFmpegVideoReader(sample.filepath) as video_reader:
+            with self.ctx:
+                inference_state = self.direct_predictor.init_state(
+                    video_path=(sample, video_reader)
+                )
+
+        classes_obj_id_map = {}
+        current_obj_idx = 0
+
+        frame_dets = sample.frames[prompt_frame_0based + 1].get_field(
+            "detections"
+        )
+        if frame_dets is not None:
+            for detection in frame_dets.detections:
+                ann_obj_id = current_obj_idx
+                current_obj_idx += 1
+                classes_obj_id_map[ann_obj_id] = detection.label
+                rx, ry, rw, rh = detection.bounding_box
+                box = np.array([rx, ry, rx + rw, ry + rh], dtype=np.float32)
+                self.direct_predictor.add_new_points_or_box(
+                    inference_state=inference_state,
+                    frame_idx=prompt_frame_0based,
+                    obj_id=ann_obj_id,
+                    box=box,
+                )
+
+        def _collect(reverse, preflight):
+            result = {}
+            for (
+                out_frame_idx,
+                out_obj_ids,
+                _low_res_masks,
+                out_mask_logits,
+                _obj_scores,
+            ) in self.direct_predictor.propagate_in_video(
+                inference_state,
+                start_frame_idx=None,
+                max_frame_num_to_track=None,
+                reverse=reverse,
+                propagate_preflight=preflight,
+            ):
+                detections = []
+                for i, out_obj_id in enumerate(out_obj_ids):
+                    mask = np.squeeze(
+                        (out_mask_logits[i] > 0.0).cpu().numpy(), axis=0
+                    )
+                    b = fosam._mask_to_box(mask)
+                    if b is None:
+                        continue
+                    label = classes_obj_id_map.get(out_obj_id, "object")
+                    x1, y1, x2, y2 = b
+                    bounding_box = [
+                        x1 / w,
+                        y1 / h,
+                        (x2 - x1) / w,
+                        (y2 - y1) / h,
+                    ]
+                    cropped_mask = mask[
+                        int(round(y1)) : int(round(y2)),
+                        int(round(x1)) : int(round(x2)),
+                    ]
+                    detections.append(
+                        Detection(
+                            label=label,
+                            bounding_box=bounding_box,
+                            mask=cropped_mask,
+                            index=out_obj_id,
+                        )
+                    )
+                result[int(out_frame_idx) + 1] = Detections(
+                    detections=detections
+                )
+            return result
+
+        if propagation_direction == "forward":
+            return _collect(reverse=False, preflight=True)
+        elif propagation_direction == "backward":
+            return _collect(reverse=True, preflight=True)
+        else:  # "both"
+            forward = _collect(reverse=False, preflight=True)
+            backward = _collect(reverse=True, preflight=False)
+            merged = dict(forward)
+            for frame_num, dets in backward.items():
+                if frame_num not in merged or not merged[frame_num].detections:
+                    merged[frame_num] = dets
+            return merged
+
+    def test_visual_box_explicit_forward_parity(self):
+        """direction='forward' from frame 1 matches direct reverse=False propagation."""
+        fo_model_fwd = foz.load_zoo_model(
+            SAM3_VIDEO_MODEL_NAME,
+            operation_mode="visual",
+            prompt_frame_indices=[1],
+            propagation_direction="forward",
+        )
+        fo_field = "sam3v_vis_box_fwd_fo"
+        direct_field = "sam3v_vis_box_fwd_direct"
+
+        self.dataset.apply_model(
+            fo_model_fwd,
+            label_field=fo_field,
+            prompt_field="frames.detections",
+        )
+
+        for sample in self.dataset.iter_samples(progress=False, autosave=True):
+            direct_result = self._run_direct_visual_boxes_for_direction(
+                sample, "forward", prompt_frame_0based=0
+            )
+            for frame_number, dets in direct_result.items():
+                if frame_number in sample.frames:
+                    sample.frames[frame_number][direct_field] = dets
+
+        _assert_video_parity(
+            self,
+            self.dataset,
+            fo_field,
+            direct_field,
+            eval_key="eval_sam3v_vis_fwd",
+        )
+
+    def test_visual_box_backward_parity(self):
+        """direction='backward' from the last frame matches direct reverse=True."""
+        fo_model_bwd = foz.load_zoo_model(
+            SAM3_VIDEO_MODEL_NAME,
+            operation_mode="visual",
+            prompt_frame_indices=[self.last_frame_1based],
+            propagation_direction="backward",
+        )
+        fo_field = "sam3v_vis_box_bwd_fo"
+        direct_field = "sam3v_vis_box_bwd_direct"
+
+        self.dataset.apply_model(
+            fo_model_bwd,
+            label_field=fo_field,
+            prompt_field="frames.detections",
+        )
+
+        for sample in self.dataset.iter_samples(progress=False, autosave=True):
+            direct_result = self._run_direct_visual_boxes_for_direction(
+                sample,
+                "backward",
+                prompt_frame_0based=self.last_frame_1based - 1,
+            )
+            for frame_number, dets in direct_result.items():
+                if frame_number in sample.frames:
+                    sample.frames[frame_number][direct_field] = dets
+
+        _assert_video_parity(
+            self,
+            self.dataset,
+            fo_field,
+            direct_field,
+            eval_key="eval_sam3v_vis_bwd",
+        )
+
+    def test_visual_box_both_parity(self):
+        """direction='both' from a mid-video frame matches direct forward+backward merge."""
+        fo_model_both = foz.load_zoo_model(
+            SAM3_VIDEO_MODEL_NAME,
+            operation_mode="visual",
+            prompt_frame_indices=[self.mid_frame_1based],
+            propagation_direction="both",
+        )
+        fo_field = "sam3v_vis_box_both_fo"
+        direct_field = "sam3v_vis_box_both_direct"
+
+        self.dataset.apply_model(
+            fo_model_both,
+            label_field=fo_field,
+            prompt_field="frames.detections",
+        )
+
+        for sample in self.dataset.iter_samples(progress=False, autosave=True):
+            direct_result = self._run_direct_visual_boxes_for_direction(
+                sample, "both", prompt_frame_0based=self.mid_frame_1based - 1
+            )
+            for frame_number, dets in direct_result.items():
+                if frame_number in sample.frames:
+                    sample.frames[frame_number][direct_field] = dets
+
+        _assert_video_parity(
+            self,
+            self.dataset,
+            fo_field,
+            direct_field,
+            eval_key="eval_sam3v_vis_both",
         )
 
     def test_visual_keypoint_parity(self):
