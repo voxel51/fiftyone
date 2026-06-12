@@ -87,18 +87,14 @@ describe("useUpdateSamples", () => {
     expect(deletedIds).toHaveLength(0);
   });
 
-  it("updates looker stores when the sample exists", () => {
-    const mockLooker = { updateSample: vi.fn() };
-    const sampleData = { sample: { _id: "s1" }, urls: {} };
-    const lookers = { get: vi.fn(() => mockLooker) } as any;
-    const samples = new Map<string, any>([["s1", sampleData]]);
-    stores.add({ samples, lookers });
+  it("drives every registered sample store for the updated sample", () => {
+    const updateSample = vi.fn();
+    stores.add({ updateSample });
 
     const updateSamples = useUpdateSamples();
     const newSample = { _id: "s1", filepath: "/new.png" };
     updateSamples([["s1", newSample as any]]);
 
-    expect(samples.get("s1")).toEqual({ ...sampleData, sample: newSample });
-    expect(mockLooker.updateSample).toHaveBeenCalledWith(newSample);
+    expect(updateSample).toHaveBeenCalledWith("s1", newSample);
   });
 });
