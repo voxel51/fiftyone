@@ -1,6 +1,11 @@
 import * as jsonpatch from "fast-json-patch";
 import { JSONDeltas, JSONDeltaSupplier } from "../types";
-import { LabelData, LabelType, LIST_LABEL_CHILD } from "./labels";
+import {
+  GENERATED_SOURCE_LIST_CHILD,
+  LabelData,
+  LabelType,
+  LIST_LABEL_CHILD,
+} from "./labels";
 import { equalsNormalized, normalizeForCompare } from "./normalize";
 import { buildJsonPath, getNestedField } from "./pointer";
 
@@ -142,11 +147,17 @@ export const firstEditedLabel = (
       continue;
     }
 
-    const child = LIST_LABEL_CHILD[type];
+    // a patches view flattens the source list to a single label, so the
+    // modal field type is the SINGLE kind — the source list child comes
+    // from the generated mapping (the server resolves the label id inside
+    // the source sample's list field)
+    const child = isGenerated
+      ? LIST_LABEL_CHILD[type] ?? GENERATED_SOURCE_LIST_CHILD[type]
+      : undefined;
 
     return {
       labelId: changed.element._id,
-      labelPath: child && isGenerated ? `${path}.${child}` : path,
+      labelPath: child ? `${path}.${child}` : path,
     };
   }
 

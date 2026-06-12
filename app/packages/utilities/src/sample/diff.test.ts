@@ -159,6 +159,24 @@ describe("firstEditedLabel", () => {
     ).toEqual({ labelId: "d1", labelPath: "gt.detections" });
   });
 
+  it("appends the SOURCE list child for a flattened single-label patch", () => {
+    // a patches view flattens the source Detections list, so the modal
+    // sample's field holds a single Detection — the labelPath must still
+    // address the source sample's list
+    expect(
+      firstEditedLabel(
+        snap({
+          sourceData: {
+            gt: { _cls: "Detection", _id: "d1", label: "a" },
+          },
+          transientData: { gt: { _cls: "Detection", _id: "d1", label: "b" } },
+          getLabelType: () => LabelType.Detection,
+        }),
+        { isGenerated: true }
+      )
+    ).toEqual({ labelId: "d1", labelPath: "gt.detections" });
+  });
+
   it("returns undefined when nothing changed", () => {
     expect(
       firstEditedLabel(

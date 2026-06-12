@@ -36,6 +36,19 @@ export const LIST_LABEL_CHILD: Partial<Record<LabelType, string>> = {
   [LabelType.Polylines]: "polylines",
 };
 
+/**
+ * For single-label types, the SOURCE sample's list child when the field was
+ * flattened by a generated (patches) view — a `Detection` patch comes from a
+ * source `Detections` field whose elements live under `detections`. Used to
+ * address the source list when persisting generated-view edits.
+ */
+export const GENERATED_SOURCE_LIST_CHILD: Partial<Record<LabelType, string>> = {
+  [LabelType.Classification]: "classifications",
+  [LabelType.Detection]: "detections",
+  [LabelType.Keypoint]: "keypoints",
+  [LabelType.Polyline]: "polylines",
+};
+
 const EMBEDDED_DOC_TYPE_TO_LABEL_TYPE: Record<string, LabelType> =
   Object.fromEntries(
     (Object.values(LabelType) as LabelType[])
