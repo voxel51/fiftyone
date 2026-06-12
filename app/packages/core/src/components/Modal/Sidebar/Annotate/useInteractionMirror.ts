@@ -1,6 +1,6 @@
 import { useAnnotationEngine, useInteraction } from "@fiftyone/annotation";
 import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 import { editing } from "./Edit";
 import useExit from "./Edit/useExit";
 import { hoveringLabelIds } from "./useHover";
@@ -15,8 +15,11 @@ const STORE = getDefaultStore();
  * (focus, hover, sidebar rows) write the engine; this is the only writer of
  * the legacy atoms for those flows. Surfaces not yet migrated (3D, drafts)
  * still write the legacy atoms directly — the mirror is edge-triggered and
- * never clobbers them between engine changes. Applied in effects, after the
- * engine's dispatch has finished. Deleted per surface as each one migrates.
+ * never clobbers them between engine changes. Applied in layout effects:
+ * after the engine's dispatch has finished, but before paint — a Lighter
+ * selection change emits deselect-then-select, and the deselect half still
+ * clears `editing` synchronously, so a post-paint mirror would flash the
+ * deselected frame. Deleted per surface as each one migrates.
  */
 export const useInteractionMirror = (): void => {
   const engine = useAnnotationEngine();
@@ -27,11 +30,11 @@ export const useInteractionMirror = (): void => {
   const setHovering = useSetAtom(hoveringLabelIds);
   const onExit = useExit();
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setHovering(hovered.map((ref) => ref.instanceId));
   }, [hovered, setHovering]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const value = STORE.get(editing);
     const isDraft =
       typeof value === "string" || (value !== null && STORE.get(value)?.isNew);
