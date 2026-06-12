@@ -25,29 +25,19 @@ export const MCAP_SOURCE_TYPE = {
 export type McapSourceType =
   typeof MCAP_SOURCE_TYPE[keyof typeof MCAP_SOURCE_TYPE];
 
-const IMAGE_SYNC_POLICY: McapStreamSyncPolicy = {
+// Latest-at-or-before with no tolerance = unbounded lookback: the read
+// layer resolves the predecessor message however sparse the stream is
+// (keyframe-rate annotations against full-rate video need no special
+// case), and future data is never shown. Kept per-type so any future
+// tuning (limits, modes) stays a one-line change.
+const LATEST_SYNC_POLICY: McapStreamSyncPolicy = {
   mode: PlaybackSyncMode.LATEST,
-  toleranceBeforeNs: 120_000_000n,
-};
-
-// Annotation streams typically arrive far slower than the image frames
-// they decorate (keyframe-rate annotations against full-rate video). An
-// image-sized tolerance leaves most ticks unresolved; widen the lookback
-// so every tick has a current annotation message available.
-const IMAGE_ANNOTATION_SYNC_POLICY: McapStreamSyncPolicy = {
-  mode: PlaybackSyncMode.LATEST,
-  toleranceBeforeNs: 1_500_000_000n,
-};
-
-const POINT_CLOUD_SYNC_POLICY: McapStreamSyncPolicy = {
-  mode: PlaybackSyncMode.LATEST,
-  toleranceBeforeNs: 200_000_000n,
 };
 
 const SYNC_POLICY_BY_TYPE: Record<McapSourceType, McapStreamSyncPolicy> = {
-  [MCAP_SOURCE_TYPE.IMAGE]: IMAGE_SYNC_POLICY,
-  [MCAP_SOURCE_TYPE.IMAGE_ANNOTATION]: IMAGE_ANNOTATION_SYNC_POLICY,
-  [MCAP_SOURCE_TYPE.POINT_CLOUD]: POINT_CLOUD_SYNC_POLICY,
+  [MCAP_SOURCE_TYPE.IMAGE]: LATEST_SYNC_POLICY,
+  [MCAP_SOURCE_TYPE.IMAGE_ANNOTATION]: LATEST_SYNC_POLICY,
+  [MCAP_SOURCE_TYPE.POINT_CLOUD]: LATEST_SYNC_POLICY,
 };
 
 /**

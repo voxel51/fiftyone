@@ -21,10 +21,12 @@ import type {
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
   McapReadTopicsRequest,
+  McapReadTopicTimeBoundsRequest,
   McapReadTimelineRangeRequest,
   McapResourceClient,
   McapSynchronizedMessageWindow,
   McapTimelineRange,
+  McapTopicTimeBounds,
 } from "../types";
 import type { StreamInventory } from "../../../schemas/v1";
 
@@ -86,6 +88,12 @@ class WorkerMcapResourceClient implements McapResourceClient {
     request: McapReadTopicsRequest
   ): Promise<readonly StreamInventory[]> {
     return this.request("readTopics", request);
+  }
+
+  readTopicTimeBounds(
+    request: McapReadTopicTimeBoundsRequest
+  ): Promise<readonly McapTopicTimeBounds[]> {
+    return this.request("readTopicTimeBounds", request);
   }
 
   readFrameTransformBootstrap(
