@@ -70,7 +70,6 @@ setup(
         "Pillow>=12.2",
         "plotly>=6.1.1,<7",
         "pprintpp>=0.1,<0.5",
-        "protobuf==7.35.0",
         "psutil>=5,<8",
         "pydash>=6,<9",
         "pymongo~=4.9.2",  # Keep small bounds on mongo-related libraries
@@ -121,4 +120,9 @@ setup(
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
     python_requires=">=3.10",
+    extras_require={
+        "multimodal": [
+            "protobuf==7.35.0",
+        ],
+    },
 )
