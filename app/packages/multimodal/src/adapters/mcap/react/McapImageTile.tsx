@@ -16,12 +16,14 @@ import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import { chooseAnnotationTopic } from "../topic-matching";
 import { ImagePanel } from "../../../visualization/panels/image";
 import McapImageAnnotationOverlay from "./McapImageAnnotationOverlay";
+import { rankImageSources } from "./playback-layout";
 import settingsStyles from "./McapTile.settings.module.css";
 import styles from "./McapTile.module.css";
 import { McapTileEmptyState, McapTileStatusBadge } from "./McapTileStreamState";
+import type { McapTileProps } from "./mcap-tile-types";
 import { useMcapTopicStream } from "./use-mcap-topic-stream";
 
-const McapImageTile: React.FC = () => {
+const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   const [imageDims, setImageDims] = useState<{
     width: number;
     height: number;
@@ -32,13 +34,18 @@ const McapImageTile: React.FC = () => {
     MCAP_SOURCE_TYPE.IMAGE_ANNOTATION
   );
   const setTileTitle = useSetTileTitle();
-  const [topic, setTopic] = useState<string>(images[0]?.id ?? "");
+  // Open on the resolver-assigned source; tiles added by hand bind the
+  // densest stream instead of whatever happens to be first in the file.
+  const [topic, setTopic] = useState<string>(
+    () => initialSourceId ?? rankImageSources(images)[0]?.id ?? ""
+  );
 
   // If sources populated after the initial render (or the selected topic
-  // disappeared), bind to the first available source.
+  // disappeared), bind to the best available source.
   useEffect(() => {
-    if (!topic && images[0]) {
-      setTopic(images[0].id);
+    if (!topic && images.length > 0) {
+      const ranked = rankImageSources(images);
+      if (ranked[0]) setTopic(ranked[0].id);
     }
   }, [images, topic]);
 

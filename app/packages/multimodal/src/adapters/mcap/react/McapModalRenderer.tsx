@@ -43,7 +43,7 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
     defaultRightOpen,
     onLeftOpenChange,
     onRightOpenChange,
-  } = useMcapModalLayout(sources);
+  } = useMcapModalLayout({ sources, readProfile: source?.readProfile });
   const { tracks, onTagCreate, onTagDelete } = useMcapTemporalTags(ctx);
 
   if (status === "error") {

@@ -1,12 +1,21 @@
 import { collectTileIds, useTiling, type TilingTile } from "@fiftyone/tiling";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import type { MosaicNode } from "react-mosaic-component";
+import type { ByteSourceReadProfile } from "../../../query/bytes";
 import type { SceneSource } from "../../../scene-inventory";
 import {
   mcapTileTypeFromId,
   readMcapModalLayout,
   writeMcapModalLayout,
 } from "./mcap-layout-persistence";
+import { MCAP_TILE_TYPE } from "./mcap-tile-types";
+import {
+  collectPlaybackDeviceCapabilities,
+  rankImageSources,
+  resolvePlaybackLayout,
+  type PlaybackDeviceCapabilities,
+  type PlaybackLayoutTile,
+} from "./playback-layout";
 import { getMcapTileDefinition, mcapTileTypesFor } from "./use-mcap-tiles";
 
 export interface McapModalLayout {
@@ -19,32 +28,53 @@ export interface McapModalLayout {
   onRightOpenChange: (open: boolean) => void;
 }
 
+export interface UseMcapModalLayoutOptions {
+  sources: readonly SceneSource[];
+  /** Source locality hint; tightens the default tile budget when remote. */
+  readProfile?: ByteSourceReadProfile;
+  /** Capability override for tests; collected from the browser when absent. */
+  capabilities?: PlaybackDeviceCapabilities;
+}
+
 /**
  * Mount-time layout state for the MCAP modal: the user's persisted
  * sidebar visibility and tile arrangement when one restores cleanly
- * against the current scene, the inventory-derived defaults (one tile
- * per source type present in the file) otherwise. Pair with
+ * against the current scene, the resolver's defaults otherwise — a
+ * budgeted grid of image tiles (densest sources first) beside one fused
+ * 3D tile, sized to the machine, the source locality, and the viewport
+ * (see `resolvePlaybackLayout`). Pair with
  * `<McapModalLayoutPersistence />` (inside the playback shell) to write
  * changes back.
  */
-export function useMcapModalLayout(
-  sources: readonly SceneSource[]
-): McapModalLayout {
+export function useMcapModalLayout({
+  sources,
+  readProfile,
+  capabilities,
+}: UseMcapModalLayoutOptions): McapModalLayout {
   const presentTypes = useMemo(
     () => Array.from(new Set(sources.map((s) => s.type))),
     [sources]
   );
+  const resolved = useMemo(
+    () =>
+      resolvePlaybackLayout({
+        capabilities: capabilities ?? collectPlaybackDeviceCapabilities(),
+        readProfile,
+        sources,
+      }),
+    [sources, readProfile, capabilities]
+  );
   const defaultTiles = useMemo(
-    () => buildDefaultTiles(presentTypes),
-    [presentTypes]
+    () => buildResolvedTiles(resolved.tiles),
+    [resolved]
   );
   // Read storage once per modal mount — navigating samples remounts the
   // renderer and picks up whatever the previous sample persisted.
   const persisted = useMemo(readMcapModalLayout, []);
 
   const restored = useMemo(
-    () => rebuildTilesFromLayout(persisted?.layout, presentTypes),
-    [persisted, presentTypes]
+    () => rebuildTilesFromLayout(persisted?.layout, presentTypes, sources),
+    [persisted, presentTypes, sources]
   );
 
   const onLeftOpenChange = useCallback((open: boolean) => {
@@ -56,7 +86,7 @@ export function useMcapModalLayout(
 
   return {
     initialTiles: restored?.tiles ?? defaultTiles,
-    initialLayout: restored?.layout,
+    initialLayout: restored?.layout ?? resolved.layout,
     defaultLeftOpen: persisted?.leftSidebarOpen ?? false,
     defaultRightOpen: persisted?.rightSidebarOpen ?? false,
     onLeftOpenChange,
@@ -65,24 +95,24 @@ export function useMcapModalLayout(
 }
 
 /**
- * One tile per tile kind that can render the scene's sources, so any
- * recording opens with something visible for every kind of data it
- * contains. Each tile discovers its sources through the inventory.
+ * Materializes the resolver's tile descriptors into tiling entries,
+ * threading each tile's assigned source into its render closure.
  */
-function buildDefaultTiles(
-  presentTypes: readonly string[]
+function buildResolvedTiles(
+  tiles: readonly PlaybackLayoutTile[]
 ): Record<string, TilingTile> {
-  const tiles: Record<string, TilingTile> = {};
-  for (const tileType of mcapTileTypesFor(presentTypes)) {
-    const definition = getMcapTileDefinition(tileType);
+  const result: Record<string, TilingTile> = {};
+  for (const tile of tiles) {
+    const definition = getMcapTileDefinition(tile.tileType);
     if (!definition) continue;
     const Tile = definition.Tile;
-    tiles[`${tileType}-default`] = {
-      title: definition.typeLabel,
-      render: () => <Tile />,
+    const initialSourceId = tile.initialSourceId;
+    result[tile.id] = {
+      title: tile.title,
+      render: () => <Tile initialSourceId={initialSourceId} />,
     };
   }
-  return tiles;
+  return result;
 }
 
 /**
@@ -91,16 +121,24 @@ function buildDefaultTiles(
  * source in the current scene can feed that tile kind — the whole
  * restore is discarded, so a layout saved against a differently-shaped
  * recording can't render dead tiles.
+ *
+ * Persistence stores the arrangement, not per-tile bindings, so image
+ * leaves rebind positionally to the ranked sources of the current
+ * recording (densest first) — restored multi-camera layouts open on
+ * distinct streams instead of all defaulting to the same one.
  */
 function rebuildTilesFromLayout(
   layout: MosaicNode<string> | null | undefined,
-  presentTypes: readonly string[]
+  presentTypes: readonly string[],
+  sources: readonly SceneSource[]
 ): { layout: MosaicNode<string>; tiles: Record<string, TilingTile> } | null {
   if (layout === null || layout === undefined) return null;
   const tileIds = collectTileIds(layout);
   if (tileIds.length === 0) return null;
 
   const availableTypes = new Set<string>(mcapTileTypesFor(presentTypes));
+  const rankedImages = rankImageSources(sources);
+  let imageLeafIndex = 0;
   const tiles: Record<string, TilingTile> = {};
   for (const id of tileIds) {
     const type = mcapTileTypeFromId(id);
@@ -108,9 +146,13 @@ function rebuildTilesFromLayout(
     const definition = getMcapTileDefinition(type);
     if (!definition) return null;
     const Tile = definition.Tile;
+    const initialSourceId =
+      type === MCAP_TILE_TYPE.IMAGE
+        ? rankedImages[imageLeafIndex++]?.id
+        : undefined;
     tiles[id] = {
       title: definition.typeLabel,
-      render: () => <Tile />,
+      render: () => <Tile initialSourceId={initialSourceId} />,
     };
   }
   return { layout, tiles };
