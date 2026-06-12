@@ -362,7 +362,10 @@ export default function useLabels() {
   useEffect(() => {
     reconcile();
 
-    if (completedFor.current !== sampleId && sampleId && active && scene) {
+    // completeness keys on the engine, never on a surface being mounted —
+    // a 3D slice has no Lighter scene; 2D rows start as stubs and upgrade
+    // when the scene mounts
+    if (completedFor.current !== sampleId && sampleId && active) {
       completedFor.current = sampleId;
       setLoading(LabelsState.COMPLETE);
 
@@ -388,7 +391,6 @@ export default function useLabels() {
     isPatches,
     reconcile,
     sampleId,
-    scene,
     setActiveLabelId,
     setLoading,
   ]);
