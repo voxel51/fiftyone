@@ -7,7 +7,6 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import ErrorImg from "../images/error.svg";
 import { ExternalLink } from "../utils/generic";
-import AggregationGuard from "./Common/AggregationGuard";
 import { SamplesHeader } from "./Grid/Header/Containers";
 
 const BaseContainer = styled.div`
@@ -39,16 +38,7 @@ const ActionContainer = styled(TextContainer)`
   position: relative;
 `;
 
-// a timed-out count can't prove emptiness; render nothing rather than full-paging
 export default function EmptySamples() {
-  return (
-    <AggregationGuard fallback={null}>
-      <EmptySamplesImpl />
-    </AggregationGuard>
-  );
-}
-
-function EmptySamplesImpl() {
   const loadedView = useRecoilValue(fos.view);
   const totalSamples = useRecoilValue(
     fos.count({ path: "", extended: true, modal: false })
