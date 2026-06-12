@@ -21,6 +21,7 @@ const mockPushUndoable = vi.fn();
 const mockGetFieldSchema = vi
   .fn()
   .mockReturnValue({ ftype: "EmbeddedDocumentField" });
+const mockEngineUpdateLabel = vi.fn();
 
 class MockDetectionOverlay {
   public id: string;
@@ -62,6 +63,10 @@ vi.mock("@fiftyone/annotation", () => ({
   DeleteAnnotationCommand: MockDeleteAnnotationCommand,
   getFieldSchema: (...args: unknown[]) => mockGetFieldSchema(...args),
   useAnnotationEventBus: () => ({ dispatch: mockDispatchAnnotationEvent }),
+  useAnnotationEngine: () => ({
+    ambientSample: () => "sample-1",
+    updateLabel: mockEngineUpdateLabel,
+  }),
 }));
 
 vi.mock("@fiftyone/command-bus", () => ({
@@ -188,8 +193,10 @@ describe("useMergeTool", () => {
     expect(mockExecuteCommand.mock.calls[0][0]).toBeInstanceOf(
       MockDeleteAnnotationCommand
     );
-    expect(mockRemoveLabelFromSidebar).toHaveBeenCalledWith("source");
-    expect(mockRemoveOverlay).toHaveBeenCalledWith("source", false);
+    // the engine read-half owns the overlay/row fallout of the delete —
+    // no manual scene/sidebar bookkeeping
+    expect(mockRemoveLabelFromSidebar).not.toHaveBeenCalled();
+    expect(mockRemoveOverlay).not.toHaveBeenCalled();
     expect(mockPushUndoable).toHaveBeenCalledTimes(1);
     expect(mockPushUndoable.mock.calls[0][0]).toBeInstanceOf(
       MockMergeDetectionsCommand
@@ -314,15 +321,20 @@ describe("useMergeTool", () => {
     mockRemoveLabelFromSidebar.mockClear();
     mockRemoveOverlay.mockClear();
 
-    // Redo path
+    // Redo path: persistence only — the engine read-half unmounts the
+    // overlay and drops the row
     await command.deps.deleteSource();
     expect(mockExecuteCommand).toHaveBeenCalledTimes(1);
-    expect(mockRemoveLabelFromSidebar).toHaveBeenCalledWith("source");
-    expect(mockRemoveOverlay).toHaveBeenCalledWith("source", false);
+    expect(mockRemoveLabelFromSidebar).not.toHaveBeenCalled();
+    expect(mockRemoveOverlay).not.toHaveBeenCalled();
 
-    // Undo path: re-attach the source overlay and re-add to the sidebar.
+    // Undo path: restore the label through the engine only — the read-half
+    // remounts the overlay and the mirror re-derives the row
     command.deps.restoreSource();
-    expect(mockAddOverlay).toHaveBeenCalledWith(source);
-    expect(mockAddLabelToSidebar).toHaveBeenCalledWith(sourceLabel);
+    expect(mockAddOverlay).not.toHaveBeenCalled();
+    expect(mockEngineUpdateLabel).toHaveBeenCalledWith(
+      { sample: "sample-1", path: "ground_truth", instanceId: "source" },
+      sourceLabel.data
+    );
   });
 });

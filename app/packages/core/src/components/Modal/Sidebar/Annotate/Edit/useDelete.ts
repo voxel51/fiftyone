@@ -1,7 +1,7 @@
 import {
   DeleteAnnotationCommand,
   getFieldSchema,
-  useSampleInstance,
+  useAnnotationEngine,
 } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
 import { useLighter } from "@fiftyone/lighter";
@@ -18,7 +18,6 @@ import {
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
-import { useLabelsContext } from "../useLabels";
 import { current } from "./state";
 import useExit from "./useExit";
 
@@ -26,11 +25,10 @@ export default function useDelete() {
   const commandBus = useCommandBus();
   const { scene, removeOverlay } = useLighter();
   const label = useAtomValue(current);
-  const sample = useSampleInstance();
+  const engine = useAnnotationEngine();
   const schema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
-  const { removeLabelFromSidebar } = useLabelsContext();
 
   const exit = useExit();
   const setNotification = fos.useNotification();
@@ -67,12 +65,11 @@ export default function useDelete() {
             return;
           }
 
+          // the engine's read-half does the rest: the bridge loop unmounts
+          // the overlay and the list mirror drops the row on the delete tick
           await commandBus.execute(
             new DeleteAnnotationCommand(label, fieldSchema)
           );
-
-          removeLabelFromSidebar(label.data._id);
-          removeOverlay(label.overlay.id, false);
 
           exit();
         } catch (error) {
@@ -87,20 +84,26 @@ export default function useDelete() {
           return;
         }
 
-        // restore the captured label in the Sample — the engine's bridge
-        // loop remounts the overlay and the list mirror restores the row
-        // (legacy re-added the overlay and let the overlay-added handler
-        // write the Sample; that handler is gone)
-        sample.updateLabel(label.path, label.data);
+        // restore the captured label through the engine — the bridge loop
+        // remounts the overlay and the list mirror restores the row (legacy
+        // re-added the overlay and let the overlay-added handler write the
+        // Sample; that handler is gone)
+        engine.updateLabel(
+          {
+            sample: engine.ambientSample(),
+            path: label.path,
+            instanceId: label.data._id,
+          },
+          label.data
+        );
       }
     );
   }, [
     commandBus,
     exit,
     label,
-    removeLabelFromSidebar,
     removeOverlay,
-    sample,
+    engine,
     scene,
     schema,
     setNotification,

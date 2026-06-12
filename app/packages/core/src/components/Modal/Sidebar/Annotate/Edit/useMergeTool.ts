@@ -2,7 +2,11 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { DeleteAnnotationCommand, getFieldSchema } from "@fiftyone/annotation";
+import {
+  DeleteAnnotationCommand,
+  getFieldSchema,
+  useAnnotationEngine,
+} from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
 import { CommandContextManager } from "@fiftyone/commands";
 import {
@@ -53,9 +57,9 @@ export interface MergeTool {
 export const useMergeTool = (): MergeTool => {
   const [mergeTargetId, setMergeTargetId] = useAtom(mergeTargetIdAtom);
   const commandBus = useCommandBus();
-  const { scene, removeOverlay } = useLighter();
-  const { addLabelToSidebar, getLabelById, removeLabelFromSidebar } =
-    useLabelsContext();
+  const { scene } = useLighter();
+  const { getLabelById } = useLabelsContext();
+  const engine = useAnnotationEngine();
   const fieldSchema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
@@ -130,12 +134,12 @@ export const useMergeTool = (): MergeTool => {
           console.error("Merge tool: failed to delete source detection", err);
           return;
         }
-        removeLabelFromSidebar(overlay.id);
-        removeOverlay(overlay.id, false);
 
         // 3. Push composite undoable. `execute` (= redo) re-applies the
         // merged mask and re-deletes; `undo` restores the pre-merge mask
-        // and re-adds the source overlay/label.
+        // and re-adds the source overlay/label. The engine's read-half owns
+        // the overlay/row fallout of deletes and restores — no manual
+        // scene/sidebar bookkeeping here.
         const command = new MergeDetectionsCommand(
           targetOverlay,
           paintData,
@@ -144,12 +148,19 @@ export const useMergeTool = (): MergeTool => {
               await commandBus.execute(
                 new DeleteAnnotationCommand(sourceLabel, schema)
               );
-              removeLabelFromSidebar(overlay.id);
-              removeOverlay(overlay.id, false);
             },
             restoreSource: () => {
-              scene.addOverlay(overlay);
-              addLabelToSidebar(sourceLabel);
+              // restore through the engine; the read-half remounts the
+              // overlay and the mirror re-derives the row (a mask_path-backed
+              // mask re-enters via the gated decode, like initial load)
+              engine.updateLabel(
+                {
+                  sample: engine.ambientSample(),
+                  path: sourceLabel.path,
+                  instanceId: sourceLabel.data._id,
+                },
+                sourceLabel.data
+              );
             },
           },
           targetOverlay.id,
@@ -166,13 +177,11 @@ export const useMergeTool = (): MergeTool => {
       return true;
     },
     [
-      addLabelToSidebar,
       commandBus,
+      engine,
       fieldSchema,
       getLabelById,
       mergeTargetId,
-      removeLabelFromSidebar,
-      removeOverlay,
       scene,
       setMergeTargetId,
     ]
