@@ -1290,9 +1290,9 @@ describe("MCAP resources", () => {
   });
 
   it("resolves duplicate same-time messages to one deterministic frame", async () => {
-    // Real recordings (e.g. DROID) carry multiple messages on one
-    // channel at the same log time. The whole batch used to reject on
-    // the ambiguity, permanently failing every topic it covered.
+    // Real recordings can carry multiple messages on one channel at
+    // the same log time. The whole batch used to reject on the
+    // ambiguity, permanently failing every topic it covered.
     const source = createMcapSourceDescriptor();
     const first = createMessage(new Uint8Array([1]), {
       logTime: 90n,
