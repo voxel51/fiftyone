@@ -1,8 +1,7 @@
-import { editing as editingAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
-import { savedLabel } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
+import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import * as fos from "@fiftyone/state";
 import { DETECTION, POLYLINE } from "@fiftyone/utilities";
-import { getDefaultStore, useSetAtom } from "jotai";
+import { useSetAtom } from "jotai";
 import { useResetAtom } from "jotai/utils";
 import { useCallback, useEffect } from "react";
 import { useSetRecoilState } from "recoil";
@@ -38,22 +37,19 @@ export function useSetEditingToExisting3dLabel(type: AnnotationType) {
     : currentEditingPolylineAtom;
   const labelType = isCuboid ? DETECTION : POLYLINE;
 
-  const setEditing = useSetAtom(editingAtom);
-  const resetEditing = useResetAtom(editingAtom);
   const resetCurrentEditing = useResetAtom(currentEditingAtom);
   const setCurrentEditing = useSetAtom(currentEditingAtom);
   const workingDoc = useWorkingDoc();
+  const { clear, select } = useAnnotationContext();
 
   useEffect(() => {
     return () => {
       resetCurrentEditing();
-      resetEditing();
+      clear();
     };
-  }, []);
+  }, [resetCurrentEditing]);
 
   const clearTransformState = useSetRecoilState(clearTransformStateSelector);
-
-  const jotaiStore = getDefaultStore();
 
   return useCallback(
     (label: CuboidLabelData | PolylineLabelData) => {
@@ -98,9 +94,12 @@ export function useSetEditingToExisting3dLabel(type: AnnotationType) {
         },
       } as fos.AnnotationLabel);
 
-      setEditing(currentEditingAtom);
-
-      jotaiStore.set(savedLabel, effectiveLabel);
+      // setCurrentEditing above populated the atom with effectiveLabel, so
+      // select()'s implicit savedLabel snapshot matches what the original
+      // explicit set(savedLabel, effectiveLabel) wrote.
+      select(
+        currentEditingAtom as unknown as Parameters<typeof select>[0]
+      );
     },
     [workingDoc]
   );

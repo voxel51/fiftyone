@@ -7,8 +7,9 @@ import { useAtomValue } from "jotai";
 import React, { useEffect } from "react";
 import styled from "styled-components";
 import Actions from "./Actions";
-import Edit, { isEditing } from "./Edit";
+import Edit from "./Edit";
 import useDelete from "./Edit/useDelete";
+import { useAnnotationContext } from "./Edit/useAnnotationContext";
 import GroupAnnotation from "./GroupAnnotation";
 import ImportSchema, { useShowImportSchema } from "./ImportSchema";
 import LabelList from "./LabelList";
@@ -74,7 +75,7 @@ const AnnotationBody = ({
   disabledReason: AnnotationDisabledReason;
   loadSchemas: () => void;
 }) => {
-  const isEditingValue = useAtomValue(isEditing);
+  const isEditingValue = useAnnotationContext().isEditing;
   const requiredField = useSourceFieldToActivate();
   const isGroupDataset = useIsGroupDataset();
   const disabledMessage = useDisabledMessage(disabledReason);
@@ -111,7 +112,6 @@ const Annotate = ({ disabledReason, loadSchemas }: AnnotateProps) => {
   useRegisterPolylineSidebarSyncHandlers();
 
   const loading = useAtomValue(labelSchemasData) === null;
-
   const contextManager = useAnnotationContextManager();
   const { clear: clearUndo } = useUndoRedo(KnownContexts.ModalAnnotate);
 

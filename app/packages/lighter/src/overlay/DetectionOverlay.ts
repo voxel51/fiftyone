@@ -105,6 +105,7 @@ export class DetectionOverlay
   private moveStartPosition?: Point;
   private moveStartBounds?: Rect;
   private isSelectedState = false;
+  private isBeingEstablished = false;
 
   #relativeBounds: Rect;
 
@@ -511,6 +512,7 @@ export class DetectionOverlay
     segmentationToolState,
   }: OverlayEvent): boolean {
     this.segmentationTool = segmentationToolState;
+    this.isBeingEstablished = !this.hasValidBounds();
 
     // Segmentation painting takes priority over drag/resize
     if (this.isPaintingActive()) {
@@ -853,16 +855,20 @@ export class DetectionOverlay
 
     if (!this.moveStartPoint || !this.moveStartBounds) return false;
 
-    const wasPainting = this.interactionState === "PAINTING";
-
-    this.interactionState = "NONE";
     const croppedBounds = this.mask?.paintEnd(this.bounds, (encoded) => {
       this.maskSource = encoded;
       this.markDirty();
     });
+
     if (croppedBounds) {
       this.bounds = croppedBounds;
     }
+
+    const wasPainting = this.interactionState === "PAINTING";
+    const isEstablishing = this.isBeingEstablished;
+
+    this.isBeingEstablished = false;
+    this.interactionState = "NONE";
     this.moveStartPoint = undefined;
     this.moveStartPosition = undefined;
     this.moveStartBounds = undefined;
@@ -872,6 +878,7 @@ export class DetectionOverlay
       this.eventBus.dispatch("lighter:overlay-paint-end", {
         id: this.id,
         paintStrokeData: this.mask?.getPaintStrokeData(),
+        isEstablishing,
       });
     }
 
@@ -1244,9 +1251,13 @@ export class DetectionOverlay
       this.markDirty();
     });
 
+    const isEstablishing = this.isBeingEstablished;
+    this.isBeingEstablished = false;
+
     this.eventBus.dispatch("lighter:overlay-paint-end", {
       id: this.id,
       paintStrokeData: this.mask?.getPaintStrokeData(),
+      isEstablishing,
     });
 
     this.cancelPenPolygon();

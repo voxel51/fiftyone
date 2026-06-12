@@ -1,7 +1,6 @@
 import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { expandPath, field } from "@fiftyone/state";
 import { FLOAT_FIELD, INT_FIELD } from "@fiftyone/utilities";
-import { useAtom, useAtomValue } from "jotai";
 import { isEqual } from "lodash";
 import { useCallback, useMemo, useRef } from "react";
 import { useRecoilCallback } from "recoil";
@@ -15,16 +14,12 @@ import {
   resolveVisibleAttribute,
 } from "./evaluateWhen";
 import { generatePrimitiveSchema } from "./schemaHelpers";
-import {
-  currentData,
-  currentField,
-  currentOverlay,
-  currentSchema,
-} from "./state";
+import { useAnnotationContext } from "./useAnnotationContext";
 
 const useSchema = (readOnly: boolean) => {
-  const config = useAtomValue(currentSchema);
-  const data = useAtomValue(currentData);
+  const { selected } = useAnnotationContext();
+  const config = selected?.schema ?? null;
+  const data = selected?.data;
   const isLabelReadOnly = config?.read_only;
   const effectiveReadOnly = readOnly || isLabelReadOnly;
 
@@ -120,12 +115,13 @@ const useParseFieldValue = () => {
  * the returned callback keeps a stable identity across data changes.
  */
 const useHandleSchemaChange = (readOnly: boolean) => {
-  const config = useAtomValue(currentSchema);
-  const [data] = useAtom(currentData);
-  const overlay = useAtomValue(currentOverlay);
+  const { selected } = useAnnotationContext();
+  const config = selected?.schema ?? null;
+  const data = selected?.data;
+  const overlay = selected?.overlay;
   const eventBus = useAnnotationEventBus();
   const parseFieldValue = useParseFieldValue();
-  const field = useAtomValue(currentField);
+  const field = selected?.field ?? null;
 
   const configRef = useRef(config);
   const dataRef = useRef(data);
@@ -206,9 +202,10 @@ export interface AnnotationSchemaProps {
 
 const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
   const schema = useSchema(readOnly);
-  const [data] = useAtom(currentData);
-  const overlay = useAtomValue(currentOverlay);
-  const field = useAtomValue(currentField);
+  const { selected } = useAnnotationContext();
+  const data = selected?.data;
+  const overlay = selected?.overlay;
+  const field = selected?.field ?? null;
   const onChange = useHandleSchemaChange(readOnly);
 
   if (!field) throw new Error("no field");

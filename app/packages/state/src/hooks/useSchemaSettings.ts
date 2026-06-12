@@ -57,7 +57,7 @@ export default function useSchemaSettings() {
   const [searchTerm, setSearchTerm] = useRecoilState<string>(
     fos.schemaSearchTerm
   );
-  const isVideo = dataset.mediaType === "video";
+  const isVideo = dataset?.mediaType === "video";
 
   const [allFieldsChecked, setAllFieldsChecked] = useRecoilState(
     fos.allFieldsCheckedState
@@ -273,7 +273,7 @@ export default function useSchemaSettings() {
       const pathAndSubPaths = getSubPaths(
         rawPath,
         fieldSchema,
-        dataset.mediaType,
+        dataset?.mediaType,
         viewSchema
       );
       if (!pathAndSubPaths.size) {
@@ -302,7 +302,7 @@ export default function useSchemaSettings() {
     [
       datasetName,
       fieldSchema,
-      dataset.mediaType,
+      dataset?.mediaType,
       viewSchema,
       setAllFieldsChecked,
       excludedPaths,

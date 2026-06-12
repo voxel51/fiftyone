@@ -1,6 +1,6 @@
-import { editing as editingAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
+import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import type { AnnotationLabel } from "@fiftyone/state";
-import type { WritableAtom } from "jotai";
+import type { PrimitiveAtom } from "jotai";
 import { getDefaultStore } from "jotai";
 import { isEqual } from "lodash";
 import { useEffect, useRef } from "react";
@@ -11,7 +11,7 @@ import { currentEditingPolylineAtom } from "./useSetEditingToNewPolyline";
 
 type ClearedEditingState = {
   labelId: string;
-  editingAtomRef: WritableAtom<AnnotationLabel | null, [any], void>;
+  editingAtomRef: PrimitiveAtom<AnnotationLabel | null>;
   editingData: AnnotationLabel;
 };
 
@@ -29,6 +29,7 @@ type ClearedEditingState = {
 export function useSyncWorkingToSidebar() {
   const workingDoc = useWorkingDoc();
   const store = getDefaultStore();
+  const { selected, clear, select, isEditingAtom } = useAnnotationContext();
 
   // Track the last synced working label to prevent unnecessary updates
   const lastSyncedWorkingLabelRef = useRef<
@@ -54,29 +55,36 @@ export function useSyncWorkingToSidebar() {
           ...editingData,
           data: { ...editingData.data, ...workingLabel },
         } as AnnotationLabel;
-        store.set(editingAtomRef, restoredEditing);
-        store.set(editingAtom, editingAtomRef);
+        store.set(
+          editingAtomRef as unknown as PrimitiveAtom<AnnotationLabel | null>,
+          restoredEditing
+        );
+        select(
+          editingAtomRef as unknown as PrimitiveAtom<AnnotationLabel>
+        );
         clearedEditingRef.current = null;
         lastSyncedWorkingLabelRef.current = workingLabel;
         return;
       }
     }
 
-    const editingValue = store.get(editingAtom);
-
     // Only sync for 3D editing atoms
-    if (!editingValue || typeof editingValue === "string") return;
-    if (
-      editingValue !== currentEditingCuboidAtom &&
-      editingValue !== currentEditingPolylineAtom
-    ) {
-      return;
-    }
+    const editingCuboid = isEditingAtom(
+      currentEditingCuboidAtom as unknown as PrimitiveAtom<AnnotationLabel>
+    );
+    const editingPolyline = isEditingAtom(
+      currentEditingPolylineAtom as unknown as PrimitiveAtom<AnnotationLabel>
+    );
+    if (!editingCuboid && !editingPolyline) return;
 
-    const currentEditing = store.get(editingValue);
-    if (!currentEditing?.data?._id) return;
+    const currentEditing = selected?.label;
+    const labelId = currentEditing?.data._id;
+    if (!labelId) return;
 
-    const labelId = currentEditing.data._id;
+    // The 3D atom backing the editing pointer — narrowed by the guards above.
+    const editingValue = editingCuboid
+      ? currentEditingCuboidAtom
+      : currentEditingPolylineAtom;
 
     // If the label was deleted (like via undo of creation), clear editing state
     if (workingDoc.deletedIds.has(labelId)) {
@@ -87,7 +95,7 @@ export function useSyncWorkingToSidebar() {
         editingData: currentEditing,
       };
       store.set(editingValue, null);
-      store.set(editingAtom, null);
+      clear();
       lastSyncedWorkingLabelRef.current = null;
       return;
     }
@@ -122,5 +130,5 @@ export function useSyncWorkingToSidebar() {
     store.set(editingValue, updatedEditing);
 
     lastSyncedWorkingLabelRef.current = workingLabel;
-  }, [workingDoc, store]);
+  }, [workingDoc, selected?.label, store, clear, select, isEditingAtom]);
 }

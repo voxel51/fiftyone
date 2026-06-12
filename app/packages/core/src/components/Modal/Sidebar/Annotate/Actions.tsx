@@ -26,13 +26,14 @@ import {
 import PolylineIcon from "@mui/icons-material/Timeline";
 import CuboidIcon from "@mui/icons-material/ViewInAr";
 import { Anchor, Text, Tooltip } from "@voxel51/voodo";
-import { useAtomValue, useSetAtom } from "jotai";
 import { createContext, useCallback, useContext } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
-import { editing } from "./Edit";
-import { fieldsOfType } from "./Edit/state";
+import {
+  useAnnotationContext,
+  useAnnotationFields,
+} from "./Edit/useAnnotationContext";
 import { useClassificationMode } from "./Edit/useClassificationMode";
 import { useDetectionMode } from "./Edit/useDetectionMode";
 import { usePolylineMode } from "./Edit/usePolylineMode";
@@ -200,8 +201,12 @@ const Classification = () => {
 };
 
 const Detection = () => {
-  const { activateDetectionMode, detectionModeActive, disabled, tooltip } =
-    useDetectionMode();
+  const {
+    activateDetectionMode,
+    detectionModeActive,
+    disabled,
+    tooltip,
+  } = useDetectionMode();
   const deactivateAll = useDeactivateAll();
 
   return (
@@ -255,8 +260,12 @@ const Segmentation = () => {
 };
 
 const Polyline = () => {
-  const { activatePolylineMode, polylineModeActive, disabled, tooltip } =
-    usePolylineMode();
+  const {
+    activatePolylineMode,
+    polylineModeActive,
+    disabled,
+    tooltip,
+  } = usePolylineMode();
   const deactivateAll = useDeactivateAll();
 
   return (
@@ -317,11 +326,11 @@ export const Redo = () => {
 };
 
 export const ThreeDPolylines = () => {
-  const setEditing = useSetAtom(editing);
+  const { createNew } = useAnnotationContext();
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
   const deactivateAll = useDeactivateAll();
-  const visibleFields = useAtomValue(fieldsOfType(POLYLINE));
+  const { fields } = useAnnotationFields(POLYLINE);
 
   const polylineFields = use3dAnnotationFields(
     useCallback(
@@ -333,7 +342,7 @@ export const ThreeDPolylines = () => {
   );
 
   const hasPolylineFieldsInSchema = polylineFields && polylineFields.length > 0;
-  const disabled = visibleFields.length === 0;
+  const disabled = fields.length === 0;
   const isPolylineAnnotateActive =
     current3dAnnotationMode === ANNOTATION_POLYLINE;
 
@@ -359,7 +368,7 @@ export const ThreeDPolylines = () => {
           if (isPolylineAnnotateActive) return;
 
           if (!hasPolylineFieldsInSchema) {
-            setEditing(POLYLINE);
+            createNew(POLYLINE);
             return;
           }
 
@@ -373,11 +382,11 @@ export const ThreeDPolylines = () => {
 };
 
 export const ThreeDCuboids = () => {
-  const setEditing = useSetAtom(editing);
+  const { createNew } = useAnnotationContext();
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
   const deactivateAll = useDeactivateAll();
-  const visibleFields = useAtomValue(fieldsOfType(DETECTION));
+  const { fields } = useAnnotationFields(DETECTION);
 
   const cuboidFields = use3dAnnotationFields(
     useCallback(
@@ -389,7 +398,7 @@ export const ThreeDCuboids = () => {
   );
 
   const hasCuboidFieldsInSchema = cuboidFields && cuboidFields.length > 0;
-  const disabled = visibleFields.length === 0;
+  const disabled = fields.length === 0;
   const isCuboidAnnotateActive = current3dAnnotationMode === ANNOTATION_CUBOID;
 
   return (
@@ -414,7 +423,7 @@ export const ThreeDCuboids = () => {
           if (isCuboidAnnotateActive) return;
 
           if (!hasCuboidFieldsInSchema) {
-            setEditing(DETECTION);
+            createNew(DETECTION);
             return;
           }
 
