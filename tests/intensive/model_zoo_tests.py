@@ -347,6 +347,11 @@ def _apply_video_models(
 
     if _SAM_PROMPT_FIELD in kwargs:
         if prompt_type == "keypoints":
+            if not kwargs[_SAM_PROMPT_FIELD].startswith("frames."):
+                raise ValueError(
+                    f"Prompt field must start with 'frames.' for video models, "
+                    f"got: {kwargs[_SAM_PROMPT_FIELD]}"
+                )
             frame_field = kwargs[_SAM_PROMPT_FIELD][len("frames.") :]
             kp_field = frame_field + "_points"
             for sample in dataset:
