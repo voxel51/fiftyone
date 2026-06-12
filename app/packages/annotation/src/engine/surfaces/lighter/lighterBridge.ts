@@ -184,6 +184,13 @@ export const createLighterBridge = ({
     },
 
     unmount: (overlay) => {
+      // unmount is a SILENT apply, and it often runs inside the engine's
+      // dispatch window (delete → loop). Removing a selected overlay makes
+      // the scene's selection teardown emit an unflagged overlay-deselect —
+      // handlers would write interaction state back mid-dispatch. Deselect
+      // first, flagged, so handlers no-op and the teardown finds nothing
+      // selected.
+      scene.deselectOverlay(overlay.id, { ignoreSideEffects: true });
       scene.removeOverlay(overlay.id);
     },
 

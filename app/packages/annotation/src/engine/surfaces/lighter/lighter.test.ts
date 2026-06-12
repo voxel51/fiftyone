@@ -53,6 +53,7 @@ type Shim = ReturnType<typeof makeOverlay>;
 
 const makeScene = () => {
   const overlays = new Map<string, Shim>();
+  const deselectOverlay = vi.fn();
 
   const scene = {
     getOverlay: (id: string) => overlays.get(id),
@@ -63,6 +64,7 @@ const makeScene = () => {
     removeOverlay: (id: string) => {
       overlays.delete(id);
     },
+    deselectOverlay,
   } as unknown as Scene2D;
 
   const overlayFactory = {
@@ -77,7 +79,7 @@ const makeScene = () => {
     ),
   } as unknown as OverlayFactory;
 
-  return { scene, overlays, overlayFactory };
+  return { scene, overlays, overlayFactory, deselectOverlay };
 };
 
 describe("lighter adapters", () => {
@@ -279,6 +281,35 @@ describe("lighter bridge", () => {
     expect(overlays.has("d1")).toBe(false);
 
     unregister();
+  });
+
+  it("unmount deselects with the side-effect flag before removal", () => {
+    // a selected overlay's removal makes the scene's selection teardown emit
+    // an unflagged deselect — inside the engine's dispatch window, a legacy
+    // handler would write interaction state back (guard trip). The bridge
+    // must deselect first, flagged.
+    const { engine } = makeEngine("sample-1", {
+      ground_truth: { detections: [makeDet("d1", "cat")] },
+    });
+    engine.updateLabel(ref("ground_truth", "d1"), {
+      bounding_box: [0.1, 0.2, 0.3, 0.4],
+    });
+    const { scene, overlays, overlayFactory, deselectOverlay } = makeScene();
+    const bridge = createLighterBridge({
+      scene,
+      overlayFactory,
+      sample: "sample-1",
+      readLabel: (r) => engine.getLabel({ sample: "sample-1", ...r }),
+    });
+    engine.registerBridge(bridge, lighterAdapters);
+    engine.interaction.setActive([ref("ground_truth", "d1")]);
+
+    engine.deleteLabel(ref("ground_truth", "d1"));
+
+    expect(overlays.has("d1")).toBe(false);
+    expect(deselectOverlay).toHaveBeenCalledWith("d1", {
+      ignoreSideEffects: true,
+    });
   });
 });
 

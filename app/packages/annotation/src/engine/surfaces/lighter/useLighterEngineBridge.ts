@@ -104,8 +104,14 @@ export const useLighterEngineBridge = ({
   on(
     "lighter:overlay-select",
     useCallback(
-      (event: { id: string; isShiftPressed?: boolean }) => {
-        if (!interactionRoutes) return;
+      (event: {
+        id: string;
+        isShiftPressed?: boolean;
+        ignoreSideEffects?: boolean;
+      }) => {
+        // flagged events are programmatic echoes (silent applies, teardown),
+        // not gestures — and may fire inside the engine's dispatch window
+        if (!interactionRoutes || event.ignoreSideEffects) return;
 
         surface.selectHandle((scene as Scene2D).getOverlay(event.id), {
           additive: event.isShiftPressed,
@@ -118,8 +124,8 @@ export const useLighterEngineBridge = ({
   on(
     "lighter:overlay-deselect",
     useCallback(
-      (event: { id: string }) => {
-        if (!interactionRoutes) return;
+      (event: { id: string; ignoreSideEffects?: boolean }) => {
+        if (!interactionRoutes || event.ignoreSideEffects) return;
 
         const overlay = (scene as Scene2D).getOverlay(event.id);
 
