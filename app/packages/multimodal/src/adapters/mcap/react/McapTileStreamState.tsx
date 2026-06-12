@@ -45,6 +45,20 @@ export const McapTileStatusBadge: React.FC<{ topic: string }> = ({ topic }) => {
  * "no data" / "failed" message.
  */
 export const McapTileEmptyState: React.FC<{ topic: string }> = ({ topic }) => {
+  if (topic === "") {
+    return (
+      <div className={styles.loading} data-testid="mcap-tile-empty-state">
+        <span className={clsx(styles.emptyText, styles.emptyTextError)}>
+          No source available
+        </span>
+      </div>
+    );
+  }
+
+  return <McapTileEmptyStateForTopic topic={topic} />;
+};
+
+const McapTileEmptyStateForTopic: React.FC<{ topic: string }> = ({ topic }) => {
   const status = useMcapTopicStatus(topic);
 
   return (

@@ -1,10 +1,9 @@
 import {
-  bufferedRangesAtom,
-  bufferingDetailAtom,
-  isBufferingAtom,
+  getBufferedRanges,
+  getBufferingDetail,
+  getIsBuffering,
+  getStreamValue,
   PlaybackProvider,
-  seekEventAtom,
-  streamValueAtom,
   usePlayback,
   usePlaybackStore,
   type PlaybackStore,
@@ -12,7 +11,7 @@ import {
 import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { useEffect, type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { mcapTopicStatusAtom } from "./mcap-stream-status";
+import { getMcapTopicStatus } from "./mcap-stream-status";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import type {
@@ -40,7 +39,7 @@ describe("useRegisterMcapDataStream", () => {
     const sourceB = createSource("source-b");
     const sourceBTimeline = deferred<McapTimelineRange>();
     const oldBatch = deferred<readonly McapSynchronizedMessageWindow[]>();
-    let playbackStore: PlaybackStore | undefined;
+    const storeCapture = capturePlaybackStore();
     let batchReadCount = 0;
     const client = createClient({
       readSynchronizedMessageBatch: vi.fn(() => {
@@ -57,13 +56,12 @@ describe("useRegisterMcapDataStream", () => {
     const { rerender } = render(
       <Harness
         client={client}
-        onStore={(store) => {
-          playbackStore = store;
-        }}
+        onStore={storeCapture.onStore}
         source={sourceA}
       />,
       { wrapper: TestProviders }
     );
+    const store = storeCapture.store();
 
     await waitFor(() => {
       expect(client.readSynchronizedMessageBatch).toHaveBeenCalledTimes(1);
@@ -72,9 +70,7 @@ describe("useRegisterMcapDataStream", () => {
     rerender(
       <Harness
         client={client}
-        onStore={(store) => {
-          playbackStore = store;
-        }}
+        onStore={storeCapture.onStore}
         source={sourceB}
       />
     );
@@ -105,13 +101,13 @@ describe("useRegisterMcapDataStream", () => {
         vi.mocked(client.readSynchronizedMessageBatch).mock.calls.length
       ).toBeGreaterThan(1);
     });
-    expect(playbackStore?.get(streamValueAtom(TOPIC))).toBeNull();
+    expect(getStreamValue(store, TOPIC)).toBeNull();
   });
 
   it("ignores in-flight batch results after topic unsubscribe", async () => {
     const source = createSource("source");
     const oldBatch = deferred<readonly McapSynchronizedMessageWindow[]>();
-    let playbackStore: PlaybackStore | undefined;
+    const storeCapture = capturePlaybackStore();
     const client = createClient({
       readSynchronizedMessageBatch: vi.fn(() => oldBatch.promise),
       readTimelineRange: vi.fn(async () => createTimelineRange()),
@@ -120,13 +116,12 @@ describe("useRegisterMcapDataStream", () => {
     const { rerender } = render(
       <Harness
         client={client}
-        onStore={(store) => {
-          playbackStore = store;
-        }}
+        onStore={storeCapture.onStore}
         source={source}
       />,
       { wrapper: TestProviders }
     );
+    const store = storeCapture.store();
 
     await waitFor(() => {
       expect(client.readSynchronizedMessageBatch).toHaveBeenCalledTimes(1);
@@ -135,9 +130,7 @@ describe("useRegisterMcapDataStream", () => {
     rerender(
       <Harness
         client={client}
-        onStore={(store) => {
-          playbackStore = store;
-        }}
+        onStore={storeCapture.onStore}
         source={source}
         subscribe={false}
       />
@@ -156,7 +149,7 @@ describe("useRegisterMcapDataStream", () => {
       await Promise.resolve();
     });
 
-    expect(playbackStore?.get(streamValueAtom(TOPIC))).toBeNull();
+    expect(getStreamValue(store, TOPIC)).toBeNull();
   });
 });
 
@@ -164,7 +157,7 @@ describe("stream status + buffering feedback", () => {
   it("reports 'loading' while the current frame is in flight, then 'ready' when it lands", async () => {
     const source = createSource("source");
     const current = deferred<McapSynchronizedMessageWindow>();
-    let playbackStore: PlaybackStore | undefined;
+    const storeCapture = capturePlaybackStore();
     const client = createClient({
       readSynchronizedMessageBatch: vi.fn(async () => []),
       readSynchronizedMessages: vi.fn(() => current.promise),
@@ -174,17 +167,16 @@ describe("stream status + buffering feedback", () => {
     render(
       <Harness
         client={client}
-        onStore={(store) => {
-          playbackStore = store;
-        }}
+        onStore={storeCapture.onStore}
         source={source}
       />,
       { wrapper: TestProviders }
     );
+    const store = storeCapture.store();
 
     await waitFor(() => {
-      expect(playbackStore?.get(mcapTopicStatusAtom(TOPIC))).toBe("loading");
-      expect(playbackStore?.get(bufferingDetailAtom)).toBe("0/1 streams");
+      expect(getMcapTopicStatus(store, TOPIC)).toBe("loading");
+      expect(getBufferingDetail(store)).toBe("0/1 streams");
     });
 
     await act(async () => {
@@ -201,15 +193,15 @@ describe("stream status + buffering feedback", () => {
     });
 
     await waitFor(() => {
-      expect(playbackStore?.get(mcapTopicStatusAtom(TOPIC))).toBe("ready");
-      expect(playbackStore?.get(bufferingDetailAtom)).toBeNull();
-      expect(playbackStore?.get(streamValueAtom(TOPIC))).not.toBeNull();
+      expect(getMcapTopicStatus(store, TOPIC)).toBe("ready");
+      expect(getBufferingDetail(store)).toBeNull();
+      expect(getStreamValue(store, TOPIC)).not.toBeNull();
     });
 
     // The buffered-ranges strip is fed on a trailing throttle.
     await waitFor(
       () => {
-        const ranges = playbackStore?.get(bufferedRangesAtom) ?? [];
+        const ranges = getBufferedRanges(store);
         expect(ranges.length).toBeGreaterThan(0);
         expect(ranges[0][0]).toBe(0);
         expect(ranges[0][1]).toBeGreaterThan(0);
@@ -220,7 +212,7 @@ describe("stream status + buffering feedback", () => {
 
   it("reports 'gap' when the fetched tick has no message for the topic", async () => {
     const source = createSource("source");
-    let playbackStore: PlaybackStore | undefined;
+    const storeCapture = capturePlaybackStore();
     const client = createClient({
       readSynchronizedMessageBatch: vi.fn(async () => []),
       readSynchronizedMessages: vi.fn(async (request) =>
@@ -232,61 +224,66 @@ describe("stream status + buffering feedback", () => {
     render(
       <Harness
         client={client}
-        onStore={(store) => {
-          playbackStore = store;
-        }}
+        onStore={storeCapture.onStore}
         source={source}
       />,
       { wrapper: TestProviders }
     );
+    const store = storeCapture.store();
 
     await waitFor(() => {
-      expect(playbackStore?.get(mcapTopicStatusAtom(TOPIC))).toBe("gap");
+      expect(getMcapTopicStatus(store, TOPIC)).toBe("gap");
     });
     // No message was ever resolved, so no frame is published either.
-    expect(playbackStore?.get(streamValueAtom(TOPIC))).toBeNull();
+    expect(getStreamValue(store, TOPIC)).toBeNull();
   });
 
   it("marks the topic 'failed' after repeated fetch failures and stops stalling on those ticks", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    const source = createSource("source");
-    let playbackStore: PlaybackStore | undefined;
-    const client = createClient({
-      readSynchronizedMessageBatch: vi.fn(() =>
-        Promise.reject(new Error("decode failed"))
-      ),
-      readSynchronizedMessages: vi.fn(() =>
-        Promise.reject(new Error("decode failed"))
-      ),
-      readTimelineRange: vi.fn(async () => createTimelineRange()),
-    });
+    try {
+      const source = createSource("source");
+      const storeCapture = capturePlaybackStore();
+      let api: ReturnType<typeof usePlayback> | undefined;
+      const client = createClient({
+        readSynchronizedMessageBatch: vi.fn(() =>
+          Promise.reject(new Error("decode failed"))
+        ),
+        readSynchronizedMessages: vi.fn(() =>
+          Promise.reject(new Error("decode failed"))
+        ),
+        readTimelineRange: vi.fn(async () => createTimelineRange()),
+      });
 
-    render(
-      <Harness
-        client={client}
-        onStore={(store) => {
-          playbackStore = store;
-        }}
-        source={source}
-      />,
-      { wrapper: TestProviders }
-    );
+      render(
+        <Harness
+          client={client}
+          onStore={storeCapture.onStore}
+          onApi={(playback) => {
+            api = playback;
+          }}
+          source={source}
+        />,
+        { wrapper: TestProviders }
+      );
+      const store = storeCapture.store();
 
-    // Mount produces two failures (current-frame + batch); a seek retry
-    // pushes the streak over the cap.
-    await waitFor(() => {
-      expect(client.readSynchronizedMessageBatch).toHaveBeenCalled();
-    });
-    await act(async () => {
-      playbackStore?.set(seekEventAtom, { time: 0, seq: 999 });
-      await Promise.resolve();
-    });
+      // Mount produces two failures (current-frame + batch); a seek retry
+      // pushes the streak over the cap.
+      await waitFor(() => {
+        expect(client.readSynchronizedMessageBatch).toHaveBeenCalled();
+      });
+      await act(async () => {
+        api?.seek(0);
+        await Promise.resolve();
+      });
 
-    await waitFor(() => {
-      expect(playbackStore?.get(mcapTopicStatusAtom(TOPIC))).toBe("failed");
-    });
-    expect(warn).toHaveBeenCalled();
-    warn.mockRestore();
+      await waitFor(() => {
+        expect(getMcapTopicStatus(store, TOPIC)).toBe("failed");
+      });
+      expect(warn).toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it("clears the engine's paused-seek buffering flag once the seeked tick is covered", async () => {
@@ -302,7 +299,7 @@ describe("stream status + buffering feedback", () => {
         readonly resolve: (value: McapSynchronizedMessageWindow) => void;
       };
     }> = [];
-    let playbackStore: PlaybackStore | undefined;
+    const storeCapture = capturePlaybackStore();
     let api: ReturnType<typeof usePlayback> | undefined;
     const client = createClient({
       readSynchronizedMessageBatch: vi.fn(
@@ -326,13 +323,12 @@ describe("stream status + buffering feedback", () => {
         onApi={(value) => {
           api = value;
         }}
-        onStore={(store) => {
-          playbackStore = store;
-        }}
+        onStore={storeCapture.onStore}
         source={source}
       />,
       { wrapper: TestProviders }
     );
+    const store = storeCapture.store();
 
     // Mount issues a priority fetch for tick 0.
     await waitFor(() => {
@@ -342,9 +338,9 @@ describe("stream status + buffering feedback", () => {
 
     // Paused seek into uncached data → the engine raises isBuffering.
     act(() => api?.seek(30));
-    expect(playbackStore?.get(isBufferingAtom)).toBe(true);
+    expect(getIsBuffering(store)).toBe(true);
     await waitFor(() => {
-      expect(playbackStore?.get(mcapTopicStatusAtom(TOPIC))).toBe("loading");
+      expect(getMcapTopicStatus(store, TOPIC)).toBe("loading");
     });
 
     // The (debounced) seek event issues a priority fetch for the seeked
@@ -367,8 +363,8 @@ describe("stream status + buffering feedback", () => {
     });
 
     await waitFor(() => {
-      expect(playbackStore?.get(isBufferingAtom)).toBe(false);
-      expect(playbackStore?.get(mcapTopicStatusAtom(TOPIC))).toBe("ready");
+      expect(getIsBuffering(store)).toBe(false);
+      expect(getMcapTopicStatus(store, TOPIC)).toBe("ready");
     });
   });
 });
@@ -419,6 +415,26 @@ function TestProviders({ children }: { readonly children: ReactNode }) {
       <McapDataStreamProvider>{children}</McapDataStreamProvider>
     </PlaybackProvider>
   );
+}
+
+/**
+ * Captures the Harness's PlaybackStore. `render` flushes effects
+ * synchronously, so `store()` is safe to call right after it returns —
+ * it throws if the Harness somehow failed to mount.
+ */
+function capturePlaybackStore() {
+  let captured: PlaybackStore | undefined;
+  return {
+    onStore: (store: PlaybackStore) => {
+      captured = store;
+    },
+    store: (): PlaybackStore => {
+      if (!captured) {
+        throw new Error("PlaybackStore was not captured — Harness not mounted");
+      }
+      return captured;
+    },
+  };
 }
 
 function createClient({

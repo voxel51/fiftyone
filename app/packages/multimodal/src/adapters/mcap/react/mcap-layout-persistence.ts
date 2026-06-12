@@ -107,6 +107,13 @@ export function writeMcapModalLayout(
  * final dash. Returns `null` for ids without a suffix.
  */
 export function mcapTileTypeFromId(tileId: string): string | null {
-  const cut = tileId.lastIndexOf("-");
-  return cut > 0 ? tileId.slice(0, cut) : null;
+  const finalDashIndex = tileId.lastIndexOf("-");
+  const hasTypeBeforeDash = finalDashIndex > 0;
+  const hasSuffixAfterDash = finalDashIndex < tileId.length - 1;
+
+  if (!hasTypeBeforeDash || !hasSuffixAfterDash) {
+    return null;
+  }
+
+  return tileId.slice(0, finalDashIndex);
 }

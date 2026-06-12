@@ -5,6 +5,22 @@ import { usePlaybackStore } from "./playback-store-context";
 import { streamValueAtom } from "./atoms";
 
 /**
+ * Reactive read of a stream's current committed value, WITHOUT marking the
+ * stream active. For consumers whose activation is managed elsewhere —
+ * e.g. MCAP tiles subscribe per-topic through the data stream, which owns
+ * a single engine-level stream for all topics. Most consumers want
+ * `useStream(id)`, which also activates the stream.
+ *
+ * Returns `null` until the stream produces its first committed value.
+ */
+export function useStreamValue<T = unknown>(id: string): T | null {
+  const store = usePlaybackStore();
+  // Target the playback store explicitly — see `playback-store-context.ts`
+  // for why we can't rely on Jotai's nearest-provider lookup.
+  return useAtomValue(streamValueAtom(id), { store }) as T | null;
+}
+
+/**
  * Subscribe to a stream's current data and re-render when it changes.
  *
  * Returns `null` until the stream is registered and produces its first
@@ -22,17 +38,13 @@ import { streamValueAtom } from "./atoms";
  */
 export function useStream<T = unknown>(id: string): T | null {
   const { subscribeStream } = usePlayback();
-  const store = usePlaybackStore();
 
   // subscribeStream is a stable action; an empty id is a no-op subscription
   // (the engine never has a stream registered under "") — skip the work.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!id) return undefined;
     return subscribeStream(id);
-  }, [id]);
+  }, [id, subscribeStream]);
 
-  // Target the playback store explicitly — see `playback-store-context.ts`
-  // for why we can't rely on Jotai's nearest-provider lookup.
-  return useAtomValue(streamValueAtom(id), { store }) as T | null;
+  return useStreamValue<T>(id);
 }

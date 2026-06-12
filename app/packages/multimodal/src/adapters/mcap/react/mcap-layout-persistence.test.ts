@@ -119,6 +119,7 @@ describe("mcap-layout-persistence", () => {
     it("returns null for ids without a suffix", () => {
       expect(mcapTileTypeFromId("camera")).toBeNull();
       expect(mcapTileTypeFromId("-3")).toBeNull();
+      expect(mcapTileTypeFromId("camera-")).toBeNull();
     });
   });
 });

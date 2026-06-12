@@ -1,19 +1,24 @@
 import {
-  bufferedRangesAtom,
-  bufferingDetailAtom,
-  isBufferingAtom,
-  playheadAtom,
-  seekEventAtom,
-  streamValueAtom,
+  getBufferedRanges,
+  getBufferingDetail,
+  getIsBuffering,
+  getPlayhead,
+  getStreamValue,
+  setBufferedRanges,
+  setBufferingDetail,
+  setIsBuffering,
+  setStreamValue,
+  subscribePlayhead,
   usePlayback,
   usePlaybackStore,
+  useSeekEvent,
   type PlaybackStore,
   type PlaybackStream,
 } from "@fiftyone/playback";
-import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  mcapTopicStatusAtom,
+  getMcapTopicStatus,
+  setMcapTopicStatus,
   type McapTopicStatus,
 } from "./mcap-stream-status";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
@@ -154,7 +159,7 @@ export function useRegisterMcapDataStream({
   const { registerStream, subscribeStream } = usePlayback();
   const store = usePlaybackStore();
   const setDataStream = useSetMcapDataStream();
-  const seekEvent = useAtomValue(seekEventAtom, { store });
+  const seekEvent = useSeekEvent();
 
   const [index, setIndex] = useState<McapTimelineIndex | null>(null);
 
@@ -250,11 +255,11 @@ export function useRegisterMcapDataStream({
       cache.clear();
     }
     for (const topic of topicCachesRef.current.keys()) {
-      store.set(streamValueAtom(topic), null);
-      store.set(mcapTopicStatusAtom(topic), "loading");
+      setStreamValue(store, topic, null);
+      setMcapTopicStatus(store, topic, "loading");
     }
-    store.set(bufferingDetailAtom, null);
-    store.set(bufferedRangesAtom, []);
+    setBufferingDetail(store, null);
+    setBufferedRanges(store, []);
     if (bufferedRangesTimerRef.current !== null) {
       clearTimeout(bufferedRangesTimerRef.current);
       bufferedRangesTimerRef.current = null;
@@ -329,8 +334,8 @@ export function useRegisterMcapDataStream({
     bufferedRangesTimerRef.current = setTimeout(() => {
       bufferedRangesTimerRef.current = null;
       const next = computeBufferedRanges();
-      if (!bufferedRangesEqual(store.get(bufferedRangesAtom), next)) {
-        store.set(bufferedRangesAtom, next);
+      if (!bufferedRangesEqual(getBufferedRanges(store), next)) {
+        setBufferedRanges(store, next);
       }
     }, BUFFERED_RANGES_PUBLISH_INTERVAL_MS);
   }, [computeBufferedRanges, store]);
@@ -355,7 +360,7 @@ export function useRegisterMcapDataStream({
     const activeTopics = getActiveTopics();
     const caches = topicCachesRef.current;
     const failed = failedTopicsRef.current;
-    const tick = indexRef.current?.nearestTick(store.get(playheadAtom)) ?? null;
+    const tick = indexRef.current?.nearestTick(getPlayhead(store)) ?? null;
 
     let covered = 0;
     for (const topic of activeTopics) {
@@ -372,8 +377,9 @@ export function useRegisterMcapDataStream({
           status = cache.get(tick) ? "ready" : "gap";
         }
       }
-      const statusAtom = mcapTopicStatusAtom(topic);
-      if (store.get(statusAtom) !== status) store.set(statusAtom, status);
+      if (getMcapTopicStatus(store, topic) !== status) {
+        setMcapTopicStatus(store, topic, status);
+      }
     }
 
     const total = activeTopics.length;
@@ -381,8 +387,8 @@ export function useRegisterMcapDataStream({
       tick !== null && total > 0 && covered < total
         ? `${covered}/${total} streams`
         : null;
-    if (store.get(bufferingDetailAtom) !== detail) {
-      store.set(bufferingDetailAtom, detail);
+    if (getBufferingDetail(store) !== detail) {
+      setBufferingDetail(store, detail);
     }
 
     // Paused catch-up completion: the engine flags buffering on a
@@ -393,9 +399,9 @@ export function useRegisterMcapDataStream({
       tick !== null &&
       total > 0 &&
       covered === total &&
-      store.get(isBufferingAtom)
+      getIsBuffering(store)
     ) {
-      store.set(isBufferingAtom, false);
+      setIsBuffering(store, false);
     }
 
     // Every data-flow event that can change statuses can also change
@@ -420,7 +426,9 @@ export function useRegisterMcapDataStream({
         }
         const cache = topicCachesRef.current.get(topic);
         if (cache?.isActive) {
-          for (const tick of ticks) cache.set(tick, null);
+          for (const tick of ticks) {
+            if (!cache.has(tick)) cache.set(tick, null);
+          }
         }
       }
       if (newlyFailed.length > 0) {
@@ -500,7 +508,7 @@ export function useRegisterMcapDataStream({
           }
           const currentIndex = indexRef.current;
           if (!currentIndex) return;
-          const tick = currentIndex.nearestTick(store.get(playheadAtom));
+          const tick = currentIndex.nearestTick(getPlayhead(store));
           const stillActiveTopics = activeTopicsInCaches(caches, activeTopics);
           // Explicit undefined check — `0n` is falsy but a valid tick.
           if (tick !== undefined) {
@@ -702,7 +710,7 @@ export function useRegisterMcapDataStream({
 
       bufferState: (timeSec) => {
         const tick = index.nearestTick(timeSec);
-        if (!tick) return "missing";
+        if (tick === undefined) return "missing";
         const activeTopics = getActiveTopics();
         if (activeTopics.length === 0) return "ready";
         const tickKey = tick.toString();
@@ -760,8 +768,8 @@ export function useRegisterMcapDataStream({
 
     // Proactive lookahead: fill the buffer ahead of the playhead in larger
     // chunks instead of creating one tiny worker request per source tick.
-    const unsubPlayhead = store.sub(playheadAtom, () => {
-      const timeSec = store.get(playheadAtom);
+    const unsubPlayhead = subscribePlayhead(store, () => {
+      const timeSec = getPlayhead(store);
       if (timeSec < nextLookaheadRefreshTimeRef.current) return;
       nextLookaheadRefreshTimeRef.current =
         timeSec + PLAYBACK_POLICY.prefetchRefreshSeconds;
@@ -805,7 +813,7 @@ export function useRegisterMcapDataStream({
   // (May be a no-op if no tile has subscribed yet — subscribeToTopic also
   // triggers this for the same reason.)
   useEffect(() => {
-    if (index) prefetchLookaheadFrom(store.get(playheadAtom));
+    if (index) prefetchLookaheadFrom(getPlayhead(store));
   }, [index, prefetchLookaheadFrom, store]);
 
   // Expose subscribeToTopic via the playback store so tiles can subscribe
@@ -818,7 +826,7 @@ export function useRegisterMcapDataStream({
       if (!cache) return noop;
 
       const cleanup = cache.subscribe();
-      prefetchLookaheadFrom(store.get(playheadAtom));
+      prefetchLookaheadFrom(getPlayhead(store));
       return () => {
         cleanup();
         // Cache cleared itself in its own cleanup once the count hit 0;
@@ -928,9 +936,8 @@ function pushTickToStore(
     // Still publish `null` when the current atom holds data, but avoid
     // waking subscribers when the selected source tick hasn't changed.
     const toWrite = lastFrame.get(topic) ?? null;
-    const atom = streamValueAtom(topic);
-    if (store.get(atom) === toWrite) continue;
-    store.set(atom, toWrite);
+    if (getStreamValue(store, topic) === toWrite) continue;
+    setStreamValue(store, topic, toWrite);
   }
 }
 

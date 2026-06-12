@@ -15,7 +15,7 @@ export interface BufferedRangesStripProps {
 /**
  * Thin shading along the timeline's top edge marking the window ranges
  * that are buffered and ready to play (the data layer publishes them via
- * `bufferedRangesAtom`). Same time→x mapping as the ruler and playhead:
+ * `setBufferedRanges`). Same time→x mapping as the ruler and playhead:
  * the lane starts after the label column and spans the current view
  * window.
  */
