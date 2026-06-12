@@ -1,5 +1,4 @@
-import { playheadAtom, usePlaybackStore } from "@fiftyone/playback";
-import { useAtomValue } from "jotai";
+import { usePlayhead } from "@fiftyone/playback";
 import { useEffect, useMemo } from "react";
 
 import type {
@@ -38,7 +37,6 @@ export function useInterpolatedImageAnnotations(
   topic: string,
   { interpolate = true }: UseInterpolatedImageAnnotationsOptions = {}
 ): ImageAnnotationsVisualization | null {
-  const store = usePlaybackStore();
   const dataStream = useMcapDataStream();
 
   useEffect(() => {
@@ -47,7 +45,7 @@ export function useInterpolatedImageAnnotations(
   }, [topic, dataStream]);
 
   // Re-render every RAF tick so the lerp tracks the playhead.
-  const playhead = useAtomValue(playheadAtom, { store });
+  const playhead = usePlayhead();
 
   const cache = dataStream?.getTopicCache(topic);
   const timeline = dataStream?.getTimelineIndex() ?? null;

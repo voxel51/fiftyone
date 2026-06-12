@@ -8,6 +8,19 @@ import type { createStore } from "jotai";
 /** Opaque handle to the scoped Jotai store owned by a PlaybackProvider instance. */
 export type PlaybackStore = ReturnType<typeof createStore>;
 
+/**
+ * A discontinuous playhead jump (seek / step / loop-wrap). The `seq`
+ * counter changes even when `time` repeats, so consumers can re-fire on
+ * every event. Read via `useSeekEvent()`.
+ */
+export type SeekEvent = { time: number; seq: number };
+
+/**
+ * Time ranges (seconds, ascending, non-overlapping) where every blocking
+ * stream has data buffered and ready to play.
+ */
+export type BufferedRanges = ReadonlyArray<readonly [number, number]>;
+
 // ---------------------------------------------------------------------------
 // Buffer readiness
 // ---------------------------------------------------------------------------

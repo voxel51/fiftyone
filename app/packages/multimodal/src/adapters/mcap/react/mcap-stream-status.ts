@@ -1,4 +1,4 @@
-import { usePlaybackStore } from "@fiftyone/playback";
+import { usePlaybackStore, type PlaybackStore } from "@fiftyone/playback";
 import { atom, useAtomValue, type PrimitiveAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
 
@@ -19,13 +19,15 @@ import { atomFamily } from "jotai/utils";
 export type McapTopicStatus = "loading" | "ready" | "gap" | "failed";
 
 /**
- * Per-topic status, written by the MCAP data stream through the playback
- * store (same store that carries `streamValueAtom`). Read via
- * `useMcapTopicStatus`.
+ * Per-topic status, stored in the surrounding PlaybackProvider's store
+ * (the same per-modal-instance store that carries the stream values).
+ * Private to this module — mirrors the playback package's layering:
+ * components read via the hook, the data stream and tests use the
+ * get/set helpers with the store they already hold.
  */
-// Same writable-shape cast as `streamValueAtom` — jotai's null-ish initial
-// value overload would otherwise narrow this to a read-only Atom.
-export const mcapTopicStatusAtom = atomFamily(
+// Same writable-shape cast as the playback atoms — jotai's null-ish
+// initial value overload would otherwise narrow this to a read-only Atom.
+const mcapTopicStatusAtom = atomFamily(
   (_topic: string) =>
     atom<McapTopicStatus>("loading") as PrimitiveAtom<McapTopicStatus>
 );
@@ -37,4 +39,21 @@ export const mcapTopicStatusAtom = atomFamily(
 export function useMcapTopicStatus(topic: string): McapTopicStatus {
   const store = usePlaybackStore();
   return useAtomValue(mcapTopicStatusAtom(topic), { store });
+}
+
+/** Non-reactive read for the data stream and tests. */
+export function getMcapTopicStatus(
+  store: PlaybackStore,
+  topic: string
+): McapTopicStatus {
+  return store.get(mcapTopicStatusAtom(topic));
+}
+
+/** Non-reactive write for the data stream's status publishing. */
+export function setMcapTopicStatus(
+  store: PlaybackStore,
+  topic: string,
+  status: McapTopicStatus
+): void {
+  store.set(mcapTopicStatusAtom(topic), status);
 }

@@ -8,8 +8,8 @@ import clsx from "clsx";
 import React from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import { usePlaybackStore } from "../../lib/playback/playback-store-context";
+import { getIsPlaying } from "../../lib/playback/store-access";
 import {
-  getIsPlaying,
   useBufferingDetail,
   useIsBuffering,
   useIsPlaying,
@@ -154,8 +154,8 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
 /**
  * Subtle "catching up" pill shown while the engine waits on stream data —
  * both mid-playback stalls and paused seeks/steps into unbuffered regions.
- * Streams can sharpen the message via `bufferingDetailAtom`
- * (e.g. "3/7 streams").
+ * Streams can sharpen the message via `setBufferingDetail` (e.g. "3/7
+ * streams").
  */
 function BufferingIndicator() {
   const isBuffering = useIsBuffering();

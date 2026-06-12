@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React, { useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { bufferedRangesAtom } from "../../lib/playback/atoms";
+import { setBufferedRanges } from "../../lib/playback/store-access";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
 import { usePlaybackStore } from "../../lib/playback/playback-store-context";
 import TimelineHeader from "./TimelineHeader";
@@ -138,7 +138,7 @@ describe("TimelineHeader", () => {
       // Syncs the test-provided ranges into the playback store the strip
       // reads from.
       React.useEffect(() => {
-        store.set(bufferedRangesAtom, ranges);
+        setBufferedRanges(store, ranges);
       }, [store, ranges]);
       return null;
     }

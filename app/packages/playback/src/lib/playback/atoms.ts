@@ -1,20 +1,27 @@
 // ---------------------------------------------------------------------------
 // Module-level atom definitions for the continuous-time playback engine.
 //
-// Each PlaybackProvider creates its own Jotai store
-// (via createStore + <JotaiProvider store={...}>), so atom values are scoped
-// per provider instance. Multiple independent playback instances
-// on the same page each get their own copy of these values.
+// Each PlaybackProvider creates its own Jotai store (via createStore), so
+// atom values are scoped per provider instance. Multiple independent
+// playback instances on the same page each get their own copy.
 //
-// Components read atoms ONLY through the wrapper hooks in
-// `use-playback-state.ts` (e.g. usePlayhead, useViewStart). Don't call
-// useAtomValue / useAtom on these atoms directly from components — keep
-// jotai isolated to the lib layer. The RAF loop reads/writes
-// imperatively via store.get / store.set.
+// These atoms are an implementation detail of this package — they are NOT
+// exported from the package index. Access is layered by consumer role:
+//
+// - React components subscribe through the hooks in `use-playback-state.ts`
+//   / `use-stream.ts`, which bind the surrounding provider's store. (Bare
+//   `useAtomValue(atom)` would silently resolve a nested foreign Jotai
+//   Provider's store — see `playback-store-context.ts`.)
+// - Stream plumbing and tests that already hold a PlaybackStore use the
+//   imperative helpers in `store-access.ts`.
+// - Code inside this lib layer (the engine's RAF loop, stream bases) uses
+//   the atoms directly via store.get / store.set — that's the layer the
+//   helpers wrap.
 // ---------------------------------------------------------------------------
 
 import { atom, type PrimitiveAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
+import type { BufferedRanges, SeekEvent } from "./types";
 
 /**
  * Per-stream reactive value atom, keyed by stream id. Lazily created on first
@@ -72,14 +79,12 @@ export const bufferingDetailAtom = atom<string | null>(null) as PrimitiveAtom<
 >;
 
 /**
- * Time ranges (seconds, ascending, non-overlapping) where every blocking
- * stream has data buffered and ready to play. Written by the data layer
- * (e.g. the MCAP data stream, throttled); rendered as shading along the
- * timeline's top edge so users can see how far ahead playback can run.
+ * Time ranges where every blocking stream has data buffered and ready to
+ * play. Written by the data layer (e.g. the MCAP data stream, throttled);
+ * rendered as shading along the timeline's top edge so users can see how
+ * far ahead playback can run.
  */
-export const bufferedRangesAtom = atom<
-  ReadonlyArray<readonly [number, number]>
->([]);
+export const bufferedRangesAtom = atom<BufferedRanges>([]);
 
 // View window (the visible time range in the ruler/track area)
 export const viewStartAtom = atom(0);
@@ -107,12 +112,11 @@ export const speedAtom = atom(1.0);
  * The `seq` counter makes each event distinguishable even when `time`
  * hasn't changed (e.g. seeking to the same position twice).
  *
- * Streams subscribe to this atom — via useAtomValue or store.sub — to
+ * Streams subscribe to this atom — via useSeekEvent or store.sub — to
  * flush their cache and start buffering around the new position. The
  * engine debounces updates to this atom during rapid scrubbing so streams
  * don't thrash. playheadAtom always updates immediately for smooth UI.
  */
-export type SeekEvent = { time: number; seq: number };
 // See `streamValueAtom` — same null-initial-value overload quirk; the
 // cast preserves the writable shape so `store.set(seekEventAtom, ...)`
 // keeps its setter signature.
