@@ -3,6 +3,7 @@ import type { DecodeClient } from "../../../query/decode";
 import {
   compareByTimelineTime,
   createWindowBounds,
+  isUnboundedLatestPolicy,
   isWithinRange,
   maxBigInt,
   minBigInt,
@@ -14,10 +15,20 @@ import type { McapTimelineStrategy } from "../timeline";
 import type {
   McapDecodedMessage,
   McapReadSynchronizedMessageBatchRequest,
+  McapResolvedStreamSyncPolicy,
   McapSynchronizedMessageWindow,
 } from "../types";
+import type { McapPredecessorStore } from "./predecessor-store";
 
 const INDEXED_LOOKUP_KEY_SEPARATOR = "\0";
+
+/**
+ * Bounded lookback used by the raw (non-indexed) fallback path for
+ * unbounded-LATEST topics. Readers without chunk indexes cannot start
+ * playback today, so this path only serves test fakes — bounded
+ * behavior there is acceptable.
+ */
+const RAW_PREDECESSOR_LOOKBACK_NS = 10_000_000_000n;
 
 interface McapRawMessageCandidate {
   readonly channel: McapTypes.TypedMcapRecords["Channel"];
@@ -36,11 +47,13 @@ interface McapIndexedMessageCandidate extends McapIndexedMessageTime {
  */
 export async function readMcapSynchronizedMessageBatch({
   decodeClient,
+  predecessorStore,
   reader,
   request,
   timeline,
 }: {
   readonly decodeClient: DecodeClient;
+  readonly predecessorStore?: McapPredecessorStore;
   readonly reader: McapIndexedReaderLike;
   readonly request: McapReadSynchronizedMessageBatchRequest;
   readonly timeline: McapTimelineStrategy;
@@ -57,9 +70,14 @@ export async function readMcapSynchronizedMessageBatch({
       topics: request.topics,
     })
   );
+  // Unbounded-lookback policies contribute their tick time, not an open
+  // start: the scan stays bounded by the batch tick span (plus explicit
+  // tolerances) and the open lookback is served by the predecessor probe.
   const startTimeNs = minBigInt(
     windowBounds.flatMap((bounds) =>
-      Object.values(bounds.streamPolicies).map((policy) => policy.startTimeNs)
+      Object.values(bounds.streamPolicies).map(
+        (policy) => policy.startTimeNs ?? bounds.timeNs
+      )
     )
   );
   const endTimeNs = maxBigInt(
@@ -67,6 +85,7 @@ export async function readMcapSynchronizedMessageBatch({
       Object.values(bounds.streamPolicies).map((policy) => policy.endTimeNs)
     )
   );
+  const minTickNs = minBigInt([...request.timeNs]);
   const rawDecodeCache = new Map<string, Promise<McapDecodedMessage>>();
   const indexedCandidates = await collectIndexedCandidates({
     endTimeNs,
@@ -76,6 +95,17 @@ export async function readMcapSynchronizedMessageBatch({
     topics: request.topics,
   });
   if (indexedCandidates) {
+    await backfillIndexedPredecessors({
+      candidatesByTopic: indexedCandidates,
+      minTickNs,
+      predecessorStore,
+      reader,
+      scanEndTimeNs: endTimeNs,
+      scanStartTimeNs: startTimeNs,
+      streamPolicies: windowBounds[0].streamPolicies,
+      timeline,
+    });
+
     const indexedDecodeCache = new Map<string, Promise<McapDecodedMessage>>();
     const rawReadCache = new Map<
       string,
@@ -109,6 +139,13 @@ export async function readMcapSynchronizedMessageBatch({
     timeline,
     topics: request.topics,
   });
+  await backfillRawPredecessors({
+    candidatesByTopic: rawCandidates,
+    minTickNs,
+    reader,
+    streamPolicies: windowBounds[0].streamPolicies,
+    timeline,
+  });
 
   return decodeWindowsFromCandidates({
     candidates: rawCandidates,
@@ -125,6 +162,203 @@ export async function readMcapSynchronizedMessageBatch({
     topics: request.topics,
     windowBounds,
   });
+}
+
+/**
+ * Appends predecessor candidates for unbounded-lookback topics whose
+ * bounded scan produced nothing at or before the earliest requested
+ * tick. One probe answers every tick in the batch: per-topic candidate
+ * collection is complete within the scan bounds, so a tick missing a
+ * predecessor there shares the predecessor of the earliest tick.
+ *
+ * Resolutions are memoized with a validity interval, so steady playback
+ * over a sparse stream costs zero probes after the first batch.
+ */
+async function backfillIndexedPredecessors({
+  candidatesByTopic,
+  minTickNs,
+  predecessorStore,
+  reader,
+  scanEndTimeNs,
+  scanStartTimeNs,
+  streamPolicies,
+  timeline,
+}: {
+  readonly candidatesByTopic: Map<string, McapIndexedMessageCandidate[]>;
+  readonly minTickNs: bigint;
+  readonly predecessorStore?: McapPredecessorStore;
+  readonly reader: McapIndexedReaderLike;
+  readonly scanEndTimeNs: bigint;
+  readonly scanStartTimeNs: bigint;
+  readonly streamPolicies: Readonly<
+    Record<string, McapResolvedStreamSyncPolicy>
+  >;
+  readonly timeline: McapTimelineStrategy;
+}): Promise<void> {
+  const indexedMessageTimeNs = timeline.indexedMessageTimeNs;
+  const indexedMessageTimesRequest = timeline.indexedMessageTimesRequest;
+  if (
+    !reader.readLatestIndexedMessageTimes ||
+    !indexedMessageTimeNs ||
+    !indexedMessageTimesRequest
+  ) {
+    return;
+  }
+
+  // Map the timeline-time bound into the message-index timestamp domain
+  // so a future non-log timeline cannot silently mis-probe.
+  const probeBoundNs = indexedMessageTimesRequest({
+    endTimeNs: minTickNs,
+  }).endTimeNs;
+  if (probeBoundNs === undefined) {
+    return;
+  }
+
+  const appendEntries = (
+    topic: string,
+    entries: readonly McapIndexedMessageTime[]
+  ) => {
+    if (entries.length === 0) {
+      return;
+    }
+    const topicCandidates = candidatesByTopic.get(topic) ?? [];
+    // Same duplicate-identity collapse as the scan collection: one
+    // representative per (channel, log time).
+    const seenIdentities = new Set<string>();
+    for (const entry of entries) {
+      const identity = indexedMessageIdentity(entry);
+      if (seenIdentities.has(identity)) {
+        continue;
+      }
+      seenIdentities.add(identity);
+      topicCandidates.push({
+        ...entry,
+        timelineTimeNs: indexedMessageTimeNs(entry),
+      });
+    }
+    candidatesByTopic.set(topic, topicCandidates);
+  };
+
+  const nextKnownByTopic = new Map<string, bigint>();
+  const probeTopicsByLimit = new Map<number, string[]>();
+
+  for (const [topic, policy] of Object.entries(streamPolicies)) {
+    if (!isUnboundedLatestPolicy(policy)) {
+      continue;
+    }
+
+    let earliestInScanNs: bigint | undefined;
+    let hasPredecessorInScan = false;
+    for (const candidate of candidatesByTopic.get(topic) ?? []) {
+      if (candidate.timelineTimeNs <= minTickNs) {
+        hasPredecessorInScan = true;
+        break;
+      }
+      if (
+        earliestInScanNs === undefined ||
+        candidate.timelineTimeNs < earliestInScanNs
+      ) {
+        earliestInScanNs = candidate.timelineTimeNs;
+      }
+    }
+    if (hasPredecessorInScan) {
+      continue;
+    }
+
+    // The scan proved the topic silent from its start through the first
+    // in-scan candidate (or the scan end) — the memo's validity bound.
+    const nextKnownTimeNs = earliestInScanNs ?? scanEndTimeNs + 1n;
+    nextKnownByTopic.set(topic, nextKnownTimeNs);
+
+    const memoized = predecessorStore?.lookup(topic, minTickNs, policy.limit);
+    if (memoized) {
+      appendEntries(topic, memoized);
+      predecessorStore?.extend(topic, scanStartTimeNs, nextKnownTimeNs);
+      continue;
+    }
+
+    const topics = probeTopicsByLimit.get(policy.limit) ?? [];
+    topics.push(topic);
+    probeTopicsByLimit.set(policy.limit, topics);
+  }
+
+  for (const [limitPerTopic, topics] of probeTopicsByLimit) {
+    const resolved = await reader.readLatestIndexedMessageTimes({
+      limitPerTopic,
+      timeNs: probeBoundNs,
+      topics,
+    });
+
+    for (const topic of topics) {
+      const entries = resolved.get(topic) ?? [];
+      appendEntries(topic, entries);
+
+      const entryTimes = entries.map(indexedMessageTimeNs);
+      predecessorStore?.record(topic, {
+        entries,
+        limitPerTopic,
+        nextKnownTimeNs: nextKnownByTopic.get(topic) ?? minTickNs + 1n,
+        predecessorTimeNs: entryTimes.length > 0 ? maxBigInt(entryTimes) : null,
+      });
+    }
+  }
+}
+
+/**
+ * Raw-path counterpart of the predecessor backfill, used only when the
+ * reader has no message-index capabilities (test fakes — see
+ * RAW_PREDECESSOR_LOOKBACK_NS). Lookback is bounded; candidates beyond
+ * it stay unresolved.
+ */
+async function backfillRawPredecessors({
+  candidatesByTopic,
+  minTickNs,
+  reader,
+  streamPolicies,
+  timeline,
+}: {
+  readonly candidatesByTopic: Map<string, McapRawMessageCandidate[]>;
+  readonly minTickNs: bigint;
+  readonly reader: McapIndexedReaderLike;
+  readonly streamPolicies: Readonly<
+    Record<string, McapResolvedStreamSyncPolicy>
+  >;
+  readonly timeline: McapTimelineStrategy;
+}): Promise<void> {
+  const needyTopics = Object.entries(streamPolicies)
+    .filter(
+      ([topic, policy]) =>
+        isUnboundedLatestPolicy(policy) &&
+        !(candidatesByTopic.get(topic) ?? []).some(
+          (candidate) => candidate.timelineTimeNs <= minTickNs
+        )
+    )
+    .map(([topic]) => topic);
+  if (needyTopics.length === 0) {
+    return;
+  }
+
+  const lookbackStartNs =
+    minTickNs > RAW_PREDECESSOR_LOOKBACK_NS
+      ? minTickNs - RAW_PREDECESSOR_LOOKBACK_NS
+      : 0n;
+  const lookback = await collectRawCandidates({
+    endTimeNs: minTickNs,
+    reader,
+    startTimeNs: lookbackStartNs,
+    timeline,
+    topics: needyTopics,
+  });
+
+  for (const topic of needyTopics) {
+    const entries = lookback.get(topic);
+    if (!entries || entries.length === 0) {
+      continue;
+    }
+    const topicCandidates = candidatesByTopic.get(topic) ?? [];
+    topicCandidates.push(...entries);
+    candidatesByTopic.set(topic, topicCandidates);
+  }
 }
 
 async function decodeWindowsFromCandidates<
@@ -176,7 +410,9 @@ async function decodeWindowsFromCandidates<
         messages,
         messagesByTopic,
         startTimeNs: minBigInt(
-          Object.values(streamPolicies).map((policy) => policy.startTimeNs)
+          Object.values(streamPolicies).map(
+            (policy) => policy.startTimeNs ?? 0n
+          )
         ),
         streamPolicies,
         timeNs,
@@ -207,6 +443,11 @@ async function collectIndexedCandidates({
   }
 
   const candidates = new Map<string, McapIndexedMessageCandidate[]>();
+  // Real files can index multiple messages at one (channel, log time) —
+  // re-published data or messages duplicated across overlapping chunks.
+  // The index can't tell them apart, so keep one representative per
+  // identity (the first in deterministic index order).
+  const seenIdentities = new Set<string>();
   const indexedRequest = timeline.indexedMessageTimesRequest({
     endTimeNs,
     startTimeNs,
@@ -218,6 +459,11 @@ async function collectIndexedCandidates({
     if (!isWithinRange(timelineTimeNs, startTimeNs, endTimeNs)) {
       continue;
     }
+    const identity = indexedMessageIdentity(message);
+    if (seenIdentities.has(identity)) {
+      continue;
+    }
+    seenIdentities.add(identity);
 
     const topicCandidates = candidates.get(message.topic) ?? [];
     topicCandidates.push({
@@ -228,6 +474,12 @@ async function collectIndexedCandidates({
   }
 
   return candidates;
+}
+
+function indexedMessageIdentity(message: McapIndexedMessageTime): string {
+  return [message.channelId.toString(), message.logTimeNs.toString()].join(
+    INDEXED_LOOKUP_KEY_SEPARATOR
+  );
 }
 
 async function collectRawCandidates({
@@ -351,7 +603,6 @@ async function resolveRawCandidateForIndexedMessage({
   }
 
   // The index gives us channel + log time, not a full raw-message identity.
-  // If multiple raw messages match, picking the first would decode arbitrary data.
   const matches = (await rawCandidates).filter(
     (raw) =>
       raw.message.channelId === candidate.channelId &&
@@ -364,17 +615,27 @@ async function resolveRawCandidateForIndexedMessage({
       } at ${candidate.logTimeNs.toString()}`
     );
   }
-  if (matches.length > 1) {
-    throw new Error(
-      `Ambiguous MCAP indexed-to-raw match for ${
-        candidate.topic
-      } entry with channel ${
-        candidate.channelId
-      } at ${candidate.logTimeNs.toString()}`
-    );
+
+  // Real recordings can carry several messages on one channel at the
+  // same log time (re-published data, duplicates across overlapping
+  // chunks). The index can't tell them apart, so resolve to one
+  // deterministic representative — failing the whole playback batch
+  // over a duplicate timestamp would take every topic in it down.
+  if (matches.length === 1) {
+    return matches[0];
+  }
+  return [...matches].sort(compareDuplicateRawMatches)[0];
+}
+
+function compareDuplicateRawMatches(
+  left: McapRawMessageCandidate,
+  right: McapRawMessageCandidate
+) {
+  if (left.message.sequence !== right.message.sequence) {
+    return left.message.sequence - right.message.sequence;
   }
 
-  return matches[0];
+  return compareBigInt(left.message.publishTime, right.message.publishTime);
 }
 
 async function collectRawCandidatesForIndexedLookup({

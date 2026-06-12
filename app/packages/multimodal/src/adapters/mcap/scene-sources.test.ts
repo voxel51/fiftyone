@@ -78,17 +78,16 @@ describe("mcapStreamPolicies", () => {
       ])
     );
 
+    // No tolerances: latest-at-or-before with unbounded lookback handles
+    // arbitrarily sparse streams at the read layer.
     expect(policies["/cam/image_rect_compressed"]).toEqual({
       mode: PlaybackSyncMode.LATEST,
-      toleranceBeforeNs: 120_000_000n,
     });
     expect(policies["/cam/annotations"]).toEqual({
       mode: PlaybackSyncMode.LATEST,
-      toleranceBeforeNs: 1_500_000_000n,
     });
     expect(policies["/lidar"]).toEqual({
       mode: PlaybackSyncMode.LATEST,
-      toleranceBeforeNs: 200_000_000n,
     });
   });
 
