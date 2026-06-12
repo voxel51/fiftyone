@@ -4,6 +4,14 @@ import { useEffect, useMemo } from "react";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import Mcap3dTile from "./Mcap3dTile";
 import McapImageTile from "./McapImageTile";
+import {
+  MCAP_TILE_TYPE,
+  type McapTileProps,
+  type McapTileType,
+} from "./mcap-tile-types";
+
+export { MCAP_TILE_TYPE } from "./mcap-tile-types";
+export type { McapTileProps, McapTileType } from "./mcap-tile-types";
 
 /**
  * Tile catalog for the MCAP adapter, keyed by tile type. A tile kind is
@@ -12,22 +20,30 @@ import McapImageTile from "./McapImageTile";
  * which gates when the kind is offered. (Annotation sources have no
  * tile of their own; they render as overlays inside image tiles.)
  */
-const TILE_BY_TYPE = {
-  image: {
+const TILE_BY_TYPE: Record<
+  McapTileType,
+  {
+    typeLabel: string;
+    icon: IconName;
+    Tile: React.ComponentType<McapTileProps>;
+    sourceTypes: readonly string[];
+  }
+> = {
+  [MCAP_TILE_TYPE.IMAGE]: {
     typeLabel: "Image",
     icon: IconName.GridView,
-    Tile: McapImageTile as unknown as React.ComponentType,
-    sourceTypes: [MCAP_SOURCE_TYPE.IMAGE] as readonly string[],
+    Tile: McapImageTile,
+    sourceTypes: [MCAP_SOURCE_TYPE.IMAGE],
   },
-  "3d": {
+  [MCAP_TILE_TYPE.THREE_D]: {
     typeLabel: "3D",
     icon: IconName.Embeddings,
-    Tile: Mcap3dTile as unknown as React.ComponentType,
-    sourceTypes: [MCAP_SOURCE_TYPE.POINT_CLOUD] as readonly string[],
+    Tile: Mcap3dTile,
+    sourceTypes: [MCAP_SOURCE_TYPE.POINT_CLOUD],
   },
-} as const;
+};
 
-export type McapTileType = keyof typeof TILE_BY_TYPE;
+const TILE_TYPES = Object.keys(TILE_BY_TYPE) as readonly McapTileType[];
 
 function isKnownTileType(type: string): type is McapTileType {
   return Object.hasOwn(TILE_BY_TYPE, type);
@@ -38,9 +54,10 @@ function isKnownTileType(type: string): type is McapTileType {
  * tile type, or `null` for unknown types (e.g. a persisted layout from
  * a build with more tile kinds).
  */
-export function getMcapTileDefinition(
-  type: string
-): { typeLabel: string; Tile: React.ComponentType } | null {
+export function getMcapTileDefinition(type: string): {
+  typeLabel: string;
+  Tile: React.ComponentType<McapTileProps>;
+} | null {
   return isKnownTileType(type) ? TILE_BY_TYPE[type] : null;
 }
 
@@ -52,7 +69,7 @@ export function getMcapTileDefinition(
 export function mcapTileTypesFor(
   sourceTypes: readonly string[]
 ): readonly McapTileType[] {
-  return (Object.keys(TILE_BY_TYPE) as McapTileType[]).filter((tileType) =>
+  return TILE_TYPES.filter((tileType) =>
     TILE_BY_TYPE[tileType].sourceTypes.some((sourceType) =>
       sourceTypes.includes(sourceType)
     )
