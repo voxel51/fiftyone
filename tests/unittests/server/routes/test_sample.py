@@ -312,11 +312,12 @@ class TestSampleFields:
         assert len(sample.ground_truth.detections) == 0
 
     @pytest.mark.asyncio
-    async def test_conflict_returns_current_field(
+    async def test_conflict_returns_full_document(
         self, mutator, dataset_id, collection, sample
     ):
-        # Someone else changes the label out from under us.
+        # Someone else changes the label AND another field out from under us.
         sample.ground_truth.detections[0].label = "changed_by_other"
+        sample["primitive_field"] = "also_changed"
         sample.save()
         sample.reload()
 
@@ -338,10 +339,13 @@ class TestSampleFields:
         body = json.loads(response.body)
         conflict = body["conflicts"][0]
         assert conflict["index"] == 0
-        # the current value of the touched top-level field comes back
+        # the full document comes back, so every concurrent edit is visible —
+        # not just the field we tried to write
         assert (
-            conflict["value"]["detections"][0]["label"] == "changed_by_other"
+            conflict["value"]["ground_truth"]["detections"][0]["label"]
+            == "changed_by_other"
         )
+        assert conflict["value"]["primitive_field"] == "also_changed"
 
         # our update must NOT have applied
         sample.reload()
@@ -608,8 +612,8 @@ class TestSampleFieldsPatchesBatch:
         assert response.status_code == 409
         conflict = json.loads(response.body)["conflicts"][0]
         assert conflict["index"] == 0
-        # the touched field's current value (flat label) comes back
-        assert conflict["value"]["label"] == "changed_by_other"
+        # the patch document's full current state comes back (flat ground_truth)
+        assert conflict["value"]["ground_truth"]["label"] == "changed_by_other"
 
 
 class TestSampleFieldsEvaluationPatches:

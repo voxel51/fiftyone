@@ -280,8 +280,9 @@ def apply_field_update(db, update: dict) -> Tuple[bool, Any]:
 
     Returns ``(matched, value)``. On success ``matched`` is ``True`` and
     ``value`` is ``None``. On a precondition mismatch ``matched`` is ``False``
-    and ``value`` is the *current* value of the touched top-level field, so the
-    client can reconcile just that field (no full-sample refetch needed).
+    and ``value`` is the document's *full current state* (or ``None`` if it was
+    deleted concurrently), so the client can reconcile every field that changed
+    out from under it — not just the one it tried to write.
 
     Raises:
         HTTPException: the update payload is malformed
@@ -344,11 +345,11 @@ def apply_field_update(db, update: dict) -> Tuple[bool, Any]:
 
     result = collection.update_one(filter_doc, update_doc)
     if result.matched_count == 0:
-        # Reconcile by returning the current value of the touched top-level
-        # field — a targeted projection read, only on the (rare) conflict path.
-        top_field = lookup_path.split(".", 1)[0]
-        current = collection.find_one(doc_filter, {top_field: 1})
-        value = current.get(top_field) if current else None
+        # Reconcile by returning the document's full current state — the
+        # editor's baseline may be stale in more than the one field it tried to
+        # write. ``None`` if the document was deleted concurrently. Only read on
+        # the (rare) conflict path.
+        current = collection.find_one(doc_filter)
         logger.warning(
             "Annotation save REJECTED (precondition mismatch): "
             "collection=%s id=%s lookupPath=%s",
@@ -356,7 +357,7 @@ def apply_field_update(db, update: dict) -> Tuple[bool, Any]:
             doc_id,
             lookup_path,
         )
-        return False, value
+        return False, current
 
     logger.debug(
         "Annotation save applied: collection=%s id=%s lookupPath=%s",
@@ -388,8 +389,8 @@ class SampleFields(HTTPEndpoint):
         Returns:
             ``200 {"updated": n}`` if every update matched; otherwise ``409
             {"conflicts": [{"index", "value"}, ...]}`` where ``value`` is the
-            current value of the touched top-level field, so the client can
-            reconcile just that field and retry.
+            full current state of the conflicting document, so the client can
+            reconcile every concurrently-changed field and retry.
         """
         updates = data.get("updates") if isinstance(data, dict) else data
         if not isinstance(updates, list):

@@ -65,19 +65,23 @@ export class PatchApplicationError extends Error {
   }
 }
 
-/** One conflicting update: its batch `index` and the field's current value. */
+/** One conflicting update: its batch `index` and the document's current state. */
 export type SaveConflict = {
   /** Index into the submitted batch. */
   index: number;
-  /** Current value of the touched top-level field (extended JSON). */
+  /**
+   * Full current state of the conflicting document (extended JSON), or `null`
+   * if it was deleted concurrently.
+   */
   value: unknown;
 };
 
 /**
  * Raised when one or more updates failed their precondition (HTTP 409).
  *
- * Each conflict carries the current value of the touched top-level field so
- * the caller can reconcile just that field (no full-sample refetch needed).
+ * Each conflict carries the conflicting document's full current state so the
+ * caller can reconcile every field that changed out from under it (not just
+ * the one it tried to write) — no full-sample refetch needed.
  */
 export class SaveConflictError extends Error {
   constructor(readonly conflicts: SaveConflict[] = []) {

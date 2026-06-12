@@ -212,9 +212,18 @@ describe("saveAnnotationChanges", () => {
     expect(updateSample).not.toHaveBeenCalled();
   });
 
-  it("reconciles the affected field and rethrows on conflict", async () => {
+  it("reconciles the full document and rethrows on conflict", async () => {
+    // The server returns the whole document, so a concurrently-changed *other*
+    // field is reconciled too — not just the one we tried to write.
     const conflict = new SaveConflictError([
-      { index: 0, value: { detections: [{ _id: "det-1", label: "other" }] } },
+      {
+        index: 0,
+        value: {
+          _id: "s1",
+          ground_truth: { detections: [{ _id: "det-1", label: "other" }] },
+          primitive_field: "also_changed",
+        },
+      },
     ]);
     vi.mocked(saveAnnotationFieldUpdates).mockRejectedValue(conflict);
     const updateSample = vi.fn();
@@ -235,6 +244,7 @@ describe("saveAnnotationChanges", () => {
     expect(updateSample).toHaveBeenCalledOnce();
     const updated = updateSample.mock.calls[0][0];
     expect(updated.ground_truth.detections[0].label).toBe("other");
+    expect(updated.primitive_field).toBe("also_changed");
   });
 
   it("returns false on a non-conflict failure", async () => {

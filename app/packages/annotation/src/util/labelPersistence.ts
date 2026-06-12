@@ -163,26 +163,39 @@ const applyChangeToSample = (
 };
 
 /**
- * On a precondition conflict, reconcile just the affected top-level fields on
- * the modal sample from the server's returned current values — no full-sample
- * refetch.
+ * On a precondition conflict the editor's baseline may be stale in more than
+ * the field it tried to write, so the server returns the conflicting document's
+ * full current state. Reconcile the modal sample from it — overlaying every
+ * server field while preserving FE-only fields (e.g. resolved media urls) —
+ * so all concurrently-changed fields are brought up to date, no refetch.
  */
 const reconcileConflicts = (
   error: SaveConflictError,
   updates: AnnotationFieldUpdate[],
   ctx: SaveContext
 ): void => {
-  const next = { ...(ctx.sample as unknown as Record<string, unknown>) };
+  let next = ctx.sample as unknown as Record<string, unknown>;
   let changed = false;
 
   for (const { index, value } of error.conflicts) {
     const update = updates[index];
-    const topField = update?.lookupPath?.split(".")[0];
-    // Only reconcile fields on the modal sample itself.
-    if (topField && String(update.id) === String(ctx.sample._id)) {
-      next[topField] = transformSampleData({ [topField]: value })[topField];
-      changed = true;
+    // Only reconcile the document the modal is actually showing; `value` is
+    // null when that document was deleted out from under us.
+    if (
+      !update ||
+      String(update.id) !== String(ctx.sample._id) ||
+      value == null
+    ) {
+      continue;
     }
+    next = {
+      ...next,
+      ...(transformSampleData(value as Record<string, unknown>) as Record<
+        string,
+        unknown
+      >),
+    };
+    changed = true;
   }
 
   if (changed) {
