@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildAnnotationPath,
-  buildLabelFieldDelta,
-  type LabelProxy,
-} from "./deltas";
+import { buildLabelFieldDelta, type LabelProxy } from "./deltas";
 import type { AnnotationLabel } from "@fiftyone/state";
 import type { Field } from "@fiftyone/utilities";
 
@@ -13,37 +9,6 @@ const makeField = (embeddedDocType: string): Field =>
   ({ embeddedDocType } as Field);
 
 type SampleArg = Parameters<typeof buildLabelFieldDelta>[0];
-
-describe("buildAnnotationPath", () => {
-  it("appends '.detections' for Detection labels in generated views", () => {
-    const label: LabelProxy = {
-      type: "Detection",
-      path: "predictions",
-      data: { _id: "l-1", label: "cat" } as LabelData,
-      boundingBox: [0.1, 0.2, 0.3, 0.4],
-    };
-    expect(buildAnnotationPath(label, true)).toBe("predictions.detections");
-  });
-
-  it("leaves the path unchanged for non-generated views", () => {
-    const label: LabelProxy = {
-      type: "Detection",
-      path: "predictions",
-      data: { _id: "l-1", label: "cat" } as LabelData,
-      boundingBox: [0.1, 0.2, 0.3, 0.4],
-    };
-    expect(buildAnnotationPath(label, false)).toBe("predictions");
-  });
-
-  it("does not append for Classification labels in generated views", () => {
-    const label: LabelProxy = {
-      type: "Classification",
-      path: "classifications",
-      data: { _id: "l-1", label: "cat" } as LabelData,
-    };
-    expect(buildAnnotationPath(label, true)).toBe("classifications");
-  });
-});
 
 describe("buildLabelFieldDelta", () => {
   const detectionsSchema = makeField("fiftyone.core.labels.Detections");

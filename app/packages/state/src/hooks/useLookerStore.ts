@@ -1,6 +1,6 @@
 import type { Lookers } from "@fiftyone/looker";
 import { LRUCache } from "lru-cache";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ModalSample } from "../recoil";
 
 export type { Lookers };
@@ -39,6 +39,13 @@ export const registerSampleStore = (store: SampleStore): (() => void) => {
   return () => {
     stores.delete(store);
   };
+};
+
+/**
+ * {@link registerSampleStore}, scoped to the calling component's lifetime.
+ */
+export const useRegisterSampleStore = (store: SampleStore): void => {
+  useEffect(() => registerSampleStore(store), [store]);
 };
 
 const create = <T extends Lookers>(): LookerStore<T> => {

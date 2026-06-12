@@ -1,5 +1,4 @@
 export * from "./applyDelta";
-export * from "./debug";
 export * from "./deltaSupplier";
 export * from "./pendingEdits";
 export * from "./use3dDeltaSupplier";

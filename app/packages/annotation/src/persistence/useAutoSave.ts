@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { useAnnotationEventBus } from "../hooks";
-import { debugLog } from "./debug";
 
 /**
  * Hook which emits a persistence request at the specified interval.
@@ -18,7 +17,6 @@ export const useAutoSave = (enabled = false, autoSaveInterval = 3_000) => {
   useEffect(() => {
     if (enabled) {
       const intervalHandle = setInterval(() => {
-        debugLog("autosave tick");
         eventBus.dispatch("annotation:persistenceRequested");
       }, autoSaveInterval);
 
@@ -27,7 +25,6 @@ export const useAutoSave = (enabled = false, autoSaveInterval = 3_000) => {
       // the server. The batch snapshot is synchronous; only the network write
       // races teardown.
       const flushNow = () => {
-        debugLog("flush on page hide");
         eventBus.dispatch("annotation:persistenceRequested");
       };
       const flushOnHidden = () => {
@@ -45,7 +42,6 @@ export const useAutoSave = (enabled = false, autoSaveInterval = 3_000) => {
         // Final flush on exit from the annotation context (mode switch or
         // unmount) so edits never wait on a tick that will not come. With no
         // pending edits this is a local no-op.
-        debugLog("flush on annotation context exit");
         eventBus.dispatch("annotation:persistenceRequested");
       };
     }

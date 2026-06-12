@@ -1,4 +1,3 @@
-import { debugLog } from "@fiftyone/annotation";
 import { DetectionOverlay, useLighter } from "@fiftyone/lighter";
 import {
   activeFields,
@@ -554,7 +553,6 @@ export default function useLabels() {
         if (currentSampleId) {
           consumeExternalSampleChange(currentSampleId);
         }
-        debugLog("scene seed", { sampleId: currentSampleId });
         getLabelsFromSample().then((result) => {
           if (stale) {
             loadingRef.current = LabelsState.UNSET;
@@ -594,20 +592,11 @@ export default function useLabels() {
           : true;
         seededSampleRef.current = modalSample.sample;
         if (sampleChanged && !isExternal) {
-          debugLog("scene refresh skipped (editor write-through)", {
-            sampleId: currentSampleId,
-          });
           return () => {
             stale = true;
           };
         }
 
-        debugLog("scene refresh", {
-          sampleId: currentSampleId,
-          reason: sampleChanged
-            ? "external sample change"
-            : "dependency change",
-        });
         // refresh label data
         getLabelsFromSample().then((result) => {
           if (stale) return;

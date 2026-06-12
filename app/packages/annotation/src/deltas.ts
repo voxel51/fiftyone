@@ -60,26 +60,6 @@ export type LabelProxy =
   | PrimitiveValue;
 
 /**
- * Build the annotation path for a label.
- *
- * @param label The annotation label
- * @param isGenerated Whether this is from a generated dataset
- * @returns The adjusted path for the annotation
- */
-export const buildAnnotationPath = (
-  label: LabelProxy,
-  isGenerated: boolean
-): string => {
-  let basePath = label.path;
-  if (isGenerated) {
-    // Patches views flatten the structure so we adjust the path to reflect the
-    // source sample.
-    if (label.type === "Detection") basePath = `${basePath}.detections`;
-  }
-  return basePath;
-};
-
-/**
  * A single label/field delta to persist: the value the editor started from
  * (``previousValue``) and the value to write (``newValue``), plus enough
  * addressing for the persistence layer to target the right collection(s).
@@ -108,7 +88,7 @@ const LABEL_TYPE_TO_LIST_KEY: Record<string, string> = {
   Keypoint: "keypoints",
 };
 
-export const listKeyForType = (type: string): string | null =>
+const listKeyForType = (type: string): string | null =>
   LABEL_TYPE_TO_LIST_KEY[type] ?? null;
 
 const listKeyFor = (label: LabelProxy, schema: Field): string | null => {
@@ -134,14 +114,12 @@ const listKeyFor = (label: LabelProxy, schema: Field): string | null => {
  * The complete value of a label proxy, as a plain object (a 2D detection's
  * bounding box is folded into its data).
  */
-export const labelProxyValue = (label: LabelProxy): unknown => {
+const incomingLabel = (label: LabelProxy): unknown => {
   if (label.type === "Detection") {
     return makeDetectionLabel(label as Detection2DMetadata);
   }
   return (label as { data: unknown }).data;
 };
-
-const incomingLabel = labelProxyValue;
 
 /**
  * Merge the editor's fields over the original label so fields the editor

@@ -6,16 +6,10 @@ import {
 } from "@fiftyone/core/src/client";
 import { extractNestedField } from "@fiftyone/core/src/utils/json";
 import type { Sample } from "@fiftyone/looker";
-import { type Field, isObject } from "@fiftyone/utilities";
-import {
-  buildLabelFieldDelta,
-  type LabelFieldDelta,
-  type LabelProxy,
-} from "../deltas";
+import { isObject } from "@fiftyone/utilities";
+import type { LabelFieldDelta } from "../deltas";
 import { applyDeltaToSample } from "../persistence/applyDelta";
-import { debugLog, summarize } from "../persistence/debug";
 import { pendingEdits } from "../persistence/pendingEdits";
-import type { OpType } from "../types";
 
 export { applyDeltaToSample };
 
@@ -222,26 +216,9 @@ export const saveAnnotationDeltas = async (
     return true;
   }
 
-  debugLog("save request", {
-    sampleId: ctx.sample._id,
-    updates: updates.map((u) => ({
-      collection: u.collection ?? u.datasetName,
-      id: u.id,
-      lookupPath: u.lookupPath,
-      labelId: u.labelId,
-      op: u.op ?? "update",
-      previousValue: summarize(u.previousValue),
-      newValue: summarize(u.newValue),
-    })),
-  });
-
   try {
     await saveAnnotationFieldUpdates(ctx.datasetId, ctx.sample._id, updates);
 
-    debugLog("save applied", {
-      sampleId: ctx.sample._id,
-      deltas: deltas.length,
-    });
     ctx.onApplied?.(deltas);
 
     return true;
@@ -249,11 +226,6 @@ export const saveAnnotationDeltas = async (
     if (error instanceof SaveConflictError) {
       const conflicted = mapConflictsToDeltas(error, updateDeltas);
       const applied = deltas.filter((delta) => !conflicted.has(delta));
-      debugLog("save conflict", {
-        sampleId: ctx.sample._id,
-        applied: applied.length,
-        conflicted: conflicted.size,
-      });
       if (applied.length) {
         ctx.onApplied?.(applied);
       }
@@ -290,9 +262,6 @@ export const saveAnnotationDeltas = async (
         applyDeltaToSample(next, pending);
       }
       ctx.updateSample(next as unknown as Sample);
-      debugLog("conflict reconciled into canonical copy", {
-        sampleId: ctx.sample._id,
-      });
 
       console.warn(
         "Annotation save conflict; reconciled affected fields from server",
@@ -300,78 +269,7 @@ export const saveAnnotationDeltas = async (
       );
       throw error;
     }
-    debugLog("save failed (non-conflict)", { error: String(error) });
     console.error("Annotation save failed", error);
     return false;
   }
-};
-
-export type LabelPersistenceArgs = {
-  sample: Sample | null;
-  datasetId: string | null;
-  updateSample: (sample: Sample) => void;
-  annotationLabel: LabelProxy | null;
-  schema: Field;
-  opType: OpType;
-  isGenerated?: boolean;
-  generatedDatasetName?: string;
-};
-
-/**
- * Persist a single sidebar label upsert/delete: capture its before/after and
- * send.
- */
-export const handleLabelPersistence = async ({
-  sample,
-  datasetId,
-  updateSample,
-  annotationLabel,
-  schema,
-  opType,
-  isGenerated = false,
-  generatedDatasetName,
-}: LabelPersistenceArgs): Promise<boolean> => {
-  if (!sample || !datasetId) {
-    console.error("missing sample or dataset id");
-    return false;
-  }
-  if (!annotationLabel) {
-    console.error("missing annotation label");
-    return false;
-  }
-
-  const delta = buildLabelFieldDelta(
-    sample as unknown as Parameters<typeof buildLabelFieldDelta>[0],
-    annotationLabel,
-    schema,
-    opType,
-    isGenerated
-  );
-  if (!delta) {
-    // Nothing actually changed — a no-op is success, not a failure (mirrors
-    // saveAnnotationDeltas treating an empty batch as success).
-    return true;
-  }
-
-  // One pipeline for all saves: record the edit, flush the net change, ack.
-  const sampleId = sample._id;
-  pendingEdits.record(sampleId, delta);
-  const deltas = pendingEdits.take(sampleId);
-  if (deltas.length === 0) {
-    return true;
-  }
-
-  return saveAnnotationDeltas(deltas, {
-    datasetId,
-    sample,
-    updateSample,
-    isGenerated,
-    generatedDatasetName,
-    onApplied: (applied) =>
-      applied.forEach((d) => pendingEdits.ackApplied(sampleId, d)),
-    onConflict: (conflicts) =>
-      conflicts.forEach(({ delta: d, serverDocument }) =>
-        pendingEdits.ackConflict(sampleId, d, serverDocument)
-      ),
-  });
 };

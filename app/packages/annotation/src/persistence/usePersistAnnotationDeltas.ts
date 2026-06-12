@@ -12,7 +12,6 @@ import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import { useAnnotationEventBus } from "../hooks";
 import { saveAnnotationDeltas } from "../util";
-import { debugLog } from "./debug";
 import { pendingEdits } from "./pendingEdits";
 import { useAnnotationDeltaSupplier } from "./useAnnotationDeltaSupplier";
 import { useRecordEdit } from "./useRecordEdit";
@@ -66,9 +65,6 @@ export const usePersistAnnotationDeltas =
         return null;
       }
 
-      debugLog("flush", {
-        samples: batches.map((b) => ({ id: b.id, deltas: b.deltas.length })),
-      });
       eventBus.dispatch("annotation:persistenceInFlight");
 
       let allOk = true;
@@ -78,9 +74,7 @@ export const usePersistAnnotationDeltas =
         // every sample with pending edits.
         const doc = getLocalSample(id);
         if (!doc) {
-          debugLog("flush SKIPPED sample (no canonical copy — invariant bug)", {
-            id,
-          });
+          console.warn("Skipped saving sample with no canonical copy", id);
           allOk = false;
           continue;
         }

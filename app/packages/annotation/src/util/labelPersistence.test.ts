@@ -23,7 +23,6 @@ import {
   applyDeltaToSample,
   buildUpdatesForDelta,
   saveAnnotationDeltas,
-  handleLabelPersistence,
 } from "./labelPersistence";
 import { pendingEdits } from "../persistence/pendingEdits";
 import type { LabelFieldDelta } from "../deltas";
@@ -223,6 +222,85 @@ describe("applyDeltaToSample", () => {
     expect((next as any).dynamic.ground_truth.detections[0].label).toBe("dog");
     expect(next["dynamic.ground_truth"]).toBeUndefined();
   });
+
+  it("appends a new label to an existing list", () => {
+    const next: Record<string, unknown> = {
+      ground_truth: { detections: [{ _id: "det-1", label: "cat" }] },
+    };
+
+    applyDeltaToSample(next, {
+      ...delta,
+      labelId: "det-2",
+      previousValue: null,
+      newValue: { _id: "det-2", label: "dog" },
+    });
+
+    expect((next as any).ground_truth.detections).toHaveLength(2);
+  });
+
+  it("removes a deleted label from the list", () => {
+    const next: Record<string, unknown> = {
+      ground_truth: {
+        detections: [
+          { _id: "det-1", label: "cat" },
+          { _id: "det-2", label: "dog" },
+        ],
+      },
+    };
+
+    applyDeltaToSample(next, { ...delta, newValue: null });
+
+    expect((next as any).ground_truth.detections).toEqual([
+      { _id: "det-2", label: "dog" },
+    ]);
+  });
+
+  it("creates the list container for the first label in an empty field", () => {
+    // Writing the label flat here would corrupt the field's shape and poison
+    // every later delta's previous value.
+    const next: Record<string, unknown> = {};
+
+    applyDeltaToSample(next, {
+      ...delta,
+      previousValue: null,
+      newValue: { _id: "det-1", label: "cat" },
+    });
+
+    expect((next as any).ground_truth).toEqual({
+      _cls: "Detections",
+      detections: [{ _id: "det-1", label: "cat" }],
+    });
+  });
+
+  it("replaces a flat (to_patches) label matched by identity", () => {
+    const next: Record<string, unknown> = {
+      ground_truth: { _id: "det-1", _cls: "Detection", label: "cat" },
+    };
+
+    applyDeltaToSample(next, {
+      ...delta,
+      newValue: { _id: "det-1", _cls: "Detection", label: "dog" },
+    });
+
+    expect((next as any).ground_truth.label).toBe("dog");
+  });
+
+  it("sets and deletes primitive fields", () => {
+    const next: Record<string, unknown> = { notes: "old" };
+    const prim: LabelFieldDelta = {
+      field: "notes",
+      listKey: null,
+      labelId: null,
+      previousValue: "old",
+      newValue: "new",
+    };
+
+    applyDeltaToSample(next, prim);
+    expect(next.notes).toBe("new");
+
+    applyDeltaToSample(next, { ...prim, previousValue: "new", newValue: null });
+    expect("notes" in next).toBe(false);
+  });
 });
 
 describe("saveAnnotationDeltas", () => {
@@ -362,71 +440,5 @@ describe("saveAnnotationDeltas", () => {
       isGenerated: false,
     });
     expect(ok).toBe(false);
-  });
-});
-
-describe("handleLabelPersistence", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    pendingEdits.reset();
-  });
-
-  it("returns false when the sample or dataset is missing", async () => {
-    const ok = await handleLabelPersistence({
-      sample: null,
-      datasetId: "ds1",
-      updateSample: vi.fn(),
-      annotationLabel: { type: "Detection", path: "ground_truth" } as never,
-      schema: {} as never,
-      opType: "mutate",
-    });
-    expect(ok).toBe(false);
-    expect(saveAnnotationFieldUpdates).not.toHaveBeenCalled();
-  });
-
-  it("returns false when the annotation label is missing", async () => {
-    const ok = await handleLabelPersistence({
-      sample: { _id: "s1" } as Sample,
-      datasetId: "ds1",
-      updateSample: vi.fn(),
-      annotationLabel: null,
-      schema: {} as never,
-      opType: "mutate",
-    });
-    expect(ok).toBe(false);
-    expect(saveAnnotationFieldUpdates).not.toHaveBeenCalled();
-  });
-
-  it("returns true (success) for a no-op edit and sends nothing", async () => {
-    // An unchanged label yields no change; that's an idempotent success, not a
-    // failure.
-    const sample = {
-      _id: "s1",
-      ground_truth: {
-        detections: [
-          { _id: "det-1", label: "cat", bounding_box: [0, 0, 1, 1] },
-        ],
-      },
-    } as unknown as Sample;
-    const annotationLabel = {
-      type: "Detection",
-      path: "ground_truth",
-      data: { _id: "det-1", label: "cat" },
-      boundingBox: [0, 0, 1, 1],
-    } as never;
-
-    const ok = await handleLabelPersistence({
-      sample,
-      datasetId: "ds1",
-      updateSample: vi.fn(),
-      annotationLabel,
-      schema: {
-        embeddedDocType: "fiftyone.core.labels.Detections",
-      } as never,
-      opType: "mutate",
-    });
-
-    expect(ok).toBe(true);
-    expect(saveAnnotationFieldUpdates).not.toHaveBeenCalled();
   });
 });
