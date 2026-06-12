@@ -22,7 +22,7 @@ import {
   labelSchemasData,
   visibleLabelSchemas,
 } from "./state";
-import { useSetActiveLabelId } from "./useAnnotationContextManager";
+import { useSetEntranceLabel } from "./useAnnotationContextManager";
 import useHover from "./useHover";
 
 export const addLabel = atom(
@@ -265,7 +265,7 @@ export default function useLabels() {
   const active = useAtomValue(visibleLabelSchemas);
   const modalSample = useModalSample();
   const isPatches = useRecoilValue(isPatchesView);
-  const setActiveLabelId = useSetActiveLabelId();
+  const setEntranceLabel = useSetEntranceLabel();
   const setLoading = useSetAtom(labelsState);
 
   const sampleId = modalSample?.sample?._id;
@@ -374,12 +374,16 @@ export default function useLabels() {
         // mounted yet but still makes the patch single-label
         const all = active.flatMap((path) =>
           SINGULAR[engine.getLabelType(path)]
-            ? engine.listLabels({ sample: sampleId, path })
+            ? engine.listLabels({ sample: sampleId, path }).map((label) => ({
+                sample: sampleId,
+                path,
+                instanceId: label._id,
+              }))
             : []
         );
 
         if (all.length === 1) {
-          setActiveLabelId(all[0]._id);
+          setEntranceLabel(all[0]);
         }
       }
     }
@@ -391,7 +395,7 @@ export default function useLabels() {
     isPatches,
     reconcile,
     sampleId,
-    setActiveLabelId,
+    setEntranceLabel,
     setLoading,
   ]);
 

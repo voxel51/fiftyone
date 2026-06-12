@@ -31,10 +31,6 @@ let mockMgmtOps: {
   activateSchemas: typeof mockActivateSchemas;
 } | null = null;
 
-vi.mock("@fiftyone/annotation", () => ({
-  useSampleInstance: () => ({ clear: vi.fn() }),
-}));
-
 vi.mock("@fiftyone/state", () => ({
   DefaultContextManager: vi.fn(() => ({
     isActive: () => false,
@@ -43,6 +39,7 @@ vi.mock("@fiftyone/state", () => ({
     registerExitCallback: vi.fn(),
   })),
   useActiveModalFields: () => [[], vi.fn()],
+  useModalSample: () => ({ sample: { _id: "test-sample-id" } }),
   useQueryPerformanceSampleLimit: () => 1000,
   useUnboundStateRef: (val: unknown) => ({ current: val }),
 }));
