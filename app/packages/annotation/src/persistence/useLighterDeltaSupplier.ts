@@ -26,6 +26,30 @@ import { useGetLabelDelta } from "./useGetLabelDelta";
 import { useRecordEdit } from "./useRecordEdit";
 
 /**
+ * Runtime/UI-only fields the scene attaches to an overlay's label. They are
+ * not part of the persisted label schema, so the server can't construct a
+ * label from them (it rejects the update with 400). Strip them before capture
+ * — mirrors the 3D supplier, which has always done this.
+ */
+const RESERVED_LABEL_ATTRIBUTES = [
+  "color",
+  "id",
+  "isNew",
+  "path",
+  "selected",
+  "sampleId",
+  "type",
+] as const;
+
+const stripReserved = <T extends Record<string, unknown>>(label: T): T => {
+  const result = { ...label };
+  for (const key of RESERVED_LABEL_ATTRIBUTES) {
+    delete result[key as keyof T];
+  }
+  return result;
+};
+
+/**
  * Build a {@link LabelProxy} instance from a lighter overlay.
  *
  * @param overlay Lighter overlay
@@ -48,8 +72,9 @@ const buildAnnotationLabel = (overlay: BaseOverlay): LabelProxy | undefined => {
 
     if (hasValidBounds(boundingBox)) {
       // Pull mask/mask_path off so we can decide what (if anything) to persist
-      // for the mask channel.
-      const { mask: _mask, mask_path: _maskPath, ...data } = overlay.label;
+      // for the mask channel; strip runtime fields off the remainder.
+      const { mask: _mask, mask_path: _maskPath, ...rest } = overlay.label;
+      const data = stripReserved(rest as Record<string, unknown>);
       const pendingMask = overlay.getPendingMask();
 
       // Include mask data only when the overlay still has a mask.
@@ -80,16 +105,18 @@ const buildAnnotationLabel = (overlay: BaseOverlay): LabelProxy | undefined => {
       };
     }
   } else if (overlay instanceof ClassificationOverlay) {
-    const label = overlay.label as ClassificationLabel;
-
     return {
       type: "Classification",
-      data: label,
+      data: stripReserved(
+        overlay.label as unknown as Record<string, unknown>
+      ) as unknown as ClassificationLabel,
       path: overlay.field,
     };
   } else if (overlay instanceof PolylineOverlay) {
     // Must be checked before KeypointOverlay, since PolylineOverlay extends it.
-    const label = overlay.label as unknown as PolylineLabel;
+    const label = stripReserved(
+      overlay.label as unknown as Record<string, unknown>
+    );
 
     return {
       type: "Polyline",
@@ -98,15 +125,15 @@ const buildAnnotationLabel = (overlay: BaseOverlay): LabelProxy | undefined => {
         points: overlay.getNestedPoints(),
         closed: overlay.getClosed(),
         filled: overlay.getFilled(),
-      } as PolylineLabel,
+      } as unknown as PolylineLabel,
       path: overlay.field,
     };
   } else if (overlay instanceof KeypointOverlay) {
-    const label = overlay.label as KeypointLabel;
-
     return {
       type: "Keypoint",
-      data: label,
+      data: stripReserved(
+        overlay.label as unknown as Record<string, unknown>
+      ) as unknown as KeypointLabel,
       path: overlay.field,
     };
   }
