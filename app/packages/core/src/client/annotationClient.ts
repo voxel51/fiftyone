@@ -13,35 +13,16 @@ import { toExtendedJson } from "./transformer";
 import { encodeURIPath } from "./util";
 
 /**
- * A single gated annotation field update.
- *
- * The server matches the document (and, for a label in a list field, the
- * element) by identity, gates on the fields that changed still holding
- * `previousValue`, and writes `newValue`:
- *
- *   - `previousValue: null` → add a new label
- *   - `newValue: null`      → remove the label (unset / pull)
- *   - both present          → modify the fields that differ
- *
- * Every save — sidebar or canvas, normal or patches — is one of these per
- * edited label/field. In a generated (patches) view the update still
- * addresses the source sample; the `generated*` hints let the server sync
- * the ephemeral copy itself.
+ * A single gated annotation field update. The server gates on `previousValue`
+ * still holding and writes `newValue`: `previousValue: null` adds,
+ * `newValue: null` removes, both present modifies the differing fields.
  */
 export type AnnotationFieldUpdate = {
-  /**
-   * Target Mongo collection, e.g. `samples.<datasetId>`. Must be one of the
-   * route dataset's own collections (samples/frames); the server validates
-   * it against the dataset's resolved collection names.
-   */
+  /** Target collection (e.g. `samples.<datasetId>`); must belong to the route dataset. */
   collection: string;
   /** `_id` of the document to match. */
   id: string;
-  /**
-   * Path to the field. For a label inside a list field this is the array path
-   * (e.g. `ground_truth.detections`); for a flat label or a primitive it is
-   * the field itself.
-   */
+  /** Array path for a list label (`ground_truth.detections`), else the field itself. */
   lookupPath?: string;
   /** `_id` of the label within `lookupPath`; omit for a flat label/primitive. */
   labelId?: string | null;
@@ -49,11 +30,7 @@ export type AnnotationFieldUpdate = {
   previousValue?: unknown;
   /** The value to write; `null` removes. */
   newValue?: unknown;
-  /**
-   * Name of the generated (patches/clips) dataset to sync, when editing in a
-   * generated view. The server derives the best-effort generated-view write
-   * itself — the client never addresses generated collections directly.
-   */
+  /** Generated (patches/clips) dataset to sync; the server derives that write. */
   generatedDatasetName?: string;
   /** `_id` of the generated (patches) sample to sync. */
   generatedSampleId?: string;
@@ -73,19 +50,14 @@ export class PatchApplicationError extends Error {
 export type SaveConflict = {
   /** Index into the submitted batch. */
   index: number;
-  /**
-   * Full current state of the conflicting document (extended JSON), or `null`
-   * if it was deleted concurrently.
-   */
+  /** Full current state of the conflicting document, or `null` if deleted. */
   value: unknown;
 };
 
 /**
- * Raised when one or more updates failed their precondition (HTTP 409).
- *
- * Each conflict carries the conflicting document's full current state so the
- * caller can reconcile every field that changed out from under it (not just
- * the one it tried to write) — no full-sample refetch needed.
+ * Raised when one or more updates failed their precondition (HTTP 409). Each
+ * conflict carries the document's full current state so the caller can rebase
+ * without a refetch.
  */
 export class SaveConflictError extends Error {
   constructor(readonly conflicts: SaveConflict[] = []) {
@@ -145,10 +117,7 @@ const doFetch = <A, R>(
     ...config,
   });
 
-/**
- * Encode an update to MongoDB Extended JSON so nested ObjectIds/datetimes in
- * the label values round-trip to the server as their BSON types.
- */
+/** Encode to Extended JSON so nested ObjectIds/datetimes reach the server as BSON. */
 const encodeUpdate = (
   update: AnnotationFieldUpdate
 ): Record<string, unknown> => {
@@ -178,16 +147,9 @@ const encodeUpdate = (
 };
 
 /**
- * Persist a batch of gated annotation field updates in a single request.
+ * Persist a batch of gated annotation field updates in one request, each
+ * applied independently. `datasetId`/`sampleId` are route context only.
  *
- * Each update is applied atomically and independently on its named collection.
- * A patches edit is a single call whose batch carries both the source-label
- * update and the patches-sample update.
- *
- * @param datasetId contextual dataset id (route only — each update names its
- *   own target collection)
- * @param sampleId contextual sample id (route only)
- * @param updates the gated updates to apply
  * @throws SaveConflictError if any update's precondition failed (HTTP 409)
  */
 export const saveAnnotationFieldUpdates = async (

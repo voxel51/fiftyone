@@ -140,15 +140,35 @@ const listKeyFor = (label: LabelProxy, schema: Field): string | null => {
   return null;
 };
 
+/** Singular label ``_cls`` values, keyed by {@link LabelProxy} type. */
+const LABEL_TYPE_TO_CLS: Record<string, string> = {
+  Detection: "Detection",
+  Classification: "Classification",
+  Polyline: "Polyline",
+  Keypoint: "Keypoint",
+};
+
 /**
  * The complete value of a label proxy, as a plain object (a 2D detection's
  * bounding box is folded into its data).
+ *
+ * Guarantees ``_cls`` on the value: for an existing label it is preserved via
+ * the merge onto the previous value, but a newly-added label may reach here
+ * without one (the overlay was created before its class was stamped), and a
+ * label persisted without ``_cls`` cannot be deserialized back. Derive it
+ * from the proxy type when absent; never overwrite an existing value.
  */
 const incomingLabel = (label: LabelProxy): unknown => {
-  if (label.type === "Detection") {
-    return makeDetectionLabel(label as Detection2DMetadata);
+  const value =
+    label.type === "Detection"
+      ? makeDetectionLabel(label as Detection2DMetadata)
+      : (label as { data: unknown }).data;
+
+  const cls = LABEL_TYPE_TO_CLS[label.type];
+  if (cls && isObject(value) && !(value as { _cls?: unknown })._cls) {
+    return { _cls: cls, ...(value as object) };
   }
-  return (label as { data: unknown }).data;
+  return value;
 };
 
 /**

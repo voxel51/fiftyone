@@ -39,6 +39,14 @@ export type AnnotationEventGroup = {
    */
   "annotation:persistenceError": { error?: Error };
   /**
+   * Notification event emitted when a label is upserted successfully.
+   */
+  "annotation:upsertSuccess": MutationSuccess<"upsert">;
+  /**
+   * Notification event emitted when an error occurs while upserting a label.
+   */
+  "annotation:upsertError": MutationError<"upsert">;
+  /**
    * Notification event emitted when a label is deleted successfully.
    */
   "annotation:deleteSuccess": MutationSuccess<"delete">;

@@ -30,26 +30,37 @@ export const useRegisterAnnotationCommandHandlers = () => {
       async (cmd) => {
         const labelId =
           (cmd.label.data as { _id?: string } | undefined)?._id ?? null;
-        const delta = sampleId && getDeleteDelta(cmd.label, cmd.label.path);
-        if (!delta) {
+        try {
+          const delta = sampleId && getDeleteDelta(cmd.label, cmd.label.path);
+          if (!delta) {
+            eventBus.dispatch("annotation:deleteError", {
+              labelId,
+              type: "delete",
+            });
+            return false;
+          }
+
+          // Record the delete; the next flush persists it alongside any other
+          // pending edits (a delete of a label that never reached the server
+          // resolves to a no-op there).
+          recordEdit(sampleId, delta);
+
+          eventBus.dispatch("annotation:deleteSuccess", {
+            labelId,
+            type: "delete",
+            labelType: cmd.label.type,
+          });
+          return true;
+        } catch (error) {
+          // Surface the failure (deltas capture / record can throw on
+          // malformed label data) and re-throw so the command bus sees it.
           eventBus.dispatch("annotation:deleteError", {
             labelId,
             type: "delete",
+            error: error as Error,
           });
-          return false;
+          throw error;
         }
-
-        // Record the delete; the next flush persists it alongside any other
-        // pending edits (a delete of a label that never reached the server
-        // resolves to a no-op there).
-        recordEdit(sampleId, delta);
-
-        eventBus.dispatch("annotation:deleteSuccess", {
-          labelId,
-          type: "delete",
-          labelType: cmd.label.type,
-        });
-        return true;
       },
       [eventBus, getDeleteDelta, recordEdit, sampleId]
     )

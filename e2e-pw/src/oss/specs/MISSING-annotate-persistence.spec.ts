@@ -78,16 +78,16 @@ test.describe.serial("annotate persistence lifecycle", () => {
     modal,
     page,
   }) => {
-    // A 409 (precondition conflict) with a single writer is the regression
-    // this pipeline exists to prevent — fail on any.
-    const conflictResponses: number[] = [];
+    // Count every /fields PATCH and its status. The contract is exactly one
+    // consolidated flush for the single drawn box (duplicate flushes are a
+    // regression), and a single writer must never see a non-200 (409 conflict).
+    const fieldsPatchStatuses: number[] = [];
     page.on("response", (response) => {
       if (
         response.url().includes("/fields") &&
-        response.request().method() === "PATCH" &&
-        response.status() !== 200
+        response.request().method() === "PATCH"
       ) {
-        conflictResponses.push(response.status());
+        fieldsPatchStatuses.push(response.status());
       }
     });
 
@@ -123,13 +123,12 @@ test.describe.serial("annotate persistence lifecycle", () => {
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
 
-    // Clicking the drawn box's location selects an overlay — proof the label
-    // is in the scene after back-navigation.
-    await modal.sidebar.annotate.detectionMode("Detections");
-    await modal.sampleCanvas.move(0.8, 0.8);
-    await modal.sampleCanvas.down();
-    await modal.sampleCanvas.up();
-    await modal.sidebar.annotate.assert.detectionModeIsActive();
+    // The drawn detection must be back IN THE SCENE after navigation — proven
+    // by an artifact tied to it, not by tool state. The re-seeded sidebar
+    // label list has two "cat" entries (the seeded box + the drawn one);
+    // selecting the second only succeeds if the drawn box survived the round
+    // trip (it would throw on a missing nth(1) entry otherwise).
+    await modal.sidebar.annotate.selectActiveLabel("cat", 1);
 
     // Durably persisted: the database holds both the seeded and drawn boxes.
     await fiftyoneLoader.executePythonCode(`
@@ -143,9 +142,11 @@ test.describe.serial("annotate persistence lifecycle", () => {
       )
     `);
 
+    // Exactly one consolidated flush, and it succeeded (no 409 for a single
+    // writer, no duplicate flush).
     expect(
-      conflictResponses,
-      `single-writer saves must never conflict/fail, got ${conflictResponses}`
-    ).toHaveLength(0);
+      fieldsPatchStatuses,
+      `expected one successful /fields PATCH, got ${fieldsPatchStatuses}`
+    ).toEqual([200]);
   });
 });

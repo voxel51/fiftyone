@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("recoil", () => ({
-  // useRecoilCallback(factory, deps) → the callback, with a no-op `set`
-  useRecoilCallback: (factory: (iface: { set: () => void }) => unknown) =>
-    factory({ set: vi.fn() }),
+// useUpdateSamples is not rendered in a component here; collapse useCallback
+// to identity so calling the hook returns the callback directly.
+vi.mock("react", () => ({
+  useCallback: (fn: unknown) => fn,
 }));
 
 vi.mock("react-relay", () => ({
@@ -17,8 +17,11 @@ vi.mock("./useLookerStore", () => ({
   stores: new Set(),
 }));
 
+// The version-bump hook is exercised separately; here it's a spy so the
+// bumped-id set can be asserted.
+const mockBumpVersions = vi.fn();
 vi.mock("../recoil/modal", () => ({
-  localSampleVersion: (id: string) => ({ key: `localSampleVersion__${id}` }),
+  useBumpLocalSampleVersions: () => mockBumpVersions,
 }));
 
 import { useUpdateSamples } from "./useUpdateSamples";
@@ -49,6 +52,7 @@ describe("useUpdateSamples", () => {
     storeRecords = {};
     deletedIds = [];
     stores.clear();
+    mockBumpVersions.mockClear();
     for (const id of ["sample-1", "s1", "patch-label-id", "source-1"]) {
       deleteLocalSample(id);
     }
@@ -109,6 +113,11 @@ describe("useUpdateSamples", () => {
 
     expect(deletedIds).toContain("source-1-modal");
     expect(storeRecords["source-1-modal"]).toBeUndefined();
+    // both the patch and its source sample re-evaluate overlaying selectors
+    const bumped = [...mockBumpVersions.mock.calls[0][0]];
+    expect(bumped).toEqual(
+      expect.arrayContaining(["patch-label-id", "source-1"])
+    );
   });
 
   it("does not delete any records for non-generated samples", () => {

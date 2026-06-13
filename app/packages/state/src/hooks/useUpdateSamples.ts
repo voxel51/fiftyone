@@ -1,7 +1,7 @@
+import { useCallback } from "react";
 import { commitLocalUpdate, useRelayEnvironment } from "react-relay";
-import { useRecoilCallback } from "recoil";
 import type { ModalSample } from "../recoil";
-import { localSampleVersion } from "../recoil/modal";
+import { useBumpLocalSampleVersions } from "../recoil/modal";
 import {
   deleteLocalSample,
   setLocalSample,
@@ -26,60 +26,60 @@ export type UpdateSamplesOptions = {
  */
 export const useUpdateSamples = () => {
   const environment = useRelayEnvironment();
+  const bumpVersions = useBumpLocalSampleVersions();
 
-  return useRecoilCallback(
-    ({ set }) =>
-      (
-        samples: [string, ModalSample["sample"] | undefined][],
-        options?: UpdateSamplesOptions
-      ) => {
-        commitLocalUpdate(environment, (store) => {
-          for (const [id, sample] of samples) {
-            if (!sample) continue;
+  return useCallback(
+    (
+      samples: [string, ModalSample["sample"] | undefined][],
+      options?: UpdateSamplesOptions
+    ) => {
+      // Every sample id whose overlaying selectors must re-evaluate.
+      const changed = new Set<string>();
 
-            // Canonical local copy first; the version bump below re-evaluates
-            // any selector overlaying it (e.g. `modalSample`).
-            setLocalSample(id, sample, options?.source ?? "external");
-
-            // Repaint this sample's tile in place in every registered view
-            // (modal + grid) — no full grid refresh.
-            for (const sampleStore of stores) {
-              sampleStore.updateSample(id, sample);
-            }
-
-            const ids = [id, `${id}-modal`];
-            for (const recordId of ids) {
-              const record = store.get(recordId);
-              if (record) {
-                if (sample) {
-                  // Relay will not allow objects when hydrating a scalar value
-                  // - https://github.com/voxel51/fiftyone/pull/2622
-                  // - https://github.com/facebook/relay/issues/91
-                  record?.setValue(JSON.stringify(sample), "sample");
-                } else {
-                  record.invalidateRecord();
-                }
-              }
-            }
-
-            // For generated views (patches/clips/frames), drop the source
-            // sample's cached copies so the next modal open fetches fresh data
-            const sourceSampleId = (sample as Record<string, unknown>)
-              ._sample_id;
-            if (typeof sourceSampleId === "string") {
-              store.delete(`${sourceSampleId}-modal`);
-              deleteLocalSample(sourceSampleId);
-              set(localSampleVersion(sourceSampleId), (v) => v + 1);
-            }
-          }
-        });
-
+      commitLocalUpdate(environment, (store) => {
         for (const [id, sample] of samples) {
           if (!sample) continue;
-          set(localSampleVersion(id), (v) => v + 1);
+
+          // Canonical local copy first; the version bump below re-evaluates
+          // any selector overlaying it (e.g. `modalSample`).
+          setLocalSample(id, sample, options?.source ?? "external");
+          changed.add(id);
+
+          // Repaint this sample's tile in place in every registered view
+          // (modal + grid) — no full grid refresh.
+          for (const sampleStore of stores) {
+            sampleStore.updateSample(id, sample);
+          }
+
+          const ids = [id, `${id}-modal`];
+          for (const recordId of ids) {
+            const record = store.get(recordId);
+            if (record) {
+              if (sample) {
+                // Relay will not allow objects when hydrating a scalar value
+                // - https://github.com/voxel51/fiftyone/pull/2622
+                // - https://github.com/facebook/relay/issues/91
+                record?.setValue(JSON.stringify(sample), "sample");
+              } else {
+                record.invalidateRecord();
+              }
+            }
+          }
+
+          // For generated views (patches/clips/frames), drop the source
+          // sample's cached copies so the next modal open fetches fresh data
+          const sourceSampleId = (sample as Record<string, unknown>)._sample_id;
+          if (typeof sourceSampleId === "string") {
+            store.delete(`${sourceSampleId}-modal`);
+            deleteLocalSample(sourceSampleId);
+            changed.add(sourceSampleId);
+          }
         }
-      },
-    [environment]
+      });
+
+      bumpVersions(changed);
+    },
+    [environment, bumpVersions]
   );
 };
 

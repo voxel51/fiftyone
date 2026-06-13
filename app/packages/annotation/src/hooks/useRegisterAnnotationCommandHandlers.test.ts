@@ -120,6 +120,18 @@ describe("useRegisterAnnotationCommandHandlers", () => {
     });
   });
 
+  it("does not dispatch deleteSuccess on the failure path", async () => {
+    mockGetDeleteDelta.mockReturnValue(null);
+    const handler = getRegisteredHandler();
+
+    await handler(makeCommand());
+
+    expect(mockDispatch).not.toHaveBeenCalledWith(
+      "annotation:deleteSuccess",
+      expect.anything()
+    );
+  });
+
   it("dispatches deleteError when there is no modal sample", async () => {
     vi.mocked(useModalSample).mockReturnValue(undefined);
     const handler = getRegisteredHandler();
@@ -131,6 +143,27 @@ describe("useRegisterAnnotationCommandHandlers", () => {
     expect(mockDispatch).toHaveBeenCalledWith(
       "annotation:deleteError",
       expect.objectContaining({ type: "delete" })
+    );
+  });
+
+  it("dispatches deleteError (with the error) and re-throws when recording throws", async () => {
+    const error = new Error("record failed");
+    mockRecordEdit.mockImplementation(() => {
+      throw error;
+    });
+    const handler = getRegisteredHandler();
+    const cmd = makeCommand({ labelId: "label-99" });
+
+    await expect(handler(cmd)).rejects.toThrow("record failed");
+
+    expect(mockDispatch).toHaveBeenCalledWith("annotation:deleteError", {
+      labelId: "label-99",
+      type: "delete",
+      error,
+    });
+    expect(mockDispatch).not.toHaveBeenCalledWith(
+      "annotation:deleteSuccess",
+      expect.anything()
     );
   });
 });

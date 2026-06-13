@@ -54,6 +54,76 @@ describe("buildLabelFieldDelta", () => {
     expect((delta?.newValue as { label: string }).label).toBe("dog");
   });
 
+  it("preserves server-only fields (_cls, tags) absent from the edited label", () => {
+    // The editor's label carries only what it knows; the merge must retain
+    // server-enriched fields (e.g. tags, _cls) it never saw, so the backend
+    // sees only the genuinely-changed field. (develop: buildSingleMutationDelta
+    // "should preserve server fields when new data is missing them".)
+    const sample = {
+      ground_truth: {
+        _cls: "Detections",
+        detections: [
+          {
+            _cls: "Detection",
+            _id: "det-1",
+            label: "cat",
+            bounding_box: [0.1, 0.1, 0.2, 0.2],
+            tags: ["reviewed"],
+          },
+        ],
+      },
+    } as unknown as SampleArg;
+
+    const delta = buildLabelFieldDelta(
+      sample,
+      detectionLabel({ _id: "det-1", label: "dog" }),
+      detectionsSchema,
+      "mutate",
+      false
+    );
+
+    const next = delta?.newValue as Record<string, unknown>;
+    expect(next.label).toBe("dog");
+    expect(next.tags).toEqual(["reviewed"]);
+    expect(next._cls).toBe("Detection");
+  });
+
+  it("resolves the keypoints listKey for a Keypoint label", () => {
+    // Exercises the non-Detection branch of the type→listKey map (develop had
+    // dedicated buildKeypoint(s)MutationDeltas coverage).
+    const sample = {
+      points: {
+        _cls: "Keypoints",
+        keypoints: [
+          {
+            _cls: "Keypoint",
+            _id: "kp-1",
+            label: "nose",
+            points: [[0.5, 0.5]],
+          },
+        ],
+      },
+    } as unknown as SampleArg;
+
+    const keypointLabel = {
+      type: "Keypoint",
+      path: "points",
+      data: { _id: "kp-1", label: "ear", points: [[0.5, 0.5]] },
+    } as unknown as LabelProxy;
+
+    const delta = buildLabelFieldDelta(
+      sample,
+      keypointLabel,
+      makeField("fiftyone.core.labels.Keypoints"),
+      "mutate",
+      false
+    );
+
+    expect(delta?.listKey).toBe("keypoints");
+    expect(delta?.labelId).toBe("kp-1");
+    expect((delta?.newValue as { label: string }).label).toBe("ear");
+  });
+
   it("returns null when nothing changed (no phantom save)", () => {
     const delta = buildLabelFieldDelta(
       makeSample(),
@@ -63,6 +133,23 @@ describe("buildLabelFieldDelta", () => {
       false
     );
     expect(delta).toBeNull();
+  });
+
+  it("returns a non-null delta for a no-op when includeUnchanged is true", () => {
+    // The pending-edits ledger always records (then resolves no-ops itself),
+    // so capture must not pre-drop an unchanged edit. With includeUnchanged
+    // the same no-op that returns null above yields a delta.
+    const delta = buildLabelFieldDelta(
+      makeSample(),
+      detectionLabel({ _id: "det-1", label: "cat" }),
+      detectionsSchema,
+      "mutate",
+      false,
+      true
+    );
+    expect(delta).not.toBeNull();
+    expect(delta?.labelId).toBe("det-1");
+    expect((delta?.newValue as { label: string }).label).toBe("cat");
   });
 
   it("captures an add (previousValue null) for a new element", () => {
@@ -76,6 +163,19 @@ describe("buildLabelFieldDelta", () => {
     expect(delta?.labelId).toBe("det-NEW");
     expect(delta?.previousValue).toBeNull();
     expect((delta?.newValue as { label: string }).label).toBe("bird");
+  });
+
+  it("stamps _cls on a new label whose overlay lacks it", () => {
+    // A new label has no previous value to merge a _cls from; persisting it
+    // without _cls would make it undeserializable. The delta must supply it.
+    const delta = buildLabelFieldDelta(
+      makeSample(),
+      detectionLabel({ _id: "det-NEW", label: "bird" }),
+      detectionsSchema,
+      "mutate",
+      false
+    );
+    expect((delta?.newValue as { _cls?: string })._cls).toBe("Detection");
   });
 
   it("captures a deletion (newValue null)", () => {

@@ -364,4 +364,15 @@ describe("saveAnnotationDeltas", () => {
     });
     expect(ok).toBe(false);
   });
+
+  it("returns false and sends nothing when dataset or sample id is missing", async () => {
+    expect(
+      await saveAnnotationDeltas([delta], {
+        datasetId: "",
+        sample: { _id: "s1" } as Sample,
+        updateSample: vi.fn(),
+      })
+    ).toBe(false);
+    expect(saveAnnotationFieldUpdates).not.toHaveBeenCalled();
+  });
 });

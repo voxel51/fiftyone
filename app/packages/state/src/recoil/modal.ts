@@ -1,6 +1,6 @@
 import { PointInfo, type Sample } from "@fiftyone/looker";
 import { mainSample, mainSampleQuery } from "@fiftyone/relay";
-import { atom, atomFamily, selector } from "recoil";
+import { atom, atomFamily, selector, useRecoilCallback } from "recoil";
 import { graphQLSelector } from "recoil-relay";
 import { VariablesOf } from "relay-runtime";
 import type { Lookers } from "../hooks";
@@ -150,13 +150,30 @@ export const nullableModalSampleId = selector<string>({
 });
 
 /**
- * Bumped (by `useUpdateSamples`) whenever a sample's canonical local copy
- * (see `stores/sampleStore`) changes, so selectors overlaying it re-evaluate.
+ * Bumped whenever a sample's canonical local copy (see `stores/sampleStore`)
+ * changes, so selectors overlaying it re-evaluate. Internal: the selectors
+ * below read it by reference; the only mutation path is
+ * {@link useBumpLocalSampleVersions}.
  */
-export const localSampleVersion = atomFamily<number, string>({
+const localSampleVersion = atomFamily<number, string>({
   key: "localSampleVersion",
   default: 0,
 });
+
+/**
+ * Returns a callback that bumps the local-copy version for each given sample
+ * id, re-evaluating any selector overlaying that sample's canonical copy.
+ */
+export const useBumpLocalSampleVersions = () =>
+  useRecoilCallback(
+    ({ set }) =>
+      (ids: Iterable<string>) => {
+        for (const id of ids) {
+          set(localSampleVersion(id), (v) => v + 1);
+        }
+      },
+    []
+  );
 
 const overlayLocalSample = (
   mapped: ModalSample,

@@ -377,6 +377,57 @@ class TestSampleFields:
         assert sample.tags == ["touched_by_other"]
 
     @pytest.mark.asyncio
+    async def test_interleaved_external_edit_never_conflicts(
+        self, mutator, dataset_id, collection, sample
+    ):
+        # The thesis of field-level gating: a label edit must not conflict with
+        # a concurrent write to a DIFFERENT field made outside the annotation
+        # flow. Sequence: add a label, an external writer touches another
+        # field, add a second label — every step succeeds (200, never 409, so
+        # the client never has to retry), and no edit clobbers another.
+        det_a, det_b = ObjectId(), ObjectId()
+
+        def add_label(label_oid, label):
+            return [
+                {
+                    "collection": collection,
+                    "id": str(sample.id),
+                    "lookupPath": "ground_truth.detections",
+                    "labelId": str(label_oid),
+                    "previousValue": None,
+                    "newValue": {
+                        "_cls": "Detection",
+                        "_id": label_oid,
+                        "label": label,
+                        "bounding_box": [0.2, 0.2, 0.1, 0.1],
+                    },
+                }
+            ]
+
+        first = await mutator.patch(
+            self._request(dataset_id, str(sample.id), add_label(det_a, "dog"))
+        )
+        assert first.status_code == 200
+
+        # An external writer (not the annotation flow) edits a different field
+        # directly in the database, between the two label edits.
+        get_db_conn()[collection].update_one(
+            {"_id": sample._id}, {"$set": {"primitive_field": "external"}}
+        )
+
+        second = await mutator.patch(
+            self._request(dataset_id, str(sample.id), add_label(det_b, "bird"))
+        )
+        # No conflict despite the interleaved external write — different field.
+        assert second.status_code == 200
+
+        sample.reload()
+        labels = {d.id: d.label for d in sample.ground_truth.detections}
+        assert labels[str(det_a)] == "dog"  # first label intact
+        assert labels[str(det_b)] == "bird"  # second label applied
+        assert sample.primitive_field == "external"  # external edit intact
+
+    @pytest.mark.asyncio
     async def test_malformed_payload(self, mutator, dataset_id, sample):
         request = MagicMock(spec=Request)
         request.path_params = {
@@ -410,6 +461,51 @@ class TestSampleFields:
                 self._request(dataset_id, str(sample.id), updates)
             )
         assert exc.value.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_dataset_not_found(self, mutator, collection, sample):
+        # The route dataset's collections are resolved from its dataset doc; an
+        # unknown dataset id is a 404 (develop: test_dataset_not_found).
+        updates = [
+            {
+                "collection": collection,
+                "id": str(sample.id),
+                "lookupPath": "primitive_field",
+                "previousValue": "initial_value",
+                "newValue": "x",
+            }
+        ]
+        with pytest.raises(HTTPException) as exc:
+            await mutator.patch(
+                self._request(str(ObjectId()), str(sample.id), updates)
+            )
+        assert exc.value.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_malformed_label_data_returns_400(
+        self, mutator, dataset_id, collection, sample
+    ):
+        # A label value that cannot be deserialized is a 400, not a silent
+        # write (develop: test_unsupported_label_class / test_malformed_label_data).
+        updates = [
+            {
+                "collection": collection,
+                "id": str(sample.id),
+                "lookupPath": "ground_truth.detections",
+                "labelId": str(self.DET_ID),
+                "previousValue": self._det(label="cat"),
+                "newValue": {
+                    "_cls": "NonExistentLabelType",
+                    "_id": str(self.DET_ID),
+                    "label": "dog",
+                },
+            }
+        ]
+        with pytest.raises(HTTPException) as exc:
+            await mutator.patch(
+                self._request(dataset_id, str(sample.id), updates)
+            )
+        assert exc.value.status_code == 400
 
     @pytest.mark.asyncio
     async def test_batch_applies_independently_when_one_update_conflicts(
