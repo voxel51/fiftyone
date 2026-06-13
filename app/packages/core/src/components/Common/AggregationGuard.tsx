@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import React, { PropsWithChildren, ReactNode } from "react";
+import React, { PropsWithChildren, ReactNode, useMemo } from "react";
 import { ErrorBoundary, FallbackProps } from "react-error-boundary";
 import { useRecoilValue } from "recoil";
 import { isAggregationTimeout } from "./TimedOutCounts";
@@ -27,9 +27,11 @@ const AggregationGuard = ({
   const filters = useRecoilValue(fos.filters);
   const refresher = useRecoilValue(fos.refresher);
 
+  const FallbackComponent = useMemo(() => makeFallback(fallback), [fallback]);
+
   return (
     <ErrorBoundary
-      FallbackComponent={makeFallback(fallback)}
+      FallbackComponent={FallbackComponent}
       resetKeys={[
         refresher,
         JSON.stringify(view ?? []),
