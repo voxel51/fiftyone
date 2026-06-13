@@ -186,7 +186,19 @@ export class ActionManager {
    * @param action The action to execute
    */
   async execute(action: Action): Promise<void> {
-    await action.execute();
+    try {
+      await action.execute();
+    } catch (error) {
+      console.error(
+        `An exception occurred during execution for action ${action.id}`,
+        error
+      );
+      // Unlike undo()/redo() — which return a boolean and so log-and-swallow
+      // — execute() returns void, so its caller has no other failure signal:
+      // re-throw. A failed action is intentionally never pushed to the undo
+      // stack and fires no action listeners; nothing happened to record.
+      throw error;
+    }
     if (isUndoable(action)) {
       // pushInternal: action listeners are notified exactly once below.
       this.pushInternal(action as Undoable);
