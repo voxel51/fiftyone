@@ -246,7 +246,8 @@ def get_extended_view(
 
     for stage in view._stages:
         if isinstance(stage, fosg.GroupBy):
-            view = view.mongo([stage._group_field_stage(view)])
+            # the stage emits `_group` itself so the grid never re-derives it
+            stage._include_group = True
 
     if pagination_data:
         # omit all dict and vector field values for performance, not needed by grid

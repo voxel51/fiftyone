@@ -186,8 +186,13 @@ class Samples(HTTPEndpoint):
         view = await run_sync_task(_build)
         pipeline = await get_samples_pipeline(view, sample_filter)
 
-        # group-by/order-by db keys the client no longer knows to request
+        skip_dimensions = bool(data.get("skipMetadata"))
+
+        # group-by/order-by db keys the client no longer knows to request, plus
+        # `metadata` so the aspect ratio comes from stored dims, not a disk read
         extra = [db_field(view, p) for p in paths]
+        if not skip_dimensions:
+            extra = extra + ["metadata"]
         projection = _projection(
             data.get("fields"), data.get("exclude"), extra
         )
@@ -214,7 +219,6 @@ class Samples(HTTPEndpoint):
         )
 
         additional = fosm._get_additional_media_fields(view) if docs else None
-        skip_dimensions = bool(data.get("skipMetadata"))
         metadata_cache: Dict[str, Any] = {}
         url_cache: Dict[str, str] = {}
         samples = await asyncio.gather(

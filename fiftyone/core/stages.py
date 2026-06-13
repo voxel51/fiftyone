@@ -3546,6 +3546,10 @@ class GroupBy(ViewStage):
         self._order_by_key = order_by_key
         # emit a per-group `_group_count`
         self._include_count = False
+        # emit `_group` (the dynamic-group value) on each doc. Off by default so
+        # plain SDK reads stay loadable; the app turns it on so it never has to
+        # re-derive the group value from the pipeline
+        self._include_group = False
 
     @property
     def outputs_dynamic_groups(self):
@@ -3642,19 +3646,21 @@ class GroupBy(ViewStage):
             [
                 {"$unwind": "$docs"},
                 {"$replaceRoot": {"newRoot": "$docs"}},
-                self._group_field_stage(sample_collection),
             ]
         )
+
+        if self._include_group:
+            pipeline.append(self._group_field_stage(sample_collection))
 
         return pipeline
 
     def _make_grouped_pipeline(self, sample_collection):
         if self._order_by_key is not None:
             order_by = sample_collection._handle_db_field(self._order_by)
-            return [
-                {"$match": {order_by: self._order_by_key}},
-                self._group_field_stage(sample_collection),
-            ]
+            pipeline = [{"$match": {order_by: self._order_by_key}}]
+            if self._include_group:
+                pipeline.append(self._group_field_stage(sample_collection))
+            return pipeline
 
         group_expr, _ = self._get_group_expr(sample_collection)
         pipeline = []
@@ -3699,7 +3705,8 @@ class GroupBy(ViewStage):
             )
 
         # re-label `_group`; the `$group`/`$replaceRoot` above drops it
-        pipeline.append(self._group_field_stage(sample_collection))
+        if self._include_group:
+            pipeline.append(self._group_field_stage(sample_collection))
 
         # add a sort stage so that we return a stable ordering of groups
         # sort by _id to preserve insertion order
