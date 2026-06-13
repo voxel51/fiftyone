@@ -13,6 +13,7 @@ import {
   isFloat,
   prettify,
 } from "../utils/generic";
+import AggregationGuard from "./Common/AggregationGuard";
 import { ContentDiv, ContentHeader } from "./utils";
 
 const Container = styled.div`
@@ -181,73 +182,73 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
     <Container id={`histogram-${path}`} ref={ref}>
       {hasMore && <Title>{`First ${data?.length} results`}</Title>}
       <div style={{ display: "flex", justifyContent: "center" }}>
-      <BarChart
-        height={height - 37}
-        width={data.length * (barWidth + 4) + 50}
-        barCategoryGap={"4px"}
-        data={strData}
-        margin={{ top: 0, left: 0, bottom: 5, right: 5 }}
-      >
-        <XAxis
-          dataKey="key"
-          height={0.2 * height}
-          axisLine={false}
-          tick={<CustomizedAxisTick {...{ fill }} />}
-          tickLine={{ stroke }}
-          {...ticksSetting}
-        />
-        <YAxis
-          dataKey="count"
-          axisLine={false}
-          tick={{ fill }}
-          tickLine={{ stroke }}
-        />
-        <Tooltip
-          cursor={false}
-          content={(point) => {
-            const key = point?.payload[0]?.payload?.key;
-            const count = point?.payload[0]?.payload?.count;
-            if (typeof count !== "number") return null;
+        <BarChart
+          height={height - 37}
+          width={data.length * (barWidth + 4) + 50}
+          barCategoryGap={"4px"}
+          data={strData}
+          margin={{ top: 0, left: 0, bottom: 5, right: 5 }}
+        >
+          <XAxis
+            dataKey="key"
+            height={0.2 * height}
+            axisLine={false}
+            tick={<CustomizedAxisTick {...{ fill }} />}
+            tickLine={{ stroke }}
+            {...ticksSetting}
+          />
+          <YAxis
+            dataKey="count"
+            axisLine={false}
+            tick={{ fill }}
+            tickLine={{ stroke }}
+          />
+          <Tooltip
+            cursor={false}
+            content={(point) => {
+              const key = point?.payload[0]?.payload?.key;
+              const count = point?.payload[0]?.payload?.count;
+              if (typeof count !== "number") return null;
 
-            let title = `Value: ${key}`;
+              let title = `Value: ${key}`;
 
-            if (map[key]) {
-              if (isDateTime || isDate) {
-                const [start, end] = map[key];
-                const { common: cFmt, diff: dFmt } =
-                  getDateTimeRangeFormattersWithPrecision(
-                    isDate ? "UTC" : timeZone,
-                    start,
-                    end
-                  );
-                let range = dFmt.formatRange(start, end);
+              if (map[key]) {
+                if (isDateTime || isDate) {
+                  const [start, end] = map[key];
+                  const { common: cFmt, diff: dFmt } =
+                    getDateTimeRangeFormattersWithPrecision(
+                      isDate ? "UTC" : timeZone,
+                      start,
+                      end
+                    );
+                  let range = dFmt.formatRange(start, end);
 
-                if (dFmt.resolvedOptions().fractionalSecondDigits === 3) {
-                  range = range.replaceAll(",", ".");
+                  if (dFmt.resolvedOptions().fractionalSecondDigits === 3) {
+                    range = range.replaceAll(",", ".");
+                  }
+                  title = `Range: ${cFmt ? cFmt.format(start) : ""} ${range}`;
+                } else {
+                  title = `Range: [${map[key]
+                    .map((e) => (Number.isInteger(e) ? e : e.toFixed(3)))
+                    .join(", ")})`;
                 }
-                title = `Range: ${cFmt ? cFmt.format(start) : ""} ${range}`;
-              } else {
-                title = `Range: [${map[key]
-                  .map((e) => (Number.isInteger(e) ? e : e.toFixed(3)))
-                  .join(", ")})`;
               }
-            }
 
-            return <PlotTooltip title={title} count={count} />;
-          }}
-          contentStyle={{
-            background: "hsl(210, 20%, 23%)",
-            borderColor: "rgb(255, 109, 4)",
-          }}
-        />
-        <Bar
-          dataKey="count"
-          fill="rgb(255, 109, 4)"
-          barCategoryGap={0}
-          barSize={barWidth}
-          isAnimationActive={false}
-        />
-      </BarChart>
+              return <PlotTooltip title={title} count={count} />;
+            }}
+            contentStyle={{
+              background: "hsl(210, 20%, 23%)",
+              borderColor: "rgb(255, 109, 4)",
+            }}
+          />
+          <Bar
+            dataKey="count"
+            fill="rgb(255, 109, 4)"
+            barCategoryGap={0}
+            barSize={barWidth}
+            isAnimationActive={false}
+          />
+        </BarChart>
       </div>
     </Container>
   ) : (
@@ -257,9 +258,15 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
 
 const Distribution = ({ path }: { path: string }) => {
   return (
-    <Suspense fallback={<Loading ellipsisAnimation>Loading</Loading>}>
-      <HistogramRenderer key={path} path={path} />
-    </Suspense>
+    <AggregationGuard
+      fallback={
+        <Loading>Distribution timed out. Narrow your view to load it.</Loading>
+      }
+    >
+      <Suspense fallback={<Loading ellipsisAnimation>Loading</Loading>}>
+        <HistogramRenderer key={path} path={path} />
+      </Suspense>
+    </AggregationGuard>
   );
 };
 
