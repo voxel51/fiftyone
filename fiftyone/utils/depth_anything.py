@@ -7,6 +7,7 @@ wrapper for the FiftyOne Model Zoo.
 |
 """
 
+import glob
 import logging
 import os
 from typing import Any, Dict, List, Optional, Tuple
@@ -40,6 +41,12 @@ da3_api = fou.lazy_import(
 )
 
 DEFAULT_DA3_MODEL = "depth-anything/da3-base"
+_VALID_REF_VIEW_STRATEGIES = (
+    "first",
+    "middle",
+    "saddle_balanced",
+    "saddle_sim_range",
+)
 
 
 class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
@@ -137,6 +144,19 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
                 if len(sky_masks.shape) == 2:
                     sky_masks = sky_masks[np.newaxis, ...]
 
+        scale_factors = output.get("scale_factor")
+        if isinstance(scale_factors, torch.Tensor):
+            scale_factors = scale_factors.detach().cpu().numpy()
+        if scale_factors is not None and np.ndim(scale_factors) > 0:
+            if len(scale_factors) < len(depth_maps):
+                logger.warning(
+                    "Scale factors (%d) fewer than depth maps (%d), "
+                    "skipping scale_factor",
+                    len(scale_factors),
+                    len(depth_maps),
+                )
+                scale_factors = None
+
         width, height = frame_size
         results = []
 
@@ -189,6 +209,19 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
             if heatmap.is_metric:
                 heatmap.max_depth = float(max_depth)
 
+            if scale_factors is not None:
+                value = (
+                    scale_factors
+                    if np.ndim(scale_factors) == 0
+                    else scale_factors[i]
+                )
+                if isinstance(value, np.ndarray):
+                    value = value.item()
+                elif hasattr(value, "item"):
+                    value = value.item()
+
+                heatmap.scale_factor = float(value)
+
             results.append(heatmap)
 
         if results:
@@ -217,9 +250,17 @@ class DepthAnythingV3ModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
             Depth Anything V3 model
         process_res (504): the processing resolution in pixels. The model
             resizes inputs to this resolution for inference
-        process_res_method ("upper_bound_resize"): the resize strategy
+        process_res_method ("upper_bound_resize"): the resize strategy.
+            Supported values are ``"upper_bound_resize"`` and
+            ``"lower_bound_resize"``
         use_ray_pose (False): whether to use ray-based pose estimation instead
             of camera decoder (more accurate but slower)
+        ref_view_strategy ("saddle_balanced"): the strategy for selecting a
+            reference view when multiple views are provided. Supported values
+            are ``"first"``, ``"middle"``, ``"saddle_balanced"``, and
+            ``"saddle_sim_range"``
+        align_to_input_ext_scale (True): whether to align the predicted pose
+            scale to match input extrinsics when extrinsics are provided
         infer_gs (False): whether to predict 3D Gaussian Splatting parameters.
             Only supported by giant and nested models
         export_feat_layers (None): optional list of transformer layer indices
@@ -245,6 +286,22 @@ class DepthAnythingV3ModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         )
 
         self.use_ray_pose = self.parse_bool(d, "use_ray_pose", default=False)
+
+        self.ref_view_strategy = self.parse_string(
+            d, "ref_view_strategy", default="saddle_balanced"
+        )
+        if self.ref_view_strategy not in _VALID_REF_VIEW_STRATEGIES:
+            raise ValueError(
+                "Unsupported ref_view_strategy '%s'. Supported values are: %s"
+                % (
+                    self.ref_view_strategy,
+                    ", ".join(_VALID_REF_VIEW_STRATEGIES),
+                )
+            )
+
+        self.align_to_input_ext_scale = self.parse_bool(
+            d, "align_to_input_ext_scale", default=True
+        )
 
         self.infer_gs = self.parse_bool(d, "infer_gs", default=False)
 
@@ -307,6 +364,8 @@ class DepthAnythingV3Model(fout.TorchImageModel):
             process_res_method=self.config.process_res_method,
             infer_gs=self.config.infer_gs,
             use_ray_pose=self.config.use_ray_pose,
+            ref_view_strategy=self.config.ref_view_strategy,
+            align_to_input_ext_scale=self.config.align_to_input_ext_scale,
             export_feat_layers=self.config.export_feat_layers or [],
         )
         output = {"depth": prediction.depth}
@@ -329,6 +388,8 @@ class DepthAnythingV3Model(fout.TorchImageModel):
                 )
         if prediction.aux:
             output["aux"] = prediction.aux
+        if getattr(prediction, "scale_factor", None) is not None:
+            output["scale_factor"] = prediction.scale_factor
         return output
 
     def compute_multiview_depth(
@@ -354,6 +415,8 @@ class DepthAnythingV3Model(fout.TorchImageModel):
             process_res_method=self.config.process_res_method,
             infer_gs=self.config.infer_gs,
             use_ray_pose=self.config.use_ray_pose,
+            ref_view_strategy=self.config.ref_view_strategy,
+            align_to_input_ext_scale=self.config.align_to_input_ext_scale,
             export_feat_layers=self.config.export_feat_layers or [],
             extrinsics=extrinsics,
             intrinsics=intrinsics,
@@ -372,6 +435,8 @@ class DepthAnythingV3Model(fout.TorchImageModel):
             output["gaussians"] = prediction.gaussians
         if prediction.aux:
             output["aux"] = prediction.aux
+        if getattr(prediction, "scale_factor", None) is not None:
+            output["scale_factor"] = prediction.scale_factor
 
         processor = DepthAnythingV3OutputProcessor()
         return processor(output, (None, None))
@@ -385,6 +450,10 @@ class DepthAnythingV3Model(fout.TorchImageModel):
         overwrite: bool = False,
         skip_failures: bool = False,
         progress: Optional[bool] = None,
+        *,
+        conf_thresh_percentile: float = 40.0,
+        num_max_points: int = 1_000_000,
+        show_cameras: bool = True,
     ) -> None:
         """Computes 3D exports (GLB, PLY) for samples.
 
@@ -404,11 +473,17 @@ class DepthAnythingV3Model(fout.TorchImageModel):
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
             output_dir: directory to write exports
-            export_format ("glb"): export format. One of ``"glb"``, ``"gs_ply"``
+            export_format ("glb"): export format. One of ``"glb"``,
+                ``"gs_ply"``, ``"gs_video"``
             rel_dir (None): optional relative directory to strip from filepaths
             overwrite (False): whether to overwrite existing exports
             skip_failures (False): whether to gracefully continue on errors
             progress (None): whether to show progress bar
+            conf_thresh_percentile (40.0): lower percentile for adaptive
+                confidence threshold when exporting GLB point clouds
+            num_max_points (1000000): maximum number of points in GLB exports
+            show_cameras (True): whether to show camera wireframes in GLB
+                exports
         """
         fov.validate_collection(samples)
 
@@ -429,6 +504,9 @@ class DepthAnythingV3Model(fout.TorchImageModel):
                     infer_gs=infer_gs,
                     export_dir=sample_export_dir,
                     export_format=export_format,
+                    conf_thresh_percentile=conf_thresh_percentile,
+                    num_max_points=num_max_points,
+                    show_cameras=show_cameras,
                 )
             except Exception as e:
                 if not skip_failures:
@@ -444,3 +522,9 @@ class DepthAnythingV3Model(fout.TorchImageModel):
                 sample["da3_export_path"] = os.path.join(
                     sample_export_dir, "gs_ply", "0000.ply"
                 )
+            elif export_format == "gs_video":
+                video_paths = sorted(
+                    glob.glob(os.path.join(sample_export_dir, "gs_video", "*.mp4"))
+                )
+                if video_paths:
+                    sample["da3_export_path"] = video_paths[-1]
