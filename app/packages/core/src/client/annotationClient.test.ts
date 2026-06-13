@@ -56,7 +56,7 @@ describe("saveAnnotationFieldUpdates", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it("passes through generatedDatasetName and op without value fields", async () => {
+  it("passes through the generated-view sync hints", async () => {
     let captured: Record<string, unknown> | undefined;
     fetchImpl.mockImplementation(async (config: Record<string, unknown>) => {
       captured = config;
@@ -64,14 +64,24 @@ describe("saveAnnotationFieldUpdates", () => {
     });
 
     await saveAnnotationFieldUpdates("ds1", "s1", [
-      { generatedDatasetName: "pds", id: "p1", op: "deleteDocument" },
+      {
+        collection: "samples.ds1",
+        id: "src1",
+        lookupPath: "ground_truth.detections",
+        labelId: "det-1",
+        previousValue: null,
+        newValue: { _cls: "Detection", label: "cat" },
+        generatedDatasetName: "pds",
+        generatedSampleId: "patch1",
+      },
     ]);
 
     const body = captured?.body as Record<string, unknown>[];
-    expect(body[0]).toEqual({
-      id: "p1",
+    expect(body[0]).toMatchObject({
+      collection: "samples.ds1",
+      id: "src1",
       generatedDatasetName: "pds",
-      op: "deleteDocument",
+      generatedSampleId: "patch1",
     });
   });
 

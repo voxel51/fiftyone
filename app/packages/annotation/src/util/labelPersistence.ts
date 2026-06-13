@@ -4,9 +4,7 @@ import {
   saveAnnotationFieldUpdates,
   transformSampleData,
 } from "@fiftyone/core/src/client";
-import { extractNestedField } from "@fiftyone/core/src/utils/json";
 import type { Sample } from "@fiftyone/looker";
-import { isObject } from "@fiftyone/utilities";
 import type { LabelFieldDelta } from "../deltas";
 import { applyDeltaToSample } from "../persistence/applyDelta";
 import { pendingEdits } from "../persistence/pendingEdits";
@@ -61,14 +59,18 @@ export type SaveContext = {
 };
 
 /**
- * Turn one captured delta into the gated update(s) to send: one for a normal
- * edit, two for a patches edit (the patches sample + the source label).
+ * Turn one captured delta into the single gated update to send. Every update
+ * addresses the permanent source sample; in a generated (patches) view the
+ * source sample comes from ``_sample_id`` and the generated dataset name +
+ * patch sample id ride along as sync hints. Generated datasets are a
+ * server-side concept — the server derives the best-effort generated-view
+ * write itself, and the client never addresses generated collections.
  */
 export const buildUpdatesForDelta = (
   delta: LabelFieldDelta,
   ctx: SaveContext
 ): AnnotationFieldUpdate[] => {
-  const sourceLookupPath = delta.listKey
+  const lookupPath = delta.listKey
     ? `${delta.field}.${delta.listKey}`
     : delta.field;
 
@@ -77,7 +79,7 @@ export const buildUpdatesForDelta = (
       {
         collection: `samples.${ctx.datasetId}`,
         id: ctx.sample._id,
-        lookupPath: sourceLookupPath,
+        lookupPath,
         labelId: delta.labelId,
         previousValue: delta.previousValue,
         newValue: delta.newValue,
@@ -96,64 +98,23 @@ export const buildUpdatesForDelta = (
     );
   }
 
-  const updates: AnnotationFieldUpdate[] = [];
-
-  // The patches sample stores the label flat (to_patches) or as a list element
-  // (evaluation patches) — address it to match its own shape. `field` may be a
-  // nested (dotted) path.
-  const patchField = extractNestedField<Record<string, unknown>>(
-    ctx.sample as unknown as Record<string, unknown>,
-    delta.field
-  );
-  const patchIsList =
-    !!delta.listKey &&
-    isObject(patchField) &&
-    Array.isArray((patchField as Record<string, unknown>)[delta.listKey]);
-
-  if (patchIsList) {
-    updates.push({
-      generatedDatasetName: ctx.generatedDatasetName,
-      id: ctx.sample._id,
-      lookupPath: sourceLookupPath,
+  return [
+    {
+      collection: `samples.${ctx.datasetId}`,
+      id: sourceSampleId,
+      lookupPath,
       labelId: delta.labelId,
       previousValue: delta.previousValue,
       newValue: delta.newValue,
-    });
-  } else if (delta.newValue === null) {
-    // A flat patch sample IS the label — deleting it deletes the document.
-    updates.push({
       generatedDatasetName: ctx.generatedDatasetName,
-      id: ctx.sample._id,
-      op: "deleteDocument",
-    });
-  } else {
-    updates.push({
-      generatedDatasetName: ctx.generatedDatasetName,
-      id: ctx.sample._id,
-      lookupPath: delta.field,
-      labelId: null,
-      previousValue: delta.previousValue,
-      newValue: delta.newValue,
-    });
-  }
-
-  // The source sample holds the same label in a list field.
-  updates.push({
-    collection: `samples.${ctx.datasetId}`,
-    id: sourceSampleId,
-    lookupPath: sourceLookupPath,
-    labelId: delta.labelId,
-    previousValue: delta.previousValue,
-    newValue: delta.newValue,
-  });
-
-  return updates;
+      generatedSampleId: ctx.sample._id,
+    },
+  ];
 };
 
 /**
  * Map each conflicting update index back to its source delta, transforming the
- * server's reported document state to FE shape. A generated-view delta fans
- * out to two updates — keep whichever conflict carries a document.
+ * server's reported document state to FE shape.
  */
 const mapConflictsToDeltas = (
   error: SaveConflictError,

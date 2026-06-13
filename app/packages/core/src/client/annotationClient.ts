@@ -23,21 +23,18 @@ import { encodeURIPath } from "./util";
  *   - `newValue: null`      → remove the label (unset / pull)
  *   - both present          → modify the fields that differ
  *
- * `op: "deleteDocument"` removes the whole document (e.g. a patches sample
- * whose label was deleted) and ignores the value/path fields.
- *
- * Every save — sidebar or canvas, normal or patches — is one or more of these.
+ * Every save — sidebar or canvas, normal or patches — is one of these per
+ * edited label/field. In a generated (patches) view the update still
+ * addresses the source sample; the `generated*` hints let the server sync
+ * the ephemeral copy itself.
  */
 export type AnnotationFieldUpdate = {
-  /** Target Mongo collection, e.g. `samples.<datasetId>`. */
-  collection?: string;
   /**
-   * Name of the generated (patches/clips) dataset this update targets — NOT
-   * the source dataset. The backend resolves it to the generated collection.
-   * Provide this instead of `collection` when the FE only has the generated
-   * dataset's name (not its `_id`).
+   * Target Mongo collection, e.g. `samples.<datasetId>`. Must be one of the
+   * route dataset's own collections (samples/frames); the server validates
+   * it against the dataset's resolved collection names.
    */
-  generatedDatasetName?: string;
+  collection: string;
   /** `_id` of the document to match. */
   id: string;
   /**
@@ -52,8 +49,14 @@ export type AnnotationFieldUpdate = {
   previousValue?: unknown;
   /** The value to write; `null` removes. */
   newValue?: unknown;
-  /** `"deleteDocument"` deletes the whole document. */
-  op?: "update" | "deleteDocument";
+  /**
+   * Name of the generated (patches/clips) dataset to sync, when editing in a
+   * generated view. The server derives the best-effort generated-view write
+   * itself — the client never addresses generated collections directly.
+   */
+  generatedDatasetName?: string;
+  /** `_id` of the generated (patches) sample to sync. */
+  generatedSampleId?: string;
 };
 
 export type ErrorResponse = { errors: string[] };
@@ -149,15 +152,15 @@ const doFetch = <A, R>(
 const encodeUpdate = (
   update: AnnotationFieldUpdate
 ): Record<string, unknown> => {
-  const encoded: Record<string, unknown> = { id: update.id };
-  if (update.collection) {
-    encoded.collection = update.collection;
-  }
+  const encoded: Record<string, unknown> = {
+    collection: update.collection,
+    id: update.id,
+  };
   if (update.generatedDatasetName) {
     encoded.generatedDatasetName = update.generatedDatasetName;
   }
-  if (update.op) {
-    encoded.op = update.op;
+  if (update.generatedSampleId) {
+    encoded.generatedSampleId = update.generatedSampleId;
   }
   if (update.lookupPath !== undefined) {
     encoded.lookupPath = update.lookupPath;

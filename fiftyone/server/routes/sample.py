@@ -6,31 +6,39 @@ FiftyOne Server sample endpoints.
 |
 
 Annotation saves are a batch of gated field updates applied directly to Mongo
-(no sample is loaded), each carrying its target, the previous value to gate on,
-and the new value to write. A failed precondition returns ``409`` with the
-document's current state so the client can reconcile.
+(no sample is ever loaded), each carrying its target, the previous value to
+gate on, and the new value to write. A failed precondition returns ``409``
+with the document's current state so the client can reconcile.
 
 Non-obvious bits:
 
-  * Updates targeting a generated (patches/clips) dataset are best-effort end
-    to end — planning failures, stale gates, and database errors are logged
-    and skipped, never failing the request. Only permanent (source) failures
-    reach the client.
-  * Permanent writes are applied independently — a stale gate on one update is
-    a conflict for that update only, never for the rest of the batch.
-  * The batch is one unordered ``bulk_write`` per target collection; no update
-    is ever issued twice. Per-update diagnosis is read-only and runs only when
-    a bulk result cannot confirm every gated update — never in the
+  * Generated (patches/clips) datasets are a server-side concept: every
+    update addresses the permanent source sample, and the server derives the
+    generated copy's sync write from the update's ``generatedDatasetName``/
+    ``generatedSampleId`` hints. Syncs are best-effort end to end — planning
+    failures, stale gates, and database errors are logged and skipped, never
+    failing the request. Only source failures reach the client.
+  * Source writes are applied independently — a stale gate on one update is a
+    conflict for that update only, never for the rest of the batch.
+  * The batch is one unordered ``bulk_write`` per target collection; no
+    update is ever issued twice. Per-update diagnosis is read-only and runs
+    only when a bulk result cannot confirm every gated update — never in the
     single-writer case.
   * A precondition miss whose post-state already holds is an idempotent retry
-    (e.g. the first attempt committed but its response was lost) and counts as
-    success, not a conflict.
-  * :class:`CommitMask` exists only because a gated update can't express a
-    server-side *file* write; its database write is the same gated primitive.
+    (e.g. the first attempt committed but its response was lost) and counts
+    as success, not a conflict.
+  * A mask lives on disk or in the database, never both: when a detection has
+    a ``mask_path``, edited mask bytes are written to that file (before any
+    database write) and are never stored inline.
+  * An update's ``collection`` is validated against the route dataset's own
+    collections, resolved from its dataset document — one naming authority,
+    correct for any dataset including generated datasets loaded directly.
 """
 
 import datetime
 import logging
+from collections import defaultdict
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 from bson import ObjectId
@@ -49,6 +57,11 @@ from fiftyone.server.utils.json.encoder import JSONResponse
 logger = logging.getLogger(__name__)
 
 
+# ---------------------------------------------------------------------------
+# Value coercion and gating
+# ---------------------------------------------------------------------------
+
+
 def _now() -> datetime.datetime:
     # Naive UTC to match how fiftyone stamps ``last_modified_at``; a tz-aware
     # value breaks naive/aware comparisons in code that reads the field.
@@ -56,6 +69,10 @@ def _now() -> datetime.datetime:
 
 
 def _object_id(value: Any) -> ObjectId:
+    # ``ObjectId(None)`` silently GENERATES a new id; reject it explicitly so
+    # a missing id can never be coerced into a valid-looking filter.
+    if value is None:
+        raise HTTPException(status_code=400, detail="Invalid id 'None'")
     try:
         return ObjectId(value)
     except Exception as err:  # pylint: disable=broad-except
@@ -103,6 +120,14 @@ def _gate(value: Any) -> Any:
     return {"$in": [None]} if value is None else value
 
 
+def _scalar_gates(bson_doc: dict) -> Dict[str, Any]:
+    return {
+        field: _gate(value)
+        for field, value in bson_doc.items()
+        if field != "_id" and _gatable(value)
+    }
+
+
 def _changed_label_fields(
     old_bson: dict, new_bson: dict
 ) -> Tuple[Dict[str, Any], List[str]]:
@@ -122,6 +147,11 @@ def _changed_label_fields(
         else:
             unset_fields.append(field)
     return set_fields, unset_fields
+
+
+# ---------------------------------------------------------------------------
+# Gated write construction
+# ---------------------------------------------------------------------------
 
 
 def _build_label_update(
@@ -144,11 +174,7 @@ def _build_label_update(
         # Gate on the scalars the editor saw so a stale delete can't erase a
         # label another editor just changed.
         old_bson = _label_to_mongo(old) if old is not None else {}
-        gates = {
-            field: _gate(value)
-            for field, value in old_bson.items()
-            if field != "_id" and _gatable(value)
-        }
+        gates = _scalar_gates(old_bson)
         if array:
             filter_doc = {
                 **doc_filter,
@@ -205,8 +231,10 @@ def _build_label_update(
     }
 
     if array:
-        elem_match = {"_id": label_oid, **gates}
-        filter_doc = {**doc_filter, lookup_path: {"$elemMatch": elem_match}}
+        filter_doc = {
+            **doc_filter,
+            lookup_path: {"$elemMatch": {"_id": label_oid, **gates}},
+        }
     else:
         filter_doc = {**doc_filter}
         if "_id" in old_bson:
@@ -220,14 +248,6 @@ def _build_label_update(
         update_doc["$unset"] = {f"{prefix}{f}": "" for f in unset_fields}
 
     return filter_doc, update_doc
-
-
-def _scalar_gates(bson_doc: dict) -> Dict[str, Any]:
-    return {
-        field: _gate(value)
-        for field, value in bson_doc.items()
-        if field != "_id" and _gatable(value)
-    }
 
 
 def _build_label_applied_filter(
@@ -261,21 +281,6 @@ def _build_label_applied_filter(
     return filter_doc
 
 
-def _build_primitive_applied_filter(
-    field_path: str,
-    new: Any,
-    *,
-    doc_filter: Dict[str, Any],
-) -> Optional[Dict[str, Any]]:
-    """A filter matching iff the primitive update already holds, or ``None``
-    when the new value is not reliably comparable (non-scalar)."""
-    if new is None:
-        return {**doc_filter, field_path: {"$in": [None]}}
-    if _gatable(new):
-        return {**doc_filter, field_path: new}
-    return None
-
-
 def _build_primitive_update(
     field_path: str,
     old: Any,
@@ -299,130 +304,40 @@ def _build_primitive_update(
     return filter_doc, update_doc
 
 
-def _resolve_collection(db, update: dict) -> str:
-    """Resolves the target collection name for an update.
-
-    A generated (patches) write carries the generated dataset's name
-    (``generatedDatasetName``) instead of a concrete ``collection`` because
-    the client has no dataset id for it.
-    """
-    collection_name = update.get("collection")
-    if isinstance(collection_name, str) and collection_name:
-        return collection_name
-
-    dataset_name = update.get("generatedDatasetName")
-    if isinstance(dataset_name, str) and dataset_name:
-        doc = db["datasets"].find_one(
-            {"name": dataset_name}, {"sample_collection_name": 1}
-        )
-        if not doc or not doc.get("sample_collection_name"):
-            raise HTTPException(
-                status_code=404, detail=f"Dataset '{dataset_name}' not found"
-            )
-        return doc["sample_collection_name"]
-
-    raise HTTPException(
-        status_code=400,
-        detail="Update is missing 'collection' or 'generatedDatasetName'",
-    )
+def _build_primitive_applied_filter(
+    field_path: str,
+    new: Any,
+    *,
+    doc_filter: Dict[str, Any],
+) -> Optional[Dict[str, Any]]:
+    """A filter matching iff the primitive update already holds, or ``None``
+    when the new value is not reliably comparable (non-scalar)."""
+    if new is None:
+        return {**doc_filter, field_path: {"$in": [None]}}
+    if _gatable(new):
+        return {**doc_filter, field_path: new}
+    return None
 
 
-# Collections produced by generated views (patches/clips/frame-patches)
-_GENERATED_PREFIXES = ("patches.", "clips.")
-
-
-def _allowed_collections(path_params: dict) -> set:
-    """The route dataset's own collections — names are deterministic, so no
-    database lookup is needed."""
-    dataset_id = path_params.get("dataset_id")
-    if not dataset_id:
-        raise HTTPException(status_code=400, detail="Missing dataset id")
-    return {f"samples.{dataset_id}", f"frames.{dataset_id}"}
-
-
-def _plan_update(db, update: dict, allowed: set) -> dict:
-    """Resolves and builds one update *without writing*.
-
-    Raises:
-        HTTPException: the payload is malformed or its target collection is
-            outside ``allowed`` (bound to the route's dataset)
-    """
-    if not isinstance(update, dict):
-        raise HTTPException(
-            status_code=400, detail="Each update must be an object"
-        )
-
-    collection_name = _resolve_collection(db, update)
-    # A body must not be able to redirect a write to another dataset: an
-    # explicit collection must be the route's own, and a generatedDatasetName
-    # target may only resolve to a generated collection.
-    if update.get("collection"):
-        target_allowed = collection_name in allowed
-    else:
-        target_allowed = collection_name.startswith(_GENERATED_PREFIXES)
-    if not target_allowed:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Update targets disallowed collection '{collection_name}'",
-        )
-
-    doc_id = update.get("id")
-    if doc_id is None:
-        raise HTTPException(status_code=400, detail="Update is missing 'id'")
-    doc_filter = {"_id": _object_id(doc_id)}
-
-    plan = {
-        "collection": db[collection_name],
-        "collection_name": collection_name,
-        "doc_id": doc_id,
-        "doc_filter": doc_filter,
-        "lookup_path": None,
-    }
-
-    # A document delete carries no precondition of its own; the gated source
-    # update in the same batch guards it against staleness.
-    if update.get("op") == "deleteDocument":
-        plan["delete_document"] = True
-        return plan
-
-    plan["delete_document"] = False
-
-    lookup_path = update.get("lookupPath")
-    if not isinstance(lookup_path, str) or not lookup_path:
-        raise HTTPException(
-            status_code=400, detail="Update is missing 'lookupPath'"
-        )
-
-    if "previousValue" not in update or "newValue" not in update:
-        raise HTTPException(
-            status_code=400,
-            detail="Update must include 'previousValue' and 'newValue'",
-        )
-    old = update["previousValue"]
-    new = update["newValue"]
-
-    label_id = update.get("labelId")
-    if label_id is not None:
-        label_oid = _object_id(label_id)
+def _build_write(
+    lookup_path: str,
+    label_oid: Optional[ObjectId],
+    old: Any,
+    new: Any,
+    doc_filter: Dict[str, Any],
+) -> Tuple[Dict[str, Any], Dict[str, Any], Optional[Dict[str, Any]]]:
+    """(filter, update, applied_filter) for one gated field write — a label
+    list element, a flat label, or a primitive."""
+    if label_oid is not None:
         filter_doc, update_doc = _build_label_update(
-            lookup_path,
-            label_oid,
-            old,
-            new,
-            array=True,
-            doc_filter=doc_filter,
+            lookup_path, label_oid, old, new, array=True, doc_filter=doc_filter
         )
         applied_filter = _build_label_applied_filter(
             lookup_path, label_oid, new, array=True, doc_filter=doc_filter
         )
     elif _is_label(new) or _is_label(old):
         filter_doc, update_doc = _build_label_update(
-            lookup_path,
-            None,
-            old,
-            new,
-            array=False,
-            doc_filter=doc_filter,
+            lookup_path, None, old, new, array=False, doc_filter=doc_filter
         )
         applied_filter = _build_label_applied_filter(
             lookup_path, None, new, array=False, doc_filter=doc_filter
@@ -435,71 +350,323 @@ def _plan_update(db, update: dict, allowed: set) -> dict:
             lookup_path, new, doc_filter=doc_filter
         )
 
-    plan["filter"] = filter_doc
-    plan["update"] = update_doc
-    plan["lookup_path"] = lookup_path
-    plan["applied_filter"] = applied_filter
-    return plan
+    return filter_doc, update_doc, applied_filter
 
 
-def _current_document(plan: dict) -> Any:
-    """The full current state of the conflicting document (``None`` if it is
-    gone). The whole document — not just the gated field — so the client can
-    reconcile every concurrent edit in one round trip."""
-    return plan["collection"].find_one(plan["doc_filter"])
+# ---------------------------------------------------------------------------
+# Planning and application
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class _UpdatePlan:
+    """One gated write, planned against its target collection."""
+
+    collection: Any
+    collection_name: str
+    doc_id: str
+    doc_filter: Dict[str, Any]
+    lookup_path: Optional[str] = None
+    filter_doc: Optional[Dict[str, Any]] = None
+    update_doc: Optional[Dict[str, Any]] = None
+    applied_filter: Optional[Dict[str, Any]] = None
+    delete_document: bool = False
+    # (path, bytes) of an edited mask destined for disk rather than the
+    # document — masks live on disk or in the database, never both
+    mask_write: Optional[Tuple[str, Any]] = None
+
+    def to_bulk_op(self):
+        if self.delete_document:
+            return DeleteOne(self.doc_filter)
+        return UpdateOne(self.filter_doc, self.update_doc)
+
+    def already_holds(self) -> bool:
+        """Whether the post-state already holds — an idempotent retry (e.g. a
+        committed write whose response was lost) is success, not a conflict."""
+        if self.applied_filter is None:
+            return False
+        return (
+            self.collection.find_one(self.applied_filter, {"_id": 1})
+            is not None
+        )
+
+    def current_document(self) -> Any:
+        """The full conflicting document (``None`` if it is gone), so the
+        client can reconcile every concurrent edit in one round trip."""
+        return self.collection.find_one(self.doc_filter)
+
+
+# Label-list container types; a generated field of any other label type is a
+# flattened single label (the document IS the label)
+_LIST_LABEL_TYPES = frozenset(
+    f"{cls.__module__}.{cls.__name__}"
+    # pylint: disable-next=protected-access
+    for cls in fol._LABEL_LIST_FIELDS
+)
+
+# Mirrors ``Dataset._is_generated`` (fiftyone/core/dataset.py), the canonical
+# markers of ephemeral generated datasets — properties cannot be imported
+# without loading a dataset
+_GENERATED_COLLECTION_PREFIXES = ("patches.", "frames.", "clips.")
 
 
 def _is_generated_collection(name: str) -> bool:
-    return name.startswith(_GENERATED_PREFIXES)
+    return name.startswith(_GENERATED_COLLECTION_PREFIXES)
 
 
-def _plan_op(plan: dict):
-    if plan["delete_document"]:
-        return DeleteOne(plan["doc_filter"])
-    return UpdateOne(plan["filter"], plan["update"])
+def _required(update: dict, key: str) -> Any:
+    value = update.get(key)
+    if value is None:
+        raise HTTPException(
+            status_code=400, detail=f"Update is missing '{key}'"
+        )
+    return value
 
 
-def _is_generated_target(update: Any) -> bool:
-    """Whether an update addresses a generated (patches/clips) dataset,
-    judged from the payload alone — answerable even when planning failed."""
-    return (
-        isinstance(update, dict)
-        and not update.get("collection")
-        and bool(update.get("generatedDatasetName"))
+def _allowed_collections(db, path_params: dict) -> set:
+    """The route dataset's collections (samples + frames), resolved from its
+    dataset document. Resolving (rather than constructing names from the id)
+    keeps one naming authority and works for any dataset, including a
+    generated dataset loaded directly."""
+    dataset_id = path_params.get("dataset_id")
+    doc = db["datasets"].find_one(
+        {"_id": _object_id(dataset_id)},
+        {"sample_collection_name": 1, "frame_collection_name": 1},
+    )
+    if not doc or not doc.get("sample_collection_name"):
+        raise HTTPException(
+            status_code=404, detail=f"Dataset '{dataset_id}' not found"
+        )
+    return {
+        name
+        for name in (
+            doc.get("sample_collection_name"),
+            doc.get("frame_collection_name"),
+        )
+        if name
+    }
+
+
+def _extract_mask_write(new: Any) -> Tuple[Any, Optional[Tuple[str, Any]]]:
+    """Splits an edited ``mask`` destined for disk out of a new label value.
+
+    A mask lives on disk or in the database, never both: when the detection
+    has a ``mask_path``, its edited bytes are written to that file and
+    stripped from the document write.
+    """
+    if not (
+        _is_label(new)
+        and new.get("mask") is not None
+        and isinstance(new.get("mask_path"), str)
+        and new["mask_path"]
+    ):
+        return new, None
+
+    stripped = {key: value for key, value in new.items() if key != "mask"}
+    return stripped, (new["mask_path"], new["mask"])
+
+
+def _write_mask_file(path: str, mask: Any) -> None:
+    try:
+        if isinstance(mask, str):
+            array = fou.deserialize_numpy_array(mask, ascii=True)
+        else:
+            array = fou.deserialize_numpy_array(bytes(mask))
+        # pylint: disable-next=protected-access
+        fol._write_mask(array, path)
+    except Exception as err:  # pylint: disable=broad-except
+        logger.exception("Failed to write mask to %s", path)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to write mask to '{path}': {err}",
+        ) from err
+
+
+def _plan_update(db, update: dict, allowed: set) -> _UpdatePlan:
+    """Validates one update and plans its gated write (no writes).
+
+    Raises:
+        HTTPException: the payload is malformed or its ``collection`` is not
+            one of the route dataset's own (writes are bound to the route)
+    """
+    if not isinstance(update, dict):
+        raise HTTPException(
+            status_code=400, detail="Each update must be an object"
+        )
+
+    collection_name = str(_required(update, "collection"))
+    # A body must not be able to redirect a write to another dataset.
+    # Generated (patches) collections are never client-addressable; their
+    # writes are derived in :func:`_plan_generated_sync`.
+    if collection_name not in allowed:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Update targets disallowed collection '{collection_name}'",
+        )
+
+    doc_id = _required(update, "id")
+    lookup_path = str(_required(update, "lookupPath"))
+    if "previousValue" not in update or "newValue" not in update:
+        raise HTTPException(
+            status_code=400,
+            detail="Update must include 'previousValue' and 'newValue'",
+        )
+
+    label_id = update.get("labelId")
+    new, mask_write = _extract_mask_write(update["newValue"])
+    doc_filter = {"_id": _object_id(doc_id)}
+    filter_doc, update_doc, applied_filter = _build_write(
+        lookup_path,
+        _object_id(label_id) if label_id is not None else None,
+        update["previousValue"],
+        new,
+        doc_filter,
+    )
+    return _UpdatePlan(
+        collection=db[collection_name],
+        collection_name=collection_name,
+        doc_id=str(doc_id),
+        doc_filter=doc_filter,
+        lookup_path=lookup_path,
+        filter_doc=filter_doc,
+        update_doc=update_doc,
+        applied_filter=applied_filter,
+        mask_write=mask_write,
     )
 
 
-def _apply_plans_bulk(
-    indexed_plans: List[Tuple[int, dict]],
+def _plan_generated_sync(
+    db, update: dict, lookup_path: str
+) -> List[_UpdatePlan]:
+    """Plans the best-effort sync of the generated (patches/clips) copy for a
+    source-addressed update carrying ``generatedDatasetName``/
+    ``generatedSampleId`` hints.
+
+    Generated datasets are a server-side concept: the client sends one update
+    per edit and the server keeps the ephemeral view in sync. The generated
+    field's shape — flat label (``to_patches``) vs label list (evaluation
+    patches) — comes from the generated dataset's schema, read in the same
+    lookup that resolves its collection.
+
+    Best-effort end to end: any failure (unknown dataset, invalid ids, a hint
+    resolving to a non-generated collection) skips the sync, never the
+    request.
+    """
+    name = update.get("generatedDatasetName")
+    if not isinstance(name, str) or not name:
+        return []
+
+    # Malformed payloads fail loudly at planning time (nothing has been
+    # written yet); only world-state conditions below are best-effort.
+    gen_oid = _object_id(update.get("generatedSampleId"))
+
+    dataset = db["datasets"].find_one(
+        {"name": name}, {"sample_collection_name": 1, "sample_fields": 1}
+    )
+    collection_name = (dataset or {}).get("sample_collection_name")
+    if not collection_name:
+        logger.info(
+            "Generated-view sync skipped (dataset '%s' not found)", name
+        )
+        return []
+    # A hint must never redirect a write to a permanent collection.
+    if not _is_generated_collection(collection_name):
+        logger.warning(
+            "Generated-view sync skipped (collection '%s' is not generated)",
+            collection_name,
+        )
+        return []
+
+    old = update["previousValue"]
+    # The generated copy never stores a disk-destined mask either; the file
+    # write happens exactly once, via the source plan.
+    new, _ = _extract_mask_write(update["newValue"])
+    label_id = update.get("labelId")
+    doc_filter = {"_id": gen_oid}
+    plan = _UpdatePlan(
+        collection=db[collection_name],
+        collection_name=collection_name,
+        doc_id=str(gen_oid),
+        doc_filter=doc_filter,
+        lookup_path=lookup_path,
+    )
+
+    # Flat label / primitive field: the generated copy has the same shape.
+    if label_id is None:
+        plan.filter_doc, plan.update_doc, _ = _build_write(
+            lookup_path, None, old, new, doc_filter
+        )
+        return [plan]
+
+    # Generated datasets flatten field paths to the base field name.
+    label_oid = _object_id(label_id)
+    gen_field = lookup_path.split(".")[0]
+    embedded_type = next(
+        (
+            f.get("embedded_doc_type")
+            for f in (dataset.get("sample_fields") or [])
+            if f.get("name") == gen_field
+        ),
+        None,
+    )
+
+    if embedded_type in _LIST_LABEL_TYPES:
+        # Label list (evaluation patches): mirror the source update.
+        plan.lookup_path = f"{gen_field}.{lookup_path.rsplit('.', 1)[-1]}"
+        plan.filter_doc, plan.update_doc = _build_label_update(
+            plan.lookup_path,
+            label_oid,
+            old,
+            new,
+            array=True,
+            doc_filter=doc_filter,
+        )
+        return [plan]
+
+    if new is None:
+        # The flat (to_patches) document IS the label: deleting the label
+        # deletes the document, gated on identity.
+        plan.delete_document = True
+        plan.doc_filter = {**doc_filter, f"{gen_field}._id": label_oid}
+        return [plan]
+
+    plan.lookup_path = gen_field
+    plan.filter_doc, plan.update_doc = _build_label_update(
+        gen_field, None, old, new, array=False, doc_filter=doc_filter
+    )
+    return [plan]
+
+
+def _apply_bulk(
+    indexed_plans: List[Tuple[int, _UpdatePlan]],
     best_effort: bool = False,
-) -> List[Tuple[int, dict]]:
+) -> List[Tuple[int, _UpdatePlan]]:
     """Applies plans with one unordered ``bulk_write`` per target collection
     — the only write pass; no update is ever issued twice.
 
     A gated miss is not a write error, so the bulk result only exposes the
     aggregate matched count per collection. A short count returns that
-    group's gated updates for read-only diagnosis; deletes carry no gate and
-    are never implicated.
+    group's gated plans for read-only diagnosis; document deletes carry no
+    gate and are never implicated.
 
     Args:
         indexed_plans: ``(index, plan)`` pairs to apply
-        best_effort: swallow database write errors (generated targets must
+        best_effort: swallow database write errors (generated-view syncs must
             never fail the request)
 
     Returns:
         the ``(index, plan)`` pairs whose application is unconfirmed
     """
-    groups: Dict[str, List[Tuple[int, dict]]] = {}
+    groups: Dict[str, List[Tuple[int, _UpdatePlan]]] = defaultdict(list)
     for index, plan in indexed_plans:
-        groups.setdefault(plan["collection_name"], []).append((index, plan))
+        groups[plan.collection_name].append((index, plan))
 
-    suspect: List[Tuple[int, dict]] = []
+    unconfirmed: List[Tuple[int, _UpdatePlan]] = []
     for items in groups.values():
-        gated = [(i, p) for i, p in items if not p["delete_document"]]
-        collection = items[0][1]["collection"]
+        gated = [(i, p) for i, p in items if not p.delete_document]
         try:
-            result = collection.bulk_write(
-                [_plan_op(plan) for _, plan in items], ordered=False
+            result = items[0][1].collection.bulk_write(
+                [plan.to_bulk_op() for _, plan in items], ordered=False
             )
         except PyMongoError:
             if not best_effort:
@@ -509,29 +676,24 @@ def _apply_plans_bulk(
                 len(items),
                 exc_info=True,
             )
-            suspect.extend(gated)
             continue
         if result.matched_count < len(gated):
-            suspect.extend(gated)
-    return suspect
+            unconfirmed.extend(gated)
+    return unconfirmed
 
 
-def _already_applied(plan: dict) -> bool:
-    """Whether the document already holds this plan's post-state — an
-    idempotent retry (e.g. a committed write whose response was lost) is a
-    success, not a conflict."""
-    applied_filter = plan.get("applied_filter")
-    if applied_filter is None:
-        return False
-    return plan["collection"].find_one(applied_filter, {"_id": 1}) is not None
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
 
 
 class SampleFields(HTTPEndpoint):
     """Applies a batch of gated annotation field updates.
 
-    Permanent (source) writes are authoritative: applied independently, their
-    gate misses conflict (409) and their errors are the only ones returned to
-    the client. Updates targeting a generated (patches/clips) dataset are
+    Every update addresses the permanent source sample, whose writes are
+    authoritative: applied independently, their gate misses conflict (409)
+    and their errors are the only ones returned to the client. Generated
+    (patches/clips) copies are synced server-side from each update's hints,
     best-effort end to end — the view is ephemeral and regenerates from the
     source.
     """
@@ -541,17 +703,17 @@ class SampleFields(HTTPEndpoint):
         """Applies a batch of gated field updates.
 
         Args:
-            request: Starlette request; ``dataset_id`` in the path bounds which
-                collections the batch may touch
+            request: Starlette request; ``dataset_id`` in the path bounds
+                which collections the batch may touch
             data: a list of updates, or ``{"updates": [...]}``
 
         Returns:
-            ``200 {"updated": n}`` if every *permanent* write was applied (or
+            ``200 {"updated": n}`` if every source write was applied (or
             already held); otherwise ``409 {"conflicts": [{"index", "value"},
             ...]}`` listing only the rejected updates, where ``value`` is the
-            conflicting document's full current state so the client can rebase
-            those deltas and retry. Updates not listed in ``conflicts`` were
-            applied.
+            conflicting document's full current state so the client can
+            rebase those deltas and retry. Updates not listed in
+            ``conflicts`` were applied.
         """
         updates = data.get("updates") if isinstance(data, dict) else data
         if not isinstance(updates, list):
@@ -560,59 +722,52 @@ class SampleFields(HTTPEndpoint):
             )
 
         db = get_db_conn()
-        allowed = _allowed_collections(request.path_params)
+        allowed = _allowed_collections(db, request.path_params)
 
-        # A generated target that can't be planned (e.g. its dataset was
-        # deleted) is skipped rather than failing the request — otherwise the
-        # authoritative source write in the same batch would be lost with it.
-        permanent: List[Tuple[int, dict]] = []
-        generated: List[Tuple[int, dict]] = []
+        source: List[Tuple[int, _UpdatePlan]] = []
+        generated: List[Tuple[int, _UpdatePlan]] = []
         for index, update in enumerate(updates):
-            try:
-                plan = _plan_update(db, update, allowed)
-            except HTTPException as err:
-                if _is_generated_target(update):
-                    logger.info(
-                        "Skipping generated-view update %d (cannot plan): %s",
-                        index,
-                        err.detail,
-                    )
-                    continue
-                raise
-            if _is_generated_collection(plan["collection_name"]):
-                generated.append((index, plan))
-            else:
-                permanent.append((index, plan))
+            plan = _plan_update(db, update, allowed)
+            source.append((index, plan))
+            for sync in _plan_generated_sync(db, update, plan.lookup_path):
+                generated.append((index, sync))
+
+        # Masks destined for disk are written before any database write — a
+        # failure aborts the request while nothing has been applied.
+        for _index, plan in source:
+            if plan.mask_write is not None:
+                _write_mask_file(*plan.mask_write)
 
         conflicts = []
-        for index, plan in _apply_plans_bulk(permanent):
-            # Read-only diagnosis. An update that applied but was changed
-            # again by a concurrent writer before this read lands as a
-            # conflict too — reconciled identically by the client.
-            if _already_applied(plan):
+        for index, plan in _apply_bulk(source):
+            # Read-only diagnosis: the update either applied in the bulk
+            # pass / already held (lost-response retry), or missed its gate.
+            # An update changed *again* by a concurrent writer before this
+            # read lands as a conflict too and reconciles identically.
+            if plan.already_holds():
                 logger.info(
                     "Annotation update applied/held (confirmed by read): "
                     "collection=%s id=%s lookupPath=%s",
-                    plan["collection_name"],
-                    plan["doc_id"],
-                    plan["lookup_path"],
+                    plan.collection_name,
+                    plan.doc_id,
+                    plan.lookup_path,
                 )
                 continue
 
             logger.warning(
                 "Annotation save REJECTED (precondition mismatch): "
                 "collection=%s id=%s lookupPath=%s",
-                plan["collection_name"],
-                plan["doc_id"],
-                plan["lookup_path"],
+                plan.collection_name,
+                plan.doc_id,
+                plan.lookup_path,
             )
             conflicts.append(
-                {"index": index, "value": _current_document(plan)}
+                {"index": index, "value": plan.current_document()}
             )
 
-        # Runs even when some permanent writes conflicted — the applied ones
-        # still want their generated view in sync.
-        unconfirmed = _apply_plans_bulk(generated, best_effort=True)
+        # Runs even when some source writes conflicted — the applied ones
+        # still want their generated copies in sync.
+        unconfirmed = _apply_bulk(generated, best_effort=True)
         if unconfirmed:
             logger.info(
                 "Generated-view sync unconfirmed for %d update(s) "
@@ -623,187 +778,9 @@ class SampleFields(HTTPEndpoint):
         if conflicts:
             return JSONResponse({"conflicts": conflicts}, status_code=409)
 
-        applied = len(permanent) + len(generated)
-        logger.debug("Annotation batch applied: %d updates", applied)
-        return JSONResponse({"updated": applied})
-
-
-def _raise_commit_mask_lookup_error(
-    collection,
-    sample_oid: ObjectId,
-    field: str,
-    lookup_path: str,
-    detection_id: str,
-) -> None:
-    """Raises the 404/400 explaining why a mask-commit lookup found nothing.
-
-    Only runs on the miss path, so the extra classification read costs nothing
-    in the common case.
-    """
-    doc = collection.find_one(
-        {"_id": sample_oid},
-        {f"{field}._cls": 1, f"{lookup_path}._id": 1},
-    )
-    if doc is None:
-        raise HTTPException(status_code=404, detail="Sample not found")
-
-    missing = object()
-    value: Any = doc
-    for part in field.split("."):
-        if not isinstance(value, dict) or part not in value:
-            value = missing
-            break
-        value = value[part]
-
-    if value is missing:
-        raise HTTPException(
-            status_code=404, detail=f"Field '{field}' not found on sample"
-        )
-    if value is None:
-        raise HTTPException(
-            status_code=404, detail=f"Field '{field}' is empty on sample"
-        )
-    if not isinstance(value, dict) or value.get("_cls") != "Detections":
-        raise HTTPException(
-            status_code=400,
-            detail=f"Field '{field}' is not a Detections field",
-        )
-    raise HTTPException(
-        status_code=404,
-        detail=f"Detection '{detection_id}' not found in '{field}'",
-    )
-
-
-class CommitMask(HTTPEndpoint):
-    """Commits an in-database mask back to its on-disk ``mask_path``.
-
-    This route exists only because a gated field update cannot express a
-    server-side *file* write; its database write is the same gated primitive
-    as every other save, and no sample is ever loaded.
-    """
-
-    @decorators.route
-    async def post(self, request: Request, data: dict) -> JSONResponse:
-        """Write a Detection's in-database mask to its ``mask_path`` on disk.
-
-        After a successful write the in-database mask is cleared and
-        ``mask_path`` is preserved.
-
-        Args:
-            request: Starlette request with ``dataset_id`` and ``sample_id`` in
-                path params
-            data: ``{"field": "ground_truth", "detection_id": "abc123"}``
-
-        Returns:
-            ``{"committed": true, "mask_path": "..."}`` on success
-        """
-        dataset_id = request.path_params["dataset_id"]
-        sample_id = request.path_params["sample_id"]
-
-        field = data.get("field")
-        detection_id = data.get("detection_id")
-        if not field or not detection_id:
-            raise HTTPException(
-                status_code=400,
-                detail="Both 'field' and 'detection_id' are required",
-            )
-
-        # An unparsable detection id reads as "not found" (404, after the
-        # field checks) rather than 400, like any other unknown id.
-        try:
-            det_oid = ObjectId(detection_id)
-        except Exception:  # pylint: disable=broad-except
-            det_oid = ObjectId()
-
-        lookup_path = f"{field}.detections"
-        collection = get_db_conn()[f"samples.{dataset_id}"]
-        sample_oid = _object_id(sample_id)
-
-        # Fast path: fetch just the matching detection (positional projection
-        # requires the $elemMatch in the query). Misses fall through to a
-        # cheap classification read that distinguishes the error cases.
-        doc = collection.find_one(
-            {
-                "_id": sample_oid,
-                lookup_path: {"$elemMatch": {"_id": det_oid}},
-            },
-            {f"{lookup_path}.$": 1},
-        )
-        detection = None
-        if doc is not None:
-            value: Any = doc
-            for part in lookup_path.split("."):
-                value = value.get(part) if isinstance(value, dict) else None
-            if (
-                isinstance(value, list)
-                and value
-                and isinstance(value[0], dict)
-            ):
-                detection = value[0]
-
-        if detection is None:
-            _raise_commit_mask_lookup_error(
-                collection, sample_oid, field, lookup_path, detection_id
-            )
-
-        mask_path = detection.get("mask_path")
-        if mask_path is None:
-            raise HTTPException(
-                status_code=400,
-                detail="Detection has no mask_path — nothing to commit",
-            )
-
-        mask_bytes = detection.get("mask")
-        if mask_bytes is None:
-            raise HTTPException(
-                status_code=400,
-                detail="Detection has no in-database mask to commit",
-            )
-
-        try:
-            # pylint: disable-next=protected-access
-            fol._write_mask(
-                fou.deserialize_numpy_array(bytes(mask_bytes)), mask_path
-            )
-        except Exception as err:  # pylint: disable=broad-except
-            logger.exception("Failed to commit mask to %s", mask_path)
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to write mask to '{mask_path}': {err}",
-            ) from err
-
-        # Gating the unset on the exact bytes just exported preserves a mask
-        # repainted while the file was being written.
-        result = collection.update_one(
-            {
-                "_id": _object_id(sample_id),
-                lookup_path: {
-                    "$elemMatch": {"_id": det_oid, "mask": mask_bytes}
-                },
-            },
-            {
-                "$unset": {f"{lookup_path}.$.mask": ""},
-                "$set": {"last_modified_at": _now()},
-            },
-        )
-        if result.matched_count == 0:
-            logger.info(
-                "Mask for detection %s changed during commit; in-database "
-                "mask preserved",
-                detection_id,
-            )
-
-        logger.info(
-            "Committed mask for detection %s to %s", detection_id, mask_path
-        )
-
-        return JSONResponse({"committed": True, "mask_path": mask_path})
+        return JSONResponse({"updated": len(source)})
 
 
 SampleRoutes = [
     ("/dataset/{dataset_id}/sample/{sample_id}/fields", SampleFields),
-    (
-        "/dataset/{dataset_id}/sample/{sample_id}/commit-mask",
-        CommitMask,
-    ),
 ]

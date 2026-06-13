@@ -56,7 +56,10 @@ describe("buildUpdatesForDelta", () => {
     ]);
   });
 
-  it("builds patches + source updates for a generated view", () => {
+  it("builds one source-addressed update with sync hints for a generated view", () => {
+    // Generated datasets are a server-side concept: the client never fans
+    // out or addresses generated collections — the server derives the sync
+    // from the hints.
     const updates = buildUpdatesForDelta(delta, {
       datasetId: "ds1",
       sample: { _id: "patch1", _sample_id: "src1" } as unknown as Sample,
@@ -64,19 +67,18 @@ describe("buildUpdatesForDelta", () => {
       isGenerated: true,
       generatedDatasetName: "pds",
     });
-    expect(updates).toHaveLength(2);
-    expect(updates[0]).toMatchObject({
-      generatedDatasetName: "pds",
-      id: "patch1",
-      lookupPath: "ground_truth",
-      labelId: null,
-    });
-    expect(updates[1]).toMatchObject({
-      collection: "samples.ds1",
-      id: "src1",
-      lookupPath: "ground_truth.detections",
-      labelId: "det-1",
-    });
+    expect(updates).toEqual([
+      {
+        collection: "samples.ds1",
+        id: "src1",
+        lookupPath: "ground_truth.detections",
+        labelId: "det-1",
+        previousValue: delta.previousValue,
+        newValue: delta.newValue,
+        generatedDatasetName: "pds",
+        generatedSampleId: "patch1",
+      },
+    ]);
   });
 
   it("uses the field path directly for a primitive change", () => {
@@ -94,85 +96,6 @@ describe("buildUpdatesForDelta", () => {
     });
     expect(updates[0].lookupPath).toBe("tags");
     expect(updates[0].labelId).toBeNull();
-  });
-
-  it("deletes the patches document on a flat (to_patches) generated delete", () => {
-    const del: LabelFieldDelta = { ...delta, newValue: null };
-    const updates = buildUpdatesForDelta(del, {
-      datasetId: "ds1",
-      // no array field on the patch sample → flat (to_patches)
-      sample: { _id: "patch1", _sample_id: "src1" } as unknown as Sample,
-      updateSample: vi.fn(),
-      isGenerated: true,
-      generatedDatasetName: "pds",
-    });
-    expect(updates[0]).toEqual({
-      generatedDatasetName: "pds",
-      id: "patch1",
-      op: "deleteDocument",
-    });
-    expect(updates[1]).toMatchObject({
-      collection: "samples.ds1",
-      id: "src1",
-      newValue: null,
-    });
-  });
-
-  it("addresses an evaluation-patches sample as a list element", () => {
-    // The patch sample stores ground_truth as an array (it also holds e.g.
-    // predictions), so the patches update must target the element, not a flat
-    // label.
-    const evalSample = {
-      _id: "patch1",
-      _sample_id: "src1",
-      ground_truth: { detections: [{ _id: "det-1", label: "cat" }] },
-    } as unknown as Sample;
-
-    const updates = buildUpdatesForDelta(delta, {
-      datasetId: "ds1",
-      sample: evalSample,
-      updateSample: vi.fn(),
-      isGenerated: true,
-      generatedDatasetName: "pds",
-    });
-    expect(updates).toHaveLength(2);
-    expect(updates[0]).toMatchObject({
-      generatedDatasetName: "pds",
-      id: "patch1",
-      lookupPath: "ground_truth.detections",
-      labelId: "det-1",
-    });
-    expect(updates[1]).toMatchObject({
-      collection: "samples.ds1",
-      id: "src1",
-      lookupPath: "ground_truth.detections",
-      labelId: "det-1",
-    });
-  });
-
-  it("removes the element (not the document) on an eval-patches delete", () => {
-    const evalSample = {
-      _id: "patch1",
-      _sample_id: "src1",
-      ground_truth: { detections: [{ _id: "det-1", label: "cat" }] },
-    } as unknown as Sample;
-    const del: LabelFieldDelta = { ...delta, newValue: null };
-
-    const updates = buildUpdatesForDelta(del, {
-      datasetId: "ds1",
-      sample: evalSample,
-      updateSample: vi.fn(),
-      isGenerated: true,
-      generatedDatasetName: "pds",
-    });
-    expect(updates[0]).toMatchObject({
-      generatedDatasetName: "pds",
-      id: "patch1",
-      lookupPath: "ground_truth.detections",
-      labelId: "det-1",
-      newValue: null,
-    });
-    expect(updates[0].op).toBeUndefined();
   });
 
   it("throws (rather than half-saving) when a generated id is missing", () => {

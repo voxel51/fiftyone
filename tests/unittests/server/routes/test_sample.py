@@ -7,7 +7,7 @@ FiftyOne Server sample field-update endpoint unit tests.
 """
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import numpy as np
 import pytest
@@ -116,25 +116,21 @@ class TestHelpers:
         assert isinstance(bson["mask"], (bytes, Binary))
         assert bson["label"] == "x"
 
-    def test_resolve_collection_explicit(self):
-        db = get_db_conn()
+    def test_required_returns_value(self):
         assert (
-            fors._resolve_collection(db, {"collection": "samples.abc"})
+            fors._required({"collection": "samples.abc"}, "collection")
             == "samples.abc"
         )
 
-    def test_resolve_collection_by_dataset_name(self, dataset):
-        db = get_db_conn()
-        resolved = fors._resolve_collection(
-            db, {"generatedDatasetName": dataset.name}
-        )
-        # pylint: disable-next=protected-access
-        assert resolved == dataset._sample_collection_name
-
-    def test_resolve_collection_missing(self):
-        db = get_db_conn()
+    def test_required_missing_field(self):
         with pytest.raises(HTTPException) as exc:
-            fors._resolve_collection(db, {})
+            fors._required({}, "collection")
+        assert exc.value.status_code == 400
+
+    def test_object_id_rejects_none(self):
+        # ObjectId(None) silently GENERATES a new id; the route must refuse it
+        with pytest.raises(HTTPException) as exc:
+            fors._object_id(None)
         assert exc.value.status_code == 400
 
 
@@ -379,25 +375,6 @@ class TestSampleFields:
         sample.reload()
         assert sample.primitive_field == "user_value"
         assert sample.tags == ["touched_by_other"]
-
-    @pytest.mark.asyncio
-    async def test_delete_document(
-        self, mutator, dataset_id, collection, sample
-    ):
-        sample_oid = sample._id
-        updates = [
-            {
-                "collection": collection,
-                "id": str(sample.id),
-                "op": "deleteDocument",
-            }
-        ]
-        response = await mutator.patch(
-            self._request(dataset_id, str(sample.id), updates)
-        )
-
-        assert response.status_code == 200
-        assert get_db_conn()[collection].find_one({"_id": sample_oid}) is None
 
     @pytest.mark.asyncio
     async def test_malformed_payload(self, mutator, dataset_id, sample):
@@ -655,6 +632,8 @@ class TestSampleFieldsPatchesBatch:
         }
         new = {**old, "label": "dog"}
 
+        # One source-addressed update; the patches copy is synced server-side
+        # from the hints — generated datasets are not client-addressable.
         updates = [
             {
                 "collection": source_collection,
@@ -663,35 +642,29 @@ class TestSampleFieldsPatchesBatch:
                 "labelId": str(self.DET_ID),
                 "previousValue": old,
                 "newValue": new,
-            },
-            {
                 "generatedDatasetName": patches_dataset.name,
-                "id": str(patch_sample.id),
-                "lookupPath": "ground_truth",
-                "previousValue": old,
-                "newValue": new,
+                "generatedSampleId": str(patch_sample.id),
             },
         ]
 
-        mock_request = MagicMock(spec=Request)
-        mock_request.path_params = {
-            "dataset_id": dataset_id,
-            "sample_id": str(sample.id),
-        }
-        mock_request.headers = {"Content-Type": "application/json"}
-        mock_request.body = AsyncMock(return_value=json_payload(updates))
-
-        response = await mutator.patch(mock_request)
+        response = await mutator.patch(
+            make_request(dataset_id, str(sample.id), updates)
+        )
 
         assert response.status_code == 200
 
-        # source updated
-        sample.reload()
-        assert sample.ground_truth.detections[0].label == "dog"
+        db = get_db_conn()
 
-        # patches sample updated (flat label)
-        updated_patch = patches_dataset[str(patch_sample.id)]
-        assert updated_patch.ground_truth.label == "dog"
+        # source updated
+        src = db[source_collection].find_one({"_id": sample._id})
+        assert src["ground_truth"]["detections"][0]["label"] == "dog"
+
+        # patches sample updated (flat label) via the derived sync
+        patch_doc = db[
+            # pylint: disable-next=protected-access
+            patches_dataset._sample_collection_name
+        ].find_one({"_id": patch_sample._id})
+        assert patch_doc["ground_truth"]["label"] == "dog"
 
     @pytest.mark.asyncio
     async def test_delete_label_removes_source_and_drops_patch(
@@ -721,11 +694,8 @@ class TestSampleFieldsPatchesBatch:
                 "labelId": str(self.DET_ID),
                 "previousValue": old,
                 "newValue": None,
-            },
-            {
                 "generatedDatasetName": patches_dataset.name,
-                "id": str(patch_sample.id),
-                "op": "deleteDocument",
+                "generatedSampleId": str(patch_sample.id),
             },
         ]
 
@@ -733,50 +703,18 @@ class TestSampleFieldsPatchesBatch:
             make_request(dataset_id, str(sample.id), updates)
         )
         assert response.status_code == 200
+
+        db = get_db_conn()
 
         # source label pulled from the list
-        sample.reload()
-        assert len(sample.ground_truth.detections) == 0
+        src = db[source_collection].find_one({"_id": sample._id})
+        assert src["ground_truth"]["detections"] == []
 
-        # patches sample deleted
-        assert len(patches_dataset) == 0
-
-    @pytest.mark.asyncio
-    async def test_stale_generated_write_is_best_effort(
-        self, mutator, dataset, dataset_id, sample
-    ):
-        """A stale write against the (ephemeral) patches collection does NOT
-        fail the request — the generated view is disposable — and it must not
-        clobber the other editor's value."""
-        patches_view = dataset.to_patches("ground_truth")
-        patches_dataset = patches_view._patches_dataset
-        patch_sample = patches_view.first()
-
-        # Someone else edits the patch's (flat) label first.
-        other = patches_dataset[str(patch_sample.id)]
-        other.ground_truth.label = "changed_by_other"
-        other.save()
-
-        old = {"_cls": "Detection", "_id": self.DET_ID, "label": "cat"}
-        new = {**old, "label": "dog"}
-        updates = [
-            {
-                "generatedDatasetName": patches_dataset.name,
-                "id": str(patch_sample.id),
-                "lookupPath": "ground_truth",
-                "previousValue": old,
-                "newValue": new,
-            }
-        ]
-
-        response = await mutator.patch(
-            make_request(dataset_id, str(sample.id), updates)
-        )
-        # best-effort: no conflict surfaced, and the gate stopped the overwrite
-        assert response.status_code == 200
+        # patches sample deleted via the derived sync
+        # pylint: disable-next=protected-access
+        patches_collection = patches_dataset._sample_collection_name
         assert (
-            patches_dataset[str(patch_sample.id)].ground_truth.label
-            == "changed_by_other"
+            db[patches_collection].find_one({"_id": patch_sample._id}) is None
         )
 
     @pytest.mark.asyncio
@@ -784,8 +722,8 @@ class TestSampleFieldsPatchesBatch:
         self, mutator, dataset, dataset_id, sample
     ):
         """The permanent source write is authoritative: it still succeeds (200)
-        even if the ephemeral patch copy changed underneath and its best-effort
-        sync is skipped."""
+        even if the ephemeral patch copy changed underneath and its derived
+        best-effort sync is skipped — without clobbering the other editor."""
         patches_view = dataset.to_patches("ground_truth")
         patches_dataset = patches_view._patches_dataset
         patch_sample = patches_view.first()
@@ -805,20 +743,15 @@ class TestSampleFieldsPatchesBatch:
         }
         new = {**old, "label": "dog"}
         updates = [
-            {  # generated patch (now stale) — best-effort, must not block
-                "generatedDatasetName": patches_dataset.name,
-                "id": str(patch_sample.id),
-                "lookupPath": "ground_truth",
-                "previousValue": old,
-                "newValue": new,
-            },
-            {  # permanent source — authoritative
+            {
                 "collection": source_collection,
                 "id": str(sample.id),
                 "lookupPath": "ground_truth.detections",
                 "labelId": str(self.DET_ID),
                 "previousValue": old,
                 "newValue": new,
+                "generatedDatasetName": patches_dataset.name,
+                "generatedSampleId": str(patch_sample.id),
             },
         ]
 
@@ -837,11 +770,11 @@ class TestSampleFieldsPatchesBatch:
         )
 
     @pytest.mark.asyncio
-    async def test_source_succeeds_when_patch_target_cannot_be_planned(
+    async def test_source_succeeds_when_patch_sync_cannot_be_planned(
         self, mutator, dataset, dataset_id, sample
     ):
-        """Generated targets are best-effort even at the *planning* stage: a
-        patches update whose dataset no longer exists is skipped, and the
+        """The derived sync is best-effort even at the planning stage: hints
+        naming a dataset that no longer exists are skipped, and the
         authoritative source write still lands — the request must not fail."""
         # pylint: disable-next=protected-access
         source_collection = dataset._sample_collection_name
@@ -853,20 +786,15 @@ class TestSampleFieldsPatchesBatch:
         }
         new = {**old, "label": "dog"}
         updates = [
-            {  # generated target that cannot be planned (dataset is gone)
-                "generatedDatasetName": "no-such-generated-dataset",
-                "id": str(ObjectId()),
-                "lookupPath": "ground_truth",
-                "previousValue": old,
-                "newValue": new,
-            },
-            {  # permanent source — authoritative
+            {
                 "collection": source_collection,
                 "id": str(sample.id),
                 "lookupPath": "ground_truth.detections",
                 "labelId": str(self.DET_ID),
                 "previousValue": old,
                 "newValue": new,
+                "generatedDatasetName": "no-such-generated-dataset",
+                "generatedSampleId": str(ObjectId()),
             },
         ]
 
@@ -877,6 +805,58 @@ class TestSampleFieldsPatchesBatch:
         assert response.status_code == 200
         sample.reload()
         assert sample.ground_truth.detections[0].label == "dog"
+
+    @pytest.mark.asyncio
+    async def test_sync_hint_cannot_target_permanent_collection(
+        self, mutator, dataset, dataset_id, sample
+    ):
+        """A sync hint resolving to a non-generated dataset is refused (the
+        ephemeral-copy mechanism must never write a permanent collection)."""
+        # pylint: disable-next=protected-access
+        source_collection = dataset._sample_collection_name
+        old = {
+            "_cls": "Detection",
+            "_id": self.DET_ID,
+            "label": "cat",
+            "bounding_box": [0.1, 0.1, 0.2, 0.2],
+        }
+        new = {**old, "label": "dog"}
+        other_sample = fo.Sample(filepath="/tmp/test_hint_other.jpg")
+        other_sample["ground_truth"] = fol.Detections(
+            detections=[
+                fol.Detection(
+                    id=self.DET_ID,
+                    label="cat",
+                    bounding_box=[0.1, 0.1, 0.2, 0.2],
+                )
+            ]
+        )
+        dataset.add_sample(other_sample)
+
+        updates = [
+            {
+                "collection": source_collection,
+                "id": str(sample.id),
+                "lookupPath": "ground_truth.detections",
+                "labelId": str(self.DET_ID),
+                "previousValue": old,
+                "newValue": new,
+                # hints pointing at the PERMANENT dataset itself
+                "generatedDatasetName": dataset.name,
+                "generatedSampleId": str(other_sample.id),
+            },
+        ]
+
+        response = await mutator.patch(
+            make_request(dataset_id, str(sample.id), updates)
+        )
+
+        assert response.status_code == 200
+        sample.reload()
+        assert sample.ground_truth.detections[0].label == "dog"
+        # the hinted permanent document was NOT written via the sync path
+        other_sample.reload()
+        assert other_sample.ground_truth.detections[0].label == "cat"
 
     @pytest.mark.asyncio
     async def test_source_planning_failure_still_errors(
@@ -977,16 +957,8 @@ class TestSampleFieldsEvaluationPatches:
                 "labelId": str(self.GT_ID),
                 "previousValue": old,
                 "newValue": new,
-            },
-            {
-                # eval patches store ground_truth as an array — address the
-                # element, not a flat label
                 "generatedDatasetName": patches_dataset.name,
-                "id": tp_patch_id,
-                "lookupPath": "ground_truth.detections",
-                "labelId": str(self.GT_ID),
-                "previousValue": old,
-                "newValue": new,
+                "generatedSampleId": tp_patch_id,
             },
         ]
 
@@ -995,14 +967,20 @@ class TestSampleFieldsEvaluationPatches:
         )
         assert response.status_code == 200
 
-        # source ground truth updated
-        sample.reload()
-        assert sample.ground_truth.detections[0].label == "dog"
+        db = get_db_conn()
 
-        # eval-patch ground truth (array) updated; predictions untouched
-        updated = patches_dataset[tp_patch_id]
-        assert updated.ground_truth.detections[0].label == "dog"
-        assert updated.predictions.detections[0].label == "cat"
+        # source ground truth updated
+        src = db[source_collection].find_one({"_id": sample._id})
+        assert src["ground_truth"]["detections"][0]["label"] == "dog"
+
+        # eval-patch ground truth (array) updated via the derived sync;
+        # predictions untouched
+        patch_doc = db[
+            # pylint: disable-next=protected-access
+            patches_dataset._sample_collection_name
+        ].find_one({"_id": ObjectId(tp_patch_id)})
+        assert patch_doc["ground_truth"]["detections"][0]["label"] == "dog"
+        assert patch_doc["predictions"]["detections"][0]["label"] == "cat"
 
 
 # ---------------------------------------------------------------------------
@@ -1032,23 +1010,26 @@ class TestArrayFieldMask:
 
 
 # ---------------------------------------------------------------------------
-# CommitMask (isolated route that writes an in-database mask to disk)
+# Mask routing (a mask lives on disk or in the database, never both)
 # ---------------------------------------------------------------------------
 
 
-class TestCommitMask:
+class TestMaskRouting:
+    DET_ID = ObjectId()
+
     @pytest.fixture(name="mask_file")
     def fixture_mask_file(self, tmp_path):
-        mask_path = str(tmp_path / "original_mask.png")
+        mask_path = str(tmp_path / "mask.png")
         _write_mask(np.zeros((10, 10), dtype=np.uint8), mask_path)
         return mask_path
 
-    @pytest.fixture(name="sample_with_mask_path")
-    def fixture_sample_with_mask_path(self, dataset, mask_file):
-        sample = fo.Sample(filepath="/tmp/test_commit.jpg")
+    @pytest.fixture(name="sample")
+    def fixture_sample(self, dataset, mask_file):
+        sample = fo.Sample(filepath="/tmp/test_mask_routing.jpg")
         sample["ground_truth"] = fol.Detections(
             detections=[
                 fol.Detection(
+                    id=self.DET_ID,
                     label="cat",
                     bounding_box=[0.1, 0.1, 0.2, 0.2],
                     mask_path=mask_file,
@@ -1056,104 +1037,99 @@ class TestCommitMask:
             ]
         )
         dataset.add_sample(sample)
-        sample.save()
-        sample.reload()
         return sample
 
-    @pytest.fixture(name="commit_endpoint")
-    def fixture_commit_endpoint(self):
-        return fors.CommitMask(
+    @pytest.fixture(name="collection")
+    def fixture_collection(self, dataset):
+        # pylint: disable-next=protected-access
+        return dataset._sample_collection_name
+
+    @pytest.fixture(name="mutator")
+    def fixture_mutator(self):
+        return fors.SampleFields(
             scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
         )
 
-    def _request(self, dataset_id, sample_id, field, detection_id):
-        mock_request = MagicMock()
-        mock_request.headers = {}
-        mock_request.path_params = {
-            "dataset_id": dataset_id,
-            "sample_id": str(sample_id),
-        }
-        mock_request.body = AsyncMock(
-            return_value=json_payload(
-                {"field": field, "detection_id": detection_id}
-            )
-        )
-        return mock_request
-
     @pytest.mark.asyncio
-    async def test_commit_writes_to_disk_and_clears_db(
-        self, commit_endpoint, dataset_id, sample_with_mask_path, mask_file
+    async def test_disk_backed_mask_is_written_to_file_not_db(
+        self, mutator, dataset_id, collection, sample, mask_file
     ):
-        sample = sample_with_mask_path
-        det = sample.ground_truth.detections[0]
-        det_id = str(det.id)
-
+        """An edited mask for a ``mask_path`` detection is written to the file
+        and never stored inline — disk or database, never both."""
         assert _read_mask(mask_file).max() == 0
 
-        det.mask = np.ones((10, 10), dtype=np.uint8)
-        sample.save()
+        edited = np.ones((10, 10), dtype=np.uint8)
+        old = {
+            "_cls": "Detection",
+            "_id": self.DET_ID,
+            "label": "cat",
+            "bounding_box": [0.1, 0.1, 0.2, 0.2],
+            "mask_path": mask_file,
+        }
+        new = {
+            **old,
+            "label": "dog",
+            "mask": fou.serialize_numpy_array(edited, ascii=True),
+        }
+        updates = [
+            {
+                "collection": collection,
+                "id": str(sample.id),
+                "lookupPath": "ground_truth.detections",
+                "labelId": str(self.DET_ID),
+                "previousValue": old,
+                "newValue": new,
+            }
+        ]
 
-        response = await commit_endpoint.post(
-            self._request(dataset_id, sample.id, "ground_truth", det_id)
+        response = await mutator.patch(
+            make_request(dataset_id, str(sample.id), updates)
         )
-
         assert response.status_code == 200
-        body = json.loads(response.body)
-        assert body["committed"] is True
-        assert body["mask_path"] == mask_file
 
-        sample.reload()
-        det = sample.ground_truth.detections[0]
-        assert det.mask is None
-        assert det.mask_path == mask_file
-        assert _read_mask(mask_file).max() > 0
+        # the file holds the edited bytes
+        np.testing.assert_array_equal(_read_mask(mask_file), edited)
 
-    @pytest.mark.asyncio
-    @pytest.mark.parametrize(
-        "field, det_id_fn, status",
-        [
-            (None, lambda _: "x", 400),
-            ("ground_truth", lambda _: None, 400),
-            ("no_such_field", lambda _: "x", 404),
-            ("ground_truth", lambda _: str(ObjectId()), 404),
-        ],
-        ids=["missing_field", "missing_det_id", "bad_field", "bad_det_id"],
-    )
-    async def test_commit_errors(
-        self,
-        commit_endpoint,
-        dataset_id,
-        sample_with_mask_path,
-        field,
-        det_id_fn,
-        status,
-    ):
-        det_id = det_id_fn(sample_with_mask_path)
-        with pytest.raises(HTTPException) as exc:
-            await commit_endpoint.post(
-                self._request(
-                    dataset_id, sample_with_mask_path.id, field, det_id
-                )
-            )
-        assert exc.value.status_code == status
+        # the document holds the other edits, the path, and NO inline mask
+        doc = get_db_conn()[collection].find_one({"_id": sample._id})
+        det = doc["ground_truth"]["detections"][0]
+        assert det["label"] == "dog"
+        assert det["mask_path"] == mask_file
+        assert "mask" not in det
 
     @pytest.mark.asyncio
-    async def test_commit_write_failure_returns_500(
-        self, commit_endpoint, dataset_id, sample_with_mask_path
+    async def test_db_backed_mask_is_stored_inline(
+        self, mutator, dataset_id, collection, sample
     ):
-        sample = sample_with_mask_path
-        det = sample.ground_truth.detections[0]
-        det.mask = np.ones((10, 10), dtype=np.uint8)
-        sample.save()
+        """An edited mask for a detection WITHOUT ``mask_path`` is stored in
+        the database."""
+        edited = np.ones((10, 10), dtype=np.uint8)
+        det_id = ObjectId()
+        updates = [
+            {
+                "collection": collection,
+                "id": str(sample.id),
+                "lookupPath": "ground_truth.detections",
+                "labelId": str(det_id),
+                "previousValue": None,
+                "newValue": {
+                    "_cls": "Detection",
+                    "_id": det_id,
+                    "label": "masked",
+                    "bounding_box": [0.4, 0.4, 0.2, 0.2],
+                    "mask": fou.serialize_numpy_array(edited, ascii=True),
+                },
+            }
+        ]
 
-        with patch(
-            "fiftyone.core.labels._write_mask",
-            side_effect=OSError("disk full"),
-        ):
-            with pytest.raises(HTTPException) as exc:
-                await commit_endpoint.post(
-                    self._request(
-                        dataset_id, sample.id, "ground_truth", str(det.id)
-                    )
-                )
-            assert exc.value.status_code == 500
+        response = await mutator.patch(
+            make_request(dataset_id, str(sample.id), updates)
+        )
+        assert response.status_code == 200
+
+        doc = get_db_conn()[collection].find_one({"_id": sample._id})
+        added = next(
+            d for d in doc["ground_truth"]["detections"] if d["_id"] == det_id
+        )
+        assert isinstance(added["mask"], (bytes, Binary))
+        assert added.get("mask_path") is None
