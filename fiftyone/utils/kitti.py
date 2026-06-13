@@ -24,9 +24,6 @@ import fiftyone.core.threed as fo3d
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
-o3d = fou.lazy_import("open3d", callback=lambda: fou.ensure_import("open3d"))
-
-
 logger = logging.getLogger(__name__)
 
 
@@ -1123,11 +1120,14 @@ def _do_conversion(input):
     # Switch to z-up coordinates
     points = np.stack((points[:, 0], points[:, 2], -points[:, 1]), axis=1)
 
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(points)
-    pcd.colors = o3d.utility.Vector3dVector(colors)
+    from pypcd4 import PointCloud
 
-    o3d.io.write_point_cloud(pcd_path, pcd)
+    rgb = PointCloud.encode_rgb(
+        np.round(np.clip(colors, 0, 1) * 255).astype(np.uint8)
+    )
+    xyzrgb = np.column_stack((points.astype(np.float32), rgb))
+
+    PointCloud.from_xyzrgb_points(xyzrgb).save(pcd_path)
 
 
 def _write_fo3d_files(pcd_dir, fo3d_dir, overwrite=False, abs_paths=False):
