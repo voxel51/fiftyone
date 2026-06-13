@@ -302,14 +302,15 @@ def _build_primitive_update(
 def _resolve_collection(db, update: dict) -> str:
     """Resolves the target collection name for an update.
 
-    A generated (patches) write carries the dataset's ``datasetName`` instead
-    of a concrete ``collection`` because the client has no dataset id for it.
+    A generated (patches) write carries the generated dataset's name
+    (``generatedDatasetName``) instead of a concrete ``collection`` because
+    the client has no dataset id for it.
     """
     collection_name = update.get("collection")
     if isinstance(collection_name, str) and collection_name:
         return collection_name
 
-    dataset_name = update.get("datasetName")
+    dataset_name = update.get("generatedDatasetName")
     if isinstance(dataset_name, str) and dataset_name:
         doc = db["datasets"].find_one(
             {"name": dataset_name}, {"sample_collection_name": 1}
@@ -322,7 +323,7 @@ def _resolve_collection(db, update: dict) -> str:
 
     raise HTTPException(
         status_code=400,
-        detail="Update is missing 'collection' or 'datasetName'",
+        detail="Update is missing 'collection' or 'generatedDatasetName'",
     )
 
 
@@ -353,8 +354,8 @@ def _plan_update(db, update: dict, allowed: set) -> dict:
 
     collection_name = _resolve_collection(db, update)
     # A body must not be able to redirect a write to another dataset: an
-    # explicit collection must be the route's own, and a datasetName target
-    # may only resolve to a generated collection.
+    # explicit collection must be the route's own, and a generatedDatasetName
+    # target may only resolve to a generated collection.
     if update.get("collection"):
         target_allowed = collection_name in allowed
     else:
@@ -442,16 +443,10 @@ def _plan_update(db, update: dict, allowed: set) -> dict:
 
 
 def _current_document(plan: dict) -> Any:
-    """The current state of the field this plan gated on (``None`` if the
-    document is gone), projected so the client can rebase without pulling the
-    entire — often large — document."""
-    lookup_path = plan.get("lookup_path")
-    if not lookup_path:
-        return plan["collection"].find_one(plan["doc_filter"])
-    top_field = lookup_path.split(".", 1)[0]
-    return plan["collection"].find_one(
-        plan["doc_filter"], {top_field: 1, "last_modified_at": 1}
-    )
+    """The full current state of the conflicting document (``None`` if it is
+    gone). The whole document — not just the gated field — so the client can
+    reconcile every concurrent edit in one round trip."""
+    return plan["collection"].find_one(plan["doc_filter"])
 
 
 def _is_generated_collection(name: str) -> bool:
@@ -470,7 +465,7 @@ def _is_generated_target(update: Any) -> bool:
     return (
         isinstance(update, dict)
         and not update.get("collection")
-        and bool(update.get("datasetName"))
+        and bool(update.get("generatedDatasetName"))
     )
 
 
@@ -554,9 +549,9 @@ class SampleFields(HTTPEndpoint):
             ``200 {"updated": n}`` if every *permanent* write was applied (or
             already held); otherwise ``409 {"conflicts": [{"index", "value"},
             ...]}`` listing only the rejected updates, where ``value`` is the
-            conflicting document's current state (projected to the gated
-            field) so the client can rebase those deltas and retry. Updates
-            not listed in ``conflicts`` were applied.
+            conflicting document's full current state so the client can rebase
+            those deltas and retry. Updates not listed in ``conflicts`` were
+            applied.
         """
         updates = data.get("updates") if isinstance(data, dict) else data
         if not isinstance(updates, list):
@@ -633,6 +628,52 @@ class SampleFields(HTTPEndpoint):
         return JSONResponse({"updated": applied})
 
 
+def _raise_commit_mask_lookup_error(
+    collection,
+    sample_oid: ObjectId,
+    field: str,
+    lookup_path: str,
+    detection_id: str,
+) -> None:
+    """Raises the 404/400 explaining why a mask-commit lookup found nothing.
+
+    Only runs on the miss path, so the extra classification read costs nothing
+    in the common case.
+    """
+    doc = collection.find_one(
+        {"_id": sample_oid},
+        {f"{field}._cls": 1, f"{lookup_path}._id": 1},
+    )
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Sample not found")
+
+    missing = object()
+    value: Any = doc
+    for part in field.split("."):
+        if not isinstance(value, dict) or part not in value:
+            value = missing
+            break
+        value = value[part]
+
+    if value is missing:
+        raise HTTPException(
+            status_code=404, detail=f"Field '{field}' not found on sample"
+        )
+    if value is None:
+        raise HTTPException(
+            status_code=404, detail=f"Field '{field}' is empty on sample"
+        )
+    if not isinstance(value, dict) or value.get("_cls") != "Detections":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Field '{field}' is not a Detections field",
+        )
+    raise HTTPException(
+        status_code=404,
+        detail=f"Detection '{detection_id}' not found in '{field}'",
+    )
+
+
 class CommitMask(HTTPEndpoint):
     """Commits an in-database mask back to its on-disk ``mask_path``.
 
@@ -676,53 +717,33 @@ class CommitMask(HTTPEndpoint):
 
         lookup_path = f"{field}.detections"
         collection = get_db_conn()[f"samples.{dataset_id}"]
+        sample_oid = _object_id(sample_id)
 
-        # The matched element plus the field's _cls is enough to distinguish
-        # every error case below without fetching the sample.
+        # Fast path: fetch just the matching detection (positional projection
+        # requires the $elemMatch in the query). Misses fall through to a
+        # cheap classification read that distinguishes the error cases.
         doc = collection.find_one(
-            {"_id": _object_id(sample_id)},
             {
+                "_id": sample_oid,
                 lookup_path: {"$elemMatch": {"_id": det_oid}},
-                f"{field}._cls": 1,
             },
+            {f"{lookup_path}.$": 1},
         )
-        if doc is None:
-            raise HTTPException(status_code=404, detail="Sample not found")
+        detection = None
+        if doc is not None:
+            value: Any = doc
+            for part in lookup_path.split("."):
+                value = value.get(part) if isinstance(value, dict) else None
+            if (
+                isinstance(value, list)
+                and value
+                and isinstance(value[0], dict)
+            ):
+                detection = value[0]
 
-        missing = object()
-        value: Any = doc
-        for part in field.split("."):
-            if not isinstance(value, dict) or part not in value:
-                value = missing
-                break
-            value = value[part]
-
-        if value is missing:
-            raise HTTPException(
-                status_code=404, detail=f"Field '{field}' not found on sample"
-            )
-        if value is None:
-            raise HTTPException(
-                status_code=404, detail=f"Field '{field}' is empty on sample"
-            )
-        if not isinstance(value, dict) or value.get("_cls") != "Detections":
-            raise HTTPException(
-                status_code=400,
-                detail=f"Field '{field}' is not a Detections field",
-            )
-
-        detection = next(
-            (
-                d
-                for d in value.get("detections") or []
-                if isinstance(d, dict) and d.get("_id") == det_oid
-            ),
-            None,
-        )
         if detection is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Detection '{detection_id}' not found in '{field}'",
+            _raise_commit_mask_lookup_error(
+                collection, sample_oid, field, lookup_path, detection_id
             )
 
         mask_path = detection.get("mask_path")

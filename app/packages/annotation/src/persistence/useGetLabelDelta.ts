@@ -20,9 +20,9 @@ export type DeltaOpType = "mutate" | "delete";
 
 export interface UseGetLabelDeltaOptions {
   /**
-   * The operation type.
-   * - "mutate": creating/updating a label (default)
-   * - "delete": deleting a label
+   * The operation type for delta generation.
+   * - "mutate": For creating/updating labels (default)
+   * - "delete": For deleting labels
    */
   opType?: DeltaOpType;
   /**
@@ -33,8 +33,8 @@ export interface UseGetLabelDeltaOptions {
 }
 
 /**
- * Map from a {@link LabelProxy} singular type to the plural embeddedDocType of
- * the list field the Schema Manager creates.
+ * Map from LabelProxy singular type to the plural embeddedDocType used by
+ * list-based label fields (the kind the Schema Manager creates).
  */
 const LABEL_TYPE_TO_EMBEDDED_DOC: Record<string, string> = {
   Detection: "fiftyone.core.labels.Detections",
@@ -44,9 +44,9 @@ const LABEL_TYPE_TO_EMBEDDED_DOC: Record<string, string> = {
 };
 
 /**
- * Build a minimal {@link Field} from a {@link LabelProxy} so capture can
- * proceed even when the Recoil schema cache is briefly stale (e.g. right after
- * a field is created via the Schema Manager).
+ * Build a minimal {@link Field} from a {@link LabelProxy} type so that delta
+ * generation can proceed even when the Recoil schema cache is stale (e.g.
+ * immediately after a field is created via the Schema Manager).
  */
 const inferFieldSchema = (labelProxy: LabelProxy): Field | null => {
   if (!("type" in labelProxy)) return null;
@@ -67,12 +67,13 @@ const inferFieldSchema = (labelProxy: LabelProxy): Field | null => {
 };
 
 /**
- * Hook which provides a function that captures a label edit as a
- * {@link LabelFieldDelta} — the original value and the updated value — for a
- * given label source. Returns `null` when the delta can't be expressed.
+ * Hook which provides a function capable of generating a
+ * {@link LabelFieldDelta} (the original and updated value) for a given label,
+ * or `null` when the delta can't be expressed.
  *
- * @param labelConstructor Builds a {@link LabelProxy} from the source data
- * @param options Optional config (opType defaults to "mutate")
+ * @param labelConstructor Function to create a {@link LabelProxy}
+ * instance from the source label data.
+ * @param options Optional configuration including opType (defaults to "mutate")
  */
 export const useGetLabelDelta = <T>(
   labelConstructor: LabelConstructor<T>,

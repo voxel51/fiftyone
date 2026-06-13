@@ -114,10 +114,14 @@ test.describe.serial("annotate persistence lifecycle", () => {
 
     // The edit must survive navigating away and back WITHOUT any refresh:
     // the scene re-seeds from the canonical local copy, not a refetch.
+    // (Navigation runs in explore mode — the navigation POM reads the sample
+    // id from the explore sidebar, which annotate mode replaces.)
+    await modal.sidebar.switchMode("explore");
     await modal.navigateNextSample();
     await modal.waitForSampleLoadDomAttribute();
     await modal.navigatePreviousSample();
     await modal.waitForSampleLoadDomAttribute();
+    await modal.sidebar.switchMode("annotate");
 
     // Clicking the drawn box's location selects an overlay — proof the label
     // is in the scene after back-navigation.

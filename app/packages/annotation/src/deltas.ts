@@ -13,7 +13,35 @@ import type { OpType } from "./types";
 import { isPrimitiveFieldType } from "./util";
 
 /**
- * Types of "native" labels which support annotation saves.
+ * Helper type representing a `fo.Polylines`-like element.
+ */
+export type PolylinesParent = {
+  polylines: PolylineLabel[];
+};
+
+/**
+ * Helper type representing a `fo.Keypoints`-like element.
+ */
+export type KeypointsParent = {
+  keypoints: KeypointLabel[];
+};
+
+/**
+ * Helper type representing a `fo.Detections`-like element.
+ */
+export type DetectionsParent = {
+  detections: DetectionLabel[];
+};
+
+/**
+ * Helper type representing a `fo.Classifications`-like element.
+ */
+export type ClassificationsParent = {
+  classifications: ClassificationLabel[];
+};
+
+/**
+ * Types of "native" labels which support delta calculation.
  */
 type FieldType =
   | "Detection"
@@ -30,7 +58,7 @@ const isFieldType = (field: Field, fieldType: FieldType): boolean => {
 };
 
 /**
- * Helper type encapsulating label metadata relevant to a save.
+ * Helper type encapsulating label metadata relevant to delta calculations.
  */
 type LabelMetadata<T> = {
   type: Extract<
@@ -50,7 +78,9 @@ type Detection2DMetadata = LabelMetadata<DetectionLabel> & {
 };
 
 /**
- * Proxy type for an annotation label being saved.
+ * Proxy type for an annotation label.
+ *
+ * This type represents a union of valid {@link LabelMetadata} variants.
  */
 export type LabelProxy =
   | LabelMetadata<

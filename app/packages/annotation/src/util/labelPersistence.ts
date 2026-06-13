@@ -112,7 +112,7 @@ export const buildUpdatesForDelta = (
 
   if (patchIsList) {
     updates.push({
-      datasetName: ctx.generatedDatasetName,
+      generatedDatasetName: ctx.generatedDatasetName,
       id: ctx.sample._id,
       lookupPath: sourceLookupPath,
       labelId: delta.labelId,
@@ -122,13 +122,13 @@ export const buildUpdatesForDelta = (
   } else if (delta.newValue === null) {
     // A flat patch sample IS the label — deleting it deletes the document.
     updates.push({
-      datasetName: ctx.generatedDatasetName,
+      generatedDatasetName: ctx.generatedDatasetName,
       id: ctx.sample._id,
       op: "deleteDocument",
     });
   } else {
     updates.push({
-      datasetName: ctx.generatedDatasetName,
+      generatedDatasetName: ctx.generatedDatasetName,
       id: ctx.sample._id,
       lookupPath: delta.field,
       labelId: null,

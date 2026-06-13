@@ -125,7 +125,9 @@ class TestHelpers:
 
     def test_resolve_collection_by_dataset_name(self, dataset):
         db = get_db_conn()
-        resolved = fors._resolve_collection(db, {"datasetName": dataset.name})
+        resolved = fors._resolve_collection(
+            db, {"generatedDatasetName": dataset.name}
+        )
         # pylint: disable-next=protected-access
         assert resolved == dataset._sample_collection_name
 
@@ -663,7 +665,7 @@ class TestSampleFieldsPatchesBatch:
                 "newValue": new,
             },
             {
-                "datasetName": patches_dataset.name,
+                "generatedDatasetName": patches_dataset.name,
                 "id": str(patch_sample.id),
                 "lookupPath": "ground_truth",
                 "previousValue": old,
@@ -721,7 +723,7 @@ class TestSampleFieldsPatchesBatch:
                 "newValue": None,
             },
             {
-                "datasetName": patches_dataset.name,
+                "generatedDatasetName": patches_dataset.name,
                 "id": str(patch_sample.id),
                 "op": "deleteDocument",
             },
@@ -759,7 +761,7 @@ class TestSampleFieldsPatchesBatch:
         new = {**old, "label": "dog"}
         updates = [
             {
-                "datasetName": patches_dataset.name,
+                "generatedDatasetName": patches_dataset.name,
                 "id": str(patch_sample.id),
                 "lookupPath": "ground_truth",
                 "previousValue": old,
@@ -804,7 +806,7 @@ class TestSampleFieldsPatchesBatch:
         new = {**old, "label": "dog"}
         updates = [
             {  # generated patch (now stale) — best-effort, must not block
-                "datasetName": patches_dataset.name,
+                "generatedDatasetName": patches_dataset.name,
                 "id": str(patch_sample.id),
                 "lookupPath": "ground_truth",
                 "previousValue": old,
@@ -852,7 +854,7 @@ class TestSampleFieldsPatchesBatch:
         new = {**old, "label": "dog"}
         updates = [
             {  # generated target that cannot be planned (dataset is gone)
-                "datasetName": "no-such-generated-dataset",
+                "generatedDatasetName": "no-such-generated-dataset",
                 "id": str(ObjectId()),
                 "lookupPath": "ground_truth",
                 "previousValue": old,
@@ -979,7 +981,7 @@ class TestSampleFieldsEvaluationPatches:
             {
                 # eval patches store ground_truth as an array — address the
                 # element, not a flat label
-                "datasetName": patches_dataset.name,
+                "generatedDatasetName": patches_dataset.name,
                 "id": tp_patch_id,
                 "lookupPath": "ground_truth.detections",
                 "labelId": str(self.GT_ID),

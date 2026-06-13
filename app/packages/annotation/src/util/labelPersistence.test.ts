@@ -66,7 +66,7 @@ describe("buildUpdatesForDelta", () => {
     });
     expect(updates).toHaveLength(2);
     expect(updates[0]).toMatchObject({
-      datasetName: "pds",
+      generatedDatasetName: "pds",
       id: "patch1",
       lookupPath: "ground_truth",
       labelId: null,
@@ -107,7 +107,7 @@ describe("buildUpdatesForDelta", () => {
       generatedDatasetName: "pds",
     });
     expect(updates[0]).toEqual({
-      datasetName: "pds",
+      generatedDatasetName: "pds",
       id: "patch1",
       op: "deleteDocument",
     });
@@ -137,7 +137,7 @@ describe("buildUpdatesForDelta", () => {
     });
     expect(updates).toHaveLength(2);
     expect(updates[0]).toMatchObject({
-      datasetName: "pds",
+      generatedDatasetName: "pds",
       id: "patch1",
       lookupPath: "ground_truth.detections",
       labelId: "det-1",
@@ -166,7 +166,7 @@ describe("buildUpdatesForDelta", () => {
       generatedDatasetName: "pds",
     });
     expect(updates[0]).toMatchObject({
-      datasetName: "pds",
+      generatedDatasetName: "pds",
       id: "patch1",
       lookupPath: "ground_truth.detections",
       labelId: "det-1",
@@ -176,7 +176,7 @@ describe("buildUpdatesForDelta", () => {
   });
 
   it("throws (rather than half-saving) when a generated id is missing", () => {
-    // Missing generated dataset name → would send datasetName: undefined.
+    // Missing generated dataset name → would send generatedDatasetName: undefined.
     expect(() =>
       buildUpdatesForDelta(delta, {
         datasetId: "ds1",

@@ -56,7 +56,7 @@ describe("saveAnnotationFieldUpdates", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it("passes through datasetName and op without value fields", async () => {
+  it("passes through generatedDatasetName and op without value fields", async () => {
     let captured: Record<string, unknown> | undefined;
     fetchImpl.mockImplementation(async (config: Record<string, unknown>) => {
       captured = config;
@@ -64,13 +64,13 @@ describe("saveAnnotationFieldUpdates", () => {
     });
 
     await saveAnnotationFieldUpdates("ds1", "s1", [
-      { datasetName: "pds", id: "p1", op: "deleteDocument" },
+      { generatedDatasetName: "pds", id: "p1", op: "deleteDocument" },
     ]);
 
     const body = captured?.body as Record<string, unknown>[];
     expect(body[0]).toEqual({
       id: "p1",
-      datasetName: "pds",
+      generatedDatasetName: "pds",
       op: "deleteDocument",
     });
   });

@@ -32,11 +32,12 @@ export type AnnotationFieldUpdate = {
   /** Target Mongo collection, e.g. `samples.<datasetId>`. */
   collection?: string;
   /**
-   * Generated (patches) dataset name; the backend resolves it to the patches
-   * collection. Provide this instead of `collection` when the FE only has the
-   * dataset name (not its `_id`).
+   * Name of the generated (patches/clips) dataset this update targets — NOT
+   * the source dataset. The backend resolves it to the generated collection.
+   * Provide this instead of `collection` when the FE only has the generated
+   * dataset's name (not its `_id`).
    */
-  datasetName?: string;
+  generatedDatasetName?: string;
   /** `_id` of the document to match. */
   id: string;
   /**
@@ -152,8 +153,8 @@ const encodeUpdate = (
   if (update.collection) {
     encoded.collection = update.collection;
   }
-  if (update.datasetName) {
-    encoded.datasetName = update.datasetName;
+  if (update.generatedDatasetName) {
+    encoded.generatedDatasetName = update.generatedDatasetName;
   }
   if (update.op) {
     encoded.op = update.op;

@@ -7,7 +7,10 @@ import { useGetLabelDelta } from "./useGetLabelDelta";
 import { OpType } from "../types";
 
 /**
- * Construct a {@link LabelProxy} from a primitive value.
+ * Method for constructing a {@link LabelProxy} from a primitive value.
+ *
+ * @param data Primitive data
+ * @param path Field path
  */
 const buildLabelProxy = ({
   data,
@@ -25,8 +28,8 @@ const buildLabelProxy = ({
 });
 
 /**
- * Hook which provides a {@link DeltaSupplier} capturing changes isolated to
- * the annotation sidebar (primitive field edits).
+ * Hook which provides a {@link DeltaSupplier} which captures changes isolated
+ * to the annotation sidebar.
  */
 export const useSidebarDeltaSupplier = (): DeltaSupplier => {
   const { stagedMutations } = useSampleMutationManager();
