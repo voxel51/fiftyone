@@ -5,8 +5,6 @@ import {
   DropdownAnchor,
   DropdownTrigger,
   MenuTextItem,
-  Size,
-  Spinner,
   Text,
   TextColor,
   TextVariant,
@@ -18,6 +16,7 @@ import { ImagePanel } from "../../../visualization/panels/image";
 import McapCameraAnnotationOverlay from "./McapCameraAnnotationOverlay";
 import settingsStyles from "./McapTile.settings.module.css";
 import styles from "./McapTile.module.css";
+import { McapTileEmptyState, McapTileStatusBadge } from "./McapTileStreamState";
 import { useMcapTopicStream } from "./use-mcap-topic-stream";
 
 const McapCameraTile: React.FC = () => {
@@ -113,11 +112,10 @@ const McapCameraTile: React.FC = () => {
               interpolate={interpolateAnnotations}
             />
           ) : null}
+          <McapTileStatusBadge topic={topic} />
         </div>
       ) : (
-        <div className={styles.loading}>
-          <Spinner size={Size.Lg} />
-        </div>
+        <McapTileEmptyState topic={topic} />
       )}
     </>
   );

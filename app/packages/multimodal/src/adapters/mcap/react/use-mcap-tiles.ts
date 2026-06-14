@@ -27,6 +27,17 @@ function isKnownTileType(type: string): type is KnownTileType {
   return Object.hasOwn(TILE_BY_TYPE, type);
 }
 
+/**
+ * Catalog lookup for layout restore: the component + label backing a
+ * tile type, or `null` for unknown types (e.g. a persisted layout from
+ * a build with more tile kinds).
+ */
+export function getMcapTileDefinition(
+  type: string
+): { typeLabel: string; Tile: React.ComponentType } | null {
+  return isKnownTileType(type) ? TILE_BY_TYPE[type] : null;
+}
+
 export interface UseMcapTilesOptions {
   /** Unique tile types present in the current scene. */
   presentTypes: readonly string[];

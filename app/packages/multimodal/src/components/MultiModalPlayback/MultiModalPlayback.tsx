@@ -10,6 +10,7 @@ import {
 import { Drawer } from "@voxel51/voodo";
 import clsx from "clsx";
 import React, { useState, type ReactNode } from "react";
+import type { MosaicNode } from "react-mosaic-component";
 import {
   PlaybackProvider,
   TemporalTagTimeline,
@@ -37,6 +38,13 @@ export interface MultiModalPlaybackProps {
   /** Initial tile entries seeded into the embedded TilingProvider. */
   initialTiles?: Record<string, TilingTile>;
 
+  /**
+   * Initial mosaic tree seeded into the embedded TilingProvider. Leave
+   * `undefined` to auto-lay-out `initialTiles`; pass an explicit tree to
+   * restore a saved arrangement.
+   */
+  initialLayout?: MosaicNode<string> | null;
+
   /** Discoverable data sources for the current scene. */
   sceneSources?: readonly SceneSource[];
 
@@ -54,6 +62,10 @@ export interface MultiModalPlaybackProps {
   defaultLeftOpen?: boolean;
   /** Whether the right sidebar starts open. @default true */
   defaultRightOpen?: boolean;
+  /** Observes left-sidebar visibility — e.g. to persist the choice. */
+  onLeftOpenChange?: (open: boolean) => void;
+  /** Observes right-sidebar visibility — e.g. to persist the choice. */
+  onRightOpenChange?: (open: boolean) => void;
 
   /**
    * Callback that persists a newly-created temporal tag.  When provided,
@@ -111,11 +123,14 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   tracks,
   defaultPinnedTrackIds,
   initialTiles,
+  initialLayout,
   sceneSources = EMPTY_SOURCES,
   leftSidebar = <TileSettingsSidebar />,
   rightSidebar = <TilingInspectorSidebar />,
   defaultLeftOpen = true,
   defaultRightOpen = true,
+  onLeftOpenChange,
+  onRightOpenChange,
   onTagCreate,
   onTagDelete,
   children,
@@ -128,7 +143,10 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
         initialPinnedIds={defaultPinnedTrackIds}
       >
         <SceneInventoryProvider sources={sceneSources}>
-          <TilingProvider initialTiles={initialTiles}>
+          <TilingProvider
+            initialTiles={initialTiles}
+            initialLayout={initialLayout}
+          >
             {children}
             <Layout
               fileName={fileName}
@@ -136,6 +154,8 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
               rightSidebar={rightSidebar}
               defaultLeftOpen={defaultLeftOpen}
               defaultRightOpen={defaultRightOpen}
+              onLeftOpenChange={onLeftOpenChange}
+              onRightOpenChange={onRightOpenChange}
               onTagCreate={onTagCreate}
               onTagDelete={onTagDelete}
               className={className}
@@ -153,6 +173,8 @@ interface LayoutProps {
   rightSidebar: ReactNode;
   defaultLeftOpen: boolean;
   defaultRightOpen: boolean;
+  onLeftOpenChange?: (open: boolean) => void;
+  onRightOpenChange?: (open: boolean) => void;
   onTagCreate?: MultiModalPlaybackProps["onTagCreate"];
   onTagDelete?: MultiModalPlaybackProps["onTagDelete"];
   className?: string;
@@ -164,6 +186,8 @@ function Layout({
   rightSidebar,
   defaultLeftOpen,
   defaultRightOpen,
+  onLeftOpenChange,
+  onRightOpenChange,
   onTagCreate,
   onTagDelete,
   className,
@@ -173,14 +197,23 @@ function Layout({
   const [leftOpen, setLeftOpen] = useState(defaultLeftOpen);
   const [rightOpen, setRightOpen] = useState(defaultRightOpen);
 
+  const updateLeftOpen = (open: boolean) => {
+    setLeftOpen(open);
+    onLeftOpenChange?.(open);
+  };
+  const updateRightOpen = (open: boolean) => {
+    setRightOpen(open);
+    onRightOpenChange?.(open);
+  };
+
   return (
     <div className={clsx(styles.root, className)}>
       <TilingHeader
         fileName={fileName}
         leftSidebarOpen={leftOpen}
         rightSidebarOpen={rightOpen}
-        onToggleLeftSidebar={() => setLeftOpen((v) => !v)}
-        onToggleRightSidebar={() => setRightOpen((v) => !v)}
+        onToggleLeftSidebar={() => updateLeftOpen(!leftOpen)}
+        onToggleRightSidebar={() => updateRightOpen(!rightOpen)}
       />
 
       <div className={styles.body}>
@@ -189,7 +222,7 @@ function Layout({
           mode="push"
           maxSize={500}
           open={leftOpen}
-          onOpenChange={(v) => setLeftOpen(v)}
+          onOpenChange={updateLeftOpen}
         >
           {leftSidebar}
         </Drawer>
@@ -209,7 +242,7 @@ function Layout({
           mode="push"
           maxSize={500}
           open={rightOpen}
-          onOpenChange={(v) => setRightOpen(v)}
+          onOpenChange={updateRightOpen}
         >
           {rightSidebar}
         </Drawer>

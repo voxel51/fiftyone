@@ -4,8 +4,6 @@ import {
   DropdownAnchor,
   DropdownTrigger,
   MenuTextItem,
-  Size,
-  Spinner,
   Text,
   TextColor,
   TextVariant,
@@ -16,6 +14,7 @@ import { useSceneSourcesByType } from "../../../scene-inventory";
 import { PointCloudPanel } from "../../../visualization/panels/point-cloud";
 import settingsStyles from "./McapTile.settings.module.css";
 import styles from "./McapTile.module.css";
+import { McapTileEmptyState, McapTileStatusBadge } from "./McapTileStreamState";
 import { useMcapTopicStream } from "./use-mcap-topic-stream";
 
 const McapLidarTile: React.FC = () => {
@@ -71,11 +70,12 @@ const McapLidarTile: React.FC = () => {
         </div>
       </TileSettingsContent>
       {frame ? (
-        <PointCloudPanel frame={frame} className={styles.panel} />
-      ) : (
-        <div className={styles.loading}>
-          <Spinner size={Size.Lg} />
+        <div className={styles.panelStack}>
+          <PointCloudPanel frame={frame} className={styles.panel} />
+          <McapTileStatusBadge topic={topic} />
         </div>
+      ) : (
+        <McapTileEmptyState topic={topic} />
       )}
     </>
   );
