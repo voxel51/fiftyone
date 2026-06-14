@@ -37,6 +37,13 @@ class SampleTests(unittest.TestCase):
         self.assertEqual(sample.filepath, abs_filepath)
 
     @drop_datasets
+    def test_url_filepath(self):
+        filepath = "https://example.com/file.png"
+
+        sample = fo.Sample(filepath=filepath)
+        self.assertEqual(sample.filepath, filepath)
+
+    @drop_datasets
     def test_get_field(self):
         field_value = "custom_value"
         sample = fo.Sample(filepath="/path/to/image.jpg", field1=field_value)
@@ -239,6 +246,17 @@ class SampleInDatasetTests(unittest.TestCase):
             dataset.add_sample(sample)
 
         self.assertEqual(len(dataset), 0)
+
+    @drop_datasets
+    def test_add_sample_with_url_filepath(self):
+        dataset = fo.Dataset()
+        filepath = "https://example.com/file.png"
+
+        sample = fo.Sample(filepath=filepath)
+        dataset.add_sample(sample)
+
+        self.assertEqual(sample.filepath, filepath)
+        self.assertEqual(dataset.first().filepath, filepath)
 
     @drop_datasets
     def test_dataset_clear(self):
