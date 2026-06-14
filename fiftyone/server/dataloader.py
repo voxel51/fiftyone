@@ -34,17 +34,17 @@ def get_dataloader(
     async def load_items(
         keys: t.List[str],
     ) -> t.List[t.Optional[T]]:
-        results = {}
-        if config.key == "id":
-            config.key = "_id"
-        find_params = [
-            {"$and": [{config.key: {"$in": keys}}] + config.filters}
-        ]
-        if config.projections:
-            find_params.append(config.projections)
+        key = "_id" if config.key == "id" else config.key
+        filter = {"$and": [{key: {"$in": keys}}] + config.filters}
 
-        async for doc in db[config.collection].find(*find_params):
-            results[doc[config.key]] = doc
+        find_args: t.List[t.Any] = [filter]
+        if config.projections is not None:
+            find_args.append(config.projections)
+
+        results = {
+            doc[key]: doc
+            async for doc in db[config.collection].find(*find_args)
+        }
 
         def build(doc: dict = None) -> t.Optional[T]:
             if not doc:
