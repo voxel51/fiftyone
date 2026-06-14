@@ -86,6 +86,20 @@ async function loadConfig() {
       dedupe: ["react", "react-dom", "react/jsx-runtime"],
     },
     build: {
+      commonjsOptions: {
+        // The @foxglove wasm packages locate their .wasm binaries with
+        // `require("./<name>.wasm")`, which foxgloveWasmAsUrl() resolves
+        // to a Vite `?url` module (a single default export holding the
+        // asset URL string). Default CommonJS interop hands `require()`
+        // the frozen module namespace instead of that string, and the
+        // emscripten glue then crashes on `filename.startsWith(...)`.
+        // Returning the default export for exactly these ids gives the
+        // glue the URL string, matching the dev-mode esbuild shim.
+        requireReturnsDefault: (id: string) =>
+          /[\\/]@foxglove[\\/]wasm-(lz4|zstd|bz2)[\\/].*\.wasm\?url$/.test(id)
+            ? "auto"
+            : false,
+      },
       rollupOptions: {
         onwarn(warning, warn) {
           if (warning.code === "MODULE_LEVEL_DIRECTIVE") {
