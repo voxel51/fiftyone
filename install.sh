@@ -230,6 +230,25 @@ if [ "$SOURCE_ETA_INSTALL" = true ]; then
     cd -
 fi
 
-echo "NOTE: You probably want to run:"
-echo "  export PYTHONPATH=\$PYTHONPATH:$(pwd)"
+if [ "$DEV_INSTALL" = true ]; then
+    echo "Adding FiftyOne source checkout to Python path"
+
+    python - <<'PY'
+import sysconfig
+from pathlib import Path
+
+repo = Path.cwd().resolve()
+site_packages = Path(sysconfig.get_paths()["purelib"])
+pth = site_packages / "fiftyone_dev_source.pth"
+
+pth.write_text(str(repo) + "\n")
+
+print(f"  wrote {pth}")
+print(f"  source path: {repo}")
+PY
+else
+    echo "NOTE: You probably want to run:"
+    echo "  export PYTHONPATH=\$PYTHONPATH:$(pwd)"
+fi
+
 echo "***** INSTALLATION COMPLETE *****"
