@@ -158,17 +158,30 @@ const LABEL_TYPE_TO_CLS: Record<string, string> = {
  * label persisted without ``_cls`` cannot be deserialized back. Derive it
  * from the proxy type when absent; never overwrite an existing value.
  */
+/**
+ * Stamp the singular ``_cls`` for ``type`` onto a label object that lacks one;
+ * never overwrites an existing ``_cls`` and leaves non-objects untouched.
+ *
+ * A label persisted (or sent as a save precondition) without ``_cls`` cannot
+ * be deserialized server-side — it round-trips to a bare dict and the gated
+ * write fails. Both the *new* value and the *previous* value (read raw from
+ * the sample, which may have been written without ``_cls``) must carry it.
+ */
+const withCls = (value: unknown, type: string): unknown => {
+  const cls = LABEL_TYPE_TO_CLS[type];
+  if (cls && isObject(value) && !(value as { _cls?: unknown })._cls) {
+    return { _cls: cls, ...(value as object) };
+  }
+  return value;
+};
+
 const incomingLabel = (label: LabelProxy): unknown => {
   const value =
     label.type === "Detection"
       ? makeDetectionLabel(label as Detection2DMetadata)
       : (label as { data: unknown }).data;
 
-  const cls = LABEL_TYPE_TO_CLS[label.type];
-  if (cls && isObject(value) && !(value as { _cls?: unknown })._cls) {
-    return { _cls: cls, ...(value as object) };
-  }
-  return value;
+  return withCls(value, label.type);
 };
 
 /**
@@ -281,9 +294,12 @@ export const buildLabelFieldDelta = (
         ? fieldValue
         : null;
 
-    const previousValue = list
-      ? list.find((e) => (e as { _id?: string })._id === labelId) ?? null
-      : flatValue;
+    const previousValue = withCls(
+      list
+        ? list.find((e) => (e as { _id?: string })._id === labelId) ?? null
+        : flatValue,
+      label.type
+    );
 
     const newValue = isDelete
       ? null
@@ -293,7 +309,10 @@ export const buildLabelFieldDelta = (
   }
 
   // Flat single-label field (e.g. a top-level Classification field).
-  const previousValue = extractNestedField(sample, label.path) ?? null;
+  const previousValue = withCls(
+    extractNestedField(sample, label.path) ?? null,
+    label.type
+  );
   const newValue = isDelete
     ? null
     : mergeOntoPrevious(previousValue, incomingLabel(label));
