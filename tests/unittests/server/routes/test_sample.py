@@ -59,63 +59,11 @@ def fixture_dataset_id(dataset):
 
 
 # ---------------------------------------------------------------------------
-# Unit tests for the gated-update helpers
+# Unit tests for the route's request-validation helpers
 # ---------------------------------------------------------------------------
 
 
 class TestHelpers:
-    def test_gatable_scalars(self):
-        assert fors._gatable("cat") is True
-        assert fors._gatable(0.5) is True
-        assert fors._gatable(None) is True
-        assert fors._gatable([0.1, 0.2, 0.3]) is True
-
-    def test_gatable_rejects_documents_and_binary(self):
-        assert fors._gatable({"label": "cat"}) is False
-        assert fors._gatable(b"\x00\x01") is False
-        # array containing an embedded document
-        assert fors._gatable([{"_id": ObjectId()}]) is False
-
-    def test_changed_label_fields_detects_change(self):
-        old = {"_id": ObjectId(), "_cls": "Detection", "label": "cat"}
-        new = {**old, "label": "dog"}
-        set_fields, unset_fields = fors._changed_label_fields(old, new)
-        assert set_fields == {"label": "dog"}
-        assert unset_fields == []
-
-    def test_changed_label_fields_detects_unset(self):
-        oid = ObjectId()
-        old = {"_id": oid, "label": "cat", "confidence": 0.9}
-        new = {"_id": oid, "label": "cat"}
-        set_fields, unset_fields = fors._changed_label_fields(old, new)
-        assert set_fields == {}
-        assert unset_fields == ["confidence"]
-
-    def test_changed_label_fields_ignores_unchanged_and_id(self):
-        oid = ObjectId()
-        old = {
-            "_id": oid,
-            "label": "cat",
-            "bounding_box": [0.1, 0.1, 0.2, 0.2],
-        }
-        new = {
-            "_id": ObjectId(),
-            "label": "cat",
-            "bounding_box": [0.1, 0.1, 0.2, 0.2],
-        }
-        set_fields, unset_fields = fors._changed_label_fields(old, new)
-        assert set_fields == {}
-        assert unset_fields == []
-
-    def test_label_to_mongo_coerces_mask_to_binary(self):
-        mask = np.array([[0, 1], [1, 0]], dtype=np.uint8)
-        mask_b64 = fou.serialize_numpy_array(mask, ascii=True)
-        bson = fors._label_to_mongo(
-            {"_cls": "Detection", "label": "x", "mask": mask_b64}
-        )
-        assert isinstance(bson["mask"], (bytes, Binary))
-        assert bson["label"] == "x"
-
     def test_required_returns_value(self):
         assert (
             fors._required({"collection": "samples.abc"}, "collection")

@@ -11,8 +11,7 @@ from bson import json_util
 from starlette.responses import JSONResponse as StarletteJSONResponse
 
 from fiftyone.server.utils.json.encoder import Encoder
-from fiftyone.server.utils.json.jsonpatch import parse as parse_jsonpatch
-from fiftyone.server.utils.json.serialization import deserialize, serialize
+from fiftyone.server.utils.json.serialization import serialize
 
 
 def dumps(obj: Any) -> str:
