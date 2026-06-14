@@ -72,12 +72,6 @@ export const useRegisterAnnotationEventHandlers = () => {
             variant: Variant.Danger,
             timeout: INDEFINITE_TOAST_TIMEOUT,
           });
-        } else {
-          setConfig({
-            iconName: IconName.Error,
-            message: "Unable to save changes. Please try again.",
-            variant: Variant.Danger,
-          });
         }
       },
       [retryController.isUnhealthy, setConfig]

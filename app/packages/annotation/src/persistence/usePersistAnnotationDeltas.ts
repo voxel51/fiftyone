@@ -1,56 +1,127 @@
+import { SaveConflictError } from "@fiftyone/core/src/client";
+import type { Sample } from "@fiftyone/looker";
+import {
+  generatedDatasetName as generatedDatasetNameAtom,
+  getLocalSample,
+  isGeneratedView,
+  useCurrentDatasetId,
+  useModalSample,
+  useUpdateSamples,
+} from "@fiftyone/state";
 import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
-import { isGeneratedView } from "@fiftyone/state";
+import { useAnnotationEventBus } from "../hooks";
+import { saveAnnotationDeltas } from "../util";
+import { pendingEdits } from "./pendingEdits";
 import { useAnnotationDeltaSupplier } from "./useAnnotationDeltaSupplier";
-import { useAnnotationEventBus, usePatchSample } from "../hooks";
+import { useRecordEdit } from "./useRecordEdit";
 
-/**
- * @returns `true` if persistence was successful
- * @returns `false` if persistence was unsuccessful
- * @returns `null` if no changes were pending
- */
 type PersistenceResult = boolean | null;
 
 /**
- * Hook which provides a callback to persist all pending annotation deltas.
+ * Returns a callback that flushes the pending edits (net original → latest
+ * value per edited label/field) to the server; resolves to `null` if there
+ * was nothing to persist.
  *
- * @returns A callback that persists annotation deltas and returns:
- *   - `true` if persistence was successful
- *   - `false` if persistence was unsuccessful
- *   - `null` if no changes were pending
+ * 2D canvas edits are already in the ledger (recorded at edit time); the 3D
+ * and sidebar surfaces are captured here — for the current sample — and
+ * recorded through the same pipeline. The flush itself is per-ledger, not
+ * per-modal-sample: EVERY sample with pending edits is saved, so edits made
+ * just before navigating away still land. Everything up to the network call
+ * is synchronous, so by the first `await` the batch is fully snapshotted —
+ * navigation/teardown can proceed safely while the write completes.
  */
 export const usePersistAnnotationDeltas =
   (): (() => Promise<PersistenceResult>) => {
-    const supplyAnnotationDeltas = useAnnotationDeltaSupplier();
-    const patchSample = usePatchSample();
+    const supplyDeltas = useAnnotationDeltaSupplier();
     const eventBus = useAnnotationEventBus();
+    const datasetId = useCurrentDatasetId();
+    const sample = useModalSample()?.sample;
+    const recordEdit = useRecordEdit();
+    const updateSamples = useUpdateSamples();
     const isGenerated = useRecoilValue(isGeneratedView);
+    const generatedDatasetName = useRecoilValue(generatedDatasetNameAtom);
 
     return useCallback(async () => {
-      const { deltas, metadata } = supplyAnnotationDeltas();
+      if (!datasetId) {
+        return null;
+      }
 
-      if (deltas.length === 0) {
+      // Pull the not-yet-event-driven surfaces (3D, sidebar) into the ledger.
+      // They are scoped to the modal's current sample by construction.
+      const currentSampleId = sample?._id;
+      if (currentSampleId) {
+        for (const delta of supplyDeltas().deltas) {
+          recordEdit(currentSampleId, delta);
+        }
+      }
+
+      // Snapshot the whole batch synchronously: one net delta set per sample.
+      const batches = pendingEdits
+        .sampleIds()
+        .map((id) => ({ id, deltas: pendingEdits.take(id) }))
+        .filter((batch) => batch.deltas.length > 0);
+      if (batches.length === 0) {
         return null;
       }
 
       eventBus.dispatch("annotation:persistenceInFlight");
 
-      if (isGenerated) {
-        if (!metadata) {
-          console.warn(
-            "Generated view persistence requires label metadata but none was provided.",
-            { deltaCount: deltas.length, deltas }
-          );
-          return false;
+      let allOk = true;
+      let conflict: SaveConflictError | null = null;
+      for (const { id, deltas } of batches) {
+        // Write-through at record time guarantees a canonical copy exists for
+        // every sample with pending edits.
+        const doc = getLocalSample(id);
+        if (!doc) {
+          console.warn("Skipped saving sample with no canonical copy", id);
+          allOk = false;
+          continue;
         }
 
-        return await patchSample(deltas, {
-          labelId: metadata.labelId,
-          labelPath: metadata.labelPath,
-          opType: "mutate",
-        });
+        try {
+          const ok = await saveAnnotationDeltas(deltas, {
+            datasetId,
+            sample: doc,
+            getCurrentSample: () => getLocalSample(id),
+            // Conflict reconciliation only: an "external" write so the
+            // annotation scene re-reads the affected fields. In-place tile/
+            // modal update — no grid refresh.
+            updateSample: (updated: Sample) =>
+              updateSamples([[updated._id, updated]], { source: "external" }),
+            isGenerated,
+            generatedDatasetName: generatedDatasetName ?? undefined,
+            onApplied: (applied) =>
+              applied.forEach((d) => pendingEdits.ackApplied(id, d)),
+            onConflict: (conflicts) =>
+              conflicts.forEach(({ delta, serverDocument }) =>
+                pendingEdits.ackConflict(id, delta, serverDocument)
+              ),
+          });
+          allOk = allOk && ok;
+        } catch (error) {
+          if (error instanceof SaveConflictError) {
+            // The ledger has already rebased; surface the first conflict
+            // after the rest of the batch has been given its chance to save.
+            conflict = conflict ?? error;
+          } else {
+            throw error;
+          }
+        }
       }
 
-      return await patchSample(deltas);
-    }, [eventBus, isGenerated, patchSample, supplyAnnotationDeltas]);
+      if (conflict) {
+        throw conflict;
+      }
+      return allOk;
+    }, [
+      supplyDeltas,
+      datasetId,
+      sample,
+      recordEdit,
+      updateSamples,
+      isGenerated,
+      generatedDatasetName,
+      eventBus,
+    ]);
   };

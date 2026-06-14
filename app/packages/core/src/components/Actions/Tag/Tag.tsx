@@ -379,17 +379,7 @@ const useTagCallback = (
         });
         set(refresher, (i) => i + 1);
 
-        if (!modal) {
-          const ids = new Set<string>();
-          fos.stores.forEach((store) => {
-            store.samples.forEach((sample) => {
-              ids.add(sample.sample._id);
-            });
-          });
-          updateSamples(
-            Array.from(ids).map((id) => [id.split("-")[0], undefined])
-          );
-        } else if (samples) {
+        if (modal && samples) {
           set(fos.refreshGroupQuery, (cur) => cur + 1);
           updateSamples(samples.map((sample) => [sample._id, sample]));
 

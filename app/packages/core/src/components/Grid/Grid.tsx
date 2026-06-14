@@ -107,6 +107,23 @@ function Grid() {
     zoom,
   ]);
 
+  // Repaint a tile in place when its sample is updated elsewhere (e.g. an
+  // annotation saved in the modal) — the grid's lookers live in a private
+  // cache, so it registers as a sample-update target.
+  fos.useRegisterSampleStore(
+    useMemoOne<fos.SampleStore>(
+      () => ({
+        updateSample: (id, sample) => {
+          const looker = cache.get(id) as
+            | { updateSample?: (sample: unknown) => void }
+            | undefined;
+          looker?.updateSample?.(sample);
+        },
+      }),
+      [cache]
+    )
+  );
+
   useEscape();
   useEvents({ id, cache, pixels, resizing, set, spotlight });
   useUpdates({ cache, getFontSize, options: lookerOptions, spotlight });

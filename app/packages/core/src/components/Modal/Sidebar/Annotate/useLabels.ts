@@ -3,6 +3,7 @@ import {
   activeFields,
   AnnotationLabel,
   AnnotationLabelData,
+  consumeExternalSampleChange,
   field,
   isPatchesView,
   ModalSample,
@@ -468,6 +469,16 @@ export default function useLabels() {
   // to UNSET — an infinite loop that prevented labels from ever loading.
   const loadingRef = useRef(LabelsState.UNSET);
 
+  // The labels currently in the scene, for the sample-change cleanup below.
+  // A ref, because cleanup closures otherwise capture the labels from the
+  // last *dependency* change — overlays added since then would leak.
+  const labelsRef = useRef(currentLabels);
+  labelsRef.current = currentLabels;
+
+  // The sample object the scene was last seeded/refreshed from, to tell a
+  // sample-data change apart from other dependency changes (paths, schemas).
+  const seededSampleRef = useRef<ModalSample["sample"] | null>(null);
+
   const getFieldType = useRecoilCallback(
     ({ snapshot }) =>
       async (path: string) => {
@@ -502,13 +513,16 @@ export default function useLabels() {
   }, [active, removeOverlay, setLabels, setLoading]);
 
   // Reset when the sample changes so the primary loading effect below starts
-  // fresh instead of entering the refresh path with stale labels.
+  // fresh instead of entering the refresh path with stale labels. Reads the
+  // label list through a ref — overlays drawn since the last sample change
+  // would otherwise be missed by this cleanup's stale closure.
   useEffect(() => {
     return () => {
-      currentLabels.forEach((label) => {
+      labelsRef.current.forEach((label) => {
         removeOverlay(label.overlay.id, false);
       });
       setLabels([]);
+      seededSampleRef.current = null;
       loadingRef.current = LabelsState.UNSET;
       setLoading(LabelsState.UNSET);
     };
@@ -533,6 +547,12 @@ export default function useLabels() {
       if (loadingRef.current === LabelsState.UNSET) {
         loadingRef.current = LabelsState.LOADING;
         setLoading(LabelsState.LOADING);
+        // This seed consumes the sample's current state — including any
+        // pending external change, which is therefore no longer pending.
+        seededSampleRef.current = modalSample.sample;
+        if (currentSampleId) {
+          consumeExternalSampleChange(currentSampleId);
+        }
         getLabelsFromSample().then((result) => {
           if (stale) {
             loadingRef.current = LabelsState.UNSET;
@@ -560,6 +580,23 @@ export default function useLabels() {
           setLoading(LabelsState.COMPLETE);
         });
       } else if (loadingRef.current === LabelsState.COMPLETE) {
+        // The scene is the editor: a sample-data change produced by its own
+        // write-through is already on the canvas, and re-reading it here
+        // would race (and stomp) whatever the user is editing right now.
+        // Re-read only when the data changed from an external source
+        // (conflict reconciliation, another writer), or when this re-run was
+        // triggered by something other than sample data (paths/schemas).
+        const sampleChanged = seededSampleRef.current !== modalSample.sample;
+        const isExternal = currentSampleId
+          ? consumeExternalSampleChange(currentSampleId)
+          : true;
+        seededSampleRef.current = modalSample.sample;
+        if (sampleChanged && !isExternal) {
+          return () => {
+            stale = true;
+          };
+        }
+
         // refresh label data
         getLabelsFromSample().then((result) => {
           if (stale) return;

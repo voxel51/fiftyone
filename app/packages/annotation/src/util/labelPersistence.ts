@@ -1,213 +1,236 @@
 import {
-  type JSONDeltas,
-  patchSample,
+  type AnnotationFieldUpdate,
+  SaveConflictError,
+  saveAnnotationFieldUpdates,
   transformSampleData,
-  VersionMismatchError,
 } from "@fiftyone/core/src/client";
 import type { Sample } from "@fiftyone/looker";
-import type { Field } from "@fiftyone/utilities";
-import { NotFoundError } from "@fiftyone/utilities";
-import {
-  buildAnnotationPath,
-  buildJsonPath,
-  buildLabelDeltas,
-  LabelProxy,
-} from "../deltas";
-import { isSampleIsh } from "@fiftyone/looker/src/util";
-import type { OpType } from "../types";
+import type { LabelFieldDelta } from "../deltas";
+import { applyDeltaToSample } from "../persistence/applyDelta";
+import { pendingEdits } from "../persistence/pendingEdits";
 
-export type DoPatchSampleArgs = {
-  sample: Sample | null;
-  datasetId: string | null;
-  getVersionToken: () => string;
-  refreshSample: (sample: Sample) => void;
-  sampleDeltas: JSONDeltas;
-  isGenerated?: boolean;
-  generatedDatasetName?: string;
-  labelId?: string;
-  labelPath?: string;
-  opType?: OpType;
+export { applyDeltaToSample };
+
+/**
+ * A delta that failed its precondition, with the server's reported current
+ * state of the document (FE-shaped; `null` if the document was deleted).
+ */
+export type ConflictedDelta = {
+  delta: LabelFieldDelta;
+  serverDocument: unknown;
 };
 
 /**
- * Apply a patch of JSON deltas to a sample.
- *
- * Any HTTP errors will be thrown and should be handled by the caller.
- *
- * @param sample Sample to apply patch against
- * @param datasetId Dataset ID for the sample
- * @param getVersionToken Function which returns a version token for the sample
- * @param refreshSample Function which refreshes sample data in the app
- * @param sampleDeltas List of JSON-patch deltas to apply
- * @param isGenerated Whether this is from a generated view (patches/clips/frames)
- * @param generatedDatasetName Name of the generated dataset (if applicable)
- * @param labelId Label ID for field-level updates (if applicable)
- * @param labelPath Path to the label field (if applicable)
- * @param opType Operation type (mutate/delete)
+ * Everything needed to address a delta against the right collection(s).
  */
-export const doPatchSample = async ({
-  sample,
-  datasetId,
-  getVersionToken,
-  refreshSample,
-  sampleDeltas,
-  isGenerated,
-  generatedDatasetName,
-  labelId,
-  labelPath,
-  opType,
-}: DoPatchSampleArgs): Promise<boolean> => {
-  // The annotation endpoint implements a CRDT via a version token
-  const versionToken = getVersionToken();
+export type SaveContext = {
+  /** Source dataset `_id` → `samples.<datasetId>`. */
+  datasetId: string;
+  /** The modal sample (the patches sample, when generated). */
+  sample: Sample;
+  /**
+   * Write a reconciled sample to the canonical store (which fans it out to the
+   * modal + grid tile in place — NOT a grid refresh). Only called on conflict:
+   * on success the canonical copy is already correct, because every edit wrote
+   * through at record time.
+   */
+  updateSample: (sample: Sample) => void;
+  /**
+   * The freshest canonical copy of the sample, as the base for conflict
+   * reconciliation (the user may have kept editing while the save was on the
+   * wire). Defaults to `sample`.
+   */
+  getCurrentSample?: () => Sample | undefined;
+  isGenerated?: boolean;
+  /** Generated (patches) dataset name; the backend resolves its collection. */
+  generatedDatasetName?: string;
+  /**
+   * The deltas the server applied (all of them on a clean save; the
+   * non-conflicted ones on a 409). The pending-edits ledger advances its
+   * originals from this.
+   */
+  onApplied?: (deltas: LabelFieldDelta[]) => void;
+  /**
+   * The deltas that failed their precondition, each with the server's current
+   * document state. The pending-edits ledger rebases from this so the next
+   * flush retries with a correct precondition.
+   */
+  onConflict?: (conflicts: ConflictedDelta[]) => void;
+};
 
-  if (!datasetId || !sample?._id || !versionToken) {
-    return false;
+/**
+ * Turn one captured delta into the single gated update to send. Every update
+ * addresses the permanent source sample; in a generated (patches) view the
+ * source sample comes from ``_sample_id`` and the generated dataset name +
+ * patch sample id ride along as sync hints. Generated datasets are a
+ * server-side concept — the server derives the best-effort generated-view
+ * write itself, and the client never addresses generated collections.
+ */
+export const buildUpdatesForDelta = (
+  delta: LabelFieldDelta,
+  ctx: SaveContext
+): AnnotationFieldUpdate[] => {
+  const lookupPath = delta.listKey
+    ? `${delta.field}.${delta.listKey}`
+    : delta.field;
+
+  if (!ctx.isGenerated) {
+    return [
+      {
+        collection: `samples.${ctx.datasetId}`,
+        id: ctx.sample._id,
+        lookupPath,
+        labelId: delta.labelId,
+        previousValue: delta.previousValue,
+        newValue: delta.newValue,
+      },
+    ];
   }
 
-  let caughtErr: Error;
+  // A generated save needs both ids; without them we'd send a malformed request
+  // or silently skip the source write. Fail loudly instead.
+  const sourceSampleId = (ctx.sample as Sample & { _sample_id?: string })
+    ._sample_id;
+  if (!ctx.generatedDatasetName || !sourceSampleId) {
+    throw new Error(
+      "Cannot persist a generated-view label without both a generated dataset " +
+        "name and the source sample id (_sample_id)"
+    );
+  }
 
-  if (sampleDeltas.length > 0) {
-    try {
-      let updatedSample: Sample;
-      // For generated views, use _sample_id so that the sampleId and datasetId
-      // always refer to the persistent source.
-      const sampleId = isGenerated
-        ? (sample as Sample & { _sample_id?: string })._sample_id
-        : sample._id;
+  return [
+    {
+      collection: `samples.${ctx.datasetId}`,
+      id: sourceSampleId,
+      lookupPath,
+      labelId: delta.labelId,
+      previousValue: delta.previousValue,
+      newValue: delta.newValue,
+      generatedDatasetName: ctx.generatedDatasetName,
+      generatedSampleId: ctx.sample._id,
+    },
+  ];
+};
 
-      try {
-        const response = await patchSample({
-          datasetId,
-          sampleId: sampleId,
-          deltas: sampleDeltas,
-          versionToken,
-          // Pass generated view parameters for field-level updates
-          labelId: labelId,
-          path: labelPath,
-          generatedDatasetName,
-          generatedSampleId: isGenerated ? sample._id : undefined,
-        });
-        updatedSample = response.sample;
-      } catch (err) {
-        // catch and defer any HTTP errors
-        caughtErr = err;
+/**
+ * Map each conflicting update index back to its source delta, transforming the
+ * server's reported document state to FE shape.
+ */
+const mapConflictsToDeltas = (
+  error: SaveConflictError,
+  updateDeltas: LabelFieldDelta[]
+): Map<LabelFieldDelta, unknown> => {
+  const conflicted = new Map<LabelFieldDelta, unknown>();
+  for (const { index, value } of error.conflicts) {
+    const delta = updateDeltas[index];
+    if (!delta) {
+      continue;
+    }
+    const doc =
+      value == null
+        ? null
+        : transformSampleData(value as Record<string, unknown>);
+    if (!conflicted.has(delta) || doc != null) {
+      conflicted.set(delta, doc);
+    }
+  }
+  return conflicted;
+};
 
-        // In the case of a version mismatch,
-        // the updated sample data is returned in the response body.
-        // We use this to refresh the app's sample data,
-        // and any pending changes will be re-attempted on the next patch
-        if (err instanceof VersionMismatchError) {
-          updatedSample = err.responseBody as Sample;
-        }
+/**
+ * Persist a batch of captured deltas (old + new value per edit).
+ *
+ * Display state is NOT touched on success — the canonical sample copy already
+ * shows every edit (write-through at record time), so a clean save only
+ * advances the ledger via `ctx.onApplied`.
+ *
+ * On a 409 the server applied everything except the conflicted updates.
+ * `ctx.onConflict` rebases the ledger, then the canonical copy is rebuilt as
+ * `server-reported field state + every still-pending edit re-applied` and
+ * written back (as an external change, so the annotation scene re-reads it).
+ * No refetch, no refresh.
+ *
+ * @returns `true` on success, `false` on a non-conflict failure
+ * @throws SaveConflictError so callers can surface the conflict
+ */
+export const saveAnnotationDeltas = async (
+  deltas: LabelFieldDelta[],
+  ctx: SaveContext
+): Promise<boolean> => {
+  if (!ctx.datasetId || !ctx.sample?._id) {
+    return false;
+  }
+  if (deltas.length === 0) {
+    return true;
+  }
+
+  // Source delta per update index, for mapping 409 conflicts back to deltas.
+  const updates: AnnotationFieldUpdate[] = [];
+  const updateDeltas: LabelFieldDelta[] = [];
+  for (const delta of deltas) {
+    for (const update of buildUpdatesForDelta(delta, ctx)) {
+      updates.push(update);
+      updateDeltas.push(delta);
+    }
+  }
+  if (updates.length === 0) {
+    return true;
+  }
+
+  try {
+    await saveAnnotationFieldUpdates(ctx.datasetId, ctx.sample._id, updates);
+
+    ctx.onApplied?.(deltas);
+
+    return true;
+  } catch (error) {
+    if (error instanceof SaveConflictError) {
+      const conflicted = mapConflictsToDeltas(error, updateDeltas);
+      const applied = deltas.filter((delta) => !conflicted.has(delta));
+      if (applied.length) {
+        ctx.onApplied?.(applied);
       }
+      // Rebase the ledger first — pendingDeltas below must reflect it.
+      ctx.onConflict?.(
+        [...conflicted].map(([delta, serverDocument]) => ({
+          delta,
+          serverDocument,
+        }))
+      );
 
-      if (updatedSample) {
-        // transform response data to match the graphql sample format
-        const cleanedSample = transformSampleData(updatedSample);
-        if (isSampleIsh(cleanedSample)) {
-          refreshSample(cleanedSample as Sample);
-        } else {
-          console.error(
-            "response data does not adhere to sample format",
-            cleanedSample
+      // Rebuild the canonical copy for the document the modal is showing:
+      // overlay the conflicting fields' current server state, then re-apply
+      // every still-pending edit so unsaved intent stays visible and retries
+      // next flush (`value` is null when the document was deleted under us).
+      const base = ctx.getCurrentSample?.() ?? ctx.sample;
+      const next = { ...(base as unknown as Record<string, unknown>) };
+      for (const { index, value } of error.conflicts) {
+        const update = updates[index];
+        if (
+          update &&
+          String(update.id) === String(ctx.sample._id) &&
+          value != null
+        ) {
+          Object.assign(
+            next,
+            transformSampleData(value as Record<string, unknown>)
           );
         }
-      } else {
-        console.warn("received empty sample data; deltas may be stale");
       }
-    } catch (error) {
-      // For delete operations on generated views (patches/clips/frames), a 404
-      // is expected because the sample in the generated dataset is deleted
-      // Note that although this is currently disabled in the UI,
-      // the backend already supports it
-      if (
-        isGenerated &&
-        opType === "delete" &&
-        error instanceof NotFoundError
-      ) {
-        return true;
+      for (const pending of pendingEdits.pendingDeltas(
+        String(ctx.sample._id)
+      )) {
+        applyDeltaToSample(next, pending);
       }
+      ctx.updateSample(next as unknown as Sample);
 
-      console.error("error patching sample", error);
-
-      return false;
+      console.warn(
+        "Annotation save conflict; reconciled affected fields from server",
+        error.conflicts
+      );
+      throw error;
     }
-  }
-
-  // raise HTTP errors to the caller
-  if (caughtErr) {
-    throw caughtErr;
-  }
-
-  return true;
-};
-
-export type LabelPersistenceArgs = {
-  sample: Sample | null;
-  applyPatch: (
-    deltas: JSONDeltas,
-    patchOptions?: {
-      labelId?: string;
-      labelPath?: string;
-      opType?: OpType;
-    }
-  ) => Promise<boolean>;
-  annotationLabel: LabelProxy | null;
-  schema: Field;
-  opType: OpType;
-  isGenerated?: boolean;
-};
-
-/**
- * Handle persisting a label update for a sample.
- *
- * @param sample Sample to modify
- * @param applyPatch Function which applies the calculated patch
- * @param annotationLabel Label to persist
- * @param schema Field schema for the label
- * @param opType Operation type
- * @param isGenerated Whether this is from a generated view (patches/clips/frames)
- */
-export const handleLabelPersistence = async ({
-  sample,
-  applyPatch,
-  annotationLabel,
-  schema,
-  opType,
-  isGenerated = false,
-}: LabelPersistenceArgs): Promise<boolean> => {
-  if (!sample) {
-    console.error("missing sample data!");
+    console.error("Annotation save failed", error);
     return false;
   }
-
-  if (!annotationLabel) {
-    console.error("missing annotation label!");
-    return false;
-  }
-
-  // calculate label deltas between current sample data and new label data
-  const sampleDeltas = buildLabelDeltas(
-    sample,
-    annotationLabel,
-    schema,
-    opType,
-    isGenerated
-  ).map((delta) => ({
-    ...delta,
-    // Convert label delta to sample delta
-    // Operation path is the label path for patches views
-    path: buildJsonPath(isGenerated ? null : annotationLabel.path, delta.path),
-  }));
-
-  // For SampleField patch updates on generated views
-  const patchOptions = isGenerated
-    ? {
-        labelId: (annotationLabel as { data?: { _id?: string } }).data?._id,
-        labelPath: buildAnnotationPath(annotationLabel, isGenerated),
-        opType,
-      }
-    : undefined;
-
-  return await applyPatch(sampleDeltas, patchOptions);
 };

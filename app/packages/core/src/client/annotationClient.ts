@@ -2,7 +2,6 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { Sample } from "@fiftyone/looker";
 import {
   FetchFunctionConfig,
   FetchFunctionResult,
@@ -10,38 +9,36 @@ import {
   MalformedRequestError,
   NotFoundError,
 } from "@fiftyone/utilities";
-import * as jsonpatch from "fast-json-patch";
 import { toExtendedJson } from "./transformer";
-import { encodeURIPath, parseETag } from "./util";
+import { encodeURIPath } from "./util";
 
 /**
- * List of JSON-patch operation deltas between two versions of a json object.
+ * A single gated annotation field update. The server gates on `previousValue`
+ * still holding and writes `newValue`: `previousValue: null` adds,
+ * `newValue: null` removes, both present modifies the differing fields.
  */
-export type JSONDeltas = jsonpatch.Operation[];
-
-export type PatchSampleRequest = {
-  datasetId: string;
-  sampleId: string;
-  deltas: JSONDeltas;
-  versionToken: string;
-  path?: string;
-  labelId?: string;
+export type AnnotationFieldUpdate = {
+  /** Target collection (e.g. `samples.<datasetId>`); must belong to the route dataset. */
+  collection: string;
+  /** `_id` of the document to match. */
+  id: string;
+  /** Array path for a list label (`ground_truth.detections`), else the field itself. */
+  lookupPath?: string;
+  /** `_id` of the label within `lookupPath`; omit for a flat label/primitive. */
+  labelId?: string | null;
+  /** The value the editor started from (the precondition). */
+  previousValue?: unknown;
+  /** The value to write; `null` removes. */
+  newValue?: unknown;
+  /** Generated (patches/clips) dataset to sync; the server derives that write. */
   generatedDatasetName?: string;
+  /** `_id` of the generated (patches) sample to sync. */
   generatedSampleId?: string;
 };
 
-export type ErrorResponse = {
-  errors: string[];
-};
+export type ErrorResponse = { errors: string[] };
 
-export type PatchSampleResponse = {
-  sample: Sample;
-  versionToken: string;
-};
-
-/**
- * Error resulting from a failed update operation.
- */
+/** Raised on a malformed save request (HTTP 400). */
 export class PatchApplicationError extends Error {
   constructor(message?: string) {
     super(message);
@@ -49,151 +46,125 @@ export class PatchApplicationError extends Error {
   }
 }
 
+/** One conflicting update: its batch `index` and the document's current state. */
+export type SaveConflict = {
+  /** Index into the submitted batch. */
+  index: number;
+  /** Full current state of the conflicting document, or `null` if deleted. */
+  value: unknown;
+};
+
 /**
- * Error resulting from a version mismatch.
- *
- * When attempting to patch a sample, the server validates the provided version
- * token and rejects the update if there is a version mismatch.
- *
- * The updated sample data is provided in the response body, and a current
- * version token is provided in the ETag header.
+ * Raised when one or more updates failed their precondition (HTTP 409). Each
+ * conflict carries the document's full current state so the caller can rebase
+ * without a refetch.
  */
-export class VersionMismatchError extends Error {
-  constructor(
-    message?: string,
-    readonly responseBody?: Record<string, unknown>,
-    readonly versionToken?: string
-  ) {
-    super(message);
-    this.name = "Version Mismatch Error";
+export class SaveConflictError extends Error {
+  constructor(readonly conflicts: SaveConflict[] = []) {
+    super("Annotation save conflict");
+    this.name = "Save Conflict Error";
   }
 }
 
-/**
- * Mapping of response code => error handler.
- *
- * These handlers are intended to be specific to known domain errors for the
- * annotation endpoints. For all other response codes, default error handling
- * is sufficient.
- */
 const errorHandlers: Record<number, (response: Response) => Promise<void>> = {
-  // bad request
+  // malformed request
   400: async (response) => {
-    // either a malformed request, or a list of errors from applying the patch
-    let errorResponse: ErrorResponse | undefined;
+    let errors: string[] | undefined;
     try {
-      // expected error response: '["error 1","error 2"]'
-      const body = await response.text();
-      const errorList = JSON.parse(body);
-      if (Array.isArray(errorList)) {
-        errorResponse = { errors: errorList };
+      const parsed = JSON.parse(await response.text());
+      if (Array.isArray(parsed)) {
+        errors = parsed.map(String);
+      } else if (parsed?.detail) {
+        errors = [String(parsed.detail)];
       }
     } catch (err) {
-      // doesn't look like a list of errors
       console.error("unparsable error:", err);
     }
-    if (errorResponse?.errors) {
-      console.error("Patch application errors:", errorResponse.errors);
-      throw new PatchApplicationError(errorResponse.errors.join(", "));
+    if (errors?.length) {
+      console.error("Annotation save errors:", errors);
+      throw new PatchApplicationError(errors.join(", "));
     }
-
     throw new MalformedRequestError(
       "Unexpected error response. See console for details."
     );
   },
 
-  // sample not found
+  // document not found
   404: async () => {
     throw new NotFoundError({ path: "sample" });
   },
 
-  // version token mismatch
-  412: async (response) => {
-    let responseBody: Record<string, unknown>;
+  // precondition mismatch — one or more updates conflicted
+  409: async (response) => {
+    let conflicts: SaveConflict[] = [];
     try {
-      responseBody = await response.json();
+      const body = await response.json();
+      if (Array.isArray(body?.conflicts)) {
+        conflicts = body.conflicts;
+      }
     } catch (err) {
-      // JSON parsing error
-      console.warn("error parsing response body", err);
+      console.warn("error parsing conflict response", err);
     }
-
-    throw new VersionMismatchError(
-      "Invalid version token",
-      responseBody,
-      parseETag(response.headers.get("ETag"))
-    );
+    throw new SaveConflictError(conflicts);
   },
 };
 
-/**
- * `fetch` with headers, error handling, etc.
- *
- * @param config fetch configuration
- */
 const doFetch = <A, R>(
   config: Omit<FetchFunctionConfig<A>, "errorHandler">
-): Promise<FetchFunctionResult<R>> => {
-  return getFetchFunctionExtended()({
+): Promise<FetchFunctionResult<R>> =>
+  getFetchFunctionExtended()({
     errorHandler: (response) => errorHandlers[response.status]?.(response),
     ...config,
   });
+
+/** Encode to Extended JSON so nested ObjectIds/datetimes reach the server as BSON. */
+const encodeUpdate = (
+  update: AnnotationFieldUpdate
+): Record<string, unknown> => {
+  const encoded: Record<string, unknown> = {
+    collection: update.collection,
+    id: update.id,
+  };
+  if (update.generatedDatasetName) {
+    encoded.generatedDatasetName = update.generatedDatasetName;
+  }
+  if (update.generatedSampleId) {
+    encoded.generatedSampleId = update.generatedSampleId;
+  }
+  if (update.lookupPath !== undefined) {
+    encoded.lookupPath = update.lookupPath;
+  }
+  if (update.labelId !== undefined && update.labelId !== null) {
+    encoded.labelId = update.labelId;
+  }
+  if ("previousValue" in update) {
+    encoded.previousValue = toExtendedJson(update.previousValue);
+  }
+  if ("newValue" in update) {
+    encoded.newValue = toExtendedJson(update.newValue);
+  }
+  return encoded;
 };
 
 /**
- * Patch a sample, applying the specified updates to its fields.
+ * Persist a batch of gated annotation field updates in one request, each
+ * applied independently. `datasetId`/`sampleId` are route context only.
  *
- * @param request Patch sample request
+ * @throws SaveConflictError if any update's precondition failed (HTTP 409)
  */
-export const patchSample = async (
-  request: PatchSampleRequest
-): Promise<PatchSampleResponse> => {
-  // Build the base path for the request.
-  const pathParts = ["dataset", request.datasetId, "sample", request.sampleId];
-
-  // Use the sampleField endpoint for field-level updates (eg detection in patchesView)
-  if (request.path && request.labelId) {
-    pathParts.push(request.path, request.labelId);
+export const saveAnnotationFieldUpdates = async (
+  datasetId: string,
+  sampleId: string,
+  updates: AnnotationFieldUpdate[]
+): Promise<void> => {
+  if (updates.length === 0) {
+    return;
   }
 
-  // Add generated dataset and label ids as query parameter if present
-  // This enables syncing changes from the source to the currently loaded generated dataset.
-  // We do this instead of making a separate request with the generated dataset _id
-  // because we want to ensure permissions are checked against the src dataset.
-  const queryParams = new URLSearchParams();
-  if (request.generatedDatasetName) {
-    if (
-      !request.generatedSampleId ||
-      request.generatedSampleId === request.sampleId
-    ) {
-      throw new Error(
-        "generatedSampleId is required and must be different from sampleId when generatedDatasetName is provided"
-      );
-    }
-    queryParams.set("generated_dataset", request.generatedDatasetName);
-    queryParams.set("generated_sample_id", request.generatedSampleId);
-  }
-
-  const queryString = queryParams.toString();
-  const pathWithQuery = queryString
-    ? `${encodeURIPath(pathParts)}?${queryString}`
-    : encodeURIPath(pathParts);
-
-  const deltas = request.deltas.map((delta) =>
-    "value" in delta ? { ...delta, value: toExtendedJson(delta.value) } : delta
-  );
-
-  const response = await doFetch<JSONDeltas, Sample>({
-    path: pathWithQuery,
+  await doFetch<Record<string, unknown>[], unknown>({
+    path: encodeURIPath(["dataset", datasetId, "sample", sampleId, "fields"]),
     method: "PATCH",
-    body: deltas,
-    headers: {
-      "Content-Type": "application/json-patch+json",
-      "If-Match": `"${request.versionToken}"`,
-    },
+    body: updates.map(encodeUpdate),
+    headers: { "Content-Type": "application/json" },
   });
-
-  return {
-    sample: response.response,
-    versionToken: parseETag(response.headers.get("ETag")),
-  };
 };

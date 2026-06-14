@@ -1,382 +1,277 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildAnnotationPath,
-  buildDeletionDeltas,
-  buildJsonPath,
-  buildKeypointMutationDeltas,
-  buildKeypointsMutationDeltas,
-  buildSingleMutationDelta,
-  type LabelProxy,
-} from "./deltas";
-import type { KeypointLabel } from "@fiftyone/lighter";
+import { buildLabelFieldDelta, type LabelProxy } from "./deltas";
 import type { AnnotationLabel } from "@fiftyone/state";
 import type { Field } from "@fiftyone/utilities";
 
 type LabelData = AnnotationLabel["data"];
 
 const makeField = (embeddedDocType: string): Field =>
-  ({
-    embeddedDocType,
-  } as Field);
+  ({ embeddedDocType } as Field);
 
-describe("delta calculation utilities", () => {
-  describe("buildAnnotationPath", () => {
-    describe("patches views (isGenerated=true)", () => {
-      it("appends '.detections' for Detection labels in generated views", () => {
-        const label: LabelProxy = {
-          type: "Detection",
-          path: "predictions",
-          data: { _id: "label-1", label: "cat" } as LabelData,
-          boundingBox: [0.1, 0.2, 0.3, 0.4],
-        };
-        expect(buildAnnotationPath(label, true)).toBe("predictions.detections");
-      });
+type SampleArg = Parameters<typeof buildLabelFieldDelta>[0];
 
-      it("does not append '.detections' for Classification labels in generated views", () => {
-        const label: LabelProxy = {
-          type: "Classification",
-          path: "classifications",
-          data: { _id: "label-1", label: "cat" } as LabelData,
-        };
-        expect(buildAnnotationPath(label, true)).toBe("classifications");
-      });
-    });
+describe("buildLabelFieldDelta", () => {
+  const detectionsSchema = makeField("fiftyone.core.labels.Detections");
 
-    describe("normal views (isGenerated=false)", () => {
-      it("returns path unchanged for Detection labels", () => {
-        const label: LabelProxy = {
-          type: "Detection",
-          path: "predictions",
-          data: { _id: "label-1", label: "cat" } as LabelData,
-          boundingBox: [0.1, 0.2, 0.3, 0.4],
-        };
-        expect(buildAnnotationPath(label, false)).toBe("predictions");
-      });
+  const makeSample = (label = "cat") =>
+    ({
+      ground_truth: {
+        _cls: "Detections",
+        detections: [
+          {
+            _cls: "Detection",
+            _id: "det-1",
+            label,
+            bounding_box: [0.1, 0.1, 0.2, 0.2],
+          },
+        ],
+      },
+      primitive_field: "initial",
+    } as unknown as SampleArg);
 
-      it("returns path unchanged for Classification labels", () => {
-        const label: LabelProxy = {
-          type: "Classification",
-          path: "classifications",
-          data: { _id: "label-1", label: "cat" } as LabelData,
-        };
-        expect(buildAnnotationPath(label, false)).toBe("classifications");
-      });
+  const detectionLabel = (data: Record<string, unknown>): LabelProxy =>
+    ({
+      type: "Detection",
+      path: "ground_truth",
+      data: data as LabelData,
+      boundingBox: [0.1, 0.1, 0.2, 0.2],
+    } as LabelProxy);
+
+  it("captures a list-label mutation as old + new value", () => {
+    const delta = buildLabelFieldDelta(
+      makeSample(),
+      detectionLabel({ _id: "det-1", label: "dog" }),
+      detectionsSchema,
+      "mutate",
+      false
+    );
+
+    expect(delta).not.toBeNull();
+    expect(delta?.field).toBe("ground_truth");
+    expect(delta?.listKey).toBe("detections");
+    expect(delta?.labelId).toBe("det-1");
+    expect((delta?.previousValue as { label: string }).label).toBe("cat");
+    expect((delta?.newValue as { label: string }).label).toBe("dog");
+  });
+
+  it("preserves server-only fields (_cls, tags) absent from the edited label", () => {
+    // The edited label carries only the fields the editor knows about; the
+    // merge must keep server-enriched fields (tags, _cls) so the saved value
+    // isn't stripped of them.
+    const sample = {
+      ground_truth: {
+        _cls: "Detections",
+        detections: [
+          {
+            _cls: "Detection",
+            _id: "det-1",
+            label: "cat",
+            bounding_box: [0.1, 0.1, 0.2, 0.2],
+            tags: ["reviewed"],
+          },
+        ],
+      },
+    } as unknown as SampleArg;
+
+    const delta = buildLabelFieldDelta(
+      sample,
+      detectionLabel({ _id: "det-1", label: "dog" }),
+      detectionsSchema,
+      "mutate",
+      false
+    );
+
+    const next = delta?.newValue as Record<string, unknown>;
+    expect(next.label).toBe("dog");
+    expect(next.tags).toEqual(["reviewed"]);
+    expect(next._cls).toBe("Detection");
+  });
+
+  it("resolves the keypoints listKey for a Keypoint label", () => {
+    // Keypoints resolve their listKey through a different branch of the
+    // type→listKey map than detections.
+    const sample = {
+      points: {
+        _cls: "Keypoints",
+        keypoints: [
+          {
+            _cls: "Keypoint",
+            _id: "kp-1",
+            label: "nose",
+            points: [[0.5, 0.5]],
+          },
+        ],
+      },
+    } as unknown as SampleArg;
+
+    const keypointLabel = {
+      type: "Keypoint",
+      path: "points",
+      data: { _id: "kp-1", label: "ear", points: [[0.5, 0.5]] },
+    } as unknown as LabelProxy;
+
+    const delta = buildLabelFieldDelta(
+      sample,
+      keypointLabel,
+      makeField("fiftyone.core.labels.Keypoints"),
+      "mutate",
+      false
+    );
+
+    expect(delta?.listKey).toBe("keypoints");
+    expect(delta?.labelId).toBe("kp-1");
+    expect((delta?.newValue as { label: string }).label).toBe("ear");
+  });
+
+  it("returns null when nothing changed (no phantom save)", () => {
+    const delta = buildLabelFieldDelta(
+      makeSample(),
+      detectionLabel({ _id: "det-1", label: "cat" }),
+      detectionsSchema,
+      "mutate",
+      false
+    );
+    expect(delta).toBeNull();
+  });
+
+  it("returns a non-null delta for a no-op when includeUnchanged is true", () => {
+    // The pending-edits ledger always records (then resolves no-ops itself),
+    // so capture must not pre-drop an unchanged edit. With includeUnchanged
+    // the same no-op that returns null above yields a delta.
+    const delta = buildLabelFieldDelta(
+      makeSample(),
+      detectionLabel({ _id: "det-1", label: "cat" }),
+      detectionsSchema,
+      "mutate",
+      false,
+      true
+    );
+    expect(delta).not.toBeNull();
+    expect(delta?.labelId).toBe("det-1");
+    expect((delta?.newValue as { label: string }).label).toBe("cat");
+  });
+
+  it("captures an add (previousValue null) for a new element", () => {
+    const delta = buildLabelFieldDelta(
+      makeSample(),
+      detectionLabel({ _id: "det-NEW", label: "bird" }),
+      detectionsSchema,
+      "mutate",
+      false
+    );
+    expect(delta?.labelId).toBe("det-NEW");
+    expect(delta?.previousValue).toBeNull();
+    expect((delta?.newValue as { label: string }).label).toBe("bird");
+  });
+
+  it("stamps _cls on a new label whose overlay lacks it", () => {
+    // A new label has no previous value to merge a _cls from; persisting it
+    // without _cls would make it undeserializable. The delta must supply it.
+    const delta = buildLabelFieldDelta(
+      makeSample(),
+      detectionLabel({ _id: "det-NEW", label: "bird" }),
+      detectionsSchema,
+      "mutate",
+      false
+    );
+    expect((delta?.newValue as { _cls?: string })._cls).toBe("Detection");
+  });
+
+  it("captures a deletion (newValue null)", () => {
+    const delta = buildLabelFieldDelta(
+      makeSample(),
+      detectionLabel({ _id: "det-1" }),
+      detectionsSchema,
+      "delete",
+      false
+    );
+    expect(delta?.field).toBe("ground_truth");
+    expect(delta?.listKey).toBe("detections");
+    expect(delta?.labelId).toBe("det-1");
+    expect(delta?.newValue).toBeNull();
+    expect((delta?.previousValue as { label: string }).label).toBe("cat");
+  });
+
+  it("captures a primitive field change", () => {
+    const label = {
+      type: "Primitive",
+      path: "primitive_field",
+      data: "updated",
+    } as unknown as LabelProxy;
+    const delta = buildLabelFieldDelta(
+      makeSample(),
+      label,
+      makeField("fiftyone.core.fields.StringField"),
+      "mutate",
+      false
+    );
+    expect(delta).toEqual({
+      field: "primitive_field",
+      listKey: null,
+      labelId: null,
+      previousValue: "initial",
+      newValue: "updated",
     });
   });
 
-  describe("buildJsonPath", () => {
-    it("builds path from labelPath and operationPath", () => {
-      expect(buildJsonPath("predictions.detections", "label")).toBe(
-        "/predictions/detections/label"
-      );
-    });
-
-    it("builds path with null labelPath (generated/patches views)", () => {
-      // In generated views, labelPath is null because deltas are relative to the label
-      expect(buildJsonPath(null, "label")).toBe("/label");
-    });
-
-    it("handles nested operation paths", () => {
-      expect(buildJsonPath("predictions.detections", "bounding_box/0")).toBe(
-        "/predictions/detections/bounding_box/0"
-      );
-    });
-
-    it("handles deeply nested labelPath", () => {
-      expect(buildJsonPath("a.b.c", "field")).toBe("/a/b/c/field");
-    });
+  it("returns null for an unchanged primitive", () => {
+    const label = {
+      type: "Primitive",
+      path: "primitive_field",
+      data: "initial",
+    } as unknown as LabelProxy;
+    const delta = buildLabelFieldDelta(
+      makeSample(),
+      label,
+      makeField("fiftyone.core.fields.StringField"),
+      "mutate",
+      false
+    );
+    expect(delta).toBeNull();
   });
 
-  describe("buildSingleMutationDelta", () => {
-    const path = "somePath";
-    const fullSampleLabel = {
-      _cls: "Classification",
-      _id: "abc123",
-      tags: ["reviewed"],
-      label: "positive",
-      confidence: 0.95,
-    };
-    const sampleData = {
-      [path]: fullSampleLabel,
-    };
+  it("addresses the source list for a generated (flat) view", () => {
+    // In a patches view the modal sample stores the label flat at the field;
+    // the change must still target the source list (by type + id).
+    const flatSample = {
+      ground_truth: {
+        _cls: "Detection",
+        _id: "det-1",
+        label: "cat",
+        bounding_box: [0.1, 0.1, 0.2, 0.2],
+      },
+    } as unknown as SampleArg;
 
-    it("should preserve server fields (_cls, _id, tags) when new data is missing them", () => {
-      const newData = { label: "negative" } as LabelData;
+    const delta = buildLabelFieldDelta(
+      flatSample,
+      detectionLabel({ _id: "det-1", label: "dog" }),
+      makeField("fiftyone.core.labels.Detection"),
+      "mutate",
+      true
+    );
 
-      const deltas = buildSingleMutationDelta(sampleData, path, newData);
-
-      expect(deltas).toEqual([
-        { op: "replace", path: "/label", value: "negative" },
-      ]);
-    });
-
-    it("should generate correct deltas when new data has all fields", () => {
-      const newData = { ...fullSampleLabel, label: "negative" } as LabelData;
-
-      const deltas = buildSingleMutationDelta(sampleData, path, newData);
-
-      expect(deltas).toEqual([
-        { op: "replace", path: "/label", value: "negative" },
-      ]);
-    });
-
-    it("should return empty deltas when nothing changed", () => {
-      const deltas = buildSingleMutationDelta(sampleData, path, {
-        ...fullSampleLabel,
-      } as LabelData);
-
-      expect(deltas).toEqual([]);
-    });
-
-    it("should allow new fields not in existing label", () => {
-      const newData = {
-        label: "positive",
-        custom_attr: "new_value",
-      } as unknown as LabelData;
-
-      const deltas = buildSingleMutationDelta(sampleData, path, newData);
-
-      expect(deltas).toEqual([
-        { op: "add", path: "/custom_attr", value: "new_value" },
-      ]);
-    });
-
-    it("should handle empty existing label (new field)", () => {
-      const newData = {
-        _cls: "Classification",
-        _id: "new123",
-        label: "positive",
-      } as LabelData;
-
-      const deltas = buildSingleMutationDelta({}, path, newData);
-
-      // All fields should be "add" operations
-      expect(deltas.every((d) => d.op === "add")).toBe(true);
-      expect(deltas.find((d) => d.op === "remove")).toBeUndefined();
-    });
-
-    it("should allow new data to explicitly replace field values", () => {
-      const newData = {
-        _cls: "Classification",
-        _id: "abc123",
-        tags: ["reviewed", "updated"],
-        label: "negative",
-        confidence: 0.99,
-      } as LabelData;
-
-      const deltas = buildSingleMutationDelta(sampleData, path, newData);
-
-      expect(deltas).toHaveLength(3);
-      expect(deltas).toContainEqual({
-        op: "replace",
-        path: "/label",
-        value: "negative",
-      });
-      expect(deltas).toContainEqual({
-        op: "replace",
-        path: "/confidence",
-        value: 0.99,
-      });
-      expect(deltas).toContainEqual({
-        op: "add",
-        path: "/tags/1",
-        value: "updated",
-      });
-    });
+    expect(delta?.field).toBe("ground_truth");
+    expect(delta?.listKey).toBe("detections");
+    expect(delta?.labelId).toBe("det-1");
+    expect((delta?.newValue as { label: string }).label).toBe("dog");
   });
 
-  describe("buildKeypointMutationDeltas", () => {
-    it("merges with existing single Keypoint and produces replace deltas", () => {
-      const path = "kp";
-      const existing: KeypointLabel = {
-        _cls: "Keypoint",
-        _id: "kp-1",
-        label: "head",
-        tags: [],
-        points: [[0.1, 0.2]],
-      } as unknown as KeypointLabel;
-      const sample = { [path]: existing };
+  it("reads the element by id for a generated array (evaluation patches)", () => {
+    // Eval patches keep the field as a Detections array (unlike to_patches'
+    // flat label), so the previous value is the matching element — not the
+    // whole container.
+    const delta = buildLabelFieldDelta(
+      makeSample(),
+      detectionLabel({ _id: "det-1", label: "dog" }),
+      detectionsSchema,
+      "mutate",
+      true
+    );
 
-      const deltas = buildKeypointMutationDeltas(sample, {
-        type: "Keypoint",
-        path,
-        data: {
-          _cls: "Keypoint",
-          _id: "kp-1",
-          label: "shoulder",
-          tags: [],
-          points: [[0.1, 0.2]],
-        } as unknown as KeypointLabel,
-      });
-
-      expect(deltas).toEqual([
-        { op: "replace", path: "/label", value: "shoulder" },
-      ]);
-    });
-  });
-
-  describe("buildKeypointsMutationDeltas", () => {
-    const path = "keypoints";
-    const existingKeypoint: KeypointLabel = {
-      _cls: "Keypoint",
-      _id: "kp-1",
-      label: "head",
-      tags: ["foo"],
-      points: [[0.1, 0.2]],
-    } as unknown as KeypointLabel;
-
-    it("upserts an existing keypoint by _id and merges server fields", () => {
-      const sample = {
-        [path]: { _cls: "Keypoints", keypoints: [existingKeypoint] },
-      };
-
-      const deltas = buildKeypointsMutationDeltas(sample, {
-        type: "Keypoint",
-        path,
-        data: {
-          _id: "kp-1",
-          label: "shoulder",
-        } as unknown as KeypointLabel,
-      });
-
-      expect(deltas).toEqual([
-        { op: "replace", path: "/keypoints/0/label", value: "shoulder" },
-      ]);
-    });
-
-    it("inserts a new keypoint when the _id is not present", () => {
-      const sample = {
-        [path]: { _cls: "Keypoints", keypoints: [existingKeypoint] },
-      };
-
-      const newKeypoint = {
-        _cls: "Keypoint",
-        _id: "kp-2",
-        label: "foot",
-        tags: [],
-        points: [[0.5, 0.6]],
-      } as unknown as KeypointLabel;
-
-      const deltas = buildKeypointsMutationDeltas(sample, {
-        type: "Keypoint",
-        path,
-        data: newKeypoint,
-      });
-
-      expect(deltas).toContainEqual({
-        op: "add",
-        path: "/keypoints/1",
-        value: newKeypoint,
-      });
-    });
-
-    it("seeds a keypoints list when none exists at the path", () => {
-      const newKeypoint = {
-        _cls: "Keypoint",
-        _id: "kp-1",
-        label: "head",
-        tags: [],
-        points: [[0.1, 0.2]],
-      } as unknown as KeypointLabel;
-
-      const deltas = buildKeypointsMutationDeltas(
-        {},
-        { type: "Keypoint", path, data: newKeypoint }
-      );
-
-      expect(deltas.some((d) => d.op === "add")).toBe(true);
-    });
-  });
-
-  describe("buildDeletionDeltas (Keypoint)", () => {
-    const path = "keypoints";
-
-    it("filters out a keypoint by _id from a Keypoints list", () => {
-      const sample = {
-        [path]: {
-          _cls: "Keypoints",
-          keypoints: [
-            {
-              _cls: "Keypoint",
-              _id: "kp-1",
-              label: "head",
-              points: [[0.1, 0.2]],
-            },
-            {
-              _cls: "Keypoint",
-              _id: "kp-2",
-              label: "foot",
-              points: [[0.5, 0.6]],
-            },
-          ],
-        },
-      };
-
-      const deltas = buildDeletionDeltas(
-        sample,
-        {
-          type: "Keypoint",
-          path,
-          data: { _id: "kp-1" } as unknown as KeypointLabel,
-        },
-        makeField("fiftyone.core.labels.Keypoints")
-      );
-
-      // fast-json-patch emits a "shift down + pop" sequence: the trailing
-      // index is removed, and prior indices are rewritten to the surviving
-      // elements.
-      expect(deltas).toContainEqual({
-        op: "remove",
-        path: "/keypoints/1",
-      });
-      expect(deltas).toContainEqual({
-        op: "replace",
-        path: "/keypoints/0/_id",
-        value: "kp-2",
-      });
-    });
-
-    it("returns a root remove for a single Keypoint field", () => {
-      const deltas = buildDeletionDeltas(
-        { kp: { _cls: "Keypoint", _id: "kp-1" } },
-        {
-          type: "Keypoint",
-          path: "kp",
-          data: { _id: "kp-1" } as unknown as KeypointLabel,
-        },
-        makeField("fiftyone.core.labels.Keypoint")
-      );
-
-      expect(deltas).toEqual([{ op: "remove", path: "/" }]);
-    });
-
-    it("short-circuits to a root remove for generated views", () => {
-      const deltas = buildDeletionDeltas(
-        {},
-        {
-          type: "Keypoint",
-          path: "keypoints",
-          data: { _id: "kp-1" } as unknown as KeypointLabel,
-        },
-        makeField("fiftyone.core.labels.Keypoints"),
-        true
-      );
-
-      expect(deltas).toEqual([{ op: "remove", path: "/" }]);
-    });
-
-    it("warns and returns [] when the keypoints list is missing", () => {
-      const deltas = buildDeletionDeltas(
-        {},
-        {
-          type: "Keypoint",
-          path: "keypoints",
-          data: { _id: "kp-1" } as unknown as KeypointLabel,
-        },
-        makeField("fiftyone.core.labels.Keypoints")
-      );
-
-      expect(deltas).toEqual([]);
-    });
+    expect(delta?.field).toBe("ground_truth");
+    expect(delta?.listKey).toBe("detections");
+    expect(delta?.labelId).toBe("det-1");
+    expect((delta?.previousValue as { label: string }).label).toBe("cat");
+    expect((delta?.newValue as { label: string }).label).toBe("dog");
   });
 });

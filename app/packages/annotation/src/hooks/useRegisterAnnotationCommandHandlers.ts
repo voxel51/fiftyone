@@ -2,10 +2,14 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { useAnnotationEventBus, useDeleteLabel } from "@fiftyone/annotation";
+import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { useRegisterCommandHandler } from "@fiftyone/command-bus";
+import { useModalSample, type AnnotationLabel } from "@fiftyone/state";
 import { useCallback } from "react";
 import { DeleteAnnotationCommand } from "../commands";
+import type { LabelProxy } from "../deltas";
+import { useGetLabelDelta } from "../persistence/useGetLabelDelta";
+import { useRecordEdit } from "../persistence/useRecordEdit";
 
 /**
  * Hook that registers command handlers for annotation persistence.
@@ -13,39 +17,52 @@ import { DeleteAnnotationCommand } from "../commands";
  */
 export const useRegisterAnnotationCommandHandlers = () => {
   const eventBus = useAnnotationEventBus();
-  const deleteLabel = useDeleteLabel();
+  const sampleId = useModalSample()?.sample?._id ?? null;
+  const recordEdit = useRecordEdit();
+  const getDeleteDelta = useGetLabelDelta(
+    (label: AnnotationLabel) => label as unknown as LabelProxy,
+    { opType: "delete", includeUnchanged: true }
+  );
 
   useRegisterCommandHandler(
     DeleteAnnotationCommand,
     useCallback(
       async (cmd) => {
+        const labelId =
+          (cmd.label.data as { _id?: string } | undefined)?._id ?? null;
         try {
-          const labelId = cmd.label.data._id;
-          const success = await deleteLabel(cmd.label, cmd.schema);
-
-          if (success) {
-            eventBus.dispatch("annotation:deleteSuccess", {
-              labelId,
-              type: "delete",
-              labelType: cmd.label.type,
-            });
-          } else {
+          const delta = sampleId && getDeleteDelta(cmd.label, cmd.label.path);
+          if (!delta) {
             eventBus.dispatch("annotation:deleteError", {
               labelId,
               type: "delete",
             });
+            return false;
           }
-          return success;
+
+          // Record the delete; the next flush persists it alongside any other
+          // pending edits (a delete of a label that never reached the server
+          // resolves to a no-op there).
+          recordEdit(sampleId, delta);
+
+          eventBus.dispatch("annotation:deleteSuccess", {
+            labelId,
+            type: "delete",
+            labelType: cmd.label.type,
+          });
+          return true;
         } catch (error) {
+          // Surface the failure (deltas capture / record can throw on
+          // malformed label data) and re-throw so the command bus sees it.
           eventBus.dispatch("annotation:deleteError", {
-            labelId: cmd?.label?.data?._id,
+            labelId,
             type: "delete",
             error: error as Error,
           });
           throw error;
         }
       },
-      [deleteLabel, eventBus]
+      [eventBus, getDeleteDelta, recordEdit, sampleId]
     )
   );
 };
