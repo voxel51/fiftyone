@@ -39,7 +39,8 @@ const keyOf = (sampleId: string, field: string, labelId: string | null) =>
 
 const sampleOf = (key: string) => key.slice(0, key.indexOf(" "));
 
-/** A label/field's current value within a (FE-shaped) document. */
+// Reads the label/field's value out of the server's reported document during
+// conflict rebasing; the document is already FE-shaped.
 const extractCurrentValue = (
   doc: unknown,
   { field, listKey, labelId }: LabelFieldDelta
@@ -75,9 +76,10 @@ export class PendingEdits {
   private entries = new Map<string, Entry>();
 
   /**
-   * Record an edit (or delete: ``newValue === null``). The first record for a
-   * key captures ``previousValue`` as the server-held original; later records
-   * only move ``latest``.
+   * Only the first record for a key captures ``previousValue`` as the
+   * server-held original; later records move only ``latest``, so the gate
+   * stays anchored to what the server actually has no matter how many times
+   * the user edits before a flush. ``newValue === null`` is a delete.
    */
   record(sampleId: string, delta: LabelFieldDelta): void {
     const key = keyOf(sampleId, delta.field, delta.labelId);
@@ -98,7 +100,6 @@ export class PendingEdits {
     });
   }
 
-  /** The sample ids that currently have pending entries. */
   sampleIds(): string[] {
     const ids = new Set<string>();
     for (const key of this.entries.keys()) {
@@ -108,9 +109,9 @@ export class PendingEdits {
   }
 
   /**
-   * The current pending deltas for ``sampleId``, read-only — no flush
-   * bookkeeping. Used to re-overlay unsaved intent onto a server-reconciled
-   * document.
+   * Unlike {@link take}, this does no flush bookkeeping — it exists so a
+   * conflict rebase can re-overlay still-unsaved intent onto the server's
+   * reconciled document without consuming the entries.
    */
   pendingDeltas(sampleId: string): LabelFieldDelta[] {
     const out: LabelFieldDelta[] = [];
@@ -187,7 +188,6 @@ export class PendingEdits {
     }
   }
 
-  /** Drop everything. */
   reset(): void {
     this.entries.clear();
   }

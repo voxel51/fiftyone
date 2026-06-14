@@ -53,7 +53,6 @@ export const applyDeltaToSample = (
     delta.field
   );
 
-  // A flat/primitive field (no list key): replace or delete it.
   if (!delta.listKey) {
     setNestedField(
       sample,
@@ -96,7 +95,6 @@ export const applyDeltaToSample = (
     return;
   }
 
-  // List field (normal view or evaluation patches): replace/add/remove by id.
   const container = { ...(fieldValue as Record<string, unknown>) };
   const list = [
     ...((container[listKey] as Array<Record<string, unknown>>) ?? []),

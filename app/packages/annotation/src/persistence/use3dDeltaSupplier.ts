@@ -14,12 +14,9 @@ import type { LabelFieldDelta, LabelProxy } from "../deltas";
 import type { DeltaSupplier } from "./deltaSupplier";
 import { useGetLabelDelta } from "./useGetLabelDelta";
 
-/**
- * List of attributes which are used for internal annotation functionality.
- *
- * These attributes should *not* be persisted to the sample and are stripped
- * before calculating a delta.
- */
+// Runtime/UI-only fields the annotation layer attaches to a working label;
+// persisting them would corrupt the stored label, so they are stripped before
+// a delta is built.
 const reservedAttributes = [
   "color",
   "id",
@@ -30,21 +27,12 @@ const reservedAttributes = [
   "type",
 ];
 
-/**
- * Omit a set of keys from an object.
- *
- * @param data Object to modify
- * @param keys List of keys to omit
- */
 const omit = <T, K extends keyof T>(data: T, ...keys: K[]): Omit<T, K> => {
   const result = { ...data };
   keys.forEach((key) => delete result[key]);
   return result as Omit<T, K>;
 };
 
-/**
- * Build a {@link LabelProxy} instance from a reconciled 3d label.
- */
 const buildAnnotationLabel = (
   label: ReconciledDetection3D | ReconciledPolyline3D
 ): LabelProxy | undefined => {
@@ -65,14 +53,9 @@ const buildAnnotationLabel = (
 };
 
 /**
- * Hook which provides a {@link DeltaSupplier} which captures changes isolated
- * to the 3D annotation context.
- *
- * The approach is:
- * - Read from the working store (committed edits) (See looker-3d/src/annotation/store/index.ts)
- * - Guard against computing deltas during active drag operations
- * - Compute mutation deltas for modified labels
- * - Compute deletion deltas for deleted labels (that existed in baseline)
+ * Captures the 3D annotation context's edits as deltas. It reads the working
+ * store's *committed* edits rather than live drag state, so a flush never
+ * persists an intermediate position (see looker-3d/src/annotation/store).
  */
 export const use3dDeltaSupplier = (): DeltaSupplier => {
   const detections = useWorkingDetections();
@@ -87,8 +70,7 @@ export const use3dDeltaSupplier = (): DeltaSupplier => {
   });
 
   return useCallback(() => {
-    // Guard: don't compute deltas during active drag
-    // This prevents intermediate states from being persisted
+    // Mid-drag positions are intermediate and must not be persisted.
     if (dragInProgress) {
       return { deltas: [] };
     }

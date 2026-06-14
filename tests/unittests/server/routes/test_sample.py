@@ -380,11 +380,11 @@ class TestSampleFields:
     async def test_interleaved_external_edit_never_conflicts(
         self, mutator, dataset_id, collection, sample
     ):
-        # The thesis of field-level gating: a label edit must not conflict with
-        # a concurrent write to a DIFFERENT field made outside the annotation
-        # flow. Sequence: add a label, an external writer touches another
-        # field, add a second label — every step succeeds (200, never 409, so
-        # the client never has to retry), and no edit clobbers another.
+        # A label edit and a concurrent write to a different field (made
+        # outside the annotation flow) gate on different fields, so neither
+        # should reject the other. Sequence: add a label, let an external
+        # writer touch another field, add a second label — every step is 200
+        # (never 409, so no client retry) and no edit clobbers another.
         det_a, det_b = ObjectId(), ObjectId()
 
         def add_label(label_oid, label):
@@ -464,8 +464,8 @@ class TestSampleFields:
 
     @pytest.mark.asyncio
     async def test_dataset_not_found(self, mutator, collection, sample):
-        # The route dataset's collections are resolved from its dataset doc; an
-        # unknown dataset id is a 404 (develop: test_dataset_not_found).
+        # The route dataset's collections are resolved from its dataset doc, so
+        # an unknown dataset id is a 404 rather than a write to nowhere.
         updates = [
             {
                 "collection": collection,
@@ -485,8 +485,8 @@ class TestSampleFields:
     async def test_malformed_label_data_returns_400(
         self, mutator, dataset_id, collection, sample
     ):
-        # A label value that cannot be deserialized is a 400, not a silent
-        # write (develop: test_unsupported_label_class / test_malformed_label_data).
+        # A label value that cannot be deserialized into its class is rejected
+        # with a 400 rather than written through in a broken shape.
         updates = [
             {
                 "collection": collection,
@@ -511,10 +511,9 @@ class TestSampleFields:
     async def test_batch_applies_independently_when_one_update_conflicts(
         self, mutator, dataset_id, collection, sample
     ):
-        # A valid primitive edit batched with a stale label edit. Updates are
-        # applied independently: the conflict rejects ONLY the stale update
-        # (reported by index), the valid one lands. Anything else would force
-        # the client to re-send the whole batch after every conflict.
+        # A valid primitive edit batched with a stale label edit. Updates apply
+        # independently: only the stale update is rejected (reported by its
+        # batch index); the valid one still lands.
         sample.ground_truth.detections[0].label = "changed_by_other"
         sample.save()
         sample.reload()

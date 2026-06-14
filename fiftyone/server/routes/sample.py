@@ -9,30 +9,6 @@ Annotation saves are a batch of gated field updates applied directly to Mongo
 (no sample is ever loaded), each carrying its target, the previous value to
 gate on, and the new value to write. A failed precondition returns ``409``
 with the document's current state so the client can reconcile.
-
-Non-obvious bits:
-
-  * Generated (patches/clips) datasets are a server-side concept: every
-    update addresses the permanent source sample, and the server derives the
-    generated copy's sync write from the update's ``generatedDatasetName``/
-    ``generatedSampleId`` hints. Syncs are best-effort end to end — planning
-    failures, stale gates, and database errors are logged and skipped, never
-    failing the request. Only source failures reach the client.
-  * Source writes are applied independently — a stale gate on one update is a
-    conflict for that update only, never for the rest of the batch.
-  * The batch is one unordered ``bulk_write`` per target collection; no
-    update is ever issued twice. Per-update diagnosis is read-only and runs
-    only when a bulk result cannot confirm every gated update — never in the
-    single-writer case.
-  * A precondition miss whose post-state already holds is an idempotent retry
-    (e.g. the first attempt committed but its response was lost) and counts
-    as success, not a conflict.
-  * A mask lives on disk or in the database, never both: when a detection has
-    a ``mask_path``, edited mask bytes are written to that file (before any
-    database write) and are never stored inline.
-  * An update's ``collection`` is validated against the route dataset's own
-    collections, resolved from its dataset document — one naming authority,
-    correct for any dataset including generated datasets loaded directly.
 """
 
 import datetime
@@ -724,6 +700,12 @@ class SampleFields(HTTPEndpoint):
         db = get_db_conn()
         allowed = _allowed_collections(db, request.path_params)
 
+        logger.debug(
+            "Applying %d field update(s) to sample %s",
+            len(updates),
+            request.path_params.get("sample_id"),
+        )
+
         source: List[Tuple[int, _UpdatePlan]] = []
         generated: List[Tuple[int, _UpdatePlan]] = []
         for index, update in enumerate(updates):
@@ -776,8 +758,19 @@ class SampleFields(HTTPEndpoint):
             )
 
         if conflicts:
+            logger.info(
+                "Annotation save for sample %s: %d of %d update(s) conflicted",
+                request.path_params.get("sample_id"),
+                len(conflicts),
+                len(source),
+            )
             return JSONResponse({"conflicts": conflicts}, status_code=409)
 
+        logger.info(
+            "Annotation save for sample %s: %d update(s) applied",
+            request.path_params.get("sample_id"),
+            len(source),
+        )
         return JSONResponse({"updated": len(source)})
 
 

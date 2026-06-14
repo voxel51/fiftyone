@@ -6,12 +6,6 @@ import { LabelProxy } from "../deltas";
 import { useGetLabelDelta } from "./useGetLabelDelta";
 import { OpType } from "../types";
 
-/**
- * Method for constructing a {@link LabelProxy} from a primitive value.
- *
- * @param data Primitive data
- * @param path Field path
- */
 const buildLabelProxy = ({
   data,
   path,

@@ -55,10 +55,9 @@ describe("buildLabelFieldDelta", () => {
   });
 
   it("preserves server-only fields (_cls, tags) absent from the edited label", () => {
-    // The editor's label carries only what it knows; the merge must retain
-    // server-enriched fields (e.g. tags, _cls) it never saw, so the backend
-    // sees only the genuinely-changed field. (develop: buildSingleMutationDelta
-    // "should preserve server fields when new data is missing them".)
+    // The edited label carries only the fields the editor knows about; the
+    // merge must keep server-enriched fields (tags, _cls) so the saved value
+    // isn't stripped of them.
     const sample = {
       ground_truth: {
         _cls: "Detections",
@@ -89,8 +88,8 @@ describe("buildLabelFieldDelta", () => {
   });
 
   it("resolves the keypoints listKey for a Keypoint label", () => {
-    // Exercises the non-Detection branch of the type→listKey map (develop had
-    // dedicated buildKeypoint(s)MutationDeltas coverage).
+    // Keypoints resolve their listKey through a different branch of the
+    // type→listKey map than detections.
     const sample = {
       points: {
         _cls: "Keypoints",

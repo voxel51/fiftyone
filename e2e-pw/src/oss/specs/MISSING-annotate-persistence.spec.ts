@@ -1,10 +1,9 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * End-to-end acceptance for the annotation persistence pipeline: drawing in
- * the modal autosaves exactly once per interval with no conflict errors, the
- * edit survives modal back/forward navigation without a refresh, and the
- * label is durably persisted to the database.
+ * Drives the modal annotation flow end to end: draw a detection, then verify
+ * one autosave request, that the edit is still present after navigating away
+ * and back, and that it persisted to the database.
  */
 import { expect, test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
