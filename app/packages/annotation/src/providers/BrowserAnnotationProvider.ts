@@ -8,6 +8,7 @@ import type {
   ErrorCallback,
   InferenceRequest,
   InferenceResult,
+  PromptPoint,
   ProviderError,
   ProviderStatus,
   StatusCallback,
@@ -199,6 +200,41 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
    */
   async encodeBitmap(request: BitmapEncodeRequest): Promise<void> {
     const { promise } = this.send("encodeBitmap", request);
+    return promise;
+  }
+
+  /** Load SAM2 video models (memory_encoder, memory_attention, image_decoder_video). */
+  async loadVideoModel(): Promise<void> {
+    const { promise } = this.send("loadVideoModel", {});
+    return promise;
+  }
+
+  /** Seed a new video tracking session from a keyframe bitmap + prompt points. */
+  async initVideoSession(
+    sessionId: string,
+    bitmap: ImageBitmap,
+    points: PromptPoint[]
+  ): Promise<void> {
+    const { promise } = this.send("initVideoSession", {
+      sessionId,
+      bitmap,
+      points,
+    });
+    return promise;
+  }
+
+  /** Propagate the tracked object to the next frame, returning its mask. */
+  async propagateVideoFrame(
+    sessionId: string,
+    bitmap: ImageBitmap
+  ): Promise<InferenceResult> {
+    const { promise } = this.send("propagateVideoFrame", { sessionId, bitmap });
+    return promise as Promise<InferenceResult>;
+  }
+
+  /** Release all memory for a video session. */
+  async endVideoSession(sessionId: string): Promise<void> {
+    const { promise } = this.send("endVideoSession", { sessionId });
     return promise;
   }
 

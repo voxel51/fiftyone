@@ -12,7 +12,7 @@
 /** ObjectId hex string. */
 export type ObjectIdHex = string;
 
-export type PropagationMethod = "linear" | "sam2";
+export type PropagationMethod = "linear" | "sam2" | "sam2-video-browser";
 
 /** Provenance written on labels created by a propagation run. */
 export interface PropagationBlob {

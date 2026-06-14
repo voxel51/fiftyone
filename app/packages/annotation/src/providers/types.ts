@@ -74,6 +74,17 @@ export type WorkerMessages = {
   embedAndDecode: WorkerMessage<InferenceRequest, InferenceResult>;
   embedAndDecodeBitmap: WorkerMessage<BitmapInferenceRequest, InferenceResult>;
   encodeBitmap: WorkerMessage<BitmapEncodeRequest, void>;
+  // SAM2 video propagation (stateful, browser-side)
+  loadVideoModel: WorkerMessage<Record<string, never>, void>;
+  initVideoSession: WorkerMessage<
+    { sessionId: string; bitmap: ImageBitmap; points: PromptPoint[] },
+    void
+  >;
+  propagateVideoFrame: WorkerMessage<
+    { sessionId: string; bitmap: ImageBitmap },
+    InferenceResult
+  >;
+  endVideoSession: WorkerMessage<{ sessionId: string }, void>;
 };
 
 /** One-way worker-to-main-thread notification payloads. */

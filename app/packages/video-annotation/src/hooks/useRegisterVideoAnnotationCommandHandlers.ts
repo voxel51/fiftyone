@@ -390,6 +390,7 @@ function usePropagateHandler({
               toFrame: cmd.toFrame,
               videoKey: sampleDescriptor.sampleId,
               getFrameBitmap,
+              strategy: "sam2-video-browser",
               onDetection: applyPropagatedDetection,
               onProgress: (done, runTotal) => {
                 tracking = true;

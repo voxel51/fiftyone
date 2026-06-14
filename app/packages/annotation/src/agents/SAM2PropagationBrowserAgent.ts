@@ -1,8 +1,13 @@
-import { objectId, type SyntheticBox } from "@fiftyone/utilities";
+import {
+  objectId,
+  type PropagationMethod,
+  type SyntheticBox,
+} from "@fiftyone/utilities";
 import {
   BrowserAnnotationProvider,
   type BrowserAnnotationProviderOptions,
   propagate,
+  propagateSam2VideoBrowser,
   pointsFromBox,
   type PropagationStrategy,
   type ProviderError,
@@ -123,57 +128,66 @@ export class SAM2PropagationBrowserAgent
 
     this.setStatus("inferring");
 
-    try {
-      await propagate(this.provider, {
-        getFrameBitmap: args.getFrameBitmap,
-        keyframeA: {
-          frameIdx: args.fromFrame,
-          points: pointsFromBox(args.seedKeyframe.bounding_box),
-        },
-        keyframeB: {
-          frameIdx: args.toFrame,
-          // Points are unused beyond the first frame
-          points: [],
-        },
-        videoKey: args.videoKey,
-        strategy: args.strategy ?? "centroid-5",
-        shouldAbort: args.shouldAbort,
-        onProgress: args.onProgress,
-        onFrame: (frameIdx, result) => {
-          // Don't overwrite the seed keyframe
-          if (frameIdx === args.fromFrame) {
-            return;
-          }
-
-          // In bracketed mode, the end frame is also a user keyframe,
-          // so skip it too
-          if (args.endKeyframe && frameIdx === args.toFrame) {
-            return;
-          }
-
-          const detection: PropagatedDetection = {
-            _id: objectId(),
-            _cls: "Detection",
-            bounding_box: [
-              result.bbox.x,
-              result.bbox.y,
-              result.bbox.w,
-              result.bbox.h,
-            ],
-            label: args.seedKeyframe.label,
-            index: args.seedKeyframe.index,
-            instance: { _cls: "Instance", _id: args.instanceId },
-            keyframe: false,
-            propagation: {
-              method: "sam2",
-              run_id: runId,
-              parent_keyframes: parentKeyframes,
-            },
-          };
-
-          args.onDetection(frameIdx, detection);
+    const onFrameResult = (
+      frameIdx: number,
+      result: { bbox: { x: number; y: number; w: number; h: number } },
+      method: PropagationMethod
+    ) => {
+      if (frameIdx === args.fromFrame) return;
+      if (args.endKeyframe && frameIdx === args.toFrame) return;
+      args.onDetection(frameIdx, {
+        _id: objectId(),
+        _cls: "Detection",
+        bounding_box: [
+          result.bbox.x,
+          result.bbox.y,
+          result.bbox.w,
+          result.bbox.h,
+        ],
+        label: args.seedKeyframe.label,
+        index: args.seedKeyframe.index,
+        instance: { _cls: "Instance", _id: args.instanceId },
+        keyframe: false,
+        propagation: {
+          method,
+          run_id: runId,
+          parent_keyframes: parentKeyframes,
         },
       });
+    };
+
+    try {
+      if (args.strategy === "sam2-video-browser") {
+        await propagateSam2VideoBrowser(this.provider, {
+          getFrameBitmap: args.getFrameBitmap,
+          seedFrameIdx: args.fromFrame,
+          endFrameIdx: args.toFrame,
+          seedPoints: pointsFromBox(args.seedKeyframe.bounding_box),
+          videoKey: args.videoKey,
+          shouldAbort: args.shouldAbort,
+          onProgress: args.onProgress,
+          onFrame: (frameIdx, result) =>
+            onFrameResult(frameIdx, result, "sam2-video-browser"),
+        });
+      } else {
+        await propagate(this.provider, {
+          getFrameBitmap: args.getFrameBitmap,
+          keyframeA: {
+            frameIdx: args.fromFrame,
+            points: pointsFromBox(args.seedKeyframe.bounding_box),
+          },
+          keyframeB: {
+            frameIdx: args.toFrame,
+            points: [],
+          },
+          videoKey: args.videoKey,
+          strategy: args.strategy ?? "centroid-5",
+          shouldAbort: args.shouldAbort,
+          onProgress: args.onProgress,
+          onFrame: (frameIdx, result) =>
+            onFrameResult(frameIdx, result, "sam2"),
+        });
+      }
 
       if (this.lifecycleStatus !== "error") {
         this.setStatus("idle");

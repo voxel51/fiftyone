@@ -148,6 +148,419 @@ if (!import.meta.env?.DEV && import.meta.env?.ORT_WASM_PATH) {
 let encoderSession: ort.InferenceSession | null = null;
 let decoderSession: ort.InferenceSession | null = null;
 
+// ── Video propagation sessions (loaded lazily via loadVideoModel) ──────────
+const VIDEO_DECODER_FILE = "image_decoder_video.onnx";
+const MEMORY_ENCODER_FILE = "memory_encoder.onnx";
+const MEMORY_ATTENTION_FILE = "memory_attention_hiera_t.onnx";
+const NO_MEM_EMBED_FILE = "no_mem_embed.bin";
+const VISION_POS_EMBED_FILE = "vision_pos_embed.bin";
+
+let videoDecoderSession: ort.InferenceSession | null = null;
+let memoryEncoderSession: ort.InferenceSession | null = null;
+let memoryAttentionSession: ort.InferenceSession | null = null;
+let noMemEmbed: Float32Array | null = null; // [256] — no_mem_embed constant
+let visionPosEmbed: Float32Array | null = null; // [4096 * 256] — spatial pos enc
+let maskmemTposEnc: Float32Array | null = null; // [7 * 64] — temporal pos enc
+
+// SAM2 hiera-tiny spatial constants
+const VIS_C = 256;
+const MEM_C = 64;
+const FEAT_SPATIAL = 64;
+const FEAT_HW = FEAT_SPATIAL * FEAT_SPATIAL; // 4096
+const MAX_MEMORY = 6;
+const VIDEO_MASK_SZ = 1024;
+
+interface MemorySlot {
+  features: Float32Array; // [FEAT_HW * MEM_C] — seq-first [HW, C] layout
+  posEnc: Float32Array; // [FEAT_HW * MEM_C] — without tpos added
+}
+
+interface VideoSession {
+  bank: MemorySlot[]; // newest-first
+  origW: number;
+  origH: number;
+}
+
+const videoSessions = new Map<string, VideoSession>();
+
+/** [1, C, H, W] BCHW → [H*W, 1, C] seq-first (for memory_attention inputs). */
+function bchwToSeqFirst(src: Float32Array, C: number): Float32Array {
+  const HW = src.length / C;
+  const dst = new Float32Array(HW * C);
+  for (let hw = 0; hw < HW; hw++)
+    for (let c = 0; c < C; c++) dst[hw * C + c] = src[c * HW + hw];
+  return dst;
+}
+
+/** [H*W, 1, C] seq-first → [1, C, H*W] BCHW (inverse of bchwToSeqFirst). */
+function seqFirstToBchw(src: Float32Array, C: number): Float32Array {
+  const HW = src.length / C;
+  const dst = new Float32Array(HW * C);
+  for (let hw = 0; hw < HW; hw++)
+    for (let c = 0; c < C; c++) dst[c * HW + hw] = src[hw * C + c];
+  return dst;
+}
+
+/** Build an InferenceResult from the [VIDEO_MASK_SZ × VIDEO_MASK_SZ] logit mask. */
+function maskLogitsToResult(mask: Float32Array): InferenceResult {
+  const SZ = VIDEO_MASK_SZ;
+  let mx0 = SZ,
+    my0 = SZ,
+    mx1 = -1,
+    my1 = -1;
+  for (let y = 0; y < SZ; y++) {
+    for (let x = 0; x < SZ; x++) {
+      if (mask[y * SZ + x] > 0) {
+        if (x < mx0) mx0 = x;
+        if (x > mx1) mx1 = x;
+        if (y < my0) my0 = y;
+        if (y > my1) my1 = y;
+      }
+    }
+  }
+  if (mx1 < 0) throw new Error("Video decoder returned an empty mask");
+
+  const cropW = mx1 - mx0 + 1;
+  const cropH = my1 - my0 + 1;
+  const croppedMask = new Float32Array(cropW * cropH);
+  for (let y = 0; y < cropH; y++)
+    for (let x = 0; x < cropW; x++) {
+      const logit = mask[(my0 + y) * SZ + (mx0 + x)];
+      croppedMask[y * cropW + x] = 1 / (1 + Math.exp(-logit));
+    }
+
+  return {
+    mask: croppedMask,
+    maskWidth: cropW,
+    maskHeight: cropH,
+    bbox: { x: mx0 / SZ, y: my0 / SZ, w: cropW / SZ, h: cropH / SZ },
+  };
+}
+
+async function loadVideoModel(): Promise<void> {
+  // Try WebGPU (Metal on Mac, Vulkan/D3D12 on Windows/Linux) then fall back
+  // to WASM. CUDA is not available in-browser — WebGPU is the GPU path here.
+  // memory_attention has dynamic batch axes; ORT Web WebGPU may reject it and
+  // we want a clean WASM fallback rather than a hard failure.
+  // TODO: get webgpu to work at parity — fp16 quantisation and possible
+  // op-level fallbacks cause visible mask shrinkage vs WASM fp32 baseline.
+  const videoEpCandidates: ort.InferenceSession.SessionOptions["executionProviders"][] =
+    [["wasm"]];
+
+  async function loadOrtSession(
+    file: string,
+    cacheKey: string
+  ): Promise<ort.InferenceSession> {
+    const url = await resolveModelUrl(FAMILY, file);
+    const buf = await loadModelWeights(
+      url,
+      cacheKey,
+      () => {},
+      postWarningNotification
+    );
+    let lastErr: unknown;
+    for (const executionProviders of videoEpCandidates) {
+      try {
+        const session = await ort.InferenceSession.create(buf, {
+          executionProviders,
+        });
+        if (SAM2_PERF_LOG) {
+          // eslint-disable-next-line no-console
+          console.debug(
+            `[sam2-perf] video-session ${file} ep=${
+              (executionProviders as string[])[0]
+            }`
+          );
+        }
+        return session;
+      } catch (err) {
+        lastErr = err;
+        if (SAM2_PERF_LOG) {
+          // eslint-disable-next-line no-console
+          console.debug(
+            `[sam2-perf] video-session ${file} ep=${
+              (executionProviders as string[])[0]
+            } FAILED, trying next: ${
+              err instanceof Error ? err.message : String(err)
+            }`
+          );
+        }
+      }
+    }
+    throw lastErr;
+  }
+
+  const [vd, me, ma] = await Promise.all([
+    videoDecoderSession
+      ? Promise.resolve(videoDecoderSession)
+      : loadOrtSession(VIDEO_DECODER_FILE, `${FAMILY}:${VIDEO_DECODER_FILE}`),
+    memoryEncoderSession
+      ? Promise.resolve(memoryEncoderSession)
+      : loadOrtSession(MEMORY_ENCODER_FILE, `${FAMILY}:${MEMORY_ENCODER_FILE}`),
+    memoryAttentionSession
+      ? Promise.resolve(memoryAttentionSession)
+      : loadOrtSession(
+          MEMORY_ATTENTION_FILE,
+          `${FAMILY}:${MEMORY_ATTENTION_FILE}`
+        ),
+  ]);
+  videoDecoderSession = vd;
+  memoryEncoderSession = me;
+  memoryAttentionSession = ma;
+
+  if (!noMemEmbed) {
+    const url = await resolveModelUrl(FAMILY, NO_MEM_EMBED_FILE);
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`Failed to fetch ${NO_MEM_EMBED_FILE}`);
+    noMemEmbed = new Float32Array(await resp.arrayBuffer()); // [256]
+  }
+  if (!visionPosEmbed) {
+    const url = await resolveModelUrl(FAMILY, VISION_POS_EMBED_FILE);
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`Failed to fetch ${VISION_POS_EMBED_FILE}`);
+    visionPosEmbed = new Float32Array(await resp.arrayBuffer()); // [4096*256]
+  }
+}
+
+async function initVideoSession(
+  sessionId: string,
+  bitmap: ImageBitmap,
+  points: PromptPoint[]
+): Promise<void> {
+  if (!encoderSession || !videoDecoderSession || !memoryEncoderSession)
+    throw new Error("Video models not loaded — call loadVideoModel first");
+
+  const imageData = bitmapToImageData(bitmap);
+  const processed = preprocessImage(imageData);
+  const { originalWidth: origW, originalHeight: origH } = processed;
+
+  // Encode
+  const encOut = await encoderSession.run({
+    image: new ort.Tensor("float32", processed.tensor, [
+      1,
+      3,
+      SAM2_INPUT_SIZE,
+      SAM2_INPUT_SIZE,
+    ]),
+  });
+  const hr0Dims = [...encOut["high_res_feats_0"].dims];
+  const hr1Dims = [...encOut["high_res_feats_1"].dims];
+  const imageEmbed = (await encOut["image_embed"].getData(
+    true
+  )) as Float32Array;
+  const hr0 = (await encOut["high_res_feats_0"].getData(true)) as Float32Array;
+  const hr1 = (await encOut["high_res_feats_1"].getData(true)) as Float32Array;
+
+  // Decode seed frame with user points
+  const n = points.length;
+  const coords = new Float32Array(n * 2);
+  const labels = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const [sx, sy] = transformPoint(points[i].x, points[i].y);
+    coords[i * 2] = sx;
+    coords[i * 2 + 1] = sy;
+    labels[i] = points[i].label;
+  }
+  const decOut = await videoDecoderSession.run({
+    point_coords: new ort.Tensor("float32", coords, [1, n, 2]),
+    point_labels: new ort.Tensor("float32", labels, [1, n]),
+    image_embed: new ort.Tensor("float32", imageEmbed, [
+      1,
+      VIS_C,
+      FEAT_SPATIAL,
+      FEAT_SPATIAL,
+    ]),
+    high_res_feats_0: new ort.Tensor("float32", hr0, hr0Dims),
+    high_res_feats_1: new ort.Tensor("float32", hr1, hr1Dims),
+  });
+  const highResMasks = decOut["high_res_masks"].data as Float32Array;
+
+  // Memory encode the seed frame
+  const memOut = await memoryEncoderSession.run({
+    pix_feat: new ort.Tensor("float32", imageEmbed, [
+      1,
+      VIS_C,
+      FEAT_SPATIAL,
+      FEAT_SPATIAL,
+    ]),
+    pred_masks_high_res: new ort.Tensor("float32", highResMasks, [
+      1,
+      1,
+      VIDEO_MASK_SZ,
+      VIDEO_MASK_SZ,
+    ]),
+  });
+
+  if (!maskmemTposEnc) {
+    maskmemTposEnc = new Float32Array(
+      memOut["maskmem_tpos_enc"].data as Float32Array
+    ); // [7 * 64]
+  }
+
+  videoSessions.set(sessionId, {
+    bank: [
+      {
+        features: bchwToSeqFirst(
+          memOut["maskmem_features"].data as Float32Array,
+          MEM_C
+        ),
+        posEnc: bchwToSeqFirst(
+          memOut["maskmem_pos_enc"].data as Float32Array,
+          MEM_C
+        ),
+      },
+    ],
+    origW,
+    origH,
+  });
+}
+
+async function propagateVideoFrame(
+  sessionId: string,
+  bitmap: ImageBitmap
+): Promise<InferenceResult> {
+  const session = videoSessions.get(sessionId);
+  if (!session) throw new Error(`No video session: ${sessionId}`);
+  if (
+    !encoderSession ||
+    !videoDecoderSession ||
+    !memoryEncoderSession ||
+    !memoryAttentionSession ||
+    !noMemEmbed ||
+    !visionPosEmbed ||
+    !maskmemTposEnc
+  )
+    throw new Error("Video models not loaded");
+
+  const t0 = performance.now();
+  const processed = preprocessImage(bitmapToImageData(bitmap));
+
+  // Encode
+  const tEnc = performance.now();
+  const encOut = await encoderSession.run({
+    image: new ort.Tensor("float32", processed.tensor, [
+      1,
+      3,
+      SAM2_INPUT_SIZE,
+      SAM2_INPUT_SIZE,
+    ]),
+  });
+  const hr0Dims = [...encOut["high_res_feats_0"].dims];
+  const hr1Dims = [...encOut["high_res_feats_1"].dims];
+  const imageEmbed = (await encOut["image_embed"].getData(
+    true
+  )) as Float32Array;
+  const hr0 = (await encOut["high_res_feats_0"].getData(true)) as Float32Array;
+  const hr1 = (await encOut["high_res_feats_1"].getData(true)) as Float32Array;
+  const encMs = performance.now() - tEnc;
+
+  // Raw vision features: bchwToSeqFirst(imageEmbed) minus noMemEmbed
+  const rawFeats = bchwToSeqFirst(imageEmbed, VIS_C);
+  for (let hw = 0; hw < FEAT_HW; hw++)
+    for (let c = 0; c < VIS_C; c++) rawFeats[hw * VIS_C + c] -= noMemEmbed[c];
+
+  // Build memory bank tensors (bank[0] = most recent = t_pos 0)
+  const nMem = session.bank.length;
+  const memory = new Float32Array(nMem * FEAT_HW * MEM_C);
+  const memPos = new Float32Array(nMem * FEAT_HW * MEM_C);
+  for (let i = 0; i < nMem; i++) {
+    const slot = session.bank[i];
+    memory.set(slot.features, i * FEAT_HW * MEM_C);
+    const tposOff = i * MEM_C;
+    const posWithTpos = new Float32Array(FEAT_HW * MEM_C);
+    for (let hw = 0; hw < FEAT_HW; hw++)
+      for (let c = 0; c < MEM_C; c++)
+        posWithTpos[hw * MEM_C + c] =
+          slot.posEnc[hw * MEM_C + c] + maskmemTposEnc[tposOff + c];
+    memPos.set(posWithTpos, i * FEAT_HW * MEM_C);
+  }
+
+  // Memory attention
+  const tMa = performance.now();
+  const maOut = await memoryAttentionSession.run({
+    curr: new ort.Tensor("float32", rawFeats, [FEAT_HW, 1, VIS_C]),
+    memory: new ort.Tensor("float32", memory, [nMem * FEAT_HW, 1, MEM_C]),
+    curr_pos: new ort.Tensor("float32", visionPosEmbed, [FEAT_HW, 1, VIS_C]),
+    memory_pos: new ort.Tensor("float32", memPos, [nMem * FEAT_HW, 1, MEM_C]),
+    num_obj_ptr_tokens: new ort.Tensor("int64", new BigInt64Array([0n]), []),
+  });
+  const condEmbed = seqFirstToBchw(
+    maOut["pix_feat"].data as Float32Array,
+    VIS_C
+  );
+  const maMs = performance.now() - tMa;
+
+  // Decode with no-click padding point (-1, -1) / label -1
+  const tDec = performance.now();
+  const decOut = await videoDecoderSession.run({
+    point_coords: new ort.Tensor(
+      "float32",
+      new Float32Array([-1, -1]),
+      [1, 1, 2]
+    ),
+    point_labels: new ort.Tensor("float32", new Float32Array([-1]), [1, 1]),
+    image_embed: new ort.Tensor("float32", condEmbed, [
+      1,
+      VIS_C,
+      FEAT_SPATIAL,
+      FEAT_SPATIAL,
+    ]),
+    high_res_feats_0: new ort.Tensor("float32", hr0, hr0Dims),
+    high_res_feats_1: new ort.Tensor("float32", hr1, hr1Dims),
+  });
+  const highResMasks = decOut["high_res_masks"].data as Float32Array;
+  const decMs = performance.now() - tDec;
+
+  // Memory encode conditioned features for next frame
+  const tMe = performance.now();
+  const memOut = await memoryEncoderSession.run({
+    pix_feat: new ort.Tensor("float32", condEmbed, [
+      1,
+      VIS_C,
+      FEAT_SPATIAL,
+      FEAT_SPATIAL,
+    ]),
+    pred_masks_high_res: new ort.Tensor("float32", highResMasks, [
+      1,
+      1,
+      VIDEO_MASK_SZ,
+      VIDEO_MASK_SZ,
+    ]),
+  });
+  const meMs = performance.now() - tMe;
+
+  // Update sliding window (newest first, max MAX_MEMORY slots)
+  session.bank.unshift({
+    features: bchwToSeqFirst(
+      memOut["maskmem_features"].data as Float32Array,
+      MEM_C
+    ),
+    posEnc: bchwToSeqFirst(
+      memOut["maskmem_pos_enc"].data as Float32Array,
+      MEM_C
+    ),
+  });
+  if (session.bank.length > MAX_MEMORY) session.bank.pop();
+
+  const result = maskLogitsToResult(
+    highResMasks.subarray(0, VIDEO_MASK_SZ * VIDEO_MASK_SZ)
+  );
+
+  perfLog("video-propagate", {
+    total: performance.now() - t0,
+    enc: encMs,
+    memAttn: maMs,
+    dec: decMs,
+    memEnc: meMs,
+  });
+
+  return result;
+}
+
+function endVideoSession(sessionId: string): void {
+  videoSessions.delete(sessionId);
+}
+
 /**
  * Fetch an image URL and decode it into ImageData.
  *
@@ -746,6 +1159,23 @@ self.onmessage = async (e: MessageEvent) => {
     } else if (type === "encodeBitmap") {
       await encodeBitmap(payload.bitmap, payload.cacheKey);
       postResponse(id, "encodeBitmap", undefined as void);
+    } else if (type === "loadVideoModel") {
+      await loadVideoModel();
+      postResponse(id, "loadVideoModel", undefined as void);
+    } else if (type === "initVideoSession") {
+      await initVideoSession(payload.sessionId, payload.bitmap, payload.points);
+      postResponse(id, "initVideoSession", undefined as void);
+    } else if (type === "propagateVideoFrame") {
+      const result = await propagateVideoFrame(
+        payload.sessionId,
+        payload.bitmap
+      );
+      postResponse(id, "propagateVideoFrame", result, [
+        result.mask.buffer as ArrayBuffer,
+      ]);
+    } else if (type === "endVideoSession") {
+      endVideoSession(payload.sessionId);
+      postResponse(id, "endVideoSession", undefined as void);
     } else {
       postError(id, type, `Unknown message type: ${type}`);
     }

@@ -43,7 +43,8 @@ export type PropagationStrategy =
   | "centroid-5"
   | "centroid-3"
   | "centroid-1"
-  | "lerp";
+  | "lerp"
+  | "sam2-video-browser";
 
 export interface PropagateOptions {
   /** Returns the decoded bitmap for a frame index (caller-defined base). */
