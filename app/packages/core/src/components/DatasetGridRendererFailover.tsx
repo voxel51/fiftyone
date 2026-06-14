@@ -69,6 +69,9 @@ const DatasetGridRendererFailoverBanner = () => {
   );
 };
 
+/**
+ * Handles dataset grid renderer failover reloads and session warning UI.
+ */
 export const DatasetGridRendererFailover = () => {
   return (
     <>

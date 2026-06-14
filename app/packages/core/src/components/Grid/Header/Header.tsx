@@ -15,7 +15,7 @@ import {
   SamplesHeader,
   SliderContainer,
 } from "./Containers";
-import GridHeaderPluginSlot from "./GridHeaderPluginSlot";
+import GridHeaderSampleRendererControls from "./GridHeaderSampleRendererControls";
 import GroupSlice from "./GroupSlice";
 import Sort from "./Sort";
 
@@ -97,7 +97,7 @@ const Header = () => {
         >
           <ResourceCount />
         </Suspense>
-        <GridHeaderPluginSlot />
+        <GridHeaderSampleRendererControls />
         {shouldShowSliceSelector && (
           <RightDiv>
             <GroupSlice />
