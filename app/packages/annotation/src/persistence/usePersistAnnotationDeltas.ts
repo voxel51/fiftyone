@@ -95,8 +95,14 @@ export const usePersistAnnotationDeltas =
         return success;
       }
 
-      // one patch per dirty sample the modal renders (selected slice + 3D)
-      const patches = engine.getJsonPatch();
+      // one patch per dirty sample the modal renders (selected slice + 3D).
+      // A store can be dirty (transient entries present) yet diff to NOTHING
+      // when a transient equals its source — that is not a save: patching []
+      // succeeds with no network, so without this filter the autosave tick
+      // would fire a spurious "saved" toast every interval.
+      const patches = engine
+        .getJsonPatch()
+        .filter((entry) => entry.deltas.length > 0);
 
       if (patches.length === 0) {
         return null;
