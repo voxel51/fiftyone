@@ -16,7 +16,7 @@ import {
   lookerSectionHeaderFirst,
 } from "./panel.module.css";
 import { Close as CloseIcon } from "@fiftyone/components";
-import React, { Fragment, useMemo } from "react";
+import { Fragment, useMemo } from "react";
 
 export default function HelpPanel({ containerRef, onClose, items }) {
   const groupedItems = useMemo(() => {

@@ -1,7 +1,7 @@
 import { LoadingDots, useTheme } from "@fiftyone/components";
 import { Checkbox as MaterialCheckbox } from "@mui/material";
 import { animated } from "@react-spring/web";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { RecoilValueReadOnly, constSelector } from "recoil";
 import styled from "styled-components";
 import { prettify } from "../../utils/generic";

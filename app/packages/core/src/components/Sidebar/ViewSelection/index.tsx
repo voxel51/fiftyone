@@ -2,7 +2,7 @@ import { useTrackEvent } from "@fiftyone/analytics";
 import { Selection } from "@fiftyone/components";
 import { useRefetchableSavedViews } from "@fiftyone/core";
 import * as fos from "@fiftyone/state";
-import React, { Suspense, useEffect, useMemo } from "react";
+import { Suspense, useEffect, useMemo } from "react";
 import {
   atom,
   useRecoilState,

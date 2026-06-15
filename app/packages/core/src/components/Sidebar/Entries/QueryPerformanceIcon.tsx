@@ -3,7 +3,6 @@ import { OPTIMIZING_QUERY_PERFORMANCE } from "@fiftyone/core";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
 import { Bolt } from "@mui/icons-material";
 import { Box, Button, Tooltip } from "@mui/material";
-import React from "react";
 import { atom, useRecoilState } from "recoil";
 import styled from "styled-components";
 

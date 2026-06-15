@@ -1,4 +1,3 @@
-import React from "react";
 import { StatusButton } from "@fiftyone/components";
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";

@@ -5,7 +5,7 @@
 
 import { WidgetProps } from "@rjsf/utils";
 import { FormField, Select } from "@voxel51/voodo";
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 function computeSelectChangeValue(
   newValue: string | string[],

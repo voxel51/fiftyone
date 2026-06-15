@@ -1,7 +1,6 @@
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import { CustomizeColor } from "@fiftyone/state";
 import { Color, cssColorNames } from "./Color";
-import { getPointIndex } from "./getPointIndex";
 import { sortStringsAlphabetically } from "./sortStringsAlphabetically";
 
 const maxLegendLineLength = 35;

@@ -14,7 +14,7 @@ import {
   useTheme,
 } from "@mui/material";
 import { isPlainObject } from "lodash";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { HeaderView } from ".";
 import { getComponentProps } from "../utils";
 import { ViewPropsType } from "../utils/types";

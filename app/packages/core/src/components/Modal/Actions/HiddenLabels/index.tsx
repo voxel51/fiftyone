@@ -1,7 +1,6 @@
 import { PillButton } from "@fiftyone/components";
 import { hiddenLabels } from "@fiftyone/state";
 import { VisibilityOff } from "@mui/icons-material";
-import React from "react";
 import { useRecoilState } from "recoil";
 
 const HiddenLabels = ({ modal }: { modal?: boolean }) => {

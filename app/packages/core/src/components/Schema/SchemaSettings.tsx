@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import { useOutsideClick } from "@fiftyone/state";
 import CloseIcon from "@mui/icons-material/Close";
 import { Box, Typography } from "@mui/material";
-import React, { Fragment, useCallback, useRef } from "react";
+import { Fragment, useCallback, useRef } from "react";
 import { useResetRecoilState } from "recoil";
 import styled from "styled-components";
 import { TabOption } from "../utils";

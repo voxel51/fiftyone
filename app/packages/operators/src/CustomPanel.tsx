@@ -1,4 +1,4 @@
-import { CenteredStack, CodeBlock, scrollable } from "@fiftyone/components";
+import { CenteredStack, scrollable } from "@fiftyone/components";
 import { clearUseKeyStores } from "@fiftyone/core/src/plugins/SchemaIO/hooks";
 import {
   PanelSkeleton,

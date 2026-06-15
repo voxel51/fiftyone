@@ -2,7 +2,6 @@ import { PillButton } from "@fiftyone/components";
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { Bookmark } from "@mui/icons-material";
-import React from "react";
 import { selector, useRecoilCallback, useRecoilValue } from "recoil";
 import Loading from "../../../Actions/Loading";
 import type { ActionProps } from "../../../Actions/types";

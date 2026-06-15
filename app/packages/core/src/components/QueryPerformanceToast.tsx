@@ -4,7 +4,7 @@ import { OPTIMIZING_QUERY_PERFORMANCE, SUMMARY_FIELDS } from "@fiftyone/core";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
 import { Bolt } from "@mui/icons-material";
 import { Box, Button, Typography } from "@mui/material";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { atom, useRecoilState } from "recoil";
 

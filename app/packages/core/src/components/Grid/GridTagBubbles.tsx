@@ -1,7 +1,7 @@
 import { computeTagData } from "@fiftyone/looker/src/elements/common/computeTagData";
 import * as fos from "@fiftyone/state";
 import { prettify } from "@fiftyone/utilities";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import styles from "./GridTagBubbles.module.css";
 
 const DEFAULT_FONT_SIZE = 14;

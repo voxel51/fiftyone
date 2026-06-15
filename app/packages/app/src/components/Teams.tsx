@@ -12,7 +12,7 @@ import {
   Typography,
   useColorScheme,
 } from "@mui/material";
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
 
 const ENTERPRISE_TOOLTIP_LS = "fiftyone-enterprise-tooltip-seen";

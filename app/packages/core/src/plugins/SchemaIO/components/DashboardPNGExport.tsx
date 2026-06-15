@@ -1,9 +1,9 @@
-import React, { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { Box, Typography } from "@mui/material";
 import { useTheme } from "@fiftyone/components";
 import DynamicIO from "./DynamicIO";
-import { ObjectSchemaType, ViewPropsType } from "../utils/types";
-import { getPath, getProps } from "../utils";
+import { ObjectSchemaType } from "../utils/types";
+import { getPath } from "../utils";
 
 interface DashboardPNGExportProps {
   schema: ObjectSchemaType;

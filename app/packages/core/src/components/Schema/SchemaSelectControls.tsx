@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { Box, FormControlLabel, FormGroup, Switch } from "@mui/material";
 
 import { useSchemaSettings, useSearchSchemaFields } from "@fiftyone/state";

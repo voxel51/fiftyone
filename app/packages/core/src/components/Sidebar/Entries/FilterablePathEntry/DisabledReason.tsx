@@ -1,6 +1,5 @@
 import { ExternalLink, useTheme } from "@fiftyone/components";
 import Launch from "@mui/icons-material/Launch";
-import React from "react";
 
 export default ({ href, text }: { href: string; text: string }) => {
   const theme = useTheme();
