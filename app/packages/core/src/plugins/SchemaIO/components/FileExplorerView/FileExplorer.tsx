@@ -1,4 +1,3 @@
-import React from "react";
 import { Button } from "@fiftyone/components";
 import ExplorerActions from "./ExplorerActions";
 import FileTable from "./FileTable";

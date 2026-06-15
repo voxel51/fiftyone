@@ -1,7 +1,7 @@
 import { useTrackEvent } from "@fiftyone/analytics";
 import { PillButton } from "@fiftyone/components";
 import { ColorLens } from "@mui/icons-material";
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRecoilState } from "recoil";
 import { activeColorEntry } from "../../ColorModal/state";
 import { ACTIVE_FIELD } from "../../ColorModal/utils";

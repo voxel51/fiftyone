@@ -1,6 +1,6 @@
 import { useRecoilTransactionObserver_UNSTABLE, useRecoilValue } from "recoil";
-import React, { useEffect, useState, useCallback } from "react";
-import { viewAtom, extendedStagesAtom, countAtom } from "./atoms"; // Replace with actual atom imports
+import { useEffect, useState, useCallback } from "react";
+// Replace with actual atom imports
 import * as fos from "@fiftyone/state";
 import { analyticsInfo, useTrackEvent } from "@fiftyone/analytics";
 

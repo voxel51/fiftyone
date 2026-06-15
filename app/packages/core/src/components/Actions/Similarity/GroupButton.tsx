@@ -4,7 +4,6 @@ import SearchIcon from "@mui/icons-material/Search";
 import SettingsIcon from "@mui/icons-material/Settings";
 import CircularProgress from "@mui/material/CircularProgress";
 import type { CSSProperties } from "react";
-import React from "react";
 import styled from "styled-components";
 
 type GroupButtonProps = {

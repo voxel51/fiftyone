@@ -22,7 +22,7 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import { FileUploadOutlined } from "../../mui";
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { OperatorExecutionButton } from "@fiftyone/operators";
 import {
   BrainKeyConfig,

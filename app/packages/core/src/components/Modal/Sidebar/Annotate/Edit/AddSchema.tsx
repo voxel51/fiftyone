@@ -7,7 +7,6 @@ import {
 } from "@mui/icons-material";
 import { Alert, Typography } from "@mui/material";
 import { useSetAtom } from "jotai";
-import React from "react";
 import styled from "styled-components";
 import { activeSchemaTab } from "../state";
 import useCanManageSchema from "../useCanManageSchema";

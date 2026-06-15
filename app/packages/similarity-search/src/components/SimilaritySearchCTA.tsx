@@ -1,6 +1,5 @@
 import { PanelCTA, PanelCTAProps } from "@fiftyone/components";
 import { Button, Size, Variant } from "@voxel51/voodo";
-import React from "react";
 import useComputeSimilarity from "../hooks/useComputeSimilarity";
 
 function Actions() {

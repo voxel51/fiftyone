@@ -1,4 +1,3 @@
-import React from "react";
 import { Box, Chip, Typography } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
 import { FileDrop as ReactFileDrop } from "react-file-drop";

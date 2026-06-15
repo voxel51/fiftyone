@@ -1,5 +1,4 @@
 import { Point } from "@fiftyone/looker";
-import { initial } from "lodash";
 import { selectorFamily } from "recoil";
 import { filters, modalFilters } from "./filters";
 import { BooleanFilter } from "./pathFilters/boolean";
