@@ -1514,6 +1514,7 @@ __all__ = [
     "SUPPORTED_INDEX_TYPES",
     "TEMPORAL_TAGS_EXPORT_FILENAME",
     "TAGS_COLLECTION_NAME",
+    "TagKind",
     "TemporalTag",
     "TemporalTagFilter",
     "TemporalTags",
