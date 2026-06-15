@@ -33,6 +33,7 @@ export const useTaxonomyTree = (
     }
 
     let cancelled = false;
+    setTree(null);
     setIsFetching(true);
     setError(null);
 
@@ -42,7 +43,10 @@ export const useTaxonomyTree = (
         if (!cancelled) setTree((result as TaxonomyResponse).taxonomy.root);
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
+        if (!cancelled) {
+          setTree(null);
+          setError(e instanceof Error ? e.message : String(e));
+        }
       })
       .finally(() => {
         if (!cancelled) setIsFetching(false);

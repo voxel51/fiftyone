@@ -3,6 +3,7 @@ version: 2
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
+    target-branch: "community"
     schedule:
       interval: "weekly"
 
@@ -16,6 +17,7 @@ updates:
   # ---------------------------------------------------------------------------
   - package-ecosystem: "pip"
     directory: "/"
+    target-branch: "community"
     schedule:
       interval: "weekly"
       day: "wednesday"

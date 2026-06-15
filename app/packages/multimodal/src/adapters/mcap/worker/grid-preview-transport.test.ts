@@ -83,8 +83,9 @@ function createResult(status: "empty" | "ready") {
     state: {
       error: null,
       frame: null,
-      hasImageTopics: status === "ready",
-      imageTopic: status === "ready" ? "/camera" : null,
+      hasPreviewTopics: status === "ready",
+      streamTopic: status === "ready" ? "/camera" : null,
+      streamTopics: status === "ready" ? ["/camera"] : [],
       status,
     },
   };

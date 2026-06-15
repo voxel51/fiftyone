@@ -34,6 +34,15 @@ export interface PointCloudField {
 }
 
 /**
+ * A decoded per-point scalar channel that can drive point-cloud colouring.
+ * Values must have length equal to the owning point cloud's pointCount.
+ */
+export interface PointCloudScalarField {
+  readonly name: string;
+  readonly values: Float32Array;
+}
+
+/**
  * Positions extracted from a point cloud into an interleaved x/y/z array.
  */
 export interface PointCloudVisualization {
@@ -41,10 +50,20 @@ export interface PointCloudVisualization {
    * Per-message source coordinate frame decoded from the point cloud payload.
    */
   readonly coordinateFrameId?: string;
+  /**
+   * Optional interleaved per-point RGB colours in 0-1 components.
+   * Length must equal 3 * pointCount.
+   */
+  readonly colors?: Float32Array;
   readonly kind: typeof VISUALIZATION_KIND.POINT_CLOUD;
   readonly fields: readonly PointCloudField[];
   readonly pointCount: number;
   readonly positions: Float32Array;
+  /**
+   * Optional canonical per-point sensor-return channels such as intensity/RCS.
+   * Each scalar field's values array must have length equal to pointCount.
+   */
+  readonly scalarFields?: readonly PointCloudScalarField[];
 }
 
 /**

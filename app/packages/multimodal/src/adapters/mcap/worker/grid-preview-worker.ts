@@ -27,7 +27,7 @@ type McapGridPreviewWorkerScope = {
 const workerScope = self as unknown as McapGridPreviewWorkerScope;
 const scheduler = new McapPlaybackWorkerScheduler();
 // Each grid preview slot serves many sources (one per visible grid cell), so
-// keep a bounded per-source cache of readers and camera selections.
+// keep a bounded per-source cache of readers and stream selections.
 const entries = new LRUCache<string, McapGridPreviewEntry>({
   max: GRID_PREVIEW_SOURCE_CACHE_LIMIT,
   dispose: (entry) => {
@@ -111,6 +111,32 @@ function transferablesForResponse(
     return [];
   }
 
-  const buffer = response.result.state.frame?.image.bytes.buffer;
-  return buffer instanceof ArrayBuffer ? [buffer] : [];
+  const frame = response.result.state.frame;
+  if (frame?.kind === "image") {
+    return transferableBuffers(frame.image.bytes);
+  }
+
+  if (frame?.kind === "point-cloud") {
+    return transferableBuffers(
+      frame.pointCloud.positions,
+      frame.pointCloud.colors,
+      ...(frame.pointCloud.scalarFields?.map((field) => field.values) ?? [])
+    );
+  }
+
+  return [];
+}
+
+function transferableBuffers(
+  ...views: readonly (ArrayBufferView | undefined)[]
+): Transferable[] {
+  const buffers = new Set<ArrayBuffer>();
+
+  for (const view of views) {
+    if (view?.buffer instanceof ArrayBuffer) {
+      buffers.add(view.buffer);
+    }
+  }
+
+  return [...buffers];
 }

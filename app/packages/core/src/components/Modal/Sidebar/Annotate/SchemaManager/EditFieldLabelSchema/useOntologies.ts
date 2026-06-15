@@ -13,6 +13,7 @@ export interface OntologySummary {
   type: OntologyType;
   version: number;
   last_modified_at: string;
+  taxonomy?: string;
 }
 
 interface OntologiesResponse {

@@ -349,6 +349,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if not _virtual:
             self._update_last_loaded_at()
 
+        if doc.media_type:
+            self._configure_media_type(doc.media_type)
+
     def __eq__(self, other):
         return type(other) == type(self) and self.name == other.name
 
@@ -474,15 +477,28 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self._contains_videos(any_slice=True):
             self._init_frames()
 
+        should_reload = self._configure_media_type(media_type)
+        self.save()
+        if should_reload:
+            self.reload()
+
+    def _configure_media_type(self, media_type):
+        """
+        Return:
+            True/False whether when a save is done a reload should also be done
+        """
+        self._doc.media_type = media_type
+
+        if self._contains_videos(any_slice=True):
+            self._init_frames()
+
         if media_type == fom.GROUP:
             # The `metadata` field of group datasets always stays as the
             # generic `Metadata` type because slices may have different types
-            self.save()
+            return False
         else:
             self._update_metadata_field(media_type)
-
-            self.save()
-            self.reload()
+            return True
 
     def _update_metadata_field(self, media_type):
         idx = None
@@ -9602,12 +9618,21 @@ def _create_dataset(
     obj,
     name,
     persistent=False,
+    media_type=None,
     _patches=False,
     _frames=False,
     _clips=False,
     _src_collection=None,
 ):
     slug = _validate_dataset_name(name)
+
+    if media_type is not None and (
+        not isinstance(media_type, str) or media_type not in fom.MEDIA_TYPES
+    ):
+        raise ValueError(
+            "Invalid media type '%s'. Must be one of %s"
+            % (media_type, sorted(fom.MEDIA_TYPES))
+        )
 
     _id = ObjectId()
     now = datetime.utcnow()
@@ -9641,7 +9666,7 @@ def _create_dataset(
         version=focn.VERSION,
         created_at=now,
         last_modified_at=now,
-        media_type=None,  # will be inferred when first sample is added
+        media_type=media_type,
         sample_collection_name=sample_collection_name,
         frame_collection_name=frame_collection_name,
         persistent=persistent,

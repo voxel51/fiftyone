@@ -1,19 +1,19 @@
 import type {
   EncodedImageVisualization,
   ImageAnnotationsVisualization,
+  PointCloudVisualization,
 } from "../../decoders";
 import type { ByteSourceDescriptor } from "../../query/bytes";
-import { PlaybackSyncMode, type StreamInventory } from "../../schemas/v1";
+import { PlaybackSyncMode } from "../../schemas/v1";
 import { VISUALIZATION_KIND } from "../../visualization";
+import { chooseAnnotationTopic } from "./topic-matching";
+import { streamTopics, type McapPreviewTopics } from "./stream-topics";
 import type {
   McapDecodedMessage,
   McapResourceClient,
   McapStreamSyncPolicy,
 } from "./types";
 
-// Note: we only support compressed image topics for preview now
-const COMPRESSED_IMAGE_PATTERN = /compressedimage/i;
-const IMAGE_ANNOTATIONS_PATTERN = /imageannotations/i;
 const IMAGE_SYNC_TOLERANCE_NS = 120_000_000n;
 const NEXT_FRAME_STEP_NS = 1n;
 
@@ -23,27 +23,8 @@ const IMAGE_SYNC_POLICY: McapStreamSyncPolicy = {
   toleranceBeforeNs: IMAGE_SYNC_TOLERANCE_NS,
 } as const;
 
-// Drop generic topic words before scoring image/annotation topic similarity so
-// camera-identifying tokens like "front" or "left" decide the best match.
-const IGNORED_TOPIC_TOKENS = new Set([
-  "annotation",
-  "annotations",
-  "cam",
-  "camera",
-  "compressed",
-  "image",
-  "rect",
-]);
-
-// Strip image-format suffix segments when deriving the camera topic prefix, so
-// "/camera/front/image_rect_compressed" pairs with "/camera/front/annotations".
-const IMAGE_TOPIC_SUFFIX_TOKENS = new Set([
-  "compressed",
-  "compressedimage",
-  "image",
-  "raw",
-  "rect",
-]);
+export { chooseAnnotationTopic } from "./topic-matching";
+export { streamTopics } from "./stream-topics";
 
 /**
  * Default playback speed for animated MCAP grid previews.
@@ -56,33 +37,67 @@ export const DEFAULT_MCAP_GRID_PREVIEW_PLAYBACK_RATE = 1.5;
 export const MCAP_GRID_PREVIEW_IMAGE_FRAME_DELAY_MS = 83;
 
 /**
+ * Default cadence for point-cloud MCAP grid preview playback.
+ */
+export const MCAP_GRID_PREVIEW_POINT_CLOUD_FRAME_DELAY_MS = 83;
+
+/**
  * Default cadence for annotated MCAP grid preview playback.
  */
 export const MCAP_GRID_PREVIEW_ANNOTATION_FRAME_DELAY_MS = 500;
 
 /**
- * Camera and annotation topic buckets used by grid preview selection.
+ * Supported stream topic buckets used by grid preview selection.
  */
-export interface McapGridTopics {
-  readonly annotations: readonly string[];
-  readonly image: readonly string[];
-}
+export type McapGridTopics = McapPreviewTopics;
 
 /**
  * Selected camera image topic plus its best matching annotation topic.
  */
 export interface McapGridCameraSelection {
   readonly annotationTopic: string | null;
-  readonly imageTopic: string;
+  readonly kind: "image";
+  readonly streamTopic: string;
 }
+
+/**
+ * Selected point-cloud topic.
+ */
+export interface McapGridPointCloudSelection {
+  readonly kind: "point-cloud";
+  readonly streamTopic: string;
+}
+
+/**
+ * Selected stream descriptor for one MCAP grid preview.
+ */
+export type McapGridPreviewSelection =
+  | McapGridCameraSelection
+  | McapGridPointCloudSelection;
 
 /**
  * Render-ready image preview frame, optionally paired with annotations.
  */
-export interface McapGridPreviewFrame {
+export interface McapGridImagePreviewFrame {
   readonly annotations: ImageAnnotationsVisualization | null;
   readonly image: EncodedImageVisualization;
+  readonly kind: "image";
 }
+
+/**
+ * Render-ready point-cloud preview frame.
+ */
+export interface McapGridPointCloudPreviewFrame {
+  readonly kind: "point-cloud";
+  readonly pointCloud: PointCloudVisualization;
+}
+
+/**
+ * Render-ready preview frame shown by the MCAP grid renderer.
+ */
+export type McapGridPreviewFrame =
+  | McapGridImagePreviewFrame
+  | McapGridPointCloudPreviewFrame;
 
 /**
  * Status values used by the MCAP grid preview renderer.
@@ -92,16 +107,18 @@ export type McapGridPreviewStatus =
   | "loading"
   | "ready"
   | "empty"
+  | "unavailable"
   | "error";
 
 /**
- * Render state for one lightweight MCAP camera preview in the grid.
+ * Render state for one lightweight MCAP stream preview in the grid.
  */
 export interface McapGridPreviewSnapshot {
   readonly error: string | null;
   readonly frame: McapGridPreviewFrame | null;
-  readonly hasImageTopics: boolean;
-  readonly imageTopic: string | null;
+  readonly hasPreviewTopics: boolean;
+  readonly streamTopic: string | null;
+  readonly streamTopics: readonly string[];
   readonly status: McapGridPreviewStatus;
 }
 
@@ -119,37 +136,55 @@ export interface McapGridPreviewResult {
  */
 export interface McapGridPreviewEntry {
   readonly client: McapResourceClient;
-  selection?: McapGridCameraSelection | null;
+  autoSelection?: McapGridPreviewSelection | null;
+  topics?: McapGridTopics;
 }
 
 /**
  * High-level grid preview decode request handled inside the shared worker pool.
  */
 export interface McapGridPreviewDecodeRequest {
+  readonly selectedStreamTopic?: string | null;
   readonly source: ByteSourceDescriptor;
   readonly startTimeNs?: bigint;
 }
 
 /**
- * Ensures a cached source camera selection and reads one render-ready preview.
+ * Ensures a cached source stream selection and reads one render-ready preview.
  */
 export async function decodeGridPreview(
   entry: McapGridPreviewEntry,
-  { source, startTimeNs }: McapGridPreviewDecodeRequest
+  { selectedStreamTopic, source, startTimeNs }: McapGridPreviewDecodeRequest
 ): Promise<McapGridPreviewResult> {
-  if (entry.selection === undefined) {
-    const topics = streamTopics(await entry.client.readTopics({ source }));
-    entry.selection = chooseCameraSelection(topics);
+  if (entry.topics === undefined) {
+    entry.topics = streamTopics(await entry.client.readTopics({ source }));
   }
 
-  const selection = entry.selection;
+  const topics = entry.topics;
+  const previewTopics = topics.previewable;
+  const selection = chooseSelection(entry, topics, selectedStreamTopic);
+
+  if (selectedStreamTopic && !selection) {
+    return {
+      state: {
+        error: null,
+        frame: null,
+        hasPreviewTopics: previewTopics.length > 0,
+        streamTopic: selectedStreamTopic,
+        streamTopics: previewTopics,
+        status: "unavailable",
+      },
+    };
+  }
+
   if (!selection) {
     return {
       state: {
         error: null,
         frame: null,
-        hasImageTopics: false,
-        imageTopic: null,
+        hasPreviewTopics: false,
+        streamTopic: null,
+        streamTopics: previewTopics,
         status: "empty",
       },
     };
@@ -167,8 +202,9 @@ export async function decodeGridPreview(
       state: {
         error: null,
         frame: null,
-        hasImageTopics: true,
-        imageTopic: selection.imageTopic,
+        hasPreviewTopics: true,
+        streamTopic: selection.streamTopic,
+        streamTopics: previewTopics,
         status: "empty",
       },
     };
@@ -180,11 +216,52 @@ export async function decodeGridPreview(
     state: {
       error: null,
       frame: result.frame,
-      hasImageTopics: true,
-      imageTopic: selection.imageTopic,
+      hasPreviewTopics: true,
+      streamTopic: selection.streamTopic,
+      streamTopics: previewTopics,
       status: "ready",
     },
   };
+}
+
+function chooseSelection(
+  entry: McapGridPreviewEntry,
+  topics: McapGridTopics,
+  selectedStreamTopic: string | null | undefined
+): McapGridPreviewSelection | null {
+  if (selectedStreamTopic) {
+    if (topics.image.includes(selectedStreamTopic)) {
+      return {
+        annotationTopic: chooseAnnotationTopic(
+          selectedStreamTopic,
+          topics.annotations
+        ),
+        kind: "image",
+        streamTopic: selectedStreamTopic,
+      };
+    }
+
+    if (topics.pointCloud.includes(selectedStreamTopic)) {
+      return {
+        kind: "point-cloud",
+        streamTopic: selectedStreamTopic,
+      };
+    }
+
+    return null;
+  }
+
+  if (entry.autoSelection === undefined) {
+    entry.autoSelection = chooseAutoSelection(topics);
+  }
+
+  return entry.autoSelection;
+}
+
+function chooseAutoSelection(
+  topics: McapGridTopics
+): McapGridPreviewSelection | null {
+  return chooseCameraSelection(topics) ?? choosePointCloudSelection(topics);
 }
 
 /**
@@ -201,13 +278,26 @@ export function chooseCameraSelection(
 
   return {
     annotationTopic: chooseAnnotationTopic(imageTopic, topics.annotations),
-    imageTopic,
+    kind: "image",
+    streamTopic: imageTopic,
   };
+}
+
+function choosePointCloudSelection(
+  topics: McapGridTopics
+): McapGridPointCloudSelection | null {
+  const pointCloudTopic = topics.pointCloud[0];
+  return pointCloudTopic
+    ? {
+        kind: "point-cloud",
+        streamTopic: pointCloudTopic,
+      }
+    : null;
 }
 
 interface ReadPreviewFrameRequest {
   readonly client: McapResourceClient;
-  readonly selection: McapGridCameraSelection;
+  readonly selection: McapGridPreviewSelection;
   readonly source: ByteSourceDescriptor;
   readonly startTimeNs?: bigint;
 }
@@ -224,6 +314,10 @@ interface McapGridPreviewReadResult {
 async function readNextPreviewFrame(
   request: ReadPreviewFrameRequest
 ): Promise<McapGridPreviewReadResult | null> {
+  if (request.selection.kind === "point-cloud") {
+    return readNextPointCloudPreviewFrame(request);
+  }
+
   if (request.selection.annotationTopic) {
     const annotatedFrame = await readNextAnnotatedPreviewFrame(request);
     if (annotatedFrame) {
@@ -240,11 +334,15 @@ async function readNextImagePreviewFrame({
   source,
   startTimeNs,
 }: ReadPreviewFrameRequest): Promise<McapGridPreviewReadResult | null> {
+  if (selection.kind !== "image") {
+    return null;
+  }
+
   const imageMessage = await readNextMessage({
     client,
     source,
     startTimeNs,
-    topic: selection.imageTopic,
+    topic: selection.streamTopic,
   });
   const image = imageMessage ? imageFrame(imageMessage) : null;
 
@@ -254,7 +352,7 @@ async function readNextImagePreviewFrame({
 
   return {
     delayMs: MCAP_GRID_PREVIEW_IMAGE_FRAME_DELAY_MS,
-    frame: { annotations: null, image },
+    frame: { annotations: null, image, kind: "image" },
     nextStartTimeNs: imageMessage.timelineTimeNs + NEXT_FRAME_STEP_NS,
   };
 }
@@ -265,6 +363,10 @@ async function readNextAnnotatedPreviewFrame({
   source,
   startTimeNs,
 }: ReadPreviewFrameRequest): Promise<McapGridPreviewReadResult | null> {
+  if (selection.kind !== "image") {
+    return null;
+  }
+
   if (!selection.annotationTopic) {
     return null;
   }
@@ -288,13 +390,13 @@ async function readNextAnnotatedPreviewFrame({
       client,
       source,
       timeNs: annotationMessage.timelineTimeNs,
-      topic: selection.imageTopic,
+      topic: selection.streamTopic,
     })) ??
     (await readNextMessage({
       client,
       source,
       startTimeNs: annotationMessage.timelineTimeNs,
-      topic: selection.imageTopic,
+      topic: selection.streamTopic,
     }).then((message) => (message ? imageFrame(message) : null)));
 
   if (!image) {
@@ -303,8 +405,39 @@ async function readNextAnnotatedPreviewFrame({
 
   return {
     delayMs: MCAP_GRID_PREVIEW_ANNOTATION_FRAME_DELAY_MS,
-    frame: { annotations, image },
+    frame: { annotations, image, kind: "image" },
     nextStartTimeNs: annotationMessage.timelineTimeNs + NEXT_FRAME_STEP_NS,
+  };
+}
+
+async function readNextPointCloudPreviewFrame({
+  client,
+  selection,
+  source,
+  startTimeNs,
+}: ReadPreviewFrameRequest): Promise<McapGridPreviewReadResult | null> {
+  if (selection.kind !== "point-cloud") {
+    return null;
+  }
+
+  const pointCloudMessage = await readNextMessage({
+    client,
+    source,
+    startTimeNs,
+    topic: selection.streamTopic,
+  });
+  const pointCloud = pointCloudMessage
+    ? pointCloudFrame(pointCloudMessage)
+    : null;
+
+  if (!pointCloudMessage || !pointCloud) {
+    return null;
+  }
+
+  return {
+    delayMs: MCAP_GRID_PREVIEW_POINT_CLOUD_FRAME_DELAY_MS,
+    frame: { kind: "point-cloud", pointCloud },
+    nextStartTimeNs: pointCloudMessage.timelineTimeNs + NEXT_FRAME_STEP_NS,
   };
 }
 
@@ -372,127 +505,11 @@ function annotationsFrame(
     : null;
 }
 
-/**
- * Splits stream inventory into image and annotation topics.
- */
-export function streamTopics(
-  topics: readonly StreamInventory[]
-): McapGridTopics {
-  const image: string[] = [];
-  const annotations: string[] = [];
-
-  for (const topic of topics) {
-    const name = topicName(topic);
-    if (!name) {
-      continue;
-    }
-
-    if (isCompressedImageStream(topic)) {
-      image.push(name);
-    } else if (isImageAnnotationsStream(topic)) {
-      annotations.push(name);
-    }
-  }
-
-  return { annotations, image };
-}
-
-function topicName(topic: StreamInventory): string {
-  return topic.metadata["mcap.topic"] ?? topic.displayName ?? "";
-}
-
-function schemaIdentity(topic: StreamInventory): string {
-  return [topic.payload?.schema, topic.metadata["mcap.schema_name"]].join(" ");
-}
-
-function isCompressedImageStream(topic: StreamInventory): boolean {
-  return COMPRESSED_IMAGE_PATTERN.test(schemaIdentity(topic));
-}
-
-function isImageAnnotationsStream(topic: StreamInventory): boolean {
-  return IMAGE_ANNOTATIONS_PATTERN.test(schemaIdentity(topic));
-}
-
-/**
- * Chooses the annotation topic that best matches a selected camera topic.
- * Prefers the exact `<camera prefix>/annotations` sibling, then falls back
- * to the highest shared-token score.
- */
-export function chooseAnnotationTopic(
-  imageTopic: string,
-  annotationTopics: readonly string[]
-): string | null {
-  if (annotationTopics.length === 0) {
-    return null;
-  }
-
-  const cameraPrefix = topicPrefix(imageTopic);
-  const exactTopic = cameraPrefix ? `${cameraPrefix}/annotations` : "";
-  const exact = annotationTopics.find((topic) => topic === exactTopic);
-  if (exact) {
-    return exact;
-  }
-
-  let bestTopic: string | null = null;
-  let bestScore = 0;
-  const imageTokens = topicTokens(imageTopic);
-
-  for (const annotationTopic of annotationTopics) {
-    const annotationTokens = topicTokens(annotationTopic);
-    let score =
-      cameraPrefix && isTopicAtOrBelowPrefix(annotationTopic, cameraPrefix)
-        ? 10
-        : 0;
-    for (const token of imageTokens) {
-      if (annotationTokens.has(token)) {
-        score += 1;
-      }
-    }
-
-    if (score > bestScore) {
-      bestScore = score;
-      bestTopic = annotationTopic;
-    }
-  }
-
-  return bestTopic;
-}
-
-function topicPrefix(topic: string): string {
-  const normalized = topic.replace(/\/+$/, "");
-  const hasLeadingSlash = normalized.startsWith("/");
-  const parts = normalized.split("/").filter(Boolean);
-
-  while (parts.length > 0 && isImageTopicSuffix(parts[parts.length - 1])) {
-    parts.pop();
-  }
-
-  return parts.length > 0
-    ? `${hasLeadingSlash ? "/" : ""}${parts.join("/")}`
-    : "";
-}
-
-function isTopicAtOrBelowPrefix(topic: string, prefix: string): boolean {
-  return topic === prefix || topic.startsWith(`${prefix}/`);
-}
-
-function isImageTopicSuffix(segment: string): boolean {
-  const tokens = segment
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter(Boolean);
-
-  return (
-    tokens.length > 0 &&
-    tokens.every((token) => IMAGE_TOPIC_SUFFIX_TOKENS.has(token))
-  );
-}
-
-function topicTokens(topic: string): Set<string> {
-  return new Set(
-    topic
-      .toLowerCase()
-      .split(/[^a-z0-9]+/)
-      .filter((token) => token && !IGNORED_TOPIC_TOKENS.has(token))
-  );
+function pointCloudFrame(
+  message: McapDecodedMessage
+): PointCloudVisualization | null {
+  const visualization = message.decoded.output.visualization;
+  return visualization?.kind === VISUALIZATION_KIND.POINT_CLOUD
+    ? visualization
+    : null;
 }
