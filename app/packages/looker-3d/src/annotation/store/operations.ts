@@ -1,4 +1,3 @@
-import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { KnownContexts, usePushUndoable } from "@fiftyone/commands";
 import {
   useGetSidebarLabels,
@@ -43,7 +42,6 @@ export function useCuboidOperations() {
   const restoreLabel = useRestoreWorkingLabel();
   const endDrag = useEndDrag();
   const currentSampleId = useRecoilValue(fos.currentSampleId);
-  const eventBus = useAnnotationEventBus();
   const { addLabelToSidebar, removeLabelFromSidebar } = useLabelsContext();
   const getSidebarLabels = useGetSidebarLabels();
 
@@ -89,16 +87,10 @@ export function useCuboidOperations() {
 
         const execFn = () => {
           updateLabel(labelId, roundedUpdates);
-          eventBus.dispatch("annotation:labelEdit", {
-            label: { id: labelId, ...roundedUpdates },
-          });
         };
 
         const undoFn = () => {
           updateLabel(labelId, previousState);
-          eventBus.dispatch("annotation:undoLabelEdit", {
-            label: { id: labelId, ...previousState },
-          });
         };
 
         createPushAndExec(`cuboid-update-${labelId}`, execFn, undoFn);
@@ -266,7 +258,6 @@ export function usePolylineOperations() {
   const restoreLabel = useRestoreWorkingLabel();
   const endDrag = useEndDrag();
   const currentSampleId = useRecoilValue(fos.currentSampleId);
-  const eventBus = useAnnotationEventBus();
   const { addLabelToSidebar, removeLabelFromSidebar } = useLabelsContext();
   const getSidebarLabels = useGetSidebarLabels();
 
@@ -307,16 +298,10 @@ export function usePolylineOperations() {
 
         const execFn = () => {
           updateLabel(labelId, roundedUpdates);
-          eventBus.dispatch("annotation:labelEdit", {
-            label: { id: labelId, ...roundedUpdates },
-          });
         };
 
         const undoFn = () => {
           updateLabel(labelId, previousState);
-          eventBus.dispatch("annotation:undoLabelEdit", {
-            label: { id: labelId, ...previousState },
-          });
         };
 
         createPushAndExec(`polyline-update-${labelId}`, execFn, undoFn);

@@ -94,7 +94,6 @@ export { MoveKeypointPointCommand } from "./commands/MoveKeypointPointCommand";
 export { MoveOverlayCommand } from "./commands/MoveOverlayCommand";
 export { RemoveKeypointPointCommand } from "./commands/RemoveKeypointPointCommand";
 export { TransformOverlayCommand } from "./commands/TransformOverlayCommand";
-export { UpdateLabelCommand } from "./commands/UpdateLabelCommand";
 export type { MergeDetectionsCommandDeps } from "./commands/MergeDetectionsCommand";
 
 // Plugin exports
