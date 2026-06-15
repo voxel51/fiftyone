@@ -16,11 +16,7 @@ import {
   collectTileIds,
 } from "../views/MosaicGrid/MosaicGrid";
 import { tileSelectionAtom } from "./atoms";
-import type {
-  AddTileOptions,
-  TilingContextValue,
-  TilingTile,
-} from "./types";
+import type { AddTileOptions, TilingContextValue, TilingTile } from "./types";
 
 export type { AddTileOptions, TilingContextValue, TilingTile } from "./types";
 
@@ -143,28 +139,25 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
     []
   );
 
-  const removeTile = useCallback(
-    (id: string) => {
-      setTiles((prev) => {
-        if (!(id in prev)) return prev;
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-      setLayoutState((prev) => {
-        if (prev === null) return null;
-        if (typeof prev === "string") return prev === id ? null : prev;
-        // Walk the tree, collapsing the parent split when one child is removed.
-        const stripped = stripTile(prev, id);
-        return stripped;
-      });
-      setFocusedTileId((current) => (current === id ? null : current));
-      // Release the per-tile atomFamily entry so the store doesn't
-      // grow unbounded across long sessions.
-      tileSelectionAtom.remove(id);
-    },
-    []
-  );
+  const removeTile = useCallback((id: string) => {
+    setTiles((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setLayoutState((prev) => {
+      if (prev === null) return null;
+      if (typeof prev === "string") return prev === id ? null : prev;
+      // Walk the tree, collapsing the parent split when one child is removed.
+      const stripped = stripTile(prev, id);
+      return stripped;
+    });
+    setFocusedTileId((current) => (current === id ? null : current));
+    // Release the per-tile atomFamily entry so the store doesn't
+    // grow unbounded across long sessions.
+    tileSelectionAtom.remove(id);
+  }, []);
 
   const setTileTitle = useCallback((tileId: string, title: string) => {
     setTiles((prev) => {
@@ -272,5 +265,12 @@ export const TileSettingsContent: React.FC<{
   const tileId = useTileId();
   const { focusedTileId, settingsSlotEl } = useTiling();
   if (!tileId || tileId !== focusedTileId || !settingsSlotEl) return null;
-  return createPortal(children, settingsSlotEl);
+  return createPortal(
+    <div onPointerDown={stopPortalEvent}>{children}</div>,
+    settingsSlotEl
+  );
 };
+
+function stopPortalEvent(event: React.SyntheticEvent) {
+  event.stopPropagation();
+}

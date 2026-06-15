@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -12,14 +12,31 @@ vi.mock("@fiftyone/tiling", async () => {
   return {
     ...actual,
     MosaicGrid: ({
+      focusedTileId,
+      onFocusTile,
       tiles,
     }: {
+      focusedTileId?: string | null;
+      onFocusTile?: (id: string, reason: "select" | "action") => void;
       tiles: Record<string, { title: string; render: () => React.ReactNode }>;
     }) => (
       <div data-testid="mosaic-stub">
         {Object.entries(tiles).map(([id, t]) => (
           <div key={id} data-testid={`stub-${id}`}>
-            {t.title}
+            <span data-testid={`title-${id}`}>{t.title}</span>
+            <button
+              data-testid={`select-${id}`}
+              data-focused={focusedTileId === id ? "true" : "false"}
+              onClick={() => onFocusTile?.(id, "select")}
+            >
+              select
+            </button>
+            <button
+              data-testid={`action-${id}`}
+              onClick={() => onFocusTile?.(id, "action")}
+            >
+              action
+            </button>
           </div>
         ))}
       </div>
@@ -47,10 +64,10 @@ describe("MultiModalPlayback shell", () => {
         }}
       />
     );
-    expect(screen.getByTestId("stub-camera-1").textContent).toBe(
+    expect(screen.getByTestId("title-camera-1").textContent).toBe(
       "camera_front"
     );
-    expect(screen.getByTestId("stub-lidar-1").textContent).toBe("lidar_top");
+    expect(screen.getByTestId("title-lidar-1").textContent).toBe("lidar_top");
   });
 
   it("renders the default sidebars (settings + inspector empty states)", () => {
@@ -69,5 +86,58 @@ describe("MultiModalPlayback shell", () => {
       />
     );
     expect(screen.queryByTestId("drawer")).toBeNull();
+  });
+
+  it("lets header captions react to active pane selection and deselection", () => {
+    render(
+      <MultiModalPlayback
+        fileName="x"
+        headerCaption={({ focusedTileTitle }) => (
+          <span data-testid="caption-context">
+            {focusedTileTitle ?? "Scene context"}
+          </span>
+        )}
+        initialTiles={{
+          "camera-1": { title: "Camera", render: () => null },
+        }}
+      />
+    );
+
+    expect(screen.getByTestId("caption-context").textContent).toBe(
+      "Scene context"
+    );
+    fireEvent.click(screen.getByTestId("select-camera-1"));
+    expect(screen.getByTestId("caption-context").textContent).toBe("Camera");
+    expect(screen.getByTestId("select-camera-1").dataset.focused).toBe("true");
+
+    fireEvent.click(screen.getByTestId("select-camera-1"));
+    expect(screen.getByTestId("caption-context").textContent).toBe(
+      "Scene context"
+    );
+    expect(screen.getByTestId("select-camera-1").dataset.focused).toBe("false");
+  });
+
+  it("keeps pane actions focused instead of toggling the active pane off", () => {
+    render(
+      <MultiModalPlayback
+        fileName="x"
+        headerCaption={({ focusedTileTitle }) => (
+          <span data-testid="caption-context">
+            {focusedTileTitle ?? "Scene context"}
+          </span>
+        )}
+        initialTiles={{
+          "camera-1": { title: "Camera", render: () => null },
+        }}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId("action-camera-1"));
+    expect(screen.getByTestId("caption-context").textContent).toBe("Camera");
+    expect(screen.getByTestId("select-camera-1").dataset.focused).toBe("true");
+
+    fireEvent.click(screen.getByTestId("action-camera-1"));
+    expect(screen.getByTestId("caption-context").textContent).toBe("Camera");
+    expect(screen.getByTestId("select-camera-1").dataset.focused).toBe("true");
   });
 });
