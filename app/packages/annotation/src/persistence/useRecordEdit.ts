@@ -7,12 +7,12 @@ import {
   getLocalSample,
   hasLocalSample,
   seedLocalSample,
-  useModalSample,
   useUpdateSamples,
 } from "@fiftyone/state";
 import { useCallback, useRef } from "react";
 import type { LabelFieldDelta } from "../deltas";
 import { applyDeltaToSample } from "./applyDelta";
+import { useAnnotationTargetSample } from "./useAnnotationTargetSample";
 import { pendingEdits } from "./pendingEdits";
 
 export type RecordEdit = (sampleId: string, delta: LabelFieldDelta) => void;
@@ -31,12 +31,14 @@ export type RecordEdit = (sampleId: string, delta: LabelFieldDelta) => void;
  */
 export const useRecordEdit = (): RecordEdit => {
   const updateSamples = useUpdateSamples();
-  const modalSample = useModalSample();
+  const targetSample = useAnnotationTargetSample();
 
   // The freshest fetched copy, for seeding only — kept in a ref so a
-  // long-lived event handler never holds a stale closure.
-  const fetchedRef = useRef(modalSample?.sample);
-  fetchedRef.current = modalSample?.sample;
+  // long-lived event handler never holds a stale closure. Resolved by active
+  // viewer so a 3D edit seeds from its own slice's sample (e.g. the pcd), not
+  // the 2D active slice.
+  const fetchedRef = useRef(targetSample);
+  fetchedRef.current = targetSample;
 
   return useCallback(
     (sampleId, delta) => {

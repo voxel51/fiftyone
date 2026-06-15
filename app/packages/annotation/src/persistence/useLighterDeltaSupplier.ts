@@ -18,7 +18,7 @@ import {
   KnownContexts,
   useCommandContext,
 } from "@fiftyone/commands";
-import { useModalSample } from "@fiftyone/state";
+import { useAnnotationTargetSample } from "./useAnnotationTargetSample";
 import { hasValidBounds } from "@fiftyone/utilities";
 import { useCallback, useEffect } from "react";
 import type { LabelProxy } from "../deltas";
@@ -196,7 +196,7 @@ const extractActionOverlays = (action: Action): BaseOverlay[] => {
  */
 export const useRecordLabelEdits = () => {
   const { scene } = useLighter();
-  const sampleId = useModalSample()?.sample?._id ?? null;
+  const sampleId = useAnnotationTargetSample()?._id ?? null;
   const { context } = useCommandContext(KnownContexts.ModalAnnotate);
   const recordEdit = useRecordEdit();
 

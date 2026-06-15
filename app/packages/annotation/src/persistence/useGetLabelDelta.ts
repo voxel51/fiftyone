@@ -1,7 +1,6 @@
 import {
   getLocalSample,
   isGeneratedView,
-  useModalSample,
   useModalSampleSchema,
 } from "@fiftyone/state";
 import type { Field } from "@fiftyone/utilities";
@@ -13,6 +12,7 @@ import {
   type LabelProxy,
 } from "../deltas";
 import { getFieldSchema } from "../util";
+import { useAnnotationTargetSample } from "./useAnnotationTargetSample";
 
 export type LabelConstructor<T> = (data: T) => LabelProxy | undefined;
 
@@ -80,13 +80,15 @@ export const useGetLabelDelta = <T>(
   options: UseGetLabelDeltaOptions = {}
 ): ((labelSource: T, path: string) => LabelFieldDelta | null) => {
   const { opType = "mutate", includeUnchanged = false } = options;
-  const modalSample = useModalSample();
+  // The sample being annotated follows the active viewer (3D scene vs 2D), so
+  // a 3D edit diffs against — and saves to — its own slice's sample.
+  const targetSample = useAnnotationTargetSample();
   const modalSampleSchema = useModalSampleSchema();
   const isGenerated = useRecoilValue(isGeneratedView);
 
   return useCallback(
     (labelSource: T, path: string) => {
-      if (!modalSample?.sample) {
+      if (!targetSample) {
         return null;
       }
 
@@ -106,10 +108,8 @@ export const useGetLabelDelta = <T>(
       // save/ack cycle, and a stale snapshot here becomes a wrong save
       // precondition (the historical source of single-user 409s). The render
       // value is only the fallback for a sample that has never been edited.
-      const sample = (getLocalSample(modalSample.sample._id) ??
-        modalSample.sample) as unknown as Parameters<
-        typeof buildLabelFieldDelta
-      >[0];
+      const sample = (getLocalSample(targetSample._id) ??
+        targetSample) as unknown as Parameters<typeof buildLabelFieldDelta>[0];
 
       return buildLabelFieldDelta(
         sample,
@@ -121,10 +121,10 @@ export const useGetLabelDelta = <T>(
       );
     },
     [
+      targetSample,
       includeUnchanged,
       isGenerated,
       labelConstructor,
-      modalSample,
       modalSampleSchema,
       opType,
     ]

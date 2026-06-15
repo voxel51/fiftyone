@@ -5,13 +5,13 @@ import {
   getLocalSample,
   isGeneratedView,
   useCurrentDatasetId,
-  useModalSample,
   useUpdateSamples,
 } from "@fiftyone/state";
 import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import { useAnnotationEventBus } from "../hooks";
 import { saveAnnotationDeltas } from "../util";
+import { useAnnotationTargetSample } from "./useAnnotationTargetSample";
 import { pendingEdits } from "./pendingEdits";
 import { useAnnotationDeltaSupplier } from "./useAnnotationDeltaSupplier";
 import { useRecordEdit } from "./useRecordEdit";
@@ -36,7 +36,10 @@ export const usePersistAnnotationDeltas =
     const supplyDeltas = useAnnotationDeltaSupplier();
     const eventBus = useAnnotationEventBus();
     const datasetId = useCurrentDatasetId();
-    const sample = useModalSample()?.sample;
+    // The sample the captured (3D canvas + sidebar) surfaces are editing —
+    // resolved by active viewer so a pcd cuboid is recorded against the pcd
+    // sample, never the 2D active-slice sample.
+    const sample = useAnnotationTargetSample();
     const recordEdit = useRecordEdit();
     const updateSamples = useUpdateSamples();
     const isGenerated = useRecoilValue(isGeneratedView);
@@ -47,8 +50,8 @@ export const usePersistAnnotationDeltas =
         return null;
       }
 
-      // Pull the not-yet-event-driven surfaces (3D, sidebar) into the ledger.
-      // They are scoped to the modal's current sample by construction.
+      // Pull the not-yet-event-driven surfaces (3D, sidebar) into the ledger,
+      // scoped to the sample the active viewer is editing.
       const currentSampleId = sample?._id;
       if (currentSampleId) {
         for (const delta of supplyDeltas().deltas) {

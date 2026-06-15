@@ -4,10 +4,11 @@
 
 import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { useRegisterCommandHandler } from "@fiftyone/command-bus";
-import { useModalSample, type AnnotationLabel } from "@fiftyone/state";
+import { type AnnotationLabel } from "@fiftyone/state";
 import { useCallback } from "react";
 import { DeleteAnnotationCommand } from "../commands";
 import type { LabelProxy } from "../deltas";
+import { useAnnotationTargetSample } from "../persistence/useAnnotationTargetSample";
 import { useGetLabelDelta } from "../persistence/useGetLabelDelta";
 import { useRecordEdit } from "../persistence/useRecordEdit";
 
@@ -17,7 +18,7 @@ import { useRecordEdit } from "../persistence/useRecordEdit";
  */
 export const useRegisterAnnotationCommandHandlers = () => {
   const eventBus = useAnnotationEventBus();
-  const sampleId = useModalSample()?.sample?._id ?? null;
+  const sampleId = useAnnotationTargetSample()?._id ?? null;
   const recordEdit = useRecordEdit();
   const getDeleteDelta = useGetLabelDelta(
     (label: AnnotationLabel) => label as unknown as LabelProxy,
