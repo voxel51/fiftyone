@@ -1126,7 +1126,7 @@ def _from_export_doc(doc) -> TemporalTag:
 def _build_query(
     dataset_id, filter: TemporalTagFilter | None, sample_ids=None
 ):
-    query = {"_dataset_id": dataset_id}
+    query = {"_dataset_id": dataset_id, "kind": TagKind.TEMPORAL.value}
 
     if sample_ids is not None:
         query["_sample_id"] = _build_in_query(list(sample_ids))
@@ -1355,6 +1355,7 @@ def _unique_query(doc):
     return {
         "_dataset_id": doc["_dataset_id"],
         "_sample_id": doc["_sample_id"],
+        "kind": doc["kind"],
         "index_type": doc["index_type"],
         "anchor": doc["anchor"],
         "start": doc["start"],
@@ -1366,6 +1367,7 @@ def _unique_query(doc):
 def _unique_key(doc):
     return (
         doc["_sample_id"],
+        doc.get("kind", None),
         doc["index_type"],
         doc.get("anchor", None),
         doc["start"],
@@ -1375,9 +1377,10 @@ def _unique_key(doc):
 
 
 def _query_from_unique_key(key):
-    sample_id, index_type, anchor, start, end, tag = key
+    sample_id, kind, index_type, anchor, start, end, tag = key
     return {
         "_sample_id": sample_id,
+        "kind": kind,
         "index_type": index_type,
         "anchor": anchor,
         "start": start,
@@ -1414,6 +1417,7 @@ def _ensure_indexes(collection) -> None:
         [
             ("_dataset_id", ASCENDING),
             ("_sample_id", ASCENDING),
+            ("kind", ASCENDING),
             ("index_type", ASCENDING),
             ("anchor", ASCENDING),
             ("start", ASCENDING),
@@ -1427,6 +1431,7 @@ def _ensure_indexes(collection) -> None:
         [
             ("_dataset_id", ASCENDING),
             ("_sample_id", ASCENDING),
+            ("kind", ASCENDING),
             ("index_type", ASCENDING),
             ("anchor", ASCENDING),
             ("start", ASCENDING),
@@ -1440,6 +1445,7 @@ def _ensure_indexes(collection) -> None:
         [
             ("_dataset_id", ASCENDING),
             ("_sample_id", ASCENDING),
+            ("kind", ASCENDING),
             ("start", ASCENDING),
             ("end", ASCENDING),
             ("index_type", ASCENDING),
@@ -1453,6 +1459,7 @@ def _ensure_indexes(collection) -> None:
     collection.create_index(
         [
             ("_dataset_id", ASCENDING),
+            ("kind", ASCENDING),
             ("tag", ASCENDING),
             ("_sample_id", ASCENDING),
             ("start", ASCENDING),
@@ -1465,6 +1472,7 @@ def _ensure_indexes(collection) -> None:
     collection.create_index(
         [
             ("_dataset_id", ASCENDING),
+            ("kind", ASCENDING),
             ("anchor", ASCENDING),
             ("tag", ASCENDING),
         ],

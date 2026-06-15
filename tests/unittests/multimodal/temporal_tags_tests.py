@@ -720,18 +720,20 @@ class TemporalTagTests(unittest.TestCase):
         indexes = collection.index_information()
 
         self.assertEqual(
-            indexes["temporal_tag_sample_range"]["key"][:4],
+            indexes["temporal_tag_sample_range"]["key"][:5],
             [
                 ("_dataset_id", 1),
                 ("_sample_id", 1),
+                ("kind", 1),
                 ("start", 1),
                 ("end", 1),
             ],
         )
         self.assertEqual(
-            indexes["temporal_tag_tag_lookup"]["key"][:3],
+            indexes["temporal_tag_tag_lookup"]["key"][:4],
             [
                 ("_dataset_id", 1),
+                ("kind", 1),
                 ("tag", 1),
                 ("_sample_id", 1),
             ],
