@@ -1,9 +1,21 @@
+import {
+  isGeneratedView,
+  useCurrentDatasetId,
+  useCurrentSampleId,
+  useInteraction3dSample,
+  useModalSample,
+  useRefreshSample,
+} from "@fiftyone/state";
 import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
-import { isGeneratedView } from "@fiftyone/state";
 import { useAnnotationDeltaSupplier } from "./useAnnotationDeltaSupplier";
-import { useAnnotationEventBus, usePatchSample } from "../hooks";
-import { useSampleInstance } from "../state";
+import {
+  useAnnotationEventBus,
+  useGetVersionTokenWith,
+  usePatchSample,
+  usePatchSampleWith,
+} from "../hooks";
+import { useAnnotationEngine } from "../state";
 
 /**
  * @returns `true` if persistence was successful
@@ -15,6 +27,12 @@ type PersistenceResult = boolean | null;
 /**
  * Hook which provides a callback to persist all pending annotation deltas.
  *
+ * A grouped modal renders more than one sample at once (the selected slice and
+ * the pinned 3D scene), each its own engine store. The engine emits one patch
+ * per dirty sample, and each is written through a binding keyed to that sample
+ * (its own version token + refresh). Generated (patches) views are
+ * single-sample and carry label metadata, so they keep their own path.
+ *
  * @returns A callback that persists annotation deltas and returns:
  *   - `true` if persistence was successful
  *   - `false` if persistence was unsuccessful
@@ -22,23 +40,41 @@ type PersistenceResult = boolean | null;
  */
 export const usePersistAnnotationDeltas =
   (): (() => Promise<PersistenceResult>) => {
+    const engine = useAnnotationEngine();
     const supplyAnnotationDeltas = useAnnotationDeltaSupplier();
-    const patchSample = usePatchSample();
+    const patchSelected = usePatchSample();
     const eventBus = useAnnotationEventBus();
-    const sample = useSampleInstance();
     const isGenerated = useRecoilValue(isGeneratedView);
 
+    // the pinned 3D scene is a distinct sample; patch it through its own
+    // binding (version token + refresh keyed to that sample). Inert unless a
+    // grouped modal actually renders a separate 3D scene.
+    const modalId = useModalSample()?.sample?._id;
+    const threeDId = useCurrentSampleId();
+    const threeDScene = useInteraction3dSample();
+    const patch3d = usePatchSampleWith({
+      sample: threeDScene?.sample ?? null,
+      datasetId: useCurrentDatasetId(),
+      getVersionToken: useGetVersionTokenWith({
+        sample: threeDScene?.sample ?? null,
+      }),
+      refreshSample: useRefreshSample(),
+      isGenerated: false,
+      generatedDatasetName: null,
+    });
+
     return useCallback(async () => {
-      const { deltas, metadata } = supplyAnnotationDeltas();
-
-      if (deltas.length === 0) {
-        return null;
-      }
-
-      eventBus.dispatch("annotation:persistenceInFlight");
-
-      let success: boolean;
+      // generated (patches) views are single-sample and route through
+      // first-edited-label metadata, so the backend can find the source label
       if (isGenerated) {
+        const { deltas, metadata } = supplyAnnotationDeltas();
+
+        if (deltas.length === 0) {
+          return null;
+        }
+
+        eventBus.dispatch("annotation:persistenceInFlight");
+
         if (!metadata) {
           console.warn(
             "Generated view persistence requires label metadata but none was provided.",
@@ -47,22 +83,56 @@ export const usePersistAnnotationDeltas =
           return false;
         }
 
-        success = await patchSample(deltas, {
+        const success = await patchSelected(deltas, {
           labelId: metadata.labelId,
           labelPath: metadata.labelPath,
           opType: "mutate",
         });
-      } else {
-        success = await patchSample(deltas);
+
+        if (success && modalId) {
+          engine.reconcilePersisted([{ sample: modalId, deltas }]);
+        }
+
+        return success;
       }
 
-      if (success) {
-        // Release server-owned fields (e.g. masks) the backend now owns, so the
-        // frozen transient copy isn't re-emitted against the server's
-        // re-encoded/relocated value on the next autosave tick.
-        sample.reconcilePersisted(deltas);
+      // one patch per dirty sample the modal renders (selected slice + 3D)
+      const patches = engine.getJsonPatch();
+
+      if (patches.length === 0) {
+        return null;
+      }
+
+      eventBus.dispatch("annotation:persistenceInFlight");
+
+      let success = true;
+      for (const entry of patches) {
+        const patch =
+          entry.sample === threeDId && entry.sample !== modalId
+            ? patch3d
+            : patchSelected;
+
+        const ok = await patch(entry.deltas);
+
+        if (ok) {
+          // release server-owned fields (e.g. masks) the backend now owns, so
+          // the frozen transient copy isn't re-emitted against the server's
+          // re-encoded value on the next autosave tick
+          engine.reconcilePersisted([entry]);
+        } else {
+          success = false;
+        }
       }
 
       return success;
-    }, [eventBus, isGenerated, patchSample, sample, supplyAnnotationDeltas]);
+    }, [
+      engine,
+      eventBus,
+      isGenerated,
+      modalId,
+      patch3d,
+      patchSelected,
+      supplyAnnotationDeltas,
+      threeDId,
+    ]);
   };
