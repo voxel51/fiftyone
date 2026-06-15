@@ -10,6 +10,7 @@ export interface McapSceneInventoryState {
   readonly error: string | null;
   readonly status: McapSceneInventoryStatus;
   readonly sources: readonly SceneSource[];
+  readonly topicCount: number;
 }
 
 /**
@@ -23,5 +24,8 @@ export function useMcapSceneInventory(
   const { status, error, topics } = useMcapTopics(options);
   const sources = useMemo(() => mcapSceneSources(topics), [topics]);
 
-  return useMemo(() => ({ error, sources, status }), [error, sources, status]);
+  return useMemo(
+    () => ({ error, sources, status, topicCount: topics.length }),
+    [error, sources, status, topics.length]
+  );
 }

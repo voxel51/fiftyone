@@ -1,9 +1,13 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
+import { humanReadableBytes } from "@fiftyone/utilities";
 import { Size, Spinner } from "@voxel51/voodo";
 import clsx from "clsx";
-import React from "react";
+import React, { useMemo } from "react";
 import MultiModalPlayback from "../../../components/MultiModalPlayback/MultiModalPlayback";
+import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import { McapDataStreamProvider } from "./mcap-data-stream-context";
+import { McapModalSettingsProvider } from "./mcap-modal-settings";
+import McapSettingsSidebar from "./McapSettingsSidebar";
 import { McapStreams } from "./McapStreams";
 import styles from "./McapModalRenderer.module.css";
 import {
@@ -34,8 +38,31 @@ import { useStableMcapSource } from "./use-stable-mcap-source";
 const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
   const client = useMcapResourceClient({ worker: true });
   const source = useStableMcapSource(ctx);
-  const fileName = source?.sourceId.split("/").pop() ?? "recording.mcap";
-  const { status, error, sources } = useMcapSceneInventory({ client, source });
+  const fileName = fileNameFromPath(ctx.media.path) ?? "recording.mcap";
+  const { status, error, sources, topicCount } = useMcapSceneInventory({
+    client,
+    source,
+  });
+  const metadata = useMemo(
+    () => ({
+      sizeLabel: sourceSizeLabel(source?.sizeBytes),
+      ...sourceCounts(sources),
+      topicCount,
+    }),
+    [source?.sizeBytes, sources, topicCount]
+  );
+  const headerCaption = useMemo(
+    () => (
+      <McapHeaderCaption
+        imageCount={metadata.imageCount}
+        labelCount={metadata.labelCount}
+        pointCloudCount={metadata.pointCloudCount}
+        sizeLabel={metadata.sizeLabel}
+        topicCount={metadata.topicCount}
+      />
+    ),
+    [metadata]
+  );
   const {
     initialTiles,
     initialLayout,
@@ -66,24 +93,28 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
   }
 
   return (
-    <McapDataStreamProvider>
-      <MultiModalPlayback
-        fileName={fileName}
-        sceneSources={sources}
-        initialTiles={initialTiles}
-        initialLayout={initialLayout}
-        tracks={tracks.length > 0 ? tracks : undefined}
-        onTagDelete={onTagDelete}
-        defaultLeftOpen={defaultLeftOpen}
-        defaultRightOpen={defaultRightOpen}
-        onLeftOpenChange={onLeftOpenChange}
-        onRightOpenChange={onRightOpenChange}
-        onTagCreate={onTagCreate}
-      >
-        <McapStreams ctx={ctx} client={client} />
-        <McapModalLayoutPersistence />
-      </MultiModalPlayback>
-    </McapDataStreamProvider>
+    <McapModalSettingsProvider>
+      <McapDataStreamProvider>
+        <MultiModalPlayback
+          fileName={fileName}
+          headerCaption={headerCaption}
+          sceneSources={sources}
+          initialTiles={initialTiles}
+          initialLayout={initialLayout}
+          tracks={tracks.length > 0 ? tracks : undefined}
+          onTagDelete={onTagDelete}
+          leftSidebar={<McapSettingsSidebar />}
+          defaultLeftOpen={defaultLeftOpen}
+          defaultRightOpen={defaultRightOpen}
+          onLeftOpenChange={onLeftOpenChange}
+          onRightOpenChange={onRightOpenChange}
+          onTagCreate={onTagCreate}
+        >
+          <McapStreams ctx={ctx} client={client} />
+          <McapModalLayoutPersistence />
+        </MultiModalPlayback>
+      </McapDataStreamProvider>
+    </McapModalSettingsProvider>
   );
 };
 
@@ -107,6 +138,66 @@ function McapModalState({
       ) : null}
     </div>
   );
+}
+
+function McapHeaderCaption({
+  imageCount,
+  labelCount,
+  pointCloudCount,
+  sizeLabel,
+  topicCount,
+}: {
+  readonly imageCount: number;
+  readonly labelCount: number;
+  readonly pointCloudCount: number;
+  readonly sizeLabel: string | null;
+  readonly topicCount: number;
+}) {
+  const parts = [
+    sizeLabel,
+    `${topicCount.toLocaleString()} ${plural(topicCount, "topic", "topics")}`,
+    `${(imageCount + pointCloudCount).toLocaleString()} ${plural(
+      imageCount + pointCloudCount,
+      "preview stream",
+      "preview streams"
+    )}`,
+    `${labelCount.toLocaleString()} ${plural(
+      labelCount,
+      "label topic",
+      "label topics"
+    )}`,
+  ].filter(Boolean);
+
+  return <span className={styles.captionText}>{parts.join(" / ")}</span>;
+}
+
+function sourceCounts(sources: readonly { type: string }[]) {
+  return {
+    imageCount: sources.filter((s) => s.type === MCAP_SOURCE_TYPE.IMAGE).length,
+    labelCount: sources.filter(
+      (s) => s.type === MCAP_SOURCE_TYPE.IMAGE_ANNOTATION
+    ).length,
+    pointCloudCount: sources.filter(
+      (s) => s.type === MCAP_SOURCE_TYPE.POINT_CLOUD
+    ).length,
+  };
+}
+
+function fileNameFromPath(path: unknown): string | null {
+  if (typeof path !== "string" || !path) return null;
+  return path.split(/[/\\]/).pop() || null;
+}
+
+function sourceSizeLabel(sizeBytes: string | undefined): string | null {
+  if (!sizeBytes || !/^\d+$/.test(sizeBytes)) return null;
+  const value = Number(sizeBytes);
+  if (!Number.isSafeInteger(value)) return null;
+  if (value === 0) return "0 B";
+  return humanReadableBytes(value) || null;
+}
+
+function plural(count: number, singular: string, pluralValue: string): string {
+  return count === 1 ? singular : pluralValue;
 }
 
 export default McapModalRenderer;
