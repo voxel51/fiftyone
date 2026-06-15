@@ -1012,7 +1012,7 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
 
         sample_detections = {
             i + 1: fol.Detections(detections=[])
-            for i in range(len(sample.frames))
+            for i in sorted(sample.frames.keys())
         }
 
         try:
