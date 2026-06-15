@@ -1,9 +1,11 @@
 name: Community base policy
 
 # Non-members may only contribute via the `community` branch. When an author
-# without write access opens a PR against develop/release, this moves the PR's
-# base to `community` automatically and leaves a one-time explanatory comment.
-# Members, and PRs already targeting `community`, are left alone.
+# without write access opens a PR, this retargets it to `community` (when it
+# isn't already) and leaves a single welcome comment. It folds in the old
+# `pr-welcome-comment.yml` so a community contributor gets exactly one bot
+# comment, not two. Members are left alone; bots (e.g. Dependabot) are
+# retargeted silently, without a welcome.
 #
 # Uses pull_request_target so it can edit the base of fork PRs. It only reads PR
 # metadata and calls the API — it never checks out PR head code.
@@ -30,9 +32,8 @@ jobs:
             const pr = context.payload.pull_request;
             const author = pr.user.login;
 
-            if (pr.base.ref === 'community') return;
-
-            // Members (write/maintain/admin) may target develop/release directly.
+            // Members (write/maintain/admin) may target develop/release directly
+            // — no retarget, no comment.
             let hasPush = false;
             try {
               const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
@@ -46,15 +47,23 @@ jobs:
             }
             if (hasPush) return;
 
-            // Non-member: move the PR onto the community branch.
-            const from = pr.base.ref;
-            await github.rest.pulls.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: pr.number,
-              base: 'community',
-            });
+            // Non-member: move the PR onto `community` if it isn't already there.
+            let from = null;
+            if (pr.base.ref !== 'community') {
+              from = pr.base.ref;
+              await github.rest.pulls.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                base: 'community',
+              });
+            }
 
+            // Bots (e.g. Dependabot) are retargeted but skip the welcome.
+            if (author.endsWith('[bot]')) return;
+
+            // Post one welcome comment, ever — the marker also covers `reopened`
+            // / `edited` re-runs. Mention the retarget only when one happened.
             const marker = '<!-- community-base-policy -->';
             const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
@@ -62,18 +71,37 @@ jobs:
               issue_number: pr.number,
               per_page: 100,
             });
-            if (!comments.some(c => (c.body || '').includes(marker))) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: pr.number,
-                body: [
-                  marker,
-                  `👋 Thanks for the contribution! Community pull requests target the \`community\` branch, so I've changed this PR's base from \`${from}\` to \`community\`.`,
-                  '',
-                  'Your changes are unaffected. A maintainer integrates `community` into `develop` automatically.',
-                  '',
-                  'See [CONTRIBUTING.md](https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md#community-pull-requests) for details.',
-                ].join('\n'),
-              });
+            if (comments.some(c => (c.body || '').includes(marker))) return;
+
+            const body = [
+              marker,
+              `Thanks for opening this pull request, @${author}! 🎉`,
+              '',
+            ];
+
+            if (from) {
+              body.push(
+                `Community pull requests target the \`community\` branch, so I've changed this PR's base from \`${from}\` to \`community\`. Your changes are unaffected — a maintainer integrates \`community\` into \`develop\` automatically.`,
+                '',
+              );
             }
+
+            body.push(
+              'A maintainer will review your changes soon. In the meantime, please ensure:',
+              '',
+              '- [ ] You filled out the PR template above, completely to the best of your knowledge',
+              '- [ ] You include tests (if applicable)',
+              '- [ ] You read the [contribution guide](https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md#community-pull-requests)',
+              '',
+              '**Helpful resources:**',
+              '- 📖 [FiftyOne Documentation](https://docs.voxel51.com/)',
+              '- 💬 [Discord Community](https://discord.gg/fiftyone-community)',
+              '- 🎬 [YouTube Channel](https://www.youtube.com/@voxel51)',
+            );
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              body: body.join('\n'),
+            });
