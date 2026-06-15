@@ -24,6 +24,7 @@ jobs:
     if: >-
       github.repository == 'voxel51/fiftyone' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
+      !endsWith(github.event.pull_request.user.login, '[bot]') &&
       (github.event.action != 'edited' || github.event.changes.base) && (
       github.event.action == 'closed' ||
       github.event.pull_request.draft != true)
