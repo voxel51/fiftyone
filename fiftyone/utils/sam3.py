@@ -35,8 +35,8 @@ logger = logging.getLogger(__name__)
 
 
 def _download_sam3_bpe_vocab_file(
-    tokenizer_base_url: str,
-    bpe_path: str,
+    tokenizer_source,
+    bpe_path,
 ):
     """Downloads SAM3 BPE vocab file if it does not exist at the specified path.
 
@@ -47,35 +47,14 @@ def _download_sam3_bpe_vocab_file(
 
     asset_filename = os.path.basename(bpe_path)
 
-    # Best-effort: copy from installed `sam3` package if it ships the asset
-    try:
-        import sam3 as _sam3_pkg
-
-        sam3_pkg_dir = os.path.dirname(os.path.abspath(_sam3_pkg.__file__))
-        candidates = (
-            os.path.join(
-                os.path.dirname(sam3_pkg_dir),
-                "assets",
-                asset_filename,
-            ),
-            os.path.join(sam3_pkg_dir, "assets", asset_filename),
-        )
-        for candidate in candidates:
-            if os.path.isfile(candidate):
-                shutil.copyfile(candidate, bpe_path)
-                return
-
-    except Exception as e:
-        logger.debug("Could not copy SAM3 vocab from installed package: %s", e)
-
     logger.info("Downloading SAM3 tokenizer vocab (%s)...", asset_filename)
     try:
-        etaw.download_file(tokenizer_base_url, path=bpe_path)
+        etaw.download_file(tokenizer_source, path=bpe_path)
     except Exception as e:
         raise RuntimeError(
             "Failed to download SAM3 tokenizer vocab. "
             "You can manually download '%s' from %s and save it to %s"
-            % (asset_filename, tokenizer_base_url, bpe_path)
+            % (asset_filename, tokenizer_source, bpe_path)
         ) from e
 
 
@@ -95,8 +74,7 @@ class SegmentAnything3ImageModelConfig(
             :class:`GetItem` to use for SAM
         get_item_args (None): a dictionary of arguments for
             ``get_item_cls(field_mapping=field_mapping, **kwargs)``
-        tokenizer_base_filename (None): the filename of the SAM3 tokenizer BPE vocab
-        tokenizer_base_url (None): the URL to download the SAM3 tokenizer BPE vocab
+        tokenizer_source (None): the URL to download the SAM3 tokenizer BPE vocab
         operation_mode ("concept"): concept or visual mode of operation for inference
     """
 
@@ -122,28 +100,9 @@ class SegmentAnything3ImageModelConfig(
         )
         self.get_item_args = self.parse_dict(d, "get_item_args", default=None)
 
-        # Tokenizer vocab settings (provided by the model zoo manifest)
-        self.tokenizer_base_filename = self.parse_string(
-            d, "tokenizer_base_filename", default=None
+        self.tokenizer_source = self.parse_string(
+            d, "tokenizer_source", default=None
         )
-        self.tokenizer_base_url = self.parse_string(
-            d, "tokenizer_base_url", default=None
-        )
-
-        # Ensure the upstream `sam3` entrypoint gets an absolute, stable BPE
-        # vocab path (avoids upstream defaulting to a relative `../assets/`)
-        if self.entrypoint_args is None:
-            self.entrypoint_args = {}
-
-        if (
-            "bpe_path" not in self.entrypoint_args
-            and self.tokenizer_base_filename
-        ):
-            self.entrypoint_args["bpe_path"] = os.path.join(
-                fo.config.model_zoo_dir,
-                "sam3",
-                self.tokenizer_base_filename,
-            )
 
         self.operation_mode = self.parse_string(
             d, "operation_mode", default="concept"
@@ -367,6 +326,15 @@ class SegmentAnything3ImageModel(fosam2.SegmentAnything2ImageModel):
             # Always set to True for easy switching of operation modes in a loaded zoo model.
             config.entrypoint_args["enable_inst_interactivity"] = True
 
+        if (
+            "bpe_path" not in config.entrypoint_args
+            and config.tokenizer_source
+        ):
+            config.entrypoint_args["bpe_path"] = os.path.join(
+                os.path.dirname(config.model_path),
+                os.path.basename(config.tokenizer_source),
+            )
+
         fout.TorchImageModelWithPrompts.__init__(self, config)
         self._sam_auto_generator = None
         self._sam_predictor = self._load_predictor()
@@ -385,26 +353,6 @@ class SegmentAnything3ImageModel(fosam2.SegmentAnything2ImageModel):
     def _load_model(self, config):
         if "device" not in config.entrypoint_args:
             config.entrypoint_args["device"] = str(self._device)
-
-        if not config.tokenizer_base_filename or not config.tokenizer_base_url:
-            raise ValueError(
-                "Missing required SAM3 tokenizer vocab configuration. "
-                "Provide 'tokenizer_base_filename' and 'tokenizer_base_url' "
-                "in the model config (typically via the model zoo manifest)."
-            )
-
-        # Ensure the upstream `sam3` entrypoint has a valid BPE vocab path
-        if config.entrypoint_args is None:
-            config.entrypoint_args = {}
-
-        bpe_path = config.entrypoint_args.get("bpe_path", None)
-        if not bpe_path:
-            bpe_path = os.path.join(
-                os.path.dirname(config.model_path),
-                config.tokenizer_base_filename,
-            )
-            config.entrypoint_args["bpe_path"] = bpe_path
-
         model = super()._load_model(config)
         return model
 
@@ -420,8 +368,14 @@ class SegmentAnything3ImageModel(fosam2.SegmentAnything2ImageModel):
 
         bpe_path = config.entrypoint_args["bpe_path"]
         if not os.path.isfile(bpe_path):
+            if not config.tokenizer_source:
+                raise ValueError(
+                    "Missing BPE vocabulary tokenizer. Either provide 'tokenizer_source'"
+                    "in the model config for downloading or set 'bpe_path' in the model config"
+                    "'entrypoint_args' to a pre-downloaded file."
+                )
             _download_sam3_bpe_vocab_file(
-                tokenizer_base_url=config.tokenizer_base_url,
+                tokenizer_source=config.tokenizer_source,
                 bpe_path=bpe_path,
             )
 
