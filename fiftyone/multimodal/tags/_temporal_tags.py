@@ -1486,7 +1486,7 @@ def _ensure_kind(kind):
     elif isinstance(kind, str):
         try:
             return TagKind(kind)
-        except KeyError as e:
+        except ValueError as e:
             raise ValueError("Invalid temporal tag kind: %r" % kind) from e
     elif isinstance(kind, TagKind):
         return kind
