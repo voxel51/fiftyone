@@ -52,7 +52,7 @@
         "vite-plugin-eslint": "^1.8.1",
         "vite-plugin-relay": "^2.0.0",
         "vite-plugin-wasm": "^3.6.0",
-        "vitest": "^3.0.8"
+        "vitest": "^3.2.6"
     },
     "workspaces": [
         "packages/*"
