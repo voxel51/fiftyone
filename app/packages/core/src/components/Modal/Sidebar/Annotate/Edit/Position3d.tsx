@@ -1,10 +1,10 @@
-import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { LabeledField } from "@fiftyone/components";
 import { DetectionLabel } from "@fiftyone/looker";
 import {
   formatDegrees,
   quaternionToRadians,
   radiansToQuaternion,
+  useCuboidOperations,
   useIsDragInProgress,
   useTransientCuboid,
   useWorkingLabel,
@@ -14,7 +14,7 @@ import { Box, Stack, TextField } from "@mui/material";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { Vector3Tuple } from "three";
-import { currentData, currentOverlay } from "./state";
+import { currentData } from "./state";
 
 interface Coordinates3d {
   position: { x?: number; y?: number; z?: number };
@@ -58,8 +58,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
     rotation: {},
   });
   const data = useAtomValue<DetectionLabel>(currentData);
-  const overlay = useAtomValue(currentOverlay);
-  const eventBus = useAnnotationEventBus();
+  const { updateCuboid } = useCuboidOperations();
   const labelId = data?._id ?? "";
 
   const workingLabel = useWorkingLabel(labelId);
@@ -190,27 +189,18 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
         newState.rotation.rz ?? 0,
       ];
 
-      const newQuaternion = newRotation
-        ? radiansToQuaternion(newRotation)
-        : null;
+      const newQuaternion = radiansToQuaternion(newRotation);
 
-      // Emit event for 3D annotation sync
-      if (overlay?.id) {
-        eventBus.dispatch("annotation:sidebarValueUpdated", {
-          overlayId: overlay.id,
-          currentLabel: overlay.label as DetectionLabel,
-          value: {
-            ...data,
-            _id: data._id,
-            location: newLocation,
-            dimensions: newDimensions,
-            quaternion: newQuaternion,
-            rotation: newRotation,
-          },
-        });
-      }
+      // an undoable working-store write; the autosave relay carries it on
+      // to the engine and persistence
+      void updateCuboid(data._id, {
+        location: newLocation,
+        dimensions: newDimensions,
+        quaternion: newQuaternion,
+        rotation: newRotation,
+      });
     },
-    [data, transformState, overlay, eventBus, readOnly]
+    [data, transformState, updateCuboid, readOnly]
   );
 
   return (
