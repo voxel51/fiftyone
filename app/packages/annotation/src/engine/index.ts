@@ -67,6 +67,19 @@ export type { LighterInteractionPolicy } from "./surfaces/lighter/interactionPol
 export { combineInteractionPolicies } from "./surfaces/lighter/interactionPolicy";
 export { useLighterEngineBridge } from "./surfaces/lighter/useLighterEngineBridge";
 
+// looker-3d surface
+export type {
+  Looker3dDescriptor,
+  Looker3dHandle,
+  Working3dLabel,
+} from "./surfaces/looker-3d/adapters";
+export { looker3dAdapters } from "./surfaces/looker-3d/adapters";
+export type {
+  Looker3dBridgeDeps,
+  WorkingStore3d,
+} from "./surfaces/looker-3d/looker3dBridge";
+export { createLooker3dBridge } from "./surfaces/looker-3d/looker3dBridge";
+
 // declarative integration
 export type {
   EngineReads,
