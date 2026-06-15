@@ -8,6 +8,7 @@ import {
   PointCloudPanel,
   type PointCloudPanelLayer,
 } from "../../../visualization/panels/point-cloud";
+import { checkboxNoSpaceToggleProps } from "./mcap-settings-keyboard";
 import settingsStyles from "./McapTile.settings.module.css";
 import styles from "./McapTile.module.css";
 import { McapTileEmptyState, McapTileStatusBadge } from "./McapTileStreamState";
@@ -25,6 +26,9 @@ const TILE_TYPE_LABEL = "3D";
 const Mcap3dTile: React.FC = () => {
   const pointClouds = useSceneSourcesByType(MCAP_SOURCE_TYPE.POINT_CLOUD);
   const setTileTitle = useSetTileTitle();
+  // Start with every source enabled. This tile only mounts after the scene
+  // inventory is ready (the renderer gates on it), so `pointClouds` is already
+  // populated and the lazy initializer captures the full set once.
   const [enabled, setEnabled] = useState<ReadonlySet<string>>(
     () => new Set(pointClouds.map((s) => s.id))
   );
@@ -106,14 +110,29 @@ const Mcap3dTile: React.FC = () => {
             <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
               Sources
             </Text>
-            {pointClouds.map((s) => (
-              <Checkbox
-                key={s.id}
-                label={s.label}
-                checked={enabled.has(s.id)}
-                onChange={(checked) => toggleSource(s.id, checked)}
-              />
-            ))}
+            {pointClouds.length > 0 ? (
+              <>
+                <div className={settingsStyles.metaText}>
+                  {selectedTopics.length.toLocaleString()} of{" "}
+                  {pointClouds.length.toLocaleString()} selected
+                </div>
+                <div className={settingsStyles.optionStack}>
+                  {pointClouds.map((s) => (
+                    <Checkbox
+                      key={s.id}
+                      label={labelWithCount(s.label, s.recordCount)}
+                      checked={enabled.has(s.id)}
+                      onChange={(checked) => toggleSource(s.id, checked)}
+                      {...checkboxNoSpaceToggleProps}
+                    />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <span className={settingsStyles.emptyText}>
+                No 3D sources available
+              </span>
+            )}
           </div>
         </div>
       </TileSettingsContent>
@@ -132,5 +151,9 @@ const Mcap3dTile: React.FC = () => {
     </>
   );
 };
+
+function labelWithCount(label: string, count: number | undefined): string {
+  return count ? `${label} (${count.toLocaleString()})` : label;
+}
 
 export default Mcap3dTile;
