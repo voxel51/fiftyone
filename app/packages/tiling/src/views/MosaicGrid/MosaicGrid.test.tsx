@@ -71,6 +71,12 @@ describe("MosaicGrid pure helpers", () => {
       const next = addTileToLayout(layout, "d", "ghost");
       expect(collectTileIds(next).sort()).toEqual(["a", "b", "c", "d"]);
     });
+
+    it("throws when the new id already exists in the layout", () => {
+      expect(() => addTileToLayout("a", "a")).toThrow(
+        'Tile id "a" already exists in layout'
+      );
+    });
   });
 });
 

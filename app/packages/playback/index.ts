@@ -13,3 +13,7 @@ export type { PlaybackStore, PlaybackStream } from "./src/lib/playback/types";
 export * from "./src/lib/tracks/TrackProvider";
 export * from "./src/views/Timeline/Timeline";
 export { default as TimelineWithTracks } from "./src/views/TimelineWithTracks/TimelineWithTracks";
+export type { TimelineWithTracksProps } from "./src/views/TimelineWithTracks/TimelineWithTracks";
+export type { TemporalTagCreatePayload } from "./src/views/TemporalTag/TemporalTagContext";
+export { default as TemporalTagTimeline } from "./src/views/TemporalTag/TemporalTagTimeline";
+export type { TemporalTagTimelineProps } from "./src/views/TemporalTag/TemporalTagTimeline";

@@ -13,13 +13,13 @@ import {
 import { ImaVidFramesController } from "@fiftyone/looker/src/lookers/imavid/controller";
 import { ImaVidFramesControllerStore } from "@fiftyone/looker/src/lookers/imavid/store";
 import type { BaseState, ImaVidConfig } from "@fiftyone/looker/src/state";
-import { isNativeMediaType } from "@fiftyone/looker/src/util";
 import {
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
   getMimeType,
   isDirect3dSamplePath,
   isFo3dSamplePath,
+  isNativeMediaType,
   isNullish,
 } from "@fiftyone/utilities";
 import { useEffect, useRef } from "react";
@@ -27,7 +27,7 @@ import { useErrorHandler } from "react-error-boundary";
 import { useRelayEnvironment } from "react-relay";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { dynamicGroupsElementCount, selectedMediaField } from "../recoil";
-import { selectedSamples, sampleSelectionStyle } from "../recoil/atoms";
+import { sampleSelectionStyle, selectedSamples } from "../recoil/atoms";
 import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
 import * as schemaAtoms from "../recoil/schema";
 import { datasetName, dynamicGroupsTargetFrameRate } from "../recoil/selectors";

@@ -125,4 +125,32 @@ describe("TimelineControls", () => {
     const row = screen.getByTestId("timeline-controls-root");
     expect(() => fireEvent.click(row)).not.toThrow();
   });
+
+  describe("extraActions", () => {
+    it("renders extra action content when provided", () => {
+      render(
+        <PlaybackProvider duration={10} stepInterval={1 / 30}>
+          <TimelineControls extraActions={<button>Custom Action</button>} />
+        </PlaybackProvider>
+      );
+      expect(screen.getByRole("button", { name: "Custom Action" })).toBeTruthy();
+    });
+
+    it("renders a second divider alongside the extra actions", () => {
+      render(
+        <PlaybackProvider duration={10} stepInterval={1 / 30}>
+          <TimelineControls extraActions={<span data-testid="extra">hi</span>} />
+        </PlaybackProvider>
+      );
+      // The first divider always exists; a second one appears only with extraActions.
+      const dividers = screen.getAllByTestId("timeline-controls-divider");
+      expect(dividers).toHaveLength(2);
+    });
+
+    it("does not render a second divider when extraActions is absent", () => {
+      renderControls({});
+      const dividers = screen.getAllByTestId("timeline-controls-divider");
+      expect(dividers).toHaveLength(1);
+    });
+  });
 });

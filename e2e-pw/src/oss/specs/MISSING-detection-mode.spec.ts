@@ -63,8 +63,7 @@ test.describe.serial("detection mode", () => {
 
     // hover over the canvas
     await modal.sampleCanvas.assert.hasCursor("pointer");
-    await modal.sampleCanvas.move(0.5, 0.5);
-    await modal.sampleCanvas.assert.hasCursor("crosshair");
+    await modal.sampleCanvas.move(0.5, 0.5, "crosshair");
 
     // Deactivate by clicking the button again
     await modal.sidebar.annotate.detectionMode("Detections");

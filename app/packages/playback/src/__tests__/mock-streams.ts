@@ -3,7 +3,7 @@
 // These are the simplest possible objects satisfying PlaybackStream.
 // ---------------------------------------------------------------------------
 
-import type { PlaybackStream } from "./types";
+import type { PlaybackStream } from "../lib/playback/types";
 
 /** Always ready. Use in UI tests that don't care about buffering. */
 export function makeReadyStream(id: string, blocking = true): PlaybackStream {

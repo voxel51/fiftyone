@@ -12,16 +12,23 @@ import { useState } from "react";
 import { useConfirmDisconnectOntology } from "../../Confirmation/useConfirmDisconnectOntology";
 import OntologyPicker from "./OntologyPicker";
 import { useAppliedOntology } from "./useLabelSchema";
-import { useOntologies } from "./useOntologies";
+import { ONTOLOGY_TYPE, useOntologies } from "./useOntologies";
 
 interface ApplyOntologySectionProps {
   field: string;
 }
 
 const ApplyOntologySection = ({ field }: ApplyOntologySectionProps) => {
-  const { appliedOntology, ontologyAttributes, applyOntology, clearOntology } =
-    useAppliedOntology(field);
-  const { ontologies, isFetching, error } = useOntologies();
+  const {
+    appliedOntology,
+    appliedTaxonomy,
+    ontologyAttributes,
+    applyOntology,
+    clearOntology,
+  } = useAppliedOntology(field);
+  const { ontologies, isFetching, error } = useOntologies(
+    ONTOLOGY_TYPE.ontology
+  );
   const [pickerArmed, setPickerArmed] = useState(false);
 
   const expanded = !!appliedOntology || pickerArmed;
@@ -45,7 +52,8 @@ const ApplyOntologySection = ({ field }: ApplyOntologySectionProps) => {
   };
 
   const handlePick = (value: string): void => {
-    applyOntology(value);
+    const taxonomy = ontologies?.find((o) => o.name === value)?.taxonomy;
+    applyOntology(value, taxonomy);
     setPickerArmed(false);
   };
 
@@ -68,9 +76,15 @@ const ApplyOntologySection = ({ field }: ApplyOntologySectionProps) => {
           ? `Chosen ontology: ${appliedOntology}`
           : "When enabled, your schema will use attributes defined in the ontology."}
       </Text>
+      {appliedTaxonomy && (
+        <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
+          Taxonomy: {appliedTaxonomy}
+        </Text>
+      )}
 
       {expanded && !appliedOntology && (
         <OntologyPicker
+          type={ONTOLOGY_TYPE.ontology}
           ontologies={ontologies}
           isFetching={isFetching}
           error={error}

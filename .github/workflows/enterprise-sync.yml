@@ -1,0 +1,67 @@
+name: Enterprise Sync
+
+on:
+  pull_request:
+    # `edited` covers base-branch changes — e.g. a stacked PR auto-retargeted
+    # to develop when its base PR merges. The head SHA doesn't change, so no
+    # `synchronize` fires; without `edited` the retargeted PR would never sync.
+    types: [opened, synchronize, reopened, closed, ready_for_review, edited]
+    branches:
+      - develop
+      - release/*
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  enterprise-sync:
+    # Only the OSS repo dispatches to Enterprise. The Enterprise repo carries an
+    # identical copy of this file (via OSS sync) where this guard makes it inert,
+    # so the file never diverges and never produces a sync conflict.
+    # On `edited`, only dispatch when the base branch changed (changes.base is
+    # only present then) — title/body edits don't need a re-sync.
+    if: >-
+      github.repository == 'voxel51/fiftyone' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (github.event.action != 'edited' || github.event.changes.base) && (
+      github.event.action == 'closed' ||
+      github.event.pull_request.draft != true)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          script: |
+            const sha = context.payload.pull_request.head.sha;
+
+            // Post `enterprise / ci = pending` on the PR head immediately so
+            // the required check appears on the PR without waiting for the
+            // Enterprise sync workflow to start. The Enterprise workflow
+            // overwrites this status with `success` or `failure` once it
+            // finishes. Skip for closed PRs — the OSS PR is past the gate.
+            if (context.payload.action !== 'closed') {
+              await github.rest.repos.createCommitStatus({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                sha,
+                state: 'pending',
+                context: 'enterprise / ci',
+                description: 'Awaiting Enterprise sync workflow…',
+              });
+            }
+
+            await github.rest.repos.createDispatchEvent({
+              owner: 'voxel51',
+              repo: 'fiftyone-teams',
+              event_type: 'oss-pr-sync',
+              client_payload: {
+                action: context.payload.action,
+                branch: context.payload.pull_request.head.ref,
+                author: context.payload.pull_request.user.login,
+                pr_number: context.payload.pull_request.number,
+                commit_sha: sha,
+                base: context.payload.pull_request.base.ref,
+                merged: context.payload.pull_request.merged ?? false,
+              }
+            });
