@@ -1,5 +1,5 @@
 import {
-  useActiveSampleId,
+  useActiveAnnotationSampleId,
   useAnnotationEngine,
   useInteraction,
 } from "@fiftyone/annotation";
@@ -61,7 +61,7 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
 
   const id = label.overlay.id;
   const path = label.path;
-  const sample = useActiveSampleId();
+  const sample = useActiveAnnotationSampleId();
 
   // the sidebar reflects the selected slice; refs carry its id (from modal
   // state, so it's correct before the engine registers a store and stays

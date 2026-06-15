@@ -12,9 +12,9 @@ import {
   type SampleChange,
   SampleChangeKind,
 } from "@fiftyone/utilities";
-import { useCurrentSampleId } from "@fiftyone/state";
 import { useEffect, useRef } from "react";
 import { build3dLabel } from "./build3dLabel";
+import { useSceneSampleId } from "./useGroupAnnotationSample";
 import { useSampleInstance } from "./useSample";
 
 /** A label update to apply onto the 3D working store. */
@@ -95,11 +95,17 @@ export const reconcile3dChange = (
  */
 export const useSync3dSample = (): void => {
   const doc = useWorkingDoc();
-  // the 3D working store is keyed by `currentSampleId`; bridge it onto THAT
-  // sample's Sample (the pinned 3D scene in a grouped modal — distinct from
-  // the selected 2D slice), never the selected one
-  const threeDId = useCurrentSampleId();
-  const sample = useSampleInstance(threeDId ?? undefined);
+  // looker-3d keys its working store internally by `currentSampleId`, but the
+  // store always holds the 3D SCENE's labels; bridge them onto the SCENE's own
+  // stable-id Sample. This is the scene's own id (the selected slice's id for a
+  // non-grouped 3D sample, the pinned scene's id for a grouped modal) — NOT
+  // currentSampleId, which on a 2D slice points at that slice and bled the
+  // cuboids onto it.
+  const sceneId = useSceneSampleId();
+  // sentinel instance while the scene id is unknown; the effects below stay
+  // inert until it settles, so a load-time write never falls back to the
+  // selected 2D slice (the leak)
+  const sample = useSampleInstance(sceneId ?? "");
   const updateWorkingLabel = useUpdateWorkingLabel();
 
   // Latest working doc, read by the read-half subscription (which stays
@@ -112,6 +118,10 @@ export const useSync3dSample = (): void => {
 
   // Write-half: mirror committed working-store edits onto Sample.
   useEffect(() => {
+    if (!sceneId) {
+      return;
+    }
+
     writing.current = true;
     try {
       for (const label of Object.values(doc.labelsById)) {
@@ -141,10 +151,14 @@ export const useSync3dSample = (): void => {
     } finally {
       writing.current = false;
     }
-  }, [doc, sample]);
+  }, [doc, sample, sceneId]);
 
   // Read-half: reconcile Sample changes back onto the working store.
   useEffect(() => {
+    if (!sceneId) {
+      return undefined;
+    }
+
     return sample.subscribeChanges((changes) => {
       if (writing.current) {
         return;
@@ -164,5 +178,5 @@ export const useSync3dSample = (): void => {
         }
       }
     });
-  }, [sample, updateWorkingLabel]);
+  }, [sample, updateWorkingLabel, sceneId]);
 };

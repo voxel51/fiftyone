@@ -1,7 +1,7 @@
 import {
   DeleteAnnotationCommand,
   getFieldSchema,
-  useActiveSampleId,
+  useActiveAnnotationSampleId,
   useAnnotationEngine,
 } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
@@ -27,7 +27,7 @@ export default function useDelete() {
   const { scene, removeOverlay } = useLighter();
   const label = useAtomValue(current);
   const engine = useAnnotationEngine();
-  const sample = useActiveSampleId();
+  const sample = useActiveAnnotationSampleId();
   const schema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );

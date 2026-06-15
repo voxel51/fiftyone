@@ -1,4 +1,7 @@
-import { useAnnotationEngine } from "@fiftyone/annotation";
+import {
+  useActiveAnnotationSampleId,
+  useAnnotationEngine,
+} from "@fiftyone/annotation";
 import {
   DetectionOverlay,
   UNDEFINED_LIGHTER_SCENE_ID,
@@ -9,7 +12,6 @@ import {
   AnnotationLabel,
   AnnotationLabelData,
   isPatchesView,
-  useModalSample,
 } from "@fiftyone/state";
 import { DETECTION, LabelType as EngineLabelType } from "@fiftyone/utilities";
 import { atom, getDefaultStore, useAtomValue, useSetAtom } from "jotai";
@@ -262,12 +264,13 @@ export default function useLabels() {
   const engine = useAnnotationEngine();
   const { scene } = useLighter();
   const active = useAtomValue(visibleLabelSchemas);
-  const modalSample = useModalSample();
   const isPatches = useRecoilValue(isPatchesView);
   const setEntranceLabel = useSetEntranceLabel();
   const setLoading = useSetAtom(labelsState);
 
-  const sampleId = modalSample?.sample?._id;
+  // the sample the sidebar reflects — the selected 2D slice, or the pinned 3D
+  // scene when its slice is selected (the one group-aware resolver)
+  const sampleId = useActiveAnnotationSampleId();
 
   // ids the mirror derived on its last pass, and for which sample — a row
   // that WAS engine-derived and no longer is was deleted (drop it, don't

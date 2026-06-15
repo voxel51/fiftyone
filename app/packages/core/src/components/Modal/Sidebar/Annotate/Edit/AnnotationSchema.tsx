@@ -1,4 +1,7 @@
-import { useActiveSampleId, useAnnotationEngine } from "@fiftyone/annotation";
+import {
+  useActiveAnnotationSampleId,
+  useAnnotationEngine,
+} from "@fiftyone/annotation";
 import { usePushUndoable } from "@fiftyone/commands";
 import { expandPath, field } from "@fiftyone/state";
 import type { LabelData } from "@fiftyone/utilities";
@@ -131,7 +134,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
   const [data] = useAtom(currentData);
   const overlay = useAtomValue(currentOverlay);
   const engine = useAnnotationEngine();
-  const sample = useActiveSampleId();
+  const sample = useActiveAnnotationSampleId();
   const { createPushAndExec } = usePushUndoable();
   const parseFieldValue = useParseFieldValue();
   const field = useAtomValue(currentField);

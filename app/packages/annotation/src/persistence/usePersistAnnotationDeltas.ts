@@ -1,7 +1,6 @@
 import {
   isGeneratedView,
   useCurrentDatasetId,
-  useCurrentSampleId,
   useInteraction3dSample,
   useModalSample,
   useRefreshSample,
@@ -15,7 +14,7 @@ import {
   usePatchSample,
   usePatchSampleWith,
 } from "../hooks";
-import { useAnnotationEngine } from "../state";
+import { useAnnotationEngine, useThreeDSceneSampleId } from "../state";
 
 /**
  * @returns `true` if persistence was successful
@@ -50,7 +49,7 @@ export const usePersistAnnotationDeltas =
     // binding (version token + refresh keyed to that sample). Inert unless a
     // grouped modal actually renders a separate 3D scene.
     const modalId = useModalSample()?.sample?._id;
-    const threeDId = useCurrentSampleId();
+    const sceneId = useThreeDSceneSampleId();
     const threeDScene = useInteraction3dSample();
     const patch3d = usePatchSampleWith({
       sample: threeDScene?.sample ?? null,
@@ -107,10 +106,7 @@ export const usePersistAnnotationDeltas =
 
       let success = true;
       for (const entry of patches) {
-        const patch =
-          entry.sample === threeDId && entry.sample !== modalId
-            ? patch3d
-            : patchSelected;
+        const patch = entry.sample === sceneId ? patch3d : patchSelected;
 
         const ok = await patch(entry.deltas);
 
@@ -132,7 +128,7 @@ export const usePersistAnnotationDeltas =
       modalId,
       patch3d,
       patchSelected,
+      sceneId,
       supplyAnnotationDeltas,
-      threeDId,
     ]);
   };

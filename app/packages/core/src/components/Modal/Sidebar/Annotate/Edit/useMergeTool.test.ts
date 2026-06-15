@@ -62,7 +62,7 @@ class MockMergeDetectionsCommand {
 vi.mock("@fiftyone/annotation", () => ({
   DeleteAnnotationCommand: MockDeleteAnnotationCommand,
   getFieldSchema: (...args: unknown[]) => mockGetFieldSchema(...args),
-  useActiveSampleId: () => "sample-1",
+  useActiveAnnotationSampleId: () => "sample-1",
   useAnnotationEventBus: () => ({ dispatch: mockDispatchAnnotationEvent }),
   useAnnotationEngine: () => ({
     updateLabel: mockEngineUpdateLabel,

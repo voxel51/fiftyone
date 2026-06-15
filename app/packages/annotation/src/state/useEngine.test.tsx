@@ -5,11 +5,14 @@ import { useAnnotationEngine, useSyncAnnotationEngine } from "./useEngine";
 import { useSampleInstance } from "./useSample";
 
 let mockModalSample: { sample?: { _id: string } } | undefined;
+let mockSceneSample: { sample?: { _id: string } } | undefined;
 
 vi.mock("@fiftyone/state", () => ({
   useModalSample: () => mockModalSample,
-  // no separate 3D scene in these tests: the 3D key tracks the modal sample,
-  // so the registered set collapses to one store
+  // the 3D scene sample (stable/non-suspending variant); when its id differs
+  // from the modal sample a second store is registered, otherwise the set
+  // collapses to one
+  useStableSceneSample3d: () => mockSceneSample,
   useCurrentSampleId: () => mockModalSample?.sample?._id ?? null,
 }));
 
@@ -43,6 +46,7 @@ const renderSync = () =>
 describe("useSyncAnnotationEngine", () => {
   it("registers a store for the modal sample; unmount detaches it", () => {
     mockModalSample = { sample: { _id: "s1" } };
+    mockSceneSample = undefined;
     const { result, unmount } = renderSync();
     const { engine, sample } = result.current;
 
@@ -62,6 +66,7 @@ describe("useSyncAnnotationEngine", () => {
 
   it("registers nothing without a modal sample", () => {
     mockModalSample = undefined;
+    mockSceneSample = undefined;
     const { result, unmount } = renderSync();
 
     expect(() =>
@@ -76,6 +81,7 @@ describe("useSyncAnnotationEngine", () => {
 
   it("re-keys the store on sample switch and sweeps the old selection", () => {
     mockModalSample = { sample: { _id: "s1" } };
+    mockSceneSample = undefined;
     const { result, rerender, unmount } = renderSync();
     const { engine } = result.current;
     const s1Sample = result.current.sample;
@@ -110,5 +116,59 @@ describe("useSyncAnnotationEngine", () => {
     unmount();
     s1Sample.clear();
     s2Sample.clear();
+  });
+
+  it("registers a second store for a co-resident 3D scene; no cross-bleed", () => {
+    // a grouped modal: the selected 2D slice (s1) and the pinned 3D scene
+    // (pcd, a distinct doc) render at once — each must resolve from its own
+    // store, never the other's (the wrong-slice-sidebar bug)
+    mockModalSample = { sample: { _id: "s1" } };
+    mockSceneSample = { sample: { _id: "pcd" } };
+
+    const { result, unmount } = renderHook(() => {
+      useSyncAnnotationEngine();
+      return {
+        engine: useAnnotationEngine(),
+        modal: useSampleInstance("s1"),
+        scene: useSampleInstance("pcd"),
+      };
+    });
+    const { engine, modal, scene } = result.current;
+
+    modal.setSchema(schema);
+    modal.setData({
+      ground_truth: { _cls: "Detections", detections: [det("d1")] },
+    });
+    scene.setSchema(schema);
+    scene.setData({
+      ground_truth: { _cls: "Detections", detections: [det("c1", "car")] },
+    });
+
+    expect(
+      engine.getLabel({
+        sample: "s1",
+        path: "ground_truth",
+        instanceId: "d1",
+      })?.label
+    ).toBe("cat");
+    expect(
+      engine.getLabel({
+        sample: "pcd",
+        path: "ground_truth",
+        instanceId: "c1",
+      })?.label
+    ).toBe("car");
+    // the 3D label is NOT visible under the 2D slice's id, and vice versa
+    expect(
+      engine.getLabel({
+        sample: "s1",
+        path: "ground_truth",
+        instanceId: "c1",
+      })
+    ).toBeUndefined();
+
+    unmount();
+    modal.clear();
+    scene.clear();
   });
 });

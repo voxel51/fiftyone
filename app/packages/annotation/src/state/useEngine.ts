@@ -1,9 +1,9 @@
-import { useCurrentSampleId, useModalSample } from "@fiftyone/state";
 import { atom, useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
 import { AnnotationEngine } from "../engine/core/engine";
 import { SampleLabelStore } from "../engine/store/sampleLabelStore";
-import { useSampleInstanceGetter } from "./useSample";
+import { useThreeDSceneSampleId } from "./useGroupAnnotationSample";
+import { useActiveSampleId, useSampleInstanceGetter } from "./useSample";
 
 /**
  * Shared {@link AnnotationEngine} for the annotation session.
@@ -35,25 +35,25 @@ export const useAnnotationEngine = (): AnnotationEngine =>
 export const useSyncAnnotationEngine = (): void => {
   const engine = useAnnotationEngine();
   const getSample = useSampleInstanceGetter();
-  const modalId = useModalSample()?.sample?._id;
-  const threeDId = useCurrentSampleId();
+  const modalId = useActiveSampleId();
+  const sceneId = useThreeDSceneSampleId();
 
   // the modal's distinct sample documents — a grouped 2D + 3D modal renders
-  // two at once (the selected slice and the pinned 3D scene); every other case
-  // collapses to one, where the ids coincide
+  // two at once (the selected slice and the pinned 3D scene, already guaranteed
+  // distinct by useThreeDSceneSampleId); every other case collapses to one
   const sampleIds = useMemo(() => {
-    const ids = new Set<string>();
+    const ids: string[] = [];
 
     if (modalId) {
-      ids.add(modalId);
+      ids.push(modalId);
     }
 
-    if (threeDId) {
-      ids.add(threeDId);
+    if (sceneId) {
+      ids.push(sceneId);
     }
 
-    return [...ids];
-  }, [modalId, threeDId]);
+    return ids;
+  }, [modalId, sceneId]);
 
   useEffect(() => {
     if (sampleIds.length === 0) {

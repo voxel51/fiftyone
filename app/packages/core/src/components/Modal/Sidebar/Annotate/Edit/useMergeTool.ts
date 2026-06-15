@@ -5,7 +5,7 @@
 import {
   DeleteAnnotationCommand,
   getFieldSchema,
-  useActiveSampleId,
+  useActiveAnnotationSampleId,
   useAnnotationEngine,
 } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
@@ -61,7 +61,7 @@ export const useMergeTool = (): MergeTool => {
   const { scene } = useLighter();
   const { getLabelById } = useLabelsContext();
   const engine = useAnnotationEngine();
-  const sample = useActiveSampleId();
+  const sample = useActiveAnnotationSampleId();
   const fieldSchema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
