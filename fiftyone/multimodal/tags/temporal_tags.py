@@ -31,7 +31,7 @@ contexts.
 from ._temporal_tags import (
     DEFAULT_INDEX_TYPE,
     SUPPORTED_INDEX_TYPES,
-    TEMPORAL_TAGS_COLLECTION_NAME,
+    TAGS_COLLECTION_NAME,
     TEMPORAL_TAGS_EXPORT_FILENAME,
     TemporalTag,
     TemporalTagFilter,
@@ -61,7 +61,7 @@ __all__ = [
     "DEFAULT_INDEX_TYPE",
     "SUPPORTED_INDEX_TYPES",
     "TEMPORAL_TAGS_EXPORT_FILENAME",
-    "TEMPORAL_TAGS_COLLECTION_NAME",
+    "TAGS_COLLECTION_NAME",
     "TemporalTag",
     "TemporalTagFilter",
     "TemporalTags",

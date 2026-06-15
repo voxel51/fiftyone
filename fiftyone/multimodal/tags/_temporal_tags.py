@@ -34,7 +34,7 @@ import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 from fiftyone.multimodal.schemas import v1 as foms
 
-TEMPORAL_TAGS_COLLECTION_NAME = "temporal_tags"
+TAGS_COLLECTION_NAME = "tags"
 TEMPORAL_TAGS_EXPORT_FILENAME = "temporal_tags.json"
 TEMPORAL_TAGS_EXPORT_KEY = "temporal_tags"
 
@@ -1369,17 +1369,17 @@ def _query_from_unique_key(key):
 
 
 def _get_or_create_collection():
-    collection = foo.get_db_conn()[TEMPORAL_TAGS_COLLECTION_NAME]
+    collection = foo.get_db_conn()[TAGS_COLLECTION_NAME]
     _ensure_indexes(collection)
     return collection
 
 
 def _get_existing_collection():
     db = foo.get_db_conn()
-    if TEMPORAL_TAGS_COLLECTION_NAME not in db.list_collection_names():
+    if TAGS_COLLECTION_NAME not in db.list_collection_names():
         return None
 
-    return db[TEMPORAL_TAGS_COLLECTION_NAME]
+    return db[TAGS_COLLECTION_NAME]
 
 
 def _delete_temporal_tags_export(export_path) -> None:
@@ -1458,7 +1458,7 @@ __all__ = [
     "DEFAULT_INDEX_TYPE",
     "SUPPORTED_INDEX_TYPES",
     "TEMPORAL_TAGS_EXPORT_FILENAME",
-    "TEMPORAL_TAGS_COLLECTION_NAME",
+    "TAGS_COLLECTION_NAME",
     "TemporalTag",
     "TemporalTagFilter",
     "TemporalTags",

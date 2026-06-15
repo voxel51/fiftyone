@@ -16,11 +16,11 @@ import fiftyone as fo
 import fiftyone.core.odm as foo
 import fiftyone.multimodal as fomm
 from fiftyone.multimodal.tags import (
-    TEMPORAL_TAGS_COLLECTION_NAME,
+    TAGS_COLLECTION_NAME,
     TimeTrackType,
 )
 
-drop_temporal_tags = drop_collection(TEMPORAL_TAGS_COLLECTION_NAME)
+drop_temporal_tags = drop_collection(TAGS_COLLECTION_NAME)
 
 
 class TemporalTagTests(unittest.TestCase):
@@ -34,7 +34,7 @@ class TemporalTagTests(unittest.TestCase):
         self.assertEqual(fomm.count_temporal_tags(dataset), {})
         self.assertEqual(fomm.delete_temporal_tags(dataset, tags="missing"), 0)
         self.assertNotIn(
-            TEMPORAL_TAGS_COLLECTION_NAME,
+            TAGS_COLLECTION_NAME,
             foo.get_db_conn().list_collection_names(),
         )
 
@@ -522,7 +522,7 @@ class TemporalTagTests(unittest.TestCase):
             ),
         )
 
-        collection = foo.get_db_conn()[TEMPORAL_TAGS_COLLECTION_NAME]
+        collection = foo.get_db_conn()[TAGS_COLLECTION_NAME]
         indexes = collection.index_information()
 
         self.assertEqual(
@@ -923,13 +923,13 @@ def _make_dataset(num_samples=1):
 
 
 def _temporal_tag_count(dataset_id):
-    return foo.get_db_conn()[TEMPORAL_TAGS_COLLECTION_NAME].count_documents(
+    return foo.get_db_conn()[TAGS_COLLECTION_NAME].count_documents(
         {"_dataset_id": dataset_id}
     )
 
 
 def _temporal_tag_count_for_sample(dataset_id, sample_id):
-    return foo.get_db_conn()[TEMPORAL_TAGS_COLLECTION_NAME].count_documents(
+    return foo.get_db_conn()[TAGS_COLLECTION_NAME].count_documents(
         {"_dataset_id": dataset_id, "_sample_id": ObjectId(sample_id)}
     )
 

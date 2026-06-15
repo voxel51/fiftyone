@@ -24,11 +24,11 @@ import fiftyone.multimodal.tags as fomt
 @pytest.fixture(autouse=True)
 def clean_temporal_tags():
     """Ensures each test starts with an empty temporal tag collection."""
-    foo.get_db_conn().drop_collection(fomt.TEMPORAL_TAGS_COLLECTION_NAME)
+    foo.get_db_conn().drop_collection(fomt.TAGS_COLLECTION_NAME)
 
     yield
 
-    foo.get_db_conn().drop_collection(fomt.TEMPORAL_TAGS_COLLECTION_NAME)
+    foo.get_db_conn().drop_collection(fomt.TAGS_COLLECTION_NAME)
 
 
 @pytest.fixture(name="dataset")
