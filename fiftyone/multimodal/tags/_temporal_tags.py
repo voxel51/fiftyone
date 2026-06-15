@@ -807,7 +807,10 @@ def delete_for_dataset_ids(dataset_ids) -> int:
         return 0
 
     return collection.delete_many(
-        {"_dataset_id": _build_in_query(dataset_ids)}
+        {
+            "_dataset_id": _build_in_query(dataset_ids),
+            "kind": TagKind.TEMPORAL.value,
+        }
     ).deleted_count
 
 
