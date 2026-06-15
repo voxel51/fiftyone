@@ -1,5 +1,4 @@
-import { useAnnotationEventBus } from "@fiftyone/annotation";
-import { useCanAnnotate } from "@fiftyone/core";
+import { useAnnotationEngine } from "@fiftyone/annotation";
 import {
   LabelHoveredEvent,
   LabelUnhoveredEvent,
@@ -166,28 +165,55 @@ export const useEventHandlers = (label: any): EventHandlers => {
     ...restEventHandlers
   } = useMeshTooltipProps(label);
 
-  const canAnnotate = useCanAnnotate();
-  const annotationEventBus = useAnnotationEventBus();
+  // the renderer is shared with explore; the ENGINE hover write-half only
+  // applies in annotate mode (the engine has no registered store in explore,
+  // so `ambientSample()` would throw). Gate on the mode, not `canAnnotate`
+  // (which is true in explore on an annotatable dataset).
+  const isAnnotateMode = fos.useModalMode() === "annotate";
+  const engine = useAnnotationEngine();
 
+  // this surface's hover write-half: pointer events write the ENGINE's
+  // hovered set with an explicit ref captured here at the dispatch site;
+  // the read-halves (sidebar rows, the 3D adapter) follow it. The tooltip
+  // handler runs first so it is never coupled to annotation state.
   return {
     onPointerOver: useCallback(() => {
-      if (canAnnotate) {
-        annotationEventBus.dispatch("annotation:canvasOverlayHover", {
-          id: label.id ?? label._id,
-        });
-      }
-
       _onPointerOver();
-    }, [label, canAnnotate, annotationEventBus, _onPointerOver]),
-    onPointerOut: useCallback(() => {
-      if (canAnnotate) {
-        annotationEventBus.dispatch("annotation:canvasOverlayUnhover", {
-          id: label.id ?? label._id,
-        });
+
+      if (!isAnnotateMode) {
+        return;
       }
 
+      const id = label?._id ?? label?.id;
+      const path = Array.isArray(label?.path)
+        ? label.path.join(".")
+        : label?.path;
+
+      if (id && path) {
+        engine.interaction.setHovered(
+          { sample: engine.ambientSample(), path, instanceId: id },
+          true
+        );
+      }
+    }, [label, isAnnotateMode, engine, _onPointerOver]),
+    onPointerOut: useCallback(() => {
       _onPointerOut();
-    }, [label, canAnnotate, annotationEventBus, _onPointerOut]),
+
+      if (!isAnnotateMode) {
+        return;
+      }
+
+      // resolve from the hovered set itself, so hover-off works even after
+      // the label has been deleted or replaced
+      const id = label?._id ?? label?.id;
+      const ref = engine.interaction
+        .getHovered()
+        .find((hovered) => hovered.instanceId === id);
+
+      if (ref) {
+        engine.interaction.setHovered(ref, false);
+      }
+    }, [label, isAnnotateMode, engine, _onPointerOut]),
     ...restEventHandlers,
   };
 };
