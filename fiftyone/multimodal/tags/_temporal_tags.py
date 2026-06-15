@@ -1108,6 +1108,7 @@ def _to_export_doc(doc):
 
 
 def _from_export_doc(doc) -> TemporalTag:
+    kind = doc.get("kind", None)
     return TemporalTag(
         sample_id=doc.get("sample_id", None),
         index_type=doc.get("index_type", None),
@@ -1115,7 +1116,7 @@ def _from_export_doc(doc) -> TemporalTag:
         end=doc.get("end", None),
         tag=doc.get("tag", None),
         anchor=doc.get("anchor", None),
-        kind=TagKind(doc.get("kind", None)),
+        kind=TagKind.TEMPORAL if kind is None else TagKind(kind),
         created_by=doc.get("created_by", None),
         last_modified_by=doc.get("last_modified_by", None),
         created_at=doc.get("created_at", None),
