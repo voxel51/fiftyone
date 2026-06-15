@@ -79,6 +79,7 @@ export type {
   WorkingStore3d,
 } from "./surfaces/looker-3d/looker3dBridge";
 export { createLooker3dBridge } from "./surfaces/looker-3d/looker3dBridge";
+export { useLooker3dEngineBridge } from "./surfaces/looker-3d/useLooker3dEngineBridge";
 
 // declarative integration
 export type {
