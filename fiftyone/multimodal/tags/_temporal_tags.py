@@ -447,7 +447,11 @@ class TemporalTags(object):
                 "Temporal tag not found: %s" % tag_id
             )
 
-        query = {"_dataset_id": self._dataset._doc.id, "_id": tag_id}
+        query = {
+            "_dataset_id": self._dataset._doc.id,
+            "_id": tag_id,
+            "kind": TagKind.TEMPORAL.value,
+        }
         if self._sample_ids is not None:
             query["_sample_id"] = _build_in_query(list(self._sample_ids))
 
