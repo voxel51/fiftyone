@@ -45,7 +45,7 @@ function affectedSuffix({ affected, total }: StatusSummary): string {
  */
 function formatStartTime(sec: number): string {
   const safe = Number.isFinite(sec) && sec > 0 ? sec : 0;
-  const totalCs = Math.floor(safe * 100);
+  const totalCs = Math.ceil(safe * 100);
   const m = Math.floor(totalCs / 6000);
   const s = Math.floor((totalCs % 6000) / 100);
   const cs = totalCs % 100;

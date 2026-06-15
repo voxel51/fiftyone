@@ -167,7 +167,7 @@ export function useRegisterMcapDataStream({
   allTopics,
   streamPolicies,
 }: UseMcapDataStreamOptions): void {
-  const { registerStream, subscribeStream } = usePlayback();
+  const { registerStream, seek, subscribeStream } = usePlayback();
   const store = usePlaybackStore();
   const setDataStream = useSetMcapDataStream();
   const seekEvent = useSeekEvent();
@@ -190,6 +190,8 @@ export function useRegisterMcapDataStream({
   const bufferedRangesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   );
+  const topicStartTimesNsRef = useRef<Map<string, bigint | null>>(new Map());
+  const autoSeekSourceEpochRef = useRef<number | null>(null);
   const nextLookaheadRefreshTimeRef = useRef(0);
   const indexRef = useRef<McapTimelineIndex | null>(null);
   const sourceEpochRef = useRef(0);
@@ -205,6 +207,50 @@ export function useRegisterMcapDataStream({
   useEffect(() => {
     streamPoliciesRef.current = streamPolicies;
   }, [streamPolicies]);
+
+  const getActiveTopics = useCallback(
+    (): string[] =>
+      allTopicsRef.current.filter(
+        (t) => topicCachesRef.current.get(t)?.isActive
+      ),
+    []
+  );
+
+  // If a recording's selected renderable topics begin just after the MCAP
+  // timeline start, land the initial playhead on the first sampled tick that
+  // can actually resolve data. This consumes the topic bounds already loaded
+  // for status copy; it never asks the worker for another index/read.
+  const maybeAutoSeekToFirstData = useCallback(() => {
+    const currentEpoch = sourceEpochRef.current;
+    if (autoSeekSourceEpochRef.current === currentEpoch) return;
+    if (getPlayhead(store) !== 0) return;
+
+    const currentIndex = indexRef.current;
+    if (!currentIndex) return;
+
+    const activeTopics = getActiveTopics();
+    if (activeTopics.length === 0) return;
+
+    let firstMessageTimeNs: bigint | null = null;
+    for (const topic of activeTopics) {
+      if (!topicStartTimesNsRef.current.has(topic)) return;
+      const topicStart = topicStartTimesNsRef.current.get(topic);
+      if (topicStart === null || topicStart === undefined) return;
+      if (firstMessageTimeNs === null || topicStart < firstMessageTimeNs) {
+        firstMessageTimeNs = topicStart;
+      }
+    }
+    if (firstMessageTimeNs === null) return;
+
+    const tick = firstTickAtOrAfter(currentIndex.ticks, firstMessageTimeNs);
+    if (tick === undefined) return;
+
+    const targetSec = nsToSeconds(tick - currentIndex.startTimeNs);
+    if (targetSec <= 0) return;
+
+    autoSeekSourceEpochRef.current = currentEpoch;
+    seek(targetSec);
+  }, [getActiveTopics, seek, store]);
 
   // Pending helpers — wrap the per-tick topic sets so call sites read
   // like simple predicates instead of repeating the get/has dance.
@@ -261,6 +307,8 @@ export function useRegisterMcapDataStream({
     lastFrameRef.current.clear();
     failureStreakRef.current.clear();
     failedTopicsRef.current.clear();
+    topicStartTimesNsRef.current.clear();
+    autoSeekSourceEpochRef.current = null;
     nextLookaheadRefreshTimeRef.current = 0;
     for (const cache of topicCachesRef.current.values()) {
       cache.clear();
@@ -299,12 +347,17 @@ export function useRegisterMcapDataStream({
         });
         if (cancelled || sourceEpochRef.current !== sourceEpoch) return;
         for (const bound of bounds) {
+          topicStartTimesNsRef.current.set(
+            bound.topic,
+            bound.firstMessageTimeNs
+          );
           const startSec =
             bound.firstMessageTimeNs === null
               ? null
               : nsToSeconds(bound.firstMessageTimeNs - range.startTimeNs);
           setMcapTopicStartTimeSec(store, bound.topic, startSec);
         }
+        maybeAutoSeekToFirstData();
       })
       .catch(noop);
     return () => {
@@ -313,15 +366,13 @@ export function useRegisterMcapDataStream({
     // client is a stable singleton — re-running on its identity would
     // discard the loaded timeline range for no benefit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [source, store]);
+  }, [maybeAutoSeekToFirstData, source, store]);
 
-  const getActiveTopics = useCallback(
-    (): string[] =>
-      allTopicsRef.current.filter(
-        (t) => topicCachesRef.current.get(t)?.isActive
-      ),
-    []
-  );
+  // This effect retries the initial auto-seek once the timeline index is
+  // committed to React state; topic bounds can resolve first.
+  useEffect(() => {
+    if (index) maybeAutoSeekToFirstData();
+  }, [index, maybeAutoSeekToFirstData]);
 
   // Contiguous [startSec, endSec] ranges where every active topic has the
   // tick cached — i.e. the stretches playback can run through without
@@ -873,6 +924,7 @@ export function useRegisterMcapDataStream({
       if (!cache) return noop;
 
       const cleanup = cache.subscribe();
+      maybeAutoSeekToFirstData();
       prefetchLookaheadFrom(getPlayhead(store));
       return () => {
         cleanup();
@@ -882,7 +934,7 @@ export function useRegisterMcapDataStream({
         if (!cache.isActive) lastFrameRef.current.delete(topic);
       };
     },
-    [prefetchLookaheadFrom, store]
+    [maybeAutoSeekToFirstData, prefetchLookaheadFrom, store]
   );
 
   const getTopicCache = useCallback(
@@ -1005,6 +1057,14 @@ function lowerBoundBigInt(arr: readonly bigint[], target: bigint): number {
     else hi = mid;
   }
   return lo;
+}
+
+function firstTickAtOrAfter(
+  ticks: readonly bigint[],
+  target: bigint
+): bigint | undefined {
+  const index = lowerBoundBigInt(ticks, target);
+  return ticks[index];
 }
 
 function bufferedRangesEqual(
