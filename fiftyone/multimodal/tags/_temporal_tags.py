@@ -723,7 +723,9 @@ def delete_for_dataset_id(dataset_id) -> int:
     if collection is None:
         return 0
 
-    return collection.delete_many({"_dataset_id": dataset_id}).deleted_count
+    return collection.delete_many(
+        {"_dataset_id": dataset_id, "kind": TagKind.TEMPORAL.value}
+    ).deleted_count
 
 
 def delete_for_sample_ids(dataset_id, sample_ids) -> int:
@@ -743,7 +745,11 @@ def delete_for_sample_ids(dataset_id, sample_ids) -> int:
     for _ids in fou.iter_batches(sample_ids, batch_size):
         sample_oids = [_ensure_object_id(_id, "sample_ids") for _id in _ids]
         num_deleted += collection.delete_many(
-            {"_dataset_id": dataset_id, "_sample_id": {"$in": sample_oids}}
+            {
+                "_dataset_id": dataset_id,
+                "kind": TagKind.TEMPORAL.value,
+                "_sample_id": {"$in": sample_oids},
+            }
         ).deleted_count
 
     return num_deleted
@@ -754,7 +760,9 @@ def count_for_dataset_id(dataset_id) -> int:
     if collection is None:
         return 0
 
-    return collection.count_documents({"_dataset_id": dataset_id})
+    return collection.count_documents(
+        {"_dataset_id": dataset_id, "kind": TagKind.TEMPORAL.value}
+    )
 
 
 def get_orphan_dataset_ids(dataset_ids) -> list:
@@ -782,7 +790,10 @@ def count_for_dataset_ids(dataset_ids) -> int:
         return 0
 
     return collection.count_documents(
-        {"_dataset_id": _build_in_query(dataset_ids)}
+        {
+            "_dataset_id": _build_in_query(dataset_ids),
+            "kind": TagKind.TEMPORAL.value,
+        }
     )
 
 
