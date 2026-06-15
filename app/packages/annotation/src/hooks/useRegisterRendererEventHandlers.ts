@@ -1,9 +1,12 @@
-import { useAnnotationContextManager } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useAnnotationContextManager";
 import { useEffect } from "react";
 import { useSelect3DLabelForAnnotation } from "@fiftyone/looker-3d/src/hooks";
 import { useWorkingDetections, useWorkingPolylines } from "@fiftyone/looker-3d";
 import { useEngineSelector } from "../engine";
-import { useAnnotationEngine } from "../state";
+import {
+  useAnnotationEngine,
+  useClearEntranceLabel,
+  useEntranceLabel,
+} from "../state";
 
 /**
  * Hook which registers event handlers related to renderer events.
@@ -17,7 +20,8 @@ export const useRegisterRendererEventHandlers = () => {
   const detections3D = useWorkingDetections();
   const polylines3D = useWorkingPolylines();
 
-  const { entranceLabel, clearEntranceLabel } = useAnnotationContextManager();
+  const entranceLabel = useEntranceLabel();
+  const clearEntranceLabel = useClearEntranceLabel();
 
   // If we entered annotation mode via direct label edit (e.g. via the label's
   // tooltip) or need to auto-edit a label (e.g. patches view), open it for

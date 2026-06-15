@@ -31,6 +31,17 @@ let mockMgmtOps: {
   activateSchemas: typeof mockActivateSchemas;
 } | null = null;
 
+// mocked whole (no importOriginal): the real package's graph re-enters core,
+// and this module only needs the contract enum + the entrance-label setter
+vi.mock("@fiftyone/annotation", () => ({
+  InitializationStatus: {
+    InsufficientPermissions: 0,
+    ServerError: 1,
+    Success: 2,
+  },
+  useSetEntranceLabel: () => vi.fn(),
+}));
+
 vi.mock("@fiftyone/state", () => ({
   DefaultContextManager: vi.fn(() => ({
     isActive: () => false,
