@@ -9,20 +9,11 @@ import { useEffect } from "react";
  * Describes a module that should be registered only after its feature flag
  * resolves enabled.
  */
-type GatedDynamicImport = {
+export type GatedDynamicImport = {
   featureFlag: FeatureFlag;
+  moduleKey: string;
   registerModule: () => Promise<unknown>;
 };
-
-/**
- * Register feature-gated modules here.
- */
-const GATED_DYNAMIC_IMPORTS: GatedDynamicImport[] = [
-  {
-    featureFlag: FeatureFlag.VFF_MULTIMODAL,
-    registerModule: () => import("@fiftyone/multimodal/inject"),
-  },
-];
 
 const moduleRegistrationPromises: Record<string, Promise<void> | undefined> =
   {};
@@ -32,10 +23,9 @@ const moduleRegistrationPromises: Record<string, Promise<void> | undefined> =
  * so a later render can retry the dynamic import.
  */
 const registerGatedModule = ({
-  featureFlag,
+  moduleKey,
   registerModule,
-}: GatedDynamicImport) => {
-  const moduleKey = featureFlag.toString();
+}: Pick<GatedDynamicImport, "moduleKey" | "registerModule">) => {
   let moduleRegistrationPromise = moduleRegistrationPromises[moduleKey];
 
   if (!moduleRegistrationPromise) {
@@ -57,6 +47,7 @@ const registerGatedModule = ({
  */
 const useGatedDynamicImport = ({
   featureFlag,
+  moduleKey,
   registerModule,
 }: GatedDynamicImport) => {
   const { isEnabled, isResolved } = useFeature({
@@ -69,12 +60,12 @@ const useGatedDynamicImport = ({
     }
 
     registerGatedModule({
-      featureFlag,
+      moduleKey,
       registerModule,
     }).catch((error) => {
-      console.warn(`Failed to register module: ${featureFlag}`, error);
+      console.warn(`Failed to register module: ${moduleKey}`, error);
     });
-  }, [featureFlag, registerModule, isEnabled, isResolved]);
+  }, [featureFlag, moduleKey, registerModule, isEnabled, isResolved]);
 };
 
 const GatedDynamicImportRegistration = ({
@@ -90,12 +81,16 @@ const GatedDynamicImportRegistration = ({
 /**
  * Registers modules only if their feature flags are enabled.
  */
-export const GatedDynamicImports = () => {
+export const GatedDynamicImports = ({
+  gatedImports,
+}: {
+  gatedImports: GatedDynamicImport[];
+}) => {
   return (
     <>
-      {GATED_DYNAMIC_IMPORTS.map((gatedImport) => (
+      {gatedImports.map((gatedImport) => (
         <GatedDynamicImportRegistration
-          key={gatedImport.featureFlag}
+          key={gatedImport.moduleKey}
           gatedImport={gatedImport}
         />
       ))}
