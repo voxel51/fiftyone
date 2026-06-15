@@ -213,6 +213,7 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
                 set(doc.keys()),
                 expected_keys,
             )
+            self.assertEqual(doc["kind"], TagKind.TEMPORAL)
             self.assertIsInstance(doc["created_at"], str)
             self.assertIsInstance(doc["last_modified_at"], str)
 
@@ -406,6 +407,7 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
         return [
             (
                 tag.sample_id,
+                tag.kind,
                 tag.index_type,
                 tag.anchor,
                 tag.start,
