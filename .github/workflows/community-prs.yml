@@ -1,4 +1,4 @@
-name: Community base policy
+name: Community PRs
 
 # Non-members may only contribute via the `community` branch. When an author
 # without write access opens a PR, this retargets it to `community` (when it
@@ -15,7 +15,7 @@ on:
     types: [opened, reopened, edited]
 
 concurrency:
-  group: community-base-policy-${{ github.event.pull_request.number }}
+  group: community-prs-${{ github.event.pull_request.number }}
   cancel-in-progress: false
 
 permissions:
@@ -23,7 +23,7 @@ permissions:
   issues: write
 
 jobs:
-  enforce:
+  triage:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/github-script@v9
@@ -64,7 +64,7 @@ jobs:
 
             // Post one welcome comment, ever — the marker also covers `reopened`
             // / `edited` re-runs. Mention the retarget only when one happened.
-            const marker = '<!-- community-base-policy -->';
+            const marker = '<!-- community-prs -->';
             const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
