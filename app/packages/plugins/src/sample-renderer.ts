@@ -1,5 +1,5 @@
-import { isNativeMediaType } from "@fiftyone/looker/src/util";
 import * as fos from "@fiftyone/state";
+import { isNativeMediaType } from "@fiftyone/utilities";
 import type { Schema } from "@fiftyone/utilities";
 import mime from "mime";
 import type React from "react";

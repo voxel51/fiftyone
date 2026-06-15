@@ -214,8 +214,8 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.sidebar.annotate.assert.selectIsActive();
 
     // Classification tab renders at the top-left of the media bounds.
-    // Move to the top-left area and click.
-    await modal.sampleCanvas.move(0.05, 0.02);
+    // Move to the top-left area and click once the tab is hit-testable.
+    await modal.sampleCanvas.move(0.05, 0.02, "pointer");
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.up();
 
@@ -236,7 +236,7 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.sidebar.annotate.assert.selectIsActive();
 
     // 2. Click the classification overlay → Classification active
-    await modal.sampleCanvas.move(0.05, 0.02);
+    await modal.sampleCanvas.move(0.05, 0.02, "pointer");
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.up();
     await modal.sidebar.annotate.assert.classificationIsActive();
@@ -275,6 +275,12 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.move(0.9, 0.9);
     await modal.sampleCanvas.up();
+
+    // Wait for the new detection's edit form to open; quitting before the
+    // async establish flow commits would re-activate detection mode
+    await expect(
+      modal.sidebar.locator.getByText("Click labels to edit")
+    ).toBeHidden();
 
     await modal.sidebar.annotate.assert.detectionModeIsActive();
     await modal.sidebar.annotate.assert.selectIsActive(false);
