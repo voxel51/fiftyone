@@ -21,7 +21,7 @@ export function useReset3dOnEditExit() {
     const previous = previousRef.current;
     previousRef.current = editingLabel;
 
-    if (previous !== null && editingLabel === null) {
+    if (previous !== undefined && editingLabel === undefined) {
       setSelectedLabel(null);
       clearTransformState(null);
     }
