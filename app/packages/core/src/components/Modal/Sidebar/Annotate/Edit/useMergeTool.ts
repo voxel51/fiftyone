@@ -5,6 +5,7 @@
 import {
   DeleteAnnotationCommand,
   getFieldSchema,
+  useActiveSampleId,
   useAnnotationEngine,
 } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
@@ -60,6 +61,7 @@ export const useMergeTool = (): MergeTool => {
   const { scene } = useLighter();
   const { getLabelById } = useLabelsContext();
   const engine = useAnnotationEngine();
+  const sample = useActiveSampleId();
   const fieldSchema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
@@ -155,7 +157,7 @@ export const useMergeTool = (): MergeTool => {
               // mask re-enters via the gated decode, like initial load)
               engine.updateLabel(
                 {
-                  sample: engine.ambientSample(),
+                  sample,
                   path: sourceLabel.path,
                   instanceId: sourceLabel.data._id,
                 },
@@ -182,6 +184,7 @@ export const useMergeTool = (): MergeTool => {
       fieldSchema,
       getLabelById,
       mergeTargetId,
+      sample,
       scene,
       setMergeTargetId,
     ]

@@ -1,4 +1,4 @@
-import { useAnnotationEngine } from "@fiftyone/annotation";
+import { useActiveSampleId, useAnnotationEngine } from "@fiftyone/annotation";
 import { usePushUndoable } from "@fiftyone/commands";
 import { expandPath, field } from "@fiftyone/state";
 import type { LabelData } from "@fiftyone/utilities";
@@ -131,6 +131,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
   const [data] = useAtom(currentData);
   const overlay = useAtomValue(currentOverlay);
   const engine = useAnnotationEngine();
+  const sample = useActiveSampleId();
   const { createPushAndExec } = usePushUndoable();
   const parseFieldValue = useParseFieldValue();
   const field = useAtomValue(currentField);
@@ -141,11 +142,13 @@ const useHandleSchemaChange = (readOnly: boolean) => {
   const overlayRef = useRef(overlay);
   const fieldRef = useRef(field);
   const currentLabelRef = useRef(currentLabel);
+  const sampleRef = useRef(sample);
   configRef.current = config;
   dataRef.current = data;
   overlayRef.current = overlay;
   fieldRef.current = field;
   currentLabelRef.current = currentLabel;
+  sampleRef.current = sample;
 
   return useCallback(
     async (changes: Record<string, unknown>) => {
@@ -202,7 +205,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
       if (isEqual(value, data)) return;
 
       const ref = {
-        sample: engine.ambientSample(),
+        sample: sampleRef.current,
         path: field,
         instanceId: (data as { _id?: string })?._id ?? overlay.id,
       };

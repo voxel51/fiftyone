@@ -23,8 +23,15 @@ const sampleFamily = atomFamily((_sampleId: string) => atom(new Sample()));
 /** Sentinel key when no modal sample is open. */
 const NO_SAMPLE = "";
 
-/** The currently selected modal slice's sample id, or the sentinel. */
-const useActiveSampleId = (): string =>
+/**
+ * The currently selected modal slice's sample id (the sentinel when no modal is
+ * open). This is the sample the sidebar reflects and the scope for
+ * sidebar-originated edits — prefer it over `engine.ambientSample()` for
+ * event-time ref construction, as it resolves from modal state (no registered
+ * store required) and stays correct once more than one store is registered
+ * (grouped 2D + 3D).
+ */
+export const useActiveSampleId = (): string =>
   useModalSample()?.sample?._id ?? NO_SAMPLE;
 
 /**

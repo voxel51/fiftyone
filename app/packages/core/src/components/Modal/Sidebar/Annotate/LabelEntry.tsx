@@ -1,4 +1,8 @@
-import { useAnnotationEngine, useInteraction } from "@fiftyone/annotation";
+import {
+  useActiveSampleId,
+  useAnnotationEngine,
+  useInteraction,
+} from "@fiftyone/annotation";
 import type { AnnotationLabel } from "@fiftyone/state";
 import { animated } from "@react-spring/web";
 import type { PrimitiveAtom } from "jotai";
@@ -57,17 +61,18 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
 
   const id = label.overlay.id;
   const path = label.path;
+  const sample = useActiveSampleId();
 
-  // ref construction is EVENT-TIME only: `ambientSample()` requires a
-  // registered store, and rows can render before the engine lifecycle
-  // effect registers one (e.g. stale rows on the explore → annotate switch)
+  // the sidebar reflects the selected slice; refs carry its id (from modal
+  // state, so it's correct before the engine registers a store and stays
+  // correct once a grouped 2D + 3D modal registers more than one)
   const toRef = useMemo(
     () => () => ({
-      sample: engine.ambientSample(),
+      sample,
       path,
       instanceId: id,
     }),
-    [engine, id, path]
+    [sample, id, path]
   );
 
   const isHovering = useInteraction(engine, (i) =>
