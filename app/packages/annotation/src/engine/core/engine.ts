@@ -1,10 +1,3 @@
-/**
- * The annotation engine: a thin coordinator over pluggable parts —
- * a registry of {@link LabelStore}s, a ref→store router, a change merger, a
- * transaction boundary, and the undo stack. Surfaces project
- * from it and write back into it; they never sync with each other.
- */
-
 import type {
   JSONDeltas,
   LabelData,
@@ -53,6 +46,12 @@ export interface ScopedEngine {
  */
 export type BookkeepingHook = (changes: readonly LabelChange[]) => void;
 
+/**
+ * The annotation engine: a thin coordinator over pluggable parts —
+ * a registry of {@link LabelStore}s, a ref→store router, a change merger, a
+ * transaction boundary, and the undo stack. Surfaces project
+ * from it and write back into it; they never sync with each other.
+ */
 export class AnnotationEngine {
   /** Ephemeral selection/hover/anchor state; GC'd by the engine. */
   readonly interaction: InteractionState;
