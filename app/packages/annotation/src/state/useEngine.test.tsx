@@ -74,20 +74,24 @@ describe("useSyncAnnotationEngine", () => {
   it("re-keys the store on sample switch and sweeps the old selection", () => {
     mockModalSample = { sample: { _id: "s1" } };
     const { result, rerender, unmount } = renderSync();
-    const { engine, sample } = result.current;
+    const { engine } = result.current;
+    const s1Sample = result.current.sample;
 
-    sample.setSchema(schema);
-    sample.setData({
+    s1Sample.setSchema(schema);
+    s1Sample.setData({
       ground_truth: { _cls: "Detections", detections: [det("d1")] },
     });
     engine.interaction.setActive([
       { sample: "s1", path: "ground_truth", instanceId: "d1" },
     ]);
 
+    // a switch surfaces a distinct per-sample instance; the store re-keys over
+    // it and the old sample's store (and its selection) is swept
     mockModalSample = { sample: { _id: "s2" } };
-    sample.clear();
     rerender();
-    sample.setData({
+    const s2Sample = result.current.sample;
+    s2Sample.setSchema(schema);
+    s2Sample.setData({
       ground_truth: { _cls: "Detections", detections: [det("d2", "dog")] },
     });
 
@@ -101,6 +105,7 @@ describe("useSyncAnnotationEngine", () => {
     ).toBe("dog");
 
     unmount();
-    sample.clear();
+    s1Sample.clear();
+    s2Sample.clear();
   });
 });
