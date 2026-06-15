@@ -63,6 +63,8 @@ export type { LighterDescriptor } from "./surfaces/lighter/adapters";
 export { lighterAdapters } from "./surfaces/lighter/adapters";
 export type { LighterBridgeDeps } from "./surfaces/lighter/lighterBridge";
 export { createLighterBridge } from "./surfaces/lighter/lighterBridge";
+export type { LighterInteractionPolicy } from "./surfaces/lighter/interactionPolicy";
+export { combineInteractionPolicies } from "./surfaces/lighter/interactionPolicy";
 export { useLighterEngineBridge } from "./surfaces/lighter/useLighterEngineBridge";
 
 // declarative integration

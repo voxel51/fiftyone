@@ -23,7 +23,6 @@ import {
   visibleLabelSchemas,
 } from "./state";
 import { useSetEntranceLabel } from "./useAnnotationContextManager";
-import useHover from "./useHover";
 
 export const addLabel = atom(
   undefined,
@@ -409,5 +408,4 @@ export default function useLabels() {
   );
 
   useSyncOverlayReadOnly();
-  useHover();
 }

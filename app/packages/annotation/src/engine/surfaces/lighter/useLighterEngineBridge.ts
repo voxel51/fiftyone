@@ -18,6 +18,7 @@ import type { AnnotationEngine } from "../../core/engine";
 import { toLabelRef } from "../../identity/ref";
 import { useSurfaceBridge } from "../../react/useSurfaceBridge";
 import { lighterAdapters } from "./adapters";
+import type { LighterInteractionPolicy } from "./interactionPolicy";
 import type { LighterBridgeDeps } from "./lighterBridge";
 import { createLighterBridge } from "./lighterBridge";
 
@@ -26,7 +27,7 @@ export const useLighterEngineBridge = ({
   sample,
   paths,
   resolveMediaUrl,
-  interactionRoutes = true,
+  interactionPolicy,
 }: {
   engine: AnnotationEngine;
   sample: string;
@@ -38,13 +39,7 @@ export const useLighterEngineBridge = ({
    * gated mounts — the modal wiring owns the sample's `sources` map.
    */
   resolveMediaUrl?: LighterBridgeDeps["resolveMediaUrl"];
-  /**
-   * TRANSITIONAL: when false, the select/hover gesture routes are not
-   * wired — legacy focus/hover handlers own interaction policy (the
-   * single-edit lock) until the sidebar form migrates. Finalize commits are
-   * always routed.
-   */
-  interactionRoutes?: boolean;
+  interactionPolicy?: LighterInteractionPolicy;
 }): void => {
   const { scene, overlayFactory } = useLighter();
   const on = useLighterEventHandler(scene?.getEventChannel());
@@ -100,7 +95,7 @@ export const useLighterEngineBridge = ({
   // End state: the sidebar writes the engine directly and this retires.
   on("lighter:overlay-label-updated", commitOverlay);
 
-  // interaction write-half (skipped while legacy handlers own the policy)
+  // interaction write-half
   on(
     "lighter:overlay-select",
     useCallback(
@@ -111,13 +106,19 @@ export const useLighterEngineBridge = ({
       }) => {
         // flagged events are programmatic echoes (silent applies, teardown),
         // not gestures — and may fire inside the engine's dispatch window
-        if (!interactionRoutes || event.ignoreSideEffects) return;
+        if (event.ignoreSideEffects) {
+          return;
+        }
+
+        if (interactionPolicy?.interceptSelect?.(event.id)) {
+          return;
+        }
 
         surface.selectHandle((scene as Scene2D).getOverlay(event.id), {
           additive: event.isShiftPressed,
         });
       },
-      [interactionRoutes, scene, surface]
+      [interactionPolicy, scene, surface]
     )
   );
 
@@ -125,7 +126,13 @@ export const useLighterEngineBridge = ({
     "lighter:overlay-deselect",
     useCallback(
       (event: { id: string; ignoreSideEffects?: boolean }) => {
-        if (!interactionRoutes || event.ignoreSideEffects) return;
+        if (event.ignoreSideEffects) {
+          return;
+        }
+
+        if (interactionPolicy?.interceptDeselect?.(event.id)) {
+          return;
+        }
 
         const overlay = (scene as Scene2D).getOverlay(event.id);
 
@@ -136,7 +143,7 @@ export const useLighterEngineBridge = ({
           );
         }
       },
-      [interactionRoutes, scene, surface]
+      [interactionPolicy, scene, surface]
     )
   );
 
@@ -144,15 +151,13 @@ export const useLighterEngineBridge = ({
     "lighter:overlay-hover",
     useCallback(
       (event: { id: string }) => {
-        if (!interactionRoutes) return;
-
         const overlay = (scene as Scene2D).getOverlay(event.id);
 
         if (overlay) {
           surface.hoverHandle(overlay, true);
         }
       },
-      [interactionRoutes, scene, surface]
+      [scene, surface]
     )
   );
 
@@ -160,15 +165,32 @@ export const useLighterEngineBridge = ({
     "lighter:overlay-unhover",
     useCallback(
       (event: { id: string }) => {
-        if (!interactionRoutes) return;
-
         const overlay = (scene as Scene2D).getOverlay(event.id);
 
         if (overlay) {
           surface.hoverHandle(overlay, false);
         }
       },
-      [interactionRoutes, scene, surface]
+      [scene, surface]
     )
+  );
+
+  // the pointer left the canvas — release every hover THIS surface holds,
+  // leaving other surfaces' hover state (e.g. a linked 3D slice) untouched.
+  // Ownership = the ref is for this sample and resolves to an overlay this
+  // scene renders; we never reach across surfaces to clear hover wholesale.
+  on(
+    "lighter:overlay-all-unhover",
+    useCallback(() => {
+      const owned = engine.interaction
+        .getHovered()
+        .filter(
+          (ref) =>
+            ref.sample === sample &&
+            !!(scene as Scene2D).getOverlay(ref.instanceId)
+        );
+
+      engine.interaction.pruneHovered(owned);
+    }, [engine, sample, scene])
   );
 };
