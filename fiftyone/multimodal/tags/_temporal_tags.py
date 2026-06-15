@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import enum
 import itertools
 import os
 from typing import Iterable
@@ -55,6 +56,10 @@ _TEMPORAL_TAG_SORT = [
 ]
 
 
+class TagKind(str, enum.Enum):
+    TEMPORAL = "temporal"
+
+
 class TemporalTag(object):
     """A temporal tag interval on one multimodal sample.
 
@@ -88,6 +93,7 @@ class TemporalTag(object):
         created_at=None,
         last_modified_at=None,
         id=None,
+        kind=None,
     ):
         self.sample_id = sample_id
         self.start = start
@@ -102,6 +108,7 @@ class TemporalTag(object):
             last_modified_at, "last_modified_at"
         )
         self.id = id
+        self.kind = kind
 
     def __repr__(self):
         return (
@@ -366,6 +373,7 @@ class TemporalTags(object):
                     "_sample_id": doc["_sample_id"],
                     "index_type": doc["index_type"],
                     "anchor": doc["anchor"],
+                    "kind": doc["kind"],
                     "start": doc["start"],
                     "end": doc["end"],
                     "tag": doc["tag"],
@@ -1006,6 +1014,7 @@ def _to_storage_doc(tag: TemporalTag, dataset_id, sample_id):
         "start": start,
         "end": end,
         "tag": _ensure_tag(tag.tag),
+        "kind": tag.kind,
         **_to_storage_provenance(tag),
     }
 
@@ -1046,6 +1055,7 @@ def _build_update_fields(
 def _from_storage_doc(doc) -> TemporalTag:
     return TemporalTag(
         id=str(doc["_id"]),
+        kind=doc.get("kind", None),
         sample_id=str(doc["_sample_id"]),
         index_type=doc["index_type"],
         anchor=doc.get("anchor", None),
@@ -1098,6 +1108,7 @@ def _from_export_doc(doc) -> TemporalTag:
         end=doc.get("end", None),
         tag=doc.get("tag", None),
         anchor=doc.get("anchor", None),
+        kind=doc.get("kind", None),
         created_by=doc.get("created_by", None),
         last_modified_by=doc.get("last_modified_by", None),
         created_at=doc.get("created_at", None),

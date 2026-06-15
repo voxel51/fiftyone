@@ -25,6 +25,7 @@ import eta.core.video as etav
 
 import fiftyone as fo
 import fiftyone.multimodal as fomm
+from fiftyone.multimodal.tags import TagKind
 import fiftyone.utils.coco as fouc
 import fiftyone.utils.image as foui
 import fiftyone.utils.labels as foul
@@ -377,6 +378,7 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
                     "keep",
                     anchor="camera_front",
                     created_by="alice",
+                    kind=TagKind.TEMPORAL,
                 ),
                 fomm.TemporalTag(
                     sample_ids[1],
@@ -385,8 +387,15 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
                     "drop",
                     anchor="lidar_top",
                     last_modified_by="carol",
+                    kind=TagKind.TEMPORAL,
                 ),
-                fomm.TemporalTag(sample_ids[2], 20, 30, "keep"),
+                fomm.TemporalTag(
+                    sample_ids[2],
+                    20,
+                    30,
+                    "keep",
+                    kind=TagKind.TEMPORAL,
+                ),
             ],
         )
 

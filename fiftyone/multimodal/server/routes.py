@@ -225,6 +225,7 @@ def _temporal_tags_from_create_payload(
                 tag=record.get("tag", None),
                 index_type=record.get("index_type", fomt.DEFAULT_INDEX_TYPE),
                 anchor=record.get("anchor", None),
+                kind=record.get("kind", None),
                 created_by=record.get("created_by", None),
                 last_modified_by=record.get("last_modified_by", None),
             )

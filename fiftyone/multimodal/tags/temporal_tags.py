@@ -33,6 +33,7 @@ from ._temporal_tags import (
     SUPPORTED_INDEX_TYPES,
     TAGS_COLLECTION_NAME,
     TEMPORAL_TAGS_EXPORT_FILENAME,
+    TagKind,
     TemporalTag,
     TemporalTagFilter,
     TemporalTags,
@@ -44,6 +45,7 @@ from ._temporal_tags import (
 )
 
 for _public_obj in (
+    TagKind,
     TemporalTag,
     TemporalTagFilter,
     TemporalTags,
@@ -62,6 +64,7 @@ __all__ = [
     "SUPPORTED_INDEX_TYPES",
     "TEMPORAL_TAGS_EXPORT_FILENAME",
     "TAGS_COLLECTION_NAME",
+    "TagKind",
     "TemporalTag",
     "TemporalTagFilter",
     "TemporalTags",

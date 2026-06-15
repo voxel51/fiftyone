@@ -17,6 +17,7 @@ import fiftyone.core.odm as foo
 import fiftyone.multimodal as fomm
 from fiftyone.multimodal.tags import (
     TAGS_COLLECTION_NAME,
+    TagKind,
     TimeTrackType,
 )
 
@@ -39,7 +40,14 @@ class TemporalTagTests(unittest.TestCase):
         )
 
         persisted = fomm.add_temporal_tags(
-            dataset, fomm.TemporalTag(sample_id, 0, 1, "review")
+            dataset,
+            fomm.TemporalTag(
+                sample_id,
+                0,
+                1,
+                "review",
+                kind=TagKind.TEMPORAL,
+            ),
         )
 
         self.assertEqual(len(persisted), 1)
@@ -75,17 +83,80 @@ class TemporalTagTests(unittest.TestCase):
         self.assertEqual(temporal_tags.count(), {"review": 1})
 
         invalid_tags = [
-            fomm.TemporalTag(str(ObjectId()), 0, 1, "missing"),
-            fomm.TemporalTag(sample_id, 1, 1, "same"),
-            fomm.TemporalTag(sample_id, 2, 1, "backwards"),
-            fomm.TemporalTag(sample_id, 0.5, 1, "fractional"),
-            fomm.TemporalTag(sample_id, 0, 1, ""),
-            fomm.TemporalTag(sample_id, 0, 1, "empty-anchor", anchor=""),
-            fomm.TemporalTag(sample_id, 0, 1, "blank-anchor", anchor="   "),
-            fomm.TemporalTag(sample_id, 0, 1, "bad-anchor", anchor=3),
-            fomm.TemporalTag(sample_id, 0, 1, "bool-anchor", anchor=False),
             fomm.TemporalTag(
-                sample_id, 0, 1, "empty-created-by", created_by=""
+                str(ObjectId()),
+                0,
+                1,
+                "missing",
+                kind=TagKind.TEMPORAL,
+            ),
+            fomm.TemporalTag(
+                sample_id,
+                1,
+                1,
+                "same",
+                kind=TagKind.TEMPORAL,
+            ),
+            fomm.TemporalTag(
+                sample_id,
+                2,
+                1,
+                "backwards",
+                kind=TagKind.TEMPORAL,
+            ),
+            fomm.TemporalTag(
+                sample_id,
+                0.5,
+                1,
+                "fractional",
+                kind=TagKind.TEMPORAL,
+            ),
+            fomm.TemporalTag(
+                sample_id,
+                0,
+                1,
+                "",
+                kind=TagKind.TEMPORAL,
+            ),
+            fomm.TemporalTag(
+                sample_id,
+                0,
+                1,
+                "empty-anchor",
+                anchor="",
+                kind=TagKind.TEMPORAL,
+            ),
+            fomm.TemporalTag(
+                sample_id,
+                0,
+                1,
+                "blank-anchor",
+                anchor="   ",
+                kind=TagKind.TEMPORAL,
+            ),
+            fomm.TemporalTag(
+                sample_id,
+                0,
+                1,
+                "bad-anchor",
+                anchor=3,
+                kind=TagKind.TEMPORAL,
+            ),
+            fomm.TemporalTag(
+                sample_id,
+                0,
+                1,
+                "bool-anchor",
+                anchor=False,
+                kind=TagKind.TEMPORAL,
+            ),
+            fomm.TemporalTag(
+                sample_id,
+                0,
+                1,
+                "empty-created-by",
+                created_by="",
+                kind=TagKind.TEMPORAL,
             ),
             fomm.TemporalTag(
                 sample_id,
@@ -93,14 +164,23 @@ class TemporalTagTests(unittest.TestCase):
                 1,
                 "blank-last-modified-by",
                 last_modified_by="   ",
+                kind=TagKind.TEMPORAL,
             ),
-            fomm.TemporalTag(sample_id, 0, 1, "bad-created-by", created_by=3),
+            fomm.TemporalTag(
+                sample_id,
+                0,
+                1,
+                "bad-created-by",
+                created_by=3,
+                kind=TagKind.TEMPORAL,
+            ),
             fomm.TemporalTag(
                 sample_id,
                 0,
                 1,
                 "bool-last-modified-by",
                 last_modified_by=False,
+                kind=TagKind.TEMPORAL,
             ),
             fomm.TemporalTag(
                 sample_id,
@@ -108,6 +188,7 @@ class TemporalTagTests(unittest.TestCase):
                 1,
                 "unsupported",
                 index_type=TimeTrackType.TIME_TRACK_TYPE_UNSPECIFIED,
+                kind=TagKind.TEMPORAL,
             ),
         ]
 
@@ -129,7 +210,14 @@ class TemporalTagTests(unittest.TestCase):
 
         inserted = fomm.add_temporal_tags(
             dataset,
-            fomm.TemporalTag(sample_id, 0, 10, "review", created_by="alice"),
+            fomm.TemporalTag(
+                sample_id,
+                0,
+                10,
+                "review",
+                created_by="alice",
+                kind=TagKind.TEMPORAL,
+            ),
         )[0]
 
         self.assertEqual(inserted.created_by, "alice")
@@ -146,7 +234,14 @@ class TemporalTagTests(unittest.TestCase):
         time.sleep(0.02)
         repeated = fomm.add_temporal_tags(
             dataset,
-            fomm.TemporalTag(sample_id, 0, 10, "review", created_by="bob"),
+            fomm.TemporalTag(
+                sample_id,
+                0,
+                10,
+                "review",
+                created_by="bob",
+                kind=TagKind.TEMPORAL,
+            ),
         )[0]
 
         self.assertEqual(repeated.id, inserted.id)
@@ -161,7 +256,12 @@ class TemporalTagTests(unittest.TestCase):
         modified = fomm.add_temporal_tags(
             dataset,
             fomm.TemporalTag(
-                sample_id, 0, 10, "review", last_modified_by="carol"
+                sample_id,
+                0,
+                10,
+                "review",
+                last_modified_by="carol",
+                kind=TagKind.TEMPORAL,
             ),
         )[0]
 
@@ -182,6 +282,7 @@ class TemporalTagTests(unittest.TestCase):
                 "manual",
                 created_at="2026-01-01T00:00:00Z",
                 last_modified_at="2026-01-02T00:00:00+00:00",
+                kind=TagKind.TEMPORAL,
             ),
         )[0]
 
@@ -201,7 +302,14 @@ class TemporalTagTests(unittest.TestCase):
 
         time.sleep(0.05)
         inserted = fomm.add_temporal_tags(
-            dataset, fomm.TemporalTag(first_id, 0, 10, "review")
+            dataset,
+            fomm.TemporalTag(
+                first_id,
+                0,
+                10,
+                "review",
+                kind=TagKind.TEMPORAL,
+            ),
         )[0]
         after_add_dataset, after_add_first = _modified_timestamps(
             dataset, first_id
@@ -214,7 +322,14 @@ class TemporalTagTests(unittest.TestCase):
 
         time.sleep(0.05)
         repeated = fomm.add_temporal_tags(
-            dataset, fomm.TemporalTag(first_id, 0, 10, "review")
+            dataset,
+            fomm.TemporalTag(
+                first_id,
+                0,
+                10,
+                "review",
+                kind=TagKind.TEMPORAL,
+            ),
         )[0]
         after_repeat_dataset, after_repeat_first = _modified_timestamps(
             dataset, first_id
@@ -254,8 +369,20 @@ class TemporalTagTests(unittest.TestCase):
         fomm.add_temporal_tags(
             dataset,
             [
-                fomm.TemporalTag(first_id, 20, 30, "clear"),
-                fomm.TemporalTag(second_id, 20, 30, "clear"),
+                fomm.TemporalTag(
+                    first_id,
+                    20,
+                    30,
+                    "clear",
+                    kind=TagKind.TEMPORAL,
+                ),
+                fomm.TemporalTag(
+                    second_id,
+                    20,
+                    30,
+                    "clear",
+                    kind=TagKind.TEMPORAL,
+                ),
             ],
         )
         before_clear_dataset, before_clear_first = _modified_timestamps(
@@ -282,11 +409,24 @@ class TemporalTagTests(unittest.TestCase):
 
         inserted = fomm.add_temporal_tags(
             dataset,
-            fomm.TemporalTag(first_id, 0, 10, "review", created_by="alice"),
+            fomm.TemporalTag(
+                first_id,
+                0,
+                10,
+                "review",
+                created_by="alice",
+                kind=TagKind.TEMPORAL,
+            ),
         )[0]
         fomm.add_temporal_tags(
             dataset,
-            fomm.TemporalTag(second_id, 0, 10, "other"),
+            fomm.TemporalTag(
+                second_id,
+                0,
+                10,
+                "other",
+                kind=TagKind.TEMPORAL,
+            ),
         )
         before_dataset, before_first = _modified_timestamps(dataset, first_id)
         _, before_second = _modified_timestamps(dataset, second_id)
@@ -339,10 +479,24 @@ class TemporalTagTests(unittest.TestCase):
         first_id, second_id = sample_ids
 
         first = fomm.add_temporal_tags(
-            dataset, fomm.TemporalTag(first_id, 0, 10, "review")
+            dataset,
+            fomm.TemporalTag(
+                first_id,
+                0,
+                10,
+                "review",
+                kind=TagKind.TEMPORAL,
+            ),
         )[0]
         second = fomm.add_temporal_tags(
-            dataset, fomm.TemporalTag(first_id, 20, 30, "other")
+            dataset,
+            fomm.TemporalTag(
+                first_id,
+                20,
+                30,
+                "other",
+                kind=TagKind.TEMPORAL,
+            ),
         )[0]
 
         invalid_updates = [
@@ -378,7 +532,13 @@ class TemporalTagTests(unittest.TestCase):
     @drop_datasets
     def test_storage_filtering_counts_and_deletion(self):
         dataset, sample_ids = _make_dataset(2)
-        first = fomm.TemporalTag(sample_ids[0], 0, 10, "review")
+        first = fomm.TemporalTag(
+            sample_ids[0],
+            0,
+            10,
+            "review",
+            kind=TagKind.TEMPORAL,
+        )
 
         inserted = fomm.add_temporal_tags(dataset, first)
         repeated = fomm.add_temporal_tags(dataset, first)
@@ -389,14 +549,27 @@ class TemporalTagTests(unittest.TestCase):
         fomm.add_temporal_tags(
             dataset,
             [
-                fomm.TemporalTag(sample_ids[0], 5, 15, "review"),
-                fomm.TemporalTag(sample_ids[0], 0, 10, "keep"),
+                fomm.TemporalTag(
+                    sample_ids[0],
+                    5,
+                    15,
+                    "review",
+                    kind=TagKind.TEMPORAL,
+                ),
+                fomm.TemporalTag(
+                    sample_ids[0],
+                    0,
+                    10,
+                    "keep",
+                    kind=TagKind.TEMPORAL,
+                ),
                 fomm.TemporalTag(
                     sample_ids[1],
                     0,
                     1,
                     "review",
                     index_type=TimeTrackType.TIME_TRACK_TYPE_SEQUENCE,
+                    kind=TagKind.TEMPORAL,
                 ),
             ],
         )
@@ -461,12 +634,28 @@ class TemporalTagTests(unittest.TestCase):
         dataset, sample_ids = _make_dataset()
         sample_id = sample_ids[0]
 
-        unanchored = fomm.TemporalTag(sample_id, 0, 10, "review")
+        unanchored = fomm.TemporalTag(
+            sample_id,
+            0,
+            10,
+            "review",
+            kind=TagKind.TEMPORAL,
+        )
         camera = fomm.TemporalTag(
-            sample_id, 0, 10, "review", anchor="camera_front"
+            sample_id,
+            0,
+            10,
+            "review",
+            anchor="camera_front",
+            kind=TagKind.TEMPORAL,
         )
         lidar = fomm.TemporalTag(
-            sample_id, 0, 10, "review", anchor="lidar_top"
+            sample_id,
+            0,
+            10,
+            "review",
+            anchor="lidar_top",
+            kind=TagKind.TEMPORAL,
         )
 
         inserted = fomm.add_temporal_tags(dataset, [unanchored, camera, lidar])
@@ -518,7 +707,12 @@ class TemporalTagTests(unittest.TestCase):
         fomm.add_temporal_tags(
             dataset,
             fomm.TemporalTag(
-                sample_ids[0], 0, 10, "review", anchor="camera_front"
+                sample_ids[0],
+                0,
+                10,
+                "review",
+                anchor="camera_front",
+                kind=TagKind.TEMPORAL,
             ),
         )
 
@@ -550,9 +744,27 @@ class TemporalTagTests(unittest.TestCase):
         fomm.add_temporal_tags(
             dataset,
             [
-                fomm.TemporalTag(sample_ids[0], 0, 10, "shared"),
-                fomm.TemporalTag(sample_ids[1], 0, 10, "shared"),
-                fomm.TemporalTag(sample_ids[2], 0, 10, "other"),
+                fomm.TemporalTag(
+                    sample_ids[0],
+                    0,
+                    10,
+                    "shared",
+                    kind=TagKind.TEMPORAL,
+                ),
+                fomm.TemporalTag(
+                    sample_ids[1],
+                    0,
+                    10,
+                    "shared",
+                    kind=TagKind.TEMPORAL,
+                ),
+                fomm.TemporalTag(
+                    sample_ids[2],
+                    0,
+                    10,
+                    "other",
+                    kind=TagKind.TEMPORAL,
+                ),
             ],
         )
 
@@ -579,11 +791,25 @@ class TemporalTagTests(unittest.TestCase):
         )
 
         fomm.add_temporal_tags(
-            view, fomm.TemporalTag(sample_ids[2], 10, 20, "view")
+            view,
+            fomm.TemporalTag(
+                sample_ids[2],
+                10,
+                20,
+                "view",
+                kind=TagKind.TEMPORAL,
+            ),
         )
         with self.assertRaises(ValueError):
             fomm.add_temporal_tags(
-                view, fomm.TemporalTag(sample_ids[1], 10, 20, "missing")
+                view,
+                fomm.TemporalTag(
+                    sample_ids[1],
+                    10,
+                    20,
+                    "missing",
+                    kind=TagKind.TEMPORAL,
+                ),
             )
 
         (
@@ -637,8 +863,20 @@ class TemporalTagTests(unittest.TestCase):
 
         persisted = dataset.temporal_tags.add(
             [
-                fomm.TemporalTag(sample_ids[0], 0, 10, "shared"),
-                fomm.TemporalTag(sample_ids[1], 10, 20, "shared"),
+                fomm.TemporalTag(
+                    sample_ids[0],
+                    0,
+                    10,
+                    "shared",
+                    kind=TagKind.TEMPORAL,
+                ),
+                fomm.TemporalTag(
+                    sample_ids[1],
+                    10,
+                    20,
+                    "shared",
+                    kind=TagKind.TEMPORAL,
+                ),
             ]
         )
 
@@ -666,7 +904,13 @@ class TemporalTagTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             view.temporal_tags.add(
-                fomm.TemporalTag(sample_ids[1], 20, 30, "outside")
+                fomm.TemporalTag(
+                    sample_ids[1],
+                    20,
+                    30,
+                    "outside",
+                    kind=TagKind.TEMPORAL,
+                )
             )
 
         self.assertEqual(view.temporal_tags.delete(tags="review"), 1)
@@ -685,6 +929,7 @@ class TemporalTagTests(unittest.TestCase):
                     10,
                     "review",
                     anchor="camera_front",
+                    kind=TagKind.TEMPORAL,
                 ),
                 fomm.TemporalTag(
                     sample_ids[1],
@@ -692,8 +937,15 @@ class TemporalTagTests(unittest.TestCase):
                     15,
                     "review",
                     anchor="lidar_top",
+                    kind=TagKind.TEMPORAL,
                 ),
-                fomm.TemporalTag(sample_ids[2], 20, 30, "other"),
+                fomm.TemporalTag(
+                    sample_ids[2],
+                    20,
+                    30,
+                    "other",
+                    kind=TagKind.TEMPORAL,
+                ),
             ],
         )
 
@@ -756,7 +1008,14 @@ class TemporalTagTests(unittest.TestCase):
         patch_id = patches.values("id")[0]
 
         fomm.add_temporal_tags(
-            patches, fomm.TemporalTag(patch_id, 0, 1, "patch")
+            patches,
+            fomm.TemporalTag(
+                patch_id,
+                0,
+                1,
+                "patch",
+                kind=TagKind.TEMPORAL,
+            ),
         )
 
         self.assertEqual(fomm.count_temporal_tags(patches), {"patch": 1})
@@ -770,12 +1029,28 @@ class TemporalTagTests(unittest.TestCase):
             dataset,
             [
                 fomm.TemporalTag(
-                    sample_ids[0], 0, 10, "first", anchor="camera_front"
+                    sample_ids[0],
+                    0,
+                    10,
+                    "first",
+                    anchor="camera_front",
+                    kind=TagKind.TEMPORAL,
                 ),
                 fomm.TemporalTag(
-                    sample_ids[1], 10, 20, "second", anchor="lidar_top"
+                    sample_ids[1],
+                    10,
+                    20,
+                    "second",
+                    anchor="lidar_top",
+                    kind=TagKind.TEMPORAL,
                 ),
-                fomm.TemporalTag(sample_ids[2], 20, 30, "third"),
+                fomm.TemporalTag(
+                    sample_ids[2],
+                    20,
+                    30,
+                    "third",
+                    kind=TagKind.TEMPORAL,
+                ),
             ],
         )
 
@@ -806,6 +1081,7 @@ class TemporalTagTests(unittest.TestCase):
                     "first",
                     anchor="camera_front",
                     created_by="alice",
+                    kind=TagKind.TEMPORAL,
                 ),
                 fomm.TemporalTag(
                     sample_ids[1],
@@ -813,6 +1089,7 @@ class TemporalTagTests(unittest.TestCase):
                     20,
                     "second",
                     last_modified_by="bob",
+                    kind=TagKind.TEMPORAL,
                 ),
             ],
         )
@@ -853,9 +1130,20 @@ class TemporalTagTests(unittest.TestCase):
             dataset,
             [
                 fomm.TemporalTag(
-                    sample_ids[0], 0, 10, "first", anchor="camera_front"
+                    sample_ids[0],
+                    0,
+                    10,
+                    "first",
+                    anchor="camera_front",
+                    kind=TagKind.TEMPORAL,
                 ),
-                fomm.TemporalTag(sample_ids[1], 10, 20, "second"),
+                fomm.TemporalTag(
+                    sample_ids[1],
+                    10,
+                    20,
+                    "second",
+                    kind=TagKind.TEMPORAL,
+                ),
             ],
         )
 
@@ -886,13 +1174,23 @@ class TemporalTagTests(unittest.TestCase):
         fomm.add_temporal_tags(
             orphan_dataset,
             fomm.TemporalTag(
-                orphan_sample_ids[0], 0, 10, "orphan", anchor="camera_front"
+                orphan_sample_ids[0],
+                0,
+                10,
+                "orphan",
+                anchor="camera_front",
+                kind=TagKind.TEMPORAL,
             ),
         )
         fomm.add_temporal_tags(
             active_dataset,
             fomm.TemporalTag(
-                active_sample_ids[0], 0, 10, "active", anchor="lidar_top"
+                active_sample_ids[0],
+                0,
+                10,
+                "active",
+                anchor="lidar_top",
+                kind=TagKind.TEMPORAL,
             ),
         )
 

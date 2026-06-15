@@ -222,9 +222,23 @@ class TestMultimodalTemporalTagsRoute:
         fomt.add_temporal_tags(
             dataset,
             [
-                fomt.TemporalTag(sample_ids[0], 0, 10, "clip"),
-                fomt.TemporalTag(sample_ids[0], 30, 40, "outside"),
-                fomt.TemporalTag(sample_ids[1], 5, 15, "other-sample"),
+                fomt.TemporalTag(
+                    sample_ids[0], 0, 10, "clip", kind=fomt.TagKind.TEMPORAL
+                ),
+                fomt.TemporalTag(
+                    sample_ids[0],
+                    30,
+                    40,
+                    "outside",
+                    kind=fomt.TagKind.TEMPORAL,
+                ),
+                fomt.TemporalTag(
+                    sample_ids[1],
+                    5,
+                    15,
+                    "other-sample",
+                    kind=fomt.TagKind.TEMPORAL,
+                ),
             ],
         )
 
@@ -252,7 +266,12 @@ class TestMultimodalTemporalTagsRoute:
         created = fomt.add_temporal_tags(
             dataset,
             fomt.TemporalTag(
-                sample_ids[0], 0, 10, "review", created_by="alice"
+                sample_ids[0],
+                0,
+                10,
+                "review",
+                created_by="alice",
+                kind=fomt.TagKind.TEMPORAL,
             ),
         )[0]
         before_patch = _modified_timestamps(dataset, sample_ids[0])
@@ -305,9 +324,27 @@ class TestMultimodalTemporalTagsRoute:
         fomt.add_temporal_tags(
             dataset,
             [
-                fomt.TemporalTag(sample_ids[0], 0, 10, "clip"),
-                fomt.TemporalTag(sample_ids[1], 10, 20, "clip"),
-                fomt.TemporalTag(sample_ids[2], 30, 40, "outside"),
+                fomt.TemporalTag(
+                    sample_ids[0],
+                    0,
+                    10,
+                    "clip",
+                    kind=fomt.TagKind.TEMPORAL,
+                ),
+                fomt.TemporalTag(
+                    sample_ids[1],
+                    10,
+                    20,
+                    "clip",
+                    kind=fomt.TagKind.TEMPORAL,
+                ),
+                fomt.TemporalTag(
+                    sample_ids[2],
+                    30,
+                    40,
+                    "outside",
+                    kind=fomt.TagKind.TEMPORAL,
+                ),
             ],
         )
 
@@ -348,10 +385,34 @@ class TestMultimodalTemporalTagsRoute:
         fomt.add_temporal_tags(
             dataset,
             [
-                fomt.TemporalTag(sample_ids[0], 0, 10, "candidate"),
-                fomt.TemporalTag(sample_ids[1], 10, 20, "candidate"),
-                fomt.TemporalTag(sample_ids[2], 20, 30, "review"),
-                fomt.TemporalTag(sample_ids[2], 30, 40, "other"),
+                fomt.TemporalTag(
+                    sample_ids[0],
+                    0,
+                    10,
+                    "candidate",
+                    kind=fomt.TagKind.TEMPORAL,
+                ),
+                fomt.TemporalTag(
+                    sample_ids[1],
+                    10,
+                    20,
+                    "candidate",
+                    kind=fomt.TagKind.TEMPORAL,
+                ),
+                fomt.TemporalTag(
+                    sample_ids[2],
+                    20,
+                    30,
+                    "review",
+                    kind=fomt.TagKind.TEMPORAL,
+                ),
+                fomt.TemporalTag(
+                    sample_ids[2],
+                    30,
+                    40,
+                    "other",
+                    kind=fomt.TagKind.TEMPORAL,
+                ),
             ],
         )
 
@@ -441,9 +502,27 @@ class TestMultimodalTemporalTagsRoute:
         fomt.add_temporal_tags(
             dataset,
             [
-                fomt.TemporalTag(sample_ids[0], 0, 10, "first"),
-                fomt.TemporalTag(sample_ids[0], 10, 20, "second"),
-                fomt.TemporalTag(sample_ids[1], 0, 10, "other"),
+                fomt.TemporalTag(
+                    sample_ids[0],
+                    0,
+                    10,
+                    "first",
+                    kind=fomt.TagKind.TEMPORAL,
+                ),
+                fomt.TemporalTag(
+                    sample_ids[0],
+                    10,
+                    20,
+                    "second",
+                    kind=fomt.TagKind.TEMPORAL,
+                ),
+                fomt.TemporalTag(
+                    sample_ids[1],
+                    0,
+                    10,
+                    "other",
+                    kind=fomt.TagKind.TEMPORAL,
+                ),
             ],
         )
 
@@ -473,7 +552,13 @@ class TestMultimodalTemporalTagsRoute:
     ):
         temporal_tag = fomt.add_temporal_tags(
             dataset,
-            fomt.TemporalTag(sample_ids[0], 0, 10, "review"),
+            fomt.TemporalTag(
+                sample_ids[0],
+                0,
+                10,
+                "review",
+                kind=fomt.TagKind.TEMPORAL,
+            ),
         )[0]
         cases = [
             (
@@ -639,7 +724,13 @@ class TestMultimodalTemporalTagsRoute:
     ):
         temporal_tag = fomt.add_temporal_tags(
             dataset,
-            fomt.TemporalTag(sample_ids[0], 0, 10, "review"),
+            fomt.TemporalTag(
+                sample_ids[0],
+                0,
+                10,
+                "review",
+                kind=fomt.TagKind.TEMPORAL,
+            ),
         )[0]
 
         cases = [
