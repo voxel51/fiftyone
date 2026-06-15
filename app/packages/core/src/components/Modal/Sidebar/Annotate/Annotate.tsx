@@ -20,6 +20,7 @@ import useLabels from "./useLabels";
 import { useRegisterPolylineSidebarSyncHandlers } from "./Edit/useRegisterPolylineSidebarSyncHandlers";
 import useSourceFieldToActivate from "./useSourceFieldToActivate";
 import {
+  useSync3dModalSample,
   useSync3dSample,
   useSyncAnnotationEngine,
   useSyncModalSample,
@@ -115,6 +116,7 @@ interface AnnotateProps {
 
 const Annotate = ({ disabledReason, loadSchemas }: AnnotateProps) => {
   useSyncModalSample();
+  useSync3dModalSample();
   useSyncAnnotationEngine();
   useLighterAnnotationBridge();
   useSync3dSample();

@@ -166,11 +166,14 @@ export const useEventHandlers = (label: any): EventHandlers => {
   } = useMeshTooltipProps(label);
 
   // the renderer is shared with explore; the ENGINE hover write-half only
-  // applies in annotate mode (the engine has no registered store in explore,
-  // so `ambientSample()` would throw). Gate on the mode, not `canAnnotate`
-  // (which is true in explore on an annotatable dataset).
+  // applies in annotate mode (the engine has no registered store in explore).
+  // Gate on the mode, not `canAnnotate` (which is true in explore on an
+  // annotatable dataset).
   const isAnnotateMode = fos.useModalMode() === "annotate";
   const engine = useAnnotationEngine();
+  // 3D labels belong to the pinned 3D scene's sample (the working-store key),
+  // not the selected 2D slice in a grouped modal
+  const sample = fos.useCurrentSampleId();
 
   // this surface's hover write-half: pointer events write the ENGINE's
   // hovered set with an explicit ref captured here at the dispatch site;
@@ -189,13 +192,10 @@ export const useEventHandlers = (label: any): EventHandlers => {
         ? label.path.join(".")
         : label?.path;
 
-      if (id && path) {
-        engine.interaction.setHovered(
-          { sample: engine.ambientSample(), path, instanceId: id },
-          true
-        );
+      if (id && path && sample) {
+        engine.interaction.setHovered({ sample, path, instanceId: id }, true);
       }
-    }, [label, isAnnotateMode, engine, _onPointerOver]),
+    }, [label, isAnnotateMode, engine, sample, _onPointerOver]),
     onPointerOut: useCallback(() => {
       _onPointerOut();
 

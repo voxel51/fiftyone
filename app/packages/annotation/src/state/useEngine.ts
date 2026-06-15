@@ -1,9 +1,9 @@
-import { useModalSample } from "@fiftyone/state";
+import { useCurrentSampleId, useModalSample } from "@fiftyone/state";
 import { atom, useAtomValue } from "jotai";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { AnnotationEngine } from "../engine/core/engine";
 import { SampleLabelStore } from "../engine/store/sampleLabelStore";
-import { useSampleInstance } from "./useSample";
+import { useSampleInstanceGetter } from "./useSample";
 
 /**
  * Shared {@link AnnotationEngine} for the annotation session.
@@ -20,35 +20,56 @@ export const useAnnotationEngine = (): AnnotationEngine =>
   useAtomValue(engineAtom);
 
 /**
- * Own the engine's store lifecycle for the modal sample: register a
- * {@link SampleLabelStore} keyed by the current sample id over the shared
- * {@link Sample}, and re-key it when the modal sample changes.
+ * Own the engine's store lifecycle for the modal: register a
+ * {@link SampleLabelStore} over the {@link Sample} of every sample the modal
+ * renders — the selected slice, plus the pinned 3D slice when a grouped modal
+ * shows both (they are distinct sample documents, federated by the engine and
+ * addressed by `LabelRef.sample`). Re-register when that set changes.
  *
- * Unregistration sweeps engine-owned ephemera (selection, hover, undo) for
- * the departed sample — sample-switch deselection lives there, not here.
+ * Unregistration sweeps engine-owned ephemera (selection, hover, undo) for the
+ * departed sample — sample-switch deselection lives there, not here.
  *
- * Mount once at the annotation root, after {@link useSyncModalSample} (its
- * effects clear and refill the shared Sample first, so the store never
- * indexes the previous sample's data under the new id).
+ * Mount once at the annotation root, after the sample-sync hooks (their effects
+ * fill each Sample first, so a store never indexes the previous sample's data).
  */
 export const useSyncAnnotationEngine = (): void => {
   const engine = useAnnotationEngine();
-  const sample = useSampleInstance();
-  const modalSample = useModalSample();
+  const getSample = useSampleInstanceGetter();
+  const modalId = useModalSample()?.sample?._id;
+  const threeDId = useCurrentSampleId();
 
-  const sampleId = modalSample?.sample?._id;
+  // the modal's distinct sample documents — a grouped 2D + 3D modal renders
+  // two at once (the selected slice and the pinned 3D scene); every other case
+  // collapses to one, where the ids coincide
+  const sampleIds = useMemo(() => {
+    const ids = new Set<string>();
+
+    if (modalId) {
+      ids.add(modalId);
+    }
+
+    if (threeDId) {
+      ids.add(threeDId);
+    }
+
+    return [...ids];
+  }, [modalId, threeDId]);
 
   useEffect(() => {
-    if (!sampleId) {
+    if (sampleIds.length === 0) {
       return undefined;
     }
 
-    const store = new SampleLabelStore(sampleId, sample);
-    const unregister = engine.registerStore(store);
+    const teardown = sampleIds.map((id) => {
+      const store = new SampleLabelStore(id, getSample(id));
+      const unregister = engine.registerStore(store);
 
-    return () => {
-      unregister();
-      store.dispose();
-    };
-  }, [engine, sample, sampleId]);
+      return () => {
+        unregister();
+        store.dispose();
+      };
+    });
+
+    return () => teardown.forEach((detach) => detach());
+  }, [engine, getSample, sampleIds]);
 };

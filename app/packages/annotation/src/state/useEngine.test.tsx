@@ -8,6 +8,9 @@ let mockModalSample: { sample?: { _id: string } } | undefined;
 
 vi.mock("@fiftyone/state", () => ({
   useModalSample: () => mockModalSample,
+  // no separate 3D scene in these tests: the 3D key tracks the modal sample,
+  // so the registered set collapses to one store
+  useCurrentSampleId: () => mockModalSample?.sample?._id ?? null,
 }));
 
 const schema = {

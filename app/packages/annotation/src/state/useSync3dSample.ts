@@ -12,6 +12,7 @@ import {
   type SampleChange,
   SampleChangeKind,
 } from "@fiftyone/utilities";
+import { useCurrentSampleId } from "@fiftyone/state";
 import { useEffect, useRef } from "react";
 import { build3dLabel } from "./build3dLabel";
 import { useSampleInstance } from "./useSample";
@@ -94,7 +95,11 @@ export const reconcile3dChange = (
  */
 export const useSync3dSample = (): void => {
   const doc = useWorkingDoc();
-  const sample = useSampleInstance();
+  // the 3D working store is keyed by `currentSampleId`; bridge it onto THAT
+  // sample's Sample (the pinned 3D scene in a grouped modal — distinct from
+  // the selected 2D slice), never the selected one
+  const threeDId = useCurrentSampleId();
+  const sample = useSampleInstance(threeDId ?? undefined);
   const updateWorkingLabel = useUpdateWorkingLabel();
 
   // Latest working doc, read by the read-half subscription (which stays
