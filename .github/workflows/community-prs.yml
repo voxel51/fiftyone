@@ -1,12 +1,7 @@
 name: Community PRs
 
-# Non-members may only contribute via the `community` branch. When an author
-# without write access opens a PR, this retargets it to `community` (when it
-# isn't already) and posts a single welcome comment. Members are left alone;
-# bots (e.g. Dependabot) are retargeted silently, without a welcome.
-#
-# Uses pull_request_target so it can edit the base of fork PRs. It only reads PR
-# metadata and calls the API — it never checks out PR head code.
+# Routes non-member PRs to the `community` branch and posts one welcome comment.
+# pull_request_target so it can edit fork PR bases; never checks out PR code.
 
 on:
   pull_request_target:
@@ -30,8 +25,6 @@ jobs:
             const pr = context.payload.pull_request;
             const author = pr.user.login;
 
-            // Members (write/maintain/admin) may target develop/release directly
-            // — no retarget, no comment.
             let hasPush = false;
             try {
               const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
@@ -45,7 +38,6 @@ jobs:
             }
             if (hasPush) return;
 
-            // Non-member: move the PR onto `community` if it isn't already there.
             let from = null;
             if (pr.base.ref !== 'community') {
               from = pr.base.ref;
@@ -60,8 +52,6 @@ jobs:
             // Bots (e.g. Dependabot) are retargeted but skip the welcome.
             if (author.endsWith('[bot]')) return;
 
-            // Post one welcome comment, ever — the marker also covers `reopened`
-            // / `edited` re-runs. Mention the retarget only when one happened.
             const marker = '<!-- community-prs -->';
             const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
