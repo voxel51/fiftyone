@@ -93,7 +93,7 @@ class TemporalTag(object):
         created_at=None,
         last_modified_at=None,
         id=None,
-        kind=None,
+        kind=TagKind.TEMPORAL,
     ):
         self.sample_id = sample_id
         self.start = start
@@ -108,7 +108,7 @@ class TemporalTag(object):
             last_modified_at, "last_modified_at"
         )
         self.id = id
-        self.kind = kind
+        self.kind = _ensure_kind(kind)
 
     def __repr__(self):
         return (
@@ -1059,7 +1059,7 @@ def _build_update_fields(
 def _from_storage_doc(doc) -> TemporalTag:
     return TemporalTag(
         id=str(doc["_id"]),
-        kind=doc.get("kind", None),
+        kind=TagKind(doc.get("kind", TagKind.TEMPORAL)),
         sample_id=str(doc["_sample_id"]),
         index_type=doc["index_type"],
         anchor=doc.get("anchor", None),
@@ -1102,7 +1102,7 @@ def _to_export_doc(doc):
         export_doc[field_name] = value
 
     if doc.get("kind", None) is not None:
-        export_doc["kind"] = doc["kind"]
+        export_doc["kind"] = TagKind(doc["kind"])
 
     return export_doc
 
@@ -1115,7 +1115,7 @@ def _from_export_doc(doc) -> TemporalTag:
         end=doc.get("end", None),
         tag=doc.get("tag", None),
         anchor=doc.get("anchor", None),
-        kind=doc.get("kind", None),
+        kind=TagKind(doc.get("kind", None)),
         created_by=doc.get("created_by", None),
         last_modified_by=doc.get("last_modified_by", None),
         created_at=doc.get("created_at", None),
@@ -1470,6 +1470,20 @@ def _ensure_indexes(collection) -> None:
         ],
         name="temporal_tag_counts",
     )
+
+
+def _ensure_kind(kind):
+    if kind is None:
+        return TagKind.TEMPORAL
+    elif isinstance(kind, str):
+        try:
+            return TagKind(kind)
+        except KeyError as e:
+            raise ValueError("Invalid temporal tag kind: %r" % kind) from e
+    elif isinstance(kind, TagKind):
+        return kind
+    else:
+        raise ValueError("Invalid temporal tag kind: %r" % kind)
 
 
 __all__ = [
