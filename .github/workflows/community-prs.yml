@@ -2,10 +2,8 @@ name: Community PRs
 
 # Non-members may only contribute via the `community` branch. When an author
 # without write access opens a PR, this retargets it to `community` (when it
-# isn't already) and leaves a single welcome comment. It folds in the old
-# `pr-welcome-comment.yml` so a community contributor gets exactly one bot
-# comment, not two. Members are left alone; bots (e.g. Dependabot) are
-# retargeted silently, without a welcome.
+# isn't already) and posts a single welcome comment. Members are left alone;
+# bots (e.g. Dependabot) are retargeted silently, without a welcome.
 #
 # Uses pull_request_target so it can edit the base of fork PRs. It only reads PR
 # metadata and calls the API — it never checks out PR head code.
