@@ -196,6 +196,7 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
                 "start",
                 "end",
                 "tag",
+                "kind",
                 "created_at",
                 "last_modified_at",
             }

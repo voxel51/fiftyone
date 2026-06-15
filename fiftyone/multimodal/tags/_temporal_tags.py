@@ -151,6 +151,7 @@ class TemporalTag(object):
             created_at=self.created_at,
             last_modified_at=self.last_modified_at,
             id=self.id,
+            kind=self.kind,
         )
 
     def to_dict(self):
@@ -183,6 +184,9 @@ class TemporalTag(object):
 
         if self.id is not None:
             d["id"] = self.id
+
+        if self.kind is not None:
+            d["kind"] = self.kind
 
         return d
 
@@ -1096,6 +1100,9 @@ def _to_export_doc(doc):
             value = _serialize_datetime(value, field_name)
 
         export_doc[field_name] = value
+
+    if doc.get("kind", None) is not None:
+        export_doc["kind"] = doc["kind"]
 
     return export_doc
 
