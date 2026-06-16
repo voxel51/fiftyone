@@ -26,6 +26,7 @@ import {
   useSyncModalSample,
 } from "@fiftyone/annotation";
 import { useLighterAnnotationBridge } from "./useLighterAnnotationBridge";
+import { useLooker3dAnnotationBridge } from "./useLooker3dAnnotationBridge";
 
 const DISABLED_MESSAGES: Record<
   Exclude<AnnotationDisabledReason, null>,
@@ -119,6 +120,7 @@ const Annotate = ({ disabledReason, loadSchemas }: AnnotateProps) => {
   useSync3dModalSample();
   useSyncAnnotationEngine();
   useLighterAnnotationBridge();
+  useLooker3dAnnotationBridge();
   useSync3dSample();
   useFormAnchor();
   useRegisterAIAnnotationEventHandlers();
