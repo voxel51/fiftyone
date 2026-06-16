@@ -11,13 +11,12 @@ import * as fos from "@fiftyone/state";
 import { isGeneratedView } from "@fiftyone/state";
 
 import {
-  DelegatingUndoable,
   KnownCommands,
   KnownContexts,
   useKeyBindings,
 } from "@fiftyone/commands";
 import { useAtomValue } from "jotai";
-import { useMemo } from "react";
+import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import { current } from "./state";
 import useExit from "./useExit";
@@ -36,76 +35,66 @@ export default function useDelete() {
   const setNotification = fos.useNotification();
   const isGenerated = useRecoilValue(isGeneratedView);
 
-  const undoable = useMemo(() => {
-    return new DelegatingUndoable(
-      "delete.undoable",
-      async () => {
-        if (!label) {
-          return;
-        }
+  // Delete is a plain action — the engine's value-based undo stack captures the
+  // delete (via DeleteAnnotationCommand → engine.deleteLabel) and owns restoring
+  // it on Ctrl-Z, so no DelegatingUndoable / command-context undo is registered.
+  const performDelete = useCallback(async () => {
+    if (!label) {
+      return;
+    }
 
-        if (label.isNew) {
-          if (scene && !scene.isDestroyed && scene.renderLoopActive) {
-            scene?.exitInteractiveMode();
-            removeOverlay(label?.data._id, true);
-          }
-
-          exit();
-          return;
-        }
-
-        try {
-          const fieldSchema = getFieldSchema(schema, label?.path);
-
-          if (!fieldSchema) {
-            setNotification({
-              msg: `Unable to delete label: field schema not found for path "${
-                label?.path ?? "unknown"
-              }".`,
-              variant: "error",
-            });
-            return;
-          }
-
-          // the engine's read-half does the rest: the bridge loop unmounts
-          // the overlay and the list mirror drops the row on the delete tick
-          await commandBus.execute(
-            new DeleteAnnotationCommand(label, fieldSchema)
-          );
-
-          exit();
-        } catch (error) {
-          // Persistence success/failure is surfaced by the shared annotation
-          // activity toast (annotation:persistenceSuccess / :persistenceError);
-          // don't show a duplicate legacy toast here.
-          console.error(error);
-        }
-      },
-      async () => {
-        if (!label) {
-          return;
-        }
-
-        // restore the captured label through the engine — the bridge loop
-        // remounts the overlay and the list mirror restores the row (legacy
-        // re-added the overlay and let the overlay-added handler write the
-        // Sample; that handler is gone)
-        engine.updateLabel(
-          {
-            sample,
-            path: label.path,
-            instanceId: label.data._id,
-          },
-          label.data
-        );
+    if (label.isNew) {
+      // a label still being drawn lives in interactive mode — leave it and
+      // tear down its in-progress overlay
+      if (scene && !scene.isDestroyed && scene.renderLoopActive) {
+        scene?.exitInteractiveMode();
+        removeOverlay(label?.data._id, true);
       }
-    );
+
+      // also drop it from the engine: `isNew` is form-side bookkeeping, but a
+      // drawn label is already engine-committed, so the engine-derived sidebar
+      // only removes the row (and autosave only persists the delete + Ctrl-Z
+      // only restores it) once the engine is told. A no-op if never committed.
+      engine.deleteLabel({
+        sample,
+        path: label.path,
+        instanceId: label.data._id,
+      });
+
+      exit();
+      return;
+    }
+
+    try {
+      const fieldSchema = getFieldSchema(schema, label?.path);
+
+      if (!fieldSchema) {
+        setNotification({
+          msg: `Unable to delete label: field schema not found for path "${
+            label?.path ?? "unknown"
+          }".`,
+          variant: "error",
+        });
+        return;
+      }
+
+      // the engine's read-half does the rest: the bridge loop unmounts
+      // the overlay and the list mirror drops the row on the delete tick
+      await commandBus.execute(new DeleteAnnotationCommand(label, fieldSchema));
+
+      exit();
+    } catch (error) {
+      // Persistence success/failure is surfaced by the shared annotation
+      // activity toast (annotation:persistenceSuccess / :persistenceError);
+      // don't show a duplicate legacy toast here.
+      console.error(error);
+    }
   }, [
     commandBus,
+    engine,
     exit,
     label,
     removeOverlay,
-    engine,
     sample,
     scene,
     schema,
@@ -117,9 +106,7 @@ export default function useDelete() {
     [
       {
         commandId: KnownCommands.ModalDeleteAnnotation,
-        handler: () => {
-          return undoable;
-        },
+        handler: performDelete,
         enablement: () => {
           // Disable delete for generated views (patches/clips/frames)
           if (!label || isGenerated) {
@@ -141,6 +128,6 @@ export default function useDelete() {
         description: "Delete label",
       },
     ],
-    [undoable, isGenerated]
+    [performDelete, isGenerated]
   );
 }
