@@ -1,3 +1,11 @@
+import {
+  encodeEntityId,
+  GEOMETRY_SIGNAL,
+  type GeometrySignal,
+  useAnnotationEngine,
+  useSceneSampleId,
+  useSignalValue,
+} from "@fiftyone/annotation";
 import { LabeledField } from "@fiftyone/components";
 import { DetectionLabel } from "@fiftyone/looker";
 import {
@@ -5,16 +13,14 @@ import {
   quaternionToRadians,
   radiansToQuaternion,
   useCuboidOperations,
-  useIsDragInProgress,
-  useTransientCuboid,
-  useWorkingLabel,
 } from "@fiftyone/looker-3d";
+import { useCurrentDatasetId } from "@fiftyone/state";
 import { DETECTION } from "@fiftyone/utilities";
 import { Box, Stack, TextField } from "@mui/material";
 import { useAtomValue } from "jotai";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Vector3Tuple } from "three";
-import { currentData } from "./state";
+import { currentData, currentField } from "./state";
 
 interface Coordinates3d {
   position: { x?: number; y?: number; z?: number };
@@ -58,92 +64,84 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
     rotation: {},
   });
   const data = useAtomValue<DetectionLabel>(currentData);
+  const field = useAtomValue(currentField);
   const { updateCuboid } = useCuboidOperations();
   const labelId = data?._id ?? "";
 
-  const workingLabel = useWorkingLabel(labelId);
+  const engine = useAnnotationEngine();
+  const sample = useSceneSampleId();
+  const dataset = useCurrentDatasetId() ?? "";
 
-  // Need transient state for live drag preview
-  const transientState = useTransientCuboid(labelId);
-  const isDragInProgress = useIsDragInProgress();
-
+  // committed baseline — the cuboid's stored geometry read from the engine-fed
+  // form data (the sidebar no longer reaches into looker-3d's working/transient
+  // store; mid-gesture changes arrive via the GEOMETRY signal below)
   useEffect(() => {
-    let baseLocation: Vector3Tuple | undefined;
-    let baseDimensions: Vector3Tuple | undefined;
-    let baseRotation: Vector3Tuple | undefined;
-    let baseQuaternion: [number, number, number, number] | undefined;
-
-    if (workingLabel && workingLabel._cls === DETECTION) {
-      baseLocation = workingLabel.location;
-      baseDimensions = workingLabel.dimensions;
-      baseRotation = workingLabel.rotation;
-      baseQuaternion = workingLabel.quaternion;
-    } else if (data?.location && data?.dimensions) {
-      // This shouldn't really happen but is here for a fallback
-      console.warn(
-        "[Position3d] Using fallback data path - workingLabel not available for label:",
-        data._id
-      );
-      baseLocation = data.location;
-      baseDimensions = data.dimensions;
-      baseRotation = data.rotation;
-    }
-
-    if (!baseLocation || !baseDimensions) {
+    if (data?._cls !== DETECTION || !data.location || !data.dimensions) {
       return;
     }
 
-    // Apply transient deltas if they exist (like, during active drag)
-    let displayLocation = baseLocation;
-    let displayDimensions = baseDimensions;
-    let displayQuaternion = baseQuaternion;
-
-    if (transientState) {
-      if (transientState.positionDelta) {
-        displayLocation = [
-          baseLocation[0] + transientState.positionDelta[0],
-          baseLocation[1] + transientState.positionDelta[1],
-          baseLocation[2] + transientState.positionDelta[2],
-        ];
-      }
-      if (transientState.dimensionsDelta) {
-        displayDimensions = [
-          baseDimensions[0] + transientState.dimensionsDelta[0],
-          baseDimensions[1] + transientState.dimensionsDelta[1],
-          baseDimensions[2] + transientState.dimensionsDelta[2],
-        ];
-      }
-      if (transientState.quaternionOverride) {
-        displayQuaternion = transientState.quaternionOverride;
-      }
-    }
-
-    // Convert quaternion to rotation for display
-    let displayRotation = baseRotation;
-    if (displayQuaternion) {
-      displayRotation = quaternionToRadians(displayQuaternion);
-    }
+    const rotation = data.quaternion
+      ? quaternionToRadians(data.quaternion)
+      : data.rotation ?? [0, 0, 0];
 
     setTransformState({
       position: {
-        x: displayLocation[0],
-        y: displayLocation[1],
-        z: displayLocation[2],
+        x: data.location[0],
+        y: data.location[1],
+        z: data.location[2],
       },
       dimensions: {
-        lx: displayDimensions[0],
-        ly: displayDimensions[1],
-        lz: displayDimensions[2],
+        lx: data.dimensions[0],
+        ly: data.dimensions[1],
+        lz: data.dimensions[2],
       },
-      rotation: displayRotation
-        ? {
-            rx: displayRotation[0],
-            ry: displayRotation[1],
-            rz: displayRotation[2],
-          }
-        : { rx: 0, ry: 0, rz: 0 },
+      rotation: { rx: rotation[0], ry: rotation[1], rz: rotation[2] },
     });
-  }, [data, workingLabel, transientState, isDragInProgress]);
+  }, [data]);
+
+  // LIVE geometry from the engine — the 3D scene publishes mid-gesture ABSOLUTE
+  // location/dimensions/quaternion; we render it directly. Render-only: the
+  // committed write lands at drag-end through the controller. Keyed by the
+  // scene's own sample id (where the engine store holds the cuboid).
+  const key = useMemo(
+    () =>
+      labelId && field && sample
+        ? encodeEntityId(dataset, {
+            sample,
+            path: field,
+            instanceId: labelId,
+          })
+        : null,
+    [dataset, sample, field, labelId]
+  );
+
+  const live = useSignalValue<GeometrySignal | null>(
+    engine,
+    GEOMETRY_SIGNAL,
+    key,
+    null
+  );
+
+  useEffect(() => {
+    if (!live || live.kind !== "3d") {
+      return;
+    }
+
+    const rotation = quaternionToRadians(live.quaternion);
+    setTransformState({
+      position: {
+        x: live.location[0],
+        y: live.location[1],
+        z: live.location[2],
+      },
+      dimensions: {
+        lx: live.dimensions[0],
+        ly: live.dimensions[1],
+        lz: live.dimensions[2],
+      },
+      rotation: { rx: rotation[0], ry: rotation[1], rz: rotation[2] },
+    });
+  }, [live]);
 
   const handleUserInputChange = useCallback(
     (coordinateDelta: Partial<Coordinates3d>) => {
