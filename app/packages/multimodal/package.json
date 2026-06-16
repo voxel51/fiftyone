@@ -76,7 +76,7 @@
         "@voxel51/voodo": "^0.0.34",
         "buffer": "^6.0.3",
         "lru-cache": "^11.0.1",
-        "protobufjs": "^7.2.5",
+        "protobufjs": "^7.6.3",
         "three": "^0.182.0"
     },
     "devDependencies": {
