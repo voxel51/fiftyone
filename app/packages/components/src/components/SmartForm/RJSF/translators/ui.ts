@@ -58,6 +58,14 @@ export function translateToUISchema(
       };
       break;
 
+    case SmartFormComponents.TaxonomyView:
+      uiSchema["ui:widget"] = "TaxonomyWidget";
+      uiSchema["ui:options"] = {
+        taxonomy: view.taxonomy,
+        multiSelect: view.multiSelect,
+      };
+      break;
+
     case SmartFormComponents.RadioView:
     case SmartFormComponents.RadioGroup:
       uiSchema["ui:widget"] = "radio";

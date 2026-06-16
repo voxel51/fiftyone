@@ -1,9 +1,8 @@
-import { getFetchParameters, mergeHeaders } from "@fiftyone/utilities";
 import { byteSourceAccessKey } from "../../../query/bytes";
 import { hydrateMcapFrameTransformSet } from "../frame-transforms";
 import { McapPlaybackWorkerTransport } from "./playback-worker-transport";
+import { workerFetchParameters } from "./worker-resource-client";
 import {
-  type McapPlaybackWorkerFetchParameters,
   type McapPlaybackWorkerRequest,
   type McapPlaybackWorkerRequestPayloadByType,
   type McapPlaybackWorkerResponse,
@@ -227,14 +226,4 @@ function disposeWorker(worker: Worker | undefined) {
   worker.onmessage = null;
   worker.onerror = null;
   worker.terminate();
-}
-
-function workerFetchParameters(): McapPlaybackWorkerFetchParameters {
-  const { headers, origin, pathPrefix } = getFetchParameters();
-
-  return {
-    headers: mergeHeaders(headers),
-    origin,
-    pathPrefix,
-  };
 }

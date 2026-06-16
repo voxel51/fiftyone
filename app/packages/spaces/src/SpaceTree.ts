@@ -57,6 +57,7 @@ export default class SpaceTree {
       node.activeChild = node.firstChild().activeChild;
       node.layout = node.firstChild().layout;
       node.firstChild().remove();
+      node.sizes = undefined;
       this.updateTree(node);
     }
   }
@@ -66,7 +67,6 @@ export default class SpaceTree {
     let ancestorNode = parentNode;
     if (parentNode?.parent && parentNode?.children.length === 1) {
       ancestorNode = parentNode?.parent;
-      ancestorNode.sizes = undefined;
       parentNode?.remove();
       this.joinNode(ancestorNode);
     } else if (ancestorNode) {

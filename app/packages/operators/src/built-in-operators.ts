@@ -1141,7 +1141,7 @@ class RegisterPanel extends Operator {
     return new types.Property(inputs);
   }
   async execute(ctx: ExecutionContext): Promise<void> {
-    registerPanel(ctx);
+    registerPanel(ctx.params);
   }
 }
 

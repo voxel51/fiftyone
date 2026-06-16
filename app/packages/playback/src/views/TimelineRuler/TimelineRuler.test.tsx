@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useAtomValue } from "jotai";
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   PlaybackProvider,
@@ -158,6 +158,23 @@ describe("TimelineRuler", () => {
       const { container } = renderRuler({ labelWidth: 80 });
       const group = container.querySelector(`.${styles.playheadGroup}`);
       expect(inlineStyle(group!)).toContain("left: 80px");
+    });
+
+    it("renders the overlay prop inside the ruler's DOM node", () => {
+      const Harness = () => {
+        const ref = useRef<HTMLDivElement>(null);
+        return (
+          <PlaybackProvider duration={10} stepInterval={1 / 30}>
+            <TimelineRuler
+              overlay={<div data-testid="ruler-overlay">over</div>}
+              zoomRef={ref}
+            />
+          </PlaybackProvider>
+        );
+      };
+      render(<Harness />);
+      const ruler = screen.getByTestId("timeline-ruler");
+      expect(ruler.querySelector('[data-testid="ruler-overlay"]')).not.toBeNull();
     });
   });
 
@@ -346,4 +363,5 @@ describe("TimelineRuler", () => {
       expect(vs).toBeCloseTo(6, 2);
     });
   });
+
 });

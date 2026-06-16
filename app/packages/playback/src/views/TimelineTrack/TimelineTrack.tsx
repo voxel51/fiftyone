@@ -26,12 +26,13 @@ import styles from "./TimelineTrack.module.css";
  */
 export type TimelineTrackEvent =
   | number
-  | { startSec: number; endSec?: number; label?: string };
+  | { startSec: number; endSec?: number; label?: string; data?: unknown };
 
-interface NormalizedEvent {
+export interface NormalizedEvent {
   startSec: number;
   endSec?: number;
   label?: string;
+  data?: unknown;
 }
 
 function normalizeEvent(e: TimelineTrackEvent): NormalizedEvent {
@@ -57,6 +58,8 @@ export interface TimelineTrackProps {
   events?: TimelineTrackEvent[];
   /** Fired when an event marker / bar is clicked. Typically seeks. */
   onEventClick?: (event: NormalizedEvent) => void;
+  /** Fired when the user chooses "Delete" from the event context menu. */
+  onEventDelete?: (event: NormalizedEvent) => void;
   /** Override the label column text. Defaults to `id`. */
   label?: string;
   height?: number;
@@ -75,6 +78,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   end,
   events = [],
   onEventClick,
+  onEventDelete,
   label,
   height = 28,
   labelWidth = 0,
@@ -213,6 +217,14 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                 >
                   Shrink window to fit
                 </MenuTextItem>
+                {onEventDelete && (
+                  <>
+                    <MenuSeparator />
+                    <MenuTextItem onClick={() => onEventDelete(e)}>
+                      Delete tag
+                    </MenuTextItem>
+                  </>
+                )}
               </>
             );
             if (isInterval) {

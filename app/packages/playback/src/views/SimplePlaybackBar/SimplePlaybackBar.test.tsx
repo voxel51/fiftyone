@@ -144,4 +144,116 @@ describe("SimplePlaybackBar", () => {
     // Readout stays at the zero baseline; no NaN, no throw.
     expect(screen.getByText("0:00.00 / 0:00.00")).toBeTruthy();
   });
+
+  describe("keyboard scrubbing", () => {
+    // Seek to 50% (5s) first so there is room to go both forward and backward.
+    function renderAtMidpoint() {
+      const result = renderBar(10);
+      const track = result.container.querySelector<HTMLDivElement>(
+        `.${styles.track}`
+      )!;
+      pointerDown(track, 50); // 50px of 100px → 5s
+      expect(screen.getByText("0:05.00 / 0:10.00")).toBeTruthy();
+      return { ...result, track };
+    }
+
+    // For nudge tests (±1%), we assert on `aria-valuenow` rather than the
+    // formatted text. `5 + 0.1` in IEEE 754 is 5.0999…, so
+    // Math.floor(5.0999… * 100) = 509 and formatTime renders "0:05.09",
+    // not "0:05.10". Asserting the underlying number sidesteps that.
+    it("ArrowRight nudges forward by 1% of duration", () => {
+      const { track } = renderAtMidpoint();
+      fireEvent.keyDown(track, { key: "ArrowRight" });
+      expect(parseFloat(track.getAttribute("aria-valuenow") ?? "0")).toBeCloseTo(
+        5.1,
+        5
+      );
+    });
+
+    it("ArrowUp nudges forward by 1% (same as ArrowRight)", () => {
+      const { track } = renderAtMidpoint();
+      fireEvent.keyDown(track, { key: "ArrowUp" });
+      expect(parseFloat(track.getAttribute("aria-valuenow") ?? "0")).toBeCloseTo(
+        5.1,
+        5
+      );
+    });
+
+    it("ArrowLeft nudges backward by 1% of duration", () => {
+      const { track } = renderAtMidpoint();
+      fireEvent.keyDown(track, { key: "ArrowLeft" });
+      expect(parseFloat(track.getAttribute("aria-valuenow") ?? "0")).toBeCloseTo(
+        4.9,
+        5
+      );
+    });
+
+    it("ArrowDown nudges backward by 1% (same as ArrowLeft)", () => {
+      const { track } = renderAtMidpoint();
+      fireEvent.keyDown(track, { key: "ArrowDown" });
+      expect(parseFloat(track.getAttribute("aria-valuenow") ?? "0")).toBeCloseTo(
+        4.9,
+        5
+      );
+    });
+
+    it("PageUp jumps forward by 10% of duration", () => {
+      const { track } = renderAtMidpoint();
+      fireEvent.keyDown(track, { key: "PageUp" });
+      expect(screen.getByText("0:06.00 / 0:10.00")).toBeTruthy();
+    });
+
+    it("PageDown jumps backward by 10% of duration", () => {
+      const { track } = renderAtMidpoint();
+      fireEvent.keyDown(track, { key: "PageDown" });
+      expect(screen.getByText("0:04.00 / 0:10.00")).toBeTruthy();
+    });
+
+    it("Home jumps to the start", () => {
+      const { track } = renderAtMidpoint();
+      fireEvent.keyDown(track, { key: "Home" });
+      expect(screen.getByText("0:00.00 / 0:10.00")).toBeTruthy();
+    });
+
+    it("End jumps to the end", () => {
+      const { track } = renderAtMidpoint();
+      fireEvent.keyDown(track, { key: "End" });
+      expect(screen.getByText("0:10.00 / 0:10.00")).toBeTruthy();
+    });
+
+    it("ArrowRight clamps at duration", () => {
+      const result = renderBar(10);
+      const track = result.container.querySelector<HTMLDivElement>(
+        `.${styles.track}`
+      )!;
+      pointerDown(track, 100); // seek to 10s (end)
+      fireEvent.keyDown(track, { key: "ArrowRight" });
+      expect(screen.getByText("0:10.00 / 0:10.00")).toBeTruthy();
+    });
+
+    it("ArrowLeft clamps at 0", () => {
+      const result = renderBar(10);
+      const track = result.container.querySelector<HTMLDivElement>(
+        `.${styles.track}`
+      )!;
+      // Playhead is at 0 by default
+      fireEvent.keyDown(track, { key: "ArrowLeft" });
+      expect(screen.getByText("0:00.00 / 0:10.00")).toBeTruthy();
+    });
+
+    it("ignores unknown keys without moving the playhead", () => {
+      const { track } = renderAtMidpoint();
+      fireEvent.keyDown(track, { key: "Tab" });
+      expect(screen.getByText("0:05.00 / 0:10.00")).toBeTruthy();
+    });
+
+    it("does not seek when duration is 0", () => {
+      const result = renderBar(0);
+      const track = result.container.querySelector<HTMLDivElement>(
+        `.${styles.track}`
+      )!;
+      fireEvent.keyDown(track, { key: "ArrowRight" });
+      expect(screen.getByText("0:00.00 / 0:00.00")).toBeTruthy();
+    });
+  });
 });

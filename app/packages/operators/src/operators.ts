@@ -467,6 +467,8 @@ export async function loadOperatorsFromServer(datasetName: string) {
         console.error(error);
       }
     }
+
+    return operators.filter((d: any) => d.panel).map((d: any) => d.panel);
   } catch (e) {
     initializationErrors.push({
       reason: "Error loading operators from server",
@@ -485,6 +487,8 @@ export async function loadOperatorsFromServer(datasetName: string) {
       throw e;
     }
   }
+
+  return [];
 }
 
 export function getLocalOrRemoteOperator(operatorURI) {

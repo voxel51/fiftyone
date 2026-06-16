@@ -1,6 +1,6 @@
 import { useDragDelta } from "@voxel51/voodo";
 import clsx from "clsx";
-import React, { useEffect, useRef } from "react";
+import React, { type ReactNode, useEffect, useRef } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import {
   useLoopEnd,
@@ -9,12 +9,11 @@ import {
   useViewEnd,
   useViewStart,
 } from "../../lib/playback/use-playback-state";
+import { clamp } from "../../lib/playback/utils";
 import styles from "./TimelineRuler.module.css";
 
 const MIN_VIEW = 0.25;
 const CLICK_PX_THRESHOLD = 3;
-const clamp = (v: number, lo: number, hi: number) =>
-  Math.min(hi, Math.max(lo, v));
 
 function tickLabel(t: number): string {
   const s = Math.floor(t);
@@ -31,12 +30,15 @@ export interface TimelineRulerProps {
    */
   zoomRef?: React.RefObject<HTMLElement | null>;
   className?: string;
+  /** Optional overlay rendered inside the ruler's positioned context. */
+  overlay?: ReactNode;
 }
 
 const TimelineRuler: React.FC<TimelineRulerProps> = ({
   labelWidth = 0,
   zoomRef,
   className,
+  overlay,
 }) => {
   const playhead = usePlayhead();
   const viewStart = useViewStart();
@@ -341,6 +343,8 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
           <div className={styles.playheadTriangle} />
         </div>
       </div>
+
+      {overlay}
     </div>
   );
 };
