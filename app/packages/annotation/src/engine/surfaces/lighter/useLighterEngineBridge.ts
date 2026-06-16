@@ -11,12 +11,18 @@
  */
 
 import type { Scene2D } from "@fiftyone/lighter";
-import { useLighter, useLighterEventHandler } from "@fiftyone/lighter";
+import {
+  DetectionOverlay,
+  useLighter,
+  useLighterEventHandler,
+} from "@fiftyone/lighter";
 import { useCallback, useEffect, useMemo } from "react";
 
 import type { AnnotationEngine } from "../../core/engine";
+import { encodeEntityId } from "../../identity/entityId";
 import { toLabelRef } from "../../identity/ref";
 import { useSurfaceBridge } from "../../react/useSurfaceBridge";
+import { GEOMETRY_SIGNAL, type GeometrySignal } from "../../signals/geometry";
 import { lighterAdapters } from "./adapters";
 import type { LighterInteractionPolicy } from "./interactionPolicy";
 import type { LighterBridgeDeps } from "./lighterBridge";
@@ -25,12 +31,15 @@ import { createLighterBridge } from "./lighterBridge";
 export const useLighterEngineBridge = ({
   engine,
   sample,
+  dataset,
   paths,
   resolveMediaUrl,
   interactionPolicy,
 }: {
   engine: AnnotationEngine;
   sample: string;
+  /** Ambient dataset — the `EntityId` namespace for signal keys. */
+  dataset: string;
   /** Active label paths — the bridge's partial-projection scope. A new set
    *  re-creates the bridge: the outgoing one clears, registration rehydrates. */
   paths?: ReadonlySet<string>;
@@ -94,6 +103,38 @@ export const useLighterEngineBridge = ({
   // TRANSITIONAL: the legacy sidebar-attr route (sidebar → overlay → engine).
   // End state: the sidebar writes the engine directly and this retires.
   on("lighter:overlay-label-updated", commitOverlay);
+
+  // LIVE GEOMETRY: republish mid-drag bounds as a signal so observers (the
+  // sidebar position panel) preview the gesture without subscribing to Lighter.
+  // Render-only — the committed write still happens at drag/resize-end above.
+  const publishGeometry = useCallback(
+    (event: { id: string }) => {
+      const overlay = (scene as Scene2D)?.getOverlay(event.id);
+
+      if (!(overlay instanceof DetectionOverlay) || !overlay.hasValidBounds()) {
+        return;
+      }
+
+      // publish the data-model RELATIVE bounds — the observer renders them
+      // directly; no pixel conversion (it both needs the scene and round-trips
+      // with float drift)
+      const b = overlay.relativeBounds;
+      const key = encodeEntityId(dataset, {
+        sample,
+        path: overlay.field,
+        instanceId: overlay.id,
+      });
+
+      engine.publishSignal<GeometrySignal>(GEOMETRY_SIGNAL, key, {
+        kind: "2d",
+        bounds: { x: b.x, y: b.y, width: b.width, height: b.height },
+      });
+    },
+    [dataset, engine, sample, scene]
+  );
+
+  on("lighter:overlay-drag-move", publishGeometry);
+  on("lighter:overlay-resize-move", publishGeometry);
 
   // interaction write-half
   on(

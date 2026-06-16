@@ -71,7 +71,11 @@ describe("useLighterEngineBridge — overlay-all-unhover", () => {
     ];
 
     renderHook(() =>
-      useLighterEngineBridge({ engine: makeEngine(), sample: "s1" })
+      useLighterEngineBridge({
+        engine: makeEngine(),
+        sample: "s1",
+        dataset: "ds",
+      })
     );
     allUnhover();
 
@@ -82,7 +86,11 @@ describe("useLighterEngineBridge — overlay-all-unhover", () => {
     hovered = [{ sample: "s1", path: "gt", instanceId: "z" }];
 
     renderHook(() =>
-      useLighterEngineBridge({ engine: makeEngine(), sample: "s1" })
+      useLighterEngineBridge({
+        engine: makeEngine(),
+        sample: "s1",
+        dataset: "ds",
+      })
     );
     allUnhover();
 

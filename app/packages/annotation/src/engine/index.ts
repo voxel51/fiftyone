@@ -91,6 +91,15 @@ export type {
 export {
   useEngineSelector,
   useInteraction,
+  useSignalValue,
   useSurfaceActions,
   useTemporal,
 } from "./react/hooks";
+
+// cross-surface geometry signal contract
+export {
+  GEOMETRY_SIGNAL,
+  type Geometry2d,
+  type Geometry3d,
+  type GeometrySignal,
+} from "./signals/geometry";

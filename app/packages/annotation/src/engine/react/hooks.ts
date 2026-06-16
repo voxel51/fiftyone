@@ -8,9 +8,17 @@
  * engine.
  */
 
-import { useCallback, useMemo, useRef, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 
 import type { AnnotationEngine } from "../core/engine";
+import type { EntityId } from "../identity/entityId";
 import type { InteractionState } from "../interaction/interactionState";
 import type { TemporalView } from "../temporal/types";
 import { createSurfaceActions } from "../bridge/surfaceController";
@@ -142,6 +150,47 @@ export const useTemporal = <T>(
     () => selector(engine.temporal),
     equals
   );
+};
+
+/**
+ * Watch a label's live signal value for one topic+key — the firehose render
+ * path for surface-owned transient state (mid-gesture geometry).
+ *
+ * Returns `initial` until a signal arrives, then the latest payload. The pipe
+ * has no retention, so `initial` is the baseline (typically the committed
+ * value) and ALSO the re-baseline target: when `initial` or `key` changes the
+ * value resets to `initial`. Pass a referentially-STABLE `initial` (e.g. a
+ * `useEngineSelector` projection) so a re-baseline fires only when the
+ * committed value actually changes — never mid-gesture, which would clobber
+ * the live override.
+ *
+ * `key === null` disables the subscription (no label to watch).
+ *
+ * Starts simple (a `setState` per tick); the subscription is a clean seam for
+ * rAF-coalescing if a gesture ever out-runs React.
+ */
+export const useSignalValue = <T>(
+  engine: AnnotationEngine,
+  topic: string,
+  key: EntityId | null,
+  initial: T
+): T => {
+  const [value, setValue] = useState<T>(initial);
+
+  // re-baseline to the committed value when it (or the watched label) changes
+  useEffect(() => {
+    setValue(initial);
+  }, [initial, key]);
+
+  useEffect(() => {
+    if (!key) {
+      return;
+    }
+
+    return engine.subscribeSignal<T>(topic, key, setValue);
+  }, [engine, topic, key]);
+
+  return value;
 };
 
 /** The shared ref-addressed write-half, bound to the ambient sample. */
