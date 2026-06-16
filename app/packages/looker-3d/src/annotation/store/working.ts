@@ -507,20 +507,38 @@ export function useDeleteWorkingLabel() {
  */
 export function useRemoveWorkingLabel() {
   return useRecoilCallback(
-    ({ set }) =>
+    ({ snapshot, set }) =>
       (labelId: LabelId) => {
-        set(workingAtom, (prev) => {
-          if (!prev.doc.labelsById[labelId]) {
-            return prev;
-          }
+        // Resolve the scene key from the sync atom and write the family entry
+        // directly — NOT the facade. The facade's `currentSampleId` fallback is
+        // async on a grouped pcd slice, and a functional-updater set against it
+        // throws while it is pending (the bridge unmount lands here during modal
+        // teardown, after the scene id resets). No scene key = nothing to remove.
+        const sampleId = snapshot
+          .getLoadable(stableSceneSampleIdAtom)
+          .getValue();
 
-          const labelsById = { ...prev.doc.labelsById };
-          delete labelsById[labelId];
+        if (!sampleId) {
+          return;
+        }
 
-          const deletedIds = new Set(prev.doc.deletedIds);
-          deletedIds.delete(labelId);
+        const prev = snapshot
+          .getLoadable(workingAtomFamily(sampleId))
+          .getValue();
 
-          return { ...prev, doc: { ...prev.doc, labelsById, deletedIds } };
+        if (!prev.doc.labelsById[labelId]) {
+          return;
+        }
+
+        const labelsById = { ...prev.doc.labelsById };
+        delete labelsById[labelId];
+
+        const deletedIds = new Set(prev.doc.deletedIds);
+        deletedIds.delete(labelId);
+
+        set(workingAtomFamily(sampleId), {
+          ...prev,
+          doc: { ...prev.doc, labelsById, deletedIds },
         });
       },
     []
