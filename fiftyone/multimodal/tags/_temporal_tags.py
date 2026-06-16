@@ -45,7 +45,7 @@ SUPPORTED_INDEX_TYPES = {
     foms.TimeTrackType.TIME_TRACK_TYPE_DURATION_NS,
     foms.TimeTrackType.TIME_TRACK_TYPE_TIMESTAMP_NS,
 }
-_TEMPORAL_TAG_SORT = [
+_TAG_SORT = [
     ("_sample_id", ASCENDING),
     ("index_type", ASCENDING),
     ("anchor", ASCENDING),
@@ -337,7 +337,7 @@ class TemporalTags(object):
         if collection is None:
             return iter(())
 
-        docs = collection.find(query).sort(_TEMPORAL_TAG_SORT)
+        docs = collection.find(query).sort(_TAG_SORT)
         return (_from_storage_doc(doc) for doc in docs)
 
     def add(self, tags: TemporalTag | Iterable[TemporalTag]):
