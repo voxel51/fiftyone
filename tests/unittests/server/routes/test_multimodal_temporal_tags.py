@@ -98,7 +98,7 @@ def fixture_temporal_tag_counts_endpoint():
 def _make_request(
     dataset_id,
     sample_id=None,
-    temporal_tag_id=None,
+    tag_id=None,
     query_params=None,
     body=None,
 ):
@@ -106,8 +106,8 @@ def _make_request(
     request.path_params = {"dataset_id": dataset_id}
     if sample_id is not None:
         request.path_params["sample_id"] = sample_id
-    if temporal_tag_id is not None:
-        request.path_params["tag_id"] = temporal_tag_id
+    if tag_id is not None:
+        request.path_params["tag_id"] = tag_id
 
     request.query_params = QueryParams(query_params or {})
     payload = {} if body is None else body
@@ -280,7 +280,7 @@ class TestMultimodalTemporalTagsRoute:
         request = _make_request(
             dataset_id,
             sample_id=sample_ids[0],
-            temporal_tag_id=created.id,
+            tag_id=created.id,
             body={
                 "id": created.id,
                 "start": 5,
@@ -641,7 +641,7 @@ class TestMultimodalTemporalTagsRoute:
                 _make_request(
                     dataset_id,
                     sample_id=sample_ids[0],
-                    temporal_tag_id=temporal_tag.id,
+                    tag_id=temporal_tag.id,
                 ),
             ),
             (
@@ -649,7 +649,7 @@ class TestMultimodalTemporalTagsRoute:
                 _make_request(
                     dataset_id,
                     sample_id=sample_ids[0],
-                    temporal_tag_id=temporal_tag.id,
+                    tag_id=temporal_tag.id,
                     body={
                         "id": str(ObjectId()),
                         "start": 1,
@@ -661,7 +661,7 @@ class TestMultimodalTemporalTagsRoute:
                 _make_request(
                     dataset_id,
                     sample_id=sample_ids[0],
-                    temporal_tag_id=temporal_tag.id,
+                    tag_id=temporal_tag.id,
                     body={
                         "sample_id": sample_ids[1],
                         "start": 1,
@@ -673,7 +673,7 @@ class TestMultimodalTemporalTagsRoute:
                 _make_request(
                     dataset_id,
                     sample_id=sample_ids[0],
-                    temporal_tag_id=temporal_tag.id,
+                    tag_id=temporal_tag.id,
                     body={
                         "created_by": "alice",
                         "start": 1,
@@ -685,7 +685,7 @@ class TestMultimodalTemporalTagsRoute:
                 _make_request(
                     dataset_id,
                     sample_id=sample_ids[0],
-                    temporal_tag_id=temporal_tag.id,
+                    tag_id=temporal_tag.id,
                     body={
                         "anchor": "camera_front",
                         "start": 1,
@@ -737,13 +737,13 @@ class TestMultimodalTemporalTagsRoute:
             _make_request(
                 dataset_id,
                 sample_id=sample_ids[0],
-                temporal_tag_id=str(ObjectId()),
+                tag_id=str(ObjectId()),
                 body={"start": 1},
             ),
             _make_request(
                 dataset_id,
                 sample_id=sample_ids[1],
-                temporal_tag_id=temporal_tag.id,
+                tag_id=temporal_tag.id,
                 body={"start": 1},
             ),
         ]
