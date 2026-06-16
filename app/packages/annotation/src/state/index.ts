@@ -5,5 +5,4 @@ export * from "./useGroupAnnotationSample";
 export * from "./useLooker3dSurfaceController";
 export * from "./useSample";
 export * from "./useSync3dModalSample";
-export * from "./useSync3dSample";
 export * from "./useSyncModalSample";

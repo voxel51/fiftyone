@@ -21,7 +21,6 @@ import { useRegisterPolylineSidebarSyncHandlers } from "./Edit/useRegisterPolyli
 import useSourceFieldToActivate from "./useSourceFieldToActivate";
 import {
   useSync3dModalSample,
-  useSync3dSample,
   useSyncAnnotationEngine,
   useSyncModalSample,
 } from "@fiftyone/annotation";
@@ -121,7 +120,6 @@ const Annotate = ({ disabledReason, loadSchemas }: AnnotateProps) => {
   useSyncAnnotationEngine();
   useLighterAnnotationBridge();
   useLooker3dAnnotationBridge();
-  useSync3dSample();
   useFormAnchor();
   useRegisterAIAnnotationEventHandlers();
   useRegisterPolylineSidebarSyncHandlers();

@@ -475,35 +475,10 @@ export function useAddWorkingLabel() {
 }
 
 /**
- * Hook that returns a callback to delete a label from the working store.
- */
-export function useDeleteWorkingLabel() {
-  return useRecoilCallback(
-    ({ set }) =>
-      (labelId: LabelId) => {
-        set(workingAtom, (prev) => {
-          const newDeletedIds = new Set(prev.doc.deletedIds);
-          newDeletedIds.add(labelId);
-
-          return {
-            ...prev,
-            doc: {
-              ...prev.doc,
-              deletedIds: newDeletedIds,
-            },
-          };
-        });
-      },
-    []
-  );
-}
-
-/**
  * Hook that returns a callback to HARD-remove a label from the working store
  * (drops it from `labelsById` and `deletedIds` both). This is the engine
- * bridge's `unmount`: when a label leaves the engine's scope, its working
- * entry goes too — distinct from the soft-delete (`useDeleteWorkingLabel`) that
- * the ad-hoc 3D delete/undo path still uses.
+ * bridge's `unmount`: when a label leaves the engine's scope (a delete, or a
+ * scope contraction), its working entry goes too.
  */
 export function useRemoveWorkingLabel() {
   return useRecoilCallback(
@@ -539,30 +514,6 @@ export function useRemoveWorkingLabel() {
         set(workingAtomFamily(sampleId), {
           ...prev,
           doc: { ...prev.doc, labelsById, deletedIds },
-        });
-      },
-    []
-  );
-}
-
-/**
- * Hook that returns a callback to restore a deleted label.
- */
-export function useRestoreWorkingLabel() {
-  return useRecoilCallback(
-    ({ set }) =>
-      (labelId: LabelId) => {
-        set(workingAtom, (prev) => {
-          const newDeletedIds = new Set(prev.doc.deletedIds);
-          newDeletedIds.delete(labelId);
-
-          return {
-            ...prev,
-            doc: {
-              ...prev.doc,
-              deletedIds: newDeletedIds,
-            },
-          };
         });
       },
     []

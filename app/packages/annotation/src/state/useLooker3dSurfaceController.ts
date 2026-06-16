@@ -58,9 +58,9 @@ export const useRegisteredLooker3dSurfaceController =
  * (`objectId()` at draw time), so `commit` upserts — the first commit creates
  * (cf. the Lighter create-from-establish path).
  *
- * Both methods no-op until a controller is registered; in that window the
- * legacy `useSync3dSample` write-half still mirrors the working store onto
- * {@link Sample}, so edits are never dropped.
+ * Both methods no-op until a controller is registered. That window is the brief
+ * pre-scene-settle interval before any label is interactable (for a non-grouped
+ * 3D sample the scene id resolves immediately), so a gesture never lands in it.
  */
 export interface Looker3dSurfaceWrite {
   /** Whether a controller is registered (the engine surface is live). */

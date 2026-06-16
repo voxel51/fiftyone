@@ -17,10 +17,9 @@ import { useMemo, useRef } from "react";
 import { visibleLabelSchemas } from "./state";
 
 /**
- * Mount the looker-3d surface on the annotation engine: the bridge owns the
+ * Mount the looker-3d surface on the annotation engine. The bridge owns the
  * READ-HALF — the engine reconciles Sample edits (sidebar form, undo,
- * persistence) into the 3D working store, replacing `useSync3dSample`'s
- * bespoke `subscribeChanges` reconcile. Scoped to the active schema paths
+ * persistence) into the 3D working store. Scoped to the active schema paths
  * (the `renders` adapters keep 2D labels out); keyed by the SCENE's stable
  * sample id so a grouped modal's 3D labels never land on the selected 2D slice.
  *
@@ -28,8 +27,8 @@ import { visibleLabelSchemas } from "./state";
  * is its Recoil binding. Mount once at the annotation root, after
  * `useSyncAnnotationEngine`.
  *
- * Transitional: the WRITE-half (working store → Sample) is still
- * `useSync3dSample`; `operations.ts` migrates onto the controller next.
+ * The WRITE-half is the registered SurfaceController: `operations.ts` commits
+ * 3D create/update/delete through it (see {@link useRegisterLooker3dSurfaceController}).
  */
 export const useLooker3dAnnotationBridge = (): void => {
   // bind the scene id into the working-store facade key BEFORE anything reads
@@ -62,18 +61,7 @@ export const useLooker3dAnnotationBridge = (): void => {
       get: (id) => docRef.current.labelsById[id],
       add,
       update,
-      // The working store owns 3D deletes (soft-delete + ad-hoc `restoreLabel`
-      // undo): a tombstoned entry must survive the Sample delete the write-half
-      // mirrors out, or undo has nothing to restore into the scene. Genuine
-      // engine-scope exits (not soft-deleted) still hard-remove. Transitional —
-      // dissolves when 3D delete commits through the engine with value-based undo.
-      remove: (id) => {
-        if (docRef.current.deletedIds.has(id)) {
-          return;
-        }
-
-        remove(id);
-      },
+      remove,
     }),
     [add, update, remove]
   );

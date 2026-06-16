@@ -10,10 +10,10 @@ import { useSampleInstance } from "./useSample";
  * The pinned 3D slice is a distinct sample document, keyed by its stable scene
  * id ({@link useThreeDSceneSampleId}). When that differs from the selected 2D
  * slice, this feeds the scene's own Sample from its data + schema so the store
- * the engine registers for it resolves real labels (live 3D working-store edits
- * land on top via `useSync3dSample`). When there is no separate 3D scene the id
- * is `undefined` and {@link useSyncModalSample} owns the single Sample, so this
- * is inert.
+ * the engine registers for it resolves real labels (live 3D edits land on top
+ * via the looker-3d surface controller). When there is no separate 3D scene the
+ * id is `undefined` and {@link useSyncModalSample} owns the single Sample, so
+ * this is inert.
  *
  * Mount once at the annotation root, beside {@link useSyncModalSample}.
  */

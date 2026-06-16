@@ -1,9 +1,5 @@
 import { useLooker3dSurfaceWrite } from "@fiftyone/annotation";
 import { KnownContexts, usePushUndoable } from "@fiftyone/commands";
-import {
-  useGetSidebarLabels,
-  useLabelsContext,
-} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useLabels";
 import * as fos from "@fiftyone/state";
 import { DETECTION, POLYLINE } from "@fiftyone/utilities";
 import { useCallback } from "react";
@@ -40,7 +36,9 @@ import {
  *     so the read-half bridge never echoes the surface's own write back);
  *   - remove a label: `remove` (engine delete, NOT suppressed) — the read-half
  *     drops the working entry, and undo re-adds the captured value.
- * Undo is a value-inverse on the `ModalAnnotate` command-context stack.
+ * Undo is a value-inverse on the `ModalAnnotate` command-context stack. Sidebar
+ * rows follow the engine read-half (the engine-complete list mirror), so no
+ * surface bookkeeping is needed: a commit derives the row, a delete drops it.
  */
 export function useCuboidOperations() {
   const { createPushAndExec } = usePushUndoable(KnownContexts.ModalAnnotate);
@@ -48,8 +46,6 @@ export function useCuboidOperations() {
   const addLabel = useAddWorkingLabel();
   const endDrag = useEndDrag();
   const currentSampleId = useRecoilValue(fos.currentSampleId);
-  const { addLabelToSidebar, removeLabelFromSidebar } = useLabelsContext();
-  const getSidebarLabels = useGetSidebarLabels();
   const { commit, remove } = useLooker3dSurfaceWrite();
 
   /**
@@ -222,34 +218,18 @@ export function useCuboidOperations() {
           return;
         }
 
-        const sidebarLabel = getSidebarLabels().find(
-          (l) => l.data._id === labelId
-        );
-
         const execFn = () => {
           remove({ path: existingLabel.path, instanceId: labelId });
-          removeLabelFromSidebar(labelId);
         };
 
         const undoFn = () => {
           addLabel(existingLabel);
           commit(existingLabel);
-          if (sidebarLabel) {
-            addLabelToSidebar(sidebarLabel);
-          }
         };
 
         createPushAndExec(`delete-cuboid-${labelId}`, execFn, undoFn);
       },
-    [
-      createPushAndExec,
-      addLabel,
-      removeLabelFromSidebar,
-      addLabelToSidebar,
-      getSidebarLabels,
-      commit,
-      remove,
-    ]
+    [createPushAndExec, addLabel, commit, remove]
   );
 
   return {
@@ -275,8 +255,6 @@ export function usePolylineOperations() {
   const addLabel = useAddWorkingLabel();
   const endDrag = useEndDrag();
   const currentSampleId = useRecoilValue(fos.currentSampleId);
-  const { addLabelToSidebar, removeLabelFromSidebar } = useLabelsContext();
-  const getSidebarLabels = useGetSidebarLabels();
   const { commit, remove } = useLooker3dSurfaceWrite();
 
   /**
@@ -454,34 +432,18 @@ export function usePolylineOperations() {
           return;
         }
 
-        const sidebarLabel = getSidebarLabels().find(
-          (l) => l.data._id === labelId
-        );
-
         const execFn = () => {
           remove({ path: existingLabel.path, instanceId: labelId });
-          removeLabelFromSidebar(labelId);
         };
 
         const undoFn = () => {
           addLabel(existingLabel);
           commit(existingLabel);
-          if (sidebarLabel) {
-            addLabelToSidebar(sidebarLabel);
-          }
         };
 
         createPushAndExec(`delete-polyline-${labelId}`, execFn, undoFn);
       },
-    [
-      createPushAndExec,
-      addLabel,
-      removeLabelFromSidebar,
-      addLabelToSidebar,
-      getSidebarLabels,
-      commit,
-      remove,
-    ]
+    [createPushAndExec, addLabel, commit, remove]
   );
 
   return {
