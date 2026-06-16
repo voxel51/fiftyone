@@ -147,6 +147,7 @@ class TestStateDictLoading:
             _load_backbone_state_dict(path)
 
     def test_loads_safetensors_directly(self, tmp_path):
+        pytest.importorskip("safetensors")
         from safetensors.torch import save_file
 
         path = str(tmp_path / "weights.safetensors")
