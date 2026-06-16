@@ -38,12 +38,7 @@ def _download_sam3_bpe_vocab_file(
     tokenizer_source,
     bpe_path,
 ):
-    """Downloads SAM3 BPE vocab file if it does not exist at the specified path.
-
-    The upstream `sam3` package defaults to a relative `../assets/` location
-    that is not always present in packaged wheels, so we store/download this
-    file in FiftyOne's model zoo directory.
-    """
+    """Downloads SAM3 BPE vocab file from the source URL."""
 
     asset_filename = os.path.basename(bpe_path)
 
