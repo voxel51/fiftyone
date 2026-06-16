@@ -1818,7 +1818,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._metadata_path = None
         self._samples_path = None
         self._frames_path = None
-        self._temporal_tags_path = None
+        self._tags_path = None
         self._has_frames = None
         self._media_fields = None
 
@@ -1832,7 +1832,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._eval_dir = os.path.join(self.dataset_dir, "evaluations")
         self._runs_dir = os.path.join(self.dataset_dir, "runs")
         self._metadata_path = os.path.join(self.dataset_dir, "metadata.json")
-        self._temporal_tags_path = os.path.join(
+        self._tags_path = os.path.join(
             self.dataset_dir, fommtt.TAGS_EXPORT_FILENAME
         )
 
@@ -1884,7 +1884,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
         fommtt.import_tags(
             dataset,
-            self._temporal_tags_path,
+            self._tags_path,
             sample_ids=sample_ids if self.max_samples is not None else None,
             progress=progress,
         )
