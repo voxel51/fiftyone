@@ -238,6 +238,9 @@ export function usePanelLoading(
         // Dedupe: returning the same reference skips the Recoil write and
         // avoids re-rendering every subscriber when the value is unchanged.
         if (panelsLoading.get(finalId) === loading) return panelsLoading;
+        // Also skip writing `false` for a key that doesn't exist yet — a
+        // missing entry already reads as false
+        if (!loading && !panelsLoading.has(finalId)) return panelsLoading;
         const updatedPanelsLoading = new Map(panelsLoading);
         updatedPanelsLoading.set(finalId, loading);
         return updatedPanelsLoading;
