@@ -12,6 +12,7 @@ import {
   editingLabelAtom,
   pendingNewTypeAtom,
   savedLabel,
+  savedLabelPath,
 } from "./atoms";
 import { createNewLabel } from "./createNew";
 import {
@@ -213,8 +214,10 @@ export const useAnnotationContext = (): AnnotationContext => {
 
   const selectExisting = useAtomCallback(
     useCallback((get, set, labelAtom: PrimitiveAtom<AnnotationLabel>) => {
-      const data = get(labelAtom).data;
+      const label = get(labelAtom);
+      const data = label.data;
       set(savedLabel, data);
+      set(savedLabelPath, label.path ?? null);
       set(editingLabelAtom, labelAtom);
       set(pendingNewTypeAtom, null);
       // Seed mask flag from committed data — no lighter event has fired yet.
@@ -244,9 +247,11 @@ export const useAnnotationContext = (): AnnotationContext => {
   );
 
   const setCurrentEditingMask = useSetAtom(currentEditingMaskAtom);
+  const setSavedPath = useSetAtom(savedLabelPath);
   const clear = useCallback<AnnotationContext["clear"]>(() => {
     recordCurrentToLastUsed();
     setSaved(null);
+    setSavedPath(null);
     setEditingLabel(null);
     setPendingNewType(null);
     setActivePrimitive(null);
@@ -258,6 +263,7 @@ export const useAnnotationContext = (): AnnotationContext => {
     setEditingLabel,
     setPendingNewType,
     setSaved,
+    setSavedPath,
   ]);
 
   const createNew = useCallback<AnnotationContext["createNew"]>(
@@ -281,6 +287,7 @@ export const useAnnotationContext = (): AnnotationContext => {
       if (built) {
         const newAtom = atom<AnnotationLabel>({ isNew: true, ...built });
         setSaved(built.data);
+        setSavedPath(built.path ?? null);
         setEditingLabel(newAtom);
         return built;
       }
@@ -299,6 +306,7 @@ export const useAnnotationContext = (): AnnotationContext => {
       setEditingLabel,
       setPendingNewType,
       setSaved,
+      setSavedPath,
     ]
   );
 
@@ -312,9 +320,20 @@ export const useAnnotationContext = (): AnnotationContext => {
     [writeField]
   );
 
+  const writeSavedSnapshot = useAtomCallback(
+    useCallback(
+      (get, set, data: AnnotationLabel["data"] | null) => {
+        set(savedLabel, data);
+        // Sync `savedLabelPath` to the current label's path so a subsequent
+        // move (via `setField`) registers as dirty against this snapshot.
+        set(savedLabelPath, data === null ? null : get(current)?.path ?? null);
+      },
+      []
+    )
+  );
   const setSavedData = useCallback<AnnotationContext["setSavedData"]>(
-    (data) => setSaved(data),
-    [setSaved]
+    (data) => writeSavedSnapshot(data),
+    [writeSavedSnapshot]
   );
 
   const writeEditingMask = useAtomCallback(
