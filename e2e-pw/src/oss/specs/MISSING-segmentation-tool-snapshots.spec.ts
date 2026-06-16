@@ -24,7 +24,6 @@
 
 import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
-import { SAM2_MOCK_WORKER_SRC } from "src/shared/sam2-mock-worker";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const SAMPLE_ID = "000000000000000000000000";
@@ -133,18 +132,16 @@ test.describe.serial("segmentation tool snapshots", () => {
     await modal.sampleCanvas.assert.hasScreenshot("seg-brush-stroke.png");
   });
 
-  test("ai", async ({ datasetName, fiftyoneLoader, modal, page }) => {
-    // Install the deterministic mock SAM2 worker BEFORE the page mounts
-    // BrowserAnnotationProvider. See `app/.../BrowserAnnotationProvider.ts`
-    // for the seam contract.
-    await page.addInitScript((workerSrc: string) => {
-      (
-        window as unknown as { __FO_TEST_SAM2_WORKER_FACTORY?: () => Worker }
-      ).__FO_TEST_SAM2_WORKER_FACTORY = () => {
-        const blob = new Blob([workerSrc], { type: "text/javascript" });
-        return new Worker(URL.createObjectURL(blob));
-      };
-    }, SAM2_MOCK_WORKER_SRC);
+  test("ai", async ({
+    datasetName,
+    fiftyoneLoader,
+    mockSam2Worker,
+    modal,
+    page,
+  }) => {
+    // `mockSam2Worker` fixture installed the deterministic worker before
+    // page navigation; nothing to do here.
+    void mockSam2Worker;
 
     await openAnnotate(modal, page, fiftyoneLoader, datasetName);
     await modal.sidebar.annotate.pickTool("AI");
