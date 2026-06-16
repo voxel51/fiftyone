@@ -58,7 +58,7 @@ class PlaybackPlanEndpoint(HTTPEndpoint):
         )
 
 
-class SampleTemporalTagsEndpoint(HTTPEndpoint):
+class SampleTagsEndpoint(HTTPEndpoint):
     """Multimodal sample temporal tag collection endpoint."""
 
     @decorators.route
@@ -108,7 +108,7 @@ class SampleTemporalTagsEndpoint(HTTPEndpoint):
         }
 
 
-class SampleTemporalTagEndpoint(HTTPEndpoint):
+class SampleTagEndpoint(HTTPEndpoint):
     """Multimodal sample temporal tag item endpoint."""
 
     @decorators.route
@@ -501,12 +501,12 @@ MultimodalRoutes = [
     # Update one temporal tag scoped by sample.
     (
         "/dataset/{dataset_id}/sample/{sample_id}/tags/{tag_id}",
-        SampleTemporalTagEndpoint,
+        SampleTagEndpoint,
     ),
     # Create, list, and delete temporal tags for one sample.
     (
         "/dataset/{dataset_id}/sample/{sample_id}/tags",
-        SampleTemporalTagsEndpoint,
+        SampleTagsEndpoint,
     ),
     # Count temporal tag values across a dataset.
     (

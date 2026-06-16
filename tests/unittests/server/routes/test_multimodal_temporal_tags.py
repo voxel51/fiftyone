@@ -66,7 +66,7 @@ def fixture_sample_ids(dataset):
 @pytest.fixture(name="sample_temporal_tags_endpoint")
 def fixture_sample_temporal_tags_endpoint():
     """Returns the sample temporal tags endpoint instance."""
-    return fomr.SampleTemporalTagsEndpoint(
+    return fomr.SampleTagsEndpoint(
         scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
     )
 
@@ -74,7 +74,7 @@ def fixture_sample_temporal_tags_endpoint():
 @pytest.fixture(name="sample_temporal_tag_endpoint")
 def fixture_sample_temporal_tag_endpoint():
     """Returns the sample temporal tag item endpoint instance."""
-    return fomr.SampleTemporalTagEndpoint(
+    return fomr.SampleTagEndpoint(
         scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
     )
 
@@ -780,11 +780,11 @@ class TestMultimodalTemporalTagsRoute:
         assert tag_routes == [
             (
                 "/dataset/{dataset_id}/sample/{sample_id}/tags/{tag_id}",
-                fomr.SampleTemporalTagEndpoint,
+                fomr.SampleTagEndpoint,
             ),
             (
                 "/dataset/{dataset_id}/sample/{sample_id}/tags",
-                fomr.SampleTemporalTagsEndpoint,
+                fomr.SampleTagsEndpoint,
             ),
             (
                 "/dataset/{dataset_id}/tags/counts",
