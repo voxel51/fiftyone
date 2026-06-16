@@ -74,15 +74,6 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-const waitForPatch = (page: import("@playwright/test").Page) =>
-  page.waitForResponse(
-    (resp) =>
-      resp.request().method() === "PATCH" &&
-      /\/dataset\/[^/]+\/sample\//.test(resp.url()) &&
-      resp.status() < 400,
-    { timeout: 30_000 }
-  );
-
 const openAnnotate = async (
   modal: ModalPom,
   page: import("@playwright/test").Page,
@@ -103,7 +94,7 @@ test.describe.serial("segmentation tool snapshots", () => {
     await openAnnotate(modal, page, fiftyoneLoader, datasetName);
     await modal.sidebar.annotate.pickTool("Pen");
 
-    const persist = waitForPatch(page);
+    const persist = modal.sidebar.annotate.waitForPatch();
 
     // Rectangle polygon centered on the canvas
     await modal.sampleCanvas.click(0.4, 0.4);
@@ -121,7 +112,7 @@ test.describe.serial("segmentation tool snapshots", () => {
     await openAnnotate(modal, page, fiftyoneLoader, datasetName);
     await modal.sidebar.annotate.pickTool("Brush");
 
-    const persist = waitForPatch(page);
+    const persist = modal.sidebar.annotate.waitForPatch();
 
     // Single diagonal stroke. drag() generates intermediate moves so the
     // brush dabs continuously instead of only at the endpoints.
@@ -146,7 +137,7 @@ test.describe.serial("segmentation tool snapshots", () => {
     await openAnnotate(modal, page, fiftyoneLoader, datasetName);
     await modal.sidebar.annotate.pickTool("AI");
 
-    const persist = waitForPatch(page);
+    const persist = modal.sidebar.annotate.waitForPatch();
 
     // One positive point near the center; mock worker returns a
     // deterministic 8x8 all-foreground mask at bbox {0.4, 0.4, 0.2, 0.2}.
@@ -185,7 +176,7 @@ test.describe.serial("segmentation tool snapshots", () => {
     await openAnnotate(modal, page, fiftyoneLoader, datasetName);
     await modal.sidebar.annotate.pickTool("Merge");
 
-    const persist = waitForPatch(page);
+    const persist = modal.sidebar.annotate.waitForPatch();
 
     // Click the first detection to set as merge target, then the second
     // detection to merge into the target.

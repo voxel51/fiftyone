@@ -122,6 +122,21 @@ export class ModalAnnotateSidebarPom {
   }
 
   /**
+   * Resolves on the next successful PATCH to the per-sample dataset
+   * endpoint — the backend persist call fired after the user commits an
+   * annotation. Returns the promise so callers can `start = waitForPatch()`
+   * before the user gesture and `await start` after.
+   */
+  waitForPatch() {
+    return this.page.waitForResponse(
+      (resp) =>
+        resp.request().method() === "PATCH" &&
+        /\/dataset\/[^/]+\/sample\//.test(resp.url()) &&
+        resp.status() < 400
+    );
+  }
+
+  /**
    * Click the Select action button
    */
   async selectAction() {
