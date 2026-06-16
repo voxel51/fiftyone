@@ -295,8 +295,12 @@ export class Scene2D {
     // Listen for paint stroke end events to push undo/redo commands
     this.registerEventHandler(
       "lighter:overlay-paint-end",
-      ({ id, paintStrokeData }) => {
+      ({ id, paintStrokeData, isEstablishing }) => {
         if (!id || !paintStrokeData) return;
+
+        // First-stroke-of-a-new-mask: the AddOverlayCommand from the
+        // subsequent overlay-establish will register the undo/redo command.
+        if (isEstablishing) return;
 
         const overlay = this.getOverlay(id);
         const { beforeBounds, beforeSnapshot, afterBounds, afterSnapshot } =

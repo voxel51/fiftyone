@@ -15,7 +15,7 @@ import { atom, getDefaultStore, useAtom } from "jotai";
 import { v4 as uuidv4 } from "uuid";
 import { ClickEventModifiers } from "@fiftyone/utilities";
 import { AnnotationLabel } from "@fiftyone/state";
-import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
+import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 
 /** Positive points are explicitly *included* in inference results. */
 export const POSITIVE_POINT_VARIANT = "positive" as const;
@@ -136,9 +136,9 @@ export const usePointSelection = (): PointSelection => {
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
 
-  const { selectedLabel } = useAnnotationContext();
-  const selectedLabelRef = useRef(selectedLabel);
-  selectedLabelRef.current = selectedLabel;
+  const { selected } = useAnnotationContext();
+  const selectedLabelRef = useRef(selected?.label);
+  selectedLabelRef.current = selected?.label;
 
   // Closure around currently-selected label
   const resolveVariant = useCallback(
