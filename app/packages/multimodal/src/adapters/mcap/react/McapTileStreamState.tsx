@@ -2,7 +2,7 @@ import { Size, Spinner } from "@voxel51/voodo";
 import clsx from "clsx";
 import React from "react";
 import styles from "./McapTile.module.css";
-import { useMcapTopicStatus } from "./mcap-stream-status";
+import { useMcapTopicStatus } from "./mcap-stream-status-state";
 
 /**
  * Corner pill layered over a tile that is showing a frame. Surfaces the

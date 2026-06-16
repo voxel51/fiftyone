@@ -20,7 +20,7 @@ import {
   getMcapTopicStatus,
   setMcapTopicStatus,
   type McapTopicStatus,
-} from "./mcap-stream-status";
+} from "./mcap-stream-status-state";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
 import { DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ } from "../timeline";
 import type {

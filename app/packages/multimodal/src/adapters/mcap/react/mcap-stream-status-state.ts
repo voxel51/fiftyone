@@ -21,9 +21,8 @@ export type McapTopicStatus = "loading" | "ready" | "gap" | "failed";
 /**
  * Per-topic status, stored in the surrounding PlaybackProvider's store
  * (the same per-modal-instance store that carries the stream values).
- * Private to this module — mirrors the playback package's layering:
- * components read via the hook, the data stream and tests use the
- * get/set helpers with the store they already hold.
+ * React components read via `useMcapTopicStatus`; data stream plumbing and
+ * tests that already hold a PlaybackStore use the non-reactive bridge helpers.
  */
 // Same writable-shape cast as the playback atoms — jotai's null-ish
 // initial value overload would otherwise narrow this to a read-only Atom.

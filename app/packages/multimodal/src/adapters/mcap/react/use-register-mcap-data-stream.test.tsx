@@ -11,7 +11,7 @@ import {
 import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { useEffect, type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getMcapTopicStatus } from "./mcap-stream-status";
+import { getMcapTopicStatus } from "./mcap-stream-status-state";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import type {
