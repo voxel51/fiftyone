@@ -86,13 +86,7 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
 
     // Auto-save runs on a 3 s interval (`useAutoSave`); set up the response
     // wait BEFORE we start interacting so we don't race the timer.
-    const persistResponse = page.waitForResponse(
-      (resp) =>
-        resp.request().method() === "PATCH" &&
-        /\/dataset\/[^/]+\/sample\//.test(resp.url()) &&
-        resp.status() < 400,
-      { timeout: 15_000 }
-    );
+    const persistResponse = modal.sidebar.annotate.waitForPatch();
 
     // ── 2. Place 4 pen points forming a rectangle, then right-click commit ──
     // First click in segmentation+pen mode creates the new overlay; subsequent

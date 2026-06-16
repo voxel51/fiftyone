@@ -98,13 +98,7 @@ test.describe.serial("segmentation AI (SAM2) round-trip", () => {
     // Set up the persistence wait BEFORE clicking so we don't race the
     // 3s auto-save timer. Clicking a point auto-triggers inference, and
     // the resulting detection is picked up by the next auto-save tick.
-    const persistResponse = page.waitForResponse(
-      (resp) =>
-        resp.request().method() === "PATCH" &&
-        /\/dataset\/[^/]+\/sample\//.test(resp.url()) &&
-        resp.status() < 400,
-      { timeout: 30_000 }
-    );
+    const persistResponse = modal.sidebar.annotate.waitForPatch();
 
     // ── 2. Place a positive point — inference auto-fires on context change ──
     await modal.sampleCanvas.click(0.5, 0.5);
