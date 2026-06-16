@@ -1035,6 +1035,8 @@ def compute_embeddings(
     -   Using an image model to compute embeddings for an image collection
     -   Using an image model to compute frame embeddings for a video collection
     -   Using a video model to compute embeddings for a video collection
+    -   Using a point cloud model to compute embeddings for a point-cloud or
+        3D collection
 
     The ``model`` must expose embeddings, i.e., :meth:`Model.has_embeddings`
     must return ``True``.
@@ -1102,6 +1104,11 @@ def compute_embeddings(
         raise ValueError(
             "Model must expose embeddings; found model.has_embeddings = %s"
             % model.has_embeddings
+        )
+
+    if model.media_type in (fom.POINT_CLOUD, fom.THREE_D):
+        return _compute_pointcloud_embeddings(
+            samples, model, embeddings_field, skip_failures, progress
         )
 
     if samples.media_type == fom.IMAGE:
@@ -1214,6 +1221,79 @@ def compute_embeddings(
         return _compute_image_embeddings_single(
             samples, model, embeddings_field, skip_failures, progress
         )
+
+
+def _compute_pointcloud_embeddings(
+    samples, model, embeddings_field, skip_failures, progress
+):
+    if samples.media_type not in (fom.POINT_CLOUD, fom.THREE_D):
+        raise fom.MediaTypeError(
+            "Point cloud models can only be applied to point-cloud or 3D "
+            "collections; found media type '%s'" % samples.media_type
+        )
+
+    samples = _select_fields_for_embeddings(samples, embeddings_field)
+
+    embeddings = []
+    errors = False
+
+    with contextlib.ExitStack() as context:
+        pb = context.enter_context(fou.ProgressBar(progress=progress))
+        if embeddings_field is not None:
+            ctx = context.enter_context(foc.SaveContext(samples))
+
+        context.enter_context(model)
+
+        for sample in pb(samples):
+            embedding = None
+
+            try:
+                points = _load_sample_point_cloud(sample)
+                embedding = model.embed(points)
+            except Exception as e:
+                if not skip_failures:
+                    raise e
+
+                errors = True
+                logger.warning("Sample: %s\nError: %s\n", sample.id, e)
+
+            if embeddings_field is not None:
+                sample[embeddings_field] = embedding
+                ctx.save(sample)
+            else:
+                embeddings.append(embedding)
+
+    if embeddings_field is not None:
+        return None
+
+    if errors:
+        return embeddings  # may contain None, must return as list
+
+    if not embeddings:
+        return np.empty((0, 0), dtype=float)
+
+    return np.stack(embeddings)
+
+
+def _load_sample_point_cloud(sample):
+    import fiftyone.utils.utils3d as fou3d
+
+    filepath = sample.filepath
+    if filepath.endswith(".fo3d"):
+        pcd_path = fou3d._get_pcd_filepath_from_scene(filepath)
+        if pcd_path is None:
+            raise ValueError(
+                "Found no point cloud asset in 3D scene '%s'" % filepath
+            )
+    else:
+        pcd_path = filepath
+
+    pc = fou3d.o3d.io.read_point_cloud(pcd_path)
+    points = np.asarray(pc.points, dtype=np.float32)
+    if points.size == 0:
+        raise ValueError("Point cloud '%s' contains no points" % pcd_path)
+
+    return points
 
 
 def _compute_image_embeddings_single(
