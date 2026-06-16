@@ -66,7 +66,7 @@ class SampleTagsEndpoint(HTTPEndpoint):
         """Lists tags for the sample."""
 
         sample_id = _get_required_path_param(request, "sample_id")
-        return _list_temporal_tags(request, sample_id=sample_id)
+        return _list_tags(request, sample_id=sample_id)
 
     @decorators.route
     async def post(self, request: Request, data: dict) -> dict:
@@ -147,7 +147,7 @@ class TagsEndpoint(HTTPEndpoint):
     async def get(self, request: Request) -> dict:
         """Lists tags for the dataset."""
 
-        return _list_temporal_tags(request)
+        return _list_tags(request)
 
 
 class TagCountsEndpoint(HTTPEndpoint):
@@ -167,9 +167,7 @@ class TagCountsEndpoint(HTTPEndpoint):
         }
 
 
-def _list_temporal_tags(
-    request: Request, sample_id: str | None = None
-) -> dict:
+def _list_tags(request: Request, sample_id: str | None = None) -> dict:
     dataset = _get_dataset_from_request(request)
     tag_filter = _temporal_tag_filter_from_query(request, sample_id=sample_id)
 
