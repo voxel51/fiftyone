@@ -221,7 +221,7 @@ def decode(hilberts, num_dims, num_bits):
       num_dims=%d and num_bits=%d for %d bits total, which can't be encoded
       into a uint64.  Are you sure you need that many points on your Hilbert
       curve?
-      """ % (num_dims, num_bits))
+      """ % (num_dims, num_bits, num_dims * num_bits))
 
     # Handle the case where we got handed a naked integer.
     hilberts = torch.atleast_1d(hilberts)

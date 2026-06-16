@@ -16,6 +16,7 @@ from typing import Optional
 
 import numpy as np
 
+import fiftyone.core.config as foc
 import fiftyone.core.media as fom
 import fiftyone.core.models as fomo
 import fiftyone.core.utils as fou
@@ -46,18 +47,23 @@ _PTV3_BASE_CONFIG = {
     "enable_rpe": False,
     "upcast_attention": False,
     "enc_mode": False,
+    # Disable per-call serialization-order shuffling so a given point cloud
+    # always produces the same embedding (the upstream default randomizes the
+    # order each forward pass, which is meant for train-time augmentation and
+    # makes embeddings non-reproducible for similarity/dedup)
+    "shuffle_orders": False,
 }
 
 
-class PointTransformerV3Config(fomo.ModelConfig, fozm.HasZooModel):
+class PointTransformerV3ModelConfig(foc.Config, fozm.HasZooModel):
     """Configuration for running a :class:`PointTransformerV3Model`.
 
     Args:
         model_path (None): the path to the model weights to load. Populated
             automatically when loading from the model zoo
-        grid_size (0.025): the voxel grid size, in meters, used to serialize the
+        grid_size (0.05): the voxel grid size, in meters, used to serialize the
             point cloud before inference. Must match the value the checkpoint
-            was trained with
+            was trained with (0.05 m for the nuScenes ``PTv3-base`` backbone)
         feature_keys (("coord", "strength")): the per-point input features the
             backbone consumes, in order. ``"coord"`` expands to the three xyz
             columns; any other key consumes one column of the input cloud. The
@@ -68,10 +74,14 @@ class PointTransformerV3Config(fomo.ModelConfig, fozm.HasZooModel):
 
     def __init__(self, d):
         d = self.init(d)
-        super().__init__(d)
 
         self.model_path = self.parse_string(d, "model_path", default=None)
-        self.grid_size = self.parse_number(d, "grid_size", default=0.025)
+        self.grid_size = self.parse_number(d, "grid_size", default=0.05)
+        if self.grid_size <= 0:
+            raise ValueError(
+                "grid_size must be a positive value, in meters; found %s"
+                % (self.grid_size,)
+            )
         self.feature_keys = tuple(
             self.parse_array(
                 d, "feature_keys", default=["coord", "strength"]
@@ -85,8 +95,11 @@ class PointTransformerV3Model(fomo.Model, fomo.EmbeddingsMixin):
 
     The model maps a point cloud of shape ``(num_points, num_features)`` to a
     single embedding vector by mean-pooling the backbone's per-point features.
-    The input columns must match :attr:`PointTransformerV3Config.feature_keys`,
+    The input columns must match :attr:`PointTransformerV3ModelConfig.feature_keys`,
     e.g. ``(x, y, z, intensity)`` for the default nuScenes checkpoint.
+
+    Inference is GPU-only and peaks near 6 GB of VRAM on a full nuScenes-scale
+    sweep (~34k points); at least 8 GB is recommended.
 
     Example::
 
@@ -99,7 +112,7 @@ class PointTransformerV3Model(fomo.Model, fomo.EmbeddingsMixin):
         embedding = model.embed(cloud)                       # (64,)
 
     Args:
-        config: a :class:`PointTransformerV3Config`
+        config: a :class:`PointTransformerV3ModelConfig`
     """
 
     def __init__(self, config):
@@ -173,7 +186,7 @@ class PointTransformerV3Model(fomo.Model, fomo.EmbeddingsMixin):
 
         Args:
             arg: a ``(num_points, num_features)`` array whose columns match
-                :attr:`PointTransformerV3Config.feature_keys`
+                :attr:`PointTransformerV3ModelConfig.feature_keys`
 
         Returns:
             a :class:`fiftyone.core.labels.Label`-free embedding is stored; use
@@ -211,6 +224,9 @@ class PointTransformerV3Model(fomo.Model, fomo.EmbeddingsMixin):
                 "Expected a 2D (num_points, num_features) point cloud, but "
                 "found shape %s" % (cloud.shape,)
             )
+
+        if cloud.shape[0] == 0:
+            raise ValueError("Point cloud is empty; found 0 points")
 
         _, expected_width = self._coord_index
         if cloud.shape[1] < 3:

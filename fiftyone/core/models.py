@@ -1232,6 +1232,11 @@ def _compute_pointcloud_embeddings(
             "collections; found media type '%s'" % samples.media_type
         )
 
+    if embeddings_field is not None:
+        dataset = samples._dataset
+        if not dataset.has_sample_field(embeddings_field):
+            dataset.add_sample_field(embeddings_field, fof.VectorField)
+
     samples = _select_fields_for_embeddings(samples, embeddings_field)
 
     embeddings = []
@@ -1292,6 +1297,14 @@ def _load_sample_point_cloud(sample):
     points = np.asarray(pc.points, dtype=np.float32)
     if points.size == 0:
         raise ValueError("Point cloud '%s' contains no points" % pcd_path)
+
+    # FiftyOne stores per-point LiDAR intensity in the PCD color channel,
+    # normalized to [0, 1] by Open3D. Surface it as a fourth column so models
+    # trained with intensity (e.g. the nuScenes PTv3 backbone) receive it
+    # instead of a zero-filled feature
+    colors = np.asarray(pc.colors, dtype=np.float32)
+    if colors.ndim == 2 and colors.shape[0] == points.shape[0]:
+        points = np.concatenate([points, colors[:, :1]], axis=1)
 
     return points
 

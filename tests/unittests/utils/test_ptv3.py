@@ -10,13 +10,15 @@ import numpy as np
 import pytest
 import torch
 
+import fiftyone.core.models as fomo
 from fiftyone.utils.ptv3 import (
     PointTransformerV3Model,
+    PointTransformerV3ModelConfig,
     _load_backbone_state_dict,
 )
 
 
-def _make_model(feature_keys=("coord", "strength"), grid_size=0.025, forward=None):
+def _make_model(feature_keys=("coord", "strength"), grid_size=0.05, forward=None):
     """Builds a model with the heavy backbone load bypassed and a fake forward."""
     model = PointTransformerV3Model.__new__(PointTransformerV3Model)
     model._device = "cpu"
@@ -82,13 +84,18 @@ class TestBuildInput:
 
     def test_rejects_too_few_columns(self):
         model = _make_model()
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="at least 3 columns"):
             model._build_input(np.random.rand(10, 2).astype("float32"))
 
     def test_rejects_non_2d_input(self):
         model = _make_model()
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="2D"):
             model._build_input(np.random.rand(10).astype("float32"))
+
+    def test_rejects_empty_cloud(self):
+        model = _make_model()
+        with pytest.raises(ValueError, match="empty"):
+            model._build_input(np.zeros((0, 4), dtype=np.float32))
 
 
 class TestEmbed:
@@ -159,3 +166,73 @@ class TestStateDictLoading:
     def test_raises_when_no_model_path(self):
         with pytest.raises(ValueError):
             _load_backbone_state_dict(None)
+
+
+class TestConfig:
+    def test_default_grid_size_matches_checkpoint(self):
+        config = PointTransformerV3ModelConfig({})
+        assert config.grid_size == 0.05
+
+    def test_rejects_nonpositive_grid_size(self):
+        with pytest.raises(ValueError, match="grid_size"):
+            PointTransformerV3ModelConfig({"grid_size": 0})
+
+    def test_zoo_deployment_resolves_config_class(self):
+        # The eta ModelConfig wrapper resolves the leaf config as
+        # "<model-type>Config", so the class must be named
+        # PointTransformerV3ModelConfig for foz.load_zoo_model to work
+        deployment = {
+            "type": "fiftyone.utils.ptv3.PointTransformerV3Model",
+            "config": {
+                "model_path": "/tmp/ptv3.pth",
+                "grid_size": 0.05,
+                "feature_keys": ["coord", "strength"],
+            },
+        }
+        model_config = fomo.ModelConfig(deployment)
+        assert isinstance(model_config.config, PointTransformerV3ModelConfig)
+        assert model_config.config.grid_size == 0.05
+
+
+class TestLoadSamplePointCloud:
+    @staticmethod
+    def _patch_reader(monkeypatch, points, colors):
+        import fiftyone.utils.utils3d as fou3d
+
+        pc = type("PC", (), {})()
+        pc.points = points
+        pc.colors = colors
+
+        reader = type("IO", (), {})()
+        reader.read_point_cloud = staticmethod(lambda path: pc)
+
+        fake = type("O3d", (), {})()
+        fake.io = reader
+        monkeypatch.setattr(fou3d, "o3d", fake)
+
+    def test_appends_intensity_from_color_channel(self, monkeypatch):
+        from fiftyone.core.models import _load_sample_point_cloud
+
+        xyz = np.random.rand(12, 3)
+        rgb = np.random.rand(12, 3)  # FiftyOne stores intensity in R channel
+        self._patch_reader(monkeypatch, xyz, rgb)
+
+        sample = type("S", (), {"filepath": "/data/foo.pcd"})()
+        points = _load_sample_point_cloud(sample)
+
+        assert points.shape == (12, 4)
+        np.testing.assert_allclose(
+            points[:, 3], rgb[:, 0].astype("float32"), rtol=1e-6
+        )
+
+    def test_xyz_only_when_no_color_channel(self, monkeypatch):
+        from fiftyone.core.models import _load_sample_point_cloud
+
+        xyz = np.random.rand(12, 3)
+        empty = np.zeros((0, 3))  # Open3D returns no colors for xyz-only PCDs
+        self._patch_reader(monkeypatch, xyz, empty)
+
+        sample = type("S", (), {"filepath": "/data/foo.pcd"})()
+        points = _load_sample_point_cloud(sample)
+
+        assert points.shape == (12, 3)

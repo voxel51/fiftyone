@@ -10922,7 +10922,7 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.ptv3.PointTransformerV3Model",
                 "config": {
-                    "grid_size": 0.025,
+                    "grid_size": 0.05,
                     "feature_keys": ["coord", "strength"]
                 }
             },
