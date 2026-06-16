@@ -118,10 +118,10 @@ class SampleTemporalTagEndpoint(HTTPEndpoint):
         dataset = _get_dataset_from_request(request)
         sample_id = _get_required_path_param(request, "sample_id")
         tag_id = _get_required_path_param(request, "tag_id")
-        update = _temporal_tag_update_from_payload(
+        update = _tag_update_from_payload(
             data,
             sample_id=sample_id,
-            temporal_tag_id=tag_id,
+            tag_id=tag_id,
         )
 
         return {
@@ -304,13 +304,11 @@ def _delete_request_from_payload(data, sample_id: str) -> dict:
     }
 
 
-def _temporal_tag_update_from_payload(
-    data, *, sample_id: str, temporal_tag_id: str
-) -> dict:
+def _tag_update_from_payload(data, *, sample_id: str, tag_id: str) -> dict:
     _require_dict(data, "request body")
     _reject_temporal_tag_update_fields(data)
     _ensure_matching_sample_id(data.get("sample_id", None), sample_id)
-    _ensure_matching_temporal_tag_id(data.get("id", None), temporal_tag_id)
+    _ensure_matching_tag_id(data.get("id", None), tag_id)
 
     update = {
         "start": data.get("start", None),
@@ -428,14 +426,14 @@ def _ensure_matching_sample_id(value, sample_id: str) -> None:
         )
 
 
-def _ensure_matching_temporal_tag_id(value, temporal_tag_id: str) -> None:
+def _ensure_matching_tag_id(value, tag_id: str) -> None:
     if value is None:
         return
 
-    if str(value) != temporal_tag_id:
+    if str(value) != tag_id:
         raise HTTPException(
             status_code=400,
-            detail="'id' must match the path temporal_tag_id",
+            detail="'id' must match the path tag_id",
         )
 
 
