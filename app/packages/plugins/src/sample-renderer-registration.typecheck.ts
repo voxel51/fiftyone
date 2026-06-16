@@ -1,12 +1,14 @@
 import {
   PluginComponentType,
   registerComponent,
+  SAMPLE_RENDERER_GRID_SLOT,
   type SampleRendererProps,
   type SampleRendererRegistration,
   useActivePlugins,
 } from "./index";
 
 const PanelComponent = () => null;
+const GridHeaderComponent = () => null;
 const RendererComponent = (_props: SampleRendererProps) => null;
 
 export function typecheckRegisterComponent() {
@@ -31,6 +33,10 @@ export function typecheckRegisterComponent() {
       supports: { extensions: ["pdf"] },
       grid: {
         enabled: true,
+        slots: {
+          [SAMPLE_RENDERER_GRID_SLOT.HEADER_AFTER_RESOURCE_COUNT]:
+            GridHeaderComponent,
+        },
       },
     },
   });
