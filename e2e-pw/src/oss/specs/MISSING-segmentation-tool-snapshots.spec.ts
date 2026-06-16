@@ -166,6 +166,7 @@ test.describe.serial("segmentation tool snapshots", () => {
 
   test("merge", async ({
     annotateSDK,
+    datasetFactory,
     datasetName,
     fiftyoneLoader,
     modal,
@@ -173,23 +174,14 @@ test.describe.serial("segmentation tool snapshots", () => {
   }) => {
     // Pre-seed two adjacent mask detections so the merge test operates on a
     // known starting state — independent of the brush/pen flows.
-    await fiftyoneLoader.executePythonCode(`
-      import fiftyone as fo
-      import numpy as np
-
-      dataset = fo.load_dataset("${datasetName}")
-      sample = dataset.first()
-
-      mask = np.ones((50, 50), dtype=bool)
-      det_a = fo.Detection(
-        label="cat", bounding_box=[0.25, 0.4, 0.2, 0.2], mask=mask
-      )
-      det_b = fo.Detection(
-        label="cat", bounding_box=[0.55, 0.4, 0.2, 0.2], mask=mask
-      )
-      sample["instances"] = fo.Detections(detections=[det_a, det_b])
-      sample.save()
-    `);
+    await datasetFactory.seedDetections({
+      datasetName,
+      field: "instances",
+      detections: [
+        { label: "cat", boundingBox: [0.25, 0.4, 0.2, 0.2], maskSize: 50 },
+        { label: "cat", boundingBox: [0.55, 0.4, 0.2, 0.2], maskSize: 50 },
+      ],
+    });
     // Annotate the freshly-saved sample.
     void annotateSDK; // unused — kept so per-test fixture creation still runs
 
