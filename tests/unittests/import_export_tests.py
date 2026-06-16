@@ -187,7 +187,7 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
         tags_path = os.path.join(export_dir, TAGS_EXPORT_FILENAME)
         self.assertTrue(os.path.isfile(tags_path))
 
-        exported = etas.read_json(tags_path)["temporal_tags"]
+        exported = etas.read_json(tags_path)["tags"]
         self.assertEqual(len(exported), 3)
         for doc in exported:
             expected_keys = {
