@@ -54,7 +54,7 @@ export interface CreateTemporalTagsClientOptions {
 }
 
 /**
- * Creates a typed client for the multimodal temporal-tag HTTP routes.
+ * Creates a typed client for the tag HTTP routes.
  */
 export function createTemporalTagsClient(
   options: CreateTemporalTagsClientOptions = {}
