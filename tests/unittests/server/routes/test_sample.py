@@ -974,9 +974,7 @@ class TestCommitMask:
             scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
         )
 
-    def _make_commit_request(
-        self, dataset_id, sample_id, field, detection_id
-    ):
+    def _make_commit_request(self, dataset_id, sample_id, field, detection_id):
         """Build a mock POST request for the commit-mask endpoint."""
         mock_request = MagicMock()
         mock_request.headers = {}
@@ -1090,16 +1088,22 @@ class TestCommitMask:
         "setup, status, description",
         [
             (
-                {"field": "ground_truth", "det_kwargs": {
-                    "mask": np.ones((5, 5), dtype=np.uint8),
-                }},
+                {
+                    "field": "ground_truth",
+                    "det_kwargs": {
+                        "mask": np.ones((5, 5), dtype=np.uint8),
+                    },
+                },
                 400,
                 "mask but no mask_path",
             ),
             (
-                {"field": "ground_truth", "det_kwargs": {
-                    "mask_path": "/tmp/_placeholder.png",
-                }},
+                {
+                    "field": "ground_truth",
+                    "det_kwargs": {
+                        "mask_path": "/tmp/_placeholder.png",
+                    },
+                },
                 400,
                 "mask_path but no in-database mask",
             ),
@@ -1136,9 +1140,7 @@ class TestCommitMask:
                 field_name=setup["field"],
                 **det_kwargs,
             )
-            det_id = str(
-                sample[setup["field"]].detections[0].id
-            )
+            det_id = str(sample[setup["field"]].detections[0].id)
 
         request = self._make_commit_request(
             dataset_id, sample.id, setup["field"], det_id
@@ -1423,17 +1425,27 @@ class TestSampleFieldRoute:
         )
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("if_match", [None], indirect=True)
-    async def test_if_match_header_missing(
-        self, mutator, mock_request, sample, if_match
-    ):
+    async def test_if_match_header_missing(self, mutator, dataset_id, sample):
         """Tests that a 400 HTTPException is raised for a missing If-Match."""
         sample["primitive_field"] = "new_value"
         sample.save()
         sample.reload()
 
+        # Build a request with no If-Match header. The shared `mock_request`
+        # fixture always seeds one (via the parametrized `if_match` fixture),
+        # which would also fan this case out 3x; using a local request keeps
+        # it a single run.
         patch_payload = [{"op": "replace", "path": "/label", "value": "fish"}]
-        mock_request.body.return_value = json_payload(patch_payload)
+        mock_request = MagicMock(spec=Request)
+        mock_request.path_params = {
+            "dataset_id": dataset_id,
+            "sample_id": str(sample.id),
+            "field_path": "ground_truth.detections",
+            "field_id": str(self.DETECTION_ID_1),
+        }
+        mock_request.headers = {"Content-Type": "application/json"}
+        mock_request.query_params = {}
+        mock_request.body = AsyncMock(return_value=json_payload(patch_payload))
 
         with pytest.raises(HTTPException) as exc_info:
             #####
@@ -1444,7 +1456,6 @@ class TestSampleFieldRoute:
         assert exc_info.value.detail == "Invalid If-Match header"
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("if_match", _if_match_values, indirect=True)
     async def test_if_match_header_failure(
         self, mutator, mock_request, sample, if_match
     ):
