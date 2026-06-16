@@ -1,5 +1,4 @@
-import { useAnnotationEngine } from "@fiftyone/annotation";
-import { useCurrentSampleId } from "@fiftyone/state";
+import { useAnnotationEngine, useSceneSampleId } from "@fiftyone/annotation";
 import { useCallback } from "react";
 import type { OverlayLabel } from "../labels/loader";
 import type { Archetype3d } from "../types";
@@ -13,9 +12,9 @@ import type { Archetype3d } from "../types";
  */
 export const useSelect3DLabelForAnnotation = () => {
   const engine = useAnnotationEngine();
-  // 3D labels belong to the pinned 3D scene's sample (the working-store key),
-  // not the selected 2D slice in a grouped modal
-  const sample = useCurrentSampleId();
+  // 3D labels belong to the pinned 3D scene's sample (the working-store key
+  // the bridge registers), not the selected 2D slice in a grouped modal
+  const sample = useSceneSampleId();
 
   return useCallback(
     (label: OverlayLabel, _archetype?: Archetype3d) => {
