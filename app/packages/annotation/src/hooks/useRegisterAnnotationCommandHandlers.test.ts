@@ -2,10 +2,11 @@ import { vi, describe, it, expect, beforeEach } from "vitest";
 import { renderHook } from "@testing-library/react";
 
 vi.mock("@fiftyone/annotation", () => ({
+  useActiveAnnotationSampleId: vi.fn(),
+  useAnnotationEngine: vi.fn(),
   useAnnotationEventBus: vi.fn(),
   useDeleteLabel: vi.fn(),
   usePersistAnnotationDeltas: vi.fn(),
-  useSampleInstance: vi.fn(),
 }));
 
 vi.mock("@fiftyone/state", () => ({
@@ -25,10 +26,11 @@ vi.mock("@fiftyone/command-bus", async (importOriginal) => {
 });
 
 import {
+  useActiveAnnotationSampleId,
+  useAnnotationEngine,
   useAnnotationEventBus,
   useDeleteLabel,
   usePersistAnnotationDeltas,
-  useSampleInstance,
 } from "@fiftyone/annotation";
 import { useRegisterCommandHandler } from "@fiftyone/command-bus";
 import { useRecoilValue } from "recoil";
@@ -54,21 +56,22 @@ function makeCommand(
 describe("useRegisterAnnotationCommandHandlers", () => {
   let mockDeleteLabel: ReturnType<typeof vi.fn>;
   let mockPersist: ReturnType<typeof vi.fn>;
-  let mockSampleDeleteLabel: ReturnType<typeof vi.fn>;
+  let mockEngineDeleteLabel: ReturnType<typeof vi.fn>;
   let mockDispatch: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockDeleteLabel = vi.fn();
     mockPersist = vi.fn().mockResolvedValue(true);
-    mockSampleDeleteLabel = vi.fn();
+    mockEngineDeleteLabel = vi.fn();
     mockDispatch = vi.fn();
 
     vi.mocked(useDeleteLabel).mockReturnValue(mockDeleteLabel);
     vi.mocked(usePersistAnnotationDeltas).mockReturnValue(mockPersist);
-    vi.mocked(useSampleInstance).mockReturnValue({
-      deleteLabel: mockSampleDeleteLabel,
+    vi.mocked(useAnnotationEngine).mockReturnValue({
+      deleteLabel: mockEngineDeleteLabel,
     } as any);
+    vi.mocked(useActiveAnnotationSampleId).mockReturnValue("sample-1");
     vi.mocked(useAnnotationEventBus).mockReturnValue({
       dispatch: mockDispatch,
     } as any);
@@ -90,16 +93,17 @@ describe("useRegisterAnnotationCommandHandlers", () => {
   });
 
   describe("non-generated views", () => {
-    it("removes the label from Sample and persists immediately (not the legacy path)", async () => {
+    it("removes the label through the engine and persists immediately (not the legacy path)", async () => {
       const handler = getRegisteredHandler();
       const cmd = makeCommand({ labelId: "label-42" });
 
       await handler(cmd);
 
-      expect(mockSampleDeleteLabel).toHaveBeenCalledWith(
-        "predictions",
-        "label-42"
-      );
+      expect(mockEngineDeleteLabel).toHaveBeenCalledWith({
+        sample: "sample-1",
+        path: "predictions",
+        instanceId: "label-42",
+      });
       expect(mockPersist).toHaveBeenCalledTimes(1);
       expect(mockDeleteLabel).not.toHaveBeenCalled();
     });
@@ -185,10 +189,11 @@ describe("useRegisterAnnotationCommandHandlers", () => {
 
       await handler(cmd);
 
-      expect(mockSampleDeleteLabel).toHaveBeenCalledWith(
-        "predictions",
-        "label-3"
-      );
+      expect(mockEngineDeleteLabel).toHaveBeenCalledWith({
+        sample: "sample-1",
+        path: "predictions",
+        instanceId: "label-3",
+      });
       expect(mockDeleteLabel).toHaveBeenCalledWith(cmd.label, cmd.schema);
       expect(mockPersist).not.toHaveBeenCalled();
       expect(mockDispatch).toHaveBeenCalledWith("annotation:deleteSuccess", {

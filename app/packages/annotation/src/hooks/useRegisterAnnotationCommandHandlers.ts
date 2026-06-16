@@ -3,10 +3,11 @@
  */
 
 import {
+  useActiveAnnotationSampleId,
+  useAnnotationEngine,
   useAnnotationEventBus,
   useDeleteLabel,
   usePersistAnnotationDeltas,
-  useSampleInstance,
 } from "@fiftyone/annotation";
 import { useRegisterCommandHandler } from "@fiftyone/command-bus";
 import { isGeneratedView } from "@fiftyone/state";
@@ -20,7 +21,8 @@ import { DeleteAnnotationCommand } from "../commands";
  */
 export const useRegisterAnnotationCommandHandlers = () => {
   const eventBus = useAnnotationEventBus();
-  const sample = useSampleInstance();
+  const engine = useAnnotationEngine();
+  const activeSample = useActiveAnnotationSampleId();
   const deleteLabel = useDeleteLabel();
   const persistAnnotationDeltas = usePersistAnnotationDeltas();
   const isGenerated = useRecoilValue(isGeneratedView);
@@ -32,10 +34,17 @@ export const useRegisterAnnotationCommandHandlers = () => {
         const labelId = cmd.label.data._id;
 
         try {
-          // Remove the label from the shared Sample first, so a pending
-          // in-flight edit to it can't be re-added by the next persistence
-          // pass (the delete and any prior edit share the same field entry).
-          sample.deleteLabel(cmd.label.path, labelId);
+          // Remove the label first, so a pending in-flight edit to it can't be
+          // re-added by the next persistence pass (the delete and any prior edit
+          // share the same field entry). Route it through the engine — not a
+          // bare Sample mutation — so the delete lands on the value-based undo
+          // stack (Ctrl-Z re-creates it); the engine still mutates the shared
+          // Sample, so persistence and ordering are unchanged.
+          engine.deleteLabel({
+            sample: activeSample,
+            path: cmd.label.path,
+            instanceId: labelId,
+          });
 
           let success: boolean;
           if (isGenerated) {
@@ -90,7 +99,14 @@ export const useRegisterAnnotationCommandHandlers = () => {
           throw error;
         }
       },
-      [deleteLabel, eventBus, isGenerated, persistAnnotationDeltas, sample]
+      [
+        activeSample,
+        deleteLabel,
+        engine,
+        eventBus,
+        isGenerated,
+        persistAnnotationDeltas,
+      ]
     )
   );
 };
