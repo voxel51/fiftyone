@@ -32,7 +32,7 @@ from ._temporal_tags import (
     DEFAULT_INDEX_TYPE,
     SUPPORTED_INDEX_TYPES,
     TAGS_COLLECTION_NAME,
-    TEMPORAL_TAGS_EXPORT_FILENAME,
+    TAGS_EXPORT_FILENAME,
     TagKind,
     TemporalTag,
     TemporalTagFilter,
@@ -62,7 +62,7 @@ del _public_obj
 __all__ = [
     "DEFAULT_INDEX_TYPE",
     "SUPPORTED_INDEX_TYPES",
-    "TEMPORAL_TAGS_EXPORT_FILENAME",
+    "TAGS_EXPORT_FILENAME",
     "TAGS_COLLECTION_NAME",
     "TagKind",
     "TemporalTag",

@@ -36,7 +36,7 @@ import fiftyone.core.view as fov
 from fiftyone.multimodal.schemas import v1 as foms
 
 TAGS_COLLECTION_NAME = "tags"
-TEMPORAL_TAGS_EXPORT_FILENAME = "temporal_tags.json"
+TAGS_EXPORT_FILENAME = "tags.json"
 TEMPORAL_TAGS_EXPORT_KEY = "temporal_tags"
 
 DEFAULT_INDEX_TYPE = foms.TimeTrackType.TIME_TRACK_TYPE_DURATION_NS
@@ -1515,7 +1515,7 @@ def _ensure_kind(kind):
 __all__ = [
     "DEFAULT_INDEX_TYPE",
     "SUPPORTED_INDEX_TYPES",
-    "TEMPORAL_TAGS_EXPORT_FILENAME",
+    "TAGS_EXPORT_FILENAME",
     "TAGS_COLLECTION_NAME",
     "TagKind",
     "TemporalTag",

@@ -2188,7 +2188,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self._runs_dir = os.path.join(self.export_dir, "runs")
         self._metadata_path = os.path.join(self.export_dir, "metadata.json")
         self._temporal_tags_path = os.path.join(
-            self.export_dir, fommtt.TEMPORAL_TAGS_EXPORT_FILENAME
+            self.export_dir, fommtt.TAGS_EXPORT_FILENAME
         )
 
         if self.use_dirs:

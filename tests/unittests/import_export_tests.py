@@ -33,7 +33,7 @@ import fiftyone.utils.yolo as fouy
 from fiftyone import ViewField as F
 from fiftyone.multimodal.tags import (
     TAGS_COLLECTION_NAME,
-    TEMPORAL_TAGS_EXPORT_FILENAME,
+    TAGS_EXPORT_FILENAME,
 )
 
 from decorators import drop_collection, drop_datasets
@@ -176,7 +176,7 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
     @drop_tags
     @drop_datasets
     def test_fiftyone_dataset_temporal_tags_round_trip(self):
-        dataset, sample_ids = self._make_temporal_tag_dataset()
+        dataset, _ = self._make_temporal_tag_dataset()
         export_dir = self._new_dir()
 
         dataset.export(
@@ -184,7 +184,7 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
             dataset_type=fo.types.FiftyOneDataset,
         )
 
-        tags_path = os.path.join(export_dir, TEMPORAL_TAGS_EXPORT_FILENAME)
+        tags_path = os.path.join(export_dir, TAGS_EXPORT_FILENAME)
         self.assertTrue(os.path.isfile(tags_path))
 
         exported = etas.read_json(tags_path)["temporal_tags"]

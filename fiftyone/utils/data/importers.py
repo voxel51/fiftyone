@@ -1833,7 +1833,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._runs_dir = os.path.join(self.dataset_dir, "runs")
         self._metadata_path = os.path.join(self.dataset_dir, "metadata.json")
         self._temporal_tags_path = os.path.join(
-            self.dataset_dir, fommtt.TEMPORAL_TAGS_EXPORT_FILENAME
+            self.dataset_dir, fommtt.TAGS_EXPORT_FILENAME
         )
 
         if os.path.isdir(self._fields_dir):
