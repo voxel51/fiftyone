@@ -30,6 +30,7 @@ import type {
 } from "../types";
 import { MCAP_ACTIVE_TIMELINE } from "../types";
 import { useSetMcapDataStream } from "./mcap-data-stream-context";
+import { resetMcapPlaybackBuffering } from "./mcap-playback-buffering";
 import type { McapTimelineIndex } from "./mcap-timeline-index";
 import { createMcapTimelineIndex } from "./mcap-timeline-index";
 import { McapTopicCache } from "./mcap-topic-cache";
@@ -258,8 +259,7 @@ export function useRegisterMcapDataStream({
       setStreamValue(store, topic, null);
       setMcapTopicStatus(store, topic, "loading");
     }
-    setBufferingDetail(store, null);
-    setBufferedRanges(store, []);
+    resetMcapPlaybackBuffering(store);
     if (bufferedRangesTimerRef.current !== null) {
       clearTimeout(bufferedRangesTimerRef.current);
       bufferedRangesTimerRef.current = null;

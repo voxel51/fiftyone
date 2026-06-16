@@ -4,6 +4,7 @@ import {
   getIsBuffering,
   getStreamValue,
   PlaybackProvider,
+  setIsBuffering,
   usePlayback,
   usePlaybackStore,
   type PlaybackStore,
@@ -365,6 +366,50 @@ describe("stream status + buffering feedback", () => {
     await waitFor(() => {
       expect(getIsBuffering(store)).toBe(false);
       expect(getMcapTopicStatus(store, TOPIC)).toBe("ready");
+    });
+  });
+
+  it("clears stale buffering state when the source changes", async () => {
+    const sourceA = createSource("source-a");
+    const sourceB = createSource("source-b");
+    const storeCapture = capturePlaybackStore();
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(
+        () =>
+          new Promise<readonly McapSynchronizedMessageWindow[]>(() => undefined)
+      ),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+    });
+
+    const { rerender } = render(
+      <Harness
+        client={client}
+        onStore={storeCapture.onStore}
+        source={sourceA}
+      />,
+      { wrapper: TestProviders }
+    );
+    const store = storeCapture.store();
+    await waitFor(() => {
+      expect(client.readTimelineRange).toHaveBeenCalledTimes(1);
+    });
+
+    act(() => {
+      setIsBuffering(store, true);
+    });
+    expect(getIsBuffering(store)).toBe(true);
+
+    rerender(
+      <Harness
+        client={client}
+        onStore={storeCapture.onStore}
+        source={sourceB}
+      />
+    );
+
+    await waitFor(() => {
+      expect(client.readTimelineRange).toHaveBeenCalledTimes(2);
+      expect(getIsBuffering(store)).toBe(false);
     });
   });
 });
