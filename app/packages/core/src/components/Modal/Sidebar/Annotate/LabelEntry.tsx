@@ -1,11 +1,11 @@
 import {
   useActiveAnnotationSampleId,
   useAnnotationEngine,
+  useEngineSelector,
   useInteraction,
 } from "@fiftyone/annotation";
 import type { AnnotationLabel } from "@fiftyone/state";
 import { animated } from "@react-spring/web";
-import type { PrimitiveAtom } from "jotai";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import styled from "styled-components";
@@ -53,15 +53,17 @@ const Line = styled.div<{ fill: string }>`
   background: ${({ fill }) => fill};
 `;
 
-const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
-  const label = useAtomValue(atom);
-  const type = useAtomValue(fieldType(label.path ?? ""));
+const LabelEntry = ({ id, path }: { id: string; path: string }) => {
   const engine = useAnnotationEngine();
+  const sample = useActiveAnnotationSampleId();
+  const type = useAtomValue(fieldType(path ?? ""));
   const Icon = ICONS[type] ?? (() => null);
 
-  const id = label.overlay.id;
-  const path = label.path;
-  const sample = useActiveAnnotationSampleId();
+  // read the label declaratively by ref — the engine is the source of truth
+  const data = useEngineSelector(engine, (e) =>
+    sample ? e.getLabel({ sample, path, instanceId: id }) : undefined
+  );
+  const labelText = data?.label as string | undefined;
 
   // the sidebar reflects the selected slice; refs carry its id (from modal
   // state, so it's correct before the engine registers a store and stays
@@ -79,7 +81,18 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
     i.getHovered().some((ref) => ref.instanceId === id && ref.path === path)
   );
 
-  const color = useColor(label.overlay);
+  // color reads only `field` + `label` off the overlay (cf. the 3D rows) — a
+  // stub over the engine label is enough, no mounted Lighter overlay needed
+  const overlay = useMemo(
+    () =>
+      ({
+        id,
+        field: path,
+        label: data,
+      } as unknown as AnnotationLabel["overlay"]),
+    [id, path, data]
+  );
+  const color = useColor(overlay);
 
   return (
     <Container
@@ -98,13 +111,13 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
           <Icon fill={color} />
           <div
             style={{
-              ...(!label.data.label
+              ...(!labelText
                 ? { color, fontStyle: "italic", opacity: 0.7 }
                 : {}),
               ...{ paddingLeft: "8px" },
             }}
           >
-            {label.data.label || "(no label)"}
+            {labelText || "(no label)"}
           </div>
         </Column>
 

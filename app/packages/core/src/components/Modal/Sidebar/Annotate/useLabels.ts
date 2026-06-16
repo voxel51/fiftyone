@@ -20,11 +20,28 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import type { LabelType } from "./Edit/state";
 import {
+  activeLabelSchemas,
   isFieldReadOnly,
   labelSchemasData,
   visibleLabelSchemas,
 } from "./state";
 import { useSetEntranceLabel } from "./useAnnotationContextManager";
+
+/**
+ * The sidebar label list is ready to render once label schemas have been
+ * fetched (`activeLabelSchemas` is non-null) AND there is an active annotation
+ * sample to read from. This is the engine-readiness signal that replaces the
+ * old `labelsState` loading gate: the list reads the engine directly, so its
+ * gate keys on the engine's preconditions, not on a mirror-load lifecycle.
+ *
+ * Schemas arrive asynchronously via `get_label_schemas`; requiring non-null
+ * schemas keeps the gate from opening on a transient zero-result state.
+ */
+export const useAnnotationLabelsReady = (): boolean => {
+  const schemasLoaded = useAtomValue(activeLabelSchemas) !== null;
+  const sampleId = useActiveAnnotationSampleId();
+  return schemasLoaded && Boolean(sampleId);
+};
 
 export const addLabel = atom(
   undefined,
