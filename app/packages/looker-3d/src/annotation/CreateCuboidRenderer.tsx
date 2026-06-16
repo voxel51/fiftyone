@@ -4,13 +4,13 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { useEmptyCanvasInteraction } from "../hooks/use-empty-canvas-interaction";
+import { useSelect3DLabelForAnnotation } from "../hooks/useSelect3DLabelForAnnotation";
 import {
   annotationPlaneAtom,
   cuboidCreationStateAtom,
   currentActiveAnnotationField3dAtom,
   isCreatingCuboidAtom,
   isCreatingCuboidPointerDownAtom,
-  selectedLabelForAnnotationAtom,
 } from "../state";
 import { getPlaneFromPositionAndQuaternion } from "../utils";
 import { useCuboidOperations } from "./store/operations";
@@ -38,9 +38,7 @@ export const CreateCuboidRenderer = ({
   const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
   const [isCreatingCuboid, setIsCreatingCuboid] =
     useRecoilState(isCreatingCuboidAtom);
-  const setSelectedLabelForAnnotation = useSetRecoilState(
-    selectedLabelForAnnotationAtom
-  );
+  const selectForAnnotation = useSelect3DLabelForAnnotation();
   const { createCuboid } = useCuboidOperations();
   const annotationPlane = useRecoilValue(annotationPlaneAtom);
   const [creationState, setCreationState] = useRecoilState(
@@ -311,8 +309,12 @@ export const CreateCuboidRenderer = ({
 
         recordLastCreatedLabel(currentActiveField, labelClass);
 
-        setSelectedLabelForAnnotation({
+        // selection flows through the engine anchor: use3dInteractionAdapter
+        // attaches the transform controls + scene selection from one source
+        selectForAnnotation({
           _id: labelId,
+          path: currentActiveField,
+          selected: true,
           _cls: DETECTION,
           location,
           dimensions,
@@ -342,6 +344,7 @@ export const CreateCuboidRenderer = ({
       creationState.step,
       previewCuboid,
       createCuboid,
+      selectForAnnotation,
       handleClick,
       workingDoc,
     ]
