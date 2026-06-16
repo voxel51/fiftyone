@@ -1,33 +1,25 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  PLUGIN_COMPONENT_SLOT,
   PluginActivator,
   PluginComponentType,
-  componentHasSlot,
   registerComponent,
   unregisterComponent,
   useActivePlugins,
   usePluginComponent,
 } from "./registry";
-import type { ComponentOptions } from "./registry";
 
 const NullComponent = () => null;
 
 const registered: string[] = [];
 
-const register = (
-  name: string,
-  activator?: PluginActivator,
-  componentOptions?: ComponentOptions
-) => {
+const register = (name: string, activator?: PluginActivator) => {
   registerComponent<PluginComponentType.Component>({
     name,
     label: name,
     component: NullComponent,
     type: PluginComponentType.Component,
     activator,
-    componentOptions,
   });
   registered.push(name);
 };
@@ -125,27 +117,6 @@ describe("useActivePlugins: runtime behavior", () => {
     expect(() =>
       renderHook(() => useActivePlugins(PluginComponentType.Component, {}))
     ).not.toThrow();
-  });
-
-  it("lets callers filter generic components by explicit slot metadata", () => {
-    register("slotless", () => true);
-    register("grid-header", () => true, {
-      slots: [PLUGIN_COMPONENT_SLOT.GRID_HEADER_AFTER_RESOURCE_COUNT],
-    });
-
-    const { result } = renderHook(() =>
-      useActivePlugins(PluginComponentType.Component, {})
-    );
-    const slotComponents = result.current.filter((component) =>
-      componentHasSlot(
-        component,
-        PLUGIN_COMPONENT_SLOT.GRID_HEADER_AFTER_RESOURCE_COUNT
-      )
-    );
-
-    expect(slotComponents.map((component) => component.name)).toEqual([
-      "grid-header",
-    ]);
   });
 });
 

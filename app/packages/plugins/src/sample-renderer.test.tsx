@@ -5,11 +5,13 @@ import {
   createSampleRendererRenderContext,
   getFileExtension,
   getMatchingSampleRenderer,
+  getSampleRendererGridSlotComponent,
   getSampleRendererComponent,
   getSelectedMediaPath,
   hasMatchMediaMatchers,
   isSampleRendererGridEnabled,
   matchesMatchMedia,
+  SAMPLE_RENDERER_GRID_SLOT,
   sortSampleRenderersByPriority,
   supportsSampleRenderer,
 } from "./sample-renderer";
@@ -44,6 +46,7 @@ const createRegistration = (
     grid?: {
       enabled?: boolean;
       overrideComponent?: React.FunctionComponent<{ ctx: any }>;
+      slots?: Partial<Record<string, React.FunctionComponent>>;
     };
   }
 ) => ({
@@ -285,5 +288,42 @@ describe("sample renderer selection", () => {
     expect(getSampleRendererComponent(registration, "grid", canonical)).toBe(
       override
     );
+  });
+
+  it("returns a grid slot component only when grid rendering is enabled", () => {
+    const SlotComponent = () => <div>header</div>;
+    const enabledRegistration = createRegistration("enabled", {
+      supports: { extensions: ["pdf"] },
+      grid: {
+        enabled: true,
+        slots: {
+          [SAMPLE_RENDERER_GRID_SLOT.HEADER_AFTER_RESOURCE_COUNT]:
+            SlotComponent,
+        },
+      },
+    });
+    const disabledRegistration = createRegistration("disabled", {
+      supports: { extensions: ["pdf"] },
+      grid: {
+        enabled: false,
+        slots: {
+          [SAMPLE_RENDERER_GRID_SLOT.HEADER_AFTER_RESOURCE_COUNT]:
+            SlotComponent,
+        },
+      },
+    });
+
+    expect(
+      getSampleRendererGridSlotComponent(
+        enabledRegistration,
+        SAMPLE_RENDERER_GRID_SLOT.HEADER_AFTER_RESOURCE_COUNT
+      )
+    ).toBe(SlotComponent);
+    expect(
+      getSampleRendererGridSlotComponent(
+        disabledRegistration,
+        SAMPLE_RENDERER_GRID_SLOT.HEADER_AFTER_RESOURCE_COUNT
+      )
+    ).toBeNull();
   });
 });
