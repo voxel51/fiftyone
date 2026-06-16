@@ -4,6 +4,7 @@ import {
   type GeometrySignal,
   useActiveAnnotationSampleId,
   useAnnotationEngine,
+  useEngineSelector,
   useSignalValue,
 } from "@fiftyone/annotation";
 import { usePushUndoable } from "@fiftyone/commands";
@@ -64,20 +65,30 @@ export default function Position({ readOnly = false }: PositionProps) {
   const dataset = useCurrentDatasetId() ?? "";
   const { createPushAndExec } = usePushUndoable();
 
-  // committed baseline — the box's stored RELATIVE bounds, shown directly
-  // (the sidebar shows the data model; absolute pixels are arbitrary and drift
-  // through the relative round-trip)
+  // committed baseline — the box's stored RELATIVE bounds, read reactively from
+  // the engine so it re-syncs on EVERY committed change (drag-end, number input,
+  // undo/redo); absolute pixels are arbitrary and drift through the round-trip.
+  const committedBounds = useEngineSelector(engine, (e) =>
+    overlay && sample
+      ? (e.getLabel({
+          sample,
+          path: overlay.field,
+          instanceId: overlay.id,
+        })?.bounding_box as number[] | undefined)
+      : undefined
+  );
+
   useEffect(() => {
-    if (!(overlay instanceof DetectionOverlay) || !overlay.hasValidBounds()) {
+    if (!committedBounds || committedBounds.length !== 4) {
       return;
     }
 
-    const b = overlay.relativeBounds;
+    const [x, y, width, height] = committedBounds;
     setState({
-      position: { x: b.x, y: b.y },
-      dimensions: { width: b.width, height: b.height },
+      position: { x, y },
+      dimensions: { width, height },
     });
-  }, [overlay]);
+  }, [committedBounds]);
 
   // LIVE geometry from the engine — the 2D scene publishes mid-drag relative
   // bounds; we render them directly, never touching Lighter. Render-only: the

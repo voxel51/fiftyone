@@ -3,6 +3,7 @@ import {
   GEOMETRY_SIGNAL,
   type GeometrySignal,
   useAnnotationEngine,
+  useEngineSelector,
   useSceneSampleId,
   useSignalValue,
 } from "@fiftyone/annotation";
@@ -72,32 +73,45 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
   const sample = useSceneSampleId();
   const dataset = useCurrentDatasetId() ?? "";
 
-  // committed baseline — the cuboid's stored geometry read from the engine-fed
-  // form data (the sidebar no longer reaches into looker-3d's working/transient
-  // store; mid-gesture changes arrive via the GEOMETRY signal below)
+  // committed baseline — the cuboid's stored geometry read reactively from the
+  // engine so it re-syncs on EVERY committed change (drag-end, number input,
+  // undo/redo). The sidebar never reaches into looker-3d's working/transient
+  // store; mid-gesture changes arrive via the GEOMETRY signal below.
+  const committed = useEngineSelector(engine, (e) =>
+    labelId && field && sample
+      ? (e.getLabel({ sample, path: field, instanceId: labelId }) as
+          | DetectionLabel
+          | undefined)
+      : undefined
+  );
+
   useEffect(() => {
-    if (data?._cls !== DETECTION || !data.location || !data.dimensions) {
+    if (
+      committed?._cls !== DETECTION ||
+      !committed.location ||
+      !committed.dimensions
+    ) {
       return;
     }
 
-    const rotation = data.quaternion
-      ? quaternionToRadians(data.quaternion)
-      : data.rotation ?? [0, 0, 0];
+    const rotation = committed.quaternion
+      ? quaternionToRadians(committed.quaternion)
+      : committed.rotation ?? [0, 0, 0];
 
     setTransformState({
       position: {
-        x: data.location[0],
-        y: data.location[1],
-        z: data.location[2],
+        x: committed.location[0],
+        y: committed.location[1],
+        z: committed.location[2],
       },
       dimensions: {
-        lx: data.dimensions[0],
-        ly: data.dimensions[1],
-        lz: data.dimensions[2],
+        lx: committed.dimensions[0],
+        ly: committed.dimensions[1],
+        lz: committed.dimensions[2],
       },
       rotation: { rx: rotation[0], ry: rotation[1], rz: rotation[2] },
     });
-  }, [data]);
+  }, [committed]);
 
   // LIVE geometry from the engine — the 3D scene publishes mid-gesture ABSOLUTE
   // location/dimensions/quaternion; we render it directly. Render-only: the
