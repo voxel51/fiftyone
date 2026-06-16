@@ -28,7 +28,7 @@
         "@testing-library/react-hooks": "latest",
         "babel-plugin-relay": "^14.1.0",
         "prettier": "^2.7.1",
-        "vite": "^7.3.2"
+        "vite": "^7.3.5"
     },
     "dependencies": {
         "@fiftyone/looker": "*",

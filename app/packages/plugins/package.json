@@ -23,7 +23,7 @@
         "@fiftyone/utilities": "workspace:^",
         "jest": "^29.7.0",
         "prettier": "2.2.1",
-        "vite": "^7.3.2"
+        "vite": "^7.3.5"
     },
     "dependencies": {
         "moment": "^2.29.4"

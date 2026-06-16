@@ -20,7 +20,7 @@
         "@voxel51/voodo": "^0.0.34"
     },
     "devDependencies": {
-        "vite": "^7.3.2",
+        "vite": "^7.3.5",
         "vite-plugin-externals": "^0.5.0"
     },
     "fiftyone": {
