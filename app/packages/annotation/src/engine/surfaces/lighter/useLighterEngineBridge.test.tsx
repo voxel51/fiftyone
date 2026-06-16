@@ -30,8 +30,9 @@ vi.mock("./lighterBridge", () => ({
   createLighterBridge: () => ({ clear: vi.fn() }),
 }));
 vi.mock("./adapters", () => ({ lighterAdapters: {} }));
+const mockCommit = vi.fn();
 vi.mock("../../react/useSurfaceBridge", () => ({
-  useSurfaceBridge: () => ({}),
+  useSurfaceBridge: () => ({ commit: mockCommit }),
 }));
 
 const { useLighterEngineBridge } = await import("./useLighterEngineBridge");
@@ -95,5 +96,75 @@ describe("useLighterEngineBridge — overlay-all-unhover", () => {
     allUnhover();
 
     expect(mockPruneHovered).toHaveBeenCalledWith([]);
+  });
+});
+
+describe("useLighterEngineBridge — mask gesture coalescing", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    handlers.clear();
+    ownedIds.clear();
+  });
+
+  const mount = () =>
+    renderHook(() =>
+      useLighterEngineBridge({
+        engine: makeEngine(),
+        sample: "s1",
+        dataset: "ds",
+      })
+    );
+
+  const fire = (event: string, overlayId: string) =>
+    handlers.get(event)?.({ overlayId });
+
+  const keyOf = (call: number): string | undefined =>
+    mockCommit.mock.calls[call]?.[1]?.undoKey;
+
+  it("shares one undoKey across a paint-end and its async mask re-commit", () => {
+    ownedIds.add("a");
+    mount();
+
+    fire("lighter:overlay-paint-end", "a");
+    fire("lighter:overlay-label-updated", "a");
+
+    expect(mockCommit).toHaveBeenCalledTimes(2);
+    expect(keyOf(0)).toBeTruthy();
+    expect(keyOf(1)).toBe(keyOf(0));
+  });
+
+  it("shares one undoKey across establish + paint-end + the async mask tail", () => {
+    ownedIds.add("a");
+    mount();
+
+    fire("lighter:overlay-establish", "a");
+    fire("lighter:overlay-paint-end", "a");
+    fire("lighter:overlay-label-updated", "a");
+
+    expect(mockCommit).toHaveBeenCalledTimes(3);
+    expect(keyOf(0)).toBeTruthy();
+    expect(keyOf(1)).toBe(keyOf(0));
+    expect(keyOf(2)).toBe(keyOf(0));
+  });
+
+  it("gives the next gesture a distinct key so independent edits don't merge", () => {
+    ownedIds.add("a");
+    mount();
+
+    fire("lighter:overlay-paint-end", "a");
+    fire("lighter:overlay-label-updated", "a");
+    fire("lighter:overlay-paint-end", "a");
+
+    expect(keyOf(2)).toBeTruthy();
+    expect(keyOf(2)).not.toBe(keyOf(0));
+  });
+
+  it("leaves a standalone label-updated (no preceding finalize) uncoalesced", () => {
+    ownedIds.add("a");
+    mount();
+
+    fire("lighter:overlay-label-updated", "a");
+
+    expect(mockCommit).toHaveBeenCalledWith({ id: "a" }, undefined);
   });
 });

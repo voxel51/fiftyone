@@ -16,7 +16,7 @@ import {
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import type { AnnotationEngine } from "../../core/engine";
 import { encodeEntityId } from "../../identity/entityId";
@@ -92,17 +92,68 @@ export const useLighterEngineBridge = ({
     [scene, surface]
   );
 
-  // WRITE-HALF: finalize events → commit (upsert by the overlay's durable id)
+  // Gesture coalescing: drawing a masked detection commits in several steps —
+  // establish (create) + paint-end (geometry) synchronously, then a re-commit of
+  // the encoded mask in a later tick (the encode is async — see
+  // DetectionOverlay.paintEnd). Each would otherwise land as its own undo entry.
+  // A gesture spans from its first finalize until the async mask tail resolves:
+  // we mint one key on the first finalize and REUSE it for every commit until the
+  // tail (overlay-label-updated) consumes and clears it, so all share one undoKey
+  // and a single Ctrl-Z reverts the whole draw. A later edit (no in-flight key)
+  // mints a fresh key, so independent edits stay separate undo units.
+  const gestureEpoch = useRef(0);
+  const pendingMaskKey = useRef(new Map<string, string>());
+
+  const gestureKeyFor = useCallback((overlayId: string) => {
+    const inFlight = pendingMaskKey.current.get(overlayId);
+
+    if (inFlight) {
+      return inFlight;
+    }
+
+    const key = `${overlayId}:${(gestureEpoch.current += 1)}`;
+    pendingMaskKey.current.set(overlayId, key);
+    return key;
+  }, []);
+
+  const commitWithMaskTail = useCallback(
+    (event: { overlayId: string }) => {
+      const key = gestureKeyFor(event.overlayId);
+      surface.commit((scene as Scene2D).getOverlay(event.overlayId), {
+        undoKey: key,
+      });
+    },
+    [gestureKeyFor, scene, surface]
+  );
+
+  const commitMaskTail = useCallback(
+    (event: { overlayId: string }) => {
+      // async encode resolved: inherit the in-flight gesture key (if any) and end
+      // the gesture; an unrelated label-updated finds nothing and stays independent
+      const key = pendingMaskKey.current.get(event.overlayId);
+      pendingMaskKey.current.delete(event.overlayId);
+      surface.commit(
+        (scene as Scene2D).getOverlay(event.overlayId),
+        key ? { undoKey: key } : undefined
+      );
+    },
+    [scene, surface]
+  );
+
+  // WRITE-HALF: finalize events → commit (upsert by the overlay's durable id).
+  // establish + paint-end produce an async mask tail, so they coalesce; drag /
+  // resize / keypoint are single synchronous commits (no tail) and stay plain.
   on("lighter:overlay-drag-end", commitOverlay);
   on("lighter:overlay-resize-end", commitOverlay);
-  on("lighter:overlay-paint-end", commitOverlay);
-  on("lighter:overlay-establish", commitOverlay);
+  on("lighter:overlay-paint-end", commitWithMaskTail);
+  on("lighter:overlay-establish", commitWithMaskTail);
   on("lighter:keypoint-point-added", commitOverlay);
   on("lighter:keypoint-point-moved", commitOverlay);
   on("lighter:keypoint-point-deleted", commitOverlay);
-  // TRANSITIONAL: the legacy sidebar-attr route (sidebar → overlay → engine).
-  // End state: the sidebar writes the engine directly and this retires.
-  on("lighter:overlay-label-updated", commitOverlay);
+  // TRANSITIONAL: the legacy sidebar-attr route (sidebar → overlay → engine),
+  // also the async mask-encode re-commit. End state: the sidebar writes the
+  // engine directly and this retires.
+  on("lighter:overlay-label-updated", commitMaskTail);
 
   // LIVE GEOMETRY: republish mid-drag bounds as a signal so observers (the
   // sidebar position panel) preview the gesture without subscribing to Lighter.

@@ -38,8 +38,13 @@ export interface SurfaceController<Handle> extends SurfaceActions {
   /**
    * Existing-label edit: adapter dispatch → `toLabel` → `updateLabel`, in one
    * transaction. No-ops on an undefined handle or an empty/null partial.
+   *
+   * `undoKey` coalesces this commit with consecutive same-key commits into one
+   * undo unit — a gesture whose commits straddle an async boundary (a mask
+   * whose encode finalizes after the synchronous geometry commit) shares one
+   * key so a single Ctrl-Z reverts the whole gesture.
    */
-  commit(handle: Handle | undefined): void;
+  commit(handle: Handle | undefined, opts?: { undoKey?: string }): void;
 
   /** Fresh create: mint instanceId, write, return the ref (caller re-ids its draft). */
   create(handle: Handle): LabelRef | undefined;
@@ -121,7 +126,7 @@ export const createSurfaceController = <Handle, Descriptor>({
   return {
     ...actions,
 
-    commit: (handle) => {
+    commit: (handle, opts) => {
       if (handle === undefined) {
         return;
       }
@@ -138,7 +143,15 @@ export const createSurfaceController = <Handle, Descriptor>({
       bridge.isWriting = true;
 
       try {
-        actions.updateLabel(bridge.refOf(handle), partial);
+        const ref = bridge.refOf(handle);
+
+        if (opts?.undoKey) {
+          actions.transaction(() => actions.updateLabel(ref, partial), {
+            undoKey: opts.undoKey,
+          });
+        } else {
+          actions.updateLabel(ref, partial);
+        }
       } finally {
         bridge.isWriting = false;
       }
