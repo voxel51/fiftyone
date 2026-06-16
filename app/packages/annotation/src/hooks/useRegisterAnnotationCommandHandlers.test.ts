@@ -15,6 +15,8 @@ vi.mock("@fiftyone/command-bus", async (importOriginal) => {
 
 vi.mock("@fiftyone/state", () => ({
   useModalSample: vi.fn(),
+  useIsGroupMain2dViewerVisible: vi.fn(() => true),
+  useStableSceneSample3d: vi.fn(),
 }));
 
 vi.mock("../persistence/useGetLabelDelta", () => ({
