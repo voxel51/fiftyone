@@ -2,7 +2,11 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { DeleteAnnotationCommand, getFieldSchema } from "@fiftyone/annotation";
+import {
+  DeleteAnnotationCommand,
+  getFieldSchema,
+  useAnnotationEngine,
+} from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
 import { DetectionOverlay, useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
@@ -48,6 +52,7 @@ export interface MergeTool {
 export const useMergeTool = (): MergeTool => {
   const [mergeTargetId, setMergeTargetId] = useAtom(mergeTargetIdAtom);
   const commandBus = useCommandBus();
+  const engine = useAnnotationEngine();
   const { scene } = useLighter();
   const { getLabelById } = useLabelsContext();
   const fieldSchema = useRecoilValue(
@@ -101,9 +106,15 @@ export const useMergeTool = (): MergeTool => {
       const schema = getFieldSchema(fieldSchema, sourceLabel.path);
       if (!schema) return true;
 
+      // One gesture id tags every commit this merge causes — the target's bbox
+      // + async mask re-encode (stamped onto the events `mergeFrom` emits, read
+      // by the engine bridge) and the source delete (below) — so a single Ctrl-Z
+      // reverts the whole merge. Scoped to these writes: nothing else coalesces.
+      const gestureId = engine.mintGestureId();
+
       // 1. Merge source mask into target. The merged-target commits flow
       // through the engine (captured for undo); snapshots back the rollback.
-      if (!targetOverlay.mergeFrom(overlay)) return true;
+      if (!targetOverlay.mergeFrom(overlay, gestureId)) return true;
       const paintData = targetOverlay.getPaintStrokeData();
       if (!paintData) return true;
 
@@ -116,7 +127,7 @@ export const useMergeTool = (): MergeTool => {
         // reverting the merge (target commits + the source delete).
         try {
           await commandBus.execute(
-            new DeleteAnnotationCommand(sourceLabel, schema)
+            new DeleteAnnotationCommand(sourceLabel, schema, gestureId)
           );
         } catch (err) {
           targetOverlay.restoreMaskSnapshot(
@@ -134,6 +145,7 @@ export const useMergeTool = (): MergeTool => {
     },
     [
       commandBus,
+      engine,
       fieldSchema,
       getLabelById,
       mergeTargetId,

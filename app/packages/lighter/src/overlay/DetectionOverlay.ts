@@ -1332,7 +1332,7 @@ export class DetectionOverlay
    * Returns `true` on success, `false` if the source has no decoded mask
    * (e.g. still loading).
    */
-  mergeFrom(source: DetectionOverlay): boolean {
+  mergeFrom(source: DetectionOverlay, gestureId?: string): boolean {
     const sourceSource = source.mask?.getPreviewSource();
     if (!this.mask || !sourceSource) return false;
 
@@ -1346,12 +1346,14 @@ export class DetectionOverlay
         // after the synchronous `overlay-label-updated` dispatch below has
         // already run (and read an empty pending mask). Re-emit so the
         // write-half re-reads the overlay and captures the merged mask —
-        // the same dance as `onPointerUp`'s paint-end.
+        // the same dance as `onPointerUp`'s paint-end. `gestureId` correlates
+        // this async commit to the same merge gesture as the sync one below.
         this.eventBus.dispatch("lighter:overlay-label-updated", {
           id: this.id,
           overlayId: this.id,
           label: this.label,
           hasMask: this.hasMask(),
+          gestureId,
         });
       }
     );
@@ -1372,6 +1374,7 @@ export class DetectionOverlay
       overlayId: this.id,
       label: updatedLabel,
       hasMask: this.hasMask(),
+      gestureId,
     });
 
     return true;

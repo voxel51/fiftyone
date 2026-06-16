@@ -45,6 +45,12 @@ export type LighterEventGroup = {
     overlayId: string;
     label: RawLookerLabel;
     hasMask: boolean;
+    /**
+     * Optional id correlating this update to a multi-commit gesture (e.g. a
+     * merge): the engine bridge stamps it on the commit so every write the
+     * gesture causes — even across async ticks — shares one undo unit.
+     */
+    gestureId?: string;
   };
 
   // ============================================================================

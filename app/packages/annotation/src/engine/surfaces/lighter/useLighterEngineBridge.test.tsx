@@ -167,4 +167,23 @@ describe("useLighterEngineBridge — mask gesture coalescing", () => {
 
     expect(mockCommit).toHaveBeenCalledWith({ id: "a" }, undefined);
   });
+
+  it("stamps the event's gestureId on the commit (merge), so its commits share one key", () => {
+    ownedIds.add("t");
+    mount();
+
+    // the two label-updateds a merge emits (sync bbox + async mask re-encode)
+    // both carry the gesture id, so they coalesce regardless of timing
+    handlers.get("lighter:overlay-label-updated")?.({
+      overlayId: "t",
+      gestureId: "gesture:9",
+    });
+    handlers.get("lighter:overlay-label-updated")?.({
+      overlayId: "t",
+      gestureId: "gesture:9",
+    });
+
+    expect(keyOf(0)).toBe("gesture:9");
+    expect(keyOf(1)).toBe("gesture:9");
+  });
 });

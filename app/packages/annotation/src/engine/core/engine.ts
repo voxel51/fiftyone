@@ -85,6 +85,9 @@ export class AnnotationEngine {
   private txChanges: LabelChange[] = [];
   private txDisplayPending = false;
 
+  // monotonic source of unique gesture keys (see mintGestureKey)
+  private gestureEpoch = 0;
+
   constructor() {
     this.interaction = new InteractionState(this.guard);
     this.signals = new SignalPipe(this.guard);
@@ -251,6 +254,16 @@ export class AnnotationEngine {
 
     this.dispatchChanges(changes);
     return result;
+  }
+
+  /**
+   * Mint a fresh, unique gesture id. Pass it as a transaction's `undoKey` for
+   * every commit a multi-commit gesture makes (directly, or by stamping it on
+   * the events a surface re-emits) so they undo/redo as one unit. Scoped to the
+   * gesture's own writes — nothing else can pick it up.
+   */
+  mintGestureId(): string {
+    return `gesture:${(this.gestureEpoch += 1)}`;
   }
 
   // ---- undo ----

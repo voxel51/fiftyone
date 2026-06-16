@@ -39,7 +39,11 @@ import type { LabelProxy } from "../deltas";
 import type { Field } from "@fiftyone/utilities";
 
 function makeCommand(
-  overrides: Partial<{ labelId: string; labelType: string }> = {}
+  overrides: Partial<{
+    labelId: string;
+    labelType: string;
+    gestureId: string;
+  }> = {}
 ) {
   const labelId = overrides.labelId ?? "label-1";
   const labelType = overrides.labelType ?? "Detection";
@@ -50,6 +54,7 @@ function makeCommand(
       data: { _id: labelId, label: "cat" },
     } as LabelProxy,
     schema: { name: "detections" } as Field,
+    gestureId: overrides.gestureId,
   };
 }
 
@@ -57,6 +62,7 @@ describe("useRegisterAnnotationCommandHandlers", () => {
   let mockDeleteLabel: ReturnType<typeof vi.fn>;
   let mockPersist: ReturnType<typeof vi.fn>;
   let mockEngineDeleteLabel: ReturnType<typeof vi.fn>;
+  let mockEngineTransaction: ReturnType<typeof vi.fn>;
   let mockDispatch: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -64,12 +70,15 @@ describe("useRegisterAnnotationCommandHandlers", () => {
     mockDeleteLabel = vi.fn();
     mockPersist = vi.fn().mockResolvedValue(true);
     mockEngineDeleteLabel = vi.fn();
+    // run the body so the wrapped deleteLabel still executes
+    mockEngineTransaction = vi.fn((fn: () => void) => fn());
     mockDispatch = vi.fn();
 
     vi.mocked(useDeleteLabel).mockReturnValue(mockDeleteLabel);
     vi.mocked(usePersistAnnotationDeltas).mockReturnValue(mockPersist);
     vi.mocked(useAnnotationEngine).mockReturnValue({
       deleteLabel: mockEngineDeleteLabel,
+      transaction: mockEngineTransaction,
     } as any);
     vi.mocked(useActiveAnnotationSampleId).mockReturnValue("sample-1");
     vi.mocked(useAnnotationEventBus).mockReturnValue({
@@ -106,6 +115,28 @@ describe("useRegisterAnnotationCommandHandlers", () => {
       });
       expect(mockPersist).toHaveBeenCalledTimes(1);
       expect(mockDeleteLabel).not.toHaveBeenCalled();
+      // no gesture id → delete is its own undo unit, not wrapped in a keyed tx
+      expect(mockEngineTransaction).not.toHaveBeenCalled();
+    });
+
+    it("keys the delete with the command's gestureId when one is given (merge)", async () => {
+      const handler = getRegisteredHandler();
+
+      await handler(
+        makeCommand({ labelId: "label-42", gestureId: "gesture:1" })
+      );
+
+      // wrapped in a transaction carrying the gesture id, so the delete
+      // coalesces into the gesture's single undo unit
+      expect(mockEngineTransaction).toHaveBeenCalledTimes(1);
+      expect(mockEngineTransaction.mock.calls[0][1]).toEqual({
+        undoKey: "gesture:1",
+      });
+      expect(mockEngineDeleteLabel).toHaveBeenCalledWith({
+        sample: "sample-1",
+        path: "predictions",
+        instanceId: "label-42",
+      });
     });
 
     it("dispatches deleteSuccess + persistenceSuccess when persistence succeeds", async () => {

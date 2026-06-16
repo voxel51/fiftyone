@@ -127,10 +127,14 @@ export const useLighterEngineBridge = ({
   );
 
   const commitMaskTail = useCallback(
-    (event: { overlayId: string }) => {
-      // async encode resolved: inherit the in-flight gesture key (if any) and end
-      // the gesture; an unrelated label-updated finds nothing and stays independent
-      const key = pendingMaskKey.current.get(event.overlayId);
+    (event: { overlayId: string; gestureId?: string }) => {
+      // A gestureId on the event correlates this commit to a multi-commit gesture
+      // (e.g. a merge stamps it on the events mergeFrom emits) — only the
+      // gesture's own writes carry it, so unrelated writes never coalesce. Else
+      // fall back to the in-flight per-overlay paint key (consume-once); a plain
+      // label-updated finds neither and stays its own undo unit.
+      const key =
+        event.gestureId ?? pendingMaskKey.current.get(event.overlayId);
       pendingMaskKey.current.delete(event.overlayId);
       surface.commit(
         (scene as Scene2D).getOverlay(event.overlayId),

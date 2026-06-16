@@ -39,12 +39,21 @@ export const useRegisterAnnotationCommandHandlers = () => {
           // share the same field entry). Route it through the engine — not a
           // bare Sample mutation — so the delete lands on the value-based undo
           // stack (Ctrl-Z re-creates it); the engine still mutates the shared
-          // Sample, so persistence and ordering are unchanged.
-          engine.deleteLabel({
+          // Sample, so persistence and ordering are unchanged. A gesture's
+          // `undoKey` (e.g. a merge's) coalesces this delete into its one unit.
+          const ref = {
             sample: activeSample,
             path: cmd.label.path,
             instanceId: labelId,
-          });
+          };
+
+          if (cmd.gestureId) {
+            engine.transaction(() => engine.deleteLabel(ref), {
+              undoKey: cmd.gestureId,
+            });
+          } else {
+            engine.deleteLabel(ref);
+          }
 
           let success: boolean;
           if (isGenerated) {

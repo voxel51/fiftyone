@@ -239,6 +239,34 @@ describe("engine undo", () => {
     expect(engine.canUndo()).toBe(false);
   });
 
+  it("mintGestureId yields unique keys that coalesce a gesture's commits", () => {
+    const { engine } = makeEngine("sample-1", {
+      ground_truth: {
+        detections: [makeDet("d1", "cat"), makeDet("d2", "dog")],
+      },
+    });
+
+    const a = engine.mintGestureId();
+    const b = engine.mintGestureId();
+    expect(a).not.toBe(b);
+
+    // two commits tagged with one gesture id are one undo unit
+    engine.transaction(
+      () => engine.updateLabel(ref("ground_truth", "d1"), { label: "lion" }),
+      { undoKey: a }
+    );
+    engine.transaction(() => engine.deleteLabel(ref("ground_truth", "d2")), {
+      undoKey: a,
+    });
+
+    engine.undo();
+    expect(engine.getLabel(ref("ground_truth", "d1"))?.label).toBe("cat");
+    expect(engine.getLabel(ref("ground_truth", "d2"))).toEqual(
+      makeDet("d2", "dog")
+    );
+    expect(engine.canUndo()).toBe(false);
+  });
+
   it("does not record undo/redo replays or no-op transactions", () => {
     const { engine } = makeEngine();
 
