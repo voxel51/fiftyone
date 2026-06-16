@@ -117,7 +117,7 @@ class SampleTemporalTagEndpoint(HTTPEndpoint):
 
         dataset = _get_dataset_from_request(request)
         sample_id = _get_required_path_param(request, "sample_id")
-        temporal_tag_id = _get_required_path_param(request, "temporal_tag_id")
+        temporal_tag_id = _get_required_path_param(request, "tag_id")
         update = _temporal_tag_update_from_payload(
             data,
             sample_id=sample_id,
@@ -502,7 +502,7 @@ def _reject_temporal_tag_update_fields(record: dict) -> None:
 MultimodalRoutes = [
     # Update one temporal tag scoped by sample.
     (
-        "/dataset/{dataset_id}/sample/{sample_id}/tags/{temporal_tag_id}",
+        "/dataset/{dataset_id}/sample/{sample_id}/tags/{tag_id}",
         SampleTemporalTagEndpoint,
     ),
     # Create, list, and delete temporal tags for one sample.

@@ -107,7 +107,7 @@ def _make_request(
     if sample_id is not None:
         request.path_params["sample_id"] = sample_id
     if temporal_tag_id is not None:
-        request.path_params["temporal_tag_id"] = temporal_tag_id
+        request.path_params["tag_id"] = temporal_tag_id
 
     request.query_params = QueryParams(query_params or {})
     payload = {} if body is None else body
@@ -779,7 +779,7 @@ class TestMultimodalTemporalTagsRoute:
 
         assert tag_routes == [
             (
-                "/dataset/{dataset_id}/sample/{sample_id}/tags/{temporal_tag_id}",
+                "/dataset/{dataset_id}/sample/{sample_id}/tags/{tag_id}",
                 fomr.SampleTemporalTagEndpoint,
             ),
             (
