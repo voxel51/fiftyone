@@ -398,8 +398,7 @@ describe("TilingProvider", () => {
   describe("settings portal", () => {
     function Host({ initialFocus }: { initialFocus?: string }) {
       const tiling = useTiling();
-      // Bind the slot DOM element on mount so TileSettingsContent
-      // has somewhere to portal into.
+      // This effect primes the focused tile for settings portal tests.
       React.useEffect(() => {
         if (initialFocus) tiling.setFocusedTileId(initialFocus);
       }, [tiling, initialFocus]);

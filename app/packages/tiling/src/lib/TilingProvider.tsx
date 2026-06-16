@@ -61,6 +61,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
   // updater (state updaters must remain pure; nested setState calls
   // duplicate in Strict Mode).
   const focusedTileIdRef = useRef<string | null>(null);
+  // This effect mirrors focusedTileId into a ref for stable addTile calls.
   useEffect(() => {
     focusedTileIdRef.current = focusedTileId;
   }, [focusedTileId]);

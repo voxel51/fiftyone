@@ -43,8 +43,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     () => initialSourceId ?? rankImageSources(images)[0]?.id ?? ""
   );
 
-  // If sources populated after the initial render (or the selected topic
-  // disappeared), bind to the best available source.
+  // This effect binds the pane to the best image source once sources resolve.
   useEffect(() => {
     if (topic && images.some((source) => source.id === topic)) return;
 
@@ -52,14 +51,13 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     if (nextTopic !== topic) setTopic(nextTopic);
   }, [images, topic]);
 
-  // Keep the tile title in sync whenever the selected topic resolves.
+  // This effect syncs the tile title with the selected image source.
   useEffect(() => {
     const label = images.find((s) => s.id === topic)?.label;
     if (label) setTileTitle(label);
   }, [topic, images, setTileTitle]);
 
-  // Reset stale dims when the image source changes so the overlay cannot
-  // briefly use the previous source's dimensions before onImageLoaded fires.
+  // This effect resets image dimensions when the selected source changes.
   useEffect(() => {
     setImageDims(null);
   }, [topic]);

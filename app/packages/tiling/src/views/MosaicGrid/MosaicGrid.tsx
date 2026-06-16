@@ -115,6 +115,7 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
   // mutation happened (add/remove/reflow) and the snapshot is stale.
   const expandedLayoutRef = useRef<MosaicNode<string> | null>(null);
 
+  // This effect invalidates fullscreen restore state after external layout changes.
   useEffect(() => {
     if (
       expandedTileId !== null &&

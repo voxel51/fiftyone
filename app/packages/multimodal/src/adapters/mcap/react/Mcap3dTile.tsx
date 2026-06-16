@@ -69,8 +69,7 @@ const Mcap3dTile: React.FC = () => {
   );
   const frames = useMcapTopicStreams<PointCloudVisualization>(selectedTopics);
 
-  // Keep the tile title in sync: a single selection reads as that source,
-  // anything else as the generic tile kind.
+  // This effect syncs the tile title with the current 3D source selection.
   useEffect(() => {
     const label =
       selectedTopics.length === 1

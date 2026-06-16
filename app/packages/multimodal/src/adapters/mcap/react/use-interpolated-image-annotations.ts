@@ -68,6 +68,7 @@ export function useInterpolatedImageAnnotationSets(
   const streamRef = useRef<McapDataStream | null>(null);
   const topicSet = useMemo(() => new Set(stableTopics), [stableTopics]);
 
+  // This effect syncs topic subscriptions with the data stream and topic list.
   useEffect(() => {
     const subscriptions = subscriptionsRef.current;
 
@@ -91,6 +92,7 @@ export function useInterpolatedImageAnnotationSets(
     }
   }, [dataStream, stableTopics, topicSet]);
 
+  // This effect releases all topic subscriptions when the hook unmounts.
   useEffect(
     () => () => {
       for (const unsubscribe of subscriptionsRef.current.values()) {

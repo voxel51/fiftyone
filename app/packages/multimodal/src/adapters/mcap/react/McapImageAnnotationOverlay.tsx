@@ -33,6 +33,7 @@ const McapImageAnnotationOverlay: React.FC<McapImageAnnotationOverlayProps> = ({
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const topicKey = topics.join("\0");
 
+  // This effect clears the selected primitive when annotation topics change.
   useEffect(() => {
     setSelectedKey(null);
   }, [topicKey]);

@@ -165,13 +165,13 @@ function Harness({
   readonly onResult: (sets: AnnotationSets) => void;
 }) {
   const setStream = useSetMcapDataStream();
-  // Publish the test stream into context (the provider has no value prop).
+  // This effect publishes the test stream into context.
   useEffect(() => {
     setStream(stream);
   }, [setStream, stream]);
 
   const sets = useInterpolatedImageAnnotationSets(topics, { interpolate });
-  // Surface the latest derived sets to the test.
+  // This effect surfaces the latest derived annotation sets to the test.
   useEffect(() => {
     onResult(sets);
   }, [onResult, sets]);
@@ -188,11 +188,13 @@ function SingleHarness({
   readonly onResult: (frame: ImageAnnotationsVisualization | null) => void;
 }) {
   const setStream = useSetMcapDataStream();
+  // This effect publishes the test stream into context.
   useEffect(() => {
     setStream(stream);
   }, [setStream, stream]);
 
   const frame = useInterpolatedImageAnnotations(topic);
+  // This effect surfaces the latest derived annotation frame to the test.
   useEffect(() => {
     onResult(frame);
   }, [onResult, frame]);
