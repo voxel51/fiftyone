@@ -771,36 +771,35 @@ class TestMultimodalTemporalTagsRoute:
 
     def test_multimodal_routes_register_temporal_tag_endpoints(self):
         routes = dict(fomr.MultimodalRoutes)
-        temporal_routes = [
+        tag_routes = [
             (path, endpoint)
             for path, endpoint in fomr.MultimodalRoutes
-            if "temporal-tags" in path
+            if "/tags" in path
         ]
 
-        assert temporal_routes == [
+        assert tag_routes == [
             (
-                "/dataset/{dataset_id}/sample/{sample_id}/multimodal/temporal-tags/{temporal_tag_id}",
+                "/dataset/{dataset_id}/sample/{sample_id}/tags/{temporal_tag_id}",
                 fomr.SampleTemporalTagEndpoint,
             ),
             (
-                "/dataset/{dataset_id}/sample/{sample_id}/multimodal/temporal-tags",
+                "/dataset/{dataset_id}/sample/{sample_id}/tags",
                 fomr.SampleTemporalTagsEndpoint,
             ),
             (
-                "/dataset/{dataset_id}/multimodal/temporal-tags/counts",
+                "/dataset/{dataset_id}/tags/counts",
                 fomr.TemporalTagCountsEndpoint,
             ),
             (
-                "/dataset/{dataset_id}/multimodal/temporal-tags",
+                "/dataset/{dataset_id}/tags",
                 fomr.TemporalTagsEndpoint,
             ),
         ]
         assert (
-            routes["/dataset/{dataset_id}/multimodal/temporal-tags"]
-            is fomr.TemporalTagsEndpoint
+            routes["/dataset/{dataset_id}/tags"] is fomr.TemporalTagsEndpoint
         )
         assert (
-            routes["/dataset/{dataset_id}/multimodal/temporal-tags/counts"]
+            routes["/dataset/{dataset_id}/tags/counts"]
             is fomr.TemporalTagCountsEndpoint
         )
         assert not hasattr(fomr.TemporalTagsEndpoint, "post")

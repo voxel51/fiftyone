@@ -502,22 +502,22 @@ def _reject_temporal_tag_update_fields(record: dict) -> None:
 MultimodalRoutes = [
     # Update one temporal tag scoped by sample.
     (
-        "/dataset/{dataset_id}/sample/{sample_id}/multimodal/temporal-tags/{temporal_tag_id}",
+        "/dataset/{dataset_id}/sample/{sample_id}/tags/{temporal_tag_id}",
         SampleTemporalTagEndpoint,
     ),
     # Create, list, and delete temporal tags for one sample.
     (
-        "/dataset/{dataset_id}/sample/{sample_id}/multimodal/temporal-tags",
+        "/dataset/{dataset_id}/sample/{sample_id}/tags",
         SampleTemporalTagsEndpoint,
     ),
     # Count temporal tag values across a dataset.
     (
-        "/dataset/{dataset_id}/multimodal/temporal-tags/counts",
+        "/dataset/{dataset_id}/tags/counts",
         TemporalTagCountsEndpoint,
     ),
     # List temporal tags across a dataset.
     (
-        "/dataset/{dataset_id}/multimodal/temporal-tags",
+        "/dataset/{dataset_id}/tags",
         TemporalTagsEndpoint,
     ),
     # Resolve playback timing for a scene inventory.
