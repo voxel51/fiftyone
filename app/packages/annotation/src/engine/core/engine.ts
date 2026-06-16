@@ -4,6 +4,7 @@ import type {
   TransientSnapshot,
 } from "@fiftyone/utilities";
 import { LabelType, objectId } from "@fiftyone/utilities";
+import { isEqual } from "lodash";
 
 import type { LabelRef, ScopedRef } from "../identity/ref";
 import { refKey, toLabelRef } from "../identity/ref";
@@ -466,7 +467,11 @@ export class AnnotationEngine {
     for (const { ref, before } of this.txBefores.values()) {
       const after = this.stores.get(ref.sample)?.getLabel(ref);
 
-      if (before === after) {
+      // value-equal, not just reference-equal: a no-op commit (e.g. a select
+      // click that re-writes an unchanged, freshly-built bounding_box) must not
+      // accrue a phantom undo entry. isEqual short-circuits on reference, so an
+      // unchanged copy-on-write subtree (mask bytes) stays cheap.
+      if (isEqual(before, after)) {
         continue;
       }
 

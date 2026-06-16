@@ -3002,10 +3002,12 @@ __metadata:
   dependencies:
     "@testing-library/dom": "npm:^10.4.0"
     "@testing-library/react": "npm:^16.2.0"
+    "@types/lodash": "npm:^4.14.182"
     "@typescript-eslint/eslint-plugin": "npm:^6.0.0"
     "@typescript-eslint/parser": "npm:^6.0.0"
     eslint: "npm:^8.0.0"
     jsdom: "npm:^26.0.0"
+    lodash: "npm:^4.18.1"
     onnxruntime-web: "npm:^1.24.3"
     uuid: "npm:^14.0.0"
     vite: "npm:^7.3.2"
