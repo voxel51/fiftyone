@@ -3,7 +3,6 @@ import {
   useAnnotationEngine,
 } from "@fiftyone/annotation";
 import {
-  DetectionOverlay,
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
   useLighterEventHandler,
@@ -13,18 +12,13 @@ import {
   AnnotationLabelData,
   isPatchesView,
 } from "@fiftyone/state";
-import { DETECTION, LabelType as EngineLabelType } from "@fiftyone/utilities";
+import { LabelType as EngineLabelType } from "@fiftyone/utilities";
 import { atom, getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { splitAtom, useAtomCallback } from "jotai/utils";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import type { LabelType } from "./Edit/state";
-import {
-  activeLabelSchemas,
-  isFieldReadOnly,
-  labelSchemasData,
-  visibleLabelSchemas,
-} from "./state";
+import { activeLabelSchemas, visibleLabelSchemas } from "./state";
 import { useSetEntranceLabel } from "./useAnnotationContextManager";
 
 /**
@@ -194,30 +188,6 @@ export const useLabelsContext = (): LabelsContext => {
     }),
     [addLabelToSidebar, getLabelById, removeLabelFromSidebar, updateLabelData]
   );
-};
-
-/**
- * Syncs overlay draggable/resizeable flags when label schema read-only state
- * changes (e.g. user toggles read-only in Schema Manager).
- */
-const useSyncOverlayReadOnly = () => {
-  const currentLabels = useAtomValue(labels);
-  const schemas = useAtomValue(labelSchemasData);
-
-  useEffect(() => {
-    if (!schemas) return;
-
-    for (const label of currentLabels) {
-      if (label.type !== DETECTION) continue;
-
-      const overlay = label.overlay;
-      if (!(overlay instanceof DetectionOverlay)) continue;
-
-      const readOnly = isFieldReadOnly(schemas[label.path]);
-      overlay.setDraggable(!readOnly);
-      overlay.setResizeable(!readOnly);
-    }
-  }, [currentLabels, schemas]);
 };
 
 const SINGULAR: Partial<Record<EngineLabelType, LabelType>> = {
@@ -426,6 +396,4 @@ export default function useLabels() {
     "lighter:overlay-added",
     useCallback(() => reconcile(), [reconcile])
   );
-
-  useSyncOverlayReadOnly();
 }
