@@ -5,10 +5,9 @@ import {
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import styled from "styled-components";
-import { currentOverlay } from "./state";
+import { useAnnotationContext } from "./useAnnotationContext";
 
 const Container = styled.div`
   display: flex;
@@ -92,7 +91,7 @@ function drawPreview(
  * - The overlay finishes rendering (async mask decode completes)
  */
 export default function MaskPreview() {
-  const overlay = useAtomValue(currentOverlay);
+  const overlay = useAnnotationContext().selected?.overlay;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const theme = useTheme();
   const isDark = theme.themeMode === "dark";

@@ -25,12 +25,11 @@ import { useSetAtom } from "jotai";
 import { useAtomCallback } from "jotai/utils";
 import { useCallback, useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
-import { editing } from "../Sidebar/Annotate/Edit";
+import { useAnnotationContext } from "../Sidebar/Annotate/Edit/useAnnotationContext";
 import {
   current,
   currentData,
-  savedLabel,
-} from "../Sidebar/Annotate/Edit/state";
+} from "../Sidebar/Annotate/Edit/useAnnotationContext/selectors";
 import { useDetectionMode } from "../Sidebar/Annotate/Edit/useDetectionMode";
 import {
   usePolylineMode,
@@ -63,8 +62,7 @@ export const useBridge = (scene: Scene2D | null) => {
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
   const save = useSetAtom(currentData);
-  const setEditing = useSetAtom(editing);
-  const setSavedLabel = useSetAtom(savedLabel);
+  const { clear, setEditingMask } = useAnnotationContext();
   const getCurrentLabel = useAtomCallback(
     useCallback((get) => get(current), [])
   );
@@ -248,13 +246,12 @@ export const useBridge = (scene: Scene2D | null) => {
 
         // If the removed overlay is the one being edited, close the sidebar
         if (currentLabel?.overlay?.id === payload.id) {
-          setEditing(null);
-          setSavedLabel(null);
+          clear();
         }
 
         removeLabelFromSidebar(payload.id);
       },
-      [getCurrentLabel, removeLabelFromSidebar, setEditing, setSavedLabel]
+      [clear, getCurrentLabel, removeLabelFromSidebar]
     )
   );
 
@@ -356,10 +353,9 @@ export const useBridge = (scene: Scene2D | null) => {
           save(newLabel);
         }
 
-        segmentationMode.setEditingMask(payload.id, payload.hasMask);
-        detectionMode.setEditingMask(payload.id, payload.hasMask);
+        setEditingMask(payload.id, payload.hasMask);
       },
-      [detectionMode, save, segmentationMode]
+      [save, setEditingMask]
     )
   );
 

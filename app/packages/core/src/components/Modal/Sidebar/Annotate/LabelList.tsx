@@ -7,11 +7,10 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import { EntryKind, isGeneratedView } from "@fiftyone/state";
-import { useAtomValue } from "jotai";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Sidebar from "../../../Sidebar";
-import { isEditing } from "./Edit";
+import { useAnnotationContext } from "./Edit/useAnnotationContext";
 import GroupEntry from "./GroupEntry";
 import LabelEntry from "./LabelEntry";
 import LoadingEntry from "./LoadingEntry";
@@ -31,7 +30,7 @@ const EmptyLabelsContainer = styled.div`
 
 export default function AnnotateSidebar() {
   usePrimitivesCount();
-  const isEditingValue = useAtomValue(isEditing);
+  const isEditingValue = useAnnotationContext().isEditing;
   const isGenerated = useRecoilValue(isGeneratedView);
   const { openSchemaManager } = useSchemaManagerModal();
   const canManage = useCanManageSchema();

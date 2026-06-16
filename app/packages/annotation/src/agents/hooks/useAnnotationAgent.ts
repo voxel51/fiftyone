@@ -9,7 +9,7 @@ import {
   ROI,
 } from "../types";
 import { useCallback, useEffect, useMemo } from "react";
-import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
+import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import { atom, useAtom } from "jotai";
 import { useToolsContext } from "./useToolsContext";
 import { useActiveTask } from "./useActiveTask";
@@ -120,7 +120,7 @@ export const useAnnotationAgent = <T extends InferenceResultProxy>(
  * In all cases, this context includes the current {@link SampleDescriptor}.
  */
 const useAgentContext = (): AnnotationContext | null => {
-  const { selectedLabel } = useAnnotationContext();
+  const { selected } = useAnnotationContext();
   const sampleDescriptor = useSampleDescriptor();
   const toolsContext = useToolsContext();
 
@@ -129,13 +129,13 @@ const useAgentContext = (): AnnotationContext | null => {
     // shares `type: "Detection"` but has no 2D `bounding_box`, so a
     // structural test alone would feed `undefined` into `bboxToRoi`.
     const bbox =
-      selectedLabel?.type === "Detection"
-        ? (selectedLabel as DetectionAnnotationLabel).data.bounding_box
+      selected?.label?.type === "Detection"
+        ? (selected?.label as DetectionAnnotationLabel).data.bounding_box
         : undefined;
     const labelOverride =
-      selectedLabel?.type === "Detection" && Array.isArray(bbox)
+      selected?.label?.type === "Detection" && Array.isArray(bbox)
         ? {
-            textPrompt: selectedLabel.data.label,
+            textPrompt: selected?.label.data.label,
             regionsOfInterest: [bboxToRoi(bbox)],
           }
         : {};
@@ -148,5 +148,5 @@ const useAgentContext = (): AnnotationContext | null => {
       ...labelOverride,
       sampleDescriptor,
     };
-  }, [sampleDescriptor, selectedLabel, toolsContext]);
+  }, [sampleDescriptor, selected?.label, toolsContext]);
 };

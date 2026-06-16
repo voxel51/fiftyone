@@ -3,8 +3,7 @@ import { isGeneratedView } from "@fiftyone/state";
 import { getDefaultStore } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
-import { editing } from "./Edit";
-import { current, savedLabel } from "./Edit/state";
+import { useAnnotationContext } from "./Edit/useAnnotationContext";
 import useExit from "./Edit/useExit";
 import { labelMap } from "./useLabels";
 
@@ -32,13 +31,21 @@ export default function useFocus(): FocusController {
   const { scene } = useLighter();
   const onExit = useExit();
   const isGenerated = useRecoilValue(isGeneratedView);
+  const { readEditing, select } = useAnnotationContext();
 
   const selectOverlay = useCallback(
     (id: string, options?: FocusOptions) => {
       if (options?.ignoreSideEffects) return;
 
-      if (STORE.get(editing)) {
-        const currentLabel = STORE.get(current);
+      // Read fresh: closure-captured `selected` / `pendingNewType` are stale
+      // when this fires from a synchronous lighter event chain that ran
+      // after `createNew` updated atoms but before React re-rendered.
+      const editing = readEditing();
+
+      // Something is already being edited (either a label or a pending
+      // new-type schema flow) — cancel the new selection.
+      if (editing.selected !== null || editing.pendingNewType !== null) {
+        const currentLabel = editing.selected?.label;
 
         if (currentLabel?.isNew) return;
 
@@ -55,11 +62,10 @@ export default function useFocus(): FocusController {
       const label = STORE.get(labelMap)[id];
       if (!label) return;
 
-      STORE.set(savedLabel, STORE.get(label)?.data);
-      STORE.set(editing, label);
+      select(label);
       scene?.selectOverlay(id, { ignoreSideEffects: true });
     },
-    [scene]
+    [readEditing, scene, select]
   );
 
   const deselectOverlay = useCallback(

@@ -1,9 +1,5 @@
 import { DetectionOverlay, useLighter } from "@fiftyone/lighter";
 import { TypeGuards } from "@fiftyone/lighter/src/core/Scene2D";
-import {
-  clearTransformStateSelector,
-  selectedLabelForAnnotationAtom,
-} from "@fiftyone/looker-3d/src/state";
 import type { AnnotationLabel } from "@fiftyone/state";
 import {
   DETECTION,
@@ -11,12 +7,8 @@ import {
   KEYPOINT,
   POLYLINE,
 } from "@fiftyone/utilities";
-import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
-import { useSetRecoilState } from "recoil";
-import { editing } from ".";
-import { current, currentOverlay, savedLabel } from "./state";
-import useActivePrimitive from "./useActivePrimitive";
+import { useAnnotationContext } from "./useAnnotationContext";
 
 /**
  * True when the user has produced something to commit — a picked class, a
@@ -54,25 +46,13 @@ const hasDrawnContent = (
 };
 
 export default function useExit() {
-  const setEditing = useSetAtom(editing);
-  const [, setActivePrimitive] = useActivePrimitive();
-  const setSaved = useSetAtom(savedLabel);
+  const annotationContext = useAnnotationContext();
+  const { clear } = annotationContext;
   const { scene, removeOverlay } = useLighter();
-  const overlay = useAtomValue(currentOverlay);
-  const label = useAtomValue(current);
-
-  /**
-   * 3D SPECIFIC IMPORTS
-   * : TODO: CLEAN THIS UP. THIS FUNCTION SHOULDN'T BE
-   * COUPLED TO LIGHTER OR LOOKER-3D.
-   */
-  const setSelectedLabelForAnnotation = useSetRecoilState(
-    selectedLabelForAnnotationAtom
-  );
-  const clearTransformState = useSetRecoilState(clearTransformStateSelector);
-  /**
-   * 3D SPECIFIC IMPORTS ENDS HERE.
-   */
+  const { label, overlay } = annotationContext.selected ?? {
+    label: null,
+    overlay: undefined,
+  };
 
   return useCallback(() => {
     // If this is an uncommitted dummy label (e.g. create-button click with no
@@ -90,29 +70,8 @@ export default function useExit() {
       }
     }
 
-    /**
-     * 3D SPECIFIC LOGIC
-     * : TODO: CLEAN THIS UP. THIS FUNCTION SHOULDN'T BE
-     * COUPLED TO LIGHTER OR LOOKER-3D.
-     */
-    setSelectedLabelForAnnotation(null);
-    clearTransformState(null);
-    /**
-     * 3D SPECIFIC LOGIC ENDS HERE.
-     */
-
-    // reset editing state
-    setSaved(null);
-    setEditing(null);
-    setActivePrimitive(null);
-  }, [
-    clearTransformState,
-    label,
-    overlay,
-    removeOverlay,
-    scene,
-    setActivePrimitive,
-    setEditing,
-    setSaved,
-  ]);
+    // 3D state cleanup happens in looker-3d's useReset3dOnEditExit, which
+    // reacts to the atom transition this clear() produces.
+    clear();
+  }, [clear, label, overlay, removeOverlay, scene]);
 }
