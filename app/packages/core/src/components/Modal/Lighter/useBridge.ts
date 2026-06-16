@@ -2,19 +2,13 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import {
-  DeleteAnnotationCommand,
-  getFieldSchema,
-  useAnnotationEventBus,
-} from "@fiftyone/annotation";
+import { DeleteAnnotationCommand, getFieldSchema } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
 import {
-  DetectionOverlay,
   type Scene2D,
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import type { DetectionLabel } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { useSetAtom } from "jotai";
 import { useAtomCallback } from "jotai/utils";
@@ -41,7 +35,6 @@ import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
  */
 export const useBridge = (scene: Scene2D | null) => {
   useLighterTooltipEventHandler(scene);
-  const annotationEventBus = useAnnotationEventBus();
   const commandBus = useCommandBus();
   const useEventHandler = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
@@ -50,8 +43,7 @@ export const useBridge = (scene: Scene2D | null) => {
   const getCurrentLabel = useAtomCallback(
     useCallback((get) => get(current), [])
   );
-  const { addLabelToSidebar, getLabelById, removeLabelFromSidebar } =
-    useLabelsContext();
+  const { getLabelById } = useLabelsContext();
   const fieldSchema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
@@ -61,29 +53,6 @@ export const useBridge = (scene: Scene2D | null) => {
   const polylineMode = usePolylineMode();
 
   usePolylineModeInstaller();
-
-  useEventHandler(
-    "lighter:overlay-establish",
-    useCallback(
-      (payload) => {
-        // Only route detection overlays into the detection establish path.
-        // Non-detection overlays (e.g. keypoints) fire the same event but
-        // should not enter the detection sidebar flow.
-        if (!(payload.handler.overlay instanceof DetectionOverlay)) {
-          return;
-        }
-
-        annotationEventBus.dispatch(
-          "annotation:canvasDetectionOverlayEstablish",
-          {
-            id: payload.id,
-            overlay: payload.handler.overlay,
-          }
-        );
-      },
-      [annotationEventBus]
-    )
-  );
 
   useEventHandler(
     "lighter:overlay-removed",
@@ -96,30 +65,8 @@ export const useBridge = (scene: Scene2D | null) => {
         if (currentLabel?.overlay?.id === payload.id) {
           setEditing(null);
         }
-
-        removeLabelFromSidebar(payload.id);
       },
-      [getCurrentLabel, removeLabelFromSidebar, setEditing]
-    )
-  );
-
-  useEventHandler(
-    "lighter:overlay-added",
-    useCallback(
-      (payload) => {
-        if (
-          payload.overlay instanceof DetectionOverlay &&
-          payload.overlay.field
-        ) {
-          addLabelToSidebar({
-            data: payload.overlay.label as DetectionLabel,
-            overlay: payload.overlay,
-            path: payload.overlay.field,
-            type: "Detection",
-          });
-        }
-      },
-      [addLabelToSidebar]
+      [getCurrentLabel, setEditing]
     )
   );
 
