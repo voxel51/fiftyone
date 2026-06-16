@@ -1447,11 +1447,9 @@ def delete_dataset(name, dry_run=False):
             conn.drop_collection(frame_collection_name)
 
     _id = dataset_dict["_id"]
-    num_temporal_tags = fommtt.count_for_dataset_id(_id)
-    if num_temporal_tags > 0:
-        _logger.info(
-            "Deleting %d multimodal temporal tag(s)", num_temporal_tags
-        )
+    num_tags = fommtt.count_for_dataset_id(_id)
+    if num_tags > 0:
+        _logger.info("Deleting %d tag(s)", num_tags)
         if not dry_run:
             fommtt.delete_for_dataset_id(_id)
 
