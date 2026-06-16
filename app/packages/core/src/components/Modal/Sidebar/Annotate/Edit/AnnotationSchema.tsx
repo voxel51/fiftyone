@@ -48,11 +48,13 @@ const useSchema = (readOnly: boolean) => {
 
   // Reruns only when the visible attribute set changes.
   return useMemo(() => {
+    const taxonomy = config?.applied_taxonomy;
     const properties: Record<string, SchemaType | undefined> = {
       label: generatePrimitiveSchema("label", {
         type: "str",
-        component: config?.component || "dropdown",
-        values: config?.classes || [],
+        component: taxonomy ? "dropdown" : config?.component || "dropdown",
+        values: taxonomy ? [] : config?.classes || [],
+        taxonomy,
         readOnly: effectiveReadOnly,
       }),
     };
@@ -63,6 +65,7 @@ const useSchema = (readOnly: boolean) => {
         type: attr.type as FieldType,
         component: attr.component as ComponentType | undefined,
         values: attr.values as string[] | number[] | undefined,
+        taxonomy: attr.taxonomy,
         readOnly: effectiveReadOnly || attr.read_only,
       });
     }

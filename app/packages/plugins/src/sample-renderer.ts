@@ -1,5 +1,5 @@
-import { isNativeMediaType } from "@fiftyone/looker/src/util";
 import * as fos from "@fiftyone/state";
+import { isNativeMediaType } from "@fiftyone/utilities";
 import type { Schema } from "@fiftyone/utilities";
 import mime from "mime";
 import type React from "react";
@@ -72,11 +72,25 @@ export type SampleRendererProps = {
 };
 
 /**
+ * Stable slots exposed by the grid surface for renderer-owned controls.
+ */
+export const SAMPLE_RENDERER_GRID_SLOT = {
+  HEADER_AFTER_RESOURCE_COUNT: "grid-header-after-resource-count",
+} as const;
+
+export type SampleRendererGridSlot =
+  typeof SAMPLE_RENDERER_GRID_SLOT[keyof typeof SAMPLE_RENDERER_GRID_SLOT];
+
+/**
  * Grid-specific renderer behavior, including enablement and optional override.
  */
 export type GridConfig = {
   enabled?: boolean;
   overrideComponent?: React.FunctionComponent<SampleRendererProps>;
+  /**
+   * Components rendered in named grid slots while this renderer is active.
+   */
+  slots?: Partial<Record<SampleRendererGridSlot, React.FunctionComponent>>;
 };
 
 /**
@@ -304,6 +318,20 @@ export function isSampleRendererGridEnabled(
   registration: SampleRendererRegistrationLike
 ) {
   return registration.sampleRendererOptions.grid?.enabled === true;
+}
+
+/**
+ * Returns the configured grid slot component when grid rendering is enabled.
+ */
+export function getSampleRendererGridSlotComponent(
+  registration: SampleRendererRegistrationLike,
+  slot: SampleRendererGridSlot
+) {
+  if (!isSampleRendererGridEnabled(registration)) {
+    return null;
+  }
+
+  return registration.sampleRendererOptions.grid?.slots?.[slot] || null;
 }
 
 /**

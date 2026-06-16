@@ -12,6 +12,7 @@ export interface PrimitiveSchema {
   values?: string[] | number[];
   range?: [number, number];
   readOnly?: boolean;
+  taxonomy?: string;
 }
 
 const getLabel = (value?: unknown): string => {
@@ -193,6 +194,36 @@ export const createSelect = (
   };
 };
 
+export const createTree = (
+  name: string,
+  taxonomy: string,
+  multiSelect: boolean
+): SchemaType => {
+  if (multiSelect) {
+    return {
+      type: "array",
+      items: { type: "string", view: {} },
+      view: {
+        name: "TaxonomyView",
+        component: "TaxonomyView",
+        label: name,
+        taxonomy,
+        multiSelect: true,
+      },
+    };
+  }
+  return {
+    type: "string",
+    view: {
+      name: "TaxonomyView",
+      component: "TaxonomyView",
+      label: name,
+      taxonomy,
+      multiSelect: false,
+    },
+  };
+};
+
 export const createCheckbox = (name: string) => {
   return {
     type: "boolean",
@@ -288,6 +319,14 @@ export function generatePrimitiveSchema(
 ): SchemaType | undefined {
   if (schema.readOnly) {
     return createReadOnly(name, schema.type);
+  }
+
+  if (
+    schema.taxonomy &&
+    schema.component === "dropdown" &&
+    (schema.type === "str" || schema.type === "list<str>")
+  ) {
+    return createTree(name, schema.taxonomy, schema.type === "list<str>");
   }
 
   if (schema.type === "list<float>" || schema.type === "list<int>") {

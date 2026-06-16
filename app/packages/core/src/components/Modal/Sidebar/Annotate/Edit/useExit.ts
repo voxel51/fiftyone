@@ -1,4 +1,4 @@
-import { useLighter } from "@fiftyone/lighter";
+import { DetectionOverlay, useLighter } from "@fiftyone/lighter";
 import { TypeGuards } from "@fiftyone/lighter/src/core/Scene2D";
 import type { AnnotationLabel } from "@fiftyone/state";
 import {
@@ -15,7 +15,10 @@ import { useAnnotationContext } from "./useAnnotationContext";
  * drawn bbox, or placed points. Used to distinguish a real (but possibly
  * label-less) annotation from a "clicked create but didn't draw" dummy.
  */
-const hasDrawnContent = (label: AnnotationLabel): boolean => {
+const hasDrawnContent = (
+  label: AnnotationLabel,
+  overlay?: AnnotationLabel["overlay"]
+): boolean => {
   // A picked class is content on its own and also covers shapes we don't
   // introspect here (e.g. 3D detections).
   if (label.data.label) {
@@ -24,6 +27,12 @@ const hasDrawnContent = (label: AnnotationLabel): boolean => {
 
   switch (label.type) {
     case DETECTION:
+      // `data.bounding_box` is only synced to the overlay's geometry once
+      // the edit form mounts, so consult the overlay's live bounds first
+      if (overlay instanceof DetectionOverlay) {
+        return overlay.hasValidBounds();
+      }
+
       return (
         Array.isArray(label.data.bounding_box) &&
         hasValidBounds(label.data.bounding_box)
@@ -49,7 +58,7 @@ export default function useExit() {
     // If this is an uncommitted dummy label (e.g. create-button click with no
     // shape drawn), remove it from the scene. Label-less labels with actual
     // geometry are valid and must be preserved.
-    if (label?.isNew && !hasDrawnContent(label)) {
+    if (label?.isNew && !hasDrawnContent(label, overlay)) {
       if (scene && !scene.isDestroyed && scene.renderLoopActive) {
         scene.exitInteractiveMode();
         removeOverlay(label.data._id, true);

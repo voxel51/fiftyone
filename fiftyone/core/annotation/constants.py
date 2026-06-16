@@ -58,6 +58,7 @@ NAME = "name"
 PRECISION = "precision"
 RANGE = "range"
 READ_ONLY = "read_only"
+TAXONOMY = "taxonomy"
 TYPE = "type"
 VALUES = "values"
 

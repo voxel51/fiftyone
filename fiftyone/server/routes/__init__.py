@@ -6,7 +6,8 @@ FiftyOne Server routes
 |
 """
 
-from fiftyone.multimodal.server import MultimodalRoutes
+from fiftyone.internal.features.registry import is_feature_enabled
+
 from fiftyone.operators.server import OperatorRoutes
 
 from .aggregate import Aggregate
@@ -21,7 +22,7 @@ from .geo import GeoPoints
 from .get_similar_labels_frames import GetSimilarLabelsFrameCollection
 from .groups import GroupsRoutes
 from .media import Media
-from .ontology import OntologyAttributes, Ontologies
+from .ontology import OntologyAttributes, OntologyTaxonomy, Ontologies
 from .plugins import Plugins
 from .runtime_assets import RuntimeAssetRoutes
 from .sample import SampleRoutes
@@ -31,12 +32,18 @@ from .tag import Tag
 from .tagging import Tagging
 from .values import Values
 
+multimodal_routes = []
+if is_feature_enabled("VFF_MULTIMODAL"):
+    from fiftyone.multimodal.server import MultimodalRoutes
+
+    multimodal_routes = MultimodalRoutes
+
 # Starlette routes should not be created here. Please leave as tuple definitions
 routes = (
     CameraRoutes
     + EmbeddingsRoutes
     + GroupsRoutes
-    + MultimodalRoutes
+    + multimodal_routes
     + OperatorRoutes
     + RuntimeAssetRoutes
     + SampleRoutes
@@ -50,6 +57,7 @@ routes = (
         ("/geo", GeoPoints),
         ("/media", Media),
         ("/ontologies/{name}/attributes", OntologyAttributes),
+        ("/ontologies/{name}/taxonomy", OntologyTaxonomy),
         ("/ontologies", Ontologies),
         ("/plugins", Plugins),
         ("/sort", Sort),
