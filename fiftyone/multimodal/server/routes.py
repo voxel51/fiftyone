@@ -59,18 +59,18 @@ class PlaybackPlanEndpoint(HTTPEndpoint):
 
 
 class SampleTagsEndpoint(HTTPEndpoint):
-    """Multimodal sample temporal tag collection endpoint."""
+    """Sample tag collection endpoint."""
 
     @decorators.route
     async def get(self, request: Request) -> dict:
-        """Lists temporal tags for the sample."""
+        """Lists tags for the sample."""
 
         sample_id = _get_required_path_param(request, "sample_id")
         return _list_temporal_tags(request, sample_id=sample_id)
 
     @decorators.route
     async def post(self, request: Request, data: dict) -> dict:
-        """Creates one or more temporal tags for the sample."""
+        """Creates one or more tags for the sample."""
 
         dataset = _get_dataset_from_request(request)
         sample_id = _get_required_path_param(request, "sample_id")
@@ -87,7 +87,7 @@ class SampleTagsEndpoint(HTTPEndpoint):
 
     @decorators.route(parse_body=True)  # pyright: ignore[reportCallIssue]
     async def delete(self, request: Request, data: dict) -> dict:
-        """Deletes temporal tags for the sample."""
+        """Deletes tags for the sample."""
 
         dataset = _get_dataset_from_request(request)
         sample_id = _get_required_path_param(request, "sample_id")
@@ -109,11 +109,11 @@ class SampleTagsEndpoint(HTTPEndpoint):
 
 
 class SampleTagEndpoint(HTTPEndpoint):
-    """Multimodal sample temporal tag item endpoint."""
+    """Sample tag item endpoint."""
 
     @decorators.route
     async def patch(self, request: Request, data: dict) -> dict:
-        """Updates a temporal tag for the sample."""
+        """Updates a tag for the sample."""
 
         dataset = _get_dataset_from_request(request)
         sample_id = _get_required_path_param(request, "sample_id")
@@ -145,7 +145,7 @@ class TagsEndpoint(HTTPEndpoint):
 
     @decorators.route
     async def get(self, request: Request) -> dict:
-        """Lists temporal tags for the dataset."""
+        """Lists tags for the dataset."""
 
         return _list_temporal_tags(request)
 
@@ -155,7 +155,7 @@ class TagCountsEndpoint(HTTPEndpoint):
 
     @decorators.route
     async def get(self, request: Request) -> dict:
-        """Counts temporal tag values for the dataset."""
+        """Counts tag values for the dataset."""
 
         dataset = _get_dataset_from_request(request)
         tag_filter = _temporal_tag_filter_from_query(request)
@@ -238,7 +238,7 @@ def _delete_request_from_payload(data, sample_id: str) -> dict:
     _require_dict(data, "request body")
 
     # Route deletes are always scoped by the path sample. Callers can delete by
-    # id/tag/filter, or opt into deleting all temporal tags for that sample via
+    # id/tag/filter, or opt into deleting all tags for that sample via
     # `delete_all`; dataset-wide deletes remain SDK-only.
     delete_all = data.get("delete_all", False)
     if not isinstance(delete_all, bool):
@@ -290,9 +290,8 @@ def _delete_request_from_payload(data, sample_id: str) -> dict:
         raise HTTPException(
             status_code=400,
             detail=(
-                "Refusing to delete temporal tags with an empty selector; "
-                "pass delete_all=True to delete all temporal tags for the "
-                "sample"
+                "Refusing to delete tags with an empty selector; pass "
+                "delete_all=True to delete all tags for the sample"
             ),
         )
 
@@ -320,8 +319,7 @@ def _tag_update_from_payload(data, *, sample_id: str, tag_id: str) -> dict:
         raise HTTPException(
             status_code=400,
             detail=(
-                "Temporal tag update must include start, end, tag, or "
-                "last_modified_by"
+                "Tag update must include start, end, tag, or last_modified_by"
             ),
         )
 
@@ -337,10 +335,7 @@ def _temporal_tag_filter_from_query(
         if sample_ids is not None:
             raise HTTPException(
                 status_code=400,
-                detail=(
-                    "'sample_id' is only supported in sample temporal tag "
-                    "routes"
-                ),
+                detail=("'sample_id' is only supported in sample tag routes"),
             )
     else:
         _ensure_matching_sample_id(sample_ids, sample_id)
@@ -467,7 +462,7 @@ def _reject_temporal_tag_timestamps(record: dict) -> None:
         raise HTTPException(
             status_code=400,
             detail=(
-                "Temporal tag %s %s response-only"
+                "Tag %s %s response-only"
                 % (
                     ", ".join(sorted(fields)),
                     "is" if len(fields) == 1 else "are",
@@ -488,7 +483,7 @@ def _reject_temporal_tag_update_fields(record: dict) -> None:
         raise HTTPException(
             status_code=400,
             detail=(
-                "Temporal tag %s %s not mutable through this route"
+                "Tag %s %s not mutable through this route"
                 % (
                     ", ".join(sorted(fields)),
                     "is" if len(fields) == 1 else "are",
@@ -498,22 +493,22 @@ def _reject_temporal_tag_update_fields(record: dict) -> None:
 
 
 MultimodalRoutes = [
-    # Update one temporal tag scoped by sample.
+    # Update one tag scoped by sample.
     (
         "/dataset/{dataset_id}/sample/{sample_id}/tags/{tag_id}",
         SampleTagEndpoint,
     ),
-    # Create, list, and delete temporal tags for one sample.
+    # Create, list, and delete tags for one sample.
     (
         "/dataset/{dataset_id}/sample/{sample_id}/tags",
         SampleTagsEndpoint,
     ),
-    # Count temporal tag values across a dataset.
+    # Count tag values across a dataset.
     (
         "/dataset/{dataset_id}/tags/counts",
         TagCountsEndpoint,
     ),
-    # List temporal tags across a dataset.
+    # List tags across a dataset.
     (
         "/dataset/{dataset_id}/tags",
         TagsEndpoint,
