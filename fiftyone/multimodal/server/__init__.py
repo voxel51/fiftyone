@@ -12,8 +12,8 @@ from .routes import (
     PROTOBUF_MEDIA_TYPE,
     SampleTagsEndpoint,
     SceneInventoryEndpoint,
-    TemporalTagCountsEndpoint,
-    TemporalTagsEndpoint,
+    TagCountsEndpoint,
+    TagsEndpoint,
 )
 
 __all__ = [
@@ -22,6 +22,6 @@ __all__ = [
     "PROTOBUF_MEDIA_TYPE",
     "SampleTagsEndpoint",
     "SceneInventoryEndpoint",
-    "TemporalTagCountsEndpoint",
-    "TemporalTagsEndpoint",
+    "TagCountsEndpoint",
+    "TagsEndpoint",
 ]

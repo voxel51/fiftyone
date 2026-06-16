@@ -82,7 +82,7 @@ def fixture_sample_temporal_tag_endpoint():
 @pytest.fixture(name="temporal_tags_endpoint")
 def fixture_temporal_tags_endpoint():
     """Returns the dataset temporal tags endpoint instance."""
-    return fomr.TemporalTagsEndpoint(
+    return fomr.TagsEndpoint(
         scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
     )
 
@@ -90,7 +90,7 @@ def fixture_temporal_tags_endpoint():
 @pytest.fixture(name="temporal_tag_counts_endpoint")
 def fixture_temporal_tag_counts_endpoint():
     """Returns the temporal tag counts endpoint instance."""
-    return fomr.TemporalTagCountsEndpoint(
+    return fomr.TagCountsEndpoint(
         scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
     )
 
@@ -788,20 +788,18 @@ class TestMultimodalTemporalTagsRoute:
             ),
             (
                 "/dataset/{dataset_id}/tags/counts",
-                fomr.TemporalTagCountsEndpoint,
+                fomr.TagCountsEndpoint,
             ),
             (
                 "/dataset/{dataset_id}/tags",
-                fomr.TemporalTagsEndpoint,
+                fomr.TagsEndpoint,
             ),
         ]
-        assert (
-            routes["/dataset/{dataset_id}/tags"] is fomr.TemporalTagsEndpoint
-        )
+        assert routes["/dataset/{dataset_id}/tags"] is fomr.TagsEndpoint
         assert (
             routes["/dataset/{dataset_id}/tags/counts"]
-            is fomr.TemporalTagCountsEndpoint
+            is fomr.TagCountsEndpoint
         )
-        assert not hasattr(fomr.TemporalTagsEndpoint, "post")
-        assert not hasattr(fomr.TemporalTagsEndpoint, "delete")
-        assert not hasattr(fomr.TemporalTagCountsEndpoint, "post")
+        assert not hasattr(fomr.TagsEndpoint, "post")
+        assert not hasattr(fomr.TagsEndpoint, "delete")
+        assert not hasattr(fomr.TagCountsEndpoint, "post")

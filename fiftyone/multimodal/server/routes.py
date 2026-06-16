@@ -140,8 +140,8 @@ class SampleTagEndpoint(HTTPEndpoint):
         }
 
 
-class TemporalTagsEndpoint(HTTPEndpoint):
-    """Multimodal dataset temporal tag read endpoint."""
+class TagsEndpoint(HTTPEndpoint):
+    """Dataset tags read endpoint."""
 
     @decorators.route
     async def get(self, request: Request) -> dict:
@@ -150,8 +150,8 @@ class TemporalTagsEndpoint(HTTPEndpoint):
         return _list_temporal_tags(request)
 
 
-class TemporalTagCountsEndpoint(HTTPEndpoint):
-    """Multimodal temporal tag count endpoint."""
+class TagCountsEndpoint(HTTPEndpoint):
+    """Tag count endpoint."""
 
     @decorators.route
     async def get(self, request: Request) -> dict:
@@ -511,12 +511,12 @@ MultimodalRoutes = [
     # Count temporal tag values across a dataset.
     (
         "/dataset/{dataset_id}/tags/counts",
-        TemporalTagCountsEndpoint,
+        TagCountsEndpoint,
     ),
     # List temporal tags across a dataset.
     (
         "/dataset/{dataset_id}/tags",
-        TemporalTagsEndpoint,
+        TagsEndpoint,
     ),
     # Resolve playback timing for a scene inventory.
     (
