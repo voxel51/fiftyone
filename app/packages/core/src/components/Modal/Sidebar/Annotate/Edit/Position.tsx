@@ -5,7 +5,6 @@ import {
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
@@ -13,7 +12,7 @@ import {
   imagePixelsToCanvasPixels,
   relativeToImagePixels,
 } from "./coordinateConversion";
-import { currentData, currentOverlay } from "./state";
+import { useAnnotationContext } from "./useAnnotationContext";
 
 const createInput = (name: string, readOnly?: boolean) => {
   return {
@@ -56,8 +55,9 @@ export default function Position({ readOnly = false }: PositionProps) {
     dimensions: {},
   });
 
-  const overlay = useAtomValue(currentOverlay);
-  const [data, setData] = useAtom(currentData);
+  const { selected, setData } = useAnnotationContext();
+  const overlay = selected?.overlay;
+  const data = selected?.data;
 
   const { scene } = useLighter();
   const useEventHandler = useLighterEventHandler(

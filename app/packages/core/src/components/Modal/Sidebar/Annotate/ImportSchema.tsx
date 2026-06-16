@@ -15,7 +15,7 @@ import {
 import { useAtomValue } from "jotai";
 import React from "react";
 import styled from "styled-components";
-import { isEditing } from "./Edit";
+import { useAnnotationContext } from "./Edit/useAnnotationContext";
 import RequiredFieldPrompt from "./RequiredFieldPrompt";
 import { activeLabelSchemas } from "./state";
 import useCanManageSchema from "./useCanManageSchema";
@@ -61,7 +61,7 @@ export function useShowImportSchema(
   requiredField: RequiredField | null
 ): boolean {
   const noActiveSchemas = !useAtomValue(activeLabelSchemas)?.length;
-  const isEditingValue = useAtomValue(isEditing);
+  const isEditingValue = useAnnotationContext().isEditing;
   return (
     noActiveSchemas || disabled || (requiredField != null && !isEditingValue)
   );
