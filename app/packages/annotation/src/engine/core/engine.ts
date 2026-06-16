@@ -281,6 +281,11 @@ export class AnnotationEngine {
     return this.undos.canRedo();
   }
 
+  /** Terse newest-first view of the undo/redo stacks; backs the history tooltips. */
+  historyView(): { undo: string[]; redo: string[] } {
+    return this.undos.describe();
+  }
+
   /** The most recently committed unit, for await-and-rollback persistence consumers. */
   lastUndoEntry(): UndoEntry | undefined {
     return this.undos.peekUndo();

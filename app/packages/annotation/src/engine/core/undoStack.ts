@@ -9,6 +9,7 @@
  */
 
 import type { LabelData } from "@fiftyone/utilities";
+import { isEqual } from "lodash";
 
 import type { LabelRef } from "../identity/ref";
 import { refKey } from "../identity/ref";
@@ -25,6 +26,57 @@ export interface UndoEntry {
   ops: UndoOp[];
   undoKey?: string;
 }
+
+/** Last 4 chars of an id — enough to eyeball-match a gesture. */
+const shortId = (id: string): string => id.slice(-4);
+
+/**
+ * Keys whose VALUE actually changed. `toLabel` rebuilds the whole label on
+ * commit, so unchanged `tags`/`attributes` come back as fresh refs — diff by
+ * reference first (cheap, and skips an unchanged mask), then confirm a ref-diff
+ * with isEqual so value-equal rebuilds don't show as edits.
+ */
+const changedKeys = (before?: LabelData, after?: LabelData): string[] => {
+  const keys = new Set([
+    ...Object.keys(before ?? {}),
+    ...Object.keys(after ?? {}),
+  ]);
+  const changed: string[] = [];
+
+  for (const key of keys) {
+    const a = (before as Record<string, unknown>)?.[key];
+    const b = (after as Record<string, unknown>)?.[key];
+
+    if (a === b || isEqual(a, b)) {
+      continue;
+    }
+
+    changed.push(key);
+  }
+
+  return changed;
+};
+
+/** Terse, gesture-traceable description of one op. */
+const describeOp = (op: UndoOp): string => {
+  const where = `${op.ref.path}#${shortId(op.ref.instanceId)}`;
+
+  if (op.before === undefined) {
+    return `create ${where}`;
+  }
+
+  if (op.after === undefined) {
+    return `delete ${where}`;
+  }
+
+  return `update ${where}[${changedKeys(op.before, op.after).join(",")}]`;
+};
+
+/** One entry: its ops, prefixed by the gesture's undoKey when present. */
+const describeEntry = (entry: UndoEntry): string => {
+  const body = entry.ops.map(describeOp).join(", ");
+  return entry.undoKey ? `${entry.undoKey}: ${body}` : body;
+};
 
 export class UndoStack {
   private undos: UndoEntry[] = [];
@@ -90,6 +142,17 @@ export class UndoStack {
   /** The most recently committed unit (rollback reuse). */
   peekUndo(): UndoEntry | undefined {
     return this.undos[this.undos.length - 1];
+  }
+
+  /**
+   * Terse, gesture-traceable view of both stacks, NEWEST-FIRST (line 1 = the
+   * next entry an undo/redo will apply). Backs the undo/redo history tooltips.
+   */
+  describe(): { undo: string[]; redo: string[] } {
+    return {
+      undo: [...this.undos].reverse().map(describeEntry),
+      redo: [...this.redos].reverse().map(describeEntry),
+    };
   }
 
   canUndo(): boolean {
