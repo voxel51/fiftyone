@@ -11,19 +11,14 @@ import {
   useModalSampleSchema,
   useUnboundStateRef,
 } from "@fiftyone/state";
-import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import AddSchema from "./AddSchema";
 import {
-  current,
-  currentDisabledFields,
-  currentField,
-  currentFields,
-  currentType,
-  editing,
-} from "./state";
+  useAnnotationContext,
+  useAnnotationFields,
+} from "./useAnnotationContext";
 
 const createSchema = (
   choices: string[],
@@ -55,17 +50,16 @@ const createSchema = (
 });
 
 const Field = () => {
-  const fields = useAtomValue(currentFields);
-  const disabled = useAtomValue(currentDisabledFields);
-  const [currentFieldValue, setCurrentField] = useAtom(currentField);
+  const { fields, disabledFields: disabled } = useAnnotationFields();
+  const { selected, setField, pendingNewType } = useAnnotationContext();
+  const currentFieldValue = selected?.field ?? null;
+  const setCurrentField = setField;
   const isPatches = useRecoilValue(isPatchesView);
-  const currentLabel = useAtomValue(current);
+  const currentLabel = selected?.label ?? null;
   const schema = useMemo(
     () => createSchema(fields, disabled, isPatches),
     [disabled, fields, isPatches]
   );
-  const type = useAtomValue(currentType);
-  const state = useAtomValue(editing);
   const modalSampleSchema = useModalSampleSchema();
   const commandBus = useCommandBus();
   const nextFieldValue = useRef(currentFieldValue);
@@ -133,7 +127,7 @@ const Field = () => {
       )}
       {/* Means the user wants to create a label but no schema fields exist for that type.
       Show AddSchema to let them create the required field. */}
-      {typeof state === "string" && <AddSchema type={type} />}
+      {pendingNewType !== null && <AddSchema type={pendingNewType} />}
     </>
   );
 };

@@ -2,6 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+// @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
 import { atom, getDefaultStore } from "jotai";
 import { beforeEach, describe, expect, it, vi } from "vitest";

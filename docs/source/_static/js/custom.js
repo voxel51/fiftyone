@@ -530,6 +530,7 @@ const initKapaAI = () => {
       "Your AI guide to all things FiftyOne and its community, powered by the complete [FiftyOne documentation](https://docs.voxel51.com/).\n\nNeed team collaboration, cloud storage, flexible deployment, and advanced workflows for production? [Get Enterprise](https://link.voxel51.com/docs-search-sales)",
     mcpEnabled: "true",
     mcpServerUrl: "https://voxel51.mcp.kapa.ai",
+    customizationId: "79381c29-919b-4c49-82eb-a90fd89b5501",
   });
 
   document.head.appendChild(script);

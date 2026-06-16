@@ -1,9 +1,5 @@
-import { useLighter } from "@fiftyone/lighter";
+import { DetectionOverlay, useLighter } from "@fiftyone/lighter";
 import { TypeGuards } from "@fiftyone/lighter/src/core/Scene2D";
-import {
-  clearTransformStateSelector,
-  selectedLabelForAnnotationAtom,
-} from "@fiftyone/looker-3d/src/state";
 import type { AnnotationLabel } from "@fiftyone/state";
 import {
   DETECTION,
@@ -11,19 +7,18 @@ import {
   KEYPOINT,
   POLYLINE,
 } from "@fiftyone/utilities";
-import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
-import { useSetRecoilState } from "recoil";
-import { editing } from ".";
-import { current, currentOverlay, savedLabel } from "./state";
-import useActivePrimitive from "./useActivePrimitive";
+import { useAnnotationContext } from "./useAnnotationContext";
 
 /**
  * True when the user has produced something to commit — a picked class, a
  * drawn bbox, or placed points. Used to distinguish a real (but possibly
  * label-less) annotation from a "clicked create but didn't draw" dummy.
  */
-const hasDrawnContent = (label: AnnotationLabel): boolean => {
+const hasDrawnContent = (
+  label: AnnotationLabel,
+  overlay?: AnnotationLabel["overlay"]
+): boolean => {
   // A picked class is content on its own and also covers shapes we don't
   // introspect here (e.g. 3D detections).
   if (label.data.label) {
@@ -32,6 +27,12 @@ const hasDrawnContent = (label: AnnotationLabel): boolean => {
 
   switch (label.type) {
     case DETECTION:
+      // `data.bounding_box` is only synced to the overlay's geometry once
+      // the edit form mounts, so consult the overlay's live bounds first
+      if (overlay instanceof DetectionOverlay) {
+        return overlay.hasValidBounds();
+      }
+
       return (
         Array.isArray(label.data.bounding_box) &&
         hasValidBounds(label.data.bounding_box)
@@ -45,31 +46,19 @@ const hasDrawnContent = (label: AnnotationLabel): boolean => {
 };
 
 export default function useExit() {
-  const setEditing = useSetAtom(editing);
-  const [, setActivePrimitive] = useActivePrimitive();
-  const setSaved = useSetAtom(savedLabel);
+  const annotationContext = useAnnotationContext();
+  const { clear } = annotationContext;
   const { scene, removeOverlay } = useLighter();
-  const overlay = useAtomValue(currentOverlay);
-  const label = useAtomValue(current);
-
-  /**
-   * 3D SPECIFIC IMPORTS
-   * : TODO: CLEAN THIS UP. THIS FUNCTION SHOULDN'T BE
-   * COUPLED TO LIGHTER OR LOOKER-3D.
-   */
-  const setSelectedLabelForAnnotation = useSetRecoilState(
-    selectedLabelForAnnotationAtom
-  );
-  const clearTransformState = useSetRecoilState(clearTransformStateSelector);
-  /**
-   * 3D SPECIFIC IMPORTS ENDS HERE.
-   */
+  const { label, overlay } = annotationContext.selected ?? {
+    label: null,
+    overlay: undefined,
+  };
 
   return useCallback(() => {
     // If this is an uncommitted dummy label (e.g. create-button click with no
     // shape drawn), remove it from the scene. Label-less labels with actual
     // geometry are valid and must be preserved.
-    if (label?.isNew && !hasDrawnContent(label)) {
+    if (label?.isNew && !hasDrawnContent(label, overlay)) {
       if (scene && !scene.isDestroyed && scene.renderLoopActive) {
         scene.exitInteractiveMode();
         removeOverlay(label.data._id, true);
@@ -81,29 +70,8 @@ export default function useExit() {
       }
     }
 
-    /**
-     * 3D SPECIFIC LOGIC
-     * : TODO: CLEAN THIS UP. THIS FUNCTION SHOULDN'T BE
-     * COUPLED TO LIGHTER OR LOOKER-3D.
-     */
-    setSelectedLabelForAnnotation(null);
-    clearTransformState(null);
-    /**
-     * 3D SPECIFIC LOGIC ENDS HERE.
-     */
-
-    // reset editing state
-    setSaved(null);
-    setEditing(null);
-    setActivePrimitive(null);
-  }, [
-    clearTransformState,
-    label,
-    overlay,
-    removeOverlay,
-    scene,
-    setActivePrimitive,
-    setEditing,
-    setSaved,
-  ]);
+    // 3D state cleanup happens in looker-3d's useReset3dOnEditExit, which
+    // reacts to the atom transition this clear() produces.
+    clear();
+  }, [clear, label, overlay, removeOverlay, scene]);
 }

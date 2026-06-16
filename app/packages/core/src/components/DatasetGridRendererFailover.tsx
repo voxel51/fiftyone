@@ -11,7 +11,7 @@ import { useRecoilValue } from "recoil";
  * Forces dataset pages onto a fresh FiftyOne subscription after a renderer
  * crash so the rest of the session uses a clean backend-synced state channel.
  */
-const DatasetGridRendererFailoverReload = () => {
+export const DatasetGridRendererFailoverReload = () => {
   const currentSubscription = useRecoilValue(fos.stateSubscription);
   const { forcedSubscription, hasAnyFailures } =
     fos.useGridCustomRendererFailover();
@@ -37,7 +37,7 @@ const DatasetGridRendererFailoverReload = () => {
 };
 
 /** Banner shown when the session has been switched to the built-in grid renderer. */
-const DatasetGridRendererFailoverBanner = () => {
+export const DatasetGridRendererFailoverBanner = () => {
   const currentDatasetName = useRecoilValue(fos.datasetName);
   const gridRendererFailover =
     fos.useGridCustomRendererFailover(currentDatasetName);
@@ -69,6 +69,9 @@ const DatasetGridRendererFailoverBanner = () => {
   );
 };
 
+/**
+ * Handles dataset grid renderer failover reloads and session warning UI.
+ */
 export const DatasetGridRendererFailover = () => {
   return (
     <>

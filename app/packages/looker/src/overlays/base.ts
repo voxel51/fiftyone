@@ -16,6 +16,8 @@ export enum CONTAINS {
 }
 
 export interface BaseLabel {
+  /** Backend (Mongo) ObjectId. Canonical id used across the app. */
+  _id?: string;
   id?: string;
   frame_number?: number;
   tags?: string[];
