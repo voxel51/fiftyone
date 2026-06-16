@@ -175,7 +175,7 @@ class DuplicateImageExportTests(ImageDatasetTests):
 class TagsImportExportTests(ImageDatasetTests):
     @drop_tags
     @drop_datasets
-    def test_fiftyone_dataset_temporal_tags_round_trip(self):
+    def test_fiftyone_dataset_tags_round_trip(self):
         dataset, _ = self._make_temporal_tag_dataset()
         export_dir = self._new_dir()
 
@@ -283,7 +283,7 @@ class TagsImportExportTests(ImageDatasetTests):
 
     @drop_tags
     @drop_datasets
-    def test_fiftyone_dataset_temporal_tags_view_export(self):
+    def test_fiftyone_dataset_tags_view_export(self):
         dataset, sample_ids = self._make_temporal_tag_dataset()
         view = dataset.select([sample_ids[0], sample_ids[2]])
         export_dir = self._new_dir()
@@ -310,7 +310,7 @@ class TagsImportExportTests(ImageDatasetTests):
 
     @drop_tags
     @drop_datasets
-    def test_fiftyone_dataset_temporal_tags_max_samples(self):
+    def test_fiftyone_dataset_tags_max_samples(self):
         dataset, sample_ids = self._make_temporal_tag_dataset()
         export_dir = self._new_dir()
 
@@ -339,7 +339,7 @@ class TagsImportExportTests(ImageDatasetTests):
 
     @drop_tags
     @drop_datasets
-    def test_fiftyone_dataset_temporal_tags_nonempty_migration_import(self):
+    def test_fiftyone_dataset_tags_nonempty_migration_import(self):
         dataset, _ = self._make_temporal_tag_dataset()
         export_dir = self._new_dir()
 
