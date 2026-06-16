@@ -77,7 +77,7 @@ class SampleTagsEndpoint(HTTPEndpoint):
         tags = _temporal_tags_from_create_payload(data, sample_id=sample_id)
 
         return {
-            "temporal_tags": [
+            "tags": [
                 _serialize_temporal_tag(tag)
                 for tag in _handle_temporal_tag_errors(
                     lambda: fomt.add_temporal_tags(dataset, tags)
@@ -174,7 +174,7 @@ def _list_temporal_tags(
     tag_filter = _temporal_tag_filter_from_query(request, sample_id=sample_id)
 
     return {
-        "temporal_tags": [
+        "tags": [
             _serialize_temporal_tag(tag)
             for tag in _handle_temporal_tag_errors(
                 lambda: fomt.list_temporal_tags(dataset, filter=tag_filter)

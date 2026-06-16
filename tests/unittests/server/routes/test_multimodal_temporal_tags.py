@@ -1,5 +1,5 @@
 """
-Multimodal temporal tag route unit tests.
+Tag route unit tests.
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -163,7 +163,7 @@ class TestTagsRoute:
         )
 
         response = await sample_tags_endpoint.post(request)
-        created = _json_body(response)["temporal_tags"]
+        created = _json_body(response)["tags"]
         after_post = _modified_timestamps(dataset, sample_ids[0])
 
         assert len(created) == 1
@@ -187,7 +187,7 @@ class TestTagsRoute:
         )
         await asyncio.sleep(0.05)
         response = await sample_tags_endpoint.get(request)
-        listed = _json_body(response)["temporal_tags"]
+        listed = _json_body(response)["tags"]
         after_get = _modified_timestamps(dataset, sample_ids[0])
 
         assert listed == created
@@ -209,7 +209,7 @@ class TestTagsRoute:
         request = _make_request(dataset_id, sample_id=sample_ids[0])
         response = await sample_tags_endpoint.get(request)
 
-        assert _json_body(response)["temporal_tags"] == []
+        assert _json_body(response)["tags"] == []
 
     @pytest.mark.asyncio
     async def test_lists_sample_temporal_tags_with_optional_range(
@@ -248,7 +248,7 @@ class TestTagsRoute:
             query_params={"start": "5", "end": "15"},
         )
         response = await sample_tags_endpoint.get(request)
-        temporal_tags = _json_body(response)["temporal_tags"]
+        temporal_tags = _json_body(response)["tags"]
 
         assert len(temporal_tags) == 1
         assert temporal_tags[0]["sample_id"] == sample_ids[0]
@@ -310,7 +310,7 @@ class TestTagsRoute:
         request = _make_request(dataset_id, sample_id=sample_ids[0])
         response = await sample_tags_endpoint.get(request)
 
-        assert _json_body(response)["temporal_tags"] == [updated]
+        assert _json_body(response)["tags"] == [updated]
 
     @pytest.mark.asyncio
     async def test_lists_scene_temporal_tags_with_optional_range(
@@ -355,7 +355,7 @@ class TestTagsRoute:
             query_params={"start": "5", "end": "15"},
         )
         response = await tags_endpoint.get(request)
-        temporal_tags = _json_body(response)["temporal_tags"]
+        temporal_tags = _json_body(response)["tags"]
         after_get = _dataset_last_modified_at(dataset)
 
         assert [tag["sample_id"] for tag in temporal_tags] == sample_ids[:2]
@@ -421,7 +421,7 @@ class TestTagsRoute:
             query_params={"tags": "candidate,review"},
         )
         response = await tags_endpoint.get(request)
-        temporal_tags = _json_body(response)["temporal_tags"]
+        temporal_tags = _json_body(response)["tags"]
 
         assert [
             (tag["sample_id"], tag["start"], tag["end"], tag["tag"])
@@ -449,7 +449,7 @@ class TestTagsRoute:
             dataset_id,
             sample_id=sample_ids[0],
             body={
-                "temporal_tags": [
+                "tags": [
                     {
                         "start": 0,
                         "end": 10,
@@ -468,7 +468,7 @@ class TestTagsRoute:
 
         response = await sample_tags_endpoint.post(request)
 
-        assert len(_json_body(response)["temporal_tags"]) == 2
+        assert len(_json_body(response)["tags"]) == 2
 
         request = _make_request(
             dataset_id,
@@ -485,7 +485,7 @@ class TestTagsRoute:
 
         request = _make_request(dataset_id, sample_id=sample_ids[0])
         response = await sample_tags_endpoint.get(request)
-        remaining = _json_body(response)["temporal_tags"]
+        remaining = _json_body(response)["tags"]
 
         assert len(remaining) == 1
         assert remaining[0]["sample_id"] == sample_ids[0]
@@ -566,7 +566,7 @@ class TestTagsRoute:
                 _make_request(
                     dataset_id,
                     sample_id=sample_ids[0],
-                    body={"temporal_tags": []},
+                    body={"tags": []},
                 ),
             ),
             (
