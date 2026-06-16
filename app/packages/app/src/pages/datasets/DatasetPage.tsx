@@ -5,6 +5,7 @@
 import {
   ActivityToast,
   Dataset,
+  DatasetGridRendererFailover,
   QueryPerformanceToast,
   SchemaManagerOutlet,
   Snackbar,
@@ -23,7 +24,6 @@ import { graphql } from "relay-runtime";
 import Nav from "../../components/Nav";
 import type { Route } from "../../routing";
 import style from "../index.module.css";
-import { DatasetGridRendererFailover } from "./DatasetGridRendererFailover";
 import type { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
 
 const DatasetPageQueryNode = graphql`

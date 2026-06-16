@@ -5,16 +5,24 @@ import { useRecoilValue, useSetRecoilState } from "recoil";
 import { registerBuiltInOperators } from "./built-in-operators";
 import { useOperatorPlacementsResolver } from "./hooks";
 import { executeOperatorsForEvent, loadOperatorsFromServer } from "./operators";
+import registerPanel from "./Panel/register";
 import {
   availableOperatorsRefreshCount,
   operatorsInitializedAtom,
 } from "./state";
 
 let startupOperatorsExecuted = false;
+const registeredPanels = new Set<string>();
 
 async function loadOperators(datasetName: string) {
   registerBuiltInOperators();
-  await loadOperatorsFromServer(datasetName);
+  const panels = await loadOperatorsFromServer(datasetName);
+  for (const panel of panels) {
+    if (!registeredPanels.has(panel.panel_name)) {
+      registeredPanels.add(panel.panel_name);
+      registerPanel(panel);
+    }
+  }
   executeOperatorsForEvent("onDatasetOpen");
   if (!startupOperatorsExecuted) {
     executeOperatorsForEvent("onStartup");

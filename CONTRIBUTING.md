@@ -3,11 +3,10 @@
 FiftyOne is open source and community contributions are welcome!
 
 If you haven’t already, we highly recommend reviewing the
-[contribution guide](https://docs.voxel51.com/contribute/index.html)
-to get a sense of how you can get involved with FiftyOne. There are 
-many ways to contribute, including reporting bugs, improving
-documentation, enhancing existing code, or helping the community through
-reviews and discussions.
+[contribution guide](https://docs.voxel51.com/contribute/index.html) to get a
+sense of how you can get involved with FiftyOne. There are many ways to
+contribute, including reporting bugs, improving documentation, enhancing
+existing code, or helping the community through reviews and discussions.
 
 Don't be intimidated by the procedures outlined below. They are not dogmatic
 and are only meant to help guide development as the project and number of
@@ -47,9 +46,18 @@ Steps to make a pull request:
 -   Create a pull request into the `develop` branch of
     https://github.com/voxel51/fiftyone
 
-The `develop` branch contains the bleeding edge version of FiftyOne. If you are
-contributing to an existing feature branch, then make your pull requests into
-that branch instead. When in doubt, work against the `develop` branch.
+If you are **not** a Voxel51 team member, we recommend opening your pull
+request against the **`community`** branch (see below).
+
+#### Community pull requests
+
+If you are **not** a Voxel51 team member, open your pull request against the
+**`community`** branch rather than `develop`. If you open one against `develop`
+or a release branch, it is automatically retargeted to `community` for you.
+
+Your changes are unaffected by the retarget. A maintainer integrates the
+`community` branch into `develop` via an automated pull request, so your
+contribution still lands in `develop` — it just goes through `community` first.
 
 Once your pull request has been merged, your changes will be automatically
 included in the next FiftyOne release!

@@ -38,7 +38,6 @@ from fiftyone.core.sample import Sample
 import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.migrations as fomi
-import fiftyone.multimodal.tags._temporal_tags as fommtt
 import fiftyone.types as fot
 
 from .parsers import (
@@ -1824,6 +1823,8 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._media_fields = None
 
     def setup(self):
+        import fiftyone.multimodal.tags._temporal_tags as fommtt
+
         self._data_dir = os.path.join(self.dataset_dir, "data")
         self._fields_dir = os.path.join(self.dataset_dir, "fields")
         self._anno_dir = os.path.join(self.dataset_dir, "annotations")
@@ -1855,6 +1856,8 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 self._has_frames = False
 
     def import_samples(self, dataset, tags=None, progress=None):
+        import fiftyone.multimodal.tags._temporal_tags as fommtt
+
         dataset_dict = foo.import_document(self._metadata_path)
 
         if len(dataset) > 0 and fomi.needs_migration(
