@@ -75,4 +75,21 @@ describe("McapTopicCache", () => {
     expect(cache.get(1n)).toBeUndefined();
     expect(listener).toHaveBeenCalledTimes(2);
   });
+
+  it("guards against a double release clearing the cache while another subscriber is active", () => {
+    const cache = new McapTopicCache();
+    const releaseA = cache.subscribe();
+    const releaseB = cache.subscribe();
+    expect(cache.isActive).toBe(true);
+
+    releaseA();
+    // StrictMode can fire the same cleanup twice; the second call must be a
+    // no-op rather than decrementing again (which would drop to 0 and clear
+    // while releaseB still holds the cache).
+    releaseA();
+    expect(cache.isActive).toBe(true);
+
+    releaseB();
+    expect(cache.isActive).toBe(false);
+  });
 });
