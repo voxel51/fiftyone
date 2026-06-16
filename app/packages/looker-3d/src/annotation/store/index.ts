@@ -19,9 +19,7 @@ export * from "./types";
 export {
   useAddWorkingLabel,
   useBindStableSceneSampleId,
-  useDeletedWorkingLabels,
   useInitializeWorking,
-  useIsLabelDeleted,
   useRemoveWorkingLabel,
   useResetWorkingOnModeChange,
   useUpdateWorkingLabel,

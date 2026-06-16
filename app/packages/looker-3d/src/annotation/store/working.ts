@@ -36,7 +36,6 @@ import type { LabelId, WorkingDoc, WorkingState } from "./types";
 const defaultWorkingState: WorkingState = {
   doc: {
     labelsById: {},
-    deletedIds: new Set(),
   },
   initialized: false,
 };
@@ -180,7 +179,6 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
     setWorking({
       doc: {
         labelsById,
-        deletedIds: new Set(),
       },
       initialized: true,
     });
@@ -221,8 +219,7 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
 
           // Baseline no longer includes this label (e.g. annotationSchemas
           // contracted). User-created labels (isNew) are always kept.
-          // Soft-deleted labels are also kept so their data survives for undo.
-          if (!raw && !label.isNew && !state.doc.deletedIds.has(id)) {
+          if (!raw && !label.isNew) {
             if (!next) next = { ...prev };
             delete next[id];
             changed = true;
@@ -266,7 +263,7 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
 
         set(workingAtom, {
           ...state,
-          doc: { labelsById: next, deletedIds: state.doc.deletedIds },
+          doc: { labelsById: next },
         });
       },
     []
@@ -317,21 +314,12 @@ export function useWorkingLabel(
 }
 
 /**
- * Hook that returns whether a label has been deleted.
- */
-export function useIsLabelDeleted(labelId: LabelId): boolean {
-  const doc = useWorkingDoc();
-  return doc.deletedIds.has(labelId);
-}
-
-/**
  * Hook that returns all detections from the working store.
  */
 export function useWorkingDetections(): ReconciledDetection3D[] {
   const doc = useWorkingDoc();
   return Object.values(doc.labelsById).filter(
-    (label): label is ReconciledDetection3D =>
-      isDetection(label) && !doc.deletedIds.has(label._id)
+    (label): label is ReconciledDetection3D => isDetection(label)
   );
 }
 
@@ -341,29 +329,8 @@ export function useWorkingDetections(): ReconciledDetection3D[] {
 export function useWorkingPolylines(): ReconciledPolyline3D[] {
   const doc = useWorkingDoc();
   return Object.values(doc.labelsById).filter(
-    (label): label is ReconciledPolyline3D =>
-      isPolyline(label) && !doc.deletedIds.has(label._id)
+    (label): label is ReconciledPolyline3D => isPolyline(label)
   );
-}
-
-/**
- * Hook that returns all deleted labels from the working store.
- */
-export function useDeletedWorkingLabels(): (
-  | ReconciledDetection3D
-  | ReconciledPolyline3D
-)[] {
-  const doc = useWorkingDoc();
-  const deletedLabels: (ReconciledDetection3D | ReconciledPolyline3D)[] = [];
-
-  doc.deletedIds.forEach((deletedId) => {
-    const label = doc.labelsById[deletedId];
-    if (label) {
-      deletedLabels.push(label);
-    }
-  });
-
-  return deletedLabels;
 }
 
 // =============================================================================
@@ -453,10 +420,6 @@ export function useAddWorkingLabel() {
           : roundPolyline(label);
 
         set(workingAtom, (prev) => {
-          // Remove from deletedIds if present
-          const newDeletedIds = new Set(prev.doc.deletedIds);
-          newDeletedIds.delete(roundedLabel._id);
-
           return {
             ...prev,
             doc: {
@@ -465,7 +428,6 @@ export function useAddWorkingLabel() {
                 ...prev.doc.labelsById,
                 [roundedLabel._id]: roundedLabel,
               },
-              deletedIds: newDeletedIds,
             },
           };
         });
@@ -476,7 +438,7 @@ export function useAddWorkingLabel() {
 
 /**
  * Hook that returns a callback to HARD-remove a label from the working store
- * (drops it from `labelsById` and `deletedIds` both). This is the engine
+ * (drops it from `labelsById`). This is the engine
  * bridge's `unmount`: when a label leaves the engine's scope (a delete, or a
  * scope contraction), its working entry goes too.
  */
@@ -508,12 +470,9 @@ export function useRemoveWorkingLabel() {
         const labelsById = { ...prev.doc.labelsById };
         delete labelsById[labelId];
 
-        const deletedIds = new Set(prev.doc.deletedIds);
-        deletedIds.delete(labelId);
-
         set(workingAtomFamily(sampleId), {
           ...prev,
-          doc: { ...prev.doc, labelsById, deletedIds },
+          doc: { ...prev.doc, labelsById },
         });
       },
     []
