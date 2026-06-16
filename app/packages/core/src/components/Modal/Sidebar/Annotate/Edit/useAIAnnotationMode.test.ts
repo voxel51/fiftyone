@@ -50,9 +50,11 @@ vi.mock("@fiftyone/annotation/src/agents", () => ({
   useToolsState: () => hoisted.toolsStateSpies,
 }));
 
-vi.mock("./state", () => ({
+vi.mock("./useAnnotationContext", () => ({
   useAnnotationContext: () => ({
-    selectedLabel: hoisted.selectedLabelRef.value,
+    selected: hoisted.selectedLabelRef.value
+      ? { label: hoisted.selectedLabelRef.value }
+      : null,
   }),
 }));
 

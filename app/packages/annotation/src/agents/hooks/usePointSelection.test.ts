@@ -86,13 +86,18 @@ vi.mock("@fiftyone/lighter", () => ({
   useLighterEventBus: () => hoisted.eventBusRef.value,
 }));
 
-vi.mock("@fiftyone/utilities", () => ({}));
+vi.mock("@fiftyone/utilities", async (importOriginal) => {
+  const actual = (await importOriginal()) as object;
+  return { ...actual };
+});
 
 vi.mock(
-  "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state",
+  "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext",
   () => ({
     useAnnotationContext: () => ({
-      selectedLabel: hoisted.selectedLabelRef.value,
+      selected: hoisted.selectedLabelRef.value
+        ? { label: hoisted.selectedLabelRef.value }
+        : null,
     }),
   })
 );
