@@ -644,8 +644,9 @@ describe("integration: whole-sample resets (the autosave echo)", () => {
     expect(retained.handle("d1")?.selected).toBe(true);
     expect(sidebar.result.current.activeIds).toBe("d1");
     expect(sidebar.result.current.entries).toBe("d1:dog,d2:fish");
-    // history refers to replaced entities — cleared
-    expect(engine.canUndo()).toBe(false);
+    // value-based undo survives the persist echo (D7): the prior edit can
+    // still be undone after the backend re-sets the same sample
+    expect(engine.canUndo()).toBe(true);
   });
 
   it("a reset that drops a label unmounts it and prunes its selection", () => {

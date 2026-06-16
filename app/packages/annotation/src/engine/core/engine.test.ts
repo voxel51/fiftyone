@@ -251,14 +251,23 @@ describe("engine undo", () => {
     expect(engine.canRedo()).toBe(true);
   });
 
-  it("clears history on whole-sample reset", () => {
-    const { engine, store } = makeEngine();
+  it("preserves undo history across a whole-sample reset", () => {
+    // value-based undo survives persistence: an autosave echoes a whole-sample
+    // reset (setData) on the same sample, and undoing the prior edit is just a
+    // new transaction writing the before-value. Sample/dataset switches GC
+    // history via store unregistration (dropSample), not the reset.
+    const { engine, store } = makeEngine("s1", {
+      ground_truth: { detections: [makeDet("d1", "cat")] },
+    });
 
-    engine.updateLabel(ref("ground_truth", "d1"), { label: "cat" });
+    engine.updateLabel(ref("ground_truth", "d1", "s1"), { label: "dog" });
     expect(engine.canUndo()).toBe(true);
 
-    store.setData({});
-    expect(engine.canUndo()).toBe(false);
+    store.setData({ ground_truth: { detections: [makeDet("d1", "dog")] } });
+    expect(engine.canUndo()).toBe(true);
+
+    engine.undo();
+    expect(engine.getLabel(ref("ground_truth", "d1", "s1"))?.label).toBe("cat");
   });
 
   it("rollbackEntry applies and drops a specific entry", () => {

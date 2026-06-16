@@ -13,7 +13,7 @@ import type {
   LabelChange,
   LabelStore,
 } from "../store/types";
-import { isWholeSampleReset, wholeSampleReset } from "../store/types";
+import { wholeSampleReset } from "../store/types";
 import { registerBridgeLoop } from "../bridge/bridgeLoop";
 import type { AdapterMap, SurfaceBridge } from "../bridge/types";
 import type { EntityId } from "../identity/entityId";
@@ -544,11 +544,6 @@ export class AnnotationEngine {
   private dispatchChanges(changes: readonly LabelChange[]): void {
     if (changes.length === 0) {
       return;
-    }
-
-    // history refers to entities a whole-sample reset replaced
-    if (changes.some(isWholeSampleReset)) {
-      this.undos.clear();
     }
 
     this.guard.run(() => {
