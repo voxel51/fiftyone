@@ -1502,15 +1502,14 @@ def _ensure_indexes(collection) -> None:
 def _ensure_kind(kind):
     if kind is None:
         return TagKind.TEMPORAL
+    elif isinstance(kind, TagKind):
+        return kind
     elif isinstance(kind, str):
         try:
             return TagKind(kind)
         except ValueError as e:
             raise ValueError("Invalid temporal tag kind: %r" % kind) from e
-    elif isinstance(kind, TagKind):
-        return kind
-    else:
-        raise ValueError("Invalid temporal tag kind: %r" % kind)
+    raise ValueError("Invalid temporal tag kind: %r" % kind)
 
 
 __all__ = [
