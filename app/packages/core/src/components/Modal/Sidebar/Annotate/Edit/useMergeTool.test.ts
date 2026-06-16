@@ -17,11 +17,9 @@ const mockRemoveOverlay = vi.fn();
 const mockGetOverlay = vi.fn();
 const mockAddOverlay = vi.fn();
 const mockSelectOverlay = vi.fn();
-const mockPushUndoable = vi.fn();
 const mockGetFieldSchema = vi
   .fn()
   .mockReturnValue({ ftype: "EmbeddedDocumentField" });
-const mockEngineUpdateLabel = vi.fn();
 
 class MockDetectionOverlay {
   public id: string;
@@ -41,49 +39,18 @@ class MockDeleteAnnotationCommand {
   constructor(public label: unknown, public schema: unknown) {}
 }
 
-class MockMergeDetectionsCommand {
-  public id: string;
-  constructor(
-    public target: unknown,
-    public paintData: unknown,
-    public deps: {
-      deleteSource: () => Promise<void>;
-      restoreSource: () => void;
-    },
-    public targetId: string,
-    public sourceId: string
-  ) {
-    this.id = `merge-${targetId}-${sourceId}-x`;
-  }
-  execute = vi.fn();
-  undo = vi.fn();
-}
-
 vi.mock("@fiftyone/annotation", () => ({
   DeleteAnnotationCommand: MockDeleteAnnotationCommand,
   getFieldSchema: (...args: unknown[]) => mockGetFieldSchema(...args),
-  useActiveAnnotationSampleId: () => "sample-1",
   useAnnotationEventBus: () => ({ dispatch: mockDispatchAnnotationEvent }),
-  useAnnotationEngine: () => ({
-    updateLabel: mockEngineUpdateLabel,
-  }),
 }));
 
 vi.mock("@fiftyone/command-bus", () => ({
   useCommandBus: () => ({ execute: mockExecuteCommand }),
 }));
 
-vi.mock("@fiftyone/commands", () => ({
-  CommandContextManager: {
-    instance: () => ({
-      getActiveContext: () => ({ pushUndoable: mockPushUndoable }),
-    }),
-  },
-}));
-
 vi.mock("@fiftyone/lighter", () => ({
   DetectionOverlay: MockDetectionOverlay,
-  MergeDetectionsCommand: MockMergeDetectionsCommand,
   useLighter: () => ({
     scene: {
       getOverlay: (id: string) => mockGetOverlay(id),
@@ -146,7 +113,6 @@ describe("useMergeTool", () => {
 
     expect(result.current.mergeTargetId).toBe("ov-1");
     expect(mockExecuteCommand).not.toHaveBeenCalled();
-    expect(mockPushUndoable).not.toHaveBeenCalled();
   });
 
   it("re-clicking the same target is a no-op", async () => {
@@ -164,7 +130,7 @@ describe("useMergeTool", () => {
     expect(mockExecuteCommand).not.toHaveBeenCalled();
   });
 
-  it("second click on a different overlay merges, deletes the source, and pushes an undoable", async () => {
+  it("second click on a different overlay merges, deletes the source, and re-selects the target", async () => {
     const target = new MockDetectionOverlay("target");
     const source = new MockDetectionOverlay("source");
     const sourceLabel = { data: { _id: "source" }, path: "ground_truth" };
@@ -197,10 +163,8 @@ describe("useMergeTool", () => {
     // no manual scene/sidebar bookkeeping
     expect(mockRemoveLabelFromSidebar).not.toHaveBeenCalled();
     expect(mockRemoveOverlay).not.toHaveBeenCalled();
-    expect(mockPushUndoable).toHaveBeenCalledTimes(1);
-    expect(mockPushUndoable.mock.calls[0][0]).toBeInstanceOf(
-      MockMergeDetectionsCommand
-    );
+    // no command-context undoable is pushed — the engine's value-based undo
+    // stack owns reverting the merge
     expect(mockSelectOverlay).toHaveBeenCalledWith("target");
     // Target stays as the merge target across a successful merge.
     expect(result.current.mergeTargetId).toBe("target");
@@ -224,7 +188,6 @@ describe("useMergeTool", () => {
     });
 
     expect(mockExecuteCommand).not.toHaveBeenCalled();
-    expect(mockPushUndoable).not.toHaveBeenCalled();
     expect(mockRemoveOverlay).not.toHaveBeenCalled();
   });
 
@@ -296,45 +259,5 @@ describe("useMergeTool", () => {
       result.current.setMergeTarget(null);
     });
     expect(result.current.mergeTargetId).toBe(null);
-  });
-
-  it("MergeDetectionsCommand deps wire deletion and restoration of the source", async () => {
-    const target = new MockDetectionOverlay("target");
-    const source = new MockDetectionOverlay("source");
-    const sourceLabel = { data: { _id: "source" }, path: "ground_truth" };
-
-    mockGetOverlay.mockReturnValue(target);
-    mockGetLabelById.mockReturnValue(sourceLabel);
-
-    const { result } = renderHook(() => useMergeTool());
-    await act(async () => {
-      await result.current.handleOverlayClick(target as never);
-    });
-    await act(async () => {
-      await result.current.handleOverlayClick(source as never);
-    });
-
-    const command = mockPushUndoable.mock
-      .calls[0][0] as MockMergeDetectionsCommand;
-
-    mockExecuteCommand.mockClear();
-    mockRemoveLabelFromSidebar.mockClear();
-    mockRemoveOverlay.mockClear();
-
-    // Redo path: persistence only — the engine read-half unmounts the
-    // overlay and drops the row
-    await command.deps.deleteSource();
-    expect(mockExecuteCommand).toHaveBeenCalledTimes(1);
-    expect(mockRemoveLabelFromSidebar).not.toHaveBeenCalled();
-    expect(mockRemoveOverlay).not.toHaveBeenCalled();
-
-    // Undo path: restore the label through the engine only — the read-half
-    // remounts the overlay and the mirror re-derives the row
-    command.deps.restoreSource();
-    expect(mockAddOverlay).not.toHaveBeenCalled();
-    expect(mockEngineUpdateLabel).toHaveBeenCalledWith(
-      { sample: "sample-1", path: "ground_truth", instanceId: "source" },
-      sourceLabel.data
-    );
   });
 });

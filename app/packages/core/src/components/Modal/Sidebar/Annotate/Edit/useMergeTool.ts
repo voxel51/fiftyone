@@ -2,19 +2,9 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import {
-  DeleteAnnotationCommand,
-  getFieldSchema,
-  useActiveAnnotationSampleId,
-  useAnnotationEngine,
-} from "@fiftyone/annotation";
+import { DeleteAnnotationCommand, getFieldSchema } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
-import { CommandContextManager } from "@fiftyone/commands";
-import {
-  DetectionOverlay,
-  MergeDetectionsCommand,
-  useLighter,
-} from "@fiftyone/lighter";
+import { DetectionOverlay, useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
 import { atom, useAtom, useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
@@ -60,8 +50,6 @@ export const useMergeTool = (): MergeTool => {
   const commandBus = useCommandBus();
   const { scene } = useLighter();
   const { getLabelById } = useLabelsContext();
-  const engine = useAnnotationEngine();
-  const sample = useActiveAnnotationSampleId();
   const fieldSchema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
@@ -113,17 +101,19 @@ export const useMergeTool = (): MergeTool => {
       const schema = getFieldSchema(fieldSchema, sourceLabel.path);
       if (!schema) return true;
 
-      // 1. Merge source mask into target. Snapshots are captured for undo.
+      // 1. Merge source mask into target. The merged-target commits flow
+      // through the engine (captured for undo); snapshots back the rollback.
       if (!targetOverlay.mergeFrom(overlay)) return true;
       const paintData = targetOverlay.getPaintStrokeData();
       if (!paintData) return true;
 
-      // Backend deletion + composite undoable push happen async
+      // Backend deletion happens async
       void (async () => {
         // 2. Persist deletion of source and detach from UI. The mask mutation
         // in step 1 is already visible locally — if the backend delete fails,
         // roll the target's mask back so the canvas / sidebar / pending
-        // persist state stay in sync.
+        // persist state stay in sync. The engine's value-based undo stack owns
+        // reverting the merge (target commits + the source delete).
         try {
           await commandBus.execute(
             new DeleteAnnotationCommand(sourceLabel, schema)
@@ -137,42 +127,6 @@ export const useMergeTool = (): MergeTool => {
           return;
         }
 
-        // 3. Push composite undoable. `execute` (= redo) re-applies the
-        // merged mask and re-deletes; `undo` restores the pre-merge mask
-        // and re-adds the source overlay/label. The engine's read-half owns
-        // the overlay/row fallout of deletes and restores — no manual
-        // scene/sidebar bookkeeping here.
-        const command = new MergeDetectionsCommand(
-          targetOverlay,
-          paintData,
-          {
-            deleteSource: async () => {
-              await commandBus.execute(
-                new DeleteAnnotationCommand(sourceLabel, schema)
-              );
-            },
-            restoreSource: () => {
-              // restore through the engine; the read-half remounts the
-              // overlay and the mirror re-derives the row (a mask_path-backed
-              // mask re-enters via the gated decode, like initial load)
-              engine.updateLabel(
-                {
-                  sample,
-                  path: sourceLabel.path,
-                  instanceId: sourceLabel.data._id,
-                },
-                sourceLabel.data
-              );
-            },
-          },
-          targetOverlay.id,
-          overlay.id
-        );
-
-        CommandContextManager.instance()
-          .getActiveContext()
-          .pushUndoable(command);
-
         scene.selectOverlay(targetOverlay.id);
       })();
 
@@ -180,11 +134,9 @@ export const useMergeTool = (): MergeTool => {
     },
     [
       commandBus,
-      engine,
       fieldSchema,
       getLabelById,
       mergeTargetId,
-      sample,
       scene,
       setMergeTargetId,
     ]
