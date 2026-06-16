@@ -248,11 +248,11 @@ class TestTagsRoute:
             query_params={"start": "5", "end": "15"},
         )
         response = await sample_tags_endpoint.get(request)
-        temporal_tags = _json_body(response)["tags"]
+        tags = _json_body(response)["tags"]
 
-        assert len(temporal_tags) == 1
-        assert temporal_tags[0]["sample_id"] == sample_ids[0]
-        assert temporal_tags[0]["tag"] == "clip"
+        assert len(tags) == 1
+        assert tags[0]["sample_id"] == sample_ids[0]
+        assert tags[0]["tag"] == "clip"
 
     @pytest.mark.asyncio
     async def test_updates_sample_temporal_tag(
@@ -355,11 +355,11 @@ class TestTagsRoute:
             query_params={"start": "5", "end": "15"},
         )
         response = await tags_endpoint.get(request)
-        temporal_tags = _json_body(response)["tags"]
+        tags = _json_body(response)["tags"]
         after_get = _dataset_last_modified_at(dataset)
 
-        assert [tag["sample_id"] for tag in temporal_tags] == sample_ids[:2]
-        assert [tag["tag"] for tag in temporal_tags] == ["clip", "clip"]
+        assert [tag["sample_id"] for tag in tags] == sample_ids[:2]
+        assert [tag["tag"] for tag in tags] == ["clip", "clip"]
         assert after_get == before_get
 
         await asyncio.sleep(0.05)
@@ -421,11 +421,11 @@ class TestTagsRoute:
             query_params={"tags": "candidate,review"},
         )
         response = await tags_endpoint.get(request)
-        temporal_tags = _json_body(response)["tags"]
+        tags = _json_body(response)["tags"]
 
         assert [
             (tag["sample_id"], tag["start"], tag["end"], tag["tag"])
-            for tag in temporal_tags
+            for tag in tags
         ] == [
             (sample_ids[0], 0, 10, "candidate"),
             (sample_ids[1], 10, 20, "candidate"),
