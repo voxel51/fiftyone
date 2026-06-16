@@ -544,7 +544,11 @@ export default function useLabels() {
           hasExistingOverlay: (id) => !!id && !!scene?.getOverlay(id),
         });
 
-      if (loadingRef.current === LabelsState.UNSET) {
+      if (loadingRef.current !== LabelsState.COMPLETE) {
+        // Re-enter on LOADING as well as UNSET: if a dep changes mid-load this
+        // fresh run must (re)start and own the state machine, else the
+        // superseded promise bails via `stale` below and wedges the sidebar at
+        // "Loading..." forever.
         loadingRef.current = LabelsState.LOADING;
         setLoading(LabelsState.LOADING);
         // This seed consumes the sample's current state — including any
@@ -553,32 +557,43 @@ export default function useLabels() {
         if (currentSampleId) {
           consumeExternalSampleChange(currentSampleId);
         }
-        getLabelsFromSample().then((result) => {
-          if (stale) {
-            loadingRef.current = LabelsState.UNSET;
-            return;
-          }
+        getLabelsFromSample()
+          .then((result) => {
+            // Superseded by a newer run that owns the COMPLETE transition.
+            if (stale) {
+              return;
+            }
 
-          // Attach overlays to the scene before exposing them to the app.
-          // This ensures that geometry is grounded in some frame of reference.
-          const initialOverlayIds = new Set<string>();
-          for (const annotationLabel of result) {
-            addLabelToRenderer(annotationLabel);
-            initialOverlayIds.add(annotationLabel.data._id);
-          }
+            // Attach overlays to the scene before exposing them to the app.
+            // This ensures that geometry is grounded in some frame of reference.
+            const initialOverlayIds = new Set<string>();
+            for (const annotationLabel of result) {
+              addLabelToRenderer(annotationLabel);
+              initialOverlayIds.add(annotationLabel.data._id);
+            }
 
-          setLabels(result);
-          setInitialOverlayIds(initialOverlayIds);
+            setLabels(result);
+            setInitialOverlayIds(initialOverlayIds);
 
-          // In patches view with a single label, activate it for editing
-          // via the entranceLabelId mechanism (reuses the quick-edit flow)
-          if (isPatches && result.length === 1) {
-            setActiveLabelId(result[0].data._id);
-          }
+            // In patches view with a single label, activate it for editing
+            // via the entranceLabelId mechanism (reuses the quick-edit flow)
+            if (isPatches && result.length === 1) {
+              setActiveLabelId(result[0].data._id);
+            }
 
-          loadingRef.current = LabelsState.COMPLETE;
-          setLoading(LabelsState.COMPLETE);
-        });
+            loadingRef.current = LabelsState.COMPLETE;
+            setLoading(LabelsState.COMPLETE);
+          })
+          .catch((error) => {
+            if (stale) {
+              return;
+            }
+
+            // Don't wedge the sidebar at "Loading..." if hydration throws.
+            console.error("Failed to load annotation labels", error);
+            loadingRef.current = LabelsState.COMPLETE;
+            setLoading(LabelsState.COMPLETE);
+          });
       } else if (loadingRef.current === LabelsState.COMPLETE) {
         // The scene is the editor: a sample-data change produced by its own
         // write-through is already on the canvas, and re-reading it here

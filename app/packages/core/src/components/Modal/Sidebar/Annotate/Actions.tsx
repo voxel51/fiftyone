@@ -16,10 +16,17 @@ import {
   useCurrent3dAnnotationMode,
   useSetCurrent3dAnnotationMode,
 } from "@fiftyone/looker-3d/src/state/accessors";
-import { is3DDataset, useIs3dPinned } from "@fiftyone/state";
+import {
+  currentSlice,
+  groupMediaTypesMap,
+  is3DDataset,
+  useIs3dPinned,
+  usePreferredGroupAnnotationSlice,
+} from "@fiftyone/state";
 import {
   DETECTION,
   DETECTIONS,
+  is3d,
   POLYLINE,
   POLYLINES,
 } from "@fiftyone/utilities";
@@ -432,6 +439,15 @@ const Actions = () => {
   const is3dDataset = useRecoilValue(is3DDataset);
   // This checks if a 3d sample is pinned - is true when media type is `group` with a 3d slice pinned
   const is3dSamplePinned = useIs3dPinned();
+  // Selecting a pcd slice doesn't pin it, so gate the 3d tools on the slice's
+  // media type, not pinning. Check both the displayed slice (preferredSlice)
+  // and modalGroupSlice, which the controller resolves a beat later.
+  const currentSliceName = useRecoilValue(currentSlice(true));
+  const [preferredSlice] = usePreferredGroupAnnotationSlice();
+  const sliceMediaTypes = useRecoilValue(groupMediaTypesMap);
+  const isCurrentSlice3d =
+    (!!currentSliceName && is3d(sliceMediaTypes[currentSliceName] ?? "")) ||
+    (!!preferredSlice && is3d(sliceMediaTypes[preferredSlice] ?? ""));
 
   const { classificationModeActive } = useClassificationMode();
   const { detectionModeActive } = useDetectionMode();
@@ -445,7 +461,8 @@ const Actions = () => {
     !segmentationModeActive &&
     !polylineModeActive &&
     !current3dAnnotationMode;
-  const areThreeDActionsVisible = is3dDataset || is3dSamplePinned;
+  const areThreeDActionsVisible =
+    is3dDataset || is3dSamplePinned || isCurrentSlice3d;
 
   const deactivateAll = useDeactivateAllModes();
 

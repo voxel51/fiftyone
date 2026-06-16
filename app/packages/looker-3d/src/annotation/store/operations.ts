@@ -27,6 +27,29 @@ import {
   workingAtom,
 } from "./working";
 
+/**
+ * Sidebar entry for a 3D working-store label. 3D labels render via the working
+ * store, not a Lighter overlay, so the entry carries a plain overlay stand-in
+ * (the same shape the 3D editing paths use).
+ */
+function build3dSidebarLabel(
+  label: ReconciledDetection3D | ReconciledPolyline3D,
+  path: string
+): fos.AnnotationLabel {
+  return {
+    isNew: true,
+    data: label,
+    path,
+    type: label._cls,
+    overlay: {
+      id: label._id,
+      field: path,
+      label,
+      getLabel: () => ({ ...label }),
+    },
+  } as unknown as fos.AnnotationLabel;
+}
+
 // =============================================================================
 // CUBOID OPERATIONS
 // =============================================================================
@@ -188,17 +211,30 @@ export function useCuboidOperations() {
         label: labelClass,
       };
 
+      // Without this the cuboid renders on the canvas but is missing from the
+      // sidebar list until a reload. Mirrors deleteCuboid's sidebar bookkeeping.
+      const sidebarLabel = build3dSidebarLabel(newLabel, path);
+
       const execFn = () => {
         addLabel(newLabel);
+        addLabelToSidebar(sidebarLabel);
       };
 
       const undoFn = () => {
         deleteLabel(labelId);
+        removeLabelFromSidebar(labelId);
       };
 
       createPushAndExec(`create-cuboid-${labelId}`, execFn, undoFn);
     },
-    [createPushAndExec, addLabel, deleteLabel, currentSampleId]
+    [
+      createPushAndExec,
+      addLabel,
+      deleteLabel,
+      currentSampleId,
+      addLabelToSidebar,
+      removeLabelFromSidebar,
+    ]
   );
 
   /**
@@ -420,17 +456,29 @@ export function usePolylineOperations() {
         ...(data.misc ?? {}),
       };
 
+      // See createCuboid — without this it only shows on the canvas, not the list.
+      const sidebarLabel = build3dSidebarLabel(newLabel, path);
+
       const execFn = () => {
         addLabel(newLabel);
+        addLabelToSidebar(sidebarLabel);
       };
 
       const undoFn = () => {
         deleteLabel(labelId);
+        removeLabelFromSidebar(labelId);
       };
 
       createPushAndExec(`create-polyline-${labelId}`, execFn, undoFn);
     },
-    [createPushAndExec, addLabel, deleteLabel, currentSampleId]
+    [
+      createPushAndExec,
+      addLabel,
+      deleteLabel,
+      currentSampleId,
+      addLabelToSidebar,
+      removeLabelFromSidebar,
+    ]
   );
 
   /**
