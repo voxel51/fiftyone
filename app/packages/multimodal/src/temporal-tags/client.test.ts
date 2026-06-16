@@ -44,13 +44,13 @@ describe("createTemporalTagsClient", () => {
     expect(
       fetchFunction.mock.calls.map(([config]) => routeKey(config))
     ).toEqual([
-      "GET /dataset/dataset-id/sample/sample-id/multimodal/temporal-tags",
-      "POST /dataset/dataset-id/sample/sample-id/multimodal/temporal-tags",
-      "PATCH /dataset/dataset-id/sample/sample-id/multimodal/temporal-tags/tag-id",
-      "DELETE /dataset/dataset-id/sample/sample-id/multimodal/temporal-tags",
-      "DELETE /dataset/dataset-id/sample/sample-id/multimodal/temporal-tags",
-      "GET /dataset/dataset-id/multimodal/temporal-tags",
-      "GET /dataset/dataset-id/multimodal/temporal-tags/counts",
+      "GET /dataset/dataset-id/sample/sample-id/tags",
+      "POST /dataset/dataset-id/sample/sample-id/tags",
+      "PATCH /dataset/dataset-id/sample/sample-id/tags/tag-id",
+      "DELETE /dataset/dataset-id/sample/sample-id/tags",
+      "DELETE /dataset/dataset-id/sample/sample-id/tags",
+      "GET /dataset/dataset-id/tags",
+      "GET /dataset/dataset-id/tags/counts",
     ]);
   });
 
@@ -73,9 +73,7 @@ describe("createTemporalTagsClient", () => {
     });
 
     const url = routeUrl(fetchFunction.mock.calls[0][0].path);
-    expect(url.pathname).toBe(
-      "/dataset/dataset%20id/sample/sample%2Fid/multimodal/temporal-tags"
-    );
+    expect(url.pathname).toBe("/dataset/dataset%20id/sample/sample%2Fid/tags");
     expect(url.searchParams.getAll("anchors")).toEqual([
       "lidar_top",
       "camera_front",
