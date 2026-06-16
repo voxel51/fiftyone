@@ -32,12 +32,7 @@ const Toast: React.FC<ToastProps> = ({
   secondary,
   duration = 5000,
   layout = {},
-  onHandleClose = (event, reason) => {
-    if (reason === "clickaway") {
-      return;
-    }
-    setOpen(false);
-  },
+  onHandleClose,
 }) => {
   const snackbarStyle = {
     height: layout?.height || 5,

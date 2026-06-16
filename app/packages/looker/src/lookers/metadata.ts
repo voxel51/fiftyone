@@ -18,8 +18,8 @@ export class MetadataLooker extends AbstractLooker<BaseState> {
   }
 
   protected hasDefaultZoom(
-    state: BaseState,
-    overlays: Overlay<BaseState>[]
+    _state: BaseState,
+    _overlays: Overlay<BaseState>[]
   ): boolean {
     return false;
   }

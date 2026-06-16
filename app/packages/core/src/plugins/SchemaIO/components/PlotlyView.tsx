@@ -278,7 +278,7 @@ function createPlotlyHandlers(handleEvent: any) {
 }
 
 const EventDataMappers = {
-  onClick: ({ event, points }) => {
+  onClick: ({ points }) => {
     const { data, fullData, xaxis, yaxis, ...pointdata } = points[0];
     const { x, y, z, ...metadata } = data;
     const result = {
@@ -289,11 +289,11 @@ const EventDataMappers = {
     return result;
   },
   onSelected: (e) => {
-    const { event, points } = e || { points: [] };
+    const { points } = e || { points: [] };
     const selected = [];
     for (const point of points) {
-      const { data, fullData, xaxis, yaxis, ...pointdata } = point;
-      const { x, y, z, ids, selectedpoints, ...metadata } = data;
+      const { data, fullData } = point;
+      const { x, y, z, ids } = data;
       selected.push({
         trace: fullData.name,
         trace_idx: point.curveNumber,
@@ -308,6 +308,7 @@ const EventDataMappers = {
   },
 };
 
+// @ts-expect-error unused — helper not currently called
 function getValuesAtIndices(array, indices) {
   if (!indices || !indices) return null;
   return indices.map((i) => array[i]);

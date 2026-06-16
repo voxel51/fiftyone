@@ -66,7 +66,7 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
   }, [paletteElem, keyDownHandler]);
 
   const handleClose = (
-    event: React.MouseEvent<HTMLDivElement, MouseEvent>,
+    _event: React.MouseEvent<HTMLDivElement, MouseEvent>,
     reason: "escapeKeyDown" | "backdropClick"
   ) => {
     // Prevent closing if an action is in progress

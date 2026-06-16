@@ -239,7 +239,7 @@ export default class HeatmapOverlay<State extends BaseState>
   }
 }
 
-export const getHeatmapPoints = (labels: HeatmapLabel[]): Coordinates[] => {
+export const getHeatmapPoints = (_labels: HeatmapLabel[]): Coordinates[] => {
   return [
     [0, 0],
     [0, 1],

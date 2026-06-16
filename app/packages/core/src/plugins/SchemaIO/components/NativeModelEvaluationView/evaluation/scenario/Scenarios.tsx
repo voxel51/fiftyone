@@ -346,7 +346,7 @@ export default function Scenarios(props) {
           <ToggleButtonGroup
             value={mode}
             exclusive
-            onChange={(e, mode) => {
+            onChange={(_e, mode) => {
               if (mode) {
                 setMode(mode);
               }

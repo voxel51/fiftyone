@@ -35,6 +35,7 @@ const FIRST_FRAME = 1;
  *
  */
 export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
+  // @ts-expect-error unused field
   private elements: ReturnType<typeof getImaVidElements>;
   private unsubscribe: ReturnType<typeof this.subscribeToState>;
 

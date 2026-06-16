@@ -2,8 +2,6 @@ import { Box, Typography } from "@mui/material";
 
 import { CodeBlock, useTheme } from "@fiftyone/components";
 
-interface Props {}
-
 interface Example {
   title: string;
   code?: string;
@@ -37,7 +35,7 @@ const EXAMPLES = [
   // },
 ] as Example[];
 
-export const SchemaSearchHelp = (props: Props) => {
+export const SchemaSearchHelp = () => {
   const theme = useTheme();
 
   return (

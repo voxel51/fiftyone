@@ -105,7 +105,7 @@ export const usePcdMaterialControls = (
       defaultMaterial.attenuateByDistance
     );
 
-  const [opacity, setOpacity] = useState(defaultMaterial.opacity);
+  const [opacity] = useState(defaultMaterial.opacity);
 
   const colorScheme = useRecoilValue(fos.colorScheme);
 

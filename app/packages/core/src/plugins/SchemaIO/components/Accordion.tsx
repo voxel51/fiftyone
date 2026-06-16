@@ -52,7 +52,7 @@ export default function Accordion(props) {
   return (
     <StyledMuiAccordion
       expanded={expanded}
-      onChange={(e, expanded) => setExpanded(expanded)}
+      onChange={(_e, expanded) => setExpanded(expanded)}
       sx={{ width: "100%" }}
     >
       <AccordionSummary>

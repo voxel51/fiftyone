@@ -389,10 +389,10 @@ export const snapBox = (
 };
 
 export const clampScale = (
-  [ww, wh]: Dimensions,
-  [iw, ih]: Dimensions,
+  _dim1: Dimensions,
+  _dim2: Dimensions,
   scale: number,
-  pad: number
+  _pad: number
 ): number => {
   return Math.min(Math.max(scale, 0.1), 10);
 };

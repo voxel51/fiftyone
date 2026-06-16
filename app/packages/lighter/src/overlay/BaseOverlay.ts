@@ -263,7 +263,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    * @param point - The point to test.
    * @returns The containment level (NONE = 0, CONTENT = 1, BORDER = 2).
    */
-  getContainmentLevel(point: Point): CONTAINS {
+  getContainmentLevel(_point: Point): CONTAINS {
     return CONTAINS.NONE;
   }
 
@@ -308,7 +308,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    * @param event - The original pointer event.
    * @returns True if the event was handled.
    */
-  onHoverEnter(point: Point | null, event: PointerEvent | null): boolean {
+  onHoverEnter(_point: Point | null, _event: PointerEvent | null): boolean {
     this.isHoveredState = true;
     this.markDirty();
     return true;
@@ -321,7 +321,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    * @param event - The original pointer event.
    * @returns True if the event was handled.
    */
-  onHoverLeave?(point?: Point | null, event?: PointerEvent | null): boolean {
+  onHoverLeave?(_point?: Point | null, _event?: PointerEvent | null): boolean {
     this.isHoveredState = false;
     this.markDirty();
     return true;
@@ -334,7 +334,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    * @param event - The original pointer event.
    * @returns True if the event was handled.
    */
-  onHoverMove(point?: Point | null, event?: PointerEvent | null): boolean {
+  onHoverMove(_point?: Point | null, _event?: PointerEvent | null): boolean {
     return true;
   }
 

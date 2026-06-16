@@ -285,7 +285,7 @@ export default class SegmentationOverlay<State extends BaseState>
 }
 
 export const getSegmentationPoints = (
-  labels: SegmentationLabel[]
+  _labels: SegmentationLabel[]
 ): Coordinates[] => {
   return [
     [0, 0],

@@ -12,23 +12,15 @@ import { NetworkError } from "@fiftyone/utilities";
 export function useViewChangeEffect() {
   const colorSeed = useRecoilValue(fos.colorSeed);
   const datasetName = useRecoilValue(fos.datasetName);
-  const [brainKey, setBrainKey] = useBrainResult();
-  const [pointsField, setPointsField] = usePointsField();
+  const [brainKey] = useBrainResult();
+  const [, setPointsField] = usePointsField();
   const [labelField] = useColorByField();
   const view = useRecoilValue(fos.view);
   const slices = useRecoilValue(fos.currentSlices(false));
   const filters = useRecoilValue(fos.filters);
-  const [loadedPlot, setLoadedPlot] = usePanelStatePartial(
-    "loadedPlot",
-    null,
-    true
-  );
-  const [loadingPlot, setLoadingPlot] = usePanelStatePartial(
-    "loadingPlot",
-    true,
-    true
-  );
-  const [loadingPlotError, setLoadingPlotError] = usePanelStatePartial(
+  const [, setLoadedPlot] = usePanelStatePartial("loadedPlot", null, true);
+  const [, setLoadingPlot] = usePanelStatePartial("loadingPlot", true, true);
+  const [, setLoadingPlotError] = usePanelStatePartial(
     "loadingPlotError",
     null,
     true

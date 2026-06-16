@@ -8,8 +8,8 @@ export class OpenEmbeddingsPanel extends Operator {
   constructor() {
     super("open-embeddings-panel", "Open Embeddings Panel");
   }
-  useHooks(ctx: ExecutionContext) {
-    const [brainKey, setBrainKey] = useBrainResult();
+  useHooks(_ctx: ExecutionContext) {
+    const [, setBrainKey] = useBrainResult();
     return {
       setBrainKey,
     };

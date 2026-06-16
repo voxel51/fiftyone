@@ -255,6 +255,7 @@ export class CommandContextManager {
    * Fires any context listeners that are registered
    * TODO: currently unused because stack is fixed — will be needed after refactor
    */
+  // @ts-expect-error unused — needed after the context-stack refactor (see TODO above)
   private _fireListeners() {
     this.listeners.forEach((listener) => {
       listener(this.contextStack[this.contextStack.length - 1].id);

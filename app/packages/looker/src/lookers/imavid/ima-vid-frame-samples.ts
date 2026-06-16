@@ -145,7 +145,7 @@ export class ImaVidFrameSamples {
    */
   resetMaskForSample(
     sample: ModalSampleExtendedWithImage,
-    newRenderStatus = RENDER_STATUS_PENDING
+    _newRenderStatus = RENDER_STATUS_PENDING
   ) {
     this.updateSample(
       sample.id ?? sample.sample._id,

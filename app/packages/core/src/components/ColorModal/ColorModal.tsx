@@ -84,7 +84,12 @@ const ColorModal = () => {
                 bottomLeft: true,
                 topLeft: true,
               }}
-              onResizeStop={(e, direction, ref, { width: dw, height: dh }) => {
+              onResizeStop={(
+                e,
+                _direction,
+                _ref,
+                { width: dw, height: dh }
+              ) => {
                 setWidth(width + dw);
                 setHeight(height + dh);
                 if (e.detail === 2) {

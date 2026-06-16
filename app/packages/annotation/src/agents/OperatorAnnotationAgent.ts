@@ -147,8 +147,8 @@ export class OperatorAnnotationAgent<T extends InferenceResultProxy>
    * Subscribes to updates for an in-progress async inference session.
    */
   async subscribe(
-    sessionId: string,
-    callback: (result: SyncInferenceResult<T>) => void
+    _sessionId: string,
+    _callback: (result: SyncInferenceResult<T>) => void
   ): Promise<void> {
     // todo
   }

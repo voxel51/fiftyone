@@ -58,8 +58,6 @@ const SchemaSettings = () => {
     setSearchTerm,
     setSelectedTab,
     selectedTab,
-    datasetName,
-    excludedPaths,
     resetExcludedPaths,
     isFilterRuleActive,
     setShowNestedFields,
@@ -72,8 +70,7 @@ const SchemaSettings = () => {
     isFilterRuleActive && (!searchTerm || !searchResults.length);
   const resetDisabled = isFilterRuleActive && !searchResults.length;
 
-  const { setSearchResults, searchMetaFilter } =
-    fos.useSearchSchemaFields(mergedSchema);
+  const { setSearchResults } = fos.useSearchSchemaFields(mergedSchema);
 
   const { setFieldVisibilityStage } = fos.useSetSelectedFieldsStage();
   const resetFieldVisibilityStage = useResetRecoilState(

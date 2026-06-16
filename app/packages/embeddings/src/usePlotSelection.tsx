@@ -27,7 +27,7 @@ export function usePlotSelection() {
     [],
     true
   );
-  const [lassoPoints, setLassoPoints] = useRecoilState(atoms.lassoPoints);
+  const [, setLassoPoints] = useRecoilState(atoms.lassoPoints);
   const selectedPatchIds = useRecoilValue(fos.selectedPatchIds(patchesField));
   const selectedPatchSampleIds = useRecoilValue(fos.selectedPatchSamples);
   function handleSelected(

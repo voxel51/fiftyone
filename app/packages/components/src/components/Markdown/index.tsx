@@ -126,7 +126,7 @@ const componentsMap = {
       </InlineCode>
     );
   },
-  p: ({ children, ...props }) => (
+  p: ({ children }) => (
     <Typography
       sx={{
         color: "inherit",

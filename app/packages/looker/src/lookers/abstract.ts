@@ -290,7 +290,7 @@ export abstract class AbstractLooker<
     this.sampleOverlays = loadOverlays(sample, this.state.config.fieldSchema);
   }
 
-  pluckOverlays(state: Readonly<State>): Overlay<State>[] {
+  pluckOverlays(_state: Readonly<State>): Overlay<State>[] {
     return this.sampleOverlays;
   }
 

@@ -507,7 +507,7 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   skeletons: {},
   showSkeletons: true,
   showOverlays: true,
-  pointFilter: (path: string, point: Point) => true,
+  pointFilter: (_path: string, _point: Point) => true,
   attributeVisibility: {},
   mediaFallback: false,
   shouldHandleKeyEvents: true,

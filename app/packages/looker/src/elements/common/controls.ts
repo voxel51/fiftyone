@@ -33,6 +33,7 @@ import {
 export class ControlsElement<
   State extends BaseState
 > extends BaseElement<State> {
+  // @ts-expect-error unused field
   private showControls: boolean = false;
 
   getEvents(): Events<State> {
