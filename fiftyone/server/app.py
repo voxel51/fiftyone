@@ -24,6 +24,7 @@ from starlette.middleware.base import (
     RequestResponseEndpoint,
 )
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 from starlette.requests import Request
 from starlette.responses import FileResponse, RedirectResponse, Response
 from starlette.routing import Mount, Route
@@ -207,20 +208,33 @@ app = Starlette(
         ),
         Mount(
             "/plugins",
-            app=Static(
-                directory=fo.config.plugins_dir,
-                html=True,
-                check_dir=False,
-                follow_symlink=True,
+            # gzip the static app/plugin assets (JS/CSS/HTML/wasm). Scoped to
+            # these mounts rather than app-wide so media (/media, range
+            # requests) and GraphQL responses are left untouched.
+            app=GZipMiddleware(
+                Static(
+                    directory=fo.config.plugins_dir,
+                    html=True,
+                    check_dir=False,
+                    follow_symlink=True,
+                ),
+                minimum_size=860,
+                compresslevel=6,
             ),
             name="plugins",
         ),
         Mount(
             "/",
-            app=Static(
-                directory=os.path.join(os.path.dirname(__file__), "static"),
-                html=True,
-                follow_symlink=True,
+            app=GZipMiddleware(
+                Static(
+                    directory=os.path.join(
+                        os.path.dirname(__file__), "static"
+                    ),
+                    html=True,
+                    follow_symlink=True,
+                ),
+                minimum_size=860,
+                compresslevel=6,
             ),
             name="static",
         ),
