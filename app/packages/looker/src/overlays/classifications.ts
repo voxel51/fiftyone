@@ -402,7 +402,7 @@ export const filterTemporalLabel = (
 };
 
 export const getClassificationPoints = (
-  labels: ClassificationLabel[]
+  _labels: ClassificationLabel[]
 ): Coordinates[] => {
   return [];
 };

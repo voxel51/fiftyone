@@ -85,7 +85,7 @@ export function serializeFieldValue(
  * @returns the initial value of the field
  */
 export function parseDatabaseValue(
-  type: string,
+  _type: string,
   value: unknown
 ): Primitive | Date {
   /**

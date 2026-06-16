@@ -22,7 +22,7 @@ const SidebarContainer = ({
       minWidth={260}
       maxWidth={600}
       direction={modal ? "left" : "right"}
-      onResizeStop={(e, direction, ref, { width: delta }) => {
+      onResizeStop={(_e, _direction, _ref, { width: delta }) => {
         setWidth(width + delta);
       }}
       onResizeReset={resetWidth}

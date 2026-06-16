@@ -89,7 +89,7 @@ export default function SliderView(props: ViewPropsType) {
     isNumber(viewMax) ? viewMax : isNumber(schemaMax) ? schemaMax : 100,
   ];
 
-  const [key, setUserChanged] = useKey(path, schema, data, true);
+  const [key] = useKey(path, schema, data, true);
   const [fieldsRevision, setFieldsRevision] = useState(0);
 
   const computedMultipleOf = isNumber(multipleOf)

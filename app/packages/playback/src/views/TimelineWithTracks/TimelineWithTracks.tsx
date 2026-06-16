@@ -15,7 +15,9 @@ import {
 import LoopOverlays from "../Loop/LoopOverlays";
 import PlayheadLine from "../Playhead/PlayheadLine";
 import TimelineHeader from "../TimelineHeader/TimelineHeader";
-import TimelineTrack, { type NormalizedEvent } from "../TimelineTrack/TimelineTrack";
+import TimelineTrack, {
+  type NormalizedEvent,
+} from "../TimelineTrack/TimelineTrack";
 import styles from "./TimelineWithTracks.module.css";
 
 export interface TimelineWithTracksProps {
@@ -95,10 +97,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
 
   if (tracks.length === 0) {
     return (
-      <div
-        ref={containerRef}
-        className={clsx(styles.root, styles.noTracks, className)}
-      >
+      <div ref={containerRef} className={clsx(styles.root, className)}>
         <TimelineHeader
           labelWidth={labelWidth}
           zoomRef={containerRef}

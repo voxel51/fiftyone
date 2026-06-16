@@ -36,7 +36,7 @@ export const PointSizeSlider = () => {
   );
 
   const handleSliderChange = useCallback(
-    (event: Event, newValue: number | number[]) => {
+    (_event: Event, newValue: number | number[]) => {
       setPointSize(String(newValue));
       setIsTextBoxEmpty(false);
     },

@@ -27,7 +27,6 @@ export const useCuboidAnnotation = ({
   location,
   dimensions,
   rotation,
-  strokeAndFillColor,
   isAnnotateMode,
   isSelectedForAnnotation,
 }: UseCuboidAnnotationProps) => {

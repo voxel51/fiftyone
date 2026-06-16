@@ -53,7 +53,7 @@ export default function RadioView(props: RadioGroupProps) {
       <MUIRadioGroup
         key={key}
         defaultValue={data}
-        onChange={(e, value) => {
+        onChange={(_e, value) => {
           onChange(path, value);
           setUserChanged();
         }}

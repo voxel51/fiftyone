@@ -370,7 +370,7 @@ export class GridCustomRendererItem {
 
   attach(
     element: HTMLElement | string,
-    dimensions?: GridItemDimensions,
+    _dimensions?: GridItemDimensions,
     _fontSize?: number
   ) {
     if (this.destroyed) {

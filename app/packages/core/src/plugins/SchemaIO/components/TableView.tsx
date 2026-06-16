@@ -54,7 +54,7 @@ export default function TableView(props: ViewPropsType) {
         if (action.rows?.[row] !== false) {
           computedRowActions.push({
             ...action,
-            onClick: (action, e) => {
+            onClick: (action) => {
               handleClick(panelId, {
                 operator: action.on_click,
                 params: { path, event: action.name, row },

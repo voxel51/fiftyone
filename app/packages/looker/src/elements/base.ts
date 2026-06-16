@@ -83,7 +83,7 @@ export abstract class BaseElement<
     }
   }
 
-  isShown(config: Readonly<State["config"]>): boolean {
+  isShown(_config: Readonly<State["config"]>): boolean {
     return true;
   }
 
@@ -114,7 +114,7 @@ export abstract class BaseElement<
     sample: Readonly<Sample>
   ): Element | null;
 
-  protected getEvents(config: Readonly<State["config"]>): Events<State> {
+  protected getEvents(_config: Readonly<State["config"]>): Events<State> {
     return {};
   }
 }

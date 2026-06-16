@@ -15,8 +15,8 @@ export class MetadataThumbnailElement extends BaseElement<BaseState> {
   #fileSize: HTMLElement;
 
   createHTMLElement(
-    dispatchEvent: DispatchEvent,
-    config: Readonly<BaseConfig>
+    _dispatchEvent: DispatchEvent,
+    _config: Readonly<BaseConfig>
   ): HTMLElement {
     const element = document.createElement("div");
     element.setAttribute("data-cy", "file-thumbnail-looker");

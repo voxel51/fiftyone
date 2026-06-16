@@ -38,7 +38,7 @@ export function EmbeddingsPlot({
   } = plotSelection;
   const [zoomRev] = useZoomRevision();
   const resetZoom = useResetPlotZoom();
-  const { isLoading, traces, style, error } = usePlot(plotSelection);
+  const { isLoading, traces, style } = usePlot(plotSelection);
   const [dragMode, setDragMode] = usePanelStatePartial(
     "dragMode",
     "lasso",
@@ -77,7 +77,7 @@ export function EmbeddingsPlot({
         <Plot
           data={data}
           style={{ zIndex: 1 }}
-          onSelected={(selected, foo) => {
+          onSelected={(selected) => {
             if (!selected || selected?.points?.length === 0) return;
 
             const result = {};

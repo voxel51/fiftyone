@@ -282,7 +282,7 @@ export default function Evaluation(props: EvaluationProps) {
       <Box sx={tabStyles.container}>
         <Tabs
           value={activeTab}
-          onChange={(e, newValue) => {
+          onChange={(_e, newValue) => {
             setActiveTab(newValue);
             trackEvent("evaluation_tab_clicked", {
               tab: newValue,

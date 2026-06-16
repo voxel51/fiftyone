@@ -1,11 +1,5 @@
 import React, { DetailedHTMLProps } from "react";
 
-export const useExternalLink = (
-  href?: string
-): React.MouseEventHandler<HTMLAnchorElement> | undefined => {
-  return;
-};
-
 const ExternalLink: React.FC<
   Omit<
     DetailedHTMLProps<
@@ -15,8 +9,7 @@ const ExternalLink: React.FC<
     "target"
   >
 > = ({ href, ...props }) => {
-  const onClick = useExternalLink(href);
-  return <a {...props} href={href} target="_blank" onClick={onClick} />;
+  return <a {...props} href={href} target="_blank" />;
 };
 
 export default ExternalLink;

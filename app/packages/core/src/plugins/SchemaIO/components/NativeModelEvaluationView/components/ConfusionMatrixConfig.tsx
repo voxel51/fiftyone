@@ -70,7 +70,7 @@ export default function ConfusionMatrixConfig(props) {
                 disableCloseOnSelect
                 options={classes}
                 defaultValue={state.classes}
-                onChange={(e, value) => {
+                onChange={(_e, value) => {
                   setState((state) => ({
                     ...state,
                     classes: value,
@@ -155,7 +155,7 @@ export default function ConfusionMatrixConfig(props) {
             control={
               <Checkbox
                 defaultChecked={log}
-                onChange={(e, checked) => {
+                onChange={(_e, checked) => {
                   setState((state) => ({ ...state, log: checked }));
                 }}
               />

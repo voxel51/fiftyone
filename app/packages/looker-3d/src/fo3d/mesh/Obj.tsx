@@ -78,7 +78,6 @@ const ObjMeshDefaultMaterial = ({
 };
 
 const ObjMeshWithCustomMaterial = ({
-  name,
   obj,
   onLoad,
 }: {

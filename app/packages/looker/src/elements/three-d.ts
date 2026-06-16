@@ -14,6 +14,7 @@ const DEFAULT_FILL_STYLE = "rgba(255, 255, 255, 0.6)";
 export class ThreeDElement extends BaseElement<ThreeDState, HTMLImageElement> {
   public imageSource: HTMLCanvasElement | HTMLImageElement;
   private isOpmAvailable: boolean;
+  // @ts-expect-error unused field
   private isFo3d: boolean;
 
   private canvas: HTMLCanvasElement;

@@ -32,7 +32,10 @@ const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
   return <>{value}</>;
 };
 
-export default function Embeddings({ containerHeight, dimensions }) {
+export default function Embeddings({
+  containerHeight: _containerHeight,
+  dimensions,
+}) {
   const el = useRef();
   const theme = useTheme();
   const resetZoom = useResetPlotZoom();

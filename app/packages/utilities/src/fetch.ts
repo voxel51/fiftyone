@@ -683,6 +683,7 @@ const pollingEventSource = (
     });
 };
 
+// @ts-expect-error unused — helper not currently called
 const getFirstFilterPath = (requestBody: any) => {
   if (requestBody && requestBody.query) {
     if (requestBody.query.includes("paginateSamplesQuery")) {

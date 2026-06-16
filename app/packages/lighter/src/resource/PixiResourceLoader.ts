@@ -163,6 +163,7 @@ export class PixiResourceLoader implements ResourceLoader {
    * @param hint - The asset type hint.
    * @returns Promise that resolves to the loaded resource.
    */
+  // @ts-expect-error unused — alternate hint-based loader, not yet wired up
   private async loadWithHint<T>(
     url: string,
     hint: LoadOptions["hint"]
@@ -243,7 +244,7 @@ export class PixiResourceLoader implements ResourceLoader {
    */
   private async loadMultipleWithHint<T>(
     urls: string[],
-    hint: LoadOptions["hint"]
+    _hint: LoadOptions["hint"]
   ): Promise<Record<string, T>> {
     // For now, use the generic Assets.load which auto-detects based on file extension
     // The hint parameter is available for future extensibility when we need type-specific loading

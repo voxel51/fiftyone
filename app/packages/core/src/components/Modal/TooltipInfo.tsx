@@ -29,7 +29,7 @@ import { useCanAnnotateField } from "./Sidebar/Annotate/useCanAnnotateField";
 
 const TOOLTIP_HEADER_ID = "fo-tooltip-header";
 
-const TooltipDiv = animated(styled(ContentDiv) <{ $isTooltipLocked: boolean }>`
+const TooltipDiv = animated(styled(ContentDiv)<{ $isTooltipLocked: boolean }>`
   position: absolute;
   margin-top: 0;
   left: -1000;
@@ -589,8 +589,9 @@ const Border = ({ color, id }) => {
   return (
     <BorderDiv
       style={{
-        borderTop: `2px ${selectedLabels.has(id) ? "dashed" : "solid"
-          } ${color}`,
+        borderTop: `2px ${
+          selectedLabels.has(id) ? "dashed" : "solid"
+        } ${color}`,
       }}
     />
   );
@@ -614,7 +615,7 @@ const useTarget = (field, target) => {
 
 const AttrInfo = ({ label, field, labelType, children = null }) => {
   let entries = Object.entries(label).filter(
-    ([k, v]) => "tags" !== k && !k.startsWith("_")
+    ([k]) => "tags" !== k && !k.startsWith("_")
   );
   if (!entries || !entries.length) {
     return null;
@@ -636,23 +637,23 @@ const AttrInfo = ({ label, field, labelType, children = null }) => {
   const attributes =
     typeof label.attributes === "object"
       ? Object.entries(
-        label.attributes as { [key: string]: { value: string | number } }
-      ).map<[string, string | number]>(([k, v]) => [
-        "attributes." + k,
-        v.value,
-      ])
+          label.attributes as { [key: string]: { value: string | number } }
+        ).map<[string, string | number]>(([k, v]) => [
+          "attributes." + k,
+          v.value,
+        ])
       : null;
 
   // we're prettifying the instance config attributes here
   const instanceAttributes = label.instance
     ? Object.entries(label.instance)
-      .filter(
-        ([k, v]) =>
-          typeof v === "string" &&
-          v.length > 0 &&
-          (k === "_id" || !k.startsWith("_"))
-      )
-      .map(([k, v]) => ["instance " + (k === "_id" ? "id" : k), v])
+        .filter(
+          ([k, v]) =>
+            typeof v === "string" &&
+            v.length > 0 &&
+            (k === "_id" || !k.startsWith("_"))
+        )
+        .map(([k, v]) => ["instance " + (k === "_id" ? "id" : k), v])
     : null;
 
   return (
@@ -721,7 +722,7 @@ const KeypointInfo = ({ detail }) => {
           field={detail.field}
           label={Object.fromEntries(
             detail.point.attributes
-              .filter(([x, y]) => x !== "points")
+              .filter(([x]) => x !== "points")
               .map(([k, v]) => [
                 `${k === "label" ? "skeleton" : k}[${detail.point.index}]`,
                 v,
