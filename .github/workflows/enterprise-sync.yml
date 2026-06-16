@@ -2,13 +2,10 @@ name: Enterprise Sync
 
 on:
   pull_request:
-    # `edited` covers base-branch changes — e.g. a stacked PR auto-retargeted
-    # to develop when its base PR merges. The head SHA doesn't change, so no
-    # `synchronize` fires; without `edited` the retargeted PR would never sync.
+    # `edited` catches base changes (no `synchronize` fires on a retarget). No
+    # `branches:` filter: it matches the current base, so a retarget away from
+    # develop/release would be dropped before we can close the mirror.
     types: [opened, synchronize, reopened, closed, ready_for_review, edited]
-    branches:
-      - develop
-      - release/*
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -16,32 +13,74 @@ concurrency:
 
 jobs:
   enterprise-sync:
-    # Only the OSS repo dispatches to Enterprise. The Enterprise repo carries an
-    # identical copy of this file (via OSS sync) where this guard makes it inert,
-    # so the file never diverges and never produces a sync conflict.
-    # On `edited`, only dispatch when the base branch changed (changes.base is
-    # only present then) — title/body edits don't need a re-sync.
+    # Only the OSS repo dispatches; the synced Enterprise copy is inert here.
+    # Run for synced-base PRs or any base change (changes.base, `edited` only).
     if: >-
       github.repository == 'voxel51/fiftyone' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       !endsWith(github.event.pull_request.user.login, '[bot]') &&
-      (github.event.action != 'edited' || github.event.changes.base) && (
-      github.event.action == 'closed' ||
-      github.event.pull_request.draft != true)
+      (github.event.action != 'edited' || github.event.changes.base) &&
+      (
+        github.event.pull_request.base.ref == 'develop' ||
+        startsWith(github.event.pull_request.base.ref, 'release/') ||
+        github.event.changes.base
+      ) &&
+      (
+        github.event.action == 'closed' ||
+        github.event.pull_request.draft != true
+      )
     runs-on: ubuntu-latest
     steps:
       - uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
           script: |
-            const sha = context.payload.pull_request.head.sha;
+            const pr = context.payload.pull_request;
+            const action = context.payload.action;
+            const sha = pr.head.sha;
+            const base = pr.base.ref;
 
-            // Post `enterprise / ci = pending` on the PR head immediately so
-            // the required check appears on the PR without waiting for the
-            // Enterprise sync workflow to start. The Enterprise workflow
-            // overwrites this status with `success` or `failure` once it
-            // finishes. Skip for closed PRs — the OSS PR is past the gate.
-            if (context.payload.action !== 'closed') {
+            // Bases mirrored into Enterprise.
+            const isSyncBase = (b) => b === 'develop' || b.startsWith('release/');
+
+            // Retarget away from a synced base: close the orphaned mirror.
+            if (action === 'edited' && context.payload.changes.base) {
+              const from = context.payload.changes.base.ref.from;
+              if (isSyncBase(from) && !isSyncBase(base)) {
+                await github.rest.repos.createCommitStatus({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  sha,
+                  state: 'success',
+                  context: 'enterprise / ci',
+                  description: 'No Enterprise sync — PR no longer targets develop/release',
+                });
+                await github.rest.repos.createDispatchEvent({
+                  owner: 'voxel51',
+                  repo: 'fiftyone-teams',
+                  event_type: 'oss-pr-sync',
+                  client_payload: {
+                    action: 'closed',
+                    branch: pr.head.ref,
+                    author: pr.user.login,
+                    pr_number: pr.number,
+                    commit_sha: sha,
+                    base: from,
+                    merged: false,
+                  },
+                });
+                return;
+              }
+            }
+
+            // A base we don't mirror, and not a retarget away from one.
+            if (!isSyncBase(base)) {
+              return;
+            }
+
+            // Show `enterprise / ci` pending until the sync workflow overwrites
+            // it. Skip for closed PRs — the OSS PR is past the gate.
+            if (action !== 'closed') {
               await github.rest.repos.createCommitStatus({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -57,12 +96,12 @@ jobs:
               repo: 'fiftyone-teams',
               event_type: 'oss-pr-sync',
               client_payload: {
-                action: context.payload.action,
-                branch: context.payload.pull_request.head.ref,
-                author: context.payload.pull_request.user.login,
-                pr_number: context.payload.pull_request.number,
+                action,
+                branch: pr.head.ref,
+                author: pr.user.login,
+                pr_number: pr.number,
                 commit_sha: sha,
-                base: context.payload.pull_request.base.ref,
-                merged: context.payload.pull_request.merged ?? false,
+                base,
+                merged: pr.merged ?? false,
               }
             });
