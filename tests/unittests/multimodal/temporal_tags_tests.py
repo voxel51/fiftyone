@@ -1224,13 +1224,17 @@ def _make_dataset(num_samples=1):
 
 def _temporal_tag_count(dataset_id):
     return foo.get_db_conn()[TAGS_COLLECTION_NAME].count_documents(
-        {"_dataset_id": dataset_id}
+        {"_dataset_id": dataset_id, "kind": TagKind.TEMPORAL.value}
     )
 
 
 def _temporal_tag_count_for_sample(dataset_id, sample_id):
     return foo.get_db_conn()[TAGS_COLLECTION_NAME].count_documents(
-        {"_dataset_id": dataset_id, "_sample_id": ObjectId(sample_id)}
+        {
+            "_dataset_id": dataset_id,
+            "_sample_id": ObjectId(sample_id),
+            "kind": TagKind.TEMPORAL.value,
+        }
     )
 
 
