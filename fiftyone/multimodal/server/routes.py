@@ -117,11 +117,11 @@ class SampleTemporalTagEndpoint(HTTPEndpoint):
 
         dataset = _get_dataset_from_request(request)
         sample_id = _get_required_path_param(request, "sample_id")
-        temporal_tag_id = _get_required_path_param(request, "tag_id")
+        tag_id = _get_required_path_param(request, "tag_id")
         update = _temporal_tag_update_from_payload(
             data,
             sample_id=sample_id,
-            temporal_tag_id=temporal_tag_id,
+            temporal_tag_id=tag_id,
         )
 
         return {
@@ -129,7 +129,7 @@ class SampleTemporalTagEndpoint(HTTPEndpoint):
                 _handle_temporal_tag_errors(
                     lambda: fomt.update_temporal_tag(
                         dataset.select([sample_id]),
-                        temporal_tag_id,
+                        tag_id,
                         start=update["start"],
                         end=update["end"],
                         tag=update["tag"],
