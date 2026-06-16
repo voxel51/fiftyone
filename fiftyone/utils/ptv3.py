@@ -54,6 +54,9 @@ _PTV3_BASE_CONFIG = {
     "shuffle_orders": False,
 }
 
+# spconv convolution algorithms selectable via the ``conv_algo`` config option
+_CONV_ALGOS = ("native", "implicit_gemm", "split_implicit_gemm")
+
 
 class PointTransformerV3ModelConfig(foc.Config, fozm.HasZooModel):
     """Configuration for running a :class:`PointTransformerV3Model`.
@@ -63,11 +66,20 @@ class PointTransformerV3ModelConfig(foc.Config, fozm.HasZooModel):
             automatically when loading from the model zoo
         grid_size (0.05): the voxel grid size, in meters, used to serialize the
             point cloud before inference. Must match the value the checkpoint
-            was trained with (0.05 m for the nuScenes ``PTv3-base`` backbone)
+            was trained with (0.05 m for the nuScenes ``PTv3-base`` backbone);
+            changing it silently degrades the embeddings
         feature_keys (("coord", "strength")): the per-point input features the
             backbone consumes, in order. ``"coord"`` expands to the three xyz
             columns; any other key consumes one column of the input cloud. The
             total width must equal the backbone's ``in_channels``
+        point_cloud_range (None): an optional ``[xmin, ymin, zmin, xmax, ymax,
+            zmax]`` box, in meters, to crop points to before voxelization. Use
+            this to bound memory on dense clouds, e.g. ``[-51.2, -51.2, -4,
+            51.2, 51.2, 2.4]`` for nuScenes-scale scenes
+        conv_algo (None): optionally force the spconv convolution algorithm,
+            one of ``"native"``, ``"implicit_gemm"``, ``"split_implicit_gemm"``.
+            Use ``"native"`` if inference aborts with a SIGFPE on newer CUDA
+            drivers
         device (None): the device to use, e.g. ``"cuda"`` or ``"cpu"``. If not
             provided, GPU is used when available
     """
@@ -87,6 +99,27 @@ class PointTransformerV3ModelConfig(foc.Config, fozm.HasZooModel):
                 d, "feature_keys", default=["coord", "strength"]
             )
         )
+        self.point_cloud_range = self.parse_array(
+            d, "point_cloud_range", default=None
+        )
+        if (
+            self.point_cloud_range is not None
+            and len(self.point_cloud_range) != 6
+        ):
+            raise ValueError(
+                "point_cloud_range must have 6 values "
+                "[xmin, ymin, zmin, xmax, ymax, zmax]; found %s"
+                % (self.point_cloud_range,)
+            )
+        self.conv_algo = self.parse_string(d, "conv_algo", default=None)
+        if (
+            self.conv_algo is not None
+            and self.conv_algo.lower() not in _CONV_ALGOS
+        ):
+            raise ValueError(
+                "Unsupported conv_algo '%s'; expected one of %s"
+                % (self.conv_algo, list(_CONV_ALGOS))
+            )
         self.device = self.parse_string(d, "device", default=None)
 
 
@@ -100,6 +133,15 @@ class PointTransformerV3Model(fomo.Model, fomo.EmbeddingsMixin):
 
     Inference is GPU-only and peaks near 6 GB of VRAM on a full nuScenes-scale
     sweep (~34k points); at least 8 GB is recommended.
+
+    The backbone is a semantic-segmentation network and the embedding is its
+    mean-pooled per-point features. The sparse-convolution kernels accumulate
+    atomically, so embeddings vary by a fraction of a percent between runs and
+    are not bit-reproducible across machines; this is fine for similarity but
+    not for exact-hash deduplication. When a cloud is read from a ``.pcd`` via
+    the dataset path, per-point LiDAR intensity is taken from the Open3D color
+    channel (FiftyOne's convention), so a genuinely RGB-colored cloud would feed
+    its red channel as the intensity feature.
 
     Example::
 
@@ -179,7 +221,35 @@ class PointTransformerV3Model(fomo.Model, fomo.EmbeddingsMixin):
                 % (len(missing), len(unexpected))
             )
 
-        return model.to(self._device).eval()
+        model = model.to(self._device).eval()
+        if config.conv_algo is not None:
+            self._set_conv_algo(model, config.conv_algo)
+
+        return model
+
+    @staticmethod
+    def _set_conv_algo(model, name):
+        from spconv.core import ConvAlgo
+        from spconv.pytorch.conv import SparseConvolution
+
+        algo = {
+            "native": ConvAlgo.Native,
+            "implicit_gemm": ConvAlgo.MaskImplicitGemm,
+            "split_implicit_gemm": ConvAlgo.MaskSplitImplicitGemm,
+        }[name.lower()]
+        for module in model.modules():
+            if isinstance(module, SparseConvolution):
+                module.algo = algo
+
+    def _embed_one(self, arg):
+        # Self-contained so concurrent calls don't race on shared state
+        point = self._build_input(arg)
+        with torch.inference_mode():
+            out = self._model(point)
+            per_point = out.feat if hasattr(out, "feat") else out["feat"]
+            embedding = per_point.mean(dim=0)
+
+        return embedding.detach().float().cpu().numpy()
 
     def predict(self, arg):
         """Embeds a single point cloud.
@@ -189,20 +259,18 @@ class PointTransformerV3Model(fomo.Model, fomo.EmbeddingsMixin):
                 :attr:`PointTransformerV3ModelConfig.feature_keys`
 
         Returns:
-            a :class:`fiftyone.core.labels.Label`-free embedding is stored; use
+            ``None``; the embedding is stored, use :meth:`get_embeddings` or
             :meth:`embed` to retrieve it
         """
-        point = self._build_input(arg)
-        with torch.inference_mode():
-            out = self._model(point)
-            per_point = out.feat if hasattr(out, "feat") else out["feat"]
-            embedding = per_point.mean(dim=0)
-
-        self._embeddings = embedding.detach().float().cpu().numpy()[np.newaxis]
+        self._embeddings = self._embed_one(arg)[np.newaxis]
         return None
 
     def predict_all(self, args):
-        return [self.predict(arg) for arg in args]
+        embeddings = [self._embed_one(arg) for arg in args]
+        self._embeddings = (
+            np.stack(embeddings) if embeddings else np.empty((0, 0))
+        )
+        return [None] * len(embeddings)
 
     def get_embeddings(self):
         if self._embeddings is None:
@@ -211,11 +279,10 @@ class PointTransformerV3Model(fomo.Model, fomo.EmbeddingsMixin):
         return self._embeddings
 
     def embed(self, arg):
-        self.predict(arg)
-        return self.get_embeddings()[0]
+        return self._embed_one(arg)
 
     def embed_all(self, args):
-        return np.stack([self.embed(arg) for arg in args])
+        return np.stack([self._embed_one(arg) for arg in args])
 
     def _build_input(self, cloud):
         cloud = np.asarray(cloud, dtype=np.float32)
@@ -259,6 +326,18 @@ class PointTransformerV3Model(fomo.Model, fomo.EmbeddingsMixin):
             )
 
         feat = np.concatenate(feats, axis=1)
+
+        pcr = self.config.point_cloud_range
+        if pcr is not None:
+            lo = np.asarray(pcr[:3], dtype=np.float32)
+            hi = np.asarray(pcr[3:], dtype=np.float32)
+            inside = np.all((coord >= lo) & (coord <= hi), axis=1)
+            coord, feat = coord[inside], feat[inside]
+            if coord.shape[0] == 0:
+                raise ValueError(
+                    "No points remain after cropping to point_cloud_range %s"
+                    % (list(pcr),)
+                )
 
         grid_size = self.config.grid_size
         grid_coord = np.floor(coord / grid_size).astype(np.int64)

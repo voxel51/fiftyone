@@ -1299,9 +1299,11 @@ def _load_sample_point_cloud(sample):
         raise ValueError("Point cloud '%s' contains no points" % pcd_path)
 
     # FiftyOne stores per-point LiDAR intensity in the PCD color channel,
-    # normalized to [0, 1] by Open3D. Surface it as a fourth column so models
-    # trained with intensity (e.g. the nuScenes PTv3 backbone) receive it
-    # instead of a zero-filled feature
+    # normalized to [0, 1] by Open3D, so surface the red channel as a fourth
+    # feature column for models trained with intensity (e.g. the nuScenes PTv3
+    # backbone). Note: for a genuinely RGB-colored point cloud this feeds the
+    # red channel as the intensity feature; there is no portable way to tell
+    # intensity-in-color apart from true RGB
     colors = np.asarray(pc.colors, dtype=np.float32)
     if colors.ndim == 2 and colors.shape[0] == points.shape[0]:
         points = np.concatenate([points, colors[:, :1]], axis=1)

@@ -18,7 +18,12 @@ from fiftyone.utils.ptv3 import (
 )
 
 
-def _make_model(feature_keys=("coord", "strength"), grid_size=0.05, forward=None):
+def _make_model(
+    feature_keys=("coord", "strength"),
+    grid_size=0.05,
+    point_cloud_range=None,
+    forward=None,
+):
     """Builds a model with the heavy backbone load bypassed and a fake forward."""
     model = PointTransformerV3Model.__new__(PointTransformerV3Model)
     model._device = "cpu"
@@ -27,6 +32,7 @@ def _make_model(feature_keys=("coord", "strength"), grid_size=0.05, forward=None
     cfg = type("Cfg", (), {})()
     cfg.grid_size = grid_size
     cfg.feature_keys = feature_keys
+    cfg.point_cloud_range = point_cloud_range
     model.config = cfg
 
     if forward is None:
@@ -97,6 +103,25 @@ class TestBuildInput:
         with pytest.raises(ValueError, match="empty"):
             model._build_input(np.zeros((0, 4), dtype=np.float32))
 
+    def test_crops_to_point_cloud_range(self):
+        model = _make_model(point_cloud_range=[-1, -1, -1, 1, 1, 1])
+        cloud = np.array(
+            [
+                [0.0, 0.0, 0.0, 0.5],   # inside
+                [0.5, -0.5, 0.2, 0.1],  # inside
+                [10.0, 0.0, 0.0, 0.3],  # outside (x)
+                [0.0, 0.0, 5.0, 0.7],   # outside (z)
+            ],
+            dtype=np.float32,
+        )
+        point = model._build_input(cloud)
+        assert point["coord"].shape[0] == 2  # only the two in-range points
+
+    def test_rejects_when_range_excludes_all(self):
+        model = _make_model(point_cloud_range=[100, 100, 100, 200, 200, 200])
+        with pytest.raises(ValueError, match="point_cloud_range"):
+            model._build_input(np.random.rand(50, 4).astype("float32"))
+
 
 class TestEmbed:
     def test_embed_returns_mean_pooled_vector(self):
@@ -119,6 +144,20 @@ class TestEmbed:
         model = _make_model()
         clouds = [np.random.rand(50, 4).astype("float32") for _ in range(3)]
         assert model.embed_all(clouds).shape == (3, 64)
+
+    def test_embed_is_pure_no_stored_state(self):
+        # embed() must not depend on or mutate shared instance state
+        model = _make_model()
+        emb = model.embed(np.random.rand(40, 4).astype("float32"))
+        assert emb.shape == (64,)
+        assert model._embeddings is None  # embed does not stash state
+
+    def test_predict_all_stores_all_embeddings(self):
+        model = _make_model()
+        clouds = [np.random.rand(50, 4).astype("float32") for _ in range(3)]
+        out = model.predict_all(clouds)
+        assert out == [None, None, None]
+        assert model.get_embeddings().shape == (3, 64)
 
 
 class TestProperties:
@@ -176,6 +215,24 @@ class TestConfig:
     def test_rejects_nonpositive_grid_size(self):
         with pytest.raises(ValueError, match="grid_size"):
             PointTransformerV3ModelConfig({"grid_size": 0})
+
+    def test_rejects_bad_conv_algo(self):
+        with pytest.raises(ValueError, match="conv_algo"):
+            PointTransformerV3ModelConfig({"conv_algo": "bogus"})
+
+    def test_rejects_bad_point_cloud_range(self):
+        with pytest.raises(ValueError, match="point_cloud_range"):
+            PointTransformerV3ModelConfig({"point_cloud_range": [0, 0, 0]})
+
+    def test_accepts_optional_params(self):
+        config = PointTransformerV3ModelConfig(
+            {
+                "conv_algo": "native",
+                "point_cloud_range": [-1, -1, -1, 1, 1, 1],
+            }
+        )
+        assert config.conv_algo == "native"
+        assert len(config.point_cloud_range) == 6
 
     def test_zoo_deployment_resolves_config_class(self):
         # The eta ModelConfig wrapper resolves the leaf config as
