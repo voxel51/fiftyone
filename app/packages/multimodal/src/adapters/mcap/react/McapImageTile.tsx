@@ -184,12 +184,13 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
 };
 
 function labelWithCount(label: string, count: number | undefined): string {
-  return count ? `${label} (${count.toLocaleString()})` : label;
+  return count !== undefined ? `${label} (${count.toLocaleString()})` : label;
 }
 
 function sourceDetails(source: { recordCount?: number } | undefined): string {
-  return source?.recordCount
-    ? `${source.recordCount.toLocaleString()} messages`
+  const count = source?.recordCount;
+  return count !== undefined
+    ? `${count.toLocaleString()} messages`
     : "Message count unavailable";
 }
 

@@ -152,7 +152,7 @@ const Mcap3dTile: React.FC = () => {
 };
 
 function labelWithCount(label: string, count: number | undefined): string {
-  return count ? `${label} (${count.toLocaleString()})` : label;
+  return count !== undefined ? `${label} (${count.toLocaleString()})` : label;
 }
 
 export default Mcap3dTile;

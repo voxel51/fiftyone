@@ -1,21 +1,18 @@
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { Checkbox } from "@voxel51/voodo";
-import type React from "react";
+import { useState, type KeyboardEvent } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   checkboxNoSpaceToggleProps,
   preventSettingsCheckboxSpaceToggle,
 } from "./mcap-settings-keyboard";
 
-function keyboardEvent(
-  key: string,
-  code?: string
-): React.KeyboardEvent<HTMLElement> {
+function keyboardEvent(key: string, code?: string): KeyboardEvent<HTMLElement> {
   return {
     code,
     key,
     preventDefault: vi.fn(),
-  } as unknown as React.KeyboardEvent<HTMLElement>;
+  } as unknown as KeyboardEvent<HTMLElement>;
 }
 
 describe("preventSettingsCheckboxSpaceToggle", () => {
@@ -64,9 +61,37 @@ describe("checkboxNoSpaceToggleProps on a voodo Checkbox", () => {
     return { checkbox, onChange };
   }
 
+  function StatefulCheckbox({
+    extraProps,
+  }: {
+    readonly extraProps: Record<string, unknown>;
+  }) {
+    const [checked, setChecked] = useState(false);
+    return (
+      <Checkbox
+        label="option"
+        checked={checked}
+        onChange={setChecked}
+        {...extraProps}
+      />
+    );
+  }
+
+  function renderStatefulCheckbox(extraProps: Record<string, unknown>) {
+    const { getByRole } = render(<StatefulCheckbox extraProps={extraProps} />);
+    const checkbox = getByRole("checkbox");
+    checkbox.focus();
+    return { checkbox };
+  }
+
   function pressSpace(el: HTMLElement) {
     fireEvent.keyDown(el, { key: " ", code: "Space" });
     fireEvent.keyUp(el, { key: " ", code: "Space" });
+  }
+
+  function pressEnter(el: HTMLElement) {
+    fireEvent.keyDown(el, { key: "Enter", code: "Enter" });
+    fireEvent.keyUp(el, { key: "Enter", code: "Enter" });
   }
 
   // Control: proves the test reproduces voodo's Space-to-toggle, so the guard
@@ -87,5 +112,14 @@ describe("checkboxNoSpaceToggleProps on a voodo Checkbox", () => {
     const { checkbox, onChange } = renderCheckbox(checkboxNoSpaceToggleProps);
     fireEvent.click(checkbox);
     expect(onChange).toHaveBeenCalled();
+  });
+
+  it("still toggles on Enter with the guard props", () => {
+    const { checkbox } = renderStatefulCheckbox(checkboxNoSpaceToggleProps);
+    expect(checkbox.getAttribute("aria-checked")).toBe("false");
+
+    pressEnter(checkbox);
+
+    expect(checkbox.getAttribute("aria-checked")).toBe("true");
   });
 });

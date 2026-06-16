@@ -96,7 +96,9 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
         >
           {fileName}
         </Text>
-        {caption ? <div className={styles.caption}>{caption}</div> : null}
+        {caption !== null && caption !== undefined ? (
+          <div className={styles.caption}>{caption}</div>
+        ) : null}
       </div>
 
       <div className={styles.spacer} />
