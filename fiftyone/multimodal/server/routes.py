@@ -125,7 +125,7 @@ class SampleTagEndpoint(HTTPEndpoint):
         )
 
         return {
-            "temporal_tag": _serialize_temporal_tag(
+            "tag": _serialize_temporal_tag(
                 _handle_temporal_tag_errors(
                     lambda: fomt.update_temporal_tag(
                         dataset.select([sample_id]),

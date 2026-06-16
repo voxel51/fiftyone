@@ -290,7 +290,7 @@ class TestTagsRoute:
             },
         )
         response = await sample_tag_endpoint.patch(request)
-        updated = _json_body(response)["temporal_tag"]
+        updated = _json_body(response)["tag"]
         after_patch = _modified_timestamps(dataset, sample_ids[0])
 
         assert updated["id"] == created.id
