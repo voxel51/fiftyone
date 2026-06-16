@@ -48,6 +48,8 @@ from .parsers import (
     FiftyOneVideoLabelsSampleParser,
 )
 
+fommtt = fou.lazy_import("fiftyone.multimodal.tags._temporal_tags")
+
 logger = logging.getLogger(__name__)
 
 
