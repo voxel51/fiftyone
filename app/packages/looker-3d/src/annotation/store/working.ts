@@ -2,6 +2,7 @@ import * as fos from "@fiftyone/state";
 import { isEqual } from "lodash";
 import { useEffect, useRef } from "react";
 import {
+  atom,
   atomFamily,
   DefaultValue,
   selector,
@@ -50,26 +51,62 @@ export const workingAtomFamily = atomFamily<WorkingState, string>({
 });
 
 /**
- * Public facade selector for accessing the working state of the current sample.
- * Automatically keys by the current sample ID.
+ * The 3D scene's stable, non-suspending sample id, mirrored into a synchronous
+ * atom. The working store always holds the SCENE's labels, but the scene's own
+ * id differs from `currentSampleId` in a grouped modal (the selected 2D slice
+ * vs. the pinned 3D scene). The facade must key by the scene id so every
+ * consumer — seed, render, the engine bridge — agrees on one family entry.
+ *
+ * Mirrored rather than read directly: the underlying `sceneSample` selector is
+ * async, and keying this synchronous facade off it would suspend the working
+ * store and hang the 3D render on "Pixelating…". {@link useBindStableSceneSampleId}
+ * (mounted with the annotation bridge) feeds the last settled value here;
+ * `undefined` outside an active 3D annotation session, where the facade falls
+ * back to `currentSampleId` (non-grouped: the two coincide anyway).
+ */
+const stableSceneSampleIdAtom = atom<string | undefined>({
+  key: "fo3d-stableSceneSampleId",
+  default: undefined,
+});
+
+/**
+ * Public facade selector for the working state of the active 3D scene, keyed by
+ * the stable scene id (falling back to `currentSampleId` when no scene is
+ * bound).
  */
 export const workingAtom = selector<WorkingState>({
   key: "fo3d-workingStoreFacade",
   get: ({ get }) => {
-    const sampleId = get(fos.currentSampleId);
+    const sampleId = get(stableSceneSampleIdAtom) ?? get(fos.currentSampleId);
     if (!sampleId) {
       return defaultWorkingState;
     }
     return get(workingAtomFamily(sampleId));
   },
   set: ({ get, set }, newValue) => {
-    const sampleId = get(fos.currentSampleId);
+    const sampleId = get(stableSceneSampleIdAtom) ?? get(fos.currentSampleId);
     if (!sampleId || newValue instanceof DefaultValue) {
       return;
     }
     set(workingAtomFamily(sampleId), newValue);
   },
 });
+
+/**
+ * Mirror the stable scene sample id into {@link stableSceneSampleIdAtom} so the
+ * working-store facade keys off the scene, not the selected slice. Mount with
+ * the annotation bridge (not the 3D viewer) so the binding outlives the
+ * viewer's visibility; resets on unmount.
+ */
+export function useBindStableSceneSampleId(): void {
+  const setSceneId = useSetRecoilState(stableSceneSampleIdAtom);
+  const sceneId = fos.useStableSceneSample3d()?.sample?._id;
+
+  useEffect(() => {
+    setSceneId(sceneId);
+    return () => setSceneId(undefined);
+  }, [sceneId, setSceneId]);
+}
 
 /**
  * Selector that returns just the working document for the current sample.
@@ -455,6 +492,35 @@ export function useDeleteWorkingLabel() {
               deletedIds: newDeletedIds,
             },
           };
+        });
+      },
+    []
+  );
+}
+
+/**
+ * Hook that returns a callback to HARD-remove a label from the working store
+ * (drops it from `labelsById` and `deletedIds` both). This is the engine
+ * bridge's `unmount`: when a label leaves the engine's scope, its working
+ * entry goes too — distinct from the soft-delete (`useDeleteWorkingLabel`) that
+ * the ad-hoc 3D delete/undo path still uses.
+ */
+export function useRemoveWorkingLabel() {
+  return useRecoilCallback(
+    ({ set }) =>
+      (labelId: LabelId) => {
+        set(workingAtom, (prev) => {
+          if (!prev.doc.labelsById[labelId]) {
+            return prev;
+          }
+
+          const labelsById = { ...prev.doc.labelsById };
+          delete labelsById[labelId];
+
+          const deletedIds = new Set(prev.doc.deletedIds);
+          deletedIds.delete(labelId);
+
+          return { ...prev, doc: { ...prev.doc, labelsById, deletedIds } };
         });
       },
     []

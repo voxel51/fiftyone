@@ -18,10 +18,12 @@ export * from "./types";
 // Working store
 export {
   useAddWorkingLabel,
+  useBindStableSceneSampleId,
   useDeletedWorkingLabels,
   useDeleteWorkingLabel,
   useInitializeWorking,
   useIsLabelDeleted,
+  useRemoveWorkingLabel,
   useResetWorkingOnModeChange,
   useRestoreWorkingLabel,
   useUpdateWorkingLabel,
