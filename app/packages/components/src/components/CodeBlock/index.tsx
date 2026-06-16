@@ -1,12 +1,11 @@
 import { CopyButton } from "@fiftyone/components";
 import { Box, useColorScheme } from "@mui/material";
-import React from "react";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import {
   a11yDark,
   a11yLight,
 } from "react-syntax-highlighter/dist/esm/styles/hljs";
-import { scrollable } from "../../scrollable.module.css";
+import scrollableStyles from "../../scrollable.module.css";
 
 export default function CodeBlock({ text, ...props }: CodeBlockProps) {
   const { mode } = useColorScheme();
@@ -41,7 +40,7 @@ export default function CodeBlock({ text, ...props }: CodeBlockProps) {
       />
       <SyntaxHighlighter
         showLineNumbers
-        className={scrollable}
+        className={scrollableStyles.scrollable}
         language="Python"
         customStyle={{ margin: 0, lineHeight: 1.75 }}
         style={mode === "dark" ? a11yDark : a11yLight}

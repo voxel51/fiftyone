@@ -7,7 +7,6 @@
 
 import { WidgetProps } from "@rjsf/utils";
 import { BaseSlider, FormField } from "@voxel51/voodo";
-import React from "react";
 
 export default function Slider(props: WidgetProps) {
   const { value, onChange, schema, uiSchema, label, rawErrors } = props;

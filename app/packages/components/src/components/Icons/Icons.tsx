@@ -1,16 +1,15 @@
 import { SvgIcon, SvgIconProps } from "@mui/material";
 import { Info as InfoIcon } from "@mui/icons-material";
-import React from "react";
 
 import ExternalLink from "../ExternalLink";
 
-import { iconLink } from "./Icons.module.css";
+import styles from "./Icons.module.css";
 
-export { iconContainer } from "./Icons.module.css";
+export const iconContainer = styles.iconContainer;
 
 export const DiscordLink = () => (
   <ExternalLink
-    className={iconLink}
+    className={styles.iconLink}
     href={"https://community.voxel51.com/"}
     title={"Discord"}
   >
@@ -28,7 +27,7 @@ export const DiscordLink = () => (
 export const GitHubLink = () => {
   return (
     <ExternalLink
-      className={iconLink}
+      className={styles.iconLink}
       title="GitHub"
       href="https://github.com/voxel51/fiftyone"
     >
@@ -46,7 +45,7 @@ export const GitHubLink = () => {
 export const DocsLink = () => {
   return (
     <ExternalLink
-      className={iconLink}
+      className={styles.iconLink}
       title="Documentation"
       href="https://docs.voxel51.com/user_guide/app.html"
     >

@@ -12,7 +12,7 @@ import {
   Spacing,
   Stack,
 } from "@voxel51/voodo";
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 interface Option {
   value: unknown;
