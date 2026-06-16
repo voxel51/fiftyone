@@ -105,6 +105,14 @@ export default function GroupAnnotation({
         return modalGroupSlice;
       }
 
+      // The annotation target slice (and thus the sample edits resolve to)
+      // changes here — log the action so a wrong-sample save can be traced to
+      // its trigger.
+      console.debug("[annotation] slice selector changed target slice", {
+        from: modalGroupSlice,
+        to: sliceName,
+      });
+
       applyVisibilityForSlice(sliceName);
       setModalGroupSlice(sliceName);
       setPreferredSlice(sliceName);

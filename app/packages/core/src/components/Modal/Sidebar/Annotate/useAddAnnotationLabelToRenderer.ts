@@ -24,7 +24,11 @@ export const useAddAnnotationLabelToRenderer = () => {
       if (label.type === CLASSIFICATION) {
         addOverlay(label.overlay);
       } else if (label.type === DETECTION) {
-        addOverlay(label.overlay as DetectionOverlay);
+        // 3D detections carry a plain overlay stand-in (rendered by looker-3d),
+        // not a Lighter overlay — only real DetectionOverlays go to the scene.
+        if (label.overlay instanceof DetectionOverlay) {
+          addOverlay(label.overlay);
+        }
       } else if (label.type === KEYPOINT) {
         addOverlay(label.overlay as KeypointOverlay);
       } else if (

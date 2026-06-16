@@ -19,6 +19,7 @@ import {
   useLighter,
 } from "@fiftyone/lighter";
 import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
+import { isDetection3dOverlay } from "@fiftyone/looker-3d";
 import { AnnotationLabel, useGetKeypointSkeleton } from "@fiftyone/state";
 import { getDefaultStore } from "jotai";
 import { isFieldReadOnly, labelSchemaData } from "./state";
@@ -67,6 +68,24 @@ export const useCreateAnnotationLabel = () => {
       if (type === DETECTION) {
         const label = data as DetectionOverlayOptions["label"];
         const boundingBox = label?.bounding_box;
+
+        // A 3D detection has no bounding_box, so the DetectionOverlay path
+        // below would throw on boundingBox[0..3] and silently drop it. Return a
+        // plain overlay stand-in instead (it renders via looker-3d). Guarded on
+        // the missing bounding_box to leave every other detection untouched.
+        if (!boundingBox && isDetection3dOverlay(data)) {
+          return {
+            data,
+            overlay: {
+              id: data._id,
+              field,
+              label: data,
+              getLabel: () => ({ ...data }),
+            },
+            path: field,
+            type,
+          } as unknown as AnnotationLabel;
+        }
 
         // Check if field is read-only
         const store = getDefaultStore();

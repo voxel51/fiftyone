@@ -4,759 +4,514 @@ FiftyOne Server sample endpoints.
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
+
+Annotation saves are a batch of gated field updates applied directly to Mongo
+(no sample is ever loaded), each carrying its target, the previous value to
+gate on, and the new value to write. A failed precondition returns ``409``
+with the document's current state so the client can reconcile.
 """
 
-import base64
-import datetime
 import logging
-import re
-from typing import Any, Dict, List, Optional, Union
+from collections import defaultdict
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple
 
-from bson import json_util
+from bson import ObjectId
+from pymongo import DeleteOne, UpdateOne
+from pymongo.errors import PyMongoError
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 
-import fiftyone as fo
-from fiftyone.server import decorators, utils
-from fiftyone.server.exceptions import DbVersionMismatchError
-from fiftyone.server.utils.datasets import (
-    get_dataset,
-    get_sample_from_dataset,
-    sync_to_generated_dataset,
+import fiftyone.core.labels as fol
+import fiftyone.core.utils as fou
+from fiftyone.core.odm.database import get_db_conn
+from fiftyone.server import decorators
+from fiftyone.server.annotations import (
+    build_label_update,
+    build_write,
+    is_label,
 )
 from fiftyone.server.utils.json.encoder import JSONResponse
-from fiftyone.server.utils.json.jsonpatch import (
-    apply as apply_jsonpatch,
-    RootDeleteError,
-)
 
 logger = logging.getLogger(__name__)
 
 
-def datetimes_match(
-    dt1: datetime.datetime, dt2: datetime.datetime, tolerance_ms: int = 1
-) -> bool:
-    """Compare datetimes with tolerance for precision and timezone differences.
-
-    When comparing datetimes from different sources (e.g., MongoDB vs parsed
-    ISO string), precision and timezone awareness may differ. This function
-    normalizes timezone awareness and compares with a small tolerance.
-
-    Args:
-        dt1: First datetime
-        dt2: Second datetime
-        tolerance_ms: Maximum allowed difference in milliseconds (default: 1)
-
-    Returns:
-        True if the datetimes match within the tolerance
-    """
-    # Normalize timezone awareness - treat naive datetimes as UTC
-    if dt1.tzinfo is None and dt2.tzinfo is not None:
-        dt1 = dt1.replace(tzinfo=datetime.timezone.utc)
-    elif dt2.tzinfo is None and dt1.tzinfo is not None:
-        dt2 = dt2.replace(tzinfo=datetime.timezone.utc)
-
-    diff = abs((dt1 - dt2).total_seconds() * 1000)
-    return diff <= tolerance_ms
-
-
-def get_if_last_modified_at(
-    request: Request,
-) -> Union[datetime.datetime, None]:
-    """Parses the If-Match header from the request, if present, and returns
-    the last modified date.
-
-    Args:
-        request: The request
-
-    Raises:
-        HTTPException: If the If-Match header could not be parsed into a
-          valid date
-
-    Returns:
-        The last modified date, or None if the header is not present
-    """
-
-    if_last_modified_at: Union[str, datetime.datetime, None] = None
-    if request.headers.get("If-Match"):
-        if_match, _ = utils.http.ETag.parse(request.headers["If-Match"])
-
-        # As ETag - Currently this is just a based64 encode string of
-        # last_modified_at
-        try:
-            if_last_modified_at = datetime.datetime.fromisoformat(
-                base64.b64decode(if_match.encode("utf-8")).decode("utf-8")
-            )
-        except Exception:
-            ...
-
-        # As ISO date
-        try:
-            if_last_modified_at = datetime.datetime.fromisoformat(if_match)
-        except Exception:
-            ...
-
-        # As Unix timestamp
-        try:
-            if_last_modified_at = datetime.datetime.fromtimestamp(
-                float(if_match)
-            )
-        except Exception:
-            ...
-
-        if if_last_modified_at is None:
-            raise HTTPException(
-                status_code=400, detail="Invalid If-Match header"
-            )
-    return if_last_modified_at
-
-
-def get_sample(
-    dataset_id: str,
-    sample_id: str,
-    if_last_modified_at: Union[datetime.datetime, None],
-) -> fo.Sample:
-    """Retrieves a sample from a dataset.
-
-    Args:
-        dataset_id: The ID of the dataset
-        sample_id: The ID of the sample
-        if_last_modified_at: The if last modified date, if it exists
-
-    Raises:
-        HTTPException: If the dataset or sample is not found or the if last
-          modified date is present and does not match the sample
-
-    Returns:
-        The sample
-    """
-
-    dataset = get_dataset(dataset_id)
-    sample = get_sample_from_dataset(dataset, sample_id)
-
-    # Fail early, if very out-of-date
-    if if_last_modified_at is not None:
-        if not datetimes_match(sample.last_modified_at, if_last_modified_at):
-            logger.debug(
-                "If-Match condition failed for sample %s: %s != %s",
-                sample.id,
-                sample.last_modified_at,
-                if_last_modified_at,
-            )
-            raise DbVersionMismatchError(
-                sample, etag=generate_sample_etag(sample)
-            )
-
-    return sample
-
-
-def generate_sample_etag(sample: fo.Sample) -> str:
-    """Generates an ETag for a sample based on its last modified date.
-
-    Args:
-        sample: The sample
-    Returns:
-        The ETag
-    """
-    value = base64.b64encode(
-        sample.last_modified_at.isoformat().encode("utf-8")
-    ).decode("utf-8")
-
-    return utils.http.ETag.create(value)
-
-
-def get_embedded_field_type(
-    schema: Dict[str, fo.Field], field: str
-) -> Optional[type]:
-    """
-    Gets the type of the specified field, or None if the field is a scalar.
-
-    Args:
-        schema: Dataset schema
-        field: Dot-delimited field
-
-    Returns:
-        Type of field
-    """
-    field_parts = field.split(".")
-    if field_parts[0] not in schema:
-        raise ValueError(f"No schema available for field '{field}")
-
-    field_schema = schema[field_parts[0]]
-
-    for part in field_parts[1:]:
-        if isinstance(field_schema, fo.EmbeddedDocumentListField) and re.match(
-            r"^\d+$", part
-        ):
-            raise ValueError(
-                "Unsupported schema for field '{field}'; "
-                "cannot determine types for lists of embedded documents"
-            )
-
-        elif isinstance(field_schema, fo.EmbeddedDocumentField):
-            if not field_schema.has_field(part):
-                raise ValueError(f"No schema available for field '{field}'")
-            # recurse into nested document
-            field_schema = field_schema.get_field(part)
-
-        else:
-            raise ValueError(f"Unsupported schema for field '{field}'")
-
-    if isinstance(field_schema, fo.EmbeddedDocumentField):
-        return field_schema.document_type_obj
-
-    # scalar value; type can be inferred
-    return None
-
-
-def get_sample_element(sample: fo.Sample, field: str) -> Optional[Any]:
-    """Get an element of a sample.
-
-    This method is similar to `fo.Sample::get_field`, but is able to traverse
-    arrays in addition to documents.
-
-    For example, this method will resolve 'path.to.list.0.attribute'.
-
-    Args:
-        sample: The sample
-        field: Dot-delimited field
-
-    Returns:
-        The element referenced by the field
-    """
-    field_parts = field.split(".")
-    current_data = sample
-    for part in field_parts:
-        # see if it looks like a numeric index
-        try:
-            key = int(part)
-        except Exception:
-            # otherwise assume it's a string path
-            key = part
-
-        try:
-            current_data = current_data[key]
-        except Exception:
-            return None
-
-    return current_data
-
-
-def ensure_sample_field(sample: fo.Sample, field: str):
-    """Ensures that the specified field exists in the provided sample.
-
-    If the field does not exist, it will be created with a field type inferred
-    from the dataset schema.
-
-    Args:
-        sample: The sample
-        field: Dot-delimited field
-    Returns:
-        None
-    """
-    if field.endswith(".-") or re.match(r".*\.\d+$", field):
-        # Special cases for JSON-patch;
-        # '-' is interpreted as "append to the array".
-        # A numeric last part is indexing into an array.
-        # In either case, we want to ensure that the parent field (the list) exists.
-        field = field[: field.rindex(".")]
-
-    element = get_sample_element(sample, field)
-    if element is not None:
-        # already initialized
-        return
-
-    logger.info("Missing sample field %s, attempting to initialize", field)
-
-    schema = sample.dataset.get_field_schema()
-
-    # track our current place in the hierarchy
-    current = sample
-    field_parts = field.split(".")
-    for idx, part in enumerate(field_parts):
-        field_path = ".".join(field_parts[: idx + 1])
-
-        try:
-            current_part = current[part]
-        except (KeyError, TypeError, IndexError):
-            current_part = None
-
-        if current_part is None:
-            # attempt to create the child field
-            try:
-                field_type = get_embedded_field_type(schema, field_path)
-            except Exception as e:
-                # no schema available for this type
-                logger.debug(
-                    "Error getting field type for %s: %s", field_path, e
-                )
-                break
-
-            if field_type is None:
-                # primitive value; type can be coerced
-                break
-            else:
-                logger.info(
-                    "Initializing %s field at %s", field_type, field_path
-                )
-                sample.set_field(field_path, field_type())
-
-        # recurse
-        current = current[part]
-
-
-def save_sample(
-    sample: fo.Sample, if_last_modified_at: Union[datetime.datetime, None]
-) -> str:
-    """Saves a sample to the database.
-
-    Args:
-        sample: The sample to save
-        if_last_modified_at: The if last modified date, if it exists
-
-    Returns:
-        The ETag of the saved sample
-    """
-
-    if if_last_modified_at is not None:
-        d = sample.to_mongo_dict(include_id=True)
-        d["last_modified_at"] = datetime.datetime.now(datetime.timezone.utc)
-
-        # pylint:disable-next=protected-access
-        update_result = sample.dataset._sample_collection.replace_one(
-            {
-                # pylint:disable-next=protected-access
-                "_id": sample._id,
-                "last_modified_at": {"$eq": if_last_modified_at},
-            },
-            d,
-        )
-
-        if update_result.matched_count == 0:
-            logger.debug(
-                "If-Match condition failed for sample %s: expected %s",
-                sample.id,
-                if_last_modified_at,
-            )
-            raise DbVersionMismatchError(
-                sample, etag=generate_sample_etag(sample)
-            )
-    else:
-        sample.save()
-
-    # Ensure last_modified_at reflects persisted state before computing Etag
-    # ETag
+# ---------------------------------------------------------------------------
+# Planning and application
+# ---------------------------------------------------------------------------
+
+
+def _object_id(value: Any) -> ObjectId:
+    # ``ObjectId(None)`` silently GENERATES a new id; reject it explicitly so
+    # a missing id can never be coerced into a valid-looking filter.
+    if value is None:
+        raise HTTPException(status_code=400, detail="Invalid id 'None'")
     try:
-        sample.reload(hard=True)
-    except Exception as e:
-        # best-effort; still return response
-        logger.debug(
-            "Could not reload sample %s after save due to: %s", sample.id, e
-        )
-
-    return generate_sample_etag(sample)
-
-
-def _handle_top_level_patch(
-    target: fo.Sample, patch_list: List[dict]
-) -> fo.Sample:
-    """Applies a list of JSON patch operations to a `fo.Sample` object."""
-    add_paths = set(
-        # convert '/path/to/field' to 'path.to.field'
-        op.get("path")[1:].replace("/", ".")
-        for op in patch_list
-        if op.get("path") is not None and op.get("op") == "add"
-    )
-
-    # Initialize any missing fields;
-    # otherwise the json patch operations will fail for new fields.
-    for field_path in add_paths:
-        ensure_sample_field(target, field_path)
-
-    return handle_json_patch(target, patch_list)
-
-
-def handle_json_patch(target: Any, patch_list: List[dict]) -> Any:
-    """Applies a list of JSON patch operations to a target object.
-
-    Raises:
-        RootDeleteError: If the patches represent a root delete operation.
-            The caller must handle deletion at the parent level.
-        HTTPException: If patches fail to parse or apply.
-    """
-    try:
-        target, errors = apply_jsonpatch(
-            target, patch_list, transform_fn=utils.json.deserialize
-        )
-    except RootDeleteError:
-        # Re-raise to handle deletion at parent level rather than fail to delete
-        # Enables signaling the deletion of a sample from a generated dataset
-        raise
-    except Exception as err:
+        return ObjectId(value)
+    except Exception as err:  # pylint: disable=broad-except
         raise HTTPException(
-            status_code=400,
-            detail=f"Failed to parse patches due to: {err}",
+            status_code=400, detail=f"Invalid id '{value}'"
         ) from err
 
-    if errors:
-        logger.error("Errors applying JSON patches to sample: %s", target)
-        for error in errors:
-            logger.error(error)
+
+def _required(update: dict, key: str) -> Any:
+    value = update.get(key)
+    if value is None:
+        raise HTTPException(
+            status_code=400, detail=f"Update is missing '{key}'"
+        )
+    return value
+
+
+@dataclass
+class _UpdatePlan:
+    """One gated write, planned against its target collection."""
+
+    collection: Any
+    collection_name: str
+    doc_id: str
+    doc_filter: Dict[str, Any]
+    lookup_path: Optional[str] = None
+    filter_doc: Optional[Dict[str, Any]] = None
+    update_doc: Optional[Dict[str, Any]] = None
+    applied_filter: Optional[Dict[str, Any]] = None
+    delete_document: bool = False
+    # (path, bytes) of an edited mask destined for disk rather than the
+    # document — masks live on disk or in the database, never both
+    mask_write: Optional[Tuple[str, Any]] = None
+
+    def to_bulk_op(self):
+        if self.delete_document:
+            return DeleteOne(self.doc_filter)
+        return UpdateOne(self.filter_doc, self.update_doc)
+
+    def already_holds(self) -> bool:
+        """Whether the post-state already holds — an idempotent retry (e.g. a
+        committed write whose response was lost) is success, not a conflict."""
+        if self.applied_filter is None:
+            return False
+        return (
+            self.collection.find_one(self.applied_filter, {"_id": 1})
+            is not None
+        )
+
+    def current_document(self) -> Any:
+        """The full conflicting document (``None`` if it is gone), so the
+        client can reconcile every concurrent edit in one round trip."""
+        return self.collection.find_one(self.doc_filter)
+
+
+# Label-list container types; a generated field of any other label type is a
+# flattened single label (the document IS the label)
+_LIST_LABEL_TYPES = frozenset(
+    f"{cls.__module__}.{cls.__name__}"
+    # pylint: disable-next=protected-access
+    for cls in fol._LABEL_LIST_FIELDS
+)
+
+# Mirrors ``Dataset._is_generated`` (fiftyone/core/dataset.py), the canonical
+# markers of ephemeral generated datasets — properties cannot be imported
+# without loading a dataset
+_GENERATED_COLLECTION_PREFIXES = ("patches.", "frames.", "clips.")
+
+
+def _is_generated_collection(name: str) -> bool:
+    return name.startswith(_GENERATED_COLLECTION_PREFIXES)
+
+
+def _allowed_collections(db, path_params: dict) -> set:
+    """The route dataset's collections (samples + frames), resolved from its
+    dataset document. Resolving (rather than constructing names from the id)
+    keeps one naming authority and works for any dataset, including a
+    generated dataset loaded directly."""
+    dataset_id = path_params.get("dataset_id")
+    doc = db["datasets"].find_one(
+        {"_id": _object_id(dataset_id)},
+        {"sample_collection_name": 1, "frame_collection_name": 1},
+    )
+    if not doc or not doc.get("sample_collection_name"):
+        raise HTTPException(
+            status_code=404, detail=f"Dataset '{dataset_id}' not found"
+        )
+    return {
+        name
+        for name in (
+            doc.get("sample_collection_name"),
+            doc.get("frame_collection_name"),
+        )
+        if name
+    }
+
+
+def _extract_mask_write(new: Any) -> Tuple[Any, Optional[Tuple[str, Any]]]:
+    """Splits an edited ``mask`` destined for disk out of a new label value.
+
+    A mask lives on disk or in the database, never both: when the detection
+    has a ``mask_path``, its edited bytes are written to that file and
+    stripped from the document write.
+    """
+    if not (
+        is_label(new)
+        and new.get("mask") is not None
+        and isinstance(new.get("mask_path"), str)
+        and new["mask_path"]
+    ):
+        return new, None
+
+    stripped = {key: value for key, value in new.items() if key != "mask"}
+    return stripped, (new["mask_path"], new["mask"])
+
+
+def _write_mask_file(path: str, mask: Any) -> None:
+    try:
+        if isinstance(mask, str):
+            array = fou.deserialize_numpy_array(mask, ascii=True)
+        else:
+            array = fou.deserialize_numpy_array(bytes(mask))
+        # pylint: disable-next=protected-access
+        fol._write_mask(array, path)
+    except Exception as err:  # pylint: disable=broad-except
+        logger.exception("Failed to write mask to %s", path)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to write mask to '{path}': {err}",
+        ) from err
+
+
+def _plan_update(db, update: dict, allowed: set) -> _UpdatePlan:
+    """Validates one update and plans its gated write (no writes).
+
+    Raises:
+        HTTPException: the payload is malformed or its ``collection`` is not
+            one of the route dataset's own (writes are bound to the route)
+    """
+    if not isinstance(update, dict):
+        raise HTTPException(
+            status_code=400, detail="Each update must be an object"
+        )
+
+    collection_name = str(_required(update, "collection"))
+    # A body must not be able to redirect a write to another dataset.
+    # Generated (patches) collections are never client-addressable; their
+    # writes are derived in :func:`_plan_generated_sync`.
+    if collection_name not in allowed:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Update targets disallowed collection '{collection_name}'",
+        )
+
+    doc_id = _required(update, "id")
+    lookup_path = str(_required(update, "lookupPath"))
+    if "previousValue" not in update or "newValue" not in update:
         raise HTTPException(
             status_code=400,
-            detail=json_util.dumps(errors),
+            detail="Update must include 'previousValue' and 'newValue'",
         )
-    return target
+
+    label_id = update.get("labelId")
+    new, mask_write = _extract_mask_write(update["newValue"])
+    doc_filter = {"_id": _object_id(doc_id)}
+    filter_doc, update_doc, applied_filter = build_write(
+        lookup_path,
+        _object_id(label_id) if label_id is not None else None,
+        update["previousValue"],
+        new,
+        doc_filter,
+    )
+    return _UpdatePlan(
+        collection=db[collection_name],
+        collection_name=collection_name,
+        doc_id=str(doc_id),
+        doc_filter=doc_filter,
+        lookup_path=lookup_path,
+        filter_doc=filter_doc,
+        update_doc=update_doc,
+        applied_filter=applied_filter,
+        mask_write=mask_write,
+    )
 
 
-class Sample(HTTPEndpoint):
-    """Sample endpoints."""
+def _plan_generated_sync(
+    db, update: dict, lookup_path: str
+) -> List[_UpdatePlan]:
+    """Plans the best-effort sync of the generated (patches/clips) copy for a
+    source-addressed update carrying ``generatedDatasetName``/
+    ``generatedSampleId`` hints.
+
+    Generated datasets are a server-side concept: the client sends one update
+    per edit and the server keeps the ephemeral view in sync. The generated
+    field's shape — flat label (``to_patches``) vs label list (evaluation
+    patches) — comes from the generated dataset's schema, read in the same
+    lookup that resolves its collection.
+
+    Best-effort end to end: any failure (unknown dataset, invalid ids, a hint
+    resolving to a non-generated collection) skips the sync, never the
+    request.
+    """
+    name = update.get("generatedDatasetName")
+    if not isinstance(name, str) or not name:
+        return []
+
+    # Malformed payloads fail loudly at planning time (nothing has been
+    # written yet); only world-state conditions below are best-effort.
+    gen_oid = _object_id(update.get("generatedSampleId"))
+
+    dataset = db["datasets"].find_one(
+        {"name": name}, {"sample_collection_name": 1, "sample_fields": 1}
+    )
+    collection_name = (dataset or {}).get("sample_collection_name")
+    if not collection_name:
+        logger.info(
+            "Generated-view sync skipped (dataset '%s' not found)", name
+        )
+        return []
+    # A hint must never redirect a write to a permanent collection.
+    if not _is_generated_collection(collection_name):
+        logger.warning(
+            "Generated-view sync skipped (collection '%s' is not generated)",
+            collection_name,
+        )
+        return []
+
+    old = update["previousValue"]
+    # The generated copy never stores a disk-destined mask either; the file
+    # write happens exactly once, via the source plan.
+    new, _ = _extract_mask_write(update["newValue"])
+    label_id = update.get("labelId")
+    doc_filter = {"_id": gen_oid}
+    plan = _UpdatePlan(
+        collection=db[collection_name],
+        collection_name=collection_name,
+        doc_id=str(gen_oid),
+        doc_filter=doc_filter,
+        lookup_path=lookup_path,
+    )
+
+    # Flat label / primitive field: the generated copy has the same shape.
+    if label_id is None:
+        plan.filter_doc, plan.update_doc, _ = build_write(
+            lookup_path, None, old, new, doc_filter
+        )
+        return [plan]
+
+    # Generated datasets flatten field paths to the base field name.
+    label_oid = _object_id(label_id)
+    gen_field = lookup_path.split(".")[0]
+    embedded_type = next(
+        (
+            f.get("embedded_doc_type")
+            for f in (dataset.get("sample_fields") or [])
+            if f.get("name") == gen_field
+        ),
+        None,
+    )
+
+    if embedded_type in _LIST_LABEL_TYPES:
+        # Label list (evaluation patches): mirror the source update.
+        plan.lookup_path = f"{gen_field}.{lookup_path.rsplit('.', 1)[-1]}"
+        plan.filter_doc, plan.update_doc = build_label_update(
+            plan.lookup_path,
+            label_oid,
+            old,
+            new,
+            array=True,
+            doc_filter=doc_filter,
+        )
+        return [plan]
+
+    if new is None:
+        # The flat (to_patches) document IS the label: deleting the label
+        # deletes the document, gated on identity.
+        plan.delete_document = True
+        plan.doc_filter = {**doc_filter, f"{gen_field}._id": label_oid}
+        return [plan]
+
+    plan.lookup_path = gen_field
+    plan.filter_doc, plan.update_doc = build_label_update(
+        gen_field, None, old, new, array=False, doc_filter=doc_filter
+    )
+    return [plan]
+
+
+def _apply_bulk(
+    indexed_plans: List[Tuple[int, _UpdatePlan]],
+    best_effort: bool = False,
+) -> List[Tuple[int, _UpdatePlan]]:
+    """Applies plans with one unordered ``bulk_write`` per target collection
+    — the only write pass; no update is ever issued twice.
+
+    A gated miss is not a write error, so the bulk result only exposes the
+    aggregate matched count per collection. A short count returns that
+    group's gated plans for read-only diagnosis; document deletes carry no
+    gate and are never implicated.
+
+    Args:
+        indexed_plans: ``(index, plan)`` pairs to apply
+        best_effort: swallow database write errors (generated-view syncs must
+            never fail the request)
+
+    Returns:
+        the ``(index, plan)`` pairs whose application is unconfirmed
+    """
+    groups: Dict[str, List[Tuple[int, _UpdatePlan]]] = defaultdict(list)
+    for index, plan in indexed_plans:
+        groups[plan.collection_name].append((index, plan))
+
+    unconfirmed: List[Tuple[int, _UpdatePlan]] = []
+    for items in groups.values():
+        gated = [(i, p) for i, p in items if not p.delete_document]
+        try:
+            result = items[0][1].collection.bulk_write(
+                [plan.to_bulk_op() for _, plan in items], ordered=False
+            )
+        except PyMongoError:
+            if not best_effort:
+                raise
+            logger.warning(
+                "Best-effort bulk write failed; %d update(s) skipped",
+                len(items),
+                exc_info=True,
+            )
+            continue
+        if result.matched_count < len(gated):
+            unconfirmed.extend(gated)
+    return unconfirmed
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+
+
+class SampleFields(HTTPEndpoint):
+    """Applies a batch of gated annotation field updates.
+
+    Every update addresses the permanent source sample, whose writes are
+    authoritative: applied independently, their gate misses conflict (409)
+    and their errors are the only ones returned to the client. Generated
+    (patches/clips) copies are synced server-side from each update's hints,
+    best-effort end to end — the view is ephemeral and regenerates from the
+    source.
+    """
 
     @decorators.route
-    async def patch(self, request: Request, data: dict) -> JSONResponse:
-        """Applies a list of field updates to a sample.
-
-        See: https://datatracker.ietf.org/doc/html/rfc6902
+    async def patch(self, request: Request, data: Any) -> JSONResponse:
+        """Applies a batch of gated field updates.
 
         Args:
-            request: Starlette request with dataset_id and sample_id in path
-              params
-            data: A dict mapping field names to values.
+            request: Starlette request; ``dataset_id`` in the path bounds
+                which collections the batch may touch
+            data: a list of updates, or ``{"updates": [...]}``
 
         Returns:
-            the final state of the sample as a dict
+            ``200 {"updated": n}`` if every source write was applied (or
+            already held); otherwise ``409 {"conflicts": [{"index", "value"},
+            ...]}`` listing only the rejected updates, where ``value`` is the
+            conflicting document's full current state so the client can
+            rebase those deltas and retry. Updates not listed in
+            ``conflicts`` were applied.
         """
-        dataset_id = request.path_params["dataset_id"]
-        sample_id = request.path_params["sample_id"]
+        try:
+            updates = data.get("updates") if isinstance(data, dict) else data
+            if not isinstance(updates, list):
+                raise HTTPException(
+                    status_code=400, detail="Expected a list of updates"
+                )
 
-        logger.info(
-            "Received patch request for sample %s in dataset %s",
-            sample_id,
-            dataset_id,
-        )
+            db = get_db_conn()
+            allowed = _allowed_collections(db, request.path_params)
 
-        if_last_modified_at = get_if_last_modified_at(request)
-        if if_last_modified_at is None:
             logger.debug(
-                "Invalid or missing If-Match header for sample %s in dataset %s",
-                sample_id,
-                dataset_id,
-            )
-            raise HTTPException(
-                status_code=400, detail="Invalid If-Match header"
+                "Applying %d field update(s) to sample %s",
+                len(updates),
+                request.path_params.get("sample_id"),
             )
 
-        sample = get_sample(dataset_id, sample_id, if_last_modified_at)
+            source: List[Tuple[int, _UpdatePlan]] = []
+            generated: List[Tuple[int, _UpdatePlan]] = []
+            for index, update in enumerate(updates):
+                plan = _plan_update(db, update, allowed)
+                source.append((index, plan))
+                for sync in _plan_generated_sync(db, update, plan.lookup_path):
+                    generated.append((index, sync))
 
-        content_type = request.headers.get("Content-Type", "")
-        ctype = content_type.split(";", 1)[0].strip().lower()
-        if ctype == "application/json":
-            self._handle_patch(sample, data)
-        elif ctype == "application/json-patch+json":
-            _handle_top_level_patch(sample, data)
-        else:
-            raise HTTPException(
-                status_code=415, detail=f"Unsupported Content-Type '{ctype}'"
-            )
+            # Masks destined for disk are written before any database write —
+            # a failure aborts the request while nothing has been applied.
+            for _index, plan in source:
+                if plan.mask_write is not None:
+                    _write_mask_file(*plan.mask_write)
 
-        etag = save_sample(sample, if_last_modified_at)
-
-        return utils.json.JSONResponse(
-            utils.json.serialize(sample), headers={"ETag": etag}
-        )
-
-    def _handle_patch(self, sample: fo.Sample, data: dict) -> fo.Sample:
-        errors = {}
-        for field_name, value in data.items():
-            try:
-                if value is None:
-                    sample.clear_field(field_name)
+            conflicts = []
+            for index, plan in _apply_bulk(source):
+                # Read-only diagnosis: the update either applied in the bulk
+                # pass / already held (lost-response retry), or missed its
+                # gate. An update changed *again* by a concurrent writer
+                # before this read lands as a conflict too and reconciles
+                # identically. A precondition miss is expected under
+                # concurrent editing, not a fault — the 409 summary below is
+                # the one INFO line; per-update detail stays at debug.
+                if plan.already_holds():
+                    logger.debug(
+                        "Annotation update applied/held (confirmed by "
+                        "read): collection=%s id=%s lookupPath=%s",
+                        plan.collection_name,
+                        plan.doc_id,
+                        plan.lookup_path,
+                    )
                     continue
 
-                sample[field_name] = utils.json.deserialize(value)
-            except Exception as e:
-                errors[field_name] = str(e)
-
-        if errors:
-            raise HTTPException(status_code=400, detail=errors)
-        return sample
-
-
-class SampleField(HTTPEndpoint):
-    """Sample field endpoints."""
-
-    @decorators.route
-    async def patch(self, request: Request, data: List[dict]) -> JSONResponse:
-        """Applies a list of field updates to a sample field in a list by id.
-
-        This endpoint handles updates to individual labels within a list field
-        (e.g., a specific detection in a detections field). When the annotation
-        is part of a generated dataset (like patches views), changes are
-        synchronized to both the source and generated datasets.
-
-        See: https://datatracker.ietf.org/doc/html/rfc6902
-
-        Args:
-            request: Starlette request with dataset_id, sample_id, field_path,
-                and field_id in path params. May include 'generated_dataset'
-                query parameter for generated dataset syncing.
-            data: JSON patch operations to apply
-
-        Returns:
-            The final state of the updated field as a dict
-        """
-        dataset_id = request.path_params["dataset_id"]
-        sample_id = request.path_params["sample_id"]
-        path = request.path_params["field_path"]
-        field_id = request.path_params["field_id"]
-        generated_dataset_name = request.query_params.get("generated_dataset")
-        # If the generated sample_id is the same as the id of the object
-        # in the field we are modifying on the source,
-        # the generated_sample_id may be omitted
-        generated_sample_id = (
-            request.query_params.get("generated_sample_id", field_id)
-            if generated_dataset_name
-            else None
-        )
-
-        logger.info(
-            "Received patch request for field %s with ID %s on sample %s "
-            "in dataset %s%s",
-            path,
-            field_id,
-            sample_id,
-            dataset_id,
-            f" (generated_dataset={generated_dataset_name})"
-            if generated_dataset_name
-            else "",
-        )
-
-        if_last_modified_at = get_if_last_modified_at(request)
-        if if_last_modified_at is None:
-            logger.debug(
-                "Invalid or missing If-Match header for sample %s in dataset %s",
-                sample_id,
-                dataset_id,
-            )
-            raise HTTPException(
-                status_code=400, detail="Invalid If-Match header"
-            )
-
-        # Skip checking the last_modified_at on the src when editing through a
-        # generated dataset as the timestamp reflect the generated sample's
-        # last_modified_at, not the source sample's timestamp.
-        source_if_match = (
-            None if generated_dataset_name else if_last_modified_at
-        )
-
-        # Load the source sample
-        logger.debug(
-            "Loading source sample %s from dataset %s", sample_id, dataset_id
-        )
-        sample = get_sample(dataset_id, sample_id, source_if_match)
-
-        # Get the field list from the source sample
-        try:
-            logger.debug("Getting field '%s' from sample", path)
-            field_list = sample.get_field(path)
-        except Exception as err:
-            logger.warning(
-                "Field '%s' not found in sample '%s' from dataset '%s': %s",
-                path,
-                sample_id,
-                dataset_id,
-                err,
-            )
-            raise HTTPException(
-                status_code=404,
-                detail=f"Field '{path}' not found in sample '{sample_id}'",
-            ) from err
-
-        # Validate that the field is a list
-        if not isinstance(field_list, list):
-            logger.warning(
-                "Field '%s' is not a list in sample '%s' (type: %s)",
-                path,
-                sample_id,
-                type(field_list).__name__,
-            )
-            raise HTTPException(
-                status_code=400, detail=f"Field '{path}' is not a list"
-            )
-
-        # field_id is the label ID in the source sample
-        # (for patches views, it's also the generated sample's _id)
-        field = next((f for f in field_list if str(f.id) == field_id), None)
-        if field is None:
-            logger.debug(
-                "Field with id %s not found in field %s", field_id, path
-            )
-            raise HTTPException(
-                status_code=404,
-                detail=f"Field with id '{field_id}' not found in field '{path}'",
-            )
-
-        # Apply patches - RootDeleteError signals deletion is needed
-        logger.debug("Applying patches to field with id %s", field_id)
-        try:
-            handle_json_patch(field, data)
-            is_delete = False
-        except RootDeleteError:
-            field_list.remove(field)
-            is_delete = True
-
-        # Save the source sample
-        etag = save_sample(sample, source_if_match)
-        logger.debug("Saved changes to source sample %s", sample.id)
-
-        if generated_dataset_name and generated_sample_id:
-            # Sync changes to generated dataset
-            try:
-                generated_sample = sync_to_generated_dataset(
-                    generated_dataset_name,
-                    generated_sample_id,
-                    path,
-                    field_id,
-                    data,
-                    delete=is_delete,
-                )
                 logger.debug(
-                    "Synced changes to generated dataset %s",
-                    generated_dataset_name,
+                    "Annotation update rejected (precondition mismatch): "
+                    "collection=%s id=%s lookupPath=%s",
+                    plan.collection_name,
+                    plan.doc_id,
+                    plan.lookup_path,
+                )
+                conflicts.append(
+                    {"index": index, "value": plan.current_document()}
                 )
 
-                if generated_sample is not None:
-                    return utils.json.JSONResponse(
-                        utils.json.serialize(generated_sample),
-                        headers={"ETag": etag},
-                    )
-            except Exception:
-                # Log instead of throwing since the source of truth has been
-                # successfully updated
-                logger.exception(
-                    "Failed to sync to generated dataset `%s` associated with dataset `%s`",
-                    generated_dataset_name,
-                    dataset_id,
+            # Runs even when some source writes conflicted — the applied
+            # ones still want their generated copies in sync.
+            unconfirmed = _apply_bulk(generated, best_effort=True)
+            if unconfirmed:
+                logger.debug(
+                    "Generated-view sync unconfirmed for %d update(s) "
+                    "(precondition mismatch)",
+                    len(unconfirmed),
                 )
 
-        return utils.json.JSONResponse(
-            utils.json.serialize(sample), headers={"ETag": etag}
-        )
+            if conflicts:
+                logger.info(
+                    "Annotation save for sample %s: %d of %d update(s) "
+                    "conflicted (409)",
+                    request.path_params.get("sample_id"),
+                    len(conflicts),
+                    len(source),
+                )
+                return JSONResponse({"conflicts": conflicts}, status_code=409)
 
-
-class CommitMask(HTTPEndpoint):
-    """Commits an in-database mask back to its on-disk mask_path."""
-
-    @decorators.route
-    async def post(self, request: Request, data: dict) -> JSONResponse:
-        """Write a Detection's in-database mask to its mask_path on disk.
-
-        After a successful write the in-database mask is cleared and mask_path
-        is preserved, matching the original storage strategy.
-
-        Args:
-            request: Starlette request with dataset_id and sample_id in path
-            data: ``{"field": "ground_truth", "detection_id": "abc123"}``
-
-        Returns:
-            ``{"committed": true, "mask_path": "..."}`` on success
-        """
-        dataset_id = request.path_params["dataset_id"]
-        sample_id = request.path_params["sample_id"]
-        if_last_modified_at = get_if_last_modified_at(request)
-
-        field = data.get("field")
-        detection_id = data.get("detection_id")
-
-        if not field or not detection_id:
-            raise HTTPException(
-                status_code=400,
-                detail="Both 'field' and 'detection_id' are required",
+            logger.debug(
+                "Annotation save for sample %s: %d update(s) applied",
+                request.path_params.get("sample_id"),
+                len(source),
             )
+            return JSONResponse({"updated": len(source)})
 
-        sample = get_sample(dataset_id, sample_id, if_last_modified_at)
-
-        try:
-            label_field = sample[field]
-        except KeyError as err:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Field '{field}' not found on sample",
-            ) from err
-
-        if label_field is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Field '{field}' is empty on sample",
-            )
-
-        detections = getattr(label_field, "detections", None)
-        if detections is None:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Field '{field}' is not a Detections field",
-            )
-
-        detection = next(
-            (d for d in detections if str(d.id) == detection_id),
-            None,
-        )
-
-        if detection is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Detection '{detection_id}' not found in '{field}'",
-            )
-
-        if detection.mask_path is None:
-            raise HTTPException(
-                status_code=400,
-                detail="Detection has no mask_path — nothing to commit",
-            )
-
-        if detection.mask is None:
-            raise HTTPException(
-                status_code=400,
-                detail="Detection has no in-database mask to commit",
-            )
-
-        mask_path = detection.mask_path
-
-        try:
-            detection.export_mask(
-                mask_path, update=True, overwrite_path=True
-            )
-            etag = save_sample(sample, if_last_modified_at)
-        except DbVersionMismatchError:
+        except HTTPException as err:
+            # Every rejected (4xx) save gets one server-side log; 5xx are
+            # unexpected and already logged with a traceback where they arise.
+            if err.status_code < 500:
+                logger.info(
+                    "Annotation save for sample %s rejected (%d): %s",
+                    request.path_params.get("sample_id"),
+                    err.status_code,
+                    err.detail,
+                )
             raise
-        except Exception as err:
-            logger.exception("Failed to commit mask to %s", mask_path)
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to write mask to '{mask_path}': {err}",
-            ) from err
-
-        logger.info(
-            "Committed mask for detection %s to %s",
-            detection_id,
-            mask_path,
-        )
-
-        return JSONResponse(
-            {"committed": True, "mask_path": mask_path},
-            headers={"ETag": etag},
-        )
 
 
 SampleRoutes = [
-    ("/dataset/{dataset_id}/sample/{sample_id}", Sample),
-    (
-        "/dataset/{dataset_id}/sample/{sample_id}/{field_path}/{field_id}",
-        SampleField,
-    ),
-    (
-        "/dataset/{dataset_id}/sample/{sample_id}/commit-mask",
-        CommitMask,
-    ),
+    ("/dataset/{dataset_id}/sample/{sample_id}/fields", SampleFields),
 ]

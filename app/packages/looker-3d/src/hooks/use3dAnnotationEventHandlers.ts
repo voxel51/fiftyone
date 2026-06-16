@@ -26,7 +26,7 @@ export const use3dAnnotationEventHandlers = () => {
   const { updatePolyline } = usePolylineOperations();
   const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
   const select3DLabelForAnnotation = useSelect3DLabelForAnnotation();
-  const { updateLabelData } = useLabelsContext();
+  const { updateLabelData, getLabelById } = useLabelsContext();
 
   const handleSidebarLabelSelected = useCallback(
     (payload) => {
@@ -102,9 +102,18 @@ export const use3dAnnotationEventHandlers = () => {
         | AnnotationEventGroup["annotation:labelEdit"]
         | AnnotationEventGroup["annotation:undoLabelEdit"]
     ) => {
-      updateLabelData(payload.label.id, payload.label);
+      const { id, ...updates } = payload.label;
+
+      // Payloads carry only changed fields; merge so a partial edit (e.g. the
+      // class) doesn't drop location/dimensions and un-3D the sidebar entry.
+      const existing = getLabelById(id);
+
+      updateLabelData(
+        id,
+        existing ? { ...existing.data, ...updates } : payload.label
+      );
     },
-    [updateLabelData]
+    [updateLabelData, getLabelById]
   );
 
   useAnnotationEventHandler("annotation:labelEdit", handleLabelEdit);

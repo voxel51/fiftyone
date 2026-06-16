@@ -5,20 +5,49 @@ import {
   KeypointOverlay,
   type KeypointLabel,
   PolylineOverlay,
+  UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
+  useLighterEventHandler,
 } from "@fiftyone/lighter";
 import type { DetectionLabel } from "@fiftyone/looker";
 import type { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
 import type { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
 import { BoundingBox } from "@fiftyone/looker/src/state";
-import { isPatchesView } from "@fiftyone/state";
+import {
+  type Action,
+  KnownContexts,
+  useCommandContext,
+} from "@fiftyone/commands";
+import { useAnnotationTargetSample } from "./useAnnotationTargetSample";
 import { hasValidBounds } from "@fiftyone/utilities";
-import { useCallback } from "react";
-import { useRecoilValue } from "recoil";
+import { useCallback, useEffect } from "react";
 import type { LabelProxy } from "../deltas";
-import { buildAnnotationPath } from "../deltas";
-import type { DeltaSupplier } from "./deltaSupplier";
 import { useGetLabelDelta } from "./useGetLabelDelta";
+import { useRecordEdit } from "./useRecordEdit";
+
+/**
+ * Runtime/UI-only fields the scene attaches to an overlay's label. They are
+ * not part of the persisted label schema, so the server can't construct a
+ * label from them (it rejects the update with 400). Strip them before capture
+ * — mirrors the 3D supplier, which has always done this.
+ */
+const RESERVED_LABEL_ATTRIBUTES = [
+  "color",
+  "id",
+  "isNew",
+  "path",
+  "selected",
+  "sampleId",
+  "type",
+] as const;
+
+const stripReserved = <T extends Record<string, unknown>>(label: T): T => {
+  const result = { ...label };
+  for (const key of RESERVED_LABEL_ATTRIBUTES) {
+    delete result[key as keyof T];
+  }
+  return result;
+};
 
 /**
  * Build a {@link LabelProxy} instance from a lighter overlay.
@@ -43,22 +72,23 @@ const buildAnnotationLabel = (overlay: BaseOverlay): LabelProxy | undefined => {
 
     if (hasValidBounds(boundingBox)) {
       // Pull mask/mask_path off so we can decide what (if anything) to persist
-      // for the mask channel.
-      const { mask: _mask, mask_path: _maskPath, ...data } = overlay.label;
+      // for the mask channel; strip runtime fields off the remainder.
+      const { mask: _mask, mask_path: _maskPath, ...rest } = overlay.label;
+      const data = stripReserved(rest as Record<string, unknown>);
       const pendingMask = overlay.getPendingMask();
 
       // Include mask data only when the overlay still has a mask.
-      // Explicitly null out mask/mask_path when removed so the merge
-      // in buildDetectionsMutationDelta overrides the existing value.
+      // Explicitly null out mask/mask_path when removed so the updated value
+      // overrides the original.
       const hadMask = _mask || _maskPath;
       const maskData = overlay.hasMask()
         ? {
             ...(_mask && { mask: _mask }),
             ...(pendingMask && { mask: pendingMask }),
-            // Edits to a `mask_path`-sourced detection are persisted as an
-            // inline `mask`; null the path so the backend doesn't end up
-            // with both fields pointing at divergent data.
-            ...(pendingMask && _maskPath && { mask_path: null }),
+            // A disk-backed mask stays disk-backed: the server writes the
+            // edited bytes to `mask_path` — a mask lives on disk or in the
+            // database, never both.
+            ...(_maskPath && { mask_path: _maskPath }),
           }
         : hadMask
         ? { mask: null, mask_path: null }
@@ -75,16 +105,18 @@ const buildAnnotationLabel = (overlay: BaseOverlay): LabelProxy | undefined => {
       };
     }
   } else if (overlay instanceof ClassificationOverlay) {
-    const label = overlay.label as ClassificationLabel;
-
     return {
       type: "Classification",
-      data: label,
+      data: stripReserved(
+        overlay.label as unknown as Record<string, unknown>
+      ) as unknown as ClassificationLabel,
       path: overlay.field,
     };
   } else if (overlay instanceof PolylineOverlay) {
     // Must be checked before KeypointOverlay, since PolylineOverlay extends it.
-    const label = overlay.label as unknown as PolylineLabel;
+    const label = stripReserved(
+      overlay.label as unknown as Record<string, unknown>
+    );
 
     return {
       type: "Polyline",
@@ -93,60 +125,134 @@ const buildAnnotationLabel = (overlay: BaseOverlay): LabelProxy | undefined => {
         points: overlay.getNestedPoints(),
         closed: overlay.getClosed(),
         filled: overlay.getFilled(),
-      } as PolylineLabel,
+      } as unknown as PolylineLabel,
       path: overlay.field,
     };
   } else if (overlay instanceof KeypointOverlay) {
-    const label = overlay.label as KeypointLabel;
-
     return {
       type: "Keypoint",
-      data: label,
+      data: stripReserved(
+        overlay.label as unknown as Record<string, unknown>
+      ) as unknown as KeypointLabel,
       path: overlay.field,
     };
   }
+  return undefined;
 };
 
 /**
- * Hook which provides a {@link DeltaSupplier} which captures changes isolated
- * to the Lighter annotation context.
+ * Resolve the overlay an undoable action targets. Lighter commands hold their
+ * overlay under ``overlay`` (sometimes wrapped in an interaction handler that
+ * exposes ``getOverlay()``) or ``target`` (merge), so duck-type rather than
+ * enumerate command classes.
  */
-export const useLighterDeltaSupplier = (): DeltaSupplier => {
+const unwrapOverlay = (candidate: unknown): BaseOverlay | null => {
+  if (!candidate || typeof candidate !== "object") {
+    return null;
+  }
+  const handler = candidate as { getOverlay?: () => unknown };
+  const overlay =
+    typeof handler.getOverlay === "function" ? handler.getOverlay() : candidate;
+  if (
+    overlay &&
+    typeof overlay === "object" &&
+    typeof (overlay as { id?: unknown }).id === "string" &&
+    typeof (overlay as { field?: unknown }).field === "string"
+  ) {
+    return overlay as BaseOverlay;
+  }
+  return null;
+};
+
+const extractActionOverlays = (action: Action): BaseOverlay[] => {
+  const record = action as unknown as Record<string, unknown>;
+  const overlays: BaseOverlay[] = [];
+  for (const candidate of [record.overlay, record.target]) {
+    const overlay = unwrapOverlay(candidate);
+    if (overlay && !overlays.includes(overlay)) {
+      overlays.push(overlay);
+    }
+  }
+  return overlays;
+};
+
+/**
+ * Hook which captures changes isolated to the Lighter annotation context.
+ *
+ * The supplier predecessor of this hook diffed the whole scene at flush time;
+ * edits are now recorded the moment they happen — one per-label delta per
+ * edit, written into the pending-edits ledger and through to the canonical
+ * sample copy (see {@link useRecordEdit}) — so a flush never has to read the
+ * scene, and a flush that runs after navigation tore the scene down still
+ * saves the last edits.
+ *
+ * All canvas mutations — drawing, moving, resizing, painting, point edits,
+ * label updates, merges, undo, redo — flow through the annotate command
+ * context's action stack, so one subscription captures them all; label
+ * mutations applied outside the stack (e.g. AI inference) arrive via
+ * ``lighter:overlay-label-updated``.
+ *
+ * This should be called once in the composition root (the modal).
+ */
+export const useRecordLabelEdits = () => {
   const { scene } = useLighter();
-  const getLabelDelta = useGetLabelDelta(buildAnnotationLabel);
-  const isPatches = useRecoilValue(isPatchesView);
+  const sampleId = useAnnotationTargetSample()?._id ?? null;
+  const { context } = useCommandContext(KnownContexts.ModalAnnotate);
+  const recordEdit = useRecordEdit();
 
-  return useCallback(() => {
-    const overlays = scene?.getAllOverlays() ?? [];
-    const allDeltas: ReturnType<typeof getLabelDelta> = [];
-    let firstChangedOverlay: BaseOverlay | undefined;
+  // `includeUnchanged`: always record — the ledger resolves no-ops, so an edit
+  // moved back to its starting value correctly supersedes the earlier record.
+  const getMutateDelta = useGetLabelDelta(buildAnnotationLabel, {
+    includeUnchanged: true,
+  });
+  const getDeleteDelta = useGetLabelDelta(buildAnnotationLabel, {
+    opType: "delete",
+    includeUnchanged: true,
+  });
 
-    for (const overlay of overlays) {
-      const deltas = getLabelDelta(overlay, overlay.field);
-      if (deltas.length > 0) {
-        allDeltas.push(...deltas);
-        if (!firstChangedOverlay) {
-          firstChangedOverlay = overlay;
+  const recordOverlay = useCallback(
+    (overlay: BaseOverlay) => {
+      if (!sampleId || !overlay.field) {
+        return;
+      }
+      // An overlay the action left out of the scene was removed — a delete.
+      const delta = scene?.hasOverlay(overlay.id)
+        ? getMutateDelta(overlay, overlay.field)
+        : getDeleteDelta(overlay, overlay.field);
+      if (delta) {
+        recordEdit(sampleId, delta);
+      }
+    },
+    [getDeleteDelta, getMutateDelta, recordEdit, sampleId, scene]
+  );
+
+  // Execute/push/undo/redo of any undoable in the annotate context (or its
+  // parents) — the single funnel for 2D canvas edits.
+  useEffect(
+    () =>
+      context.subscribeActions((_id, _isUndo, action) => {
+        if (action) {
+          extractActionOverlays(action).forEach(recordOverlay);
         }
-      }
-    }
+      }),
+    [context, recordOverlay]
+  );
 
-    // Must include additional metadata for all generated views so the backend can
-    // update the source data as well.
-    // Note: Only supported for patches views currently
-    let metadata;
-    if (isPatches && firstChangedOverlay) {
-      // Patches views by definition are flattened detections fields so updates
-      // will always be single label
-      const labelProxy = buildAnnotationLabel(firstChangedOverlay);
-      if (labelProxy) {
-        metadata = {
-          labelId: firstChangedOverlay.id,
-          labelPath: buildAnnotationPath(labelProxy, isPatches),
-        };
-      }
-    }
-
-    return { deltas: allDeltas, metadata };
-  }, [getLabelDelta, isPatches, scene]);
+  // Label mutations applied outside the command stack (e.g. AI inference
+  // writing a mask via updateLabel).
+  const useEventHandler = useLighterEventHandler(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
+  useEventHandler(
+    "lighter:overlay-label-updated",
+    useCallback(
+      (payload: { id: string }) => {
+        const overlay = scene?.getOverlay(payload.id);
+        if (overlay) {
+          recordOverlay(overlay);
+        }
+      },
+      [recordOverlay, scene]
+    )
+  );
 };

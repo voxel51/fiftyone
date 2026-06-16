@@ -1,5 +1,4 @@
 import { isDetection3d } from "@fiftyone/core/src/utils/labels";
-import type { JSONDeltas } from "@fiftyone/core/src/client";
 import {
   extractNestedField,
   generateJsonPatch,
@@ -8,16 +7,10 @@ import type { KeypointLabel } from "@fiftyone/lighter";
 import type { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
 import type { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
 import type { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
-import type {
-  AnnotationLabel,
-  DetectionAnnotationLabel,
-  PrimitiveValue,
-  Sample,
-} from "@fiftyone/state";
-import { Field, isObject, Primitive } from "@fiftyone/utilities";
-import { get } from "lodash";
+import type { PrimitiveValue, Sample } from "@fiftyone/state";
+import { Field, isObject } from "@fiftyone/utilities";
 import type { OpType } from "./types";
-import { arePrimitivesEqual, isPrimitiveFieldType } from "./util";
+import { isPrimitiveFieldType } from "./util";
 
 /**
  * Helper type representing a `fo.Polylines`-like element.
@@ -65,26 +58,6 @@ const isFieldType = (field: Field, fieldType: FieldType): boolean => {
 };
 
 /**
- * Build the annotation path for a label.
- *
- *
- * @param label The annotation label
- * @param isGenerated Whether this is from a generated dataset
- * @returns The adjusted path for the annotation
- */
-export const buildAnnotationPath = (
-  label: LabelProxy,
-  isGenerated: boolean
-): string => {
-  let basePath = label.path;
-  if (isGenerated) {
-    // Patches views flatten the structure so we need to adjust the path to reflect the src sample.
-    if (label.type === "Detection") basePath = `${basePath}.detections`;
-  }
-  return basePath;
-};
-
-/**
  * Helper type encapsulating label metadata relevant to delta calculations.
  */
 type LabelMetadata<T> = {
@@ -117,576 +90,244 @@ export type LabelProxy =
   | PrimitiveValue;
 
 /**
- * Build JSON-patch-compatible deltas for the specified changes to the sample.
+ * A single label/field delta to persist: the value the editor started from
+ * (``previousValue``) and the value to write (``newValue``), plus enough
+ * addressing for the persistence layer to target the right collection(s).
  *
- * @param sample Sample containing unmodified label data
+ *   - ``previousValue == null`` -> add
+ *   - ``newValue == null``      -> delete
+ *
+ * The backend diffs ``previousValue`` vs ``newValue`` and writes only the
+ * fields that changed, gated on their previous values.
+ */
+export type LabelFieldDelta = {
+  /** Top-level field the label/value lives in, e.g. ``ground_truth``. */
+  field: string;
+  /** List key (``detections`` …) for a list label; ``null`` otherwise. */
+  listKey: string | null;
+  /** Label ``_id`` for a list element; ``null`` for a flat label/primitive. */
+  labelId: string | null;
+  previousValue: unknown;
+  newValue: unknown;
+};
+
+const LABEL_TYPE_TO_LIST_KEY: Record<string, string> = {
+  Detection: "detections",
+  Classification: "classifications",
+  Polyline: "polylines",
+  Keypoint: "keypoints",
+};
+
+const listKeyForType = (type: string): string | null =>
+  LABEL_TYPE_TO_LIST_KEY[type] ?? null;
+
+const listKeyFor = (label: LabelProxy, schema: Field): string | null => {
+  if (label.type === "Detection" && isFieldType(schema, "Detections")) {
+    return "detections";
+  }
+  if (
+    label.type === "Classification" &&
+    isFieldType(schema, "Classifications")
+  ) {
+    return "classifications";
+  }
+  if (label.type === "Polyline" && isFieldType(schema, "Polylines")) {
+    return "polylines";
+  }
+  if (label.type === "Keypoint" && isFieldType(schema, "Keypoints")) {
+    return "keypoints";
+  }
+  return null;
+};
+
+/** Singular label ``_cls`` values, keyed by {@link LabelProxy} type. */
+const LABEL_TYPE_TO_CLS: Record<string, string> = {
+  Detection: "Detection",
+  Classification: "Classification",
+  Polyline: "Polyline",
+  Keypoint: "Keypoint",
+};
+
+/**
+ * The complete value of a label proxy, as a plain object (a 2D detection's
+ * bounding box is folded into its data).
+ *
+ * Guarantees ``_cls`` on the value: for an existing label it is preserved via
+ * the merge onto the previous value, but a newly-added label may reach here
+ * without one (the overlay was created before its class was stamped), and a
+ * label persisted without ``_cls`` cannot be deserialized back. Derive it
+ * from the proxy type when absent; never overwrite an existing value.
+ */
+/**
+ * Stamp the singular ``_cls`` for ``type`` onto a label object that lacks one;
+ * never overwrites an existing ``_cls`` and leaves non-objects untouched.
+ *
+ * A label persisted (or sent as a save precondition) without ``_cls`` cannot
+ * be deserialized server-side — it round-trips to a bare dict and the gated
+ * write fails. Both the *new* value and the *previous* value (read raw from
+ * the sample, which may have been written without ``_cls``) must carry it.
+ */
+const withCls = (value: unknown, type: string): unknown => {
+  const cls = LABEL_TYPE_TO_CLS[type];
+  if (cls && isObject(value) && !(value as { _cls?: unknown })._cls) {
+    return { _cls: cls, ...(value as object) };
+  }
+  return value;
+};
+
+const incomingLabel = (label: LabelProxy): unknown => {
+  const value =
+    label.type === "Detection"
+      ? makeDetectionLabel(label as Detection2DMetadata)
+      : (label as { data: unknown }).data;
+
+  return withCls(value, label.type);
+};
+
+/**
+ * Merge the editor's fields over the original label so fields the editor
+ * doesn't touch (e.g. server-enriched ``attributes``/``tags``/``_cls``) are
+ * preserved — the backend then sees only the genuinely-changed fields.
+ */
+const mergeOntoPrevious = (previous: unknown, incoming: unknown): unknown =>
+  isObject(previous) && isObject(incoming)
+    ? { ...(previous as object), ...(incoming as object) }
+    : incoming;
+
+/**
+ * Change *detection* (not delta computation): is the updated value materially
+ * the same as the original? For objects we use a normalized comparison so
+ * untouched labels (whose overlay representation may differ only by key order
+ * or float formatting) don't register as edits and trigger phantom saves.
+ */
+export const isUnchanged = (previous: unknown, next: unknown): boolean => {
+  if (isObject(previous) && isObject(next)) {
+    return (
+      generateJsonPatch(
+        previous as Record<string, unknown>,
+        next as Record<string, unknown>
+      ).length === 0
+    );
+  }
+  return previous === next || (previous == null && next == null);
+};
+
+/**
+ * Build the {@link LabelFieldDelta} for a label edit, or `null` if it can't be
+ * expressed (no schema / unknown type). Identifiers other than the field path
+ * (collection, document id) are added by the persistence layer.
+ *
+ * In a generated (patches) view the source it must also update is a list, so
+ * when ``isGenerated`` the source list key is derived from the label's type.
+ * The modal sample itself may store the label flat (``to_patches``) or as a
+ * list element (evaluation patches); the previous value is read from whichever
+ * shape is actually present.
+ *
+ * @param sample Sample containing the original (pre-edit) label data
  * @param label Current label state
  * @param schema Field schema
- * @param opType Operation type
- * @param isGenerated Whether this is from a generated view
+ * @param opType Operation type ("mutate" or "delete")
+ * @param isGenerated Whether this is a generated (patches) view
+ * @param includeUnchanged Return the delta even when it is a no-op. Callers
+ *   that record edits into the pending-edits store always record, and the
+ *   store resolves no-ops — so e.g. an edit moved back to its starting value
+ *   correctly supersedes the earlier recorded edit.
  */
-export const buildLabelDeltas = (
+export const buildLabelFieldDelta = (
   sample: Sample,
   label: LabelProxy,
   schema: Field,
   opType: OpType,
-  isGenerated = false
-) => {
-  if (opType === "mutate") {
-    return buildMutationDeltas(sample, label, schema, isGenerated);
-  } else if (opType === "delete") {
-    // Primitives cannot be deleted via this path
-    return buildDeletionDeltas(
-      sample,
-      label as Exclude<LabelProxy, PrimitiveValue>,
-      schema,
-      isGenerated
+  isGenerated = false,
+  includeUnchanged = false
+): LabelFieldDelta | null => {
+  const isDelete = opType === "delete";
+
+  // `null` when the edit is a no-op (nothing actually changed / nothing to
+  // delete) so unchanged labels never produce a save.
+  const skip = (previousValue: unknown, newValue: unknown): boolean =>
+    !includeUnchanged &&
+    (isDelete ? previousValue == null : isUnchanged(previousValue, newValue));
+
+  // Primitive (non-label) sample field.
+  if (label.type === "Primitive" || isPrimitiveFieldType(schema)) {
+    const path = label.path;
+    const previousValue = extractNestedField(sample, path) ?? null;
+    const newValue = isDelete ? null : (label as PrimitiveValue).data ?? null;
+    if (skip(previousValue, newValue)) return null;
+    return {
+      field: path,
+      listKey: null,
+      labelId: null,
+      previousValue,
+      newValue,
+    };
+  }
+
+  const labelId = (label as { data?: { _id?: string } }).data?._id ?? null;
+  const listKey = isGenerated
+    ? listKeyForType(label.type)
+    : listKeyFor(label, schema);
+
+  // Label inside a list field (e.g. ground_truth.detections). The modal sample
+  // stores it either as a list element (normal view, evaluation patches) or
+  // flattened to a single label (to_patches / to_clips) — read the previous
+  // value from whichever shape is present.
+  if (listKey) {
+    const fieldValue = extractNestedField(sample, label.path);
+    const list =
+      isObject(fieldValue) &&
+      Array.isArray((fieldValue as Record<string, unknown>)[listKey])
+        ? ((fieldValue as Record<string, unknown>)[listKey] as Array<
+            Record<string, unknown>
+          >)
+        : null;
+
+    // The flat fallback must be THIS label (a to_patches sample IS the label,
+    // matched by identity) — anything else at the field means the label has
+    // no previous value. Using a foreign object as the precondition would
+    // corrupt the save with another label's data.
+    const flatValue =
+      isObject(fieldValue) &&
+      labelId !== null &&
+      (fieldValue as { _id?: string })._id === labelId
+        ? fieldValue
+        : null;
+
+    const previousValue = withCls(
+      list
+        ? list.find((e) => (e as { _id?: string })._id === labelId) ?? null
+        : flatValue,
+      label.type
     );
-  } else {
-    throw new Error(`Unsupported opType ${opType}`);
-  }
-};
 
-/**
- * Build a list of JSON deltas for mutating the given sample and label.
- *
- * @param sample Sample containing unmodified label data
- * @param label Current label state (annotation label or primitive label)
- * @param schema Field schema
- * @param isGenerated Whether this is from a generated view
- */
-export const buildMutationDeltas = (
-  sample: Sample,
-  label: LabelProxy,
-  schema: Field,
-  isGenerated = false
-): JSONDeltas => {
-  // Need to branch on single element vs. list-based mutations due to
-  // inferred data model differences.
-  // Specifically, the list-like fields are expected to belong to some parent
-  // element with an implied structure.
-  if (label.type === "Detection") {
-    if (isFieldType(schema, "Detections")) {
-      return buildDetectionsMutationDelta(
-        sample,
-        label as DetectionAnnotationLabel,
-        isGenerated
-      );
-    } else if (isFieldType(schema, "Detection")) {
-      return buildDetectionMutationDelta(
-        sample,
-        label as DetectionAnnotationLabel
-      );
-    }
-  } else if (label.type === "Classification") {
-    if (isFieldType(schema, "Classifications")) {
-      return buildClassificationsMutationDeltas(
-        sample,
-        label as LabelMetadata<ClassificationLabel>
-      );
-    } else if (isFieldType(schema, "Classification")) {
-      return buildClassificationMutationDeltas(
-        sample,
-        label as LabelMetadata<ClassificationLabel>
-      );
-    }
-  } else if (label.type === "Polyline") {
-    if (isFieldType(schema, "Polylines")) {
-      return buildPolylinesMutationDeltas(
-        sample,
-        label as LabelMetadata<PolylineLabel>
-      );
-    } else if (isFieldType(schema, "Polyline")) {
-      return buildPolylineMutationDeltas(
-        sample,
-        label as LabelMetadata<PolylineLabel>
-      );
-    }
-  } else if (label.type === "Keypoint") {
-    if (isFieldType(schema, "Keypoints")) {
-      return buildKeypointsMutationDeltas(
-        sample,
-        label as LabelMetadata<KeypointLabel>
-      );
-    } else if (isFieldType(schema, "Keypoint")) {
-      return buildKeypointMutationDeltas(
-        sample,
-        label as LabelMetadata<KeypointLabel>
-      );
-    }
-  } else if (isPrimitiveFieldType(schema)) {
-    const primitiveLabel = label as PrimitiveValue;
-    return buildPrimitiveMutationDelta(
-      sample,
-      primitiveLabel.path,
-      primitiveLabel.data,
-      primitiveLabel.op
-    );
+    const newValue = isDelete
+      ? null
+      : mergeOntoPrevious(previousValue, incomingLabel(label));
+    if (skip(previousValue, newValue)) return null;
+    return { field: label.path, listKey, labelId, previousValue, newValue };
   }
 
-  throw new Error(
-    `Unsupported field type '${schema?.ftype}' at path '${label.path}'`
+  // Flat single-label field (e.g. a top-level Classification field).
+  const previousValue = withCls(
+    extractNestedField(sample, label.path) ?? null,
+    label.type
   );
-};
-
-/**
- * Build a list of JSON deltas for deleting the given label from the sample.
- *
- * @param sample Sample containing unmodified label data
- * @param label Current label state
- * @param schema Field schema
- * @param isGenerated Whether this is from a generated view
- */
-export const buildDeletionDeltas = (
-  sample: Sample,
-  label: Exclude<LabelProxy, PrimitiveValue>,
-  schema: Field,
-  isGenerated = false
-): JSONDeltas => {
-  // Future-proofing for generated views: deletion is always a simple remove of the label
-  // The backend handles removing from the source sample's list
-  if (isGenerated) {
-    return [{ op: "remove", path: "/" }];
-  }
-
-  // todo refactor to reduce code duplication
-  if (label.type === "Detection") {
-    if (isFieldType(schema, "Detections")) {
-      const existingLabel = <DetectionsParent>(
-        extractNestedField(sample, label.path)
-      );
-
-      if (!existingLabel || !Array.isArray(existingLabel.detections)) {
-        // label doesn't exist
-        console.warn(
-          `can't delete label; no detections found at ${label.path}`
-        );
-        return [];
-      }
-
-      return generateJsonPatch(existingLabel, {
-        ...existingLabel,
-        detections: existingLabel.detections.filter(
-          (det) => det._id !== label.data._id
-        ),
-      });
-    } else if (isFieldType(schema, "Detection")) {
-      return [{ op: "remove", path: "/" }];
-    }
-  } else if (label.type === "Classification") {
-    if (isFieldType(schema, "Classifications")) {
-      const existingLabel = <ClassificationsParent>(
-        extractNestedField(sample, label.path)
-      );
-
-      if (!existingLabel || !Array.isArray(existingLabel.classifications)) {
-        // label doesn't exist
-        console.warn(
-          `can't delete label; no classifications found at ${label.path}`
-        );
-        return [];
-      }
-
-      return generateJsonPatch(existingLabel, {
-        ...existingLabel,
-        classifications: existingLabel.classifications.filter(
-          (cls) => cls._id !== label.data._id
-        ),
-      });
-    } else if (isFieldType(schema, "Classification")) {
-      return [{ op: "remove", path: "/" }];
-    }
-  } else if (label.type === "Polyline") {
-    if (isFieldType(schema, "Polylines")) {
-      const existingLabel = <PolylinesParent>(
-        extractNestedField(sample, label.path)
-      );
-
-      if (!existingLabel || !Array.isArray(existingLabel.polylines)) {
-        // label doesn't exist
-        console.warn(`can't delete label; no polylines found at ${label.path}`);
-        return [];
-      }
-
-      return generateJsonPatch(existingLabel, {
-        ...existingLabel,
-        polylines: existingLabel.polylines.filter(
-          (ply) => ply._id !== label.data._id
-        ),
-      });
-    } else if (isFieldType(schema, "Polyline")) {
-      return [{ op: "remove", path: "/" }];
-    }
-  } else if (label.type === "Keypoint") {
-    if (isFieldType(schema, "Keypoints")) {
-      const existingLabel = <KeypointsParent>(
-        extractNestedField(sample, label.path)
-      );
-
-      if (!existingLabel || !Array.isArray(existingLabel.keypoints)) {
-        // label doesn't exist
-        console.warn(`can't delete label; no keypoints found at ${label.path}`);
-        return [];
-      }
-
-      return generateJsonPatch(existingLabel, {
-        ...existingLabel,
-        keypoints: existingLabel.keypoints.filter(
-          (kpt) => kpt._id !== label.data._id
-        ),
-      });
-    } else if (isFieldType(schema, "Keypoint")) {
-      return [{ op: "remove", path: "/" }];
-    }
-  }
-
-  throw new Error(
-    `unknown label type '${label.type}' for path '${label.path}'`
-  );
-};
-
-/**
- * Build mutation deltas for a "single" label, i.e. not a label belonging to
- * an array of elements.
- *
- * @param sample Sample
- * @param path Label path
- * @param data Label data
- */
-export const buildSingleMutationDelta = <
-  T extends AnnotationLabel["data"] | Primitive
->(
-  sample: Sample,
-  path: string,
-  data: T
-): JSONDeltas => {
-  const existingLabel = <T>extractNestedField(sample, path) ?? {};
-
-  // Merge with existing data so server-enriched properties
-  //  (`_cls`, `_id`, `tags`) are preserved when the overlay only has a
-  //  subset of fields
-  const merged =
-    isObject(data) && isObject(existingLabel)
-      ? { ...existingLabel, ...data }
-      : data;
-
-  return generateJsonPatch(existingLabel, merged);
-};
-
-const buildPrimitiveMutationDelta = (
-  sample: Sample,
-  path: string,
-  data: Primitive,
-  op?: OpType
-): JSONDeltas => {
-  // convert any undefined values to null so they are serialized
-  // as null for the server
-  const newValue = data ?? null;
-  const existingValue = get(sample, path) ?? null;
-
-  // If the value hasn't changed, return empty deltas
-  if (arePrimitivesEqual(existingValue, newValue)) {
-    return [];
-  }
-
-  // we leave path empty because buildJsonPath will prepend the label path
-  if (op === "delete") {
-    return [{ op: "remove", path: "" }];
-  } else if (op === "add") {
-    return [{ op: "add", path: "", value: newValue }];
-  } else {
-    return [{ op: "replace", path: "", value: newValue }];
-  }
-};
-
-/**
- * Build a list of JSON deltas for the given sample and detection label.
- *
- * This method assumes that the detection exists as a top-level field (i.e. not
- * part of an `fo.Detections` field).
- *
- * @param sample Sample containing unmodified label data
- * @param label Current label state
- */
-export const buildDetectionMutationDelta = (
-  sample: Sample,
-  label: LabelMetadata<DetectionLabel> | Detection2DMetadata
-): JSONDeltas => {
-  return buildSingleMutationDelta(
-    sample,
-    label.path,
-    makeDetectionLabel(label)
-  );
-};
-
-/**
- * Build a list of JSON deltas for the given sample and detection label.
- *
- * This method assumes that the detection exists as part of a parent
- * `fo.Detections` field.
- *
- * @param sample Sample containing unmodified label data
- * @param label Current label state
- * @param isGenerated Whether this is from a generated view
- */ export const buildDetectionsMutationDelta = (
-  sample: Sample,
-  label: LabelMetadata<DetectionLabel> | Detection2DMetadata,
-  isGenerated = false
-): JSONDeltas => {
-  const existingLabel = <DetectionsParent>(
-    extractNestedField(sample, label.path)
-  ) ?? { detections: [] };
-
-  const newDetection = makeDetectionLabel(label);
-  const existingDetection =
-    existingLabel.detections?.find((det) => det._id === label.data._id) ?? {};
-
-  if (isGenerated) {
-    // Field-level single updates
-
-    return generateJsonPatch(existingDetection, newDetection);
-  }
-
-  // Merge with existing data so server-enriched properties (tags,
-  // attributes, _cls, etc.) are preserved when the overlay only carries
-  // a minimal subset of fields.
-  const mergedDetection = existingDetection
-    ? { ...existingDetection, ...newDetection }
-    : newDetection;
-
-  const newArray = [...existingLabel.detections];
-  upsertArrayElement(
-    newArray,
-    mergedDetection,
-    (det) => det._id === label.data._id
-  );
-
-  const newLabel = {
-    ...existingLabel,
-    detections: newArray,
+  const newValue = isDelete
+    ? null
+    : mergeOntoPrevious(previousValue, incomingLabel(label));
+  if (skip(previousValue, newValue)) return null;
+  return {
+    field: label.path,
+    listKey: null,
+    labelId: null,
+    previousValue,
+    newValue,
   };
-
-  return generateJsonPatch(existingLabel, newLabel);
 };
 
 /**
- * Build a list of JSON deltas for the given sample and classification label.
- *
- * @param sample Sample containing unmodified label data
- * @param label Current label state
- */
-export const buildClassificationMutationDeltas = (
-  sample: Sample,
-  label: LabelMetadata<ClassificationLabel>
-): JSONDeltas => {
-  return buildSingleMutationDelta(sample, label.path, label.data);
-};
-
-/**
- * Build a list of JSON deltas for the given sample and classification label.
- *
- * This method assumes that the classification exists as part of a parent
- * `fo.Classifications` field.
- *
- * @param sample Sample containing unmodified label data
- * @param label Current label state
- */
-export const buildClassificationsMutationDeltas = (
-  sample: Sample,
-  label: LabelMetadata<ClassificationLabel>
-): JSONDeltas => {
-  const existingLabel = <ClassificationsParent>(
-    extractNestedField(sample, label.path)
-  ) ?? {
-    classifications: [],
-  };
-
-  const existingClassification = existingLabel.classifications.find(
-    (cls) => cls._id === label.data._id
-  );
-
-  const mergedClassification = existingClassification
-    ? { ...existingClassification, ...label.data }
-    : { ...label.data };
-
-  const newArray = [...existingLabel.classifications];
-  upsertArrayElement(
-    newArray,
-    mergedClassification,
-    (cls) => cls._id === label.data._id
-  );
-
-  const newLabel = {
-    ...existingLabel,
-    classifications: newArray,
-  };
-
-  return generateJsonPatch(existingLabel, newLabel);
-};
-
-/**
- * Build a list of JSON deltas for the given sample and detection label.
- *
- * This method assumes that the detection exists as a top-level field (i.e. not
- * part of an `fo.Polylines` field).
- *
- * @param sample Sample containing unmodified label data
- * @param label Current label state
- */
-export const buildPolylineMutationDeltas = (
-  sample: Sample,
-  label: LabelMetadata<PolylineLabel>
-): JSONDeltas => {
-  return buildSingleMutationDelta(sample, label.path, label.data);
-};
-
-/**
- * Build a list of JSON deltas for the given sample and polyline label.
- *
- * This method assumes that the polyline exists as part of a parent
- * `fo.Polylines` field.
- *
- * @param sample Sample containing unmodified label data
- * @param label Current label state
- */
-export const buildPolylinesMutationDeltas = (
-  sample: Sample,
-  label: LabelMetadata<PolylineLabel>
-): JSONDeltas => {
-  const existingLabel = <{ polylines: PolylineLabel[] }>(
-    extractNestedField(sample, label.path)
-  ) ?? {
-    polylines: [],
-  };
-
-  const existingPolyline = existingLabel.polylines.find(
-    (ply) => ply._id === label.data._id
-  );
-
-  const mergedPolyline = existingPolyline
-    ? { ...existingPolyline, ...label.data }
-    : { ...label.data };
-
-  const newArray = [...existingLabel.polylines];
-  upsertArrayElement(
-    newArray,
-    mergedPolyline,
-    (ply) => ply._id === label.data._id
-  );
-
-  const newLabel = {
-    ...existingLabel,
-    polylines: newArray,
-  };
-
-  return generateJsonPatch(existingLabel, newLabel);
-};
-
-/**
- * Build a list of JSON deltas for the given sample and keypoint label.
- *
- * This method assumes that the keypoint exists as a top-level field (i.e. not
- * part of an `fo.Keypoints` field).
- *
- * @param sample Sample containing unmodified label data
- * @param label Current label state
- */
-export const buildKeypointMutationDeltas = (
-  sample: Sample,
-  label: LabelMetadata<KeypointLabel>
-): JSONDeltas => {
-  return buildSingleMutationDelta(sample, label.path, label.data);
-};
-
-/**
- * Build a list of JSON deltas for the given sample and keypoint label.
- *
- * This method assumes that the keypoint exists as part of a parent
- * `fo.Keypoints` field.
- *
- * @param sample Sample containing unmodified label data
- * @param label Current label state
- */
-export const buildKeypointsMutationDeltas = (
-  sample: Sample,
-  label: LabelMetadata<KeypointLabel>
-): JSONDeltas => {
-  const existingLabel = <{ keypoints: KeypointLabel[] }>(
-    extractNestedField(sample, label.path)
-  ) ?? {
-    keypoints: [],
-  };
-
-  const existingKeypoint = existingLabel.keypoints.find(
-    (kpt) => kpt._id === label.data._id
-  );
-
-  const mergedKeypoint = existingKeypoint
-    ? { ...existingKeypoint, ...label.data }
-    : { ...label.data };
-
-  const newArray = [...existingLabel.keypoints];
-  upsertArrayElement(
-    newArray,
-    mergedKeypoint,
-    (kpt) => kpt._id === label.data._id
-  );
-
-  const newLabel = {
-    ...existingLabel,
-    keypoints: newArray,
-  };
-
-  return generateJsonPatch(existingLabel, newLabel);
-};
-
-/**
- * Upsert an array element in-place.
- *
- * If the specified element (as determined by `find`) exists, it is replaced.
- * Otherwise, the element is appended to the array.
- *
- * @param array Array of elements
- * @param element Element to upsert
- * @param find Function which returns `true` for a matching element, and
- *  `false` otherwise
- */
-const upsertArrayElement = <T>(
-  array: T[],
-  element: T,
-  find: (e: T) => boolean
-) => {
-  const index = array.findIndex((e) => find(e));
-  if (index >= 0) {
-    array.splice(index, 1, element);
-  } else {
-    array.push(element);
-  }
-};
-
-/**
- * Build a JSON-patch-compatible path from the root object.
- *
- * @param labelPath Dot-delimited path to label field
- * @param operationPath Slash-delimited JSON-patch path to mutation field
- */
-export const buildJsonPath = (
-  labelPath: string | null,
-  operationPath: string
-): string => {
-  // labelPath will be null when building paths for sample field updates
-  const parts = labelPath?.split(".") || [];
-  parts.push(
-    ...operationPath
-      .split("/")
-      .filter((segment) => segment !== "/" && segment.length > 0)
-  );
-
-  return `/${parts.join("/")}`;
-};
-
-/**
- * Create a {@link DetectionLabel} from a {@link LabelMetadata} instance.
+ * Create a {@link DetectionLabel} from a {@link LabelProxy} instance.
  *
  * @param label Source label
  */

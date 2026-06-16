@@ -1,14 +1,18 @@
-import type { JSONDeltas } from "@fiftyone/core";
 import {
+  getLocalSample,
   isGeneratedView,
-  useModalSample,
   useModalSampleSchema,
 } from "@fiftyone/state";
 import type { Field } from "@fiftyone/utilities";
 import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
-import { buildJsonPath, buildLabelDeltas, LabelProxy } from "../deltas";
+import {
+  buildLabelFieldDelta,
+  type LabelFieldDelta,
+  type LabelProxy,
+} from "../deltas";
 import { getFieldSchema } from "../util";
+import { useAnnotationTargetSample } from "./useAnnotationTargetSample";
 
 export type LabelConstructor<T> = (data: T) => LabelProxy | undefined;
 
@@ -21,6 +25,11 @@ export interface UseGetLabelDeltaOptions {
    * - "delete": For deleting labels
    */
   opType?: DeltaOpType;
+  /**
+   * Return the delta even when it is a no-op. Callers that record edits into
+   * the pending-edits store always record; the store resolves no-ops.
+   */
+  includeUnchanged?: boolean;
 }
 
 /**
@@ -58,8 +67,9 @@ const inferFieldSchema = (labelProxy: LabelProxy): Field | null => {
 };
 
 /**
- * Hook which provides a function capable of generating a {@link JSONDeltas}
- * for a given label.
+ * Hook which provides a function capable of generating a
+ * {@link LabelFieldDelta} (the original and updated value) for a given label,
+ * or `null` when the delta can't be expressed.
  *
  * @param labelConstructor Function to create a {@link LabelProxy}
  * instance from the source label data.
@@ -68,44 +78,55 @@ const inferFieldSchema = (labelProxy: LabelProxy): Field | null => {
 export const useGetLabelDelta = <T>(
   labelConstructor: LabelConstructor<T>,
   options: UseGetLabelDeltaOptions = {}
-): ((labelSource: T, path: string) => JSONDeltas) => {
-  const { opType = "mutate" } = options;
-  const modalSample = useModalSample();
+): ((labelSource: T, path: string) => LabelFieldDelta | null) => {
+  const { opType = "mutate", includeUnchanged = false } = options;
+  // The sample being annotated follows the active viewer (3D scene vs 2D), so
+  // a 3D edit diffs against — and saves to — its own slice's sample.
+  const targetSample = useAnnotationTargetSample();
   const modalSampleSchema = useModalSampleSchema();
   const isGenerated = useRecoilValue(isGeneratedView);
 
   return useCallback(
     (labelSource: T, path: string) => {
-      if (!modalSample?.sample) {
-        return [];
+      if (!targetSample) {
+        return null;
       }
 
       const labelProxy = labelConstructor(labelSource);
-
-      if (labelProxy) {
-        const recoilSchema = getFieldSchema(modalSampleSchema, path);
-        const inferred = recoilSchema ? null : inferFieldSchema(labelProxy);
-        const schema = recoilSchema ?? inferred;
-
-        if (schema) {
-          const labelDeltas = buildLabelDeltas(
-            modalSample.sample,
-            labelProxy,
-            schema,
-            opType,
-            isGenerated
-          );
-
-          return labelDeltas.map((delta) => ({
-            ...delta,
-            // convert label delta to sample delta
-            path: buildJsonPath(isGenerated ? null : path, delta.path),
-          }));
-        }
+      if (!labelProxy) {
+        return null;
       }
 
-      return [];
+      const recoilSchema = getFieldSchema(modalSampleSchema, path);
+      const schema = recoilSchema ?? inferFieldSchema(labelProxy);
+      if (!schema) {
+        return null;
+      }
+
+      // The previous value MUST come from the canonical store, read
+      // synchronously at call time — a React render snapshot races the
+      // save/ack cycle, and a stale snapshot here becomes a wrong save
+      // precondition (the historical source of single-user 409s). The render
+      // value is only the fallback for a sample that has never been edited.
+      const sample = (getLocalSample(targetSample._id) ??
+        targetSample) as unknown as Parameters<typeof buildLabelFieldDelta>[0];
+
+      return buildLabelFieldDelta(
+        sample,
+        labelProxy,
+        schema,
+        opType,
+        isGenerated,
+        includeUnchanged
+      );
     },
-    [isGenerated, labelConstructor, modalSample, modalSampleSchema, opType]
+    [
+      targetSample,
+      includeUnchanged,
+      isGenerated,
+      labelConstructor,
+      modalSampleSchema,
+      opType,
+    ]
   );
 };

@@ -6,12 +6,6 @@ import { LabelProxy } from "../deltas";
 import { useGetLabelDelta } from "./useGetLabelDelta";
 import { OpType } from "../types";
 
-/**
- * Method for constructing a {@link LabelProxy} from a primitive value.
- *
- * @param data Primitive data
- * @param path Field path
- */
 const buildLabelProxy = ({
   data,
   path,
@@ -35,11 +29,14 @@ export const useSidebarDeltaSupplier = (): DeltaSupplier => {
   const { stagedMutations } = useSampleMutationManager();
   const getLabelDelta = useGetLabelDelta(buildLabelProxy);
 
-  return useCallback(() => {
-    return {
-      deltas: Object.entries(stagedMutations).flatMap(([path, mutation]) =>
-        getLabelDelta({ data: mutation.data, path, op: mutation.op }, path)
-      ),
-    };
-  }, [getLabelDelta, stagedMutations]);
+  return useCallback(
+    () => ({
+      deltas: Object.entries(stagedMutations)
+        .map(([path, mutation]) =>
+          getLabelDelta({ data: mutation.data, path, op: mutation.op }, path)
+        )
+        .filter((delta): delta is NonNullable<typeof delta> => !!delta),
+    }),
+    [getLabelDelta, stagedMutations]
+  );
 };
