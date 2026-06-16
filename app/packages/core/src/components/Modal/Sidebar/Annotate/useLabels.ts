@@ -388,6 +388,14 @@ export const useGetSidebarLabels = () => {
 };
 
 /**
+ * Hook which reactively subscribes to the current sidebar labels.
+ *
+ * Defined here (not via a cross-package atom import) so external callers read
+ * the same atom instance this module writes.
+ */
+export const useSidebarLabels = () => useAtomValue(labels);
+
+/**
  * Hook which provides access to the current {@link LabelsContext}.
  */
 export const useLabelsContext = (): LabelsContext => {

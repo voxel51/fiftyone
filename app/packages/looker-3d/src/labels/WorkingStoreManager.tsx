@@ -3,7 +3,10 @@ import {
   useResetWorkingOnModeChange,
   useTransientCleanup,
 } from "../annotation/store";
-import { useSyncWorkingToSidebar } from "../annotation/useSyncWorkingToSidebar";
+import {
+  useSyncWorkingLabelsToSidebar,
+  useSyncWorkingToSidebar,
+} from "../annotation/useSyncWorkingToSidebar";
 import { type OverlayLabel } from "./loader";
 
 /**
@@ -17,6 +20,7 @@ export const WorkingStoreManager = ({
   useInitializeWorking(rawOverlays);
   useResetWorkingOnModeChange();
   useSyncWorkingToSidebar();
+  useSyncWorkingLabelsToSidebar();
   useTransientCleanup();
 
   return null;

@@ -1,10 +1,15 @@
 import { editing as editingAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
+import {
+  useLabelsContext,
+  useSidebarLabels,
+} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useLabels";
 import type { AnnotationLabel } from "@fiftyone/state";
 import type { WritableAtom } from "jotai";
 import { getDefaultStore } from "jotai";
 import { isEqual } from "lodash";
 import { useEffect, useRef } from "react";
 import { useWorkingDoc } from "./store";
+import { build3dSidebarLabel } from "./store/operations";
 import type { ReconciledDetection3D, ReconciledPolyline3D } from "./types";
 import { currentEditingCuboidAtom } from "./useSetEditingToNewCuboid";
 import { currentEditingPolylineAtom } from "./useSetEditingToNewPolyline";
@@ -123,4 +128,49 @@ export function useSyncWorkingToSidebar() {
 
     lastSyncedWorkingLabelRef.current = workingLabel;
   }, [workingDoc, store]);
+}
+
+/**
+ * Keeps the Annotate sidebar labels list in sync with the 3D working store.
+ *
+ * The working store is authoritative for 3D and is re-hydrated for every
+ * sample, but the sidebar list is rebuilt from sample data (`useLabels`) and
+ * can drop 3D cuboids — e.g. after navigating away and back. This adds any
+ * non-deleted working-store label that is missing from the sidebar list.
+ *
+ * It is idempotent (adds only what's missing), so it also re-applies after
+ * `useLabels` replaces the sidebar list during its own hydration, winning the
+ * race that otherwise leaves cuboids on the canvas but absent from the list.
+ */
+export function useSyncWorkingLabelsToSidebar() {
+  const workingDoc = useWorkingDoc();
+  const sidebarLabels = useSidebarLabels();
+  const { addLabelToSidebar } = useLabelsContext();
+
+  useEffect(() => {
+    const present = new Set(
+      sidebarLabels.map((label) => label?.data?._id).filter(Boolean)
+    );
+
+    const missing = Object.values(workingDoc.labelsById).filter(
+      (label) =>
+        !workingDoc.deletedIds.has(label._id) && !present.has(label._id)
+    );
+
+    if (missing.length === 0) {
+      return;
+    }
+
+    // Instrumentation: surfaces every reconcile so a cuboid that's on the
+    // canvas but missing from the sidebar can be traced to this sync.
+    console.debug("[3d-sidebar-sync] adding working labels missing from list", {
+      missing: missing.map((l) => ({ id: l._id, path: l.path, cls: l._cls })),
+      workingTotal: Object.keys(workingDoc.labelsById).length,
+      sidebarTotal: sidebarLabels.length,
+    });
+
+    for (const label of missing) {
+      addLabelToSidebar(build3dSidebarLabel(label, label.path));
+    }
+  }, [workingDoc, sidebarLabels, addLabelToSidebar]);
 }

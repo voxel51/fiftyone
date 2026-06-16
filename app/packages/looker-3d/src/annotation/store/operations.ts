@@ -32,7 +32,7 @@ import {
  * store, not a Lighter overlay, so the entry carries a plain overlay stand-in
  * (the same shape the 3D editing paths use).
  */
-function build3dSidebarLabel(
+export function build3dSidebarLabel(
   label: ReconciledDetection3D | ReconciledPolyline3D,
   path: string
 ): fos.AnnotationLabel {
