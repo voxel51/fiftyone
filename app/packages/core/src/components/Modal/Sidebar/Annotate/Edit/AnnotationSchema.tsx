@@ -1,4 +1,5 @@
 import {
+  stripReservedLabelAttributes,
   useActiveAnnotationSampleId,
   useAnnotationEngine,
 } from "@fiftyone/annotation";
@@ -223,10 +224,19 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         }
       }
 
+      // Persist only true label data: a 3D draft's slot carries the working/
+      // overlay shape (type/isNew/color/path/sampleId), and committing those
+      // pollutes Sample — the write-half's `build3dLabel` strips the same set,
+      // so the idempotent guard would never match and the sync loops forever.
+      const persistableValue = stripReservedLabelAttributes(
+        value as Record<string, unknown>
+      );
+      const persistableInverse = stripReservedLabelAttributes(inverse);
+
       createPushAndExec(
         `update-label-${ref.instanceId}-${Date.now()}`,
-        () => engine.updateLabel(ref, value as Partial<LabelData>),
-        () => engine.updateLabel(ref, inverse as Partial<LabelData>)
+        () => engine.updateLabel(ref, persistableValue as Partial<LabelData>),
+        () => engine.updateLabel(ref, persistableInverse as Partial<LabelData>)
       );
 
       // the anchor binding rewrites `editing` only for committed labels —

@@ -5,11 +5,14 @@ import type {
 import type { LabelData } from "@fiftyone/utilities";
 
 /**
- * Attributes used purely for internal 3D annotation functionality. They must
- * not be persisted to the sample and are stripped before writing into
- * {@link Sample}. Mirrors the legacy reserved set from the 3D delta supplier.
+ * Attributes used purely for internal annotation/UI functionality. They are
+ * never persistable label-data fields (color/selection are view state; `type`
+ * and `isNew` are sidebar bookkeeping; `path`/`sampleId` are addressing the ref
+ * already carries; `id` is the legacy alias of `_id`). Stripped before writing
+ * into {@link Sample}. Mirrors the legacy reserved set from the 3D delta
+ * supplier.
  */
-const reservedAttributes = [
+export const reservedLabelAttributes = [
   "color",
   "id",
   "isNew",
@@ -18,6 +21,21 @@ const reservedAttributes = [
   "sampleId",
   "type",
 ] as const;
+
+/**
+ * Drop the {@link reservedLabelAttributes} from a label-data partial — the
+ * sanitizer for any path that commits a working/overlay-shaped label into the
+ * engine or {@link Sample}.
+ */
+export const stripReservedLabelAttributes = <T extends Record<string, unknown>>(
+  data: T
+): T => {
+  const out = { ...data };
+  for (const key of reservedLabelAttributes) {
+    delete out[key];
+  }
+  return out;
+};
 
 /**
  * Derive the persistable label document from a reconciled 3D label, shaped for
@@ -36,10 +54,7 @@ export const build3dLabel = (
     return undefined;
   }
 
-  const data = { ...label } as Record<string, unknown>;
-  for (const key of reservedAttributes) {
-    delete data[key];
-  }
-
-  return data as unknown as LabelData;
+  return stripReservedLabelAttributes(
+    label as unknown as Record<string, unknown>
+  ) as unknown as LabelData;
 };
