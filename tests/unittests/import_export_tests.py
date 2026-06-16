@@ -41,7 +41,7 @@ from decorators import drop_collection, drop_datasets
 skipwindows = pytest.mark.skipif(
     os.name == "nt", reason="Windows hangs in workflows, fix me"
 )
-drop_temporal_tags = drop_collection(TAGS_COLLECTION_NAME)
+drop_tags = drop_collection(TAGS_COLLECTION_NAME)
 
 
 class ImageDatasetTests(unittest.TestCase):
@@ -173,7 +173,7 @@ class DuplicateImageExportTests(ImageDatasetTests):
 
 
 class TemporalTagsImportExportTests(ImageDatasetTests):
-    @drop_temporal_tags
+    @drop_tags
     @drop_datasets
     def test_fiftyone_dataset_temporal_tags_round_trip(self):
         dataset, sample_ids = self._make_temporal_tag_dataset()
@@ -281,7 +281,7 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
 
         self.assertFalse(os.path.isfile(tags_path))
 
-    @drop_temporal_tags
+    @drop_tags
     @drop_datasets
     def test_fiftyone_dataset_temporal_tags_view_export(self):
         dataset, sample_ids = self._make_temporal_tag_dataset()
@@ -308,7 +308,7 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
             {sample_ids[0], sample_ids[2]},
         )
 
-    @drop_temporal_tags
+    @drop_tags
     @drop_datasets
     def test_fiftyone_dataset_temporal_tags_max_samples(self):
         dataset, sample_ids = self._make_temporal_tag_dataset()
@@ -337,7 +337,7 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
             fomm.list_temporal_tags(dataset2)[0].created_by, "alice"
         )
 
-    @drop_temporal_tags
+    @drop_tags
     @drop_datasets
     def test_fiftyone_dataset_temporal_tags_nonempty_migration_import(self):
         dataset, _ = self._make_temporal_tag_dataset()
