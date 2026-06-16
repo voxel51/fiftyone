@@ -1,4 +1,7 @@
-import { useSampleInstance } from "@fiftyone/annotation";
+import {
+  useActiveAnnotationSampleId,
+  useAnnotationEngine,
+} from "@fiftyone/annotation";
 import {
   DelegatingUndoable,
   KnownContexts,
@@ -63,7 +66,8 @@ const Field = () => {
   );
   const type = useAtomValue(currentType);
   const state = useAtomValue(editing);
-  const sample = useSampleInstance();
+  const engine = useAnnotationEngine();
+  const sampleId = useActiveAnnotationSampleId();
   const nextFieldValue = useRef(currentFieldValue);
   const labelId = currentLabel?.overlay?.id;
   const currentLabelRef = useUnboundStateRef(currentLabel);
@@ -83,20 +87,24 @@ const Field = () => {
       const movedLabel = currentLabelRef.current;
       const id = movedLabel?.data?._id;
       const source = movedLabel?.data;
-      const overlay = movedLabel?.overlay;
 
-      // Atomic move between fields, on Sample + the captured overlay only:
-      // remove from one field and add to the other in a single transaction, so
-      // one autosave tick emits a single remove+add patch. Re-home the overlay
-      // before the add so the read-half matches it at the new field.
+      // Atomic move between fields, ALL through the engine: remove from one
+      // field and upsert at the other in a single transaction (one coalesced
+      // change → one autosave patch). The upsert preserves `_id`, so the
+      // label keeps its identity. The Lighter bridge's read-half re-homes the
+      // overlay off the engine change — the sidebar never touches Lighter.
       const move = (from: string, to: string) => {
         if (!id || !source) return;
-        sample.deleteLabel(from, id);
-        overlay?.updateField(to);
-        sample.updateLabel(to, {
-          ...buildNewLabelData(to, source._cls, { id }),
-          ...source,
-        } as LabelData);
+
+        const scoped = engine.scope(sampleId);
+        engine.transaction(() => {
+          scoped.deleteLabel({ path: from, instanceId: id });
+          scoped.updateLabel({ path: to, instanceId: id }, {
+            ...buildNewLabelData(to, source._cls, { id }),
+            ...source,
+          } as Partial<LabelData>);
+        });
+
         // Best-effort sidebar sync; no-ops when the label isn't selected.
         setCurrentField(to);
       };
@@ -106,7 +114,14 @@ const Field = () => {
         () => move(oldField, newField),
         () => move(newField, oldField)
       );
-    }, [currentLabelRef, sample, setCurrentField, labelId, currentFieldValue]),
+    }, [
+      currentLabelRef,
+      engine,
+      sampleId,
+      setCurrentField,
+      labelId,
+      currentFieldValue,
+    ]),
     () => true
   );
 
