@@ -172,7 +172,7 @@ class DuplicateImageExportTests(ImageDatasetTests):
         self.assertEqual(len(dataset2), 2)
 
 
-class TemporalTagsImportExportTests(ImageDatasetTests):
+class TagsImportExportTests(ImageDatasetTests):
     @drop_tags
     @drop_datasets
     def test_fiftyone_dataset_temporal_tags_round_trip(self):
