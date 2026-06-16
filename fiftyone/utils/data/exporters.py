@@ -45,6 +45,8 @@ from .parsers import (
     ImageSampleParser,
 )
 
+fommtt = fou.lazy_import("fiftyone.multimodal.tags._temporal_tags")
+
 logger = logging.getLogger(__name__)
 
 
@@ -2178,8 +2180,6 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self._media_field_exporters = {}
 
     def setup(self):
-        import fiftyone.multimodal.tags._temporal_tags as fommtt
-
         self._data_dir = os.path.join(self.export_dir, "data")
         self._fields_dir = os.path.join(self.export_dir, "fields")
         self._anno_dir = os.path.join(self.export_dir, "annotations")
@@ -2348,8 +2348,6 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             ]
 
         foo.export_document(dataset_dict, self._metadata_path)
-
-        import fiftyone.multimodal.tags._temporal_tags as fommtt
 
         fommtt.export_tags(
             _sample_collection, self._tags_path, progress=progress
