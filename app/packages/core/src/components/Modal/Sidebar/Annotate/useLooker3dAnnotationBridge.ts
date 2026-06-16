@@ -1,6 +1,7 @@
 import {
   useAnnotationEngine,
   useLooker3dEngineBridge,
+  useRegisterLooker3dSurfaceController,
   useSceneSampleId,
   type WorkingStore3d,
 } from "@fiftyone/annotation";
@@ -77,5 +78,16 @@ export const useLooker3dAnnotationBridge = (): void => {
     [add, update, remove]
   );
 
-  useLooker3dEngineBridge({ engine, sample: sampleId, paths, store });
+  const controller = useLooker3dEngineBridge({
+    engine,
+    sample: sampleId,
+    paths,
+    store,
+  });
+
+  // expose the controller to the 3D surface's own gesture operations
+  // (`operations.ts`) so create/update/delete commit through the engine. Null
+  // while the scene id is unsettled — the controller is the throwing
+  // not-ready stub then, and the write-half no-ops until it settles.
+  useRegisterLooker3dSurfaceController(sampleId ? controller : null);
 };
