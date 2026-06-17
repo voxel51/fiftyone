@@ -195,7 +195,7 @@ describe("useSampleTemporalTags", () => {
     expect(client.updateSampleTag).toHaveBeenCalledWith({
       datasetId: "dataset-id",
       sampleId: "sample-id",
-      temporalTagId: "temporal-tag-id",
+      tagId: "temporal-tag-id",
       update: { end: 3 },
     });
     expect(client.listSampleTags).toHaveBeenCalledTimes(3);

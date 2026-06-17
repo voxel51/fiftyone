@@ -166,7 +166,7 @@ export function createTagsClient(
     async updateSampleTag({
       datasetId,
       sampleId,
-      temporalTagId,
+      tagId,
       update,
     }: UpdateSampleTagRequest) {
       const response = await fetchFunction<
@@ -177,9 +177,7 @@ export function createTagsClient(
         method: "PATCH",
         path: `/dataset/${encodeURIComponent(
           datasetId
-        )}/sample/${encodeURIComponent(sampleId)}/tags/${encodeURIComponent(
-          temporalTagId
-        )}`,
+        )}/sample/${encodeURIComponent(sampleId)}/tags/${encodeURIComponent(tagId)}`,
       });
 
       return temporalTagFromDto(response.response.temporal_tag);

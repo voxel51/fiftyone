@@ -64,7 +64,7 @@ export interface CreateSampleTagsRequest extends SampleTagsRequest {
 
 /** Request for updating one persisted tag for one sample. */
 export interface UpdateSampleTagRequest extends SampleTagsRequest {
-  readonly temporalTagId: string;
+  readonly tagId: string;
   readonly update: TagUpdate;
 }
 
@@ -124,5 +124,5 @@ export interface UseSampleTagsResult {
   readonly create: (tags: readonly TagCreate[]) => Promise<readonly Tag[]>;
   readonly delete: (ids: readonly string[]) => Promise<number>;
   readonly reload: () => Promise<readonly Tag[]>;
-  readonly update: (temporalTagId: string, update: TagUpdate) => Promise<Tag>;
+  readonly update: (tagId: string, update: TagUpdate) => Promise<Tag>;
 }

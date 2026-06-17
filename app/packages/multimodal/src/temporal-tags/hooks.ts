@@ -114,11 +114,11 @@ export function useSampleTemporalTags({
   );
 
   const update = useCallback(
-    async (temporalTagId: string, update: TagUpdate) => {
+    async (tagId: string, update: TagUpdate) => {
       const ids = requireSampleScope(datasetId, sampleId);
       const updated = await tagsClient.updateSampleTag({
         ...ids,
-        temporalTagId,
+        tagId,
         update,
       });
       await reload();

@@ -26,7 +26,7 @@ describe("createTagsClient", () => {
     await client.updateSampleTag({
       datasetId: "dataset-id",
       sampleId: "sample-id",
-      temporalTagId: "tag-id",
+      tagId: "tag-id",
       update: { end: 4 },
     });
     await client.deleteSampleTags({
@@ -140,7 +140,7 @@ describe("createTagsClient", () => {
     const tag = await client.updateSampleTag({
       datasetId: "dataset-id",
       sampleId: "sample-id",
-      temporalTagId: "temporal-tag-id",
+      tagId: "temporal-tag-id",
       update: {
         end: 15,
         lastModifiedBy: "sashank",
