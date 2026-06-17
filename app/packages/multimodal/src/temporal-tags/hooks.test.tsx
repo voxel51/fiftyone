@@ -190,22 +190,22 @@ describe("useSampleTemporalTags", () => {
     expect(client.listSampleTags).toHaveBeenCalledTimes(2);
 
     await act(async () => {
-      await latest.update("temporal-tag-id", { end: 3 });
+      await latest.update("tag-id", { end: 3 });
     });
     expect(client.updateSampleTag).toHaveBeenCalledWith({
       datasetId: "dataset-id",
       sampleId: "sample-id",
-      tagId: "temporal-tag-id",
+      tagId: "tag-id",
       update: { end: 3 },
     });
     expect(client.listSampleTags).toHaveBeenCalledTimes(3);
 
     await act(async () => {
-      await latest.delete(["temporal-tag-id"]);
+      await latest.delete(["tag-id"]);
     });
     expect(client.deleteSampleTags).toHaveBeenCalledWith({
       datasetId: "dataset-id",
-      ids: ["temporal-tag-id"],
+      ids: ["tag-id"],
       sampleId: "sample-id",
     });
     expect(client.listSampleTags).toHaveBeenCalledTimes(4);

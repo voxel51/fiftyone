@@ -119,7 +119,7 @@ describe("createTagsClient", () => {
       createdAt: "2026-05-26T12:00:00Z",
       createdBy: "sashank",
       end: 10,
-      id: "temporal-tag-id",
+      id: "tag-id",
       indexType: 2,
       lastModifiedAt: "2026-05-26T12:01:00Z",
       lastModifiedBy: "kacey",
@@ -140,7 +140,7 @@ describe("createTagsClient", () => {
     const tag = await client.updateSampleTag({
       datasetId: "dataset-id",
       sampleId: "sample-id",
-      tagId: "temporal-tag-id",
+      tagId: "tag-id",
       update: {
         end: 15,
         lastModifiedBy: "sashank",
@@ -169,12 +169,12 @@ describe("createTagsClient", () => {
       client.deleteSampleTags({
         datasetId: "dataset-id",
         sampleId: "sample-id",
-        ids: ["temporal-tag-id"],
+        ids: ["tag-id"],
       })
     ).resolves.toBe(2);
 
     expect(fetchFunction.mock.calls[0][0].body).toEqual({
-      ids: ["temporal-tag-id"],
+      ids: ["tag-id"],
     });
   });
 
@@ -271,7 +271,7 @@ function createTagDtoBase() {
     created_at: "2026-05-26T12:00:00Z",
     created_by: "sashank",
     end: 10,
-    id: "temporal-tag-id",
+    id: "tag-id",
     index_type: 2,
     last_modified_at: "2026-05-26T12:01:00Z",
     last_modified_by: "kacey",
