@@ -91,9 +91,9 @@ export interface CountDatasetTagsRequest {
 }
 
 /**
- * Client for the multimodal tag route surface.
+ * Client for the tag route surface.
  */
-export interface TemporalTagsClient {
+export interface TagsClient {
   createSampleTemporalTags(
     request: CreateSampleTagsRequest
   ): Promise<readonly TemporalTag[]>;
@@ -117,7 +117,7 @@ export interface TemporalTagsClient {
  * Hook options for sample-scoped tag loading.
  */
 export interface UseSampleTagsOptions extends Partial<SampleTagsRequest> {
-  readonly client?: TemporalTagsClient;
+  readonly client?: TagsClient;
   readonly filter?: TemporalTagFilter;
 }
 

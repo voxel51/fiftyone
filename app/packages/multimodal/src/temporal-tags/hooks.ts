@@ -5,7 +5,7 @@ import type {
   TemporalTag,
   TemporalTagCreate,
   TemporalTagFilter,
-  TemporalTagsClient,
+  TagsClient,
   TemporalTagsStatus,
   TemporalTagUpdate,
   UseSampleTagsOptions,
@@ -23,7 +23,7 @@ const IDLE_STATE: TemporalTagsState = {
   status: "idle",
   temporalTags: [],
 };
-let defaultTemporalTagsClient: TemporalTagsClient | undefined;
+let defaultTemporalTagsClient: TagsClient | undefined;
 
 /**
  * Loads and mutates temporal tags for one dataset sample.
@@ -172,7 +172,7 @@ export function useSampleTemporalTags({
 export function useSampleRendererTemporalTags(
   ctx: SampleRendererProps["ctx"],
   options: {
-    readonly client?: TemporalTagsClient;
+    readonly client?: TagsClient;
     readonly filter?: TemporalTagFilter;
   } = {}
 ) {

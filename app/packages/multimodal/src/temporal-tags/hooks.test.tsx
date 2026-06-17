@@ -4,9 +4,9 @@ import { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useSampleRendererTemporalTags, useSampleTemporalTags } from "./hooks";
 import type {
+  TagsClient,
   TemporalTag,
   TemporalTagCreate,
-  TemporalTagsClient,
   UseSampleTagsOptions,
   UseSampleTagsResult,
 } from "./types";
@@ -291,7 +291,7 @@ function SampleRendererTemporalTagsHarness({
   client,
   ctx,
 }: {
-  readonly client: TemporalTagsClient;
+  readonly client: TagsClient;
   readonly ctx: SampleRendererProps["ctx"];
 }) {
   useSampleRendererTemporalTags(ctx, { client });
@@ -299,9 +299,7 @@ function SampleRendererTemporalTagsHarness({
   return null;
 }
 
-function createTagsClient(
-  overrides: Partial<TemporalTagsClient> = {}
-): TemporalTagsClient {
+function createTagsClient(overrides: Partial<TagsClient> = {}): TagsClient {
   return {
     clearSampleTemporalTags: vi.fn(async () => 1),
     countDatasetTemporalTags: vi.fn(async () => ({})),

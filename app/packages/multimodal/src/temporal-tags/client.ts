@@ -6,10 +6,10 @@ import type {
   DeleteSampleTagsRequest,
   ListDatasetTagsRequest,
   ListSampleTagsRequest,
+  TagsClient,
   TemporalTag,
   TemporalTagCreate,
   TemporalTagFilter,
-  TemporalTagsClient,
   TemporalTagUpdate,
   UpdateSampleTagRequest,
 } from "./types";
@@ -58,7 +58,7 @@ export interface CreateTagsClientOptions {
  */
 export function createTagsClient(
   options: CreateTagsClientOptions = {}
-): TemporalTagsClient {
+): TagsClient {
   const fetchFunction = options.fetchFunction ?? getFetchFunctionExtended();
 
   return {
