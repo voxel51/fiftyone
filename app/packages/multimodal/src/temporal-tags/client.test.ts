@@ -257,15 +257,15 @@ function createTemporalTagInput() {
 }
 
 function createTemporalTagDto(
-  overrides: Partial<ReturnType<typeof createTemporalTagDtoBase>> = {}
+  overrides: Partial<ReturnType<typeof createTagDtoBase>> = {}
 ) {
   return {
-    ...createTemporalTagDtoBase(),
+    ...createTagDtoBase(),
     ...overrides,
   };
 }
 
-function createTemporalTagDtoBase() {
+function createTagDtoBase() {
   return {
     anchor: "lidar_top",
     created_at: "2026-05-26T12:00:00Z",
