@@ -1,10 +1,10 @@
 import { getFetchFunctionExtended } from "@fiftyone/utilities";
 import type {
   ClearSampleTagsRequest,
-  CountDatasetTemporalTagsRequest,
+  CountDatasetTagsRequest,
   CreateSampleTagsRequest,
   DeleteSampleTagsRequest,
-  ListDatasetTemporalTagsRequest,
+  ListDatasetTagsRequest,
   ListSampleTagsRequest,
   TemporalTag,
   TemporalTagCreate,
@@ -105,7 +105,7 @@ export function createTemporalTagsClient(
     async countDatasetTemporalTags({
       datasetId,
       filter,
-    }: CountDatasetTemporalTagsRequest) {
+    }: CountDatasetTagsRequest) {
       const response = await fetchFunction<undefined, TagCountsResponseDto>({
         method: "GET",
         path: withFilterQuery(
@@ -139,7 +139,7 @@ export function createTemporalTagsClient(
     async listDatasetTemporalTags({
       datasetId,
       filter,
-    }: ListDatasetTemporalTagsRequest) {
+    }: ListDatasetTagsRequest) {
       const response = await fetchFunction<undefined, TagsResponseDto>({
         method: "GET",
         path: withFilterQuery(

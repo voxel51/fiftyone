@@ -78,14 +78,14 @@ export interface ClearSampleTagsRequest extends SampleTagsRequest {
   readonly filter?: TemporalTagFilter;
 }
 
-/** Request for listing temporal tags across a dataset. */
-export interface ListDatasetTemporalTagsRequest {
+/** Request for listing tags across a dataset. */
+export interface ListDatasetTagsRequest {
   readonly datasetId: string;
   readonly filter?: TemporalTagFilter;
 }
 
-/** Request for counting temporal tag values across a dataset. */
-export interface CountDatasetTemporalTagsRequest {
+/** Request for counting tag values across a dataset. */
+export interface CountDatasetTagsRequest {
   readonly datasetId: string;
   readonly filter?: TemporalTagFilter;
 }
@@ -99,11 +99,11 @@ export interface TemporalTagsClient {
   ): Promise<readonly TemporalTag[]>;
   clearSampleTemporalTags(request: ClearSampleTagsRequest): Promise<number>;
   countDatasetTemporalTags(
-    request: CountDatasetTemporalTagsRequest
+    request: CountDatasetTagsRequest
   ): Promise<Readonly<Record<string, number>>>;
   deleteSampleTemporalTags(request: DeleteSampleTagsRequest): Promise<number>;
   listDatasetTemporalTags(
-    request: ListDatasetTemporalTagsRequest
+    request: ListDatasetTagsRequest
   ): Promise<readonly TemporalTag[]>;
   listSampleTemporalTags(
     request: ListSampleTagsRequest
