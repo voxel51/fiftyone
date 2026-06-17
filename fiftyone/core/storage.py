@@ -1043,9 +1043,16 @@ def get_file_size(path):
     Returns the size of the file at the given path in bytes.
 
     Args:
-        path: the filepath
+        path: the filepath, or an open binary file handle
 
     Returns:
         the file size in bytes
     """
+    if hasattr(path, "read"):
+        position = path.tell()
+        try:
+            return path.seek(0, os.SEEK_END)
+        finally:
+            path.seek(position)
+
     return os.path.getsize(path)
