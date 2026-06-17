@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import enum
 import itertools
 import os
 from typing import Iterable
@@ -34,7 +35,7 @@ import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 from fiftyone.multimodal.schemas import v1 as foms
 
-TEMPORAL_TAGS_COLLECTION_NAME = "temporal_tags"
+TAGS_COLLECTION_NAME = "tags"
 TEMPORAL_TAGS_EXPORT_FILENAME = "temporal_tags.json"
 TEMPORAL_TAGS_EXPORT_KEY = "temporal_tags"
 
@@ -53,6 +54,10 @@ _TEMPORAL_TAG_SORT = [
     ("tag", ASCENDING),
     ("_id", ASCENDING),
 ]
+
+
+class TagKind(str, enum.Enum):
+    TEMPORAL = "temporal"
 
 
 class TemporalTag(object):
@@ -88,6 +93,7 @@ class TemporalTag(object):
         created_at=None,
         last_modified_at=None,
         id=None,
+        kind=TagKind.TEMPORAL,
     ):
         self.sample_id = sample_id
         self.start = start
@@ -102,6 +108,7 @@ class TemporalTag(object):
             last_modified_at, "last_modified_at"
         )
         self.id = id
+        self.kind = _ensure_kind(kind)
 
     def __repr__(self):
         return (
@@ -144,6 +151,7 @@ class TemporalTag(object):
             created_at=self.created_at,
             last_modified_at=self.last_modified_at,
             id=self.id,
+            kind=self.kind,
         )
 
     def to_dict(self):
@@ -176,6 +184,9 @@ class TemporalTag(object):
 
         if self.id is not None:
             d["id"] = self.id
+
+        if self.kind is not None:
+            d["kind"] = self.kind
 
         return d
 
@@ -366,6 +377,7 @@ class TemporalTags(object):
                     "_sample_id": doc["_sample_id"],
                     "index_type": doc["index_type"],
                     "anchor": doc["anchor"],
+                    "kind": doc["kind"],
                     "start": doc["start"],
                     "end": doc["end"],
                     "tag": doc["tag"],
@@ -435,7 +447,11 @@ class TemporalTags(object):
                 "Temporal tag not found: %s" % tag_id
             )
 
-        query = {"_dataset_id": self._dataset._doc.id, "_id": tag_id}
+        query = {
+            "_dataset_id": self._dataset._doc.id,
+            "_id": tag_id,
+            "kind": TagKind.TEMPORAL.value,
+        }
         if self._sample_ids is not None:
             query["_sample_id"] = _build_in_query(list(self._sample_ids))
 
@@ -711,7 +727,9 @@ def delete_for_dataset_id(dataset_id) -> int:
     if collection is None:
         return 0
 
-    return collection.delete_many({"_dataset_id": dataset_id}).deleted_count
+    return collection.delete_many(
+        {"_dataset_id": dataset_id, "kind": TagKind.TEMPORAL.value}
+    ).deleted_count
 
 
 def delete_for_sample_ids(dataset_id, sample_ids) -> int:
@@ -731,7 +749,11 @@ def delete_for_sample_ids(dataset_id, sample_ids) -> int:
     for _ids in fou.iter_batches(sample_ids, batch_size):
         sample_oids = [_ensure_object_id(_id, "sample_ids") for _id in _ids]
         num_deleted += collection.delete_many(
-            {"_dataset_id": dataset_id, "_sample_id": {"$in": sample_oids}}
+            {
+                "_dataset_id": dataset_id,
+                "kind": TagKind.TEMPORAL.value,
+                "_sample_id": {"$in": sample_oids},
+            }
         ).deleted_count
 
     return num_deleted
@@ -742,7 +764,9 @@ def count_for_dataset_id(dataset_id) -> int:
     if collection is None:
         return 0
 
-    return collection.count_documents({"_dataset_id": dataset_id})
+    return collection.count_documents(
+        {"_dataset_id": dataset_id, "kind": TagKind.TEMPORAL.value}
+    )
 
 
 def get_orphan_dataset_ids(dataset_ids) -> list:
@@ -770,7 +794,10 @@ def count_for_dataset_ids(dataset_ids) -> int:
         return 0
 
     return collection.count_documents(
-        {"_dataset_id": _build_in_query(dataset_ids)}
+        {
+            "_dataset_id": _build_in_query(dataset_ids),
+            "kind": TagKind.TEMPORAL.value,
+        }
     )
 
 
@@ -784,7 +811,10 @@ def delete_for_dataset_ids(dataset_ids) -> int:
         return 0
 
     return collection.delete_many(
-        {"_dataset_id": _build_in_query(dataset_ids)}
+        {
+            "_dataset_id": _build_in_query(dataset_ids),
+            "kind": TagKind.TEMPORAL.value,
+        }
     ).deleted_count
 
 
@@ -1006,6 +1036,7 @@ def _to_storage_doc(tag: TemporalTag, dataset_id, sample_id):
         "start": start,
         "end": end,
         "tag": _ensure_tag(tag.tag),
+        "kind": tag.kind,
         **_to_storage_provenance(tag),
     }
 
@@ -1046,6 +1077,7 @@ def _build_update_fields(
 def _from_storage_doc(doc) -> TemporalTag:
     return TemporalTag(
         id=str(doc["_id"]),
+        kind=TagKind(doc.get("kind", TagKind.TEMPORAL)),
         sample_id=str(doc["_sample_id"]),
         index_type=doc["index_type"],
         anchor=doc.get("anchor", None),
@@ -1087,10 +1119,14 @@ def _to_export_doc(doc):
 
         export_doc[field_name] = value
 
+    if doc.get("kind", None) is not None:
+        export_doc["kind"] = TagKind(doc["kind"])
+
     return export_doc
 
 
 def _from_export_doc(doc) -> TemporalTag:
+    kind = doc.get("kind", None)
     return TemporalTag(
         sample_id=doc.get("sample_id", None),
         index_type=doc.get("index_type", None),
@@ -1098,6 +1134,7 @@ def _from_export_doc(doc) -> TemporalTag:
         end=doc.get("end", None),
         tag=doc.get("tag", None),
         anchor=doc.get("anchor", None),
+        kind=TagKind.TEMPORAL if kind is None else TagKind(kind),
         created_by=doc.get("created_by", None),
         last_modified_by=doc.get("last_modified_by", None),
         created_at=doc.get("created_at", None),
@@ -1108,7 +1145,7 @@ def _from_export_doc(doc) -> TemporalTag:
 def _build_query(
     dataset_id, filter: TemporalTagFilter | None, sample_ids=None
 ):
-    query = {"_dataset_id": dataset_id}
+    query = {"_dataset_id": dataset_id, "kind": TagKind.TEMPORAL.value}
 
     if sample_ids is not None:
         query["_sample_id"] = _build_in_query(list(sample_ids))
@@ -1337,6 +1374,7 @@ def _unique_query(doc):
     return {
         "_dataset_id": doc["_dataset_id"],
         "_sample_id": doc["_sample_id"],
+        "kind": doc["kind"],
         "index_type": doc["index_type"],
         "anchor": doc["anchor"],
         "start": doc["start"],
@@ -1348,6 +1386,7 @@ def _unique_query(doc):
 def _unique_key(doc):
     return (
         doc["_sample_id"],
+        doc.get("kind", None),
         doc["index_type"],
         doc.get("anchor", None),
         doc["start"],
@@ -1357,9 +1396,10 @@ def _unique_key(doc):
 
 
 def _query_from_unique_key(key):
-    sample_id, index_type, anchor, start, end, tag = key
+    sample_id, kind, index_type, anchor, start, end, tag = key
     return {
         "_sample_id": sample_id,
+        "kind": kind,
         "index_type": index_type,
         "anchor": anchor,
         "start": start,
@@ -1369,17 +1409,17 @@ def _query_from_unique_key(key):
 
 
 def _get_or_create_collection():
-    collection = foo.get_db_conn()[TEMPORAL_TAGS_COLLECTION_NAME]
+    collection = foo.get_db_conn()[TAGS_COLLECTION_NAME]
     _ensure_indexes(collection)
     return collection
 
 
 def _get_existing_collection():
     db = foo.get_db_conn()
-    if TEMPORAL_TAGS_COLLECTION_NAME not in db.list_collection_names():
+    if TAGS_COLLECTION_NAME not in db.list_collection_names():
         return None
 
-    return db[TEMPORAL_TAGS_COLLECTION_NAME]
+    return db[TAGS_COLLECTION_NAME]
 
 
 def _delete_temporal_tags_export(export_path) -> None:
@@ -1396,6 +1436,7 @@ def _ensure_indexes(collection) -> None:
         [
             ("_dataset_id", ASCENDING),
             ("_sample_id", ASCENDING),
+            ("kind", ASCENDING),
             ("index_type", ASCENDING),
             ("anchor", ASCENDING),
             ("start", ASCENDING),
@@ -1409,6 +1450,7 @@ def _ensure_indexes(collection) -> None:
         [
             ("_dataset_id", ASCENDING),
             ("_sample_id", ASCENDING),
+            ("kind", ASCENDING),
             ("index_type", ASCENDING),
             ("anchor", ASCENDING),
             ("start", ASCENDING),
@@ -1422,6 +1464,7 @@ def _ensure_indexes(collection) -> None:
         [
             ("_dataset_id", ASCENDING),
             ("_sample_id", ASCENDING),
+            ("kind", ASCENDING),
             ("start", ASCENDING),
             ("end", ASCENDING),
             ("index_type", ASCENDING),
@@ -1435,6 +1478,7 @@ def _ensure_indexes(collection) -> None:
     collection.create_index(
         [
             ("_dataset_id", ASCENDING),
+            ("kind", ASCENDING),
             ("tag", ASCENDING),
             ("_sample_id", ASCENDING),
             ("start", ASCENDING),
@@ -1447,6 +1491,7 @@ def _ensure_indexes(collection) -> None:
     collection.create_index(
         [
             ("_dataset_id", ASCENDING),
+            ("kind", ASCENDING),
             ("anchor", ASCENDING),
             ("tag", ASCENDING),
         ],
@@ -1454,11 +1499,25 @@ def _ensure_indexes(collection) -> None:
     )
 
 
+def _ensure_kind(kind):
+    if kind is None:
+        return TagKind.TEMPORAL
+    elif isinstance(kind, TagKind):
+        return kind
+    elif isinstance(kind, str):
+        try:
+            return TagKind(kind)
+        except ValueError as e:
+            raise ValueError("Invalid temporal tag kind: %r" % kind) from e
+    raise ValueError("Invalid temporal tag kind: %r" % kind)
+
+
 __all__ = [
     "DEFAULT_INDEX_TYPE",
     "SUPPORTED_INDEX_TYPES",
     "TEMPORAL_TAGS_EXPORT_FILENAME",
-    "TEMPORAL_TAGS_COLLECTION_NAME",
+    "TAGS_COLLECTION_NAME",
+    "TagKind",
     "TemporalTag",
     "TemporalTagFilter",
     "TemporalTags",
