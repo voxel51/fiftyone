@@ -27,7 +27,7 @@ export interface Tag {
   readonly lastModifiedBy?: string;
 }
 
-/** Temporal tag payload accepted by sample-scoped create routes. */
+/** Tag payload accepted by sample-scoped create routes. */
 export interface TagCreate {
   readonly end: number;
   readonly start: number;

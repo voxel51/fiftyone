@@ -26,7 +26,7 @@ const IDLE_STATE: TagsState = {
 let defaultTagsClient: TagsClient | undefined;
 
 /**
- * Loads and mutates temporal tags for one dataset sample.
+ * Loads and mutates tags for one dataset sample.
  */
 export function useSampleTags({
   client,
@@ -35,7 +35,7 @@ export function useSampleTags({
   sampleId,
 }: UseSampleTagsOptions): UseSampleTagsResult {
   const tagsClient = client ?? getDefaultTagsClient();
-  const filterKey = temporalTagFilterKey(filter);
+  const filterKey = tagFilterKey(filter);
   const [state, setState] = useState<TagsState>(IDLE_STATE);
   const mountedRef = useRef(true);
   const requestIdRef = useRef(0);
@@ -167,7 +167,7 @@ export function useSampleTags({
 }
 
 /**
- * Loads temporal tags for a sample renderer context.
+ * Loads tags for a sample renderer context.
  */
 export function useSampleRendererTags(
   ctx: SampleRendererProps["ctx"],
@@ -195,7 +195,7 @@ function requireSampleScope(
   return { datasetId, sampleId };
 }
 
-function temporalTagFilterKey(filter: TagFilter | undefined) {
+function tagFilterKey(filter: TagFilter | undefined) {
   if (!filter) {
     return "";
   }
