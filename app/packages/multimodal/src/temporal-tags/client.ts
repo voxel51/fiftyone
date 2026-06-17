@@ -34,11 +34,11 @@ type TagsResponseDto = {
   readonly temporal_tags: readonly TagDto[];
 };
 
-type TemporalTagResponseDto = {
+type TagResponseDto = {
   readonly temporal_tag: TagDto;
 };
 
-type TemporalTagCountsResponseDto = {
+type TagCountsResponseDto = {
   readonly counts: Readonly<Record<string, number>>;
 };
 
@@ -106,10 +106,7 @@ export function createTemporalTagsClient(
       datasetId,
       filter,
     }: CountDatasetTemporalTagsRequest) {
-      const response = await fetchFunction<
-        undefined,
-        TemporalTagCountsResponseDto
-      >({
+      const response = await fetchFunction<undefined, TagCountsResponseDto>({
         method: "GET",
         path: withFilterQuery(
           `/dataset/${encodeURIComponent(datasetId)}/tags/counts`,
@@ -180,7 +177,7 @@ export function createTemporalTagsClient(
     }: UpdateSampleTagRequest) {
       const response = await fetchFunction<
         ReturnType<typeof temporalTagUpdateDto>,
-        TemporalTagResponseDto
+        TagResponseDto
       >({
         body: temporalTagUpdateDto(update),
         method: "PATCH",
