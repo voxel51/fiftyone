@@ -86,7 +86,7 @@ describe("createTagsClient", () => {
 
   it("converts create bodies and response tags between app and route shapes", async () => {
     const fetchFunction = createFetch({
-      temporal_tags: [createTemporalTagDto()],
+      temporal_tags: [createTagDto()],
     });
     const client = createTagsClient({
       fetchFunction: fetchFunction as never,
@@ -131,7 +131,7 @@ describe("createTagsClient", () => {
 
   it("converts update bodies without route-owned identity fields", async () => {
     const fetchFunction = createFetch({
-      temporal_tag: createTemporalTagDto({ end: 15, tag: "moved" }),
+      temporal_tag: createTagDto({ end: 15, tag: "moved" }),
     });
     const client = createTagsClient({
       fetchFunction: fetchFunction as never,
@@ -228,10 +228,10 @@ function responseForRoute(config: FetchConfig) {
   }
 
   if (config.method === "PATCH") {
-    return { temporal_tag: createTemporalTagDto() };
+    return { temporal_tag: createTagDto() };
   }
 
-  return { temporal_tags: [createTemporalTagDto()] };
+  return { temporal_tags: [createTagDto()] };
 }
 
 function routeKey(config: FetchConfig) {
@@ -256,7 +256,7 @@ function createTemporalTagInput() {
   };
 }
 
-function createTemporalTagDto(
+function createTagDto(
   overrides: Partial<ReturnType<typeof createTagDtoBase>> = {}
 ) {
   return {
