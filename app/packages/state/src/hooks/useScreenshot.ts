@@ -1,5 +1,4 @@
 import { getFetchFunction, sendEvent } from "@fiftyone/utilities";
-import html2canvas from "html2canvas";
 import { useCallback, useContext } from "react";
 import { useRecoilValue } from "recoil";
 
@@ -98,7 +97,8 @@ export const useScreenshot = (
   const capture = useCallback(() => {
     const { width } = document.body.getBoundingClientRect();
     captureCallbacks()
-      .then(() => html2canvas(document.body))
+      .then(() => import("html2canvas"))
+      .then(({ default: html2canvas }) => html2canvas(document.body))
       .then((canvas) => {
         const imgData = canvas.toDataURL("image/jpeg", SCREENSHOT_QUALITY);
 
@@ -128,6 +128,9 @@ export const useScreenshot = (
             );
           }
         });
+      })
+      .catch((error) => {
+        console.error("Screenshot capture failed:", error);
       });
   }, [captureCallbacks, context, subscription]);
 
