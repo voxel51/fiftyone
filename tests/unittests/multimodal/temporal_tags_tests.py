@@ -1164,7 +1164,7 @@ class TemporalTagTests(unittest.TestCase):
 
     @drop_tags
     @drop_datasets
-    def test_drop_orphan_temporal_tags(self):
+    def test_drop_orphan_tags(self):
         orphan_dataset, orphan_sample_ids = _make_dataset(1)
         active_dataset, active_sample_ids = _make_dataset(1)
         orphan_sample_collection_name = orphan_dataset._sample_collection_name
@@ -1200,12 +1200,12 @@ class TemporalTagTests(unittest.TestCase):
         active_dataset_id = active_dataset._doc.id
         foo.get_db_conn().datasets.delete_one({"_id": orphan_dataset_id})
 
-        foo.drop_orphan_temporal_tags(dry_run=True)
+        foo.drop_orphan_tags(dry_run=True)
 
         self.assertEqual(_temporal_tag_count(orphan_dataset_id), 1)
         self.assertEqual(_temporal_tag_count(active_dataset_id), 1)
 
-        foo.drop_orphan_temporal_tags()
+        foo.drop_orphan_tags()
 
         self.assertEqual(_temporal_tag_count(orphan_dataset_id), 0)
         self.assertEqual(_temporal_tag_count(active_dataset_id), 1)
