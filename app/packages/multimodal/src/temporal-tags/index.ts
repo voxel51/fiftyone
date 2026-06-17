@@ -10,7 +10,7 @@ export type {
   CreateSampleTemporalTagsRequest,
   DeleteSampleTemporalTagsRequest,
   ListDatasetTemporalTagsRequest,
-  ListSampleTemporalTagsRequest,
+  ListSampleTagsRequest,
   SampleTagsRequest,
   TemporalTag,
   TemporalTagCreate,

@@ -52,8 +52,8 @@ export interface SampleTagsRequest {
   readonly sampleId: string;
 }
 
-/** Request for listing temporal tags for one sample. */
-export interface ListSampleTemporalTagsRequest extends SampleTagsRequest {
+/** Request for listing tags for one sample. */
+export interface ListSampleTagsRequest extends SampleTagsRequest {
   readonly filter?: TemporalTagFilter;
 }
 
@@ -110,7 +110,7 @@ export interface TemporalTagsClient {
     request: ListDatasetTemporalTagsRequest
   ): Promise<readonly TemporalTag[]>;
   listSampleTemporalTags(
-    request: ListSampleTemporalTagsRequest
+    request: ListSampleTagsRequest
   ): Promise<readonly TemporalTag[]>;
   updateSampleTemporalTag(
     request: UpdateSampleTemporalTagRequest

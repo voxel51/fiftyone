@@ -5,7 +5,7 @@ import type {
   CreateSampleTemporalTagsRequest,
   DeleteSampleTemporalTagsRequest,
   ListDatasetTemporalTagsRequest,
-  ListSampleTemporalTagsRequest,
+  ListSampleTagsRequest,
   TemporalTag,
   TemporalTagCreate,
   TemporalTagFilter,
@@ -158,7 +158,7 @@ export function createTemporalTagsClient(
       datasetId,
       sampleId,
       filter,
-    }: ListSampleTemporalTagsRequest) {
+    }: ListSampleTagsRequest) {
       const response = await fetchFunction<undefined, TemporalTagsResponseDto>({
         method: "GET",
         path: withFilterQuery(
