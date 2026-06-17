@@ -11,7 +11,7 @@ import type {
   TemporalTagFilter,
   TemporalTagsClient,
   TemporalTagUpdate,
-  UpdateSampleTemporalTagRequest,
+  UpdateSampleTagRequest,
 } from "./types";
 
 type TemporalTagsFetch = ReturnType<typeof getFetchFunctionExtended>;
@@ -177,7 +177,7 @@ export function createTemporalTagsClient(
       sampleId,
       temporalTagId,
       update,
-    }: UpdateSampleTemporalTagRequest) {
+    }: UpdateSampleTagRequest) {
       const response = await fetchFunction<
         ReturnType<typeof temporalTagUpdateDto>,
         TemporalTagResponseDto

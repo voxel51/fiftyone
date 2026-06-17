@@ -63,7 +63,7 @@ export interface CreateSampleTagsRequest extends SampleTagsRequest {
 }
 
 /** Request for updating one persisted temporal tag for one sample. */
-export interface UpdateSampleTemporalTagRequest extends SampleTagsRequest {
+export interface UpdateSampleTagRequest extends SampleTagsRequest {
   readonly temporalTagId: string;
   readonly update: TemporalTagUpdate;
 }
@@ -113,7 +113,7 @@ export interface TemporalTagsClient {
     request: ListSampleTagsRequest
   ): Promise<readonly TemporalTag[]>;
   updateSampleTemporalTag(
-    request: UpdateSampleTemporalTagRequest
+    request: UpdateSampleTagRequest
   ): Promise<TemporalTag>;
 }
 
