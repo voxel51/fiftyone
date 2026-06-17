@@ -1,8 +1,10 @@
 import { Box, useTheme } from "@mui/material";
 import { merge } from "lodash";
-import React, { useMemo } from "react";
-import Plot, { PlotParams } from "react-plotly.js";
+import React, { lazy, Suspense, useMemo } from "react";
+import type { PlotParams } from "react-plotly.js";
 import PlotlyTooltip, { TooltipValue } from "./PlotlyTooltip";
+
+const Plot = lazy(() => import("react-plotly.js"));
 
 export default function EvaluationPlot(props: EvaluationPlotProps) {
   const { usePlotlyTooltip } = props;
@@ -112,13 +114,15 @@ function Plotly(props: EvaluationPlotProps) {
   }, []);
 
   return (
-    <Plot
-      config={configDefaults}
-      layout={mergedLayout}
-      style={{ height: "100%", width: "100%", zIndex: 1, ...style }}
-      data={data}
-      {...otherProps}
-    />
+    <Suspense fallback={null}>
+      <Plot
+        config={configDefaults}
+        layout={mergedLayout}
+        style={{ height: "100%", width: "100%", zIndex: 1, ...style }}
+        data={data}
+        {...otherProps}
+      />
+    </Suspense>
   );
 }
 
