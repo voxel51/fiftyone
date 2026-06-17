@@ -1,4 +1,3 @@
-import { useTileSource } from "@fiftyone/tiling";
 import React, { useRef, useState } from "react";
 import { usePlayback, useVideoStream, useVideoSync } from "@fiftyone/playback";
 import { useLighterTileScene } from "../hooks/useLighterTileScene";
@@ -29,7 +28,7 @@ export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
   videoSrc,
   field = DEFAULT_FIELD,
 }) => {
-  const sourceId = useTileSource() ?? VIDEO_STREAM_ID;
+  const sourceId = VIDEO_STREAM_ID;
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const lighterHostRef = useRef<HTMLDivElement | null>(null);
   const [videoDims, setVideoDims] = useState<{ w: number; h: number } | null>(

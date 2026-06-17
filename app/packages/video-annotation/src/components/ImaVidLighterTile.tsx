@@ -1,4 +1,3 @@
-import { useTileSource } from "@fiftyone/tiling";
 import React, { useEffect, useRef, useState } from "react";
 import { useStream } from "@fiftyone/playback";
 import { useLighterTileScene } from "../hooks/useLighterTileScene";
@@ -27,9 +26,7 @@ export interface ImaVidLighterTileProps {
 export const ImaVidLighterTile: React.FC<ImaVidLighterTileProps> = ({
   field,
 }) => {
-  // Honor any active tile source override (e.g. for split-tile layouts),
-  // but default to the imavid stream id when no override is set.
-  const sourceId = useTileSource() ?? IMAVID_STREAM_ID;
+  const sourceId = IMAVID_STREAM_ID;
 
   const lighterHostRef = useRef<HTMLDivElement | null>(null);
   const frameCanvasRef = useRef<HTMLCanvasElement | null>(null);
