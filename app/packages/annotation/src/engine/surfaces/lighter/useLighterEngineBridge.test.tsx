@@ -9,19 +9,31 @@ const mockOn = vi.fn((event: string, handler: (payload: unknown) => void) => {
   handlers.set(event, handler);
 });
 
-// the scene "renders" exactly these overlay ids
+// the scene "renders" exactly these overlay ids; a subset carry a mask
 const ownedIds = new Set<string>();
+const maskedIds = new Set<string>();
+
+class MockDetectionOverlay {
+  constructor(readonly id: string, private readonly masked: boolean) {}
+  hasMask(): boolean {
+    return this.masked;
+  }
+}
 
 vi.mock("@fiftyone/lighter", () => ({
   useLighter: () => ({
     scene: {
       getEventChannel: () => "channel",
-      getOverlay: (id: string) => (ownedIds.has(id) ? { id } : undefined),
+      getOverlay: (id: string) =>
+        ownedIds.has(id)
+          ? new MockDetectionOverlay(id, maskedIds.has(id))
+          : undefined,
       isDestroyed: false,
     },
     overlayFactory: {},
   }),
   useLighterEventHandler: () => mockOn,
+  DetectionOverlay: MockDetectionOverlay,
 }));
 
 // isolate the wiring hook from the read-half loop — we only exercise the
@@ -104,6 +116,7 @@ describe("useLighterEngineBridge — mask gesture coalescing", () => {
     vi.clearAllMocks();
     handlers.clear();
     ownedIds.clear();
+    maskedIds.clear();
   });
 
   const mount = () =>
@@ -123,6 +136,7 @@ describe("useLighterEngineBridge — mask gesture coalescing", () => {
 
   it("shares one undoKey across a paint-end and its async mask re-commit", () => {
     ownedIds.add("a");
+    maskedIds.add("a");
     mount();
 
     fire("lighter:overlay-paint-end", "a");
@@ -135,6 +149,7 @@ describe("useLighterEngineBridge — mask gesture coalescing", () => {
 
   it("shares one undoKey across establish + paint-end + the async mask tail", () => {
     ownedIds.add("a");
+    maskedIds.add("a");
     mount();
 
     fire("lighter:overlay-establish", "a");
@@ -149,6 +164,7 @@ describe("useLighterEngineBridge — mask gesture coalescing", () => {
 
   it("gives the next gesture a distinct key so independent edits don't merge", () => {
     ownedIds.add("a");
+    maskedIds.add("a");
     mount();
 
     fire("lighter:overlay-paint-end", "a");
@@ -159,13 +175,28 @@ describe("useLighterEngineBridge — mask gesture coalescing", () => {
     expect(keyOf(2)).not.toBe(keyOf(0));
   });
 
+  it("does not retain a key for a maskless establish, so a later mask edit stays a separate undo unit", () => {
+    // a plain box draw (no mask) followed by a sidebar "Add mask" on the same
+    // overlay: the establish must NOT leave a key for the later init to inherit
+    ownedIds.add("a");
+    mount();
+
+    fire("lighter:overlay-establish", "a");
+    fire("lighter:overlay-commit-requested", "a");
+
+    expect(mockCommit).toHaveBeenCalledTimes(2);
+    expect(keyOf(0)).toBeTruthy(); // the draw has its own key
+    expect(keyOf(1)).toBeUndefined(); // the later mask edit does not coalesce in
+  });
+
   it("leaves a standalone label-updated (no preceding finalize) uncoalesced", () => {
     ownedIds.add("a");
     mount();
 
     fire("lighter:overlay-commit-requested", "a");
 
-    expect(mockCommit).toHaveBeenCalledWith({ id: "a" }, undefined);
+    expect(mockCommit).toHaveBeenCalledTimes(1);
+    expect(keyOf(0)).toBeUndefined();
   });
 
   it("stamps the event's gestureId on the commit (merge), so its commits share one key", () => {

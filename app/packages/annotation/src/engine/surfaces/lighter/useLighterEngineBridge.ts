@@ -104,7 +104,12 @@ export const useLighterEngineBridge = ({
   const gestureEpoch = useRef(0);
   const pendingMaskKey = useRef(new Map<string, string>());
 
-  const gestureKeyFor = useCallback((overlayId: string) => {
+  // `retain` = a mask tail is still coming for this overlay (the async
+  // overlay-commit-requested). Only then do we keep the key in `pendingMaskKey`
+  // for the tail to consume. A maskless draw retains nothing, so a LATER mask
+  // edit (init/remove) on the same overlay can't pick up a stale key and
+  // over-merge into the draw's undo unit.
+  const gestureKeyFor = useCallback((overlayId: string, retain: boolean) => {
     const inFlight = pendingMaskKey.current.get(overlayId);
 
     if (inFlight) {
@@ -112,16 +117,24 @@ export const useLighterEngineBridge = ({
     }
 
     const key = `${overlayId}:${(gestureEpoch.current += 1)}`;
-    pendingMaskKey.current.set(overlayId, key);
+
+    if (retain) {
+      pendingMaskKey.current.set(overlayId, key);
+    }
+
     return key;
   }, []);
 
   const commitWithMaskTail = useCallback(
     (event: { overlayId: string }) => {
-      const key = gestureKeyFor(event.overlayId);
-      surface.commit((scene as Scene2D).getOverlay(event.overlayId), {
-        undoKey: key,
-      });
+      const overlay = (scene as Scene2D).getOverlay(event.overlayId);
+      // A mask tail follows only when the overlay has a mask (establish fires for
+      // both a plain box and a painted segmentation — InteractionManager's
+      // SETTING/PAINTING cases — so the overlay, not the event, is the signal).
+      const expectsMaskTail =
+        overlay instanceof DetectionOverlay && overlay.hasMask();
+      const key = gestureKeyFor(event.overlayId, expectsMaskTail);
+      surface.commit(overlay, { undoKey: key });
     },
     [gestureKeyFor, scene, surface]
   );
