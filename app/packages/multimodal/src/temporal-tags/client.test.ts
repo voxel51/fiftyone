@@ -21,7 +21,7 @@ describe("createTagsClient", () => {
     await client.createSampleTags({
       datasetId: "dataset-id",
       sampleId: "sample-id",
-      temporalTags: [createTagInput()],
+      tags: [createTagInput()],
     });
     await client.updateSampleTag({
       datasetId: "dataset-id",
@@ -95,7 +95,7 @@ describe("createTagsClient", () => {
     const tags = await client.createSampleTags({
       datasetId: "dataset-id",
       sampleId: "sample-id",
-      temporalTags: [createTagInput()],
+      tags: [createTagInput()],
     });
 
     expect(fetchFunction.mock.calls[0][0].body).toEqual({

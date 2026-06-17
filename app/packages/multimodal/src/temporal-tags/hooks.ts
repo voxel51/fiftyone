@@ -104,7 +104,7 @@ export function useSampleTemporalTags({
       const ids = requireSampleScope(datasetId, sampleId);
       const created = await tagsClient.createSampleTags({
         ...ids,
-        temporalTags: tags,
+        tags,
       });
       await reload();
 

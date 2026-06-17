@@ -65,14 +65,14 @@ export function createTagsClient(
     async createSampleTags({
       datasetId,
       sampleId,
-      temporalTags,
+      tags,
     }: CreateSampleTagsRequest) {
       const response = await fetchFunction<
         { temporal_tags: readonly ReturnType<typeof temporalTagCreateDto>[] },
         TagsResponseDto
       >({
         body: {
-          temporal_tags: temporalTags.map(temporalTagCreateDto),
+          temporal_tags: tags.map(temporalTagCreateDto),
         },
         method: "POST",
         path: `/dataset/${encodeURIComponent(
