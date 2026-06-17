@@ -14,7 +14,7 @@ describe("createTagsClient", () => {
       fetchFunction: fetchFunction as never,
     });
 
-    await client.listSampleTemporalTags({
+    await client.listSampleTags({
       datasetId: "dataset-id",
       sampleId: "sample-id",
     });
@@ -60,7 +60,7 @@ describe("createTagsClient", () => {
       fetchFunction: fetchFunction as never,
     });
 
-    await client.listSampleTemporalTags({
+    await client.listSampleTags({
       datasetId: "dataset id",
       filter: {
         anchors: ["lidar_top", "camera_front"],

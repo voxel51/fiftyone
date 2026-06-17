@@ -60,7 +60,7 @@ export function useSampleTemporalTags({
     }
 
     try {
-      const temporalTags = await temporalTagsClient.listSampleTemporalTags({
+      const temporalTags = await temporalTagsClient.listSampleTags({
         datasetId,
         filter,
         sampleId,

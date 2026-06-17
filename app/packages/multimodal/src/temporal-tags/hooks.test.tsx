@@ -26,12 +26,12 @@ describe("useSampleTemporalTags", () => {
     );
 
     expect(screen.getByTestId("temporal-tags").textContent).toBe("idle::");
-    expect(client.listSampleTemporalTags).not.toHaveBeenCalled();
+    expect(client.listSampleTags).not.toHaveBeenCalled();
   });
 
   it("loads sample temporal tags", async () => {
     const client = createTagsClient({
-      listSampleTemporalTags: vi.fn(async () => [createTemporalTag("tag-a")]),
+      listSampleTags: vi.fn(async () => [createTemporalTag("tag-a")]),
     });
 
     render(
@@ -49,7 +49,7 @@ describe("useSampleTemporalTags", () => {
         "ready:tag-a:"
       );
     });
-    expect(client.listSampleTemporalTags).toHaveBeenCalledWith({
+    expect(client.listSampleTags).toHaveBeenCalledWith({
       datasetId: "dataset-id",
       filter: undefined,
       sampleId: "sample-id",
@@ -58,7 +58,7 @@ describe("useSampleTemporalTags", () => {
 
   it("refetches when the sample id or filter changes", async () => {
     const client = createTagsClient({
-      listSampleTemporalTags: vi.fn(async ({ filter, sampleId }) => [
+      listSampleTags: vi.fn(async ({ filter, sampleId }) => [
         createTemporalTag(`${sampleId}-${filter?.start ?? 0}`),
       ]),
     });
@@ -96,14 +96,14 @@ describe("useSampleTemporalTags", () => {
         "ready:sample-b-2:"
       );
     });
-    expect(client.listSampleTemporalTags).toHaveBeenCalledTimes(2);
+    expect(client.listSampleTags).toHaveBeenCalledTimes(2);
   });
 
   it("ignores stale async responses after a rerender", async () => {
     const first = deferred<readonly TemporalTag[]>();
     const second = deferred<readonly TemporalTag[]>();
     const client = createTagsClient({
-      listSampleTemporalTags: vi.fn(({ sampleId }) =>
+      listSampleTags: vi.fn(({ sampleId }) =>
         sampleId === "sample-a" ? first.promise : second.promise
       ),
     });
@@ -119,7 +119,7 @@ describe("useSampleTemporalTags", () => {
     );
 
     await waitFor(() => {
-      expect(client.listSampleTemporalTags).toHaveBeenCalledTimes(1);
+      expect(client.listSampleTags).toHaveBeenCalledTimes(1);
     });
 
     rerender(
@@ -133,7 +133,7 @@ describe("useSampleTemporalTags", () => {
     );
 
     await waitFor(() => {
-      expect(client.listSampleTemporalTags).toHaveBeenCalledTimes(2);
+      expect(client.listSampleTags).toHaveBeenCalledTimes(2);
     });
 
     await act(async () => {
@@ -187,7 +187,7 @@ describe("useSampleTemporalTags", () => {
       sampleId: "sample-id",
       temporalTags: [createInput],
     });
-    expect(client.listSampleTemporalTags).toHaveBeenCalledTimes(2);
+    expect(client.listSampleTags).toHaveBeenCalledTimes(2);
 
     await act(async () => {
       await latest.update("temporal-tag-id", { end: 3 });
@@ -198,7 +198,7 @@ describe("useSampleTemporalTags", () => {
       temporalTagId: "temporal-tag-id",
       update: { end: 3 },
     });
-    expect(client.listSampleTemporalTags).toHaveBeenCalledTimes(3);
+    expect(client.listSampleTags).toHaveBeenCalledTimes(3);
 
     await act(async () => {
       await latest.delete(["temporal-tag-id"]);
@@ -208,7 +208,7 @@ describe("useSampleTemporalTags", () => {
       ids: ["temporal-tag-id"],
       sampleId: "sample-id",
     });
-    expect(client.listSampleTemporalTags).toHaveBeenCalledTimes(4);
+    expect(client.listSampleTags).toHaveBeenCalledTimes(4);
 
     await act(async () => {
       await latest.clear({ tags: ["review"] });
@@ -218,12 +218,12 @@ describe("useSampleTemporalTags", () => {
       filter: { tags: ["review"] },
       sampleId: "sample-id",
     });
-    expect(client.listSampleTemporalTags).toHaveBeenCalledTimes(5);
+    expect(client.listSampleTags).toHaveBeenCalledTimes(5);
   });
 
   it("surfaces client errors", async () => {
     const client = createTagsClient({
-      listSampleTemporalTags: vi.fn(async () => {
+      listSampleTags: vi.fn(async () => {
         throw new Error("boom");
       }),
     });
@@ -257,7 +257,7 @@ describe("useSampleRendererTemporalTags", () => {
     render(<SampleRendererTemporalTagsHarness client={client} ctx={ctx} />);
 
     await waitFor(() => {
-      expect(client.listSampleTemporalTags).toHaveBeenCalledWith({
+      expect(client.listSampleTags).toHaveBeenCalledWith({
         datasetId: "dataset-id",
         filter: undefined,
         sampleId: "sample-id",
@@ -306,7 +306,7 @@ function createTagsClient(overrides: Partial<TagsClient> = {}): TagsClient {
     createSampleTemporalTags: vi.fn(async () => [createTemporalTag("created")]),
     deleteSampleTemporalTags: vi.fn(async () => 1),
     listDatasetTemporalTags: vi.fn(async () => []),
-    listSampleTemporalTags: vi.fn(async () => []),
+    listSampleTags: vi.fn(async () => []),
     updateSampleTemporalTag: vi.fn(async () => createTemporalTag("updated")),
     ...overrides,
   };
