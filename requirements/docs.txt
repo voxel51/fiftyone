@@ -30,7 +30,7 @@ sphinx-autobuild==2025.8.25
 sphinx-tabs==3.5.0
 sphinx-design==0.7.0
 # Sphinx 9.1.0 is available but requires Python >=3.12
-# build-docs.yml uses Python 3.11
+# build-docs.yml uses Python 3.12
 # Using latest compatible version from 9.0.x series
 Sphinx==9.0.4
 sphinx-copybutton==0.5.2
