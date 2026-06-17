@@ -57,11 +57,11 @@ export default function useExit() {
         scene.exitInteractiveMode();
         removeOverlay(label.data._id, true);
       }
-    } else if (overlay) {
-      scene?.deselectOverlay(overlay.id, { ignoreSideEffects: true });
-      if (TypeGuards.isHoverable(overlay)) {
-        overlay.onHoverLeave?.();
-      }
+    } else if (overlay && TypeGuards.isHoverable(overlay)) {
+      // selection deselect is engine-routed — `setActive([])` below drives the
+      // Lighter bridge's applySelected(false); only hover still needs a direct
+      // poke (it isn't engine-routed on exit yet).
+      overlay.onHoverLeave?.();
     }
 
     // reset editing state
