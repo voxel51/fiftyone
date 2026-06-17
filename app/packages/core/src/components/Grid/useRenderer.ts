@@ -13,13 +13,11 @@ import {
 
 export default function useRenderer({
   cache,
-  hydrateWindow,
   id,
   records,
   store,
 }: {
   cache: LookerCache;
-  hydrateWindow: (ids: ReadonlyArray<string>) => Promise<Map<string, GridNode>>;
   id: string;
   records: Map<string, number>;
   store: SampleStore;
@@ -34,11 +32,6 @@ export default function useRenderer({
   const sampleRendererRef = useRef(sampleRenderer);
   sampleRendererRef.current = sampleRenderer;
 
-  // Tiles whose looker is mid-build (async hydrate not yet cached). The grid calls
-  // `showItem` every render frame; without this guard a slow hydrate spawns one
-  // looker per frame (orphaned, never detached).
-  const creating = useRef(new Set<string>());
-
   const detachItem = useCallback(
     (id: ID) => cache.get(id.description)?.detach(),
     [cache]
@@ -50,7 +43,7 @@ export default function useRenderer({
   );
 
   const showItem = useCallback<Show<number, fos.Sample>>(
-    async ({ id, element, dimensions, spotlight, zooming }) => {
+    ({ id, element, dimensions, spotlight, zooming }) => {
       const key = id.description;
 
       if (cache.isShown(key)) {
@@ -65,32 +58,17 @@ export default function useRenderer({
       }
 
       if (zooming) {
-        // scrolling fast — create + fetch NOTHING; the tile stays a placeholder.
+        // scrolling fast — build nothing.
         return 0;
       }
 
-      // Build a tile's looker exactly once: skip if a prior (async) showItem is
-      // still hydrating it — a re-show mounts it from cache once ready.
-      if (creating.current.has(key)) {
-        return 0;
-      }
-      creating.current.add(key);
-
-      // Settled: hydrate this tile before building the looker (which needs the
-      // signed media url). hydrateWindow coalesces every settled-window tile into
-      // ONE batched read, never per-sample.
+      // Attach straight from cache — `showItem` NEVER fetches; the in-view loader
+      // writes the store and bumps a version that re-runs this. If the sample
+      // isn't loaded yet (between the spine publish and the hydrate landing), stay
+      // a wireframe and we'll be re-called when the hydrate bump arrives.
       const ss = store as unknown as WeakMap<ID, GridNode>;
-      let result = ss.get(id);
-      if (isPlaceholder(result)) {
-        const node = (await hydrateWindow([key])).get(key);
-        if (node) {
-          ss.set(id, node);
-          result = node;
-        }
-      }
-      if (isPlaceholder(result)) {
-        // still unhydrated (scrolled away before the batch landed) — keep placeholder.
-        creating.current.delete(key);
+      const result = ss.get(id);
+      if (!result || isPlaceholder(result)) {
         return 0;
       }
 
@@ -111,11 +89,10 @@ export default function useRenderer({
       });
 
       cache.set(key, item);
-      creating.current.delete(key);
       item.attach(element, dimensions);
       return cache.sizeOf(key);
     },
-    [cache, getFontSize, hydrateWindow, selectSample, store]
+    [cache, getFontSize, selectSample, store]
   );
 
   return {

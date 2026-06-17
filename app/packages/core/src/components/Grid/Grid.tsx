@@ -55,16 +55,16 @@ function Grid() {
     ...useLabelVisibility(),
   });
 
-  const { page, store, hydrateWindow, ensureSpineWindow } = useSpotlightPager({
-    clearRecords: reset,
-    pageSelector: pageParameters,
-    records,
-    zoomSelector: gridCrop,
-  });
+  const { page, store, hydrateWindow, ensureSpineWindow, signUrls } =
+    useSpotlightPager({
+      clearRecords: reset,
+      pageSelector: pageParameters,
+      records,
+      zoomSelector: gridCrop,
+    });
 
   const { getFontSize, lookerOptions, renderer } = useRenderer({
     cache,
-    hydrateWindow,
     id,
     records,
     store,
@@ -126,9 +126,8 @@ function Grid() {
           reset={reset}
           ensureSpineWindow={ensureSpineWindow}
           hydrateWindow={hydrateWindow}
+          signUrls={signUrls}
           store={store}
-          showItem={renderer.showItem}
-          hideItem={renderer.hideItem}
           onItemClick={setSample}
         />
       ) : (

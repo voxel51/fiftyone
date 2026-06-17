@@ -1,4 +1,4 @@
-import type { Hide, ID, ItemClick, ItemData, Show } from "@fiftyone/spotlight";
+import type { ID, ItemClick, ItemData } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import React, {
   useCallback,
@@ -8,10 +8,13 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { useRecoilValue } from "recoil";
 import styles from "./Grid.module.css";
+import { drawOverlays, type Coloring } from "./gridOverlays";
 import useSpineLayout from "./useSpineLayout";
 import {
   PAGE_SIZE,
+  isPlaceholder,
   type GridNode,
   type SampleStore,
   type SpineEntry,
@@ -23,58 +26,59 @@ const SETTLE_ROWS_PER_SEC = 2;
 // accelerated (flick) threshold in rows/sec — above this the depth readout grows;
 // slow/small scrolls keep the small bottom badge (no distracting size change).
 const ACCEL_ROWS_PER_SEC = 8;
-// extra rows above/below the viewport kept mounted for smoothness.
-const OVERSCAN_ROWS = 2;
+// extra rows above/below the viewport kept MOUNTED for smoothness.
+const OVERSCAN_ROWS = 3;
+// how many samples per `paginateSamples` request — fetch MANY at once (round trips
+// are the cost). The loader pulls these batches by scroll position, decoupled from
+// which tiles are mounted, and bumps per batch so tiles fill progressively.
+const FETCH_BATCH = 80;
+// pages prefetched ahead of the viewport (loaded in the same big batches).
+const LOOKAHEAD_PAGES = 2;
 // scroll indicators linger this long after motion stops.
 const INDICATOR_FADE_MS = 900;
 const THUMB_MIN_PX = 24;
-// the in-view window must stay settled this long (a proxy for "in-view loaded")
-// before any prefetch runs — so slowing/re-flicking never prefetches until the
-// page has settled and the visible samples have loaded.
-const PREFETCH_DELAY_MS = 500;
-// warm this many pages ahead of / behind the in-view page once settled.
-const PREFETCH_AFTER = 2;
-const PREFETCH_BEFORE = 1;
-
-// showItem only needs `spotlight.sizeChange`; the virtual grid has no engine, and
-// the memory mechanism that consumed it is gone, so a no-op satisfies the type.
-const SPOTLIGHT_STUB = {
-  sizeChange: () => undefined,
-} as unknown as Parameters<Show<number, fos.Sample>>[0]["spotlight"];
 
 interface CellBox {
   index: number;
   id?: string;
+  /** signed media URL once the (cheap, separate) URL fetch has landed — the image
+   * paints from this immediately, before the heavy label/overlay read. */
+  url?: string;
   x: number;
   y: number; // virtual y (absolute, pre-vTop)
   width: number;
   height: number;
 }
 
-/** One grid cell: a visible wireframe while scrolling; on settle attaches its looker. */
+/** One grid cell: a wireframe while scrolling; on settle it paints its image (from
+ * the cheap URL fetch) and draws boxes/label-chips on a 2D canvas — NO looker, so no
+ * image repaint (flash) and no worker flood (every tile gets overlays). */
 const Cell = ({
   cell,
   vTop,
   moving,
+  version,
   idFor,
-  showItem,
-  hideItem,
+  store,
+  coloring,
+  activePaths,
   onOpen,
 }: {
   cell: CellBox;
   vTop: number;
   moving: boolean;
+  /** bumps when settle-loaded labels land in the store; re-draws the overlays. */
+  version: number;
   idFor: (id: string) => ID;
-  showItem: Show<number, fos.Sample>;
-  hideItem: Hide;
+  store: SampleStore;
+  coloring: Coloring;
+  activePaths: ReadonlyArray<string>;
   onOpen?: (index: number, id: string, event: React.MouseEvent) => void;
 }) => {
-  const ref = useRef<HTMLDivElement>(null);
-  const { id, width, height } = cell;
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { id, url, width, height } = cell;
 
-  // A plain click opens the modal (meta/ctrl/shift are reserved for selection,
-  // matching the spotlight grid). The looker is attached into this element and
-  // does not stop click propagation, so a click on the tile bubbles here.
+  // A plain click opens the modal (meta/ctrl/shift reserved for selection).
   const handleClick = useCallback(
     (event: React.MouseEvent) => {
       if (!id || !onOpen) return;
@@ -85,30 +89,23 @@ const Cell = ({
     [id, onOpen, cell.index]
   );
 
-  // attach (build/hydrate or re-attach from cache) once settled and the id is known.
+  // Draw overlays from the sample's INLINE labels onto a cheap 2D canvas over the
+  // <img>. Re-draws when labels land (`version`) or on resize; clears while
+  // scrolling or before the sample has loaded.
   useEffect(() => {
-    const el = ref.current;
-    if (moving || !id || !el) return;
-    void showItem({
-      id: idFor(id),
-      element: el,
-      dimensions: [width, height] as [number, number],
-      spotlight: SPOTLIGHT_STUB,
-      zooming: false,
-    });
-  }, [id, moving, width, height, idFor, showItem]);
-
-  // leaving the window hides (cache retains the looker) — never destroyed here.
-  useEffect(
-    () => () => {
-      id && hideItem({ id: idFor(id) });
-    },
-    [id, idFor, hideItem]
-  );
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const clear = () =>
+      canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
+    if (moving || !id) return clear();
+    const node = (store as unknown as WeakMap<ID, GridNode>).get(idFor(id));
+    const sample = node?.sample as Record<string, unknown> | undefined;
+    if (!sample) return clear();
+    drawOverlays(canvas, sample, activePaths, coloring, width, height);
+  }, [id, moving, version, width, height, idFor, store, coloring, activePaths]);
 
   return (
     <div
-      ref={ref}
       className={styles.spotlightWireframe}
       onClick={onOpen ? handleClick : undefined}
       style={{
@@ -120,7 +117,35 @@ const Cell = ({
         cursor: id && onOpen ? "pointer" : undefined,
         transform: `translateY(${cell.y - vTop}px)`,
       }}
-    />
+    >
+      {/* image paints immediately from the cheap signed-URL fetch (never blank) */}
+      {url && (
+        <img
+          src={url}
+          alt=""
+          draggable={false}
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+            pointerEvents: "none",
+          }}
+        />
+      )}
+      {/* overlays drawn on top from inline labels (boxes + chips); no looker */}
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          pointerEvents: "none",
+        }}
+      />
+    </div>
   );
 };
 
@@ -136,9 +161,8 @@ export default function InfiniteGrid({
   reset,
   ensureSpineWindow,
   hydrateWindow,
+  signUrls,
   store,
-  showItem,
-  hideItem,
   onItemClick,
 }: {
   id: string;
@@ -146,14 +170,23 @@ export default function InfiniteGrid({
   reset: string;
   ensureSpineWindow: (start: number, count: number) => Promise<SpineEntry[]>;
   hydrateWindow: (ids: ReadonlyArray<string>) => Promise<Map<string, GridNode>>;
+  /** cheap signed-URL fetch (no labels) — paints images before overlays. */
+  signUrls: (ids: ReadonlyArray<string>) => Promise<Map<string, string>>;
   store: SampleStore;
-  showItem: Show<number, fos.Sample>;
-  hideItem: Hide;
   /** opens the modal for a clicked tile (the spotlight grid's onItemClick). */
   onItemClick?: ItemClick<number, fos.Sample>;
 }) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
+
+  // active label field paths + color scheme — drives the per-tile overlay drawing
+  // (boxes/chips colored to match the sidebar). Stable across scroll.
+  const activeFields = useRecoilValue(fos.activeFields({ modal: false }));
+  const fullColoring = useRecoilValue(fos.coloring);
+  const coloring = useMemo<Coloring>(
+    () => ({ pool: fullColoring.pool, seed: fullColoring.seed }),
+    [fullColoring.pool, fullColoring.seed]
+  );
 
   // stable ID objects per sample id (the looker store is keyed by object identity).
   const idObjs = useRef(new Map<string, ID>());
@@ -311,102 +344,88 @@ export default function InfiniteGrid({
     [vTop, size.height, layout]
   );
 
-  // spine entries by index, in a ref so accumulating them never copies a growing
-  // map per frame; a version bump re-renders only when NEW entries land.
+  // spine entries by index (ids) + signed URLs by id, in refs so accumulating never
+  // copies a growing map; a version bump re-renders when NEW ids/urls/nodes land.
   const entriesRef = useRef(new Map<number, SpineEntry>());
+  const urlsRef = useRef(new Map<string, string>());
   const [entriesVersion, setEntriesVersion] = useState(0);
+  // ids whose label hydrate is in flight, so overlapping loads never re-request.
+  const inflight = useRef(new Set<string>());
 
-  // fetch the in-view window ONLY when settled (never mid-fling); page-aligned and
-  // fetched DIRECTLY (no prior pages). Slow scroll keeps `moving` false → loads
-  // progressively as the window moves.
+  // DECOUPLED loader — driven by scroll position, NOT by tile mounts. Two cheap
+  // reads, separate from each other, so the user NEVER sees blackness:
+  //   1) spine ids → positioned wireframes immediately;
+  //   2) signed URLs (lightweight, big batch) → the IMAGE paints (no overlays yet);
+  //   3) full sample + labels (`paginateSamples`) → tiles draw boxes/chips on a
+  //      cheap 2D canvas over the image (no looker, no worker → no flash, no flood).
+  // The VISIBLE window is loaded first (urls then labels), then the off-screen
+  // look-ahead — all async, nothing blocks.
   useEffect(() => {
     if (moving || range.end <= range.start) return undefined;
-    let cancelled = false;
     const start = Math.floor(range.start / PAGE_SIZE) * PAGE_SIZE;
-    const end = Math.ceil(range.end / PAGE_SIZE) * PAGE_SIZE;
-    void ensureSpineWindow(start, end - start).then((got) => {
-      if (cancelled) return;
+    const end =
+      (Math.ceil(range.end / PAGE_SIZE) + LOOKAHEAD_PAGES) * PAGE_SIZE;
+    const visEnd = Math.ceil(range.end / PAGE_SIZE) * PAGE_SIZE;
+    const ss = store as unknown as WeakMap<ID, GridNode>;
+
+    // sign + cache URLs for a batch → IMAGES paint (cheap; no labels).
+    const loadUrls = async (ids: string[]) => {
+      const need = ids.filter((id) => !urlsRef.current.has(id));
+      if (!need.length) return;
+      const urls = await signUrls(need);
+      if (urls.size) {
+        for (const [id, u] of urls) urlsRef.current.set(id, u);
+        setEntriesVersion((v) => v + 1);
+      }
+    };
+    // hydrate full samples for a batch → the looker attaches OVERLAYS.
+    const loadLabels = async (ids: string[]) => {
+      const need = ids.filter(
+        (id) => isPlaceholder(ss.get(idFor(id))) && !inflight.current.has(id)
+      );
+      if (!need.length) return;
+      need.forEach((id) => inflight.current.add(id));
+      try {
+        const nodes = await hydrateWindow(need);
+        for (const [sid, node] of nodes) ss.set(idFor(sid), node);
+      } finally {
+        need.forEach((id) => inflight.current.delete(id));
+      }
+      setEntriesVersion((v) => v + 1);
+    };
+
+    void (async () => {
+      const got = await ensureSpineWindow(start, end - start);
+      if (!got.length) return;
+      // publish ids first → positioned wireframes appear immediately.
       let changed = false;
+      const visible: string[] = [];
+      const ahead: string[] = [];
       got.forEach((e, i) => {
         if (!entriesRef.current.has(start + i)) {
           entriesRef.current.set(start + i, e);
           changed = true;
         }
+        (start + i < visEnd ? visible : ahead).push(e.id);
       });
       if (changed) setEntriesVersion((v) => v + 1);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [moving, range.start, range.end, ensureSpineWindow]);
 
-  // --- Tier 2: prefetch buffer ---
-  const currentPage =
-    layout.itemsPerRow > 0 && layout.rowStride > 0
-      ? Math.floor(
-          (Math.floor(vTop / layout.rowStride) * layout.itemsPerRow) / PAGE_SIZE
-        )
-      : 0;
-  const totalPages = Math.max(1, Math.ceil(layout.totalCount / PAGE_SIZE));
-
-  // Prefetch is allowed only after we've stayed settled (not moving) for
-  // PREFETCH_DELAY_MS — a proxy for "the in-view window has loaded". Any motion
-  // (a flick / re-flick) resets it, so prefetch never competes with the in-view
-  // load and never fires while still scrolling.
-  const [prefetchReady, setPrefetchReady] = useState(false);
-  useEffect(() => {
-    if (moving) {
-      setPrefetchReady(false);
-      return undefined;
-    }
-    const t = setTimeout(() => setPrefetchReady(true), PREFETCH_DELAY_MS);
-    return () => clearTimeout(t);
-  }, [moving]);
-
-  // Warm the pages around the in-view page (spine + media url + image bytes)
-  // WITHOUT mounting lookers, so slow scrolling reveals already-loaded rows.
-  // Re-runs as `currentPage` advances → the next page warms after ~1 page
-  // scrolled. Forward-priority (+1, +2, then −1).
-  const prefetched = useRef(new Set<number>());
-  useEffect(() => {
-    if (!prefetchReady || moving) return undefined;
-    let cancelled = false;
-    const pages: number[] = [];
-    for (let d = 1; d <= PREFETCH_AFTER; d++) pages.push(currentPage + d);
-    for (let d = 1; d <= PREFETCH_BEFORE; d++) pages.push(currentPage - d);
-    const ss = store as unknown as WeakMap<ID, GridNode>;
-    void (async () => {
-      for (const p of pages) {
-        if (cancelled) return;
-        if (p < 0 || p >= totalPages || prefetched.current.has(p)) continue;
-        prefetched.current.add(p);
-        const entries = await ensureSpineWindow(p * PAGE_SIZE, PAGE_SIZE);
-        if (cancelled || !entries.length) continue;
-        const nodes = await hydrateWindow(entries.map((e) => e.id));
-        if (cancelled) return;
-        for (const [sid, node] of nodes) {
-          ss.set(idFor(sid), node);
-          // warm image bytes (images only — a video url is the clip, not a poster).
-          const mt = (node.sample as { _media_type?: string } | undefined)
-            ?._media_type;
-          if (mt !== "video") {
-            node.urls?.forEach((u) => {
-              const img = new Image();
-              img.src = u.url;
-            });
-          }
-        }
+      // VISIBLE first: images (fast) then overlays. Then off-screen in big batches.
+      await loadUrls(visible);
+      await loadLabels(visible);
+      for (let i = 0; i < ahead.length; i += FETCH_BATCH) {
+        const batch = ahead.slice(i, i + FETCH_BATCH);
+        await loadUrls(batch);
+        await loadLabels(batch);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return undefined;
   }, [
-    prefetchReady,
     moving,
-    currentPage,
-    totalPages,
+    range.start,
+    range.end,
     ensureSpineWindow,
+    signUrls,
     hydrateWindow,
     store,
     idFor,
@@ -421,7 +440,7 @@ export default function InfiniteGrid({
     if (resetRef.current === reset) return;
     resetRef.current = reset;
     entriesRef.current = new Map();
-    prefetched.current = new Set();
+    urlsRef.current = new Map();
     idObjs.current = new Map();
     setEntriesVersion((v) => v + 1);
   }, [reset]);
@@ -431,9 +450,11 @@ export default function InfiniteGrid({
     const out: CellBox[] = [];
     for (let index = range.start; index < range.end; index++) {
       const { x, y } = layout.posOf(index);
+      const id = moving ? undefined : entriesRef.current.get(index)?.id;
       out.push({
         index,
-        id: moving ? undefined : entriesRef.current.get(index)?.id,
+        id,
+        url: id ? urlsRef.current.get(id) : undefined,
         x,
         y,
         width: layout.cellWidth,
@@ -508,9 +529,11 @@ export default function InfiniteGrid({
           cell={cell}
           vTop={vTop}
           moving={moving}
+          version={entriesVersion}
           idFor={idFor}
-          showItem={showItem}
-          hideItem={hideItem}
+          store={store}
+          coloring={coloring}
+          activePaths={activeFields}
           onOpen={openSample}
         />
       ))}

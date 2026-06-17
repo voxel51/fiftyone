@@ -14,7 +14,7 @@ import type { Records } from "./useRecords";
 import useTimeout from "./useTimeout";
 import { handleNode } from "./utils";
 
-export const PAGE_SIZE = 20;
+export const PAGE_SIZE = 40;
 
 export type SampleStore = WeakMap<ID, { sample: fos.Sample; index: number }>;
 
@@ -208,57 +208,71 @@ const useSpotlightPager = ({
                 const out = new Map<string, GridNode>();
                 if (!ids.length) return resolve(out);
 
-                // base view variables + an ordered Select narrowing to this
-                // window, so the result is the same shape as a normal grid page
-                // (overlays included), in the requested id order. Read fresh so
-                // the current filters/sort apply.
-                const base = (await snapshot.getPromise(pageSelector))(
-                  0,
-                  PAGE_SIZE
-                );
-                const variables = {
-                  ...base,
-                  view: [
-                    ...(((base as { view?: unknown[] }).view as unknown[]) ??
-                      []),
-                    {
-                      _cls: "fiftyone.core.stages.Select",
-                      kwargs: [
-                        ["sample_ids", ids],
-                        ["ordered", true],
-                      ],
-                    },
-                  ],
-                  after: null,
-                  first: ids.length,
-                } as VariablesOf<foq.paginateSamplesQuery>;
+                try {
+                  // base view variables + an ordered Select narrowing to this
+                  // window, so the result is the same shape as a normal grid page
+                  // (overlays included), in the requested id order. Read fresh so
+                  // the current filters/sort apply.
+                  const base = (await snapshot.getPromise(pageSelector))(
+                    0,
+                    PAGE_SIZE
+                  );
+                  const variables = {
+                    ...base,
+                    view: [
+                      ...(((base as { view?: unknown[] }).view as unknown[]) ??
+                        []),
+                      {
+                        _cls: "fiftyone.core.stages.Select",
+                        kwargs: [
+                          ["sample_ids", ids],
+                          ["ordered", true],
+                        ],
+                      },
+                    ],
+                    after: null,
+                    // the query's limit var is `$count` (default 20), NOT `first` —
+                    // pass the whole batch so we get every requested sample, not 20.
+                    count: ids.length,
+                  } as VariablesOf<foq.paginateSamplesQuery>;
 
-                let subscription: Subscription;
-                subscription = fetchQuery<foq.paginateSamplesQuery>(
-                  environment,
-                  foq.paginateSamples,
-                  variables,
-                  { fetchPolicy: "network-only" }
-                ).subscribe({
-                  next: (data) => {
-                    if (data.samples.__typename === "SampleItemStrConnection") {
-                      for (const edge of data.samples.edges) {
-                        const node = handleNode(edge.node) as GridNode;
-                        out.set(node.id, node);
+                  let subscription: Subscription;
+                  subscription = fetchQuery<foq.paginateSamplesQuery>(
+                    environment,
+                    foq.paginateSamples,
+                    variables,
+                    { fetchPolicy: "network-only" }
+                  ).subscribe({
+                    next: (data) => {
+                      if (
+                        data.samples.__typename === "SampleItemStrConnection"
+                      ) {
+                        for (const edge of data.samples.edges) {
+                          const node = handleNode(edge.node) as GridNode;
+                          out.set(node.id, node);
+                        }
+                      } else if (data.samples.__typename === "QueryTimeout") {
+                        handleTimeout(data.samples.queryTime);
                       }
-                    } else if (data.samples.__typename === "QueryTimeout") {
-                      handleTimeout(data.samples.queryTime);
-                    }
-                    resolve(out);
-                  },
-                  complete: () => subscription?.unsubscribe(),
-                  error: (e) => {
-                    // a single window failing leaves its tiles as wireframes (they
-                    // retry on the next settle) — never blow up the whole grid.
-                    console.error("[infinite-grid] hydrate window failed", e);
-                    resolve(out);
-                  },
-                });
+                      resolve(out);
+                    },
+                    complete: () => subscription?.unsubscribe(),
+                    error: (e) => {
+                      // a single window failing leaves its tiles as wireframes
+                      // (they retry on the next settle) — never blow up the grid.
+                      console.error("[infinite-grid] hydrate window failed", e);
+                      resolve(out);
+                    },
+                  });
+                } catch (e) {
+                  // a setup error (e.g. no dataset yet) must still resolve, or
+                  // every awaiting cell would hang as a permanent wireframe.
+                  console.error(
+                    "[infinite-grid] hydrate window setup failed",
+                    e
+                  );
+                  resolve(out);
+                }
               });
             }
           );
@@ -318,7 +332,31 @@ const useSpotlightPager = ({
     [records, spine]
   );
 
-  return { page, hydrateWindow, ensureSpineWindow, records, store };
+  // Cheap, decoupled signed-URL read: filepath signing ONLY (no sample doc / no
+  // labels), so the grid can paint a window's IMAGES immediately — before the heavy
+  // `hydrateWindow` (labels/overlays) lands. Big batches are cheap. Returns id->url.
+  const signUrls = useRecoilCallback(
+    ({ snapshot }) =>
+      async (ids: ReadonlyArray<string>): Promise<Map<string, string>> => {
+        const out = new Map<string, string>();
+        if (!ids.length) return out;
+        const datasetId = await snapshot.getPromise(fos.datasetId);
+        if (!datasetId) return out;
+        const url = `/dataset/${encodeURIComponent(datasetId)}/grid/samples`;
+        try {
+          const resp = (await getFetchFunction()("POST", url, {
+            signUrls: ids,
+          })) as { urls?: { id: string; url: string }[] };
+          for (const u of resp?.urls ?? []) out.set(u.id, u.url);
+        } catch (e) {
+          console.error("[infinite-grid] signUrls failed", e);
+        }
+        return out;
+      },
+    []
+  );
+
+  return { page, hydrateWindow, ensureSpineWindow, signUrls, records, store };
 };
 
 export default useSpotlightPager;

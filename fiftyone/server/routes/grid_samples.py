@@ -1,12 +1,17 @@
 """
-Grid spine route — the cheap ordered driver for the virtualized grid.
+Grid driver routes for the virtualized grid — two cheap, decoupled reads:
 
-POST ``/dataset/{id}/grid/samples`` with ``{spine: true, after?, sampleIds?}``
-returns ``(id, aspectRatio)`` for the view, sorted by ``_id``, with NO media
-signing and NO labels — just the id backbone the app caches to lay out the whole
-scroll range. The heavy per-window read (signed media + sample doc + overlays)
-goes through the normal ``paginateSamples`` GraphQL query, narrowed to the window
-ids; this route never touches that path. Paged by ``after`` at ``SPINE_PAGE``.
+POST ``/dataset/{id}/grid/samples`` with:
+
+* ``{spine: true, after?, sampleIds?}`` → ``(id, aspectRatio)`` for the view,
+  sorted by ``_id``, NO media signing, NO labels — the id backbone for layout.
+* ``{signUrls: [ids]}`` → ``[{id, url, mediaType}]`` — signed media URLs ONLY
+  (filepath signing, NO sample doc / labels), so the app can paint the IMAGE for a
+  window fast, decoupled from the heavy label read. Big batches are cheap here.
+
+The heavy per-window read (full sample doc + overlays) goes through the normal
+``paginateSamples`` GraphQL query, narrowed to the window ids — separate from this
+route, so images render before overlays (progressive).
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -20,8 +25,11 @@ from bson import ObjectId
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
+import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 from fiftyone.server import decorators
+from fiftyone.server.cache import get_cached_media_url
+from fiftyone.server.metadata import resolve_media_alias_to_url
 from fiftyone.server.utils.json.encoder import JSONResponse
 
 logger = logging.getLogger(__name__)
@@ -32,6 +40,8 @@ logger = logging.getLogger(__name__)
 SPINE_PAGE = 5000
 # the spine never signs media — it only needs metadata to derive the aspect ratio.
 _SPINE_PROJECTION = {"metadata": 1}
+# a URL read only needs the filepath (to sign).
+_URL_PROJECTION = {"filepath": 1}
 
 
 def _aspect_ratio(md: Optional[Dict[str, Any]]) -> float:
@@ -51,16 +61,17 @@ async def _flat_spine(
 ) -> List[Dict[str, Any]]:
     """Ordered ``(id, aspectRatio)`` for the view — sorted by ``_id``, no signing."""
     if ids is not None:
-        window = sorted(ids)[after : after + limit + 1]
+        window = ids[after : after + limit + 1]
         docs = await coll.find(
             {"_id": {"$in": window}}, _SPINE_PROJECTION
         ).to_list(len(window))
         by_id = {d["_id"]: d for d in docs}
         docs = [by_id[i] for i in window if i in by_id]
     else:
+        # NATURAL collection order (no sort) — matches `paginateSamples`, so the grid
+        # keeps the dataset's natural sample order rather than re-sorting by `_id`.
         docs = await (
             coll.find({}, _SPINE_PROJECTION)
-            .sort("_id", 1)
             .skip(after)
             .limit(limit + 1)
             .to_list(limit + 1)
@@ -87,6 +98,32 @@ class GridSamples(HTTPEndpoint):
                 {"error": "dataset not found"}, status_code=404
             )
         sample_coll = db[ds["sample_collection_name"]]
+
+        # signed media URLs ONLY (no labels) for a window of ids — the cheap read
+        # that paints the image immediately, in id order.
+        sign_ids = data.get("signUrls")
+        if sign_ids is not None:
+            oids = [ObjectId(i) for i in sign_ids]
+            docs = await sample_coll.find(
+                {"_id": {"$in": oids}}, _URL_PROJECTION
+            ).to_list(len(oids))
+            by_id = {d["_id"]: d for d in docs}
+            urls = []
+            for oid in oids:
+                d = by_id.get(oid)
+                if d is None:
+                    continue
+                fp = d["filepath"]
+                urls.append(
+                    {
+                        "id": str(oid),
+                        "url": resolve_media_alias_to_url(
+                            get_cached_media_url(fp)
+                        ),
+                        "mediaType": fom.get_media_type(fp),
+                    }
+                )
+            return JSONResponse({"urls": urls})
 
         after = int(data.get("after") or 0)
         supplied = data.get("sampleIds")

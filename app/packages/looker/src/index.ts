@@ -42,3 +42,7 @@ export {
   selectionIconX,
   selectionIconBookmark,
 } from "./elements/common/util.module.css";
+
+// numpy mask decoder — reused by the grid's lightweight overlay canvas to draw
+// segmentation/instance masks without instantiating a full looker per tile.
+export { deserialize, ARRAY_TYPES, type OverlayMask } from "./numpy";
