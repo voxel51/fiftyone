@@ -59,7 +59,7 @@ export interface ListSampleTagsRequest extends SampleTagsRequest {
 
 /** Request for creating tags for one sample. */
 export interface CreateSampleTagsRequest extends SampleTagsRequest {
-  readonly temporalTags: readonly TagCreate[];
+  readonly tags: readonly TagCreate[];
 }
 
 /** Request for updating one persisted tag for one sample. */
@@ -119,11 +119,9 @@ export interface UseSampleTagsOptions extends Partial<SampleTagsRequest> {
 export interface UseSampleTagsResult {
   readonly error: string | null;
   readonly status: TemporalTagsStatus;
-  readonly temporalTags: readonly Tag[];
+  readonly tags: readonly Tag[];
   readonly clear: (filter?: TagFilter) => Promise<number>;
-  readonly create: (
-    temporalTags: readonly TagCreate[]
-  ) => Promise<readonly Tag[]>;
+  readonly create: (tags: readonly TagCreate[]) => Promise<readonly Tag[]>;
   readonly delete: (ids: readonly string[]) => Promise<number>;
   readonly reload: () => Promise<readonly Tag[]>;
   readonly update: (temporalTagId: string, update: TagUpdate) => Promise<Tag>;
