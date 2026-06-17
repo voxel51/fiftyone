@@ -34,12 +34,17 @@ export type LighterEventGroup = {
     bounds: Rect;
   };
   /**
-   * Emitted when an overlay's label is updated, or when an overlay's
-   * editing state changes in a way subscribers need to observe (e.g.
-   * `DetectionOverlay.initMask`/`removeMask` flipping mask-canvas state
-   * without changing label data).
+   * Requests that the engine commit this overlay's current label — emit it
+   * after locally mutating an overlay (paint/merge/restore/init/remove a mask,
+   * or applying an agent label). This is NOT a passive notification: the engine
+   * bridge handles it by COMMITTING the overlay (a Sample write + an undo entry
+   * + autosave persistence), and it consumes the in-flight gesture key used to
+   * coalesce a multi-step mask edit into one undo unit. Async mask encodes
+   * re-emit it from their encode callback so the freshly-encoded mask commits
+   * (the synchronous finalize that preceded it read an empty pending mask).
+   * Don't emit it just to signal "the label changed" — that commits.
    */
-  "lighter:overlay-label-updated": {
+  "lighter:overlay-commit-requested": {
     id: string;
     /** ID of the overlay this event refers to. */
     overlayId: string;

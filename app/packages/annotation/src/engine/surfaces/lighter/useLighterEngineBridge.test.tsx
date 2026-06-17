@@ -126,7 +126,7 @@ describe("useLighterEngineBridge — mask gesture coalescing", () => {
     mount();
 
     fire("lighter:overlay-paint-end", "a");
-    fire("lighter:overlay-label-updated", "a");
+    fire("lighter:overlay-commit-requested", "a");
 
     expect(mockCommit).toHaveBeenCalledTimes(2);
     expect(keyOf(0)).toBeTruthy();
@@ -139,7 +139,7 @@ describe("useLighterEngineBridge — mask gesture coalescing", () => {
 
     fire("lighter:overlay-establish", "a");
     fire("lighter:overlay-paint-end", "a");
-    fire("lighter:overlay-label-updated", "a");
+    fire("lighter:overlay-commit-requested", "a");
 
     expect(mockCommit).toHaveBeenCalledTimes(3);
     expect(keyOf(0)).toBeTruthy();
@@ -152,7 +152,7 @@ describe("useLighterEngineBridge — mask gesture coalescing", () => {
     mount();
 
     fire("lighter:overlay-paint-end", "a");
-    fire("lighter:overlay-label-updated", "a");
+    fire("lighter:overlay-commit-requested", "a");
     fire("lighter:overlay-paint-end", "a");
 
     expect(keyOf(2)).toBeTruthy();
@@ -163,7 +163,7 @@ describe("useLighterEngineBridge — mask gesture coalescing", () => {
     ownedIds.add("a");
     mount();
 
-    fire("lighter:overlay-label-updated", "a");
+    fire("lighter:overlay-commit-requested", "a");
 
     expect(mockCommit).toHaveBeenCalledWith({ id: "a" }, undefined);
   });
@@ -174,11 +174,11 @@ describe("useLighterEngineBridge — mask gesture coalescing", () => {
 
     // the two label-updateds a merge emits (sync bbox + async mask re-encode)
     // both carry the gesture id, so they coalesce regardless of timing
-    handlers.get("lighter:overlay-label-updated")?.({
+    handlers.get("lighter:overlay-commit-requested")?.({
       overlayId: "t",
       gestureId: "gesture:9",
     });
-    handlers.get("lighter:overlay-label-updated")?.({
+    handlers.get("lighter:overlay-commit-requested")?.({
       overlayId: "t",
       gestureId: "gesture:9",
     });

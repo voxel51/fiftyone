@@ -187,7 +187,7 @@ export class DetectionOverlay
   updateLabel(label: DetectionLabel) {
     this.applyLabel(label);
 
-    this.eventBus.dispatch("lighter:overlay-label-updated", {
+    this.eventBus.dispatch("lighter:overlay-commit-requested", {
       id: this.id,
       overlayId: this.id,
       label,
@@ -868,7 +868,7 @@ export class DetectionOverlay
       // the synchronous `overlay-paint-end` dispatch below has already run (and
       // read an empty pending mask). Re-emit so the Sample write-half re-reads
       // the overlay and captures the freshly-encoded mask.
-      this.eventBus.dispatch("lighter:overlay-label-updated", {
+      this.eventBus.dispatch("lighter:overlay-commit-requested", {
         id: this.id,
         overlayId: this.id,
         label: this.label,
@@ -1140,7 +1140,7 @@ export class DetectionOverlay
     if (!this.mask) {
       this.mask = new MaskCanvas();
       this.markDirty();
-      this.eventBus.dispatch("lighter:overlay-label-updated", {
+      this.eventBus.dispatch("lighter:overlay-commit-requested", {
         id: this.id,
         overlayId: this.id,
         label: this.label,
@@ -1159,7 +1159,7 @@ export class DetectionOverlay
     this.mask = undefined;
     this.markDirty();
     if (hadMask) {
-      this.eventBus.dispatch("lighter:overlay-label-updated", {
+      this.eventBus.dispatch("lighter:overlay-commit-requested", {
         id: this.id,
         overlayId: this.id,
         label: this.label,
@@ -1343,12 +1343,12 @@ export class DetectionOverlay
       (encoded) => {
         this.maskSource = encoded;
         // Mask encoding is async: `pendingMask` only becomes available here,
-        // after the synchronous `overlay-label-updated` dispatch below has
+        // after the synchronous `overlay-commit-requested` dispatch below has
         // already run (and read an empty pending mask). Re-emit so the
         // write-half re-reads the overlay and captures the merged mask —
         // the same dance as `onPointerUp`'s paint-end. `gestureId` correlates
         // this async commit to the same merge gesture as the sync one below.
-        this.eventBus.dispatch("lighter:overlay-label-updated", {
+        this.eventBus.dispatch("lighter:overlay-commit-requested", {
           id: this.id,
           overlayId: this.id,
           label: this.label,
@@ -1369,7 +1369,7 @@ export class DetectionOverlay
     ];
     const updatedLabel = { ...this.label, bounding_box: [x, y, w, h] };
 
-    this.eventBus.dispatch("lighter:overlay-label-updated", {
+    this.eventBus.dispatch("lighter:overlay-commit-requested", {
       id: this.id,
       overlayId: this.id,
       label: updatedLabel,
@@ -1400,7 +1400,7 @@ export class DetectionOverlay
         // Mask encoding is async — same re-emit dance as `mergeFrom` and
         // paint-end: the synchronous dispatch below reads an empty pending
         // mask; re-emit so the write-half captures the restored mask.
-        this.eventBus.dispatch("lighter:overlay-label-updated", {
+        this.eventBus.dispatch("lighter:overlay-commit-requested", {
           id: this.id,
           overlayId: this.id,
           label: this.label,
@@ -1419,7 +1419,7 @@ export class DetectionOverlay
     // restores are edits too (undo/redo, failure rollback) — dispatch so the
     // write-half commits the restored bounds now; the restored mask follows
     // on the encode re-emit above
-    this.eventBus.dispatch("lighter:overlay-label-updated", {
+    this.eventBus.dispatch("lighter:overlay-commit-requested", {
       id: this.id,
       overlayId: this.id,
       label: this.label,

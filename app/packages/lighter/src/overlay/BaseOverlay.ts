@@ -393,7 +393,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    * {@link updateLabel}. Used by Sample→overlay reconciliation so an applied
    * change does not re-enter the overlay→Sample write path. Subclasses override
    * to apply their derived state, but must NOT dispatch
-   * `lighter:overlay-label-updated` here (that belongs in {@link updateLabel}).
+   * `lighter:overlay-commit-requested` here (that belongs in {@link updateLabel}).
    * @param label - The new label.
    */
   applyLabel(label: Label) {
@@ -402,7 +402,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
 
   /**
    * Apply a label as a user edit: {@link applyLabel} plus the
-   * `lighter:overlay-label-updated` dispatch that drives downstream sync.
+   * `lighter:overlay-commit-requested` dispatch that drives downstream sync.
    * @param label - The new label.
    */
   updateLabel(label: Label) {

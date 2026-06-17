@@ -98,7 +98,7 @@ export const useBridge = (scene: Scene2D | null) => {
   // the engine's: the wiring hook commits the overlay change, the read-half
   // re-derives rows, and the form follows the anchor — no save-backs.
   useEventHandler(
-    "lighter:overlay-label-updated",
+    "lighter:overlay-commit-requested",
     useCallback(
       (payload) => {
         segmentationMode.setEditingMask(payload.id, payload.hasMask);

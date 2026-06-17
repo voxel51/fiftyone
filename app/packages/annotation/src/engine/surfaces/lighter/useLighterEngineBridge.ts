@@ -98,7 +98,7 @@ export const useLighterEngineBridge = ({
   // DetectionOverlay.paintEnd). Each would otherwise land as its own undo entry.
   // A gesture spans from its first finalize until the async mask tail resolves:
   // we mint one key on the first finalize and REUSE it for every commit until the
-  // tail (overlay-label-updated) consumes and clears it, so all share one undoKey
+  // tail (overlay-commit-requested) consumes and clears it, so all share one undoKey
   // and a single Ctrl-Z reverts the whole draw. A later edit (no in-flight key)
   // mints a fresh key, so independent edits stay separate undo units.
   const gestureEpoch = useRef(0);
@@ -154,10 +154,13 @@ export const useLighterEngineBridge = ({
   on("lighter:keypoint-point-added", commitOverlay);
   on("lighter:keypoint-point-moved", commitOverlay);
   on("lighter:keypoint-point-deleted", commitOverlay);
-  // TRANSITIONAL: the legacy sidebar-attr route (sidebar → overlay → engine),
-  // also the async mask-encode re-commit. End state: the sidebar writes the
-  // engine directly and this retires.
-  on("lighter:overlay-label-updated", commitMaskTail);
+  // MASK-COMMIT CHANNEL: an overlay whose mask was mutated locally
+  // (paint/merge/restore/init/remove, or an applied agent label) requests a
+  // commit here — including the async re-emit after a mask finishes encoding,
+  // which carries the gesture key so the encoded mask folds into the same undo
+  // unit as the synchronous finalize. The sidebar does NOT route through this;
+  // it writes the engine directly (Position/Field `scoped.updateLabel`).
+  on("lighter:overlay-commit-requested", commitMaskTail);
 
   // LIVE GEOMETRY: republish mid-drag bounds as a signal so observers (the
   // sidebar position panel) preview the gesture without subscribing to Lighter.
