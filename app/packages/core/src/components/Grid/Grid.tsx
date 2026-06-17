@@ -8,11 +8,13 @@ import { useMemoOne } from "use-memo-one";
 import { v4 as uuid } from "uuid";
 import { useSyncLabelsRenderingStatus } from "../../hooks";
 import {
+  gridAspectRatio,
   gridAutosizing,
   gridCrop,
   gridSpacing,
   maxGridItemsSizeBytes,
   pageParameters,
+  parseAspectRatio,
 } from "./recoil";
 import InfiniteGrid from "./InfiniteGrid";
 import useEscape from "./useEscape";
@@ -30,14 +32,17 @@ import useZoomSetting from "./useZoomSetting";
 
 const MAX_INSTANCES = 200;
 const MAX_ROWS = 200;
-// Render the virtualized infinite-scroll grid instead of the cursor-paginated
-// Spotlight engine. Flip to false to fall back to the legacy grid.
-const USE_INFINITE_GRID = true;
 
 function Grid() {
   const id = useMemoOne(() => uuid(), []);
   const pixels = useMemoOne(() => uuid(), []);
   const spacing = useRecoilValue(gridSpacing);
+
+  // A FIXED tile aspect ratio (e.g. "16:9") makes every tile uniform, which enables
+  // the fully-virtualized infinite grid. "auto" (variable per-sample AR, parses to
+  // null) keeps the justified, cursor-paginated Spotlight grid.
+  const useInfiniteGrid =
+    parseAspectRatio(useRecoilValue(gridAspectRatio)) !== null;
   const { pageReset, reset } = useRefreshers();
   const [resizing, setResizing] = useState(false);
   const zoom = useZoomSetting();
@@ -79,8 +84,8 @@ function Grid() {
     reset;
     /** SPOTLIGHT REFRESHER */
 
-    // infinite grid replaces the cursor engine — never build Spotlight.
-    if (USE_INFINITE_GRID || resizing) {
+    // a fixed AR uses the infinite grid (no Spotlight); auto uses Spotlight.
+    if (useInfiniteGrid || resizing) {
       return undefined;
     }
 
@@ -110,6 +115,7 @@ function Grid() {
     resizing,
     setSample,
     spacing,
+    useInfiniteGrid,
     zoom,
   ]);
 
@@ -120,7 +126,7 @@ function Grid() {
 
   return (
     <div className={styles.gridContainer}>
-      {USE_INFINITE_GRID ? (
+      {useInfiniteGrid ? (
         <InfiniteGrid
           id={id}
           reset={reset}

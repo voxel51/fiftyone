@@ -56,7 +56,6 @@ interface CellBox {
 const Cell = ({
   cell,
   vTop,
-  moving,
   version,
   idFor,
   store,
@@ -66,7 +65,6 @@ const Cell = ({
 }: {
   cell: CellBox;
   vTop: number;
-  moving: boolean;
   /** bumps when settle-loaded labels land in the store; re-draws the overlays. */
   version: number;
   idFor: (id: string) => ID;
@@ -76,6 +74,7 @@ const Cell = ({
   onOpen?: (index: number, id: string, event: React.MouseEvent) => void;
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
   const { id, url, width, height } = cell;
 
   // A plain click opens the modal (meta/ctrl/shift reserved for selection).
@@ -89,20 +88,40 @@ const Cell = ({
     [id, onOpen, cell.index]
   );
 
-  // Draw overlays from the sample's INLINE labels onto a cheap 2D canvas over the
-  // <img>. Re-draws when labels land (`version`) or on resize; clears while
-  // scrolling or before the sample has loaded.
-  useEffect(() => {
+  // Paint overlays from the sample's INLINE labels onto the canvas over the <img>.
+  // Painting is NOT gated on scroll motion — an already-loaded tile stays painted
+  // while scrolling (only FETCHING is motion-gated); a tile is a wireframe only when
+  // its data isn't loaded. The media AR comes from the rendered img's NATURAL dims
+  // (the exact source `object-fit: contain` uses) so boxes/masks align at any tile AR.
+  const paint = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const clear = () =>
       canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
-    if (moving || !id) return clear();
+    if (!id) return clear();
     const node = (store as unknown as WeakMap<ID, GridNode>).get(idFor(id));
     const sample = node?.sample as Record<string, unknown> | undefined;
     if (!sample) return clear();
-    drawOverlays(canvas, sample, activePaths, coloring, width, height);
-  }, [id, moving, version, width, height, idFor, store, coloring, activePaths]);
+    const img = imgRef.current;
+    const mediaAspect =
+      img && img.naturalWidth && img.naturalHeight
+        ? img.naturalWidth / img.naturalHeight
+        : undefined;
+    drawOverlays(
+      canvas,
+      sample,
+      activePaths,
+      coloring,
+      width,
+      height,
+      mediaAspect
+    );
+  }, [id, width, height, idFor, store, coloring, activePaths]);
+
+  // redraw when data lands (`version`) or layout/identity changes (`paint` deps).
+  useEffect(() => {
+    paint();
+  }, [paint, version]);
 
   return (
     <div
@@ -121,9 +140,11 @@ const Cell = ({
       {/* image paints immediately from the cheap signed-URL fetch (never blank) */}
       {url && (
         <img
+          ref={imgRef}
           src={url}
           alt=""
           draggable={false}
+          onLoad={paint}
           style={{
             position: "absolute",
             inset: 0,
@@ -351,6 +372,9 @@ export default function InfiniteGrid({
   const [entriesVersion, setEntriesVersion] = useState(0);
   // ids whose label hydrate is in flight, so overlapping loads never re-request.
   const inflight = useRef(new Set<string>());
+  // the greatest scroll depth reached this session — the scroll-up scrollbar spans
+  // [0, maxReached], not the full (2M-row) virtual height.
+  const maxReachedRef = useRef(0);
 
   // DECOUPLED loader — driven by scroll position, NOT by tile mounts. Two cheap
   // reads, separate from each other, so the user NEVER sees blackness:
@@ -442,15 +466,18 @@ export default function InfiniteGrid({
     entriesRef.current = new Map();
     urlsRef.current = new Map();
     idObjs.current = new Map();
+    maxReachedRef.current = 0;
     setEntriesVersion((v) => v + 1);
   }, [reset]);
 
-  // cells for the in-view index range — wireframe while moving (no id), filled on settle.
+  // cells for the in-view index range. A cell shows whatever's LOADED (image +
+  // overlays) regardless of scroll motion — already-loaded tiles stay painted while
+  // scrolling; a cell is a wireframe only until its id/image/labels have loaded.
   const cells = useMemo<CellBox[]>(() => {
     const out: CellBox[] = [];
     for (let index = range.start; index < range.end; index++) {
       const { x, y } = layout.posOf(index);
-      const id = moving ? undefined : entriesRef.current.get(index)?.id;
+      const id = entriesRef.current.get(index)?.id;
       out.push({
         index,
         id,
@@ -462,8 +489,8 @@ export default function InfiniteGrid({
       });
     }
     return out;
-    // entriesVersion participates so settle-loaded ids appear.
-  }, [range, layout, moving, entriesVersion]);
+    // entriesVersion participates so settle-loaded ids/urls appear.
+  }, [range, layout, entriesVersion]);
 
   // indicator visibility: on while scrolling, fading shortly after it stops.
   const [indicate, setIndicate] = useState(false);
@@ -477,15 +504,19 @@ export default function InfiniteGrid({
   }, [moving, vTop]);
 
   // virtual scrollbar thumb geometry + drag-to-scroll.
-  const max = Math.max(0, layout.virtualHeight - size.height);
+  // scroll-up scrollbar: the thumb spans only the DEEPEST point reached so far,
+  // not the full virtual height (the whole 2M-row dataset). Wheel/fling scroll DOWN
+  // past it — which grows it; the thumb only jumps back UP within explored
+  // territory, and its bottom is the deepest you've been.
+  maxReachedRef.current = Math.max(maxReachedRef.current, vTop);
+  const explored = maxReachedRef.current;
+  const exploredContent = explored + size.height;
   const thumbHeight =
-    layout.virtualHeight > 0
-      ? Math.max(
-          THUMB_MIN_PX,
-          (size.height / layout.virtualHeight) * size.height
-        )
+    exploredContent > 0
+      ? Math.max(THUMB_MIN_PX, (size.height / exploredContent) * size.height)
       : 0;
-  const thumbTop = max > 0 ? (vTop / max) * (size.height - thumbHeight) : 0;
+  const thumbTop =
+    explored > 0 ? (vTop / explored) * (size.height - thumbHeight) : 0;
   const drag = useRef<{ y: number; vTop: number } | null>(null);
   const onThumbDown = useCallback(
     (e: React.PointerEvent) => {
@@ -501,9 +532,16 @@ export default function InfiniteGrid({
       const travel = size.height - thumbHeight;
       if (travel <= 0) return;
       const dy = e.clientY - drag.current.y;
-      scrollTo(drag.current.vTop + (dy / travel) * max);
+      const reached = maxReachedRef.current;
+      // bound to explored territory — the thumb can't drag past the deepest point.
+      scrollTo(
+        Math.min(
+          Math.max(drag.current.vTop + (dy / travel) * reached, 0),
+          reached
+        )
+      );
     },
-    [scrollTo, size.height, thumbHeight, max]
+    [scrollTo, size.height, thumbHeight]
   );
   const onThumbUp = useCallback((e: React.PointerEvent) => {
     drag.current = null;
@@ -528,7 +566,6 @@ export default function InfiniteGrid({
           key={cell.index}
           cell={cell}
           vTop={vTop}
-          moving={moving}
           version={entriesVersion}
           idFor={idFor}
           store={store}
@@ -538,7 +575,10 @@ export default function InfiniteGrid({
         />
       ))}
 
-      {max > 0 && (
+      {/* loading animation on initial load, until the first media has landed */}
+      {urlsRef.current.size === 0 && <div className={styles.fallingPixels} />}
+
+      {explored > 0 && (
         <div
           className={`${styles.virtualScrollbar}${
             indicate ? ` ${styles.visible}` : ""

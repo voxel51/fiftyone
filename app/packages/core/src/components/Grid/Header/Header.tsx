@@ -1,13 +1,18 @@
-import { LoadingDots, useTheme } from "@fiftyone/components";
+import { LoadingDots, Selector, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { isGroup as isGroupAtom } from "@fiftyone/state";
 import { Apps, ImageAspectRatio } from "@mui/icons-material";
-import React, { Suspense, useMemo } from "react";
-import { constSelector, useRecoilValue, useResetRecoilState } from "recoil";
+import React, { Suspense, useCallback, useMemo } from "react";
+import {
+  constSelector,
+  useRecoilState,
+  useRecoilValue,
+  useResetRecoilState,
+} from "recoil";
 import { Slider } from "../../Common/RangeSlider";
 import ResourceCount from "../../ResourceCount";
 import Actions from "../Actions";
-import { gridSpacing, gridZoom } from "../recoil";
+import { gridAspectRatio, gridSpacing, gridZoom } from "../recoil";
 import { ZOOM_RANGE } from "../useZoomSetting";
 import {
   RightContainer,
@@ -76,6 +81,38 @@ const Zoom = () => {
   );
 };
 
+// "auto" = each tile uses its media's own aspect ratio (variable) — the justified,
+// cursor-paginated Spotlight grid. A fixed "W:H" makes every tile that shape, which
+// enables the fully-virtualized infinite grid. Free text is accepted too.
+const AR_OPTIONS = ["auto", "1:1", "4:3", "3:2", "16:9", "2:3", "9:16"];
+
+const AspectRatioOption = ({ value }: { value: string }) => <>{value}</>;
+
+const AspectRatio = () => {
+  const [value, setValue] = useRecoilState(gridAspectRatio);
+  const useSearch = useCallback((search: string) => {
+    const values = AR_OPTIONS.filter((v) => v.includes(search));
+    return { values, total: values.length };
+  }, []);
+
+  return (
+    <Selector
+      inputStyle={{ height: 28, width: 72 }}
+      component={AspectRatioOption}
+      containerStyle={{ marginLeft: "0.5rem", position: "relative" }}
+      onSelect={async (v) => {
+        const next = v || "auto";
+        setValue(next);
+        return next;
+      }}
+      overflow={true}
+      placeholder={"aspect ratio"}
+      useSearch={useSearch}
+      value={value}
+    />
+  );
+};
+
 const Header = () => {
   const isGroup = useRecoilValue(isGroupAtom);
   const groupSlices = useRecoilValue(fos.groupSlices);
@@ -104,6 +141,7 @@ const Header = () => {
           </RightDiv>
         )}
         <Sort />
+        <AspectRatio />
         <Spacing />
         <Zoom />
       </RightContainer>
