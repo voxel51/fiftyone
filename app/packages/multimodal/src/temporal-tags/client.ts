@@ -170,10 +170,10 @@ export function createTagsClient(
       update,
     }: UpdateSampleTagRequest) {
       const response = await fetchFunction<
-        ReturnType<typeof temporalTagUpdateDto>,
+        ReturnType<typeof tagUpdateDto>,
         TagResponseDto
       >({
-        body: temporalTagUpdateDto(update),
+        body: tagUpdateDto(update),
         method: "PATCH",
         path: `/dataset/${encodeURIComponent(
           datasetId
@@ -243,7 +243,7 @@ function temporalTagCreateDto(tag: TagCreate) {
   });
 }
 
-function temporalTagUpdateDto(update: TagUpdate) {
+function tagUpdateDto(update: TagUpdate) {
   return stripUndefined({
     end: update.end,
     last_modified_by: update.lastModifiedBy,
