@@ -13,10 +13,13 @@ const HTMLToDom = (html: string): Node =>
   getParser().parseFromString(html, "text/xml").childNodes[0];
 
 const lazyIcon = (svg: string): (() => Node) => {
-  let node: Node | undefined;
+  // Parse the SVG once on first use and cache it as a template, then hand each
+  // consumer its own clone. appendChild *moves* a node, so returning a single
+  // shared instance would let a second consumer steal the icon from the first.
+  let template: Node | undefined;
   return () => {
-    if (!node) node = HTMLToDom(svg);
-    return node;
+    if (!template) template = HTMLToDom(svg);
+    return template.cloneNode(true);
   };
 };
 
