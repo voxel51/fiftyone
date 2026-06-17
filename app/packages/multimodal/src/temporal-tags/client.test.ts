@@ -21,7 +21,7 @@ describe("createTagsClient", () => {
     await client.createSampleTags({
       datasetId: "dataset-id",
       sampleId: "sample-id",
-      temporalTags: [createTemporalTagInput()],
+      temporalTags: [createTagInput()],
     });
     await client.updateSampleTag({
       datasetId: "dataset-id",
@@ -95,7 +95,7 @@ describe("createTagsClient", () => {
     const tags = await client.createSampleTags({
       datasetId: "dataset-id",
       sampleId: "sample-id",
-      temporalTags: [createTemporalTagInput()],
+      temporalTags: [createTagInput()],
     });
 
     expect(fetchFunction.mock.calls[0][0].body).toEqual({
@@ -244,7 +244,7 @@ function routeUrl(path: string) {
   return new URL(path, "http://fiftyone.test");
 }
 
-function createTemporalTagInput() {
+function createTagInput() {
   return {
     anchor: "lidar_top",
     createdBy: "sashank",
