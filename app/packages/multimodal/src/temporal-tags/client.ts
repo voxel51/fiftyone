@@ -120,10 +120,10 @@ export function createTagsClient(
       ids,
     }: DeleteSampleTagsRequest) {
       const response = await fetchFunction<
-        ReturnType<typeof deleteTemporalTagsDto>,
+        ReturnType<typeof deleteTagsDto>,
         DeleteTagsResponseDto
       >({
-        body: deleteTemporalTagsDto(ids),
+        body: deleteTagsDto(ids),
         method: "DELETE",
         path: `/dataset/${encodeURIComponent(
           datasetId
@@ -254,7 +254,7 @@ function temporalTagUpdateDto(update: TagUpdate) {
   });
 }
 
-function deleteTemporalTagsDto(ids: readonly string[]) {
+function deleteTagsDto(ids: readonly string[]) {
   return { ids };
 }
 
