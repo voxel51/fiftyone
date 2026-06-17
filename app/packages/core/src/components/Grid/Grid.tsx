@@ -14,6 +14,7 @@ import {
   maxGridItemsSizeBytes,
   pageParameters,
 } from "./recoil";
+import InfiniteGrid from "./InfiniteGrid";
 import useEscape from "./useEscape";
 import useEvents from "./useEvents";
 import useLabelVisibility from "./useLabelVisibility";
@@ -29,6 +30,9 @@ import useZoomSetting from "./useZoomSetting";
 
 const MAX_INSTANCES = 200;
 const MAX_ROWS = 200;
+// Render the virtualized infinite-scroll grid instead of the cursor-paginated
+// Spotlight engine. Flip to false to fall back to the legacy grid.
+const USE_INFINITE_GRID = true;
 
 function Grid() {
   const id = useMemoOne(() => uuid(), []);
@@ -51,7 +55,7 @@ function Grid() {
     ...useLabelVisibility(),
   });
 
-  const { page, store } = useSpotlightPager({
+  const { page, store, hydrateWindow, ensureSpineWindow } = useSpotlightPager({
     clearRecords: reset,
     pageSelector: pageParameters,
     records,
@@ -60,6 +64,7 @@ function Grid() {
 
   const { getFontSize, lookerOptions, renderer } = useRenderer({
     cache,
+    hydrateWindow,
     id,
     records,
     store,
@@ -74,7 +79,8 @@ function Grid() {
     reset;
     /** SPOTLIGHT REFRESHER */
 
-    if (resizing) {
+    // infinite grid replaces the cursor engine — never build Spotlight.
+    if (USE_INFINITE_GRID || resizing) {
       return undefined;
     }
 
@@ -114,8 +120,23 @@ function Grid() {
 
   return (
     <div className={styles.gridContainer}>
-      <div id={id} className={styles.spotlightGrid} data-cy="fo-grid" />
-      <div id={pixels} className={styles.fallingPixels} />
+      {USE_INFINITE_GRID ? (
+        <InfiniteGrid
+          id={id}
+          reset={reset}
+          ensureSpineWindow={ensureSpineWindow}
+          hydrateWindow={hydrateWindow}
+          store={store}
+          showItem={renderer.showItem}
+          hideItem={renderer.hideItem}
+          onItemClick={setSample}
+        />
+      ) : (
+        <>
+          <div id={id} className={styles.spotlightGrid} data-cy="fo-grid" />
+          <div id={pixels} className={styles.fallingPixels} />
+        </>
+      )}
     </div>
   );
 }

@@ -20,6 +20,7 @@ from .fiftyone import FiftyOne
 from .frames import Frames
 from .geo import GeoPoints
 from .get_similar_labels_frames import GetSimilarLabelsFrameCollection
+from .grid_samples import GridSamplesRoutes
 from .groups import GroupsRoutes
 from .media import Media
 from .ontology import OntologyAttributes, OntologyTaxonomy, Ontologies
@@ -46,6 +47,7 @@ routes = (
     + multimodal_routes
     + OperatorRoutes
     + RuntimeAssetRoutes
+    + GridSamplesRoutes
     + SampleRoutes
     + [
         ("/aggregate", Aggregate),

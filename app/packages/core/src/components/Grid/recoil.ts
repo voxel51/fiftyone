@@ -9,8 +9,13 @@ import { MANAGING_GRID_MEMORY } from "../../utils/links";
  * @param {number} defaultRange [0, 10] range
  * @returns {number} [-15, -1]
  */
-const convertDefault = (defaultRange) => {
-  return -(14 - (defaultRange / 10) * 14 + 1);
+const convertDefault = (defaultRange?: number) => {
+  // fall back to the server default (7) before config loads, so we never emit NaN
+  const value =
+    typeof defaultRange === "number" && !Number.isNaN(defaultRange)
+      ? defaultRange
+      : 7;
+  return -(14 - (value / 10) * 14 + 1);
 };
 
 const sortFieldsMap = selector({
@@ -144,6 +149,41 @@ export const gridZoom = selector<number>({
     set(gridZoomStore(get(fos.datasetId) ?? ""), result);
   },
 });
+
+const gridAspectRatioStore = atomFamily<string | null, string>({
+  key: "gridAspectRatioStore",
+  default: null,
+  effects: (datasetId) => [
+    fos.getBrowserStorageEffectForKey(`gridAspectRatio-${datasetId}`, {
+      valueClass: "string",
+    }),
+  ],
+});
+
+// Tile box aspect ratio: "auto" uses each sample's metadata AR; a "W:H" string
+// forces every tile to that ratio so the media is tight (no letterbox) at spacing 0.
+export const gridAspectRatio = selector<string>({
+  key: "gridAspectRatio",
+  get: ({ get }) =>
+    get(gridAspectRatioStore(get(fos.datasetId) ?? "")) ?? "auto",
+  set: ({ get, set }, value) =>
+    set(
+      gridAspectRatioStore(get(fos.datasetId) ?? ""),
+      value instanceof DefaultValue ? null : (value as string)
+    ),
+});
+
+/** Parse a grid aspect-ratio setting to a numeric w/h ratio; "auto"/invalid -> null. */
+export const parseAspectRatio = (value: string): number | null => {
+  if (!value || value === "auto") return null;
+  const [w, h] = value.split(":");
+  const width = Number(w);
+  const height = h === undefined ? 1 : Number(h);
+  if (!width || !height || Number.isNaN(width) || Number.isNaN(height)) {
+    return null;
+  }
+  return width / height;
+};
 
 export const gridCropCallback = selector({
   key: "gridCropCallback",

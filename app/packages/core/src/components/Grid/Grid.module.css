@@ -94,3 +94,61 @@
   top: 0;
   width: 100%;
 }
+
+.scrollIndicator {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 12px;
+  border-radius: 12px;
+  background-color: rgba(0, 0, 0, 0.62);
+  color: #fff;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.15s ease, font-size 0.15s ease, padding 0.15s ease;
+}
+
+.scrollIndicator.visible {
+  opacity: 1;
+}
+
+/* During an accelerated (flick) scroll only: grow the badge IN PLACE at the bottom
+   (no reposition, to minimize movement) and make it slightly transparent — a
+   transient depth readout. Small/slow scrolls keep the base bottom badge. */
+.scrollIndicator.scrolling {
+  font-size: 28px;
+  padding: 10px 20px;
+  border-radius: 16px;
+  opacity: 0.7;
+}
+
+/* In-view placeholder for the virtual grid: a visible wireframe so fast scrolling
+   shows moving tiles (not a black screen). The looker canvas attaches as a child
+   and covers it once the cell hydrates on settle. */
+.spotlightWireframe {
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Virtual scrollbar thumb: shows scroll depth without a full-content scrollbar;
+   draggable to jump. Faint at rest, brighter while scrolling (.visible). */
+.virtualScrollbar {
+  position: absolute;
+  right: 2px;
+  width: 8px;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.25);
+  opacity: 0.35;
+  transition: opacity 0.15s ease;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.virtualScrollbar.visible {
+  opacity: 0.8;
+}
