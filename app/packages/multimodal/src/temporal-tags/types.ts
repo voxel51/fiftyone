@@ -69,7 +69,7 @@ export interface UpdateSampleTagRequest extends SampleTagsRequest {
 }
 
 /** Request for deleting persisted temporal tags by ID for one sample. */
-export interface DeleteSampleTemporalTagsRequest extends SampleTagsRequest {
+export interface DeleteSampleTagsRequest extends SampleTagsRequest {
   readonly ids: readonly string[];
 }
 
@@ -103,9 +103,7 @@ export interface TemporalTagsClient {
   countDatasetTemporalTags(
     request: CountDatasetTemporalTagsRequest
   ): Promise<Readonly<Record<string, number>>>;
-  deleteSampleTemporalTags(
-    request: DeleteSampleTemporalTagsRequest
-  ): Promise<number>;
+  deleteSampleTemporalTags(request: DeleteSampleTagsRequest): Promise<number>;
   listDatasetTemporalTags(
     request: ListDatasetTemporalTagsRequest
   ): Promise<readonly TemporalTag[]>;

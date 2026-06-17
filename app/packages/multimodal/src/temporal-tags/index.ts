@@ -8,7 +8,7 @@ export type {
   CountDatasetTemporalTagsRequest,
   ClearSampleTemporalTagsRequest,
   CreateSampleTagsRequest,
-  DeleteSampleTemporalTagsRequest,
+  DeleteSampleTagsRequest,
   ListDatasetTemporalTagsRequest,
   ListSampleTagsRequest,
   SampleTagsRequest,

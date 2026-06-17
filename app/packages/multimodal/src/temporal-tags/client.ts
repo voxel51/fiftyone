@@ -3,7 +3,7 @@ import type {
   ClearSampleTemporalTagsRequest,
   CountDatasetTemporalTagsRequest,
   CreateSampleTagsRequest,
-  DeleteSampleTemporalTagsRequest,
+  DeleteSampleTagsRequest,
   ListDatasetTemporalTagsRequest,
   ListSampleTagsRequest,
   TemporalTag,
@@ -124,7 +124,7 @@ export function createTemporalTagsClient(
       datasetId,
       sampleId,
       ids,
-    }: DeleteSampleTemporalTagsRequest) {
+    }: DeleteSampleTagsRequest) {
       const response = await fetchFunction<
         ReturnType<typeof deleteTemporalTagsDto>,
         DeleteTemporalTagsResponseDto
