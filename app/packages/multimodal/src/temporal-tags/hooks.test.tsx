@@ -302,7 +302,7 @@ function SampleRendererTemporalTagsHarness({
 function createTagsClient(overrides: Partial<TagsClient> = {}): TagsClient {
   return {
     clearSampleTags: vi.fn(async () => 1),
-    countDatasetTemporalTags: vi.fn(async () => ({})),
+    countDatasetTags: vi.fn(async () => ({})),
     createSampleTags: vi.fn(async () => [createTemporalTag("created")]),
     deleteSampleTags: vi.fn(async () => 1),
     listDatasetTags: vi.fn(async () => []),

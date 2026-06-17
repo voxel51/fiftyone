@@ -102,10 +102,7 @@ export function createTagsClient(
       return response.response.deleted;
     },
 
-    async countDatasetTemporalTags({
-      datasetId,
-      filter,
-    }: CountDatasetTagsRequest) {
+    async countDatasetTags({ datasetId, filter }: CountDatasetTagsRequest) {
       const response = await fetchFunction<undefined, TagCountsResponseDto>({
         method: "GET",
         path: withFilterQuery(

@@ -39,7 +39,7 @@ describe("createTagsClient", () => {
       sampleId: "sample-id",
     });
     await client.listDatasetTags({ datasetId: "dataset-id" });
-    await client.countDatasetTemporalTags({ datasetId: "dataset-id" });
+    await client.countDatasetTags({ datasetId: "dataset-id" });
 
     expect(
       fetchFunction.mock.calls.map(([config]) => routeKey(config))
