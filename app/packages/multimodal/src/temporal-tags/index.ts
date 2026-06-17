@@ -17,7 +17,7 @@ export type {
   TagFilter,
   TagUpdate,
   TagsClient,
-  TemporalTagsStatus,
+  TagsStatus,
   UpdateSampleTagRequest,
   UseSampleTagsOptions,
   UseSampleTagsResult,

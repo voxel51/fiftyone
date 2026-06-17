@@ -7,14 +7,14 @@ import type {
   TagFilter,
   TagUpdate,
   TagsClient,
-  TemporalTagsStatus,
+  TagsStatus,
   UseSampleTagsOptions,
   UseSampleTagsResult,
 } from "./types";
 
 type TagsState = {
   readonly error: string | null;
-  readonly status: TemporalTagsStatus;
+  readonly status: TagsStatus;
   readonly tags: readonly Tag[];
 };
 

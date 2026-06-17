@@ -1,7 +1,7 @@
 import type { LoadStatus } from "../load-status";
 
 /** Load state for tag React hooks. */
-export type TemporalTagsStatus = LoadStatus;
+export type TagsStatus = LoadStatus;
 
 /** Filter for tag list/count/delete queries. */
 export interface TagFilter {
@@ -118,7 +118,7 @@ export interface UseSampleTagsOptions extends Partial<SampleTagsRequest> {
  */
 export interface UseSampleTagsResult {
   readonly error: string | null;
-  readonly status: TemporalTagsStatus;
+  readonly status: TagsStatus;
   readonly tags: readonly Tag[];
   readonly clear: (filter?: TagFilter) => Promise<number>;
   readonly create: (tags: readonly TagCreate[]) => Promise<readonly Tag[]>;
