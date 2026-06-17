@@ -20,6 +20,8 @@ permissions:
 
 jobs:
   sync:
+    # The `community` branch is OSS-only.
+    if: github.repository == 'voxel51/fiftyone'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6

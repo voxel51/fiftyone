@@ -48,9 +48,11 @@ def _create_test_dataset(num_samples=5, seed=51):
 
 
 def _get_image_as_numpy(filepath):
-    from PIL import Image
+    # Match :meth:`SegmentAnythingImageGetItem` / ``fout._load_image`` (OpenCV),
+    # not PIL, so decoded pixels match ``apply_model``.
+    import fiftyone.utils.torch as fout
 
-    return np.array(Image.open(filepath).convert("RGB"))
+    return fout._load_image(filepath, use_numpy=True, force_rgb=True)
 
 
 def _get_image_as_pil(filepath):
@@ -67,7 +69,8 @@ def _auto_masks_to_detections(masks_list):
         det = Detection.from_mask(
             mask=m["segmentation"],
             label=PLACEHOLDER_LABEL,
-            confidence=m.get("stability_score", m.get("predicted_iou", 1.0)),
+            score=m["predicted_iou"],
+            stability=m["stability_score"],
         )
         dets.append(det)
     return Detections(detections=dets)

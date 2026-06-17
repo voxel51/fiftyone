@@ -17,6 +17,8 @@ permissions:
 
 jobs:
   triage:
+    # The `community` branch is OSS-only.
+    if: github.repository == 'voxel51/fiftyone'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/github-script@v9

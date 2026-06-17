@@ -31,8 +31,9 @@ contexts.
 from ._temporal_tags import (
     DEFAULT_INDEX_TYPE,
     SUPPORTED_INDEX_TYPES,
-    TEMPORAL_TAGS_COLLECTION_NAME,
+    TAGS_COLLECTION_NAME,
     TEMPORAL_TAGS_EXPORT_FILENAME,
+    TagKind,
     TemporalTag,
     TemporalTagFilter,
     TemporalTags,
@@ -44,6 +45,7 @@ from ._temporal_tags import (
 )
 
 for _public_obj in (
+    TagKind,
     TemporalTag,
     TemporalTagFilter,
     TemporalTags,
@@ -61,7 +63,8 @@ __all__ = [
     "DEFAULT_INDEX_TYPE",
     "SUPPORTED_INDEX_TYPES",
     "TEMPORAL_TAGS_EXPORT_FILENAME",
-    "TEMPORAL_TAGS_COLLECTION_NAME",
+    "TAGS_COLLECTION_NAME",
+    "TagKind",
     "TemporalTag",
     "TemporalTagFilter",
     "TemporalTags",
