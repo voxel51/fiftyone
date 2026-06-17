@@ -12,7 +12,7 @@ import {
 import { Button } from "@fiftyone/components";
 import FolderIcon from "@mui/icons-material/Folder";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
-import moment from "moment";
+import { DateTime } from "luxon";
 import { scrollable } from "@fiftyone/components";
 import { humanReadableBytes } from "@fiftyone/utilities";
 
@@ -94,7 +94,10 @@ function FileTable({
                 </Box>
               </TableCell>
               <TableCell>
-                {file.date_modified && moment(file.date_modified).fromNow()}
+                {file.date_modified &&
+                  DateTime.fromJSDate(
+                    new Date(file.date_modified)
+                  ).toRelative()}
               </TableCell>
               <TableCell>{humanReadableBytes(file.size)}</TableCell>
             </TableRow>
