@@ -34,7 +34,7 @@ export function useSampleTemporalTags({
   filter,
   sampleId,
 }: UseSampleTagsOptions): UseSampleTagsResult {
-  const temporalTagsClient = client ?? getDefaultTagsClient();
+  const tagsClient = client ?? getDefaultTagsClient();
   const filterKey = temporalTagFilterKey(filter);
   const [state, setState] = useState<TagsState>(IDLE_STATE);
   const mountedRef = useRef(true);
@@ -60,7 +60,7 @@ export function useSampleTemporalTags({
     }
 
     try {
-      const temporalTags = await temporalTagsClient.listSampleTags({
+      const temporalTags = await tagsClient.listSampleTags({
         datasetId,
         filter,
         sampleId,
@@ -86,7 +86,7 @@ export function useSampleTemporalTags({
     // `filterKey` captures filter content changes while avoiding callback churn
     // when callers pass a new object with the same filter values.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [datasetId, filterKey, sampleId, temporalTagsClient]);
+  }, [datasetId, filterKey, sampleId, tagsClient]);
 
   useEffect(() => {
     void reload().catch(() => undefined);
@@ -102,7 +102,7 @@ export function useSampleTemporalTags({
   const create = useCallback(
     async (temporalTags: readonly TagCreate[]) => {
       const ids = requireSampleScope(datasetId, sampleId);
-      const created = await temporalTagsClient.createSampleTags({
+      const created = await tagsClient.createSampleTags({
         ...ids,
         temporalTags,
       });
@@ -110,13 +110,13 @@ export function useSampleTemporalTags({
 
       return created;
     },
-    [datasetId, reload, sampleId, temporalTagsClient]
+    [datasetId, reload, sampleId, tagsClient]
   );
 
   const update = useCallback(
     async (temporalTagId: string, update: TagUpdate) => {
       const ids = requireSampleScope(datasetId, sampleId);
-      const updated = await temporalTagsClient.updateSampleTag({
+      const updated = await tagsClient.updateSampleTag({
         ...ids,
         temporalTagId,
         update,
@@ -125,13 +125,13 @@ export function useSampleTemporalTags({
 
       return updated;
     },
-    [datasetId, reload, sampleId, temporalTagsClient]
+    [datasetId, reload, sampleId, tagsClient]
   );
 
   const deleteTags = useCallback(
     async (idsToDelete: readonly string[]) => {
       const ids = requireSampleScope(datasetId, sampleId);
-      const deleted = await temporalTagsClient.deleteSampleTags({
+      const deleted = await tagsClient.deleteSampleTags({
         ...ids,
         ids: idsToDelete,
       });
@@ -139,13 +139,13 @@ export function useSampleTemporalTags({
 
       return deleted;
     },
-    [datasetId, reload, sampleId, temporalTagsClient]
+    [datasetId, reload, sampleId, tagsClient]
   );
 
   const clear = useCallback(
     async (clearFilter?: TagFilter) => {
       const ids = requireSampleScope(datasetId, sampleId);
-      const deleted = await temporalTagsClient.clearSampleTags({
+      const deleted = await tagsClient.clearSampleTags({
         ...ids,
         filter: clearFilter,
       });
@@ -153,7 +153,7 @@ export function useSampleTemporalTags({
 
       return deleted;
     },
-    [datasetId, reload, sampleId, temporalTagsClient]
+    [datasetId, reload, sampleId, tagsClient]
   );
 
   return {
