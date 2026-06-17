@@ -21,6 +21,8 @@ jobs:
         with:
           ref: develop
           fetch-depth: 0
+          # Push as voxel51-bot, which can bypass the merge/* branch ruleset.
+          token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
       - run: |
           git config user.name 'voxel51-bot'
           git config user.email 'bot@voxel51.com'
