@@ -281,7 +281,7 @@ function TemporalTagsHarness({
 
   return (
     <div data-testid="temporal-tags">
-      {state.status}:{state.temporalTags.map((tag) => tag.id).join(",")}:
+      {state.status}:{state.tags.map((tag) => tag.id).join(",")}:
       {state.error ?? ""}
     </div>
   );

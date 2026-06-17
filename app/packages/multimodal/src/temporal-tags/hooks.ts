@@ -15,13 +15,13 @@ import type {
 type TagsState = {
   readonly error: string | null;
   readonly status: TemporalTagsStatus;
-  readonly temporalTags: readonly Tag[];
+  readonly tags: readonly Tag[];
 };
 
 const IDLE_STATE: TagsState = {
   error: null,
   status: "idle",
-  temporalTags: [],
+  tags: [],
 };
 let defaultTagsClient: TagsClient | undefined;
 
@@ -55,12 +55,12 @@ export function useSampleTemporalTags({
       setState((current) => ({
         error: null,
         status: "loading",
-        temporalTags: current.temporalTags,
+        tags: current.tags,
       }));
     }
 
     try {
-      const temporalTags = await tagsClient.listSampleTags({
+      const tags = await tagsClient.listSampleTags({
         datasetId,
         filter,
         sampleId,
@@ -69,16 +69,16 @@ export function useSampleTemporalTags({
         setState({
           error: null,
           status: "ready",
-          temporalTags,
+          tags,
         });
       }
-      return temporalTags;
+      return tags;
     } catch (error) {
       if (mountedRef.current && requestIdRef.current === requestId) {
         setState({
           error: errorMessage(error),
           status: "error",
-          temporalTags: [],
+          tags: [],
         });
       }
       throw error;
@@ -100,11 +100,11 @@ export function useSampleTemporalTags({
   }, []);
 
   const create = useCallback(
-    async (temporalTags: readonly TagCreate[]) => {
+    async (tags: readonly TagCreate[]) => {
       const ids = requireSampleScope(datasetId, sampleId);
       const created = await tagsClient.createSampleTags({
         ...ids,
-        temporalTags,
+        temporalTags: tags,
       });
       await reload();
 
