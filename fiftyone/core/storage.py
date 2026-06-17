@@ -1048,6 +1048,7 @@ def get_file_size(path):
     Returns:
         the file size in bytes
     """
+    # If path is a file handle, use seek/tell to get the size.
     if hasattr(path, "read"):
         position = path.tell()
         try:
