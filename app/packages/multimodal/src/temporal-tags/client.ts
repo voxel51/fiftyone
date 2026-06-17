@@ -14,7 +14,7 @@ import type {
   UpdateSampleTagRequest,
 } from "./types";
 
-type TemporalTagsFetch = ReturnType<typeof getFetchFunctionExtended>;
+type TagsFetch = ReturnType<typeof getFetchFunctionExtended>;
 
 type TemporalTagDto = {
   readonly end: number;
@@ -50,7 +50,7 @@ type DeleteTemporalTagsResponseDto = {
  * Options for constructing the tags route client.
  */
 export interface CreateTagsClientOptions {
-  readonly fetchFunction?: TemporalTagsFetch;
+  readonly fetchFunction?: TagsFetch;
 }
 
 /**
