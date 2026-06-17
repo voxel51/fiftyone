@@ -1,19 +1,20 @@
 // Launcher for `yarn dev:py` and `yarn dev:wpy`.
 //
 // Usage: node dev.mjs <py|wpy> [options]
-//   -p, --port <port>   Port for the vite dev server (default 5173).
-//   -n, --notebook      Notebook dev: also set proxy_url to the vite server URL.
+//   -p, --port <port>   Port for the vite client dev server (default 5173).
+//   -n, --notebook      Notebook dev: also set proxy_url to the client URL.
 //
-// Both targets export FIFTYONE_ALLOWED_ORIGINS (and, with -n,
-// FIFTYONE_APP_PROXY_URL) pointed at the vite dev server so the python server
-// accepts requests from the hot-reloading client.
+// Exports FIFTYONE_ALLOWED_ORIGINS (and, with -n, FIFTYONE_APP_PROXY_URL)
+// pointed at the vite client dev server so the python server accepts
+// cross-origin requests from the hot-reloading client. The python server keeps
+// its default port (5151); only the client dev server port is configurable
+// here, via vite's own --port flag.
 import { spawn } from "node:child_process";
 
 const [target, ...args] = process.argv.slice(2);
 
-let port = process.env.FIFTYONE_DEFAULT_APP_PORT || "5173";
-let notebook = Boolean(process.env.FIFTYONE_APP_PROXY_URL);
-
+let port = "5173";
+let notebook = false;
 for (let i = 0; i < args.length; i++) {
   const arg = args[i];
   if (arg === "-p" || arg === "--port") {
@@ -24,27 +25,24 @@ for (let i = 0; i < args.length; i++) {
 }
 
 const origin = `http://localhost:${port}`;
-const env = {
-  ...process.env,
-  FIFTYONE_DEFAULT_APP_PORT: port,
-  FIFTYONE_ALLOWED_ORIGINS: origin,
-};
+const env = { ...process.env, FIFTYONE_ALLOWED_ORIGINS: origin };
 if (notebook) {
   env.FIFTYONE_APP_PROXY_URL = origin;
 }
 
+const server = "python ../fiftyone/server/main.py";
 const commands = {
-  py: ["python", ["../fiftyone/server/main.py"]],
-  wpy: ["concurrently", ["-k", "yarn:dev", "yarn:dev:py"]],
+  py: server,
+  wpy: `concurrently -k "yarn dev --port ${port}" "${server}"`,
 };
 
-if (!commands[target]) {
+const command = commands[target];
+if (!command) {
   console.error("Usage: node dev.mjs <py|wpy> [-p port] [-n]");
   process.exit(1);
 }
 
-const [cmd, cmdArgs] = commands[target];
-const child = spawn(cmd, cmdArgs, { stdio: "inherit", env, shell: true });
+const child = spawn(command, { stdio: "inherit", env, shell: true });
 
 child.on("exit", (code, signal) => {
   if (signal) {
