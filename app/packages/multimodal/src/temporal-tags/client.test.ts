@@ -55,7 +55,7 @@ describe("createTagsClient", () => {
   });
 
   it("serializes repeated filter query params", async () => {
-    const fetchFunction = createFetch({ temporal_tags: [] });
+    const fetchFunction = createFetch({ tags: [] });
     const client = createTagsClient({
       fetchFunction: fetchFunction as never,
     });
@@ -86,7 +86,7 @@ describe("createTagsClient", () => {
 
   it("converts create bodies and response tags between app and route shapes", async () => {
     const fetchFunction = createFetch({
-      temporal_tags: [createTagDto()],
+      tags: [createTagDto()],
     });
     const client = createTagsClient({
       fetchFunction: fetchFunction as never,
@@ -99,7 +99,7 @@ describe("createTagsClient", () => {
     });
 
     expect(fetchFunction.mock.calls[0][0].body).toEqual({
-      temporal_tags: [
+      tags: [
         {
           anchor: "lidar_top",
           created_by: "sashank",
@@ -231,7 +231,7 @@ function responseForRoute(config: FetchConfig) {
     return { tag: createTagDto() };
   }
 
-  return { temporal_tags: [createTagDto()] };
+  return { tags: [createTagDto()] };
 }
 
 function routeKey(config: FetchConfig) {

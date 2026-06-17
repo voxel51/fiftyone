@@ -31,7 +31,7 @@ type TagDto = {
 };
 
 type TagsResponseDto = {
-  readonly temporal_tags: readonly TagDto[];
+  readonly tags: readonly TagDto[];
 };
 
 type TagResponseDto = {
@@ -68,11 +68,11 @@ export function createTagsClient(
       tags,
     }: CreateSampleTagsRequest) {
       const response = await fetchFunction<
-        { temporal_tags: readonly ReturnType<typeof tagCreateDto>[] },
+        { tags: readonly ReturnType<typeof tagCreateDto>[] },
         TagsResponseDto
       >({
         body: {
-          temporal_tags: tags.map(tagCreateDto),
+          tags: tags.map(tagCreateDto),
         },
         method: "POST",
         path: `/dataset/${encodeURIComponent(
@@ -80,7 +80,7 @@ export function createTagsClient(
         )}/sample/${encodeURIComponent(sampleId)}/tags`,
       });
 
-      return response.response.temporal_tags.map(tagFromDto);
+      return response.response.tags.map(tagFromDto);
     },
 
     async clearSampleTags({
@@ -142,7 +142,7 @@ export function createTagsClient(
         ),
       });
 
-      return response.response.temporal_tags.map(tagFromDto);
+      return response.response.tags.map(tagFromDto);
     },
 
     async listSampleTags({
@@ -160,7 +160,7 @@ export function createTagsClient(
         ),
       });
 
-      return response.response.temporal_tags.map(tagFromDto);
+      return response.response.tags.map(tagFromDto);
     },
 
     async updateSampleTag({
