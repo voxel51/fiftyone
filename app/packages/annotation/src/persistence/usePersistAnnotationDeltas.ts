@@ -1,9 +1,9 @@
 import {
   isGeneratedView,
   useCurrentDatasetId,
-  useInteraction3dSample,
   useModalSample,
   useRefreshSample,
+  useStableInteraction3dSample,
 } from "@fiftyone/state";
 import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
@@ -48,9 +48,15 @@ export const usePersistAnnotationDeltas =
     // the pinned 3D scene is a distinct sample; patch it through its own
     // binding (version token + refresh keyed to that sample). Inert unless a
     // grouped modal actually renders a separate 3D scene.
+    //
+    // STABLE (non-suspending) variant of the same 3D interaction sample: this
+    // hook is now reached from the broad Lighter renderer path (useBridge →
+    // useDeleteAnnotation), where the suspending `useInteraction3dSample` would
+    // hang the modal on "Pixelating…". Until the 3D group query settles it reads
+    // `undefined`, which matches `sceneId` below so the 3D branch stays inert.
     const modalId = useModalSample()?.sample?._id;
     const sceneId = useThreeDSceneSampleId();
-    const threeDScene = useInteraction3dSample();
+    const threeDScene = useStableInteraction3dSample();
     const patch3d = usePatchSampleWith({
       sample: threeDScene?.sample ?? null,
       datasetId: useCurrentDatasetId(),
