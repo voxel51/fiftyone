@@ -29,7 +29,7 @@ describe("createTagsClient", () => {
       temporalTagId: "tag-id",
       update: { end: 4 },
     });
-    await client.deleteSampleTemporalTags({
+    await client.deleteSampleTags({
       datasetId: "dataset-id",
       sampleId: "sample-id",
       ids: ["tag-id"],
@@ -166,7 +166,7 @@ describe("createTagsClient", () => {
     });
 
     await expect(
-      client.deleteSampleTemporalTags({
+      client.deleteSampleTags({
         datasetId: "dataset-id",
         sampleId: "sample-id",
         ids: ["temporal-tag-id"],

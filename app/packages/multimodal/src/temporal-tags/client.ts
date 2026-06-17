@@ -117,7 +117,7 @@ export function createTagsClient(
       return response.response.counts;
     },
 
-    async deleteSampleTemporalTags({
+    async deleteSampleTags({
       datasetId,
       sampleId,
       ids,

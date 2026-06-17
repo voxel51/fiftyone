@@ -101,7 +101,7 @@ export interface TagsClient {
   countDatasetTemporalTags(
     request: CountDatasetTagsRequest
   ): Promise<Readonly<Record<string, number>>>;
-  deleteSampleTemporalTags(request: DeleteSampleTagsRequest): Promise<number>;
+  deleteSampleTags(request: DeleteSampleTagsRequest): Promise<number>;
   listDatasetTemporalTags(
     request: ListDatasetTagsRequest
   ): Promise<readonly TemporalTag[]>;

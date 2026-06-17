@@ -131,7 +131,7 @@ export function useSampleTemporalTags({
   const deleteTags = useCallback(
     async (idsToDelete: readonly string[]) => {
       const ids = requireSampleScope(datasetId, sampleId);
-      const deleted = await temporalTagsClient.deleteSampleTemporalTags({
+      const deleted = await temporalTagsClient.deleteSampleTags({
         ...ids,
         ids: idsToDelete,
       });
