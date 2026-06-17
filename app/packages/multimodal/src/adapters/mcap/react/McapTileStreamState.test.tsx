@@ -6,7 +6,7 @@ import { McapTileEmptyState } from "./McapTileStreamState";
 import {
   setMcapTopicStartTimeSec,
   setMcapTopicStatus,
-} from "./mcap-stream-status";
+} from "./mcap-stream-status-state";
 
 const TOPIC = "/camera";
 
