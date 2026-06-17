@@ -132,6 +132,14 @@ _allowed_origins = [
     for o in (fo.config.allowed_origins or "").split(",")
     if o.strip()
 ]
+
+# allow live dev-server (`cd app/; yarn dev`)
+# gated on DEV_INSTALL so it never applies to pip-installed deployments.
+if foc.DEV_INSTALL:
+    for _origin in ("http://localhost:5173", "http://127.0.0.1:5173"):
+        if _origin not in _allowed_origins:
+            _allowed_origins.append(_origin)
+
 if _allowed_origins:
     _middleware.append(
         Middleware(
