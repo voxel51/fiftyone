@@ -12,13 +12,13 @@ import type {
   UseSampleTagsResult,
 } from "./types";
 
-type TemporalTagsState = {
+type TagsState = {
   readonly error: string | null;
   readonly status: TemporalTagsStatus;
   readonly temporalTags: readonly Tag[];
 };
 
-const IDLE_STATE: TemporalTagsState = {
+const IDLE_STATE: TagsState = {
   error: null,
   status: "idle",
   temporalTags: [],
@@ -36,7 +36,7 @@ export function useSampleTemporalTags({
 }: UseSampleTagsOptions): UseSampleTagsResult {
   const temporalTagsClient = client ?? getDefaultTagsClient();
   const filterKey = temporalTagFilterKey(filter);
-  const [state, setState] = useState<TemporalTagsState>(IDLE_STATE);
+  const [state, setState] = useState<TagsState>(IDLE_STATE);
   const mountedRef = useRef(true);
   const requestIdRef = useRef(0);
 
