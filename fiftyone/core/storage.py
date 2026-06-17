@@ -1052,7 +1052,8 @@ def get_file_size(path):
     if hasattr(path, "read"):
         position = path.tell()
         try:
-            return path.seek(0, os.SEEK_END)
+            path.seek(0, os.SEEK_END)
+            return path.tell()
         finally:
             path.seek(position)
 
