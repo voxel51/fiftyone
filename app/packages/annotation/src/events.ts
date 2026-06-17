@@ -1,6 +1,5 @@
 import { Archetype3d, Looker3dOverlayLabel } from "@fiftyone/looker-3d";
 import { AnnotationLabel } from "@fiftyone/state";
-import { DetectionOverlay } from "@fiftyone/lighter";
 import type {
   AnnotationAgentDownloadProgress,
   AnnotationAgentLifecycleStatus,
@@ -39,14 +38,6 @@ export type AnnotationEventGroup = {
    */
   "annotation:persistenceError": { error?: Error };
   /**
-   * Notification event emitted when a label is upserted successfully.
-   */
-  "annotation:upsertSuccess": MutationSuccess<"upsert">;
-  /**
-   * Notification event emitted when an error occurs while upserting a label.
-   */
-  "annotation:upsertError": MutationError<"upsert">;
-  /**
    * Notification event emitted when a label is deleted successfully.
    */
   "annotation:deleteSuccess": MutationSuccess<"delete">;
@@ -54,13 +45,6 @@ export type AnnotationEventGroup = {
    * Notification event emitted when an error occurs while deleting a label.
    */
   "annotation:deleteError": MutationError<"delete">;
-  /**
-   * Notification event emitted when a canvas overlay is established.
-   */
-  "annotation:canvasDetectionOverlayEstablish": {
-    id: string;
-    overlay: DetectionOverlay;
-  };
   /**
    * Notification event emitted when a label is selected for annotation.
    */
