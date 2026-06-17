@@ -20,7 +20,7 @@ describe("useSampleTags", () => {
     const client = createTagsClient();
 
     render(
-      <TemporalTagsHarness
+      <TagsHarness
         options={{ client, datasetId: "dataset-id", sampleId: undefined }}
       />
     );
@@ -35,7 +35,7 @@ describe("useSampleTags", () => {
     });
 
     render(
-      <TemporalTagsHarness
+      <TagsHarness
         options={{
           client,
           datasetId: "dataset-id",
@@ -64,7 +64,7 @@ describe("useSampleTags", () => {
     });
 
     const { rerender } = render(
-      <TemporalTagsHarness
+      <TagsHarness
         options={{
           client,
           datasetId: "dataset-id",
@@ -81,7 +81,7 @@ describe("useSampleTags", () => {
     });
 
     rerender(
-      <TemporalTagsHarness
+      <TagsHarness
         options={{
           client,
           datasetId: "dataset-id",
@@ -109,7 +109,7 @@ describe("useSampleTags", () => {
     });
 
     const { rerender } = render(
-      <TemporalTagsHarness
+      <TagsHarness
         options={{
           client,
           datasetId: "dataset-id",
@@ -123,7 +123,7 @@ describe("useSampleTags", () => {
     });
 
     rerender(
-      <TemporalTagsHarness
+      <TagsHarness
         options={{
           client,
           datasetId: "dataset-id",
@@ -163,7 +163,7 @@ describe("useSampleTags", () => {
     let latest!: UseSampleTagsResult;
 
     render(
-      <TemporalTagsHarness
+      <TagsHarness
         onState={(state) => {
           latest = state;
         }}
@@ -229,7 +229,7 @@ describe("useSampleTags", () => {
     });
 
     render(
-      <TemporalTagsHarness
+      <TagsHarness
         options={{
           client,
           datasetId: "dataset-id",
@@ -266,7 +266,7 @@ describe("useSampleRendererTags", () => {
   });
 });
 
-function TemporalTagsHarness({
+function TagsHarness({
   onState,
   options,
 }: {
