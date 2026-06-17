@@ -31,7 +31,7 @@ describe("useSampleTags", () => {
 
   it("loads sample temporal tags", async () => {
     const client = createTagsClient({
-      listSampleTags: vi.fn(async () => [createTemporalTag("tag-a")]),
+      listSampleTags: vi.fn(async () => [createTag("tag-a")]),
     });
 
     render(
@@ -59,7 +59,7 @@ describe("useSampleTags", () => {
   it("refetches when the sample id or filter changes", async () => {
     const client = createTagsClient({
       listSampleTags: vi.fn(async ({ filter, sampleId }) => [
-        createTemporalTag(`${sampleId}-${filter?.start ?? 0}`),
+        createTag(`${sampleId}-${filter?.start ?? 0}`),
       ]),
     });
 
@@ -137,7 +137,7 @@ describe("useSampleTags", () => {
     });
 
     await act(async () => {
-      second.resolve([createTemporalTag("sample-b")]);
+      second.resolve([createTag("sample-b")]);
       await second.promise;
     });
     expect(screen.getByTestId("temporal-tags").textContent).toBe(
@@ -145,7 +145,7 @@ describe("useSampleTags", () => {
     );
 
     await act(async () => {
-      first.resolve([createTemporalTag("sample-a")]);
+      first.resolve([createTag("sample-a")]);
       await first.promise;
     });
     expect(screen.getByTestId("temporal-tags").textContent).toBe(
@@ -303,16 +303,16 @@ function createTagsClient(overrides: Partial<TagsClient> = {}): TagsClient {
   return {
     clearSampleTags: vi.fn(async () => 1),
     countDatasetTags: vi.fn(async () => ({})),
-    createSampleTags: vi.fn(async () => [createTemporalTag("created")]),
+    createSampleTags: vi.fn(async () => [createTag("created")]),
     deleteSampleTags: vi.fn(async () => 1),
     listDatasetTags: vi.fn(async () => []),
     listSampleTags: vi.fn(async () => []),
-    updateSampleTag: vi.fn(async () => createTemporalTag("updated")),
+    updateSampleTag: vi.fn(async () => createTag("updated")),
     ...overrides,
   };
 }
 
-function createTemporalTag(id: string): Tag {
+function createTag(id: string): Tag {
   return {
     end: 2,
     id,
