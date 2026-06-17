@@ -128,6 +128,9 @@ export const useScreenshot = (
             );
           }
         });
+      })
+      .catch((error) => {
+        console.error("Screenshot capture failed:", error);
       });
   }, [captureCallbacks, context, subscription]);
 
