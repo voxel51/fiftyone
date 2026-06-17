@@ -731,6 +731,7 @@ export class KeypointOverlay
     if (from && (from[0] !== to[0] || from[1] !== to[1])) {
       this.eventBus.dispatch("lighter:keypoint-point-moved", {
         id: this.id,
+        overlayId: this.id,
         pointId: entry.id,
         from: { x: from[0], y: from[1] },
         to: { x: to[0], y: to[1] },
@@ -786,6 +787,7 @@ export class KeypointOverlay
 
     this.eventBus.dispatch("lighter:keypoint-point-added", {
       id: this.id,
+      overlayId: this.id,
       pointId: entry.id,
       point: { x: position[0], y: position[1] },
       variant,
@@ -841,6 +843,7 @@ export class KeypointOverlay
 
     this.eventBus.dispatch("lighter:keypoint-point-added", {
       id: this.id,
+      overlayId: this.id,
       pointId: entry.id,
       point: { x: position[0], y: position[1] },
       variant,
@@ -881,6 +884,7 @@ export class KeypointOverlay
 
     this.eventBus.dispatch("lighter:keypoint-point-moved", {
       id: this.id,
+      overlayId: this.id,
       pointId,
       from: { x: from[0], y: from[1] },
       to: { x: to[0], y: to[1] },
@@ -950,6 +954,7 @@ export class KeypointOverlay
 
     this.eventBus.dispatch("lighter:keypoint-point-deleted", {
       id: this.id,
+      overlayId: this.id,
       pointId,
       variant,
     });

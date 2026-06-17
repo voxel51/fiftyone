@@ -1,4 +1,3 @@
-import { useUndoRedo } from "@fiftyone/commands";
 import {
   ClassificationIcon,
   DetectionIcon,
@@ -39,6 +38,7 @@ import { useDetectionMode } from "./Edit/useDetectionMode";
 import { usePolylineMode } from "./Edit/usePolylineMode";
 import { useSegmentationMode } from "./Edit/useSegmentationMode";
 import { useDeactivateAllModes } from "./useDeactivateAllModes";
+import { useEngineUndoRedo } from "./useEngineUndoRedo";
 
 const ActionsDiv = styled.div`
   align-items: center;
@@ -201,12 +201,8 @@ const Classification = () => {
 };
 
 const Detection = () => {
-  const {
-    activateDetectionMode,
-    detectionModeActive,
-    disabled,
-    tooltip,
-  } = useDetectionMode();
+  const { activateDetectionMode, detectionModeActive, disabled, tooltip } =
+    useDetectionMode();
   const deactivateAll = useDeactivateAll();
 
   return (
@@ -260,12 +256,8 @@ const Segmentation = () => {
 };
 
 const Polyline = () => {
-  const {
-    activatePolylineMode,
-    polylineModeActive,
-    disabled,
-    tooltip,
-  } = usePolylineMode();
+  const { activatePolylineMode, polylineModeActive, disabled, tooltip } =
+    usePolylineMode();
   const deactivateAll = useDeactivateAll();
 
   return (
@@ -293,11 +285,38 @@ const Polyline = () => {
   );
 };
 
+// Terse newest-first stack dump so each undo/redo entry traces to its gesture.
+// Left-anchored because the monospace multi-line content is wider than a label.
+const HistoryTooltip = ({
+  title,
+  entries,
+}: {
+  title: string;
+  entries: string[];
+}) => (
+  <div style={{ maxWidth: 380, fontFamily: "monospace", fontSize: 11 }}>
+    <div style={{ fontWeight: 700, marginBottom: 4 }}>{title}</div>
+    {entries.length === 0 ? (
+      <div>(empty)</div>
+    ) : (
+      entries.map((entry, index) => (
+        <div key={index}>
+          {index + 1}. {entry}
+        </div>
+      ))
+    )}
+  </div>
+);
+
 export const Undo = () => {
-  const { undo, undoEnabled } = useUndoRedo();
+  const { undo, undoEnabled, undoStack } = useEngineUndoRedo();
 
   return (
-    <Tooltip anchor={Anchor.Top} content={<Text>Undo</Text>} portal>
+    <Tooltip
+      anchor={Anchor.Left}
+      content={<HistoryTooltip title="Undo" entries={undoStack} />}
+      portal
+    >
       <Round
         onClick={undo}
         className={undoEnabled ? "" : "disabled"}
@@ -310,10 +329,14 @@ export const Undo = () => {
 };
 
 export const Redo = () => {
-  const { redo, redoEnabled } = useUndoRedo();
+  const { redo, redoEnabled, redoStack } = useEngineUndoRedo();
 
   return (
-    <Tooltip anchor={Anchor.Top} content={<Text>Redo</Text>} portal>
+    <Tooltip
+      anchor={Anchor.Left}
+      content={<HistoryTooltip title="Redo" entries={redoStack} />}
+      portal
+    >
       <Round
         onClick={redo}
         className={redoEnabled ? "" : "disabled"}

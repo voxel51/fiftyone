@@ -40,8 +40,8 @@ export const useSetEditingToNewPolyline = () => {
       if (!transformData.segments || transformData.segments.length === 0)
         return;
 
-      // If what we already have in sidebar is same as the new label, don't do anything
-      // Because it'll be handled by reverse sync and useSetEditingToExisting3dLabel
+      // If what we already have in sidebar is same as the new label, don't do
+      // anything — the reverse sync and the anchor binding handle it
       if (readEditing().selected?.label.data._id === labelId) {
         return;
       }
@@ -92,7 +92,9 @@ export const useSetEditingToNewPolyline = () => {
             }
           },
         },
-      });
+        // 3D polyline overlay is an object-based stub, not a Lighter overlay
+        // class — the shapes diverge, same as the cuboid path.
+      } as unknown as fos.AnnotationLabel);
 
       select(currentEditingPolylineAtom);
       // The staged data includes the in-progress points3d; the "clean" saved

@@ -1,6 +1,13 @@
-import { useAnnotationEventBus } from "@fiftyone/annotation";
+import {
+  stripReservedLabelAttributes,
+  useActiveAnnotationSampleId,
+  useAnnotationEngine,
+} from "@fiftyone/annotation";
+import { usePushUndoable } from "@fiftyone/commands";
 import { expandPath, field } from "@fiftyone/state";
+import type { LabelData } from "@fiftyone/utilities";
 import { FLOAT_FIELD, INT_FIELD } from "@fiftyone/utilities";
+import { useAtom } from "jotai";
 import { isEqual } from "lodash";
 import { useCallback, useMemo, useRef } from "react";
 import { useRecoilCallback } from "recoil";
@@ -15,6 +22,7 @@ import {
 } from "./evaluateWhen";
 import { generatePrimitiveSchema } from "./schemaHelpers";
 import { useAnnotationContext } from "./useAnnotationContext";
+import { current } from "./useAnnotationContext/selectors";
 
 const useSchema = (readOnly: boolean) => {
   const { selected } = useAnnotationContext();
@@ -48,11 +56,13 @@ const useSchema = (readOnly: boolean) => {
 
   // Reruns only when the visible attribute set changes.
   return useMemo(() => {
-    const taxonomy = config?.applied_taxonomy;
+    const taxonomy = config?.applied_taxonomy as string | undefined;
     const properties: Record<string, SchemaType | undefined> = {
       label: generatePrimitiveSchema("label", {
         type: "str",
-        component: taxonomy ? "dropdown" : config?.component || "dropdown",
+        component: taxonomy
+          ? "dropdown"
+          : (config?.component as ComponentType) || "dropdown",
         values: taxonomy ? [] : config?.classes || [],
         taxonomy,
         readOnly: effectiveReadOnly,
@@ -111,7 +121,11 @@ const useParseFieldValue = () => {
 
 /**
  * Handles form changes: parses field types, clears values for attributes
- * whose visible entry changed, and dispatches the update event.
+ * whose visible entry changed, and commits the edit to the engine — the
+ * read-half reconciles the overlay and the list row; no events. The undo
+ * inverse (previous value + explicit nulls for keys this edit introduced)
+ * goes on the shared command stack, so Ctrl-Z ordering with geometry edits
+ * is preserved.
  *
  * Volatile atoms (config, data, overlay, field) are read via refs so that
  * the returned callback keeps a stable identity across data changes.
@@ -121,18 +135,25 @@ const useHandleSchemaChange = (readOnly: boolean) => {
   const config = selected?.schema ?? null;
   const data = selected?.data;
   const overlay = selected?.overlay;
-  const eventBus = useAnnotationEventBus();
-  const parseFieldValue = useParseFieldValue();
   const field = selected?.field ?? null;
+  const engine = useAnnotationEngine();
+  const sample = useActiveAnnotationSampleId();
+  const { createPushAndExec } = usePushUndoable();
+  const parseFieldValue = useParseFieldValue();
+  const [currentLabel, setCurrentLabel] = useAtom(current);
 
   const configRef = useRef(config);
   const dataRef = useRef(data);
   const overlayRef = useRef(overlay);
   const fieldRef = useRef(field);
+  const currentLabelRef = useRef(currentLabel);
+  const sampleRef = useRef(sample);
   configRef.current = config;
   dataRef.current = data;
   overlayRef.current = overlay;
   fieldRef.current = field;
+  currentLabelRef.current = currentLabel;
+  sampleRef.current = sample;
 
   return useCallback(
     async (changes: Record<string, unknown>) => {
@@ -186,15 +207,52 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         }
       }
 
-      if (isEqual(value, overlay.label)) return;
+      if (isEqual(value, data)) return;
 
-      eventBus.dispatch("annotation:sidebarValueUpdated", {
-        overlayId: overlay.id,
-        currentLabel: overlay.label as any,
-        value,
-      });
+      const ref = {
+        sample: sampleRef.current,
+        path: field,
+        instanceId: (data as { _id?: string })?._id ?? overlay.id,
+      };
+      const previous = engine.getLabel(ref) ?? (data as LabelData);
+
+      // explicit nulls for keys this edit introduced — the merge mutator
+      // would otherwise resurrect them on undo
+      const inverse: Record<string, unknown> = { ...previous };
+      for (const key of Object.keys(value)) {
+        if (!(key in inverse)) {
+          inverse[key] = null;
+        }
+      }
+
+      // Persist only true label data: a 3D draft's slot carries the working/
+      // overlay shape (type/isNew/color/path/sampleId), and committing those
+      // pollutes Sample — the write-half's `build3dLabel` strips the same set,
+      // so the idempotent guard would never match and the sync loops forever.
+      const persistableValue = stripReservedLabelAttributes(
+        value as Record<string, unknown>
+      );
+      const persistableInverse = stripReservedLabelAttributes(inverse);
+
+      createPushAndExec(
+        `update-label-${ref.instanceId}-${Date.now()}`,
+        () => engine.updateLabel(ref, persistableValue as Partial<LabelData>),
+        () => engine.updateLabel(ref, persistableInverse as Partial<LabelData>)
+      );
+
+      // the anchor binding rewrites `editing` only for committed labels —
+      // a DRAFT's slot is surface-owned, so the form keeps it in sync
+      // itself (last-used-class tracking and exit policy read it)
+      const live = currentLabelRef.current;
+
+      if (live?.isNew) {
+        setCurrentLabel({
+          ...live,
+          data: value as typeof live.data,
+        } as NonNullable<typeof live>);
+      }
     },
-    [eventBus, parseFieldValue, readOnly]
+    [createPushAndExec, engine, parseFieldValue, readOnly, setCurrentLabel]
   );
 };
 

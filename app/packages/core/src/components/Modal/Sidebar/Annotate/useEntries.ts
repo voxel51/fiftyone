@@ -1,21 +1,96 @@
+import {
+  useActiveAnnotationSampleId,
+  useAnnotationEngine,
+  useEngineSelector,
+} from "@fiftyone/annotation";
 import { EntryKind, type SidebarEntry } from "@fiftyone/state";
-import { getDefaultStore, useAtomValue } from "jotai";
+import { LabelType } from "@fiftyone/utilities";
+import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { LABELS_GROUP_NAME, labelsExpanded } from "./GroupEntry";
 import { visibleLabelSchemas } from "./state";
-import { LabelsState, labelAtoms, labelsState } from "./useLabels";
+import { useAnnotationLabelsReady } from "./useLabels";
 import usePrimitiveEntries from "./usePrimitiveEntries";
-const store = getDefaultStore();
 
+type LabelRow = { id: string; path: string };
+
+const sameRows = (a: LabelRow[] | null, b: LabelRow[] | null): boolean => {
+  if (a === b) {
+    return true;
+  }
+
+  if (a === null || b === null) {
+    return a === b;
+  }
+
+  return (
+    a.length === b.length &&
+    a.every(
+      (row, index) => row.id === b[index].id && row.path === b[index].path
+    )
+  );
+};
+
+/**
+ * The sidebar label rows, derived directly from the annotation engine — one row
+ * per in-scope engine label, ordered by field then label name. Returns `null`
+ * while the engine isn't ready yet (loading gate); an empty array once ready
+ * with no labels (empty state). Rows carry a `{id, path}` ref, not a mirror
+ * atom — {@link LabelEntry} reads the label per-component by ref.
+ */
 const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
-  const atoms = useAtomValue(labelAtoms);
+  const engine = useAnnotationEngine();
   const activeFields = useAtomValue(visibleLabelSchemas);
-  const state = useAtomValue(labelsState);
-  const primitiveEntries = usePrimitiveEntries(activeFields || []);
+  const sampleId = useActiveAnnotationSampleId();
+  const ready = useAnnotationLabelsReady();
   const expanded = useAtomValue(labelsExpanded);
+  const primitiveEntries = usePrimitiveEntries(activeFields || []);
+
+  const rows = useEngineSelector(
+    engine,
+    (e): LabelRow[] | null => {
+      if (!ready) {
+        return null;
+      }
+
+      const byField: Record<string, Array<{ id: string; label: string }>> = {};
+
+      for (const path of activeFields) {
+        if (e.getLabelType(path) === LabelType.Unknown) {
+          continue;
+        }
+
+        for (const data of e.listLabels({ sample: sampleId, path })) {
+          (byField[path] ??= []).push({
+            id: data._id,
+            label: (data.label as string) ?? "",
+          });
+        }
+      }
+
+      const result: LabelRow[] = [];
+      for (const path of activeFields) {
+        const fieldRows = byField[path];
+        if (!fieldRows?.length) {
+          continue;
+        }
+
+        // field -> label -> id, so equal-label rows have a stable order
+        fieldRows.sort(
+          (a, b) => a.label.localeCompare(b.label) || a.id.localeCompare(b.id)
+        );
+        for (const { id } of fieldRows) {
+          result.push({ id, path });
+        }
+      }
+
+      return result;
+    },
+    sameRows
+  );
 
   const entries = useMemo(() => {
-    if (state !== LabelsState.COMPLETE) {
+    if (rows === null) {
       return [{ kind: EntryKind.LOADING }] as SidebarEntry[];
     }
 
@@ -23,45 +98,16 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
       return [];
     }
 
-    const labelsByField: Record<
-      string,
-      Array<{ atom: typeof atoms[0]; id: string; label: string }>
-    > = {};
-
-    for (const atomItem of atoms) {
-      const labelData = store.get(atomItem);
-      const field = labelData.path;
-      if (!labelsByField[field]) {
-        labelsByField[field] = [];
-      }
-      labelsByField[field].push({
-        atom: atomItem,
-        id: labelData.overlay.id,
-        label: labelData.data?.label ?? "",
-      });
-    }
-
-    for (const field in labelsByField) {
-      labelsByField[field].sort((a, b) => a.label.localeCompare(b.label));
-    }
-
-    const result: SidebarEntry[] = [];
-    const fieldsToShow = activeFields ?? Object.keys(labelsByField);
-    for (const field of fieldsToShow) {
-      const fieldLabels = labelsByField[field];
-      if (!fieldLabels?.length) continue;
-
-      for (const { atom, id } of fieldLabels) {
-        result.push({ kind: EntryKind.LABEL, atom, id });
-      }
-    }
-
-    if (result.length === 0) {
+    if (rows.length === 0) {
       return [{ kind: EntryKind.EMPTY_ANNOTATIONS }] as SidebarEntry[];
     }
 
-    return result as SidebarEntry[];
-  }, [atoms, activeFields, state, expanded]);
+    return rows.map(({ id, path }) => ({
+      kind: EntryKind.LABEL,
+      id,
+      path,
+    })) as SidebarEntry[];
+  }, [rows, expanded]);
 
   return [
     [

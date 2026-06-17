@@ -1,9 +1,16 @@
-import {
-  ClassificationsParent,
-  DetectionsParent,
-  PolylinesParent,
-} from "../deltas";
+import type { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
+import type { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
+import type { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
 import type { ProviderError } from "../providers";
+
+/** Helper type representing a `fo.Polylines`-like element. */
+type PolylinesParent = { polylines: PolylineLabel[] };
+
+/** Helper type representing a `fo.Detections`-like element. */
+type DetectionsParent = { detections: DetectionLabel[] };
+
+/** Helper type representing a `fo.Classifications`-like element. */
+type ClassificationsParent = { classifications: ClassificationLabel[] };
 
 /**
  * The category of annotation work an agent can perform.

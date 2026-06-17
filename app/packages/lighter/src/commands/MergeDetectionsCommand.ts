@@ -9,7 +9,7 @@ import type { PaintStrokeData } from "../overlay/MaskCanvas";
 export interface MergeDetectionsCommandDeps {
   /** Persists deletion of the source label to the backend. */
   deleteSource: () => void | Promise<void>;
-  /** Re-adds the source overlay to the scene (does not re-persist). */
+  /** Restores the source label; overlay/row hydration follows from it. */
   restoreSource: () => void | Promise<void>;
 }
 

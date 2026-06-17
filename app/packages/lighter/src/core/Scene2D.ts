@@ -1118,6 +1118,7 @@ export class Scene2D {
 
     this.eventBus.dispatch("lighter:overlay-added", {
       id: overlay.id,
+      overlayId: overlay.id,
       overlay,
     });
   }

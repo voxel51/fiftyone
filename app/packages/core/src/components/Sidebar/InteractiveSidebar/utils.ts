@@ -232,7 +232,7 @@ export const getEntryKey = (entry: fos.SidebarEntry) => {
   }
 
   if (entry.kind === fos.EntryKind.LABEL) {
-    return `label-${entry.atom.toString()}`;
+    return `label-${entry.id}`;
   }
 
   if (entry.kind === fos.EntryKind.LOADING) {

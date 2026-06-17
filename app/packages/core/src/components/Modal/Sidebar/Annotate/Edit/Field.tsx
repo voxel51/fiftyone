@@ -1,24 +1,25 @@
-import { DeleteAnnotationCommand, getFieldSchema } from "@fiftyone/annotation";
-import { useCommandBus } from "@fiftyone/command-bus";
+import {
+  useActiveAnnotationSampleId,
+  useAnnotationEngine,
+} from "@fiftyone/annotation";
 import {
   DelegatingUndoable,
   KnownContexts,
   useCreateCommand,
 } from "@fiftyone/commands";
 import { useIsWorkingInitialized } from "@fiftyone/looker-3d";
-import {
-  isPatchesView,
-  useModalSampleSchema,
-  useUnboundStateRef,
-} from "@fiftyone/state";
+import { isPatchesView, useUnboundStateRef } from "@fiftyone/state";
+import type { LabelData } from "@fiftyone/utilities";
 import { useCallback, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import AddSchema from "./AddSchema";
 import {
+  type LabelType,
   useAnnotationContext,
   useAnnotationFields,
 } from "./useAnnotationContext";
+import { buildNewLabelData } from "./useAnnotationContext/createNew";
 
 const createSchema = (
   choices: string[],
@@ -60,8 +61,8 @@ const Field = () => {
     () => createSchema(fields, disabled, isPatches),
     [disabled, fields, isPatches]
   );
-  const modalSampleSchema = useModalSampleSchema();
-  const commandBus = useCommandBus();
+  const engine = useAnnotationEngine();
+  const sampleId = useActiveAnnotationSampleId();
   const nextFieldValue = useRef(currentFieldValue);
   const labelId = currentLabel?.overlay?.id;
   const currentLabelRef = useUnboundStateRef(currentLabel);
@@ -72,36 +73,48 @@ const Field = () => {
     KnownContexts.ModalAnnotate,
     `update-${labelId}-field`,
     useCallback(() => {
-      const currentField = currentFieldValue as string;
+      const oldField = currentFieldValue as string;
       const newField = nextFieldValue.current as string;
+
+      // Capture the moved label up front so execute/undo don't depend on the
+      // live selection — the label may be deselected before an undo, which
+      // would otherwise leave `current` null and skip the re-add.
+      const movedLabel = currentLabelRef.current;
+      const id = movedLabel?.data?._id;
+      const source = movedLabel?.data;
+
+      // Atomic move between fields, ALL through the engine: remove from one
+      // field and upsert at the other in a single transaction (one coalesced
+      // change → one autosave patch). The upsert preserves `_id`, so the
+      // label keeps its identity. The Lighter bridge's read-half re-homes the
+      // overlay off the engine change — the sidebar never touches Lighter.
+      const move = (from: string, to: string) => {
+        if (!id || !source) return;
+
+        const scoped = engine.scope(sampleId);
+        engine.transaction(() => {
+          scoped.deleteLabel({ path: from, instanceId: id });
+          scoped.updateLabel({ path: to, instanceId: id }, {
+            ...buildNewLabelData(to, (source as { _cls: LabelType })._cls, {
+              id,
+            }),
+            ...source,
+          } as Partial<LabelData>);
+        });
+
+        // Best-effort sidebar sync; no-ops when the label isn't selected.
+        setCurrentField(to);
+      };
 
       return new DelegatingUndoable(
         `update-${labelId}-field-action`,
-        // stage mutation on execute
-        async () => {
-          const currentLabel = currentLabelRef.current;
-          const fieldSchema = getFieldSchema(modalSampleSchema, currentField);
-          if (!currentLabel || !fieldSchema) return;
-          await commandBus.execute(
-            new DeleteAnnotationCommand(currentLabel, fieldSchema)
-          );
-          setCurrentField(newField);
-        },
-        // restore original value on undo
-        async () => {
-          const currentLabel = currentLabelRef.current;
-          const fieldSchema = getFieldSchema(modalSampleSchema, newField);
-          if (!currentLabel || !fieldSchema) return;
-          await commandBus.execute(
-            new DeleteAnnotationCommand(currentLabel, fieldSchema)
-          );
-          setCurrentField(currentField);
-        }
+        () => move(oldField, newField),
+        () => move(newField, oldField)
       );
     }, [
-      modalSampleSchema,
       currentLabelRef,
-      commandBus,
+      engine,
+      sampleId,
       setCurrentField,
       labelId,
       currentFieldValue,

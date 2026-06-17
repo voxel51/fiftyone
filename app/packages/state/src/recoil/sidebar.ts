@@ -41,7 +41,6 @@ import {
   VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";
-import type { PrimitiveAtom } from "jotai";
 import type { VariablesOf } from "react-relay";
 import { commitMutation } from "react-relay";
 import {
@@ -188,8 +187,8 @@ export interface PrimitiveValue {
 
 export interface LabelEntry {
   kind: EntryKind.LABEL;
-  atom: PrimitiveAtom<AnnotationLabel>;
   id: string;
+  path: string;
 }
 
 export interface LoadingEntry {

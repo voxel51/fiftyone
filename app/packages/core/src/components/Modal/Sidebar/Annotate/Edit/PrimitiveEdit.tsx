@@ -1,13 +1,10 @@
-import {
-  SampleMutationManager,
-  useSampleMutationManager,
-} from "@fiftyone/annotation";
+import { useSampleInstance, useSampleSelector } from "@fiftyone/annotation";
 import {
   DelegatingUndoable,
   KnownContexts,
   useCreateCommand,
 } from "@fiftyone/commands";
-import { isNullish, Primitive } from "@fiftyone/utilities";
+import { isNullish, Primitive, Sample } from "@fiftyone/utilities";
 import { Orientation, Stack } from "@voxel51/voodo";
 import { useCallback, useEffect, useRef, useState } from "react";
 import PrimitiveRenderer from "./PrimitiveRenderer";
@@ -29,8 +26,8 @@ export default function PrimitiveEdit({
 }: PrimitiveEditProps) {
   const { type } = currentLabelSchema;
 
-  const sampleMutationManager = useSampleMutationManager();
-  const value = sampleMutationManager.getPathValue(path);
+  const sample = useSampleInstance();
+  const value = useSampleSelector((s) => s.getResolved<Primitive>(path));
 
   const primitiveSchema = generatePrimitiveSchema(path, currentLabelSchema);
 
@@ -55,7 +52,7 @@ export default function PrimitiveEdit({
     useCallback(() => {
       const oldValue = value;
       const newValue = transientFieldValue.current;
-      const isAddOperation = isAdd(path, sampleMutationManager);
+      const isAddOperation = isAdd(path, sample);
 
       return new DelegatingUndoable(
         `primitive-edit-${path}-action`,
@@ -63,16 +60,14 @@ export default function PrimitiveEdit({
         () => {
           try {
             const serializedValue = serializeFieldValue(newValue, type);
-            let op = "mutate";
-            if (isAddOperation) {
-              op = "add";
-            } else if (isNullish(serializedValue) || serializedValue === "") {
-              op = "delete";
+            if (
+              !isAddOperation &&
+              (isNullish(serializedValue) || serializedValue === "")
+            ) {
+              sample.deleteField(path);
+            } else {
+              sample.setField(path, serializedValue);
             }
-            sampleMutationManager.stageMutation(path, {
-              data: serializedValue,
-              op,
-            });
           } catch (err) {
             console.warn("unparseable value", newValue);
           }
@@ -85,13 +80,14 @@ export default function PrimitiveEdit({
             oldValueSerialized = serializeDatabaseDateValue(oldValue);
           }
 
-          sampleMutationManager.stageMutation(path, {
-            data: oldValueSerialized,
-            op: isAddOperation && !hasOldValue ? "delete" : "mutate",
-          });
+          if (isAddOperation && !hasOldValue) {
+            sample.deleteField(path);
+          } else {
+            sample.setField(path, oldValueSerialized);
+          }
         }
       );
-    }, [path, sampleMutationManager, type, value]),
+    }, [path, sample, type, value]),
     () => true
   );
 
@@ -119,9 +115,9 @@ export default function PrimitiveEdit({
   );
 }
 
-function isAdd(path: string, sampleMutationManager: SampleMutationManager) {
+function isAdd(path: string, sample: Sample) {
   if (!path.includes(".")) return false;
   const parentPath = path.split(".").slice(0, -1).join(".");
-  const parentValue = sampleMutationManager.getPathValue(parentPath);
+  const parentValue = sample.getResolved(parentPath);
   return isNullish(parentValue);
 }

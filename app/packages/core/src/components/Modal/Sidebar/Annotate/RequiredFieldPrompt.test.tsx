@@ -24,17 +24,21 @@ vi.mock("./useDeactivateAllModes", () => ({
   useDeactivateAllModes: () => vi.fn(),
 }));
 
-vi.mock("./useAnnotationContextManager", async (importOriginal) => {
-  const actual = await importOriginal<
-    typeof import("./useAnnotationContextManager")
-  >();
-  return {
-    ...actual,
-    useAnnotationContextManager: vi.fn(() => ({
-      activateField: mockActivateField,
-    })),
-  };
-});
+// no importOriginal here: the real module's import graph cycles back into
+// this mock (useSave → @fiftyone/annotation → useAnnotationController →
+// this module), and awaiting the original inside the factory deadlocks
+// vite-node. Component and test both read InitializationStatus from this
+// mock, so the stub values only need to be self-consistent.
+vi.mock("./useAnnotationContextManager", () => ({
+  InitializationStatus: {
+    InsufficientPermissions: 0,
+    ServerError: 1,
+    Success: 2,
+  },
+  useAnnotationContextManager: vi.fn(() => ({
+    activateField: mockActivateField,
+  })),
+}));
 
 vi.mock("@fiftyone/state", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@fiftyone/state")>();
