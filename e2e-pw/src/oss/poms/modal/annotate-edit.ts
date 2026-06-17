@@ -30,6 +30,44 @@ export class ModalAnnotateEditPom {
   }
 
   /**
+   * The back button that exits the edit form to the label list
+   */
+  get backButton() {
+    return this.locator.getByTestId("annotate-edit-back");
+  }
+
+  /**
+   * Exit the edit form back to the label list (deselects the active label)
+   */
+  async exitToList() {
+    await this.backButton.click();
+  }
+
+  /**
+   * Open the per-label hamburger ("more") menu in the edit form header
+   */
+  async openLabelMenu() {
+    await this.locator.getByTestId("label-menu-trigger").click();
+  }
+
+  /**
+   * Add an (empty) mask to the currently-edited detection via the label menu.
+   * The MUI menu renders in a document-level portal, so target it off `page`.
+   */
+  async addMask() {
+    await this.openLabelMenu();
+    await this.page.getByTestId("label-menu-add-mask").click();
+  }
+
+  /**
+   * Remove the mask from the currently-edited detection via the label menu.
+   */
+  async removeMask() {
+    await this.openLabelMenu();
+    await this.page.getByTestId("label-menu-remove-mask").click();
+  }
+
+  /**
    * Click the undo button
    */
   async undo() {
@@ -108,6 +146,21 @@ export class ModalAnnotateEditPom {
   async setFieldValue(field: string, value: string) {
     const locator = await this.getField(field);
     await locator.fill(value);
+  }
+
+  /**
+   * Select a choice from a SmartForm select field, e.g. the label class. The
+   * SmartForm widget renders a voodo `Select` (a Headless UI combobox): click the
+   * combobox trigger, then the option. The options list mounts in a document-level
+   * portal, so the option is targeted off `page`, not the field container.
+   *
+   * @param path The field path (e.g. "label")
+   * @param choice The visible choice label to select (e.g. "dog")
+   */
+  async selectFieldChoice(path: string, choice: string) {
+    const container = this.getFieldContainer(path);
+    await container.getByRole("combobox").click();
+    await this.page.getByRole("option", { name: choice }).click();
   }
 }
 
