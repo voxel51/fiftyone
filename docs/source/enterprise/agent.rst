@@ -108,8 +108,8 @@ selected. For example:
 **Model names, always prefix with the provider slug**
 
 Use the model identifier your gateway provides, prefixed with the provider
-slug. The prefix tells the Agent which request format to use and is stripped
-before the name reaches your gateway:
+slug. The prefix prevents the model ID from being misrouted to a cloud
+provider instead of your gateway, and is stripped before the name is sent:
 
 .. code-block:: text
 
