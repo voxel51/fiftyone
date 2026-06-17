@@ -1,6 +1,6 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createTemporalTagsClient } from "./client";
+import { createTagsClient } from "./client";
 import type {
   TemporalTag,
   TemporalTagCreate,
@@ -212,7 +212,7 @@ function errorMessage(error: unknown) {
 }
 
 function getDefaultTemporalTagsClient() {
-  defaultTemporalTagsClient ??= createTemporalTagsClient();
+  defaultTemporalTagsClient ??= createTagsClient();
 
   return defaultTemporalTagsClient;
 }

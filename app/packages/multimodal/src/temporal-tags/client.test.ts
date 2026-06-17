@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createTemporalTagsClient } from "./client";
+import { createTagsClient } from "./client";
 
 type FetchConfig = {
   readonly body?: unknown;
@@ -7,10 +7,10 @@ type FetchConfig = {
   readonly path: string;
 };
 
-describe("createTemporalTagsClient", () => {
+describe("createTagsClient", () => {
   it("builds canonical route paths for every operation", async () => {
     const fetchFunction = createFetch(responseForRoute);
-    const client = createTemporalTagsClient({
+    const client = createTagsClient({
       fetchFunction: fetchFunction as never,
     });
 
@@ -56,7 +56,7 @@ describe("createTemporalTagsClient", () => {
 
   it("serializes repeated filter query params", async () => {
     const fetchFunction = createFetch({ temporal_tags: [] });
-    const client = createTemporalTagsClient({
+    const client = createTagsClient({
       fetchFunction: fetchFunction as never,
     });
 
@@ -88,7 +88,7 @@ describe("createTemporalTagsClient", () => {
     const fetchFunction = createFetch({
       temporal_tags: [createTemporalTagDto()],
     });
-    const client = createTemporalTagsClient({
+    const client = createTagsClient({
       fetchFunction: fetchFunction as never,
     });
 
@@ -133,7 +133,7 @@ describe("createTemporalTagsClient", () => {
     const fetchFunction = createFetch({
       temporal_tag: createTemporalTagDto({ end: 15, tag: "moved" }),
     });
-    const client = createTemporalTagsClient({
+    const client = createTagsClient({
       fetchFunction: fetchFunction as never,
     });
 
@@ -161,7 +161,7 @@ describe("createTemporalTagsClient", () => {
 
   it("supports deleting explicit temporal tag ids", async () => {
     const fetchFunction = createFetch({ deleted: 2 });
-    const client = createTemporalTagsClient({
+    const client = createTagsClient({
       fetchFunction: fetchFunction as never,
     });
 
@@ -180,7 +180,7 @@ describe("createTemporalTagsClient", () => {
 
   it("supports clearing all sample tags with an optional filter", async () => {
     const fetchFunction = createFetch({ deleted: 2 });
-    const client = createTemporalTagsClient({
+    const client = createTagsClient({
       fetchFunction: fetchFunction as never,
     });
 

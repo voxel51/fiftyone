@@ -1,7 +1,7 @@
 /**
  * Tag route client and React hooks.
  */
-export { createTemporalTagsClient } from "./client";
+export { createTagsClient } from "./client";
 export { useSampleRendererTemporalTags, useSampleTemporalTags } from "./hooks";
 export type { CreateTagsClientOptions } from "./client";
 export type {

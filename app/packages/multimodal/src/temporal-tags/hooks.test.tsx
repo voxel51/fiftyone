@@ -17,7 +17,7 @@ afterEach(() => {
 
 describe("useSampleTemporalTags", () => {
   it("stays idle without a sample scope", () => {
-    const client = createTemporalTagsClient();
+    const client = createTagsClient();
 
     render(
       <TemporalTagsHarness
@@ -30,7 +30,7 @@ describe("useSampleTemporalTags", () => {
   });
 
   it("loads sample temporal tags", async () => {
-    const client = createTemporalTagsClient({
+    const client = createTagsClient({
       listSampleTemporalTags: vi.fn(async () => [createTemporalTag("tag-a")]),
     });
 
@@ -57,7 +57,7 @@ describe("useSampleTemporalTags", () => {
   });
 
   it("refetches when the sample id or filter changes", async () => {
-    const client = createTemporalTagsClient({
+    const client = createTagsClient({
       listSampleTemporalTags: vi.fn(async ({ filter, sampleId }) => [
         createTemporalTag(`${sampleId}-${filter?.start ?? 0}`),
       ]),
@@ -102,7 +102,7 @@ describe("useSampleTemporalTags", () => {
   it("ignores stale async responses after a rerender", async () => {
     const first = deferred<readonly TemporalTag[]>();
     const second = deferred<readonly TemporalTag[]>();
-    const client = createTemporalTagsClient({
+    const client = createTagsClient({
       listSampleTemporalTags: vi.fn(({ sampleId }) =>
         sampleId === "sample-a" ? first.promise : second.promise
       ),
@@ -154,7 +154,7 @@ describe("useSampleTemporalTags", () => {
   });
 
   it("exposes mutation helpers and reloads after successful mutations", async () => {
-    const client = createTemporalTagsClient();
+    const client = createTagsClient();
     const createInput: TemporalTagCreate = {
       end: 2,
       start: 1,
@@ -222,7 +222,7 @@ describe("useSampleTemporalTags", () => {
   });
 
   it("surfaces client errors", async () => {
-    const client = createTemporalTagsClient({
+    const client = createTagsClient({
       listSampleTemporalTags: vi.fn(async () => {
         throw new Error("boom");
       }),
@@ -248,7 +248,7 @@ describe("useSampleTemporalTags", () => {
 
 describe("useSampleRendererTemporalTags", () => {
   it("derives the sample scope from a sample renderer context", async () => {
-    const client = createTemporalTagsClient();
+    const client = createTagsClient();
     const ctx = {
       dataset: { datasetId: "dataset-id" },
       sample: { sample: { _id: "sample-id" } },
@@ -299,7 +299,7 @@ function SampleRendererTemporalTagsHarness({
   return null;
 }
 
-function createTemporalTagsClient(
+function createTagsClient(
   overrides: Partial<TemporalTagsClient> = {}
 ): TemporalTagsClient {
   return {

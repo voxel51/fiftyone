@@ -56,7 +56,7 @@ export interface CreateTagsClientOptions {
 /**
  * Creates a typed client for the tag HTTP routes.
  */
-export function createTemporalTagsClient(
+export function createTagsClient(
   options: CreateTagsClientOptions = {}
 ): TemporalTagsClient {
   const fetchFunction = options.fetchFunction ?? getFetchFunctionExtended();
