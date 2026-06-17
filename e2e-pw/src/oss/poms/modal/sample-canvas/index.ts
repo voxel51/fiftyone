@@ -120,6 +120,14 @@ export class SampleCanvasPom {
     this.#mouseY = xy.y;
 
     if (cursor) {
+      // The cursor flag only updates on mouse events, so it can hold a stale
+      // value from a previous hover (e.g. a just-clicked sidebar button).
+      // Reset it so the gate below is only satisfied by a fresh hover-driven
+      // update at the target position — otherwise the click can fire before
+      // the canvas has rendered the element the test intends to hit.
+      await this.page.evaluate(() => {
+        window.__FO_PLAYWRIGHT_CURRENT_CURSOR = "";
+      });
       await expect(async () => {
         await this.page.mouse.move(xy.x, xy.y);
         await this.assert.hasCursor(cursor);
