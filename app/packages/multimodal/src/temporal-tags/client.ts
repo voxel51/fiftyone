@@ -1,6 +1,6 @@
 import { getFetchFunctionExtended } from "@fiftyone/utilities";
 import type {
-  ClearSampleTemporalTagsRequest,
+  ClearSampleTagsRequest,
   CountDatasetTemporalTagsRequest,
   CreateSampleTagsRequest,
   DeleteSampleTagsRequest,
@@ -42,7 +42,7 @@ type TagCountsResponseDto = {
   readonly counts: Readonly<Record<string, number>>;
 };
 
-type DeleteTemporalTagsResponseDto = {
+type DeleteTagsResponseDto = {
   readonly deleted: number;
 };
 
@@ -87,10 +87,10 @@ export function createTemporalTagsClient(
       datasetId,
       sampleId,
       filter,
-    }: ClearSampleTemporalTagsRequest) {
+    }: ClearSampleTagsRequest) {
       const response = await fetchFunction<
         ReturnType<typeof clearTemporalTagsDto>,
-        DeleteTemporalTagsResponseDto
+        DeleteTagsResponseDto
       >({
         body: clearTemporalTagsDto(filter),
         method: "DELETE",
@@ -124,7 +124,7 @@ export function createTemporalTagsClient(
     }: DeleteSampleTagsRequest) {
       const response = await fetchFunction<
         ReturnType<typeof deleteTemporalTagsDto>,
-        DeleteTemporalTagsResponseDto
+        DeleteTagsResponseDto
       >({
         body: deleteTemporalTagsDto(ids),
         method: "DELETE",

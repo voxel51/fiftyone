@@ -6,7 +6,7 @@ export { useSampleRendererTemporalTags, useSampleTemporalTags } from "./hooks";
 export type { CreateTagsClientOptions } from "./client";
 export type {
   CountDatasetTemporalTagsRequest,
-  ClearSampleTemporalTagsRequest,
+  ClearSampleTagsRequest,
   CreateSampleTagsRequest,
   DeleteSampleTagsRequest,
   ListDatasetTemporalTagsRequest,

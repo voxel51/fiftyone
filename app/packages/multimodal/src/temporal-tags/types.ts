@@ -74,7 +74,7 @@ export interface DeleteSampleTagsRequest extends SampleTagsRequest {
 }
 
 /** Request for clearing temporal tags for one sample. */
-export interface ClearSampleTemporalTagsRequest extends SampleTagsRequest {
+export interface ClearSampleTagsRequest extends SampleTagsRequest {
   readonly filter?: TemporalTagFilter;
 }
 
@@ -97,9 +97,7 @@ export interface TemporalTagsClient {
   createSampleTemporalTags(
     request: CreateSampleTagsRequest
   ): Promise<readonly TemporalTag[]>;
-  clearSampleTemporalTags(
-    request: ClearSampleTemporalTagsRequest
-  ): Promise<number>;
+  clearSampleTemporalTags(request: ClearSampleTagsRequest): Promise<number>;
   countDatasetTemporalTags(
     request: CountDatasetTemporalTagsRequest
   ): Promise<Readonly<Record<string, number>>>;
@@ -118,7 +116,8 @@ export interface TemporalTagsClient {
 /**
  * Hook options for sample-scoped tag loading.
  */
-export interface UseSampleTemporalTagsOptions extends Partial<SampleTagsRequest> {
+export interface UseSampleTemporalTagsOptions
+  extends Partial<SampleTagsRequest> {
   readonly client?: TemporalTagsClient;
   readonly filter?: TemporalTagFilter;
 }
