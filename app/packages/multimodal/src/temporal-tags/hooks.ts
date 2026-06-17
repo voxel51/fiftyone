@@ -23,7 +23,7 @@ const IDLE_STATE: TemporalTagsState = {
   status: "idle",
   temporalTags: [],
 };
-let defaultTemporalTagsClient: TagsClient | undefined;
+let defaultTagsClient: TagsClient | undefined;
 
 /**
  * Loads and mutates temporal tags for one dataset sample.
@@ -34,7 +34,7 @@ export function useSampleTemporalTags({
   filter,
   sampleId,
 }: UseSampleTagsOptions): UseSampleTagsResult {
-  const temporalTagsClient = client ?? getDefaultTemporalTagsClient();
+  const temporalTagsClient = client ?? getDefaultTagsClient();
   const filterKey = temporalTagFilterKey(filter);
   const [state, setState] = useState<TemporalTagsState>(IDLE_STATE);
   const mountedRef = useRef(true);
@@ -211,8 +211,8 @@ function errorMessage(error: unknown) {
   return String(error);
 }
 
-function getDefaultTemporalTagsClient() {
-  defaultTemporalTagsClient ??= createTagsClient();
+function getDefaultTagsClient() {
+  defaultTagsClient ??= createTagsClient();
 
-  return defaultTemporalTagsClient;
+  return defaultTagsClient;
 }
