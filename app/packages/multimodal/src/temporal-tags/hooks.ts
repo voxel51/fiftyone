@@ -102,7 +102,7 @@ export function useSampleTemporalTags({
   const create = useCallback(
     async (temporalTags: readonly TemporalTagCreate[]) => {
       const ids = requireSampleScope(datasetId, sampleId);
-      const created = await temporalTagsClient.createSampleTemporalTags({
+      const created = await temporalTagsClient.createSampleTags({
         ...ids,
         temporalTags,
       });

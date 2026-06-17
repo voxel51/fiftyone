@@ -18,7 +18,7 @@ describe("createTagsClient", () => {
       datasetId: "dataset-id",
       sampleId: "sample-id",
     });
-    await client.createSampleTemporalTags({
+    await client.createSampleTags({
       datasetId: "dataset-id",
       sampleId: "sample-id",
       temporalTags: [createTemporalTagInput()],
@@ -92,7 +92,7 @@ describe("createTagsClient", () => {
       fetchFunction: fetchFunction as never,
     });
 
-    const tags = await client.createSampleTemporalTags({
+    const tags = await client.createSampleTags({
       datasetId: "dataset-id",
       sampleId: "sample-id",
       temporalTags: [createTemporalTagInput()],

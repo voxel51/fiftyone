@@ -62,7 +62,7 @@ export function createTagsClient(
   const fetchFunction = options.fetchFunction ?? getFetchFunctionExtended();
 
   return {
-    async createSampleTemporalTags({
+    async createSampleTags({
       datasetId,
       sampleId,
       temporalTags,

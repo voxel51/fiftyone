@@ -94,7 +94,7 @@ export interface CountDatasetTagsRequest {
  * Client for the tag route surface.
  */
 export interface TagsClient {
-  createSampleTemporalTags(
+  createSampleTags(
     request: CreateSampleTagsRequest
   ): Promise<readonly TemporalTag[]>;
   clearSampleTemporalTags(request: ClearSampleTagsRequest): Promise<number>;
