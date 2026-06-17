@@ -80,7 +80,7 @@ export function createTagsClient(
         )}/sample/${encodeURIComponent(sampleId)}/tags`,
       });
 
-      return response.response.temporal_tags.map(temporalTagFromDto);
+      return response.response.temporal_tags.map(tagFromDto);
     },
 
     async clearSampleTags({
@@ -142,7 +142,7 @@ export function createTagsClient(
         ),
       });
 
-      return response.response.temporal_tags.map(temporalTagFromDto);
+      return response.response.temporal_tags.map(tagFromDto);
     },
 
     async listSampleTags({
@@ -160,7 +160,7 @@ export function createTagsClient(
         ),
       });
 
-      return response.response.temporal_tags.map(temporalTagFromDto);
+      return response.response.temporal_tags.map(tagFromDto);
     },
 
     async updateSampleTag({
@@ -180,7 +180,7 @@ export function createTagsClient(
         )}/sample/${encodeURIComponent(sampleId)}/tags/${encodeURIComponent(tagId)}`,
       });
 
-      return temporalTagFromDto(response.response.temporal_tag);
+      return tagFromDto(response.response.temporal_tag);
     },
   };
 }
@@ -273,7 +273,7 @@ function filterDto(filter: TagFilter) {
   });
 }
 
-function temporalTagFromDto(dto: TagDto): Tag {
+function tagFromDto(dto: TagDto): Tag {
   return {
     anchor: dto.anchor,
     createdAt: dto.created_at,
