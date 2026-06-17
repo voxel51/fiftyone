@@ -254,7 +254,7 @@ describe("useSampleRendererTags", () => {
       sample: { sample: { _id: "sample-id" } },
     } as SampleRendererProps["ctx"];
 
-    render(<SampleRendererTemporalTagsHarness client={client} ctx={ctx} />);
+    render(<SampleRendererTagsHarness client={client} ctx={ctx} />);
 
     await waitFor(() => {
       expect(client.listSampleTags).toHaveBeenCalledWith({
@@ -287,7 +287,7 @@ function TemporalTagsHarness({
   );
 }
 
-function SampleRendererTemporalTagsHarness({
+function SampleRendererTagsHarness({
   client,
   ctx,
 }: {
