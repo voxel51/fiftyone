@@ -57,23 +57,23 @@ export interface ListSampleTagsRequest extends SampleTagsRequest {
   readonly filter?: TemporalTagFilter;
 }
 
-/** Request for creating temporal tags for one sample. */
+/** Request for creating tags for one sample. */
 export interface CreateSampleTagsRequest extends SampleTagsRequest {
   readonly temporalTags: readonly TemporalTagCreate[];
 }
 
-/** Request for updating one persisted temporal tag for one sample. */
+/** Request for updating one persisted tag for one sample. */
 export interface UpdateSampleTagRequest extends SampleTagsRequest {
   readonly temporalTagId: string;
   readonly update: TemporalTagUpdate;
 }
 
-/** Request for deleting persisted temporal tags by ID for one sample. */
+/** Request for deleting persisted tags by ID for one sample. */
 export interface DeleteSampleTagsRequest extends SampleTagsRequest {
   readonly ids: readonly string[];
 }
 
-/** Request for clearing temporal tags for one sample. */
+/** Request for clearing tags for one sample. */
 export interface ClearSampleTagsRequest extends SampleTagsRequest {
   readonly filter?: TemporalTagFilter;
 }
