@@ -6,11 +6,11 @@ import type {
   DeleteSampleTagsRequest,
   ListDatasetTagsRequest,
   ListSampleTagsRequest,
-  TagsClient,
+  TagFilter,
   TagUpdate,
+  TagsClient,
   TemporalTag,
   TemporalTagCreate,
-  TemporalTagFilter,
   UpdateSampleTagRequest,
 } from "./types";
 
@@ -193,14 +193,14 @@ export function createTagsClient(
   };
 }
 
-function withFilterQuery(path: string, filter: TemporalTagFilter | undefined) {
+function withFilterQuery(path: string, filter: TagFilter | undefined) {
   const params = filterQueryParams(filter);
   const queryString = params.toString();
 
   return queryString ? `${path}?${queryString}` : path;
 }
 
-function filterQueryParams(filter: TemporalTagFilter | undefined) {
+function filterQueryParams(filter: TagFilter | undefined) {
   const params = new URLSearchParams();
   if (!filter) {
     return params;
@@ -264,14 +264,14 @@ function deleteTemporalTagsDto(ids: readonly string[]) {
   return { ids };
 }
 
-function clearTemporalTagsDto(filter: TemporalTagFilter | undefined) {
+function clearTemporalTagsDto(filter: TagFilter | undefined) {
   return stripUndefined({
     delete_all: true,
     filter: filter ? filterDto(filter) : undefined,
   });
 }
 
-function filterDto(filter: TemporalTagFilter) {
+function filterDto(filter: TagFilter) {
   return stripUndefined({
     anchors: filter.anchors,
     end: filter.end,

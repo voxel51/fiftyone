@@ -2,11 +2,11 @@ import type { SampleRendererProps } from "@fiftyone/plugins";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createTagsClient } from "./client";
 import type {
+  TagFilter,
+  TagUpdate,
+  TagsClient,
   TemporalTag,
   TemporalTagCreate,
-  TemporalTagFilter,
-  TagsClient,
-  TagUpdate,
   TemporalTagsStatus,
   UseSampleTagsOptions,
   UseSampleTagsResult,
@@ -143,7 +143,7 @@ export function useSampleTemporalTags({
   );
 
   const clear = useCallback(
-    async (clearFilter?: TemporalTagFilter) => {
+    async (clearFilter?: TagFilter) => {
       const ids = requireSampleScope(datasetId, sampleId);
       const deleted = await temporalTagsClient.clearSampleTemporalTags({
         ...ids,
@@ -173,7 +173,7 @@ export function useSampleRendererTemporalTags(
   ctx: SampleRendererProps["ctx"],
   options: {
     readonly client?: TagsClient;
-    readonly filter?: TemporalTagFilter;
+    readonly filter?: TagFilter;
   } = {}
 ) {
   return useSampleTemporalTags({
@@ -195,7 +195,7 @@ function requireSampleScope(
   return { datasetId, sampleId };
 }
 
-function temporalTagFilterKey(filter: TemporalTagFilter | undefined) {
+function temporalTagFilterKey(filter: TagFilter | undefined) {
   if (!filter) {
     return "";
   }

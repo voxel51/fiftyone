@@ -4,7 +4,7 @@ import type { LoadStatus } from "../load-status";
 export type TemporalTagsStatus = LoadStatus;
 
 /** Filter for tag list/count/delete queries. */
-export interface TemporalTagFilter {
+export interface TagFilter {
   readonly anchors?: readonly string[];
   readonly end?: number;
   readonly indexType?: number;
@@ -54,7 +54,7 @@ export interface SampleTagsRequest {
 
 /** Request for listing tags for one sample. */
 export interface ListSampleTagsRequest extends SampleTagsRequest {
-  readonly filter?: TemporalTagFilter;
+  readonly filter?: TagFilter;
 }
 
 /** Request for creating tags for one sample. */
@@ -75,19 +75,19 @@ export interface DeleteSampleTagsRequest extends SampleTagsRequest {
 
 /** Request for clearing tags for one sample. */
 export interface ClearSampleTagsRequest extends SampleTagsRequest {
-  readonly filter?: TemporalTagFilter;
+  readonly filter?: TagFilter;
 }
 
 /** Request for listing tags across a dataset. */
 export interface ListDatasetTagsRequest {
   readonly datasetId: string;
-  readonly filter?: TemporalTagFilter;
+  readonly filter?: TagFilter;
 }
 
 /** Request for counting tag values across a dataset. */
 export interface CountDatasetTagsRequest {
   readonly datasetId: string;
-  readonly filter?: TemporalTagFilter;
+  readonly filter?: TagFilter;
 }
 
 /**
@@ -118,7 +118,7 @@ export interface TagsClient {
  */
 export interface UseSampleTagsOptions extends Partial<SampleTagsRequest> {
   readonly client?: TagsClient;
-  readonly filter?: TemporalTagFilter;
+  readonly filter?: TagFilter;
 }
 
 /**
@@ -128,7 +128,7 @@ export interface UseSampleTagsResult {
   readonly error: string | null;
   readonly status: TemporalTagsStatus;
   readonly temporalTags: readonly TemporalTag[];
-  readonly clear: (filter?: TemporalTagFilter) => Promise<number>;
+  readonly clear: (filter?: TagFilter) => Promise<number>;
   readonly create: (
     temporalTags: readonly TemporalTagCreate[]
   ) => Promise<readonly TemporalTag[]>;
