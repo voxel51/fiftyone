@@ -23,7 +23,7 @@ describe("createTagsClient", () => {
       sampleId: "sample-id",
       temporalTags: [createTemporalTagInput()],
     });
-    await client.updateSampleTemporalTag({
+    await client.updateSampleTag({
       datasetId: "dataset-id",
       sampleId: "sample-id",
       temporalTagId: "tag-id",
@@ -137,7 +137,7 @@ describe("createTagsClient", () => {
       fetchFunction: fetchFunction as never,
     });
 
-    const tag = await client.updateSampleTemporalTag({
+    const tag = await client.updateSampleTag({
       datasetId: "dataset-id",
       sampleId: "sample-id",
       temporalTagId: "temporal-tag-id",

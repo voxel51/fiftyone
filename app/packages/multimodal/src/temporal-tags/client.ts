@@ -169,7 +169,7 @@ export function createTagsClient(
       return response.response.temporal_tags.map(temporalTagFromDto);
     },
 
-    async updateSampleTemporalTag({
+    async updateSampleTag({
       datasetId,
       sampleId,
       temporalTagId,

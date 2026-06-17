@@ -116,7 +116,7 @@ export function useSampleTemporalTags({
   const update = useCallback(
     async (temporalTagId: string, update: TagUpdate) => {
       const ids = requireSampleScope(datasetId, sampleId);
-      const updated = await temporalTagsClient.updateSampleTemporalTag({
+      const updated = await temporalTagsClient.updateSampleTag({
         ...ids,
         temporalTagId,
         update,

@@ -108,9 +108,7 @@ export interface TagsClient {
   listSampleTags(
     request: ListSampleTagsRequest
   ): Promise<readonly TemporalTag[]>;
-  updateSampleTemporalTag(
-    request: UpdateSampleTagRequest
-  ): Promise<TemporalTag>;
+  updateSampleTag(request: UpdateSampleTagRequest): Promise<TemporalTag>;
 }
 
 /**
