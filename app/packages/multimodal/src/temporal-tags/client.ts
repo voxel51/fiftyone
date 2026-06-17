@@ -6,11 +6,11 @@ import type {
   DeleteSampleTagsRequest,
   ListDatasetTagsRequest,
   ListSampleTagsRequest,
+  TagCreate,
   TagFilter,
   TagUpdate,
   TagsClient,
   TemporalTag,
-  TemporalTagCreate,
   UpdateSampleTagRequest,
 } from "./types";
 
@@ -233,7 +233,7 @@ function appendValues(
   }
 }
 
-function temporalTagCreateDto(tag: TemporalTagCreate) {
+function temporalTagCreateDto(tag: TagCreate) {
   return stripUndefined({
     anchor: tag.anchor,
     created_by: tag.createdBy,

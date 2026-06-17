@@ -2,11 +2,11 @@ import type { SampleRendererProps } from "@fiftyone/plugins";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createTagsClient } from "./client";
 import type {
+  TagCreate,
   TagFilter,
   TagUpdate,
   TagsClient,
   TemporalTag,
-  TemporalTagCreate,
   TemporalTagsStatus,
   UseSampleTagsOptions,
   UseSampleTagsResult,
@@ -100,7 +100,7 @@ export function useSampleTemporalTags({
   }, []);
 
   const create = useCallback(
-    async (temporalTags: readonly TemporalTagCreate[]) => {
+    async (temporalTags: readonly TagCreate[]) => {
       const ids = requireSampleScope(datasetId, sampleId);
       const created = await temporalTagsClient.createSampleTags({
         ...ids,

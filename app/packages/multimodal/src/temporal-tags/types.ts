@@ -28,7 +28,7 @@ export interface TemporalTag {
 }
 
 /** Temporal tag payload accepted by sample-scoped create routes. */
-export interface TemporalTagCreate {
+export interface TagCreate {
   readonly end: number;
   readonly start: number;
   readonly tag: string;
@@ -59,7 +59,7 @@ export interface ListSampleTagsRequest extends SampleTagsRequest {
 
 /** Request for creating tags for one sample. */
 export interface CreateSampleTagsRequest extends SampleTagsRequest {
-  readonly temporalTags: readonly TemporalTagCreate[];
+  readonly temporalTags: readonly TagCreate[];
 }
 
 /** Request for updating one persisted tag for one sample. */
@@ -128,7 +128,7 @@ export interface UseSampleTagsResult {
   readonly temporalTags: readonly TemporalTag[];
   readonly clear: (filter?: TagFilter) => Promise<number>;
   readonly create: (
-    temporalTags: readonly TemporalTagCreate[]
+    temporalTags: readonly TagCreate[]
   ) => Promise<readonly TemporalTag[]>;
   readonly delete: (ids: readonly string[]) => Promise<number>;
   readonly reload: () => Promise<readonly TemporalTag[]>;

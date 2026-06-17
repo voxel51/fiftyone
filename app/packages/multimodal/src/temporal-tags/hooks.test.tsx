@@ -4,9 +4,9 @@ import { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useSampleRendererTags, useSampleTemporalTags } from "./hooks";
 import type {
+  TagCreate,
   TagsClient,
   TemporalTag,
-  TemporalTagCreate,
   UseSampleTagsOptions,
   UseSampleTagsResult,
 } from "./types";
@@ -155,7 +155,7 @@ describe("useSampleTemporalTags", () => {
 
   it("exposes mutation helpers and reloads after successful mutations", async () => {
     const client = createTagsClient();
-    const createInput: TemporalTagCreate = {
+    const createInput: TagCreate = {
       end: 2,
       start: 1,
       tag: "review",
