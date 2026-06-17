@@ -149,6 +149,30 @@ describe("bridge read-half", () => {
     expect(handles.get("d9")?.label.label).toBe("fox");
   });
 
+  it("a whole-sample reset reconciles even for a path-scoped bridge", () => {
+    // the reset sentinel carries the empty path, which a `paths` scope can never
+    // contain — it must bypass the path filter, or a scoped bridge (every modal
+    // bridge) leaves ghost handles after a post-persist echo
+    const { engine, store } = makeEngine("sample-1", {
+      ground_truth: { detections: [makeDet("d1", "cat")] },
+      predictions: { detections: [makeDet("p1", "dog")] },
+    });
+    const { handles, bridge, adapters } = makeFakeSurface();
+    bridge.paths = new Set(["ground_truth"]);
+    engine.registerBridge(bridge, adapters);
+
+    expect([...handles.keys()]).toEqual(["d1"]);
+
+    store.setData({
+      ground_truth: { detections: [makeDet("d2", "fox")] },
+      predictions: { detections: [makeDet("p1", "dog")] },
+    });
+
+    expect(handles.has("d1")).toBe(false); // dropped label unmounts (no ghost)
+    expect(handles.get("d2")?.label.label).toBe("fox"); // newcomer mounts
+    expect(handles.has("p1")).toBe(false); // out-of-scope stays out of scope
+  });
+
   it("a post-persist setData refresh keeps handles and selection", () => {
     const { engine, store } = makeEngine("sample-1", {
       ground_truth: {

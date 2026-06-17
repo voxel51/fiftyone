@@ -147,12 +147,20 @@ export const registerBridgeLoop = <Handle, Descriptor>(
     }
 
     for (const change of changes) {
-      if (!inScope(change.ref)) {
+      if (change.ref.sample !== bridge.sample) {
         continue;
       }
 
+      // A whole-sample reset (setData/clear) carries the empty-path sentinel, so
+      // it never satisfies the `paths` scope — test it BEFORE that filter, keyed
+      // on `sample` alone (§6.1). Otherwise a path-scoped bridge — every modal
+      // bridge — would drop the post-persist reconcile and leave stale handles.
       if (isWholeSampleReset(change)) {
         reconcile();
+        continue;
+      }
+
+      if (!inScope(change.ref)) {
         continue;
       }
 
