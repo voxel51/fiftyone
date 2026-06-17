@@ -30,7 +30,7 @@ type TagDto = {
   readonly last_modified_by?: string;
 };
 
-type TemporalTagsResponseDto = {
+type TagsResponseDto = {
   readonly temporal_tags: readonly TagDto[];
 };
 
@@ -69,7 +69,7 @@ export function createTemporalTagsClient(
     }: CreateSampleTagsRequest) {
       const response = await fetchFunction<
         { temporal_tags: readonly ReturnType<typeof temporalTagCreateDto>[] },
-        TemporalTagsResponseDto
+        TagsResponseDto
       >({
         body: {
           temporal_tags: temporalTags.map(temporalTagCreateDto),
@@ -143,7 +143,7 @@ export function createTemporalTagsClient(
       datasetId,
       filter,
     }: ListDatasetTemporalTagsRequest) {
-      const response = await fetchFunction<undefined, TemporalTagsResponseDto>({
+      const response = await fetchFunction<undefined, TagsResponseDto>({
         method: "GET",
         path: withFilterQuery(
           `/dataset/${encodeURIComponent(datasetId)}/tags`,
@@ -159,7 +159,7 @@ export function createTemporalTagsClient(
       sampleId,
       filter,
     }: ListSampleTagsRequest) {
-      const response = await fetchFunction<undefined, TemporalTagsResponseDto>({
+      const response = await fetchFunction<undefined, TagsResponseDto>({
         method: "GET",
         path: withFilterQuery(
           `/dataset/${encodeURIComponent(
