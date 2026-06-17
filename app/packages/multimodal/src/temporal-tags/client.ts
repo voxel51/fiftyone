@@ -16,7 +16,7 @@ import type {
 
 type TagsFetch = ReturnType<typeof getFetchFunctionExtended>;
 
-type TemporalTagDto = {
+type TagDto = {
   readonly end: number;
   readonly id: string;
   readonly index_type: number;
@@ -31,11 +31,11 @@ type TemporalTagDto = {
 };
 
 type TemporalTagsResponseDto = {
-  readonly temporal_tags: readonly TemporalTagDto[];
+  readonly temporal_tags: readonly TagDto[];
 };
 
 type TemporalTagResponseDto = {
-  readonly temporal_tag: TemporalTagDto;
+  readonly temporal_tag: TagDto;
 };
 
 type TemporalTagCountsResponseDto = {
@@ -284,7 +284,7 @@ function filterDto(filter: TemporalTagFilter) {
   });
 }
 
-function temporalTagFromDto(dto: TemporalTagDto): TemporalTag {
+function temporalTagFromDto(dto: TagDto): TemporalTag {
   return {
     anchor: dto.anchor,
     createdAt: dto.created_at,
