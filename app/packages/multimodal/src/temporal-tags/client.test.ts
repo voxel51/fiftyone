@@ -159,7 +159,7 @@ describe("createTagsClient", () => {
     expect(tag.tag).toBe("moved");
   });
 
-  it("supports deleting explicit temporal tag ids", async () => {
+  it("supports deleting a tag by its ID", async () => {
     const fetchFunction = createFetch({ deleted: 2 });
     const client = createTagsClient({
       fetchFunction: fetchFunction as never,
