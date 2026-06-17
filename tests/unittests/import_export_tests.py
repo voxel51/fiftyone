@@ -25,13 +25,14 @@ import eta.core.video as etav
 
 import fiftyone as fo
 import fiftyone.multimodal as fomm
+from fiftyone.multimodal.tags import TagKind
 import fiftyone.utils.coco as fouc
 import fiftyone.utils.image as foui
 import fiftyone.utils.labels as foul
 import fiftyone.utils.yolo as fouy
 from fiftyone import ViewField as F
 from fiftyone.multimodal.tags import (
-    TEMPORAL_TAGS_COLLECTION_NAME,
+    TAGS_COLLECTION_NAME,
     TEMPORAL_TAGS_EXPORT_FILENAME,
 )
 
@@ -40,7 +41,7 @@ from decorators import drop_collection, drop_datasets
 skipwindows = pytest.mark.skipif(
     os.name == "nt", reason="Windows hangs in workflows, fix me"
 )
-drop_temporal_tags = drop_collection(TEMPORAL_TAGS_COLLECTION_NAME)
+drop_tags = drop_collection(TAGS_COLLECTION_NAME)
 
 
 class ImageDatasetTests(unittest.TestCase):
@@ -172,7 +173,7 @@ class DuplicateImageExportTests(ImageDatasetTests):
 
 
 class TemporalTagsImportExportTests(ImageDatasetTests):
-    @drop_temporal_tags
+    @drop_tags
     @drop_datasets
     def test_fiftyone_dataset_temporal_tags_round_trip(self):
         dataset, sample_ids = self._make_temporal_tag_dataset()
@@ -195,6 +196,7 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
                 "start",
                 "end",
                 "tag",
+                "kind",
                 "created_at",
                 "last_modified_at",
             }
@@ -211,6 +213,7 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
                 set(doc.keys()),
                 expected_keys,
             )
+            self.assertEqual(doc["kind"], TagKind.TEMPORAL)
             self.assertIsInstance(doc["created_at"], str)
             self.assertIsInstance(doc["last_modified_at"], str)
 
@@ -278,7 +281,7 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
 
         self.assertFalse(os.path.isfile(tags_path))
 
-    @drop_temporal_tags
+    @drop_tags
     @drop_datasets
     def test_fiftyone_dataset_temporal_tags_view_export(self):
         dataset, sample_ids = self._make_temporal_tag_dataset()
@@ -305,7 +308,7 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
             {sample_ids[0], sample_ids[2]},
         )
 
-    @drop_temporal_tags
+    @drop_tags
     @drop_datasets
     def test_fiftyone_dataset_temporal_tags_max_samples(self):
         dataset, sample_ids = self._make_temporal_tag_dataset()
@@ -334,7 +337,7 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
             fomm.list_temporal_tags(dataset2)[0].created_by, "alice"
         )
 
-    @drop_temporal_tags
+    @drop_tags
     @drop_datasets
     def test_fiftyone_dataset_temporal_tags_nonempty_migration_import(self):
         dataset, _ = self._make_temporal_tag_dataset()
@@ -377,6 +380,7 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
                     "keep",
                     anchor="camera_front",
                     created_by="alice",
+                    kind=TagKind.TEMPORAL,
                 ),
                 fomm.TemporalTag(
                     sample_ids[1],
@@ -385,8 +389,15 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
                     "drop",
                     anchor="lidar_top",
                     last_modified_by="carol",
+                    kind=TagKind.TEMPORAL,
                 ),
-                fomm.TemporalTag(sample_ids[2], 20, 30, "keep"),
+                fomm.TemporalTag(
+                    sample_ids[2],
+                    20,
+                    30,
+                    "keep",
+                    kind=TagKind.TEMPORAL,
+                ),
             ],
         )
 
@@ -396,6 +407,7 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
         return [
             (
                 tag.sample_id,
+                tag.kind,
                 tag.index_type,
                 tag.anchor,
                 tag.start,
