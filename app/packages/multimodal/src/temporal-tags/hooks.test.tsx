@@ -7,7 +7,7 @@ import type {
   TemporalTag,
   TemporalTagCreate,
   TemporalTagsClient,
-  UseSampleTemporalTagsOptions,
+  UseSampleTagsOptions,
   UseSampleTemporalTagsResult,
 } from "./types";
 
@@ -271,7 +271,7 @@ function TemporalTagsHarness({
   options,
 }: {
   readonly onState?: (state: UseSampleTemporalTagsResult) => void;
-  readonly options: UseSampleTemporalTagsOptions;
+  readonly options: UseSampleTagsOptions;
 }) {
   const state = useSampleTemporalTags(options);
 

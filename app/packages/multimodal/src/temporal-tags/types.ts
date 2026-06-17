@@ -116,8 +116,7 @@ export interface TemporalTagsClient {
 /**
  * Hook options for sample-scoped tag loading.
  */
-export interface UseSampleTemporalTagsOptions
-  extends Partial<SampleTagsRequest> {
+export interface UseSampleTagsOptions extends Partial<SampleTagsRequest> {
   readonly client?: TemporalTagsClient;
   readonly filter?: TemporalTagFilter;
 }
