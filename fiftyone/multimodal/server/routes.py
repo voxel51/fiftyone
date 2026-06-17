@@ -12,7 +12,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 import fiftyone.multimodal.tags as fomt
-from fiftyone.multimodal.tags._temporal_tags import TemporalTagNotFoundError
+from fiftyone.core.tags import TemporalTagNotFoundError
 from fiftyone.multimodal.query import (
     resolve_playback_plan,
     resolve_scene_inventory,

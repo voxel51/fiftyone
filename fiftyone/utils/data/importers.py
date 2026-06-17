@@ -48,7 +48,7 @@ from .parsers import (
     FiftyOneVideoLabelsSampleParser,
 )
 
-fommtt = fou.lazy_import("fiftyone.multimodal.tags._temporal_tags")
+fota = fou.lazy_import("fiftyone.core.tags")
 
 logger = logging.getLogger(__name__)
 
@@ -1833,7 +1833,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._runs_dir = os.path.join(self.dataset_dir, "runs")
         self._metadata_path = os.path.join(self.dataset_dir, "metadata.json")
         self._tags_path = os.path.join(
-            self.dataset_dir, fommtt.TAGS_EXPORT_FILENAME
+            self.dataset_dir, fota.TAGS_EXPORT_FILENAME
         )
 
         if os.path.isdir(self._fields_dir):
@@ -1880,7 +1880,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 dataset, dataset_dict, tags=tags, progress=progress
             )
 
-        fommtt.import_tags(
+        fota.import_tags(
             dataset,
             self._tags_path,
             sample_ids=sample_ids if self.max_samples is not None else None,

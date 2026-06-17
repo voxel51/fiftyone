@@ -45,7 +45,7 @@ fob = fou.lazy_import("fiftyone.core.brain")
 fod = fou.lazy_import("fiftyone.core.dataset")
 foe = fou.lazy_import("fiftyone.core.evaluation")
 fors = fou.lazy_import("fiftyone.core.runs")
-fommtt = fou.lazy_import("fiftyone.multimodal.tags._temporal_tags")
+fota = fou.lazy_import("fiftyone.core.tags")
 
 
 logger = logging.getLogger(__name__)
@@ -850,8 +850,8 @@ def drop_orphan_tags(dry_run=False):
     _logger = _get_logger(dry_run=dry_run)
 
     dataset_ids = set(conn.datasets.distinct("_id"))
-    orphan_dataset_ids = fommtt.get_orphan_dataset_ids(dataset_ids)
-    num_tags = fommtt.count_for_dataset_ids(orphan_dataset_ids)
+    orphan_dataset_ids = fota.get_orphan_dataset_ids(dataset_ids)
+    num_tags = fota.count_for_dataset_ids(orphan_dataset_ids)
 
     if num_tags:
         _logger.info(
@@ -861,7 +861,7 @@ def drop_orphan_tags(dry_run=False):
             orphan_dataset_ids,
         )
         if not dry_run:
-            fommtt.delete_for_dataset_ids(orphan_dataset_ids)
+            fota.delete_for_dataset_ids(orphan_dataset_ids)
 
 
 def stream_collection(collection_name):
@@ -1447,11 +1447,11 @@ def delete_dataset(name, dry_run=False):
             conn.drop_collection(frame_collection_name)
 
     _id = dataset_dict["_id"]
-    num_tags = fommtt.count_for_dataset_id(_id)
+    num_tags = fota.count_for_dataset_id(_id)
     if num_tags > 0:
         _logger.info("Deleting %d tag(s)", num_tags)
         if not dry_run:
-            fommtt.delete_for_dataset_id(_id)
+            fota.delete_for_dataset_id(_id)
 
     view_ids = _get_saved_view_ids(dataset_dict)
 
