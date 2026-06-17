@@ -8,12 +8,12 @@ dataset or view and delegate to
 :class:`TemporalTags`, a small collection facade for ordered iteration and
 bulk operations.
 
-Temporal tags are sample-scoped records stored in the dedicated
-``temporal_tags`` collection. They are removed when linked samples or datasets
-are deleted, and FiftyOne dataset import/export preserves them through the
-``temporal_tags.json`` sidecar. Tags may include an optional opaque ``anchor``
-string that qualifies the context for their ``start`` and ``end`` values, plus
-optional provenance fields describing when and by whom records were written.
+Temporal tags are sample-scoped records stored in the dedicated ``tags``
+collection. They are removed when linked samples or datasets are deleted, and
+FiftyOne dataset import/export preserves them through the ``tags.json``
+sidecar. Tags may include an optional opaque ``anchor`` string that qualifies
+the context for their ``start`` and ``end`` values, plus optional provenance
+fields describing when and by whom records were written.
 
 Adding a temporal tag is an upsert on
 ``(dataset, sample, index_type, anchor, start, end, tag)``: repeated adds update
