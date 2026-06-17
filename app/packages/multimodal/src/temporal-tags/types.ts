@@ -124,7 +124,7 @@ export interface UseSampleTagsOptions extends Partial<SampleTagsRequest> {
 /**
  * Hook result for sample-scoped tag loading and mutations.
  */
-export interface UseSampleTemporalTagsResult {
+export interface UseSampleTagsResult {
   readonly error: string | null;
   readonly status: TemporalTagsStatus;
   readonly temporalTags: readonly TemporalTag[];

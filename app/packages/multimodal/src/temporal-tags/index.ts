@@ -20,5 +20,5 @@ export type {
   TemporalTagUpdate,
   UpdateSampleTagRequest,
   UseSampleTagsOptions,
-  UseSampleTemporalTagsResult,
+  UseSampleTagsResult,
 } from "./types";

@@ -8,7 +8,7 @@ import type {
   TemporalTagCreate,
   TemporalTagsClient,
   UseSampleTagsOptions,
-  UseSampleTemporalTagsResult,
+  UseSampleTagsResult,
 } from "./types";
 
 afterEach(() => {
@@ -160,7 +160,7 @@ describe("useSampleTemporalTags", () => {
       start: 1,
       tag: "review",
     };
-    let latest!: UseSampleTemporalTagsResult;
+    let latest!: UseSampleTagsResult;
 
     render(
       <TemporalTagsHarness
@@ -270,7 +270,7 @@ function TemporalTagsHarness({
   onState,
   options,
 }: {
-  readonly onState?: (state: UseSampleTemporalTagsResult) => void;
+  readonly onState?: (state: UseSampleTagsResult) => void;
   readonly options: UseSampleTagsOptions;
 }) {
   const state = useSampleTemporalTags(options);

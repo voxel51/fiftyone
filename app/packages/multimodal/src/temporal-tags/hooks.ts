@@ -9,7 +9,7 @@ import type {
   TemporalTagsStatus,
   TemporalTagUpdate,
   UseSampleTagsOptions,
-  UseSampleTemporalTagsResult,
+  UseSampleTagsResult,
 } from "./types";
 
 type TemporalTagsState = {
@@ -33,7 +33,7 @@ export function useSampleTemporalTags({
   datasetId,
   filter,
   sampleId,
-}: UseSampleTagsOptions): UseSampleTemporalTagsResult {
+}: UseSampleTagsOptions): UseSampleTagsResult {
   const temporalTagsClient = client ?? getDefaultTemporalTagsClient();
   const filterKey = temporalTagFilterKey(filter);
   const [state, setState] = useState<TemporalTagsState>(IDLE_STATE);

@@ -2,7 +2,10 @@ import type { SampleRendererProps } from "@fiftyone/plugins";
 import type { TemporalTagCreatePayload } from "@fiftyone/playback";
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { TemporalTag, UseSampleTemporalTagsResult } from "../../../temporal-tags/types";
+import type {
+  TemporalTag,
+  UseSampleTagsResult,
+} from "../../../temporal-tags/types";
 import { useMcapTemporalTags } from "./use-mcap-temporal-tags";
 
 // ---------------------------------------------------------------------------
@@ -12,7 +15,7 @@ import { useMcapTemporalTags } from "./use-mcap-temporal-tags";
 // The hook result type is intentionally readonly; tests swap out
 // `temporalTags` between cases, so the mock uses a mutable view of it.
 type MutableTemporalTagsResult = {
-  -readonly [K in keyof UseSampleTemporalTagsResult]: UseSampleTemporalTagsResult[K];
+  -readonly [K in keyof UseSampleTagsResult]: UseSampleTagsResult[K];
 };
 
 const mockResult = vi.hoisted(
@@ -135,7 +138,11 @@ describe("useMcapTemporalTags", () => {
 
     it("places tracks without createdAt before those with older timestamps", () => {
       mockResult.temporalTags = [
-        makeTag({ id: "dated", tag: "alpha", createdAt: "2024-01-01T00:00:00Z" }),
+        makeTag({
+          id: "dated",
+          tag: "alpha",
+          createdAt: "2024-01-01T00:00:00Z",
+        }),
         makeTag({ id: "undated", tag: "beta" }),
       ];
       const { result } = renderHook(() => useMcapTemporalTags(ctx));
@@ -168,9 +175,14 @@ describe("useMcapTemporalTags", () => {
     it("rounds nanosecond values to integers", async () => {
       const { result } = renderHook(() => useMcapTemporalTags(ctx));
       await act(async () => {
-        await result.current.onTagCreate({ start: 1.0001, end: 2.9999, tag: "t" });
+        await result.current.onTagCreate({
+          start: 1.0001,
+          end: 2.9999,
+          tag: "t",
+        });
       });
-      const [created] = (mockResult.create as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      const [created] = (mockResult.create as ReturnType<typeof vi.fn>).mock
+        .calls[0][0];
       expect(Number.isInteger(created.start)).toBe(true);
       expect(Number.isInteger(created.end)).toBe(true);
     });
