@@ -36,12 +36,8 @@ First, start the App client development server with hot reloading by running:
 yarn dev
 ```
 
-This serves the client on `http://localhost:5173`.
-
-Next, we generally recommend starting the backend server with `yarn dev:py` so
-you have access to stack traces. This wrapper points the server's
-`FIFTYONE_ALLOWED_ORIGINS` at the client dev server so cross-origin requests
-from the hot-reloading client are accepted:
+Next, start the backend server with `yarn dev:py` so you have access to stack
+traces:
 
 ```shell
 yarn dev:py
@@ -54,12 +50,14 @@ run:
 yarn dev:wpy
 ```
 
-Both `dev:py` and `dev:wpy` accept the following flags:
+Both `yarn dev:py` and `yarn dev:wpy` set `FIFTYONE_ALLOWED_ORIGINS` to the
+client dev server origin (`http://localhost:5173`) so the backend accepts
+cross-origin requests from the hot-reloading client. They accept two flags:
 
--   `-p, --port <port>` — port the client dev server runs on (default `5173`).
-    The allowed origin is derived from this value.
--   `-n, --notebook` — notebook development: also set the server's `proxy_url`
-    to the client dev server URL.
+-   `-p, --port <port>` — client dev server port (default `5173`); the allowed
+    origin is derived from it.
+-   `-n, --notebook` — also set the server's `proxy_url` to the client dev
+    server origin, for notebook development.
 
 ```shell
 yarn dev:wpy -p 5273 -n
