@@ -1,4 +1,7 @@
-import { useInteraction3dSample, useModalSampleSchema } from "@fiftyone/state";
+import {
+  useModalSampleSchema,
+  useStableInteraction3dSample,
+} from "@fiftyone/state";
 import { useEffect } from "react";
 import { useThreeDSceneSampleId } from "./useGroupAnnotationSample";
 import { useSampleInstance } from "./useSample";
@@ -18,7 +21,11 @@ import { useSampleInstance } from "./useSample";
  * Mount once at the annotation root, beside {@link useSyncModalSample}.
  */
 export const useSync3dModalSample = (): void => {
-  const scene = useInteraction3dSample();
+  // Non-suspending (Loadable) read: mounted at the annotate root, the suspending
+  // `useInteraction3dSample` would hang the whole sidebar on "Pixelating…" during
+  // group-sample navigation. `useThreeDSceneSampleId` below is stable-sourced too,
+  // and the scene data is only consumed once `sceneId` settles.
+  const scene = useStableInteraction3dSample();
   const schema = useModalSampleSchema();
 
   // the 3D scene's sample, only while it is co-resident with a different
