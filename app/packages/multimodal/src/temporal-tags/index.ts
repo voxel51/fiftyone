@@ -7,7 +7,7 @@ export type { CreateTemporalTagsClientOptions } from "./client";
 export type {
   CountDatasetTemporalTagsRequest,
   ClearSampleTemporalTagsRequest,
-  CreateSampleTemporalTagsRequest,
+  CreateSampleTagsRequest,
   DeleteSampleTemporalTagsRequest,
   ListDatasetTemporalTagsRequest,
   ListSampleTagsRequest,

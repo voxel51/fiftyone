@@ -58,7 +58,7 @@ export interface ListSampleTagsRequest extends SampleTagsRequest {
 }
 
 /** Request for creating temporal tags for one sample. */
-export interface CreateSampleTemporalTagsRequest extends SampleTagsRequest {
+export interface CreateSampleTagsRequest extends SampleTagsRequest {
   readonly temporalTags: readonly TemporalTagCreate[];
 }
 
@@ -95,7 +95,7 @@ export interface CountDatasetTemporalTagsRequest {
  */
 export interface TemporalTagsClient {
   createSampleTemporalTags(
-    request: CreateSampleTemporalTagsRequest
+    request: CreateSampleTagsRequest
   ): Promise<readonly TemporalTag[]>;
   clearSampleTemporalTags(
     request: ClearSampleTemporalTagsRequest

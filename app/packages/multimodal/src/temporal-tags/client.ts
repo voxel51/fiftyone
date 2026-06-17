@@ -2,7 +2,7 @@ import { getFetchFunctionExtended } from "@fiftyone/utilities";
 import type {
   ClearSampleTemporalTagsRequest,
   CountDatasetTemporalTagsRequest,
-  CreateSampleTemporalTagsRequest,
+  CreateSampleTagsRequest,
   DeleteSampleTemporalTagsRequest,
   ListDatasetTemporalTagsRequest,
   ListSampleTagsRequest,
@@ -66,7 +66,7 @@ export function createTemporalTagsClient(
       datasetId,
       sampleId,
       temporalTags,
-    }: CreateSampleTemporalTagsRequest) {
+    }: CreateSampleTagsRequest) {
       const response = await fetchFunction<
         { temporal_tags: readonly ReturnType<typeof temporalTagCreateDto>[] },
         TemporalTagsResponseDto
