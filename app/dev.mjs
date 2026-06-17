@@ -18,7 +18,12 @@ let notebook = false;
 for (let i = 0; i < args.length; i++) {
   const arg = args[i];
   if (arg === "-p" || arg === "--port") {
-    port = args[++i];
+    const value = args[++i];
+    if (value === undefined || !/^\d+$/.test(value)) {
+      console.error(`Invalid ${arg} value: ${value ?? "(missing)"}`);
+      process.exit(1);
+    }
+    port = value;
   } else if (arg === "-n" || arg === "--notebook") {
     notebook = true;
   }
