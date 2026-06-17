@@ -426,7 +426,7 @@ def load_zoo_dataset(
         fo.delete_dataset(dataset_name)
 
     if splits is None and zoo_dataset.has_splits:
-        splits = zoo_dataset.supported_splits
+        splits = zoo_dataset.default_splits
 
     dataset = fo.Dataset(dataset_name, persistent=persistent)
 
@@ -1118,6 +1118,11 @@ class ZooDataset(object):
         raise NotImplementedError("subclasses must implement supported_splits")
 
     @property
+    def default_splits(self):
+        """The default splits to load when no split is specified."""
+        return self.supported_splits
+
+    @property
     def has_splits(self):
         """Whether the dataset has splits."""
         return self.supported_splits is not None
@@ -1271,7 +1276,7 @@ class ZooDataset(object):
                         % (split, self.supported_splits)
                     )
         elif self.has_splits:
-            splits = self.supported_splits
+            splits = self.default_splits
 
         # Load existing ZooDatasetInfo, if available
         info_path = self.get_info_path(dataset_dir)

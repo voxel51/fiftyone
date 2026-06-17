@@ -52,6 +52,7 @@ def parse_cityscapes_dataset(
 
         source_dir/
             leftImg8bit_trainvaltest.zip
+            leftImg8bit_trainextra.zip          # optional, required for train_extra split
             gtFine_trainvaltest.zip             # optional
             gtCoarse.zip                        # optional
             gtBbox_cityPersons_trainval.zip     # optional
@@ -86,7 +87,7 @@ def parse_cityscapes_dataset(
     images_dir = _extract_images(images_zip_path, scratch_dir)
 
     if images_extra_zip_path and "train_extra" in _splits:
-        _merge_extra_images(images_extra_zip_path, images_dir, scratch_dir)
+        _extract_extra_images(images_extra_zip_path, images_dir)
 
     if fine_annos_zip_path:
         fine_annos_dir = _extract_fine_annos(fine_annos_zip_path, scratch_dir)
@@ -303,24 +304,17 @@ def _export_split(
     dataset.delete()
 
 
-def _merge_extra_images(images_extra_zip_path, images_dir, scratch_dir) -> None:
-    """Extract train_extra images and merge them into the existing images dir."""
-    tmp_dir = os.path.join(scratch_dir, "images_extra")
-    extra_images_dir = os.path.join(tmp_dir, "leftImg8bit")
+def _extract_extra_images(images_extra_zip_path, images_dir) -> None:
+    """Extract train_extra images into the existing images directory."""
+    train_extra_dir = os.path.join(images_dir, "train_extra")
 
-    if not os.path.isdir(extra_images_dir):
+    if not os.path.isdir(train_extra_dir):
         logger.info("Extracting extra images...")
         etau.extract_zip(
-            images_extra_zip_path, outdir=tmp_dir, delete_zip=False
+            images_extra_zip_path,
+            outdir=os.path.dirname(images_dir),
+            delete_zip=False,
         )
-
-    # Merge train_extra city subdirectories into the main images dir
-    train_extra_dir = os.path.join(extra_images_dir, "train_extra")
-    if os.path.isdir(train_extra_dir):
-        dest_dir = os.path.join(images_dir, "train_extra")
-        if not os.path.isdir(dest_dir):
-            import shutil
-            shutil.copytree(train_extra_dir, dest_dir)
 
 
 def _extract_images(images_zip_path, scratch_dir):

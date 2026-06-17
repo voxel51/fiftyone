@@ -488,7 +488,7 @@ class BDD100KDataset(FiftyOneDataset):
 
     @property
     def supported_splits(self):
-        return ("train", "train_extra", "validation", "test")
+        return ("train", "validation", "test")
 
     @property
     def requires_manual_download(self):
@@ -707,6 +707,10 @@ class CityscapesDataset(FiftyOneDataset):
 
     @property
     def supported_splits(self):
+        return ("train", "train_extra", "validation", "test")
+
+    @property
+    def default_splits(self):
         return ("train", "validation", "test")
 
     @property
