@@ -68,11 +68,11 @@ export function createTagsClient(
       tags,
     }: CreateSampleTagsRequest) {
       const response = await fetchFunction<
-        { temporal_tags: readonly ReturnType<typeof temporalTagCreateDto>[] },
+        { temporal_tags: readonly ReturnType<typeof tagCreateDto>[] },
         TagsResponseDto
       >({
         body: {
-          temporal_tags: tags.map(temporalTagCreateDto),
+          temporal_tags: tags.map(tagCreateDto),
         },
         method: "POST",
         path: `/dataset/${encodeURIComponent(
@@ -231,7 +231,7 @@ function appendValues(
   }
 }
 
-function temporalTagCreateDto(tag: TagCreate) {
+function tagCreateDto(tag: TagCreate) {
   return stripUndefined({
     anchor: tag.anchor,
     created_by: tag.createdBy,
