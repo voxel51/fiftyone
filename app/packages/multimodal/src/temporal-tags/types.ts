@@ -38,8 +38,8 @@ export interface TemporalTagCreate {
   readonly lastModifiedBy?: string;
 }
 
-/** Mutable temporal tag fields accepted by sample-scoped update routes. */
-export interface TemporalTagUpdate {
+/** Mutable tag fields accepted by sample-scoped update routes. */
+export interface TagUpdate {
   readonly end?: number;
   readonly start?: number;
   readonly tag?: string;
@@ -65,7 +65,7 @@ export interface CreateSampleTagsRequest extends SampleTagsRequest {
 /** Request for updating one persisted tag for one sample. */
 export interface UpdateSampleTagRequest extends SampleTagsRequest {
   readonly temporalTagId: string;
-  readonly update: TemporalTagUpdate;
+  readonly update: TagUpdate;
 }
 
 /** Request for deleting persisted tags by ID for one sample. */
@@ -136,6 +136,6 @@ export interface UseSampleTagsResult {
   readonly reload: () => Promise<readonly TemporalTag[]>;
   readonly update: (
     temporalTagId: string,
-    update: TemporalTagUpdate
+    update: TagUpdate
   ) => Promise<TemporalTag>;
 }

@@ -6,8 +6,8 @@ import type {
   TemporalTagCreate,
   TemporalTagFilter,
   TagsClient,
+  TagUpdate,
   TemporalTagsStatus,
-  TemporalTagUpdate,
   UseSampleTagsOptions,
   UseSampleTagsResult,
 } from "./types";
@@ -114,7 +114,7 @@ export function useSampleTemporalTags({
   );
 
   const update = useCallback(
-    async (temporalTagId: string, update: TemporalTagUpdate) => {
+    async (temporalTagId: string, update: TagUpdate) => {
       const ids = requireSampleScope(datasetId, sampleId);
       const updated = await temporalTagsClient.updateSampleTemporalTag({
         ...ids,

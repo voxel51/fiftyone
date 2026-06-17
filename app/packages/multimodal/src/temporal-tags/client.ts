@@ -7,10 +7,10 @@ import type {
   ListDatasetTagsRequest,
   ListSampleTagsRequest,
   TagsClient,
+  TagUpdate,
   TemporalTag,
   TemporalTagCreate,
   TemporalTagFilter,
-  TemporalTagUpdate,
   UpdateSampleTagRequest,
 } from "./types";
 
@@ -251,7 +251,7 @@ function temporalTagCreateDto(tag: TemporalTagCreate) {
   });
 }
 
-function temporalTagUpdateDto(update: TemporalTagUpdate) {
+function temporalTagUpdateDto(update: TagUpdate) {
   return stripUndefined({
     end: update.end,
     last_modified_by: update.lastModifiedBy,
