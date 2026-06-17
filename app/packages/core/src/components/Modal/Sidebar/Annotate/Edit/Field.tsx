@@ -126,7 +126,7 @@ const Field = () => {
     <>
       {/* Note: we don't allow field selection in 3D since it's handled in the "left" in-canvas sidebar */}
       {!!fields.length && !is3DAnnotationStagingInitialized && (
-        <div>
+        <div data-cy="annotate-field-select">
           <SchemaIOComponent
             schema={schema}
             smartForm={true}

@@ -162,6 +162,55 @@ export class ModalAnnotateEditPom {
     await container.getByRole("combobox").click();
     await this.page.getByRole("option", { name: choice }).click();
   }
+
+  /**
+   * The field-move dropdown (the label's destination field). It's a MUI
+   * `Select` rendered through SchemaIO's `DropdownView`, scoped by the
+   * `annotate-field-select` wrapper so it doesn't collide with the class
+   * combobox. Its visible text is the current field name.
+   */
+  get fieldSelect() {
+    return this.locator
+      .getByTestId("annotate-field-select")
+      .getByRole("combobox");
+  }
+
+  /**
+   * Read the currently-selected destination field for the edited label.
+   */
+  async getCurrentField() {
+    return (await this.fieldSelect.textContent())?.trim() ?? "";
+  }
+
+  /**
+   * Move the edited label to another field. Opens the MUI Select and clicks
+   * the option; the menu mounts in a document-level portal, so the option is
+   * targeted off `page`.
+   *
+   * @param field The destination field name (e.g. "predictions")
+   */
+  async moveFieldTo(field: string) {
+    await this.fieldSelect.click();
+    await this.page.getByRole("option", { name: field, exact: true }).click();
+  }
+
+  /**
+   * The segmentation toolbar's Brush tool button. The toolbar (an on-canvas
+   * `ActionToolbar`) renders only while segmentation mode is active and exposes
+   * its tools via `aria-label`, so the Brush button's presence is a stable
+   * "segmentation mode is active" signal.
+   */
+  get segmentationBrushTool() {
+    return this.page.getByRole("button", { name: "Brush" });
+  }
+
+  /**
+   * The segmentation Merge tool button (present while segmentation mode is
+   * active; disabled until there are ≥2 masked detections in the field).
+   */
+  get mergeTool() {
+    return this.page.getByRole("button", { name: "Merge", exact: true });
+  }
 }
 
 /**
@@ -201,6 +250,43 @@ class ModalAnnotateEditAsserter {
   async verifyFieldValue(path: string, expectedValue: string) {
     const actualValue = await this.modalAnnotateEdit.getFieldValue(path);
     expect(actualValue).toBe(expectedValue);
+  }
+
+  /**
+   * Assert whether the edited detection currently has a mask. Read off the label
+   * menu, which shows "Remove mask" for a masked detection and "Add mask" for a
+   * maskless one (`Edit/Header.tsx` `isMaskDetection`). Opens then closes the
+   * menu (Escape) so it leaves no state behind.
+   *
+   * @param hasMask Whether the detection is expected to have a mask
+   */
+  async hasMask(hasMask = true) {
+    await this.modalAnnotateEdit.openLabelMenu();
+    const remove = this.modalAnnotateEdit.page.getByTestId(
+      "label-menu-remove-mask"
+    );
+    const add = this.modalAnnotateEdit.page.getByTestId("label-menu-add-mask");
+    if (hasMask) {
+      await expect(remove).toBeVisible();
+      await expect(add).toBeHidden();
+    } else {
+      await expect(add).toBeVisible();
+      await expect(remove).toBeHidden();
+    }
+    await this.modalAnnotateEdit.page.keyboard.press("Escape");
+  }
+
+  /**
+   * Assert whether segmentation mode is active (the segmentation toolbar is
+   * shown). Selecting a masked detection auto-enters segmentation mode.
+   *
+   * @param active Whether segmentation mode is expected to be active
+   */
+  async inSegmentationMode(active = true) {
+    const brush = this.modalAnnotateEdit.segmentationBrushTool;
+    return active
+      ? await expect(brush).toBeVisible()
+      : await expect(brush).toBeHidden();
   }
 
   /**
