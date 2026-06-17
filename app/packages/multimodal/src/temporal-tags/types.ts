@@ -97,7 +97,7 @@ export interface TagsClient {
   createSampleTags(
     request: CreateSampleTagsRequest
   ): Promise<readonly TemporalTag[]>;
-  clearSampleTemporalTags(request: ClearSampleTagsRequest): Promise<number>;
+  clearSampleTags(request: ClearSampleTagsRequest): Promise<number>;
   countDatasetTemporalTags(
     request: CountDatasetTagsRequest
   ): Promise<Readonly<Record<string, number>>>;

@@ -34,7 +34,7 @@ describe("createTagsClient", () => {
       sampleId: "sample-id",
       ids: ["tag-id"],
     });
-    await client.clearSampleTemporalTags({
+    await client.clearSampleTags({
       datasetId: "dataset-id",
       sampleId: "sample-id",
     });
@@ -185,7 +185,7 @@ describe("createTagsClient", () => {
     });
 
     await expect(
-      client.clearSampleTemporalTags({
+      client.clearSampleTags({
         datasetId: "dataset-id",
         filter: {
           anchors: ["lidar_top"],

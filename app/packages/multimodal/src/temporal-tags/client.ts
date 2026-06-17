@@ -83,7 +83,7 @@ export function createTagsClient(
       return response.response.temporal_tags.map(temporalTagFromDto);
     },
 
-    async clearSampleTemporalTags({
+    async clearSampleTags({
       datasetId,
       sampleId,
       filter,

@@ -213,7 +213,7 @@ describe("useSampleTemporalTags", () => {
     await act(async () => {
       await latest.clear({ tags: ["review"] });
     });
-    expect(client.clearSampleTemporalTags).toHaveBeenCalledWith({
+    expect(client.clearSampleTags).toHaveBeenCalledWith({
       datasetId: "dataset-id",
       filter: { tags: ["review"] },
       sampleId: "sample-id",
@@ -301,7 +301,7 @@ function SampleRendererTemporalTagsHarness({
 
 function createTagsClient(overrides: Partial<TagsClient> = {}): TagsClient {
   return {
-    clearSampleTemporalTags: vi.fn(async () => 1),
+    clearSampleTags: vi.fn(async () => 1),
     countDatasetTemporalTags: vi.fn(async () => ({})),
     createSampleTags: vi.fn(async () => [createTemporalTag("created")]),
     deleteSampleTags: vi.fn(async () => 1),

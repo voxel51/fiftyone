@@ -145,7 +145,7 @@ export function useSampleTemporalTags({
   const clear = useCallback(
     async (clearFilter?: TagFilter) => {
       const ids = requireSampleScope(datasetId, sampleId);
-      const deleted = await temporalTagsClient.clearSampleTemporalTags({
+      const deleted = await temporalTagsClient.clearSampleTags({
         ...ids,
         filter: clearFilter,
       });
