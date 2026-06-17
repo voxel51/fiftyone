@@ -9,7 +9,7 @@ import type {
 import { useMcapTemporalTags } from "./use-mcap-temporal-tags";
 
 // ---------------------------------------------------------------------------
-// Module mock — controls what useSampleRendererTemporalTags returns per test.
+// Module mock — controls what useSampleRendererTags returns per test.
 // ---------------------------------------------------------------------------
 
 // The hook result type is intentionally readonly; tests swap out
@@ -32,7 +32,7 @@ const mockResult = vi.hoisted(
 );
 
 vi.mock("../../../temporal-tags", () => ({
-  useSampleRendererTemporalTags: vi.fn(() => mockResult),
+  useSampleRendererTags: vi.fn(() => mockResult),
 }));
 
 // ---------------------------------------------------------------------------

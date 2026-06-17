@@ -2,7 +2,7 @@ import type { SampleRendererProps } from "@fiftyone/plugins";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { useSampleRendererTemporalTags, useSampleTemporalTags } from "./hooks";
+import { useSampleRendererTags, useSampleTemporalTags } from "./hooks";
 import type {
   TagsClient,
   TemporalTag,
@@ -246,7 +246,7 @@ describe("useSampleTemporalTags", () => {
   });
 });
 
-describe("useSampleRendererTemporalTags", () => {
+describe("useSampleRendererTags", () => {
   it("derives the sample scope from a sample renderer context", async () => {
     const client = createTagsClient();
     const ctx = {
@@ -294,7 +294,7 @@ function SampleRendererTemporalTagsHarness({
   readonly client: TagsClient;
   readonly ctx: SampleRendererProps["ctx"];
 }) {
-  useSampleRendererTemporalTags(ctx, { client });
+  useSampleRendererTags(ctx, { client });
 
   return null;
 }

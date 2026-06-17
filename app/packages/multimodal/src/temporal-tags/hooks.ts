@@ -169,7 +169,7 @@ export function useSampleTemporalTags({
 /**
  * Loads temporal tags for a sample renderer context.
  */
-export function useSampleRendererTemporalTags(
+export function useSampleRendererTags(
   ctx: SampleRendererProps["ctx"],
   options: {
     readonly client?: TagsClient;
