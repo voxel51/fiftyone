@@ -9,8 +9,8 @@ import { useMcapTemporalTags } from "./use-mcap-temporal-tags";
 // Module mock — controls what useSampleRendererTags returns per test.
 // ---------------------------------------------------------------------------
 
-// The hook result type is intentionally readonly; tests swap out
-// `temporalTags` between cases, so the mock uses a mutable view of it.
+// The hook result type is intentionally readonly; tests swap out `tags`
+// between cases, so the mock uses a mutable view of it.
 type MutableTemporalTagsResult = {
   -readonly [K in keyof UseSampleTagsResult]: UseSampleTagsResult[K];
 };
@@ -19,7 +19,7 @@ const mockResult = vi.hoisted(
   (): MutableTemporalTagsResult => ({
     status: "ready",
     error: null,
-    temporalTags: [],
+    tags: [],
     create: vi.fn(async () => []),
     delete: vi.fn(async () => 0),
     update: vi.fn(async () => makeTag({ id: "updated" })),
@@ -59,7 +59,7 @@ const ctx = {
 
 afterEach(() => {
   vi.clearAllMocks();
-  mockResult.temporalTags = [];
+  mockResult.tags = [];
 });
 
 describe("useMcapTemporalTags", () => {
@@ -70,7 +70,7 @@ describe("useMcapTemporalTags", () => {
     });
 
     it("creates one track per unique tag label", () => {
-      mockResult.temporalTags = [
+      mockResult.tags = [
         makeTag({ id: "a", tag: "lane-change" }),
         makeTag({ id: "b", tag: "pedestrian" }),
         makeTag({ id: "c", tag: "lane-change" }),
@@ -83,7 +83,7 @@ describe("useMcapTemporalTags", () => {
     });
 
     it("groups all events for the same label under one track", () => {
-      mockResult.temporalTags = [
+      mockResult.tags = [
         makeTag({ id: "a", tag: "road-clear" }),
         makeTag({ id: "b", tag: "road-clear" }),
         makeTag({ id: "c", tag: "road-clear" }),
@@ -94,9 +94,7 @@ describe("useMcapTemporalTags", () => {
     });
 
     it("converts nanosecond timestamps to seconds", () => {
-      mockResult.temporalTags = [
-        makeTag({ start: 2_500_000_000, end: 7_000_000_000 }),
-      ];
+      mockResult.tags = [makeTag({ start: 2_500_000_000, end: 7_000_000_000 })];
       const { result } = renderHook(() => useMcapTemporalTags(ctx));
       const [event] = result.current.tracks[0].events;
       expect(event.startSec).toBeCloseTo(2.5);
@@ -104,19 +102,19 @@ describe("useMcapTemporalTags", () => {
     });
 
     it("stores the tag backend id as event.data", () => {
-      mockResult.temporalTags = [makeTag({ id: "backend-id-42" })];
+      mockResult.tags = [makeTag({ id: "backend-id-42" })];
       const { result } = renderHook(() => useMcapTemporalTags(ctx));
       expect(result.current.tracks[0].events[0].data).toBe("backend-id-42");
     });
 
     it("uses the tag label as the track id prefix", () => {
-      mockResult.temporalTags = [makeTag({ tag: "my-label" })];
+      mockResult.tags = [makeTag({ tag: "my-label" })];
       const { result } = renderHook(() => useMcapTemporalTags(ctx));
       expect(result.current.tracks[0].id).toBe("temporal-tag::my-label");
     });
 
     it("assigns a deterministic color based on the label", () => {
-      mockResult.temporalTags = [makeTag({ tag: "stable-label" })];
+      mockResult.tags = [makeTag({ tag: "stable-label" })];
       const { result: r1 } = renderHook(() => useMcapTemporalTags(ctx));
       const { result: r2 } = renderHook(() => useMcapTemporalTags(ctx));
       expect(r1.current.tracks[0].color).toBe(r2.current.tracks[0].color);
@@ -124,7 +122,7 @@ describe("useMcapTemporalTags", () => {
     });
 
     it("sorts tracks newest-first by createdAt", () => {
-      mockResult.temporalTags = [
+      mockResult.tags = [
         makeTag({ id: "old", tag: "alpha", createdAt: "2024-01-01T00:00:00Z" }),
         makeTag({ id: "new", tag: "beta", createdAt: "2024-06-01T00:00:00Z" }),
       ];
@@ -134,7 +132,7 @@ describe("useMcapTemporalTags", () => {
     });
 
     it("places tracks without createdAt before those with older timestamps", () => {
-      mockResult.temporalTags = [
+      mockResult.tags = [
         makeTag({
           id: "dated",
           tag: "alpha",

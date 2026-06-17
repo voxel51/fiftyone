@@ -34,11 +34,7 @@ export interface McapTemporalTagsResult {
 export function useMcapTemporalTags(
   ctx: SampleRendererProps["ctx"]
 ): McapTemporalTagsResult {
-  const {
-    create,
-    delete: deleteTags,
-    temporalTags,
-  } = useSampleRendererTags(ctx);
+  const { create, delete: deleteTags, tags } = useSampleRendererTags(ctx);
 
   const onTagDelete = useCallback(
     async (event: { data?: unknown }) => {
@@ -61,10 +57,10 @@ export function useMcapTemporalTags(
   );
 
   const tracks = useMemo<Track[]>(() => {
-    if (temporalTags.length === 0) return NO_TRACKS;
+    if (tags.length === 0) return NO_TRACKS;
 
-    const byLabel = new Map<string, typeof temporalTags[number][]>();
-    for (const t of temporalTags) {
+    const byLabel = new Map<string, typeof tags[number][]>();
+    for (const t of tags) {
       const group = byLabel.get(t.tag) ?? [];
       group.push(t);
       byLabel.set(t.tag, group);
@@ -93,7 +89,7 @@ export function useMcapTemporalTags(
         endSec: t.end / 1_000_000_000,
       })),
     }));
-  }, [temporalTags]);
+  }, [tags]);
 
   return { tracks, onTagCreate, onTagDelete };
 }
