@@ -89,10 +89,10 @@ export function createTagsClient(
       filter,
     }: ClearSampleTagsRequest) {
       const response = await fetchFunction<
-        ReturnType<typeof clearTemporalTagsDto>,
+        ReturnType<typeof clearTagsDto>,
         DeleteTagsResponseDto
       >({
-        body: clearTemporalTagsDto(filter),
+        body: clearTagsDto(filter),
         method: "DELETE",
         path: `/dataset/${encodeURIComponent(
           datasetId
@@ -258,7 +258,7 @@ function deleteTagsDto(ids: readonly string[]) {
   return { ids };
 }
 
-function clearTemporalTagsDto(filter: TagFilter | undefined) {
+function clearTagsDto(filter: TagFilter | undefined) {
   return stripUndefined({
     delete_all: true,
     filter: filter ? filterDto(filter) : undefined,
