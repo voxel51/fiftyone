@@ -305,7 +305,7 @@ function createTagsClient(overrides: Partial<TagsClient> = {}): TagsClient {
     countDatasetTemporalTags: vi.fn(async () => ({})),
     createSampleTags: vi.fn(async () => [createTemporalTag("created")]),
     deleteSampleTags: vi.fn(async () => 1),
-    listDatasetTemporalTags: vi.fn(async () => []),
+    listDatasetTags: vi.fn(async () => []),
     listSampleTags: vi.fn(async () => []),
     updateSampleTag: vi.fn(async () => createTemporalTag("updated")),
     ...overrides,

@@ -38,7 +38,7 @@ describe("createTagsClient", () => {
       datasetId: "dataset-id",
       sampleId: "sample-id",
     });
-    await client.listDatasetTemporalTags({ datasetId: "dataset-id" });
+    await client.listDatasetTags({ datasetId: "dataset-id" });
     await client.countDatasetTemporalTags({ datasetId: "dataset-id" });
 
     expect(

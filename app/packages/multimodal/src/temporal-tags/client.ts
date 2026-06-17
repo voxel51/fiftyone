@@ -136,10 +136,7 @@ export function createTagsClient(
       return response.response.deleted;
     },
 
-    async listDatasetTemporalTags({
-      datasetId,
-      filter,
-    }: ListDatasetTagsRequest) {
+    async listDatasetTags({ datasetId, filter }: ListDatasetTagsRequest) {
       const response = await fetchFunction<undefined, TagsResponseDto>({
         method: "GET",
         path: withFilterQuery(
