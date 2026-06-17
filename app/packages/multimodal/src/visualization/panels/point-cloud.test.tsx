@@ -219,6 +219,54 @@ describe("PointCloudPanel", () => {
     });
   });
 
+  it("uses an automatic camera pose unless fitting is disabled", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const layer = {
+      frame: {
+        fields: [],
+        kind: VISUALIZATION_KIND.POINT_CLOUD,
+        pointCount: 2,
+        positions: new Float32Array([0, 0, 0, 10, 0, 0]),
+      },
+      id: "/points",
+    } as const;
+
+    const { rerender } = render(
+      <PointCloudPanel fit="never" layers={[layer]} />
+    );
+    expect(
+      screen.getByTestId("base-3d-scene").getAttribute("data-camera-pose")
+    ).toBe("");
+
+    rerender(<PointCloudPanel fit="initial" layers={[layer]} />);
+    expect(
+      screen.getByTestId("base-3d-scene").getAttribute("data-camera-pose")
+    ).not.toBe("");
+  });
+
+  it("renders finite point totals from current layer data immediately", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    render(
+      <PointCloudPanel
+        layers={[
+          {
+            frame: {
+              fields: [],
+              kind: VISUALIZATION_KIND.POINT_CLOUD,
+              pointCount: 3,
+              positions: new Float32Array([0, 0, 0, 1, 1, 1, NaN, 0, 0]),
+            },
+            id: "/points",
+          },
+        ]}
+      />
+    );
+
+    expect(screen.queryByText("No finite points")).toBeNull();
+    expect(screen.getByText("2 / 3 pts")).toBeTruthy();
+  });
+
   it("defaults to explicit point colors before derived values", () => {
     expectArrayCloseTo(
       renderPointCloudColors({

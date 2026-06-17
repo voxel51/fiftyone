@@ -92,6 +92,23 @@ describe("readTopicIndexedTimeBoundsForReader", () => {
       "MCAP topic time bounds support at most 128 topics per request"
     );
   });
+
+  it("rejects invalid max chunk probe caps", async () => {
+    const { readable } = createReadable([]);
+    const reader = createReader({ chunkIndexes: [] });
+    const topics = ["/camera"];
+
+    for (const maxChunkProbesPerTopic of [0, -1, 1.5, Number.NaN]) {
+      await expect(
+        readTopicIndexedTimeBoundsForReader(reader, readable, {
+          maxChunkProbesPerTopic,
+          topics,
+        })
+      ).rejects.toThrow(
+        "MCAP topic time-bounds lookup requires a positive integer maxChunkProbesPerTopic"
+      );
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

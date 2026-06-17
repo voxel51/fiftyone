@@ -106,6 +106,22 @@ describe("mcap-layout-persistence", () => {
           splitPercentage: "60",
         })
       ).toBe(false);
+      expect(
+        isValidMosaicLayout({
+          direction: "row",
+          first: "a-1",
+          second: "b-2",
+          splitPercentage: -1,
+        })
+      ).toBe(false);
+      expect(
+        isValidMosaicLayout({
+          direction: "row",
+          first: "a-1",
+          second: "b-2",
+          splitPercentage: 101,
+        })
+      ).toBe(false);
     });
   });
 

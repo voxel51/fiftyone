@@ -33,7 +33,9 @@ export function isValidMosaicLayout(node: unknown): node is MosaicNode<string> {
   return (
     (parent.direction === "row" || parent.direction === "column") &&
     (parent.splitPercentage === undefined ||
-      typeof parent.splitPercentage === "number") &&
+      (typeof parent.splitPercentage === "number" &&
+        parent.splitPercentage >= 0 &&
+        parent.splitPercentage <= 100)) &&
     isValidMosaicLayout(parent.first) &&
     isValidMosaicLayout(parent.second)
   );

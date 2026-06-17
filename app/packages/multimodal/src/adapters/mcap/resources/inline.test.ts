@@ -1072,6 +1072,79 @@ describe("MCAP resources", () => {
     });
   });
 
+  it("backfills enough indexed predecessors to satisfy latest limits", async () => {
+    const source = createMcapSourceDescriptor();
+    const older = createMessage(new Uint8Array([1]), {
+      channelId: 7,
+      logTime: 80n,
+      publishTime: 81n,
+    });
+    const newer = createMessage(new Uint8Array([2]), {
+      channelId: 7,
+      logTime: 90n,
+      publishTime: 91n,
+    });
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      yield createIndexedMessageTime("/topic", 7, 90n, 900n);
+    });
+    const readLatestIndexedMessageTimes = vi.fn(async () => {
+      return new Map([
+        [
+          "/topic",
+          [
+            createIndexedMessageTime("/topic", 7, 90n, 900n),
+            createIndexedMessageTime("/topic", 7, 80n, 800n),
+          ],
+        ],
+      ]);
+    });
+    const readMessages = vi.fn(async function* (args?: {
+      readonly endTime?: bigint;
+      readonly startTime?: bigint;
+    }): AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void> {
+      if (args?.startTime === 80n && args?.endTime === 80n) {
+        yield older;
+      }
+      if (args?.startTime === 90n && args?.endTime === 90n) {
+        yield newer;
+      }
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          readIndexedMessageTimes,
+          readLatestIndexedMessageTimes,
+          readMessages,
+        })
+      ),
+    });
+
+    const windows = await client.readSynchronizedMessageBatch({
+      timeNs: [100n],
+      source,
+      streamPolicies: {
+        "/topic": {
+          limit: 2,
+          mode: PlaybackSyncMode.LATEST,
+        },
+      },
+      topics: ["/topic"],
+    });
+
+    expect(
+      windows[0]?.messagesByTopic["/topic"]?.map(
+        (message) => message.timelineTimeNs
+      )
+    ).toEqual([80n, 90n]);
+    expect(readLatestIndexedMessageTimes).toHaveBeenCalledExactlyOnceWith({
+      limitPerTopic: 2,
+      timeNs: 100n,
+      topics: ["/topic"],
+    });
+  });
+
   it("memoizes predecessor lookups across batches and re-probes on backward seeks", async () => {
     const source = createMcapSourceDescriptor();
     const message = createMessage(new Uint8Array([1]), {

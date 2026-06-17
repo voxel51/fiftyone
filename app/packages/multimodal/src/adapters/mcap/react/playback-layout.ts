@@ -193,7 +193,7 @@ export function resolvePlaybackLayout({
   }
 
   return {
-    layout: buildLayoutTree({ has3d, imageTileCount, tiles }),
+    layout: buildLayoutTree({ has3d, tiles }),
     tiles,
   };
 }
@@ -273,11 +273,9 @@ function remoteNetworkBudget(downlinkMbps: number | null): number {
  */
 function buildLayoutTree({
   has3d,
-  imageTileCount,
   tiles,
 }: {
   readonly has3d: boolean;
-  readonly imageTileCount: number;
   readonly tiles: readonly PlaybackLayoutTile[];
 }): MosaicNode<string> | undefined {
   const imageGrid = autoLayout(
@@ -297,7 +295,7 @@ function buildLayoutTree({
     direction: "row",
     first: imageGrid,
     second: THREE_D_TILE_ID,
-    splitPercentage: imageTileCount >= 2 ? IMAGE_REGION_SPLIT_PERCENTAGE : 50,
+    splitPercentage: IMAGE_REGION_SPLIT_PERCENTAGE,
   };
 }
 

@@ -43,10 +43,10 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   // If sources populated after the initial render (or the selected topic
   // disappeared), bind to the best available source.
   useEffect(() => {
-    if (!topic && images.length > 0) {
-      const ranked = rankImageSources(images);
-      if (ranked[0]) setTopic(ranked[0].id);
-    }
+    if (topic && images.some((source) => source.id === topic)) return;
+
+    const nextTopic = rankImageSources(images)[0]?.id ?? "";
+    if (nextTopic !== topic) setTopic(nextTopic);
   }, [images, topic]);
 
   // Keep the tile title in sync whenever the selected topic resolves.

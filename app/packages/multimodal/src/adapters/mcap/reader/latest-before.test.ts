@@ -299,6 +299,23 @@ describe("readLatestIndexedMessageTimesForReader", () => {
       "MCAP latest-message lookup requires a positive integer per-topic limit"
     );
   });
+
+  it("rejects invalid max chunk probe caps", async () => {
+    const { readable } = createReadable([]);
+    const reader = createReader({ chunkIndexes: [] });
+
+    for (const maxChunkProbesPerTopic of [0, -1, 1.5, Number.NaN]) {
+      await expect(
+        readLatestIndexedMessageTimesForReader(reader, readable, {
+          maxChunkProbesPerTopic,
+          timeNs: 50n,
+          topics: ["/camera"],
+        })
+      ).rejects.toThrow(
+        "MCAP latest-message lookup requires a positive integer maxChunkProbesPerTopic"
+      );
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

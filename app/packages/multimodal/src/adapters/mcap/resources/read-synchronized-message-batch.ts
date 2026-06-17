@@ -224,7 +224,9 @@ async function backfillIndexedPredecessors({
     const topicCandidates = candidatesByTopic.get(topic) ?? [];
     // Same duplicate-identity collapse as the scan collection: one
     // representative per (channel, log time).
-    const seenIdentities = new Set<string>();
+    const seenIdentities = new Set<string>(
+      topicCandidates.map(indexedMessageIdentity)
+    );
     for (const entry of entries) {
       const identity = indexedMessageIdentity(entry);
       if (seenIdentities.has(identity)) {
@@ -248,11 +250,16 @@ async function backfillIndexedPredecessors({
     }
 
     let earliestInScanNs: bigint | undefined;
-    let hasPredecessorInScan = false;
+    let predecessorCount = 0;
+    const seenPredecessors = new Set<string>();
     for (const candidate of candidatesByTopic.get(topic) ?? []) {
       if (candidate.timelineTimeNs <= minTickNs) {
-        hasPredecessorInScan = true;
-        break;
+        const identity = indexedMessageIdentity(candidate);
+        if (!seenPredecessors.has(identity)) {
+          seenPredecessors.add(identity);
+          predecessorCount += 1;
+        }
+        continue;
       }
       if (
         earliestInScanNs === undefined ||
@@ -261,7 +268,7 @@ async function backfillIndexedPredecessors({
         earliestInScanNs = candidate.timelineTimeNs;
       }
     }
-    if (hasPredecessorInScan) {
+    if (predecessorCount >= policy.limit) {
       continue;
     }
 

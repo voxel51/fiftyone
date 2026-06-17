@@ -47,7 +47,12 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
   const { tracks, onTagCreate, onTagDelete } = useMcapTemporalTags(ctx);
 
   if (status === "error") {
-    return <McapModalState error text={`Failed to read recording: ${error}`} />;
+    return (
+      <McapModalState
+        error
+        text={`Failed to read recording: ${error ?? "Unknown error"}`}
+      />
+    );
   }
   if (status !== "ready") {
     return (

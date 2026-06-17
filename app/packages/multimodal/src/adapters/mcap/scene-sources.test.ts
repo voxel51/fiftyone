@@ -64,11 +64,13 @@ describe("mcapSceneSources", () => {
     dense.recordCount = "120";
     const single = createTopic("/cam/image_initial");
     single.recordCount = "1";
+    const empty = createTopic("/cam/image_empty");
+    empty.recordCount = "0";
     const unknown = createTopic("/cam/image_other");
 
-    const sources = mcapSceneSources([dense, single, unknown]);
+    const sources = mcapSceneSources([dense, single, empty, unknown]);
 
-    expect(sources.map((s) => s.recordCount)).toEqual([120, 1, undefined]);
+    expect(sources.map((s) => s.recordCount)).toEqual([120, 1, 0, undefined]);
   });
 
   it("skips topics without a resolvable name", () => {

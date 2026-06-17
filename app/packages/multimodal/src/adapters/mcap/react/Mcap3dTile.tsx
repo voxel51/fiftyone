@@ -1,6 +1,6 @@
 import { TileSettingsContent, useSetTileTitle } from "@fiftyone/tiling";
 import { Checkbox, Text, TextColor, TextVariant } from "@voxel51/voodo";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { PointCloudVisualization } from "../../../decoders";
 import { useSceneSourcesByType } from "../../../scene-inventory";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
@@ -28,6 +28,34 @@ const Mcap3dTile: React.FC = () => {
   const [enabled, setEnabled] = useState<ReadonlySet<string>>(
     () => new Set(pointClouds.map((s) => s.id))
   );
+  const knownPointCloudIdsRef = useRef<ReadonlySet<string>>(
+    new Set(pointClouds.map((s) => s.id))
+  );
+
+  useEffect(() => {
+    const currentIds = new Set(pointClouds.map((s) => s.id));
+    const previousIds = knownPointCloudIdsRef.current;
+    setEnabled((current) => {
+      const next = new Set(current);
+      let changed = false;
+
+      for (const id of currentIds) {
+        if (!previousIds.has(id) && !next.has(id)) {
+          next.add(id);
+          changed = true;
+        }
+      }
+      for (const id of next) {
+        if (!currentIds.has(id)) {
+          next.delete(id);
+          changed = true;
+        }
+      }
+
+      return changed ? next : current;
+    });
+    knownPointCloudIdsRef.current = currentIds;
+  }, [pointClouds]);
 
   // Selection in inventory order, so layers and statuses stay deterministic
   // regardless of the order sources were toggled in.

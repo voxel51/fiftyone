@@ -9,6 +9,7 @@ import type {
   McapReadTopicIndexedTimeBoundsRequest,
   McapTopicIndexedTimeBounds,
 } from "./types";
+import { positiveIntegerOption } from "./validation";
 
 /**
  * Guard against accidental fan-out: callers resolve bounds for the
@@ -38,8 +39,12 @@ export async function readTopicIndexedTimeBoundsForReader(
     );
   }
 
-  const maxChunkProbes =
-    args.maxChunkProbesPerTopic ?? DEFAULT_MAX_PREDECESSOR_CHUNK_PROBES;
+  const maxChunkProbes = positiveIntegerOption({
+    context: "MCAP topic time-bounds lookup",
+    defaultValue: DEFAULT_MAX_PREDECESSOR_CHUNK_PROBES,
+    name: "maxChunkProbesPerTopic",
+    value: args.maxChunkProbesPerTopic,
+  });
   const results = new Map<string, McapTopicIndexedTimeBounds | null>();
 
   for (const topic of args.topics) {

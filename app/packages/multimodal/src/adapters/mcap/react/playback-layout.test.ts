@@ -169,6 +169,19 @@ describe("resolvePlaybackLayout", () => {
     expect(tiles.filter((t) => t.tileType === "image")).toHaveLength(1);
   });
 
+  it("uses the shared image-region split when 3d content is present", () => {
+    const { layout } = resolvePlaybackLayout({
+      capabilities: STRONG_LOCAL,
+      readProfile: "local",
+      sources: [imageSource("/a", 1), POINT_CLOUD],
+    });
+
+    expect(layout).toMatchObject({
+      direction: "row",
+      splitPercentage: 62,
+    });
+  });
+
   it("uses the full width for images when no 3d source exists", () => {
     const { tiles, layout } = resolvePlaybackLayout({
       capabilities: STRONG_LOCAL,

@@ -68,7 +68,7 @@ export function mcapSceneSources(
     classified.push({
       id,
       type,
-      ...(Number.isFinite(recordCount) && recordCount > 0
+      ...(Number.isFinite(recordCount) && recordCount >= 0
         ? { recordCount }
         : {}),
     });

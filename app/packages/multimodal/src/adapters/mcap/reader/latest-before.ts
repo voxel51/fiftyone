@@ -9,6 +9,7 @@ import type {
   McapIndexedReaderLike,
   McapReadLatestIndexedMessageTimesRequest,
 } from "./types";
+import { positiveIntegerOption } from "./validation";
 
 /**
  * Per-topic ceiling on message-index reads during one predecessor walk.
@@ -41,8 +42,12 @@ export async function readLatestIndexedMessageTimesForReader(
     );
   }
 
-  const maxChunkProbes =
-    args.maxChunkProbesPerTopic ?? DEFAULT_MAX_PREDECESSOR_CHUNK_PROBES;
+  const maxChunkProbes = positiveIntegerOption({
+    context: "MCAP latest-message lookup",
+    defaultValue: DEFAULT_MAX_PREDECESSOR_CHUNK_PROBES,
+    name: "maxChunkProbesPerTopic",
+    value: args.maxChunkProbesPerTopic,
+  });
   const results = new Map<string, readonly McapIndexedMessageTime[]>();
 
   // Channels are exclusive to one topic, so per-topic walks never read
