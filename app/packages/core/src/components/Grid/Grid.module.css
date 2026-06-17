@@ -135,20 +135,46 @@
   background-color: rgba(255, 255, 255, 0.05);
 }
 
-/* Virtual scrollbar thumb: shows scroll depth without a full-content scrollbar;
-   draggable to jump. Faint at rest, brighter while scrolling (.visible). */
+/* Virtual scrollbar thumb: shows scroll depth (within explored territory) without a
+   full-content scrollbar; draggable to jump back up. Visible at rest, brighter while
+   scrolling (.visible) or on hover so it's easy to grab. */
 .virtualScrollbar {
   position: absolute;
-  right: 2px;
+  right: 3px;
   width: 8px;
-  border-radius: 4px;
-  background-color: rgba(255, 255, 255, 0.25);
-  opacity: 0.35;
+  min-height: 28px;
+  border-radius: 0;
+  background-color: var(--fo-palette-text-tertiary);
+  opacity: 0.9;
   transition: opacity 0.15s ease;
   cursor: pointer;
   z-index: 10;
 }
 
+.virtualScrollbar:hover,
 .virtualScrollbar.visible {
-  opacity: 0.8;
+  opacity: 1;
+}
+
+/* Small, faint corner spinner shown while a tile's IMAGE is up but its labels are
+   still loading — so an in-progress tile isn't mistaken for one with no labels. It
+   disappears the moment labels land (whether or not the sample has any). */
+.tileLoading {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: rgba(255, 255, 255, 0.75);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 3;
+  animation: tileSpin 0.8s linear infinite;
+}
+
+@keyframes tileSpin {
+  to {
+    transform: rotate(360deg);
+  }
 }

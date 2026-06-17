@@ -123,6 +123,13 @@ const Cell = ({
     paint();
   }, [paint, version]);
 
+  // labels are "loaded" once the sample is in the store. While the image is up but
+  // the sample hasn't landed, a faint spinner signals more is coming — so a tile
+  // mid-load isn't mistaken for one that genuinely has no labels.
+  const labelsLoaded = !!(
+    id && (store as unknown as WeakMap<ID, GridNode>).get(idFor(id))?.sample
+  );
+
   return (
     <div
       className={styles.spotlightWireframe}
@@ -166,6 +173,8 @@ const Cell = ({
           pointerEvents: "none",
         }}
       />
+      {/* faint spinner while the image is up but labels are still loading */}
+      {url && !labelsLoaded && <div className={styles.tileLoading} />}
     </div>
   );
 };
