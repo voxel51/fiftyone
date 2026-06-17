@@ -77,9 +77,9 @@ const LabelEntry = ({ id, path }: { id: string; path: string }) => {
     [sample, id, path]
   );
 
-  const isHovering = useInteraction(engine, (i) =>
-    i.getHovered().some((ref) => ref.instanceId === id && ref.path === path)
-  );
+  // full-identity read (sample included) — a hand-rolled instanceId+path match
+  // would cross-light a same-id row from another slice in a grouped modal
+  const isHovering = useInteraction(engine, (i) => i.isHovered(toRef()));
 
   // color reads only `field` + `label` off the overlay (cf. the 3D rows) — a
   // stub over the engine label is enough, no mounted Lighter overlay needed
