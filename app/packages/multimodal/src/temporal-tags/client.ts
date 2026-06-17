@@ -6,11 +6,11 @@ import type {
   DeleteSampleTagsRequest,
   ListDatasetTagsRequest,
   ListSampleTagsRequest,
+  Tag,
   TagCreate,
   TagFilter,
   TagUpdate,
   TagsClient,
-  TemporalTag,
   UpdateSampleTagRequest,
 } from "./types";
 
@@ -275,7 +275,7 @@ function filterDto(filter: TagFilter) {
   });
 }
 
-function temporalTagFromDto(dto: TagDto): TemporalTag {
+function temporalTagFromDto(dto: TagDto): Tag {
   return {
     anchor: dto.anchor,
     createdAt: dto.created_at,

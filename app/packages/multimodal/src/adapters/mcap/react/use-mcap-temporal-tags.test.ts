@@ -2,10 +2,7 @@ import type { SampleRendererProps } from "@fiftyone/plugins";
 import type { TemporalTagCreatePayload } from "@fiftyone/playback";
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type {
-  TemporalTag,
-  UseSampleTagsResult,
-} from "../../../temporal-tags/types";
+import type { Tag, UseSampleTagsResult } from "../../../temporal-tags/types";
 import { useMcapTemporalTags } from "./use-mcap-temporal-tags";
 
 // ---------------------------------------------------------------------------
@@ -39,7 +36,7 @@ vi.mock("../../../temporal-tags", () => ({
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeTag(overrides: Partial<TemporalTag> = {}): TemporalTag {
+function makeTag(overrides: Partial<Tag> = {}): Tag {
   return {
     id: "tag-id-1",
     sampleId: "sample-id",

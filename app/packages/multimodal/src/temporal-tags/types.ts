@@ -12,8 +12,8 @@ export interface TagFilter {
   readonly tags?: readonly string[];
 }
 
-/** Persisted temporal tag returned by the backend. */
-export interface TemporalTag {
+/** Persisted tag returned by the backend. */
+export interface Tag {
   readonly end: number;
   readonly id: string;
   readonly indexType: number;
@@ -94,21 +94,15 @@ export interface CountDatasetTagsRequest {
  * Client for the tag route surface.
  */
 export interface TagsClient {
-  createSampleTags(
-    request: CreateSampleTagsRequest
-  ): Promise<readonly TemporalTag[]>;
+  createSampleTags(request: CreateSampleTagsRequest): Promise<readonly Tag[]>;
   clearSampleTags(request: ClearSampleTagsRequest): Promise<number>;
   countDatasetTags(
     request: CountDatasetTagsRequest
   ): Promise<Readonly<Record<string, number>>>;
   deleteSampleTags(request: DeleteSampleTagsRequest): Promise<number>;
-  listDatasetTags(
-    request: ListDatasetTagsRequest
-  ): Promise<readonly TemporalTag[]>;
-  listSampleTags(
-    request: ListSampleTagsRequest
-  ): Promise<readonly TemporalTag[]>;
-  updateSampleTag(request: UpdateSampleTagRequest): Promise<TemporalTag>;
+  listDatasetTags(request: ListDatasetTagsRequest): Promise<readonly Tag[]>;
+  listSampleTags(request: ListSampleTagsRequest): Promise<readonly Tag[]>;
+  updateSampleTag(request: UpdateSampleTagRequest): Promise<Tag>;
 }
 
 /**
@@ -125,15 +119,12 @@ export interface UseSampleTagsOptions extends Partial<SampleTagsRequest> {
 export interface UseSampleTagsResult {
   readonly error: string | null;
   readonly status: TemporalTagsStatus;
-  readonly temporalTags: readonly TemporalTag[];
+  readonly temporalTags: readonly Tag[];
   readonly clear: (filter?: TagFilter) => Promise<number>;
   readonly create: (
     temporalTags: readonly TagCreate[]
-  ) => Promise<readonly TemporalTag[]>;
+  ) => Promise<readonly Tag[]>;
   readonly delete: (ids: readonly string[]) => Promise<number>;
-  readonly reload: () => Promise<readonly TemporalTag[]>;
-  readonly update: (
-    temporalTagId: string,
-    update: TagUpdate
-  ) => Promise<TemporalTag>;
+  readonly reload: () => Promise<readonly Tag[]>;
+  readonly update: (temporalTagId: string, update: TagUpdate) => Promise<Tag>;
 }

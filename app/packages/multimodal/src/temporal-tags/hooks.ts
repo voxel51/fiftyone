@@ -2,11 +2,11 @@ import type { SampleRendererProps } from "@fiftyone/plugins";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createTagsClient } from "./client";
 import type {
+  Tag,
   TagCreate,
   TagFilter,
   TagUpdate,
   TagsClient,
-  TemporalTag,
   TemporalTagsStatus,
   UseSampleTagsOptions,
   UseSampleTagsResult,
@@ -15,7 +15,7 @@ import type {
 type TemporalTagsState = {
   readonly error: string | null;
   readonly status: TemporalTagsStatus;
-  readonly temporalTags: readonly TemporalTag[];
+  readonly temporalTags: readonly Tag[];
 };
 
 const IDLE_STATE: TemporalTagsState = {

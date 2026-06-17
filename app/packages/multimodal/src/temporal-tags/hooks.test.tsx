@@ -4,9 +4,9 @@ import { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useSampleRendererTags, useSampleTemporalTags } from "./hooks";
 import type {
+  Tag,
   TagCreate,
   TagsClient,
-  TemporalTag,
   UseSampleTagsOptions,
   UseSampleTagsResult,
 } from "./types";
@@ -100,8 +100,8 @@ describe("useSampleTemporalTags", () => {
   });
 
   it("ignores stale async responses after a rerender", async () => {
-    const first = deferred<readonly TemporalTag[]>();
-    const second = deferred<readonly TemporalTag[]>();
+    const first = deferred<readonly Tag[]>();
+    const second = deferred<readonly Tag[]>();
     const client = createTagsClient({
       listSampleTags: vi.fn(({ sampleId }) =>
         sampleId === "sample-a" ? first.promise : second.promise
@@ -312,7 +312,7 @@ function createTagsClient(overrides: Partial<TagsClient> = {}): TagsClient {
   };
 }
 
-function createTemporalTag(id: string): TemporalTag {
+function createTemporalTag(id: string): Tag {
   return {
     end: 2,
     id,
