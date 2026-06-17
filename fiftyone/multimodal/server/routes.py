@@ -205,7 +205,7 @@ def _temporal_tags_from_create_payload(
     if not isinstance(records, list) or not records:
         raise HTTPException(
             status_code=400,
-            detail="'temporal_tags' must contain at least one temporal tag",
+            detail="'tags' must contain at least one tag",
         )
 
     tags = []
@@ -460,11 +460,7 @@ def _reject_temporal_tag_timestamps(record: dict) -> None:
         raise HTTPException(
             status_code=400,
             detail=(
-                "Tag %s %s response-only"
-                % (
-                    ", ".join(sorted(fields)),
-                    "is" if len(fields) == 1 else "are",
-                )
+                f"Tag {', '.join(sorted(fields))} {'is' if len(fields) == 1 else 'are'} response-only"
             ),
         )
 
@@ -481,11 +477,7 @@ def _reject_temporal_tag_update_fields(record: dict) -> None:
         raise HTTPException(
             status_code=400,
             detail=(
-                "Tag %s %s not mutable through this route"
-                % (
-                    ", ".join(sorted(fields)),
-                    "is" if len(fields) == 1 else "are",
-                )
+                f"Tag {', '.join(sorted(fields))} {'is' if len(fields) == 1 else 'are'} not mutable through this route"
             ),
         )
 
