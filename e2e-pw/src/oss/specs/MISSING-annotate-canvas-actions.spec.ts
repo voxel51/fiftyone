@@ -83,6 +83,9 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
+    // Lighter mounts hidden and reveals only after its first render;
+    // canvas overlays are not hit-testable until then
+    await modal.waitForLighterReady();
 
     // Activate detection mode
     await modal.sidebar.annotate.detectionMode("Detections");
@@ -104,6 +107,9 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
+    // Lighter mounts hidden and reveals only after its first render;
+    // canvas overlays are not hit-testable until then
+    await modal.waitForLighterReady();
 
     // Activate detection mode
     await modal.sidebar.annotate.detectionMode("Detections");
@@ -126,6 +132,9 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
+    // Lighter mounts hidden and reveals only after its first render;
+    // canvas overlays are not hit-testable until then
+    await modal.waitForLighterReady();
 
     // Activate detection mode
     await modal.sidebar.annotate.detectionMode("Detections");
@@ -152,6 +161,9 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
+    // Lighter mounts hidden and reveals only after its first render;
+    // canvas overlays are not hit-testable until then
+    await modal.waitForLighterReady();
 
     // Click on the existing detection at (0.4-0.6, 0.4-0.6)
     await modal.sampleCanvas.move(0.5, 0.5, "pointer");
@@ -210,6 +222,9 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
+    // Lighter mounts hidden and reveals only after its first render;
+    // canvas overlays are not hit-testable until then
+    await modal.waitForLighterReady();
 
     await modal.sidebar.annotate.assert.selectIsActive();
 
@@ -231,6 +246,9 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
+    // Lighter mounts hidden and reveals only after its first render;
+    // canvas overlays are not hit-testable until then
+    await modal.waitForLighterReady();
 
     // 1. Start in Select mode
     await modal.sidebar.annotate.assert.selectIsActive();
@@ -268,6 +286,9 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
+    // Lighter mounts hidden and reveals only after its first render;
+    // canvas overlays are not hit-testable until then
+    await modal.waitForLighterReady();
 
     // Activate detection mode and draw a detection
     await modal.sidebar.annotate.detectionMode("Detections");
