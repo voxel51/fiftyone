@@ -49,7 +49,7 @@ type DeleteTemporalTagsResponseDto = {
 /**
  * Options for constructing the tags route client.
  */
-export interface CreateTemporalTagsClientOptions {
+export interface CreateTagsClientOptions {
   readonly fetchFunction?: TemporalTagsFetch;
 }
 
@@ -57,7 +57,7 @@ export interface CreateTemporalTagsClientOptions {
  * Creates a typed client for the tag HTTP routes.
  */
 export function createTemporalTagsClient(
-  options: CreateTemporalTagsClientOptions = {}
+  options: CreateTagsClientOptions = {}
 ): TemporalTagsClient {
   const fetchFunction = options.fetchFunction ?? getFetchFunctionExtended();
 

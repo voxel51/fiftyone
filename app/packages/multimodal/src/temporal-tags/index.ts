@@ -3,7 +3,7 @@
  */
 export { createTemporalTagsClient } from "./client";
 export { useSampleRendererTemporalTags, useSampleTemporalTags } from "./hooks";
-export type { CreateTemporalTagsClientOptions } from "./client";
+export type { CreateTagsClientOptions } from "./client";
 export type {
   CountDatasetTemporalTagsRequest,
   ClearSampleTemporalTagsRequest,
