@@ -1,6 +1,6 @@
 import { useTrackEvent } from "@fiftyone/analytics";
 import { Toast, useTheme } from "@fiftyone/components";
-import { OPTIMIZING_QUERY_PERFORMANCE, SUMMARY_FIELDS } from "@fiftyone/core";
+import { OPTIMIZING_QUERY_PERFORMANCE, SUMMARY_FIELDS } from "../utils/links";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
 import { Bolt } from "@mui/icons-material";
 import { Box, Button, Typography } from "@mui/material";
