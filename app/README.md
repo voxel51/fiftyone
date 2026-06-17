@@ -9,11 +9,11 @@ The following installation steps are a part of the
 [install script](../install.bash).
 
 First, install [`nvm`](https://github.com/nvm-sh/nvm) and install and set your
-node version to `v17.9.0` using `nvm`.
+node version to `v22` using `nvm`.
 
 ```sh
-nvm install v17.9.0
-nvm use v17.9.0
+nvm install 22
+nvm use 22
 ```
 
 Then install `yarn` globally in your node environment with `npm`:
@@ -36,18 +36,33 @@ First, start the App client development server with hot reloading by running:
 yarn dev
 ```
 
-Next, we generally recommend starting the backend server manually so you have
-access to stack traces:
+This serves the client on `http://localhost:5173`.
+
+Next, we generally recommend starting the backend server with `yarn dev:py` so
+you have access to stack traces. This wrapper points the server's
+`FIFTYONE_ALLOWED_ORIGINS` at the client dev server so cross-origin requests
+from the hot-reloading client are accepted:
 
 ```shell
-python fiftyone/server/main.py
+yarn dev:py
 ```
 
-If you want to run both the app client development server and the backend
-server, try running:
+If you want to run both the client dev server and the backend server together,
+run:
 
 ```shell
 yarn dev:wpy
+```
+
+Both `dev:py` and `dev:wpy` accept the following flags:
+
+-   `-p, --port <port>` — port the client dev server runs on (default `5173`).
+    The allowed origin is derived from this value.
+-   `-n, --notebook` — notebook development: also set the server's `proxy_url`
+    to the client dev server URL.
+
+```shell
+yarn dev:wpy -p 5273 -n
 ```
 
 Either way, now simply launch the App like normal:
@@ -81,7 +96,7 @@ with coverage to watch for failures as you develop. Coverage can be monitored
 for open files in VS Code via the Coverage Gutters extension.
 
 ```sh
-yarn test --ui --coverage
+yarn test-ui
 ```
 
 Generally speaking, new modules and source code should have 100% coverage. If
@@ -235,4 +250,5 @@ Best practices:
 -   All React components should be function-based, not class-based
 -   We recommend writing fully typed TypeScript, although we are still
     transitioning
--   With the app dev environment installed, you can run `yarn storybook`
+-   With the app dev environment installed, you can run
+    `yarn workspace @fiftyone/components storybook`
