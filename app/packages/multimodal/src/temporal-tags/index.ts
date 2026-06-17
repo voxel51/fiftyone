@@ -11,7 +11,7 @@ export type {
   DeleteSampleTemporalTagsRequest,
   ListDatasetTemporalTagsRequest,
   ListSampleTemporalTagsRequest,
-  SampleTemporalTagsRequest,
+  SampleTagsRequest,
   TemporalTag,
   TemporalTagCreate,
   TemporalTagFilter,
