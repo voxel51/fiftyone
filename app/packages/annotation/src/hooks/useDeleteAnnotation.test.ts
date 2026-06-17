@@ -33,6 +33,8 @@ describe("useDeleteAnnotation", () => {
   let mockPersist: ReturnType<typeof vi.fn>;
   let mockEngineDeleteLabel: ReturnType<typeof vi.fn>;
   let mockEngineTransaction: ReturnType<typeof vi.fn>;
+  let mockEngineLastUndoEntry: ReturnType<typeof vi.fn>;
+  let mockEngineRollbackEntry: ReturnType<typeof vi.fn>;
   let mockDispatch: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -41,12 +43,17 @@ describe("useDeleteAnnotation", () => {
     mockEngineDeleteLabel = vi.fn();
     // run the body so the wrapped deleteLabel still executes
     mockEngineTransaction = vi.fn((fn: () => void) => fn());
+    // default: no undo entry captured → nothing to roll back
+    mockEngineLastUndoEntry = vi.fn().mockReturnValue(undefined);
+    mockEngineRollbackEntry = vi.fn();
     mockDispatch = vi.fn();
 
     vi.mocked(usePersistAnnotationDeltas).mockReturnValue(mockPersist);
     vi.mocked(useAnnotationEngine).mockReturnValue({
       deleteLabel: mockEngineDeleteLabel,
       transaction: mockEngineTransaction,
+      lastUndoEntry: mockEngineLastUndoEntry,
+      rollbackEntry: mockEngineRollbackEntry,
     } as any);
     vi.mocked(useActiveAnnotationSampleId).mockReturnValue("sample-1");
     vi.mocked(useAnnotationEventBus).mockReturnValue({
@@ -137,6 +144,46 @@ describe("useDeleteAnnotation", () => {
     const result = await deleteAnnotation(makeLabel());
 
     expect(result).toBe(true);
+  });
+
+  it("rolls back (restores) the label when the server rejects the delete", async () => {
+    // lastUndoEntry: undefined before the delete, the new entry after it
+    const entry = { ops: [], undoKey: undefined };
+    mockEngineLastUndoEntry
+      .mockReturnValueOnce(undefined)
+      .mockReturnValueOnce(entry);
+    mockPersist.mockResolvedValue(false);
+    const deleteAnnotation = getCallback();
+
+    await deleteAnnotation(makeLabel({ labelId: "label-7" }));
+
+    expect(mockEngineRollbackEntry).toHaveBeenCalledWith(entry);
+  });
+
+  it("rolls back the label when persistence throws", async () => {
+    const entry = { ops: [], undoKey: undefined };
+    mockEngineLastUndoEntry
+      .mockReturnValueOnce(undefined)
+      .mockReturnValueOnce(entry);
+    mockPersist.mockRejectedValue(new Error("network down"));
+    const deleteAnnotation = getCallback();
+
+    await expect(deleteAnnotation(makeLabel())).rejects.toThrow("network down");
+
+    expect(mockEngineRollbackEntry).toHaveBeenCalledWith(entry);
+  });
+
+  it("does not roll back a gesture (merge) delete — the gesture owns its rollback", async () => {
+    const entry = { ops: [], undoKey: undefined };
+    mockEngineLastUndoEntry
+      .mockReturnValueOnce(undefined)
+      .mockReturnValueOnce(entry);
+    mockPersist.mockResolvedValue(false);
+    const deleteAnnotation = getCallback();
+
+    await deleteAnnotation(makeLabel(), { gestureId: "gesture:1" });
+
+    expect(mockEngineRollbackEntry).not.toHaveBeenCalled();
   });
 
   it("dispatches deleteError and re-throws when persistence throws", async () => {

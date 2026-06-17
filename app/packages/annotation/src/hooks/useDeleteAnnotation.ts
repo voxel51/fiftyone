@@ -59,12 +59,21 @@ export const useDeleteAnnotation = (): ((
           instanceId: labelId,
         };
 
+        // §9 await-and-rollback: for a standalone delete, hold the undo entry
+        // this transaction pushes so a rejected persist can restore the label
+        // (and drop the entry). A gesture delete (merge) carries a gestureId and
+        // the gesture owns its own rollback, so we don't capture one here.
+        let rollback: ReturnType<typeof engine.lastUndoEntry>;
+
         if (options?.gestureId) {
           engine.transaction(() => engine.deleteLabel(ref), {
             undoKey: options.gestureId,
           });
         } else {
+          const prior = engine.lastUndoEntry();
           engine.deleteLabel(ref);
+          const top = engine.lastUndoEntry();
+          rollback = top === prior ? undefined : top;
         }
 
         // Flush immediately through the unified Sample path so the deletion
@@ -79,11 +88,21 @@ export const useDeleteAnnotation = (): ((
           if (success) {
             eventBus.dispatch("annotation:persistenceSuccess");
           } else {
+            // restore the label the server refused to delete (a later autosave
+            // re-attempts under retry-by-default)
+            if (rollback) {
+              engine.rollbackEntry(rollback);
+            }
+
             eventBus.dispatch("annotation:persistenceError", {
               error: new Error("Server rejected changes"),
             });
           }
         } catch (error) {
+          if (rollback) {
+            engine.rollbackEntry(rollback);
+          }
+
           eventBus.dispatch("annotation:persistenceError", {
             error: error as Error,
           });
