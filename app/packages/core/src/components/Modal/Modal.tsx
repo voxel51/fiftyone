@@ -1,6 +1,5 @@
 import {
   useAutoSave,
-  useRegisterAnnotationCommandHandlers,
   useRegisterAnnotationEventHandlers,
   useRegisterAnnotationKeybindings,
   useRegisterRendererEventHandlers,
@@ -93,7 +92,6 @@ const AnnotationHandlerRegistration = () => {
 };
 
 const AnnotationHandlerRegistrationInner = () => {
-  useRegisterAnnotationCommandHandlers();
   useRegisterAnnotationEventHandlers();
   useRegisterAnnotationKeybindings();
   useRegisterRendererEventHandlers();

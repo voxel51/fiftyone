@@ -9,7 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
 const mockDispatchAnnotationEvent = vi.fn();
-const mockExecuteCommand = vi.fn().mockResolvedValue(undefined);
+const mockDeleteAnnotation = vi.fn().mockResolvedValue(true);
 const mockGetLabelById = vi.fn();
 const mockAddLabelToSidebar = vi.fn();
 const mockRemoveLabelFromSidebar = vi.fn();
@@ -35,23 +35,11 @@ class MockDetectionOverlay {
   }
 }
 
-class MockDeleteAnnotationCommand {
-  constructor(
-    public label: unknown,
-    public schema: unknown,
-    public gestureId?: string
-  ) {}
-}
-
 vi.mock("@fiftyone/annotation", () => ({
-  DeleteAnnotationCommand: MockDeleteAnnotationCommand,
   getFieldSchema: (...args: unknown[]) => mockGetFieldSchema(...args),
   useAnnotationEventBus: () => ({ dispatch: mockDispatchAnnotationEvent }),
   useAnnotationEngine: () => ({ mintGestureId: () => "gesture:1" }),
-}));
-
-vi.mock("@fiftyone/command-bus", () => ({
-  useCommandBus: () => ({ execute: mockExecuteCommand }),
+  useDeleteAnnotation: () => mockDeleteAnnotation,
 }));
 
 vi.mock("@fiftyone/lighter", () => ({
@@ -117,7 +105,7 @@ describe("useMergeTool", () => {
     });
 
     expect(result.current.mergeTargetId).toBe("ov-1");
-    expect(mockExecuteCommand).not.toHaveBeenCalled();
+    expect(mockDeleteAnnotation).not.toHaveBeenCalled();
   });
 
   it("re-clicking the same target is a no-op", async () => {
@@ -132,7 +120,7 @@ describe("useMergeTool", () => {
       await result.current.handleOverlayClick(overlay as never);
     });
 
-    expect(mockExecuteCommand).not.toHaveBeenCalled();
+    expect(mockDeleteAnnotation).not.toHaveBeenCalled();
   });
 
   it("second click on a different overlay merges, deletes the source, and re-selects the target", async () => {
@@ -162,10 +150,12 @@ describe("useMergeTool", () => {
     // whole merge coalesces into one undo unit
     expect(target.mergeFrom).toHaveBeenCalledWith(source, "gesture:1");
     expect(target.getPaintStrokeData).toHaveBeenCalledTimes(1);
-    expect(mockExecuteCommand).toHaveBeenCalledTimes(1);
-    const deleteCmd = mockExecuteCommand.mock.calls[0][0];
-    expect(deleteCmd).toBeInstanceOf(MockDeleteAnnotationCommand);
-    expect(deleteCmd.gestureId).toBe("gesture:1");
+    expect(mockDeleteAnnotation).toHaveBeenCalledTimes(1);
+    // the gesture id is carried through to the delete so the whole merge
+    // coalesces into one undo unit
+    expect(mockDeleteAnnotation).toHaveBeenCalledWith(sourceLabel, {
+      gestureId: "gesture:1",
+    });
     // the engine read-half owns the overlay/row fallout of the delete —
     // no manual scene/sidebar bookkeeping
     expect(mockRemoveLabelFromSidebar).not.toHaveBeenCalled();
@@ -194,7 +184,7 @@ describe("useMergeTool", () => {
       await result.current.handleOverlayClick(source as never);
     });
 
-    expect(mockExecuteCommand).not.toHaveBeenCalled();
+    expect(mockDeleteAnnotation).not.toHaveBeenCalled();
     expect(mockRemoveOverlay).not.toHaveBeenCalled();
   });
 

@@ -3,11 +3,10 @@
  */
 
 import {
-  DeleteAnnotationCommand,
   getFieldSchema,
   useAnnotationEngine,
+  useDeleteAnnotation,
 } from "@fiftyone/annotation";
-import { useCommandBus } from "@fiftyone/command-bus";
 import { DetectionOverlay, useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
 import { atom, useAtom, useAtomValue } from "jotai";
@@ -51,7 +50,7 @@ export interface MergeTool {
  */
 export const useMergeTool = (): MergeTool => {
   const [mergeTargetId, setMergeTargetId] = useAtom(mergeTargetIdAtom);
-  const commandBus = useCommandBus();
+  const deleteAnnotation = useDeleteAnnotation();
   const engine = useAnnotationEngine();
   const { scene } = useLighter();
   const { getLabelById } = useLabelsContext();
@@ -126,9 +125,7 @@ export const useMergeTool = (): MergeTool => {
         // persist state stay in sync. The engine's value-based undo stack owns
         // reverting the merge (target commits + the source delete).
         try {
-          await commandBus.execute(
-            new DeleteAnnotationCommand(sourceLabel, schema, gestureId)
-          );
+          await deleteAnnotation(sourceLabel, { gestureId });
         } catch (err) {
           targetOverlay.restoreMaskSnapshot(
             paintData.beforeSnapshot,
@@ -144,7 +141,7 @@ export const useMergeTool = (): MergeTool => {
       return true;
     },
     [
-      commandBus,
+      deleteAnnotation,
       engine,
       fieldSchema,
       getLabelById,

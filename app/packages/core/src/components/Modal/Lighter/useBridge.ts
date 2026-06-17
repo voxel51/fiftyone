@@ -2,8 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { DeleteAnnotationCommand, getFieldSchema } from "@fiftyone/annotation";
-import { useCommandBus } from "@fiftyone/command-bus";
+import { getFieldSchema, useDeleteAnnotation } from "@fiftyone/annotation";
 import {
   type Scene2D,
   UNDEFINED_LIGHTER_SCENE_ID,
@@ -35,7 +34,7 @@ import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
  */
 export const useBridge = (scene: Scene2D | null) => {
   useLighterTooltipEventHandler(scene);
-  const commandBus = useCommandBus();
+  const deleteAnnotation = useDeleteAnnotation();
   const useEventHandler = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
@@ -86,13 +85,11 @@ export const useBridge = (scene: Scene2D | null) => {
           return;
         }
 
-        commandBus
-          .execute(new DeleteAnnotationCommand(label, schema))
-          .catch((error) => {
-            console.error("Failed to persist undo of creation:", error);
-          });
+        deleteAnnotation(label).catch((error) => {
+          console.error("Failed to persist undo of creation:", error);
+        });
       },
-      [commandBus, fieldSchema, getLabelById]
+      [deleteAnnotation, fieldSchema, getLabelById]
     )
   );
 

@@ -1,10 +1,9 @@
 import {
-  DeleteAnnotationCommand,
   getFieldSchema,
   useActiveAnnotationSampleId,
   useAnnotationEngine,
+  useDeleteAnnotation,
 } from "@fiftyone/annotation";
-import { useCommandBus } from "@fiftyone/command-bus";
 import { useLighter } from "@fiftyone/lighter";
 import { isDetection3dOverlay, isPolyline3dOverlay } from "@fiftyone/looker-3d";
 import * as fos from "@fiftyone/state";
@@ -22,10 +21,10 @@ import { current } from "./state";
 import useExit from "./useExit";
 
 export default function useDelete() {
-  const commandBus = useCommandBus();
   const { scene, removeOverlay } = useLighter();
   const label = useAtomValue(current);
   const engine = useAnnotationEngine();
+  const deleteAnnotation = useDeleteAnnotation();
   const sample = useActiveAnnotationSampleId();
   const schema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
@@ -36,8 +35,8 @@ export default function useDelete() {
   const isGenerated = useRecoilValue(isGeneratedView);
 
   // Delete is a plain action — the engine's value-based undo stack captures the
-  // delete (via DeleteAnnotationCommand → engine.deleteLabel) and owns restoring
-  // it on Ctrl-Z, so no DelegatingUndoable / command-context undo is registered.
+  // delete (via useDeleteAnnotation → engine.deleteLabel) and owns restoring it
+  // on Ctrl-Z, so no DelegatingUndoable / command-context undo is registered.
   const performDelete = useCallback(async () => {
     if (!label) {
       return;
@@ -80,7 +79,7 @@ export default function useDelete() {
 
       // the engine's read-half does the rest: the bridge loop unmounts
       // the overlay and the list mirror drops the row on the delete tick
-      await commandBus.execute(new DeleteAnnotationCommand(label, fieldSchema));
+      await deleteAnnotation(label);
 
       exit();
     } catch (error) {
@@ -90,7 +89,7 @@ export default function useDelete() {
       console.error(error);
     }
   }, [
-    commandBus,
+    deleteAnnotation,
     engine,
     exit,
     label,
