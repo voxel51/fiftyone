@@ -35,7 +35,7 @@ type TagsResponseDto = {
 };
 
 type TagResponseDto = {
-  readonly temporal_tag: TagDto;
+  readonly tag: TagDto;
 };
 
 type TagCountsResponseDto = {
@@ -180,7 +180,7 @@ export function createTagsClient(
         )}/sample/${encodeURIComponent(sampleId)}/tags/${encodeURIComponent(tagId)}`,
       });
 
-      return tagFromDto(response.response.temporal_tag);
+      return tagFromDto(response.response.tag);
     },
   };
 }

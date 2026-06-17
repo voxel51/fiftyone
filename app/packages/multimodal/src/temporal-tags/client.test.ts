@@ -131,7 +131,7 @@ describe("createTagsClient", () => {
 
   it("converts update bodies without route-owned identity fields", async () => {
     const fetchFunction = createFetch({
-      temporal_tag: createTagDto({ end: 15, tag: "moved" }),
+      tag: createTagDto({ end: 15, tag: "moved" }),
     });
     const client = createTagsClient({
       fetchFunction: fetchFunction as never,
@@ -228,7 +228,7 @@ function responseForRoute(config: FetchConfig) {
   }
 
   if (config.method === "PATCH") {
-    return { temporal_tag: createTagDto() };
+    return { tag: createTagDto() };
   }
 
   return { temporal_tags: [createTagDto()] };
