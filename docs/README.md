@@ -11,7 +11,7 @@ generate its documentation and API reference from source.
 
 Before building the docs locally, ensure you have:
 
--   Python 3.11 installed and a
+-   Python 3.12 installed and a
     [virtual environment](https://docs.voxel51.com/getting_started/virtualenv.html)
     created specifically for documentation.
 
