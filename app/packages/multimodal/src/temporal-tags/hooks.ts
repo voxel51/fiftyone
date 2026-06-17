@@ -28,7 +28,7 @@ let defaultTagsClient: TagsClient | undefined;
 /**
  * Loads and mutates temporal tags for one dataset sample.
  */
-export function useSampleTemporalTags({
+export function useSampleTags({
   client,
   datasetId,
   filter,
@@ -176,7 +176,7 @@ export function useSampleRendererTags(
     readonly filter?: TagFilter;
   } = {}
 ) {
-  return useSampleTemporalTags({
+  return useSampleTags({
     client: options.client,
     datasetId: ctx.dataset.datasetId,
     filter: options.filter,
