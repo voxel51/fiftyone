@@ -12,7 +12,6 @@ from ._temporal_tags import (
     TAGS_COLLECTION_NAME,
     TAGS_EXPORT_FILENAME,
     TagKind,
-    TemporalTag,
 )
 
 __all__ = [
@@ -21,5 +20,4 @@ __all__ = [
     "TAGS_COLLECTION_NAME",
     "TAGS_EXPORT_FILENAME",
     "TagKind",
-    "TemporalTag",
 ]

@@ -20,9 +20,6 @@ from .decoders import (
     register_decoder,
 )
 from .resolver import PlaybackPlanBuilder
-from .tags import (
-    TemporalTag,
-)
 
 __all__ = [
     "DecodedIngestFields",
@@ -31,7 +28,6 @@ __all__ = [
     "MultimodalPayload",
     "PayloadDescriptorKey",
     "PlaybackPlanBuilder",
-    "TemporalTag",
     "clear_decoders",
     "decoders",
     "get_decoder",
