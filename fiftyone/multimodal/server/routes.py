@@ -250,7 +250,7 @@ def _delete_request_from_payload(data, sample_id: str) -> dict:
     filter_payload = data.get("filter", None)
 
     if filter_payload is None:
-        tag_filter = fomt.TemporalTagFilter(sample_ids=sample_id)
+        tag_filter = fota.TemporalTagFilter(sample_ids=sample_id)
         has_filter_selector = False
     else:
         _require_dict(filter_payload, "filter")
@@ -259,7 +259,7 @@ def _delete_request_from_payload(data, sample_id: str) -> dict:
         )
         _ensure_matching_sample_id(requested_sample_ids, sample_id)
 
-        tag_filter = fomt.TemporalTagFilter(
+        tag_filter = fota.TemporalTagFilter(
             sample_ids=sample_id,
             tags=_first_present(filter_payload, "tags", "tag"),
             anchors=_first_present(filter_payload, "anchors", "anchor"),
@@ -326,7 +326,7 @@ def _tag_update_from_payload(data, *, sample_id: str, tag_id: str) -> dict:
 
 def _temporal_tag_filter_from_query(
     request: Request, sample_id: str | None = None
-) -> fomt.TemporalTagFilter:
+) -> fota.TemporalTagFilter:
     params = request.query_params
     sample_ids = _query_values(params, "sample_ids", "sample_id")
     if sample_id is None:
@@ -339,7 +339,7 @@ def _temporal_tag_filter_from_query(
         _ensure_matching_sample_id(sample_ids, sample_id)
         sample_ids = sample_id
 
-    return fomt.TemporalTagFilter(
+    return fota.TemporalTagFilter(
         sample_ids=sample_ids,
         tags=_query_values(params, "tags", "tag"),
         anchors=_query_values(params, "anchors", "anchor"),

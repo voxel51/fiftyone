@@ -22,7 +22,6 @@ from .decoders import (
 from .resolver import PlaybackPlanBuilder
 from .tags import (
     TemporalTag,
-    TemporalTagFilter,
 )
 
 __all__ = [
@@ -33,7 +32,6 @@ __all__ = [
     "PayloadDescriptorKey",
     "PlaybackPlanBuilder",
     "TemporalTag",
-    "TemporalTagFilter",
     "clear_decoders",
     "decoders",
     "get_decoder",
