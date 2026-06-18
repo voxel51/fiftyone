@@ -51,7 +51,7 @@ export const current = atom(
     if (labelAtom) {
       set(labelAtom, label);
     }
-  }
+  },
 );
 
 export const currentData = atom(
@@ -63,7 +63,7 @@ export const currentData = atom(
       const nextData = replace ? data : { ...c.data, ...data };
       return set(labelAtom, { ...c, data: nextData } as AnnotationLabel);
     }
-  }
+  },
 );
 
 export const currentField = atom(
@@ -96,7 +96,7 @@ export const currentField = atom(
     overlay?.updateLabel?.(data);
 
     set(current, { ...currentLabel, path, data } as AnnotationLabel);
-  }
+  },
 );
 
 export const currentFieldIsReadOnlyAtom = atom((get) => {
@@ -129,7 +129,7 @@ export const disabledFields = atomFamily((type: LabelType | null) =>
     }
 
     return disabled;
-  })
+  }),
 );
 
 export const currentType = atom<LabelType | null>((get) => {
@@ -153,7 +153,7 @@ export const isEditing = atom((get) => {
 });
 
 export const isNew = atom(
-  (get) => get(pendingNewTypeAtom) !== null || get(current)?.isNew
+  (get) => get(pendingNewTypeAtom) !== null || get(current)?.isNew,
 );
 
 export const isEditingMask = atom((get) => get(currentEditingMaskAtom));
@@ -173,7 +173,7 @@ export const fieldsOfType = atomFamily((type: LabelType | null) =>
     }
 
     return fields.sort();
-  })
+  }),
 );
 
 export const defaultField = atomFamily((type: LabelType | null) =>
@@ -186,7 +186,7 @@ export const defaultField = atomFamily((type: LabelType | null) =>
       }
     }
     return null;
-  })
+  }),
 );
 
 export const hasChanges = atom((get) => {

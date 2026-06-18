@@ -26,7 +26,7 @@ interface DecodeTimingContext {
  */
 export function timingFromContext(
   context: DecodeContext,
-  messageTimestampNs: bigint | undefined
+  messageTimestampNs: bigint | undefined,
 ): DecodedTiming {
   const timingContext = timingContextFromContext(context);
   const sourceTimestamps: Record<string, bigint> = {
@@ -81,7 +81,7 @@ function timingContextFromContext(context: DecodeContext): DecodeTimingContext {
 }
 
 function sourceTimestampsFromValue(
-  value: unknown
+  value: unknown,
 ): DecodedSourceTimestamps | undefined {
   if (value === undefined || value === null) {
     return undefined;

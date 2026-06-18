@@ -30,7 +30,7 @@ import { atomFamily } from "jotai/utils";
 // first. Cast preserves the writable shape so subclasses' onCommit can
 // call `store.set(streamValueAtom(id), ...)`.
 export const streamValueAtom = atomFamily(
-  (_id: string) => atom<unknown>(null) as PrimitiveAtom<unknown>
+  (_id: string) => atom<unknown>(null) as PrimitiveAtom<unknown>,
 );
 
 /**
@@ -93,5 +93,5 @@ export type SeekEvent = { time: number; seq: number };
 // cast preserves the writable shape so `store.set(seekEventAtom, ...)`
 // keeps its setter signature.
 export const seekEventAtom = atom<SeekEvent | null>(
-  null
+  null,
 ) as PrimitiveAtom<SeekEvent | null>;

@@ -37,7 +37,7 @@ const useApplySlice = () => {
 
       return available.length > 0 ? available[0] : null;
     },
-    [modalGroupSlice, preferredSlice, request]
+    [modalGroupSlice, preferredSlice, request],
   );
 
   const setModalGroupSlice = useSetRecoilState(fos.modalGroupSlice);
@@ -68,14 +68,14 @@ export function useGroupAnnotationModeController() {
   const threeDVisible = fos.useIs3dVisibleSetting();
   const { setVisible } = fos.useRenderConfig3dActions();
   const [modalGroupSliceValue, setModalGroupSliceValue] = useRecoilState(
-    fos.modalGroupSlice
+    fos.modalGroupSlice,
   );
 
   const [mainVisible, setMainVisible] = useRecoilState(
-    fos.groupMediaIsMain2DViewerVisibleSetting
+    fos.groupMediaIsMain2DViewerVisibleSetting,
   );
   const [carouselVisible, setCarouselVisible] = useRecoilState(
-    fos.groupMediaIsCarouselVisibleSetting
+    fos.groupMediaIsCarouselVisibleSetting,
   );
   // Always initialize to EXPLORE so that a modal opening directly in ANNOTATE
   // mode (e.g. after close/reopen with modalMode persisted) is treated as an
@@ -83,7 +83,7 @@ export function useGroupAnnotationModeController() {
   const prevModeRef = useRef(ModalMode.EXPLORE);
 
   const visibilitySnapshotRef = useRef<GroupVisibilityConfigSnapshot | null>(
-    null
+    null,
   );
 
   const applySlice = useApplySlice();
@@ -113,7 +113,7 @@ export function useGroupAnnotationModeController() {
         setModalGroupSliceValue(snapshot.slice);
       }
     },
-    [setCarouselVisible, setMainVisible, setModalGroupSliceValue, setVisible]
+    [setCarouselVisible, setMainVisible, setModalGroupSliceValue, setVisible],
   );
 
   // This effect handles mode transitions

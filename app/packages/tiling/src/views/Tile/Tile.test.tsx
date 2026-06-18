@@ -9,7 +9,11 @@ describe("Tile chrome", () => {
   describe("TileHeader", () => {
     it("renders the title and the close + fullscreen buttons", () => {
       render(
-        <TileHeader title="camera_front" onClose={() => {}} onFullscreen={() => {}} />
+        <TileHeader
+          title="camera_front"
+          onClose={() => {}}
+          onFullscreen={() => {}}
+        />,
       );
       expect(screen.getByText("camera_front")).toBeTruthy();
       expect(screen.getByTestId("tile-header-close")).toBeTruthy();
@@ -20,14 +24,18 @@ describe("Tile chrome", () => {
 
     it("fires onClose when the close button is clicked", () => {
       const onClose = vi.fn();
-      render(<TileHeader title="t" onClose={onClose} onFullscreen={() => {}} />);
+      render(
+        <TileHeader title="t" onClose={onClose} onFullscreen={() => {}} />,
+      );
       fireEvent.click(screen.getByTestId("tile-header-close"));
       expect(onClose).toHaveBeenCalledOnce();
     });
 
     it("fires onFullscreen when the fullscreen button is clicked", () => {
       const onFullscreen = vi.fn();
-      render(<TileHeader title="t" onClose={() => {}} onFullscreen={onFullscreen} />);
+      render(
+        <TileHeader title="t" onClose={() => {}} onFullscreen={onFullscreen} />,
+      );
       fireEvent.click(screen.getByTestId("tile-header-fullscreen"));
       expect(onFullscreen).toHaveBeenCalledOnce();
     });
@@ -38,7 +46,7 @@ describe("Tile chrome", () => {
       render(
         <Tile title="lidar_top" onClose={() => {}} onFullscreen={() => {}}>
           <div data-testid="body">body content</div>
-        </Tile>
+        </Tile>,
       );
       expect(screen.getByText("lidar_top")).toBeTruthy();
       expect(screen.getByTestId("body").textContent).toBe("body content");

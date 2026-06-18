@@ -46,7 +46,7 @@ export const useUpdateSamples = () => {
         }
       });
     },
-    [environment]
+    [environment],
   );
 };
 

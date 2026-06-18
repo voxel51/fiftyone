@@ -64,7 +64,7 @@ describe("PointCloudPanel", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const setAttribute = vi.spyOn(
       THREE.BufferGeometry.prototype,
-      "setAttribute"
+      "setAttribute",
     );
 
     const { container } = render(
@@ -82,11 +82,11 @@ describe("PointCloudPanel", () => {
           translation: new THREE.Vector3(10, 0, 0),
         }}
         showHud={false}
-      />
+      />,
     );
 
     const positionCall = setAttribute.mock.calls.find(
-      ([attributeName]) => attributeName === "position"
+      ([attributeName]) => attributeName === "position",
     );
     const positionAttribute = positionCall?.[1] as
       | THREE.BufferAttribute
@@ -112,11 +112,11 @@ describe("PointCloudPanel", () => {
           positions: new Float32Array([1, 2, 3]),
         }}
         showGizmo={false}
-      />
+      />,
     );
 
     expect(
-      screen.getByTestId("base-3d-scene").getAttribute("data-show-gizmo")
+      screen.getByTestId("base-3d-scene").getAttribute("data-show-gizmo"),
     ).toBe("false");
   });
 
@@ -138,11 +138,11 @@ describe("PointCloudPanel", () => {
           positions: new Float32Array([1, 2, 3]),
         }}
         onCameraPoseChange={onCameraPoseChange}
-      />
+      />,
     );
 
     expect(
-      screen.getByTestId("base-3d-scene").getAttribute("data-camera-pose")
+      screen.getByTestId("base-3d-scene").getAttribute("data-camera-pose"),
     ).toBe(JSON.stringify(cameraPose));
 
     fireEvent.click(screen.getByTestId("camera-change"));
@@ -160,7 +160,7 @@ describe("PointCloudPanel", () => {
         positions: new Float32Array([0, 0, 0, 0, 0, 10]),
         scalarFields: [{ name: "rcs", values: new Float32Array([10, 20]) }],
       }),
-      [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
+      [0.1, 0.2, 0.3, 0.4, 0.5, 0.6],
     );
   });
 
@@ -170,7 +170,7 @@ describe("PointCloudPanel", () => {
         positions: new Float32Array([0, 0, 100, 0, 0, 0]),
         scalarFields: [{ name: "rcs", values: new Float32Array([10, 20]) }],
       }),
-      [0.25, 0.55, 1, 1, 0.9, 0.52]
+      [0.25, 0.55, 1, 1, 0.9, 0.52],
     );
   });
 
@@ -181,7 +181,7 @@ describe("PointCloudPanel", () => {
         colors: new Float32Array([1, 0, 0, 1, 0, 0]),
         positions: new Float32Array([0, 0, 0, 0, 0, 10]),
       }),
-      [0.25, 0.55, 1, 1, 0.9, 0.52]
+      [0.25, 0.55, 1, 1, 0.9, 0.52],
     );
   });
 
@@ -190,7 +190,7 @@ describe("PointCloudPanel", () => {
       renderPointCloudColors({
         positions: new Float32Array([0, 0, 3, 1, 1, 3]),
       }),
-      [0.72, 0.76, 0.82, 0.72, 0.76, 0.82]
+      [0.72, 0.76, 0.82, 0.72, 0.76, 0.82],
     );
   });
 });
@@ -224,11 +224,11 @@ function renderPointCloudColors({
         positions,
       }}
       showHud={false}
-    />
+    />,
   );
 
   const colorCall = setAttribute.mock.calls.find(
-    ([attributeName]) => attributeName === "color"
+    ([attributeName]) => attributeName === "color",
   );
   const colorAttribute = colorCall?.[1] as THREE.BufferAttribute | undefined;
 
@@ -237,7 +237,7 @@ function renderPointCloudColors({
 
 function expectArrayCloseTo(
   actual: readonly number[],
-  expected: readonly number[]
+  expected: readonly number[],
 ) {
   expect(actual).toHaveLength(expected.length);
   actual.forEach((value, index) => {

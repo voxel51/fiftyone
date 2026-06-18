@@ -25,7 +25,7 @@ export function FrustumCollection() {
   const { data: frustumData, isLoading, error } = useFetchFrustumParameters();
   const depth = computeFrustumDepth(sceneBoundingBox);
   const visibleFrustums = frustumData.filter((frustum) =>
-    isValidStaticTransform(frustum.staticTransform)
+    isValidStaticTransform(frustum.staticTransform),
   );
 
   if (!isVisible) {

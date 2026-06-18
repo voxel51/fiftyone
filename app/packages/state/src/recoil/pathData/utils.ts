@@ -4,7 +4,7 @@ import { field as fieldAtom, fieldPaths, meetsType } from "../schema";
 export const gatherPaths = (
   get: GetRecoilValue,
   ftype: string | string[],
-  embeddedDocType?: string | string[]
+  embeddedDocType?: string | string[],
 ) => {
   const paths = [];
 

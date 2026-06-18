@@ -24,7 +24,7 @@ export type RecognizedMediaType =
  * @param mediaType media type
  */
 export const isAnnotationSupported = (
-  mediaType: string | null | undefined
+  mediaType: string | null | undefined,
 ): boolean => {
   return !!mediaType && !["video", "group"].includes(mediaType);
 };
@@ -115,7 +115,7 @@ const extractExtensionFromPath = (path: string) => {
  * Supports raw filepaths as well as direct asset URLs
  */
 export const getSamplePathExtension = (
-  path: string | null | undefined
+  path: string | null | undefined,
 ): string | null => {
   if (typeof path !== "string") {
     return null;
@@ -135,7 +135,7 @@ export const getSamplePathExtension = (
  * Returns true when the provided sample path points to a supported direct 3D asset.
  */
 export const isDirect3dSamplePath = (
-  path: string | null | undefined
+  path: string | null | undefined,
 ): boolean => {
   const extension = getSamplePathExtension(path);
   return extension ? DIRECT_3D_SAMPLE_EXTENSIONS.has(extension) : false;
@@ -146,7 +146,7 @@ export const isDirect3dSamplePath = (
  * can be wrapped into a synthetic FO3D scene.
  */
 export const isWrappableDirect3dSamplePath = (
-  path: string | null | undefined
+  path: string | null | undefined,
 ): boolean => {
   const extension = getSamplePathExtension(path);
   return extension
@@ -193,7 +193,7 @@ export const is3d = (mediaType: string): boolean => {
  * renderers.
  */
 export const isNativeMediaType = (
-  mediaType: string | null | undefined
+  mediaType: string | null | undefined,
 ): mediaType is NativeMediaType => {
   return (
     mediaType == null ||
@@ -242,7 +242,7 @@ export const setContains3d = (mediaTypes: Set<string>): boolean => {
  */
 const anyMatch = <T>(
   set: Set<T>,
-  predicate: (element: T) => boolean
+  predicate: (element: T) => boolean,
 ): boolean => {
   return [...set].some(predicate);
 };

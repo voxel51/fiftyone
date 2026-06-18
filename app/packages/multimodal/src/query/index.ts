@@ -20,7 +20,7 @@ import type {
  * Creates the source-agnostic query client surface.
  */
 export function createMultimodalQueryClient(
-  options: CreateMultimodalQueryClientOptions = {}
+  options: CreateMultimodalQueryClientOptions = {},
 ): MultimodalQueryClient {
   const byteCaches = {
     blockSizeBytes:

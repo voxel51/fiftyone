@@ -19,7 +19,7 @@ import type {
  * Default byte-cache fill block size from explicit source metadata.
  */
 export function defaultByteCacheBlockSizeBytes(
-  request: ByteRangeReadRequest
+  request: ByteRangeReadRequest,
 ): number {
   return request.source.readProfile === BYTE_SOURCE_READ_PROFILE.REMOTE
     ? DEFAULT_REMOTE_BYTE_CACHE_BLOCK_SIZE_BYTES
@@ -32,7 +32,7 @@ export function defaultByteCacheBlockSizeBytes(
  */
 export function createCachedByteClient(
   reader: ByteClient,
-  caches: ByteCacheLayers
+  caches: ByteCacheLayers,
 ): ByteClient {
   const pendingByteReads = new Map<string, Promise<ByteRangeReadResult>>();
 
@@ -48,7 +48,8 @@ export function createCachedByteClient(
         const blockSizeBytes =
           typeof caches.blockSizeBytes === "function"
             ? caches.blockSizeBytes(request)
-            : caches.blockSizeBytes ?? defaultByteCacheBlockSizeBytes(request);
+            : (caches.blockSizeBytes ??
+              defaultByteCacheBlockSizeBytes(request));
 
         if (
           blockSizeBytes !== undefined &&
@@ -126,7 +127,7 @@ function byteRangeAccessKey(request: ByteRangeReadRequest): string {
 
 function sliceByteRangeResult(
   result: ByteRangeReadResult,
-  range: ByteRange
+  range: ByteRange,
 ): ByteRangeReadResult {
   if (
     result.range.offset === range.offset &&
@@ -144,4 +145,3 @@ function sliceByteRangeResult(
     source: result.source,
   };
 }
-

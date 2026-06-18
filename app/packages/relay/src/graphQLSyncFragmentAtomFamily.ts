@@ -13,20 +13,20 @@ import { loadContext } from "./utils";
 
 export type GraphQLSyncFragmentAtomFamilyOptions<
   K,
-  P extends SerializableParam
+  P extends SerializableParam,
 > = Omit<AtomFamilyOptions<K, P>, "default">;
 
 export type GraphQLSyncFragmentSyncAtomFamilyOptions<
   T extends KeyType,
   K,
-  P extends SerializableParam
+  P extends SerializableParam,
 > = {
   fragments: GraphQLTaggedNode[];
   keys?: string[];
   read?: (
     data: KeyTypeData<T>,
     previous: KeyTypeData<T> | null,
-    params: P
+    params: P,
   ) => K | ((current: K) => K);
   sync?: (params: P) => boolean;
   default: K;
@@ -43,10 +43,10 @@ const isTest = typeof process !== "undefined" && process.env.MODE === "test";
 export function graphQLSyncFragmentAtomFamily<
   T extends KeyType,
   K,
-  P extends SerializableParam
+  P extends SerializableParam,
 >(
   fragmentOptions: GraphQLSyncFragmentSyncAtomFamilyOptions<T, K, P>,
-  options: GraphQLSyncFragmentAtomFamilyOptions<K, P>
+  options: GraphQLSyncFragmentAtomFamilyOptions<K, P>,
 ) {
   const family = atomFamily({
     ...options,
@@ -70,7 +70,7 @@ export function graphQLSyncFragmentAtomFamily<
                 let previous: null | T[" $data"] = null;
                 const setter = (
                   d: null | T[" $data"],
-                  int?: TransactionInterface_UNSTABLE
+                  int?: TransactionInterface_UNSTABLE,
                 ) => {
                   const set = int
                     ? (v: K) => int.set(family(params), v)
@@ -79,15 +79,15 @@ export function graphQLSyncFragmentAtomFamily<
                     fragmentOptions.read && d !== null
                       ? fragmentOptions.read(d, previous, params)
                       : d === null
-                      ? fragmentOptions.default
-                      : (d as K)
+                        ? fragmentOptions.default
+                        : (d as K),
                   );
                   previous = d;
                 };
 
                 const run = (
                   page: PageQuery<OperationType>,
-                  transactionInterface?: TransactionInterface_UNSTABLE
+                  transactionInterface?: TransactionInterface_UNSTABLE,
                 ): Disposable | undefined => {
                   const preloadedQuery = page.preloadedQuery;
                   let data = page.data;
@@ -105,7 +105,7 @@ export function graphQLSyncFragmentAtomFamily<
                           () => {
                             run(page);
                             unlisten();
-                          }
+                          },
                         );
                       }
 
@@ -113,7 +113,7 @@ export function graphQLSyncFragmentAtomFamily<
                       ctx = loadContext(
                         fragment,
                         preloadedQuery.environment,
-                        data
+                        data,
                       );
                       parent = data;
                       data = ctx.result.data;
@@ -128,7 +128,7 @@ export function graphQLSyncFragmentAtomFamily<
                           fragmentOptions.fragments.length - 1
                         ],
                         preloadedQuery.environment,
-                        parent
+                        parent,
                       ).result.data;
                       setter(update);
                       !update && run(page);

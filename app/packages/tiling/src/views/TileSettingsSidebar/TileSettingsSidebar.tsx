@@ -15,7 +15,7 @@ const TileSettingsSidebar: React.FC = () => {
 
   const slotRef = useCallback(
     (el: HTMLDivElement | null) => setSettingsSlotEl(el),
-    [setSettingsSlotEl]
+    [setSettingsSlotEl],
   );
 
   return (

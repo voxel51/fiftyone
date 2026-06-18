@@ -143,15 +143,15 @@ describe("KeyParser", () => {
     expect(() => {
       KeyParser.parseBinding(binding);
     }).toThrowError(
-      `The binding ${binding} contains an invalid key ${binding}`
+      `The binding ${binding} contains an invalid key ${binding}`,
     );
     binding = "ctrl+foo";
     expect(() => {
       KeyParser.parseBinding(binding);
     }).toThrowError(
       `The binding ${binding} contains an invalid key ${binding.substring(
-        binding.length - 3
-      )}`
+        binding.length - 3,
+      )}`,
     );
     binding = "foo+ctrl";
     expect(() => {
@@ -159,8 +159,8 @@ describe("KeyParser", () => {
     }).toThrowError(
       `The binding ${binding} contains an invalid key ${binding.substring(
         0,
-        3
-      )}`
+        3,
+      )}`,
     );
     binding = "+";
     expect(() => {
@@ -209,7 +209,12 @@ describe("KeyParser", () => {
     // every keystroke, so toString() must emit a parseable string. A literal
     // comma key must be re-escaped as "\," or parseBinding splits on it and
     // throws "contains an empty sequence".
-    const bindings = ["meta+\\,", "ctrl+\\,,shift+\\+", "shift+space", "ctrl+s"];
+    const bindings = [
+      "meta+\\,",
+      "ctrl+\\,,shift+\\+",
+      "shift+space",
+      "ctrl+s",
+    ];
     for (const binding of bindings) {
       const normalized = KeyParser.parseBinding(binding)
         .map((s) => s.toString())

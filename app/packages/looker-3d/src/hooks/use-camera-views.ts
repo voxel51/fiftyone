@@ -35,7 +35,7 @@ interface UseCameraViewsProps {
  * For polylines, calculates the centroid and radius from bounding box of all points.
  */
 const calculateLabelCentroidAndRadius = (
-  label?: ReconciledDetection3D | ReconciledPolyline3D | null
+  label?: ReconciledDetection3D | ReconciledPolyline3D | null,
 ): { centroid: Vector3; radius: number } | null => {
   if (!label) {
     return null;
@@ -49,7 +49,7 @@ const calculateLabelCentroidAndRadius = (
       // Calculate radius based on dimensions diagonal
       const radius =
         Math.sqrt(
-          dimensions[0] ** 2 + dimensions[1] ** 2 + dimensions[2] ** 2
+          dimensions[0] ** 2 + dimensions[1] ** 2 + dimensions[2] ** 2,
         ) * 4.5;
 
       return {
@@ -69,12 +69,12 @@ const calculateLabelCentroidAndRadius = (
             acc[1] + point[1],
             acc[2] + point[2],
           ],
-          [0, 0, 0] as [number, number, number]
+          [0, 0, 0] as [number, number, number],
         );
         const centroid = new Vector3(
           sum[0] / allPoints.length,
           sum[1] / allPoints.length,
-          sum[2] / allPoints.length
+          sum[2] / allPoints.length,
         );
 
         // Calculate bounding box to determine viewing radius
@@ -101,7 +101,7 @@ const calculateLabelCentroidAndRadius = (
         const diagonal = Math.sqrt(
           (max[0] - min[0]) ** 2 +
             (max[1] - min[1]) ** 2 +
-            (max[2] - min[2]) ** 2
+            (max[2] - min[2]) ** 2,
         );
         const radius = Math.max(diagonal * 1.5, 2); // minimum radius of 2
 
@@ -124,7 +124,7 @@ export const useCameraViews = ({
   const mode = useAtomValue(fos.modalMode);
   const enableAnnotationPlaneCameraView = canAnnotate && mode === "annotate";
   const selectedLabelForAnnotation = useRecoilValue(
-    selectedLabelForAnnotationAtom
+    selectedLabelForAnnotationAtom,
   );
   const setIsFo3dBackgroundOn = useSetRecoilState(isFo3dBackgroundOnAtom);
 
@@ -184,7 +184,7 @@ export const useCameraViews = ({
         center: constrainedLookAt,
       };
     },
-    [sceneBoundingBox, cameraRef, cameraControlsRef]
+    [sceneBoundingBox, cameraRef, cameraControlsRef],
   );
 
   const applyCameraView = useCallback(
@@ -200,7 +200,7 @@ export const useCameraViews = ({
         target.x,
         target.y,
         target.z,
-        true
+        true,
       );
 
       setCameraViewStatus({
@@ -208,7 +208,7 @@ export const useCameraViews = ({
         timestamp: Date.now(),
       });
     },
-    [cameraControlsRef, setCameraViewStatus]
+    [cameraControlsRef, setCameraViewStatus],
   );
 
   const setCameraView = useCallback(
@@ -221,7 +221,7 @@ export const useCameraViews = ({
       const { cameraPosition, center } = result;
       applyCameraView(cameraPosition, center, viewName);
     },
-    [calculateCameraPosition, applyCameraView]
+    [calculateCameraPosition, applyCameraView],
   );
 
   const handleKeyDown = useCallback(
@@ -422,7 +422,7 @@ export const useCameraViews = ({
       selectedLabelForAnnotation,
       workingLabel,
       cameraControlsRef,
-    ]
+    ],
   );
 
   // This effect registers and cleans up keyboard shortcuts for camera views.

@@ -47,7 +47,7 @@ export const encodeImageSliceView = (sliceName: string): string => {
  * Returns null if the view is not an image slice.
  */
 export const decodeImageSliceView = (
-  view: SidePanelViewType
+  view: SidePanelViewType,
 ): string | null => {
   if (!isImageSliceView(view)) {
     return null;
@@ -60,7 +60,7 @@ export const decodeImageSliceView = (
  */
 const isImageSliceAvailable = (
   view: SidePanelViewType,
-  availableSlices: string[]
+  availableSlices: string[],
 ): boolean => {
   const sliceName = decodeImageSliceView(view);
   if (!sliceName) {
@@ -131,7 +131,7 @@ export const ImageSlicePanel = ({
         const defaultView = getDefaultViewForPanel(panelId);
         console.warn(
           `Image slice view "${view}" is no longer available. Falling back to "${defaultView}" view.`,
-          { view, availableSlices: imageSlices }
+          { view, availableSlices: imageSlices },
         );
         setView(defaultView);
         return;

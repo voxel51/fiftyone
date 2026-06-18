@@ -56,7 +56,7 @@ export const ActionBar = ({
       jsonPanel.toggle(interactionSample);
     },
     [interactionSample],
-    { useTransaction: false }
+    { useTransaction: false },
   );
 
   const componentsToRender = useMemo(() => {
@@ -91,7 +91,7 @@ export const ActionBar = ({
         view={"top"}
         label={"T"}
         hint="Top View (T)"
-      />
+      />,
     );
 
     components.push(
@@ -104,7 +104,7 @@ export const ActionBar = ({
         view={"pov"}
         label={"E"}
         hint="Ego View (E)"
-      />
+      />,
     );
 
     components.push(
@@ -112,7 +112,7 @@ export const ActionBar = ({
         key="view-json"
         jsonPanel={jsonPanel}
         sample={interactionSample}
-      />
+      />,
     );
 
     components.push(<ViewHelp key="view-help" helpPanel={helpPanel} />);

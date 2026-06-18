@@ -36,7 +36,7 @@ export class CommandContext {
    */
   constructor(
     public readonly id: string,
-    private readonly parent?: CommandContext
+    private readonly parent?: CommandContext,
   ) {
     if (parent) {
       this.lastCanUndo = parent.canUndo();
@@ -50,7 +50,7 @@ export class CommandContext {
    */
   public activate() {
     this.unsubscribes.push(
-      this.listenToAllUndo(this.updateUndoState.bind(this))
+      this.listenToAllUndo(this.updateUndoState.bind(this)),
     );
   }
 
@@ -258,14 +258,14 @@ export class CommandContext {
     execute: CommandFunction,
     enablement: () => boolean,
     label?: string,
-    description?: string
+    description?: string,
   ): Command {
     return this.commands.registerCommand(
       id,
       execute,
       enablement,
       label,
-      description
+      description,
     );
   }
   /**

@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  translateSchema,
-  isSchemaIOSchema,
-  isJSONSchema,
-} from "./index";
+import { translateSchema, isSchemaIOSchema, isJSONSchema } from "./index";
 import type { SchemaType } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
 
 describe("translateSchema", () => {

@@ -97,18 +97,14 @@ describe("TimelineHeader", () => {
     render(
       <HeaderHarness
         rulerOverlay={<div data-testid="my-overlay">overlay</div>}
-      />
+      />,
     );
     const ruler = screen.getByTestId("timeline-ruler");
     expect(ruler.querySelector('[data-testid="my-overlay"]')).not.toBeNull();
   });
 
   it("forwards extraActions to the controls row", () => {
-    render(
-      <HeaderHarness
-        extraActions={<button>Tag Mode</button>}
-      />
-    );
+    render(<HeaderHarness extraActions={<button>Tag Mode</button>} />);
     expect(screen.getByRole("button", { name: "Tag Mode" })).toBeTruthy();
   });
 
@@ -116,7 +112,7 @@ describe("TimelineHeader", () => {
     render(
       <HeaderHarness>
         <div data-testid="pinned-section">pinned tracks</div>
-      </HeaderHarness>
+      </HeaderHarness>,
     );
     expect(screen.getByTestId("pinned-section")).toBeTruthy();
     // The root should gain a third child (the belowRuler wrapper).

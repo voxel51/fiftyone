@@ -41,8 +41,8 @@ const Sidebar = () => {
       trigger: (
         event: React.MouseEvent<HTMLDivElement>,
         key: string,
-        cb: () => void
-      ) => void
+        cb: () => void,
+      ) => void,
     ) => {
       switch (entry.kind) {
         case fos.EntryKind.PATH: // e.g. metadata
@@ -111,7 +111,7 @@ const Sidebar = () => {
           throw new Error("invalid entry");
       }
     },
-    [disabled]
+    [disabled],
   );
 
   return (

@@ -10,7 +10,7 @@ const HighlightedText = ({
 }) => {
   const parts = useMemo(
     () => String(text ?? "").split(searchTerm),
-    [text, searchTerm]
+    [text, searchTerm],
   );
 
   if (!String(text).includes(searchTerm)) {

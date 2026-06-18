@@ -26,7 +26,7 @@ const useSceneEventHandler = () => {
   const { scene } = useLighter();
 
   return useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
 };
 
@@ -34,7 +34,7 @@ const useSceneEventBus = () => {
   const { scene } = useLighter();
 
   return useLighterEventBus(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
 };
 
@@ -51,7 +51,7 @@ const useCanonicalMediaBounds = () => {
     useCallback(({ bounds }: { bounds: Rect }) => {
       setBounds(bounds);
     }, []),
-    { once: true }
+    { once: true },
   );
 
   return bounds;
@@ -74,7 +74,7 @@ const useHasContent = (enabled: boolean) => {
       if (scene?.getContentBounds()) {
         setHasContent(true);
       }
-    }, [scene])
+    }, [scene]),
   );
 
   if (enabled && !hasContent && scene?.getContentBounds()) {
@@ -111,7 +111,7 @@ const useRendererReady = () => {
   useSceneEventHandler()(
     "lighter:renderer-ready",
     useCallback(() => setReady(true), []),
-    { once: true }
+    { once: true },
   );
 
   return ready;
@@ -133,7 +133,7 @@ const useRendererReady = () => {
 const useInitializeViewport = (
   savedViewport: ModalViewportState | null,
   effectiveZoom: boolean,
-  mediaBounds: Rect | null
+  mediaBounds: Rect | null,
 ) => {
   const { scene } = useLighter();
   const appliedRef = useRef(false);
@@ -254,7 +254,7 @@ const useViewport = (sampleId: string | undefined) => {
   useInitializeViewport(
     initConditions?.savedViewport ?? null,
     initConditions?.effectiveZoom ?? false,
-    initConditions ? mediaBounds : null
+    initConditions ? mediaBounds : null,
   );
 };
 

@@ -59,7 +59,7 @@ describe("useUpsertLabel / useDeleteLabel", () => {
           annotationLabel: LABEL,
           schema: SCHEMA,
           opType: "mutate",
-        })
+        }),
       );
     });
 
@@ -69,7 +69,7 @@ describe("useUpsertLabel / useDeleteLabel", () => {
       await result.current(LABEL, SCHEMA);
 
       expect(handleLabelPersistence).toHaveBeenCalledWith(
-        expect.objectContaining({ sample: SAMPLE })
+        expect.objectContaining({ sample: SAMPLE }),
       );
     });
 
@@ -80,7 +80,7 @@ describe("useUpsertLabel / useDeleteLabel", () => {
       await result.current(LABEL, SCHEMA);
 
       expect(handleLabelPersistence).toHaveBeenCalledWith(
-        expect.objectContaining({ isGenerated: true })
+        expect.objectContaining({ isGenerated: true }),
       );
     });
 
@@ -110,7 +110,7 @@ describe("useUpsertLabel / useDeleteLabel", () => {
           annotationLabel: LABEL,
           schema: SCHEMA,
           opType: "delete",
-        })
+        }),
       );
     });
 
@@ -120,7 +120,7 @@ describe("useUpsertLabel / useDeleteLabel", () => {
       await result.current(LABEL, SCHEMA);
 
       expect(handleLabelPersistence).toHaveBeenCalledWith(
-        expect.objectContaining({ sample: SAMPLE })
+        expect.objectContaining({ sample: SAMPLE }),
       );
     });
 
@@ -131,7 +131,7 @@ describe("useUpsertLabel / useDeleteLabel", () => {
       await result.current(LABEL, SCHEMA);
 
       expect(handleLabelPersistence).toHaveBeenCalledWith(
-        expect.objectContaining({ isGenerated: true })
+        expect.objectContaining({ isGenerated: true }),
       );
     });
 

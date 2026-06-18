@@ -11,7 +11,7 @@ export function distance(
   x1: number,
   y1: number,
   x2: number,
-  y2: number
+  y2: number,
 ): number {
   return Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
 }
@@ -32,7 +32,7 @@ export function project2d(
   ax: number,
   ay: number,
   bx: number,
-  by: number
+  by: number,
 ): [number, number] {
   // line vector - this is relative to (0, 0), so coordinates of p need to be
   // transformed accordingly
@@ -67,7 +67,7 @@ export function project2d(
 export function projectOntoSegment2d(
   point: [number, number],
   segmentStart: [number, number],
-  segmentEnd: [number, number]
+  segmentEnd: [number, number],
 ): [number, number] {
   const dx = segmentEnd[0] - segmentStart[0];
   const dy = segmentEnd[1] - segmentStart[1];
@@ -81,9 +81,9 @@ export function projectOntoSegment2d(
     Math.max(
       ((point[0] - segmentStart[0]) * dx + (point[1] - segmentStart[1]) * dy) /
         lenSq,
-      0
+      0,
     ),
-    1
+    1,
   );
 
   return [segmentStart[0] + fraction * dx, segmentStart[1] + fraction * dy];
@@ -95,7 +95,7 @@ export function projectOntoSegment2d(
 export function distanceFromLineSegment(
   point: Point,
   segmentStart: Point,
-  segmentEnd: Point
+  segmentEnd: Point,
 ): number {
   const px = point.x,
     py = point.y;
@@ -131,7 +131,7 @@ export function distanceFromLineSegment(
   }
 
   return Math.sqrt(
-    (px - closestX) * (px - closestX) + (py - closestY) * (py - closestY)
+    (px - closestX) * (px - closestX) + (py - closestY) * (py - closestY),
   );
 }
 

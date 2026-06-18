@@ -12,7 +12,7 @@ const Draggable: React.FC<
     trigger?: (
       event: React.MouseEvent<HTMLDivElement>,
       key: string,
-      cb: () => void
+      cb: () => void,
     ) => void;
   }>
 > = ({ children, color, entryKey, trigger }) => {
@@ -51,14 +51,14 @@ const Draggable: React.FC<
   });
   const isDraggable = useMemo(
     () => !disableDrag && trigger && !disabled,
-    [disableDrag, trigger, disabled]
+    [disableDrag, trigger, disabled],
   );
 
   const title = disabled
     ? canModifySidebarGroup.message || "Can not reorder in read-only mode"
     : trigger
-    ? "Drag to reorder"
-    : undefined;
+      ? "Drag to reorder"
+      : undefined;
 
   return (
     <>

@@ -56,7 +56,7 @@ export interface OverlayEvent {
 export type EmptyCanvasClickHandler = (
   worldPoint: Point,
   point: Point,
-  event: PointerEvent
+  event: PointerEvent,
 ) => boolean | void;
 
 /**
@@ -84,7 +84,7 @@ export interface KeypointMutationHandler {
 }
 
 function hasKeypointMutation(
-  h: InteractionHandler
+  h: InteractionHandler,
 ): h is InteractionHandler & KeypointMutationHandler {
   return (
     "getSelectedPointIndex" in h &&
@@ -133,7 +133,7 @@ export interface InteractionHandler {
   getCursor?(
     worldPoint: Point,
     scale: number,
-    modifiers?: ClickEventModifiers
+    modifiers?: ClickEventModifiers,
   ): string;
 
   /**
@@ -147,7 +147,7 @@ export interface InteractionHandler {
    */
   onModifiersChanged?(
     modifiers: ClickEventModifiers,
-    worldPoint: Point | null
+    worldPoint: Point | null,
   ): void;
 
   /** Returns the current state of the handler */
@@ -259,7 +259,7 @@ export class InteractionManager {
     private canvas: HTMLCanvasElement,
     private selectionManager: SelectionManager,
     private renderer: Renderer2D,
-    eventChannel: string
+    eventChannel: string,
   ) {
     this.eventBus = getEventBus<LighterEventGroup>(eventChannel);
     this.setupEventListeners();
@@ -397,7 +397,7 @@ export class InteractionManager {
       const cursor = handler.getCursor?.(
         worldPoint,
         scale,
-        this.currentModifiers
+        this.currentModifiers,
       );
       if (cursor) {
         this.canvas.style.cursor = cursor;
@@ -440,7 +440,7 @@ export class InteractionManager {
   private configureCursorStyle(
     handler: InteractionHandler,
     worldPoint: Point,
-    scale: number
+    scale: number,
   ): void {
     if (
       segmentationModeBridge.isActive() &&
@@ -458,13 +458,13 @@ export class InteractionManager {
       this.canvas.style.cursor = "pointer";
     } else if (segmentationModeBridge.isActive()) {
       this.canvas.style.cursor = buildBrushCursor(
-        segmentationModeBridge.getToolState(scale)!
+        segmentationModeBridge.getToolState(scale)!,
       );
     } else if (TypeGuards.isInteractionHandler(handler) && handler.getCursor) {
       this.canvas.style.cursor = handler.getCursor(
         worldPoint,
         scale,
-        this.currentModifiers
+        this.currentModifiers,
       );
     }
   }
@@ -571,7 +571,7 @@ export class InteractionManager {
         event,
         scale: pending.scale,
         segmentationToolState: segmentationModeBridge.getToolState(
-          pending.scale
+          pending.scale,
         ),
       });
 
@@ -607,7 +607,7 @@ export class InteractionManager {
 
     const distance = Math.hypot(
       point.x - this.pendingAction.point.x,
-      point.y - this.pendingAction.point.y
+      point.y - this.pendingAction.point.y,
     );
 
     if (distance > this.CLICK_THRESHOLD) {
@@ -652,7 +652,7 @@ export class InteractionManager {
         this.scheduleHoverUpdate(
           this.currentPixelCoordinates,
           event,
-          undefined
+          undefined,
         );
       }
     } else {
@@ -1056,7 +1056,7 @@ export class InteractionManager {
       const cursor = interactiveHandler.getCursor(
         worldPoint,
         this.renderer.getScale(),
-        this.currentModifiers
+        this.currentModifiers,
       );
       if (cursor) {
         this.canvas.style.cursor = cursor;
@@ -1209,7 +1209,7 @@ export class InteractionManager {
   private scheduleHoverUpdate(
     point: Point,
     event: PointerEvent,
-    resolvedHandler: InteractionHandler | undefined
+    resolvedHandler: InteractionHandler | undefined,
   ): void {
     this.latestHoverPoint = point;
     this.latestHoverEvent = event;
@@ -1254,7 +1254,7 @@ export class InteractionManager {
   private handleHover(
     point: Point,
     event: PointerEvent,
-    resolvedHandler: InteractionHandler | undefined
+    resolvedHandler: InteractionHandler | undefined,
   ): void {
     const worldPoint = this.renderer.screenToWorld(point);
     const scale = this.renderer.getScale();
@@ -1351,7 +1351,7 @@ export class InteractionManager {
   }
 
   private handleZoomed = (
-    _event: LighterEventGroup["lighter:zoomed"]
+    _event: LighterEventGroup["lighter:zoomed"],
   ): void => {
     this.handlers?.forEach((handler) => handler.markDirty());
 
@@ -1370,7 +1370,7 @@ export class InteractionManager {
 
     const scale = this.renderer.getScale();
     this.canvas.style.cursor = buildBrushCursor(
-      segmentationModeBridge.getToolState(scale)!
+      segmentationModeBridge.getToolState(scale)!,
     );
   };
 
@@ -1380,7 +1380,7 @@ export class InteractionManager {
     const timeDiff = now - this.lastClickTime;
     const distance = Math.sqrt(
       Math.pow(point.x - this.lastClickPoint.x, 2) +
-        Math.pow(point.y - this.lastClickPoint.y, 2)
+        Math.pow(point.y - this.lastClickPoint.y, 2),
     );
 
     return (
@@ -1393,7 +1393,7 @@ export class InteractionManager {
     // self-managed handlers take precedence to allow editing on top of
     // other overlays
     const selfManaged = this.handlers.find((h) =>
-      isSelfManagedInteractiveHandler(h)
+      isSelfManagedInteractiveHandler(h),
     );
 
     return (
@@ -1427,7 +1427,7 @@ export class InteractionManager {
    */
   private findHandlerAtPoint(
     point: Point,
-    skipCanonicalMedia: boolean = false
+    skipCanonicalMedia: boolean = false,
   ): InteractionHandler | undefined {
     // Single-pass: find best handler at point using priority rules.
     // Priority: selected > highest selectable priority > topmost (reverse order).

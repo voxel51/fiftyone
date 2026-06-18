@@ -179,7 +179,7 @@ export const toEulerFromDegreesArray = (degreesArr: Vector3Tuple) => {
  * @returns Object containing min and max values
  */
 export const computeMinMaxForColorBufferAttribute = (
-  colorAttribute: BufferAttribute | InterleavedBufferAttribute
+  colorAttribute: BufferAttribute | InterleavedBufferAttribute,
 ) => {
   let minX = Number.POSITIVE_INFINITY,
     maxX = Number.NEGATIVE_INFINITY;
@@ -200,7 +200,7 @@ export const computeMinMaxForColorBufferAttribute = (
  * @returns Object containing min and max values
  */
 export const computeMinMaxForScalarBufferAttribute = (
-  attribute: BufferAttribute | InterleavedBufferAttribute
+  attribute: BufferAttribute | InterleavedBufferAttribute,
 ) => {
   const a = attribute.array;
   let mn = Number.POSITIVE_INFINITY,
@@ -235,7 +235,7 @@ export const getColorFromPoolBasedOnHash = (str: string) => {
  */
 export const getGridQuaternionFromUpVector = (
   upVectorNormalized: Vector3,
-  targetNormal: Vector3 = new Vector3(0, 1, 0)
+  targetNormal: Vector3 = new Vector3(0, 1, 0),
 ) => {
   const from = targetNormal.clone().normalize();
   const to = upVectorNormalized.clone();
@@ -269,7 +269,7 @@ export function toNDC(ev: PointerEvent, canvas: HTMLCanvasElement) {
  */
 export function toNDCForElement(
   ev: PointerEvent,
-  element: HTMLElement
+  element: HTMLElement,
 ): { x: number; y: number } {
   const rect = element.getBoundingClientRect();
   if (rect.width === 0 || rect.height === 0) {
@@ -294,7 +294,7 @@ export function getPlaneIntersection(
   raycaster: Raycaster,
   camera: Camera,
   ndc: { x: number; y: number },
-  plane: Plane
+  plane: Plane,
 ): Vector3 | null {
   raycaster.setFromCamera(ndc as any, camera);
   const point = new Vector3();
@@ -335,7 +335,7 @@ export function isButtonMatch(ev: PointerEvent, button: number): boolean {
  */
 export function getPlaneFromPositionAndQuaternion(
   position: [number, number, number],
-  quaternion: [number, number, number, number]
+  quaternion: [number, number, number, number],
 ): Plane {
   const pos = new Vector3(...position);
   const quat = new Quaternion(...quaternion);
@@ -383,13 +383,13 @@ export function expandBoundingBox(boundingBox: Box3, safetyMargin = 1.5): Box3 {
  */
 export function eulerToQuaternion(
   eulerAngles: [number, number, number],
-  order: EulerOrder = "XYZ"
+  order: EulerOrder = "XYZ",
 ): [number, number, number, number] {
   const euler = new Euler(
     deg2rad(eulerAngles[0]),
     deg2rad(eulerAngles[1]),
     deg2rad(eulerAngles[2]),
-    order
+    order,
   );
   const quaternion = new Quaternion();
   quaternion.setFromEuler(euler);
@@ -405,13 +405,13 @@ export function eulerToQuaternion(
  */
 export function quaternionToEuler(
   quaternion: [number, number, number, number],
-  order: EulerOrder = "XYZ"
+  order: EulerOrder = "XYZ",
 ): [number, number, number] {
   const q = new Quaternion(
     quaternion[0],
     quaternion[1],
     quaternion[2],
-    quaternion[3]
+    quaternion[3],
   );
   const euler = new Euler();
   euler.setFromQuaternion(q, order);
@@ -431,13 +431,13 @@ export function quaternionToEuler(
  */
 export function quaternionToRadians(
   quaternion: [number, number, number, number],
-  order: EulerOrder = "XYZ"
+  order: EulerOrder = "XYZ",
 ): [number, number, number] {
   const q = new Quaternion(
     quaternion[0],
     quaternion[1],
     quaternion[2],
-    quaternion[3]
+    quaternion[3],
   );
   const euler = new Euler();
   euler.setFromQuaternion(q, order);
@@ -453,13 +453,13 @@ export function quaternionToRadians(
  */
 export function radiansToQuaternion(
   eulerAngles: [number, number, number],
-  order: EulerOrder = "XYZ"
+  order: EulerOrder = "XYZ",
 ): [number, number, number, number] {
   const euler = new Euler(
     eulerAngles[0],
     eulerAngles[1],
     eulerAngles[2],
-    order
+    order,
   );
   const quaternion = new Quaternion();
   quaternion.setFromEuler(euler);
@@ -471,7 +471,7 @@ export function radiansToQuaternion(
  */
 export const isNumericTuple = (
   value: unknown,
-  expectedLength: number
+  expectedLength: number,
 ): value is number[] => {
   return (
     Array.isArray(value) &&
@@ -490,7 +490,7 @@ export const isValidPoint3d = (point: unknown): point is Vector3Tuple => {
     Array.isArray(point) &&
     point.length === 3 &&
     point.every(
-      (coord) => typeof coord === "number" && !isNaN(coord) && isFinite(coord)
+      (coord) => typeof coord === "number" && !isNaN(coord) && isFinite(coord),
     )
   );
 };
@@ -506,11 +506,11 @@ export const validatePoints3d = (points: unknown[]): Vector3Tuple[] => {
  * Validates a points3d array (array of point arrays) and filters out invalid segments
  */
 export const validatePoints3dArray = (
-  points3d: Vector3Tuple[][]
+  points3d: Vector3Tuple[][],
 ): Vector3Tuple[][] => {
   return points3d.filter(
     (pts) =>
-      pts && Array.isArray(pts) && pts.length >= 3 && pts.every(isValidPoint3d)
+      pts && Array.isArray(pts) && pts.length >= 3 && pts.every(isValidPoint3d),
   );
 };
 
@@ -519,7 +519,7 @@ export const validatePoints3dArray = (
  * This is used in index.tsx for filtering segments
  */
 export const isValidPolylineSegment = (
-  segment: unknown
+  segment: unknown,
 ): segment is Vector3Tuple[] => {
   return (
     segment !== null &&
@@ -535,7 +535,7 @@ export const isValidPolylineSegment = (
  * Returns the center location and dimensions.
  */
 export const getAxisAlignedBoundingBoxForPoints3d = (
-  points3d: Vector3Tuple[]
+  points3d: Vector3Tuple[],
 ): { location: Vector3Tuple; dimensions: Vector3Tuple } => {
   if (!points3d || points3d.length === 0) {
     return {
@@ -549,7 +549,7 @@ export const getAxisAlignedBoundingBoxForPoints3d = (
       pt &&
       Array.isArray(pt) &&
       pt.length === 3 &&
-      pt.every((v) => typeof v === "number" && isFinite(v))
+      pt.every((v) => typeof v === "number" && isFinite(v)),
   );
 
   if (validPoints.length === 0) {
@@ -613,7 +613,7 @@ export const calculateCameraPositionForUpVector = (
   size: Vector3,
   upVector: Vector3,
   distanceMultiplier = 2.5,
-  viewType: "top" | "pov" = "pov"
+  viewType: "top" | "pov" = "pov",
 ): Vector3 => {
   const maxSize = Math.max(size.x, size.y, size.z);
   const distance = maxSize * distanceMultiplier;

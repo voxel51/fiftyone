@@ -52,10 +52,10 @@ export const Transformable = ({
   const modalMode = useAtomValue(fos.modalMode);
   const transformMode = useRecoilValue(transformModeAtom);
   const currentArchetypeSelectedForTransform = useRecoilValue(
-    currentArchetypeSelectedForTransformAtom
+    currentArchetypeSelectedForTransformAtom,
   );
   const [isCurrentlyTransforming, setIsCurrentlyTransforming] = useRecoilState(
-    isCurrentlyTransformingAtom
+    isCurrentlyTransformingAtom,
   );
   const isAnnotateMode = modalMode === "annotate";
 

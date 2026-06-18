@@ -29,7 +29,7 @@ import {
  * @param label Label to check
  */
 const is2dPolyline = (
-  label: AnnotationLabel
+  label: AnnotationLabel,
 ): label is PolylineAnnotationLabel => {
   return label?.type === "Polyline" && label.overlay instanceof PolylineOverlay;
 };
@@ -68,7 +68,7 @@ const resolveEmptyHit = (ctx: PolylineEmptyHitContext) =>
  */
 export const usePolylineMode = () => {
   const [polylineModeActive, setPolylineModeActive] = useAtom(
-    polylineModeActiveAtom
+    polylineModeActiveAtom,
   );
   const isPatchView = useRecoilValue(isPatchesView);
   const { fields } = useAnnotationFields(POLYLINE);
@@ -79,19 +79,19 @@ export const usePolylineMode = () => {
   const tooltip = isPatchView
     ? "Editing polylines is not supported in this view"
     : noActiveFields
-    ? "No active fields"
-    : polylineModeActive
-    ? "Exit polyline mode"
-    : "Create new polylines";
+      ? "No active fields"
+      : polylineModeActive
+        ? "Exit polyline mode"
+        : "Create new polylines";
 
   const activatePolylineMode = useCallback(
     () => setPolylineModeActive(true),
-    [setPolylineModeActive]
+    [setPolylineModeActive],
   );
 
   const deactivatePolylineMode = useCallback(
     () => setPolylineModeActive(false),
-    [setPolylineModeActive]
+    [setPolylineModeActive],
   );
 
   const togglePolylineMode = useCallback(() => {
@@ -114,7 +114,7 @@ export const usePolylineMode = () => {
       activatePolylineMode,
       deactivatePolylineMode,
       togglePolylineMode,
-    ]
+    ],
   );
 };
 
@@ -188,7 +188,7 @@ export const usePolylineModeInstaller = (): void => {
   // create function without needing to swap the installed handler.
   const createPolyline = useCallback(
     (options?: CreateOptions) => createNew(POLYLINE, options),
-    [createNew]
+    [createNew],
   );
   const createPolylineRef = useRef(createPolyline);
   createPolylineRef.current = createPolyline;
@@ -227,7 +227,7 @@ export const usePolylineModeInstaller = (): void => {
         targetOverlay,
         resolvePointHit,
         undefined,
-        resolveEmptyHit
+        resolveEmptyHit,
       );
 
       scene.enterInteractiveMode(handler);

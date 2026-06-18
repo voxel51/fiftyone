@@ -27,7 +27,7 @@ export function McapStreams({ ctx }: McapStreamsProps) {
   const allTopics = useMemo(() => sources.map((s) => s.id), [sources]);
   const presentTypes = useMemo(
     () => Array.from(new Set(sources.map((s) => s.type))),
-    [sources]
+    [sources],
   );
 
   useRegisterMcapDataStream({ client, source, allTopics, streamPolicies });

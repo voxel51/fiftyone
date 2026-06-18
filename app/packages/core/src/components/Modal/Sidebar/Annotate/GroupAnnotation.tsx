@@ -63,24 +63,22 @@ export default function GroupAnnotation({
 }: GroupAnnotationProps) {
   const { resolved } = useGroupAnnotationSlices();
   const isLoading = resolved === "loading";
-  const slices = useMemo(() => (isLoading ? [] : resolved), [
-    isLoading,
-    resolved,
-  ]);
+  const slices = useMemo(
+    () => (isLoading ? [] : resolved),
+    [isLoading, resolved],
+  );
 
   const isEditing_ = useAnnotationContext().isEditing;
   const [modalGroupSlice, setModalGroupSlice] = useRecoilState(
-    fos.modalGroupSlice
+    fos.modalGroupSlice,
   );
   const applyVisibilityForSlice = useApplyAnnotationSliceVisibility();
-  const [
-    preferredSlice,
-    setPreferredSlice,
-  ] = fos.usePreferredGroupAnnotationSlice();
+  const [preferredSlice, setPreferredSlice] =
+    fos.usePreferredGroupAnnotationSlice();
 
   const sliceInfoMap = useMemo(
     () => Object.fromEntries(slices.map((s) => [s.name, s])),
-    [slices]
+    [slices],
   );
 
   const useSearch = useCallback(
@@ -90,12 +88,12 @@ export default function GroupAnnotation({
           ({ name, isMissing, isSupported }) =>
             !isMissing &&
             isSupported &&
-            name.toLowerCase().includes(search.toLowerCase())
+            name.toLowerCase().includes(search.toLowerCase()),
         )
         .map((s) => s.name);
       return { values, total: values.length };
     },
-    [slices]
+    [slices],
   );
 
   const onSelect = useCallback(
@@ -118,14 +116,15 @@ export default function GroupAnnotation({
       onSliceSelected,
       setModalGroupSlice,
       setPreferredSlice,
-    ]
+    ],
   );
 
   const SliceOptionComponent = useMemo(
-    () => ({ value }: { value: string }) => (
-      <SliceOption info={sliceInfoMap[value]} />
-    ),
-    [sliceInfoMap]
+    () =>
+      ({ value }: { value: string }) => (
+        <SliceOption info={sliceInfoMap[value]} />
+      ),
+    [sliceInfoMap],
   );
 
   if (isEditing_ || (!isLoading && slices.length === 0)) {

@@ -286,7 +286,7 @@ describe("worker-backed MCAP resource client", () => {
     });
 
     expect(() => client.readTimelineRange(createTimelineRequest())).toThrow(
-      "worker blocked"
+      "worker blocked",
     );
   });
 
@@ -297,7 +297,7 @@ describe("worker-backed MCAP resource client", () => {
     });
 
     expect(() => client.readTimelineRange(createTimelineRequest())).toThrow(
-      "postMessage failed"
+      "postMessage failed",
     );
 
     expect(worker.onmessage).toBeNull();
@@ -373,7 +373,7 @@ function createTimelineRange(startTimeNs: bigint, endTimeNs: bigint) {
 
 function createSource(
   sourceId: string,
-  url = `mcap-source://${encodeURIComponent(sourceId)}`
+  url = `mcap-source://${encodeURIComponent(sourceId)}`,
 ) {
   return {
     sizeBytes: "1024",
@@ -445,7 +445,7 @@ class MockWorker {
   constructor(
     private readonly options: {
       readonly throwOnMessageType?: McapPlaybackWorkerRequest["type"];
-    } = {}
+    } = {},
   ) {}
 
   private get throwOnMessageType() {

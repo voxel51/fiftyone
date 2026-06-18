@@ -11,7 +11,7 @@ export class ByteClientReadable implements McapTypes.IReadable {
 
   constructor(
     source: ByteSourceDescriptor,
-    private readonly byteClient: ByteClient
+    private readonly byteClient: ByteClient,
   ) {
     this.source = source;
   }
@@ -61,12 +61,12 @@ export class ByteClientReadable implements McapTypes.IReadable {
   private async readRange(
     offset: bigint,
     size: bigint,
-    cachePolicy?: { readonly blockFill?: boolean }
+    cachePolicy?: { readonly blockFill?: boolean },
   ): Promise<Uint8Array> {
     const sourceSize = this.resolvedSizeBytes ?? sourceSizeBytes(this.source);
     if (sourceSize !== undefined && offset + size > sourceSize) {
       throw new Error(
-        `Read of ${size.toString()} bytes at offset ${offset.toString()} exceeds source size ${sourceSize.toString()}`
+        `Read of ${size.toString()} bytes at offset ${offset.toString()} exceeds source size ${sourceSize.toString()}`,
       );
     }
 

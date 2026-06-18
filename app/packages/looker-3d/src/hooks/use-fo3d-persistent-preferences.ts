@@ -10,7 +10,7 @@ import {
 export const useFo3dPersistentPreferences = () => {
   const [autoRotate, setAutoRotate] = useBrowserStorage(
     "fo3dAutoRotate",
-    false
+    false,
   );
 
   const [pointCloudSettings, setPointCloudSettings] =
@@ -20,7 +20,7 @@ export const useFo3dPersistentPreferences = () => {
 
   const [raycastPrecision, setRaycastPrecision] = useBrowserStorage(
     "fo3d-raycastingPrecision",
-    DEFAULT_RAYCAST_PRECISION
+    DEFAULT_RAYCAST_PRECISION,
   );
 
   return {

@@ -17,7 +17,7 @@ export interface CreateMcapResourceClientOptions {
  * when requested.
  */
 export function createMcapResourceClient(
-  options: CreateMcapResourceClientOptions = {}
+  options: CreateMcapResourceClientOptions = {},
 ): McapResourceClient {
   if (options.worker === true) {
     return createWorkerMcapResourceClient();

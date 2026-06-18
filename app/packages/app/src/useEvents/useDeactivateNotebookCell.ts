@@ -12,7 +12,7 @@ const useDeactivateNotebookCell: EventHandlerHook = (ctx) => {
       | "ipython"
       | "colab"
       | "databricks"
-      | undefined
+      | undefined,
   );
 
   return useCallback(() => {

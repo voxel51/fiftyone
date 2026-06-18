@@ -20,7 +20,7 @@ type McapGridPreviewWorkerScope = {
     | null;
   postMessage(
     response: McapGridPreviewWorkerResponse,
-    transfer?: readonly Transferable[]
+    transfer?: readonly Transferable[],
   ): void;
 };
 
@@ -42,7 +42,7 @@ workerScope.onmessage = (event: MessageEvent<McapGridPreviewWorkerRequest>) => {
     setFetchFunction(
       message.payload.origin,
       message.payload.headers,
-      message.payload.pathPrefix
+      message.payload.pathPrefix,
     );
     return;
   }
@@ -71,7 +71,7 @@ async function runAndRespond(message: McapGridPreviewWorkerRpcRequest) {
   try {
     const result = await decodeGridPreview(
       entryForSource(message.sourceKey),
-      message.payload
+      message.payload,
     );
 
     postResponse({
@@ -105,7 +105,7 @@ function postResponse(response: McapGridPreviewWorkerResponse) {
 }
 
 function transferablesForResponse(
-  response: McapGridPreviewWorkerResponse
+  response: McapGridPreviewWorkerResponse,
 ): Transferable[] {
   if (!response.ok) {
     return [];
@@ -120,7 +120,7 @@ function transferablesForResponse(
     return transferableBuffers(
       frame.pointCloud.positions,
       frame.pointCloud.colors,
-      ...(frame.pointCloud.scalarFields?.map((field) => field.values) ?? [])
+      ...(frame.pointCloud.scalarFields?.map((field) => field.values) ?? []),
     );
   }
 

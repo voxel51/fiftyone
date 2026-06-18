@@ -35,7 +35,7 @@ export class DynamicPCDLoader extends Loader {
     url: string,
     onLoad: (points: Points) => void,
     onProgress?: ProgressCallback,
-    onError?: ErrorCallback
+    onError?: ErrorCallback,
   ): void {
     const loader = new FileLoader(this.manager);
     loader.setPath(this.path);
@@ -54,7 +54,7 @@ export class DynamicPCDLoader extends Loader {
           });
       },
       onProgress,
-      onError
+      onError,
     );
   }
 
@@ -67,7 +67,7 @@ export class DynamicPCDLoader extends Loader {
    */
   public loadAsync(
     url: string,
-    onProgress?: ProgressCallback
+    onProgress?: ProgressCallback,
   ): Promise<Points> {
     return new Promise((resolve, reject) => {
       this.load(url, resolve, onProgress, reject);
@@ -83,7 +83,7 @@ export class DynamicPCDLoader extends Loader {
   public async parse(data: ArrayBuffer): Promise<Points> {
     const { header, position, attributes } = parsePCDData(
       data,
-      this.littleEndian
+      this.littleEndian,
     );
 
     const geometry = createBufferGeometry(header, position, attributes);

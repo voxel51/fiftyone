@@ -22,7 +22,7 @@ export const useClearSelectedLabels = (close) => {
 
         close();
       },
-    []
+    [],
   );
 };
 
@@ -37,13 +37,13 @@ export const useClearSampleSelection = (close) => {
 
 export const useHideOthers = (
   visibleAtom?: RecoilValueReadOnly<State.SelectedLabel[]>,
-  visible?: State.SelectedLabel[]
+  visible?: State.SelectedLabel[],
 ) => {
   return useRecoilCallback(({ snapshot, set }) => async () => {
     const selected = await snapshot.getPromise(fos.selectedLabelIds);
     const result = visibleAtom
       ? await snapshot.getPromise(visibleAtom)
-      : visible ?? [];
+      : (visible ?? []);
     const hidden = await snapshot.getPromise(fos.hiddenLabels);
     set(fos.hiddenLabels, {
       ...hidden,
@@ -63,7 +63,7 @@ export const useHideSelected = () => {
 
 export const useSelectVisible = (
   visibleAtom?: RecoilValueReadOnly<fos.State.SelectedLabel[]> | null,
-  visible?: fos.State.SelectedLabel[]
+  visible?: fos.State.SelectedLabel[],
 ) => {
   const { scene } = useLighter();
 
@@ -90,14 +90,14 @@ export const useSelectVisible = (
     set(fos.selectedLabelMap, {
       ...selected,
       ...toLabelMap(
-        visibleAtom ? await snapshot.getPromise(visibleAtom) : visible || []
+        visibleAtom ? await snapshot.getPromise(visibleAtom) : visible || [],
       ),
     });
   });
 };
 
 export const useVisibleSampleLabels = (
-  lookerRef: MutableRefObject<Lookers>
+  lookerRef: MutableRefObject<Lookers>,
 ) => {
   const isGroup = useRecoilValue(fos.isGroup);
   const activeLabels = useRecoilValue(fos.activeLabels({}));
@@ -115,7 +115,7 @@ export const useVisibleSampleLabels = (
 
 export const useUnselectVisible = (
   visibleIdsAtom?: RecoilValueReadOnly<Set<string>>,
-  visibleIds?: Set<string>
+  visibleIds?: Set<string>,
 ) => {
   const { scene } = useLighter();
 
@@ -130,7 +130,7 @@ export const useUnselectVisible = (
       : visibleIds;
 
     const filtered = Object.entries(selected).filter(
-      ([label_id]) => !result?.has(label_id)
+      ([label_id]) => !result?.has(label_id),
     );
     set(fos.selectedLabelMap, Object.fromEntries(filtered));
   });

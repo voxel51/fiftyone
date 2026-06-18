@@ -11,6 +11,6 @@ export function useApplyAnnotationSliceVisibility() {
     (sliceName: string) => {
       actions.focusSlice(sliceName);
     },
-    [actions]
+    [actions],
   );
 }

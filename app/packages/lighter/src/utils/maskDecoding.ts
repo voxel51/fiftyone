@@ -31,7 +31,7 @@ export interface DecodedMask {
  */
 export async function decodeMask(
   maskData: string | OverlayMask,
-  color: string
+  color: string,
 ): Promise<DecodedMask> {
   const overlayMask =
     typeof maskData === "string" ? deserialize(maskData) : maskData;
@@ -40,7 +40,7 @@ export async function decodeMask(
   const imageData = new ImageData(
     new Uint8ClampedArray(rgbaBuffer),
     width,
-    height
+    height,
   );
   const bitmap = await createImageBitmap(imageData);
 
@@ -86,7 +86,7 @@ function paintMask(mask: OverlayMask, cssColor: string): ArrayBuffer {
 
   if (targets.length !== expectedPixels) {
     throw new Error(
-      `Mask payload length mismatch: expected ${expectedPixels}, got ${targets.length}`
+      `Mask payload length mismatch: expected ${expectedPixels}, got ${targets.length}`,
     );
   }
 

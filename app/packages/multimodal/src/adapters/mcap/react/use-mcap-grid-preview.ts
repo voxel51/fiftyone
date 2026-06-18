@@ -192,7 +192,7 @@ export function useMcapGridPreview({
 }
 
 function playbackDelayMs(
-  frameDelayMs = MCAP_GRID_PREVIEW_IMAGE_FRAME_DELAY_MS
+  frameDelayMs = MCAP_GRID_PREVIEW_IMAGE_FRAME_DELAY_MS,
 ): number {
   return Math.max(0, frameDelayMs / DEFAULT_MCAP_GRID_PREVIEW_PLAYBACK_RATE);
 }

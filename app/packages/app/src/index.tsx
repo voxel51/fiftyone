@@ -56,5 +56,5 @@ createRoot(document.getElementById("root") as HTMLDivElement).render(
         </BeforeScreenshotContext.Provider>
       </ErrorBoundary>
     </ThemeProvider>
-  </RecoilRoot>
+  </RecoilRoot>,
 );

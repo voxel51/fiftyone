@@ -201,12 +201,8 @@ const Classification = () => {
 };
 
 const Detection = () => {
-  const {
-    activateDetectionMode,
-    detectionModeActive,
-    disabled,
-    tooltip,
-  } = useDetectionMode();
+  const { activateDetectionMode, detectionModeActive, disabled, tooltip } =
+    useDetectionMode();
   const deactivateAll = useDeactivateAll();
 
   return (
@@ -260,12 +256,8 @@ const Segmentation = () => {
 };
 
 const Polyline = () => {
-  const {
-    activatePolylineMode,
-    polylineModeActive,
-    disabled,
-    tooltip,
-  } = usePolylineMode();
+  const { activatePolylineMode, polylineModeActive, disabled, tooltip } =
+    usePolylineMode();
   const deactivateAll = useDeactivateAll();
 
   return (
@@ -337,8 +329,8 @@ export const ThreeDPolylines = () => {
       (fieldType) =>
         fieldType === POLYLINE.toLocaleLowerCase() ||
         fieldType === POLYLINES.toLocaleLowerCase(),
-      []
-    )
+      [],
+    ),
   );
 
   const hasPolylineFieldsInSchema = polylineFields && polylineFields.length > 0;
@@ -393,8 +385,8 @@ export const ThreeDCuboids = () => {
       (fieldType) =>
         fieldType === DETECTION.toLocaleLowerCase() ||
         fieldType === DETECTIONS.toLocaleLowerCase(),
-      []
-    )
+      [],
+    ),
   );
 
   const hasCuboidFieldsInSchema = cuboidFields && cuboidFields.length > 0;

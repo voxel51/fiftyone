@@ -34,6 +34,6 @@ export const useAddAnnotationLabelToRenderer = () => {
         addOverlay(label.overlay);
       }
     },
-    [addOverlay]
+    [addOverlay],
   );
 };

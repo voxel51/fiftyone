@@ -45,7 +45,7 @@ export const useSimilarLabels3d = (label: OverlayLabel) => {
         } else {
           setIsSimilarLabelHovered(false);
         }
-      }
+      },
     );
 
     const unsubUnhovering = selectiveRenderingEventBus.on(
@@ -53,7 +53,7 @@ export const useSimilarLabels3d = (label: OverlayLabel) => {
       () => {
         setIsSimilarLabelHovered(false);
         jotaiStore.set(removeAllHoveredInstances);
-      }
+      },
     );
 
     return () => {

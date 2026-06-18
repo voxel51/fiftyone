@@ -21,7 +21,7 @@ export interface NumericFilter {
 const getFilter = (
   get: GetRecoilValue,
   modal: boolean,
-  path: string
+  path: string,
 ): NumericFilter => {
   const result = {
     range: [null, null] as Range,
@@ -40,7 +40,7 @@ const getFilter = (
 const getVisibility = (
   get: GetRecoilValue,
   modal: boolean,
-  path: string
+  path: string,
 ): NumericFilter => {
   const result = {
     range: [null, null] as Range,
@@ -340,7 +340,7 @@ export const helperFunction = (
   none?: boolean,
   inf?: boolean,
   ninf?: boolean,
-  nan?: boolean
+  nan?: boolean,
 ) => {
   if (start === null && end === null) {
     return true;
@@ -435,7 +435,7 @@ export const generateSelectorFamily = (key) =>
               noneVisibility,
               infVisibility,
               ninfVisibility,
-              nanVisibility
+              nanVisibility,
             );
           };
         }
@@ -464,7 +464,7 @@ export const generateSelectorFamily = (key) =>
               noneFilter,
               infFilter,
               ninfFilter,
-              nanFilter
+              nanFilter,
             );
           };
         }
@@ -497,7 +497,7 @@ export const generateSelectorFamily = (key) =>
               noneVisibility,
               infVisibility,
               ninfVisibility,
-              nanVisibility
+              nanVisibility,
             );
 
             if (isMatchingFilter) {
@@ -511,7 +511,7 @@ export const generateSelectorFamily = (key) =>
               noneFilter,
               infFilter,
               ninfFilter,
-              nanFilter
+              nanFilter,
             );
             return filterResult && visibilityResult;
           };

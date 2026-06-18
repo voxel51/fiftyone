@@ -36,7 +36,7 @@ export function useWorkspaces() {
           }
         },
         skipOutput: true,
-      }
+      },
     );
   }, [listWorkspaceExecuting, setState, currentDataset, operatorsInitialized]);
 

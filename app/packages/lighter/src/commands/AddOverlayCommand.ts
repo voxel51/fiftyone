@@ -15,7 +15,7 @@ import type { Rect, Spatial } from "../types";
  * InteractiveKeypointHandler).
  */
 function isInteractiveHandler(
-  overlay: BaseOverlay | InteractionHandler
+  overlay: BaseOverlay | InteractionHandler,
 ): overlay is InteractionHandler & { getOverlay(): BaseOverlay } {
   return (
     "getOverlay" in overlay &&
@@ -27,7 +27,7 @@ function isInteractiveHandler(
  * Type guard for overlays that expose a settable relativeBounds property.
  */
 function hasRelativeBounds(
-  obj: BaseOverlay
+  obj: BaseOverlay,
 ): obj is BaseOverlay & { relativeBounds: Rect } {
   return "relativeBounds" in obj;
 }
@@ -43,7 +43,7 @@ export class AddOverlayCommand implements Undoable {
     private scene: Scene2D,
     private overlay: BaseOverlay | InteractionHandler,
     private bounds?: Rect,
-    private relativeBounds?: Rect
+    private relativeBounds?: Rect,
   ) {
     this.id = `add-overlay-${overlay.id}-${Date.now()}`;
     this.description = `Add overlay ${overlay.id}`;
@@ -79,7 +79,7 @@ export class AddOverlayCommand implements Undoable {
     // Dispatch before removeOverlay so the label is still in the labels list
     // when the bridge handles this event for backend persistence
     const eventBus = getEventBus<LighterEventGroup>(
-      this.scene.getEventChannel()
+      this.scene.getEventChannel(),
     );
 
     try {
@@ -87,7 +87,7 @@ export class AddOverlayCommand implements Undoable {
     } catch (error) {
       console.error(
         `Failed to dispatch overlay-undone for ${overlayID}:`,
-        error
+        error,
       );
     } finally {
       if (isInteractiveHandler(this.overlay)) {

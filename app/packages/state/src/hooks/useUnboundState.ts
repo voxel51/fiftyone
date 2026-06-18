@@ -15,7 +15,7 @@ export default function useUnboundState<State>(value: State): State {
 }
 
 export function useUnboundStateRef<State>(
-  value: State
+  value: State,
 ): MutableRefObject<State> {
   const stateRef = useRef(value);
 

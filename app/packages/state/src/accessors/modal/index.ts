@@ -52,16 +52,16 @@ export const useModalModeController = (): ModalModeController => {
 
   const activateAnnotateMode = useCallback(
     () => setMode(ModalMode.ANNOTATE),
-    [setMode]
+    [setMode],
   );
   const activateExploreMode = useCallback(
     () => setMode(ModalMode.EXPLORE),
-    [setMode]
+    [setMode],
   );
 
   return useMemo(
     () => ({ activateAnnotateMode, activateExploreMode }),
-    [activateExploreMode, activateAnnotateMode]
+    [activateExploreMode, activateAnnotateMode],
   );
 };
 
@@ -96,7 +96,7 @@ export const useModalSample = (): ModalSample | undefined => {
 export const useStableModalSample = (): ModalSample | undefined => {
   const loadable = useRecoilValueLoadable(modalSample);
   const ref = useRef<ModalSample | undefined>(
-    loadable.state === "hasValue" ? loadable.contents : undefined
+    loadable.state === "hasValue" ? loadable.contents : undefined,
   );
   if (loadable.state === "hasValue") {
     ref.current = loadable.contents;
@@ -172,7 +172,7 @@ export const useModalMediaPath = (): string | null => {
   }
 
   return Array.isArray(sample.urls)
-    ? sample.urls.find((u) => u.field === mediaField)?.url ??
-        sample.urls[0]?.url
+    ? (sample.urls.find((u) => u.field === mediaField)?.url ??
+        sample.urls[0]?.url)
     : sample.urls[mediaField];
 };

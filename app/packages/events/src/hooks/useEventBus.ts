@@ -10,7 +10,7 @@ import { EventGroup } from "../types";
  * @returns Event dispatcher with on, off, and dispatch methods
  */
 export const useEventBus = <T extends EventGroup>(
-  channelId = DEFAULT_CHANNEL_ID
+  channelId = DEFAULT_CHANNEL_ID,
 ) => {
   return useMemo(() => {
     const dispatcher = getEventBus<T>(channelId);

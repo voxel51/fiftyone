@@ -51,19 +51,19 @@ describe("getClassNameError", () => {
 
   it("should return error for empty class name", () => {
     expect(getClassNameError("", existingClasses)).toBe(
-      "Class name cannot be empty"
+      "Class name cannot be empty",
     );
     expect(getClassNameError("   ", existingClasses)).toBe(
-      "Class name cannot be empty"
+      "Class name cannot be empty",
     );
   });
 
   it("should return error for duplicate class name", () => {
     expect(getClassNameError("ClassA", existingClasses)).toBe(
-      "Class name already exists"
+      "Class name already exists",
     );
     expect(getClassNameError("ClassB", existingClasses)).toBe(
-      "Class name already exists"
+      "Class name already exists",
     );
   });
 
@@ -74,14 +74,14 @@ describe("getClassNameError", () => {
 
   it("should still detect duplicates when editing different class", () => {
     expect(getClassNameError("ClassB", existingClasses, "ClassA")).toBe(
-      "Class name already exists"
+      "Class name already exists",
     );
   });
 
   it("should trim whitespace when checking", () => {
     expect(getClassNameError("  NewClass  ", existingClasses)).toBe(null);
     expect(getClassNameError("  ClassA  ", existingClasses)).toBe(
-      "Class name already exists"
+      "Class name already exists",
     );
   });
 });

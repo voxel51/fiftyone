@@ -53,7 +53,7 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
     ? (e: React.MouseEvent<HTMLDivElement>) => {
         const target = e.target as HTMLElement;
         const interactive = target.closest(
-          'button, [role="button"], a, input, select, textarea'
+          'button, [role="button"], a, input, select, textarea',
         );
         if (interactive && interactive !== e.currentTarget) return;
         onToggle();
@@ -113,12 +113,16 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
       />
       <PlayheadTime />
       <LoopBounds />
-      {extraActions ? <><span
-        className={styles.divider}
-        data-testid="timeline-controls-divider"
-        aria-hidden
-      /> {extraActions}</>: null}
-      
+      {extraActions ? (
+        <>
+          <span
+            className={styles.divider}
+            data-testid="timeline-controls-divider"
+            aria-hidden
+          />{" "}
+          {extraActions}
+        </>
+      ) : null}
     </div>
   );
 };

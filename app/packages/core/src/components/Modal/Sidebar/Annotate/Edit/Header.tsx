@@ -31,7 +31,7 @@ const LabelHamburgerMenu = () => {
 
   const deleteCommand = useCommand(
     KnownCommands.ModalDeleteAnnotation,
-    KnownContexts.ModalAnnotate
+    KnownContexts.ModalAnnotate,
   );
 
   // Permission and read-only state

@@ -182,7 +182,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       setActivePrimitive,
       setActiveSchemaPaths,
       setLabelSchema,
-    ]
+    ],
   );
 
   const enter = useCallback(
@@ -223,7 +223,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       contextManager,
       setActiveFields,
       setActiveLabelId,
-    ]
+    ],
   );
 
   const exit = useCallback(() => {
@@ -243,7 +243,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       entranceLabelId: activeLabelId,
       exit,
     }),
-    [activateField, activeLabelId, enter, exit, setActiveLabelId]
+    [activateField, activeLabelId, enter, exit, setActiveLabelId],
   );
 };
 

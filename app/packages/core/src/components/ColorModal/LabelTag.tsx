@@ -52,7 +52,7 @@ const LabelTag: React.FC = () => {
       useLabelColors: Boolean(labelTags?.valueColors?.length),
       useFieldColor: Boolean(labelTags?.fieldColor),
     }),
-    [labelTags]
+    [labelTags],
   );
 
   const onChangeFieldColor = useCallback(
@@ -64,14 +64,14 @@ const LabelTag: React.FC = () => {
         return { ...curr, fieldColor: color };
       });
     },
-    [setSetting]
+    [setSetting],
   );
 
   const onValidateColor = useCallback(
     (input) => {
       if (isValidColor(input)) {
         const hexColor = colorString.to.hex(
-          colorString.get(input)?.value ?? []
+          colorString.get(input)?.value ?? [],
         );
         onChangeFieldColor(hexColor);
         setInput(hexColor);
@@ -84,7 +84,7 @@ const LabelTag: React.FC = () => {
         }, 1000);
       }
     },
-    [onChangeFieldColor, colors, labelTags?.fieldColor]
+    [onChangeFieldColor, colors, labelTags?.fieldColor],
   );
 
   const toggleColorPicker = (e) => {

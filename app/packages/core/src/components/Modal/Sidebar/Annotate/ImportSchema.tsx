@@ -58,7 +58,7 @@ const AlertBox = styled.div`
 
 export function useShowImportSchema(
   disabled: boolean,
-  requiredField: RequiredField | null
+  requiredField: RequiredField | null,
 ): boolean {
   const noActiveSchemas = !useAtomValue(activeLabelSchemas)?.length;
   const isEditingValue = useAnnotationContext().isEditing;
@@ -110,7 +110,7 @@ export interface ImportSchemaProps {
 const ImportSchema = (
   { disabled, disabledMsg, requiredField }: ImportSchemaProps = {
     disabled: false,
-  }
+  },
 ) => {
   const canManage = useCanManageSchema();
   const { openSchemaManager } = useSchemaManagerModal();
@@ -120,8 +120,8 @@ const ImportSchema = (
   const alertMessage = disabled
     ? disabledMsg || DISABLED_DEFAULT
     : !canManage
-    ? "Only dataset managers can add schemas."
-    : null;
+      ? "Only dataset managers can add schemas."
+      : null;
 
   return (
     <Container>
