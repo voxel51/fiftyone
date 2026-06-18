@@ -16,7 +16,10 @@ import torch
 
 def _make_mixin(get_text_features_return):
     """Build a minimal ZeroShotTransformerPromptMixin instance with mocks."""
-    from fiftyone.utils.transformers import ZeroShotTransformerPromptMixin
+    try:
+        from fiftyone.utils.transformers import ZeroShotTransformerPromptMixin
+    except Exception:
+        pytest.skip("transformers not installed")
 
     mixin = ZeroShotTransformerPromptMixin.__new__(
         ZeroShotTransformerPromptMixin
