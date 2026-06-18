@@ -6,8 +6,6 @@ Multimodal temporal tag SDK.
 |
 """
 
-from fiftyone.multimodal.schemas import v1 as foms
-
 from ._temporal_tags import (
     DEFAULT_INDEX_TYPE,
     SUPPORTED_INDEX_TYPES,
@@ -24,8 +22,6 @@ from ._temporal_tags import (
     update_temporal_tag,
 )
 
-TimeTrackType = foms.TimeTrackType
-
 __all__ = [
     "DEFAULT_INDEX_TYPE",
     "SUPPORTED_INDEX_TYPES",
@@ -35,7 +31,6 @@ __all__ = [
     "TemporalTag",
     "TemporalTagFilter",
     "TemporalTags",
-    "TimeTrackType",
     "add_temporal_tags",
     "count_temporal_tags",
     "delete_temporal_tags",
