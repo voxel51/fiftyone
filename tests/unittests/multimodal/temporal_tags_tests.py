@@ -69,7 +69,7 @@ class TemporalTagTests(unittest.TestCase):
         self.assertIn("last_modified_at", persisted[0].to_dict())
         self.assertEqual(persisted[0].copy(), persisted[0])
 
-        temporal_tags = fomm.TemporalTags(dataset)
+        temporal_tags = fota.TemporalTags(dataset)
         self.assertTrue(temporal_tags)
         self.assertEqual(len(temporal_tags), 1)
         self.assertEqual(list(temporal_tags), [persisted[0].id])
@@ -392,7 +392,7 @@ class TemporalTagTests(unittest.TestCase):
         _, before_clear_second = _modified_timestamps(dataset, second_id)
 
         time.sleep(0.05)
-        self.assertEqual(fomm.TemporalTags(dataset).clear(), 2)
+        self.assertEqual(fota.TemporalTags(dataset).clear(), 2)
         after_clear_dataset, after_clear_first = _modified_timestamps(
             dataset, first_id
         )
@@ -464,7 +464,7 @@ class TemporalTagTests(unittest.TestCase):
         self.assertEqual(after_update_second, before_second)
 
         time.sleep(0.05)
-        resized = fomm.TemporalTags(dataset).update(updated.id, end=14)
+        resized = fota.TemporalTags(dataset).update(updated.id, end=14)
 
         self.assertEqual(resized.id, inserted.id)
         self.assertEqual(resized.start, 2)
@@ -856,7 +856,7 @@ class TemporalTagTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             fota.delete_temporal_tags(view)
 
-        self.assertEqual(fomm.TemporalTags(view).clear(), 2)
+        self.assertEqual(fota.TemporalTags(view).clear(), 2)
         self.assertEqual(fota.count_temporal_tags(dataset), {"shared": 1})
 
     @drop_tags
