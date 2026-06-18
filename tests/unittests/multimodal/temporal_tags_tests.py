@@ -15,10 +15,10 @@ from decorators import drop_collection, drop_datasets
 import fiftyone as fo
 import fiftyone.core.odm as foo
 import fiftyone.multimodal as fomm
+from fiftyone.multimodal.schemas import v1 as foms
 from fiftyone.multimodal.tags import (
     TAGS_COLLECTION_NAME,
     TagKind,
-    TimeTrackType,
 )
 
 drop_tags = drop_collection(TAGS_COLLECTION_NAME)
@@ -53,7 +53,7 @@ class TemporalTagTests(unittest.TestCase):
         self.assertEqual(len(persisted), 1)
         self.assertEqual(
             persisted[0].index_type,
-            TimeTrackType.TIME_TRACK_TYPE_DURATION_NS,
+            foms.TimeTrackType.TIME_TRACK_TYPE_DURATION_NS,
         )
         self.assertIsNone(persisted[0].anchor)
         self.assertIsNone(persisted[0].created_by)
@@ -187,7 +187,7 @@ class TemporalTagTests(unittest.TestCase):
                 0,
                 1,
                 "unsupported",
-                index_type=TimeTrackType.TIME_TRACK_TYPE_UNSPECIFIED,
+                index_type=foms.TimeTrackType.TIME_TRACK_TYPE_UNSPECIFIED,
                 kind=TagKind.TEMPORAL,
             ),
         ]
@@ -568,7 +568,7 @@ class TemporalTagTests(unittest.TestCase):
                     0,
                     1,
                     "review",
-                    index_type=TimeTrackType.TIME_TRACK_TYPE_SEQUENCE,
+                    index_type=foms.TimeTrackType.TIME_TRACK_TYPE_SEQUENCE,
                     kind=TagKind.TEMPORAL,
                 ),
             ],
@@ -590,7 +590,7 @@ class TemporalTagTests(unittest.TestCase):
         overlap_at_boundary = fomm.list_temporal_tags(
             dataset,
             fomm.TemporalTagFilter(
-                index_type=TimeTrackType.TIME_TRACK_TYPE_DURATION_NS,
+                index_type=foms.TimeTrackType.TIME_TRACK_TYPE_DURATION_NS,
                 start=10,
                 end=11,
             ),
