@@ -8,7 +8,7 @@ Multimodal temporal tag SDK.
 
 from fiftyone.multimodal.schemas import v1 as foms
 
-from .temporal_tags import (
+from ._temporal_tags import (
     DEFAULT_INDEX_TYPE,
     SUPPORTED_INDEX_TYPES,
     TAGS_COLLECTION_NAME,
