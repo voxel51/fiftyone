@@ -252,7 +252,7 @@ class TagsImportExportTests(ImageDatasetTests):
         )
 
         self.assertEqual(
-            fomm.count_temporal_tags(dataset2), {"drop": 1, "keep": 2}
+            fota.count_temporal_tags(dataset2), {"drop": 1, "keep": 2}
         )
         self.assertEqual(
             self._tag_tuples(dataset),
@@ -272,7 +272,7 @@ class TagsImportExportTests(ImageDatasetTests):
             dataset_type=fo.types.FiftyOneDataset,
         )
 
-        self.assertEqual(fomm.count_temporal_tags(dataset3), {})
+        self.assertEqual(fota.count_temporal_tags(dataset3), {})
 
         fota.delete_temporal_tags(dataset, delete_all=True)
         dataset.export(
@@ -299,7 +299,7 @@ class TagsImportExportTests(ImageDatasetTests):
             dataset_type=fo.types.FiftyOneDataset,
         )
 
-        self.assertEqual(fomm.count_temporal_tags(dataset2), {"keep": 2})
+        self.assertEqual(fota.count_temporal_tags(dataset2), {"keep": 2})
         self.assertEqual(
             {tag.anchor for tag in fota.list_temporal_tags(dataset2)},
             {None, "camera_front"},
@@ -327,7 +327,7 @@ class TagsImportExportTests(ImageDatasetTests):
         )
 
         self.assertEqual(len(dataset2), 1)
-        self.assertEqual(fomm.count_temporal_tags(dataset2), {"keep": 1})
+        self.assertEqual(fota.count_temporal_tags(dataset2), {"keep": 1})
         self.assertEqual(
             fota.list_temporal_tags(dataset2)[0].sample_id, sample_ids[0]
         )
@@ -362,7 +362,7 @@ class TagsImportExportTests(ImageDatasetTests):
             )
 
         self.assertEqual(
-            fomm.count_temporal_tags(dataset2), {"drop": 1, "keep": 2}
+            fota.count_temporal_tags(dataset2), {"drop": 1, "keep": 2}
         )
 
     def _make_tag_dataset(self):

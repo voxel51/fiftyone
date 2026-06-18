@@ -535,7 +535,7 @@ class TestTagsRoute:
         response = await sample_tags_endpoint.delete(request)
 
         assert _json_body(response) == {"deleted": 2}
-        assert fomt.count_temporal_tags(dataset) == {"other": 1}
+        assert fota.count_temporal_tags(dataset) == {"other": 1}
         assert [tag.sample_id for tag in fota.list_temporal_tags(dataset)] == [
             sample_ids[1]
         ]
