@@ -15,6 +15,7 @@ import { useSceneSourcesByType } from "../../../scene-inventory";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import { chooseAnnotationTopic } from "../topic-matching";
 import { ImagePanel } from "../../../visualization/panels/image";
+import { useImagePanZoom } from "../../../visualization/panels/use-image-pan-zoom";
 import { useMcapModalSettings } from "./mcap-modal-settings";
 import { checkboxNoSpaceToggleProps } from "./mcap-settings-keyboard";
 import McapImageAnnotationOverlay from "./McapImageAnnotationOverlay";
@@ -24,6 +25,8 @@ import styles from "./McapTile.module.css";
 import { McapTileEmptyState, McapTileStatusBadge } from "./McapTileStreamState";
 import type { McapTileProps } from "./mcap-tile-types";
 import { useMcapTopicStream } from "./use-mcap-topic-stream";
+
+const IMAGE_FIT = "contain";
 
 const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   const [imageDims, setImageDims] = useState<{
@@ -85,6 +88,11 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     () => (topic ? [topic, ...selectedLabelTopics] : []),
     [selectedLabelTopics, topic],
   );
+  const imagePanZoom = useImagePanZoom({
+    fit: IMAGE_FIT,
+    imageSize: imageDims,
+    resetKey: topic,
+  });
   const currentLabel =
     images.find((s) => s.id === topic)?.label ?? "Select source";
   const toggleLabelTopic = (labelTopic: string, checked: boolean) => {
@@ -154,10 +162,19 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
         </div>
       </TileSettingsContent>
       {frame ? (
-        <div className={styles.imageStack}>
+        <div
+          className={styles.imageStack}
+          onPointerCancel={imagePanZoom.onPointerCancel}
+          onPointerDown={imagePanZoom.onPointerDown}
+          onPointerMove={imagePanZoom.onPointerMove}
+          onPointerUp={imagePanZoom.onPointerUp}
+          ref={imagePanZoom.surfaceRef}
+          style={imagePanZoom.surfaceStyle}
+        >
           <ImagePanel
             frame={frame}
             className={styles.panel}
+            fit={IMAGE_FIT}
             onImageLoaded={(width, height) =>
               setImageDims((prev) =>
                 prev?.width === width && prev?.height === height
@@ -165,13 +182,17 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
                   : { width, height },
               )
             }
+            onResetView={imagePanZoom.resetView}
+            viewTransform={imagePanZoom.viewTransform}
           />
           {imageDims && selectedLabelTopics.length > 0 ? (
             <McapImageAnnotationOverlay
+              fit={IMAGE_FIT}
               imageWidth={imageDims.width}
               imageHeight={imageDims.height}
               interpolate={interpolate2dAnnotations}
               topics={selectedLabelTopics}
+              viewTransform={imagePanZoom.viewTransform}
             />
           ) : null}
           <McapTileStatusBadge topics={activeTopics} />

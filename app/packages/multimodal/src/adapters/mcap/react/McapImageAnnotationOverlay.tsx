@@ -5,6 +5,7 @@ import {
   ImageAnnotationsOverlay,
   type ImageAnnotationPickedPrimitive,
 } from "../../../visualization/panels/ImageAnnotationsOverlay";
+import type { ImageViewTransform } from "../../../visualization/panels/base-2d-scene";
 import { useInterpolatedImageAnnotationSets } from "./use-interpolated-image-annotations";
 
 export interface McapImageAnnotationOverlayProps {
@@ -13,6 +14,7 @@ export interface McapImageAnnotationOverlayProps {
   readonly fit?: "contain" | "cover";
   readonly interpolate?: boolean;
   readonly topics: readonly string[];
+  readonly viewTransform?: ImageViewTransform;
 }
 
 /**
@@ -25,6 +27,7 @@ const McapImageAnnotationOverlay: React.FC<McapImageAnnotationOverlayProps> = ({
   fit = "contain",
   interpolate = true,
   topics,
+  viewTransform,
 }) => {
   const annotationSets = useInterpolatedImageAnnotationSets(topics, {
     interpolate,
@@ -65,6 +68,7 @@ const McapImageAnnotationOverlay: React.FC<McapImageAnnotationOverlayProps> = ({
       fit={fit}
       selectedKey={selectedKey}
       onSelectPrimitive={handleSelect}
+      viewTransform={viewTransform}
     />
   );
 };

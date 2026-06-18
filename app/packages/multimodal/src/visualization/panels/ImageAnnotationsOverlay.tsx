@@ -10,6 +10,11 @@ import type {
   RgbaColor,
 } from "../../decoders";
 import { groupLineSegmentsByLabel } from "../../utils/line-segment-grouping";
+import {
+  imageDisplayRect,
+  transformedImageDisplayRect,
+  type ImageViewTransform,
+} from "./base-2d-scene";
 import styles from "./image-annotations-overlay.module.css";
 
 export type ImageAnnotationPrimitive =
@@ -34,6 +39,7 @@ export interface ImageAnnotationsOverlayProps {
   readonly strokeWidth?: number;
   readonly selectedKey?: string | null;
   readonly onSelectPrimitive?: (picked: ImageAnnotationPickedPrimitive) => void;
+  readonly viewTransform?: ImageViewTransform;
 }
 
 /**
@@ -55,6 +61,7 @@ export function ImageAnnotationsOverlay({
   strokeWidth,
   selectedKey,
   onSelectPrimitive,
+  viewTransform,
 }: ImageAnnotationsOverlayProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [containerSize, setContainerSize] = useState<{
@@ -80,7 +87,14 @@ export function ImageAnnotationsOverlay({
   }
 
   const rect = containerSize
-    ? displayRect(containerSize, imageWidth, imageHeight, fit)
+    ? transformedImageDisplayRect(
+        imageDisplayRect(
+          containerSize,
+          { height: imageHeight, width: imageWidth },
+          fit
+        ),
+        viewTransform
+      )
     : null;
 
   return (
@@ -484,13 +498,6 @@ function TextPrimitive({
 // Helpers
 // ---------------------------------------------------------------------------
 
-interface Rect {
-  readonly x: number;
-  readonly y: number;
-  readonly width: number;
-  readonly height: number;
-}
-
 interface Bounds {
   readonly minX: number;
   readonly minY: number;
@@ -641,30 +648,6 @@ function lineWidth(thickness: number, override?: number): number {
   // Source thickness is conservative; bump it ~1.5x for readability while
   // keeping the look light.
   return Math.max(1.5, thickness * 1.5);
-}
-
-function displayRect(
-  container: { width: number; height: number },
-  imageWidth: number,
-  imageHeight: number,
-  fit: "contain" | "cover",
-): Rect {
-  const containerAspect = container.width / Math.max(1, container.height);
-  const imageAspect = imageWidth / Math.max(1, imageHeight);
-  const imageIsWider = imageAspect > containerAspect;
-  const constrainByWidth = fit === "contain" ? imageIsWider : !imageIsWider;
-  const width = constrainByWidth
-    ? container.width
-    : container.height * imageAspect;
-  const height = constrainByWidth
-    ? container.width / imageAspect
-    : container.height;
-  return {
-    x: (container.width - width) / 2,
-    y: (container.height - height) / 2,
-    width,
-    height,
-  };
 }
 
 function rgbaToCss(color: RgbaColor | null | undefined): string | undefined {
