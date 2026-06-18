@@ -8,10 +8,8 @@ Multimodal temporal tag SDK.
 
 from ._temporal_tags import (
     DEFAULT_INDEX_TYPE,
-    SUPPORTED_INDEX_TYPES,
 )
 
 __all__ = [
     "DEFAULT_INDEX_TYPE",
-    "SUPPORTED_INDEX_TYPES",
 ]
