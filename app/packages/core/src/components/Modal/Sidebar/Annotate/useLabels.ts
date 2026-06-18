@@ -338,7 +338,7 @@ export default function useLabels() {
     }
   }, [active, engine, sampleId, scene]);
 
-  // first hydration per sample: loading gate + patches single-label auto-edit
+  // first hydration per sample: loading gate (one-shot per sample)
   const completedFor = useRef<string | null>(null);
 
   useEffect(() => {
@@ -348,8 +348,39 @@ export default function useLabels() {
     }
   }, [sampleId, setLoading]);
 
+  // patches single-label auto-edit: open the source label for editing as soon
+  // as it is discoverable. Kept SEPARATE from the loading gate and re-evaluated
+  // on every engine tick (and whenever the active schema changes) so it
+  // survives the label arriving async OR the source field being activated
+  // after entry. Fires at most once per sample — the user is free to deselect.
+  const enteredFor = useRef<string | null>(null);
+
+  const maybeEnterPatchLabel = useCallback(() => {
+    if (!isPatches || !sampleId || !active || enteredFor.current === sampleId) {
+      return;
+    }
+
+    // count from the engine, not the mirror — a gated overlay hasn't mounted
+    // yet but still makes the patch single-label
+    const all = active.flatMap((path) =>
+      SINGULAR[engine.getLabelType(path)]
+        ? engine.listLabels({ sample: sampleId, path }).map((label) => ({
+            sample: sampleId,
+            path,
+            instanceId: label._id,
+          }))
+        : []
+    );
+
+    if (all.length === 1) {
+      enteredFor.current = sampleId;
+      setEntranceLabel(all[0]);
+    }
+  }, [active, engine, isPatches, sampleId, setEntranceLabel]);
+
   useEffect(() => {
     reconcile();
+    maybeEnterPatchLabel();
 
     // completeness keys on the engine, never on a surface being mounted —
     // a 3D slice has no Lighter scene; 2D rows start as stubs and upgrade
@@ -357,36 +388,13 @@ export default function useLabels() {
     if (completedFor.current !== sampleId && sampleId && active) {
       completedFor.current = sampleId;
       setLoading(LabelsState.COMPLETE);
-
-      if (isPatches) {
-        // count from the engine, not the mirror — a gated overlay hasn't
-        // mounted yet but still makes the patch single-label
-        const all = active.flatMap((path) =>
-          SINGULAR[engine.getLabelType(path)]
-            ? engine.listLabels({ sample: sampleId, path }).map((label) => ({
-                sample: sampleId,
-                path,
-                instanceId: label._id,
-              }))
-            : []
-        );
-
-        if (all.length === 1) {
-          setEntranceLabel(all[0]);
-        }
-      }
     }
 
-    return engine.subscribe(reconcile);
-  }, [
-    active,
-    engine,
-    isPatches,
-    reconcile,
-    sampleId,
-    setEntranceLabel,
-    setLoading,
-  ]);
+    return engine.subscribe(() => {
+      reconcile();
+      maybeEnterPatchLabel();
+    });
+  }, [active, engine, maybeEnterPatchLabel, reconcile, sampleId, setLoading]);
 
   // gated mounts insert without an engine change
   const on = useLighterEventHandler(
