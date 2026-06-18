@@ -206,6 +206,10 @@ class TestStateDictLoading:
         with pytest.raises(ValueError):
             _load_backbone_state_dict(None)
 
+    def test_raises_when_empty_model_path(self):
+        with pytest.raises(ValueError):
+            _load_backbone_state_dict("")
+
 
 class TestConfig:
     def test_default_grid_size_matches_checkpoint(self):
@@ -223,6 +227,12 @@ class TestConfig:
     def test_rejects_bad_point_cloud_range(self):
         with pytest.raises(ValueError, match="point_cloud_range"):
             PointTransformerV3ModelConfig({"point_cloud_range": [0, 0, 0]})
+
+    def test_rejects_unordered_point_cloud_range(self):
+        with pytest.raises(ValueError, match="min < max"):
+            PointTransformerV3ModelConfig(
+                {"point_cloud_range": [1, 1, 1, -1, -1, -1]}
+            )
 
     def test_accepts_optional_params(self):
         config = PointTransformerV3ModelConfig(
@@ -293,3 +303,10 @@ class TestLoadSamplePointCloud:
         points = _load_sample_point_cloud(sample)
 
         assert points.shape == (12, 3)
+
+
+class TestGpuRequirement:
+    def test_requires_gpu(self, monkeypatch):
+        monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
+        with pytest.raises(ValueError, match="GPU"):
+            PointTransformerV3Model(object())

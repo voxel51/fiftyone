@@ -102,15 +102,20 @@ class PointTransformerV3ModelConfig(foc.Config, fozm.HasZooModel):
         self.point_cloud_range = self.parse_array(
             d, "point_cloud_range", default=None
         )
-        if (
-            self.point_cloud_range is not None
-            and len(self.point_cloud_range) != 6
-        ):
-            raise ValueError(
-                "point_cloud_range must have 6 values "
-                "[xmin, ymin, zmin, xmax, ymax, zmax]; found %s"
-                % (self.point_cloud_range,)
-            )
+        if self.point_cloud_range is not None:
+            if len(self.point_cloud_range) != 6:
+                raise ValueError(
+                    "point_cloud_range must have 6 values "
+                    "[xmin, ymin, zmin, xmax, ymax, zmax]; found %s"
+                    % (self.point_cloud_range,)
+                )
+            lo = self.point_cloud_range[:3]
+            hi = self.point_cloud_range[3:]
+            if not all(l < h for l, h in zip(lo, hi)):
+                raise ValueError(
+                    "point_cloud_range must have min < max on each axis; "
+                    "found %s" % (self.point_cloud_range,)
+                )
         self.conv_algo = self.parse_string(d, "conv_algo", default=None)
         if (
             self.conv_algo is not None
@@ -160,9 +165,13 @@ class PointTransformerV3Model(fomo.Model, fomo.EmbeddingsMixin):
     def __init__(self, config):
         self.config = config
 
-        self._device = config.device
-        if self._device is None:
-            self._device = "cuda" if torch.cuda.is_available() else "cpu"
+        if not torch.cuda.is_available():
+            raise ValueError(
+                "Point Transformer V3 requires a CUDA-capable GPU, but none is "
+                "available"
+            )
+
+        self._device = config.device or "cuda"
 
         self._coord_index = self._build_coord_index(config.feature_keys)
         self._model = self._load_model(config)
@@ -378,7 +387,7 @@ def _load_backbone_state_dict(model_path: str) -> dict:
     Returns:
         a ``{name: tensor}`` state dict for the backbone
     """
-    if model_path is None:
+    if not model_path:
         raise ValueError("No model_path provided")
 
     if model_path.endswith(".safetensors"):

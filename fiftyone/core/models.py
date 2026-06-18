@@ -1226,6 +1226,9 @@ def compute_embeddings(
 def _compute_pointcloud_embeddings(
     samples, model, embeddings_field, skip_failures, progress
 ):
+    if samples.media_type == fom.GROUP:
+        raise fom.SelectGroupSlicesError((fom.POINT_CLOUD, fom.THREE_D))
+
     if samples.media_type not in (fom.POINT_CLOUD, fom.THREE_D):
         raise fom.MediaTypeError(
             "Point cloud models can only be applied to point-cloud or 3D "

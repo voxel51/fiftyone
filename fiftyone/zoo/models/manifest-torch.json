@@ -10911,7 +10911,7 @@
             "description": "Point Transformer V3 backbone pretrained on nuScenes LiDAR semantic segmentation; produces embeddings for 3D point cloud samples",
             "source": "https://github.com/Pointcept/PointTransformerV3",
             "author": "Xiaoyang Wu, et al.",
-            "license": "CC BY-NC-SA 4.0",
+            "license": "MIT",
             "size_bytes": 554519016,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
