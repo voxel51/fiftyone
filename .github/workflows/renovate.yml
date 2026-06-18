@@ -1,13 +1,10 @@
 name: Renovate
 
-# Self-hosted Renovate, run as voxel51-bot via FIFTYONE_GITHUB_TOKEN. Authoring
-# PRs as a real account (not dependabot[bot]/renovate[bot]) is what lets the
-# resulting dependency PRs target `develop` and clear the `enterprise / ci` gate
-# in enterprise-sync.yml, which excludes `[bot]` authors and needs repo secrets.
+# Self-hosted so PRs are authored by voxel51-bot, which clears the
+# `enterprise / ci` gate in enterprise-sync.yml (it excludes `[bot]` authors).
 
 on:
   schedule:
-    # Weekly, Wednesday 14:00 UTC — matches the old Dependabot pip cadence.
     - cron: "0 14 * * 3"
   workflow_dispatch:
     inputs:

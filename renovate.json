@@ -17,18 +17,16 @@
     ],
     "packageRules": [
         {
-            "description": "Pin pydicom to <3 — pydicom 3 drops Python 3.9 and changes APIs we rely on",
+            "description": "pydicom 3 drops Python 3.9 and changes APIs we rely on",
             "matchPackageNames": ["pydicom"],
             "allowedVersions": "<3"
         },
         {
-            "description": "Batch all non-security Python updates into a single PR, mirroring the old Dependabot stable-python-packages group",
             "matchManagers": ["pip_requirements", "pip_setup"],
             "groupName": "stable-python-packages",
             "addLabels": ["python"]
         },
         {
-            "description": "Batch GitHub Actions updates into a single PR",
             "matchManagers": ["github-actions"],
             "groupName": "github-actions",
             "addLabels": ["github-actions"]
