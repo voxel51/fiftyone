@@ -220,7 +220,7 @@ class TestTagsRoute:
         dataset_id,
         sample_ids,
     ):
-        fomt.add_temporal_tags(
+        fota.add_temporal_tags(
             dataset,
             [
                 fomt.TemporalTag(
@@ -264,7 +264,7 @@ class TestTagsRoute:
         dataset_id,
         sample_ids,
     ):
-        created = fomt.add_temporal_tags(
+        created = fota.add_temporal_tags(
             dataset,
             fomt.TemporalTag(
                 sample_ids[0],
@@ -322,7 +322,7 @@ class TestTagsRoute:
         dataset_id,
         sample_ids,
     ):
-        fomt.add_temporal_tags(
+        fota.add_temporal_tags(
             dataset,
             [
                 fomt.TemporalTag(
@@ -383,7 +383,7 @@ class TestTagsRoute:
         dataset_id,
         sample_ids,
     ):
-        fomt.add_temporal_tags(
+        fota.add_temporal_tags(
             dataset,
             [
                 fomt.TemporalTag(
@@ -500,7 +500,7 @@ class TestTagsRoute:
         dataset_id,
         sample_ids,
     ):
-        fomt.add_temporal_tags(
+        fota.add_temporal_tags(
             dataset,
             [
                 fomt.TemporalTag(
@@ -551,7 +551,7 @@ class TestTagsRoute:
         dataset_id,
         sample_ids,
     ):
-        temporal_tag = fomt.add_temporal_tags(
+        temporal_tag = fota.add_temporal_tags(
             dataset,
             fomt.TemporalTag(
                 sample_ids[0],
@@ -723,7 +723,7 @@ class TestTagsRoute:
     async def test_temporal_tag_update_not_found_returns_404(
         self, sample_tag_endpoint, dataset, dataset_id, sample_ids
     ):
-        temporal_tag = fomt.add_temporal_tags(
+        temporal_tag = fota.add_temporal_tags(
             dataset,
             fomt.TemporalTag(
                 sample_ids[0],

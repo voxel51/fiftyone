@@ -371,7 +371,7 @@ class TagsImportExportTests(ImageDatasetTests):
         dataset.add_samples(samples)
         sample_ids = dataset.values("id")
 
-        fomm.add_temporal_tags(
+        fota.add_temporal_tags(
             dataset,
             [
                 fomm.TemporalTag(

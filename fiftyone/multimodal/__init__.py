@@ -24,7 +24,6 @@ from .tags import (
     TemporalTag,
     TemporalTagFilter,
     TemporalTags,
-    add_temporal_tags,
 )
 
 __all__ = [
@@ -37,7 +36,6 @@ __all__ = [
     "TemporalTag",
     "TemporalTagFilter",
     "TemporalTags",
-    "add_temporal_tags",
     "clear_decoders",
     "decoders",
     "get_decoder",
