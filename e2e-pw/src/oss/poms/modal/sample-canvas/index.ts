@@ -29,7 +29,10 @@ export class SampleCanvasPom {
   #mouseX = 0;
   #mouseY = 0;
 
-  constructor(readonly page: Page, readonly eventUtils: EventUtils) {
+  constructor(
+    readonly page: Page,
+    readonly eventUtils: EventUtils
+  ) {
     this.assert = new SampleCanvasAsserter(this);
   }
 
@@ -94,6 +97,52 @@ export class SampleCanvasPom {
     this.#mouseX = xy.x;
     this.#mouseY = xy.y;
     await this.page.mouse.dblclick(xy.x, xy.y);
+  }
+
+  /**
+   * Mouse right-click on the sample canvas.
+   *
+   * @param x The x coordinate between [0, 1]
+   * @param y The y coordinate between [0, 1]
+   */
+  async rightClick(x: number, y: number) {
+    const xy = await this.#toScreenCoordinates(x, y);
+    this.#mouseX = xy.x;
+    this.#mouseY = xy.y;
+    await this.page.mouse.click(xy.x, xy.y, { button: "right" });
+  }
+
+  /**
+   * Drag the mouse from (x1,y1) to (x2,y2) with interpolated intermediate
+   * moves. Used for the brush tool, which paints a dab per `onMove` — a
+   * naive two-point move with no intermediates would leave a discontinuous
+   * stroke (only endpoints dabbed).
+   *
+   * @param x1 Start x in [0, 1]
+   * @param y1 Start y in [0, 1]
+   * @param x2 End x in [0, 1]
+   * @param y2 End y in [0, 1]
+   * @param steps Number of intermediate moves between start and end
+   */
+  async drag(x1: number, y1: number, x2: number, y2: number, steps = 10) {
+    const start = await this.#toScreenCoordinates(x1, y1);
+    const end = await this.#toScreenCoordinates(x2, y2);
+
+    this.#mouseX = start.x;
+    this.#mouseY = start.y;
+    await this.page.mouse.move(start.x, start.y);
+    await this.page.mouse.down();
+
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps;
+      const x = start.x + (end.x - start.x) * t;
+      const y = start.y + (end.y - start.y) * t;
+      this.#mouseX = x;
+      this.#mouseY = y;
+      await this.page.mouse.move(x, y);
+    }
+
+    await this.page.mouse.up();
   }
 
   /**
@@ -237,6 +286,9 @@ class SampleCanvasAsserter {
     await this.sampleCanvasPom.tooltip.assert.isVisible(false);
     await this.sampleCanvasPom.moveMouseToViewportEdge();
     await this.sampleCanvasPom.toolbar.assert.isVisible(false);
+    await this.sampleCanvasPom.page.addStyleTag({
+      content: ".segmentation-toolbar { display: none !important; }",
+    });
     await expect(this.sampleCanvasPom.locator).toHaveScreenshot(name, {
       maxDiffPixelRatio: 0.0,
     });
