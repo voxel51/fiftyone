@@ -6,6 +6,7 @@ import { useRegisterVideoAnnotationCommandHandlers } from "../hooks/useRegisterV
 import { useRegisterVideoAnnotationKeybindings } from "../hooks/useRegisterVideoAnnotationKeybindings";
 import { useRegisterVideoLabelsDeltaSupplier } from "../persistence/useVideoLabelsDeltaSupplier";
 import { useSyncAnnotationFrameClock } from "../hooks/useSyncAnnotationFrameClock";
+import { useSyncAnnotationVideoStore } from "../hooks/useSyncAnnotationVideoStore";
 import { useActiveDetectionField } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useDetectionMode";
 import { PlaybackProvider } from "@fiftyone/playback";
 import { FrameLabelsTracks, RegisterFrameLabels } from "./FrameLabels";
@@ -185,6 +186,7 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
  */
 const VideoAnnotationHandlerRegistration: React.FC = () => {
   useSyncAnnotationFrameClock();
+  useSyncAnnotationVideoStore();
   useRegisterVideoAnnotationCommandHandlers();
   useRegisterVideoAnnotationKeybindings();
   useAutoInterpolate();

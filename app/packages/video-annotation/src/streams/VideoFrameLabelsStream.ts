@@ -185,6 +185,15 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     return this.frameCount;
   }
 
+  /**
+   * Every cached frame document, for seeding an external store (the annotation
+   * engine's frame store). Pairs with {@link subscribeToEdits} so the seed
+   * re-runs as chunks land or local edits mutate the cache.
+   */
+  cachedFrames(): FrameDoc[] {
+    return [...this.cache.values()];
+  }
+
   /** Frame rate the stream was constructed with, in fps. */
   get fps(): number {
     return this.frameRate;
