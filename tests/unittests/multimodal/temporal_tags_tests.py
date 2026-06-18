@@ -34,7 +34,7 @@ class TemporalTagTests(unittest.TestCase):
 
         self.assertEqual(fota.list_temporal_tags(dataset), [])
         self.assertEqual(fomm.count_temporal_tags(dataset), {})
-        self.assertEqual(fomm.delete_temporal_tags(dataset, tags="missing"), 0)
+        self.assertEqual(fota.delete_temporal_tags(dataset, tags="missing"), 0)
         self.assertNotIn(
             TAGS_COLLECTION_NAME,
             foo.get_db_conn().list_collection_names(),
@@ -348,7 +348,7 @@ class TemporalTagTests(unittest.TestCase):
             dataset, first_id
         )
         time.sleep(0.05)
-        self.assertEqual(fomm.delete_temporal_tags(dataset, tags="missing"), 0)
+        self.assertEqual(fota.delete_temporal_tags(dataset, tags="missing"), 0)
         after_noop_dataset, after_noop_first = _modified_timestamps(
             dataset, first_id
         )
@@ -358,7 +358,7 @@ class TemporalTagTests(unittest.TestCase):
 
         time.sleep(0.05)
         self.assertEqual(
-            fomm.delete_temporal_tags(dataset, ids=inserted.id), 1
+            fota.delete_temporal_tags(dataset, ids=inserted.id), 1
         )
         after_delete_dataset, after_delete_first = _modified_timestamps(
             dataset, first_id
@@ -611,22 +611,22 @@ class TemporalTagTests(unittest.TestCase):
         )
 
         with self.assertRaises(ValueError):
-            fomm.delete_temporal_tags(dataset)
+            fota.delete_temporal_tags(dataset)
 
         self.assertEqual(
-            fomm.delete_temporal_tags(dataset, ids=inserted[0].id), 1
+            fota.delete_temporal_tags(dataset, ids=inserted[0].id), 1
         )
         self.assertEqual(
-            fomm.delete_temporal_tags(
+            fota.delete_temporal_tags(
                 dataset,
                 filter=fomm.TemporalTagFilter(sample_ids=sample_ids[1]),
             ),
             1,
         )
-        self.assertEqual(fomm.delete_temporal_tags(dataset, tags="keep"), 1)
+        self.assertEqual(fota.delete_temporal_tags(dataset, tags="keep"), 1)
         self.assertEqual(len(fota.list_temporal_tags(dataset)), 1)
         self.assertEqual(
-            fomm.delete_temporal_tags(dataset, delete_all=True), 1
+            fota.delete_temporal_tags(dataset, delete_all=True), 1
         )
 
     @drop_tags
@@ -687,7 +687,7 @@ class TemporalTagTests(unittest.TestCase):
         )
 
         self.assertEqual(
-            fomm.delete_temporal_tags(
+            fota.delete_temporal_tags(
                 dataset,
                 filter=fomm.TemporalTagFilter(anchors="camera_front"),
             ),
@@ -828,7 +828,7 @@ class TemporalTagTests(unittest.TestCase):
 
         time.sleep(0.05)
         self.assertEqual(
-            fomm.delete_temporal_tags(view, tags="shared"),
+            fota.delete_temporal_tags(view, tags="shared"),
             1,
         )
         (
@@ -854,7 +854,7 @@ class TemporalTagTests(unittest.TestCase):
         )
 
         with self.assertRaises(ValueError):
-            fomm.delete_temporal_tags(view)
+            fota.delete_temporal_tags(view)
 
         self.assertEqual(fomm.TemporalTags(view).clear(), 2)
         self.assertEqual(fomm.count_temporal_tags(dataset), {"shared": 1})

@@ -274,7 +274,7 @@ class TagsImportExportTests(ImageDatasetTests):
 
         self.assertEqual(fomm.count_temporal_tags(dataset3), {})
 
-        fomm.delete_temporal_tags(dataset, delete_all=True)
+        fota.delete_temporal_tags(dataset, delete_all=True)
         dataset.export(
             export_dir=export_dir,
             dataset_type=fo.types.FiftyOneDataset,

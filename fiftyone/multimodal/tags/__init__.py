@@ -17,7 +17,6 @@ from ._temporal_tags import (
     TemporalTags,
     add_temporal_tags,
     count_temporal_tags,
-    delete_temporal_tags,
 )
 
 __all__ = [
@@ -31,5 +30,4 @@ __all__ = [
     "TemporalTags",
     "add_temporal_tags",
     "count_temporal_tags",
-    "delete_temporal_tags",
 ]
