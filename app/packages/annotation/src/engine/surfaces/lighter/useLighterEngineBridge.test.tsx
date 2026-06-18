@@ -43,8 +43,12 @@ vi.mock("./lighterBridge", () => ({
 }));
 vi.mock("./adapters", () => ({ lighterAdapters: {} }));
 const mockCommit = vi.fn();
+const mockSelectHandle = vi.fn();
 vi.mock("../../react/useSurfaceBridge", () => ({
-  useSurfaceBridge: () => ({ commit: mockCommit }),
+  useSurfaceBridge: () => ({
+    commit: mockCommit,
+    selectHandle: mockSelectHandle,
+  }),
 }));
 
 const { useLighterEngineBridge } = await import("./useLighterEngineBridge");

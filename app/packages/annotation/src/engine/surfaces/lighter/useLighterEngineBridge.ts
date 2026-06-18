@@ -157,13 +157,31 @@ export const useLighterEngineBridge = ({
     [scene, surface]
   );
 
+  // Establish = a freshly drawn overlay finalizing. Commit it, then route its
+  // selection THROUGH the engine so the new label enters interaction `active`
+  // (anchor ∈ active) and the scene's visual selection becomes engine-owned.
+  // Without this the draw is selected only in the scene (createNew selects it
+  // with ignoreSideEffects / interactive mode), so exit's `setActive([])` is a
+  // no-op and the overlay keeps its handles after the form closes.
+  const establishOverlay = useCallback(
+    (event: { overlayId: string }) => {
+      commitWithMaskTail(event);
+      const overlay = (scene as Scene2D).getOverlay(event.overlayId);
+
+      if (overlay) {
+        surface.selectHandle(overlay);
+      }
+    },
+    [commitWithMaskTail, scene, surface]
+  );
+
   // WRITE-HALF: finalize events → commit (upsert by the overlay's durable id).
   // establish + paint-end produce an async mask tail, so they coalesce; drag /
   // resize / keypoint are single synchronous commits (no tail) and stay plain.
   on("lighter:overlay-drag-end", commitOverlay);
   on("lighter:overlay-resize-end", commitOverlay);
   on("lighter:overlay-paint-end", commitWithMaskTail);
-  on("lighter:overlay-establish", commitWithMaskTail);
+  on("lighter:overlay-establish", establishOverlay);
   on("lighter:keypoint-point-added", commitOverlay);
   on("lighter:keypoint-point-moved", commitOverlay);
   on("lighter:keypoint-point-deleted", commitOverlay);
