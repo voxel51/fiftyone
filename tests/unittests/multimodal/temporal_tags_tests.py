@@ -15,6 +15,7 @@ from decorators import drop_collection, drop_datasets
 import fiftyone as fo
 import fiftyone.core.odm as foo
 import fiftyone.multimodal as fomm
+import fiftyone.multimodal.tags._temporal_tags as fota
 from fiftyone.multimodal.schemas import v1 as foms
 from fiftyone.multimodal.tags import (
     TAGS_COLLECTION_NAME,
@@ -432,7 +433,7 @@ class TemporalTagTests(unittest.TestCase):
         _, before_second = _modified_timestamps(dataset, second_id)
 
         time.sleep(0.05)
-        updated = fomm.update_temporal_tag(
+        updated = fota.update_temporal_tag(
             dataset,
             inserted.id,
             start=2,
@@ -508,19 +509,19 @@ class TemporalTagTests(unittest.TestCase):
         ]
         for update in invalid_updates:
             with self.assertRaises(ValueError):
-                fomm.update_temporal_tag(dataset, first.id, **update)
+                fota.update_temporal_tag(dataset, first.id, **update)
 
         with self.assertRaises(ValueError):
-            fomm.update_temporal_tag(dataset, str(ObjectId()), start=1)
+            fota.update_temporal_tag(dataset, str(ObjectId()), start=1)
 
         with self.assertRaises(ValueError):
-            fomm.update_temporal_tag(
+            fota.update_temporal_tag(
                 dataset, second.id, start=0, end=10, tag="review"
             )
 
         view = dataset.select([second_id])
         with self.assertRaises(ValueError):
-            fomm.update_temporal_tag(view, first.id, start=1)
+            fota.update_temporal_tag(view, first.id, start=1)
 
         persisted = fomm.list_temporal_tags(dataset)
         self.assertEqual(

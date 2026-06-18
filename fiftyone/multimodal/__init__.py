@@ -28,7 +28,6 @@ from .tags import (
     count_temporal_tags,
     delete_temporal_tags,
     list_temporal_tags,
-    update_temporal_tag,
 )
 
 __all__ = [
@@ -53,5 +52,4 @@ __all__ = [
     "resolver",
     "schemas",
     "server",
-    "update_temporal_tag",
 ]
