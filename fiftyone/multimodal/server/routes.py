@@ -80,7 +80,7 @@ class SampleTagsEndpoint(HTTPEndpoint):
             "tags": [
                 _serialize_temporal_tag(tag)
                 for tag in _handle_temporal_tag_errors(
-                    lambda: fomt.add_temporal_tags(dataset, tags)
+                    lambda: fota.add_temporal_tags(dataset, tags)
                 )
             ]
         }
