@@ -2,19 +2,14 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { useAnnotationEventHandler } from "@fiftyone/annotation";
 import {
-  useAnnotationEventBus,
-  useAnnotationEventHandler,
-} from "@fiftyone/annotation";
-import {
-  DetectionOverlay,
   type Scene2D,
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
 import { useCallback } from "react";
 import { useLabelsContext } from "../../../core/src/components/Modal/Sidebar/Annotate";
-import useFocus from "../../../core/src/components/Modal/Sidebar/Annotate/useFocus";
 import { useDetectionMode } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useDetectionMode";
 import useExit from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useExit";
 import { useCurrentEditingOverlay } from "../state/accessors";
@@ -23,17 +18,13 @@ import { useCurrentEditingOverlay } from "../state/accessors";
  * Bridges Lighter overlay events into the annotation systems for the video
  * surface.
  *
- * Event-handler-only: state changes flow through public hook interfaces
- * (`useDetectionMode`, `useFocus`) rather than direct atom access, so this
- * stays decoupled from those modules' internals.
+ * Event-handler-only: state changes flow through the public `useDetectionMode`
+ * interface rather than direct atom access, so this stays decoupled from that
+ * module's internals. Canvas selection is handled by the engine's Lighter
+ * bridge, not here (see the note inline).
  *
  * Wires the following bridges:
  *   - **Draw**: `lighter:overlay-create` → `detectionMode.create()`.
- *   - **Establish**: `lighter:overlay-establish` →
- *     `annotation:canvasDetectionOverlayEstablish` so the modal-level
- *     handler can open the sidebar inspector for the new label.
- *   - **Selection**: `lighter:overlay-select` / `deselect` →
- *     `focus.selectOverlay` / `deselectOverlay`.
  *   - **Mode quit**: `lighter:detection-mode-quit` and
  *     `lighter:active-mode-quit-requested` (right-click / Esc) →
  *     `detectionMode.deactivateDetectionMode()`.
@@ -52,10 +43,8 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
   const useEventHandler = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
-  const annotationEventBus = useAnnotationEventBus();
   const { removeLabelFromSidebar } = useLabelsContext();
   const detectionMode = useDetectionMode();
-  const focus = useFocus();
   const exit = useExit();
   const editingOverlay = useCurrentEditingOverlay();
 
@@ -68,21 +57,10 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
     }, [detectionMode])
   );
 
-  useEventHandler(
-    "lighter:overlay-establish",
-    useCallback(
-      (payload) => {
-        if (!(payload.handler.overlay instanceof DetectionOverlay)) {
-          return;
-        }
-        annotationEventBus.dispatch(
-          "annotation:canvasDetectionOverlayEstablish",
-          { id: payload.id, overlay: payload.handler.overlay }
-        );
-      },
-      [annotationEventBus]
-    )
-  );
+  // Establishing a freshly-drawn overlay opens the sidebar inspector via the
+  // engine bridge (create → anchor → form-follows-anchor), so the old
+  // `annotation:canvasDetectionOverlayEstablish` dispatch is gone. Wired with
+  // the bridge in the surface re-lay.
 
   useEventHandler(
     "lighter:overlay-removed",
@@ -105,29 +83,11 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
     )
   );
 
-  useEventHandler(
-    "lighter:overlay-select",
-    useCallback(
-      (payload) => {
-        focus.selectOverlay(payload.id, {
-          ignoreSideEffects: payload.ignoreSideEffects,
-        });
-      },
-      [focus]
-    )
-  );
-
-  useEventHandler(
-    "lighter:overlay-deselect",
-    useCallback(
-      (payload) => {
-        focus.deselectOverlay({
-          ignoreSideEffects: payload.ignoreSideEffects,
-        });
-      },
-      [focus]
-    )
-  );
+  // Canvas selection (`lighter:overlay-select` / `deselect`) is owned by the
+  // engine's Lighter `frame-locked` bridge (`SurfaceController.selectHandle`),
+  // which maps an overlay handle to its `LabelRef` and drives
+  // `engine.interaction`. Mirrors the image surface, which has no event bridge
+  // here. Wired with the bridge in the surface re-lay.
 
   useEventHandler(
     "lighter:detection-mode-quit",
