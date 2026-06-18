@@ -55,9 +55,15 @@ export const reconcilePersisted = (
     }
 
     // A server-owned field may be the pointer leaf (`replace .../mask`) or
-    // nested inside the op's value (`add .../detections/0` of a whole label),
-    // so scan the value, not just the leaf.
-    const baseSegments = op.path.split("/").filter(Boolean);
+    // nested inside the op's value (`add .../detections/-` of a whole label),
+    // so scan the value, not just the leaf. The id-aligned list diff appends via
+    // `/-`, which is opaque positionally — resolve it to the element's real
+    // index (matched by `_id`) so the nested mask is still locatable.
+    const baseSegments = resolveAppend(
+      op.path.split("/").filter(Boolean),
+      op.value,
+      next ?? snapshot.transientData
+    );
 
     for (const target of serverOwnedTargets(
       serverOwnedFields,
@@ -101,6 +107,49 @@ export const reconcilePersisted = (
   }
 
   return { transientData: next };
+};
+
+/**
+ * Resolve a JSON-Patch append token (`-`, emitted by the id-aligned list diff
+ * for a whole-element `add`) to the element's real index in the transient,
+ * matched by `_id`. Positional reconcile (`getAtPath`) can't walk `-`, so
+ * without this the server-owned fields nested in an appended label would never
+ * be released. Returns the segments unchanged when there's no trailing `-`, no
+ * `_id` on the value, or the element isn't found.
+ */
+const resolveAppend = (
+  segments: string[],
+  value: unknown,
+  transientData: Readonly<Record<string, unknown>>
+): string[] => {
+  if (segments[segments.length - 1] !== "-") {
+    return segments;
+  }
+
+  const id = (value as { _id?: string } | undefined)?._id;
+  if (id === undefined) {
+    return segments;
+  }
+
+  const listSegments = segments.slice(0, -1);
+  const located = locateTransient(transientData, listSegments);
+  if (!located) {
+    return segments;
+  }
+
+  const list = getAtPath(transientData[located.path], located.rest);
+  if (!Array.isArray(list)) {
+    return segments;
+  }
+
+  const index = list.findIndex(
+    (el) => (el as { _id?: string } | undefined)?._id === id
+  );
+  if (index < 0) {
+    return segments;
+  }
+
+  return [...listSegments, String(index)];
 };
 
 /**

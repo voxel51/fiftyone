@@ -930,10 +930,10 @@ describe("Sample", () => {
     });
 
     it("releases a mask nested inside a whole-element add (new detection)", () => {
-      // Adding a new masked detection emits a single `add` of the whole element,
-      // so the mask is nested in the op value (pointer leaf is the array index,
-      // not `mask`). It must still be released, else the next autosave tick
-      // re-diffs the server-re-encoded mask — the extra save.
+      // Adding a new masked detection emits a single `add` of the whole element
+      // appended via `/-`, so the mask is nested in the op value (pointer leaf is
+      // the append token, not `mask`). It must still be released, else the next
+      // autosave tick re-diffs the server-re-encoded mask — the extra save.
       const s = new Sample({
         schema: detectionsSchema,
         data: { ground_truth: { _cls: "Detections", detections: [] } },
@@ -951,7 +951,7 @@ describe("Sample", () => {
       expect(deltas).toEqual([
         {
           op: "add",
-          path: "/ground_truth/detections/0",
+          path: "/ground_truth/detections/-",
           value: {
             _id: "d1",
             _cls: "Detection",

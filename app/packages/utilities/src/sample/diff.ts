@@ -107,11 +107,62 @@ export const fieldDeltas = (
   transientValue: unknown
 ): JSONDeltas => {
   const type = snapshot.getLabelType(path);
+  const child = LIST_LABEL_CHILD[type];
+
+  if (child) {
+    return listLabelDeltas(path, child, sourceValue, type, transientValue);
+  }
 
   return supplierFor(type)(
     sourceValue,
     mergedForDiff(type, sourceValue, transientValue)
   ).map((d) => ({ ...d, path: buildJsonPath(path, d.path) }));
+};
+
+/**
+ * List-label deltas, aligned by `_id` rather than array position, so a mid-list
+ * delete or reorder emits a single `remove` (and never rewrites a sibling's
+ * `_id`) instead of the index-aligned flood `jsonpatch.compare` produces. This
+ * is the same shift-safe diff the per-frame video labels use — {@link
+ * idAlignedListDelta} — now shared by every sample-level list label (detections,
+ * temporal-detections, …).
+ *
+ * Special case: a freshly-created field whose source has no list child yet emits
+ * one `add` of the whole merged wrapper, since the parent (`_cls`) must land
+ * before any element-level path resolves.
+ */
+const listLabelDeltas = (
+  path: string,
+  child: string,
+  sourceValue: unknown,
+  type: LabelType,
+  transientValue: unknown
+): JSONDeltas => {
+  const merged = mergedForDiff(type, sourceValue, transientValue) as Record<
+    string,
+    unknown
+  >;
+  const sourceList = (sourceValue as Record<string, unknown> | undefined)?.[
+    child
+  ];
+
+  if (!Array.isArray(sourceList)) {
+    return [
+      {
+        op: "add",
+        path: buildJsonPath(path, ""),
+        value: normalizeForCompare(merged) as never,
+      },
+    ];
+  }
+
+  const current = Array.isArray(merged[child])
+    ? (merged[child] as LabelData[])
+    : [];
+
+  return idAlignedListDelta(current, sourceList as LabelData[], "", child).map(
+    (d) => ({ ...d, path: buildJsonPath(path, d.path) })
+  );
 };
 
 /**
@@ -412,7 +463,9 @@ export const idAlignedListDelta = <TCurrent = LabelData, TBaseline = LabelData>(
   const diffMatched =
     spec.diffMatched ??
     ((cur, base, path) =>
-      structuralSupplier(base, cur).map((op) => ({
+      // current/baseline are distinct generic params; the structural diff is
+      // type-agnostic, so widen to a common type for the supplier call.
+      structuralSupplier<unknown>(base, cur).map((op) => ({
         ...op,
         path: `${path}${op.path}`,
       })));
