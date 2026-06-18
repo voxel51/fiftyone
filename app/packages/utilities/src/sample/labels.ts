@@ -13,6 +13,8 @@ export enum LabelType {
   Keypoints = "Keypoints",
   Polyline = "Polyline",
   Polylines = "Polylines",
+  TemporalDetection = "TemporalDetection",
+  TemporalDetections = "TemporalDetections",
   Unknown = "Unknown",
 }
 
@@ -34,6 +36,7 @@ export const LIST_LABEL_CHILD: Partial<Record<LabelType, string>> = {
   [LabelType.Detections]: "detections",
   [LabelType.Keypoints]: "keypoints",
   [LabelType.Polylines]: "polylines",
+  [LabelType.TemporalDetections]: "detections",
 };
 
 /**
@@ -47,6 +50,7 @@ export const GENERATED_SOURCE_LIST_CHILD: Partial<Record<LabelType, string>> = {
   [LabelType.Detection]: "detections",
   [LabelType.Keypoint]: "keypoints",
   [LabelType.Polyline]: "polylines",
+  [LabelType.TemporalDetection]: "detections",
 };
 
 const EMBEDDED_DOC_TYPE_TO_LABEL_TYPE: Record<string, LabelType> =

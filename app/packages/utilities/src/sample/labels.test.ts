@@ -13,6 +13,7 @@ describe("isListLabelType", () => {
       LabelType.Detections,
       LabelType.Keypoints,
       LabelType.Polylines,
+      LabelType.TemporalDetections,
     ]) {
       expect(isListLabelType(t)).toBe(true);
     }
@@ -37,6 +38,7 @@ describe("LIST_LABEL_CHILD", () => {
     expect(LIST_LABEL_CHILD[LabelType.Classifications]).toBe("classifications");
     expect(LIST_LABEL_CHILD[LabelType.Keypoints]).toBe("keypoints");
     expect(LIST_LABEL_CHILD[LabelType.Polylines]).toBe("polylines");
+    expect(LIST_LABEL_CHILD[LabelType.TemporalDetections]).toBe("detections");
   });
 
   it("has no entry for single labels", () => {
@@ -52,6 +54,9 @@ describe("embeddedDocTypeToLabelType", () => {
     expect(embeddedDocTypeToLabelType("fiftyone.core.labels.Keypoint")).toBe(
       LabelType.Keypoint
     );
+    expect(
+      embeddedDocTypeToLabelType("fiftyone.core.labels.TemporalDetections")
+    ).toBe(LabelType.TemporalDetections);
   });
 
   it("falls back to Unknown for unrecognized or empty input", () => {

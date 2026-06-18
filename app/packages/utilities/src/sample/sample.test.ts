@@ -1172,3 +1172,62 @@ describe("Sample", () => {
     });
   });
 });
+
+// TemporalDetections are sample-level list labels (child key `detections`, like
+// Detections) — the engine addresses them by `_id`, the model treats elements
+// opaquely. This proves the generic list-label path covers them after the
+// taxonomy addition, which is what lets the video surface put TDs on the engine.
+describe("Sample — TemporalDetections", () => {
+  const tdSchema: Schema = {
+    events: field("fiftyone.core.labels.TemporalDetections", {
+      detections: field(null, undefined, {
+        ftype: "fiftyone.core.fields.ListField",
+        subfield: "fiftyone.core.fields.EmbeddedDocumentField",
+      }),
+    }),
+  };
+
+  const makeTd = (id: string, support: [number, number]): LabelData => ({
+    _id: id,
+    _cls: "TemporalDetection",
+    support,
+    label: "x",
+    tags: [],
+  });
+
+  it("resolves the type and list-ness", () => {
+    const s = new Sample({ schema: tdSchema });
+    expect(s.getLabelType("events")).toBe(LabelType.TemporalDetections);
+    expect(s.isListLabel("events")).toBe(true);
+  });
+
+  it("round-trips updateLabel / listLabels / deleteLabel by _id", () => {
+    const s = new Sample({
+      schema: tdSchema,
+      data: { events: { detections: [makeTd("t1", [1, 30])] } },
+    });
+
+    s.updateLabel("events", { _id: "t1", support: [5, 30] });
+    expect(s.listLabels("events")[0].support).toEqual([5, 30]);
+
+    s.updateLabel("events", makeTd("t2", [40, 60]));
+    expect(s.listLabels("events")).toHaveLength(2);
+
+    s.deleteLabel("events", "t1");
+    expect(s.listLabels("events").map((l) => l._id)).toEqual(["t2"]);
+  });
+
+  it("emits an id-aligned delta for a created TD", () => {
+    const s = new Sample({
+      schema: tdSchema,
+      data: { events: { detections: [] } },
+    });
+
+    s.updateLabel("events", makeTd("t1", [1, 30]));
+
+    const ops = s.getJsonPatch();
+    expect(ops.some((op) => op.path.startsWith("/events/detections"))).toBe(
+      true
+    );
+  });
+});
