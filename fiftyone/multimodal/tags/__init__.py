@@ -14,7 +14,6 @@ from ._temporal_tags import (
     TagKind,
     TemporalTag,
     TemporalTagFilter,
-    TemporalTags,
 )
 
 __all__ = [
@@ -25,5 +24,4 @@ __all__ = [
     "TagKind",
     "TemporalTag",
     "TemporalTagFilter",
-    "TemporalTags",
 ]

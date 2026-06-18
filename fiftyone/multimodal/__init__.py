@@ -23,7 +23,6 @@ from .resolver import PlaybackPlanBuilder
 from .tags import (
     TemporalTag,
     TemporalTagFilter,
-    TemporalTags,
 )
 
 __all__ = [
@@ -35,7 +34,6 @@ __all__ = [
     "PlaybackPlanBuilder",
     "TemporalTag",
     "TemporalTagFilter",
-    "TemporalTags",
     "clear_decoders",
     "decoders",
     "get_decoder",
