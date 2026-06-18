@@ -236,6 +236,37 @@ describe("ImageAnnotationsOverlay", () => {
     );
   });
 
+  it("applies the image view transform to the SVG display rect", () => {
+    const { container } = render(
+      <ImageAnnotationsOverlay
+        annotations={[
+          {
+            ...emptySet(),
+            circles: [
+              {
+                position: [100, 50],
+                diameter: 20,
+                thickness: 1,
+                outlineColor: RED,
+                fillColor: null,
+              },
+            ],
+          },
+        ]}
+        imageWidth={200}
+        imageHeight={100}
+        fit="contain"
+        viewTransform={{ scale: 2, translateX: 25, translateY: -10 }}
+      />
+    );
+
+    const svg = requireElement<SVGSVGElement>(container, "svg");
+    expect(svg.style.left).toBe("-175px");
+    expect(svg.style.top).toBe("-60px");
+    expect(svg.style.width).toBe("800px");
+    expect(svg.style.height).toBe("400px");
+  });
+
   // -------------------------------------------------------------------------
   // Circles
   // -------------------------------------------------------------------------
