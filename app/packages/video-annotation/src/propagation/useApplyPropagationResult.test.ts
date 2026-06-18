@@ -5,7 +5,17 @@
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const mockActions = {
+  transaction: vi.fn((fn: () => unknown) => fn()),
+  updateLabel: vi.fn(),
+};
+
 const h = vi.hoisted(() => ({ stream: null as unknown }));
+
+vi.mock("@fiftyone/annotation", () => ({
+  useAnnotationEngine: () => ({}),
+  useSurfaceActions: () => mockActions,
+}));
 
 vi.mock("../streams/frameLabelsStream", () => ({
   useFrameLabelsStream: () => h.stream,
@@ -16,60 +26,56 @@ import {
   useApplyPropagationResult,
 } from "./useApplyPropagationResult";
 
-const FPS = 10;
-
-/** Fake stream whose `getValue(time)` maps time→frame (1-based, `(f-1)/fps`). */
-function makeStream(frames = new Map<number, unknown[]>()) {
-  return {
-    fps: FPS,
-    getValue: (time: number) => {
-      const frame = Math.round(time * FPS) + 1;
-      return frames.has(frame) ? { detections: frames.get(frame)! } : null;
-    },
-    updateLabel: vi.fn(),
-  };
-}
+const PATH = "frames.detections";
 
 beforeEach(() => {
-  h.stream = null;
+  h.stream = { labelsField: "detections" };
+  vi.clearAllMocks();
 });
 
 describe("useApplyPropagatedDetection", () => {
-  it("reuses the existing detection's _id when one is present for the instance (replace, not append)", () => {
-    const stream = makeStream(
-      new Map([[3, [{ _id: "existing-3", instance: { _id: "inst-1" } }]]])
-    );
-    h.stream = stream;
+  it("writes the detection at its frame, addressed by instance._id, identity stripped", () => {
     const { result } = renderHook(() => useApplyPropagatedDetection());
 
-    const detection = {
+    result.current(3, {
       _id: "minted",
       instance: { _id: "inst-1" },
       bounding_box: [0, 0, 1, 1],
-    };
-    result.current(3, detection as never);
+    } as never);
 
-    expect(stream.updateLabel).toHaveBeenCalledWith(3, {
-      ...detection,
-      _id: "existing-3",
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: PATH, instanceId: "inst-1", frame: 3 },
+      { bounding_box: [0, 0, 1, 1] }
+    );
+  });
+
+  it("coalesces a streaming run under a shared undoKey", () => {
+    const { result } = renderHook(() => useApplyPropagatedDetection());
+
+    result.current(
+      4,
+      {
+        _id: "m",
+        instance: { _id: "inst-1" },
+        bounding_box: [0, 0, 1, 1],
+      } as never,
+      { undoKey: "propagate:1" }
+    );
+
+    expect(mockActions.transaction).toHaveBeenCalledWith(expect.any(Function), {
+      undoKey: "propagate:1",
     });
   });
 
-  it("keeps the minted id for a genuine gap in the track (append)", () => {
-    const stream = makeStream(
-      new Map([[3, [{ _id: "other", instance: { _id: "other-inst" } }]]])
-    );
-    h.stream = stream;
+  it("falls back to the doc _id when the detection has no instance", () => {
     const { result } = renderHook(() => useApplyPropagatedDetection());
 
-    const detection = {
-      _id: "minted",
-      instance: { _id: "inst-1" },
-      bounding_box: [0, 0, 1, 1],
-    };
-    result.current(3, detection as never);
+    result.current(2, { _id: "doc-2", bounding_box: [0, 0, 1, 1] } as never);
 
-    expect(stream.updateLabel).toHaveBeenCalledWith(3, detection);
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: PATH, instanceId: "doc-2", frame: 2 },
+      { bounding_box: [0, 0, 1, 1] }
+    );
   });
 
   it("is a no-op when no stream is mounted", () => {
@@ -79,13 +85,12 @@ describe("useApplyPropagatedDetection", () => {
     expect(() =>
       result.current(1, { instance: { _id: "x" } } as never)
     ).not.toThrow();
+    expect(mockActions.updateLabel).not.toHaveBeenCalled();
   });
 });
 
 describe("useApplyPropagationResult", () => {
-  it("writes each per-frame detection from a sync result", () => {
-    const stream = makeStream();
-    h.stream = stream;
+  it("writes each per-frame detection from a sync result in one transaction", () => {
     const { result } = renderHook(() => useApplyPropagationResult());
 
     result.current({
@@ -98,24 +103,19 @@ describe("useApplyPropagationResult", () => {
       },
     } as never);
 
-    expect(stream.updateLabel).toHaveBeenCalledTimes(2);
-    expect(stream.updateLabel).toHaveBeenCalledWith(
-      2,
-      expect.objectContaining({ _id: "a" })
-    );
-    expect(stream.updateLabel).toHaveBeenCalledWith(
-      3,
-      expect.objectContaining({ _id: "b" })
+    // the outer batch transaction plus each writer's nested transaction
+    expect(mockActions.updateLabel).toHaveBeenCalledTimes(2);
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: PATH, instanceId: "i", frame: 2 },
+      {}
     );
   });
 
   it("ignores a non-sync (streaming) result", () => {
-    const stream = makeStream();
-    h.stream = stream;
     const { result } = renderHook(() => useApplyPropagationResult());
 
     result.current({ type: "async" } as never);
 
-    expect(stream.updateLabel).not.toHaveBeenCalled();
+    expect(mockActions.updateLabel).not.toHaveBeenCalled();
   });
 });

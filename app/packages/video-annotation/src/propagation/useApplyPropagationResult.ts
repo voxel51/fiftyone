@@ -2,78 +2,103 @@ import {
   type InferenceResult,
   type PropagatedDetection,
   type PropagationInferenceResult,
+  useAnnotationEngine,
+  useSurfaceActions,
 } from "@fiftyone/annotation";
 import { useCallback } from "react";
 
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 
 /**
- * Method which applies a {@link PropagationInferenceResult} to the
- * `VideoFrameLabelsStream` cache. Each per-frame entry is written via
- * `stream.updateLabel`, which the auto-save pipeline picks up.
+ * Method which applies a {@link PropagationInferenceResult} to the engine. Each
+ * per-frame entry is written via `engine.updateLabel`, which the autosave
+ * pipeline picks up through `engine.getJsonPatch`.
  */
 export type PropagationResultHandler = (
   result: InferenceResult<PropagationInferenceResult>
 ) => void;
 
-/** Writes a single propagated detection into a 1-based frame. */
+/**
+ * Writes a single propagated detection into a 1-based frame. `undoKey`
+ * coalesces a streaming run's per-frame writes (which can't share one
+ * synchronous transaction) into a single undo unit.
+ */
 export type PropagatedDetectionWriter = (
   frameNumber: number,
-  detection: PropagatedDetection
+  detection: PropagatedDetection,
+  opts?: { undoKey?: string }
 ) => void;
 
+const SURFACE = "video";
+
 /**
- * Hook which returns a single-frame writer bound to the active session.
- * Used both by the batch {@link useApplyPropagationResult} (sync agents that
- * return every frame at once) and by streaming agents (SAM2) that emit a
- * frame at a time as inference lands.
+ * Hook which returns a single-frame writer bound to the active session. Used by
+ * the batch {@link useApplyPropagationResult} (sync agents returning every
+ * frame at once) and by streaming agents (SAM2) that emit a frame at a time as
+ * inference lands.
  *
- * The agent mints a fresh `_id` per emitted frame, but the in-between frames
- * of a tracked object usually already carry a detection for this instance.
- * `updateLabel` matches by `_id`, so a fresh id would append a duplicate
- * (collapsed in rendering by the shared `instance._id`, but doubled in the
- * data and persisted as an `add`). Reuse the existing detection's `_id` when
- * one is present so the write overwrites it in place (a `replace`); fall
- * back to the minted id only for genuine gaps in the track (a correct `add`).
+ * The engine addresses a track by its `instance._id`, so a per-frame write
+ * upserts that track's box at the frame — no fresh-id dedup dance: an existing
+ * box for the instance is overwritten in place, a gap gets a freshly-minted
+ * frame doc. Identity fields (`_id`/`instance`) are the store's, so they're
+ * stripped from the written content and re-stamped from the ref.
  */
 export const useApplyPropagatedDetection = (): PropagatedDetectionWriter => {
+  const engine = useAnnotationEngine();
+  const actions = useSurfaceActions(engine, SURFACE);
   const stream = useFrameLabelsStream();
 
   return useCallback(
-    (frameNumber: number, detection: PropagatedDetection) => {
-      if (!stream) return;
+    (frameNumber, detection, opts) => {
+      if (!stream) {
+        return;
+      }
 
-      const snapshot = stream.getValue((frameNumber - 1) / stream.fps);
-      const existing = snapshot?.detections.find(
-        (d) => d.instance?._id === detection.instance?._id
-      );
+      const instanceId = detection.instance?._id ?? detection._id;
 
-      stream.updateLabel(
-        frameNumber,
-        existing?._id ? { ...detection, _id: existing._id } : detection
+      if (!instanceId) {
+        return;
+      }
+
+      const path = `frames.${stream.labelsField}`;
+      const { _id, instance, ...content } = detection;
+
+      actions.transaction(
+        () =>
+          actions.updateLabel(
+            { path, instanceId, frame: frameNumber },
+            content
+          ),
+        opts?.undoKey ? { undoKey: opts.undoKey } : undefined
       );
     },
-    [stream]
+    [actions, stream]
   );
 };
 
 /**
- * Hook which returns a {@link PropagationResultHandler} bound to the
- * current video annotation session. Mirrors {@link useApplyInferenceResult}'s
- * shape; dispatches into the per-frame stream cache rather than into
- * Lighter overlays directly (overlays only exist for the current frame).
+ * Hook which returns a {@link PropagationResultHandler} bound to the current
+ * session. A sync agent returns every frame at once, so the whole batch lands
+ * in one engine transaction (one undo unit).
  */
 export const useApplyPropagationResult = (): PropagationResultHandler => {
+  const engine = useAnnotationEngine();
+  const actions = useSurfaceActions(engine, SURFACE);
   const applyDetection = useApplyPropagatedDetection();
 
   return useCallback(
     (result: InferenceResult<PropagationInferenceResult>) => {
-      if (result.type !== "sync") return;
+      if (result.type !== "sync") {
+        return;
+      }
 
-      result.response.perFrame.forEach(({ frameNumber, detection }) =>
-        applyDetection(frameNumber, detection)
-      );
+      // one transaction; the per-frame writers nest into it as one undo unit
+      actions.transaction(() => {
+        result.response.perFrame.forEach(({ frameNumber, detection }) =>
+          applyDetection(frameNumber, detection)
+        );
+      });
     },
-    [applyDetection]
+    [actions, applyDetection]
   );
 };
