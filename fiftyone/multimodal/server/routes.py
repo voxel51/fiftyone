@@ -175,7 +175,7 @@ def _list_tags(request: Request, sample_id: str | None = None) -> dict:
         "tags": [
             _serialize_temporal_tag(tag)
             for tag in _handle_temporal_tag_errors(
-                lambda: fomt.list_temporal_tags(dataset, filter=tag_filter)
+                lambda: fota.list_temporal_tags(dataset, filter=tag_filter)
             )
         ]
     }
