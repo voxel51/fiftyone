@@ -203,11 +203,11 @@ class TestStateDictLoading:
         assert "embedding.stem.conv.weight" in out
 
     def test_raises_when_no_model_path(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="No model_path provided"):
             _load_backbone_state_dict(None)
 
     def test_raises_when_empty_model_path(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="No model_path provided"):
             _load_backbone_state_dict("")
 
 

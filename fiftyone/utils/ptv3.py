@@ -111,7 +111,7 @@ class PointTransformerV3ModelConfig(foc.Config, fozm.HasZooModel):
                 )
             lo = self.point_cloud_range[:3]
             hi = self.point_cloud_range[3:]
-            if not all(l < h for l, h in zip(lo, hi)):
+            if not all(a < b for a, b in zip(lo, hi)):
                 raise ValueError(
                     "point_cloud_range must have min < max on each axis; "
                     "found %s" % (self.point_cloud_range,)
