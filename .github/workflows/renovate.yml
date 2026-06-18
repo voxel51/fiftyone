@@ -1,7 +1,8 @@
 name: Renovate
 
-# Self-hosted so PRs are authored by voxel51-bot, which clears the
-# `enterprise / ci` gate in enterprise-sync.yml (it excludes `[bot]` authors).
+# Self-hosted so PRs are authored by voxel51-bot, a collaborator with push:
+# community-prs.yml then leaves their base alone instead of retargeting to
+# `community`, which is what looped against Dependabot's default-branch PRs.
 
 on:
   schedule:
