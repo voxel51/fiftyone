@@ -36,6 +36,10 @@ export default function AddPanelItem({
           spaces.splitLayout(node, Layout.Horizontal);
         } else if (e.shiftKey) {
           spaces.splitLayout(node, Layout.Vertical);
+        } else if (!node.parent?.isSpaceContainer()) {
+          // by default, open the panel side-by-side with the current view;
+          // if the layout is already split, just add it as a tab
+          spaces.splitLayout(node, Layout.Horizontal);
         }
         if (onClick) onClick();
       }}
