@@ -1,13 +1,13 @@
 /**
- * Phase-1 spike: prove the engine's already-written-but-inert frame path
- * actually fires once a real {@link TemporalView} drives it. Covers
- *  - FrameTemporalView presence diffing at track granularity (enter/refresh/exit)
+ * The {@link FrameTemporalView} driving a frame-locked bridge through the
+ * engine:
+ *  - presence diffing at track granularity (enter/refresh/exit)
  *  - a frame-locked bridge getting mount/refresh/unmount as a clock advances
- *  - off-frame edits NOT touching the canvas (R1), surfacing on scrub
+ *  - off-frame edits NOT touching the canvas, surfacing on scrub
  *  - presence-exit pruning hover only (selection survives scrubbing)
  *
  * The store here is a throwaway frame-keyed LabelStore — enough to exercise the
- * engine; the real FrameStore is Phase 2.
+ * engine in isolation from a concrete store.
  */
 
 import type {
@@ -360,7 +360,7 @@ describe("frame-locked bridge driven by presence", () => {
     expect(handles.size).toBe(0);
   });
 
-  it("ignores an off-frame edit, then surfaces it when the playhead arrives (R1)", () => {
+  it("ignores an off-frame edit, then surfaces it when the playhead arrives", () => {
     const { engine, seek } = makeFrameEngine([
       { frame: 1, instanceId: "A", label: box("A", [0, 0, 1, 1]) },
       { frame: 2, instanceId: "A", label: box("A", [0, 0, 2, 2]) },

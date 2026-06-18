@@ -1,30 +1,27 @@
 /**
- * The frame-indexed {@link LabelStore}: the sibling the contract anticipates
- * (`Sample`/`SampleLabelStore` is the sample-level one). Committed truth for a
- * video sample's per-frame labels, addressed by the full ref tuple
- * `(path, instanceId, frame)`.
+ * The frame-indexed {@link LabelStore}: committed truth for a video sample's
+ * per-frame labels, addressed by the full ref tuple `(path, instanceId, frame)`.
+ * The sample-level sibling is `SampleLabelStore`; stores never know about each
+ * other.
  *
- * Identity, the keystone decision: `instanceId` is the TRACK's `instance._id`,
- * not the per-frame document `_id`. So `(instanceId, frameN)` and
- * `(instanceId, frameM)` are distinct refs (the same track's box on two
- * frames), and `linkageKey === instanceId` aggregates the whole track — one
- * canvas handle per track, the playhead choosing which frame's geometry it
- * shows. The per-frame document `_id` demotes to a round-tripped field that the
- * store mints on create and preserves on edit; PERSISTENCE aligns each frame's
- * list by that document `_id` (1:1 with the track within a frame), while
- * ADDRESSING uses `instance._id`.
+ * Identity: `instanceId` is the TRACK's `instance._id`, not the per-frame
+ * document `_id`. So `(instanceId, frameN)` and `(instanceId, frameM)` are
+ * distinct refs (the same track's box on two frames), and
+ * `linkageKey === instanceId` aggregates the whole track — one canvas handle per
+ * track, the playhead choosing which frame's geometry it shows. The per-frame
+ * document `_id` is minted on create, preserved on edit, and round-tripped as a
+ * field; persistence aligns each frame's list by that document `_id` (1:1 with
+ * the track within a frame), while addressing uses `instance._id`.
  *
- * State model mirrors `Sample`: a `source` (server truth) plus a copy-on-write
- * `working` overlay of edited frames (which doubles as the dirty set). That
- * gives, for free, the optimistic-save behaviors the video stream hand-rolled:
- * a successful `setData(echo)` re-baselines `source` and GCs working frames now
- * equal to it (edits made DURING the save survive as the next delta); a failed
- * save touches nothing, so the next `getJsonPatch` re-emits idempotently.
+ * State: a `source` (server truth) plus a copy-on-write `working` overlay of
+ * edited frames, which doubles as the dirty set. A successful `setData(echo)`
+ * re-baselines `source` and GCs working frames now equal to it, so an edit made
+ * during a save survives as the next delta; a failed save touches nothing, so
+ * the next `getJsonPatch` re-emits idempotently.
  *
- * Phase-2 scope: list-label frame fields (Detections/Keypoints/…). The exact
- * server echo/seed payload shape and server-owned-field release
- * (`reconcilePersisted`) reconcile in Phase 4 against the real video surface —
- * here the I/O is the flat {@link FramesData} shape the tests drive.
+ * Handles list-label frame fields (Detections/Keypoints/…). The server
+ * echo/seed payload is the flat {@link FramesData} shape; server-owned-field
+ * release in `reconcilePersisted` is not yet implemented.
  */
 
 import type {
@@ -281,9 +278,8 @@ export class FrameStore implements LabelStore {
   }
 
   reconcilePersisted(): void {
-    // server-owned-field release (mask_path etc.) reconciles in Phase 4 against
-    // the real echo; the routine setData(echo) re-baseline below is the path
-    // that clears dirty after a successful save.
+    // server-owned-field release (e.g. mask_path) is not yet implemented; the
+    // routine setData(echo) re-baseline is what clears dirty after a save.
   }
 
   // ---- lifecycle ----

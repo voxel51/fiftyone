@@ -1,9 +1,9 @@
 /**
- * Phase-2: the frame-indexed LabelStore. Covers identity (track =
- * `instance._id`, distinct from the per-frame doc `_id`), mutation, transaction
- * rollback/undo through the engine, the id-aligned `/frames/<n>/<field>`
- * persistence (including shift-safety), `setData` re-baseline + GC, and an
- * end-to-end run with the FrameTemporalView + a frame-locked bridge.
+ * The frame-indexed LabelStore: identity (track = `instance._id`, distinct from
+ * the per-frame doc `_id`), mutation, transaction rollback/undo through the
+ * engine, the id-aligned `/frames/<n>/<field>` persistence (including
+ * shift-safety), `setData` re-baseline + GC, and an end-to-end run with the
+ * FrameTemporalView + a frame-locked bridge.
  */
 
 import type { LabelData } from "@fiftyone/utilities";
