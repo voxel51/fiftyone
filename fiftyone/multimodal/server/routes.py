@@ -97,7 +97,7 @@ class SampleTagsEndpoint(HTTPEndpoint):
 
         return {
             "deleted": _handle_temporal_tag_errors(
-                lambda: fomt.delete_temporal_tags(
+                lambda: fota.delete_temporal_tags(
                     dataset,
                     ids=delete_request["ids"],
                     tags=delete_request["tags"],
