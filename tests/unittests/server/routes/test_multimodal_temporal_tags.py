@@ -223,17 +223,17 @@ class TestTagsRoute:
         fota.add_temporal_tags(
             dataset,
             [
-                fomt.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[0], 0, 10, "clip", kind=fomt.TagKind.TEMPORAL
                 ),
-                fomt.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[0],
                     30,
                     40,
                     "outside",
                     kind=fomt.TagKind.TEMPORAL,
                 ),
-                fomt.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[1],
                     5,
                     15,
@@ -266,7 +266,7 @@ class TestTagsRoute:
     ):
         created = fota.add_temporal_tags(
             dataset,
-            fomt.TemporalTag(
+            fota.TemporalTag(
                 sample_ids[0],
                 0,
                 10,
@@ -325,21 +325,21 @@ class TestTagsRoute:
         fota.add_temporal_tags(
             dataset,
             [
-                fomt.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[0],
                     0,
                     10,
                     "clip",
                     kind=fomt.TagKind.TEMPORAL,
                 ),
-                fomt.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[1],
                     10,
                     20,
                     "clip",
                     kind=fomt.TagKind.TEMPORAL,
                 ),
-                fomt.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[2],
                     30,
                     40,
@@ -386,28 +386,28 @@ class TestTagsRoute:
         fota.add_temporal_tags(
             dataset,
             [
-                fomt.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[0],
                     0,
                     10,
                     "candidate",
                     kind=fomt.TagKind.TEMPORAL,
                 ),
-                fomt.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[1],
                     10,
                     20,
                     "candidate",
                     kind=fomt.TagKind.TEMPORAL,
                 ),
-                fomt.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[2],
                     20,
                     30,
                     "review",
                     kind=fomt.TagKind.TEMPORAL,
                 ),
-                fomt.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[2],
                     30,
                     40,
@@ -503,21 +503,21 @@ class TestTagsRoute:
         fota.add_temporal_tags(
             dataset,
             [
-                fomt.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[0],
                     0,
                     10,
                     "first",
                     kind=fomt.TagKind.TEMPORAL,
                 ),
-                fomt.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[0],
                     10,
                     20,
                     "second",
                     kind=fomt.TagKind.TEMPORAL,
                 ),
-                fomt.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[1],
                     0,
                     10,
@@ -553,7 +553,7 @@ class TestTagsRoute:
     ):
         temporal_tag = fota.add_temporal_tags(
             dataset,
-            fomt.TemporalTag(
+            fota.TemporalTag(
                 sample_ids[0],
                 0,
                 10,
@@ -725,7 +725,7 @@ class TestTagsRoute:
     ):
         temporal_tag = fota.add_temporal_tags(
             dataset,
-            fomt.TemporalTag(
+            fota.TemporalTag(
                 sample_ids[0],
                 0,
                 10,

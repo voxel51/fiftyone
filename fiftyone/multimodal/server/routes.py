@@ -189,7 +189,7 @@ def _get_dataset_from_request(request: Request):
 
 def _temporal_tags_from_create_payload(
     data, sample_id: str
-) -> list[fomt.TemporalTag]:
+) -> list[fota.TemporalTag]:
     _require_dict(data, "request body")
 
     records = data.get("temporal_tags", None)
@@ -216,7 +216,7 @@ def _temporal_tags_from_create_payload(
         _ensure_matching_sample_id(record_sample_id, sample_id)
 
         tags.append(
-            fomt.TemporalTag(
+            fota.TemporalTag(
                 sample_id=sample_id,
                 start=record.get("start", None),
                 end=record.get("end", None),
@@ -349,7 +349,7 @@ def _temporal_tag_filter_from_query(
     )
 
 
-def _serialize_temporal_tag(tag: fomt.TemporalTag) -> dict:
+def _serialize_temporal_tag(tag: fota.TemporalTag) -> dict:
     return tag.to_dict()
 
 

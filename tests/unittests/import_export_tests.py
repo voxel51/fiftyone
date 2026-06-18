@@ -374,7 +374,7 @@ class TagsImportExportTests(ImageDatasetTests):
         fota.add_temporal_tags(
             dataset,
             [
-                fomm.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[0],
                     0,
                     10,
@@ -383,7 +383,7 @@ class TagsImportExportTests(ImageDatasetTests):
                     created_by="alice",
                     kind=TagKind.TEMPORAL,
                 ),
-                fomm.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[1],
                     10,
                     20,
@@ -392,7 +392,7 @@ class TagsImportExportTests(ImageDatasetTests):
                     last_modified_by="carol",
                     kind=TagKind.TEMPORAL,
                 ),
-                fomm.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[2],
                     20,
                     30,
