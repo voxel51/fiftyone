@@ -11,7 +11,6 @@ from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import Response
 
-import fiftyone.multimodal.tags as fomt
 import fiftyone.multimodal.tags._temporal_tags as fota
 from fiftyone.multimodal.query import (
     resolve_playback_plan,
@@ -221,7 +220,7 @@ def _temporal_tags_from_create_payload(
                 start=record.get("start", None),
                 end=record.get("end", None),
                 tag=record.get("tag", None),
-                index_type=record.get("index_type", fomt.DEFAULT_INDEX_TYPE),
+                index_type=record.get("index_type", fota.DEFAULT_INDEX_TYPE),
                 anchor=record.get("anchor", None),
                 kind=record.get("kind", None),
                 created_by=record.get("created_by", None),
