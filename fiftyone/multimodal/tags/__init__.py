@@ -11,7 +11,6 @@ from ._temporal_tags import (
     SUPPORTED_INDEX_TYPES,
     TAGS_COLLECTION_NAME,
     TAGS_EXPORT_FILENAME,
-    TagKind,
 )
 
 __all__ = [
@@ -19,5 +18,4 @@ __all__ = [
     "SUPPORTED_INDEX_TYPES",
     "TAGS_COLLECTION_NAME",
     "TAGS_EXPORT_FILENAME",
-    "TagKind",
 ]
