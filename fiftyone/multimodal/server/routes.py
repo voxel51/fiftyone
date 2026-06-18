@@ -162,7 +162,7 @@ class TagCountsEndpoint(HTTPEndpoint):
 
         return {
             "counts": _handle_temporal_tag_errors(
-                lambda: fomt.count_temporal_tags(dataset, filter=tag_filter)
+                lambda: fota.count_temporal_tags(dataset, filter=tag_filter)
             )
         }
 
