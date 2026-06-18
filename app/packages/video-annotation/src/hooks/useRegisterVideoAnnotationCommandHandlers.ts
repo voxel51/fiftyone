@@ -1,0 +1,654 @@
+import {
+  AgentTaskType,
+  type AnnotationAgent,
+  CreateTemporalDetectionCommand,
+  DeleteTemporalDetectionCommand,
+  DeleteTrackCommand,
+  EditTemporalDetectionCommand,
+  ExtendTrackCommand,
+  MarkKeyframeCommand,
+  PropagateCommand,
+  type PropagationContext,
+  type PropagationInferenceResult,
+  type SAM2PropagationBrowserAgent,
+  ShiftTrackCommand,
+  TrimTrackCommand,
+  UpdateTrackAttributesCommand,
+  useAgentRegistry,
+  useAnnotationEventBus,
+  useSampleDescriptor,
+  useTombstoneTemporalDetection,
+} from "@fiftyone/annotation";
+import { useRegisterCommandHandler } from "@fiftyone/command-bus";
+import {
+  TemporalOverlay,
+  useLighter,
+  type TemporalLabel,
+} from "@fiftyone/lighter";
+import {
+  type LocalDetection,
+  objectId,
+  type SyntheticBox,
+} from "@fiftyone/utilities";
+import { createElement, useCallback } from "react";
+import { frameAt } from "@fiftyone/playback";
+import { PropagationStatusItem } from "../components/PropagationStatusItem";
+import {
+  useApplyPropagatedDetection,
+  useApplyPropagationResult,
+} from "../propagation/useApplyPropagationResult";
+import { useVideoAnnotationStatus } from "../state/videoAnnotationStatus";
+import { useFrameLabelsStream } from "../streams/frameLabelsStream";
+import { useImaVidImageStream } from "../streams/imaVidImageStreamHandle";
+import { copyDetection, detectionAt } from "./videoCommandHelpers";
+
+// Shared dependency types — acquired once in the umbrella hook and threaded
+// to the per-command registrar hooks below (module-private; not part of the
+// package's public surface).
+type Stream = ReturnType<typeof useFrameLabelsStream>;
+type ImageStream = ReturnType<typeof useImaVidImageStream>;
+type Scene = ReturnType<typeof useLighter>["scene"];
+type EventBus = ReturnType<typeof useAnnotationEventBus>;
+type SetStatusContent = ReturnType<
+  typeof useVideoAnnotationStatus
+>["setContent"];
+type AgentRegistry = ReturnType<typeof useAgentRegistry>;
+type SampleDescriptor = ReturnType<typeof useSampleDescriptor>;
+type ApplyPropagation = ReturnType<typeof useApplyPropagationResult>;
+type ApplyPropagatedDetection = ReturnType<typeof useApplyPropagatedDetection>;
+type TombstoneTemporalDetection = ReturnType<
+  typeof useTombstoneTemporalDetection
+>;
+
+/**
+ * Registers video-specific annotation command handlers. Mount inside
+ * the video annotation surface's `<PlaybackProvider>` so dispatchers
+ * (keybinding handlers, toolbar buttons, …) can capture the playhead
+ * and selection at the moment of user intent.
+ *
+ * Each command is registered by its own `use…Handler` hook below; this
+ * umbrella acquires the shared dependencies once and threads them down so
+ * a handler depends only on what it actually uses.
+ */
+export const useRegisterVideoAnnotationCommandHandlers = () => {
+  const stream = useFrameLabelsStream();
+  const imageStream = useImaVidImageStream();
+  const { scene } = useLighter();
+  const registry = useAgentRegistry();
+  const sampleDescriptor = useSampleDescriptor();
+  const applyPropagation = useApplyPropagationResult();
+  const applyPropagatedDetection = useApplyPropagatedDetection();
+  const { setContent: setStatusContent } = useVideoAnnotationStatus();
+  const eventBus = useAnnotationEventBus();
+  const tombstoneTemporalDetection = useTombstoneTemporalDetection();
+
+  useEditTemporalDetectionHandler({ scene, eventBus });
+  useDeleteTemporalDetectionHandler({ scene, tombstoneTemporalDetection });
+  useCreateTemporalDetectionHandler({ scene });
+  useMarkKeyframeHandler({ stream, eventBus });
+  usePropagateHandler({
+    stream,
+    imageStream,
+    registry,
+    sampleDescriptor,
+    applyPropagation,
+    applyPropagatedDetection,
+    setStatusContent,
+  });
+  useExtendTrackHandler({ stream });
+  useTrimTrackHandler({ stream });
+  useDeleteTrackHandler({ stream, eventBus });
+  useUpdateTrackAttributesHandler({ stream });
+  useShiftTrackHandler({ stream });
+};
+
+function useEditTemporalDetectionHandler({
+  scene,
+  eventBus,
+}: {
+  scene: Scene;
+  eventBus: EventBus;
+}): void {
+  useRegisterCommandHandler(
+    EditTemporalDetectionCommand,
+    useCallback(
+      async (cmd) => {
+        if (!scene) return false;
+        const overlayId = `td-${cmd.fieldPath}-${cmd.detectionId}`;
+        const overlay = scene.getOverlay(overlayId);
+        if (!(overlay instanceof TemporalOverlay)) return false;
+        // Mutate via the typed setter so the overlay re-gates / marks dirty.
+        const nextLabel = {
+          ...overlay.label,
+          ...cmd.update,
+        } as TemporalLabel;
+        overlay.label = nextLabel;
+        // Live signal for sample-stale consumers (timeline track, sidebar
+        // form) — they rebuild off this rather than waiting for autosave.
+        eventBus.dispatch("annotation:labelEdit", {
+          label: nextLabel,
+        });
+        return true;
+      },
+      [scene, eventBus]
+    )
+  );
+}
+
+function useDeleteTemporalDetectionHandler({
+  scene,
+  tombstoneTemporalDetection,
+}: {
+  scene: Scene;
+  tombstoneTemporalDetection: TombstoneTemporalDetection;
+}): void {
+  useRegisterCommandHandler(
+    DeleteTemporalDetectionCommand,
+    useCallback(
+      async (cmd) => {
+        if (!scene) {
+          return false;
+        }
+
+        const overlayId = `td-${cmd.fieldPath}-${cmd.detectionId}`;
+        const overlay = scene.getOverlay(overlayId);
+        if (!(overlay instanceof TemporalOverlay)) {
+          return false;
+        }
+
+        // Record the deletion for the next tick. Removing the overlay drops
+        // the timeline row immediately.
+        tombstoneTemporalDetection(cmd.fieldPath, cmd.detectionId);
+        scene.removeOverlay(overlayId);
+
+        return true;
+      },
+      [scene, tombstoneTemporalDetection]
+    )
+  );
+}
+
+function useCreateTemporalDetectionHandler({ scene }: { scene: Scene }): void {
+  useRegisterCommandHandler(
+    CreateTemporalDetectionCommand,
+    useCallback(
+      async (cmd) => {
+        if (!scene) return null;
+        const detectionId = objectId();
+        const overlayId = `td-${cmd.fieldPath}-${detectionId}`;
+        const overlay = new TemporalOverlay({
+          id: overlayId,
+          field: cmd.fieldPath,
+          label: {
+            _cls: "TemporalDetection",
+            _id: detectionId,
+            support: [cmd.support[0], cmd.support[1]],
+            // Mirror the server-materialized default so the overlay carries
+            // `tags` from the first frame: gives tag edits a real array to
+            // mutate, and keeps the persistence diff from seeing an absent
+            // key on the next refetch.
+            tags: [],
+            ...(cmd.label !== undefined ? { label: cmd.label } : {}),
+          },
+        });
+        // Seed the time gate to the creation frame (== support start, the
+        // current playhead) so the canvas chip renders immediately. Until the
+        // TD is persisted + refetched it isn't tracked by `useTemporalOverlaySync`,
+        // so nothing else would push a frame into it.
+        overlay.setCurrentFrame(cmd.support[0]);
+        scene.addOverlay(overlay);
+        // Select immediately so the new TD opens in the sidebar for editing,
+        // consistent with other creation modes. This mirrors a TD-bar click
+        // (`linkedTracks` → `scene.selectOverlay`); the overlay-added bump in
+        // `useSyncSidebarFromTemporalOverlays` lists it this tick and its
+        // selected-but-newly-listed retry opens the editor.
+        scene.selectOverlay(overlayId);
+        return detectionId;
+      },
+      [scene]
+    )
+  );
+}
+
+function useMarkKeyframeHandler({
+  stream,
+  eventBus,
+}: {
+  stream: Stream;
+  eventBus: EventBus;
+}): void {
+  useRegisterCommandHandler(
+    MarkKeyframeCommand,
+    useCallback(
+      async (cmd) => {
+        if (!stream) return false;
+        if (cmd.detectionIds.length === 0) return false;
+
+        const snapshot = stream.getValue(cmd.time);
+        if (!snapshot) return false;
+
+        const frame = frameAt(cmd.time, stream.fps, stream.totalFrames);
+
+        let updated = false;
+        for (const id of cmd.detectionIds) {
+          const det = snapshot.detections.find((d) => d.id === id);
+          if (!det) continue;
+
+          const willBeKeyframe = !det.keyframe;
+
+          // Minimal update — `bounding_box` is required by LocalDetection
+          // but matches the existing cache entry, so the structural diff
+          // sees only the fields that actually changed. Avoid setting
+          // `instance` / `propagation` / `label` / `index` explicitly:
+          // updateLabel's shallow merge preserves them from the cache,
+          // and writing them as nulls would emit spurious `add ...
+          // value: null` patch ops against baselines that lack the keys.
+          const update: LocalDetection = {
+            _cls: "Detection",
+            _id: det._id ?? id,
+            bounding_box: det.bounding_box,
+            keyframe: willBeKeyframe,
+          };
+
+          // Promotion to keyframe semantically clears propagation. Only
+          // write the field when there's something to clear — otherwise
+          // we'd emit a no-op `add propagation: null` patch op.
+          if (willBeKeyframe && det.propagation) {
+            update.propagation = null;
+          }
+
+          stream.updateLabel(frame, update);
+          updated = true;
+
+          eventBus.dispatch("annotation:keyframeChanged", {
+            trackId: det.id,
+            instanceId: det.instance?._id ?? null,
+            frame,
+            kind: willBeKeyframe ? "set" : "removed",
+          });
+        }
+
+        return updated;
+      },
+      [stream, eventBus]
+    )
+  );
+}
+
+function usePropagateHandler({
+  stream,
+  imageStream,
+  registry,
+  sampleDescriptor,
+  applyPropagation,
+  applyPropagatedDetection,
+  setStatusContent,
+}: {
+  stream: Stream;
+  imageStream: ImageStream;
+  registry: AgentRegistry;
+  sampleDescriptor: SampleDescriptor;
+  applyPropagation: ApplyPropagation;
+  applyPropagatedDetection: ApplyPropagatedDetection;
+  setStatusContent: SetStatusContent;
+}): void {
+  useRegisterCommandHandler(
+    PropagateCommand,
+    useCallback(
+      async (cmd) => {
+        if (!stream) return false;
+        if (cmd.fromFrame >= cmd.toFrame) return false;
+
+        const fromTime = (cmd.fromFrame - 1) / stream.fps;
+        const fromSnapshot = stream.getValue(fromTime);
+        if (!fromSnapshot) {
+          return false;
+        }
+
+        const matchesInstance = (d: {
+          instance?: { _cls: "Instance"; _id?: string };
+          keyframe: boolean;
+        }): boolean =>
+          d.keyframe === true && d.instance?._id === cmd.instanceId;
+
+        const leftKeyframe = fromSnapshot.detections.find(matchesInstance);
+        if (!leftKeyframe) {
+          return false;
+        }
+
+        const toTime = (cmd.toFrame - 1) / stream.fps;
+        const rightKeyframe = stream
+          .getValue(toTime)
+          ?.detections.find(matchesInstance);
+
+        // SAM2 tracking runs asynchronously over the decoded ImaVid frames
+        // and streams a detection per frame as inference lands. It needs the
+        // image stream as a frame source; bail cleanly on surfaces that have
+        // none (e.g. native video).
+        if (cmd.method === "sam2") {
+          if (!imageStream) {
+            return false;
+          }
+
+          const agents = await registry.listAgents();
+          const descriptor = agents.find((a) => a.id === "propagate-sam2");
+          if (!descriptor) {
+            return false;
+          }
+
+          // Registry stores agents under the broad `AnnotationAgent` type;
+          // this one is driven through its dedicated `propagate()` (which
+          // carries the frame source), not the generic `infer`.
+          const agent =
+            descriptor.agent as unknown as SAM2PropagationBrowserAgent;
+
+          let aborted = false;
+          const onStop = () => {
+            aborted = true;
+          };
+
+          // Status-slot rendering. Drive the phase off `onProgress` — which
+          // is monotonic and only fires once per-frame inference starts —
+          // rather than the agent lifecycle, which churns
+          // inferring→encoding→idle every frame (the provider re-emits
+          // "encoding" per cache-miss) and would flicker the label. Until
+          // the first progress tick we're in the one-time model
+          // download/encode, shown as an indeterminate "Loading SAM2…".
+          let tracking = false;
+          const render = (done?: number, runTotal?: number) =>
+            setStatusContent(
+              createElement(PropagationStatusItem, {
+                label: tracking ? "SAM2 tracking" : "Loading SAM2…",
+                done,
+                total: runTotal,
+                onStop,
+              })
+            );
+          render();
+
+          // Map a 1-based frame number to its decoded bitmap, fetching +
+          // decoding on demand if the LRU doesn't already hold it. Same
+          // frame→time convention the labels stream + apply path use.
+          const getFrameBitmap = async (
+            frameNumber: number
+          ): Promise<ImageBitmap> => {
+            const time = (frameNumber - 1) / imageStream.fps;
+            await imageStream.warmup(time);
+            const frame = imageStream.getValue(time);
+            if (!frame) {
+              throw new Error(`ImaVid frame ${frameNumber} unavailable`);
+            }
+            return frame.bitmap;
+          };
+
+          try {
+            await agent.propagate({
+              instanceId: cmd.instanceId,
+              seedKeyframe: leftKeyframe,
+              endKeyframe: rightKeyframe,
+              fromFrame: cmd.fromFrame,
+              toFrame: cmd.toFrame,
+              videoKey: sampleDescriptor.sampleId,
+              getFrameBitmap,
+              onDetection: applyPropagatedDetection,
+              onProgress: (done, runTotal) => {
+                tracking = true;
+                render(done, runTotal);
+              },
+              shouldAbort: () => aborted,
+            });
+            return true;
+          } catch (err) {
+            console.error("[va] SAM2 propagation failed", err);
+            return false;
+          } finally {
+            setStatusContent(null);
+          }
+        }
+
+        // Linear interpolation needs both endpoints to lerp between
+        if (!rightKeyframe) {
+          return false;
+        }
+
+        const agentId = `propagate-${cmd.method}`;
+        const agents = await registry.listAgents();
+        const descriptor = agents.find((a) => a.id === agentId);
+        if (!descriptor) return false;
+
+        const context: PropagationContext = {
+          sampleDescriptor,
+          taskType: AgentTaskType.PROPAGATE,
+          instanceId: cmd.instanceId,
+          fromFrame: cmd.fromFrame,
+          toFrame: cmd.toFrame,
+          parentKeyframes: [leftKeyframe, rightKeyframe],
+        };
+
+        // Registry stores agents under the broad `InferenceResultProxy`
+        // type; narrow to the propagation agent's specific result type so
+        // the downstream apply hook is typed end-to-end.
+        const agent =
+          descriptor.agent as AnnotationAgent<PropagationInferenceResult>;
+        const result = await agent.infer(context);
+        applyPropagation(result);
+        return true;
+      },
+      [
+        stream,
+        imageStream,
+        registry,
+        sampleDescriptor,
+        applyPropagation,
+        applyPropagatedDetection,
+        setStatusContent,
+      ]
+    )
+  );
+}
+
+function useExtendTrackHandler({ stream }: { stream: Stream }): void {
+  useRegisterCommandHandler(
+    ExtendTrackCommand,
+    useCallback(
+      async (cmd) => {
+        if (!stream) {
+          return false;
+        }
+
+        if (cmd.targetFrames.length === 0) {
+          return false;
+        }
+
+        const source = detectionAt(
+          stream,
+          cmd.sourceFrame,
+          stream.fps,
+          cmd.trackId
+        );
+        if (!source) {
+          return false;
+        }
+
+        let written = false;
+        for (const frame of cmd.targetFrames) {
+          if (frame < 1 || frame > stream.totalFrames) {
+            continue;
+          }
+
+          // Non-keyframe filler — a later Propagate overwrites these in
+          // place once the far end becomes a keyframe.
+          stream.updateLabel(frame, copyDetection(source, { keyframe: false }));
+          written = true;
+        }
+
+        return written;
+      },
+      [stream]
+    )
+  );
+}
+
+function useTrimTrackHandler({ stream }: { stream: Stream }): void {
+  useRegisterCommandHandler(
+    TrimTrackCommand,
+    useCallback(
+      async (cmd) => {
+        if (!stream) {
+          return false;
+        }
+
+        let removed = false;
+        for (const frame of cmd.frames) {
+          const det = detectionAt(stream, frame, stream.fps, cmd.trackId);
+          if (!det) {
+            continue;
+          }
+
+          stream.deleteLabel(frame, det._id ?? det.id);
+          removed = true;
+        }
+
+        return removed;
+      },
+      [stream]
+    )
+  );
+}
+
+function useDeleteTrackHandler({
+  stream,
+  eventBus,
+}: {
+  stream: Stream;
+  eventBus: EventBus;
+}): void {
+  useRegisterCommandHandler(
+    DeleteTrackCommand,
+    useCallback(
+      async (cmd) => {
+        if (!stream) {
+          return false;
+        }
+
+        let removed = false;
+        for (let frame = 1; frame <= stream.totalFrames; frame++) {
+          const det = detectionAt(stream, frame, stream.fps, cmd.trackId);
+          if (!det) {
+            continue;
+          }
+
+          stream.deleteLabel(frame, det._id ?? det.id);
+          removed = true;
+        }
+
+        // Let selection/editing consumers drop any state still bound to
+        // this track's overlay (e.g. close the sidebar editor) — the
+        // per-frame deletes alone leave that lingering.
+        if (removed) {
+          eventBus.dispatch("annotation:trackDeleted", {
+            trackId: cmd.trackId,
+          });
+        }
+
+        return removed;
+      },
+      [stream, eventBus]
+    )
+  );
+}
+
+function useUpdateTrackAttributesHandler({ stream }: { stream: Stream }): void {
+  useRegisterCommandHandler(
+    UpdateTrackAttributesCommand,
+    useCallback(
+      async (cmd) => {
+        if (!stream) {
+          return false;
+        }
+
+        const keys = Object.keys(cmd.attributes);
+        if (keys.length === 0) {
+          return false;
+        }
+
+        // Merge the track-level attributes onto this track's detection on
+        // every frame it appears, leaving per-frame geometry (`bounding_box`,
+        // `keyframe`, `propagation`) and each frame's own `_id` intact.
+        let updated = false;
+        for (let frame = 1; frame <= stream.totalFrames; frame++) {
+          const det = detectionAt(stream, frame, stream.fps, cmd.trackId);
+          if (!det) {
+            continue;
+          }
+
+          stream.updateLabel(frame, {
+            _cls: "Detection",
+            _id: det._id ?? det.id,
+            ...cmd.attributes,
+          } as LocalDetection);
+          updated = true;
+        }
+
+        return updated;
+      },
+      [stream]
+    )
+  );
+}
+
+function useShiftTrackHandler({ stream }: { stream: Stream }): void {
+  useRegisterCommandHandler(
+    ShiftTrackCommand,
+    useCallback(
+      async (cmd) => {
+        if (!stream) {
+          return false;
+        }
+
+        if (cmd.delta === 0 || cmd.frames.length === 0) {
+          return false;
+        }
+
+        // Read the whole segment up front, before any mutation, so the
+        // delete/write passes below operate on a stable snapshot.
+        const sources: Array<{ frame: number; det: SyntheticBox }> = [];
+        for (const frame of cmd.frames) {
+          const det = detectionAt(stream, frame, stream.fps, cmd.trackId);
+
+          if (det) {
+            sources.push({ frame, det });
+          }
+        }
+        if (sources.length === 0) {
+          return false;
+        }
+
+        // Clear the originals, then re-lay the boxes at the shifted
+        // frames with fresh ids. Keyframe flags + propagation provenance
+        // travel with each label so a shifted track keeps its anchors.
+        for (const { frame, det } of sources) {
+          stream.deleteLabel(frame, det._id ?? det.id);
+        }
+
+        for (const { frame, det } of sources) {
+          const target = frame + cmd.delta;
+          if (target < 1 || target > stream.totalFrames) {
+            continue;
+          }
+
+          stream.updateLabel(
+            target,
+            copyDetection(det, {
+              keyframe: det.keyframe,
+              ...(det.propagation ? { propagation: det.propagation } : {}),
+            })
+          );
+        }
+
+        return true;
+      },
+      [stream]
+    )
+  );
+}

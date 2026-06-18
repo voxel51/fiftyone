@@ -5,6 +5,8 @@ import type {
   KeypointLabel,
   KeypointOverlay,
   PolylineOverlay,
+  TemporalLabel,
+  TemporalOverlay,
 } from "@fiftyone/lighter";
 import { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
 import { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
@@ -169,12 +171,19 @@ export interface KeypointAnnotationLabel extends Label {
   type: "Keypoint";
 }
 
+export interface TemporalDetectionAnnotationLabel extends Label {
+  data: TemporalLabel;
+  overlay: TemporalOverlay;
+  type: "TemporalDetection";
+}
+
 export type AnnotationLabel =
   | ClassificationAnnotationLabel
   | DetectionAnnotationLabel
   | Detection3DAnnotationLabel
   | PolylineAnnotationLabel
-  | KeypointAnnotationLabel;
+  | KeypointAnnotationLabel
+  | TemporalDetectionAnnotationLabel;
 
 export type AnnotationLabelData = AnnotationLabel["data"];
 

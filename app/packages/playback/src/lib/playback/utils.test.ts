@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveAtTime } from "./utils";
+import { frameAt, resolveAtTime } from "./utils";
 
 const NEAREST = { type: "nearest" as const, thresholdSeconds: 0.1 };
 const NEAREST_PREVIOUS = {
@@ -65,9 +65,9 @@ describe("resolveAtTime", () => {
       [1.5, "after"],
     ]);
     // Both within 0.5s — but "after" is past `time` and should be skipped.
-    expect(resolveAtTime(cache, 1, { ...NEAREST_PREVIOUS, thresholdSeconds: 0.5 })).toBe(
-      "before"
-    );
+    expect(
+      resolveAtTime(cache, 1, { ...NEAREST_PREVIOUS, thresholdSeconds: 0.5 })
+    ).toBe("before");
   });
 
   it("returns null for nearestPrevious when only future entries exist", () => {
@@ -100,5 +100,40 @@ describe("resolveAtTime", () => {
     const cache = new Map([[1, "v"]]);
     // |1.05 - 1| = 0.05 < 0.1 threshold → hit.
     expect(resolveAtTime(cache, 1.05, NEAREST)).toBe("v");
+  });
+});
+
+describe("frameAt", () => {
+  it("returns 1 at time 0 (1-indexed)", () => {
+    expect(frameAt(0, 30)).toBe(1);
+  });
+
+  it("floors to the nearest preceding frame boundary", () => {
+    // 1/30s exactly → frame 2; a meaningful amount under → still frame 1.
+    // ("Meaningful" = larger than the sub-frame FP tolerance baked into
+    // frameAt; a fractional-frame scrub position is the realistic case.)
+    expect(frameAt(1 / 30, 30)).toBe(2);
+    expect(frameAt(0.9 / 30, 30)).toBe(1);
+  });
+
+  it("round-trips frame → (frame - 1) / fps → frameAt at non-integer fps", () => {
+    // At a non-integer fps, (n - 1) / fps * fps can land just
+    // below n - 1 (e.g. 15.999999999999998 at 30.007 fps), which without an
+    // FP tolerance floors down and reports the *previous* frame.
+    const fps = 30.007001633714534;
+    for (let n = 1; n <= 1000; n++) {
+      expect(frameAt((n - 1) / fps, fps)).toBe(n);
+    }
+  });
+
+  it("returns the raw frame when no frameCount is provided", () => {
+    // 100s @ 30fps → 3001 — no clamping without an upper bound.
+    expect(frameAt(100, 30)).toBe(3001);
+  });
+
+  it("clamps to [1, frameCount] when frameCount is provided", () => {
+    expect(frameAt(-1, 30, 100)).toBe(1);
+    expect(frameAt(1000, 30, 100)).toBe(100);
+    expect(frameAt(1, 30, 100)).toBe(31);
   });
 });

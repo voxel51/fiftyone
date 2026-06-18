@@ -13,17 +13,27 @@ import {
   viewEndAtom,
   viewStartAtom,
 } from "./atoms";
-import { PlaybackProvider, usePlayback, usePlaybackStore } from "./PlaybackProvider";
+import {
+  PlaybackProvider,
+  usePlayback,
+  usePlaybackStore,
+} from "./PlaybackProvider";
 import type { PlaybackStream } from "./types";
 
 interface RenderOpts {
   duration?: number;
   defaultLoopStart?: number;
   defaultLoopEnd?: number;
+  snapToFrameOnSettle?: boolean;
 }
 
 function renderEngine(opts: RenderOpts = {}) {
-  const { duration = 10, defaultLoopStart, defaultLoopEnd } = opts;
+  const {
+    duration = 10,
+    defaultLoopStart,
+    defaultLoopEnd,
+    snapToFrameOnSettle,
+  } = opts;
   return renderHook(
     () => {
       const store = usePlaybackStore();
@@ -45,6 +55,7 @@ function renderEngine(opts: RenderOpts = {}) {
           stepInterval={1 / 30}
           defaultLoopStart={defaultLoopStart}
           defaultLoopEnd={defaultLoopEnd}
+          snapToFrameOnSettle={snapToFrameOnSettle}
         >
           {children}
         </PlaybackProvider>
@@ -137,6 +148,92 @@ describe("PlaybackProvider engine actions", () => {
     });
   });
 
+  describe("paused settle loop", () => {
+    // Drive requestAnimationFrame manually so the settle loop is
+    // deterministic. flushFrame() runs whatever the engine has queued.
+    function withManualRaf(body: (flushFrame: () => void) => void): void {
+      const queue: FrameRequestCallback[] = [];
+      const rafSpy = vi
+        .spyOn(globalThis, "requestAnimationFrame")
+        .mockImplementation((cb) => {
+          queue.push(cb);
+          return queue.length;
+        });
+      const cafSpy = vi
+        .spyOn(globalThis, "cancelAnimationFrame")
+        .mockImplementation(() => {});
+      const flushFrame = () => {
+        const cbs = queue.splice(0, queue.length);
+        act(() => cbs.forEach((cb) => cb(0)));
+      };
+      try {
+        body(flushFrame);
+      } finally {
+        rafSpy.mockRestore();
+        cafSpy.mockRestore();
+      }
+    }
+
+    it("commits a paused seek once a buffering stream becomes ready (no play needed)", () => {
+      withManualRaf((flushFrame) => {
+        const { result } = renderEngine({ duration: 10 });
+        let state: "missing" | "ready" = "missing";
+        act(() => {
+          result.current.api.registerStream({
+            id: "cam",
+            blocking: true,
+            bufferState: () => state,
+            prefetch: () => {},
+          });
+          result.current.api.subscribeStream("cam");
+        });
+
+        // Seek into an unbuffered region while paused: playhead moves, but
+        // the frame can't commit yet.
+        act(() => result.current.api.seek(4));
+        expect(result.current.playhead).toBe(4);
+        expect(result.current.currentTime).toBe(0);
+        expect(result.current.isPlaying).toBe(false);
+
+        // Settle loop keeps polling while the stream is still missing.
+        flushFrame();
+        expect(result.current.currentTime).toBe(0);
+
+        // Stream finishes buffering → the next settle frame commits,
+        // without the user ever hitting play.
+        state = "ready";
+        flushFrame();
+        expect(result.current.currentTime).toBe(4);
+      });
+    });
+
+    it("prefetch-nudges the buffering stream while paused", () => {
+      withManualRaf((flushFrame) => {
+        const { result } = renderEngine({ duration: 10 });
+        const prefetch = vi.fn();
+        act(() => {
+          result.current.api.registerStream({
+            id: "cam",
+            blocking: true,
+            bufferState: () => "missing",
+            prefetch,
+          });
+          result.current.api.subscribeStream("cam");
+        });
+
+        // A paused seek must kick the stream to fetch — otherwise a stream
+        // that only fetches via this nudge (e.g. the ImaVid image stream)
+        // would never load the seeked frame until play.
+        act(() => result.current.api.seek(4));
+        expect(prefetch).toHaveBeenCalled();
+
+        prefetch.mockClear();
+        flushFrame();
+        expect(prefetch).toHaveBeenCalled();
+      });
+    });
+  });
+
   describe("stepForward / stepBack", () => {
     it("stepForward advances the playhead by stepInterval", () => {
       const { result } = renderEngine({ duration: 10 });
@@ -163,6 +260,20 @@ describe("PlaybackProvider engine actions", () => {
       const { result } = renderEngine({ duration: 10 });
       act(() => result.current.api.stepBack());
       expect(result.current.playhead).toBe(0);
+    });
+
+    it("snaps to frame boundaries from a mid-frame playhead", () => {
+      const { result } = renderEngine({ duration: 10 });
+      // Land between frame 30 (start 29/30) and frame 31 (start 30/30 = 1).
+      act(() => result.current.api.seek(0.99));
+      act(() => result.current.api.stepForward());
+      // Displayed frame at t=0.99 is 30 (zero-indexed K=29); forward → K=30.
+      expect(result.current.playhead).toBeCloseTo(30 / 30, 5);
+
+      act(() => result.current.api.seek(0.99));
+      act(() => result.current.api.stepBack());
+      // back from displayed frame 30 → frame 29 (K=28).
+      expect(result.current.playhead).toBeCloseTo(28 / 30, 5);
     });
   });
 
@@ -201,6 +312,51 @@ describe("PlaybackProvider engine actions", () => {
       act(() => result.current.api.seek(5));
       act(() => result.current.api.play());
       expect(result.current.playhead).toBe(5);
+    });
+  });
+
+  describe("snapToFrameOnSettle", () => {
+    // stepInterval = 1/30; frame K starts at K/30. 0.52s sits inside frame 15
+    // ([0.5, 0.5333)), so the displayed-frame start is 0.5.
+    const MID_FRAME = 0.52;
+    const FRAME_START = 0.5;
+
+    it("pause snaps the playhead to the displayed frame start when enabled", () => {
+      const { result } = renderEngine({ snapToFrameOnSettle: true });
+      act(() => result.current.api.seek(MID_FRAME));
+      expect(result.current.playhead).toBe(MID_FRAME);
+      act(() => result.current.api.pause());
+      expect(result.current.playhead).toBeCloseTo(FRAME_START, 5);
+      // The committed time follows so per-frame consumers re-read the frame.
+      expect(result.current.currentTime).toBeCloseTo(FRAME_START, 5);
+    });
+
+    it("pause leaves a mid-frame playhead untouched when disabled (continuous)", () => {
+      const { result } = renderEngine();
+      act(() => result.current.api.seek(MID_FRAME));
+      act(() => result.current.api.pause());
+      expect(result.current.playhead).toBe(MID_FRAME);
+    });
+
+    it("snapPlayheadToFrame is a no-op when disabled", () => {
+      const { result } = renderEngine();
+      act(() => result.current.api.seek(MID_FRAME));
+      act(() => result.current.api.snapPlayheadToFrame());
+      expect(result.current.playhead).toBe(MID_FRAME);
+    });
+
+    it("snapPlayheadToFrame aligns the playhead when enabled", () => {
+      const { result } = renderEngine({ snapToFrameOnSettle: true });
+      act(() => result.current.api.seek(MID_FRAME));
+      act(() => result.current.api.snapPlayheadToFrame());
+      expect(result.current.playhead).toBeCloseTo(FRAME_START, 5);
+    });
+
+    it("leaves an already-aligned playhead exactly in place (no drift)", () => {
+      const { result } = renderEngine({ snapToFrameOnSettle: true });
+      act(() => result.current.api.seek(FRAME_START));
+      act(() => result.current.api.pause());
+      expect(result.current.playhead).toBe(FRAME_START);
     });
   });
 
@@ -423,14 +579,11 @@ describe("PlaybackProvider engine actions", () => {
     });
 
     it("falls back to 1/30 when neither prop nor stream provides a step", () => {
-      const { result } = renderHook(
-        () => ({ store: usePlaybackStore() }),
-        {
-          wrapper: ({ children }) => (
-            <PlaybackProvider>{children}</PlaybackProvider>
-          ),
-        }
-      );
+      const { result } = renderHook(() => ({ store: usePlaybackStore() }), {
+        wrapper: ({ children }) => (
+          <PlaybackProvider>{children}</PlaybackProvider>
+        ),
+      });
       expect(result.current.store.get(stepIntervalAtom)).toBeCloseTo(1 / 30, 6);
     });
 
@@ -444,7 +597,10 @@ describe("PlaybackProvider engine actions", () => {
           bufferState: () => "ready",
         });
       });
-      expect(result.current.store.get(stepIntervalAtom)).toBeCloseTo(1 / 100, 6);
+      expect(result.current.store.get(stepIntervalAtom)).toBeCloseTo(
+        1 / 100,
+        6
+      );
     });
 
     it("picks the smallest nativeStepSeconds across streams", () => {

@@ -1,0 +1,164 @@
+import type { ModalSample } from "@fiftyone/state";
+import type { Stage } from "@fiftyone/utilities";
+import React, { useEffect, useRef } from "react";
+import { usePlaybackStream } from "@fiftyone/playback";
+import { useWarmupThenSeek } from "../hooks/useWarmupThenSeek";
+import {
+  useDatasetName,
+  useGroupSlice,
+  useModalSampleId,
+  useView,
+} from "../state/accessors";
+import { IMAVID_STREAM_ID } from "../utils/ids";
+import { getModalSampleFrameRate } from "../utils/modalSample";
+import { ImaVidImageStream } from "../streams/ImaVidImageStream";
+import { usePublishImaVidImageStream } from "../streams/imaVidImageStreamHandle";
+
+/**
+ * Construct and register `ImaVidImageStream` as soon as the sample's
+ * params resolve. The image stream contributes `duration = frameCount/fps`
+ * back to the engine, which is what unblocks `RegisterFrameLabels`
+ * downstream — in the native-video tile the `<video>` element plays
+ * this role via `useVideoStream`.
+ *
+ * fps comes from `sample.frameRate` (GraphQL-hoisted from
+ * `VideoMetadata.frame_rate`); frameCount comes from
+ * `sample.sample.metadata.total_frame_count` and falls back to
+ * `metadata.duration * frameRate`. Both fps and frameCount throw if
+ * absent — the plan explicitly forbids silent defaults because the
+ * failure mode (misaligned frames or a stuck timeline) is hard to
+ * debug after the fact.
+ *
+ * Re-keys on any identity change so a fresh stream replaces the old
+ * one via `usePlaybackStream`'s standard cleanup.
+ */
+export const RegisterImaVidImage: React.FC<{
+  sample: ModalSample;
+  children: React.ReactNode;
+}> = ({ sample, children }) => {
+  const dataset = useDatasetName();
+  const view = useView();
+  const slice = useGroupSlice();
+  const sampleId = useModalSampleId();
+
+  const frameRate = getModalSampleFrameRate(sample);
+  if (frameRate === undefined) {
+    throw new Error(
+      "ImaVid playback requires VideoMetadata.frame_rate to be set on the sample"
+    );
+  }
+  if (!Number.isFinite(frameRate) || frameRate <= 0) {
+    throw new Error(
+      `ImaVid playback requires a positive, finite fps (got ${frameRate})`
+    );
+  }
+
+  const frameCount = resolveFrameCount(sample, frameRate);
+
+  const ready = !!sampleId && !!dataset;
+  if (!ready) {
+    return <>{children}</>;
+  }
+
+  const key = `${sampleId}|${dataset}|${
+    slice ?? ""
+  }|${frameRate}|${frameCount}`;
+
+  return (
+    <ImaVidImageRegistration
+      key={key}
+      sampleId={sampleId}
+      dataset={dataset}
+      view={view}
+      groupSlice={slice ?? null}
+      frameCount={frameCount}
+      frameRate={frameRate}
+    >
+      {children}
+    </ImaVidImageRegistration>
+  );
+};
+
+/**
+ * Read total frame count from sample.metadata. The `Sample` TS type
+ * only declares `width / height / mime_type`, but VideoMetadata
+ * persists `total_frame_count` and `duration` at runtime — we
+ * loose-cast through.
+ */
+export function resolveFrameCount(
+  sample: ModalSample,
+  frameRate: number
+): number {
+  const metadata = (sample.sample as { metadata?: Record<string, unknown> })
+    ?.metadata;
+
+  const total = metadata?.total_frame_count;
+  if (typeof total === "number" && Number.isFinite(total) && total > 0) {
+    return Math.round(total);
+  }
+
+  const duration = metadata?.duration;
+  if (
+    typeof duration === "number" &&
+    Number.isFinite(duration) &&
+    duration > 0
+  ) {
+    return Math.max(1, Math.round(duration * frameRate));
+  }
+
+  throw new Error(
+    "ImaVid playback requires VideoMetadata.total_frame_count (or .duration) on the sample"
+  );
+}
+
+interface ImaVidImageRegistrationProps {
+  sampleId: string;
+  dataset: string;
+  view: Stage[];
+  groupSlice: string | null;
+  frameCount: number;
+  frameRate: number;
+  children: React.ReactNode;
+}
+
+const ImaVidImageRegistration: React.FC<ImaVidImageRegistrationProps> = ({
+  children,
+  ...props
+}) => {
+  const streamRef = useRef<ImaVidImageStream | null>(null);
+  if (streamRef.current === null) {
+    streamRef.current = new ImaVidImageStream({
+      id: IMAVID_STREAM_ID,
+      sampleId: props.sampleId,
+      dataset: props.dataset,
+      view: props.view,
+      groupSlice: props.groupSlice,
+      frameCount: props.frameCount,
+      frameRate: props.frameRate,
+    });
+  }
+
+  // Tear down the worker on unmount. The effect is declared BEFORE
+  // `usePlaybackStream` so React runs its cleanup AFTER the playback
+  // registration's cleanup (LIFO order): the engine unregisters the
+  // stream first, then we terminate the worker.
+  useEffect(() => {
+    const stream = streamRef.current;
+
+    return () => {
+      stream?.destroy();
+    };
+  }, []);
+
+  usePlaybackStream(streamRef.current);
+
+  // Publish the stream instance so off-tile consumers
+  // can pull arbitrary frame bitmaps by index via warmup/getValue.
+  usePublishImaVidImageStream(streamRef.current);
+
+  // Pre-warm the first chunk and seek to t=0 so the first paint isn't
+  // a blank tile waiting on the network + decode.
+  useWarmupThenSeek(streamRef.current);
+
+  return <>{children}</>;
+};

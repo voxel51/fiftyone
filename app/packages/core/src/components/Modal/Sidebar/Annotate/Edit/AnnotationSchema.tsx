@@ -57,12 +57,18 @@ const useSchema = (readOnly: boolean) => {
   // Reruns only when the visible attribute set changes.
   return useMemo(() => {
     const taxonomy = config?.applied_taxonomy as string | undefined;
+    // An empty class list would emit a 0-item JSON-Schema enum, which RJSF
+    // rejects. Fall back to a free-form text input until the dataset has a
+    // configured class list; taxonomy-backed fields always use a dropdown.
+    const hasClasses = (config?.classes?.length ?? 0) > 0;
     const properties: Record<string, SchemaType | undefined> = {
       label: generatePrimitiveSchema("label", {
         type: "str",
         component: taxonomy
           ? "dropdown"
-          : (config?.component as ComponentType) || "dropdown",
+          : hasClasses
+          ? (config?.component as ComponentType) || "dropdown"
+          : undefined,
         values: taxonomy ? [] : config?.classes || [],
         taxonomy,
         readOnly: effectiveReadOnly,
@@ -173,7 +179,16 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         )
       );
 
-      const value = { ...data, ...result };
+      // Merge onto the live overlay label, which can be fresher than the
+      // form's `data` snapshot. Discard fields which are owned elsewhere.
+      const { support: _formSupport, ...formResult } = result as Record<
+        string,
+        unknown
+      >;
+      const value = {
+        ...(overlay.label as Record<string, unknown>),
+        ...formResult,
+      };
 
       const allAttributes = Array.isArray(config?.attributes)
         ? config.attributes

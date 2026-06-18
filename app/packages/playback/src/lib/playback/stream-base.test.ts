@@ -1,6 +1,6 @@
 import { createStore } from "jotai";
 import { describe, expect, it, vi } from "vitest";
-import { streamValueAtom } from "./atoms";
+import { currentTimeAtom, streamValueAtom } from "./atoms";
 import { PlaybackStreamBase } from "./stream-base";
 import type { BufferReadiness } from "./types";
 
@@ -142,6 +142,73 @@ describe("PlaybackStreamBase", () => {
     it("defaults to an empty array (no buffered ranges)", () => {
       const s = new TestStream("a");
       expect(s.bufferedRanges()).toEqual([]);
+    });
+  });
+});
+
+/**
+ * The protected atom accessors subclasses use instead of touching the jotai
+ * atoms directly (the encapsulation seam — keeps `streamValueAtom` /
+ * `currentTimeAtom` internal to the lib). Exercised through a subclass that
+ * exposes them, mirroring how real streams read engine state.
+ */
+describe("PlaybackStreamBase atom accessors", () => {
+  class ProbeStream extends PlaybackStreamBase<string> {
+    getValue(): string | null {
+      return null;
+    }
+    bufferState(): BufferReadiness {
+      return "ready";
+    }
+    prefetch(): void {}
+    readBack(store: ReturnType<typeof createStore>) {
+      return this.readPublished(store);
+    }
+    push(store: ReturnType<typeof createStore>, value: string | null) {
+      this.publish(store, value);
+    }
+    now(store: ReturnType<typeof createStore>) {
+      return this.readCurrentTime(store);
+    }
+  }
+
+  describe("readPublished", () => {
+    it("returns null before anything is published", () => {
+      const store = createStore();
+      expect(new ProbeStream("a").readBack(store)).toBeNull();
+    });
+
+    it("round-trips the value written by publish", () => {
+      const store = createStore();
+      const s = new ProbeStream("a");
+
+      s.push(store, "frame-data");
+
+      expect(s.readBack(store)).toBe("frame-data");
+      // And it's the same value onCommit would have published.
+      expect(store.get(streamValueAtom("a"))).toBe("frame-data");
+    });
+
+    it("is scoped per stream id", () => {
+      const store = createStore();
+      const cam = new ProbeStream("cam");
+      const lidar = new ProbeStream("lidar");
+
+      cam.push(store, "cam-frame");
+
+      expect(cam.readBack(store)).toBe("cam-frame");
+      expect(lidar.readBack(store)).toBeNull();
+    });
+  });
+
+  describe("readCurrentTime", () => {
+    it("reads the engine's authoritative data-time from the store", () => {
+      const store = createStore();
+      const s = new ProbeStream("a");
+
+      expect(s.now(store)).toBe(0);
+      store.set(currentTimeAtom, 3.5);
+      expect(s.now(store)).toBe(3.5);
     });
   });
 });
