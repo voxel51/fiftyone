@@ -2,6 +2,7 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -112,14 +113,14 @@ export const McapModalSettingsProvider: React.FC<{
         current: McapPersistedModalSettings
       ) => McapPersistedModalSettings
     ) => {
-      setSettings((current) => {
-        const next = resolver(current);
-        writeMcapModalSettings(next);
-        return next;
-      });
+      setSettings((current) => resolver(current));
     },
     []
   );
+
+  useEffect(() => {
+    writeMcapModalSettings(settings);
+  }, [settings]);
 
   const setInterpolate2dAnnotations = useCallback(
     (enabled: boolean) =>

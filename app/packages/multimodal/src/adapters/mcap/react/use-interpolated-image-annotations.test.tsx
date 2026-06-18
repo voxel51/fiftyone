@@ -379,6 +379,34 @@ describe("useInterpolatedImageAnnotationSets — subscription lifecycle", () => 
     expect(subscribeToTopic).not.toHaveBeenCalledWith("");
   });
 
+  it("deduplicates topics before subscribing", () => {
+    const cacheA = new McapTopicCache();
+    const cacheB = new McapTopicCache();
+    const { stream, subscribeToTopic } = makeStream(
+      new Map([
+        ["/a", cacheA],
+        ["/b", cacheB],
+      ]),
+      makeTimeline(TICKS)
+    );
+    const { onResult } = captureResult();
+
+    render(
+      <Harness
+        stream={stream}
+        topics={["/a", "/b", "/a"]}
+        onResult={onResult}
+      />,
+      {
+        wrapper: TestProviders,
+      }
+    );
+
+    expect(subscribeToTopic).toHaveBeenCalledTimes(2);
+    expect(subscribeToTopic).toHaveBeenCalledWith("/a");
+    expect(subscribeToTopic).toHaveBeenCalledWith("/b");
+  });
+
   it("releases the old stream and resubscribes when the data stream is swapped", () => {
     const timeline = makeTimeline(TICKS);
     const streamACache = new McapTopicCache();

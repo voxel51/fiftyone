@@ -346,6 +346,10 @@ interface Bounds {
 }
 
 function segmentsBounds(segments: readonly [Point2, Point2][]): Bounds {
+  if (segments.length === 0) {
+    return { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+  }
+
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;

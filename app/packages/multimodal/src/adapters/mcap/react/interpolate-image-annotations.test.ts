@@ -492,6 +492,15 @@ describe("interpolateLineList", () => {
   });
 });
 
+describe("makeGroup", () => {
+  it("returns finite bounds and centroid for an empty segment group", () => {
+    const group = makeGroup([], "empty");
+    expect(group.bounds).toEqual({ minX: 0, minY: 0, maxX: 0, maxY: 0 });
+    expect(group.centroid).toEqual([0, 0]);
+    expect(group.vertices).toEqual([]);
+  });
+});
+
 describe("matchLineListGroups", () => {
   const A = makeGroup(boxSegments(0, 0, 10, 10), "car");
 

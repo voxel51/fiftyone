@@ -238,19 +238,22 @@ function topicCacheSnapshot(
 
 function normalizeTopics(topics: readonly string[]): readonly string[] {
   if (topics.length === 0) return EMPTY_TOPICS;
-  let hasEmptyTopic = false;
+  const normalized: string[] = [];
+  const seen = new Set<string>();
+  let changed = false;
   for (const topic of topics) {
     if (!topic) {
-      hasEmptyTopic = true;
-      break;
+      changed = true;
+      continue;
     }
+    if (seen.has(topic)) {
+      changed = true;
+      continue;
+    }
+    seen.add(topic);
+    normalized.push(topic);
   }
-  if (!hasEmptyTopic) return topics;
-
-  const normalized: string[] = [];
-  for (const topic of topics) {
-    if (topic) normalized.push(topic);
-  }
+  if (!changed) return topics;
   return normalized.length > 0 ? normalized : EMPTY_TOPICS;
 }
 
