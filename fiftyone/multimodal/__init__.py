@@ -27,7 +27,6 @@ from .tags import (
     add_temporal_tags,
     count_temporal_tags,
     delete_temporal_tags,
-    list_temporal_tags,
 )
 
 __all__ = [
@@ -46,7 +45,6 @@ __all__ = [
     "decoders",
     "delete_temporal_tags",
     "get_decoder",
-    "list_temporal_tags",
     "list_decoders",
     "register_decoder",
     "resolver",

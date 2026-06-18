@@ -19,6 +19,7 @@ import fiftyone as fo
 import fiftyone.core.odm as foo
 import fiftyone.multimodal.server.routes as fomr
 import fiftyone.multimodal.tags as fomt
+import fiftyone.multimodal.tags._temporal_tags as fota
 
 
 @pytest.fixture(autouse=True)
@@ -535,7 +536,7 @@ class TestTagsRoute:
 
         assert _json_body(response) == {"deleted": 2}
         assert fomt.count_temporal_tags(dataset) == {"other": 1}
-        assert [tag.sample_id for tag in fomt.list_temporal_tags(dataset)] == [
+        assert [tag.sample_id for tag in fota.list_temporal_tags(dataset)] == [
             sample_ids[1]
         ]
 
@@ -754,7 +755,7 @@ class TestTagsRoute:
 
             assert exc_info.value.status_code == 404
 
-        persisted = fomt.list_temporal_tags(dataset)
+        persisted = fota.list_temporal_tags(dataset)
         assert [(tag.start, tag.end, tag.tag) for tag in persisted] == [
             (0, 10, "review")
         ]
