@@ -11,16 +11,43 @@ runs:
     - name: Install ffmpeg (Linux)
       if: runner.os == 'Linux'
       shell: bash
+      env:
+        DEBIAN_FRONTEND: noninteractive
       run: |
-        sudo apt-get update && \
-          sudo apt-get install -y ffmpeg
+        set -euxo pipefail
+
+        # GitHub-hosted runners run unattended-upgrades / apt-daily timers at
+        # boot, which hold the dpkg lock and can stall apt-get indefinitely.
+        # Stop them, then bound any remaining lock wait instead of blocking
+        # forever. </dev/null guards against debconf prompts that would
+        # otherwise hang waiting on stdin.
+        sudo systemctl stop apt-daily.service apt-daily-upgrade.service \
+          unattended-upgrades 2>/dev/null || true
+
+        apt_get() {
+          sudo timeout 300 apt-get -o DPkg::Lock::Timeout=120 "$@" </dev/null
+        }
+
+        for attempt in 1 2 3; do
+          if apt_get update && \
+             apt_get install -y --no-install-recommends ffmpeg; then
+            break
+          fi
+          if [ "$attempt" -eq 3 ]; then
+            echo "ffmpeg install failed after ${attempt} attempts" >&2
+            exit 1
+          fi
+          echo "apt-get attempt ${attempt} failed; retrying..." >&2
+          sleep "$((attempt * 15))"
+        done
+
         ffmpeg -version
 
     - name: Install ffmpeg (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
-        choco install ffmpeg -y --no-progress
+        choco install ffmpeg -y --no-progress --execution-timeout=600
         # ensure the choco shim dir is on PATH for this and subsequent steps
         "C:\ProgramData\chocolatey\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         $env:PATH = "C:\ProgramData\chocolatey\bin;$env:PATH"
