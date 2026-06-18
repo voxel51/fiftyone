@@ -12,7 +12,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 import fiftyone.multimodal.tags as fomt
-from fiftyone.multimodal.tags._temporal_tags import TemporalTagNotFoundError
+import fiftyone.multimodal.tags._temporal_tags as fota
 from fiftyone.multimodal.query import (
     resolve_playback_plan,
     resolve_scene_inventory,
@@ -127,7 +127,7 @@ class SampleTagEndpoint(HTTPEndpoint):
         return {
             "tag": _serialize_temporal_tag(
                 _handle_temporal_tag_errors(
-                    lambda: fomt.update_temporal_tag(
+                    lambda: fota.update_temporal_tag(
                         dataset.select([sample_id]),
                         tag_id,
                         start=update["start"],
@@ -356,7 +356,7 @@ def _serialize_temporal_tag(tag: fomt.TemporalTag) -> dict:
 def _handle_temporal_tag_errors(callback):
     try:
         return callback()
-    except TemporalTagNotFoundError as e:
+    except fota.TemporalTagNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     except (TypeError, ValueError) as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
