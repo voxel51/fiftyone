@@ -5,7 +5,6 @@ import {
 } from "@fiftyone/lighter";
 import type { ModalSample } from "@fiftyone/state";
 import type { Stage } from "@fiftyone/utilities";
-import { useActiveDetectionField } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useDetectionMode";
 import React, {
   useCallback,
   useEffect,
@@ -14,6 +13,7 @@ import React, {
   useState,
 } from "react";
 import {
+  useActiveDetectionField,
   useColorScheme,
   useColorSeed,
   useDatasetName,

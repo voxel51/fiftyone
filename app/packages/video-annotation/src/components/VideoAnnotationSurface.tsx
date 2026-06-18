@@ -6,7 +6,7 @@ import { useRegisterVideoAnnotationKeybindings } from "../hooks/useRegisterVideo
 import { useRegisterVideoLabelsDeltaSupplier } from "../persistence/useVideoLabelsDeltaSupplier";
 import { useSyncAnnotationFrameClock } from "../hooks/useSyncAnnotationFrameClock";
 import { useSyncAnnotationVideoStore } from "../hooks/useSyncAnnotationVideoStore";
-import { useActiveDetectionField } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useDetectionMode";
+import { useActiveDetectionField } from "../state/accessors";
 import { PlaybackProvider } from "@fiftyone/playback";
 import { FrameLabelsTracks, RegisterFrameLabels } from "./FrameLabels";
 import { ImaVidLighterTile } from "./ImaVidLighterTile";

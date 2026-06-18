@@ -13,13 +13,13 @@ import {
   view,
 } from "@fiftyone/state";
 import {
+  DETECTION,
   EMBEDDED_DOCUMENT_FIELD,
   type Stage,
   TEMPORAL_DETECTIONS_FIELD,
 } from "@fiftyone/utilities";
-import { useAtomValue } from "jotai";
 import { useRecoilValue } from "recoil";
-import { currentOverlay } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/state";
+import { useAnnotationContext } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 
 /**
  * Read accessors for the external recoil / jotai atoms the video surface
@@ -65,4 +65,14 @@ export const useTemporalDetectionFieldPaths = () =>
   );
 
 /** The overlay currently being edited in the sidebar (`@fiftyone/core`). */
-export const useCurrentEditingOverlay = () => useAtomValue(currentOverlay);
+export const useCurrentEditingOverlay = () =>
+  useAnnotationContext().selected?.overlay ?? null;
+
+/**
+ * The detection field new frame overlays paint into and the `/frames` stream
+ * reads from: the last-used detection field, falling back to the schema
+ * default. Replaces core's deleted `useActiveDetectionField` — `fieldFor`
+ * encapsulates the remembered → default resolution.
+ */
+export const useActiveDetectionField = (): string | null =>
+  useAnnotationContext().lastUsed.fieldFor(DETECTION);
