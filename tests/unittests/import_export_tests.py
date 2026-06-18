@@ -30,10 +30,7 @@ import fiftyone.utils.image as foui
 import fiftyone.utils.labels as foul
 import fiftyone.utils.yolo as fouy
 from fiftyone import ViewField as F
-from fiftyone.multimodal.tags import (
-    TAGS_COLLECTION_NAME,
-    TAGS_EXPORT_FILENAME,
-)
+from fiftyone.multimodal.tags import TAGS_COLLECTION_NAME
 
 from decorators import drop_collection, drop_datasets
 
@@ -183,7 +180,7 @@ class TagsImportExportTests(ImageDatasetTests):
             dataset_type=fo.types.FiftyOneDataset,
         )
 
-        tags_path = os.path.join(export_dir, TAGS_EXPORT_FILENAME)
+        tags_path = os.path.join(export_dir, fota.TAGS_EXPORT_FILENAME)
         self.assertTrue(os.path.isfile(tags_path))
 
         exported = etas.read_json(tags_path)["tags"]
