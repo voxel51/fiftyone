@@ -2,7 +2,6 @@ import { getSampleSrc } from "@fiftyone/state";
 import type { ModalSample } from "@fiftyone/state";
 import React, { useMemo, useState } from "react";
 import { useAutoInterpolate } from "../hooks/useAutoInterpolate";
-import { useRegisterVideoAnnotationCommandHandlers } from "../hooks/useRegisterVideoAnnotationCommandHandlers";
 import { useRegisterVideoAnnotationKeybindings } from "../hooks/useRegisterVideoAnnotationKeybindings";
 import { useRegisterVideoLabelsDeltaSupplier } from "../persistence/useVideoLabelsDeltaSupplier";
 import { useSyncAnnotationFrameClock } from "../hooks/useSyncAnnotationFrameClock";
@@ -187,7 +186,6 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
 const VideoAnnotationHandlerRegistration: React.FC = () => {
   useSyncAnnotationFrameClock();
   useSyncAnnotationVideoStore();
-  useRegisterVideoAnnotationCommandHandlers();
   useRegisterVideoAnnotationKeybindings();
   useAutoInterpolate();
   useRegisterVideoLabelsDeltaSupplier();

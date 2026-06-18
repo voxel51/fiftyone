@@ -1,44 +1,26 @@
 import {
-  PropagateCommand,
+  useActiveSampleId,
+  useAnnotationEngine,
   useAnnotationEventHandler,
 } from "@fiftyone/annotation";
-import { useCommandBus } from "@fiftyone/command-bus";
 import { useCallback } from "react";
-import { type VideoFrameLabelsStream } from "../streams/VideoFrameLabelsStream";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
+import { useVideoPropagate } from "./useVideoPropagate";
 
 /** Inclusive `[fromFrame, toFrame]` segment to re-propagate. */
 export type FrameRange = [number, number];
 
 /**
- * Frame numbers on a track that carry `keyframe: true`. Walks the
- * stream cache once per call; the caller decides when to invoke (e.g.
- * on each `annotation:keyframeChanged` event).
- */
-export function collectKeyframeFrames(
-  stream: VideoFrameLabelsStream,
-  trackId: string
-): number[] {
-  const allFrames = Array.from({ length: stream.totalFrames }, (_, i) => i + 1);
-  return allFrames.filter((frame) => {
-    const snapshot = stream.getValue((frame - 1) / stream.fps);
-    return (
-      snapshot?.detections.some((d) => d.id === trackId && d.keyframe) ?? false
-    );
-  });
-}
-
-/**
- * Given the current set of keyframe frames on a track and the frame
- * where a keyframe just changed, return the `(from, to)` pairs whose
- * in-between frames need re-propagation.
+ * Given the current set of keyframe frames on a track and the frame where a
+ * keyframe just changed, return the `(from, to)` pairs whose in-between frames
+ * need re-propagation.
  *
- * - `kind: "set"` — `frame` is now a keyframe. Re-propagate both
- *   sides: (prev-keyframe, frame) and (frame, next-keyframe). Each
- *   side is skipped if no bracketing keyframe exists on that side.
- * - `kind: "removed"` — `frame` is no longer a keyframe. Re-propagate
- *   the wider span (prev-keyframe, next-keyframe). Skipped entirely
- *   if either bracketing keyframe is missing.
+ * - `kind: "set"` — `frame` is now a keyframe. Re-propagate both sides:
+ *   (prev-keyframe, frame) and (frame, next-keyframe). Each side is skipped if
+ *   no bracketing keyframe exists on that side.
+ * - `kind: "removed"` — `frame` is no longer a keyframe. Re-propagate the wider
+ *   span (prev-keyframe, next-keyframe). Skipped entirely if either bracketing
+ *   keyframe is missing.
  */
 export function resolveSegmentsToRepropagate(
   keyframeFrames: number[],
@@ -62,27 +44,44 @@ export function resolveSegmentsToRepropagate(
 }
 
 /**
- * Subscribe to `annotation:keyframeChanged` and dispatch
- * `PropagateCommand` for each in-between segment that needs to be
- * re-lerped against the new keyframe layout.
+ * Subscribe to `annotation:keyframeChanged` and re-propagate (linear) each
+ * in-between segment that needs re-lerping against the new keyframe layout.
  *
- * Mount once inside the video annotation surface alongside the other
- * video-annotation registrars. The hook is a no-op until a stream
- * is published.
+ * Keyframe frames are read from the engine — the source of truth after the
+ * command-bus removal — so the layout reflects the edit that just fired the
+ * event. Mount once inside the surface; a no-op until a stream is published
+ * (it supplies the field path / frame count) and an instance is identified.
  */
 export const useAutoInterpolate = (): void => {
+  const engine = useAnnotationEngine();
+  const sampleId = useActiveSampleId();
   const stream = useFrameLabelsStream();
-  const bus = useCommandBus();
+  const propagate = useVideoPropagate();
 
   useAnnotationEventHandler(
     "annotation:keyframeChanged",
     useCallback(
       (payload) => {
         if (!stream) return;
-        const { instanceId, trackId, frame, kind } = payload;
+        const { instanceId, frame, kind } = payload;
         if (!instanceId) return;
 
-        const keyframeFrames = collectKeyframeFrames(stream, trackId);
+        const path = `frames.${stream.labelsField}`;
+        const keyframeFrames: number[] = [];
+
+        for (let f = 1; f <= stream.totalFrames; f++) {
+          const det = engine.getLabel({
+            sample: sampleId,
+            path,
+            instanceId,
+            frame: f,
+          });
+
+          if (det?.keyframe) {
+            keyframeFrames.push(f);
+          }
+        }
+
         const segments = resolveSegmentsToRepropagate(
           keyframeFrames,
           frame,
@@ -90,12 +89,10 @@ export const useAutoInterpolate = (): void => {
         );
 
         segments.forEach(([from, to]) => {
-          void bus.execute(
-            new PropagateCommand(instanceId, from, to, "linear")
-          );
+          void propagate(instanceId, from, to, "linear");
         });
       },
-      [stream, bus]
+      [engine, sampleId, stream, propagate]
     )
   );
 };

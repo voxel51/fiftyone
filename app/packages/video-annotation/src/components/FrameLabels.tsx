@@ -44,14 +44,9 @@ import { getModalSampleFrameRate } from "../utils/modalSample";
 import { resolveTrackExtentEdit } from "../tracks/trackExtentEdit";
 import { useLinkedTrackDecorator } from "../tracks/linkedTracks";
 import {
-  DeleteTemporalDetectionCommand,
-  DeleteTrackCommand,
-  EditTemporalDetectionCommand,
-  ExtendTrackCommand,
-  ShiftTrackCommand,
-  TrimTrackCommand,
-} from "@fiftyone/annotation";
-import { useCommandBus } from "@fiftyone/command-bus";
+  useVideoSurfaceActions,
+  type VideoSurfaceActions,
+} from "../hooks/useVideoSurfaceActions";
 import {
   buildTemporalDetectionTracks,
   type TemporalDetectionEventData,
@@ -265,7 +260,7 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
     };
   }, [stream, resolveColor, editVersion]);
 
-  const commandBus = useCommandBus();
+  const actions = useVideoSurfaceActions();
 
   // Live-derived TD tracks: walk the scene's `TemporalOverlay` set rather
   // than the sample (which lags one autosave round-trip behind local
@@ -344,8 +339,7 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
           snapStepSec,
           eventDeleteConfig: {
             label: "Delete track",
-            onDelete: () =>
-              void commandBus.execute(new DeleteTrackCommand(track.id)),
+            onDelete: () => actions.deleteTrack(track.id),
           },
           onEventEdit: (
             eventIndex: number,
@@ -361,7 +355,7 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
               mode,
               fps,
               totalFrames,
-              commandBus,
+              actions,
             }),
         };
       }
@@ -381,11 +375,9 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
         eventDeleteConfig: {
           label: "Delete track",
           onDelete: () =>
-            void commandBus.execute(
-              new DeleteTemporalDetectionCommand(
-                tdEvent.fieldPath,
-                tdEvent.detectionId
-              )
+            actions.deleteTemporalDetection(
+              tdEvent.fieldPath,
+              tdEvent.detectionId
             ),
         },
         onEventEdit: (
@@ -398,11 +390,11 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
             newStartSec,
             newEndSec,
             fps,
-            commandBus,
+            actions,
           }),
       };
     },
-    [linkDecorate, fps, snapStepSec, commandBus, stream]
+    [linkDecorate, fps, snapStepSec, actions, stream]
   );
 
   return (
@@ -455,7 +447,7 @@ function applyObjectTrackEdit({
   mode,
   fps,
   totalFrames,
-  commandBus,
+  actions,
 }: {
   track: Track;
   eventIndex: number;
@@ -464,7 +456,7 @@ function applyObjectTrackEdit({
   mode: "resize-start" | "resize-end" | "move";
   fps: number;
   totalFrames: number;
-  commandBus: ReturnType<typeof useCommandBus>;
+  actions: VideoSurfaceActions;
 }): void {
   const dragged = track.events[eventIndex];
   if (!dragged || dragged.endSec === undefined) {
@@ -496,17 +488,13 @@ function applyObjectTrackEdit({
 
   switch (edit.op) {
     case "extend":
-      void commandBus.execute(
-        new ExtendTrackCommand(track.id, edit.sourceFrame, edit.targetFrames)
-      );
+      actions.extendTrack(track.id, edit.sourceFrame, edit.targetFrames);
       break;
     case "trim":
-      void commandBus.execute(new TrimTrackCommand(track.id, edit.frames));
+      actions.trimTrack(track.id, edit.frames);
       break;
     case "shift":
-      void commandBus.execute(
-        new ShiftTrackCommand(track.id, edit.frames, edit.delta)
-      );
+      actions.shiftTrack(track.id, edit.frames, edit.delta);
       break;
     default:
       break;
@@ -525,20 +513,18 @@ function applyTemporalDetectionEdit({
   newStartSec,
   newEndSec,
   fps,
-  commandBus,
+  actions,
 }: {
   tdEvent: TemporalDetectionEventData;
   newStartSec: number;
   newEndSec: number;
   fps: number;
-  commandBus: ReturnType<typeof useCommandBus>;
+  actions: VideoSurfaceActions;
 }): void {
   const firstFrame = Math.max(1, Math.round(newStartSec * fps) + 1);
   const lastFrame = Math.max(firstFrame, Math.round(newEndSec * fps));
 
-  void commandBus.execute(
-    new EditTemporalDetectionCommand(tdEvent.fieldPath, tdEvent.detectionId, {
-      support: [firstFrame, lastFrame],
-    })
-  );
+  actions.editTemporalDetection(tdEvent.fieldPath, tdEvent.detectionId, {
+    support: [firstFrame, lastFrame],
+  });
 }

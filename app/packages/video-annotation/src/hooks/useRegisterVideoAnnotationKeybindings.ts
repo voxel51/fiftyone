@@ -1,9 +1,8 @@
-import { MarkKeyframeCommand } from "@fiftyone/annotation";
-import { useCommandBus } from "@fiftyone/command-bus";
 import { KnownContexts, useKeyBindings } from "@fiftyone/commands";
 import { useLighter } from "@fiftyone/lighter";
 import { useRef } from "react";
 import { usePlayhead } from "@fiftyone/playback";
+import { useVideoSurfaceActions } from "./useVideoSurfaceActions";
 
 /**
  * Registers video-only keybindings into the modal-annotate context.
@@ -13,7 +12,7 @@ import { usePlayhead } from "@fiftyone/playback";
  * both can target the same context.
  */
 export const useRegisterVideoAnnotationKeybindings = () => {
-  const bus = useCommandBus();
+  const actions = useVideoSurfaceActions();
   const { scene } = useLighter();
 
   // Read the visual playhead, not `useCurrentTime` — currentTime lags
@@ -34,13 +33,13 @@ export const useRegisterVideoAnnotationKeybindings = () => {
           if (!scene) return;
           const ids = scene.getSelectedOverlayIds();
           if (ids.length === 0) return;
-          void bus.execute(new MarkKeyframeCommand(playheadRef.current, ids));
+          actions.markKeyframe(playheadRef.current, ids);
         },
         label: "Mark keyframe",
         description:
           "Toggle the keyframe attribute on the selected detection at the current frame.",
       },
     ],
-    [scene, bus]
+    [scene, actions]
   );
 };

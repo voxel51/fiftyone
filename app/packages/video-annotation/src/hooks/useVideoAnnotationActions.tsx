@@ -1,9 +1,3 @@
-import {
-  CreateTemporalDetectionCommand,
-  MarkKeyframeCommand,
-  PropagateCommand,
-} from "@fiftyone/annotation";
-import { useCommandBus } from "@fiftyone/command-bus";
 import type { ToolbarActionGroup } from "@fiftyone/components";
 import { useModalSample } from "@fiftyone/state";
 import { Icon, IconName, Size } from "@voxel51/voodo";
@@ -17,6 +11,8 @@ import {
   type PropagationTarget,
 } from "../propagation/propagationTarget";
 import { useSelectedOverlayIds } from "./useLinkedOverlayState";
+import { useVideoPropagate } from "./useVideoPropagate";
+import { useVideoSurfaceActions } from "./useVideoSurfaceActions";
 
 /**
  * Builds the data-driven config for the video annotation toolbar, mirroring
@@ -33,7 +29,8 @@ import { useSelectedOverlayIds } from "./useLinkedOverlayState";
  * `FrameLabelsTracks`).
  */
 export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
-  const bus = useCommandBus();
+  const actions = useVideoSurfaceActions();
+  const propagate = useVideoPropagate();
   const stream = useFrameLabelsStream();
   const playhead = usePlayhead();
   const selected = useSelectedOverlayIds();
@@ -91,7 +88,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             isDisabled: !hasSelection,
             onClick: () => {
               if (!hasSelection) return;
-              void bus.execute(new MarkKeyframeCommand(playhead, selectedIds));
+              actions.markKeyframe(playhead, selectedIds);
             },
           },
           {
@@ -107,12 +104,10 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
               // Default: 1-second window starting at the playhead frame.
               const startFrame = frameAt(playhead, fps);
               const endFrame = startFrame + Math.round(fps);
-              void bus.execute(
-                new CreateTemporalDetectionCommand(tdFieldPath, [
-                  startFrame,
-                  endFrame,
-                ])
-              );
+              actions.createTemporalDetection(tdFieldPath, [
+                startFrame,
+                endFrame,
+              ]);
             },
           },
           {
@@ -126,13 +121,11 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
                 return;
               }
 
-              void bus.execute(
-                new PropagateCommand(
-                  target.instanceId,
-                  target.fromFrame,
-                  target.toFrame,
-                  "sam2"
-                )
+              void propagate(
+                target.instanceId,
+                target.fromFrame,
+                target.toFrame,
+                "sam2"
               );
             },
           },
@@ -140,7 +133,8 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
       },
     ],
     [
-      bus,
+      actions,
+      propagate,
       canCreateTd,
       fps,
       hasSelection,
