@@ -557,6 +557,7 @@ class ZeroShotTransformerPromptMixin(PromptMixin):
     def _embed_prompts(self, prompts):
         # I don't think this is ever called with preprocess = False
         # but just in case
+        inputs = None
         if self.preprocess:
             inputs = self.transforms.processor(
                 text=prompts,
@@ -566,6 +567,16 @@ class ZeroShotTransformerPromptMixin(PromptMixin):
             text_features = self._model.base_model.get_text_features(
                 **inputs.to(self._device)
             )
+            # transformers 5.x returns a ``BaseModelOutputWithPooling``
+            # object instead of a plain tensor; pull the pooled embedding.
+            if not isinstance(text_features, torch.Tensor):
+                pooled = getattr(text_features, "pooler_output", None)
+                if pooled is None:
+                    raise ValueError(
+                        "get_text_features() returned a non-tensor output "
+                        "without a pooler_output attribute"
+                    )
+                text_features = pooled
         return text_features
 
 
@@ -1702,6 +1713,8 @@ def _get_image_size(img):
         width, height = img.size
     elif isinstance(img, np.ndarray):
         height, width = img.shape[:2]
+    else:
+        raise ValueError(f"Unsupported image type: {type(img)}")
 
     return height, width
 
