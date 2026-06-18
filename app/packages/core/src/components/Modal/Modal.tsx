@@ -4,7 +4,6 @@ import {
   useRegisterAnnotationKeybindings,
   useRegisterRendererEventHandlers,
 } from "@fiftyone/annotation";
-import { useRegisterVideoAnnotationEventHandlers } from "@fiftyone/video-annotation";
 import {
   KnownCommands,
   KnownContexts,
@@ -94,7 +93,6 @@ const AnnotationHandlerRegistration = () => {
 
 const AnnotationHandlerRegistrationInner = () => {
   useRegisterAnnotationEventHandlers();
-  useRegisterVideoAnnotationEventHandlers();
   useRegisterAnnotationKeybindings();
   useRegisterRendererEventHandlers();
   useAnnotationTracking();

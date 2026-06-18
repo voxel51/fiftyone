@@ -49,5 +49,4 @@ export {
   useTemporalOverlaySync,
 } from "./src/sync/useTemporalOverlaySync";
 export { useAutoInterpolate } from "./src/hooks/useAutoInterpolate";
-export { useRegisterVideoAnnotationEventHandlers } from "./src/hooks/useRegisterVideoAnnotationEventHandlers";
 export { useRegisterVideoAnnotationKeybindings } from "./src/hooks/useRegisterVideoAnnotationKeybindings";
