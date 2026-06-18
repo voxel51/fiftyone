@@ -224,21 +224,21 @@ class TestTagsRoute:
             dataset,
             [
                 fota.TemporalTag(
-                    sample_ids[0], 0, 10, "clip", kind=fomt.TagKind.TEMPORAL
+                    sample_ids[0], 0, 10, "clip", kind=fota.TagKind.TEMPORAL
                 ),
                 fota.TemporalTag(
                     sample_ids[0],
                     30,
                     40,
                     "outside",
-                    kind=fomt.TagKind.TEMPORAL,
+                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[1],
                     5,
                     15,
                     "other-sample",
-                    kind=fomt.TagKind.TEMPORAL,
+                    kind=fota.TagKind.TEMPORAL,
                 ),
             ],
         )
@@ -272,7 +272,7 @@ class TestTagsRoute:
                 10,
                 "review",
                 created_by="alice",
-                kind=fomt.TagKind.TEMPORAL,
+                kind=fota.TagKind.TEMPORAL,
             ),
         )[0]
         before_patch = _modified_timestamps(dataset, sample_ids[0])
@@ -330,21 +330,21 @@ class TestTagsRoute:
                     0,
                     10,
                     "clip",
-                    kind=fomt.TagKind.TEMPORAL,
+                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[1],
                     10,
                     20,
                     "clip",
-                    kind=fomt.TagKind.TEMPORAL,
+                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[2],
                     30,
                     40,
                     "outside",
-                    kind=fomt.TagKind.TEMPORAL,
+                    kind=fota.TagKind.TEMPORAL,
                 ),
             ],
         )
@@ -391,28 +391,28 @@ class TestTagsRoute:
                     0,
                     10,
                     "candidate",
-                    kind=fomt.TagKind.TEMPORAL,
+                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[1],
                     10,
                     20,
                     "candidate",
-                    kind=fomt.TagKind.TEMPORAL,
+                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[2],
                     20,
                     30,
                     "review",
-                    kind=fomt.TagKind.TEMPORAL,
+                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[2],
                     30,
                     40,
                     "other",
-                    kind=fomt.TagKind.TEMPORAL,
+                    kind=fota.TagKind.TEMPORAL,
                 ),
             ],
         )
@@ -508,21 +508,21 @@ class TestTagsRoute:
                     0,
                     10,
                     "first",
-                    kind=fomt.TagKind.TEMPORAL,
+                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[0],
                     10,
                     20,
                     "second",
-                    kind=fomt.TagKind.TEMPORAL,
+                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[1],
                     0,
                     10,
                     "other",
-                    kind=fomt.TagKind.TEMPORAL,
+                    kind=fota.TagKind.TEMPORAL,
                 ),
             ],
         )
@@ -558,7 +558,7 @@ class TestTagsRoute:
                 0,
                 10,
                 "review",
-                kind=fomt.TagKind.TEMPORAL,
+                kind=fota.TagKind.TEMPORAL,
             ),
         )[0]
         cases = [
@@ -730,7 +730,7 @@ class TestTagsRoute:
                 0,
                 10,
                 "review",
-                kind=fomt.TagKind.TEMPORAL,
+                kind=fota.TagKind.TEMPORAL,
             ),
         )[0]
 
