@@ -8,6 +8,7 @@ File storage utilities.
 
 from datetime import datetime
 import enum
+import io
 import json
 import logging
 import multiprocessing.dummy
@@ -1050,6 +1051,11 @@ def get_file_size(path_or_file):
     """
     # If given a seekable file handle, use seek/tell to get the size.
     if hasattr(path_or_file, "seek") and hasattr(path_or_file, "tell"):
+        if isinstance(path_or_file, io.TextIOBase):
+            raise TypeError(
+                "get_file_size() requires a binary file handle; got a "
+                "text-mode file. Open the file in binary mode ('rb') instead."
+            )
         position = path_or_file.tell()
         try:
             path_or_file.seek(0, os.SEEK_END)
