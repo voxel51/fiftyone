@@ -25,6 +25,9 @@ export type {
 } from "./store/types";
 export { isWholeSampleReset, wholeSampleReset } from "./store/types";
 export { SampleLabelStore } from "./store/sampleLabelStore";
+export type { FramesData, FrameStoreOptions } from "./store/frameStore";
+export { FrameStore } from "./store/frameStore";
+export { VideoLabelStore } from "./store/videoLabelStore";
 
 // engine facade
 export type { ScopedEngine } from "./core/engine";
