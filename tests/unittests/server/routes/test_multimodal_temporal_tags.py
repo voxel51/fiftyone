@@ -18,18 +18,17 @@ from starlette.exceptions import HTTPException
 import fiftyone as fo
 import fiftyone.core.odm as foo
 import fiftyone.multimodal.server.routes as fomr
-import fiftyone.multimodal.tags as fomt
 import fiftyone.multimodal.tags._temporal_tags as fota
 
 
 @pytest.fixture(autouse=True)
 def clean_tags():
     """Ensures each test starts with an empty tag collection."""
-    foo.get_db_conn().drop_collection(fomt.TAGS_COLLECTION_NAME)
+    foo.get_db_conn().drop_collection(fota.TAGS_COLLECTION_NAME)
 
     yield
 
-    foo.get_db_conn().drop_collection(fomt.TAGS_COLLECTION_NAME)
+    foo.get_db_conn().drop_collection(fota.TAGS_COLLECTION_NAME)
 
 
 @pytest.fixture(name="dataset")

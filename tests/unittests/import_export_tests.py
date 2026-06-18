@@ -30,14 +30,13 @@ import fiftyone.utils.image as foui
 import fiftyone.utils.labels as foul
 import fiftyone.utils.yolo as fouy
 from fiftyone import ViewField as F
-from fiftyone.multimodal.tags import TAGS_COLLECTION_NAME
 
 from decorators import drop_collection, drop_datasets
 
 skipwindows = pytest.mark.skipif(
     os.name == "nt", reason="Windows hangs in workflows, fix me"
 )
-drop_tags = drop_collection(TAGS_COLLECTION_NAME)
+drop_tags = drop_collection(fota.TAGS_COLLECTION_NAME)
 
 
 class ImageDatasetTests(unittest.TestCase):
