@@ -37,13 +37,13 @@
         "concurrently": "^7.2.1",
         "dependency-cruiser": "^16.10.4",
         "eslint": "^8.28.0",
-        "eslint-config-prettier": "^8.5.0",
+        "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-only-warn": "^1.0.3",
-        "eslint-plugin-prettier": "^4.2.1",
+        "eslint-plugin-prettier": "^5.5.6",
         "eslint-plugin-react": "^7.31.11",
         "eslint-plugin-react-hooks": "^4.6.0",
         "jsdom": "^20.0.2",
-        "prettier": "^2.8.0",
+        "prettier": "^3.8.4",
         "relay-compiler": "^14.1.0",
         "relay-runtime": "^14.1.0",
         "typedoc": "^0.23.21",
@@ -75,6 +75,7 @@
         "three-stdlib": "^2.36.1",
         "@types/react": "18.2.0",
         "minimatch": "9.0.7",
-        "protobufjs": "^7.6.0"
+        "protobufjs": "^7.6.0",
+        "prettier": "^3.8.4"
     }
 }
