@@ -6,7 +6,7 @@ Multimodal scaffolding for shared contracts and extension points.
 |
 """
 
-from . import decoders, resolver, server, tags
+from . import decoders, resolver, server
 from . import schemas
 from .decoders import (
     DecodedIngestFields,
@@ -53,6 +53,5 @@ __all__ = [
     "resolver",
     "schemas",
     "server",
-    "tags",
     "update_temporal_tag",
 ]
