@@ -1038,23 +1038,23 @@ def _to_bytes(val, encoding="utf-8"):
     return b
 
 
-def get_file_size(path):
+def get_file_size(path_or_file):
     """
     Returns the size of the file at the given path in bytes.
 
     Args:
-        path: the filepath, or an open binary file handle
+        path_or_file: the filepath, or an open binary file handle
 
     Returns:
         the file size in bytes
     """
-    # If path is a file handle, use seek/tell to get the size.
-    if hasattr(path, "read"):
-        position = path.tell()
+    # If given a seekable file handle, use seek/tell to get the size.
+    if hasattr(path_or_file, "seek") and hasattr(path_or_file, "tell"):
+        position = path_or_file.tell()
         try:
-            path.seek(0, os.SEEK_END)
-            return path.tell()
+            path_or_file.seek(0, os.SEEK_END)
+            return path_or_file.tell()
         finally:
-            path.seek(position)
+            path_or_file.seek(position)
 
-    return os.path.getsize(path)
+    return os.path.getsize(path_or_file)
