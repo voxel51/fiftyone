@@ -31,6 +31,12 @@ const schema: Schema = {
     }),
   }),
   classification: field("fiftyone.core.labels.Classification"),
+  events: field("fiftyone.core.labels.TemporalDetections", {
+    detections: field(null, undefined, {
+      ftype: "fiftyone.core.fields.ListField",
+      subfield: "fiftyone.core.fields.EmbeddedDocumentField",
+    }),
+  }),
   uuid: field(null, undefined, { ftype: "fiftyone.core.fields.StringField" }),
 };
 
@@ -38,6 +44,13 @@ const makeDet = (id: string, label: string): LabelData => ({
   _id: id,
   _cls: "Detection",
   label,
+});
+
+const makeTd = (id: string, label: string): LabelData => ({
+  _id: id,
+  _cls: "TemporalDetection",
+  label,
+  support: [1, 5],
 });
 
 const SAMPLE = "sample-1";
@@ -154,6 +167,46 @@ describe("SampleLabelStore mutation", () => {
 
     store.deleteLabel(ref("classification", "c1"));
     expect(store.getLabel(ref("classification", "c1"))).toBeUndefined();
+  });
+});
+
+describe("SampleLabelStore persistence", () => {
+  it("emits a remove tombstone when a TemporalDetection is deleted", () => {
+    // TDs are sample-level list labels (child `detections`, addressed by
+    // `_id`), so a delete rides the id-aligned list diff straight to a
+    // `remove` op — no separate tombstone registry needed.
+    const { store } = makeStore({
+      events: {
+        _cls: "TemporalDetections",
+        detections: [makeTd("t1", "run"), makeTd("t2", "walk")],
+      },
+    });
+
+    store.deleteLabel(ref("events", "t1"));
+
+    expect(store.getJsonPatch()).toEqual([
+      { op: "remove", path: "/events/detections/0" },
+    ]);
+  });
+
+  it("a mid-list delete emits ONE id-aligned remove — no _id rewrite or flood", () => {
+    // Regression: index-aligned diffing (the pre-fix behavior) slid t3 down
+    // into t2's slot and emitted `replace /events/detections/1/_id = t3`
+    // alongside per-field replaces — a flood that rewrites a doc's `_id`. The
+    // id-aligned list diff must instead emit exactly the one remove at t2's
+    // baseline index.
+    const { store } = makeStore({
+      events: {
+        _cls: "TemporalDetections",
+        detections: [makeTd("t1", "a"), makeTd("t2", "b"), makeTd("t3", "c")],
+      },
+    });
+
+    store.deleteLabel(ref("events", "t2"));
+
+    const ops = store.getJsonPatch();
+    expect(ops).toEqual([{ op: "remove", path: "/events/detections/1" }]);
+    expect(ops.some((op) => op.path.endsWith("/_id"))).toBe(false);
   });
 });
 
