@@ -357,3 +357,135 @@ export const unknownSupplier: JSONDeltaSupplier = (a, b) => {
  */
 export const supplierFor = (type: LabelType): JSONDeltaSupplier =>
   type === LabelType.Unknown ? unknownSupplier : structuralSupplier;
+
+/**
+ * Injected specifics for {@link idAlignedListDelta}. All optional — the
+ * defaults cover the common label-list case (id = `_id`, structural diff of a
+ * matched item, normalized whole-item add). Override per shape: temporal
+ * detections key on a different id and remove via an explicit tombstone set.
+ */
+export interface IdAlignedDeltaSpec<TCurrent, TBaseline> {
+  /** Stable id of a current (edited) item; items returning undefined are skipped. */
+  currentId?: (item: TCurrent) => string | undefined;
+  /** Stable id of a baseline (server) entry. */
+  baselineId?: (entry: TBaseline) => string | undefined;
+  /** Diff a matched item against its baseline entry; ops are rooted at `path`. */
+  diffMatched?: (
+    current: TCurrent,
+    baseline: TBaseline,
+    path: string
+  ) => JSONDeltas;
+  /** Serialize an unmatched item into an `add` value; return null to skip it. */
+  serializeAdd?: (current: TCurrent) => unknown;
+  /**
+   * Ids to remove. Omit to remove baseline ids absent from `current`
+   * (set-diff); supply explicitly when absence doesn't imply deletion.
+   */
+  removalIds?: Iterable<string>;
+}
+
+/**
+ * Build a JSON-Patch delta for one label list, aligning edited `current` items
+ * to the server `baseline` by id rather than by array position. Emits, under
+ * `<containerPath>/<listChild>/...`: an `add` (`/-`) for current items with no
+ * baseline match, in-place `diffMatched` ops for items on both sides (at their
+ * baseline index), and `remove`s for removed ids in DESCENDING index order so an
+ * earlier remove never shifts an index a later one references.
+ *
+ * Index-aligned diffing floods unappliable replaces when a list shifts (a
+ * deleted slot slides every later slot down); id-alignment avoids that and stays
+ * safe against baseline entries the client never saw. This is the shared shape
+ * behind the per-frame video-label diff and the temporal-detection diff —
+ * generalized over the list child so it serves any list-label field.
+ */
+export const idAlignedListDelta = <TCurrent = LabelData, TBaseline = LabelData>(
+  current: readonly TCurrent[],
+  baseline: readonly TBaseline[],
+  containerPath: string,
+  listChild: string,
+  spec: IdAlignedDeltaSpec<TCurrent, TBaseline> = {}
+): JSONDeltas => {
+  const idOf = (item: unknown): string | undefined =>
+    (item as { _id?: string } | undefined)?._id;
+  const currentId = spec.currentId ?? idOf;
+  const baselineId = spec.baselineId ?? idOf;
+  const diffMatched =
+    spec.diffMatched ??
+    ((cur, base, path) =>
+      structuralSupplier(base, cur).map((op) => ({
+        ...op,
+        path: `${path}${op.path}`,
+      })));
+  const serializeAdd =
+    spec.serializeAdd ?? ((cur: TCurrent) => normalizeForCompare(cur ?? {}));
+
+  const listPath = `${containerPath}/${listChild}`;
+  const baselineIndexById = new Map<string, number>();
+
+  baseline.forEach((entry, index) => {
+    const id = baselineId(entry);
+
+    if (id !== undefined) {
+      baselineIndexById.set(id, index);
+    }
+  });
+
+  const ops: JSONDeltas = [];
+  const currentIds = new Set<string>();
+
+  for (const item of current) {
+    const id = currentId(item);
+
+    if (id === undefined) {
+      continue;
+    }
+
+    currentIds.add(id);
+    const index = baselineIndexById.get(id);
+
+    if (index === undefined) {
+      const value = serializeAdd(item);
+
+      if (value === null || value === undefined) {
+        continue;
+      }
+
+      ops.push({ op: "add", path: `${listPath}/-`, value: value as never });
+      continue;
+    }
+
+    for (const op of diffMatched(
+      item,
+      baseline[index],
+      `${listPath}/${index}`
+    )) {
+      ops.push(op);
+    }
+  }
+
+  const removalIndices: number[] = [];
+
+  if (spec.removalIds !== undefined) {
+    for (const id of spec.removalIds) {
+      const index = baselineIndexById.get(id);
+
+      if (index !== undefined) {
+        removalIndices.push(index);
+      }
+    }
+  } else {
+    baselineIndexById.forEach((index, id) => {
+      if (!currentIds.has(id)) {
+        removalIndices.push(index);
+      }
+    });
+  }
+
+  removalIndices.sort((a, b) => b - a);
+
+  for (const index of removalIndices) {
+    ops.push({ op: "remove", path: `${listPath}/${index}` });
+  }
+
+  return ops;
+};
