@@ -265,8 +265,7 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   // Live-derived TD tracks: walk the scene's `TemporalOverlay` set rather
   // than the sample (which lags one autosave round-trip behind local
   // edits). Overlays are the source of truth — `useTemporalOverlaySync`
-  // primes them from the sample on first load and `useTemporalDetectionDeltaSupplier`
-  // walks them at autosave time.
+  // primes them from the sample on first load.
   const { scene } = useLighter();
   const tdVersion = useTemporalOverlayVersion(scene, {
     listenLabelEdit: true,

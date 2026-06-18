@@ -3,7 +3,6 @@ import type { ModalSample } from "@fiftyone/state";
 import React, { useMemo, useState } from "react";
 import { useAutoInterpolate } from "../hooks/useAutoInterpolate";
 import { useRegisterVideoAnnotationKeybindings } from "../hooks/useRegisterVideoAnnotationKeybindings";
-import { useRegisterVideoLabelsDeltaSupplier } from "../persistence/useVideoLabelsDeltaSupplier";
 import { useSyncAnnotationFrameClock } from "../hooks/useSyncAnnotationFrameClock";
 import { useSyncAnnotationVideoStore } from "../hooks/useSyncAnnotationVideoStore";
 import { useActiveDetectionField } from "../state/accessors";
@@ -188,6 +187,5 @@ const VideoAnnotationHandlerRegistration: React.FC = () => {
   useSyncAnnotationVideoStore();
   useRegisterVideoAnnotationKeybindings();
   useAutoInterpolate();
-  useRegisterVideoLabelsDeltaSupplier();
   return null;
 };

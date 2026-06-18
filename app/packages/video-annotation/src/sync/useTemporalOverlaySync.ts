@@ -139,10 +139,8 @@ export function syncTemporalOverlays({
  * Mirrors {@link useFrameOverlaySync}'s shape: pass `scene` +
  * `canonicalMediaReady` from the host tile; the hook owns the diff
  * lifecycle. Cleans up every tracked overlay on scene change /
- * unmount. Locally-edited overlays are the source of truth — the
- * persistence layer ({@link useTemporalDetectionDeltaSupplier}) walks
- * scene overlays at autosave time, so unsynced edits stay in place
- * until the sample re-fetch lands.
+ * unmount. Locally-edited overlays are the source of truth, so
+ * unsynced edits stay in place until the sample re-fetch lands.
  */
 export function useTemporalOverlaySync(
   scene: ReturnType<typeof useLighterSetupWithPixi>["scene"],
