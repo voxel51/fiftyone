@@ -7,6 +7,8 @@ import { useSampleInstance } from "./useSample";
 let mockModalSample: { sample?: { _id: string } } | undefined;
 let mockSceneSample: { sample?: { _id: string } } | undefined;
 
+let mockIsVideo = false;
+
 vi.mock("@fiftyone/state", () => ({
   useModalSample: () => mockModalSample,
   // the 3D scene sample (stable/non-suspending variant); when its id differs
@@ -14,6 +16,8 @@ vi.mock("@fiftyone/state", () => ({
   // collapses to one
   useStableSceneSample3d: () => mockSceneSample,
   useCurrentSampleId: () => mockModalSample?.sample?._id ?? null,
+  // a video modal sample is owned by the video surface, not this hook
+  useIsVideo: () => mockIsVideo,
 }));
 
 const schema = {
@@ -62,6 +66,25 @@ describe("useSyncAnnotationEngine", () => {
 
     expect(engine.getLabel(ref)).toBeUndefined();
     sample.clear();
+  });
+
+  it("skips a video modal sample — the video surface owns it", () => {
+    mockModalSample = { sample: { _id: "vid" } };
+    mockSceneSample = undefined;
+    mockIsVideo = true;
+
+    const { result, unmount } = renderSync();
+
+    // no store registered for the video sample: a write has nowhere to land
+    expect(() =>
+      result.current.engine.updateLabel(
+        { sample: "vid", path: "frames.detections", instanceId: "d1" },
+        { label: "x" }
+      )
+    ).toThrow(/no store/);
+
+    unmount();
+    mockIsVideo = false;
   });
 
   it("registers nothing without a modal sample", () => {
