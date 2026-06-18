@@ -1,0 +1,36 @@
+name: Renovate
+
+# Self-hosted Renovate, run as voxel51-bot via FIFTYONE_GITHUB_TOKEN. Authoring
+# PRs as a real account (not dependabot[bot]/renovate[bot]) is what lets the
+# resulting dependency PRs target `develop` and clear the `enterprise / ci` gate
+# in enterprise-sync.yml, which excludes `[bot]` authors and needs repo secrets.
+
+on:
+  schedule:
+    # Weekly, Wednesday 14:00 UTC — matches the old Dependabot pip cadence.
+    - cron: "0 14 * * 3"
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: Renovate log level
+        default: info
+        type: string
+
+concurrency:
+  group: renovate
+  cancel-in-progress: false
+
+jobs:
+  renovate:
+    # Only the OSS repo runs Renovate; the synced Enterprise copy is inert.
+    if: github.repository == 'voxel51/fiftyone'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: renovatebot/github-action@v46.1.15
+        with:
+          token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          configurationFile: renovate.json
+        env:
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          LOG_LEVEL: ${{ inputs.logLevel || 'info' }}
