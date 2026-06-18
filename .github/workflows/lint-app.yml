@@ -45,7 +45,7 @@ jobs:
           ESLINT_PACKAGES=$(grep -v '^#' ./eslint-packages.txt | xargs)
           yarn eslint $ESLINT_PACKAGES
 
-      - name: Lint Biome Packages
+      - name: Check multimodal package
         run: |
           cd app
           yarn check
