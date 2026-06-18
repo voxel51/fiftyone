@@ -41,6 +41,8 @@ export type {
   PresenceListener,
   TemporalView,
 } from "./temporal/types";
+export type { FrameReads } from "./temporal/frameTemporalView";
+export { FrameTemporalView } from "./temporal/frameTemporalView";
 
 // retained-mode integration
 export type {

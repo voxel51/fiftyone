@@ -17,6 +17,16 @@ export type PresenceListener = (events: readonly PresenceEvent[]) => void;
 
 /** Derived temporal presence over the pool. Presence ≡ pool when non-temporal. */
 export interface TemporalView {
+  /**
+   * Does this view discriminate by time? `false` for the non-temporal pool
+   * view (presence ≡ pool, `isPresent` conflates with existence); `true` for a
+   * real frame view (`isPresent` is a pure frame query, independent of
+   * existence). The read-half loop reads this to decide whether a frame-locked
+   * bridge may filter out off-frame changes — under the pool view it must not,
+   * or a delete (which leaves the pool) would never unmount.
+   */
+  readonly isTemporal: boolean;
+
   /** Refs present at the current time (frame stamped). */
   getPresent(): readonly LabelRef[];
 

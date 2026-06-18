@@ -88,10 +88,21 @@ export class AnnotationEngine {
   // monotonic source of unique gesture keys (see mintGestureKey)
   private gestureEpoch = 0;
 
-  constructor() {
+  /**
+   * @param opts.temporal a factory for the temporal view, given the engine as
+   *   its pool/change source. Defaults to the non-temporal {@link
+   *   PoolTemporalView} (presence ≡ pool) — every image/3D session. A video
+   *   session injects a frame view built over a playback {@link Clock}; the
+   *   factory shape lets it close over the clock without the engine knowing it.
+   */
+  constructor(
+    opts: { temporal?: (engine: AnnotationEngine) => TemporalView } = {}
+  ) {
     this.interaction = new InteractionState(this.guard);
     this.signals = new SignalPipe(this.guard);
-    this.temporal = new PoolTemporalView(this);
+    this.temporal = (
+      opts.temporal ?? ((engine) => new PoolTemporalView(engine))
+    )(this);
     this.registerBookkeeping((changes) =>
       this.interaction.gc(changes, (ref) => this.getLabel(ref) !== undefined)
     );
