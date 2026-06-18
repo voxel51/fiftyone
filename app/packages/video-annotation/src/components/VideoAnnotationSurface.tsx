@@ -5,6 +5,7 @@ import { useAutoInterpolate } from "../hooks/useAutoInterpolate";
 import { useRegisterVideoAnnotationCommandHandlers } from "../hooks/useRegisterVideoAnnotationCommandHandlers";
 import { useRegisterVideoAnnotationKeybindings } from "../hooks/useRegisterVideoAnnotationKeybindings";
 import { useRegisterVideoLabelsDeltaSupplier } from "../persistence/useVideoLabelsDeltaSupplier";
+import { useSyncAnnotationFrameClock } from "../hooks/useSyncAnnotationFrameClock";
 import { useActiveDetectionField } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useDetectionMode";
 import { PlaybackProvider } from "@fiftyone/playback";
 import { FrameLabelsTracks, RegisterFrameLabels } from "./FrameLabels";
@@ -183,6 +184,7 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
  * stream, so it's safe to render unconditionally.
  */
 const VideoAnnotationHandlerRegistration: React.FC = () => {
+  useSyncAnnotationFrameClock();
   useRegisterVideoAnnotationCommandHandlers();
   useRegisterVideoAnnotationKeybindings();
   useAutoInterpolate();
