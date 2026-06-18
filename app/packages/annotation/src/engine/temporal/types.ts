@@ -34,6 +34,14 @@ export interface TemporalView {
   isPresent(ref: LabelRef): boolean;
 
   subscribePresence(listener: PresenceListener): () => void;
+
+  /**
+   * Release any external subscriptions (clock, change stream). Called when a
+   * session-scoped view is detached from the engine (see
+   * {@link AnnotationEngine.attachTemporal}). Optional — the degenerate pool
+   * view holds no subscriptions.
+   */
+  dispose?(): void;
 }
 
 /**

@@ -57,8 +57,14 @@ export class AnnotationEngine {
   /** Ephemeral selection/hover/anchor state; GC'd by the engine. */
   readonly interaction: InteractionState;
 
-  /** Derived temporal presence over the pool; ≡ pool when non-temporal. */
-  readonly temporal: TemporalView;
+  /**
+   * Derived temporal presence over the pool; ≡ pool when non-temporal. Installed
+   * at construction (default {@link PoolTemporalView}) and swappable per session
+   * via {@link attachTemporal} — a video modal attaches a frame view over its
+   * playback clock and detaches on close, mirroring the store lifecycle. Read
+   * live; do not assign directly.
+   */
+  temporal: TemporalView;
 
   private signals: SignalPipe;
 
@@ -106,6 +112,29 @@ export class AnnotationEngine {
     this.registerBookkeeping((changes) =>
       this.interaction.gc(changes, (ref) => this.getLabel(ref) !== undefined)
     );
+  }
+
+  /**
+   * Install a session-scoped temporal view (e.g. a video {@link
+   * FrameTemporalView} over a playback clock), mirroring the per-modal store
+   * lifecycle. Returns a detach that disposes the installed view and restores
+   * the prior one; idempotent if a later attach has already superseded it.
+   */
+  attachTemporal(
+    factory: (engine: AnnotationEngine) => TemporalView
+  ): () => void {
+    const previous = this.temporal;
+    const next = factory(this);
+    this.temporal = next;
+
+    return () => {
+      if (this.temporal !== next) {
+        return;
+      }
+
+      next.dispose?.();
+      this.temporal = previous;
+    };
   }
 
   // ---- identity ----

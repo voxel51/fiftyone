@@ -425,3 +425,64 @@ describe("non-temporal regression guard", () => {
     expect(listener).not.toHaveBeenCalled();
   });
 });
+
+describe("attachTemporal lifecycle (the video clock binding seam)", () => {
+  it("swaps the pool view for a frame view and restores it on detach", () => {
+    const engine = new AnnotationEngine();
+    expect(engine.temporal.isTemporal).toBe(false);
+
+    const { clock } = makeClock();
+    const detach = engine.attachTemporal(
+      (e) => new FrameTemporalView(e, clock, (t) => t)
+    );
+    expect(engine.temporal.isTemporal).toBe(true);
+
+    detach();
+    expect(engine.temporal.isTemporal).toBe(false);
+  });
+
+  it("a stale detach does not clobber a newer attach (strict-mode safe)", () => {
+    const engine = new AnnotationEngine();
+    const { clock } = makeClock();
+
+    // attach → detach → attach is the strict-mode / remount sequence
+    const detach1 = engine.attachTemporal(
+      (e) => new FrameTemporalView(e, clock, (t) => t)
+    );
+    detach1();
+    expect(engine.temporal.isTemporal).toBe(false);
+
+    const detach2 = engine.attachTemporal(
+      (e) => new FrameTemporalView(e, clock, (t) => t)
+    );
+    const view2 = engine.temporal;
+
+    detach1(); // stale: its view was already torn down
+    expect(engine.temporal).toBe(view2);
+
+    detach2();
+    expect(engine.temporal.isTemporal).toBe(false);
+  });
+
+  it("detach disposes the frame view so later clock ticks are inert", () => {
+    const { clock, seek } = makeClock();
+    const store = new FakeFrameStore();
+    const engine = new AnnotationEngine({
+      temporal: (e) => new FrameTemporalView(e, clock, (t) => t),
+    });
+    engine.registerStore(store);
+    store.hydrate([
+      { frame: 1, instanceId: "a", label: box("a", [0, 0, 1, 1]) },
+      { frame: 2, instanceId: "a", label: box("a", [0, 0, 1, 1]) },
+    ]);
+
+    const view = engine.temporal;
+    const onPresence = vi.fn();
+    view.subscribePresence(onPresence);
+
+    view.dispose?.();
+    seek(2); // would emit `refresh` for track "a" were the clock still wired
+
+    expect(onPresence).not.toHaveBeenCalled();
+  });
+});

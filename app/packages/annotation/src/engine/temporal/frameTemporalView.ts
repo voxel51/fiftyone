@@ -56,6 +56,9 @@ export class FrameTemporalView implements TemporalView {
   /** Present refs at the last-observed frame, keyed by linkage (track) identity. */
   private present: Map<string, LabelRef>;
 
+  /** Clock + change-stream teardown, released on {@link dispose}. */
+  private unsubscribers: Array<() => void> = [];
+
   constructor(
     reads: FrameReads,
     clock: Clock,
@@ -66,10 +69,18 @@ export class FrameTemporalView implements TemporalView {
     this.frameAtTime = frameAtTime;
     this.present = this.computePresent();
 
-    this.clock.subscribe(() => this.onClock());
-    this.reads.subscribeChanges(() => {
-      this.present = this.computePresent();
-    });
+    this.unsubscribers.push(this.clock.subscribe(() => this.onClock()));
+    this.unsubscribers.push(
+      this.reads.subscribeChanges(() => {
+        this.present = this.computePresent();
+      })
+    );
+  }
+
+  dispose(): void {
+    this.unsubscribers.forEach((unsubscribe) => unsubscribe());
+    this.unsubscribers = [];
+    this.listeners.clear();
   }
 
   getPresent(): readonly LabelRef[] {
