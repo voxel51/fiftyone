@@ -66,8 +66,7 @@ def evaluate_detections(
 
     When evaluating keypoints, "IoUs" are computed via
     `object keypoint similarity <https://cocodataset.org/#keypoints-eval>`_.
-    You can pass ``keypoint_sigmas`` to COCO-style evaluation to customize the
-    per-keypoint OKS falloff.
+    You can pass ``keypoint_sigmas`` to customize the per-keypoint OKS falloff.
 
     For temporal segment detection, this method uses ActivityNet-style
     evaluation by default.
