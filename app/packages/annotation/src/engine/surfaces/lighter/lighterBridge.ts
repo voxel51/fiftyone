@@ -47,6 +47,14 @@ export interface LighterBridgeDeps {
     subField: string;
     raw: string;
   }) => string | undefined;
+  /**
+   * Stamp the occurrence coordinate onto `refOf` for a frame-locked surface:
+   * the scene holds one overlay per track (keyed by `instanceId`, frame-
+   * agnostic), but engine writes/selection address `(instanceId, frame)`. The
+   * video canvas supplies the playhead's current frame; image/3D omit it (a
+   * frame-less ref). Read live so a gesture stamps the frame it lands on.
+   */
+  frameOf?: () => number | undefined;
 }
 
 export const createLighterBridge = ({
@@ -56,6 +64,7 @@ export const createLighterBridge = ({
   paths,
   readLabel,
   resolveMediaUrl,
+  frameOf,
 }: LighterBridgeDeps): SurfaceBridge<BaseOverlay, LighterDescriptor> => {
   /** Gated mounts in flight, by overlay id — the latest descriptor wins. */
   const pending = new Map<string, LighterDescriptor>();
@@ -165,7 +174,13 @@ export const createLighterBridge = ({
       return overlay;
     },
 
-    refOf: (overlay) => ({ path: overlay.field, instanceId: overlay.id }),
+    refOf: (overlay) => ({
+      path: overlay.field,
+      instanceId: overlay.id,
+      // frame-locked surfaces stamp the playhead's frame; image/3D leave it
+      // off (frameOf undefined) so the ref stays frame-agnostic
+      ...(frameOf ? { frame: frameOf() } : {}),
+    }),
 
     mount: (descriptor) => {
       const { id } = descriptor.options;

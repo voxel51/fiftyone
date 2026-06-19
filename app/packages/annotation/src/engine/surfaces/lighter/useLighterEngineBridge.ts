@@ -13,6 +13,7 @@
 import type { Scene2D } from "@fiftyone/lighter";
 import {
   DetectionOverlay,
+  UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
@@ -35,6 +36,8 @@ export const useLighterEngineBridge = ({
   paths,
   resolveMediaUrl,
   interactionPolicy,
+  frameOf,
+  enabled = true,
 }: {
   engine: AnnotationEngine;
   sample: string;
@@ -49,23 +52,57 @@ export const useLighterEngineBridge = ({
    */
   resolveMediaUrl?: LighterBridgeDeps["resolveMediaUrl"];
   interactionPolicy?: LighterInteractionPolicy;
+  /**
+   * Frame-locked surfaces (the video canvas) supply the playhead's current
+   * frame; the bridge stamps it onto every ref so writes/selection address
+   * `(instanceId, frame)`. MUST be referentially stable (a new identity
+   * re-creates the bridge). Omitted by image/3D — refs stay frame-agnostic.
+   */
+  frameOf?: () => number | undefined;
+  /**
+   * Gate the whole surface off without violating hook order: a disabled bridge
+   * registers nothing AND binds its gesture handlers to the inert sentinel
+   * channel, so a shared scene (the video tile sets the global `lighterSceneAtom`
+   * the image sidebar also reads) never routes its events through the wrong
+   * surface. Default on.
+   */
+  enabled?: boolean;
 }): void => {
   const { scene, overlayFactory } = useLighter();
-  const on = useLighterEventHandler(scene?.getEventChannel());
+  // disabled → bind to the inert channel so handlers never fire on a scene this
+  // surface doesn't own (rules-of-hooks safe: the hook is always called)
+  const on = useLighterEventHandler(
+    enabled && scene ? scene.getEventChannel() : UNDEFINED_LIGHTER_SCENE_ID
+  );
 
   const bridge = useMemo(
     () =>
-      scene
+      enabled && scene
         ? createLighterBridge({
             scene,
             overlayFactory,
             sample,
             paths,
-            readLabel: (ref) => engine.getLabel(toLabelRef(sample, ref)),
+            // the gated-mask discard probe; on a frame-locked surface getLabel
+            // needs the playhead's frame (the FrameStore is frame-keyed)
+            readLabel: (ref) =>
+              engine.getLabel(
+                toLabelRef(sample, frameOf ? { ...ref, frame: frameOf() } : ref)
+              ),
             resolveMediaUrl,
+            frameOf,
           })
         : undefined,
-    [engine, scene, overlayFactory, sample, paths, resolveMediaUrl]
+    [
+      enabled,
+      engine,
+      scene,
+      overlayFactory,
+      sample,
+      paths,
+      resolveMediaUrl,
+      frameOf,
+    ]
   );
 
   // a replaced bridge (scope/scene/sample change) clears its overlays on the
@@ -267,13 +304,19 @@ export const useLighterEngineBridge = ({
         const overlay = (scene as Scene2D).getOverlay(event.id);
 
         if (overlay) {
+          // frame-stamp on a frame-locked surface so the ref matches the
+          // frame-keyed active entry (refKey includes frame)
           surface.toggleActive(
-            { path: overlay.field, instanceId: overlay.id },
+            {
+              path: overlay.field,
+              instanceId: overlay.id,
+              ...(frameOf ? { frame: frameOf() } : {}),
+            },
             false
           );
         }
       },
-      [interactionPolicy, scene, surface]
+      [interactionPolicy, scene, surface, frameOf]
     )
   );
 
