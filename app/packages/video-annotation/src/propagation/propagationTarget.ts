@@ -28,8 +28,9 @@ export type PropagationTarget =
   | { ok: false; reason: string };
 
 /**
- * Given the active stream, the currently-selected overlay ids, and the
- * visual playhead time, work out whether a SAM2 tracking run can start and,
+ * Given the active stream, the currently-selected track ids (engine
+ * instanceIds), and the visual playhead time, work out whether a SAM2
+ * tracking run can start and,
  * if so, over which frame span.
  *
  * Two shapes of run:
@@ -58,7 +59,12 @@ export function resolvePropagationTarget(
     return { ok: false, reason: "No labels loaded at the current frame yet." };
   }
 
-  const selected = snapshot.detections.find((d) => selectedIds.includes(d.id));
+  // selectedIds are engine instanceIds (`instance._id`, or the doc `_id` for
+  // instance-less detections) — match the snapshot the same way the engine
+  // addresses a label.
+  const selected = snapshot.detections.find((d) =>
+    selectedIds.includes(d.instance?._id ?? d.id)
+  );
   if (!selected) {
     return {
       ok: false,

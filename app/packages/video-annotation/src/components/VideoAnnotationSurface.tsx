@@ -5,15 +5,13 @@ import { useAutoInterpolate } from "../hooks/useAutoInterpolate";
 import { useRegisterVideoAnnotationKeybindings } from "../hooks/useRegisterVideoAnnotationKeybindings";
 import { useSyncAnnotationFrameClock } from "../hooks/useSyncAnnotationFrameClock";
 import { useSyncAnnotationVideoStore } from "../hooks/useSyncAnnotationVideoStore";
-import { useActiveDetectionField } from "../state/accessors";
+import { useVideoLighterEngineBridge } from "../hooks/useVideoLighterEngineBridge";
 import { PlaybackProvider } from "@fiftyone/playback";
 import { FrameLabelsTracks, RegisterFrameLabels } from "./FrameLabels";
 import { ImaVidLighterTile } from "./ImaVidLighterTile";
-import { LinkedOverlayStateBridge } from "../tracks/linkedTracks";
 import { RegisterImaVidImage } from "./RegisterImaVidImage";
 import {
   RegisterSyntheticLabels,
-  SYNTHETIC_FIELD,
   SyntheticTrackTimeline,
 } from "./SyntheticLabels";
 import { VideoAnnotationTopBar } from "./VideoAnnotationTopBar";
@@ -103,29 +101,17 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
     return url ? getSampleSrc(url) : null;
   }, [sample, tileMode]);
 
-  // Tracks the detection field the sidebar is currently configured to annotate
-  // into so newly-drawn overlays paint with the right color and persist to the
-  // right list. `null` means no detection field is available (e.g. schema
-  // has none, or all are read-only) — the surface still renders, but
-  // overlay extraction will see a missing per-frame key and emit nothing.
-  const activeDetectionField = useActiveDetectionField();
-  const field =
-    labelsMode === "synthetic"
-      ? SYNTHETIC_FIELD
-      : activeDetectionField ?? "frames.detections";
-
   const media =
     tileMode === "imavid" ? (
-      <ImaVidLighterTile field={field} />
+      <ImaVidLighterTile />
     ) : videoSrc ? (
-      <VideoLighterTile videoSrc={videoSrc} field={field} />
+      <VideoLighterTile videoSrc={videoSrc} />
     ) : (
       <div className={styles.empty}>No media URL on this sample.</div>
     );
 
   const layout = (
     <div className={styles.root}>
-      <LinkedOverlayStateBridge />
       <VideoAnnotationTopBar sample={sample} />
       <div className={styles.media}>{media}</div>
       <div className={styles.timeline}>
@@ -185,6 +171,9 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
 const VideoAnnotationHandlerRegistration: React.FC = () => {
   useSyncAnnotationFrameClock();
   useSyncAnnotationVideoStore();
+  // after the clock + store: the bridge reconciles against the FrameTemporalView
+  // and a seeded frame store, not the degenerate pool view
+  useVideoLighterEngineBridge();
   useRegisterVideoAnnotationKeybindings();
   useAutoInterpolate();
   return null;

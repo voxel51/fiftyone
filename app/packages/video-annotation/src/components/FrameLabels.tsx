@@ -1,4 +1,9 @@
 import {
+  useActiveSampleId,
+  useAnnotationEngine,
+  useEngineSelector,
+} from "@fiftyone/annotation";
+import {
   getLabelColorFromContext,
   TemporalOverlay,
   useLighter,
@@ -31,7 +36,6 @@ import {
   usePlaybackStream,
 } from "@fiftyone/playback";
 import {
-  useFrameLabelsEditVersion,
   useFrameLabelsStream,
   usePublishFrameLabelsStream,
 } from "../streams/frameLabelsStream";
@@ -42,7 +46,8 @@ import {
 import { LABELS_STREAM_ID } from "../utils/ids";
 import { getModalSampleFrameRate } from "../utils/modalSample";
 import { resolveTrackExtentEdit } from "../tracks/trackExtentEdit";
-import { useLinkedTrackDecorator } from "../tracks/linkedTracks";
+import { useVideoTrackDecorator } from "../tracks/useVideoTrackDecorator";
+import { useScrollTrackToAnchor } from "../state/useVideoInteraction";
 import {
   useVideoSurfaceActions,
   type VideoSurfaceActions,
@@ -202,10 +207,16 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   sample,
 }) => {
   const stream = useFrameLabelsStream();
-  const editVersion = useFrameLabelsEditVersion();
+  const engine = useAnnotationEngine();
+  const sampleId = useActiveSampleId();
   const scheme = useColorScheme();
   const seed = useColorSeed();
   const activeField = useActiveDetectionField() ?? DEFAULT_FRAME_FIELD;
+
+  // The engine projects the timeline; its version is the rebuild signal.
+  const engineVersion = useEngineSelector(engine, () => engine.getVersion());
+  // Frame-detection field the engine FrameStore is registered under.
+  const path = stream ? `frames.${stream.labelsField}` : null;
 
   // useState so we can re-render once warmupAll resolves, but keep the
   // build deterministic in the deps (stream identity changes when the
@@ -238,7 +249,7 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   );
 
   useEffect(() => {
-    if (!stream) {
+    if (!stream || !sampleId || !path) {
       setFrameTracks([]);
       setFrameTracksResolved(false);
       return undefined;
@@ -246,19 +257,31 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
 
     let cancelled = false;
 
+    // Warm every chunk so the `/frames` seed re-hydrates the engine across the
+    // whole clip; the build then walks the engine, not the stream.
     void stream.warmupAll().then(() => {
       if (cancelled) {
         return;
       }
 
-      setFrameTracks(buildPerInstanceTracks({ stream, resolveColor }));
+      setFrameTracks(
+        buildPerInstanceTracks({
+          engine,
+          sample: sampleId,
+          path,
+          totalFrames: stream.totalFrames,
+          fps: stream.fps,
+          resolveColor,
+        })
+      );
       setFrameTracksResolved(true);
     });
 
     return () => {
       cancelled = true;
     };
-  }, [stream, resolveColor, editVersion]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- engineVersion is the invalidation signal
+  }, [engine, sampleId, path, stream, resolveColor, engineVersion]);
 
   const actions = useVideoSurfaceActions();
 
@@ -308,7 +331,8 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   // they'd trip the empty→ready flip before frame tracks land and
   // frame tracks would arrive unpinned.
   const ready = frameTracksResolved;
-  const linkDecorate = useLinkedTrackDecorator();
+  const baseDecorate = useVideoTrackDecorator();
+  useScrollTrackToAnchor();
   const fps = getModalSampleFrameRate(sample);
   const snapStepSec =
     Number.isFinite(fps) && fps && fps > 0 ? 1 / fps : undefined;
@@ -319,16 +343,15 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   // them — they don't break, just don't do anything visible.
   const decorateTrack = useCallback(
     (track: Track) => {
-      const base = linkDecorate(track);
+      const base = baseDecorate(track);
       if (!fps) {
         return base;
       }
 
       // Object tracks: drag a presence bar to extend / trim / shift the
-      // track's per-frame labels. Identified by the synthetic overlay-id
-      // prefixes `extractDetections` emits.
-      const isObjectTrack =
-        track.id.startsWith("instance-") || track.id.startsWith("track-");
+      // track's per-frame labels. TD rows carry the `td-` prefix; everything
+      // else is an engine-addressed object track (row id == instanceId).
+      const isObjectTrack = !track.id.startsWith("td-");
 
       if (isObjectTrack && stream) {
         const totalFrames = stream.totalFrames;
@@ -393,7 +416,7 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
           }),
       };
     },
-    [linkDecorate, fps, snapStepSec, actions, stream]
+    [baseDecorate, fps, snapStepSec, actions, stream]
   );
 
   return (

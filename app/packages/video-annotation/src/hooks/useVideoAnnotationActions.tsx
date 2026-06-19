@@ -10,7 +10,7 @@ import {
   resolvePropagationTarget,
   type PropagationTarget,
 } from "../propagation/propagationTarget";
-import { useSelectedOverlayIds } from "./useLinkedOverlayState";
+import { useSelectedTrackIds } from "../state/useVideoInteraction";
 import { useVideoPropagate } from "./useVideoPropagate";
 import { useVideoSurfaceActions } from "./useVideoSurfaceActions";
 
@@ -33,7 +33,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
   const propagate = useVideoPropagate();
   const stream = useFrameLabelsStream();
   const playhead = usePlayhead();
-  const selected = useSelectedOverlayIds();
+  const selected = useSelectedTrackIds();
   const modalSample = useModalSample();
 
   // Resolve from the dataset schema
@@ -49,8 +49,8 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
   const canCreateTd =
     !!tdFieldPath && Number.isFinite(fps) && fps !== undefined && fps > 0;
 
-  // Selection atom is keyed on the synthetic overlay id, the same id the
-  // stream snapshot and command handlers agree on.
+  // Selection is keyed on the engine instanceId — the same id the propagation
+  // target resolver matches against the per-frame detections.
   const selectedIds = useMemo(() => Array.from(selected), [selected]);
   const hasSelection = selectedIds.length > 0;
 

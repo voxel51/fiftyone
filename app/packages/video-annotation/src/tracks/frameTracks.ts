@@ -1,23 +1,17 @@
+import type { AnnotationEngine } from "@fiftyone/annotation";
 import type { Track, TrackEvent } from "@fiftyone/playback";
-import type { VideoFrameLabelsStream } from "../streams/VideoFrameLabelsStream";
+import type { LabelData } from "@fiftyone/utilities";
 
-/**
- * Synthetic-id prefixes emitted by {@link VideoFrameLabelsStream.extractDetections}.
- * `instance-` is preferred when the detection carries an `Instance._id`;
- * `track-` is the legacy fallback for data that only has the numeric
- * `index`. Both qualify the box for a timeline track row.
- */
-const INSTANCE_ID_PREFIX = "instance-";
-const TRACK_ID_PREFIX = "track-";
+/** The engine read surface this builder needs — one frame's labels at a time. */
+export type FrameLabelReader = Pick<AnnotationEngine, "listLabels">;
 
 interface InstanceState {
   /** Class label observed for this instance (e.g. "person"). */
   classLabel: string;
   /**
    * Persisted track index carried on the underlying detection, when
-   * present. Set for `track-`-prefixed boxes and for `instance-`-prefixed
-   * boxes that the upstream pipeline already assigned a number to.
-   * Undefined for freshly-drawn instances that haven't been numbered.
+   * present. Undefined for freshly-drawn instances that haven't been
+   * numbered.
    */
   persistedIndex?: number;
   /**
@@ -60,39 +54,68 @@ export interface PerInstanceLabel {
 }
 
 export interface BuildPerInstanceTracksInput {
-  stream: VideoFrameLabelsStream;
+  engine: FrameLabelReader;
+  /** Sample whose frame labels back the timeline. */
+  sample: string;
+  /** Frame-agnostic detection field path (e.g. `frames.detections`). */
+  path: string;
+  /** Total frames in the clip — the walk range `[1, totalFrames]`. */
+  totalFrames: number;
+  /** Frame rate, for the frame↔seconds mapping. */
+  fps: number;
   resolveColor: (label: PerInstanceLabel) => string;
 }
 
+/** Track identity is `instance._id`; fall back to the doc `_id` (legacy). */
+const addressIdOf = (label: LabelData): string => {
+  const instance = label.instance as { _id?: string } | undefined;
+  return instance?._id ?? label._id;
+};
+
+const labelOf = (label: LabelData): string =>
+  (label.label as string | undefined) || "unknown";
+
+const indexOf = (label: LabelData): number | undefined =>
+  label.index as number | undefined;
+
+const instanceOf = (
+  label: LabelData
+): { _cls: "Instance"; _id?: string } | null =>
+  (label.instance as { _cls: "Instance"; _id?: string } | null) ?? null;
+
 /**
- * Walk every frame in `[1, stream.totalFrames]`, group labels by
- * synthetic overlay id, and emit one {@link Track} per tracked instance
+ * Walk every frame in `[1, totalFrames]`, group the engine's per-frame labels
+ * by their engine `instanceId` (`instance._id`, or the doc `_id` for legacy
+ * instance-less detections), and emit one {@link Track} per tracked instance
  * whose events are the contiguous presence intervals.
  *
- * Includes both `instance-`-prefixed (Instance._id-based identity) and
- * `track-`-prefixed (legacy numeric-index identity) detections. Boxes
- * with no cross-frame identity (raw `_id` only) are skipped — they
- * still render as overlays during playback but don't contribute rows.
+ * The track id IS the engine `instanceId`, so the timeline links to engine
+ * interaction with no synthetic-id mapping. Legacy instance-less detections
+ * carry a distinct doc `_id` per frame and so fragment into single-frame rows
+ * (O1, accepted) until edited into a real instance.
  *
  * Row labels combine the class with a per-class display ordinal (e.g.
- * "person 5"). For boxes that already carry a persisted `index`, that
- * number is used; for `Instance._id`-only boxes the ordinal is the
- * next free integer above the per-class max. Row color is resolved
- * from the class so each row matches the colour of its bbox overlay.
+ * "person 5"). For detections that already carry a persisted `index`, that
+ * number is used; otherwise the ordinal is the next free integer above the
+ * per-class max. Row color is resolved from the class so each row matches the
+ * colour of its bbox overlay.
  *
- * Requires the stream's cache to cover the full range; call
- * {@link VideoFrameLabelsStream#warmupAll} and `await` it first.
+ * Requires the engine to project the whole clip; trigger a full warmup of the
+ * `/frames` seed first so every frame is loaded.
  */
 export function buildPerInstanceTracks({
-  stream,
+  engine,
+  sample,
+  path,
+  totalFrames,
+  fps,
   resolveColor,
 }: BuildPerInstanceTracksInput): Track[] {
-  const { totalFrames, fps } = stream;
   if (totalFrames < 1 || !Number.isFinite(fps) || fps <= 0) {
     return [];
   }
 
-  const states = accumulatePresence(stream);
+  const states = accumulatePresence(engine, sample, path, totalFrames, fps);
   assignDisplayOrdinals(states);
 
   const tracks: Track[] = [];
@@ -107,11 +130,6 @@ export function buildPerInstanceTracks({
   return sortByClassThenOrdinal(tracks, states);
 }
 
-/** A synthetic id qualifies for a track row only if it's instance/track-keyed. */
-function isTrackedId(id: string): boolean {
-  return id.startsWith(TRACK_ID_PREFIX) || id.startsWith(INSTANCE_ID_PREFIX);
-}
-
 /** Close a state's currently-open presence interval at `endSec`. */
 function closeInterval(state: InstanceState, endSec: number): void {
   if (state.currentStart === null) {
@@ -123,15 +141,11 @@ function closeInterval(state: InstanceState, endSec: number): void {
   state.inFrame = false;
 }
 
-function newInstanceState(det: {
-  label?: string;
-  index?: number;
-  instance?: { _cls: "Instance"; _id?: string } | null;
-}): InstanceState {
+function newInstanceState(label: LabelData): InstanceState {
   return {
-    classLabel: det.label || "unknown",
-    persistedIndex: det.index,
-    instance: det.instance,
+    classLabel: labelOf(label),
+    persistedIndex: indexOf(label),
+    instance: instanceOf(label),
     // Placeholder — overwritten by `assignDisplayOrdinals` once every
     // state is known and per-class ordinals can be computed.
     displayIndex: 0,
@@ -143,32 +157,30 @@ function newInstanceState(det: {
 }
 
 /**
- * Walk every frame and group tracked detections into per-instance presence
+ * Walk every frame and group the engine's labels into per-instance presence
  * intervals + keyframe times. Intervals still open at clip end are closed.
  */
 function accumulatePresence(
-  stream: VideoFrameLabelsStream
+  engine: FrameLabelReader,
+  sample: string,
+  path: string,
+  totalFrames: number,
+  fps: number
 ): Map<string, InstanceState> {
-  const { totalFrames, fps } = stream;
   const states = new Map<string, InstanceState>();
 
   for (let frame = 1; frame <= totalFrames; frame++) {
     const frameStartSec = (frame - 1) / fps;
-    const snapshot = stream.getValue(frameStartSec);
     const present = new Set<string>();
 
-    // todo - adapter pattern to handle other label types
-    for (const det of snapshot?.detections ?? []) {
-      if (!isTrackedId(det.id)) {
-        continue;
-      }
+    for (const label of engine.listLabels({ sample, path, frame })) {
+      const id = addressIdOf(label);
+      present.add(id);
 
-      present.add(det.id);
-
-      let state = states.get(det.id);
+      let state = states.get(id);
       if (!state) {
-        state = newInstanceState(det);
-        states.set(det.id, state);
+        state = newInstanceState(label);
+        states.set(id, state);
       }
 
       if (!state.inFrame) {
@@ -176,7 +188,7 @@ function accumulatePresence(
         state.inFrame = true;
       }
 
-      if (det.keyframe) {
+      if (label.keyframe) {
         state.keyframeTimes.push(frameStartSec);
       }
     }

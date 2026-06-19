@@ -9,7 +9,6 @@ import {
   usePlaybackStream,
 } from "@fiftyone/playback";
 import { LABELS_STREAM_ID } from "../utils/ids";
-import { useLinkedTrackDecorator } from "../tracks/linkedTracks";
 import {
   DEFAULT_ACTOR_SPECS,
   resolveActor,
@@ -92,7 +91,9 @@ export const SyntheticTrackTimeline: React.FC = () => {
 
   const pinned = useMemo(() => tracks.map((t) => t.id), [tracks]);
   const ready = tracks.length > 0;
-  const decorateTrack = useLinkedTrackDecorator();
+  // Synthetic actors carry no engine identity, so rows have no interaction
+  // linkage — render them undecorated.
+  const decorateTrack = useCallback(() => ({}), []);
 
   return (
     <TrackProvider
