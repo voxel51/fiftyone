@@ -198,6 +198,8 @@ export interface LabelEntry {
   kind: EntryKind.LABEL;
   id: string;
   path: string;
+  /** Occurrence frame for video frame labels; absent for sample-level labels. */
+  frame?: number;
 }
 
 export interface LoadingEntry {

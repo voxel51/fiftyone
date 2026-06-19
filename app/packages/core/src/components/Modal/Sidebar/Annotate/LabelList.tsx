@@ -71,9 +71,9 @@ export default function AnnotateSidebar() {
           }
 
           if (entry.kind === EntryKind.LABEL) {
-            const { id, path } = entry;
+            const { id, path, frame } = entry;
             return {
-              children: <LabelEntry id={id} path={path} />,
+              children: <LabelEntry id={id} path={path} frame={frame} />,
               disabled: true,
             };
           }

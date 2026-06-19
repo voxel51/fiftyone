@@ -1,7 +1,7 @@
 import {
   useActiveAnnotationSampleId,
   useAnnotationEngine,
-  useEngineSelector,
+  useTemporal,
 } from "@fiftyone/annotation";
 import { EntryKind, type SidebarEntry } from "@fiftyone/state";
 import { LabelType } from "@fiftyone/utilities";
@@ -12,7 +12,7 @@ import { visibleLabelSchemas } from "./state";
 import { useAnnotationLabelsReady } from "./useLabels";
 import usePrimitiveEntries from "./usePrimitiveEntries";
 
-type LabelRow = { id: string; path: string };
+type LabelRow = { id: string; path: string; frame?: number };
 
 const sameRows = (a: LabelRow[] | null, b: LabelRow[] | null): boolean => {
   if (a === b) {
@@ -26,17 +26,23 @@ const sameRows = (a: LabelRow[] | null, b: LabelRow[] | null): boolean => {
   return (
     a.length === b.length &&
     a.every(
-      (row, index) => row.id === b[index].id && row.path === b[index].path
+      (row, index) =>
+        row.id === b[index].id &&
+        row.path === b[index].path &&
+        row.frame === b[index].frame
     )
   );
 };
 
 /**
- * The sidebar label rows, derived directly from the annotation engine — one row
- * per in-scope engine label, ordered by field then label name. Returns `null`
- * while the engine isn't ready yet (loading gate); an empty array once ready
- * with no labels (empty state). Rows carry a `{id, path}` ref, not a mirror
- * atom — {@link LabelEntry} reads the label per-component by ref.
+ * The sidebar label rows, derived from the engine's temporal presence — one row
+ * per present in-scope label, ordered by field then label name. For an image
+ * (pool) sample presence is the whole pool; for a video (frame view) it is the
+ * current frame's labels plus any in-support temporal detections, and the list
+ * re-derives as the playhead scrubs. Returns `null` while the engine isn't ready
+ * yet (loading gate); an empty array once ready with no labels (empty state).
+ * Rows carry a `{id, path, frame?}` ref — {@link LabelEntry} reads the label
+ * per-component at that ref.
  */
 const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
   const engine = useAnnotationEngine();
@@ -46,26 +52,38 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
   const expanded = useAtomValue(labelsExpanded);
   const primitiveEntries = usePrimitiveEntries(activeFields || []);
 
-  const rows = useEngineSelector(
+  const rows = useTemporal(
     engine,
-    (e): LabelRow[] | null => {
+    (t): LabelRow[] | null => {
       if (!ready) {
         return null;
       }
 
-      const byField: Record<string, Array<{ id: string; label: string }>> = {};
+      const active = new Set(activeFields);
+      const byField: Record<
+        string,
+        Array<{ id: string; label: string; frame?: number }>
+      > = {};
 
-      for (const path of activeFields) {
-        if (e.getLabelType(path) === LabelType.Unknown) {
+      for (const ref of t.getPresent()) {
+        if (ref.sample !== sampleId || !active.has(ref.path)) {
           continue;
         }
 
-        for (const data of e.listLabels({ sample: sampleId, path })) {
-          (byField[path] ??= []).push({
-            id: data._id,
-            label: (data.label as string) ?? "",
-          });
+        if (engine.getLabelType(ref.path) === LabelType.Unknown) {
+          continue;
         }
+
+        const data = engine.getLabel(ref);
+        if (!data) {
+          continue;
+        }
+
+        (byField[ref.path] ??= []).push({
+          id: ref.instanceId,
+          label: (data.label as string) ?? "",
+          frame: ref.frame,
+        });
       }
 
       const result: LabelRow[] = [];
@@ -79,8 +97,8 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
         fieldRows.sort(
           (a, b) => a.label.localeCompare(b.label) || a.id.localeCompare(b.id)
         );
-        for (const { id } of fieldRows) {
-          result.push({ id, path });
+        for (const { id, frame } of fieldRows) {
+          result.push({ id, path, frame });
         }
       }
 
@@ -102,10 +120,11 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
       return [{ kind: EntryKind.EMPTY_ANNOTATIONS }] as SidebarEntry[];
     }
 
-    return rows.map(({ id, path }) => ({
+    return rows.map(({ id, path, frame }) => ({
       kind: EntryKind.LABEL,
       id,
       path,
+      frame,
     })) as SidebarEntry[];
   }, [rows, expanded]);
 
