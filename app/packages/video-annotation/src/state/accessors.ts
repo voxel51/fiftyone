@@ -10,6 +10,7 @@ import {
   fieldPaths,
   groupSlice,
   modalSampleId,
+  useCurrentDatasetId,
   view,
 } from "@fiftyone/state";
 import {
@@ -37,6 +38,9 @@ export const useColorSeed = () => useRecoilValue(colorSeed);
 
 /** Current dataset name. */
 export const useDatasetName = () => useRecoilValue(datasetName);
+
+/** Current dataset id — the `EntityId` namespace for engine signal keys. */
+export const useDatasetId = (): string => useCurrentDatasetId() ?? "";
 
 /** Active group slice, or `null` when the dataset isn't grouped. */
 export const useGroupSlice = () => useRecoilValue(groupSlice);
