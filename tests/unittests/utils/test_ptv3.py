@@ -28,6 +28,7 @@ def _make_model(
     """Builds a model with the heavy backbone load bypassed and a fake forward."""
     model = PointTransformerV3Model.__new__(PointTransformerV3Model)
     model._device = "cpu"
+    model._use_half_precision = False
     model._coord_index = PointTransformerV3Model._build_coord_index(feature_keys)
 
     cfg = type("Cfg", (), {})()
@@ -245,6 +246,11 @@ class TestConfig:
         assert config.conv_algo == "native"
         assert len(config.point_cloud_range) == 6
 
+    def test_use_half_precision(self):
+        assert PointTransformerV3ModelConfig({}).use_half_precision is False
+        config = PointTransformerV3ModelConfig({"use_half_precision": True})
+        assert config.use_half_precision is True
+
     def test_zoo_deployment_resolves_config_class(self):
         # The eta ModelConfig wrapper resolves the leaf config as
         # "<model-type>Config", so the class must be named
@@ -319,3 +325,15 @@ class TestGetItem:
         get_item = _make_model().build_get_item()
         assert isinstance(get_item, PointCloudGetItem)
         assert get_item.required_keys == ["filepath"]
+
+
+class TestEnsurePackages:
+    def test_checks_all_deps(self, monkeypatch):
+        from fiftyone.utils import ptv3
+
+        checked = []
+        monkeypatch.setattr(
+            ptv3.fou, "ensure_import", lambda mod, **kw: checked.append(mod)
+        )
+        ptv3._ensure_ptv3_packages()
+        assert set(checked) == {"spconv", "torch_scatter", "timm", "addict"}

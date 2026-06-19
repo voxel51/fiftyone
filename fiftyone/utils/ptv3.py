@@ -12,6 +12,7 @@ visualization, and deduplication of 3D samples.
 |
 """
 
+import contextlib
 from typing import Optional
 
 import numpy as np
@@ -60,6 +61,16 @@ _PTV3_BASE_CONFIG = {
 _CONV_ALGOS = ("native", "implicit_gemm", "split_implicit_gemm")
 
 
+def _ensure_ptv3_packages():
+    msg = (
+        "Point Transformer V3 requires the spconv, torch_scatter, timm, and "
+        "addict packages; install spconv and torch-scatter built for your CUDA "
+        "and PyTorch versions"
+    )
+    for module in ("spconv", "torch_scatter", "timm", "addict"):
+        fou.ensure_import(module, error_level=0, error_msg=msg)
+
+
 class PointTransformerV3ModelConfig(foc.Config, fozm.HasZooModel):
     """Configuration for running a :class:`PointTransformerV3Model`.
 
@@ -82,6 +93,8 @@ class PointTransformerV3ModelConfig(foc.Config, fozm.HasZooModel):
             one of ``"native"``, ``"implicit_gemm"``, ``"split_implicit_gemm"``.
             Use ``"native"`` if inference aborts with a SIGFPE on newer CUDA
             drivers
+        use_half_precision (False): whether to run inference under float16
+            autocast, which roughly halves GPU memory
         device (None): the device to use, e.g. ``"cuda"`` or ``"cpu"``. If not
             provided, GPU is used when available
     """
@@ -128,6 +141,9 @@ class PointTransformerV3ModelConfig(foc.Config, fozm.HasZooModel):
                 % (self.conv_algo, list(_CONV_ALGOS))
             )
         self.device = self.parse_string(d, "device", default=None)
+        self.use_half_precision = self.parse_bool(
+            d, "use_half_precision", default=False
+        )
 
 
 class PointTransformerV3Model(
@@ -166,6 +182,7 @@ class PointTransformerV3Model(
             )
 
         self._device = config.device or "cuda"
+        self._use_half_precision = config.use_half_precision
 
         self._coord_index = self._build_coord_index(config.feature_keys)
         self._model = self._load_model(config)
@@ -217,6 +234,7 @@ class PointTransformerV3Model(
         pass
 
     def _load_model(self, config):
+        _ensure_ptv3_packages()
         from fiftyone.utils.ptv3_arch import PointTransformerV3
 
         model = PointTransformerV3(**_PTV3_BASE_CONFIG)
@@ -254,7 +272,12 @@ class PointTransformerV3Model(
     def _embed_one(self, arg):
         # Self-contained so concurrent calls don't race on shared state
         point = self._build_input(arg)
-        with torch.inference_mode():
+        if self._use_half_precision:
+            autocast = torch.autocast("cuda", dtype=torch.float16)
+        else:
+            autocast = contextlib.nullcontext()
+
+        with torch.inference_mode(), autocast:
             out = self._model(point)
             per_point = out.feat if hasattr(out, "feat") else out["feat"]
             embedding = per_point.mean(dim=0)
