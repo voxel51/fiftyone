@@ -50,6 +50,7 @@ def compute_ious(
 
     For keypoints, "IoUs" are computed via
     `object keypoint similarity <https://cocodataset.org/#keypoints-eval>`_.
+    You can pass ``keypoint_sigmas`` to customize the per-keypoint OKS falloff.
 
     Args:
         preds: a list of predicted
@@ -1015,21 +1016,11 @@ def _compute_object_keypoint_similarity(gtp, predp, keypoint_sigmas=None):
     predp = np.asarray(predp, dtype=float)
 
     if keypoint_sigmas is not None:
-        keypoint_sigmas = np.asarray(keypoint_sigmas, dtype=float)
-        if keypoint_sigmas.ndim != 1:
-            raise ValueError("`keypoint_sigmas` must be a 1D array")
-
-        if len(keypoint_sigmas) != len(gtp):
+        if len(gtp) != len(keypoint_sigmas):
             raise ValueError(
-                "Expected `keypoint_sigmas` to have length %d, found %d"
-                % (len(gtp), len(keypoint_sigmas))
+                "The number of object keypoints (%d) must match the number of "
+                "`keypoint_sigmas` (%d)" % (len(gtp), len(keypoint_sigmas))
             )
-
-        if not np.all(np.isfinite(keypoint_sigmas)):
-            raise ValueError("`keypoint_sigmas` must contain finite values")
-
-        if np.any(keypoint_sigmas <= 0):
-            raise ValueError("`keypoint_sigmas` must contain positive values")
 
     # Use extent of GT points as proxy for box area
     scale = np.sqrt(np.prod(np.nanmax(gtp, axis=0) - np.nanmin(gtp, axis=0)))
@@ -1060,11 +1051,11 @@ def _compute_object_keypoint_similarity(gtp, predp, keypoint_sigmas=None):
         return 0.0
 
     if keypoint_sigmas is None:
-        sigmas = 1.0
+        sigmas = 1.0  # default: kappa=1
     else:
         sigmas = np.array(sigmas)
 
-    # object keypoint similarity with default kappa == 1
+    # Object keypoint similarity
     # https://cocodataset.org/#keypoints-eval
     return np.sum(np.exp(-(dists**2) / (2 * ((scale * sigmas) ** 2)))) / n
 
