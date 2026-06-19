@@ -64,12 +64,12 @@ const DEFAULT_FRAME_FIELD = "detections";
  * Caches per-frame samples by 1-indexed frame number. `bufferState`
  * reports readiness for a given time; `prefetch` issues a chunk fetch
  * starting at the first missing frame in the requested range; `getValue`
- * reads the cached frame and pulls labels out as overlays so the existing
- * diff path in `VideoLighterTile` can consume them unchanged.
+ * reads the cached frame for the read-only snapshot.
  *
- * Label identity prefers FiftyOne's track `index` when present (so
- * tracked instances mutate in place across frames); falls back to `_id`
- * for un-tracked labels (which will churn each frame).
+ * Read-only: the stream loads `/frames` chunks and seeds the annotation
+ * engine's frame store (via {@link cachedFrames} + {@link subscribeToEdits}).
+ * All label mutation, dirty tracking, and persistence live in the engine; the
+ * stream holds no edit state.
  */
 export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapshot> {
   private readonly sampleId: string;
@@ -82,25 +82,12 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   private readonly chunkSize: number;
 
   private readonly cache = new Map<number, FrameDoc>();
-  // Server-original snapshots, populated from `/frames` and never
-  // mutated. The eventual delta supplier diffs `cache` against this to
-  // compute server PATCHes.
-  private readonly baseline = new Map<number, FrameDoc>();
-  // Frames with local edits that haven't been persisted to the server.
-  private readonly dirty = new Set<number>();
-  // Cache refs captured at delta-build time. On persistence success, these
-  // become the new baseline; on failure they're discarded. Null when no
-  // patch is in flight.
-  private pendingCommit: Map<number, FrameDoc> | null = null;
   private readonly inflight = new Map<number, Promise<void>>();
   private readonly fetchedRanges: Array<[number, number]> = [];
-  // Cached on each `onCommit` so local-edit republishes can write to
-  // the same atom store the engine drives. Null until first commit.
-  private lastStore: PlaybackStore | null = null;
-  // Monotonic counter bumped on every cache mutation (fetch lands,
-  // local edit). Consumers that need to re-derive cross-frame state
-  // (e.g. timeline track rows) subscribe via `subscribeToEdits`.
-  private editVersion = 0;
+  // Notified whenever a chunk lands. The annotation engine's frame store
+  // re-seeds from `cachedFrames()` on this signal (via `subscribeToEdits`);
+  // the stream itself holds no edit state — it is a read-only `/frames` seed
+  // and the engine owns all label mutations.
   private readonly editListeners = new Set<() => void>();
 
   constructor(opts: VideoFrameLabelsStreamOptions) {
@@ -188,7 +175,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   /**
    * Every cached frame document, for seeding an external store (the annotation
    * engine's frame store). Pairs with {@link subscribeToEdits} so the seed
-   * re-runs as chunks land or local edits mutate the cache.
+   * re-runs as chunks land.
    */
   cachedFrames(): FrameDoc[] {
     return [...this.cache.values()];
@@ -270,7 +257,6 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
    * miss → hit when a chunk lands).
    */
   override onCommit(time: number, store: PlaybackStore): void {
-    this.lastStore = store;
     const next = this.getValue(time);
     const prev = this.readPublished(store);
 
@@ -286,141 +272,9 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   }
 
   /**
-   * Insert or replace a detection in the local cache for the given frame
-   * and republish so subscribers re-render at the current playhead. No-op
-   * if the frame isn't cached.
-   */
-  updateLabel(frameNumber: number, detection: LocalDetection): void {
-    const existing = this.cache.get(frameNumber);
-    if (!existing) {
-      return;
-    }
-
-    const id = detection._id ?? detection.id;
-    if (!id) {
-      return;
-    }
-
-    const next = withDetectionList(existing, this.frameField, (list) => {
-      const idx = list.findIndex((d) => (d._id ?? d.id) === id);
-      if (idx < 0) {
-        return [...list, detection];
-      }
-
-      const copy = list.slice();
-      copy[idx] = { ...list[idx], ...detection };
-      return copy;
-    });
-
-    this.cache.set(frameNumber, next);
-    this.dirty.add(frameNumber);
-    this.republish();
-    this.bumpEditVersion();
-  }
-
-  /**
-   * Remove a detection from the local cache for the given frame and
-   * republish. No-op if the frame isn't cached or the id isn't present.
-   */
-  deleteLabel(frameNumber: number, detectionId: string): void {
-    const existing = this.cache.get(frameNumber);
-    if (!existing) {
-      return;
-    }
-
-    const next = withDetectionList(existing, this.frameField, (list) =>
-      list.filter((d) => (d._id ?? d.id) !== detectionId)
-    );
-
-    this.cache.set(frameNumber, next);
-    this.dirty.add(frameNumber);
-    this.republish();
-    this.bumpEditVersion();
-  }
-
-  /** Whether the given frame has unsaved local edits. */
-  isDirty(frameNumber: number): boolean {
-    return this.dirty.has(frameNumber);
-  }
-
-  /**
-   * Snapshots for every frame with unsaved local edits. Each entry pairs the
-   * server-original baseline with the current cache state — translation to a
-   * wire format (JSON Patch, GraphQL mutation, …) is the caller's concern.
-   *
-   * Returns an empty array when no frames are dirty.
-   */
-  getDirtyFrameSnapshots(): Array<{
-    frameNumber: number;
-    baseline: FrameDoc;
-    cache: FrameDoc;
-  }> {
-    const out: Array<{
-      frameNumber: number;
-      baseline: FrameDoc;
-      cache: FrameDoc;
-    }> = [];
-
-    for (const frameNumber of this.dirty) {
-      const baseline = this.baseline.get(frameNumber);
-      const cache = this.cache.get(frameNumber);
-
-      if (!baseline || !cache) {
-        continue;
-      }
-
-      out.push({ frameNumber, baseline, cache });
-    }
-
-    return out;
-  }
-
-  /**
-   * Stash the cache refs that were just translated into a persistence
-   * payload. Paired with {@link commitPending} on success and
-   * {@link discardPending} on failure. Overwrites any prior pending state
-   * — the persistence layer guarantees only one in-flight save at a time.
-   */
-  markCommitPending(
-    snapshots: ReadonlyArray<{ frameNumber: number; cache: FrameDoc }>
-  ): void {
-    this.pendingCommit = new Map(
-      snapshots.map((s) => [s.frameNumber, s.cache])
-    );
-  }
-
-  /**
-   * Advance baseline for every pending frame to the cache ref that was
-   * captured at {@link markCommitPending} time. A frame stays dirty if the
-   * cache has moved since (the user kept editing during the save) — that
-   * way the next save sends only the *incremental* delta against the
-   * just-saved state.
-   */
-  commitPending(): void {
-    if (!this.pendingCommit) {
-      return;
-    }
-
-    for (const [frameNumber, frameDoc] of this.pendingCommit) {
-      this.baseline.set(frameNumber, frameDoc);
-      if (this.cache.get(frameNumber) === frameDoc) {
-        this.dirty.delete(frameNumber);
-      }
-    }
-
-    this.pendingCommit = null;
-    this.bumpEditVersion();
-  }
-
-  /** Drop the pending snapshot without touching baseline or dirty. */
-  discardPending(): void {
-    this.pendingCommit = null;
-  }
-
-  /**
-   * Subscribe to cache-mutation events (fetches landing, local edits).
-   * Returns an unsubscribe function. Pair with `getEditVersion` and
-   * React's `useSyncExternalStore` to re-derive cross-frame state.
+   * Subscribe to cache-mutation events (chunks landing). Returns an
+   * unsubscribe function. Used to re-seed an external store (the engine's
+   * frame store) whenever the `/frames` cache changes.
    */
   subscribeToEdits(listener: () => void): () => void {
     this.editListeners.add(listener);
@@ -429,26 +283,10 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     };
   }
 
-  /** Current cache-mutation version. Increases on every mutation. */
-  getEditVersion(): number {
-    return this.editVersion;
-  }
-
-  private bumpEditVersion(): void {
-    this.editVersion++;
-
+  private notifyEdits(): void {
     for (const listener of this.editListeners) {
       listener();
     }
-  }
-
-  private republish(): void {
-    if (!this.lastStore) {
-      return;
-    }
-
-    const time = this.readCurrentTime(this.lastStore);
-    this.publish(this.lastStore, this.getValue(time));
   }
 
   bufferedRanges(): Array<[number, number]> {
@@ -502,19 +340,15 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       });
 
       for (const frame of result.frames) {
-        // Local edits made before the fetch landed are discarded — the
-        // server response is the new source of truth. (Once the delta
-        // supplier exists, in-flight edits will be tracked separately
-        // and reconciled on persistence success.)
+        // The /frames response is the seed; the engine owns edits, so the
+        // stream never reconciles local state against the fetch.
         this.cache.set(frame.frame_number, frame);
-        this.baseline.set(frame.frame_number, frame);
-        this.dirty.delete(frame.frame_number);
       }
 
       mergeRange(this.fetchedRanges, result.range);
 
       if (result.frames.length > 0) {
-        this.bumpEditVersion();
+        this.notifyEdits();
       }
     } catch (error) {
       // Surface but don't crash — the engine will keep asking; subsequent
@@ -572,11 +406,14 @@ function extractDetections(
 }
 
 /**
- * Derive a detection's cross-frame overlay id. Prefers `instance._id` so
- * tracked instances keep one identity across frames; falls back to
- * `track-${index}` for legacy data carrying only a numeric index, then to
- * the per-frame `_id` for untracked, un-instanced detections. `null` when
- * the detection carries no usable identifier.
+ * Derive a detection's cross-frame overlay id for the read-only snapshot.
+ * Prefers `instance._id` so tracked instances keep one identity across frames;
+ * falls back to `track-${index}` for legacy data carrying only a numeric index,
+ * then to the per-frame `_id` for untracked, un-instanced detections. `null`
+ * when the detection carries no usable identifier.
+ *
+ * Note: this is the snapshot's synthetic scheme; the engine addresses tracks by
+ * the raw `instance._id` (see `trackIdentity`).
  */
 export function resolveSyntheticId(det: RawDetection): string | null {
   if (det.instance?._id) {
@@ -588,22 +425,4 @@ export function resolveSyntheticId(det: RawDetection): string | null {
   }
 
   return det._id ?? det.id ?? null;
-}
-
-/**
- * Return a shallow copy of `frame` with the `detections` list under
- * `frameField` replaced by `fn(list)`. Preserves the original `frame`
- * object so the baseline map keeps pointing at it.
- */
-function withDetectionList(
-  frame: FrameDoc,
-  frameField: string,
-  fn: (list: RawDetection[]) => RawDetection[]
-): FrameDoc {
-  const existing = frame[frameField] as RawDetectionsField | undefined;
-  const list = existing?.detections ?? [];
-  return {
-    ...frame,
-    [frameField]: { ...existing, detections: fn(list) },
-  } as FrameDoc;
 }
