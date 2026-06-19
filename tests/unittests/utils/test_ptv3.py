@@ -278,14 +278,13 @@ class TestLoadSamplePointCloud:
         monkeypatch.setattr(fou3d, "o3d", fake)
 
     def test_appends_intensity_from_color_channel(self, monkeypatch):
-        from fiftyone.core.models import _load_sample_point_cloud
+        from fiftyone.core.models import _load_point_cloud
 
         xyz = np.random.rand(12, 3)
         rgb = np.random.rand(12, 3)  # FiftyOne stores intensity in R channel
         self._patch_reader(monkeypatch, xyz, rgb)
 
-        sample = type("S", (), {"filepath": "/data/foo.pcd"})()
-        points = _load_sample_point_cloud(sample)
+        points = _load_point_cloud("/data/foo.pcd")
 
         assert points.shape == (12, 4)
         np.testing.assert_allclose(
@@ -293,14 +292,13 @@ class TestLoadSamplePointCloud:
         )
 
     def test_xyz_only_when_no_color_channel(self, monkeypatch):
-        from fiftyone.core.models import _load_sample_point_cloud
+        from fiftyone.core.models import _load_point_cloud
 
         xyz = np.random.rand(12, 3)
         empty = np.zeros((0, 3))  # Open3D returns no colors for xyz-only PCDs
         self._patch_reader(monkeypatch, xyz, empty)
 
-        sample = type("S", (), {"filepath": "/data/foo.pcd"})()
-        points = _load_sample_point_cloud(sample)
+        points = _load_point_cloud("/data/foo.pcd")
 
         assert points.shape == (12, 3)
 

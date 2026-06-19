@@ -1108,7 +1108,13 @@ def compute_embeddings(
 
     if model.media_type in (fom.POINT_CLOUD, fom.THREE_D):
         return _compute_pointcloud_embeddings(
-            samples, model, embeddings_field, skip_failures, progress
+            samples,
+            model,
+            embeddings_field,
+            batch_size,
+            num_workers,
+            skip_failures,
+            progress,
         )
 
     if samples.media_type == fom.IMAGE:
@@ -1224,7 +1230,13 @@ def compute_embeddings(
 
 
 def _compute_pointcloud_embeddings(
-    samples, model, embeddings_field, skip_failures, progress
+    samples,
+    model,
+    embeddings_field,
+    batch_size,
+    num_workers,
+    skip_failures,
+    progress,
 ):
     if samples.media_type == fom.GROUP:
         raise fom.SelectGroupSlicesError((fom.POINT_CLOUD, fom.THREE_D))
@@ -1242,34 +1254,77 @@ def _compute_pointcloud_embeddings(
 
     samples = _select_fields_for_embeddings(samples, embeddings_field)
 
+    if batch_size is None:
+        batch_size = 1
+
+    num_workers = fout.recommend_num_workers(num_workers)
+
+    # Load point clouds in worker processes so that disk I/O overlaps with GPU
+    # inference, mirroring the image embeddings data loader
+    torch_dataset = samples.to_torch(
+        _pointcloud_get_item(), skip_failures=skip_failures
+    )
+    collate_fn = ErrorHandlingCollate(
+        skip_failures,
+        ragged_batches=True,
+        use_numpy=True,
+        user_collate_fn=None,
+    )
+    data_loader = tud.DataLoader(
+        torch_dataset,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        collate_fn=collate_fn,
+        persistent_workers=False,
+        worker_init_fn=fout.FiftyOneTorchDataset.worker_init,
+    )
+
     embeddings = []
     errors = False
 
     with contextlib.ExitStack() as context:
-        pb = context.enter_context(fou.ProgressBar(progress=progress))
+        pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
         if embeddings_field is not None:
-            ctx = context.enter_context(foc.SaveContext(samples))
+            ctx = context.enter_context(
+                foc.SaveContext(samples, async_writes=True)
+            )
+        else:
+            ctx = None
 
         context.enter_context(model)
 
-        for sample in pb(samples):
-            embedding = None
+        for sample_batch, clouds in zip(
+            fou.iter_batches(samples, batch_size),
+            data_loader,
+        ):
+            embeddings_batch = [None] * len(sample_batch)
 
             try:
-                points = _load_sample_point_cloud(sample)
-                embedding = model.embed(points)
+                if isinstance(clouds, Exception):
+                    raise clouds
+
+                embeddings_batch = list(model.embed_all(clouds))
             except Exception as e:
                 if not skip_failures:
                     raise e
 
                 errors = True
-                logger.warning("Sample: %s\nError: %s\n", sample.id, e)
+                logger.warning(
+                    "Batch: %s - %s\nError: %s\n",
+                    sample_batch[0].id,
+                    sample_batch[-1].id,
+                    e,
+                )
 
             if embeddings_field is not None:
-                sample[embeddings_field] = embedding
-                ctx.save(sample)
+                for sample, embedding in zip(sample_batch, embeddings_batch):
+                    sample[embeddings_field] = embedding
+                    if ctx:
+                        ctx.save(sample)
             else:
-                embeddings.append(embedding)
+                embeddings.extend(embeddings_batch)
+
+            pb.update(len(sample_batch))
 
     if embeddings_field is not None:
         return None
@@ -1283,10 +1338,35 @@ def _compute_pointcloud_embeddings(
     return np.stack(embeddings)
 
 
-def _load_sample_point_cloud(sample):
+_POINTCLOUD_GET_ITEM_CLS = None
+
+
+def _pointcloud_get_item():
+    # Built lazily and cached at module scope: subclassing ``fout.GetItem`` (a
+    # lazy import) at module load time would trigger a circular import, but the
+    # class must remain resolvable by qualified name so DataLoader workers can
+    # unpickle it
+    global _POINTCLOUD_GET_ITEM_CLS
+    if _POINTCLOUD_GET_ITEM_CLS is None:
+
+        class _PointCloudGetItem(fout.GetItem):
+            @property
+            def required_keys(self):
+                return ["filepath"]
+
+            def __call__(self, d):
+                return _load_point_cloud(d["filepath"])
+
+        _PointCloudGetItem.__qualname__ = "_PointCloudGetItem"
+        globals()["_PointCloudGetItem"] = _PointCloudGetItem
+        _POINTCLOUD_GET_ITEM_CLS = _PointCloudGetItem
+
+    return _POINTCLOUD_GET_ITEM_CLS()
+
+
+def _load_point_cloud(filepath):
     import fiftyone.utils.utils3d as fou3d
 
-    filepath = sample.filepath
     if filepath.endswith(".fo3d"):
         pcd_path = fou3d._get_pcd_filepath_from_scene(filepath)
         if pcd_path is None:
