@@ -1252,32 +1252,22 @@ def _compute_pointcloud_embeddings(
         if not dataset.has_sample_field(embeddings_field):
             dataset.add_sample_field(embeddings_field, fof.VectorField)
 
-    samples = _select_fields_for_embeddings(samples, embeddings_field)
-
     if batch_size is None:
         batch_size = 1
 
-    num_workers = fout.recommend_num_workers(num_workers)
-
     # Load point clouds in worker processes so that disk I/O overlaps with GPU
     # inference, mirroring the image embeddings data loader
-    torch_dataset = samples.to_torch(
-        _pointcloud_get_item(), skip_failures=skip_failures
-    )
-    collate_fn = ErrorHandlingCollate(
+    data_loader = _make_data_loader(
+        samples,
+        model,
+        batch_size,
+        num_workers,
         skip_failures,
-        ragged_batches=True,
-        use_numpy=True,
-        user_collate_fn=None,
+        field_mapping=None,
+        pin_memory=False,
     )
-    data_loader = tud.DataLoader(
-        torch_dataset,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        collate_fn=collate_fn,
-        persistent_workers=False,
-        worker_init_fn=fout.FiftyOneTorchDataset.worker_init,
-    )
+
+    samples = _select_fields_for_embeddings(samples, embeddings_field)
 
     embeddings = []
     errors = False
@@ -1336,62 +1326,6 @@ def _compute_pointcloud_embeddings(
         return np.empty((0, 0), dtype=float)
 
     return np.stack(embeddings)
-
-
-_POINTCLOUD_GET_ITEM_CLS = None
-
-
-def _pointcloud_get_item():
-    # Built lazily and cached at module scope: subclassing ``fout.GetItem`` (a
-    # lazy import) at module load time would trigger a circular import, but the
-    # class must remain resolvable by qualified name so DataLoader workers can
-    # unpickle it
-    global _POINTCLOUD_GET_ITEM_CLS
-    if _POINTCLOUD_GET_ITEM_CLS is None:
-
-        class _PointCloudGetItem(fout.GetItem):
-            @property
-            def required_keys(self):
-                return ["filepath"]
-
-            def __call__(self, d):
-                return _load_point_cloud(d["filepath"])
-
-        _PointCloudGetItem.__qualname__ = "_PointCloudGetItem"
-        globals()["_PointCloudGetItem"] = _PointCloudGetItem
-        _POINTCLOUD_GET_ITEM_CLS = _PointCloudGetItem
-
-    return _POINTCLOUD_GET_ITEM_CLS()
-
-
-def _load_point_cloud(filepath):
-    import fiftyone.utils.utils3d as fou3d
-
-    if filepath.endswith(".fo3d"):
-        pcd_path = fou3d._get_pcd_filepath_from_scene(filepath)
-        if pcd_path is None:
-            raise ValueError(
-                "Found no point cloud asset in 3D scene '%s'" % filepath
-            )
-    else:
-        pcd_path = filepath
-
-    pc = fou3d.o3d.io.read_point_cloud(pcd_path)
-    points = np.asarray(pc.points, dtype=np.float32)
-    if points.size == 0:
-        raise ValueError("Point cloud '%s' contains no points" % pcd_path)
-
-    # FiftyOne stores per-point LiDAR intensity in the PCD color channel,
-    # normalized to [0, 1] by Open3D, so surface the red channel as a fourth
-    # feature column for models trained with intensity (e.g. the nuScenes PTv3
-    # backbone). Note: for a genuinely RGB-colored point cloud this feeds the
-    # red channel as the intensity feature; there is no portable way to tell
-    # intensity-in-color apart from true RGB
-    colors = np.asarray(pc.colors, dtype=np.float32)
-    if colors.ndim == 2 and colors.shape[0] == points.shape[0]:
-        points = np.concatenate([points, colors[:, :1]], axis=1)
-
-    return points
 
 
 def _compute_image_embeddings_single(

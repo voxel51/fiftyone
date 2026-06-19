@@ -25,6 +25,8 @@ import fiftyone.zoo.models as fozm
 fou.ensure_torch()
 import torch
 
+import fiftyone.utils.torch as fout
+
 
 # The nuScenes ``PTv3-base`` backbone configuration. These match the upstream
 # config the released checkpoint was trained with; see
@@ -128,25 +130,19 @@ class PointTransformerV3ModelConfig(foc.Config, fozm.HasZooModel):
         self.device = self.parse_string(d, "device", default=None)
 
 
-class PointTransformerV3Model(fomo.Model, fomo.EmbeddingsMixin):
-    """FiftyOne embeddings wrapper around a Point Transformer V3 backbone.
+class PointTransformerV3Model(
+    fomo.Model, fomo.EmbeddingsMixin, fomo.SupportsGetItem
+):
+    """FiftyOne embeddings model wrapping a Point Transformer V3 backbone.
 
-    The model maps a point cloud of shape ``(num_points, num_features)`` to a
-    single embedding vector by mean-pooling the backbone's per-point features.
-    The input columns must match :attr:`PointTransformerV3ModelConfig.feature_keys`,
-    e.g. ``(x, y, z, intensity)`` for the default nuScenes checkpoint.
+    Maps a point cloud of shape ``(num_points, num_features)`` to a single
+    embedding by mean-pooling the backbone's per-point features. Input columns
+    must match :attr:`PointTransformerV3ModelConfig.feature_keys`, e.g.
+    ``(x, y, z, intensity)`` for the default nuScenes checkpoint.
 
-    Inference is GPU-only and peaks near 6 GB of VRAM on a full nuScenes-scale
-    sweep (~34k points); at least 8 GB is recommended.
-
-    The backbone is a semantic-segmentation network and the embedding is its
-    mean-pooled per-point features. The sparse-convolution kernels accumulate
-    atomically, so embeddings vary by a fraction of a percent between runs and
-    are not bit-reproducible across machines; this is fine for similarity but
-    not for exact-hash deduplication. When a cloud is read from a ``.pcd`` via
-    the dataset path, per-point LiDAR intensity is taken from the Open3D color
-    channel (FiftyOne's convention), so a genuinely RGB-colored cloud would feed
-    its red channel as the intensity feature.
+    GPU-only; peaks near 6 GB of VRAM on a full nuScenes-scale sweep. Embeddings
+    vary by a fraction of a percent between runs (atomic sparse-conv kernels),
+    which is fine for similarity but not exact-hash dedup.
 
     Example::
 
@@ -154,9 +150,7 @@ class PointTransformerV3Model(fomo.Model, fomo.EmbeddingsMixin):
         import fiftyone.zoo as foz
 
         model = foz.load_zoo_model("point-transformer-v3-nuscenes-torch")
-
-        cloud = np.random.rand(20000, 4).astype("float32")  # x, y, z, intensity
-        embedding = model.embed(cloud)                       # (64,)
+        embedding = model.embed(np.random.rand(20000, 4).astype("float32"))
 
     Args:
         config: a :class:`PointTransformerV3ModelConfig`
@@ -201,6 +195,13 @@ class PointTransformerV3Model(fomo.Model, fomo.EmbeddingsMixin):
     def ragged_batches(self):
         # Point clouds have varying numbers of points
         return True
+
+    @property
+    def has_collate_fn(self):
+        return False
+
+    def build_get_item(self, field_mapping=None):
+        return PointCloudGetItem(field_mapping=field_mapping)
 
     @property
     def transforms(self):
@@ -372,6 +373,47 @@ class PointTransformerV3Model(fomo.Model, fomo.EmbeddingsMixin):
                 [num_points], dtype=torch.long, device=self._device
             ),
         }
+
+
+class PointCloudGetItem(fout.GetItem):
+    """Loads point clouds for :class:`PointTransformerV3Model` data loaders."""
+
+    @property
+    def required_keys(self):
+        return ["filepath"]
+
+    def __call__(self, d):
+        return _load_point_cloud(d["filepath"])
+
+
+def _load_point_cloud(filepath):
+    import fiftyone.utils.utils3d as fou3d
+
+    if filepath.endswith(".fo3d"):
+        pcd_path = fou3d._get_pcd_filepath_from_scene(filepath)
+        if pcd_path is None:
+            raise ValueError(
+                "Found no point cloud asset in 3D scene '%s'" % filepath
+            )
+    else:
+        pcd_path = filepath
+
+    pc = fou3d.o3d.io.read_point_cloud(pcd_path)
+    points = np.asarray(pc.points, dtype=np.float32)
+    if points.size == 0:
+        raise ValueError("Point cloud '%s' contains no points" % pcd_path)
+
+    # FiftyOne stores per-point LiDAR intensity in the PCD color channel,
+    # normalized to [0, 1] by Open3D, so surface the red channel as a fourth
+    # feature column for models trained with intensity (e.g. the nuScenes PTv3
+    # backbone). Note: for a genuinely RGB-colored point cloud this feeds the
+    # red channel as the intensity feature; there is no portable way to tell
+    # intensity-in-color apart from true RGB
+    colors = np.asarray(pc.colors, dtype=np.float32)
+    if colors.ndim == 2 and colors.shape[0] == points.shape[0]:
+        points = np.concatenate([points, colors[:, :1]], axis=1)
+
+    return points
 
 
 def _load_backbone_state_dict(model_path: str) -> dict:

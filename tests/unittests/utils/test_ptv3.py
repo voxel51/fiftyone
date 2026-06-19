@@ -12,6 +12,7 @@ import torch
 
 import fiftyone.core.models as fomo
 from fiftyone.utils.ptv3 import (
+    PointCloudGetItem,
     PointTransformerV3Model,
     PointTransformerV3ModelConfig,
     _load_backbone_state_dict,
@@ -278,7 +279,7 @@ class TestLoadSamplePointCloud:
         monkeypatch.setattr(fou3d, "o3d", fake)
 
     def test_appends_intensity_from_color_channel(self, monkeypatch):
-        from fiftyone.core.models import _load_point_cloud
+        from fiftyone.utils.ptv3 import _load_point_cloud
 
         xyz = np.random.rand(12, 3)
         rgb = np.random.rand(12, 3)  # FiftyOne stores intensity in R channel
@@ -292,7 +293,7 @@ class TestLoadSamplePointCloud:
         )
 
     def test_xyz_only_when_no_color_channel(self, monkeypatch):
-        from fiftyone.core.models import _load_point_cloud
+        from fiftyone.utils.ptv3 import _load_point_cloud
 
         xyz = np.random.rand(12, 3)
         empty = np.zeros((0, 3))  # Open3D returns no colors for xyz-only PCDs
@@ -308,3 +309,13 @@ class TestGpuRequirement:
         monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
         with pytest.raises(ValueError, match="GPU"):
             PointTransformerV3Model(object())
+
+
+class TestGetItem:
+    def test_is_supports_get_item(self):
+        assert issubclass(PointTransformerV3Model, fomo.SupportsGetItem)
+
+    def test_build_get_item(self):
+        get_item = _make_model().build_get_item()
+        assert isinstance(get_item, PointCloudGetItem)
+        assert get_item.required_keys == ["filepath"]
