@@ -1,9 +1,11 @@
 /**
  * The temporal {@link TemporalView}: presence is the pool subset whose
- * occurrence coordinate matches the playhead's current frame (sample-level
- * refs — `frame == null` — are always present). Time lives in the {@link Clock}
- * (seconds); each frame view maps time to its own frame, so concurrently-
- * playing media at different fps stay in sync through shared time.
+ * occurrence coordinate matches the playhead's current frame. Sample-level refs
+ * (`frame == null`) are present too, EXCEPT temporal detections, which are gated
+ * by their `support` span — a TD shows only while the playhead sits inside
+ * `[support[0], support[1]]`. Time lives in the {@link Clock} (seconds); each
+ * frame view maps time to its own frame, so concurrently-playing media at
+ * different fps stay in sync through shared time.
  *
  * Presence is tracked at LINKAGE (track) granularity, not full-ref: one track
  * has one box per frame, so moving the playhead within a track's span is a
@@ -88,7 +90,11 @@ export class FrameTemporalView implements TemporalView {
   }
 
   isPresent(ref: LabelRef): boolean {
-    return ref.frame == null || ref.frame === this.currentFrame();
+    if (ref.frame == null) {
+      return this.sampleLevelPresent(ref, this.currentFrame());
+    }
+
+    return ref.frame === this.currentFrame();
   }
 
   subscribePresence(listener: PresenceListener): () => void {
@@ -110,12 +116,48 @@ export class FrameTemporalView implements TemporalView {
     const present = new Map<string, LabelRef>();
 
     for (const ref of this.reads.enumerateLabels(ALL_LABEL_TYPES)) {
-      if (ref.frame == null || ref.frame === frame) {
+      if (ref.frame == null) {
+        if (this.sampleLevelPresent(ref, frame)) {
+          present.set(linkageKey(ref), ref);
+        }
+
+        continue;
+      }
+
+      if (ref.frame === frame) {
         present.set(linkageKey(ref), ref);
       }
     }
 
     return present;
+  }
+
+  /**
+   * Sample-level presence: most sample-level labels are always present, but a
+   * temporal detection is gated by its `support` span. A malformed / missing
+   * support falls through to present so a label is never silently dropped.
+   */
+  private sampleLevelPresent(ref: LabelRef, frame: number): boolean {
+    const label = this.reads.getLabel(ref) as
+      | { _cls?: string; support?: unknown }
+      | undefined;
+
+    if (!label || label._cls !== "TemporalDetection") {
+      return true;
+    }
+
+    const support = label.support;
+
+    if (
+      !Array.isArray(support) ||
+      support.length !== 2 ||
+      !Number.isFinite(support[0]) ||
+      !Number.isFinite(support[1])
+    ) {
+      return true;
+    }
+
+    return frame >= support[0] && frame <= support[1];
   }
 
   private onClock(): void {
