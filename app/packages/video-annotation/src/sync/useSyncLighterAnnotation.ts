@@ -9,7 +9,6 @@ import {
   useLighterEventHandler,
 } from "@fiftyone/lighter";
 import { useCallback } from "react";
-import { useLabelsContext } from "../../../core/src/components/Modal/Sidebar/Annotate";
 import { useDetectionMode } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useDetectionMode";
 import useExit from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useExit";
 import { useCurrentEditingOverlay } from "../state/accessors";
@@ -28,13 +27,11 @@ import { useCurrentEditingOverlay } from "../state/accessors";
  *   - **Mode quit**: `lighter:detection-mode-quit` and
  *     `lighter:active-mode-quit-requested` (right-click / Esc) →
  *     `detectionMode.deactivateDetectionMode()`.
- *   - **Transient sidebar cleanup**: `lighter:overlay-removed` →
- *     `removeLabelFromSidebar`. Snapshot-driven membership lives in
- *     {@link useSyncSidebarFromSnapshot}.
+ *   - **Editor teardown**: `lighter:overlay-removed` for a `td-` overlay that
+ *     is open in the editor → `exit()`.
  *
- * Sidebar membership and per-frame data freshness are otherwise owned by
- * {@link useSyncSidebarFromSnapshot}, which reconciles against the current
- * `FrameLabelSnapshot`.
+ * Sidebar membership is engine-derived (`useEntries` reads engine presence), so
+ * nothing here pushes or prunes sidebar rows.
  * @param scene - The scene to bridge, or `null` while it's still being
  *   set up. When `null`, handlers attach to an inert sentinel channel
  *   and re-bind once the real scene becomes available.
@@ -43,7 +40,6 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
   const useEventHandler = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
-  const { removeLabelFromSidebar } = useLabelsContext();
   const detectionMode = useDetectionMode();
   const exit = useExit();
   const editingOverlay = useCurrentEditingOverlay();
@@ -66,12 +62,12 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
     "lighter:overlay-removed",
     useCallback(
       (payload) => {
-        removeLabelFromSidebar(payload.id);
         // A TemporalDetection deleted from the timeline context menu removes
         // its overlay directly; if it was the one open in the editor, tear
         // the now-dangling edit panel down. Scoped to `td-` ids so the
         // fresh-draw overlay swap (which also removes an overlay mid-edit,
-        // then re-selects its replacement) is left untouched.
+        // then re-selects its replacement) is left untouched. Sidebar rows are
+        // engine-derived, so there's nothing to prune here.
         if (
           payload.id?.startsWith("td-") &&
           editingOverlay?.id === payload.id
@@ -79,7 +75,7 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
           exit();
         }
       },
-      [removeLabelFromSidebar, exit, editingOverlay]
+      [exit, editingOverlay]
     )
   );
 

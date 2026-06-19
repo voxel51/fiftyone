@@ -6,14 +6,6 @@ import { IMAVID_STREAM_ID } from "../utils/ids";
 import type { ImaVidImageFrame } from "../streams/ImaVidImageStream";
 import styles from "./ImaVidLighterTile.module.css";
 
-export interface ImaVidLighterTileProps {
-  /**
-   * Schema field name the labels are reported under. Threaded through
-   * the overlays so activePaths / color-mapping flow.
-   */
-  field: string;
-}
-
 /**
  * ImaVid tile — draws each frame's `ImageBitmap` (decoded off-main in
  * `framesWorker`) into a `<canvas>` and overlays Lighter on top.
@@ -23,9 +15,7 @@ export interface ImaVidLighterTileProps {
  * bitmap multiple times (a frame revisited after scrub) and
  * `transferFromImageBitmap` would consume it.
  */
-export const ImaVidLighterTile: React.FC<ImaVidLighterTileProps> = ({
-  field,
-}) => {
+export const ImaVidLighterTile: React.FC = () => {
   const sourceId = IMAVID_STREAM_ID;
 
   const lighterHostRef = useRef<HTMLDivElement | null>(null);
@@ -53,7 +43,6 @@ export const ImaVidLighterTile: React.FC<ImaVidLighterTileProps> = ({
   // picture, not just the overlays.
   useVideoAnnotationSyncBundle({
     scene,
-    field,
     canonicalMediaReady,
     mediaRef: frameCanvasRef,
   });

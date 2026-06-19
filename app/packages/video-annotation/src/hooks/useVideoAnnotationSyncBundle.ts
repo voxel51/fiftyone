@@ -4,23 +4,21 @@
 
 import { useLighterSetupWithPixi } from "@fiftyone/lighter";
 import type { RefObject } from "react";
-import { useStream } from "@fiftyone/playback";
-import type { FrameLabelSnapshot } from "../streams/SyntheticLabelStream";
-import { useFrameOverlaySync } from "../sync/useFrameOverlaySync";
 import { useSyncLighterAnnotation } from "../sync/useSyncLighterAnnotation";
-import { useSyncLighterLabelStream } from "../sync/useSyncLighterLabelStream";
 import { useSyncMediaTransform } from "../sync/useSyncMediaTransform";
-import { useSyncSidebarFromSnapshot } from "../sync/useSyncSidebarFromSnapshot";
-import { useSyncSidebarFromTemporalOverlays } from "../sync/useSyncSidebarFromTemporalOverlays";
 import { useTemporalOverlaySync } from "../sync/useTemporalOverlaySync";
-import { LABELS_STREAM_ID } from "../utils/ids";
 
 type TileScene = ReturnType<typeof useLighterSetupWithPixi>["scene"];
 
 /**
- * The complete set of overlay / sidebar sync hooks both lighter tiles wire
- * up, in their order-sensitive order. The labels-stream snapshot is acquired
- * internally so the tile never touches the stream id.
+ * The overlay / sync hooks both lighter tiles wire up, in their order-sensitive
+ * order.
+ *
+ * Frame detections render through the engine's frame-locked Lighter bridge
+ * (mounted by `useVideoLighterEngineBridge`); TD canvas chips are engine-sourced
+ * and sidebar membership is engine-derived (`useEntries`). What remains here:
+ * the TD overlay sync, the draw-mode / mode-quit event bridges, and media
+ * transform tracking.
  *
  * `mediaRef` is the element the media transform tracks so scroll-zoom scales
  * the picture, not just the overlays — the `<video>` for the native tile, the
@@ -28,24 +26,14 @@ type TileScene = ReturnType<typeof useLighterSetupWithPixi>["scene"];
  */
 export function useVideoAnnotationSyncBundle<T extends HTMLElement>({
   scene,
-  field,
   canonicalMediaReady,
   mediaRef,
 }: {
   scene: TileScene;
-  field: string;
   canonicalMediaReady: boolean;
   mediaRef: RefObject<T | null>;
 }): void {
-  const snapshot = useStream<FrameLabelSnapshot>(LABELS_STREAM_ID);
-
-  useFrameOverlaySync(scene, snapshot, field, canonicalMediaReady);
   useTemporalOverlaySync(scene, canonicalMediaReady);
-  useSyncSidebarFromSnapshot(scene, snapshot, field, canonicalMediaReady);
-  useSyncSidebarFromTemporalOverlays(scene, canonicalMediaReady);
-
   useSyncLighterAnnotation(scene);
-  useSyncLighterLabelStream(scene);
-
   useSyncMediaTransform(scene, mediaRef);
 }

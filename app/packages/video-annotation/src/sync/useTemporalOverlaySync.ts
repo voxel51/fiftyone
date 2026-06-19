@@ -3,6 +3,11 @@
  */
 
 import {
+  useActiveSampleId,
+  useAnnotationEngine,
+  useEngineSelector,
+} from "@fiftyone/annotation";
+import {
   overlayFactory,
   TemporalOverlay,
   type TemporalLabel,
@@ -13,7 +18,10 @@ import { useModalSample } from "@fiftyone/state";
 import { isTemporalDetectionsField } from "@fiftyone/utilities";
 import { useEffect, useRef } from "react";
 import { frameAt, usePlayhead } from "@fiftyone/playback";
-import { useActiveModalPaths } from "../state/accessors";
+import {
+  useActiveModalPaths,
+  useTemporalDetectionFieldPaths,
+} from "../state/accessors";
 import { getModalSampleFrameRate } from "../utils/modalSample";
 
 /**
@@ -31,12 +39,10 @@ interface SceneLike {
 export interface SyncTemporalOverlaysInput {
   scene: SceneLike;
   /**
-   * Sample from the server-side store. Scene-side overlay edits are
-   * not reflected here — overlays own their state until autosave
-   * round-trips. Overlays added directly to the scene by other code
-   * (e.g. `CreateTemporalDetectionCommand`) aren't in `overlays`, so
-   * the eviction pass leaves them alone; they're adopted on the next
-   * sync once the refetched sample carries their `_id`.
+   * TD set shaped like a sample dict (`{ [field]: { _cls:
+   * "TemporalDetections", detections } }`). The video hook builds this from the
+   * engine (the authoritative TD source), so it already carries local creates /
+   * edits; the diff adds, refreshes, and evicts overlays to match it.
    */
   sample: Record<string, unknown> | null | undefined;
   activePaths: ReadonlySet<string>;
@@ -103,17 +109,17 @@ export function syncTemporalOverlays({
       next.add(id);
       const label = td as unknown as TemporalLabel;
 
-      // Adopt an existing overlay (ours or one `useCreateAnnotationLabel`
-      // added) so concurrent paths don't double-add at the same id.
+      // Adopt an existing overlay at the same id so concurrent paths don't
+      // double-add.
       const adopted =
         overlays.get(id) ??
         (scene.getOverlay(id) as TemporalOverlay | undefined);
 
       if (adopted) {
-        // Overlay owns its label state post-creation — don't clobber
-        // local edits with re-rendered sample data. The persistence
-        // layer flushes the overlay's state at autosave; sample data
-        // here is only used to determine which TDs exist.
+        // The engine is the authoritative TD source, so refresh the overlay's
+        // label from it — a support / label edit made through the engine shows
+        // on the canvas chip without waiting for an autosave round-trip.
+        adopted.label = label;
         overlays.set(id, adopted);
       } else {
         const created = create({ id, field: fieldPath, label });
@@ -132,15 +138,47 @@ export function syncTemporalOverlays({
 }
 
 /**
- * Keep the Lighter scene's `TemporalOverlay` set in sync with the
- * modal sample's `TemporalDetections` fields, and push the playhead
- * frame into each overlay so the time gate updates live.
+ * Build the engine's sample-level temporal detections, shaped like a sample
+ * dict so {@link syncTemporalOverlays} can consume them the same way it used to
+ * consume the server sample. Reads the engine — the authoritative TD source —
+ * so local creates / edits are reflected immediately.
+ */
+const buildEngineTemporalSample = (
+  engine: { listLabels: (ref: { sample: string; path: string }) => unknown[] },
+  sample: string,
+  tdPaths: readonly string[]
+): Record<string, unknown> => {
+  const out: Record<string, unknown> = {};
+
+  for (const path of tdPaths) {
+    // TDs are sample-level; never the per-frame `frames.` fields.
+    if (path.startsWith("frames.")) {
+      continue;
+    }
+
+    const detections = engine.listLabels({ sample, path });
+    if (detections.length) {
+      out[path] = { _cls: "TemporalDetections", detections };
+    }
+  }
+
+  return out;
+};
+
+const sameTemporalSample = (
+  a: Record<string, unknown>,
+  b: Record<string, unknown>
+): boolean => JSON.stringify(a) === JSON.stringify(b);
+
+/**
+ * Keep the Lighter scene's `TemporalOverlay` set in sync with the engine's
+ * `TemporalDetections`, and push the playhead frame into each overlay so the
+ * time gate updates live.
  *
- * Mirrors {@link useFrameOverlaySync}'s shape: pass `scene` +
- * `canonicalMediaReady` from the host tile; the hook owns the diff
- * lifecycle. Cleans up every tracked overlay on scene change /
- * unmount. Locally-edited overlays are the source of truth, so
- * unsynced edits stay in place until the sample re-fetch lands.
+ * The TD set is sourced from the engine (authoritative), so creates / edits /
+ * deletes show on the canvas without waiting for an autosave round-trip. Pass
+ * `scene` + `canonicalMediaReady` from the host tile; the hook owns the diff
+ * lifecycle and cleans up every tracked overlay on scene change / unmount.
  */
 export function useTemporalOverlaySync(
   scene: ReturnType<typeof useLighterSetupWithPixi>["scene"],
@@ -148,14 +186,25 @@ export function useTemporalOverlaySync(
 ): void {
   const overlaysRef = useRef<Map<string, TemporalOverlay>>(new Map());
 
-  const sample = useModalSample();
+  const engine = useAnnotationEngine();
+  const sampleId = useActiveSampleId();
+  const tdPaths = useTemporalDetectionFieldPaths();
   const activePathsList = useActiveModalPaths();
+  const modalSample = useModalSample();
 
-  // Current playhead frame. fps comes from the sample (same source the TD
-  // track build uses). Held in a ref so the sync effect can seed newly-added
+  // Engine-authoritative TD set as a sample dict; stable across unrelated engine
+  // bumps so the sync effect only re-runs when the TDs actually change.
+  const temporalSample = useEngineSelector(
+    engine,
+    (e) => (sampleId ? buildEngineTemporalSample(e, sampleId, tdPaths) : {}),
+    sameTemporalSample
+  );
+
+  // Current playhead frame. fps comes from the sample metadata (labels live in
+  // the engine now). Held in a ref so the sync effect can seed newly-added
   // overlays without re-running on every playhead tick.
   const playheadSec = usePlayhead();
-  const frameRate = getModalSampleFrameRate(sample);
+  const frameRate = getModalSampleFrameRate(modalSample);
   const currentFrame =
     frameRate && Number.isFinite(frameRate) && frameRate > 0
       ? frameAt(playheadSec, frameRate)
@@ -169,10 +218,9 @@ export function useTemporalOverlaySync(
     }
 
     const activePaths = new Set(activePathsList);
-    const baseSample = (sample?.sample as Record<string, unknown>) ?? null;
     syncTemporalOverlays({
       scene,
-      sample: baseSample,
+      sample: temporalSample,
       activePaths,
       overlays: overlaysRef.current,
     });
@@ -186,7 +234,7 @@ export function useTemporalOverlaySync(
         overlay.setCurrentFrame(currentFrameRef.current);
       }
     }
-  }, [scene, sample, canonicalMediaReady, activePathsList]);
+  }, [scene, temporalSample, canonicalMediaReady, activePathsList]);
 
   // Push the playhead frame into each tracked overlay on playhead changes.
   useEffect(() => {

@@ -9,16 +9,7 @@ import styles from "./VideoLighterTile.module.css";
 export interface VideoLighterTileProps {
   /** Resolved media URL for the video. */
   videoSrc: string;
-  /**
-   * // todo - multiple fields
-   * Schema field name the labels are reported under. Should match a real
-   * field on the dataset so activePaths / color-mapping flow through.
-   */
-  field?: string;
 }
-
-// todo - annotation state
-const DEFAULT_FIELD = "synthetic_detections";
 
 /**
  * <video> bound to the playback engine, Lighter overlaid on top,
@@ -26,7 +17,6 @@ const DEFAULT_FIELD = "synthetic_detections";
  */
 export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
   videoSrc,
-  field = DEFAULT_FIELD,
 }) => {
   const sourceId = VIDEO_STREAM_ID;
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -61,7 +51,6 @@ export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
   // the Lighter viewport so scroll-zoom scales the picture, not just overlays.
   useVideoAnnotationSyncBundle({
     scene,
-    field,
     canonicalMediaReady,
     mediaRef: videoRef,
   });
