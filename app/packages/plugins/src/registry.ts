@@ -12,7 +12,17 @@ declare global {
   }
 }
 
+// Holds the registry when evaluated outside a browser (Next.js SSR), where
+// `window` is undefined and the top-level registerComponent() calls would throw.
+let serverRegistry: PluginComponentRegistry | undefined;
+
 export function usingRegistry() {
+  if (typeof window === "undefined") {
+    if (!serverRegistry) {
+      serverRegistry = new PluginComponentRegistry();
+    }
+    return serverRegistry;
+  }
   if (!window.__fo_plugin_registry__) {
     window.__fo_plugin_registry__ = new PluginComponentRegistry();
   }
