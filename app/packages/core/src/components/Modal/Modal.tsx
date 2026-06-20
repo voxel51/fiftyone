@@ -1,11 +1,4 @@
 import {
-  useAutoSave,
-  useRegisterAnnotationCommandHandlers,
-  useRegisterAnnotationEventHandlers,
-  useRegisterAnnotationKeybindings,
-  useRegisterRendererEventHandlers,
-} from "@fiftyone/annotation";
-import {
   KnownCommands,
   KnownContexts,
   useKeyBindings,
@@ -14,35 +7,40 @@ import { ErrorDisplayMarkup, HelpPanel, JSONPanel } from "@fiftyone/components";
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
-import { ModalMode, canAnnotate, useModalMode } from "@fiftyone/state";
+import { canAnnotate } from "@fiftyone/state";
 import {
   currentModalUniqueIdJotaiAtom,
   jotaiStore,
 } from "@fiftyone/state/src/jotai";
 import { is3d } from "@fiftyone/utilities";
-import React, { Fragment, Suspense, useCallback, useMemo, useRef } from "react";
+import React, { Suspense, useCallback, useMemo, useRef } from "react";
 import ReactDOM from "react-dom";
 import {
   FallbackProps,
   ErrorBoundary as ReactErrorBoundary,
 } from "react-error-boundary";
-import {
-  useRecoilCallback,
-  useRecoilValue,
-  useRecoilValueLoadable,
-} from "recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Actions from "./Actions";
 import ModalNavigation from "./ModalNavigation";
 import { ModalSpace } from "./ModalSpace";
 import { ModalStatusBar } from "./ModalStatusBar";
 import { Sidebar } from "./Sidebar";
-import { SegmentationToolbar } from "./Sidebar/Annotate/Edit/SegmentationToolbar";
-import { useAnnotationStatus } from "./Sidebar/Annotate/Edit/useAnnotationStatus";
-import { useAnnotationTracking } from "./Sidebar/Annotate/useAnnotationTracking";
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
+
+// Lazily loaded and gated on annotation permission so the heavy in-modal
+// annotation + looker code stays out of the page-load bundle for users who
+// can't annotate.
+const AnnotationModalSupport = React.lazy(
+  () => import("./AnnotationModalSupport")
+);
+const SegmentationToolbar = React.lazy(() =>
+  import("./Sidebar/Annotate/Edit/SegmentationToolbar").then((m) => ({
+    default: m.SegmentationToolbar,
+  }))
+);
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -78,34 +76,6 @@ const SpacesContainer = styled.div`
   z-index: 1501;
 `;
 
-const AnnotationHandlerRegistration = () => {
-  // Sparse groups can have no sample on the active slice; the annotation
-  // hooks below read modalSample and would throw GroupSampleNotFound. Skip
-  // registration entirely until the slice has a sample.
-  const modal = useRecoilValueLoadable(fos.modalSample);
-  if (
-    modal.state === "hasError" &&
-    modal.contents instanceof fos.GroupSampleNotFound
-  ) {
-    return <Fragment />;
-  }
-  return <AnnotationHandlerRegistrationInner />;
-};
-
-const AnnotationHandlerRegistrationInner = () => {
-  useRegisterAnnotationCommandHandlers();
-  useRegisterAnnotationEventHandlers();
-  useRegisterAnnotationKeybindings();
-  useRegisterRendererEventHandlers();
-  useAnnotationTracking();
-
-  const modalMode = useModalMode();
-
-  useAutoSave(modalMode === ModalMode.ANNOTATE);
-
-  return <Fragment />;
-};
-
 const ModalErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
   return (
     <ErrorDisplayMarkup
@@ -116,8 +86,6 @@ const ModalErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
 };
 
 const Modal = () => {
-  useAnnotationStatus();
-
   const wrapperRef = useRef<HTMLDivElement>(null);
   const pointerDownTargetRef = useRef<EventTarget | null>(null);
   const { enabled: isAnnotationEnabled } = useRecoilValue(canAnnotate);
@@ -327,7 +295,7 @@ const Modal = () => {
         <Actions />
         {isAnnotationEnabled && (
           <Suspense>
-            <AnnotationHandlerRegistration />
+            <AnnotationModalSupport />
           </Suspense>
         )}
         <TooltipInfo />
@@ -338,7 +306,11 @@ const Modal = () => {
           >
             <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
             <ModalNavigation closePanels={closePanels} />
-            <SegmentationToolbar />
+            {isAnnotationEnabled && (
+              <Suspense>
+                <SegmentationToolbar />
+              </Suspense>
+            )}
             <SpacesContainer>
               <ModalSpace />
               <ModalStatusBar />

@@ -1,15 +1,14 @@
-import { useAnnotationController } from "@fiftyone/annotation";
 import * as fos from "@fiftyone/state";
+import { useSetAtom } from "jotai";
 import { Operator, OperatorConfig } from "../operators";
 import * as types from "../types";
 
 import type { ExecutionContext } from "../ts";
 
-type AnnotationController = ReturnType<typeof useAnnotationController>;
-
 export type AnnotateHooks = {
   setExpanded: ReturnType<typeof fos.useSetExpandedSample>;
-  enterAnnotationMode: AnnotationController["enterAnnotationMode"];
+  activateAnnotateMode: () => void;
+  setPendingTarget: (target: fos.PendingAnnotationTarget | null) => void;
 };
 
 export type AnnotateParams = {
@@ -39,17 +38,23 @@ export class Annotate extends Operator {
     return new types.Property(inputs);
   }
   useHooks(): AnnotateHooks {
-    const { enterAnnotationMode } = useAnnotationController();
+    const { activateAnnotateMode } = fos.useModalModeController();
     const setExpanded = fos.useSetExpandedSample();
+    const setPendingTarget = useSetAtom(fos.pendingAnnotationTargetAtom);
 
-    return { setExpanded, enterAnnotationMode };
+    return { setExpanded, activateAnnotateMode, setPendingTarget };
   }
   async execute(ctx: ExecutionContext<AnnotateParams, AnnotateHooks>) {
     const { hooks, params } = ctx;
-    const { setExpanded, enterAnnotationMode } = hooks;
+    const { setExpanded, activateAnnotateMode, setPendingTarget } = hooks;
     const { id, group_id, field_path, label_id } = params;
 
+    // Publish the deep-link target for the modal to consume so the operator
+    // needn't import the heavy in-modal annotation controller at startup.
+    if (field_path || label_id) {
+      setPendingTarget({ path: field_path, labelId: label_id });
+    }
+    activateAnnotateMode();
     setExpanded({ id, groupId: group_id });
-    enterAnnotationMode(field_path, label_id);
   }
 }

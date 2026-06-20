@@ -1,9 +1,12 @@
 import { useRegisterAIAnnotationEventHandlers } from "@fiftyone/annotation/src/agents/hooks/useRegisterAIAnnotationEventHandlers";
 import { KnownContexts, useUndoRedo } from "@fiftyone/commands";
 import { LoadingSpinner } from "@fiftyone/components";
-import { useIsGroupDataset } from "@fiftyone/state";
+import {
+  pendingAnnotationTargetAtom,
+  useIsGroupDataset,
+} from "@fiftyone/state";
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import React, { useEffect } from "react";
 import styled from "styled-components";
 import Actions from "./Actions";
@@ -14,7 +17,10 @@ import GroupAnnotation from "./GroupAnnotation";
 import ImportSchema, { useShowImportSchema } from "./ImportSchema";
 import LabelList from "./LabelList";
 import { labelSchemasData } from "./state";
-import { useAnnotationContextManager } from "./useAnnotationContextManager";
+import {
+  useAnnotationContextManager,
+  useSetActiveLabelId,
+} from "./useAnnotationContextManager";
 import type { AnnotationDisabledReason } from "./useCanAnnotate";
 import useLabels from "./useLabels";
 import { useRegisterPolylineSidebarSyncHandlers } from "./Edit/useRegisterPolylineSidebarSyncHandlers";
@@ -114,6 +120,9 @@ const Annotate = ({ disabledReason, loadSchemas }: AnnotateProps) => {
   const loading = useAtomValue(labelSchemasData) === null;
   const contextManager = useAnnotationContextManager();
   const { clear: clearUndo } = useUndoRedo(KnownContexts.ModalAnnotate);
+  const pendingTarget = useAtomValue(pendingAnnotationTargetAtom);
+  const setPendingTarget = useSetAtom(pendingAnnotationTargetAtom);
+  const setActiveLabelId = useSetActiveLabelId();
 
   const isDisabled = disabledReason !== null;
 
@@ -128,6 +137,21 @@ const Annotate = ({ disabledReason, loadSchemas }: AnnotateProps) => {
       clearUndo();
     };
   }, []);
+
+  // Apply the deep-link target published by the `annotate` operator. enter() is
+  // a no-op once the context is active, so activate the field/label directly.
+  useEffect(() => {
+    if (!pendingTarget) {
+      return;
+    }
+    if (pendingTarget.path) {
+      contextManager.activateField(pendingTarget.path);
+    }
+    if (pendingTarget.labelId) {
+      setActiveLabelId(pendingTarget.labelId);
+    }
+    setPendingTarget(null);
+  }, [pendingTarget, contextManager, setActiveLabelId, setPendingTarget]);
 
   if (!isDisabled && loading) {
     return <Loading />;

@@ -28,6 +28,23 @@ export const modalMode = atomWithStorage<ModalMode>(
 );
 
 /**
+ * A field/label the modal should open for editing once annotation mode mounts.
+ */
+export interface PendingAnnotationTarget {
+  readonly path?: string;
+  readonly labelId?: string;
+}
+
+/**
+ * Deep-link target published by the `annotate` operator so the modal can enter
+ * annotation mode for a specific field/label. Lets the operator stay out of the
+ * heavy in-modal annotation controller's bundle on page load.
+ */
+export const pendingAnnotationTargetAtom = atom<PendingAnnotationTarget | null>(
+  null
+);
+
+/**
  * Extends the base ViewportState with a `sampleId` so stale state from
  * a previous sample is never mistakenly applied when switching between
  * modes (EXPLORE vs ANNOTATE).

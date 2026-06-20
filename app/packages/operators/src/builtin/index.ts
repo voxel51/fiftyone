@@ -31,7 +31,11 @@ const builtInOperators = {
   ...spaces,
 };
 
-registerBuiltInOperators(builtInOperators);
-registerBuiltInOperatorsAsync().catch((e) => {
-  console.error("Failed to register built-in operators asynchronously:", e);
-});
+// Operator registration is browser-only; its import chain (e.g. @fiftyone/looker)
+// touches browser globals (window/self) that don't exist during Next.js SSR.
+if (typeof window !== "undefined") {
+  registerBuiltInOperators(builtInOperators);
+  registerBuiltInOperatorsAsync().catch((e) => {
+    console.error("Failed to register built-in operators asynchronously:", e);
+  });
+}

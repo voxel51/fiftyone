@@ -102,5 +102,7 @@ export {
   modalMode,
   ModalMode,
   type ModalViewportState,
+  type PendingAnnotationTarget,
+  pendingAnnotationTargetAtom,
 } from "./modal";
 export { modalBridge } from "./modalBridge";

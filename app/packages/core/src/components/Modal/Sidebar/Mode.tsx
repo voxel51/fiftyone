@@ -1,6 +1,10 @@
-import { useAnnotationController } from "@fiftyone/annotation";
 import { useTheme } from "@fiftyone/components";
-import { ModalMode, useIsGroupDataset, useModalMode } from "@fiftyone/state";
+import {
+  ModalMode,
+  useIsGroupDataset,
+  useModalMode,
+  useModalModeController,
+} from "@fiftyone/state";
 import styled from "styled-components";
 import useCanAnnotate from "./Annotate/useCanAnnotate";
 import { useGroupAnnotationModeController } from "./Annotate/useGroupAnnotationModeController";
@@ -37,7 +41,10 @@ const GroupsController = (): null => {
 
 const Mode = () => {
   const mode = useModalMode();
-  const { enterAnnotationMode, exitAnnotationMode } = useAnnotationController();
+  // Flipping the mode mounts/unmounts <Annotate>, whose effects enter/exit the
+  // annotation context; the toggle needn't pull the heavy controller itself.
+  const { activateAnnotateMode, activateExploreMode } =
+    useModalModeController();
   const theme = useTheme();
   const background = { background: theme.background.level1 };
   const text = { color: theme.text.secondary };
@@ -57,7 +64,7 @@ const Mode = () => {
             style={mode === ModalMode.EXPLORE ? background : text}
             onClick={() => {
               if (mode === ModalMode.ANNOTATE) {
-                exitAnnotationMode();
+                activateExploreMode();
               }
             }}
           >
@@ -68,7 +75,7 @@ const Mode = () => {
             style={mode === ModalMode.ANNOTATE ? background : text}
             onClick={() => {
               if (mode !== ModalMode.ANNOTATE) {
-                enterAnnotationMode();
+                activateAnnotateMode();
               }
             }}
           >

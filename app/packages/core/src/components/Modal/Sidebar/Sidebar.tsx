@@ -7,17 +7,20 @@ import {
   useModalExplorEntries,
 } from "@fiftyone/state";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useEffect } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import ExploreSidebar from "../../Sidebar";
 import { createExploreIsDisabled } from "../../Sidebar/InteractiveSidebar";
 import SidebarContainer from "../../Sidebar/SidebarContainer";
-import Annotate from "./Annotate";
 import { exploreActiveFields } from "./Annotate/state";
 import useCanAnnotate from "./Annotate/useCanAnnotate";
 import useLoadSchemas from "./Annotate/useLoadSchemas";
 import Mode from "./Mode";
 import { useModalSidebarRenderEntry } from "./use-sidebar-render-entry";
+
+// Heavy in-modal annotation tree; only fetched when an annotator actually
+// switches the sample modal into annotate mode.
+const Annotate = lazy(() => import("./Annotate"));
 
 const Explore = () => {
   const renderEntry = useModalSidebarRenderEntry();
@@ -64,7 +67,9 @@ const Sidebar = () => {
       {mode === EXPLORE || !showAnnotationTab ? (
         <Explore />
       ) : (
-        <Annotate disabledReason={disabledReason} loadSchemas={loadSchemas} />
+        <Suspense fallback={null}>
+          <Annotate disabledReason={disabledReason} loadSchemas={loadSchemas} />
+        </Suspense>
       )}
     </SidebarContainer>
   );
