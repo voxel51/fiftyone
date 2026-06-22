@@ -2,7 +2,10 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { useAnnotationEventHandler } from "@fiftyone/annotation";
+import {
+  toFrameEnginePath,
+  useAnnotationEventHandler,
+} from "@fiftyone/annotation";
 import {
   type Scene2D,
   UNDEFINED_LIGHTER_SCENE_ID,
@@ -11,6 +14,7 @@ import {
 import { useCallback } from "react";
 import { useDetectionMode } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useDetectionMode";
 import useExit from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useExit";
+import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 import { useCurrentEditingOverlay } from "../state/accessors";
 
 /**
@@ -43,14 +47,21 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
   const detectionMode = useDetectionMode();
   const exit = useExit();
   const editingOverlay = useCurrentEditingOverlay();
+  const stream = useFrameLabelsStream();
 
   useEventHandler(
     "lighter:overlay-create",
     useCallback(() => {
       if (detectionMode.detectionModeActive) {
-        detectionMode.create();
+        // Pin the destination to the frame engine path. The schema only exposes
+        // the sample-level detection field, so the default resolution would
+        // stamp that path on the overlay and route the write to the sample
+        // store; the seam maps the relative field to `frames.<field>`.
+        detectionMode.create(
+          stream ? toFrameEnginePath(stream.labelsField) : undefined
+        );
       }
-    }, [detectionMode])
+    }, [detectionMode, stream])
   );
 
   // Establishing a freshly-drawn overlay opens the sidebar inspector via the

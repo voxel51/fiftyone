@@ -2,6 +2,7 @@ import {
   useActiveAnnotationSampleId,
   useAnnotationEngine,
   useTemporal,
+  toSchemaField,
 } from "@fiftyone/annotation";
 import { EntryKind, type SidebarEntry } from "@fiftyone/state";
 import { LabelType } from "@fiftyone/utilities";
@@ -66,7 +67,9 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
       > = {};
 
       for (const ref of t.getPresent()) {
-        if (ref.sample !== sampleId || !active.has(ref.path)) {
+        // refs carry the ENGINE path (`frames.detections`); the active set is
+        // in the schema namespace (`detections`), so translate before matching.
+        if (ref.sample !== sampleId || !active.has(toSchemaField(ref.path))) {
           continue;
         }
 
@@ -86,12 +89,16 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
         });
       }
 
+      // order by the active-field order of each present field, keyed by engine
+      // path so rows carry the path `LabelEntry` resolves the label at.
       const result: LabelRow[] = [];
-      for (const path of activeFields) {
+      const enginePaths = Object.keys(byField).sort(
+        (a, b) =>
+          activeFields.indexOf(toSchemaField(a)) -
+          activeFields.indexOf(toSchemaField(b))
+      );
+      for (const path of enginePaths) {
         const fieldRows = byField[path];
-        if (!fieldRows?.length) {
-          continue;
-        }
 
         // field -> label -> id, so equal-label rows have a stable order
         fieldRows.sort(
