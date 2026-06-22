@@ -1,0 +1,103 @@
+name: Community to develop PR
+
+# When a pull request is merged into the `community` branch, open (or update) a
+# direct `community` → `develop` pull request and post to the #community Slack
+# channel. The PR head is the `community` branch itself — there is no intermediate
+# merge branch. Pairs with sync-develop-to-community.yml (the develop → community
+# direction).
+
+on:
+  pull_request_target:
+    types: [closed]
+    branches: [community]
+  workflow_dispatch:
+
+concurrency:
+  group: community-to-develop
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  pr:
+    # The `community` branch is OSS-only; only act on merged PRs (or manual runs).
+    if: >-
+      github.repository == 'voxel51/fiftyone' &&
+      (github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: community
+          fetch-depth: 0
+          # Use the bot PAT so the PR triggers CI (GITHUB_TOKEN-authored PRs don't).
+          token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+
+      - name: Open or update community → develop PR and notify #community
+        env:
+          GH_TOKEN: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_COMMUNITY_WEBHOOK_URL }}
+          REPO: ${{ github.repository }}
+        run: |
+          git fetch --no-tags origin develop community
+
+          if git diff --quiet origin/develop...origin/community; then
+            echo "No changes to integrate from community into develop."
+            exit 0
+          fi
+
+          number="$(gh pr list --repo "$REPO" --head community --base develop \
+            --state open --json number --jq '.[0].number')"
+          if [ -n "$number" ]; then
+            action="updated"
+          else
+            gh pr create --repo "$REPO" --head community --base develop \
+              --title 'AUTOMATED MERGE `community` to `develop`' \
+              --body 'Automated integration of community contributions into `develop`, opened because `community` is ahead of `develop`. This PR tracks the `community` branch and updates as more contributions land.'
+            number="$(gh pr list --repo "$REPO" --head community --base develop \
+              --state open --json number --jq '.[0].number')"
+            action="opened"
+          fi
+
+          url="$(gh pr view "$number" --repo "$REPO" --json url --jq .url)"
+
+          # Detect conflicts deterministically with a local trial merge, rather
+          # than GitHub's asynchronously-computed `mergeable` field. The
+          # conflicting file set is identical in either merge direction, and this
+          # catches conflicts introduced by the community side (which the
+          # develop → community sync never sees, since it only runs on develop pushes).
+          git config user.name 'voxel51-bot'
+          git config user.email 'bot@voxel51.com'
+          conflicts=""
+          if ! git merge --no-commit --no-ff origin/develop >/dev/null 2>&1; then
+            conflicts="$(git diff --name-only --diff-filter=U)"
+          fi
+          git merge --abort 2>/dev/null || true
+
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "::warning::SLACK_COMMUNITY_WEBHOOK_URL not set; skipping Slack notification."
+            exit 0
+          fi
+
+          if [ -n "$conflicts" ]; then
+            files="$(printf '%s\n' "$conflicts" | sed 's/^/• /')"
+            text="$(printf '%s\n' \
+              ":rotating_light: community → develop PR $action — merge conflict" \
+              "" \
+              "<$url|#$number> conflicts with \`develop\` and needs manual resolution." \
+              "" \
+              "Conflicting files:" \
+              "$files")"
+          else
+            text="$(printf '%s\n' \
+              ":twisted_rightwards_arrows: community → develop PR $action" \
+              "" \
+              "<$url|#$number> — ✅ no conflicts" \
+              "" \
+              "Integrates community contributions into \`develop\`.")"
+          fi
+
+          jq -nc --arg text "$text" '{text: $text}' \
+            | curl -sS -X POST -H 'Content-type: application/json' --data @- "$SLACK_WEBHOOK_URL"
