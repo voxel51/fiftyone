@@ -278,6 +278,16 @@ export const registerBridgeLoop = <Handle, Descriptor>(
               continue;
             }
 
+            // Only act on kinds this bridge has an adapter for — mirrors
+            // currentRefs's filter. A sample-level temporal detection shares the
+            // video scene but is owned by another source; its id resolves
+            // through resolveHandle, so unmounting it on a support-gate exit
+            // would evict its overlay, and reproject can't re-add it (no
+            // adapter) — it would stay gone until the source re-emits.
+            if (!kinds.includes(engine.getLabelType(event.ref.path))) {
+              continue;
+            }
+
             if (event.kind === "exit") {
               unmountRef(event.ref);
               exited.push(event.ref);
