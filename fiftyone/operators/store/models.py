@@ -6,7 +6,7 @@ Execution store models.
 |
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, field, asdict
 from typing import Optional, Any
 from enum import Enum
@@ -28,6 +28,10 @@ class KeyPolicy(str, Enum):
     EVICT = "evict"
 
 
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 @dataclass
 class KeyDocument:
     """Model representing a key in the store."""
@@ -37,7 +41,7 @@ class KeyDocument:
     value: Any
     _id: Optional[Any] = None
     dataset_id: Optional[ObjectId] = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=_utcnow)
     updated_at: Optional[datetime] = None
     expires_at: Optional[datetime] = None
     policy: KeyPolicy = KeyPolicy.PERSIST
@@ -48,7 +52,7 @@ class KeyDocument:
         if ttl is None:
             return None
 
-        return datetime.utcnow() + timedelta(seconds=ttl)
+        return _utcnow() + timedelta(seconds=ttl)
 
     @classmethod
     def from_dict(cls, doc: dict[str, Any]) -> "KeyDocument":
