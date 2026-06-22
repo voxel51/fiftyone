@@ -6,10 +6,8 @@ import type { Track } from "@fiftyone/playback";
 import clsx from "clsx";
 import { useCallback } from "react";
 import { useVideoInteraction } from "../state/useVideoInteraction";
+import { temporalDetectionRefOf } from "./temporalDetectionTracks";
 import styles from "../components/VideoAnnotationSurface.module.css";
-
-/** TD rows carry sample-level identity; they don't link through this seam. */
-const TEMPORAL_DETECTION_PREFIX = "td-";
 
 type TrackDecoration = Partial<{
   className: string;
@@ -19,27 +17,49 @@ type TrackDecoration = Partial<{
 }>;
 
 /**
- * Decorate timeline rows from engine interaction: an object track's row id IS
- * its `instanceId`, so it lights up (`linkHovered` / `linkSelected`) when its
- * track is hovered / selected, and the row's own hover / click writes that
- * interaction back through the engine — which the canvas Lighter bridge applies
- * to the overlay. The row's visual hover is plain CSS `:hover`; only the
- * cross-component direction needs the engine.
+ * Decorate timeline rows from engine interaction so a row lights up
+ * (`linkHovered` / `linkSelected`) when its label is hovered / selected on any
+ * surface, and the row's own hover / click writes that interaction back through
+ * the engine — which the canvas Lighter bridge applies to the overlay. The
+ * row's visual hover is plain CSS `:hover`; only the cross-component direction
+ * needs the engine.
  *
- * TD rows (sample-level, `td-` prefix) are inert here — their selection / edit
- * wiring is layered on by the caller; routing them through the object-track
- * instanceId seam would write a bogus ref.
+ * Two row kinds, both engine-addressed:
+ *  - an OBJECT track's row id IS its `instanceId` (a frame-detection track), so
+ *    it links on `track.id` at the current playhead frame;
+ *  - a TEMPORAL-DETECTION row is sample-level — identified by its structured
+ *    event payload (not the row-id shape) — so it links on the TD's `_id`
+ *    (`instanceId`) at its own field path, frame-less.
+ *
+ * Both read the same engine interaction sets (keyed by `instanceId`), so the TD
+ * `_id` matches the canvas overlay and sidebar row.
  */
 export const useVideoTrackDecorator = (): ((
   track: Track
 ) => TrackDecoration) => {
-  const { selectedTrackIds, hoveredTrackIds, selectTrack, hoverTrack } =
-    useVideoInteraction();
+  const {
+    selectedTrackIds,
+    hoveredTrackIds,
+    selectTrack,
+    hoverTrack,
+    selectLabel,
+    hoverLabel,
+  } = useVideoInteraction();
 
   return useCallback(
     (track: Track) => {
-      if (track.id.startsWith(TEMPORAL_DETECTION_PREFIX)) {
-        return {};
+      const tdRef = temporalDetectionRefOf(track);
+
+      if (tdRef) {
+        return {
+          className: clsx({
+            [styles.linkHovered]: hoveredTrackIds.has(tdRef.instanceId),
+            [styles.linkSelected]: selectedTrackIds.has(tdRef.instanceId),
+          }),
+          onMouseEnter: () => hoverLabel(tdRef, true),
+          onMouseLeave: () => hoverLabel(tdRef, false),
+          onTrackClick: () => selectLabel(tdRef),
+        };
       }
 
       return {
@@ -52,6 +72,13 @@ export const useVideoTrackDecorator = (): ((
         onTrackClick: () => selectTrack(track.id),
       };
     },
-    [hoveredTrackIds, selectedTrackIds, hoverTrack, selectTrack]
+    [
+      hoveredTrackIds,
+      selectedTrackIds,
+      hoverTrack,
+      selectTrack,
+      hoverLabel,
+      selectLabel,
+    ]
   );
 };

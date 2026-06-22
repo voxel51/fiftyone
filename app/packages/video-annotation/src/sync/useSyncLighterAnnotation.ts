@@ -12,6 +12,7 @@ import {
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
+import { LabelType } from "@fiftyone/utilities";
 import { useCallback } from "react";
 import { useAnnotationContext } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import { useDetectionMode } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useDetectionMode";
@@ -20,6 +21,10 @@ import { useVideoSurfaceActions } from "../hooks/useVideoSurfaceActions";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 import { autoExtendTargetFrames } from "../tracks/autoExtend";
 import { useCurrentEditingOverlay } from "../state/accessors";
+
+/** Schema-driven TD check: a field whose label type is a temporal detection. */
+const isTemporalDetectionType = (type: LabelType): boolean =>
+  type === LabelType.TemporalDetection || type === LabelType.TemporalDetections;
 
 /**
  * Bridges Lighter overlay events into the annotation systems for the video
@@ -143,19 +148,21 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
     useCallback(
       (payload) => {
         // A TemporalDetection deleted from the timeline context menu removes
-        // its overlay directly; if it was the one open in the editor, tear
-        // the now-dangling edit panel down. Scoped to `td-` ids so the
-        // fresh-draw overlay swap (which also removes an overlay mid-edit,
-        // then re-selects its replacement) is left untouched. Sidebar rows are
-        // engine-derived, so there's nothing to prune here.
+        // its overlay directly; if it was the one open in the editor, tear the
+        // now-dangling edit panel down. We identify the TD by the editing
+        // overlay's FIELD TYPE (the schema) rather than an id shape: a
+        // fresh-draw detection swap (which also removes an overlay mid-edit
+        // then re-selects its replacement) is a Detection field, so it's left
+        // untouched. Sidebar rows are engine-derived — nothing to prune here.
         if (
-          payload.id?.startsWith("td-") &&
-          editingOverlay?.id === payload.id
+          editingOverlay &&
+          editingOverlay.id === payload.id &&
+          isTemporalDetectionType(engine.getLabelType(editingOverlay.field))
         ) {
           exit();
         }
       },
-      [exit, editingOverlay]
+      [engine, exit, editingOverlay]
     )
   );
 

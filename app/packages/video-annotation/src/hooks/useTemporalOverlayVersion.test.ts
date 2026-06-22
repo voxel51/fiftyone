@@ -85,28 +85,20 @@ describe("useTemporalOverlayVersion", () => {
   });
 
   describe("overlay-removed", () => {
-    it("bumps when a `td-` overlay is removed", () => {
+    it("bumps on any overlay removal (the removed id no longer reveals the type)", () => {
       const { result } = renderHook(() => useTemporalOverlayVersion(scene));
 
-      fireLighter("lighter:overlay-removed", { id: "td-events-a" });
+      fireLighter("lighter:overlay-removed", { id: "any-overlay" });
 
       expect(result.current).toBe(1);
     });
 
-    it("ignores removal of a non-`td-` overlay", () => {
-      const { result } = renderHook(() => useTemporalOverlayVersion(scene));
-
-      fireLighter("lighter:overlay-removed", { id: "det-1" });
-
-      expect(result.current).toBe(0);
-    });
-
-    it("tolerates a removal payload with no id", () => {
+    it("bumps even when the removal payload has no id", () => {
       const { result } = renderHook(() => useTemporalOverlayVersion(scene));
 
       fireLighter("lighter:overlay-removed", { id: undefined });
 
-      expect(result.current).toBe(0);
+      expect(result.current).toBe(1);
     });
   });
 

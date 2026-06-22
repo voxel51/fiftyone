@@ -147,7 +147,9 @@ export const useCreateAnnotationLabel = () => {
 
       if (type === TEMPORAL_DETECTION) {
         const tdLabel = data as TemporalOptions["label"];
-        const overlayId = `td-${field}-${data._id}`;
+        // overlay id == the TD `_id` (the engine `instanceId`) so the engine
+        // bridge addresses it canonically (matches useTemporalOverlaySync).
+        const overlayId = data._id;
         const existing = scene?.getOverlay(overlayId);
 
         if (existing instanceof TemporalOverlay) {

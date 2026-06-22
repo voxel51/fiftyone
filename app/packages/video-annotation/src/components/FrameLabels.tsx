@@ -351,10 +351,14 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
         return base;
       }
 
-      // Object tracks: drag a presence bar to extend / trim / shift the
-      // track's per-frame labels. TD rows carry the `td-` prefix; everything
-      // else is an engine-addressed object track (row id == instanceId).
-      const isObjectTrack = !track.id.startsWith("td-");
+      // A TemporalDetection row is identified by its structured event payload
+      // (the schema-typed TD field it came from), not a row-id shape; anything
+      // else is an engine-addressed object track (row id == instanceId), whose
+      // presence bar drags extend / trim / shift the track's per-frame labels.
+      const tdEvent = track.events[0]?.data as
+        | TemporalDetectionEventData
+        | undefined;
+      const isObjectTrack = tdEvent?.detectionId === undefined;
 
       if (isObjectTrack && stream) {
         const totalFrames = stream.totalFrames;
@@ -385,12 +389,7 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
         };
       }
 
-      const tdEvent = track.events[0]?.data as
-        | TemporalDetectionEventData
-        | undefined;
-      const isTemporalDetection =
-        track.id.startsWith("td-") && tdEvent !== undefined;
-      if (!isTemporalDetection) {
+      if (tdEvent?.detectionId === undefined) {
         return base;
       }
 

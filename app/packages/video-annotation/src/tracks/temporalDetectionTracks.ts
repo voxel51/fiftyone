@@ -63,6 +63,25 @@ export interface TemporalDetectionEventData {
 }
 
 /**
+ * The sample-level engine ref `{ path, instanceId }` for a timeline track that
+ * represents a TemporalDetection, or `null` for an object track. Reads the
+ * track's structured event payload (set by {@link buildTemporalDetectionTracks})
+ * — never the row-id shape, so the TD vs object-track distinction stays driven
+ * by the data, not a string prefix. Frame-less: a TD is sample-level.
+ */
+export const temporalDetectionRefOf = (
+  track: Track
+): { path: string; instanceId: string } | null => {
+  const data = track.events[0]?.data as TemporalDetectionEventData | undefined;
+
+  if (!data || typeof data.detectionId !== "string") {
+    return null;
+  }
+
+  return { path: data.fieldPath, instanceId: data.detectionId };
+};
+
+/**
  * Walk the top-level sample dict, find every `TemporalDetections` field,
  * and emit one {@link Track} per `TemporalDetection` whose single event
  * is an interval spanning `support`.

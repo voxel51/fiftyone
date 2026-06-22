@@ -63,14 +63,12 @@ export function useTemporalOverlayVersion(
 
   useLighterEvent(
     "lighter:overlay-removed",
-    useCallback(
-      (payload) => {
-        if (payload.id?.startsWith("td-")) {
-          bump();
-        }
-      },
-      [bump]
-    )
+    // The removed payload carries only an id, so we can't tell a TD from a
+    // detection by type here — and the overlay id is no longer a `td-`-prefixed
+    // tell. Bump on ANY removal: re-deriving the (small) TD set on an unrelated
+    // detection delete is cheap, and never missing a TD removal keeps the
+    // timeline rows in step.
+    useCallback(() => bump(), [bump])
   );
 
   // Always registered to keep hook order stable; no-ops unless opted in.

@@ -105,7 +105,11 @@ export function syncTemporalOverlays({
         continue;
       }
 
-      const id = `td-${fieldPath}-${detId}`;
+      // The overlay id IS the TD's `_id` (the engine `instanceId`), so the
+      // engine Lighter bridge builds the canonical sample-level ref for its
+      // select / hover events and TD interaction syncs with the sidebar and
+      // timeline. (The field is frame-less; frameOf omits it — see the bridge.)
+      const id = String(detId);
       next.add(id);
       const label = td as unknown as TemporalLabel;
 

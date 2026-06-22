@@ -47,6 +47,14 @@ export interface VideoInteraction {
   selectTrack: (instanceId: string) => void;
   /** Set hover on this track's current-frame occurrence. */
   hoverTrack: (instanceId: string, on: boolean) => void;
+  /**
+   * Select / hover a label by its exact engine ref. Used for sample-level
+   * labels (temporal detections: addressed by `instanceId`, no frame) whose
+   * path differs from the frame-detection field, so they can't go through the
+   * `instanceId`-only track seam above.
+   */
+  selectLabel: (ref: { path: string; instanceId: string }) => void;
+  hoverLabel: (ref: { path: string; instanceId: string }, on: boolean) => void;
 }
 
 /** Read selected track ids (engine instanceIds) from interaction state. */
@@ -103,7 +111,25 @@ export const useVideoInteraction = (): VideoInteraction => {
     [actions, path, getFrame]
   );
 
-  return { selectedTrackIds, hoveredTrackIds, selectTrack, hoverTrack };
+  const selectLabel = useCallback(
+    (ref: { path: string; instanceId: string }) => actions.setActive([ref]),
+    [actions]
+  );
+
+  const hoverLabel = useCallback(
+    (ref: { path: string; instanceId: string }, on: boolean) =>
+      actions.setHovered(ref, on),
+    [actions]
+  );
+
+  return {
+    selectedTrackIds,
+    hoveredTrackIds,
+    selectTrack,
+    hoverTrack,
+    selectLabel,
+    hoverLabel,
+  };
 };
 
 /**

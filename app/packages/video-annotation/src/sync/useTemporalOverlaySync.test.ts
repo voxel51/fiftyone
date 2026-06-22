@@ -91,8 +91,8 @@ describe("syncTemporalOverlays", () => {
 
       expect(scene.added).toHaveLength(2);
       expect(overlays.size).toBe(2);
-      expect(overlays.get("td-events-a")).toBeDefined();
-      expect(overlays.get("td-events-b")).toBeDefined();
+      expect(overlays.get("a")).toBeDefined();
+      expect(overlays.get("b")).toBeDefined();
     });
 
     it("adopts an overlay already present on the scene under the same id (avoids double-add collision)", () => {
@@ -102,7 +102,7 @@ describe("syncTemporalOverlays", () => {
       // Pre-seed the scene with an overlay at our expected id — as if
       // useCreateAnnotationLabel created it first.
       const pre = new FakeOverlay({
-        id: "td-events-a",
+        id: "a",
         field: "events",
         label: {
           _cls: "TemporalDetection",
@@ -111,7 +111,7 @@ describe("syncTemporalOverlays", () => {
           label: "running",
         } as TemporalLabel,
       });
-      scene.byId.set("td-events-a", pre);
+      scene.byId.set("a", pre);
 
       syncTemporalOverlays({
         scene,
@@ -124,7 +124,7 @@ describe("syncTemporalOverlays", () => {
       // No new overlay added — adopted the pre-existing one.
       expect(scene.addOverlay).not.toHaveBeenCalled();
       // But we tracked it locally and refreshed its label.
-      expect(overlays.get("td-events-a")).toBe(pre);
+      expect(overlays.get("a")).toBe(pre);
     });
 
     it("does not re-add an overlay that already exists", () => {
@@ -164,7 +164,7 @@ describe("syncTemporalOverlays", () => {
         overlays,
         create: createFake as never,
       });
-      const overlay = overlays.get("td-events-a") as FakeOverlay;
+      const overlay = overlays.get("a") as FakeOverlay;
 
       // The engine is authoritative: a subsequent sync carrying an edited
       // support / label refreshes the same overlay in place.
@@ -176,7 +176,7 @@ describe("syncTemporalOverlays", () => {
         create: createFake as never,
       });
 
-      expect(overlays.get("td-events-a")).toBe(overlay);
+      expect(overlays.get("a")).toBe(overlay);
       expect(overlay.label.support).toEqual([5, 25]);
       expect(overlay.label.label).toBe("renamed");
     });
@@ -202,9 +202,9 @@ describe("syncTemporalOverlays", () => {
         create: createFake as never,
       });
 
-      expect(scene.removeOverlay).toHaveBeenCalledWith("td-events-b");
-      expect(overlays.has("td-events-b")).toBe(false);
-      expect(overlays.has("td-events-a")).toBe(true);
+      expect(scene.removeOverlay).toHaveBeenCalledWith("b");
+      expect(overlays.has("b")).toBe(false);
+      expect(overlays.has("a")).toBe(true);
     });
 
     it("removes every overlay when the sample becomes null", () => {
@@ -249,8 +249,8 @@ describe("syncTemporalOverlays", () => {
         create: createFake as never,
       });
 
-      expect(overlays.has("td-events-a")).toBe(true);
-      expect(overlays.has("td-highlights-b")).toBe(false);
+      expect(overlays.has("a")).toBe(true);
+      expect(overlays.has("b")).toBe(false);
     });
 
     it("removes existing overlays whose field becomes inactive", () => {
@@ -274,8 +274,8 @@ describe("syncTemporalOverlays", () => {
         create: createFake as never,
       });
 
-      expect(scene.removeOverlay).toHaveBeenCalledWith("td-events-a");
-      expect(overlays.has("td-events-a")).toBe(false);
+      expect(scene.removeOverlay).toHaveBeenCalledWith("a");
+      expect(overlays.has("a")).toBe(false);
     });
   });
 
@@ -376,20 +376,22 @@ describe("syncTemporalOverlays", () => {
         create: createFake as never,
       });
 
-      expect(overlays.has("td-events-a")).toBe(true);
-      expect(overlays.has("td-highlights-b")).toBe(true);
+      expect(overlays.has("a")).toBe(true);
+      expect(overlays.has("b")).toBe(true);
     });
 
-    it("keys overlays by `td-<fieldPath>-<detectionId>` to avoid cross-field collisions", () => {
+    it("keys overlays by the TD `_id` (the engine instanceId, globally unique)", () => {
       const scene = makeScene();
       const overlays = new Map();
 
-      // Same detectionId across two fields — overlays must be separate.
+      // TD `_id`s are globally unique across fields, so the overlay id is the
+      // bare `_id` (== the engine instanceId the bridge addresses); two TDs in
+      // different fields have distinct ids and distinct overlays.
       syncTemporalOverlays({
         scene,
         sample: {
           events: field(td("a", [1, 10])),
-          highlights: field(td("a", [20, 30])),
+          highlights: field(td("b", [20, 30])),
         },
         activePaths: ALL_ACTIVE,
         overlays,
@@ -397,8 +399,8 @@ describe("syncTemporalOverlays", () => {
       });
 
       expect(overlays.size).toBe(2);
-      expect(overlays.has("td-events-a")).toBe(true);
-      expect(overlays.has("td-highlights-a")).toBe(true);
+      expect(overlays.has("a")).toBe(true);
+      expect(overlays.has("b")).toBe(true);
     });
   });
 });
