@@ -31,6 +31,7 @@ import type {
   TransientSnapshot,
 } from "@fiftyone/utilities";
 import {
+  applyDeltas,
   equalsNormalized,
   idAlignedListDelta,
   isListLabelType,
@@ -38,6 +39,7 @@ import {
   objectId,
 } from "@fiftyone/utilities";
 
+import { toSchemaField } from "../identity/framePath";
 import type { LabelRef } from "../identity/ref";
 import type {
   ChangeListener,
@@ -277,9 +279,58 @@ export class FrameStore implements LabelStore {
     return this.working.size > 0;
   }
 
-  reconcilePersisted(): void {
-    // server-owned-field release (e.g. mask_path) is not yet implemented; the
-    // routine setData(echo) re-baseline is what clears dirty after a save.
+  /**
+   * Fold the server-confirmed deltas into `source` (the new committed truth),
+   * then drop working frames now equal to it — the same GC `setData(echo)`
+   * does, but driven by the deltas rather than a stream re-seed (the `/frames`
+   * source is not refetched after an annotation save, so no echo arrives). A
+   * frame edited during the save round-trip still differs from the rebased
+   * source, so it stays dirty and re-emits as the next delta.
+   *
+   * Server-owned-field release (e.g. mask_path) is still not handled here.
+   */
+  reconcilePersisted(deltas: JSONDeltas): void {
+    const byFrame = new Map<number, JSONDeltas>();
+
+    for (const op of deltas) {
+      const segments = op.path.split("/").filter(Boolean);
+
+      // /frames/<n>/<wireField>/<listChild>/...
+      if (segments[0] !== "frames" || segments.length < 4) {
+        continue;
+      }
+
+      const frame = Number(segments[1]);
+
+      if (!Number.isFinite(frame)) {
+        continue;
+      }
+
+      let frameOps = byFrame.get(frame);
+
+      if (!frameOps) {
+        frameOps = [];
+        byFrame.set(frame, frameOps);
+      }
+
+      frameOps.push(op);
+    }
+
+    if (byFrame.size === 0) {
+      return;
+    }
+
+    for (const [frame, frameOps] of byFrame) {
+      this.source.set(frame, this.rebaseFrame(frame, frameOps));
+    }
+
+    for (const [frame, doc] of [...this.working]) {
+      if (this.frameEquals(doc, this.source.get(frame))) {
+        this.working.delete(frame);
+      }
+    }
+
+    this.emit([wholeSampleReset(this.sample)]);
   }
 
   // ---- lifecycle ----
@@ -373,7 +424,48 @@ export class FrameStore implements LabelStore {
 
   /** Strip the frame-container prefix for the wire path (`frames.detections` → `detections`). */
   private field(path: string): string {
-    return path.startsWith("frames.") ? path.slice("frames.".length) : path;
+    return toSchemaField(path);
+  }
+
+  /**
+   * Fold one frame's confirmed deltas into a fresh source `FrameDoc`. The delta
+   * pointers address the WIRE shape (`/frames/<n>/<wireField>/<listChild>/...`,
+   * the list wrapped in its label-doc child); the store holds the unwrapped
+   * element lists keyed by engine path. So reshape into the wire wrapper, strip
+   * the `/frames/<n>` prefix, apply via the shared patch primitive (the same
+   * semantics the server used), and read the lists back. Non-label source keys
+   * (if any) are carried through untouched.
+   */
+  private rebaseFrame(frame: number, frameOps: JSONDeltas): FrameDoc {
+    const source = this.source.get(frame);
+    const doc: Record<string, Record<string, LabelData[]>> = {};
+
+    for (const path of Object.keys(this.labelTypes)) {
+      const child = LIST_LABEL_CHILD[this.labelTypes[path]];
+
+      if (child) {
+        doc[this.field(path)] = { [child]: [...(source?.get(path) ?? [])] };
+      }
+    }
+
+    const scoped: JSONDeltas = frameOps.map((op) => ({
+      ...op,
+      path: `/${op.path.split("/").filter(Boolean).slice(2).join("/")}`,
+    }));
+
+    const next = applyDeltas(doc, scoped);
+
+    const rebased: FrameDoc = source ? new Map(source) : new Map();
+
+    for (const path of Object.keys(this.labelTypes)) {
+      const child = LIST_LABEL_CHILD[this.labelTypes[path]];
+
+      if (child) {
+        rebased.set(path, next[this.field(path)]?.[child] ?? []);
+      }
+    }
+
+    return rebased;
   }
 
   private frameEquals(doc: FrameDoc, source: FrameDoc | undefined): boolean {

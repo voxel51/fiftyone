@@ -281,6 +281,79 @@ describe("FrameStore setData: re-baseline + GC", () => {
   });
 });
 
+describe("FrameStore reconcilePersisted: rebase from confirmed deltas", () => {
+  it("a freshly-drawn track's append clears the dirty frame (no save loop)", () => {
+    const store = makeStore({ 1: { [PATH]: [] } });
+
+    store.updateLabel(ref("NEW", 1), {
+      label: "dog",
+      bounding_box: [2, 2, 2, 2],
+    });
+    const deltas = store.getJsonPatch();
+    expect(deltas).toHaveLength(1);
+    expect(store.isDirty()).toBe(true);
+
+    // the server accepted exactly those deltas — no `/frames` echo arrives
+    store.reconcilePersisted(deltas);
+
+    expect(store.isDirty()).toBe(false);
+    expect(store.getJsonPatch()).toEqual([]);
+    expect(store.getLabel(ref("NEW", 1))?.label).toBe("dog");
+  });
+
+  it("an in-place edit rebases and clears", () => {
+    const store = makeStore({
+      1: { [PATH]: [det("doc-1", "A", [0, 0, 1, 1], "cat")] },
+    });
+
+    store.updateLabel(ref("A", 1), { label: "lynx" });
+    store.reconcilePersisted(store.getJsonPatch());
+
+    expect(store.isDirty()).toBe(false);
+    expect(store.getLabel(ref("A", 1))?.label).toBe("lynx");
+  });
+
+  it("a mid-list delete rebases and clears", () => {
+    const store = makeStore({
+      1: {
+        [PATH]: [
+          det("doc-A", "A", [0, 0, 1, 1]),
+          det("doc-B", "B", [1, 1, 1, 1]),
+          det("doc-C", "C", [2, 2, 1, 1]),
+        ],
+      },
+    });
+
+    store.deleteLabel(ref("B", 1));
+    store.reconcilePersisted(store.getJsonPatch());
+
+    expect(store.isDirty()).toBe(false);
+    expect(store.getLabel(ref("B", 1))).toBeUndefined();
+    expect(store.getLabel(ref("C", 1))?._id).toBe("doc-C");
+  });
+
+  it("an edit made DURING the save survives as the next delta", () => {
+    const store = makeStore({
+      1: { [PATH]: [det("doc-1", "A", [0, 0, 1, 1], "cat")] },
+    });
+
+    store.updateLabel(ref("A", 1), { label: "dog" }); // captured by getJsonPatch
+    const deltas = store.getJsonPatch();
+    store.updateLabel(ref("A", 1), { label: "wolf" }); // typed during the PATCH
+
+    store.reconcilePersisted(deltas); // only the first edit was confirmed
+
+    expect(store.isDirty()).toBe(true);
+    expect(store.getJsonPatch()).toEqual([
+      {
+        op: "replace",
+        path: "/frames/1/detections/detections/0/label",
+        value: "wolf",
+      },
+    ]);
+  });
+});
+
 // ---- end-to-end: store + temporal view + frame-locked bridge ----
 
 const makeClock = () => {
