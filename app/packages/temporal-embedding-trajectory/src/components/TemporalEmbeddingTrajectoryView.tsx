@@ -7,7 +7,8 @@ import { useFrameSync } from "../hooks/useFrameSync";
 import { useCompareData } from "../hooks/useCompareData";
 import { useFrameMedia } from "../hooks/useFrameMedia";
 import {
-  buildTraces,
+  buildStaticTraces,
+  buildDynamicTraces,
   defaultJumpThreshold,
   findCursorIndex,
 } from "../plot/buildTraces";
@@ -17,6 +18,10 @@ import {
   scenesFromBoundaries,
   scenesLayout,
 } from "../plot/buildScenesTraces";
+import {
+  buildSegmentScatterTraces,
+  segmentScatterLayout,
+} from "../plot/buildSegmentScatterTraces";
 import { trajectoryConfig, trajectoryLayout } from "../plot/trajectoryLayout";
 import JumpFrames, { JumpFrame } from "./JumpFrames";
 import type { SceneTrajectory, TrajectoryViewProps, ViewMode } from "../types";
@@ -25,6 +30,7 @@ const TRAJECTORY_LENGTH_DEFAULT = 30;
 const JUMP_SIGMA_DEFAULT = 2;
 const CONTEXT_HALF_DEFAULT = 2; // +/- frames around the selected frame
 const LOW_VARIATION_CV = 0.3; // coefficient-of-variation threshold for the noise-hint banner
+const SEGMENT_MIN_PEAK_DIST = 30; // min frame gap between scene boundaries (matches Scenes tab)
 
 const ACCENT_A = "rgba(70, 140, 220, 0.95)";
 const ACCENT_B = "rgba(230, 130, 50, 0.95)";
@@ -196,18 +202,50 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
     () => (scene ? defaultJumpThreshold(scene.jump_dists, jumpSigma ?? 2) : 0),
     [scene, jumpSigma]
   );
-  const scatterTraces = useMemo(() => {
-    if (!scene || scene.points.length === 0) return [];
-    return buildTraces(scene, {
-      trajectoryLength: trajectoryLength ?? TRAJECTORY_LENGTH_DEFAULT,
-      jumpThreshold,
-      currentFrameNumber: currentFrame,
-    });
-  }, [scene, trajectoryLength, jumpThreshold, currentFrame]);
+  // Split static (base + jumps) from dynamic (trajectory + cursor) so the
+  // heavy base trace keeps a stable reference across playback frames —
+  // Plotly.react then skips re-drawing it and only the small dynamic
+  // traces update, keeping the cursor moving smoothly. Order is
+  // [base, jumps, trajectory, cursor] so the yellow cursor draws last/on top.
+  const scatterStatic = useMemo(
+    () =>
+      scene && scene.points.length > 0
+        ? buildStaticTraces(scene, { jumpThreshold })
+        : [],
+    [scene, jumpThreshold]
+  );
+  const scatterDynamic = useMemo(
+    () =>
+      scene && scene.points.length > 0
+        ? buildDynamicTraces(scene, {
+            trajectoryLength: trajectoryLength ?? TRAJECTORY_LENGTH_DEFAULT,
+            currentFrameNumber: currentFrame,
+          })
+        : [],
+    [scene, trajectoryLength, currentFrame]
+  );
+  const scatterTraces = useMemo(
+    () => [...scatterStatic, ...scatterDynamic],
+    [scatterStatic, scatterDynamic]
+  );
   const scatterJumps = useMemo<JumpFrame[]>(
     () => (scene ? jumpsForScene(scene, jumpSigma ?? JUMP_SIGMA_DEFAULT) : []),
     [scene, jumpSigma]
   );
+
+  // ── Segment scatter (scatter_b) derived state ──────────────────────
+  // Same single-key scene as Scatter, but colored by scene_shift
+  // segments. Reuses the Scene σ slider for boundary sensitivity.
+  const segmentScatter = useMemo(() => {
+    if (!scene || scene.points.length === 0) {
+      return { traces: [], segments: [], numSegments: 0 };
+    }
+    return buildSegmentScatterTraces(scene, {
+      sigma: sceneSigma ?? 1.5,
+      minPeakDistance: SEGMENT_MIN_PEAK_DIST,
+      currentFrameNumber: currentFrame,
+    });
+  }, [scene, sceneSigma, currentFrame]);
 
   // ── Compare / Scenes derived state ─────────────────────────────────
   const sceneA = keyA ? compareScenes[keyA] : undefined;
@@ -295,6 +333,8 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
     const ids: string[] = [];
     if (viewMode === "scatter") {
       ids.push(...scatterJumps.map((j) => j.frameId));
+    } else if (viewMode === "scatter_b") {
+      ids.push(...segmentScatter.segments.map((s) => s.frameId));
     } else if (viewMode === "compare") {
       ids.push(
         ...[
@@ -314,6 +354,7 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
   }, [
     viewMode,
     scatterJumps,
+    segmentScatter,
     compareDiff,
     scenesSegmentsA,
     scenesSegmentsB,
@@ -344,9 +385,9 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
       if (frameNumber == null || Number.isNaN(frameNumber)) return;
       handleSelectFrame(frameNumber);
 
-      // Cross-sample fallback (only matters in scatter mode).
+      // Cross-sample fallback (only matters in single-key scatter modes).
       if (
-        viewMode === "scatter" &&
+        (viewMode === "scatter" || viewMode === "scatter_b") &&
         scene &&
         currentSampleId &&
         currentSampleId !== scene.sample_id
@@ -420,6 +461,11 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
         ? `${scene.points.length} frames · ${scatterJumps.length} jumps`
         : "no scene loaded";
     }
+    if (viewMode === "scatter_b") {
+      return scene
+        ? `${scene.points.length} frames · ${segmentScatter.numSegments} scenes`
+        : "no scene loaded";
+    }
     if (viewMode === "compare") {
       return `${compareDiff.onlyA.length} only A · ${compareDiff.both.length} both · ${compareDiff.onlyB.length} only B`;
     }
@@ -431,25 +477,29 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
       {/* ── Row 1: mode tabs · key selection · compute action ──────── */}
       <div style={styles.toolbarRow}>
         <div style={styles.modeToggle}>
-          {(["scatter", "compare", "scenes"] as ViewMode[]).map((m) => (
-            <button
-              key={m}
-              onClick={() => setViewMode(m)}
-              style={{
-                ...styles.modeButton,
-                ...(viewMode === m ? styles.modeButtonActive : {}),
-              }}
-            >
-              {m === "scatter"
-                ? "Scatter"
-                : m === "compare"
-                ? "Compare"
-                : "Scenes"}
-            </button>
-          ))}
+          {(["scatter", "scatter_b", "compare", "scenes"] as ViewMode[]).map(
+            (m) => (
+              <button
+                key={m}
+                onClick={() => setViewMode(m)}
+                style={{
+                  ...styles.modeButton,
+                  ...(viewMode === m ? styles.modeButtonActive : {}),
+                }}
+              >
+                {m === "scatter"
+                  ? "Scatter"
+                  : m === "scatter_b"
+                  ? "Segments"
+                  : m === "compare"
+                  ? "Compare"
+                  : "Scenes"}
+              </button>
+            )
+          )}
         </div>
 
-        {viewMode === "scatter" ? (
+        {viewMode === "scatter" || viewMode === "scatter_b" ? (
           <label style={styles.field}>
             <span style={styles.fieldLabel}>Brain key</span>
             <select
@@ -543,6 +593,20 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
               />
             </label>
           </>
+        )}
+
+        {viewMode === "scatter_b" && (
+          <label style={styles.field}>
+            <span style={styles.fieldLabel}>Scene σ: {sceneSigma}</span>
+            <input
+              type="range"
+              min={0.5}
+              max={5}
+              step={0.1}
+              value={sceneSigma ?? 1.5}
+              onChange={(e) => setSceneSigma(Number(e.target.value))}
+            />
+          </label>
         )}
 
         {viewMode === "compare" && (
@@ -644,6 +708,33 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
               onClick={handlePlotClick}
             />
           )
+        ) : viewMode === "scatter_b" ? (
+          segmentScatter.traces.length === 0 ? (
+            <div style={styles.empty}>
+              {noBrainKeys ? (
+                <p>Compute a brain key first.</p>
+              ) : scene &&
+                !(scene.scene_shifts && scene.scene_shifts.length) ? (
+                <p>
+                  No scene-shift data for "{selectedBrainKey}" — re-run Compute
+                  to populate the <code>_scene_shift</code> field.
+                </p>
+              ) : (
+                <p>
+                  No embeddings found for this scene under "{selectedBrainKey}".
+                </p>
+              )}
+            </div>
+          ) : (
+            <Plot
+              data={segmentScatter.traces as any}
+              layout={segmentScatterLayout()}
+              config={trajectoryConfig as any}
+              useResizeHandler
+              style={{ width: "100%", height: "100%" }}
+              onClick={handlePlotClick}
+            />
+          )
         ) : viewMode === "compare" ? (
           compareTracesAndDomain.traces.length === 0 ? (
             <div style={styles.empty}>
@@ -707,6 +798,19 @@ function TemporalEmbeddingTrajectoryReady(props: TrajectoryViewProps) {
             <JumpFrames
               title="jump frames"
               frames={scatterJumps}
+              media={frameMedia}
+              onClickFrame={handleSelectFrame}
+            />
+          ) : null
+        ) : viewMode === "scatter_b" ? (
+          scene && segmentScatter.segments.length > 0 ? (
+            <JumpFrames
+              title="scene starts"
+              frames={segmentScatter.segments.map((s) => ({
+                frameId: s.frameId,
+                frameNumber: s.frameNumber,
+                accent: s.color,
+              }))}
               media={frameMedia}
               onClickFrame={handleSelectFrame}
             />

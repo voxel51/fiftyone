@@ -63,7 +63,11 @@ export function buildCompareTraces(opts: CompareTraceOptions) {
       y: jump_dists,
       ids: frame_ids,
       customdata: frame_numbers.map((fn, k) => [brainKey, fn, jump_dists[k]]),
-      type: "scattergl" as const,
+      // SVG (not scattergl): plotly 3.x's WebGL renderer drops the line in
+      // lines+markers traces, and its gl canvas would also hide the yellow
+      // cursor-line shape in compareLayout. SVG handles a handful of
+      // brain keys × a few hundred frames easily.
+      type: "scatter" as const,
       mode: "lines+markers" as const,
       name: brainKey,
       line: { color, width: 1.5 },
@@ -91,7 +95,9 @@ export function buildCompareTraces(opts: CompareTraceOptions) {
         y: jumpYs,
         ids: jumpIds,
         customdata: jumpCustom,
-        type: "scattergl" as const,
+        // SVG too — keeps the whole compare plot off the WebGL layer so
+        // the cursor-line shape stays visible (see the line trace above).
+        type: "scatter" as const,
         mode: "markers" as const,
         name: `${brainKey} jumps`,
         showlegend: false,

@@ -59,20 +59,6 @@ def _windowed_centroid_shift(normed: np.ndarray, W: int) -> np.ndarray:
     return scores
 
 
-def _field_is_populated(view, field_name):
-    """True if at least one value in `field_name` is non-None.
-
-    Used to decide whether a cached embedding column is usable. A
-    bare ``has_field`` check isn't enough: the field can exist on the
-    schema with every value being None (e.g. after a failed prior
-    run that aborted before any frame was written).
-    """
-    try:
-        return bool(view.match({field_name: {"$ne": None}}).limit(1).count())
-    except Exception:
-        return False
-
-
 def _list_existing_embedding_fields(ctx):
     """Return sample-field names that plausibly hold embeddings.
 
@@ -230,6 +216,21 @@ class ComputeTrajectoryEmbeddings(foo.Operator):
             required=False,
         )
 
+        inputs.int(
+            "seed",
+            label="UMAP/t-SNE random seed",
+            default=51,
+            description=(
+                "Random seed for the dimensionality reduction. Fixing "
+                "this makes the scatter layout reproducible: re-running "
+                "with the same embeddings (e.g. only changing the "
+                "scene-shift window) yields an identical projection "
+                "instead of a rotated/reflected one. Leave as-is unless "
+                "you want a different layout."
+            ),
+            required=False,
+        )
+
         return types.Property(
             inputs,
             view=types.View(label="Compute trajectory embeddings"),
@@ -249,6 +250,9 @@ class ComputeTrajectoryEmbeddings(foo.Operator):
         method = ctx.params.get("method") or "umap"
         batch_size = ctx.params.get("batch_size") or 32
         scene_window = max(2, int(ctx.params.get("scene_window") or 30))
+        seed = ctx.params.get("seed")
+        if seed is None:
+            seed = 51
 
         # Frame-level collection. For video datasets we materialize
         # frames via to_frames; for image datasets we assume each sample
@@ -292,24 +296,46 @@ class ComputeTrajectoryEmbeddings(foo.Operator):
             embeddings_field = (
                 f"trajectory_embeddings_{model_name.replace('-', '_')}"
             )
-            if frames.has_field(embeddings_field) and _field_is_populated(
-                frames, embeddings_field
-            ):
+            n_total = len(frames)
+            n_cached = (
+                frames.exists(embeddings_field).count()
+                if frames.has_field(embeddings_field)
+                else 0
+            )
+            if n_cached >= n_total and n_total > 0:
                 ctx.ops.notify(
-                    f"Reusing cached embeddings in `{embeddings_field}`.",
+                    f"Reusing cached embeddings in `{embeddings_field}` "
+                    f"({n_cached}/{n_total} frames).",
                     variant="info",
                 )
             else:
-                # compute_embeddings wants a Model instance, not a string
-                # — load the zoo model first so we can reuse it for both
-                # the raw embeddings (cosine-distance) and
-                # compute_visualization.
+                # Embed ONLY the frames still missing an embedding. This
+                # fills a partially-populated cache (the common case
+                # after an interrupted/failed run) and computes from
+                # scratch when the field is empty.
+                #
+                # The previous gate accepted the cache if *any* single
+                # frame was embedded. That was a bug: a partial field
+                # masqueraded as complete, the
+                # missing frames were never embedded, and the projection
+                # silently ran on a sparse subset — producing a
+                # fragmented scatter and inflated jump distances (a
+                # "jump" skipped over the un-embedded frames).
                 model = foz.load_zoo_model(model_name)
+                todo = (
+                    frames.exists(embeddings_field, False)
+                    if frames.has_field(embeddings_field)
+                    else frames
+                )
+                ctx.ops.notify(
+                    f"Embedding {len(todo)} frame(s) with {model_name} "
+                    f"({n_cached} already cached).",
+                    variant="info",
+                )
                 # compute_embeddings writes to embeddings_field and
-                # returns None when a field is specified; pull the
-                # array back from the field for the downstream
-                # jump-distance step.
-                frames.compute_embeddings(
+                # returns None when a field is specified; we pull the
+                # array back from the field below for jump distances.
+                todo.compute_embeddings(
                     model=model,
                     embeddings_field=embeddings_field,
                     batch_size=batch_size,
@@ -317,9 +343,12 @@ class ComputeTrajectoryEmbeddings(foo.Operator):
                 )
 
         # Some frames may have failed to embed (e.g. ffmpeg couldn't
-        # decode the tail of a video). Filter to the subset whose
-        # embedding actually landed on disk; all downstream work uses
-        # this restricted view.
+        # decode a frame). Filter to the subset whose embedding actually
+        # landed on disk; all downstream work uses this restricted view.
+        # Capture the pre-filter count FIRST so we can detect (and warn
+        # about) partial coverage — otherwise the subsetting is silent
+        # and the projection quietly covers fewer frames than the video.
+        n_before_filter = len(frames)
         frames = frames.exists(embeddings_field)
         total = len(frames)
         if total == 0:
@@ -330,6 +359,14 @@ class ComputeTrajectoryEmbeddings(foo.Operator):
                     "frame. Check the video file for decode errors."
                 ),
             }
+        if total < n_before_filter:
+            ctx.ops.notify(
+                f"Only {total}/{n_before_filter} frames have embeddings — "
+                f"the projection covers a sparse subset, which fragments "
+                f"the scatter and inflates jump distances. Re-run Compute "
+                f"to embed the rest.",
+                variant="warning",
+            )
 
         raw_values = frames.values(embeddings_field)
         embeddings = np.asarray(
@@ -342,12 +379,19 @@ class ComputeTrajectoryEmbeddings(foo.Operator):
                 variant="warning",
             )
 
+        # Pass a fixed seed so the projection is reproducible. UMAP /
+        # t-SNE are stochastic; without a seed each run produces a
+        # rotated/reflected/locally-distorted layout even for identical
+        # embeddings, which looks like the scatter "changing shape"
+        # between runs that only differ in, e.g., scene_window. `seed`
+        # flows through **kwargs to the reducer's random_state.
         fob.compute_visualization(
             frames,
             embeddings=embeddings,
             method=method,
             brain_key=brain_key,
             num_dims=2,
+            seed=seed,
         )
 
         # Now compute consecutive-frame cosine distances within each

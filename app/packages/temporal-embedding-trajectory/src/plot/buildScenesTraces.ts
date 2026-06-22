@@ -65,7 +65,10 @@ export function buildScenesTraces(opts: ScenesTraceOptions): ScenesPlot {
       y: scores,
       ids: frame_ids,
       customdata: frame_numbers.map((fn, k) => [brainKey, fn, scores[k]]),
-      type: "scattergl" as const,
+      // SVG (not scattergl): plotly 3.x's WebGL renderer drops line-only
+      // traces (blank chart) and its gl canvas hides the yellow cursor-line
+      // shape in scenesLayout. SVG is plenty fast at this scale.
+      type: "scatter" as const,
       mode: "lines" as const,
       name: brainKey,
       line: { color, width: 1.5 },
@@ -80,7 +83,9 @@ export function buildScenesTraces(opts: ScenesTraceOptions): ScenesPlot {
         y: peaks.map((i) => scores[i]),
         ids: peaks.map((i) => frame_ids[i]),
         customdata: peaks.map((i) => [brainKey, frame_numbers[i], scores[i]]),
-        type: "scattergl" as const,
+        // SVG too — keeps the scenes plot off the WebGL layer so the
+        // cursor-line shape stays visible (see the line trace above).
+        type: "scatter" as const,
         mode: "markers" as const,
         name: `${brainKey} peaks`,
         showlegend: false,
@@ -209,7 +214,7 @@ export function scenesFromBoundaries(
 
 // ── helpers ────────────────────────────────────────────────────────────
 
-function thresholdFromScores(scores: number[], sigma: number): number {
+export function thresholdFromScores(scores: number[], sigma: number): number {
   const nonZero = scores.filter((s) => s > 0);
   if (nonZero.length < 2) return 0;
   const mean = nonZero.reduce((a, b) => a + b, 0) / nonZero.length;
@@ -219,7 +224,7 @@ function thresholdFromScores(scores: number[], sigma: number): number {
   return mean + sigma * std;
 }
 
-function findPeaks(
+export function findPeaks(
   values: number[],
   threshold: number,
   minDistance: number

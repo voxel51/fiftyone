@@ -33,7 +33,7 @@ export type TrajectoryViewSchema = {
   };
 };
 
-export type ViewMode = "scatter" | "compare" | "scenes";
+export type ViewMode = "scatter" | "scatter_b" | "compare" | "scenes";
 
 export type TrajectoryViewProps = {
   schema: TrajectoryViewSchema;
