@@ -676,8 +676,15 @@ class CityscapesDataset(FiftyOneDataset):
             (False), or only if the ZIP file exists (None)
         coarse_annos (None): whether to load the coarse annotations (True), or
             not (False), or only if the ZIP file exists (None)
-        person_annos (None): whether to load the personn detections (True), or
+        person_annos (None): whether to load the person detections (True), or
             not (False), or only if the ZIP file exists (None)
+        extra_attrs (True): whether to load extra attributes onto the person
+            detections. Only applies when ``person_annos`` are loaded.
+            Supported values are:
+
+            -   ``True``: load all extra attributes
+            -   ``False``: do not load any extra attributes
+            -   a name or list of names of specific attributes to load
     """
 
     def __init__(
@@ -686,11 +693,13 @@ class CityscapesDataset(FiftyOneDataset):
         fine_annos=None,
         coarse_annos=None,
         person_annos=None,
+        extra_attrs=True,
     ):
         self.source_dir = source_dir
         self.fine_annos = fine_annos
         self.coarse_annos = coarse_annos
         self.person_annos = person_annos
+        self.extra_attrs = extra_attrs
 
     @property
     def name(self):
@@ -729,6 +738,7 @@ class CityscapesDataset(FiftyOneDataset):
                 fine_annos=self.fine_annos,
                 coarse_annos=self.coarse_annos,
                 person_annos=self.person_annos,
+                extra_attrs=self.extra_attrs,
             )
 
         logger.info("Parsing dataset metadata")
