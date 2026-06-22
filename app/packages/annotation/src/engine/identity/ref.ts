@@ -50,5 +50,16 @@ export const refsEqual = (a: LabelRef, b: LabelRef): boolean =>
 export const refKey = (ref: LabelRef): string =>
   [ref.sample, ref.path, ref.instanceId, ref.frame ?? ""].join(" ");
 
+/**
+ * Frame-AGNOSTIC identity key, for HOVER only. Hover is a track-level
+ * highlight, not a per-occurrence one: a row/overlay lights its whole track up.
+ * Keying hover on the full ref strands an entry when the playhead advances
+ * between mouseenter (stamped at frame N) and mouseleave (cleared at frame M) —
+ * the frame-N entry never clears. Collapsing a track's occurrences to one key
+ * makes set/clear symmetric regardless of the playhead.
+ */
+export const hoverKey = (ref: LabelRef): string =>
+  [ref.sample, ref.path, ref.instanceId].join(" ");
+
 /** Linkage-class key (`instanceId` alone) — cross-slice highlight ONLY. */
 export const linkageKey = (ref: LabelRef): string => ref.instanceId;

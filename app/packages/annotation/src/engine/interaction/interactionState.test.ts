@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { InteractionState } from "./interactionState";
+import type { LabelRef } from "../identity/ref";
 import { makeDet, makeEngine, ref } from "../testing/fixtures";
 
 describe("InteractionState active/anchor", () => {
@@ -83,6 +84,43 @@ describe("InteractionState hover", () => {
 
     state.setHovered(ref("ground_truth", "d1"), false);
     expect(state.isHovered(ref("ground_truth", "d1"))).toBe(false);
+  });
+
+  it("keys hover frame-agnostically — a clear on a moved playhead still releases the track", () => {
+    const state = new InteractionState();
+    const at = (frame: number): LabelRef => ({
+      sample: "s1",
+      path: "frames.detections",
+      instanceId: "t1",
+      frame,
+    });
+
+    // hovered while the playhead is on frame 3
+    state.setHovered(at(3), true);
+    expect(state.isHovered(at(3))).toBe(true);
+    // the playhead advanced to 7, so mouseleave clears at a different frame
+    state.setHovered(at(7), false);
+
+    expect(state.getHovered()).toEqual([]);
+    expect(state.isHovered(at(3))).toBe(false);
+    expect(state.isHovered(at(7))).toBe(false);
+  });
+
+  it("keeps distinct tracks' hover separate", () => {
+    const state = new InteractionState();
+    const at = (instanceId: string, frame: number): LabelRef => ({
+      sample: "s1",
+      path: "frames.detections",
+      instanceId,
+      frame,
+    });
+
+    state.setHovered(at("t1", 3), true);
+    state.setHovered(at("t2", 3), true);
+    state.setHovered(at("t1", 9), false);
+
+    expect(state.isHovered(at("t1", 3))).toBe(false);
+    expect(state.isHovered(at("t2", 3))).toBe(true);
   });
 
   it("presence exit prunes hover only — never selection", () => {
