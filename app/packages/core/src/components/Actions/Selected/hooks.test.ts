@@ -21,9 +21,6 @@ import {
 } from "recoil";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// ── Atom/selector stubs ────────────────────────────────────────────────────
-// vi.hoisted ensures these refs exist as a mutable container before any
-// vi.mock factory or import runs. The async factory populates them.
 const stubs = vi.hoisted(() => ({
   selectedLabels: null as any,
   selectedLabelMap: null as any,
@@ -67,7 +64,6 @@ vi.mock("@fiftyone/state", async () => {
   };
 });
 
-// ── Lighter scene mock ─────────────────────────────────────────────────────
 const refs = vi.hoisted(() => ({
   scene: { clearSelection: vi.fn() } as {
     clearSelection: ReturnType<typeof vi.fn>;
