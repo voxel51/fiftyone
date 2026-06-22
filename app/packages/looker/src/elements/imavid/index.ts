@@ -21,8 +21,7 @@ export function withImaVidLookerEvents(): () => Events<ImaVidState> {
       mouseenter: ({ update }) => {
         update(({ config: { thumbnail } }) => {
           if (thumbnail) {
-            // entering via scroll (tile moving under a stationary cursor) is NOT a
-            // deliberate hover — keep hoverProbed false until a real mousemove.
+            // scroll-induced enter isn't a deliberate hover; wait for a mousemove
             return {
               playing: true,
               disableOverlays: true,
@@ -49,8 +48,7 @@ export function withImaVidLookerEvents(): () => Events<ImaVidState> {
       },
       mousemove: ({ event, update }) => {
         update((state) => {
-          // a real pointer move over the tile = deliberate hover; this is what
-          // unlocks the frame-stream fetch. Scroll never fires mousemove.
+          // a real pointer move = deliberate hover that unlocks the stream fetch
           const probe = state.config.thumbnail ? { hoverProbed: true } : {};
           return { ...seekFn(state, event), ...probe };
         });
@@ -237,14 +235,11 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   async drawFrameNoAnimation(frameNumberToDraw: number) {
     let image = this.getCurrentFrameImage(frameNumberToDraw);
 
-    // BLOCK until the frame is actually loaded (fetching the look-ahead meanwhile),
-    // so this promise resolves only once the frame is drawable. The MODAL timeline
-    // gates its playhead on this resolving — if we returned early on a not-yet-loaded
-    // frame, the playhead would race ahead of the stream (canvas frozen on frame 1,
-    // "never plays") and its merged look-ahead would balloon into one giant fetch.
+    // block until the frame is loaded so the modal timeline's playhead can't race
+    // ahead of the stream (it gates on this promise resolving)
     while (!image) {
       const total = this.framesController.totalFrameCount;
-      // past the known end → nothing to draw (don't hang).
+      // past the known end, nothing to draw
       if (total != null && frameNumberToDraw > total) {
         return;
       }
@@ -287,8 +282,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     const currentFrameImage = this.getCurrentFrameImage(frameNumberToDraw);
     if (!currentFrameImage) {
       const total = this.framesController.totalFrameCount;
-      // while still streaming (length unknown) wait for the frame; only pause once
-      // the stream has revealed the end and we're genuinely past it.
+      // while streaming (length unknown) wait for the frame; pause only past a known end
       if (total == null || frameNumberToDraw < total) {
         this.skipAndTryAgain(frameNumberToDraw, true);
         return;
@@ -380,8 +374,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     const frameCountMultiplierWeight =
       1 + Math.min((totalFrameCount ?? 0) / 5000, 1);
 
-    // Only the seeded poster is buffered → this is the FIRST fetch, so keep it tiny
-    // for a sub-second start; once streaming, grow to the full look-ahead window.
+    // first fetch (only the seeded poster buffered): keep it tiny for a fast start
     const onlySeedBuffered =
       this.framesController.storeBufferManager.totalFramesInBuffer <= 1;
 
@@ -389,8 +382,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       ? 2
       : onlySeedBuffered
       ? INITIAL_LOOK_AHEAD_FRAMES
-      : // floor at a full pymongo batch so low frame rates don't issue tiny
-        // (~17-frame) requests; stream in 100-frame windows, not per-frame trickle
+      : // floor at a full batch so low frame rates don't issue tiny requests
         Math.max(
           this.targetFrameRate *
             LOOK_AHEAD_MULTIPLIER *
@@ -398,8 +390,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
           STREAM_BATCH_FRAMES
         );
 
-    // while the length is still unknown (streaming), fetch the look-ahead window
-    // uncapped — reaching a page with no next page is what reveals the true total.
+    // while streaming (length unknown) fetch uncapped; the empty next page reveals the total
     const frameRangeMax =
       totalFrameCount == null
         ? Math.trunc(currentFrameNumber + offset)
@@ -451,12 +442,8 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
    * This is for legacy imavid, which is used for thumbnail imavid.
    */
   private ensureBuffers(state: Readonly<ImaVidState>) {
-    // A thumbnail's first stream fetch is heavy and can't be cancelled server-side,
-    // so only start it once the hover has PERSISTED — transient mouse-over while
-    // scrolling (or tiles mounting under a stationary cursor) must never kick one off.
-    // Once frames are streaming, keep the buffer topped up with no delay.
-    // A scroll fires mouseenter (hovering) but never mousemove (hoverProbed), so
-    // gating on hoverProbed guarantees scrolling never starts a per-group stream.
+    // a thumbnail's first stream fetch is heavy and uncancellable, so gate it on a
+    // sustained hover (hoverProbed); scroll fires mouseenter but never mousemove
     if (!state.hovering || !state.hoverProbed) {
       this.cancelHoverFetch();
       return;
@@ -490,10 +477,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
    * Starts fetch if there are buffers in the fetch buffer manager
    */
   public checkFetchBufferManager() {
-    // Prefetch on open and maintain a look-ahead buffer so playback starts instantly
-    // and never stalls. The seeded poster renders immediately, so this fetch is async
-    // and never blocks the modal. Only one look-ahead window is ever in flight, and
-    // the next is enqueued only as playback advances past what's buffered.
+    // prefetch the look-ahead window so playback starts without stalling
     const range = this.getLookAheadFrameRange(this.frameNumber || 1);
     if (
       range[1] >= range[0] &&

@@ -199,10 +199,8 @@ const modalSampleQuery = graphQLSelector<
   },
 });
 
-// Cache-first modal sample: a hydrated grid sample already lives in the shared
-// `stores` cache (keyed by id), so opening it in the modal issues NO query. Only a
-// cache miss (a not-yet-hydrated sample, or a slice we haven't loaded) falls back to
-// the `mainSample` query.
+// cache-first: a hydrated grid sample is already in the shared `stores` cache, so
+// opening it issues no query; a miss falls back to the `mainSample` query
 const getCachedModalSample = (id: string): ModalSample | undefined => {
   for (const store of stores) {
     const cached = store.samples.get(id);
@@ -213,11 +211,9 @@ const getCachedModalSample = (id: string): ModalSample | undefined => {
   return undefined;
 };
 
-// The non-label "complement" for a sample id, fetched async via the lean REST
-// route. Source of truth for BOTH consumers below: the looker reads it
-// non-blocking (noWait) so the modal renders INSTANTLY from the lean grid payload,
-// while the sidebar awaits it (suspends → loading state) so it reflects the full
-// current sample. recoil caches per id; the fetcher dedupes — one request per id.
+// the non-label complement for a sample id, fetched via REST. the looker reads it
+// non-blocking (noWait) so the modal renders from the lean grid payload; the sidebar
+// awaits it. cached per id (the fetcher dedupes)
 export const modalSampleComplement = selectorFamily<
   Record<string, unknown>,
   string
@@ -249,8 +245,7 @@ export const modalSample = selector<ModalSample>({
     if (current !== null) {
       const cached = getCachedModalSample(current.id);
       if (cached) {
-        // assemble at runtime: lean grid payload + non-label fields when they
-        // arrive — NEVER block the looker on the complement (noWait, not get)
+        // non-blocking: render from the lean payload, fold in non-label fields as they arrive
         const loadable = get(noWait(modalSampleComplement(current.id)));
         if (loadable.state === "hasValue") {
           return {

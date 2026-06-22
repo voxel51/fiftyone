@@ -4,16 +4,13 @@
 
 import { getFetchFunction } from "@fiftyone/utilities";
 
-// One record from the samples endpoint: a projected FIELD SLICE (`fields`) + signed
-// media `urls`, keyed by id. This is NOT a "sample" — the sample is assembled at
-// runtime by joining the field slices the client has cached (overlay/complement/
-// frame fields) by id.
+// one record from the samples endpoint: a projected field slice (`fields`) + signed
+// media `urls`, keyed by id; the sample is assembled at render by joining cached slices
 export interface SampleRow {
   id: string;
   urls: { field: string; url: string | null }[];
   fields: Record<string, unknown>;
-  // real per-tile aspect ratio, present ONLY for the auto-AR grid (fixed-AR tiles
-  // lay out from the grid setting and never receive it)
+  // per-tile aspect ratio, present only for the auto-AR grid
   aspectRatio?: number;
 }
 
@@ -22,8 +19,8 @@ export interface SamplesRequest {
   ids?: string[];
   after?: number;
   count?: number;
-  // the app sends the EXACT fields it needs (include) OR the paths to drop
-  // (exclude); the backend is a thin projector and applies whichever is present
+  // the app sends either the fields to include or the paths to exclude; the
+  // backend projects whichever is present
   fields?: string[];
   exclude?: string[];
   view: unknown;
@@ -32,8 +29,8 @@ export interface SamplesRequest {
   sortBy?: string;
   desc?: boolean;
   hint?: string;
-  // skip the per-doc media OPEN that reads width/height — set for frame/tile reads
-  // that inherit a poster's aspect ratio (the dominant cost of a large group fetch)
+  // skip the per-doc media open that reads width/height — set for frame/tile reads
+  // that inherit a poster's aspect ratio
   skipMetadata?: boolean;
 }
 

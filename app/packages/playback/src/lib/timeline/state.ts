@@ -101,11 +101,8 @@ export type FoTimelineConfig = {
   totalFrames: TotalFrames;
 
   /**
-   * If true, the true length isn't known yet — `totalFrames` is provisional and the
-   * source (e.g. ImaVid) is still streaming. The playback controls initialize and play
-   * the buffered frames WITHOUT blocking on the count: the playhead waits at the
-   * buffered end instead of looping/stopping, and the load window isn't clamped to the
-   * provisional total. Both revert once the real count lands and this clears.
+   * If true, `totalFrames` is provisional (source still streaming): the playhead
+   * waits at the buffered end instead of looping and the load window isn't clamped.
    */
   streaming?: boolean;
 
@@ -470,8 +467,7 @@ export const getLoadRangeForFrameNumber = (
 ): BufferRange => {
   const { totalFrames, targetFrameRate, speed, streaming } = config;
 
-  // while streaming, the real length is unknown — don't clamp the window to the
-  // provisional total; just stream a fixed window ahead of the playhead.
+  // while streaming, length is unknown — don't clamp the window to the provisional total
   const upperBound = streaming ? Infinity : totalFrames;
 
   // we'll keep behind-buffer size fixed

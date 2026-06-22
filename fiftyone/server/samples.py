@@ -125,13 +125,8 @@ async def paginate_samples(
     if int(after) > -1:
         view = view.skip(int(after) + 1)
 
-    # `_group_count` rides on the grid's poster-tile media load ONLY (page load +
-    # scroll for new tiles), so each poster carries its group size and the ImaVid
-    # looker never re-queries it. That load is the paginated grouped read:
-    # `pagination_data` is True AND there is no `dynamic_group`. Excluded by design:
-    # hover/playback (single-group frame stream → `dynamic_group` set), the modal
-    # single-sample fetch (`pagination_data` False), and the id-only spine (a separate
-    # route that never calls this). Keeps the $sum off every non-poster query.
+    # emit per-group counts only for the top-level paginated grouped read, not
+    # single-group (`dynamic_group`) or non-paginated fetches.
     if dynamic_group is None and pagination_data:
         for stage in getattr(view, "_stages", []):
             if isinstance(stage, fos.GroupBy):
@@ -165,8 +160,6 @@ async def paginate_samples(
                 url_cache,
                 pagination_data,
                 additional_media_fields=additional_media_fields,
-                # client decides per the grid's aspect-ratio/autosizing settings:
-                # dimensions are only needed for poster images in auto mode
                 skip_dimensions=skip_metadata,
             )
             for sample in samples

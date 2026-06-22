@@ -34,8 +34,7 @@ const jobQueue: AsyncLabelsRenderingJob[] = [];
 const pendingJobs = new Map<Sample, AsyncLabelsRenderingJob>();
 const processingSamples = new Set<Sample>();
 
-// Shared with the initial-load path (worker/pool.ts) so we don't run a second
-// hardwareConcurrency-sized pool. freeWorkers tracks which are free for async jobs.
+// shared with the initial-load path (worker/pool.ts) to avoid a second worker pool
 const freeWorkers: Worker[] = sharedWorkerPool().slice();
 
 const updateRenderingCount = (delta: number) => {

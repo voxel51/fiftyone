@@ -141,11 +141,8 @@ export const imaVidLookerState = atomFamily<any, string>({
 export const groupByFieldValue = selector({
   key: "groupByFieldValue",
   get: ({ get }) => {
-    // A non-nested dynamic group (e.g. ImaVid) isn't sliced, so there's no
-    // "main slice vs displayed slice" distinction — its `_group` is already on the
-    // modal sample (served cache-first from the grid rep). Read it there to avoid a
-    // redundant `mainSample` query. Only nested/sliced groups need the main-slice
-    // fetch (where the displayed slice differs from the main slice).
+    // a non-nested dynamic group isn't sliced, so `_group` is already on the
+    // modal sample — read it there to avoid a redundant mainSample query
     if (get(isNonNestedDynamicGroup)) {
       const fromModal = get(modalSample)?.sample?._group;
       if (fromModal != null) {

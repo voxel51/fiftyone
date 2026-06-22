@@ -120,8 +120,7 @@ async def get_metadata(
                 )
 
     if filepath not in metadata_cache and skip_dimensions:
-        # the ImaVid client computes dimensions from the decoded image, so skip
-        # the per-frame media read just to obtain width/height
+        # caller opted out of dimensions; use a placeholder aspect ratio
         metadata_cache[filepath] = dict(aspect_ratio=1.0)
 
     if filepath not in metadata_cache:

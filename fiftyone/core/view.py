@@ -923,9 +923,8 @@ class DatasetView(foc.SampleCollection):
         elif isinstance(group_expr, (list, tuple)) and all(
             etau.is_str(e) and e.startswith("$") for e in group_expr
         ):
-            # Compound key of plain field references: match each field directly so
-            # the query is index-eligible. An `$expr` over a computed array forces a
-            # full collection scan on every per-group fetch.
+            # match each field directly (index-eligible) rather than an `$expr` over
+            # a computed array, which cannot use an index.
             pipeline.append(
                 {
                     "$match": {

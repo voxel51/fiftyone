@@ -233,9 +233,8 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
 
     if (
       (!state.config.thumbnail || state.playing) &&
-      // grid tiles: never start streaming playback frames until the POSTER has
-      // rendered — so flinging over not-yet-loaded tiles can't kick off fetches that
-      // starve the posters. The modal (`!thumbnail`) is exempt.
+      // grid tiles don't stream playback frames until the poster has rendered, so
+      // flinging over unloaded tiles can't starve the posters; the modal is exempt
       (!state.config.thumbnail || state.hasPoster) &&
       LOOKER_WITH_READER !== this &&
       frameCount !== null
@@ -250,10 +249,8 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     }
 
     if (LOOKER_WITH_READER === this) {
-      // Gate on the next frame being buffered: if present, play; if not, pause
-      // (buffering) and request ONE chunk from the stable frame so the playhead
-      // doesn't race ahead and spam setStream/`/frames`. With the persistent frame
-      // cache, a re-acquired looker (modal) already has the frames → no pause.
+      // pause and request a chunk if the next frame isn't buffered, so the playhead
+      // can't race ahead of the stream
       if (this.hasFrame(Math.min(frameCount, state.frameNumber + 1))) {
         this.state.buffering && this.dispatchEvent("buffering", false);
         this.state.buffering = false;
@@ -267,9 +264,8 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     return pluckedOverlays;
   }
 
-  // Authoritative frame count: prefer the server's `metadata.total_frame_count` over
-  // deriving from `video.duration`, which is unreliable for range-served / non-
-  // faststart mp4s (under-reports, or transiently Infinity → a runaway stream).
+  // prefer the server's `total_frame_count` over deriving from `video.duration`,
+  // which is unreliable for range-served mp4s (can be wrong or transiently Infinity)
   private get frameCount(): number | null {
     const fromMetadata = this.sample?.metadata?.total_frame_count;
     if (typeof fromMetadata === "number" && fromMetadata > 0) {

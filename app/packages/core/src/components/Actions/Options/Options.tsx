@@ -195,9 +195,7 @@ const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
   );
 };
 
-// In-app imavid playback frame rate — persisted to localStorage per (dataset,
-// group-by), NOT saved on the dataset. Set it to the data's capture rate (e.g. 10)
-// so playback doesn't over-demand frames.
+// imavid playback frame rate, persisted to localStorage per (dataset, group-by)
 const ImaVidFrameRate = () => {
   const [fps, setFps] = useRecoilState(fos.dynamicGroupsTargetFrameRate);
   return (

@@ -61,10 +61,8 @@ export default class SegmentationOverlay<State extends BaseState>
       return;
     }
 
-    // The mask buffer may have been transferred to a render worker (detached) when
-    // this frame was rasterized — its byteLength is then 0. The cached bitmap still
-    // draws, so skip rebuilding the hit-test targets rather than throwing
-    // "Cannot perform Construct on a detached ArrayBuffer".
+    // skip rebuilding hit-test targets if the mask buffer was transferred to a worker
+    // (detached, byteLength 0); the cached bitmap still draws
     if (this.label.mask.data.buffer.byteLength === 0) {
       return;
     }
@@ -90,8 +88,8 @@ export default class SegmentationOverlay<State extends BaseState>
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
-    // targets is absent when the mask buffer was transferred (detached); the cached
-    // bitmap is still drawable, so only bail when there's nothing to paint at all.
+    // targets is absent when the mask buffer was transferred, but the cached bitmap
+    // is still drawable, so only bail when there's nothing to paint
     if (!this.targets && !this.label.mask?.bitmap?.width) {
       return;
     }

@@ -15,9 +15,8 @@ export const dynamicGroupsElementCount = selectorFamily({
       modal: boolean;
     }) =>
     ({ get }) => {
-      // HARD RULE: never fire an aggregation on modal open / playback. The group
-      // size rides on the poster's `_group_count` (lean grid payload); absent it,
-      // 0 puts the imavid timeline in streaming mode (the stream reveals length).
+      // in the modal, the group size rides on the poster's `_group_count`; absent
+      // it, 0 puts the imavid timeline in streaming mode (the stream reveals length)
       if (modal) {
         const sample = get(modalSample)?.sample as
           | { _group_count?: number }

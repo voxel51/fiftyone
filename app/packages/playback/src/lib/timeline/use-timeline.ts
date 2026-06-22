@@ -123,10 +123,8 @@ export const useTimeline = (name?: TimelineName) => {
     [updateConfig, timelineName]
   );
 
-  // Update the timeline length after init — used by streaming sources (ImaVid) that
-  // play before the group's true length is known: the timeline starts on the frames
-  // already buffered and the real total lands later (from the stream), enabling the
-  // full seek range without ever re-initializing.
+  // update the timeline length after init — for streaming sources whose real total
+  // lands after playback starts, without re-initializing
   const setTotalFrames = useCallback(
     (totalFrames: number, streaming = false) => {
       updateConfig({

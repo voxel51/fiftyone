@@ -1,27 +1,14 @@
 """
-Samples routes — where the FRONTEND requests exactly the data it needs.
+Samples routes for field-projected and id-only paginated reads.
 
-Two endpoints share one matched/paginated pipeline builder (``get_view`` +
-``get_samples_pipeline``); they differ only in what they project and how they window:
+Two endpoints share one paginated pipeline builder (``get_view`` +
+``get_samples_pipeline``), differing only in projection and windowing:
 
-``POST /dataset/{id}/samples`` — the DATA reader. Body
-``{ids?|after?,count?, fields?:[paths]|exclude?:[paths], view?, filters?, filter?,
-dynamicGroup?, sortBy?, desc?, hint?, skipMetadata?}`` →
-``{samples: [{id, urls, fields, aspectRatio?}]}``. Returns a FIELD SLICE
-("fields"), never a "sample" — the client assembles the runtime sample by joining
-the field slices it has cached (overlay fields, complement fields, frame fields) by
-id. Appends ONE ``$project`` from ``fields`` (inclusion) or ``exclude`` (exclusion)
-and signs media urls. Grid, modal, and imavid frames all use this one endpoint.
-``aspectRatio`` is included ONLY for the auto-AR grid (real dimensions); fixed-AR
-tiles lay out from the grid setting and never receive it.
+``POST /dataset/{id}/samples`` returns a per-id field slice + signed media urls,
+projected from the requested ``fields`` (inclusion) or ``exclude`` (exclusion).
 
-``POST /dataset/{id}/grid/samples`` — the cheap ordered id SPINE for the virtual
-grid. Body ``{spine: true, after?, view?, filters?, filter?, sortBy?, desc?, hint?}``
-→ ``{spine: [{id}], next}``, windowed by ``after``. Mirrors the data reader's view
-exactly (filters/sort/group-slices apply; dynamic-group views page by group), but a
-final ``$project`` keeps only ``_id`` (no metadata, no media signing, no labels), so
-the whole scroll range lays out from a few cheap reads instead of one heavy read per
-screen.
+``POST /dataset/{id}/grid/samples`` returns an ordered window of ids only (final
+``$project`` keeps just ``_id``), windowed by ``after``.
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -29,7 +16,6 @@ screen.
 """
 
 import asyncio
-import logging
 from typing import Any, Dict, List, Optional
 
 from bson import ObjectId
@@ -48,21 +34,17 @@ from fiftyone.server.samples import get_samples_pipeline
 from fiftyone.server.utils.json.encoder import JSONResponse
 import fiftyone.server.view as fosv
 
-logger = logging.getLogger(__name__)
-
 # identifiers the response always needs (media-type dispatch + signing + cache key)
 _ALWAYS = ("_id", "filepath", "_media_type")
 
-# One spine fetch returns up to this many ids; the app pages the spine by ``after``
-# only when a view exceeds it, so layout is driven by a few cheap reads rather than
-# one heavy read per screen.
+# max ids returned per spine fetch; larger views page by ``after``
 SPINE_PAGE = 5000
 
 
 def _projection(
     fields: Optional[List[str]], exclude: Optional[List[str]]
 ) -> Optional[Dict[str, Any]]:
-    """A Mongo ``$project`` from the client's include/exclude field list."""
+    """A Mongo ``$project`` from the requested include/exclude field list."""
     if fields:
         project = {path: True for path in fields}
         for path in _ALWAYS:
@@ -81,7 +63,7 @@ def _projection(
 def _sample_filter(
     filter_arg: Optional[Dict[str, Any]]
 ) -> Optional[SampleFilter]:
-    """Build a ``SampleFilter`` (group slice) from the client ``filter`` param."""
+    """Build a ``SampleFilter`` (group slice) from the ``filter`` param."""
     if not filter_arg:
         return None
     group = filter_arg.get("group")
@@ -120,33 +102,24 @@ async def _build_item(
         metadata_cache,
         url_cache,
         additional_media_fields=additional,
-        # frames/tiles inherit the poster's aspect ratio — skip the per-doc media
-        # OPEN that reads width/height (the bulk of a large group's fetch cost)
         skip_dimensions=skip_dimensions,
     )
 
-    # "sample" is a RUNTIME concept assembled on the client; this endpoint returns
-    # only the projected field slice ("fields") + signed media urls (keyed by id).
     item = {
         "id": str(doc["_id"]),
         "urls": metadata.get("urls"),
         "fields": foj.stringify(doc),
     }
 
-    # Aspect ratio is a GRID concern: tiles lay out from the gridAspectRatio SETTING
-    # in fixed mode (skip_dimensions=True → omit it entirely, NEVER a 1.0 placeholder)
-    # and only AUTO mode asks for the real per-tile ratio (skip_dimensions=False).
+    # aspect ratio is omitted when dimensions are skipped (no placeholder)
     if not skip_dimensions:
         item["aspectRatio"] = metadata.get("aspect_ratio")
 
-    # NOTE: no video-specific keys here. frame_rate / frame_number live INSIDE the
-    # projected `fields` (fields.metadata.frame_rate, fields.frame_number); the
-    # VideoLooker derives them at runtime — the record stays media-type agnostic.
     return item
 
 
 class Samples(HTTPEndpoint):
-    """Thin field-projecting samples reader for grid, modal, and imavid."""
+    """Field-projecting paginated samples reader."""
 
     @decorators.route
     async def post(self, request: Request, data: dict) -> JSONResponse:
@@ -163,8 +136,6 @@ class Samples(HTTPEndpoint):
         sample_filter = _sample_filter(data.get("filter"))
 
         def _build():
-            # pagination_data=False: NO server projection — the client's $project
-            # (below) is the only field selection
             view = fosv.get_view(
                 dataset_name,
                 stages=data.get("view") or [],
@@ -195,13 +166,6 @@ class Samples(HTTPEndpoint):
             count or None
         )
 
-        logger.info(
-            "[fetch] samples ds=%s n=%d fields=%s",
-            dataset_id,
-            len(docs),
-            len(data.get("fields") or []) or "exclude",
-        )
-
         additional = fosm._get_additional_media_fields(view) if docs else None
         skip_dimensions = bool(data.get("skipMetadata"))
         metadata_cache: Dict[str, Any] = {}
@@ -224,7 +188,7 @@ class Samples(HTTPEndpoint):
 
 
 class GridSamples(HTTPEndpoint):
-    """The cheap ordered id spine driver for the virtual grid."""
+    """Ordered id-only paginated reader."""
 
     @decorators.route
     async def post(self, request: Request, data: dict) -> JSONResponse:
@@ -239,10 +203,8 @@ class GridSamples(HTTPEndpoint):
         sample_filter = _sample_filter(data.get("filter"))
 
         def _build():
-            # pagination_data=False: the spine only needs ids, so DON'T inject the full
-            # grid field projection (90 label/mask fields) — projecting all of them
-            # across every grouped rep just to strip back to {_id} is the bulk of the
-            # cost. The final $project below keeps only _id.
+            # pagination_data=False: only ids are needed, so skip the full field
+            # projection that the final $project would strip back to _id anyway
             view = fosv.get_view(
                 dataset_name,
                 stages=data.get("view") or [],
@@ -267,13 +229,6 @@ class GridSamples(HTTPEndpoint):
         more = len(docs) > SPINE_PAGE
         docs = docs[:SPINE_PAGE]
         spine = [{"id": str(d["_id"])} for d in docs]
-        logger.info(
-            "[grid-spine] ds=%s after=%d -> %d (more=%s)",
-            dataset_id,
-            after,
-            len(spine),
-            more,
-        )
         return JSONResponse(
             {"spine": spine, "next": after + SPINE_PAGE if more else None}
         )

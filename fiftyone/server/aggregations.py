@@ -164,8 +164,7 @@ async def aggregate_resolver(
 
     maxTimeMS = form.max_query_time * 1000 if form.max_query_time else None
     try:
-        # a root-only request now has NO aggregations (count comes from the estimate),
-        # so skip the DB round-trip entirely rather than aggregate an empty pipeline
+        # root-only requests have no aggregations; skip the empty round-trip
         result = (
             await view._async_aggregate(flattened, maxTimeMS=maxTimeMS)
             if flattened
@@ -239,10 +238,9 @@ def _resolve_path_aggregation(
     query_performance: bool,
     hint: t.Optional[str] = None,
 ) -> AggregateResult:
-    # The ROOT total ("" path) is NOT counted with a Count aggregation — on a dynamic
-    # GroupBy view that forces a full group-by pass, and it's redundant with the free
-    # estimated sample count the client already has (fos.datasetSampleCount). Only
-    # FIELD paths get a real (indexed) Count for their sidebar tallies.
+    # the root ("" path) total uses the estimated document count, not a `Count`
+    # (which forces a full group-by pass on grouped views); only field paths get a
+    # real indexed count.
     aggregations: t.List[foa.Aggregation] = []
     if path:
         aggregations.append(
@@ -286,9 +284,6 @@ def _resolve_path_aggregation(
 
     data = {"path": path}
     if not path:
-        # ROOT total: the FREE estimated sample count (metadata, no scan / no
-        # group-by) — same source as fos.datasetSampleCount on the client. Exact
-        # filtered/grouped totals are resolved client-side from the spine.
         est = view._root_dataset._sample_collection.estimated_document_count()
         data["count"] = est
         data["exists"] = est

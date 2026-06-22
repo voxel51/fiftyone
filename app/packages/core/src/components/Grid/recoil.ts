@@ -84,20 +84,15 @@ export const gridPage = atom({
   default: 0,
 });
 
-// Measured height of the floating action bar (SamplesHeader) that overlays the grid.
-// The virtual layout insets its top by this so the first row starts BELOW the bar on
-// load; scrolling then slides rows up under it (the bar's fade gradient handles the
-// overlap look). 0 until the header measures itself.
+// measured height of the floating action bar; the virtual layout insets its top by
+// this so the first row starts below the bar. 0 until the header measures itself
 export const gridHeaderHeight = atom<number>({
   key: "gridHeaderHeight",
   default: 0,
 });
 
-// The grid's resolved item count, learned for free from the spine when it reaches the
-// view's end (no count query). null until known. For a dynamic-group view the spine
-// pages by GROUP, so this is the number of GROUPS — the value the bottom scroll counter
-// shows and that the top-of-grid ResourceCount reads so it reads "<#groups> groups"
-// rather than the total sample count.
+// the grid's resolved item count, learned from the spine at the view's end (no count
+// query); null until known. for a dynamic-group view this is the number of groups
 export const gridSpineTotal = atom<number | null>({
   key: "gridSpineTotal",
   default: null,

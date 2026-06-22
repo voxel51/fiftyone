@@ -12,12 +12,9 @@ import useZoomSetting from "./useZoomSetting";
 /**
  * Deterministic layout for the virtual infinite grid.
  *
- * Positioning uses a single uniform row model: row `r = floor(index/itemsPerRow)`,
- * `y = r*rowStride`. `itemsPerRow`/`rowHeight` come only from zoom/width/AR/spacing,
- * never from loaded data — so a given index ALWAYS lands at the same row/position
- * regardless of scroll/load history, and no other page's data is needed. (Fetching
- * is page-aligned separately; see `InfiniteGrid`.) Forced aspect ratio is exact;
- * "auto" uses a representative ratio (~square) for the slot.
+ * Uniform row model (`row = floor(index/itemsPerRow)`, `y = row*rowStride`) derived
+ * only from zoom/width/AR/spacing, never from loaded data, so a given index always
+ * lands at the same position regardless of load history.
  */
 export interface SpineLayout {
   itemsPerRow: number;
@@ -40,9 +37,8 @@ export interface SpineLayout {
 
 export default function useSpineLayout(
   width: number,
-  // the view's TRUE item count once the spine has revealed it (filtered/grouped/
-  // dynamic-group views); null until then, when we fall back to the dataset's
-  // estimated sample count (the free, no-query total for a flat dataset).
+  // the view's item count once the spine has revealed it; null until then, falling
+  // back to the dataset's estimated sample count
   revealedTotal: number | null
 ): SpineLayout {
   const zoom = useZoomSetting();
@@ -50,18 +46,15 @@ export default function useSpineLayout(
   const spacing = useRecoilValue(gridSpacing);
   const datasetCount = useRecoilValue(fos.datasetSampleCount) ?? 0;
   const totalCount = revealedTotal ?? datasetCount;
-  // top inset = floating action bar height, so row 0 starts below it; scrolling past
-  // it slides rows up under the bar.
+  // top inset = floating action bar height, so row 0 starts below it
   const headerOffset = useRecoilValue(gridHeaderHeight);
 
   return useMemo(() => {
     const safeWidth = Math.max(width, 1);
-    // representative aspect ratio: forced ratio when set, else ~square.
+    // representative aspect ratio: forced ratio when set, else ~square
     const repAspect = parseAspectRatio(aspectRatioSetting) ?? 1;
-    // Target a CONSISTENT tile size (calibrated from the zoom at a fixed reference
-    // width), then fit as many columns as the ACTUAL width allows. So a narrower
-    // viewport shows FEWER columns at the same tile size — not the same columns shrunk
-    // smaller (which perversely packs MORE rows on screen as you narrow the window).
+    // target a consistent tile size calibrated at a reference width, then fit as many
+    // columns as the actual width allows (narrower = fewer columns, same tile size)
     const REF_WIDTH = 1200;
     const refCols = Math.max(1, zoom(REF_WIDTH) / repAspect);
     const targetTileWidth = REF_WIDTH / refCols;

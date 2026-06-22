@@ -29,15 +29,12 @@ export interface Frame {
   overlays: Overlay<VideoState>[];
 }
 
-// Bound the number of per-sample frame caches kept alive. Each inner cache is
-// LRU-bounded, but an unbounded outer map grew one ~1GB cache per video sample ever
-// hovered/scrolled and never freed it → renderer OOM on large video grids.
+// bound how many per-sample frame caches stay alive so the outer map can't grow one
+// LRU cache per video sample ever hovered and OOM the renderer
 const MAX_FRAME_STORES = 20;
 
-// FRAME-LEVEL CACHE: native-video frames keyed by `(sampleId -> frameNumber -> Frame)`,
-// module-level + LRU-bounded, persistent across looker detach (mirrors imavid's
-// shared sample cache). Grid hover fills it; opening the modal reuses it so playback
-// resumes instantly — only missing ranges stream. Reset only on view/filter change.
+// per-sample native-video frame caches, persistent across looker detach so grid hover
+// fills them and opening the modal reuses them; reset only on view/filter change
 const frameStores = new LRUCache<string, LRUCache<number, Frame>>({
   max: MAX_FRAME_STORES,
   dispose: (store) => store.clear(),
@@ -62,8 +59,7 @@ const getFrameStore = (sampleId: string): LRUCache<number, Frame> => {
   return store;
 };
 
-// Reset on view/filter change ONLY (called from the looker package boundary); detach
-// must NEVER reach this — that was the native-video single-reader wipe bug.
+// reset on view/filter change only; detach must not clear these
 export const resetFrameStores = () => {
   for (const store of frameStores.values()) {
     store.clear();
@@ -91,8 +87,7 @@ interface AcquireReaderOptions {
 
 export const { acquireReader, clearReader } = (() => {
   let currentOptions: AcquireReaderOptions = null;
-  // the per-sample store the ACTIVE reader streams into — resolved from the
-  // persistent module-level map, never recreated on detach.
+  // the per-sample store the active reader streams into, resolved from frameStores
   let frameCache: LRUCache<number, Frame> = null;
   let frameReader: Worker;
   let nextRange: BufferRange = null;
@@ -179,16 +174,15 @@ export const { acquireReader, clearReader } = (() => {
       currentOptions = options;
       frameCache = getFrameStore(options.sampleId);
 
-      // Replay frames already cached by a prior looker (grid hover) into THIS
-      // looker so the modal resumes instantly; only gaps stream below.
+      // replay frames cached by a prior looker (grid hover) so the modal resumes
+      // instantly; only gaps stream below
       frameCache.forEach((frame, frameNumber) => {
         options.addFrame(frameNumber, frame);
         options.addFrameBuffers([frameNumber, frameNumber]);
       });
 
-      // Only open a worker stream if the starting frame isn't already cached — a
-      // re-acquired looker (modal) over a fully-buffered video issues ZERO refetch;
-      // the request callback below restarts the stream on the first real cache miss.
+      // only open a stream if the starting frame isn't cached; the request callback
+      // below restarts it on the first real cache miss
       let subscription: string | null = null;
       if (!frameCache.has(options.frameNumber)) {
         subscription = setStream(currentOptions);
@@ -199,7 +193,7 @@ export const { acquireReader, clearReader } = (() => {
 
       return (frameNumber: number) => {
         const isCacheMiss = Boolean(frameCache && !frameCache.has(frameNumber));
-        // a frame already in the persistent cache needs no fetch — never re-stream it.
+        // a cached frame needs no fetch
         if (!isCacheMiss) {
           return;
         }
@@ -220,8 +214,7 @@ export const { acquireReader, clearReader } = (() => {
       };
     },
 
-    // Stop the active worker + reset streaming state, but KEEP the per-sample frame
-    // caches (they live in `frameStores`) — this is the native-video reuse fix.
+    // stop the worker and reset streaming state but keep the per-sample frame caches
     clearReader: () => {
       nextRange = null;
       frameCache = null;

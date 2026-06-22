@@ -76,8 +76,8 @@ export default <T extends AbstractLooker<BaseState>>(
   const view = useRecoilValue(viewAtoms.view);
   const dataset = useRecoilValue(datasetName);
   const mediaField = useRecoilValue(selectedMediaField(isModal));
-  // the grid's media field — used (modal-independent) to key the shared imavid
-  // controller so the modal REUSES the grid's buffered frames instead of refetching
+  // the grid's media field — keys the shared imavid controller so the modal
+  // reuses the grid's buffered frames instead of refetching
   const sharedMediaField = useRecoilValue(selectedMediaField(false));
 
   const fieldSchema = useRecoilValue(
@@ -262,9 +262,8 @@ export default <T extends AbstractLooker<BaseState>>(
               sharedSamples: sharedSampleCache,
             });
 
-            // Seed the poster frame from the already-loaded grid data so the looker
-            // renders immediately with ZERO sample fetches; the rest of the group
-            // streams only on play/hover.
+            // seed the poster frame from already-loaded grid data so the looker
+            // renders without a fetch; the rest of the group streams on play/hover
             if (!controller.store.frameIndex.has(firstFrameNumber)) {
               controller.store.samples.set(thisSampleId, {
                 id: thisSampleId,
@@ -287,15 +286,11 @@ export default <T extends AbstractLooker<BaseState>>(
             ImaVidFramesControllerStore.set(imavidPartitionKey, controller);
           }
 
-          // narrowed (definitely defined) so the count closure below is type-safe.
           const frameStoreController = controller;
 
-          // Resolve the group's frame count for the modal seek bar / timeline init
-          // WITHOUT re-fetching anything already on the client. Prefer cached counts:
-          // a length the stream already revealed on the shared controller (a fully-
-          // played group → 0 queries), or the poster's `_group_count` when the read
-          // carried it. Only a cold modal whose group is in no client cache fetches
-          // the count once; the grid itself never fetches it.
+          // resolve the group frame count for the modal timeline, preferring cached
+          // counts (stream-revealed length or the poster's `_group_count`) and only
+          // fetching once for a cold modal whose group is in no client cache
           if (isModal && frameStoreController.totalFrameCount == null) {
             const posterGroupCount = (sample as { _group_count?: number })
               ._group_count;

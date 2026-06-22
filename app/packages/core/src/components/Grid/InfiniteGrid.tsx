@@ -21,17 +21,15 @@ import {
 } from "./useSpotlightPager";
 import useVirtualScroll from "./useVirtualScroll";
 
-// settle threshold in rows/sec — at or below this, the in-view window loads.
+// settle threshold in rows/sec — at or below this, the in-view window loads
 const SETTLE_ROWS_PER_SEC = 2;
-// accelerated (flick) threshold in rows/sec — above this the depth readout grows;
-// slow/small scrolls keep the small bottom badge (no distracting size change).
+// accelerated (flick) threshold in rows/sec — above this the depth readout grows
 const ACCEL_ROWS_PER_SEC = 8;
-// extra rows above/below the viewport kept MOUNTED for smoothness.
+// extra rows above/below the viewport kept mounted for smoothness
 const OVERSCAN_ROWS = 3;
-// pages prefetched ahead of the viewport (hydrated in the SAME single match-_id
-// query as the visible window, so a settle is one data query).
+// pages prefetched ahead of the viewport, hydrated in the same query as the window
 const LOOKAHEAD_PAGES = 2;
-// scroll indicators linger this long after motion stops.
+// scroll indicators linger this long after motion stops
 const INDICATOR_FADE_MS = 900;
 const THUMB_MIN_PX = 24;
 
@@ -44,10 +42,7 @@ interface CellBox {
   height: number;
 }
 
-/** One grid cell: a positioned wireframe that, once its sample is hydrated, attaches a
- * real looker (reused from the shared cache). The looker loads its media + renders
- * overlays ASYNCHRONOUSLY — image first, overlays as the worker drains — so it handles
- * every media type (image/video/imavid/3D/groups) without blocking. */
+/** One grid cell: a positioned wireframe that attaches a cached looker once its sample is hydrated. */
 const Cell = ({
   cell,
   vTop,
@@ -62,8 +57,7 @@ const Cell = ({
   vTop: number;
   /** bumps when a hydrate lands — re-runs the attach so a wireframe becomes a looker. */
   version: number;
-  /** true while scrolling above the settle threshold — don't attach lookers (which
-   * load poster media) for tiles swept past mid-fling; attach on settle. */
+  /** true while scrolling above the settle threshold — defer attaching lookers until settle. */
   moving: boolean;
   idFor: (id: string) => ID;
   attachItem: (
@@ -88,21 +82,15 @@ const Cell = ({
     [id, onOpen, cell.index]
   );
 
-  // Attach the looker once the tile has dimensions. Idempotent (reuses the cached
-  // instance) and a no-op until the sample is hydrated, so it retries on `version`
-  // (hydrate landing) without ever blocking — the looker then renders async.
+  // attach the looker once the tile has dimensions; idempotent, retries on `version`
   useEffect(() => {
     const el = elRef.current;
-    // Skip attaching while flinging: attaching creates the looker, which loads the
-    // poster media (.mp4 thumbnailer / image) — that's the burst of requests on
-    // swept-over tiles. On settle (`moving` → false) this effect re-runs and attaches.
+    // skip while flinging: attaching loads poster media, a burst on swept-over tiles
     if (!el || !id || !width || !height || moving) return;
     attachItem(idFor(id), el, [width, height]);
   }, [id, width, height, idFor, attachItem, version, moving]);
 
-  // Release on recycle (id change) / unmount — separate from the attach effect so a
-  // `version` re-attach never releases first (no flash). The looker is detached from
-  // the DOM and returned to the cache for instant reuse on revisit.
+  // release on recycle/unmount — separate from attach so a re-attach never releases first
   useEffect(() => {
     if (!id) return;
     const key = idFor(id);
@@ -150,12 +138,10 @@ export default function InfiniteGrid({
   reset: string;
   ensureSpineWindow: (start: number, count: number) => Promise<SpineEntry[]>;
   hydrateWindow: (ids: ReadonlyArray<string>) => Promise<Map<string, GridNode>>;
-  /** the view's true item count once the spine reaches its end, else null (flat
-   * datasets fall back to the estimated sample count) — sizes the virtual layout. */
+  /** the view's true item count once the spine reaches its end, else null — sizes the layout. */
   spineTotal: () => number | null;
   store: SampleStore;
-  /** attach a real looker (from the shared cache) to a tile — reuses the SAME renderer
-   * the Spotlight grid uses, so all media + overlays render async, no reimplementation. */
+  /** attach a cached looker to a tile, reusing the Spotlight grid's renderer. */
   attachItem: (
     id: ID,
     element: HTMLElement,
@@ -183,8 +169,7 @@ export default function InfiniteGrid({
     []
   );
 
-  // measure SYNCHRONOUSLY before paint (so the first frame already has wireframes,
-  // not a black screen), then keep it current with a ResizeObserver.
+  // measure before paint so the first frame has wireframes, then track via observer
   useLayoutEffect(() => {
     const el = viewportRef.current;
     if (!el) return undefined;
@@ -202,15 +187,11 @@ export default function InfiniteGrid({
     return () => ro.disconnect();
   }, []);
 
-  // `spineTotal()` is null until the spine reveals the view's end; reading it here
-  // (re-read on the entriesVersion bump that follows each spine fetch) clamps the
-  // layout to the real item count for filtered/grouped/dynamic-group views.
+  // null until the spine reveals the view's end; clamps the layout to the real count
   const revealedTotal = spineTotal();
   const layout = useSpineLayout(size.width, revealedTotal);
 
-  // publish the revealed item count so the top-of-grid ResourceCount can read it (the
-  // bottom scroll counter reads the same value); reset to null on unmount so a later
-  // view never shows a stale count.
+  // publish the revealed count for ResourceCount; reset on unmount so no stale count
   const setSpineTotalAtom = useSetRecoilState(gridSpineTotal);
   useEffect(() => {
     setSpineTotalAtom(revealedTotal);
@@ -224,12 +205,8 @@ export default function InfiniteGrid({
     acceleratedSpeed: layout.rowHeight * ACCEL_ROWS_PER_SEC,
   });
 
-  // Open the modal for a clicked tile. The infinite grid has no spotlight
-  // engine, so modal next/previous navigation rides a spine-index cursor: each
-  // step resolves the neighbouring index from the spine and hydrates it into the
-  // looker store (so `useExpandSample`'s reader finds it). The clicked sample is
-  // hydrated first for the same reason — otherwise the modal silently never
-  // opens (its query is keyed off the modal selector this sets).
+  // open the modal for a clicked tile; with no spotlight engine, next/previous
+  // navigation rides a spine-index cursor that hydrates neighbours into the store
   const openSample = useCallback(
     (index: number, sampleId: string, event: React.MouseEvent) => {
       if (!onItemClick) {
@@ -287,9 +264,8 @@ export default function InfiniteGrid({
         }
       };
 
-      // The looker reader throws if the clicked sample isn't in the store, so
-      // hydrate it first when missing rather than fail the open. A grid sample
-      // hovered/scrolled-into-view is already hydrated → opens with zero queries.
+      // the looker reader throws if the clicked sample isn't in the store, so
+      // hydrate it first when missing rather than fail the open
       if (ss.has(obj)) {
         fire();
       } else {
@@ -333,39 +309,26 @@ export default function InfiniteGrid({
     [vTop, size.height, layout]
   );
 
-  // spine entries by index (ids), in a ref so accumulating never copies a growing
-  // map; a version bump re-renders when NEW ids/nodes land.
+  // spine entries by index, in a ref so accumulating never copies a growing map
   const entriesRef = useRef(new Map<number, SpineEntry>());
   const [entriesVersion, setEntriesVersion] = useState(0);
-  // true once the first hydrate has landed — drives the initial loading animation.
+  // true once the first hydrate has landed — drives the initial loading animation
   const [loadedOnce, setLoadedOnce] = useState(false);
-  // ids whose label hydrate is in flight, so overlapping loads never re-request.
+  // ids whose label hydrate is in flight, so overlapping loads never re-request
   const inflight = useRef(new Set<string>());
-  // the greatest scroll depth reached this session — the scroll-up scrollbar spans
-  // [0, maxReached], not the full (2M-row) virtual height.
+  // the greatest scroll depth reached this session — bounds the scroll-up scrollbar
   const maxReachedRef = useRef(0);
   // the previous settle's first visible index — its delta gives the scroll direction
-  // so the loader prefetches the look-ahead in the direction of travel.
   const prevStartRef = useRef(0);
 
-  // DECOUPLED loader — driven by scroll position, NOT by tile mounts, and gated on
-  // scroll SETTLE so flinging never fetches. Dynamic-group (ImaVid) views page through
-  // the SAME windowed path as flat views: the spine route windows the grouped view
-  // (its GroupBy lives in `view`), so jumping to any group index loads only that window
-  // — never all groups up front. Steps:
-  //   1) spine ids → positioned wireframes immediately;
-  //   2) full sample + labels (`paginateSamples`, big batches) → written to the store;
-  //      a version bump then re-runs each tile's attach, mounting a looker that loads
-  //      its media + renders overlays ASYNC (image first, overlays as the worker drains).
-  // The VISIBLE window hydrates first, then the off-screen look-ahead — nothing blocks.
+  // loader driven by scroll position and gated on settle, so flinging never fetches:
+  // spine ids become wireframes immediately, then a hydrate writes samples to the
+  // store and bumps version to attach lookers; visible window hydrates before look-ahead
   useEffect(() => {
     if (moving || range.end <= range.start) return undefined;
     const ss = store as unknown as WeakMap<ID, GridNode>;
 
-    // prefetch the look-ahead in the SCROLL DIRECTION: a lower start than the last
-    // settle means we're scrolling UP, so extend the window ABOVE the viewport; else
-    // extend BELOW. Without this the look-ahead is always downward and slow upward
-    // scrolling waits row-by-row.
+    // extend the look-ahead in the scroll direction (up extends above, else below)
     const goingUp = range.start < prevStartRef.current;
     prevStartRef.current = range.start;
 
@@ -376,7 +339,7 @@ export default function InfiniteGrid({
       : visStart;
     const end = goingUp ? visEnd : visEnd + LOOKAHEAD_PAGES * PAGE_SIZE;
 
-    // hydrate full samples for a batch → tiles attach their looker (which renders).
+    // hydrate full samples for a batch so tiles can attach their looker
     const loadLabels = async (ids: string[]) => {
       const need = ids.filter(
         (id) => isPlaceholder(ss.get(idFor(id))) && !inflight.current.has(id)
@@ -396,7 +359,7 @@ export default function InfiniteGrid({
     void (async () => {
       const got = await ensureSpineWindow(start, end - start);
       if (!got.length) return;
-      // publish ids first → positioned wireframes appear immediately.
+      // publish ids first so positioned wireframes appear immediately
       let changed = false;
       const visible: string[] = [];
       const ahead: string[] = [];
@@ -406,14 +369,12 @@ export default function InfiniteGrid({
           entriesRef.current.set(idx, e);
           changed = true;
         }
-        // viewport tiles hydrate first; the directional look-ahead follows.
+        // viewport tiles hydrate first; the directional look-ahead follows
         (idx >= visStart && idx < visEnd ? visible : ahead).push(e.id);
       });
       if (changed) setEntriesVersion((v) => v + 1);
 
-      // ONE match-_id query per settle: hydrate the visible window + look-ahead
-      // horizon together (never per-batch fan-out, never a per-group GroupBy stream),
-      // so a settle issues exactly one data query covering position + horizon.
+      // one query per settle: hydrate the visible window and look-ahead together
       await loadLabels([...visible, ...ahead]);
     })();
     return undefined;
@@ -428,9 +389,7 @@ export default function InfiniteGrid({
   ]);
 
   // a view/filter reset re-keys the spine; drop the index-keyed caches so stale
-  // (index → sample) mappings never paint after the underlying set changes. Guarded
-  // so it only fires on an ACTUAL change — never on mount (which would wipe the
-  // initial in-view load before it paints).
+  // mappings never paint. guarded to fire only on an actual change, never on mount
   const resetRef = useRef(reset);
   useEffect(() => {
     if (resetRef.current === reset) return;
@@ -442,9 +401,7 @@ export default function InfiniteGrid({
     setEntriesVersion((v) => v + 1);
   }, [reset]);
 
-  // cells for the in-view index range. Each carries its spine id; the Cell attaches a
-  // looker once the sample is hydrated (a version bump re-runs the attach). A cell is
-  // a wireframe only until its id + sample have loaded.
+  // cells for the in-view index range, each carrying its spine id
   const cells = useMemo<CellBox[]>(() => {
     const out: CellBox[] = [];
     for (let index = range.start; index < range.end; index++) {
@@ -459,10 +416,10 @@ export default function InfiniteGrid({
       });
     }
     return out;
-    // entriesVersion participates so settle-loaded ids appear.
+    // entriesVersion participates so settle-loaded ids appear
   }, [range, layout, entriesVersion]);
 
-  // indicator visibility: on while scrolling, fading shortly after it stops.
+  // indicator visibility: on while scrolling, fading shortly after it stops
   const [indicate, setIndicate] = useState(false);
   useEffect(() => {
     if (moving) {
@@ -473,11 +430,8 @@ export default function InfiniteGrid({
     return () => clearTimeout(t);
   }, [moving, vTop]);
 
-  // virtual scrollbar thumb geometry + drag-to-scroll.
-  // scroll-up scrollbar: the thumb spans only the DEEPEST point reached so far,
-  // not the full virtual height (the whole 2M-row dataset). Wheel/fling scroll DOWN
-  // past it — which grows it; the thumb only jumps back UP within explored
-  // territory, and its bottom is the deepest you've been.
+  // virtual scrollbar thumb geometry + drag-to-scroll; the thumb spans only the
+  // deepest point reached so far, not the full virtual height
   maxReachedRef.current = Math.max(maxReachedRef.current, vTop);
   const explored = maxReachedRef.current;
   const exploredContent = explored + size.height;
@@ -503,7 +457,7 @@ export default function InfiniteGrid({
       if (travel <= 0) return;
       const dy = e.clientY - drag.current.y;
       const reached = maxReachedRef.current;
-      // bound to explored territory — the thumb can't drag past the deepest point.
+      // bound to explored territory — can't drag past the deepest point
       scrollTo(
         Math.min(
           Math.max(drag.current.vTop + (dy / travel) * reached, 0),
@@ -518,8 +472,7 @@ export default function InfiniteGrid({
     (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
   }, []);
 
-  // the deepest item visible (clamped to the total) — so the counter reads the full
-  // count (e.g. 408 / 408) once you've scrolled to the bottom, not the top-of-window.
+  // the deepest item visible, clamped to the total, so the counter reaches the full count
   const topIndex = layout.itemsPerRow
     ? Math.min(
         layout.totalCount,

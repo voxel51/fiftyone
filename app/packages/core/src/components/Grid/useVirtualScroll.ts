@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-// frames of near-zero movement before we stop the rAF loop (and declare settled).
+// frames of near-zero movement before the rAF loop stops (and declares settled)
 const IDLE_FRAMES = 4;
 const IDLE_EPSILON = 0.5; // px/frame treated as "not moving"
 // `moving` stays true this long after the last above-threshold frame, so a flick
-// with frame gaps (no wheel delta) never momentarily reads as settled and triggers
-// a mid-scroll load. Loads fire only once speed stays below threshold this long.
+// with frame gaps never momentarily reads as settled and triggers a mid-scroll load
 const SETTLE_DELAY_MS = 140;
-// EMA factor for velocity — smooths the per-frame spikes from discrete wheel
-// notches so a slow (but chunky) scroll isn't misread as a fast flick.
+// EMA factor for velocity — smooths per-frame spikes from discrete wheel notches
 const VELOCITY_SMOOTHING = 0.7;
 
 export interface VirtualScroll {
@@ -91,9 +89,8 @@ export default function useVirtualScroll({
       lastTimeRef.current = now;
       lastVRef.current = vTopRef.current;
 
-      // Both flags use the same hysteresis (bridge frame gaps so they never flicker
-      // mid-flick): `moving` gates loading; `fast` (a higher threshold) gates the
-      // accelerated-scroll indicator treatment.
+      // both flags use the same hysteresis to bridge frame gaps: `moving` gates
+      // loading, `fast` (higher threshold) gates the accelerated-scroll indicator
       const aboveSettle = velocity > settleSpeedRef.current;
       if (aboveSettle) lastFastRef.current = now;
       const isMoving =
@@ -108,8 +105,7 @@ export default function useVirtualScroll({
       setFast(isFast);
 
       idle = Math.abs(delta) < IDLE_EPSILON ? idle + 1 : 0;
-      // Stop only once truly settled (idle AND past the settle delay), so the loop
-      // never leaves `moving` stuck true.
+      // stop only once truly settled, so the loop never leaves `moving` stuck true
       if (idle > IDLE_FRAMES && !isMoving) {
         runningRef.current = false;
         return;

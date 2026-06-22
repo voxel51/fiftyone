@@ -171,10 +171,8 @@ export const disableFrameFiltering = selector<boolean>({
   },
 });
 
-// Per-(dataset, group-by) imavid playback frame rate, persisted to localStorage —
-// NOT saved on the dataset (it's a view-time playback preference, and the dynamic
-// group isn't a persisted group). `null` until the user overrides it in the grid
-// config; the selector below falls back to the dataset app config, then 30.
+// per-(dataset, group-by) imavid playback frame rate, persisted to localStorage (a
+// view-time preference, not saved on the dataset); null until the user overrides it
 const dynamicGroupsFrameRateStore = atomFamily<number | null, string>({
   key: "dynamicGroupsFrameRateStore",
   default: null,

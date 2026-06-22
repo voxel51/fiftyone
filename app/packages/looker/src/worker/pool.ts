@@ -1,13 +1,8 @@
 import { LookerUtils } from "../lookers/shared";
 import { createWorker } from "../util";
 
-// Single shared decode-worker pool for the whole looker package. There used to be
-// TWO module-scope pools — initial label load (abstract.ts) and async re-render
-// (async-labels-rendering-manager.ts) — each sized to navigator.hardwareConcurrency,
-// doubling worker threads/memory for no benefit since both run the identical worker
-// script. Capped so high-core machines don't spawn a huge pool, and persisted on
-// globalThis so HMR module re-eval reuses it instead of orphaning the old (never
-// terminated) workers.
+// single shared decode-worker pool for the whole looker package; capped so high-core
+// machines don't over-spawn, and held on globalThis so HMR reuses it across re-eval
 const MAX_WORKERS =
   typeof window !== "undefined"
     ? Math.min(navigator.hardwareConcurrency || 4, 8)

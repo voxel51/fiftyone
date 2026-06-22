@@ -1,9 +1,8 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Frontend field partition: the dataset schema is split so the GRID requests
- * `fieldsForOverlay` and the MODAL requests the rest (full minus vectors/logits).
- * The backend is a thin projector — it never decides what to fetch.
+ * Field partition: the grid requests overlay fields, the modal requests the rest
+ * (full minus vectors/logits).
  */
 import {
   CLASSIFICATIONS_FIELD,
@@ -133,31 +132,20 @@ const walk = (
   }
 };
 
-/**
- * The include list the GRID sends: overlay label subfields + media + identifiers
- * (+ the dynamic group-by/order fields appended by the caller that knows them).
- */
+/** The include list the grid sends: overlay label subfields + media + identifiers. */
 export const gridSampleFields = selector<string[]>({
   key: "gridSampleFields",
   get: ({ get }) => {
     const schema = get(fullSchema);
     const overlay: string[] = [];
     walk(schema, "", overlay, []);
-    // NOTE: this is the field list the GRID overlays (and imavid playback) fetch.
-    // It currently includes mask/mask_path (the `OVERLAY_LEAVES`), so mask blobs are
-    // fetched INLINE with the rest of the overlay data. After the backend sample EAV
-    // refactor, masks should be split out as standalone BLOBS fetched by id in
-    // parallel (like the frame images) and render-joined — NOT carried inline here.
-    // Until then, decoupling masks client-side is ineffective (same bytes, re-fetched).
+    // mask/mask_path are still fetched inline here; splitting them into standalone
+    // blobs awaits the backend sample EAV refactor
     return Array.from(new Set([...IDENTIFIERS, ...overlay]));
   },
 });
 
-/**
- * The exclude list the MODAL sends: only VectorField + `logits` paths, so the
- * modal sample is the full sample minus those (all other label attributes,
- * dicts, primitives and metadata are returned).
- */
+/** The exclude list the modal sends: VectorField + `logits` paths. */
 export const modalSampleExclude = selector<string[]>({
   key: "modalSampleExclude",
   get: ({ get }) => {

@@ -29,18 +29,15 @@ export default function useRenderer({
   const selectSample = useSelectSample(records);
   const sampleRenderer = useGridCustomRendererItem(createLooker);
   // the InfiniteGrid has no Spotlight engine driving `useUpdates`, so it applies the
-  // SAME per-looker update itself on attach (renders overlays + wires interactions).
+  // per-looker update itself on attach (renders overlays + wires interactions)
   const itemUpdater = useItemUpdater(cache, lookerOptions);
 
   // `showItem` must stay stable even as the sample renderer hook refreshes.
   const sampleRendererRef = useRef(sampleRenderer);
   sampleRendererRef.current = sampleRenderer;
 
-  // Spotlight's `useUpdates` re-applied the per-looker update to every tile via
-  // `updateItems` whenever active fields / coloring changed; the InfiniteGrid has no
-  // engine, so it must drive that refresh itself — otherwise overlays don't show/hide
-  // with the sidebar checkboxes. Skip the initial mount (each tile's `attachItem`
-  // already applies the update on create).
+  // re-apply the per-looker update to every shown tile when active fields / coloring
+  // change, so overlays show/hide with the sidebar checkboxes; skip the initial mount
   const optionsRef = useRef(lookerOptions);
   optionsRef.current = lookerOptions;
   const lastColoringKeyRef = useRef(
@@ -88,14 +85,12 @@ export default function useRenderer({
       }
 
       if (zooming) {
-        // scrolling fast — build nothing.
+        // scrolling fast — build nothing
         return 0;
       }
 
-      // Attach straight from cache — `showItem` NEVER fetches; the in-view loader
-      // writes the store and bumps a version that re-runs this. If the sample
-      // isn't loaded yet (between the spine publish and the hydrate landing), stay
-      // a wireframe and we'll be re-called when the hydrate bump arrives.
+      // attach straight from cache; `showItem` never fetches. stays a wireframe until
+      // the sample is hydrated, then re-runs when the hydrate bumps the version
       const ss = store as unknown as WeakMap<ID, GridNode>;
       const result = ss.get(id);
       if (!result || isPlaceholder(result)) {
@@ -125,16 +120,13 @@ export default function useRenderer({
     [cache, getFontSize, selectSample, store]
   );
 
-  // Spotlight-independent attach used by the InfiniteGrid: create-or-reuse a looker
-  // from the SAME cache and attach it to a tile element. A no-op until the sample is
-  // hydrated (the tile stays a wireframe and is re-called when the hydrate lands), so
-  // it never blocks — the looker then loads its media + renders overlays async.
+  // Spotlight-independent attach for the InfiniteGrid: create-or-reuse a looker from
+  // the cache and attach it to a tile; a no-op until the sample is hydrated
   const attachItem = useCallback(
     (id: ID, element: HTMLElement, dimensions: [number, number]) => {
       const key = id.description;
-      // apply the looker's options + render its overlays / wire interactions, exactly
-      // as Spotlight's `useUpdates` does — passing the CURRENT coloring key so only
-      // genuinely-new label fields hard-reload (re-rasterize).
+      // apply the looker's options + render overlays, passing the current coloring key
+      // so only genuinely-new label fields hard-reload
       const update = () =>
         itemUpdater(
           getFontSize(),
@@ -143,10 +135,8 @@ export default function useRenderer({
 
       const cached = cache.get(key);
       if (cached) {
-        // Re-attach an already-rendered looker WITHOUT re-running the update: its
-        // overlays are already painted, and a re-load would `postMessage` a mask
-        // buffer that was already transferred (detached) → DataCloneError → the
-        // looker retries without the buffer → overlays vanish on scroll.
+        // re-attach an already-rendered looker without re-running the update: a re-load
+        // would postMessage an already-transferred mask buffer (DataCloneError)
         cached.attach(element, dimensions, getFontSize());
         cache.show(key);
         return;
@@ -155,7 +145,7 @@ export default function useRenderer({
       const ss = store as unknown as WeakMap<ID, GridNode>;
       const result = ss.get(id);
       if (!result || isPlaceholder(result)) {
-        // expected during scroll: stays a wireframe until its hydrate lands.
+        // expected during scroll: stays a wireframe until its hydrate lands
         return;
       }
 
@@ -176,10 +166,8 @@ export default function useRenderer({
     [cache, getFontSize, selectSample, store, itemUpdater, lookerOptions]
   );
 
-  // release a tile's looker on recycle/unmount: detach its element from the DOM (so a
-  // recycled tile blanks immediately instead of showing the previous sample) and hide
-  // it in the bounded cache (the LRU destroys it only when evicted, so revisiting a
-  // row reuses the already-rendered instance).
+  // release a tile's looker on recycle/unmount: detach from the DOM and hide it in the
+  // bounded cache (the LRU destroys it only on eviction, so revisits reuse the instance)
   const releaseItem = useCallback(
     (id: ID) => {
       const key = id.description;

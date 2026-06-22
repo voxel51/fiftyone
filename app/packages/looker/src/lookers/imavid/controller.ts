@@ -14,9 +14,8 @@ export class ImaVidFramesController {
   public fetchBufferManager = new BufferManager();
   public isFetching = false;
   public storeBufferManager: BufferManager;
-  // undefined until the group's length is known — revealed by the stream (a page
-  // reporting no further page) or seeded via setTotalFrameCount from a count the
-  // client already has.
+  // undefined until the group's length is known (revealed by a short page or seeded
+  // via setTotalFrameCount)
   public totalFrameCount: number | undefined;
 
   private updateImaVidState: StateUpdate<ImaVidState>;
@@ -36,7 +35,7 @@ export class ImaVidFramesController {
       filters?: unknown;
       // grid overlay field list (gridSampleFields) the stream projects
       fields: string[];
-      // SHARED sample cache (keyed by `_id`) the grid and modal both use
+      // shared sample cache (keyed by `_id`) the grid and modal both use
       sharedSamples: Map<string, ModalSample>;
     }
   ) {
@@ -54,9 +53,8 @@ export class ImaVidFramesController {
     this.updateImaVidState = updater;
   }
 
-  // Seed the group's length from data the client already has (the poster's group
-  // size, or a count the stream already revealed); never overwrites a known count,
-  // so a fully-streamed group costs zero count queries.
+  // seed the group's length from a count the client already has; never overwrites a
+  // known count, so a fully-streamed group costs no count queries
   public setTotalFrameCount(count: number) {
     if (count && this.totalFrameCount == null) {
       this.totalFrameCount = count;
@@ -200,13 +198,9 @@ export class ImaVidFramesController {
   }
 
   public async fetchMore(cursor: number, count: number) {
-    // Stream the requested range in small CHUNKS: each chunk is decoded and
-    // published (fetchMore event) before the next is fetched, so playback starts
-    // the instant the first frames arrive instead of blocking on the whole group.
-    // executeFetch only ever passes the UNFETCHED range, so already-buffered frames
-    // (e.g. from grid hover) are reused and streaming resumes from the gap.
-    // 100 = pymongo's default cursor batch; keep chunks at/above it so a look-ahead
-    // window is pulled in one request, not split into per-request overhead.
+    // stream the range in chunks: each chunk publishes (fetchMore event) before the
+    // next is fetched, so playback starts as soon as the first frames arrive.
+    // 100 matches pymongo's default cursor batch
     const CHUNK = 100;
 
     for (let offset = 0; offset < count; offset += CHUNK) {
@@ -218,10 +212,8 @@ export class ImaVidFramesController {
         dynamicGroup: this.config.groupValue,
         after: chunkCursor > 0 ? chunkCursor : undefined,
         count: chunkCount,
-        // NOTE: masks are fetched INLINE here. Decoupling them (geometry-first +
-        // masks as separate parallel blobs) is only effective once the backend
-        // sample EAV refactor stores masks as standalone blobs fetchable by id —
-        // until then a separate mask fetch just re-transfers the same inline bytes.
+        // masks fetched inline; decoupling them only helps once the EAV refactor
+        // stores masks as standalone blobs fetchable by id
         fields: this.config.fields,
         view: this.config.view,
         filters: this.config.filters,
@@ -230,8 +222,7 @@ export class ImaVidFramesController {
       });
 
       if (rows.length < chunkCount && this.totalFrameCount == null) {
-        // a SHORT page (fewer than requested) ends at the group's last frame —
-        // reveal the length from the stream itself (never a count aggregation)
+        // a short page ends at the group's last frame, revealing the length
         const revealed = chunkCursor + rows.length;
         if (revealed) {
           this.totalFrameCount = revealed;
@@ -259,7 +250,7 @@ export class ImaVidFramesController {
           );
         }
 
-        // mark each frame drawable the instant ITS image resolves
+        // mark each frame drawable as soon as its image resolves
         const perFramePromises: Promise<void>[] = [];
         for (const [frameNumber, imagePromise] of imageFetchPromisesMap) {
           perFramePromises.push(

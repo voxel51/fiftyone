@@ -446,10 +446,8 @@ export interface ImaVidState extends BaseState {
    */
   seekBarHovering: boolean;
   /**
-   * true once the pointer has actively MOVED over this looker — a deliberate hover.
-   * Wheel/trackpad scrolling fires mouseenter (tiles pass under a stationary cursor)
-   * but never mousemove, so this stays false during scroll and gates the per-group
-   * frame-stream fetch: scrolling never triggers a stream, only a real hover does.
+   * true once the pointer has moved over this looker; gates the frame-stream
+   * fetch so wheel/trackpad scrolling (mouseenter without mousemove) doesn't fetch
    */
   hoverProbed: boolean;
 }

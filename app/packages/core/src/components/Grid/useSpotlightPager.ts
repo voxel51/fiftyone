@@ -13,10 +13,8 @@ export const PAGE_SIZE = 40;
 
 export type SampleStore = WeakMap<ID, { sample: fos.Sample; index: number }>;
 
-// The cheap ordered driver: ids for the view, fetched in large chunks and cached so
-// the whole scroll range can be laid out without paging the heavy data. Aspect ratio
-// is NOT here — the grid lays tiles out from its `gridAspectRatio` SETTING
-// (`useSpineLayout`); the spine is purely the ordered id backbone.
+// the ordered id backbone for the view, fetched in chunks and cached so the whole
+// scroll range can be laid out without paging the heavy data
 export interface SpineEntry {
   id: string;
 }
@@ -26,25 +24,18 @@ interface SpineResponse {
   next: number | null;
 }
 
-// Client-cached spine for the virtual grid's RANDOM-ACCESS reads: a window fetched
-// with `after=start` fills indices start..start+resp.length, so jumping to page 10k
-// never touches pages 0..9,999. `windowLocks` dedupes concurrent fetches of the
-// same offset.
+// client-cached spine for random-access reads: a window fetched with `after=start`
+// fills indices start..start+resp.length, so jumping to page 10k skips 0..9,999
 interface SpineCache {
   byIndex: Map<number, SpineEntry>;
   windowLocks: Map<number, Promise<void>>;
-  // the view's TRUE item count, learned when a spine window comes back exhausted
-  // (`next: null`). For a flat dataset this stays null until the end is reached (the
-  // layout uses the dataset estimate); for a filtered/grouped/dynamic-group view it
-  // resolves on the first short window, so the layout isn't sized to the whole
-  // dataset (which would create phantom tiles + pointless past-end spine fetches).
+  // the view's item count, learned when a spine window comes back exhausted; null
+  // until the end is reached for a flat dataset, resolves early for a filtered view
   total: number | null;
 }
 
-// A grid sample node (a `SampleRow` from the REST samples endpoint). A PLACEHOLDER
-// is simply a missing store entry — its id is known from the spine but its
-// sample/media is not loaded; only the layout (uniform tiles) needs no data.
-// `showItem` hydrates it on settle.
+// a grid sample node; a placeholder is a missing store entry whose id is known from
+// the spine but whose sample isn't loaded. `showItem` hydrates it on settle
 export type GridNode = fos.SampleRow & {
   sample: fos.Sample;
 };
@@ -79,11 +70,8 @@ const processSamplePageData = (
     store.set(id, node);
     records.set(node.id, page * PAGE_SIZE + i);
 
-    // Auto-AR sizes each tile by its own ratio: prefer the server's value (auto mode
-    // returns it), else derive from REAL stored dimensions already in the payload
-    // (metadata.width/height, or frame_width/height for video). The final `?? 1` is a
-    // transient justified-layout estimate ONLY for media whose dimensions aren't known
-    // until decode — corrected when the looker loads; it is never stored/propagated.
+    // auto-AR sizes each tile by its own ratio: prefer the server's value, else derive
+    // from stored dimensions; `?? 1` is a transient estimate corrected on looker load
     const aspectRatio =
       node.aspectRatio ?? aspectRatioFromMetadata(node.sample) ?? 1;
 
@@ -143,8 +131,8 @@ const fieldsWithGroup = (
   return Array.from(new Set([...base, ...extra]));
 };
 
-// Rebuilds the `_group` key the ImaVid looker needs from the group-by field
-// VALUES on a returned sample (GroupBy was stripped server-side for speed).
+// rebuilds the `_group` key the ImaVid looker needs from the group-by field values
+// (GroupBy was stripped server-side for speed)
 const reconstructGroup = (
   node: GridNode,
   groupFields: string | string[] | undefined
@@ -175,16 +163,15 @@ const useSpotlightPager = ({
   const pager = useRecoilValue(pageSelector);
   const zoom = useRecoilValue(zoomSelector);
   const store: SampleStore = useMemo(() => new WeakMap(), []);
-  // shared id-keyed sample cache (the `stores` registry that `useUpdateSamples` and
-  // the modal read) — so opening a hydrated grid sample in the modal needs NO query.
+  // shared id-keyed sample cache the modal reads, so opening a hydrated grid sample
+  // in the modal needs no query
   const lookerStore = fos.useLookerStore();
   const lookerResetRef = useRef(clearRecords);
   useEffect(() => {
     if (lookerResetRef.current === clearRecords) return;
     lookerResetRef.current = clearRecords;
     lookerStore.reset();
-    // view/filter change invalidates frame content — drop the persistent native-video
-    // frame caches (detach never does; only a real view change does).
+    // view/filter change invalidates frame content — drop the native-video frame caches
     resetFrameStores();
   }, [clearRecords, lookerStore]);
 
@@ -206,9 +193,8 @@ const useSpotlightPager = ({
     };
   }, [clearRecords]);
 
-  // The cursor pager used by the legacy Spotlight engine path (auto aspect ratio);
-  // the fixed-AR infinite grid uses ensureSpineWindow/hydrateWindow instead. Reads
-  // a page of samples from the unified REST endpoint by numeric offset.
+  // cursor pager for the Spotlight engine path (auto aspect ratio); the fixed-AR
+  // infinite grid uses ensureSpineWindow/hydrateWindow instead
   const page = useRecoilCallback(
     ({ snapshot }) => {
       return async (
@@ -236,9 +222,7 @@ const useSpotlightPager = ({
           sortBy: base.sortBy as string | undefined,
           desc: base.desc as boolean | undefined,
           hint: base.hint as string | undefined,
-          // auto-AR (this legacy Spotlight path) sizes each tile by its OWN ratio, so
-          // the server must compute it; fixed-AR never reaches here. base carries the
-          // grid's skipMetadata (false in auto/autosize, true at a fixed ratio).
+          // auto-AR sizes each tile by its own ratio, so the server must compute it
           skipMetadata: base.skipMetadata as boolean | undefined,
         });
 
@@ -265,12 +249,8 @@ const useSpotlightPager = ({
     [pager, pages, records, store, zoom]
   );
 
-  // Coalesces every visible tile's hydration request from one settled render pass
-  // into a SINGLE batched read — the SAME `paginateSamples` query the grid uses,
-  // narrowed to the window ids with an UNORDERED `Select` stage (indexed `$match`),
-  // so overlays (boxes, masks, video poster frames) render exactly as in the normal
-  // grid. Returns the built nodes by id; the renderer writes them into `store` (it
-  // holds the IDs) and reads them by id, so the response order doesn't matter.
+  // coalesces a settle's visible tile hydrations into one batched read narrowed to
+  // the window ids; returns the built nodes by id (response order doesn't matter)
   const hydrate = useRef<{
     ids: Set<string>;
     promise: Promise<Map<string, GridNode>> | null;
@@ -290,12 +270,8 @@ const useSpotlightPager = ({
                 const out = new Map<string, GridNode>();
                 if (!ids.length) return resolve(out);
 
-                // The spine already enumerated these reps — fetch them straight BY
-                // ID from the unified REST endpoint. Strip any GroupBy stage so the
-                // server compiles a plain indexed `$match {_id: $in}` + `$project`
-                // instead of re-grouping the whole collection; the `_group` key the
-                // ImaVid looker needs is reconstructed client-side from the group-by
-                // field values returned in the lean payload.
+                // fetch straight by id; strip GroupBy so the server compiles an
+                // indexed `$match {_id: $in}` instead of re-grouping the collection
                 const datasetId = await snapshot.getPromise(fos.datasetId);
                 if (!datasetId) return resolve(out);
                 const gridFields = await snapshot.getPromise(
@@ -340,8 +316,7 @@ const useSpotlightPager = ({
                 }
                 resolve(out);
               };
-              // batch on the microtask queue so one settle = one request; a fetch
-              // failure rejects (never swallowed) so callers can surface/retry.
+              // batch on the microtask queue so one settle = one request
               queueMicrotask(() => {
                 run().catch(reject);
               });
@@ -353,10 +328,8 @@ const useSpotlightPager = ({
     [lookerStore, pageSelector]
   );
 
-  // Random-access spine read for the virtual grid: returns the `(id, aspectRatio)`
-  // entries for absolute indices [start, start+count) — fetching ONLY that window
-  // (`after=start`) when missing, never prior pages. Fills `byIndex` + `byId` and
-  // the id->index `records` (selection); `windowLocks` dedupes concurrent fetches.
+  // random-access spine read: returns the entries for indices [start, start+count),
+  // fetching only that window when missing; `windowLocks` dedupes concurrent fetches
   const ensureSpineWindow = useRecoilCallback(
     ({ snapshot }) =>
       async (start: number, count: number): Promise<SpineEntry[]> => {
@@ -370,9 +343,8 @@ const useSpotlightPager = ({
         };
 
         const missing = () => {
-          // Indices past the view's known total don't exist — they're not "missing",
-          // so don't let a window that overruns the end trigger a redundant spine
-          // fetch for ids already cached on the client.
+          // indices past the known total don't exist, so a window overrunning the
+          // end shouldn't trigger a redundant fetch for already-cached ids
           const cap =
             spine.total != null
               ? Math.min(start + count, spine.total)
@@ -390,14 +362,12 @@ const useSpotlightPager = ({
               const id = await snapshot.getPromise(fos.datasetId);
               if (!id) return;
               const url = `/dataset/${encodeURIComponent(id)}/grid/samples`;
-              // send the SAME view params paginateSamples uses, so the spine order
-              // and grouping match exactly (filters/sort applied; dynamic groups —
-              // whose GroupBy stage lives in `view` — page by group).
+              // send the same view params paginateSamples uses, so the spine order
+              // and grouping match (dynamic groups page by group)
               const base = (await snapshot.getPromise(pageSelector))(
                 0,
                 PAGE_SIZE
               ) as Record<string, unknown>;
-              const t0 = performance.now();
               const resp = (await getFetchFunction()("POST", url, {
                 spine: true,
                 after: start,
@@ -411,18 +381,12 @@ const useSpotlightPager = ({
                 hint: base.hint,
               })) as SpineResponse;
               const got = resp?.spine ?? [];
-              console.debug(
-                `[grid-spine] after=${start} -> ${got.length} ids (next=${
-                  resp?.next
-                }) in ${Math.round(performance.now() - t0)}ms`
-              );
               got.forEach((e, i) => {
                 spine.byIndex.set(start + i, e);
                 records.set(e.id, start + i);
               });
-              // a window that came back NOT full (no next page) is the end of the
-              // view → its last index is the TRUE item count. Only trust non-empty
-              // windows (a past-end fetch returns nothing and must not set a total).
+              // a window with no next page is the end; only non-empty windows set a
+              // total (a past-end fetch returns nothing)
               if (resp?.next == null && got.length > 0) {
                 spine.total = Math.min(
                   spine.total ?? Infinity,
@@ -441,9 +405,8 @@ const useSpotlightPager = ({
     [records, spine, pageSelector]
   );
 
-  // the view's true item count once the spine has reached its end, else null — the
-  // grid clamps its layout to this so a filtered/grouped view isn't sized to the
-  // whole dataset. Read during render (re-read on the grid's spine version bump).
+  // the view's item count once the spine reaches its end, else null; the grid clamps
+  // its layout to this so a filtered view isn't sized to the whole dataset
   const spineTotal = useCallback(() => spine.total, [spine]);
 
   return {

@@ -630,10 +630,8 @@ export abstract class AbstractLooker<
     return (sample: Sample) => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
-        // the captured `sample` can be stale-null: an update scheduled (e.g. the
-        // grid's on-attach `updateOptions`) before the async initial load set
-        // `this.sample` would otherwise reload the worker with null and get back
-        // "sample not attached". Fall back to the now-loaded current sample.
+        // the captured `sample` can be null if scheduled before the initial load;
+        // fall back to the now-loaded current sample
         const target = sample ?? this.sample;
         if (!target) {
           return;
@@ -658,10 +656,8 @@ export abstract class AbstractLooker<
     this.updateSampleDebounced(sample);
   }
 
-  // a refresh requested before the async initial load sets `this.sample` is parked
-  // here and replayed once the sample lands; dropping it (the old early-return) left
-  // grid overlays/masks unpainted, since the grid applies its update on attach —
-  // before the worker round-trip that sets `this.sample` completes.
+  // a refresh requested before the initial load sets `this.sample` is parked here
+  // and replayed once the sample lands, so grid overlays still paint
   private pendingRefresh: { labels: string[] | null } | null = null;
 
   refreshSample(renderLabels: string[] | null = null) {
@@ -926,9 +922,7 @@ export abstract class AbstractLooker<
 
         this.isSampleUpdating = false;
 
-        // replay a refresh that was requested before this sample finished loading
-        // (e.g. the grid's on-attach overlay update) — now that `this.sample` is set
-        // it will actually paint instead of being dropped.
+        // replay a refresh requested before this sample finished loading
         if (this.pendingRefresh) {
           const { labels } = this.pendingRefresh;
           this.pendingRefresh = null;

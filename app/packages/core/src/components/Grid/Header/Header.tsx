@@ -93,9 +93,7 @@ const Zoom = () => {
   );
 };
 
-// "auto" = each tile uses its media's own aspect ratio (variable) — the justified,
-// cursor-paginated Spotlight grid. A fixed "W:H" makes every tile that shape, which
-// enables the fully-virtualized infinite grid. Free text is accepted too.
+// "auto" uses the Spotlight grid; a fixed "W:H" enables the infinite grid
 const AR_OPTIONS = ["auto", "1:1", "4:3", "3:2", "16:9", "2:3", "9:16"];
 
 const AspectRatioOption = ({ value }: { value: string }) => <>{value}</>;
@@ -133,15 +131,13 @@ const Header = () => {
     [isGroup, groupSlices]
   );
 
-  // publish the bar's height so the grid can inset its first row below it (overlap
-  // only on scroll). It changes with controls wrapping / window width, so track live.
+  // publish the bar's live height so the grid can inset its first row below it
   const headerRef = useRef<HTMLDivElement>(null);
   const setHeaderHeight = useSetRecoilState(gridHeaderHeight);
   useEffect(() => {
     const el = headerRef.current;
     if (!el) return undefined;
-    // round so sub-pixel jitter from the observer doesn't churn the grid layout;
-    // recoil bails on an unchanged value, so a stable bar fires zero re-renders.
+    // round so sub-pixel observer jitter doesn't churn the grid layout
     const measure = () =>
       setHeaderHeight(Math.round(el.getBoundingClientRect().height));
     measure();

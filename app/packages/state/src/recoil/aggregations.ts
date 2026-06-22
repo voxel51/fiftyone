@@ -147,9 +147,8 @@ const collectLeafValues = (obj: unknown, segments: string[]): unknown[] => {
   );
 };
 
-// Compute one path's aggregation result for a SINGLE sample, matching the server's
-// per-type result shapes — so the modal sidebar derives everything from the cached
-// `paginateSamples` JSON instead of ever firing an `aggregationsQuery`.
+// compute one path's aggregation result for a single sample, matching the server's
+// per-type result shapes so the modal sidebar can derive it from the cached sample JSON
 const computeSampleAggregation = (
   ftype: string | undefined,
   subfield: string | undefined,
@@ -255,8 +254,8 @@ const computeSampleAggregation = (
 };
 
 /**
- * Modal sidebar aggregations computed entirely client-side from the cached sample
- * JSON — the modal NEVER fires an `aggregationsQuery` (see {@link aggregations}).
+ * Modal sidebar aggregations computed client-side from the cached sample JSON,
+ * so the modal never fires an `aggregationsQuery` (see {@link aggregations}).
  */
 export const modalSampleAggregations = selectorFamily<
   Aggregation[],
@@ -306,8 +305,7 @@ export const aggregations = selectorFamily({
     }) =>
     ({ get }) => {
       if (params) {
-        // The modal sidebar is fully derivable from the cached sample JSON returned
-        // by paginateSamples, so it must never reach the server.
+        // the modal sidebar is derivable from the cached sample JSON, so never query
         if (params.modal) {
           return get(
             modalSampleAggregations({

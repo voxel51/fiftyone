@@ -83,10 +83,8 @@ const Count = () => {
 
   const isGroup = useRecoilValue(isGroupAtom);
   const queryPerformance = useRecoilValue(fos.queryPerformance);
-  // the spine resolves the EXACT item count for the current view (filtered samples, or
-  // groups for a dynamic-group view) for free — the same value the bottom scroll
-  // counter shows. the server returns only the dataset ESTIMATE for the root path, so
-  // prefer the spine total wherever it has resolved (filtered or grouped).
+  // the spine resolves the exact item count for the current view for free, so prefer
+  // it over the server's root-path estimate wherever it has resolved
   const spineTotal = useRecoilValue(gridSpineTotal);
   if (queryPerformance) {
     total = subtotal;
@@ -94,8 +92,7 @@ const Count = () => {
   if (spineTotal != null) {
     total = spineTotal;
   }
-  // relabel to "groups" ONLY for dynamic-group views — flat/filtered views stay
-  // "samples" and just show the exact spine count.
+  // relabel to "groups" only for dynamic-group views
   if (
     (isDynamicGroupViewStageActive && spineTotal != null) ||
     (!queryPerformance &&
