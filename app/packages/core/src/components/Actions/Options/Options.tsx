@@ -227,7 +227,7 @@ const ImaVidFrameRate = () => {
           textAlign: "right",
           background: "transparent",
           color: "inherit",
-          border: "1px solid rgba(255,255,255,0.2)",
+          border: "1px solid var(--fo-palette-divider)",
           borderRadius: "3px",
         }}
       />

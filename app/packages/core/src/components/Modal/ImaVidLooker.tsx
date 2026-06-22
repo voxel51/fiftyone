@@ -390,15 +390,15 @@ export const ImaVidLookerReact = React.memo(
               gap: "5px",
               padding: "2px 6px",
               borderRadius: "3px",
-              background: "rgba(0,0,0,0.55)",
+              background: "var(--fo-palette-background-modalBackdrop)",
             }}
           >
             <span
               style={{
                 width: "10px",
                 height: "10px",
-                border: "2px solid rgba(255,255,255,0.25)",
-                borderTopColor: "#ff6d04",
+                border: "2px solid var(--fo-palette-divider)",
+                borderTopColor: "var(--fo-palette-voxel-500)",
                 borderRadius: "50%",
                 display: "inline-block",
                 animation: "imavid-buffer-spin 0.8s linear infinite",
@@ -407,7 +407,7 @@ export const ImaVidLookerReact = React.memo(
             <span
               style={{
                 fontSize: "11px",
-                color: "#bbb",
+                color: "var(--fo-palette-text-secondary)",
                 fontFamily: "ui-monospace, Menlo, monospace",
               }}
             >

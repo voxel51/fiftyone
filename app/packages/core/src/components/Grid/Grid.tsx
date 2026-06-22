@@ -38,11 +38,7 @@ function Grid() {
   const pixels = useMemoOne(() => uuid(), []);
   const spacing = useRecoilValue(gridSpacing);
 
-  // A FIXED tile aspect ratio (e.g. "16:9") makes every tile uniform, which enables
-  // the fully-virtualized infinite grid; tiles render with the SAME looker the
-  // Spotlight grid uses, so every media type (image/video/imavid/group/3D) works.
-  // "auto" (variable per-sample AR, parses to null) keeps the justified, cursor-
-  // paginated Spotlight grid.
+  // Virtualized infinite grid requires a fixed aspect ratio
   const useInfiniteGrid =
     parseAspectRatio(useRecoilValue(gridAspectRatio)) !== null;
   const { pageReset, reset } = useRefreshers();

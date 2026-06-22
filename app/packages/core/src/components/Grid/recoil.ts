@@ -264,9 +264,7 @@ export const pageParameters = selector({
           }
         : {};
 
-    // per-sample dimensions are only needed when tiles are sized by their own
-    // aspect ratio: autosizing on, or aspect ratio set to "auto". Otherwise the
-    // grid renders at a fixed ratio and no media type needs metadata.
+    // per-sample dimensions only needed when the grid is not set to a fixed aspect ratio
     const skipMetadata = !(
       get(gridAutosizing) || parseAspectRatio(get(gridAspectRatio)) === null
     );

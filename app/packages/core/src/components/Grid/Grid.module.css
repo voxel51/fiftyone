@@ -106,8 +106,8 @@
   transform: translateX(-50%);
   padding: 4px 12px;
   border-radius: 12px;
-  background-color: rgba(0, 0, 0, 0.62);
-  color: #fff;
+  background-color: var(--fo-palette-background-modalBackdrop);
+  color: var(--fo-palette-text-primary);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   pointer-events: none;
@@ -135,8 +135,8 @@
    and covers it once the cell hydrates on settle. */
 .spotlightWireframe {
   box-sizing: border-box;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--fo-palette-divider);
+  background-color: var(--fo-palette-background-field);
 }
 
 /* Virtual scrollbar thumb: shows scroll depth (within explored territory) without a
