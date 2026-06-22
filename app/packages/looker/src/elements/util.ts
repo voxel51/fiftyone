@@ -201,6 +201,13 @@ const makeAcquirer = (
     video.muted = true;
     video.preload = "metadata";
     video.loop = false;
+    // Abort any in-flight range fetch the browser keeps running after the poster is
+    // drawn: a released thumbnailer that keeps `src` set continues buffering the whole
+    // .mp4 in the background — across the pool that was the grid's request/MB storm.
+    if (video.getAttribute("src")) {
+      video.removeAttribute("src");
+      video.load();
+    }
   };
 
   const release = (video: HTMLVideoElement) => {
@@ -241,7 +248,9 @@ const makeAcquirer = (
       });
     },
     () => {
-      QUEUE.forEach(clearVideo);
+      // abort in-flight fetches on the actual pooled VIDEO ELEMENTS (QUEUE holds
+      // Promise resolvers, not videos — calling clearVideo on those crashed).
+      VIDEOS.forEach(clearVideo);
       FREE = [];
       QUEUE = [];
       VIDEOS = [];
@@ -251,7 +260,11 @@ const makeAcquirer = (
 
 const [acquirePlayer, freePlayer] = makeAcquirer(1);
 
-const [acquireThumbnailer, freeThumbnailers] = makeAcquirer(6);
+// caps how many grid poster .mp4s decode at once. The OOM risk that once forced this
+// very low is now handled by clearVideo() aborting each released element's in-flight
+// fetch, so this can be high enough to fill a viewport of posters in parallel instead
+// of serializing ~25 visible tiles 3-at-a-time (which left the grid black for >10s).
+const [acquireThumbnailer, freeThumbnailers] = makeAcquirer(12);
 
 export { acquirePlayer, acquireThumbnailer };
 

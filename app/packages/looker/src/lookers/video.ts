@@ -18,7 +18,7 @@ import type {
   VideoState,
 } from "../state";
 import { DEFAULT_VIDEO_OPTIONS } from "../state";
-import { addToBuffers, removeFromBuffers } from "../util";
+import { addToBuffers } from "../util";
 import { AbstractLooker } from "./abstract";
 import { type Frame, acquireReader, clearReader } from "./frame-reader";
 import { LookerUtils, withFrames } from "./shared";
@@ -229,18 +229,14 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       pluckedOverlays = [...pluckedOverlays, ...frame.overlays];
     }
 
-    let frameCount = null;
-
-    if (this.state.duration !== null) {
-      frameCount = getFrameNumber(
-        this.state.duration,
-        this.state.duration,
-        this.state.config.frameRate
-      );
-    }
+    const frameCount = this.frameCount;
 
     if (
       (!state.config.thumbnail || state.playing) &&
+      // grid tiles: never start streaming playback frames until the POSTER has
+      // rendered — so flinging over not-yet-loaded tiles can't kick off fetches that
+      // starve the posters. The modal (`!thumbnail`) is exempt.
+      (!state.config.thumbnail || state.hasPoster) &&
       LOOKER_WITH_READER !== this &&
       frameCount !== null
     ) {
@@ -254,12 +250,16 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     }
 
     if (LOOKER_WITH_READER === this) {
+      // Gate on the next frame being buffered: if present, play; if not, pause
+      // (buffering) and request ONE chunk from the stable frame so the playhead
+      // doesn't race ahead and spam setStream/`/frames`. With the persistent frame
+      // cache, a re-acquired looker (modal) already has the frames → no pause.
       if (this.hasFrame(Math.min(frameCount, state.frameNumber + 1))) {
         this.state.buffering && this.dispatchEvent("buffering", false);
         this.state.buffering = false;
       } else {
+        !this.state.buffering && this.dispatchEvent("buffering", true);
         this.state.buffering = true;
-        this.dispatchEvent("buffering", true);
         this.requestFrames(state.frameNumber);
       }
     }
@@ -267,12 +267,28 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     return pluckedOverlays;
   }
 
+  // Authoritative frame count: prefer the server's `metadata.total_frame_count` over
+  // deriving from `video.duration`, which is unreliable for range-served / non-
+  // faststart mp4s (under-reports, or transiently Infinity → a runaway stream).
+  private get frameCount(): number | null {
+    const fromMetadata = this.sample?.metadata?.total_frame_count;
+    if (typeof fromMetadata === "number" && fromMetadata > 0) {
+      return fromMetadata;
+    }
+
+    if (this.state.duration !== null) {
+      return getFrameNumber(
+        this.state.duration,
+        this.state.duration,
+        this.state.config.frameRate
+      );
+    }
+
+    return null;
+  }
+
   private setReader() {
-    const frameCount = getFrameNumber(
-      this.state.duration,
-      this.state.duration,
-      this.state.config.frameRate
-    );
+    const frameCount = this.frameCount;
 
     jotaiStore.set(updateTimelineConfigAtom, {
       name: `timeline-${this.state.config.sampleId}`,
@@ -296,8 +312,6 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       frameNumber: this.state.frameNumber,
       getCurrentFrame: () => this.frameNumber,
       group: this.state.config.group,
-      removeFrame: (frameNumber) =>
-        removeFromBuffers(frameNumber, this.state.buffers),
       sampleId: this.state.config.sampleId,
       schema: this.state.config.fieldSchema,
       update: this.updater,

@@ -117,7 +117,13 @@ export class ImageLooker extends AbstractLooker<ImageState> {
         reloading: this.state.disabled,
         disabled: false,
       });
-      this.updateSample(this.sample);
+      // the async initial load may not have set `this.sample` yet (the grid applies
+      // options on attach, before the worker round-trip lands). Reloading null posts
+      // `loadSample(null)` → "sample not attached"; the pending load renders these
+      // options when it completes, so just skip the redundant reload here.
+      if (this.sample) {
+        this.updateSample(this.sample);
+      }
     } else {
       this.updater({ ...state, disabled: false });
     }

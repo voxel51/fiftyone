@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import useZoomSetting from "./useZoomSetting";
 
 const MAX = 14;
-const MIN = 10;
+const MIN = 12;
 const SCALE_FACTOR = 0.09;
 
 export default (id: string) => {

@@ -1,13 +1,16 @@
 import { PointInfo, type Sample } from "@fiftyone/looker";
 import { mainSample, mainSampleQuery } from "@fiftyone/relay";
-import { atom, selector } from "recoil";
+import { atom, noWait, selector, selectorFamily } from "recoil";
 import { graphQLSelector } from "recoil-relay";
 import { VariablesOf } from "relay-runtime";
+import { fetchSamples } from "../fetchers/samples";
 import type { Lookers } from "../hooks";
+import { stores } from "../hooks";
 import { ComputeCoordinatesReturnType } from "../hooks/useTooltip";
 import { ModalSelector, sessionAtom } from "../session";
 import { ResponseFrom } from "../utils";
 import { imaVidLookerState, shouldRenderImaVidLooker } from "./dynamicGroups";
+import { filters } from "./filters";
 import {
   activeModalSidebarSample,
   groupId,
@@ -16,12 +19,13 @@ import {
   modalGroupSlice,
 } from "./groups";
 import { RelayEnvironmentKey } from "./relay";
+import { modalSampleExclude } from "./sampleProjection";
 import {
   interaction3dSample,
   is3dPinned,
   pinned3DSampleSlice,
 } from "./renderConfig3d.atoms";
-import { datasetName } from "./selectors";
+import { datasetId, datasetName } from "./selectors";
 import { mapSampleResponse } from "./utils";
 import { view } from "./view";
 
@@ -148,12 +152,12 @@ export const nullableModalSampleId = selector<string>({
   },
 });
 
-export const modalSample = graphQLSelector<
+const modalSampleQuery = graphQLSelector<
   VariablesOf<mainSampleQuery>,
   ModalSample
 >({
   environment: RelayEnvironmentKey,
-  key: "modalSample",
+  key: "modalSampleQuery",
   query: mainSample,
   mapResponse: (data: ModalSampleResponse, { variables }) => {
     if (!data.sample) {
@@ -192,6 +196,72 @@ export const modalSample = graphQLSelector<
           : null,
       },
     };
+  },
+});
+
+// Cache-first modal sample: a hydrated grid sample already lives in the shared
+// `stores` cache (keyed by id), so opening it in the modal issues NO query. Only a
+// cache miss (a not-yet-hydrated sample, or a slice we haven't loaded) falls back to
+// the `mainSample` query.
+const getCachedModalSample = (id: string): ModalSample | undefined => {
+  for (const store of stores) {
+    const cached = store.samples.get(id);
+    if (cached) {
+      return cached;
+    }
+  }
+  return undefined;
+};
+
+// The non-label "complement" for a sample id, fetched async via the lean REST
+// route. Source of truth for BOTH consumers below: the looker reads it
+// non-blocking (noWait) so the modal renders INSTANTLY from the lean grid payload,
+// while the sidebar awaits it (suspends → loading state) so it reflects the full
+// current sample. recoil caches per id; the fetcher dedupes — one request per id.
+export const modalSampleComplement = selectorFamily<
+  Record<string, unknown>,
+  string
+>({
+  key: "modalSampleComplement",
+  get:
+    (id) =>
+    async ({ get }) => {
+      const dataset = get(datasetId);
+      if (!dataset) {
+        return {};
+      }
+
+      const result = await fetchSamples({
+        datasetId: dataset,
+        ids: [id],
+        exclude: get(modalSampleExclude),
+        view: get(view),
+        filters: get(filters),
+      });
+      return result[0]?.fields ?? {};
+    },
+});
+
+export const modalSample = selector<ModalSample>({
+  key: "modalSample",
+  get: ({ get }) => {
+    const current = get(modalSelector);
+    if (current !== null) {
+      const cached = getCachedModalSample(current.id);
+      if (cached) {
+        // assemble at runtime: lean grid payload + non-label fields when they
+        // arrive — NEVER block the looker on the complement (noWait, not get)
+        const loadable = get(noWait(modalSampleComplement(current.id)));
+        if (loadable.state === "hasValue") {
+          return {
+            ...cached,
+            sample: { ...cached.sample, ...loadable.contents },
+          };
+        }
+        return cached;
+      }
+    }
+    return get(modalSampleQuery);
   },
 });
 

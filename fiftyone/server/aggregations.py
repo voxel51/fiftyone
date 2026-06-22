@@ -164,7 +164,13 @@ async def aggregate_resolver(
 
     maxTimeMS = form.max_query_time * 1000 if form.max_query_time else None
     try:
-        result = await view._async_aggregate(flattened, maxTimeMS=maxTimeMS)
+        # a root-only request now has NO aggregations (count comes from the estimate),
+        # so skip the DB round-trip entirely rather than aggregate an empty pipeline
+        result = (
+            await view._async_aggregate(flattened, maxTimeMS=maxTimeMS)
+            if flattened
+            else []
+        )
     except ExecutionTimeout:
         return [
             AggregationQueryTimeout(path=path, query_time=form.max_query_time)
@@ -233,13 +239,19 @@ def _resolve_path_aggregation(
     query_performance: bool,
     hint: t.Optional[str] = None,
 ) -> AggregateResult:
-    aggregations: t.List[foa.Aggregation] = [
-        foa.Count(
-            path if path and path != "" else None,
-            _optimize=query_performance,
-            _hint=hint if query_performance else None,
+    # The ROOT total ("" path) is NOT counted with a Count aggregation — on a dynamic
+    # GroupBy view that forces a full group-by pass, and it's redundant with the free
+    # estimated sample count the client already has (fos.datasetSampleCount). Only
+    # FIELD paths get a real (indexed) Count for their sidebar tallies.
+    aggregations: t.List[foa.Aggregation] = []
+    if path:
+        aggregations.append(
+            foa.Count(
+                path,
+                _optimize=query_performance,
+                _hint=hint if query_performance else None,
+            )
         )
-    ]
     field = view.get_field(path)
 
     while isinstance(field, fof.ListField):
@@ -273,6 +285,13 @@ def _resolve_path_aggregation(
             aggregations.append(foa.CountValues(path, _first=LIST_LIMIT))
 
     data = {"path": path}
+    if not path:
+        # ROOT total: the FREE estimated sample count (metadata, no scan / no
+        # group-by) — same source as fos.datasetSampleCount on the client. Exact
+        # filtered/grouped totals are resolved client-side from the spine.
+        est = view._root_dataset._sample_collection.estimated_document_count()
+        data["count"] = est
+        data["exists"] = est
 
     def from_results(results):
         for aggregation, result in zip(aggregations, results):

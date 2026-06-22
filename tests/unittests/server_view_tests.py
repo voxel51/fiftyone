@@ -1303,3 +1303,72 @@ class GetExtendedViewTests(unittest.TestCase):
         )
         self.assertEqual(len(view), 1)
         ds.delete()
+
+
+class SamplesProjectionTests(unittest.TestCase):
+    @drop_datasets
+    def test_include_keeps_only_requested(self):
+        from fiftyone.server.routes.samples import _projection
+
+        dataset = fod.Dataset("test_samples_incl")
+        dataset.add_sample(
+            fos.Sample(
+                filepath="a.png",
+                uniqueness=0.5,
+                predictions=fol.Classification(
+                    label="cat", confidence=0.9, logits=[0.1, 0.2]
+                ),
+            )
+        )
+        view = dataset.view()
+        pipeline = view._pipeline() + [
+            _projection(["predictions.label"], None)
+        ]
+        docs = list(
+            foo.aggregate(
+                foo.get_db_conn()[view._dataset._sample_collection_name],
+                pipeline,
+            )
+        )
+        doc = docs[0]
+        # identifiers always present
+        self.assertIn("_id", doc)
+        self.assertIn("filepath", doc)
+        # requested field present, non-requested fields absent
+        self.assertIn("label", doc["predictions"])
+        self.assertNotIn("uniqueness", doc)
+        self.assertNotIn("confidence", doc["predictions"])
+        self.assertNotIn("logits", doc["predictions"])
+
+    @drop_datasets
+    def test_exclude_drops_requested(self):
+        from fiftyone.server.routes.samples import _projection
+
+        dataset = fod.Dataset("test_samples_excl")
+        dataset.add_sample(
+            fos.Sample(
+                filepath="a.png",
+                uniqueness=0.5,
+                predictions=fol.Classification(
+                    label="cat", confidence=0.9, logits=[0.1, 0.2]
+                ),
+            )
+        )
+        view = dataset.view()
+        pipeline = view._pipeline() + [
+            _projection(None, ["predictions.logits", "filepath"])
+        ]
+        docs = list(
+            foo.aggregate(
+                foo.get_db_conn()[view._dataset._sample_collection_name],
+                pipeline,
+            )
+        )
+        doc = docs[0]
+        # everything kept except the excluded path
+        self.assertIn("uniqueness", doc)
+        self.assertIn("label", doc["predictions"])
+        self.assertIn("confidence", doc["predictions"])
+        self.assertNotIn("logits", doc["predictions"])
+        # identifiers are never excluded even if asked
+        self.assertIn("filepath", doc)

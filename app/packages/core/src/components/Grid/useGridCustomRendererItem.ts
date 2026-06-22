@@ -81,6 +81,18 @@ export function useGridCustomRendererItem(
 
   const createDefaultItem = useCallback(
     (result: GridSampleResult, id: ID, fontSize: number): fos.Lookers => {
+      // DIAGNOSTIC: if the hydrated node has no `.sample`, the looker is built
+      // sample-less → "sample not attached" + blank overlays. Catch it at the source.
+      if (!(result as { sample?: unknown })?.sample) {
+        console.warn(
+          "[looker-debug] creating looker from node with NO .sample",
+          {
+            id: id.description,
+            hasResult: Boolean(result),
+            keys: result && Object.keys(result),
+          }
+        );
+      }
       const looker = createDefaultLooker.current?.(
         {
           ...result,

@@ -388,7 +388,7 @@ def _project_pagination_paths(
         if isinstance(field, (fof.DictField, fof.VectorField))
     ]
 
-    selected_fields = ["_group"]  # store dynamic group values
+    selected_fields = ["_group", "_group_count"]
     for path in schema:
         if any(path.startswith(exclude) for exclude in excluded):
             continue

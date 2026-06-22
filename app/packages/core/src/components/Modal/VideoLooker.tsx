@@ -21,19 +21,39 @@ export const VideoLookerReact = (props: VideoLookerReactProps) => {
   const { id, looker, sample } = useLooker<VideoLooker>(props);
   const [totalFrames, setTotalFrames] = useState<number>();
   const frameRate = useMemo(() => {
-    return sample.frameRate;
+    // node-level frameRate (lean REST payload) falls back to the stored metadata
+    return (
+      sample.frameRate ??
+      (sample.sample as { metadata?: { frame_rate?: number } } | undefined)
+        ?.metadata?.frame_rate
+    );
+  }, [sample]);
+  // Authoritative video length — `video.duration` under-reports for range-served /
+  // non-faststart mp4s, which truncated the timeline (e.g. a 20s video to 4s).
+  const totalFrameCount = useMemo(() => {
+    const count = (
+      sample.sample as { metadata?: { total_frame_count?: number } } | undefined
+    )?.metadata?.total_frame_count;
+    return typeof count === "number" && count > 0 ? count : null;
   }, [sample]);
 
   useVideoModalSelectiveRendering(id, looker);
 
   useEffect(() => {
+    if (totalFrameCount != null) {
+      setTotalFrames(totalFrameCount);
+      return;
+    }
+
+    // fall back to the (less reliable) media duration only when metadata is absent
     const load = () => {
       const duration = looker.getVideo().duration;
       setTotalFrames(getFrameNumber(duration, duration, frameRate));
       looker.removeEventListener("load", load);
     };
     looker.addEventListener("load", load);
-  }, [frameRate, looker]);
+    return () => looker.removeEventListener("load", load);
+  }, [totalFrameCount, frameRate, looker]);
 
   return (
     <>

@@ -123,6 +123,20 @@ export const useTimeline = (name?: TimelineName) => {
     [updateConfig, timelineName]
   );
 
+  // Update the timeline length after init — used by streaming sources (ImaVid) that
+  // play before the group's true length is known: the timeline starts on the frames
+  // already buffered and the real total lands later (from the stream), enabling the
+  // full seek range without ever re-initializing.
+  const setTotalFrames = useCallback(
+    (totalFrames: number, streaming = false) => {
+      updateConfig({
+        name: timelineName,
+        configDelta: { totalFrames, streaming },
+      });
+    },
+    [updateConfig, timelineName]
+  );
+
   const subscribe = useCallback(
     (subscription: SequenceTimelineSubscription) => {
       subscribeImpl({ name: timelineName, subscription });
@@ -165,6 +179,10 @@ export const useTimeline = (name?: TimelineName) => {
      * Set the speed of the timeline.
      */
     setSpeed,
+    /**
+     * Update the total frame count after initialization (streaming sources).
+     */
+    setTotalFrames,
     /**
      * Subscribe to the timeline for frame updates.
      */

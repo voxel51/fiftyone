@@ -32,9 +32,17 @@ export class ImaVidFrameSamples {
 
   private readonly abortController: AbortController;
 
-  constructor(storeBufferManager: BufferManager) {
+  // shared sample cache (keyed by sample `_id`) populated by the grid and modal;
+  // frames already fetched there are reused so a hover/open issues no extra fetch
+  private readonly sharedSamples?: Map<SampleId, ModalSample>;
+
+  constructor(
+    storeBufferManager: BufferManager,
+    sharedSamples?: Map<SampleId, ModalSample>
+  ) {
     this.storeBufferManager = storeBufferManager;
     this.abortController = new AbortController();
+    this.sharedSamples = sharedSamples;
 
     this.samples = new LRUCache<SampleId, ModalSampleExtendedWithImage>({
       dispose: (_modal, sampleId) => {
@@ -65,7 +73,19 @@ export class ImaVidFrameSamples {
       return undefined;
     }
 
-    return this.samples.get(sampleId);
+    const local = this.samples.get(sampleId);
+    if (local) {
+      return local;
+    }
+
+    // read through to the shared cache so a frame already fetched by the grid is
+    // reused without re-fetching; the image is filled in lazily by fetchImageForSample
+    const shared = this.sharedSamples?.get(sampleId);
+    if (shared) {
+      return { ...shared, image: null } as ModalSampleExtendedWithImage;
+    }
+
+    return undefined;
   }
 
   async fetchImageForSample(

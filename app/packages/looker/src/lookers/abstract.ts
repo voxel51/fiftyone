@@ -49,7 +49,6 @@ import {
   ViewportState,
 } from "../state";
 import {
-  createWorker,
   getDPR,
   getElementBBox,
   getFitRect,
@@ -58,7 +57,7 @@ import {
 } from "../util";
 import { ProcessSample } from "../worker";
 import { AsyncLabelsRenderingManager } from "../worker/async-labels-rendering-manager";
-import { LookerUtils } from "./shared";
+import { nextWorker } from "../worker/pool";
 import { retrieveTransferables } from "./utils";
 
 const LABEL_LISTS_PATH = new Set(withPath(LABELS_PATH, LABEL_LISTS));
@@ -68,29 +67,6 @@ const LABEL_LIST_KEY = Object.fromEntries(
 const LABELS_SET = new Set(LABELS);
 
 const UPDATE_SAMPLE_DEBOUNCE_MS = 100;
-
-/**
- * worker pool for processing labels
- */
-const getLabelsWorker = (() => {
-  const numWorkers =
-    typeof window !== "undefined" ? navigator.hardwareConcurrency || 4 : 1;
-  let workers: Worker[];
-
-  let next = -1;
-  return () => {
-    if (!workers) {
-      workers = [];
-      for (let i = 0; i < numWorkers; i++) {
-        workers.push(createWorker(LookerUtils.workerCallbacks));
-      }
-    }
-
-    next++;
-    next %= numWorkers;
-    return workers[next];
-  };
-})();
 
 export abstract class AbstractLooker<
   State extends BaseState,
@@ -654,9 +630,12 @@ export abstract class AbstractLooker<
     return (sample: Sample) => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
-        // todo: sometimes instance in spotlight?.updateItems() is defined but has no ref to sample
-        // this crashes the app. this is a bug and should be fixed
-        if (!this.sample) {
+        // the captured `sample` can be stale-null: an update scheduled (e.g. the
+        // grid's on-attach `updateOptions`) before the async initial load set
+        // `this.sample` would otherwise reload the worker with null and get back
+        // "sample not attached". Fall back to the now-loaded current sample.
+        const target = sample ?? this.sample;
+        if (!target) {
           return;
         }
 
@@ -666,7 +645,7 @@ export abstract class AbstractLooker<
 
         this.isSampleUpdating = true;
         try {
-          this.loadSample(sample, retrieveTransferables(this.sampleOverlays));
+          this.loadSample(target, retrieveTransferables(this.sampleOverlays));
         } catch (error) {
           this.isSampleUpdating = false;
           console.error(error);
@@ -679,10 +658,15 @@ export abstract class AbstractLooker<
     this.updateSampleDebounced(sample);
   }
 
+  // a refresh requested before the async initial load sets `this.sample` is parked
+  // here and replayed once the sample lands; dropping it (the old early-return) left
+  // grid overlays/masks unpainted, since the grid applies its update on attach —
+  // before the worker round-trip that sets `this.sample` completes.
+  private pendingRefresh: { labels: string[] | null } | null = null;
+
   refreshSample(renderLabels: string[] | null = null) {
-    // todo: sometimes instance in spotlight?.updateItems() is defined but has no ref to sample
-    // this crashes the app. this is a bug and should be fixed
     if (!this.sample) {
+      this.pendingRefresh = { labels: renderLabels };
       return;
     }
 
@@ -911,7 +895,7 @@ export abstract class AbstractLooker<
   private loadSample(sample: Sample, transfer: Transferable[] = []) {
     const messageUUID = uuid();
 
-    const labelsWorker = getLabelsWorker();
+    const labelsWorker = nextWorker();
 
     const listener = ({ data: { sample, coloring, uuid, error } }) => {
       if (uuid === messageUUID) {
@@ -941,6 +925,15 @@ export abstract class AbstractLooker<
         labelsWorker.removeEventListener("message", listener);
 
         this.isSampleUpdating = false;
+
+        // replay a refresh that was requested before this sample finished loading
+        // (e.g. the grid's on-attach overlay update) — now that `this.sample` is set
+        // it will actually paint instead of being dropped.
+        if (this.pendingRefresh) {
+          const { labels } = this.pendingRefresh;
+          this.pendingRefresh = null;
+          this.refreshSample(labels);
+        }
       }
     };
 

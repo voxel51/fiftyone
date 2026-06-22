@@ -2,9 +2,6 @@ import { useTheme } from "@fiftyone/components";
 import { ImaVidLooker } from "@fiftyone/looker";
 import type { FoTimelineConfig } from "@fiftyone/playback";
 import {
-  PLAYHEAD_STATE_BUFFERING,
-  PLAYHEAD_STATE_PAUSED,
-  PLAYHEAD_STATE_PLAYING,
   useCreateTimeline,
   useDefaultTimelineNameImperative,
   useTimeline,
@@ -184,44 +181,16 @@ export const ImaVidLookerReact = React.memo(
           return;
         }
 
-        // if looker is playing, don't change playhead to buffering status
-        // we indicate buffering status in status bar
-        if (getPlayHeadState() !== PLAYHEAD_STATE_PLAYING) {
-          setPlayHeadState(PLAYHEAD_STATE_BUFFERING);
-        }
-
+        // NON-BLOCKING, exactly like grid hover: kick off the fetch for the missing
+        // range in the BACKGROUND and return immediately. NEVER gate the controls or
+        // playback on buffering — the play button stays available, already-buffered
+        // (e.g. grid-hovered) frames play instantly, and the draw loop paces itself
+        // to the buffer (waiting only on a frame that hasn't arrived yet). A separate
+        // status indicator shows in-progress loading without hiding the play button.
         imaVidLookerRef.current.frameStoreController.enqueueFetch(
           unprocessedBufferRange
         );
-
         imaVidLookerRef.current.frameStoreController.resumeFetch();
-
-        return new Promise<void>((resolve) => {
-          const fetchMoreListener = (e: CustomEvent) => {
-            if (
-              e.detail.id === imaVidLookerRef.current.frameStoreController.key
-            ) {
-              if (storeBufferManager.containsRange(unprocessedBufferRange)) {
-                // if we were buffering, set playhead state to playing
-                if (getPlayHeadState() === PLAYHEAD_STATE_BUFFERING) {
-                  setPlayHeadState(PLAYHEAD_STATE_PAUSED);
-                }
-
-                resolve();
-
-                window.removeEventListener(
-                  "fetchMore",
-                  fetchMoreListener as EventListener
-                );
-              }
-            }
-          };
-
-          window.addEventListener(
-            "fetchMore",
-            fetchMoreListener as EventListener
-          );
-        });
       },
       []
     );
@@ -233,35 +202,42 @@ export const ImaVidLookerReact = React.memo(
     const { getName } = useDefaultTimelineNameImperative();
     const timelineName = React.useMemo(() => getName(), [getName]);
 
-    const [totalFrameCount, setTotalFrameCount] = useState<number | null>(null);
+    // The shared controller may already carry the group's length (a grid hover
+    // streamed the whole group) — read it synchronously so the controls initialize
+    // on first render with the real total. Null → stream it in async, never blocking.
+    const initialFrameCount =
+      (looker as ImaVidLooker)?.frameStoreController?.totalFrameCount ?? null;
 
-    const totalFrameCountRef = useRef<number | null>(null);
+    const [totalFrameCount, setTotalFrameCount] = useState<number | null>(
+      initialFrameCount
+    );
+
+    const totalFrameCountRef = useRef<number | null>(initialFrameCount);
+
+    // true while the group is still streaming frames (length unknown, or buffered <
+    // total) — drives the buffering indicator next to the frame count so a slow
+    // stream reads as "still loading", not stalled/truncated.
+    const [isBuffering, setIsBuffering] = useState<boolean>(true);
 
     const timelineCreationConfig = useMemo(() => {
-      // todo: not working because it's resolved in a promise later
-      // maybe emit event to update the total frames
-      if (!totalFrameCount) {
-        return undefined;
-      }
-
+      // Never block the controls on the group's length. When the real count is known
+      // (grid already streamed the group) initialize with it; otherwise initialize in
+      // `streaming` mode against the buffered frames so playback starts immediately —
+      // the real total fills in async (below), so the playhead can't race to a
+      // provisional end and the load window isn't clamped to it.
+      const streaming = totalFrameCount == null;
       return {
         loop: (looker as ImaVidLooker).options.loop,
         targetFrameRate: dynamicGroupsTargetFrameRate,
-        totalFrames: totalFrameCount,
+        totalFrames: totalFrameCount ?? 1,
+        streaming,
       } as FoTimelineConfig;
     }, [totalFrameCount, (looker as ImaVidLooker).options.loop]);
 
     const readyWhen = useCallback(async () => {
-      return new Promise<void>((resolve) => {
-        // hack: wait for total frame count to be resolved
-        let intervalId;
-        intervalId = setInterval(() => {
-          if (totalFrameCountRef.current) {
-            clearInterval(intervalId);
-            resolve();
-          }
-        }, 10);
-      });
+      // resolve immediately — the controls must not wait on the group's length; they
+      // initialize against the seeded poster / buffered frames and stream the rest.
+      return Promise.resolve();
     }, []);
 
     const onAnimationStutter = useCallback(() => {
@@ -284,7 +260,7 @@ export const ImaVidLookerReact = React.memo(
       onAnimationStutter,
     });
 
-    const { setPlayHeadState, getPlayHeadState } = useTimeline(timelineName);
+    const { setTotalFrames } = useTimeline(timelineName);
 
     /**
      * This effect subscribes to the timeline.
@@ -325,22 +301,58 @@ export const ImaVidLookerReact = React.memo(
     }, [isTimelineInitialized, loadRange, renderFrame, subscribe]);
 
     /**
-     * This effect sets the total frame count by polling the frame store controller.
+     * Poll for the group's true frame count (arrives async, never blocks the poster).
+     * The timeline initializes only once it lands, so the seek bar shows the real total
+     * and the playhead can't run past loaded frames.
      */
     useEffect(() => {
-      // hack: poll every 10ms for total frame count
-      // replace with event listener or callback
-      let intervalId = setInterval(() => {
-        const totalFrameCount =
-          imaVidLookerRef.current.frameStoreController.totalFrameCount;
-        if (totalFrameCount) {
-          setTotalFrameCount(totalFrameCount);
-          clearInterval(intervalId);
+      // Keep the timeline's playable extent in sync with what's BUFFERED while the
+      // group's true length is unknown (a partial grid-hover stream): the modal plays
+      // the reused/buffered frames immediately instead of capping at 1/1, and the seek
+      // bar grows as frames stream in. Snap to the real total once the stream reveals
+      // it (a short final page) — never a count aggregation.
+      let lastTarget = 0;
+      const intervalId = setInterval(() => {
+        const controller = imaVidLookerRef.current?.frameStoreController;
+        if (!controller) {
+          return;
         }
-      }, 10);
+        const real = controller.totalFrameCount ?? null;
+        const buffers = controller.storeBufferManager?.buffers ?? [];
+        const bufferedMax = buffers.reduce(
+          (max, range) => (range ? Math.max(max, range[1]) : max),
+          0
+        );
+
+        if (real) {
+          // The group's TRUE length is the only correct denominator (seeded from the
+          // poster's `_group_count` / the stream's short final page) — show it
+          // immediately so the seek bar never displays an inaccurate total like 1/1.
+          if (real !== lastTarget) {
+            lastTarget = real;
+            setTotalFrames(real, false);
+            setTotalFrameCount(real);
+            totalFrameCountRef.current = real;
+          }
+          // still buffering until every frame of the group is loaded
+          const done = bufferedMax >= real;
+          setIsBuffering(!done);
+          if (done) {
+            clearInterval(intervalId);
+          }
+        } else {
+          // Length genuinely unknown (cold group with no `_group_count`): grow the bar
+          // with buffered frames until the stream reveals the real length.
+          setIsBuffering(true);
+          if (bufferedMax && bufferedMax !== lastTarget) {
+            lastTarget = bufferedMax;
+            setTotalFrames(bufferedMax, true);
+          }
+        }
+      }, 100);
 
       return () => clearInterval(intervalId);
-    }, [looker]);
+    }, [looker, setTotalFrames]);
 
     useImavidModalSelectiveRendering(id, looker);
 
@@ -366,6 +378,46 @@ export const ImaVidLookerReact = React.memo(
             position: "relative",
           }}
         />
+        {isBuffering && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: "42px",
+              right: "10px",
+              zIndex: 2,
+              display: "flex",
+              alignItems: "center",
+              gap: "5px",
+              padding: "2px 6px",
+              borderRadius: "3px",
+              background: "rgba(0,0,0,0.55)",
+            }}
+          >
+            <span
+              style={{
+                width: "10px",
+                height: "10px",
+                border: "2px solid rgba(255,255,255,0.25)",
+                borderTopColor: "#ff6d04",
+                borderRadius: "50%",
+                display: "inline-block",
+                animation: "imavid-buffer-spin 0.8s linear infinite",
+              }}
+            />
+            <span
+              style={{
+                fontSize: "11px",
+                color: "#bbb",
+                fontFamily: "ui-monospace, Menlo, monospace",
+              }}
+            >
+              buffering…
+            </span>
+            <style>
+              {"@keyframes imavid-buffer-spin{to{transform:rotate(360deg)}}"}
+            </style>
+          </div>
+        )}
         <Timeline
           name={timelineName}
           style={{

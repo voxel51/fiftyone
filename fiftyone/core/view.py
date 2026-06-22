@@ -920,6 +920,20 @@ class DatasetView(foc.SampleCollection):
 
         if etau.is_str(group_expr):
             pipeline.append({"$match": {group_expr[1:]: group_value}})
+        elif isinstance(group_expr, (list, tuple)) and all(
+            etau.is_str(e) and e.startswith("$") for e in group_expr
+        ):
+            # Compound key of plain field references: match each field directly so
+            # the query is index-eligible. An `$expr` over a computed array forces a
+            # full collection scan on every per-group fetch.
+            pipeline.append(
+                {
+                    "$match": {
+                        field_ref[1:]: value
+                        for field_ref, value in zip(group_expr, group_value)
+                    }
+                }
+            )
         else:
             pipeline.append(
                 {"$match": {"$expr": {"$eq": [group_expr, group_value]}}}

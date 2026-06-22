@@ -6,11 +6,14 @@ FiftyOne Server /frames route
 |
 """
 
+import logging
+
 from starlette.endpoints import HTTPEndpoint
 from starlette.responses import JSONResponse
 from starlette.requests import Request
 
 from fiftyone.core.expressions import ViewField as F
+import fiftyone.core.fields as fof
 import fiftyone.core.json as foj
 import fiftyone.core.odm as foo
 from fiftyone.core.utils import run_sync_task
@@ -18,6 +21,24 @@ import fiftyone.core.view as fov
 
 from fiftyone.server.decorators import route
 import fiftyone.server.view as fosv
+
+logger = logging.getLogger(__name__)
+
+
+def _heavy_frame_paths(view):
+    """Frame ``DictField``/``VectorField`` paths — embeddings, logits, dynamic Dict
+    attrs the video timeline never reads. Excluded so a streamed range can't balloon
+    the payload and OOM the renderer."""
+    frame_schema = view.get_frame_field_schema(flat=True) or {}
+    return [
+        f"frames.{path}"
+        for path, field in frame_schema.items()
+        # by TYPE (embeddings/vectors/dicts) AND by NAME (`logits`), so logits are
+        # excluded identically to the grid/modal paths regardless of declared type
+        if isinstance(field, (fof.DictField, fof.VectorField))
+        or path == "logits"
+        or path.endswith(".logits")
+    ]
 
 
 class Frames(HTTPEndpoint):
@@ -37,6 +58,12 @@ class Frames(HTTPEndpoint):
         end_frame = min(num_frames + start_frame, frame_count)
         support = None if stages else [start_frame, end_frame]
 
+        logger.info(
+            "[fetch] video-frames sample=%s range=%s",
+            sample_id,
+            [start_frame, end_frame],
+        )
+
         def run(view):
             view = fov.make_optimized_select_view(
                 view, sample_id, flatten=True
@@ -55,9 +82,14 @@ class Frames(HTTPEndpoint):
 
         view = await run_sync_task(run, view)
 
+        pipeline = view._pipeline(frames_only=True, support=support)
+        heavy = _heavy_frame_paths(view)
+        if heavy:
+            pipeline.append({"$project": {path: 0 for path in heavy}})
+
         frames = await foo.aggregate(
             foo.get_async_db_conn()[view._dataset._sample_collection_name],
-            view._pipeline(frames_only=True, support=support),
+            pipeline,
         ).to_list(end_frame - start_frame + 1)
 
         return JSONResponse(

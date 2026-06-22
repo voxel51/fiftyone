@@ -57,14 +57,21 @@ export class LoaderBar extends BaseElement<VideoState> {
     duration,
     buffering,
     hovering,
+    hasPoster,
     waitingForVideo,
     waitingToStream,
     error,
     lockedToSupport,
     config: { frameRate, support },
   }: Readonly<VideoState>) {
+    // Don't show the loader bar until the POSTER has rendered — hovering an empty/
+    // not-yet-loaded tile (waitingForVideo, no poster) shouldn't flash a loading bar
+    // over a blank tile; it only appears once there's a poster and playback buffers.
     const shown =
-      !error && hovering && (waitingForVideo || buffering || waitingToStream);
+      !error &&
+      hovering &&
+      hasPoster &&
+      (waitingForVideo || buffering || waitingToStream);
 
     if (shown === this.shown) {
       return this.element;

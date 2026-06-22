@@ -21,6 +21,7 @@ export * from "./pathData";
 export * from "./pathFilters";
 export * from "./queryPerformance";
 export * from "./relay";
+export * from "./sampleProjection";
 export * from "./schema";
 export * from "./schemaSettings.atoms";
 export * from "./selectors";

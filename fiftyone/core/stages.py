@@ -3544,6 +3544,10 @@ class GroupBy(ViewStage):
         self._create_index = create_index
         self._sort_stage = None
         self._order_by_key = order_by_key
+        # opt-in: emit a per-group `_group_count`. Off by default because the $sum
+        # forces every group member to be scanned, defeating the $first-only
+        # DISTINCT_SCAN that keeps grouped paging (grid spine, deep jumps) cheap.
+        self._include_count = False
 
     @property
     def outputs_dynamic_groups(self):
@@ -3653,12 +3657,42 @@ class GroupBy(ViewStage):
         if self._sort_stage is not None:
             pipeline.extend(self._sort_stage.to_mongo(sample_collection))
 
-        pipeline.extend(
-            [
-                {"$group": {"_id": group_expr, "doc": {"$first": "$$ROOT"}}},
-                {"$replaceRoot": {"newRoot": "$doc"}},
-            ]
-        )
+        if self._include_count:
+            # only when a consumer explicitly needs each group's size (the grid's
+            # poster-hydration query): $sum scans every member, defeating DISTINCT_SCAN
+            pipeline.extend(
+                [
+                    {
+                        "$group": {
+                            "_id": group_expr,
+                            "doc": {"$first": "$$ROOT"},
+                            "_group_count": {"$sum": 1},
+                        }
+                    },
+                    {
+                        "$replaceRoot": {
+                            "newRoot": {
+                                "$mergeObjects": [
+                                    "$doc",
+                                    {"_group_count": "$_group_count"},
+                                ]
+                            }
+                        }
+                    },
+                ]
+            )
+        else:
+            pipeline.extend(
+                [
+                    {
+                        "$group": {
+                            "_id": group_expr,
+                            "doc": {"$first": "$$ROOT"},
+                        }
+                    },
+                    {"$replaceRoot": {"newRoot": "$doc"}},
+                ]
+            )
 
         # add a sort stage so that we return a stable ordering of groups
         # sort by _id to preserve insertion order

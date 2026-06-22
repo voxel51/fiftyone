@@ -131,6 +131,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
       buffering: false,
       bufferManager: new BufferManager([[FIRST_FRAME, FIRST_FRAME]]),
       seekBarHovering: false,
+      hoverProbed: false,
       SHORTCUTS: IMAVID_SHORTCUTS,
     };
   }

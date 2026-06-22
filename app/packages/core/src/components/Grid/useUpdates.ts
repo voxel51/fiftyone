@@ -66,7 +66,7 @@ export const handlePotentiallyStillPendingOverlays = (entry: fos.Lookers) => {
   rerender.length && entry.refreshSample(rerender);
 };
 
-const useItemUpdater = (
+export const useItemUpdater = (
   cache: LookerCache,
   options: ReturnType<typeof fos.useLookerOptions>
 ) => {

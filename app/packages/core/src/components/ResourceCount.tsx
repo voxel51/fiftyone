@@ -7,6 +7,7 @@ import React from "react";
 import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
 import TimedOut from "./Common/TimedOut";
+import { gridSpineTotal } from "./Grid/recoil";
 import { PathEntryCounts } from "./Sidebar/Entries/EntryCounts";
 
 const RightDiv = styled.div`
@@ -82,14 +83,25 @@ const Count = () => {
 
   const isGroup = useRecoilValue(isGroupAtom);
   const queryPerformance = useRecoilValue(fos.queryPerformance);
+  // the spine resolves the EXACT item count for the current view (filtered samples, or
+  // groups for a dynamic-group view) for free — the same value the bottom scroll
+  // counter shows. the server returns only the dataset ESTIMATE for the root path, so
+  // prefer the spine total wherever it has resolved (filtered or grouped).
+  const spineTotal = useRecoilValue(gridSpineTotal);
   if (queryPerformance) {
     total = subtotal;
   }
+  if (spineTotal != null) {
+    total = spineTotal;
+  }
+  // relabel to "groups" ONLY for dynamic-group views — flat/filtered views stay
+  // "samples" and just show the exact spine count.
   if (
-    !queryPerformance &&
-    ((isGroup && !isDynamicGroupViewStageActive) ||
-      (isDynamicGroupViewStageActive && parent === "group") ||
-      (isDynamicGroupViewStageActive && element.singular === "sample"))
+    (isDynamicGroupViewStageActive && spineTotal != null) ||
+    (!queryPerformance &&
+      ((isGroup && !isDynamicGroupViewStageActive) ||
+        (isDynamicGroupViewStageActive && parent === "group") ||
+        (isDynamicGroupViewStageActive && element.singular === "sample")))
   ) {
     element = {
       plural: "groups",
@@ -100,7 +112,11 @@ const Count = () => {
   return (
     <RightDiv data-cy="entry-counts">
       <div style={{ whiteSpace: "nowrap" }}>
-        <PathEntryCounts modal={false} path={""} />{" "}
+        {spineTotal != null ? (
+          spineTotal.toLocaleString()
+        ) : (
+          <PathEntryCounts modal={false} path={""} />
+        )}{" "}
         {isDynamicGroupViewStageActive &&
           !["sample", "group"].includes(element.singular) &&
           `group${total === 1 ? "" : "s"} of `}

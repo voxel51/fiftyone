@@ -303,15 +303,18 @@ export default class Spotlight<K, V> extends EventTarget {
     this.#validate = validate;
 
     return {
-      measure: (item: ItemData<K, V>, itemBytes: Promise<number>) => {
+      measure: (item: ItemData<K, V>, itemBytes: number | Promise<number>) => {
         if (this.#rejected || ar <= MIN_ASPECT_RATIO_RECOMMENDATION) {
           return;
         }
 
-        promises.push(itemBytes);
+        // `showItem` may resolve a size synchronously (cache hit) or async (load);
+        // normalize so the size-accounting path is uniform.
+        const sizeBytes = Promise.resolve(itemBytes);
+        promises.push(sizeBytes);
         items.push(item);
 
-        itemBytes.then((add) => {
+        sizeBytes.then((add) => {
           if (this.#rejected) {
             return;
           }

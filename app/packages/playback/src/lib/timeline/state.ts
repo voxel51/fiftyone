@@ -101,6 +101,15 @@ export type FoTimelineConfig = {
   totalFrames: TotalFrames;
 
   /**
+   * If true, the true length isn't known yet — `totalFrames` is provisional and the
+   * source (e.g. ImaVid) is still streaming. The playback controls initialize and play
+   * the buffered frames WITHOUT blocking on the count: the playhead waits at the
+   * buffered end instead of looping/stopping, and the load window isn't clamped to the
+   * provisional total. Both revert once the real count lands and this clears.
+   */
+  streaming?: boolean;
+
+  /**
    * If true, the timeline will show a time indicator instead
    * of the frame number.
    *
@@ -212,6 +221,7 @@ export const addTimelineAtom = atom(
         timeline.config.targetFrameRate ?? DEFAULT_TARGET_FRAME_RATE,
       useTimeIndicator:
         timeline.config.useTimeIndicator ?? DEFAULT_USE_TIME_INDICATOR,
+      streaming: timeline.config.streaming ?? false,
     };
 
     const isTimelineAlreadyInitialized = get(
@@ -228,8 +238,9 @@ export const addTimelineAtom = atom(
     }
 
     if (
+      !configWithImputedValues.streaming &&
       configWithImputedValues.defaultFrameNumber >
-      configWithImputedValues.totalFrames
+        configWithImputedValues.totalFrames
     ) {
       throw new Error(
         `Default frame number ${configWithImputedValues.defaultFrameNumber} is greater than total frames ${configWithImputedValues.totalFrames}`
@@ -457,7 +468,11 @@ export const getLoadRangeForFrameNumber = (
   frameNumber: FrameNumber,
   config: FoTimelineConfig
 ): BufferRange => {
-  const { totalFrames, targetFrameRate, speed } = config;
+  const { totalFrames, targetFrameRate, speed, streaming } = config;
+
+  // while streaming, the real length is unknown — don't clamp the window to the
+  // provisional total; just stream a fixed window ahead of the playhead.
+  const upperBound = streaming ? Infinity : totalFrames;
 
   // we'll keep behind-buffer size fixed
   const behindBuffer = MIN_LOAD_RANGE_SIZE;

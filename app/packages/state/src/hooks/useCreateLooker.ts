@@ -24,18 +24,39 @@ import {
 } from "@fiftyone/utilities";
 import { useEffect, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
-import { useRelayEnvironment } from "react-relay";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { dynamicGroupsElementCount, selectedMediaField } from "../recoil";
 import { sampleSelectionStyle, selectedSamples } from "../recoil/atoms";
 import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
+import { filters } from "../recoil/filters";
+import type { ModalSample } from "../recoil/modal";
+import { gridSampleFields } from "../recoil/sampleProjection";
 import * as schemaAtoms from "../recoil/schema";
-import { datasetName, dynamicGroupsTargetFrameRate } from "../recoil/selectors";
+import {
+  datasetId,
+  datasetName,
+  dynamicGroupsTargetFrameRate,
+} from "../recoil/selectors";
 import { State } from "../recoil/types";
 import { getSampleSrc, resolveSelectionIcon } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
 import { getNormalizedUrls } from "../utils";
+import { stores } from "./useLookerStore";
 import { useOnShiftClickLabel } from "./useOnShiftClickLabel";
+
+// Read-through view over every registered looker store's sample cache so imavid
+// frames keyed by `_id` are reused whether the grid or the modal populated them.
+const sharedSampleCache = {
+  get: (id: string): ModalSample | undefined => {
+    for (const store of stores) {
+      const cached = store.samples.get(id);
+      if (cached) {
+        return cached;
+      }
+    }
+    return undefined;
+  },
+} as unknown as Map<string, ModalSample>;
 
 export default <T extends AbstractLooker<BaseState>>(
   isModal: boolean,
@@ -45,7 +66,6 @@ export default <T extends AbstractLooker<BaseState>>(
   enableTimeline?: boolean
 ) => {
   const abortControllerRef = useRef(new AbortController());
-  const environment = useRelayEnvironment();
   const selected = useRecoilValue(selectedSamples);
   const style = useRecoilValue(sampleSelectionStyle);
   const isClip = useRecoilValue(viewAtoms.isClipsView);
@@ -56,6 +76,9 @@ export default <T extends AbstractLooker<BaseState>>(
   const view = useRecoilValue(viewAtoms.view);
   const dataset = useRecoilValue(datasetName);
   const mediaField = useRecoilValue(selectedMediaField(isModal));
+  // the grid's media field — used (modal-independent) to key the shared imavid
+  // controller so the modal REUSES the grid's buffered frames instead of refetching
+  const sharedMediaField = useRecoilValue(selectedMediaField(false));
 
   const fieldSchema = useRecoilValue(
     schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE })
@@ -159,8 +182,16 @@ export default <T extends AbstractLooker<BaseState>>(
             ...fieldSchema,
           },
           sources: urls,
-          frameNumber: create === FrameLooker ? frameNumber : undefined,
-          frameRate,
+          frameNumber:
+            create === FrameLooker
+              ? frameNumber ?? (sample.frame_number as number | undefined)
+              : undefined,
+          // frame_rate lives in the sample's metadata; derive it (the GraphQL
+          // modal path also passes it as an arg) so the VideoLooker can step frames
+          frameRate:
+            frameRate ??
+            (sample.metadata as { frame_rate?: number } | undefined)
+              ?.frame_rate,
           isDynamicGroup,
           sampleId: sample._id,
           support: isClip ? sample.support : undefined,
@@ -209,53 +240,77 @@ export default <T extends AbstractLooker<BaseState>>(
         }
 
         if (create === ImaVidLooker) {
-          const totalFrameCountPromise = getPromise(
-            dynamicGroupsElementCount({ value: sample._group })
-          );
-          const page = snapshot
-            .getLoadable(
-              dynamicGroupAtoms.dynamicGroupPageSelector({
-                value: sample._group,
-                modal: isModal,
-              })
-            )
-            .valueMaybe();
-
           const firstFrameNumber = isModal
             ? snapshot
                 .getLoadable(dynamicGroupAtoms.dynamicGroupCurrentElementIndex)
                 .valueMaybe() ?? 1
             : 1;
 
-          const imavidKey = snapshot
-            .getLoadable(
-              dynamicGroupAtoms.imaVidStoreKey({
-                groupByFieldValue: sample._group,
-                modal: isModal,
-              })
-            )
-            .valueOrThrow();
-
           const thisSampleId = sample._id as string;
-          const imavidPartitionKey = `${thisSampleId}-${mediaField}`;
-          if (!ImaVidFramesControllerStore.has(imavidPartitionKey)) {
-            ImaVidFramesControllerStore.set(
-              imavidPartitionKey,
-              new ImaVidFramesController({
-                environment,
-                firstFrameNumber,
-                page,
-                targetFrameRate: dynamicGroupsTargetFrameRateValue,
-                totalFrameCountPromise,
-                key: imavidKey,
-              })
-            );
+          const imavidPartitionKey = `${thisSampleId}-${sharedMediaField}`;
+          let controller = ImaVidFramesControllerStore.get(imavidPartitionKey);
+          if (!controller) {
+            controller = new ImaVidFramesController({
+              firstFrameNumber,
+              targetFrameRate: dynamicGroupsTargetFrameRateValue,
+              datasetId: snapshot.getLoadable(datasetId).valueMaybe() ?? "",
+              groupValue: sample._group as string,
+              view,
+              filters: snapshot.getLoadable(filters).valueMaybe() ?? {},
+              fields: snapshot.getLoadable(gridSampleFields).valueMaybe() ?? [],
+              // frames keyed by `_id` in the shared cache → grid/modal reuse
+              sharedSamples: sharedSampleCache,
+            });
+
+            // Seed the poster frame from the already-loaded grid data so the looker
+            // renders immediately with ZERO sample fetches; the rest of the group
+            // streams only on play/hover.
+            if (!controller.store.frameIndex.has(firstFrameNumber)) {
+              controller.store.samples.set(thisSampleId, {
+                id: thisSampleId,
+                sample,
+                urls: rawUrls,
+                image: null,
+              } as never);
+              controller.store.frameIndex.set(firstFrameNumber, thisSampleId);
+              controller.store.reverseFrameIndex.set(
+                thisSampleId,
+                firstFrameNumber
+              );
+              void controller.store.fetchImageForSample(
+                thisSampleId,
+                rawUrls,
+                mediaField
+              );
+            }
+
+            ImaVidFramesControllerStore.set(imavidPartitionKey, controller);
+          }
+
+          // narrowed (definitely defined) so the count closure below is type-safe.
+          const frameStoreController = controller;
+
+          // Resolve the group's frame count for the modal seek bar / timeline init
+          // WITHOUT re-fetching anything already on the client. Prefer cached counts:
+          // a length the stream already revealed on the shared controller (a fully-
+          // played group → 0 queries), or the poster's `_group_count` when the read
+          // carried it. Only a cold modal whose group is in no client cache fetches
+          // the count once; the grid itself never fetches it.
+          if (isModal && frameStoreController.totalFrameCount == null) {
+            const posterGroupCount = (sample as { _group_count?: number })
+              ._group_count;
+            if (posterGroupCount != null) {
+              frameStoreController.setTotalFrameCount(posterGroupCount);
+            } else {
+              getPromise(
+                dynamicGroupsElementCount({ value: sample._group, modal: true })
+              ).then((count) => frameStoreController.setTotalFrameCount(count));
+            }
           }
 
           config = {
             ...config,
-            frameStoreController:
-              ImaVidFramesControllerStore.get(imavidPartitionKey),
+            frameStoreController,
             frameRate: dynamicGroupsTargetFrameRateValue,
             firstFrameNumber: isModal
               ? snapshot

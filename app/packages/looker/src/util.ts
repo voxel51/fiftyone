@@ -467,7 +467,13 @@ export const createWorker = (
   worker.addEventListener(
     "error",
     (error) => {
-      dispatchEvent("error", error);
+      // dispatchEvent is optional (the shared worker pool + overlay-render workers
+      // omit it); surface the error rather than crash on an undefined dispatcher.
+      if (dispatchEvent) {
+        dispatchEvent("error", error);
+      } else {
+        console.error("[looker] worker error:", error);
+      }
     },
     signal
   );
@@ -479,7 +485,11 @@ export const createWorker = (
         const error = !ERRORS[data.error.cls]
           ? new Error(data.error.message)
           : new ERRORS[data.error.cls](data.error.data, data.error.message);
-        dispatchEvent("error", new ErrorEvent("error", { error }));
+        if (dispatchEvent) {
+          dispatchEvent("error", new ErrorEvent("error", { error }));
+        } else {
+          console.error("[looker] worker error:", error);
+        }
       }
     },
     signal
@@ -496,7 +506,15 @@ export const createWorker = (
 
   worker.addEventListener(
     "message",
-    ({ data: { method, ...args } }) => {
+    (event) => {
+      const data = event.data;
+      // a router that already ignores unknown `method`s must not crash on a
+      // dataless / non-protocol message either.
+      if (!data || typeof data !== "object" || !("method" in data)) {
+        return;
+      }
+
+      const { method, ...args } = data;
       if (!(method in listeners)) {
         return;
       }

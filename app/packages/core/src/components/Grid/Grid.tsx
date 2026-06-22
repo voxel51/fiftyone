@@ -8,12 +8,15 @@ import { useMemoOne } from "use-memo-one";
 import { v4 as uuid } from "uuid";
 import { useSyncLabelsRenderingStatus } from "../../hooks";
 import {
+  gridAspectRatio,
   gridAutosizing,
   gridCrop,
   gridSpacing,
   maxGridItemsSizeBytes,
   pageParameters,
+  parseAspectRatio,
 } from "./recoil";
+import InfiniteGrid from "./InfiniteGrid";
 import useEscape from "./useEscape";
 import useEvents from "./useEvents";
 import useLabelVisibility from "./useLabelVisibility";
@@ -34,6 +37,14 @@ function Grid() {
   const id = useMemoOne(() => uuid(), []);
   const pixels = useMemoOne(() => uuid(), []);
   const spacing = useRecoilValue(gridSpacing);
+
+  // A FIXED tile aspect ratio (e.g. "16:9") makes every tile uniform, which enables
+  // the fully-virtualized infinite grid; tiles render with the SAME looker the
+  // Spotlight grid uses, so every media type (image/video/imavid/group/3D) works.
+  // "auto" (variable per-sample AR, parses to null) keeps the justified, cursor-
+  // paginated Spotlight grid.
+  const useInfiniteGrid =
+    parseAspectRatio(useRecoilValue(gridAspectRatio)) !== null;
   const { pageReset, reset } = useRefreshers();
   const [resizing, setResizing] = useState(false);
   const zoom = useZoomSetting();
@@ -51,19 +62,21 @@ function Grid() {
     ...useLabelVisibility(),
   });
 
-  const { page, store } = useSpotlightPager({
-    clearRecords: reset,
-    pageSelector: pageParameters,
-    records,
-    zoomSelector: gridCrop,
-  });
+  const { page, store, hydrateWindow, ensureSpineWindow, spineTotal } =
+    useSpotlightPager({
+      clearRecords: reset,
+      pageSelector: pageParameters,
+      records,
+      zoomSelector: gridCrop,
+    });
 
-  const { getFontSize, lookerOptions, renderer } = useRenderer({
-    cache,
-    id,
-    records,
-    store,
-  });
+  const { getFontSize, lookerOptions, renderer, attachItem, releaseItem } =
+    useRenderer({
+      cache,
+      id,
+      records,
+      store,
+    });
   const { get, set } = useScrollLocation(pageReset);
 
   const setSample = fos.useExpandSample(store);
@@ -74,7 +87,8 @@ function Grid() {
     reset;
     /** SPOTLIGHT REFRESHER */
 
-    if (resizing) {
+    // a fixed AR uses the infinite grid (no Spotlight); auto uses Spotlight.
+    if (useInfiniteGrid || resizing) {
       return undefined;
     }
 
@@ -104,6 +118,7 @@ function Grid() {
     resizing,
     setSample,
     spacing,
+    useInfiniteGrid,
     zoom,
   ]);
 
@@ -114,8 +129,24 @@ function Grid() {
 
   return (
     <div className={styles.gridContainer}>
-      <div id={id} className={styles.spotlightGrid} data-cy="fo-grid" />
-      <div id={pixels} className={styles.fallingPixels} />
+      {useInfiniteGrid ? (
+        <InfiniteGrid
+          id={id}
+          reset={reset}
+          ensureSpineWindow={ensureSpineWindow}
+          hydrateWindow={hydrateWindow}
+          spineTotal={spineTotal}
+          store={store}
+          attachItem={attachItem}
+          releaseItem={releaseItem}
+          onItemClick={setSample}
+        />
+      ) : (
+        <>
+          <div id={id} className={styles.spotlightGrid} data-cy="fo-grid" />
+          <div id={pixels} className={styles.fallingPixels} />
+        </>
+      )}
     </div>
   );
 }

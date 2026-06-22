@@ -101,6 +101,7 @@ async def paginate_samples(
     hint: t.Optional[str] = None,
     dynamic_group: t.Optional[BSON] = None,
     max_query_time: t.Optional[int] = None,
+    skip_metadata: t.Optional[bool] = False,
 ) -> Connection[t.Union[ImageSample, VideoSample], str]:
     run = lambda: fosv.get_view(
         dataset,
@@ -118,13 +119,28 @@ async def paginate_samples(
     if after is None:
         after = "-1"
 
+    maxTimeMS = max_query_time * 1000 if max_query_time else None
+    coll = foo.get_async_db_conn()[view._dataset._sample_collection_name]
+
     if int(after) > -1:
         view = view.skip(int(after) + 1)
 
+    # `_group_count` rides on the grid's poster-tile media load ONLY (page load +
+    # scroll for new tiles), so each poster carries its group size and the ImaVid
+    # looker never re-queries it. That load is the paginated grouped read:
+    # `pagination_data` is True AND there is no `dynamic_group`. Excluded by design:
+    # hover/playback (single-group frame stream → `dynamic_group` set), the modal
+    # single-sample fetch (`pagination_data` False), and the id-only spine (a separate
+    # route that never calls this). Keeps the $sum off every non-poster query.
+    if dynamic_group is None and pagination_data:
+        for stage in getattr(view, "_stages", []):
+            if isinstance(stage, fos.GroupBy):
+                stage._include_count = True
+
     pipeline = await get_samples_pipeline(view, sample_filter)
-    maxTimeMS = max_query_time * 1000 if max_query_time else None
+
     samples = await foo.aggregate(
-        foo.get_async_db_conn()[view._dataset._sample_collection_name],
+        coll,
         pipeline,
         hint,
         maxTimeMS=maxTimeMS,
@@ -149,6 +165,9 @@ async def paginate_samples(
                 url_cache,
                 pagination_data,
                 additional_media_fields=additional_media_fields,
+                # client decides per the grid's aspect-ratio/autosizing settings:
+                # dimensions are only needed for poster images in auto mode
+                skip_dimensions=skip_metadata,
             )
             for sample in samples
         ]
@@ -182,6 +201,7 @@ async def _create_sample_item(
     pagination_data: bool,
     *,
     additional_media_fields: t.Optional[t.Tuple] = None,
+    skip_dimensions: bool = False,
 ) -> SampleItem:
     media_type = fom.get_media_type(sample["filepath"])
     cls = MEDIA_TYPES[media_type]
@@ -193,6 +213,7 @@ async def _create_sample_item(
         metadata_cache,
         url_cache,
         additional_media_fields=additional_media_fields,
+        skip_dimensions=skip_dimensions,
     )
 
     if cls == VideoSample:

@@ -86,6 +86,10 @@ export type Sample = {
     width: number;
     height: number;
     mime_type?: string;
+    // video metadata — `total_frame_count` is the authoritative video length;
+    // `video.duration` is unreliable for range-served / non-faststart mp4s.
+    total_frame_count?: number;
+    frame_rate?: number;
   };
   _id: string;
   id: string;
@@ -441,6 +445,13 @@ export interface ImaVidState extends BaseState {
    * true if the seek bar is being hovered
    */
   seekBarHovering: boolean;
+  /**
+   * true once the pointer has actively MOVED over this looker — a deliberate hover.
+   * Wheel/trackpad scrolling fires mouseenter (tiles pass under a stationary cursor)
+   * but never mousemove, so this stays false during scroll and gates the per-group
+   * frame-stream fetch: scrolling never triggers a stream, only a real hover does.
+   */
+  hoverProbed: boolean;
 }
 
 export interface ThreeDState extends BaseState {

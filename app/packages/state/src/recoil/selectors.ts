@@ -20,7 +20,7 @@ import { modalSample, modalSelector } from "./modal";
 import { pathFilter } from "./pathFilters";
 import type { SelectionType } from "./types";
 import { State } from "./types";
-import { isPatchesView } from "./view";
+import { isPatchesView, view } from "./view";
 
 export const datasetName = graphQLSyncFragmentAtom<
   datasetFragment$key,
@@ -171,10 +171,62 @@ export const disableFrameFiltering = selector<boolean>({
   },
 });
 
+// Per-(dataset, group-by) imavid playback frame rate, persisted to localStorage —
+// NOT saved on the dataset (it's a view-time playback preference, and the dynamic
+// group isn't a persisted group). `null` until the user overrides it in the grid
+// config; the selector below falls back to the dataset app config, then 30.
+const dynamicGroupsFrameRateStore = atomFamily<number | null, string>({
+  key: "dynamicGroupsFrameRateStore",
+  default: null,
+  effects: (storageKey) => [
+    ({ setSelf, onSet }) => {
+      if (typeof localStorage === "undefined") {
+        return;
+      }
+      const k = `fiftyone-imavid-fps-${storageKey}`;
+      const saved = localStorage.getItem(k);
+      if (saved != null && saved !== "") {
+        setSelf(Number(saved));
+      }
+      onSet((newValue) => {
+        if (newValue == null) {
+          localStorage.removeItem(k);
+        } else {
+          localStorage.setItem(k, String(newValue));
+        }
+      });
+    },
+  ],
+});
+
+const _frameRateStorageKey = selector<string>({
+  key: "dynamicGroupsFrameRateStorageKey",
+  get: ({ get }) => {
+    // the group-by field(s) from the GroupBy view stage (kwargs[0] = field_or_expr)
+    const groupByStage = (get(view) ?? []).find(
+      (s) => s._cls === "fiftyone.core.stages.GroupBy"
+    );
+    const groupBy = groupByStage?.kwargs?.[0]?.[1] ?? "";
+    return `${get(datasetId)}-${JSON.stringify(groupBy)}`;
+  },
+});
+
 export const dynamicGroupsTargetFrameRate = selector<number>({
   key: "dynamicGroupsTargetFrameRate",
   get: ({ get }) => {
+    const override = get(
+      dynamicGroupsFrameRateStore(get(_frameRateStorageKey))
+    );
+    if (override != null) {
+      return override;
+    }
     return get(datasetAppConfig)?.dynamicGroupsTargetFrameRate ?? 30;
+  },
+  set: ({ get, set }, newValue) => {
+    set(
+      dynamicGroupsFrameRateStore(get(_frameRateStorageKey)),
+      newValue instanceof DefaultValue ? null : newValue
+    );
   },
 });
 
