@@ -1,5 +1,7 @@
 import {
+  FRAMES_PREFIX,
   stripReservedLabelAttributes,
+  toFrameEnginePath,
   useActiveAnnotationSampleId,
   useAnnotationEngine,
 } from "@fiftyone/annotation";
@@ -142,6 +144,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
   const data = selected?.data;
   const overlay = selected?.overlay;
   const field = selected?.field ?? null;
+  const editingRef = selected?.ref ?? null;
   const engine = useAnnotationEngine();
   const sample = useActiveAnnotationSampleId();
   const { createPushAndExec } = usePushUndoable();
@@ -152,12 +155,14 @@ const useHandleSchemaChange = (readOnly: boolean) => {
   const dataRef = useRef(data);
   const overlayRef = useRef(overlay);
   const fieldRef = useRef(field);
+  const editingRefRef = useRef(editingRef);
   const currentLabelRef = useRef(currentLabel);
   const sampleRef = useRef(sample);
   configRef.current = config;
   dataRef.current = data;
   overlayRef.current = overlay;
   fieldRef.current = field;
+  editingRefRef.current = editingRef;
   currentLabelRef.current = currentLabel;
   sampleRef.current = sample;
 
@@ -224,10 +229,23 @@ const useHandleSchemaChange = (readOnly: boolean) => {
 
       if (isEqual(value, data)) return;
 
+      // address the engine in its own namespace: the anchor ref carries the
+      // track `instanceId` and the present `frame` for a video frame label, and
+      // names the field by its full `frames.<field>` path. Use the LIVE field
+      // for the path name (a mid-edit field move tracks through `field`), but
+      // re-prefix it when the ref says this is a frame field. With no ref
+      // (externally-managed atoms) fall back to the field + doc id, already
+      // correct for the sample-level labels those carry.
+      const editingRef = editingRefRef.current;
+      const isFrameField = editingRef?.path?.startsWith(FRAMES_PREFIX) ?? false;
       const ref = {
         sample: sampleRef.current,
-        path: field,
-        instanceId: (data as { _id?: string })?._id ?? overlay.id,
+        path: isFrameField ? toFrameEnginePath(field) : field,
+        instanceId:
+          editingRef?.instanceId ??
+          (data as { _id?: string })?._id ??
+          overlay.id,
+        frame: editingRef?.frame,
       };
       const previous = engine.getLabel(ref) ?? (data as LabelData);
 
