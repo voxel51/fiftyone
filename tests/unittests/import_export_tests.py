@@ -33,7 +33,7 @@ import fiftyone.utils.yolo as fouy
 from fiftyone import ViewField as F
 from fiftyone.multimodal.tags import (
     TAGS_COLLECTION_NAME,
-    TEMPORAL_TAGS_EXPORT_FILENAME,
+    TAGS_EXPORT_FILENAME,
 )
 
 from decorators import drop_collection, drop_datasets
@@ -172,11 +172,11 @@ class DuplicateImageExportTests(ImageDatasetTests):
         self.assertEqual(len(dataset2), 2)
 
 
-class TemporalTagsImportExportTests(ImageDatasetTests):
+class TagsImportExportTests(ImageDatasetTests):
     @drop_tags
     @drop_datasets
-    def test_fiftyone_dataset_temporal_tags_round_trip(self):
-        dataset, sample_ids = self._make_temporal_tag_dataset()
+    def test_fiftyone_dataset_tags_round_trip(self):
+        dataset, _ = self._make_tag_dataset()
         export_dir = self._new_dir()
 
         dataset.export(
@@ -184,10 +184,10 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
             dataset_type=fo.types.FiftyOneDataset,
         )
 
-        tags_path = os.path.join(export_dir, TEMPORAL_TAGS_EXPORT_FILENAME)
+        tags_path = os.path.join(export_dir, TAGS_EXPORT_FILENAME)
         self.assertTrue(os.path.isfile(tags_path))
 
-        exported = etas.read_json(tags_path)["temporal_tags"]
+        exported = etas.read_json(tags_path)["tags"]
         self.assertEqual(len(exported), 3)
         for doc in exported:
             expected_keys = {
@@ -254,8 +254,8 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
             fomm.count_temporal_tags(dataset2), {"drop": 1, "keep": 2}
         )
         self.assertEqual(
-            self._temporal_tag_tuples(dataset),
-            self._temporal_tag_tuples(dataset2),
+            self._tag_tuples(dataset),
+            self._tag_tuples(dataset2),
         )
         self.assertGreater(dataset2.last_modified_at, source_tag_modified_at)
         self.assertTrue(
@@ -283,8 +283,8 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
 
     @drop_tags
     @drop_datasets
-    def test_fiftyone_dataset_temporal_tags_view_export(self):
-        dataset, sample_ids = self._make_temporal_tag_dataset()
+    def test_fiftyone_dataset_tags_view_export(self):
+        dataset, sample_ids = self._make_tag_dataset()
         view = dataset.select([sample_ids[0], sample_ids[2]])
         export_dir = self._new_dir()
 
@@ -310,8 +310,8 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
 
     @drop_tags
     @drop_datasets
-    def test_fiftyone_dataset_temporal_tags_max_samples(self):
-        dataset, sample_ids = self._make_temporal_tag_dataset()
+    def test_fiftyone_dataset_tags_max_samples(self):
+        dataset, sample_ids = self._make_tag_dataset()
         export_dir = self._new_dir()
 
         dataset.export(
@@ -339,8 +339,8 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
 
     @drop_tags
     @drop_datasets
-    def test_fiftyone_dataset_temporal_tags_nonempty_migration_import(self):
-        dataset, _ = self._make_temporal_tag_dataset()
+    def test_fiftyone_dataset_tags_nonempty_migration_import(self):
+        dataset, _ = self._make_tag_dataset()
         export_dir = self._new_dir()
 
         dataset.export(
@@ -364,7 +364,7 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
             fomm.count_temporal_tags(dataset2), {"drop": 1, "keep": 2}
         )
 
-    def _make_temporal_tag_dataset(self):
+    def _make_tag_dataset(self):
         dataset = fo.Dataset()
         samples = [fo.Sample(filepath=self._new_image()) for _ in range(3)]
         dataset.add_samples(samples)
@@ -403,7 +403,7 @@ class TemporalTagsImportExportTests(ImageDatasetTests):
 
         return dataset, sample_ids
 
-    def _temporal_tag_tuples(self, dataset):
+    def _tag_tuples(self, dataset):
         return [
             (
                 tag.sample_id,
