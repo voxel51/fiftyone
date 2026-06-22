@@ -2,13 +2,6 @@
 
 /**
  * Tests for useUnselectVisible.
- *
- * Regression: Before the fix, the hook read from fos.selectedLabels (an array)
- * instead of fos.selectedLabelMap (a {labelId: labelData} object). This caused
- * Object.entries() to iterate the numeric array indices, writing keys like "0",
- * "1", "2" into selectedLabelMap instead of the real labelIds — permanently
- * corrupting selection state so that the "Manage Selected" badge showed the
- * wrong count after deselecting visible labels.
  */
 
 import { act, renderHook } from "@testing-library/react";
@@ -96,6 +89,7 @@ function makeWrapper(initialMap: LabelMap) {
 
 describe("useUnselectVisible", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     refs.scene = { clearSelection: vi.fn() };
   });
 
