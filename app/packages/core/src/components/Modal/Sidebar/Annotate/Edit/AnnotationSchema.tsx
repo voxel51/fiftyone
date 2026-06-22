@@ -23,6 +23,7 @@ import {
   resolveVisibleAttribute,
 } from "./evaluateWhen";
 import { generatePrimitiveSchema } from "./schemaHelpers";
+import { buildTrackFanOut, trackLevelPartial } from "./trackFanOut";
 import { useAnnotationContext } from "./useAnnotationContext";
 import { current } from "./useAnnotationContext/selectors";
 
@@ -267,10 +268,37 @@ const useHandleSchemaChange = (readOnly: boolean) => {
       );
       const persistableInverse = stripReservedLabelAttributes(inverse);
 
+      // A video frame label belongs to a track, so a track-level edit (label,
+      // index, attributes — everything but geometry) applies to EVERY frame the
+      // instance appears on; geometry stays on this frame. Image / sample-level
+      // labels have no sibling frames, so this is empty for them.
+      const trackWrites =
+        isFrameField && ref.frame != null
+          ? buildTrackFanOut(engine, ref, trackLevelPartial(persistableValue))
+          : [];
+
       createPushAndExec(
         `update-label-${ref.instanceId}-${Date.now()}`,
-        () => engine.updateLabel(ref, persistableValue as Partial<LabelData>),
-        () => engine.updateLabel(ref, persistableInverse as Partial<LabelData>)
+        () =>
+          engine.transaction(() => {
+            engine.updateLabel(ref, persistableValue as Partial<LabelData>);
+            for (const write of trackWrites) {
+              engine.updateLabel(
+                write.ref,
+                write.forward as Partial<LabelData>
+              );
+            }
+          }),
+        () =>
+          engine.transaction(() => {
+            engine.updateLabel(ref, persistableInverse as Partial<LabelData>);
+            for (const write of trackWrites) {
+              engine.updateLabel(
+                write.ref,
+                write.inverse as Partial<LabelData>
+              );
+            }
+          })
       );
 
       // the anchor binding rewrites `editing` only for committed labels —
