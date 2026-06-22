@@ -45,7 +45,7 @@ from .parsers import (
     ImageSampleParser,
 )
 
-fommtt = fou.lazy_import("fiftyone.multimodal.tags._temporal_tags")
+fota = fou.lazy_import("fiftyone.core.tags")
 
 logger = logging.getLogger(__name__)
 
@@ -2188,7 +2188,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self._runs_dir = os.path.join(self.export_dir, "runs")
         self._metadata_path = os.path.join(self.export_dir, "metadata.json")
         self._tags_path = os.path.join(
-            self.export_dir, fommtt.TAGS_EXPORT_FILENAME
+            self.export_dir, fota.TAGS_EXPORT_FILENAME
         )
 
         if self.use_dirs:
@@ -2349,7 +2349,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
 
         foo.export_document(dataset_dict, self._metadata_path)
 
-        fommtt.export_tags(
+        fota.export_tags(
             _sample_collection, self._tags_path, progress=progress
         )
 
