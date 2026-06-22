@@ -4,10 +4,19 @@ import {
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import { atom, getDefaultStore } from "jotai";
+import { atom, useAtomValue } from "jotai";
+import { atomFamily } from "jotai/utils";
+import { getDefaultStore } from "jotai";
 import { useCallback } from "react";
 
-export const hoveringLabelIds = atom<string[]>([]);
+const hoveringLabelIds = atom<string[]>([]);
+
+const isLabelHoveringFamily = atomFamily((id: string) =>
+  atom((get) => get(hoveringLabelIds).includes(id))
+);
+
+export const useIsLabelHovering = (id: string): boolean =>
+  useAtomValue(isLabelHoveringFamily(id));
 
 export default function useHover() {
   const { scene } = useLighter();

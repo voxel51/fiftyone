@@ -3,8 +3,7 @@ import { useLighter } from "@fiftyone/lighter";
 import { isDetection3dOverlay, isPolyline3dOverlay } from "@fiftyone/looker-3d";
 import type { AnnotationLabel } from "@fiftyone/state";
 import { animated } from "@react-spring/web";
-import type { PrimitiveAtom } from "jotai";
-import { getDefaultStore, useAtomValue } from "jotai";
+import { type PrimitiveAtom, getDefaultStore, useAtomValue } from "jotai";
 import { useMemo } from "react";
 import styled from "styled-components";
 import { Column } from "./Components";
@@ -12,7 +11,7 @@ import { useAnnotationContext } from "./Edit/useAnnotationContext";
 import { ICONS } from "./Icons";
 import { fieldType } from "./state";
 import useColor from "./useColor";
-import { hoveringLabelIds } from "./useHover";
+import { useIsLabelHovering } from "./useHover";
 
 const Container = animated(styled.div`
   display: flex;
@@ -58,10 +57,9 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
   const type = useAtomValue(fieldType(label.path ?? ""));
   const { select, setSavedData } = useAnnotationContext();
   const Icon = ICONS[type] ?? (() => null);
-  const hoveringLabelIdsList = useAtomValue(hoveringLabelIds);
   const { scene } = useLighter();
 
-  const isHovering = hoveringLabelIdsList.includes(label.overlay.id);
+  const isHovering = useIsLabelHovering(label.overlay.id);
 
   const color = useColor(label.overlay);
 
