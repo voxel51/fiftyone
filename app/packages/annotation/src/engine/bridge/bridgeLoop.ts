@@ -266,7 +266,7 @@ export const registerBridgeLoop = <Handle, Descriptor>(
   const onPresence =
     bridge.temporal === "pool"
       ? undefined
-      : engine.temporal.subscribePresence((events) => {
+      : engine.subscribePresence((events) => {
           if (bridge.isWriting) {
             return;
           }

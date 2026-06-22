@@ -138,7 +138,7 @@ export const useTemporal = <T>(
   const subscribe = useCallback(
     (listener: () => void) => {
       const unsubscribeDisplay = engine.subscribe(listener);
-      const unsubscribePresence = engine.temporal.subscribePresence(() => {
+      const unsubscribePresence = engine.subscribePresence(() => {
         presenceVersion.current++;
         listener();
       });

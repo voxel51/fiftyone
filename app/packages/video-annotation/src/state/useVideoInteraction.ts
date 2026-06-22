@@ -7,9 +7,9 @@ import {
   useInteraction,
   useSurfaceActions,
 } from "@fiftyone/annotation";
-import { useTimeline } from "@fiftyone/playback";
 import { useCallback, useEffect, useRef } from "react";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
+import { useCurrentFrameGetter } from "./useCurrentFrame";
 
 const SURFACE = "video-timeline";
 
@@ -74,7 +74,7 @@ export const useVideoInteraction = (): VideoInteraction => {
   const engine = useAnnotationEngine();
   const actions = useSurfaceActions(engine, SURFACE);
   const stream = useFrameLabelsStream();
-  const { getFrameNumber } = useTimeline();
+  const getFrame = useCurrentFrameGetter();
 
   const selectedTrackIds = useSelectedTrackIds();
   const hoveredTrackIds = useHoveredTrackIds();
@@ -87,9 +87,9 @@ export const useVideoInteraction = (): VideoInteraction => {
         return;
       }
 
-      actions.setActive([{ path, instanceId, frame: getFrameNumber() }]);
+      actions.setActive([{ path, instanceId, frame: getFrame() }]);
     },
-    [actions, path, getFrameNumber]
+    [actions, path, getFrame]
   );
 
   const hoverTrack = useCallback(
@@ -98,9 +98,9 @@ export const useVideoInteraction = (): VideoInteraction => {
         return;
       }
 
-      actions.setHovered({ path, instanceId, frame: getFrameNumber() }, on);
+      actions.setHovered({ path, instanceId, frame: getFrame() }, on);
     },
-    [actions, path, getFrameNumber]
+    [actions, path, getFrame]
   );
 
   return { selectedTrackIds, hoveredTrackIds, selectTrack, hoverTrack };

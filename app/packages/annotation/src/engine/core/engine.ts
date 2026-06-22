@@ -22,7 +22,7 @@ import { InteractionState } from "../interaction/interactionState";
 import type { SignalHandler } from "../signals/signalPipe";
 import { SignalPipe } from "../signals/signalPipe";
 import { PoolTemporalView } from "../temporal/poolTemporalView";
-import type { TemporalView } from "../temporal/types";
+import type { PresenceListener, TemporalView } from "../temporal/types";
 import { DispatchGuard } from "./dispatchGuard";
 import type { UndoEntry, UndoOp } from "./undoStack";
 import { UndoStack } from "./undoStack";
@@ -65,6 +65,13 @@ export class AnnotationEngine {
    * live; do not assign directly.
    */
   temporal: TemporalView;
+
+  /** Stable presence channel: forwards from whatever {@link temporal} view is
+   *  current, re-bound on {@link attachTemporal}. Subscribers register here
+   *  (not on the view) so a subscription taken before the frame view is
+   *  attached still receives its clock events. */
+  private presenceListeners = new Set<PresenceListener>();
+  private temporalPresenceUnsub: (() => void) | undefined;
 
   private signals: SignalPipe;
 
@@ -109,6 +116,7 @@ export class AnnotationEngine {
     this.temporal = (
       opts.temporal ?? ((engine) => new PoolTemporalView(engine))
     )(this);
+    this.bindTemporalPresence();
     this.registerBookkeeping((changes) =>
       this.interaction.gc(changes, (ref) => this.getLabel(ref) !== undefined)
     );
@@ -126,6 +134,10 @@ export class AnnotationEngine {
     const previous = this.temporal;
     const next = factory(this);
     this.temporal = next;
+    this.bindTemporalPresence();
+    // the new view's present-set differs from the old one's; nudge display
+    // subscribers to re-read it now rather than waiting for the first tick
+    this.notifyDisplay();
 
     return () => {
       if (this.temporal !== next) {
@@ -134,7 +146,33 @@ export class AnnotationEngine {
 
       next.dispose?.();
       this.temporal = previous;
+      this.bindTemporalPresence();
+      this.notifyDisplay();
     };
+  }
+
+  /**
+   * Subscribe to temporal presence through the engine's stable channel (vs.
+   * `temporal.subscribePresence`, which a later {@link attachTemporal} would
+   * orphan). The engine re-points its internal forwarder on attach, so a
+   * subscription survives the pool→frame view swap.
+   */
+  subscribePresence(listener: PresenceListener): () => void {
+    this.presenceListeners.add(listener);
+
+    return () => {
+      this.presenceListeners.delete(listener);
+    };
+  }
+
+  /** (Re)bind the internal forwarder to the current temporal view. */
+  private bindTemporalPresence(): void {
+    this.temporalPresenceUnsub?.();
+    this.temporalPresenceUnsub = this.temporal.subscribePresence((events) => {
+      for (const listener of this.presenceListeners) {
+        listener(events);
+      }
+    });
   }
 
   // ---- identity ----

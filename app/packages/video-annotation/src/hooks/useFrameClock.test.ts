@@ -1,54 +1,50 @@
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-// Mock the playback timeline so the clock can be driven directly. `useFrameClock`
-// only pulls `Clock` from @fiftyone/annotation as a type (erased), so no engine
-// runtime is loaded here.
-const { timeline } = vi.hoisted(() => ({
-  timeline: {
-    frame: 7,
-    subscription: undefined as
-      | undefined
-      | { id: string; renderFrame: (n: number) => void },
-    unsubscribed: [] as string[],
-  },
-}));
+// Drive the clock through the frame-source seam. `useFrameClock` only pulls
+// `Clock` from @fiftyone/annotation as a type (erased), so no engine runtime is
+// loaded here; the playback engine is represented by the seam's frame value.
+const { source } = vi.hoisted(() => ({ source: { frame: 7 } }));
 
-vi.mock("@fiftyone/playback", () => ({
-  useTimeline: () => ({
-    getFrameNumber: () => timeline.frame,
-    subscribe: (sub: { id: string; renderFrame: (n: number) => void }) => {
-      timeline.subscription = sub;
-    },
-    unsubscribe: (id: string) => {
-      timeline.unsubscribed.push(id);
-    },
-  }),
+vi.mock("../state/useCurrentFrame", () => ({
+  useCurrentFrame: () => source.frame,
 }));
 
 import { useFrameClock } from "./useFrameClock";
 
 describe("useFrameClock", () => {
-  it("reads the timeline frame as the engine clock time", () => {
-    const { result } = renderHook(() => useFrameClock());
+  it("reads the current frame as the engine clock time", () => {
+    const { result, rerender } = renderHook(() => useFrameClock());
 
     expect(result.current.getTime()).toBe(7);
 
-    timeline.frame = 9;
+    source.frame = 9;
+    rerender();
     expect(result.current.getTime()).toBe(9);
   });
 
-  it("forwards frame ticks to the listener and unsubscribes on teardown", () => {
-    const { result } = renderHook(() => useFrameClock());
+  it("forwards frame changes to subscribers and stops on teardown", () => {
+    const { result, rerender } = renderHook(() => useFrameClock());
     const listener = vi.fn();
 
     const teardown = result.current.subscribe(listener);
-    expect(timeline.subscription).toBeDefined();
 
-    timeline.subscription?.renderFrame(42);
+    source.frame = 42;
+    rerender();
     expect(listener).toHaveBeenCalledWith(42);
 
     teardown();
-    expect(timeline.unsubscribed).toContain(timeline.subscription?.id);
+    source.frame = 43;
+    rerender();
+    expect(listener).not.toHaveBeenCalledWith(43);
+  });
+
+  it("returns a stable clock across renders (attaches once)", () => {
+    const { result, rerender } = renderHook(() => useFrameClock());
+    const first = result.current;
+
+    source.frame = 5;
+    rerender();
+    expect(result.current).toBe(first);
   });
 });

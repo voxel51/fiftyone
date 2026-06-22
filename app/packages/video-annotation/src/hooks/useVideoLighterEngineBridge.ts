@@ -7,9 +7,8 @@ import {
   useAnnotationEngine,
   useLighterEngineBridge,
 } from "@fiftyone/annotation";
-import { useTimeline } from "@fiftyone/playback";
-import { useCallback, useRef } from "react";
 import { useDatasetId } from "../state/accessors";
+import { useCurrentFrameGetter } from "../state/useCurrentFrame";
 
 /**
  * Mount the video canvas on the annotation engine. The tile's Lighter scene
@@ -29,13 +28,10 @@ export const useVideoLighterEngineBridge = (): void => {
   const engine = useAnnotationEngine();
   const sample = useActiveSampleId();
   const dataset = useDatasetId();
-  const { getFrameNumber } = useTimeline();
 
   // referentially stable frame reader — a new identity would re-create the
   // bridge (clear + rehydrate); the playhead value is read live at call time
-  const frameRef = useRef(getFrameNumber);
-  frameRef.current = getFrameNumber;
-  const frameOf = useCallback(() => frameRef.current(), []);
+  const frameOf = useCurrentFrameGetter();
 
   // paths left unscoped: the composite store registers a single frame-detection
   // field, and sample-level temporal-detections carry no Lighter adapter, so the

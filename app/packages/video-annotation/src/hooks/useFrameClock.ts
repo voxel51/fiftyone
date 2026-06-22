@@ -1,35 +1,40 @@
 import type { Clock } from "@fiftyone/annotation";
-import { useTimeline } from "@fiftyone/playback";
-import { useId, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import { useCurrentFrame } from "../state/useCurrentFrame";
 
 /**
- * Adapts the modal playback timeline to the annotation engine's {@link Clock}.
- * The timeline already yields a frame number, so `getTime` returns the frame and
- * the engine's `frameAtTime` is identity (seconds-based time only matters for
- * multi-fps sync, deferred). `subscribe` returns a real teardown via the
- * timeline's `unsubscribe`, so the temporal view disposes cleanly; a per-hook
- * `useId` keeps the subscription id unique across modals and strict-mode remounts.
+ * Adapts the surface's playback position to the annotation engine's
+ * {@link Clock}. The frame comes from {@link useCurrentFrame} (the
+ * `PlaybackProvider` engine's playhead), so `getTime` already yields a frame
+ * number and the engine's `frameAtTime` is identity.
  *
- * Must be called inside a `PlaybackProvider`. `getFrameNumber` returns -1 until
- * the timeline initializes — the engine reads that as an empty present-set.
+ * The returned clock is referentially STABLE: `getTime` reads the latest frame
+ * through a ref and `subscribe` registers listeners notified by an effect when
+ * the frame changes. A stable clock means the `FrameTemporalView` attaches once
+ * (no re-attach churn that would reset its present-set each render).
  */
 export const useFrameClock = (): Clock => {
-  const { getFrameNumber, subscribe, unsubscribe } = useTimeline();
-  const id = useId();
+  const frame = useCurrentFrame();
+
+  const frameRef = useRef(frame);
+  frameRef.current = frame;
+
+  const listeners = useRef(new Set<(time: number) => void>()).current;
+
+  useEffect(() => {
+    for (const listener of listeners) {
+      listener(frame);
+    }
+  }, [frame, listeners]);
 
   return useMemo<Clock>(
     () => ({
-      getTime: () => getFrameNumber(),
+      getTime: () => frameRef.current,
       subscribe: (listener) => {
-        subscribe({
-          id,
-          loadRange: async () => {},
-          renderFrame: (frameNumber) => listener(frameNumber),
-        });
-
-        return () => unsubscribe(id);
+        listeners.add(listener);
+        return () => listeners.delete(listener);
       },
     }),
-    [getFrameNumber, subscribe, unsubscribe, id]
+    [listeners]
   );
 };
