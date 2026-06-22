@@ -44,8 +44,20 @@ def _make_mixin(get_text_features_return):
     return mixin
 
 
+def _pooling_output(pooler_output):
+    """Build a transformers ``BaseModelOutputWithPooling`` for tests.
+
+    The import is deferred so this module can still be collected when
+    ``transformers`` is not installed.
+    """
+    pytest.importorskip("transformers")
+    from transformers.modeling_outputs import BaseModelOutputWithPooling
+
+    return BaseModelOutputWithPooling(pooler_output=pooler_output)
+
+
 class TestEmbedPromptsPoolerUnwrap:
-    """Test that _embed_prompts handles both plain-tensor and pooler_output returns."""
+    """Test that _embed_prompts handles plain-tensor and pooler_output returns."""
 
     def test_plain_tensor_returned_unchanged(self):
         """When get_text_features returns a plain tensor, it should pass through."""
@@ -56,22 +68,29 @@ class TestEmbedPromptsPoolerUnwrap:
         assert result.shape == (2, 512)
 
     def test_pooler_output_object_is_unwrapped(self):
-        """transformers 5.x returns a namespace with pooler_output; must unwrap."""
+        """transformers 5.x returns a BaseModelOutputWithPooling; must unwrap."""
         pooler_tensor = torch.randn(2, 512)
-        model_output = types.SimpleNamespace(pooler_output=pooler_tensor)
+        model_output = _pooling_output(pooler_tensor)
         mixin = _make_mixin(model_output)
         result = mixin._embed_prompts(["cat", "dog"])
         assert isinstance(result, torch.Tensor)
         assert result.shape == (2, 512)
         assert torch.equal(result, pooler_tensor)
 
-    def test_non_tensor_without_pooler_output_raises(self):
-        """Non-tensor without pooler_output should raise a clear ValueError."""
+    def test_base_model_output_without_pooler_output_raises(self):
+        """A BaseModelOutputWithPooling whose pooler_output is None must raise."""
+        model_output = _pooling_output(None)
+        mixin = _make_mixin(model_output)
+        with pytest.raises(ValueError, match="pooler_output"):
+            mixin._embed_prompts(["cat"])
+
+    def test_unsupported_output_type_raises(self):
+        """An output that is neither a tensor nor a pooling output must raise."""
         bad_output = types.SimpleNamespace(
             last_hidden_state=torch.randn(2, 10, 512)
         )
         mixin = _make_mixin(bad_output)
-        with pytest.raises(ValueError, match="pooler_output"):
+        with pytest.raises(ValueError, match="unsupported"):
             mixin._embed_prompts(["cat"])
 
     def test_embed_prompts_returns_numpy_array(self):
@@ -83,9 +102,9 @@ class TestEmbedPromptsPoolerUnwrap:
         assert result.shape == (3, 256)
 
     def test_embed_prompts_pooler_output_returns_numpy_array(self):
-        """Public embed_prompts must unwrap pooler_output (the sort_by_similarity path)."""
+        """Public embed_prompts must unwrap pooler_output (sort_by_similarity path)."""
         pooler_tensor = torch.randn(3, 256)
-        model_output = types.SimpleNamespace(pooler_output=pooler_tensor)
+        model_output = _pooling_output(pooler_tensor)
         mixin = _make_mixin(model_output)
         result = mixin.embed_prompts(["a", "b", "c"])
         assert isinstance(result, np.ndarray)

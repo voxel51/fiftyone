@@ -567,16 +567,26 @@ class ZeroShotTransformerPromptMixin(PromptMixin):
             text_features = self._model.base_model.get_text_features(
                 **inputs.to(self._device)
             )
-            # transformers 5.x returns a ``BaseModelOutputWithPooling``
-            # object instead of a plain tensor; pull the pooled embedding.
-            if not isinstance(text_features, torch.Tensor):
-                pooled = getattr(text_features, "pooler_output", None)
-                if pooled is None:
+            if isinstance(text_features, torch.Tensor):
+                # transformers < 5 returns the pooled embedding directly
+                pass
+            elif isinstance(
+                text_features,
+                transformers.modeling_outputs.BaseModelOutputWithPooling,
+            ):
+                # transformers 5.x returns a ``BaseModelOutputWithPooling``
+                # object instead of a plain tensor; pull the pooled embedding.
+                if text_features.pooler_output is None:
                     raise ValueError(
-                        "get_text_features() returned a non-tensor output "
-                        "without a pooler_output attribute"
+                        "get_text_features() returned a "
+                        "BaseModelOutputWithPooling without a pooler_output"
                     )
-                text_features = pooled
+                text_features = text_features.pooler_output
+            else:
+                raise ValueError(
+                    "get_text_features() returned an unsupported output "
+                    f"type: {type(text_features)}"
+                )
         return text_features
 
 
