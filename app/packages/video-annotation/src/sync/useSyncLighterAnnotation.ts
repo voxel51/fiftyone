@@ -13,6 +13,7 @@ import {
   useLighterEventHandler,
 } from "@fiftyone/lighter";
 import { useCallback } from "react";
+import { useAnnotationContext } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import { useDetectionMode } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useDetectionMode";
 import useExit from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useExit";
 import { useVideoSurfaceActions } from "../hooks/useVideoSurfaceActions";
@@ -49,6 +50,7 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
   );
   const detectionMode = useDetectionMode();
   const exit = useExit();
+  const { clear } = useAnnotationContext();
   const editingOverlay = useCurrentEditingOverlay();
   const stream = useFrameLabelsStream();
   const engine = useAnnotationEngine();
@@ -74,13 +76,23 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
   // `annotation:canvasDetectionOverlayEstablish` dispatch is gone. Wired with
   // the bridge in the surface re-lay.
 
-  // Auto-extend a freshly-drawn box forward as a short track. `establish` fires
-  // only for a new draw (a new track), so this is new-tracks-only by
-  // construction. The engine bridge's establish handler commits + selects the
-  // draw synchronously, so a microtask later the interaction anchor IS the new
-  // track's ref; copy its box onto the next frames as non-keyframe filler
-  // (`extendTrack` semantics), matching a manual drag-to-extend. Leaves a single
-  // keyframe, so a later propagate/auto-lerp fills these in place.
+  // Establishing a freshly-drawn overlay: the engine bridge's establish handler
+  // commits + selects the draw synchronously, so a microtask later the engine
+  // owns the label and the interaction anchor IS the new track's ref. Two things
+  // happen here, both keyed off that anchor:
+  //
+  //  1. Hand the form off from the surface-owned draft to the engine anchor. The
+  //     draft pins the ENGINE path (`frames.<field>`) so the write routes to the
+  //     FrameStore and carries no engine ref, so the form shows the raw path and
+  //     neither playhead-follow nor live re-sync engage. Dropping the draft
+  //     (`clear`) lets `useFormAnchor` adopt the anchor — schema field + ref — so
+  //     the form reads `<field>` and tracks the playhead, as a deselect→reselect
+  //     does manually.
+  //  2. Auto-extend a freshly-drawn box forward as a short track. `establish`
+  //     fires only for a new draw (a new track), so this is new-tracks-only by
+  //     construction; copy its box onto the next frames as non-keyframe filler
+  //     (`extendTrack` semantics), matching a manual drag-to-extend. Leaves a
+  //     single keyframe, so a later propagate/auto-lerp fills these in place.
   useEventHandler(
     "lighter:overlay-establish",
     useCallback(() => {
@@ -95,10 +107,16 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
           return;
         }
 
-        // boxes only — a fresh draw of another label kind isn't a track
         const source = engine.getLabel(anchor);
 
-        if (!Array.isArray(source?.bounding_box)) {
+        if (!source) {
+          return;
+        }
+
+        clear();
+
+        // boxes only — a fresh draw of another label kind isn't a track
+        if (!Array.isArray(source.bounding_box)) {
           return;
         }
 
@@ -117,7 +135,7 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
           targetFrames
         );
       });
-    }, [engine, surfaceActions, stream])
+    }, [clear, engine, surfaceActions, stream])
   );
 
   useEventHandler(
