@@ -3,10 +3,12 @@
  */
 
 import {
+  FRAMES_PREFIX,
   useActiveSampleId,
   useAnnotationEngine,
   useLighterEngineBridge,
 } from "@fiftyone/annotation";
+import { useCallback } from "react";
 import { useDatasetId } from "../state/accessors";
 import { useCurrentFrameGetter } from "../state/useCurrentFrame";
 
@@ -31,10 +33,20 @@ export const useVideoLighterEngineBridge = (): void => {
 
   // referentially stable frame reader — a new identity would re-create the
   // bridge (clear + rehydrate); the playhead value is read live at call time
-  const frameOf = useCurrentFrameGetter();
+  const getFrame = useCurrentFrameGetter();
+
+  // Stamp the playhead frame only onto frame-scoped paths (`frames.*`). A
+  // sample-level temporal detection sharing this scene must stay frame-less so
+  // its engine ref matches the sidebar / timeline; stamping a frame would make
+  // each surface address a different occurrence and break cross-surface select.
+  const frameOf = useCallback(
+    (path: string) => (path.startsWith(FRAMES_PREFIX) ? getFrame() : undefined),
+    [getFrame]
+  );
 
   // paths left unscoped: the composite store registers a single frame-detection
-  // field, and sample-level temporal-detections carry no Lighter adapter, so the
-  // loop's kind filter drops them from the canvas already.
+  // field; sample-level temporal-detections carry no Lighter adapter, so the
+  // loop's kind filter drops them from hydration, but their select/hover events
+  // still route through the bridge (frame-less ref, instanceId == the TD `_id`).
   useLighterEngineBridge({ engine, sample, dataset, frameOf });
 };

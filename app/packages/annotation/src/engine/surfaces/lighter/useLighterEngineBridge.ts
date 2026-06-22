@@ -54,11 +54,14 @@ export const useLighterEngineBridge = ({
   interactionPolicy?: LighterInteractionPolicy;
   /**
    * Frame-locked surfaces (the video canvas) supply the playhead's current
-   * frame; the bridge stamps it onto every ref so writes/selection address
-   * `(instanceId, frame)`. MUST be referentially stable (a new identity
-   * re-creates the bridge). Omitted by image/3D — refs stay frame-agnostic.
+   * frame for an overlay's PATH; the bridge stamps it onto the ref so
+   * writes/selection address `(instanceId, frame)`. Returns `undefined` for a
+   * sample-level path (a temporal detection sharing the video scene) so its ref
+   * stays frame-agnostic and matches the sidebar / timeline. MUST be
+   * referentially stable (a new identity re-creates the bridge). Omitted by
+   * image/3D — refs stay frame-agnostic.
    */
-  frameOf?: () => number | undefined;
+  frameOf?: (path: string) => number | undefined;
   /**
    * Gate the whole surface off without violating hook order: a disabled bridge
    * registers nothing AND binds its gesture handlers to the inert sentinel
@@ -84,11 +87,15 @@ export const useLighterEngineBridge = ({
             sample,
             paths,
             // the gated-mask discard probe; on a frame-locked surface getLabel
-            // needs the playhead's frame (the FrameStore is frame-keyed)
-            readLabel: (ref) =>
-              engine.getLabel(
-                toLabelRef(sample, frameOf ? { ...ref, frame: frameOf() } : ref)
-              ),
+            // needs the playhead's frame (the FrameStore is frame-keyed), but
+            // only for frame-scoped paths — a sample-level path stays frame-less
+            readLabel: (ref) => {
+              const frame = frameOf?.(ref.path);
+
+              return engine.getLabel(
+                toLabelRef(sample, frame != null ? { ...ref, frame } : ref)
+              );
+            },
             resolveMediaUrl,
             frameOf,
           })
@@ -305,12 +312,15 @@ export const useLighterEngineBridge = ({
 
         if (overlay) {
           // frame-stamp on a frame-locked surface so the ref matches the
-          // frame-keyed active entry (refKey includes frame)
+          // frame-keyed active entry (refKey includes frame); a sample-level
+          // path stays frame-less (frameOf returns undefined for it)
+          const frame = frameOf?.(overlay.field);
+
           surface.toggleActive(
             {
               path: overlay.field,
               instanceId: overlay.id,
-              ...(frameOf ? { frame: frameOf() } : {}),
+              ...(frame != null ? { frame } : {}),
             },
             false
           );

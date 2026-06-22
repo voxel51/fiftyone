@@ -53,8 +53,13 @@ export interface LighterBridgeDeps {
    * agnostic), but engine writes/selection address `(instanceId, frame)`. The
    * video canvas supplies the playhead's current frame; image/3D omit it (a
    * frame-less ref). Read live so a gesture stamps the frame it lands on.
+   *
+   * Receives the overlay's PATH so the surface can decide per-overlay: a video
+   * canvas frame-stamps its per-frame detections but NOT a sample-level overlay
+   * sharing the scene (a temporal detection), which must stay frame-less or its
+   * ref won't match the sidebar / timeline. Returns `undefined` to omit.
    */
-  frameOf?: () => number | undefined;
+  frameOf?: (path: string) => number | undefined;
 }
 
 export const createLighterBridge = ({
@@ -174,13 +179,18 @@ export const createLighterBridge = ({
       return overlay;
     },
 
-    refOf: (overlay) => ({
-      path: overlay.field,
-      instanceId: overlay.id,
-      // frame-locked surfaces stamp the playhead's frame; image/3D leave it
-      // off (frameOf undefined) so the ref stays frame-agnostic
-      ...(frameOf ? { frame: frameOf() } : {}),
-    }),
+    refOf: (overlay) => {
+      // frame-locked surfaces stamp the playhead's frame; image/3D and
+      // sample-level overlays (frameOf returns undefined for their path) stay
+      // frame-agnostic
+      const frame = frameOf?.(overlay.field);
+
+      return {
+        path: overlay.field,
+        instanceId: overlay.id,
+        ...(frame != null ? { frame } : {}),
+      };
+    },
 
     mount: (descriptor) => {
       const { id } = descriptor.options;
