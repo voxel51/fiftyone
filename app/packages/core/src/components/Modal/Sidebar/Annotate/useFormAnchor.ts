@@ -7,14 +7,14 @@ import {
 } from "@fiftyone/annotation";
 import { useLighter } from "@fiftyone/lighter";
 import type { AnnotationLabel, AnnotationLabelData } from "@fiftyone/state";
-import { atom, getDefaultStore, type PrimitiveAtom } from "jotai";
+import { atom, getDefaultStore, type PrimitiveAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { useAnnotationContext } from "./Edit/useAnnotationContext";
 import {
   editingLabelAtom,
   pendingNewTypeAtom,
 } from "./Edit/useAnnotationContext/atoms";
-import { current } from "./Edit/useAnnotationContext/selectors";
+import { isNew as isNewSelector } from "./Edit/useAnnotationContext/selectors";
 import useExit from "./Edit/useExit";
 
 const STORE = getDefaultStore();
@@ -64,6 +64,15 @@ export const useFormAnchor = (): void => {
   const { select } = useAnnotationContext();
   const onExit = useExit();
 
+  // The surface-owned DRAFT lock, read REACTIVELY: while a pre-entity or
+  // uncommitted draft holds the form, the anchor never clobbers it. Reading it
+  // reactively (not a one-shot store peek) is what lets the effect re-run and
+  // adopt the anchor the moment a surface releases its draft — e.g. a video
+  // draw hands off to its committed engine label (see useSyncLighterAnnotation).
+  const pendingNewType = useAtomValue(pendingNewTypeAtom);
+  const isNewLabel = useAtomValue(isNewSelector);
+  const isDraft = pendingNewType !== null || Boolean(isNewLabel);
+
   // single-slot cache for the resolved editing atom — one label is edited at a
   // time, so the atom is recreated only when the anchor ref changes. Reusing it
   // across re-selects of the same ref keeps the layout effect from re-selecting
@@ -97,9 +106,6 @@ export const useFormAnchor = (): void => {
 
   useLayoutEffect(() => {
     const editingAtom = STORE.get(editingLabelAtom);
-    const isDraft =
-      STORE.get(pendingNewTypeAtom) !== null ||
-      Boolean(STORE.get(current)?.isNew);
 
     // the draft lock is surface-owned
     if (isDraft) {
@@ -138,7 +144,7 @@ export const useFormAnchor = (): void => {
       STORE.set(labelAtom, build(anchor, data as AnnotationLabelData));
       select(labelAtom, anchor);
     }
-  }, [anchor, build, engine, onExit, select]);
+  }, [anchor, build, engine, isDraft, onExit, select]);
 
   // live engine → form sync for the open label. Re-seeds the editing atom on
   // engine change (canvas transform, undo, persisted reconcile), but only while
