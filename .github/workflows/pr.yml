@@ -15,6 +15,7 @@ jobs:
       app-changes: ${{ steps.filter.outputs.app }}
       e2e-changes: ${{ steps.filter.outputs.e2e-pw }}
       fiftyone-changes: ${{ steps.filter.outputs.fiftyone }}
+      format-changes: ${{ steps.filter.outputs.format }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -43,6 +44,15 @@ jobs:
               - '.github/workflows/build.yml'
               - '.github/workflows/test.yml'
               - 'plugins/**'
+            format:
+              - '**/*.ts'
+              - '**/*.tsx'
+              - '**/*.js'
+              - '**/*.jsx'
+              - '**/*.json'
+              - '**/*.css'
+              - '**/*.scss'
+              - '**/*.md'
 
   build:
     needs: modified-files
@@ -69,7 +79,8 @@ jobs:
     if: >-
       github.event.action != 'closed' && (
       needs.modified-files.outputs.app-changes == 'true' ||
-      needs.modified-files.outputs.fiftyone-changes == 'true')
+      needs.modified-files.outputs.fiftyone-changes == 'true' ||
+      needs.modified-files.outputs.format-changes == 'true')
     uses: ./.github/workflows/lint-app.yml
 
   test:

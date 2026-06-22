@@ -1,6 +1,16 @@
-*.html
-voxel51-website.js
-**/__generated__
+# Generated, vendored, and cache output — never format
+node_modules
 **/dist
 **/build
-docs/source/_static/css/custom.css
+**/__generated__
+**/coverage
+**/playwright-report
+**/.pytest_cache
+**/.claude
+docs/source/_static
+docs/theme
+fiftyone/server/static
+
+# Specific files
+*.html
+voxel51-website.js

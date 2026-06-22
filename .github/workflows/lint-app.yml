@@ -45,6 +45,11 @@ jobs:
           ESLINT_PACKAGES=$(grep -v '^#' ./eslint-packages.txt | xargs)
           yarn eslint $ESLINT_PACKAGES
 
+      - name: Check formatting
+        run: |
+          cd app
+          yarn format:check
+
       - name: Check multimodal package
         run: |
           cd app

@@ -18,6 +18,8 @@
         "dev:wpy": "node dev.mjs wpy",
         "doc": "./gen-docs.sh",
         "lint:prettify": "prettier --config ../.prettierrc.js --ignore-path ../.prettierignore  --write \"packages/**/*.(ts|js|jsx|tsx|json|css|scss)\"",
+        "format": "cd .. && prettier --write --ignore-path .prettierignore \"**/*.{ts,js,jsx,tsx,json,css,scss,md}\"",
+        "format:check": "cd .. && prettier --check --ignore-path .prettierignore \"**/*.{ts,js,jsx,tsx,json,css,scss,md}\"",
         "start": "yarn workspace @fiftyone/app start",
         "storybook": "yarn workspace @fiftyone/components storybook",
         "test": "yarn vitest run --no-coverage",
