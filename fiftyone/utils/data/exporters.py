@@ -45,6 +45,8 @@ from .parsers import (
     ImageSampleParser,
 )
 
+fommtt = fou.lazy_import("fiftyone.multimodal.tags._temporal_tags")
+
 logger = logging.getLogger(__name__)
 
 
@@ -2172,14 +2174,12 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self._metadata_path = None
         self._samples_path = None
         self._frames_path = None
-        self._temporal_tags_path = None
+        self._tags_path = None
         self._media_exporter = None
         self._media_fields = {}
         self._media_field_exporters = {}
 
     def setup(self):
-        import fiftyone.multimodal.tags._temporal_tags as fommtt
-
         self._data_dir = os.path.join(self.export_dir, "data")
         self._fields_dir = os.path.join(self.export_dir, "fields")
         self._anno_dir = os.path.join(self.export_dir, "annotations")
@@ -2187,8 +2187,8 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self._eval_dir = os.path.join(self.export_dir, "evaluations")
         self._runs_dir = os.path.join(self.export_dir, "runs")
         self._metadata_path = os.path.join(self.export_dir, "metadata.json")
-        self._temporal_tags_path = os.path.join(
-            self.export_dir, fommtt.TEMPORAL_TAGS_EXPORT_FILENAME
+        self._tags_path = os.path.join(
+            self.export_dir, fommtt.TAGS_EXPORT_FILENAME
         )
 
         if self.use_dirs:
@@ -2349,10 +2349,8 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
 
         foo.export_document(dataset_dict, self._metadata_path)
 
-        import fiftyone.multimodal.tags._temporal_tags as fommtt
-
         fommtt.export_tags(
-            _sample_collection, self._temporal_tags_path, progress=progress
+            _sample_collection, self._tags_path, progress=progress
         )
 
         self._media_exporter.close()
