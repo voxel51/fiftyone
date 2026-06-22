@@ -4,6 +4,7 @@
 
 import {
   toFrameEnginePath,
+  useAnnotationEngine,
   useAnnotationEventHandler,
 } from "@fiftyone/annotation";
 import {
@@ -14,7 +15,9 @@ import {
 import { useCallback } from "react";
 import { useDetectionMode } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useDetectionMode";
 import useExit from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useExit";
+import { useVideoSurfaceActions } from "../hooks/useVideoSurfaceActions";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
+import { autoExtendTargetFrames } from "../tracks/autoExtend";
 import { useCurrentEditingOverlay } from "../state/accessors";
 
 /**
@@ -48,6 +51,8 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
   const exit = useExit();
   const editingOverlay = useCurrentEditingOverlay();
   const stream = useFrameLabelsStream();
+  const engine = useAnnotationEngine();
+  const surfaceActions = useVideoSurfaceActions();
 
   useEventHandler(
     "lighter:overlay-create",
@@ -68,6 +73,52 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
   // engine bridge (create → anchor → form-follows-anchor), so the old
   // `annotation:canvasDetectionOverlayEstablish` dispatch is gone. Wired with
   // the bridge in the surface re-lay.
+
+  // Auto-extend a freshly-drawn box forward as a short track. `establish` fires
+  // only for a new draw (a new track), so this is new-tracks-only by
+  // construction. The engine bridge's establish handler commits + selects the
+  // draw synchronously, so a microtask later the interaction anchor IS the new
+  // track's ref; copy its box onto the next frames as non-keyframe filler
+  // (`extendTrack` semantics), matching a manual drag-to-extend. Leaves a single
+  // keyframe, so a later propagate/auto-lerp fills these in place.
+  useEventHandler(
+    "lighter:overlay-establish",
+    useCallback(() => {
+      if (!stream) {
+        return;
+      }
+
+      queueMicrotask(() => {
+        const anchor = engine.interaction.getAnchor();
+
+        if (!anchor || anchor.frame == null) {
+          return;
+        }
+
+        // boxes only — a fresh draw of another label kind isn't a track
+        const source = engine.getLabel(anchor);
+
+        if (!Array.isArray(source?.bounding_box)) {
+          return;
+        }
+
+        const targetFrames = autoExtendTargetFrames(
+          anchor.frame,
+          stream.totalFrames
+        );
+
+        if (targetFrames.length === 0) {
+          return;
+        }
+
+        surfaceActions.extendTrack(
+          anchor.instanceId,
+          anchor.frame,
+          targetFrames
+        );
+      });
+    }, [engine, surfaceActions, stream])
+  );
 
   useEventHandler(
     "lighter:overlay-removed",
