@@ -137,12 +137,28 @@ export function useLighterTileScene({
   }, [scene, sceneId, dims]);
 
   // Viewport init — without this the pixi-viewport never gets framed and
-  // overlays render with zero / wrong coordinate transforms. We wait for both
-  // renderer-ready and canonical media (via `dims`) before fitting.
+  // overlays render with zero / wrong coordinate transforms. The resting frame
+  // is IDENTITY (scale 1, pan 0): the media element behind the canvas uses
+  // `object-fit: contain`, so its letterboxed pixels already equal the scene's
+  // world coordinates (see useSyncMediaTransform). `fitToContent` would instead
+  // frame the LABELS' bounding box (it excludes the canonical media), zooming
+  // into the detections and dragging the media element's transform with it.
+  // Resetting needs the renderer ready (the pixi-viewport must exist) AND the
+  // canonical media's REAL bounds: `canonicalMediaReady` flips synchronously at
+  // install, but the bounds come from a ResizeObserver once the container has
+  // laid out, so acting at renderer-ready alone races a zero-size scene (black
+  // until the user hits 'r'). `canonical-media-bounds-changed` only fires with
+  // non-zero bounds (see ExternalCanonicalMedia), so it is the readiness
+  // signal; reset once both are true.
   const [rendererReady, setRendererReady] = useState(false);
+  const [mediaBoundsReady, setMediaBoundsReady] = useState(false);
   const useEventHandler = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
+
+  useEffect(() => {
+    setMediaBoundsReady(false);
+  }, [sceneId]);
 
   useEventHandler(
     "lighter:renderer-ready",
@@ -150,8 +166,13 @@ export function useLighterTileScene({
     { once: true }
   );
 
+  useEventHandler(
+    "lighter:canonical-media-bounds-changed",
+    useCallback(() => setMediaBoundsReady(true), [])
+  );
+
   useEffect(() => {
-    if (!scene || !rendererReady || !dims) {
+    if (!scene || !rendererReady || !mediaBoundsReady) {
       return;
     }
 
@@ -159,8 +180,8 @@ export function useLighterTileScene({
       return;
     }
 
-    scene.fitToContent();
-  }, [scene, sceneId, rendererReady, dims]);
+    scene.resetZoomPan();
+  }, [scene, sceneId, rendererReady, mediaBoundsReady]);
 
   return { scene, canonicalMediaReady };
 }
