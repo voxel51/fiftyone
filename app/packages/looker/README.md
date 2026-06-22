@@ -15,17 +15,17 @@ Looker is a client-side JavaScript media viewer that can render label overlays
 - Label rotation
 - [Video] play/pause, seek, prev/next frame
 - Label Rendering
-  - Classification
-  - Detection
-  - Keypoint
-  - Polyline
-  - Segmentation
+    - Classification
+    - Detection
+    - Keypoint
+    - Polyline
+    - Segmentation
 - Label Selection
 - [Video] Frame Labels
 - Tooltip w/ label fields
 - External State Management
-  - Allows other components to update its state
-  - Used for filtering / sidebar integration
+    - Allows other components to update its state
+    - Used for filtering / sidebar integration
 
 # Approach / Nuances
 
@@ -33,7 +33,7 @@ Looker is a client-side JavaScript media viewer that can render label overlays
 - Dynamically attached to an empty React rendered element
 - Canvas
 - Bespoke internal state management
-  - Allows for hooks in react to call `looker.updateOptions()` and similar
+    - Allows for hooks in react to call `looker.updateOptions()` and similar
 - Requires wrapping react code to mediate recoil hooks
 - Duplicates recoil state
 
@@ -70,71 +70,71 @@ Looker is a client-side JavaScript media viewer that can render label overlays
 
 ```ts
 export interface BaseState {
-  disabled: boolean;
-  cursorCoordinates: Coordinates;
-  pixelCoordinates: Coordinates;
-  disableControls: boolean;
-  loaded: boolean;
-  hovering: boolean;
-  hoveringControls: boolean;
-  showOptions: boolean;
-  config: BaseConfig;
-  options: BaseOptions;
-  scale: number;
-  pan: Coordinates;
-  panning: boolean;
-  rotate: number;
-  strokeWidth: number;
-  fontSize: number;
-  wheeling: boolean;
-  windowBBox: BoundingBox;
-  transformedWindowBBox: BoundingBox;
-  mediaBBox: BoundingBox;
-  transformedMediaBBox: BoundingBox;
-  canvasBBox: BoundingBox;
-  textPad: number;
-  pointRadius: number;
-  dashLength: number;
-  relativeCoordinates: Coordinates;
-  mouseIsOnOverlay: boolean;
-  overlaysPrepared: boolean;
-  disableOverlays: boolean;
-  zoomToContent: boolean;
-  setZoom: boolean;
-  hasDefaultZoom: boolean;
-  SHORTCUTS: Readonly<ControlMap<any>>; // fix me,
-  error: boolean | number;
-  destroyed: boolean;
-  reloading: boolean;
+    disabled: boolean;
+    cursorCoordinates: Coordinates;
+    pixelCoordinates: Coordinates;
+    disableControls: boolean;
+    loaded: boolean;
+    hovering: boolean;
+    hoveringControls: boolean;
+    showOptions: boolean;
+    config: BaseConfig;
+    options: BaseOptions;
+    scale: number;
+    pan: Coordinates;
+    panning: boolean;
+    rotate: number;
+    strokeWidth: number;
+    fontSize: number;
+    wheeling: boolean;
+    windowBBox: BoundingBox;
+    transformedWindowBBox: BoundingBox;
+    mediaBBox: BoundingBox;
+    transformedMediaBBox: BoundingBox;
+    canvasBBox: BoundingBox;
+    textPad: number;
+    pointRadius: number;
+    dashLength: number;
+    relativeCoordinates: Coordinates;
+    mouseIsOnOverlay: boolean;
+    overlaysPrepared: boolean;
+    disableOverlays: boolean;
+    zoomToContent: boolean;
+    setZoom: boolean;
+    hasDefaultZoom: boolean;
+    SHORTCUTS: Readonly<ControlMap<any>>; // fix me,
+    error: boolean | number;
+    destroyed: boolean;
+    reloading: boolean;
 }
 
 export interface FrameState extends BaseState {
-  config: FrameConfig;
-  options: FrameOptions;
-  duration: number | null;
-  SHORTCUTS: Readonly<ControlMap<FrameState>>;
+    config: FrameConfig;
+    options: FrameOptions;
+    duration: number | null;
+    SHORTCUTS: Readonly<ControlMap<FrameState>>;
 }
 
 export interface ImageState extends BaseState {
-  config: ImageConfig;
-  options: ImageOptions;
-  SHORTCUTS: Readonly<ControlMap<ImageState>>;
+    config: ImageConfig;
+    options: ImageOptions;
+    SHORTCUTS: Readonly<ControlMap<ImageState>>;
 }
 
 export interface VideoState extends BaseState {
-  config: VideoConfig;
-  options: VideoOptions;
-  seeking: boolean;
-  playing: boolean;
-  frameNumber: number;
-  duration: number | null;
-  fragment: [number, number] | null;
-  buffering: boolean;
-  buffers: Buffers;
-  seekBarHovering: boolean;
-  SHORTCUTS: Readonly<ControlMap<VideoState>>;
-  hasPoster: boolean;
-  waitingForVideo: boolean;
-  lockedToSupport: boolean;
+    config: VideoConfig;
+    options: VideoOptions;
+    seeking: boolean;
+    playing: boolean;
+    frameNumber: number;
+    duration: number | null;
+    fragment: [number, number] | null;
+    buffering: boolean;
+    buffers: Buffers;
+    seekBarHovering: boolean;
+    SHORTCUTS: Readonly<ControlMap<VideoState>>;
+    hasPoster: boolean;
+    waitingForVideo: boolean;
+    lockedToSupport: boolean;
 }
 ```

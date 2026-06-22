@@ -7460,7 +7460,14 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "torch", "yolo", "zero-shot", "prompt-free", "official"],
+            "tags": [
+                "instances",
+                "torch",
+                "yolo",
+                "zero-shot",
+                "prompt-free",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "Objects365v1",
@@ -7518,7 +7525,14 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "torch", "yolo", "zero-shot", "prompt-free", "official"],
+            "tags": [
+                "instances",
+                "torch",
+                "yolo",
+                "zero-shot",
+                "prompt-free",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "Objects365v1",
@@ -7576,7 +7590,14 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "torch", "yolo", "zero-shot", "prompt-free", "official"],
+            "tags": [
+                "instances",
+                "torch",
+                "yolo",
+                "zero-shot",
+                "prompt-free",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "Objects365v1",
@@ -7634,7 +7655,14 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "torch", "yolo", "zero-shot", "prompt-free", "official"],
+            "tags": [
+                "instances",
+                "torch",
+                "yolo",
+                "zero-shot",
+                "prompt-free",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "Objects365v1",
@@ -7692,7 +7720,14 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "torch", "yolo", "zero-shot", "prompt-free", "official"],
+            "tags": [
+                "instances",
+                "torch",
+                "yolo",
+                "zero-shot",
+                "prompt-free",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "Objects365v1",
@@ -10626,8 +10661,17 @@
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
-            "tags": ["detection", "coco", "torch", "transformer", "rfdetr", "official"],
-            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2026-03-06 12:00:00"
         },
         {
@@ -10650,8 +10694,17 @@
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
-            "tags": ["detection", "coco", "torch", "transformer", "rfdetr", "official"],
-            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2026-03-06 12:00:00"
         },
         {
@@ -10674,8 +10727,17 @@
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
-            "tags": ["detection", "coco", "torch", "transformer", "rfdetr", "official"],
-            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2026-03-06 12:00:00"
         },
         {
@@ -10698,8 +10760,17 @@
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
-            "tags": ["detection", "coco", "torch", "transformer", "rfdetr", "official"],
-            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2026-03-06 12:00:00"
         },
         {
@@ -10722,8 +10793,17 @@
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
-            "tags": ["detection", "coco", "torch", "transformer", "rfdetr", "official"],
-            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2026-03-06 12:00:00"
         },
         {
@@ -10746,8 +10826,17 @@
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
-            "tags": ["instances", "coco", "torch", "transformer", "rfdetr", "official"],
-            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2026-03-06 12:00:00"
         },
         {
@@ -10770,8 +10859,17 @@
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
-            "tags": ["instances", "coco", "torch", "transformer", "rfdetr", "official"],
-            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2026-03-06 12:00:00"
         },
         {
@@ -10794,8 +10892,17 @@
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
-            "tags": ["instances", "coco", "torch", "transformer", "rfdetr", "official"],
-            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2026-03-06 12:00:00"
         },
         {
@@ -10818,8 +10925,17 @@
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
-            "tags": ["instances", "coco", "torch", "transformer", "rfdetr", "official"],
-            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2026-03-06 12:00:00"
         },
         {
@@ -10842,8 +10958,17 @@
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
-            "tags": ["instances", "coco", "torch", "transformer", "rfdetr", "official"],
-            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2026-03-06 12:00:00"
         },
         {
@@ -10866,8 +10991,17 @@
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
-            "tags": ["instances", "coco", "torch", "transformer", "rfdetr", "official"],
-            "training_data": [{ "name": "MS COCO 2017", "url": "https://cocodataset.org" }],
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2026-03-06 12:00:00"
         },
         {

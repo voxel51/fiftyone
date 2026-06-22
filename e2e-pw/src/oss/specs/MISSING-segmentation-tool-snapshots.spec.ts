@@ -44,13 +44,9 @@ const test = base.extend<{
   },
   // Fresh dataset per test. Uses the test title so each baseline is
   // colocated with its corresponding dataset's render.
-  datasetName: async (
-    { annotateSDK, datasetFactory },
-    use,
-    testInfo
-  ) => {
+  datasetName: async ({ annotateSDK, datasetFactory }, use, testInfo) => {
     const name = getUniqueDatasetNameWithPrefix(
-      `seg-snap-${testInfo.title.replace(/\s+/g, "-")}`
+      `seg-snap-${testInfo.title.replace(/\s+/g, "-")}`,
     );
 
     await datasetFactory.createDataset({
@@ -78,7 +74,7 @@ const openAnnotate = async (
   modal: ModalPom,
   page: import("@playwright/test").Page,
   fiftyoneLoader: import("src/shared/abstract-loader").AbstractFiftyoneLoader,
-  datasetName: string
+  datasetName: string,
 ) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id: SAMPLE_ID }),
@@ -190,7 +186,7 @@ test.describe.serial("segmentation tool snapshots", () => {
     // Sanity check: the merge collapsed the pair into a single detection.
     const state = await annotateSDK.getDetectionsState(
       datasetName,
-      "instances"
+      "instances",
     );
     expect(state.count).toBe(1);
     expect(state.maskPixels).toBeGreaterThan(0);
