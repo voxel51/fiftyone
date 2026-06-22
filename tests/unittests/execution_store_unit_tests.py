@@ -6,7 +6,7 @@ FiftyOne execution store related unit tests.
 |
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 import time
 import unittest
 from unittest.mock import patch, MagicMock, ANY, Mock
@@ -34,7 +34,7 @@ def assert_delta_seconds_approx(time_delta, seconds, epsilon=EPSILON):
 class TestKeyDocument(unittest.TestCase):
     def test_get_expiration(self):
         ttl = 1
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         expiration = KeyDocument.get_expiration(ttl)
         time_delta = expiration - now
         assert_delta_seconds_approx(time_delta, ttl)
