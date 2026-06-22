@@ -230,13 +230,16 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   // would arrive unpinned.
   const [frameTracksResolved, setFrameTracksResolved] = useState(false);
 
+  // Color by the ENGINE path (`frames.detections`), matching the sidebar rows
+  // and canvas overlays. The schema-namespace `activeField` (`detections`) keys
+  // a different color-scheme entry, so using it tinted the timeline rows off.
   const resolveColor = useCallback(
     (label: PerInstanceLabel) =>
-      getLabelColorFromContext(activeField, label, {
+      getLabelColorFromContext(path ?? activeField, label, {
         colorScheme: scheme,
         seed,
       }),
-    [activeField, scheme, seed]
+    [path, activeField, scheme, seed]
   );
 
   const resolveTemporalDetectionColor = useCallback(
