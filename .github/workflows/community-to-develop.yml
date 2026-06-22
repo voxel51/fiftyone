@@ -7,6 +7,11 @@ name: Community to develop PR
 # direction).
 
 on:
+  # pull_request_target (not pull_request) is required to access the
+  # FIFTYONE_GITHUB_TOKEN secret needed to open a PR that triggers downstream CI.
+  # This is safe despite the usual warnings: the job only runs on merged PRs
+  # (closed + merged == true guard), checkout uses the base `ref: community`
+  # rather than the PR head, and no repo code is executed — only git/gh commands.
   pull_request_target:
     types: [closed]
     branches: [community]
@@ -34,6 +39,7 @@ jobs:
           fetch-depth: 0
           # Use the bot PAT so the PR triggers CI (GITHUB_TOKEN-authored PRs don't).
           token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          persist-credentials: false
 
       - name: Open or update community → develop PR and notify #community
         env:
