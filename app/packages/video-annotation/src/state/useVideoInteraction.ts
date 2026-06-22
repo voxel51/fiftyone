@@ -9,7 +9,7 @@ import {
 } from "@fiftyone/annotation";
 import { useCallback, useEffect, useRef } from "react";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
-import { useCurrentFrameGetter } from "./useCurrentFrame";
+import { useCurrentFrame, useCurrentFrameGetter } from "./useCurrentFrame";
 
 const SURFACE = "video-timeline";
 
@@ -104,6 +104,37 @@ export const useVideoInteraction = (): VideoInteraction => {
   );
 
   return { selectedTrackIds, hoveredTrackIds, selectTrack, hoverTrack };
+};
+
+/**
+ * Keep the editing anchor on the playhead. While a video frame label is the
+ * anchor (the form follows it), advancing the playhead re-stamps the anchor to
+ * the SAME track (`instanceId`) at the new frame, so the form and canvas
+ * selection track the instance across frames. Only re-stamps when that track
+ * has an occurrence on the new frame — a gap leaves the anchor on its current
+ * occurrence rather than blanking the form. Sample-level anchors (no `frame`,
+ * e.g. a temporal detection) are left alone.
+ */
+export const useFollowAnchorFrame = (): void => {
+  const engine = useAnnotationEngine();
+  const frame = useCurrentFrame();
+
+  useEffect(() => {
+    const anchor = engine.interaction.getAnchor();
+
+    if (!anchor || anchor.frame == null || anchor.frame === frame) {
+      return;
+    }
+
+    const next = { ...anchor, frame };
+
+    // track absent on this frame — keep editing the current occurrence
+    if (!engine.getLabel(next)) {
+      return;
+    }
+
+    engine.interaction.setActive([next]);
+  }, [engine, frame]);
 };
 
 /**

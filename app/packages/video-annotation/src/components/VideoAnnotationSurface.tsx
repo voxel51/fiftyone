@@ -6,6 +6,7 @@ import { useRegisterVideoAnnotationKeybindings } from "../hooks/useRegisterVideo
 import { useSyncAnnotationFrameClock } from "../hooks/useSyncAnnotationFrameClock";
 import { useSyncAnnotationVideoStore } from "../hooks/useSyncAnnotationVideoStore";
 import { useVideoLighterEngineBridge } from "../hooks/useVideoLighterEngineBridge";
+import { useFollowAnchorFrame } from "../state/useVideoInteraction";
 import { PlaybackProvider } from "@fiftyone/playback";
 import { FrameLabelsTracks, RegisterFrameLabels } from "./FrameLabels";
 import { ImaVidLighterTile } from "./ImaVidLighterTile";
@@ -176,5 +177,8 @@ const VideoAnnotationHandlerRegistration: React.FC = () => {
   useVideoLighterEngineBridge();
   useRegisterVideoAnnotationKeybindings();
   useAutoInterpolate();
+  // editing a frame label: keep the anchor (and the form) on the playhead's
+  // occurrence of the same track as the playhead moves
+  useFollowAnchorFrame();
   return null;
 };
