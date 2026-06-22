@@ -1,5 +1,7 @@
 import React, { useEffect } from "react";
-import { useTheme } from "@fiftyone/components";
+import { ThemeProvider, useTheme } from "@fiftyone/components";
+import { createRoot } from "react-dom/client";
+import { RecoilRoot } from "recoil";
 import usePanelEvent from "@fiftyone/operators/src/usePanelEvent";
 import { usePanelId, usePanelState } from "@fiftyone/spaces";
 import useNotification from "@fiftyone/state/src/hooks/useNotification";
@@ -1304,9 +1306,6 @@ export default function DashboardView(props: ViewPropsType) {
       document.body.appendChild(exportContainer);
 
       // Create a React root and render the PNG export component
-      const { createRoot } = await import("react-dom/client");
-      const { RecoilRoot } = await import("recoil");
-      const { ThemeProvider } = await import("@fiftyone/components");
       const root = createRoot(exportContainer);
 
       // Render the PNG export component with necessary providers

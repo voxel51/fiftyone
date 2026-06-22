@@ -36,8 +36,8 @@ import fiftyone.core.view as fov
 from fiftyone.multimodal.schemas import v1 as foms
 
 TAGS_COLLECTION_NAME = "tags"
-TEMPORAL_TAGS_EXPORT_FILENAME = "temporal_tags.json"
-TEMPORAL_TAGS_EXPORT_KEY = "temporal_tags"
+TAGS_EXPORT_FILENAME = "tags.json"
+TAGS_EXPORT_KEY = "tags"
 
 DEFAULT_INDEX_TYPE = foms.TimeTrackType.TIME_TRACK_TYPE_DURATION_NS
 SUPPORTED_INDEX_TYPES = {
@@ -45,7 +45,7 @@ SUPPORTED_INDEX_TYPES = {
     foms.TimeTrackType.TIME_TRACK_TYPE_DURATION_NS,
     foms.TimeTrackType.TIME_TRACK_TYPE_TIMESTAMP_NS,
 }
-_TEMPORAL_TAG_SORT = [
+_TAG_SORT = [
     ("_sample_id", ASCENDING),
     ("index_type", ASCENDING),
     ("anchor", ASCENDING),
@@ -337,7 +337,7 @@ class TemporalTags(object):
         if collection is None:
             return iter(())
 
-        docs = collection.find(query).sort(_TEMPORAL_TAG_SORT)
+        docs = collection.find(query).sort(_TAG_SORT)
         return (_from_storage_doc(doc) for doc in docs)
 
     def add(self, tags: TemporalTag | Iterable[TemporalTag]):
@@ -872,7 +872,7 @@ def export_tags(sample_collection, export_path, progress=None) -> int:
     foo.export_collection(
         map(_to_export_doc, docs),
         export_path,
-        key=TEMPORAL_TAGS_EXPORT_KEY,
+        key=TAGS_EXPORT_KEY,
         progress=progress,
         num_docs=num_docs,
     )
@@ -886,9 +886,7 @@ def import_tags(dataset, import_path, sample_ids=None, progress=None) -> int:
     if not os.path.isfile(import_path):
         return 0
 
-    records, _ = foo.import_collection(
-        import_path, key=TEMPORAL_TAGS_EXPORT_KEY
-    )
+    records, _ = foo.import_collection(import_path, key=TAGS_EXPORT_KEY)
 
     if sample_ids is not None:
         sample_ids = {str(sample_id) for sample_id in sample_ids}
@@ -1515,7 +1513,7 @@ def _ensure_kind(kind):
 __all__ = [
     "DEFAULT_INDEX_TYPE",
     "SUPPORTED_INDEX_TYPES",
-    "TEMPORAL_TAGS_EXPORT_FILENAME",
+    "TAGS_EXPORT_FILENAME",
     "TAGS_COLLECTION_NAME",
     "TagKind",
     "TemporalTag",
