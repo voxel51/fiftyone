@@ -195,17 +195,46 @@ def inline_applied_ontology(label_schema: dict, ontology: Any) -> dict:
 def _merge(label_schema: dict, ontology: Any) -> dict:
     hydrated = copy.deepcopy(label_schema)
     existing = hydrated.get(foac.ATTRIBUTES, [])
-
-    # Preserve existing schema order; ontology-only attrs appended.
-    by_name: dict = {a.get(foac.NAME): a for a in existing}
-    ordered_names = [a.get(foac.NAME) for a in existing]
-
-    for attr_dict in attributes_with_source(ontology):
-        name = attr_dict.get(foac.NAME)
-        if name not in by_name:
-            ordered_names.append(name)
-        # ontology wins on collision
-        by_name[name] = attr_dict
-
-    hydrated[foac.ATTRIBUTES] = [by_name[n] for n in ordered_names]
+    onto_attrs = attributes_with_source(ontology)
+    hydrated[foac.ATTRIBUTES] = _merge_attributes(existing, onto_attrs)
     return hydrated
+
+
+def _merge_attributes(
+    existing: list[dict], onto_attrs: list[dict]
+) -> list[dict]:
+    """Merges ontology attributes into a schema's existing attributes.
+
+    The ontology owns every name it contributes: its attributes replace any
+    local attribute(s) of that name in place, anchored to the first local
+    occurrence. Local names the ontology doesn't touch pass through
+    unchanged; ontology-only names are appended in declaration order.
+
+    Conditional attributes share a name but differ by their ``when``
+    condition, so one name can map to several variants — all of which must
+    survive. Grouping (rather than keying) by name preserves every variant;
+    a name-keyed dict would collapse them to the last one.
+    """
+    # Group ontology attributes by name, preserving the declaration order of
+    # both the names and the variants within each name.
+    ontology_by_name: dict[str, list[dict]] = {}
+    for attr in onto_attrs:
+        ontology_by_name.setdefault(attr.get(foac.NAME), []).append(attr)
+
+    merged_attributes: list[dict] = []
+    ontology_names_placed: set[str] = set()
+    for attr in existing:
+        name = attr.get(foac.NAME)
+        if name in ontology_by_name:
+            if name not in ontology_names_placed:
+                merged_attributes.extend(ontology_by_name[name])
+                ontology_names_placed.add(name)
+        else:
+            merged_attributes.append(attr)
+
+    for name, variants in ontology_by_name.items():
+        if name not in ontology_names_placed:
+            merged_attributes.extend(variants)
+            ontology_names_placed.add(name)
+
+    return merged_attributes
