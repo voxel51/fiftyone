@@ -28,6 +28,7 @@ import {
   currentPanelAreasRenderer,
   panelAreaRenderers,
   panelIdToScopeAtom,
+  panelLoadingSelector,
   panelStatePartialSelector,
   panelStateSelector,
   panelTitlesState,
@@ -223,18 +224,25 @@ export function usePanelLoading(
   id?: string,
 ): [boolean, (loading: boolean, id?: string) => void] {
   const panelContext = useContext(PanelContext);
-  const [panelsLoadingState, setPanelsLoadingState] = useRecoilState(
-    panelsLoadingStateAtom,
-  );
-
   const panelId = (id || panelContext?.node?.id) as string;
-  const panelLoading = Boolean(panelsLoadingState.get(panelId));
+
+  // Subscribe only to this panel's loading state so flips on other panels
+  // don't re-render this consumer.
+  const panelLoading = useRecoilValue(panelLoadingSelector(panelId));
+  const setPanelsLoadingState = useSetRecoilState(panelsLoadingStateAtom);
 
   const setPanelLoading = useCallback(
-    (loading: boolean, id?: string) => {
+    (loading: boolean, targetId?: string) => {
       setPanelsLoadingState((panelsLoading) => {
+        const finalId = targetId || panelId;
+        // Dedupe: returning the same reference skips the Recoil write and
+        // avoids re-rendering every subscriber when the value is unchanged.
+        if (panelsLoading.get(finalId) === loading) return panelsLoading;
+        // Also skip writing `false` for a key that doesn't exist yet — a
+        // missing entry already reads as false
+        if (!loading && !panelsLoading.has(finalId)) return panelsLoading;
         const updatedPanelsLoading = new Map(panelsLoading);
-        updatedPanelsLoading.set(id || panelId, loading);
+        updatedPanelsLoading.set(finalId, loading);
         return updatedPanelsLoading;
       });
     },
