@@ -81,6 +81,7 @@
     },
     "peerDependencies": {
         "@fiftyone/annotation": "*",
+        "@fiftyone/video-annotation": "*",
         "@mui/icons-material": "*",
         "@mui/material": "*",
         "@react-spring/web": "*",

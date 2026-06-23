@@ -2996,7 +2996,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/annotation@workspace:packages/annotation":
+"@fiftyone/annotation@workspace:*, @fiftyone/annotation@workspace:packages/annotation":
   version: 0.0.0-use.local
   resolution: "@fiftyone/annotation@workspace:packages/annotation"
   dependencies:
@@ -3036,6 +3036,7 @@ __metadata:
     "@fiftyone/relay": "npm:*"
     "@fiftyone/state": "npm:*"
     "@fiftyone/utilities": "npm:*"
+    "@fiftyone/video-annotation": "workspace:*"
     "@material-ui/core": "npm:4.12.4"
     "@types/lodash": "npm:^4.14.182"
     "@types/mime": "npm:^2.0.3"
@@ -3077,7 +3078,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/command-bus@workspace:packages/command-bus":
+"@fiftyone/command-bus@workspace:*, @fiftyone/command-bus@workspace:packages/command-bus":
   version: 0.0.0-use.local
   resolution: "@fiftyone/command-bus@workspace:packages/command-bus"
   dependencies:
@@ -3095,7 +3096,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/commands@workspace:^, @fiftyone/commands@workspace:packages/commands":
+"@fiftyone/commands@workspace:*, @fiftyone/commands@workspace:^, @fiftyone/commands@workspace:packages/commands":
   version: 0.0.0-use.local
   resolution: "@fiftyone/commands@workspace:packages/commands"
   dependencies:
@@ -3113,7 +3114,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/components@npm:*, @fiftyone/components@workspace:packages/components":
+"@fiftyone/components@npm:*, @fiftyone/components@workspace:*, @fiftyone/components@workspace:packages/components":
   version: 0.0.0-use.local
   resolution: "@fiftyone/components@workspace:packages/components"
   dependencies:
@@ -3232,6 +3233,7 @@ __metadata:
     xstate: "npm:^4.14.0"
   peerDependencies:
     "@fiftyone/annotation": "*"
+    "@fiftyone/video-annotation": "*"
     "@mui/icons-material": "*"
     "@mui/material": "*"
     "@react-spring/web": "*"
@@ -3353,7 +3355,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/lighter@workspace:packages/lighter":
+"@fiftyone/lighter@workspace:*, @fiftyone/lighter@workspace:packages/lighter":
   version: 0.0.0-use.local
   resolution: "@fiftyone/lighter@workspace:packages/lighter"
   dependencies:
@@ -3498,7 +3500,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/playback@workspace:packages/playback":
+"@fiftyone/playback@workspace:*, @fiftyone/playback@workspace:packages/playback":
   version: 0.0.0-use.local
   resolution: "@fiftyone/playback@workspace:packages/playback"
   dependencies:
@@ -3596,7 +3598,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/state@npm:*, @fiftyone/state@workspace:packages/state":
+"@fiftyone/state@npm:*, @fiftyone/state@workspace:*, @fiftyone/state@workspace:packages/state":
   version: 0.0.0-use.local
   resolution: "@fiftyone/state@workspace:packages/state"
   dependencies:
@@ -3620,7 +3622,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/tiling@npm:*, @fiftyone/tiling@workspace:packages/tiling":
+"@fiftyone/tiling@npm:*, @fiftyone/tiling@workspace:*, @fiftyone/tiling@workspace:packages/tiling":
   version: 0.0.0-use.local
   resolution: "@fiftyone/tiling@workspace:packages/tiling"
   dependencies:
@@ -3634,7 +3636,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/utilities@npm:*, @fiftyone/utilities@workspace:^, @fiftyone/utilities@workspace:packages/utilities":
+"@fiftyone/utilities@npm:*, @fiftyone/utilities@workspace:*, @fiftyone/utilities@workspace:^, @fiftyone/utilities@workspace:packages/utilities":
   version: 0.0.0-use.local
   resolution: "@fiftyone/utilities@workspace:packages/utilities"
   dependencies:
@@ -3651,6 +3653,33 @@ __metadata:
     vite: "npm:^7.3.2"
   peerDependencies:
     react: "*"
+  languageName: unknown
+  linkType: soft
+
+"@fiftyone/video-annotation@workspace:*, @fiftyone/video-annotation@workspace:packages/video-annotation":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/video-annotation@workspace:packages/video-annotation"
+  dependencies:
+    "@eslint/compat": "npm:^1.1.1"
+    "@fiftyone/annotation": "workspace:*"
+    "@fiftyone/command-bus": "workspace:*"
+    "@fiftyone/commands": "workspace:*"
+    "@fiftyone/components": "workspace:*"
+    "@fiftyone/lighter": "workspace:*"
+    "@fiftyone/playback": "workspace:*"
+    "@fiftyone/state": "workspace:*"
+    "@fiftyone/tiling": "workspace:*"
+    "@fiftyone/utilities": "workspace:*"
+    "@voxel51/voodo": "npm:^0.0.30"
+    clsx: "npm:^2.1.0"
+    eslint: "npm:9.7.0"
+    eslint-plugin-react: "npm:^7.35.0"
+    eslint-plugin-react-hooks: "npm:rc"
+    globals: "npm:^15.8.0"
+    jotai: "npm:^2.9.3"
+    lru-cache: "npm:^11.0.1"
+    typescript-eslint: "npm:^7.17.0"
+    vite: "npm:^7.3.2"
   languageName: unknown
   linkType: soft
 
