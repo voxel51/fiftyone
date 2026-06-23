@@ -24,24 +24,19 @@ import eta.core.utils as etau
 import eta.core.video as etav
 
 import fiftyone as fo
-import fiftyone.multimodal as fomm
-from fiftyone.multimodal.tags import TagKind
+import fiftyone.multimodal.tags._temporal_tags as fota
 import fiftyone.utils.coco as fouc
 import fiftyone.utils.image as foui
 import fiftyone.utils.labels as foul
 import fiftyone.utils.yolo as fouy
 from fiftyone import ViewField as F
-from fiftyone.multimodal.tags import (
-    TAGS_COLLECTION_NAME,
-    TAGS_EXPORT_FILENAME,
-)
 
 from decorators import drop_collection, drop_datasets
 
 skipwindows = pytest.mark.skipif(
     os.name == "nt", reason="Windows hangs in workflows, fix me"
 )
-drop_tags = drop_collection(TAGS_COLLECTION_NAME)
+drop_tags = drop_collection(fota.TAGS_COLLECTION_NAME)
 
 
 class ImageDatasetTests(unittest.TestCase):
@@ -184,7 +179,7 @@ class TagsImportExportTests(ImageDatasetTests):
             dataset_type=fo.types.FiftyOneDataset,
         )
 
-        tags_path = os.path.join(export_dir, TAGS_EXPORT_FILENAME)
+        tags_path = os.path.join(export_dir, fota.TAGS_EXPORT_FILENAME)
         self.assertTrue(os.path.isfile(tags_path))
 
         exported = etas.read_json(tags_path)["tags"]
@@ -213,7 +208,7 @@ class TagsImportExportTests(ImageDatasetTests):
                 set(doc.keys()),
                 expected_keys,
             )
-            self.assertEqual(doc["kind"], TagKind.TEMPORAL)
+            self.assertEqual(doc["kind"], fota.TagKind.TEMPORAL)
             self.assertIsInstance(doc["created_at"], str)
             self.assertIsInstance(doc["last_modified_at"], str)
 
@@ -237,7 +232,7 @@ class TagsImportExportTests(ImageDatasetTests):
         )
 
         source_tag_modified_at = max(
-            tag.last_modified_at for tag in fomm.list_temporal_tags(dataset)
+            tag.last_modified_at for tag in fota.list_temporal_tags(dataset)
         )
         time.sleep(0.05)
 
@@ -245,13 +240,13 @@ class TagsImportExportTests(ImageDatasetTests):
             dataset_dir=export_dir,
             dataset_type=fo.types.FiftyOneDataset,
         )
-        imported_tags = fomm.list_temporal_tags(dataset2)
+        imported_tags = fota.list_temporal_tags(dataset2)
         sample_modified_at = dict(
             zip(dataset2.values("id"), dataset2.values("last_modified_at"))
         )
 
         self.assertEqual(
-            fomm.count_temporal_tags(dataset2), {"drop": 1, "keep": 2}
+            fota.count_temporal_tags(dataset2), {"drop": 1, "keep": 2}
         )
         self.assertEqual(
             self._tag_tuples(dataset),
@@ -271,9 +266,9 @@ class TagsImportExportTests(ImageDatasetTests):
             dataset_type=fo.types.FiftyOneDataset,
         )
 
-        self.assertEqual(fomm.count_temporal_tags(dataset3), {})
+        self.assertEqual(fota.count_temporal_tags(dataset3), {})
 
-        fomm.delete_temporal_tags(dataset, delete_all=True)
+        fota.delete_temporal_tags(dataset, delete_all=True)
         dataset.export(
             export_dir=export_dir,
             dataset_type=fo.types.FiftyOneDataset,
@@ -298,13 +293,13 @@ class TagsImportExportTests(ImageDatasetTests):
             dataset_type=fo.types.FiftyOneDataset,
         )
 
-        self.assertEqual(fomm.count_temporal_tags(dataset2), {"keep": 2})
+        self.assertEqual(fota.count_temporal_tags(dataset2), {"keep": 2})
         self.assertEqual(
-            {tag.anchor for tag in fomm.list_temporal_tags(dataset2)},
+            {tag.anchor for tag in fota.list_temporal_tags(dataset2)},
             {None, "camera_front"},
         )
         self.assertEqual(
-            {tag.sample_id for tag in fomm.list_temporal_tags(dataset2)},
+            {tag.sample_id for tag in fota.list_temporal_tags(dataset2)},
             {sample_ids[0], sample_ids[2]},
         )
 
@@ -326,15 +321,15 @@ class TagsImportExportTests(ImageDatasetTests):
         )
 
         self.assertEqual(len(dataset2), 1)
-        self.assertEqual(fomm.count_temporal_tags(dataset2), {"keep": 1})
+        self.assertEqual(fota.count_temporal_tags(dataset2), {"keep": 1})
         self.assertEqual(
-            fomm.list_temporal_tags(dataset2)[0].sample_id, sample_ids[0]
+            fota.list_temporal_tags(dataset2)[0].sample_id, sample_ids[0]
         )
         self.assertEqual(
-            fomm.list_temporal_tags(dataset2)[0].anchor, "camera_front"
+            fota.list_temporal_tags(dataset2)[0].anchor, "camera_front"
         )
         self.assertEqual(
-            fomm.list_temporal_tags(dataset2)[0].created_by, "alice"
+            fota.list_temporal_tags(dataset2)[0].created_by, "alice"
         )
 
     @drop_tags
@@ -361,7 +356,7 @@ class TagsImportExportTests(ImageDatasetTests):
             )
 
         self.assertEqual(
-            fomm.count_temporal_tags(dataset2), {"drop": 1, "keep": 2}
+            fota.count_temporal_tags(dataset2), {"drop": 1, "keep": 2}
         )
 
     def _make_tag_dataset(self):
@@ -370,33 +365,33 @@ class TagsImportExportTests(ImageDatasetTests):
         dataset.add_samples(samples)
         sample_ids = dataset.values("id")
 
-        fomm.add_temporal_tags(
+        fota.add_temporal_tags(
             dataset,
             [
-                fomm.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[0],
                     0,
                     10,
                     "keep",
                     anchor="camera_front",
                     created_by="alice",
-                    kind=TagKind.TEMPORAL,
+                    kind=fota.TagKind.TEMPORAL,
                 ),
-                fomm.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[1],
                     10,
                     20,
                     "drop",
                     anchor="lidar_top",
                     last_modified_by="carol",
-                    kind=TagKind.TEMPORAL,
+                    kind=fota.TagKind.TEMPORAL,
                 ),
-                fomm.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[2],
                     20,
                     30,
                     "keep",
-                    kind=TagKind.TEMPORAL,
+                    kind=fota.TagKind.TEMPORAL,
                 ),
             ],
         )
@@ -418,7 +413,7 @@ class TagsImportExportTests(ImageDatasetTests):
                 tag.created_at,
                 tag.last_modified_at,
             )
-            for tag in fomm.list_temporal_tags(dataset)
+            for tag in fota.list_temporal_tags(dataset)
         ]
 
 

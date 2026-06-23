@@ -18,17 +18,17 @@ from starlette.exceptions import HTTPException
 import fiftyone as fo
 import fiftyone.core.odm as foo
 import fiftyone.multimodal.server.routes as fomr
-import fiftyone.multimodal.tags as fomt
+import fiftyone.multimodal.tags._temporal_tags as fota
 
 
 @pytest.fixture(autouse=True)
 def clean_tags():
     """Ensures each test starts with an empty tag collection."""
-    foo.get_db_conn().drop_collection(fomt.TAGS_COLLECTION_NAME)
+    foo.get_db_conn().drop_collection(fota.TAGS_COLLECTION_NAME)
 
     yield
 
-    foo.get_db_conn().drop_collection(fomt.TAGS_COLLECTION_NAME)
+    foo.get_db_conn().drop_collection(fota.TAGS_COLLECTION_NAME)
 
 
 @pytest.fixture(name="dataset")
@@ -219,25 +219,25 @@ class TestTagsRoute:
         dataset_id,
         sample_ids,
     ):
-        fomt.add_temporal_tags(
+        fota.add_temporal_tags(
             dataset,
             [
-                fomt.TemporalTag(
-                    sample_ids[0], 0, 10, "clip", kind=fomt.TagKind.TEMPORAL
+                fota.TemporalTag(
+                    sample_ids[0], 0, 10, "clip", kind=fota.TagKind.TEMPORAL
                 ),
-                fomt.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[0],
                     30,
                     40,
                     "outside",
-                    kind=fomt.TagKind.TEMPORAL,
+                    kind=fota.TagKind.TEMPORAL,
                 ),
-                fomt.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[1],
                     5,
                     15,
                     "other-sample",
-                    kind=fomt.TagKind.TEMPORAL,
+                    kind=fota.TagKind.TEMPORAL,
                 ),
             ],
         )
@@ -263,15 +263,15 @@ class TestTagsRoute:
         dataset_id,
         sample_ids,
     ):
-        created = fomt.add_temporal_tags(
+        created = fota.add_temporal_tags(
             dataset,
-            fomt.TemporalTag(
+            fota.TemporalTag(
                 sample_ids[0],
                 0,
                 10,
                 "review",
                 created_by="alice",
-                kind=fomt.TagKind.TEMPORAL,
+                kind=fota.TagKind.TEMPORAL,
             ),
         )[0]
         before_patch = _modified_timestamps(dataset, sample_ids[0])
@@ -321,29 +321,29 @@ class TestTagsRoute:
         dataset_id,
         sample_ids,
     ):
-        fomt.add_temporal_tags(
+        fota.add_temporal_tags(
             dataset,
             [
-                fomt.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[0],
                     0,
                     10,
                     "clip",
-                    kind=fomt.TagKind.TEMPORAL,
+                    kind=fota.TagKind.TEMPORAL,
                 ),
-                fomt.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[1],
                     10,
                     20,
                     "clip",
-                    kind=fomt.TagKind.TEMPORAL,
+                    kind=fota.TagKind.TEMPORAL,
                 ),
-                fomt.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[2],
                     30,
                     40,
                     "outside",
-                    kind=fomt.TagKind.TEMPORAL,
+                    kind=fota.TagKind.TEMPORAL,
                 ),
             ],
         )
@@ -382,36 +382,36 @@ class TestTagsRoute:
         dataset_id,
         sample_ids,
     ):
-        fomt.add_temporal_tags(
+        fota.add_temporal_tags(
             dataset,
             [
-                fomt.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[0],
                     0,
                     10,
                     "candidate",
-                    kind=fomt.TagKind.TEMPORAL,
+                    kind=fota.TagKind.TEMPORAL,
                 ),
-                fomt.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[1],
                     10,
                     20,
                     "candidate",
-                    kind=fomt.TagKind.TEMPORAL,
+                    kind=fota.TagKind.TEMPORAL,
                 ),
-                fomt.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[2],
                     20,
                     30,
                     "review",
-                    kind=fomt.TagKind.TEMPORAL,
+                    kind=fota.TagKind.TEMPORAL,
                 ),
-                fomt.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[2],
                     30,
                     40,
                     "other",
-                    kind=fomt.TagKind.TEMPORAL,
+                    kind=fota.TagKind.TEMPORAL,
                 ),
             ],
         )
@@ -499,29 +499,29 @@ class TestTagsRoute:
         dataset_id,
         sample_ids,
     ):
-        fomt.add_temporal_tags(
+        fota.add_temporal_tags(
             dataset,
             [
-                fomt.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[0],
                     0,
                     10,
                     "first",
-                    kind=fomt.TagKind.TEMPORAL,
+                    kind=fota.TagKind.TEMPORAL,
                 ),
-                fomt.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[0],
                     10,
                     20,
                     "second",
-                    kind=fomt.TagKind.TEMPORAL,
+                    kind=fota.TagKind.TEMPORAL,
                 ),
-                fomt.TemporalTag(
+                fota.TemporalTag(
                     sample_ids[1],
                     0,
                     10,
                     "other",
-                    kind=fomt.TagKind.TEMPORAL,
+                    kind=fota.TagKind.TEMPORAL,
                 ),
             ],
         )
@@ -534,8 +534,8 @@ class TestTagsRoute:
         response = await sample_tags_endpoint.delete(request)
 
         assert _json_body(response) == {"deleted": 2}
-        assert fomt.count_temporal_tags(dataset) == {"other": 1}
-        assert [tag.sample_id for tag in fomt.list_temporal_tags(dataset)] == [
+        assert fota.count_temporal_tags(dataset) == {"other": 1}
+        assert [tag.sample_id for tag in fota.list_temporal_tags(dataset)] == [
             sample_ids[1]
         ]
 
@@ -550,14 +550,14 @@ class TestTagsRoute:
         dataset_id,
         sample_ids,
     ):
-        temporal_tag = fomt.add_temporal_tags(
+        temporal_tag = fota.add_temporal_tags(
             dataset,
-            fomt.TemporalTag(
+            fota.TemporalTag(
                 sample_ids[0],
                 0,
                 10,
                 "review",
-                kind=fomt.TagKind.TEMPORAL,
+                kind=fota.TagKind.TEMPORAL,
             ),
         )[0]
         cases = [
@@ -722,14 +722,14 @@ class TestTagsRoute:
     async def test_temporal_tag_update_not_found_returns_404(
         self, sample_tag_endpoint, dataset, dataset_id, sample_ids
     ):
-        temporal_tag = fomt.add_temporal_tags(
+        temporal_tag = fota.add_temporal_tags(
             dataset,
-            fomt.TemporalTag(
+            fota.TemporalTag(
                 sample_ids[0],
                 0,
                 10,
                 "review",
-                kind=fomt.TagKind.TEMPORAL,
+                kind=fota.TagKind.TEMPORAL,
             ),
         )[0]
 
@@ -754,7 +754,7 @@ class TestTagsRoute:
 
             assert exc_info.value.status_code == 404
 
-        persisted = fomt.list_temporal_tags(dataset)
+        persisted = fota.list_temporal_tags(dataset)
         assert [(tag.start, tag.end, tag.tag) for tag in persisted] == [
             (0, 10, "review")
         ]
