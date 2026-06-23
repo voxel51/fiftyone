@@ -75,7 +75,7 @@ jobs:
           echo "::error::Merging develop into community conflicted — resolve on the community branch."
           exit 1
 
-      - name: Notify #community of conflict
+      - name: "Notify #community of conflict"
         if: failure() && steps.merge.outputs.conflicts != ''
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_COMMUNITY_WEBHOOK_URL }}
