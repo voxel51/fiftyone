@@ -718,12 +718,9 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
             if proc_cls is None:
                 raise
 
-            try:
-                processor = proc_cls.from_pretrained(name, **ta)
-            except AttributeError:
-                # The processor declares no tokenizer_class, so from_pretrained
-                # re-enters the same tokenizer resolution; read the fast
-                # tokenizer from the repo directly.
+            if getattr(proc_cls, "tokenizer_class", None) is None:
+                # No tokenizer_class to auto-resolve; build the fast tokenizer
+                # directly.
                 processor = proc_cls(
                     image_processor=transformers.AutoImageProcessor.from_pretrained(
                         name, **ta
@@ -732,6 +729,8 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
                         name, **ta
                     ),
                 )
+            else:
+                processor = proc_cls.from_pretrained(name, **ta)
         return _HFTransformsHandler(
             processor, **(config.transformers_processor_kwargs)
         )
