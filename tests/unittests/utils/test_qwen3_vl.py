@@ -783,6 +783,47 @@ class TestQwen3VLEmbedFrames:
         assert len(captured["frames"]) == 5
         assert captured["fps"] == 2.0
 
+    def test_embed_frames_fps_zero(self):
+        model = self._make_model()
+        model.config.video_fps = 2.0
+
+        captured = {}
+
+        def _capture(messages):
+            content = messages[0]["content"][0]
+            captured["frames"] = content["video"]
+            captured["fps"] = content["fps"]
+            return (None, ["<video>"])
+
+        with mock.patch.object(qwen3_vl, "qwen_vl_utils") as mock_qvu:
+            mock_qvu.process_vision_info.side_effect = _capture
+            model.embed_frames(self._frames(5), fps=0)
+
+        # fps == 0 is treated as unknown: no subsampling, target fps reported
+        assert len(captured["frames"]) == 5
+        assert captured["fps"] == 2.0
+
+    def test_embed_frames_fps_negative(self):
+        model = self._make_model()
+        model.config.video_fps = 2.0
+
+        captured = {}
+
+        def _capture(messages):
+            content = messages[0]["content"][0]
+            captured["frames"] = content["video"]
+            captured["fps"] = content["fps"]
+            return (None, ["<video>"])
+
+        with mock.patch.object(qwen3_vl, "qwen_vl_utils") as mock_qvu:
+            mock_qvu.process_vision_info.side_effect = _capture
+            model.embed_frames(self._frames(5), fps=-4.0)
+
+        # negative fps is treated as unknown (like the video-file path): no
+        # subsampling and a sane, non-negative fps reported to the model
+        assert len(captured["frames"]) == 5
+        assert captured["fps"] == 2.0
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

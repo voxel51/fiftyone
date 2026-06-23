@@ -487,9 +487,9 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
             frames: an ordered iterable of in-memory frames (PIL images,
                 numpy arrays, or torch tensors)
             fps (None): the rate the frames were sampled at, used to decide
-                how aggressively to subsample. If ``None`` (or zero), the
-                frames are used as-is and ``config.video_fps`` is reported
-                to the model as the playback rate
+                how aggressively to subsample. If ``None`` or non-positive,
+                the frames are used as-is and ``config.video_fps`` is
+                reported to the model as the playback rate
 
         Returns:
             a 1D numpy array embedding
@@ -500,7 +500,9 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
 
         sample_fps = self.config.video_fps
 
-        if fps and sample_fps > 0:
+        has_fps = fps is not None and fps > 0
+
+        if has_fps and sample_fps > 0:
             step = max(1, round(fps / sample_fps))
         else:
             step = 1
@@ -511,7 +513,7 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
             if len(sampled) >= self.config.max_video_frames:
                 break
 
-        effective_fps = fps / step if fps else sample_fps
+        effective_fps = fps / step if has_fps else sample_fps
 
         return self._embed_frame_list(sampled, effective_fps)
 
