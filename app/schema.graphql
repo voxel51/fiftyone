@@ -655,6 +655,7 @@ type Query {
     view: BSONArray!
     first: Int = 20
     after: String = null
+    before: String = null
     filter: SampleFilter = null
     filters: BSON = null
     extendedStages: BSON = null
@@ -664,6 +665,7 @@ type Query {
     hint: String = null
     maxQueryTime: Int = null
     dynamicGroup: BSON = null
+    cursorPagination: Boolean = false
   ): PaginateSamplesResponse!
   sample(
     dataset: String!

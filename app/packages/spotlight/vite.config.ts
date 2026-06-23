@@ -1,14 +1,22 @@
-import type { UserConfig } from "vite";
+import { defineConfig } from "vite";
 
-export default {
-  esbuild: {},
-  build: {
-    lib: {
-      entry: "src/index.ts",
-      formats: ["es"],
-    },
-    target: "es2022",
-    minify: false,
-  },
-  test: {},
-} as UserConfig;
+export default defineConfig(({ command }) => {
+  if (command === "build") {
+    return {
+      esbuild: {},
+      build: {
+        lib: {
+          entry: "src/index.ts",
+          formats: ["es"],
+        },
+        target: "es2022",
+        minify: false,
+      },
+      test: {},
+    };
+  }
+
+  return {
+    root: "examples",
+  };
+});
