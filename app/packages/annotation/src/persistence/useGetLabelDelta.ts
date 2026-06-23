@@ -1,7 +1,7 @@
 import type { JSONDeltas } from "@fiftyone/core";
 import {
   isGeneratedView,
-  useModalSample,
+  useActiveModalSample,
   useModalSampleSchema,
 } from "@fiftyone/state";
 import type { Field } from "@fiftyone/utilities";
@@ -70,13 +70,13 @@ export const useGetLabelDelta = <T>(
   options: UseGetLabelDeltaOptions = {}
 ): ((labelSource: T, path: string) => JSONDeltas) => {
   const { opType = "mutate" } = options;
-  const modalSample = useModalSample();
+  const sample = useActiveModalSample();
   const modalSampleSchema = useModalSampleSchema();
   const isGenerated = useRecoilValue(isGeneratedView);
 
   return useCallback(
     (labelSource: T, path: string) => {
-      if (!modalSample?.sample) {
+      if (!sample) {
         return [];
       }
 
@@ -89,7 +89,7 @@ export const useGetLabelDelta = <T>(
 
         if (schema) {
           const labelDeltas = buildLabelDeltas(
-            modalSample.sample,
+            sample,
             labelProxy,
             schema,
             opType,
@@ -106,6 +106,6 @@ export const useGetLabelDelta = <T>(
 
       return [];
     },
-    [isGenerated, labelConstructor, modalSample, modalSampleSchema, opType]
+    [isGenerated, labelConstructor, sample, modalSampleSchema, opType]
   );
 };
