@@ -1,14 +1,16 @@
 name: Sync develop to community
 
 # Keeps the long-lived `community` branch current with `develop` by merging
-# `develop` into `community` on every push to `develop`. When the merge
-# conflicts, it posts a summary to the #community Slack channel and fails so a
-# maintainer can resolve it on the `community` branch.
+# `develop` into `community` once a day, rather than on every push to
+# `develop`. When the merge conflicts, it posts a summary to the #community
+# Slack channel and fails so a maintainer can resolve it on the `community`
+# branch.
 
 on:
-  push:
-    branches:
-      - develop
+  schedule:
+    # 09:00 America/New_York. GitHub cron runs in UTC and ignores DST, so this
+    # fires at 09:00 during EDT (summer) and 08:00 during EST (winter).
+    - cron: "0 13 * * *"
   workflow_dispatch:
 
 concurrency:
