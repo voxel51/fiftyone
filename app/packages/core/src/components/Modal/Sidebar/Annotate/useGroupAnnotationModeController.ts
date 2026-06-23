@@ -12,13 +12,23 @@ import {
   useSetRecoilState,
 } from "recoil";
 import { useApplyAnnotationSliceVisibility } from "./useApplyAnnotationSliceVisibility";
+import type { AnnotationSliceInfo } from "./useGroupAnnotationSlices";
 import { useGroupAnnotationSlices } from "./useGroupAnnotationSlices";
+
+// Does the current group expose at least one slice we can annotate?
+export const hasApplicableAnnotationSlice = (
+  resolved: AnnotationSliceInfo[] | "loading"
+): boolean =>
+  resolved !== "loading" &&
+  resolved.some(({ isSupported, isMissing }) => isSupported && !isMissing);
 
 const useApplySlice = () => {
   const { request } = useGroupAnnotationSlices();
   const modalGroupSlice = useRecoilValue(fos.modalGroupSlice);
-  const [preferredSlice, setPreferredSlice] =
-    fos.usePreferredGroupAnnotationSlice();
+  const [
+    preferredSlice,
+    setPreferredSlice,
+  ] = fos.usePreferredGroupAnnotationSlice();
 
   const resolveSlice = useRecoilCallback(
     () => async () => {
@@ -87,21 +97,19 @@ export function useGroupAnnotationModeController() {
   );
 
   const applySlice = useApplySlice();
+
+  const appliedRef = useRef(false);
+  const { resolved } = useGroupAnnotationSlices();
+  const hasApplicableSlice = hasApplicableAnnotationSlice(resolved);
+
   const captureVisibility = useCallback((): GroupVisibilityConfigSnapshot => {
-    applySlice();
     return {
       main: mainVisible,
       carousel: carouselVisible,
       threeDViewer: threeDVisible,
       slice: modalGroupSliceValue,
     };
-  }, [
-    applySlice,
-    mainVisible,
-    carouselVisible,
-    threeDVisible,
-    modalGroupSliceValue,
-  ]);
+  }, [mainVisible, carouselVisible, threeDVisible, modalGroupSliceValue]);
 
   const restoreVisibility = useCallback(
     (snapshot: GroupVisibilityConfigSnapshot | null) => {
@@ -121,14 +129,28 @@ export function useGroupAnnotationModeController() {
     const prevMode = prevModeRef.current ?? ModalMode.EXPLORE;
 
     if (prevMode === ModalMode.EXPLORE && mode === ModalMode.ANNOTATE) {
-      // Entering Annotate mode: capture current visibility
+      // Entering Annotate mode: capture current visibility.
       visibilitySnapshotRef.current = captureVisibility();
+      appliedRef.current = false;
     } else if (prevMode === ModalMode.ANNOTATE && mode === ModalMode.EXPLORE) {
       // Returning to Explore mode: restore visibility
       restoreVisibility(visibilitySnapshotRef.current);
       visibilitySnapshotRef.current = null;
+      appliedRef.current = false;
     }
 
     prevModeRef.current = mode;
   }, [mode, captureVisibility, restoreVisibility]);
+
+  // Apply the annotation slice once the group's slices are available.
+  useEffect(() => {
+    if (
+      mode === ModalMode.ANNOTATE &&
+      !appliedRef.current &&
+      hasApplicableSlice
+    ) {
+      appliedRef.current = true;
+      applySlice();
+    }
+  }, [mode, hasApplicableSlice, applySlice]);
 }
