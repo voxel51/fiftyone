@@ -275,10 +275,10 @@ export function usePanelState<T>(
   );
   const computedState = state || defaultState;
 
-  return [computedState, setState];
+  return [computedState, setState] as [typeof computedState, typeof setState];
 }
 
-export function useSetPanelStateById<T>(local?: boolean, scope?: string) {
+export function useSetPanelStateById(local?: boolean, scope?: string) {
   const panelScope = useScope(scope);
   return useRecoilCallback(
     ({ set, snapshot }) =>
@@ -305,7 +305,7 @@ export function usePanelId() {
 }
 
 export function useSetCustomPanelState<T>(local?: boolean) {
-  const [panelState, setPanelState] = usePanelState<T>(null, undefined, local);
+  const [, setPanelState] = usePanelState<T>(null, undefined, local);
   return (fn: (state: T) => T) => {
     setPanelState((panelState) => {
       const customPanelState = fn(panelState?.state || {});
