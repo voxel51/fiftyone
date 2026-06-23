@@ -313,6 +313,10 @@ const pathMap = selector<{ [key: string]: string }>({
   },
 });
 
+export const useLabelsCount = () => {
+  return useAtomValue(labels).length;
+};
+
 /**
  * Returns a callback that updates the {@link AnnotationLabelData} for a label
  * identified by its overlay ID.
