@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-/// <reference types="./env.d.ts" />
+/// <reference path="./env.d.ts" />
 import { ErrorBoundary, ThemeProvider } from "@fiftyone/components";
 import {
   GatedDynamicImports,

@@ -2,7 +2,13 @@ import { Button } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import { useTheme } from "@fiftyone/components";
 
-export default function ComputeVisualizationButton({ variant, onClick }) {
+export default function ComputeVisualizationButton({
+  variant,
+  onClick,
+}: {
+  variant?: string;
+  onClick?: () => void;
+}) {
   const theme = useTheme();
 
   if (variant === "box") {

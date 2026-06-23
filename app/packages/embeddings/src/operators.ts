@@ -8,8 +8,8 @@ export class OpenEmbeddingsPanel extends Operator {
   constructor() {
     super("open-embeddings-panel", "Open Embeddings Panel");
   }
-  useHooks(ctx: ExecutionContext) {
-    const [brainKey, setBrainKey] = useBrainResult();
+  useHooks() {
+    const [, setBrainKey] = useBrainResult();
     return {
       setBrainKey,
     };
@@ -23,6 +23,7 @@ export class OpenEmbeddingsPanel extends Operator {
       label: "Brain Key",
       description: "The brain key to use for the embeddings",
     });
+    return new types.Property(inputs);
   }
   async execute(ctx) {
     const { brainKey } = ctx.params;

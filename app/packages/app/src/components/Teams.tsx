@@ -12,7 +12,7 @@ import {
   Typography,
   useColorScheme,
 } from "@mui/material";
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import styled, { css, keyframes } from "styled-components";
 
 const ENTERPRISE_TOOLTIP_LS = "fiftyone-enterprise-tooltip-seen";
@@ -170,7 +170,7 @@ const BaseEnterpriseButton = styled(Button)<{
             255,
             255,
             255,
-            ${({ isLightMode }) => (isLightMode ? "0.6" : "0.2")}
+            ${({ $isLightMode }) => ($isLightMode ? "0.6" : "0.2")}
           )
           50%,
         rgba(255, 255, 255, 0) 100%
