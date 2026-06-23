@@ -12,6 +12,7 @@ import {
   useSetRecoilState,
 } from "recoil";
 import { useApplyAnnotationSliceVisibility } from "./useApplyAnnotationSliceVisibility";
+import { useGroupAnnotationSliceReady } from "./useGroupAnnotationSliceReady";
 import type { AnnotationSliceInfo } from "./useGroupAnnotationSlices";
 import { useGroupAnnotationSlices } from "./useGroupAnnotationSlices";
 
@@ -25,10 +26,8 @@ export const hasApplicableAnnotationSlice = (
 const useApplySlice = () => {
   const { request } = useGroupAnnotationSlices();
   const modalGroupSlice = useRecoilValue(fos.modalGroupSlice);
-  const [
-    preferredSlice,
-    setPreferredSlice,
-  ] = fos.usePreferredGroupAnnotationSlice();
+  const [preferredSlice, setPreferredSlice] =
+    fos.usePreferredGroupAnnotationSlice();
 
   const resolveSlice = useRecoilCallback(
     () => async () => {
@@ -57,7 +56,11 @@ const useApplySlice = () => {
 
     setPreferredSlice(slice);
     setModalGroupSlice(slice);
-    applyVisibilityForSlice(slice);
+    // Await so the returned promise resolves only after focusSlice has settled
+    // is3dPinned, letting callers know the 2D/3D decision is final.
+    if (slice) {
+      await applyVisibilityForSlice(slice);
+    }
   }, [
     applyVisibilityForSlice,
     resolveSlice,
@@ -102,6 +105,8 @@ export function useGroupAnnotationModeController() {
   const { resolved } = useGroupAnnotationSlices();
   const hasApplicableSlice = hasApplicableAnnotationSlice(resolved);
 
+  const [, setGroupAnnotationSliceReady] = useGroupAnnotationSliceReady();
+
   const captureVisibility = useCallback((): GroupVisibilityConfigSnapshot => {
     return {
       main: mainVisible,
@@ -132,17 +137,26 @@ export function useGroupAnnotationModeController() {
       // Entering Annotate mode: capture current visibility.
       visibilitySnapshotRef.current = captureVisibility();
       appliedRef.current = false;
+      setGroupAnnotationSliceReady(false);
     } else if (prevMode === ModalMode.ANNOTATE && mode === ModalMode.EXPLORE) {
       // Returning to Explore mode: restore visibility
       restoreVisibility(visibilitySnapshotRef.current);
       visibilitySnapshotRef.current = null;
       appliedRef.current = false;
+      setGroupAnnotationSliceReady(false);
     }
 
     prevModeRef.current = mode;
-  }, [mode, captureVisibility, restoreVisibility]);
+  }, [
+    mode,
+    captureVisibility,
+    restoreVisibility,
+    setGroupAnnotationSliceReady,
+  ]);
 
-  // Apply the annotation slice once the group's slices are available.
+  // Apply the annotation slice once the group's slices are available. Mark it
+  // ready only after applySlice settles is3dPinned, so the Actions bar can
+  // withhold the 2D/3D tools until the decision is final (no wrong-tool flash).
   useEffect(() => {
     if (
       mode === ModalMode.ANNOTATE &&
@@ -150,7 +164,7 @@ export function useGroupAnnotationModeController() {
       hasApplicableSlice
     ) {
       appliedRef.current = true;
-      applySlice();
+      applySlice().then(() => setGroupAnnotationSliceReady(true));
     }
-  }, [mode, hasApplicableSlice, applySlice]);
+  }, [mode, hasApplicableSlice, applySlice, setGroupAnnotationSliceReady]);
 }
