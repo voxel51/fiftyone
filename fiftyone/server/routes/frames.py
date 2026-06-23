@@ -21,16 +21,30 @@ from fiftyone.server.decorators import route
 import fiftyone.server.view as fosv
 
 
-def _heavy_frame_paths(view):
-    # exclude large fields (dicts, vectors, logits) from the response
-    frame_schema = view.get_frame_field_schema(flat=True) or {}
-    return [
-        f"frames.{path}"
-        for path, field in frame_schema.items()
-        if isinstance(field, (fof.DictField, fof.VectorField))
-        or path == "logits"
-        or path.endswith(".logits")
-    ]
+def _heavy_frame_paths(schema, prefix=""):
+    # Collect paths to dicts, vectors, and per-label `logits` fields to exclude
+    # from the projection since they aren't exposed in the app anyways. Descends
+    # into label embedded docs to reach nested logits, but stops at any excluded
+    # field so the $project exclusions can't overlap.
+    paths = []
+    for name, field in schema.items():
+        path = f"{prefix}.{name}" if prefix else name
+
+        if (
+            isinstance(field, (fof.DictField, fof.VectorField))
+            or name == "logits"
+        ):
+            paths.append(f"frames.{path}")
+            continue
+
+        nested = field
+        while isinstance(nested, (fof.ListField, fof.DictField)):
+            nested = nested.field
+
+        if isinstance(nested, fof.EmbeddedDocumentField):
+            paths.extend(_heavy_frame_paths(nested.get_field_schema(), path))
+
+    return paths
 
 
 class Frames(HTTPEndpoint):
@@ -69,7 +83,7 @@ class Frames(HTTPEndpoint):
         view = await run_sync_task(run, view)
 
         pipeline = view._pipeline(frames_only=True, support=support)
-        heavy = _heavy_frame_paths(view)
+        heavy = _heavy_frame_paths(view.get_frame_field_schema())
         if heavy:
             pipeline.append({"$project": {path: 0 for path in heavy}})
 
