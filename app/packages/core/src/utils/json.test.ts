@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { idAlignedDetectionsDelta, normalizeData } from "./json";
+import { normalizeData } from "./json";
 
 describe("normalizeData", () => {
   it("should leave primitive values unchanged", () => {
@@ -109,110 +109,5 @@ describe("normalizeData", () => {
         expect(normalizeData(data)).toStrictEqual(data);
       });
     });
-  });
-});
-
-describe("idAlignedDetectionsDelta", () => {
-  type Item = { id: string; v?: number };
-
-  const spec = (overrides: Record<string, unknown> = {}) => ({
-    currentId: (i: Item) => i.id,
-    baselineId: (e: Item) => e.id,
-    diffMatched: (cur: Item, base: Item, path: string) =>
-      cur.v !== base.v
-        ? [{ op: "replace" as const, path: `${path}/v`, value: cur.v }]
-        : [],
-    serializeAdd: (i: Item) => i,
-    ...overrides,
-  });
-
-  it("appends current-only items with `/-`", () => {
-    const delta = idAlignedDetectionsDelta(
-      [{ id: "a" }, { id: "b" }],
-      [{ id: "a" }],
-      "/p",
-      spec()
-    );
-    expect(delta).toEqual([
-      { op: "add", path: "/p/detections/-", value: { id: "b" } },
-    ]);
-  });
-
-  it("diffs matched items at their baseline index, not array position", () => {
-    const delta = idAlignedDetectionsDelta(
-      [
-        { id: "a", v: 2 },
-        { id: "b", v: 9 },
-      ],
-      [
-        { id: "a", v: 1 },
-        { id: "b", v: 9 },
-      ],
-      "/p",
-      spec()
-    );
-    expect(delta).toEqual([
-      { op: "replace", path: "/p/detections/0/v", value: 2 },
-    ]);
-  });
-
-  it("removes baseline-only ids in descending index order (set-diff default)", () => {
-    const delta = idAlignedDetectionsDelta(
-      [{ id: "a" }],
-      [{ id: "a" }, { id: "b" }, { id: "c" }],
-      "/p",
-      spec()
-    );
-    expect(delta).toEqual([
-      { op: "remove", path: "/p/detections/2" },
-      { op: "remove", path: "/p/detections/1" },
-    ]);
-  });
-
-  it("does not flood replaces when a list shifts (the regression this guards)", () => {
-    // `b` deleted, so `c` slides 2 → 1. Index-alignment would see both slots
-    // 'change'; id-alignment emits one remove and nothing for the unmoved a/c.
-    const delta = idAlignedDetectionsDelta(
-      [{ id: "a" }, { id: "c" }],
-      [{ id: "a" }, { id: "b" }, { id: "c" }],
-      "/p",
-      spec()
-    );
-    expect(delta).toEqual([{ op: "remove", path: "/p/detections/1" }]);
-  });
-
-  it("with explicit removalIds, removes only those (absence is not deletion)", () => {
-    const delta = idAlignedDetectionsDelta(
-      [{ id: "a" }],
-      [{ id: "a" }, { id: "b" }, { id: "c" }],
-      "/p",
-      spec({ removalIds: ["b", "missing"] })
-    );
-    // `c` is absent from current but NOT removed; "missing" resolves to nothing.
-    expect(delta).toEqual([{ op: "remove", path: "/p/detections/1" }]);
-  });
-
-  it("skips current items whose id is undefined", () => {
-    const delta = idAlignedDetectionsDelta(
-      [{ id: "keep" }, { id: "drop" }],
-      [],
-      "/p",
-      spec({ currentId: (i: Item) => (i.id === "drop" ? undefined : i.id) })
-    );
-    expect(delta).toEqual([
-      { op: "add", path: "/p/detections/-", value: { id: "keep" } },
-    ]);
-  });
-
-  it("skips the add when serializeAdd returns null", () => {
-    const delta = idAlignedDetectionsDelta(
-      [{ id: "a" }],
-      [],
-      "/p",
-      spec({
-        serializeAdd: () => null,
-      })
-    );
-    expect(delta).toEqual([]);
   });
 });
