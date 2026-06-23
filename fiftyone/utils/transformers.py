@@ -701,7 +701,21 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
         )
 
     def _load_transforms(self, config):
-        processor = super()._load_transforms(config)
+        try:
+            processor = super()._load_transforms(config)
+        except AttributeError:
+            # build the processor from its components
+            from transformers.models.auto.processing_auto import PROCESSOR_MAPPING
+
+            ta = config.transforms_args or {}
+            name = ta.get("pretrained_model_name_or_path") or ta.get("name_or_path")
+            proc_cls = PROCESSOR_MAPPING[
+                type(transformers.AutoConfig.from_pretrained(name))
+            ]
+            processor = proc_cls(
+                image_processor=transformers.AutoImageProcessor.from_pretrained(name),
+                tokenizer=transformers.PreTrainedTokenizerFast.from_pretrained(name),
+            )
         return _HFTransformsHandler(
             processor, **(config.transformers_processor_kwargs)
         )
