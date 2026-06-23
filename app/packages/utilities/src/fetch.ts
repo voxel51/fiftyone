@@ -355,6 +355,7 @@ export const setFetchFunction = (
             ) {
               return true;
             }
+            return false;
           },
         })
       : fetch;
@@ -597,7 +598,15 @@ export const getEventSource = (
             }
 
             throw new ServerError(
-              {},
+              {
+                code: response.status,
+                bodyResponse: JSON.stringify(err),
+                route: response.url,
+                payload: {},
+                requestHeaders: init?.headers ?? {},
+                responseHeaders: response.headers,
+                statusText: response.statusText,
+              },
               (err as unknown as { stack: string }).stack
             );
           }
@@ -681,19 +690,4 @@ const pollingEventSource = (
         2000
       );
     });
-};
-
-const getFirstFilterPath = (requestBody: any) => {
-  if (requestBody && requestBody.query) {
-    if (requestBody.query.includes("paginateSamplesQuery")) {
-      const pathsArray = requestBody?.variables?.filters;
-      const paths = pathsArray ? Object.keys(pathsArray) : [];
-      return paths.length > 0 ? paths[0] : undefined;
-    }
-    if (requestBody.query.includes("lightningQuery")) {
-      const paths = requestBody?.variables?.input?.paths;
-      return paths && paths.length > 0 ? paths[0].path : undefined;
-    }
-  }
-  return undefined;
 };
