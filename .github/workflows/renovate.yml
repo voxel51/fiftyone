@@ -30,10 +30,27 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
+      # Enterprise (package/teams) deps resolve from a private Google Artifact
+      # Registry. Mint a short-lived access token via Workload Identity
+      # Federation; the OSS repo has no such registry, so this is gated off
+      # there and the host rule below resolves to an empty (unused) password.
+      - name: Authenticate to Google Artifact Registry
+        id: gar
+        if: github.repository == 'voxel51/fiftyone-teams'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+          token_format: access_token
       - uses: renovatebot/github-action@v46.1.15
         with:
           token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
-          configurationFile: renovate.json
+          # Each repo keeps its own config: OSS uses renovate.json; the Enterprise
+          # copy uses renovate-foe.json (the synced renovate.json is inert there).
+          configurationFile: ${{ github.repository == 'voxel51/fiftyone-teams' && 'renovate-foe.json' || 'renovate.json' }}
         env:
           RENOVATE_REPOSITORIES: ${{ github.repository }}
           LOG_LEVEL: ${{ inputs.logLevel || 'info' }}
+          # Auth for the private Artifact Registry index (empty/no-op in OSS).
+          RENOVATE_HOST_RULES: >-
+            [{"matchHost":"us-central1-python.pkg.dev","hostType":"pypi","username":"oauth2accesstoken","password":"${{ steps.gar.outputs.access_token }}"}]
