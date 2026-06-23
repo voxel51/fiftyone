@@ -374,9 +374,9 @@ class SampleCollection(object):
     @hide_from_docs
     def temporal_tags(self):
         """The multimodal temporal tags for this collection."""
-        import fiftyone.multimodal as fomm
+        import fiftyone.multimodal.tags._temporal_tags as fota
 
-        return fomm.TemporalTags(self)
+        return fota.TemporalTags(self)
 
     @property
     def _dataset(self):
@@ -7225,9 +7225,9 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        import fiftyone.multimodal as fomm
+        import fiftyone.multimodal.tags._temporal_tags as fota
 
-        tag_filter = fomm.TemporalTagFilter(
+        tag_filter = fota.TemporalTagFilter(
             tags=tags,
             anchors=anchors,
             index_type=index_type,
