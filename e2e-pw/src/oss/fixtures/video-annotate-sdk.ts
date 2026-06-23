@@ -25,13 +25,11 @@ export interface SeedVideoAnnotationOptions {
 }
 
 /**
- * Seeds a video-annotation dataset that mirrors the deployed demo
- * (`setup_video_annotation_demo.py`): a sample-level `detections` field that
- * SHADOWS `frames.detections` (the schema-manager hack the annotation logic
- * relies on), declared frame fields, an active `events` TemporalDetections
- * schema, materialized per-frame images for the ImaVid tile, and
- * empty-but-present `frames.detections` on every frame so the first draw's
- * JSON patch can append.
+ * Seeds a video-annotation dataset: declared frame fields with an active
+ * `frames.detections` annotation schema (keyed by its real frame path), an
+ * active sample-level `events` TemporalDetections schema, materialized per-frame
+ * images for the ImaVid tile, and empty-but-present `frames.detections` on every
+ * frame so the first draw's JSON patch can append.
  */
 export class VideoAnnotateSDK {
   loader: OssLoader;
@@ -65,6 +63,7 @@ EVENT_CLASSES = ${pyEventClasses}
 WITH_EVENTS = ${withEvents ? "True" : "False"}
 TRACKED = set(${pyTracked})
 DETECTIONS_FIELD = "detections"
+FRAME_DETECTIONS_PATH = "frames." + DETECTIONS_FIELD
 EVENTS_FIELD = "events"
 
 if fo.dataset_exists("${datasetName}"):
@@ -90,12 +89,7 @@ dataset.reload()
 # / dimensions).
 dataset.compute_metadata()
 
-# (2) sample-level Detections field that shadows frames.detections.
-dataset.add_sample_field(
-    DETECTIONS_FIELD, fo.EmbeddedDocumentField, embedded_doc_type=fo.Detections
-)
-
-# (3) frame fields the propagation pipeline writes. Declare the parent
+# (2) frame fields the propagation pipeline writes. Declare the parent
 # Detections container first, then the nested specs.
 dataset.add_frame_field(
     DETECTIONS_FIELD, fo.EmbeddedDocumentField, embedded_doc_type=fo.Detections
@@ -177,7 +171,7 @@ for sample in dataset.iter_samples(progress=False, autosave=True):
             if current is None or current.id != inst.id:
                 det.instance = inst
 
-# Active annotation schemas: detections (frame-forwarding shadow) + events.
+# Active annotation schemas: frames.detections + events.
 det_schema = {
     "type": "detections",
     "component": "dropdown",
@@ -190,8 +184,10 @@ det_schema = {
     ],
     "classes": CLASSES,
 }
-dataset.update_label_schema(DETECTIONS_FIELD, det_schema, allow_new_attrs=True)
-dataset.active_label_schemas = [DETECTIONS_FIELD]
+dataset.update_label_schema(
+    FRAME_DETECTIONS_PATH, det_schema, allow_new_attrs=True
+)
+dataset.active_label_schemas = [FRAME_DETECTIONS_PATH]
 
 events_schema = {
     "type": "temporaldetections",
