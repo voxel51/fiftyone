@@ -142,7 +142,7 @@ export function usePanels(
   const panels = useActivePlugins(PluginComponentType.Panel, ctx);
 
   const panelsToReturn = useMemo(() => {
-    const allPanels = plots.concat(panels);
+    const allPanels = [...plots, ...panels];
     if (predicate) {
       return allPanels.filter(predicate);
     }
@@ -305,10 +305,10 @@ export function usePanelId() {
 }
 
 export function useSetCustomPanelState<T>(local?: boolean) {
-  const [, setPanelState] = usePanelState<T>(null, undefined, local);
+  const [, setPanelState] = usePanelState<{ state: T }>(null, undefined, local);
   return (fn: (state: T) => T) => {
     setPanelState((panelState) => {
-      const customPanelState = fn(panelState?.state || {});
+      const customPanelState = fn((panelState?.state || {}) as T);
       const state = fn(customPanelState);
       return { ...panelState, state };
     });
