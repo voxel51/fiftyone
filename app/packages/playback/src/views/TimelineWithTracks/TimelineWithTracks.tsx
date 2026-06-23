@@ -3,7 +3,6 @@ import clsx from "clsx";
 import React, { useMemo, useRef, useState } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import {
-  TIMELINE_DEFAULT_DRAWER_SIZE,
   TIMELINE_DRAWER_MAX_SIZE,
   TIMELINE_LABEL_WIDTH,
 } from "../../lib/constants";
@@ -115,8 +114,6 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
         side="bottom"
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
-        defaultSize={TIMELINE_DEFAULT_DRAWER_SIZE}
-        minSize={0}
         maxSize={maxSize}
         mode="push"
         header={({ toggle }) => (
