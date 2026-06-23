@@ -7,8 +7,10 @@ import {
   getFrameNumberAtom,
   getPlayheadStateAtom,
   getTimelineConfigAtom,
+  removeSubscriberAtom,
   SequenceTimelineSubscription,
   setFrameNumberAtom,
+  SubscriptionId,
   TimelineName,
   updatePlayheadStateAtom,
   updateTimelineConfigAtom,
@@ -44,6 +46,7 @@ export const useTimeline = (name?: TimelineName) => {
   const playHeadState = useAtomValue(getPlayheadStateAtom(timelineName));
   const setPlayheadStateWrapper = useSetAtom(updatePlayheadStateAtom);
   const subscribeImpl = useSetAtom(addSubscriberAtom);
+  const unsubscribeImpl = useSetAtom(removeSubscriberAtom);
   const updateConfig = useSetAtom(updateTimelineConfigAtom);
 
   useEffect(() => {
@@ -130,6 +133,13 @@ export const useTimeline = (name?: TimelineName) => {
     [subscribeImpl, timelineName]
   );
 
+  const unsubscribe = useCallback(
+    (id: SubscriptionId) => {
+      unsubscribeImpl({ name: timelineName, id });
+    },
+    [unsubscribeImpl, timelineName]
+  );
+
   return {
     config: leanConfig,
     isTimelineInitialized,
@@ -169,5 +179,10 @@ export const useTimeline = (name?: TimelineName) => {
      * Subscribe to the timeline for frame updates.
      */
     subscribe,
+    /**
+     * Remove a previously-added subscription by id. Pairs with `subscribe` for
+     * consumers that outlive a single render and need explicit teardown.
+     */
+    unsubscribe,
   };
 };

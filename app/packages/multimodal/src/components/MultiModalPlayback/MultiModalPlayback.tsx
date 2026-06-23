@@ -62,7 +62,9 @@ export interface MultiModalPlaybackProps {
    */
   onTagCreate?: TemporalTagTimelineProps["onTagCreate"];
   /** Callback that deletes an existing temporal tag by its backend id. */
-  onTagDelete?: TemporalTagTimelineProps["onEventDelete"];
+  onTagDelete?: NonNullable<
+    TemporalTagTimelineProps["eventDeleteConfig"]
+  >["onDelete"];
 
   /**
    * Rendered inside the providers this component owns. Use it for
@@ -123,10 +125,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
 }) => {
   return (
     <PlaybackProvider>
-      <TrackProvider
-        initialTracks={tracks}
-        initialPinnedIds={defaultPinnedTrackIds}
-      >
+      <TrackProvider tracks={tracks} initialPinnedIds={defaultPinnedTrackIds}>
         <SceneInventoryProvider sources={sceneSources}>
           <TilingProvider initialTiles={initialTiles}>
             {children}
@@ -217,7 +216,11 @@ function Layout({
 
       <TemporalTagTimeline
         onTagCreate={onTagCreate}
-        onEventDelete={onTagDelete}
+        eventDeleteConfig={
+          onTagDelete
+            ? { label: "Delete tag", onDelete: onTagDelete }
+            : undefined
+        }
       />
     </div>
   );
