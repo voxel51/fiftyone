@@ -7424,16 +7424,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/mapbox-gl@npm:*, @types/mapbox-gl@npm:>=1.0.0":
-  version: 3.1.0
-  resolution: "@types/mapbox-gl@npm:3.1.0"
-  dependencies:
-    "@types/geojson": "npm:*"
-  checksum: 10/f748f05f5fb32b91632f4f5d176f9ddc767e3913c31f43dbf905ffb5fe6628b52d388043a787fffb6e8b69187addca3624339edf238ec4eb249e37821ed9621f
-  languageName: node
-  linkType: hard
-
-"@types/mapbox-gl@npm:^2.7.4":
+"@types/mapbox-gl@npm:2.7.21":
   version: 2.7.21
   resolution: "@types/mapbox-gl@npm:2.7.21"
   dependencies:
