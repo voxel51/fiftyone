@@ -6,7 +6,8 @@ import { getFetchFunction, type Schema } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { VariablesOf } from "react-relay";
 import type { RecoilValueReadOnly } from "recoil";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
+import { gridSpineTotal } from "./recoil";
 import type { Records } from "./useRecords";
 
 export const PAGE_SIZE = 40;
@@ -60,11 +61,14 @@ const processSamplePageData = (
   rows: fos.SampleRow[],
   schema: Schema,
   zoom: boolean,
-  records: Map<string, number>
+  records: Map<string, number>,
+  groupFields: string | string[] | undefined
 ) => {
   return rows.map((row, i) => {
     // assemble the runtime sample from the projected field slice
     const node = { ...row, sample: row.fields } as GridNode;
+    // rebuild `_group` here, where `node.sample` exists (a raw row has only `.fields`)
+    reconstructGroup(node, groupFields, schema);
     const id = { description: node.id };
 
     store.set(id, node);
@@ -81,7 +85,7 @@ const processSamplePageData = (
         ? zoomAspectRatio(node.sample, schema, aspectRatio)
         : aspectRatio,
       id,
-      data: node as fos.Sample,
+      data: node as unknown as fos.Sample,
     };
   });
 };
@@ -131,20 +135,34 @@ const fieldsWithGroup = (
   return Array.from(new Set([...base, ...extra]));
 };
 
+// Reads a group-by field's value off a returned sample by its db field name —
+// FiftyOne stores some fields (e.g. `sample_id`) under a different db key
+// (`_sample_id`), so the document key isn't always the field name.
+const groupFieldValue = (
+  s: Record<string, unknown>,
+  field: string,
+  schema: Schema | undefined
+): unknown => {
+  const dbField = schema?.[field]?.dbField;
+  if (dbField && s[dbField] !== undefined) return s[dbField];
+  return s[field];
+};
+
 // rebuilds the `_group` key the ImaVid looker needs from the group-by field values
 // (GroupBy was stripped server-side for speed)
 const reconstructGroup = (
   node: GridNode,
-  groupFields: string | string[] | undefined
+  groupFields: string | string[] | undefined,
+  schema: Schema | undefined
 ) => {
   if (!groupFields || !node.sample) return;
   const s = node.sample as Record<string, unknown>;
   node.sample = {
     ...s,
     _group: Array.isArray(groupFields)
-      ? groupFields.map((f) => s[f])
-      : s[groupFields],
-  } as typeof node.sample;
+      ? groupFields.map((f) => groupFieldValue(s, f, schema))
+      : groupFieldValue(s, groupFields, schema),
+  } as unknown as typeof node.sample;
 };
 
 const useSpotlightPager = ({
@@ -162,6 +180,9 @@ const useSpotlightPager = ({
 }) => {
   const pager = useRecoilValue(pageSelector);
   const zoom = useRecoilValue(zoomSelector);
+  // auto-AR publishes the spine's group total here so the counter shows groups, not
+  // raw samples; fixed-AR's InfiniteGrid publishes the same atom.
+  const setSpineTotal = useSetRecoilState(gridSpineTotal);
   const store: SampleStore = useMemo(() => new WeakMap(), []);
   // shared id-keyed sample cache the modal reads, so opening a hydrated grid sample
   // in the modal needs no query
@@ -193,62 +214,6 @@ const useSpotlightPager = ({
     };
   }, [clearRecords]);
 
-  // cursor pager for the Spotlight engine path (auto aspect ratio); the fixed-AR
-  // infinite grid uses ensureSpineWindow/hydrateWindow instead
-  const page = useRecoilCallback(
-    ({ snapshot }) => {
-      return async (
-        pageNumber: number
-      ): Promise<Response<number, fos.Sample>> => {
-        const schema = await snapshot.getPromise(
-          fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
-        );
-        const datasetId = await snapshot.getPromise(fos.datasetId);
-        const gridFields = await snapshot.getPromise(fos.gridSampleFields);
-        pages.add(pageNumber);
-        if (!datasetId) return { items: [], next: null, previous: null };
-
-        const base = pager(0, PAGE_SIZE) as unknown as Record<string, unknown>;
-        const { view, groupFields, orderBy } = stripGroupBy(base);
-        const fields = fieldsWithGroup(gridFields, groupFields, orderBy);
-
-        const rows = await fos.fetchSamples({
-          datasetId,
-          after: pageNumber * PAGE_SIZE,
-          count: PAGE_SIZE,
-          fields,
-          view,
-          filters: base.filters,
-          sortBy: base.sortBy as string | undefined,
-          desc: base.desc as boolean | undefined,
-          hint: base.hint as string | undefined,
-          // auto-AR sizes each tile by its own ratio, so the server must compute it
-          skipMetadata: base.skipMetadata as boolean | undefined,
-        });
-
-        for (const row of rows) reconstructGroup(row as GridNode, groupFields);
-
-        const items = processSamplePageData(
-          pageNumber,
-          store,
-          rows,
-          schema,
-          zoom,
-          records
-        );
-        for (const item of items) keys.current.add(item.id.description);
-
-        // a full page implies there may be more; a short page is the end.
-        return {
-          items,
-          next: rows.length === PAGE_SIZE ? pageNumber + 1 : null,
-          previous: pageNumber > 0 ? pageNumber - 1 : null,
-        };
-      };
-    },
-    [pager, pages, records, store, zoom]
-  );
-
   // coalesces a settle's visible tile hydrations into one batched read narrowed to
   // the window ids; returns the built nodes by id (response order doesn't matter)
   const hydrate = useRef<{
@@ -274,6 +239,9 @@ const useSpotlightPager = ({
                 // indexed `$match {_id: $in}` instead of re-grouping the collection
                 const datasetId = await snapshot.getPromise(fos.datasetId);
                 if (!datasetId) return resolve(out);
+                const schema = await snapshot.getPromise(
+                  fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
+                );
                 const gridFields = await snapshot.getPromise(
                   fos.gridSampleFields
                 );
@@ -305,7 +273,7 @@ const useSpotlightPager = ({
                 for (const row of rows) {
                   // assemble the runtime sample from the projected field slice
                   const node = { ...row, sample: row.fields } as GridNode;
-                  reconstructGroup(node, groupFields);
+                  reconstructGroup(node, groupFields, schema);
                   out.set(node.id, node);
                   // mirror into the shared cache so the modal renders this sample
                   // with zero queries
@@ -408,6 +376,113 @@ const useSpotlightPager = ({
   // the view's item count once the spine reaches its end, else null; the grid clamps
   // its layout to this so a filtered view isn't sized to the whole dataset
   const spineTotal = useCallback(() => spine.total, [spine]);
+
+  // Cursor pager for the Spotlight engine path (auto-AR). Flat views take a single
+  // offset read; dynamic groups group via the cached spine (no per-page re-group),
+  // then fetch those posters by id (indexed `$match`) with media for per-tile ratios.
+  const page = useRecoilCallback(
+    ({ snapshot }) =>
+      async (pageNumber: number): Promise<Response<number, fos.Sample>> => {
+        const schema = await snapshot.getPromise(
+          fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
+        );
+        const datasetId = await snapshot.getPromise(fos.datasetId);
+        const gridFields = await snapshot.getPromise(fos.gridSampleFields);
+        pages.add(pageNumber);
+        if (!datasetId) return { items: [], next: null, previous: null };
+
+        const start = pageNumber * PAGE_SIZE;
+        const base = pager(0, PAGE_SIZE) as unknown as Record<string, unknown>;
+        const { view, groupFields, orderBy } = stripGroupBy(base);
+        const fields = fieldsWithGroup(gridFields, groupFields, orderBy);
+
+        let rows: fos.SampleRow[];
+        let hasMore: boolean;
+
+        if (groupFields) {
+          // dynamic group: group via the cached spine (no per-page re-group), then
+          // fetch those posters by id (indexed `$match {_id:$in}`), opening media so
+          // auto-AR has per-tile ratios. `_group` is rebuilt per poster downstream.
+          const spineEntries = await ensureSpineWindow(start, PAGE_SIZE);
+          // publish the accurate GROUP total — the counter must never show raw samples
+          setSpineTotal(spineTotal());
+          if (!spineEntries.length) {
+            return {
+              items: [],
+              next: null,
+              previous: pageNumber > 0 ? pageNumber - 1 : null,
+            };
+          }
+          const ids = spineEntries.map((e) => e.id);
+          const fetched = await fos.fetchSamples({
+            datasetId,
+            ids,
+            count: ids.length,
+            fields,
+            view,
+            filters: base.filters,
+            sortBy: base.sortBy as string | undefined,
+            desc: base.desc as boolean | undefined,
+            hint: base.hint as string | undefined,
+            skipMetadata: false,
+          });
+          // fetch-by-id is unordered; restore the spine's group order
+          const byId = new Map(fetched.map((r) => [r.id, r]));
+          rows = ids
+            .map((id) => byId.get(id))
+            .filter(Boolean) as fos.SampleRow[];
+          const total = spineTotal();
+          hasMore =
+            total != null
+              ? start + PAGE_SIZE < total
+              : spineEntries.length === PAGE_SIZE;
+        } else {
+          // flat view: a single offset read — no extra spine round-trip. Its count
+          // comes from the aggregation, so don't drive the spine-total atom.
+          setSpineTotal(null);
+          rows = await fos.fetchSamples({
+            datasetId,
+            after: start,
+            count: PAGE_SIZE,
+            fields,
+            view,
+            filters: base.filters,
+            sortBy: base.sortBy as string | undefined,
+            desc: base.desc as boolean | undefined,
+            hint: base.hint as string | undefined,
+            skipMetadata: base.skipMetadata as boolean | undefined,
+          });
+          hasMore = rows.length === PAGE_SIZE;
+        }
+
+        const items = processSamplePageData(
+          pageNumber,
+          store,
+          rows,
+          schema,
+          zoom,
+          records,
+          groupFields
+        );
+        for (const item of items) keys.current.add(item.id.description);
+
+        return {
+          items,
+          next: hasMore ? pageNumber + 1 : null,
+          previous: pageNumber > 0 ? pageNumber - 1 : null,
+        };
+      },
+    [
+      pager,
+      pages,
+      records,
+      store,
+      zoom,
+      ensureSpineWindow,
+      spineTotal,
+      setSpineTotal,
+    ]
+  );
 
   return {
     page,
