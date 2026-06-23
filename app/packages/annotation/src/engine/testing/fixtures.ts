@@ -7,6 +7,7 @@ import type { Field, LabelData, Schema } from "@fiftyone/utilities";
 import { Sample } from "@fiftyone/utilities";
 
 import { AnnotationEngine } from "../core/engine";
+import type { UndoEntry } from "../core/undoStack";
 import type { LabelRef } from "../identity/ref";
 import { SampleLabelStore } from "../store/sampleLabelStore";
 
@@ -74,3 +75,61 @@ export const ref = (
   instanceId: string,
   sample = "sample-1"
 ): LabelRef => ({ sample, path, instanceId });
+
+/**
+ * A minimal LIFO navigator over the engine's commit/drop emissions, mirroring
+ * the global command stack. Tests drive undo/redo through it instead of the
+ * engine (the engine produces + applies entries; it no longer navigates).
+ */
+export const createUndoNavigator = (engine: AnnotationEngine) => {
+  const undos: UndoEntry[] = [];
+  const redos: UndoEntry[] = [];
+
+  engine.subscribeUndoableCommit((entry, coalesced) => {
+    if (coalesced) {
+      return;
+    }
+
+    undos.push(entry);
+    redos.length = 0;
+  });
+
+  engine.subscribeUndoableDrop((ids) => {
+    const dropped = new Set(ids);
+    const prune = (stack: UndoEntry[]) => {
+      for (let i = stack.length - 1; i >= 0; i--) {
+        if (dropped.has(stack[i].id)) {
+          stack.splice(i, 1);
+        }
+      }
+    };
+
+    prune(undos);
+    prune(redos);
+  });
+
+  return {
+    undo() {
+      const entry = undos.pop();
+
+      if (entry) {
+        engine.applyUndo(entry);
+        redos.push(entry);
+      }
+    },
+    redo() {
+      const entry = redos.pop();
+
+      if (entry) {
+        engine.applyRedo(entry);
+        undos.push(entry);
+      }
+    },
+    canUndo() {
+      return undos.length > 0;
+    },
+    canRedo() {
+      return redos.length > 0;
+    },
+  };
+};

@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { makeDet, makeEngine, makeStore, ref } from "../testing/fixtures";
+import {
+  createUndoNavigator,
+  makeDet,
+  makeEngine,
+  makeStore,
+  ref,
+} from "../testing/fixtures";
 import { isWholeSampleReset } from "../store/types";
 import type {
   PresenceEvent,
@@ -134,6 +140,7 @@ describe("engine transactions", () => {
     const { engine } = makeEngine("sample-1", {
       ground_truth: { detections: [makeDet("d1", "cat")] },
     });
+    const nav = createUndoNavigator(engine);
     const listener = vi.fn();
     engine.subscribeChanges(listener);
 
@@ -151,7 +158,7 @@ describe("engine transactions", () => {
       engine.listLabels({ sample: "sample-1", path: "ground_truth" })
     ).toHaveLength(1);
     expect(engine.isDirty()).toBe(false);
-    expect(engine.canUndo()).toBe(false);
+    expect(nav.canUndo()).toBe(false);
   });
 
   it("nested transactions join the outermost", () => {
@@ -189,13 +196,14 @@ describe("engine transactions", () => {
 
   it("bare mutators are implicit one-op transactions", () => {
     const { engine } = makeEngine();
+    const nav = createUndoNavigator(engine);
     const listener = vi.fn();
     engine.subscribeChanges(listener);
 
     engine.updateLabel(ref("ground_truth", "d1"), { label: "cat" });
 
     expect(listener).toHaveBeenCalledTimes(1);
-    expect(engine.canUndo()).toBe(true);
+    expect(nav.canUndo()).toBe(true);
   });
 
   it("throws on writes from within a change subscriber", () => {
@@ -216,24 +224,25 @@ describe("engine transactions", () => {
   });
 });
 
-describe("engine undo", () => {
+describe("engine undo (driven through the commit/drop emission contract)", () => {
   it("undoes and redoes a value edit exactly (replace, not merge)", () => {
     const { engine } = makeEngine("sample-1", {
       ground_truth: { detections: [makeDet("d1", "cat")] },
     });
+    const nav = createUndoNavigator(engine);
 
     engine.updateLabel(ref("ground_truth", "d1"), {
       label: "dog",
       confidence: 0.9,
     });
 
-    engine.undo();
+    nav.undo();
     // the added `confidence` field must not survive the undo
     expect(engine.getLabel(ref("ground_truth", "d1"))).toEqual(
       makeDet("d1", "cat")
     );
 
-    engine.redo();
+    nav.redo();
     expect(engine.getLabel(ref("ground_truth", "d1"))).toMatchObject({
       label: "dog",
       confidence: 0.9,
@@ -244,6 +253,7 @@ describe("engine undo", () => {
     const { engine } = makeEngine("sample-1", {
       ground_truth: { detections: [makeDet("d1", "cat")] },
     });
+    const nav = createUndoNavigator(engine);
 
     const created = engine.createLabel("ground_truth", {
       _cls: "Detection",
@@ -251,13 +261,13 @@ describe("engine undo", () => {
     });
     engine.deleteLabel(ref("ground_truth", "d1"));
 
-    engine.undo(); // restore d1
+    nav.undo(); // restore d1
     expect(engine.getLabel(ref("ground_truth", "d1"))?.label).toBe("cat");
 
-    engine.undo(); // delete the created label
+    nav.undo(); // delete the created label
     expect(engine.getLabel(created)).toBeUndefined();
 
-    engine.redo();
+    nav.redo();
     expect(engine.getLabel(created)?.label).toBe("bird");
   });
 
@@ -265,23 +275,25 @@ describe("engine undo", () => {
     const { engine } = makeEngine("sample-1", {
       ground_truth: { detections: [makeDet("d1", "cat")] },
     });
+    const nav = createUndoNavigator(engine);
 
     engine.transaction(() => {
       engine.updateLabel(ref("ground_truth", "d1"), { label: "dog" });
       engine.createLabel("ground_truth", { label: "bird" });
     });
 
-    engine.undo();
+    nav.undo();
     expect(engine.getLabel(ref("ground_truth", "d1"))?.label).toBe("cat");
     expect(
       engine.listLabels({ sample: "sample-1", path: "ground_truth" })
     ).toHaveLength(1);
   });
 
-  it("coalesces consecutive units sharing an undoKey", () => {
+  it("coalesces consecutive units sharing an undoKey into one entry", () => {
     const { engine } = makeEngine("sample-1", {
       ground_truth: { detections: [makeDet("d1", "cat")] },
     });
+    const nav = createUndoNavigator(engine);
 
     for (const confidence of [0.1, 0.5, 0.9]) {
       engine.transaction(
@@ -290,11 +302,11 @@ describe("engine undo", () => {
       );
     }
 
-    engine.undo();
+    nav.undo();
     expect(engine.getLabel(ref("ground_truth", "d1"))).toEqual(
       makeDet("d1", "cat")
     );
-    expect(engine.canUndo()).toBe(false);
+    expect(nav.canUndo()).toBe(false);
   });
 
   it("mintGestureId yields unique keys that coalesce a gesture's commits", () => {
@@ -303,6 +315,7 @@ describe("engine undo", () => {
         detections: [makeDet("d1", "cat"), makeDet("d2", "dog")],
       },
     });
+    const nav = createUndoNavigator(engine);
 
     const a = engine.mintGestureId();
     const b = engine.mintGestureId();
@@ -317,24 +330,25 @@ describe("engine undo", () => {
       undoKey: a,
     });
 
-    engine.undo();
+    nav.undo();
     expect(engine.getLabel(ref("ground_truth", "d1"))?.label).toBe("cat");
     expect(engine.getLabel(ref("ground_truth", "d2"))).toEqual(
       makeDet("d2", "dog")
     );
-    expect(engine.canUndo()).toBe(false);
+    expect(nav.canUndo()).toBe(false);
   });
 
-  it("does not record undo/redo replays or no-op transactions", () => {
+  it("does not record applied replays or no-op transactions", () => {
     const { engine } = makeEngine();
+    const nav = createUndoNavigator(engine);
 
     engine.transaction(() => undefined);
-    expect(engine.canUndo()).toBe(false);
+    expect(nav.canUndo()).toBe(false);
 
     engine.updateLabel(ref("ground_truth", "d1"), { label: "cat" });
-    engine.undo();
-    expect(engine.canUndo()).toBe(false);
-    expect(engine.canRedo()).toBe(true);
+    nav.undo();
+    expect(nav.canUndo()).toBe(false);
+    expect(nav.canRedo()).toBe(true);
   });
 
   it("preserves undo history across a whole-sample reset", () => {
@@ -345,21 +359,23 @@ describe("engine undo", () => {
     const { engine, store } = makeEngine("s1", {
       ground_truth: { detections: [makeDet("d1", "cat")] },
     });
+    const nav = createUndoNavigator(engine);
 
     engine.updateLabel(ref("ground_truth", "d1", "s1"), { label: "dog" });
-    expect(engine.canUndo()).toBe(true);
+    expect(nav.canUndo()).toBe(true);
 
     store.setData({ ground_truth: { detections: [makeDet("d1", "dog")] } });
-    expect(engine.canUndo()).toBe(true);
+    expect(nav.canUndo()).toBe(true);
 
-    engine.undo();
+    nav.undo();
     expect(engine.getLabel(ref("ground_truth", "d1", "s1"))?.label).toBe("cat");
   });
 
-  it("rollbackEntry applies and drops a specific entry", () => {
+  it("rollbackEntry applies and drops a specific entry (pruning the navigator)", () => {
     const { engine } = makeEngine("sample-1", {
       ground_truth: { detections: [makeDet("d1", "cat")] },
     });
+    const nav = createUndoNavigator(engine);
 
     engine.deleteLabel(ref("ground_truth", "d1"));
     const entry = engine.lastUndoEntry();
@@ -367,8 +383,34 @@ describe("engine undo", () => {
     engine.rollbackEntry(entry!);
 
     expect(engine.getLabel(ref("ground_truth", "d1"))?.label).toBe("cat");
-    expect(engine.canUndo()).toBe(false);
-    expect(engine.canRedo()).toBe(false);
+    expect(nav.canUndo()).toBe(false);
+    expect(nav.canRedo()).toBe(false);
+  });
+
+  it("emits a coalesced flag and drop ids on the emission channels", () => {
+    const { engine, unregister } = makeEngine("sample-1", {
+      ground_truth: { detections: [makeDet("d1", "cat")] },
+    });
+    const commits: boolean[] = [];
+    const drops: string[][] = [];
+    engine.subscribeUndoableCommit((_entry, coalesced) =>
+      commits.push(coalesced)
+    );
+    engine.subscribeUndoableDrop((ids) => drops.push(ids));
+
+    engine.transaction(
+      () => engine.updateLabel(ref("ground_truth", "d1"), { confidence: 0.1 }),
+      { undoKey: "g" }
+    );
+    engine.transaction(
+      () => engine.updateLabel(ref("ground_truth", "d1"), { confidence: 0.9 }),
+      { undoKey: "g" }
+    );
+    expect(commits).toEqual([false, true]);
+
+    unregister();
+    expect(drops).toHaveLength(1);
+    expect(drops[0]).toHaveLength(1);
   });
 });
 
@@ -457,24 +499,26 @@ describe("store unregistration sweep", () => {
     const { engine, unregister } = makeEngine("s1", {
       ground_truth: { detections: [makeDet("d1", "cat")] },
     });
+    const nav = createUndoNavigator(engine);
 
     engine.updateLabel(ref("ground_truth", "d1", "s1"), { label: "dog" });
     engine.interaction.setActive([ref("ground_truth", "d1", "s1")]);
     engine.interaction.setHovered(ref("ground_truth", "d1", "s1"), true);
-    expect(engine.canUndo()).toBe(true);
+    expect(nav.canUndo()).toBe(true);
 
     unregister();
 
     expect(engine.interaction.getActive()).toEqual([]);
     expect(engine.interaction.getAnchor()).toBeUndefined();
     expect(engine.interaction.getHovered()).toEqual([]);
-    expect(engine.canUndo()).toBe(false);
+    expect(nav.canUndo()).toBe(false);
   });
 
   it("sweeps only the departed sample — survivors keep selection and undo", () => {
     const { engine } = makeEngine("s1", {
       ground_truth: { detections: [makeDet("d1", "cat")] },
     });
+    const nav = createUndoNavigator(engine);
     const second = makeStore("s2", {
       ground_truth: { detections: [makeDet("d9", "dog")] },
     });
@@ -495,10 +539,10 @@ describe("store unregistration sweep", () => {
     expect(engine.interaction.getAnchor()).toEqual(
       ref("ground_truth", "d1", "s1")
     );
-    expect(engine.canUndo()).toBe(true);
-    engine.undo();
+    expect(nav.canUndo()).toBe(true);
+    nav.undo();
     expect(engine.getLabel(ref("ground_truth", "d1", "s1"))?.label).toBe("cat");
-    expect(engine.canUndo()).toBe(false);
+    expect(nav.canUndo()).toBe(false);
   });
 
   it("dispatches no label changes and notifies interaction once", () => {

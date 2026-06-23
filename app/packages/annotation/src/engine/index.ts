@@ -37,7 +37,13 @@ export { VideoLabelStore } from "./store/videoLabelStore";
 // engine facade
 export type { ScopedEngine } from "./core/engine";
 export { AnnotationEngine } from "./core/engine";
-export type { UndoEntry, UndoOp } from "./core/undoStack";
+export type {
+  UndoCommitListener,
+  UndoDropListener,
+  UndoEntry,
+  UndoOp,
+} from "./core/undoStack";
+export { describeEntry } from "./core/undoStack";
 
 // interaction
 export type { InteractionState } from "./interaction/interactionState";

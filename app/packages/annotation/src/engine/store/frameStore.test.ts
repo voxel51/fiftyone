@@ -16,6 +16,7 @@ import { AnnotationEngine } from "../core/engine";
 import type { LabelRef } from "../identity/ref";
 import { FrameTemporalView } from "../temporal/frameTemporalView";
 import type { Clock } from "../temporal/types";
+import { createUndoNavigator } from "../testing/fixtures";
 import type { FramesData } from "./frameStore";
 import { FrameStore } from "./frameStore";
 
@@ -163,11 +164,12 @@ describe("FrameStore through the engine: transactions + undo", () => {
     const { engine, store } = makeEngine({
       1: { [PATH]: [det("doc-1", "A", [0, 0, 1, 1], "cat")] },
     });
+    const nav = createUndoNavigator(engine);
 
     engine.updateLabel(ref("A", 1), { label: "dog" });
     expect(store.getLabel(ref("A", 1))?.label).toBe("dog");
 
-    engine.undo();
+    nav.undo();
     expect(store.getLabel(ref("A", 1))?.label).toBe("cat");
     expect(store.getLabel(ref("A", 1))?._id).toBe("doc-1"); // identity survives undo
   });
