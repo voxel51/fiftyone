@@ -18,13 +18,18 @@ concurrency:
   group: renovate
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   renovate:
-    # Only the OSS repo runs Renovate; the synced Enterprise copy is inert.
-    if: github.repository == 'voxel51/fiftyone'
+    # RENOVATE_REPOSITORIES below scopes each run to whichever repo it's
+    # executing in — the OSS repo or its synced Enterprise copy.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: renovatebot/github-action@v46.1.15
         with:
           token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
