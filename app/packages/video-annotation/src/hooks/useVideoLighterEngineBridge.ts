@@ -11,6 +11,7 @@ import {
 import { useCallback } from "react";
 import { useDatasetId } from "../state/accessors";
 import { useCurrentFrameGetter } from "../state/useCurrentFrame";
+import { stashEstablishKey } from "../sync/establishKeyRelay";
 
 /**
  * Mount the video canvas on the annotation engine. The tile's Lighter scene
@@ -48,5 +49,13 @@ export const useVideoLighterEngineBridge = (): void => {
   // field; sample-level temporal-detections carry no Lighter adapter, so the
   // loop's kind filter drops them from hydration, but their select/hover events
   // still route through the bridge (frame-less ref, instanceId == the TD `_id`).
-  useLighterEngineBridge({ engine, sample, dataset, frameOf });
+  // Stash each draw's gesture key by overlay id so the auto-extend can fold its
+  // filler into the draw's undo unit (one Ctrl-Z removes the whole drawn track).
+  useLighterEngineBridge({
+    engine,
+    sample,
+    dataset,
+    frameOf,
+    onEstablishCommit: stashEstablishKey,
+  });
 };

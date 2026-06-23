@@ -21,6 +21,7 @@ import { useVideoSurfaceActions } from "../hooks/useVideoSurfaceActions";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 import { autoExtendTargetFrames } from "../tracks/autoExtend";
 import { useCurrentEditingOverlay } from "../state/accessors";
+import { takeEstablishKey } from "./establishKeyRelay";
 
 /** Schema-driven TD check: a field whose label type is a temporal detection. */
 const isTemporalDetectionType = (type: LabelType): boolean =>
@@ -100,47 +101,57 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
   //     single keyframe, so a later propagate/auto-lerp fills these in place.
   useEventHandler(
     "lighter:overlay-establish",
-    useCallback(() => {
-      if (!stream) {
-        return;
-      }
-
-      queueMicrotask(() => {
-        const anchor = engine.interaction.getAnchor();
-
-        if (!anchor || anchor.frame == null) {
+    useCallback(
+      (payload) => {
+        if (!stream) {
           return;
         }
 
-        const source = engine.getLabel(anchor);
+        queueMicrotask(() => {
+          // The bridge stashed this draw's gesture key by overlay id during its
+          // synchronous establish commit; take it (consume-once) so the auto-extend
+          // folds into the draw's undo unit. Microtask order guarantees the stash
+          // ran first, and it's keyed by identity — no engine-last-entry guess.
+          const drawUndoKey = takeEstablishKey(payload.overlayId);
+          const anchor = engine.interaction.getAnchor();
 
-        if (!source) {
-          return;
-        }
+          if (!anchor || anchor.frame == null) {
+            return;
+          }
 
-        clear();
+          const source = engine.getLabel(anchor);
 
-        // boxes only — a fresh draw of another label kind isn't a track
-        if (!Array.isArray(source.bounding_box)) {
-          return;
-        }
+          if (!source) {
+            return;
+          }
 
-        const targetFrames = autoExtendTargetFrames(
-          anchor.frame,
-          stream.totalFrames
-        );
+          clear();
 
-        if (targetFrames.length === 0) {
-          return;
-        }
+          // boxes only — a fresh draw of another label kind isn't a track
+          if (!Array.isArray(source.bounding_box)) {
+            return;
+          }
 
-        surfaceActions.extendTrack(
-          anchor.instanceId,
-          anchor.frame,
-          targetFrames
-        );
-      });
-    }, [clear, engine, surfaceActions, stream])
+          const targetFrames = autoExtendTargetFrames(
+            anchor.frame,
+            stream.totalFrames
+          );
+
+          if (targetFrames.length === 0) {
+            return;
+          }
+
+          // fold the filler into the draw's undo unit (key taken above)
+          surfaceActions.extendTrack(
+            anchor.instanceId,
+            anchor.frame,
+            targetFrames,
+            drawUndoKey
+          );
+        });
+      },
+      [clear, engine, surfaceActions, stream]
+    )
   );
 
   useEventHandler(
@@ -159,7 +170,11 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
           editingOverlay.id === payload.id &&
           isTemporalDetectionType(engine.getLabelType(editingOverlay.field))
         ) {
-          exit();
+          // `overlay-removed` fires synchronously inside the engine's delete
+          // dispatch; `exit()` writes `engine.interaction.setActive([])`, so
+          // defer it outside the dispatch — a subscriber must never write back
+          // to the engine.
+          queueMicrotask(() => exit());
         }
       },
       [engine, exit, editingOverlay]

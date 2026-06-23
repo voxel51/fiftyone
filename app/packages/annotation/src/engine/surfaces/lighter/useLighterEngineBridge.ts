@@ -37,6 +37,7 @@ export const useLighterEngineBridge = ({
   resolveMediaUrl,
   interactionPolicy,
   frameOf,
+  onEstablishCommit,
   enabled = true,
 }: {
   engine: AnnotationEngine;
@@ -62,6 +63,14 @@ export const useLighterEngineBridge = ({
    * image/3D — refs stay frame-agnostic.
    */
   frameOf?: (path: string) => number | undefined;
+  /**
+   * Called right after a freshly-drawn overlay is committed + selected, with its
+   * overlay id and the gesture `undoKey` the commit landed under. A surface uses
+   * it to fold a follow-up write into the draw's single undo unit (the video
+   * auto-extend), keyed by overlay id rather than reading the engine's last
+   * entry. Omitted by image/3D.
+   */
+  onEstablishCommit?: (overlayId: string, undoKey: string) => void;
   /**
    * Gate the whole surface off without violating hook order: a disabled bridge
    * registers nothing AND binds its gesture handlers to the inert sentinel
@@ -179,6 +188,7 @@ export const useLighterEngineBridge = ({
         overlay instanceof DetectionOverlay && overlay.hasMask();
       const key = gestureKeyFor(event.overlayId, expectsMaskTail);
       surface.commit(overlay, { undoKey: key });
+      return key;
     },
     [gestureKeyFor, scene, surface]
   );
@@ -209,14 +219,18 @@ export const useLighterEngineBridge = ({
   // no-op and the overlay keeps its handles after the form closes.
   const establishOverlay = useCallback(
     (event: { overlayId: string }) => {
-      commitWithMaskTail(event);
+      const undoKey = commitWithMaskTail(event);
       const overlay = (scene as Scene2D).getOverlay(event.overlayId);
 
       if (overlay) {
         surface.selectHandle(overlay);
       }
+
+      // hand the gesture key to surfaces that fold a follow-up write into the
+      // draw's undo unit (video auto-extend), keyed by overlay id
+      onEstablishCommit?.(event.overlayId, undoKey);
     },
-    [commitWithMaskTail, scene, surface]
+    [commitWithMaskTail, onEstablishCommit, scene, surface]
   );
 
   // WRITE-HALF: finalize events → commit (upsert by the overlay's durable id).

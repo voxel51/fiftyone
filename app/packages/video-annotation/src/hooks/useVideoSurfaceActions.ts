@@ -16,11 +16,16 @@ const SURFACE = "video";
 export interface VideoSurfaceActions {
   /** Toggle `keyframe` on each selected track at `time`'s frame, in one undo unit. */
   markKeyframe(time: number, trackIds: readonly string[]): void;
-  /** Fill `targetFrames` with the source frame's box (non-keyframe). */
+  /**
+   * Fill `targetFrames` with the source frame's box (non-keyframe). Pass
+   * `undoKey` to coalesce the fill into a prior commit's undo unit (the
+   * auto-extend folds into the draw that triggered it).
+   */
   extendTrack(
     trackId: string,
     sourceFrame: number,
-    targetFrames: number[]
+    targetFrames: number[],
+    undoKey?: string
   ): void;
   /** Delete this track's box on each of `frames`. */
   trimTrack(trackId: string, frames: number[]): void;
@@ -154,7 +159,7 @@ export const useVideoSurfaceActions = (): VideoSurfaceActions => {
         }
       },
 
-      extendTrack: (trackId, sourceFrame, targetFrames) => {
+      extendTrack: (trackId, sourceFrame, targetFrames, undoKey) => {
         const instanceId = instanceIdFromTrackId(trackId);
 
         if (!ready() || !instanceId || targetFrames.length === 0) {
@@ -170,16 +175,19 @@ export const useVideoSurfaceActions = (): VideoSurfaceActions => {
         // non-keyframe filler — a later propagate overwrites these in place
         const filler = { ...content(source), keyframe: false };
 
-        actions.transaction(() => {
-          for (const frame of targetFrames) {
-            if (frame >= 1 && frame <= totalFrames) {
-              actions.updateLabel(
-                { path: path as string, instanceId, frame },
-                filler
-              );
+        actions.transaction(
+          () => {
+            for (const frame of targetFrames) {
+              if (frame >= 1 && frame <= totalFrames) {
+                actions.updateLabel(
+                  { path: path as string, instanceId, frame },
+                  filler
+                );
+              }
             }
-          }
-        });
+          },
+          undoKey ? { undoKey } : undefined
+        );
       },
 
       trimTrack: (trackId, frames) => {
