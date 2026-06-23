@@ -303,13 +303,33 @@ class DatasetAnnotationTests(unittest.TestCase):
             )
 
     @drop_datasets
+    def test_temporal_detection_supported(self):
+        # TemporalDetection(s) are valid annotation label types (the
+        # video-annotation sidebar edits them); they were previously rejected
+        # as globally unsupported.
+        dataset = fo.Dataset()
+        dataset.add_sample(fo.Sample(filepath="/tmp/video.mp4"))
+        self.assertEqual(dataset.media_type, "video")
+
+        for label_type in [fol.TemporalDetection, fol.TemporalDetections]:
+            type_ = label_type.__name__.lower()
+            dataset.add_sample_field(
+                "events",
+                fo.EmbeddedDocumentField,
+                embedded_doc_type=label_type,
+            )
+            dataset.set_label_schemas({"events": {"type": type_}})
+            dataset.reload()
+            self.assertEqual(dataset.label_schemas["events"]["type"], type_)
+            dataset.set_label_schemas(None)
+            dataset.delete_sample_field("events")
+
+    @drop_datasets
     def test_unsupported(self):
         dataset = fo.Dataset()
         for label_type in [
             fol.GeoLocation,
             fol.GeoLocations,
-            fol.TemporalDetection,
-            fol.TemporalDetections,
         ]:
             dataset.add_sample_field(
                 "unsupported",
