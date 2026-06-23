@@ -11,6 +11,7 @@ from starlette.responses import JSONResponse
 from starlette.requests import Request
 
 from fiftyone.core.expressions import ViewField as F
+import fiftyone.core.fields as fof
 import fiftyone.core.json as foj
 import fiftyone.core.odm as foo
 from fiftyone.core.utils import run_sync_task
@@ -18,6 +19,18 @@ import fiftyone.core.view as fov
 
 from fiftyone.server.decorators import route
 import fiftyone.server.view as fosv
+
+
+def _heavy_frame_paths(view):
+    # exclude large fields (dicts, vectors, logits) from the response
+    frame_schema = view.get_frame_field_schema(flat=True) or {}
+    return [
+        f"frames.{path}"
+        for path, field in frame_schema.items()
+        if isinstance(field, (fof.DictField, fof.VectorField))
+        or path == "logits"
+        or path.endswith(".logits")
+    ]
 
 
 class Frames(HTTPEndpoint):
@@ -55,9 +68,14 @@ class Frames(HTTPEndpoint):
 
         view = await run_sync_task(run, view)
 
+        pipeline = view._pipeline(frames_only=True, support=support)
+        heavy = _heavy_frame_paths(view)
+        if heavy:
+            pipeline.append({"$project": {path: 0 for path in heavy}})
+
         frames = await foo.aggregate(
             foo.get_async_db_conn()[view._dataset._sample_collection_name],
-            view._pipeline(frames_only=True, support=support),
+            pipeline,
         ).to_list(end_frame - start_frame + 1)
 
         return JSONResponse(
