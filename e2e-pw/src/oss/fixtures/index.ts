@@ -7,6 +7,7 @@ import { AggregationWatcher } from "./aggregation-watcher";
 import { AnnotateSDK } from "./annotate-sdk";
 import { FoWebServer } from "./fo-server";
 import { OssLoader } from "./loader";
+import { VideoAnnotateSDK } from "./video-annotate-sdk";
 
 // note: this difference between "with" and "without" is only for type safety
 
@@ -18,6 +19,7 @@ export type CustomFixturesWithoutPage = {
   mediaFactory: typeof MediaFactory;
   foWebServer: FoWebServer;
   annotateSDK: AnnotateSDK;
+  videoAnnotateSDK: VideoAnnotateSDK;
 };
 
 // these fixtures have access to the {page} fixture
@@ -70,6 +72,12 @@ const customFixtures = base.extend<object, CustomFixturesWithoutPage>({
   annotateSDK: [
     async ({}, use) => {
       await use(new AnnotateSDK());
+    },
+    { scope: "worker" },
+  ],
+  videoAnnotateSDK: [
+    async ({}, use) => {
+      await use(new VideoAnnotateSDK());
     },
     { scope: "worker" },
   ],

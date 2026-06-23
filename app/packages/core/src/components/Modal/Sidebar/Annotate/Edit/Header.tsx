@@ -115,7 +115,10 @@ const LabelHamburgerMenu = () => {
           </MenuItem>
         )}
         {showDelete && (
-          <MenuItem onClick={deleteCommand.callback}>
+          <MenuItem
+            onClick={deleteCommand.callback}
+            data-cy="label-menu-delete"
+          >
             <Stack direction="row" gap={1} alignItems="center">
               <Icon name={IconName.Delete} size={Size.Md} />
               <Text>{deleteCommand.descriptor.label}</Text>

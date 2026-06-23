@@ -107,6 +107,10 @@ const LabelEntry = ({
 
   return (
     <Container
+      data-cy={`annotate-label-${id}`}
+      data-cy-path={path}
+      data-cy-frame={frame ?? ""}
+      data-cy-label={labelText ?? ""}
       onClick={() => {
         // the form follows the anchor; each surface (2D scene, 3D scene)
         // projects the selection through its own engine adapter
