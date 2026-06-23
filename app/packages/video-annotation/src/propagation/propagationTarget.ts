@@ -83,25 +83,11 @@ export function resolvePropagationTarget(
 
   const currentFrame = frameAt(time, stream.fps, stream.totalFrames);
 
-  // Walk the cached frames for the bracketing keyframes: the most recent
-  // keyframe at or before the playhead (left), and the first keyframe
-  // strictly after (right). Left keeps updating until the loop hits a
-  // frame past the playhead, at which point right is locked in.
-  let leftFrame: number | null = null;
-  let rightFrame: number | null = null;
-  for (let f = 1; f <= stream.totalFrames; f++) {
-    const snap = stream.getValue((f - 1) / stream.fps);
-    if (!snap) continue;
-    const det = snap.detections.find(
-      (d) => d.keyframe && d.instance?._id === instanceId
-    );
-    if (!det) continue;
-    if (f <= currentFrame) leftFrame = f;
-    if (f > currentFrame && rightFrame === null) {
-      rightFrame = f;
-      break;
-    }
-  }
+  const { leftFrame, rightFrame } = findBracketingKeyframes(
+    stream,
+    instanceId,
+    currentFrame
+  );
 
   if (leftFrame === null && rightFrame === null) {
     return {
@@ -109,6 +95,7 @@ export function resolvePropagationTarget(
       reason: "Mark a keyframe to seed propagation",
     };
   }
+
   if (leftFrame === null) {
     return { ok: false, reason: "Need a keyframe at or before this frame." };
   }
@@ -120,7 +107,69 @@ export function resolvePropagationTarget(
 
   // Forward run: only the seed keyframe exists. Fill forward to the end of
   // the track's contiguous presence run containing the playhead.
+  const endFrame = forwardPresenceEnd(stream, instanceId, currentFrame);
+
+  if (endFrame <= leftFrame) {
+    return {
+      ok: false,
+      reason: "Extend the track past this frame to fill it with SAM2.",
+    };
+  }
+
+  return { ok: true, instanceId, fromFrame: leftFrame, toFrame: endFrame };
+}
+
+/**
+ * Walk the cached frames for the keyframes bracketing the playhead: the most
+ * recent keyframe at or before it (`leftFrame`), and the first keyframe strictly
+ * after (`rightFrame`). `leftFrame` keeps updating until the loop hits a frame
+ * past the playhead, at which point `rightFrame` is locked in.
+ */
+function findBracketingKeyframes(
+  stream: VideoFrameLabelsStream,
+  instanceId: string,
+  currentFrame: number
+): { leftFrame: number | null; rightFrame: number | null } {
+  let leftFrame: number | null = null;
+  let rightFrame: number | null = null;
+
+  for (let f = 1; f <= stream.totalFrames; f++) {
+    const snap = stream.getValue((f - 1) / stream.fps);
+    if (!snap) {
+      continue;
+    }
+
+    const det = snap.detections.find(
+      (d) => d.keyframe && d.instance?._id === instanceId
+    );
+    if (!det) {
+      continue;
+    }
+
+    if (f <= currentFrame) {
+      leftFrame = f;
+    }
+
+    if (f > currentFrame && rightFrame === null) {
+      rightFrame = f;
+      break;
+    }
+  }
+
+  return { leftFrame, rightFrame };
+}
+
+/**
+ * Last frame of the track's contiguous presence run containing the playhead.
+ * Walks forward from `currentFrame` until the instance is no longer present.
+ */
+function forwardPresenceEnd(
+  stream: VideoFrameLabelsStream,
+  instanceId: string,
+  currentFrame: number
+): number {
   let endFrame = currentFrame;
+
   for (let f = currentFrame + 1; f <= stream.totalFrames; f++) {
     const present = stream
       .getValue((f - 1) / stream.fps)
@@ -133,12 +182,5 @@ export function resolvePropagationTarget(
     endFrame = f;
   }
 
-  if (endFrame <= leftFrame) {
-    return {
-      ok: false,
-      reason: "Extend the track past this frame to fill it with SAM2.",
-    };
-  }
-
-  return { ok: true, instanceId, fromFrame: leftFrame, toFrame: endFrame };
+  return endFrame;
 }

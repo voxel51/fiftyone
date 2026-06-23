@@ -31,9 +31,8 @@ export type {
 const notImplemented = <K extends LabelKind>(kind: K): OverlayAdapter<K> =>
   ({
     factoryKey: kind,
-    // Stub `snapshotKey` to the kind name. The snapshot has no such
-    // field, so the diff loop reads `undefined` and skips this adapter
-    // entirely — `extract` is never reached in practice.
+    // No snapshot field is named for the kind, so the diff loop reads
+    // `undefined` and skips the adapter (the consumer keys off `snapshotKey`).
     snapshotKey: kind as never,
     extract() {
       throw new Error(`Overlay adapter for "${kind}" is not implemented`);

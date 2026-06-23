@@ -34,8 +34,13 @@ export function resolveSegmentsToRepropagate(
   const segments: FrameRange[] = [];
 
   if (kind === "set") {
-    if (prev !== null) segments.push([prev, changedFrame]);
-    if (next !== null) segments.push([changedFrame, next]);
+    if (prev !== null) {
+      segments.push([prev, changedFrame]);
+    }
+
+    if (next !== null) {
+      segments.push([changedFrame, next]);
+    }
   } else if (prev !== null && next !== null) {
     segments.push([prev, next]);
   }
@@ -47,9 +52,9 @@ export function resolveSegmentsToRepropagate(
  * Subscribe to `annotation:keyframeChanged` and re-propagate (linear) each
  * in-between segment that needs re-lerping against the new keyframe layout.
  *
- * Keyframe frames are read from the engine — the source of truth after the
- * command-bus removal — so the layout reflects the edit that just fired the
- * event. Mount once inside the surface; a no-op until a stream is published
+ * Keyframe frames are read from the engine, so the layout reflects the edit
+ * that just fired the event. Mount once inside the surface; a no-op until a
+ * stream is published
  * (it supplies the field path / frame count) and an instance is identified.
  */
 export const useAutoInterpolate = (): void => {
@@ -62,9 +67,15 @@ export const useAutoInterpolate = (): void => {
     "annotation:keyframeChanged",
     useCallback(
       (payload) => {
-        if (!stream) return;
+        if (!stream) {
+          return;
+        }
+
         const { instanceId, frame, kind } = payload;
-        if (!instanceId) return;
+
+        if (!instanceId) {
+          return;
+        }
 
         const path = `frames.${stream.labelsField}`;
         const keyframeFrames: number[] = [];

@@ -10,7 +10,7 @@
  *   that same `_id`, so the track id is already the instanceId.
  * - `track-<index>` — a legacy index-only track with no `instance._id`. Its
  *   per-frame docs carry different `_id`s, so there is no single engine
- *   instanceId for the track (O1, deferred) — returns `null`.
+ *   instanceId for the track — returns `null`.
  */
 
 const INSTANCE_PREFIX = "instance-";

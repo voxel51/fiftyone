@@ -92,7 +92,7 @@ const instanceOf = (
  * The track id IS the engine `instanceId`, so the timeline links to engine
  * interaction with no synthetic-id mapping. Legacy instance-less detections
  * carry a distinct doc `_id` per frame and so fragment into single-frame rows
- * (O1, accepted) until edited into a real instance.
+ * until edited into a real instance.
  *
  * Row labels combine the class with a per-class display ordinal (e.g.
  * "person 5"). For detections that already carry a persisted `index`, that

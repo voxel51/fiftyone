@@ -6,9 +6,8 @@ import {
 } from "@fiftyone/utilities";
 import type { Track, TrackEvent } from "@fiftyone/playback";
 
-// The raw TD shapes + predicates now live in `@fiftyone/utilities` (below both
-// annotation packages). Re-exported here for back-compat with the package
-// barrel.
+// Raw TD shapes + predicates live in `@fiftyone/utilities`; re-exported from
+// the package barrel.
 export type { RawTemporalDetection, RawTemporalDetectionsField };
 
 /**

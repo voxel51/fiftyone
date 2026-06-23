@@ -3,6 +3,7 @@
  */
 
 import {
+  type ScopedRef,
   useAnnotationEngine,
   useInteraction,
   useSurfaceActions,
@@ -53,8 +54,8 @@ export interface VideoInteraction {
    * path differs from the frame-detection field, so they can't go through the
    * `instanceId`-only track seam above.
    */
-  selectLabel: (ref: { path: string; instanceId: string }) => void;
-  hoverLabel: (ref: { path: string; instanceId: string }, on: boolean) => void;
+  selectLabel: (ref: ScopedRef) => void;
+  hoverLabel: (ref: ScopedRef, on: boolean) => void;
 }
 
 /** Read selected track ids (engine instanceIds) from interaction state. */
@@ -112,13 +113,12 @@ export const useVideoInteraction = (): VideoInteraction => {
   );
 
   const selectLabel = useCallback(
-    (ref: { path: string; instanceId: string }) => actions.setActive([ref]),
+    (ref: ScopedRef) => actions.setActive([ref]),
     [actions]
   );
 
   const hoverLabel = useCallback(
-    (ref: { path: string; instanceId: string }, on: boolean) =>
-      actions.setHovered(ref, on),
+    (ref: ScopedRef, on: boolean) => actions.setHovered(ref, on),
     [actions]
   );
 

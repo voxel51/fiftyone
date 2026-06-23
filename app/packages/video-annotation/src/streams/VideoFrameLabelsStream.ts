@@ -18,9 +18,7 @@ import {
 } from "@fiftyone/playback";
 import { isInFetchedRange, mergeRange, toSecondRanges } from "./fetchedRanges";
 
-// `RawDetection`, `RawDetectionsField`, and `LocalDetection` now live in
-// `@fiftyone/utilities` (below both annotation packages). Re-exported here for
-// back-compat with the package barrel.
+// Re-exported from `@fiftyone/utilities` for the package barrel.
 export type { LocalDetection, RawDetection, RawDetectionsField };
 
 export interface VideoFrameLabelsStreamOptions {
@@ -137,11 +135,8 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   /**
    * Resolve once every frame in [1, frameCount] is cached. Coalesces
    * against any in-flight chunks; otherwise walks the range in chunk-
-   * sized strides and dispatches fetches in parallel.
-   *
-   * Use for one-shot analyses over the full clip (e.g. building
-   * per-class timeline tracks). For long clips this is expensive — a
-   * future aggregation endpoint would be preferable.
+   * sized strides and dispatches fetches in parallel. Expensive over long
+   * clips; used for one-shot full-clip analyses (e.g. timeline tracks).
    */
   async warmupAll(): Promise<void> {
     const promises: Promise<void>[] = [];
@@ -248,13 +243,9 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   }
 
   /**
-   * Custom `onCommit`: dedupe by `frameNumber`. The engine ticks 5–8×
-   * within a single frame; default `onCommit` would build a fresh
-   * detections array and re-publish on every tick, kicking every
-   * `useStream` consumer into a re-render and re-running the overlay
-   * diff with identical content. We only need to publish when the frame
-   * actually changes — or when transitioning to/from `null` (cache
-   * miss → hit when a chunk lands).
+   * Custom `onCommit`: dedupe by `frameNumber` so we only publish when the
+   * frame changes or transitions to/from `null` (cache miss → hit). Avoids
+   * re-publishing identical content on every intra-frame tick.
    */
   override onCommit(time: number, store: PlaybackStore): void {
     const next = this.getValue(time);

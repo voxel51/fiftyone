@@ -12,12 +12,7 @@ type TileScene = ReturnType<typeof useLighterSetupWithPixi>["scene"];
 
 /**
  * The overlay / sync hooks both lighter tiles wire up, in their order-sensitive
- * order.
- *
- * Frame detections render through the engine's frame-locked Lighter bridge
- * (mounted by `useVideoLighterEngineBridge`); TD canvas chips are engine-sourced
- * and sidebar membership is engine-derived (`useEntries`). What remains here:
- * the TD overlay sync, the draw-mode / mode-quit event bridges, and media
+ * order: TD overlay sync, the draw-mode / mode-quit event bridges, and media
  * transform tracking.
  *
  * `mediaRef` is the element the media transform tracks so scroll-zoom scales

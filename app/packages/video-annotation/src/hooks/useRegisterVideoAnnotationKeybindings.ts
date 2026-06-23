@@ -18,7 +18,7 @@ export const useRegisterVideoAnnotationKeybindings = () => {
   // Read the visual playhead, not `useCurrentTime` — currentTime lags
   // playhead while streams buffer, so dispatching at "the moment the
   // user pressed K" needs the visual position. Held in a ref so the
-  // keybinding handler is rebuilt only when `scene` or `bus` change.
+  // keybinding handler is rebuilt only when `scene` or `actions` change.
   const playhead = usePlayhead();
   const playheadRef = useRef(playhead);
   playheadRef.current = playhead;
@@ -30,9 +30,16 @@ export const useRegisterVideoAnnotationKeybindings = () => {
         commandId: "annotation-mark-keyframe",
         sequence: "k",
         handler: () => {
-          if (!scene) return;
+          if (!scene) {
+            return;
+          }
+
           const ids = scene.getSelectedOverlayIds();
-          if (ids.length === 0) return;
+
+          if (ids.length === 0) {
+            return;
+          }
+
           actions.markKeyframe(playheadRef.current, ids);
         },
         label: "Mark keyframe",

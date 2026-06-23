@@ -92,7 +92,7 @@ export const useApplyPropagationResult = (): PropagationResultHandler => {
         return;
       }
 
-      // one transaction; the per-frame writers nest into it as one undo unit
+      // One transaction so the per-frame writers nest into a single undo unit.
       actions.transaction(() => {
         result.response.perFrame.forEach(({ frameNumber, detection }) =>
           applyDetection(frameNumber, detection)

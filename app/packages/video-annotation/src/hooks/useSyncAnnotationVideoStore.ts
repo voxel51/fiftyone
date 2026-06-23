@@ -22,9 +22,7 @@ import { parseFramesData } from "../streams/framesData";
  * own it.
  *
  * The frame backing is seeded from the active `/frames` stream and re-seeded as
- * chunks land or local edits mutate the cache (via `subscribeToEdits`). A
- * `setData` reset is what hydrates the temporal presence cache (registration
- * alone emits no change), so the frame view sees the pool once it attaches.
+ * chunks land or local edits mutate the cache (via `subscribeToEdits`).
  *
  * Must be mounted under the modal scope where the labels stream is published.
  */

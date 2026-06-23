@@ -1,9 +1,7 @@
 import type { FrameLabelSnapshot, SyntheticBox } from "@fiftyone/utilities";
 import { PlaybackStreamBase } from "@fiftyone/playback";
 
-// These label leaf types now live in `@fiftyone/utilities` (below both
-// annotation packages). Re-exported here for back-compat with the package
-// barrel.
+// Re-exported from `@fiftyone/utilities` for the package barrel.
 export type {
   FrameLabelSnapshot,
   PropagationBlob,

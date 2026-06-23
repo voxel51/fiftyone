@@ -53,16 +53,9 @@ function makeExternalCanonicalId(): string {
  * container-fitted rendered bounds) so Lighter overlays position
  * correctly, but draws no pixels of its own.
  *
- * We don't use `ImageOverlay` as a stand-in for two reasons:
- *  - It sizes itself from the loaded image's natural dimensions. A
- *    transparent stand-in would collapse every overlay's coordinate
- *    space to whatever 1×1 placeholder we fed it; here we want the
- *    canonical dimensions to be the media's intrinsic resolution.
- *  - `renderImpl` decodes and paints a sprite every frame. We don't
- *    need that — the element behind the canvas is the visible media.
- *
- * The right long-term fix is for `@fiftyone/lighter` to ship a
- * first-class no-pixel canonical of its own.
+ * Not `ImageOverlay`: it sizes from the loaded image's natural dimensions
+ * (collapsing the coordinate space to a placeholder) and paints a sprite every
+ * frame; we want intrinsic-resolution bounds and no pixels of our own.
  */
 export class ExternalCanonicalMedia
   extends BaseOverlay
