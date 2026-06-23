@@ -181,6 +181,34 @@ export class CommandContext {
   }
 
   /**
+   * Newest-first descriptions of the undo stack that {@link undo} would act on
+   * (the local stack, else the parent's). Backs the undo history view.
+   */
+  public describeUndoStack(): string[] {
+    if (this.actions.canUndo()) {
+      return this.actions.describeUndoStack();
+    }
+    if (this.parent) {
+      return this.parent.describeUndoStack();
+    }
+    return [];
+  }
+
+  /**
+   * Newest-first descriptions of the redo stack that {@link redo} would act on
+   * (the local stack, else the parent's). Backs the redo history view.
+   */
+  public describeRedoStack(): string[] {
+    if (this.actions.canRedo()) {
+      return this.actions.describeRedoStack();
+    }
+    if (this.parent) {
+      return this.parent.describeRedoStack();
+    }
+    return [];
+  }
+
+  /**
    * Registers a listener that is notified of changes in the
    * undo/redo state.
    * @param listener the listener @see UndoStateListener
