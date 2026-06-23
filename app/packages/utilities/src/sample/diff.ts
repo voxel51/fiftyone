@@ -127,9 +127,11 @@ export const fieldDeltas = (
  * idAlignedListDelta} — now shared by every sample-level list label (detections,
  * temporal-detections, …).
  *
- * Special case: a freshly-created field whose source has no list child yet emits
- * one `add` of the whole merged wrapper, since the parent (`_cls`) must land
- * before any element-level path resolves.
+ * A field absent from the source diffs against an empty list, so every element
+ * is an append (`/<child>/-`). The backend initializes the missing parent field
+ * from the dataset schema before applying element ops, so we never emit a
+ * whole-wrapper `add` (which it rejects when setting a label field from a raw
+ * value).
  */
 const listLabelDeltas = (
   path: string,
@@ -145,24 +147,15 @@ const listLabelDeltas = (
   const sourceList = (sourceValue as Record<string, unknown> | undefined)?.[
     child
   ];
-
-  if (!Array.isArray(sourceList)) {
-    return [
-      {
-        op: "add",
-        path: buildJsonPath(path, ""),
-        value: normalizeForCompare(merged) as never,
-      },
-    ];
-  }
-
+  const baseline = Array.isArray(sourceList) ? (sourceList as LabelData[]) : [];
   const current = Array.isArray(merged[child])
     ? (merged[child] as LabelData[])
     : [];
 
-  return idAlignedListDelta(current, sourceList as LabelData[], "", child).map(
-    (d) => ({ ...d, path: buildJsonPath(path, d.path) })
-  );
+  return idAlignedListDelta(current, baseline, "", child).map((d) => ({
+    ...d,
+    path: buildJsonPath(path, d.path),
+  }));
 };
 
 /**

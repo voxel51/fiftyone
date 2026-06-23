@@ -76,6 +76,31 @@ describe("buildJsonPatch — label fields", () => {
     ]);
   });
 
+  it("appends elements for a list field absent from source", () => {
+    // a field move's destination field has no source value yet; the backend
+    // initializes the parent field, so we emit element appends rather than a
+    // whole-wrapper `add` of the field (which the backend rejects)
+    const deltas = buildJsonPatch(
+      snap({
+        sourceData: {},
+        transientData: {
+          predictions: {
+            _cls: "Detections",
+            detections: [{ _id: "d1", label: "cat" }],
+          },
+        },
+        getLabelType: () => LabelType.Detections,
+      })
+    );
+    expect(deltas).toEqual([
+      {
+        op: "add",
+        path: "/predictions/detections/-",
+        value: { _id: "d1", label: "cat" },
+      },
+    ]);
+  });
+
   it("emits a label-rooted diff for generated views", () => {
     const deltas = buildJsonPatch(
       snap({
