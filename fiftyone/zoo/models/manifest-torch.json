@@ -667,7 +667,6 @@
                 "type": "fiftyone.utils.sam3.SegmentAnything3ImageModel",
                 "config": {
                     "entrypoint_fcn": "sam3.model_builder.build_sam3_image_model",
-                    "entrypoint_args": {},
                     "tokenizer_source": "https://raw.githubusercontent.com/openai/CLIP/main/clip/bpe_simple_vocab_16e6.txt.gz"
                 }
             },
@@ -681,11 +680,9 @@
                 }
             },
             "tags": [
-                "segmentation",
-                "instance-segmentation",
+                "segment-anything",
+                "torch",
                 "zero-shot",
-                "open-vocabulary",
-                "text-prompted",
                 "transformer",
                 "official"
             ],
@@ -718,7 +715,8 @@
                 "type": "fiftyone.utils.sam3.SegmentAnything3VideoModel",
                 "config": {
                     "entrypoint_fcn": "sam3.model_builder.build_sam3_video_model",
-                    "entrypoint_args": {}
+                    "tokenizer_source": "https://raw.githubusercontent.com/openai/CLIP/main/clip/bpe_simple_vocab_16e6.txt.gz",
+                    "concept_predictor_fcn": "sam3.model_builder.build_sam3_video_predictor"
                 }
             },
             "requirements": {
@@ -731,13 +729,10 @@
                 }
             },
             "tags": [
-                "segmentation",
-                "instance-segmentation",
-                "video",
-                "tracking",
+                "segment-anything",
+                "torch",
                 "zero-shot",
-                "open-vocabulary",
-                "text-prompted",
+                "video",
                 "transformer",
                 "official"
             ],

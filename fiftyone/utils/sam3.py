@@ -13,7 +13,6 @@ import os
 import shutil
 from PIL import Image
 
-import fiftyone as fo
 import cv2
 import eta.core.utils as etau
 
@@ -326,7 +325,6 @@ class SegmentAnything3ImageModel(fosam2.SegmentAnything2ImageModel):
             # Sam3Image.inst_interactive_predictor is only needed for "visual" operation mode.
             # Always set to True for easy switching of operation modes in a loaded zoo model.
             config.entrypoint_args["enable_inst_interactivity"] = True
-
         if (
             "bpe_path" not in config.entrypoint_args
             and config.tokenizer_source
@@ -358,14 +356,15 @@ class SegmentAnything3ImageModel(fosam2.SegmentAnything2ImageModel):
         return model
 
     def _download_model(self, config):
-        # Download sam3 to fo.config.model_zoo_dir from HF hub.
-        from huggingface_hub import hf_hub_download
+        if "checkpoint_path" not in config.entrypoint_args:
+            # Download sam3 to fo.config.model_zoo_dir from HF hub.
+            from huggingface_hub import hf_hub_download
 
-        hf_hub_download(
-            repo_id="facebook/sam3",
-            filename=os.path.basename(config.model_path),
-            local_dir=os.path.dirname(config.model_path),
-        )
+            config.entrypoint_args["checkpoint_path"] = hf_hub_download(
+                repo_id="facebook/sam3",
+                filename=os.path.basename(config.model_path),
+                local_dir=os.path.dirname(config.model_path),
+            )
 
         bpe_path = config.entrypoint_args["bpe_path"]
         if not os.path.isfile(bpe_path):
@@ -685,8 +684,14 @@ class SegmentAnything3VideoModelConfig(
         operation_mode ("concept"): concept or visual mode of operation for inference
         propagation_direction ("both"): direction to propagate in video;
             supported values are ``"forward"``, ``"backward"``, and ``"both"``
+        propagation_precedence: detection that takes precendence when merging results for bidirection propagation;
+            supported values are ``"forward"`` and ``"backward"``
         prompt_frame_indices (None): 1-based frame indices for visual / exemplar prompts
         text_frame_idx (1): 1-based frame index for text concept prompts
+        tokenizer_source (None): the URL to download the SAM3 tokenizer BPE vocab
+        concept_predictor_fcn (None): a function or string like
+            ``"sam3.model_builder.build_sam3_video_model"`` specifying the entrypoint
+            function that loads the concept predictor
     """
 
     def __init__(self, cfg_dict):
@@ -697,6 +702,13 @@ class SegmentAnything3VideoModelConfig(
         """
         d = self.init(cfg_dict)
         super().__init__(d)
+
+        self.tokenizer_source = self.parse_string(
+            d, "tokenizer_source", default=None
+        )
+        self.concept_predictor_fcn = self.parse_raw(
+            d, "concept_predictor_fcn", default=None
+        )
 
         self.operation_mode = self.parse_string(
             d, "operation_mode", default="concept"
@@ -714,6 +726,17 @@ class SegmentAnything3VideoModelConfig(
         }:
             raise ValueError(
                 "propagation_direction must be 'forward', 'backward', or 'both'"
+            )
+        # .
+        self.propagation_precedence = self.parse_string(
+            d, "propagation_precedence", default="forward"
+        )
+        if self.propagation_precedence not in {
+            "forward",
+            "backward",
+        }:
+            raise ValueError(
+                "propagation_precedence must be 'forward' or 'backward'"
             )
         self.prompt_frame_indices = self.parse_array(
             d, "prompt_frame_indices", default=None
@@ -768,6 +791,17 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
 
         self._operation_mode = self.config.operation_mode
 
+        if config.entrypoint_args is None:
+            config.entrypoint_args = {}
+        if (
+            "bpe_path" not in config.entrypoint_args
+            and config.tokenizer_source
+        ):
+            config.entrypoint_args["bpe_path"] = os.path.join(
+                os.path.dirname(config.model_path),
+                os.path.basename(config.tokenizer_source),
+            )
+
         self.ctx = _load_video_frames_monkey_patch_sam3()
 
         self._download_model(config)
@@ -786,7 +820,40 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
         return "video"
 
     def _download_model(self, config):
-        config.download_model_if_necessary()
+        if config.entrypoint_args is None:
+            config.entrypoint_args = {}
+        if "checkpoint_path" not in config.entrypoint_args:
+            from huggingface_hub import hf_hub_download
+
+            repo_id = "facebook/sam3"
+            # The HF repo uses "sam3.pt"; local base_filename is "sam3_video.pt"
+            # to avoid collisions with the image model in the zoo manifest.
+            zoo_dir = os.path.dirname(config.model_path)
+            model_filename = "sam3.pt"
+            _ = hf_hub_download(repo_id=repo_id, filename="config.json")
+            hf_zoo_path = hf_hub_download(
+                repo_id=repo_id,
+                filename=model_filename,
+                local_dir=zoo_dir,
+            )
+            if not os.path.isfile(config.model_path):
+                shutil.copy2(hf_zoo_path, config.model_path)
+            config.entrypoint_args["checkpoint_path"] = config.model_path
+
+        if "bpe_path" in config.entrypoint_args:
+            bpe_path = config.entrypoint_args["bpe_path"]
+            if not os.path.isfile(bpe_path):
+                if not config.tokenizer_source:
+                    raise ValueError(
+                        "Missing BPE vocabulary tokenizer. Either provide "
+                        "'tokenizer_source' in the model config for downloading "
+                        "or set 'bpe_path' in the model config 'entrypoint_args' "
+                        "to a pre-downloaded file."
+                    )
+                _download_sam3_bpe_vocab_file(
+                    tokenizer_source=config.tokenizer_source,
+                    bpe_path=bpe_path,
+                )
 
     def _load_model(self, config):
         if config.model is not None:
@@ -797,7 +864,7 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
             if etau.is_str(entrypoint_fcn):
                 entrypoint_fcn = etau.get_function(entrypoint_fcn)
 
-            kwargs = config.entrypoint_args or {}
+            kwargs = dict(config.entrypoint_args or {})
             with self.ctx:
                 model = entrypoint_fcn(**kwargs)
 
@@ -810,8 +877,14 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
         return model
 
     def _load_concept_predictor(self):
-        return sam3.model_builder.build_sam3_video_predictor(
-            gpus_to_use=[self._device.index if self._device.index else 0]
+        concept_predictor_fcn = self.config.concept_predictor_fcn
+        if etau.is_str(concept_predictor_fcn):
+            concept_predictor_fcn = etau.get_function(concept_predictor_fcn)
+
+        kwargs = dict(self.config.entrypoint_args or {})
+        return concept_predictor_fcn(
+            gpus_to_use=[self._device.index if self._device.index else 0],
+            **kwargs,
         )
 
     @property
@@ -1263,7 +1336,9 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
                 reverse=True,
                 propagate_preflight=False,
             )
-            return self._merge_propagation_results(forward, backward)
+            if self.config.propagation_precedence == "forward":
+                return self._merge_propagation_results(forward, backward)
+            return self._merge_propagation_results(backward, forward)
 
     def _run_visual_propagation(
         self, inference_state, classes_obj_id_map, reverse, propagate_preflight
@@ -1325,27 +1400,33 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
 
         return sample_detections
 
-    def _merge_propagation_results(self, forward, backward):
+    def _merge_propagation_results(
+        self, primary_direction, secondary_direction
+    ):
         """Merge forward and backward propagation results per Detection.index.
 
         Detections are merged by their ``index`` field so that objects tracked
         only in the backward pass are not discarded on frames where the forward
         pass produced detections for different objects.
         """
-        all_frame_nums = set(forward) | set(backward)
+        all_frame_nums = set(primary_direction) | set(secondary_direction)
         merged = {}
         for frame_num in all_frame_nums:
-            fwd_dets = forward.get(frame_num, fol.Detections(detections=[]))
-            bwd_dets = backward.get(frame_num, fol.Detections(detections=[]))
+            prim_dets = primary_direction.get(
+                frame_num, fol.Detections(detections=[])
+            )
+            sec_dets = secondary_direction.get(
+                frame_num, fol.Detections(detections=[])
+            )
 
             seen_indices = set()
             combined = []
-            for det in fwd_dets.detections:
+            for det in prim_dets.detections:
                 combined.append(det)
                 if det.index is not None:
                     seen_indices.add(det.index)
 
-            for det in bwd_dets.detections:
+            for det in sec_dets.detections:
                 if det.index is None or det.index not in seen_indices:
                     combined.append(det)
 
