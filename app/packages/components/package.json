@@ -53,7 +53,7 @@
         "@mui/material": "^5.9.0",
         "@react-spring/web": "^9.7.3",
         "@textea/json-viewer": "^3.4.1",
-        "@voxel51/voodo": "^0.0.34",
+        "@voxel51/voodo": "^0.0.35",
         "classnames": "^2.3.1",
         "framer-motion": "^6.2.7",
         "material-icons": "^1.13.12",
