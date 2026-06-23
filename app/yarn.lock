@@ -2957,7 +2957,7 @@ __metadata:
     "@textea/json-viewer": "npm:^3.4.1"
     "@types/react-input-autosize": "npm:^2.2.1"
     "@types/react-syntax-highlighter": "npm:^15.5.6"
-    "@voxel51/voodo": "npm:^0.0.34"
+    "@voxel51/voodo": "npm:^0.0.35"
     classnames: "npm:^2.3.1"
     framer-motion: "npm:^6.2.7"
     material-icons: "npm:^1.13.12"
@@ -3010,7 +3010,7 @@ __metadata:
     "@types/styled-components": "npm:^5.1.23"
     "@use-gesture/react": "npm:^10.3.0"
     "@vitejs/plugin-react-refresh": "npm:^1.3.3"
-    "@voxel51/voodo": "npm:^0.0.34"
+    "@voxel51/voodo": "npm:^0.0.35"
     "@xstate/react": "npm:1.3.3"
     classnames: "npm:^2.2.6"
     color: "npm:^4.2.3"
@@ -3296,7 +3296,7 @@ __metadata:
     "@react-three/drei": "npm:9.105.4"
     "@react-three/fiber": "npm:^8.18.0"
     "@types/three": "npm:^0.182.0"
-    "@voxel51/voodo": "npm:^0.0.34"
+    "@voxel51/voodo": "npm:^0.0.35"
     buffer: "npm:^6.0.3"
     lru-cache: "npm:^11.0.1"
     protobufjs: "npm:^7.6.4"
@@ -3328,7 +3328,7 @@ __metadata:
     "@eslint/compat": "npm:^1.1.1"
     "@fiftyone/commands": "workspace:^"
     "@fiftyone/tiling": "npm:*"
-    "@voxel51/voodo": "npm:^0.0.34"
+    "@voxel51/voodo": "npm:^0.0.35"
     eslint: "npm:9.7.0"
     eslint-plugin-react: "npm:^7.35.0"
     eslint-plugin-react-hooks: "npm:rc"
@@ -3380,7 +3380,7 @@ __metadata:
     "@fiftyone/plugins": "npm:*"
     "@fiftyone/spaces": "npm:*"
     "@fiftyone/state": "npm:*"
-    "@voxel51/voodo": "npm:^0.0.34"
+    "@voxel51/voodo": "npm:^0.0.35"
     vite: "npm:^7.3.2"
     vite-plugin-externals: "npm:^0.5.0"
   peerDependencies:
@@ -3428,7 +3428,7 @@ __metadata:
     "@fiftyone/utilities": "npm:*"
     "@microsoft/fetch-event-source": "npm:^2.0.1"
     "@testing-library/react-hooks": "npm:latest"
-    "@voxel51/voodo": "npm:^0.0.34"
+    "@voxel51/voodo": "npm:^0.0.35"
     babel-plugin-relay: "npm:^14.1.0"
     html2canvas: "npm:1.0.0-rc.7"
     lodash: "npm:^4.18.1"
@@ -3447,7 +3447,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/tiling@workspace:packages/tiling"
   dependencies:
-    "@voxel51/voodo": "npm:^0.0.34"
+    "@voxel51/voodo": "npm:^0.0.35"
     clsx: "npm:^2.1.1"
     jotai: "npm:^2.9.3"
     react-mosaic-component: "npm:^6.1.1"
@@ -8653,9 +8653,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@voxel51/voodo@npm:^0.0.34":
-  version: 0.0.34
-  resolution: "@voxel51/voodo@npm:0.0.34"
+"@voxel51/voodo@npm:^0.0.35":
+  version: 0.0.35
+  resolution: "@voxel51/voodo@npm:0.0.35"
   dependencies:
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
@@ -8672,7 +8672,7 @@ __metadata:
     react: ^18.0.0
     react-dom: ^18.0.0
     react-is: ^18.0.0
-  checksum: 10/e7ca0e9d792182805891d8e4bf8e89356112f4cd78811613108634e803494e9695457eb5d48194518a75a1e41fded08ecd730c7eed3f16e23017ccf3529502fe
+  checksum: 10/a2cc59ae1a6f2842b494363c1c918349b165cb65dbc3a2c6c6c1cb8ff6cd74336d76ebd0df455c8bbc8a8b32100461e5ea2ecd7bcc89b8684bfe66315522b09e
   languageName: node
   linkType: hard
 
