@@ -15,7 +15,12 @@ import {
   useCurrent3dAnnotationMode,
   useSetCurrent3dAnnotationMode,
 } from "@fiftyone/looker-3d/src/state/accessors";
-import { is3DDataset, useIs3dPinned } from "@fiftyone/state";
+import {
+  is3DDataset,
+  isVideoDataset,
+  useIs3dPinned,
+  useRenderConfig3dState,
+} from "@fiftyone/state";
 import {
   DETECTION,
   DETECTIONS,
@@ -462,6 +467,11 @@ export const ThreeDCuboids = () => {
 const Actions = () => {
   // This checks if media type of the dataset resolved to 3d
   const is3dDataset = useRecoilValue(is3DDataset);
+  // Video annotation supports only box drawing today, so the surface shows a
+  // reduced label-type set (Select + Detection); the other label-type modes are
+  // hidden until segmentation/polyline land. Undo/redo are shown — the engine's
+  // value-based stack backs them on video too.
+  const isVideo = useRecoilValue(isVideoDataset);
   // This checks if a 3d sample is pinned - is true when media type is `group` with a 3d slice pinned
   const is3dSamplePinned = useIs3dPinned();
 
@@ -487,17 +497,23 @@ const Actions = () => {
         <Row>
           <ItemLeft style={{ columnGap: "0.1rem" }}>
             <Select active={noActiveActions} />
-            <Classification />
-            {areThreeDActionsVisible ? (
-              <>
-                <ThreeDCuboids />
-                <ThreeDPolylines />
-              </>
+            {isVideo ? (
+              <Detection />
             ) : (
               <>
-                <Detection />
-                <Segmentation />
-                <Polyline />
+                <Classification />
+                {areThreeDActionsVisible ? (
+                  <>
+                    <ThreeDCuboids />
+                    <ThreeDPolylines />
+                  </>
+                ) : (
+                  <>
+                    <Detection />
+                    <Segmentation />
+                    <Polyline />
+                  </>
+                )}
               </>
             )}
           </ItemLeft>

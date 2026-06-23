@@ -53,15 +53,25 @@ const Line = styled.div<{ fill: string }>`
   background: ${({ fill }) => fill};
 `;
 
-const LabelEntry = ({ id, path }: { id: string; path: string }) => {
+const LabelEntry = ({
+  id,
+  path,
+  frame,
+}: {
+  id: string;
+  path: string;
+  frame?: number;
+}) => {
   const engine = useAnnotationEngine();
   const sample = useActiveAnnotationSampleId();
   const type = useAtomValue(fieldType(path ?? ""));
   const Icon = ICONS[type] ?? (() => null);
 
-  // read the label declaratively by ref — the engine is the source of truth
+  // read the label declaratively by ref — the engine is the source of truth.
+  // `frame` is set for video frame labels (the playhead occurrence the row was
+  // derived at) and absent for sample-level / image labels.
   const data = useEngineSelector(engine, (e) =>
-    sample ? e.getLabel({ sample, path, instanceId: id }) : undefined
+    sample ? e.getLabel({ sample, path, instanceId: id, frame }) : undefined
   );
   const labelText = data?.label as string | undefined;
 
@@ -73,8 +83,9 @@ const LabelEntry = ({ id, path }: { id: string; path: string }) => {
       sample,
       path,
       instanceId: id,
+      frame,
     }),
-    [sample, id, path]
+    [sample, id, path, frame]
   );
 
   // full-identity read (sample included) — a hand-rolled instanceId+path match
@@ -96,6 +107,10 @@ const LabelEntry = ({ id, path }: { id: string; path: string }) => {
 
   return (
     <Container
+      data-cy={`annotate-label-${id}`}
+      data-cy-path={path}
+      data-cy-frame={frame ?? ""}
+      data-cy-label={labelText ?? ""}
       onClick={() => {
         // the form follows the anchor; each surface (2D scene, 3D scene)
         // projects the selection through its own engine adapter

@@ -23,6 +23,9 @@ export default function useDelete() {
   const { scene, removeOverlay } = useLighter();
   const { selected } = useAnnotationContext();
   const label = selected?.label;
+  // engine identity from the anchor — carries the track instanceId + frame +
+  // `frames.<field>` path a video frame label needs; null for sample-level
+  const ref = selected?.ref ?? undefined;
   const engine = useAnnotationEngine();
   const deleteAnnotation = useDeleteAnnotation();
   const sample = useActiveAnnotationSampleId();
@@ -54,11 +57,13 @@ export default function useDelete() {
       // drawn label is already engine-committed, so the engine-derived sidebar
       // only removes the row (and autosave only persists the delete + Ctrl-Z
       // only restores it) once the engine is told. A no-op if never committed.
-      engine.deleteLabel({
-        sample,
-        path: label.path,
-        instanceId: label.data._id,
-      });
+      engine.deleteLabel(
+        ref ?? {
+          sample,
+          path: label.path,
+          instanceId: label.data._id,
+        }
+      );
 
       exit();
       return;
@@ -79,7 +84,7 @@ export default function useDelete() {
 
       // the engine's read-half does the rest: the bridge loop unmounts
       // the overlay and the list mirror drops the row on the delete tick
-      await deleteAnnotation(label);
+      await deleteAnnotation(label, ref ? { ref } : undefined);
 
       exit();
     } catch (error) {
@@ -93,6 +98,7 @@ export default function useDelete() {
     engine,
     exit,
     label,
+    ref,
     removeOverlay,
     sample,
     scene,

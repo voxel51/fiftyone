@@ -1,5 +1,7 @@
 import {
+  FRAMES_PREFIX,
   stripReservedLabelAttributes,
+  toFrameEnginePath,
   useActiveAnnotationSampleId,
   useAnnotationEngine,
 } from "@fiftyone/annotation";
@@ -21,6 +23,7 @@ import {
   resolveVisibleAttribute,
 } from "./evaluateWhen";
 import { generatePrimitiveSchema } from "./schemaHelpers";
+import { buildTrackFanOut, trackLevelPartial } from "./trackFanOut";
 import { useAnnotationContext } from "./useAnnotationContext";
 import { current } from "./useAnnotationContext/selectors";
 
@@ -57,12 +60,18 @@ const useSchema = (readOnly: boolean) => {
   // Reruns only when the visible attribute set changes.
   return useMemo(() => {
     const taxonomy = config?.applied_taxonomy as string | undefined;
+    // An empty class list would emit a 0-item JSON-Schema enum, which RJSF
+    // rejects. Fall back to a free-form text input until the dataset has a
+    // configured class list; taxonomy-backed fields always use a dropdown.
+    const hasClasses = (config?.classes?.length ?? 0) > 0;
     const properties: Record<string, SchemaType | undefined> = {
       label: generatePrimitiveSchema("label", {
         type: "str",
         component: taxonomy
           ? "dropdown"
-          : (config?.component as ComponentType) || "dropdown",
+          : hasClasses
+          ? (config?.component as ComponentType) || "dropdown"
+          : undefined,
         values: taxonomy ? [] : config?.classes || [],
         taxonomy,
         readOnly: effectiveReadOnly,
@@ -136,6 +145,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
   const data = selected?.data;
   const overlay = selected?.overlay;
   const field = selected?.field ?? null;
+  const editingRef = selected?.ref ?? null;
   const engine = useAnnotationEngine();
   const sample = useActiveAnnotationSampleId();
   const { createPushAndExec } = usePushUndoable();
@@ -146,12 +156,14 @@ const useHandleSchemaChange = (readOnly: boolean) => {
   const dataRef = useRef(data);
   const overlayRef = useRef(overlay);
   const fieldRef = useRef(field);
+  const editingRefRef = useRef(editingRef);
   const currentLabelRef = useRef(currentLabel);
   const sampleRef = useRef(sample);
   configRef.current = config;
   dataRef.current = data;
   overlayRef.current = overlay;
   fieldRef.current = field;
+  editingRefRef.current = editingRef;
   currentLabelRef.current = currentLabel;
   sampleRef.current = sample;
 
@@ -173,7 +185,16 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         )
       );
 
-      const value = { ...data, ...result };
+      // Merge onto the live overlay label, which can be fresher than the
+      // form's `data` snapshot. Discard fields which are owned elsewhere.
+      const { support: _formSupport, ...formResult } = result as Record<
+        string,
+        unknown
+      >;
+      const value = {
+        ...(overlay.label as Record<string, unknown>),
+        ...formResult,
+      };
 
       const allAttributes = Array.isArray(config?.attributes)
         ? config.attributes
@@ -209,10 +230,23 @@ const useHandleSchemaChange = (readOnly: boolean) => {
 
       if (isEqual(value, data)) return;
 
+      // address the engine in its own namespace: the anchor ref carries the
+      // track `instanceId` and the present `frame` for a video frame label, and
+      // names the field by its full `frames.<field>` path. Use the LIVE field
+      // for the path name (a mid-edit field move tracks through `field`), but
+      // re-prefix it when the ref says this is a frame field. With no ref
+      // (externally-managed atoms) fall back to the field + doc id, already
+      // correct for the sample-level labels those carry.
+      const editingRef = editingRefRef.current;
+      const isFrameField = editingRef?.path?.startsWith(FRAMES_PREFIX) ?? false;
       const ref = {
         sample: sampleRef.current,
-        path: field,
-        instanceId: (data as { _id?: string })?._id ?? overlay.id,
+        path: isFrameField ? toFrameEnginePath(field) : field,
+        instanceId:
+          editingRef?.instanceId ??
+          (data as { _id?: string })?._id ??
+          overlay.id,
+        frame: editingRef?.frame,
       };
       const previous = engine.getLabel(ref) ?? (data as LabelData);
 
@@ -234,10 +268,37 @@ const useHandleSchemaChange = (readOnly: boolean) => {
       );
       const persistableInverse = stripReservedLabelAttributes(inverse);
 
+      // A video frame label belongs to a track, so a track-level edit (label,
+      // index, attributes — everything but geometry) applies to EVERY frame the
+      // instance appears on; geometry stays on this frame. Image / sample-level
+      // labels have no sibling frames, so this is empty for them.
+      const trackWrites =
+        isFrameField && ref.frame != null
+          ? buildTrackFanOut(engine, ref, trackLevelPartial(persistableValue))
+          : [];
+
       createPushAndExec(
         `update-label-${ref.instanceId}-${Date.now()}`,
-        () => engine.updateLabel(ref, persistableValue as Partial<LabelData>),
-        () => engine.updateLabel(ref, persistableInverse as Partial<LabelData>)
+        () =>
+          engine.transaction(() => {
+            engine.updateLabel(ref, persistableValue as Partial<LabelData>);
+            for (const write of trackWrites) {
+              engine.updateLabel(
+                write.ref,
+                write.forward as Partial<LabelData>
+              );
+            }
+          }),
+        () =>
+          engine.transaction(() => {
+            engine.updateLabel(ref, persistableInverse as Partial<LabelData>);
+            for (const write of trackWrites) {
+              engine.updateLabel(
+                write.ref,
+                write.inverse as Partial<LabelData>
+              );
+            }
+          })
       );
 
       // the anchor binding rewrites `editing` only for committed labels —

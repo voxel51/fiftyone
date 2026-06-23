@@ -2,13 +2,13 @@ import {
   encodeEntityId,
   GEOMETRY_SIGNAL,
   type GeometrySignal,
+  type LabelRef,
   useActiveAnnotationSampleId,
   useAnnotationEngine,
   useEngineSelector,
   useSignalValue,
 } from "@fiftyone/annotation";
 import { usePushUndoable } from "@fiftyone/commands";
-import { DetectionOverlay } from "@fiftyone/lighter";
 import { useCurrentDatasetId } from "@fiftyone/state";
 import type { LabelData } from "@fiftyone/utilities";
 import { useEffect, useMemo, useState } from "react";
@@ -65,17 +65,26 @@ export default function Position({ readOnly = false }: PositionProps) {
   const dataset = useCurrentDatasetId() ?? "";
   const { createPushAndExec } = usePushUndoable();
 
+  // address the box by its engine ref — the anchor's full ref (carries the
+  // video frame + track instanceId + frames.<field> path) when the form was
+  // opened from a surface; falls back to the schema-field + overlay id, which is
+  // already correct for an image / sample-level label. The engine is the source
+  // of truth for geometry; the overlay is no longer read here.
+  const ref = useMemo<LabelRef | null>(
+    () =>
+      selected?.ref ??
+      (overlay && sample
+        ? { sample, path: overlay.field, instanceId: overlay.id }
+        : null),
+    [selected?.ref, overlay, sample]
+  );
+
   // committed baseline — the box's stored RELATIVE bounds, read reactively from
   // the engine so it re-syncs on EVERY committed change (drag-end, number input,
-  // undo/redo); absolute pixels are arbitrary and drift through the round-trip.
+  // undo/redo, playhead move to another frame of the track); absolute pixels are
+  // arbitrary and drift through the round-trip.
   const committedBounds = useEngineSelector(engine, (e) =>
-    overlay && sample
-      ? (e.getLabel({
-          sample,
-          path: overlay.field,
-          instanceId: overlay.id,
-        })?.bounding_box as number[] | undefined)
-      : undefined
+    ref ? (e.getLabel(ref)?.bounding_box as number[] | undefined) : undefined
   );
 
   useEffect(() => {
@@ -94,15 +103,8 @@ export default function Position({ readOnly = false }: PositionProps) {
   // bounds; we render them directly, never touching Lighter. Render-only: the
   // committed write happens on drag-end through the bridge.
   const key = useMemo(
-    () =>
-      overlay && sample
-        ? encodeEntityId(dataset, {
-            sample,
-            path: overlay.field,
-            instanceId: overlay.id,
-          })
-        : null,
-    [dataset, sample, overlay]
+    () => (ref ? encodeEntityId(dataset, ref) : null),
+    [dataset, ref]
   );
 
   const live = useSignalValue<GeometrySignal | null>(
@@ -152,28 +154,49 @@ export default function Position({ readOnly = false }: PositionProps) {
   return (
     <div style={{ width: "100%" }}>
       <SchemaIOComponent
-        key={overlay?.id}
+        key={ref?.instanceId ?? overlay?.id}
         smartForm={true}
         schema={schema}
         data={state}
         onChange={(input: Coordinates) => {
-          if (
-            readOnly ||
-            !(overlay instanceof DetectionOverlay) ||
-            !overlay.hasValidBounds()
-          ) {
+          if (readOnly || !ref) {
             return;
           }
 
-          const current = overlay.relativeBounds;
+          // current bounds from the engine (source of truth), falling back to
+          // what's displayed — never from the Lighter overlay, which a video
+          // frame label doesn't carry for the current playhead.
+          const stored = engine.getLabel(ref)?.bounding_box as
+            | number[]
+            | undefined;
+          const current =
+            stored && stored.length === 4
+              ? {
+                  x: stored[0],
+                  y: stored[1],
+                  width: stored[2],
+                  height: stored[3],
+                }
+              : {
+                  x: state.position.x,
+                  y: state.position.y,
+                  width: state.dimensions.width,
+                  height: state.dimensions.height,
+                };
+
           const merged = {
-            x: current.x,
-            y: current.y,
-            width: current.width,
-            height: current.height,
+            ...current,
             ...input.dimensions,
             ...input.position,
           };
+
+          if (
+            [merged.x, merged.y, merged.width, merged.height].some(
+              (v) => typeof v !== "number"
+            )
+          ) {
+            return;
+          }
 
           // immediate display of the typed value
           setState({
@@ -182,28 +205,19 @@ export default function Position({ readOnly = false }: PositionProps) {
           });
 
           // commit through the engine: it persists (autosave diffs the engine)
-          // and the Lighter bridge read-half re-homes the overlay. A plain
-          // overlay transform moves the box but never reaches the engine, so it
-          // wouldn't persist.
-          const ref = { path: overlay.field, instanceId: overlay.id };
+          // and the Lighter bridge read-half re-homes the overlay.
           const next = [merged.x, merged.y, merged.width, merged.height];
-          const previous = (engine.getLabel({ sample, ...ref })
-            ?.bounding_box as number[] | undefined) ?? [
-            current.x,
-            current.y,
-            current.width,
-            current.height,
-          ];
-          const scoped = engine.scope(sample);
+          const previous =
+            stored && stored.length === 4 ? stored : (next as number[]);
 
           createPushAndExec(
-            `transform-${overlay.id}-${Date.now()}`,
+            `transform-${ref.instanceId}-${ref.frame ?? ""}-${Date.now()}`,
             () =>
-              scoped.updateLabel(ref, {
+              engine.updateLabel(ref, {
                 bounding_box: next,
               } as Partial<LabelData>),
             () =>
-              scoped.updateLabel(ref, {
+              engine.updateLabel(ref, {
                 bounding_box: previous,
               } as Partial<LabelData>)
           );

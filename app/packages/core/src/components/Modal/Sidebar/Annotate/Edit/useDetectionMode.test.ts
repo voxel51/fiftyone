@@ -145,7 +145,21 @@ describe("useDetectionMode", () => {
 
       expect(scene().exitInteractiveMode).toHaveBeenCalledOnce();
       expect(annotationContext().createNew).toHaveBeenCalledOnce();
-      expect(annotationContext().createNew).toHaveBeenCalledWith("Detection");
+      // no pinned field → field/class resolve from last-used memory
+      expect(annotationContext().createNew).toHaveBeenCalledWith(
+        "Detection",
+        undefined
+      );
+    });
+
+    it("pins the destination field when one is given (video frame field)", () => {
+      const { result } = renderHook(() => useDetectionMode());
+
+      act(() => result.current.create("frames.detections"));
+
+      expect(annotationContext().createNew).toHaveBeenCalledWith("Detection", {
+        field: "frames.detections",
+      });
     });
   });
 

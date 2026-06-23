@@ -12,6 +12,7 @@ import {
   getDefaultComponent,
   LABEL_TYPE_OPTIONS,
   LABEL_TYPE_OPTIONS_3D,
+  LABEL_TYPE_OPTIONS_VIDEO,
   LIST_TYPES,
   NUMERIC_TYPES,
   SYSTEM_READ_ONLY_FIELD_NAME,
@@ -694,6 +695,9 @@ export const reconcileComponent = (
 export const getLabelTypeOptions = (mediaType: string | null | undefined) => {
   if (mediaType && is3d(mediaType)) {
     return LABEL_TYPE_OPTIONS_3D;
+  }
+  if (mediaType === "video") {
+    return LABEL_TYPE_OPTIONS_VIDEO;
   }
   return LABEL_TYPE_OPTIONS;
 };
