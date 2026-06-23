@@ -715,7 +715,9 @@ class TestQwen3VLEmbedFrames:
 
     def test_embed_frames_returns_1d_array(self):
         model = self._make_model()
-        with mock.patch.object(qwen3_vl, "qwen_vl_utils") as mock_qvu:
+        with mock.patch.object(
+            qwen3_vl, "qwen_vl_utils", mock.MagicMock()
+        ) as mock_qvu:
             mock_qvu.process_vision_info.return_value = (None, ["<video>"])
             result = model.embed_frames(self._frames(4), fps=4.0)
 
@@ -739,7 +741,9 @@ class TestQwen3VLEmbedFrames:
             captured["fps"] = content["fps"]
             return (None, ["<video>"])
 
-        with mock.patch.object(qwen3_vl, "qwen_vl_utils") as mock_qvu:
+        with mock.patch.object(
+            qwen3_vl, "qwen_vl_utils", mock.MagicMock()
+        ) as mock_qvu:
             mock_qvu.process_vision_info.side_effect = _capture
             model.embed_frames(self._frames(8), fps=8.0)
 
@@ -757,7 +761,9 @@ class TestQwen3VLEmbedFrames:
             captured["frames"] = messages[0]["content"][0]["video"]
             return (None, ["<video>"])
 
-        with mock.patch.object(qwen3_vl, "qwen_vl_utils") as mock_qvu:
+        with mock.patch.object(
+            qwen3_vl, "qwen_vl_utils", mock.MagicMock()
+        ) as mock_qvu:
             mock_qvu.process_vision_info.side_effect = _capture
             model.embed_frames(self._frames(10), fps=None)
 
@@ -775,7 +781,9 @@ class TestQwen3VLEmbedFrames:
             captured["fps"] = content["fps"]
             return (None, ["<video>"])
 
-        with mock.patch.object(qwen3_vl, "qwen_vl_utils") as mock_qvu:
+        with mock.patch.object(
+            qwen3_vl, "qwen_vl_utils", mock.MagicMock()
+        ) as mock_qvu:
             mock_qvu.process_vision_info.side_effect = _capture
             model.embed_frames(self._frames(5), fps=None)
 
@@ -795,7 +803,9 @@ class TestQwen3VLEmbedFrames:
             captured["fps"] = content["fps"]
             return (None, ["<video>"])
 
-        with mock.patch.object(qwen3_vl, "qwen_vl_utils") as mock_qvu:
+        with mock.patch.object(
+            qwen3_vl, "qwen_vl_utils", mock.MagicMock()
+        ) as mock_qvu:
             mock_qvu.process_vision_info.side_effect = _capture
             model.embed_frames(self._frames(5), fps=0)
 
@@ -815,7 +825,9 @@ class TestQwen3VLEmbedFrames:
             captured["fps"] = content["fps"]
             return (None, ["<video>"])
 
-        with mock.patch.object(qwen3_vl, "qwen_vl_utils") as mock_qvu:
+        with mock.patch.object(
+            qwen3_vl, "qwen_vl_utils", mock.MagicMock()
+        ) as mock_qvu:
             mock_qvu.process_vision_info.side_effect = _capture
             model.embed_frames(self._frames(5), fps=-4.0)
 
