@@ -28,6 +28,23 @@ export interface LabelRef {
 /** A ref within an ambient sample scope (`engine.scope(sample)`). */
 export type ScopedRef = Omit<LabelRef, "sample">;
 
+/**
+ * Stamp a frame-locked surface's occurrence coordinate onto a ref. The scene
+ * holds one frame-agnostic handle per track, but engine writes/selection
+ * address `(instanceId, frame)`. `frameOf` returns the playhead's frame for a
+ * per-frame path, or `undefined` for a sample-level one (a temporal detection
+ * sharing the video scene) which must stay frame-less. Image/3D pass no
+ * `frameOf`, so refs stay frame-agnostic.
+ */
+export const stampFrame = <R extends { path: string }>(
+  ref: R,
+  frameOf?: (path: string) => number | undefined
+): R & { frame?: number } => {
+  const frame = frameOf?.(ref.path);
+
+  return frame != null ? { ...ref, frame } : ref;
+};
+
 /** Bind a scoped ref to its sample, producing a canonical ref. */
 export const toLabelRef = (sample: string, ref: ScopedRef): LabelRef => ({
   sample,
@@ -50,14 +67,7 @@ export const refsEqual = (a: LabelRef, b: LabelRef): boolean =>
 export const refKey = (ref: LabelRef): string =>
   [ref.sample, ref.path, ref.instanceId, ref.frame ?? ""].join(" ");
 
-/**
- * Frame-AGNOSTIC identity key, for HOVER only. Hover is a track-level
- * highlight, not a per-occurrence one: a row/overlay lights its whole track up.
- * Keying hover on the full ref strands an entry when the playhead advances
- * between mouseenter (stamped at frame N) and mouseleave (cleared at frame M) —
- * the frame-N entry never clears. Collapsing a track's occurrences to one key
- * makes set/clear symmetric regardless of the playhead.
- */
+/** Frame-agnostic track key; hover is track-level (all occurrences light up). */
 export const hoverKey = (ref: LabelRef): string =>
   [ref.sample, ref.path, ref.instanceId].join(" ");
 

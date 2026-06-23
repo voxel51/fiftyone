@@ -16,6 +16,7 @@ import type { LabelData } from "@fiftyone/utilities";
 import { DETECTION } from "@fiftyone/utilities";
 
 import type { SurfaceBridge } from "../../bridge/types";
+import { stampFrame } from "../../identity/ref";
 import type { LighterDescriptor } from "./adapters";
 
 export interface LighterBridgeDeps {
@@ -179,18 +180,8 @@ export const createLighterBridge = ({
       return overlay;
     },
 
-    refOf: (overlay) => {
-      // frame-locked surfaces stamp the playhead's frame; image/3D and
-      // sample-level overlays (frameOf returns undefined for their path) stay
-      // frame-agnostic
-      const frame = frameOf?.(overlay.field);
-
-      return {
-        path: overlay.field,
-        instanceId: overlay.id,
-        ...(frame != null ? { frame } : {}),
-      };
-    },
+    refOf: (overlay) =>
+      stampFrame({ path: overlay.field, instanceId: overlay.id }, frameOf),
 
     mount: (descriptor) => {
       const { id } = descriptor.options;

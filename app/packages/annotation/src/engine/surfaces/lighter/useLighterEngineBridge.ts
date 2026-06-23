@@ -21,7 +21,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import type { AnnotationEngine } from "../../core/engine";
 import { encodeEntityId } from "../../identity/entityId";
-import { toLabelRef } from "../../identity/ref";
+import { stampFrame, toLabelRef } from "../../identity/ref";
 import { useSurfaceBridge } from "../../react/useSurfaceBridge";
 import { GEOMETRY_SIGNAL, type GeometrySignal } from "../../signals/geometry";
 import { lighterAdapters } from "./adapters";
@@ -29,17 +29,7 @@ import type { LighterInteractionPolicy } from "./interactionPolicy";
 import type { LighterBridgeDeps } from "./lighterBridge";
 import { createLighterBridge } from "./lighterBridge";
 
-export const useLighterEngineBridge = ({
-  engine,
-  sample,
-  dataset,
-  paths,
-  resolveMediaUrl,
-  interactionPolicy,
-  frameOf,
-  onEstablishCommit,
-  enabled = true,
-}: {
+export interface UseLighterEngineBridgeArgs {
   engine: AnnotationEngine;
   sample: string;
   /** Ambient dataset — the `EntityId` namespace for signal keys. */
@@ -67,8 +57,7 @@ export const useLighterEngineBridge = ({
    * Called right after a freshly-drawn overlay is committed + selected, with its
    * overlay id and the gesture `undoKey` the commit landed under. A surface uses
    * it to fold a follow-up write into the draw's single undo unit (the video
-   * auto-extend), keyed by overlay id rather than reading the engine's last
-   * entry. Omitted by image/3D.
+   * auto-extend), keyed by overlay id. Omitted by image/3D.
    */
   onEstablishCommit?: (overlayId: string, undoKey: string) => void;
   /**
@@ -79,7 +68,19 @@ export const useLighterEngineBridge = ({
    * surface. Default on.
    */
   enabled?: boolean;
-}): void => {
+}
+
+export const useLighterEngineBridge = ({
+  engine,
+  sample,
+  dataset,
+  paths,
+  resolveMediaUrl,
+  interactionPolicy,
+  frameOf,
+  onEstablishCommit,
+  enabled = true,
+}: UseLighterEngineBridgeArgs): void => {
   const { scene, overlayFactory } = useLighter();
   // disabled → bind to the inert channel so handlers never fire on a scene this
   // surface doesn't own (rules-of-hooks safe: the hook is always called)
@@ -98,13 +99,8 @@ export const useLighterEngineBridge = ({
             // the gated-mask discard probe; on a frame-locked surface getLabel
             // needs the playhead's frame (the FrameStore is frame-keyed), but
             // only for frame-scoped paths — a sample-level path stays frame-less
-            readLabel: (ref) => {
-              const frame = frameOf?.(ref.path);
-
-              return engine.getLabel(
-                toLabelRef(sample, frame != null ? { ...ref, frame } : ref)
-              );
-            },
+            readLabel: (ref) =>
+              engine.getLabel(toLabelRef(sample, stampFrame(ref, frameOf))),
             resolveMediaUrl,
             frameOf,
           })
@@ -328,14 +324,11 @@ export const useLighterEngineBridge = ({
           // frame-stamp on a frame-locked surface so the ref matches the
           // frame-keyed active entry (refKey includes frame); a sample-level
           // path stays frame-less (frameOf returns undefined for it)
-          const frame = frameOf?.(overlay.field);
-
           surface.toggleActive(
-            {
-              path: overlay.field,
-              instanceId: overlay.id,
-              ...(frame != null ? { frame } : {}),
-            },
+            stampFrame(
+              { path: overlay.field, instanceId: overlay.id },
+              frameOf
+            ),
             false
           );
         }
