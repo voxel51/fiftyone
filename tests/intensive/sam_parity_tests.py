@@ -1348,7 +1348,8 @@ class TestSAM3ConceptParity(unittest.TestCase):
         from sam3.model_builder import build_sam3_image_model
         from sam3.model.sam3_image_processor import Sam3Processor
 
-        cls.sam3_model = build_sam3_image_model()
+        bpe_path = cls.fo_model.config.entrypoint_args.get("bpe_path")
+        cls.sam3_model = build_sam3_image_model(bpe_path=bpe_path)
         cls.processor = Sam3Processor(cls.sam3_model)
 
         cls.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -1455,8 +1456,10 @@ class TestSAM3VisualParity(unittest.TestCase):
 
         from sam3.model_builder import build_sam3_image_model
 
+        bpe_path = cls.fo_model.config.entrypoint_args.get("bpe_path")
         sam3_model = build_sam3_image_model(
             enable_inst_interactivity=True,
+            bpe_path=bpe_path,
         )
         tracker_model = sam3_model.inst_interactive_predictor.model
         if getattr(tracker_model, "backbone", None) is None:
