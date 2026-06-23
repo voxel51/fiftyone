@@ -118,9 +118,14 @@ class GetLabelSchemas(foo.Operator):
 
     def execute(self, ctx):
         label_schemas = ctx.dataset.label_schemas
-        fields = foau.list_valid_annotation_fields(ctx.dataset, flatten=True)
+        fields = foau.list_valid_annotation_fields(
+            ctx.dataset, flatten=True, include_frames=True
+        )
         supported_fields = foau.list_valid_annotation_fields(
-            ctx.dataset, require_app_support=True, flatten=True
+            ctx.dataset,
+            require_app_support=True,
+            flatten=True,
+            include_frames=True,
         )
         result = {}
 
@@ -360,7 +365,10 @@ class ListValidAnnotationFields(foo.Operator):
         require_app_support = ctx.params.get("require_app_support", True)
 
         valid_fields = foau.list_valid_annotation_fields(
-            ctx.dataset, require_app_support=require_app_support, flatten=True
+            ctx.dataset,
+            require_app_support=require_app_support,
+            flatten=True,
+            include_frames=True,
         )
 
         return {"valid_fields": valid_fields}

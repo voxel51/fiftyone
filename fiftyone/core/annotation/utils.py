@@ -68,7 +68,10 @@ def get_supported_app_annotation_fields(sample_collection):
 
 
 def list_valid_annotation_fields(
-    sample_collection, require_app_support=False, flatten=False
+    sample_collection,
+    require_app_support=False,
+    flatten=False,
+    include_frames=False,
 ):
     """Lists all valid annotation fields for a
     :class:`fiftyone.core.collections.SampleCollection`.
@@ -83,14 +86,35 @@ def list_valid_annotation_fields(
             by the App for annotation
         flatten (False): whether to flatten embedded documents with
             ``dot.notation``
+        include_frames (False): whether to also include valid per-frame label
+            fields, keyed by their ``frames.<field>`` path
 
     Returns:
         a sorted list of valid annotation field names
     """
-    fields = sample_collection.get_field_schema()
+    result = _valid_annotation_fields(
+        sample_collection,
+        sample_collection.get_field_schema(),
+        require_app_support,
+    )
 
+    if include_frames and sample_collection._has_frame_fields():
+        frame_fields = _valid_annotation_fields(
+            sample_collection,
+            sample_collection.get_frame_field_schema(),
+            require_app_support,
+        )
+        result |= {f"frames.{field_name}" for field_name in frame_fields}
+
+    if flatten:
+        result = flatten_fields(sample_collection, result, require_app_support)
+
+    return sorted(result)
+
+
+def _valid_annotation_fields(collection, schema, require_app_support):
     result = set()
-    for field_name, field in fields.items():
+    for field_name, field in schema.items():
 
         if _is_supported_primitive(field):
             result.add(field_name)
@@ -103,13 +127,10 @@ def list_valid_annotation_fields(
             result.add(field_name)
             continue
 
-        if _is_supported_label(sample_collection, field, require_app_support):
+        if _is_supported_label(collection, field, require_app_support):
             result.add(field_name)
 
-    if flatten:
-        result = flatten_fields(sample_collection, result, require_app_support)
-
-    return sorted(result)
+    return result
 
 
 def flatten_fields(collection, fields, require_app_support=False):
