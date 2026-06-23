@@ -20,16 +20,10 @@
  * the next `getJsonPatch` re-emits idempotently.
  *
  * Handles list-label frame fields (Detections/Keypoints/…). The server
- * echo/seed payload is the flat {@link FramesData} shape; server-owned-field
- * release in `reconcilePersisted` is not yet implemented.
+ * echo/seed payload is the flat {@link FramesData} shape.
  */
 
-import type {
-  JSONDeltas,
-  LabelData,
-  LabelType,
-  TransientSnapshot,
-} from "@fiftyone/utilities";
+import type { JSONDeltas, LabelData, LabelType } from "@fiftyone/utilities";
 import {
   applyDeltas,
   equalsNormalized,
@@ -46,11 +40,17 @@ import type {
   DisplayListener,
   LabelChange,
   LabelStore,
+  StoreSnapshot,
 } from "./types";
 import { wholeSampleReset } from "./types";
 
 /** One frame's labels, keyed by frame-agnostic field path → element list. */
 type FrameDoc = Map<string, LabelData[]>;
+
+/** The store's transient state for transaction rollback: the dirty overlay. */
+interface FrameSnapshot {
+  working: Map<number, FrameDoc>;
+}
 
 /** Flat per-frame seed/echo shape: `{ [frame]: { [path]: elements } }`. */
 export type FramesData = Record<number, Record<string, LabelData[]>>;
@@ -203,7 +203,7 @@ export class FrameStore implements LabelStore {
 
   // ---- atomicity (engine transactions) ----
 
-  snapshot(): TransientSnapshot {
+  snapshot(): StoreSnapshot {
     const working = new Map<number, FrameDoc>();
 
     // clone the frame maps; element arrays are copy-on-write (mutations replace
@@ -212,18 +212,12 @@ export class FrameStore implements LabelStore {
       working.set(frame, new Map(doc));
     }
 
-    return {
-      transientData: { working },
-      transientDeletes: new Set(),
-    } as unknown as TransientSnapshot;
+    const snapshot: FrameSnapshot = { working };
+    return snapshot;
   }
 
-  restore(snapshot: TransientSnapshot): void {
-    const { working } = (
-      snapshot as unknown as {
-        transientData: { working: Map<number, FrameDoc> };
-      }
-    ).transientData;
+  restore(snapshot: StoreSnapshot): void {
+    const { working } = snapshot as FrameSnapshot;
 
     this.working = new Map();
 
@@ -255,7 +249,7 @@ export class FrameStore implements LabelStore {
           continue;
         }
 
-        const container = `/frames/${frame}/${this.field(path)}`;
+        const container = `/frames/${frame}/${toSchemaField(path)}`;
         ops.push(...idAlignedListDelta(current, baseline, container, child));
       }
     }
@@ -268,7 +262,7 @@ export class FrameStore implements LabelStore {
 
     for (const frame of this.working.keys()) {
       for (const path of Object.keys(this.labelTypes)) {
-        paths.push(`frames.${frame}.${this.field(path)}`);
+        paths.push(`frames.${frame}.${toSchemaField(path)}`);
       }
     }
 
@@ -281,13 +275,9 @@ export class FrameStore implements LabelStore {
 
   /**
    * Fold the server-confirmed deltas into `source` (the new committed truth),
-   * then drop working frames now equal to it — the same GC `setData(echo)`
-   * does, but driven by the deltas rather than a stream re-seed (the `/frames`
-   * source is not refetched after an annotation save, so no echo arrives). A
-   * frame edited during the save round-trip still differs from the rebased
-   * source, so it stays dirty and re-emits as the next delta.
-   *
-   * Server-owned-field release (e.g. mask_path) is still not handled here.
+   * then drop working frames now equal to it (the `/frames` source is not
+   * refetched after a save, so no echo arrives to drive the GC). A frame edited
+   * mid-save still differs from the rebased source, so it stays dirty.
    */
   reconcilePersisted(deltas: JSONDeltas): void {
     const byFrame = new Map<number, JSONDeltas>();
@@ -422,19 +412,13 @@ export class FrameStore implements LabelStore {
     };
   }
 
-  /** Strip the frame-container prefix for the wire path (`frames.detections` → `detections`). */
-  private field(path: string): string {
-    return toSchemaField(path);
-  }
-
   /**
-   * Fold one frame's confirmed deltas into a fresh source `FrameDoc`. The delta
-   * pointers address the WIRE shape (`/frames/<n>/<wireField>/<listChild>/...`,
-   * the list wrapped in its label-doc child); the store holds the unwrapped
-   * element lists keyed by engine path. So reshape into the wire wrapper, strip
-   * the `/frames/<n>` prefix, apply via the shared patch primitive (the same
-   * semantics the server used), and read the lists back. Non-label source keys
-   * (if any) are carried through untouched.
+   * Fold one frame's confirmed deltas into a fresh source `FrameDoc`. Delta
+   * pointers address the wire shape (`/frames/<n>/<wireField>/<listChild>/...`,
+   * the list wrapped in its label-doc child); the store holds unwrapped element
+   * lists keyed by engine path. Reshape into the wire wrapper, strip the
+   * `/frames/<n>` prefix, apply via the shared patch primitive, read the lists
+   * back. Non-label source keys are carried through untouched.
    */
   private rebaseFrame(frame: number, frameOps: JSONDeltas): FrameDoc {
     const source = this.source.get(frame);
@@ -444,7 +428,7 @@ export class FrameStore implements LabelStore {
       const child = LIST_LABEL_CHILD[this.labelTypes[path]];
 
       if (child) {
-        doc[this.field(path)] = { [child]: [...(source?.get(path) ?? [])] };
+        doc[toSchemaField(path)] = { [child]: [...(source?.get(path) ?? [])] };
       }
     }
 
@@ -461,7 +445,7 @@ export class FrameStore implements LabelStore {
       const child = LIST_LABEL_CHILD[this.labelTypes[path]];
 
       if (child) {
-        rebased.set(path, next[this.field(path)]?.[child] ?? []);
+        rebased.set(path, next[toSchemaField(path)]?.[child] ?? []);
       }
     }
 

@@ -31,6 +31,7 @@ import type {
   LabelChange,
   LabelChangeKind,
   LabelStore,
+  StoreSnapshot,
 } from "./types";
 import { wholeSampleReset } from "./types";
 
@@ -168,12 +169,12 @@ export class SampleLabelStore implements LabelStore {
 
   // ---- atomicity ----
 
-  snapshot(): TransientSnapshot {
+  snapshot(): StoreSnapshot {
     return this.source.snapshotTransient();
   }
 
-  restore(snapshot: TransientSnapshot): void {
-    this.source.restoreTransient(snapshot);
+  restore(snapshot: StoreSnapshot): void {
+    this.source.restoreTransient(snapshot as TransientSnapshot);
   }
 
   // ---- persistence ----

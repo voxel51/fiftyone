@@ -22,22 +22,23 @@
  * {@link FramesData} directly by the surface that owns the `/frames` source.
  */
 
-import type {
-  JSONDeltas,
-  LabelData,
-  TransientSnapshot,
-} from "@fiftyone/utilities";
+import type { JSONDeltas, LabelData } from "@fiftyone/utilities";
 import { LabelType } from "@fiftyone/utilities";
 
 import type { LabelRef } from "../identity/ref";
 import type { FrameStore } from "./frameStore";
 import type { SampleLabelStore } from "./sampleLabelStore";
-import type { ChangeListener, DisplayListener, LabelStore } from "./types";
+import type {
+  ChangeListener,
+  DisplayListener,
+  LabelStore,
+  StoreSnapshot,
+} from "./types";
 
-/** Bundles the children's transient snapshots behind the opaque engine type. */
+/** Bundles the children's opaque transient snapshots into one. */
 interface CompositeSnapshot {
-  frames: TransientSnapshot;
-  sampleLevel: TransientSnapshot;
+  frames: StoreSnapshot;
+  sampleLevel: StoreSnapshot;
 }
 
 export class VideoLabelStore implements LabelStore {
@@ -69,11 +70,7 @@ export class VideoLabelStore implements LabelStore {
   }
 
   getLabelType(path: string): LabelType {
-    const type = this.frames.getLabelType(path);
-
-    return type !== LabelType.Unknown
-      ? type
-      : this.sampleLevel.getLabelType(path);
+    return this.route(path).getLabelType(path);
   }
 
   enumerateLabels(kinds: readonly LabelType[]): LabelRef[] {
@@ -121,15 +118,16 @@ export class VideoLabelStore implements LabelStore {
 
   // ---- atomicity (bundle both children's transient state) ----
 
-  snapshot(): TransientSnapshot {
-    return {
+  snapshot(): StoreSnapshot {
+    const snapshot: CompositeSnapshot = {
       frames: this.frames.snapshot(),
       sampleLevel: this.sampleLevel.snapshot(),
-    } as unknown as TransientSnapshot;
+    };
+    return snapshot;
   }
 
-  restore(snapshot: TransientSnapshot): void {
-    const bundle = snapshot as unknown as CompositeSnapshot;
+  restore(snapshot: StoreSnapshot): void {
+    const bundle = snapshot as CompositeSnapshot;
     this.frames.restore(bundle.frames);
     this.sampleLevel.restore(bundle.sampleLevel);
   }

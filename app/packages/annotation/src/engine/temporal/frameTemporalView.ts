@@ -38,6 +38,34 @@ const ALL_LABEL_TYPES = Object.values(LabelType).filter(
   (type) => type !== LabelType.Unknown
 );
 
+/** The two fields frame-presence reads off a sample-level label. */
+interface PresenceProbe {
+  _cls?: string;
+  support?: unknown;
+}
+
+/** A label whose presence is gated by a `support` span. */
+const isTemporalDetection = (label: PresenceProbe | undefined): boolean =>
+  label?._cls === "TemporalDetection";
+
+/** A well-formed `[start, end]` frame span, else undefined. */
+const supportSpan = (
+  label: PresenceProbe
+): readonly [number, number] | undefined => {
+  const support = label.support;
+
+  if (
+    !Array.isArray(support) ||
+    support.length !== 2 ||
+    !Number.isFinite(support[0]) ||
+    !Number.isFinite(support[1])
+  ) {
+    return undefined;
+  }
+
+  return [support[0], support[1]];
+};
+
 /** The pool half the view reads, plus the change channel it tracks. */
 export interface FrameReads {
   enumerateLabels(kinds: readonly LabelType[]): LabelRef[];
@@ -86,7 +114,7 @@ export class FrameTemporalView implements TemporalView {
   }
 
   getPresent(): readonly LabelRef[] {
-    return [...this.computePresent().values()];
+    return [...this.present.values()];
   }
 
   isPresent(ref: LabelRef): boolean {
@@ -138,26 +166,19 @@ export class FrameTemporalView implements TemporalView {
    * support falls through to present so a label is never silently dropped.
    */
   private sampleLevelPresent(ref: LabelRef, frame: number): boolean {
-    const label = this.reads.getLabel(ref) as
-      | { _cls?: string; support?: unknown }
-      | undefined;
+    const label = this.reads.getLabel(ref) as PresenceProbe | undefined;
 
-    if (!label || label._cls !== "TemporalDetection") {
+    if (!isTemporalDetection(label)) {
       return true;
     }
 
-    const support = label.support;
+    const span = supportSpan(label as PresenceProbe);
 
-    if (
-      !Array.isArray(support) ||
-      support.length !== 2 ||
-      !Number.isFinite(support[0]) ||
-      !Number.isFinite(support[1])
-    ) {
+    if (!span) {
       return true;
     }
 
-    return frame >= support[0] && frame <= support[1];
+    return frame >= span[0] && frame <= span[1];
   }
 
   private onClock(): void {

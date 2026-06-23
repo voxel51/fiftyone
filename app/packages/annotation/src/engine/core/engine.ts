@@ -1,8 +1,4 @@
-import type {
-  JSONDeltas,
-  LabelData,
-  TransientSnapshot,
-} from "@fiftyone/utilities";
+import type { JSONDeltas, LabelData } from "@fiftyone/utilities";
 import { LabelType, objectId } from "@fiftyone/utilities";
 import { isEqual } from "lodash";
 
@@ -13,6 +9,7 @@ import type {
   DisplayListener,
   LabelChange,
   LabelStore,
+  StoreSnapshot,
 } from "../store/types";
 import { wholeSampleReset } from "../store/types";
 import { registerBridgeLoop } from "../bridge/bridgeLoop";
@@ -62,9 +59,13 @@ export class AnnotationEngine {
    * at construction (default {@link PoolTemporalView}) and swappable per session
    * via {@link attachTemporal} — a video modal attaches a frame view over its
    * playback clock and detaches on close, mirroring the store lifecycle. Read
-   * live; do not assign directly.
+   * live; mutated only by {@link attachTemporal}/{@link bindTemporalPresence}.
    */
-  temporal: TemporalView;
+  get temporal(): TemporalView {
+    return this._temporal;
+  }
+
+  private _temporal: TemporalView;
 
   /** Stable presence channel: forwards from whatever {@link temporal} view is
    *  current, re-bound on {@link attachTemporal}. Subscribers register here
@@ -90,7 +91,7 @@ export class AnnotationEngine {
   // outermost-transaction state: lazy store snapshots, per-ref
   // before-values for undo capture, and the buffered change stream
   private txDepth = 0;
-  private txSnapshots = new Map<LabelStore, TransientSnapshot>();
+  private txSnapshots = new Map<LabelStore, StoreSnapshot>();
   private txBefores = new Map<
     string,
     { ref: LabelRef; before: LabelData | undefined }
@@ -113,7 +114,7 @@ export class AnnotationEngine {
   ) {
     this.interaction = new InteractionState(this.guard);
     this.signals = new SignalPipe(this.guard);
-    this.temporal = (
+    this._temporal = (
       opts.temporal ?? ((engine) => new PoolTemporalView(engine))
     )(this);
     this.bindTemporalPresence();
@@ -131,21 +132,21 @@ export class AnnotationEngine {
   attachTemporal(
     factory: (engine: AnnotationEngine) => TemporalView
   ): () => void {
-    const previous = this.temporal;
+    const previous = this._temporal;
     const next = factory(this);
-    this.temporal = next;
+    this._temporal = next;
     this.bindTemporalPresence();
     // the new view's present-set differs from the old one's; nudge display
     // subscribers to re-read it now rather than waiting for the first tick
     this.notifyDisplay();
 
     return () => {
-      if (this.temporal !== next) {
+      if (this._temporal !== next) {
         return;
       }
 
       next.dispose?.();
-      this.temporal = previous;
+      this._temporal = previous;
       this.bindTemporalPresence();
       this.notifyDisplay();
     };
