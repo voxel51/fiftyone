@@ -704,18 +704,34 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
         try:
             processor = super()._load_transforms(config)
         except AttributeError:
-            # build the processor from its components
+            # AutoProcessor can't resolve the tokenizer for some models; resolve
+            # the processor class from the config and load it directly.
             from transformers.models.auto.processing_auto import PROCESSOR_MAPPING
 
-            ta = config.transforms_args or {}
-            name = ta.get("pretrained_model_name_or_path") or ta.get("name_or_path")
-            proc_cls = PROCESSOR_MAPPING[
-                type(transformers.AutoConfig.from_pretrained(name))
-            ]
-            processor = proc_cls(
-                image_processor=transformers.AutoImageProcessor.from_pretrained(name),
-                tokenizer=transformers.PreTrainedTokenizerFast.from_pretrained(name),
+            ta = dict(config.transforms_args or {})
+            name = ta.pop("pretrained_model_name_or_path", None)
+            name = name or ta.pop("name_or_path", None)
+
+            proc_cls = PROCESSOR_MAPPING.get(
+                type(transformers.AutoConfig.from_pretrained(name, **ta)), None
             )
+            if proc_cls is None:
+                raise
+
+            try:
+                processor = proc_cls.from_pretrained(name, **ta)
+            except AttributeError:
+                # The processor declares no tokenizer_class, so from_pretrained
+                # re-enters the same tokenizer resolution; read the fast
+                # tokenizer from the repo directly.
+                processor = proc_cls(
+                    image_processor=transformers.AutoImageProcessor.from_pretrained(
+                        name, **ta
+                    ),
+                    tokenizer=transformers.PreTrainedTokenizerFast.from_pretrained(
+                        name, **ta
+                    ),
+                )
         return _HFTransformsHandler(
             processor, **(config.transformers_processor_kwargs)
         )
