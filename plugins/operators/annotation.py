@@ -122,17 +122,17 @@ class GetLabelSchemas(foo.Operator):
         supported_fields = foau.list_valid_annotation_fields(
             ctx.dataset, require_app_support=True, flatten=True
         )
+        default_label_schemas = (
+            ctx.dataset.generate_label_schemas(
+                fields=list(supported_fields), scan_samples=False
+            )
+            if supported_fields
+            else {}
+        )
+
         result = {}
 
         for field in fields:
-            supported = field in supported_fields
-
-            default_label_schema = None
-            if supported:
-                default_label_schema = ctx.dataset.generate_label_schemas(
-                    fields=field, scan_samples=False
-                )
-
             field_instance = ctx.dataset.get_field(field)
             read_only = field_instance.read_only
             _type = foau.get_type(field_instance)
@@ -140,10 +140,10 @@ class GetLabelSchemas(foo.Operator):
                 _type = field_instance.document_type.__name__.lower()
 
             result[field] = {
-                "default_label_schema": default_label_schema,
+                "default_label_schema": default_label_schemas.get(field),
                 "read_only": read_only,
                 "type": _type,
-                "unsupported": not supported,
+                "unsupported": field not in supported_fields,
             }
 
             if field in label_schemas:
