@@ -68,6 +68,15 @@ export class ModalAnnotateEditPom {
   }
 
   /**
+   * Delete the currently-edited label via the label menu. The MUI menu renders
+   * in a document-level portal, so target the item off `page`.
+   */
+  async deleteLabel() {
+    await this.openLabelMenu();
+    await this.page.getByTestId("label-menu-delete").click();
+  }
+
+  /**
    * Click the undo button
    */
   async undo() {
