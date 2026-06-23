@@ -15,7 +15,7 @@ import ImportSchema, { useShowImportSchema } from "./ImportSchema";
 import LabelList from "./LabelList";
 import { labelSchemasData } from "./state";
 import { useAnnotationContextManager } from "./useAnnotationContextManager";
-import { useRegisterEngineUndoRedo } from "./useEngineUndoRedo";
+import { useEngineUndoableBridge } from "./useEngineUndoableBridge";
 import { useFormAnchor } from "./useFormAnchor";
 import type { AnnotationDisabledReason } from "./useCanAnnotate";
 import useLabels from "./useLabels";
@@ -120,7 +120,7 @@ const Annotate = ({ disabledReason, loadSchemas }: AnnotateProps) => {
   useSyncModalSample();
   useSync3dModalSample();
   useSyncAnnotationEngine();
-  useRegisterEngineUndoRedo();
+  useEngineUndoableBridge();
   useLighterAnnotationBridge();
   useLooker3dAnnotationBridge();
   useFormAnchor();
