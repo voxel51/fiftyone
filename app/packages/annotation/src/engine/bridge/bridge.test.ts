@@ -2,9 +2,25 @@ import type { LabelData } from "@fiftyone/utilities";
 import { LabelType } from "@fiftyone/utilities";
 import { describe, expect, it, vi } from "vitest";
 
+import { Sample } from "@fiftyone/utilities";
+
 import { createSurfaceController } from "./surfaceController";
 import type { LabelKindAdapter, SurfaceBridge } from "./types";
-import { makeDet, makeEngine, makeStore, ref } from "../testing/fixtures";
+import { AnnotationEngine } from "../core/engine";
+import { SampleLabelStore } from "../store/sampleLabelStore";
+import {
+  field,
+  labelSchema,
+  makeDet,
+  makeEngine,
+  makeStore,
+  ref,
+} from "../testing/fixtures";
+import type {
+  PresenceEvent,
+  PresenceListener,
+  TemporalView,
+} from "../temporal/types";
 
 /** A minimal retained-mode surface: handles in a map, flags applied silently. */
 interface FakeHandle {
@@ -495,5 +511,112 @@ describe("surface controller (write-half)", () => {
     expect(
       engine.listLabels({ sample: "sample-1", path: "ground_truth" })
     ).toHaveLength(1);
+  });
+});
+
+/** A drivable temporal view: emit() pushes presence events to the loop. */
+const makeFakeTemporal = () => {
+  const listeners = new Set<PresenceListener>();
+  const view: TemporalView = {
+    isTemporal: true,
+    getPresent: () => [],
+    isPresent: () => true,
+    subscribePresence: (l) => {
+      listeners.add(l);
+      return () => listeners.delete(l);
+    },
+    dispose: () => listeners.clear(),
+  };
+
+  return {
+    view,
+    emit: (events: PresenceEvent[]) => listeners.forEach((l) => l(events)),
+  };
+};
+
+/** Engine whose schema carries a sample-level `TemporalDetections` field
+ *  (`events`) alongside the standard detection fields — no detection adapter
+ *  kind covers it. */
+const makeTemporalEngine = () => {
+  const schema = {
+    ...labelSchema,
+    events: field("fiftyone.core.labels.TemporalDetections", {
+      detections: field(null, undefined, {
+        ftype: "fiftyone.core.fields.ListField",
+        subfield: "fiftyone.core.fields.EmbeddedDocumentField",
+      }),
+    }),
+  };
+
+  const sample = new Sample({
+    data: {
+      events: {
+        _cls: "TemporalDetections",
+        detections: [
+          {
+            _id: "td1",
+            _cls: "TemporalDetection",
+            label: "x",
+            support: [1, 5],
+          },
+        ],
+      },
+    },
+    schema,
+  });
+
+  const engine = new AnnotationEngine();
+  engine.registerStore(new SampleLabelStore("sample-1", sample));
+  return engine;
+};
+
+describe("bridge presence merge (temporal)", () => {
+  it("leaves a kind without an adapter alone on a presence exit", () => {
+    const engine = makeTemporalEngine();
+    const { handles, bridge, adapters } = makeFakeSurface();
+
+    // a sample-level TD overlay shares the scene but is owned by another
+    // source (useTemporalOverlaySync) — its id resolves through resolveHandle
+    handles.set("td1", {
+      id: "td1",
+      path: "events",
+      label: { _id: "td1", _cls: "TemporalDetection", label: "x" },
+      selected: false,
+      hovered: false,
+      anchor: false,
+    });
+
+    engine.registerBridge(bridge, adapters);
+    const fake = makeFakeTemporal();
+    engine.attachTemporal(() => fake.view);
+
+    // playhead leaves the TD's support → the view emits an exit for its ref;
+    // the bridge has no TemporalDetections adapter, so it must NOT evict the
+    // overlay (it doesn't own it and couldn't re-mount it)
+    fake.emit([{ ref: ref("events", "td1"), kind: "exit" }]);
+
+    expect(handles.has("td1")).toBe(true);
+  });
+
+  it("still unmounts an adapter kind on a presence exit", () => {
+    const engine = makeTemporalEngine();
+    const { handles, bridge, adapters } = makeFakeSurface();
+
+    handles.set("d1", {
+      id: "d1",
+      path: "ground_truth",
+      label: makeDet("d1", "cat"),
+      selected: false,
+      hovered: false,
+      anchor: false,
+    });
+
+    engine.registerBridge(bridge, adapters);
+    const fake = makeFakeTemporal();
+    engine.attachTemporal(() => fake.view);
+
+    fake.emit([{ ref: ref("ground_truth", "d1"), kind: "exit" }]);
+
+    expect(handles.has("d1")).toBe(false);
   });
 });

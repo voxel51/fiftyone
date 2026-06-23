@@ -20,6 +20,8 @@ interface PoolReads {
 }
 
 export class PoolTemporalView implements TemporalView {
+  readonly isTemporal = false;
+
   private pool: PoolReads;
 
   constructor(pool: PoolReads) {

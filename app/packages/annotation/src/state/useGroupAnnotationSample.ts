@@ -36,7 +36,12 @@ export const useThreeDSceneSampleId = (): string | undefined => {
   const sceneId = useSceneSampleId();
   const modalId = useActiveSampleId();
 
-  return sceneId && sceneId !== modalId ? sceneId : undefined;
+  // Require a known `modalId`: during modal navigation it blanks for a tick
+  // while the stable scene selector still resolves to the active (non-3D)
+  // sample, and `sceneId !== modalId` would then treat that sample as a
+  // distinct scene to register — colliding with the surface's own store (e.g. a
+  // video sample's VideoLabelStore).
+  return sceneId && modalId && sceneId !== modalId ? sceneId : undefined;
 };
 
 /**

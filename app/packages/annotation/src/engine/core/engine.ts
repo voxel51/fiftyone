@@ -1,8 +1,4 @@
-import type {
-  JSONDeltas,
-  LabelData,
-  TransientSnapshot,
-} from "@fiftyone/utilities";
+import type { JSONDeltas, LabelData } from "@fiftyone/utilities";
 import { LabelType, objectId } from "@fiftyone/utilities";
 import { isEqual } from "lodash";
 
@@ -13,6 +9,7 @@ import type {
   DisplayListener,
   LabelChange,
   LabelStore,
+  StoreSnapshot,
 } from "../store/types";
 import { wholeSampleReset } from "../store/types";
 import { registerBridgeLoop } from "../bridge/bridgeLoop";
@@ -22,7 +19,7 @@ import { InteractionState } from "../interaction/interactionState";
 import type { SignalHandler } from "../signals/signalPipe";
 import { SignalPipe } from "../signals/signalPipe";
 import { PoolTemporalView } from "../temporal/poolTemporalView";
-import type { TemporalView } from "../temporal/types";
+import type { PresenceListener, TemporalView } from "../temporal/types";
 import { DispatchGuard } from "./dispatchGuard";
 import type { UndoEntry, UndoOp } from "./undoStack";
 import { UndoStack } from "./undoStack";
@@ -57,8 +54,25 @@ export class AnnotationEngine {
   /** Ephemeral selection/hover/anchor state; GC'd by the engine. */
   readonly interaction: InteractionState;
 
-  /** Derived temporal presence over the pool; ≡ pool when non-temporal. */
-  readonly temporal: TemporalView;
+  /**
+   * Derived temporal presence over the pool; ≡ pool when non-temporal. Installed
+   * at construction (default {@link PoolTemporalView}) and swappable per session
+   * via {@link attachTemporal} — a video modal attaches a frame view over its
+   * playback clock and detaches on close, mirroring the store lifecycle. Read
+   * live; mutated only by {@link attachTemporal}/{@link bindTemporalPresence}.
+   */
+  get temporal(): TemporalView {
+    return this._temporal;
+  }
+
+  private _temporal: TemporalView;
+
+  /** Stable presence channel: forwards from whatever {@link temporal} view is
+   *  current, re-bound on {@link attachTemporal}. Subscribers register here
+   *  (not on the view) so a subscription taken before the frame view is
+   *  attached still receives its clock events. */
+  private presenceListeners = new Set<PresenceListener>();
+  private temporalPresenceUnsub: (() => void) | undefined;
 
   private signals: SignalPipe;
 
@@ -77,7 +91,7 @@ export class AnnotationEngine {
   // outermost-transaction state: lazy store snapshots, per-ref
   // before-values for undo capture, and the buffered change stream
   private txDepth = 0;
-  private txSnapshots = new Map<LabelStore, TransientSnapshot>();
+  private txSnapshots = new Map<LabelStore, StoreSnapshot>();
   private txBefores = new Map<
     string,
     { ref: LabelRef; before: LabelData | undefined }
@@ -88,13 +102,78 @@ export class AnnotationEngine {
   // monotonic source of unique gesture keys (see mintGestureKey)
   private gestureEpoch = 0;
 
-  constructor() {
+  /**
+   * @param opts.temporal a factory for the temporal view, given the engine as
+   *   its pool/change source. Defaults to the non-temporal {@link
+   *   PoolTemporalView} (presence ≡ pool) — every image/3D session. A video
+   *   session injects a frame view built over a playback {@link Clock}; the
+   *   factory shape lets it close over the clock without the engine knowing it.
+   */
+  constructor(
+    opts: { temporal?: (engine: AnnotationEngine) => TemporalView } = {}
+  ) {
     this.interaction = new InteractionState(this.guard);
     this.signals = new SignalPipe(this.guard);
-    this.temporal = new PoolTemporalView(this);
+    this._temporal = (
+      opts.temporal ?? ((engine) => new PoolTemporalView(engine))
+    )(this);
+    this.bindTemporalPresence();
     this.registerBookkeeping((changes) =>
       this.interaction.gc(changes, (ref) => this.getLabel(ref) !== undefined)
     );
+  }
+
+  /**
+   * Install a session-scoped temporal view (e.g. a video {@link
+   * FrameTemporalView} over a playback clock), mirroring the per-modal store
+   * lifecycle. Returns a detach that disposes the installed view and restores
+   * the prior one; idempotent if a later attach has already superseded it.
+   */
+  attachTemporal(
+    factory: (engine: AnnotationEngine) => TemporalView
+  ): () => void {
+    const previous = this._temporal;
+    const next = factory(this);
+    this._temporal = next;
+    this.bindTemporalPresence();
+    // the new view's present-set differs from the old one's; nudge display
+    // subscribers to re-read it now rather than waiting for the first tick
+    this.notifyDisplay();
+
+    return () => {
+      if (this._temporal !== next) {
+        return;
+      }
+
+      next.dispose?.();
+      this._temporal = previous;
+      this.bindTemporalPresence();
+      this.notifyDisplay();
+    };
+  }
+
+  /**
+   * Subscribe to temporal presence through the engine's stable channel (vs.
+   * `temporal.subscribePresence`, which a later {@link attachTemporal} would
+   * orphan). The engine re-points its internal forwarder on attach, so a
+   * subscription survives the pool→frame view swap.
+   */
+  subscribePresence(listener: PresenceListener): () => void {
+    this.presenceListeners.add(listener);
+
+    return () => {
+      this.presenceListeners.delete(listener);
+    };
+  }
+
+  /** (Re)bind the internal forwarder to the current temporal view. */
+  private bindTemporalPresence(): void {
+    this.temporalPresenceUnsub?.();
+    this.temporalPresenceUnsub = this.temporal.subscribePresence((events) => {
+      for (const listener of this.presenceListeners) {
+        listener(events);
+      }
+    });
   }
 
   // ---- identity ----

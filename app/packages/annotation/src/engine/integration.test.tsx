@@ -15,7 +15,7 @@ import type { LabelData } from "@fiftyone/utilities";
 import { LabelType } from "@fiftyone/utilities";
 import { describe, expect, it } from "vitest";
 
-import type { AnnotationEngine } from "./core/engine";
+import { AnnotationEngine } from "./core/engine";
 import { createSurfaceController } from "./bridge/surfaceController";
 import type {
   AdapterMap,
@@ -30,7 +30,10 @@ import {
   useSurfaceActions,
   useTemporal,
 } from "./react/hooks";
+import { FrameStore } from "./store/frameStore";
 import type { LabelChange } from "./store/types";
+import { FrameTemporalView } from "./temporal/frameTemporalView";
+import type { Clock } from "./temporal/types";
 import { makeDet, makeEngine, makeStore, ref } from "./testing/fixtures";
 
 // ---------------------------------------------------------------------------
@@ -994,5 +997,209 @@ describe("integration: display and temporal projections", () => {
 
     expect(present.result.current.split(",")).toHaveLength(3);
     expect(engine.temporal.isPresent(ref("ground_truth", created))).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// the frame-indexed (video) world: a FrameStore + a clock-driven temporal
+// view, a frame-locked retained canvas, and a declarative whole-clip pool
+// reader (the timeline). Edits target an explicit frame, as a timeline/command
+// would; the canvas is the read-half projection of the present frame.
+// ---------------------------------------------------------------------------
+
+const FRAME_PATH = "frames.detections";
+
+const frameDet = (
+  docId: string,
+  trackId: string,
+  bounding: number[],
+  label = "x"
+): LabelData => ({
+  _id: docId,
+  _cls: "Detection",
+  instance: { _id: trackId, _cls: "Instance" },
+  label,
+  bounding_box: bounding,
+});
+
+const makeFrameClock = () => {
+  let time = 1;
+  const listeners = new Set<(t: number) => void>();
+  const clock: Clock = {
+    getTime: () => time,
+    subscribe: (l) => {
+      listeners.add(l);
+      return () => listeners.delete(l);
+    },
+  };
+  return {
+    clock,
+    seek: (next: number) => {
+      time = next;
+      for (const l of listeners) l(next);
+    },
+  };
+};
+
+const frameRef = (instanceId: string, frame: number): LabelRef => ({
+  sample: "v",
+  path: FRAME_PATH,
+  instanceId,
+  frame,
+});
+
+const makeFrameWorld = (data?: Record<number, Record<string, LabelData[]>>) => {
+  const { clock, seek } = makeFrameClock();
+  const engine = new AnnotationEngine({
+    temporal: (e) => new FrameTemporalView(e, clock, (t) => t),
+  });
+  const store = new FrameStore("v", {
+    labelTypes: { [FRAME_PATH]: LabelType.Detections },
+  });
+  engine.registerStore(store);
+
+  // the canvas: a frame-locked retained surface (default posture); its
+  // resolveHandle keys on instanceId, so one handle tracks a whole track
+  const canvas = makeRetainedSurface(engine, "v", "frame-canvas");
+
+  // the timeline: a declarative reader over the whole-clip pool, grouped to one
+  // row per track — playhead-independent (it must not change as the clock moves)
+  const timeline = renderHook(() =>
+    useEngineSelector(engine, (e) =>
+      [
+        ...new Set(
+          e
+            .listLabels({ sample: "v", path: FRAME_PATH })
+            .map((l) => (l.instance as { _id: string })._id)
+        ),
+      ]
+        .sort()
+        .join(",")
+    )
+  );
+
+  if (data) {
+    act(() => store.setData(data));
+  }
+
+  return { engine, store, seek, canvas, timeline };
+};
+
+// track A spans frames 1–2 (distinct doc ids, one instance); B is on 2 only
+const CLIP = {
+  1: { [FRAME_PATH]: [frameDet("doc-1", "A", [0, 0, 1, 1])] },
+  2: {
+    [FRAME_PATH]: [
+      frameDet("doc-2", "A", [0, 0, 2, 2]),
+      frameDet("doc-3", "B", [5, 5, 1, 1]),
+    ],
+  },
+};
+
+describe("integration: frame-indexed temporal path through the engine", () => {
+  it("the canvas shows the present frame; the timeline shows the whole clip", () => {
+    const { seek, canvas, timeline } = makeFrameWorld(CLIP);
+
+    // frame 1: canvas has only A; the timeline pool already spans the clip
+    expect([...canvas.handles.keys()]).toEqual(["A"]);
+    expect(canvas.handle("A")?.label.bounding_box).toEqual([0, 0, 1, 1]);
+    expect(timeline.result.current).toBe("A,B");
+
+    // scrub to 2: A is the SAME handle refreshed to frame-2 geometry; B mounts;
+    // the timeline does not change (the pool is playhead-independent)
+    const handleA = canvas.handle("A");
+    act(() => seek(2));
+    expect(canvas.handle("A")).toBe(handleA);
+    expect(canvas.handle("A")?.label.bounding_box).toEqual([0, 0, 2, 2]);
+    expect(canvas.handle("B")).toBeDefined();
+    expect(timeline.result.current).toBe("A,B");
+
+    // past A's last frame: the canvas empties, the timeline still spans the clip
+    act(() => seek(9));
+    expect(canvas.handles.size).toBe(0);
+    expect(timeline.result.current).toBe("A,B");
+  });
+
+  it("a current-frame edit converges on the canvas, persists, and undoes", () => {
+    const { engine, store, canvas } = makeFrameWorld(CLIP);
+
+    act(() => engine.updateLabel(frameRef("A", 1), { label: "cat" }));
+
+    expect(canvas.handle("A")?.label.label).toBe("cat");
+    expect(store.getJsonPatch()).toEqual([
+      {
+        op: "replace",
+        path: "/frames/1/detections/detections/0/label",
+        value: "cat",
+      },
+    ]);
+
+    act(() => engine.undo());
+    expect(canvas.handle("A")?.label.label).toBe("x");
+    expect(store.getJsonPatch()).toEqual([]);
+  });
+
+  it("an off-frame edit stays off the canvas, then surfaces on scrub", () => {
+    const { engine, seek, canvas } = makeFrameWorld(CLIP);
+
+    // editing frame 2 while parked on frame 1 must not touch the canvas
+    act(() => engine.updateLabel(frameRef("A", 2), { label: "future" }));
+    expect(canvas.handle("A")?.label.label).toBe("x");
+
+    act(() => seek(2));
+    expect(canvas.handle("A")?.label.label).toBe("future");
+  });
+
+  it("selection survives scrubbing; hover prunes; both re-apply on return", () => {
+    const { engine, seek, canvas } = makeFrameWorld(CLIP);
+
+    act(() => {
+      engine.interaction.setActive([frameRef("A", 1)]);
+      engine.interaction.setHovered(frameRef("A", 1), true);
+    });
+    expect(canvas.handle("A")).toMatchObject({ selected: true, hovered: true });
+
+    // scrub A off-frame: it unmounts, hover prunes, selection survives
+    act(() => seek(9));
+    expect(canvas.handle("A")).toBeUndefined();
+    expect(engine.interaction.isActive(frameRef("A", 1))).toBe(true);
+    expect(engine.interaction.isHovered(frameRef("A", 1))).toBe(false);
+
+    // scrub back: A re-mounts and re-applies the surviving selection
+    act(() => seek(1));
+    expect(canvas.handle("A")).toMatchObject({
+      selected: true,
+      hovered: false,
+    });
+  });
+
+  it("autosave drains deltas across frames, then a setData echo clears dirty", () => {
+    const { engine, store } = makeFrameWorld(CLIP);
+
+    act(() => {
+      engine.updateLabel(frameRef("A", 1), { label: "one" });
+      engine.updateLabel(frameRef("A", 2), { label: "two" });
+    });
+
+    const paths = store.getJsonPatch().map((op) => op.path);
+    expect(paths.some((p) => p.startsWith("/frames/1/"))).toBe(true);
+    expect(paths.some((p) => p.startsWith("/frames/2/"))).toBe(true);
+    expect(store.isDirty()).toBe(true);
+
+    // the backend echoes the saved clip
+    act(() =>
+      store.setData({
+        1: { [FRAME_PATH]: [frameDet("doc-1", "A", [0, 0, 1, 1], "one")] },
+        2: {
+          [FRAME_PATH]: [
+            frameDet("doc-2", "A", [0, 0, 2, 2], "two"),
+            frameDet("doc-3", "B", [5, 5, 1, 1]),
+          ],
+        },
+      })
+    );
+
+    expect(store.isDirty()).toBe(false);
+    expect(store.getJsonPatch()).toEqual([]);
   });
 });

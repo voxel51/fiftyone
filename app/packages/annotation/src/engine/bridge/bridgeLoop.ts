@@ -164,6 +164,19 @@ export const registerBridgeLoop = <Handle, Descriptor>(
         continue;
       }
 
+      // A frame-locked surface shows only the present subset, so an edit,
+      // delete, or add on a frame other than the playhead's is real in the
+      // store but must not touch the canvas — the presence merge surfaces it
+      // when the clock arrives. Gated to genuinely temporal engines: under the
+      // pool view presence ≡ existence, where a delete must still unmount.
+      if (
+        bridge.temporal !== "pool" &&
+        engine.temporal.isTemporal &&
+        !engine.temporal.isPresent(change.ref)
+      ) {
+        continue;
+      }
+
       if (change.kind === "delete") {
         unmountRef(change.ref);
         continue;
@@ -253,22 +266,38 @@ export const registerBridgeLoop = <Handle, Descriptor>(
   const onPresence =
     bridge.temporal === "pool"
       ? undefined
-      : engine.temporal.subscribePresence((events) => {
+      : engine.subscribePresence((events) => {
           if (bridge.isWriting) {
             return;
           }
+
+          const exited: LabelRef[] = [];
 
           for (const event of events) {
             if (!inScope(event.ref)) {
               continue;
             }
 
+            // Only act on kinds this bridge adapts; unmounting a foreign-owned
+            // ref (e.g. a temporal detection) is unrecoverable — reproject can't
+            // re-add it without an adapter.
+            if (!kinds.includes(engine.getLabelType(event.ref.path))) {
+              continue;
+            }
+
             if (event.kind === "exit") {
               unmountRef(event.ref);
+              exited.push(event.ref);
               continue;
             }
 
             reproject(event.ref);
+          }
+
+          // scrubbing a label off-frame prunes its hover (the overlay under the
+          // cursor vanished) but never its selection — active/anchor survive.
+          if (exited.length > 0) {
+            engine.interaction.pruneHovered(exited);
           }
         });
 

@@ -13,6 +13,7 @@
 import type { Scene2D } from "@fiftyone/lighter";
 import {
   DetectionOverlay,
+  UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
@@ -20,7 +21,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import type { AnnotationEngine } from "../../core/engine";
 import { encodeEntityId } from "../../identity/entityId";
-import { toLabelRef } from "../../identity/ref";
+import { stampFrame, toLabelRef } from "../../identity/ref";
 import { useSurfaceBridge } from "../../react/useSurfaceBridge";
 import { GEOMETRY_SIGNAL, type GeometrySignal } from "../../signals/geometry";
 import { lighterAdapters } from "./adapters";
@@ -28,14 +29,7 @@ import type { LighterInteractionPolicy } from "./interactionPolicy";
 import type { LighterBridgeDeps } from "./lighterBridge";
 import { createLighterBridge } from "./lighterBridge";
 
-export const useLighterEngineBridge = ({
-  engine,
-  sample,
-  dataset,
-  paths,
-  resolveMediaUrl,
-  interactionPolicy,
-}: {
+export interface UseLighterEngineBridgeArgs {
   engine: AnnotationEngine;
   sample: string;
   /** Ambient dataset — the `EntityId` namespace for signal keys. */
@@ -49,23 +43,78 @@ export const useLighterEngineBridge = ({
    */
   resolveMediaUrl?: LighterBridgeDeps["resolveMediaUrl"];
   interactionPolicy?: LighterInteractionPolicy;
-}): void => {
+  /**
+   * Frame-locked surfaces (the video canvas) supply the playhead's current
+   * frame for an overlay's PATH; the bridge stamps it onto the ref so
+   * writes/selection address `(instanceId, frame)`. Returns `undefined` for a
+   * sample-level path (a temporal detection sharing the video scene) so its ref
+   * stays frame-agnostic and matches the sidebar / timeline. MUST be
+   * referentially stable (a new identity re-creates the bridge). Omitted by
+   * image/3D — refs stay frame-agnostic.
+   */
+  frameOf?: (path: string) => number | undefined;
+  /**
+   * Called right after a freshly-drawn overlay is committed + selected, with its
+   * overlay id and the gesture `undoKey` the commit landed under. A surface uses
+   * it to fold a follow-up write into the draw's single undo unit (the video
+   * auto-extend), keyed by overlay id. Omitted by image/3D.
+   */
+  onEstablishCommit?: (overlayId: string, undoKey: string) => void;
+  /**
+   * Gate the whole surface off without violating hook order: a disabled bridge
+   * registers nothing AND binds its gesture handlers to the inert sentinel
+   * channel, so a shared scene (the video tile sets the global `lighterSceneAtom`
+   * the image sidebar also reads) never routes its events through the wrong
+   * surface. Default on.
+   */
+  enabled?: boolean;
+}
+
+export const useLighterEngineBridge = ({
+  engine,
+  sample,
+  dataset,
+  paths,
+  resolveMediaUrl,
+  interactionPolicy,
+  frameOf,
+  onEstablishCommit,
+  enabled = true,
+}: UseLighterEngineBridgeArgs): void => {
   const { scene, overlayFactory } = useLighter();
-  const on = useLighterEventHandler(scene?.getEventChannel());
+  // disabled → bind to the inert channel so handlers never fire on a scene this
+  // surface doesn't own (rules-of-hooks safe: the hook is always called)
+  const on = useLighterEventHandler(
+    enabled && scene ? scene.getEventChannel() : UNDEFINED_LIGHTER_SCENE_ID
+  );
 
   const bridge = useMemo(
     () =>
-      scene
+      enabled && scene
         ? createLighterBridge({
             scene,
             overlayFactory,
             sample,
             paths,
-            readLabel: (ref) => engine.getLabel(toLabelRef(sample, ref)),
+            // the gated-mask discard probe; on a frame-locked surface getLabel
+            // needs the playhead's frame (the FrameStore is frame-keyed), but
+            // only for frame-scoped paths — a sample-level path stays frame-less
+            readLabel: (ref) =>
+              engine.getLabel(toLabelRef(sample, stampFrame(ref, frameOf))),
             resolveMediaUrl,
+            frameOf,
           })
         : undefined,
-    [engine, scene, overlayFactory, sample, paths, resolveMediaUrl]
+    [
+      enabled,
+      engine,
+      scene,
+      overlayFactory,
+      sample,
+      paths,
+      resolveMediaUrl,
+      frameOf,
+    ]
   );
 
   // a replaced bridge (scope/scene/sample change) clears its overlays on the
@@ -135,6 +184,7 @@ export const useLighterEngineBridge = ({
         overlay instanceof DetectionOverlay && overlay.hasMask();
       const key = gestureKeyFor(event.overlayId, expectsMaskTail);
       surface.commit(overlay, { undoKey: key });
+      return key;
     },
     [gestureKeyFor, scene, surface]
   );
@@ -165,14 +215,18 @@ export const useLighterEngineBridge = ({
   // no-op and the overlay keeps its handles after the form closes.
   const establishOverlay = useCallback(
     (event: { overlayId: string }) => {
-      commitWithMaskTail(event);
+      const undoKey = commitWithMaskTail(event);
       const overlay = (scene as Scene2D).getOverlay(event.overlayId);
 
       if (overlay) {
         surface.selectHandle(overlay);
       }
+
+      // hand the gesture key to surfaces that fold a follow-up write into the
+      // draw's undo unit (video auto-extend), keyed by overlay id
+      onEstablishCommit?.(event.overlayId, undoKey);
     },
-    [commitWithMaskTail, scene, surface]
+    [commitWithMaskTail, onEstablishCommit, scene, surface]
   );
 
   // WRITE-HALF: finalize events → commit (upsert by the overlay's durable id).
@@ -267,13 +321,19 @@ export const useLighterEngineBridge = ({
         const overlay = (scene as Scene2D).getOverlay(event.id);
 
         if (overlay) {
+          // frame-stamp on a frame-locked surface so the ref matches the
+          // frame-keyed active entry (refKey includes frame); a sample-level
+          // path stays frame-less (frameOf returns undefined for it)
           surface.toggleActive(
-            { path: overlay.field, instanceId: overlay.id },
+            stampFrame(
+              { path: overlay.field, instanceId: overlay.id },
+              frameOf
+            ),
             false
           );
         }
       },
-      [interactionPolicy, scene, surface]
+      [interactionPolicy, scene, surface, frameOf]
     )
   );
 

@@ -4,16 +4,19 @@
  * a frame-indexed `FrameStore` is another. Stores never know about each other.
  */
 
-import type {
-  JSONDeltas,
-  LabelData,
-  LabelType,
-  TransientSnapshot,
-} from "@fiftyone/utilities";
+import type { JSONDeltas, LabelData, LabelType } from "@fiftyone/utilities";
 
 import type { LabelRef } from "../identity/ref";
 
 export type LabelChangeKind = "update" | "delete" | "reset";
+
+/**
+ * A store's transient state, captured opaquely for transaction rollback. Each
+ * store defines its own concrete shape; the engine only round-trips a snapshot
+ * back to the same store's {@link LabelStore.restore}, so the type is opaque to
+ * everyone else. A store narrows `unknown` → its own shape once, in `restore`.
+ */
+export type StoreSnapshot = unknown;
 
 /**
  * A single semantic mutation: an edit, delete, or reconcile happened to
@@ -76,8 +79,8 @@ export interface LabelStore {
   subscribeChanges(listener: ChangeListener): () => void;
 
   // atomicity (engine transactions)
-  snapshot(): TransientSnapshot;
-  restore(snapshot: TransientSnapshot): void;
+  snapshot(): StoreSnapshot;
+  restore(snapshot: StoreSnapshot): void;
 
   // persistence
   getJsonPatch(opts?: { isGenerated?: boolean }): JSONDeltas;

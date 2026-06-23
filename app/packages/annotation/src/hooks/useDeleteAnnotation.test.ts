@@ -80,6 +80,29 @@ describe("useDeleteAnnotation", () => {
     expect(mockEngineTransaction).not.toHaveBeenCalled();
   });
 
+  it("deletes at the given engine ref when one is provided (video frame label)", async () => {
+    const deleteAnnotation = getCallback();
+
+    // a video frame label: the engine identity is the track instanceId + frame
+    // + full frames.<field> path, none of which the label's path + doc _id can
+    // reconstruct — the caller passes the anchor ref to override it
+    await deleteAnnotation(makeLabel({ labelId: "doc-7" }), {
+      ref: {
+        sample: "sample-1",
+        path: "frames.detections",
+        instanceId: "track-3",
+        frame: 12,
+      },
+    });
+
+    expect(mockEngineDeleteLabel).toHaveBeenCalledWith({
+      sample: "sample-1",
+      path: "frames.detections",
+      instanceId: "track-3",
+      frame: 12,
+    });
+  });
+
   it("keys the delete with the given gestureId when one is provided (merge)", async () => {
     const deleteAnnotation = getCallback();
 

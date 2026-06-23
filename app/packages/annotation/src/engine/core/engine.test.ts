@@ -2,6 +2,64 @@ import { describe, expect, it, vi } from "vitest";
 
 import { makeDet, makeEngine, makeStore, ref } from "../testing/fixtures";
 import { isWholeSampleReset } from "../store/types";
+import type {
+  PresenceEvent,
+  PresenceListener,
+  TemporalView,
+} from "../temporal/types";
+
+const makeFakeTemporal = () => {
+  const listeners = new Set<PresenceListener>();
+  const view: TemporalView = {
+    isTemporal: true,
+    getPresent: () => [],
+    isPresent: () => true,
+    subscribePresence: (l) => {
+      listeners.add(l);
+      return () => listeners.delete(l);
+    },
+    dispose: () => listeners.clear(),
+  };
+
+  return {
+    view,
+    emit: (events: PresenceEvent[]) => listeners.forEach((l) => l(events)),
+  };
+};
+
+describe("engine presence channel (stable across attachTemporal)", () => {
+  it("forwards events from a view attached AFTER the subscription", () => {
+    const { engine } = makeEngine();
+    const received: PresenceEvent[][] = [];
+
+    // subscribe BEFORE attaching the frame view — the sidebar's mount order
+    engine.subscribePresence((events) => received.push([...events]));
+
+    const fake = makeFakeTemporal();
+    engine.attachTemporal(() => fake.view);
+
+    const event: PresenceEvent = {
+      ref: ref("frames.detections", "A", "s1"),
+      kind: "enter",
+    };
+    fake.emit([event]);
+
+    expect(received).toEqual([[event]]);
+  });
+
+  it("stops forwarding once the view is detached", () => {
+    const { engine } = makeEngine();
+    const received: PresenceEvent[][] = [];
+    engine.subscribePresence((events) => received.push([...events]));
+
+    const fake = makeFakeTemporal();
+    const detach = engine.attachTemporal(() => fake.view);
+    detach();
+
+    fake.emit([{ ref: ref("frames.detections", "A", "s1"), kind: "enter" }]);
+    expect(received).toEqual([]);
+  });
+});
 
 describe("engine routing", () => {
   it("routes reads and writes by ref.sample", () => {

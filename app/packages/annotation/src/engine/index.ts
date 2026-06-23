@@ -8,6 +8,11 @@
 // identity
 export type { LabelRef, ScopedRef } from "./identity/ref";
 export { linkageKey, refKey, refsEqual, toLabelRef } from "./identity/ref";
+export {
+  FRAMES_PREFIX,
+  toFrameEnginePath,
+  toSchemaField,
+} from "./identity/framePath";
 export type { EntityId, EntityIdentity } from "./identity/entityId";
 export {
   decodeEntityId,
@@ -25,6 +30,9 @@ export type {
 } from "./store/types";
 export { isWholeSampleReset, wholeSampleReset } from "./store/types";
 export { SampleLabelStore } from "./store/sampleLabelStore";
+export type { FramesData, FrameStoreOptions } from "./store/frameStore";
+export { FrameStore } from "./store/frameStore";
+export { VideoLabelStore } from "./store/videoLabelStore";
 
 // engine facade
 export type { ScopedEngine } from "./core/engine";
@@ -41,6 +49,8 @@ export type {
   PresenceListener,
   TemporalView,
 } from "./temporal/types";
+export type { FrameReads } from "./temporal/frameTemporalView";
+export { FrameTemporalView } from "./temporal/frameTemporalView";
 
 // retained-mode integration
 export type {

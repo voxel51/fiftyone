@@ -7,6 +7,7 @@ import {
   useAnnotationEngine,
   useAnnotationEventBus,
   usePersistAnnotationDeltas,
+  type LabelRef,
 } from "@fiftyone/annotation";
 import { AnnotationLabel } from "@fiftyone/state";
 import { useCallback } from "react";
@@ -15,8 +16,13 @@ import { useCallback } from "react";
  * Optional gesture id: when this delete is one commit of a larger gesture (e.g.
  * a merge's source delete), the gesture passes its id so the delete shares the
  * gesture's single undo unit.
+ *
+ * `ref` overrides the engine identity to delete at: the caller passes the
+ * interaction-anchor ref for a video frame label, whose track `instanceId` and
+ * `frame` (and full `frames.<field>` path) the label's `path` + doc `_id`
+ * can't reconstruct. Sample-level labels omit it and delete by `label`.
  */
-type DeleteAnnotationOptions = { gestureId?: string };
+type DeleteAnnotationOptions = { gestureId?: string; ref?: LabelRef };
 
 /**
  * Hook returning a callback that deletes an annotation label and persists the
@@ -53,7 +59,7 @@ export const useDeleteAnnotation = (): ((
         // stack (Ctrl-Z re-creates it); the engine still mutates the shared
         // Sample, so persistence and ordering are unchanged. A gesture's
         // `undoKey` (e.g. a merge's) coalesces this delete into its one unit.
-        const ref = {
+        const ref = options?.ref ?? {
           sample: activeSample,
           path: label.path,
           instanceId: labelId,
