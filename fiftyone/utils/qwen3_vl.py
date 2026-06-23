@@ -468,6 +468,53 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
         """
         return self._predict_all(args)
 
+    def embed_frames(self, frames, fps=None):
+        """Generates a single embedding for an ordered list of in-memory
+        frames.
+
+        The frames are treated as one clip and embedded together via
+        Qwen3-VL's native video input, yielding a single vector that
+        captures their full temporal context. This is the in-memory
+        counterpart to passing an ``eta.core.video.FFmpegVideoReader`` to
+        :meth:`embed`, for callers that already hold decoded frames.
+
+        The frames are subsampled toward ``config.video_fps`` (treating
+        ``fps`` as the source rate) and capped at
+        ``config.max_video_frames``, matching how :meth:`embed` handles a
+        video file.
+
+        Args:
+            frames: an ordered iterable of in-memory frames (PIL images,
+                numpy arrays, or torch tensors)
+            fps (None): the rate the frames were sampled at, used to decide
+                how aggressively to subsample. If ``None`` (or zero), the
+                frames are used as-is and ``config.video_fps`` is reported
+                to the model as the playback rate
+
+        Returns:
+            a 1D numpy array embedding
+        """
+        frames = list(frames)
+        if not frames:
+            raise ValueError("Cannot embed an empty list of frames")
+
+        sample_fps = self.config.video_fps
+
+        if fps and sample_fps > 0:
+            step = max(1, round(fps / sample_fps))
+        else:
+            step = 1
+
+        sampled = []
+        for i in range(0, len(frames), step):
+            sampled.append(self._prepare_image(frames[i]))
+            if len(sampled) >= self.config.max_video_frames:
+                break
+
+        effective_fps = fps / step if fps else sample_fps
+
+        return self._embed_frame_list(sampled, effective_fps)
+
     def embed_prompt(self, prompt):
         """Generates an embedding for the given text prompt.
 
@@ -569,6 +616,19 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
 
         effective_fps = raw_fps / step if raw_fps > 0 else sample_fps
 
+        return self._embed_frame_list(frames, effective_fps)
+
+    def _embed_frame_list(self, frames, fps):
+        """Embeds an ordered list of prepared frames as one native Qwen3-VL
+        video message and returns a 1D numpy array embedding.
+
+        Args:
+            frames: a list of prepared frames (e.g. PIL images), in order
+            fps: the playback frame rate to report to the model
+
+        Returns:
+            a 1D numpy array embedding
+        """
         messages = [
             {
                 "role": "user",
@@ -576,7 +636,7 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
                     {
                         "type": "video",
                         "video": frames,
-                        "fps": effective_fps,
+                        "fps": fps,
                     },
                 ],
             }
