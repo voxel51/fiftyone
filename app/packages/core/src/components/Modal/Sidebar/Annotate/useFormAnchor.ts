@@ -1,6 +1,5 @@
 import {
   refKey,
-  toSchemaField,
   useAnnotationEngine,
   useInteraction,
   type LabelRef,
@@ -82,13 +81,13 @@ export const useFormAnchor = (): void => {
     atom: PrimitiveAtom<AnnotationLabel>;
   } | null>(null);
 
-  // build the editing-atom value from current engine truth. The form operates
-  // in the schema namespace, so the row's field is the relative `<field>`; the
-  // overlay is the live Lighter one when mounted (matched by id + field), else a
-  // stub over the engine label.
+  // build the editing-atom value from current engine truth. Form, overlay, and
+  // engine share one namespace — the ref's full path (`frames.<field>` for a
+  // frame field); the overlay is the live Lighter one when mounted (matched by
+  // id + field), else a stub over the engine label.
   const build = useCallback(
     (ref: LabelRef, data: AnnotationLabelData): AnnotationLabel => {
-      const field = toSchemaField(ref.path);
+      const field = ref.path;
       const mounted = scene?.getOverlay(data._id as string);
       const live = mounted && mounted.field === field ? mounted : undefined;
 

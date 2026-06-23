@@ -111,18 +111,14 @@ export const useDetectionMode = () => {
   }, [detectionModeActive, deactivateDetectionMode, activateDetectionMode]);
 
   /**
-   * Finalize the previous detection and create the next one. Field and
-   * label class are auto-resolved from {@link useAnnotationContext}'s
-   * last-used memory, unless `field` pins the destination field (the video
-   * surface stamps its frame field, which the schema doesn't expose).
+   * Finalize the previous detection and create the next one. Field and label
+   * class are auto-resolved from {@link useAnnotationContext}'s last-used
+   * memory, falling back to the configured schema's detection field.
    */
-  const create = useCallback(
-    (field?: string) => {
-      sceneRef.current?.exitInteractiveMode();
-      annotationContext.createNew(DETECTION, field ? { field } : undefined);
-    },
-    [annotationContext]
-  );
+  const create = useCallback(() => {
+    sceneRef.current?.exitInteractiveMode();
+    annotationContext.createNew(DETECTION);
+  }, [annotationContext]);
 
   return useMemo(
     () => ({

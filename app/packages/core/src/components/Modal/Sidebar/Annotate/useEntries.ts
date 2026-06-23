@@ -2,7 +2,6 @@ import {
   useActiveAnnotationSampleId,
   useAnnotationEngine,
   useTemporal,
-  toSchemaField,
 } from "@fiftyone/annotation";
 import { EntryKind, type SidebarEntry } from "@fiftyone/state";
 import { LabelType } from "@fiftyone/utilities";
@@ -67,9 +66,9 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
       > = {};
 
       for (const ref of t.getPresent()) {
-        // refs carry the ENGINE path (`frames.detections`); the active set is
-        // in the schema namespace (`detections`), so translate before matching.
-        if (ref.sample !== sampleId || !active.has(toSchemaField(ref.path))) {
+        // refs and the active set share the schema namespace — a frame field is
+        // `frames.<field>` on both sides, so match the ref path directly.
+        if (ref.sample !== sampleId || !active.has(ref.path)) {
           continue;
         }
 
@@ -89,13 +88,11 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
         });
       }
 
-      // order by the active-field order of each present field, keyed by engine
-      // path so rows carry the path `LabelEntry` resolves the label at.
+      // order by the active-field order of each present field; rows carry the
+      // path `LabelEntry` resolves the label at.
       const result: LabelRow[] = [];
       const enginePaths = Object.keys(byField).sort(
-        (a, b) =>
-          activeFields.indexOf(toSchemaField(a)) -
-          activeFields.indexOf(toSchemaField(b))
+        (a, b) => activeFields.indexOf(a) - activeFields.indexOf(b)
       );
       for (const path of enginePaths) {
         const fieldRows = byField[path];
