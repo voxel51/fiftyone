@@ -9,7 +9,11 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Don't cancel the `closed` run: merging a PR auto-deletes its head branch,
+  # which tears down refs/pull/<n>/merge and cancels the in-flight run before it
+  # can dispatch the "OSS merged" signal to fiftyone-teams. Only cancel the
+  # superseded in-PR runs (opened/synchronize/etc.).
+  cancel-in-progress: ${{ github.event.action != 'closed' }}
 
 jobs:
   enterprise-sync:
