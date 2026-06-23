@@ -30,10 +30,6 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      # Enterprise (package/teams) deps resolve from a private Google Artifact
-      # Registry. Mint a short-lived access token via Workload Identity
-      # Federation; the OSS repo has no such registry, so this is gated off
-      # there and the host rule below resolves to an empty (unused) password.
       - name: Authenticate to Google Artifact Registry
         id: gar
         if: github.repository == 'voxel51/fiftyone-teams'
