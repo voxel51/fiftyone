@@ -23,46 +23,26 @@ import { autoExtendTargetFrames } from "../tracks/autoExtend";
 import { useCurrentEditingOverlay } from "../state/accessors";
 import { takeEstablishKey } from "./establishKeyRelay";
 
+/** Registers a handler for a Lighter event on the bridged scene's channel. */
+type RegisterLighterHandler = ReturnType<typeof useLighterEventHandler>;
+
 /** Schema-driven TD check: a field whose label type is a temporal detection. */
 const isTemporalDetectionType = (type: LabelType): boolean =>
   type === LabelType.TemporalDetection || type === LabelType.TemporalDetections;
 
 /**
- * Bridges Lighter overlay events into the annotation systems for the video
- * surface.
- *
- * Event-handler-only: state changes flow through the public `useDetectionMode`
- * interface rather than direct atom access, so this stays decoupled from that
- * module's internals. Canvas selection is handled by the engine's Lighter
- * bridge, not here (see the note inline).
- *
- * Wires the following bridges:
- *   - **Draw**: `lighter:overlay-create` → `detectionMode.create()`.
- *   - **Mode quit**: `lighter:detection-mode-quit` and
- *     `lighter:active-mode-quit-requested` (right-click / Esc) →
- *     `detectionMode.deactivateDetectionMode()`.
- *   - **Editor teardown**: `lighter:overlay-removed` for a `td-` overlay that
- *     is open in the editor → `exit()`.
- *
- * Sidebar membership is engine-derived (`useEntries` reads engine presence), so
- * nothing here pushes or prunes sidebar rows.
- * @param scene - The scene to bridge, or `null` while it's still being
- *   set up. When `null`, handlers attach to an inert sentinel channel
- *   and re-bind once the real scene becomes available.
+ * Draw: a Lighter overlay create while detection mode is active opens a new
+ * detection draft on the engine frame path.
  */
-export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
-  const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
-  );
+const useRegisterDrawHandler = ({
+  registerHandler,
+}: {
+  registerHandler: RegisterLighterHandler;
+}): void => {
   const detectionMode = useDetectionMode();
-  const exit = useExit();
-  const { clear } = useAnnotationContext();
-  const editingOverlay = useCurrentEditingOverlay();
   const stream = useFrameLabelsStream();
-  const engine = useAnnotationEngine();
-  const surfaceActions = useVideoSurfaceActions();
 
-  useEventHandler(
+  registerHandler(
     "lighter:overlay-create",
     useCallback(() => {
       if (detectionMode.detectionModeActive) {
@@ -76,30 +56,37 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
       }
     }, [detectionMode, stream])
   );
+};
 
-  // Establishing a freshly-drawn overlay opens the sidebar inspector via the
-  // engine bridge (create → anchor → form-follows-anchor), so the old
-  // `annotation:canvasDetectionOverlayEstablish` dispatch is gone. Wired with
-  // the bridge in the surface re-lay.
+/**
+ * Draw establish: the engine bridge commits + selects the draw synchronously, so
+ * a microtask later the engine owns the label and the interaction anchor IS the
+ * new track's ref. Two things happen here, both keyed off that anchor:
+ *
+ *  1. Hand the form off from the surface-owned draft to the engine anchor. The
+ *     draft pins the ENGINE path (`frames.<field>`) so the write routes to the
+ *     FrameStore and carries no engine ref, so the form shows the raw path and
+ *     neither playhead-follow nor live re-sync engage. Dropping the draft
+ *     (`clear`) lets `useFormAnchor` adopt the anchor — schema field + ref — so
+ *     the form reads `<field>` and tracks the playhead, as a deselect→reselect
+ *     does manually.
+ *  2. Auto-extend a freshly-drawn box forward as a short track. `establish` fires
+ *     only for a new draw (a new track), so this is new-tracks-only by
+ *     construction; copy its box onto the next frames as non-keyframe filler
+ *     (`extendTrack` semantics), matching a manual drag-to-extend. Leaves a
+ *     single keyframe, so a later propagate/auto-lerp fills these in place.
+ */
+const useRegisterDrawEstablishHandler = ({
+  registerHandler,
+}: {
+  registerHandler: RegisterLighterHandler;
+}): void => {
+  const { clear } = useAnnotationContext();
+  const stream = useFrameLabelsStream();
+  const engine = useAnnotationEngine();
+  const surfaceActions = useVideoSurfaceActions();
 
-  // Establishing a freshly-drawn overlay: the engine bridge's establish handler
-  // commits + selects the draw synchronously, so a microtask later the engine
-  // owns the label and the interaction anchor IS the new track's ref. Two things
-  // happen here, both keyed off that anchor:
-  //
-  //  1. Hand the form off from the surface-owned draft to the engine anchor. The
-  //     draft pins the ENGINE path (`frames.<field>`) so the write routes to the
-  //     FrameStore and carries no engine ref, so the form shows the raw path and
-  //     neither playhead-follow nor live re-sync engage. Dropping the draft
-  //     (`clear`) lets `useFormAnchor` adopt the anchor — schema field + ref — so
-  //     the form reads `<field>` and tracks the playhead, as a deselect→reselect
-  //     does manually.
-  //  2. Auto-extend a freshly-drawn box forward as a short track. `establish`
-  //     fires only for a new draw (a new track), so this is new-tracks-only by
-  //     construction; copy its box onto the next frames as non-keyframe filler
-  //     (`extendTrack` semantics), matching a manual drag-to-extend. Leaves a
-  //     single keyframe, so a later propagate/auto-lerp fills these in place.
-  useEventHandler(
+  registerHandler(
     "lighter:overlay-establish",
     useCallback(
       (payload) => {
@@ -109,9 +96,9 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
 
         queueMicrotask(() => {
           // The bridge stashed this draw's gesture key by overlay id during its
-          // synchronous establish commit; take it (consume-once) so the auto-extend
-          // folds into the draw's undo unit. Microtask order guarantees the stash
-          // ran first, and it's keyed by identity — no engine-last-entry guess.
+          // synchronous establish commit; take it (consume-once) so the
+          // auto-extend folds into the draw's undo unit. Microtask order
+          // guarantees the stash ran first, and it's keyed by identity.
           const drawUndoKey = takeEstablishKey(payload.overlayId);
           const anchor = engine.interaction.getAnchor();
 
@@ -153,18 +140,30 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
       [clear, engine, surfaceActions, stream]
     )
   );
+};
 
-  useEventHandler(
+/**
+ * Editor teardown: a TemporalDetection deleted from the timeline context menu
+ * removes its overlay directly; if it was open in the editor, tear the
+ * now-dangling edit panel down.
+ */
+const useRegisterEditorTeardownHandler = ({
+  registerHandler,
+}: {
+  registerHandler: RegisterLighterHandler;
+}): void => {
+  const exit = useExit();
+  const engine = useAnnotationEngine();
+  const editingOverlay = useCurrentEditingOverlay();
+
+  registerHandler(
     "lighter:overlay-removed",
     useCallback(
       (payload) => {
-        // A TemporalDetection deleted from the timeline context menu removes
-        // its overlay directly; if it was the one open in the editor, tear the
-        // now-dangling edit panel down. We identify the TD by the editing
-        // overlay's FIELD TYPE (the schema) rather than an id shape: a
-        // fresh-draw detection swap (which also removes an overlay mid-edit
-        // then re-selects its replacement) is a Detection field, so it's left
-        // untouched. Sidebar rows are engine-derived — nothing to prune here.
+        // Identify the TD by the editing overlay's FIELD TYPE (the schema)
+        // rather than an id shape: a fresh-draw detection swap (which also
+        // removes an overlay mid-edit then re-selects its replacement) is a
+        // Detection field, so it's left untouched.
         if (
           editingOverlay &&
           editingOverlay.id === payload.id &&
@@ -180,21 +179,27 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
       [engine, exit, editingOverlay]
     )
   );
+};
 
-  // Canvas selection (`lighter:overlay-select` / `deselect`) is owned by the
-  // engine's Lighter `frame-locked` bridge (`SurfaceController.selectHandle`),
-  // which maps an overlay handle to its `LabelRef` and drives
-  // `engine.interaction`. Mirrors the image surface, which has no event bridge
-  // here. Wired with the bridge in the surface re-lay.
+/**
+ * Mode quit: right-click (`lighter:detection-mode-quit`) and Esc
+ * (`lighter:active-mode-quit-requested`) both deactivate detection mode.
+ */
+const useRegisterModeQuitHandlers = ({
+  registerHandler,
+}: {
+  registerHandler: RegisterLighterHandler;
+}): void => {
+  const detectionMode = useDetectionMode();
 
-  useEventHandler(
+  registerHandler(
     "lighter:detection-mode-quit",
     useCallback(() => {
       detectionMode.deactivateDetectionMode();
     }, [detectionMode])
   );
 
-  useEventHandler(
+  registerHandler(
     "lighter:active-mode-quit-requested",
     useCallback(() => {
       if (detectionMode.detectionModeActive) {
@@ -202,13 +207,50 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
       }
     }, [detectionMode])
   );
+};
 
-  // Deleting a track leaves no useful edit/draw state to keep open, so tear
-  // detection mode down.
+/**
+ * Track deleted: deleting a track leaves no useful edit/draw state to keep open,
+ * so tear detection mode down.
+ */
+const useRegisterTrackDeletedHandler = (): void => {
+  const detectionMode = useDetectionMode();
+
   useAnnotationEventHandler(
     "annotation:trackDeleted",
     useCallback(() => {
       detectionMode.deactivateDetectionMode();
     }, [detectionMode])
   );
+};
+
+/**
+ * Bridges Lighter overlay events into the annotation systems for the video
+ * surface. Binds the scene's event channel and delegates each concern to a
+ * tightly-scoped handler hook.
+ *
+ * Event-handler-only: state changes flow through the public `useDetectionMode`
+ * interface rather than direct atom access, so this stays decoupled from that
+ * module's internals. Sidebar membership is engine-derived (`useEntries` reads
+ * engine presence), so nothing here pushes or prunes sidebar rows.
+ *
+ * Canvas selection (`lighter:overlay-select` / `deselect`) is owned by the
+ * engine's Lighter `frame-locked` bridge (`SurfaceController.selectHandle`),
+ * which maps an overlay handle to its `LabelRef` and drives `engine.interaction`
+ * — so there is deliberately no select/deselect handler here.
+ *
+ * @param scene - The scene to bridge, or `null` while it's still being set up.
+ *   When `null`, handlers attach to an inert sentinel channel and re-bind once
+ *   the real scene becomes available.
+ */
+export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
+  const registerHandler = useLighterEventHandler(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
+
+  useRegisterDrawHandler({ registerHandler });
+  useRegisterDrawEstablishHandler({ registerHandler });
+  useRegisterEditorTeardownHandler({ registerHandler });
+  useRegisterModeQuitHandlers({ registerHandler });
+  useRegisterTrackDeletedHandler();
 };

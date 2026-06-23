@@ -9,6 +9,7 @@ import {
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
+import type { LabelData } from "@fiftyone/utilities";
 import { useCallback, useEffect, useState } from "react";
 
 interface TemporalOverlayVersionOptions {
@@ -25,26 +26,10 @@ interface TemporalOverlayVersionOptions {
   bumpOnSceneReady?: boolean;
 }
 
-/**
- * A counter that bumps whenever the scene's `TemporalDetection` set could have
- * changed — a `TemporalOverlay` added to, or a `td-` overlay removed from, the
- * scene. Lets consumers re-derive scene-only TD state that a sample- or
- * sidebar-derived signature can't observe.
- *
- * Two opt-in extras via {@link TemporalOverlayVersionOptions} cover the
- * TD-track rebuild's needs without forking the hook; their handlers are always
- * registered (no conditional hooks) and no-op when the flag is off.
- */
-export function useTemporalOverlayVersion(
-  scene: Scene2D | null,
-  {
-    listenLabelEdit = false,
-    bumpOnSceneReady = false,
-  }: TemporalOverlayVersionOptions = {}
-): number {
-  const [version, setVersion] = useState(0);
-  const bump = useCallback(() => setVersion((v) => v + 1), []);
+type Bump = () => void;
 
+/** Bump on a `TemporalOverlay` add or any overlay removal in the scene. */
+const useSceneOverlayBumps = (scene: Scene2D | null, bump: Bump): void => {
   const useLighterEvent = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
@@ -61,38 +46,72 @@ export function useTemporalOverlayVersion(
     )
   );
 
+  // The removed payload carries only an id, so we can't tell a TD from a
+  // detection by type — bump on ANY removal. Re-deriving the small TD set on an
+  // unrelated detection delete is cheap, and never missing a TD removal keeps
+  // the timeline rows in step.
   useLighterEvent(
     "lighter:overlay-removed",
-    // The removed payload carries only an id, so we can't tell a TD from a
-    // detection by type here — and the overlay id is no longer a `td-`-prefixed
-    // tell. Bump on ANY removal: re-deriving the (small) TD set on an unrelated
-    // detection delete is cheap, and never missing a TD removal keeps the
-    // timeline rows in step.
     useCallback(() => bump(), [bump])
   );
+};
 
-  // Always registered to keep hook order stable; no-ops unless opted in.
+/** Opt-in: bump on a `TemporalDetection` label edit. Handler is a no-op when off. */
+const useLabelEditBump = (enabled: boolean, bump: Bump): void => {
   useAnnotationEventHandler(
     "annotation:labelEdit",
     useCallback(
       (payload) => {
-        if (!listenLabelEdit) {
+        if (!enabled) {
           return;
         }
-        const cls = (payload.label as { _cls?: string } | null)?._cls;
+
+        const cls = (payload.label as Partial<LabelData> | null)?._cls;
         if (cls === "TemporalDetection") {
           bump();
         }
       },
-      [bump, listenLabelEdit]
+      [bump, enabled]
     )
   );
+};
 
+/** Opt-in: emit a one-shot bump once `scene` becomes available. */
+const useSceneReadyBump = (
+  enabled: boolean,
+  scene: Scene2D | null,
+  bump: Bump
+): void => {
   useEffect(() => {
-    if (bumpOnSceneReady && scene) {
+    if (enabled && scene) {
       bump();
     }
-  }, [bumpOnSceneReady, scene, bump]);
+  }, [enabled, scene, bump]);
+};
+
+/**
+ * A counter that bumps whenever the scene's `TemporalDetection` set could have
+ * changed — a `TemporalOverlay` added to, or a `td-` overlay removed from, the
+ * scene. Lets consumers re-derive scene-only TD state that a sample- or
+ * sidebar-derived signature can't observe.
+ *
+ * Two opt-in extras via {@link TemporalOverlayVersionOptions} cover the
+ * TD-track rebuild's needs; their handlers are always registered (no
+ * conditional hooks) and no-op when the flag is off.
+ */
+export function useTemporalOverlayVersion(
+  scene: Scene2D | null,
+  {
+    listenLabelEdit = false,
+    bumpOnSceneReady = false,
+  }: TemporalOverlayVersionOptions = {}
+): number {
+  const [version, setVersion] = useState(0);
+  const bump = useCallback(() => setVersion((v) => v + 1), []);
+
+  useSceneOverlayBumps(scene, bump);
+  useLabelEditBump(listenLabelEdit, bump);
+  useSceneReadyBump(bumpOnSceneReady, scene, bump);
 
   return version;
 }

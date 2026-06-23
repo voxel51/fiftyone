@@ -6,58 +6,31 @@ import { IMAVID_STREAM_ID } from "../utils/ids";
 import type { ImaVidImageFrame } from "../streams/ImaVidImageStream";
 import styles from "./ImaVidLighterTile.module.css";
 
+interface ImageDimensions {
+  w: number;
+  h: number;
+}
+
 /**
- * ImaVid tile — draws each frame's `ImageBitmap` (decoded off-main in
- * `framesWorker`) into a `<canvas>` and overlays Lighter on top.
+ * Paint each decoded frame's bitmap into `canvasRef`, sizing the drawing
+ * buffer to the bitmap's intrinsic dimensions (CSS keeps the element fitting
+ * the host via `object-fit: contain`). Returns the current intrinsic
+ * dimensions, which the caller feeds to the scene as canonical-media size.
  *
- * The bitmap is rendered via 2D `drawImage` rather than transferred
- * via a `bitmaprenderer` context, because the LRU may serve the same
- * bitmap multiple times (a frame revisited after scrub) and
- * `transferFromImageBitmap` would consume it.
+ * Smoothing is disabled around the draw so pixel-exact frames don't blur.
  */
-export const ImaVidLighterTile: React.FC = () => {
-  const sourceId = IMAVID_STREAM_ID;
+function usePaintFrameToCanvas(
+  frame: ImaVidImageFrame | undefined,
+  canvasRef: React.RefObject<HTMLCanvasElement | null>
+): ImageDimensions | null {
+  const [dims, setDims] = useState<ImageDimensions | null>(null);
 
-  const lighterHostRef = useRef<HTMLDivElement | null>(null);
-  const frameCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [imageDims, setImageDims] = useState<{ w: number; h: number } | null>(
-    null
-  );
-
-  // Latest decoded frame from the playback engine. Each tick republishes
-  // the new {bitmap, frameNumber, sampleId}; the image stream dedupes on
-  // frameNumber so this only changes when the frame actually changes.
-  const frame = useStream<ImaVidImageFrame>(sourceId);
-
-  // Scene lifecycle (singleton canvas, pixi setup, color scheme, canonical
-  // media, viewport fit). A once-per-mount scene; `dims` from the decoded
-  // bitmap's intrinsic resolution (discovered in the paint effect below).
-  const { scene, canonicalMediaReady } = useLighterTileScene({
-    hostRef: lighterHostRef,
-    dims: imageDims,
-    sceneIdPrefix: "imavid-anno",
-  });
-
-  // Overlay / sidebar sync. `frameCanvasRef` keeps the frame canvas
-  // zoomed/panned with the Lighter viewport so scroll-zoom scales the
-  // picture, not just the overlays.
-  useVideoAnnotationSyncBundle({
-    scene,
-    canonicalMediaReady,
-    mediaRef: frameCanvasRef,
-  });
-
-  // Paint the current frame's bitmap into the canvas. Sets the canvas
-  // drawing buffer to the bitmap's intrinsic dimensions on first paint
-  // (and on any dimension change — shouldn't happen for to_frames
-  // materialized clips, but harmless if it does). CSS sizing keeps the
-  // displayed element fitting the host with `object-fit: contain`.
   useEffect(() => {
     if (!frame) {
       return;
     }
 
-    const canvasEl = frameCanvasRef.current;
+    const canvasEl = canvasRef.current;
     if (!canvasEl) {
       return;
     }
@@ -67,6 +40,7 @@ export const ImaVidLighterTile: React.FC = () => {
     if (canvasEl.width !== w) {
       canvasEl.width = w;
     }
+
     if (canvasEl.height !== h) {
       canvasEl.height = h;
     }
@@ -81,10 +55,48 @@ export const ImaVidLighterTile: React.FC = () => {
     ctx.drawImage(frame.bitmap, 0, 0);
     ctx.imageSmoothingEnabled = priorImageSmoothing;
 
-    if (imageDims === null || imageDims.w !== w || imageDims.h !== h) {
-      setImageDims({ w, h });
+    if (dims === null || dims.w !== w || dims.h !== h) {
+      setDims({ w, h });
     }
-  }, [frame, imageDims]);
+  }, [frame, dims, canvasRef]);
+
+  return dims;
+}
+
+/**
+ * ImaVid tile — draws each frame's `ImageBitmap` (decoded off-main in
+ * `framesWorker`) into a `<canvas>` and overlays Lighter on top.
+ *
+ * Drawn via 2D `drawImage`, not a `bitmaprenderer` context, because the LRU
+ * may serve the same bitmap again (a revisited frame) and
+ * `transferFromImageBitmap` would consume it.
+ */
+export const ImaVidLighterTile: React.FC = () => {
+  const sourceId = IMAVID_STREAM_ID;
+
+  const lighterHostRef = useRef<HTMLDivElement | null>(null);
+  const frameCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Latest decoded frame; the image stream dedupes on frameNumber so this
+  // only changes when the frame actually changes.
+  const frame = useStream<ImaVidImageFrame>(sourceId);
+
+  const imageDims = usePaintFrameToCanvas(frame, frameCanvasRef);
+
+  // Scene lifecycle: once-per-mount scene; `dims` from the decoded bitmap.
+  const { scene, canonicalMediaReady } = useLighterTileScene({
+    hostRef: lighterHostRef,
+    dims: imageDims,
+    sceneIdPrefix: "imavid-anno",
+  });
+
+  // Overlay / sidebar sync. `frameCanvasRef` keeps the frame canvas
+  // zoomed/panned with the Lighter viewport so scroll-zoom scales the picture.
+  useVideoAnnotationSyncBundle({
+    scene,
+    canonicalMediaReady,
+    mediaRef: frameCanvasRef,
+  });
 
   return (
     <div className={styles.body}>

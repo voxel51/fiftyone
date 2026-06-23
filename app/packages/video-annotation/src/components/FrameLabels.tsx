@@ -62,27 +62,43 @@ import { VideoAnnotationToolbar } from "./VideoAnnotationToolbar";
 
 const DEFAULT_FRAME_FIELD = "frames.detections";
 
-/**
- * Strip the `frames.` prefix from a sample-schema field path to get the
- * per-frame field name the `/frames` endpoint returns. Falls back to the
- * raw value if no prefix is present (defensive — caller already filters
- * to detection fields, which on videos always live under `frames.`).
- */
+/** Base linked-overlay decoration the interaction layer attaches per row. */
+type BaseTrackDecoration = ReturnType<
+  ReturnType<typeof useVideoTrackDecorator>
+>;
+
+/** Decoration a track row contributes to {@link TimelineWithTracks}. */
+type TrackDecoration = BaseTrackDecoration & {
+  snapStepSec?: number;
+  eventDeleteConfig?: { label: string; onDelete: () => void };
+  onEventEdit?: (
+    eventIndex: number,
+    newStartSec: number,
+    newEndSec: number,
+    mode: "resize-start" | "resize-end" | "move"
+  ) => void;
+};
+
+/** Resolves the row color for a per-frame object track. */
+type ObjectTrackColorResolver = (label: PerInstanceLabel) => string;
+
+/** Resolves the row color for a temporal-detection track. */
+type TemporalDetectionColorResolver = (
+  path: string,
+  label: TemporalDetectionLabelLike
+) => string;
+
+/** Strip the `frames.` prefix so the value matches what `/frames` returns. */
 const toPerFrameField = (field: string): string =>
   field.startsWith("frames.") ? field.slice("frames.".length) : field;
 
 /**
  * Reads the params needed to construct a real `/frames`-backed labels
- * stream from recoil + the modal sample, waits until duration is known
- * (so we can derive `frameCount`), then mounts the registration child
- * with a key that changes if the underlying sample / view / active
- * detection field changes — so a fresh stream cleanly replaces the old
- * one through usePlaybackStream's standard lifecycle.
- *
- * The active stream is published via {@link usePublishFrameLabelsStream} so
- * downstream consumers (track builder, persistence supplier mounted above
- * the surface) can read it via {@link useFrameLabelsStream} without being
- * tied to the registrar's React subtree.
+ * stream, waits until duration is known (so we can derive `frameCount`),
+ * then mounts the registrar with an identity key so a fresh stream cleanly
+ * replaces the old one through usePlaybackStream's lifecycle. The active
+ * stream is published via {@link usePublishFrameLabelsStream} for consumers
+ * outside the registrar's subtree.
  */
 export const RegisterFrameLabels: React.FC<{
   sample: ModalSample;
@@ -93,11 +109,8 @@ export const RegisterFrameLabels: React.FC<{
   const view = useView();
   const slice = useGroupSlice();
   const sampleId = useModalSampleId();
-  // Active detection field is the source of truth for which per-frame
-  // list this stream reads from and which list new edits patch into.
-  // Defaults to `frames.detections` while the schema is still resolving
-  // so the registrar doesn't repeatedly tear down and re-mount on first
-  // render.
+  // Source of truth for which per-frame list this stream reads + patches.
+  // Default while the schema resolves avoids a tear-down/re-mount churn.
   const activeField = useActiveDetectionField() ?? DEFAULT_FRAME_FIELD;
 
   const frameRate = getModalSampleFrameRate(sample);
@@ -109,17 +122,15 @@ export const RegisterFrameLabels: React.FC<{
     Number.isFinite(frameRate);
 
   if (!ready) {
-    // Stream params aren't all available yet; consumers read the atom and
-    // see `null` until FrameLabelsRegistration mounts.
+    // Params incomplete; consumers read `null` until the registrar mounts.
     return <>{children}</>;
   }
 
   const frameCount = Math.max(1, Math.round(duration * frameRate));
   const frameField = toPerFrameField(activeField);
 
-  // Include every input that affects the stream's identity in the key so
-  // changing sample / view / field re-mounts the registrar with a fresh
-  // stream and `usePlaybackStream`'s effect cleanup unregisters the old one.
+  // Stream-identity key: changing any input re-mounts the registrar so
+  // usePlaybackStream's cleanup unregisters the old stream.
   const key = `${sampleId}|${dataset}|${
     slice ?? ""
   }|${frameRate}|${frameCount}|${frameField}`;
@@ -155,8 +166,7 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
   children,
   ...props
 }) => {
-  // Construct once per mount — the parent re-mounts us on identity
-  // changes via `key`.
+  // Construct once per mount; the parent re-mounts on identity changes.
   const streamRef = useRef<VideoFrameLabelsStream | null>(null);
   if (streamRef.current === null) {
     streamRef.current = new VideoFrameLabelsStream({
@@ -170,104 +180,54 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
       frameField: props.frameField,
     });
   }
+
   usePlaybackStream(streamRef.current);
 
-  // Publish the active stream so consumers above the surface (e.g. the
-  // annotation persistence supplier mounted on <Modal>) can reach it
-  // through `useFrameLabelsStream()`. The hook handles clear-on-unmount.
+  // Publish so consumers above the surface reach it via useFrameLabelsStream.
   usePublishFrameLabelsStream(streamRef.current);
 
-  // Prefetch the chunk containing t=0 and seek there, so overlays paint on
-  // first load instead of staying blank until the user presses play.
+  // Prefetch + seek t=0 so overlays paint on first load, not on first play.
   useWarmupThenSeek(streamRef.current);
 
   return <>{children}</>;
 };
 
 /**
- * Labels track timeline — one row per tracked instance observed in
- * the clip (grouped by `index`), plus one row per `TemporalDetection`
- * on the sample (rendered as an interval spanning `support`). Untracked
- * labels still paint as overlays but don't get rows. Triggers a one-shot
- * `warmupAll` so the cache covers every frame, then walks it to build
- * the frame-derived tracks; TD tracks are derived synchronously from
- * the sample dict and merged in.
- *
- * Rebuilds (and re-broadcasts through `TrackProvider`) whenever the
- * color scheme or seed changes so row colors stay in lock-step with the
- * overlays — `getLabelColorFromContext` returns different colors under
- * the same input when the palette, seed, or `colorBy` mode changes.
- *
- * One-shot re-key on the empty→ready transition so `initialPinnedIds`
- * (which the provider only reads at mount) bootstraps from the real
- * track list. Subsequent recolors update through the live `tracks`
- * prop and don't trip the key, so the user's pin state is preserved.
+ * Build the per-instance object tracks by warming every chunk so the engine
+ * re-hydrates across the whole clip, then walking the engine. Returns `[]`
+ * until warmup resolves; `resolved` flips true on the first resolved build
+ * (including a legitimately empty clip) to gate the pin bootstrap.
  */
-export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
-  sample,
-}) => {
+function useFrameDerivedTracks(resolveColor: ObjectTrackColorResolver): {
+  tracks: Track[];
+  resolved: boolean;
+} {
   const stream = useFrameLabelsStream();
   const engine = useAnnotationEngine();
   const sampleId = useActiveSampleId();
-  const scheme = useColorScheme();
-  const seed = useColorSeed();
-  const activeField = useActiveDetectionField() ?? DEFAULT_FRAME_FIELD;
-
-  // The engine projects the timeline; its version is the rebuild signal.
-  const engineVersion = useEngineSelector(engine, () => engine.getVersion());
-  // Frame-detection field the engine FrameStore is registered under.
   const path = stream ? `frames.${stream.labelsField}` : null;
 
-  // useState so we can re-render once warmupAll resolves, but keep the
-  // build deterministic in the deps (stream identity changes when the
-  // sample changes, which is the trigger we care about).
-  const [frameTracks, setFrameTracks] = useState<Track[]>([]);
-  // Tracked separately from `frameTracks` because an empty list after
-  // warmup (clip has no tracked detections) is a legitimately resolved
-  // state. We need this signal to drive the one-shot `initialPinnedIds`
-  // bootstrap — otherwise a sync-resolved TD list would trip the
-  // empty→ready key flip before frame tracks land, and frame tracks
-  // would arrive unpinned.
-  const [frameTracksResolved, setFrameTracksResolved] = useState(false);
+  const [tracks, setTracks] = useState<Track[]>([]);
+  const [resolved, setResolved] = useState(false);
 
-  // Color by the ENGINE path (`frames.detections`), matching the sidebar rows
-  // and canvas overlays. The schema-namespace `activeField` (`detections`) keys
-  // a different color-scheme entry, so using it tinted the timeline rows off.
-  const resolveColor = useCallback(
-    (label: PerInstanceLabel) =>
-      getLabelColorFromContext(path ?? activeField, label, {
-        colorScheme: scheme,
-        seed,
-      }),
-    [path, activeField, scheme, seed]
-  );
-
-  const resolveTemporalDetectionColor = useCallback(
-    (path: string, label: TemporalDetectionLabelLike) =>
-      getLabelColorFromContext(path, label, {
-        colorScheme: scheme,
-        seed,
-      }),
-    [scheme, seed]
-  );
+  // engine version is the rebuild signal.
+  const engineVersion = useEngineSelector(engine, () => engine.getVersion());
 
   useEffect(() => {
     if (!stream || !sampleId || !path) {
-      setFrameTracks([]);
-      setFrameTracksResolved(false);
+      setTracks([]);
+      setResolved(false);
       return undefined;
     }
 
     let cancelled = false;
 
-    // Warm every chunk so the `/frames` seed re-hydrates the engine across the
-    // whole clip; the build then walks the engine, not the stream.
     void stream.warmupAll().then(() => {
       if (cancelled) {
         return;
       }
 
-      setFrameTracks(
+      setTracks(
         buildPerInstanceTracks({
           engine,
           sample: sampleId,
@@ -277,7 +237,7 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
           resolveColor,
         })
       );
-      setFrameTracksResolved(true);
+      setResolved(true);
     });
 
     return () => {
@@ -286,12 +246,18 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- engineVersion is the invalidation signal
   }, [engine, sampleId, path, stream, resolveColor, engineVersion]);
 
-  const actions = useVideoSurfaceActions();
+  return { tracks, resolved };
+}
 
-  // Live-derived TD tracks: walk the scene's `TemporalOverlay` set rather
-  // than the sample (which lags one autosave round-trip behind local
-  // edits). Overlays are the source of truth — `useTemporalOverlaySync`
-  // primes them from the sample on first load.
+/**
+ * Derive TD tracks from the scene's live `TemporalOverlay` set rather than
+ * the sample, which lags an autosave behind local edits. `useTemporalOverlaySync`
+ * primes the overlays from the sample on first load.
+ */
+function useTemporalDetectionTracks(
+  sample: ModalSample | undefined,
+  resolveColor: TemporalDetectionColorResolver
+): Track[] {
   const { scene } = useLighter();
   const tdVersion = useTemporalOverlayVersion(scene, {
     listenLabelEdit: true,
@@ -299,7 +265,7 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   });
   const frameRate = getModalSampleFrameRate(sample);
 
-  const temporalDetectionTracks = useMemo(() => {
+  return useMemo(() => {
     if (!scene) {
       return [];
     }
@@ -319,107 +285,135 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
     return buildTemporalDetectionTracks({
       sample: buildVirtualTemporalSample(temporalOverlays),
       fps: frameRate,
-      resolveColor: resolveTemporalDetectionColor,
+      resolveColor,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- tdVersion is the invalidation signal
-  }, [scene, frameRate, resolveTemporalDetectionColor, tdVersion]);
+  }, [scene, frameRate, resolveColor, tdVersion]);
+}
 
-  const tracks = useMemo(
-    () => [...frameTracks, ...temporalDetectionTracks],
-    [frameTracks, temporalDetectionTracks]
+/** Build the row-color resolvers, kept in lock-step with the overlays. */
+function useTrackColorResolvers(path: string | null): {
+  resolveObjectColor: ObjectTrackColorResolver;
+  resolveTemporalDetectionColor: TemporalDetectionColorResolver;
+} {
+  const scheme = useColorScheme();
+  const seed = useColorSeed();
+  const activeField = useActiveDetectionField() ?? DEFAULT_FRAME_FIELD;
+
+  // Color by the ENGINE path (`frames.detections`) to match the sidebar and
+  // canvas; the schema-namespace `activeField` keys a different scheme entry.
+  const resolveObjectColor = useCallback(
+    (label: PerInstanceLabel) =>
+      getLabelColorFromContext(path ?? activeField, label, {
+        colorScheme: scheme,
+        seed,
+      }),
+    [path, activeField, scheme, seed]
   );
-  const pinned = useMemo(() => tracks.map((t) => t.id), [tracks]);
-  // Bootstrap on frame-tracks-resolved, not on `tracks.length`. TD
-  // tracks resolve synchronously from the sample; without this gate,
-  // they'd trip the empty→ready flip before frame tracks land and
-  // frame tracks would arrive unpinned.
-  const ready = frameTracksResolved;
+
+  const resolveTemporalDetectionColor = useCallback(
+    (tdPath: string, label: TemporalDetectionLabelLike) =>
+      getLabelColorFromContext(tdPath, label, {
+        colorScheme: scheme,
+        seed,
+      }),
+    [scheme, seed]
+  );
+
+  return { resolveObjectColor, resolveTemporalDetectionColor };
+}
+
+/** Build the row decorator that wires presence-bar edits + delete per kind. */
+function useTrackDecorator(
+  sample: ModalSample | undefined
+): (track: Track) => TrackDecoration {
   const baseDecorate = useVideoTrackDecorator();
-  useScrollTrackToAnchor();
+  const actions = useVideoSurfaceActions();
+  const stream = useFrameLabelsStream();
   const fps = getModalSampleFrameRate(sample);
   const snapStepSec =
     Number.isFinite(fps) && fps && fps > 0 ? 1 / fps : undefined;
 
-  // Compose: keep the linked-overlay wiring (hover / select / scroll)
-  // and layer TD-specific resize wiring on top for TD rows. TD rows
-  // have no Lighter overlay, so the linked-overlay calls are no-ops on
-  // them — they don't break, just don't do anything visible.
-  const decorateTrack = useCallback(
-    (track: Track) => {
+  return useCallback(
+    (track: Track): TrackDecoration => {
       const base = baseDecorate(track);
       if (!fps) {
         return base;
       }
 
-      // A TemporalDetection row is identified by its structured event payload
-      // (the schema-typed TD field it came from), not a row-id shape; anything
-      // else is an engine-addressed object track (row id == instanceId), whose
-      // presence bar drags extend / trim / shift the track's per-frame labels.
+      // A TD row is identified by its structured event payload; anything else
+      // is an engine-addressed object track (row id == instanceId).
       const tdEvent = track.events[0]?.data as
         | TemporalDetectionEventData
         | undefined;
       const isObjectTrack = tdEvent?.detectionId === undefined;
 
       if (isObjectTrack && stream) {
-        const totalFrames = stream.totalFrames;
-
-        return {
-          ...base,
+        return decorateObjectTrack({
+          track,
+          base,
           snapStepSec,
-          eventDeleteConfig: {
-            label: "Delete track",
-            onDelete: () => actions.deleteTrack(track.id),
-          },
-          onEventEdit: (
-            eventIndex: number,
-            newStartSec: number,
-            newEndSec: number,
-            mode: "resize-start" | "resize-end" | "move"
-          ) =>
-            applyObjectTrackEdit({
-              track,
-              eventIndex,
-              newStartSec,
-              newEndSec,
-              mode,
-              fps,
-              totalFrames,
-              actions,
-            }),
-        };
+          fps,
+          totalFrames: stream.totalFrames,
+          actions,
+        });
       }
 
-      if (tdEvent?.detectionId === undefined) {
+      // Object track with no stream yet: can't wire frame edits — base only.
+      if (isObjectTrack) {
         return base;
       }
 
-      return {
-        ...base,
+      return decorateTemporalDetectionTrack({
+        tdEvent: tdEvent as TemporalDetectionEventData,
+        base,
         snapStepSec,
-        eventDeleteConfig: {
-          label: "Delete track",
-          onDelete: () =>
-            actions.deleteTemporalDetection(
-              tdEvent.fieldPath,
-              tdEvent.detectionId
-            ),
-        },
-        onEventEdit: (
-          _eventIndex: number,
-          newStartSec: number,
-          newEndSec: number
-        ) =>
-          applyTemporalDetectionEdit({
-            tdEvent,
-            newStartSec,
-            newEndSec,
-            fps,
-            actions,
-          }),
-      };
+        fps,
+        actions,
+      });
     },
     [baseDecorate, fps, snapStepSec, actions, stream]
   );
+}
+
+/**
+ * Labels track timeline — one row per tracked instance (grouped by `index`)
+ * plus one row per `TemporalDetection` (rendered as a `support`-spanning
+ * interval). Untracked labels still paint as overlays but get no rows.
+ *
+ * One-shot re-key on the empty→ready transition so `initialPinnedIds` (read
+ * only at mount) bootstraps from the real frame-track list; later recolors
+ * update through the live `tracks` prop and preserve the user's pin state.
+ */
+export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
+  sample,
+}) => {
+  const stream = useFrameLabelsStream();
+  const path = stream ? `frames.${stream.labelsField}` : null;
+
+  const { resolveObjectColor, resolveTemporalDetectionColor } =
+    useTrackColorResolvers(path);
+
+  const { tracks: frameTracks, resolved: frameTracksResolved } =
+    useFrameDerivedTracks(resolveObjectColor);
+  const temporalDetectionTracks = useTemporalDetectionTracks(
+    sample,
+    resolveTemporalDetectionColor
+  );
+
+  const tracks = useMemo(
+    () => [...frameTracks, ...temporalDetectionTracks],
+    [frameTracks, temporalDetectionTracks]
+  );
+  const pinned = useMemo(() => tracks.map((t) => t.id), [tracks]);
+
+  // Bootstrap on frame-tracks-resolved, not `tracks.length`: TD tracks resolve
+  // synchronously and would otherwise trip the empty→ready flip before frame
+  // tracks land, leaving frame tracks unpinned.
+  const ready = frameTracksResolved;
+
+  useScrollTrackToAnchor();
+  const decorateTrack = useTrackDecorator(sample);
 
   return (
     <TrackProvider
@@ -435,11 +429,80 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   );
 };
 
+/** Decorate an object track: snap, delete, and presence-bar drag edits. */
+function decorateObjectTrack({
+  track,
+  base,
+  snapStepSec,
+  fps,
+  totalFrames,
+  actions,
+}: {
+  track: Track;
+  base: BaseTrackDecoration;
+  snapStepSec: number | undefined;
+  fps: number;
+  totalFrames: number;
+  actions: VideoSurfaceActions;
+}): TrackDecoration {
+  return {
+    ...base,
+    snapStepSec,
+    eventDeleteConfig: {
+      label: "Delete track",
+      onDelete: () => actions.deleteTrack(track.id),
+    },
+    onEventEdit: (eventIndex, newStartSec, newEndSec, mode) =>
+      applyObjectTrackEdit({
+        track,
+        eventIndex,
+        newStartSec,
+        newEndSec,
+        mode,
+        fps,
+        totalFrames,
+        actions,
+      }),
+  };
+}
+
+/** Decorate a TD track: snap, delete, and interval drag edits. */
+function decorateTemporalDetectionTrack({
+  tdEvent,
+  base,
+  snapStepSec,
+  fps,
+  actions,
+}: {
+  tdEvent: TemporalDetectionEventData;
+  base: BaseTrackDecoration;
+  snapStepSec: number | undefined;
+  fps: number;
+  actions: VideoSurfaceActions;
+}): TrackDecoration {
+  return {
+    ...base,
+    snapStepSec,
+    eventDeleteConfig: {
+      label: "Delete track",
+      onDelete: () =>
+        actions.deleteTemporalDetection(tdEvent.fieldPath, tdEvent.detectionId),
+    },
+    onEventEdit: (_eventIndex, newStartSec, newEndSec) =>
+      applyTemporalDetectionEdit({
+        tdEvent,
+        newStartSec,
+        newEndSec,
+        fps,
+        actions,
+      }),
+  };
+}
+
 /**
- * Project a set of scene `TemporalOverlay`s into a sample-shaped dict
- * (`{ [field]: { _cls: "TemporalDetections", detections } }`) so
- * {@link buildTemporalDetectionTracks} can consume the live overlay state
- * the same way it consumes a server sample.
+ * Project scene `TemporalOverlay`s into a sample-shaped dict so
+ * {@link buildTemporalDetectionTracks} consumes live overlay state the same
+ * way it consumes a server sample.
  */
 function buildVirtualTemporalSample(
   overlays: TemporalOverlay[]
@@ -487,8 +550,7 @@ function applyObjectTrackEdit({
     return;
   }
 
-  // Other presence bars of this same track — used to clamp a move so it
-  // can't overrun a neighbouring segment.
+  // Other presence bars of this track — used to clamp a move against neighbors.
   const neighborSegments = track.events
     .filter((e, i) => i !== eventIndex && e.endSec !== undefined)
     .map(
@@ -527,10 +589,8 @@ function applyObjectTrackEdit({
 
 /**
  * Apply a TD interval drag: convert the dragged seconds back to a 1-indexed
- * inclusive frame `support` and dispatch the edit.
- *
- * Inverts the build's mapping: `startSec = (firstFrame - 1) / fps` and
- * `endSec = lastFrame / fps`.
+ * inclusive frame `support` and dispatch the edit. Inverts the build's
+ * mapping: `startSec = (firstFrame - 1) / fps`, `endSec = lastFrame / fps`.
  */
 function applyTemporalDetectionEdit({
   tdEvent,

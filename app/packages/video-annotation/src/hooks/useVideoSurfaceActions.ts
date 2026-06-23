@@ -54,17 +54,309 @@ export interface VideoSurfaceActions {
   deleteTemporalDetection(fieldPath: string, detectionId: string): void;
 }
 
+type SurfaceActions = ReturnType<typeof useSurfaceActions>;
+type AnnotationEngine = ReturnType<typeof useAnnotationEngine>;
+type AnnotationEventBus = ReturnType<typeof useAnnotationEventBus>;
+
+/** Narrowed, non-null inputs every per-frame op needs to run. */
+interface ReadyContext {
+  sample: string;
+  path: string;
+  fps: number;
+  totalFrames: number;
+}
+
+/** Engine-backed reads scoped to the active sample + frames field. */
+interface FrameReader {
+  /** This track's detection on a frame, read through the engine. */
+  read(instanceId: string, frame: number): LabelData | undefined;
+  /** A detection's content minus engine-owned identity (re-stamped on write). */
+  content(label: LabelData): Partial<LabelData>;
+  /** Every frame [1, total] this track appears on. */
+  trackFrames(instanceId: string): number[];
+}
+
+const makeFrameReader = (
+  engine: AnnotationEngine,
+  ctx: ReadyContext
+): FrameReader => {
+  const read = (instanceId: string, frame: number): LabelData | undefined =>
+    engine.getLabel({
+      sample: ctx.sample,
+      path: ctx.path,
+      instanceId,
+      frame,
+    });
+
+  const content = (label: LabelData): Partial<LabelData> => {
+    const { _id, instance, ...rest } = label;
+    return rest;
+  };
+
+  const trackFrames = (instanceId: string): number[] => {
+    const frames: number[] = [];
+
+    for (let frame = 1; frame <= ctx.totalFrames; frame++) {
+      if (read(instanceId, frame)) {
+        frames.push(frame);
+      }
+    }
+
+    return frames;
+  };
+
+  return { read, content, trackFrames };
+};
+
+/** Per-frame track ops (keyframes, fills, trims, shifts, deletes, attributes). */
+const makeTrackOps = (
+  ctx: ReadyContext,
+  actions: SurfaceActions,
+  eventBus: AnnotationEventBus,
+  reader: FrameReader
+) => {
+  const { path, fps, totalFrames } = ctx;
+  const { read, content, trackFrames } = reader;
+
+  const markKeyframe = (time: number, trackIds: readonly string[]): void => {
+    if (trackIds.length === 0) {
+      return;
+    }
+
+    const frame = frameAt(time, fps, totalFrames);
+    const changed: { trackId: string; instanceId: string; set: boolean }[] = [];
+
+    actions.transaction(() => {
+      for (const trackId of trackIds) {
+        const instanceId = instanceIdFromTrackId(trackId);
+
+        if (!instanceId) {
+          continue;
+        }
+
+        const det = read(instanceId, frame);
+
+        if (!det) {
+          continue;
+        }
+
+        const set = !det.keyframe;
+        const update: Partial<LabelData> = { keyframe: set };
+
+        // promotion clears interpolation provenance — only when present, so
+        // an unchanged baseline doesn't accrue a no-op `propagation: null` op
+        if (set && det.propagation) {
+          update.propagation = null;
+        }
+
+        actions.updateLabel({ path, instanceId, frame }, update);
+        changed.push({ trackId, instanceId, set });
+      }
+    });
+
+    for (const { trackId, instanceId, set } of changed) {
+      eventBus.dispatch("annotation:keyframeChanged", {
+        trackId,
+        instanceId,
+        frame,
+        kind: set ? "set" : "removed",
+      });
+    }
+  };
+
+  const extendTrack = (
+    trackId: string,
+    sourceFrame: number,
+    targetFrames: number[],
+    undoKey?: string
+  ): void => {
+    const instanceId = instanceIdFromTrackId(trackId);
+
+    if (!instanceId || targetFrames.length === 0) {
+      return;
+    }
+
+    const source = read(instanceId, sourceFrame);
+
+    if (!source) {
+      return;
+    }
+
+    // non-keyframe filler — a later propagate overwrites these in place
+    const filler = { ...content(source), keyframe: false };
+
+    actions.transaction(
+      () => {
+        for (const frame of targetFrames) {
+          if (frame >= 1 && frame <= totalFrames) {
+            actions.updateLabel({ path, instanceId, frame }, filler);
+          }
+        }
+      },
+      undoKey ? { undoKey } : undefined
+    );
+  };
+
+  const trimTrack = (trackId: string, frames: number[]): void => {
+    const instanceId = instanceIdFromTrackId(trackId);
+
+    if (!instanceId || frames.length === 0) {
+      return;
+    }
+
+    actions.transaction(() => {
+      for (const frame of frames) {
+        if (read(instanceId, frame)) {
+          actions.deleteLabel({ path, instanceId, frame });
+        }
+      }
+    });
+  };
+
+  const shiftTrack = (
+    trackId: string,
+    frames: number[],
+    delta: number
+  ): void => {
+    const instanceId = instanceIdFromTrackId(trackId);
+
+    if (!instanceId || delta === 0 || frames.length === 0) {
+      return;
+    }
+
+    // read the whole segment up front so the delete/write passes operate on
+    // a stable snapshot
+    const sources = frames
+      .map((frame) => ({ frame, det: read(instanceId, frame) }))
+      .filter((s): s is { frame: number; det: LabelData } => !!s.det);
+
+    if (sources.length === 0) {
+      return;
+    }
+
+    actions.transaction(() => {
+      for (const { frame } of sources) {
+        actions.deleteLabel({ path, instanceId, frame });
+      }
+
+      for (const { frame, det } of sources) {
+        const target = frame + delta;
+
+        if (target >= 1 && target <= totalFrames) {
+          actions.updateLabel(
+            { path, instanceId, frame: target },
+            content(det)
+          );
+        }
+      }
+    });
+  };
+
+  const deleteTrack = (trackId: string): void => {
+    const instanceId = instanceIdFromTrackId(trackId);
+
+    if (!instanceId) {
+      return;
+    }
+
+    const frames = trackFrames(instanceId);
+
+    if (frames.length === 0) {
+      return;
+    }
+
+    actions.transaction(() => {
+      for (const frame of frames) {
+        actions.deleteLabel({ path, instanceId, frame });
+      }
+    });
+
+    // let selection/editing consumers drop state bound to this track
+    eventBus.dispatch("annotation:trackDeleted", { trackId });
+  };
+
+  const updateTrackAttributes = (
+    trackId: string,
+    attributes: Record<string, unknown>
+  ): void => {
+    const instanceId = instanceIdFromTrackId(trackId);
+
+    if (!instanceId || Object.keys(attributes).length === 0) {
+      return;
+    }
+
+    const frames = trackFrames(instanceId);
+
+    actions.transaction(() => {
+      for (const frame of frames) {
+        actions.updateLabel({ path, instanceId, frame }, attributes);
+      }
+    });
+  };
+
+  return {
+    markKeyframe,
+    extendTrack,
+    trimTrack,
+    shiftTrack,
+    deleteTrack,
+    updateTrackAttributes,
+  };
+};
+
+/** Sample-level TemporalDetection ops (no frame on the ref). */
+const makeTemporalDetectionOps = (actions: SurfaceActions) => {
+  const createTemporalDetection = (
+    fieldPath: string,
+    support: [number, number],
+    label?: string
+  ): string => {
+    const ref: LabelRef = actions.createLabel(fieldPath, {
+      _cls: "TemporalDetection",
+      support,
+      // mirror the server-materialized default so a tag edit has a real
+      // array and the next refetch diff doesn't see an absent key
+      tags: [],
+      ...(label !== undefined ? { label } : {}),
+    });
+
+    return ref.instanceId;
+  };
+
+  const editTemporalDetection = (
+    fieldPath: string,
+    detectionId: string,
+    update: Partial<LabelData>
+  ): void => {
+    actions.updateLabel({ path: fieldPath, instanceId: detectionId }, update);
+  };
+
+  const deleteTemporalDetection = (
+    fieldPath: string,
+    detectionId: string
+  ): void => {
+    actions.deleteLabel({ path: fieldPath, instanceId: detectionId });
+  };
+
+  return {
+    createTemporalDetection,
+    editTemporalDetection,
+    deleteTemporalDetection,
+  };
+};
+
 /**
- * Engine-native video annotation writes — the replacement for the old
- * command-bus handlers. Every op is an {@link AnnotationEngine} transaction over
- * the registered composite store: per-frame detections route to the
- * `FrameStore` (ref carries `frame`), sample-level temporal-detections route to
- * the `SampleLabelStore` (no `frame`). The engine owns identity, undo, and
- * persistence; this layer just maps the timeline's synthetic track ids to engine
- * `instanceId`s and reads current geometry through the engine, not the stream.
+ * Engine-native video annotation writes. Every op is an
+ * {@link AnnotationEngine} transaction over the registered composite store:
+ * per-frame detections route to the `FrameStore` (ref carries `frame`),
+ * sample-level temporal-detections route to the `SampleLabelStore` (no
+ * `frame`). The engine owns identity, undo, and persistence; this layer maps
+ * the timeline's synthetic track ids to engine `instanceId`s and reads current
+ * geometry through the engine, not the stream.
  *
- * No-ops until a labels stream is published (it supplies fps / frame-count /
- * field) and a sample is active. Mount under the surface's modal scope.
+ * Per-frame ops no-op until a labels stream is published (it supplies fps /
+ * frame-count / field) and a sample is active. Mount under the surface's modal
+ * scope.
  */
 export const useVideoSurfaceActions = (): VideoSurfaceActions => {
   const engine = useAnnotationEngine();
@@ -74,238 +366,35 @@ export const useVideoSurfaceActions = (): VideoSurfaceActions => {
   const eventBus = useAnnotationEventBus();
 
   return useMemo<VideoSurfaceActions>(() => {
-    const path = stream ? `frames.${stream.labelsField}` : null;
-    const fps = stream?.fps;
-    const totalFrames = stream?.totalFrames ?? 0;
-
-    const ready = (): boolean => !!sampleId && !!stream && !!path && !!fps;
-
-    /** This track's detection on a frame, read through the engine. */
-    const read = (instanceId: string, frame: number): LabelData | undefined =>
-      engine.getLabel({
-        sample: sampleId,
-        path: path as string,
-        instanceId,
-        frame,
-      });
-
-    /** A detection's content minus engine-owned identity (re-stamped on write). */
-    const content = (label: LabelData): Partial<LabelData> => {
-      const { _id, instance, ...rest } = label;
-      return rest;
-    };
-
-    /** Every frame [1, total] this track appears on. */
-    const trackFrames = (instanceId: string): number[] => {
-      const frames: number[] = [];
-
-      for (let frame = 1; frame <= totalFrames; frame++) {
-        if (read(instanceId, frame)) {
-          frames.push(frame);
-        }
-      }
-
-      return frames;
-    };
-
-    return {
-      markKeyframe: (time, trackIds) => {
-        if (!ready() || trackIds.length === 0) {
-          return;
-        }
-
-        const frame = frameAt(time, fps as number, totalFrames);
-        const changed: { trackId: string; instanceId: string; set: boolean }[] =
-          [];
-
-        actions.transaction(() => {
-          for (const trackId of trackIds) {
-            const instanceId = instanceIdFromTrackId(trackId);
-
-            if (!instanceId) {
-              continue;
-            }
-
-            const det = read(instanceId, frame);
-
-            if (!det) {
-              continue;
-            }
-
-            const set = !det.keyframe;
-            const update: Partial<LabelData> = { keyframe: set };
-
-            // promotion clears interpolation provenance — only when present, so
-            // an unchanged baseline doesn't accrue a no-op `propagation: null` op
-            if (set && det.propagation) {
-              update.propagation = null;
-            }
-
-            actions.updateLabel(
-              { path: path as string, instanceId, frame },
-              update
-            );
-            changed.push({ trackId, instanceId, set });
+    const ctx: ReadyContext | null =
+      sampleId && stream && stream.fps
+        ? {
+            sample: sampleId,
+            path: `frames.${stream.labelsField}`,
+            fps: stream.fps,
+            totalFrames: stream.totalFrames ?? 0,
           }
-        });
+        : null;
 
-        for (const { trackId, instanceId, set } of changed) {
-          eventBus.dispatch("annotation:keyframeChanged", {
-            trackId,
-            instanceId,
-            frame,
-            kind: set ? "set" : "removed",
-          });
-        }
-      },
+    const temporal = makeTemporalDetectionOps(actions);
 
-      extendTrack: (trackId, sourceFrame, targetFrames, undoKey) => {
-        const instanceId = instanceIdFromTrackId(trackId);
+    if (!ctx) {
+      // TD ops are sample-level and stream-independent; per-frame track ops
+      // no-op until the stream + sample are ready.
+      return {
+        markKeyframe: () => {},
+        extendTrack: () => {},
+        trimTrack: () => {},
+        shiftTrack: () => {},
+        deleteTrack: () => {},
+        updateTrackAttributes: () => {},
+        ...temporal,
+      };
+    }
 
-        if (!ready() || !instanceId || targetFrames.length === 0) {
-          return;
-        }
+    const reader = makeFrameReader(engine, ctx);
+    const track = makeTrackOps(ctx, actions, eventBus, reader);
 
-        const source = read(instanceId, sourceFrame);
-
-        if (!source) {
-          return;
-        }
-
-        // non-keyframe filler — a later propagate overwrites these in place
-        const filler = { ...content(source), keyframe: false };
-
-        actions.transaction(
-          () => {
-            for (const frame of targetFrames) {
-              if (frame >= 1 && frame <= totalFrames) {
-                actions.updateLabel(
-                  { path: path as string, instanceId, frame },
-                  filler
-                );
-              }
-            }
-          },
-          undoKey ? { undoKey } : undefined
-        );
-      },
-
-      trimTrack: (trackId, frames) => {
-        const instanceId = instanceIdFromTrackId(trackId);
-
-        if (!ready() || !instanceId || frames.length === 0) {
-          return;
-        }
-
-        actions.transaction(() => {
-          for (const frame of frames) {
-            if (read(instanceId, frame)) {
-              actions.deleteLabel({ path: path as string, instanceId, frame });
-            }
-          }
-        });
-      },
-
-      shiftTrack: (trackId, frames, delta) => {
-        const instanceId = instanceIdFromTrackId(trackId);
-
-        if (!ready() || !instanceId || delta === 0 || frames.length === 0) {
-          return;
-        }
-
-        // read the whole segment up front so the delete/write passes operate on
-        // a stable snapshot
-        const sources = frames
-          .map((frame) => ({ frame, det: read(instanceId, frame) }))
-          .filter((s): s is { frame: number; det: LabelData } => !!s.det);
-
-        if (sources.length === 0) {
-          return;
-        }
-
-        actions.transaction(() => {
-          for (const { frame } of sources) {
-            actions.deleteLabel({ path: path as string, instanceId, frame });
-          }
-
-          for (const { frame, det } of sources) {
-            const target = frame + delta;
-
-            if (target >= 1 && target <= totalFrames) {
-              actions.updateLabel(
-                { path: path as string, instanceId, frame: target },
-                content(det)
-              );
-            }
-          }
-        });
-      },
-
-      deleteTrack: (trackId) => {
-        const instanceId = instanceIdFromTrackId(trackId);
-
-        if (!ready() || !instanceId) {
-          return;
-        }
-
-        const frames = trackFrames(instanceId);
-
-        if (frames.length === 0) {
-          return;
-        }
-
-        actions.transaction(() => {
-          for (const frame of frames) {
-            actions.deleteLabel({ path: path as string, instanceId, frame });
-          }
-        });
-
-        // let selection/editing consumers drop state bound to this track
-        eventBus.dispatch("annotation:trackDeleted", { trackId });
-      },
-
-      updateTrackAttributes: (trackId, attributes) => {
-        const instanceId = instanceIdFromTrackId(trackId);
-
-        if (!ready() || !instanceId || Object.keys(attributes).length === 0) {
-          return;
-        }
-
-        const frames = trackFrames(instanceId);
-
-        actions.transaction(() => {
-          for (const frame of frames) {
-            actions.updateLabel(
-              { path: path as string, instanceId, frame },
-              attributes
-            );
-          }
-        });
-      },
-
-      createTemporalDetection: (fieldPath, support, label) => {
-        const ref: LabelRef = actions.createLabel(fieldPath, {
-          _cls: "TemporalDetection",
-          support,
-          // mirror the server-materialized default so a tag edit has a real
-          // array and the next refetch diff doesn't see an absent key
-          tags: [],
-          ...(label !== undefined ? { label } : {}),
-        });
-
-        return ref.instanceId;
-      },
-
-      editTemporalDetection: (fieldPath, detectionId, update) => {
-        actions.updateLabel(
-          { path: fieldPath, instanceId: detectionId },
-          update
-        );
-      },
-
-      deleteTemporalDetection: (fieldPath, detectionId) => {
-        actions.deleteLabel({ path: fieldPath, instanceId: detectionId });
-      },
-    };
+    return { ...track, ...temporal };
   }, [engine, actions, sampleId, stream, eventBus]);
 };

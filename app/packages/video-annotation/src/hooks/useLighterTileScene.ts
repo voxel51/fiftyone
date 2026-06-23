@@ -26,44 +26,18 @@ interface Dimensions {
   h: number;
 }
 
+type LighterScene = ReturnType<typeof useLighterSetupWithPixi>["scene"];
+
 /**
- * Owns the Lighter scene lifecycle shared by both video-annotation tiles:
- * attaches the singleton canvas into `hostRef`, sets up the pixi scene under a
- * freshly-minted scene id, syncs the FiftyOne color scheme, installs a
- * canonical-media overlay sized to `dims`, and fits the viewport once the
- * renderer and media are both ready.
- *
- * `dims` is injected so the hook stays agnostic to *how* the tile discovered
- * them (native `<video>` metadata vs. a decoded imavid bitmap). `sceneIdDeps`
- * recompute the scene id — the video tile re-mints per source; pass nothing
- * (default `[]`) for a once-per-mount scene.
- *
- * Returns the scene plus whether its canonical media is installed.
- * `canonicalMediaReady` gates the overlay sync (overlays added before media
- * exists have no coordinate context and render with broken bounds), so feed it
- * straight into {@link useVideoAnnotationSyncBundle}.
+ * Attach the SINGLETON Lighter canvas into `hostRef`. One
+ * SharedPixiApplication per page binds to the first canvas it sees; a fresh
+ * canvas would leave Pixi rendering to the old (image-modal) one.
  */
-export function useLighterTileScene({
-  hostRef,
-  dims,
-  sceneIdPrefix,
-  sceneIdDeps = [],
-}: {
-  hostRef: RefObject<HTMLDivElement | null>;
-  dims: Dimensions | null;
-  sceneIdPrefix: string;
-  sceneIdDeps?: DependencyList;
-}): {
-  scene: ReturnType<typeof useLighterSetupWithPixi>["scene"];
-  canonicalMediaReady: boolean;
-} {
+function useAttachedSingletonCanvas(
+  hostRef: RefObject<HTMLDivElement | null>
+): HTMLCanvasElement | null {
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
 
-  // Attach the SINGLETON Lighter canvas into our host. There is one
-  // SharedPixiApplication per page bound to the first canvas it ever sees;
-  // creating a fresh canvas would leave Pixi rendering to the old
-  // (image-modal) canvas instead. singletonCanvas detaches cleanly from any
-  // previous container and reattaches here.
   useEffect(() => {
     const host = hostRef.current;
     if (!host) {
@@ -77,24 +51,14 @@ export function useLighterTileScene({
     };
   }, [hostRef]);
 
-  // Modal options so activePaths / showOverlays / alpha match the sidebar and
-  // overlays.
-  const options = useModalLookerOptions();
+  return canvas;
+}
 
-  // Mint a fresh scene id whenever `sceneIdDeps` change, so a new source gets
-  // its own Lighter scene.
-  const sceneId = useMemo(
-    () => `${sceneIdPrefix}-${Math.random().toString(36).slice(2, 9)}`,
-    // caller-supplied dep list; exhaustive-deps can't statically verify it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    sceneIdDeps
-  );
-
-  const { scene } = useLighterSetupWithPixi(canvas!, options, sceneId);
-
-  // Wire the FiftyOne color scheme so overlays match the rest of the UI.
+/** Keep the scene's color mapping in sync with the FiftyOne color scheme. */
+function useSceneColorScheme(scene: LighterScene, sceneId: string): void {
   const scheme = useColorScheme();
   const seed = useColorSeed();
+
   useEffect(() => {
     if (!scene || scene.getSceneId() !== sceneId) {
       return;
@@ -102,21 +66,24 @@ export function useLighterTileScene({
 
     scene.updateColorMappingContext({ colorScheme: scheme, seed });
   }, [scene, sceneId, scheme, seed]);
+}
 
-  // Tracks whether the *current* scene has its canonical media installed. The
-  // overlay diff gates on this — without canonical media, overlays added to
-  // the scene have no coordinate context to position against, so they render
-  // with broken bounds and a later in-place `relativeBounds` update doesn't
-  // fix them. Reset whenever `sceneId` changes (new scene → not installed yet)
-  // and set true at the bottom of the install effect.
-  const [canonicalMediaReady, setCanonicalMediaReady] = useState(false);
+/**
+ * Install a no-pixel canonical-media overlay sized to `dims`. Lighter draws
+ * overlays relative to it. Returns whether the current scene's media is
+ * installed — overlays added before it exists have no coordinate context.
+ */
+function useCanonicalMediaInstall(
+  scene: LighterScene,
+  sceneId: string,
+  dims: Dimensions | null
+): boolean {
+  const [ready, setReady] = useState(false);
+
   useEffect(() => {
-    setCanonicalMediaReady(false);
+    setReady(false);
   }, [sceneId]);
 
-  // Install a no-pixel canonical-media overlay sized to the media's intrinsic
-  // resolution. Lighter draws overlays relative to it; the element behind the
-  // canvas provides the visible pixels.
   useEffect(() => {
     if (!scene || !dims) {
       return;
@@ -133,23 +100,21 @@ export function useLighterTileScene({
 
     scene.addOverlay(media);
     scene.setCanonicalMedia(media);
-    setCanonicalMediaReady(true);
+    setReady(true);
   }, [scene, sceneId, dims]);
 
-  // Viewport init — without this the pixi-viewport never gets framed and
-  // overlays render with zero / wrong coordinate transforms. The resting frame
-  // is IDENTITY (scale 1, pan 0): the media element behind the canvas uses
-  // `object-fit: contain`, so its letterboxed pixels already equal the scene's
-  // world coordinates (see useSyncMediaTransform). `fitToContent` would instead
-  // frame the LABELS' bounding box (it excludes the canonical media), zooming
-  // into the detections and dragging the media element's transform with it.
-  // Resetting needs the renderer ready (the pixi-viewport must exist) AND the
-  // canonical media's REAL bounds: `canonicalMediaReady` flips synchronously at
-  // install, but the bounds come from a ResizeObserver once the container has
-  // laid out, so acting at renderer-ready alone races a zero-size scene (black
-  // until the user hits 'r'). `canonical-media-bounds-changed` only fires with
-  // non-zero bounds (see ExternalCanonicalMedia), so it is the readiness
-  // signal; reset once both are true.
+  return ready;
+}
+
+/**
+ * Reset the viewport to the resting IDENTITY frame once the renderer and the
+ * canonical media's real bounds are both ready. Identity (not `fitToContent`,
+ * which frames the labels' bbox) keeps the letterboxed media aligned with
+ * world coordinates. Bounds arrive via ResizeObserver after layout, so we gate
+ * on the `bounds-changed` event rather than renderer-ready alone (which races
+ * a zero-size scene).
+ */
+function useViewportReset(scene: LighterScene, sceneId: string): void {
   const [rendererReady, setRendererReady] = useState(false);
   const [mediaBoundsReady, setMediaBoundsReady] = useState(false);
   const useEventHandler = useLighterEventHandler(
@@ -182,6 +147,54 @@ export function useLighterTileScene({
 
     scene.resetZoomPan();
   }, [scene, sceneId, rendererReady, mediaBoundsReady]);
+}
+
+/**
+ * Owns the Lighter scene lifecycle shared by both video-annotation tiles:
+ * attaches the singleton canvas, sets up the pixi scene under a fresh scene
+ * id, syncs the color scheme, installs a canonical-media overlay sized to
+ * `dims`, and resets the viewport once renderer + media are ready.
+ *
+ * `dims` is injected so the hook stays agnostic to how the tile discovered
+ * them. `sceneIdDeps` recompute the scene id (the video tile re-mints per
+ * source; pass nothing for a once-per-mount scene).
+ *
+ * Returns the scene plus whether its canonical media is installed; feed
+ * `canonicalMediaReady` into {@link useVideoAnnotationSyncBundle}.
+ */
+export function useLighterTileScene({
+  hostRef,
+  dims,
+  sceneIdPrefix,
+  sceneIdDeps = [],
+}: {
+  hostRef: RefObject<HTMLDivElement | null>;
+  dims: Dimensions | null;
+  sceneIdPrefix: string;
+  sceneIdDeps?: DependencyList;
+}): {
+  scene: LighterScene;
+  canonicalMediaReady: boolean;
+} {
+  const canvas = useAttachedSingletonCanvas(hostRef);
+
+  // Modal options so activePaths / showOverlays / alpha match the sidebar.
+  const options = useModalLookerOptions();
+
+  // Fresh scene id whenever `sceneIdDeps` change, so a new source gets its
+  // own scene.
+  const sceneId = useMemo(
+    () => `${sceneIdPrefix}-${Math.random().toString(36).slice(2, 9)}`,
+    // caller-supplied dep list; exhaustive-deps can't statically verify it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    sceneIdDeps
+  );
+
+  const { scene } = useLighterSetupWithPixi(canvas, options, sceneId);
+
+  useSceneColorScheme(scene, sceneId);
+  const canonicalMediaReady = useCanonicalMediaInstall(scene, sceneId, dims);
+  useViewportReset(scene, sceneId);
 
   return { scene, canonicalMediaReady };
 }

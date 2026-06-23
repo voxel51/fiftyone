@@ -24,9 +24,9 @@ export const SYNTHETIC_FIELD = "synthetic_detections";
 export const SYNTHETIC_FPS = 30;
 
 /**
- * Synthetic labels stream — used for testing the rendering path without
- * real labels. Mirrors the lifecycle of `RegisterFrameLabels`:
- * construct once, push actors in once duration is known, nudge `seek(0)`.
+ * Synthetic labels stream — exercises the rendering path without real labels.
+ * Constructs the stream once, pushes actors in once duration is known, and
+ * nudges `seek(0)`.
  */
 export const RegisterSyntheticLabels: React.FC = () => {
   const duration = useDuration();
@@ -38,7 +38,9 @@ export const RegisterSyntheticLabels: React.FC = () => {
       fps: SYNTHETIC_FPS,
     });
   }
-  usePlaybackStream(streamRef.current);
+
+  const stream = streamRef.current;
+  usePlaybackStream(stream);
 
   useEffect(() => {
     if (duration <= 0) {
@@ -48,18 +50,17 @@ export const RegisterSyntheticLabels: React.FC = () => {
     const actors = DEFAULT_ACTOR_SPECS.map((spec) =>
       resolveActor(spec, duration)
     );
-    streamRef.current!.setActors(actors);
+    stream.setActors(actors);
     seek(0);
-  }, [duration, seek]);
+  }, [stream, duration, seek]);
 
   return null;
 };
 
 /**
- * Synthetic track timeline — one row per actor with the color resolved
- * against the same color scheme the overlays use. Mirrors
- * `FrameLabelsTracks`: live recolor through the reactive `tracks` prop,
- * plus a one-shot empty→ready key flip so `initialPinnedIds` bootstraps
+ * Synthetic track timeline — one row per actor, colored against the same
+ * color scheme the overlays use. Recolors live through the reactive `tracks`
+ * prop, with a one-shot empty→ready key flip so `initialPinnedIds` bootstraps
  * when the real track list lands.
  */
 export const SyntheticTrackTimeline: React.FC = () => {

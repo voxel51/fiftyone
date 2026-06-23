@@ -3,13 +3,12 @@
  */
 
 /**
- * A tiny consume-once relay for the undo key a freshly-drawn overlay committed
- * under. The engine Lighter bridge stashes the key by overlay id the moment it
- * commits a draw (`onEstablishCommit`); the video auto-extend takes it back —
- * also by overlay id — to fold its filler write into the draw's single undo
- * unit. Keyed by the globally-unique overlay id (not "the engine's last undo
- * entry"), so the handoff is explicit and order-independent: the take runs in a
- * microtask, after the bridge's synchronous commit has stashed the key.
+ * A consume-once relay for the undo key a freshly-drawn overlay committed
+ * under. The engine Lighter bridge stashes the key by overlay id when it commits
+ * a draw (`onEstablishCommit`); the video auto-extend takes it back — also by
+ * overlay id — to fold its filler write into the draw's single undo unit. Keying
+ * by the globally-unique overlay id keeps the handoff explicit and
+ * order-independent: the take runs in a microtask, after the synchronous stash.
  */
 const keys = new Map<string, string>();
 

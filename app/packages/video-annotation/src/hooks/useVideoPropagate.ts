@@ -39,149 +39,180 @@ const toSyntheticBox = (label: LabelData): SyntheticBox => ({
 });
 
 /**
- * Run object-track propagation between two keyframes of one instance.
- *
- * The agents are unchanged (SAM2 streams a detection per decoded frame; linear
- * lerps the bracketing pair); only the I/O moved onto the engine — the seed /
- * end keyframes are read with `engine.getLabel` (the track's box at a frame),
- * and results apply through the engine writers. A streaming run's per-frame
- * writes can't share one synchronous transaction, so they coalesce under a
- * single minted gesture id (one undo unit per propagation).
- *
- * Returns `true` when work was applied. No-ops (returns `false`) without a
- * stream, on a degenerate range, or when the seed frame isn't a keyframe.
+ * The streaming SAM2 agent is registered under the broad `AnnotationAgent`
+ * type but driven through its dedicated `propagate()` (which carries the frame
+ * source). Narrow by that method rather than casting blind.
  */
-export const useVideoPropagate = () => {
-  const engine = useAnnotationEngine();
-  const sampleId = useActiveSampleId();
-  const stream = useFrameLabelsStream();
-  const imageStream = useImaVidImageStream();
+const isSam2Agent = (
+  agent: AnnotationAgent<PropagationInferenceResult>
+): agent is SAM2PropagationBrowserAgent =>
+  typeof (agent as Partial<SAM2PropagationBrowserAgent>).propagate ===
+  "function";
+
+/** Resolves a registered agent by id, or `null` when absent. */
+const useResolveAgent = () => {
   const registry = useAgentRegistry();
+
+  return useCallback(
+    async (
+      id: string
+    ): Promise<AnnotationAgent<PropagationInferenceResult> | null> => {
+      const agents = await registry.listAgents();
+      const descriptor = agents.find((a) => a.id === id);
+
+      return descriptor
+        ? (descriptor.agent as AnnotationAgent<PropagationInferenceResult>)
+        : null;
+    },
+    [registry]
+  );
+};
+
+/** A track's box at a frame, read through the engine. */
+type FrameReader = (frame: number) => LabelData | undefined;
+
+interface PropagateArgs {
+  instanceId: string;
+  fromFrame: number;
+  toFrame: number;
+  /** Frames-field path of the active stream. */
+  path: string;
+  /** Reads the track's box at a frame through the engine. */
+  at: FrameReader;
+  /** The seed keyframe (already verified present + keyframe). */
+  leftKeyframe: LabelData;
+  /** The end keyframe, if any. */
+  rightKeyframe: LabelData | undefined;
+}
+
+/**
+ * SAM2 tracking runs asynchronously over the decoded ImaVid frames and streams
+ * a detection per frame as inference lands. Per-frame writes can't share one
+ * synchronous transaction, so they coalesce under a single minted gesture id
+ * (one undo unit per propagation). No-ops without an image stream.
+ */
+const useSam2Propagate = () => {
+  const engine = useAnnotationEngine();
+  const imageStream = useImaVidImageStream();
+  const resolveAgent = useResolveAgent();
   const sampleDescriptor = useSampleDescriptor();
-  const applyPropagation = useApplyPropagationResult();
   const applyPropagatedDetection = useApplyPropagatedDetection();
   const { setContent: setStatusContent } = useVideoAnnotationStatus();
 
   return useCallback(
-    async (
-      instanceId: string,
-      fromFrame: number,
-      toFrame: number,
-      method: PropagationMethod
-    ): Promise<boolean> => {
-      if (!stream || fromFrame >= toFrame) {
+    async (args: PropagateArgs): Promise<boolean> => {
+      const { instanceId, fromFrame, toFrame, leftKeyframe, rightKeyframe } =
+        args;
+
+      if (!imageStream) {
         return false;
       }
 
-      const path = `frames.${stream.labelsField}`;
-      const at = (frame: number): LabelData | undefined =>
-        engine.getLabel({ sample: sampleId, path, instanceId, frame });
+      const agent = await resolveAgent("propagate-sam2");
 
-      const leftKeyframe = at(fromFrame);
-
-      if (!leftKeyframe?.keyframe) {
+      if (!agent || !isSam2Agent(agent)) {
         return false;
       }
 
-      const rightKeyframe = at(toFrame);
+      const undoKey = engine.mintGestureId();
 
-      // SAM2 tracking runs asynchronously over the decoded ImaVid frames and
-      // streams a detection per frame as inference lands. It needs the image
-      // stream as a frame source; bail cleanly on surfaces that have none.
-      if (method === "sam2") {
-        if (!imageStream) {
-          return false;
+      let aborted = false;
+      const onStop = () => {
+        aborted = true;
+      };
+
+      // Drive the phase off `onProgress` (monotonic, fires once per-frame
+      // inference starts) rather than the agent lifecycle, which churns
+      // inferring→encoding→idle every frame and would flicker the label.
+      // Until the first progress tick we're in the one-time model download /
+      // encode, shown as an indeterminate "Loading SAM2…".
+      let tracking = false;
+      const render = (done?: number, runTotal?: number) =>
+        setStatusContent(
+          createElement(PropagationStatusItem, {
+            label: tracking ? "SAM2 tracking" : "Loading SAM2…",
+            done,
+            total: runTotal,
+            onStop,
+          })
+        );
+      render();
+
+      // Map a 1-based frame number to its decoded bitmap, fetching + decoding
+      // on demand if the LRU doesn't already hold it.
+      const getFrameBitmap = async (
+        frameNumber: number
+      ): Promise<ImageBitmap> => {
+        const time = (frameNumber - 1) / imageStream.fps;
+        await imageStream.warmup(time);
+        const frame = imageStream.getValue(time);
+
+        if (!frame) {
+          throw new Error(`ImaVid frame ${frameNumber} unavailable`);
         }
 
-        const agents = await registry.listAgents();
-        const descriptor = agents.find((a) => a.id === "propagate-sam2");
+        return frame.bitmap;
+      };
 
-        if (!descriptor) {
-          return false;
-        }
-
-        // registry stores agents under the broad `AnnotationAgent` type; this
-        // one is driven through its dedicated `propagate()` (which carries the
-        // frame source), not the generic `infer`
-        const agent =
-          descriptor.agent as unknown as SAM2PropagationBrowserAgent;
-        const undoKey = engine.mintGestureId();
-
-        let aborted = false;
-        const onStop = () => {
-          aborted = true;
-        };
-
-        // Drive the phase off `onProgress` (monotonic, fires once per-frame
-        // inference starts) rather than the agent lifecycle, which churns
-        // inferring→encoding→idle every frame and would flicker the label.
-        // Until the first progress tick we're in the one-time model download /
-        // encode, shown as an indeterminate "Loading SAM2…".
-        let tracking = false;
-        const render = (done?: number, runTotal?: number) =>
-          setStatusContent(
-            createElement(PropagationStatusItem, {
-              label: tracking ? "SAM2 tracking" : "Loading SAM2…",
-              done,
-              total: runTotal,
-              onStop,
-            })
-          );
-        render();
-
-        // Map a 1-based frame number to its decoded bitmap, fetching + decoding
-        // on demand if the LRU doesn't already hold it.
-        const getFrameBitmap = async (
-          frameNumber: number
-        ): Promise<ImageBitmap> => {
-          const time = (frameNumber - 1) / imageStream.fps;
-          await imageStream.warmup(time);
-          const frame = imageStream.getValue(time);
-
-          if (!frame) {
-            throw new Error(`ImaVid frame ${frameNumber} unavailable`);
-          }
-
-          return frame.bitmap;
-        };
-
-        try {
-          await agent.propagate({
-            instanceId,
-            seedKeyframe: toSyntheticBox(leftKeyframe),
-            endKeyframe: rightKeyframe
-              ? toSyntheticBox(rightKeyframe)
-              : undefined,
-            fromFrame,
-            toFrame,
-            videoKey: sampleDescriptor.sampleId,
-            getFrameBitmap,
-            onDetection: (frameNumber, detection) =>
-              applyPropagatedDetection(frameNumber, detection, { undoKey }),
-            onProgress: (done, runTotal) => {
-              tracking = true;
-              render(done, runTotal);
-            },
-            shouldAbort: () => aborted,
-          });
-          return true;
-        } catch (err) {
-          console.error("[va] SAM2 propagation failed", err);
-          return false;
-        } finally {
-          setStatusContent(null);
-        }
+      try {
+        await agent.propagate({
+          instanceId,
+          seedKeyframe: toSyntheticBox(leftKeyframe),
+          endKeyframe: rightKeyframe
+            ? toSyntheticBox(rightKeyframe)
+            : undefined,
+          fromFrame,
+          toFrame,
+          videoKey: sampleDescriptor.sampleId,
+          getFrameBitmap,
+          onDetection: (frameNumber, detection) =>
+            applyPropagatedDetection(frameNumber, detection, { undoKey }),
+          onProgress: (done, runTotal) => {
+            tracking = true;
+            render(done, runTotal);
+          },
+          shouldAbort: () => aborted,
+        });
+        return true;
+      } catch (err) {
+        console.error("[va] SAM2 propagation failed", err);
+        return false;
+      } finally {
+        setStatusContent(null);
       }
+    },
+    [
+      engine,
+      imageStream,
+      resolveAgent,
+      sampleDescriptor,
+      applyPropagatedDetection,
+      setStatusContent,
+    ]
+  );
+};
 
-      // linear interpolation needs both endpoints to lerp between
+/**
+ * Linear interpolation lerps the bracketing keyframe pair in one synchronous
+ * inference call. No-ops without an end keyframe to lerp toward.
+ */
+const useLinearPropagate = () => {
+  const resolveAgent = useResolveAgent();
+  const sampleDescriptor = useSampleDescriptor();
+  const applyPropagation = useApplyPropagationResult();
+
+  return useCallback(
+    async (args: PropagateArgs): Promise<boolean> => {
+      const { instanceId, fromFrame, toFrame, leftKeyframe, rightKeyframe } =
+        args;
+
       if (!rightKeyframe) {
         return false;
       }
 
-      const agents = await registry.listAgents();
-      const descriptor = agents.find((a) => a.id === "propagate-linear");
+      const agent = await resolveAgent("propagate-linear");
 
-      if (!descriptor) {
+      if (!agent) {
         return false;
       }
 
@@ -197,22 +228,68 @@ export const useVideoPropagate = () => {
         ],
       };
 
-      const agent =
-        descriptor.agent as AnnotationAgent<PropagationInferenceResult>;
       const result = await agent.infer(context);
       applyPropagation(result);
       return true;
     },
-    [
-      engine,
-      sampleId,
-      stream,
-      imageStream,
-      registry,
-      sampleDescriptor,
-      applyPropagation,
-      applyPropagatedDetection,
-      setStatusContent,
-    ]
+    [resolveAgent, sampleDescriptor, applyPropagation]
+  );
+};
+
+/**
+ * Run object-track propagation between two keyframes of one instance,
+ * dispatching to the SAM2 or linear pipeline by `method`. The seed / end
+ * keyframes are read with `engine.getLabel` (the track's box at a frame) and
+ * results apply through the engine writers.
+ *
+ * Returns `true` when work was applied. No-ops (returns `false`) without a
+ * stream, on a degenerate range, or when the seed frame isn't a keyframe.
+ */
+export const useVideoPropagate = () => {
+  const engine = useAnnotationEngine();
+  const sampleId = useActiveSampleId();
+  const stream = useFrameLabelsStream();
+  const sam2Propagate = useSam2Propagate();
+  const linearPropagate = useLinearPropagate();
+
+  return useCallback(
+    async (
+      instanceId: string,
+      fromFrame: number,
+      toFrame: number,
+      method: PropagationMethod
+    ): Promise<boolean> => {
+      if (!stream || fromFrame >= toFrame) {
+        return false;
+      }
+
+      const path = `frames.${stream.labelsField}`;
+      const at: FrameReader = (frame) =>
+        engine.getLabel({ sample: sampleId, path, instanceId, frame });
+
+      const leftKeyframe = at(fromFrame);
+
+      if (!leftKeyframe?.keyframe) {
+        return false;
+      }
+
+      const rightKeyframe = at(toFrame);
+      const args: PropagateArgs = {
+        instanceId,
+        fromFrame,
+        toFrame,
+        path,
+        at,
+        leftKeyframe,
+        rightKeyframe,
+      };
+
+      if (method === "sam2") {
+        return sam2Propagate(args);
+      }
+
+      return linearPropagate(args);
+    },
+    [engine, sampleId, stream, sam2Propagate, linearPropagate]
   );
 };
