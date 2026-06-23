@@ -3,16 +3,15 @@ import type {
   AnnotationProvider,
   BitmapEncodeRequest,
   BitmapInferenceRequest,
-  DownloadProgress,
   DownloadProgressCallback,
   ErrorCallback,
   InferenceRequest,
   InferenceResult,
   ProviderError,
-  ProviderStatus,
   StatusCallback,
   WarningCallback,
   WorkerMessageType,
+  WorkerOutbound,
   WorkerRequest,
   WorkerResponse,
 } from "./types";
@@ -108,39 +107,42 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
       throw err;
     }
 
-    this.worker.onmessage = (e: MessageEvent) => {
-      const { id, type, success, result, error } = e.data;
+    this.worker.onmessage = (e: MessageEvent<WorkerOutbound>) => {
+      const msg = e.data;
 
-      if (type === "ready") return;
+      if (msg.type === "ready") return;
 
-      if (type === "status") {
-        this.onStatus?.(result as ProviderStatus);
+      if (msg.type === "status") {
+        this.onStatus?.(msg.result);
         return;
       }
 
-      if (type === "progress") {
-        this.onProgress?.(result as DownloadProgress);
+      if (msg.type === "progress") {
+        this.onProgress?.(msg.result);
         return;
       }
 
-      if (type === "warning") {
-        this.onWarning?.(result as string);
+      if (msg.type === "warning") {
+        this.onWarning?.(msg.result);
         return;
       }
 
-      if (type === "error") {
-        this.onError?.(result as ProviderError);
+      if (msg.type === "error") {
+        this.onError?.(msg.result);
         return;
       }
 
-      const entry = this.pending.get(id);
+      const entry = this.pending.get(msg.id);
       if (!entry) return;
 
-      this.pending.delete(id);
+      this.pending.delete(msg.id);
 
-      success
-        ? entry.resolve(result)
-        : entry.reject(new Error(error ?? "Worker error"));
+      if (msg.success === false) {
+        entry.reject(new Error(msg.error ?? "Worker error"));
+        return;
+      }
+
+      entry.resolve(msg.result);
     };
 
     this.worker.onerror = (e: ErrorEvent) => {

@@ -90,6 +90,49 @@ export type WorkerRequest<T extends WorkerMessageType> =
 export type WorkerResponse<T extends WorkerMessageType> =
   WorkerMessages[T]["response"];
 
+/** Main-thread fetch params replayed to the worker so it routes the same way. */
+export interface WorkerInitPayload {
+  origin: string;
+  headers: Record<string, string>;
+  pathPrefix: string;
+}
+
+/** A request the worker receives over `postMessage` (`init` carries no id). */
+export type WorkerInbound =
+  | { type: "init"; payload: WorkerInitPayload }
+  | {
+      [T in WorkerMessageType]: {
+        id: number;
+        type: T;
+        payload: WorkerRequest<T>;
+      };
+    }[WorkerMessageType];
+
+/** A successful request reply the main thread receives. */
+export type WorkerOutboundResponse = {
+  [T in WorkerMessageType]: {
+    id: number;
+    type: T;
+    success: true;
+    result: WorkerResponse<T>;
+  };
+}[WorkerMessageType];
+
+/** A one-way notification the main thread receives. */
+export type WorkerOutboundNotification = {
+  [T in keyof WorkerNotifications]: {
+    type: T;
+    result: WorkerNotifications[T];
+  };
+}[keyof WorkerNotifications];
+
+/** Everything the main thread can receive from the worker. */
+export type WorkerOutbound =
+  | { type: "ready" }
+  | WorkerOutboundNotification
+  | WorkerOutboundResponse
+  | { id: number; type: WorkerMessageType; success: false; error: string };
+
 /** Status events emitted during the provider lifecycle. */
 export type ProviderStatus = "loading" | "encoding" | "ready" | "failure";
 

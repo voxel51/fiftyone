@@ -6,6 +6,7 @@ import type {
   ProviderError,
   ProviderStatus,
   PromptPoint,
+  WorkerInbound,
   WorkerMessageType,
   WorkerNotifications,
   WorkerResponse,
@@ -52,9 +53,9 @@ function postResponse<T extends WorkerMessageType>(
   id: number,
   type: T,
   result: WorkerResponse<T>,
-  transfer?: Transferable[]
+  transfer: Transferable[] = []
 ): void {
-  self.postMessage({ id, type, success: true, result }, transfer as any);
+  self.postMessage({ id, type, success: true, result }, transfer);
 }
 
 function postError(id: number, type: string, error: string): void {
@@ -65,12 +66,7 @@ function postError(id: number, type: string, error: string): void {
 const IMAGE_MEAN = [0.485, 0.456, 0.406];
 const IMAGE_STD = [0.229, 0.224, 0.225];
 
-// Temporary perf instrumentation for the video-propagation tuning effort.
-// Logs are tagged "[sam2-perf]" — filter the console on that. The encode vs.
-// decode split is the key signal: encoder embeddings are prompt-independent
-// and could be precomputed server-side; the decoder needs interactive points
-// and must stay client-side. Flip to false (or strip this block) once the
-// server-side-precompute decision is made.
+// Perf instrumentation; logs are tagged "[sam2-perf]". Set false to silence.
 const SAM2_PERF_LOG = true;
 
 function perfLog(label: string, marks: Record<string, number>): void {
@@ -115,11 +111,9 @@ const isCOI = typeof crossOriginIsolated !== "undefined" && crossOriginIsolated;
 ort.env.wasm.numThreads = isCOI ? navigator.hardwareConcurrency || 4 : 1;
 ort.env.wasm.simd = true;
 
-// WebGPU experiment: the SAM2 encoder is a heavy ViT and dominates per-frame
-// time (~96%) under single-threaded WASM. Try the WebGPU execution provider
-// when the runtime exposes it, falling back to WASM per-session if WebGPU
-// can't load the model (the encoder ships as a runtime-optimized `.ort` file,
-// which may be pinned to the WASM EP — `loadSession` reports the actual EP).
+// Prefer the WebGPU execution provider when the runtime exposes it, falling
+// back to WASM per-session (the runtime-optimized `.ort` encoder may be pinned
+// to the WASM EP — `loadSession` reports the actual EP).
 const WEBGPU_AVAILABLE =
   typeof navigator !== "undefined" &&
   !!(navigator as Navigator & { gpu?: unknown }).gpu;
@@ -498,34 +492,53 @@ async function encodeBitmap(
   );
 }
 
+/** Encoder embeddings plus the geometry needed to map masks back to pixels. */
+interface ResolvedEmbedding {
+  encResults: Record<string, ort.Tensor>;
+  geometry: ImageGeometry;
+  cacheHit: boolean;
+  /** Phase timings folded into the final perf log. */
+  marks: { cacheLookupMs: number; preprocessMs: number; encodeMs: number };
+}
+
+/** Rebuild encoder-output tensors from a cached embedding entry. */
+function tensorsFromCache(
+  cached: NonNullable<Awaited<ReturnType<typeof getEmbedding>>>
+): Record<string, ort.Tensor> {
+  return {
+    image_embed: new ort.Tensor(
+      "float32",
+      cached.imageEmbed.data,
+      cached.imageEmbed.dims
+    ),
+    high_res_feats_0: new ort.Tensor(
+      "float32",
+      cached.highResFeats0.data,
+      cached.highResFeats0.dims
+    ),
+    high_res_feats_1: new ort.Tensor(
+      "float32",
+      cached.highResFeats1.data,
+      cached.highResFeats1.dims
+    ),
+  };
+}
+
 /**
- * Shared SAM2 core: encode (or reuse a cached embedding for `cacheKey`),
- * decode against `points`, and postprocess to the best mask. `cacheKey` is
- * the fully-qualified embedding-cache key (already `CACHE_PREFIX`-prefixed).
+ * Encode `imageData` (or reuse a cached embedding for `cacheKey`), returning
+ * the encoder outputs and image geometry. GPU-resident outputs are pushed onto
+ * `gpuTensors` for the caller to dispose after the decoder reads them; on a
+ * cache miss the embedding is stored (fire-and-forget) when `useEmbeddingCache`.
  */
-async function embedAndDecodeFromImageData(
+async function resolveEmbedding(
   imageData: ImageData,
   cacheKey: string,
-  points: PromptPoint[],
-  useEmbeddingCache = true
-): Promise<InferenceResult> {
-  if (!encoderSession || !decoderSession) throw new Error("Model not loaded");
+  useEmbeddingCache: boolean,
+  gpuTensors: ort.Tensor[]
+): Promise<ResolvedEmbedding> {
+  if (!encoderSession) throw new Error("Model not loaded");
 
-  if (points.length === 0)
-    throw new Error("At least one prompt point is required");
-
-  const tStart = performance.now();
-  let preprocessMs = 0;
-  let encodeMs = 0;
   let cacheLookupMs = 0;
-
-  let encResults: Record<string, ort.Tensor>;
-  let geometry: ImageGeometry;
-  let cacheHit = false;
-
-  // Encoder outputs may be GPU-resident (preferredOutputLocation). Those must
-  // be released after the decoder reads them; collect them for a finally.
-  const gpuTensors: ort.Tensor[] = [];
 
   if (useEmbeddingCache) {
     const tCache = performance.now();
@@ -534,220 +547,275 @@ async function embedAndDecodeFromImageData(
 
     if (cached) {
       try {
-        encResults = {
-          image_embed: new ort.Tensor(
-            "float32",
-            cached.imageEmbed.data,
-            cached.imageEmbed.dims
-          ),
-          high_res_feats_0: new ort.Tensor(
-            "float32",
-            cached.highResFeats0.data,
-            cached.highResFeats0.dims
-          ),
-          high_res_feats_1: new ort.Tensor(
-            "float32",
-            cached.highResFeats1.data,
-            cached.highResFeats1.dims
-          ),
+        return {
+          encResults: tensorsFromCache(cached),
+          geometry: cached.processedImage,
+          cacheHit: true,
+          marks: { cacheLookupMs, preprocessMs: 0, encodeMs: 0 },
         };
-        geometry = cached.processedImage;
-        cacheHit = true;
       } catch {
         postWarningNotification("Corrupt embedding cache entry, re-encoding");
       }
     }
   }
 
+  postStatusNotification("encoding");
+  const tPreprocess = performance.now();
+  const processed = preprocessImage(imageData);
+  const preprocessMs = performance.now() - tPreprocess;
+
+  const tEncode = performance.now();
+  const encResults = await encoderSession.run({
+    image: new ort.Tensor("float32", processed.tensor, [
+      1,
+      3,
+      SAM2_INPUT_SIZE,
+      SAM2_INPUT_SIZE,
+    ]),
+  });
+  const encodeMs = performance.now() - tEncode;
+
+  for (const t of [
+    encResults["image_embed"],
+    encResults["high_res_feats_0"],
+    encResults["high_res_feats_1"],
+  ]) {
+    if (t.location !== "cpu") gpuTensors.push(t);
+  }
+
+  // embedding payload size (element counts via dims, CPU or GPU)
+  const elems = (t: ort.Tensor) => t.dims.reduce((a, b) => a * b, 1);
+  perfLog("embedding-size", {
+    mb:
+      (elems(encResults["image_embed"]) +
+        elems(encResults["high_res_feats_0"]) +
+        elems(encResults["high_res_feats_1"])) *
+      (Float32Array.BYTES_PER_ELEMENT / (1024 * 1024)),
+    imageEmbed: elems(encResults["image_embed"]),
+    highRes0: elems(encResults["high_res_feats_0"]),
+    highRes1: elems(encResults["high_res_feats_1"]),
+  });
+
+  if (useEmbeddingCache) {
+    await storeEmbedding(cacheKey, encResults, processed);
+  }
+
+  return {
+    encResults,
+    geometry: processed,
+    cacheHit: false,
+    marks: { cacheLookupMs, preprocessMs, encodeMs },
+  };
+}
+
+/**
+ * Download CPU copies of the encoder outputs (a no-op for cpu tensors;
+ * releaseData=false keeps GPU buffers alive for the decoder) and persist them.
+ * Fire-and-forget: the IDB write runs while the decoder proceeds.
+ */
+async function storeEmbedding(
+  cacheKey: string,
+  encResults: Record<string, ort.Tensor>,
+  geometry: ImageGeometry
+): Promise<void> {
+  const [imageEmbed, highResFeats0, highResFeats1] = (await Promise.all([
+    encResults["image_embed"].getData(false),
+    encResults["high_res_feats_0"].getData(false),
+    encResults["high_res_feats_1"].getData(false),
+  ])) as Float32Array[];
+
+  putEmbedding(
+    cacheKey,
+    {
+      imageEmbed: {
+        data: imageEmbed,
+        dims: [...encResults["image_embed"].dims],
+      },
+      highResFeats0: {
+        data: highResFeats0,
+        dims: [...encResults["high_res_feats_0"].dims],
+      },
+      highResFeats1: {
+        data: highResFeats1,
+        dims: [...encResults["high_res_feats_1"].dims],
+      },
+      processedImage: {
+        originalWidth: geometry.originalWidth,
+        originalHeight: geometry.originalHeight,
+      },
+    },
+    postWarningNotification
+  );
+}
+
+/** Decoder timings folded into the final perf log. */
+interface DecodeMarks {
+  decodeMs: number;
+  postMs: number;
+}
+
+/**
+ * Run the decoder against `points`, pick the best mask by IoU, and postprocess
+ * it back to original-image pixels. The encoder embeddings may be GPU-resident;
+ * the decoder reads them in place on the same device.
+ */
+async function decodeToMask(
+  encResults: Record<string, ort.Tensor>,
+  geometry: ImageGeometry,
+  points: PromptPoint[]
+): Promise<{ result: InferenceResult; marks: DecodeMarks }> {
+  if (!decoderSession) throw new Error("Model not loaded");
+
+  const n = points.length;
+  const coords = new Float32Array(n * 2);
+  const labels = new Float32Array(n);
+
+  for (let i = 0; i < n; i++) {
+    const [sx, sy] = transformPoint(points[i].x, points[i].y);
+    coords[i * 2] = sx;
+    coords[i * 2 + 1] = sy;
+    labels[i] = points[i].label;
+  }
+
+  const tDecode = performance.now();
+  const decResults = await decoderSession.run({
+    image_embed: encResults["image_embed"],
+    high_res_feats_0: encResults["high_res_feats_0"],
+    high_res_feats_1: encResults["high_res_feats_1"],
+    point_coords: new ort.Tensor("float32", coords, [1, n, 2]),
+    point_labels: new ort.Tensor("float32", labels, [1, n]),
+    mask_input: new ort.Tensor(
+      "float32",
+      new Float32Array(SAM2_OUTPUT_SIZE * SAM2_OUTPUT_SIZE),
+      [1, 1, SAM2_OUTPUT_SIZE, SAM2_OUTPUT_SIZE]
+    ),
+    has_mask_input: new ort.Tensor("float32", new Float32Array([0]), [1]),
+  });
+  const decodeMs = performance.now() - tDecode;
+
+  const tPost = performance.now();
+  const result = bestMaskResult(decResults, geometry);
+  const postMs = performance.now() - tPost;
+
+  return { result, marks: { decodeMs, postMs } };
+}
+
+/** Select the highest-IoU mask and crop/normalize it to the source image. */
+function bestMaskResult(
+  decResults: Record<string, ort.Tensor>,
+  geometry: ImageGeometry
+): InferenceResult {
+  const masks = decResults["masks"].data as Float32Array;
+  const ious = decResults["iou_predictions"].data as Float32Array;
+  const sz = SAM2_OUTPUT_SIZE * SAM2_OUTPUT_SIZE;
+
+  let bestIdx = 0;
+  for (let i = 1; i < ious.length; i++) {
+    if (ious[i] > ious[bestIdx]) bestIdx = i;
+  }
+
+  const bestMask = masks.slice(bestIdx * sz, (bestIdx + 1) * sz);
+  const bbox = computeMaskBbox(bestMask, geometry);
+
+  if (!bbox) throw new Error("Model returned an empty mask");
+
+  return {
+    mask: postprocessMask(bestMask, geometry, bbox),
+    maskWidth: bbox.w,
+    maskHeight: bbox.h,
+    bbox: normalizeBbox(bbox, geometry),
+  };
+}
+
+/**
+ * Shared SAM2 core: resolve an embedding (cache or encode), decode against
+ * `points`, postprocess to the best mask. `cacheKey` is the fully-qualified
+ * embedding-cache key (already `CACHE_PREFIX`-prefixed).
+ */
+async function embedAndDecodeFromImageData(
+  imageData: ImageData,
+  cacheKey: string,
+  points: PromptPoint[],
+  useEmbeddingCache = true
+): Promise<InferenceResult> {
+  if (points.length === 0)
+    throw new Error("At least one prompt point is required");
+
+  const tStart = performance.now();
+
+  // Encoder outputs may be GPU-resident (preferredOutputLocation); release them
+  // after the decoder reads them.
+  const gpuTensors: ort.Tensor[] = [];
+
   try {
-    if (!cacheHit) {
-      postStatusNotification("encoding");
-      const tPreprocess = performance.now();
-      const processed = preprocessImage(imageData);
-      geometry = processed;
-      preprocessMs = performance.now() - tPreprocess;
+    const { encResults, geometry, cacheHit, marks } = await resolveEmbedding(
+      imageData,
+      cacheKey,
+      useEmbeddingCache,
+      gpuTensors
+    );
 
-      const tEncode = performance.now();
-      encResults = await encoderSession.run({
-        image: new ort.Tensor("float32", processed.tensor, [
-          1,
-          3,
-          SAM2_INPUT_SIZE,
-          SAM2_INPUT_SIZE,
-        ]),
-      });
-      // With GPU-resident outputs, run() resolves without downloading the
-      // ~16MB of embeddings — so this is now encode COMPUTE, not compute+readback.
-      encodeMs = performance.now() - tEncode;
-
-      const encoderOutputs = [
-        encResults["image_embed"],
-        encResults["high_res_feats_0"],
-        encResults["high_res_feats_1"],
-      ];
-      for (const t of encoderOutputs) {
-        if (t.location !== "cpu") gpuTensors.push(t);
-      }
-
-      // Embedding payload size (element counts via dims — works whether the
-      // tensor is on CPU or GPU). The deciding factor for a server-side
-      // precompute that would ship these instead of encoding client-side.
-      const elems = (t: ort.Tensor) => t.dims.reduce((a, b) => a * b, 1);
-      perfLog("embedding-size", {
-        mb:
-          (elems(encResults["image_embed"]) +
-            elems(encResults["high_res_feats_0"]) +
-            elems(encResults["high_res_feats_1"])) *
-          (Float32Array.BYTES_PER_ELEMENT / (1024 * 1024)),
-        imageEmbed: elems(encResults["image_embed"]),
-        highRes0: elems(encResults["high_res_feats_0"]),
-        highRes1: elems(encResults["high_res_feats_1"]),
-      });
-
-      if (useEmbeddingCache) {
-        // Caching needs CPU copies, so download explicitly here (getData on a
-        // gpu-buffer tensor reads it back; on a cpu tensor it returns .data).
-        // releaseData=false keeps the buffer alive for the decoder below.
-        const [imageEmbed, highResFeats0, highResFeats1] = (await Promise.all([
-          encResults["image_embed"].getData(false),
-          encResults["high_res_feats_0"].getData(false),
-          encResults["high_res_feats_1"].getData(false),
-        ])) as Float32Array[];
-
-        // Fire-and-forget: IDB write runs in background while decoder proceeds.
-        putEmbedding(
-          cacheKey,
-          {
-            // Key names are defined by the ONNX model and must match exactly.
-            // Encode — input: "image"; outputs: "image_embed", "high_res_feats_0", "high_res_feats_1"
-            imageEmbed: {
-              data: imageEmbed,
-              dims: [...encResults["image_embed"].dims],
-            },
-            highResFeats0: {
-              data: highResFeats0,
-              dims: [...encResults["high_res_feats_0"].dims],
-            },
-            highResFeats1: {
-              data: highResFeats1,
-              dims: [...encResults["high_res_feats_1"].dims],
-            },
-            processedImage: {
-              originalWidth: geometry.originalWidth,
-              originalHeight: geometry.originalHeight,
-            },
-          },
-          postWarningNotification
-        );
-      }
-    }
-
-    // Build decoder inputs
-    const n = points.length;
-    const coords = new Float32Array(n * 2);
-    const labels = new Float32Array(n);
-    for (let i = 0; i < n; i++) {
-      const [sx, sy] = transformPoint(points[i].x, points[i].y);
-      coords[i * 2] = sx;
-      coords[i * 2 + 1] = sy;
-      labels[i] = points[i].label;
-    }
-
-    // Decode — outputs: "masks", "iou_predictions". The encoder embeddings may
-    // be GPU-resident here; the decoder reads them in place (same WebGPU device).
-    const tDecode = performance.now();
-    const decResults = await decoderSession.run({
-      image_embed: encResults["image_embed"],
-      high_res_feats_0: encResults["high_res_feats_0"],
-      high_res_feats_1: encResults["high_res_feats_1"],
-      point_coords: new ort.Tensor("float32", coords, [1, n, 2]),
-      point_labels: new ort.Tensor("float32", labels, [1, n]),
-      mask_input: new ort.Tensor(
-        "float32",
-        new Float32Array(SAM2_OUTPUT_SIZE * SAM2_OUTPUT_SIZE),
-        [1, 1, SAM2_OUTPUT_SIZE, SAM2_OUTPUT_SIZE]
-      ),
-      has_mask_input: new ort.Tensor("float32", new Float32Array([0]), [1]),
-    });
-    const decodeMs = performance.now() - tDecode;
-
-    const tPost = performance.now();
-
-    // Pick best mask by IoU (Intersection over Union) confidence score
-    const masks = decResults["masks"].data as Float32Array;
-    const ious = decResults["iou_predictions"].data as Float32Array;
-    const sz = SAM2_OUTPUT_SIZE * SAM2_OUTPUT_SIZE;
-
-    let bestIdx = 0;
-    for (let i = 1; i < ious.length; i++) {
-      if (ious[i] > ious[bestIdx]) bestIdx = i;
-    }
-
-    const bestMask = masks.slice(bestIdx * sz, (bestIdx + 1) * sz);
-    const bbox = computeMaskBbox(bestMask, geometry);
-
-    if (!bbox) throw new Error("Model returned an empty mask");
-
-    const finalMask = postprocessMask(bestMask, geometry, bbox);
-    const postMs = performance.now() - tPost;
+    const { result, marks: decodeMarks } = await decodeToMask(
+      encResults,
+      geometry,
+      points
+    );
 
     perfLog(cacheHit ? "infer(cache-hit)" : "infer(cache-miss)", {
       total: performance.now() - tStart,
-      cacheLookup: cacheLookupMs,
-      preprocess: preprocessMs,
-      encode: encodeMs,
-      decode: decodeMs,
-      post: postMs,
+      cacheLookup: marks.cacheLookupMs,
+      preprocess: marks.preprocessMs,
+      encode: marks.encodeMs,
+      decode: decodeMarks.decodeMs,
+      post: decodeMarks.postMs,
     });
 
-    return {
-      mask: finalMask,
-      maskWidth: bbox.w,
-      maskHeight: bbox.h,
-      bbox: normalizeBbox(bbox, geometry),
-    };
+    return result;
   } finally {
-    // Release GPU-resident encoder outputs (no-op for cached/CPU tensors).
     for (const t of gpuTensors) t.dispose();
   }
 }
 
-// Worker message handler
-self.onmessage = async (e: MessageEvent) => {
-  const { id, type, payload } = e.data;
+// Worker message handler — dispatched per discriminated `type`.
+self.onmessage = async (e: MessageEvent<WorkerInbound>) => {
+  const msg = e.data;
+
+  // init carries fetch params (no id / response); mirror them so
+  // getFetchFunction() routes through the right backend path
+  if (msg.type === "init") {
+    const { origin, headers, pathPrefix } = msg.payload;
+    setFetchFunction(origin, headers, pathPrefix);
+    return;
+  }
+
+  const { id, type } = msg;
 
   try {
-    if (type === "init") {
-      // Mirror main-thread fetch params (origin, headers, pathPrefix) so
-      // getFetchFunction() routes through the right backend path.
-      const { origin, headers, pathPrefix } = payload;
-      setFetchFunction(origin, headers, pathPrefix);
-      return;
-    }
-    if (type === "loadModel") {
+    if (msg.type === "loadModel") {
       await loadModel();
       postResponse(id, "loadModel", undefined as void);
-    } else if (type === "embedAndDecode") {
-      const result = await embedAndDecode(payload.imageUrl, payload.points);
+    } else if (msg.type === "embedAndDecode") {
+      const result = await embedAndDecode(
+        msg.payload.imageUrl,
+        msg.payload.points
+      );
       postStatusNotification("ready");
       postResponse(id, "embedAndDecode", result, [
         result.mask.buffer as ArrayBuffer,
       ]);
-    } else if (type === "embedAndDecodeBitmap") {
+    } else if (msg.type === "embedAndDecodeBitmap") {
       const result = await embedAndDecodeBitmap(
-        payload.bitmap,
-        payload.cacheKey,
-        payload.points
+        msg.payload.bitmap,
+        msg.payload.cacheKey,
+        msg.payload.points
       );
       postStatusNotification("ready");
       postResponse(id, "embedAndDecodeBitmap", result, [
         result.mask.buffer as ArrayBuffer,
       ]);
-    } else if (type === "encodeBitmap") {
-      await encodeBitmap(payload.bitmap, payload.cacheKey);
+    } else if (msg.type === "encodeBitmap") {
+      await encodeBitmap(msg.payload.bitmap, msg.payload.cacheKey);
       postResponse(id, "encodeBitmap", undefined as void);
-    } else {
-      postError(id, type, `Unknown message type: ${type}`);
     }
   } catch (err) {
     if (type === "embedAndDecode" || type === "embedAndDecodeBitmap") {
@@ -757,6 +825,7 @@ self.onmessage = async (e: MessageEvent) => {
         message: err instanceof Error ? err.message : String(err),
       });
     }
+
     postError(id, type, err instanceof Error ? err.message : String(err));
   }
 };

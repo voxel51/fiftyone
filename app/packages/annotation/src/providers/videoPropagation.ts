@@ -22,13 +22,50 @@
 import type { BrowserAnnotationProvider } from "./BrowserAnnotationProvider";
 import { PointLabel, type InferenceResult, type PromptPoint } from "./types";
 
-// Temporary perf instrumentation for the video-propagation tuning effort.
-// Logs are tagged "[sam2-perf]" — filter the console on that. Engine-side
-// timings (bitmap fetch / infer round-trip / point sampling) pair with the
-// worker-side encode/decode breakdown; the gap between the engine's `infer`
-// time and the worker's `total` is postMessage + structured-clone overhead.
-// Flip to false (or strip) once the server-side-precompute decision is made.
+// Perf instrumentation; logs are tagged "[sam2-perf]". Set false to silence.
 const SAM2_PERF_LOG = true;
+
+/** Accumulates per-frame engine-side timings and logs the run summary. */
+class PerfTracker {
+  private runStart = performance.now();
+  private bitmapMs = 0;
+  private inferMs = 0;
+  private pointsMs = 0;
+  private framesDone = 0;
+
+  frame(frameIdx: number, bitmapMs: number, inferMs: number, pointsMs: number) {
+    this.bitmapMs += bitmapMs;
+    this.inferMs += inferMs;
+    this.pointsMs += pointsMs;
+    this.framesDone++;
+
+    if (SAM2_PERF_LOG) {
+      // eslint-disable-next-line no-console
+      console.debug(
+        `[sam2-perf] frame=${frameIdx} bitmap=${bitmapMs.toFixed(
+          1
+        )}ms infer=${inferMs.toFixed(1)}ms points=${pointsMs.toFixed(1)}ms`
+      );
+    }
+  }
+
+  summarize(strategy: PropagationStrategy) {
+    if (!SAM2_PERF_LOG || this.framesDone === 0) {
+      return;
+    }
+
+    const wall = performance.now() - this.runStart;
+    // eslint-disable-next-line no-console
+    console.debug(
+      `[sam2-perf] run done frames=${this.framesDone} wall=${wall.toFixed(
+        0
+      )}ms (${(wall / this.framesDone).toFixed(1)}ms/frame) ` +
+        `bitmap=${this.bitmapMs.toFixed(0)}ms infer=${this.inferMs.toFixed(
+          0
+        )}ms points=${this.pointsMs.toFixed(0)}ms strategy=${strategy}`
+    );
+  }
+}
 
 export interface Keyframe {
   /** Frame index in the caller's chosen base (the ImaVid agent uses the
@@ -94,12 +131,7 @@ export async function propagate(
   const results = new Map<number, InferenceResult>();
 
   let prevResult: InferenceResult | null = null;
-
-  const runStart = performance.now();
-  let bitmapTotalMs = 0;
-  let inferTotalMs = 0;
-  let pointsTotalMs = 0;
-  let framesDone = 0;
+  const perf = new PerfTracker();
 
   for (let i = 0; i < total; i++) {
     if (options.shouldAbort?.()) {
@@ -126,18 +158,7 @@ export async function propagate(
     const result = await provider.inferBitmap({ bitmap, cacheKey, points });
     const inferMs = performance.now() - tInfer;
 
-    if (SAM2_PERF_LOG) {
-      // eslint-disable-next-line no-console
-      console.debug(
-        `[sam2-perf] frame=${frameIdx} bitmap=${bitmapMs.toFixed(
-          1
-        )}ms infer=${inferMs.toFixed(1)}ms points=${pointsMs.toFixed(1)}ms`
-      );
-    }
-    bitmapTotalMs += bitmapMs;
-    inferTotalMs += inferMs;
-    pointsTotalMs += pointsMs;
-    framesDone++;
+    perf.frame(frameIdx, bitmapMs, inferMs, pointsMs);
 
     prevResult = result;
     results.set(frameIdx, result);
@@ -145,18 +166,7 @@ export async function propagate(
     options.onProgress?.(i + 1, total);
   }
 
-  if (SAM2_PERF_LOG && framesDone > 0) {
-    const wall = performance.now() - runStart;
-    // eslint-disable-next-line no-console
-    console.debug(
-      `[sam2-perf] run done frames=${framesDone} wall=${wall.toFixed(0)}ms (${(
-        wall / framesDone
-      ).toFixed(1)}ms/frame) ` +
-        `bitmap=${bitmapTotalMs.toFixed(0)}ms infer=${inferTotalMs.toFixed(
-          0
-        )}ms points=${pointsTotalMs.toFixed(0)}ms strategy=${strategy}`
-    );
-  }
+  perf.summarize(strategy);
 
   return results;
 }
