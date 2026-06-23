@@ -49,11 +49,14 @@ export const useLighter = () => {
     []
   );
 
-  const removeOverlay = useCallback((id: string, withUndo: boolean = false) => {
-    if (sceneRef.current) {
-      sceneRef.current.removeOverlay(id, withUndo);
-    }
-  }, []);
+  const removeOverlay = useCallback(
+    (id: string, withUndo: boolean = false, lifecycle: boolean = false) => {
+      if (sceneRef.current) {
+        sceneRef.current.removeOverlay(id, withUndo, lifecycle);
+      }
+    },
+    []
+  );
 
   const getOverlay = useCallback((id: string) => {
     if (sceneRef.current) {

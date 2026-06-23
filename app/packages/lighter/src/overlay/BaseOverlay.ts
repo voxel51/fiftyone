@@ -3,7 +3,7 @@
  */
 
 import { type EventDispatcher, getEventBus } from "@fiftyone/events";
-import { CONTAINS } from "../core/Scene2D";
+import { CONTAINS } from "../core/containment";
 import type { LighterEventGroup } from "../events";
 import type {
   InteractionHandler,
