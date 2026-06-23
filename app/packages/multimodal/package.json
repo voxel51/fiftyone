@@ -73,7 +73,7 @@
         "@mcap/support": "^1.1.0",
         "@react-three/drei": "9.105.4",
         "@react-three/fiber": "^8.18.0",
-        "@voxel51/voodo": "^0.0.34",
+        "@voxel51/voodo": "^0.0.35",
         "buffer": "^6.0.3",
         "lru-cache": "^11.0.1",
         "protobufjs": "^7.2.5",
