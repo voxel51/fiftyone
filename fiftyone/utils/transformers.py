@@ -722,7 +722,36 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
         )
 
     def _load_transforms(self, config):
-        processor = super()._load_transforms(config)
+        try:
+            processor = super()._load_transforms(config)
+        except AttributeError:
+            # AutoProcessor can't resolve the tokenizer for some models; resolve
+            # the processor class from the config and load it directly.
+            from transformers.models.auto.processing_auto import PROCESSOR_MAPPING
+
+            ta = dict(config.transforms_args or {})
+            name = ta.pop("pretrained_model_name_or_path", None)
+            name = name or ta.pop("name_or_path", None)
+
+            proc_cls = PROCESSOR_MAPPING.get(
+                type(transformers.AutoConfig.from_pretrained(name, **ta)), None
+            )
+            if proc_cls is None:
+                raise
+
+            if getattr(proc_cls, "tokenizer_class", None) is None:
+                # No tokenizer_class to auto-resolve; build the fast tokenizer
+                # directly.
+                processor = proc_cls(
+                    image_processor=transformers.AutoImageProcessor.from_pretrained(
+                        name, **ta
+                    ),
+                    tokenizer=transformers.PreTrainedTokenizerFast.from_pretrained(
+                        name, **ta
+                    ),
+                )
+            else:
+                processor = proc_cls.from_pretrained(name, **ta)
         return _HFTransformsHandler(
             processor, **(config.transformers_processor_kwargs)
         )
