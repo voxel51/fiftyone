@@ -4,6 +4,7 @@ import { EventUtils } from "src/shared/event-utils";
 import { GridActionsRowPom } from "../action-row/grid-actions-row";
 import { GridSliceSelectorPom } from "../action-row/grid-slice-selector";
 import { GridTaggerPom } from "../action-row/tagger/grid-tagger";
+import { SelectorPom } from "../selector";
 import { UrlPom } from "../url";
 
 export class GridPom {
@@ -78,6 +79,17 @@ export class GridPom {
     return backwardSectionDiv.scrollIntoViewIfNeeded({
       timeout: Duration.Seconds(20),
     });
+  }
+
+  // "auto" sizes each tile from sample metadata; a "W:H" string (e.g. "1:1")
+  // forces fixed-aspect-ratio mode via the header control
+  async setAspectRatio(value: string) {
+    const selector = new SelectorPom(
+      this.page,
+      this.eventUtils,
+      "aspect ratio"
+    );
+    await selector.selectResult(value);
   }
 
   async selectSlice(slice: string) {

@@ -17,7 +17,6 @@ import {
   isPlaceholder,
   type GridNode,
   type SampleStore,
-  type SpineEntry,
 } from "./useSpotlightPager";
 import useVirtualScroll from "./useVirtualScroll";
 
@@ -131,7 +130,10 @@ export default function InfiniteGrid({
   id: string;
   // changes on view/filter reset; invalidates index-keyed caches
   reset: string;
-  ensureSpineWindow: (start: number, count: number) => Promise<SpineEntry[]>;
+  ensureSpineWindow: (
+    start: number,
+    count: number
+  ) => Promise<fos.SpineEntry[]>;
   hydrateWindow: (ids: ReadonlyArray<string>) => Promise<Map<string, GridNode>>;
   // the view's item count once the spine reaches its end, else null
   spineTotal: () => number | null;
@@ -304,7 +306,7 @@ export default function InfiniteGrid({
   );
 
   // ref so accumulating entries never copies a growing map
-  const entriesRef = useRef(new Map<number, SpineEntry>());
+  const entriesRef = useRef(new Map<number, fos.SpineEntry>());
   const [entriesVersion, setEntriesVersion] = useState(0);
   // true once the first hydrate has landed — drives the initial loading animation.
   const [loadedOnce, setLoadedOnce] = useState(false);

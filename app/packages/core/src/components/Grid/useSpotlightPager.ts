@@ -2,7 +2,7 @@ import { resetFrameStores, zoomAspectRatio } from "@fiftyone/looker";
 import type { paginateSamplesQuery } from "@fiftyone/relay";
 import type { ID, Response } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import { getFetchFunction, type Schema } from "@fiftyone/utilities";
+import { type Schema } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { VariablesOf } from "react-relay";
 import type { RecoilValueReadOnly } from "recoil";
@@ -16,22 +16,10 @@ export type SampleStore = WeakMap<ID, { sample: fos.Sample; index: number }>;
 
 // The ordered id backbone: ids for the view, fetched in large chunks and cached so the
 // scroll range can be laid out without paging the heavy data.
-export interface SpineEntry {
-  id: string;
-  // group's frame count from the spine's GroupBy (dynamic groups only); seeds the
-  // imavid timeline total at modal open without a separate count query.
-  groupCount?: number;
-}
-
-interface SpineResponse {
-  spine: SpineEntry[];
-  next: number | null;
-}
-
 // Client-cached spine for random-access reads: an `after=start` window fills only its
 // own indices, so deep jumps never page from 0. `windowLocks` dedupes concurrent fetches.
 interface SpineCache {
-  byIndex: Map<number, SpineEntry>;
+  byIndex: Map<number, fos.SpineEntry>;
   windowLocks: Map<number, Promise<void>>;
   // the view's item count, learned when a spine window comes back exhausted
   // (`next: null`); null for a flat dataset until the end is reached.
@@ -312,9 +300,9 @@ const useSpotlightPager = ({
   // [start, start+count), fetching only that window when missing (never prior pages).
   const ensureSpineWindow = useRecoilCallback(
     ({ snapshot }) =>
-      async (start: number, count: number): Promise<SpineEntry[]> => {
+      async (start: number, count: number): Promise<fos.SpineEntry[]> => {
         const slice = () => {
-          const out: SpineEntry[] = [];
+          const out: fos.SpineEntry[] = [];
           for (let i = start; i < start + count; i++) {
             const e = spine.byIndex.get(i);
             if (e) out.push(e);
@@ -341,7 +329,6 @@ const useSpotlightPager = ({
             inflight = (async () => {
               const id = await snapshot.getPromise(fos.datasetId);
               if (!id) return;
-              const url = `/dataset/${encodeURIComponent(id)}/grid/samples`;
               // send the SAME view params paginateSamples uses, so the spine order
               // and grouping match exactly (filters/sort applied; dynamic groups —
               // whose GroupBy stage lives in `view` — page by group).
@@ -349,18 +336,18 @@ const useSpotlightPager = ({
                 0,
                 PAGE_SIZE
               ) as Record<string, unknown>;
-              const resp = (await getFetchFunction()("POST", url, {
-                spine: true,
+              const resp = await fos.fetchSpine({
+                datasetId: id,
                 after: start,
                 view: base.view,
                 filters: base.filters,
                 filter: base.filter,
-                sortBy: base.sortBy,
-                desc: base.desc,
+                sortBy: base.sortBy as string | undefined,
+                desc: base.desc as boolean | undefined,
                 // same index hint paginateSamples uses, so the spine's $skip walks
                 // index entries instead of scanning docs at deep offsets
-                hint: base.hint,
-              })) as SpineResponse;
+                hint: base.hint as string | undefined,
+              });
               const got = resp?.spine ?? [];
               got.forEach((e, i) => {
                 spine.byIndex.set(start + i, e);

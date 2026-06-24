@@ -44,45 +44,56 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   `);
 });
 
-test.describe.serial("grid page", () => {
-  test("grid has correct second page (all 21 samples)", async ({
-    fiftyoneLoader,
-    grid,
-    page,
-  }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-    await grid.assert.isLookerCountEqualTo(21);
-  });
+// run the grouping / carousel / pagination flows in both the default auto
+// aspect ratio and a fixed ratio, to confirm fixed mode breaks none of them.
+// the "auto" variant is left identical to the original test; the fixed variant
+// flips the header control after the grid loads.
+for (const aspectRatio of ["auto", "1:1"] as const) {
+  const fixed = aspectRatio !== "auto";
 
-  test("modal group carousel has correct second page (all 21 samples)", async ({
-    fiftyoneLoader,
-    grid,
-    modal,
-    page,
-  }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, groupDatasetName);
-    await grid.openFirstSample();
-    await modal.sidebar.toggleSidebarGroup("GROUP");
-    await modal.waitForCarouselToLoad();
-    await modal.scrollCarouselTo("20");
-    await modal.navigateSlice("group.name", "20", true);
-    await modal.sidebar.assert.verifySidebarEntryText("group.name", "20");
-  });
-
-  test("modal dynamic group carousel has correct second page (all 21 samples)", async ({
-    fiftyoneLoader,
-    grid,
-    modal,
-    page,
-  }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-      searchParams: new URLSearchParams({ view: "group" }),
+  test.describe.serial(`grid page [aspect ratio: ${aspectRatio}]`, () => {
+    test("grid has correct second page (all 21 samples)", async ({
+      fiftyoneLoader,
+      grid,
+      page,
+    }) => {
+      await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+      if (fixed) await grid.setAspectRatio(aspectRatio);
+      await grid.assert.isLookerCountEqualTo(21);
     });
-    await grid.openFirstSample();
-    await modal.group.setDynamicGroupsNavigationMode("carousel");
-    await modal.waitForCarouselToLoad();
-    await modal.scrollCarouselTo("20");
-    await modal.navigateSlice("i", "20", true);
-    await modal.sidebar.assert.verifySidebarEntryText("i", "20");
+
+    test("modal group carousel has correct second page (all 21 samples)", async ({
+      fiftyoneLoader,
+      grid,
+      modal,
+      page,
+    }) => {
+      await fiftyoneLoader.waitUntilGridVisible(page, groupDatasetName);
+      if (fixed) await grid.setAspectRatio(aspectRatio);
+      await grid.openFirstSample();
+      await modal.sidebar.toggleSidebarGroup("GROUP");
+      await modal.waitForCarouselToLoad();
+      await modal.scrollCarouselTo("20");
+      await modal.navigateSlice("group.name", "20", true);
+      await modal.sidebar.assert.verifySidebarEntryText("group.name", "20");
+    });
+
+    test("modal dynamic group carousel has correct second page (all 21 samples)", async ({
+      fiftyoneLoader,
+      grid,
+      modal,
+      page,
+    }) => {
+      await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+        searchParams: new URLSearchParams({ view: "group" }),
+      });
+      if (fixed) await grid.setAspectRatio(aspectRatio);
+      await grid.openFirstSample();
+      await modal.group.setDynamicGroupsNavigationMode("carousel");
+      await modal.waitForCarouselToLoad();
+      await modal.scrollCarouselTo("20");
+      await modal.navigateSlice("i", "20", true);
+      await modal.sidebar.assert.verifySidebarEntryText("i", "20");
+    });
   });
-});
+}

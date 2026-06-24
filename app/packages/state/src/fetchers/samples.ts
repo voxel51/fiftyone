@@ -48,3 +48,42 @@ export const fetchSamples = async (
 
   return response?.samples ?? [];
 };
+
+// one ordered window of the grid spine: ids only (+ a dynamic group's frame
+// count), the cheap id-only read that drives virtualized scrolling
+export interface SpineEntry {
+  id: string;
+  // group's frame count from the spine's GroupBy (dynamic groups only); seeds the
+  // imavid timeline total at modal open without a separate count query.
+  groupCount?: number;
+}
+
+export interface SpineResponse {
+  spine: SpineEntry[];
+  // offset to request next, or null at the end of the view
+  next: number | null;
+}
+
+export interface SpineRequest {
+  datasetId: string;
+  after: number;
+  view: unknown;
+  filters?: unknown;
+  filter?: unknown;
+  sortBy?: string;
+  desc?: boolean;
+  hint?: string;
+}
+
+/** The id-only grid spine reader (see {@link fetchSamples} for field data). */
+export const fetchSpine = async (
+  request: SpineRequest
+): Promise<SpineResponse> => {
+  const { datasetId, ...body } = request;
+
+  return (await getFetchFunction()(
+    "POST",
+    `/dataset/${encodeURIComponent(datasetId)}/grid/samples`,
+    body
+  )) as SpineResponse;
+};
