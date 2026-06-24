@@ -1,9 +1,9 @@
 import type { LoadStatus } from "../load-status";
 
-/** Load state for temporal-tag React hooks. */
+/** Load state for tag React hooks. */
 export type TemporalTagsStatus = LoadStatus;
 
-/** Filter for temporal-tag list/count/delete queries. */
+/** Filter for tag list/count/delete queries. */
 export interface TemporalTagFilter {
   readonly anchors?: readonly string[];
   readonly end?: number;
@@ -46,7 +46,7 @@ export interface TemporalTagUpdate {
   readonly lastModifiedBy?: string;
 }
 
-/** Common request shape for sample-scoped temporal-tag operations. */
+/** Common request shape for sample-scoped tag operations. */
 export interface SampleTemporalTagsRequest {
   readonly datasetId: string;
   readonly sampleId: string;
@@ -96,7 +96,7 @@ export interface CountDatasetTemporalTagsRequest {
 }
 
 /**
- * Client for the multimodal temporal-tag route surface.
+ * Client for the multimodal tag route surface.
  */
 export interface TemporalTagsClient {
   createSampleTemporalTags(
@@ -123,7 +123,7 @@ export interface TemporalTagsClient {
 }
 
 /**
- * Hook options for sample-scoped temporal-tag loading.
+ * Hook options for sample-scoped tag loading.
  */
 export interface UseSampleTemporalTagsOptions
   extends Partial<SampleTemporalTagsRequest> {
@@ -132,7 +132,7 @@ export interface UseSampleTemporalTagsOptions
 }
 
 /**
- * Hook result for sample-scoped temporal-tag loading and mutations.
+ * Hook result for sample-scoped tag loading and mutations.
  */
 export interface UseSampleTemporalTagsResult {
   readonly error: string | null;

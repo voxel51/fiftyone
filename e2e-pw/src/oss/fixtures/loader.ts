@@ -87,10 +87,15 @@ export class OssLoader extends AbstractFiftyoneLoader {
 
       const handleCursorChange = (e: MouseEvent) => {
         const element = document.elementFromPoint(e.clientX, e.clientY);
+        // elementFromPoint may return null (e.g. pointer outside the
+        // viewport); a throw here would silently freeze the cursor flag
+        // at its previous value
+        if (!element) {
+          return;
+        }
         const cursor = window.getComputedStyle(element).cursor;
         if (cursor !== window.__FO_PLAYWRIGHT_CURRENT_CURSOR) {
-          window.__FO_PLAYWRIGHT_CURRENT_CURSOR =
-            window.getComputedStyle(element).cursor;
+          window.__FO_PLAYWRIGHT_CURRENT_CURSOR = cursor;
           document.dispatchEvent(new CustomEvent("cursor-change"));
         }
       };

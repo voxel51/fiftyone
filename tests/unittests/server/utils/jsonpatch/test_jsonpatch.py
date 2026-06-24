@@ -220,3 +220,56 @@ class TestApplyRootDeleteError:
         assert result["label"] == "car"
         assert "tags" in result
         assert result["tags"] == ["modified"]
+
+
+class TestApplyInstanceId:
+    """Regression tests for patching the ``_id`` of an embedded
+    :class:`fiftyone.core.labels.Instance`.
+
+    Deleting a detection with ``instance=fo.Instance()`` re-indexes the
+    remaining detections, producing a ``replace`` patch on
+    ``.../instance/_id``. This used to fail with "Unable to remove value with
+    path: .../instance/_id" because the ``_id`` property has no deleter.
+    """
+
+    def test_replace_instance_id(self):
+        """replace on an embedded Instance ``_id`` succeeds."""
+        import fiftyone as fo
+
+        det = fo.Detection(label="Pedestrian", instance=fo.Instance())
+        detections = fo.Detections(detections=[det])
+        new_id = str(fo.Instance().id)
+
+        result, errors = jsonpatch.apply(
+            detections,
+            [{"op": "replace", "path": "/detections/0/instance/_id",
+              "value": new_id}],
+        )
+
+        assert errors == []
+        assert str(result.detections[0].instance.id) == new_id
+
+    def test_delete_reindexes_detection_with_instance(self):
+        """Deleting one of two detections with instances and re-indexing the
+        survivor (the full client patch) applies cleanly."""
+        import fiftyone as fo
+
+        det0 = fo.Detection(label="Pedestrian", instance=fo.Instance())
+        det1 = fo.Detection(label="Pedestrian", instance=fo.Instance())
+        detections = fo.Detections(detections=[det0, det1])
+
+        result, errors = jsonpatch.apply(
+            detections,
+            [
+                {"op": "replace", "path": "/detections/0/_id",
+                 "value": str(det1.id)},
+                {"op": "replace", "path": "/detections/0/instance/_id",
+                 "value": str(det1.instance.id)},
+                {"op": "remove", "path": "/detections/1"},
+            ],
+        )
+
+        assert errors == []
+        assert len(result.detections) == 1
+        assert str(result.detections[0].id) == str(det1.id)
+        assert str(result.detections[0].instance.id) == str(det1.instance.id)

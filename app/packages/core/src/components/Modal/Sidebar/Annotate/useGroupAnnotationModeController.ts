@@ -12,7 +12,16 @@ import {
   useSetRecoilState,
 } from "recoil";
 import { useApplyAnnotationSliceVisibility } from "./useApplyAnnotationSliceVisibility";
+import { useGroupAnnotationSliceReady } from "./useGroupAnnotationSliceReady";
+import type { AnnotationSliceInfo } from "./useGroupAnnotationSlices";
 import { useGroupAnnotationSlices } from "./useGroupAnnotationSlices";
+
+// Does the current group expose at least one slice we can annotate?
+export const hasApplicableAnnotationSlice = (
+  resolved: AnnotationSliceInfo[] | "loading"
+): boolean =>
+  resolved !== "loading" &&
+  resolved.some(({ isSupported, isMissing }) => isSupported && !isMissing);
 
 const useApplySlice = () => {
   const { request } = useGroupAnnotationSlices();
@@ -47,7 +56,11 @@ const useApplySlice = () => {
 
     setPreferredSlice(slice);
     setModalGroupSlice(slice);
-    applyVisibilityForSlice(slice);
+    // Await so the returned promise resolves only after focusSlice has settled
+    // is3dPinned, letting callers know the 2D/3D decision is final.
+    if (slice) {
+      await applyVisibilityForSlice(slice);
+    }
   }, [
     applyVisibilityForSlice,
     resolveSlice,
@@ -87,21 +100,21 @@ export function useGroupAnnotationModeController() {
   );
 
   const applySlice = useApplySlice();
+
+  const appliedRef = useRef(false);
+  const { resolved } = useGroupAnnotationSlices();
+  const hasApplicableSlice = hasApplicableAnnotationSlice(resolved);
+
+  const [, setGroupAnnotationSliceReady] = useGroupAnnotationSliceReady();
+
   const captureVisibility = useCallback((): GroupVisibilityConfigSnapshot => {
-    applySlice();
     return {
       main: mainVisible,
       carousel: carouselVisible,
       threeDViewer: threeDVisible,
       slice: modalGroupSliceValue,
     };
-  }, [
-    applySlice,
-    mainVisible,
-    carouselVisible,
-    threeDVisible,
-    modalGroupSliceValue,
-  ]);
+  }, [mainVisible, carouselVisible, threeDVisible, modalGroupSliceValue]);
 
   const restoreVisibility = useCallback(
     (snapshot: GroupVisibilityConfigSnapshot | null) => {
@@ -121,14 +134,37 @@ export function useGroupAnnotationModeController() {
     const prevMode = prevModeRef.current ?? ModalMode.EXPLORE;
 
     if (prevMode === ModalMode.EXPLORE && mode === ModalMode.ANNOTATE) {
-      // Entering Annotate mode: capture current visibility
+      // Entering Annotate mode: capture current visibility.
       visibilitySnapshotRef.current = captureVisibility();
+      appliedRef.current = false;
+      setGroupAnnotationSliceReady(false);
     } else if (prevMode === ModalMode.ANNOTATE && mode === ModalMode.EXPLORE) {
       // Returning to Explore mode: restore visibility
       restoreVisibility(visibilitySnapshotRef.current);
       visibilitySnapshotRef.current = null;
+      appliedRef.current = false;
+      setGroupAnnotationSliceReady(false);
     }
 
     prevModeRef.current = mode;
-  }, [mode, captureVisibility, restoreVisibility]);
+  }, [
+    mode,
+    captureVisibility,
+    restoreVisibility,
+    setGroupAnnotationSliceReady,
+  ]);
+
+  // Apply the annotation slice once the group's slices are available. Mark it
+  // ready only after applySlice settles is3dPinned, so the Actions bar can
+  // withhold the 2D/3D tools until the decision is final (no wrong-tool flash).
+  useEffect(() => {
+    if (
+      mode === ModalMode.ANNOTATE &&
+      !appliedRef.current &&
+      hasApplicableSlice
+    ) {
+      appliedRef.current = true;
+      applySlice().then(() => setGroupAnnotationSliceReady(true));
+    }
+  }, [mode, hasApplicableSlice, applySlice, setGroupAnnotationSliceReady]);
 }
