@@ -105,6 +105,33 @@ class SamplesRouteTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([s["id"] for s in body["samples"]], [str(s2.id)])
 
     @drop_async_dataset
+    async def test_grouped_read_labels_group_from_pipeline(self, dataset):
+        # GroupBy's `$addFields` labels each doc with its dynamic-group value in
+        # Mongo; the server never re-derives `_group` in Python
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="a0.png", scene="a"),
+                fo.Sample(filepath="a1.png", scene="a"),
+                fo.Sample(filepath="b0.png", scene="b"),
+            ]
+        )
+
+        view = dataset.group_by("scene")
+        status, body = await _dispatch(
+            Samples,
+            str(dataset._doc.id),
+            {"view": view._serialize(), "skipMetadata": True},
+        )
+        self.assertEqual(status, 200)
+        by_path = {
+            s["fields"]["filepath"].rsplit("/", 1)[-1]: s["fields"]["_group"]
+            for s in body["samples"]
+        }
+        self.assertEqual(by_path["a0.png"], "a")
+        self.assertEqual(by_path["a1.png"], "a")
+        self.assertEqual(by_path["b0.png"], "b")
+
+    @drop_async_dataset
     async def test_unknown_dataset_returns_404(self, dataset):
         status, _ = await _dispatch(Samples, str(ObjectId()), {})
         self.assertEqual(status, 404)

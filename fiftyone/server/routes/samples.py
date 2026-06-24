@@ -32,10 +32,9 @@ from fiftyone.server import decorators
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 import fiftyone.server.metadata as fosm
 from fiftyone.server.samples import (
-    assemble_group,
-    assemble_group_counts,
     db_field,
     get_samples_pipeline,
+    group_field_stage,
     group_paths,
     strip_group_by,
 )
@@ -199,23 +198,15 @@ class Samples(HTTPEndpoint):
         if projection is not None:
             pipeline.append(projection)
 
+        # label `_group` from GroupBy's expression in Mongo so the frontend never
+        # decodes db keys; the by-id/offset `$match` above still drives the index
+        group_stage = group_field_stage(view, group_fields, order_by)
+        if group_stage is not None:
+            pipeline.append(group_stage)
+
         coll = foo.get_async_db_conn()[view._dataset._sample_collection_name]
         docs = await foo.aggregate(coll, pipeline, data.get("hint")).to_list(
             count or None
-        )
-
-        # rebuild `_group` server-side so the frontend never decodes db keys, and
-        # attach each group's frame count so the modal timeline opens at the right length
-        assemble_group(view, docs, group_fields)
-        await assemble_group_counts(
-            dataset_name,
-            degrouped,
-            data.get("filters"),
-            data.get("sortBy"),
-            data.get("desc"),
-            sample_filter,
-            docs,
-            group_fields,
         )
 
         additional = fosm._get_additional_media_fields(view) if docs else None

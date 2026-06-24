@@ -74,76 +74,18 @@ def db_field(view, path):
     return (field.db_field or path) if field is not None else path
 
 
-def assemble_group(view, docs, group_fields):
-    """Set ``doc['_group']`` from the group-by field value(s): a scalar for a
-    single field, a list for multiple. Idempotent and a no-op for flat views."""
-    if not group_fields or not docs:
-        return
+def group_field_stage(view, group_fields, order_by=None):
+    """The GroupBy ``$addFields`` that labels each doc with its dynamic-group
+    value (``_group``), computed in Mongo from the group expression. Index
+    eligible (no ``$group``) so it rides on a by-id/offset read; ``None`` for
+    flat views. ``_group_count`` is emitted by the stage's ``_include_count``
+    plumbing on the grouped spine, never re-derived here."""
+    if not group_fields:
+        return None
 
-    is_list = isinstance(group_fields, (list, tuple))
-    fields = list(group_fields) if is_list else [group_fields]
-    db_fields = [db_field(view, f) for f in fields]
-
-    for doc in docs:
-        values = [doc.get(f) for f in db_fields]
-        doc["_group"] = values if is_list else values[0]
-
-
-async def assemble_group_counts(
-    dataset_name,
-    degrouped_stages,
-    filters,
-    sort_by,
-    desc,
-    sample_filter,
-    docs,
-    group_fields,
-):
-    """Set ``doc['_group_count']`` = the number of samples in each group within
-    the view, so the modal timeline opens at the right length. Skips docs that
-    already carry a count (grouped reads emit it) and the multi-field case.
-    """
-    if not group_fields or isinstance(group_fields, (list, tuple)) or not docs:
-        return
-
-    pending = [d for d in docs if d.get("_group_count") is None]
-    values = [d.get("_group") for d in pending if d.get("_group") is not None]
-    if not values:
-        return
-
-    # count the whole group: drop any single-sample `id` filter but keep the
-    # group slice, so the base view isn't narrowed to the one fetched sample
-    count_filter = (
-        SampleFilter(group=sample_filter.group)
-        if sample_filter is not None and sample_filter.group
-        else None
+    return fos.GroupBy(group_fields, order_by=order_by)._group_field_stage(
+        view
     )
-
-    def _build_base():
-        return fosv.get_view(
-            dataset_name,
-            stages=degrouped_stages,
-            filters=filters,
-            pagination_data=False,
-            sort_by=sort_by,
-            desc=bool(desc),
-            sample_filter=count_filter,
-        )
-
-    base = await run_sync_task(_build_base)
-    db = db_field(base, group_fields)
-    pipeline = await get_samples_pipeline(base, count_filter)
-    pipeline += [
-        {"$match": {db: {"$in": values}}},
-        {"$group": {"_id": f"${db}", "_n": {"$sum": 1}}},
-    ]
-    coll = foo.get_async_db_conn()[base._dataset._sample_collection_name]
-    counts = {
-        c["_id"]: c["_n"]
-        for c in await foo.aggregate(coll, pipeline).to_list(None)
-    }
-    for doc in pending:
-        doc["_group_count"] = counts.get(doc.get("_group"))
 
 
 @gql.type
@@ -251,6 +193,13 @@ async def paginate_samples(
 
     pipeline = await get_samples_pipeline(view, sample_filter)
 
+    # label `_group` from GroupBy's expression so the modal resolves every
+    # dynamic-group sample on any fetch path; no-op for flat views
+    _, group_fields, order_by = strip_group_by(stages)
+    group_stage = group_field_stage(view, group_fields, order_by)
+    if group_stage is not None:
+        pipeline.append(group_stage)
+
     samples = await foo.aggregate(
         coll,
         pipeline,
@@ -262,22 +211,6 @@ async def paginate_samples(
     if len(samples) > first:
         samples = samples[:first]
         more = True
-
-    # attach group identity + size to every dynamic-group sample so the modal
-    # resolves them on any fetch path; no-op for flat views
-    degrouped, group_fields, _ = strip_group_by(stages)
-    if group_fields and samples:
-        assemble_group(view, samples, group_fields)
-        await assemble_group_counts(
-            dataset,
-            degrouped,
-            filters,
-            sort_by,
-            desc,
-            sample_filter,
-            samples,
-            group_fields,
-        )
 
     metadata_cache = {}
     url_cache = {}
