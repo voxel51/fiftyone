@@ -111,6 +111,10 @@ export const use3dInteractionAdapter = (): void => {
     setCurrent3dAnnotationMode(archetype);
     setCurrentArchetypeSelectedForTransform(archetype);
 
+    if (archetype === ANNOTATION_CUBOID) {
+      setTransformMode("scale");
+    }
+
     // we only support translate for polylines for now
     if (
       archetype === ANNOTATION_POLYLINE &&

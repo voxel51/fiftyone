@@ -1,7 +1,7 @@
 import { Line, useCursor } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { FO_USER_DATA } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
@@ -29,6 +29,7 @@ export const AnnotationPlane = ({
 
   const isSegmenting = useRecoilValue(isActivelySegmentingSelector);
   const transformMode = useRecoilValue(transformModeAtom);
+  const setTransformMode = useSetRecoilState(transformModeAtom);
 
   const [
     currentArchetypeSelectedForTransform,
@@ -209,12 +210,22 @@ export const AnnotationPlane = ({
       event.stopPropagation();
 
       if (!isDragging) {
-        setCurrentArchetypeSelectedForTransform((prev) =>
-          prev === "annotation-plane" ? null : "annotation-plane",
-        );
+        if (isSelected) {
+          setCurrentArchetypeSelectedForTransform(null);
+        } else {
+          setTransformMode("translate");
+          setCurrentArchetypeSelectedForTransform("annotation-plane");
+        }
       }
     },
-    [showTransformControls, isDragging, isSegmenting],
+    [
+      showTransformControls,
+      isDragging,
+      isSegmenting,
+      isSelected,
+      setCurrentArchetypeSelectedForTransform,
+      setTransformMode,
+    ],
   );
 
   const handleTransformStart = useCallback(() => {

@@ -226,6 +226,10 @@ export const useCameraViews = ({
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+
       // If we're in input mode, don't handle camera views
       const isInputMode =
         event.target instanceof HTMLInputElement ||

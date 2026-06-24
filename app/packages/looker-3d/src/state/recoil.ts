@@ -534,7 +534,7 @@ export const hoveredVertexAtom = atom<{
  */
 export const transformModeAtom = atom<TransformMode>({
   key: "fo3d-transformMode",
-  default: "translate",
+  default: "scale",
 });
 
 /**
@@ -609,7 +609,7 @@ export const clearTransformStateSelector = selector({
   key: "fo3d-clearTransformState",
   get: () => null,
   set: ({ set }) => {
-    set(transformModeAtom, "translate");
+    set(transformModeAtom, "scale");
     set(selectedPolylineVertexAtom, null);
     set(currentArchetypeSelectedForTransformAtom, null);
     set(isCurrentlyTransformingAtom, false);

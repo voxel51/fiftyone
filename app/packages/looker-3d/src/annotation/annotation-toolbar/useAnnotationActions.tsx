@@ -1,5 +1,10 @@
 import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import useExit from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useExit";
+import {
+  KnownContexts,
+  useKeyBindings,
+  type KeyBinding,
+} from "@fiftyone/commands";
 import { Close, Delete, Edit, OpenWith, Straighten } from "@mui/icons-material";
 import AddBoxIcon from "@mui/icons-material/AddBox";
 import RectangleIcon from "@mui/icons-material/Rectangle";
@@ -58,6 +63,8 @@ const createCoordinateAction = (customComponent: React.ReactNode) => ({
   ],
 });
 
+const CUBOID_TRANSFORM_SHORTCUT_PRIORITY = 100;
+
 export const useAnnotationActions = () => {
   const selectedLabelForAnnotation = useRecoilValue(
     selectedLabelForAnnotationAtom,
@@ -99,6 +106,56 @@ export const useAnnotationActions = () => {
     },
     [setTransformMode],
   );
+
+  const canUseCuboidTransformShortcuts = useCallback(() => {
+    return (
+      currentArchetypeSelectedForTransform === "cuboid" &&
+      selectedLabelForAnnotation !== null &&
+      isDetection3dOverlay(selectedLabelForAnnotation) &&
+      !isActivelySegmenting
+    );
+  }, [
+    currentArchetypeSelectedForTransform,
+    selectedLabelForAnnotation,
+    isActivelySegmenting,
+  ]);
+
+  const transformKeyBindings = useMemo<KeyBinding[]>(
+    () => [
+      {
+        commandId: "looker-3d.annotation.transform.translate",
+        sequence: "t",
+        handler: () => handleTransformModeChange("translate"),
+        label: "Translate cuboid",
+        description: "Switch selected cuboid to translate mode.",
+        enablement: canUseCuboidTransformShortcuts,
+        priority: CUBOID_TRANSFORM_SHORTCUT_PRIORITY,
+      },
+      {
+        commandId: "looker-3d.annotation.transform.scale",
+        sequence: "s",
+        handler: () => handleTransformModeChange("scale"),
+        label: "Scale cuboid",
+        description: "Switch selected cuboid to scale mode.",
+        enablement: canUseCuboidTransformShortcuts,
+        priority: CUBOID_TRANSFORM_SHORTCUT_PRIORITY,
+      },
+      {
+        commandId: "looker-3d.annotation.transform.rotate",
+        sequence: "r",
+        handler: () => handleTransformModeChange("rotate"),
+        label: "Rotate cuboid",
+        description: "Switch selected cuboid to rotate mode.",
+        enablement: canUseCuboidTransformShortcuts,
+        priority: CUBOID_TRANSFORM_SHORTCUT_PRIORITY,
+      },
+    ],
+    [canUseCuboidTransformShortcuts, handleTransformModeChange]
+  );
+
+  useKeyBindings(KnownContexts.ModalAnnotate, transformKeyBindings, [
+    transformKeyBindings,
+  ]);
 
   const handleStartSegmentPolyline = useCallback(() => {
     setSegmentState({
@@ -384,10 +441,21 @@ export const useAnnotationActions = () => {
         isHidden: !currentArchetypeSelectedForTransform,
         actions: [
           {
+            id: "scale",
+            label: "Scale",
+            icon: <Straighten />,
+            shortcut: "S",
+            tooltip: "Scale object (S)",
+            isActive: transformMode === "scale",
+            isVisible: currentArchetypeSelectedForTransform === "cuboid",
+            onClick: () => handleTransformModeChange("scale"),
+          },
+          {
             id: "translate",
             label: "Translate",
             icon: <OpenWith />,
-            tooltip: "Translate or move object",
+            shortcut: "T",
+            tooltip: "Translate or move object (T)",
             isActive:
               !!currentArchetypeSelectedForTransform &&
               transformMode === "translate",
@@ -398,21 +466,13 @@ export const useAnnotationActions = () => {
             id: "rotate",
             label: "Rotate",
             icon: <ThreeSixtyIcon />,
-            tooltip: "Rotate object",
+            shortcut: "R",
+            tooltip: "Rotate object (R)",
             isVisible:
               currentArchetypeSelectedForTransform === "annotation-plane" ||
               currentArchetypeSelectedForTransform === "cuboid",
             isActive: transformMode === "rotate",
             onClick: () => handleTransformModeChange("rotate"),
-          },
-          {
-            id: "scale",
-            label: "Scale",
-            icon: <Straighten />,
-            tooltip: "Scale object",
-            isActive: transformMode === "scale",
-            isVisible: currentArchetypeSelectedForTransform === "cuboid",
-            onClick: () => handleTransformModeChange("scale"),
           },
         ],
       },

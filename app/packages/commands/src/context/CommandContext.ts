@@ -371,16 +371,16 @@ export class CommandContext {
    * @param sequence A key sequence, ie. ctrl+s, alt+t, etc
    * @param commandId the id of a previously registered command
    */
-  public bindKey(sequence: string, commandId: string): void {
-    this.keys.bindKey(sequence, commandId);
+  public bindKey(sequence: string, commandId: string, priority?: number): void {
+    this.keys.bindKey(sequence, commandId, priority);
   }
 
   /**
    * Unbinds a previously registered key binding.
    * @param binding the key sequence of the binding
    */
-  public unbindKey(binding: string) {
-    this.keys.unbindKey(binding);
+  public unbindKey(binding: string, commandId?: string) {
+    this.keys.unbindKey(binding, commandId);
   }
 
   /**
