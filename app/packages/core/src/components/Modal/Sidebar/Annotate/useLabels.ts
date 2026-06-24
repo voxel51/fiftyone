@@ -287,8 +287,15 @@ export default function useLabels() {
       for (const data of engine.listLabels({ sample: sampleId, path })) {
         engineIds.add(data._id);
 
+        // The scene keys overlays by the track's `instance._id` (the engine
+        // `instanceId`), which equals the doc `_id` for an untracked 2D label
+        // but differs for a per-frame video track — so resolve the instance id
+        // to find the live overlay (and its mask), falling back to `_id`.
+        const instanceId =
+          (data as { instance?: { _id?: string } }).instance?._id ?? data._id;
+
         const prev = previousById.get(data._id);
-        const mounted = scene?.getOverlay(data._id);
+        const mounted = scene?.getOverlay(instanceId);
         const live = mounted && mounted.field === path ? mounted : undefined;
 
         // keep stub identity across reconciles while the data is unchanged;

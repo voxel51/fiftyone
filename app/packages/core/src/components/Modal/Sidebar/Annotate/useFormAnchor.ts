@@ -88,7 +88,13 @@ export const useFormAnchor = (): void => {
   const build = useCallback(
     (ref: LabelRef, data: AnnotationLabelData): AnnotationLabel => {
       const field = ref.path;
-      const mounted = scene?.getOverlay(data._id as string);
+      // the scene keys overlays by the track's `instance._id` (equal to the
+      // doc `_id` for an untracked 2D label, but distinct for a per-frame video
+      // track) — resolve the instance id so the live overlay (and its mask) is
+      // found, mirroring the sidebar list resolution in `useLabels`
+      const instanceId =
+        (data as { instance?: { _id?: string } }).instance?._id ?? data._id;
+      const mounted = scene?.getOverlay(instanceId as string);
       const live = mounted && mounted.field === field ? mounted : undefined;
 
       return {
