@@ -819,6 +819,10 @@ export class PixiRenderer2D implements Renderer2D {
         sprite.scale.x = options.scaleX ?? 1;
         sprite.scale.y = options.scaleY ?? 1;
       }
+      if (options.tint !== undefined) {
+        // GPU multiply: white texture × tint = tint, no per-pixel CPU work.
+        sprite.tint = options.tint;
+      }
     }
     this.addToContainer(sprite, containerId, false);
   }
