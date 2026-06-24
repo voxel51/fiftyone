@@ -34,7 +34,7 @@ def _heavy_frame_paths(schema, prefix=""):
             isinstance(field, (fof.DictField, fof.VectorField))
             or name == "logits"
         ):
-            paths.append(f"frames.{path}")
+            paths.append(path)
             continue
 
         nested = field
