@@ -158,7 +158,11 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
             extraActions={extraActions}
           >
             <div className={styles.pinnedOverlayHost}>
-              {pinned.map(renderPinnedTrack)}
+              {/* Pinned rows live here only while the drawer is closed; when it
+                  opens they move into the body below. Rendering both
+                  unconditionally double-mounts every pinned row under the same
+                  track id, so selecting one hit both. */}
+              {!drawerOpen && pinned.map(renderPinnedTrack)}
               <LoopOverlays labelWidth={labelWidth} />
               <PlayheadLine labelWidth={labelWidth} />
             </div>
@@ -168,9 +172,10 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
         <div className={styles.tracksOuter}>
           <div className={styles.tracksArea}>
             {/* When the drawer is open, pinned tracks move into the body
-                so they scroll together with the unpinned section below. */}
+                so they scroll together with the unpinned section below; the
+                header slot above stops rendering them so each row mounts once. */}
             <div className={styles.pinnedTracks}>
-              {pinned.map(renderPinnedTrack)}
+              {drawerOpen && pinned.map(renderPinnedTrack)}
             </div>
             <div>
               {unpinned.map((track) => {
