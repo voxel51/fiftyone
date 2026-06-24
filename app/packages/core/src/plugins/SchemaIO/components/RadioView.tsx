@@ -5,7 +5,7 @@ import {
   RadioGroup as MUIRadioGroup,
   Radio,
 } from "@mui/material";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { ButtonView, HeaderView } from ".";
 import { autoFocus, getComponentProps } from "../utils";
 import { useKey } from "../hooks";

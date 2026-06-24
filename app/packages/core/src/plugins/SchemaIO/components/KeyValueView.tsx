@@ -7,7 +7,6 @@ import {
   TableContainer,
   TableRow,
 } from "@mui/material";
-import React from "react";
 import { HeaderView } from ".";
 import { getComponentProps } from "../utils";
 import { isPlainObject } from "lodash";

@@ -1,4 +1,3 @@
-import React from "react";
 import LabelValueView from "./LabelValueView";
 import CheckboxView from "./CheckboxView";
 import FieldView from "./FieldView";

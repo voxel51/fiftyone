@@ -1,11 +1,8 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
-import {
-  TrackProvider,
-  type Track,
-} from "../../lib/tracks/TrackProvider";
+import { TrackProvider, type Track } from "../../lib/tracks/TrackProvider";
 import TimelineWithTracks from "./TimelineWithTracks";
 import styles from "./TimelineWithTracks.module.css";
 
@@ -30,12 +27,7 @@ interface RenderOpts {
 }
 
 function renderTimeline(opts: RenderOpts = {}) {
-  const {
-    tracks = [],
-    pinnedIds = [],
-    duration = 10,
-    labelWidth,
-  } = opts;
+  const { tracks = [], pinnedIds = [], duration = 10, labelWidth } = opts;
 
   return render(
     <PlaybackProvider duration={duration} stepInterval={1 / 30}>

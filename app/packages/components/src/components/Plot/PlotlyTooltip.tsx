@@ -3,7 +3,7 @@ import {
   isFunctionalComponent,
 } from "@fiftyone/utilities";
 import { Stack, Typography, useTheme } from "@mui/material";
-import React, { ComponentType } from "react";
+import { ComponentType } from "react";
 
 export default function PlotlyTooltip(props: PlotlyTooltipProps) {
   const { event, value } = props;

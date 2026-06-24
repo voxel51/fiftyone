@@ -3,7 +3,6 @@ import * as fos from "@fiftyone/state";
 import { Launch } from "@mui/icons-material";
 import { Button } from "@mui/material";
 import { SnackbarProvider } from "notistack";
-import React from "react";
 import { useRecoilState } from "recoil";
 
 const SNACK_VISIBLE_DURATION = 5000;

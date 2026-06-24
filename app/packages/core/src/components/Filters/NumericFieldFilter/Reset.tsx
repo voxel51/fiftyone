@@ -1,5 +1,4 @@
 import * as fos from "@fiftyone/state";
-import React from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { Button } from "../../utils";
 

@@ -1,6 +1,5 @@
 import * as fos from "@fiftyone/state";
 import { isSidebarFilterMode } from "@fiftyone/state";
-import React from "react";
 import { useRecoilCallback } from "recoil";
 import { Button } from "../../utils";
 

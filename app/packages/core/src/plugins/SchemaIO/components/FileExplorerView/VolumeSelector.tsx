@@ -6,7 +6,6 @@ import {
   Stack,
   Tooltip,
 } from "@mui/material";
-import React from "react";
 import * as icons from "./icons/index";
 import FolderIcon from "@mui/icons-material/Folder";
 import { useAvailableFileSystems } from "./state";

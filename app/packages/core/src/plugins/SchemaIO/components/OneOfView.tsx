@@ -1,6 +1,6 @@
 import { HelpTooltip } from "@fiftyone/components";
 import { Box, Tab, Tabs } from "@mui/material";
-import React, { useState } from "react";
+import { useState } from "react";
 import { HeaderView } from ".";
 import { getComponentProps } from "../utils";
 import DynamicIO from "./DynamicIO";

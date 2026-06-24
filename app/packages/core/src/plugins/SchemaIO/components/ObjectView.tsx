@@ -1,5 +1,4 @@
 import { Box, Grid } from "@mui/material";
-import React from "react";
 import { HeaderView } from ".";
 import { getComponentProps, getPath } from "../utils";
 import DynamicIO from "./DynamicIO";

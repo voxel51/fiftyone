@@ -1,4 +1,3 @@
-import React from "react";
 import { CodeBlock } from "@fiftyone/components";
 import { Box, Tab, Tabs } from "@mui/material";
 import { useMemo, useState } from "react";

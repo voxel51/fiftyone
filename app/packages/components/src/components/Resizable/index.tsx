@@ -2,7 +2,6 @@ import {
   Resizable as ReResizable,
   ResizableProps as ReResizableProps,
 } from "re-resizable";
-import React from "react";
 import { useTheme } from "../ThemeProvider";
 import { resizeHandle } from "./index.module.css";
 

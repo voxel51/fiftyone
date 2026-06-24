@@ -1,6 +1,6 @@
 import Editor, { EditorProps } from "@monaco-editor/react";
 import { useColorScheme } from "@mui/material";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function Code(props: CodeProps) {
   const { readOnly, options = {}, defaultValue, value, ...editorProps } = props;

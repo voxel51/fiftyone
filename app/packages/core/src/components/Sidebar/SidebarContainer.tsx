@@ -2,7 +2,6 @@ import { Resizable } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { useTheme as useMUITheme } from "@mui/material";
 import type { ReactNode } from "react";
-import React from "react";
 import { useRecoilState, useResetRecoilState } from "recoil";
 
 const SidebarContainer = ({

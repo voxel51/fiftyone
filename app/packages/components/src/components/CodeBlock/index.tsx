@@ -1,6 +1,5 @@
 import { CopyButton } from "@fiftyone/components";
 import { Box, useColorScheme } from "@mui/material";
-import React from "react";
 // Use the `Light` build and register only the languages we render. The default
 // `react-syntax-highlighter` export bundles all ~190 hljs languages (~1.4MB) onto
 // the eager critical path; this keeps it to the handful we actually use.
