@@ -28,6 +28,124 @@ from fiftyone.server.utils import from_dict
 import fiftyone.server.view as fosv
 
 
+# serialized class string for the dynamic-group stage the frontend sends in ``view``
+GROUP_BY_CLS = "fiftyone.core.stages.GroupBy"
+
+
+def strip_group_by(stages):
+    """Pull any ``GroupBy`` stage out of a serialized view.
+
+    Returns ``(kept_stages, field_or_expr, order_by)``. Removing the stage lets a
+    by-id read compile an index-eligible ``$match`` instead of re-grouping the
+    whole collection; the returned fields let the server rebuild ``_group``.
+    """
+    group_fields = None
+    order_by = None
+    kept = []
+    for stage in stages or []:
+        if stage.get("_cls") == GROUP_BY_CLS:
+            kwargs = dict(stage.get("kwargs") or [])
+            group_fields = kwargs.get("field_or_expr")
+            order_by = kwargs.get("order_by")
+            continue
+        kept.append(stage)
+    return kept, group_fields, order_by
+
+
+def group_paths(group_fields, order_by):
+    """Field paths a grouped read must project to rebuild ``_group``."""
+    paths = []
+    if isinstance(group_fields, (list, tuple)):
+        paths.extend(group_fields)
+    elif group_fields:
+        paths.append(group_fields)
+    if order_by:
+        paths.append(order_by)
+    return paths
+
+
+def db_field(view, path):
+    """Resolve a field path to its Mongo storage key (e.g. ``sample_id`` ->
+    ``_sample_id``). This db-key knowledge stays in the backend."""
+    try:
+        field = view.get_field(path)
+    except Exception:  # pragma: no cover - defensive: unknown path
+        return path
+    return (field.db_field or path) if field is not None else path
+
+
+def assemble_group(view, docs, group_fields):
+    """Set ``doc['_group']`` from the group-by field value(s): a scalar for a
+    single field, a list for multiple. Idempotent and a no-op for flat views."""
+    if not group_fields or not docs:
+        return
+
+    is_list = isinstance(group_fields, (list, tuple))
+    fields = list(group_fields) if is_list else [group_fields]
+    db_fields = [db_field(view, f) for f in fields]
+
+    for doc in docs:
+        values = [doc.get(f) for f in db_fields]
+        doc["_group"] = values if is_list else values[0]
+
+
+async def assemble_group_counts(
+    dataset_name,
+    degrouped_stages,
+    filters,
+    sort_by,
+    desc,
+    sample_filter,
+    docs,
+    group_fields,
+):
+    """Set ``doc['_group_count']`` = the number of samples in each group within
+    the view, so the modal timeline opens at the right length. Skips docs that
+    already carry a count (grouped reads emit it) and the multi-field case.
+    """
+    if not group_fields or isinstance(group_fields, (list, tuple)) or not docs:
+        return
+
+    pending = [d for d in docs if d.get("_group_count") is None]
+    values = [d.get("_group") for d in pending if d.get("_group") is not None]
+    if not values:
+        return
+
+    # count the whole group: drop any single-sample `id` filter but keep the
+    # group slice, so the base view isn't narrowed to the one fetched sample
+    count_filter = (
+        SampleFilter(group=sample_filter.group)
+        if sample_filter is not None and sample_filter.group
+        else None
+    )
+
+    def _build_base():
+        return fosv.get_view(
+            dataset_name,
+            stages=degrouped_stages,
+            filters=filters,
+            pagination_data=False,
+            sort_by=sort_by,
+            desc=bool(desc),
+            sample_filter=count_filter,
+        )
+
+    base = await run_sync_task(_build_base)
+    db = db_field(base, group_fields)
+    pipeline = await get_samples_pipeline(base, count_filter)
+    pipeline += [
+        {"$match": {db: {"$in": values}}},
+        {"$group": {"_id": f"${db}", "_n": {"$sum": 1}}},
+    ]
+    coll = foo.get_async_db_conn()[base._dataset._sample_collection_name]
+    counts = {
+        c["_id"]: c["_n"]
+        for c in await foo.aggregate(coll, pipeline).to_list(None)
+    }
+    for doc in pending:
+        doc["_group_count"] = counts.get(doc.get("_group"))
+
+
 @gql.type
 class MediaURL:
     field: str
@@ -101,6 +219,7 @@ async def paginate_samples(
     hint: t.Optional[str] = None,
     dynamic_group: t.Optional[BSON] = None,
     max_query_time: t.Optional[int] = None,
+    skip_metadata: t.Optional[bool] = False,
 ) -> Connection[t.Union[ImageSample, VideoSample], str]:
     run = lambda: fosv.get_view(
         dataset,
@@ -118,13 +237,22 @@ async def paginate_samples(
     if after is None:
         after = "-1"
 
+    maxTimeMS = max_query_time * 1000 if max_query_time else None
+    coll = foo.get_async_db_conn()[view._dataset._sample_collection_name]
+
     if int(after) > -1:
         view = view.skip(int(after) + 1)
 
+    # emit per-group counts only for the top-level paginated grouped read
+    if dynamic_group is None and pagination_data:
+        for stage in getattr(view, "_stages", []):
+            if isinstance(stage, fos.GroupBy):
+                stage._include_count = True
+
     pipeline = await get_samples_pipeline(view, sample_filter)
-    maxTimeMS = max_query_time * 1000 if max_query_time else None
+
     samples = await foo.aggregate(
-        foo.get_async_db_conn()[view._dataset._sample_collection_name],
+        coll,
         pipeline,
         hint,
         maxTimeMS=maxTimeMS,
@@ -134,6 +262,22 @@ async def paginate_samples(
     if len(samples) > first:
         samples = samples[:first]
         more = True
+
+    # attach group identity + size to every dynamic-group sample so the modal
+    # resolves them on any fetch path; no-op for flat views
+    degrouped, group_fields, _ = strip_group_by(stages)
+    if group_fields and samples:
+        assemble_group(view, samples, group_fields)
+        await assemble_group_counts(
+            dataset,
+            degrouped,
+            filters,
+            sort_by,
+            desc,
+            sample_filter,
+            samples,
+            group_fields,
+        )
 
     metadata_cache = {}
     url_cache = {}
@@ -149,6 +293,7 @@ async def paginate_samples(
                 url_cache,
                 pagination_data,
                 additional_media_fields=additional_media_fields,
+                skip_dimensions=skip_metadata,
             )
             for sample in samples
         ]
@@ -182,6 +327,7 @@ async def _create_sample_item(
     pagination_data: bool,
     *,
     additional_media_fields: t.Optional[t.Tuple] = None,
+    skip_dimensions: bool = False,
 ) -> SampleItem:
     media_type = fom.get_media_type(sample["filepath"])
     cls = MEDIA_TYPES[media_type]
@@ -193,6 +339,7 @@ async def _create_sample_item(
         metadata_cache,
         url_cache,
         additional_media_fields=additional_media_fields,
+        skip_dimensions=skip_dimensions,
     )
 
     if cls == VideoSample:

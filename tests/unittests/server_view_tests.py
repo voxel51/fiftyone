@@ -11,6 +11,7 @@ import unittest
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
+import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
@@ -19,7 +20,7 @@ from fiftyone.server.query import Dataset
 from fiftyone.server.samples import paginate_samples
 import fiftyone.server.view as fosv
 
-from decorators import drop_datasets
+from decorators import drop_async_dataset, drop_datasets
 from utils.groups import make_disjoint_groups_dataset
 
 
@@ -1303,3 +1304,139 @@ class GetExtendedViewTests(unittest.TestCase):
         )
         self.assertEqual(len(view), 1)
         ds.delete()
+
+
+class SamplesProjectionTests(unittest.TestCase):
+    @drop_datasets
+    def test_include_keeps_only_requested(self):
+        from fiftyone.server.routes.samples import _projection
+
+        dataset = fod.Dataset("test_samples_incl")
+        dataset.add_sample(
+            fos.Sample(
+                filepath="a.png",
+                uniqueness=0.5,
+                predictions=fol.Classification(
+                    label="cat", confidence=0.9, logits=[0.1, 0.2]
+                ),
+            )
+        )
+        view = dataset.view()
+        pipeline = view._pipeline() + [
+            _projection(["predictions.label"], None)
+        ]
+        docs = list(
+            foo.aggregate(
+                foo.get_db_conn()[view._dataset._sample_collection_name],
+                pipeline,
+            )
+        )
+        doc = docs[0]
+        # identifiers always present
+        self.assertIn("_id", doc)
+        self.assertIn("filepath", doc)
+        # requested field present, non-requested fields absent
+        self.assertIn("label", doc["predictions"])
+        self.assertNotIn("uniqueness", doc)
+        self.assertNotIn("confidence", doc["predictions"])
+        self.assertNotIn("logits", doc["predictions"])
+
+    @drop_datasets
+    def test_exclude_drops_requested(self):
+        from fiftyone.server.routes.samples import _projection
+
+        dataset = fod.Dataset("test_samples_excl")
+        dataset.add_sample(
+            fos.Sample(
+                filepath="a.png",
+                uniqueness=0.5,
+                predictions=fol.Classification(
+                    label="cat", confidence=0.9, logits=[0.1, 0.2]
+                ),
+            )
+        )
+        view = dataset.view()
+        pipeline = view._pipeline() + [
+            _projection(None, ["predictions.logits", "filepath"])
+        ]
+        docs = list(
+            foo.aggregate(
+                foo.get_db_conn()[view._dataset._sample_collection_name],
+                pipeline,
+            )
+        )
+        doc = docs[0]
+        # everything kept except the excluded path
+        self.assertIn("uniqueness", doc)
+        self.assertIn("label", doc["predictions"])
+        self.assertIn("confidence", doc["predictions"])
+        self.assertNotIn("logits", doc["predictions"])
+        # identifiers are never excluded even if asked
+        self.assertIn("filepath", doc)
+
+
+class FramesRouteTests(unittest.IsolatedAsyncioTestCase):
+    @drop_async_dataset
+    async def test_response_excludes_heavy_fields(self, dataset):
+        import json
+
+        import numpy as np
+
+        from fiftyone.server.routes.frames import Frames
+
+        sample = fos.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame(
+            frame_str="keep",
+            embedding=np.random.rand(8),
+            info={"a": 1},
+            cls=fol.Classification(label="x", logits=[0.1, 0.2]),
+            detections=fol.Detections(
+                detections=[
+                    fol.Detection(label="d", bounding_box=[0, 0, 1, 1])
+                ]
+            ),
+        )
+        dataset.add_sample(sample)
+
+        body = json.dumps(
+            {
+                "frameNumber": 1,
+                "frameCount": 1,
+                "numFrames": 1,
+                "dataset": dataset.name,
+                "sampleId": str(sample.id),
+            }
+        ).encode()
+
+        async def receive():
+            return {"type": "http.request", "body": body, "more_body": False}
+
+        sent = []
+
+        async def send(message):
+            sent.append(message)
+
+        # dispatch the real ASGI endpoint (parses the body, runs the route)
+        await Frames(
+            {"type": "http", "method": "POST", "headers": []}, receive, send
+        )
+
+        (start,) = [m for m in sent if m["type"] == "http.response.start"]
+        self.assertEqual(start["status"], 200)
+        payload = b"".join(
+            m.get("body", b"")
+            for m in sent
+            if m["type"] == "http.response.body"
+        )
+        frames = json.loads(payload)["frames"]
+        self.assertEqual(len(frames), 1)
+        frame = frames[0]
+
+        # heavy fields (vectors, dicts, logits) must not ship in the response
+        self.assertNotIn("embedding", frame)
+        self.assertNotIn("info", frame)
+        self.assertNotIn("logits", frame.get("cls", {}))
+
+        # overlay fields the app renders are kept
+        self.assertIn("frame_str", frame)
+        self.assertIn("detections", frame)

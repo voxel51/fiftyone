@@ -923,8 +923,8 @@ class DatasetView(foc.SampleCollection):
         elif isinstance(group_expr, (list, tuple)) and all(
             etau.is_str(e) and e.startswith("$") for e in group_expr
         ):
-            # match each field directly (index-eligible) rather than an `$expr` over
-            # a computed array, which cannot use an index.
+            # match each field directly (index-eligible); an `$expr` over a
+            # computed array cannot use an index
             pipeline.append(
                 {
                     "$match": {
