@@ -226,7 +226,7 @@ export const isMultimodal = (mediaType: string | null | undefined): boolean => {
  * @param mediaType media type
  */
 export const hasNonMongoFields = (
-  _mediaType: string | null | undefined
+  _mediaType: string | null | undefined,
 ): boolean => {
   return false;
 };

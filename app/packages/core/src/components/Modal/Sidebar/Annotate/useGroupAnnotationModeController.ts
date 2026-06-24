@@ -18,7 +18,7 @@ import { useGroupAnnotationSlices } from "./useGroupAnnotationSlices";
 
 // Does the current group expose at least one slice we can annotate?
 export const hasApplicableAnnotationSlice = (
-  resolved: AnnotationSliceInfo[] | "loading"
+  resolved: AnnotationSliceInfo[] | "loading",
 ): boolean =>
   resolved !== "loading" &&
   resolved.some(({ isSupported, isMissing }) => isSupported && !isMissing);
