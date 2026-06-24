@@ -7,6 +7,7 @@ import { Fo3dSceneContent } from "../Fo3dCanvas";
 import type { FoScene } from "../render-types";
 
 const threeDLabelsMock = vi.fn((_: { sampleMap: unknown }) => null);
+const orbitControlsMock = vi.fn((_: Record<string, unknown>) => null);
 
 vi.mock("@fiftyone/state", () => ({
   modalMode: { key: "modalMode" },
@@ -22,7 +23,7 @@ vi.mock("jotai", () => ({
 vi.mock("@react-three/drei", () => ({
   AdaptiveDpr: () => null,
   AdaptiveEvents: () => null,
-  OrbitControls: () => null,
+  OrbitControls: (props: Record<string, unknown>) => orbitControlsMock(props),
   PerspectiveCamera: () => null,
 }));
 
@@ -143,5 +144,13 @@ describe("Fo3dSceneContent", () => {
     expect(threeDLabelsMock.mock.calls[0][0]).toMatchObject({
       sampleMap: labelSampleMap,
     });
+    expect(fo3dPerformanceMonitorMock).toHaveBeenCalledTimes(1);
+    expect(orbitControlsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rotateSpeed: 1,
+        zoomSpeed: 0.6,
+        panSpeed: 1.15,
+      })
+    );
   });
 });

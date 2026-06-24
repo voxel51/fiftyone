@@ -128,7 +128,7 @@ export const Fo3dSceneContent = ({
         autoRotate={autoRotate}
         enableDamping={false}
         rotateSpeed={1}
-        zoomSpeed={1.25}
+        zoomSpeed={0.6}
         panSpeed={1.15}
         zoomToCursor
       />
