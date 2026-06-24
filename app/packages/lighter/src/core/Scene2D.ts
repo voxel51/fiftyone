@@ -149,6 +149,10 @@ export class Scene2D {
   private rotation: number = 0;
   private interactiveMode: boolean = false;
   private interactiveHandler?: InteractionHandler;
+  // When an external authority (the annotation engine) owns undo/redo, Lighter
+  // must not also push its own edit commands — the engine captures the same
+  // edits as value-based entries, so a self-push double-counts every gesture.
+  private externalUndoAuthority: boolean = false;
   private isRenderLoopActive: boolean = false;
   private abortController = new AbortController();
   private readonly sceneId: string;
@@ -226,6 +230,8 @@ export class Scene2D {
 
     // Listen for OVERLAY_ESTABLISH events to unset bounds of new overlay
     this.registerEventHandler("lighter:overlay-establish", (event) => {
+      if (this.externalUndoAuthority) return;
+
       const { handler, bounds } = event;
 
       if (handler) {
@@ -239,6 +245,8 @@ export class Scene2D {
 
     // Listen for OVERLAY_DRAG_END events to trigger re-rendering of overlays that are currently dragged
     this.registerEventHandler("lighter:overlay-drag-end", (event) => {
+      if (this.externalUndoAuthority) return;
+
       const overlay = this.getOverlay(event.id);
       if (overlay && TypeGuards.isSpatial(overlay)) {
         const { startBounds, bounds } = event;
@@ -262,6 +270,8 @@ export class Scene2D {
 
     // Listen for OVERLAY_RESIZE_END events to trigger re-rendering of overlays that are currently resized
     this.registerEventHandler("lighter:overlay-resize-end", (event) => {
+      if (this.externalUndoAuthority) return;
+
       const overlay = this.getOverlay(event.id);
       if (overlay && TypeGuards.isSpatial(overlay)) {
         const { startBounds, bounds: endBounds } = event;
@@ -289,6 +299,8 @@ export class Scene2D {
     this.registerEventHandler(
       "lighter:overlay-paint-end",
       ({ id, paintStrokeData, isEstablishing }) => {
+        if (this.externalUndoAuthority) return;
+
         if (!id || !paintStrokeData) return;
 
         // First-stroke-of-a-new-mask: the AddOverlayCommand from the
@@ -1306,6 +1318,15 @@ export class Scene2D {
       isUndoable,
       command,
     });
+  }
+
+  /**
+   * Hand undo/redo authority to an external owner (the annotation engine). While
+   * set, Lighter records no edit commands of its own — the owner captures every
+   * gesture, so a self-push would double-count it on the shared command stack.
+   */
+  setExternalUndoAuthority(enabled: boolean): void {
+    this.externalUndoAuthority = enabled;
   }
 
   /**
