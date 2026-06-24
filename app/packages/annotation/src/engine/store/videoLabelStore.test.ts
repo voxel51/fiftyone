@@ -74,6 +74,10 @@ class FakeSampleStore implements LabelStore {
     return [tdRef("td-1")];
   }
 
+  dirtyFrames(): number[] {
+    return [];
+  }
+
   updateLabel(ref: LabelRef): void {
     this.calls.push(`updateLabel:${ref.path}`);
   }
