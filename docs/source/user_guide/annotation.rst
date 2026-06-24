@@ -294,12 +294,15 @@ The SDK provides taxonomy-specific accessors that mirror the ontology functions:
    fo.delete_taxonomy("vehicle_classes")  # raises if referenced; force=True to override
 
 Reference a taxonomy from an annotation ontology
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+"""""""""""""""""""""""""""""""""""""""""""""""""
 
-An :ref:`Annotation Ontology <annotation-ontologies>` can bundle a taxonomy and
-use it to supply the allowed values for an attribute. Pass the taxonomy to the
-ontology, and set ``taxonomy=`` on the attribute that should draw its values
-from the hierarchy:
+A taxonomy is referenced in two distinct places, and they do different things:
+
+- ``taxonomy=`` on the :ref:`Annotation Ontology <annotation-ontologies>`
+  bundles the taxonomy with the ontology as a whole. It takes a
+  :class:`Taxonomy` instance.
+- ``taxonomy=`` on an individual ``AttributeSpec`` names the taxonomy whose
+  nodes supply that attribute's allowed values. It takes the taxonomy name.
 
 .. code-block:: python
 
@@ -307,13 +310,13 @@ from the hierarchy:
 
    fo.AnnotationOntology(
        name="vehicle_ontology",
-       taxonomy=taxonomy,
+       taxonomy=taxonomy,                    # bundle the taxonomy with the ontology
        attributes=[
            fo.AttributeSpec(
                name="vehicle_type",
                type="str",
                component="dropdown",
-               taxonomy="vehicle_classes",   # values come from the taxonomy
+               taxonomy="vehicle_classes",   # this attribute's values come from the taxonomy
            ),
            fo.AttributeSpec(name="damaged", type="bool", component="checkbox"),
        ],
