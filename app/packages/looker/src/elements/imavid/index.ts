@@ -5,7 +5,10 @@
 import {
   BUFFERING_PAUSE_TIMEOUT,
   DEFAULT_PLAYBACK_RATE,
+  HOVER_FETCH_INTENT_MS,
+  INITIAL_LOOK_AHEAD_FRAMES,
   LOOK_AHEAD_MULTIPLIER,
+  STREAM_BATCH_FRAMES,
 } from "../../lookers/imavid/constants";
 import { ImaVidFramesController } from "../../lookers/imavid/controller";
 import { DispatchEvent, ImaVidState } from "../../state";
@@ -18,9 +21,11 @@ export function withImaVidLookerEvents(): () => Events<ImaVidState> {
       mouseenter: ({ update }) => {
         update(({ config: { thumbnail } }) => {
           if (thumbnail) {
+            // scroll-induced enter isn't a deliberate hover; wait for a real mousemove.
             return {
               playing: true,
               disableOverlays: true,
+              hoverProbed: false,
             };
           }
           return {};
@@ -32,6 +37,7 @@ export function withImaVidLookerEvents(): () => Events<ImaVidState> {
             return {
               currentFrameNumber: 1,
               playing: false,
+              hoverProbed: false,
             };
           }
           return {
@@ -41,7 +47,11 @@ export function withImaVidLookerEvents(): () => Events<ImaVidState> {
         });
       },
       mousemove: ({ event, update }) => {
-        update((state) => seekFn(state, event));
+        update((state) => {
+          // a real pointer move = deliberate hover, which unlocks the stream fetch.
+          const probe = state.config.thumbnail ? { hoverProbed: true } : {};
+          return { ...seekFn(state, event), ...probe };
+        });
       },
       mouseup: ({ event, update }) => {
         update((state) => ({ ...seekFn(state, event), seeking: false }));
@@ -94,6 +104,8 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   private isLoop: boolean;
   private waitingToPause = false;
   private isAnimationActive = false;
+  // pending sustained-hover timer before a thumbnail's first stream fetch starts
+  private hoverFetchTimer?: number;
 
   public framesController: ImaVidFramesController;
 
@@ -102,7 +114,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   getEvents(): Events<ImaVidState> {
     return {
       load: () => {
-        // assign value for looker's canvas
         this.canvas = document.createElement("canvas");
         this.canvas.style.imageRendering = "pixelated";
         this.canvas.width = this.element.naturalWidth;
@@ -116,8 +127,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
         this.update({
           loaded: true,
-          // note: working assumption =  all images in this "video" are of the same width and height
-          // this might be an incorrect assumption for certain use cases
+          // assumes all frames share one width/height.
           dimensions: [this.element.naturalWidth, this.element.naturalHeight],
         });
       },
@@ -127,18 +137,9 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     };
   }
 
-  /**
-   * Create the relevant html element so that this.imagesource is set
-   *
-   * in image looker:
-   *  - it is an HTMLImageElement
-   *
-   * in video looker:
-   * - if thumbnail, it is canvas for grid view, html video otherwise (modal)
-   * - thumbnailer:
-   */
+  /** Create the html element so that this.imageSource is set. */
   createHTMLElement(dispatchEvent: DispatchEvent) {
-    // not really doing an update, just updating refs
+    // not an update, just updating refs.
     this.update(
       ({
         config: {
@@ -193,6 +194,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       });
     }
     this.resetWaitingFlags();
+    this.cancelHoverFetch();
     this.framesController.pauseFetch();
   }
 
@@ -220,16 +222,22 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   }
 
   async drawFrameNoAnimation(frameNumberToDraw: number) {
-    const currentFrameImage = this.getCurrentFrameImage(frameNumberToDraw);
+    let image = this.getCurrentFrameImage(frameNumberToDraw);
 
-    if (!currentFrameImage) {
-      if (frameNumberToDraw < this.framesController.totalFrameCount) {
-        this.skipAndTryAgain(frameNumberToDraw, false);
+    // block until the frame is drawable; the modal timeline gates its playhead on this.
+    while (!image) {
+      const total = this.framesController.totalFrameCount;
+      // past the known end → nothing to draw (don't hang).
+      if (total != null && frameNumberToDraw > total) {
         return;
       }
+      this.checkFetchBufferManager();
+      await new Promise((resolve) =>
+        setTimeout(resolve, BUFFERING_PAUSE_TIMEOUT)
+      );
+      image = this.getCurrentFrameImage(frameNumberToDraw);
     }
 
-    const image = currentFrameImage;
     this.paintImageOnCanvas(image);
 
     this.update(() => ({ currentFrameNumber: frameNumberToDraw }));
@@ -249,9 +257,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
     this.isAnimationActive = animate;
 
-    // if abs(frameNumberToDraw, currentFrameNumber) > 1, then skip
-    // this is to avoid drawing frames that are too far apart
-    // this can happen when user is scrubbing through the video
+    // skip frames too far apart (e.g. while scrubbing).
     if (Math.abs(frameNumberToDraw - this.frameNumber) > 1 && !this.isLoop) {
       this.skipAndTryAgain(frameNumberToDraw, true);
       return;
@@ -261,7 +267,10 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
     const currentFrameImage = this.getCurrentFrameImage(frameNumberToDraw);
     if (!currentFrameImage) {
-      if (frameNumberToDraw < this.framesController.totalFrameCount) {
+      const total = this.framesController.totalFrameCount;
+      // while still streaming (length unknown) wait for the frame; only pause once
+      // the stream has revealed the end and we're genuinely past it.
+      if (total == null || frameNumberToDraw < total) {
         this.skipAndTryAgain(frameNumberToDraw, true);
         return;
       } else {
@@ -281,14 +290,15 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     }
 
     if (animate && !this.waitingToPause) {
-      if (frameNumberToDraw <= this.framesController.totalFrameCount) {
+      const total = this.framesController.totalFrameCount;
+      if (total == null || frameNumberToDraw <= total) {
         this.update(({ playing }) => {
           if (playing) {
             return {
-              currentFrameNumber: Math.min(
-                frameNumberToDraw,
-                this.framesController.totalFrameCount
-              ),
+              currentFrameNumber:
+                total == null
+                  ? frameNumberToDraw
+                  : Math.min(frameNumberToDraw, total),
             };
           }
 
@@ -299,8 +309,12 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       setTimeout(() => {
         requestAnimationFrame(() => {
           const next = frameNumberToDraw + 1;
+          // re-read: the stream may have revealed the end since this frame began.
+          const total = this.framesController.totalFrameCount;
 
-          if (next > this.framesController.totalFrameCount) {
+          // only stop/loop once the length is known; while streaming, keep advancing
+          // as frames arrive.
+          if (total != null && next > total) {
             this.update(({ options: { loop } }) => {
               if (loop) {
                 this.drawFrame(1);
@@ -314,7 +328,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
               return {
                 playing: false,
                 disableOverlays: false,
-                currentFrameNumber: this.framesController.totalFrameCount,
+                currentFrameNumber: total,
               };
             });
             return;
@@ -341,71 +355,101 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       throw new Error("currentFrameNumber must be a number");
     }
 
+    const totalFrameCount = this.framesController.totalFrameCount;
+
     // 5000 is an arbitrary upper bound for the multiplier
     const frameCountMultiplierWeight =
-      1 + Math.min(this.framesController.totalFrameCount / 5000, 1);
+      1 + Math.min((totalFrameCount ?? 0) / 5000, 1);
 
+    const onlySeedBuffered =
+      this.framesController.storeBufferManager.totalFramesInBuffer <= 1;
+
+    // the seed buys playback runway; every refill is a full batch so the buffer stays ahead of
+    // the playhead in as few (expensive, GroupBy-skipping) round trips as possible.
     const offset = this.isSeeking
       ? 2
-      : this.targetFrameRate *
-        LOOK_AHEAD_MULTIPLIER *
-        frameCountMultiplierWeight;
+      : onlySeedBuffered
+      ? INITIAL_LOOK_AHEAD_FRAMES
+      : Math.max(
+          this.targetFrameRate *
+            LOOK_AHEAD_MULTIPLIER *
+            frameCountMultiplierWeight,
+          STREAM_BATCH_FRAMES
+        );
 
-    const frameRangeMax = Math.min(
-      Math.trunc(currentFrameNumber + offset),
-      this.framesController.totalFrameCount
-    );
+    // while streaming (length unknown) fetch uncapped; the empty next page reveals the total.
+    const frameRangeMax =
+      totalFrameCount == null
+        ? Math.trunc(currentFrameNumber + offset)
+        : Math.min(Math.trunc(currentFrameNumber + offset), totalFrameCount);
 
     return [currentFrameNumber, frameRangeMax] as const;
   }
 
-  /**
-   * Queue up frames to be fetched if necessary.
-   * This method is not blocking, it merely enqueues a fetch job.
-   *
-   * This is for legacy imavid, which is used for thumbnail imavid.
-   */
-  private ensureBuffers(state: Readonly<ImaVidState>) {
-    if (!this.framesController.totalFrameCount) {
-      return;
-    }
-
-    let shouldEnqueueFetch = false;
-    const necessaryFrameRange = this.getLookAheadFrameRange(
-      state.currentFrameNumber
-    );
+  /** Enqueue (and start) the look-ahead fetch off the given frame, if needed. */
+  private enqueueLookAheadFetch(currentFrameNumber: number) {
+    const necessaryFrameRange = this.getLookAheadFrameRange(currentFrameNumber);
 
     if (necessaryFrameRange[1] < necessaryFrameRange[0]) {
       return;
     }
 
-    const rangeAvailable =
+    if (
       this.framesController.storeBufferManager.containsRange(
         necessaryFrameRange
-      );
-
-    if (rangeAvailable) {
+      )
+    ) {
       return;
     }
 
-    if (state.config.thumbnail && state.hovering) {
-      shouldEnqueueFetch = true;
-    } else if (!state.config.thumbnail) {
-      shouldEnqueueFetch = true;
+    const unprocessedBufferRange =
+      this.framesController.fetchBufferManager.getUnprocessedBufferRange(
+        this.framesController.storeBufferManager.getUnprocessedBufferRange(
+          necessaryFrameRange
+        )
+      );
+
+    if (unprocessedBufferRange) {
+      this.framesController.enqueueFetch(unprocessedBufferRange);
+      this.framesController.resumeFetch();
+    }
+  }
+
+  private cancelHoverFetch() {
+    if (this.hoverFetchTimer != null) {
+      window.clearTimeout(this.hoverFetchTimer);
+      this.hoverFetchTimer = undefined;
+    }
+  }
+
+  /** Enqueue a (non-blocking) frame fetch if needed; thumbnail imavid only. */
+  private ensureBuffers(state: Readonly<ImaVidState>) {
+    // first fetch is heavy and uncancellable, so gate it on a persisted hover
+    // (hoverProbed) — a scroll fires mouseenter but never mousemove.
+    if (!state.hovering || !state.hoverProbed) {
+      this.cancelHoverFetch();
+      return;
     }
 
-    if (shouldEnqueueFetch) {
-      const unprocessedBufferRange =
-        this.framesController.fetchBufferManager.getUnprocessedBufferRange(
-          this.framesController.storeBufferManager.getUnprocessedBufferRange(
-            necessaryFrameRange
-          )
-        );
+    const streaming =
+      this.framesController.storeBufferManager.totalFramesInBuffer > 1;
 
-      if (unprocessedBufferRange) {
-        this.framesController.enqueueFetch(unprocessedBufferRange);
-        this.framesController.resumeFetch();
-      }
+    if (streaming) {
+      this.cancelHoverFetch();
+      this.enqueueLookAheadFetch(state.currentFrameNumber);
+      return;
+    }
+
+    // arm the intent timer once; don't re-arm while one is pending or a fetch is in flight.
+    if (
+      this.hoverFetchTimer == null &&
+      !this.framesController.isFetching &&
+      this.framesController.fetchBufferManager.buffers.length === 0
+    ) {
+      this.hoverFetchTimer = window.setTimeout(() => {
+        this.hoverFetchTimer = undefined;
+        this.enqueueLookAheadFetch(this.frameNumber || 1);
+      }, HOVER_FETCH_INTENT_MS);
     }
   }
 
@@ -413,8 +457,20 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
    * Starts fetch if there are buffers in the fetch buffer manager
    */
   public checkFetchBufferManager() {
-    if (!this.framesController.totalFrameCount) {
-      return;
+    const range = this.getLookAheadFrameRange(this.frameNumber || 1);
+    if (
+      range[1] >= range[0] &&
+      !this.framesController.storeBufferManager.containsRange(range)
+    ) {
+      const unprocessed =
+        this.framesController.fetchBufferManager.getUnprocessedBufferRange(
+          this.framesController.storeBufferManager.getUnprocessedBufferRange(
+            range
+          )
+        );
+      if (unprocessed) {
+        this.framesController.enqueueFetch(unprocessed);
+      }
     }
 
     if (this.framesController.fetchBufferManager.buffers.length > 0) {
@@ -501,8 +557,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     }
 
     if (!playing && !seeking && thumbnail) {
-      // check if current frame number is what has been drawn
-      // if they're different, then draw the frame
       if (this.frameNumber !== this.canvasFrameNumber) {
         this.waitingToPause = false;
         this.drawFrameNoAnimation(this.frameNumber);

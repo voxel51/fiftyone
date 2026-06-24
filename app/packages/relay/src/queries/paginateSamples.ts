@@ -2,11 +2,7 @@ import { graphql } from "react-relay";
 import r from "../resolve";
 import type { paginateSamplesQuery$data } from "./__generated__/paginateSamplesQuery.graphql";
 
-/**
- * The successful `SampleItemStrConnection` branch of `samples`, with the
- * `QueryTimeout` and `%other` union members removed. Use this when narrowing
- * `paginateSamplesQuery` results before accessing `edges` / `pageInfo`.
- */
+/** The `SampleItemStrConnection` branch of `samples`, with `QueryTimeout`/`%other` removed. */
 export type PaginateSamplesConnection = Exclude<
   Exclude<
     paginateSamplesQuery$data["samples"],
@@ -15,22 +11,13 @@ export type PaginateSamplesConnection = Exclude<
   { readonly __typename: "%other" }
 >;
 
-/**
- * A concrete sample node from `paginateSamplesQuery`, with the `QueryTimeout`,
- * `%other` connection variants and the `%other` node variant all narrowed
- * away. Consumers can treat the result as one of the known sample types
- * ({@link ImageSample}, {@link PointCloudSample}, etc.).
- */
+/** A concrete sample node from `paginateSamplesQuery`, with `%other` variants narrowed away. */
 export type PaginateSamplesNode = Exclude<
   PaginateSamplesConnection["edges"][number]["node"],
   { readonly __typename: "%other" }
 >;
 
-/**
- * Type guard for {@link PaginateSamplesConnection}. Returns `true` when
- * `samples` is the successful connection variant and `edges` / `pageInfo` are
- * safe to access.
- */
+/** Type guard for {@link PaginateSamplesConnection}. */
 export const isPaginateSamplesConnection = (
   samples: paginateSamplesQuery$data["samples"]
 ): samples is PaginateSamplesConnection =>
@@ -51,6 +38,7 @@ export default r(graphql`
     $hint: String
     $dynamicGroup: BSON = null
     $maxQueryTime: Int
+    $skipMetadata: Boolean = false
   ) {
     samples(
       dataset: $dataset
@@ -66,12 +54,14 @@ export default r(graphql`
       hint: $hint
       dynamicGroup: $dynamicGroup
       maxQueryTime: $maxQueryTime
+      skipMetadata: $skipMetadata
     ) {
       __typename
       ... on QueryTimeout {
         queryTime
       }
       ... on SampleItemStrConnection {
+        total
         pageInfo {
           hasNextPage
         }

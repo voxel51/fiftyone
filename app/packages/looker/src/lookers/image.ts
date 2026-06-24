@@ -117,7 +117,10 @@ export class ImageLooker extends AbstractLooker<ImageState> {
         reloading: this.state.disabled,
         disabled: false,
       });
-      this.updateSample(this.sample);
+      // skip the reload if the async initial load hasn't set `this.sample` yet
+      if (this.sample) {
+        this.updateSample(this.sample);
+      }
     } else {
       this.updater({ ...state, disabled: false });
     }

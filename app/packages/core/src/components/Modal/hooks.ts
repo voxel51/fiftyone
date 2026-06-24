@@ -69,6 +69,22 @@ export const useInitializeImaVidSubscriptions = () => {
   return { subscribeToImaVidStateChanges };
 };
 
+export const useInitializeVideoSubscriptions = () => {
+  const subscribeToVideoStateChanges = useRecoilCallback(
+    ({ set }) =>
+      () => {
+        // primes the onSet subscription to the video looker's frame state so the sidebar
+        // can settle on the frame playback stopped on
+        set(fos.videoLookerState("frameNumber"), Math.random());
+        set(fos.videoLookerState("playing"), null);
+        set(fos.videoLookerState("seeking"), null);
+      },
+    []
+  );
+
+  return { subscribeToVideoStateChanges };
+};
+
 export const useModalContext = () => {
   const ctx = useContext(modalContext);
 

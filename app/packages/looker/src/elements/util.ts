@@ -201,6 +201,11 @@ const makeAcquirer = (
     video.muted = true;
     video.preload = "metadata";
     video.loop = false;
+    // a released thumbnailer that keeps `src` set keeps buffering the whole .mp4; abort it.
+    if (video.getAttribute("src")) {
+      video.removeAttribute("src");
+      video.load();
+    }
   };
 
   const release = (video: HTMLVideoElement) => {
@@ -241,7 +246,8 @@ const makeAcquirer = (
       });
     },
     () => {
-      QUEUE.forEach(clearVideo);
+      // clear the pooled video elements only; QUEUE holds resolvers, not videos.
+      VIDEOS.forEach(clearVideo);
       FREE = [];
       QUEUE = [];
       VIDEOS = [];
@@ -251,7 +257,8 @@ const makeAcquirer = (
 
 const [acquirePlayer, freePlayer] = makeAcquirer(1);
 
-const [acquireThumbnailer, freeThumbnailers] = makeAcquirer(6);
+// caps how many grid poster .mp4s decode at once (clearVideo aborts released fetches).
+const [acquireThumbnailer, freeThumbnailers] = makeAcquirer(12);
 
 export { acquirePlayer, acquireThumbnailer };
 

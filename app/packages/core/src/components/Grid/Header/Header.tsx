@@ -1,13 +1,30 @@
-import { LoadingDots, useTheme } from "@fiftyone/components";
+import { LoadingDots, Selector, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { isGroup as isGroupAtom } from "@fiftyone/state";
 import { Apps, ImageAspectRatio } from "@mui/icons-material";
-import React, { Suspense, useMemo } from "react";
-import { constSelector, useRecoilValue, useResetRecoilState } from "recoil";
+import React, {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
+import {
+  constSelector,
+  useRecoilState,
+  useRecoilValue,
+  useResetRecoilState,
+  useSetRecoilState,
+} from "recoil";
 import { Slider } from "../../Common/RangeSlider";
 import ResourceCount from "../../ResourceCount";
 import Actions from "../Actions";
-import { gridSpacing, gridZoom } from "../recoil";
+import {
+  gridAspectRatio,
+  gridHeaderHeight,
+  gridSpacing,
+  gridZoom,
+} from "../recoil";
 import { ZOOM_RANGE } from "../useZoomSetting";
 import {
   RightContainer,
@@ -76,6 +93,35 @@ const Zoom = () => {
   );
 };
 
+const AR_OPTIONS = ["auto", "1:1", "4:3", "3:2", "16:9", "2:3", "9:16"];
+
+const AspectRatioOption = ({ value }: { value: string }) => <>{value}</>;
+
+const AspectRatio = () => {
+  const [value, setValue] = useRecoilState(gridAspectRatio);
+  const useSearch = useCallback((search: string) => {
+    const values = AR_OPTIONS.filter((v) => v.includes(search));
+    return { values, total: values.length };
+  }, []);
+
+  return (
+    <Selector
+      inputStyle={{ height: 28, width: 72 }}
+      component={AspectRatioOption}
+      containerStyle={{ marginLeft: "0.5rem", position: "relative" }}
+      onSelect={async (v) => {
+        const next = v || "auto";
+        setValue(next);
+        return next;
+      }}
+      overflow={true}
+      placeholder={"aspect ratio"}
+      useSearch={useSearch}
+      value={value}
+    />
+  );
+};
+
 const Header = () => {
   const isGroup = useRecoilValue(isGroupAtom);
   const groupSlices = useRecoilValue(fos.groupSlices);
@@ -84,8 +130,26 @@ const Header = () => {
     [isGroup, groupSlices]
   );
 
+  // publish the bar's height so the grid can inset its first row below it.
+  const headerRef = useRef<HTMLDivElement>(null);
+  const setHeaderHeight = useSetRecoilState(gridHeaderHeight);
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return undefined;
+    // round so sub-pixel observer jitter doesn't churn the grid layout.
+    const measure = () =>
+      setHeaderHeight(Math.round(el.getBoundingClientRect().height));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      setHeaderHeight(0);
+    };
+  }, [setHeaderHeight]);
+
   return (
-    <SamplesHeader data-cy={"fo-grid-actions"}>
+    <SamplesHeader ref={headerRef} data-cy={"fo-grid-actions"}>
       <Actions key={"actions"} />
       <RightContainer key={"options"}>
         <Suspense
@@ -104,6 +168,7 @@ const Header = () => {
           </RightDiv>
         )}
         <Sort />
+        <AspectRatio />
         <Spacing />
         <Zoom />
       </RightContainer>

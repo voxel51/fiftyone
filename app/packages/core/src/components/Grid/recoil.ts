@@ -9,8 +9,13 @@ import { MANAGING_GRID_MEMORY } from "../../utils/links";
  * @param {number} defaultRange [0, 10] range
  * @returns {number} [-15, -1]
  */
-const convertDefault = (defaultRange) => {
-  return -(14 - (defaultRange / 10) * 14 + 1);
+const convertDefault = (defaultRange?: number) => {
+  // fall back to the server default (7) before config loads, so we never emit NaN.
+  const value =
+    typeof defaultRange === "number" && !Number.isNaN(defaultRange)
+      ? defaultRange
+      : 7;
+  return -(14 - (value / 10) * 14 + 1);
 };
 
 const sortFieldsMap = selector({
@@ -79,6 +84,21 @@ export const gridPage = atom({
   default: 0,
 });
 
+// Measured height of the floating action bar; the virtual layout insets its top by
+// this so row 0 starts below the bar. 0 until the header measures itself.
+export const gridHeaderHeight = atom<number>({
+  key: "gridHeaderHeight",
+  default: 0,
+});
+
+// The grid's resolved item count, learned from the spine when it reaches the view's
+// end (no count query); null until known. A dynamic-group view pages by group, so
+// this is the number of groups.
+export const gridSpineTotal = atom<number | null>({
+  key: "gridSpineTotal",
+  default: null,
+});
+
 export const gridAt = atom<string | null>({
   key: "gridAt",
   default: null,
@@ -145,6 +165,41 @@ export const gridZoom = selector<number>({
   },
 });
 
+const gridAspectRatioStore = atomFamily<string | null, string>({
+  key: "gridAspectRatioStore",
+  default: null,
+  effects: (datasetId) => [
+    fos.getBrowserStorageEffectForKey(`gridAspectRatio-${datasetId}`, {
+      valueClass: "string",
+    }),
+  ],
+});
+
+// Tile box aspect ratio: "auto" uses each sample's metadata AR; a "W:H" string forces
+// every tile to that ratio.
+export const gridAspectRatio = selector<string>({
+  key: "gridAspectRatio",
+  get: ({ get }) =>
+    get(gridAspectRatioStore(get(fos.datasetId) ?? "")) ?? "auto",
+  set: ({ get, set }, value) =>
+    set(
+      gridAspectRatioStore(get(fos.datasetId) ?? ""),
+      value instanceof DefaultValue ? null : (value as string)
+    ),
+});
+
+/** Parse a grid aspect-ratio setting to a numeric w/h ratio; "auto"/invalid -> null. */
+export const parseAspectRatio = (value: string): number | null => {
+  if (!value || value === "auto") return null;
+  const [w, h] = value.split(":");
+  const width = Number(w);
+  const height = h === undefined ? 1 : Number(h);
+  if (!width || !height || Number.isNaN(width) || Number.isNaN(height)) {
+    return null;
+  }
+  return width / height;
+};
+
 export const gridCropCallback = selector({
   key: "gridCropCallback",
   get: ({ getCallback }) => {
@@ -205,6 +260,12 @@ export const pageParameters = selector({
           }
         : {};
 
+    // per-sample dimensions are only needed when tiles are sized by their own ratio
+    // (autosizing on, or aspect ratio "auto"); a fixed ratio needs no metadata.
+    const skipMetadata = !(
+      get(gridAutosizing) || parseAspectRatio(get(gridAspectRatio)) === null
+    );
+
     const params = {
       dataset,
       view: get(fos.view),
@@ -219,6 +280,7 @@ export const pageParameters = selector({
       },
       extendedStages,
       maxQueryTime: queryPerformance ? get(fos.config).maxQueryTime : null,
+      skipMetadata,
       ...extra,
     };
 

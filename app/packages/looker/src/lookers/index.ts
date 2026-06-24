@@ -1,4 +1,5 @@
 export * from "./abstract";
+export { resetFrameStores } from "./frame-reader";
 export * from "./frame";
 export * from "./image";
 export * from "./imavid";

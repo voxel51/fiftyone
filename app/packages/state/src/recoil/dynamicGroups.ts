@@ -6,14 +6,9 @@ import {
   LIST_FIELD,
 } from "@fiftyone/utilities";
 import { atom, atomFamily, selector, selectorFamily } from "recoil";
-import {
-  currentSlice,
-  groupSlice,
-  hasGroupSlices,
-  modalGroupSlice,
-} from "./groups";
-import { groupSampleAtMainSlice, modalLooker } from "./modal";
-import { dynamicGroupsViewMode, selectedMediaField } from "./options";
+import { groupSlice, hasGroupSlices, modalGroupSlice } from "./groups";
+import { groupSampleAtMainSlice, modalLooker, modalSample } from "./modal";
+import { dynamicGroupsViewMode } from "./options";
 import { fieldPaths } from "./schema";
 import { datasetName, parentMediaTypeSelector } from "./selectors";
 import { State } from "./types";
@@ -82,6 +77,8 @@ export const dynamicGroupPageSelector = selectorFamily<
         view: get(view),
         dynamicGroup: value,
         filter: { group: { slice } },
+        // a group's frames inherit the poster's aspect ratio — never fetch metadata
+        skipMetadata: true,
       };
 
       if (get(hasGroupSlices)) {
@@ -106,13 +103,8 @@ export const imaVidLookerState = atomFamily<any, string>({
       let unsubscribe;
 
       onSet((_newValue) => {
-        // note: resetRecoilState is not triggering `onSet` in effect,
-        // see https://github.com/facebookexperimental/Recoil/issues/2183
-        // replace with `useResetRecoileState` when fixed
-
-        // if (!isReset) {
-        //   throw new Error("cannot set ima-vid state directly");
-        // }
+        // resetRecoilState does not trigger `onSet` in effect:
+        // https://github.com/facebookexperimental/Recoil/issues/2183
         unsubscribe?.();
 
         getPromise(modalLooker)
@@ -135,31 +127,51 @@ export const imaVidLookerState = atomFamily<any, string>({
   ],
 });
 
+// mirrors imaVidLookerState for the native VideoLooker (frameNumber/playing/seeking),
+// so the sidebar can reflect the frame playback stopped on
+export const videoLookerState = atomFamily<any, string>({
+  key: "videoLookerState",
+  default: null,
+  effects: (key) => [
+    ({ setSelf, getPromise, onSet }) => {
+      let unsubscribe;
+
+      onSet((_newValue) => {
+        unsubscribe?.();
+
+        getPromise(modalLooker)
+          .then((looker) => {
+            if (looker) {
+              unsubscribe = looker.subscribeToState(key, (stateValue) => {
+                setSelf(stateValue);
+              });
+            }
+          })
+          .catch((e) => {
+            console.error(e);
+          });
+      });
+
+      return () => {
+        unsubscribe?.();
+      };
+    },
+  ],
+});
+
 export const groupByFieldValue = selector({
   key: "groupByFieldValue",
   get: ({ get }) => {
-    // Always read from the sample on the main groupSlice, independent of
-    // which slice the modal is currently displaying. See
-    // {@link groupSampleAtMainSlice}.
+    // a non-nested dynamic group isn't sliced, so its `_group` is on the modal
+    // sample already; reading it there avoids a redundant `mainSample` query
+    if (get(isNonNestedDynamicGroup)) {
+      const fromModal = get(modalSample)?.sample?._group;
+      if (fromModal != null) {
+        return fromModal;
+      }
+    }
     return get(groupSampleAtMainSlice)?.sample?._group ?? null;
   },
-});
-
-export const imaVidStoreKey = selectorFamily<
-  string,
-  { modal: boolean; groupByFieldValue: string }
->({
-  key: "imaVidStoreKey",
-  get:
-    ({ modal, groupByFieldValue }) =>
-    ({ get }) => {
-      const slice = get(currentSlice(modal)) ?? "UNSLICED";
-      const mediaField = get(selectedMediaField(modal));
-
-      return `${JSON.stringify(
-        get(view)
-      )}-${groupByFieldValue}-${slice}-${mediaField}`;
-    },
 });
 
 export const isDynamicGroup = selector<boolean>({

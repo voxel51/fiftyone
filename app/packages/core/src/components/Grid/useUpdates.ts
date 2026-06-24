@@ -62,11 +62,10 @@ export const handlePotentiallyStillPendingOverlays = (entry: fos.Lookers) => {
     rerender.push(overlay.field);
   }
 
-  // if there are any labels marked "pending", render them
   rerender.length && entry.refreshSample(rerender);
 };
 
-const useItemUpdater = (
+export const useItemUpdater = (
   cache: LookerCache,
   options: ReturnType<typeof fos.useLookerOptions>
 ) => {

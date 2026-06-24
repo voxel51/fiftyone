@@ -1,6 +1,12 @@
 {
     "src": "./packages",
     "schema": "./schema.graphql",
+    "exclude": [
+        "**/node_modules/**",
+        "**/__mocks__/**",
+        "**/__generated__/**",
+        "**/dist/**"
+    ],
     "eagerEsModules": true,
     "language": "typescript",
     "customScalars": {

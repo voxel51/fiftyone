@@ -8,12 +8,15 @@ import { useMemoOne } from "use-memo-one";
 import { v4 as uuid } from "uuid";
 import { useSyncLabelsRenderingStatus } from "../../hooks";
 import {
+  gridAspectRatio,
   gridAutosizing,
   gridCrop,
   gridSpacing,
   maxGridItemsSizeBytes,
   pageParameters,
+  parseAspectRatio,
 } from "./recoil";
+import InfiniteGrid from "./InfiniteGrid";
 import useEscape from "./useEscape";
 import useEvents from "./useEvents";
 import useLabelVisibility from "./useLabelVisibility";
@@ -34,6 +37,11 @@ function Grid() {
   const id = useMemoOne(() => uuid(), []);
   const pixels = useMemoOne(() => uuid(), []);
   const spacing = useRecoilValue(gridSpacing);
+
+  // A fixed tile aspect ratio enables the virtualized infinite grid; "auto" (parses
+  // to null) keeps the justified, cursor-paginated Spotlight grid.
+  const useInfiniteGrid =
+    parseAspectRatio(useRecoilValue(gridAspectRatio)) !== null;
   const { pageReset, reset } = useRefreshers();
   const [resizing, setResizing] = useState(false);
   const zoom = useZoomSetting();
@@ -44,37 +52,41 @@ function Grid() {
 
   // divide by two, half for the hidden cache and half for max shown
   const maxBytes = useRecoilValue(maxGridItemsSizeBytes) / 2;
+  // both are stable (useCallback/useRecoilCallback with no deps), so the cache
+  // identity below is preserved across renders.
+  const { onDispose, onSet } = useLabelVisibility();
   const cache = useLookerCache({
     maxHiddenItems: MAX_INSTANCES,
     maxHiddenItemsSizeBytes: maxBytes,
     reset,
-    ...useLabelVisibility(),
+    onSet,
+    onDispose,
   });
 
-  const { page, store } = useSpotlightPager({
-    clearRecords: reset,
-    pageSelector: pageParameters,
-    records,
-    zoomSelector: gridCrop,
-  });
+  const { page, store, hydrateWindow, ensureSpineWindow, spineTotal } =
+    useSpotlightPager({
+      clearRecords: reset,
+      pageSelector: pageParameters,
+      records,
+      zoomSelector: gridCrop,
+    });
 
-  const { getFontSize, lookerOptions, renderer } = useRenderer({
-    cache,
-    id,
-    records,
-    store,
-  });
+  const { getFontSize, lookerOptions, renderer, attachItem, releaseItem } =
+    useRenderer({
+      cache,
+      id,
+      records,
+      store,
+    });
   const { get, set } = useScrollLocation(pageReset);
 
   const setSample = fos.useExpandSample(store);
   const autosizing = useRecoilValue(gridAutosizing);
 
   const spotlight = useMemoOne(() => {
-    /** SPOTLIGHT REFRESHER */
     reset;
-    /** SPOTLIGHT REFRESHER */
 
-    if (resizing) {
+    if (useInfiniteGrid || resizing) {
       return undefined;
     }
 
@@ -104,6 +116,7 @@ function Grid() {
     resizing,
     setSample,
     spacing,
+    useInfiniteGrid,
     zoom,
   ]);
 
@@ -114,8 +127,24 @@ function Grid() {
 
   return (
     <div className={styles.gridContainer}>
-      <div id={id} className={styles.spotlightGrid} data-cy="fo-grid" />
-      <div id={pixels} className={styles.fallingPixels} />
+      {useInfiniteGrid ? (
+        <InfiniteGrid
+          id={id}
+          reset={reset}
+          ensureSpineWindow={ensureSpineWindow}
+          hydrateWindow={hydrateWindow}
+          spineTotal={spineTotal}
+          store={store}
+          attachItem={attachItem}
+          releaseItem={releaseItem}
+          onItemClick={setSample}
+        />
+      ) : (
+        <>
+          <div id={id} className={styles.spotlightGrid} data-cy="fo-grid" />
+          <div id={pixels} className={styles.fallingPixels} />
+        </>
+      )}
     </div>
   );
 }

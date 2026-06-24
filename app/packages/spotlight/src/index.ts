@@ -124,25 +124,22 @@ export default class Spotlight<K, V> extends EventTarget {
 
     const observer = new ResizeObserver(([el]) => {
       if (this.attached && this.#loaded) {
-        // update rect for height
         this.#rect = el.contentRect;
         this.#render({ ...this.#measure() });
       }
     });
     observer.observe(this.#element);
-    // Run in the next animation frame for a correct measurement;
 
+    // measure on the next animation frame, retrying until height is known
     const fill = () =>
       requestAnimationFrame(() => {
         this.#rect = this.#element.getBoundingClientRect();
 
-        // wait for height
         if (this.#rect.height) {
           this.#fill();
           return;
         }
 
-        // try again
         fill();
       });
 
@@ -303,15 +300,18 @@ export default class Spotlight<K, V> extends EventTarget {
     this.#validate = validate;
 
     return {
-      measure: (item: ItemData<K, V>, itemBytes: Promise<number>) => {
+      measure: (item: ItemData<K, V>, itemBytes: number | Promise<number>) => {
         if (this.#rejected || ar <= MIN_ASPECT_RATIO_RECOMMENDATION) {
           return;
         }
 
-        promises.push(itemBytes);
+        // `showItem` may resolve a size synchronously (cache hit) or async (load);
+        // normalize so the size-accounting path is uniform.
+        const sizeBytes = Promise.resolve(itemBytes);
+        promises.push(sizeBytes);
         items.push(item);
 
-        itemBytes.then((add) => {
+        sizeBytes.then((add) => {
           if (this.#rejected) {
             return;
           }

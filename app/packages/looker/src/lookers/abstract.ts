@@ -49,7 +49,6 @@ import {
   ViewportState,
 } from "../state";
 import {
-  createWorker,
   getDPR,
   getElementBBox,
   getFitRect,
@@ -58,7 +57,7 @@ import {
 } from "../util";
 import { ProcessSample } from "../worker";
 import { AsyncLabelsRenderingManager } from "../worker/async-labels-rendering-manager";
-import { LookerUtils } from "./shared";
+import { nextWorker } from "../worker/pool";
 import { retrieveTransferables } from "./utils";
 
 const LABEL_LISTS_PATH = new Set(withPath(LABELS_PATH, LABEL_LISTS));
@@ -68,29 +67,6 @@ const LABEL_LIST_KEY = Object.fromEntries(
 const LABELS_SET = new Set(LABELS);
 
 const UPDATE_SAMPLE_DEBOUNCE_MS = 100;
-
-/**
- * worker pool for processing labels
- */
-const getLabelsWorker = (() => {
-  const numWorkers =
-    typeof window !== "undefined" ? navigator.hardwareConcurrency || 4 : 1;
-  let workers: Worker[];
-
-  let next = -1;
-  return () => {
-    if (!workers) {
-      workers = [];
-      for (let i = 0; i < numWorkers; i++) {
-        workers.push(createWorker(LookerUtils.workerCallbacks));
-      }
-    }
-
-    next++;
-    next %= numWorkers;
-    return workers[next];
-  };
-})();
 
 export abstract class AbstractLooker<
   State extends BaseState,
@@ -148,8 +124,7 @@ export abstract class AbstractLooker<
     this.ctx = this.canvas.getContext("2d");
 
     if (!this.state.config.thumbnail) {
-      // resize observer adds cost and is not for thumbnails
-      // instead, dimensions are provided when attached
+      // resize observer adds cost; thumbnails get dimensions on attach instead
       this.resizeObserver = new ResizeObserver(() => {
         const box = getElementBBox(this.lookerElement.element);
         if (box[2] && box[3] && this.lookerElement) {
@@ -203,7 +178,7 @@ export abstract class AbstractLooker<
       labelId: _sourceLabelId,
     } = e.detail;
 
-    // .find() instead of .filter() because label "instance" is unique per looker
+    // label instance is unique per looker
     const label = this.currentOverlays.find(
       (o) => o.label.instance?._id === instanceId
     );
@@ -257,7 +232,6 @@ export abstract class AbstractLooker<
 
     this.subscriptions[field].push(callback);
 
-    // return unsubscribe function
     return () => {
       const newCallbacks = this.subscriptions[field].filter(
         (cb) => cb !== callback
@@ -406,15 +380,13 @@ export abstract class AbstractLooker<
         this.previousState = this.state;
         this.state = mergedUpdates as State;
 
-        // check subscriptions
         for (const field in updates) {
           if (this.subscriptions[field]) {
             this.subscriptions[field].forEach((cb) => cb(updates[field]));
           }
         }
 
-        // Need this because when user reset attributeVisibility, it resets
-        // to empty object, which gets overwritten in mergeUpdates
+        // mergeUpdates drops a reset-to-empty attributeVisibility; restore it
         if (JSON.stringify(updates.options?.attributeVisibility) === "{}") {
           this.state.options.attributeVisibility = {};
         }
@@ -605,8 +577,18 @@ export abstract class AbstractLooker<
     }
 
     if (element === this.lookerElement.element.parentElement) {
-      this.state.disabled &&
-        this.updater({ disabled: false, options: { fontSize } });
+      // thumbnails have no resizeObserver, so a re-attach with new dimensions must refit here or the tile keeps its old size
+      const needsResize =
+        !!dimensions &&
+        (this.state.windowBBox?.[2] !== dimensions[0] ||
+          this.state.windowBBox?.[3] !== dimensions[1]);
+      if (needsResize || this.state.disabled) {
+        this.updater({
+          ...(needsResize ? { windowBBox: [0, 0, ...dimensions] } : {}),
+          disabled: false,
+          options: { fontSize },
+        });
+      }
       this.resizeObserver?.observe(element);
       return;
     }
@@ -654,9 +636,10 @@ export abstract class AbstractLooker<
     return (sample: Sample) => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
-        // todo: sometimes instance in spotlight?.updateItems() is defined but has no ref to sample
-        // this crashes the app. this is a bug and should be fixed
-        if (!this.sample) {
+        // captured `sample` can be stale-null (update scheduled before the async
+        // initial load set `this.sample`); fall back to the now-loaded sample
+        const target = sample ?? this.sample;
+        if (!target) {
           return;
         }
 
@@ -666,7 +649,7 @@ export abstract class AbstractLooker<
 
         this.isSampleUpdating = true;
         try {
-          this.loadSample(sample, retrieveTransferables(this.sampleOverlays));
+          this.loadSample(target, retrieveTransferables(this.sampleOverlays));
         } catch (error) {
           this.isSampleUpdating = false;
           console.error(error);
@@ -679,10 +662,13 @@ export abstract class AbstractLooker<
     this.updateSampleDebounced(sample);
   }
 
+  // a refresh requested before the async initial load sets `this.sample` is parked
+  // here and replayed once the sample lands, else grid overlays go unpainted
+  private pendingRefresh: { labels: string[] | null } | null = null;
+
   refreshSample(renderLabels: string[] | null = null) {
-    // todo: sometimes instance in spotlight?.updateItems() is defined but has no ref to sample
-    // this crashes the app. this is a bug and should be fixed
     if (!this.sample) {
+      this.pendingRefresh = { labels: renderLabels };
       return;
     }
 
@@ -700,7 +686,6 @@ export abstract class AbstractLooker<
         this.sample = sample;
         this.loadOverlays(sample);
 
-        // to run looker reconciliation
         this.updater((prev) => ({
           ...prev,
           overlaysPrepared: true,
@@ -911,7 +896,7 @@ export abstract class AbstractLooker<
   private loadSample(sample: Sample, transfer: Transferable[] = []) {
     const messageUUID = uuid();
 
-    const labelsWorker = getLabelsWorker();
+    const labelsWorker = nextWorker();
 
     const listener = ({ data: { sample, coloring, uuid, error } }) => {
       if (uuid === messageUUID) {
@@ -922,8 +907,7 @@ export abstract class AbstractLooker<
           return;
         }
 
-        // we paint overlays again, so cleanup the old ones
-        // this helps prevent memory leaks from, for instance, dangling ImageBitmaps
+        // cleanup old overlays before repainting to free dangling ImageBitmaps
         this.cleanOverlays();
         this.sample = sample;
         this.loadOverlays(sample);
@@ -941,6 +925,13 @@ export abstract class AbstractLooker<
         labelsWorker.removeEventListener("message", listener);
 
         this.isSampleUpdating = false;
+
+        // replay a refresh requested before this sample finished loading
+        if (this.pendingRefresh) {
+          const { labels } = this.pendingRefresh;
+          this.pendingRefresh = null;
+          this.refreshSample(labels);
+        }
       }
     };
 
@@ -963,9 +954,7 @@ export abstract class AbstractLooker<
     try {
       labelsWorker.postMessage(workerArgs, transfer);
     } catch (error) {
-      // rarely we'll get a DataCloneError
-      // if one of the buffers is detached and we didn't catch it
-      // try again without transferring the buffers (copying them)
+      // a detached buffer throws DataCloneError on transfer; retry by copying
       if (error.name === "DataCloneError") {
         labelsWorker.postMessage(workerArgs);
       } else {

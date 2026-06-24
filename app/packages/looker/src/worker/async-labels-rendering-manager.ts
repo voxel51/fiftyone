@@ -6,10 +6,9 @@ import {
 import { v4 as uuid } from "uuid";
 import { ProcessSample } from ".";
 import { Coloring, Sample } from "..";
-import { LookerUtils } from "../lookers/shared";
 import { retrieveTransferables } from "../lookers/utils";
 import { accumulateOverlays } from "../overlays";
-import { createWorker } from "../util";
+import { workerPool as sharedWorkerPool } from "./pool";
 
 export type AsyncLabelsRenderingJob = {
   sample: Sample;
@@ -30,18 +29,12 @@ export type WorkerResponse = {
   uuid: string;
 };
 
-const MAX_WORKERS =
-  typeof window !== "undefined" ? navigator.hardwareConcurrency || 4 : 0;
-
-// global job queue and indexes
 const jobQueue: AsyncLabelsRenderingJob[] = [];
 const pendingJobs = new Map<Sample, AsyncLabelsRenderingJob>();
 const processingSamples = new Set<Sample>();
 
-const workerPool: Worker[] = Array.from({ length: MAX_WORKERS }, () =>
-  createWorker(LookerUtils.workerCallbacks)
-);
-const freeWorkers: Worker[] = workerPool.slice();
+// shared with the initial-load pool so we don't run a second worker pool
+const freeWorkers: Worker[] = sharedWorkerPool().slice();
 
 const updateRenderingCount = (delta: number) => {
   jotaiStore.set(numConcurrentRenderingLabels, (curr) =>
@@ -63,14 +56,13 @@ export const processQueue = () => {
       const job = jobQueue[i];
       if (!processingSamples.has(job.sample)) {
         jobQueue.splice(i, 1);
-        // note: object equality makes sense here
         if (pendingJobs.get(job.sample) === job) {
           pendingJobs.delete(job.sample);
         }
         processingSamples.add(job.sample);
         assignJobToFreeWorker(job);
         jobAssigned = true;
-        // restart search as jobQueue has been modified
+        // restart search since jobQueue was mutated
         break;
       }
     }
@@ -91,10 +83,8 @@ const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
     if (resUuid !== messageUuid) return;
 
     cleanup();
-    // shallow merge worker-returned sample with the original sample.
     const mergedSample = { ...job.sample, ...sample };
 
-    // also merge frames if they exist
     if (job.sample.frames && sample.frames) {
       mergedSample.frames = job.sample.frames.map((frame, idx) => {
         return { ...frame, ...sample.frames[idx] };
@@ -126,7 +116,6 @@ const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
   worker.addEventListener("message", handleMessage);
   worker.addEventListener("error", handleError);
 
-  // filter sample to only include keys in job.labels
   const pluckRelevant = (sample: Sample, frames = false) => {
     const filtered = { ...sample };
     Object.keys(filtered).forEach((key) => {
@@ -196,7 +185,6 @@ export class AsyncLabelsRenderingManager {
     return new Promise<AsyncJobResolutionResult>((resolve, reject) => {
       const pendingJob = pendingJobs.get(sample);
       if (pendingJob) {
-        // merge / replace pending job for the same sample
         pendingJob.labels = [...new Set([...pendingJob.labels, ...labels])];
         pendingJob.resolve = resolve;
         pendingJob.reject = reject;

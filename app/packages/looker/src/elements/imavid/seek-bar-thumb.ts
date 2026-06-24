@@ -42,7 +42,8 @@ export class SeekBarThumbElement extends BaseElement<
   }: Readonly<ImaVidState>) {
     const totalFrames = frameStoreController.totalFrameCount;
 
-    if (totalFrames === 0) {
+    // nothing to position against until the stream reveals the group's length.
+    if (!totalFrames) {
       return this.element;
     }
 

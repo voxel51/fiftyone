@@ -61,6 +61,12 @@ export default class SegmentationOverlay<State extends BaseState>
       return;
     }
 
+    // mask buffer was transferred to a render worker (detached, byteLength 0); the
+    // cached bitmap still draws, so skip rebuilding hit-test targets rather than throw
+    if (this.label.mask.data.buffer.byteLength === 0) {
+      return;
+    }
+
     this.targets = new ARRAY_TYPES[this.label.mask.data.arrayType](
       this.label.mask.data.buffer
     );
@@ -82,7 +88,8 @@ export default class SegmentationOverlay<State extends BaseState>
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
-    if (!this.targets) {
+    // targets is absent when the mask buffer was transferred; bail only if there's also no bitmap
+    if (!this.targets && !this.label.mask?.bitmap?.width) {
       return;
     }
 
@@ -173,7 +180,7 @@ export default class SegmentationOverlay<State extends BaseState>
       this.initRgbMaskTargetsCache(maskTargets);
 
       if (!this.isRgbMaskTargets) {
-        // getting color here is computationally inefficient, return no tooltip ribbon color for this edge case
+        // computing color here is too expensive; skip the tooltip ribbon color
         return rgbSegmentationInfoWithoutColor;
       }
 

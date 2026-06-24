@@ -8,13 +8,13 @@ import {
   DETECTIONS,
   DYNAMIC_EMBEDDED_DOCUMENT,
   EMBEDDED_DOCUMENT,
-  LABEL_LIST,
-  Schema,
-  Stage,
-  VALID_LABEL_TYPES,
   getCls,
   getFetchFunction,
+  LABEL_LIST,
+  Schema,
   setFetchFunction,
+  Stage,
+  VALID_LABEL_TYPES,
   is3d,
 } from "@fiftyone/utilities";
 import { CHUNK_SIZE } from "../constants";
@@ -66,8 +66,7 @@ const shouldProcessLabel = ({
   label: any;
   activePaths: string[];
 }) => {
-  // check if it has a valid render status, in which case it takes precendence over activePaths
-  // it means this label was processed before and we should re-render it
+  // an already-processed label re-renders regardless of activePaths
   const currentLabel_renderStatus = label?._renderStatus;
 
   if (
@@ -135,7 +134,7 @@ const processLabels = async (
           })
         ) {
           maskPathDecodingPromises.push(
-            // note: if it's an already decoded label, this will be cheap
+            // cheap when the label is already decoded
             decodeOverlayOnDisk(
               `${prefix || ""}${field}`,
               label,
@@ -153,7 +152,7 @@ const processLabels = async (
             DeserializerFactory[cls](label, maskTargetsBuffers);
           }
         } else {
-          // we'll process this label asynchronously later
+          // deferred to the async render path
           label._renderStatus = null;
         }
       }
@@ -287,8 +286,7 @@ const collectBitmapPromises = (label, cls, bitmapPromises) => {
       height
     );
 
-    // set raw image to null - will be garbage collected
-    // we don't need it anymore since we copied to ImageData
+    // free the raw image now that it's copied into ImageData
     label[overlayField].image = null;
 
     bitmapPromises.push(
@@ -360,7 +358,7 @@ const processSample = async ({
   let maskTargetsBuffers: ArrayBuffer[] = [];
 
   if (is3d(sample?._media_type)) {
-    // we process all 3d labels regardless of active paths
+    // 3d labels are processed regardless of active paths
     process3DLabels(schema, sample);
   } else {
     const [bitmapPromises, moreMaskTargetsBuffers] = await processLabels(

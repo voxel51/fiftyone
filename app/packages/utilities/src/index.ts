@@ -718,16 +718,7 @@ export const getMimeType = (sample: Sample) => {
 };
 
 export const toSlug = (name: string) => {
-  /**  Returns the URL-friendly slug for the given string.
-   *
-   * The following strategy is used to generate slugs:
-   *   (based on fiftyone.core.utils `to_slug` function)
-   *   -   The characters ``A-Za-z0-9`` are converted to lowercase
-   *   -   Whitespace and ``+_.-`` are converted to ``-``
-   *   -   All other characters are omitted
-   *   -   All consecutive ``-`` characters are reduced to a single ``-``
-   *   -   All leading and trailing ``-`` are stripped
-   */
+  /** Returns the URL-friendly slug for the given string (mirrors `to_slug`). */
   if (name.length < 1) {
     return "";
   }
