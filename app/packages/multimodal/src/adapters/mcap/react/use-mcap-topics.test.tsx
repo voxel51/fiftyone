@@ -126,6 +126,7 @@ function createTopicsClient(
     readSynchronizedMessages: vi.fn(),
     readTimelineRange: vi.fn(),
     readTopics: vi.fn(readTopics),
+    readTopicTimeBounds: vi.fn(async () => []),
   };
 }
 

@@ -38,8 +38,8 @@ export interface MosaicGridProps {
    * (`addTileToLayout(layout, newId, focusedTileId)`).
    */
   focusedTileId?: string | null;
-  /** Called when the user clicks a tile's header or body. */
-  onFocusTile?: (id: string) => void;
+  /** Called when the user selects a tile or invokes one of its actions. */
+  onFocusTile?: (id: string, reason: "select" | "action") => void;
   className?: string;
 }
 
@@ -115,6 +115,7 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
   // mutation happened (add/remove/reflow) and the snapshot is stale.
   const expandedLayoutRef = useRef<MosaicNode<string> | null>(null);
 
+  // This effect invalidates fullscreen restore state after external layout changes.
   useEffect(() => {
     if (
       expandedTileId !== null &&
@@ -151,7 +152,8 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
     const tile = tiles[id];
     if (!tile) return <div />;
 
-    const focus = () => onFocusTile?.(id);
+    const focusForSelect = () => onFocusTile?.(id, "select");
+    const focusForAction = () => onFocusTile?.(id, "action");
     const isFocused = focusedTileId === id;
 
     // Focus is folded into the action callbacks rather than fired from a
@@ -159,7 +161,7 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
     // re-render between pointerdown and click that swallowed the click on
     // the toolbar's buttons (needed two taps to fullscreen).
     const handleClose = () => {
-      focus();
+      focusForAction();
       if (expandedTileId === id) {
         preExpandLayout.current = null;
         setExpandedTileId(null);
@@ -170,7 +172,7 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
       }
     };
     const handleFullscreen = () => {
-      focus();
+      focusForAction();
       handleExpand(id, path);
     };
 
@@ -180,7 +182,7 @@ const MosaicGrid: React.FC<MosaicGridProps> = ({
           path={path}
           tile={tile}
           isFocused={isFocused}
-          onFocus={focus}
+          onFocus={focusForSelect}
           onClose={handleClose}
           onFullscreen={handleFullscreen}
         />
@@ -214,10 +216,7 @@ export function autoLayout(ids: string[]): MosaicNode<string> | null {
   return build(ids, "row");
 }
 
-function build(
-  ids: string[],
-  direction: "row" | "column"
-): MosaicNode<string> {
+function build(ids: string[], direction: "row" | "column"): MosaicNode<string> {
   if (ids.length === 1) return ids[0];
   const mid = Math.ceil(ids.length / 2);
   const next: "row" | "column" = direction === "row" ? "column" : "row";

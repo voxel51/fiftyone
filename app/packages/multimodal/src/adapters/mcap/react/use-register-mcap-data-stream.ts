@@ -18,6 +18,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getMcapTopicStatus,
+  setMcapTopicStartTimeSec,
   setMcapTopicStatus,
   type McapTopicStatus,
 } from "./mcap-stream-status-state";
@@ -127,6 +128,15 @@ const MAX_FETCH_FAILURE_STREAK = 3;
  */
 const BUFFERED_RANGES_PUBLISH_INTERVAL_MS = 500;
 
+/**
+ * Age past which a rendered frame counts as "stale": selection is
+ * latest-at-or-before with unbounded lookback, so a mid-recording
+ * sensor dropout keeps rendering the last frame — the status flips so
+ * a frozen frame can't read as live. Generous enough that normally
+ * sparse streams (keyframe-rate annotations) never trip it.
+ */
+const STALE_THRESHOLD_NS = 3_000_000_000n;
+
 const PLAYBACK_POLICY = deriveMcapPlaybackPolicy(DEFAULT_MCAP_PLAYBACK_POLICY);
 
 const noop = (): void => undefined;
@@ -157,7 +167,7 @@ export function useRegisterMcapDataStream({
   allTopics,
   streamPolicies,
 }: UseMcapDataStreamOptions): void {
-  const { registerStream, subscribeStream } = usePlayback();
+  const { registerStream, seek, subscribeStream } = usePlayback();
   const store = usePlaybackStore();
   const setDataStream = useSetMcapDataStream();
   const seekEvent = useSeekEvent();
@@ -180,6 +190,8 @@ export function useRegisterMcapDataStream({
   const bufferedRangesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   );
+  const topicStartTimesNsRef = useRef<Map<string, bigint | null>>(new Map());
+  const autoSeekSourceEpochRef = useRef<number | null>(null);
   const nextLookaheadRefreshTimeRef = useRef(0);
   const indexRef = useRef<McapTimelineIndex | null>(null);
   const sourceEpochRef = useRef(0);
@@ -195,6 +207,50 @@ export function useRegisterMcapDataStream({
   useEffect(() => {
     streamPoliciesRef.current = streamPolicies;
   }, [streamPolicies]);
+
+  const getActiveTopics = useCallback(
+    (): string[] =>
+      allTopicsRef.current.filter(
+        (t) => topicCachesRef.current.get(t)?.isActive
+      ),
+    []
+  );
+
+  // If a recording's selected renderable topics begin just after the MCAP
+  // timeline start, land the initial playhead on the first sampled tick that
+  // can actually resolve data. This consumes the topic bounds already loaded
+  // for status copy; it never asks the worker for another index/read.
+  const maybeAutoSeekToFirstData = useCallback(() => {
+    const currentEpoch = sourceEpochRef.current;
+    if (autoSeekSourceEpochRef.current === currentEpoch) return;
+    if (getPlayhead(store) !== 0) return;
+
+    const currentIndex = indexRef.current;
+    if (!currentIndex) return;
+
+    const activeTopics = getActiveTopics();
+    if (activeTopics.length === 0) return;
+
+    let firstMessageTimeNs: bigint | null = null;
+    for (const topic of activeTopics) {
+      if (!topicStartTimesNsRef.current.has(topic)) return;
+      const topicStart = topicStartTimesNsRef.current.get(topic);
+      if (topicStart === null || topicStart === undefined) return;
+      if (firstMessageTimeNs === null || topicStart < firstMessageTimeNs) {
+        firstMessageTimeNs = topicStart;
+      }
+    }
+    if (firstMessageTimeNs === null) return;
+
+    const tick = firstTickAtOrAfter(currentIndex.ticks, firstMessageTimeNs);
+    if (tick === undefined) return;
+
+    const targetSec = nsToSeconds(tick - currentIndex.startTimeNs);
+    if (targetSec <= 0) return;
+
+    autoSeekSourceEpochRef.current = currentEpoch;
+    seek(targetSec);
+  }, [getActiveTopics, seek, store]);
 
   // Pending helpers — wrap the per-tick topic sets so call sites read
   // like simple predicates instead of repeating the get/has dance.
@@ -251,6 +307,8 @@ export function useRegisterMcapDataStream({
     lastFrameRef.current.clear();
     failureStreakRef.current.clear();
     failedTopicsRef.current.clear();
+    topicStartTimesNsRef.current.clear();
+    autoSeekSourceEpochRef.current = null;
     nextLookaheadRefreshTimeRef.current = 0;
     for (const cache of topicCachesRef.current.values()) {
       cache.clear();
@@ -258,6 +316,7 @@ export function useRegisterMcapDataStream({
     for (const topic of topicCachesRef.current.keys()) {
       setStreamValue(store, topic, null);
       setMcapTopicStatus(store, topic, "loading");
+      setMcapTopicStartTimeSec(store, topic, null);
     }
     resetMcapPlaybackBuffering(store);
     if (bufferedRangesTimerRef.current !== null) {
@@ -266,12 +325,39 @@ export function useRegisterMcapDataStream({
     }
     if (!source) return;
     let cancelled = false;
-    client
-      .readTimelineRange({ source, activeTimeline: MCAP_ACTIVE_TIMELINE.LOG })
+    const rangeRead = client.readTimelineRange({
+      source,
+      activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+    });
+    rangeRead
       .then((range) => {
         if (!cancelled && sourceEpochRef.current === sourceEpoch) {
           setIndex(createMcapTimelineIndex(range));
         }
+      })
+      .catch(noop);
+    // Auxiliary: per-topic first-message times feed the "No data until
+    // 0:12" tile copy. Best-effort — failures never block playback.
+    rangeRead
+      .then(async (range) => {
+        const bounds = await client.readTopicTimeBounds({
+          activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+          source,
+          topics: allTopicsRef.current,
+        });
+        if (cancelled || sourceEpochRef.current !== sourceEpoch) return;
+        for (const bound of bounds) {
+          topicStartTimesNsRef.current.set(
+            bound.topic,
+            bound.firstMessageTimeNs
+          );
+          const startSec =
+            bound.firstMessageTimeNs === null
+              ? null
+              : nsToSeconds(bound.firstMessageTimeNs - range.startTimeNs);
+          setMcapTopicStartTimeSec(store, bound.topic, startSec);
+        }
+        maybeAutoSeekToFirstData();
       })
       .catch(noop);
     return () => {
@@ -280,15 +366,13 @@ export function useRegisterMcapDataStream({
     // client is a stable singleton — re-running on its identity would
     // discard the loaded timeline range for no benefit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [source, store]);
+  }, [maybeAutoSeekToFirstData, source, store]);
 
-  const getActiveTopics = useCallback(
-    (): string[] =>
-      allTopicsRef.current.filter(
-        (t) => topicCachesRef.current.get(t)?.isActive
-      ),
-    []
-  );
+  // This effect retries the initial auto-seek once the timeline index is
+  // committed to React state; topic bounds can resolve first.
+  useEffect(() => {
+    if (index) maybeAutoSeekToFirstData();
+  }, [index, maybeAutoSeekToFirstData]);
 
   // Contiguous [startSec, endSec] ranges where every active topic has the
   // tick cached — i.e. the stretches playback can run through without
@@ -374,7 +458,18 @@ export function useRegisterMcapDataStream({
         if (failed.has(topic)) {
           status = "failed";
         } else {
-          status = cache.get(tick) ? "ready" : "gap";
+          const msg = cache.get(tick);
+          if (!msg) {
+            status = "gap";
+          } else {
+            // Latest-at-or-before selection holds the last frame through
+            // dropouts; flag it once the frame is older than the
+            // threshold so a frozen frame can't read as live.
+            status =
+              tick - msg.timelineTimeNs > STALE_THRESHOLD_NS
+                ? "stale"
+                : "ready";
+          }
         }
       }
       if (getMcapTopicStatus(store, topic) !== status) {
@@ -710,6 +805,9 @@ export function useRegisterMcapDataStream({
 
       bufferState: (timeSec) => {
         const tick = index.nearestTick(timeSec);
+        // Explicit undefined check — `0n` is falsy but a valid tick
+        // (files with relative log times start at exactly 0n, and a
+        // falsy check here wedges the engine at t=0 forever).
         if (tick === undefined) return "missing";
         const activeTopics = getActiveTopics();
         if (activeTopics.length === 0) return "ready";
@@ -826,6 +924,7 @@ export function useRegisterMcapDataStream({
       if (!cache) return noop;
 
       const cleanup = cache.subscribe();
+      maybeAutoSeekToFirstData();
       prefetchLookaheadFrom(getPlayhead(store));
       return () => {
         cleanup();
@@ -835,7 +934,7 @@ export function useRegisterMcapDataStream({
         if (!cache.isActive) lastFrameRef.current.delete(topic);
       };
     },
-    [prefetchLookaheadFrom, store]
+    [maybeAutoSeekToFirstData, prefetchLookaheadFrom, store]
   );
 
   const getTopicCache = useCallback(
@@ -906,6 +1005,14 @@ function activeTopicsInCaches(
   return topics.filter((topic) => caches.get(topic)?.isActive);
 }
 
+function nsToSeconds(deltaNs: bigint): number {
+  const clamped = deltaNs < 0n ? 0n : deltaNs;
+  return (
+    Number(clamped / 1_000_000_000n) +
+    Number(clamped % 1_000_000_000n) / 1_000_000_000
+  );
+}
+
 function distributeWindowToCaches(
   window: McapSynchronizedMessageWindow,
   caches: Map<string, McapTopicCache>,
@@ -950,6 +1057,14 @@ function lowerBoundBigInt(arr: readonly bigint[], target: bigint): number {
     else hi = mid;
   }
   return lo;
+}
+
+function firstTickAtOrAfter(
+  ticks: readonly bigint[],
+  target: bigint
+): bigint | undefined {
+  const index = lowerBoundBigInt(ticks, target);
+  return ticks[index];
 }
 
 function bufferedRangesEqual(

@@ -2,6 +2,7 @@ import {
   getBufferedRanges,
   getBufferingDetail,
   getIsBuffering,
+  getPlayhead,
   getStreamValue,
   PlaybackProvider,
   setIsBuffering,
@@ -412,6 +413,43 @@ describe("stream status + buffering feedback", () => {
       expect(getIsBuffering(store)).toBe(false);
     });
   });
+
+  it("auto-forwards the initial playhead to the first tick with indexed topic data", async () => {
+    const source = createSource("source");
+    const storeCapture = capturePlaybackStore();
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(
+        () =>
+          new Promise<readonly McapSynchronizedMessageWindow[]>(() => undefined)
+      ),
+      readSynchronizedMessages: vi.fn(
+        () => new Promise<McapSynchronizedMessageWindow>(() => undefined)
+      ),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readTopicTimeBounds: vi.fn(async () => [
+        {
+          firstMessageTimeNs: 10_000_000n,
+          lastMessageTimeNs: 1_000_000_000n,
+          topic: TOPIC,
+        },
+      ]),
+    });
+
+    render(
+      <Harness
+        client={client}
+        onStore={storeCapture.onStore}
+        source={source}
+      />,
+      { wrapper: TestProviders }
+    );
+    const store = storeCapture.store();
+
+    await waitFor(() => {
+      expect(getPlayhead(store)).toBeCloseTo(1 / 30, 6);
+    });
+    expect(client.readTopicTimeBounds).toHaveBeenCalledTimes(1);
+  });
 });
 
 function Harness({
@@ -491,10 +529,12 @@ function createClient({
   readSynchronizedMessages = vi.fn(
     () => new Promise<McapSynchronizedMessageWindow>(() => undefined)
   ),
+  readTopicTimeBounds = vi.fn(async () => []),
 }: {
   readonly readSynchronizedMessageBatch: McapResourceClient["readSynchronizedMessageBatch"];
   readonly readTimelineRange: McapResourceClient["readTimelineRange"];
   readonly readSynchronizedMessages?: McapResourceClient["readSynchronizedMessages"];
+  readonly readTopicTimeBounds?: McapResourceClient["readTopicTimeBounds"];
 }): McapResourceClient {
   return {
     dispose: vi.fn(),
@@ -509,6 +549,7 @@ function createClient({
     readSynchronizedMessages,
     readTimelineRange,
     readTopics: vi.fn(async () => []),
+    readTopicTimeBounds,
   };
 }
 

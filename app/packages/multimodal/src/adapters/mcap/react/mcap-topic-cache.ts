@@ -16,10 +16,17 @@ interface CacheEntry {
  * topic — distinct from "not yet fetched", which `has()` reports as false.
  * Tracks subscriber count so the data stream can skip fetching for topics
  * with no active tiles.
+ *
+ * The cache is also a tiny external store: interpolation hooks read lookahead
+ * messages directly from it, so they subscribe to `revision` changes via
+ * `subscribeToChanges()` instead of waiting for the playback stream value to
+ * change.
  */
 export class McapTopicCache {
   private readonly cache: LRUCache<string, CacheEntry>;
+  private readonly listeners = new Set<() => void>();
   private _subscriberCount = 0;
+  private _revision = 0;
 
   constructor(maxEntries = DEFAULT_MAX_ENTRIES) {
     this.cache = new LRUCache({ max: maxEntries });
@@ -27,6 +34,10 @@ export class McapTopicCache {
 
   get isActive(): boolean {
     return this._subscriberCount > 0;
+  }
+
+  get revision(): number {
+    return this._revision;
   }
 
   subscribe(): () => void {
@@ -43,7 +54,14 @@ export class McapTopicCache {
       // for a topic no tile is rendering is pure memory pressure, and a
       // future re-subscribe should start from a clean slate so it can't
       // flash stale data while the next fetch lands.
-      if (this._subscriberCount === 0) this.cache.clear();
+      if (this._subscriberCount === 0) this.clear();
+    };
+  }
+
+  subscribeToChanges(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
     };
   }
 
@@ -56,7 +74,13 @@ export class McapTopicCache {
   }
 
   set(tick: bigint, msg: McapDecodedMessage | null): void {
-    this.cache.set(tick.toString(), { msg });
+    const key = tick.toString();
+    const hadEntry = this.cache.has(key);
+    // peek() reads the prior value without refreshing LRU recency, so re-setting
+    // an unchanged value doesn't promote the entry toward the front of the cache.
+    const previous = this.cache.peek(key)?.msg;
+    this.cache.set(key, { msg });
+    if (!hadEntry || previous !== msg) this.bumpRevision();
   }
 
   /** Drop every cached entry without touching subscriptions. Used when
@@ -64,6 +88,13 @@ export class McapTopicCache {
    *  previously-cached frames are now from a different recording and
    *  must not be reused. */
   clear(): void {
+    if (this.cache.size === 0) return;
     this.cache.clear();
+    this.bumpRevision();
+  }
+
+  private bumpRevision(): void {
+    this._revision++;
+    for (const listener of this.listeners) listener();
   }
 }
