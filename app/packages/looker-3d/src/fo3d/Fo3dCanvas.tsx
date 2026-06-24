@@ -9,7 +9,6 @@ import { useAtomValue } from "jotai";
 import type * as THREE from "three";
 import type { Vector3 } from "three";
 import { SpinningCube } from "../SpinningCube";
-import { StatusTunnel } from "../StatusBar";
 import { AnnotationPlane } from "../annotation/AnnotationPlane";
 import { CreateCuboidRenderer } from "../annotation/CreateCuboidRenderer";
 import { Crosshair3D } from "../annotation/Crosshair3D";
@@ -20,6 +19,7 @@ import { useCameraViews } from "../hooks/use-camera-views";
 import { ThreeDLabels } from "../labels";
 import { RaycastService } from "../services/RaycastService";
 import type { Fo3dCameraControls } from "./camera-controls";
+import { Fo3dPerformanceMonitor } from "./Fo3dPerformanceMonitor";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
 import { FoScene } from "./render-types";
@@ -106,7 +106,7 @@ export const Fo3dSceneContent = ({
   return (
     <>
       <RaycastService panelId={PANEL_ID_MAIN} />
-      <StatusTunnel.Out />
+      <Fo3dPerformanceMonitor />
       <AdaptiveDpr pixelated />
       <AdaptiveEvents />
 

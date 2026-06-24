@@ -99,6 +99,31 @@ export const isStatusBarOnAtom = atom<boolean>({
   default: false,
 });
 
+export type Fo3dPerformanceStats = {
+  fps: number;
+  calls: number;
+  triangles: number;
+  points: number;
+  geometries: number;
+  textures: number;
+  programs: number;
+};
+
+export const DEFAULT_FO3D_PERFORMANCE_STATS: Fo3dPerformanceStats = {
+  fps: 0,
+  calls: 0,
+  triangles: 0,
+  points: 0,
+  geometries: 0,
+  textures: 0,
+  programs: 0,
+};
+
+export const fo3dPerformanceStatsAtom = atom<Fo3dPerformanceStats>({
+  key: "fo3d-performanceStats",
+  default: DEFAULT_FO3D_PERFORMANCE_STATS,
+});
+
 // GRID & BACKGROUND
 export const isGridOnAtom = atom<boolean>({
   key: "fo3d-isGridOn",

@@ -12,7 +12,6 @@ import TimelineIcon from "@mui/icons-material/Timeline";
 import CameraIcon from "@mui/icons-material/Videocam";
 import Text from "@mui/material/Typography";
 import { animated, useSpring } from "@react-spring/web";
-import { PerfHeadless, getPerf } from "r3f-perf";
 import {
   type RefObject,
   useCallback,
@@ -23,13 +22,13 @@ import {
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import type { OrthographicCamera, PerspectiveCamera, Vector3 } from "three";
-import tunnel from "tunnel-rat";
 import { AnnotationTips } from "./AnnotationTips";
 import { StatusBarContainer } from "./containers";
 import {
   activeNodeAtom,
   activeSegmentationStateAtom,
   cameraViewStatusAtom,
+  fo3dPerformanceStatsAtom,
   isStatusBarOnAtom,
 } from "./state";
 
@@ -131,7 +130,7 @@ const CloseBar = styled.div<{ $bg: string }>`
   background-color: ${(p) => p.$bg};
 `;
 
-const PerfPanel = styled.div<{ $bg: string }>`
+const StatusPanel = styled.div<{ $bg: string }>`
   display: flex;
   flex-direction: column;
   padding-left: 1em;
@@ -164,8 +163,6 @@ const ViewStatusMessage = styled.div<{ $color: string; $multiview: boolean }>`
   user-select: none;
   pointer-events: none;
 `;
-
-export const StatusTunnel = tunnel();
 
 const CameraInfo = ({
   cameraRef,
@@ -214,35 +211,7 @@ const CameraInfo = ({
 };
 
 const PerfStats = () => {
-  const [perfStats, setPerfStats] = useState({
-    fps: 0,
-    calls: 0,
-    triangles: 0,
-    points: 0,
-    geometries: 0,
-    textures: 0,
-    programs: 0,
-  });
-
-  useEffect(() => {
-    const updateStats = () => {
-      const perfState = getPerf() as any;
-      if (!perfState) return;
-
-      setPerfStats({
-        fps: perfState.log?.fps || 0,
-        calls: perfState.gl?.info?.render?.calls || 0,
-        triangles: perfState.gl?.info?.render?.triangles || 0,
-        points: perfState.gl?.info?.render?.points || 0,
-        geometries: perfState.gl?.info?.memory?.geometries || 0,
-        textures: perfState.gl?.info?.memory?.textures || 0,
-        programs: perfState.gl?.info?.programs?.length || 0,
-      });
-    };
-
-    const interval = setInterval(updateStats, 500);
-    return () => clearInterval(interval);
-  }, []);
+  const perfStats = useRecoilValue(fo3dPerformanceStatsAtom);
 
   const statBarColors = {
     // blue
@@ -467,12 +436,9 @@ export const StatusBar = ({
                 <Close />
               </IconButton>
             </CloseBar>
-            <PerfPanel $bg={`hsla(208.46, 87%, 53%, 0.20)`}>
+            <StatusPanel $bg={`hsla(208.46, 87%, 53%, 0.20)`}>
               <CameraInfo cameraRef={cameraRef} />
-              <StatusTunnel.In>
-                <PerfHeadless />
-              </StatusTunnel.In>
-            </PerfPanel>
+            </StatusPanel>
           </StatusBarContainer>
         </>
       )}

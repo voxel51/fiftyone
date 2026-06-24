@@ -26,10 +26,6 @@ vi.mock("@react-three/drei", () => ({
   PerspectiveCamera: () => null,
 }));
 
-vi.mock("../../StatusBar", () => ({
-  StatusTunnel: { Out: () => null },
-}));
-
 vi.mock("../../SpinningCube", () => ({
   SpinningCube: () => null,
 }));
@@ -75,6 +71,12 @@ vi.mock("../../services/RaycastService", () => ({
 
 vi.mock("../FoScene", () => ({
   FoSceneComponent: () => null,
+}));
+
+const fo3dPerformanceMonitorMock = vi.fn(() => null);
+
+vi.mock("../Fo3dPerformanceMonitor", () => ({
+  Fo3dPerformanceMonitor: () => fo3dPerformanceMonitorMock(),
 }));
 
 vi.mock("../Gizmos", () => ({
