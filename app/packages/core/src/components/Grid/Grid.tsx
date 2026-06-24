@@ -11,6 +11,7 @@ import {
   gridAspectRatio,
   gridAutosizing,
   gridCrop,
+  gridEngineAuto,
   gridSpacing,
   maxGridItemsSizeBytes,
   pageParameters,
@@ -38,10 +39,15 @@ function Grid() {
   const pixels = useMemoOne(() => uuid(), []);
   const spacing = useRecoilValue(gridSpacing);
 
-  // A fixed tile aspect ratio enables the virtualized infinite grid; "auto" (parses
-  // to null) keeps the justified, cursor-paginated Spotlight grid.
-  const useInfiniteGrid =
+  // A fixed tile aspect ratio always uses the virtualized infinite grid. "auto"
+  // (parses to null) keeps the justified Spotlight grid unless the engine flag opts
+  // in (Phase 2 A/B: justified-from-spine vs Spotlight, before Spotlight is retired).
+  // call both hooks unconditionally (no short-circuit) — `||` would skip the
+  // second hook in fixed mode and break the Rules of Hooks on toggle
+  const fixedAspectRatio =
     parseAspectRatio(useRecoilValue(gridAspectRatio)) !== null;
+  const engineAuto = useRecoilValue(gridEngineAuto);
+  const useInfiniteGrid = fixedAspectRatio || engineAuto;
   const { pageReset, reset } = useRefreshers();
   const [resizing, setResizing] = useState(false);
   const zoom = useZoomSetting();

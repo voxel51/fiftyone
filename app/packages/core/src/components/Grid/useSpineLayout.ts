@@ -26,12 +26,21 @@ export interface SpineLayout {
   virtualHeight: number;
   /** absolute (pre-vTop) position of a sample index. */
   posOf: (index: number) => { x: number; y: number };
+  /** position + size of a sample index (shared layout surface). */
+  cellOf: (index: number) => {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
   /** the sample index range intersecting [vTop, vTop+viewportHeight] (+ overscanRows). */
   indexRange: (
     vTop: number,
     viewportHeight: number,
     overscanRows: number
   ) => { start: number; end: number };
+  /** deepest item index visible at [vTop, vTop+viewportHeight], clamped to the count. */
+  lastVisibleIndex: (vTop: number, viewportHeight: number) => number;
 }
 
 export default function useSpineLayout(
@@ -74,6 +83,11 @@ export default function useSpineLayout(
       };
     };
 
+    const cellOf = (index: number) => {
+      const { x, y } = posOf(index);
+      return { x, y, width: cellWidth, height: rowHeight };
+    };
+
     const indexRange = (
       vTop: number,
       viewportHeight: number,
@@ -89,6 +103,13 @@ export default function useSpineLayout(
       return { start, end: Math.max(start, end) };
     };
 
+    const lastVisibleIndex = (vTop: number, viewportHeight: number) =>
+      Math.min(
+        totalCount,
+        Math.ceil((vTop - headerOffset + viewportHeight) / rowStride) *
+          itemsPerRow
+      );
+
     return {
       itemsPerRow,
       rowHeight,
@@ -99,7 +120,9 @@ export default function useSpineLayout(
       totalRows,
       virtualHeight,
       posOf,
+      cellOf,
       indexRange,
+      lastVisibleIndex,
     };
   }, [width, zoom, aspectRatioSetting, spacing, totalCount, headerOffset]);
 }

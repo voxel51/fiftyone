@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { VariablesOf } from "react-relay";
 import type { RecoilValueReadOnly } from "recoil";
 import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
-import { gridSpineTotal } from "./recoil";
+import { gridAspectRatio, gridSpineTotal, parseAspectRatio } from "./recoil";
 import type { Records } from "./useRecords";
 
 export const PAGE_SIZE = 40;
@@ -336,6 +336,11 @@ const useSpotlightPager = ({
                 0,
                 PAGE_SIZE
               ) as Record<string, unknown>;
+              // justified (auto) layout needs per-item ARs; a fixed ratio keeps the
+              // spine an index-only read
+              const wantAr =
+                parseAspectRatio(await snapshot.getPromise(gridAspectRatio)) ===
+                null;
               const resp = await fos.fetchSpine({
                 datasetId: id,
                 after: start,
@@ -347,6 +352,7 @@ const useSpotlightPager = ({
                 // same index hint paginateSamples uses, so the spine's $skip walks
                 // index entries instead of scanning docs at deep offsets
                 hint: base.hint as string | undefined,
+                aspectRatio: wantAr,
               });
               const got = resp?.spine ?? [];
               got.forEach((e, i) => {

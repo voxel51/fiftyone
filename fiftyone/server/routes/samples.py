@@ -205,6 +205,19 @@ class Samples(HTTPEndpoint):
         return JSONResponse({"samples": samples})
 
 
+def _spine_entry(doc: Dict[str, Any], want_ar: bool) -> Dict[str, Any]:
+    """One spine record: id, optional group count, optional aspect ratio."""
+    entry: Dict[str, Any] = {"id": str(doc["_id"])}
+    if "_group_count" in doc:
+        entry["groupCount"] = doc["_group_count"]
+    if want_ar:
+        metadata = doc.get("metadata") or {}
+        width = metadata.get("width")
+        height = metadata.get("height")
+        entry["aspectRatio"] = width / height if width and height else None
+    return entry
+
+
 class GridSamples(HTTPEndpoint):
     """Ordered id-only paginated reader."""
 
@@ -240,9 +253,16 @@ class GridSamples(HTTPEndpoint):
         for stage in getattr(view, "_stages", []):
             if isinstance(stage, fos.GroupBy):
                 stage._include_count = True
+        # the justified (auto-AR) layout needs each tile's aspect ratio; fixed AR
+        # doesn't, so stay an index-only `_id` read unless asked
+        want_ar = bool(data.get("aspectRatio"))
+        project: Dict[str, Any] = {"_id": 1, "_group_count": 1}
+        if want_ar:
+            project["metadata.width"] = 1
+            project["metadata.height"] = 1
+
         pipeline = await get_samples_pipeline(view, sample_filter)
-        # keep `_group_count` alongside the id projection
-        pipeline.append({"$project": {"_id": 1, "_group_count": 1}})
+        pipeline.append({"$project": project})
         coll = foo.get_async_db_conn()[view._dataset._sample_collection_name]
         # same index hint paginate_samples uses, so $skip walks index entries
         docs = await foo.aggregate(coll, pipeline, data.get("hint")).to_list(
@@ -251,12 +271,7 @@ class GridSamples(HTTPEndpoint):
 
         more = len(docs) > SPINE_PAGE
         docs = docs[:SPINE_PAGE]
-        spine = [
-            {"id": str(d["_id"]), "groupCount": d["_group_count"]}
-            if "_group_count" in d
-            else {"id": str(d["_id"])}
-            for d in docs
-        ]
+        spine = [_spine_entry(d, want_ar) for d in docs]
         return JSONResponse(
             {"spine": spine, "next": after + SPINE_PAGE if more else None}
         )

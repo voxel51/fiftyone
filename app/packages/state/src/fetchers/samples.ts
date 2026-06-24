@@ -56,6 +56,9 @@ export interface SpineEntry {
   // group's frame count from the spine's GroupBy (dynamic groups only); seeds the
   // imavid timeline total at modal open without a separate count query.
   groupCount?: number;
+  // w/h ratio for justified (auto-AR) layout; only present when requested, null
+  // when the sample has no metadata dimensions
+  aspectRatio?: number | null;
 }
 
 export interface SpineResponse {
@@ -73,6 +76,8 @@ export interface SpineRequest {
   sortBy?: string;
   desc?: boolean;
   hint?: string;
+  // request per-item aspect ratio (justified layout); omit to keep the read index-only
+  aspectRatio?: boolean;
 }
 
 /** The id-only grid spine reader (see {@link fetchSamples} for field data). */

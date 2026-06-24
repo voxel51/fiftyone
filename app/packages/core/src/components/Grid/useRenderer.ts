@@ -12,6 +12,9 @@ import {
   type SampleStore,
 } from "./useSpotlightPager";
 
+// the looker instance the cache stores (non-undefined return of `cache.get`)
+type CacheItem = NonNullable<ReturnType<LookerCache["get"]>>;
+
 export default function useRenderer({
   cache,
   id,
@@ -70,31 +73,35 @@ export default function useRenderer({
     [cache]
   );
 
-  const showItem = useCallback<Show<number, fos.Sample>>(
-    ({ id, element, dimensions, spotlight, zooming }) => {
+  // Shared create-or-reuse for both render paths. Reuse re-attaches only — re-running
+  // the update would postMessage an already-transferred mask buffer → DataCloneError →
+  // overlays vanish. A no-op until the sample hydrates. `onCreate` runs once, only for
+  // a freshly built looker.
+  const mountOrReuse = useCallback(
+    (
+      id: ID,
+      element: HTMLElement,
+      dimensions: [number, number],
+      opts?: { zooming?: boolean; onCreate?: (item: CacheItem) => void }
+    ): CacheItem | null => {
       const key = id.description;
 
-      if (cache.isShown(key)) {
-        return cache.sizeOf(key);
-      }
-
-      const instance = cache.get(key);
-      if (instance) {
-        instance.attach(element, dimensions, getFontSize());
+      const cached = cache.get(key);
+      if (cached) {
+        cached.attach(element, dimensions, getFontSize());
         cache.show(key);
-        return cache.sizeOf(key);
+        return cached;
       }
 
-      if (zooming) {
-        // scrolling fast — build nothing.
-        return 0;
+      // scrolling fast — build nothing.
+      if (opts?.zooming) {
+        return null;
       }
 
-      // `showItem` never fetches; stay a wireframe until the hydrate bump arrives.
       const ss = store as unknown as WeakMap<ID, GridNode>;
       const result = ss.get(id);
       if (!result || isPlaceholder(result)) {
-        return 0;
+        return null;
       }
 
       const item = sampleRendererRef.current.createItem(
@@ -104,64 +111,49 @@ export default function useRenderer({
         id,
         getFontSize()
       );
-
       item.addEventListener("selectthumbnail", ({ detail }) =>
         selectSample.current?.(detail)
       );
-      item.addEventListener("refresh", () => {
-        cache.isShown(key) &&
-          spotlight.sizeChange(key, item.getSizeBytesEstimate());
-      });
-
       cache.set(key, item);
       item.attach(element, dimensions);
-      return cache.sizeOf(key);
+      opts?.onCreate?.(item);
+      return item;
     },
     [cache, getFontSize, selectSample, store]
   );
 
-  // Attach used by the InfiniteGrid: create-or-reuse a looker from the cache. A no-op
-  // until the sample is hydrated; re-called when the hydrate lands.
+  const showItem = useCallback<Show<number, fos.Sample>>(
+    ({ id, element, dimensions, spotlight, zooming }) => {
+      const key = id.description;
+      if (cache.isShown(key)) {
+        return cache.sizeOf(key);
+      }
+      const item = mountOrReuse(id, element, dimensions, {
+        zooming,
+        onCreate: (created) =>
+          created.addEventListener("refresh", () => {
+            cache.isShown(key) &&
+              spotlight.sizeChange(key, created.getSizeBytesEstimate());
+          }),
+      });
+      return item ? cache.sizeOf(key) : 0;
+    },
+    [cache, mountOrReuse]
+  );
+
+  // Attach used by the InfiniteGrid: shares create-or-reuse with `showItem`, then
+  // applies the per-looker update Spotlight's engine would (InfiniteGrid has none).
   const attachItem = useCallback(
     (id: ID, element: HTMLElement, dimensions: [number, number]) => {
-      const key = id.description;
-      // pass the current coloring key so only genuinely-new label fields re-rasterize.
-      const update = () =>
-        itemUpdater(
-          getFontSize(),
-          getColoringKey(lookerOptions.coloring, lookerOptions.colorscale)
-        )(id);
-
-      const cached = cache.get(key);
-      if (cached) {
-        // re-attach without re-running the update: a re-load would postMessage a mask
-        // buffer that was already transferred → DataCloneError → overlays vanish.
-        cached.attach(element, dimensions, getFontSize());
-        cache.show(key);
-        return;
-      }
-
-      const ss = store as unknown as WeakMap<ID, GridNode>;
-      const result = ss.get(id);
-      if (!result || isPlaceholder(result)) {
-        return;
-      }
-
-      const item = sampleRendererRef.current.createItem(
-        result as unknown as Parameters<
-          typeof sampleRendererRef.current.createItem
-        >[0],
-        id,
-        getFontSize()
-      );
-      item.addEventListener("selectthumbnail", ({ detail }) =>
-        selectSample.current?.(detail)
-      );
-      cache.set(key, item);
-      item.attach(element, dimensions);
-      update();
+      mountOrReuse(id, element, dimensions, {
+        onCreate: () =>
+          itemUpdater(
+            getFontSize(),
+            getColoringKey(lookerOptions.coloring, lookerOptions.colorscale)
+          )(id),
+      });
     },
-    [cache, getFontSize, selectSample, store, itemUpdater, lookerOptions]
+    [mountOrReuse, itemUpdater, getFontSize, lookerOptions]
   );
 
   // release a tile's looker on recycle/unmount: detach (so it blanks immediately) and
