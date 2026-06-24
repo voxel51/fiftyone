@@ -233,13 +233,17 @@ def _resolve_path_aggregation(
     query_performance: bool,
     hint: t.Optional[str] = None,
 ) -> AggregateResult:
-    aggregations: t.List[foa.Aggregation] = [
-        foa.Count(
-            path if path and path != "" else None,
-            _optimize=query_performance,
-            _hint=hint if query_performance else None,
+    # root ("" path) total uses the estimated document count; a `Count` would
+    # force a full group-by pass on grouped views. only field paths get a count.
+    aggregations: t.List[foa.Aggregation] = []
+    if path:
+        aggregations.append(
+            foa.Count(
+                path,
+                _optimize=query_performance,
+                _hint=hint if query_performance else None,
+            )
         )
-    ]
     field = view.get_field(path)
 
     while isinstance(field, fof.ListField):
@@ -273,6 +277,10 @@ def _resolve_path_aggregation(
             aggregations.append(foa.CountValues(path, _first=LIST_LIMIT))
 
     data = {"path": path}
+    if not path:
+        est = view._root_dataset._sample_collection.estimated_document_count()
+        data["count"] = est
+        data["exists"] = est
 
     def from_results(results):
         for aggregation, result in zip(aggregations, results):
