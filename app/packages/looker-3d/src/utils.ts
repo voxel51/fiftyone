@@ -13,7 +13,10 @@ import {
   type Vector4Tuple,
 } from "three";
 import { COLOR_POOL } from "./constants";
-import type { FoMeshMaterial, FoPointcloudMaterialProps } from "./hooks";
+import type {
+  FoMeshMaterial,
+  FoPointcloudMaterialProps,
+} from "./fo3d/render-types";
 
 export type FoSceneRawNode = {
   _type: string;
@@ -161,6 +164,34 @@ export const deg2rad = (degrees: number) => degrees * (Math.PI / 180);
 export function formatNumber(n: number, decimals = 3): string {
   return n.toFixed(decimals);
 }
+
+export type Vector3Input = Vector3 | Vector3Tuple;
+
+export const MIN_VECTOR_DISTANCE_SQUARED = 1e-8;
+
+export const toVector3 = (value: Vector3Input) => {
+  if (value instanceof Vector3) {
+    return value.clone();
+  }
+
+  return new Vector3(value[0], value[1], value[2]);
+};
+
+export const isFiniteVector3 = (vector: Vector3): boolean => {
+  return (
+    Number.isFinite(vector.x) &&
+    Number.isFinite(vector.y) &&
+    Number.isFinite(vector.z)
+  );
+};
+
+export const areVectorsCoLocated = (
+  a: Vector3,
+  b: Vector3,
+  minDistanceSquared = MIN_VECTOR_DISTANCE_SQUARED
+) => {
+  return a.distanceToSquared(b) <= minDistanceSquared;
+};
 
 /**
  * Converts an array of degrees to an array of radians.

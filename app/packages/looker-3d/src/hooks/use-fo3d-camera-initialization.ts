@@ -18,27 +18,11 @@ import { getSavedCameraState, saveCameraState } from "../fo3d/utils";
 import type { Looker3dSettings } from "../settings";
 import { cameraPositionAtom } from "../state";
 import { RenderPath } from "../types";
+import { areVectorsCoLocated, isFiniteVector3, toVector3 } from "../utils";
 import { useFo3dCameraLookAt } from "./use-fo3d-camera-look-at";
 
 const ORIGIN = new Vector3(0, 0, 0);
 const FALLBACK_TARGET_OFFSET = new Vector3(0, 0, 1);
-const MIN_TARGET_DISTANCE_SQUARED = 1e-8;
-
-const isFiniteVector3 = (vector: Vector3): boolean => {
-  return (
-    Number.isFinite(vector.x) &&
-    Number.isFinite(vector.y) &&
-    Number.isFinite(vector.z)
-  );
-};
-
-const toVector3 = (tuple: [number, number, number]) => {
-  return new Vector3(tuple[0], tuple[1], tuple[2]);
-};
-
-const areCoLocated = (a: Vector3, b: Vector3) => {
-  return a.distanceToSquared(b) <= MIN_TARGET_DISTANCE_SQUARED;
-};
 
 interface UseFo3dCameraInitializationArgs {
   cameraRef: React.RefObject<PerspectiveCamera>;
@@ -78,7 +62,7 @@ export const useFo3dCameraInitialization = ({
     (overridePositionTuple: [number, number, number]) => {
       const overridePosition = toVector3(overridePositionTuple);
 
-      if (!areCoLocated(overridePosition, ORIGIN)) {
+      if (!areVectorsCoLocated(overridePosition, ORIGIN)) {
         return ORIGIN;
       }
 
@@ -91,7 +75,7 @@ export const useFo3dCameraInitialization = ({
       if (
         currentTarget &&
         isFiniteVector3(currentTarget) &&
-        !areCoLocated(overridePosition, currentTarget)
+        !areVectorsCoLocated(overridePosition, currentTarget)
       ) {
         return currentTarget;
       }
