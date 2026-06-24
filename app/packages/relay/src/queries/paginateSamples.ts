@@ -2,7 +2,11 @@ import { graphql } from "react-relay";
 import r from "../resolve";
 import type { paginateSamplesQuery$data } from "./__generated__/paginateSamplesQuery.graphql";
 
-/** The `SampleItemStrConnection` branch of `samples`, with `QueryTimeout`/`%other` removed. */
+/**
+ * The successful `SampleItemStrConnection` branch of `samples`, with the
+ * `QueryTimeout` and `%other` union members removed. Use this when narrowing
+ * `paginateSamplesQuery` results before accessing `edges` / `pageInfo`.
+ */
 export type PaginateSamplesConnection = Exclude<
   Exclude<
     paginateSamplesQuery$data["samples"],
@@ -11,13 +15,22 @@ export type PaginateSamplesConnection = Exclude<
   { readonly __typename: "%other" }
 >;
 
-/** A concrete sample node from `paginateSamplesQuery`, with `%other` variants narrowed away. */
+/**
+ * A concrete sample node from `paginateSamplesQuery`, with the `QueryTimeout`,
+ * `%other` connection variants and the `%other` node variant all narrowed
+ * away. Consumers can treat the result as one of the known sample types
+ * ({@link ImageSample}, {@link PointCloudSample}, etc.).
+ */
 export type PaginateSamplesNode = Exclude<
   PaginateSamplesConnection["edges"][number]["node"],
   { readonly __typename: "%other" }
 >;
 
-/** Type guard for {@link PaginateSamplesConnection}. */
+/**
+ * Type guard for {@link PaginateSamplesConnection}. Returns `true` when
+ * `samples` is the successful connection variant and `edges` / `pageInfo` are
+ * safe to access.
+ */
 export const isPaginateSamplesConnection = (
   samples: paginateSamplesQuery$data["samples"]
 ): samples is PaginateSamplesConnection =>

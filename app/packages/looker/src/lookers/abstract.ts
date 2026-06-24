@@ -124,7 +124,8 @@ export abstract class AbstractLooker<
     this.ctx = this.canvas.getContext("2d");
 
     if (!this.state.config.thumbnail) {
-      // resize observer adds cost; thumbnails get dimensions on attach instead
+      // resize observer adds cost and is not for thumbnails
+      // instead, dimensions are provided when attached
       this.resizeObserver = new ResizeObserver(() => {
         const box = getElementBBox(this.lookerElement.element);
         if (box[2] && box[3] && this.lookerElement) {
@@ -178,7 +179,7 @@ export abstract class AbstractLooker<
       labelId: _sourceLabelId,
     } = e.detail;
 
-    // label instance is unique per looker
+    // .find() instead of .filter() because label "instance" is unique per looker
     const label = this.currentOverlays.find(
       (o) => o.label.instance?._id === instanceId
     );
@@ -232,6 +233,7 @@ export abstract class AbstractLooker<
 
     this.subscriptions[field].push(callback);
 
+    // return unsubscribe function
     return () => {
       const newCallbacks = this.subscriptions[field].filter(
         (cb) => cb !== callback
@@ -380,13 +382,15 @@ export abstract class AbstractLooker<
         this.previousState = this.state;
         this.state = mergedUpdates as State;
 
+        // check subscriptions
         for (const field in updates) {
           if (this.subscriptions[field]) {
             this.subscriptions[field].forEach((cb) => cb(updates[field]));
           }
         }
 
-        // mergeUpdates drops a reset-to-empty attributeVisibility; restore it
+        // Need this because when user reset attributeVisibility, it resets
+        // to empty object, which gets overwritten in mergeUpdates
         if (JSON.stringify(updates.options?.attributeVisibility) === "{}") {
           this.state.options.attributeVisibility = {};
         }
@@ -686,6 +690,7 @@ export abstract class AbstractLooker<
         this.sample = sample;
         this.loadOverlays(sample);
 
+        // to run looker reconciliation
         this.updater((prev) => ({
           ...prev,
           overlaysPrepared: true,
@@ -907,7 +912,8 @@ export abstract class AbstractLooker<
           return;
         }
 
-        // cleanup old overlays before repainting to free dangling ImageBitmaps
+        // we paint overlays again, so cleanup the old ones
+        // this helps prevent memory leaks from, for instance, dangling ImageBitmaps
         this.cleanOverlays();
         this.sample = sample;
         this.loadOverlays(sample);
@@ -954,7 +960,9 @@ export abstract class AbstractLooker<
     try {
       labelsWorker.postMessage(workerArgs, transfer);
     } catch (error) {
-      // a detached buffer throws DataCloneError on transfer; retry by copying
+      // rarely we'll get a DataCloneError
+      // if one of the buffers is detached and we didn't catch it
+      // try again without transferring the buffers (copying them)
       if (error.name === "DataCloneError") {
         labelsWorker.postMessage(workerArgs);
       } else {

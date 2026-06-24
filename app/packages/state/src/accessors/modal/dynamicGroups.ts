@@ -36,7 +36,6 @@ export const useElementsCount = (modal: boolean): number => {
   const loadable = useRecoilValueLoadable(
     dynamicGroupsElementCount({ modal, value })
   );
-  // hold the last settled count to bridge Suspense transitions between samples
   const ref = useRef<number>(
     loadable.state === "hasValue" ? loadable.contents : 0
   );

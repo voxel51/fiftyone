@@ -172,6 +172,8 @@ const _playHeadStates = atomFamily((_timelineName: TimelineName) =>
 export const _INTERNAL_timelineConfigsLruCache = new LRUCache({
   max: ATOM_FAMILY_CONFIGS_LRU_CACHE_SIZE,
   dispose: (timelineName: string) => {
+    // remove param from all "families"
+    // make sure this is done for all atom families
     _currentBufferingRange.remove(timelineName);
     _dataLoadedBuffers.remove(timelineName);
     _frameNumbers.remove(timelineName);
@@ -224,6 +226,7 @@ export const addTimelineAtom = atom(
     ).__internal_IsTimelineInitialized;
 
     if (isTimelineAlreadyInitialized) {
+      // update config and return
       set(_timelineConfigs(timelineName), {
         ...configWithImputedValues,
         __internal_IsTimelineInitialized: true,
@@ -266,13 +269,14 @@ export const addTimelineAtom = atom(
           );
         });
     } else {
+      // mark timeline as initialized
       set(_timelineConfigs(timelineName), {
         ...configWithImputedValues,
         __internal_IsTimelineInitialized: true,
       });
     }
 
-    // value is unused; the cache only tracks keys for disposal
+    // 'true' is a placeholder value, since we're just using the cache for disposing
     _INTERNAL_timelineConfigsLruCache.set(timelineName, timelineName);
   }
 );
@@ -287,6 +291,7 @@ export const addSubscriberAtom = atom(
       subscription,
     }: { name: TimelineName; subscription: SequenceTimelineSubscription }
   ) => {
+    // warn if subscription with this id already exists
     if (get(_subscribers(name)).has(subscription.id)) {
       console.warn(
         `Subscription with ${subscription.id} already exists for timeline ${name}. Replacing old subscription. Make sure this is an intentional behavior.`
@@ -325,6 +330,8 @@ export const setFrameNumberAtom = atom(
       return;
     }
 
+    // verify that the frame number is valid, and is ready to be streamed
+    // if not, we need to buffer the data before rendering
     const bufferManager = get(_dataLoadedBuffers(name));
     const config = get(getTimelineConfigAtom(name));
 
@@ -344,8 +351,11 @@ export const setFrameNumberAtom = atom(
       set(_currentBufferingRange(name), newLoadRange);
 
       const allPromisesSettled = Promise.allSettled(rangeLoadPromises);
-      // await only when the target frame isn't buffered; otherwise load in background
+      // we await only if isCurrentValueNotInBuffer
+      // otherwise we can render the frame immediately
+      // and load range in background
       if (isCurrentValueNotInBuffer) {
+        // Promise.allSettled never rejects — no try/catch needed.
         await allPromisesSettled;
         bufferManager.addNewRange(newLoadRange);
         set(_currentBufferingRange(name), [0, 0]);
@@ -357,6 +367,9 @@ export const setFrameNumberAtom = atom(
       }
     }
 
+    // `renderFrame` is declared as `void` (synchronous) on the
+    // subscription interface — call each subscriber inline; no
+    // promise collection / await needed.
     subscribers.forEach((subscriber) => {
       subscriber.renderFrame(newFrameNumber);
     });
@@ -458,7 +471,9 @@ export const getLoadRangeForFrameNumber = (
   const upperBound = streaming ? Infinity : totalFrames;
 
   const behindBuffer = MIN_LOAD_RANGE_SIZE;
-  // ahead-buffer scales with speed and target frame rate relative to a baseline
+  // adaptive ahead-buffer: at minimum MIN_LOAD_RANGE_SIZE,
+  // but scales with speed and target frame rate relative to a baseline
+
   const baseAdaptiveBuffer =
     MIN_LOAD_RANGE_SIZE *
     (speed ?? 1) *
@@ -473,6 +488,7 @@ export const getLoadRangeForFrameNumber = (
     Math.ceil(baseAdaptiveBuffer + totalFramesFactor)
   );
 
+  // initial range centered on the current frame.
   let min = frameNumber - behindBuffer;
   let max = frameNumber + adaptiveAheadBuffer;
 
@@ -483,6 +499,7 @@ export const getLoadRangeForFrameNumber = (
     min = Math.max(1, min - extra);
     max = upperBound;
   }
+  // similarly, if the range goes below 1, extend the ahead buffer.
   if (min < 1) {
     const extra = 1 - min;
     max = Math.min(upperBound, max + extra);

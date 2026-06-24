@@ -58,28 +58,38 @@ export const useCreateTimeline = (
   const setFrameNumber = useSetAtom(setFrameNumberAtom);
   const setPlayHeadState = useSetAtom(updatePlayheadStateAtom);
 
+  /**
+   * this effect syncs onAnimationStutter ref from props
+   */
   useEffect(() => {
     onAnimationStutterRef.current = newTimelineProps.onAnimationStutter;
   }, [newTimelineProps.onAnimationStutter]);
 
+  /**
+   * this effect creates the timeline
+   */
   useEffect(() => {
-    // a missing config can be used to delay timeline initialization
+    // missing config might be used as a technique to delay the initialization of the timeline
     if (!newTimelineProps.config) {
       return undefined;
     }
 
     addTimeline({ name: timelineName, config: newTimelineProps.config });
 
-    // bring this timeline to the front of the LRU cache
+    // this is so that this timeline is brought to the front of the cache
     _INTERNAL_timelineConfigsLruCache.get(timelineName);
 
     return () => {
+      // when component using this hook unmounts, pause animation
       pause();
-      // timeline cleanup runs in the LRU cache's dispose()
+      // timeline cleanup is handled by `_INTERNAL_timelineConfigsLruCache::dispose()`
     };
 
-    // config isn't a dep because it's not guaranteed referentially stable;
-    // depend on its primitive/stable constituents instead
+    // note: we're not using newTimelineConfig.config as a dependency
+    // because it's not guaranteed to be referentially stable.
+    // that would require caller to memoize the passed config object.
+    // instead use constituent properties of the config object that are primitives
+    // or referentially stable
   }, [
     addTimeline,
     timelineName,
@@ -89,6 +99,10 @@ export const useCreateTimeline = (
     newTimelineProps.config?.totalFrames,
   ]);
 
+  /**
+   * this effect starts or stops the animation
+   * based on the playhead state
+   */
   useEffect(() => {
     if (!isTimelineInitialized || newTimelineProps.optOutOfAnimation) {
       return;
@@ -109,14 +123,21 @@ export const useCreateTimeline = (
     newTimelineProps.optOutOfAnimation,
   ]);
 
-  // binds to externally-set frame numbers; the external setter must pause
-  // (dispatch a pause event) first for this to take effect
+  /**
+   * this effect establishes a binding with externally
+   * updated frame number. Note that for this effect to have
+   * the required effect, the external setter needs to have disabled animation first
+   * by dispatching a pause event
+   */
   useEffect(() => {
     if (!isAnimationActiveRef.current) {
       frameNumberRef.current = frameNumber;
     }
   }, [frameNumber]);
 
+  /**
+   * the following effects are used to keep the refs up to date
+   */
   useEffect(() => {
     configRef.current = config;
   }, [config]);
@@ -245,9 +266,12 @@ export const useCreateTimeline = (
         if (configRef.current.loop) {
           loopToBeginning();
         } else {
+          // if animation is active, and loop config is off, means we need to stop
           if (isAnimationActiveRef.current) {
             pause();
-            // restarting from a pause at the end of the timeline: loop to the beginning
+            // animation was not running and we were paused but got signal to start animating
+            // this means video was paused at the end of the timeline
+            // start from the beginning
           } else {
             loopToBeginning();
           }
@@ -357,6 +381,7 @@ export const useCreateTimeline = (
         return;
       }
 
+      // Skip frame stepping when optOutOfAnimation is true
       if (newTimelineProps.optOutOfAnimation) {
         return;
       }

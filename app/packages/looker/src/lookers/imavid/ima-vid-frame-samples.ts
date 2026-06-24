@@ -45,11 +45,15 @@ export class ImaVidFrameSamples {
 
     this.samples = new LRUCache<SampleId, ModalSampleExtendedWithImage>({
       dispose: (_modal, sampleId) => {
+        // remove it from the frame index
         const frameNumber = this.reverseFrameIndex.get(sampleId);
         if (frameNumber !== undefined) {
           this.frameIndex.delete(frameNumber);
         }
+        // remove from reverse frame index
         this.reverseFrameIndex.delete(sampleId);
+
+        // remove from store buffer manager
         this.storeBufferManager.removeBufferValue(frameNumber);
       },
       max: MAX_FRAME_STREAM_SIZE,
@@ -98,6 +102,9 @@ export class ImaVidFrameSamples {
           const sample = this.samples.get(sampleId);
 
           if (!sample) {
+            // sample was removed from the cache, this shouldn't happen...
+            // but if it does, it might be because the cache was cleared
+            // todo: handle this case better
             console.error(
               "Sample was removed from cache before image loaded",
               sampleId
@@ -122,7 +129,8 @@ export class ImaVidFrameSamples {
             source
           );
 
-          // placeholder so a failed image never blocks animation
+          // use a placeholder blank black image to not block animation
+          // setting src should trigger the load event
           image.src = BASE64_BLACK_IMAGE;
         },
         { signal: this.abortController?.signal }

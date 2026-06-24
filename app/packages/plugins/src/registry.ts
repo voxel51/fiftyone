@@ -94,18 +94,34 @@ export function safePluginActivator(
   return false;
 }
 
-// module scope so useSyncExternalStore doesn't re-subscribe on every render
+/**
+ * Returns active plugins of the given type, filtered by each plugin's
+ * `activator(ctx)`.
+ *
+ * `ctx` must be supplied by the caller — deriving it implicitly would
+ * make a stateless filter stateful (silently subscribing to state the
+ * caller never sees), fan out re-renders across every node in schema
+ * renderers, and pick a default the hook can't choose correctly. Pass
+ * `{}` if activation doesn't depend on app state.
+ *
+ * @param type The type of plugin to list
+ * @param ctx Passed to each plugin's activator
+ * @returns A list of active plugins
+ */
+// Defined at module scope so useSyncExternalStore doesn't re-subscribe on
+// every render.
 const subscribeRegistry = (onChange: () => void) =>
   subscribeToRegistry(() => onChange());
 
 const getRegistryVersion = () => usingRegistry().getVersion();
 
-/** Active plugins of the given type, filtered by each plugin's `activator(ctx)`. */
 export function useActivePlugins<TType extends PluginComponentType>(
   type: TType,
   ctx: Record<string, unknown>
 ) {
-  // synchronous snapshot + atomic subscribe; a register between the two can't be dropped
+  // useSyncExternalStore reads the snapshot synchronously during render and
+  // atomically subscribes, so a register/unregister event that fires between
+  // the snapshot and the subscription can't be dropped.
   const version = useSyncExternalStore(subscribeRegistry, getRegistryVersion);
 
   return useMemo(

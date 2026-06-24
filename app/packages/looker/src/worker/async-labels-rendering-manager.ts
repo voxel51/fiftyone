@@ -56,13 +56,14 @@ export const processQueue = () => {
       const job = jobQueue[i];
       if (!processingSamples.has(job.sample)) {
         jobQueue.splice(i, 1);
+        // note: object equality makes sense here
         if (pendingJobs.get(job.sample) === job) {
           pendingJobs.delete(job.sample);
         }
         processingSamples.add(job.sample);
         assignJobToFreeWorker(job);
         jobAssigned = true;
-        // restart search since jobQueue was mutated
+        // restart search as jobQueue has been modified
         break;
       }
     }
@@ -83,8 +84,10 @@ const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
     if (resUuid !== messageUuid) return;
 
     cleanup();
+    // shallow merge worker-returned sample with the original sample.
     const mergedSample = { ...job.sample, ...sample };
 
+    // also merge frames if they exist
     if (job.sample.frames && sample.frames) {
       mergedSample.frames = job.sample.frames.map((frame, idx) => {
         return { ...frame, ...sample.frames[idx] };
@@ -116,6 +119,7 @@ const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
   worker.addEventListener("message", handleMessage);
   worker.addEventListener("error", handleError);
 
+  // filter sample to only include keys in job.labels
   const pluckRelevant = (sample: Sample, frames = false) => {
     const filtered = { ...sample };
     Object.keys(filtered).forEach((key) => {
@@ -185,6 +189,7 @@ export class AsyncLabelsRenderingManager {
     return new Promise<AsyncJobResolutionResult>((resolve, reject) => {
       const pendingJob = pendingJobs.get(sample);
       if (pendingJob) {
+        // merge / replace pending job for the same sample
         pendingJob.labels = [...new Set([...pendingJob.labels, ...labels])];
         pendingJob.resolve = resolve;
         pendingJob.reject = reject;

@@ -58,7 +58,7 @@ export const sidebarSampleId = selector<null | string>({
         }
       }
 
-      // hold the sidebar sample steady while playing/seeking
+      // if we are playing or seeking, we don't want to change the sidebar sample and fire agg query
       return null;
     }
 
@@ -277,8 +277,13 @@ export const modalSample = selector<ModalSample>({
   },
 });
 
-/** Like {@link modalSample} but pinned to the dataset's main `groupSlice`. */
-export const groupSampleAtMainSlice = graphQLSelector<
+/**
+ * Same as {@link modalSample} but always pinned to the dataset's main
+ * `groupSlice` for both the active slice and the requested slices. Used by
+ * `groupByFieldValue` so the dynamic group value is always read from the
+ * main slice's sample regardless of which slice the modal is currently
+ * displaying. Has its own Relay cache key so it can resolve independently.
+ */ export const groupSampleAtMainSlice = graphQLSelector<
   VariablesOf<mainSampleQuery>,
   ModalSample
 >({

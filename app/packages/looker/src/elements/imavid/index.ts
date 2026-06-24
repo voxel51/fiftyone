@@ -114,6 +114,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   getEvents(): Events<ImaVidState> {
     return {
       load: () => {
+        // assign value for looker's canvas
         this.canvas = document.createElement("canvas");
         this.canvas.style.imageRendering = "pixelated";
         this.canvas.width = this.element.naturalWidth;
@@ -127,7 +128,8 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
         this.update({
           loaded: true,
-          // assumes all frames share one width/height.
+          // note: working assumption =  all images in this "video" are of the same width and height
+          // this might be an incorrect assumption for certain use cases
           dimensions: [this.element.naturalWidth, this.element.naturalHeight],
         });
       },
@@ -137,9 +139,18 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     };
   }
 
-  /** Create the html element so that this.imageSource is set. */
+  /**
+   * Create the relevant html element so that this.imagesource is set
+   *
+   * in image looker:
+   *  - it is an HTMLImageElement
+   *
+   * in video looker:
+   * - if thumbnail, it is canvas for grid view, html video otherwise (modal)
+   * - thumbnailer:
+   */
   createHTMLElement(dispatchEvent: DispatchEvent) {
-    // not an update, just updating refs.
+    // not really doing an update, just updating refs
     this.update(
       ({
         config: {
@@ -257,7 +268,9 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
     this.isAnimationActive = animate;
 
-    // skip frames too far apart (e.g. while scrubbing).
+    // if abs(frameNumberToDraw, currentFrameNumber) > 1, then skip
+    // this is to avoid drawing frames that are too far apart
+    // this can happen when user is scrubbing through the video
     if (Math.abs(frameNumberToDraw - this.frameNumber) > 1 && !this.isLoop) {
       this.skipAndTryAgain(frameNumberToDraw, true);
       return;
@@ -386,7 +399,12 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     return [currentFrameNumber, frameRangeMax] as const;
   }
 
-  /** Enqueue (and start) the look-ahead fetch off the given frame, if needed. */
+  /**
+   * Queue up frames to be fetched if necessary.
+   * This method is not blocking, it merely enqueues a fetch job.
+   *
+   * This is for legacy imavid, which is used for thumbnail imavid.
+   */
   private enqueueLookAheadFetch(currentFrameNumber: number) {
     const necessaryFrameRange = this.getLookAheadFrameRange(currentFrameNumber);
 
@@ -557,6 +575,8 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     }
 
     if (!playing && !seeking && thumbnail) {
+      // check if current frame number is what has been drawn
+      // if they're different, then draw the frame
       if (this.frameNumber !== this.canvasFrameNumber) {
         this.waitingToPause = false;
         this.drawFrameNoAnimation(this.frameNumber);
