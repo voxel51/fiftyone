@@ -966,26 +966,430 @@ describe("MCAP resources", () => {
     expect(decodeClient.decode).toHaveBeenCalledTimes(2);
   });
 
-  it("rejects ambiguous indexed-to-raw message matches", async () => {
+  it("soft-fails topic time bounds to nulls without summary indexes", async () => {
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () => createReader()),
+    });
+
+    await expect(
+      client.readTopicTimeBounds({
+        source: createMcapSourceDescriptor(),
+        topics: ["/camera", "/lidar"],
+      })
+    ).resolves.toEqual([
+      { firstMessageTimeNs: null, lastMessageTimeNs: null, topic: "/camera" },
+      { firstMessageTimeNs: null, lastMessageTimeNs: null, topic: "/lidar" },
+    ]);
+  });
+
+  it("caches topic time bounds per source and topic set", async () => {
+    const readTopicIndexedTimeBounds = vi.fn(async () => {
+      return new Map([
+        ["/camera", { firstLogTimeNs: 10n, lastLogTimeNs: 90n }],
+      ]);
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        Object.assign(createReader({ chunkIndexes: [createChunkIndex()] }), {
+          readTopicIndexedTimeBounds,
+        })
+      ),
+    });
+    const request = {
+      source: createMcapSourceDescriptor(),
+      topics: ["/camera"],
+    };
+
+    await expect(client.readTopicTimeBounds(request)).resolves.toEqual([
+      { firstMessageTimeNs: 10n, lastMessageTimeNs: 90n, topic: "/camera" },
+    ]);
+    await client.readTopicTimeBounds(request);
+    expect(readTopicIndexedTimeBounds).toHaveBeenCalledTimes(1);
+  });
+
+  it("serves sparse topics from one bounded scan plus one predecessor probe", async () => {
+    const source = createMcapSourceDescriptor();
+    const old = createMessage(new Uint8Array([1]), {
+      channelId: 7,
+      logTime: 0n,
+      publishTime: 1n,
+    });
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      // Nothing in the scan window — the topic is sparse around the batch.
+    });
+    const readLatestIndexedMessageTimes = vi.fn(async () => {
+      return new Map([
+        ["/topic", [createIndexedMessageTime("/topic", 7, 0n, 0n)]],
+      ]);
+    });
+    const readMessages = vi.fn(async function* (args?: {
+      readonly endTime?: bigint;
+      readonly startTime?: bigint;
+      readonly topics?: readonly string[];
+    }): AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void> {
+      if (args?.startTime === 0n && args?.endTime === 0n) {
+        yield old;
+      }
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          readIndexedMessageTimes,
+          readLatestIndexedMessageTimes,
+          readMessages,
+        })
+      ),
+    });
+
+    const windows = await client.readSynchronizedMessageBatch({
+      timeNs: [5_000n, 5_033n],
+      source,
+      topics: ["/topic"],
+    });
+
+    // Both ticks resolve the far-past predecessor under the default
+    // unbounded-latest policy.
+    expect(windows).toHaveLength(2);
+    expect(windows[0]?.messagesByTopic["/topic"]?.[0]?.timelineTimeNs).toBe(0n);
+    expect(windows[1]?.messagesByTopic["/topic"]?.[0]?.timelineTimeNs).toBe(0n);
+
+    // The scan stays bounded by the batch tick span — never the file.
+    expect(readIndexedMessageTimes).toHaveBeenCalledWith({
+      endTimeNs: 5_033n,
+      startTimeNs: 5_000n,
+      topics: ["/topic"],
+    });
+    expect(readLatestIndexedMessageTimes).toHaveBeenCalledExactlyOnceWith({
+      limitPerTopic: 1,
+      timeNs: 5_000n,
+      topics: ["/topic"],
+    });
+  });
+
+  it("backfills enough indexed predecessors to satisfy latest limits", async () => {
+    const source = createMcapSourceDescriptor();
+    const older = createMessage(new Uint8Array([1]), {
+      channelId: 7,
+      logTime: 80n,
+      publishTime: 81n,
+    });
+    const newer = createMessage(new Uint8Array([2]), {
+      channelId: 7,
+      logTime: 90n,
+      publishTime: 91n,
+    });
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      yield createIndexedMessageTime("/topic", 7, 90n, 900n);
+    });
+    const readLatestIndexedMessageTimes = vi.fn(async () => {
+      return new Map([
+        [
+          "/topic",
+          [
+            createIndexedMessageTime("/topic", 7, 90n, 900n),
+            createIndexedMessageTime("/topic", 7, 80n, 800n),
+          ],
+        ],
+      ]);
+    });
+    const readMessages = vi.fn(async function* (args?: {
+      readonly endTime?: bigint;
+      readonly startTime?: bigint;
+    }): AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void> {
+      if (args?.startTime === 80n && args?.endTime === 80n) {
+        yield older;
+      }
+      if (args?.startTime === 90n && args?.endTime === 90n) {
+        yield newer;
+      }
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          readIndexedMessageTimes,
+          readLatestIndexedMessageTimes,
+          readMessages,
+        })
+      ),
+    });
+
+    const windows = await client.readSynchronizedMessageBatch({
+      timeNs: [100n],
+      source,
+      streamPolicies: {
+        "/topic": {
+          limit: 2,
+          mode: PlaybackSyncMode.LATEST,
+        },
+      },
+      topics: ["/topic"],
+    });
+
+    expect(
+      windows[0]?.messagesByTopic["/topic"]?.map(
+        (message) => message.timelineTimeNs
+      )
+    ).toEqual([80n, 90n]);
+    expect(readLatestIndexedMessageTimes).toHaveBeenCalledExactlyOnceWith({
+      limitPerTopic: 2,
+      timeNs: 100n,
+      topics: ["/topic"],
+    });
+  });
+
+  it("memoizes predecessor lookups across batches and re-probes on backward seeks", async () => {
+    const source = createMcapSourceDescriptor();
+    const message = createMessage(new Uint8Array([1]), {
+      channelId: 7,
+      logTime: 4_000n,
+      publishTime: 4_001n,
+    });
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      // Every scan window misses the lone message at 4_000n.
+    });
+    const readLatestIndexedMessageTimes = vi.fn(
+      async (args: { readonly timeNs: bigint }) => {
+        return new Map([
+          [
+            "/topic",
+            args.timeNs >= 4_000n
+              ? [createIndexedMessageTime("/topic", 7, 4_000n, 0n)]
+              : [],
+          ],
+        ]);
+      }
+    );
+    const readMessages = vi.fn(async function* (args?: {
+      readonly endTime?: bigint;
+      readonly startTime?: bigint;
+    }): AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void> {
+      if (args?.startTime === 4_000n && args?.endTime === 4_000n) {
+        yield message;
+      }
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          readIndexedMessageTimes,
+          readLatestIndexedMessageTimes,
+          readMessages,
+        })
+      ),
+    });
+
+    // First batch probes once and memoizes the resolution.
+    await client.readSynchronizedMessageBatch({
+      timeNs: [5_000n, 5_033n],
+      source,
+      topics: ["/topic"],
+    });
+    expect(readLatestIndexedMessageTimes).toHaveBeenCalledTimes(1);
+
+    // Overlapping later batch: memo hit, and its empty scan extends the
+    // memo's validity through 6_000n.
+    await client.readSynchronizedMessageBatch({
+      timeNs: [5_010n, 6_000n],
+      source,
+      topics: ["/topic"],
+    });
+    expect(readLatestIndexedMessageTimes).toHaveBeenCalledTimes(1);
+
+    // Within the extended interval: still no probe.
+    const windows = await client.readSynchronizedMessageBatch({
+      timeNs: [5_900n],
+      source,
+      topics: ["/topic"],
+    });
+    expect(readLatestIndexedMessageTimes).toHaveBeenCalledTimes(1);
+    expect(windows[0]?.messagesByTopic["/topic"]?.[0]?.timelineTimeNs).toBe(
+      4_000n
+    );
+
+    // Backward seek before the memoized predecessor: fresh probe.
+    const earlier = await client.readSynchronizedMessageBatch({
+      timeNs: [100n],
+      source,
+      topics: ["/topic"],
+    });
+    expect(readLatestIndexedMessageTimes).toHaveBeenCalledTimes(2);
+    expect(readLatestIndexedMessageTimes).toHaveBeenLastCalledWith({
+      limitPerTopic: 1,
+      timeNs: 100n,
+      topics: ["/topic"],
+    });
+    expect(earlier[0]?.messagesByTopic["/topic"]).toEqual([]);
+  });
+
+  it("skips the predecessor probe when another topic's tolerance already covers it", async () => {
+    const source = createMcapSourceDescriptor();
+    const camera = createMessage(new Uint8Array([1]), {
+      channelId: 7,
+      logTime: 90n,
+      publishTime: 91n,
+    });
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      yield createIndexedMessageTime("/camera", 7, 90n, 900n);
+    });
+    const readLatestIndexedMessageTimes = vi.fn(async () => new Map());
+    const readMessages = vi.fn(async function* (args?: {
+      readonly endTime?: bigint;
+      readonly startTime?: bigint;
+    }): AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void> {
+      if (args?.startTime === 90n && args?.endTime === 90n) {
+        yield camera;
+      }
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [7, createChannel({ id: 7, topic: "/camera" })],
+            [8, createChannel({ id: 8, topic: "/lidar" })],
+          ]),
+          readIndexedMessageTimes,
+          readLatestIndexedMessageTimes,
+          readMessages,
+        })
+      ),
+    });
+
+    const windows = await client.readSynchronizedMessageBatch({
+      timeNs: [100n],
+      source,
+      streamPolicies: {
+        "/lidar": {
+          mode: PlaybackSyncMode.NEAREST,
+          toleranceAfterNs: 0n,
+          toleranceBeforeNs: 20n,
+        },
+      },
+      topics: ["/camera", "/lidar"],
+    });
+
+    // The lidar tolerance widened the shared scan to [80, 100], which
+    // already contains the camera predecessor — no probe needed.
+    expect(readIndexedMessageTimes).toHaveBeenCalledWith({
+      endTimeNs: 100n,
+      startTimeNs: 80n,
+      topics: ["/camera", "/lidar"],
+    });
+    expect(readLatestIndexedMessageTimes).not.toHaveBeenCalled();
+    expect(windows[0]?.messagesByTopic["/camera"]?.[0]?.timelineTimeNs).toBe(
+      90n
+    );
+  });
+
+  it("surfaces predecessor probe failures as batch failures", async () => {
+    const source = createMcapSourceDescriptor();
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      // empty scan forces the probe
+    });
+    const readLatestIndexedMessageTimes = vi.fn(async () => {
+      throw new Error("index read failed");
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          readIndexedMessageTimes,
+          readLatestIndexedMessageTimes,
+        })
+      ),
+    });
+
+    await expect(
+      client.readSynchronizedMessageBatch({
+        timeNs: [5_000n],
+        source,
+        topics: ["/topic"],
+      })
+    ).rejects.toThrow("index read failed");
+  });
+
+  it("falls back to a bounded raw lookback for readers without indexes", async () => {
+    const source = createMcapSourceDescriptor();
+    const old = createMessage(new Uint8Array([1]), {
+      channelId: 7,
+      logTime: 1_000n,
+      publishTime: 1_001n,
+    });
+    const readMessages = vi.fn(async function* (args?: {
+      readonly endTime?: bigint;
+      readonly startTime?: bigint;
+    }): AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void> {
+      if (
+        args?.startTime !== undefined &&
+        args?.endTime !== undefined &&
+        old.logTime >= args.startTime &&
+        old.logTime <= args.endTime
+      ) {
+        yield old;
+      }
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () => createReader({ readMessages })),
+    });
+
+    const windows = await client.readSynchronizedMessageBatch({
+      timeNs: [5_000n],
+      source,
+      topics: ["/topic"],
+    });
+
+    expect(windows[0]?.messagesByTopic["/topic"]?.[0]?.timelineTimeNs).toBe(
+      1_000n
+    );
+    // One bounded scan plus one bounded lookback — clamped at 0, never
+    // the whole file beyond the documented lookback.
+    expect(readMessages.mock.calls.map(([args]) => args)).toEqual([
+      { endTime: 5_000n, startTime: 5_000n, topics: ["/topic"] },
+      { endTime: 5_000n, startTime: 0n, topics: ["/topic"] },
+    ]);
+  });
+
+  it("resolves duplicate same-time messages to one deterministic frame", async () => {
+    // Real recordings can carry multiple messages on one channel at
+    // the same log time. The whole batch used to reject on the
+    // ambiguity, permanently failing every topic it covered.
     const source = createMcapSourceDescriptor();
     const first = createMessage(new Uint8Array([1]), {
       logTime: 90n,
       publishTime: 91n,
+      sequence: 1,
     });
     const second = createMessage(new Uint8Array([2]), {
       logTime: 90n,
       publishTime: 92n,
+      sequence: 2,
     });
     const readIndexedMessageTimes = vi.fn(async function* () {
+      // Duplicate index entries for the duplicate messages.
       yield createIndexedMessageTime("/topic", 7, 90n, 900n);
+      yield createIndexedMessageTime("/topic", 7, 90n, 901n);
     });
     const readMessages = vi.fn(async function* () {
       yield first;
       yield second;
     });
+    const decodeClient = createTestDecodeClient();
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
-      decodeClient: createTestDecodeClient(),
+      decodeClient,
       readerFactory: vi.fn(async () =>
         createReader({
           readIndexedMessageTimes,
@@ -994,18 +1398,21 @@ describe("MCAP resources", () => {
       ),
     });
 
-    await expect(
-      client.readSynchronizedMessageBatch({
-        timeNs: [90n],
-        source,
-        defaultStreamPolicy: {
-          mode: PlaybackSyncMode.STRICT,
-        },
-        topics: ["/topic"],
-      })
-    ).rejects.toThrow(
-      "Ambiguous MCAP indexed-to-raw match for /topic entry with channel 7 at 90"
-    );
+    const windows = await client.readSynchronizedMessageBatch({
+      timeNs: [90n],
+      source,
+      defaultStreamPolicy: {
+        mode: PlaybackSyncMode.STRICT,
+      },
+      topics: ["/topic"],
+    });
+
+    // One frame, deterministically the lowest-sequence duplicate, and
+    // one decode — the duplicate index entry collapsed at collection.
+    expect(windows[0]?.messagesByTopic["/topic"]).toHaveLength(1);
+    expect(windows[0]?.messagesByTopic["/topic"]?.[0]?.sequence).toBe(1);
+    expect(windows[0]?.messagesByTopic["/topic"]?.[0]?.publishTimeNs).toBe(91n);
+    expect(decodeClient.decode).toHaveBeenCalledTimes(1);
   });
 
   it("returns empty synchronized batches without opening a reader", async () => {
@@ -1158,6 +1565,7 @@ function createReader({
   chunkIndexes = [],
   messages = [],
   readIndexedMessageTimes,
+  readLatestIndexedMessageTimes,
   readMessages,
   schemasById = new Map([[3, createSchema(new Uint8Array([9]))]]),
   statistics,
@@ -1179,6 +1587,22 @@ function createReader({
     void,
     void
   >;
+  readonly readLatestIndexedMessageTimes?: (args: {
+    readonly limitPerTopic?: number;
+    readonly timeNs: bigint;
+    readonly topics: readonly string[];
+  }) => Promise<
+    ReadonlyMap<
+      string,
+      readonly {
+        readonly channelId: number;
+        readonly chunkStartOffset: bigint;
+        readonly logTimeNs: bigint;
+        readonly messageOffset: bigint;
+        readonly topic: string;
+      }[]
+    >
+  >;
   readonly readMessages?: (args?: {
     readonly endTime?: bigint;
     readonly startTime?: bigint;
@@ -1194,6 +1618,7 @@ function createReader({
     channelsById,
     chunkIndexes,
     readIndexedMessageTimes,
+    readLatestIndexedMessageTimes,
     readMessages:
       readMessages ??
       vi.fn(async function* () {

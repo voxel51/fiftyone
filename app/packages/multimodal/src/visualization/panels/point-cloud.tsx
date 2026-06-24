@@ -30,6 +30,7 @@ const PERSPECTIVE_POINT_CAMERA = {
 const DEFAULT_MAX_RENDERED_POINTS = 120_000;
 // Default WebGL point sprite size in pixels.
 const DEFAULT_POINT_SIZE = 2;
+const CAMERA_FIT_PADDING = 1.35;
 // Side length of the synthetic unit cube used when a cloud has no spread
 // (e.g. a single point), so the camera has a non-zero target to frame.
 const EMPTY_POINT_CLOUD_BOUNDS_SIZE = 1;
@@ -88,6 +89,11 @@ interface PointCloudRenderData {
   readonly renderedPointCount: number;
 }
 
+interface PointCloudRenderLayer {
+  readonly data: PointCloudRenderData;
+  readonly layer: PointCloudPanelLayer;
+}
+
 interface PointCloudObjectTransform {
   readonly position: [number, number, number];
   readonly quaternion: [number, number, number, number];
@@ -109,15 +115,26 @@ export interface PointCloudFrameTransform {
 export type PointCloudCameraPose = ThreeCameraPose;
 
 /**
- * Props for rendering one decoded point-cloud visualization frame.
+ * One point cloud rendered into the shared panel scene. `id` is the
+ * stable identity used for React reconciliation and per-layer point
+ * counting — use the source's topic/stream id.
+ */
+export interface PointCloudPanelLayer {
+  readonly frame: PointCloudVisualization;
+  readonly frameTransform?: PointCloudFrameTransform;
+  readonly id: string;
+}
+
+/**
+ * Props for rendering decoded point-cloud visualization frames. A panel
+ * renders one shared 3D scene; each layer contributes one cloud to it.
  */
 export interface PointCloudPanelProps {
   readonly cameraPose?: PointCloudCameraPose | null;
   readonly className?: string;
   readonly colorBy?: PointCloudColorBy;
   readonly fit?: "initial" | "frame" | "never";
-  readonly frame: PointCloudVisualization;
-  readonly frameTransform?: PointCloudFrameTransform;
+  readonly layers: readonly PointCloudPanelLayer[];
   readonly maxRenderedPoints?: number;
   readonly onCameraPoseChange?: (pose: PointCloudCameraPose) => void;
   readonly pointSize?: number;
@@ -128,15 +145,16 @@ export interface PointCloudPanelProps {
 }
 
 /**
- * Production point-cloud visualization panel backed by a stable Three.js canvas.
+ * Production point-cloud visualization panel backed by a stable Three.js
+ * canvas. All layers share one scene and one camera, so multiple sensor
+ * streams compose into a single fused view.
  */
 export function PointCloudPanel({
   cameraPose,
   className,
   colorBy,
   fit = "initial",
-  frame,
-  frameTransform,
+  layers,
   maxRenderedPoints = DEFAULT_MAX_RENDERED_POINTS,
   onCameraPoseChange,
   pointSize = DEFAULT_POINT_SIZE,
@@ -146,37 +164,54 @@ export function PointCloudPanel({
   warning = null,
 }: PointCloudPanelProps) {
   const [canvasError, setCanvasError] = useState<string | null>(null);
-  const [finitePointCount, setFinitePointCount] = useState(0);
-  const scene = useMemo(
-    () => (
-      <PointCloudSceneContent
-        cameraPose={cameraPose}
-        colorBy={colorBy}
-        colors={frame.colors}
-        fit={fit}
-        maxRenderedPoints={maxRenderedPoints}
-        onCameraPoseChange={onCameraPoseChange}
-        onFinitePointCount={setFinitePointCount}
-        pointSize={pointSize}
-        positions={frame.positions}
-        scalarFields={frame.scalarFields}
-        showGizmo={showGizmo}
-        transform={frameTransform}
-      />
-    ),
-    [
-      cameraPose,
-      colorBy,
-      fit,
-      frame.colors,
-      frame.positions,
-      frame.scalarFields,
-      frameTransform,
-      maxRenderedPoints,
-      onCameraPoseChange,
-      pointSize,
-      showGizmo,
-    ]
+  const renderLayers = useMemo(
+    () =>
+      layers.map((layer) => ({
+        data: buildPointCloudRenderData(
+          layer.frame.positions,
+          maxRenderedPoints,
+          {
+            colorBy,
+            colors: layer.frame.colors,
+            scalarFields: layer.frame.scalarFields,
+          }
+        ),
+        layer,
+      })),
+    [colorBy, layers, maxRenderedPoints]
+  );
+
+  const frameFitPose = useMemo(
+    () => cameraPoseForBounds(sceneBoundsForLayers(renderLayers)),
+    [renderLayers]
+  );
+  const [initialFitPose, setInitialFitPose] =
+    useState<PointCloudCameraPose | null>(null);
+
+  useEffect(() => {
+    if (fit !== "initial") {
+      if (initialFitPose) setInitialFitPose(null);
+      return;
+    }
+    if (!initialFitPose && frameFitPose) {
+      setInitialFitPose(frameFitPose);
+    }
+  }, [fit, frameFitPose, initialFitPose]);
+
+  const fittedCameraPose =
+    fit === "never"
+      ? null
+      : fit === "frame"
+      ? frameFitPose
+      : initialFitPose ?? frameFitPose;
+
+  const finitePointCount = renderLayers.reduce(
+    (sum, layer) => sum + layer.data.finitePointCount,
+    0
+  );
+  const declaredPointCount = layers.reduce(
+    (sum, layer) => sum + layer.frame.pointCount,
+    0
   );
 
   return (
@@ -187,7 +222,20 @@ export function PointCloudPanel({
         role="img"
         style={styles.canvas}
       >
-        {scene}
+        <Base3DScene
+          cameraPose={cameraPose ?? fittedCameraPose}
+          onCameraPoseChange={onCameraPoseChange}
+          showGizmo={showGizmo}
+        >
+          {renderLayers.map(({ data, layer }) => (
+            <PointCloudSceneLayer
+              key={layer.id}
+              data={data}
+              layer={layer}
+              pointSize={pointSize}
+            />
+          ))}
+        </Base3DScene>
       </WebGpuCanvas>
 
       {canvasError ? (
@@ -196,7 +244,7 @@ export function PointCloudPanel({
         <div style={styles.status}>No finite points</div>
       ) : showHud ? (
         <div style={styles.hud}>
-          {pointCountLabel(finitePointCount, frame.pointCount)}
+          {pointCountLabel(finitePointCount, declaredPointCount)}
         </div>
       ) : null}
       {warning ? <div style={styles.warning}>{warning}</div> : null}
@@ -204,69 +252,35 @@ export function PointCloudPanel({
   );
 }
 
-function PointCloudSceneContent({
-  cameraPose,
-  colorBy,
-  colors,
-  fit: _fit,
-  maxRenderedPoints,
-  onCameraPoseChange,
-  onFinitePointCount,
+function PointCloudSceneLayer({
+  data,
+  layer,
   pointSize,
-  positions,
-  scalarFields,
-  showGizmo,
-  transform,
 }: {
-  readonly cameraPose?: PointCloudCameraPose | null;
-  readonly colorBy?: PointCloudColorBy;
-  readonly colors?: Float32Array;
-  readonly fit: "initial" | "frame" | "never";
-  readonly maxRenderedPoints: number;
-  readonly onCameraPoseChange?: (pose: PointCloudCameraPose) => void;
-  readonly onFinitePointCount: (count: number) => void;
+  readonly data: PointCloudRenderData;
+  readonly layer: PointCloudPanelLayer;
   readonly pointSize: number;
-  readonly positions: Float32Array;
-  readonly scalarFields?: readonly PointCloudScalarField[];
-  readonly showGizmo: boolean;
-  readonly transform: PointCloudFrameTransform | undefined;
 }) {
   const invalidate = useThree((state) => state.invalidate);
-  const data = useMemo(
-    () =>
-      buildPointCloudRenderData(positions, maxRenderedPoints, {
-        colorBy,
-        colors,
-        scalarFields,
-      }),
-    [colorBy, colors, maxRenderedPoints, positions, scalarFields]
-  );
+  const { frameTransform } = layer;
   const objectTransform = useMemo(
-    () => pointCloudObjectTransform(transform),
-    [transform]
+    () => pointCloudObjectTransform(frameTransform),
+    [frameTransform]
   );
 
-  useEffect(() => {
-    onFinitePointCount(data.finitePointCount);
-  }, [data.finitePointCount, onFinitePointCount]);
-
+  // This effect requests a frameloop-on-demand repaint when the layer's
+  // placement changes.
   useEffect(() => {
     invalidate();
   }, [invalidate, objectTransform]);
 
   return (
-    <Base3DScene
-      cameraPose={cameraPose}
-      onCameraPoseChange={onCameraPoseChange}
-      showGizmo={showGizmo}
+    <group
+      position={objectTransform.position}
+      quaternion={objectTransform.quaternion}
     >
-      <group
-        position={objectTransform.position}
-        quaternion={objectTransform.quaternion}
-      >
-        <PointCloudPoints data={data} pointSize={pointSize} />
-      </group>
-    </Base3DScene>
+      <PointCloudPoints data={data} pointSize={pointSize} />
+    </group>
   );
 }
 
@@ -709,6 +723,71 @@ function pointCloudObjectTransform(
       normalizedRotation.z,
       normalizedRotation.w,
     ],
+  };
+}
+
+/**
+ * Combined world-space bounds for all current layers. Each layer's geometry
+ * bounds start in its local point-cloud frame, so transforms must be applied
+ * before the boxes can be unioned for camera fitting.
+ */
+function sceneBoundsForLayers(
+  layers: readonly PointCloudRenderLayer[]
+): THREE.Box3 | null {
+  const sceneBounds = new THREE.Box3();
+  sceneBounds.makeEmpty();
+
+  for (const { data, layer } of layers) {
+    sceneBounds.union(worldBoundsForLayer(data.bounds, layer.frameTransform));
+  }
+
+  return sceneBounds.isEmpty() ? null : sceneBounds;
+}
+
+/**
+ * Converts one layer's local geometry bounds into panel world coordinates.
+ * The returned box is cloned so the render data can keep reusing its local
+ * bounding box for geometry and future fit calculations.
+ */
+function worldBoundsForLayer(
+  bounds: THREE.Box3,
+  frameTransform: PointCloudFrameTransform | undefined
+): THREE.Box3 {
+  const transform = pointCloudObjectTransform(frameTransform);
+  const matrix = new THREE.Matrix4().compose(
+    new THREE.Vector3(...transform.position),
+    new THREE.Quaternion(...transform.quaternion),
+    new THREE.Vector3(1, 1, 1)
+  );
+
+  return bounds.clone().applyMatrix4(matrix);
+}
+
+/**
+ * Frames a bounding box from the panel's default diagonal viewing direction.
+ * The radius/FOV calculation places the camera far enough back for the whole
+ * box to fit, with padding so points are not pinned to the viewport edge.
+ */
+function cameraPoseForBounds(
+  bounds: THREE.Box3 | null
+): PointCloudCameraPose | null {
+  if (!bounds) {
+    return null;
+  }
+
+  const center = bounds.getCenter(new THREE.Vector3());
+  const size = bounds.getSize(new THREE.Vector3());
+  const radius = Math.max(EMPTY_POINT_CLOUD_BOUNDS_SIZE, size.length() / 2);
+  const fovRad = THREE.MathUtils.degToRad(PERSPECTIVE_POINT_CAMERA.fov);
+  const distance = (radius / Math.sin(fovRad / 2)) * CAMERA_FIT_PADDING;
+  const direction = new THREE.Vector3(...PERSPECTIVE_POINT_CAMERA.position)
+    .normalize()
+    .multiplyScalar(distance);
+  const position = center.clone().add(direction);
+
+  return {
+    position: [position.x, position.y, position.z],
+    target: [center.x, center.y, center.z],
   };
 }
 

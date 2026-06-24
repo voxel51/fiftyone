@@ -1,0 +1,24 @@
+/* Full-modal placeholder shown while the topic inventory loads (or when
+   it fails / contains nothing previewable). */
+
+.state {
+  align-items: center;
+  display: flex;
+  height: 100%;
+  justify-content: center;
+  width: 100%;
+}
+
+.stateText {
+  color: var(--color-content-text-secondary);
+  font-size: 12px;
+}
+
+.stateError {
+  color: var(--color-content-text-destructive);
+}
+
+.captionText {
+  color: var(--color-content-text-muted);
+  font-size: 11px;
+}

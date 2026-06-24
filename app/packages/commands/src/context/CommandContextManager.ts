@@ -27,6 +27,31 @@ export enum KnownCommands {
   ModalDeleteAnnotation = "fo.modal.delete.annotation",
   ModalStepForward = "fo.modal.step.forward",
   ModalStepBack = "fo.modal.step.back",
+  ModalPlayPause = "fo.modal.play.pause",
+}
+
+/**
+ * Input types that don't capture general typing. Commands stay active on
+ * these so a bound key (e.g. Space for play/pause) wins over native
+ * activation of a focused checkbox/button — the manager's
+ * `preventDefault` on a full match suppresses the native toggle. Types
+ * with richer native keyboard models (text, radio, range, date, …) keep
+ * native-first behavior.
+ */
+const NON_TEXT_INPUT_TYPES = new Set(["button", "checkbox", "reset", "submit"]);
+
+/** True when the element consumes general keystrokes for editing/navigation. */
+function isTextEditingTarget(el: Element | null): boolean {
+  if (!el) {
+    return false;
+  }
+  if (el.tagName === "TEXTAREA" || el.tagName === "SELECT") {
+    return true;
+  }
+  if (el.tagName === "INPUT") {
+    return !NON_TEXT_INPUT_TYPES.has((el as HTMLInputElement).type);
+  }
+  return el instanceof HTMLElement && el.isContentEditable;
 }
 //callback for context changes
 export type CommandContextListener = (newId: string) => void;
@@ -242,15 +267,10 @@ export class CommandContextManager {
    * @param event the key event
    */
   public async handleKeyDown(event: KeyboardEvent): Promise<void> {
-    const active = document.activeElement;
-
-    // Prevent shortcuts when interacting with any form field
-    if (
-      active?.tagName === "INPUT" ||
-      active?.tagName === "TEXTAREA" ||
-      active?.tagName === "SELECT" ||
-      event.repeat
-    ) {
+    // Text editing always wins over shortcuts; held-key repeats never
+    // re-fire commands. Non-text controls (checkbox/button) stay subject
+    // to shortcuts — see `isTextEditingTarget`.
+    if (isTextEditingTarget(document.activeElement) || event.repeat) {
       return;
     }
 
