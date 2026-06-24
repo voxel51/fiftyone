@@ -6,10 +6,8 @@ import {
   type Stage,
   type SyntheticBox,
 } from "@fiftyone/utilities";
-import {
-  getFrames,
-  type FrameDoc,
-} from "../../../core/src/client/framesClient";
+import { type FrameDoc } from "../../../core/src/client/framesClient";
+import { getVideoLabelsWindow } from "../../../core/src/client/videoLabelsClient";
 import {
   frameAt,
   PlaybackStreamBase,
@@ -25,28 +23,25 @@ export interface VideoFrameLabelsStreamOptions {
   id: string;
   /** Sample id for the parent video document. */
   sampleId: string;
-  /** Current dataset name (POST /frames requires it). */
+  /** Current dataset name (the window read requires it). */
   dataset: string;
   /** Active view stages — same shape sent on every dataset query. */
   view: Stage[];
-  /** Group slice name, when the dataset is grouped. */
-  groupSlice?: string | null;
   /** Total frame count of the clip (1-indexed up to this number). */
   frameCount: number;
   /** Frame rate in frames per second. */
   frameRate: number;
   /**
    * todo - multiple fields
-   * Field on the per-frame document that carries `Detections`. Strip the
-   * `frames.` prefix that lives in the parent video schema — the per-frame
-   * samples returned by `/frames` are already frame-relative.
+   * Field on the per-frame document that carries `Detections`, frame-relative
+   * (the `frames.` prefix from the parent video schema stripped).
    *
    * @default "detections"
    */
   frameField?: string;
   /**
-   * Number of frames to request in a single `/frames` chunk. Larger
-   * values mean fewer round trips but larger payloads.
+   * Number of frames to request in a single window chunk. Larger values mean
+   * fewer round trips but larger payloads.
    *
    * @default 60
    */
@@ -57,23 +52,22 @@ const DEFAULT_CHUNK_SIZE = 60;
 const DEFAULT_FRAME_FIELD = "detections";
 
 /**
- * Labels stream backed by the `POST /frames` endpoint.
+ * Labels stream backed by the `POST /video-labels/window` endpoint.
  *
- * Caches per-frame samples by 1-indexed frame number. `bufferState`
- * reports readiness for a given time; `prefetch` issues a chunk fetch
- * starting at the first missing frame in the requested range; `getValue`
+ * Caches field-projected per-frame label payloads by 1-indexed frame number.
+ * `bufferState` reports readiness for a given time; `prefetch` issues a window
+ * fetch starting at the first missing frame in the requested range; `getValue`
  * reads the cached frame for the read-only snapshot.
  *
- * Read-only: the stream loads `/frames` chunks and seeds the annotation
- * engine's frame store (via {@link cachedFrames} + {@link subscribeToEdits}).
- * All label mutation, dirty tracking, and persistence live in the engine; the
- * stream holds no edit state.
+ * Read-only: the stream loads window chunks and seeds the annotation engine's
+ * frame store (via {@link cachedFrames} + {@link subscribeToEdits}). All label
+ * mutation, dirty tracking, and persistence live in the engine; the stream
+ * holds no edit state.
  */
 export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapshot> {
   private readonly sampleId: string;
   private readonly dataset: string;
   private readonly view: Stage[];
-  private readonly groupSlice: string | null;
   private readonly frameCount: number;
   private readonly frameRate: number;
   private readonly frameField: string;
@@ -84,7 +78,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   private readonly fetchedRanges: Array<[number, number]> = [];
   // Notified whenever a chunk lands. The annotation engine's frame store
   // re-seeds from `cachedFrames()` on this signal (via `subscribeToEdits`);
-  // the stream itself holds no edit state — it is a read-only `/frames` seed
+  // the stream itself holds no edit state — it is a read-only window seed
   // and the engine owns all label mutations.
   private readonly editListeners = new Set<() => void>();
 
@@ -102,7 +96,6 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     this.sampleId = opts.sampleId;
     this.dataset = opts.dataset;
     this.view = opts.view;
-    this.groupSlice = opts.groupSlice ?? null;
     this.frameCount = opts.frameCount;
     this.frameRate = opts.frameRate;
     this.frameField = opts.frameField ?? DEFAULT_FRAME_FIELD;
@@ -184,6 +177,14 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   /** Per-frame field that carries the labels (e.g. `"detections"`). */
   get labelsField(): string {
     return this.frameField;
+  }
+
+  /**
+   * The dataset query this stream reads against — the params the
+   * `/video-labels/{index,window}` fetches share with the `/frames` seed.
+   */
+  labelQuery(): { sampleId: string; dataset: string; view: Stage[] } {
+    return { sampleId: this.sampleId, dataset: this.dataset, view: this.view };
   }
 
   bufferState(time: number): BufferReadiness {
@@ -319,33 +320,39 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   }
 
   private async doFetch(startFrame: number, numFrames: number): Promise<void> {
+    const endFrame = Math.min(startFrame + numFrames - 1, this.frameCount);
+
     try {
-      const result = await getFrames({
-        frameNumber: startFrame,
-        numFrames,
-        frameCount: this.frameCount,
+      const result = await getVideoLabelsWindow({
         sampleId: this.sampleId,
         dataset: this.dataset,
         view: this.view,
-        slice: this.groupSlice ?? undefined,
+        fields: [this.frameField],
+        startFrame,
+        endFrame,
       });
 
-      for (const frame of result.frames) {
-        // The /frames response is the seed; the engine owns edits, so the
-        // stream never reconciles local state against the fetch.
-        this.cache.set(frame.frame_number, frame);
+      let landed = 0;
+      for (const [frameNumber, fields] of Object.entries(result.frames)) {
+        // Field-projected window payload → the cache's per-frame doc shape.
+        // The engine owns edits, so the stream never reconciles against it.
+        this.cache.set(Number(frameNumber), {
+          frame_number: Number(frameNumber),
+          ...fields,
+        });
+        landed++;
       }
 
       mergeRange(this.fetchedRanges, result.range);
 
-      if (result.frames.length > 0) {
+      if (landed > 0) {
         this.notifyEdits();
       }
     } catch (error) {
       // Surface but don't crash — the engine will keep asking; subsequent
       // prefetch calls will retry the missing frames.
       console.error(
-        `[VideoFrameLabelsStream] fetch failed for [${startFrame}, +${numFrames})`,
+        `[VideoFrameLabelsStream] fetch failed for [${startFrame}, ${endFrame}]`,
         error
       );
     }

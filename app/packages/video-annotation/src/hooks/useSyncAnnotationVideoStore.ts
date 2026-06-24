@@ -51,6 +51,11 @@ export const useSyncAnnotationVideoStore = (): void => {
     const unsubscribe = stream.subscribeToEdits(seed);
     seed();
 
+    // Whole-clip seed for engine consumers that still walk every frame
+    // (propagation, interpolation, track ops). The timeline no longer needs
+    // it — it reads the server index. Retire once those ops fetch per-range.
+    void stream.warmupAll();
+
     return () => {
       unsubscribe();
       unregister();
