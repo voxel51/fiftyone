@@ -165,9 +165,6 @@ export default function Embeddings({ dimensions }) {
                 <Warnings />
 
                 <PlotOption
-                  href={
-                    "https://docs.voxel51.com/user_guide/app.html#embeddings-panel"
-                  }
                   title={"Help"}
                   to={embeddingsDocumentationLink}
                   target={"_blank"}
