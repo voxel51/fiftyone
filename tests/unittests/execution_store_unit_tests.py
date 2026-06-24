@@ -420,3 +420,250 @@ class ExecutionStoreServiceDatasetIdTests(unittest.TestCase):
             )
 
         self.assertIn("dataset_id must be an ObjectId", str(context.exception))
+
+
+class TestCloneExecutionStores(unittest.TestCase):
+    """Tests for cloning execution store records to a cloned dataset."""
+
+    def _clone(self, seed, src_id, dst_id, id_map=None):
+        """Runs ``clone_execution_stores`` against a mocked collection seeded
+        with ``seed`` and returns the list of inserted documents."""
+        from fiftyone.operators.store import clone as esc
+
+        inserted = []
+        mock_coll = MagicMock()
+
+        def _find(query):
+            ds = query["dataset_id"]
+            allow = set(query["store_name"]["$in"])
+            return [
+                dict(d)
+                for d in seed
+                if d["dataset_id"] == ds and d["store_name"] in allow
+            ]
+
+        mock_coll.find.side_effect = _find
+        mock_coll.insert_many.side_effect = lambda docs: inserted.extend(docs)
+
+        src = Mock()
+        src._doc.id = src_id
+        dst = Mock()
+        dst._doc.id = dst_id
+
+        # Decouple from plugin importability: the store names are sourced from
+        # the owning panels at runtime, but the copy/remap logic under test is
+        # independent of which panels happen to be importable here.
+        store_names = [
+            "auto_labeling_run_store",
+            "similarity_search_panel",
+            "model_evaluation_panel_builtin",
+        ]
+
+        with patch(
+            "fiftyone.operators.store.clone.foo.get_db_conn"
+        ) as mock_conn, patch(
+            "fiftyone.operators.store.clone._cloneable_store_names",
+            return_value=store_names,
+        ):
+            mock_conn.return_value = {
+                MongoExecutionStoreRepo.COLLECTION_NAME: mock_coll
+            }
+            esc.clone_execution_stores(src, dst, now=None, id_map=id_map)
+
+        return inserted, mock_coll
+
+    def test_clones_only_allowlisted_stores(self):
+        src_id = ObjectId()
+        other_id = ObjectId()
+        dst_id = ObjectId()
+        seed = [
+            {
+                "_id": ObjectId(),
+                "dataset_id": src_id,
+                "store_name": "similarity_search_panel",
+                "key": "run1",
+                "value": {"q": "dog"},
+            },
+            {
+                "_id": ObjectId(),
+                "dataset_id": src_id,
+                "store_name": "similarity_search_panel",
+                "key": "__store__",
+                "value": None,
+            },
+            {
+                "_id": ObjectId(),
+                "dataset_id": src_id,
+                "store_name": "auto_labeling_run_store",
+                "key": "al1",
+                "value": {"status": "done"},
+            },
+            {
+                "_id": ObjectId(),
+                "dataset_id": src_id,
+                "store_name": "model_evaluation_panel_builtin",
+                "key": "eval1",
+                "value": {"k": 1},
+            },
+            # Excluded: not on the allowlist
+            {
+                "_id": ObjectId(),
+                "dataset_id": src_id,
+                "store_name": "data_quality_panel",
+                "key": "dq1",
+                "value": "no",
+            },
+            # Excluded: belongs to a different dataset
+            {
+                "_id": ObjectId(),
+                "dataset_id": other_id,
+                "store_name": "similarity_search_panel",
+                "key": "other",
+                "value": "no",
+            },
+        ]
+
+        inserted, _ = self._clone(seed, src_id, dst_id)
+
+        names = {d["store_name"] for d in inserted}
+        self.assertEqual(
+            names,
+            {
+                "similarity_search_panel",
+                "auto_labeling_run_store",
+                "model_evaluation_panel_builtin",
+            },
+        )
+        # 3 allowlisted stores incl. the sim-search __store__ metadata record
+        self.assertEqual(len(inserted), 4)
+        # dataset_id rewritten to the clone; original _id dropped
+        self.assertTrue(all(d["dataset_id"] == dst_id for d in inserted))
+        self.assertTrue(all("_id" not in d for d in inserted))
+        # excluded stores / other datasets never copied
+        self.assertNotIn("data_quality_panel", names)
+        # original values preserved
+        sim = next(
+            d
+            for d in inserted
+            if d["store_name"] == "similarity_search_panel"
+            and d["key"] == "run1"
+        )
+        self.assertEqual(sim["value"], {"q": "dog"})
+
+    def test_remaps_model_evaluation_ids(self):
+        src_id = ObjectId()
+        dst_id = ObjectId()
+        old_eval_id = str(ObjectId())
+        new_eval_id = str(ObjectId())
+        id_map = {str(src_id): str(dst_id), old_eval_id: new_eval_id}
+        seed = [
+            # review status + note: eval id is a dict key inside the value
+            {
+                "_id": ObjectId(),
+                "dataset_id": src_id,
+                "store_name": "model_evaluation_panel_builtin",
+                "key": "statuses",
+                "value": {old_eval_id: "reviewed"},
+            },
+            {
+                "_id": ObjectId(),
+                "dataset_id": src_id,
+                "store_name": "model_evaluation_panel_builtin",
+                "key": "notes",
+                "value": {old_eval_id: "looks good"},
+            },
+            # pending_evaluations: keyed by the source dataset id
+            {
+                "_id": ObjectId(),
+                "dataset_id": src_id,
+                "store_name": "model_evaluation_panel_builtin",
+                "key": "pending_evaluations",
+                "value": {str(src_id): [{"eval_key": "eval"}]},
+            },
+            # cached metrics: eval id is the document key itself
+            {
+                "_id": ObjectId(),
+                "dataset_id": src_id,
+                "store_name": "model_evaluation_panel_builtin",
+                "key": old_eval_id,
+                "value": {"metrics": "..."},
+            },
+        ]
+
+        inserted, _ = self._clone(seed, src_id, dst_id, id_map=id_map)
+
+        by_key = {d["key"]: d for d in inserted}
+        # statuses/notes inner keys remapped to the new eval id
+        self.assertEqual(
+            by_key["statuses"]["value"], {new_eval_id: "reviewed"}
+        )
+        self.assertEqual(by_key["notes"]["value"], {new_eval_id: "looks good"})
+        # pending_evaluations dataset-id key remapped to the clone
+        self.assertEqual(
+            by_key["pending_evaluations"]["value"],
+            {str(dst_id): [{"eval_key": "eval"}]},
+        )
+        # cache document key itself remapped from old eval id to new
+        self.assertIn(new_eval_id, by_key)
+        self.assertNotIn(old_eval_id, by_key)
+        self.assertTrue(all(d["dataset_id"] == dst_id for d in inserted))
+
+    def test_remap_leaves_unmatched_ids_untouched(self):
+        # AL + Similarity Search reference only sample ids (preserved on clone)
+        # and panel uuids — none appear in the id_map, so they pass through.
+        src_id = ObjectId()
+        dst_id = ObjectId()
+        id_map = {str(src_id): str(dst_id), str(ObjectId()): str(ObjectId())}
+        seed = [
+            {
+                "_id": ObjectId(),
+                "dataset_id": src_id,
+                "store_name": "similarity_search_panel",
+                "key": "run:abc",
+                "value": {"brain_key": "sim", "result_ids": ["s1", "s2"]},
+            },
+            {
+                "_id": ObjectId(),
+                "dataset_id": src_id,
+                "store_name": "auto_labeling_run_store",
+                "key": "al-uuid",
+                "value": {"label_field": "predictions", "status": "done"},
+            },
+        ]
+
+        inserted, _ = self._clone(seed, src_id, dst_id, id_map=id_map)
+
+        by_key = {d["key"]: d for d in inserted}
+        self.assertEqual(
+            by_key["run:abc"]["value"],
+            {"brain_key": "sim", "result_ids": ["s1", "s2"]},
+        )
+        self.assertIn("al-uuid", by_key)
+        self.assertEqual(
+            by_key["al-uuid"]["value"],
+            {"label_field": "predictions", "status": "done"},
+        )
+
+    def test_no_records_no_insert(self):
+        inserted, mock_coll = self._clone([], ObjectId(), ObjectId())
+        self.assertEqual(inserted, [])
+        mock_coll.insert_many.assert_not_called()
+
+    def test_registered_as_extras_cloner(self):
+        import fiftyone.core.dataset as fod
+        from fiftyone.operators.store.clone import clone_execution_stores
+
+        self.assertIn(clone_execution_stores, fod._extras_cloners)
+
+    def test_register_cloneable_store(self):
+        from fiftyone.operators.store import clone as esc
+
+        name = "some_downstream_store"
+        try:
+            esc.register_cloneable_store(name)
+            self.assertIn(name, esc._cloneable_store_names())
+            # idempotent
+            esc.register_cloneable_store(name)
+            self.assertEqual(esc._cloneable_store_names().count(name), 1)
+        finally:
+            esc._registered_store_names.remove(name)
