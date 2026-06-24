@@ -3,11 +3,10 @@ import { useAtomValue } from "jotai";
 import { Quaternion, Vector3 } from "three";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as fos from "@fiftyone/state";
-import type { Fo3dPointCloudSettings } from "../context";
 import { Fo3dSceneContent } from "../Fo3dCanvas";
 import type { FoScene } from "../render-types";
 
-const threeDLabelsMock = vi.fn(() => null);
+const threeDLabelsMock = vi.fn((_: { sampleMap: unknown }) => null);
 
 vi.mock("@fiftyone/state", () => ({
   modalMode: { key: "modalMode" },
@@ -23,7 +22,6 @@ vi.mock("jotai", () => ({
 vi.mock("@react-three/drei", () => ({
   AdaptiveDpr: () => null,
   AdaptiveEvents: () => null,
-  CameraControls: () => null,
   OrbitControls: () => null,
   PerspectiveCamera: () => null,
 }));
@@ -101,25 +99,31 @@ describe("Fo3dSceneContent", () => {
       pcd_right: {
         sample: { _id: "right-sample", filepath: "/tmp/right.pcd" },
       },
-    };
+    } as unknown as ReturnType<
+      typeof fos.useRenderConfig3dState
+    >["activeSampleMap"];
 
     vi.mocked(fos.useRenderConfig3dState).mockReturnValue({
       activeSampleMap: labelSampleMap,
-    });
+    } as ReturnType<typeof fos.useRenderConfig3dState>);
 
     const foScene: FoScene = {
       position: new Vector3(0, 0, 0),
       quaternion: new Quaternion(),
       scale: new Vector3(1, 1, 1),
       background: null,
-      cameraProps: {},
+      cameraProps: {
+        position: null,
+        lookAt: null,
+        up: "Y",
+        fov: 50,
+        aspect: 1,
+        near: 0.1,
+        far: 2500,
+      },
       lights: [],
       children: [],
     };
-    const pointCloudSettings: Fo3dPointCloudSettings = {
-      enableTooltip: false,
-    };
-
     render(
       <Fo3dSceneContent
         cameraPosition={new Vector3(0, 0, 5)}
@@ -128,7 +132,6 @@ describe("Fo3dSceneContent", () => {
         cameraControlsRef={{ current: null }}
         foScene={foScene}
         isSceneInitialized={true}
-        pointCloudSettings={pointCloudSettings}
         assetsGroupRef={{ current: null }}
         cameraRef={{ current: null }}
       />,

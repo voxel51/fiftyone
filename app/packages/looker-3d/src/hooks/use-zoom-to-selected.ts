@@ -1,7 +1,15 @@
 import * as fos from "@fiftyone/state";
-import type { CameraControls } from "@react-three/drei";
 import { useRecoilCallback } from "recoil";
-import { Box3, Vector3, type Vector3Tuple } from "three";
+import {
+  Box3,
+  Vector3,
+  type PerspectiveCamera,
+  type Vector3Tuple,
+} from "three";
+import {
+  setCameraControlsLookAt,
+  type Fo3dCameraControls,
+} from "../fo3d/camera-controls";
 import { selectedLabelForAnnotationAtom } from "../state";
 import {
   calculateCameraPositionForUpVector,
@@ -12,7 +20,7 @@ interface UseZoomToSelectedProps {
   interactionSample: fos.ModalSample;
   upVector: Vector3 | null;
   mode: string;
-  cameraControlsRef: React.RefObject<CameraControls>;
+  cameraControlsRef: React.RefObject<Fo3dCameraControls>;
 }
 
 type LabelWithId = { _id?: string; id?: string };
@@ -143,15 +151,12 @@ export const useZoomToSelected = ({
           "top",
         );
 
-        await cameraControlsRef.current.setLookAt(
-          cameraPosition.x,
-          cameraPosition.y,
-          cameraPosition.z,
-          center.x,
-          center.y,
-          center.z,
-          true,
-        );
+        setCameraControlsLookAt({
+          camera: cameraControlsRef.current.object as PerspectiveCamera,
+          controls: cameraControlsRef.current,
+          position: cameraPosition,
+          target: center,
+        });
       },
     [interactionSample, upVector, mode, cameraControlsRef],
   );

@@ -1,6 +1,5 @@
 import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
 import * as fos from "@fiftyone/state";
-import type { CameraControls } from "@react-three/drei";
 import { useAtomValue } from "jotai";
 import React, { useCallback, useEffect } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -15,6 +14,11 @@ import {
   SET_TOP_VIEW_EVENT,
   SET_ZOOM_TO_SELECTED_EVENT,
 } from "../constants";
+import {
+  getCameraControlsTarget,
+  setCameraControlsLookAt,
+  type Fo3dCameraControls,
+} from "../fo3d/camera-controls";
 import { useFo3dContext } from "../fo3d/context";
 import {
   annotationPlaneAtom,
@@ -26,7 +30,7 @@ import { isDetection3dOverlay, isPolyline3dOverlay } from "../types";
 
 interface UseCameraViewsProps {
   cameraRef: React.RefObject<PerspectiveCamera>;
-  cameraControlsRef: React.RefObject<CameraControls>;
+  cameraControlsRef: React.RefObject<Fo3dCameraControls>;
 }
 
 /**
@@ -144,8 +148,7 @@ export const useCameraViews = ({
       }
 
       const currentCameraPosition = cameraRef.current.position.clone();
-      const lookAt = new Vector3();
-      cameraControlsRef.current.getTarget(lookAt);
+      const lookAt = getCameraControlsTarget(cameraControlsRef.current);
 
       // Calculate radius based on the position of the camera and the look at point
       const currentRadius = currentCameraPosition.distanceTo(lookAt);
@@ -189,26 +192,23 @@ export const useCameraViews = ({
 
   const applyCameraView = useCallback(
     (cameraPosition: Vector3, target: Vector3, viewName: string) => {
-      if (!cameraControlsRef.current) {
+      if (!cameraRef.current || !cameraControlsRef.current) {
         return;
       }
 
-      cameraControlsRef.current.setLookAt(
-        cameraPosition.x,
-        cameraPosition.y,
-        cameraPosition.z,
-        target.x,
-        target.y,
-        target.z,
-        true,
-      );
+      setCameraControlsLookAt({
+        camera: cameraRef.current,
+        controls: cameraControlsRef.current,
+        position: cameraPosition,
+        target,
+      });
 
       setCameraViewStatus({
         viewName,
         timestamp: Date.now(),
       });
     },
-    [cameraControlsRef, setCameraViewStatus],
+    [cameraRef, cameraControlsRef, setCameraViewStatus],
   );
 
   const setCameraView = useCallback(

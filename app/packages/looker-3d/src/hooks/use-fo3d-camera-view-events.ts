@@ -1,10 +1,10 @@
 import * as fos from "@fiftyone/state";
-import type { CameraControls } from "@react-three/drei";
 import { useCallback, useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import type { Box3, PerspectiveCamera, Vector3 } from "three";
 import { SET_EGO_VIEW_EVENT, SET_TOP_VIEW_EVENT } from "../constants";
 import { resolveViewConfig } from "../fo3d/camera-init";
+import type { Fo3dCameraControls } from "../fo3d/camera-controls";
 import { FoScene } from "../fo3d/render-types";
 import type { Looker3dSettings } from "../settings";
 import { cameraPositionAtom } from "../state";
@@ -14,7 +14,7 @@ const BOUNDS_RETRY_DELAY_MS = 50;
 
 interface UseFo3dCameraViewEventsArgs {
   cameraRef: React.RefObject<PerspectiveCamera>;
-  cameraControlsRef: React.RefObject<CameraControls>;
+  cameraControlsRef: React.RefObject<Fo3dCameraControls>;
   effectiveSceneBoundingBox: Box3;
   sceneBoundingBox: Box3 | null;
   upVector: Vector3 | null;

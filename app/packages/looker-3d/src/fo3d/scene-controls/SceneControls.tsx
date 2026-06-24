@@ -1,20 +1,22 @@
 import * as fos from "@fiftyone/state";
-import type { CameraControls } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { folder, useControls } from "leva";
 import { useMemo, useRef } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
-import { Vector3 } from "three";
 import { PANEL_ORDER_SCENE_CONTROLS } from "../../constants";
-import type { FoScene } from "../../hooks";
 import { avoidZFightingAtom } from "../../state";
 import { useFo3dContext } from "../context";
+import type { FoScene } from "../render-types";
 import {
   ORTHONORMAL_AXIS_OPTIONS,
   getOrthonormalAxis,
   getUpVectorFromAxis,
   saveCameraState,
 } from "../utils";
+import {
+  getCameraControlsTarget,
+  type Fo3dCameraControls,
+} from "../camera-controls";
 import { useCameraSelectorControls } from "./cameras/use-camera-selector-controls";
 import { Lights } from "./lights/Lights";
 
@@ -23,7 +25,7 @@ export const SceneControls = ({
   cameraControlsRef,
 }: {
   scene: FoScene;
-  cameraControlsRef?: React.RefObject<CameraControls>;
+  cameraControlsRef?: React.RefObject<Fo3dCameraControls>;
 }) => {
   const {
     upVector,
@@ -72,7 +74,7 @@ export const SceneControls = ({
       saveCameraState(
         datasetName,
         state.camera.position.toArray(),
-        cameraControls.getTarget(new Vector3()).toArray(),
+        getCameraControlsTarget(cameraControls).toArray(),
       );
       lastCameraUpdateRef.current = now;
     }

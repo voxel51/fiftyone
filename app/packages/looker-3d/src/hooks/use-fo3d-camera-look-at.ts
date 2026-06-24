@@ -1,7 +1,9 @@
-import type { CameraControls } from "@react-three/drei";
 import { useCallback } from "react";
-import type { PerspectiveCamera, Vector3Tuple } from "three";
-import { Vector3 } from "three";
+import type { PerspectiveCamera, Vector3, Vector3Tuple } from "three";
+import {
+  setCameraControlsLookAt,
+  type Fo3dCameraControls,
+} from "../fo3d/camera-controls";
 
 type CameraVector = Vector3 | Vector3Tuple;
 
@@ -13,16 +15,8 @@ interface LookAtParams {
 
 interface UseFo3dCameraLookAtArgs {
   cameraRef: React.RefObject<PerspectiveCamera>;
-  cameraControlsRef: React.RefObject<CameraControls>;
+  cameraControlsRef: React.RefObject<Fo3dCameraControls>;
 }
-
-const toVectorTuple = (value: CameraVector): Vector3Tuple => {
-  if (value instanceof Vector3) {
-    return [value.x, value.y, value.z];
-  }
-
-  return value;
-};
 
 /**
  * Thin adapter for FO3D look-at updates.
@@ -38,18 +32,12 @@ export const useFo3dCameraLookAt = ({
         return false;
       }
 
-      const [positionX, positionY, positionZ] = toVectorTuple(lookAt.position);
-      const [targetX, targetY, targetZ] = toVectorTuple(lookAt.target);
-
-      cameraControlsRef.current.setLookAt(
-        positionX,
-        positionY,
-        positionZ,
-        targetX,
-        targetY,
-        targetZ,
-        lookAt.animate,
-      );
+      setCameraControlsLookAt({
+        camera: cameraRef.current,
+        controls: cameraControlsRef.current,
+        position: lookAt.position,
+        target: lookAt.target,
+      });
 
       return true;
     },

@@ -1,5 +1,4 @@
 import * as fos from "@fiftyone/state";
-import type { CameraControls } from "@react-three/drei";
 import { useEffect, useRef } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import type { Vector3 } from "three";
@@ -8,6 +7,7 @@ import {
   isFo3dCameraLifecycleReady,
   type Fo3dCameraLifecycleState,
 } from "../fo3d/camera-lifecycle";
+import type { Fo3dCameraControls } from "../fo3d/camera-controls";
 import { useFo3dContext } from "../fo3d/context";
 import {
   activeNodeAtom,
@@ -22,7 +22,7 @@ interface UseFo3dInteractionLifecycleArgs {
   interactionSample: fos.ModalSample;
   upVector: Vector3 | null;
   mode: string;
-  cameraControlsRef: React.RefObject<CameraControls>;
+  cameraControlsRef: React.RefObject<Fo3dCameraControls>;
 }
 
 /**

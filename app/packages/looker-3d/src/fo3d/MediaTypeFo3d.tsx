@@ -2,7 +2,6 @@ import { Loading, LoadingDots } from "@fiftyone/components";
 import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import type { CameraControls } from "@react-three/drei";
 import { useEffect, useMemo, useReducer, useRef } from "react";
 import {
   LoadingManager,
@@ -34,6 +33,7 @@ import {
   isFo3dSceneReady,
   type Fo3dCameraLifecycleState,
 } from "./camera-lifecycle";
+import type { Fo3dCameraControls } from "./camera-controls";
 import { Fo3dSceneContext } from "./context";
 import { FoScene } from "./render-types";
 
@@ -44,7 +44,7 @@ interface Fo3dPanelsProps {
   foScene: FoScene;
   interactionSample: fos.ModalSample;
   cameraRef: React.RefObject<PerspectiveCamera>;
-  cameraControlsRef: React.RefObject<CameraControls>;
+  cameraControlsRef: React.RefObject<Fo3dCameraControls>;
   mountCameraPosition: Vector3;
   cameraLifecycleState: Fo3dCameraLifecycleState;
   mode: string;
@@ -147,7 +147,7 @@ export const MediaTypeFo3dComponent = () => {
   }, [sceneSampleId]);
 
   const cameraRef = useRef<PerspectiveCamera | null>(null);
-  const cameraControlsRef = useRef<CameraControls | null>(null);
+  const cameraControlsRef = useRef<Fo3dCameraControls | null>(null);
   const assetsGroupRef = useRef<Group | null>(null);
   const threeJsLoadingStatus = useTrackStatus(loadingManager, isSceneReady);
 

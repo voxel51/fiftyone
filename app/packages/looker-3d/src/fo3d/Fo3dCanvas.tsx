@@ -2,7 +2,6 @@ import * as fos from "@fiftyone/state";
 import {
   AdaptiveDpr,
   AdaptiveEvents,
-  CameraControls,
   OrbitControls,
   PerspectiveCamera as PerspectiveCameraDrei,
 } from "@react-three/drei";
@@ -20,9 +19,9 @@ import { FrustumCollection } from "../frustum";
 import { useCameraViews } from "../hooks/use-camera-views";
 import { ThreeDLabels } from "../labels";
 import { RaycastService } from "../services/RaycastService";
+import type { Fo3dCameraControls } from "./camera-controls";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
-import type { Fo3dPointCloudSettings } from "./context";
 import { FoScene } from "./render-types";
 import { SceneControls } from "./scene-controls/SceneControls";
 
@@ -52,17 +51,13 @@ interface Fo3dSceneContentProps {
    */
   aspect?: number;
   /**
-   * Camera zoom (for orthographic)
-   */
-  zoom?: number;
-  /**
    * Whether auto-rotate is enabled
    */
   autoRotate: boolean;
   /**
    * Reference to camera controls
    */
-  cameraControlsRef: React.RefObject<CameraControls>;
+  cameraControlsRef: React.RefObject<Fo3dCameraControls>;
   /**
    * The 3D scene to render
    */
@@ -71,10 +66,6 @@ interface Fo3dSceneContentProps {
    * Whether the scene is initialized
    */
   isSceneInitialized: boolean;
-  /**
-   * Point cloud settings
-   */
-  pointCloudSettings: Fo3dPointCloudSettings;
   /**
    * Reference to the assets group
    */
@@ -96,13 +87,11 @@ export const Fo3dSceneContent = ({
   near = 0.1,
   far = 2500,
   aspect = 1,
-  zoom = 100,
   autoRotate,
   cameraControlsRef,
   foScene,
   isSceneInitialized,
   isGizmoHelperVisible,
-  pointCloudSettings,
   assetsGroupRef,
   cameraRef,
 }: Fo3dSceneContentProps) => {
@@ -133,16 +122,16 @@ export const Fo3dSceneContent = ({
         onUpdate={(cam) => cam.updateProjectionMatrix()}
       />
 
-      {!autoRotate ? (
-        <CameraControls
-          smoothTime={0.1}
-          dollySpeed={0.1}
-          dollyToCursor
-          ref={cameraControlsRef}
-        />
-      ) : (
-        <OrbitControls autoRotate={autoRotate} makeDefault />
-      )}
+      <OrbitControls
+        ref={cameraControlsRef}
+        makeDefault
+        autoRotate={autoRotate}
+        enableDamping={false}
+        rotateSpeed={1}
+        zoomSpeed={1.25}
+        panSpeed={1.15}
+        zoomToCursor
+      />
 
       <SceneControls scene={foScene} cameraControlsRef={cameraControlsRef} />
 

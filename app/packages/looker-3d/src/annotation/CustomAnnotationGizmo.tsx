@@ -11,10 +11,7 @@
  * It uses a custom canvas to render the gizmo and syncs with the main camera.
  *
  */
-import {
-  CameraControls as CameraControlsType,
-  OrthographicCamera,
-} from "@react-three/drei";
+import { OrthographicCamera } from "@react-three/drei";
 import {
   Canvas,
   ThreeElements,
@@ -22,7 +19,6 @@ import {
   useFrame,
   useThree,
 } from "@react-three/fiber";
-import CameraControlsImpl from "camera-controls";
 import * as React from "react";
 import { useCallback, useState } from "react";
 import styled from "styled-components";
@@ -37,6 +33,11 @@ import {
   Vector3,
 } from "three";
 import { OrbitControls as OrbitControlsType } from "three-stdlib";
+import {
+  getCameraControlsTarget,
+  setCameraControlsPosition,
+  type Fo3dCameraControls,
+} from "../fo3d/camera-controls";
 const GizmoOverlay = styled.div`
   position: absolute;
   top: 0;
@@ -82,7 +83,10 @@ const [q1, q2] = [
 ];
 const targetPosition = /* @__PURE__ */ new Vector3();
 
-type ControlsProto = { update(delta?: number): void; target: Vector3 };
+type ControlsProto = {
+  update(delta?: number): void;
+  target: Vector3;
+};
 
 type GizmoHelperProps = ThreeElements["group"] & {
   margin?: [number, number];
@@ -98,12 +102,6 @@ const isOrbitControls = (
   controls: ControlsProto,
 ): controls is OrbitControlsType => {
   return "minPolarAngle" in (controls as OrbitControlsType);
-};
-
-const isCameraControls = (
-  controls: CameraControlsType | ControlsProto,
-): controls is CameraControlsType => {
-  return "getTarget" in (controls as CameraControlsType);
 };
 
 const AnnotationGizmoHelper = ({
@@ -165,10 +163,7 @@ const AnnotationGizmoHelper = ({
       animating.current = true;
       if (defaultControls || onTarget) {
         focusPoint.current =
-          onTarget?.() ||
-          (isCameraControls(defaultControls)
-            ? defaultControls.getTarget(focusPoint.current)
-            : defaultControls?.target || new Vector3(0, 0, 0));
+          onTarget?.() || defaultControls?.target || new Vector3(0, 0, 0);
       }
       radius.current = cameraState.position.distanceTo(cameraState.target);
 
@@ -199,7 +194,7 @@ const AnnotationGizmoHelper = ({
           // Orbit controls uses UP vector as the orbit axes,
           // so we need to reset it after the animation is done
           // moving it around for the controls to work correctly
-          if (isOrbitControls(defaultControls)) {
+          if (defaultControls && isOrbitControls(defaultControls)) {
             mainCamera.up.copy(defaultUp.current);
           }
         } else {
@@ -214,13 +209,6 @@ const AnnotationGizmoHelper = ({
             .add(focusPoint.current);
           mainCamera.up.set(0, 1, 0).applyQuaternion(q1).normalize();
           mainCamera.quaternion.copy(q1);
-
-          if (isCameraControls(defaultControls))
-            defaultControls.setPosition(
-              mainCamera.position.x,
-              mainCamera.position.y,
-              mainCamera.position.z,
-            );
 
           if (onUpdate) onUpdate();
           else if (defaultControls) defaultControls.update(delta);
@@ -239,7 +227,7 @@ const AnnotationGizmoHelper = ({
         gizmoRef.current?.quaternion.setFromRotationMatrix(matrix);
       }
     }
-  });
+  }, renderPriority);
 
   const gizmoHelperContext = React.useMemo(
     () => ({ tweenCamera }),
@@ -450,7 +438,7 @@ const CustomGizmo = ({
   cameraControlsRef,
 }: {
   mainCamera: React.RefObject<THREE.PerspectiveCamera>;
-  cameraControlsRef: React.RefObject<CameraControlsImpl>;
+  cameraControlsRef: React.RefObject<Fo3dCameraControls>;
 }) => {
   const [mainCameraState, setMainCameraState] = useState<{
     position: THREE.Vector3;
@@ -460,14 +448,15 @@ const CustomGizmo = ({
 
   // Sync with main camera and controls using useEffect with proper cleanup
   React.useEffect(() => {
-    if (!mainCamera.current || !cameraControlsRef.current) return;
+    if (!mainCamera.current || !cameraControlsRef.current) {
+      return undefined;
+    }
 
     let animationId: number;
 
     const updateCameraState = () => {
       if (mainCamera.current && cameraControlsRef.current) {
-        const target = new THREE.Vector3();
-        cameraControlsRef.current.getTarget(target);
+        const target = getCameraControlsTarget(cameraControlsRef.current);
 
         setMainCameraState({
           position: mainCamera.current.position.clone(),
@@ -502,12 +491,11 @@ const CustomGizmo = ({
       const newPosition = direction.clone().multiplyScalar(radius).add(target);
 
       // Set the new camera position
-      cameraControlsRef.current.setPosition(
-        newPosition.x,
-        newPosition.y,
-        newPosition.z,
-        true, // animate
-      );
+      setCameraControlsPosition({
+        camera: mainCamera.current,
+        controls: cameraControlsRef.current,
+        position: newPosition,
+      });
     },
     [mainCamera, cameraControlsRef, mainCameraState],
   );
@@ -531,7 +519,7 @@ export const AnnotationMultiViewGizmoOverlayWrapper = ({
   cameraControlsRef,
 }: {
   mainCamera: React.RefObject<THREE.PerspectiveCamera>;
-  cameraControlsRef: React.RefObject<CameraControlsImpl>;
+  cameraControlsRef: React.RefObject<Fo3dCameraControls>;
 }) => {
   return (
     <GizmoOverlay>

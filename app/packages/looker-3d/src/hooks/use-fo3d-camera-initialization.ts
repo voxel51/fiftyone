@@ -1,5 +1,4 @@
 import * as fos from "@fiftyone/state";
-import type { CameraControls } from "@react-three/drei";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import type { Box3, PerspectiveCamera } from "three";
@@ -10,6 +9,10 @@ import {
   FO3D_CAMERA_LIFECYCLE_ACTION,
   Fo3dCameraLifecycleAction,
 } from "../fo3d/camera-lifecycle";
+import {
+  getCameraControlsTarget,
+  type Fo3dCameraControls,
+} from "../fo3d/camera-controls";
 import { FoScene } from "../fo3d/render-types";
 import { getSavedCameraState, saveCameraState } from "../fo3d/utils";
 import type { Looker3dSettings } from "../settings";
@@ -39,7 +42,7 @@ const areCoLocated = (a: Vector3, b: Vector3) => {
 
 interface UseFo3dCameraInitializationArgs {
   cameraRef: React.RefObject<PerspectiveCamera>;
-  cameraControlsRef: React.RefObject<CameraControls>;
+  cameraControlsRef: React.RefObject<Fo3dCameraControls>;
   currentRenderPath: RenderPath;
   foScene: FoScene | null;
   sceneBoundingBox: Box3 | null;
@@ -82,7 +85,9 @@ export const useFo3dCameraInitialization = ({
       // If origin override also targets origin, controls get a
       // zero camera-target distance which leads to degenerate state (eye = position - target, and can't be zero)
       // and pinch/truck effectively stalls.
-      const currentTarget = cameraControlsRef.current?.getTarget(new Vector3());
+      const currentTarget = cameraControlsRef.current
+        ? getCameraControlsTarget(cameraControlsRef.current)
+        : null;
       if (
         currentTarget &&
         isFiniteVector3(currentTarget) &&
@@ -117,8 +122,7 @@ export const useFo3dCameraInitialization = ({
       return;
     }
 
-    const target = new Vector3();
-    cameraControlsRef.current.getTarget(target);
+    const target = getCameraControlsTarget(cameraControlsRef.current);
 
     saveCameraState(
       datasetName ?? undefined,
