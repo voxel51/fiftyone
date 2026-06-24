@@ -43,11 +43,13 @@ interface Fo3dPanelsProps {
   assetsGroupRef: React.RefObject<Group>;
   foScene: FoScene;
   interactionSample: fos.ModalSample;
+  activeSampleMap: Record<string, fos.ModalSample>;
   cameraRef: React.RefObject<PerspectiveCamera>;
   cameraControlsRef: React.RefObject<Fo3dCameraControls>;
   mountCameraPosition: Vector3;
   cameraLifecycleState: Fo3dCameraLifecycleState;
   mode: string;
+  useLegacyCoordinates: boolean;
 }
 
 const Fo3dPanels = ({
@@ -56,18 +58,22 @@ const Fo3dPanels = ({
   assetsGroupRef,
   foScene,
   interactionSample,
+  activeSampleMap,
   cameraRef,
   cameraControlsRef,
   mountCameraPosition,
   cameraLifecycleState,
   mode,
+  useLegacyCoordinates,
 }: Fo3dPanelsProps) => {
   const { resetActiveNode } = useFo3dInteractionLifecycle({
     cameraLifecycleState,
     interactionSample,
+    activeSampleMap,
     upVector,
     mode,
     cameraControlsRef,
+    useLegacyCoordinates,
   });
 
   if (shouldRenderMultiPanelView) {
@@ -113,7 +119,8 @@ const Fo3dLoadErrorState = ({ error }: { error: Error | null }) => {
 };
 
 export const MediaTypeFo3dComponent = () => {
-  const { interactionSample, sceneSample } = fos.useRenderConfig3dState();
+  const { activeSampleMap, interactionSample, sceneSample } =
+    fos.useRenderConfig3dState();
   const settings = usePluginSettings<Looker3dSettings>("3d");
   const mode = fos.useModalMode();
   const canAnnotate = useCanAnnotate().showAnnotationTab;
@@ -236,11 +243,13 @@ export const MediaTypeFo3dComponent = () => {
         assetsGroupRef={assetsGroupRef}
         foScene={foScene}
         interactionSample={interactionSample}
+        activeSampleMap={activeSampleMap}
         cameraRef={cameraRef}
         cameraControlsRef={cameraControlsRef}
         mountCameraPosition={mountCameraPosition}
         cameraLifecycleState={cameraLifecycleState}
         mode={mode}
+        useLegacyCoordinates={settings.useLegacyCoordinates}
       />
       {shouldShowAnnotationToolbar && <AnnotationToolbar />}
     </Fo3dSceneContext.Provider>
