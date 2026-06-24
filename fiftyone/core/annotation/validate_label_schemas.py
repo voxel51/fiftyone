@@ -195,6 +195,8 @@ def _validate_bool_field_label_schema(
             _validate_default(field_name, value, bool, allow_default)
         elif key == foac.READ_ONLY:
             _validate_read_only(field_name, value)
+        elif key == foac.DYNAMIC:
+            _validate_dynamic(field_name, value)
         elif key == foac.TYPE and value != foac.BOOL:
             _raise_type_error(field, field_name, value)
 
@@ -216,6 +218,8 @@ def _validate_date_datetime_field_label_schema(
             _validate_default(field_name, value, _type, allow_default)
         elif key == foac.READ_ONLY:
             _validate_read_only(field_name, value)
+        elif key == foac.DYNAMIC:
+            _validate_dynamic(field_name, value)
         elif key == foac.TYPE:
             invalid_date = (
                 isinstance(field, fof.DateField) and value != foac.DATE
@@ -240,6 +244,8 @@ def _validate_dict_field_label_schema(
             _validate_default(field_name, value, dict, allow_default)
         elif key == foac.READ_ONLY:
             _validate_read_only(field_name, value)
+        elif key == foac.DYNAMIC:
+            _validate_dynamic(field_name, value)
         elif key == foac.TYPE and value != foac.DICT:
             _raise_type_error(field, field_name, value)
 
@@ -293,6 +299,8 @@ def _validate_float_int_field_label_schema(
             _validate_precision(field_name, value)
         elif key == foac.READ_ONLY:
             _validate_read_only(field_name, value)
+        elif key == foac.DYNAMIC:
+            _validate_dynamic(field_name, value)
         elif key == foac.TYPE and value != _str_type:
             _raise_type_error(field, field_name, value)
 
@@ -334,6 +342,8 @@ def _validate_float_int_list_field_label_schema(
             _validate_precision(field_name, value)
         elif key == foac.READ_ONLY:
             _validate_read_only(field_name, value)
+        elif key == foac.DYNAMIC:
+            _validate_dynamic(field_name, value)
         elif key == foac.TYPE and value != _str_type:
             _raise_type_error(field, field_name, value)
 
@@ -391,6 +401,8 @@ def _validate_str_field_label_schema(
             )
         elif key == foac.READ_ONLY:
             _validate_read_only(field_name, value)
+        elif key == foac.DYNAMIC:
+            _validate_dynamic(field_name, value)
         elif key == foac.TYPE and value != foac.STR:
             _raise_type_error(field, field_name, value)
 
@@ -432,6 +444,8 @@ def _validate_str_list_field_label_schema(
             )
         elif key == foac.READ_ONLY:
             _validate_read_only(field_name, value)
+        elif key == foac.DYNAMIC:
+            _validate_dynamic(field_name, value)
         elif key == foac.TYPE and value != foac.STR_LIST:
             _raise_type_error(field, field_name, value)
 
@@ -486,6 +500,8 @@ def _validate_label_field_label_schema(
             )
         elif key == foac.READ_ONLY:
             _validate_read_only(field_name, value)
+        elif key == foac.DYNAMIC:
+            _validate_dynamic(field_name, value)
         elif key == foac.TYPE and value != class_name:
             _raise_type_error(field, field_name, value)
 
@@ -702,6 +718,14 @@ def _validate_read_only(field_name, value, require=False):
     if not isinstance(value, bool) or (require and not value):
         raise ValueError(
             f"invalid '{foac.READ_ONLY}' value '{value}' for field "
+            f"'{field_name}'"
+        )
+
+
+def _validate_dynamic(field_name, value):
+    if not isinstance(value, bool):
+        raise ValueError(
+            f"invalid '{foac.DYNAMIC}' value '{value}' for field "
             f"'{field_name}'"
         )
 

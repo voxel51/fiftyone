@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  createDefaultFormData,
   formatAttributeCount,
   formatSchemaCount,
   getAttributeTypeLabel,
   getClassNameError,
+  toAttributeConfig,
+  toFormData,
 } from "./utils";
 
 describe("getAttributeTypeLabel", () => {
@@ -107,5 +110,42 @@ describe("formatSchemaCount", () => {
     expect(formatSchemaCount(0)).toBe("0 schemas");
     expect(formatSchemaCount(2)).toBe("2 schemas");
     expect(formatSchemaCount(5)).toBe("5 schemas");
+  });
+});
+
+describe("dynamic attribute flag", () => {
+  it("defaults to false for a new attribute", () => {
+    expect(createDefaultFormData().dynamic).toBe(false);
+  });
+
+  it("hydrates the form from a dynamic config", () => {
+    const form = toFormData({
+      name: "turn_signal",
+      type: "str",
+      dynamic: true,
+    });
+    expect(form.dynamic).toBe(true);
+  });
+
+  it("defaults the form to false when the config omits dynamic", () => {
+    const form = toFormData({ name: "color", type: "str" });
+    expect(form.dynamic).toBe(false);
+  });
+
+  it("serializes a dynamic attribute and omits it when false", () => {
+    const dynamic = toAttributeConfig({
+      ...createDefaultFormData(),
+      name: "turn_signal",
+      type: "str",
+      dynamic: true,
+    });
+    expect(dynamic.dynamic).toBe(true);
+
+    const static_ = toAttributeConfig({
+      ...createDefaultFormData(),
+      name: "color",
+      type: "str",
+    });
+    expect(static_.dynamic).toBeUndefined();
   });
 });

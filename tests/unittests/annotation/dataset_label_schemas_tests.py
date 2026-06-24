@@ -629,6 +629,50 @@ class FrameLabelSchemaTests(unittest.TestCase):
         )
         self.assertIn("frames.detections", with_frames)
 
+    @drop_datasets
+    def test_frame_attribute_dynamic_flag(self):
+        dataset = _make_video_dataset()
+        dataset.add_frame_field(
+            "detections.detections.turn_signal", fo.StringField
+        )
+
+        dataset.set_label_schemas(
+            {
+                "frames.detections": {
+                    "type": "detections",
+                    "attributes": [
+                        {
+                            "name": "turn_signal",
+                            "component": "text",
+                            "type": "str",
+                            "dynamic": True,
+                        }
+                    ],
+                }
+            }
+        )
+
+        saved = dataset.label_schemas["frames.detections"]
+        self.assertTrue(saved["attributes"][0]["dynamic"])
+
+        # a non-boolean 'dynamic' value is rejected
+        with self.assertRaises(ExceptionGroup):
+            dataset.set_label_schemas(
+                {
+                    "frames.detections": {
+                        "type": "detections",
+                        "attributes": [
+                            {
+                                "name": "turn_signal",
+                                "component": "text",
+                                "type": "str",
+                                "dynamic": "yes",
+                            }
+                        ],
+                    }
+                }
+            )
+
 
 def _make_video_dataset():
     dataset = fo.Dataset()

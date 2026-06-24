@@ -76,6 +76,7 @@ const AttributeFormContent = ({
     handleDefaultChange,
     handleListDefaultChange,
     handleReadOnlyChange,
+    handleDynamicChange,
     handleValuesModeChange,
     handleTaxonomyChange,
   } = useAttributeForm({ formState, onFormStateChange });
@@ -230,6 +231,27 @@ const AttributeFormContent = ({
         </Stack>
         <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
           When enabled, annotators can view but cannot edit values.
+        </Text>
+      </Stack>
+
+      {/* Section 2b: Dynamic toggle */}
+      <Stack orientation={Orientation.Column} spacing={Spacing.None}>
+        <Stack
+          orientation={Orientation.Row}
+          spacing={Spacing.Sm}
+          align={Align.Center}
+        >
+          <Text variant={TextVariant.Md}>Dynamic</Text>
+          <Toggle
+            checked={formState.dynamic}
+            onChange={handleDynamicChange}
+            size={Size.Md}
+            disabled={isFromOntology}
+          />
+        </Stack>
+        <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+          When enabled, the value can change across frames and appears as its
+          own timeline sub-track.
         </Text>
       </Stack>
 
