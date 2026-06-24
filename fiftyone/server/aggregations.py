@@ -101,16 +101,18 @@ class StringAggregation(Aggregation):
     values: t.Optional[t.List[StringAggregationValue]] = None
 
 
-AggregateResult = t.Annotated[
-    t.Union[
-        BooleanAggregation,
-        DataAggregation,
-        IntAggregation,
-        FloatAggregation,
-        RootAggregation,
-        StringAggregation,
-    ],
-    gql.union("AggregateResult"),
+# Internal helper return type. Not exposed as a GraphQL field, so we
+# deliberately omit ``gql.union(...)`` — registering a Strawberry union
+# here causes the schema converter to dedupe the identical member set
+# inside ``AggregationResponse`` below, producing an illegal
+# union-of-unions at schema build time.
+AggregateResult = t.Union[
+    BooleanAggregation,
+    DataAggregation,
+    IntAggregation,
+    FloatAggregation,
+    RootAggregation,
+    StringAggregation,
 ]
 
 
@@ -118,7 +120,15 @@ async def aggregate_resolver(
     form: AggregationForm,
 ) -> t.List[
     t.Annotated[
-        t.Union[AggregateResult, AggregationQueryTimeout],
+        t.Union[
+            BooleanAggregation,
+            DataAggregation,
+            IntAggregation,
+            FloatAggregation,
+            RootAggregation,
+            StringAggregation,
+            AggregationQueryTimeout,
+        ],
         gql.union("AggregationResponse"),
     ]
 ]:
