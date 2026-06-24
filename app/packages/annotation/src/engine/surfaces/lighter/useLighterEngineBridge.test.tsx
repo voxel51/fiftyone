@@ -29,11 +29,13 @@ vi.mock("@fiftyone/lighter", () => ({
           ? new MockDetectionOverlay(id, maskedIds.has(id))
           : undefined,
       isDestroyed: false,
+      setExternalUndoAuthority: mockSetExternalUndoAuthority,
     },
     overlayFactory: {},
   }),
   useLighterEventHandler: () => mockOn,
   DetectionOverlay: MockDetectionOverlay,
+  UNDEFINED_LIGHTER_SCENE_ID: "undefined-scene",
 }));
 
 // isolate the wiring hook from the read-half loop — we only exercise the
@@ -44,6 +46,7 @@ vi.mock("./lighterBridge", () => ({
 vi.mock("./adapters", () => ({ lighterAdapters: {} }));
 const mockCommit = vi.fn();
 const mockSelectHandle = vi.fn();
+const mockSetExternalUndoAuthority = vi.fn();
 vi.mock("../../react/useSurfaceBridge", () => ({
   useSurfaceBridge: () => ({
     commit: mockCommit,
@@ -220,5 +223,41 @@ describe("useLighterEngineBridge — mask gesture coalescing", () => {
 
     expect(keyOf(0)).toBe("gesture:9");
     expect(keyOf(1)).toBe("gesture:9");
+  });
+});
+
+describe("useLighterEngineBridge — undo authority", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    handlers.clear();
+  });
+
+  it("claims the scene's undo authority while enabled and releases it on unmount", () => {
+    const { unmount } = renderHook(() =>
+      useLighterEngineBridge({
+        engine: makeEngine(),
+        sample: "s1",
+        dataset: "ds",
+      })
+    );
+
+    expect(mockSetExternalUndoAuthority).toHaveBeenLastCalledWith(true);
+
+    unmount();
+
+    expect(mockSetExternalUndoAuthority).toHaveBeenLastCalledWith(false);
+  });
+
+  it("leaves the scene's undo authority alone when disabled", () => {
+    renderHook(() =>
+      useLighterEngineBridge({
+        engine: makeEngine(),
+        sample: "s1",
+        dataset: "ds",
+        enabled: false,
+      })
+    );
+
+    expect(mockSetExternalUndoAuthority).not.toHaveBeenCalled();
   });
 });

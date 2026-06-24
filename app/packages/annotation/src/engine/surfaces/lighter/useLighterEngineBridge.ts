@@ -128,6 +128,22 @@ export const useLighterEngineBridge = ({
     [bridge, scene]
   );
 
+  // the engine owns undo/redo on the surface it drives — Lighter must not also
+  // record its own edit commands, or every gesture double-counts on the stack
+  useEffect(() => {
+    if (!enabled || !scene) {
+      return undefined;
+    }
+
+    scene.setExternalUndoAuthority(true);
+
+    return () => {
+      if (!scene.isDestroyed) {
+        scene.setExternalUndoAuthority(false);
+      }
+    };
+  }, [enabled, scene]);
+
   const surface = useSurfaceBridge({
     engine,
     bridge,
