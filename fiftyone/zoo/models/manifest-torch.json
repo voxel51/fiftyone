@@ -12439,7 +12439,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers", "timm", "open-clip-torch", "scikit-learn", "scipy"],
+                "packages": ["torch", "torchvision", "transformers", "timm", "einops", "open-clip-torch", "scikit-learn", "scipy"],
                 "cpu": {
                     "support": true
                 },
@@ -12472,7 +12472,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers", "timm", "open-clip-torch", "scikit-learn", "scipy"],
+                "packages": ["torch", "torchvision", "transformers", "timm", "einops", "open-clip-torch", "scikit-learn", "scipy"],
                 "cpu": {
                     "support": true
                 },
