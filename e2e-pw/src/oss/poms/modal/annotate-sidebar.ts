@@ -145,6 +145,16 @@ export class ModalAnnotateSidebarPom {
       await this.page.getByTestId("detection-mode").click();
     }
   }
+
+  /** Activate polyline-drawing mode (the Polyline action button). */
+  async polylineMode() {
+    await this.page.getByTestId("polyline-mode").click();
+  }
+
+  /** Activate segmentation (mask-paint) mode (the Segmentation action button). */
+  async segmentationMode() {
+    await this.page.getByTestId("segmentation-mode").click();
+  }
 }
 
 /**
@@ -273,9 +283,7 @@ class ModalAnnotateSidebarAsserter {
    * @param active Whether detection mode should be active (default true)
    */
   async detectionModeIsActive(active = true) {
-    const button = this.modalAnnotateSidebar.page.getByTestId(
-      "detection-mode"
-    );
+    const button = this.modalAnnotateSidebar.page.getByTestId("detection-mode");
     await expect(button).toHaveAttribute("data-cy-active", active.toString());
   }
 }

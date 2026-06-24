@@ -213,6 +213,11 @@ export class ModalAnnotateEditPom {
     return this.page.getByRole("button", { name: "Brush" });
   }
 
+  /** Select the Brush tool from the segmentation toolbar (mask painting). */
+  async selectBrushTool() {
+    await this.segmentationBrushTool.click();
+  }
+
   /**
    * The segmentation Merge tool button (present while segmentation mode is
    * active; disabled until there are ≥2 masked detections in the field).
@@ -259,6 +264,25 @@ class ModalAnnotateEditAsserter {
   async verifyFieldValue(path: string, expectedValue: string) {
     const actualValue = await this.modalAnnotateEdit.getFieldValue(path);
     expect(actualValue).toBe(expectedValue);
+  }
+
+  /**
+   * Assert whether the sidebar renders the mask preview for the edited
+   * detection. The preview only mounts when the selected label resolves to a
+   * live `DetectionOverlay` with a mask, so its presence proves the row found
+   * the mask-bearing overlay (not a maskless stub).
+   *
+   * @param visible Whether the mask preview is expected to be shown
+   */
+  async hasMaskPreview(visible = true) {
+    const preview = this.modalAnnotateEdit.page.getByTestId(
+      "annotate-mask-preview"
+    );
+    if (visible) {
+      await expect(preview).toBeVisible();
+    } else {
+      await expect(preview).toBeHidden();
+    }
   }
 
   /**
