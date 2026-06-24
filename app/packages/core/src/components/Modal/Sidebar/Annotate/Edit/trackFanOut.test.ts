@@ -2,7 +2,11 @@ import type { LabelRef } from "@fiftyone/annotation";
 import type { LabelData, LabelType } from "@fiftyone/utilities";
 import { describe, expect, it } from "vitest";
 
-import { buildTrackFanOut, trackLevelPartial } from "./trackFanOut";
+import {
+  buildForwardFill,
+  buildTrackFanOut,
+  splitTrackEdit,
+} from "./trackFanOut";
 
 const DETECTIONS = "Detections" as LabelType;
 
@@ -23,10 +27,10 @@ const frameRef = (frame: number, instanceId = "t1"): LabelRef => ({
   frame,
 });
 
-describe("trackLevelPartial", () => {
-  it("drops geometry and identity, keeps classification fields", () => {
-    expect(
-      trackLevelPartial({
+describe("splitTrackEdit", () => {
+  it("drops geometry and identity, keeps classification fields as track-level", () => {
+    const { trackPartial, dynamicPartial } = splitTrackEdit(
+      {
         _id: "doc1",
         instance: { _id: "t1" },
         bounding_box: [0, 0, 1, 1],
@@ -34,8 +38,97 @@ describe("trackLevelPartial", () => {
         label: "cat",
         index: 3,
         truncated: true,
-      })
-    ).toEqual({ label: "cat", index: 3, truncated: true });
+      },
+      new Set()
+    );
+
+    expect(trackPartial).toEqual({ label: "cat", index: 3, truncated: true });
+    expect(dynamicPartial).toEqual({});
+  });
+
+  it("routes declared dynamic keys to the dynamic half", () => {
+    const { trackPartial, dynamicPartial } = splitTrackEdit(
+      { label: "car", turn_signal: "left", index: 2 },
+      new Set(["turn_signal"])
+    );
+
+    expect(trackPartial).toEqual({ label: "car", index: 2 });
+    expect(dynamicPartial).toEqual({ turn_signal: "left" });
+  });
+});
+
+describe("buildForwardFill", () => {
+  const dynRef = (frame: number): LabelRef => frameRef(frame);
+
+  it("fills later frames holding the prior value, stopping at the next change", () => {
+    const engine = stubEngine([
+      { ref: dynRef(1), data: { _id: "a", turn_signal: "off" } },
+      { ref: dynRef(2), data: { _id: "b", turn_signal: "off" } },
+      { ref: dynRef(3), data: { _id: "c", turn_signal: "off" } },
+      { ref: dynRef(4), data: { _id: "d", turn_signal: "right" } },
+      { ref: dynRef(5), data: { _id: "e", turn_signal: "off" } },
+    ]);
+
+    const writes = buildForwardFill(
+      engine,
+      dynRef(2),
+      { turn_signal: "left" },
+      { turn_signal: "off" }
+    );
+
+    // frames 3 only — frame 4 already differs (a preserved change point),
+    // so the fill stops there and never reaches frame 5
+    expect(writes.map((w) => w.ref.frame)).toEqual([3]);
+    expect(writes[0].forward).toEqual({ turn_signal: "left" });
+    expect(writes[0].inverse).toEqual({ turn_signal: "off" });
+  });
+
+  it("never fills earlier frames or the anchor frame", () => {
+    const engine = stubEngine([
+      { ref: dynRef(1), data: { _id: "a", turn_signal: "off" } },
+      { ref: dynRef(2), data: { _id: "b", turn_signal: "off" } },
+      { ref: dynRef(3), data: { _id: "c", turn_signal: "off" } },
+    ]);
+
+    const writes = buildForwardFill(
+      engine,
+      dynRef(2),
+      { turn_signal: "left" },
+      { turn_signal: "off" }
+    );
+
+    expect(writes.map((w) => w.ref.frame)).toEqual([3]);
+  });
+
+  it("captures an explicit-null inverse where the key was absent", () => {
+    const engine = stubEngine([
+      { ref: dynRef(1), data: { _id: "a" } },
+      { ref: dynRef(2), data: { _id: "b" } },
+    ]);
+
+    const writes = buildForwardFill(
+      engine,
+      dynRef(1),
+      { turn_signal: "left" },
+      {}
+    );
+
+    expect(writes.map((w) => w.ref.frame)).toEqual([2]);
+    expect(writes[0].inverse).toEqual({ turn_signal: null });
+  });
+
+  it("returns nothing for an empty dynamic partial or a sample-level anchor", () => {
+    const engine = stubEngine([{ ref: dynRef(1), data: { _id: "a" } }]);
+
+    expect(buildForwardFill(engine, dynRef(1), {}, {})).toEqual([]);
+    expect(
+      buildForwardFill(
+        engine,
+        { sample: "s1", path: "detections", instanceId: "t1" },
+        { turn_signal: "left" },
+        {}
+      )
+    ).toEqual([]);
   });
 });
 
