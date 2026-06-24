@@ -8,7 +8,6 @@ import {
   useEngineSelector,
   useSignalValue,
 } from "@fiftyone/annotation";
-import { usePushUndoable } from "@fiftyone/commands";
 import { useCurrentDatasetId } from "@fiftyone/state";
 import type { LabelData } from "@fiftyone/utilities";
 import { useEffect, useMemo, useState } from "react";
@@ -63,7 +62,6 @@ export default function Position({ readOnly = false }: PositionProps) {
   const engine = useAnnotationEngine();
   const sample = useActiveAnnotationSampleId();
   const dataset = useCurrentDatasetId() ?? "";
-  const { createPushAndExec } = usePushUndoable();
 
   // address the box by its engine ref — the anchor's full ref (carries the
   // video frame + track instanceId + frames.<field> path) when the form was
@@ -205,22 +203,15 @@ export default function Position({ readOnly = false }: PositionProps) {
           });
 
           // commit through the engine: it persists (autosave diffs the engine)
-          // and the Lighter bridge read-half re-homes the overlay.
+          // and the Lighter bridge read-half re-homes the overlay. A bare
+          // updateLabel is one implicit transaction, so the engine bridge pushes
+          // the single value-based undo entry — don't also push our own (that
+          // double-counts the edit on the shared command stack).
           const next = [merged.x, merged.y, merged.width, merged.height];
-          const previous =
-            stored && stored.length === 4 ? stored : (next as number[]);
 
-          createPushAndExec(
-            `transform-${ref.instanceId}-${ref.frame ?? ""}-${Date.now()}`,
-            () =>
-              engine.updateLabel(ref, {
-                bounding_box: next,
-              } as Partial<LabelData>),
-            () =>
-              engine.updateLabel(ref, {
-                bounding_box: previous,
-              } as Partial<LabelData>)
-          );
+          engine.updateLabel(ref, {
+            bounding_box: next,
+          } as Partial<LabelData>);
         }}
       />
     </div>

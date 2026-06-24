@@ -5,7 +5,6 @@ import {
   useActiveAnnotationSampleId,
   useAnnotationEngine,
 } from "@fiftyone/annotation";
-import { usePushUndoable } from "@fiftyone/commands";
 import { expandPath, field } from "@fiftyone/state";
 import type { LabelData } from "@fiftyone/utilities";
 import { FLOAT_FIELD, INT_FIELD } from "@fiftyone/utilities";
@@ -131,10 +130,9 @@ const useParseFieldValue = () => {
 /**
  * Handles form changes: parses field types, clears values for attributes
  * whose visible entry changed, and commits the edit to the engine — the
- * read-half reconciles the overlay and the list row; no events. The undo
- * inverse (previous value + explicit nulls for keys this edit introduced)
- * goes on the shared command stack, so Ctrl-Z ordering with geometry edits
- * is preserved.
+ * read-half reconciles the overlay and the list row; no events. The edit is
+ * one engine transaction, so the engine bridge pushes a single value-based
+ * undo entry — Ctrl-Z ordering with geometry edits is preserved.
  *
  * Volatile atoms (config, data, overlay, field) are read via refs so that
  * the returned callback keeps a stable identity across data changes.
@@ -148,7 +146,6 @@ const useHandleSchemaChange = (readOnly: boolean) => {
   const editingRef = selected?.ref ?? null;
   const engine = useAnnotationEngine();
   const sample = useActiveAnnotationSampleId();
-  const { createPushAndExec } = usePushUndoable();
   const parseFieldValue = useParseFieldValue();
   const [currentLabel, setCurrentLabel] = useAtom(current);
 
@@ -248,17 +245,6 @@ const useHandleSchemaChange = (readOnly: boolean) => {
           overlay.id,
         frame: editingRef?.frame,
       };
-      const previous = engine.getLabel(ref) ?? (data as LabelData);
-
-      // explicit nulls for keys this edit introduced — the merge mutator
-      // would otherwise resurrect them on undo
-      const inverse: Record<string, unknown> = { ...previous };
-      for (const key of Object.keys(value)) {
-        if (!(key in inverse)) {
-          inverse[key] = null;
-        }
-      }
-
       // Persist only true label data: a 3D draft's slot carries the working/
       // overlay shape (type/isNew/color/path/sampleId), and committing those
       // pollutes Sample — the write-half's `build3dLabel` strips the same set,
@@ -266,7 +252,6 @@ const useHandleSchemaChange = (readOnly: boolean) => {
       const persistableValue = stripReservedLabelAttributes(
         value as Record<string, unknown>
       );
-      const persistableInverse = stripReservedLabelAttributes(inverse);
 
       // A video frame label belongs to a track, so a track-level edit (label,
       // index, attributes — everything but geometry) applies to EVERY frame the
@@ -277,29 +262,16 @@ const useHandleSchemaChange = (readOnly: boolean) => {
           ? buildTrackFanOut(engine, ref, trackLevelPartial(persistableValue))
           : [];
 
-      createPushAndExec(
-        `update-label-${ref.instanceId}-${Date.now()}`,
-        () =>
-          engine.transaction(() => {
-            engine.updateLabel(ref, persistableValue as Partial<LabelData>);
-            for (const write of trackWrites) {
-              engine.updateLabel(
-                write.ref,
-                write.forward as Partial<LabelData>
-              );
-            }
-          }),
-        () =>
-          engine.transaction(() => {
-            engine.updateLabel(ref, persistableInverse as Partial<LabelData>);
-            for (const write of trackWrites) {
-              engine.updateLabel(
-                write.ref,
-                write.inverse as Partial<LabelData>
-              );
-            }
-          })
-      );
+      // One engine transaction is one undo unit: the engine captures
+      // before-values and the engine bridge pushes the single value-based entry.
+      // The form must NOT push its own undoable (no createPushAndExec) — that
+      // would double-count the edit on the shared command stack.
+      engine.transaction(() => {
+        engine.updateLabel(ref, persistableValue as Partial<LabelData>);
+        for (const write of trackWrites) {
+          engine.updateLabel(write.ref, write.forward as Partial<LabelData>);
+        }
+      });
 
       // the anchor binding rewrites `editing` only for committed labels —
       // a DRAFT's slot is surface-owned, so the form keeps it in sync
@@ -313,7 +285,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         } as NonNullable<typeof live>);
       }
     },
-    [createPushAndExec, engine, parseFieldValue, readOnly, setCurrentLabel]
+    [engine, parseFieldValue, readOnly, setCurrentLabel]
   );
 };
 
