@@ -15,6 +15,11 @@ import { LabelType } from "@fiftyone/utilities";
 import { useCallback } from "react";
 import { useAnnotationContext } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import { useDetectionMode } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useDetectionMode";
+import {
+  usePolylineMode,
+  usePolylineModeInstaller,
+} from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/usePolylineMode";
+import { useSegmentationMode } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
 import useExit from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useExit";
 import { useVideoSurfaceActions } from "../hooks/useVideoSurfaceActions";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
@@ -25,31 +30,42 @@ import { takeEstablishKey } from "./establishKeyRelay";
 /** Registers a handler for a Lighter event on the bridged scene's channel. */
 type RegisterLighterHandler = ReturnType<typeof useLighterEventHandler>;
 
+/** The create modes the top hook resolves once and injects into sub-hooks. */
+type DetectionMode = ReturnType<typeof useDetectionMode>;
+type SegmentationMode = ReturnType<typeof useSegmentationMode>;
+type PolylineMode = ReturnType<typeof usePolylineMode>;
+
 /** Schema-driven TD check: a field whose label type is a temporal detection. */
 const isTemporalDetectionType = (type: LabelType): boolean =>
   type === LabelType.TemporalDetection || type === LabelType.TemporalDetections;
 
 /**
- * Draw: a Lighter overlay create while detection mode is active opens a new
- * detection draft on the engine frame path.
+ * Draw: a Lighter overlay create opens a new draft on the engine frame path —
+ * a masked detection while segmentation mode is active, else a plain detection
+ * while detection mode is active. (Polylines self-create through their own
+ * creation handler — see {@link usePolylineModeInstaller}.)
  */
 const useRegisterDrawHandler = ({
   registerHandler,
+  detectionMode,
+  segmentationMode,
 }: {
   registerHandler: RegisterLighterHandler;
+  detectionMode: DetectionMode;
+  segmentationMode: SegmentationMode;
 }): void => {
-  const detectionMode = useDetectionMode();
-
   registerHandler(
     "lighter:overlay-create",
     useCallback(() => {
-      if (detectionMode.detectionModeActive) {
-        // The schema exposes the frame field at its real `frames.<field>` path,
-        // so default field resolution stamps it and the write routes to the
-        // FrameStore — no pinned destination needed.
+      // The schema exposes the frame field at its real `frames.<field>` path,
+      // so default field resolution stamps it and the write routes to the
+      // FrameStore — no pinned destination needed.
+      if (segmentationMode.segmentationModeActive) {
+        segmentationMode.create();
+      } else if (detectionMode.detectionModeActive) {
         detectionMode.create();
       }
-    }, [detectionMode])
+    }, [detectionMode, segmentationMode])
   );
 };
 
@@ -177,16 +193,22 @@ const useRegisterEditorTeardownHandler = ({
 };
 
 /**
- * Mode quit: right-click (`lighter:detection-mode-quit`) and Esc
- * (`lighter:active-mode-quit-requested`) both deactivate detection mode.
+ * Mode quit: right-click and Esc deactivate whichever create mode is active.
+ * `lighter:detection-mode-quit` / `lighter:segmentation-mode-quit` target their
+ * own mode; the generic `lighter:active-mode-quit-requested` self-filters across
+ * detection, segmentation, and polyline.
  */
 const useRegisterModeQuitHandlers = ({
   registerHandler,
+  detectionMode,
+  segmentationMode,
+  polylineMode,
 }: {
   registerHandler: RegisterLighterHandler;
+  detectionMode: DetectionMode;
+  segmentationMode: SegmentationMode;
+  polylineMode: PolylineMode;
 }): void => {
-  const detectionMode = useDetectionMode();
-
   registerHandler(
     "lighter:detection-mode-quit",
     useCallback(() => {
@@ -195,12 +217,31 @@ const useRegisterModeQuitHandlers = ({
   );
 
   registerHandler(
+    "lighter:segmentation-mode-quit",
+    useCallback(() => {
+      if (segmentationMode.segmentationModeActive) {
+        segmentationMode.deactivateSegmentationMode();
+      }
+    }, [segmentationMode])
+  );
+
+  registerHandler(
     "lighter:active-mode-quit-requested",
     useCallback(() => {
       if (detectionMode.detectionModeActive) {
         detectionMode.deactivateDetectionMode();
+        return;
       }
-    }, [detectionMode])
+
+      if (segmentationMode.segmentationModeActive) {
+        segmentationMode.deactivateSegmentationMode();
+        return;
+      }
+
+      if (polylineMode.polylineModeActive) {
+        polylineMode.deactivatePolylineMode();
+      }
+    }, [detectionMode, segmentationMode, polylineMode])
   );
 };
 
@@ -208,9 +249,11 @@ const useRegisterModeQuitHandlers = ({
  * Track deleted: deleting a track leaves no useful edit/draw state to keep open,
  * so tear detection mode down.
  */
-const useRegisterTrackDeletedHandler = (): void => {
-  const detectionMode = useDetectionMode();
-
+const useRegisterTrackDeletedHandler = ({
+  detectionMode,
+}: {
+  detectionMode: DetectionMode;
+}): void => {
   useAnnotationEventHandler(
     "annotation:trackDeleted",
     useCallback(() => {
@@ -224,10 +267,13 @@ const useRegisterTrackDeletedHandler = (): void => {
  * surface. Binds the scene's event channel and delegates each concern to a
  * tightly-scoped handler hook.
  *
- * Event-handler-only: state changes flow through the public `useDetectionMode`
- * interface rather than direct atom access, so this stays decoupled from that
- * module's internals. Sidebar membership is engine-derived (`useEntries` reads
- * engine presence), so nothing here pushes or prunes sidebar rows.
+ * Event-handler-only: state changes flow through the public mode interfaces
+ * (`useDetectionMode` / `useSegmentationMode` / `usePolylineMode`) rather than
+ * direct atom access, so this stays decoupled from those modules' internals.
+ * The modes are resolved once here (the binding agent) and injected — segmentation
+ * in particular installs a scene handler (`usePenTool`), so it must mount once.
+ * Sidebar membership is engine-derived (`useEntries` reads engine presence), so
+ * nothing here pushes or prunes sidebar rows.
  *
  * Canvas selection (`lighter:overlay-select` / `deselect`) is owned by the
  * engine's Lighter `frame-locked` bridge (`SurfaceController.selectHandle`),
@@ -243,9 +289,23 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
 
-  useRegisterDrawHandler({ registerHandler });
+  const detectionMode = useDetectionMode();
+  const segmentationMode = useSegmentationMode();
+  const polylineMode = usePolylineMode();
+
+  useRegisterDrawHandler({ registerHandler, detectionMode, segmentationMode });
   useRegisterDrawEstablishHandler({ registerHandler });
   useRegisterEditorTeardownHandler({ registerHandler });
-  useRegisterModeQuitHandlers({ registerHandler });
-  useRegisterTrackDeletedHandler();
+  useRegisterModeQuitHandlers({
+    registerHandler,
+    detectionMode,
+    segmentationMode,
+    polylineMode,
+  });
+  useRegisterTrackDeletedHandler({ detectionMode });
+
+  // Polylines self-create through an InteractiveCreationHandler the installer
+  // mounts on the scene (the image surface gets this via `useBridge`); without
+  // it polyline mode toggles but a canvas click draws nothing.
+  usePolylineModeInstaller();
 };
