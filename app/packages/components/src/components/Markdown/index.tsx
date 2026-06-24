@@ -31,8 +31,9 @@ SyntaxHighlighter.registerLanguage("typescript", ts);
 SyntaxHighlighter.registerLanguage("python", python);
 
 const InlineCode = styled.span`
-  background: ${({ theme }) => theme.background.level1};
-  color: ${({ theme }) => theme.voxel[500]};
+  background: ${({ theme }) =>
+    theme?.background?.level1 ?? "hsl(200, 0%, 20%)"};
+  color: ${({ theme }) => theme?.voxel?.[500] ?? "#FF6D04"};
   border-radius: 3px;
   padding: 0.2em 0.4em;
   font-size: 85%;
@@ -40,7 +41,8 @@ const InlineCode = styled.span`
 `;
 
 const CodeContainer = styled(Box)`
-  border: 1px solid ${({ theme }) => theme.background.level1};
+  border: 1px solid
+    ${({ theme }) => theme?.background?.level1 ?? "hsl(200, 0%, 20%)"};
   pre {
     margin: 0;
     padding: 1rem !important;
@@ -53,8 +55,10 @@ const CodeHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 0rem 1rem;
-  border-bottom: 1px solid ${({ theme }) => theme.background.level1};
-  background: ${({ theme }) => theme.background.level2};
+  border-bottom: 1px solid
+    ${({ theme }) => theme?.background?.level1 ?? "hsl(200, 0%, 20%)"};
+  background: ${({ theme }) =>
+    theme?.background?.level2 ?? "hsl(200, 0%, 10%)"};
 `;
 
 const defaultSx: SxProps = { color: "inherit", mb: 1 };
