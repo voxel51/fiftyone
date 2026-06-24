@@ -2944,6 +2944,7 @@ __metadata:
     "@emotion/styled": "npm:^11.10.4"
     "@fiftyone/commands": "workspace:^"
     "@fiftyone/state": "npm:*"
+    "@fiftyone/utilities": "npm:*"
     "@mdx-js/react": "npm:^1.6.22"
     "@mui/icons-material": "npm:^5.16.7"
     "@mui/material": "npm:^5.9.0"
@@ -2956,6 +2957,7 @@ __metadata:
     "@textea/json-viewer": "npm:^3.4.1"
     "@types/react-input-autosize": "npm:^2.2.1"
     "@types/react-syntax-highlighter": "npm:^15.5.6"
+    "@voxel51/voodo": "npm:^0.0.35"
     classnames: "npm:^2.3.1"
     framer-motion: "npm:^6.2.7"
     material-icons: "npm:^1.13.12"
@@ -3008,7 +3010,7 @@ __metadata:
     "@types/styled-components": "npm:^5.1.23"
     "@use-gesture/react": "npm:^10.3.0"
     "@vitejs/plugin-react-refresh": "npm:^1.3.3"
-    "@voxel51/voodo": "npm:^0.0.30"
+    "@voxel51/voodo": "npm:^0.0.35"
     "@xstate/react": "npm:1.3.3"
     classnames: "npm:^2.2.6"
     color: "npm:^4.2.3"
@@ -3284,7 +3286,9 @@ __metadata:
   resolution: "@fiftyone/multimodal@workspace:packages/multimodal"
   dependencies:
     "@bufbuild/protobuf": "npm:^2.11.0"
+    "@fiftyone/components": "npm:*"
     "@fiftyone/plugins": "npm:*"
+    "@fiftyone/state": "npm:*"
     "@fiftyone/tiling": "npm:*"
     "@fiftyone/utilities": "npm:*"
     "@mcap/core": "npm:^2.2.1"
@@ -3292,6 +3296,7 @@ __metadata:
     "@react-three/drei": "npm:9.105.4"
     "@react-three/fiber": "npm:^8.18.0"
     "@types/three": "npm:^0.182.0"
+    "@voxel51/voodo": "npm:^0.0.35"
     buffer: "npm:^6.0.3"
     lru-cache: "npm:^11.0.1"
     protobufjs: "npm:^7.6.4"
@@ -3323,7 +3328,7 @@ __metadata:
     "@eslint/compat": "npm:^1.1.1"
     "@fiftyone/commands": "workspace:^"
     "@fiftyone/tiling": "npm:*"
-    "@voxel51/voodo": "npm:^0.0.30"
+    "@voxel51/voodo": "npm:^0.0.35"
     eslint: "npm:9.7.0"
     eslint-plugin-react: "npm:^7.35.0"
     eslint-plugin-react-hooks: "npm:rc"
@@ -3346,7 +3351,6 @@ __metadata:
     "@babel/preset-typescript": "npm:^7.17.12"
     "@fiftyone/utilities": "workspace:^"
     jest: "npm:^29.7.0"
-    moment: "npm:^2.29.4"
     prettier: "npm:2.2.1"
     vite: "npm:^7.3.2"
   languageName: unknown
@@ -3376,11 +3380,11 @@ __metadata:
     "@fiftyone/plugins": "npm:*"
     "@fiftyone/spaces": "npm:*"
     "@fiftyone/state": "npm:*"
+    "@voxel51/voodo": "npm:^0.0.35"
     vite: "npm:^7.3.2"
     vite-plugin-externals: "npm:^0.5.0"
   peerDependencies:
     "@mui/icons-material": "*"
-    "@voxel51/voodo": "*"
     jotai: "*"
     recoil: "*"
   languageName: unknown
@@ -3424,13 +3428,13 @@ __metadata:
     "@fiftyone/utilities": "npm:*"
     "@microsoft/fetch-event-source": "npm:^2.0.1"
     "@testing-library/react-hooks": "npm:latest"
+    "@voxel51/voodo": "npm:^0.0.35"
     babel-plugin-relay: "npm:^14.1.0"
     html2canvas: "npm:1.0.0-rc.7"
     lodash: "npm:^4.18.1"
     prettier: "npm:^2.7.1"
     vite: "npm:^7.3.2"
   peerDependencies:
-    "@voxel51/voodo": "*"
     react: "*"
     react-error-boundary: "*"
     react-relay: "*"
@@ -3443,7 +3447,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/tiling@workspace:packages/tiling"
   dependencies:
-    "@voxel51/voodo": "npm:^0.0.30"
+    "@voxel51/voodo": "npm:^0.0.35"
     clsx: "npm:^2.1.1"
     jotai: "npm:^2.9.3"
     react-mosaic-component: "npm:^6.1.1"
@@ -3497,6 +3501,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@floating-ui/core@npm:^1.7.5":
+  version: 1.7.5
+  resolution: "@floating-ui/core@npm:1.7.5"
+  dependencies:
+    "@floating-ui/utils": "npm:^0.2.11"
+  checksum: 10/fecdc9b3ce93f02bf78a6114b93730a4cb9fa8234c62f9a949016186297a039c9f9cd3c5c81ff74b93ebddf0b32048c4af7a528afe7904b75423ed2e7491b888
+  languageName: node
+  linkType: hard
+
 "@floating-ui/dom@npm:^0.5.3":
   version: 0.5.4
   resolution: "@floating-ui/dom@npm:0.5.4"
@@ -3523,6 +3536,16 @@ __metadata:
     "@floating-ui/core": "npm:^1.7.4"
     "@floating-ui/utils": "npm:^0.2.10"
   checksum: 10/2764990da82bd5cfe942211480aa82352926326008de93f5f3f19749cc8b171fe05b77526a2652605eadcbeab902c6506f18d60a4c43281f2651802047de100b
+  languageName: node
+  linkType: hard
+
+"@floating-ui/dom@npm:^1.7.6":
+  version: 1.7.6
+  resolution: "@floating-ui/dom@npm:1.7.6"
+  dependencies:
+    "@floating-ui/core": "npm:^1.7.5"
+    "@floating-ui/utils": "npm:^0.2.11"
+  checksum: 10/84dff2ffdf85c8b92d7edafc543c55869abbeaeb3007fa983159467e050153b507a0f5fe8e84f88c3f28c35a82de9df9c20a6eef5560cbba3afae19141444ff2
   languageName: node
   linkType: hard
 
@@ -3563,6 +3586,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@floating-ui/react-dom@npm:^2.1.8":
+  version: 2.1.8
+  resolution: "@floating-ui/react-dom@npm:2.1.8"
+  dependencies:
+    "@floating-ui/dom": "npm:^1.7.6"
+  peerDependencies:
+    react: ">=16.8.0"
+    react-dom: ">=16.8.0"
+  checksum: 10/39c3e3e5538a111a3eadf1b9ca486d7dc17c7eb24b83a0ea9b4c189fa7dbe5abe01357388d8cf6a4badb2d3fec2b1090e10529537bde91acbcfe19b0a8d10f90
+  languageName: node
+  linkType: hard
+
 "@floating-ui/react@npm:^0.26.16":
   version: 0.26.28
   resolution: "@floating-ui/react@npm:0.26.28"
@@ -3591,6 +3626,20 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@floating-ui/react@npm:^0.27.19":
+  version: 0.27.19
+  resolution: "@floating-ui/react@npm:0.27.19"
+  dependencies:
+    "@floating-ui/react-dom": "npm:^2.1.8"
+    "@floating-ui/utils": "npm:^0.2.11"
+    tabbable: "npm:^6.0.0"
+  peerDependencies:
+    react: ">=17.0.0"
+    react-dom: ">=17.0.0"
+  checksum: 10/4ebdc582544d0abf8f8011a6182af2ce4464e3a6a9a0fd4ff5facef161e73c6defa80240a7dc62f7cd2cbd5ecfb00b17c5dd5b10aa6e787cbc1ed963f323245c
+  languageName: node
+  linkType: hard
+
 "@floating-ui/utils@npm:^0.2.0, @floating-ui/utils@npm:^0.2.1":
   version: 0.2.1
   resolution: "@floating-ui/utils@npm:0.2.1"
@@ -3602,6 +3651,13 @@ __metadata:
   version: 0.2.10
   resolution: "@floating-ui/utils@npm:0.2.10"
   checksum: 10/b635ea865a8be2484b608b7157f5abf9ed439f351011a74b7e988439e2898199a9a8b790f52291e05bdcf119088160dc782d98cff45cc98c5a271bc6f51327ae
+  languageName: node
+  linkType: hard
+
+"@floating-ui/utils@npm:^0.2.11":
+  version: 0.2.11
+  resolution: "@floating-ui/utils@npm:0.2.11"
+  checksum: 10/72150138ba1c274d757a1da85233202fa9fdfd2272ec1fb0883eb0ffdf138863af81573049ed2c20b98adb4b7ae2236065541ce14037fe328955089831a678d5
   languageName: node
   linkType: hard
 
@@ -6688,6 +6744,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@tanstack/react-virtual@npm:^3.13.24":
+  version: 3.14.2
+  resolution: "@tanstack/react-virtual@npm:3.14.2"
+  dependencies:
+    "@tanstack/virtual-core": "npm:3.17.0"
+  peerDependencies:
+    react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+    react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+  checksum: 10/01816d6cb1d8e20b3b253764856c686126c753f4341aaee959457b517f5de75d51fb156ee2a8df74ac6a7bb1f068e18da260f7b33e1c2be797ca209cc5f7762b
+  languageName: node
+  linkType: hard
+
 "@tanstack/react-virtual@npm:^3.13.9":
   version: 3.13.18
   resolution: "@tanstack/react-virtual@npm:3.13.18"
@@ -6704,6 +6772,13 @@ __metadata:
   version: 3.13.18
   resolution: "@tanstack/virtual-core@npm:3.13.18"
   checksum: 10/b891eac7bfa1bc20a353f65e12d6863c1ff8f91ad763f5ebbd624887c286f4b3ec5664b0c1426270463765802e514792d6864b95076e4087735b28d7db0461f0
+  languageName: node
+  linkType: hard
+
+"@tanstack/virtual-core@npm:3.17.0":
+  version: 3.17.0
+  resolution: "@tanstack/virtual-core@npm:3.17.0"
+  checksum: 10/0f6bdd491ef49fe50fca17857ceee2f0c482cf5d5b3df4a4fa0164ed5194ea486a44b12acc10eae3863cfda7c9e8bb563059e5061211ef22c4970f67f4dec020
   languageName: node
   linkType: hard
 
@@ -8578,14 +8653,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@voxel51/voodo@npm:^0.0.30":
-  version: 0.0.30
-  resolution: "@voxel51/voodo@npm:0.0.30"
+"@voxel51/voodo@npm:^0.0.35":
+  version: 0.0.35
+  resolution: "@voxel51/voodo@npm:0.0.35"
   dependencies:
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
     "@dnd-kit/utilities": "npm:^3.2.2"
+    "@floating-ui/react": "npm:^0.27.19"
     "@headlessui/react": "npm:^2.2.9"
+    "@tanstack/react-virtual": "npm:^3.13.24"
     clsx: "npm:^2.1.1"
     date-fns-tz: "npm:^3.2.0"
     lodash.debounce: "npm:^4.0.8"
@@ -8595,7 +8672,7 @@ __metadata:
     react: ^18.0.0
     react-dom: ^18.0.0
     react-is: ^18.0.0
-  checksum: 10/0df87d1af8cd1ff80b01e194752f3387bdc0e931696e345141fc12af0e9c0b2860e3abba1f9187740d27cda198683415172d6cf1dfa8f18b9d74d17ef89dc0ff
+  checksum: 10/a2cc59ae1a6f2842b494363c1c918349b165cb65dbc3a2c6c6c1cb8ff6cd74336d76ebd0df455c8bbc8a8b32100461e5ea2ecd7bcc89b8684bfe66315522b09e
   languageName: node
   linkType: hard
 
@@ -17338,13 +17415,6 @@ __metadata:
     pkg-types: "npm:^1.3.1"
     ufo: "npm:^1.6.1"
   checksum: 10/4db690a421076d5fe88331679f702b77a4bfc9fe3f324bc6150270fb0b69ecd4b5e43570b8e4573dde341515b3eac4daa720a6ac9f2715c210b670852641ab1c
-  languageName: node
-  linkType: hard
-
-"moment@npm:^2.29.4":
-  version: 2.30.1
-  resolution: "moment@npm:2.30.1"
-  checksum: 10/ae42d876d4ec831ef66110bdc302c0657c664991e45cf2afffc4b0f6cd6d251dde11375c982a5c0564ccc0fa593fc564576ddceb8c8845e87c15f58aa6baca69
   languageName: node
   linkType: hard
 
