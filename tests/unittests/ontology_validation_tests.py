@@ -133,8 +133,11 @@ class TaxonomyComponentTests(unittest.TestCase):
                 ),
             ],
         )
-        with self.assertRaises(ValueError):
-            validate_annotation_ontology(ao)
+        # Target the rule directly — going through
+        # validate_annotation_ontology would also raise on the unsaved
+        # taxonomy reference, so it wouldn't prove the dropdown rule fired.
+        errors = _validate_taxonomy_components(ao)
+        self.assertEqual(len(errors), 1)
 
     def test_accepts_taxonomy_with_dropdown_component(self):
         ao = AnnotationOntology(

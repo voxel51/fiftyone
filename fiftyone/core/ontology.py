@@ -502,7 +502,10 @@ def _list_by_type(
     """
     query: dict[str, Any] = {"type": ontology_type}
     if glob_patt is not None:
-        query["name__regex"] = fnmatch.translate(glob_patt)
+        # ``fnmatch.translate`` end-anchors with ``\Z`` but not the start;
+        # Mongo ``$regex`` matches anywhere, so anchor the start ourselves
+        # to avoid ``vehicle_*`` also matching e.g. ``myvehicle_classes``.
+        query["name__regex"] = "^" + fnmatch.translate(glob_patt)
 
     docs = OntologyDocument.objects(**query)  # pylint: disable=no-member
     return sorted(docs.distinct("name"))
@@ -598,15 +601,29 @@ def _find_ontologies_referencing_taxonomy(taxonomy_name: str) -> list[str]:
     """Returns the names of annotation ontologies that bundle the named
     taxonomy via their ``taxonomy`` reference.
 
-    Matches across all versions (a name is reported if any version
-    references the taxonomy); the lookup keys on the stored slug.
+    Only the latest version of each annotation-ontology lineage is
+    considered, matching how the accessors resolve ontologies: a lineage
+    whose newest version has dropped the taxonomy is not reported, even
+    if an older version still referenced it.
     """
     slug = fou.to_slug(taxonomy_name)
-    docs = OntologyDocument.objects(  # pylint: disable=no-member
-        type=OntologyType.ANNOTATION_ONTOLOGY.value,
-        root__taxonomy=slug,
-    )
-    return sorted(docs.distinct("name"))
+    pipeline = [
+        {"$match": {"type": OntologyType.ANNOTATION_ONTOLOGY.value}},
+        # Highest version first so $first picks the latest per slug.
+        {"$sort": {"slug": 1, "version": -1}},
+        {
+            "$group": {
+                "_id": "$slug",
+                "name": {"$first": "$name"},
+                "taxonomy": {"$first": "$root.taxonomy"},
+            }
+        },
+        # Keep only lineages whose latest version bundles this taxonomy.
+        {"$match": {"taxonomy": slug}},
+    ]
+    # pylint: disable-next=no-member
+    matches = OntologyDocument.objects.aggregate(pipeline)
+    return sorted(m["name"] for m in matches)
 
 
 def delete_taxonomy(name: str, force: bool = False) -> None:

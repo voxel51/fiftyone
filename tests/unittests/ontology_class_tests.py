@@ -1070,8 +1070,8 @@ class OntologySDKTests(unittest.TestCase):
         self.assertEqual(load_ontology("forwarded").description, "rev 2")
 
 
-class TaxonomySDKTests(unittest.TestCase):
-    """Integration tests for the taxonomy-specific accessors."""
+class TaxonomyAccessorTests(unittest.TestCase):
+    """Integration tests for the taxonomy-specific accessor functions."""
 
     def setUp(self):
         import fiftyone.core.odm as foo
@@ -1220,6 +1220,36 @@ class TaxonomySDKTests(unittest.TestCase):
 
         delete_taxonomy("vehicle_classes", force=True)
         self.assertFalse(taxonomy_exists("vehicle_classes"))
+
+    def test_delete_taxonomy_ignores_stale_reference_in_old_version(self):
+        from fiftyone.core.ontology import (
+            delete_taxonomy,
+            load_ontology,
+            taxonomy_exists,
+        )
+
+        taxonomy = self._make_taxonomy()
+        taxonomy.save()
+
+        # v1 bundles the taxonomy ...
+        AnnotationOntology(name="bundle", taxonomy=taxonomy).save()
+        # ... v2 drops it. Only the latest version should count.
+        ao = load_ontology("bundle")
+        ao.taxonomy = None
+        ao.save()
+
+        # not blocked by the stale v1 reference
+        delete_taxonomy("vehicle_classes")
+        self.assertFalse(taxonomy_exists("vehicle_classes"))
+
+    def test_list_taxonomies_glob_anchored_at_start(self):
+        from fiftyone.core.ontology import list_taxonomies
+
+        self._make_taxonomy("vehicle_classes").save()
+        self._make_taxonomy("myvehicle_classes").save()
+
+        # "vehicle_*" must not match a name that merely contains it
+        self.assertEqual(list_taxonomies("vehicle_*"), ["vehicle_classes"])
 
 
 class NodeTests(unittest.TestCase):
