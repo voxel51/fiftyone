@@ -173,6 +173,80 @@ describe("FrameStore through the engine: transactions + undo", () => {
   });
 });
 
+describe("FrameStore re-key via compose (the split/merge primitive)", () => {
+  const makeEngine = (data?: FramesData) => {
+    const engine = new AnnotationEngine();
+    const store = makeStore(data);
+    engine.registerStore(store);
+    return { engine, store };
+  };
+
+  // identity is engine-owned and `updateLabel` refuses to touch it, so split /
+  // merge re-key a frame by deleting the old instance + recreating its content
+  // under the new one — this strips the engine-owned fields like the hook does.
+  const content = (label: LabelData): Partial<LabelData> => {
+    const { _id, instance, ...rest } = label;
+    return rest;
+  };
+
+  it("delete(old) + create(new) re-keys a frame onto a fresh instance, one undo unit", () => {
+    const { engine, store } = makeEngine({
+      1: { [PATH]: [det("doc-1", "A", [0, 0, 3, 3], "car")] },
+    });
+
+    const before = store.getLabel(ref("A", 1))!;
+
+    engine.transaction(() => {
+      engine.deleteLabel(ref("A", 1));
+      engine.updateLabel(ref("B", 1), content(before));
+    });
+
+    // A is gone; B carries the content under a new instance + a fresh doc id
+    expect(store.getLabel(ref("A", 1))).toBeUndefined();
+
+    const reKeyed = store.getLabel(ref("B", 1))!;
+    expect((reKeyed.instance as { _id: string })._id).toBe("B");
+    expect(reKeyed.label).toBe("car");
+    expect(reKeyed.bounding_box).toEqual([0, 0, 3, 3]);
+    expect(reKeyed._id).not.toBe("doc-1"); // doc id re-minted (it links nothing)
+
+    // one transaction = one undo unit: drops B, restores A's content + instance
+    engine.undo();
+    expect(store.getLabel(ref("B", 1))).toBeUndefined();
+
+    const restored = store.getLabel(ref("A", 1))!;
+    expect((restored.instance as { _id: string })._id).toBe("A");
+    expect(restored.label).toBe("car");
+    expect(restored.bounding_box).toEqual([0, 0, 3, 3]);
+  });
+
+  it("re-keys only the tail, leaving earlier frames on the original instance", () => {
+    const { engine, store } = makeEngine({
+      1: { [PATH]: [det("doc-1", "A", [0, 0, 1, 1])] },
+      2: { [PATH]: [det("doc-2", "A", [0, 0, 2, 2])] },
+      3: { [PATH]: [det("doc-3", "A", [0, 0, 3, 3])] },
+    });
+
+    // split at frame 2: frames >= 2 move onto B, frame 1 stays on A
+    engine.transaction(() => {
+      for (const frame of [2, 3]) {
+        const current = store.getLabel(ref("A", frame))!;
+        engine.deleteLabel(ref("A", frame));
+        engine.updateLabel(ref("B", frame), content(current));
+      }
+    });
+
+    expect(store.getLabel(ref("A", 1))?.bounding_box).toEqual([0, 0, 1, 1]);
+    expect(store.getLabel(ref("A", 2))).toBeUndefined();
+    expect(store.getLabel(ref("B", 2))?.bounding_box).toEqual([0, 0, 2, 2]);
+    expect(store.getLabel(ref("B", 3))?.bounding_box).toEqual([0, 0, 3, 3]);
+
+    engine.undo();
+    expect(store.getLabel(ref("A", 2))?.bounding_box).toEqual([0, 0, 2, 2]);
+    expect(store.getLabel(ref("B", 2))).toBeUndefined();
+  });
+});
+
 describe("FrameStore persistence: id-aligned /frames/<n>/<field> deltas", () => {
   it("an in-place edit diffs at the baseline index", () => {
     const store = makeStore({

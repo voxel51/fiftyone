@@ -121,6 +121,38 @@ export type AnnotationEventGroup = {
   };
 
   /**
+   * Notification event emitted when a track is split at a frame: frames at or
+   * after `atFrame` are re-keyed onto a fresh instance, the original keeps the
+   * earlier frames.
+   */
+  "annotation:trackSplit": {
+    /** Synthetic overlay id of the track that was split. */
+    trackId: string;
+    /** The original track's `instance._id` (keeps frames `< atFrame`). */
+    instanceId: string;
+    /** The minted `instance._id` carrying frames `>= atFrame`. */
+    newInstanceId: string;
+    /** 1-indexed split boundary; this frame lands on the new track. */
+    atFrame: number;
+  };
+
+  /**
+   * Notification event emitted when one track is merged into another: the
+   * source's frames are re-keyed onto the target's instance (target-wins on
+   * overlapping frames) and the source ceases to exist.
+   */
+  "annotation:trackMerged": {
+    /** Synthetic overlay id of the absorbed (source) track. */
+    sourceTrackId: string;
+    /** Synthetic overlay id of the surviving (target) track. */
+    targetTrackId: string;
+    /** The source track's `instance._id` (no longer present after merge). */
+    sourceInstanceId: string;
+    /** The target track's `instance._id` (now carries the merged frames). */
+    targetInstanceId: string;
+  };
+
+  /**
    * Notification event emitted when the active annotation agent transitions
    * between lifecycle states (e.g. `"initializing"` → `"inferring"`).
    */
