@@ -117,6 +117,9 @@ const getFaceResizeEdgePoints = ([width, height]: [number, number]) =>
     [-width / 2, -height / 2, 0],
   ] as THREE.Vector3Tuple[];
 
+const canArmFaceResizeHover = (e: ThreeEvent<PointerEvent>) =>
+  e.nativeEvent.buttons === 0;
+
 export interface CuboidProps extends OverlayProps {
   location: THREE.Vector3Tuple;
   dimensions: THREE.Vector3Tuple;
@@ -408,6 +411,10 @@ export const Cuboid = ({
         return;
       }
 
+      if (!canArmFaceResizeHover(e)) {
+        return;
+      }
+
       setHoveredResizeFace(getCuboidResizeFaceFromNormal(e.face?.normal));
     },
     [canFaceResize, isFaceResizeDragging, restEventHandlers]
@@ -425,6 +432,10 @@ export const Cuboid = ({
       restEventHandlers.onPointerMove?.(e);
 
       if (!canFaceResize || isFaceResizeDragging) {
+        return;
+      }
+
+      if (!canArmFaceResizeHover(e)) {
         return;
       }
 
@@ -668,6 +679,10 @@ export const Cuboid = ({
             onPointerMove={(e) => handleFaceResizeHandlePointerMove(e, face)}
             onPointerOver={(e) => {
               e.stopPropagation();
+              if (!canArmFaceResizeHover(e)) {
+                return;
+              }
+
               setHoveredLabel({ id: label._id });
               setHoveredResizeFace(face);
               onPointerOver();
