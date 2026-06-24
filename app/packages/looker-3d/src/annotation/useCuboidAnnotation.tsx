@@ -26,7 +26,6 @@ interface UseCuboidAnnotationProps {
   location: Vector3Tuple;
   dimensions: Vector3Tuple;
   rotation: Vector3Tuple;
-  strokeAndFillColor: string;
   isAnnotateMode: boolean;
   isSelectedForAnnotation: boolean;
 }
@@ -36,7 +35,6 @@ export const useCuboidAnnotation = ({
   location,
   dimensions,
   rotation,
-  strokeAndFillColor,
   isAnnotateMode,
   isSelectedForAnnotation,
 }: UseCuboidAnnotationProps) => {
@@ -192,6 +190,21 @@ export const useCuboidAnnotation = ({
     contentRef.current.scale.set(1, 1, 1);
   }, [labelId, finalizeCuboidDrag]);
 
+  const handleFaceResizeStart = useCallback(() => {
+    startDrag(labelId);
+  }, [startDrag, labelId]);
+
+  const handleFaceResizeChange = useCallback(
+    (transientUpdate: TransientCuboidState) => {
+      updateCuboid(labelId, transientUpdate);
+    },
+    [labelId, updateCuboid]
+  );
+
+  const handleFaceResizeEnd = useCallback(() => {
+    finalizeCuboidDrag(labelId);
+  }, [labelId, finalizeCuboidDrag]);
+
   // This effect clears drag state on unmount
   useEffect(() => {
     return () => endDrag(labelId);
@@ -212,5 +225,8 @@ export const useCuboidAnnotation = ({
     handleTransformStart,
     handleTransformChange,
     handleTransformEnd,
+    handleFaceResizeStart,
+    handleFaceResizeChange,
+    handleFaceResizeEnd,
   };
 };

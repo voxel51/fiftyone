@@ -355,6 +355,7 @@ export const ThreeDLabels = ({
             label={overlay as unknown as OverlayLabel}
             useLegacyCoordinates={settings.useLegacyCoordinates}
             color={getOverlayColor(overlay)}
+            enableFaceResize={isMainPanel}
           />
         </DragGate3D>
       )),
@@ -367,6 +368,7 @@ export const ThreeDLabels = ({
       handleSelect,
       settings,
       getOverlayColor,
+      isMainPanel,
     ]
   );
 
