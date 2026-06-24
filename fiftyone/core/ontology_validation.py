@@ -37,6 +37,7 @@ def validate_annotation_ontology(ontology: AnnotationOntology) -> None:
         *_validate_when_operators(ontology),
         *_validate_types(ontology),
         *_validate_components(ontology),
+        *_validate_taxonomy_components(ontology),
         *_validate_no_cycles(ontology),
         *_validate_then_keys(ontology),
         *_validate_taxonomy_ref(ontology),
@@ -122,6 +123,25 @@ def _validate_components(ontology: AnnotationOntology) -> list[str]:
             errors.append(
                 f"attribute {attr.name!r}: component {attr.component!r} "
                 f"not valid for type {attr.type!r}"
+            )
+    return errors
+
+
+def _validate_taxonomy_components(ontology: AnnotationOntology) -> list[str]:
+    """Reject attributes that pair a ``taxonomy`` reference with a
+    non-``dropdown`` component.
+
+    A taxonomy supplies the allowed values for a dropdown; the App only
+    renders taxonomy-backed attributes as dropdowns, so any other
+    component renders nothing. Mirrors the same rule enforced on
+    label-schema fields in ``validate_label_schemas``.
+    """
+    errors: list[str] = []
+    for attr in ontology.attributes:
+        if attr.taxonomy is not None and attr.component != _fac.DROPDOWN:
+            errors.append(
+                f"attribute {attr.name!r}: {_fac.TAXONOMY!r} requires a "
+                f"{_fac.DROPDOWN!r} component, got {attr.component!r}"
             )
     return errors
 

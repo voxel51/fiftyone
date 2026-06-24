@@ -17,7 +17,10 @@ from fiftyone.core.annotation.attributes import (
     WhenOr,
 )
 from fiftyone.core.ontology import AnnotationOntology
-from fiftyone.core.ontology_validation import validate_annotation_ontology
+from fiftyone.core.ontology_validation import (
+    _validate_taxonomy_components,
+    validate_annotation_ontology,
+)
 
 
 class OperatorValidTests(unittest.TestCase):
@@ -114,6 +117,41 @@ class ComponentCompatibleTests(unittest.TestCase):
         )
         with self.assertRaises(ValueError):
             validate_annotation_ontology(ao)
+
+
+class TaxonomyComponentTests(unittest.TestCase):
+    def test_rejects_taxonomy_with_non_dropdown_component(self):
+        # the App only renders taxonomy-backed attributes as dropdowns
+        ao = AnnotationOntology(
+            name="test",
+            attributes=[
+                AttributeSpec(
+                    name="vehicle_type",
+                    type="str",
+                    component="radio",
+                    taxonomy="vehicle_classes",
+                ),
+            ],
+        )
+        with self.assertRaises(ValueError):
+            validate_annotation_ontology(ao)
+
+    def test_accepts_taxonomy_with_dropdown_component(self):
+        ao = AnnotationOntology(
+            name="test",
+            attributes=[
+                AttributeSpec(
+                    name="vehicle_type",
+                    type="str",
+                    component="dropdown",
+                    taxonomy="vehicle_classes",
+                ),
+            ],
+        )
+        # taxonomy-component rule passes; the taxonomy-ref resolver is what
+        # would flag the (unsaved) reference, validated separately
+        errors = _validate_taxonomy_components(ao)
+        self.assertEqual(errors, [])
 
 
 class NoCyclesTests(unittest.TestCase):
