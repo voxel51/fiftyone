@@ -284,10 +284,10 @@ describe("TimelineTrack", () => {
     });
   });
 
-  describe("eventDeleteConfig", () => {
+  describe("eventMenuItems", () => {
     const interval = { startSec: 4, endSec: 6 };
 
-    it("omits the delete item (and renders fine) when eventDeleteConfig is absent", () => {
+    it("adds no custom items (and renders fine) when eventMenuItems is absent", () => {
       const { container } = renderTrack({
         track: { start: 0, end: 10, events: [interval], labelWidth: 100 },
       });
@@ -299,14 +299,16 @@ describe("TimelineTrack", () => {
       expect(screen.queryByText("Delete track")).toBeNull();
     });
 
-    it("adds a destructive item with the supplied label that fires onDelete with the event", () => {
-      const onDelete = vi.fn();
+    it("fires an item's onSelect with the event the menu opened on", () => {
+      const onSelect = vi.fn();
       const { container } = renderTrack({
         track: {
           start: 0,
           end: 10,
           events: [interval],
-          eventDeleteConfig: { label: "Delete track", onDelete },
+          eventMenuItems: [
+            { label: "Delete track", destructive: true, onSelect },
+          ],
         },
       });
       const bar = container.querySelector(
@@ -314,27 +316,51 @@ describe("TimelineTrack", () => {
       ) as HTMLElement;
       fireEvent.contextMenu(bar);
       fireEvent.click(screen.getByText("Delete track"));
-      expect(onDelete).toHaveBeenCalledTimes(1);
-      expect(onDelete.mock.calls[0][0]).toMatchObject({
+      expect(onSelect).toHaveBeenCalledTimes(1);
+      expect(onSelect.mock.calls[0][0]).toMatchObject({
         startSec: 4,
         endSec: 6,
       });
     });
 
-    it("uses the supplied label verbatim (e.g. the temporal-tag 'Delete tag')", () => {
+    it("renders every supplied item in order (e.g. delete + split + merge)", () => {
       const { container } = renderTrack({
         track: {
           start: 0,
           end: 10,
           events: [interval],
-          eventDeleteConfig: { label: "Delete tag", onDelete: vi.fn() },
+          eventMenuItems: [
+            { label: "Delete track", destructive: true, onSelect: vi.fn() },
+            { label: "Split at playhead", onSelect: vi.fn() },
+            { label: "Merge into B", onSelect: vi.fn() },
+          ],
         },
       });
       const bar = container.querySelector(
         `.${styles.intervalBar}`
       ) as HTMLElement;
       fireEvent.contextMenu(bar);
-      expect(screen.getByText("Delete tag")).toBeTruthy();
+      expect(screen.getByText("Delete track")).toBeTruthy();
+      expect(screen.getByText("Split at playhead")).toBeTruthy();
+      expect(screen.getByText("Merge into B")).toBeTruthy();
+    });
+
+    it("does not fire onSelect for a disabled item", () => {
+      const onSelect = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [interval],
+          eventMenuItems: [{ label: "Merge into…", disabled: true, onSelect }],
+        },
+      });
+      const bar = container.querySelector(
+        `.${styles.intervalBar}`
+      ) as HTMLElement;
+      fireEvent.contextMenu(bar);
+      fireEvent.click(screen.getByText("Merge into…"));
+      expect(onSelect).not.toHaveBeenCalled();
     });
   });
 

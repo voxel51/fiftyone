@@ -16,8 +16,8 @@ import LoopOverlays from "../Loop/LoopOverlays";
 import PlayheadLine from "../Playhead/PlayheadLine";
 import TimelineHeader from "../TimelineHeader/TimelineHeader";
 import TimelineTrack, {
-  type NormalizedEvent,
   type TimelineTrackProps,
+  type TrackEventMenuItem,
 } from "../TimelineTrack/TimelineTrack";
 import styles from "./TimelineWithTracks.module.css";
 
@@ -38,14 +38,11 @@ export interface TimelineWithTracksProps {
   /** Overlay rendered on top of the ruler row in each TimelineHeader. */
   rulerOverlay?: React.ReactNode;
   /**
-   * Adds a destructive delete item to every track's event context menu. Per-row
-   * overrides can still be supplied via {@link decorateTrack}. See
-   * {@link TimelineTrackProps.eventDeleteConfig}.
+   * Custom context-menu items added to every track's events. Per-row overrides
+   * can still be supplied via {@link decorateTrack}. See
+   * {@link TimelineTrackProps.eventMenuItems}.
    */
-  eventDeleteConfig?: {
-    label: string;
-    onDelete: (event: NormalizedEvent) => void;
-  };
+  eventMenuItems?: TrackEventMenuItem[];
   /**
    * Optional content rendered inline between the playback control buttons and
    * the playhead time display. Forwarded to {@link TimelineHeader}'s
@@ -82,7 +79,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   maxSize = TIMELINE_DRAWER_MAX_SIZE,
   className,
   rulerOverlay,
-  eventDeleteConfig,
+  eventMenuItems,
   extraControls,
   extraActions,
   decorateTrack,
@@ -116,7 +113,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
       pinned
       onPinClick={() => togglePin(track.id)}
       onEventClick={(e) => seek(e.startSec)}
-      eventDeleteConfig={eventDeleteConfig}
+      eventMenuItems={eventMenuItems}
       {...(decorateTrack ? decorateTrack(track, true) : null)}
     />
   );
@@ -158,7 +155,11 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
             extraActions={extraActions}
           >
             <div className={styles.pinnedOverlayHost}>
-              {pinned.map(renderPinnedTrack)}
+              {/* Pinned rows live here only while the drawer is closed; when it
+                  opens they move into the body below. Rendering both
+                  unconditionally double-mounts every pinned row under the same
+                  track id, so selecting one hit both. */}
+              {!drawerOpen && pinned.map(renderPinnedTrack)}
               <LoopOverlays labelWidth={labelWidth} />
               <PlayheadLine labelWidth={labelWidth} />
             </div>
@@ -168,9 +169,10 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
         <div className={styles.tracksOuter}>
           <div className={styles.tracksArea}>
             {/* When the drawer is open, pinned tracks move into the body
-                so they scroll together with the unpinned section below. */}
+                so they scroll together with the unpinned section below; the
+                header slot above stops rendering them so each row mounts once. */}
             <div className={styles.pinnedTracks}>
-              {pinned.map(renderPinnedTrack)}
+              {drawerOpen && pinned.map(renderPinnedTrack)}
             </div>
             <div>
               {unpinned.map((track) => {
@@ -188,7 +190,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
                     pinned={false}
                     onPinClick={() => togglePin(track.id)}
                     onEventClick={(e) => seek(e.startSec)}
-                    eventDeleteConfig={eventDeleteConfig}
+                    eventMenuItems={eventMenuItems}
                     {...extra}
                     className={clsx(styles.unpinnedTrack, extra?.className)}
                   />

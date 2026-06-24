@@ -84,11 +84,11 @@ describe("TimelineWithTracks", () => {
       expect(root.className).not.toContain(styles.noTracks);
     });
 
-    it("renders track labels for registered tracks", () => {
+    it("renders a pinned track exactly once", () => {
       renderTimeline({ tracks: [TRACK_A, TRACK_B], pinnedIds: ["track-a"] });
-      // A pinned track renders in both the collapsed header overlay and the
-      // drawer body, so its label appears more than once.
-      expect(screen.getAllByText("Track A").length).toBeGreaterThan(0);
+      // With the drawer closed (default) a pinned row lives only in the header
+      // overlay — not also in the body — so it mounts once under one track id.
+      expect(screen.getAllByText("Track A")).toHaveLength(1);
     });
 
     it("renders rows for both pinned and unpinned tracks", () => {
