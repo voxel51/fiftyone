@@ -14,7 +14,10 @@ vi.mock("@fiftyone/state", () => ({
   useRenderConfig3dState: vi.fn(),
 }));
 
-vi.mock("recoil", () => ({}));
+vi.mock("recoil", () => ({
+  useRecoilValue: vi.fn(() => null),
+  useSetRecoilState: vi.fn(() => vi.fn()),
+}));
 
 vi.mock("jotai", () => ({
   useAtomValue: vi.fn(),
@@ -68,6 +71,13 @@ vi.mock("../../labels", () => ({
 
 vi.mock("../../services/RaycastService", () => ({
   RaycastService: () => null,
+}));
+
+vi.mock("../../state", () => ({
+  activeCursorPanelAtom: {},
+  mainPanelPanSyncIntentAtom: {},
+  mainPanelZoomSyncIntentAtom: {},
+  raycastResultAtom: {},
 }));
 
 vi.mock("../FoScene", () => ({

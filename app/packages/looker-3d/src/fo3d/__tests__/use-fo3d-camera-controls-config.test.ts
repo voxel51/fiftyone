@@ -31,6 +31,7 @@ vi.mock("recoil", async () => {
   return {
     ...actual,
     useRecoilValue: () => false,
+    useSetRecoilState: () => () => undefined,
   };
 });
 

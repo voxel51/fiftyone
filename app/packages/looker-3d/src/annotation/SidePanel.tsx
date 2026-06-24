@@ -12,7 +12,8 @@ import {
   View,
 } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import * as THREE from "three";
 import { Box3, Vector3 } from "three";
@@ -34,8 +35,26 @@ import { FoScene } from "../fo3d/render-types";
 import { Lights } from "../fo3d/scene-controls/lights/Lights";
 import { ThreeDLabels } from "../labels";
 import { RaycastService } from "../services/RaycastService";
+import {
+  hoveredLabelAtom,
+  mainPanelPanSyncIntentAtom,
+  mainPanelZoomSyncIntentAtom,
+  selectedLabelForAnnotationAtom,
+} from "../state";
 import type { SidePanelId, SidePanelViewType } from "../types";
 import { expandBoundingBox } from "../utils";
+import {
+  applyMainPanelPanSyncIntentToOrthographicCamera,
+  applyMainPanelZoomSyncIntentToOrthographicCamera,
+  deriveSidePanelCameraFrame,
+  shouldApplyMainPanelPanSyncIntent,
+  shouldApplyMainPanelZoomSyncIntent,
+} from "../utils/side-panel-camera-sync";
+import type { PointCloudCrop } from "../utils/point-cloud-crop";
+import {
+  createPointCloudCropHelperMesh,
+  disposePointCloudCropHelperMesh,
+} from "../utils/point-cloud-crop";
 import { AnnotationPlane } from "./AnnotationPlane";
 import { CreateCuboidRenderer } from "./CreateCuboidRenderer";
 import { Crosshair3D } from "./Crosshair3D";
@@ -47,6 +66,7 @@ import {
 } from "./ImageSlicePanel";
 import { SegmentPolylineRenderer } from "./SegmentPolylineRenderer";
 import { useImageSlicesIfAvailable } from "./useImageSlicesIfAvailable";
+import { usePointCloudCrop } from "./usePointCloudCrop";
 
 const SidePanelContainer = styled.div<{ $area: string }>`
   grid-area: ${(p) => p.$area};
@@ -64,237 +84,6 @@ const ViewSelectorWrapper = styled.div`
   left: 10px;
   z-index: 1000;
 `;
-
-/**
- * Calculate camera position for different side panel views based on upVector and lookAt point
- */
-const calculateCameraPositionForSidePanel = (
-  sidePanelViewType: SidePanelViewType,
-  upVector: Vector3,
-  lookAt: Vector3,
-  sceneBoundingBox: Box3 | null,
-): Vector3 => {
-  if (!sceneBoundingBox) {
-    // Fallback to default positions if no bounding box
-    const defaultPositions = {
-      Top: [0, 10, 0] as [number, number, number],
-      Bottom: [0, -10, 0] as [number, number, number],
-      Left: [-10, 0, 0] as [number, number, number],
-      Right: [10, 0, 0] as [number, number, number],
-      Back: [0, 0, -10] as [number, number, number],
-      Front: [0, 0, 10] as [number, number, number],
-    };
-    const position = defaultPositions[sidePanelViewType];
-    return position ? new Vector3(...position) : new Vector3(0, 10, 0);
-  }
-
-  const size = new Vector3();
-  sceneBoundingBox.getSize(size);
-  const maxSize = Math.max(size.x, size.y, size.z);
-  const distance = maxSize * 2.5;
-
-  const upDir = upVector.clone().normalize();
-  const center = lookAt.clone();
-
-  // Create orthogonal vectors for different views
-  let direction: Vector3;
-
-  switch (sidePanelViewType) {
-    case VIEW_TYPE_TOP:
-      direction = upDir.clone();
-      break;
-    case VIEW_TYPE_BOTTOM:
-      direction = upDir.clone().negate();
-      break;
-    case VIEW_TYPE_LEFT:
-      // Create a vector perpendicular to up vector
-      if (Math.abs(upDir.y) > 0.9) {
-        // If up is mostly Y, use negative X axis for left
-        direction = new Vector3(-1, 0, 0);
-      } else {
-        const right = new Vector3(0, 1, 0).cross(upDir).normalize();
-        direction = right.negate();
-      }
-      break;
-    case VIEW_TYPE_RIGHT:
-      // Opposite of Left
-      if (Math.abs(upDir.y) > 0.9) {
-        direction = new Vector3(1, 0, 0);
-      } else {
-        direction = new Vector3(0, 1, 0).cross(upDir).normalize();
-      }
-      break;
-    case VIEW_TYPE_FRONT:
-      // Create a vector perpendicular to both up and left
-      if (Math.abs(upDir.y) > 0.9) {
-        direction = new Vector3(0, 0, 1);
-      } else {
-        const left = new Vector3(0, -1, 0).cross(upDir).normalize();
-        direction = upDir.clone().cross(left).normalize();
-      }
-      break;
-    case VIEW_TYPE_BACK:
-      // Opposite of Front
-      if (Math.abs(upDir.y) > 0.9) {
-        direction = new Vector3(0, 0, -1);
-      } else {
-        const left = new Vector3(0, 1, 0).cross(upDir).normalize();
-        direction = upDir.clone().cross(left).normalize();
-      }
-      break;
-    default:
-      direction = upDir.clone();
-  }
-
-  return center.clone().add(direction.multiplyScalar(distance));
-};
-
-/**
- * Calculate camera "up" vector for different side panel views to ensure proper axis alignment
- */
-const calculateCameraUpForSidePanel = (
-  sidePanelViewType: SidePanelViewType,
-  upVector: Vector3,
-): Vector3 => {
-  const upDir = upVector.clone().normalize();
-
-  switch (sidePanelViewType) {
-    case VIEW_TYPE_TOP: {
-      // For Top view, camera is looking down along upDir
-      // Camera's "up" must be perpendicular to the viewing direction
-      // Find a horizontal vector perpendicular to upDir
-      // Match the convention used by Front/Back views for consistency
-
-      let candidate: Vector3;
-
-      // If upDir is mostly aligned with Y axis (Y-up scene)
-      // Front view looks along +Z, so camera up should be along +Z
-      if (Math.abs(upDir.y) > 0.9) {
-        candidate = new Vector3(0, 0, 1);
-      }
-      // If upDir is mostly aligned with Z axis (Z-up scene)
-      // Camera up should be along +Y
-      else if (Math.abs(upDir.z) > 0.9) {
-        candidate = new Vector3(0, 1, 0);
-      }
-      // If upDir is mostly aligned with X axis (X-up scene)
-      // Use Y axis as candidate
-      else if (Math.abs(upDir.x) > 0.9) {
-        candidate = new Vector3(0, 1, 0);
-      }
-      // General case: use a vector perpendicular to upDir
-      else {
-        // Find a vector perpendicular to upDir using cross product
-        const temp = new Vector3(0, 1, 0);
-        if (Math.abs(upDir.dot(temp)) > 0.9) {
-          temp.set(1, 0, 0);
-        }
-        candidate = new Vector3().crossVectors(temp, upDir).normalize();
-      }
-
-      // Project candidate onto plane perpendicular to upDir
-      // This gives us a vector perpendicular to upDir
-      const projection = candidate
-        .clone()
-        .sub(upDir.clone().multiplyScalar(candidate.dot(upDir)))
-        .normalize();
-
-      // If projection is too small (nearly parallel), try another axis
-      if (projection.length() < 0.1) {
-        // Try different axes as fallback
-        const fallback =
-          Math.abs(upDir.y) > 0.9
-            ? new Vector3(1, 0, 0) // For Y-up, try X
-            : new Vector3(0, 0, 1); // Otherwise try Z
-        const fallbackProjection = fallback
-          .clone()
-          .sub(upDir.clone().multiplyScalar(fallback.dot(upDir)))
-          .normalize();
-        return fallbackProjection.length() > 0.1
-          ? fallbackProjection
-          : new Vector3(0, 0, 1);
-      }
-
-      return projection;
-    }
-    case VIEW_TYPE_BOTTOM: {
-      // For Bottom view, camera is looking up along -upDir
-      // Camera's "up" must be perpendicular to the viewing direction
-      // Use similar logic to Top but apply cross product to maintain correct orientation
-
-      let candidate: Vector3;
-
-      // Match Top view logic for candidate selection
-      // If upDir is mostly aligned with Y axis (Y-up scene)
-      // Front view looks along +Z, so camera up should be along +Z
-      if (Math.abs(upDir.y) > 0.9) {
-        candidate = new Vector3(0, 0, 1);
-      }
-      // If upDir is mostly aligned with Z axis (Z-up scene)
-      // Camera up should be along +Y
-      else if (Math.abs(upDir.z) > 0.9) {
-        candidate = new Vector3(0, 1, 0);
-      }
-      // If upDir is mostly aligned with X axis (X-up scene)
-      // Use Y axis as candidate
-      else if (Math.abs(upDir.x) > 0.9) {
-        candidate = new Vector3(0, 1, 0);
-      }
-      // General case: use a vector perpendicular to upDir
-      else {
-        const temp = new Vector3(0, 1, 0);
-        if (Math.abs(upDir.dot(temp)) > 0.9) {
-          temp.set(1, 0, 0);
-        }
-        candidate = new Vector3().crossVectors(temp, upDir).normalize();
-      }
-
-      const projection = candidate
-        .clone()
-        .sub(upDir.clone().multiplyScalar(candidate.dot(upDir)))
-        .normalize();
-
-      if (projection.length() < 0.1) {
-        const fallback =
-          Math.abs(upDir.y) > 0.9 ? new Vector3(1, 0, 0) : new Vector3(0, 0, 1);
-        const fallbackProjection = fallback
-          .clone()
-          .sub(upDir.clone().multiplyScalar(fallback.dot(upDir)))
-          .normalize();
-        if (fallbackProjection.length() > 0.1) {
-          // Apply cross product for Bottom view orientation
-          const right = new Vector3()
-            .crossVectors(fallbackProjection, upDir)
-            .normalize();
-          const bottomUp = new Vector3()
-            .crossVectors(right, upDir.clone().negate())
-            .normalize();
-          return bottomUp.length() > 0.1 ? bottomUp : fallbackProjection;
-        }
-        return new Vector3(0, 0, 1);
-      }
-
-      // For Bottom view, use cross product to get correct orientation
-      // Cross product with upDir to get a right vector, then use that to determine orientation
-      const right = new Vector3().crossVectors(projection, upDir).normalize();
-      // Use the right vector crossed with the viewing direction (-upDir) to get the proper up
-      const bottomUp = new Vector3()
-        .crossVectors(right, upDir.clone().negate())
-        .normalize();
-
-      return bottomUp.length() > 0.1 ? bottomUp : projection;
-    }
-    case VIEW_TYPE_LEFT:
-    case VIEW_TYPE_RIGHT:
-    case VIEW_TYPE_FRONT:
-    case VIEW_TYPE_BACK:
-      // For these views, camera is looking perpendicular to upDir
-      // Camera's "up" should be along upDir (or its appropriate orientation)
-      return upDir.clone();
-    default:
-      return upDir.clone();
-  }
-};
 
 /**
  * Returns a dropdown value that is guaranteed to exist in the current side-panel
@@ -367,26 +156,21 @@ export const SidePanel = ({
     imageSlices,
     isLoadingImageSlices,
   });
+  const showImageSlicePanel =
+    isImageSliceView(view) && safeSelectValue === view;
+  const pointCloudCrop = usePointCloudCrop({
+    enabled: !showImageSlicePanel,
+  });
 
-  const position = useMemo(
+  const sidePanelCameraFrame = useMemo(
     () =>
-      upVector && lookAt
-        ? calculateCameraPositionForSidePanel(
-            safeSelectValue,
-            upVector,
-            lookAt,
-            sceneBoundingBox,
-          )
-        : new Vector3(0, 10, 0),
-    [safeSelectValue, upVector, lookAt, sceneBoundingBox],
-  );
-
-  const cameraUp = useMemo(
-    () =>
-      upVector
-        ? calculateCameraUpForSidePanel(safeSelectValue, upVector)
-        : new Vector3(0, 1, 0),
-    [safeSelectValue, upVector],
+      deriveSidePanelCameraFrame({
+        sceneBoundingBox,
+        target: lookAt ?? new Vector3(0, 0, 0),
+        upVector: upVector ?? new Vector3(0, 1, 0),
+        viewType: safeSelectValue,
+      }),
+    [safeSelectValue, upVector, lookAt, sceneBoundingBox]
   );
 
   const theme = useTheme();
@@ -411,6 +195,12 @@ export const SidePanel = ({
   const [observe, setObserve] = useState(true);
 
   const [fitBoundsKey, setFitBoundsKey] = useState(0);
+  const pointCloudCropFitKey = pointCloudCrop
+    ? pointCloudCrop.source === "hover" ||
+      pointCloudCrop.source === "raycast-hover"
+      ? null
+      : `${pointCloudCrop.source}-${pointCloudCrop.labelId}-${fitBoundsKey}`
+    : null;
 
   useEffect(() => {
     setObserve(true);
@@ -423,16 +213,13 @@ export const SidePanel = ({
 
   // Update camera to look at the scene center and use correct up vector
   useEffect(() => {
-    if (cameraRef.current && lookAt && upVector) {
-      cameraRef.current.position.copy(position);
-      cameraRef.current.up.copy(cameraUp);
-      cameraRef.current.lookAt(lookAt);
+    if (cameraRef.current) {
+      cameraRef.current.position.copy(sidePanelCameraFrame.position);
+      cameraRef.current.up.copy(sidePanelCameraFrame.up);
+      cameraRef.current.lookAt(sidePanelCameraFrame.target);
       cameraRef.current.updateProjectionMatrix();
     }
-  }, [position, cameraUp, lookAt, upVector]);
-
-  const showImageSlicePanel =
-    isImageSliceView(view) && safeSelectValue === view;
+  }, [sidePanelCameraFrame]);
 
   return (
     <SidePanelContainer id={getPanelElementId(panelId)} $area={gridArea}>
@@ -459,8 +246,8 @@ export const SidePanel = ({
           <OrthographicCamera
             makeDefault
             ref={cameraRef}
-            position={position}
-            up={cameraUp.toArray() as [number, number, number]}
+            position={sidePanelCameraFrame.position}
+            up={sidePanelCameraFrame.up.toArray() as [number, number, number]}
           />
           <MapControls
             makeDefault
@@ -469,17 +256,30 @@ export const SidePanel = ({
             enableRotate={false}
             zoomSpeed={0.8}
           />
-          <Bounds fit clip observe={observe} margin={1.25} maxDuration={0.001}>
-            <BoundsSideEffectsComponent />
+          <Bounds
+            fit
+            clip
+            observe={pointCloudCrop ? false : observe}
+            margin={1.25}
+            maxDuration={0.001}
+          >
+            <BoundsSideEffectsComponent
+              pointCloudCrop={pointCloudCrop}
+              pointCloudCropFitKey={pointCloudCropFitKey}
+            />
             <Gizmos isGridVisible={false} isGizmoHelperVisible={false} />
             <group visible={isSceneInitialized}>
-              <FoSceneComponent scene={foScene} />
+              <FoSceneComponent
+                scene={foScene}
+                pointCloudCrop={pointCloudCrop}
+              />
             </group>
             {isSceneInitialized && (
               <ThreeDLabels
                 sampleMap={labelSampleMap}
                 globalOpacity={0.5}
                 isMainPanel={false}
+                unfocusedLabelOpacity={SIDE_PANEL_UNFOCUSED_LABEL_OPACITY}
               />
             )}
             {/* `safeSelectValue` is guaranteed to be a cardinal view here */}
@@ -496,7 +296,7 @@ export const SidePanel = ({
                   | "back"
               }
             />
-            <RaycastService panelId={panelId} />
+            <RaycastService panelId={panelId} pointCloudCrop={pointCloudCrop} />
             <SegmentPolylineRenderer ignoreEffects />
             <CreateCuboidRenderer ignoreEffects />
             <Crosshair3D panelId={panelId} />
@@ -554,8 +354,8 @@ export const SidePanel = ({
 
 function findByUserData(
   scene: THREE.Scene,
-  key: (typeof FO_USER_DATA)[keyof typeof FO_USER_DATA],
-  value: unknown,
+  key: typeof FO_USER_DATA[keyof typeof FO_USER_DATA],
+  value: unknown
 ): THREE.Object3D | null {
   let result: THREE.Object3D | null = null;
   scene.traverse((o) => {
@@ -570,11 +370,443 @@ const DEFAULT_CUBOID_CREATION_MARGIN = 50;
 const DEFAULT_POLYLINE_VERTEX_FOCUS_SIZE = 5;
 const MIN_POLYLINE_VERTEX_FOCUS_SIZE = 1;
 const MAX_POLYLINE_VERTEX_FOCUS_SIZE = 30;
+const AUTO_EXPAND_FIT_INTERVAL_MS = 125;
+const AUTO_EXPAND_NDC_PADDING = 0.86;
+const RAYCAST_HOVER_FIT_INTERVAL_MS = 125;
+const RAYCAST_HOVER_CENTER_EPSILON_SQ = 1e-8;
+const SIDE_PANEL_UNFOCUSED_LABEL_OPACITY = 0.08;
 
-const BoundsSideEffectsComponent = () => {
+interface RaycastHoverFitSnapshot {
+  center: THREE.Vector3;
+  halfSize: THREE.Vector3;
+}
+
+function getPointCloudCropWorldCorners(crop: PointCloudCrop) {
+  const corners: THREE.Vector3[] = [];
+  const signs = [-1, 1];
+
+  for (const xSign of signs) {
+    for (const ySign of signs) {
+      for (const zSign of signs) {
+        corners.push(
+          new THREE.Vector3(
+            crop.halfSize.x * xSign,
+            crop.halfSize.y * ySign,
+            crop.halfSize.z * zSign
+          )
+            .applyQuaternion(crop.quaternion)
+            .add(crop.center)
+        );
+      }
+    }
+  }
+
+  return corners;
+}
+
+function doesCropFitCamera(
+  crop: PointCloudCrop,
+  camera: THREE.Camera,
+  padding = AUTO_EXPAND_NDC_PADDING
+) {
+  camera.updateMatrixWorld();
+  const cameraWithProjection = camera as THREE.Camera & {
+    updateProjectionMatrix?: () => void;
+  };
+  cameraWithProjection.updateProjectionMatrix?.();
+
+  return getPointCloudCropWorldCorners(crop).every((corner) => {
+    const projected = corner.project(camera);
+    return Math.abs(projected.x) <= padding && Math.abs(projected.y) <= padding;
+  });
+}
+
+type SidePanelControls = {
+  target?: THREE.Vector3;
+  update?: () => void;
+  minZoom?: number;
+  maxZoom?: number;
+};
+
+type SidePanelProjectionCamera = THREE.Camera & {
+  near: number;
+  far: number;
+  updateProjectionMatrix: () => void;
+};
+
+interface SidePanelCameraSnapshot {
+  position: THREE.Vector3;
+  quaternion: THREE.Quaternion;
+  up: THREE.Vector3;
+  zoom?: number;
+  near: number;
+  far: number;
+  controlsTarget?: THREE.Vector3;
+}
+
+const getProjectionCamera = (camera: THREE.Camera) =>
+  camera as SidePanelProjectionCamera;
+
+const getOrthographicCamera = (camera: THREE.Camera) => {
+  const maybeOrthographic = getProjectionCamera(
+    camera
+  ) as THREE.OrthographicCamera & {
+    isOrthographicCamera?: boolean;
+  };
+
+  return maybeOrthographic.isOrthographicCamera ? maybeOrthographic : null;
+};
+
+const captureSidePanelCameraSnapshot = (
+  camera: THREE.Camera,
+  controls?: SidePanelControls
+): SidePanelCameraSnapshot => {
+  const projectionCamera = getProjectionCamera(camera);
+  const orthographicCamera = getOrthographicCamera(camera);
+
+  return {
+    position: camera.position.clone(),
+    quaternion: camera.quaternion.clone(),
+    up: camera.up.clone(),
+    zoom: orthographicCamera?.zoom,
+    near: projectionCamera.near,
+    far: projectionCamera.far,
+    controlsTarget: controls?.target?.clone(),
+  };
+};
+
+const restoreSidePanelCameraSnapshot = ({
+  camera,
+  controls,
+  snapshot,
+  invalidate,
+}: {
+  camera: THREE.Camera;
+  controls?: SidePanelControls;
+  snapshot: SidePanelCameraSnapshot;
+  invalidate: () => void;
+}) => {
+  const projectionCamera = getProjectionCamera(camera);
+
+  camera.position.copy(snapshot.position);
+  camera.quaternion.copy(snapshot.quaternion);
+  camera.up.copy(snapshot.up);
+  projectionCamera.near = snapshot.near;
+  projectionCamera.far = snapshot.far;
+
+  const orthographicCamera = getOrthographicCamera(camera);
+  if (orthographicCamera && snapshot.zoom !== undefined) {
+    orthographicCamera.zoom = snapshot.zoom;
+  }
+
+  camera.updateMatrixWorld();
+  projectionCamera.updateProjectionMatrix();
+
+  if (controls?.target && snapshot.controlsTarget) {
+    controls.target.copy(snapshot.controlsTarget);
+    controls.update?.();
+  }
+
+  invalidate();
+};
+
+const BoundsSideEffectsComponent = ({
+  pointCloudCrop,
+  pointCloudCropFitKey,
+}: {
+  pointCloudCrop?: PointCloudCrop | null;
+  pointCloudCropFitKey: string | null;
+}) => {
   const api = useBounds();
 
-  const { scene } = useThree();
+  const { camera, scene, invalidate } = useThree();
+  const controls = useThree(
+    (state) => state.controls as SidePanelControls | undefined
+  );
+  const hoveredLabel = useRecoilValue(hoveredLabelAtom);
+  const selectedLabel = useRecoilValue(selectedLabelForAnnotationAtom);
+  const mainPanelPanSyncIntent = useRecoilValue(mainPanelPanSyncIntentAtom);
+  const mainPanelZoomSyncIntent = useRecoilValue(mainPanelZoomSyncIntentAtom);
+  const pointCloudCropRef = useRef(pointCloudCrop);
+  const lastAutoExpandFitAtRef = useRef(0);
+  const lastRaycastHoverFitAtRef = useRef(0);
+  const lastRaycastHoverFitRef = useRef<RaycastHoverFitSnapshot | null>(null);
+  const lastHandledMainPanelPanSyncIntentRef = useRef<string | null>(null);
+  const lastHandledMainPanelZoomSyncIntentRef = useRef<string | null>(null);
+  const hoverFocusRef = useRef<{
+    labelId: string;
+    snapshot: SidePanelCameraSnapshot;
+  } | null>(null);
+
+  useEffect(() => {
+    pointCloudCropRef.current = pointCloudCrop;
+  }, [pointCloudCrop]);
+
+  const fitToPointCloudCrop = useCallback(
+    (crop: PointCloudCrop) => {
+      const helperMesh = createPointCloudCropHelperMesh(crop);
+      scene.add(helperMesh);
+
+      api.refresh(helperMesh).reset().fit();
+
+      setTimeout(() => {
+        scene.remove(helperMesh);
+        disposePointCloudCropHelperMesh(helperMesh);
+      }, 0);
+    },
+    [api, scene]
+  );
+
+  const fitToBox = useCallback(
+    (box: THREE.Box3) => {
+      const expandedSize = box.getSize(new Vector3());
+      const expandedCenter = box.getCenter(new Vector3());
+      const boxGeometry = new THREE.BoxGeometry(
+        expandedSize.x,
+        expandedSize.y,
+        expandedSize.z
+      );
+      const helperMesh = new THREE.Mesh(boxGeometry);
+      helperMesh.position.copy(expandedCenter);
+      helperMesh.visible = false;
+      scene.add(helperMesh);
+
+      api.refresh(helperMesh).reset().fit();
+
+      setTimeout(() => {
+        scene.remove(helperMesh);
+        boxGeometry.dispose();
+      }, 0);
+    },
+    [api, scene]
+  );
+
+  const fitToExpandedObject = useCallback(
+    (object: THREE.Object3D) => {
+      const objectBox = new Box3().setFromObject(object);
+
+      if (objectBox.isEmpty()) {
+        api.refresh(object).reset().fit();
+        return;
+      }
+
+      fitToBox(expandBoundingBox(objectBox, 2.5));
+    },
+    [api, fitToBox]
+  );
+
+  const restoreHoverFocus = useCallback(() => {
+    const hoverFocus = hoverFocusRef.current;
+    if (!hoverFocus) {
+      return;
+    }
+
+    hoverFocusRef.current = null;
+
+    if (selectedLabel?._id === hoverFocus.labelId) {
+      return;
+    }
+
+    restoreSidePanelCameraSnapshot({
+      camera,
+      controls,
+      snapshot: hoverFocus.snapshot,
+      invalidate,
+    });
+  }, [camera, controls, invalidate, selectedLabel?._id]);
+
+  useEffect(() => {
+    const crop = pointCloudCropRef.current;
+    if (!crop || !pointCloudCropFitKey) {
+      return;
+    }
+
+    fitToPointCloudCrop(crop);
+  }, [fitToPointCloudCrop, pointCloudCropFitKey]);
+
+  useEffect(() => {
+    const hoveredLabelId = hoveredLabel?.id;
+    if (!hoveredLabelId) {
+      restoreHoverFocus();
+      return;
+    }
+
+    const existingHoverFocus = hoverFocusRef.current;
+    if (existingHoverFocus?.labelId === hoveredLabelId) {
+      return;
+    }
+
+    if (!existingHoverFocus) {
+      hoverFocusRef.current = {
+        labelId: hoveredLabelId,
+        snapshot: captureSidePanelCameraSnapshot(camera, controls),
+      };
+    } else {
+      hoverFocusRef.current = {
+        ...existingHoverFocus,
+        labelId: hoveredLabelId,
+      };
+    }
+
+    const crop = pointCloudCropRef.current;
+    if (crop?.source === "hover" && crop.labelId === hoveredLabelId) {
+      fitToPointCloudCrop(crop);
+      return;
+    }
+
+    const object = findByUserData(scene, FO_USER_DATA.LABEL_ID, hoveredLabelId);
+    if (object) {
+      fitToExpandedObject(object);
+    }
+  }, [
+    camera,
+    controls,
+    fitToExpandedObject,
+    fitToPointCloudCrop,
+    hoveredLabel?.id,
+    restoreHoverFocus,
+    scene,
+  ]);
+
+  useEffect(() => {
+    const crop = pointCloudCropRef.current;
+    if (!crop || crop.source !== "creation") {
+      return;
+    }
+
+    if (doesCropFitCamera(crop, camera)) {
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastAutoExpandFitAtRef.current < AUTO_EXPAND_FIT_INTERVAL_MS) {
+      return;
+    }
+
+    lastAutoExpandFitAtRef.current = now;
+    fitToPointCloudCrop(crop);
+  }, [
+    camera,
+    fitToPointCloudCrop,
+    pointCloudCrop?.center.x,
+    pointCloudCrop?.center.y,
+    pointCloudCrop?.center.z,
+    pointCloudCrop?.halfSize.x,
+    pointCloudCrop?.halfSize.y,
+    pointCloudCrop?.halfSize.z,
+    pointCloudCrop?.quaternion.x,
+    pointCloudCrop?.quaternion.y,
+    pointCloudCrop?.quaternion.z,
+    pointCloudCrop?.quaternion.w,
+    pointCloudCrop?.source,
+  ]);
+
+  useEffect(() => {
+    const crop = pointCloudCropRef.current;
+    if (!crop || crop.source !== "raycast-hover") {
+      lastRaycastHoverFitAtRef.current = 0;
+      lastRaycastHoverFitRef.current = null;
+      return;
+    }
+
+    const lastFit = lastRaycastHoverFitRef.current;
+    if (
+      lastFit &&
+      lastFit.center.distanceToSquared(crop.center) <=
+        RAYCAST_HOVER_CENTER_EPSILON_SQ &&
+      lastFit.halfSize.distanceToSquared(crop.halfSize) <=
+        RAYCAST_HOVER_CENTER_EPSILON_SQ
+    ) {
+      return;
+    }
+
+    const now = Date.now();
+    if (
+      lastFit &&
+      now - lastRaycastHoverFitAtRef.current < RAYCAST_HOVER_FIT_INTERVAL_MS
+    ) {
+      return;
+    }
+
+    lastRaycastHoverFitAtRef.current = now;
+    lastRaycastHoverFitRef.current = {
+      center: crop.center.clone(),
+      halfSize: crop.halfSize.clone(),
+    };
+    fitToPointCloudCrop(crop);
+  }, [
+    fitToPointCloudCrop,
+    pointCloudCrop?.center.x,
+    pointCloudCrop?.center.y,
+    pointCloudCrop?.center.z,
+    pointCloudCrop?.halfSize.x,
+    pointCloudCrop?.halfSize.y,
+    pointCloudCrop?.halfSize.z,
+    pointCloudCrop?.quaternion.x,
+    pointCloudCrop?.quaternion.y,
+    pointCloudCrop?.quaternion.z,
+    pointCloudCrop?.quaternion.w,
+    pointCloudCrop?.source,
+  ]);
+
+  useEffect(() => {
+    if (
+      !mainPanelZoomSyncIntent ||
+      lastHandledMainPanelZoomSyncIntentRef.current ===
+        mainPanelZoomSyncIntent.id
+    ) {
+      return;
+    }
+
+    lastHandledMainPanelZoomSyncIntentRef.current = mainPanelZoomSyncIntent.id;
+
+    if (
+      !shouldApplyMainPanelZoomSyncIntent({
+        activeCrop: pointCloudCropRef.current,
+        hasHoverFocus: Boolean(hoverFocusRef.current || hoveredLabel?.id),
+        intent: mainPanelZoomSyncIntent,
+        now: Date.now(),
+      })
+    ) {
+      return;
+    }
+
+    applyMainPanelZoomSyncIntentToOrthographicCamera({
+      camera,
+      controls,
+      intent: mainPanelZoomSyncIntent,
+      invalidate,
+    });
+  }, [camera, controls, hoveredLabel?.id, invalidate, mainPanelZoomSyncIntent]);
+
+  useEffect(() => {
+    if (
+      !mainPanelPanSyncIntent ||
+      lastHandledMainPanelPanSyncIntentRef.current === mainPanelPanSyncIntent.id
+    ) {
+      return;
+    }
+
+    lastHandledMainPanelPanSyncIntentRef.current = mainPanelPanSyncIntent.id;
+
+    if (
+      !shouldApplyMainPanelPanSyncIntent({
+        activeCrop: pointCloudCropRef.current,
+        hasHoverFocus: Boolean(hoverFocusRef.current || hoveredLabel?.id),
+        intent: mainPanelPanSyncIntent,
+        now: Date.now(),
+      })
+    ) {
+      return;
+    }
+
+    applyMainPanelPanSyncIntentToOrthographicCamera({
+      camera,
+      controls,
+      intent: mainPanelPanSyncIntent,
+      invalidate,
+    });
+  }, [camera, controls, hoveredLabel?.id, invalidate, mainPanelPanSyncIntent]);
 
   const getVertexFocusBoxSize = () => {
     const sceneBounds = new Box3().setFromObject(scene);
@@ -587,12 +819,18 @@ const BoundsSideEffectsComponent = () => {
     return THREE.MathUtils.clamp(
       maxSceneDimension * 0.05,
       MIN_POLYLINE_VERTEX_FOCUS_SIZE,
-      MAX_POLYLINE_VERTEX_FOCUS_SIZE,
+      MAX_POLYLINE_VERTEX_FOCUS_SIZE
     );
   };
 
   useAnnotationEventHandler("annotation:3dLabelSelected", (payload) => {
     const { label } = payload;
+    const crop = pointCloudCropRef.current;
+
+    if (crop?.labelId === label._id) {
+      fitToPointCloudCrop(crop);
+      return;
+    }
 
     const object = findByUserData(scene, FO_USER_DATA.LABEL_ID, label._id);
 
@@ -600,27 +838,7 @@ const BoundsSideEffectsComponent = () => {
       const objectBox = new Box3().setFromObject(object);
 
       if (!objectBox.isEmpty()) {
-        const expandedBox = expandBoundingBox(objectBox, 2.5);
-
-        const expandedSize = expandedBox.getSize(new Vector3());
-        const expandedCenter = expandedBox.getCenter(new Vector3());
-        const boxGeometry = new THREE.BoxGeometry(
-          expandedSize.x,
-          expandedSize.y,
-          expandedSize.z,
-        );
-        const helperMesh = new THREE.Mesh(boxGeometry);
-        helperMesh.position.copy(expandedCenter);
-        helperMesh.visible = false;
-        scene.add(helperMesh);
-
-        api.refresh(helperMesh).reset().fit();
-
-        // Remove helper mesh after a short delay to ensure the bounds are updated
-        setTimeout(() => {
-          scene.remove(helperMesh);
-          boxGeometry.dispose();
-        }, 0);
+        fitToBox(expandBoundingBox(objectBox, 2.5));
       } else {
         api.refresh(object).reset().fit();
       }
@@ -634,7 +852,7 @@ const BoundsSideEffectsComponent = () => {
     const boxGeometry = new THREE.BoxGeometry(
       DEFAULT_CUBOID_CREATION_MARGIN,
       DEFAULT_CUBOID_CREATION_MARGIN,
-      DEFAULT_CUBOID_CREATION_MARGIN,
+      DEFAULT_CUBOID_CREATION_MARGIN
     );
     const helperMesh = new THREE.Mesh(boxGeometry);
     helperMesh.position.set(position[0], position[1], position[2]);
@@ -658,7 +876,7 @@ const BoundsSideEffectsComponent = () => {
       const boxGeometry = new THREE.BoxGeometry(
         focusBoxSize,
         focusBoxSize,
-        focusBoxSize,
+        focusBoxSize
       );
       const helperMesh = new THREE.Mesh(boxGeometry);
       helperMesh.position.set(position[0], position[1], position[2]);
@@ -671,7 +889,7 @@ const BoundsSideEffectsComponent = () => {
         scene.remove(helperMesh);
         boxGeometry.dispose();
       }, 0);
-    },
+    }
   );
 
   return null;

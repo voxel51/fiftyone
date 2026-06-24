@@ -30,7 +30,6 @@ export interface CuboidProps extends OverlayProps {
 }
 
 export const Cuboid = ({
-  itemRotation,
   dimensions,
   opacity,
   rotation,
@@ -166,7 +165,7 @@ export const Cuboid = ({
     if (combinedQuaternion) {
       return undefined;
     }
-    return effectiveRotation;
+    return new THREE.Euler(...(effectiveRotation as THREE.Vector3Tuple));
   }, [combinedQuaternion, effectiveRotation]);
 
   const renderBoxGeometry = useMemo(
@@ -190,6 +189,7 @@ export const Cuboid = ({
     () => chroma(strokeAndFillColor).set("hsl.h", "+180").hex(),
     [strokeAndFillColor],
   );
+  const shouldShowWireframe = isSelectedForAnnotation || isHovered;
 
   const material = useMemo(
     () =>
@@ -263,7 +263,7 @@ export const Cuboid = ({
           />
         </mesh>
 
-        {isSelectedForAnnotation && (
+        {shouldShowWireframe && (
           <mesh>
             <boxGeometry args={displayDimensions} />
             <meshBasicMaterial wireframe color={complementaryColor} />

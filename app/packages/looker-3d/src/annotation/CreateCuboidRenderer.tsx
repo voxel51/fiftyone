@@ -13,6 +13,7 @@ import {
   isCreatingCuboidPointerDownAtom,
 } from "../state";
 import { getPlaneFromPositionAndQuaternion } from "../utils";
+import { getCuboidCreationPreview } from "./cuboid-creation-preview";
 import { useCuboidOperations } from "./store/operations";
 import {
   getDefaultLabel,
@@ -27,10 +28,6 @@ interface CreateCuboidRendererProps {
   ignoreEffects?: boolean;
 }
 
-const MIN_DIMENSION = 0.1;
-
-const DEFAULT_HEIGHT = 1;
-
 export const CreateCuboidRenderer = ({
   color = "#00ff00",
   ignoreEffects = false,
@@ -42,10 +39,10 @@ export const CreateCuboidRenderer = ({
   const { createCuboid } = useCuboidOperations();
   const annotationPlane = useRecoilValue(annotationPlaneAtom);
   const [creationState, setCreationState] = useRecoilState(
-    cuboidCreationStateAtom,
+    cuboidCreationStateAtom
   );
   const setIsCreatingCuboidPointerDown = useSetRecoilState(
-    isCreatingCuboidPointerDownAtom,
+    isCreatingCuboidPointerDownAtom
   );
 
   const setEditingToNewCuboid = useSetEditingToNewCuboid();
@@ -56,20 +53,11 @@ export const CreateCuboidRenderer = ({
   // Track whether we're actively creating (to differentiate from hovering)
   const isActiveRef = useRef(false);
 
-  // Get the plane's local axes from its quaternion
-  const planeAxes = useMemo(() => {
-    const quaternion = new THREE.Quaternion(...annotationPlane.quaternion);
-    const localX = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion);
-    const localY = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion);
-    const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(quaternion);
-    return { localX, localY, normal };
-  }, [annotationPlane.quaternion]);
-
   // Calculate the annotation plane for raycasting
   const raycastPlane = useMemo(() => {
     const plane = getPlaneFromPositionAndQuaternion(
       annotationPlane.position,
-      annotationPlane.quaternion,
+      annotationPlane.quaternion
     );
 
     return {
@@ -79,118 +67,10 @@ export const CreateCuboidRenderer = ({
   }, [annotationPlane.position, annotationPlane.quaternion]);
 
   // Calculate preview cuboid properties based on creation state
-  const previewCuboid = useMemo(() => {
-    const { step, centerPosition, orientationPoint, currentPosition } =
-      creationState;
-
-    if (!centerPosition || !currentPosition) {
-      return null;
-    }
-
-    const center = new THREE.Vector3(...centerPosition);
-    const current = new THREE.Vector3(...currentPosition);
-
-    if (step === 1) {
-      // Step 1: Show preview with orientation line from center to current position
-      // Length is the distance from center to current, width is MIN_DIMENSION
-      const directionVector = current.clone().sub(center);
-      const length = Math.max(directionVector.length(), MIN_DIMENSION);
-
-      // Calculate yaw rotation from direction vector (in plane's local space)
-      const localDirection = new THREE.Vector2(
-        directionVector.dot(planeAxes.localX),
-        directionVector.dot(planeAxes.localY),
-      );
-      const yaw = Math.atan2(localDirection.y, localDirection.x);
-
-      // Create rotation quaternion combining plane orientation with yaw
-      const planeQuaternion = new THREE.Quaternion(
-        ...annotationPlane.quaternion,
-      );
-      const yawQuaternion = new THREE.Quaternion().setFromAxisAngle(
-        planeAxes.normal,
-        yaw,
-      );
-      const finalQuaternion = yawQuaternion.multiply(planeQuaternion);
-
-      // Position center at midpoint between center and current
-      const cuboidCenter = center.clone().add(current).multiplyScalar(0.5);
-
-      return {
-        location: cuboidCenter.toArray() as THREE.Vector3Tuple,
-        dimensions: [
-          length,
-          MIN_DIMENSION,
-          DEFAULT_HEIGHT,
-        ] as THREE.Vector3Tuple,
-        quaternion: finalQuaternion.toArray() as [
-          number,
-          number,
-          number,
-          number,
-        ],
-      };
-    }
-
-    if (step === 2 && orientationPoint) {
-      // Step 2: Show preview with length fixed, width based on perpendicular distance
-      // The orientation line (center -> orientationPoint) represents one bound/edge of the cuboid
-      // The current mouse position sets the opposite bound for width
-      const orientation = new THREE.Vector3(...orientationPoint);
-      const directionVector = orientation.clone().sub(center);
-      const length = Math.max(directionVector.length(), MIN_DIMENSION);
-
-      // Calculate yaw rotation
-      const localDirection = new THREE.Vector2(
-        directionVector.dot(planeAxes.localX),
-        directionVector.dot(planeAxes.localY),
-      );
-      const yaw = Math.atan2(localDirection.y, localDirection.x);
-
-      // Create rotation quaternion
-      const planeQuaternion = new THREE.Quaternion(
-        ...annotationPlane.quaternion,
-      );
-      const yawQuaternion = new THREE.Quaternion().setFromAxisAngle(
-        planeAxes.normal,
-        yaw,
-      );
-      const finalQuaternion = yawQuaternion.multiply(planeQuaternion);
-
-      // Calculate width as perpendicular distance from current position to the orientation line
-      // This directly represents one bound to the other (no doubling needed)
-      const centerToOrientation = directionVector.clone().normalize();
-      const centerToCurrent = current.clone().sub(center);
-      // Project centerToCurrent onto centerToOrientation
-      const projection = centerToOrientation
-        .clone()
-        .multiplyScalar(centerToCurrent.dot(centerToOrientation));
-      // Perpendicular component - this is the vector from the orientation line to current position
-      const perpendicular = centerToCurrent.clone().sub(projection);
-      const width = Math.max(perpendicular.length(), MIN_DIMENSION);
-
-      // Position center at midpoint between center and orientation (along the length axis)
-      const cuboidCenter = center.clone().add(orientation).multiplyScalar(0.5);
-      // Offset by half width perpendicular to the orientation line (toward the current position)
-      if (perpendicular.length() > 0.001) {
-        const perpendicularDirection = perpendicular.clone().normalize();
-        cuboidCenter.add(perpendicularDirection.multiplyScalar(width / 2));
-      }
-
-      return {
-        location: cuboidCenter.toArray() as THREE.Vector3Tuple,
-        dimensions: [length, width, DEFAULT_HEIGHT] as THREE.Vector3Tuple,
-        quaternion: finalQuaternion.toArray() as [
-          number,
-          number,
-          number,
-          number,
-        ],
-      };
-    }
-
-    return null;
-  }, [creationState, planeAxes, annotationPlane.quaternion]);
+  const previewCuboid = useMemo(
+    () => getCuboidCreationPreview(creationState, annotationPlane),
+    [creationState, annotationPlane]
+  );
 
   // Handle click - progress through creation steps
   const handleClick = useCallback(
@@ -245,7 +125,7 @@ export const CreateCuboidRenderer = ({
       setCreationState,
       setIsCreatingCuboidPointerDown,
       annotationEventBus,
-    ],
+    ]
   );
 
   // Handle pointer move - update current position for preview
@@ -265,7 +145,7 @@ export const CreateCuboidRenderer = ({
         currentPosition: position,
       }));
     },
-    [isCreatingCuboid, creationState.step, setCreationState],
+    [isCreatingCuboid, creationState.step, setCreationState]
   );
 
   // Handle final click (step 2) - commit the cuboid
@@ -347,7 +227,7 @@ export const CreateCuboidRenderer = ({
       selectForAnnotation,
       handleClick,
       workingDoc,
-    ],
+    ]
   );
 
   // Reset creation state when create mode is disabled
@@ -373,7 +253,7 @@ export const CreateCuboidRenderer = ({
 
   // Set cursor to crosshair when in create mode
   useEffect(() => {
-    if (ignoreEffects) return;
+    if (ignoreEffects) return undefined;
 
     if (isCreatingCuboid) {
       document.body.style.cursor = "crosshair";
@@ -381,11 +261,13 @@ export const CreateCuboidRenderer = ({
         document.body.style.cursor = "default";
       };
     }
+
+    return undefined;
   }, [ignoreEffects, isCreatingCuboid]);
 
   // Handle Escape key to cancel cuboid creation
   useEffect(() => {
-    if (ignoreEffects) return;
+    if (ignoreEffects) return undefined;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!isCreatingCuboid || creationState.step === 0) return;

@@ -1,9 +1,10 @@
 import * as fos from "@fiftyone/state";
 import { useCallback, useEffect, useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import { MOUSE } from "three";
 import type { Fo3dCameraControls } from "../fo3d/camera-controls";
 import {
+  isFo3dShiftPressedAtom,
   isCreatingCuboidPointerDownAtom,
   isCurrentlyTransformingAtom,
   isSegmentingPointerDownAtom,
@@ -41,9 +42,10 @@ export const useFo3dCameraControlsConfig = ({
 }: UseFo3dCameraControlsConfigArgs) => {
   const isSegmentingPointerDown = useRecoilValue(isSegmentingPointerDownAtom);
   const isCreatingCuboidPointerDown = useRecoilValue(
-    isCreatingCuboidPointerDownAtom,
+    isCreatingCuboidPointerDownAtom
   );
   const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
+  const setIsFo3dShiftPressed = useSetRecoilState(isFo3dShiftPressedAtom);
 
   const keyState = useRef<Record<ModifierKey, boolean>>({
     shiftRight: false,
@@ -53,6 +55,19 @@ export const useFo3dCameraControlsConfig = ({
     metaRight: false,
     metaLeft: false,
   });
+  const isShiftPressedRef = useRef(false);
+
+  const setShiftPressed = useCallback(
+    (isPressed: boolean) => {
+      if (isShiftPressedRef.current === isPressed) {
+        return;
+      }
+
+      isShiftPressedRef.current = isPressed;
+      setIsFo3dShiftPressed(isPressed);
+    },
+    [setIsFo3dShiftPressed]
+  );
 
   const updateCameraControlsConfig = useCallback(() => {
     if (!cameraControlsRef.current) return;
@@ -109,10 +124,22 @@ export const useFo3dCameraControlsConfig = ({
       }
 
       keyState.current[modifierKey] = isPressed;
+      setShiftPressed(
+        keyState.current.shiftRight || keyState.current.shiftLeft
+      );
       updateCameraControlsConfig();
     },
-    [updateCameraControlsConfig],
+    [setShiftPressed, updateCameraControlsConfig]
   );
+
+  const resetModifierState = useCallback(() => {
+    for (const key of Object.keys(keyState.current) as ModifierKey[]) {
+      keyState.current[key] = false;
+    }
+
+    setShiftPressed(false);
+    updateCameraControlsConfig();
+  }, [setShiftPressed, updateCameraControlsConfig]);
 
   // Global listeners are intentional: modifier keys can change even when canvas
   // focus/pointer state changes mid-interaction.
@@ -123,4 +150,6 @@ export const useFo3dCameraControlsConfig = ({
   fos.useEventHandler(document, "keyup", (e: KeyboardEvent) => {
     updateModifierState(e.code, false);
   });
+
+  fos.useEventHandler(window, "blur", resetModifierState);
 };
