@@ -12,8 +12,9 @@ import unittest
 
 import numpy as np
 import numpy.testing as nptest
-import open3d as o3d
 from PIL import Image
+from pypcd4 import PointCloud
+from scipy.spatial.transform import Rotation
 
 import fiftyone as fo
 import fiftyone.core.threed as fo3d
@@ -61,8 +62,9 @@ class BaseOrthographicProjectionTests(unittest.TestCase):
             -dimensions / 2, dimensions / 2, size=(num_points, 3)
         )
 
-        # rotate points
-        rotation_matrix = o3d.geometry.get_rotation_matrix_from_xyz(rotation)
+        # rotate points (open3d's `get_rotation_matrix_from_xyz` is equivalent
+        # to an intrinsic "XYZ" Euler rotation)
+        rotation_matrix = Rotation.from_euler("XYZ", rotation).as_matrix()
         points = (
             points @ rotation_matrix.T
         )  # equivalent to (rotation_matrix @ points.T).T
@@ -70,14 +72,16 @@ class BaseOrthographicProjectionTests(unittest.TestCase):
         # translate points
         points = points + location[np.newaxis, :]
 
-        pc = o3d.geometry.PointCloud()
-        pc.points = o3d.utility.Vector3dVector(points)
+        points = points.astype(np.float32)
 
         if pcd_type == "rgb" or pcd_type == "intensity":
             rgb = np.random.rand(points.shape[0], 3)
-            pc.colors = o3d.utility.Vector3dVector(rgb)
+            rgb = PointCloud.encode_rgb((rgb * 255).astype(np.uint8))
+            pc = PointCloud.from_xyzrgb_points(np.column_stack((points, rgb)))
+        else:
+            pc = PointCloud.from_xyz_points(points)
 
-        o3d.io.write_point_cloud(self.test_pcd_path, pc, write_ascii=True)
+        pc.save(self.test_pcd_path)
 
 
 class OrthographicProjectionTests(BaseOrthographicProjectionTests):
@@ -118,6 +122,8 @@ class OrthographicProjectionTests(BaseOrthographicProjectionTests):
             ),
         ]
         dataset.add_samples(group_samples)
+
+        self.write_test_pcd(seed=0)
 
         # if media type is group, in_group_slice should be valid, or omitted to
         # be implicitly derived
@@ -257,13 +263,10 @@ class ParsePointCloudTests(BaseOrthographicProjectionTests):
                 # because the rotation is ambiguous, we can't compare original and rotated arbitrary points
                 # we can only ensure that points along the user specified projection normal vector
                 # will invariably be aligned with the z-axis after rotation
-                points = np.array([projection_normal])
+                points = np.array([projection_normal], dtype=np.float32)
 
-                pc = o3d.geometry.PointCloud()
-                pc.points = o3d.utility.Vector3dVector(points)
-                o3d.io.write_point_cloud(
-                    self.test_pcd_path, pc, write_ascii=True
-                )
+                pc = PointCloud.from_xyz_points(points)
+                pc.save(self.test_pcd_path)
 
                 points_rotated = fou3d._parse_point_cloud(
                     self.test_pcd_path,
