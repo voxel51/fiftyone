@@ -196,10 +196,11 @@ Ontologies
 
 An Annotation Ontology is a global, named, versioned resource that bundles a
 reusable set of typed attributes — with optional
-:ref:`conditional display logic <annotation-conditional-attributes>` — into a
-single document that can be attached to a label schema field. Ontologies live
-outside any dataset, so multiple datasets and fields can reference the same
-ontology by name.
+:ref:`conditional display logic <annotation-conditional-attributes>` and an
+optional :ref:`taxonomy <annotation-taxonomies>` reference — into a single
+document that can be attached to a label schema field. Ontologies live outside
+any dataset, so multiple datasets and fields can reference the same ontology by
+name.
 
 Create and save an ontology with the SDK:
 
@@ -231,6 +232,92 @@ Attach the ontology to a field on a dataset's label schema:
 
 Pass ``ontology_name=None`` to ``apply_ontology()`` to unset an existing
 reference on a field.
+
+.. _annotation-taxonomies:
+
+Taxonomies
+^^^^^^^^^^
+
+A Taxonomy is a global, named, versioned class hierarchy. Instead of inlining a
+flat list of classes on every dataset, you define the hierarchy once and
+reference it by name, so the same structure can be shared across datasets.
+Like ontologies, taxonomies live outside any dataset.
+
+A taxonomy is a tree of ``Node`` objects. Every node has the same shape; its
+role is determined by its position in the tree and a few flags:
+
+- ``values`` holds a node's children. A node with no ``values`` is a leaf — a
+  selectable class.
+- ``can_select=False`` marks a *group header*: it organizes the tree but is not
+  itself a class an annotator can pick.
+- ``deprecated=True`` hides a class from new selections while keeping it valid
+  on labels that already use it.
+- ``description`` provides tooltip / guidance text in the App.
+
+Build a hierarchy and save it as a named taxonomy:
+
+.. code-block:: python
+
+   import fiftyone as fo
+
+   taxonomy = fo.Taxonomy(
+       name="vehicle_classes",
+       description="Shared vehicle class hierarchy",
+       root=fo.Node(
+           name="vehicles",
+           can_select=False,  # group header, not a selectable class
+           values=[
+               fo.Node(
+                   name="car",
+                   values=[
+                       fo.Node(name="sedan"),
+                       fo.Node(name="coupe"),
+                       fo.Node(name="wagon", deprecated=True),  # legacy class
+                   ],
+               ),
+               fo.Node(name="truck"),
+               fo.Node(name="motorcycle"),  # leaf with no children
+           ],
+       ),
+   )
+   taxonomy.save()
+
+The SDK provides taxonomy-specific accessors that mirror the ontology functions:
+
+.. code-block:: python
+
+   import fiftyone as fo
+
+   fo.load_taxonomy("vehicle_classes")    # load by name
+   fo.list_taxonomies()                   # taxonomy names only
+   fo.taxonomy_exists("vehicle_classes")  # True/False
+   fo.delete_taxonomy("vehicle_classes")  # raises if referenced; force=True to override
+
+Reference a taxonomy from an annotation ontology
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+An :ref:`Annotation Ontology <annotation-ontologies>` can bundle a taxonomy and
+use it to supply the allowed values for an attribute. Pass the taxonomy to the
+ontology, and set ``taxonomy=`` on the attribute that should draw its values
+from the hierarchy:
+
+.. code-block:: python
+
+   import fiftyone as fo
+
+   fo.AnnotationOntology(
+       name="vehicle_ontology",
+       taxonomy=taxonomy,
+       attributes=[
+           fo.AttributeSpec(
+               name="vehicle_type",
+               type="str",
+               component="dropdown",
+               taxonomy="vehicle_classes",   # values come from the taxonomy
+           ),
+           fo.AttributeSpec(name="damaged", type="bool", component="checkbox"),
+       ],
+   ).save()
 
 .. _annotation-conditional-attributes:
 
