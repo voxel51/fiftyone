@@ -205,6 +205,33 @@ export const isNativeMediaType = (
 };
 
 /**
+ * Returns true if the provided media type is multimodal.
+ *
+ * @param mediaType media type
+ */
+export const isMultimodal = (mediaType: string | null | undefined): boolean => {
+  return mediaType === MEDIA_TYPE_MULTIMODAL;
+};
+
+/**
+ * Returns true if the dataset has fields outside the Mongo sample
+ * collection — i.e. fields the standard ``lightning`` resolver can't
+ * see. Always false in OSS; overridden in Enterprise where multimodal
+ * datasets carry parquet-backed fields alongside their Mongo doc.
+ *
+ * Callers use this to disable Query Performance for affected
+ * datasets so the sidebar falls back to the standard aggregations
+ * path.
+ *
+ * @param mediaType media type
+ */
+export const hasNonMongoFields = (
+  _mediaType: string | null | undefined
+): boolean => {
+  return false;
+};
+
+/**
  * Returns true if the provided set contains any media types which are
  * associated with FO3D.
  *

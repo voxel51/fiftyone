@@ -916,8 +916,9 @@ calculated:
 -   For keypoint tasks,
     `object keypoint similarity <https://cocodataset.org/#keypoints-eval>`_
     is computed for each pair of objects, using the extent of the ground truth
-    keypoints as a proxy for the area of the object's bounding box, and
-    assuming uniform falloff (:math:`\kappa`)
+    keypoints as a proxy for the area of the object's bounding box. By default,
+    uniform falloff (:math:`\kappa`) is assumed, but you can provide
+    `keypoint_sigmas` to customize the per-keypoint OKS falloff
 -   For temporal detections, IoU is computed between the 1D support of two
     temporal segments
 

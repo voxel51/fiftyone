@@ -43,8 +43,11 @@ const useSchema = (readOnly: boolean) => {
     }, new Map<string, AttributeConfig>());
   }, [allAttributes, data]);
 
-  // Stable string key — only changes when the visible attribute set changes
-  const visibleKey = [...visibleAttributes.keys()].join("\0");
+  // Key on the winning entry's index, not its name: same-name variants must
+  // bust the schema memo when the active one swaps (Toyota model -> Honda).
+  const visibleKey = [...visibleAttributes.values()]
+    .map((attr) => allAttributes.indexOf(attr))
+    .join("\0");
 
   // Reruns only when the visible attribute set changes.
   return useMemo(() => {

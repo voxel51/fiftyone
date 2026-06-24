@@ -25,7 +25,7 @@
         "jest": "^29.7.0",
         "prettier": "^3.8.4",
         "vite": "^7.3.2",
-        "vitest": "^3.0.8"
+        "vitest": "^3.2.6"
     },
     "peerDependencies": {
         "@mui/icons-material": "*",

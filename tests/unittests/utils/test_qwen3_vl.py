@@ -15,6 +15,7 @@ from unittest import mock
 import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.models as fom
+import fiftyone.utils.qwen3_vl as qwen3_vl
 from fiftyone.utils.qwen3_vl import (
     Qwen3VLModel,
     Qwen3VLModelConfig,
@@ -668,6 +669,172 @@ class TestPromptMixinMocked:
         model = self._make_model_with_mock_processor()
         with pytest.raises(ValueError, match="at least one"):
             model.embed_prompts([])
+
+
+class TestQwen3VLEmbedFrames:
+    """Test embed_frames: embedding a list of in-memory frames as one clip."""
+
+    def _make_model(self):
+        """Build a Qwen3VLModel with mocked _model and _processor."""
+        model = Qwen3VLModel.__new__(Qwen3VLModel)
+        model._output_processor = None
+        model._mode = None
+        model.config = Qwen3VLModelConfig(
+            {
+                "name_or_path": "Qwen/Qwen3-VL-Embedding-2B",
+                "embedding_dim": None,
+                "normalize_embeddings": True,
+            }
+        )
+
+        fake_hidden = torch.randn(1, 10, 2048)
+        mock_outputs = mock.MagicMock()
+        mock_outputs.hidden_states = [fake_hidden]
+
+        mock_model = mock.MagicMock()
+        mock_model.return_value = mock_outputs
+        mock_model.device = torch.device("cpu")
+        model._model = mock_model
+
+        mock_processor = mock.MagicMock()
+        mock_processor.apply_chat_template.return_value = "<chat-text>"
+        mock_processor.return_value = {
+            "input_ids": torch.randint(0, 1000, (1, 10)),
+            "attention_mask": torch.ones(1, 10, dtype=torch.long),
+        }
+        model._processor = mock_processor
+
+        return model
+
+    @staticmethod
+    def _frames(n):
+        return [
+            np.random.randint(0, 255, (8, 8, 3), dtype=np.uint8)
+            for _ in range(n)
+        ]
+
+    def test_embed_frames_returns_1d_array(self):
+        model = self._make_model()
+        with mock.patch.object(
+            qwen3_vl, "qwen_vl_utils", mock.MagicMock()
+        ) as mock_qvu:
+            mock_qvu.process_vision_info.return_value = (None, ["<video>"])
+            result = model.embed_frames(self._frames(4), fps=4.0)
+
+        assert isinstance(result, np.ndarray)
+        assert result.ndim == 1
+
+    def test_embed_frames_empty_raises(self):
+        model = self._make_model()
+        with pytest.raises(ValueError, match="empty"):
+            model.embed_frames([])
+
+    def test_embed_frames_subsamples_to_video_fps(self):
+        model = self._make_model()
+        model.config.video_fps = 2.0
+
+        captured = {}
+
+        def _capture(messages):
+            content = messages[0]["content"][0]
+            captured["frames"] = content["video"]
+            captured["fps"] = content["fps"]
+            return (None, ["<video>"])
+
+        with mock.patch.object(
+            qwen3_vl, "qwen_vl_utils", mock.MagicMock()
+        ) as mock_qvu:
+            mock_qvu.process_vision_info.side_effect = _capture
+            model.embed_frames(self._frames(8), fps=8.0)
+
+        # 8 fps down to 2 fps -> keep every 4th frame -> 2 frames
+        assert len(captured["frames"]) == 2
+        assert captured["fps"] == 2.0
+
+    def test_embed_frames_caps_at_max_video_frames(self):
+        model = self._make_model()
+        model.config.max_video_frames = 3
+
+        captured = {}
+
+        def _capture(messages):
+            captured["frames"] = messages[0]["content"][0]["video"]
+            return (None, ["<video>"])
+
+        with mock.patch.object(
+            qwen3_vl, "qwen_vl_utils", mock.MagicMock()
+        ) as mock_qvu:
+            mock_qvu.process_vision_info.side_effect = _capture
+            model.embed_frames(self._frames(10), fps=None)
+
+        assert len(captured["frames"]) == 3
+
+    def test_embed_frames_fps_none_keeps_all_frames(self):
+        model = self._make_model()
+        model.config.video_fps = 2.0
+
+        captured = {}
+
+        def _capture(messages):
+            content = messages[0]["content"][0]
+            captured["frames"] = content["video"]
+            captured["fps"] = content["fps"]
+            return (None, ["<video>"])
+
+        with mock.patch.object(
+            qwen3_vl, "qwen_vl_utils", mock.MagicMock()
+        ) as mock_qvu:
+            mock_qvu.process_vision_info.side_effect = _capture
+            model.embed_frames(self._frames(5), fps=None)
+
+        # fps unknown -> no subsampling; all frames used, target fps reported
+        assert len(captured["frames"]) == 5
+        assert captured["fps"] == 2.0
+
+    def test_embed_frames_fps_zero(self):
+        model = self._make_model()
+        model.config.video_fps = 2.0
+
+        captured = {}
+
+        def _capture(messages):
+            content = messages[0]["content"][0]
+            captured["frames"] = content["video"]
+            captured["fps"] = content["fps"]
+            return (None, ["<video>"])
+
+        with mock.patch.object(
+            qwen3_vl, "qwen_vl_utils", mock.MagicMock()
+        ) as mock_qvu:
+            mock_qvu.process_vision_info.side_effect = _capture
+            model.embed_frames(self._frames(5), fps=0)
+
+        # fps == 0 is treated as unknown: no subsampling, target fps reported
+        assert len(captured["frames"]) == 5
+        assert captured["fps"] == 2.0
+
+    def test_embed_frames_fps_negative(self):
+        model = self._make_model()
+        model.config.video_fps = 2.0
+
+        captured = {}
+
+        def _capture(messages):
+            content = messages[0]["content"][0]
+            captured["frames"] = content["video"]
+            captured["fps"] = content["fps"]
+            return (None, ["<video>"])
+
+        with mock.patch.object(
+            qwen3_vl, "qwen_vl_utils", mock.MagicMock()
+        ) as mock_qvu:
+            mock_qvu.process_vision_info.side_effect = _capture
+            model.embed_frames(self._frames(5), fps=-4.0)
+
+        # negative fps is treated as unknown (like the video-file path): no
+        # subsampling and a sane, non-negative fps reported to the model
+        assert len(captured["frames"]) == 5
+        assert captured["fps"] == 2.0
 
 
 if __name__ == "__main__":

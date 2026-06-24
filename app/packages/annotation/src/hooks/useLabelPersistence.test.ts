@@ -7,7 +7,7 @@ vi.mock("../util", () => ({
 
 vi.mock("@fiftyone/state", () => ({
   isGeneratedView: { key: "isGeneratedView" },
-  useModalSample: vi.fn(),
+  useActiveModalSample: vi.fn(),
 }));
 
 vi.mock("recoil", () => ({
@@ -19,7 +19,7 @@ vi.mock("./usePatchSample", () => ({
 }));
 
 import { handleLabelPersistence } from "../util";
-import { useModalSample, isGeneratedView } from "@fiftyone/state";
+import { useActiveModalSample, isGeneratedView } from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
 import { usePatchSample } from "./usePatchSample";
 import { useUpsertLabel, useDeleteLabel } from "./useLabelPersistence";
@@ -43,7 +43,7 @@ describe("useUpsertLabel / useDeleteLabel", () => {
     mockApplyPatch = vi.fn().mockResolvedValue(true);
 
     vi.mocked(useRecoilValue).mockReturnValue(false);
-    vi.mocked(useModalSample).mockReturnValue({ sample: SAMPLE } as any);
+    vi.mocked(useActiveModalSample).mockReturnValue(SAMPLE as any);
     vi.mocked(usePatchSample).mockReturnValue(mockApplyPatch);
     vi.mocked(handleLabelPersistence).mockResolvedValue(true);
   });

@@ -8,9 +8,7 @@ export function useApplyAnnotationSliceVisibility() {
   const actions = fos.useRenderConfig3dActions();
 
   return useCallback(
-    (sliceName: string) => {
-      actions.focusSlice(sliceName);
-    },
-    [actions],
+    (sliceName: string) => actions.focusSlice(sliceName),
+    [actions]
   );
 }

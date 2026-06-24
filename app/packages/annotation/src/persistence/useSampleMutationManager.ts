@@ -1,4 +1,4 @@
-import { useModalSample, useModalSampleSchema } from "@fiftyone/state";
+import { useActiveModalSample, useModalSampleSchema } from "@fiftyone/state";
 import { Primitive } from "@fiftyone/utilities";
 import { atom, useAtom } from "jotai";
 import { get, isEqual } from "lodash";
@@ -58,7 +58,7 @@ export interface SampleMutationManager {
  */
 export const useSampleMutationManager = (): SampleMutationManager => {
   const [stagedMutations, setStagedMutations] = useAtom(stagedMutationsAtom);
-  const modalSample = useModalSample();
+  const sample = useActiveModalSample();
   const modalSampleSchema = useModalSampleSchema();
   const firstRenderRef = useRef(true);
 
@@ -67,14 +67,14 @@ export const useSampleMutationManager = (): SampleMutationManager => {
       if (path in stagedMutations) {
         // return current value if mutated
         return stagedMutations[path].data as Primitive;
-      } else if (modalSample?.sample) {
+      } else if (sample) {
         // otherwise fall back to sample data
-        return get(modalSample.sample, path) as Primitive;
+        return get(sample, path) as Primitive;
       } else {
         return null;
       }
     },
-    [modalSample?.sample, stagedMutations],
+    [sample, stagedMutations]
   );
 
   const stageMutation = useCallback(
@@ -84,7 +84,7 @@ export const useSampleMutationManager = (): SampleMutationManager => {
         [path]: mutation,
       }));
     },
-    [setStagedMutations],
+    [setStagedMutations]
   );
 
   const reset = useCallback(() => {
@@ -99,12 +99,10 @@ export const useSampleMutationManager = (): SampleMutationManager => {
       const data = mutation.data as Primitive;
       // primitives require custom comparator to handle types like dates
       if (isPrimitiveFieldType(getFieldSchema(modalSampleSchema, path))) {
-        if (
-          arePrimitivesEqual(get(modalSample?.sample, path) as Primitive, data)
-        ) {
+        if (arePrimitivesEqual(get(sample, path) as Primitive, data)) {
           keysToRemove.push(path);
         }
-      } else if (isEqual(get(modalSample?.sample, path), data)) {
+      } else if (isEqual(get(sample, path), data)) {
         keysToRemove.push(path);
       }
     });
@@ -117,12 +115,7 @@ export const useSampleMutationManager = (): SampleMutationManager => {
         return newData;
       });
     }
-  }, [
-    modalSample?.sample,
-    modalSampleSchema,
-    setStagedMutations,
-    stagedMutations,
-  ]);
+  }, [sample, modalSampleSchema, setStagedMutations, stagedMutations]);
 
   // clear state on sample change
   useEffect(() => {
@@ -135,10 +128,10 @@ export const useSampleMutationManager = (): SampleMutationManager => {
     }
 
     reset();
-  }, [modalSample?.sample?._id]);
+  }, [sample?._id]);
 
   // gc stale keys when sample data changes
-  useEffect(() => garbageCollect(), [modalSample?.sample]);
+  useEffect(() => garbageCollect(), [sample]);
 
   return useMemo(
     () => ({
@@ -147,6 +140,6 @@ export const useSampleMutationManager = (): SampleMutationManager => {
       stagedMutations,
       stageMutation,
     }),
-    [getPathValue, reset, stagedMutations, stageMutation],
+    [getPathValue, reset, stagedMutations, stageMutation]
   );
 };

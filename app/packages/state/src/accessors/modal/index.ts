@@ -11,9 +11,11 @@ import { preferredGroupAnnotationSliceAtom } from "../../jotai/group-annotation"
 import type { ModalViewportState } from "../../jotai/modal";
 import { __unsafeModalViewportAtom } from "../../jotai/modal";
 import type { ModalSample } from "../../recoil";
+import type { Sample } from "@fiftyone/looker";
 import {
   State,
   activeFields,
+  activeModalSample,
   currentSampleId,
   fieldSchema,
   lookerOptions,
@@ -78,6 +80,27 @@ export const useModalMode = () => useAtomValue(modalMode);
  */
 export const useModalSample = (): ModalSample | undefined => {
   const loadable = useRecoilValueLoadable(modalSample);
+
+  if (loadable.state === "hasValue") {
+    return loadable.contents;
+  }
+
+  return undefined;
+};
+
+/**
+ * Get the sample currently being acted on in the modal.
+ *
+ * Unlike {@link useModalSample}, which always resolves the 2D `modalGroupSlice`
+ * sample, this is 3D-aware: when a 3D slice is pinned it returns that slice's
+ * sample. It mirrors the sample the sidebar and looker display, so annotation
+ * edits persist to the slice the user is actually editing (e.g. a cuboid edit
+ * targets the point-cloud sample, not the 2D image slice).
+ *
+ * Returns `undefined` if the modal is closed or the sample is still loading.
+ */
+export const useActiveModalSample = (): Sample | undefined => {
+  const loadable = useRecoilValueLoadable(activeModalSample);
 
   if (loadable.state === "hasValue") {
     return loadable.contents;
