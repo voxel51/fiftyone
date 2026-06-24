@@ -30,6 +30,7 @@ import {
   getPanelElementId,
   getSidePanelGridArea,
   PANEL_ID_SIDE_TOP,
+  UNFOCUSED_LABEL_OPACITY,
   VIEW_TYPE_BACK,
   VIEW_TYPE_BOTTOM,
   VIEW_TYPE_FRONT,
@@ -286,7 +287,7 @@ export const SidePanel = ({
                 globalOpacity={0.5}
                 isMainPanel={false}
                 dimAllLabels={pointCloudCrop?.source === "raycast-hover"}
-                unfocusedLabelOpacity={SIDE_PANEL_UNFOCUSED_LABEL_OPACITY}
+                unfocusedLabelOpacity={UNFOCUSED_LABEL_OPACITY}
               />
             )}
             {/* `safeSelectValue` is guaranteed to be a cardinal view here */}
@@ -366,7 +367,6 @@ const MAX_POLYLINE_VERTEX_FOCUS_SIZE = 30;
 const AUTO_EXPAND_FIT_INTERVAL_MS = 125;
 const RAYCAST_HOVER_SYNC_INTERVAL_MS = 125;
 const RAYCAST_HOVER_CENTER_EPSILON_SQ = 1e-8;
-const SIDE_PANEL_UNFOCUSED_LABEL_OPACITY = 0.08;
 
 interface RaycastHoverSyncSnapshot {
   center: THREE.Vector3;

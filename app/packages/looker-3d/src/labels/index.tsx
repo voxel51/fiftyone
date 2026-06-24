@@ -29,12 +29,14 @@ import {
   ANNOTATION_POLYLINE,
   DRAG_GATE_THRESHOLD_PX,
   PANEL_ORDER_LABELS,
+  UNFOCUSED_LABEL_OPACITY,
 } from "../constants";
 import { usePathFilter, useSelect3DLabelForAnnotation } from "../hooks";
 import { type Looker3dSettings, defaultPluginSettings } from "../settings";
 import {
   cuboidLabelLineWidthAtom,
   isActivelySegmentingSelector,
+  isCreatingCuboidAtom,
   polylineLabelLineWidthAtom,
   hoveredLabelAtom,
   selectedLabelForAnnotationAtom,
@@ -86,6 +88,7 @@ export const ThreeDLabels = ({
   const [polylineWidth, setPolylineWidth] = useRecoilState(
     polylineLabelLineWidthAtom
   );
+  const isCreatingCuboid = useRecoilValue(isCreatingCuboidAtom);
   const selectedLabels = useRecoilValue(fos.selectedLabelMap);
   const labelAlpha = globalOpacity ?? colorScheme.opacity;
 
@@ -291,12 +294,19 @@ export const ThreeDLabels = ({
     },
     [coloring, labelTagColors, customizeColorSetting]
   );
+  const shouldDimLabelsForCreation =
+    mode === fos.ModalMode.ANNOTATE && isCreatingCuboid;
+  const effectiveUnfocusedLabelOpacity =
+    unfocusedLabelOpacity ??
+    (shouldDimLabelsForCreation ? UNFOCUSED_LABEL_OPACITY : undefined);
+  const shouldDimAllLabels = dimAllLabels || shouldDimLabelsForCreation;
+
   const focusedLabelIds = useMemo(() => {
-    if (unfocusedLabelOpacity === undefined) {
+    if (effectiveUnfocusedLabelOpacity === undefined) {
       return null;
     }
 
-    if (dimAllLabels) {
+    if (shouldDimAllLabels) {
       return new Set<string>();
     }
 
@@ -312,10 +322,10 @@ export const ThreeDLabels = ({
 
     return labelIds.size > 0 ? labelIds : null;
   }, [
-    dimAllLabels,
+    effectiveUnfocusedLabelOpacity,
     hoveredLabel?.id,
     selectedLabelForAnnotation?._id,
-    unfocusedLabelOpacity,
+    shouldDimAllLabels,
   ]);
 
   const getOverlayOpacity = useCallback(
@@ -324,9 +334,9 @@ export const ThreeDLabels = ({
         return labelAlpha;
       }
 
-      return unfocusedLabelOpacity ?? labelAlpha;
+      return effectiveUnfocusedLabelOpacity ?? labelAlpha;
     },
-    [focusedLabelIds, labelAlpha, unfocusedLabelOpacity]
+    [effectiveUnfocusedLabelOpacity, focusedLabelIds, labelAlpha]
   );
 
   // Detections render model -> JSX
