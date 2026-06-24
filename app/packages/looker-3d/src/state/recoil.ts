@@ -23,6 +23,8 @@ import type {
   AssetLoadingLog,
   CuboidCreationState,
   LoadingStatusWithContext,
+  MainPanelPanSyncIntent,
+  MainPanelZoomSyncIntent,
   PanelId,
   RaycastResult,
   ShadeBy,
@@ -339,6 +341,14 @@ export const activeCursorPanelAtom = atom<PanelId | null>({
 });
 
 /**
+ * Whether either Shift key is currently pressed while the 3D modal is active.
+ */
+export const isFo3dShiftPressedAtom = atom<boolean>({
+  key: "fo3d-isShiftPressed",
+  default: false,
+});
+
+/**
  * Centralized raycast result atom that stores intersection data from the RaycastService.
  */
 export const raycastResultAtom = atom<RaycastResult>({
@@ -347,10 +357,23 @@ export const raycastResultAtom = atom<RaycastResult>({
     sourcePanel: null,
     worldPosition: null,
     intersectedObjectUuid: null,
+    isPointCloud: false,
     pointIndex: null,
     distance: null,
     timestamp: 0,
   },
+});
+
+export const mainPanelZoomSyncIntentAtom = atom<MainPanelZoomSyncIntent | null>(
+  {
+    key: "fo3d-mainPanelZoomSyncIntent",
+    default: null,
+  }
+);
+
+export const mainPanelPanSyncIntentAtom = atom<MainPanelPanSyncIntent | null>({
+  key: "fo3d-mainPanelPanSyncIntent",
+  default: null,
 });
 
 /**

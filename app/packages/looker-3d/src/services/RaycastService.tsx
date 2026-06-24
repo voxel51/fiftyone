@@ -7,10 +7,15 @@ import { useFo3dContext } from "../fo3d/context";
 import { activeCursorPanelAtom, raycastResultAtom } from "../state";
 import type { PanelId } from "../types";
 import { precisionToThreshold, toNDCForElement } from "../utils";
-import { getRaycastableObjects } from "../utils/raycast-utils";
+import type { PointCloudCrop } from "../utils/point-cloud-crop";
+import {
+  filterIntersectionsForPointCloudCrop,
+  getRaycastableObjects,
+} from "../utils/raycast-utils";
 
 interface RaycastServiceProps {
   panelId: PanelId;
+  pointCloudCrop?: PointCloudCrop | null;
 }
 
 /**
@@ -20,7 +25,10 @@ interface RaycastServiceProps {
  *
  * @param panelId - The ID of the panel this service belongs to
  */
-export const RaycastService = ({ panelId }: RaycastServiceProps) => {
+export const RaycastService = ({
+  panelId,
+  pointCloudCrop,
+}: RaycastServiceProps) => {
   const activeCursorPanel = useRecoilValue(activeCursorPanelAtom);
   const setRaycastResult = useSetRecoilState(raycastResultAtom);
 
@@ -64,12 +72,18 @@ export const RaycastService = ({ panelId }: RaycastServiceProps) => {
         false,
       );
 
-      if (intersections.length === 0) {
+      const visibleIntersections = filterIntersectionsForPointCloudCrop(
+        intersections,
+        pointCloudCrop,
+      );
+
+      if (visibleIntersections.length === 0) {
         // No object hit - clear raycast result
         setRaycastResult({
           sourcePanel: null,
           worldPosition: null,
           intersectedObjectUuid: null,
+          isPointCloud: false,
           pointIndex: null,
           distance: null,
           timestamp: Date.now(),
@@ -78,7 +92,7 @@ export const RaycastService = ({ panelId }: RaycastServiceProps) => {
       }
 
       // Use the closest intersection
-      const closest = intersections[0];
+      const closest = visibleIntersections[0];
       const worldPos = closest.point;
 
       const position: [number, number, number] = [
@@ -95,12 +109,21 @@ export const RaycastService = ({ panelId }: RaycastServiceProps) => {
         // Note: Recoil freezes objects so can't store the full intersected object...
         // but we can store the UUID
         intersectedObjectUuid: closest.object.uuid,
+        isPointCloud: closest.object instanceof THREE.Points,
         pointIndex,
         distance: closest.distance,
         timestamp: Date.now(),
       });
     },
-    [activeCursorPanel, panelId, camera, raycaster, scene],
+    [
+      activeCursorPanel,
+      panelId,
+      camera,
+      raycaster,
+      scene,
+      pointCloudCrop,
+      setRaycastResult,
+    ],
   );
 
   // This effect clears stale raycast result when the cursor leaves all panels
@@ -110,6 +133,7 @@ export const RaycastService = ({ panelId }: RaycastServiceProps) => {
         sourcePanel: null,
         worldPosition: null,
         intersectedObjectUuid: null,
+        isPointCloud: false,
         pointIndex: null,
         distance: null,
         timestamp: Date.now(),

@@ -6,11 +6,12 @@ import { HoveredPointMarker } from "../../components/HoveredPointMarker";
 import PcdColormapModal, {
   PcdColorMapTunnel,
 } from "../../components/PcdColormapModal";
-import type { PcdAsset } from "../../hooks";
 import { useFoLoader } from "../../hooks/use-fo-loaders";
 import { usePointCloudHoverFromRaycast } from "../../hooks/use-point-cloud-hover-from-raycast";
 import { DynamicPCDLoader } from "../../loaders/dynamic-pcd-loader";
+import type { PointCloudCrop } from "../../utils/point-cloud-crop";
 import { useFo3dContext } from "../context";
+import type { PcdAsset } from "../render-types";
 import { getResolvedUrlForFo3dAsset } from "../utils";
 import { usePcdMaterial } from "./use-pcd-material";
 
@@ -21,6 +22,7 @@ export const Pcd = ({
   quaternion,
   scale,
   children,
+  pointCloudCrop,
 }: {
   name: string;
   pcd: PcdAsset;
@@ -28,6 +30,7 @@ export const Pcd = ({
   quaternion: Quaternion;
   scale: Vector3;
   children?: React.ReactNode;
+  pointCloudCrop?: PointCloudCrop | null;
 }) => {
   const { fo3dRoot, setHoverMetadata } = useFo3dContext();
 
@@ -64,6 +67,8 @@ export const Pcd = ({
     defaultMaterial,
     pcdContainerRef,
     quaternion,
+    false,
+    pointCloudCrop,
   );
 
   const { currentHoveredPoint } = usePointCloudHoverFromRaycast({
@@ -107,7 +112,7 @@ export const Pcd = ({
             onClose={() => setIsColormapModalOpen(false)}
             attribute={shadingMode}
             onSave={handleColormapSave}
-            initialColorscale={{ list: colorMap }}
+            initialColorscale={{ list: [...colorMap] }}
           />
         </PcdColorMapTunnel.In>
       )}

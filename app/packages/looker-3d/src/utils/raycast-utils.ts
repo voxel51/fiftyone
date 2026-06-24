@@ -1,5 +1,7 @@
 import * as THREE from "three";
 import { FO_USER_DATA } from "../constants";
+import type { PointCloudCrop } from "./point-cloud-crop";
+import { isPointInsidePointCloudCrop } from "./point-cloud-crop";
 
 /**
  * Objects to exclude from raycasting (helpers, gizmos, UI elements, etc.)
@@ -79,3 +81,20 @@ export function getRaycastableObjects(scene: THREE.Scene): THREE.Object3D[] {
   traverse(scene);
   return objects;
 }
+
+export const filterIntersectionsForPointCloudCrop = (
+  intersections: THREE.Intersection[],
+  pointCloudCrop?: PointCloudCrop | null
+) => {
+  if (!pointCloudCrop) {
+    return intersections;
+  }
+
+  return intersections.filter((intersection) => {
+    if (!(intersection.object instanceof THREE.Points)) {
+      return true;
+    }
+
+    return isPointInsidePointCloudCrop(intersection.point, pointCloudCrop);
+  });
+};

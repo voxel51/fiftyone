@@ -1,4 +1,5 @@
 import { useBrowserStorage } from "@fiftyone/state";
+import { DEFAULT_SELECTED_CUBOID_CROP_MARGIN } from "../constants";
 import {
   DEFAULT_RAYCAST_PRECISION,
   type Fo3dPointCloudSettings,
@@ -16,6 +17,7 @@ export const useFo3dPersistentPreferences = () => {
   const [pointCloudSettings, setPointCloudSettings] =
     useBrowserStorage<Fo3dPointCloudSettings>("fo3d-pointCloudSettings", {
       enableTooltip: false,
+      selectedCuboidCropMargin: DEFAULT_SELECTED_CUBOID_CROP_MARGIN,
     });
 
   const [raycastPrecision, setRaycastPrecision] = useBrowserStorage(

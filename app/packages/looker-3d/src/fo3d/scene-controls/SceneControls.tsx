@@ -3,7 +3,10 @@ import { useFrame } from "@react-three/fiber";
 import { folder, useControls } from "leva";
 import { useMemo, useRef } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
-import { PANEL_ORDER_SCENE_CONTROLS } from "../../constants";
+import {
+  DEFAULT_SELECTED_CUBOID_CROP_MARGIN,
+  PANEL_ORDER_SCENE_CONTROLS,
+} from "../../constants";
 import { avoidZFightingAtom } from "../../state";
 import { useFo3dContext } from "../context";
 import type { FoScene } from "../render-types";
@@ -44,6 +47,9 @@ export const SceneControls = ({
   const datasetName = useRecoilValue(fos.datasetName);
   const [avoidZFighting, setAvoidZFighting] =
     useRecoilState(avoidZFightingAtom);
+  const selectedCuboidCropMargin =
+    pointCloudSettings.selectedCuboidCropMargin ??
+    DEFAULT_SELECTED_CUBOID_CROP_MARGIN;
 
   const dirFromUpVector = useMemo(
     () => getOrthonormalAxis(upVector),
@@ -139,12 +145,25 @@ export const SceneControls = ({
             setPointCloudSettings({
               ...pointCloudSettings,
               enableTooltip: value,
+              selectedCuboidCropMargin,
+            });
+          },
+        },
+        selectedCuboidCropMargin: {
+          value: selectedCuboidCropMargin,
+          label: "Selected Cuboid Crop Margin",
+          min: 0,
+          step: 0.1,
+          onChange: (value: number) => {
+            setPointCloudSettings({
+              ...pointCloudSettings,
+              selectedCuboidCropMargin: value,
             });
           },
         },
       }),
     }),
-    [pointCloudSettings.enableTooltip],
+    [pointCloudSettings, selectedCuboidCropMargin, setPointCloudSettings],
   );
 
   return <Lights lights={scene?.lights} />;

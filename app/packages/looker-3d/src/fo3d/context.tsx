@@ -1,5 +1,6 @@
 import { createContext, Dispatch, SetStateAction, useContext } from "react";
 import type { Box3, LoadingManager, Vector3 } from "three";
+import { DEFAULT_SELECTED_CUBOID_CROP_MARGIN } from "../constants";
 import type { Looker3dSettings } from "../settings";
 import { HoverMetadata } from "../types";
 import {
@@ -9,6 +10,7 @@ import {
 
 export interface Fo3dPointCloudSettings {
   enableTooltip: boolean;
+  selectedCuboidCropMargin: number;
 }
 
 /**
@@ -57,6 +59,7 @@ const defaultContext: Fo3dContextT = {
   setAutoRotate: () => {},
   pointCloudSettings: {
     enableTooltip: false,
+    selectedCuboidCropMargin: DEFAULT_SELECTED_CUBOID_CROP_MARGIN,
   },
   setPointCloudSettings: () => {},
   raycastPrecision: DEFAULT_RAYCAST_PRECISION,

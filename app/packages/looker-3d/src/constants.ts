@@ -28,6 +28,7 @@ export const ANNOTATION_CUBOID = "cuboid";
 export const ANNOTATION_POLYLINE = "polyline";
 
 export const DEFAULT_CAMERA_POSITION = () => new Vector3(0, 5, -5);
+export const DEFAULT_SELECTED_CUBOID_CROP_MARGIN = 1;
 
 // Default bounding box when scene bounds cannot be determined
 export const DEFAULT_BOUNDING_BOX = new Box3(

@@ -173,8 +173,22 @@ export interface RaycastResult {
   sourcePanel: PanelId | null;
   worldPosition: [number, number, number] | null;
   intersectedObjectUuid: string | null;
+  isPointCloud: boolean;
   pointIndex: number | null;
   distance: number | null;
+  timestamp: number;
+}
+
+export interface MainPanelZoomSyncIntent {
+  id: string;
+  anchor: [number, number, number];
+  zoomRatio: number;
+  timestamp: number;
+}
+
+export interface MainPanelPanSyncIntent {
+  id: string;
+  anchor: [number, number, number];
   timestamp: number;
 }
 

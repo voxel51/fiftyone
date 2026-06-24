@@ -8,7 +8,6 @@ import {
   SHADE_BY_NONE,
   SHADE_BY_RGB,
 } from "../../constants";
-import type { PcdAsset } from "../../hooks";
 import { useFo3dBounds } from "../../hooks/use-bounds";
 import { usePcdMaterialControls } from "../../hooks/use-pcd-material-controls";
 import {
@@ -17,12 +16,15 @@ import {
   RgbShader,
   ShadeByHeight,
   ShadeByIntensity,
+  VertexColorShader,
 } from "../../renderables/pcd/shaders";
+import type { PointCloudCrop } from "../../utils/point-cloud-crop";
 import {
   computeMinMaxForColorBufferAttribute,
   computeMinMaxForScalarBufferAttribute,
 } from "../../utils";
 import { useFo3dContext } from "../context";
+import type { PcdAsset } from "../render-types";
 
 export const getMinMaxForAttribute = (
   geometry: BufferGeometry,
@@ -62,6 +64,7 @@ export const usePcdMaterial = (
   pcdContainerRef: React.RefObject<any>,
   quaternion?: Quaternion,
   vertexColorsAvailable: boolean = false,
+  pointCloudCrop?: PointCloudCrop | null,
 ) => {
   const { upVector, pluginSettings } = useFo3dContext();
 
@@ -138,6 +141,15 @@ export const usePcdMaterial = (
   }, [geometry, shadeBy]);
 
   const pointsMaterial = useMemo(() => {
+    const fallbackPointSize = isPointSizeAttenuated
+      ? pointSize / 1000
+      : pointSize / 2;
+    const pointCloudCropKey = pointCloudCrop
+      ? `${pointCloudCrop.labelId}-${pointCloudCrop.halfSize
+          .toArray()
+          .join(",")}-${pointCloudCrop.worldToBox.elements.join(",")}`
+      : "none";
+
     // to trigger rerender
     const key = `${name}-${opacity}-${pointSize}-${isPointSizeAttenuated}-${shadeBy}-${customColor}-${minMaxCoordinates}-${minIntensity}-${maxIntensity}-${upVector}-${
       quaternion
@@ -150,7 +162,7 @@ export const usePcdMaterial = (
         : ""
     }-${colorMap ? JSON.stringify(colorMap) : ""}-${
       activeThreshold ? JSON.stringify(activeThreshold) : ""
-    }`;
+    }-${pointCloudCropKey}`;
 
     switch (shadeBy) {
       case SHADE_BY_HEIGHT:
@@ -165,6 +177,7 @@ export const usePcdMaterial = (
             pointSize={pointSize}
             opacity={opacity}
             isPointSizeAttenuated={isPointSizeAttenuated}
+            pointCloudCrop={pointCloudCrop}
           />
         );
 
@@ -181,6 +194,7 @@ export const usePcdMaterial = (
             isLegacyIntensity={!geometry.hasAttribute("intensity")}
             thresholdMin={activeThreshold?.[0]}
             thresholdMax={activeThreshold?.[1]}
+            pointCloudCrop={pointCloudCrop}
           />
         );
 
@@ -191,6 +205,7 @@ export const usePcdMaterial = (
             pointSize={pointSize}
             opacity={opacity}
             isPointSizeAttenuated={isPointSizeAttenuated}
+            pointCloudCrop={pointCloudCrop}
           />
         );
 
@@ -202,17 +217,43 @@ export const usePcdMaterial = (
             opacity={opacity}
             isPointSizeAttenuated={isPointSizeAttenuated}
             color={customColor || "#ffffff"}
+            pointCloudCrop={pointCloudCrop}
           />
         );
 
       case SHADE_BY_NONE:
+        if (vertexColorsAvailable && geometry.hasAttribute("color")) {
+          return (
+            <VertexColorShader
+              key={key}
+              pointSize={fallbackPointSize}
+              opacity={opacity}
+              isPointSizeAttenuated={isPointSizeAttenuated}
+              pointCloudCrop={pointCloudCrop}
+            />
+          );
+        }
+
+        if (vertexColorsAvailable && geometry.hasAttribute("rgb")) {
+          return (
+            <RgbShader
+              key={key}
+              pointSize={fallbackPointSize}
+              opacity={opacity}
+              isPointSizeAttenuated={isPointSizeAttenuated}
+              pointCloudCrop={pointCloudCrop}
+            />
+          );
+        }
+
         return (
-          <pointsMaterial
-            color={"#ffffff"}
-            size={isPointSizeAttenuated ? pointSize / 1000 : pointSize / 2}
+          <CustomColorShader
+            key={key}
+            pointSize={fallbackPointSize}
             opacity={opacity}
-            sizeAttenuation={isPointSizeAttenuated}
-            vertexColors={Boolean(vertexColorsAvailable)}
+            isPointSizeAttenuated={isPointSizeAttenuated}
+            color="#ffffff"
+            pointCloudCrop={pointCloudCrop}
           />
         );
 
@@ -233,16 +274,19 @@ export const usePcdMaterial = (
               colorMap={colorMap}
               thresholdMin={activeThreshold?.[0]}
               thresholdMax={activeThreshold?.[1]}
+              pointCloudCrop={pointCloudCrop}
             />
           );
         } else {
           // fallback to default
           return (
-            <pointsMaterial
-              color={"#ffffff"}
-              size={isPointSizeAttenuated ? pointSize / 1000 : pointSize / 2}
+            <CustomColorShader
+              key={key}
+              pointSize={fallbackPointSize}
               opacity={opacity}
-              sizeAttenuation={isPointSizeAttenuated}
+              isPointSizeAttenuated={isPointSizeAttenuated}
+              color="#ffffff"
+              pointCloudCrop={pointCloudCrop}
             />
           );
         }
@@ -263,6 +307,8 @@ export const usePcdMaterial = (
     name,
     colorMap,
     activeThreshold,
+    vertexColorsAvailable,
+    pointCloudCrop,
   ]);
 
   return {
