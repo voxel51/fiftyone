@@ -20,9 +20,10 @@ import type {
   KeypointLabel,
   PolylineOverlay,
 } from "@fiftyone/lighter";
+import { decodeMaskPath } from "@fiftyone/lighter";
 import type { DetectionLabel } from "@fiftyone/looker";
 import type { LabelData } from "@fiftyone/utilities";
-import { hasValidBounds, LabelType } from "@fiftyone/utilities";
+import { DETECTION, hasValidBounds, LabelType } from "@fiftyone/utilities";
 
 import type { AdapterMap, LabelKindAdapter } from "../../bridge/types";
 
@@ -39,13 +40,29 @@ export interface LighterDescriptor {
   >;
 
   /**
-   * Raw `mask_path` value needing an async decode before a faithful overlay
-   * exists. The bridge gates the mount on it — never a
-   * maskless intermediate. Set by the detection adapter when the label has
-   * `mask_path` but no inline `mask`.
+   * Set when a faithful overlay needs an async source resolved before it can
+   * mount (e.g. a `mask_path` that must be fetched + decoded). The bridge gates
+   * the mount, runs it with an abort `signal`, merges the returned options into
+   * the factory spec, then inserts — never a partially-hydrated intermediate.
+   * The signal is aborted when a newer mount for the same overlay supersedes
+   * this one (the adapter forwards it to `fetch`/decode to cancel the work).
+   *
+   * Kind-agnostic: the bridge never learns what the source is. The adapter owns
+   * the decode and closes over its own media-URL resolver (via
+   * {@link createLighterAdapters}); the bridge supplies only the signal.
    */
-  pendingMaskPath?: string;
+  deferred?: (
+    signal: AbortSignal
+  ) => Promise<Record<string, unknown> | undefined>;
 }
+
+/** Maps a raw media sub-field value (e.g. `mask_path`) to a fetchable URL. */
+export type ResolveMediaUrl = (args: {
+  path: string;
+  instanceId: string;
+  subField: string;
+  raw: string;
+}) => string | undefined;
 
 export type LighterAdapter = LabelKindAdapter<BaseOverlay, LighterDescriptor>;
 
@@ -62,7 +79,14 @@ const withoutId = (label: Record<string, unknown>): Partial<LabelData> => {
   return rest;
 };
 
-export const detectionAdapter: LighterAdapter = {
+/**
+ * Detection adapter factory: closes over the modal-wiring `resolveMediaUrl` so
+ * the deferred mask decode is entirely the adapter's concern — the bridge
+ * supplies only an abort signal.
+ */
+export const makeDetectionAdapter = (
+  resolveMediaUrl?: ResolveMediaUrl
+): LighterAdapter => ({
   // a 2D box is what this surface draws — Detection3D (shared `_cls`) and
   // box-less junk fall out of scope by failing the requirement
   renders: (label) =>
@@ -71,7 +95,33 @@ export const detectionAdapter: LighterAdapter = {
   buildHandle: (ref, label) => ({
     factoryKey: "detection",
     ...(!label.mask && typeof label.mask_path === "string"
-      ? { pendingMaskPath: label.mask_path }
+      ? {
+          // The mask decode is the adapter's concern, not the bridge's.
+          deferred: async (signal: AbortSignal) => {
+            const url = resolveMediaUrl?.({
+              path: ref.path,
+              instanceId: ref.instanceId,
+              subField: "mask_path",
+              raw: label.mask_path as string,
+            });
+
+            if (!url) {
+              console.warn(
+                `[mask-path] detection ${ref.instanceId} in field ` +
+                  `"${ref.path}" has mask_path but no resolvable URL; ` +
+                  "mounting without its mask"
+              );
+              return undefined;
+            }
+
+            if (signal.aborted) return undefined;
+
+            const mask = await decodeMaskPath(url, ref.path, DETECTION);
+            return signal.aborted || !mask
+              ? undefined
+              : { preDecodedMask: mask };
+          },
+        }
       : {}),
     options: {
       id: ref.instanceId,
@@ -126,7 +176,7 @@ export const detectionAdapter: LighterAdapter = {
 
     return { ...data, ...maskData, bounding_box: boundingBox };
   },
-};
+});
 
 export const classificationAdapter: LighterAdapter = {
   buildHandle: (ref, label) => ({
@@ -186,13 +236,20 @@ export const polylineAdapter: LighterAdapter = {
  * The full Lighter adapter map. Single and list kinds share an adapter — the
  * engine routes by `getLabelType(ref.path)`, the overlay shape is identical.
  */
-export const lighterAdapters: AdapterMap<BaseOverlay, LighterDescriptor> = {
-  [LabelType.Detection]: detectionAdapter,
-  [LabelType.Detections]: detectionAdapter,
-  [LabelType.Classification]: classificationAdapter,
-  [LabelType.Classifications]: classificationAdapter,
-  [LabelType.Keypoint]: keypointAdapter,
-  [LabelType.Keypoints]: keypointAdapter,
-  [LabelType.Polyline]: polylineAdapter,
-  [LabelType.Polylines]: polylineAdapter,
+export const createLighterAdapters = ({
+  resolveMediaUrl,
+}: {
+  resolveMediaUrl?: ResolveMediaUrl;
+}): AdapterMap<BaseOverlay, LighterDescriptor> => {
+  const detection = makeDetectionAdapter(resolveMediaUrl);
+  return {
+    [LabelType.Detection]: detection,
+    [LabelType.Detections]: detection,
+    [LabelType.Classification]: classificationAdapter,
+    [LabelType.Classifications]: classificationAdapter,
+    [LabelType.Keypoint]: keypointAdapter,
+    [LabelType.Keypoints]: keypointAdapter,
+    [LabelType.Polyline]: polylineAdapter,
+    [LabelType.Polylines]: polylineAdapter,
+  };
 };

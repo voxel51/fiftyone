@@ -41,7 +41,7 @@ vi.mock("@fiftyone/lighter", () => ({
 vi.mock("./lighterBridge", () => ({
   createLighterBridge: () => ({ clear: vi.fn() }),
 }));
-vi.mock("./adapters", () => ({ lighterAdapters: {} }));
+vi.mock("./adapters", () => ({ createLighterAdapters: () => ({}) }));
 const mockCommit = vi.fn();
 const mockSelectHandle = vi.fn();
 vi.mock("../../react/useSurfaceBridge", () => ({

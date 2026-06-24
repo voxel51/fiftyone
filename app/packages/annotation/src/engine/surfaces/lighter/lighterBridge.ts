@@ -3,17 +3,16 @@
  * engine's read-half loop and a `Scene2D`. Methods close over the scene; the
  * engine never holds a scene reference.
  *
- * Async-sourced mounts are gated: a descriptor
- * carrying `pendingMaskPath` defers its insert until the mask decodes — no
- * maskless intermediate overlay ever mounts. In-flight gates dedupe (a
- * re-fired reconcile refreshes the descriptor, never starts a second decode),
- * and a resolve whose ref no longer reads back from the engine is discarded.
+ * Async-sourced mounts are gated: a descriptor carrying `deferred` defers its
+ * insert until the adapter's `resolve` completes — no partially-hydrated
+ * intermediate overlay ever mounts. A newer mount for the same overlay aborts
+ * the prior resolve (supersession), and a resolve whose ref no longer reads
+ * back from the engine is discarded. The bridge is kind-agnostic: the adapter
+ * owns the decode; the bridge only runs `resolve` and merges its result.
  */
 
 import type { BaseOverlay, OverlayFactory, Scene2D } from "@fiftyone/lighter";
-import { decodeMaskPath } from "@fiftyone/lighter";
 import type { LabelData } from "@fiftyone/utilities";
-import { DETECTION } from "@fiftyone/utilities";
 
 import type { SurfaceBridge } from "../../bridge/types";
 import type { LighterDescriptor } from "./adapters";
@@ -35,18 +34,6 @@ export interface LighterBridgeDeps {
     path: string;
     instanceId: string;
   }) => LabelData | undefined;
-  /**
-   * Map a raw media sub-field value (e.g. `mask_path`) to a fetchable URL.
-   * Owned by the modal wiring (the sample's `sources` map + media-URL
-   * rewrite); when absent or unresolvable the overlay mounts without its
-   * mask, with a warning — the legacy terminal fallback.
-   */
-  resolveMediaUrl?: (args: {
-    path: string;
-    instanceId: string;
-    subField: string;
-    raw: string;
-  }) => string | undefined;
 }
 
 export const createLighterBridge = ({
@@ -55,10 +42,15 @@ export const createLighterBridge = ({
   sample,
   paths,
   readLabel,
-  resolveMediaUrl,
 }: LighterBridgeDeps): SurfaceBridge<BaseOverlay, LighterDescriptor> => {
-  /** Gated mounts in flight, by overlay id — the latest descriptor wins. */
-  const pending = new Map<string, LighterDescriptor>();
+  /**
+   * Gated mounts in flight, by overlay id. Each carries an AbortController so a
+   * newer mount (or `clear`) can supersede the in-flight resolve.
+   */
+  const pending = new Map<
+    string,
+    { descriptor: LighterDescriptor; controller: AbortController }
+  >();
 
   /**
    * Overlay ids this bridge manages: mounted (sync or gated insert) or
@@ -71,7 +63,7 @@ export const createLighterBridge = ({
   const insert = (
     descriptor: LighterDescriptor,
     label: LabelData,
-    mask: Awaited<ReturnType<typeof decodeMaskPath>>
+    extra: Record<string, unknown>
   ): BaseOverlay => {
     const overlay = overlayFactory.create<
       LighterDescriptor["options"],
@@ -79,72 +71,40 @@ export const createLighterBridge = ({
     >(descriptor.factoryKey, {
       ...descriptor.options,
       label,
-      ...(mask ? { preDecodedMask: mask } : {}),
+      ...extra,
     });
     scene.addOverlay(overlay);
     managed.add(overlay.id);
 
-    // silent re-apply absorbs anything committed while the decode was in
+    // silent re-apply absorbs anything committed while the resolve was in
     // flight (descriptor geometry was built from the request-time label)
     overlay.applyLabel(label as Parameters<BaseOverlay["applyLabel"]>[0]);
 
     return overlay;
   };
 
-  const mountWhenDecoded = async (id: string): Promise<void> => {
-    for (;;) {
-      const attempt = pending.get(id);
+  const resolveAndInsert = async (
+    id: string,
+    descriptor: LighterDescriptor,
+    signal: AbortSignal
+  ): Promise<void> => {
+    const extra = await descriptor.deferred?.(signal);
 
-      if (!attempt) {
-        return; // cancelled (lifecycle clear / superseded by a sync mount)
-      }
-
-      const path = attempt.options.field;
-      const raw = attempt.pendingMaskPath as string;
-      const url = resolveMediaUrl?.({
-        path,
-        instanceId: id,
-        subField: "mask_path",
-        raw,
-      });
-
-      if (!url) {
-        console.warn(
-          `[mask-path] detection ${id} in field "${path}" has mask_path ` +
-            "but no resolvable URL; mounting without its mask"
-        );
-      }
-
-      const mask = url ? await decodeMaskPath(url, path, DETECTION) : undefined;
-      const latest = pending.get(id);
-
-      if (!latest) {
-        return; // cancelled mid-flight
-      }
-
-      if (latest.pendingMaskPath !== attempt.pendingMaskPath) {
-        continue; // the source changed mid-flight — decode the new value
-      }
-
-      pending.delete(id);
-      const label = readLabel({ path: latest.options.field, instanceId: id });
-
-      if (!label) {
-        return; // ref deleted or reconciled away while gated — discard
-      }
-
-      if (url && !mask) {
-        console.warn(
-          `[mask-path] decode failed for detection ${id} in field ` +
-            `"${path}" (url=${url}); mounting without its mask`
-        );
-      }
-
-      const overlay = insert(latest, label, mask);
-      bridge.onDeferredMount?.(overlay);
-
+    // Superseded while resolving — a newer mount (or `clear`) aborted this gate
+    // and/or replaced the pending entry. Drop the stale result.
+    if (signal.aborted || pending.get(id)?.controller.signal !== signal) {
       return;
     }
+    pending.delete(id);
+
+    // Discard if the ref was deleted / reconciled away while gated.
+    const label = readLabel({ path: descriptor.options.field, instanceId: id });
+    if (!label) {
+      return;
+    }
+
+    const overlay = insert(descriptor, label, extra ?? {});
+    bridge.onDeferredMount?.(overlay);
   };
 
   const bridge: SurfaceBridge<BaseOverlay, LighterDescriptor> = {
@@ -170,11 +130,12 @@ export const createLighterBridge = ({
     mount: (descriptor) => {
       const { id } = descriptor.options;
 
-      if (descriptor.pendingMaskPath === undefined) {
-        // a sync mount supersedes any in-flight gate for the same id (the
-        // label gained an inline mask, so there is nothing left to decode)
-        pending.delete(id);
+      // A fresh mount supersedes any in-flight gate for this overlay: abort the
+      // prior resolve so its late result is discarded (and its fetch can stop).
+      pending.get(id)?.controller.abort();
+      pending.delete(id);
 
+      if (!descriptor.deferred) {
         const overlay = overlayFactory.create<
           LighterDescriptor["options"],
           BaseOverlay
@@ -185,13 +146,10 @@ export const createLighterBridge = ({
         return overlay;
       }
 
-      // the gate: defer until decoded — never a maskless intermediate
-      const inFlight = pending.has(id);
-      pending.set(id, descriptor);
-
-      if (!inFlight) {
-        void mountWhenDecoded(id);
-      }
+      // the gate: defer until `resolve` completes — never an intermediate
+      const controller = new AbortController();
+      pending.set(id, { descriptor, controller });
+      void resolveAndInsert(id, descriptor, controller.signal);
 
       return undefined;
     },
@@ -209,7 +167,11 @@ export const createLighterBridge = ({
     },
 
     clear: () => {
-      // cancel gated mounts (lifecycle teardown)
+      // cancel gated mounts (lifecycle teardown): abort in-flight resolves so
+      // their late results are discarded.
+      for (const { controller } of pending.values()) {
+        controller.abort();
+      }
       pending.clear();
 
       // exactly the overlays this bridge manages — surface-owned transients

@@ -23,9 +23,8 @@ import { encodeEntityId } from "../../identity/entityId";
 import { toLabelRef } from "../../identity/ref";
 import { useSurfaceBridge } from "../../react/useSurfaceBridge";
 import { GEOMETRY_SIGNAL, type GeometrySignal } from "../../signals/geometry";
-import { lighterAdapters } from "./adapters";
+import { createLighterAdapters, type ResolveMediaUrl } from "./adapters";
 import type { LighterInteractionPolicy } from "./interactionPolicy";
-import type { LighterBridgeDeps } from "./lighterBridge";
 import { createLighterBridge } from "./lighterBridge";
 
 export const useLighterEngineBridge = ({
@@ -47,7 +46,7 @@ export const useLighterEngineBridge = ({
    * Maps raw media sub-field values (e.g. `mask_path`) to fetchable URLs for
    * gated mounts — the modal wiring owns the sample's `sources` map.
    */
-  resolveMediaUrl?: LighterBridgeDeps["resolveMediaUrl"];
+  resolveMediaUrl?: ResolveMediaUrl;
   interactionPolicy?: LighterInteractionPolicy;
 }): void => {
   const { scene, overlayFactory } = useLighter();
@@ -62,10 +61,16 @@ export const useLighterEngineBridge = ({
             sample,
             paths,
             readLabel: (ref) => engine.getLabel(toLabelRef(sample, ref)),
-            resolveMediaUrl,
           })
         : undefined,
-    [engine, scene, overlayFactory, sample, paths, resolveMediaUrl]
+    [engine, scene, overlayFactory, sample, paths]
+  );
+
+  // The detection adapter closes over `resolveMediaUrl` (modal-wiring owned),
+  // so the bridge no longer needs it — a new resolver re-creates the adapters.
+  const adapters = useMemo(
+    () => createLighterAdapters({ resolveMediaUrl }),
+    [resolveMediaUrl]
   );
 
   // a replaced bridge (scope/scene/sample change) clears its overlays on the
@@ -82,7 +87,7 @@ export const useLighterEngineBridge = ({
   const surface = useSurfaceBridge({
     engine,
     bridge,
-    adapters: lighterAdapters,
+    adapters,
   });
 
   const commitOverlay = useCallback(

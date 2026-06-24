@@ -2,11 +2,23 @@ import type { BaseOverlay, OverlayFactory, Scene2D } from "@fiftyone/lighter";
 import { decodeMaskPath } from "@fiftyone/lighter";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { detectionAdapter, polylineAdapter } from "./adapters";
-import { lighterAdapters } from "./adapters";
+import {
+  createLighterAdapters,
+  makeDetectionAdapter,
+  polylineAdapter,
+  type ResolveMediaUrl,
+} from "./adapters";
 import type { LighterBridgeDeps } from "./lighterBridge";
 import { createLighterBridge } from "./lighterBridge";
 import { makeDet, makeEngine, ref } from "../../testing/fixtures";
+
+// The adapter (not the bridge) owns mask-URL resolution + decode now, so build
+// adapters with a stub resolver baked in.
+const DEFAULT_RESOLVER: ResolveMediaUrl = ({ raw }) => `http://x${raw}`;
+const detectionAdapter = makeDetectionAdapter(DEFAULT_RESOLVER);
+const lighterAdapters = createLighterAdapters({
+  resolveMediaUrl: DEFAULT_RESOLVER,
+});
 
 // the bridge's only runtime lighter import — everything else is type-only
 vi.mock("@fiftyone/lighter", () => ({ decodeMaskPath: vi.fn() }));
@@ -110,7 +122,7 @@ describe("lighter adapters", () => {
       mask_path: "/m.png",
     });
 
-    expect(gated.pendingMaskPath).toBe("/m.png");
+    expect(typeof gated.deferred).toBe("function");
 
     const inline = detectionAdapter.buildHandle(ref("ground_truth", "d1"), {
       _id: "d1",
@@ -119,7 +131,7 @@ describe("lighter adapters", () => {
       mask: "INLINE",
     });
 
-    expect(inline.pendingMaskPath).toBeUndefined();
+    expect(inline.deferred).toBeUndefined();
   });
 
   it("toLabel extracts bounds and strips _id (the ref owns identity)", () => {
@@ -377,8 +389,15 @@ describe("lighter bridge gated mounts (deferred mask_path decode)", () => {
     ...extras,
   });
 
-  const gatedDescriptor = (id = "d1", extras: Record<string, unknown> = {}) =>
-    detectionAdapter.buildHandle(ref("ground_truth", id), det(id, extras));
+  const gatedDescriptor = (
+    id = "d1",
+    extras: Record<string, unknown> = {},
+    resolveMediaUrl: ResolveMediaUrl = DEFAULT_RESOLVER
+  ) =>
+    makeDetectionAdapter(resolveMediaUrl).buildHandle(
+      ref("ground_truth", id),
+      det(id, extras)
+    );
 
   const makeGated = (overrides: Partial<LighterBridgeDeps> = {}) => {
     const parts = makeScene();
@@ -387,7 +406,6 @@ describe("lighter bridge gated mounts (deferred mask_path decode)", () => {
       overlayFactory: parts.overlayFactory,
       sample: "sample-1",
       readLabel: () => det("d1"),
-      resolveMediaUrl: ({ raw }) => `http://x${raw}`,
       ...overrides,
     });
     return { ...parts, bridge };
@@ -417,19 +435,18 @@ describe("lighter bridge gated mounts (deferred mask_path decode)", () => {
     expect(onDeferredMount).toHaveBeenCalledWith(overlays.get("d1"));
   });
 
-  it("dedupes a re-fired mount while the decode is in flight", async () => {
+  it("supersedes an in-flight mount on a re-fire (abort, last wins)", async () => {
     const gate = deferred();
     vi.mocked(decodeMaskPath).mockReturnValue(gate.promise);
     const { bridge, overlays } = makeGated();
 
     bridge.mount(gatedDescriptor());
-    bridge.mount(gatedDescriptor()); // routine reconcile re-fire
-
-    expect(decodeMaskPath).toHaveBeenCalledTimes(1);
+    bridge.mount(gatedDescriptor()); // re-fired reconcile aborts the first
 
     gate.resolve(MASK);
     await settle();
 
+    // the superseded resolve is discarded; exactly one overlay mounts
     expect(overlays.size).toBe(1);
   });
 
@@ -503,12 +520,11 @@ describe("lighter bridge gated mounts (deferred mask_path decode)", () => {
     expect(overlays.size).toBe(1);
   });
 
-  it("mounts without a mask when no URL resolves (terminal fallback)", () => {
-    const { bridge, overlays, overlayFactory } = makeGated({
-      resolveMediaUrl: () => undefined,
-    });
+  it("mounts without a mask when no URL resolves (terminal fallback)", async () => {
+    const { bridge, overlays, overlayFactory } = makeGated();
 
-    bridge.mount(gatedDescriptor());
+    bridge.mount(gatedDescriptor("d1", {}, () => undefined));
+    await settle();
 
     expect(decodeMaskPath).not.toHaveBeenCalled();
     expect(overlays.get("d1")).toBeDefined();
@@ -536,7 +552,6 @@ describe("lighter bridge gated mounts (deferred mask_path decode)", () => {
       overlayFactory,
       sample: "sample-1",
       readLabel: (r) => engine.getLabel({ sample: "sample-1", ...r }),
-      resolveMediaUrl: ({ raw }) => `http://x${raw}`,
     });
 
     const unregister = engine.registerBridge(bridge, lighterAdapters);
