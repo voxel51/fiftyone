@@ -76,6 +76,13 @@ interface ApplyMainPanelPanSyncIntentOptions {
   invalidate?: () => void;
 }
 
+interface ApplySidePanelCameraFrameOptions {
+  camera: THREE.Camera;
+  controls?: SidePanelControls;
+  frame: SidePanelCameraFrame;
+  invalidate?: () => void;
+}
+
 interface DeriveSidePanelCameraFrameOptions {
   distance?: number;
   sceneBoundingBox?: THREE.Box3 | null;
@@ -317,6 +324,42 @@ export const deriveSidePanelCameraFrame = ({
     target: resolvedTarget,
     up: getSidePanelCameraUp(viewType, upVector),
   };
+};
+
+export const retargetSidePanelCameraFrame = (
+  frame: SidePanelCameraFrame,
+  target: THREE.Vector3
+): SidePanelCameraFrame => {
+  const resolvedTarget = target.clone();
+  const direction = frame.direction.clone().normalize();
+
+  return {
+    direction,
+    distance: frame.distance,
+    position: resolvedTarget
+      .clone()
+      .add(direction.clone().multiplyScalar(frame.distance)),
+    target: resolvedTarget,
+    up: frame.up.clone(),
+  };
+};
+
+export const applySidePanelCameraFrame = ({
+  camera,
+  controls,
+  frame,
+  invalidate,
+}: ApplySidePanelCameraFrameOptions) => {
+  const projectionCamera = getProjectionCamera(camera);
+
+  camera.position.copy(frame.position);
+  camera.up.copy(frame.up);
+  controls?.target?.copy(frame.target);
+  camera.lookAt(frame.target);
+  camera.updateMatrixWorld();
+  projectionCamera.updateProjectionMatrix();
+  controls?.update?.();
+  invalidate?.();
 };
 
 export const deriveSidePanelCameraUpdateFromMainViewer = ({

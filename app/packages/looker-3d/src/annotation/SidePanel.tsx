@@ -12,10 +12,18 @@ import {
   View,
 } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import * as THREE from "three";
+import type { MapControls as MapControlsImpl } from "three-stdlib";
 import { Box3, Vector3 } from "three";
 import {
   FO_USER_DATA,
@@ -44,14 +52,17 @@ import {
 import type { SidePanelId, SidePanelViewType } from "../types";
 import { expandBoundingBox, findObjectByUserData } from "../utils";
 import {
+  applySidePanelCameraFrame,
   applyMainPanelPanSyncIntentToOrthographicCamera,
   applyMainPanelZoomSyncIntentToOrthographicCamera,
   captureSidePanelCameraSnapshot,
   deriveSidePanelCameraFrame,
   doesPointCloudCropFitCamera,
+  retargetSidePanelCameraFrame,
   restoreSidePanelCameraSnapshot,
   shouldApplyMainPanelPanSyncIntent,
   shouldApplyMainPanelZoomSyncIntent,
+  type SidePanelCameraFrame,
   type SidePanelCameraSnapshot,
   type SidePanelControls,
 } from "../utils/side-panel-camera-sync";
@@ -179,8 +190,7 @@ export const SidePanel = ({
   );
 
   const theme = useTheme();
-
-  const cameraRef = useRef<THREE.OrthographicCamera>();
+  const mapControlsRef = useRef<MapControlsImpl | null>(null);
 
   // --- "Fit bounds" reset key mechanism ---
   //
@@ -191,9 +201,9 @@ export const SidePanel = ({
   // 1. Force-remount the R3F <View> (via its `key` prop) so the camera,
   //    controls, and scene are cleanly re-initialized for the new orientation.
   //
-  // 2. Temporarily enable <Bounds observe={true}> so drei auto-fits the
-  //    camera to the scene contents. We disable it after 750ms so the user
-  //    can freely pan/zoom without Bounds fighting them.
+  // 2. Temporarily run a side-panel-aware Bounds fit that preserves the
+  //    cardinal camera direction. We disable it after 750ms so the user can
+  //    freely pan/zoom without Bounds fighting them.
   //
   // Increment `fitBoundsKey` whenever the camera should re-fit: view changes,
   // reset button clicks, etc.
@@ -215,16 +225,6 @@ export const SidePanel = ({
 
     return () => clearTimeout(timer);
   }, [fitBoundsKey]);
-
-  // Update camera to look at the scene center and use correct up vector
-  useEffect(() => {
-    if (cameraRef.current) {
-      cameraRef.current.position.copy(sidePanelCameraFrame.position);
-      cameraRef.current.up.copy(sidePanelCameraFrame.up);
-      cameraRef.current.lookAt(sidePanelCameraFrame.target);
-      cameraRef.current.updateProjectionMatrix();
-    }
-  }, [sidePanelCameraFrame]);
 
   return (
     <SidePanelContainer id={getPanelElementId(panelId)} $area={gridArea}>
@@ -250,27 +250,27 @@ export const SidePanel = ({
         >
           <OrthographicCamera
             makeDefault
-            ref={cameraRef}
             position={sidePanelCameraFrame.position}
             up={sidePanelCameraFrame.up.toArray() as [number, number, number]}
           />
           <MapControls
             makeDefault
+            ref={mapControlsRef}
             screenSpacePanning
             zoomToCursor
             enableRotate={false}
             zoomSpeed={0.8}
           />
-          <Bounds
-            fit
-            clip
-            observe={pointCloudCrop ? false : observe}
-            margin={1.25}
-            maxDuration={0.001}
-          >
+          <SidePanelCameraFrameController
+            controlsRef={mapControlsRef}
+            frame={sidePanelCameraFrame}
+          />
+          <Bounds margin={1.25} maxDuration={0.001}>
             <BoundsSideEffectsComponent
+              observe={!pointCloudCrop && observe}
               pointCloudCrop={pointCloudCrop}
               pointCloudCropFitKey={pointCloudCropFitKey}
+              sidePanelCameraFrame={sidePanelCameraFrame}
             />
             <Gizmos isGridVisible={false} isGizmoHelperVisible={false} />
             <group visible={isSceneInitialized}>
@@ -371,12 +371,42 @@ interface RaycastHoverFitSnapshot {
   halfSize: THREE.Vector3;
 }
 
+const SidePanelCameraFrameController = ({
+  controlsRef,
+  frame,
+}: {
+  controlsRef: { current: SidePanelControls | null };
+  frame: SidePanelCameraFrame;
+}) => {
+  const { camera, invalidate } = useThree();
+  const fallbackControls = useThree(
+    (state) => state.controls as SidePanelControls | undefined
+  );
+
+  useLayoutEffect(() => {
+    const controls = controlsRef.current ?? fallbackControls;
+
+    applySidePanelCameraFrame({
+      camera,
+      controls,
+      frame,
+      invalidate,
+    });
+  }, [camera, controlsRef, fallbackControls, frame, invalidate]);
+
+  return null;
+};
+
 const BoundsSideEffectsComponent = ({
+  observe,
   pointCloudCrop,
   pointCloudCropFitKey,
+  sidePanelCameraFrame,
 }: {
+  observe: boolean;
   pointCloudCrop?: PointCloudCrop | null;
   pointCloudCropFitKey: string | null;
+  sidePanelCameraFrame: SidePanelCameraFrame;
 }) => {
   const api = useBounds();
 
@@ -403,23 +433,50 @@ const BoundsSideEffectsComponent = ({
     pointCloudCropRef.current = pointCloudCrop;
   }, [pointCloudCrop]);
 
+  const fitBoundsWithSidePanelFrame = useCallback(
+    (
+      object: THREE.Object3D | THREE.Box3 | undefined,
+      target: THREE.Vector3,
+      shouldClip = false
+    ) => {
+      const frame = retargetSidePanelCameraFrame(sidePanelCameraFrame, target);
+      applySidePanelCameraFrame({
+        camera,
+        controls,
+        frame,
+        invalidate,
+      });
+
+      const bounds = api
+        .refresh(object)
+        .moveTo(frame.position)
+        .lookAt({ target: frame.target, up: frame.up })
+        .fit();
+
+      if (shouldClip) {
+        bounds.clip();
+      }
+    },
+    [api, camera, controls, invalidate, sidePanelCameraFrame]
+  );
+
   const fitToTemporaryMesh = useCallback(
-    (helperMesh: THREE.Mesh, dispose: () => void) => {
+    (helperMesh: THREE.Mesh, target: THREE.Vector3, dispose: () => void) => {
       scene.add(helperMesh);
-      api.refresh(helperMesh).reset().fit();
+      fitBoundsWithSidePanelFrame(helperMesh, target);
 
       setTimeout(() => {
         scene.remove(helperMesh);
         dispose();
       }, 0);
     },
-    [api, scene]
+    [fitBoundsWithSidePanelFrame, scene]
   );
 
   const fitToPointCloudCrop = useCallback(
     (crop: PointCloudCrop) => {
       const helperMesh = createPointCloudCropHelperMesh(crop);
-      fitToTemporaryMesh(helperMesh, () =>
+      fitToTemporaryMesh(helperMesh, crop.center, () =>
         disposePointCloudCropHelperMesh(helperMesh)
       );
     },
@@ -440,7 +497,7 @@ const BoundsSideEffectsComponent = ({
       helperMesh.position.copy(boxCenter);
       helperMesh.visible = false;
 
-      fitToTemporaryMesh(helperMesh, () => {
+      fitToTemporaryMesh(helperMesh, boxCenter, () => {
         boxGeometry.dispose();
         boxMaterial.dispose();
       });
@@ -465,13 +522,16 @@ const BoundsSideEffectsComponent = ({
       const objectBox = new Box3().setFromObject(object);
 
       if (objectBox.isEmpty()) {
-        api.refresh(object).reset().fit();
+        fitBoundsWithSidePanelFrame(
+          object,
+          object.getWorldPosition(new Vector3())
+        );
         return;
       }
 
       fitToBox(expandBoundingBox(objectBox, 2.5));
     },
-    [api, fitToBox]
+    [fitBoundsWithSidePanelFrame, fitToBox]
   );
 
   const restoreHoverFocus = useCallback(() => {
@@ -493,6 +553,14 @@ const BoundsSideEffectsComponent = ({
       invalidate,
     });
   }, [camera, controls, invalidate, selectedLabel?._id]);
+
+  useEffect(() => {
+    if (!observe || pointCloudCropRef.current) {
+      return;
+    }
+
+    fitBoundsWithSidePanelFrame(undefined, sidePanelCameraFrame.target, true);
+  }, [fitBoundsWithSidePanelFrame, observe, sidePanelCameraFrame.target]);
 
   useEffect(() => {
     const crop = pointCloudCropRef.current;
@@ -727,7 +795,10 @@ const BoundsSideEffectsComponent = ({
       if (!objectBox.isEmpty()) {
         fitToBox(expandBoundingBox(objectBox, 2.5));
       } else {
-        api.refresh(object).reset().fit();
+        fitBoundsWithSidePanelFrame(
+          object,
+          object.getWorldPosition(new Vector3())
+        );
       }
     }
   });

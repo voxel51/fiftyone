@@ -10,6 +10,7 @@ import type { RaycastResult } from "../types";
 import { createPointCloudCropFromDetection } from "./point-cloud-crop";
 import type { PointCloudCrop } from "./point-cloud-crop";
 import {
+  applySidePanelCameraFrame,
   applyMainPanelPanSyncIntentToOrthographicCamera,
   applyMainPanelZoomSyncIntentToOrthographicCamera,
   captureSidePanelCameraSnapshot,
@@ -19,6 +20,7 @@ import {
   deriveSidePanelCameraUpdateFromMainViewer,
   doesPointCloudCropFitCamera,
   getOrbitControlsWheelZoomRatio,
+  retargetSidePanelCameraFrame,
   restoreSidePanelCameraSnapshot,
   shouldApplyMainPanelPanSyncIntent,
   shouldApplyMainPanelZoomSyncIntent,
@@ -83,6 +85,57 @@ describe("side panel camera sync", () => {
 
     expect(frame.position.toArray()).toEqual([5, 16, 7]);
     expect(frame.target.toArray()).toEqual([5, 6, 7]);
+  });
+
+  it("retargets side-panel camera frames without changing view direction", () => {
+    const frame = deriveSidePanelCameraFrame({
+      target: new Vector3(1, 2, 3),
+      upVector: new Vector3(0, 1, 0),
+      viewType: VIEW_TYPE_TOP,
+    });
+    const retargeted = retargetSidePanelCameraFrame(
+      frame,
+      new Vector3(10, 20, 30)
+    );
+
+    expect(retargeted.direction.toArray()).toEqual([0, 1, 0]);
+    expect(retargeted.distance).toBe(frame.distance);
+    expect(retargeted.position.toArray()).toEqual([10, 30, 30]);
+    expect(retargeted.target.toArray()).toEqual([10, 20, 30]);
+    expect(retargeted.up.toArray()).toEqual(frame.up.toArray());
+  });
+
+  it("applies side-panel camera frames to both camera and controls", () => {
+    const frame = deriveSidePanelCameraFrame({
+      target: new Vector3(5, 6, 7),
+      upVector: new Vector3(0, 1, 0),
+      viewType: VIEW_TYPE_TOP,
+    });
+    const camera = new OrthographicCamera(-1, 1, 1, -1, 0.1, 1000);
+    const controls = {
+      target: new Vector3(0, 0, 0),
+      update: vi.fn(),
+    };
+    const invalidate = vi.fn();
+
+    applySidePanelCameraFrame({
+      camera,
+      controls,
+      frame,
+      invalidate,
+    });
+
+    const worldDirection = new Vector3();
+    camera.getWorldDirection(worldDirection);
+
+    expect(camera.position.toArray()).toEqual([5, 16, 7]);
+    expect(camera.up.toArray()).toEqual(frame.up.toArray());
+    expect(worldDirection.x).toBeCloseTo(0);
+    expect(worldDirection.y).toBeCloseTo(-1);
+    expect(worldDirection.z).toBeCloseTo(0);
+    expect(controls.target.toArray()).toEqual([5, 6, 7]);
+    expect(controls.update).toHaveBeenCalledTimes(1);
+    expect(invalidate).toHaveBeenCalledTimes(1);
   });
 
   it("derives side-panel camera updates from a main-view anchor", () => {
