@@ -133,7 +133,19 @@ _MODEL_TEMPLATE = """
         operation_mode="concept",
         classes=["person", "car", "dog"],
     )
-    dataset.apply_model(model, label_field="segmentations")
+    dataset.apply_model(model, label_field="segmentations_concept")
+
+    # Exemplar concept mode: find and segment object with text prompts and exemplar Detections
+    model = foz.load_zoo_model(
+        "{{ name }}",
+        operation_mode="concept",
+        classes=["person"],
+    )
+    dataset.apply_model(
+            model,
+            label_field=""segmentations_concept_with_exemplar",
+            prompt_field="person_detections", # contains exemplar Detections with positive / negative labels
+        )
 
     session = fo.launch_app(dataset)
 
@@ -171,7 +183,7 @@ _MODEL_TEMPLATE = """
     dataset.apply_model(
         model,
         label_field="segmentations",
-        prompt_field="frames.person_detections",  # exemplar Detections or Keypoints on frame 1
+        prompt_field="frames.person_detections",  # exemplar Detections on frame 1
     )
 
     # Visual mode: segment inside boxes and propagate to all frames
