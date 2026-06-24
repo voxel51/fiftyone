@@ -22,6 +22,19 @@ export interface SeedVideoAnnotationOptions {
    * existing track. Defaults to none (a clean slate, like `va-demo-bare`).
    */
   trackedSampleIndices?: number[];
+  /**
+   * Optional string attribute declared `dynamic` in the `frames.detections`
+   * schema (a dropdown over `values`) and seeded to `values[0]` on every frame
+   * of the tracked detection — so tests can exercise dynamic-attribute
+   * forward-fill propagation.
+   */
+  dynamicAttribute?: { name: string; values: string[] };
+  /**
+   * Multiple dynamic attributes (each a dropdown over its `values`, seeded to
+   * `values[0]` on every frame of the tracked detection). Use when a test needs
+   * more than one sub-track row. Takes precedence over {@link dynamicAttribute}.
+   */
+  dynamicAttributes?: Array<{ name: string; values: string[] }>;
 }
 
 /**
@@ -46,12 +59,18 @@ export class VideoAnnotateSDK {
       eventClasses = ["approach", "pass", "depart"],
       withEvents = true,
       trackedSampleIndices = [],
+      dynamicAttribute,
+      dynamicAttributes,
     } = options;
 
     const pyPaths = JSON.stringify(videoPaths);
     const pyClasses = JSON.stringify(classes);
     const pyEventClasses = JSON.stringify(eventClasses);
     const pyTracked = JSON.stringify(trackedSampleIndices);
+    // Normalize the singular + plural dynamic-attribute options into one list.
+    const dynAttrs =
+      dynamicAttributes ?? (dynamicAttribute ? [dynamicAttribute] : []);
+    const pyDynAttrs = JSON.stringify(dynAttrs);
 
     return this.loader.executePythonCode(`
 import fiftyone as fo
@@ -62,6 +81,7 @@ CLASSES = ${pyClasses}
 EVENT_CLASSES = ${pyEventClasses}
 WITH_EVENTS = ${withEvents ? "True" : "False"}
 TRACKED = set(${pyTracked})
+DYN_ATTRS = ${pyDynAttrs}
 DETECTIONS_FIELD = "detections"
 FRAME_DETECTIONS_PATH = "frames." + DETECTIONS_FIELD
 EVENTS_FIELD = "events"
@@ -96,6 +116,10 @@ dataset.add_frame_field(
 )
 dataset.add_frame_field("detections.detections.keyframe", fo.BooleanField)
 dataset.add_frame_field("detections.detections.propagation", fo.DictField)
+for a in DYN_ATTRS:
+    dataset.add_frame_field(
+        "detections.detections." + a["name"], fo.StringField
+    )
 
 # (4) sample-level TemporalDetections field.
 dataset.add_sample_field(
@@ -127,6 +151,7 @@ for sample in dataset.iter_samples(progress=False, autosave=True):
 for idx, sample in enumerate(dataset.iter_samples(progress=False, autosave=True)):
     if idx not in TRACKED:
         continue
+    dyn_kwargs = {a["name"]: a["values"][0] for a in DYN_ATTRS}
     for fn in range(1, total_frames(sample) + 1):
         sample.frames[fn]["detections"] = fo.Detections(
             detections=[
@@ -134,6 +159,7 @@ for idx, sample in enumerate(dataset.iter_samples(progress=False, autosave=True)
                     label=CLASSES[0],
                     bounding_box=[0.3, 0.3, 0.2, 0.2],
                     index=1,
+                    **dyn_kwargs,
                 )
             ]
         )
@@ -184,6 +210,16 @@ det_schema = {
     ],
     "classes": CLASSES,
 }
+for a in DYN_ATTRS:
+    det_schema["attributes"].append(
+        {
+            "name": a["name"],
+            "type": "str",
+            "component": "dropdown",
+            "values": a["values"],
+            "dynamic": True,
+        }
+    )
 dataset.update_label_schema(
     FRAME_DETECTIONS_PATH, det_schema, allow_new_attrs=True
 )
