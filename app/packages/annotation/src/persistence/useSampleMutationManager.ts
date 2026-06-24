@@ -74,7 +74,7 @@ export const useSampleMutationManager = (): SampleMutationManager => {
         return null;
       }
     },
-    [sample, stagedMutations]
+    [sample, stagedMutations],
   );
 
   const stageMutation = useCallback(
@@ -84,7 +84,7 @@ export const useSampleMutationManager = (): SampleMutationManager => {
         [path]: mutation,
       }));
     },
-    [setStagedMutations]
+    [setStagedMutations],
   );
 
   const reset = useCallback(() => {
@@ -140,6 +140,6 @@ export const useSampleMutationManager = (): SampleMutationManager => {
       stagedMutations,
       stageMutation,
     }),
-    [getPathValue, reset, stagedMutations, stageMutation]
+    [getPathValue, reset, stagedMutations, stageMutation],
   );
 };
