@@ -184,10 +184,7 @@ export const AnnotationTips = ({
       </TipsContent>
 
       <TipsActions>
-        <TipsButton $variant="primary" onClick={handleCancel}>
-          Got it
-        </TipsButton>
-        <TipsButton $variant="secondary" onClick={handleDoNotShowAgain}>
+        <TipsButton $variant="primary" onClick={handleDoNotShowAgain}>
           Don't show again
         </TipsButton>
       </TipsActions>
