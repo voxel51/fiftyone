@@ -133,6 +133,8 @@ export const useCameraViews = ({
   const setIsFo3dBackgroundOn = useSetRecoilState(isFo3dBackgroundOnAtom);
 
   const workingLabel = useWorkingLabel(selectedLabelForAnnotation?._id ?? "");
+  const shouldReserveTForCuboidTransform =
+    mode === "annotate" && isDetection3dOverlay(selectedLabelForAnnotation);
 
   // We use current camera position and look at point to calculate the camera position
   // with some reasonable constraints.
@@ -239,7 +241,11 @@ export const useCameraViews = ({
         return;
       }
 
-      if (!event.metaKey && event.code === "KeyT") {
+      if (
+        !event.metaKey &&
+        event.code === "KeyT" &&
+        !shouldReserveTForCuboidTransform
+      ) {
         setCameraViewStatus({
           viewName: "Top view",
           timestamp: Date.now(),
@@ -424,6 +430,7 @@ export const useCameraViews = ({
       setCameraViewStatus,
       annotationPlane,
       enableAnnotationPlaneCameraView,
+      shouldReserveTForCuboidTransform,
       selectedLabelForAnnotation,
       workingLabel,
       cameraControlsRef,

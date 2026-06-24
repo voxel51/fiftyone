@@ -107,25 +107,32 @@ export const useAnnotationActions = () => {
     [setTransformMode],
   );
 
+  const isCuboidSelectedForAnnotation = isDetection3dOverlay(
+    selectedLabelForAnnotation
+  );
+
   const canUseCuboidTransformShortcuts = useCallback(() => {
     return (
-      currentArchetypeSelectedForTransform === "cuboid" &&
-      selectedLabelForAnnotation !== null &&
-      isDetection3dOverlay(selectedLabelForAnnotation) &&
-      !isActivelySegmenting
+      isCuboidSelectedForAnnotation &&
+      !isActivelySegmenting &&
+      !isCreatingCuboid
     );
-  }, [
-    currentArchetypeSelectedForTransform,
-    selectedLabelForAnnotation,
-    isActivelySegmenting,
-  ]);
+  }, [isCuboidSelectedForAnnotation, isActivelySegmenting, isCreatingCuboid]);
+
+  const handleCuboidTransformShortcut = useCallback(
+    (mode: TransformMode) => {
+      setCurrentArchetypeSelectedForTransform("cuboid");
+      setTransformMode(mode);
+    },
+    [setCurrentArchetypeSelectedForTransform, setTransformMode]
+  );
 
   const transformKeyBindings = useMemo<KeyBinding[]>(
     () => [
       {
         commandId: "looker-3d.annotation.transform.translate",
         sequence: "t",
-        handler: () => handleTransformModeChange("translate"),
+        handler: () => handleCuboidTransformShortcut("translate"),
         label: "Translate cuboid",
         description: "Switch selected cuboid to translate mode.",
         enablement: canUseCuboidTransformShortcuts,
@@ -134,7 +141,7 @@ export const useAnnotationActions = () => {
       {
         commandId: "looker-3d.annotation.transform.scale",
         sequence: "s",
-        handler: () => handleTransformModeChange("scale"),
+        handler: () => handleCuboidTransformShortcut("scale"),
         label: "Scale cuboid",
         description: "Switch selected cuboid to scale mode.",
         enablement: canUseCuboidTransformShortcuts,
@@ -143,14 +150,14 @@ export const useAnnotationActions = () => {
       {
         commandId: "looker-3d.annotation.transform.rotate",
         sequence: "r",
-        handler: () => handleTransformModeChange("rotate"),
+        handler: () => handleCuboidTransformShortcut("rotate"),
         label: "Rotate cuboid",
         description: "Switch selected cuboid to rotate mode.",
         enablement: canUseCuboidTransformShortcuts,
         priority: CUBOID_TRANSFORM_SHORTCUT_PRIORITY,
       },
     ],
-    [canUseCuboidTransformShortcuts, handleTransformModeChange]
+    [canUseCuboidTransformShortcuts, handleCuboidTransformShortcut]
   );
 
   useKeyBindings(KnownContexts.ModalAnnotate, transformKeyBindings, [

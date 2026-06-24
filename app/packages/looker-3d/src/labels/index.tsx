@@ -295,7 +295,7 @@ export const ThreeDLabels = ({
     [coloring, labelTagColors, customizeColorSetting]
   );
   const shouldDimLabelsForCreation =
-    mode === fos.ModalMode.ANNOTATE && isCreatingCuboid;
+    !isMainPanel && mode === fos.ModalMode.ANNOTATE && isCreatingCuboid;
   const effectiveUnfocusedLabelOpacity =
     unfocusedLabelOpacity ??
     (shouldDimLabelsForCreation ? UNFOCUSED_LABEL_OPACITY : undefined);

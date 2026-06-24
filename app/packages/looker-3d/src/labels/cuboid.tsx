@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import { useCursor } from "@react-three/drei";
+import { Line, useCursor } from "@react-three/drei";
 import { extend, useThree, type ThreeEvent } from "@react-three/fiber";
 import chroma from "chroma-js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -39,9 +39,10 @@ import { Transformable } from "./shared/TransformControls";
 
 extend({ LineSegments2, LineMaterial, LineSegmentsGeometry });
 
-const FACE_RESIZE_HIGHLIGHT_COLOR = "#5f5f5f";
+const FACE_RESIZE_EDGE_COLOR = "#ff2f2f";
 const FACE_RESIZE_HIGHLIGHT_OPACITY = 0.78;
 const FACE_RESIZE_HIGHLIGHT_OFFSET = 1e-4;
+const FACE_RESIZE_EDGE_LINE_WIDTH = 2;
 
 type PointerCaptureTarget = EventTarget & {
   setPointerCapture?: (pointerId: number) => void;
@@ -106,6 +107,15 @@ const getFaceResizeHighlightProps = (
     args: [dimensionMagnitudes[0], dimensionMagnitudes[1]] as [number, number],
   };
 };
+
+const getFaceResizeEdgePoints = ([width, height]: [number, number]) =>
+  [
+    [-width / 2, -height / 2, 0],
+    [width / 2, -height / 2, 0],
+    [width / 2, height / 2, 0],
+    [-width / 2, height / 2, 0],
+    [-width / 2, -height / 2, 0],
+  ] as THREE.Vector3Tuple[];
 
 export interface CuboidProps extends OverlayProps {
   location: THREE.Vector3Tuple;
@@ -667,7 +677,7 @@ export const Cuboid = ({
           >
             <planeGeometry args={args} />
             <meshBasicMaterial
-              color={FACE_RESIZE_HIGHLIGHT_COLOR}
+              color={color}
               transparent
               opacity={0}
               side={THREE.DoubleSide}
@@ -677,25 +687,33 @@ export const Cuboid = ({
         ))}
 
         {faceResizeHighlightProps && (
-          <mesh
+          <group
             position={faceResizeHighlightProps.position}
             rotation={faceResizeHighlightProps.rotation}
             renderOrder={1}
-            raycast={() => null}
           >
-            <planeGeometry args={faceResizeHighlightProps.args} />
-            <meshBasicMaterial
-              color={FACE_RESIZE_HIGHLIGHT_COLOR}
-              transparent
-              opacity={FACE_RESIZE_HIGHLIGHT_OPACITY}
-              side={THREE.DoubleSide}
+            <mesh raycast={() => null}>
+              <planeGeometry args={faceResizeHighlightProps.args} />
+              <meshBasicMaterial
+                color={color}
+                transparent
+                opacity={FACE_RESIZE_HIGHLIGHT_OPACITY}
+                side={THREE.DoubleSide}
+                depthTest={false}
+                depthWrite={false}
+                polygonOffset
+                polygonOffsetFactor={-1}
+                polygonOffsetUnits={-1}
+              />
+            </mesh>
+            <Line
+              points={getFaceResizeEdgePoints(faceResizeHighlightProps.args)}
+              color={FACE_RESIZE_EDGE_COLOR}
+              lineWidth={FACE_RESIZE_EDGE_LINE_WIDTH}
               depthTest={false}
-              depthWrite={false}
-              polygonOffset
-              polygonOffsetFactor={-1}
-              polygonOffsetUnits={-1}
+              raycast={() => null}
             />
-          </mesh>
+          </group>
         )}
 
         {shouldShowWireframe && (
