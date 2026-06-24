@@ -1,12 +1,21 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
+ *
+ * Mask decode dispatcher. Produces a color-INDEPENDENT white+alpha
+ * `ImageBitmap` (for GPU tinting) plus single-channel hit-test pixels. The
+ * decode + rasterize + `ImageBitmap` creation run in `maskDecodeWorker`
+ * off the main thread when Workers are available, with a main-thread fallback
+ * (SSR, tests, CSP-blocked workers, or a worker crash).
+ *
+ * The bitmap encodes only the mask SHAPE — opaque white where present,
+ * transparent elsewhere — so the display color is applied at draw time via the
+ * renderer's per-sprite tint and a color change never re-decodes.
  */
 
-import {
-  ARRAY_TYPES,
-  deserialize,
-  type OverlayMask,
-} from "@fiftyone/looker/src/numpy";
+import type { OverlayMask } from "@fiftyone/looker/src/numpy";
+
+import { decodeMaskToRaster } from "./maskRaster";
+import type { MaskDecodeResponse } from "./maskDecodeWorker";
 
 export interface DecodedMask {
   bitmap: ImageBitmap;
@@ -14,89 +23,126 @@ export interface DecodedMask {
   rawPixels: { src: Uint8Array; width: number; height: number };
 }
 
+// ---- worker plumbing ----
+
+let worker: Worker | undefined;
+let nextId = 1;
+const pending = new Map<
+  string,
+  { resolve: (mask: DecodedMask) => void; reject: (err: Error) => void }
+>();
+
+const supportsWorkers = (): boolean =>
+  typeof Worker !== "undefined" && typeof window !== "undefined";
+
+const ensureWorker = (): Worker | undefined => {
+  if (worker) {
+    return worker;
+  }
+  if (!supportsWorkers()) {
+    return undefined;
+  }
+
+  try {
+    worker = new Worker(new URL("./maskDecodeWorker.ts", import.meta.url), {
+      type: "module",
+    });
+  } catch (err) {
+    // `new Worker` can throw synchronously (e.g. CSP `worker-src`). Fall back
+    // to the main thread instead of failing the decode.
+    console.error("[decodeMask] worker unavailable; main-thread decode:", err);
+    worker = undefined;
+    return undefined;
+  }
+
+  worker.addEventListener(
+    "message",
+    (event: MessageEvent<MaskDecodeResponse>) => {
+      // Destructure once so the discriminated union narrows on `data.ok`.
+      const data = event.data;
+      const job = pending.get(data.uuid);
+      if (!job) {
+        return;
+      }
+      pending.delete(data.uuid);
+
+      if (data.ok) {
+        job.resolve({
+          bitmap: data.bitmap,
+          rawPixels: {
+            src: data.rawPixels,
+            width: data.width,
+            height: data.height,
+          },
+        });
+      } else {
+        // `in`-narrow (the union discriminant doesn't narrow under this
+        // package's tsconfig — cf. maskPathDecoding).
+        job.reject(
+          new Error("error" in data ? data.error : "mask rasterize failed")
+        );
+      }
+    }
+  );
+
+  worker.addEventListener("error", (event) => {
+    // Worker died: fail everyone in flight (callers fall back) and drop the
+    // instance so the next decode respawns.
+    console.error("[decodeMask] worker crashed; respawning:", event);
+    for (const job of pending.values()) {
+      job.reject(new Error("mask rasterize worker crashed"));
+    }
+    pending.clear();
+    worker?.terminate();
+    worker = undefined;
+  });
+
+  return worker;
+};
+
+const decodeViaWorker = (
+  w: Worker,
+  maskData: string | OverlayMask
+): Promise<DecodedMask> =>
+  new Promise((resolve, reject) => {
+    const uuid = String(nextId++);
+    pending.set(uuid, { resolve, reject });
+    w.postMessage({ uuid, maskData });
+  });
+
+const decodeOnMainThread = async (
+  maskData: string | OverlayMask
+): Promise<DecodedMask> => {
+  const { rgba, width, height, rawPixels } = decodeMaskToRaster(maskData);
+  const bitmap = await createImageBitmap(
+    new ImageData(new Uint8ClampedArray(rgba), width, height)
+  );
+  return { bitmap, rawPixels: { src: rawPixels, width, height } };
+};
+
 /**
- * Decodes a mask source into a color-INDEPENDENT white+alpha ImageBitmap
- * ready for GPU tinting, alongside the raw single-channel pixel data for
- * hit-testing.
+ * Decode + rasterize a mask source. Runs off the main thread via
+ * `maskDecodeWorker` when possible; falls back to the main thread when
+ * Workers are unavailable or the worker fails.
  *
- * The bitmap encodes only the mask SHAPE — opaque white where the mask is
- * present, transparent elsewhere. The display color is applied at draw time
- * via the renderer's per-sprite tint (`white × tint = tint`), so a color or
- * colorscheme change never re-decodes or re-rasterizes; it just re-tints.
- *
- * Accepts either a base64-encoded numpy string (inline `mask` field) or a
- * pre-decoded {@link OverlayMask} (e.g. produced from a `mask_path` fetch).
- * The string path runs the full base64 → inflate → numpy parse pipeline; the
- * `OverlayMask` path skips straight to rasterizing.
- *
- * @param maskData - Base64-encoded compressed numpy string, or a decoded
- *   {@link OverlayMask}.
+ * @param maskData - Base64-encoded compressed numpy string (inline `mask`), or
+ *   a pre-decoded {@link OverlayMask} (`mask_path`).
  */
 export async function decodeMask(
   maskData: string | OverlayMask
 ): Promise<DecodedMask> {
-  const overlayMask =
-    typeof maskData === "string" ? deserialize(maskData) : maskData;
-  const rgbaBuffer = rasterizeMaskAlpha(overlayMask);
-  const [height, width] = overlayMask.shape;
-  const imageData = new ImageData(
-    new Uint8ClampedArray(rgbaBuffer),
-    width,
-    height
-  );
-  const bitmap = await createImageBitmap(imageData);
-
-  const ArrayType = ARRAY_TYPES[overlayMask.arrayType];
-  if (!ArrayType) {
-    throw new Error(`Unsupported mask array type: ${overlayMask.arrayType}`);
+  const w = ensureWorker();
+  if (!w) {
+    return decodeOnMainThread(maskData);
   }
 
-  const typed = new ArrayType(overlayMask.buffer);
-  const src = new Uint8Array(typed.length);
-  for (let i = 0; i < typed.length; i++) {
-    src[i] = typed[i] ? 1 : 0;
-  }
-
-  return { bitmap, rawPixels: { src, width, height } };
-}
-
-/**
- * Rasterizes a single-channel mask into a color-INDEPENDENT RGBA buffer:
- * non-zero mask values become opaque white, zero values stay transparent.
- * The display color is applied later via GPU tint, so this never bakes a
- * color in and never needs to re-run on a color change.
- */
-function rasterizeMaskAlpha(mask: OverlayMask): ArrayBuffer {
-  if (mask.channels !== 1) {
-    throw new Error(`Expected single-channel mask, got ${mask.channels}`);
-  }
-
-  const [height, width] = mask.shape;
-  const rgbaBuffer = new ArrayBuffer(width * height * 4);
-  const overlay = new Uint32Array(rgbaBuffer);
-
-  // Opaque white (RGBA 255,255,255,255 → 0xFFFFFFFF in any byte order).
-  const WHITE = 0xffffffff;
-  const ArrayType = ARRAY_TYPES[mask.arrayType];
-
-  if (!ArrayType) {
-    throw new Error(`Unsupported mask array type: ${mask.arrayType}`);
-  }
-
-  const targets = new ArrayType(mask.buffer);
-  const expectedPixels = width * height;
-
-  if (targets.length !== expectedPixels) {
-    throw new Error(
-      `Mask payload length mismatch: expected ${expectedPixels}, got ${targets.length}`
+  try {
+    return await decodeViaWorker(w, maskData);
+  } catch (err) {
+    console.error(
+      "[decodeMask] worker decode failed; main-thread fallback:",
+      err
     );
+    return decodeOnMainThread(maskData);
   }
-
-  for (let i = 0; i < expectedPixels; i++) {
-    if (targets[i]) {
-      overlay[i] = WHITE;
-    }
-  }
-
-  return rgbaBuffer;
 }
