@@ -1,17 +1,30 @@
 .root {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .row {
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+.optionStack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.metaText,
+.emptyText {
+  color: var(--color-content-text-muted);
+  font-size: 11px;
+  line-height: 1.25;
 }

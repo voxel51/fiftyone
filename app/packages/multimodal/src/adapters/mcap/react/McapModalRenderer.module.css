@@ -17,3 +17,8 @@
 .stateError {
   color: var(--color-content-text-destructive);
 }
+
+.captionText {
+  color: var(--color-content-text-muted);
+  font-size: 11px;
+}

@@ -5,11 +5,12 @@ import {
   TilingInspectorSidebar,
   TilingProvider,
   useTiling,
+  type TilingHeaderCaption,
   type TilingTile,
 } from "@fiftyone/tiling";
 import { Drawer } from "@voxel51/voodo";
 import clsx from "clsx";
-import React, { useState, type ReactNode } from "react";
+import React, { useCallback, useState, type ReactNode } from "react";
 import type { MosaicNode } from "react-mosaic-component";
 import {
   PlaybackProvider,
@@ -25,10 +26,13 @@ import {
 import styles from "./MultiModalPlayback.module.css";
 
 const EMPTY_SOURCES: readonly SceneSource[] = [];
+const SIDEBAR_SIZE_PX = 360;
 
 export interface MultiModalPlaybackProps {
   /** Filename rendered on the left of the top bar. */
   fileName: string;
+  /** Optional caption rendered below the filename in the top bar. */
+  headerCaption?: TilingHeaderCaption;
 
   /** Tracks broadcast through the embedded TrackProvider. */
   tracks?: Track[];
@@ -120,6 +124,7 @@ export interface MultiModalPlaybackProps {
  */
 const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   fileName,
+  headerCaption,
   tracks,
   defaultPinnedTrackIds,
   initialTiles,
@@ -150,6 +155,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
             {children}
             <Layout
               fileName={fileName}
+              headerCaption={headerCaption}
               leftSidebar={leftSidebar}
               rightSidebar={rightSidebar}
               defaultLeftOpen={defaultLeftOpen}
@@ -169,6 +175,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
 
 interface LayoutProps {
   fileName: string;
+  headerCaption?: TilingHeaderCaption;
   leftSidebar: ReactNode;
   rightSidebar: ReactNode;
   defaultLeftOpen: boolean;
@@ -182,6 +189,7 @@ interface LayoutProps {
 
 function Layout({
   fileName,
+  headerCaption,
   leftSidebar,
   rightSidebar,
   defaultLeftOpen,
@@ -205,11 +213,20 @@ function Layout({
     setRightOpen(open);
     onRightOpenChange?.(open);
   };
+  // Re-selecting the focused tile clears focus (toggle off); "action" reasons
+  // (close/fullscreen) always focus without toggling.
+  const handleFocusTile = useCallback(
+    (id: string, reason: "select" | "action") => {
+      setFocusedTileId(reason === "select" && focusedTileId === id ? null : id);
+    },
+    [focusedTileId, setFocusedTileId]
+  );
 
   return (
     <div className={clsx(styles.root, className)}>
       <TilingHeader
         fileName={fileName}
+        headerCaption={headerCaption}
         leftSidebarOpen={leftOpen}
         rightSidebarOpen={rightOpen}
         onToggleLeftSidebar={() => updateLeftOpen(!leftOpen)}
@@ -220,11 +237,11 @@ function Layout({
         <Drawer
           side="left"
           mode="push"
-          maxSize={500}
+          maxSize={SIDEBAR_SIZE_PX}
           open={leftOpen}
           onOpenChange={updateLeftOpen}
         >
-          {leftSidebar}
+          <div className={styles.sidebarPane}>{leftSidebar}</div>
         </Drawer>
 
         <div className={styles.main}>
@@ -233,18 +250,18 @@ function Layout({
             value={layout}
             onChange={setLayout}
             focusedTileId={focusedTileId}
-            onFocusTile={setFocusedTileId}
+            onFocusTile={handleFocusTile}
           />
         </div>
 
         <Drawer
           side="right"
           mode="push"
-          maxSize={500}
+          maxSize={SIDEBAR_SIZE_PX}
           open={rightOpen}
           onOpenChange={updateRightOpen}
         >
-          {rightSidebar}
+          <div className={styles.sidebarPane}>{rightSidebar}</div>
         </Drawer>
       </div>
 
