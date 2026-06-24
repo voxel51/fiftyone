@@ -1,9 +1,8 @@
 import { LoadingDots } from "@fiftyone/components";
-import { AggregationQueryTimeout } from "@fiftyone/state";
 import React, { Suspense } from "react";
 import type { RecoilValue } from "recoil";
 import { constSelector, useRecoilValue, useRecoilValueLoadable } from "recoil";
-import TimedOut from "../Common/TimedOut";
+import TimedOutCounts, { isAggregationTimeout } from "../Common/TimedOutCounts";
 
 const CONST_SELECTOR = constSelector(null);
 
@@ -56,14 +55,26 @@ const EntryCountsContainer = ({
   countAtom?: RecoilValue<number | null>;
   subcountAtom?: RecoilValue<number | null>;
 }) => {
-  // only subcounts have a timeout
+  const countResult = useRecoilValueLoadable(countAtom);
   const subResult = useRecoilValueLoadable(subcountAtom);
 
-  if (
-    subResult.state === "hasError" &&
-    subResult.contents instanceof AggregationQueryTimeout
-  ) {
-    return <TimedOut queryTime={subResult.contents.queryTime} />;
+  // a timed-out count for this path shows a marker instead of erroring the page;
+  // other fields keep their counts. Surface non-timeout errors first so a timeout
+  // on one loadable can't mask a real error on the other; only fall back to the
+  // marker once every observed error is timeout-classified.
+  let timedOut = false;
+  for (const result of [countResult, subResult]) {
+    if (result.state === "hasError") {
+      if (isAggregationTimeout(result.contents)) {
+        timedOut = true;
+      } else {
+        throw result.contents;
+      }
+    }
+  }
+
+  if (timedOut) {
+    return <TimedOutCounts />;
   }
 
   return <EntryCounts countAtom={countAtom} subcountAtom={subcountAtom} />;

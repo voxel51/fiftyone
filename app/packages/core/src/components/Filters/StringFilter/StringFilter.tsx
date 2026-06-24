@@ -4,6 +4,7 @@ import React from "react";
 import type { RecoilState } from "recoil";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
+import TimedOutCounts from "../../Common/TimedOutCounts";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import { isInKeypointsField } from "../state";
 import useIncompleteResults from "../use-incomplete-results";
@@ -72,7 +73,7 @@ const StringFilter = ({
   const name = useName(path);
   const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
   const field = useRecoilValue(fos.field(path));
-  const { results, showSearch, useSearch } = useSelected(
+  const { results, showSearch, useSearch, timedOut } = useSelected(
     modal,
     path,
     resultsAtom
@@ -85,7 +86,7 @@ const StringFilter = ({
   const footer = useIncompleteResults(path);
   const icon = useQueryPerformanceIcon(modal, named, path, color);
   const queryPerformance = useRecoilValue(fos.queryPerformance);
-  if (named && (!queryPerformance || modal) && !results?.count) {
+  if (!timedOut && named && (!queryPerformance || modal) && !results?.count) {
     return null;
   }
 
@@ -102,7 +103,7 @@ const StringFilter = ({
           template={({ label, hoverTarget }) => (
             <NamedStringFilterHeader>
               <span ref={hoverTarget}>{label}</span>
-              {icon}
+              {timedOut ? <TimedOutCounts /> : icon}
             </NamedStringFilterHeader>
           )}
         />

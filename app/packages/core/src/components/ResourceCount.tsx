@@ -6,6 +6,7 @@ import {
 import React from "react";
 import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
+import AggregationGuard from "./Common/AggregationGuard";
 import TimedOut from "./Common/TimedOut";
 import { PathEntryCounts } from "./Sidebar/Entries/EntryCounts";
 
@@ -37,10 +38,30 @@ const ResourceCount = () => {
     return <TimedOut queryTime={result.contents.queryTime} />;
   }
 
-  return groupStats === "group" && !queryPerformance ? (
-    <GroupsCount />
-  ) : (
-    <Count />
+  return (
+    <AggregationGuard fallback={<CountFallback />}>
+      {groupStats === "group" && !queryPerformance ? (
+        <GroupsCount />
+      ) : (
+        <Count />
+      )}
+    </AggregationGuard>
+  );
+};
+
+// on a timed-out total, fall back to the dataset's estimated sample count so the
+// footer still renders and the rest of the app keeps working
+const CountFallback = () => {
+  const element = useRecoilValue(fos.elementNames);
+  const total = useRecoilValue(fos.datasetSampleCount);
+
+  return (
+    <RightDiv data-cy="entry-counts">
+      <div style={{ whiteSpace: "nowrap" }}>
+        {total?.toLocaleString()}{" "}
+        {total === 1 ? element.singular : element.plural}
+      </div>
+    </RightDiv>
   );
 };
 

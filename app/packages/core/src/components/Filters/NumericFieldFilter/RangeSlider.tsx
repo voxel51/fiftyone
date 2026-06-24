@@ -1,8 +1,11 @@
 import * as fos from "@fiftyone/state";
 import { formatPrimitive } from "@fiftyone/utilities";
 import React, { useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
+import TimedOutCounts, {
+  isAggregationTimeout,
+} from "../../Common/TimedOutCounts";
 import CommonRangeSlider from "../../Common/RangeSlider";
 import Box from "./Box";
 import FilterOption from "./FilterOption";
@@ -44,12 +47,52 @@ const RangeSlider = ({
   const key = path.replace(/[ ,.]/g, "-");
   const excluded = useRecoilValue(fos.numericExcludeAtom({ modal, path }));
   const defaultRange = useRecoilValue(state.hasDefaultRange({ modal, path }));
-  const one = useRecoilValue(state.oneBound({ path, modal }));
+  const oneLoadable = useRecoilValueLoadable(state.oneBound({ path, modal }));
   const timeZone = useRecoilValue(fos.timeZone);
-  const hasBounds = useRecoilValue(state.hasBounds({ path, modal }));
+  const hasBoundsLoadable = useRecoilValueLoadable(
+    state.hasBounds({ path, modal })
+  );
+  const noResults = useNoResults(path);
+
+  // a timed-out bounds aggregation degrades to manual min/max inputs (no slider);
+  // preserve Suspense while loading and rethrow unrelated errors
+  let timedOut = false;
+  for (const loadable of [oneLoadable, hasBoundsLoadable]) {
+    if (loadable.state === "loading") {
+      throw loadable.contents;
+    }
+    if (loadable.state === "hasError") {
+      if (isAggregationTimeout(loadable.contents)) {
+        timedOut = true;
+      } else {
+        throw loadable.contents;
+      }
+    }
+  }
+
+  if (timedOut) {
+    return (
+      <Container
+        ref={containerRef}
+        onMouseDown={(e) => e.stopPropagation()}
+        style={{ cursor: "default" }}
+        data-cy={`numeric-slider-container-${key}`}
+      >
+        {/* signal why the slider is absent; manual inputs still drive filtering */}
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <TimedOutCounts text="Range bounds timed out. Use the min/max inputs to filter this field." />
+        </div>
+        <Inputs modal={modal} path={path} color={color} />
+        <FilterOption color={color} modal={modal} path={path} />
+        <Reset color={color} modal={modal} path={path} />
+      </Container>
+    );
+  }
+
+  const one = oneLoadable.contents as number | null;
+  const hasBounds = hasBoundsLoadable.contents as boolean;
   const showSlider = hasBounds && !(excluded && defaultRange);
 
-  const noResults = useNoResults(path);
   if (!hasBounds && noResults) {
     return (
       <Box>
