@@ -606,8 +606,10 @@ export const getEventSource = (
                 requestHeaders: init?.headers ?? {},
                 responseHeaders: response.headers,
                 statusText: response.statusText,
+                stack: (err as unknown as { stack?: string }).stack,
               },
-              (err as unknown as { stack: string }).stack
+              (err as unknown as { message?: string }).message ??
+                `${response.status} ${response.url}`
             );
           }
 

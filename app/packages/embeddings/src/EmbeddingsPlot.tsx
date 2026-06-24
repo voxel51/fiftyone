@@ -87,7 +87,7 @@ export function EmbeddingsPlot({
           data={data as Data[]}
           style={{ zIndex: 1 }}
           onSelected={(selected) => {
-            if (!selected || selected?.points?.length === 0) return;
+            if (!selected?.points?.length) return;
 
             const result: Record<string, string[]> = {};
             const pointIds: string[] = [];
