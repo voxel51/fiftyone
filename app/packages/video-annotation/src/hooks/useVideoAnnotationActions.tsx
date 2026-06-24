@@ -54,6 +54,11 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
   const selectedIds = useMemo(() => Array.from(selected), [selected]);
   const hasSelection = selectedIds.length > 0;
 
+  // split needs one track + a playhead frame; merge needs exactly two
+  const canSplit =
+    selectedIds.length === 1 && Number.isFinite(fps) && !!fps && fps > 0;
+  const canMerge = selectedIds.length === 2;
+
   // Recomputed each playhead tick / selection change so the Propagate
   // affordance reflects the current frame's bracketing keyframes. When
   // disabled, `reason` becomes the tooltip — the "why can't I propagate?"
@@ -129,6 +134,40 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
               );
             },
           },
+          {
+            id: "split-track",
+            label: "Split",
+            icon: <Icon name={IconName.UnfoldMore} size={Size.Sm} />,
+            tooltip: canSplit
+              ? "Split the selected track at this frame"
+              : "Select one track to split it at the playhead",
+            isDisabled: !canSplit,
+            onClick: () => {
+              if (!canSplit || !fps) {
+                return;
+              }
+
+              actions.splitTrack(selectedIds[0], frameAt(playhead, fps));
+            },
+          },
+          {
+            id: "merge-tracks",
+            label: "Merge",
+            icon: <Icon name={IconName.Workspaces} size={Size.Sm} />,
+            // direction is ambiguous from a selection set, so fix a rule: the
+            // first-selected merges into the last-selected, which survives
+            tooltip: canMerge
+              ? "Merge the two selected tracks (keeps the later selection)"
+              : "Select two tracks to merge them",
+            isDisabled: !canMerge,
+            onClick: () => {
+              if (!canMerge) {
+                return;
+              }
+
+              actions.mergeTracks(selectedIds[0], selectedIds[1]);
+            },
+          },
         ],
       },
     ],
@@ -136,6 +175,8 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
       actions,
       propagate,
       canCreateTd,
+      canMerge,
+      canSplit,
       fps,
       hasSelection,
       playhead,

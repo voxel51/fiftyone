@@ -38,6 +38,19 @@ export interface VideoSurfaceActions {
     trackId: string,
     attributes: Record<string, unknown>
   ): void;
+  /**
+   * Split this track at `atFrame`: frames `>= atFrame` are re-keyed onto a
+   * fresh instance (a distinct object); the original keeps frames `< atFrame`.
+   * One undo unit. No-ops on a legacy/non-instance track or an empty tail.
+   */
+  splitTrack(trackId: string, atFrame: number): void;
+  /**
+   * Merge `sourceTrackId` into `targetTrackId`: the source's frames are
+   * re-keyed onto the target's instance, target-wins on overlapping frames
+   * (the source box is dropped there). One undo unit. No-ops on a
+   * legacy/non-instance track or a self-merge.
+   */
+  mergeTracks(sourceTrackId: string, targetTrackId: string): void;
   /** Create a sample-level TemporalDetection; returns its id (the new instanceId). */
   createTemporalDetection(
     fieldPath: string,
@@ -304,6 +317,115 @@ const makeTrackOps = (
   };
 };
 
+/** A frame's detection paired with its number, for stable-snapshot passes. */
+type FrameDetection = { frame: number; det: LabelData };
+
+/**
+ * Instance-level track identity rewrites (split / merge). Each re-keys frames
+ * by composing `deleteLabel` (old instance) + `updateLabel` (new instance,
+ * born under the target id) inside one transaction — one undo unit. The engine
+ * refuses identity edits via `updateLabel`, so re-keying is delete + recreate;
+ * the per-frame doc `_id` is re-minted (it links nothing — `instance._id` is
+ * the track key).
+ */
+const makeTrackIdentityOps = (
+  ctx: ReadyContext,
+  actions: SurfaceActions,
+  eventBus: AnnotationEventBus,
+  reader: FrameReader,
+  engine: AnnotationEngine
+) => {
+  const { path } = ctx;
+  const { read, content, trackFrames } = reader;
+
+  /** A track's frames with detections read up front, for a stable snapshot. */
+  const snapshot = (
+    instanceId: string,
+    keep: (frame: number) => boolean
+  ): FrameDetection[] =>
+    trackFrames(instanceId)
+      .filter(keep)
+      .map((frame) => ({ frame, det: read(instanceId, frame) }))
+      .filter((s): s is FrameDetection => !!s.det);
+
+  const splitTrack = (trackId: string, atFrame: number): void => {
+    const instanceId = instanceIdFromTrackId(trackId);
+
+    if (!instanceId) {
+      return;
+    }
+
+    const tail = snapshot(instanceId, (frame) => frame >= atFrame);
+
+    if (tail.length === 0) {
+      return;
+    }
+
+    const newInstanceId = engine.mintInstanceId();
+
+    actions.transaction(() => {
+      for (const { frame, det } of tail) {
+        actions.deleteLabel({ path, instanceId, frame });
+        actions.updateLabel(
+          { path, instanceId: newInstanceId, frame },
+          content(det)
+        );
+      }
+    });
+
+    eventBus.dispatch("annotation:trackSplit", {
+      trackId,
+      instanceId,
+      newInstanceId,
+      atFrame,
+    });
+  };
+
+  const mergeTracks = (sourceTrackId: string, targetTrackId: string): void => {
+    const sourceInstanceId = instanceIdFromTrackId(sourceTrackId);
+    const targetInstanceId = instanceIdFromTrackId(targetTrackId);
+
+    if (
+      !sourceInstanceId ||
+      !targetInstanceId ||
+      sourceInstanceId === targetInstanceId
+    ) {
+      return;
+    }
+
+    const occupied = new Set(trackFrames(targetInstanceId));
+    const sources = snapshot(sourceInstanceId, () => true);
+
+    if (sources.length === 0) {
+      return;
+    }
+
+    actions.transaction(() => {
+      for (const { frame, det } of sources) {
+        // target-wins: always drop the source box; only re-stamp onto the
+        // target where it has no box on this frame
+        actions.deleteLabel({ path, instanceId: sourceInstanceId, frame });
+
+        if (!occupied.has(frame)) {
+          actions.updateLabel(
+            { path, instanceId: targetInstanceId, frame },
+            content(det)
+          );
+        }
+      }
+    });
+
+    eventBus.dispatch("annotation:trackMerged", {
+      sourceTrackId,
+      targetTrackId,
+      sourceInstanceId,
+      targetInstanceId,
+    });
+  };
+
+  return { splitTrack, mergeTracks };
+};
+
 /** Sample-level TemporalDetection ops (no frame on the ref). */
 const makeTemporalDetectionOps = (actions: SurfaceActions) => {
   const createTemporalDetection = (
@@ -388,13 +510,22 @@ export const useVideoSurfaceActions = (): VideoSurfaceActions => {
         shiftTrack: () => {},
         deleteTrack: () => {},
         updateTrackAttributes: () => {},
+        splitTrack: () => {},
+        mergeTracks: () => {},
         ...temporal,
       };
     }
 
     const reader = makeFrameReader(engine, ctx);
     const track = makeTrackOps(ctx, actions, eventBus, reader);
+    const identity = makeTrackIdentityOps(
+      ctx,
+      actions,
+      eventBus,
+      reader,
+      engine
+    );
 
-    return { ...track, ...temporal };
+    return { ...track, ...identity, ...temporal };
   }, [engine, actions, sampleId, stream, eventBus]);
 };
