@@ -9,7 +9,7 @@ import {
   useLighterEngineBridge,
 } from "@fiftyone/annotation";
 import { useCallback } from "react";
-import { useDatasetId } from "../state/accessors";
+import { useDatasetId, useVisibleLabelSchemas } from "../state/accessors";
 import { useCurrentFrameGetter } from "../state/useCurrentFrame";
 import { stashEstablishKey } from "../sync/establishKeyRelay";
 
@@ -32,6 +32,13 @@ export const useVideoLighterEngineBridge = (): void => {
   const sample = useActiveSampleId();
   const dataset = useDatasetId();
 
+  // The bridge's projection scope = the sidebar's visible set (annotation-active
+  // ∩ explore-active). Deactivating a frame field in the schema manager drops
+  // its path here, the bridge re-creates, and its overlays clear — the canvas
+  // now respects the active schema like the sidebar. Sample-level fields stay
+  // scoped too (a still-active temporal-detection field remains present).
+  const paths = useVisibleLabelSchemas();
+
   // referentially stable frame reader — a new identity would re-create the
   // bridge (clear + rehydrate); the playhead value is read live at call time
   const getFrame = useCurrentFrameGetter();
@@ -45,16 +52,17 @@ export const useVideoLighterEngineBridge = (): void => {
     [getFrame]
   );
 
-  // paths left unscoped: the composite store registers a single frame-detection
-  // field; sample-level temporal-detections carry no Lighter adapter, so the
-  // loop's kind filter drops them from hydration, but their select/hover events
-  // still route through the bridge (frame-less ref, instanceId == the TD `_id`).
-  // Stash each draw's gesture key by overlay id so the auto-extend can fold its
-  // filler into the draw's undo unit (one Ctrl-Z removes the whole drawn track).
+  // Sample-level temporal-detections carry no Lighter adapter, so the loop's
+  // kind filter drops them from hydration regardless of scope, but their
+  // select/hover events still route through the bridge (frame-less ref,
+  // instanceId == the TD `_id`). Stash each draw's gesture key by overlay id so
+  // the auto-extend can fold its filler into the draw's undo unit (one Ctrl-Z
+  // removes the whole drawn track).
   useLighterEngineBridge({
     engine,
     sample,
     dataset,
+    paths,
     frameOf,
     onEstablishCommit: stashEstablishKey,
   });

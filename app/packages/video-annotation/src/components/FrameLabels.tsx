@@ -25,6 +25,7 @@ import {
   useGroupSlice,
   useModalSampleId,
   useView,
+  useVisibleLabelSchemas,
 } from "../state/accessors";
 import { useTemporalOverlayVersion } from "../hooks/useTemporalOverlayVersion";
 import { useWarmupThenSeek } from "../hooks/useWarmupThenSeek";
@@ -205,7 +206,12 @@ function useFrameDerivedTracks(resolveColor: ObjectTrackColorResolver): {
   const stream = useFrameLabelsStream();
   const engine = useAnnotationEngine();
   const sampleId = useActiveSampleId();
+  const visible = useVisibleLabelSchemas();
   const path = stream ? `frames.${stream.labelsField}` : null;
+
+  // Gate the frame field's tracks on the sidebar's visible set — deactivating it
+  // in the schema manager hides its timeline rows, matching the canvas + sidebar.
+  const active = !!path && visible.has(path);
 
   const [tracks, setTracks] = useState<Track[]>([]);
   const [resolved, setResolved] = useState(false);
@@ -217,6 +223,13 @@ function useFrameDerivedTracks(resolveColor: ObjectTrackColorResolver): {
     if (!stream || !sampleId || !path) {
       setTracks([]);
       setResolved(false);
+      return undefined;
+    }
+
+    // Inactive field: no rows, but still resolved so TD-track pin bootstrap fires.
+    if (!active) {
+      setTracks([]);
+      setResolved(true);
       return undefined;
     }
 
@@ -244,7 +257,7 @@ function useFrameDerivedTracks(resolveColor: ObjectTrackColorResolver): {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- engineVersion is the invalidation signal
-  }, [engine, sampleId, path, stream, resolveColor, engineVersion]);
+  }, [engine, sampleId, path, active, stream, resolveColor, engineVersion]);
 
   return { tracks, resolved };
 }
@@ -264,6 +277,7 @@ function useTemporalDetectionTracks(
     bumpOnSceneReady: true,
   });
   const frameRate = getModalSampleFrameRate(sample);
+  const visible = useVisibleLabelSchemas();
 
   return useMemo(() => {
     if (!scene) {
@@ -278,9 +292,12 @@ function useTemporalDetectionTracks(
       return [];
     }
 
+    // Only overlays whose field is visible — a deactivated TD field drops its
+    // timeline rows, matching the canvas + sidebar.
     const temporalOverlays = scene
       .getAllOverlays()
-      .filter((o): o is TemporalOverlay => o instanceof TemporalOverlay);
+      .filter((o): o is TemporalOverlay => o instanceof TemporalOverlay)
+      .filter((o) => visible.has(o.field));
 
     return buildTemporalDetectionTracks({
       sample: buildVirtualTemporalSample(temporalOverlays),
@@ -288,7 +305,7 @@ function useTemporalDetectionTracks(
       resolveColor,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- tdVersion is the invalidation signal
-  }, [scene, frameRate, resolveColor, tdVersion]);
+  }, [scene, frameRate, resolveColor, tdVersion, visible]);
 }
 
 /** Build the row-color resolvers, kept in lock-step with the overlays. */
