@@ -54,6 +54,46 @@ export interface BrowserAnnotationProviderOptions {
   onError?: ErrorCallback;
 }
 
+/**
+ * Factory that returns the Worker backing the SAM2 inference pipeline.
+ */
+type WorkerFactory = () => Worker;
+
+declare global {
+  interface Window {
+    /**
+     * Test-only seam: when set on `window` before
+     * `BrowserAnnotationProvider.initialize()`, substitutes the SAM2 inference
+     * worker. Production builds and normal users never set this, so the
+     * default factory is used.
+     *
+     * The replacement worker MUST implement the same protocol as `worker.ts`:
+     *   - emit `{ type: "ready" }` once on startup
+     *   - respond to `init`, `loadModel`, `embedAndDecode` requests with
+     *     matching `{ id, type, success, result }` responses
+     *   - emit `status` / `progress` / `warning` / `error` notifications as
+     *     appropriate
+     *
+     * Used by Playwright specs that need deterministic SAM2 output without
+     * downloading or running the real ONNX model.
+     */
+    __FO_TEST_SAM2_WORKER_FACTORY?: WorkerFactory;
+  }
+}
+
+const defaultWorkerFactory: WorkerFactory = () =>
+  new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
+
+const resolveWorkerFactory = (): WorkerFactory => {
+  if (
+    typeof window !== "undefined" &&
+    typeof window.__FO_TEST_SAM2_WORKER_FACTORY === "function"
+  ) {
+    return window.__FO_TEST_SAM2_WORKER_FACTORY;
+  }
+  return defaultWorkerFactory;
+};
+
 export class BrowserAnnotationProvider implements AnnotationProvider {
   private worker: Worker | null = null;
   private nextId = 0;
@@ -90,9 +130,7 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
     this.onStatus?.("loading");
 
     try {
-      this.worker = new Worker(new URL("./worker.ts", import.meta.url), {
-        type: "module",
-      });
+      this.worker = resolveWorkerFactory()();
     } catch (err) {
       this.onStatus?.("failure");
       throw err;

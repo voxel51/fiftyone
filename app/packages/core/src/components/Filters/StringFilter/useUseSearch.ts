@@ -1,6 +1,9 @@
+import { useDebounceCallback } from "@fiftyone/state";
 import { useEffect } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { stringSearch, stringSearchResults } from "./state";
+
+const DEBOUNCE_DELAY = 200;
 
 export default function ({ modal, path }: { modal: boolean; path: string }) {
   return (search: string) => {
@@ -9,10 +12,11 @@ export default function ({ modal, path }: { modal: boolean; path: string }) {
     );
 
     const setSearch = useSetRecoilState(stringSearch({ modal, path }));
+    const debouncedSetSearch = useDebounceCallback(setSearch, DEBOUNCE_DELAY);
 
     useEffect(() => {
-      setSearch(search);
-    }, [search, setSearch]);
+      debouncedSetSearch(search);
+    }, [search, debouncedSetSearch]);
 
     return {
       values,

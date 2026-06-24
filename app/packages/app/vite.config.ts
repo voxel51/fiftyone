@@ -107,6 +107,21 @@ async function loadConfig() {
           }
           warn(warning);
         },
+        output: {
+          // Give the heavy, lazily-loaded vendor libs their own deterministic
+          // chunks so rollup doesn't hoist them into the entry or glue them
+          // together (e.g. mapbox + plotly landing in one blob). Each only
+          // loads when its panel/view opens.
+          manualChunks(id) {
+            if (id.includes("node_modules")) {
+              if (/[\\/](mapbox-gl|@mapbox)[\\/]/.test(id)) return "mapbox-gl";
+              if (/[\\/]plotly\.js/.test(id) || /react-plotly\.js/.test(id))
+                return "plotly";
+              if (/[\\/]recharts[\\/]/.test(id)) return "recharts";
+              if (/[\\/]html2canvas[\\/]/.test(id)) return "html2canvas";
+            }
+          },
+        },
       },
     },
     server: {

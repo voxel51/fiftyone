@@ -124,7 +124,7 @@ export const useUnselectVisible = (
       scene.clearSelection({ ignoreSideEffects: true });
     }
 
-    const selected = await snapshot.getPromise(fos.selectedLabels);
+    const selected = await snapshot.getPromise(fos.selectedLabelMap);
     const result = visibleIdsAtom
       ? await snapshot.getPromise(visibleIdsAtom)
       : visibleIds;

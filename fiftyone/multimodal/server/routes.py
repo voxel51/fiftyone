@@ -11,8 +11,7 @@ from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import Response
 
-import fiftyone.multimodal.tags as fomt
-from fiftyone.multimodal.tags._temporal_tags import TemporalTagNotFoundError
+import fiftyone.multimodal.tags._temporal_tags as fota
 from fiftyone.multimodal.query import (
     resolve_playback_plan,
     resolve_scene_inventory,
@@ -58,36 +57,36 @@ class PlaybackPlanEndpoint(HTTPEndpoint):
         )
 
 
-class SampleTemporalTagsEndpoint(HTTPEndpoint):
-    """Multimodal sample temporal tag collection endpoint."""
+class SampleTagsEndpoint(HTTPEndpoint):
+    """Sample tag collection endpoint."""
 
     @decorators.route
     async def get(self, request: Request) -> dict:
-        """Lists temporal tags for the sample."""
+        """Lists tags for the sample."""
 
         sample_id = _get_required_path_param(request, "sample_id")
-        return _list_temporal_tags(request, sample_id=sample_id)
+        return _list_tags(request, sample_id=sample_id)
 
     @decorators.route
     async def post(self, request: Request, data: dict) -> dict:
-        """Creates one or more temporal tags for the sample."""
+        """Creates one or more tags for the sample."""
 
         dataset = _get_dataset_from_request(request)
         sample_id = _get_required_path_param(request, "sample_id")
         tags = _temporal_tags_from_create_payload(data, sample_id=sample_id)
 
         return {
-            "temporal_tags": [
+            "tags": [
                 _serialize_temporal_tag(tag)
                 for tag in _handle_temporal_tag_errors(
-                    lambda: fomt.add_temporal_tags(dataset, tags)
+                    lambda: fota.add_temporal_tags(dataset, tags)
                 )
             ]
         }
 
     @decorators.route(parse_body=True)  # pyright: ignore[reportCallIssue]
     async def delete(self, request: Request, data: dict) -> dict:
-        """Deletes temporal tags for the sample."""
+        """Deletes tags for the sample."""
 
         dataset = _get_dataset_from_request(request)
         sample_id = _get_required_path_param(request, "sample_id")
@@ -97,7 +96,7 @@ class SampleTemporalTagsEndpoint(HTTPEndpoint):
 
         return {
             "deleted": _handle_temporal_tag_errors(
-                lambda: fomt.delete_temporal_tags(
+                lambda: fota.delete_temporal_tags(
                     dataset,
                     ids=delete_request["ids"],
                     tags=delete_request["tags"],
@@ -108,28 +107,28 @@ class SampleTemporalTagsEndpoint(HTTPEndpoint):
         }
 
 
-class SampleTemporalTagEndpoint(HTTPEndpoint):
-    """Multimodal sample temporal tag item endpoint."""
+class SampleTagEndpoint(HTTPEndpoint):
+    """Sample tag item endpoint."""
 
     @decorators.route
     async def patch(self, request: Request, data: dict) -> dict:
-        """Updates a temporal tag for the sample."""
+        """Updates a tag for the sample."""
 
         dataset = _get_dataset_from_request(request)
         sample_id = _get_required_path_param(request, "sample_id")
-        temporal_tag_id = _get_required_path_param(request, "temporal_tag_id")
-        update = _temporal_tag_update_from_payload(
+        tag_id = _get_required_path_param(request, "tag_id")
+        update = _tag_update_from_payload(
             data,
             sample_id=sample_id,
-            temporal_tag_id=temporal_tag_id,
+            tag_id=tag_id,
         )
 
         return {
-            "temporal_tag": _serialize_temporal_tag(
+            "tag": _serialize_temporal_tag(
                 _handle_temporal_tag_errors(
-                    lambda: fomt.update_temporal_tag(
+                    lambda: fota.update_temporal_tag(
                         dataset.select([sample_id]),
-                        temporal_tag_id,
+                        tag_id,
                         start=update["start"],
                         end=update["end"],
                         tag=update["tag"],
@@ -140,44 +139,42 @@ class SampleTemporalTagEndpoint(HTTPEndpoint):
         }
 
 
-class TemporalTagsEndpoint(HTTPEndpoint):
-    """Multimodal dataset temporal tag read endpoint."""
+class TagsEndpoint(HTTPEndpoint):
+    """Dataset tags read endpoint."""
 
     @decorators.route
     async def get(self, request: Request) -> dict:
-        """Lists temporal tags for the dataset."""
+        """Lists tags for the dataset."""
 
-        return _list_temporal_tags(request)
+        return _list_tags(request)
 
 
-class TemporalTagCountsEndpoint(HTTPEndpoint):
-    """Multimodal temporal tag count endpoint."""
+class TagCountsEndpoint(HTTPEndpoint):
+    """Tag count endpoint."""
 
     @decorators.route
     async def get(self, request: Request) -> dict:
-        """Counts temporal tag values for the dataset."""
+        """Counts tag values for the dataset."""
 
         dataset = _get_dataset_from_request(request)
         tag_filter = _temporal_tag_filter_from_query(request)
 
         return {
             "counts": _handle_temporal_tag_errors(
-                lambda: fomt.count_temporal_tags(dataset, filter=tag_filter)
+                lambda: fota.count_temporal_tags(dataset, filter=tag_filter)
             )
         }
 
 
-def _list_temporal_tags(
-    request: Request, sample_id: str | None = None
-) -> dict:
+def _list_tags(request: Request, sample_id: str | None = None) -> dict:
     dataset = _get_dataset_from_request(request)
     tag_filter = _temporal_tag_filter_from_query(request, sample_id=sample_id)
 
     return {
-        "temporal_tags": [
+        "tags": [
             _serialize_temporal_tag(tag)
             for tag in _handle_temporal_tag_errors(
-                lambda: fomt.list_temporal_tags(dataset, filter=tag_filter)
+                lambda: fota.list_temporal_tags(dataset, filter=tag_filter)
             )
         ]
     }
@@ -191,7 +188,7 @@ def _get_dataset_from_request(request: Request):
 
 def _temporal_tags_from_create_payload(
     data, sample_id: str
-) -> list[fomt.TemporalTag]:
+) -> list[fota.TemporalTag]:
     _require_dict(data, "request body")
 
     records = data.get("temporal_tags", None)
@@ -207,7 +204,7 @@ def _temporal_tags_from_create_payload(
     if not isinstance(records, list) or not records:
         raise HTTPException(
             status_code=400,
-            detail="'temporal_tags' must contain at least one temporal tag",
+            detail="'tags' must contain at least one tag",
         )
 
     tags = []
@@ -218,13 +215,14 @@ def _temporal_tags_from_create_payload(
         _ensure_matching_sample_id(record_sample_id, sample_id)
 
         tags.append(
-            fomt.TemporalTag(
+            fota.TemporalTag(
                 sample_id=sample_id,
                 start=record.get("start", None),
                 end=record.get("end", None),
                 tag=record.get("tag", None),
-                index_type=record.get("index_type", fomt.DEFAULT_INDEX_TYPE),
+                index_type=record.get("index_type", fota.DEFAULT_INDEX_TYPE),
                 anchor=record.get("anchor", None),
+                kind=record.get("kind", None),
                 created_by=record.get("created_by", None),
                 last_modified_by=record.get("last_modified_by", None),
             )
@@ -237,7 +235,7 @@ def _delete_request_from_payload(data, sample_id: str) -> dict:
     _require_dict(data, "request body")
 
     # Route deletes are always scoped by the path sample. Callers can delete by
-    # id/tag/filter, or opt into deleting all temporal tags for that sample via
+    # id/tag/filter, or opt into deleting all tags for that sample via
     # `delete_all`; dataset-wide deletes remain SDK-only.
     delete_all = data.get("delete_all", False)
     if not isinstance(delete_all, bool):
@@ -251,7 +249,7 @@ def _delete_request_from_payload(data, sample_id: str) -> dict:
     filter_payload = data.get("filter", None)
 
     if filter_payload is None:
-        tag_filter = fomt.TemporalTagFilter(sample_ids=sample_id)
+        tag_filter = fota.TemporalTagFilter(sample_ids=sample_id)
         has_filter_selector = False
     else:
         _require_dict(filter_payload, "filter")
@@ -260,7 +258,7 @@ def _delete_request_from_payload(data, sample_id: str) -> dict:
         )
         _ensure_matching_sample_id(requested_sample_ids, sample_id)
 
-        tag_filter = fomt.TemporalTagFilter(
+        tag_filter = fota.TemporalTagFilter(
             sample_ids=sample_id,
             tags=_first_present(filter_payload, "tags", "tag"),
             anchors=_first_present(filter_payload, "anchors", "anchor"),
@@ -289,9 +287,8 @@ def _delete_request_from_payload(data, sample_id: str) -> dict:
         raise HTTPException(
             status_code=400,
             detail=(
-                "Refusing to delete temporal tags with an empty selector; "
-                "pass delete_all=True to delete all temporal tags for the "
-                "sample"
+                "Refusing to delete tags with an empty selector; pass "
+                "delete_all=True to delete all tags for the sample"
             ),
         )
 
@@ -303,13 +300,11 @@ def _delete_request_from_payload(data, sample_id: str) -> dict:
     }
 
 
-def _temporal_tag_update_from_payload(
-    data, *, sample_id: str, temporal_tag_id: str
-) -> dict:
+def _tag_update_from_payload(data, *, sample_id: str, tag_id: str) -> dict:
     _require_dict(data, "request body")
     _reject_temporal_tag_update_fields(data)
     _ensure_matching_sample_id(data.get("sample_id", None), sample_id)
-    _ensure_matching_temporal_tag_id(data.get("id", None), temporal_tag_id)
+    _ensure_matching_tag_id(data.get("id", None), tag_id)
 
     update = {
         "start": data.get("start", None),
@@ -321,8 +316,7 @@ def _temporal_tag_update_from_payload(
         raise HTTPException(
             status_code=400,
             detail=(
-                "Temporal tag update must include start, end, tag, or "
-                "last_modified_by"
+                "Tag update must include start, end, tag, or last_modified_by"
             ),
         )
 
@@ -331,23 +325,20 @@ def _temporal_tag_update_from_payload(
 
 def _temporal_tag_filter_from_query(
     request: Request, sample_id: str | None = None
-) -> fomt.TemporalTagFilter:
+) -> fota.TemporalTagFilter:
     params = request.query_params
     sample_ids = _query_values(params, "sample_ids", "sample_id")
     if sample_id is None:
         if sample_ids is not None:
             raise HTTPException(
                 status_code=400,
-                detail=(
-                    "'sample_id' is only supported in sample temporal tag "
-                    "routes"
-                ),
+                detail=("'sample_id' is only supported in sample tag routes"),
             )
     else:
         _ensure_matching_sample_id(sample_ids, sample_id)
         sample_ids = sample_id
 
-    return fomt.TemporalTagFilter(
+    return fota.TemporalTagFilter(
         sample_ids=sample_ids,
         tags=_query_values(params, "tags", "tag"),
         anchors=_query_values(params, "anchors", "anchor"),
@@ -357,14 +348,14 @@ def _temporal_tag_filter_from_query(
     )
 
 
-def _serialize_temporal_tag(tag: fomt.TemporalTag) -> dict:
+def _serialize_temporal_tag(tag: fota.TemporalTag) -> dict:
     return tag.to_dict()
 
 
 def _handle_temporal_tag_errors(callback):
     try:
         return callback()
-    except TemporalTagNotFoundError as e:
+    except fota.TemporalTagNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     except (TypeError, ValueError) as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -427,14 +418,14 @@ def _ensure_matching_sample_id(value, sample_id: str) -> None:
         )
 
 
-def _ensure_matching_temporal_tag_id(value, temporal_tag_id: str) -> None:
+def _ensure_matching_tag_id(value, tag_id: str) -> None:
     if value is None:
         return
 
-    if str(value) != temporal_tag_id:
+    if str(value) != tag_id:
         raise HTTPException(
             status_code=400,
-            detail="'id' must match the path temporal_tag_id",
+            detail="'id' must match the path tag_id",
         )
 
 
@@ -468,11 +459,7 @@ def _reject_temporal_tag_timestamps(record: dict) -> None:
         raise HTTPException(
             status_code=400,
             detail=(
-                "Temporal tag %s %s response-only"
-                % (
-                    ", ".join(sorted(fields)),
-                    "is" if len(fields) == 1 else "are",
-                )
+                f"Tag {', '.join(sorted(fields))} {'is' if len(fields) == 1 else 'are'} response-only"
             ),
         )
 
@@ -489,35 +476,31 @@ def _reject_temporal_tag_update_fields(record: dict) -> None:
         raise HTTPException(
             status_code=400,
             detail=(
-                "Temporal tag %s %s not mutable through this route"
-                % (
-                    ", ".join(sorted(fields)),
-                    "is" if len(fields) == 1 else "are",
-                )
+                f"Tag {', '.join(sorted(fields))} {'is' if len(fields) == 1 else 'are'} not mutable through this route"
             ),
         )
 
 
 MultimodalRoutes = [
-    # Update one temporal tag scoped by sample.
+    # Update one tag scoped by sample.
     (
-        "/dataset/{dataset_id}/sample/{sample_id}/multimodal/temporal-tags/{temporal_tag_id}",
-        SampleTemporalTagEndpoint,
+        "/dataset/{dataset_id}/sample/{sample_id}/tags/{tag_id}",
+        SampleTagEndpoint,
     ),
-    # Create, list, and delete temporal tags for one sample.
+    # Create, list, and delete tags for one sample.
     (
-        "/dataset/{dataset_id}/sample/{sample_id}/multimodal/temporal-tags",
-        SampleTemporalTagsEndpoint,
+        "/dataset/{dataset_id}/sample/{sample_id}/tags",
+        SampleTagsEndpoint,
     ),
-    # Count temporal tag values across a dataset.
+    # Count tag values across a dataset.
     (
-        "/dataset/{dataset_id}/multimodal/temporal-tags/counts",
-        TemporalTagCountsEndpoint,
+        "/dataset/{dataset_id}/tags/counts",
+        TagCountsEndpoint,
     ),
-    # List temporal tags across a dataset.
+    # List tags across a dataset.
     (
-        "/dataset/{dataset_id}/multimodal/temporal-tags",
-        TemporalTagsEndpoint,
+        "/dataset/{dataset_id}/tags",
+        TagsEndpoint,
     ),
     # Resolve playback timing for a scene inventory.
     (

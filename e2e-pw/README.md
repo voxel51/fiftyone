@@ -127,7 +127,7 @@ Note: `PYTHONPATH` and virtual env setup is done automatically.
 
 #### Creating Datasets
 
-Always use `DatasetFactory.createBlankDataset` when a test needs a FiftyOne
+Always use `DatasetFactory.createDataset` when a test needs a FiftyOne
 dataset. It generates blank PNG images, inserts samples directly into the
 underlying MongoDB collection for performance, and applies any additional
 schema fields and saved views.
@@ -135,7 +135,7 @@ schema fields and saved views.
 ```ts
 import { DatasetFactory } from "src/shared/dataset-factory";
 
-await DatasetFactory.createBlankDataset({
+await DatasetFactory.createDataset({
     datasetName: "my-test-dataset",
     numSamples: 5,
     numbered: true,

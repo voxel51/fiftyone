@@ -14,6 +14,7 @@ Usage:
 |
 """
 
+import io
 import os
 import shutil
 import tempfile
@@ -987,6 +988,130 @@ class TestTempDir:
                 assert os.path.isdir(tmpdir)
         finally:
             shutil.rmtree(basedir, ignore_errors=True)
+
+
+class TestGetFileSize:
+    """Test get_file_size() for path strings and binary file handles."""
+
+    def test_path_returns_correct_size(self, temp_dir):
+        content = b"hello world"
+        path = os.path.join(temp_dir, "sample.bin")
+        with open(path, "wb") as f:
+            f.write(content)
+
+        assert fos.get_file_size(path) == len(content)
+
+    def test_path_empty_file(self, temp_dir):
+        path = os.path.join(temp_dir, "empty.bin")
+        open(path, "wb").close()
+
+        assert fos.get_file_size(path) == 0
+
+    def test_binary_file_handle_returns_full_size(self, temp_dir):
+        content = b"abcdefghij"
+        path = os.path.join(temp_dir, "handle.bin")
+        with open(path, "wb") as f:
+            f.write(content)
+
+        with open(path, "rb") as f:
+            size = fos.get_file_size(f)
+
+        assert size == len(content)
+
+    def test_file_handle_agrees_with_path(self, temp_dir):
+        """Size from file handle must match size from path."""
+        content = b"\x00" * 512
+        path = os.path.join(temp_dir, "agree.bin")
+        with open(path, "wb") as f:
+            f.write(content)
+
+        with open(path, "rb") as f:
+            handle_size = fos.get_file_size(f)
+
+        assert handle_size == fos.get_file_size(path)
+
+    def test_file_handle_restores_position_at_start(self, temp_dir):
+        content = b"position test"
+        path = os.path.join(temp_dir, "pos.bin")
+        with open(path, "wb") as f:
+            f.write(content)
+
+        with open(path, "rb") as f:
+            assert f.tell() == 0
+            fos.get_file_size(f)
+            assert f.tell() == 0
+
+    def test_file_handle_restores_position_mid_file(self, temp_dir):
+        """If the caller has already read some bytes, the cursor must be
+        restored to that offset — not to 0 and not to EOF."""
+        content = b"abcdefghijklmnop"
+        path = os.path.join(temp_dir, "mid.bin")
+        with open(path, "wb") as f:
+            f.write(content)
+
+        with open(path, "rb") as f:
+            f.read(6)
+            assert f.tell() == 6
+            fos.get_file_size(f)
+            assert f.tell() == 6
+            assert f.read() == content[6:]
+
+    def test_file_handle_does_not_return_remaining_bytes(self, temp_dir):
+        """get_file_size must return the full file size, not EOF - current pos."""
+        content = b"x" * 100
+        path = os.path.join(temp_dir, "full.bin")
+        with open(path, "wb") as f:
+            f.write(content)
+
+        with open(path, "rb") as f:
+            f.seek(40)
+            size = fos.get_file_size(f)
+
+        assert size == 100
+
+    def test_bytesio_duck_typing(self):
+        """BytesIO has seek/tell but is not a real file; it should work via
+        the duck-typed file-handle path."""
+        data = b"in-memory content"
+        buf = io.BytesIO(data)
+
+        size = fos.get_file_size(buf)
+
+        assert size == len(data)
+
+    def test_bytesio_restores_position(self):
+        data = b"abcdefgh"
+        buf = io.BytesIO(data)
+        buf.seek(3)
+
+        fos.get_file_size(buf)
+
+        assert buf.tell() == 3
+
+    def test_text_mode_file_raises_type_error(self, temp_dir):
+        path = os.path.join(temp_dir, "text.txt")
+        with open(path, "w") as f:
+            f.write("some text")
+
+        with open(path, "r") as f:
+            with pytest.raises(TypeError, match="binary file handle"):
+                fos.get_file_size(f)
+
+    def test_stringio_raises_type_error(self):
+        """io.StringIO is an in-memory text stream; it must be rejected with
+        the same TypeError as an on-disk text-mode handle."""
+        buf = io.StringIO("hello")
+        with pytest.raises(TypeError, match="binary file handle"):
+            fos.get_file_size(buf)
+
+    def test_text_mode_error_message_is_helpful(self, temp_dir):
+        path = os.path.join(temp_dir, "text.txt")
+        with open(path, "w") as f:
+            f.write("data")
+
+        with open(path, "r") as f:
+            with pytest.raises(TypeError, match="'rb'"):
+                fos.get_file_size(f)
 
 
 class TestToBytes:
