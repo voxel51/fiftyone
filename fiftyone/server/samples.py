@@ -28,66 +28,6 @@ from fiftyone.server.utils import from_dict
 import fiftyone.server.view as fosv
 
 
-# serialized class string for the dynamic-group stage the frontend sends in ``view``
-GROUP_BY_CLS = "fiftyone.core.stages.GroupBy"
-
-
-def strip_group_by(stages):
-    """Pull any ``GroupBy`` stage out of a serialized view.
-
-    Returns ``(kept_stages, field_or_expr, order_by)``. Removing the stage lets a
-    by-id read compile an index-eligible ``$match`` instead of re-grouping the
-    whole collection; the returned fields let the server rebuild ``_group``.
-    """
-    group_fields = None
-    order_by = None
-    kept = []
-    for stage in stages or []:
-        if stage.get("_cls") == GROUP_BY_CLS:
-            kwargs = dict(stage.get("kwargs") or [])
-            group_fields = kwargs.get("field_or_expr")
-            order_by = kwargs.get("order_by")
-            continue
-        kept.append(stage)
-    return kept, group_fields, order_by
-
-
-def group_paths(group_fields, order_by):
-    """Field paths a grouped read must project to rebuild ``_group``."""
-    paths = []
-    if isinstance(group_fields, (list, tuple)):
-        paths.extend(group_fields)
-    elif group_fields:
-        paths.append(group_fields)
-    if order_by:
-        paths.append(order_by)
-    return paths
-
-
-def db_field(view, path):
-    """Resolve a field path to its Mongo storage key (e.g. ``sample_id`` ->
-    ``_sample_id``). This db-key knowledge stays in the backend."""
-    try:
-        field = view.get_field(path)
-    except Exception:  # pragma: no cover - defensive: unknown path
-        return path
-    return (field.db_field or path) if field is not None else path
-
-
-def group_field_stage(view, group_fields, order_by=None):
-    """The GroupBy ``$addFields`` that labels each doc with its dynamic-group
-    value (``_group``), computed in Mongo from the group expression. Index
-    eligible (no ``$group``) so it rides on a by-id/offset read; ``None`` for
-    flat views. ``_group_count`` is emitted by the stage's ``_include_count``
-    plumbing on the grouped spine, never re-derived here."""
-    if not group_fields:
-        return None
-
-    return fos.GroupBy(group_fields, order_by=order_by)._group_field_stage(
-        view
-    )
-
-
 @gql.type
 class MediaURL:
     field: str
@@ -192,13 +132,6 @@ async def paginate_samples(
                 stage._include_count = True
 
     pipeline = await get_samples_pipeline(view, sample_filter)
-
-    # label `_group` from GroupBy's expression so the modal resolves every
-    # dynamic-group sample on any fetch path; no-op for flat views
-    _, group_fields, order_by = strip_group_by(stages)
-    group_stage = group_field_stage(view, group_fields, order_by)
-    if group_stage is not None:
-        pipeline.append(group_stage)
 
     samples = await foo.aggregate(
         coll,

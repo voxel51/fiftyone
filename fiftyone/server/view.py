@@ -244,9 +244,9 @@ def get_extended_view(
     if sort_by:
         view = view.sort_by(sort_by, reverse=bool(desc), create_index=False)
 
+    # the GroupBy stage emits `_group` itself so the grid never re-derives it
     for stage in view._stages:
         if isinstance(stage, fosg.GroupBy):
-            # the stage emits `_group` itself so the grid never re-derives it
             stage._include_group = True
 
     if pagination_data:

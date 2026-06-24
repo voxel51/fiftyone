@@ -26,23 +26,19 @@ import fiftyone.core.json as foj
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.stages as fos
+import fiftyone.core.view as fov
 from fiftyone.core.utils import run_sync_task
 
 from fiftyone.server import decorators
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 import fiftyone.server.metadata as fosm
-from fiftyone.server.samples import (
-    db_field,
-    get_samples_pipeline,
-    group_field_stage,
-    group_paths,
-    strip_group_by,
-)
+from fiftyone.server.samples import get_samples_pipeline
 from fiftyone.server.utils.json.encoder import JSONResponse
 import fiftyone.server.view as fosv
 
 # identifiers the response always needs (media-type dispatch + signing + cache key)
-_ALWAYS = ("_id", "filepath", "_media_type")
+# plus `_group`/`_group_count`, which the GroupBy stage emits for grouped reads
+_ALWAYS = ("_id", "filepath", "_media_type", "_group", "_group_count")
 
 # max ids returned per spine fetch; larger views page by ``after``
 SPINE_PAGE = 5000
@@ -55,8 +51,8 @@ def _projection(
 ) -> Optional[Dict[str, Any]]:
     """A Mongo ``$project`` from the requested include/exclude field list.
 
-    ``extra`` paths (group-by/order-by db keys) are always included so the
-    server can rebuild ``_group`` even though the client didn't ask for them.
+    ``extra`` paths (e.g. ``metadata`` for aspect ratio) are always kept even
+    when the client didn't request them.
     """
     if fields:
         project = {path: True for path in fields}
@@ -150,23 +146,10 @@ class Samples(HTTPEndpoint):
         sample_filter = _sample_filter(data.get("filter"))
         dynamic_group = data.get("dynamicGroup")
 
-        # the poster read uses the de-grouped stages so its by-id/offset `$match`
-        # stays index-eligible; the single-group frame read keeps the GroupBy
-        # stage so `get_view` can select that group's frames
-        degrouped, group_fields, order_by = strip_group_by(
-            data.get("view") or []
-        )
-        stages = (
-            (data.get("view") or [])
-            if dynamic_group is not None
-            else degrouped
-        )
-        paths = group_paths(group_fields, order_by)
-
         def _build():
             view = fosv.get_view(
                 dataset_name,
-                stages=stages,
+                stages=data.get("view") or [],
                 filters=data.get("filters"),
                 pagination_data=False,
                 sort_by=data.get("sortBy"),
@@ -175,7 +158,9 @@ class Samples(HTTPEndpoint):
                 dynamic_group=dynamic_group,
             )
             if ids:
-                view = view.select(ids)
+                # core's optimized select drops any GroupBy `$group` for an
+                # index-eligible by-id `$match` and labels `_group` itself
+                view = fov.make_optimized_select_view(view, ids)
             elif after is not None:
                 view = view.skip(int(after))
             if count:
@@ -187,22 +172,13 @@ class Samples(HTTPEndpoint):
 
         skip_dimensions = bool(data.get("skipMetadata"))
 
-        # group-by/order-by db keys the client no longer knows to request, plus
-        # `metadata` so the aspect ratio comes from stored dims, not a disk read
-        extra = [db_field(view, p) for p in paths]
-        if not skip_dimensions:
-            extra = extra + ["metadata"]
+        # keep `metadata` so the aspect ratio comes from stored dims, not a disk read
+        extra = None if skip_dimensions else ["metadata"]
         projection = _projection(
             data.get("fields"), data.get("exclude"), extra
         )
         if projection is not None:
             pipeline.append(projection)
-
-        # label `_group` from GroupBy's expression in Mongo so the frontend never
-        # decodes db keys; the by-id/offset `$match` above still drives the index
-        group_stage = group_field_stage(view, group_fields, order_by)
-        if group_stage is not None:
-            pipeline.append(group_stage)
 
         coll = foo.get_async_db_conn()[view._dataset._sample_collection_name]
         docs = await foo.aggregate(coll, pipeline, data.get("hint")).to_list(
