@@ -640,7 +640,6 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         return {"img": img, "orig_img": img}
 
     def _ultralytics_preprocess(self, img):
-        # Taken from ultralytics.engine.predictor.preprocess.
         img = np.stack(self._pre_transform(img))
         img = img.transpose((0, 3, 1, 2))
         img = np.ascontiguousarray(img)
@@ -650,7 +649,6 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         return torch.squeeze(img, axis=0)
 
     def _pre_transform(self, im):
-        # Taken from ultralytics.engine.predictor.pre_transform.
         # TODO: Look into why self._model.predictor.pre_transform
         # doesn't resize the image to (imgsz, imgsz) with rect=False.
         same_shapes = len({x.shape for x in im}) == 1
@@ -952,7 +950,6 @@ class FiftyOneYOLOClassificationModel(FiftyOneYOLOModel):
     """
 
     def _ultralytics_preprocess(self, img):
-        # Taken from ultralytics.models.yolo.classify.predict.
         is_legacy_transform = False
         if hasattr(self._model.predictor, "_legacy_transform_name"):
             is_legacy_transform = any(
