@@ -42,13 +42,18 @@ import {
   selectedLabelForAnnotationAtom,
 } from "../state";
 import type { SidePanelId, SidePanelViewType } from "../types";
-import { expandBoundingBox } from "../utils";
+import { expandBoundingBox, findObjectByUserData } from "../utils";
 import {
   applyMainPanelPanSyncIntentToOrthographicCamera,
   applyMainPanelZoomSyncIntentToOrthographicCamera,
+  captureSidePanelCameraSnapshot,
   deriveSidePanelCameraFrame,
+  doesPointCloudCropFitCamera,
+  restoreSidePanelCameraSnapshot,
   shouldApplyMainPanelPanSyncIntent,
   shouldApplyMainPanelZoomSyncIntent,
+  type SidePanelCameraSnapshot,
+  type SidePanelControls,
 } from "../utils/side-panel-camera-sync";
 import type { PointCloudCrop } from "../utils/point-cloud-crop";
 import {
@@ -352,26 +357,11 @@ export const SidePanel = ({
   );
 };
 
-function findByUserData(
-  scene: THREE.Scene,
-  key: typeof FO_USER_DATA[keyof typeof FO_USER_DATA],
-  value: unknown
-): THREE.Object3D | null {
-  let result: THREE.Object3D | null = null;
-  scene.traverse((o) => {
-    if (o.userData?.[key] === value) {
-      result = o as THREE.Object3D;
-    }
-  });
-  return result;
-}
-
 const DEFAULT_CUBOID_CREATION_MARGIN = 50;
 const DEFAULT_POLYLINE_VERTEX_FOCUS_SIZE = 5;
 const MIN_POLYLINE_VERTEX_FOCUS_SIZE = 1;
 const MAX_POLYLINE_VERTEX_FOCUS_SIZE = 30;
 const AUTO_EXPAND_FIT_INTERVAL_MS = 125;
-const AUTO_EXPAND_NDC_PADDING = 0.86;
 const RAYCAST_HOVER_FIT_INTERVAL_MS = 125;
 const RAYCAST_HOVER_CENTER_EPSILON_SQ = 1e-8;
 const SIDE_PANEL_UNFOCUSED_LABEL_OPACITY = 0.08;
@@ -380,135 +370,6 @@ interface RaycastHoverFitSnapshot {
   center: THREE.Vector3;
   halfSize: THREE.Vector3;
 }
-
-function getPointCloudCropWorldCorners(crop: PointCloudCrop) {
-  const corners: THREE.Vector3[] = [];
-  const signs = [-1, 1];
-
-  for (const xSign of signs) {
-    for (const ySign of signs) {
-      for (const zSign of signs) {
-        corners.push(
-          new THREE.Vector3(
-            crop.halfSize.x * xSign,
-            crop.halfSize.y * ySign,
-            crop.halfSize.z * zSign
-          )
-            .applyQuaternion(crop.quaternion)
-            .add(crop.center)
-        );
-      }
-    }
-  }
-
-  return corners;
-}
-
-function doesCropFitCamera(
-  crop: PointCloudCrop,
-  camera: THREE.Camera,
-  padding = AUTO_EXPAND_NDC_PADDING
-) {
-  camera.updateMatrixWorld();
-  const cameraWithProjection = camera as THREE.Camera & {
-    updateProjectionMatrix?: () => void;
-  };
-  cameraWithProjection.updateProjectionMatrix?.();
-
-  return getPointCloudCropWorldCorners(crop).every((corner) => {
-    const projected = corner.project(camera);
-    return Math.abs(projected.x) <= padding && Math.abs(projected.y) <= padding;
-  });
-}
-
-type SidePanelControls = {
-  target?: THREE.Vector3;
-  update?: () => void;
-  minZoom?: number;
-  maxZoom?: number;
-};
-
-type SidePanelProjectionCamera = THREE.Camera & {
-  near: number;
-  far: number;
-  updateProjectionMatrix: () => void;
-};
-
-interface SidePanelCameraSnapshot {
-  position: THREE.Vector3;
-  quaternion: THREE.Quaternion;
-  up: THREE.Vector3;
-  zoom?: number;
-  near: number;
-  far: number;
-  controlsTarget?: THREE.Vector3;
-}
-
-const getProjectionCamera = (camera: THREE.Camera) =>
-  camera as SidePanelProjectionCamera;
-
-const getOrthographicCamera = (camera: THREE.Camera) => {
-  const maybeOrthographic = getProjectionCamera(
-    camera
-  ) as THREE.OrthographicCamera & {
-    isOrthographicCamera?: boolean;
-  };
-
-  return maybeOrthographic.isOrthographicCamera ? maybeOrthographic : null;
-};
-
-const captureSidePanelCameraSnapshot = (
-  camera: THREE.Camera,
-  controls?: SidePanelControls
-): SidePanelCameraSnapshot => {
-  const projectionCamera = getProjectionCamera(camera);
-  const orthographicCamera = getOrthographicCamera(camera);
-
-  return {
-    position: camera.position.clone(),
-    quaternion: camera.quaternion.clone(),
-    up: camera.up.clone(),
-    zoom: orthographicCamera?.zoom,
-    near: projectionCamera.near,
-    far: projectionCamera.far,
-    controlsTarget: controls?.target?.clone(),
-  };
-};
-
-const restoreSidePanelCameraSnapshot = ({
-  camera,
-  controls,
-  snapshot,
-  invalidate,
-}: {
-  camera: THREE.Camera;
-  controls?: SidePanelControls;
-  snapshot: SidePanelCameraSnapshot;
-  invalidate: () => void;
-}) => {
-  const projectionCamera = getProjectionCamera(camera);
-
-  camera.position.copy(snapshot.position);
-  camera.quaternion.copy(snapshot.quaternion);
-  camera.up.copy(snapshot.up);
-  projectionCamera.near = snapshot.near;
-  projectionCamera.far = snapshot.far;
-
-  const orthographicCamera = getOrthographicCamera(camera);
-  if (orthographicCamera && snapshot.zoom !== undefined) {
-    orthographicCamera.zoom = snapshot.zoom;
-  }
-
-  camera.updateMatrixWorld();
-  projectionCamera.updateProjectionMatrix();
-
-  if (controls?.target && snapshot.controlsTarget) {
-    controls.target.copy(snapshot.controlsTarget);
-    controls.update?.();
-  }
-
-  invalidate();
-};
 
 const BoundsSideEffectsComponent = ({
   pointCloudCrop,
@@ -542,43 +403,61 @@ const BoundsSideEffectsComponent = ({
     pointCloudCropRef.current = pointCloudCrop;
   }, [pointCloudCrop]);
 
-  const fitToPointCloudCrop = useCallback(
-    (crop: PointCloudCrop) => {
-      const helperMesh = createPointCloudCropHelperMesh(crop);
+  const fitToTemporaryMesh = useCallback(
+    (helperMesh: THREE.Mesh, dispose: () => void) => {
       scene.add(helperMesh);
-
       api.refresh(helperMesh).reset().fit();
 
       setTimeout(() => {
         scene.remove(helperMesh);
-        disposePointCloudCropHelperMesh(helperMesh);
+        dispose();
       }, 0);
     },
     [api, scene]
   );
 
+  const fitToPointCloudCrop = useCallback(
+    (crop: PointCloudCrop) => {
+      const helperMesh = createPointCloudCropHelperMesh(crop);
+      fitToTemporaryMesh(helperMesh, () =>
+        disposePointCloudCropHelperMesh(helperMesh)
+      );
+    },
+    [fitToTemporaryMesh]
+  );
+
   const fitToBox = useCallback(
     (box: THREE.Box3) => {
-      const expandedSize = box.getSize(new Vector3());
-      const expandedCenter = box.getCenter(new Vector3());
+      const boxSize = box.getSize(new Vector3());
+      const boxCenter = box.getCenter(new Vector3());
       const boxGeometry = new THREE.BoxGeometry(
-        expandedSize.x,
-        expandedSize.y,
-        expandedSize.z
+        boxSize.x,
+        boxSize.y,
+        boxSize.z
       );
-      const helperMesh = new THREE.Mesh(boxGeometry);
-      helperMesh.position.copy(expandedCenter);
+      const boxMaterial = new THREE.MeshBasicMaterial({ visible: false });
+      const helperMesh = new THREE.Mesh(boxGeometry, boxMaterial);
+      helperMesh.position.copy(boxCenter);
       helperMesh.visible = false;
-      scene.add(helperMesh);
 
-      api.refresh(helperMesh).reset().fit();
-
-      setTimeout(() => {
-        scene.remove(helperMesh);
+      fitToTemporaryMesh(helperMesh, () => {
         boxGeometry.dispose();
-      }, 0);
+        boxMaterial.dispose();
+      });
     },
-    [api, scene]
+    [fitToTemporaryMesh]
+  );
+
+  const fitToCenteredBox = useCallback(
+    (center: THREE.Vector3Tuple, size: number) => {
+      fitToBox(
+        new Box3().setFromCenterAndSize(
+          new Vector3(...center),
+          new Vector3(size, size, size)
+        )
+      );
+    },
+    [fitToBox]
   );
 
   const fitToExpandedObject = useCallback(
@@ -654,7 +533,11 @@ const BoundsSideEffectsComponent = ({
       return;
     }
 
-    const object = findByUserData(scene, FO_USER_DATA.LABEL_ID, hoveredLabelId);
+    const object = findObjectByUserData(
+      scene,
+      FO_USER_DATA.LABEL_ID,
+      hoveredLabelId
+    );
     if (object) {
       fitToExpandedObject(object);
     }
@@ -674,7 +557,7 @@ const BoundsSideEffectsComponent = ({
       return;
     }
 
-    if (doesCropFitCamera(crop, camera)) {
+    if (doesPointCloudCropFitCamera(crop, camera)) {
       return;
     }
 
@@ -832,7 +715,11 @@ const BoundsSideEffectsComponent = ({
       return;
     }
 
-    const object = findByUserData(scene, FO_USER_DATA.LABEL_ID, label._id);
+    const object = findObjectByUserData(
+      scene,
+      FO_USER_DATA.LABEL_ID,
+      label._id
+    );
 
     if (object) {
       const objectBox = new Box3().setFromObject(object);
@@ -847,48 +734,13 @@ const BoundsSideEffectsComponent = ({
 
   // Focus camera on cuboid creation location when user starts creating
   useAnnotationEventHandler("annotation:cuboidCreationStarted", (payload) => {
-    const { position } = payload;
-
-    const boxGeometry = new THREE.BoxGeometry(
-      DEFAULT_CUBOID_CREATION_MARGIN,
-      DEFAULT_CUBOID_CREATION_MARGIN,
-      DEFAULT_CUBOID_CREATION_MARGIN
-    );
-    const helperMesh = new THREE.Mesh(boxGeometry);
-    helperMesh.position.set(position[0], position[1], position[2]);
-    helperMesh.visible = false;
-    scene.add(helperMesh);
-
-    api.refresh(helperMesh).reset().fit();
-
-    setTimeout(() => {
-      scene.remove(helperMesh);
-      boxGeometry.dispose();
-    }, 0);
+    fitToCenteredBox(payload.position, DEFAULT_CUBOID_CREATION_MARGIN);
   });
 
   useAnnotationEventHandler(
     "annotation:3dPolylineVertexSelected",
     (payload) => {
-      const { position } = payload;
-      const focusBoxSize = getVertexFocusBoxSize();
-
-      const boxGeometry = new THREE.BoxGeometry(
-        focusBoxSize,
-        focusBoxSize,
-        focusBoxSize
-      );
-      const helperMesh = new THREE.Mesh(boxGeometry);
-      helperMesh.position.set(position[0], position[1], position[2]);
-      helperMesh.visible = false;
-      scene.add(helperMesh);
-
-      api.refresh(helperMesh).reset().fit();
-
-      setTimeout(() => {
-        scene.remove(helperMesh);
-        boxGeometry.dispose();
-      }, 0);
+      fitToCenteredBox(payload.position, getVertexFocusBoxSize());
     }
   );
 

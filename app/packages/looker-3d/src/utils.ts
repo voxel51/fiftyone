@@ -5,9 +5,11 @@ import {
   Euler,
   type EulerOrder,
   type InterleavedBufferAttribute,
+  type Object3D,
   Plane,
   Quaternion,
   type Raycaster,
+  type Scene,
   Vector3,
   type Vector3Tuple,
   type Vector4Tuple,
@@ -191,6 +193,22 @@ export const areVectorsCoLocated = (
   minDistanceSquared = MIN_VECTOR_DISTANCE_SQUARED
 ) => {
   return a.distanceToSquared(b) <= minDistanceSquared;
+};
+
+export const findObjectByUserData = (
+  scene: Scene,
+  key: string,
+  value: unknown
+): Object3D | null => {
+  let result: Object3D | null = null;
+
+  scene.traverse((object) => {
+    if (!result && object.userData?.[key] === value) {
+      result = object;
+    }
+  });
+
+  return result;
 };
 
 /**

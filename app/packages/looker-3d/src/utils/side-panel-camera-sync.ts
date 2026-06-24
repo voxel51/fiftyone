@@ -54,7 +54,7 @@ interface ShouldApplyMainPanelNavigationSyncIntentOptions {
   now: number;
 }
 
-interface AnchoredOrthographicControls {
+export interface SidePanelControls {
   target?: THREE.Vector3;
   update?: () => void;
   minZoom?: number;
@@ -63,14 +63,14 @@ interface AnchoredOrthographicControls {
 
 interface ApplyMainPanelZoomSyncIntentOptions {
   camera: THREE.Camera;
-  controls?: AnchoredOrthographicControls;
+  controls?: SidePanelControls;
   intent: MainPanelZoomSyncIntent;
   invalidate?: () => void;
 }
 
 interface ApplyMainPanelPanSyncIntentOptions {
   camera: THREE.Camera;
-  controls?: AnchoredOrthographicControls;
+  controls?: SidePanelControls;
   damping?: number;
   intent: MainPanelPanSyncIntent;
   invalidate?: () => void;
@@ -109,6 +109,23 @@ export interface SidePanelCameraUpdate {
   zoom: number;
 }
 
+export interface SidePanelCameraSnapshot {
+  position: THREE.Vector3;
+  quaternion: THREE.Quaternion;
+  up: THREE.Vector3;
+  zoom?: number;
+  near: number;
+  far: number;
+  controlsTarget?: THREE.Vector3;
+}
+
+type SidePanelProjectionCamera = THREE.Camera & {
+  near: number;
+  far: number;
+  updateProjectionMatrix: () => void;
+};
+
+const POINT_CLOUD_CROP_NDC_PADDING = 0.86;
 const getFiniteControlZoomLimit = (value: unknown, fallback: number) => {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 };
@@ -118,6 +135,42 @@ const isOrthographicCamera = (camera: THREE.Camera) => {
     (camera as THREE.OrthographicCamera & { isOrthographicCamera?: boolean })
       .isOrthographicCamera
   );
+};
+
+const getProjectionCamera = (camera: THREE.Camera) =>
+  camera as SidePanelProjectionCamera;
+
+const getOrthographicCamera = (camera: THREE.Camera) => {
+  const maybeOrthographic = getProjectionCamera(
+    camera
+  ) as THREE.OrthographicCamera & {
+    isOrthographicCamera?: boolean;
+  };
+
+  return maybeOrthographic.isOrthographicCamera ? maybeOrthographic : null;
+};
+
+const getPointCloudCropWorldCorners = (crop: PointCloudCrop) => {
+  const corners: THREE.Vector3[] = [];
+  const signs = [-1, 1];
+
+  for (const xSign of signs) {
+    for (const ySign of signs) {
+      for (const zSign of signs) {
+        corners.push(
+          new THREE.Vector3(
+            crop.halfSize.x * xSign,
+            crop.halfSize.y * ySign,
+            crop.halfSize.z * zSign
+          )
+            .applyQuaternion(crop.quaternion)
+            .add(crop.center)
+        );
+      }
+    }
+  }
+
+  return corners;
 };
 
 const resolveSidePanelCameraDistance = ({
@@ -297,6 +350,76 @@ export const deriveSidePanelCameraUpdateFromMainViewer = ({
     target: currentTarget.clone().add(targetDelta),
     zoom,
   };
+};
+
+export const captureSidePanelCameraSnapshot = (
+  camera: THREE.Camera,
+  controls?: SidePanelControls
+): SidePanelCameraSnapshot => {
+  const projectionCamera = getProjectionCamera(camera);
+  const orthographicCamera = getOrthographicCamera(camera);
+
+  return {
+    position: camera.position.clone(),
+    quaternion: camera.quaternion.clone(),
+    up: camera.up.clone(),
+    zoom: orthographicCamera?.zoom,
+    near: projectionCamera.near,
+    far: projectionCamera.far,
+    controlsTarget: controls?.target?.clone(),
+  };
+};
+
+export const restoreSidePanelCameraSnapshot = ({
+  camera,
+  controls,
+  invalidate,
+  snapshot,
+}: {
+  camera: THREE.Camera;
+  controls?: SidePanelControls;
+  invalidate?: () => void;
+  snapshot: SidePanelCameraSnapshot;
+}) => {
+  const projectionCamera = getProjectionCamera(camera);
+
+  camera.position.copy(snapshot.position);
+  camera.quaternion.copy(snapshot.quaternion);
+  camera.up.copy(snapshot.up);
+  projectionCamera.near = snapshot.near;
+  projectionCamera.far = snapshot.far;
+
+  const orthographicCamera = getOrthographicCamera(camera);
+  if (orthographicCamera && snapshot.zoom !== undefined) {
+    orthographicCamera.zoom = snapshot.zoom;
+  }
+
+  camera.updateMatrixWorld();
+  projectionCamera.updateProjectionMatrix();
+
+  if (controls?.target && snapshot.controlsTarget) {
+    controls.target.copy(snapshot.controlsTarget);
+    controls.update?.();
+  }
+
+  invalidate?.();
+};
+
+export const doesPointCloudCropFitCamera = (
+  crop: PointCloudCrop,
+  camera: THREE.Camera,
+  padding = POINT_CLOUD_CROP_NDC_PADDING
+) => {
+  camera.updateMatrixWorld();
+  const cameraWithProjection = camera as THREE.Camera & {
+    updateProjectionMatrix?: () => void;
+  };
+  cameraWithProjection.updateProjectionMatrix?.();
+
+  return getPointCloudCropWorldCorners(crop).every((corner) => {
+    const projected = corner.project(camera);
+    return Math.abs(projected.x) <= padding && Math.abs(projected.y) <= padding;
+  });
 };
 
 export const getOrbitControlsWheelZoomRatio = (

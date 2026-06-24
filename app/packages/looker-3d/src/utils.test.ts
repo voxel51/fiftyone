@@ -1,9 +1,11 @@
 import {
   BufferAttribute,
+  Object3D,
   PerspectiveCamera,
   Plane,
   Quaternion,
   Raycaster,
+  Scene,
   Vector3,
 } from "three";
 import { describe, expect, it, vi } from "vitest";
@@ -15,6 +17,7 @@ import {
   createPlane,
   deg2rad,
   eulerToQuaternion,
+  findObjectByUserData,
   formatNumber,
   getAxisAlignedBoundingBoxForPoints3d,
   getColorFromPoolBasedOnHash,
@@ -121,6 +124,21 @@ describe("areVectorsCoLocated", () => {
     expect(
       areVectorsCoLocated(new Vector3(0, 0, 0), new Vector3(0.01, 0, 0), 1e-2)
     ).toBe(true);
+  });
+});
+
+describe("findObjectByUserData", () => {
+  it("returns the first scene object with matching user data", () => {
+    const scene = new Scene();
+    const child = new Object3D();
+    const laterChild = new Object3D();
+    child.userData.labelId = "label-1";
+    laterChild.userData.labelId = "label-1";
+    scene.add(child);
+    scene.add(laterChild);
+
+    expect(findObjectByUserData(scene, "labelId", "label-1")).toBe(child);
+    expect(findObjectByUserData(scene, "labelId", "missing")).toBeNull();
   });
 });
 
