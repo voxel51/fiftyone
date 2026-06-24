@@ -4,6 +4,7 @@
 
 import { useLighterSetupWithPixi } from "@fiftyone/lighter";
 import type { RefObject } from "react";
+import { useExposeSceneOverlayFieldsForTest } from "../sync/useExposeSceneOverlayFieldsForTest";
 import { useSyncLighterAnnotation } from "../sync/useSyncLighterAnnotation";
 import { useSyncMediaTransform } from "../sync/useSyncMediaTransform";
 import { useTemporalOverlaySync } from "../sync/useTemporalOverlaySync";
@@ -31,4 +32,5 @@ export function useVideoAnnotationSyncBundle<T extends HTMLElement>({
   useTemporalOverlaySync(scene, canonicalMediaReady);
   useSyncLighterAnnotation(scene);
   useSyncMediaTransform(scene, mediaRef);
+  useExposeSceneOverlayFieldsForTest(scene);
 }
