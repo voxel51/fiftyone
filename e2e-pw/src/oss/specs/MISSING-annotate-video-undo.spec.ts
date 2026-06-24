@@ -153,6 +153,51 @@ test.describe.serial("video annotation undo/redo", () => {
     await va.assert.labelListed("person");
   });
 
+  test("two distinct edits are two undo units — no duplicate entries", async ({
+    fiftyoneLoader,
+    modal,
+    page,
+  }) => {
+    await openAnnotate(fiftyoneLoader, modal, page);
+    const va = modal.videoAnnotate;
+
+    await va.assert.objectTrackCount(1);
+    await va.assert.labelListed("vehicle");
+
+    // edit A: a track-wide class change (one engine transaction, one undo unit)
+    await va.selectLabel("vehicle");
+    const saved = savedResponse(page);
+    await modal.sidebar.edit.selectFieldChoice("label", "person");
+    await modal.sidebar.edit.assert.verifyFieldValue("label", "person");
+    await saved;
+    await modal.sidebar.edit.exitToList();
+    await va.assert.labelListed("person");
+
+    // edit B: draw a second track (its auto-extend coalesces into one unit)
+    await modal.sidebar.annotate.detectionMode("Detections");
+    await modal.sampleCanvas.move(0.6, 0.6);
+    await modal.sampleCanvas.down();
+    await modal.sampleCanvas.move(0.82, 0.82);
+    await modal.sampleCanvas.up();
+    await va.assert.objectTrackCount(2);
+    await modal.sidebar.edit.exitToList();
+
+    // EXACTLY two undos return to baseline — one per edit. If either edit
+    // pushed a duplicate entry (the Lighter self-undo or the form's own
+    // undoable), two undos would leave the surface mid-edit and this fails.
+    await undoKey(page);
+    await va.assert.objectTrackCount(1);
+    await undoKey(page);
+    await va.assert.labelListed("vehicle");
+    await va.assert.labelListed("person", false);
+
+    // and exactly two redos reapply both, newest-undone first
+    await redoKey(page);
+    await va.assert.labelListed("person");
+    await redoKey(page);
+    await va.assert.objectTrackCount(2);
+  });
+
   test("deleting a whole track undoes to a restored track", async ({
     fiftyoneLoader,
     modal,
