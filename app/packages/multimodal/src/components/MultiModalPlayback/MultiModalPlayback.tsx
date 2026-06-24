@@ -63,8 +63,8 @@ export interface MultiModalPlaybackProps {
   onTagCreate?: TemporalTagTimelineProps["onTagCreate"];
   /** Callback that deletes an existing temporal tag by its backend id. */
   onTagDelete?: NonNullable<
-    TemporalTagTimelineProps["eventDeleteConfig"]
-  >["onDelete"];
+    TemporalTagTimelineProps["eventMenuItems"]
+  >[number]["onSelect"];
 
   /**
    * Rendered inside the providers this component owns. Use it for
@@ -216,9 +216,15 @@ function Layout({
 
       <TemporalTagTimeline
         onTagCreate={onTagCreate}
-        eventDeleteConfig={
+        eventMenuItems={
           onTagDelete
-            ? { label: "Delete tag", onDelete: onTagDelete }
+            ? [
+                {
+                  label: "Delete tag",
+                  destructive: true,
+                  onSelect: onTagDelete,
+                },
+              ]
             : undefined
         }
       />
