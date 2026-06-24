@@ -32,6 +32,8 @@ export type TimelineTrackEvent =
       startSec: number;
       endSec?: number;
       label?: string;
+      /** Per-event color override; falls back to the track color. */
+      color?: string;
       /** Free-form payload — anything the source produced about this event. */
       data?: unknown;
       /**
@@ -47,6 +49,7 @@ export interface NormalizedEvent {
   startSec: number;
   endSec?: number;
   label?: string;
+  color?: string;
   data?: unknown;
   resizable?: boolean;
 }
@@ -149,7 +152,31 @@ export interface TimelineTrackProps {
    * drags.
    */
   snapStepSec?: number;
+  /**
+   * Nesting depth. `0` is a top-level row; `1` indents the label as a child
+   * (e.g. a dynamic-attribute sub-track under its object track).
+   */
+  depth?: number;
+  /** Render as a child row: a connector rail instead of a color dot, dimmed. */
+  isChild?: boolean;
+  /**
+   * Reserve the left gutter for an expand chevron so rows with and without
+   * children keep their labels aligned. The chevron itself only renders when
+   * {@link expandable} is set.
+   */
+  expansionGutter?: boolean;
+  /** This row has collapsible children — render an expand/collapse chevron. */
+  expandable?: boolean;
+  /** Whether this row's children are currently shown. */
+  expanded?: boolean;
+  /** Toggle this row's children. */
+  onToggleExpand?: () => void;
 }
+
+/** Pixels of label indent per nesting {@link TimelineTrackProps.depth}. */
+const DEPTH_INDENT_PX = 14;
+/** Base left padding of the label column (matches the CSS). */
+const LABEL_BASE_PADDING_PX = 10;
 
 const TimelineTrack: React.FC<TimelineTrackProps> = ({
   id,
@@ -172,6 +199,12 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   onTrackClick,
   onEventEdit,
   snapStepSec,
+  depth = 0,
+  isChild = false,
+  expansionGutter = false,
+  expandable = false,
+  expanded = false,
+  onToggleExpand,
 }) => {
   const viewStart = useViewStart();
   const viewEnd = useViewEnd();
@@ -357,7 +390,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
 
   return (
     <div
-      className={clsx(styles.root, className)}
+      className={clsx(styles.root, { [styles.childRow]: isChild }, className)}
       style={{
         height,
         ...(onTrackClick ? { cursor: "pointer" } : null),
@@ -369,16 +402,49 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
       data-track-id={id}
     >
       {labelWidth > 0 && (
-        <div className={styles.label} style={{ width: labelWidth }}>
-          <div className={styles.dot} style={{ background: color }} />
+        <div
+          className={styles.label}
+          style={{
+            width: labelWidth,
+            paddingLeft: LABEL_BASE_PADDING_PX + depth * DEPTH_INDENT_PX,
+          }}
+        >
+          {(expansionGutter || expandable) && (
+            <div className={styles.chevronSlot}>
+              {expandable && (
+                <Button
+                  variant={Variant.Icon}
+                  size={Size.Xs}
+                  data-testid={`timeline-track-expand-${id}`}
+                  leadingIcon={
+                    expanded ? IconName.ChevronBottom : IconName.ChevronRight
+                  }
+                  aria-label={
+                    expanded ? "Collapse sub-tracks" : "Expand sub-tracks"
+                  }
+                  aria-expanded={expanded}
+                  className={styles.chevron}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleExpand?.();
+                  }}
+                />
+              )}
+            </div>
+          )}
+          {isChild ? (
+            <div className={styles.rail} />
+          ) : (
+            <div className={styles.dot} style={{ background: color }} />
+          )}
           <Text
             variant={TextVariant.Xs}
-            color={TextColor.Primary}
+            color={isChild ? TextColor.Secondary : TextColor.Primary}
             className={styles.labelText}
           >
             {labelText}
           </Text>
-          {onPinClick && (
+          {onPinClick && !isChild && (
             <Button
               variant={Variant.Icon}
               size={Size.Xs}
@@ -477,6 +543,8 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
             const isResizable = Boolean(
               isInterval && event.resizable && onEventEdit
             );
+            // Per-event override (value-segmented sub-tracks) or track color.
+            const eventColor = event.color ?? color;
 
             // While a drag is in progress, render with the override
             // position so the bar tracks the cursor. Outside of drag,
@@ -543,8 +611,8 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                     style={{
                       left,
                       width,
-                      background: `${color}99`,
-                      border: `1px solid ${color}`,
+                      background: `${eventColor}99`,
+                      border: `1px solid ${eventColor}`,
                       cursor: isResizable ? "grab" : "pointer",
                     }}
                     title={
@@ -629,7 +697,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
               <ContextMenu key={originalIndex} menu={menu}>
                 <div
                   className={styles.event}
-                  style={{ left: pct(pointSec), background: color }}
+                  style={{ left: pct(pointSec), background: eventColor }}
                   title={
                     event.label
                       ? `${event.label}  @ ${event.startSec.toFixed(3)}s`

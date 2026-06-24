@@ -2,6 +2,9 @@ import type { LabelData } from "@fiftyone/utilities";
 import { describe, expect, it, vi } from "vitest";
 import {
   buildPerInstanceTracks,
+  parseSubTrackId,
+  segmentAttribute,
+  subTrackId,
   type FrameLabelReader,
   type PerInstanceLabel,
 } from "./frameTracks";
@@ -119,5 +122,147 @@ describe("buildPerInstanceTracks", () => {
 
     const intervals = tracks[0].events.filter((e) => e.endSec !== undefined);
     expect(intervals).toHaveLength(2);
+  });
+});
+
+describe("segmentAttribute", () => {
+  it("coalesces a uniform value into one segment spanning all frames", () => {
+    const segments = segmentAttribute(
+      [
+        { frame: 1, value: "off" },
+        { frame: 2, value: "off" },
+        { frame: 3, value: "off" },
+      ],
+      FPS
+    );
+
+    expect(segments).toEqual([{ startSec: 0, endSec: 3 / FPS, value: "off" }]);
+  });
+
+  it("opens a new segment at each value change", () => {
+    const segments = segmentAttribute(
+      [
+        { frame: 1, value: "off" },
+        { frame: 2, value: "off" },
+        { frame: 3, value: "left" },
+        { frame: 4, value: "left" },
+      ],
+      FPS
+    );
+
+    expect(segments).toEqual([
+      { startSec: 0, endSec: 2 / FPS, value: "off" },
+      { startSec: 2 / FPS, endSec: 4 / FPS, value: "left" },
+    ]);
+  });
+
+  it("handles back-to-back single-frame changes", () => {
+    const segments = segmentAttribute(
+      [
+        { frame: 1, value: "a" },
+        { frame: 2, value: "b" },
+        { frame: 3, value: "c" },
+      ],
+      FPS
+    );
+
+    expect(segments.map((s) => s.value)).toEqual(["a", "b", "c"]);
+    expect(segments).toHaveLength(3);
+  });
+
+  it("splits on a presence gap even when the value is unchanged", () => {
+    // Present 1-2, absent 3, present 4 — frame 4 isn't contiguous with 2.
+    const segments = segmentAttribute(
+      [
+        { frame: 1, value: "off" },
+        { frame: 2, value: "off" },
+        { frame: 4, value: "off" },
+      ],
+      FPS
+    );
+
+    expect(segments).toEqual([
+      { startSec: 0, endSec: 2 / FPS, value: "off" },
+      { startSec: 3 / FPS, endSec: 4 / FPS, value: "off" },
+    ]);
+  });
+});
+
+describe("buildPerInstanceTracks dynamic-attribute sub-tracks", () => {
+  const withSignal = (signal: string): LabelData => ({
+    _id: "doc",
+    _cls: "Detection",
+    label: "vehicle",
+    index: 1,
+    instance: { _cls: "Instance", _id: "veh-1" },
+    signal,
+  });
+
+  it("attaches a value-segmented sub-track right after its parent", () => {
+    const tracks = buildPerInstanceTracks({
+      engine: makeEngine({
+        1: [withSignal("off")],
+        2: [withSignal("off")],
+        3: [withSignal("left")],
+        4: [withSignal("left")],
+      }),
+      sample: SAMPLE,
+      path: PATH,
+      totalFrames: 4,
+      fps: FPS,
+      resolveColor: () => "#parent",
+      dynamicAttributes: ["signal"],
+    });
+
+    expect(tracks).toHaveLength(2);
+
+    const [parent, child] = tracks;
+    expect(parent.id).toBe("veh-1");
+    expect(child.id).toBe(subTrackId("veh-1", "signal"));
+    expect(parseSubTrackId(child.id)).toEqual({
+      parentId: "veh-1",
+      attr: "signal",
+    });
+    expect(child.label).toBe("signal");
+
+    // Two value segments, each labeled + colored by its value.
+    expect(child.events).toHaveLength(2);
+    expect(child.events.map((e) => e.label)).toEqual(["off", "left"]);
+    expect(child.events[0].color).not.toBe(child.events[1].color);
+    expect(child.events[0]).toMatchObject({
+      startSec: 0,
+      endSec: 2 / FPS,
+      data: { value: "off" },
+    });
+  });
+
+  it("gives a declared-dynamic attribute a single-segment row when uniform", () => {
+    const tracks = buildPerInstanceTracks({
+      engine: makeEngine({ 1: [withSignal("off")], 2: [withSignal("off")] }),
+      sample: SAMPLE,
+      path: PATH,
+      totalFrames: 2,
+      fps: FPS,
+      resolveColor: () => "#parent",
+      dynamicAttributes: ["signal"],
+    });
+
+    expect(tracks).toHaveLength(2);
+    expect(tracks[1].events).toHaveLength(1);
+    expect(tracks[1].events[0].label).toBe("off");
+  });
+
+  it("emits no sub-tracks when no dynamic attributes are declared", () => {
+    const tracks = buildPerInstanceTracks({
+      engine: makeEngine({ 1: [withSignal("off")] }),
+      sample: SAMPLE,
+      path: PATH,
+      totalFrames: 1,
+      fps: FPS,
+      resolveColor: () => "#parent",
+    });
+
+    expect(tracks).toHaveLength(1);
+    expect(parseSubTrackId(tracks[0].id)).toBeNull();
   });
 });

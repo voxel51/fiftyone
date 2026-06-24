@@ -20,6 +20,12 @@ export interface TrackEvent {
   endSec?: number;
   /** Optional human-readable label, e.g. for hover / inspection. */
   label?: string;
+  /**
+   * Per-event color override. When set, the event's bar / marker paints in
+   * this color instead of the track color — used by value-segmented sub-tracks
+   * to color each segment by its value. Falls back to the track color.
+   */
+  color?: string;
   /** Free-form payload — anything the source produced about this event. */
   data?: unknown;
 }
@@ -108,9 +114,7 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
   // are pre-existing tags the user hasn't explicitly pinned). Any ID that
   // appears after that initial hydration is a new creation and gets pinned.
   const hydratedRef = useRef(tracks.length > 0);
-  const seenTrackIdsRef = useRef<Set<string>>(
-    new Set(tracks.map((t) => t.id))
-  );
+  const seenTrackIdsRef = useRef<Set<string>>(new Set(tracks.map((t) => t.id)));
   useEffect(() => {
     if (!hydratedRef.current) {
       // Still waiting for the first non-empty batch — don't advance

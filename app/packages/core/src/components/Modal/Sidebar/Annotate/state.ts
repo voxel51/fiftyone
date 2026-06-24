@@ -1,4 +1,4 @@
-import { atom, useAtom } from "jotai";
+import { atom, useAtom, useAtomValue } from "jotai";
 import { atomFamily } from "jotai/utils";
 import { capitalize } from "lodash";
 import { LabelSchemaMeta } from "./useSchemaManager";
@@ -109,6 +109,32 @@ export const fieldAttributeCount = atomFamily((path: string) =>
     return Array.isArray(attrs) ? attrs.length : 0;
   })
 );
+
+/**
+ * Names of the attributes the annotation schema declares `dynamic` for a label
+ * field path. A dynamic attribute may change within a track's presence
+ * interval, so the video timeline gives it a value-segmented sub-track and the
+ * sidebar forward-fills edits rather than fanning them across the track. Empty
+ * when the schema is unloaded or the field has no dynamic attributes.
+ *
+ * Lives here (not in the video-annotation package) so it reads the same
+ * `labelSchemaData` atom instance core writes — a cross-package atom import
+ * would resolve to a different, never-written family.
+ */
+export const useDynamicAttributeNames = (path: string | null): string[] => {
+  const meta = useAtomValue(labelSchemaData(path ?? ""));
+
+  return useMemo(() => {
+    const attributes = meta?.label_schema?.attributes;
+    if (!Array.isArray(attributes)) {
+      return [];
+    }
+
+    return attributes
+      .filter((attribute) => attribute.dynamic && attribute.name)
+      .map((attribute) => attribute.name);
+  }, [meta]);
+};
 
 export const fieldTypes = atom((get) => {
   return (get(activeLabelSchemas) ?? []).reduce((acc, cur) => {

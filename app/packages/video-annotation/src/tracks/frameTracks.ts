@@ -1,6 +1,7 @@
 import type { AnnotationEngine } from "@fiftyone/annotation";
 import type { Track, TrackEvent } from "@fiftyone/playback";
 import type { LabelData } from "@fiftyone/utilities";
+import { isEqual } from "lodash";
 
 /** The engine read surface this builder needs — one frame's labels at a time. */
 export type FrameLabelReader = Pick<AnnotationEngine, "listLabels">;
@@ -35,6 +36,13 @@ interface InstanceState {
   intervals: Array<{ start: number; end: number }>;
   /** Frame start times (sec) where this instance has `keyframe: true`. */
   keyframeTimes: number[];
+  /**
+   * Per declared-dynamic attribute, its value on each frame the instance is
+   * present, in frame order. Drives the collapsible sub-track rows: coalescing
+   * consecutive-equal values into segments shows where the attribute changes
+   * within the track.
+   */
+  attributeFrames: Map<string, Array<{ frame: number; value: unknown }>>;
 }
 
 /**
@@ -64,6 +72,13 @@ export interface BuildPerInstanceTracksInput {
   /** Frame rate, for the frame↔seconds mapping. */
   fps: number;
   resolveColor: (label: PerInstanceLabel) => string;
+  /**
+   * Schema-declared dynamic attribute names. Each one that appears on an
+   * instance gets a collapsible sub-track row beneath its parent object track,
+   * its value segmented along the timeline. Empty (the default) yields no
+   * sub-tracks, so non-dynamic schemas are unaffected.
+   */
+  dynamicAttributes?: string[];
 }
 
 /** Track identity is `instance._id`; fall back to the doc `_id` (legacy). */
@@ -110,24 +125,47 @@ export function buildPerInstanceTracks({
   totalFrames,
   fps,
   resolveColor,
+  dynamicAttributes = [],
 }: BuildPerInstanceTracksInput): Track[] {
   if (totalFrames < 1 || !Number.isFinite(fps) || fps <= 0) {
     return [];
   }
 
-  const states = accumulatePresence(engine, sample, path, totalFrames, fps);
+  const states = accumulatePresence(
+    engine,
+    sample,
+    path,
+    totalFrames,
+    fps,
+    dynamicAttributes
+  );
   assignDisplayOrdinals(states);
 
-  const tracks: Track[] = [];
+  const parents: Track[] = [];
+  const childrenByParent = new Map<string, Track[]>();
   for (const [id, state] of states) {
     if (state.intervals.length === 0) {
       continue;
     }
 
-    tracks.push(toTrack(id, state, resolveColor));
+    const parent = toTrack(id, state, resolveColor);
+    parents.push(parent);
+
+    const children = buildSubTracks(parent, state, dynamicAttributes, fps);
+    if (children.length > 0) {
+      childrenByParent.set(id, children);
+    }
   }
 
-  return sortByClassThenOrdinal(tracks, states);
+  // Emit each parent immediately followed by its sub-tracks so a child row
+  // always sits under its parent in the flat list the timeline renders.
+  const ordered: Track[] = [];
+  for (const parent of sortByClassThenOrdinal(parents, states)) {
+    ordered.push(parent);
+    ordered.push(...(childrenByParent.get(parent.id) ?? []));
+  }
+
+  return ordered;
 }
 
 /** Close a state's currently-open presence interval at `endSec`. */
@@ -153,6 +191,7 @@ function newInstanceState(label: LabelData): InstanceState {
     currentStart: null,
     intervals: [],
     keyframeTimes: [],
+    attributeFrames: new Map(),
   };
 }
 
@@ -165,7 +204,8 @@ function accumulatePresence(
   sample: string,
   path: string,
   totalFrames: number,
-  fps: number
+  fps: number,
+  dynamicAttributes: readonly string[]
 ): Map<string, InstanceState> {
   const states = new Map<string, InstanceState>();
 
@@ -191,6 +231,8 @@ function accumulatePresence(
       if (label.keyframe) {
         state.keyframeTimes.push(frameStartSec);
       }
+
+      recordDynamicValues(state, label, frame, dynamicAttributes);
     }
 
     // Close any instance that was present last frame but not now.
@@ -298,4 +340,196 @@ function sortByClassThenOrdinal(
 
     return sa.displayIndex - sb.displayIndex;
   });
+}
+
+/** Separator between a parent track id and the dynamic-attribute sub-track. */
+const SUB_TRACK_SEPARATOR = "::";
+
+/** Mint a sub-track id from its parent track id and the attribute name. */
+export const subTrackId = (parentId: string, attr: string): string =>
+  `${parentId}${SUB_TRACK_SEPARATOR}${attr}`;
+
+/**
+ * Parse a sub-track id back into `{ parentId, attr }`, or `null` when the id is
+ * an ordinary parent / temporal-detection track (no separator). Parent ids are
+ * Mongo `instance._id`s, so the separator never collides.
+ */
+export const parseSubTrackId = (
+  id: string
+): { parentId: string; attr: string } | null => {
+  const at = id.indexOf(SUB_TRACK_SEPARATOR);
+  if (at === -1) {
+    return null;
+  }
+
+  return {
+    parentId: id.slice(0, at),
+    attr: id.slice(at + SUB_TRACK_SEPARATOR.length),
+  };
+};
+
+/** A contiguous run of one dynamic-attribute value across a track's frames. */
+export interface AttributeSegment {
+  startSec: number;
+  endSec: number;
+  value: unknown;
+}
+
+/**
+ * Record each declared-dynamic attribute's value on this present frame. Absent
+ * keys record `null` so an attribute that's set on some frames and not others
+ * segments cleanly (a missing value is a distinct segment, not a gap).
+ */
+function recordDynamicValues(
+  state: InstanceState,
+  label: LabelData,
+  frame: number,
+  dynamicAttributes: readonly string[]
+): void {
+  for (const attr of dynamicAttributes) {
+    const value =
+      attr in label ? (label as Record<string, unknown>)[attr] : null;
+
+    let records = state.attributeFrames.get(attr);
+    if (!records) {
+      records = [];
+      state.attributeFrames.set(attr, records);
+    }
+
+    records.push({ frame, value });
+  }
+}
+
+/**
+ * Coalesce a dynamic attribute's per-frame values into value segments. A new
+ * segment opens whenever the value changes OR the frame isn't contiguous with
+ * the previous one (a presence gap), so segments never bridge frames where the
+ * instance was absent. Frames span `[(frame - 1) / fps, frame / fps]`, matching
+ * the parent's presence-interval mapping. Records must be in frame order.
+ */
+export function segmentAttribute(
+  records: ReadonlyArray<{ frame: number; value: unknown }>,
+  fps: number
+): AttributeSegment[] {
+  const segments: AttributeSegment[] = [];
+
+  let startFrame: number | null = null;
+  let endFrame = 0;
+  let runValue: unknown;
+
+  const flush = () => {
+    if (startFrame === null) {
+      return;
+    }
+
+    segments.push({
+      startSec: (startFrame - 1) / fps,
+      endSec: endFrame / fps,
+      value: runValue,
+    });
+  };
+
+  for (const { frame, value } of records) {
+    const extends_ =
+      startFrame !== null && frame === endFrame + 1 && isEqual(value, runValue);
+
+    if (extends_) {
+      endFrame = frame;
+      continue;
+    }
+
+    flush();
+    startFrame = frame;
+    endFrame = frame;
+    runValue = value;
+  }
+
+  flush();
+  return segments;
+}
+
+/**
+ * Build one sub-track per declared-dynamic attribute the instance carries. A
+ * declared attribute always gets a row (uniform → a single full-presence
+ * segment); each value segment is colored by its value so changes read at a
+ * glance, with the value as the segment label.
+ */
+function buildSubTracks(
+  parent: Track,
+  state: InstanceState,
+  dynamicAttributes: readonly string[],
+  fps: number
+): Track[] {
+  const tracks: Track[] = [];
+
+  for (const attr of dynamicAttributes) {
+    const records = state.attributeFrames.get(attr);
+    if (!records || records.length === 0) {
+      continue;
+    }
+
+    const segments = segmentAttribute(records, fps);
+    if (segments.length === 0) {
+      continue;
+    }
+
+    tracks.push(toSubTrack(parent, attr, segments));
+  }
+
+  return tracks;
+}
+
+/** Build the sub-track {@link Track} for one dynamic attribute's segments. */
+function toSubTrack(
+  parent: Track,
+  attr: string,
+  segments: AttributeSegment[]
+): Track {
+  const events: TrackEvent[] = segments.map(({ startSec, endSec, value }) => ({
+    startSec,
+    endSec,
+    label: renderAttributeValue(value),
+    color: hashColor(value),
+    data: { value },
+  }));
+
+  return {
+    id: subTrackId(parent.id, attr),
+    label: attr,
+    description: `Dynamic attribute "${attr}" of ${parent.label}`,
+    // Fallback only — each segment carries its own value-hashed color.
+    color: parent.color,
+    events,
+  };
+}
+
+/** Human-readable rendering of an attribute value for a segment label. */
+function renderAttributeValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return "unset";
+  }
+
+  if (typeof value === "boolean") {
+    return value ? "true" : "false";
+  }
+
+  return String(value);
+}
+
+/**
+ * Deterministic color per attribute value so equal values share a color and
+ * changes stand out. `null` / `undefined` ("unset") render as a neutral gray.
+ */
+function hashColor(value: unknown): string {
+  if (value === null || value === undefined) {
+    return "hsl(0, 0%, 45%)";
+  }
+
+  const key = renderAttributeValue(value);
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  }
+
+  return `hsl(${hash % 360}, 65%, 55%)`;
 }
