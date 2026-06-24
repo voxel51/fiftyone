@@ -98,6 +98,7 @@ const Options: React.FC<{
 
         <Link
           className={styles.link}
+          href={"https://docs.voxel51.com/user_guide/app.html#map-panel"}
           title={"Help"}
           to={useExternalLink("https://docs.voxel51.com")}
           target={"_blank"}
