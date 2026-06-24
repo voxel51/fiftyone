@@ -172,6 +172,7 @@ export type Archetype3d = "point" | "cuboid" | "polyline" | "annotation-plane";
 export interface RaycastResult {
   sourcePanel: PanelId | null;
   worldPosition: [number, number, number] | null;
+  visibleWorldHeightAtPoint: number | null;
   intersectedObjectUuid: string | null;
   isPointCloud: boolean;
   pointIndex: number | null;
@@ -183,6 +184,7 @@ export interface MainPanelZoomSyncIntent {
   id: string;
   anchor: [number, number, number];
   zoomRatio: number;
+  visibleWorldHeightAtAnchor?: number | null;
   timestamp: number;
 }
 

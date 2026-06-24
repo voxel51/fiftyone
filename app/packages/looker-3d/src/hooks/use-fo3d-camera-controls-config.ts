@@ -4,7 +4,7 @@ import { useRecoilValue, useSetRecoilState } from "recoil";
 import { MOUSE } from "three";
 import type { Fo3dCameraControls } from "../fo3d/camera-controls";
 import {
-  isFo3dShiftPressedAtom,
+  isFo3dPointCropModifierPressedAtom,
   isCreatingCuboidPointerDownAtom,
   isCurrentlyTransformingAtom,
   isSegmentingPointerDownAtom,
@@ -16,7 +16,9 @@ type ModifierKey =
   | "controlRight"
   | "controlLeft"
   | "metaRight"
-  | "metaLeft";
+  | "metaLeft"
+  | "altRight"
+  | "altLeft";
 
 // KeyboardEvent.code uses physical-key identifiers from the DOM spec.
 // We track left/right keys independently so releasing one side does not
@@ -28,6 +30,8 @@ const KEY_CODE_TO_MODIFIER: Record<string, ModifierKey> = {
   ControlLeft: "controlLeft",
   MetaRight: "metaRight",
   MetaLeft: "metaLeft",
+  AltRight: "altRight",
+  AltLeft: "altLeft",
 };
 
 interface UseFo3dCameraControlsConfigArgs {
@@ -45,7 +49,9 @@ export const useFo3dCameraControlsConfig = ({
     isCreatingCuboidPointerDownAtom
   );
   const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
-  const setIsFo3dShiftPressed = useSetRecoilState(isFo3dShiftPressedAtom);
+  const setIsPointCropModifierPressed = useSetRecoilState(
+    isFo3dPointCropModifierPressedAtom
+  );
 
   const keyState = useRef<Record<ModifierKey, boolean>>({
     shiftRight: false,
@@ -54,19 +60,21 @@ export const useFo3dCameraControlsConfig = ({
     controlLeft: false,
     metaRight: false,
     metaLeft: false,
+    altRight: false,
+    altLeft: false,
   });
-  const isShiftPressedRef = useRef(false);
+  const isPointCropModifierPressedRef = useRef(false);
 
-  const setShiftPressed = useCallback(
+  const setPointCropModifierPressed = useCallback(
     (isPressed: boolean) => {
-      if (isShiftPressedRef.current === isPressed) {
+      if (isPointCropModifierPressedRef.current === isPressed) {
         return;
       }
 
-      isShiftPressedRef.current = isPressed;
-      setIsFo3dShiftPressed(isPressed);
+      isPointCropModifierPressedRef.current = isPressed;
+      setIsPointCropModifierPressed(isPressed);
     },
-    [setIsFo3dShiftPressed]
+    [setIsPointCropModifierPressed]
   );
 
   const updateCameraControlsConfig = useCallback(() => {
@@ -124,12 +132,17 @@ export const useFo3dCameraControlsConfig = ({
       }
 
       keyState.current[modifierKey] = isPressed;
-      setShiftPressed(
-        keyState.current.shiftRight || keyState.current.shiftLeft
+      setPointCropModifierPressed(
+        keyState.current.shiftRight ||
+          keyState.current.shiftLeft ||
+          keyState.current.metaRight ||
+          keyState.current.metaLeft ||
+          keyState.current.altRight ||
+          keyState.current.altLeft
       );
       updateCameraControlsConfig();
     },
-    [setShiftPressed, updateCameraControlsConfig]
+    [setPointCropModifierPressed, updateCameraControlsConfig]
   );
 
   const resetModifierState = useCallback(() => {
@@ -137,9 +150,9 @@ export const useFo3dCameraControlsConfig = ({
       keyState.current[key] = false;
     }
 
-    setShiftPressed(false);
+    setPointCropModifierPressed(false);
     updateCameraControlsConfig();
-  }, [setShiftPressed, updateCameraControlsConfig]);
+  }, [setPointCropModifierPressed, updateCameraControlsConfig]);
 
   // Global listeners are intentional: modifier keys can change even when canvas
   // focus/pointer state changes mid-interaction.

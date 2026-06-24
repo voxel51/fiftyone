@@ -161,15 +161,63 @@ describe("point-cloud crop", () => {
   it("creates a padded axis-aligned crop around a raycast hover point", () => {
     const crop = createPointCloudCropFromPoint([1, 2, 3], {
       margin: 1.5,
+      visibleWorldHeightAtPoint: 4,
     });
 
     expect(crop?.source).toBe("raycast-hover");
+    expect(crop?.visibleWorldHeightAtCenter).toBe(4);
     expect(crop?.center.toArray()).toEqual([1, 2, 3]);
     expect(crop?.halfSize.toArray()).toEqual([1.5, 1.5, 1.5]);
     expect(isPointInsidePointCloudCrop(new Vector3(2.49, 2, 3), crop!)).toBe(
       true
     );
     expect(isPointInsidePointCloudCrop(new Vector3(2.51, 2, 3), crop!)).toBe(
+      false
+    );
+    expect(isPointInsidePointCloudCrop(new Vector3(2.1, 3.1, 4.1), crop!)).toBe(
+      true
+    );
+  });
+
+  it("biases raycast hover point crops downward along scene up", () => {
+    const crop = createPointCloudCropFromPoint([0, 0, 0], {
+      margin: 1,
+      upVector: new Vector3(0, 1, 0),
+    });
+
+    expect(crop?.center.toArray()).toEqual([0, -0.625, 0]);
+    expect(crop?.halfSize.toArray()).toEqual([1, 1.375, 1]);
+    expect(isPointInsidePointCloudCrop(new Vector3(0, 0.74, 0), crop!)).toBe(
+      true
+    );
+    expect(isPointInsidePointCloudCrop(new Vector3(0, 0.76, 0), crop!)).toBe(
+      false
+    );
+    expect(isPointInsidePointCloudCrop(new Vector3(0, -1.99, 0), crop!)).toBe(
+      true
+    );
+    expect(isPointInsidePointCloudCrop(new Vector3(0, -2.01, 0), crop!)).toBe(
+      false
+    );
+  });
+
+  it("biases raycast hover point crops along non-Y scene up", () => {
+    const crop = createPointCloudCropFromPoint([0, 0, 0], {
+      margin: 1,
+      upVector: new Vector3(0, 0, 1),
+    });
+
+    expect(crop?.center.toArray()).toEqual([0, 0, -0.625]);
+    expect(isPointInsidePointCloudCrop(new Vector3(0, 0, 0.74), crop!)).toBe(
+      true
+    );
+    expect(isPointInsidePointCloudCrop(new Vector3(0, 0, 0.76), crop!)).toBe(
+      false
+    );
+    expect(isPointInsidePointCloudCrop(new Vector3(0, 0, -1.99), crop!)).toBe(
+      true
+    );
+    expect(isPointInsidePointCloudCrop(new Vector3(0, 0, -2.01), crop!)).toBe(
       false
     );
   });

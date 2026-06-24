@@ -7,7 +7,7 @@ import {
   annotationPlaneAtom,
   cuboidCreationStateAtom,
   hoveredLabelAtom,
-  isFo3dShiftPressedAtom,
+  isFo3dPointCropModifierPressedAtom,
   isCreatingCuboidAtom,
   raycastResultAtom,
   selectedLabelForAnnotationAtom,
@@ -31,10 +31,12 @@ export const usePointCloudCrop = ({
   enabled = true,
 }: UsePointCloudCropOptions = {}) => {
   const mode = fos.useModalMode();
-  const { pluginSettings, pointCloudSettings } = useFo3dContext();
+  const { pluginSettings, pointCloudSettings, upVector } = useFo3dContext();
   const selectedLabel = useRecoilValue(selectedLabelForAnnotationAtom);
   const hoveredLabel = useRecoilValue(hoveredLabelAtom);
-  const isShiftPressed = useRecoilValue(isFo3dShiftPressedAtom);
+  const isPointCropModifierPressed = useRecoilValue(
+    isFo3dPointCropModifierPressedAtom
+  );
   const raycastResult = useRecoilValue(raycastResultAtom);
   const isCreatingCuboid = useRecoilValue(isCreatingCuboidAtom);
   const cuboidCreationState = useRecoilValue(cuboidCreationStateAtom);
@@ -77,14 +79,19 @@ export const usePointCloudCrop = ({
 
     if (
       mode === "annotate" &&
-      isShiftPressed &&
+      isPointCropModifierPressed &&
       raycastResult.sourcePanel === PANEL_ID_MAIN &&
       raycastResult.isPointCloud &&
       raycastResult.worldPosition
     ) {
       const raycastHoverCrop = createPointCloudCropFromPoint(
         raycastResult.worldPosition,
-        { margin, source: "raycast-hover" }
+        {
+          margin,
+          source: "raycast-hover",
+          upVector,
+          visibleWorldHeightAtPoint: raycastResult.visibleWorldHeightAtPoint,
+        }
       );
 
       if (raycastHoverCrop) {
@@ -103,14 +110,16 @@ export const usePointCloudCrop = ({
     creationPreview,
     enabled,
     hoveredLabel?.id,
-    isShiftPressed,
+    isPointCropModifierPressed,
     margin,
     mode,
     raycastResult.isPointCloud,
     raycastResult.sourcePanel,
+    raycastResult.visibleWorldHeightAtPoint,
     raycastResult.worldPosition,
     renderModel,
     selectedLabel?._id,
+    upVector,
     useLegacyCoordinates,
   ]);
 };

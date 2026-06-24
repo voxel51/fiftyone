@@ -53,6 +53,7 @@ import type { SidePanelId, SidePanelViewType } from "../types";
 import { expandBoundingBox, findObjectByUserData } from "../utils";
 import {
   applySidePanelCameraFrame,
+  applyVisibleWorldHeightZoomToOrthographicCamera,
   applyMainPanelPanSyncIntentToOrthographicCamera,
   applyMainPanelZoomSyncIntentToOrthographicCamera,
   captureSidePanelCameraSnapshot,
@@ -284,6 +285,7 @@ export const SidePanel = ({
                 sampleMap={labelSampleMap}
                 globalOpacity={0.5}
                 isMainPanel={false}
+                dimAllLabels={pointCloudCrop?.source === "raycast-hover"}
                 unfocusedLabelOpacity={SIDE_PANEL_UNFOCUSED_LABEL_OPACITY}
               />
             )}
@@ -362,13 +364,14 @@ const DEFAULT_POLYLINE_VERTEX_FOCUS_SIZE = 5;
 const MIN_POLYLINE_VERTEX_FOCUS_SIZE = 1;
 const MAX_POLYLINE_VERTEX_FOCUS_SIZE = 30;
 const AUTO_EXPAND_FIT_INTERVAL_MS = 125;
-const RAYCAST_HOVER_FIT_INTERVAL_MS = 125;
+const RAYCAST_HOVER_SYNC_INTERVAL_MS = 125;
 const RAYCAST_HOVER_CENTER_EPSILON_SQ = 1e-8;
 const SIDE_PANEL_UNFOCUSED_LABEL_OPACITY = 0.08;
 
-interface RaycastHoverFitSnapshot {
+interface RaycastHoverSyncSnapshot {
   center: THREE.Vector3;
   halfSize: THREE.Vector3;
+  visibleWorldHeightAtCenter?: number | null;
 }
 
 const SidePanelCameraFrameController = ({
@@ -420,8 +423,8 @@ const BoundsSideEffectsComponent = ({
   const mainPanelZoomSyncIntent = useRecoilValue(mainPanelZoomSyncIntentAtom);
   const pointCloudCropRef = useRef(pointCloudCrop);
   const lastAutoExpandFitAtRef = useRef(0);
-  const lastRaycastHoverFitAtRef = useRef(0);
-  const lastRaycastHoverFitRef = useRef<RaycastHoverFitSnapshot | null>(null);
+  const lastRaycastHoverSyncAtRef = useRef(0);
+  const lastRaycastHoverSyncRef = useRef<RaycastHoverSyncSnapshot | null>(null);
   const lastHandledMainPanelPanSyncIntentRef = useRef<string | null>(null);
   const lastHandledMainPanelZoomSyncIntentRef = useRef<string | null>(null);
   const hoverFocusRef = useRef<{
@@ -481,6 +484,34 @@ const BoundsSideEffectsComponent = ({
       );
     },
     [fitToTemporaryMesh]
+  );
+
+  const centerOnPointCloudCrop = useCallback(
+    (crop: PointCloudCrop) => {
+      const frame = retargetSidePanelCameraFrame(
+        sidePanelCameraFrame,
+        crop.center
+      );
+
+      applySidePanelCameraFrame({
+        camera,
+        controls,
+        frame,
+        invalidate,
+      });
+
+      applyVisibleWorldHeightZoomToOrthographicCamera({
+        camera,
+        controls,
+        invalidate,
+        visibleWorldHeight: crop.visibleWorldHeightAtCenter,
+      });
+
+      if (!doesPointCloudCropFitCamera(crop, camera)) {
+        fitToPointCloudCrop(crop);
+      }
+    },
+    [camera, controls, fitToPointCloudCrop, invalidate, sidePanelCameraFrame]
   );
 
   const fitToBox = useCallback(
@@ -655,38 +686,40 @@ const BoundsSideEffectsComponent = ({
   useEffect(() => {
     const crop = pointCloudCropRef.current;
     if (!crop || crop.source !== "raycast-hover") {
-      lastRaycastHoverFitAtRef.current = 0;
-      lastRaycastHoverFitRef.current = null;
+      lastRaycastHoverSyncAtRef.current = 0;
+      lastRaycastHoverSyncRef.current = null;
       return;
     }
 
-    const lastFit = lastRaycastHoverFitRef.current;
+    const lastSync = lastRaycastHoverSyncRef.current;
     if (
-      lastFit &&
-      lastFit.center.distanceToSquared(crop.center) <=
+      lastSync &&
+      lastSync.center.distanceToSquared(crop.center) <=
         RAYCAST_HOVER_CENTER_EPSILON_SQ &&
-      lastFit.halfSize.distanceToSquared(crop.halfSize) <=
-        RAYCAST_HOVER_CENTER_EPSILON_SQ
+      lastSync.halfSize.distanceToSquared(crop.halfSize) <=
+        RAYCAST_HOVER_CENTER_EPSILON_SQ &&
+      lastSync.visibleWorldHeightAtCenter === crop.visibleWorldHeightAtCenter
     ) {
       return;
     }
 
     const now = Date.now();
     if (
-      lastFit &&
-      now - lastRaycastHoverFitAtRef.current < RAYCAST_HOVER_FIT_INTERVAL_MS
+      lastSync &&
+      now - lastRaycastHoverSyncAtRef.current < RAYCAST_HOVER_SYNC_INTERVAL_MS
     ) {
       return;
     }
 
-    lastRaycastHoverFitAtRef.current = now;
-    lastRaycastHoverFitRef.current = {
+    lastRaycastHoverSyncAtRef.current = now;
+    lastRaycastHoverSyncRef.current = {
       center: crop.center.clone(),
       halfSize: crop.halfSize.clone(),
+      visibleWorldHeightAtCenter: crop.visibleWorldHeightAtCenter,
     };
-    fitToPointCloudCrop(crop);
+    centerOnPointCloudCrop(crop);
   }, [
-    fitToPointCloudCrop,
+    centerOnPointCloudCrop,
     pointCloudCrop?.center.x,
     pointCloudCrop?.center.y,
     pointCloudCrop?.center.z,
@@ -698,6 +731,7 @@ const BoundsSideEffectsComponent = ({
     pointCloudCrop?.quaternion.z,
     pointCloudCrop?.quaternion.w,
     pointCloudCrop?.source,
+    pointCloudCrop?.visibleWorldHeightAtCenter,
   ]);
 
   useEffect(() => {

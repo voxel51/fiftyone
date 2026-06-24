@@ -121,7 +121,10 @@ export const Fo3dSceneContent = ({
   return (
     <>
       <RaycastService panelId={PANEL_ID_MAIN} />
-      <MainPanelNavigationSyncEmitter cameraControlsRef={cameraControlsRef} />
+      <MainPanelNavigationSyncEmitter
+        cameraControlsRef={cameraControlsRef}
+        cameraRef={cameraRef}
+      />
       <Fo3dPerformanceMonitor />
       <AdaptiveDpr pixelated />
       <AdaptiveEvents />
@@ -175,8 +178,10 @@ export const Fo3dSceneContent = ({
 
 const MainPanelNavigationSyncEmitter = ({
   cameraControlsRef,
+  cameraRef,
 }: {
   cameraControlsRef: React.RefObject<Fo3dCameraControls>;
+  cameraRef?: React.RefObject<THREE.PerspectiveCamera>;
 }) => {
   const activeCursorPanel = useRecoilValue(activeCursorPanelAtom);
   const raycastResult = useRecoilValue(raycastResultAtom);
@@ -206,6 +211,7 @@ const MainPanelNavigationSyncEmitter = ({
       const timestamp = Date.now();
       const intent = createMainPanelZoomSyncIntent({
         activeCursorPanel: activeCursorPanelRef.current,
+        camera: cameraRef?.current ?? undefined,
         deltaY: event.deltaY,
         id: `${timestamp}-${sequenceRef.current++}`,
         raycastResult: raycastResultRef.current,
@@ -222,7 +228,7 @@ const MainPanelNavigationSyncEmitter = ({
     return () => {
       window.removeEventListener("wheel", handleWheel);
     };
-  }, [setMainPanelZoomSyncIntent]);
+  }, [cameraRef, setMainPanelZoomSyncIntent]);
 
   useEffect(() => {
     const handlePointerDown = () => {

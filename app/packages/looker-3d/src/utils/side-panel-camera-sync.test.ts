@@ -1,4 +1,4 @@
-import { Box3, OrthographicCamera, Vector3 } from "three";
+import { Box3, OrthographicCamera, PerspectiveCamera, Vector3 } from "three";
 import { describe, expect, it, vi } from "vitest";
 import {
   PANEL_ID_MAIN,
@@ -19,6 +19,8 @@ import {
   deriveSidePanelCameraFrame,
   deriveSidePanelCameraUpdateFromMainViewer,
   doesPointCloudCropFitCamera,
+  getCameraVisibleWorldHeightAtPoint,
+  getOrthographicZoomForVisibleWorldHeight,
   getOrbitControlsWheelZoomRatio,
   retargetSidePanelCameraFrame,
   restoreSidePanelCameraSnapshot,
@@ -31,6 +33,7 @@ const buildRaycastResult = (
 ): RaycastResult => ({
   sourcePanel: PANEL_ID_MAIN,
   worldPosition: [1, 2, 3],
+  visibleWorldHeightAtPoint: null,
   intersectedObjectUuid: "point-cloud",
   isPointCloud: true,
   pointIndex: 1,
@@ -157,6 +160,29 @@ describe("side panel camera sync", () => {
     expect(getOrbitControlsWheelZoomRatio(-1)).toBeGreaterThan(1);
     expect(getOrbitControlsWheelZoomRatio(1)).toBeLessThan(1);
     expect(getOrbitControlsWheelZoomRatio(0)).toBeNull();
+  });
+
+  it("derives perspective visible world height at a raycast point", () => {
+    const camera = new PerspectiveCamera(90, 1, 0.1, 1000);
+    camera.position.set(0, 0, 10);
+    camera.lookAt(0, 0, 0);
+    camera.updateMatrixWorld();
+
+    expect(
+      getCameraVisibleWorldHeightAtPoint(camera, new Vector3(0, 0, 0))
+    ).toBeCloseTo(20);
+    expect(
+      getCameraVisibleWorldHeightAtPoint(camera, new Vector3(0, 0, 5))
+    ).toBeCloseTo(10);
+  });
+
+  it("maps perspective visible world height to side orthographic zoom", () => {
+    const camera = new OrthographicCamera(-1, 1, 1, -1, 0.1, 1000);
+
+    expect(getOrthographicZoomForVisibleWorldHeight(camera, 2)).toBeCloseTo(
+      1.5
+    );
+    expect(getOrthographicZoomForVisibleWorldHeight(camera, 0)).toBeNull();
   });
 
   it("creates a sync intent only for main-panel wheel zooms with raycast hits", () => {
@@ -364,6 +390,33 @@ describe("side panel camera sync", () => {
     expect(controls.target.toArray()).toEqual([1, 2, 3]);
     expect(controls.update).toHaveBeenCalledTimes(1);
     expect(invalidate).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses perspective visible height when applying main zoom to side panels", () => {
+    const camera = new OrthographicCamera(-1, 1, 1, -1, 0.1, 1000);
+    camera.position.set(0, 0, 10);
+    camera.zoom = 2;
+    const controls = {
+      target: new Vector3(0, 0, 0),
+      update: vi.fn(),
+    };
+    const invalidate = vi.fn();
+
+    expect(
+      applyMainPanelZoomSyncIntentToOrthographicCamera({
+        camera,
+        controls,
+        intent: {
+          ...buildIntent(),
+          visibleWorldHeightAtAnchor: 0.5,
+        },
+        invalidate,
+      })
+    ).toBe(true);
+
+    expect(camera.zoom).toBe(6);
+    expect(camera.position.toArray()).toEqual([1, 2, 13]);
+    expect(controls.target.toArray()).toEqual([1, 2, 3]);
   });
 
   it("pans side orthographic cameras toward the raycast anchor without changing zoom", () => {

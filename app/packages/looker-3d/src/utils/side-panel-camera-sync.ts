@@ -26,12 +26,14 @@ export const MAIN_PANEL_PAN_SYNC_TARGET_EPSILON_SQ = 1e-10;
 export const SIDE_PANEL_PAN_SYNC_DAMPING = 0.35;
 export const SIDE_PANEL_SYNC_MIN_ZOOM = 0.01;
 export const SIDE_PANEL_SYNC_MAX_ZOOM = 10000;
+export const SIDE_PANEL_PERSPECTIVE_ZOOM_GAIN = 1.5;
 
 const DEFAULT_SIDE_PANEL_CAMERA_DISTANCE = 10;
 const ORBIT_CONTROLS_WHEEL_ZOOM_BASE = 0.95;
 
 interface CreateMainPanelZoomSyncIntentOptions {
   activeCursorPanel: PanelId | null;
+  camera?: THREE.Camera;
   deltaY: number;
   id: string;
   raycastResult: RaycastResult;
@@ -68,6 +70,13 @@ interface ApplyMainPanelZoomSyncIntentOptions {
   invalidate?: () => void;
 }
 
+interface ApplyVisibleWorldHeightZoomOptions {
+  camera: THREE.Camera;
+  controls?: SidePanelControls;
+  invalidate?: () => void;
+  visibleWorldHeight?: number | null;
+}
+
 interface ApplyMainPanelPanSyncIntentOptions {
   camera: THREE.Camera;
   controls?: SidePanelControls;
@@ -98,6 +107,7 @@ interface DeriveSidePanelCameraUpdateFromMainViewerOptions {
   mainAnchor: THREE.Vector3;
   maxZoom?: number;
   minZoom?: number;
+  targetZoom?: number | null;
   panDamping?: number;
   zoomRatio?: number;
 }
@@ -155,6 +165,104 @@ const getOrthographicCamera = (camera: THREE.Camera) => {
   };
 
   return maybeOrthographic.isOrthographicCamera ? maybeOrthographic : null;
+};
+
+const getPerspectiveCamera = (camera: THREE.Camera) => {
+  const maybePerspective = camera as THREE.PerspectiveCamera & {
+    isPerspectiveCamera?: boolean;
+  };
+
+  return maybePerspective.isPerspectiveCamera ? maybePerspective : null;
+};
+
+export const getCameraVisibleWorldHeightAtPoint = (
+  camera: THREE.Camera,
+  point: THREE.Vector3
+) => {
+  const orthographicCamera = getOrthographicCamera(camera);
+  if (orthographicCamera) {
+    return (
+      (orthographicCamera.top - orthographicCamera.bottom) /
+      orthographicCamera.zoom
+    );
+  }
+
+  const perspectiveCamera = getPerspectiveCamera(camera);
+  if (!perspectiveCamera) {
+    return null;
+  }
+
+  camera.updateMatrixWorld();
+  const direction = new THREE.Vector3();
+  camera.getWorldDirection(direction);
+  const depth = point.clone().sub(camera.position).dot(direction);
+
+  if (!Number.isFinite(depth) || depth <= 0) {
+    return null;
+  }
+
+  return (
+    2 * depth * Math.tan(THREE.MathUtils.degToRad(perspectiveCamera.fov) / 2)
+  );
+};
+
+export const getOrthographicZoomForVisibleWorldHeight = (
+  camera: THREE.Camera,
+  visibleWorldHeight: number | null | undefined,
+  zoomGain = SIDE_PANEL_PERSPECTIVE_ZOOM_GAIN
+) => {
+  const orthographicCamera = getOrthographicCamera(camera);
+
+  if (
+    !orthographicCamera ||
+    typeof visibleWorldHeight !== "number" ||
+    !Number.isFinite(visibleWorldHeight) ||
+    visibleWorldHeight <= 0
+  ) {
+    return null;
+  }
+
+  const frustumHeight = orthographicCamera.top - orthographicCamera.bottom;
+  const zoom = (frustumHeight / visibleWorldHeight) * zoomGain;
+
+  return Number.isFinite(zoom) && zoom > 0 ? zoom : null;
+};
+
+export const applyVisibleWorldHeightZoomToOrthographicCamera = ({
+  camera,
+  controls,
+  invalidate,
+  visibleWorldHeight,
+}: ApplyVisibleWorldHeightZoomOptions) => {
+  const orthographicCamera = getOrthographicCamera(camera);
+  if (!orthographicCamera) {
+    return false;
+  }
+
+  const targetZoom = getOrthographicZoomForVisibleWorldHeight(
+    camera,
+    visibleWorldHeight
+  );
+  if (!targetZoom) {
+    return false;
+  }
+
+  const minZoom = getFiniteControlZoomLimit(
+    controls?.minZoom,
+    SIDE_PANEL_SYNC_MIN_ZOOM
+  );
+  const maxZoom = Math.max(
+    minZoom,
+    getFiniteControlZoomLimit(controls?.maxZoom, SIDE_PANEL_SYNC_MAX_ZOOM)
+  );
+
+  orthographicCamera.zoom = THREE.MathUtils.clamp(targetZoom, minZoom, maxZoom);
+  orthographicCamera.updateProjectionMatrix();
+  camera.updateMatrixWorld();
+  controls?.update?.();
+  invalidate?.();
+
+  return true;
 };
 
 const getPointCloudCropWorldCorners = (crop: PointCloudCrop) => {
@@ -370,6 +478,7 @@ export const deriveSidePanelCameraUpdateFromMainViewer = ({
   maxZoom = SIDE_PANEL_SYNC_MAX_ZOOM,
   minZoom = SIDE_PANEL_SYNC_MIN_ZOOM,
   panDamping = 1,
+  targetZoom,
   zoomRatio,
 }: DeriveSidePanelCameraUpdateFromMainViewerOptions): SidePanelCameraUpdate => {
   const clampedDamping = THREE.MathUtils.clamp(panDamping, 0, 1);
@@ -380,7 +489,13 @@ export const deriveSidePanelCameraUpdateFromMainViewer = ({
   const resolvedMinZoom = Math.max(0, minZoom);
   const resolvedMaxZoom = Math.max(resolvedMinZoom, maxZoom);
   const zoom =
-    typeof zoomRatio === "number" && Number.isFinite(zoomRatio) && zoomRatio > 0
+    typeof targetZoom === "number" &&
+    Number.isFinite(targetZoom) &&
+    targetZoom > 0
+      ? THREE.MathUtils.clamp(targetZoom, resolvedMinZoom, resolvedMaxZoom)
+      : typeof zoomRatio === "number" &&
+        Number.isFinite(zoomRatio) &&
+        zoomRatio > 0
       ? THREE.MathUtils.clamp(
           currentZoom * zoomRatio,
           resolvedMinZoom,
@@ -480,6 +595,7 @@ export const getOrbitControlsWheelZoomRatio = (
 
 export const createMainPanelZoomSyncIntent = ({
   activeCursorPanel,
+  camera,
   deltaY,
   id,
   raycastResult,
@@ -499,10 +615,15 @@ export const createMainPanelZoomSyncIntent = ({
     return null;
   }
 
+  const anchor = new THREE.Vector3(...raycastResult.worldPosition);
+
   return {
     id,
     anchor: raycastResult.worldPosition,
     zoomRatio,
+    visibleWorldHeightAtAnchor:
+      (camera && getCameraVisibleWorldHeightAtPoint(camera, anchor)) ??
+      raycastResult.visibleWorldHeightAtPoint,
     timestamp,
   };
 };
@@ -597,8 +718,12 @@ export const applyMainPanelZoomSyncIntentToOrthographicCamera = ({
     minZoom,
     getFiniteControlZoomLimit(controls?.maxZoom, SIDE_PANEL_SYNC_MAX_ZOOM)
   );
+  const targetZoom = getOrthographicZoomForVisibleWorldHeight(
+    camera,
+    intent.visibleWorldHeightAtAnchor
+  );
   const nextZoom = THREE.MathUtils.clamp(
-    orthographicCamera.zoom * intent.zoomRatio,
+    targetZoom ?? orthographicCamera.zoom * intent.zoomRatio,
     minZoom,
     maxZoom
   );
@@ -610,6 +735,7 @@ export const applyMainPanelZoomSyncIntentToOrthographicCamera = ({
         mainAnchor: new THREE.Vector3(...intent.anchor),
         maxZoom,
         minZoom,
+        targetZoom,
         zoomRatio: intent.zoomRatio,
       })
     : null;

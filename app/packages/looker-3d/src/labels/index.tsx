@@ -55,6 +55,7 @@ export interface ThreeDLabelsProps {
   sampleMap: Parameters<typeof load3dOverlays>[0];
   globalOpacity?: number;
   isMainPanel?: boolean;
+  dimAllLabels?: boolean;
   unfocusedLabelOpacity?: number;
 }
 
@@ -62,6 +63,7 @@ export const ThreeDLabels = ({
   sampleMap,
   globalOpacity,
   isMainPanel = true,
+  dimAllLabels = false,
   unfocusedLabelOpacity,
 }: ThreeDLabelsProps) => {
   const mode = fos.useModalMode();
@@ -294,6 +296,10 @@ export const ThreeDLabels = ({
       return null;
     }
 
+    if (dimAllLabels) {
+      return new Set<string>();
+    }
+
     const labelIds = new Set<string>();
 
     if (hoveredLabel?.id) {
@@ -306,6 +312,7 @@ export const ThreeDLabels = ({
 
     return labelIds.size > 0 ? labelIds : null;
   }, [
+    dimAllLabels,
     hoveredLabel?.id,
     selectedLabelForAnnotation?._id,
     unfocusedLabelOpacity,

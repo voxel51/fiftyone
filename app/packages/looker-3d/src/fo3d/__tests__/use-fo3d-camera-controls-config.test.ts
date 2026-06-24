@@ -5,6 +5,10 @@ import { describe, expect, it, vi } from "vitest";
 import { useFo3dCameraControlsConfig } from "../../hooks/use-fo3d-camera-controls-config";
 import type { Fo3dCameraControls } from "../camera-controls";
 
+const recoilMocks = vi.hoisted(() => ({
+  setPointCropModifierPressed: vi.fn(),
+}));
+
 vi.mock("@fiftyone/state", async () => {
   const React = await vi.importActual<typeof import("react")>("react");
 
@@ -31,7 +35,7 @@ vi.mock("recoil", async () => {
   return {
     ...actual,
     useRecoilValue: () => false,
-    useSetRecoilState: () => () => undefined,
+    useSetRecoilState: () => recoilMocks.setPointCropModifierPressed,
   };
 });
 
@@ -60,6 +64,7 @@ const makeControls = () => {
 
 describe("useFo3dCameraControlsConfig", () => {
   it("maps modifiers without letting cmd-left drag pan", () => {
+    recoilMocks.setPointCropModifierPressed.mockClear();
     const { controls, cameraControlsRef } = makeControls();
 
     renderHook(() => useFo3dCameraControlsConfig({ cameraControlsRef }));
@@ -72,11 +77,17 @@ describe("useFo3dCameraControlsConfig", () => {
       );
     });
     expect(controls.mouseButtons.LEFT).toBe(MOUSE.ROTATE);
+    expect(recoilMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
+      true
+    );
 
     act(() => {
       document.dispatchEvent(new KeyboardEvent("keyup", { code: "ShiftLeft" }));
     });
     expect(controls.mouseButtons.LEFT).toBe(MOUSE.ROTATE);
+    expect(recoilMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
+      false
+    );
 
     act(() => {
       document.dispatchEvent(
@@ -98,6 +109,9 @@ describe("useFo3dCameraControlsConfig", () => {
       );
     });
     expect(controls.mouseButtons.LEFT).toBe(MOUSE.PAN);
+    expect(recoilMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
+      true
+    );
 
     act(() => {
       document.dispatchEvent(
@@ -110,5 +124,30 @@ describe("useFo3dCameraControlsConfig", () => {
       document.dispatchEvent(new KeyboardEvent("keyup", { code: "MetaLeft" }));
     });
     expect(controls.mouseButtons.LEFT).toBe(MOUSE.ROTATE);
+    expect(recoilMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
+      true
+    );
+
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keyup", { code: "ShiftLeft" }));
+    });
+    expect(recoilMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
+      false
+    );
+
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { code: "AltLeft" }));
+    });
+    expect(controls.mouseButtons.LEFT).toBe(MOUSE.ROTATE);
+    expect(recoilMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
+      true
+    );
+
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keyup", { code: "AltLeft" }));
+    });
+    expect(recoilMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
+      false
+    );
   });
 });

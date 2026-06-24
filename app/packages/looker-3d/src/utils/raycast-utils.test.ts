@@ -8,7 +8,10 @@ import {
 } from "three";
 import { describe, expect, it } from "vitest";
 import type { ReconciledDetection3D } from "../annotation/types";
-import { createPointCloudCropFromDetection } from "./point-cloud-crop";
+import {
+  createPointCloudCropFromDetection,
+  createPointCloudCropFromPoint,
+} from "./point-cloud-crop";
 import { filterIntersectionsForPointCloudCrop } from "./raycast-utils";
 
 const buildPointCloudCrop = () => {
@@ -71,5 +74,21 @@ describe("filterIntersectionsForPointCloudCrop", () => {
     expect(
       filterIntersectionsForPointCloudCrop([outside], buildPointCloudCrop())
     ).toEqual([]);
+  });
+
+  it("uses axis-aligned bounds for raycast-hover point crops", () => {
+    const inside = buildIntersection(buildPoints(), new Vector3(0.5, 0, 0));
+    const insideCorner = buildIntersection(
+      buildPoints(),
+      new Vector3(0.8, 0.8, 0.8)
+    );
+    const outside = buildIntersection(buildPoints(), new Vector3(1.1, 0, 0));
+
+    expect(
+      filterIntersectionsForPointCloudCrop(
+        [outside, insideCorner, inside],
+        createPointCloudCropFromPoint([0, 0, 0], { margin: 1 })
+      )
+    ).toEqual([insideCorner, inside]);
   });
 });

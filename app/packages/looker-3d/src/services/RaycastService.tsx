@@ -12,6 +12,7 @@ import {
   filterIntersectionsForPointCloudCrop,
   getRaycastableObjects,
 } from "../utils/raycast-utils";
+import { getCameraVisibleWorldHeightAtPoint } from "../utils/side-panel-camera-sync";
 
 interface RaycastServiceProps {
   panelId: PanelId;
@@ -82,6 +83,7 @@ export const RaycastService = ({
         setRaycastResult({
           sourcePanel: null,
           worldPosition: null,
+          visibleWorldHeightAtPoint: null,
           intersectedObjectUuid: null,
           isPointCloud: false,
           pointIndex: null,
@@ -106,6 +108,10 @@ export const RaycastService = ({
       setRaycastResult({
         sourcePanel: panelId,
         worldPosition: position,
+        visibleWorldHeightAtPoint: getCameraVisibleWorldHeightAtPoint(
+          camera,
+          worldPos
+        ),
         // Note: Recoil freezes objects so can't store the full intersected object...
         // but we can store the UUID
         intersectedObjectUuid: closest.object.uuid,
@@ -132,6 +138,7 @@ export const RaycastService = ({
       setRaycastResult({
         sourcePanel: null,
         worldPosition: null,
+        visibleWorldHeightAtPoint: null,
         intersectedObjectUuid: null,
         isPointCloud: false,
         pointIndex: null,

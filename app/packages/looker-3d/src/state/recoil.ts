@@ -341,10 +341,11 @@ export const activeCursorPanelAtom = atom<PanelId | null>({
 });
 
 /**
- * Whether either Shift key is currently pressed while the 3D modal is active.
+ * Whether a modifier key that activates point-hover side-panel cropping is
+ * currently pressed while the 3D modal is active.
  */
-export const isFo3dShiftPressedAtom = atom<boolean>({
-  key: "fo3d-isShiftPressed",
+export const isFo3dPointCropModifierPressedAtom = atom<boolean>({
+  key: "fo3d-isPointCropModifierPressed",
   default: false,
 });
 
@@ -356,6 +357,7 @@ export const raycastResultAtom = atom<RaycastResult>({
   default: {
     sourcePanel: null,
     worldPosition: null,
+    visibleWorldHeightAtPoint: null,
     intersectedObjectUuid: null,
     isPointCloud: false,
     pointIndex: null,

@@ -14,6 +14,7 @@ export interface PointCloudCrop {
   halfSize: THREE.Vector3;
   quaternion: THREE.Quaternion;
   worldToBox: THREE.Matrix4;
+  visibleWorldHeightAtCenter?: number | null;
 }
 
 interface CreatePointCloudCropOptions {
@@ -25,6 +26,8 @@ interface CreatePointCloudCropOptions {
 interface CreatePointCloudCropFromPointOptions
   extends CreatePointCloudCropOptions {
   labelId?: string;
+  upVector?: THREE.Vector3 | null;
+  visibleWorldHeightAtPoint?: number | null;
 }
 
 interface RenderModelPointCloudCropOptions extends CreatePointCloudCropOptions {
@@ -42,6 +45,8 @@ interface LabelPointCloudCropOptions extends RenderModelPointCloudCropOptions {
 }
 
 const EPSILON = 1e-6;
+const POINT_CROP_MARGIN_ABOVE_POINT_SCALE = 0.75;
+const POINT_CROP_MARGIN_BELOW_POINT_SCALE = 2;
 
 const isFiniteNumberTuple = (
   value: unknown,
@@ -78,6 +83,14 @@ const getCuboidQuaternion = (cuboid: CuboidTransformData) => {
   }
 
   return new THREE.Quaternion();
+};
+
+const getPointCropUpVector = (upVector: THREE.Vector3 | null | undefined) => {
+  if (!upVector || upVector.lengthSq() <= EPSILON) {
+    return null;
+  }
+
+  return upVector.clone().normalize();
 };
 
 export const createPointCloudCropFromCuboidTransform = (
@@ -192,6 +205,8 @@ export const createPointCloudCropFromPoint = (
     labelId = "raycast-hover",
     margin,
     source = "raycast-hover",
+    upVector,
+    visibleWorldHeightAtPoint,
   }: CreatePointCloudCropFromPointOptions = {}
 ): PointCloudCrop | null => {
   if (!isFiniteNumberTuple(point, 3)) {
@@ -203,13 +218,33 @@ export const createPointCloudCropFromPoint = (
     return null;
   }
 
-  const center = new THREE.Vector3(...point);
+  const pointVector = new THREE.Vector3(...point);
+  const pointCropUpVector = getPointCropUpVector(upVector);
+  const marginAbovePoint = pointCropUpVector
+    ? resolvedMargin * POINT_CROP_MARGIN_ABOVE_POINT_SCALE
+    : resolvedMargin;
+  const marginBelowPoint = pointCropUpVector
+    ? resolvedMargin * POINT_CROP_MARGIN_BELOW_POINT_SCALE
+    : resolvedMargin;
+  const center = pointCropUpVector
+    ? pointVector
+        .clone()
+        .addScaledVector(
+          pointCropUpVector,
+          (marginAbovePoint - marginBelowPoint) / 2
+        )
+    : pointVector;
   const halfSize = new THREE.Vector3(
     resolvedMargin,
-    resolvedMargin,
+    (marginAbovePoint + marginBelowPoint) / 2,
     resolvedMargin
   );
-  const quaternion = new THREE.Quaternion();
+  const quaternion = pointCropUpVector
+    ? new THREE.Quaternion().setFromUnitVectors(
+        new THREE.Vector3(0, 1, 0),
+        pointCropUpVector
+      )
+    : new THREE.Quaternion();
   const boxToWorld = new THREE.Matrix4().compose(
     center,
     quaternion,
@@ -223,6 +258,7 @@ export const createPointCloudCropFromPoint = (
     halfSize,
     quaternion,
     worldToBox: boxToWorld.clone().invert(),
+    visibleWorldHeightAtCenter: visibleWorldHeightAtPoint,
   };
 };
 
