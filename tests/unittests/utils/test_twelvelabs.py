@@ -39,13 +39,13 @@ class TestTwelveLabsModelConfig:
 class TestTwelveLabsModel:
     """Test model wiring with a mocked client (no network)."""
 
-    @mock.patch.object(foutl, "twelvelabs")
+    @mock.patch.object(foutl, "twelvelabs", new_callable=mock.MagicMock)
     def test_missing_api_key(self, _mock_tl):
         with mock.patch.dict(os.environ, {}, clear=True):
             with pytest.raises(ValueError):
                 TwelveLabsModel(TwelveLabsModelConfig({}))
 
-    @mock.patch.object(foutl, "twelvelabs")
+    @mock.patch.object(foutl, "twelvelabs", new_callable=mock.MagicMock)
     def test_properties(self, _mock_tl):
         model = TwelveLabsModel(TwelveLabsModelConfig({"api_key": "sk-test"}))
         assert model.media_type == "video"
@@ -53,7 +53,7 @@ class TestTwelveLabsModel:
         assert model.can_embed_prompts is True
         assert model.ragged_batches is False
 
-    @mock.patch.object(foutl, "twelvelabs")
+    @mock.patch.object(foutl, "twelvelabs", new_callable=mock.MagicMock)
     def test_embed_video(self, mock_tl):
         client = mock_tl.TwelveLabs.return_value
 
@@ -82,7 +82,7 @@ class TestTwelveLabsModel:
         # get_embeddings() returns a batched array
         assert model.get_embeddings().shape == (1, 512)
 
-    @mock.patch.object(foutl, "twelvelabs")
+    @mock.patch.object(foutl, "twelvelabs", new_callable=mock.MagicMock)
     def test_embed_prompt(self, mock_tl):
         client = mock_tl.TwelveLabs.return_value
 
@@ -98,7 +98,7 @@ class TestTwelveLabsModel:
         _, kwargs = client.embed.create.call_args
         assert kwargs["text"] == "a person riding a bike"
 
-    @mock.patch.object(foutl, "twelvelabs")
+    @mock.patch.object(foutl, "twelvelabs", new_callable=mock.MagicMock)
     def test_predict_caption(self, mock_tl):
         client = mock_tl.TwelveLabs.return_value
         client.analyze.return_value = mock.Mock(data="  A dog runs.  ")
