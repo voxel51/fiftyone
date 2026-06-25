@@ -1271,6 +1271,16 @@ export class DetectionOverlay
     this.bounds = this.mask.paintEnd(this.bounds, (encoded) => {
       this.maskSource = encoded;
       this.markDirty();
+      // Mask encoding is async: `pendingMask` only becomes available here, after
+      // the synchronous `overlay-paint-end` dispatch below has already run (and
+      // read an empty pending mask). Re-emit so the Sample write-half re-reads
+      // the overlay and captures the freshly-encoded mask.
+      this.eventBus.dispatch("lighter:overlay-commit-requested", {
+        id: this.id,
+        overlayId: this.id,
+        label: this.label,
+        hasMask: !!this.mask,
+      });
     });
 
     const isEstablishing = this.isBeingEstablished;
