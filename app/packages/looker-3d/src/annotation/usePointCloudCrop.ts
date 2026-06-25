@@ -85,7 +85,7 @@ export const usePointCloudCrop = ({
     }
 
     if (
-      mode === "annotate" &&
+      mode === fos.ModalMode.ANNOTATE &&
       !isMainPanelPointerDown &&
       isPointCropModifierPressed &&
       raycastResult.sourcePanel === PANEL_ID_MAIN &&

@@ -3,6 +3,7 @@ import { useAtomValue } from "jotai";
 import { Quaternion, Vector3 } from "three";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as fos from "@fiftyone/state";
+import { MAIN_PANEL_ORBIT_ZOOM_SPEED } from "../../utils/side-panel-camera-sync";
 import { Fo3dSceneContent } from "../Fo3dCanvas";
 import type { FoScene } from "../render-types";
 
@@ -13,6 +14,10 @@ const frustumCollectionMock = vi.fn(
 );
 
 vi.mock("@fiftyone/state", () => ({
+  ModalMode: {
+    ANNOTATE: "annotate",
+    EXPLORE: "explore",
+  },
   modalMode: { key: "modalMode" },
   useRenderConfig3dState: vi.fn(),
 }));
@@ -124,7 +129,7 @@ describe("Fo3dSceneContent", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(useAtomValue).mockReturnValue("explore");
+    vi.mocked(useAtomValue).mockReturnValue(fos.ModalMode.EXPLORE);
   });
 
   it("renders labels from the active 3d slice sample map", () => {
@@ -167,7 +172,7 @@ describe("Fo3dSceneContent", () => {
     expect(orbitControlsMock).toHaveBeenCalledWith(
       expect.objectContaining({
         rotateSpeed: 1,
-        zoomSpeed: 0.6,
+        zoomSpeed: MAIN_PANEL_ORBIT_ZOOM_SPEED,
         panSpeed: 1.15,
         minDistance: 0.0001,
       })

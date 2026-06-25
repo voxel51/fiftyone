@@ -55,7 +55,7 @@ export const useZoomToSelected = ({
         }
 
         const boundingBox =
-          mode === "annotate"
+          mode === fos.ModalMode.ANNOTATE
             ? getUnionBoundingBox(
                 [
                   resolveAnnotationLabelBoundingBox({

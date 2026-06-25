@@ -175,7 +175,7 @@ export const Fo3dSceneContent = ({
       {isSceneInitialized && <ThreeDLabels sampleMap={labelSampleMap} />}
       <FrustumCollection isSceneInitialized={isSceneInitialized} />
 
-      {mode === "annotate" && <AnnotationControls />}
+      {mode === fos.ModalMode.ANNOTATE && <AnnotationControls />}
     </>
   );
 };

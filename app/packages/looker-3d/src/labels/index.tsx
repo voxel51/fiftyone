@@ -165,7 +165,7 @@ export const ThreeDLabels = ({
     const handler = (event: KeyboardEvent) => {
       if (
         event.key === "Escape" &&
-        mode === "annotate" &&
+        mode === fos.ModalMode.ANNOTATE &&
         selectedLabelForAnnotation
       ) {
         onExit();

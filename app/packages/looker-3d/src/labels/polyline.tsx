@@ -52,7 +52,7 @@ export const Polyline = ({
 
   const isHovered = hoveredLabel?.id === label._id;
 
-  const isAnnotateMode = useAtomValue(fos.modalMode) === "annotate";
+  const isAnnotateMode = useAtomValue(fos.modalMode) === fos.ModalMode.ANNOTATE;
   const isSelectedForAnnotation =
     useRecoilValue(selectedLabelForAnnotationAtom)?._id === label._id;
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();

@@ -24,6 +24,7 @@ import { useCuboidAnnotation } from "../annotation/useCuboidAnnotation";
 import { FO_USER_DATA, PANEL_ID_MAIN } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
 import {
+  currentArchetypeSelectedForTransformAtom,
   hoveredLabelAtom,
   isActivelySegmentingSelector,
   isCreatingCuboidPointerDownAtom,
@@ -295,10 +296,13 @@ export const Cuboid = ({
 
   const isHovered = hoveredLabel?.id === label._id;
 
-  const isAnnotateMode = fos.useModalMode() === "annotate";
+  const isAnnotateMode = fos.useModalMode() === fos.ModalMode.ANNOTATE;
   const isSelectedForAnnotation =
     useRecoilValue(selectedLabelForAnnotationAtom)?._id === label._id;
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
+  const setCurrentArchetypeSelectedForTransform = useSetRecoilState(
+    currentArchetypeSelectedForTransformAtom
+  );
 
   useEffect(() => {
     if (isSelectedForAnnotation) {
@@ -786,6 +790,10 @@ export const Cuboid = ({
             suppressNextClickRef.current = false;
             e.stopPropagation();
             return;
+          }
+
+          if (isSelectedForAnnotation) {
+            setCurrentArchetypeSelectedForTransform("cuboid");
           }
 
           onClick(e);

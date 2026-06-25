@@ -5,6 +5,10 @@ import React, { useCallback, useEffect } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { type PerspectiveCamera, Quaternion, Vector3 } from "three";
 import { useWorkingLabel } from "../annotation/store";
+import {
+  canTransformArchetypeUseMode,
+  getSelectedTransformArchetype,
+} from "../annotation/transform-shortcuts";
 import type {
   ReconciledDetection3D,
   ReconciledPolyline3D,
@@ -23,8 +27,10 @@ import { useFo3dContext } from "../fo3d/context";
 import {
   annotationPlaneAtom,
   cameraViewStatusAtom,
+  currentArchetypeSelectedForTransformAtom,
   isFo3dBackgroundOnAtom,
   selectedLabelForAnnotationAtom,
+  selectedPolylineVertexAtom,
 } from "../state";
 import { isDetection3dOverlay, isPolyline3dOverlay } from "../types";
 
@@ -126,15 +132,27 @@ export const useCameraViews = ({
   const annotationPlane = useRecoilValue(annotationPlaneAtom);
   const canAnnotate = useCanAnnotate();
   const mode = useAtomValue(fos.modalMode);
-  const enableAnnotationPlaneCameraView = canAnnotate && mode === "annotate";
+  const enableAnnotationPlaneCameraView =
+    canAnnotate && mode === fos.ModalMode.ANNOTATE;
   const selectedLabelForAnnotation = useRecoilValue(
     selectedLabelForAnnotationAtom,
   );
+  const currentArchetypeSelectedForTransform = useRecoilValue(
+    currentArchetypeSelectedForTransformAtom
+  );
+  const selectedPoint = useRecoilValue(selectedPolylineVertexAtom);
   const setIsFo3dBackgroundOn = useSetRecoilState(isFo3dBackgroundOnAtom);
 
   const workingLabel = useWorkingLabel(selectedLabelForAnnotation?._id ?? "");
-  const shouldReserveTForCuboidTransform =
-    mode === "annotate" && isDetection3dOverlay(selectedLabelForAnnotation);
+  const selectedTransformArchetype = getSelectedTransformArchetype({
+    currentArchetypeSelectedForTransform,
+    isAnnotationPlaneEnabled: annotationPlane.enabled,
+    selectedLabelForAnnotation,
+    selectedPoint,
+  });
+  const shouldReserveTForTransform =
+    mode === fos.ModalMode.ANNOTATE &&
+    canTransformArchetypeUseMode(selectedTransformArchetype, "translate");
 
   // We use current camera position and look at point to calculate the camera position
   // with some reasonable constraints.
@@ -244,7 +262,7 @@ export const useCameraViews = ({
       if (
         !event.metaKey &&
         event.code === "KeyT" &&
-        !shouldReserveTForCuboidTransform
+        !shouldReserveTForTransform
       ) {
         setCameraViewStatus({
           viewName: "Top view",
@@ -430,7 +448,7 @@ export const useCameraViews = ({
       setCameraViewStatus,
       annotationPlane,
       enableAnnotationPlaneCameraView,
-      shouldReserveTForCuboidTransform,
+      shouldReserveTForTransform,
       selectedLabelForAnnotation,
       workingLabel,
       cameraControlsRef,

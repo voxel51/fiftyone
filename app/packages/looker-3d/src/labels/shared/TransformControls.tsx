@@ -57,7 +57,7 @@ export const Transformable = ({
   const [isCurrentlyTransforming, setIsCurrentlyTransforming] = useRecoilState(
     isCurrentlyTransformingAtom,
   );
-  const isAnnotateMode = modalMode === "annotate";
+  const isAnnotateMode = modalMode === fos.ModalMode.ANNOTATE;
 
   const onTransformStartDecorated = useCallback(() => {
     setIsCurrentlyTransforming(true);

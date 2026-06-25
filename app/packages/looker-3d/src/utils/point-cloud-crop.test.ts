@@ -1,3 +1,4 @@
+import { ModalMode } from "@fiftyone/state";
 import { Quaternion, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 import {
@@ -53,7 +54,7 @@ const buildPolyline = (
 describe("point-cloud crop", () => {
   it("does not create a crop outside annotate mode", () => {
     const crop = getSelectedCuboidPointCloudCrop({
-      mode: "explore",
+      mode: ModalMode.EXPLORE,
       renderModel: { detections: [buildDetection()], polylines: [] },
       selectedLabelId: "detection-1",
     });
@@ -76,14 +77,14 @@ describe("point-cloud crop", () => {
 
     expect(
       getSelectedCuboidPointCloudCrop({
-        mode: "annotate",
+        mode: ModalMode.ANNOTATE,
         renderModel,
         selectedLabelId: null,
       })
     ).toBeNull();
     expect(
       getSelectedCuboidPointCloudCrop({
-        mode: "annotate",
+        mode: ModalMode.ANNOTATE,
         renderModel,
         selectedLabelId: "polyline-1",
       })
@@ -309,7 +310,7 @@ describe("point-cloud crop", () => {
     };
 
     const crop = getSelectedCuboidPointCloudCrop({
-      mode: "annotate",
+      mode: ModalMode.ANNOTATE,
       renderModel: deriveRenderModel(workingDoc, transient),
       selectedLabelId: detection._id,
       margin: 0,
@@ -340,7 +341,7 @@ describe("point-cloud crop", () => {
 
     expect(
       getSelectedCuboidPointCloudCrop({
-        mode: "annotate",
+        mode: ModalMode.ANNOTATE,
         renderModel,
         selectedLabelId: "polyline-1",
       })
@@ -357,7 +358,7 @@ describe("point-cloud crop", () => {
 
     expect(
       getLabelPointCloudCrop({
-        mode: "annotate",
+        mode: ModalMode.ANNOTATE,
         renderModel,
         labelId: detection._id,
         margin: 0,
@@ -365,7 +366,7 @@ describe("point-cloud crop", () => {
     ).toBe("hover");
     expect(
       getLabelPointCloudCrop({
-        mode: "annotate",
+        mode: ModalMode.ANNOTATE,
         renderModel,
         labelId: polyline._id,
         margin: 0,

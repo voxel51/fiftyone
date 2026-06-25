@@ -1,3 +1,4 @@
+import { ModalMode } from "@fiftyone/state";
 import * as THREE from "three";
 import type { RenderModel } from "../annotation/store";
 import type {
@@ -31,7 +32,7 @@ interface CreatePointCloudCropFromPointOptions
 }
 
 interface RenderModelPointCloudCropOptions extends CreatePointCloudCropOptions {
-  mode: string;
+  mode: ModalMode;
   renderModel: RenderModel;
 }
 
@@ -269,7 +270,7 @@ export const getSelectedCuboidPointCloudCrop = ({
   margin,
   useLegacyCoordinates = false,
 }: SelectedPointCloudCropOptions): PointCloudCrop | null => {
-  if (mode !== "annotate" || !selectedLabelId) {
+  if (mode !== ModalMode.ANNOTATE || !selectedLabelId) {
     return null;
   }
 
@@ -295,7 +296,7 @@ export const getLabelPointCloudCrop = ({
   margin,
   useLegacyCoordinates = false,
 }: LabelPointCloudCropOptions): PointCloudCrop | null => {
-  if (mode !== "annotate" || !labelId) {
+  if (mode !== ModalMode.ANNOTATE || !labelId) {
     return null;
   }
 
