@@ -202,10 +202,12 @@ describe("buildTracksFromIndex dynamic-attribute sub-tracks", () => {
 
     const [, child] = tracks;
     expect(child.events.map((e) => e.label)).toEqual(["off", "left", "off"]);
+    // Each event carries its value plus the parent's field path, so a sub-track
+    // row click resolves the parent's `(path, instanceId)` ref.
     expect(child.events.map((e) => e.data)).toEqual([
-      { value: "off" },
-      { value: "left" },
-      { value: "off" },
+      { value: "off", path: "frames.detections" },
+      { value: "left", path: "frames.detections" },
+      { value: "off", path: "frames.detections" },
     ]);
   });
 

@@ -822,7 +822,7 @@ function buildSubTracks(
       continue;
     }
 
-    tracks.push(toSubTrack(parent, attr, segments));
+    tracks.push(toSubTrack(parent, attr, segments, state.path));
   }
 
   return tracks;
@@ -832,14 +832,19 @@ function buildSubTracks(
 function toSubTrack(
   parent: Track,
   attr: string,
-  segments: AttributeSegment[]
+  segments: AttributeSegment[],
+  path: string
 ): Track {
+  // Carry the parent's field path on every event so a sub-track row resolves the
+  // parent's `(path, instanceId)` ref when its row is clicked — selection is
+  // path-aware (tracks span multiple frame fields), and a row with no path
+  // selects nothing. `value` drives the per-segment seek/label.
   const events: TrackEvent[] = segments.map(({ startSec, endSec, value }) => ({
     startSec,
     endSec,
     label: renderAttributeValue(value),
     color: hashColor(value),
-    data: { value },
+    data: { value, path },
   }));
 
   return {
