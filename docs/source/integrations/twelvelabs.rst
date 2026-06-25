@@ -11,10 +11,8 @@ few lines of code:
 
 -   **Marengo** generates 512-dimensional video embeddings (and matching text
     embeddings), so you can compute visualizations, build similarity indexes,
-    and run text-to-video searches over your video datasets.
--   **Pegasus** generates natural-language captions/answers about a video,
-    which you can store as
-    :class:`Classification <fiftyone.core.labels.Classification>` labels.
+    and run text-to-video searches over your video datasets
+-   **Pegasus** generates natural-language captions/answers about a video
 
 The models run server-side via the TwelveLabs API, so no local GPU is required.
 
@@ -56,14 +54,15 @@ visualizations and similarity searches:
     import fiftyone as fo
     import fiftyone.zoo as foz
     import fiftyone.brain as fob
-    from fiftyone.utils.twelvelabs import (
-        TwelveLabsModel,
-        TwelveLabsModelConfig,
-    )
+    from fiftyone.utils.twelvelabs import TwelveLabsModel, TwelveLabsModelConfig
 
     dataset = foz.load_zoo_dataset("quickstart-video")
 
+    # Load directly
     model = TwelveLabsModel(TwelveLabsModelConfig({"operation": "embed"}))
+
+    # Load via zoo
+    # model = foz.load_zoo_model(("twelvelabs-marengo3.0")
 
     dataset.compute_embeddings(model, embeddings_field="twelvelabs")
 
@@ -80,7 +79,11 @@ build a similarity index and run text-to-video searches:
         brain_key="tl_sim",
     )
 
-    view = dataset.sort_by_similarity("a person riding a bike", k=10)
+    view = dataset.sort_by_similarity(
+        "a person riding a bike",
+        brain_key="tl_sim",
+        k=10,
+    )
 
     session = fo.launch_app(view)
 
@@ -89,16 +92,22 @@ build a similarity index and run text-to-video searches:
 Video captions
 ______________
 
-Apply the Pegasus model to caption your videos for curation. Captions are
-stored as :class:`Classification <fiftyone.core.labels.Classification>`
-labels:
+Apply the Pegasus model to caption your videos for curation:
 
 .. code-block:: python
     :linenos:
 
-    model = TwelveLabsModel(
-        TwelveLabsModelConfig({"operation": "caption"})
-    )
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone.utils.twelvelabs import TwelveLabsModel, TwelveLabsModelConfig
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+
+    # Load directly
+    model = TwelveLabsModel(TwelveLabsModelConfig({"operation": "caption"}))
+
+    # Load via zoo
+    # model = foz.load_zoo_model("twelvelabs-pegasus1.5")
 
     dataset.apply_model(model, label_field="caption")
 
@@ -107,6 +116,7 @@ You can customize the prompt and generation length:
 .. code-block:: python
     :linenos:
 
+    # Load directly
     model = TwelveLabsModel(
         TwelveLabsModelConfig(
             {
@@ -115,4 +125,11 @@ You can customize the prompt and generation length:
                 "max_tokens": 1024,
             }
         )
+    )
+
+    # Load via zoo
+    model = foz.load_zoo_model(
+        "twelvelabs-pegasus1.5",
+        prompt="List the main objects that appear in this video.",
+        max_tokens=1024,
     )

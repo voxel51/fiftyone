@@ -8,10 +8,8 @@ dataset curation:
 -   **Marengo** generates 512-dimensional video embeddings (and matching text
     embeddings), enabling :meth:`compute_embeddings`,
     :meth:`compute_visualization`, and text-to-video
-    :meth:`compute_similarity` searches.
--   **Pegasus** generates natural-language captions/answers about a video,
-    which can be stored as
-    :class:`fiftyone.core.labels.Classification` labels.
+    :meth:`compute_similarity` searches
+-   **Pegasus** generates natural-language captions/answers about a video
 
 The models run server-side via the TwelveLabs API, so no local GPU is
 required. Set your API key via the ``TWELVELABS_API_KEY`` environment variable
@@ -27,12 +25,13 @@ import os
 
 import numpy as np
 
-import eta.core.config as etac
 import eta.core.video as etav
 
+import fiftyone.core.config as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.models as fom
 import fiftyone.core.utils as fou
+import fiftyone.zoo.models as fozm
 
 twelvelabs = fou.lazy_import(
     "twelvelabs", callback=lambda: fou.ensure_package("twelvelabs>=1.2.8")
@@ -48,7 +47,7 @@ DEFAULT_CAPTION_PROMPT = "Describe what happens in this video."
 MIN_ANALYSIS_MAX_TOKENS = 512
 
 
-class TwelveLabsModelConfig(etac.Config):
+class TwelveLabsModelConfig(foc.Config, fozm.HasZooModel):
     """Configuration for running a :class:`TwelveLabsModel`.
 
     Args:
@@ -98,33 +97,52 @@ class TwelveLabsModel(fom.Model, fom.EmbeddingsMixin, fom.PromptMixin):
     """Wrapper for running inference with `TwelveLabs <https://twelvelabs.io>`_
     video foundation models.
 
-    Embedding videos with Marengo, e.g. for similarity/visualization::
+    Example usage::
 
         import fiftyone as fo
         import fiftyone.zoo as foz
         import fiftyone.brain as fob
-        from fiftyone.utils.twelvelabs import (
-            TwelveLabsModel,
-            TwelveLabsModelConfig,
-        )
+        from fiftyone.utils.twelvelabs import TwelveLabsModel, TwelveLabsModelConfig
 
-        dataset = foz.load_zoo_dataset("quickstart-video")
+        dataset = foz.load_zoo_dataset("quickstart-video", max_samples=2)
 
+        #
+        # Video embeddings
+        #
+
+        # Load directly
         model = TwelveLabsModel(TwelveLabsModelConfig({"operation": "embed"}))
+
+        # Load via zoo
+        # model = foz.load_zoo_model("twelvelabs-marengo3.0")
 
         dataset.compute_embeddings(model, embeddings_field="twelvelabs")
 
-        # Text-to-video search (Marengo aligns text and video embeddings)
+        # Text-to-video search
         index = fob.compute_similarity(
-            dataset, model=model, embeddings="twelvelabs", brain_key="tl_sim"
+            dataset,
+            model=model,
+            embeddings="twelvelabs",
+            brain_key="tl_sim",
         )
-        view = dataset.sort_by_similarity("a person riding a bike", k=10)
 
-    Captioning videos with Pegasus, e.g. for curation::
-
-        model = TwelveLabsModel(
-            TwelveLabsModelConfig({"operation": "caption"})
+        view = dataset.sort_by_similarity(
+            "a person riding a bike",
+            brain_key="tl_sim",
+            k=10,
         )
+
+        session = fo.launch_app(view)
+
+        #
+        # Video captions
+        #
+
+        # Load directly
+        model = TwelveLabsModel(TwelveLabsModelConfig({"operation": "caption"}))
+
+        # Load viz zoo
+        # model = foz.load_zoo_model("twelvelabs-pegasus1.5")
 
         dataset.apply_model(model, label_field="caption")
 
@@ -248,7 +266,7 @@ class TwelveLabsModel(fom.Model, fom.EmbeddingsMixin, fom.PromptMixin):
         if self._is_url(path):
             kwargs["video_url"] = path
         else:
-            kwargs["video_file"] = path
+            kwargs["video_file"] = open(path, "rb")
 
         # The API requires "clip" to be present; we request a single "video"
         # scope embedding that summarizes the entire video
