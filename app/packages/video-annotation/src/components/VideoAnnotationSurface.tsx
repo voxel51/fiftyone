@@ -9,7 +9,10 @@ import { useVideoLighterEngineBridge } from "../hooks/useVideoLighterEngineBridg
 import { useFollowAnchorFrame } from "../state/useVideoInteraction";
 import { useAnnotatePrerequisites } from "../hooks/useAnnotatePrerequisites";
 import { PlaybackProvider } from "@fiftyone/playback";
-import { AnnotatePrerequisiteNotice } from "./AnnotatePrerequisiteNotice";
+import {
+  AnnotatePrerequisiteChecking,
+  AnnotatePrerequisiteNotice,
+} from "./AnnotatePrerequisiteNotice";
 import { FrameLabelsTracks, RegisterFrameLabels } from "./FrameLabels";
 import { ImaVidLighterTile } from "./ImaVidLighterTile";
 import { RegisterImaVidImage } from "./RegisterImaVidImage";
@@ -93,16 +96,20 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
   const tileMode = useTileMode();
   const prerequisites = useAnnotatePrerequisites(sample);
 
-  // Annotation needs a frame count (and fps) to drive the timeline; when the
-  // sample's VideoMetadata wasn't computed we can't resolve one. Show a prompt
-  // instead of mounting the playback stream — which used to throw and take the
-  // whole modal down (explore included).
-  if (!prerequisites.ok) {
+  // Annotation needs computed metadata (frame count + fps) and sampled frame
+  // images. When a prerequisite is missing, show an actionable prompt instead
+  // of mounting the playback stream — which used to throw and take the whole
+  // modal down (metadata), or render a silent blank (frames).
+  if (prerequisites.status !== "ready") {
     return (
       <div className={styles.root}>
         <VideoAnnotationTopBar sample={sample} />
         <div className={styles.media}>
-          <AnnotatePrerequisiteNotice blocker={prerequisites.blocker} />
+          {prerequisites.status === "blocked" ? (
+            <AnnotatePrerequisiteNotice blocker={prerequisites.blocker} />
+          ) : (
+            <AnnotatePrerequisiteChecking />
+          )}
         </div>
       </div>
     );
