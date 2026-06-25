@@ -8,7 +8,7 @@ const videoDatasetName = getUniqueDatasetNameWithPrefix("video-dataset");
 const detectionDatasetName =
   getUniqueDatasetNameWithPrefix("detection-dataset");
 const groupVideoDatasetName = getUniqueDatasetNameWithPrefix(
-  "group-video-dataset"
+  "group-video-dataset",
 );
 
 const id = "000000000000000000000000";
@@ -109,7 +109,7 @@ test.beforeAll(
       group=group.element("video1")
   )
   dataset.add_samples([sample])`);
-  }
+  },
 );
 
 const DEFAULT_LABEL_SCHEMA = {
@@ -222,7 +222,7 @@ test.describe.serial("schema manager", () => {
 
     // Annotation should be disabled for video datasets
     await modal.sidebar.assert.hasDisabledMessage(
-      "isn\u2019t supported for video datasets"
+      "isn\u2019t supported for video datasets",
     );
     await schemaManager.assert.isDisabled();
   });
@@ -274,7 +274,7 @@ test.describe.serial("schema manager", () => {
 
     // Annotation should be disabled for grouped datasets with no supported slices
     await modal.sidebar.assert.hasDisabledMessage(
-      "has no slices that support annotation"
+      "has no slices that support annotation",
     );
     await schemaManager.assert.isDisabled();
   });

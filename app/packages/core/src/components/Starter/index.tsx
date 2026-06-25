@@ -125,7 +125,7 @@ export function StarterSubtitle(props: StarterPropsType) {
       }
       return false;
     },
-    [browser]
+    [browser],
   );
   const hasCreateDatasetOperator = useMemo(() => {
     if (!isAddSample) {

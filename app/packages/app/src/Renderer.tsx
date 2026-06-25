@@ -72,7 +72,7 @@ const Renderer = () => {
         set(entry, result);
         setReady(true);
       },
-    [router]
+    [router],
   );
 
   const init = useCallback(
@@ -81,7 +81,7 @@ const Renderer = () => {
       await setExpansion();
       apply(result);
     },
-    [apply, setExpansion, setModalState]
+    [apply, setExpansion, setModalState],
   );
 
   useEffect(() => {
@@ -95,12 +95,11 @@ const Renderer = () => {
   useEffect(() => {
     return router.subscribe(
       () => undefined,
-      () => setPending(true)
+      () => setPending(true),
     );
   }, [router, setPending]);
 
-
-  const loading = <Pixelating/>
+  const loading = <Pixelating />;
   if (!routeEntry || !ready) return loading;
 
   return (

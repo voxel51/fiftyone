@@ -128,7 +128,7 @@ test.describe.serial("field visibility", () => {
     await fieldVisibility.openFieldVisibilityModal();
     await fieldVisibility.openTab("Filter rule");
     await fieldVisibility.addFilterRuleInput(
-      "description:ground_truth description"
+      "description:ground_truth description",
     );
     await fieldVisibility.asserter.assertFieldsAreSelected(["ground_truth"]);
   });

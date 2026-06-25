@@ -2,7 +2,7 @@ import { PluginComponentRegistration } from "@fiftyone/plugins";
 
 export function panelsCompareFn(
   panelA: PluginComponentRegistration,
-  panelB: PluginComponentRegistration
+  panelB: PluginComponentRegistration,
 ) {
   const panelAPriority = panelA?.panelOptions?.priority || 0;
   const panelBPriority = panelB?.panelOptions?.priority || 0;

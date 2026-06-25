@@ -53,7 +53,7 @@ const McapImageAnnotationOverlay: React.FC<McapImageAnnotationOverlayProps> = ({
         data: picked.primitive.value,
       });
     },
-    [annotationSets, setSelection]
+    [annotationSets, setSelection],
   );
 
   if (annotationSets.length === 0) return null;

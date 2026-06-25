@@ -12,7 +12,7 @@ export const MCAP_TILE_TYPE = {
   THREE_D: "3d",
 } as const;
 
-export type McapTileType = typeof MCAP_TILE_TYPE[keyof typeof MCAP_TILE_TYPE];
+export type McapTileType = (typeof MCAP_TILE_TYPE)[keyof typeof MCAP_TILE_TYPE];
 
 /**
  * Props every MCAP tile body accepts. `initialSourceId` is the source

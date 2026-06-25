@@ -19,7 +19,7 @@ const DEFAULT_MCAP_MESSAGE_INDEX_CACHE_SIZE_BYTES = 128 * 1024 * 1024;
  */
 export async function createDefaultMcapReader(
   _source: ByteSourceDescriptor,
-  readable: McapTypes.IReadable
+  readable: McapTypes.IReadable,
 ): Promise<McapIndexedReaderLike> {
   const wasmDecompressHandlers = await loadDecompressHandlers();
   const reader = await McapIndexedReader.Initialize({
@@ -36,7 +36,7 @@ export async function createDefaultMcapReader(
     readIndexedMessageTimes: (args?: McapReadIndexedMessageTimesRequest) =>
       readIndexedMessageTimesForReader(reader, readable, args),
     readLatestIndexedMessageTimes: (
-      args: McapReadLatestIndexedMessageTimesRequest
+      args: McapReadLatestIndexedMessageTimesRequest,
     ) => readLatestIndexedMessageTimesForReader(reader, readable, args),
     readTopicIndexedTimeBounds: (args: McapReadTopicIndexedTimeBoundsRequest) =>
       readTopicIndexedTimeBoundsForReader(reader, readable, args),
@@ -53,13 +53,13 @@ function compressedChunkTypes(reader: McapIndexedReader): ReadonlySet<string> {
   return new Set(
     chunkIndexes
       .map((chunkIndex) => chunkIndex.compression)
-      .filter((compression) => compression.length > 0)
+      .filter((compression) => compression.length > 0),
   );
 }
 
 function assertSupportedChunkCompressions(
   compressions: ReadonlySet<string>,
-  decompressHandlers: McapTypes.DecompressHandlers
+  decompressHandlers: McapTypes.DecompressHandlers,
 ) {
   const supported = new Set(Object.keys(decompressHandlers));
   const unsupported = [...compressions]
@@ -71,8 +71,8 @@ function assertSupportedChunkCompressions(
 
     throw new Error(
       `Unsupported MCAP chunk compression: ${unsupported.join(
-        ", "
-      )}. Supported compressions are ${supportedList}.`
+        ", ",
+      )}. Supported compressions are ${supportedList}.`,
     );
   }
 }

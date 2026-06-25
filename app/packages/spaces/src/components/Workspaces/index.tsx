@@ -45,7 +45,7 @@ export default function Workspaces() {
 
   const filteredWorkspaces = useMemo(() => {
     return workspaces.filter((space) =>
-      space.name.toLowerCase().includes(searchTerm.toLowerCase())
+      space.name.toLowerCase().includes(searchTerm.toLowerCase()),
     );
   }, [workspaces, searchTerm]);
 

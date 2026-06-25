@@ -31,7 +31,7 @@ describe("useExecuteLoader", () => {
           params: {},
           path: "loader",
           onChange,
-        })
+        }),
       );
 
       act(() => result.current());
@@ -50,7 +50,7 @@ describe("useExecuteLoader", () => {
           params: { key: "value" },
           path: "myLoader",
           onChange,
-        })
+        }),
       );
 
       act(() => result.current());
@@ -66,7 +66,7 @@ describe("useExecuteLoader", () => {
           params: { key: "value" },
           path: "myLoader",
           onChange,
-        })
+        }),
       );
 
       act(() => result.current());
@@ -74,7 +74,7 @@ describe("useExecuteLoader", () => {
       expect(mockExecuteOperator).toHaveBeenCalledWith(
         "@test/load",
         { key: "value" },
-        expect.objectContaining({ callback: expect.any(Function) })
+        expect.objectContaining({ callback: expect.any(Function) }),
       );
     });
   });
@@ -96,7 +96,7 @@ describe("useExecuteLoader", () => {
           params: {},
           path: "myLoader",
           onChange,
-        })
+        }),
       );
 
       act(() => result.current());
@@ -123,7 +123,7 @@ describe("useExecuteLoader", () => {
           params: {},
           path: "myLoader",
           onChange,
-        })
+        }),
       );
 
       act(() => result.current());
@@ -152,7 +152,7 @@ describe("useExecuteLoader", () => {
           params: {},
           path: "myLoader",
           onChange,
-        })
+        }),
       );
 
       act(() => result.current());
@@ -178,7 +178,7 @@ describe("useExecuteLoader", () => {
           params: {},
           path: "myLoader",
           onChange,
-        })
+        }),
       );
 
       act(() => result.current());
@@ -203,7 +203,7 @@ describe("useExecuteLoader", () => {
             path: "myLoader",
             onChange,
           }),
-        { initialProps: { params } }
+        { initialProps: { params } },
       );
 
       const firstCallback = result.current;
@@ -224,7 +224,7 @@ describe("useExecuteLoader", () => {
             path: "myLoader",
             onChange,
           }),
-        { initialProps: { params: { key: "value1" } } }
+        { initialProps: { params: { key: "value1" } } },
       );
 
       const firstCallback = result.current;

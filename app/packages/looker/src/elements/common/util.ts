@@ -28,7 +28,7 @@ import { lookerCheckbox, lookerLabel } from "./util.module.css";
 
 export const dispatchTooltipEvent = <State extends BaseState>(
   dispatchEvent: DispatchEvent,
-  nullify = false
+  nullify = false,
 ) => {
   return (state: Readonly<State>, overlays: Readonly<Overlay<State>[]>) => {
     if (
@@ -53,7 +53,7 @@ export const dispatchTooltipEvent = <State extends BaseState>(
           labelId: detail.label.id,
           instanceId: detail.label.instance?._id,
           field: detail.label.field,
-        })
+        }),
       );
     } else {
       selectiveRenderingEventBus.emit(new LabelUnhoveredEvent());
@@ -71,14 +71,14 @@ export const dispatchTooltipEvent = <State extends BaseState>(
             coordinates: state.cursorCoordinates,
             sampleId: state.config.sampleId,
           }
-        : null
+        : null,
     );
   };
 };
 
 export const makeCheckboxRow = function (
   text: string,
-  checked: boolean
+  checked: boolean,
 ): [HTMLLabelElement, HTMLInputElement] {
   const label = document.createElement("label");
   label.setAttribute("data-cy", `looker-checkbox-${text}`);
@@ -98,7 +98,7 @@ export const makeCheckboxRow = function (
 };
 
 export const prettify = (
-  v: boolean | string | null | undefined | number | number[]
+  v: boolean | string | null | undefined | number | number[],
 ): string | HTMLAnchorElement => {
   const result = pretty(v);
 
@@ -118,7 +118,7 @@ export const prettify = (
 
 function findColorSetting(
   customizeColorSetting: CustomizeColor[],
-  path: string
+  path: string,
 ) {
   return customizeColorSetting.find((s) => s.path === path);
 }
@@ -128,7 +128,7 @@ function getFallbackColor(
   seed: number,
   path: string,
   value: string | number | boolean,
-  valueMode: boolean
+  valueMode: boolean,
 ) {
   const fallbackColorByField = getColor(pool, seed, path);
   return ![undefined, null].includes(value) && valueMode
@@ -141,7 +141,7 @@ function getColorByField(
   pool: readonly string[],
   seed: number,
   path: string,
-  isValidColor: (string) => boolean
+  isValidColor: (string) => boolean,
 ) {
   if (isValidColor(setting?.fieldColor)) {
     return setting.fieldColor;
@@ -154,7 +154,7 @@ function getCurrentValue(
   setting: CustomizeColor,
   param: string | RegularLabel | Regression,
   fallbackLabel: string,
-  value: string | number | boolean
+  value: string | number | boolean,
 ) {
   const key = setting?.colorByAttribute ?? fallbackLabel;
   let currentValue;
@@ -180,10 +180,10 @@ function getTagColor(
   pool: readonly string[],
   seed: number,
   param: string | RegularLabel | Regression,
-  isValidColor: (string) => boolean
+  isValidColor: (string) => boolean,
 ) {
   const valueColor = setting.valueColors?.find(
-    (v) => v.value === (param as string)
+    (v) => v.value === (param as string),
   )?.color;
 
   if (isValidColor(valueColor)) {
@@ -199,7 +199,7 @@ function getTargetColor(
   param: string | RegularLabel | Regression,
   key: string,
   value: string | number | boolean,
-  currentValue: string
+  currentValue: string,
 ) {
   return setting.valueColors?.find((colorSetup) => {
     const stringifiedLowercaseValue = colorSetup.value
@@ -285,7 +285,7 @@ export function getAssignedColor({
     seed,
     path,
     value,
-    by === "value"
+    by === "value",
   );
 
   if (by === COLOR_BY.INSTANCE) {
@@ -295,8 +295,8 @@ export function getAssignedColor({
       path === "tags"
         ? (param as string)
         : isPrimitive
-        ? value
-        : getHashLabelColorByInstance(param as RegularLabel)
+          ? value
+          : getHashLabelColorByInstance(param as RegularLabel),
     );
   }
 
@@ -314,7 +314,7 @@ export function getAssignedColor({
   if (by === COLOR_BY.VALUE) {
     if (isTagged) {
       const tagColor = labelTagColors?.valueColors?.find((pair) =>
-        param.tags?.includes(pair.value)
+        param.tags?.includes(pair.value),
       )?.color;
       if (isValidColor(tagColor)) {
         return tagColor;
@@ -330,7 +330,7 @@ export function getAssignedColor({
           : getColor(
               pool,
               seed,
-              path === "tags" ? param : param[fallbackLabel]
+              path === "tags" ? param : param[fallbackLabel],
             );
       }
 
@@ -339,7 +339,7 @@ export function getAssignedColor({
         setting,
         param,
         fallbackLabel,
-        value
+        value,
       );
 
       if (path === "tags") {
@@ -356,7 +356,7 @@ export function getAssignedColor({
         param,
         setting.colorByAttribute ?? fallbackLabel,
         value,
-        currentValue
+        currentValue,
       );
 
       if (isValidColor(targetColor)) {

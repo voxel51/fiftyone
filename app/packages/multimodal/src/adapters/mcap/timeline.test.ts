@@ -25,13 +25,13 @@ describe("MCAP timeline helpers", () => {
         publishTime: 20n,
         sequence: 0,
         type: "Message",
-      })
+      }),
     ).toBe(10n);
   });
 
   it("rejects unsupported timeline values from untyped callers", () => {
     expect(() => resolveMcapActiveTimeline("publish")).toThrow(
-      "Unsupported MCAP active timeline 'publish'"
+      "Unsupported MCAP active timeline 'publish'",
     );
   });
 
@@ -40,7 +40,7 @@ describe("MCAP timeline helpers", () => {
       createMcapTimelineTicks({
         endTimeNs: 100_000_000n,
         startTimeNs: 0n,
-      })
+      }),
     ).toEqual([0n, 33_333_333n, 66_666_666n, 99_999_999n]);
   });
 
@@ -54,8 +54,8 @@ describe("MCAP timeline helpers", () => {
         {
           maxTicks: 3,
           tickRateHz: 10,
-        }
-      )
+        },
+      ),
     ).toEqual([0n, 100_000_000n, 200_000_000n]);
     expect(DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ).toBe(30);
   });

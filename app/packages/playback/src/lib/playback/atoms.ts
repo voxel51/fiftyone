@@ -37,7 +37,7 @@ import type { BufferedRanges, SeekEvent } from "./types";
 // first. Cast preserves the writable shape so subclasses' onCommit can
 // call `store.set(streamValueAtom(id), ...)`.
 export const streamValueAtom = atomFamily(
-  (_id: string) => atom<unknown>(null) as PrimitiveAtom<unknown>
+  (_id: string) => atom<unknown>(null) as PrimitiveAtom<unknown>,
 );
 
 /**
@@ -121,5 +121,5 @@ export const speedAtom = atom(1.0);
 // cast preserves the writable shape so `store.set(seekEventAtom, ...)`
 // keeps its setter signature.
 export const seekEventAtom = atom<SeekEvent | null>(
-  null
+  null,
 ) as PrimitiveAtom<SeekEvent | null>;

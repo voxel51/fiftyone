@@ -15,7 +15,7 @@ export function useBrainResultsSelector() {
   const [loadingPlotError, setLoadingPlotError] = usePanelStatePartial(
     "loadingPlotError",
     null,
-    true
+    true,
   );
   const handlers = {
     onSelect(selected) {
@@ -26,7 +26,7 @@ export function useBrainResultsSelector() {
     value: selected,
     useSearch: (search) => ({
       values: getBrainKeysFromDataset(dataset).filter((item) =>
-        item.toLowerCase().includes(search.toLowerCase())
+        item.toLowerCase().includes(search.toLowerCase()),
       ),
     }),
   };

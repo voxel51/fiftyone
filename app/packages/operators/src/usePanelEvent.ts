@@ -61,8 +61,8 @@ export default function usePanelEvent(): TriggerEventFn {
       },
       panelId,
       panelState,
-      args
-    )
+      args,
+    ),
   );
 }
 
@@ -82,7 +82,7 @@ export function handlePanelEvent(
   },
   panelId: string,
   panelState: any,
-  args: any[]
+  args: any[],
 ) {
   const options = args[0] as HandlerOptions;
   const { params, operator, prompt, currentPanelState } = options;
@@ -111,15 +111,15 @@ export function handlePanelEvent(
         typeof result.errorMessage === "string"
           ? result.errorMessage
           : result.errorMessage instanceof Error
-          ? result.errorMessage.message
-          : String(result.errorMessage);
+            ? result.errorMessage.message
+            : String(result.errorMessage);
     } else if (result.error) {
       errorMessage =
         typeof result.error === "string"
           ? result.error
           : result.error instanceof Error
-          ? result.error.message
-          : String(result.error);
+            ? result.error.message
+            : String(result.error);
     }
 
     let suppressError = false;
@@ -169,7 +169,7 @@ export function usePendingPanelEventError(): {
         message,
         error?.stack || error?.message || String(error),
         operatorUri,
-        eventName
+        eventName,
       );
     }
   }, [pendingError]);
@@ -186,7 +186,7 @@ export function useTriggerPanelEvent() {
       event: string,
       params?: ParamsType,
       prompt?: boolean,
-      callback?: ExecutionCallback
+      callback?: ExecutionCallback,
     ) => {
       handleEvent(panelId, {
         operator: event,
@@ -196,7 +196,7 @@ export function useTriggerPanelEvent() {
         panelId,
       });
     },
-    [handleEvent, panelId]
+    [handleEvent, panelId],
   );
 
   return triggerEvent;

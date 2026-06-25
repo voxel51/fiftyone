@@ -31,7 +31,7 @@ function remoteReadProfile(filepath: string) {
  * Builds an MCAP byte source from the modal sample filepath.
  */
 export function getMcapSourceDescriptor(
-  ctx: SampleRendererProps["ctx"]
+  ctx: SampleRendererProps["ctx"],
 ): ByteSourceDescriptor | null {
   const media = ctx.media;
   const sample = ctx.sample.sample;

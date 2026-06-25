@@ -34,6 +34,6 @@ export default function Dialog(props: DialogProps) {
 type DialogProps = Omit<MuiDialogProps, "onClose"> & {
   onClose?: (
     event: unknown,
-    reason: "backdropClick" | "escapeKeyDown" | "closeButtonClick"
+    reason: "backdropClick" | "escapeKeyDown" | "closeButtonClick",
   ) => void;
 };

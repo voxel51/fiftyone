@@ -74,7 +74,7 @@ const isFieldType = (field: Field, fieldType: FieldType): boolean => {
  */
 export const buildAnnotationPath = (
   label: LabelProxy,
-  isGenerated: boolean
+  isGenerated: boolean,
 ): string => {
   let basePath = label.path;
   if (isGenerated) {
@@ -130,7 +130,7 @@ export const buildLabelDeltas = (
   label: LabelProxy,
   schema: Field,
   opType: OpType,
-  isGenerated = false
+  isGenerated = false,
 ) => {
   if (opType === "mutate") {
     return buildMutationDeltas(sample, label, schema, isGenerated);
@@ -140,7 +140,7 @@ export const buildLabelDeltas = (
       sample,
       label as Exclude<LabelProxy, PrimitiveValue>,
       schema,
-      isGenerated
+      isGenerated,
     );
   } else {
     throw new Error(`Unsupported opType ${opType}`);
@@ -159,7 +159,7 @@ export const buildMutationDeltas = (
   sample: Sample,
   label: LabelProxy,
   schema: Field,
-  isGenerated = false
+  isGenerated = false,
 ): JSONDeltas => {
   // Need to branch on single element vs. list-based mutations due to
   // inferred data model differences.
@@ -170,48 +170,48 @@ export const buildMutationDeltas = (
       return buildDetectionsMutationDelta(
         sample,
         label as DetectionAnnotationLabel,
-        isGenerated
+        isGenerated,
       );
     } else if (isFieldType(schema, "Detection")) {
       return buildDetectionMutationDelta(
         sample,
-        label as DetectionAnnotationLabel
+        label as DetectionAnnotationLabel,
       );
     }
   } else if (label.type === "Classification") {
     if (isFieldType(schema, "Classifications")) {
       return buildClassificationsMutationDeltas(
         sample,
-        label as LabelMetadata<ClassificationLabel>
+        label as LabelMetadata<ClassificationLabel>,
       );
     } else if (isFieldType(schema, "Classification")) {
       return buildClassificationMutationDeltas(
         sample,
-        label as LabelMetadata<ClassificationLabel>
+        label as LabelMetadata<ClassificationLabel>,
       );
     }
   } else if (label.type === "Polyline") {
     if (isFieldType(schema, "Polylines")) {
       return buildPolylinesMutationDeltas(
         sample,
-        label as LabelMetadata<PolylineLabel>
+        label as LabelMetadata<PolylineLabel>,
       );
     } else if (isFieldType(schema, "Polyline")) {
       return buildPolylineMutationDeltas(
         sample,
-        label as LabelMetadata<PolylineLabel>
+        label as LabelMetadata<PolylineLabel>,
       );
     }
   } else if (label.type === "Keypoint") {
     if (isFieldType(schema, "Keypoints")) {
       return buildKeypointsMutationDeltas(
         sample,
-        label as LabelMetadata<KeypointLabel>
+        label as LabelMetadata<KeypointLabel>,
       );
     } else if (isFieldType(schema, "Keypoint")) {
       return buildKeypointMutationDeltas(
         sample,
-        label as LabelMetadata<KeypointLabel>
+        label as LabelMetadata<KeypointLabel>,
       );
     }
   } else if (isPrimitiveFieldType(schema)) {
@@ -220,12 +220,12 @@ export const buildMutationDeltas = (
       sample,
       primitiveLabel.path,
       primitiveLabel.data,
-      primitiveLabel.op
+      primitiveLabel.op,
     );
   }
 
   throw new Error(
-    `Unsupported field type '${schema?.ftype}' at path '${label.path}'`
+    `Unsupported field type '${schema?.ftype}' at path '${label.path}'`,
   );
 };
 
@@ -241,7 +241,7 @@ export const buildDeletionDeltas = (
   sample: Sample,
   label: Exclude<LabelProxy, PrimitiveValue>,
   schema: Field,
-  isGenerated = false
+  isGenerated = false,
 ): JSONDeltas => {
   // Future-proofing for generated views: deletion is always a simple remove of the label
   // The backend handles removing from the source sample's list
@@ -259,7 +259,7 @@ export const buildDeletionDeltas = (
       if (!existingLabel || !Array.isArray(existingLabel.detections)) {
         // label doesn't exist
         console.warn(
-          `can't delete label; no detections found at ${label.path}`
+          `can't delete label; no detections found at ${label.path}`,
         );
         return [];
       }
@@ -267,7 +267,7 @@ export const buildDeletionDeltas = (
       return generateJsonPatch(existingLabel, {
         ...existingLabel,
         detections: existingLabel.detections.filter(
-          (det) => det._id !== label.data._id
+          (det) => det._id !== label.data._id,
         ),
       });
     } else if (isFieldType(schema, "Detection")) {
@@ -282,7 +282,7 @@ export const buildDeletionDeltas = (
       if (!existingLabel || !Array.isArray(existingLabel.classifications)) {
         // label doesn't exist
         console.warn(
-          `can't delete label; no classifications found at ${label.path}`
+          `can't delete label; no classifications found at ${label.path}`,
         );
         return [];
       }
@@ -290,7 +290,7 @@ export const buildDeletionDeltas = (
       return generateJsonPatch(existingLabel, {
         ...existingLabel,
         classifications: existingLabel.classifications.filter(
-          (cls) => cls._id !== label.data._id
+          (cls) => cls._id !== label.data._id,
         ),
       });
     } else if (isFieldType(schema, "Classification")) {
@@ -311,7 +311,7 @@ export const buildDeletionDeltas = (
       return generateJsonPatch(existingLabel, {
         ...existingLabel,
         polylines: existingLabel.polylines.filter(
-          (ply) => ply._id !== label.data._id
+          (ply) => ply._id !== label.data._id,
         ),
       });
     } else if (isFieldType(schema, "Polyline")) {
@@ -332,7 +332,7 @@ export const buildDeletionDeltas = (
       return generateJsonPatch(existingLabel, {
         ...existingLabel,
         keypoints: existingLabel.keypoints.filter(
-          (kpt) => kpt._id !== label.data._id
+          (kpt) => kpt._id !== label.data._id,
         ),
       });
     } else if (isFieldType(schema, "Keypoint")) {
@@ -341,7 +341,7 @@ export const buildDeletionDeltas = (
   }
 
   throw new Error(
-    `unknown label type '${label.type}' for path '${label.path}'`
+    `unknown label type '${label.type}' for path '${label.path}'`,
   );
 };
 
@@ -354,11 +354,11 @@ export const buildDeletionDeltas = (
  * @param data Label data
  */
 export const buildSingleMutationDelta = <
-  T extends AnnotationLabel["data"] | Primitive
+  T extends AnnotationLabel["data"] | Primitive,
 >(
   sample: Sample,
   path: string,
-  data: T
+  data: T,
 ): JSONDeltas => {
   const existingLabel = <T>extractNestedField(sample, path) ?? {};
 
@@ -377,7 +377,7 @@ const buildPrimitiveMutationDelta = (
   sample: Sample,
   path: string,
   data: Primitive,
-  op?: OpType
+  op?: OpType,
 ): JSONDeltas => {
   // convert any undefined values to null so they are serialized
   // as null for the server
@@ -410,12 +410,12 @@ const buildPrimitiveMutationDelta = (
  */
 export const buildDetectionMutationDelta = (
   sample: Sample,
-  label: LabelMetadata<DetectionLabel> | Detection2DMetadata
+  label: LabelMetadata<DetectionLabel> | Detection2DMetadata,
 ): JSONDeltas => {
   return buildSingleMutationDelta(
     sample,
     label.path,
-    makeDetectionLabel(label)
+    makeDetectionLabel(label),
   );
 };
 
@@ -431,7 +431,7 @@ export const buildDetectionMutationDelta = (
  */ export const buildDetectionsMutationDelta = (
   sample: Sample,
   label: LabelMetadata<DetectionLabel> | Detection2DMetadata,
-  isGenerated = false
+  isGenerated = false,
 ): JSONDeltas => {
   const existingLabel = <DetectionsParent>(
     extractNestedField(sample, label.path)
@@ -458,7 +458,7 @@ export const buildDetectionMutationDelta = (
   upsertArrayElement(
     newArray,
     mergedDetection,
-    (det) => det._id === label.data._id
+    (det) => det._id === label.data._id,
   );
 
   const newLabel = {
@@ -477,7 +477,7 @@ export const buildDetectionMutationDelta = (
  */
 export const buildClassificationMutationDeltas = (
   sample: Sample,
-  label: LabelMetadata<ClassificationLabel>
+  label: LabelMetadata<ClassificationLabel>,
 ): JSONDeltas => {
   return buildSingleMutationDelta(sample, label.path, label.data);
 };
@@ -493,7 +493,7 @@ export const buildClassificationMutationDeltas = (
  */
 export const buildClassificationsMutationDeltas = (
   sample: Sample,
-  label: LabelMetadata<ClassificationLabel>
+  label: LabelMetadata<ClassificationLabel>,
 ): JSONDeltas => {
   const existingLabel = <ClassificationsParent>(
     extractNestedField(sample, label.path)
@@ -502,7 +502,7 @@ export const buildClassificationsMutationDeltas = (
   };
 
   const existingClassification = existingLabel.classifications.find(
-    (cls) => cls._id === label.data._id
+    (cls) => cls._id === label.data._id,
   );
 
   const mergedClassification = existingClassification
@@ -513,7 +513,7 @@ export const buildClassificationsMutationDeltas = (
   upsertArrayElement(
     newArray,
     mergedClassification,
-    (cls) => cls._id === label.data._id
+    (cls) => cls._id === label.data._id,
   );
 
   const newLabel = {
@@ -535,7 +535,7 @@ export const buildClassificationsMutationDeltas = (
  */
 export const buildPolylineMutationDeltas = (
   sample: Sample,
-  label: LabelMetadata<PolylineLabel>
+  label: LabelMetadata<PolylineLabel>,
 ): JSONDeltas => {
   return buildSingleMutationDelta(sample, label.path, label.data);
 };
@@ -551,7 +551,7 @@ export const buildPolylineMutationDeltas = (
  */
 export const buildPolylinesMutationDeltas = (
   sample: Sample,
-  label: LabelMetadata<PolylineLabel>
+  label: LabelMetadata<PolylineLabel>,
 ): JSONDeltas => {
   const existingLabel = <{ polylines: PolylineLabel[] }>(
     extractNestedField(sample, label.path)
@@ -560,7 +560,7 @@ export const buildPolylinesMutationDeltas = (
   };
 
   const existingPolyline = existingLabel.polylines.find(
-    (ply) => ply._id === label.data._id
+    (ply) => ply._id === label.data._id,
   );
 
   const mergedPolyline = existingPolyline
@@ -571,7 +571,7 @@ export const buildPolylinesMutationDeltas = (
   upsertArrayElement(
     newArray,
     mergedPolyline,
-    (ply) => ply._id === label.data._id
+    (ply) => ply._id === label.data._id,
   );
 
   const newLabel = {
@@ -593,7 +593,7 @@ export const buildPolylinesMutationDeltas = (
  */
 export const buildKeypointMutationDeltas = (
   sample: Sample,
-  label: LabelMetadata<KeypointLabel>
+  label: LabelMetadata<KeypointLabel>,
 ): JSONDeltas => {
   return buildSingleMutationDelta(sample, label.path, label.data);
 };
@@ -609,7 +609,7 @@ export const buildKeypointMutationDeltas = (
  */
 export const buildKeypointsMutationDeltas = (
   sample: Sample,
-  label: LabelMetadata<KeypointLabel>
+  label: LabelMetadata<KeypointLabel>,
 ): JSONDeltas => {
   const existingLabel = <{ keypoints: KeypointLabel[] }>(
     extractNestedField(sample, label.path)
@@ -618,7 +618,7 @@ export const buildKeypointsMutationDeltas = (
   };
 
   const existingKeypoint = existingLabel.keypoints.find(
-    (kpt) => kpt._id === label.data._id
+    (kpt) => kpt._id === label.data._id,
   );
 
   const mergedKeypoint = existingKeypoint
@@ -629,7 +629,7 @@ export const buildKeypointsMutationDeltas = (
   upsertArrayElement(
     newArray,
     mergedKeypoint,
-    (kpt) => kpt._id === label.data._id
+    (kpt) => kpt._id === label.data._id,
   );
 
   const newLabel = {
@@ -654,7 +654,7 @@ export const buildKeypointsMutationDeltas = (
 const upsertArrayElement = <T>(
   array: T[],
   element: T,
-  find: (e: T) => boolean
+  find: (e: T) => boolean,
 ) => {
   const index = array.findIndex((e) => find(e));
   if (index >= 0) {
@@ -672,14 +672,14 @@ const upsertArrayElement = <T>(
  */
 export const buildJsonPath = (
   labelPath: string | null,
-  operationPath: string
+  operationPath: string,
 ): string => {
   // labelPath will be null when building paths for sample field updates
   const parts = labelPath?.split(".") || [];
   parts.push(
     ...operationPath
       .split("/")
-      .filter((segment) => segment !== "/" && segment.length > 0)
+      .filter((segment) => segment !== "/" && segment.length > 0),
   );
 
   return `/${parts.join("/")}`;
@@ -691,7 +691,7 @@ export const buildJsonPath = (
  * @param label Source label
  */
 const makeDetectionLabel = (
-  label: LabelMetadata<DetectionLabel> | Detection2DMetadata
+  label: LabelMetadata<DetectionLabel> | Detection2DMetadata,
 ): DetectionLabel => {
   if (isDetection3d(label.data)) {
     return label.data;

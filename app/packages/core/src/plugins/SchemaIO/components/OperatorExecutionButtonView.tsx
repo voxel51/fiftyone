@@ -49,7 +49,7 @@ export default function OperatorExecutionButtonView(props: ViewPropsType) {
 
   const handleOnSuccess: ExecutionCallback = (
     operatorResult: OperatorResult,
-    { ctx }
+    { ctx },
   ) => {
     if (on_success) {
       triggerEvent(panelId, {
@@ -63,7 +63,7 @@ export default function OperatorExecutionButtonView(props: ViewPropsType) {
   };
   const handleOnError: ExecutionErrorCallback = (
     result: OperatorResult,
-    { ctx }
+    { ctx },
   ) => {
     if (on_error) {
       triggerEvent(panelId, {

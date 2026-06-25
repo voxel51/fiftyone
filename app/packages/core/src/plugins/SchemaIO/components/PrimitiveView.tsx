@@ -8,7 +8,7 @@ export default function PrimitiveView(props) {
   const Component = readOnly
     ? LabelValueView
     : type === "boolean"
-    ? CheckboxView
-    : FieldView;
+      ? CheckboxView
+      : FieldView;
   return <Component {...props} />;
 }

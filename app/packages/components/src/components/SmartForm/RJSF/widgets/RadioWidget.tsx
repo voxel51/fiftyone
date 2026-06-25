@@ -29,7 +29,7 @@ export default function RadioWidget(props: WidgetProps) {
         value: String(val),
         label: String(enumNames[index] || val),
       })),
-    [schema?.enum, schema?.enumNames]
+    [schema?.enum, schema?.enumNames],
   );
   const isDisabled = disabled || readonly;
 
@@ -42,7 +42,7 @@ export default function RadioWidget(props: WidgetProps) {
       const originalValue = enumValues.find((v) => String(v) === newValue);
       onChange(originalValue !== undefined ? originalValue : newValue);
     },
-    [isDisabled, enumValues, onChange]
+    [isDisabled, enumValues, onChange],
   );
 
   // Convert value to string for RadioGroup, ensuring it matches one of the options

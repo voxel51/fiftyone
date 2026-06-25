@@ -28,12 +28,12 @@ export function McapGridStreamSelector() {
     (search: string) => {
       const normalizedSearch = search.toLowerCase();
       const values = options.filter((topic) =>
-        topic.toLowerCase().includes(normalizedSearch)
+        topic.toLowerCase().includes(normalizedSearch),
       );
 
       return { total: options.length, values };
     },
-    [options]
+    [options],
   );
 
   return (

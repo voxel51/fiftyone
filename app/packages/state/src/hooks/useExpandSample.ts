@@ -29,7 +29,7 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
             } else {
               newSelected.set(
                 item.id.description,
-                event.altKey ? "alt" : "default"
+                event.altKey ? "alt" : "default",
               );
             }
 
@@ -39,7 +39,7 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
         }
 
         const hasGroupSlices = await snapshot.getPromise(
-          groupAtoms.hasGroupSlices
+          groupAtoms.hasGroupSlices,
         );
         const groupField = await snapshot.getPromise(groupAtoms.groupField);
 
@@ -93,6 +93,6 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
           .then(() => iter(Promise.resolve(item.id)))
           .then((data) => setExpandedSample({ ...data, hasNext, hasPrevious }));
       },
-    [setExpandedSample, setModalState]
+    [setExpandedSample, setModalState],
   );
 };

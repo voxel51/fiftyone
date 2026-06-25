@@ -188,7 +188,7 @@ export function useRegisterMcapDataStream({
   const failedTopicsRef = useRef<Set<string>>(new Set());
   // Pending trailing-throttle timer for the buffered-ranges publish.
   const bufferedRangesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null
+    null,
   );
   const topicStartTimesNsRef = useRef<Map<string, bigint | null>>(new Map());
   const autoSeekSourceEpochRef = useRef<number | null>(null);
@@ -211,9 +211,9 @@ export function useRegisterMcapDataStream({
   const getActiveTopics = useCallback(
     (): string[] =>
       allTopicsRef.current.filter(
-        (t) => topicCachesRef.current.get(t)?.isActive
+        (t) => topicCachesRef.current.get(t)?.isActive,
       ),
-    []
+    [],
   );
 
   // If a recording's selected renderable topics begin just after the MCAP
@@ -258,7 +258,7 @@ export function useRegisterMcapDataStream({
     pendingTicksRef.current.get(tickKey)?.has(topic) ?? false;
   const markTopicsPending = (
     tickKeys: readonly string[],
-    topics: readonly string[]
+    topics: readonly string[],
   ): void => {
     const pending = pendingTicksRef.current;
     for (const key of tickKeys) {
@@ -272,7 +272,7 @@ export function useRegisterMcapDataStream({
   };
   const clearTopicsPending = (
     tickKeys: readonly string[],
-    topics: readonly string[]
+    topics: readonly string[],
   ): void => {
     const pending = pendingTicksRef.current;
     for (const key of tickKeys) {
@@ -289,7 +289,7 @@ export function useRegisterMcapDataStream({
       if (!topicCachesRef.current.has(topic)) {
         topicCachesRef.current.set(
           topic,
-          new McapTopicCache(PLAYBACK_POLICY.topicCacheMaxEntries)
+          new McapTopicCache(PLAYBACK_POLICY.topicCacheMaxEntries),
         );
       }
     }
@@ -349,7 +349,7 @@ export function useRegisterMcapDataStream({
         for (const bound of bounds) {
           topicStartTimesNsRef.current.set(
             bound.topic,
-            bound.firstMessageTimeNs
+            bound.firstMessageTimeNs,
           );
           const startSec =
             bound.firstMessageTimeNs === null
@@ -433,7 +433,7 @@ export function useRegisterMcapDataStream({
         bufferedRangesTimerRef.current = null;
       }
     },
-    []
+    [],
   );
 
   // Recompute per-topic status at the current playhead tick and the
@@ -530,13 +530,13 @@ export function useRegisterMcapDataStream({
         console.warn(
           `[mcap] giving up on topics after ${MAX_FETCH_FAILURE_STREAK} failed fetches:`,
           newlyFailed,
-          error
+          error,
         );
       }
       // Statuses are republished by the caller's `.finally`, after the
       // pending bookkeeping for this fetch is cleared.
     },
-    []
+    [],
   );
 
   const handleFetchSuccess = useCallback((topics: readonly string[]) => {
@@ -574,7 +574,7 @@ export function useRegisterMcapDataStream({
           return (
             !caches.get(topic)?.has(tick) && !isTopicPending(tickKey, topic)
           );
-        })
+        }),
       );
       if (topicsToFetch.length === 0) return false;
 
@@ -594,7 +594,7 @@ export function useRegisterMcapDataStream({
 
           const activeFetchedTopics = activeTopicsInCaches(
             caches,
-            topicsToFetch
+            topicsToFetch,
           );
           if (activeFetchedTopics.length === 0) return;
 
@@ -612,7 +612,7 @@ export function useRegisterMcapDataStream({
               tick,
               caches,
               lastFrameRef.current,
-              store
+              store,
             );
           }
         })
@@ -636,7 +636,7 @@ export function useRegisterMcapDataStream({
       handleFetchFailure,
       handleFetchSuccess,
       publishStreamStatuses,
-    ]
+    ],
   );
 
   // Fetch the nearest target frame through the worker's current-frame lane so
@@ -653,7 +653,7 @@ export function useRegisterMcapDataStream({
       const tickKey = tick.toString();
       const topicsToFetch = activeTopics.filter(
         (topic) =>
-          !caches.get(topic)?.has(tick) && !isTopicPending(tickKey, topic)
+          !caches.get(topic)?.has(tick) && !isTopicPending(tickKey, topic),
       );
       if (topicsToFetch.length === 0) return false;
 
@@ -673,7 +673,7 @@ export function useRegisterMcapDataStream({
 
           const activeFetchedTopics = activeTopicsInCaches(
             caches,
-            topicsToFetch
+            topicsToFetch,
           );
           if (activeFetchedTopics.length === 0) return;
 
@@ -683,7 +683,7 @@ export function useRegisterMcapDataStream({
             tick,
             caches,
             lastFrameRef.current,
-            store
+            store,
           );
         })
         .catch((error) => {
@@ -706,7 +706,7 @@ export function useRegisterMcapDataStream({
       handleFetchFailure,
       handleFetchSuccess,
       publishStreamStatuses,
-    ]
+    ],
   );
 
   // Collect ticks in [startSec, endSec] where at least one active topic
@@ -731,14 +731,14 @@ export function useRegisterMcapDataStream({
         if (tick > endNs) break;
         const tickKey = tick.toString();
         const needsFetch = activeTopics.some(
-          (t) => !caches.get(t)?.has(tick) && !isTopicPending(tickKey, t)
+          (t) => !caches.get(t)?.has(tick) && !isTopicPending(tickKey, t),
         );
         if (needsFetch) toFetch.push(tick);
         if (toFetch.length >= PLAYBACK_POLICY.maxPrefetchBatch) break;
       }
       return toFetch;
     },
-    [getActiveTopics]
+    [getActiveTopics],
   );
 
   // Push cached current frame for the active set, request a missing current
@@ -760,7 +760,7 @@ export function useRegisterMcapDataStream({
           tick,
           topicCachesRef.current,
           lastFrameRef.current,
-          store
+          store,
         );
         fetchCurrentFrame(tick, activeTopics);
       }
@@ -784,7 +784,7 @@ export function useRegisterMcapDataStream({
       getActiveTopics,
       publishStreamStatuses,
       store,
-    ]
+    ],
   );
 
   // Register the single engine stream and the proactive lookahead subscription.
@@ -851,7 +851,7 @@ export function useRegisterMcapDataStream({
           tick,
           caches,
           lastFrame,
-          commitStore
+          commitStore,
         );
         // The committed tick changed — gaps/ready flips happen here
         // during normal playback.
@@ -934,12 +934,12 @@ export function useRegisterMcapDataStream({
         if (!cache.isActive) lastFrameRef.current.delete(topic);
       };
     },
-    [maybeAutoSeekToFirstData, prefetchLookaheadFrom, store]
+    [maybeAutoSeekToFirstData, prefetchLookaheadFrom, store],
   );
 
   const getTopicCache = useCallback(
     (topic: string) => topicCachesRef.current.get(topic),
-    []
+    [],
   );
   const getTimelineIndex = useCallback(() => indexRef.current, []);
 
@@ -957,18 +957,18 @@ export function useRegisterMcapDataStream({
 
 function deriveMcapPlaybackPolicy(
   policy: McapPlaybackPolicy,
-  tickRateHz = DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ
+  tickRateHz = DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ,
 ): DerivedMcapPlaybackPolicy {
   return {
     ...policy,
     maxPrefetchBatch: Math.ceil(tickRateHz * policy.prefetchBatchSeconds),
     prefetchBatchesPerLookahead: Math.ceil(
-      policy.lookaheadSeconds / policy.prefetchBatchSeconds
+      policy.lookaheadSeconds / policy.prefetchBatchSeconds,
     ),
     topicCacheMaxEntries: Math.ceil(
       tickRateHz *
         policy.lookaheadSeconds *
-        policy.topicCacheLookaheadMultiplier
+        policy.topicCacheLookaheadMultiplier,
     ),
   };
 }
@@ -989,7 +989,7 @@ function fillMissingLookaheadFrom({
   const endSec = timeSec + policy.lookaheadSeconds;
   const batchesToQueue = Math.min(
     policy.prefetchBatchesPerPass,
-    policy.prefetchBatchesPerLookahead
+    policy.prefetchBatchesPerLookahead,
   );
   for (let i = 0; i < batchesToQueue; i++) {
     const missing = collectMissingTicks(timeSec, endSec);
@@ -1000,7 +1000,7 @@ function fillMissingLookaheadFrom({
 
 function activeTopicsInCaches(
   caches: Map<string, McapTopicCache>,
-  topics: readonly string[]
+  topics: readonly string[],
 ): string[] {
   return topics.filter((topic) => caches.get(topic)?.isActive);
 }
@@ -1016,7 +1016,7 @@ function nsToSeconds(deltaNs: bigint): number {
 function distributeWindowToCaches(
   window: McapSynchronizedMessageWindow,
   caches: Map<string, McapTopicCache>,
-  requestedTopics: readonly string[]
+  requestedTopics: readonly string[],
 ): void {
   // Seed every requested topic for this tick — null if the backend omitted
   // or returned an empty array — so bufferState resolves and the engine
@@ -1032,7 +1032,7 @@ function pushTickToStore(
   tick: bigint,
   caches: Map<string, McapTopicCache>,
   lastFrame: Map<string, unknown>,
-  store: PlaybackStore
+  store: PlaybackStore,
 ): void {
   for (const topic of activeTopics) {
     const cache = caches.get(topic);
@@ -1061,7 +1061,7 @@ function lowerBoundBigInt(arr: readonly bigint[], target: bigint): number {
 
 function firstTickAtOrAfter(
   ticks: readonly bigint[],
-  target: bigint
+  target: bigint,
 ): bigint | undefined {
   const index = lowerBoundBigInt(ticks, target);
   return ticks[index];
@@ -1069,7 +1069,7 @@ function firstTickAtOrAfter(
 
 function bufferedRangesEqual(
   a: ReadonlyArray<readonly [number, number]>,
-  b: ReadonlyArray<readonly [number, number]>
+  b: ReadonlyArray<readonly [number, number]>,
 ): boolean {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {

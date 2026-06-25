@@ -65,7 +65,7 @@ test("grid tagging", async ({ fiftyoneLoader, grid, page, sidebar }) => {
     const locator = grid.locator.getByText(`/tmp/${i}-${datasetName}.png`);
     await expect(locator).toBeVisible();
     await expect(
-      locator.locator("..").getByTestId("tag-tags-grid-test")
+      locator.locator("..").getByTestId("tag-tags-grid-test"),
     ).toBeVisible();
   }
 });

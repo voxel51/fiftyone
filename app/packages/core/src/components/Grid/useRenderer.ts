@@ -30,12 +30,12 @@ export default function useRenderer({
 
   const detachItem = useCallback(
     (id: ID) => cache.get(id.description)?.detach(),
-    [cache]
+    [cache],
   );
 
   const hideItem = useCallback<Hide>(
     ({ id }) => cache.hide(id.description),
-    [cache]
+    [cache],
   );
 
   const showItem = useCallback<Show<number, fos.Sample>>(
@@ -62,18 +62,18 @@ export default function useRenderer({
 
       if (!result) {
         throw new Error(
-          `Failed to retrieve sample from store: ${id.description}`
+          `Failed to retrieve sample from store: ${id.description}`,
         );
       }
 
       const item = sampleRendererRef.current.createItem(
         result,
         id,
-        getFontSize()
+        getFontSize(),
       );
 
       item.addEventListener("selectthumbnail", ({ detail }) =>
-        selectSample.current?.(detail)
+        selectSample.current?.(detail),
       );
       item.addEventListener("refresh", () => {
         cache.isShown(key) &&
@@ -84,7 +84,7 @@ export default function useRenderer({
       item.attach(element, dimensions);
       return cache.sizeOf(key);
     },
-    [cache, getFontSize, selectSample, sampleRendererRef, store]
+    [cache, getFontSize, selectSample, sampleRendererRef, store],
   );
 
   return {
@@ -96,7 +96,7 @@ export default function useRenderer({
         hideItem,
         showItem,
       }),
-      [detachItem, hideItem, showItem]
+      [detachItem, hideItem, showItem],
     ),
   };
 }

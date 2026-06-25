@@ -19,7 +19,7 @@ export default class SectionElement implements Section {
   private readonly section: HTMLDivElement = document.createElement("div");
   private readonly rows: [
     { aspectRatio: number; extraMargins: number },
-    [HTMLDivElement, ItemData][]
+    [HTMLDivElement, ItemData][],
   ][];
   private readonly render: Render;
 
@@ -29,7 +29,7 @@ export default class SectionElement implements Section {
     rows: RowData[],
     render: Render,
     horizontal: boolean,
-    onItemClick?: (id: string, event: MouseEvent) => void
+    onItemClick?: (id: string, event: MouseEvent) => void,
   ) {
     this.index = index;
     this.itemIndex = itemIndex;
@@ -116,7 +116,7 @@ export default class SectionElement implements Section {
           });
 
           localTop += height + MARGIN;
-        }
+        },
       );
 
       if (this.width !== width) {
@@ -166,10 +166,10 @@ export default class SectionElement implements Section {
               item,
               this.horizontal ? [height, width] : [width, height],
               false,
-              true
+              true,
             );
           });
-        }
+        },
       );
       this.attached = false;
     }
@@ -210,10 +210,10 @@ export default class SectionElement implements Section {
               item,
               this.horizontal ? [height, width] : [width, height],
               soft,
-              false
+              false,
             );
           });
-        }
+        },
       );
   }
 
@@ -232,10 +232,10 @@ export default class SectionElement implements Section {
 
           resizer(
             id,
-            this.horizontal ? [height, itemWidth] : [itemWidth, height]
+            this.horizontal ? [height, itemWidth] : [itemWidth, height],
           );
         });
-      }
+      },
     );
   }
 }

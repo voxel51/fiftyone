@@ -52,7 +52,7 @@ export const toSnakeCase = (obj: O): O =>
 export const move = <T>(
   array: Array<T>,
   moveIndex: number,
-  toIndex: number
+  toIndex: number,
 ): Array<T> => {
   const item = array[moveIndex];
   const length = array.length;
@@ -86,7 +86,7 @@ type KeyValue<T> = {
 export const removeKeys = <T>(
   obj: KeyValue<T>,
   keys: Iterable<string>,
-  startsWith = false
+  startsWith = false,
 ): KeyValue<T> => {
   const set = new Set(keys);
   const values = Array.from(keys);
@@ -95,8 +95,8 @@ export const removeKeys = <T>(
     Object.entries(obj).filter(
       startsWith
         ? ([key]) => values.every((k) => !key.startsWith(k))
-        : ([key]) => !set.has(key)
-    )
+        : ([key]) => !set.has(key),
+    ),
   );
 };
 
@@ -115,7 +115,7 @@ export const meetsFieldType = (
     ftype: string | string[];
     embeddedDocType?: string | string[];
     acceptLists?: boolean;
-  }
+  },
 ) => {
   if (!Array.isArray(ftype)) {
     ftype = [ftype];
@@ -131,7 +131,7 @@ export const meetsFieldType = (
 
   if (
     ftype.some(
-      (f) => field.ftype === f || (field.subfield === f && acceptLists)
+      (f) => field.ftype === f || (field.subfield === f && acceptLists),
     )
   ) {
     return embeddedDocType.some((doc) => field.embeddedDocType === doc || !doc);
@@ -254,7 +254,7 @@ export const LABEL_LIST_PATH = Object.fromEntries(
   Object.entries(LABEL_LIST).map(([docType, field]) => [
     withPath(`fiftyone.core.labels`, docType),
     field,
-  ])
+  ]),
 );
 
 export const NOT_VISIBLE_LIST = [
@@ -265,7 +265,7 @@ export const NOT_VISIBLE_LIST = [
 ];
 
 export const LABEL_DOC_TYPES = VALID_LABEL_TYPES.filter(
-  (label) => !LABEL_LISTS.includes(label)
+  (label) => !LABEL_LISTS.includes(label),
 );
 
 export const AGGS = {
@@ -491,7 +491,7 @@ export function withPath(path: string, types: string): string;
 export function withPath(path: string, types: string[]): string[];
 export function withPath(
   path: string,
-  types: string | string[]
+  types: string | string[],
 ): string | string[] {
   if (Array.isArray(types)) {
     return types.map((type) => [path, type].join("."));
@@ -506,7 +506,7 @@ export const VALID_KEYPOINTS = withPath(LABELS_PATH, [KEYPOINT, KEYPOINTS]);
 export const isNotebook = () => {
   return Boolean(
     typeof window !== "undefined" &&
-      new URLSearchParams(window.location.search).get("context")
+    new URLSearchParams(window.location.search).get("context"),
   );
 };
 
@@ -555,7 +555,7 @@ const isURL = (() => {
 })();
 
 export const prettify = (
-  v: boolean | string | null | undefined | number | number[]
+  v: boolean | string | null | undefined | number | number[],
 ): URL | string => {
   if (typeof v === "string") {
     if (isURL(v)) {
@@ -598,7 +598,7 @@ const buildDateTimeOpts = (timeZone: string): Intl.DateTimeFormatOptions => {
 
 export const formatDateTime = (
   timeStamp: number,
-  timeZone: string = "local"
+  timeZone: string = "local",
 ): string => {
   const MS = 1000;
   const S = 60 * MS;
@@ -626,7 +626,7 @@ export const formatDateTime = (
 
 export const formatLongDateTime = (
   timeStamp: number,
-  timeZone: string = "local"
+  timeZone: string = "local",
 ): string => {
   const options = buildDateTimeOpts(timeZone);
 
@@ -753,7 +753,7 @@ export const toSlug = (name: string) => {
 export function pluralize(
   number: number,
   singular: string | JSX.Element,
-  plural: string | JSX.Element
+  plural: string | JSX.Element,
 ) {
   return number === 1 ? singular : plural;
 }

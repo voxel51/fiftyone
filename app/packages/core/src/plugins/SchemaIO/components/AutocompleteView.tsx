@@ -36,7 +36,7 @@ export default function AutocompleteView(props) {
             schema,
             choice,
             valuesOnly,
-            multiple
+            multiple,
           );
           onChange(path, changedValue);
           setUserChanged();
@@ -98,8 +98,8 @@ function getDefaultValue(defaultValue, choices = [], multiple = false) {
     const values = Array.isArray(defaultValue)
       ? defaultValue
       : defaultValue != null
-      ? [defaultValue]
-      : [];
+        ? [defaultValue]
+        : [];
     return values.map((v) => {
       const choice = choices.find(({ value }) => value === v);
       return choice || { value: v, label: v };

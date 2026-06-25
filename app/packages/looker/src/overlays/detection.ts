@@ -36,7 +36,7 @@ let lastModalUniqueId = "";
 
 const getIndexIdFromInstanceIdForLabel = (
   instanceId: string,
-  label: DetectionLabel
+  label: DetectionLabel,
 ) => {
   const currentModalUniqueId = jotaiStore.get(currentModalUniqueIdJotaiAtom);
 
@@ -86,7 +86,7 @@ export interface DetectionLabel extends RegularLabel {
 }
 
 export default class DetectionOverlay<
-  State extends BaseState
+  State extends BaseState,
 > extends CoordinateOverlay<State, DetectionLabel> {
   private labelBoundingBox: BoundingBox;
 
@@ -241,7 +241,7 @@ export default class DetectionOverlay<
       x,
       y,
       w * state.canvasBBox[2],
-      h * state.canvasBBox[3]
+      h * state.canvasBBox[3],
     );
     ctx.globalAlpha = tmp;
   }
@@ -268,7 +268,7 @@ export default class DetectionOverlay<
       } else {
         text += `${getIndexIdFromInstanceIdForLabel(
           this.label.instance._id,
-          this.label
+          this.label,
         )}`;
       }
     }
@@ -305,7 +305,7 @@ export default class DetectionOverlay<
   private fillRectFor3d(
     ctx: CanvasRenderingContext2D,
     state: Readonly<State>,
-    color: string
+    color: string,
   ) {
     const convexHull = this.label.convexHull;
 
@@ -339,7 +339,7 @@ export default class DetectionOverlay<
     ctx: CanvasRenderingContext2D,
     state: Readonly<State>,
     color: string,
-    dash?: number
+    dash?: number,
   ) {
     const [tlx, tly, w, h] = this.label.bounding_box;
     ctx.beginPath();

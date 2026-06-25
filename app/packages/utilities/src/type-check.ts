@@ -19,7 +19,7 @@ export function isObjectIdString(value: string, strict = true) {
 }
 
 export function isFunctionalComponent(
-  value?: unknown
+  value?: unknown,
 ): value is React.FunctionComponent {
   if (typeof value !== "function") return false;
 
@@ -29,7 +29,7 @@ export function isFunctionalComponent(
     /return\s*\(.*<\w+/.test(fnStr) || /React\.createElement/.test(fnStr);
   const usesHooks =
     /\buse(State|Effect|Context|Reducer|Memo|Callback|Ref|LayoutEffect|ImperativeHandle)\b/.test(
-      fnStr
+      fnStr,
     );
 
   return returnsJSX || usesHooks;

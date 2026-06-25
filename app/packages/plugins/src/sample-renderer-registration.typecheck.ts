@@ -72,7 +72,7 @@ export function typecheckRegisterComponent() {
 export function typecheckUseActivePlugins() {
   const sampleRenderers = useActivePlugins(
     PluginComponentType.SampleRenderer,
-    {}
+    {},
   );
   const _sampleRenderers: SampleRendererRegistration[] = sampleRenderers;
 

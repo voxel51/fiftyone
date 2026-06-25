@@ -108,7 +108,7 @@ const NON_COLOR_IMAGE_TOKENS = new Set(["depth", "disparity", "ir"]);
  * density, unknown counts last, inventory order as the stable tiebreak.
  */
 export function rankImageSources(
-  sources: readonly SceneSource[]
+  sources: readonly SceneSource[],
 ): readonly SceneSource[] {
   return sources
     .filter((source) => source.type === MCAP_SOURCE_TYPE.IMAGE)
@@ -165,7 +165,7 @@ export function resolvePlaybackLayout({
 }): ResolvedPlaybackLayout {
   const rankedImages = rankImageSources(sources);
   const has3d = sources.some(
-    (source) => source.type === MCAP_SOURCE_TYPE.POINT_CLOUD
+    (source) => source.type === MCAP_SOURCE_TYPE.POINT_CLOUD,
   );
 
   const imageTileCount =
@@ -173,7 +173,7 @@ export function resolvePlaybackLayout({
       ? 0
       : Math.min(
           rankedImages.length,
-          imageTileBudget({ capabilities, has3d, readProfile })
+          imageTileBudget({ capabilities, has3d, readProfile }),
         );
 
   const tiles: PlaybackLayoutTile[] = rankedImages
@@ -211,19 +211,19 @@ function imageTileBudget({
     capabilities.cpuCores >= 12
       ? MAX_DEFAULT_IMAGE_TILES
       : capabilities.cpuCores >= 8
-      ? 4
-      : capabilities.cpuCores >= 4
-      ? 3
-      : 2;
+        ? 4
+        : capabilities.cpuCores >= 4
+          ? 3
+          : 2;
 
   const memoryBudget =
     capabilities.memoryGb === null
       ? MAX_DEFAULT_IMAGE_TILES
       : capabilities.memoryGb >= 8
-      ? MAX_DEFAULT_IMAGE_TILES
-      : capabilities.memoryGb >= 4
-      ? 4
-      : 2;
+        ? MAX_DEFAULT_IMAGE_TILES
+        : capabilities.memoryGb >= 4
+          ? 4
+          : 2;
 
   const localityBudget =
     readProfile === BYTE_SOURCE_READ_PROFILE.REMOTE
@@ -238,8 +238,8 @@ function imageTileBudget({
     Math.floor(imageRegionWidth / MIN_IMAGE_TILE_WIDTH_PX) *
       Math.max(
         1,
-        Math.floor(capabilities.viewportHeight / MIN_IMAGE_TILE_HEIGHT_PX)
-      )
+        Math.floor(capabilities.viewportHeight / MIN_IMAGE_TILE_HEIGHT_PX),
+      ),
   );
 
   return Math.max(
@@ -249,8 +249,8 @@ function imageTileBudget({
       cpuBudget,
       memoryBudget,
       localityBudget,
-      viewportBudget
-    )
+      viewportBudget,
+    ),
   );
 }
 
@@ -281,7 +281,7 @@ function buildLayoutTree({
   const imageGrid = autoLayout(
     tiles
       .filter((tile) => tile.tileType === MCAP_TILE_TYPE.IMAGE)
-      .map((tile) => tile.id)
+      .map((tile) => tile.id),
   );
 
   if (!has3d) {

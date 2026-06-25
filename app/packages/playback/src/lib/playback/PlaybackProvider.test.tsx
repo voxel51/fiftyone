@@ -55,7 +55,7 @@ function renderEngine(opts: RenderOpts = {}) {
           {children}
         </PlaybackProvider>
       ),
-    }
+    },
   );
 }
 
@@ -493,7 +493,7 @@ describe("PlaybackProvider engine actions", () => {
       });
       expect(result.current.store.get(stepIntervalAtom)).toBeCloseTo(
         1 / 100,
-        6
+        6,
       );
     });
 

@@ -12,7 +12,7 @@ import { Field } from "@fiftyone/utilities";
 export class DeleteAnnotationCommand extends Command<boolean> {
   constructor(
     public readonly label: AnnotationLabel,
-    public readonly schema: Field
+    public readonly schema: Field,
   ) {
     super();
   }

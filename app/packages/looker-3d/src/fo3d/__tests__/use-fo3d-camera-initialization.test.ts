@@ -50,7 +50,7 @@ type CameraHarness = {
 };
 
 const makeCameraHarness = (
-  targetValue: [number, number, number] = [4, 5, 6]
+  targetValue: [number, number, number] = [4, 5, 6],
 ): CameraHarness => {
   const setLookAt = vi.fn();
   const getTarget = vi.fn((target: Vector3) => {
@@ -77,14 +77,14 @@ const makeCameraHarness = (
 
 const makeFoScene = (
   position: Vector3Tuple | null = [0, 0, 10],
-  lookAt: Vector3Tuple | null = [0, 0, 0]
+  lookAt: Vector3Tuple | null = [0, 0, 0],
 ) =>
   ({
     cameraProps: {
       position,
       lookAt,
     },
-  } as unknown as Parameters<typeof useFo3dCameraInitialization>[0]["foScene"]);
+  }) as unknown as Parameters<typeof useFo3dCameraInitialization>[0]["foScene"];
 
 describe("useFo3dCameraInitialization", () => {
   beforeEach(() => {
@@ -114,7 +114,7 @@ describe("useFo3dCameraInitialization", () => {
         settings: null,
         isBoundsResolved: true,
         dispatchCameraLifecycle,
-      })
+      }),
     );
 
     expect(result.current.mountCameraPosition.toArray()).toEqual([10, 20, 30]);
@@ -143,7 +143,7 @@ describe("useFo3dCameraInitialization", () => {
         }),
       {
         initialProps: { isBoundsResolved: false },
-      }
+      },
     );
 
     expect(setLookAt).not.toHaveBeenCalled();
@@ -194,7 +194,7 @@ describe("useFo3dCameraInitialization", () => {
         }),
       {
         initialProps: { currentRenderPath: "main" as const },
-      }
+      },
     );
 
     expect(setLookAt).toHaveBeenCalledTimes(1);
@@ -223,11 +223,11 @@ describe("useFo3dCameraInitialization", () => {
         settings: null,
         isBoundsResolved: true,
         dispatchCameraLifecycle,
-      })
+      }),
     );
 
     const initialAnimatedCalls = setLookAt.mock.calls.filter(
-      (call) => call[6] === true
+      (call) => call[6] === true,
     );
     expect(initialAnimatedCalls).toHaveLength(0);
 
@@ -256,7 +256,7 @@ describe("useFo3dCameraInitialization", () => {
         settings: null,
         isBoundsResolved: true,
         dispatchCameraLifecycle,
-      })
+      }),
     );
 
     mockRecoilState.overriddenCameraPosition = [0, 0, 0];
@@ -281,7 +281,7 @@ describe("useFo3dCameraInitialization", () => {
         settings: null,
         isBoundsResolved: true,
         dispatchCameraLifecycle,
-      })
+      }),
     );
 
     unmount();
@@ -289,7 +289,7 @@ describe("useFo3dCameraInitialization", () => {
     expect(saveCameraState).toHaveBeenCalledWith(
       "cleanup-dataset",
       [9, 8, 7],
-      [4, 5, 6]
+      [4, 5, 6],
     );
   });
 });

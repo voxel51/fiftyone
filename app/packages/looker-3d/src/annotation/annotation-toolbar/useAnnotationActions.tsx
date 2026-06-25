@@ -60,7 +60,7 @@ const createCoordinateAction = (customComponent: React.ReactNode) => ({
 
 export const useAnnotationActions = () => {
   const selectedLabelForAnnotation = useRecoilValue(
-    selectedLabelForAnnotationAtom
+    selectedLabelForAnnotationAtom,
   );
   const [
     currentArchetypeSelectedForTransform,
@@ -68,7 +68,7 @@ export const useAnnotationActions = () => {
   ] = useRecoilState(currentArchetypeSelectedForTransformAtom);
   const [transformMode, setTransformMode] = useRecoilState(transformModeAtom);
   const [selectedPoint, setSelectedPoint] = useRecoilState(
-    selectedPolylineVertexAtom
+    selectedPolylineVertexAtom,
   );
   const isActivelySegmenting = useRecoilValue(isActivelySegmentingSelector);
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
@@ -77,10 +77,10 @@ export const useAnnotationActions = () => {
   const [isCreatingCuboid, setIsCreatingCuboid] =
     useRecoilState(isCreatingCuboidAtom);
   const [segmentState, setSegmentState] = useRecoilState(
-    activeSegmentationStateAtom
+    activeSegmentationStateAtom,
   );
   const [snapCloseAutomatically, setSnapCloseAutomatically] = useRecoilState(
-    snapCloseAutomaticallyAtom
+    snapCloseAutomaticallyAtom,
   );
   const editing = useAnnotationContext().isEditing;
   const [editSegmentsMode, setEditSegmentsMode] =
@@ -97,7 +97,7 @@ export const useAnnotationActions = () => {
     (mode: TransformMode) => {
       setTransformMode(mode);
     },
-    [setTransformMode]
+    [setTransformMode],
   );
 
   const handleStartSegmentPolyline = useCallback(() => {

@@ -32,7 +32,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   } | null>(null);
   const images = useSceneSourcesByType(MCAP_SOURCE_TYPE.IMAGE);
   const annotationSources = useSceneSourcesByType(
-    MCAP_SOURCE_TYPE.IMAGE_ANNOTATION
+    MCAP_SOURCE_TYPE.IMAGE_ANNOTATION,
   );
   const { imageLabelTopics, interpolate2dAnnotations, setImageLabelTopics } =
     useMcapModalSettings();
@@ -40,7 +40,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   // Open on the resolver-assigned source; tiles added by hand bind the
   // densest stream instead of whatever happens to be first in the file.
   const [topic, setTopic] = useState<string>(
-    () => initialSourceId ?? rankImageSources(images)[0]?.id ?? ""
+    () => initialSourceId ?? rankImageSources(images)[0]?.id ?? "",
   );
 
   // This effect binds the pane to the best image source once sources resolve.
@@ -65,25 +65,25 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
   const frame = useMcapTopicStream<EncodedImageVisualization>(topic);
   const annotationTopics = useMemo(
     () => annotationSources.map((s) => s.id),
-    [annotationSources]
+    [annotationSources],
   );
   const inferredAnnotationTopic = useMemo(
     () => (topic ? chooseAnnotationTopic(topic, annotationTopics) : null),
-    [topic, annotationTopics]
+    [topic, annotationTopics],
   );
   const selectedLabelTopics = useMemo(() => {
     if (!topic) return [];
     if (Object.hasOwn(imageLabelTopics, topic)) {
       const available = new Set(annotationTopics);
       return imageLabelTopics[topic].filter((labelTopic) =>
-        available.has(labelTopic)
+        available.has(labelTopic),
       );
     }
     return inferredAnnotationTopic ? [inferredAnnotationTopic] : [];
   }, [annotationTopics, imageLabelTopics, inferredAnnotationTopic, topic]);
   const activeTopics = useMemo(
     () => (topic ? [topic, ...selectedLabelTopics] : []),
-    [selectedLabelTopics, topic]
+    [selectedLabelTopics, topic],
   );
   const currentLabel =
     images.find((s) => s.id === topic)?.label ?? "Select source";
@@ -97,7 +97,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     }
     setImageLabelTopics(
       topic,
-      annotationTopics.filter((availableTopic) => next.has(availableTopic))
+      annotationTopics.filter((availableTopic) => next.has(availableTopic)),
     );
   };
 
@@ -162,7 +162,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
               setImageDims((prev) =>
                 prev?.width === width && prev?.height === height
                   ? prev
-                  : { width, height }
+                  : { width, height },
               )
             }
           />

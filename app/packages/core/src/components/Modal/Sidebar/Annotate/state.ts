@@ -11,7 +11,7 @@ export const activeSchemaTab = atom<"gui" | "json">("gui");
 export const currentField = atom<null | string>();
 
 export const labelSchemasData = atom<Record<string, LabelSchemaMeta> | null>(
-  null
+  null,
 );
 
 export const labelSchemaData = atomFamily((field: string) => {
@@ -19,7 +19,7 @@ export const labelSchemaData = atomFamily((field: string) => {
     (get) => get(labelSchemasData)?.[field],
     (get, set, value) => {
       set(labelSchemasData, { ...get(labelSchemasData), [field]: value });
-    }
+    },
   );
 });
 
@@ -59,7 +59,7 @@ export const visibleLabelSchemas = atom((get) => {
 export const inactiveLabelSchemas = atom((get) =>
   Object.keys(get(labelSchemasData) ?? {})
     .sort()
-    .filter((field) => !(get(activeLabelSchemas) ?? []).includes(field))
+    .filter((field) => !(get(activeLabelSchemas) ?? []).includes(field)),
 );
 
 // =============================================================================
@@ -88,7 +88,7 @@ export const activePaths = atom(
   },
   (_, set, newOrder: string[]) => {
     set(activePathsOrder, newOrder);
-  }
+  },
 );
 
 // =============================================================================
@@ -99,7 +99,7 @@ export const fieldType = atomFamily((path: string) =>
   atom((get) => {
     const legacyData = get(labelSchemaData(path));
     return legacyData?.type ? capitalize(legacyData.type) : undefined;
-  })
+  }),
 );
 
 export const fieldAttributeCount = atomFamily((path: string) =>
@@ -107,14 +107,17 @@ export const fieldAttributeCount = atomFamily((path: string) =>
     const data = get(labelSchemaData(path));
     const attrs = data?.label_schema?.attributes;
     return Array.isArray(attrs) ? attrs.length : 0;
-  })
+  }),
 );
 
 export const fieldTypes = atom((get) => {
-  return (get(activeLabelSchemas) ?? []).reduce((acc, cur) => {
-    acc[cur] = get(fieldType(cur));
-    return acc;
-  }, {} as { [key: string]: string });
+  return (get(activeLabelSchemas) ?? []).reduce(
+    (acc, cur) => {
+      acc[cur] = get(fieldType(cur));
+      return acc;
+    },
+    {} as { [key: string]: string },
+  );
 });
 
 export const addToActiveSchemas = atom(null, (get, set, add: Set<string>) => {
@@ -128,9 +131,9 @@ export const removeFromActiveSchemas = atom(
     const current: string[] = get(activeLabelSchemas) ?? [];
     set(
       activeLabelSchemas,
-      current.filter((field) => !remove.has(field))
+      current.filter((field) => !remove.has(field)),
     );
-  }
+  },
 );
 
 export const schemaManagerDisplayedAtom = atom(false);
@@ -193,6 +196,6 @@ export const useAnnotationSchemaContext = (): AnnotationSchemaContext => {
       setActiveSchemaPaths,
       setLabelSchema,
     }),
-    [activeSchemaPaths, labelSchema, setActiveSchemaPaths, setLabelSchema]
+    [activeSchemaPaths, labelSchema, setActiveSchemaPaths, setLabelSchema],
   );
 };

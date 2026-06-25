@@ -220,7 +220,7 @@ export default function OperatorBrowser() {
         )}
       </PaletteContentContainer>
     </OperatorPalette>,
-    document.body
+    document.body,
   );
 }
 

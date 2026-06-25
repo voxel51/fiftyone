@@ -219,7 +219,7 @@ function Layout({
     (id: string, reason: "select" | "action") => {
       setFocusedTileId(reason === "select" && focusedTileId === id ? null : id);
     },
-    [focusedTileId, setFocusedTileId]
+    [focusedTileId, setFocusedTileId],
   );
 
   return (

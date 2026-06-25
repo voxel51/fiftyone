@@ -12,11 +12,11 @@ import { rotate } from "./util";
 
 const processOverlays = <State extends BaseState>(
   state: State,
-  overlays: Overlay<State>[]
+  overlays: Overlay<State>[],
 ): [Overlay<State>[], number] => {
   const activePaths = state.options.activePaths;
   const bins = Object.fromEntries(
-    activePaths.map<[string, Overlay<State>[]]>((l) => [l, []])
+    activePaths.map<[string, Overlay<State>[]]>((l) => [l, []]),
   );
 
   let classifications = null;
@@ -82,13 +82,13 @@ const processOverlays = <State extends BaseState>(
     .filter((o) => o.containsPoint(state, [x, y]) > CONTAINS.NONE)
     .sort(
       (a, b) =>
-        a.getMouseDistance(state, [x, y]) - b.getMouseDistance(state, [x, y])
+        a.getMouseDistance(state, [x, y]) - b.getMouseDistance(state, [x, y]),
     );
 
   const outside = ordered.filter(
     (o) =>
       o instanceof ClassificationsOverlay ||
-      o.containsPoint(state, [x, y]) === CONTAINS.NONE
+      o.containsPoint(state, [x, y]) === CONTAINS.NONE,
   );
 
   let newRotate = state.rotate;
@@ -107,7 +107,7 @@ export const filter = <State extends BaseState>(
   overlay: Overlay<State>,
   bins: {
     [k: string]: Overlay<State>[];
-  }
+  },
 ) => {
   if (!(overlay.field && overlay.field in bins)) return true;
 

@@ -18,7 +18,7 @@ export const useFo3dDerivedSceneState = (sceneBoundingBox: Box3 | null) => {
 
   const lookAt = useMemo(
     () => effectiveSceneBoundingBox.getCenter(new Vector3()),
-    [effectiveSceneBoundingBox]
+    [effectiveSceneBoundingBox],
   );
 
   return {

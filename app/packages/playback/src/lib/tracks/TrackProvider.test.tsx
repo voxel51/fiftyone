@@ -32,7 +32,7 @@ describe("TrackProvider", () => {
 
   it("throws when consumed outside a provider", () => {
     expect(() => renderHook(() => useTrackContext())).toThrow(
-      /must be used inside <TrackProvider>/
+      /must be used inside <TrackProvider>/,
     );
   });
 
@@ -67,7 +67,7 @@ describe("TrackProvider", () => {
     it("togglePin flips a track between pinned and unpinned", () => {
       const { result } = renderHook(
         () => ({ pinning: useTrackPinning(), pinned: usePinnedTracks() }),
-        { wrapper: wrap(TRACKS, []) }
+        { wrapper: wrap(TRACKS, []) },
       );
       expect(result.current.pinned.map((t) => t.id)).toEqual([]);
       act(() => result.current.pinning.togglePin("dog"));
@@ -79,7 +79,7 @@ describe("TrackProvider", () => {
     it("setPinned imperatively sets a single track's pin state", () => {
       const { result } = renderHook(
         () => ({ pinning: useTrackPinning(), pinned: usePinnedTracks() }),
-        { wrapper: wrap(TRACKS, ["cat"]) }
+        { wrapper: wrap(TRACKS, ["cat"]) },
       );
       act(() => result.current.pinning.setPinned("dog", true));
       expect(result.current.pinned.map((t) => t.id).sort()).toEqual([
@@ -93,7 +93,7 @@ describe("TrackProvider", () => {
     it("setPinned is a no-op when the requested state matches the current one", () => {
       const { result } = renderHook(
         () => ({ pinning: useTrackPinning(), pinned: usePinnedTracks() }),
-        { wrapper: wrap(TRACKS, ["cat"]) }
+        { wrapper: wrap(TRACKS, ["cat"]) },
       );
       act(() => result.current.pinning.setPinned("cat", true));
       expect(result.current.pinned.map((t) => t.id)).toEqual(["cat"]);

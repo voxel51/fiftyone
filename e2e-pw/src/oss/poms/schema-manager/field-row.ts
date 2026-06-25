@@ -14,7 +14,7 @@ export class FieldRowPom {
     readonly page: Page,
     readonly eventUtils: EventUtils,
     readonly field: string,
-    readonly schemaManager: SchemaManagerPom
+    readonly schemaManager: SchemaManagerPom,
   ) {
     this.assert = new FieldRowAsserter(this);
   }
@@ -77,7 +77,7 @@ export class FieldRowPom {
       this.page,
       this.eventUtils,
       this.field,
-      this.schemaManager
+      this.schemaManager,
     );
   }
 
@@ -92,7 +92,7 @@ export class FieldRowPom {
       this.page,
       this.eventUtils,
       this.field,
-      this.schemaManager
+      this.schemaManager,
     );
   }
 }
@@ -108,7 +108,7 @@ class FieldRowAsserter {
    */
   async isActiveField() {
     await this.fieldRowPom.schemaManager.assert.isActiveFieldRow(
-      this.fieldRowPom.field
+      this.fieldRowPom.field,
     );
   }
 
@@ -125,7 +125,7 @@ class FieldRowAsserter {
    */
   async isHiddenField() {
     await this.fieldRowPom.schemaManager.assert.isHiddenFieldRow(
-      this.fieldRowPom.field
+      this.fieldRowPom.field,
     );
   }
 

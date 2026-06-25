@@ -40,7 +40,7 @@ import { view } from "./view";
  * A generic type that extracts the response type from a GraphQL query.
  */
 export type AggregationResponseFrom<
-  TAggregate extends { response: { aggregate: readonly unknown[] } }
+  TAggregate extends { response: { aggregate: readonly unknown[] } },
 > = TAggregate["response"]["aggregate"][0];
 
 const extendedViewForm = selector({
@@ -213,7 +213,7 @@ export const distributionPaths = selector<string[]>({
       fieldPaths({
         space: State.SPACE.SAMPLE,
         ftype: VALID_DISTRIBUTION_TYPES,
-      })
+      }),
     )
       .filter((path) => !["filepath", "id"].includes(path))
       .filter((path) => {

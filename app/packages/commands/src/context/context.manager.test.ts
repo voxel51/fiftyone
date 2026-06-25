@@ -14,20 +14,20 @@ describe("CommandContextManager", () => {
     });
     const newContext = CommandContextManager.instance().createCommandContext(
       "fo.test",
-      true
+      true,
     );
     const unsub = CommandContextManager.instance().subscribe(listener);
     CommandContextManager.instance().pushContext(newContext);
     expect(listener).toBeCalledTimes(1);
     expect(listener.mock.calls[0][0]).toBe(newContext.id);
     expect(CommandContextManager.instance().getActiveContext().id).toBe(
-      newContext.id
+      newContext.id,
     );
     CommandContextManager.instance().popContext();
     expect(listener).toBeCalledTimes(2);
     expect(listener.mock.calls[1][0]).toBe(KnownContexts.Default);
     expect(CommandContextManager.instance().getActiveContext().id).toBe(
-      KnownContexts.Default
+      KnownContexts.Default,
     );
     unsub();
     CommandContextManager.instance().pushContext(newContext);
@@ -38,35 +38,35 @@ describe("CommandContextManager", () => {
   // TODO: re-enable after refactoring CommandContextManager to support dynamic push/pop
   it.skip("always keeps a default context", () => {
     expect(CommandContextManager.instance().getActiveContext().id).toBe(
-      KnownContexts.Default
+      KnownContexts.Default,
     );
     const newContext = CommandContextManager.instance().createCommandContext(
       "fo.test",
-      true
+      true,
     );
     CommandContextManager.instance().pushContext(newContext);
     expect(CommandContextManager.instance().getActiveContext().id).toBe(
-      newContext.id
+      newContext.id,
     );
     //pop returns to the default
     CommandContextManager.instance().popContext();
     expect(CommandContextManager.instance().getActiveContext().id).toBe(
-      KnownContexts.Default
+      KnownContexts.Default,
     );
     //further pops stay at default
     CommandContextManager.instance().popContext();
     expect(CommandContextManager.instance().getActiveContext().id).toBe(
-      KnownContexts.Default
+      KnownContexts.Default,
     );
 
     CommandContextManager.instance().pushContext(newContext);
     expect(CommandContextManager.instance().getActiveContext().id).toBe(
-      newContext.id
+      newContext.id,
     );
     //direct restore to the default context
     CommandContextManager.instance().toDefault();
     expect(CommandContextManager.instance().getActiveContext().id).toBe(
-      KnownContexts.Default
+      KnownContexts.Default,
     );
   });
 
@@ -83,7 +83,7 @@ describe("CommandContextManager", () => {
       .getActiveContext()
       .bindKey("ctrl+x", cmd.id);
     await CommandContextManager.instance().handleKeyDown(
-      new KeyboardEvent("keydown", { ctrlKey: true, key: "x" })
+      new KeyboardEvent("keydown", { ctrlKey: true, key: "x" }),
     );
     expect(execFn).toBeCalledTimes(1);
   });
@@ -102,11 +102,11 @@ describe("CommandContextManager", () => {
       .bindKey("ctrl+x", cmd.id);
     const context = CommandContextManager.instance().createCommandContext(
       "new.context",
-      true
+      true,
     );
     CommandContextManager.instance().pushContext(context);
     await CommandContextManager.instance().handleKeyDown(
-      new KeyboardEvent("keydown", { ctrlKey: true, key: "x" })
+      new KeyboardEvent("keydown", { ctrlKey: true, key: "x" }),
     );
     expect(execFn).toBeCalledTimes(1);
   });
@@ -126,11 +126,11 @@ describe("CommandContextManager", () => {
       .bindKey("ctrl+x", cmd.id);
     const context = CommandContextManager.instance().createCommandContext(
       "new.context",
-      false
+      false,
     );
     CommandContextManager.instance().pushContext(context);
     await CommandContextManager.instance().handleKeyDown(
-      new KeyboardEvent("keydown", { ctrlKey: true, key: "x" })
+      new KeyboardEvent("keydown", { ctrlKey: true, key: "x" }),
     );
     expect(execFn).toBeCalledTimes(0);
   });
@@ -156,29 +156,29 @@ describe("CommandContextManager", () => {
       .bindKey("ctrl+x", cmd.id);
     const context = CommandContextManager.instance().createCommandContext(
       "new.context",
-      true
+      true,
     );
     CommandContextManager.instance().pushContext(context);
     await CommandContextManager.instance().handleKeyDown(
-      new KeyboardEvent("keydown", { ctrlKey: true, key: "x" })
+      new KeyboardEvent("keydown", { ctrlKey: true, key: "x" }),
     );
     expect(cmdFn).toBeCalledTimes(1);
     expect(execFn).toBeCalledTimes(1);
     expect(undoFn).toBeCalledTimes(0);
     expect(CommandContextManager.instance().getActiveContext().canUndo()).toBe(
-      true
+      true,
     );
     expect(CommandContextManager.instance().getActiveContext().canRedo()).toBe(
-      false
+      false,
     );
     await CommandContextManager.instance().getActiveContext().undo();
     expect(undoFn).toBeCalledTimes(1);
     expect(execFn).toBeCalledTimes(1);
     expect(CommandContextManager.instance().getActiveContext().canUndo()).toBe(
-      false
+      false,
     );
     expect(CommandContextManager.instance().getActiveContext().canRedo()).toBe(
-      true
+      true,
     );
     await CommandContextManager.instance().getActiveContext().redo();
     expect(execFn).toBeCalledTimes(2);
@@ -274,10 +274,10 @@ describe("CommandContextManager text-editing guard", () => {
   it("ignores modified variants of a bare binding", async () => {
     const execFn = bindSpace();
     await CommandContextManager.instance().handleKeyDown(
-      spaceEvent({ shiftKey: true })
+      spaceEvent({ shiftKey: true }),
     );
     await CommandContextManager.instance().handleKeyDown(
-      spaceEvent({ metaKey: true })
+      spaceEvent({ metaKey: true }),
     );
     expect(execFn).not.toBeCalled();
   });
@@ -285,7 +285,7 @@ describe("CommandContextManager text-editing guard", () => {
   it("ignores key repeats from a held key", async () => {
     const execFn = bindSpace();
     await CommandContextManager.instance().handleKeyDown(
-      spaceEvent({ repeat: true })
+      spaceEvent({ repeat: true }),
     );
     expect(execFn).not.toBeCalled();
   });

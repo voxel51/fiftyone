@@ -25,30 +25,30 @@ export class ColorModalPom {
 
   async setColorBy(mode: "value" | "field") {
     await this.getFieldSelector(
-      "color-modal-list-item-Global settings"
+      "color-modal-list-item-Global settings",
     ).click();
     await this.getFieldSelector(`radio-button-${mode}`).click();
   }
 
   async shuffleColors() {
     await this.getFieldSelector(
-      "color-modal-list-item-Global settings"
+      "color-modal-list-item-Global settings",
     ).click();
     await this.getFieldSelector("shuffle-colors").click();
   }
 
   async useColorBlindColors() {
     await this.getFieldSelector(
-      "color-modal-list-item-Global settings"
+      "color-modal-list-item-Global settings",
     ).click();
     await this.getFieldSelector(
-      "checkbox-Use color blind friendly option"
+      "checkbox-Use color blind friendly option",
     ).click();
   }
 
   async useMultiColorKeypoints() {
     await this.getFieldSelector(
-      "color-modal-list-item-Global settings"
+      "color-modal-list-item-Global settings",
     ).click();
     await this.getFieldSelector("checkbox-Multicolor keypoints").click();
   }
@@ -111,14 +111,14 @@ export class ColorModalPom {
   // action buttons
   async saveAsDefault() {
     const saveAsDefaultButton = this.page.getByTestId(
-      "button-Save to dataset appConfig"
+      "button-Save to dataset appConfig",
     );
     await saveAsDefaultButton.click();
   }
 
   async resetColorScheme() {
     const resetButton = this.page.getByTestId(
-      "button-Clear session settings and revert to default settings"
+      "button-Clear session settings and revert to default settings",
     );
     await resetButton.click();
   }
@@ -136,7 +136,7 @@ class ColorModalAsserter {
     await expect(
       this.colorModalPom.colorModal
         .getByTestId(`radio-button-${mode}`)
-        .getByRole("radio")
+        .getByRole("radio"),
     ).toBeChecked();
   }
 }

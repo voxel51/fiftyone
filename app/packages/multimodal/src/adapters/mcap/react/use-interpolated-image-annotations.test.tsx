@@ -76,7 +76,7 @@ function makeTimeline(ticks: readonly bigint[]): McapTimelineIndex {
 
 function makeStream(
   caches: Map<string, McapTopicCache>,
-  timeline: McapTimelineIndex
+  timeline: McapTimelineIndex,
 ) {
   let active = 0;
   const subscribeToTopic = vi.fn((topic: string) => {
@@ -109,7 +109,7 @@ function emptyViz(): ImageAnnotationsVisualization {
 }
 
 function circleViz(
-  position: readonly [number, number]
+  position: readonly [number, number],
 ): ImageAnnotationsVisualization {
   return {
     kind: VISUALIZATION_KIND.IMAGE_ANNOTATIONS,
@@ -129,7 +129,7 @@ function circleViz(
 
 function message(
   timelineTimeNs: bigint,
-  viz: ImageAnnotationsVisualization
+  viz: ImageAnnotationsVisualization,
 ): McapDecodedMessage {
   return {
     timelineTimeNs,
@@ -218,7 +218,7 @@ describe("useInterpolatedImageAnnotationSets — subscription lifecycle", () => 
         ["/a", cacheA],
         ["/b", cacheB],
       ]),
-      makeTimeline(TICKS)
+      makeTimeline(TICKS),
     );
     const { onResult } = captureResult();
 
@@ -226,7 +226,7 @@ describe("useInterpolatedImageAnnotationSets — subscription lifecycle", () => 
       <Harness stream={stream} topics={["/a", "/b"]} onResult={onResult} />,
       {
         wrapper: TestProviders,
-      }
+      },
     );
 
     expect(subscribeToTopic).toHaveBeenCalledTimes(2);
@@ -244,13 +244,13 @@ describe("useInterpolatedImageAnnotationSets — subscription lifecycle", () => 
         ["/a", cacheA],
         ["/b", cacheB],
       ]),
-      makeTimeline(TICKS)
+      makeTimeline(TICKS),
     );
     const { onResult } = captureResult();
 
     const { unmount } = render(
       <Harness stream={stream} topics={["/a", "/b"]} onResult={onResult} />,
-      { wrapper: TestProviders }
+      { wrapper: TestProviders },
     );
     expect(cacheA.isActive).toBe(true);
 
@@ -264,13 +264,13 @@ describe("useInterpolatedImageAnnotationSets — subscription lifecycle", () => 
     const cacheA = new McapTopicCache();
     const { stream, subscribeToTopic } = makeStream(
       new Map([["/a", cacheA]]),
-      makeTimeline(TICKS)
+      makeTimeline(TICKS),
     );
     const { onResult, latest } = captureResult();
 
     const { rerender } = render(
       <Harness stream={null} topics={["/a"]} onResult={onResult} />,
-      { wrapper: TestProviders }
+      { wrapper: TestProviders },
     );
     expect(subscribeToTopic).not.toHaveBeenCalled();
     expect(latest()).toEqual([]);
@@ -289,24 +289,24 @@ describe("useInterpolatedImageAnnotationSets — subscription lifecycle", () => 
         ["/a", cacheA],
         ["/b", cacheB],
       ]),
-      makeTimeline(TICKS)
+      makeTimeline(TICKS),
     );
     const { onResult } = captureResult();
 
     const { rerender } = render(
       <Harness stream={stream} topics={["/a"]} onResult={onResult} />,
-      { wrapper: TestProviders }
+      { wrapper: TestProviders },
     );
     expect(subscribeToTopic).toHaveBeenCalledTimes(1);
 
     rerender(
-      <Harness stream={stream} topics={["/a", "/b"]} onResult={onResult} />
+      <Harness stream={stream} topics={["/a", "/b"]} onResult={onResult} />,
     );
 
     expect(subscribeToTopic).toHaveBeenCalledWith("/b");
     // "/a" is not re-subscribed.
     expect(
-      subscribeToTopic.mock.calls.filter(([t]) => t === "/a")
+      subscribeToTopic.mock.calls.filter(([t]) => t === "/a"),
     ).toHaveLength(1);
     expect(cacheA.isActive).toBe(true);
     expect(cacheB.isActive).toBe(true);
@@ -320,13 +320,13 @@ describe("useInterpolatedImageAnnotationSets — subscription lifecycle", () => 
         ["/a", cacheA],
         ["/b", cacheB],
       ]),
-      makeTimeline(TICKS)
+      makeTimeline(TICKS),
     );
     const { onResult } = captureResult();
 
     const { rerender } = render(
       <Harness stream={stream} topics={["/a", "/b"]} onResult={onResult} />,
-      { wrapper: TestProviders }
+      { wrapper: TestProviders },
     );
 
     rerender(<Harness stream={stream} topics={["/a"]} onResult={onResult} />);
@@ -343,13 +343,13 @@ describe("useInterpolatedImageAnnotationSets — subscription lifecycle", () => 
     const subscribeToChanges = vi.spyOn(cacheA, "subscribeToChanges");
     const { stream, subscribeToTopic } = makeStream(
       new Map([["/a", cacheA]]),
-      makeTimeline(TICKS)
+      makeTimeline(TICKS),
     );
     const { onResult } = captureResult();
 
     const { rerender } = render(
       <Harness stream={stream} topics={["/a"]} onResult={onResult} />,
-      { wrapper: TestProviders }
+      { wrapper: TestProviders },
     );
     const bindingsAfterMount = subscribeToChanges.mock.calls.length;
 
@@ -363,7 +363,7 @@ describe("useInterpolatedImageAnnotationSets — subscription lifecycle", () => 
     const cacheA = new McapTopicCache();
     const { stream, subscribeToTopic } = makeStream(
       new Map([["/a", cacheA]]),
-      makeTimeline(TICKS)
+      makeTimeline(TICKS),
     );
     const { onResult } = captureResult();
 
@@ -371,7 +371,7 @@ describe("useInterpolatedImageAnnotationSets — subscription lifecycle", () => 
       <Harness stream={stream} topics={["/a", ""]} onResult={onResult} />,
       {
         wrapper: TestProviders,
-      }
+      },
     );
 
     expect(subscribeToTopic).toHaveBeenCalledTimes(1);
@@ -387,7 +387,7 @@ describe("useInterpolatedImageAnnotationSets — subscription lifecycle", () => 
         ["/a", cacheA],
         ["/b", cacheB],
       ]),
-      makeTimeline(TICKS)
+      makeTimeline(TICKS),
     );
     const { onResult } = captureResult();
 
@@ -399,7 +399,7 @@ describe("useInterpolatedImageAnnotationSets — subscription lifecycle", () => 
       />,
       {
         wrapper: TestProviders,
-      }
+      },
     );
 
     expect(subscribeToTopic).toHaveBeenCalledTimes(2);
@@ -413,17 +413,17 @@ describe("useInterpolatedImageAnnotationSets — subscription lifecycle", () => 
     const streamBCache = new McapTopicCache();
     const { stream: streamA, subscribeToTopic: subA } = makeStream(
       new Map([["/a", streamACache]]),
-      timeline
+      timeline,
     );
     const { stream: streamB, subscribeToTopic: subB } = makeStream(
       new Map([["/a", streamBCache]]),
-      timeline
+      timeline,
     );
     const { onResult } = captureResult();
 
     const { rerender } = render(
       <Harness stream={streamA} topics={["/a"]} onResult={onResult} />,
-      { wrapper: TestProviders }
+      { wrapper: TestProviders },
     );
     expect(subA).toHaveBeenCalledTimes(1);
     expect(streamACache.isActive).toBe(true);
@@ -439,13 +439,13 @@ describe("useInterpolatedImageAnnotationSets — subscription lifecycle", () => 
     const cacheA = new McapTopicCache();
     const { stream } = makeStream(
       new Map([["/a", cacheA]]),
-      makeTimeline(TICKS)
+      makeTimeline(TICKS),
     );
     const { onResult, latest } = captureResult();
 
     const { rerender } = render(
       <Harness stream={stream} topics={["/a"]} onResult={onResult} />,
-      { wrapper: TestProviders }
+      { wrapper: TestProviders },
     );
     expect(cacheA.isActive).toBe(true);
 
@@ -461,7 +461,7 @@ describe("useInterpolatedImageAnnotationSets — external-store recompute", () =
     const cacheA = new McapTopicCache();
     const { stream } = makeStream(
       new Map([["/a", cacheA]]),
-      makeTimeline(TICKS)
+      makeTimeline(TICKS),
     );
     const { onResult, latest } = captureResult();
 
@@ -483,7 +483,7 @@ describe("useInterpolatedImageAnnotationSets — external-store recompute", () =
     const cacheA = new McapTopicCache();
     const { stream } = makeStream(
       new Map([["/a", cacheA]]),
-      makeTimeline(TICKS)
+      makeTimeline(TICKS),
     );
     const { onResult } = captureResult();
 
@@ -506,7 +506,7 @@ describe("useInterpolatedImageAnnotationSets — external-store recompute", () =
     const cacheA = new McapTopicCache();
     const { stream } = makeStream(
       new Map([["/a", cacheA]]),
-      makeTimeline(TICKS)
+      makeTimeline(TICKS),
     );
     const { onResult, latest } = captureResult();
 
@@ -532,13 +532,13 @@ describe("useInterpolatedImageAnnotationSets — external-store recompute", () =
         ["/a", cacheA],
         ["/b", cacheB],
       ]),
-      makeTimeline(TICKS)
+      makeTimeline(TICKS),
     );
     const { onResult, latest } = captureResult();
 
     const { rerender } = render(
       <Harness stream={stream} topics={["/a"]} onResult={onResult} />,
-      { wrapper: TestProviders }
+      { wrapper: TestProviders },
     );
 
     rerender(<Harness stream={stream} topics={["/b"]} onResult={onResult} />);
@@ -570,7 +570,7 @@ describe("useInterpolatedImageAnnotationSets — interpolation seam", () => {
     const cacheA = new McapTopicCache();
     const { stream } = makeStream(
       new Map([["/a", cacheA]]),
-      makeTimeline(ticks)
+      makeTimeline(ticks),
     );
     const { onResult, latest } = captureResult();
 
@@ -593,7 +593,7 @@ describe("useInterpolatedImageAnnotationSets — interpolation seam", () => {
     const cacheA = new McapTopicCache();
     const { stream } = makeStream(
       new Map([["/a", cacheA]]),
-      makeTimeline(ticks)
+      makeTimeline(ticks),
     );
     const { onResult, latest } = captureResult();
 
@@ -604,7 +604,7 @@ describe("useInterpolatedImageAnnotationSets — interpolation seam", () => {
         interpolate={false}
         onResult={onResult}
       />,
-      { wrapper: TestProviders }
+      { wrapper: TestProviders },
     );
     act(() => {
       cacheA.set(0n, message(0n, circleViz([0, 0])));
@@ -620,7 +620,7 @@ describe("useInterpolatedImageAnnotationSets — interpolation seam", () => {
     const cacheA = new McapTopicCache();
     const { stream } = makeStream(
       new Map([["/a", cacheA]]),
-      makeTimeline(TICKS)
+      makeTimeline(TICKS),
     );
     const { onResult, latest } = captureFrame();
 
@@ -641,7 +641,7 @@ describe("useInterpolatedImageAnnotationSets — StrictMode", () => {
     const cacheA = new McapTopicCache();
     const { stream, activeCount } = makeStream(
       new Map([["/a", cacheA]]),
-      makeTimeline(TICKS)
+      makeTimeline(TICKS),
     );
     const { onResult, latest } = captureResult();
 
@@ -649,7 +649,7 @@ describe("useInterpolatedImageAnnotationSets — StrictMode", () => {
       <StrictMode>
         <Harness stream={stream} topics={["/a"]} onResult={onResult} />
       </StrictMode>,
-      { wrapper: TestProviders }
+      { wrapper: TestProviders },
     );
 
     // Double-invoked effects must net to EXACTLY one active subscription, not

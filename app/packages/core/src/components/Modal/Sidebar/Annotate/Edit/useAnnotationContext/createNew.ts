@@ -30,7 +30,7 @@ import type { CreateDeps, CreateOptions, LabelType } from "./types";
 export function createNewLabel(
   type: LabelType,
   options: CreateOptions | undefined,
-  deps: CreateDeps
+  deps: CreateDeps,
 ): AnnotationLabel | null {
   const { scene, addOverlay, overlayFactory } = deps;
   const store = getDefaultStore();
@@ -81,7 +81,7 @@ export function createNewLabel(
     const polylineData = data as PolylineLabel;
     const overlay = overlayFactory.create<PolylineOptions, PolylineOverlay>(
       "polyline",
-      { field, id, label: polylineData, selectable: true }
+      { field, id, label: polylineData, selectable: true },
     );
     // withUndo=true so first-point placement is undoable.
     addOverlay(overlay, true);
@@ -105,7 +105,7 @@ export function createNewLabel(
 export function buildNewLabelData(
   field: string,
   type: LabelType,
-  options?: CreateOptions
+  options?: CreateOptions,
 ) {
   const labelId = options?.id ?? objectId();
   const store = getDefaultStore();
@@ -132,10 +132,10 @@ export function buildNewLabelData(
       type === CLASSIFICATION
         ? "Classification"
         : type === DETECTION
-        ? "Detection"
-        : type === POLYLINE
-        ? "Polyline"
-        : undefined,
+          ? "Detection"
+          : type === POLYLINE
+            ? "Polyline"
+            : undefined,
     _id: labelId,
     ...defaults,
     ...(labelValue && { label: labelValue }),

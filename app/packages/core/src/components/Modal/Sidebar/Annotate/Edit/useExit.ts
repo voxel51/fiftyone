@@ -17,7 +17,7 @@ import { useAnnotationContext } from "./useAnnotationContext";
  */
 const hasDrawnContent = (
   label: AnnotationLabel,
-  overlay?: AnnotationLabel["overlay"]
+  overlay?: AnnotationLabel["overlay"],
 ): boolean => {
   // A picked class is content on its own and also covers shapes we don't
   // introspect here (e.g. 3D detections).

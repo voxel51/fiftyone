@@ -10,7 +10,7 @@ import { GLOBAL_TIMELINE_ID } from "../constants";
  */
 export const getTimelineNameFromSampleAndGroupId = (
   sampleId?: string | null,
-  groupId?: string | null
+  groupId?: string | null,
 ) => {
   if (!sampleId && !groupId) {
     return GLOBAL_TIMELINE_ID;

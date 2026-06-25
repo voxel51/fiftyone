@@ -19,13 +19,13 @@ export interface McapSceneInventoryState {
  * streams actually present in the file, whatever produced it.
  */
 export function useMcapSceneInventory(
-  options: UseMcapTopicsOptions
+  options: UseMcapTopicsOptions,
 ): McapSceneInventoryState {
   const { status, error, topics } = useMcapTopics(options);
   const sources = useMemo(() => mcapSceneSources(topics), [topics]);
 
   return useMemo(
     () => ({ error, sources, status, topicCount: topics.length }),
-    [error, sources, status, topics.length]
+    [error, sources, status, topics.length],
   );
 }

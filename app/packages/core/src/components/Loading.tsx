@@ -46,7 +46,7 @@ const Loading = React.memo(
         </div>
       </Container>
     );
-  }
+  },
 );
 
 export default Loading;

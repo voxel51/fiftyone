@@ -43,7 +43,7 @@ export default function ToggleWidget(props: WidgetProps) {
         },
       },
     ],
-    []
+    [],
   );
 
   const defaultIndex = value === true ? 1 : 0;

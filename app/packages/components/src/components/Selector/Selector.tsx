@@ -229,7 +229,7 @@ function Selector<T>(props: SelectorProps<T>) {
                 </Suspense>
               </motion.div>
             </AnimatePresence>
-          )
+          ),
         )}
     </div>
   );

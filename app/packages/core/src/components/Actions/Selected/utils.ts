@@ -1,7 +1,7 @@
 import type { State } from "@fiftyone/state";
 
 export const toLabelMap = (
-  labels: State.SelectedLabel[]
+  labels: State.SelectedLabel[],
 ): State.SelectedLabelMap =>
   Object.fromEntries(labels.map(({ labelId, ...rest }) => [labelId, rest]));
 

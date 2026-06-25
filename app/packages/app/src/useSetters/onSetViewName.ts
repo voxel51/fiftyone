@@ -49,7 +49,7 @@ const onSetViewName: RegisteredSetter =
       }),
       {
         view: [],
-      }
+      },
     );
   };
 

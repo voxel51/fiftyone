@@ -20,7 +20,7 @@ export interface McapPreviewTopics {
  * Classifies stream inventory into supported preview and pairing topic buckets.
  */
 export function streamTopics(
-  topics: readonly StreamInventory[]
+  topics: readonly StreamInventory[],
 ): McapPreviewTopics {
   const image: string[] = [];
   const annotations: string[] = [];
@@ -82,7 +82,7 @@ export function isPointCloudStream(topic: StreamInventory): boolean {
  */
 export function hasPayload(
   topic: StreamInventory,
-  payload: PayloadDescriptor
+  payload: PayloadDescriptor,
 ): boolean {
   const topicPayload = topic.payload;
   if (!topicPayload) {

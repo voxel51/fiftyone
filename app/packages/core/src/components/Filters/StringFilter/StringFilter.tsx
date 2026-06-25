@@ -53,8 +53,8 @@ const useName = (path: string) => {
   name = path.startsWith("tags")
     ? "sample tag"
     : path.startsWith("_label_tags")
-    ? "label tag"
-    : name;
+      ? "label tag"
+      : name;
 
   return name;
 };
@@ -75,7 +75,7 @@ const StringFilter = ({
   const { results, showSearch, useSearch } = useSelected(
     modal,
     path,
-    resultsAtom
+    resultsAtom,
   );
   const onSelect = useOnSelect(modal, path, selectedAtom);
   const skeleton =

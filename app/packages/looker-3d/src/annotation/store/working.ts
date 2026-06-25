@@ -89,7 +89,7 @@ export const workingDocSelector = selector<WorkingDoc>({
  * Converts raw overlays to a labelsById map for the working store.
  */
 function mapOverlaysToLabelId(
-  overlays: OverlayLabel[]
+  overlays: OverlayLabel[],
 ): Record<LabelId, ReconciledDetection3D | ReconciledPolyline3D> {
   const labelsById: Record<
     LabelId,
@@ -232,7 +232,7 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
           doc: { labelsById: next, deletedIds: state.doc.deletedIds },
         });
       },
-    []
+    [],
   );
 
   // Patch the working store whenever rawOverlays changes
@@ -273,7 +273,7 @@ export function useWorkingDoc(): WorkingDoc {
  * Hook that returns a specific label from the working store.
  */
 export function useWorkingLabel(
-  labelId: LabelId
+  labelId: LabelId,
 ): ReconciledDetection3D | ReconciledPolyline3D | undefined {
   const doc = useWorkingDoc();
   return doc.labelsById[labelId];
@@ -294,7 +294,7 @@ export function useWorkingDetections(): ReconciledDetection3D[] {
   const doc = useWorkingDoc();
   return Object.values(doc.labelsById).filter(
     (label): label is ReconciledDetection3D =>
-      isDetection(label) && !doc.deletedIds.has(label._id)
+      isDetection(label) && !doc.deletedIds.has(label._id),
   );
 }
 
@@ -305,7 +305,7 @@ export function useWorkingPolylines(): ReconciledPolyline3D[] {
   const doc = useWorkingDoc();
   return Object.values(doc.labelsById).filter(
     (label): label is ReconciledPolyline3D =>
-      isPolyline(label) && !doc.deletedIds.has(label._id)
+      isPolyline(label) && !doc.deletedIds.has(label._id),
   );
 }
 
@@ -341,7 +341,7 @@ export function useUpdateWorkingLabel() {
     ({ set }) =>
       (
         labelId: LabelId,
-        updates: Partial<ReconciledDetection3D> | Partial<ReconciledPolyline3D>
+        updates: Partial<ReconciledDetection3D> | Partial<ReconciledPolyline3D>,
       ) => {
         set(workingAtom, (prev): WorkingState => {
           const existingLabel = prev.doc.labelsById[labelId];
@@ -360,7 +360,7 @@ export function useUpdateWorkingLabel() {
             }
             if (detectionUpdates.dimensions) {
               roundedUpdates.dimensions = roundTuple(
-                detectionUpdates.dimensions
+                detectionUpdates.dimensions,
               );
             }
             if (detectionUpdates.rotation) {
@@ -368,7 +368,7 @@ export function useUpdateWorkingLabel() {
             }
             if (detectionUpdates.quaternion) {
               roundedUpdates.quaternion = roundTuple(
-                detectionUpdates.quaternion
+                detectionUpdates.quaternion,
               );
             }
           } else if (isPolyline(existingLabel)) {
@@ -377,8 +377,8 @@ export function useUpdateWorkingLabel() {
               roundedUpdates.points3d = polylineUpdates.points3d.map(
                 (segment) =>
                   segment.map(
-                    (point) => roundTuple(point) as [number, number, number]
-                  )
+                    (point) => roundTuple(point) as [number, number, number],
+                  ),
               );
             }
           }
@@ -400,7 +400,7 @@ export function useUpdateWorkingLabel() {
           };
         });
       },
-    []
+    [],
   );
 }
 
@@ -433,7 +433,7 @@ export function useAddWorkingLabel() {
           };
         });
       },
-    []
+    [],
   );
 }
 
@@ -457,7 +457,7 @@ export function useDeleteWorkingLabel() {
           };
         });
       },
-    []
+    [],
   );
 }
 
@@ -481,6 +481,6 @@ export function useRestoreWorkingLabel() {
           };
         });
       },
-    []
+    [],
   );
 }

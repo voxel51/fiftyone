@@ -119,7 +119,7 @@ export interface ParsedMcapMessageIndexRecord {
    */
   readonly records: readonly (readonly [
     logTimeNs: bigint,
-    messageOffset: bigint
+    messageOffset: bigint,
   ])[];
 }
 
@@ -128,7 +128,7 @@ export interface ParsedMcapMessageIndexRecord {
  */
 export type McapReaderFactory = (
   source: ByteSourceDescriptor,
-  readable: McapTypes.IReadable
+  readable: McapTypes.IReadable,
 ) => Promise<McapIndexedReaderLike>;
 
 /**
@@ -159,7 +159,7 @@ export interface McapIndexedReaderLike {
    * Reads timestamp-only message-index entries without decoding chunk records.
    */
   readIndexedMessageTimes?(
-    args?: McapReadIndexedMessageTimesRequest
+    args?: McapReadIndexedMessageTimesRequest,
   ): AsyncGenerator<McapIndexedMessageTime, void, void>;
 
   /**
@@ -167,7 +167,7 @@ export interface McapIndexedReaderLike {
    * with unbounded lookback, without decoding chunk records.
    */
   readLatestIndexedMessageTimes?(
-    args: McapReadLatestIndexedMessageTimesRequest
+    args: McapReadLatestIndexedMessageTimesRequest,
   ): Promise<ReadonlyMap<string, readonly McapIndexedMessageTime[]>>;
 
   /**
@@ -175,7 +175,7 @@ export interface McapIndexedReaderLike {
    * decoding chunk records.
    */
   readTopicIndexedTimeBounds?(
-    args: McapReadTopicIndexedTimeBoundsRequest
+    args: McapReadTopicIndexedTimeBoundsRequest,
   ): Promise<ReadonlyMap<string, McapTopicIndexedTimeBounds | null>>;
 
   /**

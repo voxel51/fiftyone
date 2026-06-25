@@ -53,7 +53,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
   const [layout, setLayoutState] = useState<MosaicNode<string> | null>(
     initialLayout === undefined
       ? autoLayoutFn(Object.keys(initialTiles))
-      : initialLayout
+      : initialLayout,
   );
   const [focusedTileId, setFocusedTileId] = useState<string | null>(null);
   // Mirror `focusedTileId` in a ref so `addTile` can resolve the target
@@ -71,7 +71,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
   // Portal target the settings sidebar registers; `<TileSettingsContent>`
   // children render here when their tile is focused.
   const [settingsSlotEl, setSettingsSlotEl] = useState<HTMLElement | null>(
-    null
+    null,
   );
   // Seed the counter past any `<prefix>-<n>` suffix in the initial tiles,
   // so the first `addTile("camera", ...)` against `{ "camera-1": ... }`
@@ -81,7 +81,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
     Object.keys(initialTiles).reduce((max, id) => {
       const m = id.match(/-(\d+)$/);
       return m ? Math.max(max, Number(m[1])) : max;
-    }, 0) + 1
+    }, 0) + 1,
   );
   // Always-current ref so autoLayout stays referentially stable — avoids
   // stale captures in useMemo dependency-suppressed consumers (TilingHeader).
@@ -101,7 +101,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       // updaters synchronously (and Strict Mode replays them), so
       // side effects belong here, not inside.
       const idsToRemove = Object.keys(tiles).filter(
-        (id) => !presentIds.has(id)
+        (id) => !presentIds.has(id),
       );
       if (idsToRemove.length > 0) {
         setTiles((prev) => {
@@ -116,16 +116,16 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
         }
       }
       setFocusedTileId((current) =>
-        current && presentIds.has(current) ? current : null
+        current && presentIds.has(current) ? current : null,
       );
     },
-    [tiles]
+    [tiles],
   );
 
   const addTile = useCallback(
     (
       tile: TilingTile,
-      { idPrefix = "tile", targetId, focus = true }: AddTileOptions = {}
+      { idPrefix = "tile", targetId, focus = true }: AddTileOptions = {},
     ): string => {
       const id = `${idPrefix}-${counterRef.current++}`;
       setTiles((prev) => ({ ...prev, [id]: tile }));
@@ -137,7 +137,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       if (focus) setFocusedTileId(id);
       return id;
     },
-    []
+    [],
   );
 
   const removeTile = useCallback((id: string) => {
@@ -202,7 +202,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
       autoLayout,
       settingsSlotEl,
       setTileTitle,
-    ]
+    ],
   );
 
   return (
@@ -218,7 +218,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
  */
 function stripTile(
   node: MosaicNode<string>,
-  id: string
+  id: string,
 ): MosaicNode<string> | null {
   if (typeof node === "string") return node === id ? null : node;
   const first = stripTile(node.first, id);
@@ -268,7 +268,7 @@ export const TileSettingsContent: React.FC<{
   if (!tileId || tileId !== focusedTileId || !settingsSlotEl) return null;
   return createPortal(
     <div onPointerDown={stopPortalEvent}>{children}</div>,
-    settingsSlotEl
+    settingsSlotEl,
   );
 };
 

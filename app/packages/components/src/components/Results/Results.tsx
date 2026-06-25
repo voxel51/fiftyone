@@ -87,7 +87,7 @@ function Results<T>({
 
   useLayoutEffect(() => {
     ref.current?.dispatchEvent(
-      new CustomEvent(`selector-results-${cy}`, { bubbles: true })
+      new CustomEvent(`selector-results-${cy}`, { bubbles: true }),
     );
   }, [cy, ref]);
 

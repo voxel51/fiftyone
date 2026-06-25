@@ -55,7 +55,7 @@ export function newellNormal(pts: Vector3[]): Vector3 {
  */
 export function createFilledPolygonMesh(
   loop: THREE.Vector3Tuple[],
-  material: THREE.Material
+  material: THREE.Material,
 ): THREE.Mesh | null {
   try {
     // Validate input: need at least 3 points for a polygon
@@ -72,7 +72,7 @@ export function createFilledPolygonMesh(
       (pt) =>
         Math.abs(pt.x - firstPoint.x) < EPS &&
         Math.abs(pt.y - firstPoint.y) < EPS &&
-        Math.abs(pt.z - firstPoint.z) < EPS
+        Math.abs(pt.z - firstPoint.z) < EPS,
     );
     if (allSame) {
       return null;
@@ -143,7 +143,7 @@ export function createFilledPolygonMesh(
  */
 export function createFilledPolygonMeshes(
   points3d: THREE.Vector3Tuple[][],
-  material: THREE.Material
+  material: THREE.Material,
 ): THREE.Mesh[] | null {
   if (points3d.length === 0) {
     return null;

@@ -29,7 +29,7 @@ interface FakeOverlay {
 }
 
 const makeOverlay = (
-  initialLabel: Record<string, unknown> = {}
+  initialLabel: Record<string, unknown> = {},
 ): FakeOverlay => ({
   label: initialLabel,
   updateLabel: vi.fn(),
@@ -39,7 +39,9 @@ const setLighter = (opts: {
   scene?: unknown;
   getOverlayResult?: FakeOverlay | null;
 }) => {
-  const getOverlay = vi.fn().mockReturnValue(opts.getOverlayResult ?? undefined);
+  const getOverlay = vi
+    .fn()
+    .mockReturnValue(opts.getOverlayResult ?? undefined);
   // Distinguish "key omitted" (use fake scene) from "key present but
   // undefined" (caller is asserting on the no-scene branch).
   const scene = "scene" in opts ? opts.scene : { id: "scene-1" };
@@ -50,14 +52,14 @@ const setLighter = (opts: {
 const renderHandler = (createDetection: () => unknown) =>
   renderHook(() =>
     useApplyInferenceResult(
-      createDetection as Parameters<typeof useApplyInferenceResult>[0]
-    )
+      createDetection as Parameters<typeof useApplyInferenceResult>[0],
+    ),
   ).result.current;
 
 const segmentResult = (
   labelId: string,
   bbox: [number, number, number, number],
-  mask: unknown
+  mask: unknown,
 ) => ({
   labelId,
   type: "sync" as const,
@@ -101,9 +103,7 @@ describe("useApplyInferenceResult", () => {
 
   it("creates a new detection when no overlay exists for the labelId", () => {
     const newOverlay = makeOverlay({ label: "" });
-    const createDetection = vi
-      .fn()
-      .mockReturnValue({ overlay: newOverlay });
+    const createDetection = vi.fn().mockReturnValue({ overlay: newOverlay });
     setLighter({ getOverlayResult: null });
 
     const apply = renderHandler(createDetection);
@@ -169,7 +169,7 @@ describe("useApplyInferenceResult", () => {
 
     expect(overlay.updateLabel).not.toHaveBeenCalled();
     expect(warnSpy).toHaveBeenCalledWith(
-      `Unsupported task type: ${AgentTaskType.DETECT}`
+      `Unsupported task type: ${AgentTaskType.DETECT}`,
     );
   });
 

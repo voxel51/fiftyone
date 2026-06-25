@@ -13,14 +13,14 @@ describe("useDependencyHash", () => {
   describe("no dependencies", () => {
     it("returns null when dependencies is undefined", () => {
       const { result } = renderHook(() =>
-        useDependencyHash({ foo: "bar" }, undefined)
+        useDependencyHash({ foo: "bar" }, undefined),
       );
       expect(result.current).toBeNull();
     });
 
     it("returns null for empty dependencies array", () => {
       const { result } = renderHook(() =>
-        useDependencyHash({ foo: "bar" }, [])
+        useDependencyHash({ foo: "bar" }, []),
       );
       expect(result.current).toBeNull();
     });
@@ -29,7 +29,7 @@ describe("useDependencyHash", () => {
   describe("shallow dependencies", () => {
     it("returns hash of single dependency value", () => {
       const { result } = renderHook(() =>
-        useDependencyHash({ make: "Toyota", year: 2020 }, ["make"])
+        useDependencyHash({ make: "Toyota", year: 2020 }, ["make"]),
       );
       expect(result.current).toBe(JSON.stringify(["Toyota"]));
     });
@@ -39,7 +39,7 @@ describe("useDependencyHash", () => {
         useDependencyHash({ make: "Toyota", year: 2020, color: "red" }, [
           "make",
           "year",
-        ])
+        ]),
       );
       expect(result.current).toBe(JSON.stringify(["Toyota", 2020]));
     });
@@ -49,7 +49,7 @@ describe("useDependencyHash", () => {
     it("returns hash of nested dependency value", () => {
       const params = { filters: { category: "sedan", color: "red" } };
       const { result } = renderHook(() =>
-        useDependencyHash(params, ["filters.category"])
+        useDependencyHash(params, ["filters.category"]),
       );
       expect(result.current).toBe(JSON.stringify(["sedan"]));
     });
@@ -57,7 +57,7 @@ describe("useDependencyHash", () => {
     it("returns hash of deeply nested dependency value", () => {
       const params = { options: { display: { theme: "dark" } } };
       const { result } = renderHook(() =>
-        useDependencyHash(params, ["options.display.theme"])
+        useDependencyHash(params, ["options.display.theme"]),
       );
       expect(result.current).toBe(JSON.stringify(["dark"]));
     });
@@ -66,14 +66,14 @@ describe("useDependencyHash", () => {
   describe("missing paths", () => {
     it("returns undefined for missing paths", () => {
       const { result } = renderHook(() =>
-        useDependencyHash({ foo: "bar" }, ["missing"])
+        useDependencyHash({ foo: "bar" }, ["missing"]),
       );
       expect(result.current).toBe(JSON.stringify([undefined]));
     });
 
     it("returns undefined for missing nested paths", () => {
       const { result } = renderHook(() =>
-        useDependencyHash({ foo: "bar" }, ["missing.nested.path"])
+        useDependencyHash({ foo: "bar" }, ["missing.nested.path"]),
       );
       expect(result.current).toBe(JSON.stringify([undefined]));
     });
@@ -83,7 +83,7 @@ describe("useDependencyHash", () => {
     it("updates hash when dependency value changes", () => {
       const { result, rerender } = renderHook(
         ({ params }) => useDependencyHash(params, ["make"]),
-        { initialProps: { params: { make: "Toyota" } } }
+        { initialProps: { params: { make: "Toyota" } } },
       );
 
       expect(result.current).toBe(JSON.stringify(["Toyota"]));
@@ -95,7 +95,7 @@ describe("useDependencyHash", () => {
     it("hash is stable when non-dependency values change", () => {
       const { result, rerender } = renderHook(
         ({ params }) => useDependencyHash(params, ["make"]),
-        { initialProps: { params: { make: "Toyota", year: 2020 } } }
+        { initialProps: { params: { make: "Toyota", year: 2020 } } },
       );
 
       const initialHash = result.current;
@@ -107,7 +107,7 @@ describe("useDependencyHash", () => {
     it("hash changes when any tracked dependency changes", () => {
       const { result, rerender } = renderHook(
         ({ params }) => useDependencyHash(params, ["make", "year"]),
-        { initialProps: { params: { make: "Toyota", year: 2020 } } }
+        { initialProps: { params: { make: "Toyota", year: 2020 } } },
       );
 
       const initialHash = result.current;

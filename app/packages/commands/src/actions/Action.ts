@@ -22,7 +22,7 @@ export interface Action {
 export class DelegatingAction implements Action {
   constructor(
     public readonly id: string,
-    private readonly execFn: () => void | Promise<void>
+    private readonly execFn: () => void | Promise<void>,
   ) {}
   /**
    * Executes the delegate function

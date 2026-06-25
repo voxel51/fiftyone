@@ -30,10 +30,10 @@ const Mcap3dTile: React.FC = () => {
   // inventory is ready (the renderer gates on it), so `pointClouds` is already
   // populated and the lazy initializer captures the full set once.
   const [enabled, setEnabled] = useState<ReadonlySet<string>>(
-    () => new Set(pointClouds.map((s) => s.id))
+    () => new Set(pointClouds.map((s) => s.id)),
   );
   const knownPointCloudIdsRef = useRef<ReadonlySet<string>>(
-    new Set(pointClouds.map((s) => s.id))
+    new Set(pointClouds.map((s) => s.id)),
   );
 
   useEffect(() => {
@@ -65,7 +65,7 @@ const Mcap3dTile: React.FC = () => {
   // regardless of the order sources were toggled in.
   const selectedTopics = useMemo(
     () => pointClouds.filter((s) => enabled.has(s.id)).map((s) => s.id),
-    [pointClouds, enabled]
+    [pointClouds, enabled],
   );
   const frames = useMcapTopicStreams<PointCloudVisualization>(selectedTopics);
 

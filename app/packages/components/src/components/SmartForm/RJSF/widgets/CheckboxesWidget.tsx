@@ -49,21 +49,21 @@ export default function CheckboxesWidget(props: WidgetProps) {
         valueStr: String(val),
         label: String(enumNames[index] ?? val),
       })),
-    [enumValues, enumNames]
+    [enumValues, enumNames],
   );
 
   // convert values to string for comparison.
   const validStringValues = useMemo(
     // handle strings, ints, etc., de-duping as we goa
     () => new Set((values ?? []).map((v: unknown) => String(v))),
-    [values]
+    [values],
   );
 
   const handleToggle = useCallback(
     (optionValueStr: string, checked: boolean) => {
       if (isDisabled) return;
       const originalValue = enumValues.find(
-        (v) => String(v) === optionValueStr
+        (v) => String(v) === optionValueStr,
       );
       if (originalValue === undefined) return;
 
@@ -78,11 +78,11 @@ export default function CheckboxesWidget(props: WidgetProps) {
 
       // convert back to original types
       const newArr = enumValues.filter((v: unknown) =>
-        currentSet.has(String(v))
+        currentSet.has(String(v)),
       );
       onChange(newArr);
     },
-    [isDisabled, enumValues, values, onChange]
+    [isDisabled, enumValues, values, onChange],
   );
 
   const control = (

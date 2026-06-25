@@ -61,7 +61,7 @@ export interface McapTimelineStrategy {
    * Returns the chunk-level inclusive start time for this timeline.
    */
   chunkStartTimeNs(
-    chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"]
+    chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"],
   ): bigint;
 
   /**
@@ -118,7 +118,7 @@ const MCAP_LOG_TIMELINE_STRATEGY: McapTimelineStrategy = {
  * Normalizes and validates the active MCAP timeline id.
  */
 export function resolveMcapActiveTimeline(
-  activeTimeline: string | undefined
+  activeTimeline: string | undefined,
 ): McapActiveTimeline {
   return resolveMcapTimelineStrategy(activeTimeline).id;
 }
@@ -127,7 +127,7 @@ export function resolveMcapActiveTimeline(
  * Resolves the active MCAP timeline strategy.
  */
 export function resolveMcapTimelineStrategy(
-  activeTimeline: string | undefined
+  activeTimeline: string | undefined,
 ): McapTimelineStrategy {
   if (
     activeTimeline === undefined ||
@@ -144,7 +144,7 @@ export function resolveMcapTimelineStrategy(
  */
 export function createMcapTimelineTicks(
   range: McapTimelineRangeLike,
-  options: McapTimelineTickOptions = {}
+  options: McapTimelineTickOptions = {},
 ): readonly bigint[] {
   const tickRateHz = options.tickRateHz ?? DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ;
   if (!Number.isFinite(tickRateHz) || tickRateHz <= 0) {
@@ -161,7 +161,7 @@ export function createMcapTimelineTicks(
   }
 
   const stepNs = BigInt(
-    Math.max(1, Math.round(NANOSECONDS_PER_SECOND / tickRateHz))
+    Math.max(1, Math.round(NANOSECONDS_PER_SECOND / tickRateHz)),
   );
   const ticks: bigint[] = [];
 

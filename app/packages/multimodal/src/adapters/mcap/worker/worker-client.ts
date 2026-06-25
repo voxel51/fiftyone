@@ -41,7 +41,7 @@ export interface CreateWorkerMcapResourceClientOptions {
  * Creates a worker-backed MCAP resource client for synchronized playback.
  */
 export function createWorkerMcapResourceClient(
-  options: CreateWorkerMcapResourceClientOptions = {}
+  options: CreateWorkerMcapResourceClientOptions = {},
 ): McapResourceClient {
   if (!options.workerFactory && typeof Worker === "undefined") {
     throw new Error("MCAP playback workers are not available");
@@ -54,12 +54,12 @@ class WorkerMcapResourceClient implements McapResourceClient {
   private activeSourceKey = "";
   private disposed = false;
   private readonly transport = new McapPlaybackWorkerTransport(
-    (sourceKey) => this.activeSourceKey === sourceKey
+    (sourceKey) => this.activeSourceKey === sourceKey,
   );
   private worker: Worker | undefined;
 
   constructor(
-    private readonly options: CreateWorkerMcapResourceClientOptions
+    private readonly options: CreateWorkerMcapResourceClientOptions,
   ) {}
 
   dispose() {
@@ -68,65 +68,65 @@ class WorkerMcapResourceClient implements McapResourceClient {
   }
 
   async *readDecodedMessages(
-    request: McapReadDecodedMessagesRequest
+    request: McapReadDecodedMessagesRequest,
   ): AsyncGenerator<McapDecodedMessage, void, void> {
     for await (const message of this.streamRequest(
       "readDecodedMessages",
-      request
+      request,
     )) {
       yield message;
     }
   }
 
   readTimelineRange(
-    request: McapReadTimelineRangeRequest
+    request: McapReadTimelineRangeRequest,
   ): Promise<McapTimelineRange> {
     return this.request("readTimelineRange", request);
   }
 
   readTopics(
-    request: McapReadTopicsRequest
+    request: McapReadTopicsRequest,
   ): Promise<readonly StreamInventory[]> {
     return this.request("readTopics", request);
   }
 
   readTopicTimeBounds(
-    request: McapReadTopicTimeBoundsRequest
+    request: McapReadTopicTimeBoundsRequest,
   ): Promise<readonly McapTopicTimeBounds[]> {
     return this.request("readTopicTimeBounds", request);
   }
 
   readFrameTransformBootstrap(
-    request: McapReadFrameTransformBootstrapRequest
+    request: McapReadFrameTransformBootstrapRequest,
   ): Promise<McapFrameTransformSet> {
     return this.request("readFrameTransformBootstrap", request).then(
-      hydrateMcapFrameTransformSet
+      hydrateMcapFrameTransformSet,
     );
   }
 
   readFrameTransformWindow(
-    request: McapReadFrameTransformWindowRequest
+    request: McapReadFrameTransformWindowRequest,
   ): Promise<McapFrameTransformSet> {
     return this.request("readFrameTransformWindow", request).then(
-      hydrateMcapFrameTransformSet
+      hydrateMcapFrameTransformSet,
     );
   }
 
   readSynchronizedMessages(
-    request: McapReadSynchronizedMessagesRequest
+    request: McapReadSynchronizedMessagesRequest,
   ): Promise<McapSynchronizedMessageWindow> {
     return this.request("readSynchronizedMessages", request);
   }
 
   readSynchronizedMessageBatch(
-    request: McapReadSynchronizedMessageBatchRequest
+    request: McapReadSynchronizedMessageBatchRequest,
   ): Promise<readonly McapSynchronizedMessageWindow[]> {
     return this.request("readSynchronizedMessageBatch", request);
   }
 
   private request<Type extends McapPlaybackWorkerUnaryType>(
     type: Type,
-    payload: McapPlaybackWorkerRequestPayloadByType[Type]
+    payload: McapPlaybackWorkerRequestPayloadByType[Type],
   ): Promise<McapPlaybackWorkerResultByType[Type]> {
     if (this.disposed) {
       return Promise.reject(new Error("MCAP worker client is disposed"));
@@ -137,13 +137,13 @@ class WorkerMcapResourceClient implements McapResourceClient {
       this.workerForSource(sourceKey),
       sourceKey,
       type,
-      payload
+      payload,
     );
   }
 
   private async *streamRequest<Type extends McapPlaybackWorkerStreamType>(
     type: Type,
-    payload: McapPlaybackWorkerRequestPayloadByType[Type]
+    payload: McapPlaybackWorkerRequestPayloadByType[Type],
   ): AsyncGenerator<McapPlaybackWorkerStreamItemByType[Type], void, void> {
     if (this.disposed) {
       throw new Error("MCAP worker client is disposed");
@@ -154,7 +154,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
       this.workerForSource(sourceKey),
       sourceKey,
       type,
-      payload
+      payload,
     );
   }
 

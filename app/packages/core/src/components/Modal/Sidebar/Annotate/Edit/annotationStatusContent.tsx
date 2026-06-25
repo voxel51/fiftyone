@@ -119,7 +119,7 @@ const isActiveStatus = (status: InferenceStatus): boolean =>
 
 const formatProgressLabel = (
   status: InferenceStatus,
-  progress: InferenceProgress
+  progress: InferenceProgress,
 ): string => {
   const base = STATUS_LABELS[status];
   if (status !== "downloading-weights" || !progress || !progress.total) {
@@ -127,7 +127,7 @@ const formatProgressLabel = (
   }
   const pct = Math.min(
     100,
-    Math.max(0, Math.round((progress.loaded / progress.total) * 100))
+    Math.max(0, Math.round((progress.loaded / progress.total) * 100)),
   );
   return `${base} (${pct}%)`;
 };

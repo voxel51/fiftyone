@@ -27,9 +27,9 @@ export function EmbeddingsPlot({
   type WithRgb = { rgb?: [number, number, number][] };
   const fieldColorscale =
     (
-      colorscheme.colorscales.find(
-        (item) => item.path === labelField
-      ) as WithRgb | undefined
+      colorscheme.colorscales.find((item) => item.path === labelField) as
+        | WithRgb
+        | undefined
     )?.rgb ??
     (colorscheme.defaultColorscale as WithRgb)?.rgb ??
     configColorscale;
@@ -51,7 +51,7 @@ export function EmbeddingsPlot({
   const [dragMode, setDragMode] = usePanelStatePartial(
     "dragMode",
     "lasso",
-    true
+    true,
   );
   useKeyDown("s", () => setDragMode("lasso"));
   useKeyDown("g", () => setDragMode("pan"));
@@ -64,7 +64,7 @@ export function EmbeddingsPlot({
         resetZoom();
       }
     },
-    [hasSelection]
+    [hasSelection],
   );
 
   if (labelSelectorLoading || isLoading || !traces)
@@ -76,7 +76,7 @@ export function EmbeddingsPlot({
     resolvedSelection,
     selectionStyle,
     fieldColorscale,
-    setting
+    setting,
   );
   const isCategorical = style === "categorical";
 

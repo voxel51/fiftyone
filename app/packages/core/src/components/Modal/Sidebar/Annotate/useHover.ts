@@ -11,14 +11,14 @@ import { useCallback } from "react";
 const hoveringLabelIds = atom<string[]>([]);
 
 const isLabelHoveringFamily = atomFamily((id: string) =>
-  atom((get) => get(hoveringLabelIds).includes(id))
+  atom((get) => get(hoveringLabelIds).includes(id)),
 );
 
 // Evict atoms older than 10 minutes so the cache doesn't grow without bound across
 // long annotation sessions with many distinct label IDs. These atoms are purely
 // derived and hold no mutable state, so eviction and lazy recreation is transparent.
 isLabelHoveringFamily.setShouldRemove(
-  (createdAt) => Date.now() - createdAt > 10 * 60 * 1000
+  (createdAt) => Date.now() - createdAt > 10 * 60 * 1000,
 );
 
 export const useIsLabelHovering = (id: string): boolean =>
@@ -27,7 +27,7 @@ export const useIsLabelHovering = (id: string): boolean =>
 export default function useHover() {
   const { scene } = useLighter();
   const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
 
   useEventHandler(
@@ -38,7 +38,7 @@ export default function useHover() {
       if (!current.includes(payload.id)) {
         store.set(hoveringLabelIds, [...current, payload.id]);
       }
-    }, [])
+    }, []),
   );
 
   useEventHandler(
@@ -47,9 +47,9 @@ export default function useHover() {
       const store = getDefaultStore();
       store.set(
         hoveringLabelIds,
-        store.get(hoveringLabelIds).filter((id) => id !== payload.id)
+        store.get(hoveringLabelIds).filter((id) => id !== payload.id),
       );
-    }, [])
+    }, []),
   );
 
   useEventHandler(
@@ -57,7 +57,7 @@ export default function useHover() {
     useCallback((_payload) => {
       const store = getDefaultStore();
       store.set(hoveringLabelIds, []);
-    }, [])
+    }, []),
   );
 
   useAnnotationEventHandler(
@@ -68,7 +68,7 @@ export default function useHover() {
       if (!current.includes(payload.id)) {
         store.set(hoveringLabelIds, [...current, payload.id]);
       }
-    }, [])
+    }, []),
   );
 
   useAnnotationEventHandler(
@@ -77,8 +77,8 @@ export default function useHover() {
       const store = getDefaultStore();
       store.set(
         hoveringLabelIds,
-        store.get(hoveringLabelIds).filter((id) => id !== payload.id)
+        store.get(hoveringLabelIds).filter((id) => id !== payload.id),
       );
-    }, [])
+    }, []),
   );
 }

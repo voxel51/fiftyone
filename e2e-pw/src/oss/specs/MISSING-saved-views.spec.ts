@@ -202,7 +202,7 @@ test.describe.serial("saved views", () => {
       updatedView2.name,
       updatedView2.description,
       "Blue",
-      updatedView2.color
+      updatedView2.color,
     );
 
     await savedViews.openSelect();
@@ -230,7 +230,7 @@ test.describe.serial("saved views", () => {
       updatedView2.name,
       updatedView2.description,
       "Blue",
-      updatedView2.color
+      updatedView2.color,
     );
 
     await savedViews.assert.verifySavedView("test-updated");

@@ -14,7 +14,7 @@ export const useModalSpaces = () => {
   const panelsPredicate = useCallback(
     (panel: PluginComponentRegistration) =>
       panel.panelOptions?.surfaces?.includes("modal"),
-    []
+    [],
   );
 
   const allModalPlugins = usePanels(panelsPredicate);
@@ -65,7 +65,7 @@ export const useModalSpaces = () => {
 
 const getModalSpacesFromLocalStorage = () => {
   const maybeModalSpacesSerialized = localStorage.getItem(
-    SAMPLE_MODAL_PLUGINS_LOCAL_STORAGE_KEY
+    SAMPLE_MODAL_PLUGINS_LOCAL_STORAGE_KEY,
   );
   if (maybeModalSpacesSerialized) {
     return JSON.parse(maybeModalSpacesSerialized);
@@ -76,6 +76,6 @@ const getModalSpacesFromLocalStorage = () => {
 export const saveModalSpacesToLocalStorage = (modalSpaces: SpaceNodeJSON) => {
   localStorage.setItem(
     SAMPLE_MODAL_PLUGINS_LOCAL_STORAGE_KEY,
-    JSON.stringify(modalSpaces)
+    JSON.stringify(modalSpaces),
   );
 };

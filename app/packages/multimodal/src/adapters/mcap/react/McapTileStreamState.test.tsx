@@ -19,7 +19,7 @@ describe("McapTileEmptyState", () => {
     render(<McapTileEmptyState topics={[""]} />);
 
     expect(screen.getByTestId("mcap-tile-empty-state").textContent).toBe(
-      "No source available"
+      "No source available",
     );
   });
 
@@ -27,7 +27,7 @@ describe("McapTileEmptyState", () => {
     render(
       <PlaybackProvider>
         <SeedGap startSec={0.001} />
-      </PlaybackProvider>
+      </PlaybackProvider>,
     );
 
     expect(await screen.findByText("No data until 0:00.01")).toBeTruthy();

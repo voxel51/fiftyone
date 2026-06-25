@@ -33,11 +33,11 @@ describe("ImportSchema", () => {
       expect(screen.getByText(/annotate faster than ever/i)).toBeTruthy();
       expect(
         screen.getByText(
-          /import your dataset schema to access and edit labels/i
-        )
+          /import your dataset schema to access and edit labels/i,
+        ),
       ).toBeTruthy();
       expect(screen.getByRole("button", { name: /add schema/i }).disabled).toBe(
-        false
+        false,
       );
     });
 
@@ -45,18 +45,18 @@ describe("ImportSchema", () => {
       render(<ImportSchema disabled={true} />);
 
       expect(screen.getByRole("button", { name: /add schema/i }).disabled).toBe(
-        true
+        true,
       );
       expect(
         screen.getByText(
-          /annotation is not yet supported for this type of media or view/i
-        )
+          /annotation is not yet supported for this type of media or view/i,
+        ),
       ).toBeTruthy();
     });
 
     it("shows custom disabled message when provided", () => {
       render(
-        <ImportSchema disabled={true} disabledMsg="Custom disabled reason" />
+        <ImportSchema disabled={true} disabledMsg="Custom disabled reason" />,
       );
 
       expect(screen.getByText("Custom disabled reason")).toBeTruthy();
@@ -79,9 +79,9 @@ describe("ImportSchema", () => {
 
         expect(screen.queryByTestId("required-field-prompt")).toBeNull();
         expect(
-          screen.getByRole("button", { name: /add schema/i })
+          screen.getByRole("button", { name: /add schema/i }),
         ).toBeTruthy();
-      }
+      },
     );
 
     it("calls openSchemaManager when Add schema button is clicked", async () => {
@@ -106,7 +106,7 @@ describe("ImportSchema", () => {
       render(
         <ImportSchema
           requiredField={{ field: "ground_truth", hasSchema: false }}
-        />
+        />,
       );
 
       expect(screen.getByTestId("required-field-prompt")).toBeTruthy();
@@ -130,12 +130,12 @@ describe("ImportSchema", () => {
       render(
         <ImportSchema
           requiredField={{ field: "ground_truth", hasSchema: false }}
-        />
+        />,
       );
 
       expect(screen.getByTestId("required-field-prompt")).toBeTruthy();
       expect(
-        screen.getByText("Only dataset managers can add schemas.")
+        screen.getByText("Only dataset managers can add schemas."),
       ).toBeTruthy();
     });
 
@@ -143,10 +143,10 @@ describe("ImportSchema", () => {
       render(<ImportSchema disabled={false} />);
 
       expect(screen.getByRole("button", { name: /add schema/i }).disabled).toBe(
-        true
+        true,
       );
       expect(
-        screen.getByText("Only dataset managers can add schemas.")
+        screen.getByText("Only dataset managers can add schemas."),
       ).toBeTruthy();
     });
   });

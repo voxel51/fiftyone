@@ -14,7 +14,7 @@ export const MCAP_ACTIVE_TIMELINE = Object.freeze({
  * Supported MCAP timeline used to derive playback synchronization time.
  */
 export type McapActiveTimeline =
-  typeof MCAP_ACTIVE_TIMELINE[keyof typeof MCAP_ACTIVE_TIMELINE];
+  (typeof MCAP_ACTIVE_TIMELINE)[keyof typeof MCAP_ACTIVE_TIMELINE];
 
 /**
  * Stream-local playback sync policy. The mode comes from playback.proto; the
@@ -260,8 +260,10 @@ export interface McapReadSynchronizedMessagesRequest {
  * Batch request for playback prefetchers that need multiple synchronized
  * windows from the same source and topic set.
  */
-export interface McapReadSynchronizedMessageBatchRequest
-  extends Omit<McapReadSynchronizedMessagesRequest, "timeNs"> {
+export interface McapReadSynchronizedMessageBatchRequest extends Omit<
+  McapReadSynchronizedMessagesRequest,
+  "timeNs"
+> {
   /**
    * Playback times to resolve against the same source/topic/policy request.
    */
@@ -370,21 +372,21 @@ export interface McapResourceClient {
    * Streams decoded messages for the requested topics and time bounds.
    */
   readDecodedMessages(
-    request: McapReadDecodedMessagesRequest
+    request: McapReadDecodedMessagesRequest,
   ): AsyncGenerator<McapDecodedMessage, void, void>;
 
   /**
    * Returns the playable time range for the active timeline.
    */
   readTimelineRange(
-    request: McapReadTimelineRangeRequest
+    request: McapReadTimelineRangeRequest,
   ): Promise<McapTimelineRange>;
 
   /**
    * Reads stream inventory entries from MCAP summary channel metadata.
    */
   readTopics(
-    request: McapReadTopicsRequest
+    request: McapReadTopicsRequest,
   ): Promise<readonly StreamInventory[]>;
 
   /**
@@ -392,34 +394,34 @@ export interface McapResourceClient {
    * Auxiliary data: soft-fails to null bounds when indexes are absent.
    */
   readTopicTimeBounds(
-    request: McapReadTopicTimeBoundsRequest
+    request: McapReadTopicTimeBoundsRequest,
   ): Promise<readonly McapTopicTimeBounds[]>;
 
   /**
    * Reads eager frame transforms needed for initial 3D placement.
    */
   readFrameTransformBootstrap(
-    request: McapReadFrameTransformBootstrapRequest
+    request: McapReadFrameTransformBootstrapRequest,
   ): Promise<McapFrameTransformSet>;
 
   /**
    * Reads dynamic frame transforms in a playback timeline window.
    */
   readFrameTransformWindow(
-    request: McapReadFrameTransformWindowRequest
+    request: McapReadFrameTransformWindowRequest,
   ): Promise<McapFrameTransformSet>;
 
   /**
    * Reads one synchronized decoded message window around a playback time.
    */
   readSynchronizedMessages(
-    request: McapReadSynchronizedMessagesRequest
+    request: McapReadSynchronizedMessagesRequest,
   ): Promise<McapSynchronizedMessageWindow>;
 
   /**
    * Reads multiple synchronized windows for playback lookahead/prefetch.
    */
   readSynchronizedMessageBatch(
-    request: McapReadSynchronizedMessageBatchRequest
+    request: McapReadSynchronizedMessageBatchRequest,
   ): Promise<readonly McapSynchronizedMessageWindow[]>;
 }

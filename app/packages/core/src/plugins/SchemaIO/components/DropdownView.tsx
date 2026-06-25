@@ -50,7 +50,7 @@ export default function DropdownView(props: ViewPropsType) {
       onChange(path, computedValue);
       setUserChanged();
     },
-    [onChange, path, separator, setUserChanged, type]
+    [onChange, path, separator, setUserChanged, type],
   );
 
   // dynamically import the icon component
@@ -96,7 +96,11 @@ export default function DropdownView(props: ViewPropsType) {
   // Compute selected state from data instead of using useState to avoid setState during render
   const selected = useMemo(() => {
     const value = computedDefaultValue;
-    return value != null && value !== "" && !(Array.isArray(value) && value.length === 0);
+    return (
+      value != null &&
+      value !== "" &&
+      !(Array.isArray(value) && value.length === 0)
+    );
   }, [computedDefaultValue]);
 
   const getIconOnlyStyles = () => ({
@@ -148,7 +152,7 @@ export default function DropdownView(props: ViewPropsType) {
         ...getDropdownStyles(icon, selected),
         ...getFieldSx({ color, variant }),
       },
-    }
+    },
   );
 
   const renderIcon = () => {

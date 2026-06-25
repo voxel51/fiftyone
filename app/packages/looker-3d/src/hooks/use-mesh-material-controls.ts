@@ -9,21 +9,21 @@ import type { FoMeshMaterial } from "./use-fo3d";
 export const useMeshMaterialControls = (
   name: string,
   foMeshMaterial: FoMeshMaterial,
-  omitColorControls = false
+  omitColorControls = false,
 ) => {
   const avoidZFighting = useRecoilValue(avoidZFightingAtom);
   const [opacity, setOpacity] = useState(foMeshMaterial.opacity);
   const [renderAsWireframe, setRenderAsWireframe] = useState(
-    foMeshMaterial.wireframe
+    foMeshMaterial.wireframe,
   );
   const [color, setColor] = useState(foMeshMaterial["color"] ?? "#ffffff");
   const [metalness, setMetalness] = useState(foMeshMaterial["metalness"] ?? 0);
   const [roughness, setRoughness] = useState(foMeshMaterial["roughness"] ?? 1);
   const [emissiveColor, setEmissiveColor] = useState(
-    foMeshMaterial["emissive"] ?? "#000000"
+    foMeshMaterial["emissive"] ?? "#000000",
   );
   const [emissiveIntensity, setEmissiveIntensity] = useState(
-    foMeshMaterial["emissiveIntensity"] ?? 0.1
+    foMeshMaterial["emissiveIntensity"] ?? 0.1,
   );
 
   // note: we're not making attributes like reflectivity, IOR, etc. configurable
@@ -121,7 +121,7 @@ export const useMeshMaterialControls = (
         {
           order: PANEL_ORDER_PCD_CONTROLS,
           collapsed: true,
-        }
+        },
       ),
     }),
     [
@@ -131,7 +131,7 @@ export const useMeshMaterialControls = (
       renderAsWireframe,
       name,
       colorControls,
-    ]
+    ],
   );
 
   const material = useMemo(() => {
@@ -146,7 +146,7 @@ export const useMeshMaterialControls = (
         emissiveColor,
         emissiveIntensity,
       },
-      avoidZFighting
+      avoidZFighting,
     );
   }, [
     foMeshMaterial,

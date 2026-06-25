@@ -22,7 +22,7 @@ export default function DrawControl({ draw, onCreate }: DrawControlProps) {
     },
     ({ map }) => {
       map.off("draw.create", create.current);
-    }
+    },
   );
 
   return null;

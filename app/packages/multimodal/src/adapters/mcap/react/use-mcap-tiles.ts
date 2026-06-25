@@ -67,12 +67,12 @@ export function getMcapTileDefinition(type: string): {
  * and persisted-layout validation.
  */
 export function mcapTileTypesFor(
-  sourceTypes: readonly string[]
+  sourceTypes: readonly string[],
 ): readonly McapTileType[] {
   return TILE_TYPES.filter((tileType) =>
     TILE_BY_TYPE[tileType].sourceTypes.some((sourceType) =>
-      sourceTypes.includes(sourceType)
-    )
+      sourceTypes.includes(sourceType),
+    ),
   );
 }
 
@@ -90,7 +90,7 @@ export function useMcapTiles({ presentTypes }: UseMcapTilesOptions): void {
   const { registerTile } = useTileRegistry();
   const tileTypes = useMemo(
     () => mcapTileTypesFor(presentTypes),
-    [presentTypes]
+    [presentTypes],
   );
 
   useEffect(() => {

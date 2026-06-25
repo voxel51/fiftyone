@@ -17,7 +17,7 @@ import {
 export const createBufferGeometry = (
   header: PCDHeader,
   position: number[] | Float32Array,
-  attributes: PCDAttributes
+  attributes: PCDAttributes,
 ): BufferGeometry => {
   const geometry = new BufferGeometry();
 

@@ -12,7 +12,7 @@ import { isDetection3dOverlay, isPolyline3dOverlay } from "../types";
 export const use3dAnnotationEventHandlers = () => {
   const updateWorkingLabel = useUpdateWorkingLabel();
   const setSelectedLabelForAnnotation = useSetRecoilState(
-    selectedLabelForAnnotationAtom
+    selectedLabelForAnnotationAtom,
   );
   const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
 
@@ -23,7 +23,7 @@ export const use3dAnnotationEventHandlers = () => {
         _id: payload.id,
         ...payload.data,
       });
-    }, [])
+    }, []),
   );
 
   useAnnotationEventHandler(
@@ -43,8 +43,8 @@ export const use3dAnnotationEventHandlers = () => {
         const { _id, ...updates } = value;
         updateWorkingLabel(_id, coerceStringBooleans(updates));
       },
-      [updateWorkingLabel]
-    )
+      [updateWorkingLabel],
+    ),
   );
 
   useAnnotationEventHandler(
@@ -53,13 +53,13 @@ export const use3dAnnotationEventHandlers = () => {
       setHoveredLabel({
         id: payload.id,
       });
-    }, [])
+    }, []),
   );
 
   useAnnotationEventHandler(
     "annotation:sidebarLabelUnhover",
     useCallback(() => {
       setHoveredLabel(null);
-    }, [])
+    }, []),
   );
 };

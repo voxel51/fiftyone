@@ -12,7 +12,7 @@ import { resolveContext } from "./utils";
 export const useKeyBinding = (
   command: string | Command,
   binding: string,
-  context?: CommandContext | string
+  context?: CommandContext | string,
 ) => {
   const resolvedCtx = useMemo(() => {
     return resolveContext(context);
