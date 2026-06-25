@@ -33,7 +33,7 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory, videoAnnotateSDK }) => {
+test.beforeAll(async ({ foWebServer, mediaFactory }) => {
   await foWebServer.startWebServer();
   await mediaFactory.createVideo({
     outputPath: clip,
@@ -42,13 +42,6 @@ test.beforeAll(async ({ foWebServer, mediaFactory, videoAnnotateSDK }) => {
     height: 64,
     frameRate: 10,
     color: "#3050a0",
-  });
-  // clean slate (no pre-seeded tracks) but with the polylines field + schema
-  // active, so polyline create mode is enterable and the first draw can append.
-  await videoAnnotateSDK.seed({
-    datasetName,
-    videoPaths: [clip],
-    withPolylineField: true,
   });
 });
 
@@ -96,6 +89,17 @@ const savedSample = (page: Page) =>
   );
 
 test.describe.serial("video non-box label create", () => {
+  // Re-seed a clean slate per test (polylines field + schema active, no tracks):
+  // these run serially against one dataset, so a persisted draw from one test
+  // would otherwise leave a stray track that the next test's count picks up.
+  test.beforeEach(async ({ videoAnnotateSDK }) => {
+    await videoAnnotateSDK.seed({
+      datasetName,
+      videoPaths: [clip],
+      withPolylineField: true,
+    });
+  });
+
   test("drawing a polyline adds a track, assigns a class, and persists", async ({
     browser,
     fiftyoneLoader,
