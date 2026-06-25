@@ -454,7 +454,7 @@ class TestCloneExecutionStores(unittest.TestCase):
         # the owning panels at runtime, but the copy/remap logic under test is
         # independent of which panels happen to be importable here.
         store_names = [
-            "auto_labeling_run_store",
+            "another_panel_store",
             "similarity_search_panel",
             "model_evaluation_panel_builtin",
         ]
@@ -494,7 +494,7 @@ class TestCloneExecutionStores(unittest.TestCase):
             {
                 "_id": ObjectId(),
                 "dataset_id": src_id,
-                "store_name": "auto_labeling_run_store",
+                "store_name": "another_panel_store",
                 "key": "al1",
                 "value": {"status": "done"},
             },
@@ -509,7 +509,7 @@ class TestCloneExecutionStores(unittest.TestCase):
             {
                 "_id": ObjectId(),
                 "dataset_id": src_id,
-                "store_name": "data_quality_panel",
+                "store_name": "unlisted_panel_store",
                 "key": "dq1",
                 "value": "no",
             },
@@ -530,7 +530,7 @@ class TestCloneExecutionStores(unittest.TestCase):
             names,
             {
                 "similarity_search_panel",
-                "auto_labeling_run_store",
+                "another_panel_store",
                 "model_evaluation_panel_builtin",
             },
         )
@@ -540,7 +540,7 @@ class TestCloneExecutionStores(unittest.TestCase):
         self.assertTrue(all(d["dataset_id"] == dst_id for d in inserted))
         self.assertTrue(all("_id" not in d for d in inserted))
         # excluded stores / other datasets never copied
-        self.assertNotIn("data_quality_panel", names)
+        self.assertNotIn("unlisted_panel_store", names)
         # original values preserved
         sim = next(
             d
@@ -609,8 +609,8 @@ class TestCloneExecutionStores(unittest.TestCase):
         self.assertTrue(all(d["dataset_id"] == dst_id for d in inserted))
 
     def test_remap_leaves_unmatched_ids_untouched(self):
-        # AL + Similarity Search reference only sample ids (preserved on clone)
-        # and panel uuids — none appear in the id_map, so they pass through.
+        # Records that reference only sample ids (preserved on clone) and panel
+        # uuids — none appear in the id_map, so they pass through unchanged.
         src_id = ObjectId()
         dst_id = ObjectId()
         id_map = {str(src_id): str(dst_id), str(ObjectId()): str(ObjectId())}
@@ -625,7 +625,7 @@ class TestCloneExecutionStores(unittest.TestCase):
             {
                 "_id": ObjectId(),
                 "dataset_id": src_id,
-                "store_name": "auto_labeling_run_store",
+                "store_name": "another_panel_store",
                 "key": "al-uuid",
                 "value": {"label_field": "predictions", "status": "done"},
             },
@@ -650,10 +650,14 @@ class TestCloneExecutionStores(unittest.TestCase):
         mock_coll.insert_many.assert_not_called()
 
     def test_registered_as_extras_cloner(self):
+        # Importing fiftyone must register the cloner (via fiftyone/__init__.py),
+        # so check the registry without importing the clone module directly,
+        # which would itself trigger the registration being asserted.
+        import fiftyone  # noqa: F401
         import fiftyone.core.dataset as fod
-        from fiftyone.operators.store.clone import clone_execution_stores
 
-        self.assertIn(clone_execution_stores, fod._extras_cloners)
+        registered = [getattr(c, "__name__", "") for c in fod._extras_cloners]
+        self.assertIn("clone_execution_stores", registered)
 
     def test_register_cloneable_store(self):
         from fiftyone.operators.store import clone as esc

@@ -60,19 +60,25 @@ def _cloneable_store_names():
 
     try:
         from plugins.panels.similarity_search.constants import STORE_NAME
-
+    except ModuleNotFoundError as e:
+        # Panel not installed in this distribution; surface anything else
+        # (renamed constant, transitive import failure, etc.)
+        # pylint: disable=no-member
+        if not (e.name or "").startswith("plugins"):
+            raise
+    else:
         if STORE_NAME not in names:
             names.append(STORE_NAME)
-    except Exception:
-        pass
 
     try:
         from plugins.utils.model_evaluation import STORE_NAME
-
+    except ModuleNotFoundError as e:
+        # pylint: disable=no-member
+        if not (e.name or "").startswith("plugins"):
+            raise
+    else:
         if STORE_NAME not in names:
             names.append(STORE_NAME)
-    except Exception:
-        pass
 
     return names
 
