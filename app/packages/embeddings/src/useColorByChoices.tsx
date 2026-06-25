@@ -14,7 +14,7 @@ export function useColorByChoices() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [availableFields, setAvailableFields] = useState(null);
-  const [error, setError] = useState(null);
+  const [, setError] = useState(null);
 
   useEffect(() => {
     if (loadedPlot && brainKey) {

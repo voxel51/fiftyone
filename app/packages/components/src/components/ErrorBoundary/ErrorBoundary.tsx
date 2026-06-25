@@ -17,7 +17,7 @@ import React, {
   useLayoutEffect,
 } from "react";
 import { ErrorBoundary as Boundary, FallbackProps } from "react-error-boundary";
-import { scrollable } from "../../scrollable.module.css";
+import scrollableStyles from "../../scrollable.module.css";
 import CodeBlock from "../CodeBlock";
 import Loading from "../Loading";
 import style from "./ErrorBoundary.module.css";
@@ -97,10 +97,10 @@ export const ErrorDisplayMarkup = <T extends AppError>({
 
   return (
     <div
-      className={classnames(style.wrapper, scrollable)}
+      className={classnames(style.wrapper, scrollableStyles.scrollable)}
       data-cy={"error-boundary"}
     >
-      <div className={classnames(style.container, scrollable)}>
+      <div className={classnames(style.container, scrollableStyles.scrollable)}>
         <div className={style.heading}>
           <div>
             {error.name}

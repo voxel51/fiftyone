@@ -23,4 +23,5 @@ export function toPercentage(floatingPoint?: number) {
   if (typeof floatingPoint === "number") {
     return `${Math.round(floatingPoint * 100)}%`;
   }
+  return undefined;
 }

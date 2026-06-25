@@ -19,12 +19,7 @@ import {
 import { createScrollReader } from "./zooming";
 export type { Render, Response } from "./state";
 
-import {
-  flashlight,
-  flashlightContainer,
-  flashlightPixels,
-  scrollbar,
-} from "./styles.module.css";
+import styles from "./styles.module.css";
 import tile from "./tile";
 import { argMin, getDims } from "./util";
 
@@ -66,7 +61,7 @@ export default class Flashlight<K> {
     this.showPixels();
     this.element = document.createElement("div");
     config.elementId && this.element.setAttribute("id", config.elementId);
-    this.element.classList.add(flashlight, scrollbar);
+    this.element.classList.add(styles.flashlight, styles.scrollbar);
     this.element.setAttribute("data-cy", "flashlight");
     this.state = this.getEmptyState(config);
 
@@ -184,14 +179,15 @@ export default class Flashlight<K> {
     this.container.dispatchEvent(
       new CustomEvent("flashlight-show-loading-pixels", { bubbles: true })
     );
-    this.config.showPixels && this.container.classList.add(flashlightPixels);
+    this.config.showPixels &&
+      this.container.classList.add(styles.flashlightPixels);
   }
 
   private hidePixels() {
     this.container.dispatchEvent(
       new CustomEvent("flashlight-hide-loading-pixels", { bubbles: true })
     );
-    this.container.classList.remove(flashlightPixels);
+    this.container.classList.remove(styles.flashlightPixels);
   }
 
   attach(element: HTMLElement | string): void {
@@ -346,7 +342,7 @@ export default class Flashlight<K> {
     this.loading = true;
     const ctx = this.ctx;
     return this.state
-      .get(this.state.currentRequestKey, this.state.selectedMediaFieldName)
+      .get(this.state.currentRequestKey)
       .then(({ items, nextRequestKey }) => {
         if (ctx !== this.ctx) {
           return;
@@ -612,7 +608,7 @@ export default class Flashlight<K> {
 
   private createContainer(): HTMLDivElement {
     const container = document.createElement("div");
-    container.classList.add(flashlightContainer);
+    container.classList.add(styles.flashlightContainer);
     if (this.config.containerId) {
       container.setAttribute("id", this.config.containerId);
     }

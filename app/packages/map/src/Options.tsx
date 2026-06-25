@@ -1,4 +1,4 @@
-import { link, options } from "./Options.module.css";
+import styles from "./Options.module.css";
 
 import { Link, Selector, useTheme } from "@fiftyone/components";
 import { CenterFocusWeak, Close, Help } from "@mui/icons-material";
@@ -59,7 +59,7 @@ const Options: React.FC<{
   });
 
   return (
-    <div className={options}>
+    <div className={styles.options}>
       <div>
         <Selector
           placeholder={"Map Style"}
@@ -87,17 +87,17 @@ const Options: React.FC<{
 
       <div>
         {hasMapSelection && (
-          <Link to={reset} className={link} title={"Reset (Esc)"}>
+          <Link to={reset} className={styles.link} title={"Reset (Esc)"}>
             <Close />
           </Link>
         )}
 
-        <Link to={fitSelectionData} className={link} title={"Fit data (f)"}>
+        <Link to={fitSelectionData} className={styles.link} title={"Fit data (f)"}>
           <CenterFocusWeak />
         </Link>
 
         <Link
-          className={link}
+          className={styles.link}
           href={"https://docs.voxel51.com/user_guide/app.html#map-panel"}
           title={"Help"}
           to={useExternalLink("https://docs.voxel51.com")}
