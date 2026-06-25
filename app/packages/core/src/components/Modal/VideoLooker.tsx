@@ -8,6 +8,7 @@ import {
 } from "@fiftyone/playback";
 import * as fos from "@fiftyone/state";
 import React, { useEffect, useMemo, useState } from "react";
+import { useInitializeVideoSubscriptions } from "./hooks";
 import useLooker from "./use-looker";
 import { useVideoModalSelectiveRendering } from "./use-modal-selective-rendering";
 
@@ -19,21 +20,46 @@ interface VideoLookerReactProps {
 export const VideoLookerReact = (props: VideoLookerReactProps) => {
   const theme = useTheme();
   const { id, looker, sample } = useLooker<VideoLooker>(props);
+  const { subscribeToVideoStateChanges } = useInitializeVideoSubscriptions();
+  useEffect(() => {
+    if (looker) {
+      subscribeToVideoStateChanges();
+    }
+  }, [looker, subscribeToVideoStateChanges]);
   const [totalFrames, setTotalFrames] = useState<number>();
   const frameRate = useMemo(() => {
-    return sample.frameRate;
+    return (
+      sample.frameRate ??
+      (sample.sample as { metadata?: { frame_rate?: number } } | undefined)
+        ?.metadata?.frame_rate
+    );
+  }, [sample]);
+  // `video.duration` under-reports for range-served / non-faststart mp4s, truncating
+  // the timeline, so prefer the stored count.
+  const totalFrameCount = useMemo(() => {
+    const count = (
+      sample.sample as { metadata?: { total_frame_count?: number } } | undefined
+    )?.metadata?.total_frame_count;
+    return typeof count === "number" && count > 0 ? count : null;
   }, [sample]);
 
   useVideoModalSelectiveRendering(id, looker);
 
   useEffect(() => {
+    if (totalFrameCount != null) {
+      setTotalFrames(totalFrameCount);
+      return;
+    }
+
+    // fall back to the (less reliable) media duration only when metadata is absent
     const load = () => {
       const duration = looker.getVideo().duration;
       setTotalFrames(getFrameNumber(duration, duration, frameRate));
       looker.removeEventListener("load", load);
     };
     looker.addEventListener("load", load);
-  }, [frameRate, looker]);
+    return () => looker.removeEventListener("load", load);
+  }, [totalFrameCount, frameRate, looker]);
 
   return (
     <>

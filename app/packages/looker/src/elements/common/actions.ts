@@ -40,7 +40,6 @@ const escape: Control = {
         if (showHelp) {
           dispatchEvent("panels", { showHelp: "close" });
           return {};
-          // return { options: {showHelp: false} };
         }
 
         if (showOptions) {
@@ -537,6 +536,10 @@ const seekTo: Control<VideoState | ImaVidState> = {
           },
           currentFrameNumber,
         } = state as ImaVidState;
+        // length not yet revealed by the stream — can't seek by percentage.
+        if (!totalFrameCount) {
+          return {};
+        }
         total = totalFrameCount;
         base = currentFrameNumber < totalFrameCount ? currentFrameNumber : 1;
       } else {

@@ -664,6 +664,7 @@ type Query {
     hint: String = null
     maxQueryTime: Int = null
     dynamicGroup: BSON = null
+    skipMetadata: Boolean = false
   ): PaginateSamplesResponse!
   sample(
     dataset: String!

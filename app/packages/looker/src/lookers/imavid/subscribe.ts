@@ -16,6 +16,8 @@ export const getSubscription = ({
   modal: boolean;
 }) => {
   let lastSyncKey: string | null = null;
+  // frames painted once (masks render); repainting on loops/re-renders caused flicker
+  const paintedFrames = new Set<number>();
 
   const subscription = () => {
     const newFrameNumber = looker.state.currentFrameNumber;
@@ -98,15 +100,25 @@ export const getSubscription = ({
     }
 
     if (forceRefresh) {
+      // dedup on the stable looker id, not the frame: active fields are looker-level, and keying by frame made every frame repaint all fields
       const newFieldsIfAny = syncAndGetNewLabels(
-        thisFrameLutId,
+        id,
         lut,
         new Set(looker.state.options.activePaths)
       );
 
-      if (newFieldsIfAny && newFrameNumber > 0) {
+      // a newly-activated field invalidates every frame's painted state
+      if (newFieldsIfAny) {
+        paintedFrames.clear();
+      }
+
+      if (!paintedFrames.has(newFrameNumber) && newFrameNumber > 0) {
+        // first visit: paint labels once (renders masks), then cache so later visits just redraw
+        const fieldsToPaint =
+          newFieldsIfAny ??
+          Array.from(new Set(looker.state.options.activePaths));
         try {
-          looker.refreshSample(newFieldsIfAny, newFrameNumber);
+          looker.refreshSample(fieldsToPaint, newFrameNumber);
         } catch (e) {
           console.error("Error refreshing sample", e);
         }
@@ -115,8 +127,10 @@ export const getSubscription = ({
         } catch (e) {
           console.error("Error refreshing overlays", e);
         }
+        paintedFrames.add(newFrameNumber);
       } else {
-        looker.refreshSample();
+        // already painted: just draw this frame's overlays (no full reload)
+        looker.refreshOverlaysToCurrentFrame();
       }
     }
 

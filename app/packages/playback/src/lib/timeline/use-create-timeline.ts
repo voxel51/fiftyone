@@ -245,8 +245,12 @@ export const useCreateTimeline = (
       // the frame timing across re-renders.
       lastDrawTime.current = newTime - (elapsed % updateFreqRef.current);
 
-      // don't commit if: we're at the end of the timeline
-      if (frameNumberRef.current === configRef.current.totalFrames) {
+      // at the end of the timeline: loop or stop, unless streaming (totalFrames is
+      // only the provisional buffered end, so fall through and wait for more frames)
+      if (
+        frameNumberRef.current === configRef.current.totalFrames &&
+        !configRef.current.streaming
+      ) {
         const loopToBeginning = () => {
           const loopToFrameNumber =
             configRef.current.defaultFrameNumber ?? DEFAULT_FRAME_NUMBER;

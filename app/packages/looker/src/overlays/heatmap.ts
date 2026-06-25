@@ -13,6 +13,7 @@ import { BaseState, Coordinates } from "../state";
 import { isFloatArray } from "../util";
 import { clampedIndex } from "../worker/painter";
 import {
+  BASE_RENDER_FIELDS,
   BaseLabel,
   CONTAINS,
   LabelMask,
@@ -38,6 +39,10 @@ interface HeatmapInfo extends BaseLabel {
 export default class HeatmapOverlay<State extends BaseState>
   implements Overlay<State>
 {
+  static getRenderFields(): string[] {
+    return [...BASE_RENDER_FIELDS, "map", "map_path", "range"];
+  }
+
   readonly field: string;
   readonly label: HeatmapLabel;
   private targets?: TypedArray;

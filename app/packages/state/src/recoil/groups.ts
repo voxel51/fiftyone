@@ -1,4 +1,4 @@
-import { ImaVidLooker } from "@fiftyone/looker";
+import { ImaVidLooker, VideoLooker } from "@fiftyone/looker";
 import * as foq from "@fiftyone/relay";
 import {
   datasetFragment,
@@ -32,6 +32,7 @@ import {
   isDynamicGroup,
   isNestedDynamicGroup,
   shouldRenderImaVidLooker,
+  videoLookerState,
 } from "./dynamicGroups";
 import { ModalSample, modalLooker, modalSample, modalSelector } from "./modal";
 import { RelayEnvironmentKey } from "./relay";
@@ -45,7 +46,11 @@ import {
   is3dPinned,
   pinned3DSampleSlice,
 } from "./renderConfig3d.atoms";
-import { datasetName, parentMediaTypeSelector } from "./selectors";
+import {
+  datasetName,
+  isVideoDataset,
+  parentMediaTypeSelector,
+} from "./selectors";
 import { mapSampleResponse } from "./utils";
 import * as viewAtoms from "./view";
 
@@ -457,6 +462,22 @@ export const activeModalSidebarSample = selector({
       const sample =
         currentModalLooker?.frameStoreController?.store.samples.get(sampleId);
       return sample?.sample ?? get(activeModalSample);
+    }
+
+    if (get(isVideoDataset)) {
+      // reflect the frame playback stopped on: splice its labels (already in the streamed
+      // frame store) into the frames array so `frames.*` sidebar counts match the view
+      const currentFrameNumber = get(videoLookerState("frameNumber"));
+      const base = get(activeModalSample);
+      if (!currentFrameNumber) {
+        return base;
+      }
+      const looker = get(modalLooker) as VideoLooker;
+      const frameSample = looker?.thisFrameSample;
+      if (!frameSample) {
+        return base;
+      }
+      return { ...base, sample: { ...base.sample, frames: [frameSample] } };
     }
 
     return get(activeModalSample);

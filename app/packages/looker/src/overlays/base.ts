@@ -75,6 +75,10 @@ export interface RegularLabel extends BaseLabel {
   confidence?: number | NONFINITE;
 }
 
+// db leaves every label needs to deserialize, select, and color; overlays append
+// their own geometry/text leaves via the static `getRenderFields`
+export const BASE_RENDER_FIELDS = ["_id", "_cls"];
+
 export const isShown = <State extends BaseState, Label extends RegularLabel>(
   state: Readonly<State>,
   field: string,

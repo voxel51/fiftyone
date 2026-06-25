@@ -32,9 +32,16 @@ export class ImaVidFrameSamples {
 
   private readonly abortController: AbortController;
 
-  constructor(storeBufferManager: BufferManager) {
+  // shared sample cache (keyed by sample `_id`) the grid and modal both reuse
+  private readonly sharedSamples?: Map<SampleId, ModalSample>;
+
+  constructor(
+    storeBufferManager: BufferManager,
+    sharedSamples?: Map<SampleId, ModalSample>
+  ) {
     this.storeBufferManager = storeBufferManager;
     this.abortController = new AbortController();
+    this.sharedSamples = sharedSamples;
 
     this.samples = new LRUCache<SampleId, ModalSampleExtendedWithImage>({
       dispose: (_modal, sampleId) => {
@@ -65,7 +72,18 @@ export class ImaVidFrameSamples {
       return undefined;
     }
 
-    return this.samples.get(sampleId);
+    const local = this.samples.get(sampleId);
+    if (local) {
+      return local;
+    }
+
+    // read through to the shared cache so a grid-fetched frame is reused; image fills in lazily
+    const shared = this.sharedSamples?.get(sampleId);
+    if (shared) {
+      return { ...shared, image: null } as ModalSampleExtendedWithImage;
+    }
+
+    return undefined;
   }
 
   async fetchImageForSample(

@@ -457,9 +457,7 @@ export const createWorker = (
       type: "module",
     });
   } catch (err) {
-    // `new Worker(...)` can throw synchronously (e.g. CSP blocking
-    // `worker-src`). Match the no-worker-support contract and return null
-    // rather than leaving listeners unwired.
+    // new Worker() can throw synchronously (e.g. CSP blocking worker-src)
     console.error("[looker] worker unavailable:", err);
     return null;
   }
@@ -467,7 +465,12 @@ export const createWorker = (
   worker.addEventListener(
     "error",
     (error) => {
-      dispatchEvent("error", error);
+      // dispatchEvent is optional (shared pool + overlay-render workers omit it)
+      if (dispatchEvent) {
+        dispatchEvent("error", error);
+      } else {
+        console.error("[looker] worker error:", error);
+      }
     },
     signal
   );
@@ -479,7 +482,11 @@ export const createWorker = (
         const error = !ERRORS[data.error.cls]
           ? new Error(data.error.message)
           : new ERRORS[data.error.cls](data.error.data, data.error.message);
-        dispatchEvent("error", new ErrorEvent("error", { error }));
+        if (dispatchEvent) {
+          dispatchEvent("error", new ErrorEvent("error", { error }));
+        } else {
+          console.error("[looker] worker error:", error);
+        }
       }
     },
     signal
@@ -496,7 +503,13 @@ export const createWorker = (
 
   worker.addEventListener(
     "message",
-    ({ data: { method, ...args } }) => {
+    (event) => {
+      const data = event.data;
+      if (!data || typeof data !== "object" || !("method" in data)) {
+        return;
+      }
+
+      const { method, ...args } = data;
       if (!(method in listeners)) {
         return;
       }
@@ -580,7 +593,6 @@ export const getMimeType = (sample: any) => {
 export const isFloatArray = (arr) =>
   arr instanceof Float32Array || arr instanceof Float64Array;
 
-// go through customizedColor array and check if any item.fieldColor has changed;
 export const hasColorChanged = (
   prevColorScheme: Object[],
   nextColorScheme: Object[]

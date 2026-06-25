@@ -57,14 +57,19 @@ export class LoaderBar extends BaseElement<VideoState> {
     duration,
     buffering,
     hovering,
+    hasPoster,
     waitingForVideo,
     waitingToStream,
     error,
     lockedToSupport,
     config: { frameRate, support },
   }: Readonly<VideoState>) {
+    // gate on hasPoster so an empty tile doesn't flash a loading bar over a blank tile.
     const shown =
-      !error && hovering && (waitingForVideo || buffering || waitingToStream);
+      !error &&
+      hovering &&
+      hasPoster &&
+      (waitingForVideo || buffering || waitingToStream);
 
     if (shown === this.shown) {
       return this.element;
@@ -575,6 +580,15 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         this.element = document.createElement("video");
         this.element.preload = "metadata";
         this.element.src = src;
+      }
+      const customCredentialsAudience = sessionStorage.getItem(
+        "customCredentialsAudience"
+      );
+      if (
+        customCredentialsAudience &&
+        src.includes(customCredentialsAudience)
+      ) {
+        this.element.crossOrigin = "Anonymous";
       }
 
       return {};

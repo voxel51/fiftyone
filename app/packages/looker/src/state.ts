@@ -2,11 +2,15 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { BufferManager } from "@fiftyone/utilities";
+import {
+  AppError,
+  BufferManager,
+  COLOR_BY,
+  Schema,
+  Stage,
+} from "@fiftyone/utilities";
 import { ImaVidFramesController } from "./lookers/imavid/controller";
 import { Overlay } from "./overlays/base";
-
-import { AppError, COLOR_BY, Schema, Stage } from "@fiftyone/utilities";
 
 export type Optional<T> = {
   [P in keyof T]?: Optional<T[P]>;
@@ -86,6 +90,9 @@ export type Sample = {
     width: number;
     height: number;
     mime_type?: string;
+    // authoritative video length; `video.duration` is unreliable for range-served mp4s
+    total_frame_count?: number;
+    frame_rate?: number;
   };
   _id: string;
   id: string;
@@ -441,6 +448,11 @@ export interface ImaVidState extends BaseState {
    * true if the seek bar is being hovered
    */
   seekBarHovering: boolean;
+  /**
+   * true once the pointer has moved over this looker (a deliberate hover, not a
+   * scroll-by); gates the per-group frame-stream fetch.
+   */
+  hoverProbed: boolean;
 }
 
 export interface ThreeDState extends BaseState {

@@ -1,13 +1,22 @@
 import { PointInfo, type Sample } from "@fiftyone/looker";
 import { mainSample, mainSampleQuery } from "@fiftyone/relay";
-import { atom, selector } from "recoil";
+import { atom, noWait, selector, selectorFamily } from "recoil";
 import { graphQLSelector } from "recoil-relay";
 import { VariablesOf } from "relay-runtime";
+import { fetchSamples } from "../fetchers/samples";
 import type { Lookers } from "../hooks";
+import { stores } from "../hooks";
 import { ComputeCoordinatesReturnType } from "../hooks/useTooltip";
 import { ModalSelector, sessionAtom } from "../session";
 import { ResponseFrom } from "../utils";
-import { imaVidLookerState, shouldRenderImaVidLooker } from "./dynamicGroups";
+import { filters } from "./filters";
+import { datasetId } from "./selectors";
+import {
+  imaVidLookerState,
+  shouldRenderImaVidLooker,
+  videoLookerState,
+} from "./dynamicGroups";
+import { isVideoDataset } from "./selectors";
 import {
   activeModalSidebarSample,
   groupId,
@@ -16,6 +25,7 @@ import {
   modalGroupSlice,
 } from "./groups";
 import { RelayEnvironmentKey } from "./relay";
+import { modalSampleExclude } from "./sampleProjection";
 import {
   interaction3dSample,
   is3dPinned,
@@ -42,7 +52,6 @@ export const sidebarSampleId = selector<null | string>({
       const sample = get(activeModalSidebarSample);
 
       if (!isPlaying && !isSeeking && thisFrameNumber && sample) {
-        // is the type incorrect? fix me
         const id = sample?.id || sample?._id || (sample?.sample?._id as string);
         if (id) {
           return id;
@@ -51,6 +60,18 @@ export const sidebarSampleId = selector<null | string>({
 
       // if we are playing or seeking, we don't want to change the sidebar sample and fire agg query
       return null;
+    }
+
+    if (get(isVideoDataset)) {
+      // native video: don't compute sidebar counts during playback/seek; settle on the
+      // frame it stopped on (the frame's labels are already in the streamed frame store)
+      if (
+        get(videoLookerState("playing")) ||
+        get(videoLookerState("seeking"))
+      ) {
+        return null;
+      }
+      return get(modalSampleId);
     }
 
     const override = get(pinned3DSampleSlice);
@@ -148,12 +169,12 @@ export const nullableModalSampleId = selector<string>({
   },
 });
 
-export const modalSample = graphQLSelector<
+const modalSampleQuery = graphQLSelector<
   VariablesOf<mainSampleQuery>,
   ModalSample
 >({
   environment: RelayEnvironmentKey,
-  key: "modalSample",
+  key: "modalSampleQuery",
   query: mainSample,
   mapResponse: (data: ModalSampleResponse, { variables }) => {
     if (!data.sample) {
@@ -195,14 +216,74 @@ export const modalSample = graphQLSelector<
   },
 });
 
+// Returns a hydrated grid sample from the shared `stores` cache (keyed by id);
+// a miss falls back to the `mainSample` query.
+const getCachedModalSample = (id: string): ModalSample | undefined => {
+  for (const store of stores) {
+    const cached = store.samples.get(id);
+    if (cached) {
+      return cached;
+    }
+  }
+  return undefined;
+};
+
+// The non-label complement for a sample id, fetched async via the REST route. The
+// looker reads it non-blocking (noWait); the sidebar awaits it. Deduped per id.
+export const modalSampleComplement = selectorFamily<
+  Record<string, unknown>,
+  string
+>({
+  key: "modalSampleComplement",
+  get:
+    (id) =>
+    async ({ get }) => {
+      const dataset = get(datasetId);
+      if (!dataset) {
+        return {};
+      }
+
+      const result = await fetchSamples({
+        datasetId: dataset,
+        ids: [id],
+        exclude: get(modalSampleExclude),
+        view: get(view),
+        filters: get(filters),
+      });
+      return result[0]?.fields ?? {};
+    },
+});
+
+export const modalSample = selector<ModalSample>({
+  key: "modalSample",
+  get: ({ get }) => {
+    const current = get(modalSelector);
+    if (current !== null) {
+      const cached = getCachedModalSample(current.id);
+      if (cached) {
+        // merge in the complement's non-label fields once available; noWait so the
+        // looker is never blocked on it
+        const loadable = get(noWait(modalSampleComplement(current.id)));
+        if (loadable.state === "hasValue") {
+          return {
+            ...cached,
+            sample: { ...cached.sample, ...loadable.contents },
+          };
+        }
+        return cached;
+      }
+    }
+    return get(modalSampleQuery);
+  },
+});
+
 /**
  * Same as {@link modalSample} but always pinned to the dataset's main
  * `groupSlice` for both the active slice and the requested slices. Used by
  * `groupByFieldValue` so the dynamic group value is always read from the
  * main slice's sample regardless of which slice the modal is currently
  * displaying. Has its own Relay cache key so it can resolve independently.
- */
-export const groupSampleAtMainSlice = graphQLSelector<
+ */ export const groupSampleAtMainSlice = graphQLSelector<
   VariablesOf<mainSampleQuery>,
   ModalSample
 >({

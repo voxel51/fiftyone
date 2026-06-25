@@ -1,4 +1,3 @@
-/* Back layer: small, dark, slow */
 @keyframes fallingBack {
   0% {
     background-position: 0 0;
@@ -8,7 +7,6 @@
   }
 }
 
-/* Mid layer: medium, lighter, medium speed */
 @keyframes fallingMid {
   0% {
     background-position: 0 0;
@@ -18,7 +16,6 @@
   }
 }
 
-/* Front layer: large, colorful, fast */
 @keyframes fallingFront {
   0% {
     background-position: 0 0;
@@ -40,12 +37,14 @@
   height: 100%;
   position: absolute;
   top: 0;
+  left: 0;
   width: 100%;
   opacity: 1;
+  /* above the tiles, below the scrollbar/indicator (z-index 10). */
+  z-index: 8;
   background-color: var(--fo-palette-background-level2);
 }
 
-/* Back layer — small dark pixels, slow drift */
 .fallingPixels::before,
 .fallingPixels::after,
 .fallingPixels {
@@ -58,7 +57,6 @@
   animation: fallingBack 120s linear infinite;
 }
 
-/* Mid layer — medium lighter pixels, moderate speed */
 .fallingPixels::before {
   content: "";
   position: absolute;
@@ -70,7 +68,6 @@
   animation: fallingMid 90s linear infinite;
 }
 
-/* Front layer — large colorful pixels, fastest */
 .fallingPixels::after {
   content: "";
   position: absolute;
@@ -93,4 +90,60 @@
   position: absolute;
   top: 0;
   width: 100%;
+}
+
+.scrollIndicator {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 12px;
+  border-radius: 12px;
+  background-color: rgba(0, 0, 0, 0.62);
+  color: #fff;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.15s ease, font-size 0.15s ease, padding 0.15s ease;
+}
+
+.scrollIndicator.visible {
+  opacity: 1;
+}
+
+/* During a flick scroll: grow the depth readout in place (no reposition). */
+.scrollIndicator.scrolling {
+  font-size: 28px;
+  padding: 10px 20px;
+  border-radius: 16px;
+  opacity: 0.7;
+}
+
+/* Wireframe placeholder so fast scrolling shows moving tiles; the looker canvas
+   attaches as a child and covers it once the cell hydrates. */
+.spotlightWireframe {
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Virtual scrollbar thumb: scroll depth within explored territory, draggable to jump up. */
+.virtualScrollbar {
+  position: absolute;
+  right: 3px;
+  width: 8px;
+  min-height: 28px;
+  border-radius: 0;
+  background-color: var(--fo-palette-text-tertiary);
+  opacity: 0.9;
+  transition: opacity 0.15s ease;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.virtualScrollbar:hover,
+.virtualScrollbar.visible {
+  opacity: 1;
 }

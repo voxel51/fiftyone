@@ -1,4 +1,13 @@
 import * as foq from "@fiftyone/relay";
+import {
+  BOOLEAN_FIELD,
+  FLOAT_FIELD,
+  FRAME_NUMBER_FIELD,
+  INT_FIELD,
+  LIST_FIELD,
+  OBJECT_ID_FIELD,
+  STRING_FIELD,
+} from "@fiftyone/utilities";
 import type { VariablesOf } from "react-relay";
 import type { SerializableParam } from "recoil";
 import { selectorFamily } from "recoil";
@@ -8,6 +17,7 @@ import { refresher } from "./atoms";
 import { config } from "./config";
 import * as filterAtoms from "./filters";
 import {
+  activeModalSidebarSample,
   currentSlices,
   groupId,
   groupSlice,
@@ -119,6 +129,163 @@ export const aggregationQuery = graphQLSelectorFamily<
     },
 });
 
+// Collect every leaf value along a dotted path, flattening arrays along the way.
+const collectLeafValues = (obj: unknown, segments: string[]): unknown[] => {
+  if (obj === null || obj === undefined) {
+    return [];
+  }
+  if (Array.isArray(obj)) {
+    return obj.flatMap((item) => collectLeafValues(item, segments));
+  }
+  if (segments.length === 0) {
+    return [obj];
+  }
+  return collectLeafValues(
+    (obj as Record<string, unknown>)[segments[0]],
+    segments.slice(1)
+  );
+};
+
+// Compute one path's aggregation for a single sample, matching the server's per-type result shapes.
+const computeSampleAggregation = (
+  ftype: string | undefined,
+  subfield: string | undefined,
+  path: string,
+  sample: Record<string, unknown>
+): Aggregation => {
+  if (path === "" || path === "_") {
+    return {
+      __typename: "RootAggregation",
+      path,
+      count: 1,
+      exists: 1,
+      slice: 1,
+      expandedFieldCount: 0,
+      frameLabelFieldCount: 0,
+    } as unknown as Aggregation;
+  }
+
+  const values = collectLeafValues(sample, path.split("."));
+  const nonNull = values.filter((v) => v !== null && v !== undefined);
+  const valueType = ftype === LIST_FIELD ? subfield : ftype;
+
+  switch (valueType) {
+    case INT_FIELD:
+    case FRAME_NUMBER_FIELD: {
+      const nums = nonNull.filter((v) => typeof v === "number") as number[];
+      return {
+        __typename: "IntAggregation",
+        path,
+        count: nums.length,
+        exists: nums.length,
+        min: nums.length ? Math.min(...nums) : null,
+        max: nums.length ? Math.max(...nums) : null,
+      } as unknown as Aggregation;
+    }
+    case FLOAT_FIELD: {
+      let inf = 0;
+      let ninf = 0;
+      let nan = 0;
+      const finite: number[] = [];
+      for (const v of nonNull) {
+        if (v === "inf" || v === Infinity) inf++;
+        else if (v === "-inf" || v === -Infinity) ninf++;
+        else if (v === "nan" || (typeof v === "number" && Number.isNaN(v)))
+          nan++;
+        else if (typeof v === "number") finite.push(v);
+      }
+      const exists = finite.length + inf + ninf + nan;
+      return {
+        __typename: "FloatAggregation",
+        path,
+        count: exists,
+        exists,
+        min: finite.length ? Math.min(...finite) : null,
+        max: finite.length ? Math.max(...finite) : null,
+        inf,
+        ninf,
+        nan,
+      } as unknown as Aggregation;
+    }
+    case BOOLEAN_FIELD: {
+      let trueCount = 0;
+      let falseCount = 0;
+      for (const v of nonNull) {
+        if (v === true) trueCount++;
+        else if (v === false) falseCount++;
+      }
+      return {
+        __typename: "BooleanAggregation",
+        path,
+        count: trueCount + falseCount,
+        exists: trueCount + falseCount,
+        true: trueCount,
+        false: falseCount,
+      } as unknown as Aggregation;
+    }
+    case STRING_FIELD:
+    case OBJECT_ID_FIELD: {
+      const tally = new Map<string, number>();
+      for (const v of nonNull) {
+        const key = String(v);
+        tally.set(key, (tally.get(key) ?? 0) + 1);
+      }
+      return {
+        __typename: "StringAggregation",
+        path,
+        count: nonNull.length,
+        exists: nonNull.length,
+        values: [...tally.entries()].map(([value, count]) => ({
+          value,
+          count,
+        })),
+      } as unknown as Aggregation;
+    }
+    default:
+      // embedded-document / label-list path — only the count is read
+      return {
+        __typename: "DataAggregation",
+        path,
+        count: values.length,
+      } as unknown as Aggregation;
+  }
+};
+
+/** Modal sidebar aggregations computed client-side from the cached sample JSON. */
+export const modalSampleAggregations = selectorFamily<
+  Aggregation[],
+  { paths: string[]; mixed?: boolean }
+>({
+  key: "modalSampleAggregations",
+  get:
+    (params) =>
+    ({ get }) => {
+      // null while playing/seeking an ImaVid; the sidebar settles on pause
+      if (get(sidebarSampleId) === null) {
+        return [];
+      }
+
+      const raw = get(activeModalSidebarSample) as
+        | Record<string, unknown>
+        | undefined;
+      // ImaVid frames yield a wrapper; normalize to the inner field dict either way
+      const sample = (raw?.sample as Record<string, unknown>) ?? raw;
+      if (!sample) {
+        return [];
+      }
+
+      return params.paths.map((path) => {
+        const field = get(schemaAtoms.field(path));
+        return computeSampleAggregation(
+          field?.ftype,
+          field?.subfield ?? undefined,
+          path,
+          sample
+        );
+      });
+    },
+});
+
 export const aggregations = selectorFamily({
   key: "aggregations",
   get:
@@ -131,6 +298,16 @@ export const aggregations = selectorFamily({
     }) =>
     ({ get }) => {
       if (params) {
+        // the modal sidebar is derived from the cached sample JSON, not the server
+        if (params.modal) {
+          return get(
+            modalSampleAggregations({
+              paths: params.paths,
+              mixed: params.mixed,
+            })
+          );
+        }
+
         let extended = params.extended;
         if (extended && !get(filterAtoms.hasFilters(params.modal))) {
           extended = false;

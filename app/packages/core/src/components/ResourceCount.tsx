@@ -7,6 +7,7 @@ import React from "react";
 import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
 import TimedOut from "./Common/TimedOut";
+import { gridSpineTotal } from "./Grid/recoil";
 import { PathEntryCounts } from "./Sidebar/Entries/EntryCounts";
 
 const RightDiv = styled.div`
@@ -82,14 +83,22 @@ const Count = () => {
 
   const isGroup = useRecoilValue(isGroupAtom);
   const queryPerformance = useRecoilValue(fos.queryPerformance);
+  // the spine resolves the exact item count for the current view; the server returns
+  // only the dataset estimate, so prefer the spine total wherever it has resolved.
+  const spineTotal = useRecoilValue(gridSpineTotal);
   if (queryPerformance) {
     total = subtotal;
   }
+  if (spineTotal != null) {
+    total = spineTotal;
+  }
+  // relabel to "groups" only for dynamic-group views; flat/filtered stay "samples".
   if (
-    !queryPerformance &&
-    ((isGroup && !isDynamicGroupViewStageActive) ||
-      (isDynamicGroupViewStageActive && parent === "group") ||
-      (isDynamicGroupViewStageActive && element.singular === "sample"))
+    (isDynamicGroupViewStageActive && spineTotal != null) ||
+    (!queryPerformance &&
+      ((isGroup && !isDynamicGroupViewStageActive) ||
+        (isDynamicGroupViewStageActive && parent === "group") ||
+        (isDynamicGroupViewStageActive && element.singular === "sample")))
   ) {
     element = {
       plural: "groups",
@@ -100,7 +109,11 @@ const Count = () => {
   return (
     <RightDiv data-cy="entry-counts">
       <div style={{ whiteSpace: "nowrap" }}>
-        <PathEntryCounts modal={false} path={""} />{" "}
+        {spineTotal != null ? (
+          spineTotal.toLocaleString()
+        ) : (
+          <PathEntryCounts modal={false} path={""} />
+        )}{" "}
         {isDynamicGroupViewStageActive &&
           !["sample", "group"].includes(element.singular) &&
           `group${total === 1 ? "" : "s"} of `}

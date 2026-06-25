@@ -6,10 +6,9 @@ import {
 import { v4 as uuid } from "uuid";
 import { ProcessSample } from ".";
 import { Coloring, Sample } from "..";
-import { LookerUtils } from "../lookers/shared";
 import { retrieveTransferables } from "../lookers/utils";
 import { accumulateOverlays } from "../overlays";
-import { createWorker } from "../util";
+import { workerPool as sharedWorkerPool } from "./pool";
 
 export type AsyncLabelsRenderingJob = {
   sample: Sample;
@@ -30,18 +29,12 @@ export type WorkerResponse = {
   uuid: string;
 };
 
-const MAX_WORKERS =
-  typeof window !== "undefined" ? navigator.hardwareConcurrency || 4 : 0;
-
-// global job queue and indexes
 const jobQueue: AsyncLabelsRenderingJob[] = [];
 const pendingJobs = new Map<Sample, AsyncLabelsRenderingJob>();
 const processingSamples = new Set<Sample>();
 
-const workerPool: Worker[] = Array.from({ length: MAX_WORKERS }, () =>
-  createWorker(LookerUtils.workerCallbacks)
-);
-const freeWorkers: Worker[] = workerPool.slice();
+// shared with the initial-load pool so we don't run a second worker pool
+const freeWorkers: Worker[] = sharedWorkerPool().slice();
 
 const updateRenderingCount = (delta: number) => {
   jotaiStore.set(numConcurrentRenderingLabels, (curr) =>

@@ -837,6 +837,17 @@ export const fullyDisabledPaths = selector({
       paths.add(path);
     }
 
+    // disable unsupported-type frame fields so they don't render a misleading count;
+    // matching ftype directly (not `unsupportedMatcher`) keeps frame labels filterable
+    for (const path of fieldsMatcher(
+      frameFields,
+      (field) => UNSUPPORTED_FILTER_TYPES.includes(field.ftype),
+      undefined,
+      "frames."
+    )) {
+      paths.add(path);
+    }
+
     for (const parent of frameFields.filter(groupFilter)) {
       for (const path of fieldsMatcher(
         parent.fields || [],

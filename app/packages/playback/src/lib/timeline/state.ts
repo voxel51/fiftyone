@@ -101,6 +101,12 @@ export type FoTimelineConfig = {
   totalFrames: TotalFrames;
 
   /**
+   * If true, `totalFrames` is provisional and the source is still streaming, so
+   * the playhead waits at the buffered end and the load window isn't clamped to it.
+   */
+  streaming?: boolean;
+
+  /**
    * If true, the timeline will show a time indicator instead
    * of the frame number.
    *
@@ -212,6 +218,7 @@ export const addTimelineAtom = atom(
         timeline.config.targetFrameRate ?? DEFAULT_TARGET_FRAME_RATE,
       useTimeIndicator:
         timeline.config.useTimeIndicator ?? DEFAULT_USE_TIME_INDICATOR,
+      streaming: timeline.config.streaming ?? false,
     };
 
     const isTimelineAlreadyInitialized = get(
@@ -228,8 +235,9 @@ export const addTimelineAtom = atom(
     }
 
     if (
+      !configWithImputedValues.streaming &&
       configWithImputedValues.defaultFrameNumber >
-      configWithImputedValues.totalFrames
+        configWithImputedValues.totalFrames
     ) {
       throw new Error(
         `Default frame number ${configWithImputedValues.defaultFrameNumber} is greater than total frames ${configWithImputedValues.totalFrames}`
@@ -457,9 +465,11 @@ export const getLoadRangeForFrameNumber = (
   frameNumber: FrameNumber,
   config: FoTimelineConfig
 ): BufferRange => {
-  const { totalFrames, targetFrameRate, speed } = config;
+  const { totalFrames, targetFrameRate, speed, streaming } = config;
 
-  // we'll keep behind-buffer size fixed
+  // while streaming the real length is unknown, so don't clamp to the provisional total
+  const upperBound = streaming ? Infinity : totalFrames;
+
   const behindBuffer = MIN_LOAD_RANGE_SIZE;
   // adaptive ahead-buffer: at minimum MIN_LOAD_RANGE_SIZE,
   // but scales with speed and target frame rate relative to a baseline
@@ -470,8 +480,8 @@ export const getLoadRangeForFrameNumber = (
     ((targetFrameRate ?? DEFAULT_TARGET_FRAME_RATE) /
       DEFAULT_TARGET_FRAME_RATE);
 
-  // use weight = 2% of totalFrames to gently extend the buffer on larger timelines.
-  const totalFramesFactor = Math.ceil(totalFrames * 0.02);
+  // extend the buffer by 2% of totalFrames on larger timelines (n/a while streaming)
+  const totalFramesFactor = streaming ? 0 : Math.ceil(totalFrames * 0.02);
 
   const adaptiveAheadBuffer = Math.max(
     MIN_LOAD_RANGE_SIZE,
@@ -482,17 +492,17 @@ export const getLoadRangeForFrameNumber = (
   let min = frameNumber - behindBuffer;
   let max = frameNumber + adaptiveAheadBuffer;
 
-  // if the range exceeds totalFrames at the end,
-  // pull extra frames from behind to maintain overall buffer size.
-  if (max > totalFrames) {
-    const extra = max - totalFrames;
+  // when the range overruns an edge, shift the overflow onto the opposite side
+  // to keep overall buffer size constant
+  if (max > upperBound) {
+    const extra = max - upperBound;
     min = Math.max(1, min - extra);
-    max = totalFrames;
+    max = upperBound;
   }
   // similarly, if the range goes below 1, extend the ahead buffer.
   if (min < 1) {
     const extra = 1 - min;
-    max = Math.min(totalFrames, max + extra);
+    max = Math.min(upperBound, max + extra);
     min = 1;
   }
 
