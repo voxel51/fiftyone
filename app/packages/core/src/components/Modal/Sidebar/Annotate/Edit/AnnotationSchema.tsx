@@ -271,6 +271,10 @@ const useHandleSchemaChange = (readOnly: boolean) => {
           ? splitTrackEdit(persistableValue, dynamicKeys)
           : { trackPartial: {}, dynamicPartial: {} };
 
+      // the anchor frame's pre-edit value — `updateLabel` has not run yet, so the
+      // engine still holds the old label; forward-fill boundaries read against it
+      const previous = engine.getLabel(ref) ?? (data as LabelData);
+
       const trackWrites = [
         ...buildTrackFanOut(engine, ref, trackPartial),
         ...buildForwardFill(
