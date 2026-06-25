@@ -262,25 +262,25 @@ class SAM3ConceptSegmenterOutputProcessor(fout.OutputProcessor):
     """
 
     def __init__(self, classes=None, mask_thresh=0.5):
-        self.classes = classes
+        self.classes = None
         self.mask_thresh = mask_thresh
 
-    def __call__(self, output, frame_size, classes=None):
+    def __call__(self, output, frame_size, query_texts=None):
         """Returns intermediate model output dicts with per-detection text labels.
 
         Args:
             output: a list of model output per sample, each with ``pred_logits``
                 ``[N, M, 1]``, ``pred_masks`` ``[N, M, H, W]``, and
-                ``presence_logit_dec`` ``[N, M]`` where N = num text queries
+                ``presence_logit_dec`` ``[N, M]`` where N = num find queries
             frame_size: a list of ``(H, W)`` tuples for each sample
-            classes (None): text prompts overriding ``self.classes``
+            query_texts (None): a list (one per sample) of query text strings in
+                the same order as the find_queries built during collation
 
         Returns:
             a list of dicts with keys ``masks`` ``[K, 1, H, W]``,
             ``iou_predictions`` ``[K, 1]``, and ``detection_labels`` (list of K
             label strings), suitable for ``SAMSegmenterOutputProcessor``
         """
-        classes = classes if classes is not None else self.classes
         proc_output = []
         for idx, out in enumerate(output):
             out_logits = out["pred_logits"]
@@ -292,13 +292,19 @@ class SAM3ConceptSegmenterOutputProcessor(fout.OutputProcessor):
             img_h, img_w = frame_size[idx]
             n_queries = out_probs.shape[0]
 
+            sample_query_texts = (
+                query_texts[idx]
+                if query_texts and idx < len(query_texts)
+                else []
+            )
+
             all_masks = []
             all_probs = []
             all_labels = []
             for query_idx in range(n_queries):
                 label = (
-                    classes[query_idx]
-                    if classes and query_idx < len(classes)
+                    sample_query_texts[query_idx]
+                    if query_idx < len(sample_query_texts)
                     else None
                 )
                 keep = out_probs[query_idx] > self.mask_thresh
@@ -460,6 +466,7 @@ class SegmentAnything3ImageModel(fosam2.SegmentAnything2ImageModel):
         # For "concept" mode, the collated output needs to be in Datapoint.
         transform = build_sam_datapoint_transform()
         datapoints = []
+        per_sample_query_texts = []
         for img_idx in range(len(results["image"])):
             datapoint = sam3ds.Datapoint(find_queries=[], images=[])
             datapoint.images = [
@@ -546,11 +553,15 @@ class SegmentAnything3ImageModel(fosam2.SegmentAnything2ImageModel):
                             ),
                         )
                     )
+            per_sample_query_texts.append(
+                [q.query_text for q in datapoint.find_queries]
+            )
             datapoints.append(transform(datapoint))
         batched_dps = sam3coll.collate_fn_api(
             datapoints, dict_key="datapoints"
         )
         results["datapoints"] = batched_dps["datapoints"]
+        results["query_texts"] = per_sample_query_texts
         return results
 
     def build_get_item(self, field_mapping=None):
@@ -605,7 +616,9 @@ class SegmentAnything3ImageModel(fosam2.SegmentAnything2ImageModel):
             output = self._forward_pass_concept(args)
             if self._concept_output_processor is not None:
                 output = self._concept_output_processor(
-                    output, orig_image_sizes, classes=self.config.classes
+                    output,
+                    orig_image_sizes,
+                    query_texts=args.get("query_texts"),
                 )
                 labels = [out["detection_labels"] for out in output]
         elif prompt_type == "auto":
