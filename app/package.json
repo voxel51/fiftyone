@@ -75,6 +75,7 @@
         "three-stdlib": "^2.36.1",
         "@types/react": "18.2.0",
         "minimatch": "9.0.7",
-        "protobufjs": "^7.6.4"
+        "protobufjs": "^7.6.4",
+        "@types/mapbox-gl": "2.7.21"
     }
 }

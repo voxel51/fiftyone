@@ -510,7 +510,7 @@ export const isNotebook = () => {
   );
 };
 
-export const useExternalLink = (href) => {
+export const useExternalLink = (_href) => {
   return (e) => e.stopPropagation();
 };
 

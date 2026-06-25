@@ -251,15 +251,6 @@ export class CommandContextManager {
       this.listeners.delete(listener);
     };
   }
-  /**
-   * Fires any context listeners that are registered
-   * TODO: currently unused because stack is fixed — will be needed after refactor
-   */
-  private _fireListeners() {
-    this.listeners.forEach((listener) => {
-      listener(this.contextStack[this.contextStack.length - 1].id);
-    });
-  }
 
   /**
    * Handles the keydown event.  Only public for testing.
