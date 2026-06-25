@@ -308,7 +308,7 @@ export function useSetCustomPanelState<T>(local?: boolean) {
   const [, setPanelState] = usePanelState<{ state: T }>(null, undefined, local);
   return (fn: (state: T) => T) => {
     setPanelState((panelState) => {
-      const state = fn((panelState?.state || {}) as T);
+      const state = fn((panelState?.state ?? {}) as T);
       return { ...panelState, state };
     });
   };

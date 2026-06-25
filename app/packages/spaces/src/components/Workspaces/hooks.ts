@@ -22,13 +22,16 @@ export function useWorkspaces() {
       {},
       {
         callback: (result) => {
+          const maybeWorkspaces = (
+            result?.result as { workspaces?: Workspace[] }
+          )?.workspaces;
           setState((state) => {
             return {
               ...state,
               initialized: true,
-              workspaces:
-                (result?.result as { workspaces?: Workspace[] })?.workspaces ||
-                [],
+              workspaces: Array.isArray(maybeWorkspaces)
+                ? maybeWorkspaces
+                : [],
               dataset: currentDataset,
             };
           });

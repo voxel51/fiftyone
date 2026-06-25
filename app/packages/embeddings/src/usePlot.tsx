@@ -3,7 +3,7 @@ import { useViewChangeEffect } from "./useViewChangeEffect";
 import { useSelectionEffect } from "./useSelectionEffect";
 import useExtendedStageEffect from "./useExtendedStageEffect";
 
-export function usePlot(_selection) {
+export function usePlot() {
   const [loadedPlot] = usePanelStatePartial("loadedPlot", null, true);
   const [loadingPlot] = usePanelStatePartial("loadingPlot", true, true);
 

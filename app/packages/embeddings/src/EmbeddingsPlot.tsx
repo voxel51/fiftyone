@@ -47,7 +47,7 @@ export function EmbeddingsPlot({
   } = plotSelection;
   const [zoomRev] = useZoomRevision();
   const resetZoom = useResetPlotZoom();
-  const { isLoading, traces, style } = usePlot(plotSelection);
+  const { isLoading, traces, style } = usePlot();
   const [dragMode, setDragMode] = usePanelStatePartial(
     "dragMode",
     "lasso",

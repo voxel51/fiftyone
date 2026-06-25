@@ -1,6 +1,6 @@
 import { Operator, OperatorConfig, types } from "@fiftyone/operators";
-import { ExecutionContext } from "@fiftyone/operators/src/operators";
-import { Property } from "@fiftyone/operators/src/types";
+import type { ExecutionContext } from "@fiftyone/operators/src/operators";
+import type { Property } from "@fiftyone/operators/src/types";
 import * as fos from "@fiftyone/state";
 import { getBrainKeysFromDataset, useBrainResult } from "./useBrainResult";
 

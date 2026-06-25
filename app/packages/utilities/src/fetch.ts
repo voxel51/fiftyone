@@ -600,7 +600,7 @@ export const getEventSource = (
             throw new ServerError(
               {
                 code: response.status,
-                bodyResponse: JSON.stringify(err),
+                bodyResponse: err,
                 route: response.url,
                 payload: {},
                 requestHeaders: init?.headers ?? {},
