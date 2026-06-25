@@ -297,6 +297,11 @@ def handle_group_filter(
     stages = view._stages
     group_field = dataset.group_field
 
+    if group_field is None:
+        # a slice filter carried over from a previously-viewed grouped dataset;
+        # this dataset isn't grouped, so there's nothing to select
+        return view, None
+
     selected = False
     for stage in stages:
         if isinstance(stage, fosg.SelectGroupSlices) and stage.flat:
