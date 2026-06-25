@@ -630,6 +630,26 @@ class FrameLabelSchemaTests(unittest.TestCase):
         self.assertIn("frames.detections", with_frames)
 
     @drop_datasets
+    def test_sample_level_spatial_labels_excluded_for_video(self):
+        import fiftyone.core.annotation.utils as foau
+
+        dataset = _make_video_dataset()
+        dataset.add_sample_field(
+            "ground_truth", fo.EmbeddedDocumentField, fo.Detections
+        )
+        dataset.add_sample_field("weather", fo.StringField)
+
+        valid = foau.list_valid_annotation_fields(
+            dataset, flatten=True, include_frames=True
+        )
+
+        # sample-level spatial labels belong on frames, not the clip
+        self.assertNotIn("ground_truth", valid)
+        # frame-level spatial labels and sample-level primitives are still valid
+        self.assertIn("frames.detections", valid)
+        self.assertIn("weather", valid)
+
+    @drop_datasets
     def test_frame_attribute_dynamic_flag(self):
         dataset = _make_video_dataset()
         dataset.add_frame_field(

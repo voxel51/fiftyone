@@ -92,10 +92,16 @@ def list_valid_annotation_fields(
     Returns:
         a sorted list of valid annotation field names
     """
+    # On video, spatial labels belong to frames — a sample-level
+    # detections/polylines field isn't annotatable, so drop it from the
+    # sample-level scan (frame-level spatial labels are added below).
+    exclude_sample_spatial = sample_collection.media_type == fom.VIDEO
+
     result = _valid_annotation_fields(
         sample_collection,
         sample_collection.get_field_schema(),
         require_app_support,
+        exclude_spatial_labels=exclude_sample_spatial,
     )
 
     if include_frames and sample_collection._has_frame_fields():
@@ -112,7 +118,9 @@ def list_valid_annotation_fields(
     return sorted(result)
 
 
-def _valid_annotation_fields(collection, schema, require_app_support):
+def _valid_annotation_fields(
+    collection, schema, require_app_support, exclude_spatial_labels=False
+):
     result = set()
     for field_name, field in schema.items():
 
@@ -125,6 +133,11 @@ def _valid_annotation_fields(collection, schema, require_app_support):
 
         if field.document_type in foac.SUPPORTED_DOC_TYPES:
             result.add(field_name)
+            continue
+
+        if exclude_spatial_labels and issubclass(
+            field.document_type, foac.SPATIAL_LABEL_TYPES
+        ):
             continue
 
         if _is_supported_label(collection, field, require_app_support):
