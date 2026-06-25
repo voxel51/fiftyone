@@ -58,6 +58,7 @@ import {
   applyVisibleWorldHeightZoomToOrthographicCamera,
   applyMainPanelPanSyncIntentToOrthographicCamera,
   applyMainPanelZoomSyncIntentToOrthographicCamera,
+  applyPointCloudCropMainPanelSyncToOrthographicCamera,
   captureSidePanelCameraSnapshot,
   deriveSidePanelCameraFrame,
   doesPointCloudCropFitCamera,
@@ -736,10 +737,22 @@ const BoundsSideEffectsComponent = ({
       halfSize: crop.halfSize.clone(),
       visibleWorldHeightAtCenter: crop.visibleWorldHeightAtCenter,
     };
-    centerOnPointCloudCrop(crop);
+
+    if (
+      !applyPointCloudCropMainPanelSyncToOrthographicCamera({
+        camera,
+        controls,
+        crop,
+        invalidate,
+      })
+    ) {
+      centerOnPointCloudCrop(crop);
+    }
   }, [
     camera,
     centerOnPointCloudCrop,
+    controls,
+    invalidate,
     pointCloudCrop?.center.x,
     pointCloudCrop?.center.y,
     pointCloudCrop?.center.z,

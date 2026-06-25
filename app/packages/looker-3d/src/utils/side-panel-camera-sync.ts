@@ -70,6 +70,22 @@ interface ApplyMainPanelZoomSyncIntentOptions {
   invalidate?: () => void;
 }
 
+interface ApplyMainPanelZoomSyncOptions {
+  anchor: THREE.Vector3;
+  camera: THREE.Camera;
+  controls?: SidePanelControls;
+  invalidate?: () => void;
+  visibleWorldHeightAtAnchor?: number | null;
+  zoomRatio: number;
+}
+
+interface ApplyPointCloudCropMainPanelSyncOptions {
+  camera: THREE.Camera;
+  controls?: SidePanelControls;
+  crop: PointCloudCrop;
+  invalidate?: () => void;
+}
+
 interface ApplyVisibleWorldHeightZoomOptions {
   camera: THREE.Camera;
   controls?: SidePanelControls;
@@ -692,20 +708,22 @@ export const shouldApplyMainPanelPanSyncIntent = (
   });
 };
 
-export const applyMainPanelZoomSyncIntentToOrthographicCamera = ({
+const applyMainPanelZoomSyncToOrthographicCamera = ({
+  anchor,
   camera,
   controls,
-  intent,
   invalidate,
-}: ApplyMainPanelZoomSyncIntentOptions) => {
+  visibleWorldHeightAtAnchor,
+  zoomRatio,
+}: ApplyMainPanelZoomSyncOptions) => {
   const orthographicCamera = camera as THREE.OrthographicCamera & {
     isOrthographicCamera?: boolean;
   };
 
   if (
     !isOrthographicCamera(camera) ||
-    !Number.isFinite(intent.zoomRatio) ||
-    intent.zoomRatio <= 0
+    !Number.isFinite(zoomRatio) ||
+    zoomRatio <= 0
   ) {
     return false;
   }
@@ -720,10 +738,10 @@ export const applyMainPanelZoomSyncIntentToOrthographicCamera = ({
   );
   const targetZoom = getOrthographicZoomForVisibleWorldHeight(
     camera,
-    intent.visibleWorldHeightAtAnchor
+    visibleWorldHeightAtAnchor
   );
   const nextZoom = THREE.MathUtils.clamp(
-    targetZoom ?? orthographicCamera.zoom * intent.zoomRatio,
+    targetZoom ?? orthographicCamera.zoom * zoomRatio,
     minZoom,
     maxZoom
   );
@@ -732,11 +750,11 @@ export const applyMainPanelZoomSyncIntentToOrthographicCamera = ({
         currentPosition: camera.position,
         currentTarget: controls.target,
         currentZoom: orthographicCamera.zoom,
-        mainAnchor: new THREE.Vector3(...intent.anchor),
+        mainAnchor: anchor,
         maxZoom,
         minZoom,
         targetZoom,
-        zoomRatio: intent.zoomRatio,
+        zoomRatio,
       })
     : null;
 
@@ -754,6 +772,49 @@ export const applyMainPanelZoomSyncIntentToOrthographicCamera = ({
   invalidate?.();
 
   return true;
+};
+
+export const applyMainPanelZoomSyncIntentToOrthographicCamera = ({
+  camera,
+  controls,
+  intent,
+  invalidate,
+}: ApplyMainPanelZoomSyncIntentOptions) => {
+  return applyMainPanelZoomSyncToOrthographicCamera({
+    anchor: new THREE.Vector3(...intent.anchor),
+    camera,
+    controls,
+    invalidate,
+    visibleWorldHeightAtAnchor: intent.visibleWorldHeightAtAnchor,
+    zoomRatio: intent.zoomRatio,
+  });
+};
+
+export const applyPointCloudCropMainPanelSyncToOrthographicCamera = ({
+  camera,
+  controls,
+  crop,
+  invalidate,
+}: ApplyPointCloudCropMainPanelSyncOptions) => {
+  const visibleWorldHeight = crop.visibleWorldHeightAtCenter;
+
+  if (
+    !controls?.target ||
+    typeof visibleWorldHeight !== "number" ||
+    !Number.isFinite(visibleWorldHeight) ||
+    visibleWorldHeight <= 0
+  ) {
+    return false;
+  }
+
+  return applyMainPanelZoomSyncToOrthographicCamera({
+    anchor: crop.center,
+    camera,
+    controls,
+    invalidate,
+    visibleWorldHeightAtAnchor: visibleWorldHeight,
+    zoomRatio: 1,
+  });
 };
 
 export const applyMainPanelPanSyncIntentToOrthographicCamera = ({

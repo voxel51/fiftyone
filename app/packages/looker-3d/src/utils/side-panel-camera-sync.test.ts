@@ -7,12 +7,16 @@ import {
   VIEW_TYPE_TOP,
 } from "../constants";
 import type { RaycastResult } from "../types";
-import { createPointCloudCropFromDetection } from "./point-cloud-crop";
+import {
+  createPointCloudCropFromDetection,
+  createPointCloudCropFromPoint,
+} from "./point-cloud-crop";
 import type { PointCloudCrop } from "./point-cloud-crop";
 import {
   applySidePanelCameraFrame,
   applyMainPanelPanSyncIntentToOrthographicCamera,
   applyMainPanelZoomSyncIntentToOrthographicCamera,
+  applyPointCloudCropMainPanelSyncToOrthographicCamera,
   captureSidePanelCameraSnapshot,
   createMainPanelPanSyncIntent,
   createMainPanelZoomSyncIntent,
@@ -417,6 +421,62 @@ describe("side panel camera sync", () => {
     expect(camera.zoom).toBe(6);
     expect(camera.position.toArray()).toEqual([1, 2, 13]);
     expect(controls.target.toArray()).toEqual([1, 2, 3]);
+  });
+
+  it("applies raycast crop framing through the main-panel zoom sync path", () => {
+    const camera = new OrthographicCamera(-1, 1, 1, -1, 0.1, 1000);
+    camera.position.set(0, 0, 10);
+    camera.zoom = 2;
+    const controls = {
+      target: new Vector3(0, 0, 0),
+      update: vi.fn(),
+    };
+    const invalidate = vi.fn();
+    const crop = createPointCloudCropFromPoint([1, 2, 3], {
+      visibleWorldHeightAtPoint: 0.5,
+    })!;
+
+    expect(
+      applyPointCloudCropMainPanelSyncToOrthographicCamera({
+        camera,
+        controls,
+        crop,
+        invalidate,
+      })
+    ).toBe(true);
+
+    expect(camera.zoom).toBe(6);
+    expect(camera.position.toArray()).toEqual([1, 2, 13]);
+    expect(controls.target.toArray()).toEqual([1, 2, 3]);
+    expect(controls.update).toHaveBeenCalledTimes(1);
+    expect(invalidate).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not apply raycast crop sync without main-panel visible height", () => {
+    const camera = new OrthographicCamera(-1, 1, 1, -1, 0.1, 1000);
+    camera.position.set(0, 0, 10);
+    camera.zoom = 2;
+    const controls = {
+      target: new Vector3(0, 0, 0),
+      update: vi.fn(),
+    };
+    const invalidate = vi.fn();
+    const crop = createPointCloudCropFromPoint([1, 2, 3])!;
+
+    expect(
+      applyPointCloudCropMainPanelSyncToOrthographicCamera({
+        camera,
+        controls,
+        crop,
+        invalidate,
+      })
+    ).toBe(false);
+
+    expect(camera.zoom).toBe(2);
+    expect(camera.position.toArray()).toEqual([0, 0, 10]);
+    expect(controls.target.toArray()).toEqual([0, 0, 0]);
+    expect(controls.update).not.toHaveBeenCalled();
+    expect(invalidate).not.toHaveBeenCalled();
   });
 
   it("pans side orthographic cameras toward the raycast anchor without changing zoom", () => {

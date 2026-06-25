@@ -46,8 +46,6 @@ interface LabelPointCloudCropOptions extends RenderModelPointCloudCropOptions {
 }
 
 const EPSILON = 1e-6;
-const POINT_CROP_MARGIN_ABOVE_POINT_SCALE = 0.75;
-const POINT_CROP_MARGIN_BELOW_POINT_SCALE = 2;
 
 const isFiniteNumberTuple = (
   value: unknown,
@@ -221,23 +219,10 @@ export const createPointCloudCropFromPoint = (
 
   const pointVector = new THREE.Vector3(...point);
   const pointCropUpVector = getPointCropUpVector(upVector);
-  const marginAbovePoint = pointCropUpVector
-    ? resolvedMargin * POINT_CROP_MARGIN_ABOVE_POINT_SCALE
-    : resolvedMargin;
-  const marginBelowPoint = pointCropUpVector
-    ? resolvedMargin * POINT_CROP_MARGIN_BELOW_POINT_SCALE
-    : resolvedMargin;
-  const center = pointCropUpVector
-    ? pointVector
-        .clone()
-        .addScaledVector(
-          pointCropUpVector,
-          (marginAbovePoint - marginBelowPoint) / 2
-        )
-    : pointVector;
+  const center = pointVector;
   const halfSize = new THREE.Vector3(
     resolvedMargin,
-    (marginAbovePoint + marginBelowPoint) / 2,
+    resolvedMargin,
     resolvedMargin
   );
   const quaternion = pointCropUpVector
