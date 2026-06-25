@@ -357,6 +357,103 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
       });
   });
 
+  test("editing a cuboid on the 3D mesh slice persists only to that slice", async ({
+    grid,
+    modal,
+    fiftyoneLoader,
+  }) => {
+    await grid.openFirstSample();
+    await modal.waitForSampleLoadDomAttribute(true);
+    await modal.sidebar.switchMode("annotate");
+
+    // select the mesh slice as the annotation target — in annotate mode this
+    // mounts the 3D looker + its annotation surface (the grouped 3D path); the
+    // surface must finish loading before the cuboid is selectable
+    await modal.sidebar.annotate.selectAnnotationSlice("mesh");
+    await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("mesh");
+    await modal.annotate3d.waitForSurface();
+    await expect
+      .poll(() => modal.sidebar.annotate.getActiveLabelsCount(), {
+        timeout: 20_000,
+      })
+      .toBe(1);
+
+    // select the mesh cuboid and change its class
+    await modal.annotate3d.selectLabel("cat");
+    const saved = modal.sidebar.annotate.waitForPatch();
+    await modal.sidebar.edit.selectFieldChoice("label", "dog");
+    await modal.sidebar.edit.assert.verifyFieldValue("label", "dog");
+    await saved;
+
+    // only the mesh sample changed; image + cloud untouched
+    await expect
+      .poll(() => readSliceClasses(fiftyoneLoader), { timeout: 20_000 })
+      .toEqual({
+        image: ["cat", "cat"],
+        mesh: ["dog"],
+        cloud: ["cat", "cat", "cat"],
+      });
+  });
+
+  // NOTE: cuboid CREATE on a 3D slice in a grouped modal is intentionally not
+  // covered. Once a 3D slice has no labels (e.g. an empty mesh, or after
+  // deleting its only cuboid) the annotate sidebar reports "No active fields"
+  // and the cuboid-create toolbar never mounts — so a fresh draw can't be
+  // started. 2D-slice create is covered above; 3D create here is blocked on that
+  // empty-slice field-activation behavior (looks like an app gap — flagged).
+
+  test("deleting a cuboid on the 3D mesh slice persists, and undo/redo round-trip — all only on that slice", async ({
+    grid,
+    modal,
+    fiftyoneLoader,
+  }) => {
+    await grid.openFirstSample();
+    await modal.waitForSampleLoadDomAttribute(true);
+    await modal.sidebar.switchMode("annotate");
+
+    await modal.sidebar.annotate.selectAnnotationSlice("mesh");
+    await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("mesh");
+    await modal.annotate3d.waitForSurface();
+    await expect
+      .poll(() => modal.sidebar.annotate.getActiveLabelsCount(), {
+        timeout: 20_000,
+      })
+      .toBe(1);
+
+    // delete the mesh cuboid via the 3D annotation toolbar
+    await modal.annotate3d.selectLabel("cat");
+    await modal.annotate3d.deleteSelected();
+
+    // the delete persists to the mesh sample only — image + cloud untouched
+    await expect
+      .poll(() => readSliceClasses(fiftyoneLoader), { timeout: 20_000 })
+      .toEqual({
+        image: ["cat", "cat"],
+        mesh: [],
+        cloud: ["cat", "cat", "cat"],
+      });
+
+    // undo restores the mesh cuboid
+    await modal.sidebar.edit.undo();
+    await expect
+      .poll(() => readSliceClasses(fiftyoneLoader), { timeout: 20_000 })
+      .toEqual({
+        image: ["cat", "cat"],
+        mesh: ["cat"],
+        cloud: ["cat", "cat", "cat"],
+      });
+
+    // redo re-applies the delete
+    await modal.sidebar.edit.redo();
+    await expect
+      .poll(() => readSliceClasses(fiftyoneLoader), { timeout: 20_000 })
+      .toEqual({
+        image: ["cat", "cat"],
+        mesh: [],
+        cloud: ["cat", "cat", "cat"],
+      });
+  });
+
   test("deleting a label on the 2D image slice persists, and undo/redo round-trip — all only on that slice", async ({
     grid,
     modal,
