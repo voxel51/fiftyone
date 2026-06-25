@@ -10,7 +10,7 @@ import {
   ToggleSwitch,
   ToggleSwitchTab,
 } from "@voxel51/voodo";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 
 /**
  * Convert a voodo toggle tabs into a boolean value

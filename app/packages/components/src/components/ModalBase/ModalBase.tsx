@@ -144,7 +144,7 @@ const ModalBase: React.FC<ModalBaseProps> = ({
     },
   });
 
-  const [secondaryButtonView, setSecondaryButtonView] = useState({
+  const [secondaryButtonView] = useState({
     variant: "outlined",
     color: secondaryButton?.secondaryColor,
     label: secondaryButton?.secondaryText,

@@ -11,7 +11,7 @@ import {
   Typography,
   TypographyProps,
 } from "@mui/material";
-import React, { useState } from "react";
+import { useState } from "react";
 import TooltipProvider from "../TooltipProvider";
 
 export default function EditableLabel(props: EditableLabelProps) {

@@ -1,5 +1,5 @@
 import { Stack, StackProps } from "@mui/material";
-import React, { PropsWithChildren } from "react";
+import { PropsWithChildren } from "react";
 
 export default function CenteredStack(props: CenteredStackPropsType) {
   const { children, sx = {}, ...otherProps } = props;

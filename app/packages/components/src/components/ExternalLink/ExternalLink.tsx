@@ -1,9 +1,9 @@
 import React, { DetailedHTMLProps } from "react";
 
 export const useExternalLink = (
-  href?: string
+  _href?: string
 ): React.MouseEventHandler<HTMLAnchorElement> | undefined => {
-  return;
+  return undefined;
 };
 
 const ExternalLink: React.FC<
