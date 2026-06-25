@@ -2,8 +2,6 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import type Spotlight from "./index";
-
 export interface At {
   description: string;
   offset?: number;
@@ -56,14 +54,6 @@ export type Request<K, V> = (key: K) => Promise<{
   previous?: K;
 }>;
 
-export type Show<K, V> = (ctx: {
-  id: ID;
-  dimensions: [number, number];
-  element: HTMLDivElement;
-  spotlight: Spotlight<K, V>;
-  zooming: boolean;
-}) => number | Promise<number>;
-
 export interface SpotlightConfig<K, V> {
   at?: At;
   key: K;
@@ -79,7 +69,6 @@ export interface SpotlightConfig<K, V> {
   hideItem: Hide;
   onItemClick?: ItemClick<K, V>;
   rowAspectRatioThreshold: (width: number) => number;
-  showItem: Show<K, V>;
 }
 
 export type Updater = (id: ID) => void;

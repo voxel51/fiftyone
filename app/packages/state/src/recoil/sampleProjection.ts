@@ -24,6 +24,7 @@ import {
   VECTOR_FIELD,
 } from "@fiftyone/utilities";
 import { selector } from "recoil";
+import { groupField } from "./groups";
 import { fullSchema } from "./schema";
 
 // label container types → their list subfield (db) name; single labels are absent
@@ -69,6 +70,10 @@ const OVERLAY_LEAVES = [
   "closed",
   "filled",
   "support",
+  // 3D detection (cuboid) geometry — the 3D label processor projects from these
+  "location",
+  "dimensions",
+  "rotation",
 ];
 
 // sample/frame identifier + media fields the response always needs (cache key,
@@ -141,8 +146,13 @@ export const gridSampleFields = selector<string[]>({
     const schema = get(fullSchema);
     const overlay: string[] = [];
     walk(schema, "", overlay, []);
+    // grouped datasets: include the group field so the modal can resolve a clicked
+    // sample's group (useExpandSample reads `<group>._id`)
+    const group = get(groupField);
     // mask/mask_path still fetched inline; splitting into blobs awaits the backend EAV refactor
-    return Array.from(new Set([...IDENTIFIERS, ...overlay]));
+    return Array.from(
+      new Set([...IDENTIFIERS, ...overlay, ...(group ? [group] : [])])
+    );
   },
 });
 

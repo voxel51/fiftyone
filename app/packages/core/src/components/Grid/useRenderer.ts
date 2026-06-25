@@ -1,6 +1,6 @@
-import type { Hide, ID, Show } from "@fiftyone/spotlight";
+import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { LookerCache } from "./types";
 import useFontSize from "./useFontSize";
 import { useGridCustomRendererItem } from "./useGridCustomRendererItem";
@@ -63,26 +63,16 @@ export default function useRenderer({
     );
   }, [cache, getFontSize, itemUpdater]);
 
-  const detachItem = useCallback(
-    (id: ID) => cache.get(id.description)?.detach(),
-    [cache]
-  );
-
-  const hideItem = useCallback<Hide>(
-    ({ id }) => cache.hide(id.description),
-    [cache]
-  );
-
-  // Shared create-or-reuse for both render paths. Reuse re-attaches only — re-running
-  // the update would postMessage an already-transferred mask buffer → DataCloneError →
-  // overlays vanish. A no-op until the sample hydrates. `onCreate` runs once, only for
-  // a freshly built looker.
+  // Create-or-reuse a tile's looker. Reuse re-attaches only — re-running the update
+  // would postMessage an already-transferred mask buffer → DataCloneError → overlays
+  // vanish. A no-op until the sample hydrates. `onCreate` runs once, only for a freshly
+  // built looker.
   const mountOrReuse = useCallback(
     (
       id: ID,
       element: HTMLElement,
       dimensions: [number, number],
-      opts?: { zooming?: boolean; onCreate?: (item: CacheItem) => void }
+      opts?: { onCreate?: (item: CacheItem) => void }
     ): CacheItem | null => {
       const key = id.description;
 
@@ -91,11 +81,6 @@ export default function useRenderer({
         cached.attach(element, dimensions, getFontSize());
         cache.show(key);
         return cached;
-      }
-
-      // scrolling fast — build nothing.
-      if (opts?.zooming) {
-        return null;
       }
 
       const ss = store as unknown as WeakMap<ID, GridNode>;
@@ -122,27 +107,7 @@ export default function useRenderer({
     [cache, getFontSize, selectSample, store]
   );
 
-  const showItem = useCallback<Show<number, fos.Sample>>(
-    ({ id, element, dimensions, spotlight, zooming }) => {
-      const key = id.description;
-      if (cache.isShown(key)) {
-        return cache.sizeOf(key);
-      }
-      const item = mountOrReuse(id, element, dimensions, {
-        zooming,
-        onCreate: (created) =>
-          created.addEventListener("refresh", () => {
-            cache.isShown(key) &&
-              spotlight.sizeChange(key, created.getSizeBytesEstimate());
-          }),
-      });
-      return item ? cache.sizeOf(key) : 0;
-    },
-    [cache, mountOrReuse]
-  );
-
-  // Attach used by the InfiniteGrid: shares create-or-reuse with `showItem`, then
-  // applies the per-looker update Spotlight's engine would (InfiniteGrid has none).
+  // Attach a tile's looker, then apply the per-looker update on a fresh build.
   const attachItem = useCallback(
     (id: ID, element: HTMLElement, dimensions: [number, number]) => {
       mountOrReuse(id, element, dimensions, {
@@ -172,13 +137,5 @@ export default function useRenderer({
     lookerOptions,
     attachItem,
     releaseItem,
-    renderer: useMemo(
-      () => ({
-        detachItem,
-        hideItem,
-        showItem,
-      }),
-      [detachItem, hideItem, showItem]
-    ),
   };
 }

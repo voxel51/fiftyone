@@ -252,6 +252,9 @@ const useSpotlightPager = ({
                   fields,
                   view,
                   filters: base.filters,
+                  // the ids came from a slice-filtered spine; resolve the same slice
+                  // here or `select(ids)` finds nothing in the default-slice view
+                  filter: base.filter,
                   sortBy: base.sortBy as string | undefined,
                   desc: base.desc as boolean | undefined,
                   hint: base.hint as string | undefined,

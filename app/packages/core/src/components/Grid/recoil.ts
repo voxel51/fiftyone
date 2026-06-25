@@ -188,19 +188,6 @@ export const gridAspectRatio = selector<string>({
     ),
 });
 
-// Phase 2 A/B: route auto-AR through the spine engine (justified layout) instead
-// of Spotlight, so the two can be compared before Spotlight is retired. Default
-// off keeps auto on Spotlight.
-export const gridEngineAuto = atom<boolean>({
-  key: "gridEngineAuto",
-  default: false,
-  effects: [
-    fos.getBrowserStorageEffectForKey("gridEngineAuto", {
-      valueClass: "boolean",
-    }),
-  ],
-});
-
 /** Parse a grid aspect-ratio setting to a numeric w/h ratio; "auto"/invalid -> null. */
 export const parseAspectRatio = (value: string): number | null => {
   if (!value || value === "auto") return null;

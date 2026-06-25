@@ -23,6 +23,9 @@ export interface SamplesRequest {
   exclude?: string[];
   view: unknown;
   filters?: unknown;
+  // group slice / sample filter (e.g. {group: {slice}}); selecting by id needs it so
+  // the server resolves the same slice the ids came from, else the view excludes them
+  filter?: unknown;
   dynamicGroup?: unknown;
   sortBy?: string;
   desc?: boolean;
