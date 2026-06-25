@@ -254,7 +254,10 @@ def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
     original_fields = fields
     is_scalar = etau.is_str(fields)
     all_fields = foau.list_valid_annotation_fields(
-        sample_collection, require_app_support=True, flatten=True
+        sample_collection,
+        require_app_support=True,
+        flatten=True,
+        include_frames=True,
     )
     if is_scalar:
         fields = [fields]
@@ -441,8 +444,10 @@ def _preserve_applied_ontology(
 ) -> dict:
     # Carries a stored applied_ontology reference through regeneration.
     # Dangling references are not re-validated here; the next save handles it.
-    stored_label_schemas = sample_collection._dataset._doc.label_schemas or {}
-    stored_field_schema = stored_label_schemas.get(field_name) or {}
+    stored_field_schema = (
+        sample_collection._dataset._doc.get_stored_label_schema(field_name)
+        or {}
+    )
     applied_ontology = stored_field_schema.get(foac.APPLIED_ONTOLOGY)
     if applied_ontology is not None:
         label_schema[foac.APPLIED_ONTOLOGY] = applied_ontology

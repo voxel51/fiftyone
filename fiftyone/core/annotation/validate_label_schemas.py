@@ -62,9 +62,14 @@ def validate_label_schemas(
     elif fields is None:
         fields = sorted(label_schema.keys())
 
-    all_fields = sample_collection.get_field_schema(flat=True)
+    all_fields = dict(sample_collection.get_field_schema(flat=True))
+    if sample_collection._has_frame_fields():
+        frame_fields = sample_collection.get_frame_field_schema(flat=True)
+        for name, field in frame_fields.items():
+            all_fields[f"frames.{name}"] = field
+
     supported_fields = foau.list_valid_annotation_fields(
-        sample_collection, flatten=True
+        sample_collection, flatten=True, include_frames=True
     )
     exceptions = []
     for field_name in fields:

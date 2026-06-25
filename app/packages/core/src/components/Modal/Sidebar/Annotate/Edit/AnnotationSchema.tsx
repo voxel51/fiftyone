@@ -1,7 +1,6 @@
 import {
   FRAMES_PREFIX,
   stripReservedLabelAttributes,
-  toFrameEnginePath,
   useActiveAnnotationSampleId,
   useAnnotationEngine,
 } from "@fiftyone/annotation";
@@ -231,17 +230,14 @@ const useHandleSchemaChange = (readOnly: boolean) => {
       if (isEqual(value, data)) return;
 
       // address the engine in its own namespace: the anchor ref carries the
-      // track `instanceId` and the present `frame` for a video frame label, and
-      // names the field by its full `frames.<field>` path. Use the LIVE field
-      // for the path name (a mid-edit field move tracks through `field`), but
-      // re-prefix it when the ref says this is a frame field. With no ref
-      // (externally-managed atoms) fall back to the field + doc id, already
-      // correct for the sample-level labels those carry.
+      // track `instanceId` and the present `frame` for a video frame label. The
+      // field is already the full path (`frames.<field>` for a frame field) — a
+      // mid-edit field move tracks through it — so name the ref by it directly.
       const editingRef = editingRefRef.current;
       const isFrameField = editingRef?.path?.startsWith(FRAMES_PREFIX) ?? false;
       const ref = {
         sample: sampleRef.current,
-        path: isFrameField ? toFrameEnginePath(field) : field,
+        path: field,
         instanceId:
           editingRef?.instanceId ??
           (data as { _id?: string })?._id ??

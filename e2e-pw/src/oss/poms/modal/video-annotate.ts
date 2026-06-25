@@ -155,6 +155,23 @@ export class VideoAnnotatePom {
     // role="button" whose accessible name bubbles up "New TD".
     await this.page.locator('button[aria-label="New TD"]').click();
   }
+
+  /**
+   * The distinct fields of the overlays currently rendered on the canvas.
+   * Canvas overlays are PIXI (not DOM), so this reads the scene through the
+   * `__FO_PLAYWRIGHT_SCENE_OVERLAY_FIELDS` e2e affordance the surface exposes —
+   * the only handle a spec has on what the canvas is actually painting.
+   */
+  async canvasOverlayFields(): Promise<string[]> {
+    return this.page.evaluate(
+      () =>
+        (
+          window as unknown as {
+            __FO_PLAYWRIGHT_SCENE_OVERLAY_FIELDS?: () => string[];
+          }
+        ).__FO_PLAYWRIGHT_SCENE_OVERLAY_FIELDS?.() ?? []
+    );
+  }
 }
 
 class VideoAnnotateAsserter {
@@ -193,5 +210,12 @@ class VideoAnnotateAsserter {
     await expect
       .poll(async () => (await this.va.listedLabels()).length)
       .toBe(expected);
+  }
+
+  /** Assert whether the canvas currently renders any overlay for `field`. */
+  async canvasRendersField(field: string, rendered = true) {
+    await expect
+      .poll(async () => (await this.va.canvasOverlayFields()).includes(field))
+      .toBe(rendered);
   }
 }

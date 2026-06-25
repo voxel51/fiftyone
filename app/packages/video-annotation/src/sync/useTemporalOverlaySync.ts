@@ -19,8 +19,8 @@ import { isTemporalDetectionsField } from "@fiftyone/utilities";
 import { type MutableRefObject, useEffect, useRef } from "react";
 import { frameAt, usePlayhead } from "@fiftyone/playback";
 import {
-  useActiveModalPaths,
   useTemporalDetectionFieldPaths,
+  useVisibleLabelSchemas,
 } from "../state/accessors";
 import type { FrameLabelReader } from "../tracks/frameTracks";
 import { getModalSampleFrameRate } from "../utils/modalSample";
@@ -219,7 +219,7 @@ const useOverlayDiff = (
   scene: Scene,
   canonicalMediaReady: boolean,
   temporalSample: Record<string, unknown>,
-  activePathsList: readonly string[],
+  activePaths: ReadonlySet<string>,
   overlaysRef: MutableRefObject<Map<string, TemporalOverlay>>,
   currentFrameRef: MutableRefObject<number | null>
 ): void => {
@@ -228,7 +228,6 @@ const useOverlayDiff = (
       return;
     }
 
-    const activePaths = new Set(activePathsList);
     syncTemporalOverlays({
       scene,
       sample: temporalSample,
@@ -242,7 +241,7 @@ const useOverlayDiff = (
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scene, temporalSample, canonicalMediaReady, activePathsList]);
+  }, [scene, temporalSample, canonicalMediaReady, activePaths]);
 };
 
 /** Push the playhead frame into each tracked overlay on playhead changes. */
@@ -304,14 +303,18 @@ export function useTemporalOverlaySync(
   const overlaysRef = useRef<Map<string, TemporalOverlay>>(new Map());
 
   const temporalSample = useEngineTemporalSample();
-  const activePathsList = useActiveModalPaths();
+  // Gate on the sidebar's visible set (annotation-active ∩ explore-active) so a
+  // schema-manager deactivation evicts the TD overlay from the canvas too —
+  // matching the timeline + sidebar. (Was explore-active only, which the schema
+  // manager never touches.)
+  const activePaths = useVisibleLabelSchemas();
   const currentFrameRef = useCurrentFrameRef();
 
   useOverlayDiff(
     scene,
     canonicalMediaReady,
     temporalSample,
-    activePathsList,
+    activePaths,
     overlaysRef,
     currentFrameRef
   );

@@ -3,7 +3,6 @@
  */
 
 import {
-  toFrameEnginePath,
   useAnnotationEngine,
   useAnnotationEventHandler,
 } from "@fiftyone/annotation";
@@ -40,21 +39,17 @@ const useRegisterDrawHandler = ({
   registerHandler: RegisterLighterHandler;
 }): void => {
   const detectionMode = useDetectionMode();
-  const stream = useFrameLabelsStream();
 
   registerHandler(
     "lighter:overlay-create",
     useCallback(() => {
       if (detectionMode.detectionModeActive) {
-        // Pin the destination to the frame engine path. The schema only exposes
-        // the sample-level detection field, so the default resolution would
-        // stamp that path on the overlay and route the write to the sample
-        // store; the seam maps the relative field to `frames.<field>`.
-        detectionMode.create(
-          stream ? toFrameEnginePath(stream.labelsField) : undefined
-        );
+        // The schema exposes the frame field at its real `frames.<field>` path,
+        // so default field resolution stamps it and the write routes to the
+        // FrameStore — no pinned destination needed.
+        detectionMode.create();
       }
-    }, [detectionMode, stream])
+    }, [detectionMode])
   );
 };
 

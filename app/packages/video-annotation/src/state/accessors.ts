@@ -3,7 +3,6 @@
  */
 
 import {
-  activeFields,
   colorScheme,
   colorSeed,
   datasetName,
@@ -19,8 +18,11 @@ import {
   type Stage,
   TEMPORAL_DETECTIONS_FIELD,
 } from "@fiftyone/utilities";
+import { useAtomValue } from "jotai";
+import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { useAnnotationContext } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
+import { visibleLabelSchemas } from "../../../core/src/components/Modal/Sidebar/Annotate/state";
 
 /**
  * Read accessors for the external recoil / jotai atoms the video surface
@@ -55,10 +57,6 @@ export const useModalSampleId = () => useRecoilValue(modalSampleId);
  */
 export const useView = (): Stage[] => (useRecoilValue(view) ?? []) as Stage[];
 
-/** Field paths active (collapsed) in the modal sidebar. */
-export const useActiveModalPaths = () =>
-  useRecoilValue(activeFields({ modal: true, expanded: false }));
-
 /** Schema paths of the dataset's temporal-detections fields. */
 export const useTemporalDetectionFieldPaths = () =>
   useRecoilValue(
@@ -80,3 +78,16 @@ export const useCurrentEditingOverlay = () =>
  */
 export const useActiveDetectionField = (): string | null =>
   useAnnotationContext().lastUsed.fieldFor(DETECTION);
+
+/**
+ * The label paths visible in the annotate sidebar — annotation-active ∩
+ * explore-active — in the engine namespace (frame fields as `frames.*`). The
+ * canvas overlays and timeline tracks gate rendering on this set so that
+ * deactivating a field in the schema manager (or hiding it in Explore) hides it
+ * everywhere, exactly like the sidebar. Returns a referentially-stable set so
+ * the bridge's `paths` scope only re-creates on a real visibility change.
+ */
+export const useVisibleLabelSchemas = (): ReadonlySet<string> => {
+  const visible = useAtomValue(visibleLabelSchemas);
+  return useMemo(() => new Set(visible), [visible]);
+};
