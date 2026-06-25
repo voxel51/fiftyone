@@ -21,7 +21,12 @@ import {
   resolveVisibleAttribute,
 } from "./evaluateWhen";
 import { generatePrimitiveSchema } from "./schemaHelpers";
-import { buildTrackFanOut, trackLevelPartial } from "./trackFanOut";
+import type { TrackEditSplit } from "./trackFanOut";
+import {
+  buildForwardFill,
+  buildTrackFanOut,
+  splitTrackEdit,
+} from "./trackFanOut";
 import { useAnnotationContext } from "./useAnnotationContext";
 import { current } from "./useAnnotationContext/selectors";
 
@@ -249,14 +254,32 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         value as Record<string, unknown>
       );
 
-      // A video frame label belongs to a track, so a track-level edit (label,
-      // index, attributes — everything but geometry) applies to EVERY frame the
-      // instance appears on; geometry stays on this frame. Image / sample-level
-      // labels have no sibling frames, so this is empty for them.
-      const trackWrites =
+      // A video frame label belongs to a track. A static track-level edit
+      // (label, index, non-dynamic attributes) applies to EVERY frame the
+      // instance appears on; a schema-declared dynamic attribute carries
+      // per-frame meaning, so it forward-fills from this frame to the track's
+      // next change. Geometry stays on this frame; image / sample-level labels
+      // have no sibling frames, so both are empty for them.
+      const dynamicKeys = new Set(
+        allAttributes
+          .filter((attr) => attr.dynamic && attr.name)
+          .map((attr) => attr.name as string)
+      );
+
+      const { trackPartial, dynamicPartial }: TrackEditSplit =
         isFrameField && ref.frame != null
-          ? buildTrackFanOut(engine, ref, trackLevelPartial(persistableValue))
-          : [];
+          ? splitTrackEdit(persistableValue, dynamicKeys)
+          : { trackPartial: {}, dynamicPartial: {} };
+
+      const trackWrites = [
+        ...buildTrackFanOut(engine, ref, trackPartial),
+        ...buildForwardFill(
+          engine,
+          ref,
+          dynamicPartial,
+          previous as Record<string, unknown>
+        ),
+      ];
 
       // One engine transaction is one undo unit: the engine captures
       // before-values and the engine bridge pushes the single value-based entry.

@@ -3,6 +3,7 @@ import type { LabelData } from "@fiftyone/utilities";
 import { describe, expect, it } from "vitest";
 import {
   buildTracksFromIndex,
+  parseSubTrackId,
   type FrameOverlay,
   type IndexInstance,
 } from "./frameTracks";
@@ -33,14 +34,23 @@ function det(over: Partial<LabelData> = {}): LabelData {
   } as LabelData;
 }
 
-function build(index: IndexInstance[], overlay: FrameOverlay = new Map()) {
+function build(
+  index: IndexInstance[],
+  overlay: FrameOverlay = new Map(),
+  dynamicAttributes: string[] = []
+) {
   return buildTracksFromIndex({
     path: "frames.detections",
     index,
     overlay,
     fps: FPS,
     resolveColor: () => "#fff",
+    dynamicAttributes,
   });
+}
+
+function subTracks(tracks: Track[]) {
+  return tracks.filter((t) => parseSubTrackId(t.id) !== null);
 }
 
 function presence(track: Track) {
@@ -136,5 +146,74 @@ describe("buildTracksFromIndex", () => {
     ]);
 
     expect(build([indexInstance({ segments: [[1, 3]] })], overlay)).toEqual([]);
+  });
+});
+
+describe("buildTracksFromIndex dynamic-attribute sub-tracks", () => {
+  it("emits a sub-track from the index value runs after its parent", () => {
+    const tracks = build(
+      [
+        indexInstance({
+          segments: [[1, 4]],
+          attributeSegments: {
+            signal: [
+              [1, 2, "off"],
+              [3, 4, "left"],
+            ],
+          },
+        }),
+      ],
+      new Map(),
+      ["signal"]
+    );
+
+    expect(tracks).toHaveLength(2);
+    const [parent, child] = tracks;
+    expect(parent.id).toBe("inst-a");
+    expect(parseSubTrackId(child.id)).toEqual({
+      parentId: "inst-a",
+      attr: "signal",
+    });
+    expect(child.events.map((e) => e.label)).toEqual(["off", "left"]);
+    expect(child.events[0]).toMatchObject({
+      startSec: 0,
+      endSec: 2 / FPS,
+      data: { value: "off" },
+    });
+  });
+
+  it("overlays the live value at a dirty frame onto the baseline runs", () => {
+    // Baseline says "off" across 1–4; the overlay edits frame 3 to "left",
+    // so the run splits at the dirty frame without a whole-clip walk.
+    const overlay: FrameOverlay = new Map([
+      [3, [det({ signal: "left" } as Partial<LabelData>)]],
+    ]);
+
+    const tracks = build(
+      [
+        indexInstance({
+          segments: [[1, 4]],
+          attributeSegments: { signal: [[1, 4, "off"]] },
+        }),
+      ],
+      overlay,
+      ["signal"]
+    );
+
+    const [, child] = tracks;
+    expect(child.events.map((e) => e.label)).toEqual(["off", "left", "off"]);
+    expect(child.events.map((e) => e.data)).toEqual([
+      { value: "off" },
+      { value: "left" },
+      { value: "off" },
+    ]);
+  });
+
+  it("emits no sub-tracks when no dynamic attributes are requested", () => {
+    const tracks = build([
+      indexInstance({ attributeSegments: { signal: [[1, 3, "off"]] } }),
+    ]);
+
+    expect(subTracks(tracks)).toHaveLength(0);
   });
 });

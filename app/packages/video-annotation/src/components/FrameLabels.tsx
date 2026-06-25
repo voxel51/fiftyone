@@ -16,6 +16,7 @@ import {
   useColorScheme,
   useColorSeed,
   useDatasetName,
+  useDynamicAttributeNames,
   useFrameLabelFields,
   useGroupSlice,
   useModalSampleId,
@@ -38,10 +39,15 @@ import {
 } from "../streams/frameLabelsStream";
 import {
   buildTracksFromIndex,
+  parseSubTrackId,
   type FrameOverlay,
   type PerInstanceLabel,
 } from "../tracks/frameTracks";
 import { useVideoLabelsIndex } from "../hooks/useVideoLabelsIndex";
+import {
+  useTrackExpansion,
+  type TrackExpansion,
+} from "../tracks/useTrackExpansion";
 import { LABELS_STREAM_ID } from "../utils/ids";
 import { getModalSampleFrameRate } from "../utils/modalSample";
 import { resolveTrackExtentEdit } from "../tracks/trackExtentEdit";
@@ -78,7 +84,17 @@ type TrackDecoration = BaseTrackDecoration & {
     newEndSec: number,
     mode: "resize-start" | "resize-end" | "move"
   ) => void;
+  depth?: number;
+  isChild?: boolean;
+  height?: number;
+  expansionGutter?: boolean;
+  expandable?: boolean;
+  expanded?: boolean;
+  onToggleExpand?: () => void;
 };
+
+/** Row height (px) for a dynamic-attribute sub-track — shorter than a parent. */
+const SUB_TRACK_ROW_HEIGHT = 22;
 
 /** Resolves the row color for a per-frame object track. */
 type ObjectTrackColorResolver = (
@@ -199,7 +215,10 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
  * rebuild on each engine commit (cheap: only the dirty frames are read).
  * `resolved` flips true once the index settles, gating the pin bootstrap.
  */
-function useFrameDerivedTracks(resolveColor: ObjectTrackColorResolver): {
+function useFrameDerivedTracks(
+  resolveColor: ObjectTrackColorResolver,
+  dynamicAttributes: string[]
+): {
   tracks: Track[];
   resolved: boolean;
 } {
@@ -241,6 +260,7 @@ function useFrameDerivedTracks(resolveColor: ObjectTrackColorResolver): {
         overlay: readDirtyOverlay(engine, sampleId, path),
         fps: stream.fps,
         resolveColor,
+        dynamicAttributes,
       })
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps -- engineVersion is the invalidation signal
@@ -252,6 +272,7 @@ function useFrameDerivedTracks(resolveColor: ObjectTrackColorResolver): {
     resolveColor,
     indexByPath,
     loaded,
+    dynamicAttributes,
     engineVersion,
   ]);
 
@@ -356,10 +377,17 @@ function useTrackColorResolvers(): {
 }
 
 /** Build the row decorator that wires presence-bar edits + menu per kind. */
-function useTrackDecorator(
-  sample: ModalSample | undefined,
-  objectTracks: Track[]
-): (track: Track) => TrackDecoration {
+function useTrackDecorator({
+  sample,
+  objectTracks,
+  expansion,
+  expandableParentIds,
+}: {
+  sample: ModalSample | undefined;
+  objectTracks: Track[];
+  expansion: TrackExpansion;
+  expandableParentIds: ReadonlySet<string>;
+}): (track: Track) => TrackDecoration {
   const baseDecorate = useVideoTrackDecorator();
   const actions = useVideoSurfaceActions();
   const stream = useFrameLabelsStream();
@@ -377,15 +405,32 @@ function useTrackDecorator(
   // id + label of every object track, the universe of merge targets; each row
   // filters itself out below.
   const mergeCandidates = useMemo(
-    () => objectTracks.map((t) => ({ id: t.id, label: t.label })),
+    () =>
+      objectTracks
+        .filter((t) => !parseSubTrackId(t.id))
+        .map((t) => ({ id: t.id, label: t.label })),
     [objectTracks]
   );
 
   return useCallback(
     (track: Track): TrackDecoration => {
+      // A sub-track row links its hover / selection to the PARENT instance and
+      // renders as an indented child; it owns no presence-bar edits.
+      const sub = parseSubTrackId(track.id);
+      if (sub) {
+        const parentLink = baseDecorate({ ...track, id: sub.parentId });
+        return {
+          ...parentLink,
+          expansionGutter: true,
+          depth: 1,
+          isChild: true,
+          height: SUB_TRACK_ROW_HEIGHT,
+        };
+      }
+
       const base = baseDecorate(track);
       if (!fps) {
-        return base;
+        return { ...base, expansionGutter: true };
       }
 
       // A TD row is identified by its structured event payload; anything else
@@ -396,7 +441,7 @@ function useTrackDecorator(
       const isObjectTrack = tdEvent?.detectionId === undefined;
 
       if (isObjectTrack && stream) {
-        return decorateObjectTrack({
+        const decorated = decorateObjectTrack({
           track,
           base,
           snapStepSec,
@@ -407,20 +452,35 @@ function useTrackDecorator(
           splitFrameRef,
           mergeTargets: mergeCandidates.filter((c) => c.id !== track.id),
         });
+
+        if (!expandableParentIds.has(track.id)) {
+          return { ...decorated, expansionGutter: true };
+        }
+
+        return {
+          ...decorated,
+          expansionGutter: true,
+          expandable: true,
+          expanded: expansion.isExpanded(track.id),
+          onToggleExpand: () => expansion.toggle(track.id),
+        };
       }
 
       // Object track with no stream yet: can't wire frame edits — base only.
       if (isObjectTrack) {
-        return base;
+        return { ...base, expansionGutter: true };
       }
 
-      return decorateTemporalDetectionTrack({
-        tdEvent: tdEvent as TemporalDetectionEventData,
-        base,
-        snapStepSec,
-        fps,
-        actions,
-      });
+      return {
+        ...decorateTemporalDetectionTrack({
+          tdEvent: tdEvent as TemporalDetectionEventData,
+          base,
+          snapStepSec,
+          fps,
+          actions,
+        }),
+        expansionGutter: true,
+      };
     },
     [
       baseDecorate,
@@ -430,6 +490,8 @@ function useTrackDecorator(
       stream,
       getCurrentFrame,
       mergeCandidates,
+      expansion,
+      expandableParentIds,
     ]
   );
 }
@@ -449,18 +511,50 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   const { resolveObjectColor, resolveTemporalDetectionColor } =
     useTrackColorResolvers();
 
+  // Dynamic attributes are declared on the primary labels stream's field.
+  const stream = useFrameLabelsStream();
+  const path = stream ? `frames.${stream.labelsField}` : null;
+  const dynamicAttributeNames = useDynamicAttributeNames(path);
+
   const { tracks: frameTracks, resolved: frameTracksResolved } =
-    useFrameDerivedTracks(resolveObjectColor);
+    useFrameDerivedTracks(resolveObjectColor, dynamicAttributeNames);
   const temporalDetectionTracks = useTemporalDetectionTracks(
     sample,
     resolveTemporalDetectionColor
   );
 
+  // Object tracks (with their sub-tracks interleaved) followed by TD tracks.
   const tracks = useMemo(
     () => [...frameTracks, ...temporalDetectionTracks],
     [frameTracks, temporalDetectionTracks]
   );
-  const pinned = useMemo(() => tracks.map((t) => t.id), [tracks]);
+
+  const expansion = useTrackExpansion();
+
+  // Parents carrying at least one sub-track — only these get an expand chevron.
+  const expandableParentIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const track of tracks) {
+      const sub = parseSubTrackId(track.id);
+      if (sub) {
+        ids.add(sub.parentId);
+      }
+    }
+
+    return ids;
+  }, [tracks]);
+
+  // Hide a collapsed parent's sub-track rows; everything else renders.
+  const visibleTracks = useMemo(
+    () =>
+      tracks.filter((track) => {
+        const sub = parseSubTrackId(track.id);
+        return !sub || expansion.expandedIds.has(sub.parentId);
+      }),
+    [tracks, expansion.expandedIds]
+  );
+
+  const pinned = useMemo(() => visibleTracks.map((t) => t.id), [visibleTracks]);
 
   // Bootstrap on frame-tracks-resolved, not `tracks.length`: TD tracks resolve
   // synchronously and would otherwise trip the empty→ready flip before frame
@@ -468,12 +562,17 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   const ready = frameTracksResolved;
 
   useScrollTrackToAnchor();
-  const decorateTrack = useTrackDecorator(sample, frameTracks);
+  const decorateTrack = useTrackDecorator({
+    sample,
+    objectTracks: frameTracks,
+    expansion,
+    expandableParentIds,
+  });
 
   return (
     <TrackProvider
       key={ready ? "ready" : "init"}
-      tracks={tracks}
+      tracks={visibleTracks}
       initialPinnedIds={pinned}
     >
       <TimelineWithTracks

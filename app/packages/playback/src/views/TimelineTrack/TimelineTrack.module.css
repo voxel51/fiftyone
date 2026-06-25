@@ -22,6 +22,59 @@
   flex-shrink: 0;
 }
 
+/* Child (sub-track) row — slightly dimmed so it reads as subordinate to its
+   parent object track. The value-segmented bars stay full-strength. */
+.childRow {
+  opacity: 0.92;
+}
+
+/* Fixed gutter so rows with and without an expand chevron keep their labels
+   aligned. Sized to the Xs icon button. */
+.chevronSlot {
+  width: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.chevron {
+  opacity: 0.7;
+  transition: opacity 0.1s;
+}
+
+.chevron:hover {
+  opacity: 1;
+}
+
+/* Elbow connector standing in for a child row's color dot — a short vertical
+   stem from the parent above joined to a horizontal tick toward the label,
+   so the row visibly nests. */
+.rail {
+  position: relative;
+  width: 8px;
+  height: 100%;
+  flex-shrink: 0;
+}
+
+.rail::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0;
+  bottom: 50%;
+  border-left: 1px solid var(--color-content-border-default);
+}
+
+.rail::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  width: 6px;
+  border-top: 1px solid var(--color-content-border-default);
+}
+
 .labelText {
   font-size: 0.72rem;
   color: var(--color-content-text-primary);

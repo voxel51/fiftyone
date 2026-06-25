@@ -80,6 +80,9 @@ export interface AttributeConfig {
   range?: [number, number];
   default?: string | number | boolean | (string | number)[]; // Array for list types
   read_only?: boolean;
+  // Attribute value may vary frame-to-frame within a track; drives sub-track
+  // rows and excludes the attribute from whole-track propagation.
+  dynamic?: boolean;
   when?: AttributeCondition;
   _source?: string;
   taxonomy?: string;
@@ -121,6 +124,7 @@ export interface AttributeFormData {
   default: string;
   listDefault: (string | number)[]; // For list types
   read_only: boolean;
+  dynamic: boolean;
   when?: AttributeCondition;
   _source?: string;
   valuesMode: ValuesMode;
@@ -305,6 +309,7 @@ export const createDefaultFormData = (): AttributeFormData => ({
   default: "",
   listDefault: [],
   read_only: false,
+  dynamic: false,
   valuesMode: VALUES_MODE.simple,
 });
 
@@ -340,6 +345,7 @@ export const toFormData = (config: AttributeConfig): AttributeFormData => {
     default: defaultStr,
     listDefault,
     read_only: config.read_only || false,
+    dynamic: config.dynamic || false,
     when: config.when,
     _source: config._source,
     valuesMode: config.taxonomy ? VALUES_MODE.taxonomy : VALUES_MODE.simple,
@@ -399,6 +405,7 @@ export const toAttributeConfig = (data: AttributeFormData): AttributeConfig => {
       component: data.component || undefined,
       range,
       read_only: data.read_only || undefined,
+      dynamic: data.dynamic || undefined,
       taxonomy: data.taxonomy,
     };
   }
@@ -411,6 +418,7 @@ export const toAttributeConfig = (data: AttributeFormData): AttributeConfig => {
     range,
     default: defaultValue,
     read_only: data.read_only || undefined,
+    dynamic: data.dynamic || undefined,
   };
 };
 

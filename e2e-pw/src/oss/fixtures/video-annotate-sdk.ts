@@ -49,6 +49,19 @@ export interface SeedVideoAnnotationOptions {
    * polyline. Implied true whenever {@link polylineSampleIndices} is non-empty.
    */
   withPolylineField?: boolean;
+  /**
+   * Optional string attribute declared `dynamic` in the `frames.detections`
+   * schema (a dropdown over `values`) and seeded to `values[0]` on every frame
+   * of the tracked detection — so tests can exercise dynamic-attribute
+   * forward-fill propagation.
+   */
+  dynamicAttribute?: { name: string; values: string[] };
+  /**
+   * Multiple dynamic attributes (each a dropdown over its `values`, seeded to
+   * `values[0]` on every frame of the tracked detection). Use when a test needs
+   * more than one sub-track row. Takes precedence over {@link dynamicAttribute}.
+   */
+  dynamicAttributes?: Array<{ name: string; values: string[] }>;
 }
 
 /**
@@ -77,6 +90,8 @@ export class VideoAnnotateSDK {
       maskedSampleIndices = [],
       polylineSampleIndices = [],
       withPolylineField = false,
+      dynamicAttribute,
+      dynamicAttributes,
     } = options;
 
     const pyPaths = JSON.stringify(videoPaths);
@@ -87,6 +102,10 @@ export class VideoAnnotateSDK {
     const pyMasked = JSON.stringify(maskedSampleIndices);
     const pyPolyline = JSON.stringify(polylineSampleIndices);
     const pyWithPolylineField = withPolylineField ? "True" : "False";
+    // Normalize the singular + plural dynamic-attribute options into one list.
+    const dynAttrs =
+      dynamicAttributes ?? (dynamicAttribute ? [dynamicAttribute] : []);
+    const pyDynAttrs = JSON.stringify(dynAttrs);
 
     return this.loader.executePythonCode(`
 import fiftyone as fo
@@ -104,6 +123,7 @@ POLYLINE_TRACKED = set(${pyPolyline})
 # Declare + activate the polylines field whenever a track is seeded OR a
 # clean-slate polyline-create test asked for the schema only.
 POLYLINE_SCHEMA = bool(POLYLINE_TRACKED) or ${pyWithPolylineField}
+DYN_ATTRS = ${pyDynAttrs}
 DETECTIONS_FIELD = "detections"
 FRAME_DETECTIONS_PATH = "frames." + DETECTIONS_FIELD
 POLYLINES_FIELD = "polylines"
@@ -140,6 +160,10 @@ dataset.add_frame_field(
 )
 dataset.add_frame_field("detections.detections.keyframe", fo.BooleanField)
 dataset.add_frame_field("detections.detections.propagation", fo.DictField)
+for a in DYN_ATTRS:
+    dataset.add_frame_field(
+        "detections.detections." + a["name"], fo.StringField
+    )
 
 # Per-frame Polylines container (declared when polyline tracks are seeded or a
 # clean-slate create test asked for the polylines schema).
@@ -184,6 +208,7 @@ for idx, sample in enumerate(dataset.iter_samples(progress=False, autosave=True)
     if idx not in TRACKED:
         continue
     mask = np.ones((20, 20), dtype=bool) if idx in MASKED else None
+    dyn_kwargs = {a["name"]: a["values"][0] for a in DYN_ATTRS}
     for fn in range(1, total_frames(sample) + 1):
         sample.frames[fn]["detections"] = fo.Detections(
             detections=[
@@ -192,6 +217,7 @@ for idx, sample in enumerate(dataset.iter_samples(progress=False, autosave=True)
                     bounding_box=[0.3, 0.3, 0.2, 0.2],
                     index=1,
                     mask=mask,
+                    **dyn_kwargs,
                 )
             ]
         )
@@ -287,6 +313,16 @@ det_schema = {
     ],
     "classes": CLASSES,
 }
+for a in DYN_ATTRS:
+    det_schema["attributes"].append(
+        {
+            "name": a["name"],
+            "type": "str",
+            "component": "dropdown",
+            "values": a["values"],
+            "dynamic": True,
+        }
+    )
 dataset.update_label_schema(
     FRAME_DETECTIONS_PATH, det_schema, allow_new_attrs=True
 )

@@ -42,9 +42,61 @@ export class VideoAnnotatePom {
     return Array.from(new Set(ids.filter(Boolean)));
   }
 
-  /** Timeline track ids for object (frame-label) tracks — the engine instanceIds. */
+  /**
+   * Timeline track ids for object (frame-label) tracks — the engine
+   * instanceIds. Excludes TD rows (`td-…`) and dynamic-attribute sub-tracks
+   * (`<parentId>::<attr>`), so a count reflects distinct tracked instances.
+   */
   async objectTrackIds(): Promise<string[]> {
-    return (await this.trackIds()).filter((id) => !id.startsWith("td-"));
+    return (await this.trackIds()).filter(
+      (id) => !id.startsWith("td-") && !id.includes("::")
+    );
+  }
+
+  /**
+   * Wait until at least one object track has built (timeline warmup is async),
+   * then return the first object track's id. Use instead of indexing
+   * `objectTrackIds()` directly right after the surface mounts.
+   */
+  async firstObjectTrackId(): Promise<string> {
+    await expect
+      .poll(async () => (await this.objectTrackIds()).length)
+      .toBeGreaterThan(0);
+    return (await this.objectTrackIds())[0];
+  }
+
+  /**
+   * Dynamic-attribute sub-track ids under a parent object track, each
+   * `<parentId>::<attr>`. Empty while the parent is collapsed (the default).
+   */
+  async subTrackIds(parentId: string): Promise<string[]> {
+    return (await this.trackIds()).filter((id) =>
+      id.startsWith(`${parentId}::`)
+    );
+  }
+
+  /**
+   * Expand / collapse a parent track's dynamic-attribute sub-tracks. The
+   * chevron carries `data-testid`; this suite maps `getByTestId` to `data-cy`,
+   * so target the attribute directly.
+   */
+  async toggleTrackExpansion(parentId: string) {
+    await this.page
+      .locator(`[data-testid="timeline-track-expand-${parentId}"]`)
+      .first()
+      .click();
+  }
+
+  /**
+   * The value-segment bars within a sub-track row — one per coalesced run of an
+   * equal attribute value. The bar `title` carries the value (e.g. "off").
+   * Scoped to the first row copy (`track` uses `.first()`), since a pinned row
+   * mounts in both the timeline header and the drawer body on this base.
+   */
+  segmentBars(subTrackId: string): Locator {
+    return this.track(subTrackId).locator(
+      "[data-event-index]:not([data-resize-handle])"
+    );
   }
 
   /** Timeline track ids for temporal-detection rows (`td-<field>-<id>`). */

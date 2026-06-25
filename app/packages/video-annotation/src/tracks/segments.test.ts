@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   coalesce,
+  mergeAttributeRuns,
   mergePresence,
   removeFrames,
   type Segment,
@@ -114,5 +115,59 @@ describe("mergePresence", () => {
 
   it("builds presence entirely from the overlay for a new track", () => {
     expect(mergePresence([], [3, 4, 5], [3, 4, 5])).toEqual([[3, 5]]);
+  });
+});
+
+describe("mergeAttributeRuns", () => {
+  it("returns the baseline runs when nothing is dirty", () => {
+    expect(
+      mergeAttributeRuns(
+        [
+          [1, 2, "off"],
+          [3, 4, "left"],
+        ],
+        [],
+        new Map()
+      )
+    ).toEqual([
+      [1, 2, "off"],
+      [3, 4, "left"],
+    ]);
+  });
+
+  it("splits a baseline run where the overlay edits one frame's value", () => {
+    expect(
+      mergeAttributeRuns([[1, 4, "off"]], [3], new Map([[3, "left"]]))
+    ).toEqual([
+      [1, 2, "off"],
+      [3, 3, "left"],
+      [4, 4, "off"],
+    ]);
+  });
+
+  it("coalesces a dirty frame whose value matches its neighbors", () => {
+    expect(
+      mergeAttributeRuns([[1, 4, "off"]], [3], new Map([[3, "off"]]))
+    ).toEqual([[1, 4, "off"]]);
+  });
+
+  it("drops a dirty frame absent from the overlay (deleted there)", () => {
+    expect(mergeAttributeRuns([[1, 4, "off"]], [3], new Map())).toEqual([
+      [1, 2, "off"],
+      [4, 4, "off"],
+    ]);
+  });
+
+  it("adds a value run purely from the overlay when no baseline exists", () => {
+    expect(
+      mergeAttributeRuns(
+        [],
+        [1, 2],
+        new Map([
+          [1, "left"],
+          [2, "left"],
+        ])
+      )
+    ).toEqual([[1, 2, "left"]]);
   });
 });
