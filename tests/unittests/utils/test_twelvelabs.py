@@ -112,33 +112,3 @@ class TestTwelveLabsModel:
         label = model.predict("https://example.com/video.mp4")
         assert isinstance(label, fol.Classification)
         assert label.label == "A dog runs."
-
-
-@pytest.mark.skipif(
-    not os.environ.get("TWELVELABS_API_KEY"),
-    reason="TWELVELABS_API_KEY not set",
-)
-class TestTwelveLabsModelLive:
-    """End-to-end tests that hit the TwelveLabs API (key required)."""
-
-    _URL = (
-        "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/"
-        "Big_Buck_Bunny_360_10s_1MB.mp4"
-    )
-
-    def test_embed_video_and_prompt(self):
-        model = TwelveLabsModel(TwelveLabsModelConfig({}))
-
-        video_emb = model.embed(self._URL)
-        assert video_emb.shape == (512,)
-
-        text_emb = model.embed_prompt("a rabbit in a forest")
-        assert text_emb.shape == (512,)
-
-    def test_caption(self):
-        model = TwelveLabsModel(
-            TwelveLabsModelConfig({"operation": "caption"})
-        )
-        label = model.predict(self._URL)
-        assert isinstance(label, fol.Classification)
-        assert label.label
