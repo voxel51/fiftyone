@@ -213,7 +213,7 @@ describe("FrameStore re-key via compose (the split/merge primitive)", () => {
     expect(reKeyed._id).not.toBe("doc-1"); // doc id re-minted (it links nothing)
 
     // one transaction = one undo unit: drops B, restores A's content + instance
-    engine.undo();
+    engine.applyUndo(engine.lastUndoEntry()!);
     expect(store.getLabel(ref("B", 1))).toBeUndefined();
 
     const restored = store.getLabel(ref("A", 1))!;
@@ -243,7 +243,7 @@ describe("FrameStore re-key via compose (the split/merge primitive)", () => {
     expect(store.getLabel(ref("B", 2))?.bounding_box).toEqual([0, 0, 2, 2]);
     expect(store.getLabel(ref("B", 3))?.bounding_box).toEqual([0, 0, 3, 3]);
 
-    engine.undo();
+    engine.applyUndo(engine.lastUndoEntry()!);
     expect(store.getLabel(ref("A", 2))?.bounding_box).toEqual([0, 0, 2, 2]);
     expect(store.getLabel(ref("B", 2))).toBeUndefined();
   });
