@@ -3546,14 +3546,8 @@ class GroupBy(ViewStage):
         self._order_by_key = order_by_key
         # emit a per-group `_group_count`
         self._include_count = False
-        # emit `_group` (the dynamic-group value) on each doc. Off by default so
-        # plain SDK reads stay loadable; the app turns it on so it never has to
-        # re-derive the group value from the pipeline
+        # emit `_group` (the dynamic-group value) on each doc.
         self._include_group = False
-        # presort by the group key so the `$group` rides an index (IXSCAN)
-        # instead of scanning the collection. Off by default because it changes
-        # which document represents each group; the app turns it on
-        self._index_optimized = False
 
     @property
     def outputs_dynamic_groups(self):
@@ -3619,31 +3613,6 @@ class GroupBy(ViewStage):
         group_expr, _ = self._get_group_expr(sample_collection)
         return {"$addFields": {"_group": group_expr}}
 
-    def _index_presort(self, sample_collection):
-        # a `$sort` on the group key(s) lets the `$group` ride an index, but only
-        # when one exists; a presort without an index is a blocking sort (worse)
-        group_expr, _ = self._get_group_expr(sample_collection)
-        exprs = (
-            group_expr
-            if isinstance(group_expr, (list, tuple))
-            else [group_expr]
-        )
-        if not all(etau.is_str(e) and e.startswith("$") for e in exprs):
-            return None
-
-        fields = [e[1:] for e in exprs]
-        try:
-            index_info = sample_collection.get_index_information()
-        except Exception:
-            return None
-
-        for info in index_info.values():
-            keys = [k for k, _ in info.get("key", [])]
-            if keys[: len(fields)] == fields:
-                return {"$sort": {f: 1 for f in fields}}
-
-        return None
-
     def _make_flat_pipeline(self, sample_collection):
         group_expr, _ = self._get_group_expr(sample_collection)
         match_expr = self._get_mongo_match_expr()
@@ -3697,10 +3666,6 @@ class GroupBy(ViewStage):
         # sort so that first document in each group comes from a sorted list
         if self._sort_stage is not None:
             pipeline.extend(self._sort_stage.to_mongo(sample_collection))
-        elif self._index_optimized:
-            presort = self._index_presort(sample_collection)
-            if presort is not None:
-                pipeline.append(presort)
 
         if self._include_count:
             pipeline.extend(

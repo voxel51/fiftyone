@@ -125,13 +125,11 @@ async def paginate_samples(
     if int(after) > -1:
         view = view.skip(int(after) + 1)
 
-    # emit per-group counts only for the top-level paginated grouped read;
-    # `_index_optimized` presorts the group key so the count rides an index
+    # emit per-group counts only for the top-level paginated grouped read
     if dynamic_group is None and pagination_data:
         for stage in getattr(view, "_stages", []):
             if isinstance(stage, fos.GroupBy):
                 stage._include_count = True
-                stage._index_optimized = True
 
     pipeline = await get_samples_pipeline(view, sample_filter)
 
