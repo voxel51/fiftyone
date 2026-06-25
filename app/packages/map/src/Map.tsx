@@ -1,4 +1,4 @@
-import { container } from "./Map.module.css";
+import styles from "./Map.module.css";
 
 import * as foc from "@fiftyone/components";
 import { ExternalLink } from "@fiftyone/components";
@@ -269,7 +269,7 @@ const Panel: React.FC<{}> = () => {
   }
 
   return (
-    <div className={container} ref={ref}>
+    <div className={styles.container} ref={ref}>
       {loading && !length ? (
         <foc.Loading style={{ opacity: 0.5 }}>Pixelating...</foc.Loading>
       ) : mapError ? (

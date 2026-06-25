@@ -1,7 +1,5 @@
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
-import { CustomizeColor } from "@fiftyone/state";
 import { Color, cssColorNames } from "./Color";
-import { getPointIndex } from "./getPointIndex";
 import { sortStringsAlphabetically } from "./sortStringsAlphabetically";
 
 const maxLegendLineLength = 35;
@@ -123,7 +121,10 @@ const addLineBreaks = ([key, trace]) => {
   return [key, trace];
 };
 
-const getLabelColor = (key: string, setting: CustomizeColor): Color | null => {
+const getLabelColor = (
+  key: string,
+  setting: { valueColors?: ReadonlyArray<{ value: string; color: string }> | null }
+): Color | null => {
   if (!setting || !setting.valueColors) {
     return null;
   }

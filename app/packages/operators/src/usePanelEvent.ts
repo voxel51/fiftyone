@@ -11,7 +11,10 @@ type HandlerOptions = {
   params: { [name: string]: unknown };
   operator: string;
   prompt?: boolean;
-  panelId: string;
+  // Optional: the panelId is passed as triggerEvent's first argument and read
+  // from there; handlePanelEvent never reads it off the options object. Every
+  // call site omits it here, so requiring it just produced spurious TS errors.
+  panelId?: string;
   callback?: ExecutionCallback;
   currentPanelState?: any; // most current panel state
 };

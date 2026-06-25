@@ -13,6 +13,7 @@ export default function useComputeVisualization() {
 
   const prompt = useCallback(() => {
     triggerEvent(panelId, {
+      panelId,
       params: { delegate: true },
       operator: computeVisUri,
       prompt: true,

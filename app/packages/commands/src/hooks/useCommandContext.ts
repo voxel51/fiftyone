@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { CommandContext, CommandContextManager } from "../context";
+import { CommandContext } from "../context";
 import { resolveContext } from "./utils";
 
 /**

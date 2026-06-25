@@ -2,6 +2,7 @@ import { Loading, useTheme } from "@fiftyone/components";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
 import { useMemo } from "react";
+import type { Data } from "plotly.js";
 import Plot from "react-plotly.js";
 import { useRecoilValue } from "recoil";
 import { tracesToData } from "./tracesToData";
@@ -20,9 +21,17 @@ export function EmbeddingsPlot({
   const fields = useRecoilValue(fos.colorScheme).fields;
   const colorscheme = useRecoilValue(fos.colorScheme);
   const configColorscale = useRecoilValue(fos.coloring).scale;
+  // The colorscale objects carry a computed `rgb` triples array at runtime
+  // that isn't part of the relay Colorscale*Input types; read it through a
+  // cast and fall back to the config colorscale when absent.
+  type WithRgb = { rgb?: [number, number, number][] };
   const fieldColorscale =
-    colorscheme.colorscales.find((item) => item.path === labelField)?.rgb ??
-    colorscheme.defaultColorscale.rgb ??
+    (
+      colorscheme.colorscales.find(
+        (item) => item.path === labelField
+      ) as WithRgb | undefined
+    )?.rgb ??
+    (colorscheme.defaultColorscale as WithRgb)?.rgb ??
     configColorscale;
 
   const setting = useMemo(() => {
@@ -38,7 +47,7 @@ export function EmbeddingsPlot({
   } = plotSelection;
   const [zoomRev] = useZoomRevision();
   const resetZoom = useResetPlotZoom();
-  const { isLoading, traces, style, error } = usePlot(plotSelection);
+  const { isLoading, traces, style } = usePlot();
   const [dragMode, setDragMode] = usePanelStatePartial(
     "dragMode",
     "lasso",
@@ -75,14 +84,19 @@ export function EmbeddingsPlot({
     <div style={{ height: "100%" }} data-cy="embeddings-plot-container">
       {bounds?.width && (
         <Plot
-          data={data}
+          data={data as Data[]}
           style={{ zIndex: 1 }}
-          onSelected={(selected, foo) => {
-            if (!selected || selected?.points?.length === 0) return;
+          onSelected={(selected) => {
+            if (!selected?.points?.length) return;
 
-            const result = {};
-            const pointIds = [];
-            for (const p of selected.points) {
+            const result: Record<string, string[]> = {};
+            const pointIds: string[] = [];
+            // Plotly attaches `fullData` and `id` to selection points at
+            // runtime; they aren't part of @types/plotly's PlotDatum.
+            for (const p of selected.points as unknown as Array<{
+              fullData: { name: string };
+              id: string;
+            }>) {
               if (!result[p.fullData.name]) {
                 result[p.fullData.name] = [];
               }

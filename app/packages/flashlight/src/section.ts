@@ -5,10 +5,7 @@
 import { MARGIN } from "./constants";
 import { ItemData, OnItemResize, Render, RowData, Section } from "./state";
 
-import {
-  flashlightSection,
-  flashlightSectionHidden,
-} from "./styles.module.css";
+import styles from "./styles.module.css";
 
 export default class SectionElement implements Section {
   private attached: boolean = false;
@@ -39,7 +36,7 @@ export default class SectionElement implements Section {
     this.horizontal = horizontal;
     this.render = render;
 
-    this.section.classList.add(flashlightSection);
+    this.section.classList.add(styles.flashlightSection);
 
     if (horizontal) {
       this.section.setAttribute("data-cy", "flashlight-section-horizontal");
@@ -185,8 +182,8 @@ export default class SectionElement implements Section {
   show(element: HTMLDivElement, hidden: boolean, soft: boolean): void {
     if (hidden !== this.hidden) {
       hidden
-        ? this.section.classList.add(flashlightSectionHidden)
-        : this.section.classList.remove(flashlightSectionHidden);
+        ? this.section.classList.add(styles.flashlightSectionHidden)
+        : this.section.classList.remove(styles.flashlightSectionHidden);
       this.hidden = hidden;
     }
 

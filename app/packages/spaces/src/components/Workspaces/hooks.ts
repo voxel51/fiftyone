@@ -3,7 +3,7 @@ import { datasetName } from "@fiftyone/state";
 import { toSlug } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
-import { savedWorkspacesAtom } from "../../state";
+import { savedWorkspacesAtom, Workspace } from "../../state";
 import { LIST_WORKSPACES_OPERATOR, LOAD_WORKSPACE_OPERATOR } from "./constants";
 import { operatorsInitializedAtom } from "@fiftyone/operators/src/state";
 
@@ -22,11 +22,16 @@ export function useWorkspaces() {
       {},
       {
         callback: (result) => {
+          const maybeWorkspaces = (
+            result?.result as { workspaces?: Workspace[] }
+          )?.workspaces;
           setState((state) => {
             return {
               ...state,
               initialized: true,
-              workspaces: result?.result?.workspaces || [],
+              workspaces: Array.isArray(maybeWorkspaces)
+                ? maybeWorkspaces
+                : [],
               dataset: currentDataset,
             };
           });
