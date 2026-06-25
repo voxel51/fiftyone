@@ -22,7 +22,13 @@ type VideoLabelsRequestBase = {
   extended?: unknown;
 };
 
-export type GetVideoLabelsIndexRequest = VideoLabelsRequestBase;
+export type GetVideoLabelsIndexRequest = VideoLabelsRequestBase & {
+  /**
+   * Declared-dynamic attribute names to value-segment per instance. Omitted →
+   * the index returns presence + keyframes only (no `attributeSegments`).
+   */
+  dynamicAttributes?: string[];
+};
 
 export type GetVideoLabelsWindowRequest = VideoLabelsRequestBase & {
   /** First frame of the window (1-indexed, inclusive). */
@@ -46,6 +52,13 @@ export type VideoLabelIndexInstance = {
   instance: { _cls: "Instance"; _id?: string } | null;
   segments: Array<[number, number]>;
   keyframes: number[];
+  /**
+   * Per declared-dynamic attribute, run-length-encoded `[startFrame, endFrame,
+   * value]` value runs across the instance's presence. Present only when the
+   * request named `dynamicAttributes`; a frame missing the attribute yields a
+   * `null`-valued run.
+   */
+  attributeSegments?: Record<string, Array<[number, number, unknown]>>;
 };
 
 export type GetVideoLabelsIndexResponse = {

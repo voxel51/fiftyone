@@ -130,6 +130,13 @@ export interface IndexInstance {
   segments: Array<[number, number]>;
   /** Frame numbers carrying a `keyframe` flag. */
   keyframes: number[];
+  /**
+   * Per declared-dynamic attribute, RLE `[startFrame, endFrame, value]` value
+   * runs across the instance's presence. Present only when the index was
+   * fetched with `dynamicAttributes`; consumed by the dynamic-attribute
+   * sub-track read model (not the presence/keyframe timeline).
+   */
+  attributeSegments?: Record<string, Array<[number, number, unknown]>>;
 }
 
 /** Live engine labels for the dirty (edited) frames, keyed by frame number. */
