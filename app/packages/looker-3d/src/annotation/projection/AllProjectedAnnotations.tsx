@@ -1,5 +1,8 @@
+import { useRecoilValue } from "recoil";
+import { useFo3dContext } from "../../fo3d/context";
 import type { FrustumData } from "../../frustum/types";
 import {
+  showCuboidOrientationAtom,
   useCurrentSelected3dAnnotationLabel,
   useHoveredLabel3d,
 } from "../../state";
@@ -21,6 +24,8 @@ export function AllProjectedAnnotations({
   const renderModel = useRenderModel();
   const selectedLabel = useCurrentSelected3dAnnotationLabel();
   const hoveredLabel = useHoveredLabel3d();
+  const showCuboidOrientation = useRecoilValue(showCuboidOrientationAtom);
+  const { upVector } = useFo3dContext();
 
   const { intrinsics } = frustumData;
 
@@ -53,6 +58,8 @@ export function AllProjectedAnnotations({
           isSelected={detection._id === selectedId}
           isHovered={detection._id === hoveredId && !isSameAsSelected}
           isAnyLabelSelected={isAnyLabelSelected}
+          showOrientation={showCuboidOrientation}
+          upVector={upVector}
         />
       ))}
 
