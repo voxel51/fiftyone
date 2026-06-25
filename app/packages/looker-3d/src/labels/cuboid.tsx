@@ -21,7 +21,7 @@ import {
 } from "../annotation/cuboid-face-resize";
 import { useTransientCuboid } from "../annotation/store";
 import { useCuboidAnnotation } from "../annotation/useCuboidAnnotation";
-import { FO_USER_DATA } from "../constants";
+import { FO_USER_DATA, PANEL_ID_MAIN } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
 import {
   hoveredLabelAtom,
@@ -38,6 +38,7 @@ import {
   getPlaneIntersection,
   toNDC,
 } from "../utils";
+import type { HoveredLabelSource } from "../types";
 import type { OverlayProps } from "./shared";
 import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
 import { Transformable } from "./shared/TransformControls";
@@ -136,6 +137,7 @@ export interface CuboidProps extends OverlayProps {
   itemRotation: THREE.Vector3Tuple;
   lineWidth?: number;
   enableFaceResize?: boolean;
+  hoverSource?: HoveredLabelSource;
   showOrientation?: boolean;
 }
 
@@ -267,6 +269,7 @@ export const Cuboid = ({
   color,
   useLegacyCoordinates,
   enableFaceResize = false,
+  hoverSource = PANEL_ID_MAIN,
   showOrientation = false,
 }: CuboidProps) => {
   useHoverState();
@@ -342,6 +345,18 @@ export const Cuboid = ({
     isAnnotateMode,
     isSelectedForAnnotation,
   });
+
+  const setHoveredLabelFromPointer = useCallback(
+    (e: ThreeEvent<PointerEvent>) => {
+      if (hoverSource === PANEL_ID_MAIN && e.nativeEvent.buttons !== 0) {
+        return false;
+      }
+
+      setHoveredLabel({ id: label._id, source: hoverSource });
+      return true;
+    },
+    [hoverSource, label._id, setHoveredLabel]
+  );
 
   const transformMode = useRecoilValue(transformModeAtom);
 
@@ -775,8 +790,11 @@ export const Cuboid = ({
 
           onClick(e);
         }}
-        onPointerOver={() => {
-          setHoveredLabel({ id: label._id });
+        onPointerOver={(e) => {
+          if (!setHoveredLabelFromPointer(e)) {
+            return;
+          }
+
           onPointerOver();
         }}
         onPointerOut={() => {
@@ -812,7 +830,10 @@ export const Cuboid = ({
                 return;
               }
 
-              setHoveredLabel({ id: label._id });
+              if (!setHoveredLabelFromPointer(e)) {
+                return;
+              }
+
               setHoveredResizeFace(face);
               onPointerOver();
             }}

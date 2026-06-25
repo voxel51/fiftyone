@@ -7,6 +7,7 @@ import {
   annotationPlaneAtom,
   cuboidCreationStateAtom,
   hoveredLabelAtom,
+  isFo3dMainPanelPointerDownAtom,
   isFo3dPointCropModifierPressedAtom,
   isCreatingCuboidAtom,
   raycastResultAtom,
@@ -19,6 +20,7 @@ import {
   getSelectedCuboidPointCloudCrop,
 } from "../utils/point-cloud-crop";
 import { getCuboidCreationPreview } from "./cuboid-creation-preview";
+import { isHoverEligibleForPointCloudCrop } from "./point-cloud-crop-eligibility";
 import { useRenderModel } from "./store";
 
 interface UsePointCloudCropOptions {
@@ -37,6 +39,7 @@ export const usePointCloudCrop = ({
   const isPointCropModifierPressed = useRecoilValue(
     isFo3dPointCropModifierPressedAtom
   );
+  const isMainPanelPointerDown = useRecoilValue(isFo3dMainPanelPointerDownAtom);
   const raycastResult = useRecoilValue(raycastResultAtom);
   const isCreatingCuboid = useRecoilValue(isCreatingCuboidAtom);
   const cuboidCreationState = useRecoilValue(cuboidCreationStateAtom);
@@ -66,19 +69,24 @@ export const usePointCloudCrop = ({
       );
     }
 
-    const hoveredCrop = getLabelPointCloudCrop({
-      mode,
-      renderModel,
-      labelId: hoveredLabel?.id,
-      margin,
-      useLegacyCoordinates,
-    });
-    if (hoveredCrop) {
-      return hoveredCrop;
+    if (
+      isHoverEligibleForPointCloudCrop(hoveredLabel, isMainPanelPointerDown)
+    ) {
+      const hoveredCrop = getLabelPointCloudCrop({
+        mode,
+        renderModel,
+        labelId: hoveredLabel?.id,
+        margin,
+        useLegacyCoordinates,
+      });
+      if (hoveredCrop) {
+        return hoveredCrop;
+      }
     }
 
     if (
       mode === "annotate" &&
+      !isMainPanelPointerDown &&
       isPointCropModifierPressed &&
       raycastResult.sourcePanel === PANEL_ID_MAIN &&
       raycastResult.isPointCloud &&
@@ -110,6 +118,8 @@ export const usePointCloudCrop = ({
     creationPreview,
     enabled,
     hoveredLabel?.id,
+    hoveredLabel?.source,
+    isMainPanelPointerDown,
     isPointCropModifierPressed,
     margin,
     mode,

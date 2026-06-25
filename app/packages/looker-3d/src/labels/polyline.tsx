@@ -6,8 +6,9 @@ import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { useTransientPolyline } from "../annotation/store";
 import { usePolylineAnnotation } from "../annotation/usePolylineAnnotation";
-import { FO_USER_DATA } from "../constants";
+import { FO_USER_DATA, PANEL_ID_MAIN } from "../constants";
 import { hoveredLabelAtom, selectedLabelForAnnotationAtom } from "../state";
+import type { HoveredLabelSource } from "../types";
 import { useSetCurrent3dAnnotationMode } from "../state/accessors";
 import {
   isValidPoint3d,
@@ -25,6 +26,7 @@ export interface PolyLineProps extends OverlayProps {
   filled: boolean;
   lineWidth?: number;
   closed?: boolean;
+  hoverSource?: HoveredLabelSource;
 }
 
 export const Polyline = ({
@@ -38,6 +40,7 @@ export const Polyline = ({
   closed,
   onClick,
   label,
+  hoverSource = PANEL_ID_MAIN,
 }: PolyLineProps) => {
   const meshesRef = useRef<THREE.Mesh[]>([]);
 
@@ -273,8 +276,12 @@ export const Polyline = ({
         {previewLines}
         <group
           {...restEventHandlers}
-          onPointerOver={() => {
-            setHoveredLabel({ id: label._id });
+          onPointerOver={(e) => {
+            if (hoverSource === PANEL_ID_MAIN && e.nativeEvent.buttons !== 0) {
+              return;
+            }
+
+            setHoveredLabel({ id: label._id, source: hoverSource });
             handleAnnotationPointerOver();
             onPointerOver();
           }}

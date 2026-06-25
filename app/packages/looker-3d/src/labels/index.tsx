@@ -29,6 +29,7 @@ import {
   ANNOTATION_POLYLINE,
   DRAG_GATE_THRESHOLD_PX,
   PANEL_ORDER_LABELS,
+  PANEL_ID_MAIN,
   UNFOCUSED_LABEL_OPACITY,
 } from "../constants";
 import { usePathFilter, useSelect3DLabelForAnnotation } from "../hooks";
@@ -42,11 +43,8 @@ import {
   selectedLabelForAnnotationAtom,
   showCuboidOrientationAtom,
 } from "../state";
-import {
-  Archetype3d,
-  isDetection3dOverlay,
-  isPolyline3dOverlay,
-} from "../types";
+import { isDetection3dOverlay, isPolyline3dOverlay } from "../types";
+import type { Archetype3d, PanelId } from "../types";
 import { toEulerFromDegreesArray } from "../utils";
 import { Cuboid, type CuboidProps } from "./cuboid";
 import { DragGate3D } from "./DragGate3D";
@@ -58,6 +56,7 @@ export interface ThreeDLabelsProps {
   sampleMap: Parameters<typeof load3dOverlays>[0];
   globalOpacity?: number;
   isMainPanel?: boolean;
+  panelId?: PanelId;
   dimAllLabels?: boolean;
   unfocusedLabelOpacity?: number;
 }
@@ -66,6 +65,7 @@ export const ThreeDLabels = ({
   sampleMap,
   globalOpacity,
   isMainPanel = true,
+  panelId,
   dimAllLabels = false,
   unfocusedLabelOpacity,
 }: ThreeDLabelsProps) => {
@@ -93,6 +93,7 @@ export const ThreeDLabels = ({
   const isCreatingCuboid = useRecoilValue(isCreatingCuboidAtom);
   const selectedLabels = useRecoilValue(fos.selectedLabelMap);
   const labelAlpha = globalOpacity ?? colorScheme.opacity;
+  const hoverSource = panelId ?? (isMainPanel ? PANEL_ID_MAIN : undefined);
 
   const selectedLabelForAnnotation = useRecoilValue(
     selectedLabelForAnnotationAtom
@@ -368,6 +369,7 @@ export const ThreeDLabels = ({
             useLegacyCoordinates={settings.useLegacyCoordinates}
             color={getOverlayColor(overlay)}
             enableFaceResize={isMainPanel}
+            hoverSource={hoverSource}
             showOrientation={showCuboidOrientation}
           />
         </DragGate3D>
@@ -409,6 +411,7 @@ export const ThreeDLabels = ({
           opacity={getOverlayOpacity(overlay._id)}
           label={overlay as unknown as OverlayLabel}
           color={getOverlayColor(overlay)}
+          hoverSource={hoverSource}
         />
       </DragGate3D>
     ));

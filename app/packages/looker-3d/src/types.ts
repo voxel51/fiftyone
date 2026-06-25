@@ -57,6 +57,13 @@ export type SidePanelId =
   | typeof PANEL_ID_SIDE_TOP
   | typeof PANEL_ID_SIDE_BOTTOM;
 
+export type HoveredLabelSource = PanelId | "sidebar";
+
+export interface HoveredLabel {
+  id: string;
+  source?: HoveredLabelSource;
+}
+
 export type SidePanelViewType =
   | typeof VIEW_TYPE_TOP
   | typeof VIEW_TYPE_BOTTOM

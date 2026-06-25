@@ -1,7 +1,10 @@
 import { useCallback, useEffect } from "react";
 import { useSetRecoilState } from "recoil";
-import { PANEL_IDS, getPanelElementId } from "../constants";
-import { activeCursorPanelAtom } from "../state";
+import { PANEL_ID_MAIN, PANEL_IDS, getPanelElementId } from "../constants";
+import {
+  activeCursorPanelAtom,
+  isFo3dMainPanelPointerDownAtom,
+} from "../state";
 import type { PanelId } from "../types";
 
 /**
@@ -40,32 +43,72 @@ export const GlobalCursorCoordinator = ({
   containerRef,
 }: GlobalCursorCoordinatorProps) => {
   const setActiveCursorPanel = useSetRecoilState(activeCursorPanelAtom);
+  const setIsMainPanelPointerDown = useSetRecoilState(
+    isFo3dMainPanelPointerDownAtom
+  );
 
-  const handlePointerMove = useCallback((ev: PointerEvent) => {
-    const panelId = getPanelUnderCursor(ev.clientX, ev.clientY);
-    setActiveCursorPanel(panelId);
-  }, []);
+  const handlePointerMove = useCallback(
+    (ev: PointerEvent) => {
+      const panelId = getPanelUnderCursor(ev.clientX, ev.clientY);
+      setActiveCursorPanel(panelId);
+    },
+    [setActiveCursorPanel]
+  );
+
+  const handlePointerDown = useCallback(
+    (ev: PointerEvent) => {
+      setIsMainPanelPointerDown(
+        getPanelUnderCursor(ev.clientX, ev.clientY) === PANEL_ID_MAIN
+      );
+    },
+    [setIsMainPanelPointerDown]
+  );
+
+  const handlePointerUp = useCallback(() => {
+    setIsMainPanelPointerDown(false);
+  }, [setIsMainPanelPointerDown]);
 
   const handlePointerLeave = useCallback(() => {
     setActiveCursorPanel(null);
-  }, []);
+    setIsMainPanelPointerDown(false);
+  }, [setActiveCursorPanel, setIsMainPanelPointerDown]);
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!container) {
+      return undefined;
+    }
 
     container.addEventListener("pointermove", handlePointerMove, {
       passive: true,
     });
+    container.addEventListener("pointerdown", handlePointerDown, {
+      passive: true,
+    });
+    window.addEventListener("pointerup", handlePointerUp, { passive: true });
+    window.addEventListener("pointercancel", handlePointerUp, {
+      passive: true,
+    });
+    window.addEventListener("blur", handlePointerUp);
     container.addEventListener("pointerleave", handlePointerLeave, {
       passive: true,
     });
 
     return () => {
       container.removeEventListener("pointermove", handlePointerMove);
+      container.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
+      window.removeEventListener("blur", handlePointerUp);
       container.removeEventListener("pointerleave", handlePointerLeave);
     };
-  }, [containerRef, handlePointerMove, handlePointerLeave]);
+  }, [
+    containerRef,
+    handlePointerDown,
+    handlePointerLeave,
+    handlePointerMove,
+    handlePointerUp,
+  ]);
 
   return null;
 };

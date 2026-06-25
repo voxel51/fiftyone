@@ -14,6 +14,7 @@ import {
   useWorkingLabel,
 } from "../annotation/store";
 import type { TransientPolylineState } from "../annotation/store/types";
+import { PANEL_ID_MAIN } from "../constants";
 import {
   editSegmentsModeAtom,
   hoveredLabelAtom,
@@ -222,7 +223,7 @@ export const usePolylineAnnotation = ({
 
   const handlePointerOver = useCallback(() => {
     if (isAnnotateMode) {
-      setHoveredLabel({ id: labelId });
+      setHoveredLabel({ id: labelId, source: PANEL_ID_MAIN });
     }
   }, [isAnnotateMode, setHoveredLabel, labelId]);
 

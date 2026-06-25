@@ -22,6 +22,7 @@ import type {
   Actions,
   AssetLoadingLog,
   CuboidCreationState,
+  HoveredLabel,
   LoadingStatusWithContext,
   MainPanelPanSyncIntent,
   MainPanelZoomSyncIntent,
@@ -316,7 +317,7 @@ export const currentHoveredPointAtom = atom<Vector3 | null>({
 });
 
 // Hover state for labels in annotate mode
-export const hoveredLabelAtom = atom<{ id: string } | null>({
+export const hoveredLabelAtom = atom<HoveredLabel | null>({
   key: "fo3d-hoveredLabel",
   default: null,
 });
@@ -348,6 +349,16 @@ export const annotationToolbarPositionAtom = atom<number>({
 export const activeCursorPanelAtom = atom<PanelId | null>({
   key: "fo3d-activeCursorPanel",
   default: null,
+});
+
+/**
+ * Whether a pointer interaction started in the main 3D panel and has not ended.
+ * Used to avoid treating incidental hover while orbiting/panning/zooming as a
+ * request to crop side panels around a label or point.
+ */
+export const isFo3dMainPanelPointerDownAtom = atom<boolean>({
+  key: "fo3d-isMainPanelPointerDown",
+  default: false,
 });
 
 /**
