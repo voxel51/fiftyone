@@ -6,7 +6,7 @@ import {
   useSampleInstanceGetter,
   VideoLabelStore,
 } from "@fiftyone/annotation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 import { parseFramesData } from "../streams/framesData";
 import { useFrameLabelFields } from "../state/accessors";
@@ -33,6 +33,17 @@ export const useSyncAnnotationVideoStore = (): void => {
   const stream = useFrameLabelsStream();
   const labelTypes = useFrameLabelFields();
 
+  // Working overlay carried across an effect rebuild (e.g. activating a frame
+  // field, or the labels stream re-mounting) so unsaved edits aren't dropped
+  // when the FrameStore is reconstructed. This hook's component outlives the
+  // keyed stream registrar, so the ref survives a stream swap but dies with the
+  // surface — no edits resurrected across a modal session. Overwritten on every
+  // teardown, so only an immediate same-sample rebuild restores.
+  const carry = useRef<{
+    sampleId: string;
+    snapshot: ReturnType<FrameStore["snapshot"]>;
+  } | null>(null);
+
   useEffect(() => {
     if (!sampleId || !stream) {
       return undefined;
@@ -53,12 +64,27 @@ export const useSyncAnnotationVideoStore = (): void => {
     const unsubscribe = stream.subscribeToEdits(seed);
     seed();
 
+    // Restore edits carried from the prior FrameStore (same sample) after the
+    // source seed; the working overlay is source-independent, so it wins. Each
+    // carried frame still differs from the freshly-seeded (un-persisted) source,
+    // so the next setData GC keeps it and autosave picks it up.
+    if (carry.current && carry.current.sampleId === sampleId) {
+      frames.restore(carry.current.snapshot);
+    }
+    carry.current = null;
+
     // Whole-clip seed for engine consumers that still walk every frame
     // (propagation, interpolation, track ops). The timeline no longer needs
     // it — it reads the server index. Retire once those ops fetch per-range.
     void stream.warmupAll();
 
     return () => {
+      // Carry unsaved edits to the next FrameStore (this same hook stays
+      // mounted across a stream re-mount). Overwrites any prior carry, so a
+      // different sample's edits can never leak back into this one.
+      carry.current = frames.isDirty()
+        ? { sampleId, snapshot: frames.snapshot() }
+        : null;
       unsubscribe();
       unregister();
       sampleLevel.dispose();
