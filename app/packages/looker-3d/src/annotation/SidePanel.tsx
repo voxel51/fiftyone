@@ -691,6 +691,14 @@ const BoundsSideEffectsComponent = ({
       return;
     }
 
+    // Raycast-hover crops track the pointer. When the current crop already
+    // fits the side panel, keep the user's zoom/pan stable and only let the
+    // crop mask update. Re-centering every hovered point is especially visible
+    // as vertical jitter at high zoom.
+    if (doesPointCloudCropFitCamera(crop, camera)) {
+      return;
+    }
+
     const lastSync = lastRaycastHoverSyncRef.current;
     if (
       lastSync &&
@@ -719,6 +727,7 @@ const BoundsSideEffectsComponent = ({
     };
     centerOnPointCloudCrop(crop);
   }, [
+    camera,
     centerOnPointCloudCrop,
     pointCloudCrop?.center.x,
     pointCloudCrop?.center.y,
