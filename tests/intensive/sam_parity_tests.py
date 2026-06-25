@@ -1440,7 +1440,7 @@ class TestSAM3ConceptParity(unittest.TestCase):
         cls.processor = Sam3Processor(cls.sam3_model)
 
         cls.device = "cuda" if torch.cuda.is_available() else "cpu"
-        cls.dataset = _create_test_dataset(num_samples=4, seed=31)
+        cls.dataset = _create_test_dataset(num_samples=4, seed=39)
 
     @classmethod
     def tearDownClass(cls):
@@ -1486,7 +1486,7 @@ class TestSAM3ConceptParity(unittest.TestCase):
 
     def test_concept_multi_prompt_parity(self):
         """Multiple text prompts: verify each prompt's detections match."""
-        multi_prompts = ["person", "car"]
+        multi_prompts = self.dataset.distinct("ground_truth.detections.label")
 
         fo_model_multi = foz.load_zoo_model(
             self.MODEL_NAME,
