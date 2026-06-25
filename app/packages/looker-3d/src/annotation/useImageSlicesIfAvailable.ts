@@ -50,6 +50,9 @@ export const useImageSlicesIfAvailable = (
     const fetchImageSlices = async () => {
       try {
         setIsLoadingImageSlices(true);
+        setImageSlices([]);
+        setSliceUrls({});
+
         const fetchFunction = getFetchFunction({ cache: true });
         const path = `/dataset/${dataset}/groups/${groupId}?fields=filepath&resolve_urls=true&media_type=image`;
 

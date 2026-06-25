@@ -8,6 +8,9 @@ import type { FoScene } from "../render-types";
 
 const threeDLabelsMock = vi.fn((_: { sampleMap: unknown }) => null);
 const orbitControlsMock = vi.fn((_: Record<string, unknown>) => null);
+const frustumCollectionMock = vi.fn(
+  (_: { isSceneInitialized?: boolean }) => null
+);
 
 vi.mock("@fiftyone/state", () => ({
   modalMode: { key: "modalMode" },
@@ -55,7 +58,8 @@ vi.mock("../../constants", () => ({
 }));
 
 vi.mock("../../frustum", () => ({
-  FrustumCollection: () => null,
+  FrustumCollection: (props: { isSceneInitialized?: boolean }) =>
+    frustumCollectionMock(props),
 }));
 
 vi.mock("../../hooks/use-camera-views", () => ({
@@ -99,6 +103,24 @@ vi.mock("../scene-controls/SceneControls", () => ({
 }));
 
 describe("Fo3dSceneContent", () => {
+  const foScene: FoScene = {
+    position: new Vector3(0, 0, 0),
+    quaternion: new Quaternion(),
+    scale: new Vector3(1, 1, 1),
+    background: null,
+    cameraProps: {
+      position: null,
+      lookAt: null,
+      up: "Y",
+      fov: 50,
+      aspect: 1,
+      near: 0.1,
+      far: 2500,
+    },
+    lights: [],
+    children: [],
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(useAtomValue).mockReturnValue("explore");
@@ -120,23 +142,6 @@ describe("Fo3dSceneContent", () => {
       activeSampleMap: labelSampleMap,
     } as ReturnType<typeof fos.useRenderConfig3dState>);
 
-    const foScene: FoScene = {
-      position: new Vector3(0, 0, 0),
-      quaternion: new Quaternion(),
-      scale: new Vector3(1, 1, 1),
-      background: null,
-      cameraProps: {
-        position: null,
-        lookAt: null,
-        up: "Y",
-        fov: 50,
-        aspect: 1,
-        near: 0.1,
-        far: 2500,
-      },
-      lights: [],
-      children: [],
-    };
     render(
       <Fo3dSceneContent
         cameraPosition={new Vector3(0, 0, 5)}
@@ -155,6 +160,9 @@ describe("Fo3dSceneContent", () => {
       sampleMap: labelSampleMap,
     });
     expect(fo3dPerformanceMonitorMock).toHaveBeenCalledTimes(1);
+    expect(frustumCollectionMock).toHaveBeenCalledWith({
+      isSceneInitialized: true,
+    });
     expect(orbitControlsMock).toHaveBeenCalledWith(
       expect.objectContaining({
         rotateSpeed: 1,
@@ -162,5 +170,29 @@ describe("Fo3dSceneContent", () => {
         panSpeed: 1.15,
       })
     );
+  });
+
+  it("mounts frustum collection before scene content is initialized", () => {
+    vi.mocked(fos.useRenderConfig3dState).mockReturnValue({
+      activeSampleMap: {},
+    } as ReturnType<typeof fos.useRenderConfig3dState>);
+
+    render(
+      <Fo3dSceneContent
+        cameraPosition={new Vector3(0, 0, 5)}
+        upVector={new Vector3(0, 1, 0)}
+        autoRotate={false}
+        cameraControlsRef={{ current: null }}
+        foScene={foScene}
+        isSceneInitialized={false}
+        assetsGroupRef={{ current: null }}
+        cameraRef={{ current: null }}
+      />
+    );
+
+    expect(threeDLabelsMock).not.toHaveBeenCalled();
+    expect(frustumCollectionMock).toHaveBeenCalledWith({
+      isSceneInitialized: false,
+    });
   });
 });

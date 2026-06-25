@@ -164,12 +164,8 @@ export const Fo3dSceneContent = ({
         <FoSceneComponent scene={foScene} />
       </group>
 
-      {isSceneInitialized && (
-        <>
-          <ThreeDLabels sampleMap={labelSampleMap} />
-          <FrustumCollection />
-        </>
-      )}
+      {isSceneInitialized && <ThreeDLabels sampleMap={labelSampleMap} />}
+      <FrustumCollection isSceneInitialized={isSceneInitialized} />
 
       {mode === "annotate" && <AnnotationControls />}
     </>
