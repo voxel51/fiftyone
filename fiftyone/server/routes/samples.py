@@ -18,7 +18,6 @@ projected from the requested ``fields`` (inclusion) or ``exclude`` (exclusion).
 import asyncio
 from typing import Any, Dict, List, Optional
 
-from bson import ObjectId
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
@@ -91,6 +90,37 @@ def _sample_filter(
     )
 
 
+async def _resolve_view(
+    dataset_id: str,
+    data: Dict[str, Any],
+    sample_filter: Optional[SampleFilter],
+    dynamic_group: Optional[Any] = None,
+) -> Optional[fov.DatasetView]:
+    """Load the dataset by id and build the base paginated view, in a sync task.
+
+    Returns the view, or ``None`` if the dataset doesn't exist.
+    """
+
+    def _run():
+        try:
+            dataset = foo.database.load_dataset(id=dataset_id)
+        except ValueError:
+            # unknown dataset id raises rather than returning None
+            return None
+        return fosv.get_view(
+            dataset,
+            stages=data.get("view") or [],
+            filters=data.get("filters"),
+            pagination_data=False,
+            sort_by=data.get("sortBy"),
+            desc=bool(data.get("desc")),
+            sample_filter=sample_filter,
+            dynamic_group=dynamic_group,
+        )
+
+    return await run_sync_task(_run)
+
+
 async def _build_item(
     view, doc, metadata_cache, url_cache, additional, skip_dimensions
 ):
@@ -129,38 +159,24 @@ class Samples(HTTPEndpoint):
         after = data.get("after")
         count = int(data.get("count") or 0)
         sample_filter = _sample_filter(data.get("filter"))
-        dynamic_group = data.get("dynamicGroup")
 
-        def _build():
-            dataset = foo.database.load_dataset(id=dataset_id)
-            if not dataset:
-                return JSONResponse(
-                    {"error": "dataset not found"}, status_code=404
-                )
-            view = fosv.get_view(
-                dataset,
-                stages=data.get("view") or [],
-                filters=data.get("filters"),
-                pagination_data=False,
-                sort_by=data.get("sortBy"),
-                desc=bool(data.get("desc")),
-                sample_filter=sample_filter,
-                dynamic_group=dynamic_group,
+        view = await _resolve_view(
+            dataset_id, data, sample_filter, data.get("dynamicGroup")
+        )
+        if view is None:
+            return JSONResponse(
+                {"error": "dataset not found"}, status_code=404
             )
-            if ids:
-                # core's optimized select drops any GroupBy `$group` for an
-                # index-eligible by-id `$match` and labels `_group` itself
-                view = fov.make_optimized_select_view(view, ids)
-            elif after is not None:
-                view = view.skip(int(after))
-            if count:
-                view = view.limit(count)
-            return view
 
-        view = await run_sync_task(_build)
-        if isinstance(view, JSONResponse):
-            # return early with 404 if the dataset doesn't exist
-            return view
+        if ids:
+            # core's optimized select drops any GroupBy `$group` for an
+            # index-eligible by-id `$match` and labels `_group` itself
+            view = fov.make_optimized_select_view(view, ids)
+        elif after is not None:
+            view = view.skip(int(after))
+        if count:
+            view = view.limit(count)
+
         pipeline = await get_samples_pipeline(view, sample_filter)
 
         skip_dimensions = bool(data.get("skipMetadata"))
@@ -204,41 +220,29 @@ class GridSamples(HTTPEndpoint):
     @decorators.route
     async def post(self, request: Request, data: dict) -> JSONResponse:
         dataset_id = request.path_params["dataset_id"]
-
         after = int(data.get("after") or 0)
         sample_filter = _sample_filter(data.get("filter"))
 
-        def _build():
-            # pagination_data=False: only ids are needed; the final $project
-            # strips back to _id anyway
-            dataset = foo.database.load_dataset(id=dataset_id)
-            if not dataset:
-                return JSONResponse(
-                    {"error": "dataset not found"}, status_code=404
-                )
-            view = fosv.get_view(
-                dataset,
-                stages=data.get("view") or [],
-                filters=data.get("filters"),
-                pagination_data=False,
-                sort_by=data.get("sortBy"),
-                desc=bool(data.get("desc")),
-                sample_filter=sample_filter,
+        # pagination_data=False: only ids are needed; the final $project below
+        # strips back to _id anyway
+        view = await _resolve_view(dataset_id, data, sample_filter)
+        if view is None:
+            return JSONResponse(
+                {"error": "dataset not found"}, status_code=404
             )
-            return view.skip(after).limit(SPINE_PAGE + 1)
 
-        view = await run_sync_task(_build)
-        if isinstance(view, JSONResponse):
-            # return early with 404 if the dataset doesn't exist
-            return view
+        view = view.skip(after).limit(SPINE_PAGE + 1)
+
         # GroupBy emits `_group_count` only when asked; turn it on so the spine
         # carries each group's length to the imavid timeline
         for stage in getattr(view, "_stages", []):
             if isinstance(stage, fos.GroupBy):
                 stage._include_count = True
+
         pipeline = await get_samples_pipeline(view, sample_filter)
         # keep `_group_count` alongside the id projection
         pipeline.append({"$project": {"_id": 1, "_group_count": 1}})
+
         coll = foo.get_async_db_conn()[view._dataset._sample_collection_name]
         # same index hint paginate_samples uses, so $skip walks index entries
         docs = await foo.aggregate(coll, pipeline, data.get("hint")).to_list(
