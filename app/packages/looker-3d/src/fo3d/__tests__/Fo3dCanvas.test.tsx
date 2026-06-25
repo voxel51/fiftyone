@@ -54,6 +54,7 @@ vi.mock("../../annotation/SegmentPolylineRenderer", () => ({
 }));
 
 vi.mock("../../constants", () => ({
+  DEFAULT_SELECTED_CUBOID_CROP_MARGIN: 1,
   PANEL_ID_MAIN: "main",
 }));
 
@@ -168,6 +169,7 @@ describe("Fo3dSceneContent", () => {
         rotateSpeed: 1,
         zoomSpeed: 0.6,
         panSpeed: 1.15,
+        minDistance: 0.0001,
       })
     );
   });

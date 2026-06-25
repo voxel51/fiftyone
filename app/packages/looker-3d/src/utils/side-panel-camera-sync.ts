@@ -28,8 +28,8 @@ export const SIDE_PANEL_SYNC_MIN_ZOOM = 0.01;
 export const SIDE_PANEL_SYNC_MAX_ZOOM = 10000;
 export const SIDE_PANEL_PERSPECTIVE_ZOOM_GAIN = 1.5;
 
+export const ORBIT_CONTROLS_WHEEL_ZOOM_BASE = 0.95;
 const DEFAULT_SIDE_PANEL_CAMERA_DISTANCE = 10;
-const ORBIT_CONTROLS_WHEEL_ZOOM_BASE = 0.95;
 
 interface CreateMainPanelZoomSyncIntentOptions {
   activeCursorPanel: PanelId | null;

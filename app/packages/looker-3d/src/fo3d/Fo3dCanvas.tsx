@@ -6,7 +6,7 @@ import {
   PerspectiveCamera as PerspectiveCameraDrei,
 } from "@react-three/drei";
 import { useAtomValue } from "jotai";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import type * as THREE from "three";
 import type { Vector3 } from "three";
@@ -27,6 +27,7 @@ import {
   raycastResultAtom,
 } from "../state";
 import type { Fo3dCameraControls } from "./camera-controls";
+import { useFo3dContext } from "./context";
 import { Fo3dPerformanceMonitor } from "./Fo3dPerformanceMonitor";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
@@ -39,6 +40,11 @@ import {
   MAIN_PANEL_PAN_SYNC_TARGET_EPSILON_SQ,
   MAIN_PANEL_ORBIT_ZOOM_SPEED,
 } from "../utils/side-panel-camera-sync";
+import {
+  MAIN_PANEL_CAMERA_TARGET_EPSILON,
+  MAIN_PANEL_ORBIT_PAN_SPEED,
+  syncMainPanelOrbitControls,
+} from "../utils/main-panel-orbit-controls";
 
 interface Fo3dSceneContentProps {
   /**
@@ -148,9 +154,11 @@ export const Fo3dSceneContent = ({
         enableDamping={false}
         rotateSpeed={1}
         zoomSpeed={MAIN_PANEL_ORBIT_ZOOM_SPEED}
-        panSpeed={1.15}
+        panSpeed={MAIN_PANEL_ORBIT_PAN_SPEED}
+        minDistance={MAIN_PANEL_CAMERA_TARGET_EPSILON}
         zoomToCursor
       />
+      <MainPanelOrbitControlsSync cameraControlsRef={cameraControlsRef} />
 
       <SceneControls scene={foScene} cameraControlsRef={cameraControlsRef} />
 
@@ -170,6 +178,45 @@ export const Fo3dSceneContent = ({
       {mode === "annotate" && <AnnotationControls />}
     </>
   );
+};
+
+const MainPanelOrbitControlsSync = ({
+  cameraControlsRef,
+}: {
+  cameraControlsRef: React.RefObject<Fo3dCameraControls>;
+}) => {
+  const { sceneBoundingBox } = useFo3dContext();
+
+  const syncControls = useCallback(() => {
+    const controls = cameraControlsRef.current;
+    if (!controls) {
+      return;
+    }
+
+    syncMainPanelOrbitControls({
+      controls,
+      sceneBoundingBox,
+    });
+  }, [cameraControlsRef, sceneBoundingBox]);
+
+  useEffect(() => {
+    syncControls();
+  });
+
+  useEffect(() => {
+    const controls = cameraControlsRef.current;
+    if (!controls) {
+      return undefined;
+    }
+
+    controls.addEventListener("change", syncControls);
+
+    return () => {
+      controls.removeEventListener("change", syncControls);
+    };
+  }, [cameraControlsRef, syncControls]);
+
+  return null;
 };
 
 const MainPanelNavigationSyncEmitter = ({
@@ -212,6 +259,7 @@ const MainPanelNavigationSyncEmitter = ({
         id: `${timestamp}-${sequenceRef.current++}`,
         raycastResult: raycastResultRef.current,
         timestamp,
+        zoomSpeed: cameraControlsRef.current?.zoomSpeed,
       });
 
       if (intent) {
@@ -224,7 +272,7 @@ const MainPanelNavigationSyncEmitter = ({
     return () => {
       window.removeEventListener("wheel", handleWheel);
     };
-  }, [cameraRef, setMainPanelZoomSyncIntent]);
+  }, [cameraControlsRef, cameraRef, setMainPanelZoomSyncIntent]);
 
   useEffect(() => {
     const handlePointerDown = () => {
