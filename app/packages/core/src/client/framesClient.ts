@@ -30,6 +30,12 @@ export type GetFramesRequest = {
   slice?: string | null;
   /** Optional extended view stages. */
   extended?: unknown;
+  /**
+   * Optional frame-field projection. When set, the response carries only
+   * `frame_number` plus these fields — avoids shipping the whole frame
+   * document when a caller needs just a few fields (e.g. `["filepath"]`).
+   */
+  fields?: string[];
 };
 
 /**

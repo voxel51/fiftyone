@@ -9,14 +9,8 @@ import {
   useLighter,
 } from "@fiftyone/lighter";
 import type { ModalSample } from "@fiftyone/state";
-import type { Stage } from "@fiftyone/utilities";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import type { LabelData, Stage } from "@fiftyone/utilities";
+import React, { useCallback, useMemo, useRef } from "react";
 import {
   useActiveDetectionField,
   useColorScheme,
@@ -43,9 +37,11 @@ import {
   usePublishFrameLabelsStream,
 } from "../streams/frameLabelsStream";
 import {
-  buildPerInstanceTracks,
+  buildTracksFromIndex,
+  type FrameOverlay,
   type PerInstanceLabel,
 } from "../tracks/frameTracks";
+import { useVideoLabelsIndex } from "../hooks/useVideoLabelsIndex";
 import { LABELS_STREAM_ID } from "../utils/ids";
 import { getModalSampleFrameRate } from "../utils/modalSample";
 import { resolveTrackExtentEdit } from "../tracks/trackExtentEdit";
@@ -149,7 +145,6 @@ export const RegisterFrameLabels: React.FC<{
       sampleId={sampleId}
       dataset={dataset}
       view={view}
-      groupSlice={slice ?? null}
       frameCount={frameCount}
       frameRate={frameRate}
       frameField={frameField}
@@ -163,7 +158,6 @@ interface FrameLabelsRegistrationProps {
   sampleId: string;
   dataset: string;
   view: Stage[];
-  groupSlice: string | null;
   frameCount: number;
   frameRate: number;
   frameField: string;
@@ -182,7 +176,6 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
       sampleId: props.sampleId,
       dataset: props.dataset,
       view: props.view,
-      groupSlice: props.groupSlice,
       frameCount: props.frameCount,
       frameRate: props.frameRate,
       frameField: props.frameField,
@@ -201,10 +194,10 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
 };
 
 /**
- * Build the per-instance object tracks by warming every chunk so the engine
- * re-hydrates across the whole clip, then walking the engine. Returns `[]`
- * until warmup resolves; `resolved` flips true on the first resolved build
- * (including a legitimately empty clip) to gate the pin bootstrap.
+ * Build the per-instance object tracks from the server distribution index
+ * merged with the engine's edited-frame overlay — no whole-clip walk. Tracks
+ * rebuild on each engine commit (cheap: only the dirty frames are read).
+ * `resolved` flips true once the index settles, gating the pin bootstrap.
  */
 function useFrameDerivedTracks(resolveColor: ObjectTrackColorResolver): {
   tracks: Track[];
@@ -216,64 +209,72 @@ function useFrameDerivedTracks(resolveColor: ObjectTrackColorResolver): {
   const visible = useVisibleLabelSchemas();
   const labelTypes = useFrameLabelFields();
 
+  // Fetch the index for every declared frame label field (stable per dataset/
+  // view) so visibility toggles filter client-side without re-fetching.
+  const allFields = useMemo(() => Object.keys(labelTypes), [labelTypes]);
+
   // Gate each frame field's tracks on the sidebar's visible set — deactivating
   // a field in the schema manager hides its timeline rows, matching the canvas
   // + sidebar.
   const paths = useMemo(
-    () => Object.keys(labelTypes).filter((p) => visible.has(p)),
-    [labelTypes, visible]
+    () => allFields.filter((p) => visible.has(p)),
+    [allFields, visible]
   );
 
-  const [tracks, setTracks] = useState<Track[]>([]);
-  const [resolved, setResolved] = useState(false);
+  const { indexByPath, loaded } = useVideoLabelsIndex(stream, allFields);
 
   // engine version is the rebuild signal.
   const engineVersion = useEngineSelector(engine, () => engine.getVersion());
 
-  useEffect(() => {
-    // The stream's presence is the activation-independent "has a frame field"
-    // signal; without it there's nothing to bootstrap.
-    if (!stream || !sampleId) {
-      setTracks([]);
-      setResolved(false);
-      return undefined;
+  // No visible frame field, or the index hasn't settled: no rows. Tracks build
+  // per visible field from that field's index ⊕ its dirty-frame overlay, then
+  // concatenate — instance ids are unique across fields, so the rows just merge.
+  const tracks = useMemo(() => {
+    if (!stream || !sampleId || !loaded || paths.length === 0) {
+      return [];
     }
 
-    // No visible frame field (none active, or all deactivated): no rows, but
-    // still resolved so the TD-track pin bootstrap fires.
-    if (paths.length === 0) {
-      setTracks([]);
-      setResolved(true);
-      return undefined;
-    }
-
-    let cancelled = false;
-
-    void stream.warmupAll().then(() => {
-      if (cancelled) {
-        return;
-      }
-
-      setTracks(
-        buildPerInstanceTracks({
-          engine,
-          sample: sampleId,
-          paths,
-          totalFrames: stream.totalFrames,
-          fps: stream.fps,
-          resolveColor,
-        })
-      );
-      setResolved(true);
-    });
-
-    return () => {
-      cancelled = true;
-    };
+    return paths.flatMap((path) =>
+      buildTracksFromIndex({
+        path,
+        index: indexByPath[path] ?? [],
+        overlay: readDirtyOverlay(engine, sampleId, path),
+        fps: stream.fps,
+        resolveColor,
+      })
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps -- engineVersion is the invalidation signal
-  }, [engine, sampleId, paths, stream, resolveColor, engineVersion]);
+  }, [
+    engine,
+    sampleId,
+    paths,
+    stream,
+    resolveColor,
+    indexByPath,
+    loaded,
+    engineVersion,
+  ]);
 
-  return { tracks, resolved };
+  return { tracks, resolved: loaded };
+}
+
+/**
+ * The engine's edited frames + their live labels, keyed by frame number — the
+ * overlay that shadows the server index. Only dirty frames are read, so this
+ * is bounded by the edit count, never the clip length.
+ */
+function readDirtyOverlay(
+  engine: ReturnType<typeof useAnnotationEngine>,
+  sample: string,
+  path: string
+): FrameOverlay {
+  const overlay: FrameOverlay = new Map<number, LabelData[]>();
+
+  for (const frame of engine.dirtyFrames(sample)) {
+    overlay.set(frame, engine.listLabels({ sample, path, frame }));
+  }
+
+  return overlay;
 }
 
 /**

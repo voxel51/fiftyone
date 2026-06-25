@@ -66,6 +66,11 @@ export interface LabelStore {
    *  per-store half of `engine.enumerateLabels` (hydration). */
   enumerateLabels(kinds: readonly LabelType[]): LabelRef[];
 
+  /** Frame numbers edited this session (the dirty overlay). Empty for stores
+   *  that are not frame-indexed. The timeline merges these over the server
+   *  index so in-session edits show without a whole-clip walk. */
+  dirtyFrames(): number[];
+
   // mutation (upsert by instanceId for list labels) — the store stamps
   // `_id = ref.instanceId`; callers never reconstruct arrays. `updateLabel`
   // merges (unset = explicit null write); `replaceLabel` writes the exact

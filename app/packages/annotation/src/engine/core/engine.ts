@@ -252,6 +252,11 @@ export class AnnotationEngine {
     return this.stores.get(ref.sample)?.listLabels(ref.path, ref.frame) ?? [];
   }
 
+  /** Frame numbers edited this session for a sample (empty for non-frame stores). */
+  dirtyFrames(sample: string): number[] {
+    return this.stores.get(sample)?.dirtyFrames() ?? [];
+  }
+
   /** Current labels across all stores, for hydration. */
   enumerateLabels(kinds: readonly LabelType[]): LabelRef[] {
     const refs: LabelRef[] = [];

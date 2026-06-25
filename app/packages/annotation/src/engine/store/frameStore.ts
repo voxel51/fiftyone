@@ -136,6 +136,10 @@ export class FrameStore implements LabelStore {
     return refs;
   }
 
+  dirtyFrames(): number[] {
+    return [...this.working.keys()];
+  }
+
   // ---- mutation ----
 
   updateLabel(ref: LabelRef, partial: Partial<LabelData>): void {

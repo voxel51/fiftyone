@@ -333,6 +333,9 @@ export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
         dataset: this.dataset,
         view: this.view,
         slice: this.groupSlice ?? undefined,
+        // The image stream only needs each frame's media path; project to it
+        // so `/frames` doesn't ship every label field per frame.
+        fields: ["filepath"],
       },
     });
   }

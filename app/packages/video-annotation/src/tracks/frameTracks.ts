@@ -1,6 +1,7 @@
 import type { AnnotationEngine } from "@fiftyone/annotation";
 import type { Track, TrackEvent } from "@fiftyone/playback";
 import type { LabelData } from "@fiftyone/utilities";
+import { mergePresence, type Segment } from "./segments";
 
 /** The engine read surface this builder needs — one frame's labels at a time. */
 export type FrameLabelReader = Pick<AnnotationEngine, "listLabels">;
@@ -148,6 +149,71 @@ export function buildPerInstanceTracks({
   }
 
   const states = accumulatePresence(engine, sample, paths, totalFrames, fps);
+  return statesToTracks(states, resolveColor);
+}
+
+/** One tracked instance's server-side presence distribution (no payloads). */
+export interface IndexInstance {
+  instanceId: string;
+  classLabel: string | null;
+  persistedIndex: number | null;
+  instance: { _cls: "Instance"; _id?: string } | null;
+  /** Run-length-encoded `[startFrame, endFrame]` presence runs. */
+  segments: Array<[number, number]>;
+  /** Frame numbers carrying a `keyframe` flag. */
+  keyframes: number[];
+  /**
+   * Per declared-dynamic attribute, RLE `[startFrame, endFrame, value]` value
+   * runs across the instance's presence. Present only when the index was
+   * fetched with `dynamicAttributes`; consumed by the dynamic-attribute
+   * sub-track read model (not the presence/keyframe timeline).
+   */
+  attributeSegments?: Record<string, Array<[number, number, unknown]>>;
+}
+
+/** Live engine labels for the dirty (edited) frames, keyed by frame number. */
+export type FrameOverlay = Map<number, LabelData[]>;
+
+export interface BuildTracksFromIndexInput {
+  /** Engine field path these entries live on (e.g. `frames.detections`). */
+  path: string;
+  /** Server baseline distribution for the field, one entry per instance. */
+  index: IndexInstance[];
+  /** The engine's edited frames — these shadow the baseline frame-for-frame. */
+  overlay: FrameOverlay;
+  /** Frame rate, for the frame↔seconds mapping. */
+  fps: number;
+  resolveColor: PerInstanceColorResolver;
+}
+
+/**
+ * Build per-instance timeline tracks from the server index merged with the
+ * engine's edited-frame overlay. The index supplies the whole-clip presence
+ * baseline; the overlay supplies the authoritative presence at the (small)
+ * set of dirty frames, so in-session edits — new tracks, deletions, extended
+ * presence — reflect immediately without re-fetching the index or walking the
+ * whole clip. The merge stays in segment space (see {@link mergePresence}).
+ */
+export function buildTracksFromIndex({
+  path,
+  index,
+  overlay,
+  fps,
+  resolveColor,
+}: BuildTracksFromIndexInput): Track[] {
+  if (!Number.isFinite(fps) || fps <= 0) {
+    return [];
+  }
+
+  const states = mergeIndexWithOverlay(index, overlay, fps, path);
+  return statesToTracks(states, resolveColor);
+}
+
+/** Shape the accumulated states into sorted, colored timeline tracks. */
+function statesToTracks(
+  states: Map<string, InstanceState>,
+  resolveColor: PerInstanceColorResolver
+): Track[] {
   assignDisplayOrdinals(states);
 
   const tracks: Track[] = [];
@@ -160,6 +226,133 @@ export function buildPerInstanceTracks({
   }
 
   return sortByClassThenOrdinal(tracks, states);
+}
+
+/**
+ * Reconcile the index baseline with the dirty-frame overlay into per-instance
+ * states. For each instance the merged presence is `baseline − dirtyFrames +
+ * (frames the overlay still has it)`; keyframes likewise prefer the overlay at
+ * dirty frames; class/index/instance prefer the live overlay label when the
+ * instance was touched this session, else the baseline.
+ */
+function mergeIndexWithOverlay(
+  index: IndexInstance[],
+  overlay: FrameOverlay,
+  fps: number,
+  path: string
+): Map<string, InstanceState> {
+  const dirtySorted = [...overlay.keys()].sort((a, b) => a - b);
+  const dirtySet = new Set(dirtySorted);
+
+  const presentByInstance = new Map<string, number[]>();
+  const liveLabelByInstance = new Map<string, LabelData>();
+  const dirtyKeyframesByInstance = new Map<string, number[]>();
+
+  for (const frame of dirtySorted) {
+    for (const label of overlay.get(frame) ?? []) {
+      const id = addressIdOf(label);
+      pushTo(presentByInstance, id, frame);
+
+      if (!liveLabelByInstance.has(id)) {
+        liveLabelByInstance.set(id, label);
+      }
+
+      if (label.keyframe) {
+        pushTo(dirtyKeyframesByInstance, id, frame);
+      }
+    }
+  }
+
+  const baselineById = new Map(index.map((entry) => [entry.instanceId, entry]));
+  const ids = new Set<string>([
+    ...baselineById.keys(),
+    ...presentByInstance.keys(),
+  ]);
+
+  const states = new Map<string, InstanceState>();
+  for (const id of ids) {
+    const baseline = baselineById.get(id);
+    const baseSegments: Segment[] = baseline ? baseline.segments : [];
+    const present = presentByInstance.get(id) ?? [];
+
+    const segments = mergePresence(baseSegments, dirtySorted, present);
+    if (segments.length === 0) {
+      continue;
+    }
+
+    states.set(
+      id,
+      indexInstanceState({
+        baseline,
+        live: liveLabelByInstance.get(id),
+        segments,
+        baselineKeyframes: baseline?.keyframes ?? [],
+        dirtyKeyframes: dirtyKeyframesByInstance.get(id) ?? [],
+        dirtySet,
+        fps,
+        path,
+      })
+    );
+  }
+
+  return states;
+}
+
+function pushTo(map: Map<string, number[]>, key: string, value: number): void {
+  const existing = map.get(key);
+  if (existing) {
+    existing.push(value);
+    return;
+  }
+
+  map.set(key, [value]);
+}
+
+/** Build one instance's state from its merged segments + class/keyframe sources. */
+function indexInstanceState({
+  baseline,
+  live,
+  segments,
+  baselineKeyframes,
+  dirtyKeyframes,
+  dirtySet,
+  fps,
+  path,
+}: {
+  baseline: IndexInstance | undefined;
+  live: LabelData | undefined;
+  segments: Segment[];
+  baselineKeyframes: number[];
+  dirtyKeyframes: number[];
+  dirtySet: Set<number>;
+  fps: number;
+  path: string;
+}): InstanceState {
+  const intervals = segments.map(([start, end]) => ({
+    start: (start - 1) / fps,
+    end: end / fps,
+  }));
+
+  const keyframeFrames = [
+    ...baselineKeyframes.filter((frame) => !dirtySet.has(frame)),
+    ...dirtyKeyframes,
+  ].sort((a, b) => a - b);
+
+  const keyframeTimes = keyframeFrames.map((frame) => (frame - 1) / fps);
+
+  return {
+    classLabel: live ? labelOf(live) : baseline?.classLabel || "unknown",
+    path,
+    persistedIndex: live
+      ? indexOf(live)
+      : baseline?.persistedIndex ?? undefined,
+    instance: live ? instanceOf(live) : baseline?.instance ?? null,
+    displayIndex: 0,
+    inFrame: false,
+    currentStart: null,
+    intervals,
+    keyframeTimes,
+  };
 }
 
 /** Close a state's currently-open presence interval at `endSec`. */
