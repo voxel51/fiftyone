@@ -267,6 +267,16 @@ export const polylineLabelLineWidthAtom = atom({
   ],
 });
 
+export const showCuboidOrientationAtom = atom<boolean>({
+  key: "fo3d-showCuboidOrientation",
+  default: false,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-showCuboidOrientation", {
+      valueClass: "boolean",
+    }),
+  ],
+});
+
 export const avoidZFightingAtom = atom<boolean>({
   key: "fo3d-avoidZFighting",
   default: true,

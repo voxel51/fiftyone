@@ -1,7 +1,6 @@
 import { POLYLINE } from "@fiftyone/utilities";
 import { Line as LineDrei } from "@react-three/drei";
 import { ThreeEvent } from "@react-three/fiber";
-import chroma from "chroma-js";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import type { Vector3Tuple } from "three";
@@ -20,6 +19,7 @@ import {
   hoveredLabelAtom,
   selectedPolylineVertexAtom,
 } from "../state";
+import { getComplementaryColor } from "../utils";
 import { PolylinePointMarker } from "./PolylinePointMarker";
 import {
   findClickedSegment,
@@ -92,9 +92,7 @@ export const usePolylineAnnotation = ({
 
     // This is to have contrast for annotation,
     // Or else the point markers would be invisible with large line widths
-    const complementaryColor = chroma(strokeAndFillColor)
-      .set("hsl.h", "+180")
-      .hex();
+    const complementaryColor = getComplementaryColor(strokeAndFillColor);
 
     // Global deduplication set to prevent multiple markers for the same physical vertex
     // This ensures that shared vertices between segments only get one draggable marker
@@ -157,10 +155,9 @@ export const usePolylineAnnotation = ({
 
     if (!strokeAndFillColor) return null;
 
-    const centroidColor = chroma(strokeAndFillColor)
-      .set("hsl.h", "+180")
-      .brighten(1.5)
-      .hex();
+    const centroidColor = getComplementaryColor(strokeAndFillColor, {
+      brighten: 1.5,
+    });
 
     return (
       <PolylinePointMarker

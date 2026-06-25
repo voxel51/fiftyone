@@ -1,7 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { Line, useCursor } from "@react-three/drei";
 import { extend, useThree, type ThreeEvent } from "@react-three/fiber";
-import chroma from "chroma-js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
@@ -21,8 +20,9 @@ import {
   type CuboidResizeFace,
 } from "../annotation/cuboid-face-resize";
 import { useTransientCuboid } from "../annotation/store";
-import { FO_USER_DATA } from "../constants";
 import { useCuboidAnnotation } from "../annotation/useCuboidAnnotation";
+import { FO_USER_DATA } from "../constants";
+import { useFo3dContext } from "../fo3d/context";
 import {
   hoveredLabelAtom,
   isActivelySegmentingSelector,
@@ -32,7 +32,12 @@ import {
   transformModeAtom,
 } from "../state";
 import { useSetCurrent3dAnnotationMode } from "../state/accessors";
-import { getPlaneIntersection, toNDC } from "../utils";
+import {
+  getComplementaryColor,
+  getCuboidForwardFaceBasePoint,
+  getPlaneIntersection,
+  toNDC,
+} from "../utils";
 import type { OverlayProps } from "./shared";
 import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
 import { Transformable } from "./shared/TransformControls";
@@ -43,6 +48,11 @@ const FACE_RESIZE_EDGE_COLOR = "#ff2f2f";
 const FACE_RESIZE_HIGHLIGHT_OPACITY = 0.78;
 const FACE_RESIZE_HIGHLIGHT_OFFSET = 1e-4;
 const FACE_RESIZE_EDGE_LINE_WIDTH = 2;
+const ORIENTATION_MARKER_LINE_WIDTH = 3;
+const ORIENTATION_MARKER_OPACITY = 0.95;
+const ORIENTATION_MARKER_MIN_HEAD_LENGTH = 0.08;
+const ORIENTATION_MARKER_MIN_HEAD_RADIUS = 0.03;
+const ORIENTATION_MARKER_HEAD_SEGMENTS = 24;
 
 type PointerCaptureTarget = EventTarget & {
   setPointerCapture?: (pointerId: number) => void;
@@ -126,7 +136,124 @@ export interface CuboidProps extends OverlayProps {
   itemRotation: THREE.Vector3Tuple;
   lineWidth?: number;
   enableFaceResize?: boolean;
+  showOrientation?: boolean;
 }
+
+interface CuboidOrientationMarkerProps {
+  dimensions: THREE.Vector3Tuple;
+  color: string;
+  orientation: THREE.Quaternion;
+  upVector?: THREE.Vector3 | null;
+}
+
+const getFiniteMagnitude = (value: number) =>
+  Number.isFinite(value) ? Math.abs(value) : 0;
+
+const getCuboidOrientationMarkerProps = (
+  dimensions: THREE.Vector3Tuple,
+  orientation: THREE.Quaternion,
+  upVector?: THREE.Vector3 | null
+): {
+  headLength: number;
+  headPosition: THREE.Vector3Tuple;
+  headRadius: number;
+  shaftStart: THREE.Vector3Tuple;
+  shaftEnd: THREE.Vector3Tuple;
+} | null => {
+  const length = getFiniteMagnitude(dimensions[0]);
+
+  if (length <= 0) {
+    return null;
+  }
+
+  const basePoint = getCuboidForwardFaceBasePoint({
+    dimensions,
+    orientation,
+    upVector,
+  });
+
+  if (!basePoint) {
+    return null;
+  }
+
+  const localYExtent = getFiniteMagnitude(dimensions[1]);
+  const localZExtent = getFiniteMagnitude(dimensions[2]);
+  const faceX = length / 2;
+  const extensionLength = length / 2;
+  const headLength = Math.max(
+    Math.min(length * 0.18, extensionLength),
+    ORIENTATION_MARKER_MIN_HEAD_LENGTH
+  );
+  const crossSection = Math.max(
+    Math.min(localYExtent, localZExtent),
+    length * 0.1
+  );
+  const headRadius = Math.max(
+    Math.min(crossSection * 0.12, headLength * 0.45),
+    ORIENTATION_MARKER_MIN_HEAD_RADIUS
+  );
+  const shaftEndX = faceX + extensionLength;
+
+  return {
+    headLength,
+    headPosition: [shaftEndX + headLength / 2, basePoint.y, basePoint.z],
+    headRadius,
+    shaftStart: basePoint.toArray() as THREE.Vector3Tuple,
+    shaftEnd: [shaftEndX, basePoint.y, basePoint.z],
+  };
+};
+
+const CuboidOrientationMarker = ({
+  dimensions,
+  color,
+  orientation,
+  upVector,
+}: CuboidOrientationMarkerProps) => {
+  const markerProps = getCuboidOrientationMarkerProps(
+    dimensions,
+    orientation,
+    upVector
+  );
+
+  if (!markerProps) {
+    return null;
+  }
+
+  return (
+    <group userData={{ [FO_USER_DATA.IS_HELPER]: true }} renderOrder={3}>
+      <Line
+        points={[markerProps.shaftStart, markerProps.shaftEnd]}
+        color={color}
+        lineWidth={ORIENTATION_MARKER_LINE_WIDTH}
+        opacity={ORIENTATION_MARKER_OPACITY}
+        transparent
+        depthTest={false}
+        raycast={() => null}
+      />
+      <mesh
+        position={markerProps.headPosition}
+        rotation={[0, 0, -Math.PI / 2]}
+        renderOrder={3}
+        raycast={() => null}
+      >
+        <coneGeometry
+          args={[
+            markerProps.headRadius,
+            markerProps.headLength,
+            ORIENTATION_MARKER_HEAD_SEGMENTS,
+          ]}
+        />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={ORIENTATION_MARKER_OPACITY}
+          depthTest={false}
+          depthWrite={false}
+        />
+      </mesh>
+    </group>
+  );
+};
 
 export const Cuboid = ({
   dimensions,
@@ -140,9 +267,11 @@ export const Cuboid = ({
   color,
   useLegacyCoordinates,
   enableFaceResize = false,
+  showOrientation = false,
 }: CuboidProps) => {
   useHoverState();
   const { camera, gl } = useThree();
+  const { upVector } = useFo3dContext();
   const hoveredLabel = useRecoilValue(hoveredLabelAtom);
   const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
   const isActivelySegmenting = useRecoilValue(isActivelySegmentingSelector);
@@ -569,7 +698,7 @@ export const Cuboid = ({
   );
 
   const complementaryColor = useMemo(
-    () => chroma(strokeAndFillColor).set("hsl.h", "+180").hex(),
+    () => getComplementaryColor(strokeAndFillColor),
     [strokeAndFillColor],
   );
   const shouldShowWireframe = isSelectedForAnnotation || isHovered;
@@ -738,6 +867,15 @@ export const Cuboid = ({
           </mesh>
         )}
       </group>
+
+      {showOrientation && (
+        <CuboidOrientationMarker
+          dimensions={displayDimensions}
+          color={complementaryColor}
+          orientation={orientationQuaternion}
+          upVector={upVector}
+        />
+      )}
     </group>
   );
 

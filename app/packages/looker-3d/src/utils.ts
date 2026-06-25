@@ -1,3 +1,4 @@
+import chroma from "chroma-js";
 import {
   Box3,
   type BufferAttribute,
@@ -166,6 +167,79 @@ export const deg2rad = (degrees: number) => degrees * (Math.PI / 180);
 export function formatNumber(n: number, decimals = 3): string {
   return n.toFixed(decimals);
 }
+
+export const getComplementaryColor = (
+  color: string,
+  options?: { brighten?: number }
+) => {
+  let result = chroma(color).set("hsl.h", "+180");
+
+  if (options?.brighten) {
+    result = result.brighten(options.brighten);
+  }
+
+  return result.hex();
+};
+
+const DEFAULT_SCENE_UP_VECTOR = new Vector3(0, 0, 1);
+
+export const getCuboidForwardFaceBasePoint = ({
+  dimensions,
+  orientation,
+  upVector,
+}: {
+  dimensions: Vector3Tuple;
+  orientation: Quaternion;
+  upVector?: Vector3 | null;
+}) => {
+  const headingExtent = Math.abs(dimensions[0]);
+  const yExtent = Math.abs(dimensions[1]);
+  const zExtent = Math.abs(dimensions[2]);
+
+  if (
+    !Number.isFinite(headingExtent) ||
+    !Number.isFinite(yExtent) ||
+    !Number.isFinite(zExtent) ||
+    headingExtent <= 0
+  ) {
+    return null;
+  }
+
+  const candidates = [
+    { extent: yExtent, point: new Vector3(headingExtent / 2, -yExtent / 2, 0) },
+    { extent: yExtent, point: new Vector3(headingExtent / 2, yExtent / 2, 0) },
+    { extent: zExtent, point: new Vector3(headingExtent / 2, 0, -zExtent / 2) },
+    { extent: zExtent, point: new Vector3(headingExtent / 2, 0, zExtent / 2) },
+  ].filter(({ extent }) => Number.isFinite(extent) && extent > 0);
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  const effectiveUp =
+    upVector && upVector.lengthSq() > 0
+      ? upVector.clone().normalize()
+      : DEFAULT_SCENE_UP_VECTOR;
+
+  let bestCandidate = candidates[0];
+  let bestScore = Infinity;
+
+  for (const candidate of candidates) {
+    const faceDirection = candidate.point
+      .clone()
+      .setX(0)
+      .normalize()
+      .applyQuaternion(orientation);
+    const score = faceDirection.dot(effectiveUp);
+
+    if (score < bestScore) {
+      bestScore = score;
+      bestCandidate = candidate;
+    }
+  }
+
+  return bestCandidate.point;
+};
 
 export type Vector3Input = Vector3 | Vector3Tuple;
 

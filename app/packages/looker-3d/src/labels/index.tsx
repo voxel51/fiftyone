@@ -40,6 +40,7 @@ import {
   polylineLabelLineWidthAtom,
   hoveredLabelAtom,
   selectedLabelForAnnotationAtom,
+  showCuboidOrientationAtom,
 } from "../state";
 import {
   Archetype3d,
@@ -88,6 +89,7 @@ export const ThreeDLabels = ({
   const [polylineWidth, setPolylineWidth] = useRecoilState(
     polylineLabelLineWidthAtom
   );
+  const showCuboidOrientation = useRecoilValue(showCuboidOrientationAtom);
   const isCreatingCuboid = useRecoilValue(isCreatingCuboidAtom);
   const selectedLabels = useRecoilValue(fos.selectedLabelMap);
   const labelAlpha = globalOpacity ?? colorScheme.opacity;
@@ -366,6 +368,7 @@ export const ThreeDLabels = ({
             useLegacyCoordinates={settings.useLegacyCoordinates}
             color={getOverlayColor(overlay)}
             enableFaceResize={isMainPanel}
+            showOrientation={showCuboidOrientation}
           />
         </DragGate3D>
       )),
@@ -379,6 +382,7 @@ export const ThreeDLabels = ({
       settings,
       getOverlayColor,
       isMainPanel,
+      showCuboidOrientation,
     ]
   );
 

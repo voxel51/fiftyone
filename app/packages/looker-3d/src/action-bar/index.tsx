@@ -13,6 +13,7 @@ import { LevaConfigPanel } from "./LevaConfigPanel";
 import { SetViewButton } from "./SetViewButton";
 import { SliceSelector } from "./SliceSelector";
 import { ToggleFo3dBackground } from "./ToggleBackground";
+import { ToggleCuboidOrientation } from "./ToggleCuboidOrientation";
 import { ToggleFrustums } from "./ToggleFrustums";
 import { ToggleGridHelper } from "./ToggleGridHelper";
 import { ViewFo3d } from "./ViewFo3d";
@@ -72,6 +73,7 @@ export const ActionBar = ({
     }
 
     components.push(<ToggleGridHelper key="grid-helper" />);
+    components.push(<ToggleCuboidOrientation key="cuboid-orientation" />);
 
     if (fo3dContainsBackground) {
       components.push(<ToggleFo3dBackground key="toggle-background" />);
