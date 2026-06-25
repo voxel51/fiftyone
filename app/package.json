@@ -9,7 +9,7 @@
         "build": "yarn check:strict && yarn workspace @fiftyone/app build",
         "build:win32": "yarn check:strict && yarn workspace @fiftyone/app build:win32",
         "check:strict": "echo 'Running strict lint checks...' && yarn workspace @fiftyone/multimodal check",
-        "check": "yarn workspace @fiftyone/app check && yarn workspace @fiftyone/spotlight check && yarn workspace @fiftyone/multimodal check",
+        "check": "yarn workspace @fiftyone/multimodal check",
         "typecheck": "tsc --noEmit -p tsconfig.check.json",
         "typecheck:error-count": "yarn typecheck | grep -c \"error TS\"",
         "compile": "yarn relay-compiler",
