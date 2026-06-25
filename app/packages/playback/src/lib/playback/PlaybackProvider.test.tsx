@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   currentTimeAtom,
   durationAtom,
+  isBufferingAtom,
   isPlayingAtom,
   loopEndAtom,
   loopStartAtom,
@@ -40,6 +41,7 @@ function renderEngine(opts: RenderOpts = {}) {
         playhead: useAtomValue(playheadAtom, { store }),
         currentTime: useAtomValue(currentTimeAtom, { store }),
         isPlaying: useAtomValue(isPlayingAtom, { store }),
+        isBuffering: useAtomValue(isBufferingAtom, { store }),
       };
     },
     {
@@ -138,6 +140,50 @@ describe("PlaybackProvider engine actions", () => {
       });
       act(() => result.current.api.seek(4));
       expect(result.current.currentTime).toBe(4);
+    });
+  });
+
+  describe("buffering flag on paused seek / step", () => {
+    it("seek into not-ready data raises isBuffering; seek into ready data clears it", () => {
+      let ready = false;
+      const { result } = renderEngine({ duration: 10 });
+      act(() => {
+        result.current.api.registerStream({
+          id: "cam",
+          blocking: true,
+          bufferState: () => (ready ? "ready" : "loading"),
+        });
+        result.current.api.subscribeStream("cam");
+      });
+
+      act(() => result.current.api.seek(4));
+      expect(result.current.isBuffering).toBe(true);
+      expect(result.current.currentTime).toBe(0);
+
+      ready = true;
+      act(() => result.current.api.seek(5));
+      expect(result.current.isBuffering).toBe(false);
+      expect(result.current.currentTime).toBe(5);
+    });
+
+    it("stepForward / stepBack mirror readiness into isBuffering", () => {
+      let ready = false;
+      const { result } = renderEngine({ duration: 10 });
+      act(() => {
+        result.current.api.registerStream({
+          id: "cam",
+          blocking: true,
+          bufferState: () => (ready ? "ready" : "loading"),
+        });
+        result.current.api.subscribeStream("cam");
+      });
+
+      act(() => result.current.api.stepForward());
+      expect(result.current.isBuffering).toBe(true);
+
+      ready = true;
+      act(() => result.current.api.stepBack());
+      expect(result.current.isBuffering).toBe(false);
     });
   });
 

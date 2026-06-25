@@ -130,6 +130,78 @@ describe("TimelineControls", () => {
     expect(() => fireEvent.click(row)).not.toThrow();
   });
 
+  describe("keyboard playback shortcuts", () => {
+    // Bindings dispatch through the CommandContextManager singleton's
+    // document-level keydown listener, so events are fired on document
+    // descendants and assertions await the async command execution.
+
+    it("space toggles play and pause", async () => {
+      renderControls();
+      fireEvent.keyDown(document.body, { key: " " });
+      expect(await screen.findByRole("button", { name: "Pause" })).toBeTruthy();
+      fireEvent.keyDown(document.body, { key: " " });
+      expect(await screen.findByRole("button", { name: "Play" })).toBeTruthy();
+    });
+
+    it("'.' steps forward and ',' steps back one tick", async () => {
+      renderControls({ duration: 10 });
+      fireEvent.keyDown(document.body, { key: "." });
+      expect(await screen.findByText("0:00.03 / 0:10.00")).toBeTruthy();
+      fireEvent.keyDown(document.body, { key: "," });
+      expect(await screen.findByText("0:00.00 / 0:10.00")).toBeTruthy();
+    });
+
+    it("ignores modified variants (shift+space, meta+.)", async () => {
+      renderControls({ duration: 10 });
+      fireEvent.keyDown(document.body, { key: " ", shiftKey: true });
+      fireEvent.keyDown(document.body, { key: ".", metaKey: true });
+      // Flush the manager's async command path before asserting nothing moved.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(screen.getByRole("button", { name: "Play" })).toBeTruthy();
+      expect(screen.getByText("0:00.00 / 0:10.00")).toBeTruthy();
+    });
+
+    it("space on the focused controls row toggles playback, not the drawer", async () => {
+      const onToggle = vi.fn();
+      renderControls({ onToggle });
+      const row = screen.getByTestId("timeline-controls-root");
+      row.focus();
+      fireEvent.keyDown(row, { key: " " });
+      expect(await screen.findByRole("button", { name: "Pause" })).toBeTruthy();
+      expect(onToggle).not.toHaveBeenCalled();
+    });
+
+    it("enter on the focused controls row still toggles the drawer", () => {
+      const onToggle = vi.fn();
+      renderControls({ onToggle });
+      const row = screen.getByTestId("timeline-controls-root");
+      row.focus();
+      fireEvent.keyDown(row, { key: "Enter" });
+      expect(onToggle).toHaveBeenCalledTimes(1);
+    });
+
+    it("space types normally in a text input instead of toggling playback", async () => {
+      render(
+        <PlaybackProvider duration={10} stepInterval={1 / 30}>
+          <TimelineControls />
+          <input data-testid="text-field" />
+        </PlaybackProvider>,
+      );
+      const input = screen.getByTestId("text-field");
+      input.focus();
+      fireEvent.keyDown(input, { key: " " });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(screen.getByRole("button", { name: "Play" })).toBeTruthy();
+    });
+  });
+
+  describe("buffering indicator", () => {
+    it("is hidden while no stream is buffering", () => {
+      renderControls();
+      expect(screen.queryByTestId("timeline-controls-buffering")).toBeNull();
+    });
+  });
+
   describe("extraActions", () => {
     it("renders extra action content when provided", () => {
       render(

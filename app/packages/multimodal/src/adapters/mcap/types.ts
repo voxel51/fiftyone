@@ -69,9 +69,11 @@ export interface McapResolvedStreamSyncPolicy {
   readonly mode: PlaybackSyncMode;
 
   /**
-   * Inclusive start bound used for message selection.
+   * Inclusive start bound used for message selection. Undefined means
+   * unbounded lookback: selection may fall back to the newest message
+   * at or before the playback time anywhere earlier in the file.
    */
-  readonly startTimeNs: bigint;
+  readonly startTimeNs?: bigint;
 }
 
 /**
@@ -132,6 +134,36 @@ export interface McapReadTopicsRequest {
    * MCAP source to inspect for summary channel metadata.
    */
   readonly source: ByteSourceDescriptor;
+}
+
+/**
+ * Request for per-topic first/last message times from MCAP summary indexes.
+ */
+export interface McapReadTopicTimeBoundsRequest {
+  /**
+   * Timeline used for the returned bounds; defaults to MCAP log time.
+   */
+  readonly activeTimeline?: McapActiveTimeline;
+
+  /**
+   * MCAP source to inspect for message-index bounds.
+   */
+  readonly source: ByteSourceDescriptor;
+
+  /**
+   * MCAP topics to resolve bounds for.
+   */
+  readonly topics: readonly string[];
+}
+
+/**
+ * First/last message times for one topic. Null bounds mean the topic
+ * has no indexed messages (or the file carries no usable indexes).
+ */
+export interface McapTopicTimeBounds {
+  readonly topic: string;
+  readonly firstMessageTimeNs: bigint | null;
+  readonly lastMessageTimeNs: bigint | null;
 }
 
 /**
@@ -356,6 +388,14 @@ export interface McapResourceClient {
   readTopics(
     request: McapReadTopicsRequest,
   ): Promise<readonly StreamInventory[]>;
+
+  /**
+   * Reads per-topic first/last message times from summary indexes.
+   * Auxiliary data: soft-fails to null bounds when indexes are absent.
+   */
+  readTopicTimeBounds(
+    request: McapReadTopicTimeBoundsRequest
+  ): Promise<readonly McapTopicTimeBounds[]>;
 
   /**
    * Reads eager frame transforms needed for initial 3D placement.

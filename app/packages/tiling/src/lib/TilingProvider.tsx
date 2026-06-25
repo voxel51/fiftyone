@@ -61,6 +61,7 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
   // updater (state updaters must remain pure; nested setState calls
   // duplicate in Strict Mode).
   const focusedTileIdRef = useRef<string | null>(null);
+  // This effect mirrors focusedTileId into a ref for stable addTile calls.
   useEffect(() => {
     focusedTileIdRef.current = focusedTileId;
   }, [focusedTileId]);
@@ -265,5 +266,12 @@ export const TileSettingsContent: React.FC<{
   const tileId = useTileId();
   const { focusedTileId, settingsSlotEl } = useTiling();
   if (!tileId || tileId !== focusedTileId || !settingsSlotEl) return null;
-  return createPortal(children, settingsSlotEl);
+  return createPortal(
+    <div onPointerDown={stopPortalEvent}>{children}</div>,
+    settingsSlotEl
+  );
 };
+
+function stopPortalEvent(event: React.SyntheticEvent) {
+  event.stopPropagation();
+}

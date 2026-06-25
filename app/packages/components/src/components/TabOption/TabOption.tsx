@@ -54,7 +54,7 @@ const TabOption = ({
   color,
 }: TabOptionProps) => {
   const theme = useTheme();
-  const [hovering, setHovering] = useState(options.map((o) => false));
+  const [hovering, setHovering] = useState(options.map(() => false));
   const styles = useSprings(
     options.length,
     options.map((o, i) => ({

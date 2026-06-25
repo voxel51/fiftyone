@@ -1,401 +1,324 @@
-import { playheadAtom, usePlaybackStore } from "@fiftyone/playback";
-import { useAtomValue } from "jotai";
-import { useEffect, useMemo } from "react";
+import { usePlayhead } from "@fiftyone/playback";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useSyncExternalStore,
+} from "react";
 
-import type {
-  ImageAnnotationCircle,
-  ImageAnnotationPoints,
-  ImageAnnotationText,
-  ImageAnnotationsVisualization,
-} from "../../../decoders";
-import { groupLineSegmentsByLabel } from "../../../utils/line-segment-grouping";
+import type { ImageAnnotationsVisualization } from "../../../decoders";
 import type { McapDecodedMessage } from "../types";
-import { useMcapDataStream } from "./mcap-data-stream-context";
+import {
+  interpolateImageAnnotations,
+  interpolationFraction,
+  lowerBoundBigInt,
+  vizOf,
+} from "./interpolate-image-annotations";
+import {
+  useMcapDataStream,
+  type McapDataStream,
+} from "./mcap-data-stream-context";
+import type { McapTimelineIndex } from "./mcap-timeline-index";
+import type { McapTopicCache } from "./mcap-topic-cache";
 
-/**
- * Returns the annotation visualization for `topic` at the current playhead,
- * interpolated between the surrounding annotation messages when both are
- * cached. Falls back to the latest available message when the next one
- * isn't cached yet.
- *
- * Annotations arrive ~2 Hz against ~12 Hz camera images. To bridge that
- * gap visually we lerp between the prev and next annotation message by
- * fraction `(now - prev_t) / (next_t - prev_t)`.
- *
- * Foxglove doesn't carry stable instance IDs across messages, so we run a
- * greedy nearest-centroid matching pass between prev and next groups
- * (connected-component clusters of the LINE_LIST segments, keyed by their
- * inferred label) and only lerp matched pairs. Unmatched groups in prev
- * stay put; unmatched groups in next don't appear until the next message
- * becomes current.
- */
+/** Options for the interpolated image-annotation hooks. */
 export interface UseInterpolatedImageAnnotationsOptions {
   /** When false, returns the current annotation as-is with no lerping. */
   readonly interpolate?: boolean;
 }
 
+const EMPTY_TOPICS: readonly string[] = [];
+// Forward-scan budget when searching for the next distinct annotation to lerp
+// toward. Coupled to the ~30 Hz timeline tick rate: 120 ticks ≈ 4s, which
+// comfortably spans the ~2 Hz annotation cadence. If the tick rate changes,
+// revisit this — set too low, sparse annotations silently stop interpolating.
+const MAX_NEXT_MESSAGE_SCAN_TICKS = 120;
+
+/**
+ * Single-topic convenience wrapper over {@link useInterpolatedImageAnnotationSets}.
+ * Returns the interpolated image-annotation visualization for `topic` at the
+ * current playhead, or `null` when no frame is available. Pass
+ * `{ interpolate: false }` for the current frame at the playhead without lerping.
+ */
 export function useInterpolatedImageAnnotations(
   topic: string,
   { interpolate = true }: UseInterpolatedImageAnnotationsOptions = {},
 ): ImageAnnotationsVisualization | null {
-  const store = usePlaybackStore();
-  const dataStream = useMcapDataStream();
+  const topics = useMemo(() => (topic ? [topic] : EMPTY_TOPICS), [topic]);
+  const sets = useInterpolatedImageAnnotationSets(topics, { interpolate });
+  return sets[0]?.frame ?? null;
+}
 
+/**
+ * Returns decoded image-annotation visualizations for every selected
+ * annotation topic, in topic order, omitting topics with no frame at the
+ * current playhead.
+ */
+export function useInterpolatedImageAnnotationSets(
+  topics: readonly string[],
+  { interpolate = true }: UseInterpolatedImageAnnotationsOptions = {},
+): readonly {
+  readonly frame: ImageAnnotationsVisualization;
+  readonly topic: string;
+}[] {
+  const stableTopics = useStableTopics(topics);
+  const dataStream = useMcapDataStream();
+  const subscriptionsRef = useRef<Map<string, () => void>>(new Map());
+  const streamRef = useRef<McapDataStream | null>(null);
+  const topicSet = useMemo(() => new Set(stableTopics), [stableTopics]);
+
+  // This effect syncs topic subscriptions with the data stream and topic list.
   useEffect(() => {
-    if (!topic || !dataStream) return undefined;
-    return dataStream.subscribeToTopic(topic);
-  }, [topic, dataStream]);
+    const subscriptions = subscriptionsRef.current;
+
+    if (streamRef.current !== dataStream) {
+      for (const unsubscribe of subscriptions.values()) unsubscribe();
+      subscriptions.clear();
+      streamRef.current = dataStream;
+    }
+    if (!dataStream) return;
+
+    for (const [topic, unsubscribe] of subscriptions) {
+      if (!topicSet.has(topic)) {
+        unsubscribe();
+        subscriptions.delete(topic);
+      }
+    }
+    for (const topic of stableTopics) {
+      if (!subscriptions.has(topic)) {
+        subscriptions.set(topic, dataStream.subscribeToTopic(topic));
+      }
+    }
+  }, [dataStream, stableTopics, topicSet]);
+
+  // This effect releases all topic subscriptions when the hook unmounts.
+  useEffect(
+    () => () => {
+      for (const unsubscribe of subscriptionsRef.current.values()) {
+        unsubscribe();
+      }
+      subscriptionsRef.current.clear();
+    },
+    [],
+  );
 
   // Re-render every RAF tick so the lerp tracks the playhead.
-  const playhead = useAtomValue(playheadAtom, { store });
-
-  const cache = dataStream?.getTopicCache(topic);
+  const playhead = usePlayhead();
   const timeline = dataStream?.getTimelineIndex() ?? null;
+  const cacheSnapshot = useTopicCacheSnapshot(dataStream, stableTopics);
 
-  return useMemo<ImageAnnotationsVisualization | null>(() => {
-    if (!cache || !timeline) return null;
-
-    const currentTick = timeline.nearestTick(playhead);
-    if (currentTick === undefined) return null;
-    const currentMsg = cache.get(currentTick);
-    if (!currentMsg) return null;
-    const currentViz = vizOf(currentMsg);
-    if (!currentViz) return null;
-    if (!interpolate) return currentViz;
-
-    // Find next distinct annotation (different timeline time). Cached
-    // ticks return the latest <= tick under LATEST sync, so consecutive
-    // ticks alias the same source message until the next one lands.
-    const ticks = timeline.ticks;
-    let lo = 0;
-    let hi = ticks.length - 1;
-    while (lo < hi) {
-      const mid = (lo + hi) >> 1;
-      if (ticks[mid] < currentTick) lo = mid + 1;
-      else hi = mid;
-    }
-    let nextMsg: McapDecodedMessage | null = null;
-    for (let i = lo + 1; i < ticks.length; i++) {
-      const m = cache.get(ticks[i]);
-      if (m && m.timelineTimeNs !== currentMsg.timelineTimeNs) {
-        nextMsg = m;
-        break;
-      }
-    }
-    if (!nextMsg) return currentViz;
-    const nextViz = vizOf(nextMsg);
-    if (!nextViz) return currentViz;
-
-    const span = nextMsg.timelineTimeNs - currentMsg.timelineTimeNs;
-    if (span <= 0n) return currentViz;
-    const playheadNs = timeline.secToNs(playhead);
-    const elapsed = playheadNs - currentMsg.timelineTimeNs;
-    let f = Number(elapsed) / Number(span);
-    if (!Number.isFinite(f) || f <= 0) return currentViz;
-    if (f >= 1) f = 1;
-
-    return interpolateImageAnnotations(currentViz, nextViz, f);
-  }, [cache, timeline, playhead, interpolate]);
+  return useMemo(
+    () =>
+      annotationSetsFromCaches({
+        cacheSnapshot,
+        dataStream,
+        interpolate,
+        playhead,
+        timeline,
+        topics: stableTopics,
+      }),
+    [cacheSnapshot, dataStream, interpolate, playhead, stableTopics, timeline],
+  );
 }
 
-function vizOf(msg: McapDecodedMessage): ImageAnnotationsVisualization | null {
-  const v = msg.decoded.output.visualization;
-  if (!v || v.kind !== "image-annotations") return null;
-  return v as ImageAnnotationsVisualization;
+interface AnnotationSetsFromCachesArgs {
+  /** Invalidation token from `useSyncExternalStore`; frame derivation reads caches below. */
+  readonly cacheSnapshot: string;
+  readonly dataStream: McapDataStream | null;
+  readonly interpolate: boolean;
+  readonly playhead: number;
+  readonly timeline: McapTimelineIndex | null;
+  readonly topics: readonly string[];
 }
 
-// ---------------------------------------------------------------------------
-// Interpolation
-// ---------------------------------------------------------------------------
+function annotationSetsFromCaches({
+  dataStream,
+  interpolate,
+  playhead,
+  timeline,
+  topics,
+}: AnnotationSetsFromCachesArgs): readonly {
+  readonly frame: ImageAnnotationsVisualization;
+  readonly topic: string;
+}[] {
+  if (!dataStream || !timeline) return [];
 
-type Point2 = readonly [number, number];
-
-const MATCH_DISTANCE_PX = 200;
-const MIN_MATCH_IOU = 0.15;
-
-function interpolateImageAnnotations(
-  prev: ImageAnnotationsVisualization,
-  next: ImageAnnotationsVisualization,
-  f: number,
-): ImageAnnotationsVisualization {
-  return {
-    kind: prev.kind,
-    circles: interpolateCircles(prev.circles, next.circles, f),
-    points: interpolatePointsArray(prev, next, f),
-    texts: interpolateTexts(prev.texts, next.texts, f),
-  };
-}
-
-function interpolateCircles(
-  prev: readonly ImageAnnotationCircle[],
-  next: readonly ImageAnnotationCircle[],
-  f: number,
-): readonly ImageAnnotationCircle[] {
-  // Index matching is acceptable for circles — they're rare in this data
-  // and tend to stay in order; if counts differ we just keep prev.
-  if (prev.length !== next.length) return prev;
-  return prev.map((p, i) => {
-    const n = next[i];
-    return {
-      ...p,
-      position: lerpPoint(p.position, n.position, f),
-      diameter: lerp(p.diameter, n.diameter, f),
-    };
-  });
-}
-
-function interpolateTexts(
-  prev: readonly ImageAnnotationText[],
-  next: readonly ImageAnnotationText[],
-  f: number,
-): readonly ImageAnnotationText[] {
-  // Match texts by `text` content + nearest position, greedy per content.
-  const out: ImageAnnotationText[] = [];
-  const usedNext = new Set<number>();
-  for (const p of prev) {
-    let bestIdx = -1;
-    let bestDist = Infinity;
-    for (let j = 0; j < next.length; j++) {
-      if (usedNext.has(j)) continue;
-      const n = next[j];
-      if (n.text !== p.text) continue;
-      const d = squaredDistance(p.position, n.position);
-      if (d < bestDist) {
-        bestDist = d;
-        bestIdx = j;
-      }
+  const sets: {
+    frame: ImageAnnotationsVisualization;
+    topic: string;
+  }[] = [];
+  for (const topic of topics) {
+    const cache = dataStream.getTopicCache(topic);
+    const frame = cache
+      ? currentAnnotationFrame({
+          cache,
+          interpolate,
+          playhead,
+          timeline,
+        })
+      : null;
+    if (frame) {
+      sets.push({ frame, topic });
     }
-    if (bestIdx === -1 || bestDist > MATCH_DISTANCE_PX * MATCH_DISTANCE_PX) {
-      out.push(p);
-      continue;
-    }
-    usedNext.add(bestIdx);
-    const n = next[bestIdx];
-    out.push({ ...p, position: lerpPoint(p.position, n.position, f) });
   }
-  return out;
+  return sets;
 }
 
 /**
- * Interpolation for the points array. LINE_LIST primitives carry every
- * cuboid in one big segment list; we split each into per-object groups
- * via connected components, match groups between prev and next by label
- * + centroid proximity, then lerp matched pairs. Non-line-list primitives
- * fall back to index-based interpolation.
+ * Returns a referentially stable, empty-topic-free copy of `topics` that only
+ * changes identity when the topic *contents* change. Lets callers pass a fresh
+ * array each render without re-triggering the subscription effects or the
+ * `useSyncExternalStore` snapshot below.
  */
-function interpolatePointsArray(
-  prev: ImageAnnotationsVisualization,
-  next: ImageAnnotationsVisualization,
-  f: number,
-): readonly ImageAnnotationPoints[] {
-  if (prev.points.length !== next.points.length) return prev.points;
-  return prev.points.map((pp, idx) => {
-    const np = next.points[idx];
-    if (pp.type !== np.type) return pp;
-    if (pp.type === "line-list") {
-      return interpolateLineList(pp, np, prev.texts, next.texts, f);
-    }
-    if (pp.points.length !== np.points.length) return pp;
-    return {
-      ...pp,
-      points: pp.points.map((pt, j) => lerpPoint(pt, np.points[j], f)),
-    };
-  });
+function useStableTopics(topics: readonly string[]): readonly string[] {
+  // Memoize on the joined contents rather than array identity, so callers can
+  // pass a fresh array every render without churning the downstream memo and
+  // external-store subscriptions. A newline can't appear in a topic name, so
+  // equal lists always yield the same key. Keying here keeps it concurrent-safe,
+  // unlike caching it through a ref written during render.
+  const normalized = normalizeTopics(topics);
+  const key = normalized.join("\n");
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- key is the content digest of `normalized`
+  return useMemo(() => normalized, [key]);
 }
 
-function interpolateLineList(
-  prevPrim: ImageAnnotationPoints,
-  nextPrim: ImageAnnotationPoints,
-  prevTexts: readonly ImageAnnotationText[],
-  nextTexts: readonly ImageAnnotationText[],
-  f: number,
-): ImageAnnotationPoints {
-  const prevGroups = groupLineList(prevPrim.points, prevTexts);
-  const nextGroups = groupLineList(nextPrim.points, nextTexts);
-
-  // Per-prev candidate selection:
-  //   1. Same label class (hard).
-  //   2. Centroid within MATCH_DISTANCE_PX (coarse position filter).
-  //   3. AABB IoU above MIN_IOU (rejects gross size mismatches —
-  //      e.g. a parked truck near a passing sedan).
-  //   4. Among survivors, pick the lowest symmetric Chamfer distance
-  //      over the cuboid's unique vertices (shape similarity tiebreak).
-  // Greedy: first prev to claim a next wins.
-  const usedNext = new Set<number>();
-  const matchedPairs: { prev: Group; next: Group | null }[] = prevGroups.map(
-    (pg) => {
-      let bestIdx = -1;
-      let bestScore = Infinity;
-      const distSqThreshold = MATCH_DISTANCE_PX * MATCH_DISTANCE_PX;
-      for (let j = 0; j < nextGroups.length; j++) {
-        if (usedNext.has(j)) continue;
-        const ng = nextGroups[j];
-        if (ng.label !== pg.label) continue;
-        if (squaredDistance(pg.centroid, ng.centroid) > distSqThreshold) {
-          continue;
-        }
-        if (aabbIoU(pg.bounds, ng.bounds) < MIN_MATCH_IOU) continue;
-        const score = chamferDistance(pg.vertices, ng.vertices);
-        if (score < bestScore) {
-          bestScore = score;
-          bestIdx = j;
+/**
+ * Subscribes to the per-topic cache revisions via `useSyncExternalStore` and
+ * returns a `"topic:revision|"` digest string. The digest changes whenever a
+ * watched cache bumps its revision (frames arrive, change, or are cleared),
+ * which is what drives the hook to re-derive annotation frames as data streams in.
+ */
+function useTopicCacheSnapshot(
+  dataStream: McapDataStream | null,
+  topics: readonly string[],
+): string {
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => {
+      if (!dataStream || topics.length === 0) return () => undefined;
+      // Only caches that already exist are observed. This is safe because the
+      // data stream creates every topic cache before it publishes itself, so by
+      // the time `dataStream` is non-null the caches exist. If a topic's cache
+      // could appear *after* this subscription runs, its revision bumps would go
+      // unseen — bump a dependency here to re-subscribe in that case.
+      const unsubscribeFns: (() => void)[] = [];
+      for (const topic of topics) {
+        const cache = dataStream.getTopicCache(topic);
+        if (cache) {
+          unsubscribeFns.push(cache.subscribeToChanges(onStoreChange));
         }
       }
-      if (bestIdx === -1) return { prev: pg, next: null };
-      usedNext.add(bestIdx);
-      return { prev: pg, next: nextGroups[bestIdx] };
+      return () => {
+        for (const unsubscribe of unsubscribeFns) unsubscribe();
+      };
     },
+    [dataStream, topics],
   );
 
-  const out: Point2[] = [];
-  for (const { prev, next } of matchedPairs) {
-    if (!next || prev.segments.length !== next.segments.length) {
-      for (const [a, b] of prev.segments) {
-        out.push(a, b);
-      }
+  const getSnapshot = useCallback(
+    () => topicCacheSnapshot(dataStream, topics),
+    [dataStream, topics],
+  );
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+}
+
+function topicCacheSnapshot(
+  dataStream: McapDataStream | null,
+  topics: readonly string[],
+): string {
+  if (!dataStream || topics.length === 0) return "";
+  let snapshot = "";
+  for (const topic of topics) {
+    const revision = dataStream.getTopicCache(topic)?.revision ?? -1;
+    snapshot += `${topic}:${revision}|`;
+  }
+  return snapshot;
+}
+
+function normalizeTopics(topics: readonly string[]): readonly string[] {
+  if (topics.length === 0) return EMPTY_TOPICS;
+  const normalized: string[] = [];
+  const seen = new Set<string>();
+  let changed = false;
+  for (const topic of topics) {
+    if (!topic) {
+      changed = true;
       continue;
     }
-    for (let i = 0; i < prev.segments.length; i++) {
-      const [pa, pb] = prev.segments[i];
-      const [na, nb] = next.segments[i];
-      out.push(lerpPoint(pa, na, f), lerpPoint(pb, nb, f));
+    if (seen.has(topic)) {
+      changed = true;
+      continue;
     }
+    seen.add(topic);
+    normalized.push(topic);
   }
-
-  return { ...prevPrim, points: out };
+  if (!changed) return topics;
+  return normalized.length > 0 ? normalized : EMPTY_TOPICS;
 }
 
-// ---------------------------------------------------------------------------
-// Connected-component grouping (mirror of the overlay's render path)
-// ---------------------------------------------------------------------------
+function currentAnnotationFrame({
+  cache,
+  interpolate,
+  playhead,
+  timeline,
+}: {
+  readonly cache: McapTopicCache;
+  readonly interpolate: boolean;
+  readonly playhead: number;
+  readonly timeline: McapTimelineIndex;
+}): ImageAnnotationsVisualization | null {
+  const currentTick = timeline.nearestTick(playhead);
+  if (currentTick === undefined) return null;
+  const currentMsg = cache.get(currentTick);
+  if (!currentMsg) return null;
+  const currentViz = vizOf(currentMsg);
+  if (!currentViz) return null;
+  if (!interpolate) return currentViz;
 
-interface Group {
-  readonly segments: readonly [Point2, Point2][];
-  readonly centroid: Point2;
-  readonly bounds: Bounds;
-  readonly vertices: readonly Point2[];
-  readonly label: string | null;
+  const nextMsg = nextDistinctAnnotationMessage({
+    cache,
+    currentTick,
+    currentTimelineTimeNs: currentMsg.timelineTimeNs,
+    timeline,
+  });
+  if (!nextMsg) return currentViz;
+  const nextViz = vizOf(nextMsg);
+  if (!nextViz) return currentViz;
+
+  const f = interpolationFraction({
+    nextTimelineTimeNs: nextMsg.timelineTimeNs,
+    playheadNs: timeline.secToNs(playhead),
+    previousTimelineTimeNs: currentMsg.timelineTimeNs,
+  });
+  if (f === null) return currentViz;
+
+  return interpolateImageAnnotations(currentViz, nextViz, f);
 }
 
-function groupLineList(
-  points: readonly Point2[],
-  texts: readonly ImageAnnotationText[],
-): readonly Group[] {
-  return groupLineSegmentsByLabel(points, texts).map(({ label, segments }) =>
-    makeGroup(segments, label),
+function nextDistinctAnnotationMessage({
+  cache,
+  currentTick,
+  currentTimelineTimeNs,
+  timeline,
+}: {
+  readonly cache: McapTopicCache;
+  readonly currentTick: bigint;
+  readonly currentTimelineTimeNs: bigint;
+  readonly timeline: McapTimelineIndex;
+}): McapDecodedMessage | null {
+  // Ticks are synchronized with LATEST semantics, so several cached ticks can
+  // point to the same source annotation. Walk forward only far enough to find
+  // the next cached source message; if lookahead is missing, staying on the
+  // current frame is cheaper and visually safer than scanning the full file.
+  const startIndex = lowerBoundBigInt(timeline.ticks, currentTick) + 1;
+  const endIndex = Math.min(
+    timeline.ticks.length,
+    startIndex + MAX_NEXT_MESSAGE_SCAN_TICKS,
   );
-}
-
-function makeGroup(
-  segments: readonly [Point2, Point2][],
-  label: string | null,
-): Group {
-  const bounds = segmentsBounds(segments);
-  const centroid: Point2 = [
-    (bounds.minX + bounds.maxX) / 2,
-    (bounds.minY + bounds.maxY) / 2,
-  ];
-  return {
-    segments,
-    centroid,
-    bounds,
-    vertices: uniqueVertices(segments),
-    label,
-  };
-}
-
-function uniqueVertices(
-  segments: readonly [Point2, Point2][],
-): readonly Point2[] {
-  const seen = new Set<string>();
-  const out: Point2[] = [];
-  for (const [a, b] of segments) {
-    for (const p of [a, b]) {
-      const k = `${Math.round(p[0] * 100)}|${Math.round(p[1] * 100)}`;
-      if (seen.has(k)) continue;
-      seen.add(k);
-      out.push(p);
-    }
+  for (let i = startIndex; i < endIndex; i++) {
+    const msg = cache.get(timeline.ticks[i]);
+    if (msg && msg.timelineTimeNs !== currentTimelineTimeNs) return msg;
   }
-  return out;
-}
-
-function aabbIoU(a: Bounds, b: Bounds): number {
-  const x1 = Math.max(a.minX, b.minX);
-  const y1 = Math.max(a.minY, b.minY);
-  const x2 = Math.min(a.maxX, b.maxX);
-  const y2 = Math.min(a.maxY, b.maxY);
-  if (x2 <= x1 || y2 <= y1) return 0;
-  const inter = (x2 - x1) * (y2 - y1);
-  const areaA = Math.max(0, a.maxX - a.minX) * Math.max(0, a.maxY - a.minY);
-  const areaB = Math.max(0, b.maxX - b.minX) * Math.max(0, b.maxY - b.minY);
-  const union = areaA + areaB - inter;
-  return union > 0 ? inter / union : 0;
-}
-
-/**
- * Symmetric Chamfer distance between two point sets — average nearest-
- * neighbour distance from A→B plus from B→A, halved. Small values mean
- * the two cuboid wireframes have similar vertex layouts (good match).
- */
-function chamferDistance(a: readonly Point2[], b: readonly Point2[]): number {
-  if (a.length === 0 || b.length === 0) return Infinity;
-  let sumAB = 0;
-  for (const pa of a) {
-    let minD = Infinity;
-    for (const pb of b) {
-      const d = squaredDistance(pa, pb);
-      if (d < minD) minD = d;
-    }
-    sumAB += Math.sqrt(minD);
-  }
-  let sumBA = 0;
-  for (const pb of b) {
-    let minD = Infinity;
-    for (const pa of a) {
-      const d = squaredDistance(pa, pb);
-      if (d < minD) minD = d;
-    }
-    sumBA += Math.sqrt(minD);
-  }
-  return (sumAB / a.length + sumBA / b.length) / 2;
-}
-
-interface Bounds {
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
-}
-
-function segmentsBounds(segments: readonly [Point2, Point2][]): Bounds {
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-  for (const [[x1, y1], [x2, y2]] of segments) {
-    if (x1 < minX) minX = x1;
-    if (x2 < minX) minX = x2;
-    if (x1 > maxX) maxX = x1;
-    if (x2 > maxX) maxX = x2;
-    if (y1 < minY) minY = y1;
-    if (y2 < minY) minY = y2;
-    if (y1 > maxY) maxY = y1;
-    if (y2 > maxY) maxY = y2;
-  }
-  return { minX, minY, maxX, maxY };
-}
-
-function squaredDistance(a: Point2, b: Point2): number {
-  const dx = a[0] - b[0];
-  const dy = a[1] - b[1];
-  return dx * dx + dy * dy;
-}
-
-function lerpPoint(a: Point2, b: Point2, f: number): Point2 {
-  return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
-}
-
-function lerp(a: number, b: number, f: number): number {
-  return a + (b - a) * f;
+  return null;
 }

@@ -1,14 +1,27 @@
 import {
-  playheadAtom,
-  seekEventAtom,
-  streamValueAtom,
+  getBufferedRanges,
+  getBufferingDetail,
+  getIsBuffering,
+  getPlayhead,
+  getStreamValue,
+  setBufferedRanges,
+  setBufferingDetail,
+  setIsBuffering,
+  setStreamValue,
+  subscribePlayhead,
   usePlayback,
   usePlaybackStore,
+  useSeekEvent,
   type PlaybackStore,
   type PlaybackStream,
 } from "@fiftyone/playback";
-import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  getMcapTopicStatus,
+  setMcapTopicStartTimeSec,
+  setMcapTopicStatus,
+  type McapTopicStatus,
+} from "./mcap-stream-status-state";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
 import { DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ } from "../timeline";
 import type {
@@ -18,6 +31,7 @@ import type {
 } from "../types";
 import { MCAP_ACTIVE_TIMELINE } from "../types";
 import { useSetMcapDataStream } from "./mcap-data-stream-context";
+import { resetMcapPlaybackBuffering } from "./mcap-playback-buffering";
 import type { McapTimelineIndex } from "./mcap-timeline-index";
 import { createMcapTimelineIndex } from "./mcap-timeline-index";
 import { McapTopicCache } from "./mcap-topic-cache";
@@ -96,6 +110,33 @@ const DEFAULT_MCAP_PLAYBACK_POLICY: McapPlaybackPolicy = {
   topicCacheLookaheadMultiplier: 2,
 } as const;
 
+/**
+ * Consecutive fetch failures per topic before the stream stops retrying
+ * the affected ticks. Below the threshold a failure leaves the ticks
+ * uncached so the engine's normal prefetch loop retries (covers transient
+ * network errors); at the threshold the failed ticks are seeded as
+ * "fetched, no message" so one persistently-broken topic can't stall the
+ * clock and freeze the whole modal.
+ */
+const MAX_FETCH_FAILURE_STREAK = 3;
+
+/**
+ * Trailing-throttle interval for republishing buffered ranges to the
+ * timeline strip. Computing ranges walks every timeline tick, so it must
+ * not run at the cadence of status publishes (RAF-adjacent during
+ * buffering stalls).
+ */
+const BUFFERED_RANGES_PUBLISH_INTERVAL_MS = 500;
+
+/**
+ * Age past which a rendered frame counts as "stale": selection is
+ * latest-at-or-before with unbounded lookback, so a mid-recording
+ * sensor dropout keeps rendering the last frame — the status flips so
+ * a frozen frame can't read as live. Generous enough that normally
+ * sparse streams (keyframe-rate annotations) never trip it.
+ */
+const STALE_THRESHOLD_NS = 3_000_000_000n;
+
 const PLAYBACK_POLICY = deriveMcapPlaybackPolicy(DEFAULT_MCAP_PLAYBACK_POLICY);
 
 const noop = (): void => undefined;
@@ -126,10 +167,10 @@ export function useRegisterMcapDataStream({
   allTopics,
   streamPolicies,
 }: UseMcapDataStreamOptions): void {
-  const { registerStream, subscribeStream } = usePlayback();
+  const { registerStream, seek, subscribeStream } = usePlayback();
   const store = usePlaybackStore();
   const setDataStream = useSetMcapDataStream();
-  const seekEvent = useAtomValue(seekEventAtom, { store });
+  const seekEvent = useSeekEvent();
 
   const [index, setIndex] = useState<McapTimelineIndex | null>(null);
 
@@ -140,6 +181,17 @@ export function useRegisterMcapDataStream({
   // topic doesn't make collectMissingTicks think that topic is in flight.
   const pendingTicksRef = useRef<Map<string, Set<string>>>(new Map());
   const lastFrameRef = useRef<Map<string, unknown>>(new Map());
+  // Consecutive fetch failures per topic; reset on the first success.
+  const failureStreakRef = useRef<Map<string, number>>(new Map());
+  // Topics currently in the "failed" state (streak hit the cap). Sticky
+  // until a later fetch covering the topic succeeds.
+  const failedTopicsRef = useRef<Set<string>>(new Set());
+  // Pending trailing-throttle timer for the buffered-ranges publish.
+  const bufferedRangesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const topicStartTimesNsRef = useRef<Map<string, bigint | null>>(new Map());
+  const autoSeekSourceEpochRef = useRef<number | null>(null);
   const nextLookaheadRefreshTimeRef = useRef(0);
   const indexRef = useRef<McapTimelineIndex | null>(null);
   const sourceEpochRef = useRef(0);
@@ -155,6 +207,50 @@ export function useRegisterMcapDataStream({
   useEffect(() => {
     streamPoliciesRef.current = streamPolicies;
   }, [streamPolicies]);
+
+  const getActiveTopics = useCallback(
+    (): string[] =>
+      allTopicsRef.current.filter(
+        (t) => topicCachesRef.current.get(t)?.isActive,
+      ),
+    [],
+  );
+
+  // If a recording's selected renderable topics begin just after the MCAP
+  // timeline start, land the initial playhead on the first sampled tick that
+  // can actually resolve data. This consumes the topic bounds already loaded
+  // for status copy; it never asks the worker for another index/read.
+  const maybeAutoSeekToFirstData = useCallback(() => {
+    const currentEpoch = sourceEpochRef.current;
+    if (autoSeekSourceEpochRef.current === currentEpoch) return;
+    if (getPlayhead(store) !== 0) return;
+
+    const currentIndex = indexRef.current;
+    if (!currentIndex) return;
+
+    const activeTopics = getActiveTopics();
+    if (activeTopics.length === 0) return;
+
+    let firstMessageTimeNs: bigint | null = null;
+    for (const topic of activeTopics) {
+      if (!topicStartTimesNsRef.current.has(topic)) return;
+      const topicStart = topicStartTimesNsRef.current.get(topic);
+      if (topicStart === null || topicStart === undefined) return;
+      if (firstMessageTimeNs === null || topicStart < firstMessageTimeNs) {
+        firstMessageTimeNs = topicStart;
+      }
+    }
+    if (firstMessageTimeNs === null) return;
+
+    const tick = firstTickAtOrAfter(currentIndex.ticks, firstMessageTimeNs);
+    if (tick === undefined) return;
+
+    const targetSec = nsToSeconds(tick - currentIndex.startTimeNs);
+    if (targetSec <= 0) return;
+
+    autoSeekSourceEpochRef.current = currentEpoch;
+    seek(targetSec);
+  }, [getActiveTopics, seek, store]);
 
   // Pending helpers — wrap the per-tick topic sets so call sites read
   // like simple predicates instead of repeating the get/has dance.
@@ -209,21 +305,59 @@ export function useRegisterMcapDataStream({
     setIndex(null);
     pendingTicksRef.current.clear();
     lastFrameRef.current.clear();
+    failureStreakRef.current.clear();
+    failedTopicsRef.current.clear();
+    topicStartTimesNsRef.current.clear();
+    autoSeekSourceEpochRef.current = null;
     nextLookaheadRefreshTimeRef.current = 0;
     for (const cache of topicCachesRef.current.values()) {
       cache.clear();
     }
     for (const topic of topicCachesRef.current.keys()) {
-      store.set(streamValueAtom(topic), null);
+      setStreamValue(store, topic, null);
+      setMcapTopicStatus(store, topic, "loading");
+      setMcapTopicStartTimeSec(store, topic, null);
+    }
+    resetMcapPlaybackBuffering(store);
+    if (bufferedRangesTimerRef.current !== null) {
+      clearTimeout(bufferedRangesTimerRef.current);
+      bufferedRangesTimerRef.current = null;
     }
     if (!source) return;
     let cancelled = false;
-    client
-      .readTimelineRange({ source, activeTimeline: MCAP_ACTIVE_TIMELINE.LOG })
+    const rangeRead = client.readTimelineRange({
+      source,
+      activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+    });
+    rangeRead
       .then((range) => {
         if (!cancelled && sourceEpochRef.current === sourceEpoch) {
           setIndex(createMcapTimelineIndex(range));
         }
+      })
+      .catch(noop);
+    // Auxiliary: per-topic first-message times feed the "No data until
+    // 0:12" tile copy. Best-effort — failures never block playback.
+    rangeRead
+      .then(async (range) => {
+        const bounds = await client.readTopicTimeBounds({
+          activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+          source,
+          topics: allTopicsRef.current,
+        });
+        if (cancelled || sourceEpochRef.current !== sourceEpoch) return;
+        for (const bound of bounds) {
+          topicStartTimesNsRef.current.set(
+            bound.topic,
+            bound.firstMessageTimeNs,
+          );
+          const startSec =
+            bound.firstMessageTimeNs === null
+              ? null
+              : nsToSeconds(bound.firstMessageTimeNs - range.startTimeNs);
+          setMcapTopicStartTimeSec(store, bound.topic, startSec);
+        }
+        maybeAutoSeekToFirstData();
       })
       .catch(noop);
     return () => {
@@ -232,15 +366,185 @@ export function useRegisterMcapDataStream({
     // client is a stable singleton — re-running on its identity would
     // discard the loaded timeline range for no benefit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [source, store]);
+  }, [maybeAutoSeekToFirstData, source, store]);
 
-  const getActiveTopics = useCallback(
-    (): string[] =>
-      allTopicsRef.current.filter(
-        (t) => topicCachesRef.current.get(t)?.isActive,
-      ),
+  // This effect retries the initial auto-seek once the timeline index is
+  // committed to React state; topic bounds can resolve first.
+  useEffect(() => {
+    if (index) maybeAutoSeekToFirstData();
+  }, [index, maybeAutoSeekToFirstData]);
+
+  // Contiguous [startSec, endSec] ranges where every active topic has the
+  // tick cached — i.e. the stretches playback can run through without
+  // stalling. Walks the full tick index, hence the trailing throttle in
+  // `scheduleBufferedRangesPublish`.
+  const computeBufferedRanges = useCallback((): Array<[number, number]> => {
+    const currentIndex = indexRef.current;
+    if (!currentIndex) return [];
+    const activeTopics = getActiveTopics();
+    if (activeTopics.length === 0) return [];
+    const caches = topicCachesRef.current;
+    const { startTimeNs, ticks, durationSec } = currentIndex;
+    const nominalTickSec = 1 / DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ;
+
+    const tickToSec = (tick: bigint): number => {
+      const delta = tick - startTimeNs;
+      return (
+        Number(delta / 1_000_000_000n) +
+        Number(delta % 1_000_000_000n) / 1_000_000_000
+      );
+    };
+
+    const ranges: Array<[number, number]> = [];
+    let runStart: number | null = null;
+    let runEnd = 0;
+    for (const tick of ticks) {
+      const covered = activeTopics.every((t) => caches.get(t)?.has(tick));
+      if (covered) {
+        const sec = tickToSec(tick);
+        if (runStart === null) runStart = sec;
+        runEnd = Math.min(sec + nominalTickSec, durationSec);
+      } else if (runStart !== null) {
+        ranges.push([runStart, runEnd]);
+        runStart = null;
+      }
+    }
+    if (runStart !== null) ranges.push([runStart, runEnd]);
+    return ranges;
+  }, [getActiveTopics]);
+
+  const scheduleBufferedRangesPublish = useCallback(() => {
+    if (bufferedRangesTimerRef.current !== null) return;
+    bufferedRangesTimerRef.current = setTimeout(() => {
+      bufferedRangesTimerRef.current = null;
+      const next = computeBufferedRanges();
+      if (!bufferedRangesEqual(getBufferedRanges(store), next)) {
+        setBufferedRanges(store, next);
+      }
+    }, BUFFERED_RANGES_PUBLISH_INTERVAL_MS);
+  }, [computeBufferedRanges, store]);
+
+  // Clear any pending buffered-ranges timer when the hook unmounts so it
+  // can't fire against an orphaned store.
+  useEffect(
+    () => () => {
+      if (bufferedRangesTimerRef.current !== null) {
+        clearTimeout(bufferedRangesTimerRef.current);
+        bufferedRangesTimerRef.current = null;
+      }
+    },
     [],
   );
+
+  // Recompute per-topic status at the current playhead tick and the
+  // aggregate buffering detail ("N/M streams"). Same-value atom writes are
+  // no-ops, so calling this from RAF-adjacent paths (stream.prefetch,
+  // onCommit) only wakes React on actual transitions.
+  const publishStreamStatuses = useCallback(() => {
+    const activeTopics = getActiveTopics();
+    const caches = topicCachesRef.current;
+    const failed = failedTopicsRef.current;
+    const tick = indexRef.current?.nearestTick(getPlayhead(store)) ?? null;
+
+    let covered = 0;
+    for (const topic of activeTopics) {
+      const cache = caches.get(topic);
+
+      let status: McapTopicStatus;
+      if (tick === null || !cache?.has(tick)) {
+        status = failed.has(topic) ? "failed" : "loading";
+      } else {
+        covered += 1;
+        if (failed.has(topic)) {
+          status = "failed";
+        } else {
+          const msg = cache.get(tick);
+          if (!msg) {
+            status = "gap";
+          } else {
+            // Latest-at-or-before selection holds the last frame through
+            // dropouts; flag it once the frame is older than the
+            // threshold so a frozen frame can't read as live.
+            status =
+              tick - msg.timelineTimeNs > STALE_THRESHOLD_NS
+                ? "stale"
+                : "ready";
+          }
+        }
+      }
+      if (getMcapTopicStatus(store, topic) !== status) {
+        setMcapTopicStatus(store, topic, status);
+      }
+    }
+
+    const total = activeTopics.length;
+    const detail =
+      tick !== null && total > 0 && covered < total
+        ? `${covered}/${total} streams`
+        : null;
+    if (getBufferingDetail(store) !== detail) {
+      setBufferingDetail(store, detail);
+    }
+
+    // Paused catch-up completion: the engine flags buffering on a
+    // seek/step into uncached data but has no tick to clear it while
+    // paused — once every active topic covers the playhead tick, the
+    // wait is over. (Never *set* the flag here; the engine owns that.)
+    if (
+      tick !== null &&
+      total > 0 &&
+      covered === total &&
+      getIsBuffering(store)
+    ) {
+      setIsBuffering(store, false);
+    }
+
+    // Every data-flow event that can change statuses can also change
+    // coverage — refresh the timeline's buffered shading (throttled).
+    scheduleBufferedRangesPublish();
+  }, [getActiveTopics, scheduleBufferedRangesPublish, store]);
+
+  // Failure bookkeeping for one rejected fetch. Below the streak cap the
+  // ticks stay uncached so the engine retries; at the cap the requested
+  // ticks are sealed as "no message" so playback can move past the
+  // failure, and the topic surfaces as "failed" until a fetch succeeds.
+  const handleFetchFailure = useCallback(
+    (error: unknown, ticks: readonly bigint[], topics: readonly string[]) => {
+      const newlyFailed: string[] = [];
+      for (const topic of topics) {
+        const streak = (failureStreakRef.current.get(topic) ?? 0) + 1;
+        failureStreakRef.current.set(topic, streak);
+        if (streak < MAX_FETCH_FAILURE_STREAK) continue;
+        if (!failedTopicsRef.current.has(topic)) {
+          failedTopicsRef.current.add(topic);
+          newlyFailed.push(topic);
+        }
+        const cache = topicCachesRef.current.get(topic);
+        if (cache?.isActive) {
+          for (const tick of ticks) {
+            if (!cache.has(tick)) cache.set(tick, null);
+          }
+        }
+      }
+      if (newlyFailed.length > 0) {
+        console.warn(
+          `[mcap] giving up on topics after ${MAX_FETCH_FAILURE_STREAK} failed fetches:`,
+          newlyFailed,
+          error,
+        );
+      }
+      // Statuses are republished by the caller's `.finally`, after the
+      // pending bookkeeping for this fetch is cleared.
+    },
+    [],
+  );
+
+  const handleFetchSuccess = useCallback((topics: readonly string[]) => {
+    for (const topic of topics) {
+      failureStreakRef.current.delete(topic);
+      failedTopicsRef.current.delete(topic);
+    }
+  }, []);
 
   // Core batch-fetch helper. Fetches ticks for the active topic set, fills
   // per-topic caches, and (since the engine doesn't tick when paused) also
@@ -286,6 +590,7 @@ export function useRegisterMcapDataStream({
         })
         .then((windows) => {
           if (sourceEpochRef.current !== sourceEpoch) return;
+          handleFetchSuccess(topicsToFetch);
 
           const activeFetchedTopics = activeTopicsInCaches(
             caches,
@@ -298,9 +603,10 @@ export function useRegisterMcapDataStream({
           }
           const currentIndex = indexRef.current;
           if (!currentIndex) return;
-          const tick = currentIndex.nearestTick(store.get(playheadAtom));
+          const tick = currentIndex.nearestTick(getPlayhead(store));
           const stillActiveTopics = activeTopicsInCaches(caches, activeTopics);
-          if (tick) {
+          // Explicit undefined check — `0n` is falsy but a valid tick.
+          if (tick !== undefined) {
             pushTickToStore(
               stillActiveTopics,
               tick,
@@ -310,16 +616,27 @@ export function useRegisterMcapDataStream({
             );
           }
         })
-        .catch(noop)
+        .catch((error) => {
+          if (sourceEpochRef.current !== sourceEpoch) return;
+          handleFetchFailure(error, toFetch, topicsToFetch);
+        })
         .finally(() => {
           if (sourceEpochRef.current !== sourceEpoch) return;
 
           clearTopicsPending(keys, topicsToFetch);
+          publishStreamStatuses();
         });
 
       return true;
     },
-    [client, source, store],
+    [
+      client,
+      source,
+      store,
+      handleFetchFailure,
+      handleFetchSuccess,
+      publishStreamStatuses,
+    ],
   );
 
   // Fetch the nearest target frame through the worker's current-frame lane so
@@ -352,6 +669,7 @@ export function useRegisterMcapDataStream({
         })
         .then((window) => {
           if (sourceEpochRef.current !== sourceEpoch) return;
+          handleFetchSuccess(topicsToFetch);
 
           const activeFetchedTopics = activeTopicsInCaches(
             caches,
@@ -368,16 +686,27 @@ export function useRegisterMcapDataStream({
             store,
           );
         })
-        .catch(noop)
+        .catch((error) => {
+          if (sourceEpochRef.current !== sourceEpoch) return;
+          handleFetchFailure(error, [tick], topicsToFetch);
+        })
         .finally(() => {
           if (sourceEpochRef.current !== sourceEpoch) return;
 
           clearTopicsPending([tickKey], topicsToFetch);
+          publishStreamStatuses();
         });
 
       return true;
     },
-    [client, source, store],
+    [
+      client,
+      source,
+      store,
+      handleFetchFailure,
+      handleFetchSuccess,
+      publishStreamStatuses,
+    ],
   );
 
   // Collect ticks in [startSec, endSec] where at least one active topic
@@ -424,7 +753,8 @@ export function useRegisterMcapDataStream({
       nextLookaheadRefreshTimeRef.current = timeSec;
 
       const tick = currentIndex.nearestTick(timeSec);
-      if (tick) {
+      // Explicit undefined check — `0n` is falsy but a valid tick.
+      if (tick !== undefined) {
         pushTickToStore(
           activeTopics,
           tick,
@@ -442,12 +772,17 @@ export function useRegisterMcapDataStream({
         policy: PLAYBACK_POLICY,
         timeSec,
       });
+
+      // Surface "loading" immediately on seek/mount/subscribe — the
+      // fetches kicked off above republish when they settle.
+      publishStreamStatuses();
     },
     [
       collectMissingTicks,
       fetchBatch,
       fetchCurrentFrame,
       getActiveTopics,
+      publishStreamStatuses,
       store,
     ],
   );
@@ -470,7 +805,10 @@ export function useRegisterMcapDataStream({
 
       bufferState: (timeSec) => {
         const tick = index.nearestTick(timeSec);
-        if (!tick) return "missing";
+        // Explicit undefined check — `0n` is falsy but a valid tick
+        // (files with relative log times start at exactly 0n, and a
+        // falsy check here wedges the engine at t=0 forever).
+        if (tick === undefined) return "missing";
         const activeTopics = getActiveTopics();
         if (activeTopics.length === 0) return "ready";
         const tickKey = tick.toString();
@@ -491,14 +829,20 @@ export function useRegisterMcapDataStream({
       prefetch: ([startSec, endSec]) => {
         const activeTopics = getActiveTopics();
         const tick = index.nearestTick(startSec);
-        if (tick) fetchCurrentFrame(tick, activeTopics);
+        // Explicit undefined check — `0n` is falsy but a valid tick.
+        if (tick !== undefined) fetchCurrentFrame(tick, activeTopics);
         const missing = collectMissingTicks(startSec, endSec);
         if (missing.length > 0) fetchBatch(missing, activeTopics);
+        // Mid-playback stall: keep per-topic statuses and the "N/M
+        // streams" detail fresh while the engine waits. Same-value
+        // writes are no-ops, so RAF-rate calls stay cheap.
+        publishStreamStatuses();
       },
 
       onCommit: (timeSec, commitStore) => {
         const tick = index.nearestTick(timeSec);
-        if (!tick) return;
+        // Explicit undefined check — `0n` is falsy but a valid tick.
+        if (tick === undefined) return;
         const tickKey = tick.toString();
         if (lastCommittedTickKey === tickKey) return;
         lastCommittedTickKey = tickKey;
@@ -509,6 +853,9 @@ export function useRegisterMcapDataStream({
           lastFrame,
           commitStore,
         );
+        // The committed tick changed — gaps/ready flips happen here
+        // during normal playback.
+        publishStreamStatuses();
       },
     };
 
@@ -519,8 +866,8 @@ export function useRegisterMcapDataStream({
 
     // Proactive lookahead: fill the buffer ahead of the playhead in larger
     // chunks instead of creating one tiny worker request per source tick.
-    const unsubPlayhead = store.sub(playheadAtom, () => {
-      const timeSec = store.get(playheadAtom);
+    const unsubPlayhead = subscribePlayhead(store, () => {
+      const timeSec = getPlayhead(store);
       if (timeSec < nextLookaheadRefreshTimeRef.current) return;
       nextLookaheadRefreshTimeRef.current =
         timeSec + PLAYBACK_POLICY.prefetchRefreshSeconds;
@@ -552,6 +899,7 @@ export function useRegisterMcapDataStream({
     fetchCurrentFrame,
     collectMissingTicks,
     getActiveTopics,
+    publishStreamStatuses,
   ]);
 
   // Paused-seek: scrub while paused → push or fetch the seeked tick + window.
@@ -563,7 +911,7 @@ export function useRegisterMcapDataStream({
   // (May be a no-op if no tile has subscribed yet — subscribeToTopic also
   // triggers this for the same reason.)
   useEffect(() => {
-    if (index) prefetchLookaheadFrom(store.get(playheadAtom));
+    if (index) prefetchLookaheadFrom(getPlayhead(store));
   }, [index, prefetchLookaheadFrom, store]);
 
   // Expose subscribeToTopic via the playback store so tiles can subscribe
@@ -576,7 +924,8 @@ export function useRegisterMcapDataStream({
       if (!cache) return noop;
 
       const cleanup = cache.subscribe();
-      prefetchLookaheadFrom(store.get(playheadAtom));
+      maybeAutoSeekToFirstData();
+      prefetchLookaheadFrom(getPlayhead(store));
       return () => {
         cleanup();
         // Cache cleared itself in its own cleanup once the count hit 0;
@@ -585,7 +934,7 @@ export function useRegisterMcapDataStream({
         if (!cache.isActive) lastFrameRef.current.delete(topic);
       };
     },
-    [prefetchLookaheadFrom, store],
+    [maybeAutoSeekToFirstData, prefetchLookaheadFrom, store],
   );
 
   const getTopicCache = useCallback(
@@ -656,6 +1005,14 @@ function activeTopicsInCaches(
   return topics.filter((topic) => caches.get(topic)?.isActive);
 }
 
+function nsToSeconds(deltaNs: bigint): number {
+  const clamped = deltaNs < 0n ? 0n : deltaNs;
+  return (
+    Number(clamped / 1_000_000_000n) +
+    Number(clamped % 1_000_000_000n) / 1_000_000_000
+  );
+}
+
 function distributeWindowToCaches(
   window: McapSynchronizedMessageWindow,
   caches: Map<string, McapTopicCache>,
@@ -686,9 +1043,8 @@ function pushTickToStore(
     // Still publish `null` when the current atom holds data, but avoid
     // waking subscribers when the selected source tick hasn't changed.
     const toWrite = lastFrame.get(topic) ?? null;
-    const atom = streamValueAtom(topic);
-    if (store.get(atom) === toWrite) continue;
-    store.set(atom, toWrite);
+    if (getStreamValue(store, topic) === toWrite) continue;
+    setStreamValue(store, topic, toWrite);
   }
 }
 
@@ -701,4 +1057,23 @@ function lowerBoundBigInt(arr: readonly bigint[], target: bigint): number {
     else hi = mid;
   }
   return lo;
+}
+
+function firstTickAtOrAfter(
+  ticks: readonly bigint[],
+  target: bigint,
+): bigint | undefined {
+  const index = lowerBoundBigInt(ticks, target);
+  return ticks[index];
+}
+
+function bufferedRangesEqual(
+  a: ReadonlyArray<readonly [number, number]>,
+  b: ReadonlyArray<readonly [number, number]>,
+): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i][0] !== b[i][0] || a[i][1] !== b[i][1]) return false;
+  }
+  return true;
 }

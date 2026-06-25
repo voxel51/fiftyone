@@ -11,12 +11,17 @@ import {
 } from "../reader";
 import { mcapTimelineRangeFromReader } from "./read-timeline-range";
 import { readMcapSynchronizedMessageBatch } from "./read-synchronized-message-batch";
+import {
+  createMcapPredecessorStore,
+  type McapPredecessorStore,
+} from "./predecessor-store";
 import { resolveMcapTimelineStrategy } from "../timeline";
 import {
   readMcapFrameTransformBootstrap,
   readMcapFrameTransformWindow,
 } from "./read-frame-transforms";
 import { readMcapTopics } from "./read-topics";
+import { readMcapTopicTimeBounds } from "./read-topic-time-bounds";
 import type { McapFrameTransformSet } from "../frame-transform-types";
 import {
   type McapDecodedMessage,
@@ -26,10 +31,12 @@ import {
   type McapReadSynchronizedMessageBatchRequest,
   type McapReadSynchronizedMessagesRequest,
   type McapReadTopicsRequest,
+  type McapReadTopicTimeBoundsRequest,
   type McapReadTimelineRangeRequest,
   type McapResourceClient,
   type McapSynchronizedMessageWindow,
   type McapTimelineRange,
+  type McapTopicTimeBounds,
 } from "../types";
 import type { StreamInventory } from "../../../schemas/v1";
 
@@ -61,6 +68,12 @@ export function createInlineMcapResourceClient(
   const readerFactory = options.readerFactory ?? createDefaultMcapReader;
   const readerStore = createMcapReaderStore({ byteClient, readerFactory });
   const topicReads = new Map<string, Promise<readonly StreamInventory[]>>();
+  const topicTimeBoundsReads = new Map<
+    string,
+    Promise<readonly McapTopicTimeBounds[]>
+  >();
+  // Per-source predecessor memos; bounded by topic count, dropped on dispose.
+  const predecessorStores = new Map<string, McapPredecessorStore>();
   const frameTransformBootstrapReads = new Map<
     string,
     Promise<McapFrameTransformSet>
@@ -75,6 +88,8 @@ export function createInlineMcapResourceClient(
   const client: McapResourceClient = {
     dispose() {
       topicReads.clear();
+      topicTimeBoundsReads.clear();
+      predecessorStores.clear();
       frameTransformBootstrapReads.clear();
       frameTransformWindowReads.clear();
       readerStore.dispose();
@@ -116,6 +131,27 @@ export function createInlineMcapResourceClient(
           throw error;
         });
       topicReads.set(sourceKey, read);
+
+      return read;
+    },
+
+    async readTopicTimeBounds(request: McapReadTopicTimeBoundsRequest) {
+      const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
+      const sourceKey = byteSourceAccessKey(request.source);
+      const boundsKey = [sourceKey, timeline.id, ...request.topics].join("\0");
+      const cached = topicTimeBoundsReads.get(boundsKey);
+      if (cached) {
+        return cached;
+      }
+
+      const read = readerStore
+        .get(request.source)
+        .then((reader) => readMcapTopicTimeBounds({ reader, request }))
+        .catch((error) => {
+          topicTimeBoundsReads.delete(boundsKey);
+          throw error;
+        });
+      topicTimeBoundsReads.set(boundsKey, read);
 
       return read;
     },
@@ -177,8 +213,16 @@ export function createInlineMcapResourceClient(
 
       const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
       const reader = await readerStore.get(request.source);
+      const sourceKey = byteSourceAccessKey(request.source);
+      let predecessorStore = predecessorStores.get(sourceKey);
+      if (!predecessorStore) {
+        predecessorStore = createMcapPredecessorStore();
+        predecessorStores.set(sourceKey, predecessorStore);
+      }
+
       return readMcapSynchronizedMessageBatch({
         decodeClient,
+        predecessorStore,
         reader,
         request,
         timeline,

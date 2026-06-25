@@ -1,6 +1,7 @@
 import React, { type ReactNode } from "react";
 import TimelineControls from "../TimelineControls/TimelineControls";
 import TimelineRuler from "../TimelineRuler/TimelineRuler";
+import BufferedRangesStrip from "./BufferedRangesStrip";
 import styles from "./TimelineHeader.module.css";
 
 export interface TimelineHeaderProps {
@@ -49,6 +50,7 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
 }) => {
   return (
     <div className={styles.root} data-testid="timeline-header-root">
+      <BufferedRangesStrip labelWidth={labelWidth} />
       <TimelineControls onToggle={onToggle} extraActions={extraActions} />
       <TimelineRuler
         labelWidth={labelWidth}

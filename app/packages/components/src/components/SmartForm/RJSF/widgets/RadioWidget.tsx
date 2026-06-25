@@ -5,7 +5,7 @@
 
 import { WidgetProps } from "@rjsf/utils";
 import { FormField, RadioGroup, Size } from "@voxel51/voodo";
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 export default function RadioWidget(props: WidgetProps) {
   const {

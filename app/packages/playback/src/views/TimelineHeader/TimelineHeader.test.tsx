@@ -1,7 +1,9 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React, { useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { setBufferedRanges } from "../../lib/playback/store-access";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
+import { usePlaybackStore } from "../../lib/playback/playback-store-context";
 import TimelineHeader from "./TimelineHeader";
 
 /**
@@ -124,5 +126,62 @@ describe("TimelineHeader", () => {
     render(<HeaderHarness />);
     const root = screen.getByTestId("timeline-header-root");
     expect(root.children).toHaveLength(2);
+  });
+
+  describe("buffered-ranges strip", () => {
+    function SetBufferedRanges({
+      ranges,
+    }: {
+      ranges: ReadonlyArray<readonly [number, number]>;
+    }) {
+      const store = usePlaybackStore();
+      // Syncs the test-provided ranges into the playback store the strip
+      // reads from.
+      React.useEffect(() => {
+        setBufferedRanges(store, ranges);
+      }, [store, ranges]);
+      return null;
+    }
+
+    it("is absent while no ranges are published", () => {
+      render(<HeaderHarness />);
+      expect(screen.queryByTestId("buffered-ranges-strip")).toBeNull();
+    });
+
+    it("renders one shaded segment per buffered range, mapped into the view window", () => {
+      render(
+        <HeaderHarness duration={10} labelWidth={100}>
+          <SetBufferedRanges
+            ranges={[
+              [2, 4],
+              [6, 8],
+            ]}
+          />
+        </HeaderHarness>
+      );
+      const strip = screen.getByTestId("buffered-ranges-strip");
+      // Lane starts after the label column, like the ruler and playhead.
+      expect(strip.getAttribute("style") ?? "").toContain("left: 100px");
+      const segments = Array.from(strip.children) as HTMLElement[];
+      expect(segments).toHaveLength(2);
+      // View window is [0, 10] → [2,4] maps to left 20% / width 20%.
+      // Parse the percentages — ratio math carries float noise.
+      expect(parseFloat(segments[0].style.left)).toBeCloseTo(20);
+      expect(parseFloat(segments[0].style.width)).toBeCloseTo(20);
+      expect(parseFloat(segments[1].style.left)).toBeCloseTo(60);
+      expect(parseFloat(segments[1].style.width)).toBeCloseTo(20);
+    });
+
+    it("clamps ranges that extend beyond the view window", () => {
+      render(
+        <HeaderHarness duration={10}>
+          <SetBufferedRanges ranges={[[-2, 25]]} />
+        </HeaderHarness>
+      );
+      const strip = screen.getByTestId("buffered-ranges-strip");
+      const segment = strip.children[0] as HTMLElement;
+      expect(segment.style.left).toBe("0%");
+      expect(segment.style.width).toBe("100%");
+    });
   });
 });

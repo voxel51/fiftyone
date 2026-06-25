@@ -12,14 +12,24 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import clsx from "clsx";
-import React, { useMemo } from "react";
+import React, { useMemo, type ReactNode } from "react";
 import { useTileTypes } from "../../lib/use-tile-state";
 import { useTiling } from "../../lib/TilingProvider";
 import { SidebarLeftIcon, SidebarRightIcon } from "./tiling-header-icons";
 import styles from "./TilingHeader.module.css";
 
+export interface TilingHeaderCaptionContext {
+  readonly focusedTileId: string | null;
+  readonly focusedTileTitle: string | null;
+}
+
+export type TilingHeaderCaption =
+  | ReactNode
+  | ((context: TilingHeaderCaptionContext) => ReactNode);
+
 export interface TilingHeaderProps {
   fileName: string;
+  headerCaption?: TilingHeaderCaption;
   leftSidebarOpen?: boolean;
   rightSidebarOpen?: boolean;
   onToggleLeftSidebar?: () => void;
@@ -28,13 +38,20 @@ export interface TilingHeaderProps {
 
 const TilingHeader: React.FC<TilingHeaderProps> = ({
   fileName,
+  headerCaption,
   leftSidebarOpen,
   rightSidebarOpen,
   onToggleLeftSidebar,
   onToggleRightSidebar,
 }) => {
   const types = useTileTypes();
-  const { addTile, autoLayout } = useTiling();
+  const { addTile, autoLayout, focusedTileId, tiles } = useTiling();
+  const focusedTileTitle =
+    focusedTileId && tiles[focusedTileId] ? tiles[focusedTileId].title : null;
+  const caption =
+    typeof headerCaption === "function"
+      ? headerCaption({ focusedTileId, focusedTileTitle })
+      : headerCaption;
 
   const tileMenu = useMemo(() => {
     if (types.length === 0) return null;
@@ -79,6 +96,9 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
         >
           {fileName}
         </Text>
+        {caption !== null && caption !== undefined ? (
+          <div className={styles.caption}>{caption}</div>
+        ) : null}
       </div>
 
       <div className={styles.spacer} />

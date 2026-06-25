@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import CircleIcon from "@mui/icons-material/Circle";
 import { Chip, FormControl, MenuItem, Select, Tooltip } from "@mui/material";
 import { usePanelEvent } from "@fiftyone/operators";

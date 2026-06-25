@@ -15,7 +15,7 @@ import { ReactSortable } from "react-sortablejs";
 import { useSetRecoilState } from "recoil";
 import PillButton from "../PillButton";
 import PopoutButton from "../PopoutButton";
-import { SHOW_MORE_ACTIONS_BUTTON_WIDTH, hideOverflowingNodes } from "./utils";
+import { hideOverflowingNodes } from "./utils";
 
 export default function AdaptiveMenu<T extends AdaptiveMenuItemPropsType>(
   props: AdaptiveMenuPropsType<T>,

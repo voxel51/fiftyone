@@ -1,6 +1,13 @@
-import { act, cleanup, render, renderHook } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+} from "@testing-library/react";
 import React from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   TileIdScope,
   TileSettingsContent,
@@ -210,6 +217,26 @@ describe("TilingProvider", () => {
     });
   });
 
+  describe("TileSettingsContent", () => {
+    it("does not bubble sidebar portal clicks back to the tile body", () => {
+      const onPanePointerDown = vi.fn();
+      render(
+        <TilingProvider
+          initialTiles={{
+            "tile-1": makeTile("tile"),
+          }}
+        >
+          <SettingsPortalHarness onPanePointerDown={onPanePointerDown} />
+        </TilingProvider>,
+      );
+
+      fireEvent.click(screen.getByTestId("focus-tile"));
+      fireEvent.pointerDown(screen.getByTestId("settings-button"));
+
+      expect(onPanePointerDown).not.toHaveBeenCalled();
+    });
+  });
+
   describe("removeTile", () => {
     it("drops the tile from the tiles map and the layout", () => {
       const { result } = renderHook(() => useTiling(), {
@@ -371,8 +398,7 @@ describe("TilingProvider", () => {
   describe("settings portal", () => {
     function Host({ initialFocus }: { initialFocus?: string }) {
       const tiling = useTiling();
-      // Bind the slot DOM element on mount so TileSettingsContent
-      // has somewhere to portal into.
+      // This effect primes the focused tile for settings portal tests.
       React.useEffect(() => {
         if (initialFocus) tiling.setFocusedTileId(initialFocus);
       }, [tiling, initialFocus]);
@@ -447,3 +473,30 @@ describe("TilingProvider", () => {
     });
   });
 });
+
+function SettingsPortalHarness({
+  onPanePointerDown,
+}: {
+  readonly onPanePointerDown: () => void;
+}) {
+  const { setFocusedTileId, setSettingsSlotEl } = useTiling();
+
+  return (
+    <>
+      <button
+        data-testid="focus-tile"
+        onClick={() => setFocusedTileId("tile-1")}
+      >
+        focus
+      </button>
+      <div data-testid="settings-slot" ref={setSettingsSlotEl} />
+      <TileIdScope tileId="tile-1">
+        <div data-testid="tile-body" onPointerDown={onPanePointerDown}>
+          <TileSettingsContent>
+            <button data-testid="settings-button">settings</button>
+          </TileSettingsContent>
+        </div>
+      </TileIdScope>
+    </>
+  );
+}

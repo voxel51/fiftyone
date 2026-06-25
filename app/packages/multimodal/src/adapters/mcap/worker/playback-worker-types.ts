@@ -7,9 +7,11 @@ import type {
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
   McapReadTopicsRequest,
+  McapReadTopicTimeBoundsRequest,
   McapReadTimelineRangeRequest,
   McapSynchronizedMessageWindow,
   McapTimelineRange,
+  McapTopicTimeBounds,
 } from "../types";
 import type { StreamInventory } from "../../../schemas/v1";
 
@@ -57,6 +59,7 @@ export type McapPlaybackWorkerRequestPayloadByType = {
   readonly readSynchronizedMessages: McapReadSynchronizedMessagesRequest;
   readonly readTimelineRange: McapReadTimelineRangeRequest;
   readonly readTopics: McapReadTopicsRequest;
+  readonly readTopicTimeBounds: McapReadTopicTimeBoundsRequest;
 };
 
 /**
@@ -69,6 +72,7 @@ export type McapPlaybackWorkerResultByType = {
   readonly readSynchronizedMessages: McapSynchronizedMessageWindow;
   readonly readTimelineRange: McapTimelineRange;
   readonly readTopics: readonly StreamInventory[];
+  readonly readTopicTimeBounds: readonly McapTopicTimeBounds[];
 };
 
 /**

@@ -10,12 +10,13 @@ export default function CopyButton({ text = "", ...props }: CopyButtonProps) {
   const [copied, setCopied] = useState<boolean>(false);
 
   useEffect(() => {
-    if (copied) {
-      const timer = setTimeout(() => {
-        setCopied(false);
-      }, 5000);
-      return () => clearTimeout(timer);
+    if (!copied) {
+      return undefined;
     }
+    const timer = setTimeout(() => {
+      setCopied(false);
+    }, 5000);
+    return () => clearTimeout(timer);
   }, [copied]);
 
   return (

@@ -9,7 +9,7 @@ import type {
 } from "./types";
 
 /**
- * Default tolerance for synchronized MCAP playback windows.
+ * Default tolerance for NEAREST-mode synchronized MCAP playback windows.
  */
 export const DEFAULT_MCAP_SYNC_TOLERANCE_NS = 50_000_000n;
 
@@ -110,10 +110,23 @@ export function selectSynchronizedWindow({
     messages,
     messagesByTopic,
     startTimeNs: minBigInt(
-      Object.values(streamPolicies).map((policy) => policy.startTimeNs),
+      Object.values(streamPolicies).map((policy) => policy.startTimeNs ?? 0n),
     ),
     streamPolicies,
   };
+}
+
+/**
+ * Returns whether a resolved policy selects with unbounded lookback —
+ * the predecessor query the batch reader must backfill outside its
+ * bounded scan window.
+ */
+export function isUnboundedLatestPolicy(
+  policy: McapResolvedStreamSyncPolicy,
+): boolean {
+  return (
+    policy.mode === PlaybackSyncMode.LATEST && policy.startTimeNs === undefined
+  );
 }
 
 /**
@@ -274,11 +287,21 @@ function resolveStreamSyncPolicy(
         startTimeNs: timeNs,
       };
     case PlaybackSyncMode.LATEST: {
-      const toleranceBeforeNs =
-        policy?.toleranceBeforeNs ?? DEFAULT_MCAP_SYNC_TOLERANCE_NS;
-      assertNonNegativeTolerance(topic, "toleranceBeforeNs", toleranceBeforeNs);
       assertUnsupportedTolerance(topic, mode, "toleranceAfterNs", policy);
 
+      // No tolerance means unbounded lookback: select the newest message
+      // at or before the playback time, however old. Bounding happens at
+      // the read layer (predecessor lookup), not here.
+      const toleranceBeforeNs = policy?.toleranceBeforeNs;
+      if (toleranceBeforeNs === undefined) {
+        return {
+          endTimeNs: timeNs,
+          limit,
+          mode,
+        };
+      }
+
+      assertNonNegativeTolerance(topic, "toleranceBeforeNs", toleranceBeforeNs);
       return {
         endTimeNs: timeNs,
         limit,
@@ -295,8 +318,10 @@ function normalizePlaybackSyncMode(
   | PlaybackSyncMode.NEAREST
   | PlaybackSyncMode.STRICT
   | PlaybackSyncMode.LATEST {
+  // Playback defaults to "newest at or before the playhead" — NEAREST can
+  // select future data, which reads as misleading during playback.
   if (mode === undefined || mode === PlaybackSyncMode.UNSPECIFIED) {
-    return PlaybackSyncMode.NEAREST;
+    return PlaybackSyncMode.LATEST;
   }
 
   if (

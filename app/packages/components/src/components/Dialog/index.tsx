@@ -4,7 +4,6 @@ import {
   Dialog as MuiDialog,
   DialogProps as MuiDialogProps,
 } from "@mui/material";
-import React from "react";
 
 export default function Dialog(props: DialogProps) {
   const { children, PaperProps, onClose, ...otherProps } = props;

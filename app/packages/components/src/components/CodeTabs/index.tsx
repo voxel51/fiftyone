@@ -1,4 +1,3 @@
-import React from "react";
 import { CodeBlock } from "@fiftyone/components";
 import { Box, Tab, Tabs } from "@mui/material";
 import { useMemo, useState } from "react";
@@ -36,7 +35,7 @@ export default function CodeTabs(props: CodeTabsProps) {
       <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
         <Tabs
           value={computedTab}
-          onChange={(e, value) => {
+          onChange={(_e, value) => {
             setTab(value);
             if (typeof onChange === "function") onChange(value);
           }}

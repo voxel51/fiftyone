@@ -239,13 +239,30 @@ export function usePlaybackEngine({
     [isActive],
   );
 
+  /**
+   * Commit `time` if every blocking stream is ready, and mirror the
+   * readiness into `isBufferingAtom` so paused seeks/steps surface the
+   * same "catching up" signal the RAF loop provides during playback.
+   * While paused nothing re-evaluates readiness, so the stream that
+   * fulfils the missing data is responsible for clearing the flag (the
+   * MCAP data stream does this when the playhead tick becomes covered).
+   */
+  const commitIfReady = useCallback(
+    (time: number) => {
+      const ready = checkAllReady(time);
+      store.set(isBufferingAtom, !ready);
+      if (ready) doCommit(time);
+    },
+    [checkAllReady, doCommit, store],
+  );
+
   const actions = useMemo(
     () => ({
       seek: (time: number) => {
         const clamped = clamp(time, 0, store.get(durationAtom));
         store.set(playheadAtom, clamped);
         fireSeekEvent(clamped);
-        if (checkAllReady(clamped)) doCommit(clamped);
+        commitIfReady(clamped);
       },
       play: () => {
         const current = store.get(playheadAtom);
@@ -268,7 +285,7 @@ export function usePlaybackEngine({
         );
         store.set(playheadAtom, next);
         fireSeekEvent(next, true);
-        if (checkAllReady(next)) doCommit(next);
+        commitIfReady(next);
       },
       stepForward: () => {
         const next = clamp(
@@ -278,7 +295,7 @@ export function usePlaybackEngine({
         );
         store.set(playheadAtom, next);
         fireSeekEvent(next, true);
-        if (checkAllReady(next)) doCommit(next);
+        commitIfReady(next);
       },
       setView: (start: number, end: number) => {
         const bounds = clampAndValidateBounds(
@@ -344,8 +361,7 @@ export function usePlaybackEngine({
     [
       store,
       fireSeekEvent,
-      doCommit,
-      checkAllReady,
+      commitIfReady,
       recomputeDuration,
       recomputeStepInterval,
     ],

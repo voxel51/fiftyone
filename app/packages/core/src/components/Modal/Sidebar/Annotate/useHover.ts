@@ -4,10 +4,25 @@ import {
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import { atom, getDefaultStore } from "jotai";
+import { atom, useAtomValue, getDefaultStore } from "jotai";
+import { atomFamily } from "jotai/utils";
 import { useCallback } from "react";
 
-export const hoveringLabelIds = atom<string[]>([]);
+const hoveringLabelIds = atom<string[]>([]);
+
+const isLabelHoveringFamily = atomFamily((id: string) =>
+  atom((get) => get(hoveringLabelIds).includes(id))
+);
+
+// Evict atoms older than 10 minutes so the cache doesn't grow without bound across
+// long annotation sessions with many distinct label IDs. These atoms are purely
+// derived and hold no mutable state, so eviction and lazy recreation is transparent.
+isLabelHoveringFamily.setShouldRemove(
+  (createdAt) => Date.now() - createdAt > 10 * 60 * 1000
+);
+
+export const useIsLabelHovering = (id: string): boolean =>
+  useAtomValue(isLabelHoveringFamily(id));
 
 export default function useHover() {
   const { scene } = useLighter();
