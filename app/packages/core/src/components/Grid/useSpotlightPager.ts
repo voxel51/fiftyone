@@ -304,6 +304,11 @@ const useSpotlightPager = ({
   const ensureSpineWindow = useRecoilCallback(
     ({ snapshot }) =>
       async (start: number, count: number): Promise<fos.SpineEntry[]> => {
+        // justified (auto) layout needs per-item ARs; a fixed ratio keeps the
+        // spine an index-only read
+        const wantAr =
+          parseAspectRatio(await snapshot.getPromise(gridAspectRatio)) === null;
+
         const slice = () => {
           const out: fos.SpineEntry[] = [];
           for (let i = start; i < start + count; i++) {
@@ -321,7 +326,12 @@ const useSpotlightPager = ({
               ? Math.min(start + count, spine.total)
               : start + count;
           for (let i = start; i < cap; i++) {
-            if (!spine.byIndex.has(i)) return true;
+            const e = spine.byIndex.get(i);
+            if (!e) return true;
+            // fixed -> auto: a cached fixed-mode entry has no aspect ratio
+            // (undefined); refetch so justified gets real per-tile ratios. A null
+            // AR is a valid auto value (sample without metadata) — don't refetch it.
+            if (wantAr && e.aspectRatio === undefined) return true;
           }
           return false;
         };
@@ -339,11 +349,6 @@ const useSpotlightPager = ({
                 0,
                 PAGE_SIZE
               ) as Record<string, unknown>;
-              // justified (auto) layout needs per-item ARs; a fixed ratio keeps the
-              // spine an index-only read
-              const wantAr =
-                parseAspectRatio(await snapshot.getPromise(gridAspectRatio)) ===
-                null;
               const resp = await fos.fetchSpine({
                 datasetId: id,
                 after: start,

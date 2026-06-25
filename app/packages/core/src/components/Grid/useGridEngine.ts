@@ -206,7 +206,13 @@ export default function useGridEngine({
         let changed = false;
         got.forEach((e, i) => {
           const idx = cursor + i;
-          if (!entriesRef.current.has(idx)) {
+          const existing = entriesRef.current.get(idx);
+          // set when new, or when this entry carries an AR a cached fixed-mode entry
+          // lacked (fixed -> auto), so the justified layout reflows to real ratios.
+          if (
+            !existing ||
+            (existing.aspectRatio == null && e.aspectRatio != null)
+          ) {
             entriesRef.current.set(idx, e);
             changed = true;
           }
@@ -360,7 +366,13 @@ export default function useGridEngine({
       const ahead: string[] = [];
       got.forEach((e, i) => {
         const idx = start + i;
-        if (!entriesRef.current.has(idx)) {
+        const existing = entriesRef.current.get(idx);
+        // set when new, or when this entry gains an AR the cached one lacked (fixed
+        // -> auto), so positioned tiles reflow to their real ratios.
+        if (
+          !existing ||
+          (existing.aspectRatio == null && e.aspectRatio != null)
+        ) {
           entriesRef.current.set(idx, e);
           changed = true;
         }
