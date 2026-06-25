@@ -1,4 +1,3 @@
-import type { ModalSample } from "@fiftyone/state";
 import type { Stage } from "@fiftyone/utilities";
 import React, { useEffect, useRef } from "react";
 import { usePlaybackStream } from "@fiftyone/playback";
@@ -10,7 +9,6 @@ import {
   useView,
 } from "../state/accessors";
 import { IMAVID_STREAM_ID } from "../utils/ids";
-import { getModalSampleFrameRate } from "../utils/modalSample";
 import { ImaVidImageStream } from "../streams/ImaVidImageStream";
 import { usePublishImaVidImageStream } from "../streams/imaVidImageStreamHandle";
 
@@ -21,39 +19,23 @@ import { usePublishImaVidImageStream } from "../streams/imaVidImageStreamHandle"
  * downstream — in the native-video tile the `<video>` element plays
  * this role via `useVideoStream`.
  *
- * fps comes from `sample.frameRate` (GraphQL-hoisted from
- * `VideoMetadata.frame_rate`); frameCount comes from
- * `sample.sample.metadata.total_frame_count` and falls back to
- * `metadata.duration * frameRate`. Both fps and frameCount throw if
- * absent — the plan explicitly forbids silent defaults because the
- * failure mode (misaligned frames or a stuck timeline) is hard to
- * debug after the fact.
+ * `frameCount` and `frameRate` are resolved + validated upstream by
+ * `useAnnotatePrerequisites` (which gates this component behind a
+ * "compute metadata" prompt when they're absent), so they arrive as
+ * positive finite numbers — no resolution or throwing here.
  *
  * Re-keys on any identity change so a fresh stream replaces the old
  * one via `usePlaybackStream`'s standard cleanup.
  */
 export const RegisterImaVidImage: React.FC<{
-  sample: ModalSample;
+  frameCount: number;
+  frameRate: number;
   children: React.ReactNode;
-}> = ({ sample, children }) => {
+}> = ({ frameCount, frameRate, children }) => {
   const dataset = useDatasetName();
   const view = useView();
   const slice = useGroupSlice();
   const sampleId = useModalSampleId();
-
-  const frameRate = getModalSampleFrameRate(sample);
-  if (frameRate === undefined) {
-    throw new Error(
-      "ImaVid playback requires VideoMetadata.frame_rate to be set on the sample",
-    );
-  }
-  if (!Number.isFinite(frameRate) || frameRate <= 0) {
-    throw new Error(
-      `ImaVid playback requires a positive, finite fps (got ${frameRate})`,
-    );
-  }
-
-  const frameCount = resolveFrameCount(sample, frameRate);
 
   const ready = !!sampleId && !!dataset;
   if (!ready) {
@@ -78,38 +60,6 @@ export const RegisterImaVidImage: React.FC<{
     </ImaVidImageRegistration>
   );
 };
-
-/**
- * Read total frame count from sample.metadata. The `Sample` TS type
- * only declares `width / height / mime_type`, but VideoMetadata
- * persists `total_frame_count` and `duration` at runtime — we
- * loose-cast through.
- */
-export function resolveFrameCount(
-  sample: ModalSample,
-  frameRate: number,
-): number {
-  const metadata = (sample.sample as { metadata?: Record<string, unknown> })
-    ?.metadata;
-
-  const total = metadata?.total_frame_count;
-  if (typeof total === "number" && Number.isFinite(total) && total > 0) {
-    return Math.round(total);
-  }
-
-  const duration = metadata?.duration;
-  if (
-    typeof duration === "number" &&
-    Number.isFinite(duration) &&
-    duration > 0
-  ) {
-    return Math.max(1, Math.round(duration * frameRate));
-  }
-
-  throw new Error(
-    "ImaVid playback requires VideoMetadata.total_frame_count (or .duration) on the sample",
-  );
-}
 
 interface ImaVidImageRegistrationProps {
   sampleId: string;

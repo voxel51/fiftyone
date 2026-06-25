@@ -7,7 +7,9 @@ import { useSyncAnnotationFrameClock } from "../hooks/useSyncAnnotationFrameCloc
 import { useSyncAnnotationVideoStore } from "../hooks/useSyncAnnotationVideoStore";
 import { useVideoLighterEngineBridge } from "../hooks/useVideoLighterEngineBridge";
 import { useFollowAnchorFrame } from "../state/useVideoInteraction";
+import { useAnnotatePrerequisites } from "../hooks/useAnnotatePrerequisites";
 import { PlaybackProvider } from "@fiftyone/playback";
+import { AnnotatePrerequisiteNotice } from "./AnnotatePrerequisiteNotice";
 import { FrameLabelsTracks, RegisterFrameLabels } from "./FrameLabels";
 import { ImaVidLighterTile } from "./ImaVidLighterTile";
 import { RegisterImaVidImage } from "./RegisterImaVidImage";
@@ -89,6 +91,22 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
 }) => {
   const labelsMode = useLabelsMode();
   const tileMode = useTileMode();
+  const prerequisites = useAnnotatePrerequisites(sample);
+
+  // Annotation needs a frame count (and fps) to drive the timeline; when the
+  // sample's VideoMetadata wasn't computed we can't resolve one. Show a prompt
+  // instead of mounting the playback stream — which used to throw and take the
+  // whole modal down (explore included).
+  if (!prerequisites.ok) {
+    return (
+      <div className={styles.root}>
+        <VideoAnnotationTopBar sample={sample} />
+        <div className={styles.media}>
+          <AnnotatePrerequisiteNotice blocker={prerequisites.blocker} />
+        </div>
+      </div>
+    );
+  }
 
   // The native-video tile binds to a single top-level URL. The ImaVid
   // tile resolves a per-frame URL through the image stream, so it does
@@ -143,7 +161,12 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
 
   const registered =
     tileMode === "imavid" ? (
-      <RegisterImaVidImage sample={sample}>{labels}</RegisterImaVidImage>
+      <RegisterImaVidImage
+        frameCount={prerequisites.frameCount}
+        frameRate={prerequisites.frameRate}
+      >
+        {labels}
+      </RegisterImaVidImage>
     ) : (
       labels
     );
