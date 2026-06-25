@@ -7,7 +7,6 @@ import {
   deserialize,
   type OverlayMask,
 } from "@fiftyone/looker/src/numpy";
-import { parseColorToRGBA } from "./color";
 
 export interface DecodedMask {
   bitmap: ImageBitmap;
@@ -16,26 +15,29 @@ export interface DecodedMask {
 }
 
 /**
- * Decodes a mask source and paints it with the given color, returning an
- * ImageBitmap ready for rendering alongside the raw single-channel pixel
- * data for hit-testing.
+ * Decodes a mask source into a color-INDEPENDENT white+alpha ImageBitmap
+ * ready for GPU tinting, alongside the raw single-channel pixel data for
+ * hit-testing.
+ *
+ * The bitmap encodes only the mask SHAPE — opaque white where the mask is
+ * present, transparent elsewhere. The display color is applied at draw time
+ * via the renderer's per-sprite tint (`white × tint = tint`), so a color or
+ * colorscheme change never re-decodes or re-rasterizes; it just re-tints.
  *
  * Accepts either a base64-encoded numpy string (inline `mask` field) or a
  * pre-decoded {@link OverlayMask} (e.g. produced from a `mask_path` fetch).
  * The string path runs the full base64 → inflate → numpy parse pipeline; the
- * `OverlayMask` path skips straight to painting.
+ * `OverlayMask` path skips straight to rasterizing.
  *
  * @param maskData - Base64-encoded compressed numpy string, or a decoded
  *   {@link OverlayMask}.
- * @param color - CSS color string for non-zero mask pixels.
  */
 export async function decodeMask(
-  maskData: string | OverlayMask,
-  color: string
+  maskData: string | OverlayMask
 ): Promise<DecodedMask> {
   const overlayMask =
     typeof maskData === "string" ? deserialize(maskData) : maskData;
-  const rgbaBuffer = paintMask(overlayMask, color);
+  const rgbaBuffer = rasterizeMaskAlpha(overlayMask);
   const [height, width] = overlayMask.shape;
   const imageData = new ImageData(
     new Uint8ClampedArray(rgbaBuffer),
@@ -59,10 +61,12 @@ export async function decodeMask(
 }
 
 /**
- * Paints a deserialized mask into an RGBA buffer using the given color.
- * Non-zero mask values become the color; zero values stay transparent.
+ * Rasterizes a single-channel mask into a color-INDEPENDENT RGBA buffer:
+ * non-zero mask values become opaque white, zero values stay transparent.
+ * The display color is applied later via GPU tint, so this never bakes a
+ * color in and never needs to re-run on a color change.
  */
-function paintMask(mask: OverlayMask, cssColor: string): ArrayBuffer {
+function rasterizeMaskAlpha(mask: OverlayMask): ArrayBuffer {
   if (mask.channels !== 1) {
     throw new Error(`Expected single-channel mask, got ${mask.channels}`);
   }
@@ -71,10 +75,8 @@ function paintMask(mask: OverlayMask, cssColor: string): ArrayBuffer {
   const rgbaBuffer = new ArrayBuffer(width * height * 4);
   const overlay = new Uint32Array(rgbaBuffer);
 
-  const { r, g, b, a } = parseColorToRGBA(cssColor);
-
-  // Pack as RGBA (little-endian: ABGR in Uint32)
-  const packedColor = (a << 24) | (b << 16) | (g << 8) | r;
+  // Opaque white (RGBA 255,255,255,255 → 0xFFFFFFFF in any byte order).
+  const WHITE = 0xffffffff;
   const ArrayType = ARRAY_TYPES[mask.arrayType];
 
   if (!ArrayType) {
@@ -92,7 +94,7 @@ function paintMask(mask: OverlayMask, cssColor: string): ArrayBuffer {
 
   for (let i = 0; i < expectedPixels; i++) {
     if (targets[i]) {
-      overlay[i] = packedColor;
+      overlay[i] = WHITE;
     }
   }
 

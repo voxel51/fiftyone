@@ -60,7 +60,7 @@ describe("decodeMask", () => {
     const overlayMask = deserialize(SAMPLE_MASK);
     const [height, width] = overlayMask.shape;
 
-    const { rawPixels } = await decodeMask(SAMPLE_MASK, "#ffffff");
+    const { rawPixels } = await decodeMask(SAMPLE_MASK);
 
     expect(rawPixels.width).toBe(width);
     expect(rawPixels.height).toBe(height);
@@ -72,8 +72,8 @@ describe("decodeMask", () => {
     );
   });
 
-  test("paints non-zero mask pixels with the requested color", async () => {
-    await decodeMask(SAMPLE_MASK, "#ff0000");
+  test("rasterizes non-zero mask pixels as opaque white (color via tint)", async () => {
+    await decodeMask(SAMPLE_MASK);
 
     expect(lastImageData).toBeDefined();
     const { data, width, height } = lastImageData!;
@@ -93,10 +93,11 @@ describe("decodeMask", () => {
       const a = data[i * 4 + 3];
 
       if (src[i] > 0) {
-        // Painted: full red, opaque.
+        // Color-independent: opaque white. The display color is applied at
+        // draw time via GPU tint, not baked into the bitmap.
         expect(r).toBe(255);
-        expect(g).toBe(0);
-        expect(b).toBe(0);
+        expect(g).toBe(255);
+        expect(b).toBe(255);
         expect(a).toBe(255);
         paintedCount++;
       } else {
@@ -111,32 +112,28 @@ describe("decodeMask", () => {
     expect(transparentCount).toBeGreaterThan(0);
   });
 
-  test("respects the alpha component of an rgba(...) color", async () => {
-    await decodeMask(SAMPLE_MASK, "rgba(0, 128, 0, 0.5)");
+  test("output is color-independent — same white+alpha regardless of input", async () => {
+    // decodeMask no longer takes a color; the rasterized bitmap is always
+    // white+alpha so the GPU tint can color it. This guards against a
+    // regression that reintroduces a color argument / baked color.
+    await decodeMask(SAMPLE_MASK);
 
     expect(lastImageData).toBeDefined();
     const { data } = lastImageData!;
     const overlayMask = deserialize(SAMPLE_MASK);
     const src = new Uint8Array(overlayMask.buffer);
 
-    // Find one painted pixel and assert its RGBA matches the parsed color.
     const paintedIndex = src.findIndex((v) => v > 0);
     expect(paintedIndex).toBeGreaterThanOrEqual(0);
 
-    const r = data[paintedIndex * 4];
-    const g = data[paintedIndex * 4 + 1];
-    const b = data[paintedIndex * 4 + 2];
-    const a = data[paintedIndex * 4 + 3];
-
-    expect(r).toBe(0);
-    expect(g).toBe(128);
-    expect(b).toBe(0);
-    // 0.5 alpha → ~128 (Math.round(0.5 * 255) = 128).
-    expect(a).toBe(128);
+    expect(data[paintedIndex * 4]).toBe(255);
+    expect(data[paintedIndex * 4 + 1]).toBe(255);
+    expect(data[paintedIndex * 4 + 2]).toBe(255);
+    expect(data[paintedIndex * 4 + 3]).toBe(255);
   });
 
   test("returns a bitmap promise", async () => {
-    const { bitmap } = await decodeMask(SAMPLE_MASK, "#ffffff");
+    const { bitmap } = await decodeMask(SAMPLE_MASK);
     expect(bitmap).toBeDefined();
   });
 });

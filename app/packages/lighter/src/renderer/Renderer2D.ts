@@ -44,6 +44,13 @@ export interface ImageOptions {
   rotation?: number;
   scaleX?: number;
   scaleY?: number;
+  /**
+   * Per-object GPU tint (CSS color string or `0xRRGGBB`). Multiplies the
+   * texture's RGB in the batched draw, so a white texture renders as `tint`
+   * for free — no per-pixel CPU recolor. Undefined leaves the texture
+   * untinted (white identity).
+   */
+  tint?: number | string;
 }
 
 /**
