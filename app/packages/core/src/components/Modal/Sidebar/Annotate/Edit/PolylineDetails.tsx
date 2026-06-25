@@ -48,8 +48,9 @@ const countVertices = (points: Coordinates[][] | undefined): number => {
 
 export const PolylineDetails = () => {
   const { selected } = useAnnotationContext();
-  const currentDataValue =
-    selected?.data as fos.PolylineAnnotationLabel["data"] | null;
+  const currentDataValue = selected?.data as
+    | fos.PolylineAnnotationLabel["data"]
+    | null;
 
   const { segmentCount, vertexCount } = useMemo(() => {
     const points = currentDataValue?.points3d ?? currentDataValue?.points;

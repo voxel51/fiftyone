@@ -22,12 +22,12 @@ type LabelWithId = { _id?: string; id?: string };
  */
 const extractLabel = (
   labelFieldData: any,
-  labelId: string
+  labelId: string,
 ): { dimensions: Vector3Tuple; location: Vector3Tuple } | null => {
   // Array of labels
   if (Array.isArray(labelFieldData)) {
     const label = labelFieldData.find(
-      (l: LabelWithId) => l._id === labelId || l.id === labelId
+      (l: LabelWithId) => l._id === labelId || l.id === labelId,
     );
     return label || null;
   }
@@ -35,7 +35,7 @@ const extractLabel = (
   // Field with detections array
   if (labelFieldData?.detections && Array.isArray(labelFieldData.detections)) {
     const label = labelFieldData.detections.find(
-      (l: LabelWithId) => l._id === labelId || l.id === labelId
+      (l: LabelWithId) => l._id === labelId || l.id === labelId,
     );
     return label || null;
   }
@@ -47,7 +47,7 @@ const extractLabel = (
       flattenedPoints = labelFieldData.points3d.flat();
     } else if (labelFieldData.polylines) {
       flattenedPoints = labelFieldData.polylines.flatMap((polyline: any) =>
-        polyline.points3d.flat()
+        polyline.points3d.flat(),
       );
     }
 
@@ -76,7 +76,7 @@ const createBoundingBox = (label: {
   const box = new Box3();
   box.setFromCenterAndSize(
     new Vector3(...label.location),
-    new Vector3(...label.dimensions)
+    new Vector3(...label.dimensions),
   );
   return box;
 };
@@ -127,7 +127,7 @@ export const useZoomToSelected = ({
 
         const unionBox = boundingBoxes.reduce(
           (acc, box) => acc.union(box),
-          boundingBoxes[0].clone()
+          boundingBoxes[0].clone(),
         );
 
         const center = new Vector3();
@@ -140,7 +140,7 @@ export const useZoomToSelected = ({
           size,
           upVector,
           2,
-          "top"
+          "top",
         );
 
         await cameraControlsRef.current.setLookAt(
@@ -150,10 +150,10 @@ export const useZoomToSelected = ({
           center.x,
           center.y,
           center.z,
-          true
+          true,
         );
       },
-    [interactionSample, upVector, mode, cameraControlsRef]
+    [interactionSample, upVector, mode, cameraControlsRef],
   );
 
   return handleZoomToSelected;

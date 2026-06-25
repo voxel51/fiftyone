@@ -15,7 +15,7 @@ const useTrackViewChanges = () => {
       const view = snapshot.getLoadable(fos.view)?.contents;
       const extendedStages = snapshot.getLoadable(fos.extendedStages)?.contents;
       const count = snapshot.getLoadable(
-        fos.count({ path: "", extended: false, modal: false })
+        fos.count({ path: "", extended: false, modal: false }),
       )?.contents;
       const filters = snapshot.getLoadable(fos.filters)?.contents;
 
@@ -36,7 +36,7 @@ const useTrackViewChanges = () => {
         setChanges((prevChanges) => ({ ...prevChanges, ...newChanges }));
       }
     },
-    [changes]
+    [changes],
   );
 
   useRecoilTransactionObserver_UNSTABLE(handleStateChange);

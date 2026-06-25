@@ -22,7 +22,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> => {
 };
 
 export const isStaticTransform = (
-  value: unknown
+  value: unknown,
 ): value is SerializedStaticTransform => {
   if (!isRecord(value)) {
     return false;
@@ -42,7 +42,7 @@ const buildCameraLabel = (sourceFrame: string, targetFrame: string) => {
 };
 
 export const buildCameraControlOptionsFromTransforms = (
-  transforms: unknown[]
+  transforms: unknown[],
 ): CameraControlOption[] => {
   const optionsByKey = new Map<string, Omit<CameraControlOption, "label">>();
 
@@ -121,7 +121,7 @@ export const resolveCameraSelectorTarget = ({
   const cameraPosition = new Vector3(
     translation[0],
     translation[1],
-    translation[2]
+    translation[2],
   );
 
   if (
@@ -137,8 +137,8 @@ export const resolveCameraSelectorTarget = ({
       quaternion[0],
       quaternion[1],
       quaternion[2],
-      quaternion[3]
-    ).normalize()
+      quaternion[3],
+    ).normalize(),
   );
 
   if (
@@ -155,7 +155,7 @@ export const resolveCameraSelectorTarget = ({
 
 export const filterCameraControlOptions = (
   cameraOptions: CameraControlOption[],
-  query: string
+  query: string,
 ): CameraControlOption[] => {
   const trimmedQuery = query.trim().toLowerCase();
   const terms =

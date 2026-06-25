@@ -84,7 +84,7 @@ export class ModalAnnotateEditPom {
    */
   async getField(path: string) {
     return (await this.getFieldContainer(path)).locator(
-      "input, textarea, select"
+      "input, textarea, select",
     );
   }
 

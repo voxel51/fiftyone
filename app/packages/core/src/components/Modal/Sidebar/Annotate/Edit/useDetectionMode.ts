@@ -28,7 +28,7 @@ export { detectionModeActiveAtom as _unsafeDetectionModeActiveAtom };
  */
 export const useDetectionMode = () => {
   const [detectionModeActive, setDetectionModeActive] = useAtom(
-    detectionModeActiveAtom
+    detectionModeActiveAtom,
   );
   const isPatchView = useRecoilValue(isPatchesView);
   const { scene } = useLighter();
@@ -59,10 +59,10 @@ export const useDetectionMode = () => {
   const tooltip = isPatchView
     ? "Creating detections is not supported in this view"
     : noActiveFields
-    ? "No active fields"
-    : detectionModeActive
-    ? "Exit detection creation"
-    : "Create new detections";
+      ? "No active fields"
+      : detectionModeActive
+        ? "Exit detection creation"
+        : "Create new detections";
 
   /**
    * Exit interactive mode, snapshot last-used (via clear), and run the
@@ -143,6 +143,6 @@ export const useDetectionMode = () => {
       toggleDetectionMode,
       tooltip,
       create,
-    ]
+    ],
   );
 };

@@ -159,12 +159,12 @@ export const modalSample = graphQLSelector<
     if (!data.sample) {
       if (variables.filter.group) {
         throw new GroupSampleNotFound(
-          `sample with group id ${variables.filter.id} and slice ${variables.filter.group.slices[0]} not found`
+          `sample with group id ${variables.filter.id} and slice ${variables.filter.group.slices[0]} not found`,
         );
       }
 
       throw new SampleNotFound(
-        `sample with id ${variables.filter.id} not found`
+        `sample with id ${variables.filter.id} not found`,
       );
     }
 
@@ -213,12 +213,12 @@ export const groupSampleAtMainSlice = graphQLSelector<
     if (!data.sample) {
       if (variables.filter.group) {
         throw new GroupSampleNotFound(
-          `sample with group id ${variables.filter.id} and slice ${variables.filter.group.slices[0]} not found`
+          `sample with group id ${variables.filter.id} and slice ${variables.filter.group.slices[0]} not found`,
         );
       }
 
       throw new SampleNotFound(
-        `sample with id ${variables.filter.id} not found`
+        `sample with id ${variables.filter.id} not found`,
       );
     }
 

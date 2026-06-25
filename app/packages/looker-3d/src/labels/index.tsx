@@ -70,22 +70,22 @@ export const ThreeDLabels = ({
 
   const settings = fop.usePluginSettings<Looker3dSettings>(
     "3d",
-    defaultPluginSettings
+    defaultPluginSettings,
   );
   const onSelectLabel = fos.useOnSelectLabel();
   const pathFilter = usePathFilter();
   const colorScheme = useRecoilValue(fos.colorScheme);
   const [cuboidLineWidth, setCuboidLineWidth] = useRecoilState(
-    cuboidLabelLineWidthAtom
+    cuboidLabelLineWidthAtom,
   );
   const [polylineWidth, setPolylineWidth] = useRecoilState(
-    polylineLabelLineWidthAtom
+    polylineLabelLineWidthAtom,
   );
   const selectedLabels = useRecoilValue(fos.selectedLabelMap);
   const labelAlpha = globalOpacity ?? colorScheme.opacity;
 
   const selectedLabelForAnnotation = useRecoilValue(
-    selectedLabelForAnnotationAtom
+    selectedLabelForAnnotationAtom,
   );
   const onExit = useExit();
 
@@ -121,14 +121,14 @@ export const ThreeDLabels = ({
         collapsed: true,
       }),
     }),
-    [setCuboidLineWidth, setPolylineWidth]
+    [setCuboidLineWidth, setPolylineWidth],
   );
 
   const handleSelect = useCallback(
     (
       label: OverlayLabel,
       archetype: Archetype3d,
-      e: ThreeEvent<MouseEvent>
+      e: ThreeEvent<MouseEvent>,
     ) => {
       if (isSegmenting) return;
       if (mode === fos.ModalMode.ANNOTATE) {
@@ -146,7 +146,7 @@ export const ThreeDLabels = ({
         },
       });
     },
-    [onSelectLabel, mode, select3DLabelForAnnotation, isSegmenting]
+    [onSelectLabel, mode, select3DLabelForAnnotation, isSegmenting],
   );
 
   useEffect(() => {
@@ -174,10 +174,10 @@ export const ThreeDLabels = ({
     () => [
       toEulerFromDegreesArray(_get(settings, "overlay.rotation", [0, 0, 0])),
       toEulerFromDegreesArray(
-        _get(settings, "overlay.itemRotation", [0, 0, 0])
+        _get(settings, "overlay.itemRotation", [0, 0, 0]),
       ),
     ],
-    [settings]
+    [settings],
   );
 
   // Load raw overlays from sample data (for both explore and annotate modes)
@@ -207,7 +207,7 @@ export const ThreeDLabels = ({
           // In annotate mode, only show fields that exist in annotation schemas
           if (mode === fos.ModalMode.ANNOTATE) {
             const isInAnnotationSchemas = Boolean(
-              annotationSchemas?.includes(l.path)
+              annotationSchemas?.includes(l.path),
             );
 
             if (!isInAnnotationSchemas) {
@@ -228,7 +228,7 @@ export const ThreeDLabels = ({
       customizeColorSetting,
       mode,
       annotationSchemas,
-    ]
+    ],
   );
 
   // Working store management hooks run only in main panel
@@ -280,7 +280,7 @@ export const ThreeDLabels = ({
             embeddedDocType: overlay._cls,
           })
         : overlay.color,
-    [coloring, labelTagColors, customizeColorSetting]
+    [coloring, labelTagColors, customizeColorSetting],
   );
 
   // Detections render model -> JSX
@@ -315,7 +315,7 @@ export const ThreeDLabels = ({
       handleSelect,
       settings,
       getOverlayColor,
-    ]
+    ],
   );
 
   // Polylines render model -> JSX
@@ -356,7 +356,7 @@ export const ThreeDLabels = ({
       FO_LABEL_TOGGLED_EVENT,
       (e: LabelToggledEvent) => {
         getOnShiftClickLabelCallback(e);
-      }
+      },
     );
 
     return () => {

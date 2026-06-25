@@ -34,8 +34,8 @@ describe("CommandContext", () => {
         },
         () => {
           return true;
-        }
-      )
+        },
+      ),
     ).toBeDefined();
     expect(context.getCommand("fo.test")).toBeDefined();
   });
@@ -49,8 +49,8 @@ describe("CommandContext", () => {
         },
         () => {
           return true;
-        }
-      )
+        },
+      ),
     ).toBeDefined();
     expect(() => {
       context.registerCommand(
@@ -60,7 +60,7 @@ describe("CommandContext", () => {
         },
         () => {
           return true;
-        }
+        },
       );
     }).toThrowError();
   });
@@ -110,12 +110,12 @@ describe("CommandContext", () => {
     const drop = new DelegatingUndoable(
       "fo.test.drop",
       async () => undefined,
-      async () => undefined
+      async () => undefined,
     );
     const keep = new DelegatingUndoable(
       "fo.test.keep",
       async () => undefined,
-      async () => undefined
+      async () => undefined,
     );
     await context.executeAction(drop);
     await context.executeAction(keep);
@@ -137,12 +137,12 @@ describe("CommandContext", () => {
     const parentUndoable = new DelegatingUndoable(
       "fo.test.parent",
       async () => undefined,
-      async () => undefined
+      async () => undefined,
     );
     const childUndoable = new DelegatingUndoable(
       "fo.test.child",
       async () => undefined,
-      async () => undefined
+      async () => undefined,
     );
     await parent.executeAction(parentUndoable);
     await child.executeAction(childUndoable);

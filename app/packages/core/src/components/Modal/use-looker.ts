@@ -30,7 +30,7 @@ function useLooker<L extends fos.Lookers>({
 
   const lookerOptions = React.useMemo(
     () => ({ ...baseLookerOptions }),
-    [baseLookerOptions]
+    [baseLookerOptions],
   );
 
   const createLooker = fos.useCreateLooker(
@@ -38,7 +38,7 @@ function useLooker<L extends fos.Lookers>({
     false,
     lookerOptions,
     undefined,
-    true
+    true,
   );
   const selectedMediaField = useRecoilValue(fos.selectedMediaField(true));
   const colorScheme = useRecoilValue(fos.colorScheme);
@@ -85,7 +85,7 @@ function useLooker<L extends fos.Lookers>({
 
   useEffect(() => {
     ref.current?.dispatchEvent(
-      new CustomEvent("looker-attached", { bubbles: true })
+      new CustomEvent("looker-attached", { bubbles: true }),
     );
   }, []);
 
@@ -118,9 +118,9 @@ function useLooker<L extends fos.Lookers>({
       }
 
       updateLookerOptions({}, (updatedOptions) =>
-        looker.updateOptions(updatedOptions)
+        looker.updateOptions(updatedOptions),
       );
-    }
+    },
   );
 
   useKeyEvents(initialRef, sample.sample._id, looker);
@@ -150,7 +150,7 @@ export default useLooker;
  */
 function useSyncViewport<L extends fos.Lookers>(
   looker: L,
-  sampleRef: RefObject<fos.ModalSample>
+  sampleRef: RefObject<fos.ModalSample>,
 ) {
   const setViewportState = useSaveModalViewport();
 

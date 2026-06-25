@@ -182,7 +182,7 @@ interface DatasetOptions {
    */
   withSampleData?: (
     sampleScaffold: SampleScaffold,
-    helpers: Helpers
+    helpers: Helpers,
   ) => JSONObject;
 }
 
@@ -228,13 +228,13 @@ const createDataset = (() => {
   }: DatasetOptions) => {
     if (!Number.isInteger(numSamples)) {
       throw new Error(
-        `Expected 'numSamples' to be an integer, but got ${numSamples}`
+        `Expected 'numSamples' to be an integer, but got ${numSamples}`,
       );
     }
 
     if (numSamples < 1 || numSamples > 100) {
       throw new Error(
-        `'numSamples' must be >0 and <=100, but got ${numSamples}`
+        `'numSamples' must be >0 and <=100, but got ${numSamples}`,
       );
     }
 
@@ -250,7 +250,7 @@ const createDataset = (() => {
           outputPath: filepath,
           watermarkString: numbered ? index.toString() : undefined,
           ...imageOptions,
-        })
+        }),
       );
       const _id = indexToId(index);
       const sampleScaffold = {
@@ -260,8 +260,8 @@ const createDataset = (() => {
       };
       sampleData.push(
         `sample_data.append(json_util.loads('${JSON.stringify(
-          withSampleData(sampleScaffold, { createId })
-        )}'))`
+          withSampleData(sampleScaffold, { createId }),
+        )}'))`,
       );
     }
 
@@ -397,7 +397,7 @@ const createGroupDataset = (() => {
               width: 128,
               height: 128,
               hideLogs: true,
-            })
+            }),
           );
         } else {
           const plyPath = path.join(outputDir, `${slice.name}-${i}.ply`);
@@ -433,7 +433,7 @@ const createGroupDataset = (() => {
       .map((s) =>
         s.mediaType === "3d"
           ? `"${s.name}": fom.THREE_D`
-          : `"${s.name}": fom.IMAGE`
+          : `"${s.name}": fom.IMAGE`,
       )
       .join(", ");
     const defaultSlice = slices[0]?.name ?? "left";

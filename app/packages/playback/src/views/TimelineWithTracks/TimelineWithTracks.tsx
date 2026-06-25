@@ -14,7 +14,9 @@ import {
 import LoopOverlays from "../Loop/LoopOverlays";
 import PlayheadLine from "../Playhead/PlayheadLine";
 import TimelineHeader from "../TimelineHeader/TimelineHeader";
-import TimelineTrack, { type NormalizedEvent } from "../TimelineTrack/TimelineTrack";
+import TimelineTrack, {
+  type NormalizedEvent,
+} from "../TimelineTrack/TimelineTrack";
 import styles from "./TimelineWithTracks.module.css";
 
 export interface TimelineWithTracksProps {

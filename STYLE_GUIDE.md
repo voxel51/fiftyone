@@ -26,26 +26,26 @@ enforces much of the whitespace-related components of our style.
 
 Here are some highlights of our Python style:
 
--   Maximum line length is **79 characters**, with the exception of long URLs
-    that cannot be split
+- Maximum line length is **79 characters**, with the exception of long URLs
+  that cannot be split
 
--   Indent your code with **4 spaces**. That is, **no tabs**!
+- Indent your code with **4 spaces**. That is, **no tabs**!
 
--   Always strip all trailing whitespace from lines that you edit (you can
-    configure your text editor to do this automatically)
+- Always strip all trailing whitespace from lines that you edit (you can
+  configure your text editor to do this automatically)
 
--   Follow standard typographic rules for spaces around punctuation
+- Follow standard typographic rules for spaces around punctuation
 
--   Leave two blank lines between top-level definitions, and one blank line
-    between class method definitions
+- Leave two blank lines between top-level definitions, and one blank line
+  between class method definitions
 
--   Imports should always be on separate lines at the top of the file, just
-    after the module docstring. Imports should be grouped by type with one
-    space between each group, sorted alphabetically within each group, with the
-    groups sorted in order of most generic (standard library) to least generic
-    (local modules)
+- Imports should always be on separate lines at the top of the file, just after
+  the module docstring. Imports should be grouped by type with one space
+  between each group, sorted alphabetically within each group, with the groups
+  sorted in order of most generic (standard library) to least generic (local
+  modules)
 
--   Names should follow the conventions:
+- Names should follow the conventions:
 
 ```py
 module_name, package_name, ClassName, method_name, ExceptionName,
@@ -53,21 +53,20 @@ function_name, GLOBAL_CONSTANT_NAME, global_var_name, instance_var_name,
 function_parameter_name, local_var_name
 ```
 
--   All private variables, constants, functions, methods, and classes should
-    have `_` prepended
+- All private variables, constants, functions, methods, and classes should have
+  `_` prepended
 
--   All non-trivial public module/class methods should have docstrings
-    describing their behavior, inputs, outputs, and exceptions (when
-    applicable)
+- All non-trivial public module/class methods should have docstrings describing
+  their behavior, inputs, outputs, and exceptions (when applicable)
 
--   If a class inherits from no other base classes, explicitly inherit from
-    `object`
+- If a class inherits from no other base classes, explicitly inherit from
+  `object`
 
--   When encountering a pylint error during a commit that cannot be addressed
-    for whatever reason, add an inline comment `# pylint: disable=rule` where
-    `rule` is the rule in question
+- When encountering a pylint error during a commit that cannot be addressed for
+  whatever reason, add an inline comment `# pylint: disable=rule` where `rule`
+  is the rule in question
 
--   Use `@todo` to mark todo items in the source code when appropriate
+- Use `@todo` to mark todo items in the source code when appropriate
 
 ### Imports
 
@@ -76,10 +75,10 @@ below the module docstring. Imports should be grouped by type with one space
 between each group, with the groups sorted in order of most generic to least
 generic:
 
--   Standard library imports (most generic)
--   Third-party package dependencies
--   Voxel51-authored non-FiftyOne package dependencies
--   FiftyOne modules (least generic)
+- Standard library imports (most generic)
+- Third-party package dependencies
+- Voxel51-authored non-FiftyOne package dependencies
+- FiftyOne modules (least generic)
 
 For core FiftyOne imports, we import modules as `fox`, where `x` is the first
 letter of the module imported. If necessary, we use `foxy` to disambiguate
@@ -371,27 +370,27 @@ options.
 
 Here are some highlights of our RST style:
 
--   Maximum line length is **79 characters**, with the exception of long URLs
-    that cannot be split
+- Maximum line length is **79 characters**, with the exception of long URLs
+  that cannot be split
 
--   Leave exactly one blank line before and after all of the following:
+- Leave exactly one blank line before and after all of the following:
 
-    -   Paragraphs
-    -   Code blocks
-    -   Section and subsection headings
+    - Paragraphs
+    - Code blocks
+    - Section and subsection headings
 
--   One blank line at the end of the file
+- One blank line at the end of the file
 
--   Indent 4 spaces when writing multiline list items, tabs, groups, code
-    blocks, etc.
+- Indent 4 spaces when writing multiline list items, tabs, groups, code blocks,
+  etc.
 
--   Always strip all trailing whitespace from lines that you edit (you can
-    configure your text editor to do this automatically)
+- Always strip all trailing whitespace from lines that you edit (you can
+  configure your text editor to do this automatically)
 
--   Follow standard typographic rules for spaces around punctuation
+- Follow standard typographic rules for spaces around punctuation
 
--   Add anchor links for any sections that you link to from other pages, so
-    that section titles can be changed later if desired:
+- Add anchor links for any sections that you link to from other pages, so that
+  section titles can be changed later if desired:
 
 ```
 .. _view-stages:
@@ -403,8 +402,8 @@ Dataset views encapsulate a pipeline of logical operations that determine which
 samples appear in the view (and perhaps what subset of their contents).
 ```
 
--   **Never edit** an anchor link itself once it is created, as this may break
-    an external link (e.g., blog post, presentation, etc.)
+- **Never edit** an anchor link itself once it is created, as this may break an
+  external link (e.g., blog post, presentation, etc.)
 
 ### Building the docs locally
 
@@ -430,28 +429,28 @@ options.
 
 Here are some highlights of our Markdown style:
 
--   Maximum line length is **79 characters**, with the exception of long URLs
-    that cannot be split
+- Maximum line length is **79 characters**, with the exception of long URLs
+  that cannot be split
 
--   All Markdown files start with a title with `# Uppercase Title Words` syntax
+- All Markdown files start with a title with `# Uppercase Title Words` syntax
 
--   Section headings use `## Capital then lowercase` syntax
+- Section headings use `## Capital then lowercase` syntax
 
--   Leave exactly one blank line before and after all of the following:
+- Leave exactly one blank line before and after all of the following:
 
-    -   Paragraphs
-    -   Code blocks
-    -   Section headings `##`
-    -   Lower level headings `###` and `####`
+    - Paragraphs
+    - Code blocks
+    - Section headings `##`
+    - Lower level headings `###` and `####`
 
--   One blank line at the end of the file
+- One blank line at the end of the file
 
--   Indent 4 spaces when writing multiline list items
+- Indent 4 spaces when writing multiline list items
 
--   Always strip all trailing whitespace from lines that you edit (you can
-    configure your text editor to do this automatically)
+- Always strip all trailing whitespace from lines that you edit (you can
+  configure your text editor to do this automatically)
 
--   Follow standard typographic rules for spaces around punctuation
+- Follow standard typographic rules for spaces around punctuation
 
 ### Previewing Markdown locally
 

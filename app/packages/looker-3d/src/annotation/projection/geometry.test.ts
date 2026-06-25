@@ -27,7 +27,7 @@ const SIMPLE_INTRINSICS: CameraIntrinsics = {
 
 function makeFrustumData(
   intrinsics: CameraIntrinsics | null = SIMPLE_INTRINSICS,
-  staticTransform = IDENTITY_TRANSFORM
+  staticTransform = IDENTITY_TRANSFORM,
 ): FrustumData {
   return {
     sliceName: "test",
@@ -84,7 +84,7 @@ describe("getCuboidWorldCorners", () => {
     const corners = getCuboidWorldCorners(
       [0, 0, 0],
       [2, 0, 0],
-      [0, 0, Math.PI / 2]
+      [0, 0, Math.PI / 2],
     );
 
     // A cuboid of dimensions [2,0,0] has corners at x=+-1 before rotation.
@@ -116,7 +116,7 @@ describe("getCuboidWorldCorners", () => {
       // would produce no rotation
       [0, 0, 0],
       // 90deg around Z
-      [0, 0, s, s]
+      [0, 0, s, s],
     );
 
     const maxY = Math.max(...corners.map((c) => Math.abs(c.y)));

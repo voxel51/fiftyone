@@ -25,7 +25,7 @@ import {
 } from "./decode";
 
 type ExtendedFetchFunction = <Body, Result>(
-  config: FetchFunctionConfig<Body> & { readonly signal?: AbortSignal }
+  config: FetchFunctionConfig<Body> & { readonly signal?: AbortSignal },
 ) => Promise<FetchFunctionResult<Result>>;
 
 interface FetchCall {
@@ -51,7 +51,7 @@ describe("multimodal query clients", () => {
           ...createByteRangeReadRequest().source,
           sizeBytes: "7",
         },
-      })
+      }),
     ).resolves.toMatchObject({ bytes: new Uint8Array([1, 2, 3]) });
 
     expect(calls[0]?.headers).toEqual({ Range: "bytes=4-6" });
@@ -83,7 +83,7 @@ describe("multimodal query clients", () => {
       {
         "bytes://source/default": new Uint8Array([1, 2, 3]).buffer,
       },
-      { head: "missing" }
+      { head: "missing" },
     );
     const client = createHttpByteClient(extendedFetch);
     const request = {
@@ -110,7 +110,7 @@ describe("multimodal query clients", () => {
       {
         "bytes://source/default": new Uint8Array([1, 2, 3]).buffer,
       },
-      { head: "fail" }
+      { head: "fail" },
     );
     const client = createHttpByteClient(extendedFetch);
 
@@ -118,7 +118,7 @@ describe("multimodal query clients", () => {
       client.stat?.({
         sourceId: "source:1",
         url: "bytes://source/default",
-      })
+      }),
     ).resolves.toBeUndefined();
   });
 
@@ -135,7 +135,7 @@ describe("multimodal query clients", () => {
           ...createByteRangeReadRequest().source,
           sizeBytes: "999",
         },
-      })
+      }),
     ).resolves.toMatchObject({
       source: {
         sizeBytes: "7",
@@ -202,13 +202,13 @@ describe("multimodal query clients", () => {
       byteSourceCacheKey({
         sourceId: "source:1",
         url: "bytes://source/old",
-      })
+      }),
     ).toBe(
       byteSourceCacheKey({
         sizeBytes: "128",
         sourceId: "source:1",
         url: "bytes://source/new",
-      })
+      }),
     );
   });
 
@@ -256,7 +256,7 @@ describe("multimodal query clients", () => {
         payload,
         recordId: "record",
         streamId: "stream",
-      })
+      }),
     ).not.toBe(
       decodedOutputCacheKey({
         decoderId: "decoder",
@@ -265,7 +265,7 @@ describe("multimodal query clients", () => {
         payload,
         recordId: "record",
         streamId: "stream",
-      })
+      }),
     );
   });
 
@@ -307,8 +307,8 @@ describe("multimodal query clients", () => {
             attributes: attributes as Record<string, never>,
           },
           payload: { encoding: "custom" },
-        }
-      )
+        },
+      ),
     ).resolves.toBeUndefined();
   });
 
@@ -504,10 +504,10 @@ describe("multimodal query clients", () => {
 
     await Promise.all([
       client.readBytes(
-        createByteRangeReadRequest({ range: { length: 4n, offset: 4n } })
+        createByteRangeReadRequest({ range: { length: 4n, offset: 4n } }),
       ),
       client.readBytes(
-        createByteRangeReadRequest({ range: { length: 4n, offset: 12n } })
+        createByteRangeReadRequest({ range: { length: 4n, offset: 12n } }),
       ),
     ]);
 
@@ -527,7 +527,7 @@ describe("multimodal query clients", () => {
           ...createByteRangeReadRequest().source,
           sizeBytes: "not-a-number",
         },
-      })
+      }),
     ).resolves.toMatchObject({
       source: {
         sizeBytes: "7",
@@ -540,17 +540,17 @@ describe("multimodal query clients", () => {
     try {
       const client = createHttpByteClient(
         async <Body, Result>(
-          config: FetchFunctionConfig<Body> & { readonly signal?: AbortSignal }
+          config: FetchFunctionConfig<Body> & { readonly signal?: AbortSignal },
         ): Promise<FetchFunctionResult<Result>> =>
           new Promise((_, reject) => {
             config.signal?.addEventListener("abort", () => {
               reject(new DOMException("aborted", "AbortError"));
             });
-          })
+          }),
       );
       const read = client.readBytes(createByteRangeReadRequest());
       const rejection = expect(read).rejects.toThrow(
-        "HTTP byte-range read timed out"
+        "HTTP byte-range read timed out",
       );
 
       await vi.advanceTimersByTimeAsync(30_000);
@@ -623,7 +623,7 @@ describe("multimodal query clients", () => {
     registry.register(decoder);
     const executor: DecodeExecutor = {
       decode: vi.fn(({ bytes, context, decoder: activeDecoder }) =>
-        activeDecoder.decode(bytes, context)
+        activeDecoder.decode(bytes, context),
       ),
     };
     const client = createDecodeClient({
@@ -669,21 +669,21 @@ describe("multimodal query clients", () => {
           schema: "missing.Schema",
           schemaEncoding: "missing-schema",
         },
-      })
+      }),
     ).rejects.toThrow("No decoder registered");
   });
 });
 
 function createFetchMock(
   responses: Readonly<Record<string, ArrayBufferLike>>,
-  options: { readonly head?: "missing" | "fail" } = {}
+  options: { readonly head?: "missing" | "fail" } = {},
 ): {
   calls: FetchCall[];
   extendedFetch: ExtendedFetchFunction;
 } {
   const calls: FetchCall[] = [];
   const extendedFetch: ExtendedFetchFunction = async <Body, Result>(
-    config: FetchFunctionConfig<Body> & { readonly signal?: AbortSignal }
+    config: FetchFunctionConfig<Body> & { readonly signal?: AbortSignal },
   ): Promise<FetchFunctionResult<Result>> => {
     const { body, headers, method, path, result, signal } = config;
     calls.push({ body, headers, method, path, result, signal });
@@ -734,7 +734,7 @@ function contentRangeHeader(rangeHeader: string, response: ArrayBufferLike) {
 }
 
 function createByteRangeReadRequest(
-  overrides: Partial<ByteRangeReadRequest> = {}
+  overrides: Partial<ByteRangeReadRequest> = {},
 ): ByteRangeReadRequest {
   return {
     ...(overrides.cachePolicy ? { cachePolicy: overrides.cachePolicy } : {}),
@@ -750,6 +750,6 @@ function createByteRangeReadRequest(
 function bytesForRange(request: ByteRangeReadRequest): Uint8Array {
   return Uint8Array.from(
     { length: Number(request.range.length) },
-    (_, index) => Number(request.range.offset) + index
+    (_, index) => Number(request.range.offset) + index,
   );
 }

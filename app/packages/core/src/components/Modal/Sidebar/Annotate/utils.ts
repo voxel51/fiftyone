@@ -9,7 +9,7 @@
  * @returns The sanitized records
  */
 export function coerceStringBooleans<T extends Record<string, unknown>>(
-  records: T
+  records: T,
 ): T {
   if (typeof records !== "object" || records === null) return records;
 
@@ -27,6 +27,6 @@ export function coerceStringBooleans<T extends Record<string, unknown>>(
       }
 
       return [key, value];
-    })
+    }),
   ) as T;
 }

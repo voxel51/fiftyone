@@ -22,16 +22,31 @@ function createMockIDB(options?: { failOn?: "get" | "put" }) {
         error: failOn === "get" ? new Error("read failed") : null,
       };
       setTimeout(() => {
-        if (failOn === "get") { req.onerror?.(); }
-        else { req.result = backing.get(key); req.onsuccess?.(); }
+        if (failOn === "get") {
+          req.onerror?.();
+        } else {
+          req.result = backing.get(key);
+          req.onsuccess?.();
+        }
       });
       return req;
     },
-    put: (value: any, key: string) => { if (failOn !== "put") backing.set(key, value); },
-    delete: (key: string) => { backing.delete(key); },
+    put: (value: any, key: string) => {
+      if (failOn !== "put") backing.set(key, value);
+    },
+    delete: (key: string) => {
+      backing.delete(key);
+    },
     getAllKeys: () => {
-      const req = { result: [] as string[], onsuccess: null as any, onerror: null as any };
-      setTimeout(() => { req.result = [...backing.keys()]; req.onsuccess?.(); });
+      const req = {
+        result: [] as string[],
+        onsuccess: null as any,
+        onerror: null as any,
+      };
+      setTimeout(() => {
+        req.result = [...backing.keys()];
+        req.onsuccess?.();
+      });
       return req;
     },
   });
@@ -50,13 +65,11 @@ function createMockIDB(options?: { failOn?: "get" | "put" }) {
         onerror: null as any,
         error: shouldFailPut ? new Error("write failed") : null,
         set oncomplete(fn: any) {
-          if (!shouldFailPut)
-            setTimeout(() => fn?.());
+          if (!shouldFailPut) setTimeout(() => fn?.());
         },
       };
 
-      if (shouldFailPut)
-        setTimeout(() => tx.onerror?.());
+      if (shouldFailPut) setTimeout(() => tx.onerror?.());
 
       return tx;
     },
@@ -65,8 +78,16 @@ function createMockIDB(options?: { failOn?: "get" | "put" }) {
   };
 
   const openSpy = vi.fn(() => {
-    const req = { result: mockDB, onupgradeneeded: null as any, onsuccess: null as any, onerror: null as any };
-    setTimeout(() => { req.onupgradeneeded?.(); req.onsuccess?.(); });
+    const req = {
+      result: mockDB,
+      onupgradeneeded: null as any,
+      onsuccess: null as any,
+      onerror: null as any,
+    };
+    setTimeout(() => {
+      req.onupgradeneeded?.();
+      req.onsuccess?.();
+    });
     return req;
   });
 
@@ -80,7 +101,13 @@ function createTestEmbedding(seed = 51): CachedEmbedding {
     imageEmbed: { data: new Float32Array([seed, seed + 1]), dims: [1, 2] },
     highResFeats0: { data: new Float32Array([seed + 2]), dims: [1, 1] },
     highResFeats1: { data: new Float32Array([seed + 3]), dims: [1, 1] },
-    processedImage: { originalWidth: 640, originalHeight: 480, scale: 1.6, padX: 12, padY: 56 },
+    processedImage: {
+      originalWidth: 640,
+      originalHeight: 480,
+      scale: 1.6,
+      padX: 12,
+      padY: 56,
+    },
   };
 }
 
@@ -139,7 +166,10 @@ describe("embeddingCache", () => {
 
   it("Evicts oldest entry when over MAX_CACHE_ENTRIES", async () => {
     for (let i = 0; i <= MAX_CACHE_ENTRIES; i++)
-      await putEmbedding(`https://example.com/${i}.jpg`, createTestEmbedding(i));
+      await putEmbedding(
+        `https://example.com/${i}.jpg`,
+        createTestEmbedding(i),
+      );
 
     // Clear memory so gets fall through to IDB, where entry 0 was also evicted
     _resetMemoryCache();
@@ -155,7 +185,10 @@ describe("embeddingCache", () => {
   it("Preserves prior-session IDB entries after reload and new write", async () => {
     // Seed MAX_CACHE_ENTRIES entries (simulates a prior session)
     for (let i = 0; i < MAX_CACHE_ENTRIES; i++)
-      await putEmbedding(`https://example.com/${i}.jpg`, createTestEmbedding(i));
+      await putEmbedding(
+        `https://example.com/${i}.jpg`,
+        createTestEmbedding(i),
+      );
 
     // Simulate page reload: memory is empty, IDB still has all entries
     _resetMemoryCache();
@@ -181,11 +214,14 @@ describe("embeddingCache", () => {
   it("Memory hit updates IDB timestamp so hot entries survive eviction", async () => {
     // Fill cache
     for (let i = 0; i < MAX_CACHE_ENTRIES; i++)
-      await putEmbedding(`https://example.com/${i}.jpg`, createTestEmbedding(i));
+      await putEmbedding(
+        `https://example.com/${i}.jpg`,
+        createTestEmbedding(i),
+      );
 
     // Touch entry 0 from memory (updates its IDB lastAccessed)
     await getEmbedding("https://example.com/0.jpg");
-  
+
     // Let the fire-and-forget IDB write settle
     await new Promise((r) => setTimeout(r, 10));
 
@@ -201,16 +237,40 @@ describe("embeddingCache", () => {
   });
 
   it.each([
-    { name: "open fails on get", failOn: undefined, op: "get" as const, warning: "Embedding cache open failed: Error: blocked" },
-    { name: "open fails on put", failOn: undefined, op: "put" as const, warning: "Embedding cache open failed: Error: blocked" },
-    { name: "idbGet fails", failOn: "get" as const, op: "get" as const, warning: "Embedding cache read failed: Error: read failed" },
-    { name: "idbPut fails", failOn: "put" as const, op: "put" as const, warning: "Embedding cache write failed: Error: write failed" },
+    {
+      name: "open fails on get",
+      failOn: undefined,
+      op: "get" as const,
+      warning: "Embedding cache open failed: Error: blocked",
+    },
+    {
+      name: "open fails on put",
+      failOn: undefined,
+      op: "put" as const,
+      warning: "Embedding cache open failed: Error: blocked",
+    },
+    {
+      name: "idbGet fails",
+      failOn: "get" as const,
+      op: "get" as const,
+      warning: "Embedding cache read failed: Error: read failed",
+    },
+    {
+      name: "idbPut fails",
+      failOn: "put" as const,
+      op: "put" as const,
+      warning: "Embedding cache write failed: Error: write failed",
+    },
   ])("Warns and falls through when $name", async ({ failOn, op, warning }) => {
     if (failOn) {
       const idb = createMockIDB({ failOn });
       vi.stubGlobal("indexedDB", idb.mockIndexedDB);
     } else {
-      vi.stubGlobal("indexedDB", { open: () => { throw new Error("blocked"); } });
+      vi.stubGlobal("indexedDB", {
+        open: () => {
+          throw new Error("blocked");
+        },
+      });
     }
     const onWarning = vi.fn();
 

@@ -23,7 +23,7 @@ export default function useDelete() {
   const { selected } = useAnnotationContext();
   const label = selected?.label;
   const schema = useRecoilValue(
-    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
+    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
   );
   const { addLabelToSidebar, removeLabelFromSidebar } = useLabelsContext();
 
@@ -63,7 +63,7 @@ export default function useDelete() {
           }
 
           await commandBus.execute(
-            new DeleteAnnotationCommand(label, fieldSchema)
+            new DeleteAnnotationCommand(label, fieldSchema),
           );
 
           removeLabelFromSidebar(label.data._id);
@@ -110,7 +110,7 @@ export default function useDelete() {
             });
           }
         }
-      }
+      },
     );
   }, [
     addLabelToSidebar,
@@ -153,6 +153,6 @@ export default function useDelete() {
         description: "Delete label",
       },
     ],
-    [undoable, isGenerated]
+    [undoable, isGenerated],
   );
 }

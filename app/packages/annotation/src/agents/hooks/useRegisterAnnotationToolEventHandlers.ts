@@ -39,7 +39,7 @@ export const useRegisterAnnotationToolEventHandlers = () => {
   const agent = useAnnotationAgent(useAgentSelector().activeAgent?.agent);
   const createDetection = useCallback(
     () => createNew("Detection"),
-    [createNew]
+    [createNew],
   );
   const applyInferenceResult = useApplyInferenceResult(createDetection);
 
@@ -74,7 +74,7 @@ export const useRegisterAnnotationToolEventHandlers = () => {
       };
     },
     // trigger inference every time the input context changes
-    [toolsContext]
+    [toolsContext],
   );
 
   // Reset tools state on mount, unmount, and whenever the lighter scene is

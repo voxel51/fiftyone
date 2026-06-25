@@ -50,7 +50,7 @@ export default function useAnimate({
         order.current,
         newOrder,
         down.current,
-        realDelta
+        realDelta,
       );
       controller.set({ minHeight: minHeight + MARGIN });
 
@@ -70,6 +70,6 @@ export default function useAnimate({
       lastOrder,
       order,
       start,
-    ]
+    ],
   );
 }

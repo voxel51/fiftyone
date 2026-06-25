@@ -12,7 +12,7 @@ import { DETECTION } from "@fiftyone/utilities";
 
 function makeDetection(
   id: string,
-  overrides: Partial<ReconciledDetection3D> = {}
+  overrides: Partial<ReconciledDetection3D> = {},
 ): ReconciledDetection3D {
   return {
     _id: id,
@@ -30,7 +30,7 @@ function makeDetection(
 
 function makeDoc(
   labels: ReconciledDetection3D[],
-  deletedIds: string[] = []
+  deletedIds: string[] = [],
 ): WorkingDoc {
   const labelsById: WorkingDoc["labelsById"] = {};
   for (const l of labels) labelsById[l._id] = l;
@@ -89,7 +89,7 @@ describe("getDefaultLabel", () => {
         makeDetection("2", { label: "car" }),
         makeDetection("3", { label: "person" }),
       ],
-      ["1", "2"]
+      ["1", "2"],
     );
     expect(getDefaultLabel("predictions", doc)).toBe("person");
   });

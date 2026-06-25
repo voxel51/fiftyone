@@ -95,7 +95,7 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
   // reference (e.g. via useMemo) so the context value only updates when
   // the track list genuinely changes. No internal state needed.
   const [pinnedIds, setPinnedSet] = useState<Set<string>>(
-    () => new Set(initialPinnedIds)
+    () => new Set(initialPinnedIds),
   );
 
   // Auto-pin tracks added one-at-a-time after the initial load (e.g. a
@@ -106,7 +106,7 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
   // appears after that initial hydration is a new creation and gets pinned.
   const hydratedRef = useRef(initialTracks.length > 0);
   const seenTrackIdsRef = useRef<Set<string>>(
-    new Set(initialTracks.map((t) => t.id))
+    new Set(initialTracks.map((t) => t.id)),
   );
   useEffect(() => {
     if (!hydratedRef.current) {
@@ -160,7 +160,7 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
       togglePin,
       setPinned,
     }),
-    [initialTracks, pinnedIds, togglePin, setPinned]
+    [initialTracks, pinnedIds, togglePin, setPinned],
   );
 
   return (
@@ -173,7 +173,7 @@ export function useTrackContext(): TrackContextValue {
   const ctx = useContext(TrackContext);
   if (!ctx) {
     throw new Error(
-      "useTrackContext (and friends) must be used inside <TrackProvider>"
+      "useTrackContext (and friends) must be used inside <TrackProvider>",
     );
   }
   return ctx;
@@ -189,7 +189,7 @@ export function usePinnedTracks(): Track[] {
   const { tracks, pinnedIds } = useTrackContext();
   return useMemo(
     () => tracks.filter((t) => pinnedIds.has(t.id)),
-    [tracks, pinnedIds]
+    [tracks, pinnedIds],
   );
 }
 

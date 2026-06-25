@@ -17,7 +17,7 @@ interface SceneInventoryContextValue {
 }
 
 const SceneInventoryContext = createContext<SceneInventoryContextValue | null>(
-  null
+  null,
 );
 
 export interface SceneInventoryProviderProps {
@@ -53,7 +53,7 @@ export function useSceneInventory(): readonly SceneSource[] {
   const ctx = useContext(SceneInventoryContext);
   if (!ctx) {
     throw new Error(
-      "useSceneInventory must be used inside <SceneInventoryProvider>"
+      "useSceneInventory must be used inside <SceneInventoryProvider>",
     );
   }
   return ctx.sources;

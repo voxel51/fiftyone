@@ -34,7 +34,7 @@ const isTest = typeof process !== "undefined" && process.env.MODE === "test";
  */
 export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
   fragmentOptions: GraphQLSyncFragmentSyncAtomOptions<T, K>,
-  options: GraphQLSyncFragmentAtomOptions<K>
+  options: GraphQLSyncFragmentAtomOptions<K>,
 ) {
   const value = atom({
     ...options,
@@ -56,15 +56,15 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
         let previous: null | T[" $data"] = null;
         const setter = (
           d: null | T[" $data"],
-          int?: TransactionInterface_UNSTABLE
+          int?: TransactionInterface_UNSTABLE,
         ) => {
           const set = int ? (v: K) => int.set(value, v) : setSelf;
           set(
             fragmentOptions.read && d !== null
               ? fragmentOptions.read(d, previous)
               : d === null
-              ? fragmentOptions.default
-              : (d as K)
+                ? fragmentOptions.default
+                : (d as K),
           );
 
           previous = d;
@@ -72,7 +72,7 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
 
         const run = (
           page: PageQuery<OperationType>,
-          transactionInterface?: TransactionInterface_UNSTABLE
+          transactionInterface?: TransactionInterface_UNSTABLE,
         ): Disposable | undefined => {
           const preloadedQuery = page.preloadedQuery;
           let data = page.data;
@@ -91,7 +91,7 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
                   () => {
                     run(page);
                     unlisten();
-                  }
+                  },
                 );
               }
 
@@ -107,7 +107,7 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
               const update = loadContext(
                 fragmentOptions.fragments[fragmentOptions.fragments.length - 1],
                 preloadedQuery.environment,
-                parent
+                parent,
               ).result.data;
               setter(update);
               !update && run(page);
@@ -143,7 +143,7 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
             ? value
             : undefined,
       },
-      options.key
+      options.key,
     );
   }
 

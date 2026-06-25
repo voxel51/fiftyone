@@ -66,7 +66,7 @@ export const AnnotationPlane = ({
       const upAbs = new THREE.Vector3(
         Math.abs(upVector.x),
         Math.abs(upVector.y),
-        Math.abs(upVector.z)
+        Math.abs(upVector.z),
       );
 
       // Get the two largest orthogonal dimensions
@@ -92,11 +92,11 @@ export const AnnotationPlane = ({
 
   const position = useMemo(
     () => new THREE.Vector3(...annotationPlane.position),
-    [annotationPlane]
+    [annotationPlane],
   );
   const quaternion = useMemo(
     () => new THREE.Quaternion(...annotationPlane.quaternion),
-    [annotationPlane]
+    [annotationPlane],
   );
 
   // Determine which axes to show based on upVector and mode
@@ -124,7 +124,7 @@ export const AnnotationPlane = ({
     const upAbs = new THREE.Vector3(
       Math.abs(upVector.x),
       Math.abs(upVector.y),
-      Math.abs(upVector.z)
+      Math.abs(upVector.z),
     );
 
     const maxComponent = Math.max(upAbs.x, upAbs.y, upAbs.z);
@@ -157,7 +157,7 @@ export const AnnotationPlane = ({
   useCursor(
     isHovered && isSelected && !isSegmenting,
     "pointer",
-    isSegmenting ? "crosshair" : "auto"
+    isSegmenting ? "crosshair" : "auto",
   );
 
   // Simple pulsing animation for scale and opacity for visibility
@@ -192,7 +192,7 @@ export const AnnotationPlane = ({
         }
       }
     },
-    [isMouseDown, dragStartPosition]
+    [isMouseDown, dragStartPosition],
   );
 
   const handleMouseUp = useCallback(() => {
@@ -210,11 +210,11 @@ export const AnnotationPlane = ({
 
       if (!isDragging) {
         setCurrentArchetypeSelectedForTransform((prev) =>
-          prev === "annotation-plane" ? null : "annotation-plane"
+          prev === "annotation-plane" ? null : "annotation-plane",
         );
       }
     },
-    [showTransformControls, isDragging, isSegmenting]
+    [showTransformControls, isDragging, isSegmenting],
   );
 
   const handleTransformStart = useCallback(() => {

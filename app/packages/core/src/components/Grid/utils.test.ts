@@ -19,7 +19,7 @@ describe("spotlight paging", () => {
       handleNode({
         ...NODE,
         sample: "{}" as unknown as Record<string, unknown>,
-      })
+      }),
     ).toStrictEqual(NODE);
   });
 

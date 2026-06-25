@@ -51,8 +51,8 @@ export const useFetchSampleStaticTransform = () => {
       const response = await fetch<void, StaticTransformsListResponse>(
         "GET",
         `/dataset/${encodeURIComponent(
-          fetchDatasetId
-        )}/sample/${encodeURIComponent(fetchSampleId)}/static_transforms`
+          fetchDatasetId,
+        )}/sample/${encodeURIComponent(fetchSampleId)}/static_transforms`,
       );
 
       const transforms = Array.isArray(response?.transforms)

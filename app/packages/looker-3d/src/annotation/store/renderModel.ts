@@ -20,7 +20,7 @@ import { workingAtom, workingDocSelector } from "./working";
  */
 export function applyTransientToCuboid(
   detection: ReconciledDetection3D,
-  transient: TransientCuboidState | undefined
+  transient: TransientCuboidState | undefined,
 ): ReconciledDetection3D {
   if (!transient) {
     return detection;
@@ -57,7 +57,7 @@ export function applyTransientToCuboid(
  */
 export function applyTransientToPolyline(
   polyline: ReconciledPolyline3D,
-  transient: TransientPolylineState | undefined
+  transient: TransientPolylineState | undefined,
 ): ReconciledPolyline3D {
   if (!transient) {
     return polyline;
@@ -73,7 +73,7 @@ export function applyTransientToPolyline(
         point[0] + delta[0],
         point[1] + delta[1],
         point[2] + delta[2],
-      ])
+      ]),
     );
   }
 
@@ -91,7 +91,7 @@ export function applyTransientToPolyline(
           ];
         }
         return point;
-      })
+      }),
     );
   }
 
@@ -112,7 +112,7 @@ export function applyTransientToPolyline(
  */
 export function deriveRenderModel(
   workingDoc: WorkingDoc,
-  transient: TransientStore
+  transient: TransientStore,
 ): RenderModel {
   const detections: ReconciledDetection3D[] = [];
   const polylines: ReconciledPolyline3D[] = [];
@@ -126,13 +126,13 @@ export function deriveRenderModel(
     if (isDetection(label)) {
       const withTransient = applyTransientToCuboid(
         label,
-        transient.cuboids[labelId]
+        transient.cuboids[labelId],
       );
       detections.push(withTransient);
     } else if (isPolyline(label)) {
       const withTransient = applyTransientToPolyline(
         label,
-        transient.polylines[labelId]
+        transient.polylines[labelId],
       );
       polylines.push(withTransient);
     }
@@ -188,13 +188,13 @@ export function useRenderModel(): RenderModel {
  * Hook that returns a specific detection from the render model.
  */
 export function useRenderDetection(
-  labelId: LabelId
+  labelId: LabelId,
 ): ReconciledDetection3D | undefined {
   const renderModel = useRenderModel();
 
   return useMemo(
     () => renderModel.detections.find((d) => d._id === labelId),
-    [renderModel.detections, labelId]
+    [renderModel.detections, labelId],
   );
 }
 
@@ -202,13 +202,13 @@ export function useRenderDetection(
  * Hook that returns a specific polyline from the render model.
  */
 export function useRenderPolyline(
-  labelId: LabelId
+  labelId: LabelId,
 ): ReconciledPolyline3D | undefined {
   const renderModel = useRenderModel();
 
   return useMemo(
     () => renderModel.polylines.find((p) => p._id === labelId),
-    [renderModel.polylines, labelId]
+    [renderModel.polylines, labelId],
   );
 }
 

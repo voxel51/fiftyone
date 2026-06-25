@@ -127,7 +127,7 @@ export const SchemaSelectionControls = () => {
                   />
                 </FormGroup>
               </ContainerBox>
-            )
+            ),
           )}
       </Box>
     </Box>

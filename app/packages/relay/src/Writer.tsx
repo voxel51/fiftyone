@@ -19,7 +19,7 @@ export interface PageQuery<T extends OperationType> {
 export type PageSubscription<T extends OperationType> = (
   pageQuery: PageQuery<T>,
   transactionInterface: TransactionInterface_UNSTABLE,
-  previousPageQuery?: PageQuery<T>
+  previousPageQuery?: PageQuery<T>,
 ) => void;
 
 let pageQueryReader: <T extends OperationType>() => PageQuery<T>;
@@ -28,7 +28,7 @@ let pageQueryReader: <T extends OperationType>() => PageQuery<T>;
 const subscribersBefore = new Set<PageSubscription<any>>();
 
 export function subscribeBefore<T extends OperationType>(
-  subscription: PageSubscription<T>
+  subscription: PageSubscription<T>,
 ) {
   subscribersBefore.add(subscription);
 
@@ -41,7 +41,7 @@ export function subscribeBefore<T extends OperationType>(
 const subscribers = new Set<PageSubscription<any>>();
 
 export function subscribe<T extends OperationType>(
-  subscription: PageSubscription<T>
+  subscription: PageSubscription<T>,
 ) {
   subscribers.add(subscription);
 
@@ -105,7 +105,7 @@ export function Writer<T extends OperationType>({
       (cb: (TransactionInterface: TransactionInterface_UNSTABLE) => void) => {
         cb(transactionInterface);
       },
-    []
+    [],
   );
 
   React.useEffect(() => {

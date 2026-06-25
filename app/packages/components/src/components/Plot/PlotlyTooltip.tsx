@@ -60,7 +60,7 @@ function DefaultTooltipComponent(props: PlotlyTooltipProps) {
 
 function getTooltipData(
   event: TooltipEvent,
-  value?: TooltipValue
+  value?: TooltipValue,
 ): FullTooltipData {
   if (typeof value === "function") {
     const valueResolver = value as TooltipResolver;

@@ -15,7 +15,7 @@ const LabelTagByValue: React.FC = () => {
   const initialValue = colorScheme.labelTags?.valueColors;
   const setting = useMemo(
     () => colorScheme.labelTags,
-    [activePath, colorScheme.labelTags]
+    [activePath, colorScheme.labelTags],
   );
   const values = useMemo(() => setting?.valueColors ?? [], [setting]);
   const defaultValue = {
@@ -23,7 +23,7 @@ const LabelTagByValue: React.FC = () => {
     color: getRandomColorFromPool(colorScheme.colorPool),
   };
   const shouldShowAddButton = Boolean(
-    setting?.valueColors && setting.valueColors.length > 0
+    setting?.valueColors && setting.valueColors.length > 0,
   );
 
   const onSyncUpdate = useCallback((copy: ValueColorInput[]) => {

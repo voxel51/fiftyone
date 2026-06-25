@@ -111,7 +111,7 @@ function DisconnectOntologyModalComponent({
 
 export const useConfirmDisconnectOntology = (
   onConfirm: () => void,
-  affectedAttributes: string[]
+  affectedAttributes: string[],
 ) => {
   const showConfirmation = useSetAtom(showDisconnectConfirmation);
   const DisconnectOntologyModal = useMemo(
@@ -121,12 +121,12 @@ export const useConfirmDisconnectOntology = (
         affectedAttributes={affectedAttributes}
       />
     ),
-    [onConfirm, affectedAttributes]
+    [onConfirm, affectedAttributes],
   );
   return {
     confirmDisconnect: useCallback(
       () => showConfirmation(true),
-      [showConfirmation]
+      [showConfirmation],
     ),
     DisconnectOntologyModal,
   };

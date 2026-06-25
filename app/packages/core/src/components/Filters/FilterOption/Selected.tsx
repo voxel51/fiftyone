@@ -17,7 +17,7 @@ const Selected = ({
 
   const isFilterMode = useRecoilValue(isSidebarFilterMode);
   const icon = options.find(
-    (o) => o.key === (isFilterMode ? filterKey : visibilityKey)
+    (o) => o.key === (isFilterMode ? filterKey : visibilityKey),
   )?.icon;
   if (!icon) return <>{isFilterMode ? filterKey : visibilityKey}</>;
 

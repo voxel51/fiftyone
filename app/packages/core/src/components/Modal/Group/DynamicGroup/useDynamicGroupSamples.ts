@@ -18,7 +18,7 @@ export const useDynamicGroupSamples = () => {
     // slice is how the group was accessed, i.e. from the grid
     // modalSlice is the currently selected modal slice
     () => (slice ? { group: { slice, slices: [modalSlice] } } : {}),
-    [slice, modalSlice]
+    [slice, modalSlice],
   );
   const loadDynamicGroupSamples = useCallback(
     (cursor?: number) => {
@@ -45,15 +45,15 @@ export const useDynamicGroupSamples = () => {
           filter,
           dynamicGroup,
           view,
-        }
+        },
       );
     },
-    [dataset, dynamicGroup, environment, filter, shouldRenderImavid, view]
+    [dataset, dynamicGroup, environment, filter, shouldRenderImavid, view],
   );
 
   const queryRef = useMemo(
     () => loadDynamicGroupSamples(dynamicGroupIndex),
-    [loadDynamicGroupSamples, dynamicGroupIndex]
+    [loadDynamicGroupSamples, dynamicGroupIndex],
   );
 
   return {

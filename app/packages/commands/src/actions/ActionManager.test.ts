@@ -68,7 +68,7 @@ describe("ActionManager", () => {
         },
         () => {
           return;
-        }
+        },
       );
 
     it("removes matching entries from the undo stack", async () => {

@@ -41,10 +41,10 @@ repository.
 
 Steps to make a pull request:
 
--   Fork https://github.com/voxel51/fiftyone
--   Implement your feature as a branch off of the `develop` branch
--   Create a pull request into the `develop` branch of
-    https://github.com/voxel51/fiftyone
+- Fork https://github.com/voxel51/fiftyone
+- Implement your feature as a branch off of the `develop` branch
+- Create a pull request into the `develop` branch of
+  https://github.com/voxel51/fiftyone
 
 If you are **not** a Voxel51 team member, we recommend opening your pull
 request against the **`community`** branch (see below).
@@ -77,13 +77,13 @@ During issue triage, we try to proactively identify issues that require design
 by labeling them with `needs design`. This is particularly important if your
 proposed implementation:
 
--   Introduces new user-facing FiftyOne APIs
-    -   FiftyOne's API surface is carefully designed to generalize across a
-        variety of common CV/ML use cases. It is important to ensure that new
-        APIs are broadly useful to CV/ML engineers and scientists, easy to work
-        with, and simple yet powerful
--   Adds new library dependencies to FiftyOne
--   Makes changes to critical internal abstractions
+- Introduces new user-facing FiftyOne APIs
+    - FiftyOne's API surface is carefully designed to generalize across a
+      variety of common CV/ML use cases. It is important to ensure that new
+      APIs are broadly useful to CV/ML engineers and scientists, easy to work
+      with, and simple yet powerful
+- Adds new library dependencies to FiftyOne
+- Makes changes to critical internal abstractions
 
 ### Make changes backwards compatible
 

@@ -2,8 +2,8 @@
 
 FiftyOne consists of several packages:
 
--   `fiftyone`: the core library
--   `fiftyone-db`: a bundled copy of MongoDB
+- `fiftyone`: the core library
+- `fiftyone-db`: a bundled copy of MongoDB
 
 These packages are distributed as [wheels](https://pythonwheels.com/)
 installable with `pip`. They are separated in this way to enable individual
@@ -16,10 +16,10 @@ release. Due to `fiftyone` being tightly coupled to the other packages listed
 above, it should generally require relatively strict version ranges. For
 example:
 
--   `fiftyone-db>=1.2,<2` would require at least `fiftyone-db` 1.2, would also
-    allow 1.2.1, 1.3.0, but would not allow 2.0 or above.
--   `fiftyone-db>=1.2,<1.3` differs from the above by not allowing
-    `fiftyone-db` 1.3.0 or above
+- `fiftyone-db>=1.2,<2` would require at least `fiftyone-db` 1.2, would also
+  allow 1.2.1, 1.3.0, but would not allow 2.0 or above.
+- `fiftyone-db>=1.2,<1.3` differs from the above by not allowing `fiftyone-db`
+  1.3.0 or above
 
 Care should be taken when assigning version numbers to packages that `fiftyone`
 depends on. Generally, following [Semantic Versioning](https://semver.org/) for
@@ -33,21 +33,20 @@ package are located in the `.github/workflows` directory. Wheels are always
 built when the workflow runs, and are downloadable as workflow artifacts.
 Wheels are also published to PyPI under the following circumstances:
 
--   `fiftyone` wheels (and documentation) are published when a tag matching
-    `v*` is pushed. `*` must match the version in `setup.py`.
--   `fiftyone-db` wheels are published when a tag matching `db-v*` is pushed.
-    `*` must match the version in `package/db/setup.py`.
+- `fiftyone` wheels (and documentation) are published when a tag matching `v*`
+  is pushed. `*` must match the version in `setup.py`.
+- `fiftyone-db` wheels are published when a tag matching `db-v*` is pushed. `*`
+  must match the version in `package/db/setup.py`.
 
 It is recommended to:
 
--   Publish all dependencies of `fiftyone` that the new release depends on
-    _before_ publishing `fiftyone`. This ensures that users are never able to
-    download a `fiftyone` package whose dependencies have not been published
-    yet.
--   Create the tags on a release branch and wait for builds to be published
-    successfully before merging the branch.
--   Update `master` after the release has been merged into `develop`:
-    `git push origin develop:master`
+- Publish all dependencies of `fiftyone` that the new release depends on
+  _before_ publishing `fiftyone`. This ensures that users are never able to
+  download a `fiftyone` package whose dependencies have not been published yet.
+- Create the tags on a release branch and wait for builds to be published
+  successfully before merging the branch.
+- Update `master` after the release has been merged into `develop`:
+  `git push origin develop:master`
 
 If the `publish` step of a workflow fails and has uploaded some (but not all)
 packages to PyPI, you will likely need to upload the rest manually (e.g. with

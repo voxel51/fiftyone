@@ -83,7 +83,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
       // This shouldn't really happen but is here for a fallback
       console.warn(
         "[Position3d] Using fallback data path - workingLabel not available for label:",
-        data._id
+        data._id,
       );
       baseLocation = data.location;
       baseDimensions = data.dimensions;
@@ -210,7 +210,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
         });
       }
     },
-    [data, transformState, overlay, eventBus, readOnly]
+    [data, transformState, overlay, eventBus, readOnly],
   );
 
   return (

@@ -239,7 +239,7 @@ class ModalSidebarAsserter {
         );
       },
       { key_: key, value_: value },
-      { timeout: 5000 }
+      { timeout: 5000 },
     );
   }
 
@@ -257,8 +257,8 @@ class ModalSidebarAsserter {
   }) {
     await Promise.all(
       Object.entries(entries).map(([key, value]) =>
-        this.waitUntilSidebarEntryTextEquals(key, value)
-      )
+        this.waitUntilSidebarEntryTextEquals(key, value),
+      ),
     );
   }
 
@@ -272,8 +272,8 @@ class ModalSidebarAsserter {
   async verifySidebarEntryTexts(entries: { [key: string]: string }) {
     await Promise.all(
       Object.entries(entries).map(([key, value]) =>
-        this.verifySidebarEntryText(key, value)
-      )
+        this.verifySidebarEntryText(key, value),
+      ),
     );
   }
 
@@ -286,7 +286,9 @@ class ModalSidebarAsserter {
    */
   async verifySidebarFieldCount(field: string, count: string | number) {
     await expect(
-      this.modalSidebarPom.getSidebarField(field).getByTestId("entry-count-all")
+      this.modalSidebarPom
+        .getSidebarField(field)
+        .getByTestId("entry-count-all"),
     ).toHaveText(String(count));
   }
 
@@ -302,14 +304,14 @@ class ModalSidebarAsserter {
         return (
           Number(
             document.querySelector("#modal [data-cy='sidebar-entry-tags']")
-              .textContent
+              .textContent,
           ) === count_
         );
       },
       count,
       {
         timeout: Duration.Seconds(1),
-      }
+      },
     );
   }
 
@@ -346,15 +348,15 @@ class ModalSidebarAsserter {
         return (
           Number(
             document.querySelector(
-              "#modal [data-cy='sidebar-field-container-_label_tags'] [data-cy='entry-count-all']"
-            ).textContent
+              "#modal [data-cy='sidebar-field-container-_label_tags'] [data-cy='entry-count-all']",
+            ).textContent,
           ) === count_
         );
       },
       count,
       {
         timeout: Duration.Seconds(1),
-      }
+      },
     );
   }
 
@@ -363,7 +365,7 @@ class ModalSidebarAsserter {
    */
   async hasDisabledMessage(messageSubstring: string) {
     await expect(
-      this.modalSidebarPom.locator.getByText(messageSubstring)
+      this.modalSidebarPom.locator.getByText(messageSubstring),
     ).toBeVisible();
   }
 }

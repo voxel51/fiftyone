@@ -87,7 +87,7 @@ describe("enqueueFetch", () => {
     mockedFetch.mockResolvedValue(mockResponse);
 
     await expect(enqueueFetch({ url: "https://fiftyone.ai" })).rejects.toThrow(
-      "Non-retryable HTTP error: 404"
+      "Non-retryable HTTP error: 404",
     );
   });
 
@@ -102,7 +102,7 @@ describe("enqueueFetch", () => {
           retries: MAX_RETRIES,
           delay: 50,
         },
-      })
+      }),
     ).rejects.toThrow("Max retries for fetch reached");
 
     expect(mockedFetch).toHaveBeenCalledTimes(MAX_RETRIES);

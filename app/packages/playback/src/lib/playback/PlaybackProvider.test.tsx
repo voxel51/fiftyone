@@ -13,7 +13,11 @@ import {
   viewEndAtom,
   viewStartAtom,
 } from "./atoms";
-import { PlaybackProvider, usePlayback, usePlaybackStore } from "./PlaybackProvider";
+import {
+  PlaybackProvider,
+  usePlayback,
+  usePlaybackStore,
+} from "./PlaybackProvider";
 import type { PlaybackStream } from "./types";
 
 interface RenderOpts {
@@ -49,7 +53,7 @@ function renderEngine(opts: RenderOpts = {}) {
           {children}
         </PlaybackProvider>
       ),
-    }
+    },
   );
 }
 
@@ -423,14 +427,11 @@ describe("PlaybackProvider engine actions", () => {
     });
 
     it("falls back to 1/30 when neither prop nor stream provides a step", () => {
-      const { result } = renderHook(
-        () => ({ store: usePlaybackStore() }),
-        {
-          wrapper: ({ children }) => (
-            <PlaybackProvider>{children}</PlaybackProvider>
-          ),
-        }
-      );
+      const { result } = renderHook(() => ({ store: usePlaybackStore() }), {
+        wrapper: ({ children }) => (
+          <PlaybackProvider>{children}</PlaybackProvider>
+        ),
+      });
       expect(result.current.store.get(stepIntervalAtom)).toBeCloseTo(1 / 30, 6);
     });
 
@@ -444,7 +445,10 @@ describe("PlaybackProvider engine actions", () => {
           bufferState: () => "ready",
         });
       });
-      expect(result.current.store.get(stepIntervalAtom)).toBeCloseTo(1 / 100, 6);
+      expect(result.current.store.get(stepIntervalAtom)).toBeCloseTo(
+        1 / 100,
+        6,
+      );
     });
 
     it("picks the smallest nativeStepSeconds across streams", () => {

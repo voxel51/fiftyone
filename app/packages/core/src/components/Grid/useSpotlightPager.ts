@@ -24,11 +24,11 @@ const processSamplePageData = (
   data: fos.ResponseFrom<foq.paginateSamplesQuery>,
   schema: Schema,
   zoom: boolean,
-  records: Map<string, number>
+  records: Map<string, number>,
 ) => {
   if (data.samples.__typename !== "SampleItemStrConnection") {
     throw new Error(
-      `unexepcted typename ${data.samples.__typename}, expected 'SampleItemStrConnection'`
+      `unexepcted typename ${data.samples.__typename}, expected 'SampleItemStrConnection'`,
     );
   }
 
@@ -84,7 +84,7 @@ const useSpotlightPager = ({
         const variables = pager(pageNumber, PAGE_SIZE);
         let subscription: Subscription;
         const schema = await snapshot.getPromise(
-          fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
+          fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
         );
 
         // if a page has not been requested by this callback, require a network
@@ -102,7 +102,7 @@ const useSpotlightPager = ({
             {
               networkCacheConfig: { metadata: {} },
               fetchPolicy,
-            }
+            },
           ).subscribe({
             next: (data) => {
               if (data.samples.__typename !== "SampleItemStrConnection") {
@@ -121,7 +121,7 @@ const useSpotlightPager = ({
                 data,
                 schema,
                 zoom,
-                records
+                records,
               );
               for (const item of items) keys.current.add(item.id.description);
 
@@ -139,7 +139,7 @@ const useSpotlightPager = ({
         });
       };
     },
-    [environment, handleError, handleTimeout, pager, store, zoom]
+    [environment, handleError, handleTimeout, pager, store, zoom],
   );
 
   return { page, records, store };

@@ -25,7 +25,7 @@ export const PainterFactory = (requestColor) => ({
     customizeColorSetting: CustomizeColor[],
     colorscale: Colorscale,
     labelTagColors: LabelTagColor,
-    selectedLabelTags: string[]
+    selectedLabelTags: string[],
   ) => {
     if (!label?.mask) {
       return;
@@ -40,7 +40,7 @@ export const PainterFactory = (requestColor) => ({
       color = await requestColor(
         coloring.pool,
         coloring.seed,
-        getHashLabelColorByInstance(label)
+        getHashLabelColorByInstance(label),
       );
     }
     if (coloring.by === COLOR_BY.FIELD) {
@@ -54,7 +54,7 @@ export const PainterFactory = (requestColor) => ({
           color = await requestColor(
             coloring.pool,
             coloring.seed,
-            "_label_tags"
+            "_label_tags",
           );
         }
       } else {
@@ -70,7 +70,7 @@ export const PainterFactory = (requestColor) => ({
       if (setting) {
         if (isTagged) {
           const tagColor = labelTagColors?.valueColors?.find((pair) =>
-            label.tags.includes(pair.value)
+            label.tags.includes(pair.value),
           )?.color;
           if (tagColor && Boolean(colorString.get(tagColor))) {
             color = tagColor;
@@ -78,7 +78,7 @@ export const PainterFactory = (requestColor) => ({
             color = await requestColor(
               coloring.pool,
               coloring.seed,
-              label.tags.length > 0 ? label.tags[0] : "_label_tags"
+              label.tags.length > 0 ? label.tags[0] : "_label_tags",
             );
           }
         } else {
@@ -118,7 +118,7 @@ export const PainterFactory = (requestColor) => ({
     const numChannels = label.mask.data.channels;
     const overlay = new Uint32Array(label.mask.image);
     const targets = new ARRAY_TYPES[label.mask.data.arrayType](
-      label.mask.data.buffer
+      label.mask.data.buffer,
     );
     const bitColor = get32BitColor(color);
 
@@ -153,7 +153,7 @@ export const PainterFactory = (requestColor) => ({
     customizeColorSetting: CustomizeColor[],
     colorscale: Colorscale,
     labelTagColors: LabelTagColor,
-    selectedLabelTags: string[]
+    selectedLabelTags: string[],
   ) => {
     if (!labels?.detections) {
       return;
@@ -169,8 +169,8 @@ export const PainterFactory = (requestColor) => ({
         customizeColorSetting,
         colorscale,
         labelTagColors,
-        selectedLabelTags
-      )
+        selectedLabelTags,
+      ),
     );
 
     await Promise.all(promises);
@@ -184,7 +184,7 @@ export const PainterFactory = (requestColor) => ({
     customizeColorSetting: CustomizeColor[],
     colorscale: Colorscale,
     selectedLabelTags: string[],
-    labelTagColors: LabelTagColor
+    labelTagColors: LabelTagColor,
   ) => {
     if (!label?.map) {
       return;
@@ -194,14 +194,14 @@ export const PainterFactory = (requestColor) => ({
     const mapData = label.map.data;
 
     const targets = new ARRAY_TYPES[label.map.data.arrayType](
-      label.map.data.buffer
+      label.map.data.buffer,
     );
 
     const [start, stop] = label.range
       ? label.range
       : isFloatArray(targets)
-      ? [0, 1]
-      : [0, 255];
+        ? [0, 1]
+        : [0, 255];
     const max = Math.max(Math.abs(start), Math.abs(stop));
 
     let color;
@@ -262,7 +262,7 @@ export const PainterFactory = (requestColor) => ({
     customizeColorSetting: CustomizeColor[],
     colorscale: Colorscale,
     selectedLabelsTags: string[],
-    labelTagColors: LabelTagColor
+    labelTagColors: LabelTagColor,
   ) => {
     if (!label?.mask) {
       return;
@@ -355,8 +355,8 @@ export const PainterFactory = (requestColor) => ({
             convertToHex(
               coloring.targets[
                 Math.round(Math.abs(i)) % coloring.targets.length
-              ]
-            )
+              ],
+            ),
           );
         }
 
@@ -365,10 +365,10 @@ export const PainterFactory = (requestColor) => ({
 
       // convert the defaultMaskTargetsColors and fields maskTargetsColors into objects to improve performance
       const defaultSetting = convertMaskColorsToObject(
-        coloring.defaultMaskTargetsColors
+        coloring.defaultMaskTargetsColors,
       );
       const fieldSetting = convertMaskColorsToObject(
-        setting?.maskTargetsColors
+        setting?.maskTargetsColors,
       );
 
       // these for loops must be fast. no "in" or "of" syntax
@@ -413,7 +413,7 @@ const isFloatArray = (arr) =>
 const getRgbFromMaskData = (
   maskTypedArray: TypedArray,
   channels: number,
-  index: number
+  index: number,
 ) => {
   const r = maskTypedArray[index * channels];
   const g = maskTypedArray[index * channels + 1];
@@ -438,13 +438,13 @@ export const clampedIndex = (
   value: number,
   start: number,
   stop: number,
-  length: number
+  length: number,
 ) => {
   if (value < start) {
     return -1;
   }
   const clamped = Math.min(value, stop);
   return Math.round(
-    (Math.max(clamped - start, 0) / (stop - start)) * (length - 1)
+    (Math.max(clamped - start, 0) / (stop - start)) * (length - 1),
   );
 };
