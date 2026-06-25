@@ -257,6 +257,12 @@ export class AnnotationEngine {
     return this.stores.get(sample)?.dirtyFrames() ?? [];
   }
 
+  /** Frame numbers a sample has materialized — seed ∪ edits (empty for non-frame
+   *  stores). The timeline overlays these over the server index. */
+  loadedFrames(sample: string): number[] {
+    return this.stores.get(sample)?.loadedFrames() ?? [];
+  }
+
   /** Current labels across all stores, for hydration. */
   enumerateLabels(kinds: readonly LabelType[]): LabelRef[] {
     const refs: LabelRef[] = [];

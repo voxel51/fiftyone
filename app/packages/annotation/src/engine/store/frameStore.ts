@@ -140,6 +140,10 @@ export class FrameStore implements LabelStore {
     return [...this.working.keys()];
   }
 
+  loadedFrames(): number[] {
+    return this.frames();
+  }
+
   // ---- mutation ----
 
   updateLabel(ref: LabelRef, partial: Partial<LabelData>): void {

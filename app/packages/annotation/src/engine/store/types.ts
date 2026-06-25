@@ -71,6 +71,14 @@ export interface LabelStore {
    *  index so in-session edits show without a whole-clip walk. */
   dirtyFrames(): number[];
 
+  /** Frame numbers the store has materialized (server seed ∪ edits). Empty for
+   *  stores that are not frame-indexed. The timeline overlays these over the
+   *  server index: the engine is authoritative for every loaded frame, so this
+   *  keeps the timeline correct after a save folds edits into the seed and
+   *  clears the dirty set — and naturally composes index (unloaded) ⊕ engine
+   *  (loaded window) once the seed is windowed. */
+  loadedFrames(): number[];
+
   // mutation (upsert by instanceId for list labels) — the store stamps
   // `_id = ref.instanceId`; callers never reconstruct arrays. `updateLabel`
   // merges (unset = explicit null write); `replaceLabel` writes the exact

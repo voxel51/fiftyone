@@ -84,6 +84,10 @@ export class VideoLabelStore implements LabelStore {
     return this.frames.dirtyFrames();
   }
 
+  loadedFrames(): number[] {
+    return this.frames.loadedFrames();
+  }
+
   // ---- mutation ----
 
   updateLabel(ref: LabelRef, partial: Partial<LabelData>): void {

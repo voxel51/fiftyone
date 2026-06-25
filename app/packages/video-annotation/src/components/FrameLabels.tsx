@@ -257,7 +257,7 @@ function useFrameDerivedTracks(
       buildTracksFromIndex({
         path,
         index: indexByPath[path] ?? [],
-        overlay: readDirtyOverlay(engine, sampleId, path),
+        overlay: readEngineOverlay(engine, sampleId, path),
         fps: stream.fps,
         resolveColor,
         dynamicAttributes,
@@ -280,18 +280,23 @@ function useFrameDerivedTracks(
 }
 
 /**
- * The engine's edited frames + their live labels, keyed by frame number — the
- * overlay that shadows the server index. Only dirty frames are read, so this
- * is bounded by the edit count, never the clip length.
+ * The engine's materialized frames + their live labels, keyed by frame number —
+ * the overlay that shadows the server index. Reads every loaded frame, not just
+ * the dirty set: a successful autosave folds edits into the seed and clears the
+ * dirty set, so a dirty-only overlay would revert the timeline to the stale
+ * index after each save. The engine is authoritative for every frame it holds,
+ * so overlaying all of them keeps the timeline correct post-save and composes
+ * index (unloaded) ⊕ engine (loaded window) once the seed is windowed. Bounded
+ * by the loaded window, which today is the whole clip (see `warmupAll`).
  */
-function readDirtyOverlay(
+function readEngineOverlay(
   engine: ReturnType<typeof useAnnotationEngine>,
   sample: string,
   path: string
 ): FrameOverlay {
   const overlay: FrameOverlay = new Map<number, LabelData[]>();
 
-  for (const frame of engine.dirtyFrames(sample)) {
+  for (const frame of engine.loadedFrames(sample)) {
     overlay.set(frame, engine.listLabels({ sample, path, frame }));
   }
 

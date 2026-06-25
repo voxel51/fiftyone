@@ -137,6 +137,10 @@ export class SampleLabelStore implements LabelStore {
     return [];
   }
 
+  loadedFrames(): number[] {
+    return [];
+  }
+
   // ---- mutation ----
 
   updateLabel(ref: LabelRef, partial: Partial<LabelData>): void {
