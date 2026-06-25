@@ -10,7 +10,7 @@ import {
 } from "@fiftyone/lighter";
 import type { ModalSample } from "@fiftyone/state";
 import type { LabelData, Stage } from "@fiftyone/utilities";
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   useActiveDetectionField,
   useColorScheme,
@@ -162,10 +162,16 @@ export const RegisterFrameLabels: React.FC<{
   ];
 
   // Stream-identity key: changing any input re-mounts the registrar so
-  // usePlaybackStream's cleanup unregisters the old stream.
+  // usePlaybackStream's cleanup unregisters the old stream. Keyed on the
+  // *set* of fetched fields (sorted), NOT their primary-first order — a
+  // field-move flips which field is primary (most-populated) without changing
+  // the set, and a re-mount there would tear down the engine's frame store and
+  // discard the move's unsaved edits. The primary follows in place via
+  // `setPrimaryField` (below); only adding/removing a field re-mounts.
+  const fieldSetKey = [...frameFields].sort().join(",");
   const key = `${sampleId}|${dataset}|${
     slice ?? ""
-  }|${frameRate}|${frameCount}|${frameFields.join(",")}`;
+  }|${frameRate}|${frameCount}|${fieldSetKey}`;
 
   return (
     <FrameLabelsRegistration
@@ -212,6 +218,14 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
       frameFields: props.frameFields,
     });
   }
+
+  // The primary field can change without a re-mount (the key is set-based, not
+  // order-based), so push it onto the existing stream in place — no refetch,
+  // since every field is already cached.
+  const stream = streamRef.current;
+  useEffect(() => {
+    stream.setPrimaryField(props.frameField);
+  }, [stream, props.frameField]);
 
   usePlaybackStream(streamRef.current);
 

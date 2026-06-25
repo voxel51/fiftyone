@@ -77,7 +77,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   private readonly view: Stage[];
   private readonly frameCount: number;
   private readonly frameRate: number;
-  private readonly frameField: string;
+  private frameField: string;
   /** All fields fetched per window + seeded into the engine (primary first). */
   private readonly frameFields: string[];
   private readonly chunkSize: number;
@@ -191,6 +191,17 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   /** Per-frame field that carries the labels (e.g. `"detections"`). */
   get labelsField(): string {
     return this.frameField;
+  }
+
+  /**
+   * Repoint the primary label field the read-only snapshot ({@link getValue})
+   * extracts from. Every field in {@link frameFields} is already fetched into
+   * the per-frame cache, so this only changes which one the snapshot reads — no
+   * refetch. Lets the active field follow a field-move without rebuilding the
+   * stream (which would tear down the engine's frame store and its edits).
+   */
+  setPrimaryField(field: string): void {
+    this.frameField = field;
   }
 
   /**
