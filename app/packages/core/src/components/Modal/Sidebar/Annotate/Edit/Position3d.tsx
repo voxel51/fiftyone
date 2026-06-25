@@ -236,6 +236,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
                 });
               }}
               size="small"
+              inputProps={{ "data-cy": "position3d-x" }}
               disabled={readOnly}
             />
           }
@@ -253,6 +254,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
                 });
               }}
               size="small"
+              inputProps={{ "data-cy": "position3d-y" }}
               disabled={readOnly}
             />
           }
@@ -270,6 +272,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
                 });
               }}
               size="small"
+              inputProps={{ "data-cy": "position3d-z" }}
               disabled={readOnly}
             />
           }
@@ -295,7 +298,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
                 });
               }}
               size="small"
-              inputProps={{ step: 0.1 }}
+              inputProps={{ step: 0.1, "data-cy": "position3d-lx" }}
               disabled={readOnly}
             />
           }
@@ -313,7 +316,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
                 });
               }}
               size="small"
-              inputProps={{ step: 0.1 }}
+              inputProps={{ step: 0.1, "data-cy": "position3d-ly" }}
               disabled={readOnly}
             />
           }
@@ -331,7 +334,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
                 });
               }}
               size="small"
-              inputProps={{ step: 0.1 }}
+              inputProps={{ step: 0.1, "data-cy": "position3d-lz" }}
               disabled={readOnly}
             />
           }
@@ -357,7 +360,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
                 });
               }}
               size="small"
-              inputProps={{ step: 0.01 }}
+              inputProps={{ step: 0.01, "data-cy": "position3d-rx" }}
               disabled={readOnly}
             />
           }
@@ -375,7 +378,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
                 });
               }}
               size="small"
-              inputProps={{ step: 0.01 }}
+              inputProps={{ step: 0.01, "data-cy": "position3d-ry" }}
               disabled={readOnly}
             />
           }
@@ -393,7 +396,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
                 });
               }}
               size="small"
-              inputProps={{ step: 0.01 }}
+              inputProps={{ step: 0.01, "data-cy": "position3d-rz" }}
               disabled={readOnly}
             />
           }

@@ -388,6 +388,8 @@ export const ThreeDPolylines = () => {
       portal
     >
       <Square
+        data-cy="polyline-mode-3d"
+        data-cy-active={String(isPolylineAnnotateActive)}
         $active={isPolylineAnnotateActive}
         className={disabled ? "disabled" : ""}
         onClick={() => {
@@ -443,6 +445,8 @@ export const ThreeDCuboids = () => {
       portal
     >
       <Square
+        data-cy="cuboid-mode"
+        data-cy-active={String(isCuboidAnnotateActive)}
         $active={isCuboidAnnotateActive}
         className={disabled ? "disabled" : ""}
         onClick={() => {
