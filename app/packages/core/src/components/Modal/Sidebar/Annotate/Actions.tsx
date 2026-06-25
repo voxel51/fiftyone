@@ -43,7 +43,7 @@ import { useDetectionMode } from "./Edit/useDetectionMode";
 import { usePolylineMode } from "./Edit/usePolylineMode";
 import { useSegmentationMode } from "./Edit/useSegmentationMode";
 import { useDeactivateAllModes } from "./useDeactivateAllModes";
-import { useEngineUndoRedo } from "./useEngineUndoRedo";
+import { useAnnotationUndoRedo } from "./useAnnotationUndoRedo";
 
 const ActionsDiv = styled.div`
   align-items: center;
@@ -314,7 +314,7 @@ const HistoryTooltip = ({
 );
 
 export const Undo = () => {
-  const { undo, undoEnabled, undoStack } = useEngineUndoRedo();
+  const { undo, undoEnabled, undoStack } = useAnnotationUndoRedo();
 
   return (
     <Tooltip
@@ -334,7 +334,7 @@ export const Undo = () => {
 };
 
 export const Redo = () => {
-  const { redo, redoEnabled, redoStack } = useEngineUndoRedo();
+  const { redo, redoEnabled, redoStack } = useAnnotationUndoRedo();
 
   return (
     <Tooltip

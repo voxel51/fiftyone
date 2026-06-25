@@ -34,7 +34,13 @@ import { FrameStore } from "./store/frameStore";
 import type { LabelChange } from "./store/types";
 import { FrameTemporalView } from "./temporal/frameTemporalView";
 import type { Clock } from "./temporal/types";
-import { makeDet, makeEngine, makeStore, ref } from "./testing/fixtures";
+import {
+  createUndoNavigator,
+  makeDet,
+  makeEngine,
+  makeStore,
+  ref,
+} from "./testing/fixtures";
 
 // ---------------------------------------------------------------------------
 // the retained-mode mock surface: an imperative handle scene + bridge/adapter
@@ -506,6 +512,7 @@ describe("integration: transactions and undo", () => {
 
   it("undo/redo replays converge every surface", () => {
     const { engine, retained, sidebar } = makeWorld();
+    const nav = createUndoNavigator(engine);
     const other = makeRetainedSurface(engine, "sample-1", "fake-other");
 
     act(() => {
@@ -514,13 +521,13 @@ describe("integration: transactions and undo", () => {
     expect(sidebar.result.current.entries).toBe("d1:dog,d2:fish");
 
     act(() => {
-      engine.undo();
+      nav.undo();
     });
     expect(sidebar.result.current.entries).toBe("d1:cat,d2:fish");
     expect(other.handle("d1")?.label.label).toBe("cat");
 
     act(() => {
-      engine.redo();
+      nav.redo();
     });
     expect(sidebar.result.current.entries).toBe("d1:dog,d2:fish");
     expect(other.handle("d1")?.label.label).toBe("dog");
@@ -528,6 +535,7 @@ describe("integration: transactions and undo", () => {
 
   it("undoKey coalesces a gesture stream into one step", () => {
     const { engine, retained } = makeWorld();
+    const nav = createUndoNavigator(engine);
 
     for (const label of ["dog-1", "dog-2", "dog-3"]) {
       retained.controller.transaction(
@@ -541,14 +549,15 @@ describe("integration: transactions and undo", () => {
     }
     expect(engine.getLabel(ref("ground_truth", "d1"))?.label).toBe("dog-3");
 
-    engine.undo();
+    nav.undo();
 
     expect(engine.getLabel(ref("ground_truth", "d1"))?.label).toBe("cat");
-    expect(engine.canUndo()).toBe(false);
+    expect(nav.canUndo()).toBe(false);
   });
 
   it("undo of a create deletes everywhere; redo restores", () => {
     const { engine, retained, sidebar } = makeWorld();
+    const nav = createUndoNavigator(engine);
 
     let created = "";
     act(() => {
@@ -559,19 +568,20 @@ describe("integration: transactions and undo", () => {
     expect(retained.handle(created)).toBeDefined();
 
     act(() => {
-      engine.undo();
+      nav.undo();
     });
     expect(retained.handle(created)).toBeUndefined();
     expect(sidebar.result.current.entries).toBe("d1:cat,d2:fish");
 
     act(() => {
-      engine.redo();
+      nav.redo();
     });
     expect(retained.handle(created)?.label.label).toBe("bird");
   });
 
   it("undo survives persistence (value-based inverses)", () => {
     const { engine, retained } = makeWorld();
+    const nav = createUndoNavigator(engine);
 
     retained.gesture("d1", { label: "dog" });
 
@@ -580,7 +590,7 @@ describe("integration: transactions and undo", () => {
     expect(patches.length).toBe(1);
     engine.reconcilePersisted(patches);
 
-    engine.undo();
+    nav.undo();
 
     expect(engine.getLabel(ref("ground_truth", "d1"))?.label).toBe("cat");
     expect(retained.handle("d1")?.label.label).toBe("cat");
@@ -588,6 +598,7 @@ describe("integration: transactions and undo", () => {
 
   it("a failed confirmed-destructive op rolls back via its own undo entry", () => {
     const { engine, retained, sidebar } = makeWorld();
+    const nav = createUndoNavigator(engine);
 
     act(() => {
       retained.controller.deleteLabel({
@@ -611,14 +622,15 @@ describe("integration: transactions and undo", () => {
       "d1:cat",
       "d2:fish",
     ]);
-    expect(engine.canUndo()).toBe(false);
-    expect(engine.canRedo()).toBe(false);
+    expect(nav.canUndo()).toBe(false);
+    expect(nav.canRedo()).toBe(false);
   });
 });
 
 describe("integration: whole-sample resets (the autosave echo)", () => {
   it("a same-ids reset reconciles: handles, selection, and visuals survive", () => {
     const { engine, retained, sidebar, store } = makeWorld();
+    const nav = createUndoNavigator(engine);
 
     act(() => {
       retained.gesture("d1", { label: "dog" });
@@ -649,7 +661,7 @@ describe("integration: whole-sample resets (the autosave echo)", () => {
     expect(sidebar.result.current.entries).toBe("d1:dog,d2:fish");
     // value-based undo survives the persist echo (D7): the prior edit can
     // still be undone after the backend re-sets the same sample
-    expect(engine.canUndo()).toBe(true);
+    expect(nav.canUndo()).toBe(true);
   });
 
   it("a reset that drops a label unmounts it and prunes its selection", () => {
@@ -1122,6 +1134,7 @@ describe("integration: frame-indexed temporal path through the engine", () => {
 
   it("a current-frame edit converges on the canvas, persists, and undoes", () => {
     const { engine, store, canvas } = makeFrameWorld(CLIP);
+    const nav = createUndoNavigator(engine);
 
     act(() => engine.updateLabel(frameRef("A", 1), { label: "cat" }));
 
@@ -1134,7 +1147,7 @@ describe("integration: frame-indexed temporal path through the engine", () => {
       },
     ]);
 
-    act(() => engine.undo());
+    act(() => nav.undo());
     expect(canvas.handle("A")?.label.label).toBe("x");
     expect(store.getJsonPatch()).toEqual([]);
   });

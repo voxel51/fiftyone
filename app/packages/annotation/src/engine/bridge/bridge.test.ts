@@ -9,6 +9,7 @@ import type { LabelKindAdapter, SurfaceBridge } from "./types";
 import { AnnotationEngine } from "../core/engine";
 import { SampleLabelStore } from "../store/sampleLabelStore";
 import {
+  createUndoNavigator,
   field,
   labelSchema,
   makeDet,
@@ -424,6 +425,7 @@ describe("surface controller (write-half)", () => {
     const { engine } = makeEngine("sample-1", {
       ground_truth: { detections: [makeDet("d1", "cat")] },
     });
+    const nav = createUndoNavigator(engine);
     const { handles, bridge, adapters } = makeFakeSurface();
     engine.registerBridge(bridge, adapters);
     const controller = createSurfaceController({ engine, bridge, adapters });
@@ -437,7 +439,7 @@ describe("surface controller (write-half)", () => {
 
     expect(engine.getLabel(ref("ground_truth", "d1"))?.label).toBe("dog");
     expect(listener).toHaveBeenCalledTimes(1);
-    expect(engine.canUndo()).toBe(true);
+    expect(nav.canUndo()).toBe(true);
 
     // no-ops
     controller.commit(undefined);
@@ -495,6 +497,7 @@ describe("surface controller (write-half)", () => {
     const { engine } = makeEngine("sample-1", {
       ground_truth: { detections: [makeDet("d1", "cat")] },
     });
+    const nav = createUndoNavigator(engine);
     const { bridge, adapters } = makeFakeSurface();
     const controller = createSurfaceController({ engine, bridge, adapters });
 
@@ -506,7 +509,7 @@ describe("surface controller (write-half)", () => {
       controller.createLabel("ground_truth", { label: "bird" });
     });
 
-    engine.undo();
+    nav.undo();
     expect(engine.getLabel(ref("ground_truth", "d1"))?.label).toBe("cat");
     expect(
       engine.listLabels({ sample: "sample-1", path: "ground_truth" })

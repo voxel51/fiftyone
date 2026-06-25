@@ -1,11 +1,13 @@
 /**
- * The engine-owned undo stack: value-based transaction
- * inverses, captured per touched ref. Value-based (not transient restores) so
- * undo survives persistence — undoing an autosaved edit is a new, ordinary
- * transaction writing the before-values.
+ * Ledger of committed transaction inverses, captured per touched ref. Value-based
+ * (not transient restores) so an undo survives persistence — applying an entry is
+ * an ordinary transaction writing the before-values.
  *
- * Pure bookkeeping: applying an entry is the engine's job (a non-recording
- * replay transaction).
+ * The ledger records and coalesces entries; it does NOT navigate. Undo/redo
+ * ordering lives in the global command stack (`@fiftyone/commands`), which
+ * addresses entries by id via the engine's apply methods. The ledger exists for
+ * entry construction, coalescing, await-and-rollback peeking, and lifecycle
+ * drops.
  */
 
 import type { LabelData } from "@fiftyone/utilities";
@@ -21,11 +23,18 @@ export interface UndoOp {
   after: LabelData | undefined;
 }
 
-/** One undoable unit — a top-level transaction's touched refs. */
+/** One undoable unit — a top-level transaction's touched refs, addressed by `id`. */
 export interface UndoEntry {
+  id: string;
   ops: UndoOp[];
   undoKey?: string;
 }
+
+/** Notified when a transaction commits an entry; `coalesced` = merged into the prior unit. */
+export type UndoCommitListener = (entry: UndoEntry, coalesced: boolean) => void;
+
+/** Notified when entries leave the ledger (rollback, store unregister). */
+export type UndoDropListener = (ids: string[]) => void;
 
 /** Last 4 chars of an id — enough to eyeball-match a gesture. */
 const shortId = (id: string): string => id.slice(-4);
@@ -72,28 +81,38 @@ const describeOp = (op: UndoOp): string => {
   return `update ${where}[${changedKeys(op.before, op.after).join(",")}]`;
 };
 
-/** One entry: its ops, prefixed by the gesture's undoKey when present. */
-const describeEntry = (entry: UndoEntry): string => {
+/**
+ * Terse, gesture-traceable description of one entry; the undoKey prefixes when
+ * present. Computed lazily by the command-stack entry so a coalesced merge is
+ * reflected. Used for the undo/redo history tooltips.
+ */
+export const describeEntry = (entry: UndoEntry): string => {
   const body = entry.ops.map(describeOp).join(", ");
   return entry.undoKey ? `${entry.undoKey}: ${body}` : body;
 };
 
-export class UndoStack {
-  private undos: UndoEntry[] = [];
-  private redos: UndoEntry[] = [];
+/** Outcome of a push: the ledger entry (the prior unit when coalesced) + whether it merged. */
+export interface UndoPushResult {
+  entry: UndoEntry;
+  coalesced: boolean;
+}
+
+export class UndoLedger {
+  private entries: UndoEntry[] = [];
 
   /**
    * Record a committed transaction. Consecutive entries sharing an `undoKey`
-   * merge into one unit (slider drags, streaming batches): the earlier
-   * `before` wins, the later `after` wins. Any push invalidates redo.
+   * merge into one unit (slider drags, streaming batches): the earlier `before`
+   * wins, the later `after` wins. Returns the live unit (the prior one when
+   * coalesced, mutated in place) so the command-stack entry that closed over it
+   * reflects the merge.
    */
-  push(entry: UndoEntry): void {
-    this.redos = [];
-    const top = this.undos[this.undos.length - 1];
+  push(entry: UndoEntry): UndoPushResult {
+    const top = this.entries[this.entries.length - 1];
 
     if (!entry.undoKey || top?.undoKey !== entry.undoKey) {
-      this.undos.push(entry);
-      return;
+      this.entries.push(entry);
+      return { entry, coalesced: false };
     }
 
     for (const op of entry.ops) {
@@ -105,79 +124,38 @@ export class UndoStack {
         top.ops.push(op);
       }
     }
+
+    return { entry: top, coalesced: true };
   }
 
-  /** Pop the next undo unit, moving it to the redo side. */
-  takeUndo(): UndoEntry | undefined {
-    const entry = this.undos.pop();
-
-    if (entry) {
-      this.redos.push(entry);
-    }
-
-    return entry;
-  }
-
-  /** Pop the next redo unit, moving it back to the undo side. */
-  takeRedo(): UndoEntry | undefined {
-    const entry = this.redos.pop();
-
-    if (entry) {
-      this.undos.push(entry);
-    }
-
-    return entry;
-  }
-
-  /**
-   * Drop a specific entry wherever it sits — rollback reuse: an
-   * await-and-rollback persist failure applies the transaction's own entry
-   * and removes it from history.
-   */
+  /** Drop a specific entry — await-and-rollback removes its own entry after applying it. */
   drop(entry: UndoEntry): void {
-    this.undos = this.undos.filter((e) => e !== entry);
-    this.redos = this.redos.filter((e) => e !== entry);
+    this.entries = this.entries.filter((e) => e !== entry);
   }
 
-  /** The most recently committed unit (rollback reuse). */
-  peekUndo(): UndoEntry | undefined {
-    return this.undos[this.undos.length - 1];
-  }
-
-  /**
-   * Terse, gesture-traceable view of both stacks, NEWEST-FIRST (line 1 = the
-   * next entry an undo/redo will apply). Backs the undo/redo history tooltips.
-   */
-  describe(): { undo: string[]; redo: string[] } {
-    return {
-      undo: [...this.undos].reverse().map(describeEntry),
-      redo: [...this.redos].reverse().map(describeEntry),
-    };
-  }
-
-  canUndo(): boolean {
-    return this.undos.length > 0;
-  }
-
-  canRedo(): boolean {
-    return this.redos.length > 0;
-  }
-
-  /** Whole-sample reset: history refers to entities that no longer exist. */
-  clear(): void {
-    this.undos = [];
-    this.redos = [];
+  /** The most recently committed unit (await-and-rollback peeking). */
+  peek(): UndoEntry | undefined {
+    return this.entries[this.entries.length - 1];
   }
 
   /**
-   * Store unregistration: drop every unit touching the departed sample. An
-   * entry goes whole — a mixed-sample transaction cannot half-replay.
+   * Store unregistration: drop every unit touching the departed sample and
+   * return their ids. An entry goes whole — a mixed-sample transaction cannot
+   * half-replay.
    */
-  dropSample(sample: string): void {
-    const touches = (entry: UndoEntry) =>
-      entry.ops.some((op) => op.ref.sample === sample);
+  dropSample(sample: string): string[] {
+    const dropped: string[] = [];
 
-    this.undos = this.undos.filter((entry) => !touches(entry));
-    this.redos = this.redos.filter((entry) => !touches(entry));
+    this.entries = this.entries.filter((entry) => {
+      const touches = entry.ops.some((op) => op.ref.sample === sample);
+
+      if (touches) {
+        dropped.push(entry.id);
+      }
+
+      return !touches;
+    });
+
+    return dropped;
   }
 }

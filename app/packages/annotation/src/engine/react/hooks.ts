@@ -27,14 +27,7 @@ import type { SurfaceActions } from "../bridge/surfaceController";
 /** Read-only projections — no mutators, so a selector cannot write back. */
 export type EngineReads = Pick<
   AnnotationEngine,
-  | "getLabel"
-  | "getLabelType"
-  | "listLabels"
-  | "enumerateLabels"
-  | "isDirty"
-  | "canUndo"
-  | "canRedo"
-  | "historyView"
+  "getLabel" | "getLabelType" | "listLabels" | "enumerateLabels" | "isDirty"
 >;
 export type InteractionReads = Pick<
   InteractionState,

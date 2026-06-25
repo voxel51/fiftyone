@@ -21,8 +21,13 @@ import { SignalPipe } from "../signals/signalPipe";
 import { PoolTemporalView } from "../temporal/poolTemporalView";
 import type { PresenceListener, TemporalView } from "../temporal/types";
 import { DispatchGuard } from "./dispatchGuard";
-import type { UndoEntry, UndoOp } from "./undoStack";
-import { UndoStack } from "./undoStack";
+import type {
+  UndoCommitListener,
+  UndoDropListener,
+  UndoEntry,
+  UndoOp,
+} from "./undoStack";
+import { UndoLedger } from "./undoStack";
 
 /** Sample-bound facade — same API minus the `sample` field on refs. */
 export interface ScopedEngine {
@@ -85,8 +90,14 @@ export class AnnotationEngine {
   /** The keystone reentrancy guard, shared with interaction state: one dispatch scope. */
   private guard = new DispatchGuard();
 
-  private undos = new UndoStack();
+  private undos = new UndoLedger();
   private replaying = false;
+
+  // committed entries flow to the global command stack, which navigates them;
+  // the engine only produces (commit) and applies (applyUndo/applyRedo) them
+  private undoCommitListeners = new Set<UndoCommitListener>();
+  private undoDropListeners = new Set<UndoDropListener>();
+  private undoEpoch = 0;
 
   // outermost-transaction state: lazy store snapshots, per-ref
   // before-values for undo capture, and the buffered change stream
@@ -211,7 +222,7 @@ export class AnnotationEngine {
         [wholeSampleReset(store.sample)],
         (ref) => this.getLabel(ref) !== undefined
       );
-      this.undos.dropSample(store.sample);
+      this.emitUndoDrop(this.undos.dropSample(store.sample));
     };
   }
 
@@ -324,7 +335,9 @@ export class AnnotationEngine {
     this.resetTransaction();
 
     if (ops.length > 0 && !this.replaying) {
-      this.undos.push({ ops, undoKey: opts.undoKey });
+      const id = `undo:${(this.undoEpoch += 1)}`;
+      const result = this.undos.push({ id, ops, undoKey: opts.undoKey });
+      this.emitUndoCommit(result.entry, result.coalesced);
     }
 
     if (displayPending) {
@@ -345,49 +358,65 @@ export class AnnotationEngine {
     return `gesture:${(this.gestureEpoch += 1)}`;
   }
 
-  // ---- undo ----
+  // ---- undo (the global command stack navigates; the engine produces + applies) ----
 
-  undo(): void {
-    this.assertNotDispatching("undo");
-    const entry = this.undos.takeUndo();
+  /** Notified when a transaction commits an entry; `coalesced` = merged into the prior unit. */
+  subscribeUndoableCommit(listener: UndoCommitListener): () => void {
+    this.undoCommitListeners.add(listener);
 
-    if (entry) {
-      this.replay(entry, "undo");
-    }
+    return () => {
+      this.undoCommitListeners.delete(listener);
+    };
   }
 
-  redo(): void {
-    this.assertNotDispatching("redo");
-    const entry = this.undos.takeRedo();
+  /** Notified when entries leave the ledger (rollback, store unregister). */
+  subscribeUndoableDrop(listener: UndoDropListener): () => void {
+    this.undoDropListeners.add(listener);
 
-    if (entry) {
-      this.replay(entry, "redo");
-    }
+    return () => {
+      this.undoDropListeners.delete(listener);
+    };
   }
 
-  canUndo(): boolean {
-    return this.undos.canUndo();
+  /** Apply an entry's inverses (Ctrl-Z). Non-recording — adds no new entry. */
+  applyUndo(entry: UndoEntry): void {
+    this.assertNotDispatching("applyUndo");
+    this.replay(entry, "undo");
   }
 
-  canRedo(): boolean {
-    return this.undos.canRedo();
-  }
-
-  /** Terse newest-first view of the undo/redo stacks; backs the history tooltips. */
-  historyView(): { undo: string[]; redo: string[] } {
-    return this.undos.describe();
+  /** Re-apply an entry's forward values (redo). Non-recording — adds no new entry. */
+  applyRedo(entry: UndoEntry): void {
+    this.assertNotDispatching("applyRedo");
+    this.replay(entry, "redo");
   }
 
   /** The most recently committed unit, for await-and-rollback persistence consumers. */
   lastUndoEntry(): UndoEntry | undefined {
-    return this.undos.peekUndo();
+    return this.undos.peek();
   }
 
-  /** Persist-failure rollback: apply an entry's inverses and drop it from history. */
+  /** Persist-failure rollback: apply an entry's inverses, drop it, and prune the command stack. */
   rollbackEntry(entry: UndoEntry): void {
     this.assertNotDispatching("rollbackEntry");
     this.replay(entry, "undo");
     this.undos.drop(entry);
+    this.emitUndoDrop([entry.id]);
+  }
+
+  private emitUndoCommit(entry: UndoEntry, coalesced: boolean): void {
+    for (const listener of this.undoCommitListeners) {
+      listener(entry, coalesced);
+    }
+  }
+
+  private emitUndoDrop(ids: string[]): void {
+    if (ids.length === 0) {
+      return;
+    }
+
+    for (const listener of this.undoDropListeners) {
+      listener(ids);
+    }
   }
 
   // ---- observability (merged across stores) ----
