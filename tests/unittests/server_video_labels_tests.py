@@ -16,6 +16,7 @@ from fiftyone.server.routes.video_labels import (
     build_instance_index,
     resolve_label_list_field,
     run_length_encode,
+    run_length_encode_values,
 )
 
 from decorators import drop_async_dataset
@@ -42,7 +43,84 @@ class RunLengthEncodeTests(unittest.TestCase):
         )
 
 
+class RunLengthEncodeValuesTests(unittest.TestCase):
+    def test_empty(self):
+        self.assertEqual(run_length_encode_values([]), [])
+
+    def test_uniform_is_single_run(self):
+        self.assertEqual(
+            run_length_encode_values([(1, "off"), (2, "off"), (3, "off")]),
+            [[1, 3, "off"]],
+        )
+
+    def test_value_change_splits(self):
+        self.assertEqual(
+            run_length_encode_values(
+                [(1, "off"), (2, "off"), (3, "left"), (4, "left")]
+            ),
+            [[1, 2, "off"], [3, 4, "left"]],
+        )
+
+    def test_presence_gap_splits_equal_values(self):
+        self.assertEqual(
+            run_length_encode_values([(1, "off"), (2, "off"), (4, "off")]),
+            [[1, 2, "off"], [4, 4, "off"]],
+        )
+
+    def test_none_is_its_own_run(self):
+        self.assertEqual(
+            run_length_encode_values([(1, None), (2, "left"), (3, None)]),
+            [[1, 1, None], [2, 2, "left"], [3, 3, None]],
+        )
+
+    def test_unsorted_and_duplicate_frame_last_wins(self):
+        self.assertEqual(
+            run_length_encode_values([(2, "left"), (1, "off"), (2, "right")]),
+            [[1, 1, "off"], [2, 2, "right"]],
+        )
+
+
 class BuildInstanceIndexTests(unittest.TestCase):
+    def test_dynamic_attribute_segments(self):
+        groups = [
+            {
+                "_id": "abc",
+                "frames": [1, 2, 3, 4],
+                "keyframes": [],
+                "classLabel": "car",
+                "persistedIndex": 1,
+                "instance": {"_cls": "Instance", "_id": "abc"},
+                "attributeSamples": [
+                    {"fn": 1, "turn_signal": "off"},
+                    {"fn": 2, "turn_signal": "off"},
+                    {"fn": 3, "turn_signal": "left"},
+                    # frame 4 carries no turn_signal -> a null-valued run.
+                    {"fn": 4},
+                ],
+            }
+        ]
+
+        [entry] = build_instance_index(groups, ["turn_signal"])
+
+        self.assertEqual(
+            entry["attributeSegments"]["turn_signal"],
+            [[1, 2, "off"], [3, 3, "left"], [4, 4, None]],
+        )
+
+    def test_attribute_segments_omitted_without_dynamic_attributes(self):
+        groups = [
+            {
+                "_id": "abc",
+                "frames": [1, 2],
+                "keyframes": [],
+                "attributeSamples": [{"fn": 1, "turn_signal": "off"}],
+            }
+        ]
+
+        [entry] = build_instance_index(groups)
+
+        self.assertNotIn("attributeSegments", entry)
+
     def test_skips_empty_and_filters_none_keyframes(self):
         groups = [
             {
@@ -133,6 +211,44 @@ class VideoLabelsAggregationTests(unittest.IsolatedAsyncioTestCase):
         # The instance-less detection fragments into a single-frame entry.
         self.assertEqual(by_id[id_legacy]["segments"], [[1, 1]])
         self.assertEqual(by_id[id_legacy]["classLabel"], "car")
+
+    @drop_async_dataset
+    async def test_index_dynamic_attribute_segments(self, dataset):
+        inst = fo.Instance()
+
+        video = fo.Sample(filepath="video.mp4")
+        # turn_signal: off (1-2) -> left (3-4); the attribute is absent on
+        # frame 5, which must read back as a null-valued run.
+        signals = {1: "off", 2: "off", 3: "left", 4: "left"}
+        for frame_number in range(1, 6):
+            detection = fo.Detection(label="car", index=1, instance=inst)
+            if frame_number in signals:
+                detection["turn_signal"] = signals[frame_number]
+
+            video[frame_number]["detections"] = fo.Detections(
+                detections=[detection]
+            )
+        dataset.add_sample(video)
+
+        instance_id = str(video[1]["detections"].detections[0].instance._id)
+
+        view = fov.make_optimized_select_view(
+            dataset.view(), video.id, flatten=True
+        )
+        result = await aggregate_index(view, ["detections"], ["turn_signal"])
+
+        [entry] = result["detections"]["instances"]
+        self.assertEqual(entry["instanceId"], instance_id)
+        self.assertEqual(
+            entry["attributeSegments"]["turn_signal"],
+            [[1, 2, "off"], [3, 4, "left"], [5, 5, None]],
+        )
+
+        # Without dynamicAttributes the column is absent (unchanged shape).
+        plain = await aggregate_index(view, ["detections"])
+        self.assertNotIn(
+            "attributeSegments", plain["detections"]["instances"][0]
+        )
 
     @drop_async_dataset
     async def test_window_projects_fields_and_range(self, dataset):
