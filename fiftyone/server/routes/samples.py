@@ -226,10 +226,12 @@ class GridSamples(HTTPEndpoint):
 
         view = await run_sync_task(_build)
         # GroupBy emits `_group_count` only when asked; turn it on so the spine
-        # carries each group's length to the imavid timeline
+        # carries each group's length to the imavid timeline. `_index_optimized`
+        # presorts the group key so the counting `$group` rides an index
         for stage in getattr(view, "_stages", []):
             if isinstance(stage, fos.GroupBy):
                 stage._include_count = True
+                stage._index_optimized = True
         pipeline = await get_samples_pipeline(view, sample_filter)
         # keep `_group_count` alongside the id projection
         pipeline.append({"$project": {"_id": 1, "_group_count": 1}})

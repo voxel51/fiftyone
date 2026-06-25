@@ -38,6 +38,15 @@ def _make_group_field_stage(view):
     return fosg.Mongo([group_by._group_field_stage(view)])
 
 
+def _include_group_fields(view):
+    # every server read of a grouped view emits `_group` from the stage, even the
+    # plain-pagination path that skips `get_extended_view`; no reader re-derives it
+    for stage in view._stages:
+        if isinstance(stage, fosg.GroupBy):
+            stage._include_group = True
+    return view
+
+
 @gql.input
 class ExtendedViewForm:
     filters: Optional[JSON] = None
@@ -166,7 +175,7 @@ def get_view(
                 desc=desc,
             )
 
-        return view
+        return _include_group_fields(view)
 
     if awaitable:
         return fou.run_sync_task(run, dataset, stages)
@@ -243,11 +252,6 @@ def get_extended_view(
 
     if sort_by:
         view = view.sort_by(sort_by, reverse=bool(desc), create_index=False)
-
-    # the GroupBy stage emits `_group` itself so the grid never re-derives it
-    for stage in view._stages:
-        if isinstance(stage, fosg.GroupBy):
-            stage._include_group = True
 
     if pagination_data:
         # omit all dict and vector field values for performance, not needed by grid
