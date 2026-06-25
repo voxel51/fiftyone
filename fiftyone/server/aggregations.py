@@ -319,7 +319,9 @@ def _resolve_path_aggregation(
 
     data = {"path": path}
     if use_estimate:
-        est = view._root_dataset._sample_collection.estimated_document_count()
+        # estimate the collection the view actually reads (`_dataset`); for
+        # generated views (patches/clips/frames) that differs from `_root_dataset`
+        est = view._dataset._sample_collection.estimated_document_count()
         data["count"] = est
         data["exists"] = est
     elif combined_root:
