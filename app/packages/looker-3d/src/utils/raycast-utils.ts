@@ -3,6 +3,8 @@ import { FO_USER_DATA } from "../constants";
 import type { PointCloudCrop } from "./point-cloud-crop";
 import { isPointInsidePointCloudCrop } from "./point-cloud-crop";
 
+export const POINT_PICK_RADIUS_PX = 4;
+
 /**
  * Objects to exclude from raycasting (helpers, gizmos, UI elements, etc.)
  */
@@ -96,5 +98,103 @@ export const filterIntersectionsForPointCloudCrop = (
     }
 
     return isPointInsidePointCloudCrop(intersection.point, pointCloudCrop);
+  });
+};
+
+const getPanelHeight = (panelElement: HTMLElement): number => {
+  const rect = panelElement.getBoundingClientRect();
+  return rect.height || panelElement.clientHeight || 0;
+};
+
+const getPerspectiveRaycastDepth = (
+  camera: THREE.PerspectiveCamera,
+  sceneBoundingBox?: THREE.Box3 | null
+): number => {
+  if (sceneBoundingBox && !sceneBoundingBox.isEmpty()) {
+    const sphere = sceneBoundingBox.getBoundingSphere(new THREE.Sphere());
+    return Math.max(
+      camera.near,
+      camera.position.distanceTo(sphere.center) + sphere.radius
+    );
+  }
+
+  return Math.max(camera.near, camera.position.length());
+};
+
+export const getPointCloudRaycastThreshold = ({
+  camera,
+  panelElement,
+  sceneBoundingBox,
+  pickRadiusPx = POINT_PICK_RADIUS_PX,
+}: {
+  camera: THREE.Camera;
+  panelElement: HTMLElement;
+  sceneBoundingBox?: THREE.Box3 | null;
+  pickRadiusPx?: number;
+}): number => {
+  const panelHeight = getPanelHeight(panelElement);
+  if (panelHeight <= 0 || pickRadiusPx <= 0) {
+    return 0;
+  }
+
+  if (camera instanceof THREE.OrthographicCamera) {
+    const visibleWorldHeight = (camera.top - camera.bottom) / camera.zoom;
+    return (visibleWorldHeight / panelHeight) * pickRadiusPx;
+  }
+
+  if (camera instanceof THREE.PerspectiveCamera) {
+    const depth = getPerspectiveRaycastDepth(camera, sceneBoundingBox);
+    const visibleWorldHeight =
+      2 * depth * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
+    return (visibleWorldHeight / panelHeight) * pickRadiusPx;
+  }
+
+  return pickRadiusPx / panelHeight;
+};
+
+export const filterPointIntersectionsByScreenDistance = ({
+  intersections,
+  camera,
+  panelElement,
+  ndc,
+  pickRadiusPx = POINT_PICK_RADIUS_PX,
+}: {
+  intersections: THREE.Intersection[];
+  camera: THREE.Camera;
+  panelElement: HTMLElement;
+  ndc: { x: number; y: number };
+  pickRadiusPx?: number;
+}) => {
+  const rect = panelElement.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0 || pickRadiusPx <= 0) {
+    return intersections;
+  }
+
+  const pointerX = ((ndc.x + 1) / 2) * rect.width;
+  const pointerY = ((1 - ndc.y) / 2) * rect.height;
+  const maxDistanceSq = pickRadiusPx * pickRadiusPx;
+  const projectedPoint = new THREE.Vector3();
+
+  return intersections.filter((intersection) => {
+    if (!(intersection.object instanceof THREE.Points)) {
+      return true;
+    }
+
+    projectedPoint.copy(intersection.point).project(camera);
+    if (
+      !Number.isFinite(projectedPoint.x) ||
+      !Number.isFinite(projectedPoint.y) ||
+      projectedPoint.z < -1 ||
+      projectedPoint.z > 1
+    ) {
+      return false;
+    }
+
+    const projectedX = ((projectedPoint.x + 1) / 2) * rect.width;
+    const projectedY = ((1 - projectedPoint.y) / 2) * rect.height;
+    const dx = projectedX - pointerX;
+    const dy = projectedY - pointerY;
+
+    return dx * dx + dy * dy <= maxDistanceSq;
   });
 };

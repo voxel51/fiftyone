@@ -37,8 +37,6 @@ export const SceneControls = ({
     setAutoRotate,
     pointCloudSettings,
     setPointCloudSettings,
-    raycastPrecision,
-    setRaycastPrecision,
     isSceneInitialized,
     isComputingSceneBoundingBox,
     lookAt,
@@ -114,16 +112,6 @@ export const SceneControls = ({
             label: "Avoid Z fighting",
             onChange: (value) => {
               setAvoidZFighting(value);
-            },
-          },
-          raycastPrecision: {
-            value: raycastPrecision,
-            label: "Raycast Precision",
-            min: 1,
-            max: 10,
-            step: 1,
-            onChange: (value: number) => {
-              setRaycastPrecision(value);
             },
           },
         },

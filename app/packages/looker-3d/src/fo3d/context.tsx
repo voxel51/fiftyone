@@ -13,12 +13,6 @@ export interface Fo3dPointCloudSettings {
   selectedCuboidCropMargin: number;
 }
 
-/**
- * Default raycast precision (1-10 scale).
- * Higher values = more precise (smaller hit area).
- */
-export const DEFAULT_RAYCAST_PRECISION = 5;
-
 interface Fo3dContextT {
   cameraLifecycleState: Fo3dCameraLifecycleState;
   isSceneInitialized: boolean;
@@ -36,8 +30,6 @@ interface Fo3dContextT {
   setAutoRotate: (autoRotate: boolean) => void;
   pointCloudSettings: Fo3dPointCloudSettings;
   setPointCloudSettings: (pointCloudSettings: Fo3dPointCloudSettings) => void;
-  raycastPrecision: number;
-  setRaycastPrecision: (precision: number) => void;
   hoverMetadata: HoverMetadata | null;
   setHoverMetadata: Dispatch<SetStateAction<HoverMetadata | null>>;
 }
@@ -62,8 +54,6 @@ const defaultContext: Fo3dContextT = {
     selectedCuboidCropMargin: DEFAULT_SELECTED_CUBOID_CROP_MARGIN,
   },
   setPointCloudSettings: () => {},
-  raycastPrecision: DEFAULT_RAYCAST_PRECISION,
-  setRaycastPrecision: () => {},
   hoverMetadata: null,
   setHoverMetadata: () => {},
 };

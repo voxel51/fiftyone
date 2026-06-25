@@ -734,26 +734,3 @@ export const formatDegrees = (radians: number | undefined): string => {
   if (radians === undefined || !Number.isFinite(radians)) return "";
   return Math.round(rad2deg(radians)).toString();
 };
-
-/**
- * Converts raycast precision (1-10) to a raycaster threshold value.
- * Higher precision values = smaller threshold (more precise).
- *
- * - Precision 1-5: linear from 2.0 to 1.0 (lenient range)
- * - Precision 5-10: exponential from 1.0 to 0.001 (precise range)
- *
- * @param precision - Value from 1 to 10
- * @returns Threshold value for raycaster.params.Points.threshold
- */
-export const precisionToThreshold = (precision: number): number => {
-  const safePrecision = Number.isFinite(precision) ? precision : 5;
-  const clampedValue = Math.max(1, Math.min(10, safePrecision));
-
-  if (clampedValue <= 5) {
-    // Linear: precision 1 -> 2.0, precision 5 -> 1.0
-    return 2 - (clampedValue - 1) * 0.25;
-  }
-
-  // Exponential: precision 5 -> 1.0, precision 10 -> 0.01
-  return Math.pow(10, (5 - clampedValue) * 0.4);
-};

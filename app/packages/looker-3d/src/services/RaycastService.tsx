@@ -6,10 +6,12 @@ import { getPanelElementId } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
 import { activeCursorPanelAtom, raycastResultAtom } from "../state";
 import type { PanelId } from "../types";
-import { precisionToThreshold, toNDCForElement } from "../utils";
+import { toNDCForElement } from "../utils";
 import type { PointCloudCrop } from "../utils/point-cloud-crop";
 import {
+  filterPointIntersectionsByScreenDistance,
   filterIntersectionsForPointCloudCrop,
+  getPointCloudRaycastThreshold,
   getRaycastableObjects,
 } from "../utils/raycast-utils";
 import { getCameraVisibleWorldHeightAtPoint } from "../utils/side-panel-camera-sync";
@@ -34,17 +36,9 @@ export const RaycastService = ({
   const setRaycastResult = useSetRecoilState(raycastResultAtom);
 
   const { camera, raycaster, gl, events, scene } = useThree();
-  const { raycastPrecision } = useFo3dContext();
+  const { sceneBoundingBox } = useFo3dContext();
 
   const panelElementRef = useRef<HTMLElement | null>(null);
-
-  // This effect applies the configured raycast precision threshold to this panel's raycaster.
-  useEffect(() => {
-    const threshold = precisionToThreshold(raycastPrecision);
-    if (raycaster.params.Points) {
-      raycaster.params.Points.threshold = threshold;
-    }
-  }, [raycaster, raycastPrecision]);
 
   // This effect gets the panel element on mount
   useEffect(() => {
@@ -65,6 +59,14 @@ export const RaycastService = ({
 
       const ndc = toNDCForElement(ev, panelElement);
 
+      if (raycaster.params.Points) {
+        raycaster.params.Points.threshold = getPointCloudRaycastThreshold({
+          camera,
+          panelElement,
+          sceneBoundingBox,
+        });
+      }
+
       raycaster.setFromCamera(new THREE.Vector2(ndc.x, ndc.y), camera);
 
       const raycastableObjects = getRaycastableObjects(scene);
@@ -74,7 +76,12 @@ export const RaycastService = ({
       );
 
       const visibleIntersections = filterIntersectionsForPointCloudCrop(
-        intersections,
+        filterPointIntersectionsByScreenDistance({
+          intersections,
+          camera,
+          panelElement,
+          ndc,
+        }),
         pointCloudCrop,
       );
 
@@ -127,6 +134,7 @@ export const RaycastService = ({
       camera,
       raycaster,
       scene,
+      sceneBoundingBox,
       pointCloudCrop,
       setRaycastResult,
     ],
