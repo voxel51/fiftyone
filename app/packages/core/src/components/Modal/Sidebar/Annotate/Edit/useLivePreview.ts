@@ -8,6 +8,13 @@ import { useCallback, useRef } from "react";
 
 import { useAnnotationContext } from "./useAnnotationContext";
 
+/**
+ * Sidebar binding for live label preview. Returns a `(name, value)` callback
+ * that publishes a render-only patch for the selected label — observing surfaces
+ * (e.g. the canvas overlay) preview the in-progress edit without a commit. The
+ * actual write still happens separately, on gesture release. Reads the selection
+ * through refs so the callback identity stays stable across edits.
+ */
 export const useLivePreview = (readOnly: boolean) => {
   const { selected } = useAnnotationContext();
   const overlay = selected?.overlay;
