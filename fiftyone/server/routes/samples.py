@@ -91,15 +91,6 @@ def _sample_filter(
     )
 
 
-async def _resolve_dataset_name(dataset_id: str) -> Optional[str]:
-    """Resolve a dataset id to its name, or ``None`` if it does not exist."""
-    db = foo.get_async_db_conn()
-    ds = await db["datasets"].find_one(
-        {"_id": ObjectId(dataset_id)}, {"name": 1}
-    )
-    return ds["name"] if ds is not None else None
-
-
 async def _build_item(
     view, doc, metadata_cache, url_cache, additional, skip_dimensions
 ):
@@ -134,12 +125,6 @@ class Samples(HTTPEndpoint):
     @decorators.route
     async def post(self, request: Request, data: dict) -> JSONResponse:
         dataset_id = request.path_params["dataset_id"]
-        dataset_name = await _resolve_dataset_name(dataset_id)
-        if dataset_name is None:
-            return JSONResponse(
-                {"error": "dataset not found"}, status_code=404
-            )
-
         ids = data.get("ids")
         after = data.get("after")
         count = int(data.get("count") or 0)
@@ -147,8 +132,13 @@ class Samples(HTTPEndpoint):
         dynamic_group = data.get("dynamicGroup")
 
         def _build():
+            dataset = foo.database.load_dataset(id=dataset_id)
+            if not dataset:
+                return JSONResponse(
+                    {"error": "dataset not found"}, status_code=404
+                )
             view = fosv.get_view(
-                dataset_name,
+                dataset,
                 stages=data.get("view") or [],
                 filters=data.get("filters"),
                 pagination_data=False,
@@ -211,11 +201,6 @@ class GridSamples(HTTPEndpoint):
     @decorators.route
     async def post(self, request: Request, data: dict) -> JSONResponse:
         dataset_id = request.path_params["dataset_id"]
-        dataset_name = await _resolve_dataset_name(dataset_id)
-        if dataset_name is None:
-            return JSONResponse(
-                {"error": "dataset not found"}, status_code=404
-            )
 
         after = int(data.get("after") or 0)
         sample_filter = _sample_filter(data.get("filter"))
@@ -223,8 +208,13 @@ class GridSamples(HTTPEndpoint):
         def _build():
             # pagination_data=False: only ids are needed; the final $project
             # strips back to _id anyway
+            dataset = foo.database.load_dataset(id=dataset_id)
+            if not dataset:
+                return JSONResponse(
+                    {"error": "dataset not found"}, status_code=404
+                )
             view = fosv.get_view(
-                dataset_name,
+                dataset,
                 stages=data.get("view") or [],
                 filters=data.get("filters"),
                 pagination_data=False,
