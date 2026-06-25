@@ -143,11 +143,9 @@ _MODEL_TEMPLATE = """
     )
     dataset.apply_model(
             model,
-            label_field=""segmentations_concept_with_exemplar",
+            label_field="segmentations_concept_with_exemplar",
             prompt_field="person_detections", # contains exemplar Detections with positive / negative labels
         )
-
-    session = fo.launch_app(dataset)
 
     # Visual mode: segment inside boxes or using keypoints
     model = foz.load_zoo_model(
@@ -195,6 +193,7 @@ _MODEL_TEMPLATE = """
         prompt_frame_indices=[1],
     )
 
+    session = fo.launch_app(dataset)
 {% elif 'segment-anything' in tags and 'video' not in tags %}
     model = foz.load_zoo_model("{{ name }}")
 
