@@ -1,11 +1,12 @@
 import { act, renderHook } from "@testing-library/react-hooks";
 import type { RefObject } from "react";
 import { MOUSE, Vector3 } from "three";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useFo3dCameraControlsConfig } from "../../hooks/use-fo3d-camera-controls-config";
 import type { Fo3dCameraControls } from "../camera-controls";
 
 const recoilMocks = vi.hoisted(() => ({
+  values: new Map<string, boolean>(),
   setPointCropModifierPressed: vi.fn(),
 }));
 
@@ -34,7 +35,8 @@ vi.mock("recoil", async () => {
 
   return {
     ...actual,
-    useRecoilValue: () => false,
+    useRecoilValue: (atom: { key?: string }) =>
+      recoilMocks.values.get(atom.key ?? "") ?? false,
     useSetRecoilState: () => recoilMocks.setPointCropModifierPressed,
   };
 });
@@ -45,7 +47,9 @@ type TestControls = Fo3dCameraControls & {
 
 const makeControls = () => {
   const controls = {
+    enableRotate: true,
     enablePan: true,
+    enableZoom: true,
     enabled: true,
     mouseButtons: {
       LEFT: MOUSE.ROTATE,
@@ -63,8 +67,12 @@ const makeControls = () => {
 };
 
 describe("useFo3dCameraControlsConfig", () => {
-  it("maps modifiers without letting cmd-left drag pan", () => {
+  beforeEach(() => {
+    recoilMocks.values.clear();
     recoilMocks.setPointCropModifierPressed.mockClear();
+  });
+
+  it("maps modifiers without letting cmd-left drag pan", () => {
     const { controls, cameraControlsRef } = makeControls();
 
     renderHook(() => useFo3dCameraControlsConfig({ cameraControlsRef }));
@@ -149,5 +157,46 @@ describe("useFo3dCameraControlsConfig", () => {
     expect(recoilMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
       false
     );
+  });
+
+  it.each([
+    "fo3d-isSegmentingPointerDownAtom",
+    "fo3d-isCreatingCuboidPointerDownAtom",
+    "fo3d-isCurrentlyTransformingAtom",
+  ])(
+    "keeps wheel zoom while annotation interactions own drags for %s",
+    (key) => {
+      recoilMocks.values.set(key, true);
+      const { controls, cameraControlsRef } = makeControls();
+      controls.mouseButtons.LEFT = MOUSE.DOLLY;
+
+      renderHook(() => useFo3dCameraControlsConfig({ cameraControlsRef }));
+
+      expect(controls.enabled).toBe(true);
+      expect(controls.enableZoom).toBe(true);
+      expect(controls.enableRotate).toBe(false);
+      expect(controls.enablePan).toBe(false);
+      expect(controls.mouseButtons.LEFT).toBe(MOUSE.ROTATE);
+    }
+  );
+
+  it("restores drag navigation after annotation interactions release controls", () => {
+    recoilMocks.values.set("fo3d-isCurrentlyTransformingAtom", true);
+    const { controls, cameraControlsRef } = makeControls();
+    const { rerender } = renderHook(() =>
+      useFo3dCameraControlsConfig({ cameraControlsRef })
+    );
+
+    expect(controls.enableRotate).toBe(false);
+    expect(controls.enablePan).toBe(false);
+
+    recoilMocks.values.set("fo3d-isCurrentlyTransformingAtom", false);
+    rerender();
+
+    expect(controls.enabled).toBe(true);
+    expect(controls.enableZoom).toBe(true);
+    expect(controls.enableRotate).toBe(true);
+    expect(controls.enablePan).toBe(true);
+    expect(controls.mouseButtons.LEFT).toBe(MOUSE.ROTATE);
   });
 });

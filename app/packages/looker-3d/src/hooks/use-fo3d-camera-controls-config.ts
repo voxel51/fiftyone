@@ -80,17 +80,24 @@ export const useFo3dCameraControlsConfig = ({
   const updateCameraControlsConfig = useCallback(() => {
     if (!cameraControlsRef.current) return;
 
-    // Disable camera controls while drawing/transforming annotations.
+    // Keep wheel zoom available while annotations own pointer drags.
     if (
       isSegmentingPointerDown ||
       isCreatingCuboidPointerDown ||
       isCurrentlyTransforming
     ) {
-      cameraControlsRef.current.enabled = false;
+      cameraControlsRef.current.enabled = true;
+      cameraControlsRef.current.enableRotate = false;
+      cameraControlsRef.current.enablePan = false;
+      cameraControlsRef.current.enableZoom = true;
+      cameraControlsRef.current.mouseButtons.LEFT = MOUSE.ROTATE;
       return;
     }
 
     cameraControlsRef.current.enabled = true;
+    cameraControlsRef.current.enableRotate = true;
+    cameraControlsRef.current.enablePan = true;
+    cameraControlsRef.current.enableZoom = true;
 
     const isShiftPressed =
       keyState.current.shiftRight || keyState.current.shiftLeft;
