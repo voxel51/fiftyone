@@ -1440,7 +1440,7 @@ class TestSAM3ConceptParity(unittest.TestCase):
         cls.processor = Sam3Processor(cls.sam3_model)
 
         cls.device = "cuda" if torch.cuda.is_available() else "cpu"
-        cls.dataset = _create_test_dataset(num_samples=4, seed=39)
+        cls.dataset = _create_test_dataset(num_samples=4, seed=31)
 
     @classmethod
     def tearDownClass(cls):

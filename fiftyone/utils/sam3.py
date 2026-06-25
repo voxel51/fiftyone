@@ -283,11 +283,11 @@ class SAM3ConceptSegmenterOutputProcessor(fout.OutputProcessor):
         classes = classes if classes is not None else self.classes
         proc_output = []
         for idx, out in enumerate(output):
-            out_logits = out["pred_logits"]  # [N, M, 1]
-            out_masks = out["pred_masks"]  # [N, M, H, W]
+            out_logits = out["pred_logits"]
+            out_masks = out["pred_masks"]
             out_probs = out_logits.sigmoid()
-            presence_score = out["presence_logit_dec"].sigmoid().unsqueeze(1)
-            out_probs = (out_probs * presence_score).squeeze(-1)  # [N, M]
+            presence_score = out["presence_logit_dec"].sigmoid().unsqueeze(-1)
+            out_probs = (out_probs * presence_score).squeeze(-1)
 
             img_h, img_w = frame_size[idx]
             n_queries = out_probs.shape[0]
