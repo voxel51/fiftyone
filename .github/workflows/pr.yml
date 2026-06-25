@@ -18,7 +18,7 @@ jobs:
       format-changes: ${{ steps.filter.outputs.format }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           sparse-checkout: |
             /*
