@@ -30,7 +30,7 @@ import {
 import PolylineIcon from "@mui/icons-material/Timeline";
 import CuboidIcon from "@mui/icons-material/ViewInAr";
 import { Anchor, Text, Tooltip } from "@voxel51/voodo";
-import { createContext, useCallback, useContext } from "react";
+import { createContext, useCallback, useContext, useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
@@ -456,7 +456,7 @@ const Actions = () => {
   const is3dSamplePinned = useIs3dPinned();
 
   const { classificationModeActive } = useClassificationMode();
-  const { detectionModeActive } = useDetectionMode();
+  const { deactivateDetectionMode, detectionModeActive } = useDetectionMode();
   const { segmentationModeActive } = useSegmentationMode();
   const { polylineModeActive } = usePolylineMode();
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
@@ -478,6 +478,26 @@ const Actions = () => {
   const toolsResolved = !isGroupDataset || groupAnnotationSliceReady;
 
   const deactivateAll = useDeactivateAllModes();
+
+  useEffect(() => {
+    if (!detectionModeActive) return undefined;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+
+      deactivateDetectionMode();
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    };
+
+    // Capture before the modal-level Escape binding closes the modal.
+    document.addEventListener("keydown", handleKeyDown, { capture: true });
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown, {
+        capture: true,
+      });
+    };
+  }, [deactivateDetectionMode, detectionModeActive]);
 
   return (
     <DeactivateAllContext.Provider value={deactivateAll}>

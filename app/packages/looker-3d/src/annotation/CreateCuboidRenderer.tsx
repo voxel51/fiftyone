@@ -5,6 +5,7 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { useEmptyCanvasInteraction } from "../hooks/use-empty-canvas-interaction";
 import { useSelect3DLabelForAnnotation } from "../hooks/useSelect3DLabelForAnnotation";
+import type { CuboidCreationState } from "../types";
 import {
   annotationPlaneAtom,
   cuboidCreationStateAtom,
@@ -22,13 +23,20 @@ import {
   recordLastCreatedLabel,
 } from "./store/labelResolution";
 import { workingDocSelector } from "./store/working";
-import { CuboidTransformData } from "./types";
+import type { CuboidTransformData } from "./types";
 import { useSetEditingToNewCuboid } from "./useSetEditingToNewCuboid";
 
 interface CreateCuboidRendererProps {
   color?: string;
   ignoreEffects?: boolean;
 }
+
+const createInitialCuboidCreationState = (): CuboidCreationState => ({
+  step: 0,
+  centerPosition: null,
+  orientationPoint: null,
+  currentPosition: null,
+});
 
 export const CreateCuboidRenderer = ({
   color = "#00ff00",
@@ -58,6 +66,12 @@ export const CreateCuboidRenderer = ({
 
   // Track whether we're actively creating (to differentiate from hovering)
   const isActiveRef = useRef(false);
+
+  const resetCuboidCreation = useCallback(() => {
+    isActiveRef.current = false;
+    setIsCreatingCuboidPointerDown(false);
+    setCreationState(createInitialCuboidCreationState());
+  }, [setCreationState, setIsCreatingCuboidPointerDown]);
 
   // Calculate the annotation plane for raycasting
   const raycastPlane = useMemo(() => {
@@ -213,14 +227,7 @@ export const CreateCuboidRenderer = ({
         setIsCreatingCuboid(false);
 
         // Reset creation state
-        isActiveRef.current = false;
-        setIsCreatingCuboidPointerDown(false);
-        setCreationState({
-          step: 0,
-          centerPosition: null,
-          orientationPoint: null,
-          currentPosition: null,
-        });
+        resetCuboidCreation();
       } else if (creationState.step < 2) {
         // Handle clicks for steps 0 and 1
         handleClick(intersectionPoint);
@@ -235,11 +242,10 @@ export const CreateCuboidRenderer = ({
       selectForAnnotation,
       handleClick,
       setCurrentArchetypeSelectedForTransform,
-      setCreationState,
       setEditingToNewCuboid,
       setIsCreatingCuboid,
-      setIsCreatingCuboidPointerDown,
       setTransformMode,
+      resetCuboidCreation,
       workingDoc,
     ]
   );
@@ -249,21 +255,9 @@ export const CreateCuboidRenderer = ({
     if (ignoreEffects) return;
 
     if (!isCreatingCuboid) {
-      isActiveRef.current = false;
-      setIsCreatingCuboidPointerDown(false);
-      setCreationState({
-        step: 0,
-        centerPosition: null,
-        orientationPoint: null,
-        currentPosition: null,
-      });
+      resetCuboidCreation();
     }
-  }, [
-    ignoreEffects,
-    isCreatingCuboid,
-    setCreationState,
-    setIsCreatingCuboidPointerDown,
-  ]);
+  }, [ignoreEffects, isCreatingCuboid, resetCuboidCreation]);
 
   // Set cursor to crosshair when in create mode
   useEffect(() => {
@@ -279,37 +273,32 @@ export const CreateCuboidRenderer = ({
     return undefined;
   }, [ignoreEffects, isCreatingCuboid]);
 
-  // Handle Escape key to cancel cuboid creation
+  // Handle Escape key before the modal-level binding closes the modal.
   useEffect(() => {
     if (ignoreEffects) return undefined;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (!isCreatingCuboid || creationState.step === 0) return;
+      if (!isCreatingCuboid) return;
 
       if (event.key === "Escape") {
-        // Reset creation state
-        isActiveRef.current = false;
-        setIsCreatingCuboidPointerDown(false);
-        setCreationState({
-          step: 0,
-          centerPosition: null,
-          orientationPoint: null,
-          currentPosition: null,
-        });
+        setIsCreatingCuboid(false);
+        resetCuboidCreation();
 
         event.stopImmediatePropagation();
         event.preventDefault();
       }
     };
 
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown, { capture: true });
+    return () =>
+      document.removeEventListener("keydown", handleKeyDown, {
+        capture: true,
+      });
   }, [
     ignoreEffects,
     isCreatingCuboid,
-    creationState.step,
-    setCreationState,
-    setIsCreatingCuboidPointerDown,
+    resetCuboidCreation,
+    setIsCreatingCuboid,
   ]);
 
   useEmptyCanvasInteraction({
