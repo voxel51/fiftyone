@@ -132,6 +132,10 @@ export const RegisterFrameLabels: React.FC<{
   // Source of truth for which per-frame list this stream reads + patches.
   // Default while the schema resolves avoids a tear-down/re-mount churn.
   const activeField = useActiveDetectionField() ?? DEFAULT_FRAME_FIELD;
+  // Every active per-frame field — the stream fetches + seeds all of them so the
+  // engine (and the sidebar/canvas/timeline that read it) sees more than just
+  // the primary detection field (e.g. polylines, masked detections).
+  const labelFields = useFrameLabelFields();
 
   const frameRate = getModalSampleFrameRate(sample);
   const ready =
@@ -148,12 +152,20 @@ export const RegisterFrameLabels: React.FC<{
 
   const frameCount = Math.max(1, Math.round(duration * frameRate));
   const frameField = toPerFrameField(activeField);
+  // All active per-frame fields, frame-relative, primary first — deduped + sorted
+  // so the identity key is stable regardless of schema iteration order.
+  const frameFields = [
+    ...new Set([
+      frameField,
+      ...Object.keys(labelFields).map(toPerFrameField).sort(),
+    ]),
+  ];
 
   // Stream-identity key: changing any input re-mounts the registrar so
   // usePlaybackStream's cleanup unregisters the old stream.
   const key = `${sampleId}|${dataset}|${
     slice ?? ""
-  }|${frameRate}|${frameCount}|${frameField}`;
+  }|${frameRate}|${frameCount}|${frameFields.join(",")}`;
 
   return (
     <FrameLabelsRegistration
@@ -164,6 +176,7 @@ export const RegisterFrameLabels: React.FC<{
       frameCount={frameCount}
       frameRate={frameRate}
       frameField={frameField}
+      frameFields={frameFields}
     >
       {children}
     </FrameLabelsRegistration>
@@ -177,6 +190,7 @@ interface FrameLabelsRegistrationProps {
   frameCount: number;
   frameRate: number;
   frameField: string;
+  frameFields: string[];
   children: React.ReactNode;
 }
 
@@ -195,6 +209,7 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
       frameCount: props.frameCount,
       frameRate: props.frameRate,
       frameField: props.frameField,
+      frameFields: props.frameFields,
     });
   }
 

@@ -32,13 +32,20 @@ export interface VideoFrameLabelsStreamOptions {
   /** Frame rate in frames per second. */
   frameRate: number;
   /**
-   * todo - multiple fields
-   * Field on the per-frame document that carries `Detections`, frame-relative
-   * (the `frames.` prefix from the parent video schema stripped).
+   * Primary per-frame field carrying `Detections`, frame-relative (the `frames.`
+   * prefix stripped). Backs the read-only overlay snapshot ({@link getValue})
+   * and the timeline index's dynamic-attribute lookup.
    *
    * @default "detections"
    */
   frameField?: string;
+  /**
+   * Every active per-frame label field to fetch + seed into the engine,
+   * frame-relative (e.g. `["detections", "polylines"]`). The engine holds all
+   * of them so the sidebar/canvas/timeline see every field; defaults to just
+   * {@link frameField} when omitted.
+   */
+  frameFields?: string[];
   /**
    * Number of frames to request in a single window chunk. Larger values mean
    * fewer round trips but larger payloads.
@@ -71,6 +78,8 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   private readonly frameCount: number;
   private readonly frameRate: number;
   private readonly frameField: string;
+  /** All fields fetched per window + seeded into the engine (primary first). */
+  private readonly frameFields: string[];
   private readonly chunkSize: number;
 
   private readonly cache = new Map<number, FrameDoc>();
@@ -99,6 +108,11 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     this.frameCount = opts.frameCount;
     this.frameRate = opts.frameRate;
     this.frameField = opts.frameField ?? DEFAULT_FRAME_FIELD;
+    // Always fetch the primary field; union any extra active fields (deduped).
+    this.frameFields =
+      opts.frameFields && opts.frameFields.length > 0
+        ? [...new Set([this.frameField, ...opts.frameFields])]
+        : [this.frameField];
     this.chunkSize = opts.chunkSize ?? DEFAULT_CHUNK_SIZE;
   }
 
@@ -327,7 +341,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
         sampleId: this.sampleId,
         dataset: this.dataset,
         view: this.view,
-        fields: [this.frameField],
+        fields: this.frameFields,
         startFrame,
         endFrame,
       });
