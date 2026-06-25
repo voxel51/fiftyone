@@ -12,7 +12,13 @@ import {
   Point,
 } from "../state";
 import { distance, distanceFromLineSegment, multiply } from "../util";
-import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
+import {
+  BASE_RENDER_FIELDS,
+  CONTAINS,
+  CoordinateOverlay,
+  PointInfo,
+  RegularLabel,
+} from "./base";
 import { resolveLabelSelectionVisuals, t } from "./util";
 import { isHoveringParticularLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
 
@@ -23,6 +29,11 @@ interface KeypointLabel extends RegularLabel {
 export default class KeypointOverlay<
   State extends BaseState
 > extends CoordinateOverlay<State, KeypointLabel> {
+  // per-point custom attributes are tooltip-only (modal); the grid draws points + label/index
+  static getRenderFields(): string[] {
+    return [...BASE_RENDER_FIELDS, "label", "index", "instance", "points"];
+  }
+
   constructor(field, label) {
     super(field, label);
   }

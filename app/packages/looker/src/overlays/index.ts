@@ -42,15 +42,92 @@ export const fromLabelList = (overlayType, list_key) => (field, labels) =>
 
 export { ClassificationsOverlay };
 
-export const FROM_FO = {
-  Detection: fromLabel(DetectionOverlay),
-  Detections: fromLabelList(DetectionOverlay, "detections"),
-  Heatmap: fromLabel(HeatmapOverlay),
-  Keypoint: fromLabel(KeypointOverlay),
-  Keypoints: fromLabelList(KeypointOverlay, "keypoints"),
-  Polyline: fromLabel(PolylineOverlay),
-  Polylines: fromLabelList(PolylineOverlay, "polylines"),
-  Segmentation: fromLabel(SegmentationOverlay),
+// the overlay class that renders each label docType. `LABEL_LISTS_MAP` supplies the
+// list subfield for the plural types, so this map is the single source of truth for
+// the docType -> overlay relationship (the factory and the fetched-fields list below
+// both derive from it and therefore can't drift)
+const OVERLAY_BY_CLS: Record<string, { getRenderFields(): string[] }> = {
+  Detection: DetectionOverlay,
+  Detections: DetectionOverlay,
+  Heatmap: HeatmapOverlay,
+  Keypoint: KeypointOverlay,
+  Keypoints: KeypointOverlay,
+  Polyline: PolylineOverlay,
+  Polylines: PolylineOverlay,
+  Segmentation: SegmentationOverlay,
+  Classification: ClassificationsOverlay,
+  Classifications: ClassificationsOverlay,
+  Regression: ClassificationsOverlay,
+  TemporalDetection: TemporalDetectionOverlay,
+  TemporalDetections: TemporalDetectionOverlay,
+};
+
+// the docTypes whose overlays are instantiated one-per-label (the classification
+// family is accumulated into a single overlay in `loadOverlays` instead)
+const COORDINATE_CLSES = [
+  "Detection",
+  "Detections",
+  "Heatmap",
+  "Keypoint",
+  "Keypoints",
+  "Polyline",
+  "Polylines",
+  "Segmentation",
+];
+
+export const FROM_FO = Object.fromEntries(
+  COORDINATE_CLSES.map((cls) => {
+    const overlay = OVERLAY_BY_CLS[cls];
+    const listKey = LABEL_LISTS_MAP[cls];
+    return [
+      cls,
+      listKey ? fromLabelList(overlay, listKey) : fromLabel(overlay),
+    ];
+  })
+);
+
+/**
+ * The db field paths required to render a sample's overlays, derived from the
+ * schema and each overlay's `getRenderFields`. This is what the grid requests:
+ * exactly the leaves the renderers read, nothing else.
+ */
+export const getRenderFieldPaths = (schema: Schema): string[] => {
+  const paths = new Set<string>();
+
+  const visit = (fields: Schema, prefix: string) => {
+    for (const name in fields) {
+      const field = fields[name];
+      const path = prefix
+        ? `${prefix}.${field.dbField || field.name}`
+        : field.dbField || field.name;
+      const cls = field.embeddedDocType?.split(".").slice(-1)[0];
+      const overlay = cls ? OVERLAY_BY_CLS[cls] : undefined;
+
+      if (overlay) {
+        const listKey = LABEL_LISTS_MAP[cls];
+        const base = listKey ? `${path}.${listKey}` : path;
+        for (const leaf of overlay.getRenderFields()) {
+          paths.add(`${base}.${leaf}`);
+        }
+        continue;
+      }
+
+      // descend non-label embedded docs (incl. the `frames` document) to reach
+      // labels nested within them
+      if (field.fields) {
+        visit(field.fields, path);
+      }
+    }
+  };
+
+  visit(schema, "");
+
+  // video frame overlays are keyed by frame number
+  if (schema.frames?.fields) {
+    paths.add("frames.frame_number");
+  }
+
+  return Array.from(paths);
 };
 
 export const POINTS_FROM_FO = {

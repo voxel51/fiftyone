@@ -6,6 +6,7 @@ import { getColor, sizeBytesEstimate } from "@fiftyone/utilities";
 import { ARRAY_TYPES, TypedArray } from "../numpy";
 import { BaseState, Coordinates, MaskTargets } from "../state";
 import {
+  BASE_RENDER_FIELDS,
   BaseLabel,
   CONTAINS,
   LabelMask,
@@ -34,6 +35,10 @@ interface SegmentationInfo extends BaseLabel {
 export default class SegmentationOverlay<State extends BaseState>
   implements Overlay<State>
 {
+  static getRenderFields(): string[] {
+    return [...BASE_RENDER_FIELDS, "mask", "mask_path"];
+  }
+
   readonly field: string;
   readonly label: SegmentationLabel;
   private targets?: TypedArray;

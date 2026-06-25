@@ -13,6 +13,7 @@ import { BaseState, BoundingBox, Coordinates, NONFINITE } from "../state";
 import { distanceFromLineSegment } from "../util";
 import { RENDER_STATUS_PAINTED, RENDER_STATUS_PENDING } from "../worker/shared";
 import {
+  BASE_RENDER_FIELDS,
   CONTAINS,
   CoordinateOverlay,
   LabelMask,
@@ -88,6 +89,23 @@ export interface DetectionLabel extends RegularLabel {
 export default class DetectionOverlay<
   State extends BaseState
 > extends CoordinateOverlay<State, DetectionLabel> {
+  // leaves draw()/getColor() read: box + 3D cuboid geometry, mask, label text/index;
+  // `confidence` is text-only and rendered in the modal, not the grid thumbnail
+  static getRenderFields(): string[] {
+    return [
+      ...BASE_RENDER_FIELDS,
+      "label",
+      "index",
+      "instance",
+      "bounding_box",
+      "mask",
+      "mask_path",
+      "location",
+      "dimensions",
+      "rotation",
+    ];
+  }
+
   private labelBoundingBox: BoundingBox;
 
   containsPoint(state: Readonly<State>): CONTAINS {

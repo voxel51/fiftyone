@@ -2,25 +2,27 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("recoil");
 vi.mock("recoil-relay");
 
-import {
-  DETECTIONS_FIELD,
-  GROUP,
-  STRING_FIELD,
-  VECTOR_FIELD,
-} from "@fiftyone/utilities";
+// the grid include list is composed from looker's overlay declarations; stub them
+// here so this suite tests only state's composition (identifiers + group + delegation)
+vi.mock("@fiftyone/looker", () => ({
+  getRenderFieldPaths: () => [
+    "predictions.detections._id",
+    "predictions.detections.label",
+    "predictions.detections.bounding_box",
+  ],
+}));
+
+import { GROUP, STRING_FIELD, VECTOR_FIELD } from "@fiftyone/utilities";
 import { setMockAtoms, TestSelector } from "../../../../__mocks__/recoil";
 import * as sampleProjection from "./sampleProjection";
 
-// The grid projection derives label overlay subfields from the schema subtree
-// (no hardcoded leaf list), excluding heavy vectors; the modal excludes only
-// those vectors. New label attributes (e.g. 3D geometry) are picked up for free.
 describe("sampleProjection", () => {
-  // a Detections label with a deep subfield (location, like a 3D cuboid) and a
-  // logits vector; a top-level embedding vector; and a group field.
+  // a Detections label with a nested logits vector, a top-level embedding vector,
+  // and a group field.
   const schema = {
     predictions: {
       name: "predictions",
-      embeddedDocType: DETECTIONS_FIELD,
+      embeddedDocType: "fiftyone.core.labels.Detections",
       ftype: "fiftyone.core.fields.EmbeddedDocumentField",
       fields: {
         detections: {
@@ -28,10 +30,6 @@ describe("sampleProjection", () => {
           ftype: "fiftyone.core.fields.EmbeddedDocumentListField",
           fields: {
             label: { name: "label", ftype: STRING_FIELD },
-            location: {
-              name: "location",
-              ftype: "fiftyone.core.fields.ListField",
-            },
             logits: { name: "logits", ftype: VECTOR_FIELD },
           },
         },
@@ -52,25 +50,23 @@ describe("sampleProjection", () => {
     TestSelector<typeof sampleProjection.modalSampleExclude>
   >(<unknown>sampleProjection.modalSampleExclude);
 
-  it("derives label overlay leaves from the schema, incl. new attributes", () => {
+  it("composes grid fields from looker render paths + identifiers + group", () => {
     setMockAtoms({ fullSchema: schema });
     const fields = gridFields();
-    expect(fields).toContain("filepath"); // identifier
+    // overlay leaves the renderer declared (via looker)
     expect(fields).toContain("predictions.detections.label");
-    // a non-hardcoded subfield (3D-style geometry) is included automatically
-    expect(fields).toContain("predictions.detections.location");
-    expect(fields).toContain("predictions.detections._id"); // deserialization meta
+    expect(fields).toContain("predictions.detections._id");
+    // sample-structural identifiers (filepath/_id are forced server-side, not listed)
+    expect(fields).toContain("metadata");
+    expect(fields).toContain("tags");
+    // group field for slice/group resolution
+    expect(fields).toContain("group");
     // vectors never enter the grid include
     expect(fields).not.toContain("embedding");
     expect(fields).not.toContain("predictions.detections.logits");
   });
 
-  it("includes the group field (for slice/group resolution)", () => {
-    setMockAtoms({ fullSchema: schema });
-    expect(gridFields()).toContain("group");
-  });
-
-  it("modal exclude lists vector fields and label logits, not overlay leaves", () => {
+  it("modal exclude lists every vector path (incl. nested label logits)", () => {
     setMockAtoms({ fullSchema: schema });
     const exclude = modalExclude();
     expect(exclude).toContain("embedding");

@@ -6,7 +6,13 @@ import { isHoveringParticularLabelWithInstanceConfig } from "@fiftyone/state/src
 import { TOLERANCE } from "../constants";
 import { BaseState, Coordinates } from "../state";
 import { distanceFromLineSegment, getRenderedScale } from "../util";
-import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
+import {
+  BASE_RENDER_FIELDS,
+  CONTAINS,
+  CoordinateOverlay,
+  PointInfo,
+  RegularLabel,
+} from "./base";
 import {
   getInstanceStrokeStyles,
   resolveLabelSelectionVisuals,
@@ -23,6 +29,18 @@ export type PolylineLabel = RegularLabel & {
 export default class PolylineOverlay<
   State extends BaseState
 > extends CoordinateOverlay<State, PolylineLabel> {
+  static getRenderFields(): string[] {
+    return [
+      ...BASE_RENDER_FIELDS,
+      "label",
+      "index",
+      "instance",
+      "points",
+      "closed",
+      "filled",
+    ];
+  }
+
   containsPoint(state: Readonly<State>): CONTAINS {
     const tolerance =
       (state.strokeWidth * TOLERANCE) /

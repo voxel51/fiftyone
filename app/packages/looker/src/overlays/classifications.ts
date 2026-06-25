@@ -19,6 +19,7 @@ import {
   VideoState,
 } from "../state";
 import {
+  BASE_RENDER_FIELDS,
   CONTAINS,
   Overlay,
   PointInfo,
@@ -48,6 +49,12 @@ export class ClassificationsOverlay<
   Label extends Classification = ClassificationLabel
 > implements Overlay<State>
 {
+  // text overlay: the drawn label string (`value` for Regression); `confidence` is
+  // option-gated tooltip text shown in the modal, not fetched for the grid
+  static getRenderFields(): string[] {
+    return [...BASE_RENDER_FIELDS, "label", "value"];
+  }
+
   private labelBoundingBoxes: { [key: string]: BoundingBox };
 
   protected readonly labels: Labels<Label>;
@@ -360,6 +367,11 @@ export class TemporalDetectionOverlay extends ClassificationsOverlay<
   VideoState,
   TemporalDetectionLabel | ClassificationLabel
 > {
+  // `support` gates which frames the label is shown on (filterTemporalLabel)
+  static getRenderFields(): string[] {
+    return [...ClassificationsOverlay.getRenderFields(), "support"];
+  }
+
   getFiltered(state: Readonly<VideoState>) {
     return this.labels.map<
       [string, (TemporalDetectionLabel | ClassificationLabel)[]]
