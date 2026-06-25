@@ -9,13 +9,17 @@ wrapper for the FiftyOne Model Zoo.
 
 import logging
 import os
+import shutil
 from PIL import Image
 
+import fiftyone as fo
 import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
 import fiftyone.utils.sam as fosam
 import fiftyone.utils.sam2 as fosam2
 import fiftyone.zoo.models as fozm
+
+import eta.core.web as etaw
 
 fou.ensure_torch()
 import torch
@@ -28,6 +32,25 @@ sam3misc = fou.lazy_import("sam3.model.utils.misc")
 sam2ip = fou.lazy_import("sam2.sam2_image_predictor")
 
 logger = logging.getLogger(__name__)
+
+
+def _download_sam3_bpe_vocab_file(
+    tokenizer_source,
+    bpe_path,
+):
+    """Downloads SAM3 BPE vocab file from the source URL."""
+
+    asset_filename = os.path.basename(bpe_path)
+
+    logger.info("Downloading SAM3 tokenizer vocab (%s)...", asset_filename)
+    try:
+        etaw.download_file(tokenizer_source, path=bpe_path)
+    except Exception as e:
+        raise RuntimeError(
+            "Failed to download SAM3 tokenizer vocab. "
+            "You can manually download '%s' from %s and save it to %s"
+            % (asset_filename, tokenizer_source, bpe_path)
+        ) from e
 
 
 class SegmentAnything3ImageModelConfig(
@@ -46,6 +69,7 @@ class SegmentAnything3ImageModelConfig(
             :class:`GetItem` to use for SAM
         get_item_args (None): a dictionary of arguments for
             ``get_item_cls(field_mapping=field_mapping, **kwargs)``
+        tokenizer_source (None): the URL to download the SAM3 tokenizer BPE vocab
         operation_mode ("concept"): concept or visual mode of operation for inference
     """
 
@@ -70,6 +94,10 @@ class SegmentAnything3ImageModelConfig(
             default="fiftyone.utils.sam3.SegmentAnything3ImageGetItem",
         )
         self.get_item_args = self.parse_dict(d, "get_item_args", default=None)
+
+        self.tokenizer_source = self.parse_string(
+            d, "tokenizer_source", default=None
+        )
 
         self.operation_mode = self.parse_string(
             d, "operation_mode", default="concept"
@@ -293,6 +321,15 @@ class SegmentAnything3ImageModel(fosam2.SegmentAnything2ImageModel):
             # Always set to True for easy switching of operation modes in a loaded zoo model.
             config.entrypoint_args["enable_inst_interactivity"] = True
 
+        if (
+            "bpe_path" not in config.entrypoint_args
+            and config.tokenizer_source
+        ):
+            config.entrypoint_args["bpe_path"] = os.path.join(
+                os.path.dirname(config.model_path),
+                os.path.basename(config.tokenizer_source),
+            )
+
         fout.TorchImageModelWithPrompts.__init__(self, config)
         self._sam_auto_generator = None
         self._sam_predictor = self._load_predictor()
@@ -323,6 +360,19 @@ class SegmentAnything3ImageModel(fosam2.SegmentAnything2ImageModel):
             filename=os.path.basename(config.model_path),
             local_dir=os.path.dirname(config.model_path),
         )
+
+        bpe_path = config.entrypoint_args["bpe_path"]
+        if not os.path.isfile(bpe_path):
+            if not config.tokenizer_source:
+                raise ValueError(
+                    "Missing BPE vocabulary tokenizer. Either provide 'tokenizer_source'"
+                    "in the model config for downloading or set 'bpe_path' in the model config"
+                    "'entrypoint_args' to a pre-downloaded file."
+                )
+            _download_sam3_bpe_vocab_file(
+                tokenizer_source=config.tokenizer_source,
+                bpe_path=bpe_path,
+            )
 
     def _build_concept_output_processor(self, config):
         kwargs = config.output_processor_args or {}

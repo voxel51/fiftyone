@@ -159,6 +159,14 @@ def add(
                         ) from type_err
 
                     target.insert(idx, value)
+            except KeyError:
+                # Item access rejects `name` (e.g. an embedded document's
+                # `_id`, whose db field name isn't a settable item key). Fall
+                # back to attribute assignment if available.
+                if not hasattr(target, name):
+                    raise
+
+                setattr(target, name, value)
         else:
             setattr(target, name, value)
 
@@ -282,7 +290,18 @@ def replace(
     pointer = to_json_pointer(path)
 
     if not is_root_path(pointer):
-        src = remove(src, pointer)
+        parent = get(
+            src, jsonpointer.JsonPointer.from_parts(pointer.parts[:-1])
+        )
+        if isinstance(parent, list):
+            # `add` inserts at a list index rather than overwriting, so the
+            # existing element must be removed first.
+            src = remove(src, pointer)
+        else:
+            # `add` overwrites object/dict members in place; removing first is
+            # unnecessary and fails for read-only members (e.g. an embedded
+            # document's `_id` property). Still verify the target exists.
+            get(src, pointer)
 
     return add(src, pointer, value)
 

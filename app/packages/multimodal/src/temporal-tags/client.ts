@@ -47,14 +47,14 @@ type DeleteTemporalTagsResponseDto = {
 };
 
 /**
- * Options for constructing the temporal-tags route client.
+ * Options for constructing the tags route client.
  */
 export interface CreateTemporalTagsClientOptions {
   readonly fetchFunction?: TemporalTagsFetch;
 }
 
 /**
- * Creates a typed client for the multimodal temporal-tag HTTP routes.
+ * Creates a typed client for the tag HTTP routes.
  */
 export function createTemporalTagsClient(
   options: CreateTemporalTagsClientOptions = {}
@@ -77,7 +77,7 @@ export function createTemporalTagsClient(
         method: "POST",
         path: `/dataset/${encodeURIComponent(
           datasetId
-        )}/sample/${encodeURIComponent(sampleId)}/multimodal/temporal-tags`,
+        )}/sample/${encodeURIComponent(sampleId)}/tags`,
       });
 
       return response.response.temporal_tags.map(temporalTagFromDto);
@@ -96,7 +96,7 @@ export function createTemporalTagsClient(
         method: "DELETE",
         path: `/dataset/${encodeURIComponent(
           datasetId
-        )}/sample/${encodeURIComponent(sampleId)}/multimodal/temporal-tags`,
+        )}/sample/${encodeURIComponent(sampleId)}/tags`,
       });
 
       return response.response.deleted;
@@ -112,9 +112,7 @@ export function createTemporalTagsClient(
       >({
         method: "GET",
         path: withFilterQuery(
-          `/dataset/${encodeURIComponent(
-            datasetId
-          )}/multimodal/temporal-tags/counts`,
+          `/dataset/${encodeURIComponent(datasetId)}/tags/counts`,
           filter
         ),
       });
@@ -135,7 +133,7 @@ export function createTemporalTagsClient(
         method: "DELETE",
         path: `/dataset/${encodeURIComponent(
           datasetId
-        )}/sample/${encodeURIComponent(sampleId)}/multimodal/temporal-tags`,
+        )}/sample/${encodeURIComponent(sampleId)}/tags`,
       });
 
       return response.response.deleted;
@@ -148,7 +146,7 @@ export function createTemporalTagsClient(
       const response = await fetchFunction<undefined, TemporalTagsResponseDto>({
         method: "GET",
         path: withFilterQuery(
-          `/dataset/${encodeURIComponent(datasetId)}/multimodal/temporal-tags`,
+          `/dataset/${encodeURIComponent(datasetId)}/tags`,
           filter
         ),
       });
@@ -166,7 +164,7 @@ export function createTemporalTagsClient(
         path: withFilterQuery(
           `/dataset/${encodeURIComponent(
             datasetId
-          )}/sample/${encodeURIComponent(sampleId)}/multimodal/temporal-tags`,
+          )}/sample/${encodeURIComponent(sampleId)}/tags`,
           filter
         ),
       });
@@ -188,9 +186,9 @@ export function createTemporalTagsClient(
         method: "PATCH",
         path: `/dataset/${encodeURIComponent(
           datasetId
-        )}/sample/${encodeURIComponent(
-          sampleId
-        )}/multimodal/temporal-tags/${encodeURIComponent(temporalTagId)}`,
+        )}/sample/${encodeURIComponent(sampleId)}/tags/${encodeURIComponent(
+          temporalTagId
+        )}`,
       });
 
       return temporalTagFromDto(response.response.temporal_tag);

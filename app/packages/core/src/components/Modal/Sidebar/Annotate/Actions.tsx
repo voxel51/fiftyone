@@ -19,7 +19,7 @@ import {
   is3DDataset,
   isVideoDataset,
   useIs3dPinned,
-  useRenderConfig3dState,
+  useIsGroupDataset,
 } from "@fiftyone/state";
 import {
   DETECTION,
@@ -44,6 +44,7 @@ import { usePolylineMode } from "./Edit/usePolylineMode";
 import { useSegmentationMode } from "./Edit/useSegmentationMode";
 import { useDeactivateAllModes } from "./useDeactivateAllModes";
 import { useAnnotationUndoRedo } from "./useAnnotationUndoRedo";
+import { useGroupAnnotationSliceReady } from "./useGroupAnnotationSliceReady";
 
 const ActionsDiv = styled.div`
   align-items: center;
@@ -490,6 +491,14 @@ const Actions = () => {
     !current3dAnnotationMode;
   const areThreeDActionsVisible = is3dDataset || is3dSamplePinned;
 
+  // For group datasets the 2D-vs-3D decision depends on the resolved annotation
+  // slice, which isn't known until the group's sample data loads. Withhold the
+  // slice-dependent tools until then so a 3D sample never flashes 2D tools.
+  // Non-group datasets resolve immediately and don't gate.
+  const isGroupDataset = useIsGroupDataset();
+  const [groupAnnotationSliceReady] = useGroupAnnotationSliceReady();
+  const toolsResolved = !isGroupDataset || groupAnnotationSliceReady;
+
   const deactivateAll = useDeactivateAllModes();
 
   return (
@@ -507,18 +516,19 @@ const Actions = () => {
             ) : (
               <>
                 <Classification />
-                {areThreeDActionsVisible ? (
-                  <>
-                    <ThreeDCuboids />
-                    <ThreeDPolylines />
-                  </>
-                ) : (
-                  <>
-                    <Detection />
-                    <Segmentation />
-                    <Polyline />
-                  </>
-                )}
+                {toolsResolved &&
+                  (areThreeDActionsVisible ? (
+                    <>
+                      <ThreeDCuboids />
+                      <ThreeDPolylines />
+                    </>
+                  ) : (
+                    <>
+                      <Detection />
+                      <Segmentation />
+                      <Polyline />
+                    </>
+                  ))}
               </>
             )}
           </ItemLeft>

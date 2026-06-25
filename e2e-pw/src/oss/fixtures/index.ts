@@ -2,6 +2,7 @@ import { test as base } from "@playwright/test";
 import { DatasetFactory } from "src/shared/dataset-factory";
 import { EventUtils } from "src/shared/event-utils";
 import { MediaFactory } from "src/shared/media-factory";
+import { SAM2_MOCK_WORKER_SRC } from "src/shared/sam2-mock-worker";
 import { AbstractFiftyoneLoader } from "../../shared/abstract-loader";
 import { AggregationWatcher } from "./aggregation-watcher";
 import { AnnotateSDK } from "./annotate-sdk";
@@ -26,6 +27,13 @@ export type CustomFixturesWithoutPage = {
 export type CustomFixturesWithPage = {
   eventUtils: EventUtils;
   aggregationWatcher: AggregationWatcher;
+  /**
+   * Installs a deterministic mock SAM2 worker via `page.addInitScript` so
+   * the page's `BrowserAnnotationProvider` constructs the mock instead of
+   * the real WebAssembly worker. Auto-runs when destructured; no value to
+   * use directly.
+   */
+  mockSam2Worker: void;
 };
 
 const customFixtures = base.extend<object, CustomFixturesWithoutPage>({
@@ -89,6 +97,19 @@ export const test = customFixtures.extend<CustomFixturesWithPage>({
   },
   aggregationWatcher: async ({ page }, use) => {
     await use(new AggregationWatcher(page));
+  },
+  mockSam2Worker: async ({ page }, use) => {
+    // Must install BEFORE the page mounts BrowserAnnotationProvider. See
+    // `app/.../BrowserAnnotationProvider.ts` for the seam contract.
+    await page.addInitScript((workerSrc: string) => {
+      (
+        window as unknown as { __FO_TEST_SAM2_WORKER_FACTORY?: () => Worker }
+      ).__FO_TEST_SAM2_WORKER_FACTORY = () => {
+        const blob = new Blob([workerSrc], { type: "text/javascript" });
+        return new Worker(URL.createObjectURL(blob));
+      };
+    }, SAM2_MOCK_WORKER_SRC);
+    await use();
   },
   baseURL: async ({ fiftyoneServerPort }, use) => {
     if (process.env.USE_DEV_BUILD?.toLocaleLowerCase() === "true") {
