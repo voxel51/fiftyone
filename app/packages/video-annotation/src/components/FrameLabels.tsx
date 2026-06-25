@@ -240,7 +240,11 @@ function useFrameDerivedTracks(
     [allFields, visible]
   );
 
-  const { indexByPath, loaded } = useVideoLabelsIndex(stream, allFields);
+  const { indexByPath, loaded } = useVideoLabelsIndex(
+    stream,
+    allFields,
+    dynamicAttributes
+  );
 
   // engine version is the rebuild signal.
   const engineVersion = useEngineSelector(engine, () => engine.getVersion());
