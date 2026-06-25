@@ -1,7 +1,4 @@
-import {
-  useActiveAnnotationSampleId,
-  useAnnotationEngine,
-} from "@fiftyone/annotation";
+import { useAnnotationEngine, type LabelRef } from "@fiftyone/annotation";
 import {
   DelegatingUndoable,
   KnownContexts,
@@ -62,7 +59,6 @@ const Field = () => {
     [disabled, fields, isPatches]
   );
   const engine = useAnnotationEngine();
-  const sampleId = useActiveAnnotationSampleId();
   const nextFieldValue = useRef(currentFieldValue);
   const labelId = currentLabel?.overlay?.id;
   const currentLabelRef = useUnboundStateRef(currentLabel);
@@ -80,26 +76,58 @@ const Field = () => {
       // live selection — the label may be deselected before an undo, which
       // would otherwise leave `current` null and skip the re-add.
       const movedLabel = currentLabelRef.current;
-      const id = movedLabel?.data?._id;
       const source = movedLabel?.data;
+      // Track identity is `instance._id` (shared across a video track's
+      // frames); an image / sample-level label falls back to its doc `_id`.
+      // The store addresses occurrences by this id, so a per-frame doc `_id`
+      // (which differs frame to frame) would match nothing.
+      const instanceId =
+        (source as { instance?: { _id?: string } } | undefined)?.instance
+          ?._id ?? source?._id;
 
-      // Atomic move between fields, ALL through the engine: remove from one
-      // field and upsert at the other in a single transaction (one coalesced
-      // change → one autosave patch). The upsert preserves `_id`, so the
-      // label keeps its identity. The Lighter bridge's read-half re-homes the
-      // overlay off the engine change — the sidebar never touches Lighter.
+      // Atomic move between fields, ALL through the engine: drop EVERY
+      // occurrence of the track from the source field and re-home it (with its
+      // per-frame geometry) at the destination, in a single transaction (one
+      // coalesced change → one autosave patch, one undo unit). A video track
+      // spans many frames — moving only the current frame would leave the rest
+      // behind and never clear the source — so the move fans across all frames
+      // the instance occupies. Identity is the store's, so the track keeps its
+      // `instance._id` across the move. The Lighter bridge's read-half re-homes
+      // the overlay off the engine change — the sidebar never touches Lighter.
       const move = (from: string, to: string) => {
-        if (!id || !source) return;
+        if (!instanceId || !source) return;
 
-        const scoped = engine.scope(sampleId);
+        const type = engine.getLabelType(from);
+
+        // Snapshot each occurrence BEFORE the transaction (the deletes mutate
+        // the store). For an image / sample-level label this is one frame-less
+        // entry; for a video track it is one entry per frame. Match by track
+        // identity + field; each occurrence carries its own full ref (sample +
+        // frame) so writes land in the right store and frame.
+        const occurrences = engine
+          .enumerateLabels([type])
+          .filter((ref) => ref.path === from && ref.instanceId === instanceId)
+          .map((ref) => ({ ref, data: engine.getLabel(ref) }))
+          .filter((o): o is { ref: LabelRef; data: LabelData } => !!o.data);
+
+        if (occurrences.length === 0) return;
+
+        const cls = (source as { _cls: LabelType })._cls;
+
         engine.transaction(() => {
-          scoped.deleteLabel({ path: from, instanceId: id });
-          scoped.updateLabel({ path: to, instanceId: id }, {
-            ...buildNewLabelData(to, (source as { _cls: LabelType })._cls, {
-              id,
-            }),
-            ...source,
-          } as Partial<LabelData>);
+          for (const { ref } of occurrences) {
+            engine.deleteLabel(ref);
+          }
+
+          for (const { ref, data } of occurrences) {
+            engine.updateLabel(
+              { sample: ref.sample, path: to, instanceId, frame: ref.frame },
+              {
+                ...buildNewLabelData(to, cls, { id: instanceId }),
+                ...data,
+              } as Partial<LabelData>
+            );
+          }
         });
 
         // Best-effort sidebar sync; no-ops when the label isn't selected.
@@ -111,14 +139,7 @@ const Field = () => {
         () => move(oldField, newField),
         () => move(newField, oldField)
       );
-    }, [
-      currentLabelRef,
-      engine,
-      sampleId,
-      setCurrentField,
-      labelId,
-      currentFieldValue,
-    ]),
+    }, [currentLabelRef, engine, setCurrentField, labelId, currentFieldValue]),
     () => true
   );
 
