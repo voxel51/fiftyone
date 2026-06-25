@@ -6862,7 +6862,7 @@
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
                     "ultralytics>=8.3.99",
-                    "git+https://github.com/openai/CLIP.git"
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -6921,7 +6921,7 @@
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
                     "ultralytics>=8.3.99",
-                    "git+https://github.com/openai/CLIP.git"
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -6980,7 +6980,7 @@
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
                     "ultralytics>=8.3.99",
-                    "git+https://github.com/openai/CLIP.git"
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -7039,7 +7039,7 @@
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
                     "ultralytics>=8.3.99",
-                    "git+https://github.com/openai/CLIP.git"
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -7098,7 +7098,7 @@
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
                     "ultralytics>=8.3.99",
-                    "git+https://github.com/openai/CLIP.git"
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -7157,7 +7157,7 @@
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
                     "ultralytics>=8.3.99",
-                    "git+https://github.com/openai/CLIP.git"
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -7216,7 +7216,7 @@
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
                     "ultralytics>=8.4.0",
-                    "git+https://github.com/openai/CLIP.git"
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -7275,7 +7275,7 @@
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
                     "ultralytics>=8.4.0",
-                    "git+https://github.com/openai/CLIP.git"
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -7334,7 +7334,7 @@
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
                     "ultralytics>=8.4.0",
-                    "git+https://github.com/openai/CLIP.git"
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -7393,7 +7393,7 @@
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
                     "ultralytics>=8.4.0",
-                    "git+https://github.com/openai/CLIP.git"
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -7452,7 +7452,7 @@
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
                     "ultralytics>=8.4.0",
-                    "git+https://github.com/openai/CLIP.git"
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -7511,7 +7511,7 @@
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
                     "ultralytics>=8.4.0",
-                    "git+https://github.com/openai/CLIP.git"
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -7577,7 +7577,7 @@
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
                     "ultralytics>=8.4.0",
-                    "git+https://github.com/openai/CLIP.git"
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -7643,7 +7643,7 @@
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
                     "ultralytics>=8.4.0",
-                    "git+https://github.com/openai/CLIP.git"
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -7709,7 +7709,7 @@
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
                     "ultralytics>=8.4.0",
-                    "git+https://github.com/openai/CLIP.git"
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -7775,7 +7775,7 @@
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
                     "ultralytics>=8.4.0",
-                    "git+https://github.com/openai/CLIP.git"
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -7941,7 +7941,7 @@
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
                     "ultralytics>=8.1.0",
-                    "git+https://github.com/openai/CLIP.git"
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -7996,7 +7996,7 @@
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
                     "ultralytics>=8.1.0",
-                    "git+https://github.com/openai/CLIP.git"
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -8051,7 +8051,7 @@
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
                     "ultralytics>=8.1.0",
-                    "git+https://github.com/openai/CLIP.git"
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -8106,7 +8106,7 @@
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
                     "ultralytics>=8.1.0",
-                    "git+https://github.com/openai/CLIP.git"
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
