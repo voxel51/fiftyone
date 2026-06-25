@@ -54,7 +54,7 @@ describe("checkboxNoSpaceToggleProps on a voodo Checkbox", () => {
         checked={false}
         onChange={onChange}
         {...extraProps}
-      />
+      />,
     );
     const checkbox = getByRole("checkbox");
     checkbox.focus();

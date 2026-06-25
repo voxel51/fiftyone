@@ -1,4 +1,3 @@
-
 import { useTheme } from "@fiftyone/components";
 import { Close } from "@mui/icons-material";
 import { CustomSearchBox, SearchInput } from "./styledComponents";

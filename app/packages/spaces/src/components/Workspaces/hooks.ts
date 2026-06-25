@@ -29,9 +29,7 @@ export function useWorkspaces() {
             return {
               ...state,
               initialized: true,
-              workspaces: Array.isArray(maybeWorkspaces)
-                ? maybeWorkspaces
-                : [],
+              workspaces: Array.isArray(maybeWorkspaces) ? maybeWorkspaces : [],
               dataset: currentDataset,
             };
           });

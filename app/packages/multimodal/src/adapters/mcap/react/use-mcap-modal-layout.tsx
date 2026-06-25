@@ -53,7 +53,7 @@ export function useMcapModalLayout({
 }: UseMcapModalLayoutOptions): McapModalLayout {
   const presentTypes = useMemo(
     () => Array.from(new Set(sources.map((s) => s.type))),
-    [sources]
+    [sources],
   );
   const resolved = useMemo(
     () =>
@@ -62,11 +62,11 @@ export function useMcapModalLayout({
         readProfile,
         sources,
       }),
-    [sources, readProfile, capabilities]
+    [sources, readProfile, capabilities],
   );
   const defaultTiles = useMemo(
     () => buildResolvedTiles(resolved.tiles),
-    [resolved]
+    [resolved],
   );
   // Read storage once per modal mount — navigating samples remounts the
   // renderer and picks up whatever the previous sample persisted.
@@ -74,7 +74,7 @@ export function useMcapModalLayout({
 
   const restored = useMemo(
     () => rebuildTilesFromLayout(persisted?.layout, presentTypes, sources),
-    [persisted, presentTypes, sources]
+    [persisted, presentTypes, sources],
   );
 
   const onLeftOpenChange = useCallback((open: boolean) => {
@@ -99,7 +99,7 @@ export function useMcapModalLayout({
  * threading each tile's assigned source into its render closure.
  */
 function buildResolvedTiles(
-  tiles: readonly PlaybackLayoutTile[]
+  tiles: readonly PlaybackLayoutTile[],
 ): Record<string, TilingTile> {
   const result: Record<string, TilingTile> = {};
   for (const tile of tiles) {
@@ -130,7 +130,7 @@ function buildResolvedTiles(
 function rebuildTilesFromLayout(
   layout: MosaicNode<string> | null | undefined,
   presentTypes: readonly string[],
-  sources: readonly SceneSource[]
+  sources: readonly SceneSource[],
 ): { layout: MosaicNode<string>; tiles: Record<string, TilingTile> } | null {
   if (layout === null || layout === undefined) return null;
   const tileIds = collectTileIds(layout);
@@ -187,7 +187,7 @@ export function McapModalLayoutPersistence(): React.ReactElement | null {
     () => () => {
       writeMcapModalLayout({ layout: layoutRef.current });
     },
-    []
+    [],
   );
 
   return null;

@@ -394,7 +394,7 @@ export interface McapResourceClient {
    * Auxiliary data: soft-fails to null bounds when indexes are absent.
    */
   readTopicTimeBounds(
-    request: McapReadTopicTimeBoundsRequest
+    request: McapReadTopicTimeBoundsRequest,
   ): Promise<readonly McapTopicTimeBounds[]>;
 
   /**

@@ -43,7 +43,7 @@ export function useMcapTopicStream<T = unknown>(topic: string): T | null {
  * combined atom and re-diffs the subscriptions.
  */
 export function useMcapTopicStreams<T = unknown>(
-  topics: readonly string[]
+  topics: readonly string[],
 ): readonly (T | null)[] {
   const dataStream = useMcapDataStream();
   const subscriptionsRef = useRef<Map<string, () => void>>(new Map());
@@ -84,7 +84,7 @@ export function useMcapTopicStreams<T = unknown>(
       }
       subscriptionsRef.current.clear();
     },
-    []
+    [],
   );
 
   return useStreamValues<T>(topics);

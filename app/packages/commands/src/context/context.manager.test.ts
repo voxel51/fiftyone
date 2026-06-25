@@ -274,10 +274,10 @@ describe("CommandContextManager text-editing guard", () => {
   it("ignores modified variants of a bare binding", async () => {
     const execFn = bindSpace();
     await CommandContextManager.instance().handleKeyDown(
-      spaceEvent({ shiftKey: true })
+      spaceEvent({ shiftKey: true }),
     );
     await CommandContextManager.instance().handleKeyDown(
-      spaceEvent({ metaKey: true })
+      spaceEvent({ metaKey: true }),
     );
     expect(execFn).not.toBeCalled();
   });
@@ -285,7 +285,7 @@ describe("CommandContextManager text-editing guard", () => {
   it("ignores key repeats from a held key", async () => {
     const execFn = bindSpace();
     await CommandContextManager.instance().handleKeyDown(
-      spaceEvent({ repeat: true })
+      spaceEvent({ repeat: true }),
     );
     expect(execFn).not.toBeCalled();
   });

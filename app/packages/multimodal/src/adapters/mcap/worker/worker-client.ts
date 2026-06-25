@@ -91,7 +91,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
   }
 
   readTopicTimeBounds(
-    request: McapReadTopicTimeBoundsRequest
+    request: McapReadTopicTimeBoundsRequest,
   ): Promise<readonly McapTopicTimeBounds[]> {
     return this.request("readTopicTimeBounds", request);
   }

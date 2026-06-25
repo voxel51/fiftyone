@@ -167,7 +167,7 @@ export interface McapIndexedReaderLike {
    * with unbounded lookback, without decoding chunk records.
    */
   readLatestIndexedMessageTimes?(
-    args: McapReadLatestIndexedMessageTimesRequest
+    args: McapReadLatestIndexedMessageTimesRequest,
   ): Promise<ReadonlyMap<string, readonly McapIndexedMessageTime[]>>;
 
   /**
@@ -175,7 +175,7 @@ export interface McapIndexedReaderLike {
    * decoding chunk records.
    */
   readTopicIndexedTimeBounds?(
-    args: McapReadTopicIndexedTimeBoundsRequest
+    args: McapReadTopicIndexedTimeBoundsRequest,
   ): Promise<ReadonlyMap<string, McapTopicIndexedTimeBounds | null>>;
 
   /**

@@ -89,7 +89,7 @@ describe("mcapStreamPolicies", () => {
         createTopic("/cam/image_rect_compressed"),
         createTopic("/cam/annotations", "foxglove.ImageAnnotations"),
         createTopic("/lidar", "foxglove.PointCloud"),
-      ])
+      ]),
     );
 
     // No tolerances: latest-at-or-before with unbounded lookback handles
@@ -107,7 +107,7 @@ describe("mcapStreamPolicies", () => {
 
   it("ignores sources with unknown types", () => {
     expect(
-      mcapStreamPolicies([{ id: "/radar", type: "radar", label: "radar" }])
+      mcapStreamPolicies([{ id: "/radar", type: "radar", label: "radar" }]),
     ).toEqual({});
   });
 });
@@ -116,7 +116,7 @@ function createTopic(
   topic: string,
   schema = "foxglove.CompressedImage",
   encoding = "protobuf",
-  schemaEncoding = "protobuf"
+  schemaEncoding = "protobuf",
 ): StreamInventory {
   return {
     $typeName: "fiftyone.multimodal.schemas.v1.StreamInventory",

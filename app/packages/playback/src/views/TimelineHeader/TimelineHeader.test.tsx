@@ -157,7 +157,7 @@ describe("TimelineHeader", () => {
               [6, 8],
             ]}
           />
-        </HeaderHarness>
+        </HeaderHarness>,
       );
       const strip = screen.getByTestId("buffered-ranges-strip");
       // Lane starts after the label column, like the ruler and playhead.
@@ -176,7 +176,7 @@ describe("TimelineHeader", () => {
       render(
         <HeaderHarness duration={10}>
           <SetBufferedRanges ranges={[[-2, 25]]} />
-        </HeaderHarness>
+        </HeaderHarness>,
       );
       const strip = screen.getByTestId("buffered-ranges-strip");
       const segment = strip.children[0] as HTMLElement;

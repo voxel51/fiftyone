@@ -85,7 +85,7 @@ export function readMcapModalLayout(): McapPersistedModalLayout | null {
  * toggles and the layout observer write independently.
  */
 export function writeMcapModalLayout(
-  patch: Partial<Omit<McapPersistedModalLayout, "version">>
+  patch: Partial<Omit<McapPersistedModalLayout, "version">>,
 ): void {
   try {
     const storage = globalThis.localStorage;

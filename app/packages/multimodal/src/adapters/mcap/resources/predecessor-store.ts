@@ -45,7 +45,7 @@ export interface McapPredecessorStore {
   lookup(
     topic: string,
     timeNs: bigint,
-    limitPerTopic: number
+    limitPerTopic: number,
   ): readonly McapIndexedMessageTime[] | undefined;
 
   /**

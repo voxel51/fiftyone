@@ -33,7 +33,7 @@ export type McapTopicStatus = "loading" | "ready" | "stale" | "gap" | "failed";
 // initial value overload would otherwise narrow this to a read-only Atom.
 const mcapTopicStatusAtom = atomFamily(
   (_topic: string) =>
-    atom<McapTopicStatus>("loading") as PrimitiveAtom<McapTopicStatus>
+    atom<McapTopicStatus>("loading") as PrimitiveAtom<McapTopicStatus>,
 );
 
 /**
@@ -43,7 +43,7 @@ const mcapTopicStatusAtom = atomFamily(
  * data until 0:12" instead of a generic gap message.
  */
 const mcapTopicStartTimeSecAtom = atomFamily(
-  (_topic: string) => atom<number | null>(null) as PrimitiveAtom<number | null>
+  (_topic: string) => atom<number | null>(null) as PrimitiveAtom<number | null>,
 );
 
 /**
@@ -54,12 +54,12 @@ const mcapTopicStartTimeSecAtom = atomFamily(
  * identity re-derives the combined atom.
  */
 export function useMcapTopicStatuses(
-  topics: readonly string[]
+  topics: readonly string[],
 ): readonly McapTopicStatus[] {
   const store = usePlaybackStore();
   const statusesAtom = useMemo(
     () => atom((get) => topics.map((topic) => get(mcapTopicStatusAtom(topic)))),
-    [topics]
+    [topics],
   );
   return useAtomValue(statusesAtom, { store });
 }
@@ -69,15 +69,15 @@ export function useMcapTopicStatuses(
  * index-aligned with `topics`. Pass a referentially stable array.
  */
 export function useMcapTopicStartTimes(
-  topics: readonly string[]
+  topics: readonly string[],
 ): readonly (number | null)[] {
   const store = usePlaybackStore();
   const startTimesAtom = useMemo(
     () =>
       atom((get) =>
-        topics.map((topic) => get(mcapTopicStartTimeSecAtom(topic)))
+        topics.map((topic) => get(mcapTopicStartTimeSecAtom(topic))),
       ),
-    [topics]
+    [topics],
   );
   return useAtomValue(startTimesAtom, { store });
 }
@@ -85,7 +85,7 @@ export function useMcapTopicStartTimes(
 /** Non-reactive read for the data stream and tests. */
 export function getMcapTopicStatus(
   store: PlaybackStore,
-  topic: string
+  topic: string,
 ): McapTopicStatus {
   return store.get(mcapTopicStatusAtom(topic));
 }
@@ -94,7 +94,7 @@ export function getMcapTopicStatus(
 export function setMcapTopicStatus(
   store: PlaybackStore,
   topic: string,
-  status: McapTopicStatus
+  status: McapTopicStatus,
 ): void {
   store.set(mcapTopicStatusAtom(topic), status);
 }
@@ -103,7 +103,7 @@ export function setMcapTopicStatus(
 export function setMcapTopicStartTimeSec(
   store: PlaybackStore,
   topic: string,
-  startTimeSec: number | null
+  startTimeSec: number | null,
 ): void {
   store.set(mcapTopicStartTimeSecAtom(topic), startTimeSec);
 }

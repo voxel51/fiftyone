@@ -39,7 +39,7 @@ const STRONG_CAPABILITIES = {
 
 function renderLayoutHook(sources: readonly SceneSource[]) {
   return renderHook(() =>
-    useMcapModalLayout({ sources, capabilities: STRONG_CAPABILITIES })
+    useMcapModalLayout({ sources, capabilities: STRONG_CAPABILITIES }),
   );
 }
 
@@ -208,7 +208,7 @@ describe("McapModalLayoutPersistence", () => {
       >
         <LayoutDriver next="camera-default" />
         <McapModalLayoutPersistence />
-      </TilingProvider>
+      </TilingProvider>,
     );
 
     act(() => {
@@ -226,7 +226,7 @@ describe("McapModalLayoutPersistence", () => {
       >
         <LayoutDriver next="camera-default" />
         <McapModalLayoutPersistence />
-      </TilingProvider>
+      </TilingProvider>,
     );
 
     // Unmount before the 500ms debounce fires.

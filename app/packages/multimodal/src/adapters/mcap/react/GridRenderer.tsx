@@ -115,7 +115,7 @@ function PointCloudPreviewFrame({
   const [cameraPose, setCameraPose] = useMcapGridCameraPose();
   const layers = useMemo(
     () => [{ frame: frame.pointCloud, id: "preview" }],
-    [frame.pointCloud]
+    [frame.pointCloud],
   );
 
   return (

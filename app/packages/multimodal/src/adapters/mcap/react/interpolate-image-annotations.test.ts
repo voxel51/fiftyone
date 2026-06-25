@@ -31,7 +31,7 @@ import {
 
 function circle(
   position: readonly [number, number],
-  diameter: number
+  diameter: number,
 ): ImageAnnotationCircle {
   return {
     position,
@@ -44,7 +44,7 @@ function circle(
 
 function text(
   t: string,
-  position: readonly [number, number]
+  position: readonly [number, number],
 ): ImageAnnotationText {
   return {
     position,
@@ -57,7 +57,7 @@ function text(
 
 function pointsPrim(
   type: ImageAnnotationPoints["type"],
-  points: readonly (readonly [number, number])[]
+  points: readonly (readonly [number, number])[],
 ): ImageAnnotationPoints {
   return {
     type,
@@ -70,7 +70,7 @@ function pointsPrim(
 }
 
 function lineList(
-  points: readonly (readonly [number, number])[]
+  points: readonly (readonly [number, number])[],
 ): ImageAnnotationPoints {
   return pointsPrim("line-list", points);
 }
@@ -78,7 +78,7 @@ function lineList(
 function viz(
   parts: Partial<
     Pick<ImageAnnotationsVisualization, "circles" | "points" | "texts">
-  > = {}
+  > = {},
 ): ImageAnnotationsVisualization {
   return {
     kind: VISUALIZATION_KIND.IMAGE_ANNOTATIONS,
@@ -98,7 +98,7 @@ function boxSegments(
   x: number,
   y: number,
   w: number,
-  h: number
+  h: number,
 ): [Point2, Point2][] {
   const bl: Point2 = [x, y];
   const br: Point2 = [x + w, y];
@@ -123,14 +123,14 @@ describe("interpolationFraction", () => {
         previousTimelineTimeNs: ns(0),
         nextTimelineTimeNs: ns(100),
         playheadNs: ns(50),
-      })
+      }),
     ).toBe(0.5);
     expect(
       interpolationFraction({
         previousTimelineTimeNs: ns(0),
         nextTimelineTimeNs: ns(100),
         playheadNs: ns(25),
-      })
+      }),
     ).toBe(0.25);
   });
 
@@ -140,7 +140,7 @@ describe("interpolationFraction", () => {
         previousTimelineTimeNs: ns(0),
         nextTimelineTimeNs: ns(100),
         playheadNs: ns(250),
-      })
+      }),
     ).toBe(1);
   });
 
@@ -150,14 +150,14 @@ describe("interpolationFraction", () => {
         previousTimelineTimeNs: ns(100),
         nextTimelineTimeNs: ns(100),
         playheadNs: ns(150),
-      })
+      }),
     ).toBeNull();
     expect(
       interpolationFraction({
         previousTimelineTimeNs: ns(100),
         nextTimelineTimeNs: ns(50),
         playheadNs: ns(120),
-      })
+      }),
     ).toBeNull();
   });
 
@@ -167,14 +167,14 @@ describe("interpolationFraction", () => {
         previousTimelineTimeNs: ns(100),
         nextTimelineTimeNs: ns(200),
         playheadNs: ns(100),
-      })
+      }),
     ).toBeNull();
     expect(
       interpolationFraction({
         previousTimelineTimeNs: ns(100),
         nextTimelineTimeNs: ns(200),
         playheadNs: ns(50),
-      })
+      }),
     ).toBeNull();
   });
 });
@@ -183,7 +183,7 @@ describe("vizOf", () => {
   const msgWith = (visualization: unknown): McapDecodedMessage =>
     ({
       decoded: { output: { visualization } },
-    } as unknown as McapDecodedMessage);
+    }) as unknown as McapDecodedMessage;
 
   it("returns the visualization when it is an image-annotations kind", () => {
     const v = viz({ circles: [circle([1, 2], 4)] });
@@ -197,7 +197,7 @@ describe("vizOf", () => {
 
   it("returns null for a non-image-annotations visualization", () => {
     expect(
-      vizOf(msgWith({ kind: VISUALIZATION_KIND.ENCODED_IMAGE }))
+      vizOf(msgWith({ kind: VISUALIZATION_KIND.ENCODED_IMAGE })),
     ).toBeNull();
   });
 });
@@ -230,8 +230,8 @@ describe("aabbIoU", () => {
     expect(
       aabbIoU(
         { minX: 0, minY: 0, maxX: 10, maxY: 10 },
-        { minX: 0, minY: 0, maxX: 10, maxY: 10 }
-      )
+        { minX: 0, minY: 0, maxX: 10, maxY: 10 },
+      ),
     ).toBe(1);
   });
 
@@ -239,15 +239,15 @@ describe("aabbIoU", () => {
     expect(
       aabbIoU(
         { minX: 0, minY: 0, maxX: 10, maxY: 10 },
-        { minX: 20, minY: 20, maxX: 30, maxY: 30 }
-      )
+        { minX: 20, minY: 20, maxX: 30, maxY: 30 },
+      ),
     ).toBe(0);
     // shares only the x=10 edge -> no positive-area intersection
     expect(
       aabbIoU(
         { minX: 0, minY: 0, maxX: 10, maxY: 10 },
-        { minX: 10, minY: 0, maxX: 20, maxY: 10 }
-      )
+        { minX: 10, minY: 0, maxX: 20, maxY: 10 },
+      ),
     ).toBe(0);
   });
 
@@ -256,8 +256,8 @@ describe("aabbIoU", () => {
     expect(
       aabbIoU(
         { minX: 0, minY: 0, maxX: 10, maxY: 10 },
-        { minX: 5, minY: 5, maxX: 15, maxY: 15 }
-      )
+        { minX: 5, minY: 5, maxX: 15, maxY: 15 },
+      ),
     ).toBeCloseTo(25 / 175, 6);
   });
 
@@ -265,8 +265,8 @@ describe("aabbIoU", () => {
     expect(
       aabbIoU(
         { minX: 0, minY: 0, maxX: 0, maxY: 0 },
-        { minX: 0, minY: 0, maxX: 0, maxY: 0 }
-      )
+        { minX: 0, minY: 0, maxX: 0, maxY: 0 },
+      ),
     ).toBe(0);
   });
 });
@@ -287,8 +287,8 @@ describe("chamferDistance", () => {
         [
           [0, 0],
           [10, 0],
-        ]
-      )
+        ],
+      ),
     ).toBe(0);
   });
 
@@ -328,7 +328,7 @@ describe("interpolateTexts", () => {
     const out = interpolateTexts(
       [text("car", [0, 0])],
       [text("car", [10, 10])],
-      0.5
+      0.5,
     );
     expect(out[0].position).toEqual([5, 5]);
     expect(out[0].text).toBe("car");
@@ -338,7 +338,7 @@ describe("interpolateTexts", () => {
     const out = interpolateTexts(
       [text("car", [0, 0])],
       [text("truck", [0, 0])],
-      0.5
+      0.5,
     );
     expect(out[0].position).toEqual([0, 0]);
   });
@@ -347,7 +347,7 @@ describe("interpolateTexts", () => {
     const out = interpolateTexts(
       [text("car", [0, 0])],
       [text("car", [300, 0])],
-      0.5
+      0.5,
     );
     expect(out[0].position).toEqual([0, 0]);
   });
@@ -433,7 +433,7 @@ describe("interpolateLineList", () => {
       next,
       [text("car", [5, 5])],
       [text("car", [10, 5])],
-      0.5
+      0.5,
     );
     expect(out.type).toBe("line-list");
     expect(out.points).toHaveLength(8);
@@ -451,7 +451,7 @@ describe("interpolateLineList", () => {
       next,
       [text("car", [5, 5])],
       [text("truck", [10, 5])],
-      0.5
+      0.5,
     );
     expect(out.points).toEqual(prevPts);
   });
@@ -475,7 +475,7 @@ describe("interpolateLineList", () => {
       next,
       [text("car", [5, 5])],
       [text("car", [5, 5])],
-      0.5
+      0.5,
     );
     expect(out.points).toEqual(prevPts);
   });
@@ -583,7 +583,7 @@ describe("interpolateImageAnnotations", () => {
   it("preserves the kind discriminant", () => {
     const v = viz();
     expect(interpolateImageAnnotations(v, v, 0.5).kind).toBe(
-      VISUALIZATION_KIND.IMAGE_ANNOTATIONS
+      VISUALIZATION_KIND.IMAGE_ANNOTATIONS,
     );
   });
 });

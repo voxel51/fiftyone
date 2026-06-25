@@ -92,7 +92,11 @@ const Options: React.FC<{
           </Link>
         )}
 
-        <Link to={fitSelectionData} className={styles.link} title={"Fit data (f)"}>
+        <Link
+          to={fitSelectionData}
+          className={styles.link}
+          title={"Fit data (f)"}
+        >
           <CenterFocusWeak />
         </Link>
 

@@ -36,7 +36,7 @@ export async function createDefaultMcapReader(
     readIndexedMessageTimes: (args?: McapReadIndexedMessageTimesRequest) =>
       readIndexedMessageTimesForReader(reader, readable, args),
     readLatestIndexedMessageTimes: (
-      args: McapReadLatestIndexedMessageTimesRequest
+      args: McapReadLatestIndexedMessageTimesRequest,
     ) => readLatestIndexedMessageTimesForReader(reader, readable, args),
     readTopicIndexedTimeBounds: (args: McapReadTopicIndexedTimeBoundsRequest) =>
       readTopicIndexedTimeBoundsForReader(reader, readable, args),

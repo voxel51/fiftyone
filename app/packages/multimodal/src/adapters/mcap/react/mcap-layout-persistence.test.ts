@@ -57,7 +57,7 @@ describe("mcap-layout-persistence", () => {
   it("rejects payloads from other schema versions", () => {
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ version: 99, leftSidebarOpen: true })
+      JSON.stringify({ version: 99, leftSidebarOpen: true }),
     );
     expect(readMcapModalLayout()).toBeNull();
   });
@@ -69,7 +69,7 @@ describe("mcap-layout-persistence", () => {
         version: 1,
         leftSidebarOpen: true,
         layout: { direction: "diagonal", first: "a", second: "b" },
-      })
+      }),
     );
     const read = readMcapModalLayout();
     expect(read?.leftSidebarOpen).toBe(true);
@@ -87,7 +87,7 @@ describe("mcap-layout-persistence", () => {
           direction: "column",
           first: { direction: "row", first: "a-1", second: "b-2" },
           second: "c-3",
-        })
+        }),
       ).toBe(true);
     });
 
@@ -96,7 +96,7 @@ describe("mcap-layout-persistence", () => {
       expect(isValidMosaicLayout(null)).toBe(false);
       expect(isValidMosaicLayout(42)).toBe(false);
       expect(isValidMosaicLayout({ direction: "row", first: "a-1" })).toBe(
-        false
+        false,
       );
       expect(
         isValidMosaicLayout({
@@ -104,7 +104,7 @@ describe("mcap-layout-persistence", () => {
           first: "a-1",
           second: "b-2",
           splitPercentage: "60",
-        })
+        }),
       ).toBe(false);
       expect(
         isValidMosaicLayout({
@@ -112,7 +112,7 @@ describe("mcap-layout-persistence", () => {
           first: "a-1",
           second: "b-2",
           splitPercentage: -1,
-        })
+        }),
       ).toBe(false);
       expect(
         isValidMosaicLayout({
@@ -120,7 +120,7 @@ describe("mcap-layout-persistence", () => {
           first: "a-1",
           second: "b-2",
           splitPercentage: 101,
-        })
+        }),
       ).toBe(false);
     });
   });

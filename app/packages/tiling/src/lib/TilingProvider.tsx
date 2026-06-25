@@ -268,7 +268,7 @@ export const TileSettingsContent: React.FC<{
   if (!tileId || tileId !== focusedTileId || !settingsSlotEl) return null;
   return createPortal(
     <div onPointerDown={stopPortalEvent}>{children}</div>,
-    settingsSlotEl
+    settingsSlotEl,
   );
 };
 

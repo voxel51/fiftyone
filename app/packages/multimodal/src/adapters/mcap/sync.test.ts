@@ -130,9 +130,9 @@ describe("MCAP sync policy selection", () => {
           },
         },
         topics: ["/camera"],
-      })
+      }),
     ).toThrow(
-      "MCAP sync policy toleranceAfterNs for /camera is not valid for LATEST"
+      "MCAP sync policy toleranceAfterNs for /camera is not valid for LATEST",
     );
   });
 

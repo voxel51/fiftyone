@@ -59,7 +59,7 @@ const MIN_MATCH_IOU = 0.15;
 function interpolateImageAnnotations(
   prev: ImageAnnotationsVisualization,
   next: ImageAnnotationsVisualization,
-  f: number
+  f: number,
 ): ImageAnnotationsVisualization {
   return {
     kind: prev.kind,
@@ -72,7 +72,7 @@ function interpolateImageAnnotations(
 function interpolateCircles(
   prev: readonly ImageAnnotationCircle[],
   next: readonly ImageAnnotationCircle[],
-  f: number
+  f: number,
 ): readonly ImageAnnotationCircle[] {
   // Index matching is acceptable for circles — they're rare in this data
   // and tend to stay in order; if counts differ we just keep prev.
@@ -90,7 +90,7 @@ function interpolateCircles(
 function interpolateTexts(
   prev: readonly ImageAnnotationText[],
   next: readonly ImageAnnotationText[],
-  f: number
+  f: number,
 ): readonly ImageAnnotationText[] {
   // Match texts by `text` content + nearest position, greedy per content.
   const out: ImageAnnotationText[] = [];
@@ -129,7 +129,7 @@ function interpolateTexts(
 function interpolatePointsArray(
   prev: ImageAnnotationsVisualization,
   next: ImageAnnotationsVisualization,
-  f: number
+  f: number,
 ): readonly ImageAnnotationPoints[] {
   if (prev.points.length !== next.points.length) return prev.points;
   return prev.points.map((pp, idx) => {
@@ -151,7 +151,7 @@ function interpolateLineList(
   nextPrim: ImageAnnotationPoints,
   prevTexts: readonly ImageAnnotationText[],
   nextTexts: readonly ImageAnnotationText[],
-  f: number
+  f: number,
 ): ImageAnnotationPoints {
   const prevGroups = groupLineList(prevPrim.points, prevTexts);
   const nextGroups = groupLineList(nextPrim.points, nextTexts);
@@ -172,7 +172,7 @@ interface MatchedGroupPair {
 
 function matchLineListGroups(
   prevGroups: readonly Group[],
-  nextGroups: readonly Group[]
+  nextGroups: readonly Group[],
 ): readonly MatchedGroupPair[] {
   // Per-prev candidate selection:
   //   1. Same label class (hard).
@@ -194,7 +194,7 @@ function matchLineListGroups(
 function bestNextGroupIndex(
   prev: Group,
   nextGroups: readonly Group[],
-  usedNext: ReadonlySet<number>
+  usedNext: ReadonlySet<number>,
 ): number {
   let bestIdx = -1;
   let bestScore = Infinity;
@@ -220,7 +220,7 @@ function appendInterpolatedSegments(
   out: Point2[],
   prev: Group,
   next: Group | null,
-  f: number
+  f: number,
 ): void {
   if (!next || prev.segments.length !== next.segments.length) {
     appendSegments(out, prev.segments);
@@ -235,7 +235,7 @@ function appendInterpolatedSegments(
 
 function appendSegments(
   out: Point2[],
-  segments: readonly [Point2, Point2][]
+  segments: readonly [Point2, Point2][],
 ): void {
   for (const [a, b] of segments) {
     out.push(a, b);
@@ -256,16 +256,16 @@ interface Group {
 
 function groupLineList(
   points: readonly Point2[],
-  texts: readonly ImageAnnotationText[]
+  texts: readonly ImageAnnotationText[],
 ): readonly Group[] {
   return groupLineSegmentsByLabel(points, texts).map(({ label, segments }) =>
-    makeGroup(segments, label)
+    makeGroup(segments, label),
   );
 }
 
 function makeGroup(
   segments: readonly [Point2, Point2][],
-  label: string | null
+  label: string | null,
 ): Group {
   const bounds = segmentsBounds(segments);
   const centroid: Point2 = [
@@ -282,7 +282,7 @@ function makeGroup(
 }
 
 function uniqueVertices(
-  segments: readonly [Point2, Point2][]
+  segments: readonly [Point2, Point2][],
 ): readonly Point2[] {
   const seen = new Set<string>();
   const out: Point2[] = [];

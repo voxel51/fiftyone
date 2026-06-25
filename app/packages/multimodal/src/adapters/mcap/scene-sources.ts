@@ -23,7 +23,7 @@ export const MCAP_SOURCE_TYPE = {
 } as const;
 
 export type McapSourceType =
-  typeof MCAP_SOURCE_TYPE[keyof typeof MCAP_SOURCE_TYPE];
+  (typeof MCAP_SOURCE_TYPE)[keyof typeof MCAP_SOURCE_TYPE];
 
 // Latest-at-or-before with no tolerance = unbounded lookback: the read
 // layer resolves the predecessor message however sparse the stream is
@@ -48,7 +48,7 @@ const SYNC_POLICY_BY_TYPE: Record<McapSourceType, McapStreamSyncPolicy> = {
  * defaults stay deterministic per file.
  */
 export function mcapSceneSources(
-  topics: readonly StreamInventory[]
+  topics: readonly StreamInventory[],
 ): readonly SceneSource[] {
   const classified: Array<{
     id: string;
@@ -100,7 +100,7 @@ export function mcapSceneSources(
  * without per-topic configuration.
  */
 export function mcapStreamPolicies(
-  sources: readonly SceneSource[]
+  sources: readonly SceneSource[],
 ): McapStreamSyncPolicies {
   const policies: Record<string, McapStreamSyncPolicy> = {};
   for (const source of sources) {

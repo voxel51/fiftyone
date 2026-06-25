@@ -134,7 +134,7 @@ describe("PointCloudPanel", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const setAttribute = vi.spyOn(
       THREE.BufferGeometry.prototype,
-      "setAttribute"
+      "setAttribute",
     );
 
     const { container } = render(
@@ -166,11 +166,11 @@ describe("PointCloudPanel", () => {
           },
         ]}
         showHud={false}
-      />
+      />,
     );
 
     const positionCalls = setAttribute.mock.calls.filter(
-      ([attributeName]) => attributeName === "position"
+      ([attributeName]) => attributeName === "position",
     );
     expect(positionCalls).toHaveLength(2);
 
@@ -232,15 +232,15 @@ describe("PointCloudPanel", () => {
     } as const;
 
     const { rerender } = render(
-      <PointCloudPanel fit="never" layers={[layer]} />
+      <PointCloudPanel fit="never" layers={[layer]} />,
     );
     expect(
-      screen.getByTestId("base-3d-scene").getAttribute("data-camera-pose")
+      screen.getByTestId("base-3d-scene").getAttribute("data-camera-pose"),
     ).toBe("");
 
     rerender(<PointCloudPanel fit="initial" layers={[layer]} />);
     expect(
-      screen.getByTestId("base-3d-scene").getAttribute("data-camera-pose")
+      screen.getByTestId("base-3d-scene").getAttribute("data-camera-pose"),
     ).not.toBe("");
   });
 
@@ -260,7 +260,7 @@ describe("PointCloudPanel", () => {
             id: "/points",
           },
         ]}
-      />
+      />,
     );
 
     expect(screen.queryByText("No finite points")).toBeNull();

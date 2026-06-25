@@ -172,7 +172,7 @@ describe("stream status + buffering feedback", () => {
         onStore={storeCapture.onStore}
         source={source}
       />,
-      { wrapper: TestProviders }
+      { wrapper: TestProviders },
     );
     const store = storeCapture.store();
 
@@ -189,7 +189,7 @@ describe("stream status + buffering feedback", () => {
             bytes: new Uint8Array([1, 2, 3]),
             kind: VISUALIZATION_KIND.ENCODED_IMAGE,
           },
-        })
+        }),
       );
       await Promise.resolve();
     });
@@ -208,7 +208,7 @@ describe("stream status + buffering feedback", () => {
         expect(ranges[0][0]).toBe(0);
         expect(ranges[0][1]).toBeGreaterThan(0);
       },
-      { timeout: 2000 }
+      { timeout: 2000 },
     );
   });
 
@@ -218,7 +218,7 @@ describe("stream status + buffering feedback", () => {
     const client = createClient({
       readSynchronizedMessageBatch: vi.fn(async () => []),
       readSynchronizedMessages: vi.fn(async (request) =>
-        createEmptyWindow(request.timeNs)
+        createEmptyWindow(request.timeNs),
       ),
       readTimelineRange: vi.fn(async () => createTimelineRange()),
     });
@@ -229,7 +229,7 @@ describe("stream status + buffering feedback", () => {
         onStore={storeCapture.onStore}
         source={source}
       />,
-      { wrapper: TestProviders }
+      { wrapper: TestProviders },
     );
     const store = storeCapture.store();
 
@@ -248,10 +248,10 @@ describe("stream status + buffering feedback", () => {
       let api: ReturnType<typeof usePlayback> | undefined;
       const client = createClient({
         readSynchronizedMessageBatch: vi.fn(() =>
-          Promise.reject(new Error("decode failed"))
+          Promise.reject(new Error("decode failed")),
         ),
         readSynchronizedMessages: vi.fn(() =>
-          Promise.reject(new Error("decode failed"))
+          Promise.reject(new Error("decode failed")),
         ),
         readTimelineRange: vi.fn(async () => createTimelineRange()),
       });
@@ -265,7 +265,7 @@ describe("stream status + buffering feedback", () => {
           }}
           source={source}
         />,
-        { wrapper: TestProviders }
+        { wrapper: TestProviders },
       );
       const store = storeCapture.store();
 
@@ -306,7 +306,9 @@ describe("stream status + buffering feedback", () => {
     const client = createClient({
       readSynchronizedMessageBatch: vi.fn(
         () =>
-          new Promise<readonly McapSynchronizedMessageWindow[]>(() => undefined)
+          new Promise<readonly McapSynchronizedMessageWindow[]>(
+            () => undefined,
+          ),
       ),
       readSynchronizedMessages: vi.fn((request) => {
         const handle = deferred<McapSynchronizedMessageWindow>();
@@ -315,7 +317,7 @@ describe("stream status + buffering feedback", () => {
       }),
       // 60s file so the seek target sits far beyond the mount lookahead.
       readTimelineRange: vi.fn(async () =>
-        createTimelineRange(60_000_000_000n)
+        createTimelineRange(60_000_000_000n),
       ),
     });
 
@@ -328,7 +330,7 @@ describe("stream status + buffering feedback", () => {
         onStore={storeCapture.onStore}
         source={source}
       />,
-      { wrapper: TestProviders }
+      { wrapper: TestProviders },
     );
     const store = storeCapture.store();
 
@@ -359,7 +361,7 @@ describe("stream status + buffering feedback", () => {
             bytes: new Uint8Array([9]),
             kind: VISUALIZATION_KIND.ENCODED_IMAGE,
           },
-        })
+        }),
       );
       await Promise.resolve();
     });
@@ -377,7 +379,9 @@ describe("stream status + buffering feedback", () => {
     const client = createClient({
       readSynchronizedMessageBatch: vi.fn(
         () =>
-          new Promise<readonly McapSynchronizedMessageWindow[]>(() => undefined)
+          new Promise<readonly McapSynchronizedMessageWindow[]>(
+            () => undefined,
+          ),
       ),
       readTimelineRange: vi.fn(async () => createTimelineRange()),
     });
@@ -388,7 +392,7 @@ describe("stream status + buffering feedback", () => {
         onStore={storeCapture.onStore}
         source={sourceA}
       />,
-      { wrapper: TestProviders }
+      { wrapper: TestProviders },
     );
     const store = storeCapture.store();
     await waitFor(() => {
@@ -405,7 +409,7 @@ describe("stream status + buffering feedback", () => {
         client={client}
         onStore={storeCapture.onStore}
         source={sourceB}
-      />
+      />,
     );
 
     await waitFor(() => {
@@ -420,10 +424,12 @@ describe("stream status + buffering feedback", () => {
     const client = createClient({
       readSynchronizedMessageBatch: vi.fn(
         () =>
-          new Promise<readonly McapSynchronizedMessageWindow[]>(() => undefined)
+          new Promise<readonly McapSynchronizedMessageWindow[]>(
+            () => undefined,
+          ),
       ),
       readSynchronizedMessages: vi.fn(
-        () => new Promise<McapSynchronizedMessageWindow>(() => undefined)
+        () => new Promise<McapSynchronizedMessageWindow>(() => undefined),
       ),
       readTimelineRange: vi.fn(async () => createTimelineRange()),
       readTopicTimeBounds: vi.fn(async () => [
@@ -441,7 +447,7 @@ describe("stream status + buffering feedback", () => {
         onStore={storeCapture.onStore}
         source={source}
       />,
-      { wrapper: TestProviders }
+      { wrapper: TestProviders },
     );
     const store = storeCapture.store();
 
@@ -527,7 +533,7 @@ function createClient({
   // never-settling promise so tests that only exercise the batch lane
   // aren't affected by it.
   readSynchronizedMessages = vi.fn(
-    () => new Promise<McapSynchronizedMessageWindow>(() => undefined)
+    () => new Promise<McapSynchronizedMessageWindow>(() => undefined),
   ),
   readTopicTimeBounds = vi.fn(async () => []),
 }: {

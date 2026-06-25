@@ -27,9 +27,9 @@ export function EmbeddingsPlot({
   type WithRgb = { rgb?: [number, number, number][] };
   const fieldColorscale =
     (
-      colorscheme.colorscales.find(
-        (item) => item.path === labelField
-      ) as WithRgb | undefined
+      colorscheme.colorscales.find((item) => item.path === labelField) as
+        | WithRgb
+        | undefined
     )?.rgb ??
     (colorscheme.defaultColorscale as WithRgb)?.rgb ??
     configColorscale;

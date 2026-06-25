@@ -22,7 +22,7 @@ interface StatusSummary {
  * when every topic is current.
  */
 function summarizeStatuses(
-  statuses: readonly McapTopicStatus[]
+  statuses: readonly McapTopicStatus[],
 ): StatusSummary | null {
   for (const status of ["failed", "loading", "gap", "stale"] as const) {
     const affected = statuses.filter((s) => s === status).length;
@@ -60,7 +60,7 @@ function formatStartTime(sec: number): string {
  */
 function earliestGapStartSec(
   statuses: readonly McapTopicStatus[],
-  startTimes: readonly (number | null)[]
+  startTimes: readonly (number | null)[],
 ): number | null {
   let earliest: number | null = null;
   statuses.forEach((status, index) => {
@@ -124,7 +124,7 @@ export const McapTileStatusBadge: React.FC<{
       )}
       {summary.status === "gap" &&
         `${gapCopy(earliestGapStartSec(statuses, startTimes))}${affectedSuffix(
-          summary
+          summary,
         )}`}
       {summary.status === "stale" && `No new data${affectedSuffix(summary)}`}
       {summary.status === "failed" &&

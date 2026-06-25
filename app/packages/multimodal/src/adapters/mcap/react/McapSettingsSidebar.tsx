@@ -18,7 +18,7 @@ const McapSettingsSidebar: React.FC = () => {
     focusedTileId && tiles[focusedTileId] ? tiles[focusedTileId] : null;
   const slotRef = useCallback(
     (el: HTMLDivElement | null) => setSettingsSlotEl(el),
-    [setSettingsSlotEl]
+    [setSettingsSlotEl],
   );
 
   const contextTitle = focusedTile ? focusedTile.title : "Scene context";
