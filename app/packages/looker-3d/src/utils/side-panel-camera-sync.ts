@@ -18,7 +18,7 @@ import type {
 import type { PointCloudCrop } from "./point-cloud-crop";
 import { isPointInsidePointCloudCrop } from "./point-cloud-crop";
 
-export const MAIN_PANEL_ORBIT_ZOOM_SPEED = 0.6;
+export const MAIN_PANEL_ORBIT_ZOOM_SPEED = 1;
 export const MAIN_PANEL_ZOOM_SYNC_MAX_AGE_MS = 250;
 export const MAIN_PANEL_PAN_SYNC_MAX_AGE_MS = 250;
 export const MAIN_PANEL_PAN_SYNC_INTERVAL_MS = 80;
