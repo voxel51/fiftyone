@@ -428,6 +428,7 @@ class TestCloneExecutionStores(unittest.TestCase):
     def _clone(self, seed, src_id, dst_id, id_map=None):
         """Runs ``clone_execution_stores`` against a mocked collection seeded
         with ``seed`` and returns the list of inserted documents."""
+        # pylint: disable=no-name-in-module,import-error
         from fiftyone.operators.store import clone as esc
 
         inserted = []
@@ -650,16 +651,23 @@ class TestCloneExecutionStores(unittest.TestCase):
         mock_coll.insert_many.assert_not_called()
 
     def test_registered_as_extras_cloner(self):
-        # Importing fiftyone must register the cloner (via fiftyone/__init__.py),
-        # so check the registry without importing the clone module directly,
-        # which would itself trigger the registration being asserted.
-        import fiftyone  # noqa: F401
-        import fiftyone.core.dataset as fod
+        # `import fiftyone` alone must register the cloner (via
+        # fiftyone/__init__.py). Checked in a fresh interpreter so the result
+        # can't be satisfied by other tests importing the clone module
+        # directly (which would also trigger registration).
+        import subprocess
+        import sys
 
-        registered = [getattr(c, "__name__", "") for c in fod._extras_cloners]
-        self.assertIn("clone_execution_stores", registered)
+        code = (
+            "import fiftyone\n"
+            "import fiftyone.core.dataset as d\n"
+            "names = [getattr(c, '__name__', '') for c in d._extras_cloners]\n"
+            "assert 'clone_execution_stores' in names, names\n"
+        )
+        subprocess.run([sys.executable, "-c", code], check=True)
 
     def test_register_cloneable_store(self):
+        # pylint: disable=no-name-in-module,import-error
         from fiftyone.operators.store import clone as esc
 
         name = "some_downstream_store"
