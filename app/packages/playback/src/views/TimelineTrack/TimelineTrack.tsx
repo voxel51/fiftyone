@@ -51,6 +51,18 @@ export interface NormalizedEvent {
   resizable?: boolean;
 }
 
+/** A custom action contributed to a track event's context menu. */
+export interface TrackEventMenuItem {
+  /** Menu text, e.g. "Delete track" or "Split at playhead". */
+  label: string;
+  /** Render in the destructive (red) style. */
+  destructive?: boolean;
+  /** Grey out and ignore clicks (e.g. "Merge into…" with no candidates). */
+  disabled?: boolean;
+  /** Receives the event the menu was opened on. */
+  onSelect: (event: NormalizedEvent) => void;
+}
+
 function normalizeEvent(e: TimelineTrackEvent): NormalizedEvent {
   return typeof e === "number" ? { startSec: e } : e;
 }
@@ -98,17 +110,13 @@ export interface TimelineTrackProps {
   /** Fired when an event marker / bar is clicked. Typically seeks. */
   onEventClick?: (event: NormalizedEvent) => void;
   /**
-   * Adds a destructive item to an event's context menu. `label` is the menu
-   * text (e.g. "Delete tag" or "Delete track") and `onDelete` receives the
-   * event the menu was opened on — the handler decides whether that means
-   * deleting the single event or the whole track. Hidden when not provided.
-   * Supply per-row via `decorateTrack` or uniformly via
-   * {@link TimelineWithTracksProps.eventDeleteConfig}.
+   * Custom items appended (below a separator) to an event's context menu.
+   * Each `onSelect` receives the event the menu was opened on — the handler
+   * decides whether that means the single event or the whole track. Supply
+   * per-row via `decorateTrack` or uniformly via
+   * {@link TimelineWithTracksProps.eventMenuItems}. Empty/omitted adds nothing.
    */
-  eventDeleteConfig?: {
-    label: string;
-    onDelete: (event: NormalizedEvent) => void;
-  };
+  eventMenuItems?: TrackEventMenuItem[];
   /** Override the label column text. Defaults to `id`. */
   label?: string;
   height?: number;
@@ -159,7 +167,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   end,
   events = [],
   onEventClick,
-  eventDeleteConfig,
+  eventMenuItems,
   label,
   height = 28,
   labelWidth = 0,
@@ -510,20 +518,27 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                 >
                   Shrink window to fit
                 </MenuTextItem>
-                {eventDeleteConfig && (
+                {eventMenuItems && eventMenuItems.length > 0 && (
                   <>
                     <MenuSeparator />
-                    <MenuTextItem
-                      destructive
-                      onClick={(ev) => {
-                        // Stop the click bubbling to the row's `onClick`
-                        // (`onTrackClick`).
-                        ev.stopPropagation();
-                        eventDeleteConfig.onDelete(event);
-                      }}
-                    >
-                      {eventDeleteConfig.label}
-                    </MenuTextItem>
+                    {eventMenuItems.map((item, i) => (
+                      <MenuTextItem
+                        key={i}
+                        destructive={item.destructive}
+                        disabled={item.disabled}
+                        onClick={(ev) => {
+                          // Stop the click bubbling to the row's `onClick`
+                          // (`onTrackClick`).
+                          ev.stopPropagation();
+
+                          if (!item.disabled) {
+                            item.onSelect(event);
+                          }
+                        }}
+                      >
+                        {item.label}
+                      </MenuTextItem>
+                    ))}
                   </>
                 )}
               </>

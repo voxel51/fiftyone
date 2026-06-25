@@ -22,6 +22,12 @@ export interface SeedVideoAnnotationOptions {
    * existing track. Defaults to none (a clean slate, like `va-demo-bare`).
    */
   trackedSampleIndices?: number[];
+  /**
+   * Sample indices that should carry a SECOND tracked instance (`index=2`,
+   * class `classes[1]`, on every frame) alongside the first — so tests can
+   * exercise multi-track ops like merge. Additive; defaults to none.
+   */
+  secondTrackSampleIndices?: number[];
 }
 
 /**
@@ -46,12 +52,14 @@ export class VideoAnnotateSDK {
       eventClasses = ["approach", "pass", "depart"],
       withEvents = true,
       trackedSampleIndices = [],
+      secondTrackSampleIndices = [],
     } = options;
 
     const pyPaths = JSON.stringify(videoPaths);
     const pyClasses = JSON.stringify(classes);
     const pyEventClasses = JSON.stringify(eventClasses);
     const pyTracked = JSON.stringify(trackedSampleIndices);
+    const pySecondTracked = JSON.stringify(secondTrackSampleIndices);
 
     return this.loader.executePythonCode(`
 import fiftyone as fo
@@ -62,6 +70,7 @@ CLASSES = ${pyClasses}
 EVENT_CLASSES = ${pyEventClasses}
 WITH_EVENTS = ${withEvents ? "True" : "False"}
 TRACKED = set(${pyTracked})
+SECOND_TRACKED = set(${pySecondTracked})
 DETECTIONS_FIELD = "detections"
 FRAME_DETECTIONS_PATH = "frames." + DETECTIONS_FIELD
 EVENTS_FIELD = "events"
@@ -137,6 +146,24 @@ for idx, sample in enumerate(dataset.iter_samples(progress=False, autosave=True)
                 )
             ]
         )
+
+# A SECOND tracked instance (index=2, class CLASSES[1]) appended on every
+# frame of requested samples — for multi-track ops (merge).
+for idx, sample in enumerate(dataset.iter_samples(progress=False, autosave=True)):
+    if idx not in SECOND_TRACKED:
+        continue
+    for fn in range(1, total_frames(sample) + 1):
+        dets = sample.frames[fn]["detections"]
+        if dets is None:
+            dets = fo.Detections(detections=[])
+        dets.detections.append(
+            fo.Detection(
+                label=CLASSES[1],
+                bounding_box=[0.55, 0.55, 0.2, 0.2],
+                index=2,
+            )
+        )
+        sample.frames[fn]["detections"] = dets
 
 # (5) demo temporal events (approach / pass / depart thirds).
 if WITH_EVENTS:

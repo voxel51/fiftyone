@@ -86,6 +86,65 @@ export class VideoAnnotatePom {
   }
 
   /**
+   * Right-click a track's interval bar and choose "Split at playhead" — re-keys
+   * the frames at/after the current playhead onto a fresh instance (a distinct
+   * object), splitting the track in two in one engine transaction.
+   */
+  async splitTrackViaContextMenu(trackId: string) {
+    await this.trackBar(trackId).click({ button: "right" });
+    await this.page
+      .getByRole("menuitem", { name: "Split at playhead" })
+      .click();
+  }
+
+  /**
+   * Seek the playhead by clicking the timeline ruler at `fraction` of its
+   * width — a real timeline seek that lands mid-clip (unlike clicking a track
+   * row, which jumps the playhead to that track's start frame).
+   */
+  async seekToRulerFraction(fraction: number) {
+    // the ruler uses `data-testid` (not the suite's `data-cy` testid attr), so
+    // address it explicitly; `.first()` covers the pinned + drawer layouts
+    const ruler = this.page.locator('[data-testid="timeline-ruler"]').first();
+    const box = await ruler.boundingBox();
+
+    if (!box) {
+      throw new Error("timeline ruler is not visible");
+    }
+
+    await ruler.click({
+      position: { x: box.width * fraction, y: box.height / 2 },
+    });
+  }
+
+  /** Click the toolbar "Split" button (enabled with exactly one track selected). */
+  async clickSplitToolbarButton() {
+    await this.page.locator('button[aria-label="Split"]').click();
+  }
+
+  /** Click the toolbar "Merge" button (enabled with exactly two tracks selected). */
+  async clickMergeToolbarButton() {
+    await this.page.locator('button[aria-label="Merge"]').click();
+  }
+
+  /**
+   * Right-click the source track's interval bar and choose "Merge into
+   * <targetLabel>" — re-keys the source's frames onto the target instance
+   * (target-wins on overlapping frames); the source track ceases to exist.
+   */
+  async mergeTrackViaContextMenu(sourceTrackId: string, targetLabel: string) {
+    await this.trackBar(sourceTrackId).click({ button: "right" });
+    await this.page
+      .getByRole("menuitem", { name: `Merge into ${targetLabel}` })
+      .click();
+  }
+
+  /** Undo the last annotation edit (the ModalAnnotate undo keybinding). */
+  async undo() {
+    await this.page.keyboard.press("ControlOrMeta+z");
+  }
+
+  /**
    * Advance the playhead one frame. Uses the Modal-context "." keybinding
    * (`KnownCommands.ModalStepForward`) rather than the icon button, which is
    * the robust path while the ImaVid buffer settles.

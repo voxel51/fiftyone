@@ -33,6 +33,7 @@ import {
   TimelineWithTracks,
   TrackProvider,
   type Track,
+  type TrackEventMenuItem,
   useDuration,
   usePlaybackStream,
 } from "@fiftyone/playback";
@@ -49,6 +50,7 @@ import { getModalSampleFrameRate } from "../utils/modalSample";
 import { resolveTrackExtentEdit } from "../tracks/trackExtentEdit";
 import { useVideoTrackDecorator } from "../tracks/useVideoTrackDecorator";
 import { useScrollTrackToAnchor } from "../state/useVideoInteraction";
+import { useCurrentFrameGetter } from "../state/useCurrentFrame";
 import {
   useVideoSurfaceActions,
   type VideoSurfaceActions,
@@ -71,7 +73,8 @@ type BaseTrackDecoration = ReturnType<
 /** Decoration a track row contributes to {@link TimelineWithTracks}. */
 type TrackDecoration = BaseTrackDecoration & {
   snapStepSec?: number;
-  eventDeleteConfig?: { label: string; onDelete: () => void };
+  eventMenuItems?: TrackEventMenuItem[];
+  onContextMenu?: (e: React.MouseEvent<HTMLDivElement>) => void;
   onEventEdit?: (
     eventIndex: number,
     newStartSec: number,
@@ -340,16 +343,31 @@ function useTrackColorResolvers(path: string | null): {
   return { resolveObjectColor, resolveTemporalDetectionColor };
 }
 
-/** Build the row decorator that wires presence-bar edits + delete per kind. */
+/** Build the row decorator that wires presence-bar edits + menu per kind. */
 function useTrackDecorator(
-  sample: ModalSample | undefined
+  sample: ModalSample | undefined,
+  objectTracks: Track[]
 ): (track: Track) => TrackDecoration {
   const baseDecorate = useVideoTrackDecorator();
   const actions = useVideoSurfaceActions();
   const stream = useFrameLabelsStream();
+  const getCurrentFrame = useCurrentFrameGetter();
   const fps = getModalSampleFrameRate(sample);
   const snapStepSec =
     Number.isFinite(fps) && fps && fps > 0 ? 1 / fps : undefined;
+
+  // The split boundary, captured when the track's context menu OPENS — not read
+  // live in the menu item's handler, because clicking a menu item seeks the
+  // timeline to the track's start, racing the gesture (explicit payload over
+  // implicit context).
+  const splitFrameRef = useRef(1);
+
+  // id + label of every object track, the universe of merge targets; each row
+  // filters itself out below.
+  const mergeCandidates = useMemo(
+    () => objectTracks.map((t) => ({ id: t.id, label: t.label })),
+    [objectTracks]
+  );
 
   return useCallback(
     (track: Track): TrackDecoration => {
@@ -373,6 +391,9 @@ function useTrackDecorator(
           fps,
           totalFrames: stream.totalFrames,
           actions,
+          getCurrentFrame,
+          splitFrameRef,
+          mergeTargets: mergeCandidates.filter((c) => c.id !== track.id),
         });
       }
 
@@ -389,7 +410,15 @@ function useTrackDecorator(
         actions,
       });
     },
-    [baseDecorate, fps, snapStepSec, actions, stream]
+    [
+      baseDecorate,
+      fps,
+      snapStepSec,
+      actions,
+      stream,
+      getCurrentFrame,
+      mergeCandidates,
+    ]
   );
 }
 
@@ -430,7 +459,7 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   const ready = frameTracksResolved;
 
   useScrollTrackToAnchor();
-  const decorateTrack = useTrackDecorator(sample);
+  const decorateTrack = useTrackDecorator(sample, frameTracks);
 
   return (
     <TrackProvider
@@ -454,6 +483,9 @@ function decorateObjectTrack({
   fps,
   totalFrames,
   actions,
+  getCurrentFrame,
+  splitFrameRef,
+  mergeTargets,
 }: {
   track: Track;
   base: BaseTrackDecoration;
@@ -461,13 +493,35 @@ function decorateObjectTrack({
   fps: number;
   totalFrames: number;
   actions: VideoSurfaceActions;
+  getCurrentFrame: () => number;
+  splitFrameRef: React.MutableRefObject<number>;
+  mergeTargets: { id: string; label: string }[];
 }): TrackDecoration {
+  const menuItems: TrackEventMenuItem[] = [
+    {
+      label: "Delete track",
+      destructive: true,
+      onSelect: () => actions.deleteTrack(track.id),
+    },
+    {
+      // splits at the frame captured when the menu opened (see onContextMenu)
+      label: "Split at playhead",
+      onSelect: () => actions.splitTrack(track.id, splitFrameRef.current),
+    },
+    ...mergeTargets.map((target) => ({
+      label: `Merge into ${target.label}`,
+      onSelect: () => actions.mergeTracks(track.id, target.id),
+    })),
+  ];
+
   return {
     ...base,
     snapStepSec,
-    eventDeleteConfig: {
-      label: "Delete track",
-      onDelete: () => actions.deleteTrack(track.id),
+    eventMenuItems: menuItems,
+    // snapshot the playhead frame as the menu opens, before the item click
+    // seeks the timeline to the track start
+    onContextMenu: () => {
+      splitFrameRef.current = getCurrentFrame();
     },
     onEventEdit: (eventIndex, newStartSec, newEndSec, mode) =>
       applyObjectTrackEdit({
@@ -500,11 +554,17 @@ function decorateTemporalDetectionTrack({
   return {
     ...base,
     snapStepSec,
-    eventDeleteConfig: {
-      label: "Delete track",
-      onDelete: () =>
-        actions.deleteTemporalDetection(tdEvent.fieldPath, tdEvent.detectionId),
-    },
+    eventMenuItems: [
+      {
+        label: "Delete track",
+        destructive: true,
+        onSelect: () =>
+          actions.deleteTemporalDetection(
+            tdEvent.fieldPath,
+            tdEvent.detectionId
+          ),
+      },
+    ],
     onEventEdit: (_eventIndex, newStartSec, newEndSec) =>
       applyTemporalDetectionEdit({
         tdEvent,

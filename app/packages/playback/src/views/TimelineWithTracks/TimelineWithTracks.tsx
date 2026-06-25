@@ -16,8 +16,8 @@ import LoopOverlays from "../Loop/LoopOverlays";
 import PlayheadLine from "../Playhead/PlayheadLine";
 import TimelineHeader from "../TimelineHeader/TimelineHeader";
 import TimelineTrack, {
-  type NormalizedEvent,
   type TimelineTrackProps,
+  type TrackEventMenuItem,
 } from "../TimelineTrack/TimelineTrack";
 import styles from "./TimelineWithTracks.module.css";
 
@@ -38,14 +38,11 @@ export interface TimelineWithTracksProps {
   /** Overlay rendered on top of the ruler row in each TimelineHeader. */
   rulerOverlay?: React.ReactNode;
   /**
-   * Adds a destructive delete item to every track's event context menu. Per-row
-   * overrides can still be supplied via {@link decorateTrack}. See
-   * {@link TimelineTrackProps.eventDeleteConfig}.
+   * Custom context-menu items added to every track's events. Per-row overrides
+   * can still be supplied via {@link decorateTrack}. See
+   * {@link TimelineTrackProps.eventMenuItems}.
    */
-  eventDeleteConfig?: {
-    label: string;
-    onDelete: (event: NormalizedEvent) => void;
-  };
+  eventMenuItems?: TrackEventMenuItem[];
   /**
    * Optional content rendered inline between the playback control buttons and
    * the playhead time display. Forwarded to {@link TimelineHeader}'s
@@ -82,7 +79,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   maxSize = TIMELINE_DRAWER_MAX_SIZE,
   className,
   rulerOverlay,
-  eventDeleteConfig,
+  eventMenuItems,
   extraControls,
   extraActions,
   decorateTrack,
@@ -116,7 +113,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
       pinned
       onPinClick={() => togglePin(track.id)}
       onEventClick={(e) => seek(e.startSec)}
-      eventDeleteConfig={eventDeleteConfig}
+      eventMenuItems={eventMenuItems}
       {...(decorateTrack ? decorateTrack(track, true) : null)}
     />
   );
@@ -193,7 +190,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
                     pinned={false}
                     onPinClick={() => togglePin(track.id)}
                     onEventClick={(e) => seek(e.startSec)}
-                    eventDeleteConfig={eventDeleteConfig}
+                    eventMenuItems={eventMenuItems}
                     {...extra}
                     className={clsx(styles.unpinnedTrack, extra?.className)}
                   />
