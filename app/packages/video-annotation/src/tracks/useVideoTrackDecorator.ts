@@ -6,6 +6,7 @@ import type { Track } from "@fiftyone/playback";
 import clsx from "clsx";
 import { useCallback } from "react";
 import { useVideoInteraction } from "../state/useVideoInteraction";
+import { objectTrackPathOf } from "./frameTracks";
 import { temporalDetectionRefOf } from "./temporalDetectionTracks";
 import styles from "../components/VideoAnnotationSurface.module.css";
 
@@ -62,14 +63,18 @@ export const useVideoTrackDecorator = (): ((
         };
       }
 
+      // An object row addresses `(path, instanceId)` — the path is the field
+      // the track lives on (detections / polylines), carried on its events.
+      const path = objectTrackPathOf(track);
+
       return {
         className: clsx({
           [styles.linkHovered]: hoveredTrackIds.has(track.id),
           [styles.linkSelected]: selectedTrackIds.has(track.id),
         }),
-        onMouseEnter: () => hoverTrack(track.id, true),
-        onMouseLeave: () => hoverTrack(track.id, false),
-        onTrackClick: () => selectTrack(track.id),
+        onMouseEnter: () => path && hoverTrack(track.id, path, true),
+        onMouseLeave: () => path && hoverTrack(track.id, path, false),
+        onTrackClick: () => path && selectTrack(track.id, path),
       };
     },
     [

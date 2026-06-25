@@ -22,6 +22,7 @@ import {
   useColorScheme,
   useColorSeed,
   useDatasetName,
+  useFrameLabelFields,
   useGroupSlice,
   useModalSampleId,
   useView,
@@ -84,7 +85,10 @@ type TrackDecoration = BaseTrackDecoration & {
 };
 
 /** Resolves the row color for a per-frame object track. */
-type ObjectTrackColorResolver = (label: PerInstanceLabel) => string;
+type ObjectTrackColorResolver = (
+  label: PerInstanceLabel,
+  path: string
+) => string;
 
 /** Resolves the row color for a temporal-detection track. */
 type TemporalDetectionColorResolver = (
@@ -210,11 +214,15 @@ function useFrameDerivedTracks(resolveColor: ObjectTrackColorResolver): {
   const engine = useAnnotationEngine();
   const sampleId = useActiveSampleId();
   const visible = useVisibleLabelSchemas();
-  const path = stream ? `frames.${stream.labelsField}` : null;
+  const labelTypes = useFrameLabelFields();
 
-  // Gate the frame field's tracks on the sidebar's visible set — deactivating it
-  // in the schema manager hides its timeline rows, matching the canvas + sidebar.
-  const active = !!path && visible.has(path);
+  // Gate each frame field's tracks on the sidebar's visible set — deactivating
+  // a field in the schema manager hides its timeline rows, matching the canvas
+  // + sidebar.
+  const paths = useMemo(
+    () => Object.keys(labelTypes).filter((p) => visible.has(p)),
+    [labelTypes, visible]
+  );
 
   const [tracks, setTracks] = useState<Track[]>([]);
   const [resolved, setResolved] = useState(false);
@@ -223,14 +231,17 @@ function useFrameDerivedTracks(resolveColor: ObjectTrackColorResolver): {
   const engineVersion = useEngineSelector(engine, () => engine.getVersion());
 
   useEffect(() => {
-    if (!stream || !sampleId || !path) {
+    // The stream's presence is the activation-independent "has a frame field"
+    // signal; without it there's nothing to bootstrap.
+    if (!stream || !sampleId) {
       setTracks([]);
       setResolved(false);
       return undefined;
     }
 
-    // Inactive field: no rows, but still resolved so TD-track pin bootstrap fires.
-    if (!active) {
+    // No visible frame field (none active, or all deactivated): no rows, but
+    // still resolved so the TD-track pin bootstrap fires.
+    if (paths.length === 0) {
       setTracks([]);
       setResolved(true);
       return undefined;
@@ -247,7 +258,7 @@ function useFrameDerivedTracks(resolveColor: ObjectTrackColorResolver): {
         buildPerInstanceTracks({
           engine,
           sample: sampleId,
-          path,
+          paths,
           totalFrames: stream.totalFrames,
           fps: stream.fps,
           resolveColor,
@@ -260,7 +271,7 @@ function useFrameDerivedTracks(resolveColor: ObjectTrackColorResolver): {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- engineVersion is the invalidation signal
-  }, [engine, sampleId, path, active, stream, resolveColor, engineVersion]);
+  }, [engine, sampleId, paths, stream, resolveColor, engineVersion]);
 
   return { tracks, resolved };
 }
@@ -312,23 +323,23 @@ function useTemporalDetectionTracks(
 }
 
 /** Build the row-color resolvers, kept in lock-step with the overlays. */
-function useTrackColorResolvers(path: string | null): {
+function useTrackColorResolvers(): {
   resolveObjectColor: ObjectTrackColorResolver;
   resolveTemporalDetectionColor: TemporalDetectionColorResolver;
 } {
   const scheme = useColorScheme();
   const seed = useColorSeed();
-  const activeField = useActiveDetectionField() ?? DEFAULT_FRAME_FIELD;
 
-  // Color by the ENGINE path (`frames.detections`) to match the sidebar and
-  // canvas; the schema-namespace `activeField` keys a different scheme entry.
+  // Color by each row's own ENGINE path (`frames.detections`,
+  // `frames.polylines`, …) so the row matches its overlay's color and
+  // multi-field rows don't collapse onto one field's scheme entry.
   const resolveObjectColor = useCallback(
-    (label: PerInstanceLabel) =>
-      getLabelColorFromContext(path ?? activeField, label, {
+    (label: PerInstanceLabel, path: string) =>
+      getLabelColorFromContext(path, label, {
         colorScheme: scheme,
         seed,
       }),
-    [path, activeField, scheme, seed]
+    [scheme, seed]
   );
 
   const resolveTemporalDetectionColor = useCallback(
@@ -434,11 +445,8 @@ function useTrackDecorator(
 export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   sample,
 }) => {
-  const stream = useFrameLabelsStream();
-  const path = stream ? `frames.${stream.labelsField}` : null;
-
   const { resolveObjectColor, resolveTemporalDetectionColor } =
-    useTrackColorResolvers(path);
+    useTrackColorResolvers();
 
   const { tracks: frameTracks, resolved: frameTracksResolved } =
     useFrameDerivedTracks(resolveObjectColor);

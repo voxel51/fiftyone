@@ -1,12 +1,16 @@
 /**
  * The `/frames` → flat-FramesData adapter: frame keying, the `frames.<field>`
- * path, element pass-through, `_id` normalization, and empty/absent fields.
+ * path, multi-field projection, element pass-through, `_id` normalization, and
+ * empty/absent fields.
  */
 
+import { LabelType } from "@fiftyone/utilities";
 import { describe, expect, it } from "vitest";
 
 import type { FrameDocLike } from "./framesData";
 import { parseFramesData } from "./framesData";
+
+const DETECTIONS = { "frames.detections": LabelType.Detections };
 
 const doc = (frame_number: number, detections: unknown[]): FrameDocLike => ({
   frame_number,
@@ -20,7 +24,7 @@ describe("parseFramesData", () => {
         doc(1, [{ _id: "d1", instance: { _id: "A", _cls: "Instance" } }]),
         doc(2, [{ _id: "d2", instance: { _id: "A", _cls: "Instance" } }]),
       ],
-      "detections"
+      DETECTIONS
     );
 
     expect(Object.keys(data)).toEqual(["1", "2"]);
@@ -35,10 +39,15 @@ describe("parseFramesData", () => {
     const data = parseFramesData(
       [
         doc(1, [
-          { _id: "d1", label: "car", bounding_box: [0, 0, 1, 1], mask: "m" },
+          {
+            _id: "d1",
+            label: "car",
+            bounding_box: [0, 0, 1, 1],
+            mask_path: "/p/m.png",
+          },
         ]),
       ],
-      "detections"
+      DETECTIONS
     );
 
     const el = data[1]["frames.detections"][0];
@@ -47,12 +56,41 @@ describe("parseFramesData", () => {
       _cls: "Detection",
       label: "car",
       bounding_box: [0, 0, 1, 1],
-      mask: "m",
+      mask_path: "/p/m.png",
+    });
+  });
+
+  it("projects multiple label fields per frame with the right child + _cls", () => {
+    const data = parseFramesData(
+      [
+        {
+          frame_number: 1,
+          detections: { detections: [{ _id: "d1", label: "car" }] },
+          polylines: {
+            polylines: [{ _id: "p1", points: [[[0, 0]]], closed: true }],
+          },
+        },
+      ],
+      {
+        "frames.detections": LabelType.Detections,
+        "frames.polylines": LabelType.Polylines,
+      }
+    );
+
+    expect(data[1]["frames.detections"][0]).toMatchObject({
+      _id: "d1",
+      _cls: "Detection",
+    });
+    expect(data[1]["frames.polylines"][0]).toMatchObject({
+      _id: "p1",
+      _cls: "Polyline",
+      points: [[[0, 0]]],
+      closed: true,
     });
   });
 
   it("normalizes _id from a raw `id` when `_id` is absent", () => {
-    const data = parseFramesData([doc(1, [{ id: "legacy" }])], "detections");
+    const data = parseFramesData([doc(1, [{ id: "legacy" }])], DETECTIONS);
 
     expect(data[1]["frames.detections"][0]._id).toBe("legacy");
   });
@@ -60,17 +98,14 @@ describe("parseFramesData", () => {
   it("respects a non-default per-frame field name", () => {
     const data = parseFramesData(
       [{ frame_number: 5, boxes: { detections: [{ _id: "d1" }] } }],
-      "boxes"
+      { "frames.boxes": LabelType.Detections }
     );
 
     expect(data[5]["frames.boxes"]).toHaveLength(1);
   });
 
-  it("emits an empty list for a fetched frame with no detections", () => {
-    const data = parseFramesData(
-      [{ frame_number: 3 }, doc(4, [])],
-      "detections"
-    );
+  it("emits an empty list for every registered field on a label-less frame", () => {
+    const data = parseFramesData([{ frame_number: 3 }, doc(4, [])], DETECTIONS);
 
     expect(data[3]["frames.detections"]).toEqual([]);
     expect(data[4]["frames.detections"]).toEqual([]);

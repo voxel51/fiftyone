@@ -72,12 +72,31 @@ export interface RawDetection {
   label?: string;
   bounding_box?: [number, number, number, number];
   instance?: { _cls: "Instance"; _id?: string } | null;
+  mask_path?: string;
+  mask?: unknown;
   keyframe?: boolean;
   propagation?: PropagationBlob | null;
 }
 
 export interface RawDetectionsField {
   detections?: RawDetection[];
+}
+
+export interface RawPolyline {
+  _id?: string;
+  id?: string;
+  index?: number;
+  label?: string;
+  points?: [number, number][][];
+  closed?: boolean;
+  filled?: boolean;
+  instance?: { _cls: "Instance"; _id?: string } | null;
+  keyframe?: boolean;
+  propagation?: PropagationBlob | null;
+}
+
+export interface RawPolylinesField {
+  polylines?: RawPolyline[];
 }
 
 /**

@@ -10,10 +10,12 @@ const FPS = 30;
 const SAMPLE = "sample-1";
 const PATH = "frames.detections";
 
+type ColorResolver = (l: PerInstanceLabel, path: string) => string;
+
 /**
  * Minimal engine stub: `buildPerInstanceTracks` only calls
  * `listLabels({ sample, path, frame })`. `frames` maps a 1-indexed frame
- * number to the labels the engine projects for it.
+ * number to the labels the engine projects for it (path-agnostic).
  */
 function makeEngine(frames: Record<number, LabelData[]>): FrameLabelReader {
   return {
@@ -21,15 +23,27 @@ function makeEngine(frames: Record<number, LabelData[]>): FrameLabelReader {
   };
 }
 
+/**
+ * Path-aware engine stub for multi-field tests: `byPath` maps a field path to
+ * its per-frame labels.
+ */
+function makeMultiFieldEngine(
+  byPath: Record<string, Record<number, LabelData[]>>
+): FrameLabelReader {
+  return {
+    listLabels: ({ path, frame }) => (frame ? byPath[path]?.[frame] ?? [] : []),
+  };
+}
+
 function build(
   totalFrames: number,
   frames: Record<number, LabelData[]>,
-  resolveColor: (l: PerInstanceLabel) => string = () => "#fff"
+  resolveColor: ColorResolver = () => "#fff"
 ) {
   return buildPerInstanceTracks({
     engine: makeEngine(frames),
     sample: SAMPLE,
-    path: PATH,
+    paths: [PATH],
     totalFrames,
     fps: FPS,
     resolveColor,
@@ -50,17 +64,20 @@ describe("buildPerInstanceTracks", () => {
       keyframe: false,
     };
 
-    const resolveColor = vi.fn<(l: PerInstanceLabel) => string>(() => "#fff");
+    const resolveColor = vi.fn<ColorResolver>(() => "#fff");
     const tracks = build(2, { 1: [det], 2: [det] }, resolveColor);
 
     expect(tracks).toHaveLength(1);
     // Track id IS the engine instanceId (instance._id), no synthetic prefix.
     expect(tracks[0].id).toBe("abc123");
-    expect(resolveColor).toHaveBeenCalledWith({
-      label: "person",
-      index: 7,
-      instance: { _cls: "Instance", _id: "abc123" },
-    });
+    expect(resolveColor).toHaveBeenCalledWith(
+      {
+        label: "person",
+        index: 7,
+        instance: { _cls: "Instance", _id: "abc123" },
+      },
+      PATH
+    );
     // Display text still uses the persisted index as the ordinal.
     expect(tracks[0].label).toBe("person 7");
   });
@@ -74,15 +91,18 @@ describe("buildPerInstanceTracks", () => {
       keyframe: false,
     };
 
-    const resolveColor = vi.fn<(l: PerInstanceLabel) => string>(() => "#fff");
+    const resolveColor = vi.fn<ColorResolver>(() => "#fff");
     const tracks = build(1, { 1: [det] }, resolveColor);
 
     expect(tracks[0].id).toBe("doc-3");
-    expect(resolveColor).toHaveBeenCalledWith({
-      label: "vehicle",
-      index: 3,
-      instance: null,
-    });
+    expect(resolveColor).toHaveBeenCalledWith(
+      {
+        label: "vehicle",
+        index: 3,
+        instance: null,
+      },
+      PATH
+    );
   });
 
   it("assigns instance-only ordinals as the next free integer above the per-class max", () => {
@@ -104,6 +124,46 @@ describe("buildPerInstanceTracks", () => {
 
     // Sorted by ordinal: persisted 3, then the next free (4).
     expect(tracks.map((t) => t.label)).toEqual(["person 3", "person 4"]);
+  });
+
+  it("builds a track per instance across multiple fields, colored by each field's path", () => {
+    const POLY_PATH = "frames.polylines";
+    const box: LabelData = {
+      _id: "doc-box",
+      _cls: "Detection",
+      label: "vehicle",
+      index: 1,
+      instance: { _cls: "Instance", _id: "box-inst" },
+    };
+    const poly: LabelData = {
+      _id: "doc-poly",
+      _cls: "Polyline",
+      label: "lane",
+      index: 1,
+      instance: { _cls: "Instance", _id: "poly-inst" },
+    };
+
+    const resolveColor = vi.fn<ColorResolver>((_l, path) =>
+      path === POLY_PATH ? "#0f0" : "#00f"
+    );
+
+    const tracks = buildPerInstanceTracks({
+      engine: makeMultiFieldEngine({
+        [PATH]: { 1: [box] },
+        [POLY_PATH]: { 1: [poly] },
+      }),
+      sample: SAMPLE,
+      paths: [PATH, POLY_PATH],
+      totalFrames: 1,
+      fps: FPS,
+      resolveColor,
+    });
+
+    expect(tracks.map((t) => t.id).sort()).toEqual(["box-inst", "poly-inst"]);
+    const byId = Object.fromEntries(tracks.map((t) => [t.id, t]));
+    // Each row's color comes from its own field path.
+    expect(byId["box-inst"].color).toBe("#00f");
+    expect(byId["poly-inst"].color).toBe("#0f0");
   });
 
   it("emits one presence interval per contiguous run", () => {

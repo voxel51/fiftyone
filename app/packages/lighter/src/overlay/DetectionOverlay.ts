@@ -174,9 +174,13 @@ export class DetectionOverlay
         this.mask = new MaskCanvas(label.mask);
       }
       this.markDirty();
-    } else if (label.mask === null) {
-      // null — explicit removal
-      // `undefined` can be cases when mask has not been saved yet - leave it alone
+    } else if (label.mask === null || !label.mask_path) {
+      // Drop a stale mask when the label carries neither inline `mask` data nor
+      // a `mask_path` to decode — an explicit removal (`null`), or reconciling
+      // this overlay onto a label with no mask at all (e.g. a video track's
+      // mask-less frame as the playhead advances past the mask's keyframe).
+      // A pending `mask_path` decode (mask `undefined`, `mask_path` set) is left
+      // alone so the in-flight decode still lands.
       const hadMask = !!this.mask;
       this.maskSource = undefined;
       this.mask?.destroy();

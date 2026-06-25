@@ -9,7 +9,6 @@ import {
   useSurfaceActions,
 } from "@fiftyone/annotation";
 import { useCallback, useEffect, useRef } from "react";
-import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 import { useCurrentFrame, useCurrentFrameGetter } from "./useCurrentFrame";
 
 const SURFACE = "video-timeline";
@@ -44,10 +43,14 @@ export interface VideoInteraction {
   selectedTrackIds: ReadonlySet<string>;
   /** Track ids (= engine instanceIds) currently hovered. */
   hoveredTrackIds: ReadonlySet<string>;
-  /** Replace the selection with this track's current-frame occurrence. */
-  selectTrack: (instanceId: string) => void;
-  /** Set hover on this track's current-frame occurrence. */
-  hoverTrack: (instanceId: string, on: boolean) => void;
+  /**
+   * Replace the selection with this track's current-frame occurrence on the
+   * given frame field path (tracks span multiple fields, so the path is
+   * explicit — not assumed to be the detections field).
+   */
+  selectTrack: (instanceId: string, path: string) => void;
+  /** Set hover on this track's current-frame occurrence on the given path. */
+  hoverTrack: (instanceId: string, path: string, on: boolean) => void;
   /**
    * Select / hover a label by its exact engine ref. Used for sample-level
    * labels (temporal detections: addressed by `instanceId`, no frame) whose
@@ -82,34 +85,23 @@ export const useHoveredTrackIds = (): ReadonlySet<string> => {
 export const useVideoInteraction = (): VideoInteraction => {
   const engine = useAnnotationEngine();
   const actions = useSurfaceActions(engine, SURFACE);
-  const stream = useFrameLabelsStream();
   const getFrame = useCurrentFrameGetter();
 
   const selectedTrackIds = useSelectedTrackIds();
   const hoveredTrackIds = useHoveredTrackIds();
 
-  const path = stream ? `frames.${stream.labelsField}` : null;
-
   const selectTrack = useCallback(
-    (instanceId: string) => {
-      if (!path) {
-        return;
-      }
-
+    (instanceId: string, path: string) => {
       actions.setActive([{ path, instanceId, frame: getFrame() }]);
     },
-    [actions, path, getFrame]
+    [actions, getFrame]
   );
 
   const hoverTrack = useCallback(
-    (instanceId: string, on: boolean) => {
-      if (!path) {
-        return;
-      }
-
+    (instanceId: string, path: string, on: boolean) => {
       actions.setHovered({ path, instanceId, frame: getFrame() }, on);
     },
-    [actions, path, getFrame]
+    [actions, getFrame]
   );
 
   const selectLabel = useCallback(

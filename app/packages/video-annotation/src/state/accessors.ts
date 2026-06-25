@@ -12,16 +12,22 @@ import {
   useCurrentDatasetId,
   view,
 } from "@fiftyone/state";
+import { FRAMES_PREFIX } from "@fiftyone/annotation";
 import {
   DETECTION,
   EMBEDDED_DOCUMENT_FIELD,
+  LabelType,
+  POLYLINE,
   type Stage,
   TEMPORAL_DETECTIONS_FIELD,
 } from "@fiftyone/utilities";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
-import { useAnnotationContext } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
+import {
+  useAnnotationContext,
+  useAnnotationFields,
+} from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import { visibleLabelSchemas } from "../../../core/src/components/Modal/Sidebar/Annotate/state";
 
 /**
@@ -90,4 +96,37 @@ export const useActiveDetectionField = (): string | null =>
 export const useVisibleLabelSchemas = (): ReadonlySet<string> => {
   const visible = useAtomValue(visibleLabelSchemas);
   return useMemo(() => new Set(visible), [visible]);
+};
+
+/**
+ * Every schema-active per-frame label field, mapped to its list label type
+ * — the engine seed registers and renders exactly these (mirroring the 2D
+ * surface, which paints every active field of each supported type).
+ *
+ * Drawn from the annotation schema's active fields per type (read-only fields
+ * already filtered out by {@link useAnnotationFields}) and narrowed to the
+ * `frames.*` namespace, since the video surface only owns per-frame labels.
+ * Detection masks ride their parent detection field, so no separate entry.
+ */
+export const useFrameLabelFields = (): Record<string, LabelType> => {
+  const detectionFields = useAnnotationFields(DETECTION).fields;
+  const polylineFields = useAnnotationFields(POLYLINE).fields;
+
+  return useMemo(() => {
+    const fields: Record<string, LabelType> = {};
+
+    for (const field of detectionFields) {
+      if (field.startsWith(FRAMES_PREFIX)) {
+        fields[field] = LabelType.Detections;
+      }
+    }
+
+    for (const field of polylineFields) {
+      if (field.startsWith(FRAMES_PREFIX)) {
+        fields[field] = LabelType.Polylines;
+      }
+    }
+
+    return fields;
+  }, [detectionFields, polylineFields]);
 };

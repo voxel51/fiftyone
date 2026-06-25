@@ -5,9 +5,31 @@ import type { LabelData } from "@fiftyone/utilities";
 /** The engine read surface this builder needs — one frame's labels at a time. */
 export type FrameLabelReader = Pick<AnnotationEngine, "listLabels">;
 
+/**
+ * Payload attached to each object track's {@link TrackEvent.data}. Carries the
+ * engine field path the row's instance lives on so a row click / hover can
+ * address the right `(path, instanceId)` ref — tracks span multiple frame
+ * fields (detections, polylines), so the path can't be assumed.
+ */
+export interface ObjectTrackEventData {
+  path: string;
+}
+
+/**
+ * The engine field path an object track's instance lives on, read off its
+ * event payload. `null` for a TD row (whose data is a
+ * {@link TemporalDetectionEventData}) or any row without the payload.
+ */
+export const objectTrackPathOf = (track: Track): string | null => {
+  const data = track.events[0]?.data as ObjectTrackEventData | undefined;
+  return typeof data?.path === "string" ? data.path : null;
+};
+
 interface InstanceState {
   /** Class label observed for this instance (e.g. "person"). */
   classLabel: string;
+  /** Engine field path the instance lives on (e.g. `frames.polylines`). */
+  path: string;
   /**
    * Persisted track index carried on the underlying detection, when
    * present. Undefined for freshly-drawn instances that haven't been
@@ -53,17 +75,27 @@ export interface PerInstanceLabel {
   instance?: { _cls: "Instance"; _id?: string } | null;
 }
 
+/** Resolve a row's color from its label and the field path it lives on. */
+export type PerInstanceColorResolver = (
+  label: PerInstanceLabel,
+  path: string
+) => string;
+
 export interface BuildPerInstanceTracksInput {
   engine: FrameLabelReader;
   /** Sample whose frame labels back the timeline. */
   sample: string;
-  /** Frame-agnostic detection field path (e.g. `frames.detections`). */
-  path: string;
+  /**
+   * Frame-agnostic label field paths to project (e.g. `frames.detections`,
+   * `frames.polylines`). Each instance keys by its `instance._id`, unique
+   * across fields, so the per-field walks merge into one set of tracks.
+   */
+  paths: string[];
   /** Total frames in the clip — the walk range `[1, totalFrames]`. */
   totalFrames: number;
   /** Frame rate, for the frame↔seconds mapping. */
   fps: number;
-  resolveColor: (label: PerInstanceLabel) => string;
+  resolveColor: PerInstanceColorResolver;
 }
 
 /** Track identity is `instance._id`; fall back to the doc `_id` (legacy). */
@@ -106,7 +138,7 @@ const instanceOf = (
 export function buildPerInstanceTracks({
   engine,
   sample,
-  path,
+  paths,
   totalFrames,
   fps,
   resolveColor,
@@ -115,7 +147,7 @@ export function buildPerInstanceTracks({
     return [];
   }
 
-  const states = accumulatePresence(engine, sample, path, totalFrames, fps);
+  const states = accumulatePresence(engine, sample, paths, totalFrames, fps);
   assignDisplayOrdinals(states);
 
   const tracks: Track[] = [];
@@ -141,9 +173,10 @@ function closeInterval(state: InstanceState, endSec: number): void {
   state.inFrame = false;
 }
 
-function newInstanceState(label: LabelData): InstanceState {
+function newInstanceState(label: LabelData, path: string): InstanceState {
   return {
     classLabel: labelOf(label),
+    path,
     persistedIndex: indexOf(label),
     instance: instanceOf(label),
     // Placeholder — overwritten by `assignDisplayOrdinals` once every
@@ -163,7 +196,7 @@ function newInstanceState(label: LabelData): InstanceState {
 function accumulatePresence(
   engine: FrameLabelReader,
   sample: string,
-  path: string,
+  paths: string[],
   totalFrames: number,
   fps: number
 ): Map<string, InstanceState> {
@@ -173,23 +206,25 @@ function accumulatePresence(
     const frameStartSec = (frame - 1) / fps;
     const present = new Set<string>();
 
-    for (const label of engine.listLabels({ sample, path, frame })) {
-      const id = addressIdOf(label);
-      present.add(id);
+    for (const path of paths) {
+      for (const label of engine.listLabels({ sample, path, frame })) {
+        const id = addressIdOf(label);
+        present.add(id);
 
-      let state = states.get(id);
-      if (!state) {
-        state = newInstanceState(label);
-        states.set(id, state);
-      }
+        let state = states.get(id);
+        if (!state) {
+          state = newInstanceState(label, path);
+          states.set(id, state);
+        }
 
-      if (!state.inFrame) {
-        state.currentStart = frameStartSec;
-        state.inFrame = true;
-      }
+        if (!state.inFrame) {
+          state.currentStart = frameStartSec;
+          state.inFrame = true;
+        }
 
-      if (label.keyframe) {
-        state.keyframeTimes.push(frameStartSec);
+        if (label.keyframe) {
+          state.keyframeTimes.push(frameStartSec);
+        }
       }
     }
 
@@ -245,8 +280,12 @@ function assignDisplayOrdinals(states: Map<string, InstanceState>): void {
 function toTrack(
   id: string,
   state: InstanceState,
-  resolveColor: (label: PerInstanceLabel) => string
+  resolveColor: PerInstanceColorResolver
 ): Track {
+  // Every event carries the field path so a row's click / hover resolves the
+  // correct `(path, instanceId)` ref regardless of which frame field it's on.
+  const data: ObjectTrackEventData = { path: state.path };
+
   const events: TrackEvent[] = [
     // `resizable: true` opts each presence bar into in-place edit — drag
     // handles to extend/trim the track, drag the body to shift it. Inert
@@ -257,6 +296,7 @@ function toTrack(
         endSec: end,
         label: "in frame",
         resizable: true,
+        data,
       })
     ),
     // Point events render as diamond markers on top of the presence bar
@@ -264,6 +304,7 @@ function toTrack(
     ...state.keyframeTimes.map((startSec) => ({
       startSec,
       label: "Keyframe",
+      data,
     })),
   ];
 
@@ -271,11 +312,14 @@ function toTrack(
     id,
     label: `${state.classLabel} ${state.displayIndex}`,
     description: `Tracked "${state.classLabel}" (track ${state.displayIndex})`,
-    color: resolveColor({
-      label: state.classLabel,
-      index: state.persistedIndex,
-      instance: state.instance,
-    }),
+    color: resolveColor(
+      {
+        label: state.classLabel,
+        index: state.persistedIndex,
+        instance: state.instance,
+      },
+      state.path
+    ),
     events,
   };
 }

@@ -6,10 +6,10 @@ import {
   useSampleInstanceGetter,
   VideoLabelStore,
 } from "@fiftyone/annotation";
-import { LabelType } from "@fiftyone/utilities";
 import { useEffect } from "react";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 import { parseFramesData } from "../streams/framesData";
+import { useFrameLabelFields } from "../state/accessors";
 
 /**
  * Own the video sample's engine store for the lifetime of the surface.
@@ -31,23 +31,25 @@ export const useSyncAnnotationVideoStore = (): void => {
   const sampleId = useActiveSampleId();
   const getSample = useSampleInstanceGetter();
   const stream = useFrameLabelsStream();
-  const field = stream?.labelsField;
+  const labelTypes = useFrameLabelFields();
 
   useEffect(() => {
-    if (!sampleId || !stream || !field) {
+    if (!sampleId || !stream) {
       return undefined;
     }
 
-    const path = `frames.${field}`;
-    const frames = new FrameStore(sampleId, {
-      labelTypes: { [path]: LabelType.Detections },
-    });
+    // Register whenever the surface has a sample + stream — NOT gated on the
+    // active frame fields. Deactivating every frame label field empties
+    // `labelTypes`, but the composite store still owns the sample-level
+    // (temporal-detection) labels; tearing it down then would sweep those
+    // overlays too. Visibility/activation gates rendering, never the store.
+    const frames = new FrameStore(sampleId, { labelTypes });
     const sampleLevel = new SampleLabelStore(sampleId, getSample(sampleId));
     const store = new VideoLabelStore(sampleId, frames, sampleLevel);
     const unregister = engine.registerStore(store);
 
     const seed = () =>
-      frames.setData(parseFramesData(stream.cachedFrames(), field));
+      frames.setData(parseFramesData(stream.cachedFrames(), labelTypes));
     const unsubscribe = stream.subscribeToEdits(seed);
     seed();
 
@@ -56,5 +58,5 @@ export const useSyncAnnotationVideoStore = (): void => {
       unregister();
       sampleLevel.dispose();
     };
-  }, [engine, sampleId, field, getSample, stream]);
+  }, [engine, sampleId, labelTypes, getSample, stream]);
 };
