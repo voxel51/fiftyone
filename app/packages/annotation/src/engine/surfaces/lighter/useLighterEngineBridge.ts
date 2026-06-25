@@ -28,6 +28,7 @@ import { lighterAdapters } from "./adapters";
 import type { LighterInteractionPolicy } from "./interactionPolicy";
 import type { LighterBridgeDeps } from "./lighterBridge";
 import { createLighterBridge } from "./lighterBridge";
+import { useLighterPreviewSync } from "./useLighterPreviewSync";
 
 export interface UseLighterEngineBridgeArgs {
   engine: AnnotationEngine;
@@ -294,6 +295,8 @@ export const useLighterEngineBridge = ({
 
   on("lighter:overlay-drag-move", publishGeometry);
   on("lighter:overlay-resize-move", publishGeometry);
+
+  useLighterPreviewSync(engine, sample, scene as Scene2D | null);
 
   // interaction write-half
   on(

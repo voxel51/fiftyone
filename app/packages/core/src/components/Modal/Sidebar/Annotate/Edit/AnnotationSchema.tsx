@@ -29,6 +29,7 @@ import {
 } from "./trackFanOut";
 import { useAnnotationContext } from "./useAnnotationContext";
 import { current } from "./useAnnotationContext/selectors";
+import { useLivePreview } from "./useLivePreview";
 
 const useSchema = (readOnly: boolean) => {
   const { selected } = useAnnotationContext();
@@ -326,6 +327,7 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
   const overlay = selected?.overlay;
   const field = selected?.field ?? null;
   const onChange = useHandleSchemaChange(readOnly);
+  const onLivePreview = useLivePreview(readOnly);
 
   if (!field) throw new Error("no field");
   if (!overlay) throw new Error("no overlay");
@@ -345,7 +347,10 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
       <SchemaIOComponent
         key={overlay.id}
         smartForm={true}
-        smartFormProps={{ liveValidate: "onChange" }}
+        smartFormProps={{
+          liveValidate: "onChange",
+          formContext: { onLivePreview },
+        }}
         schema={schema}
         data={displayData}
         onChange={onChange}

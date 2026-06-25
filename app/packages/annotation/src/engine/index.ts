@@ -115,3 +115,10 @@ export {
   type Geometry3d,
   type GeometrySignal,
 } from "./signals/geometry";
+
+// generalized cross-surface label-patch preview signal
+export {
+  LABEL_PATCH_SIGNAL,
+  type LabelPatchSignal,
+  publishLabelPreview,
+} from "./signals/labelPatch";

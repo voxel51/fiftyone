@@ -44,6 +44,7 @@ vi.mock("./lighterBridge", () => ({
   createLighterBridge: () => ({ clear: vi.fn() }),
 }));
 vi.mock("./adapters", () => ({ lighterAdapters: {} }));
+vi.mock("./useLighterPreviewSync", () => ({ useLighterPreviewSync: vi.fn() }));
 const mockCommit = vi.fn();
 const mockSelectHandle = vi.fn();
 const mockSetExternalUndoAuthority = vi.fn();
