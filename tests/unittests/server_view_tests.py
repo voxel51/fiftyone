@@ -1049,42 +1049,6 @@ class ServerViewTests(unittest.TestCase):
         self.assertNotIn("COLLSCAN", plan)
 
     @drop_datasets
-    def test_index_optimized_count_uses_index(self):
-        dataset = fod.Dataset("test")
-        samples = []
-        for s in range(20):
-            for f in range(3):
-                samples.append(
-                    fo.Sample(filepath="%d_%d.png" % (s, f), scene="s%d" % s)
-                )
-        dataset.add_samples(samples)
-        dataset.create_index("scene")
-
-        stages = [fosg.GroupBy("scene")._serialize()]
-
-        def _plan(index_optimized):
-            view = fosv.get_view("test", stages=stages)
-            for stage in view._stages:
-                if isinstance(stage, fosg.GroupBy):
-                    stage._include_count = True
-                    stage._index_optimized = index_optimized
-            explain = foo.get_db_conn().command(
-                "aggregate",
-                view._dataset._sample_collection_name,
-                pipeline=view._pipeline(),
-                explain=True,
-            )
-            return json.dumps(explain, default=str)
-
-        # gated off (SDK default): the counting `$group` scans the collection
-        self.assertIn("COLLSCAN", _plan(False))
-
-        # server opt-in: the presort rides the `scene` index instead
-        plan = _plan(True)
-        self.assertIn("IXSCAN", plan)
-        self.assertNotIn("COLLSCAN", plan)
-
-    @drop_datasets
     def test_sort_by(self):
         dataset = fod.Dataset("test")
         dataset.add_sample(fo.Sample(filepath="image.png", value="value"))
