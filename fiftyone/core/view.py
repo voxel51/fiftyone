@@ -908,6 +908,16 @@ class DatasetView(foc.SampleCollection):
 
         group_expr, is_id_field, root_view, sort = self._parse_dynamic_groups()
 
+        if isinstance(group_expr, (list, tuple)) and (
+            not isinstance(group_value, (list, tuple))
+            or len(group_value) != len(group_expr)
+        ):
+            # compound key: one value per field, else zip() builds a partial match
+            raise ValueError(
+                "Expected %d values for compound group key %s; found %r"
+                % (len(group_expr), group_expr, group_value)
+            )
+
         if isinstance(is_id_field, (list, tuple)):
             group_value = [
                 ObjectId(v) if i else v

@@ -158,6 +158,9 @@ class Samples(HTTPEndpoint):
             return view
 
         view = await run_sync_task(_build)
+        if isinstance(view, JSONResponse):
+            # return early with 404 if the dataset doesn't exist
+            return view
         pipeline = await get_samples_pipeline(view, sample_filter)
 
         skip_dimensions = bool(data.get("skipMetadata"))
@@ -225,6 +228,9 @@ class GridSamples(HTTPEndpoint):
             return view.skip(after).limit(SPINE_PAGE + 1)
 
         view = await run_sync_task(_build)
+        if isinstance(view, JSONResponse):
+            # return early with 404 if the dataset doesn't exist
+            return view
         # GroupBy emits `_group_count` only when asked; turn it on so the spine
         # carries each group's length to the imavid timeline. `_index_optimized`
         # presorts the group key so the counting `$group` rides an index

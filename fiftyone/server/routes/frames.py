@@ -47,7 +47,10 @@ def _heavy_frame_paths(schema, prefix=""):
             continue
 
         nested = field
-        while isinstance(nested, (fof.ListField, fof.DictField)):
+        while isinstance(
+            nested,
+            (fof.ListField, fof.DictField, fof.EmbeddedDocumentListField),
+        ):
             nested = nested.field
 
         if isinstance(nested, fof.EmbeddedDocumentField):

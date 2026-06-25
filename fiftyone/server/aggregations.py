@@ -150,13 +150,22 @@ async def aggregate_resolver(
     aggregations, deserializers = zip(
         *[
             _resolve_path_aggregation(
-                path, view, form.query_performance, form.hint, form.mixed
+                path, view, form.query_performance, form.hint, mixed=form.mixed
             )
             for path in form.paths
         ]
     )
     counts = [len(a) for a in aggregations]
     flattened = [item for sublist in aggregations for item in sublist]
+
+    # group-statistics mode on a grouped dataset: one `$group` pass over the
+    # mixed view yields both the sample total and the distinct-group total,
+    # instead of a second `Count` query over a single slice
+    grouped_root = (
+        form.mixed
+        and "" in form.paths
+        and view._root_dataset.media_type == fom.GROUP
+    )
 
     maxTimeMS = form.max_query_time * 1000 if form.max_query_time else None
     try:
@@ -165,6 +174,9 @@ async def aggregate_resolver(
             if flattened
             else []
         )
+        groups = samples = None
+        if grouped_root:
+            groups, samples = await _grouped_root_counts(view, maxTimeMS)
     except ExecutionTimeout:
         return [
             AggregationQueryTimeout(path=path, query_time=form.max_query_time)
@@ -177,11 +189,7 @@ async def aggregate_resolver(
         results.append(deserialize(result[offset : length + offset]))
         offset += length
 
-    if form.mixed and "" in form.paths:
-        # group-statistics mode: one `$group` pass over the mixed view yields
-        # both the sample total and the distinct-group total, instead of a
-        # second `Count` query over a single slice
-        groups, samples = await _grouped_root_counts(view, maxTimeMS)
+    if grouped_root:
         for result in results:
             if isinstance(result, RootAggregation):
                 result.slice = groups
@@ -192,7 +200,7 @@ async def aggregate_resolver(
     return results
 
 
-async def _grouped_root_counts(view, maxTimeMS=None):
+async def _grouped_root_counts(view, maxTimeMS=None) -> t.Tuple[int, int]:
     group_id = view._root_dataset.group_field + "._id"
     pipeline = view._pipeline() + [
         {"$group": {"_id": "$" + group_id, "_n": {"$sum": 1}}},
@@ -257,6 +265,7 @@ def _resolve_path_aggregation(
     view: foc.SampleCollection,
     query_performance: bool,
     hint: t.Optional[str] = None,
+    *,
     mixed: bool = False,
 ) -> AggregateResult:
     # root ("" path) total: the O(1) estimated document count ignores the

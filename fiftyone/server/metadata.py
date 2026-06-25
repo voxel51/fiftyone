@@ -120,8 +120,13 @@ async def get_metadata(
                 )
 
     if filepath not in metadata_cache and skip_dimensions:
-        # caller opted out of dimensions; use a placeholder aspect ratio
-        metadata_cache[filepath] = dict(aspect_ratio=1.0)
+        # caller opted out of dimensions; use a placeholder aspect ratio (plus a
+        # frame_rate placeholder for video, matching the fallback path)
+        metadata_cache[filepath] = (
+            dict(aspect_ratio=1.0, frame_rate=30)
+            if is_video
+            else dict(aspect_ratio=1.0)
+        )
 
     if filepath not in metadata_cache:
         try:

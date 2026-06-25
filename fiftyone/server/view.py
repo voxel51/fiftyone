@@ -140,7 +140,7 @@ def get_view(
             dataset = fod.load_dataset(dataset, reload=reload)
 
         if view_name is not None:
-            return dataset.load_saved_view(view_name)
+            return _include_group_fields(dataset.load_saved_view(view_name))
 
         if stages:
             view = fov.DatasetView._build(dataset, stages)
