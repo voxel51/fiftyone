@@ -180,7 +180,7 @@ _MODEL_TEMPLATE = """
     )
     dataset.apply_model(
         model,
-        label_field="segmentations",
+        label_field="segmentations_concept_with_exemplar",
         prompt_field="frames.person_detections",  # exemplar Detections on frame 1
     )
 
