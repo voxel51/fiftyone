@@ -94,7 +94,7 @@ export const PARSER = {
     parse: (value) =>
       String(+value.replace(/[,\s]/g, "")).replace(
         /\B(?=(\d{3})+(?!\d))/g,
-        ","
+        ",",
       ),
     validate: (value) => /^\d+$/.test(convert(value).replace(/[,\s]/g, "")),
   },
@@ -215,7 +215,7 @@ export default Machine(
             results: ({ type, fieldNames, value }) =>
               type === "field"
                 ? fieldNames.filter((f) =>
-                    f.toLowerCase().startsWith(value.toLowerCase())
+                    f.toLowerCase().startsWith(value.toLowerCase()),
                   )
                 : [],
           }),
@@ -248,7 +248,7 @@ export default Machine(
                 results: ({ type, fieldNames }, { value }) =>
                   type === "field"
                     ? fieldNames.filter((f) =>
-                        f.toLowerCase().startsWith(value.toLowerCase())
+                        f.toLowerCase().startsWith(value.toLowerCase()),
                       )
                     : [],
               }),
@@ -262,7 +262,7 @@ export default Machine(
                   submitted: true,
                   value: (
                     { type, value, defaultValue, fieldNames, bestMatch },
-                    { value: eventValue }
+                    { value: eventValue },
                   ) => {
                     const match =
                       type === "field" ? getMatch(fieldNames, value) : null;
@@ -270,8 +270,8 @@ export default Machine(
                     value = match
                       ? match
                       : bestMatch.value
-                      ? bestMatch.value
-                      : value;
+                        ? bestMatch.value
+                        : value;
                     return value === "" && defaultValue
                       ? defaultValue
                       : type.split("|").reduce((acc, t) => {
@@ -293,7 +293,7 @@ export default Machine(
               ],
               cond: (
                 { type, fieldNames, value, defaultValue, bestMatch },
-                { value: eventValue }
+                { value: eventValue },
               ) => {
                 value = eventValue ? eventValue : value;
                 const match =
@@ -301,8 +301,8 @@ export default Machine(
                 value = match
                   ? match
                   : bestMatch.value
-                  ? bestMatch.value
-                  : value;
+                    ? bestMatch.value
+                    : value;
                 return (
                   (value === "" && defaultValue) ||
                   type
@@ -407,5 +407,5 @@ export default Machine(
       blurInput: () => {},
       focusInput: () => {},
     },
-  }
+  },
 );

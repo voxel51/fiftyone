@@ -56,8 +56,8 @@ function Checkbox<T>({
   const [text, coloring] = getValueString(formatter ? formatter(name) : name);
 
   const countAtom = useMemo(
-    () => (typeof count === "number" ? constSelector(count) : count ?? null),
-    [count]
+    () => (typeof count === "number" ? constSelector(count) : (count ?? null)),
+    [count],
   );
 
   return (

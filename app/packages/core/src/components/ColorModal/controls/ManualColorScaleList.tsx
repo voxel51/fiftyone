@@ -57,7 +57,7 @@ const ManualColorScaleList: React.FC<ManualColorScaleListProp> = ({
 }) => {
   const [input, setInput] = useState<Input[]>(initialValue ?? []);
   const [showPicker, setShowPicker] = useState(
-    Array(values?.length ?? 0).fill(false)
+    Array(values?.length ?? 0).fill(false),
   );
   const pickerRef = useRef<ChromePicker>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -96,7 +96,7 @@ const ManualColorScaleList: React.FC<ManualColorScaleListProp> = ({
       setInput(copy);
       onSyncUpdate(copy as ColorscaleListInput[]);
     },
-    [input, onSyncUpdate]
+    [input, onSyncUpdate],
   );
 
   // onBlur and onEnter in numberfield to validate certain rules
@@ -118,7 +118,7 @@ const ManualColorScaleList: React.FC<ManualColorScaleListProp> = ({
         }, 1000);
       }
     },
-    [input, values, onSyncUpdate, onValidate]
+    [input, values, onSyncUpdate, onValidate],
   );
 
   // onBlur and onEnter in textfield to validate color and sync with atoms
@@ -146,7 +146,7 @@ const ManualColorScaleList: React.FC<ManualColorScaleListProp> = ({
         onSyncUpdate(copy as ColorscaleListInput[]);
       }
     },
-    [input, values, onSyncUpdate]
+    [input, values, onSyncUpdate],
   );
 
   const onValidateUnitInterval = useCallback((value: number | string) => {
@@ -199,7 +199,7 @@ const ManualColorScaleList: React.FC<ManualColorScaleListProp> = ({
             color={input[index].color}
             onClick={() => {
               setShowPicker((prev) =>
-                prev.map((_, i) => (i === index ? !prev[index] : _))
+                prev.map((_, i) => (i === index ? !prev[index] : _)),
               );
             }}
           >
@@ -219,7 +219,7 @@ const ManualColorScaleList: React.FC<ManualColorScaleListProp> = ({
                   disableAlpha={true}
                   onBlur={() =>
                     setShowPicker((prev) =>
-                      prev.map((_, i) => (i === index ? false : _))
+                      prev.map((_, i) => (i === index ? false : _)),
                     )
                   }
                   className={colorPicker}

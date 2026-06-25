@@ -34,7 +34,7 @@ interface ToastProps {
   };
   onHandleClose?: (
     event: React.SyntheticEvent<any> | Event,
-    reason?: string
+    reason?: string,
   ) => void;
 }
 
@@ -50,7 +50,7 @@ const Toast: React.FC<ToastProps> = ({
 
   const handleClose = (
     event: React.SyntheticEvent<any> | Event,
-    reason?: string
+    reason?: string,
   ) => {
     if (reason === "clickaway") {
       return;

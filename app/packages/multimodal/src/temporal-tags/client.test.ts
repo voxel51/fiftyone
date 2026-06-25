@@ -42,15 +42,15 @@ describe("createTemporalTagsClient", () => {
     await client.countDatasetTemporalTags({ datasetId: "dataset-id" });
 
     expect(
-      fetchFunction.mock.calls.map(([config]) => routeKey(config))
+      fetchFunction.mock.calls.map(([config]) => routeKey(config)),
     ).toEqual([
-      "GET /dataset/dataset-id/sample/sample-id/multimodal/temporal-tags",
-      "POST /dataset/dataset-id/sample/sample-id/multimodal/temporal-tags",
-      "PATCH /dataset/dataset-id/sample/sample-id/multimodal/temporal-tags/tag-id",
-      "DELETE /dataset/dataset-id/sample/sample-id/multimodal/temporal-tags",
-      "DELETE /dataset/dataset-id/sample/sample-id/multimodal/temporal-tags",
-      "GET /dataset/dataset-id/multimodal/temporal-tags",
-      "GET /dataset/dataset-id/multimodal/temporal-tags/counts",
+      "GET /dataset/dataset-id/sample/sample-id/tags",
+      "POST /dataset/dataset-id/sample/sample-id/tags",
+      "PATCH /dataset/dataset-id/sample/sample-id/tags/tag-id",
+      "DELETE /dataset/dataset-id/sample/sample-id/tags",
+      "DELETE /dataset/dataset-id/sample/sample-id/tags",
+      "GET /dataset/dataset-id/tags",
+      "GET /dataset/dataset-id/tags/counts",
     ]);
   });
 
@@ -73,9 +73,7 @@ describe("createTemporalTagsClient", () => {
     });
 
     const url = routeUrl(fetchFunction.mock.calls[0][0].path);
-    expect(url.pathname).toBe(
-      "/dataset/dataset%20id/sample/sample%2Fid/multimodal/temporal-tags"
-    );
+    expect(url.pathname).toBe("/dataset/dataset%20id/sample/sample%2Fid/tags");
     expect(url.searchParams.getAll("anchors")).toEqual([
       "lidar_top",
       "camera_front",
@@ -114,7 +112,7 @@ describe("createTemporalTagsClient", () => {
       ],
     });
     expect(JSON.stringify(fetchFunction.mock.calls[0][0].body)).not.toContain(
-      "sample_id"
+      "sample_id",
     );
     expect(tags[0]).toEqual({
       anchor: "lidar_top",
@@ -156,7 +154,7 @@ describe("createTemporalTagsClient", () => {
       tag: "moved",
     });
     expect(JSON.stringify(fetchFunction.mock.calls[0][0].body)).not.toContain(
-      "sample_id"
+      "sample_id",
     );
     expect(tag.tag).toBe("moved");
   });
@@ -172,7 +170,7 @@ describe("createTemporalTagsClient", () => {
         datasetId: "dataset-id",
         sampleId: "sample-id",
         ids: ["temporal-tag-id"],
-      })
+      }),
     ).resolves.toBe(2);
 
     expect(fetchFunction.mock.calls[0][0].body).toEqual({
@@ -197,7 +195,7 @@ describe("createTemporalTagsClient", () => {
           tags: ["review"],
         },
         sampleId: "sample-id",
-      })
+      }),
     ).resolves.toBe(2);
 
     expect(fetchFunction.mock.calls[0][0].body).toEqual({
@@ -259,7 +257,7 @@ function createTemporalTagInput() {
 }
 
 function createTemporalTagDto(
-  overrides: Partial<ReturnType<typeof createTemporalTagDtoBase>> = {}
+  overrides: Partial<ReturnType<typeof createTemporalTagDtoBase>> = {},
 ) {
   return {
     ...createTemporalTagDtoBase(),

@@ -13,7 +13,7 @@ const MCAP_CHANNEL_METADATA_PREFIX = `${MCAP_METADATA_PREFIX}channel_metadata.`;
  * Builds source inventory stream entries from MCAP summary channel metadata.
  */
 export function readMcapTopics(
-  reader: McapIndexedReaderLike
+  reader: McapIndexedReaderLike,
 ): readonly StreamInventory[] {
   return [...reader.channelsById.entries()].map(([channelId, channel]) => {
     const schema = schemaForChannel(channel, reader.schemasById);
@@ -31,7 +31,7 @@ export function readMcapTopics(
 function channelMetadata(
   channelId: number,
   channel: McapTypes.TypedMcapRecords["Channel"],
-  schema: McapTypes.TypedMcapRecords["Schema"] | undefined
+  schema: McapTypes.TypedMcapRecords["Schema"] | undefined,
 ): Record<string, string> {
   const metadata = Object.fromEntries(channel.metadata.entries());
 
@@ -40,7 +40,7 @@ function channelMetadata(
   putDerivedMetadata(
     metadata,
     "mcap.message_encoding",
-    channel.messageEncoding
+    channel.messageEncoding,
   );
   putDerivedMetadata(metadata, "mcap.schema_id", channel.schemaId.toString());
 
@@ -53,7 +53,7 @@ function channelMetadata(
     putDerivedMetadata(
       metadata,
       `${MCAP_CHANNEL_METADATA_PREFIX}${key}`,
-      value
+      value,
     );
   }
 
@@ -62,7 +62,7 @@ function channelMetadata(
 
 function payloadForChannel(
   channel: McapTypes.TypedMcapRecords["Channel"],
-  schema: McapTypes.TypedMcapRecords["Schema"] | undefined
+  schema: McapTypes.TypedMcapRecords["Schema"] | undefined,
 ) {
   return {
     encoding: channel.messageEncoding,
@@ -73,14 +73,14 @@ function payloadForChannel(
 
 function schemaForChannel(
   channel: McapTypes.TypedMcapRecords["Channel"],
-  schemasById: ReadonlyMap<number, McapTypes.TypedMcapRecords["Schema"]>
+  schemasById: ReadonlyMap<number, McapTypes.TypedMcapRecords["Schema"]>,
 ): McapTypes.TypedMcapRecords["Schema"] | undefined {
   return channel.schemaId === 0 ? undefined : schemasById.get(channel.schemaId);
 }
 
 function recordCountForChannel(
   channelId: number,
-  reader: McapIndexedReaderLike
+  reader: McapIndexedReaderLike,
 ): string {
   return (
     reader.statistics?.channelMessageCounts.get(channelId)?.toString() ?? "0"
@@ -90,7 +90,7 @@ function recordCountForChannel(
 function putDerivedMetadata(
   metadata: Record<string, string>,
   key: string,
-  value: string
+  value: string,
 ) {
   if (!(key in metadata)) {
     metadata[key] = value;

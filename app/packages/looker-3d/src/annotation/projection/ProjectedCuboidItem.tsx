@@ -30,7 +30,7 @@ export function ProjectedCuboidItem({
     detection.color,
     isSelected,
     isHovered,
-    isAnyLabelSelected
+    isAnyLabelSelected,
   );
 
   return (

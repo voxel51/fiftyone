@@ -1,9 +1,9 @@
 import type { LoadStatus } from "../load-status";
 
-/** Load state for temporal-tag React hooks. */
+/** Load state for tag React hooks. */
 export type TemporalTagsStatus = LoadStatus;
 
-/** Filter for temporal-tag list/count/delete queries. */
+/** Filter for tag list/count/delete queries. */
 export interface TemporalTagFilter {
   readonly anchors?: readonly string[];
   readonly end?: number;
@@ -46,40 +46,35 @@ export interface TemporalTagUpdate {
   readonly lastModifiedBy?: string;
 }
 
-/** Common request shape for sample-scoped temporal-tag operations. */
+/** Common request shape for sample-scoped tag operations. */
 export interface SampleTemporalTagsRequest {
   readonly datasetId: string;
   readonly sampleId: string;
 }
 
 /** Request for listing temporal tags for one sample. */
-export interface ListSampleTemporalTagsRequest
-  extends SampleTemporalTagsRequest {
+export interface ListSampleTemporalTagsRequest extends SampleTemporalTagsRequest {
   readonly filter?: TemporalTagFilter;
 }
 
 /** Request for creating temporal tags for one sample. */
-export interface CreateSampleTemporalTagsRequest
-  extends SampleTemporalTagsRequest {
+export interface CreateSampleTemporalTagsRequest extends SampleTemporalTagsRequest {
   readonly temporalTags: readonly TemporalTagCreate[];
 }
 
 /** Request for updating one persisted temporal tag for one sample. */
-export interface UpdateSampleTemporalTagRequest
-  extends SampleTemporalTagsRequest {
+export interface UpdateSampleTemporalTagRequest extends SampleTemporalTagsRequest {
   readonly temporalTagId: string;
   readonly update: TemporalTagUpdate;
 }
 
 /** Request for deleting persisted temporal tags by ID for one sample. */
-export interface DeleteSampleTemporalTagsRequest
-  extends SampleTemporalTagsRequest {
+export interface DeleteSampleTemporalTagsRequest extends SampleTemporalTagsRequest {
   readonly ids: readonly string[];
 }
 
 /** Request for clearing temporal tags for one sample. */
-export interface ClearSampleTemporalTagsRequest
-  extends SampleTemporalTagsRequest {
+export interface ClearSampleTemporalTagsRequest extends SampleTemporalTagsRequest {
   readonly filter?: TemporalTagFilter;
 }
 
@@ -96,43 +91,42 @@ export interface CountDatasetTemporalTagsRequest {
 }
 
 /**
- * Client for the multimodal temporal-tag route surface.
+ * Client for the multimodal tag route surface.
  */
 export interface TemporalTagsClient {
   createSampleTemporalTags(
-    request: CreateSampleTemporalTagsRequest
+    request: CreateSampleTemporalTagsRequest,
   ): Promise<readonly TemporalTag[]>;
   clearSampleTemporalTags(
-    request: ClearSampleTemporalTagsRequest
+    request: ClearSampleTemporalTagsRequest,
   ): Promise<number>;
   countDatasetTemporalTags(
-    request: CountDatasetTemporalTagsRequest
+    request: CountDatasetTemporalTagsRequest,
   ): Promise<Readonly<Record<string, number>>>;
   deleteSampleTemporalTags(
-    request: DeleteSampleTemporalTagsRequest
+    request: DeleteSampleTemporalTagsRequest,
   ): Promise<number>;
   listDatasetTemporalTags(
-    request: ListDatasetTemporalTagsRequest
+    request: ListDatasetTemporalTagsRequest,
   ): Promise<readonly TemporalTag[]>;
   listSampleTemporalTags(
-    request: ListSampleTemporalTagsRequest
+    request: ListSampleTemporalTagsRequest,
   ): Promise<readonly TemporalTag[]>;
   updateSampleTemporalTag(
-    request: UpdateSampleTemporalTagRequest
+    request: UpdateSampleTemporalTagRequest,
   ): Promise<TemporalTag>;
 }
 
 /**
- * Hook options for sample-scoped temporal-tag loading.
+ * Hook options for sample-scoped tag loading.
  */
-export interface UseSampleTemporalTagsOptions
-  extends Partial<SampleTemporalTagsRequest> {
+export interface UseSampleTemporalTagsOptions extends Partial<SampleTemporalTagsRequest> {
   readonly client?: TemporalTagsClient;
   readonly filter?: TemporalTagFilter;
 }
 
 /**
- * Hook result for sample-scoped temporal-tag loading and mutations.
+ * Hook result for sample-scoped tag loading and mutations.
  */
 export interface UseSampleTemporalTagsResult {
   readonly error: string | null;
@@ -140,12 +134,12 @@ export interface UseSampleTemporalTagsResult {
   readonly temporalTags: readonly TemporalTag[];
   readonly clear: (filter?: TemporalTagFilter) => Promise<number>;
   readonly create: (
-    temporalTags: readonly TemporalTagCreate[]
+    temporalTags: readonly TemporalTagCreate[],
   ) => Promise<readonly TemporalTag[]>;
   readonly delete: (ids: readonly string[]) => Promise<number>;
   readonly reload: () => Promise<readonly TemporalTag[]>;
   readonly update: (
     temporalTagId: string,
-    update: TemporalTagUpdate
+    update: TemporalTagUpdate,
   ) => Promise<TemporalTag>;
 }

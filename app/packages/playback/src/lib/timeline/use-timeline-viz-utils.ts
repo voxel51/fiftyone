@@ -25,18 +25,18 @@ export const useTimelineVizUtils = (name?: TimelineName) => {
 
   const getSeekValue = React.useCallback(
     () => convertFrameNumberToPercentage(frameNumber, config.totalFrames),
-    [frameNumber, config?.totalFrames]
+    [frameNumber, config?.totalFrames],
   );
 
   const seekTo = React.useCallback(
     (newSeekValue: number) => {
       const newFrameNumber = Math.max(
         Math.ceil((newSeekValue / 100) * config.totalFrames),
-        1
+        1,
       );
       setFrameNumber({ name: timelineName, newFrameNumber });
     },
-    [setFrameNumber, timelineName, config?.totalFrames]
+    [setFrameNumber, timelineName, config?.totalFrames],
   );
 
   return {
@@ -47,7 +47,7 @@ export const useTimelineVizUtils = (name?: TimelineName) => {
 
 export const convertFrameNumberToPercentage = (
   frameNumber: number,
-  totalFrames: number
+  totalFrames: number,
 ) => {
   // offset by -1 since frame indexing is 1-based
   const numerator = frameNumber - 1;

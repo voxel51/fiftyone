@@ -62,7 +62,7 @@ describe("GridRenderer", () => {
             sample: { sample: { id: "1" } },
           } as never
         }
-      />
+      />,
     );
 
     expect(screen.getByText("No preview streams")).toBeTruthy();

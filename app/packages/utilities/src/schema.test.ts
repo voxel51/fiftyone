@@ -104,7 +104,7 @@ describe("schema", () => {
     it("should return correct pathWithDbField", () => {
       const field = schema.getFieldInfo(
         "embeddedWithDbFields.sample_id",
-        SCHEMA
+        SCHEMA,
       );
       expect(field?.pathWithDbField).toBe("embeddedWithDbFields._sample_id");
     });
@@ -115,8 +115,8 @@ describe("schema", () => {
       expect(
         schema.getFieldsWithEmbeddedDocType(
           SCHEMA,
-          "fiftyone.core.labels.TopLabel"
-        )
+          "fiftyone.core.labels.TopLabel",
+        ),
       ).toEqual([SCHEMA.top]);
     });
 
@@ -124,8 +124,8 @@ describe("schema", () => {
       expect(
         schema.getFieldsWithEmbeddedDocType(
           SCHEMA,
-          "fiftyone.core.labels.EmbeddedLabel"
-        )
+          "fiftyone.core.labels.EmbeddedLabel",
+        ),
       ).toEqual([
         SCHEMA.embedded.fields!.field,
         SCHEMA.embeddedWithDbFields.fields!.sample_id,
@@ -134,7 +134,7 @@ describe("schema", () => {
 
     it("should return empty array if embeddedDocType does not exist", () => {
       expect(
-        schema.getFieldsWithEmbeddedDocType(SCHEMA, "nonexistentDocType")
+        schema.getFieldsWithEmbeddedDocType(SCHEMA, "nonexistentDocType"),
       ).toEqual([]);
     });
 
@@ -148,8 +148,8 @@ describe("schema", () => {
       expect(
         schema.doesSchemaContainEmbeddedDocType(
           SCHEMA,
-          "fiftyone.core.labels.TopLabel"
-        )
+          "fiftyone.core.labels.TopLabel",
+        ),
       ).toBe(true);
     });
 
@@ -157,20 +157,20 @@ describe("schema", () => {
       expect(
         schema.doesSchemaContainEmbeddedDocType(
           SCHEMA,
-          "fiftyone.core.labels.EmbeddedLabel"
-        )
+          "fiftyone.core.labels.EmbeddedLabel",
+        ),
       ).toBe(true);
     });
 
     it("should return false if embeddedDocType does not exist", () => {
       expect(
-        schema.doesSchemaContainEmbeddedDocType(SCHEMA, "nonexistentDocType")
+        schema.doesSchemaContainEmbeddedDocType(SCHEMA, "nonexistentDocType"),
       ).toBe(false);
     });
 
     it("should return false for empty schema", () => {
       expect(schema.doesSchemaContainEmbeddedDocType({}, "anyDocType")).toBe(
-        false
+        false,
       );
     });
   });

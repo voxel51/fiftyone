@@ -9,11 +9,11 @@ The following installation steps are a part of the
 [install script](../install.bash).
 
 First, install [`nvm`](https://github.com/nvm-sh/nvm) and install and set your
-node version to `v17.9.0` using `nvm`.
+node version to `v22` using `nvm`.
 
 ```sh
-nvm install v17.9.0
-nvm use v17.9.0
+nvm install 22
+nvm use 22
 ```
 
 Then install `yarn` globally in your node environment with `npm`:
@@ -36,18 +36,31 @@ First, start the App client development server with hot reloading by running:
 yarn dev
 ```
 
-Next, we generally recommend starting the backend server manually so you have
-access to stack traces:
+Next, start the backend server with `yarn dev:py` so you have access to stack
+traces:
 
 ```shell
-python fiftyone/server/main.py
+yarn dev:py
 ```
 
-If you want to run both the app client development server and the backend
-server, try running:
+If you want to run both the client dev server and the backend server together,
+run:
 
 ```shell
 yarn dev:wpy
+```
+
+Both `yarn dev:py` and `yarn dev:wpy` set `FIFTYONE_ALLOWED_ORIGINS` to the
+client dev server origin (`http://localhost:5173`) so the backend accepts
+cross-origin requests from the hot-reloading client. They accept two flags:
+
+- `-p, --port <port>` — client dev server port (default `5173`); the allowed
+  origin is derived from it.
+- `-n, --notebook` — also set the server's `proxy_url` to the client dev server
+  origin, for notebook development.
+
+```shell
+yarn dev:wpy -p 5273 -n
 ```
 
 Either way, now simply launch the App like normal:
@@ -81,7 +94,7 @@ with coverage to watch for failures as you develop. Coverage can be monitored
 for open files in VS Code via the Coverage Gutters extension.
 
 ```sh
-yarn test --ui --coverage
+yarn test-ui
 ```
 
 Generally speaking, new modules and source code should have 100% coverage. If
@@ -232,7 +245,7 @@ It should be noted that this App began as this
 
 Best practices:
 
--   All React components should be function-based, not class-based
--   We recommend writing fully typed TypeScript, although we are still
-    transitioning
--   With the app dev environment installed, you can run `yarn storybook`
+- All React components should be function-based, not class-based
+- We recommend writing fully typed TypeScript, although we are still
+  transitioning
+- With the app dev environment installed, you can run `yarn storybook`

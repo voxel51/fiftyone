@@ -32,8 +32,8 @@ export interface SelectorProps<T> {
   overflowContainer?: boolean;
   onMouseEnter?: React.MouseEventHandler;
   cy?: string;
-  footer?: React.JSX.Element;
-  DuringSuspense?: (props: React.PropsWithChildren) => React.JSX.Element;
+  footer?: JSX.Element;
+  DuringSuspense?: (props: React.PropsWithChildren) => JSX.Element;
 }
 
 function Selector<T>(props: SelectorProps<T>) {
@@ -229,7 +229,7 @@ function Selector<T>(props: SelectorProps<T>) {
                 </Suspense>
               </motion.div>
             </AnimatePresence>
-          )
+          ),
         )}
     </div>
   );

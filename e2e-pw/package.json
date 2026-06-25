@@ -20,7 +20,7 @@
         "ts-dedent": "^2.2.0",
         "typescript": "^5.8.2",
         "typescript-eslint": "^8.26.0",
-        "vitest": "^3.0.7",
+        "vitest": "^3.2.6",
         "wait-on": "^8.0.2"
     },
     "scripts": {

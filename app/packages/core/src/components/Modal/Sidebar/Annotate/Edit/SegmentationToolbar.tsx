@@ -15,6 +15,7 @@ export const SegmentationToolbar = () => {
 
   return (
     <ActionToolbar
+      className="segmentation-toolbar"
       groups={groups}
       orientation={Orientation.Column}
       xOffset="5%"

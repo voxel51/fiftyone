@@ -24,7 +24,7 @@ export const isInKeypointsField = selectorFamily({
     ({ get }) => {
       return (
         [KEYPOINTS_POINTS_FIELD, LIST_FIELD].includes(
-          get(field(path))?.ftype || ""
+          get(field(path))?.ftype || "",
         ) && get(parentField(path))?.embeddedDocType === KEYPOINT_FIELD
       );
     },

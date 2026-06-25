@@ -165,7 +165,7 @@ export class PixiRenderer2D implements Renderer2D {
     bounds: Rect,
     width: number,
     color: number | string,
-    alpha: number
+    alpha: number,
   ): void {
     const halfWidth = width / 2;
 
@@ -174,19 +174,19 @@ export class PixiRenderer2D implements Renderer2D {
       bounds.x + bounds.width - halfWidth,
       bounds.y - halfWidth,
       width,
-      width
+      width,
     );
     graphics.rect(
       bounds.x - halfWidth,
       bounds.y + bounds.height - halfWidth,
       width,
-      width
+      width,
     );
     graphics.rect(
       bounds.x + bounds.width - halfWidth,
       bounds.y + bounds.height - halfWidth,
       width,
-      width
+      width,
     );
 
     graphics.setFillStyle({
@@ -201,7 +201,7 @@ export class PixiRenderer2D implements Renderer2D {
     bounds: Rect,
     width: number,
     color: number | string,
-    containerId: string
+    containerId: string,
   ): void {
     width *= HANDLE_FACTOR / this.getScale();
     const graphics = new PIXI.Graphics();
@@ -216,14 +216,14 @@ export class PixiRenderer2D implements Renderer2D {
   drawScrim(
     bounds: Rect,
     canonicalMediaBounds: Rect,
-    containerId: string
+    containerId: string,
   ): void {
     const mask = new PIXI.Graphics();
     mask.rect(
       canonicalMediaBounds.x,
       canonicalMediaBounds.y,
       canonicalMediaBounds.width,
-      canonicalMediaBounds.height
+      canonicalMediaBounds.height,
     );
     mask.setFillStyle({ color: SELECTED_COLOR, alpha: SELECTED_ALPHA });
     mask.fill();
@@ -232,12 +232,12 @@ export class PixiRenderer2D implements Renderer2D {
     const y = Math.max(bounds.y, canonicalMediaBounds.y);
     const maxRight = Math.min(
       canonicalMediaBounds.x + canonicalMediaBounds.width,
-      bounds.x + bounds.width
+      bounds.x + bounds.width,
     );
     const w = maxRight - x;
     const maxBottom = Math.min(
       canonicalMediaBounds.y + canonicalMediaBounds.height,
-      bounds.y + bounds.height
+      bounds.y + bounds.height,
     );
     const h = maxBottom - y;
 
@@ -291,7 +291,7 @@ export class PixiRenderer2D implements Renderer2D {
   private drawBorder(
     bounds: Rect,
     options: TextOptions | undefined,
-    containerId: string
+    containerId: string,
   ): void {
     if (options?.dashline) {
       const border = new PIXI.Graphics();
@@ -362,7 +362,7 @@ export class PixiRenderer2D implements Renderer2D {
   private drawBackground(
     bounds: Rect,
     options: TextOptions | undefined,
-    containerId: string
+    containerId: string,
   ): void {
     if (options?.backgroundColor) {
       const background = new PIXI.Graphics();
@@ -419,7 +419,7 @@ export class PixiRenderer2D implements Renderer2D {
     position: Point,
     finalHeight: number,
     finalWidth: number,
-    options: TextOptions | undefined
+    options: TextOptions | undefined,
   ): { txt: Point; bg: Rect } {
     const padding =
       (options?.padding ?? DEFAULT_TEXT_PADDING) / this.getScale();
@@ -497,7 +497,7 @@ export class PixiRenderer2D implements Renderer2D {
     text: string,
     position: Point,
     options: TextOptions | undefined,
-    containerId: string
+    containerId: string,
   ): Rect {
     if (text?.length === 0) {
       return { x: 0, y: 0, width: 0, height: 0 };
@@ -527,7 +527,7 @@ export class PixiRenderer2D implements Renderer2D {
       position,
       finalHeight,
       finalWidth,
-      options
+      options,
     );
 
     pixiText.x = txt.x;
@@ -543,7 +543,7 @@ export class PixiRenderer2D implements Renderer2D {
     center: Point,
     radius: number,
     style: DrawStyle,
-    containerId: string
+    containerId: string,
   ): void {
     const graphics = new PIXI.Graphics();
     const scaledRadius = radius / this.getScale();
@@ -574,7 +574,7 @@ export class PixiRenderer2D implements Renderer2D {
     centers: Point[],
     radius: number,
     style: DrawStyle,
-    containerId: string
+    containerId: string,
   ): void {
     if (centers.length === 0) return;
     const graphics = new PIXI.Graphics();
@@ -660,12 +660,12 @@ export class PixiRenderer2D implements Renderer2D {
   drawLines(
     segments: Array<[Point, Point]>,
     style: DrawStyle,
-    containerId: string
+    containerId: string,
   ): void {
     if (segments.length === 0) return;
     const graphics = new PIXI.Graphics();
     const { color, alpha } = parseColorWithAlpha(
-      style.strokeStyle || "#000000"
+      style.strokeStyle || "#000000",
     );
 
     if (style.dashPattern && style.dashPattern.length > 0) {
@@ -700,11 +700,11 @@ export class PixiRenderer2D implements Renderer2D {
     start: Point,
     end: Point,
     style: DrawStyle,
-    containerId: string
+    containerId: string,
   ): void {
     const graphics = new PIXI.Graphics();
     const { color, alpha } = parseColorWithAlpha(
-      style.strokeStyle || "#000000"
+      style.strokeStyle || "#000000",
     );
 
     if (style.dashPattern && style.dashPattern.length > 0) {
@@ -735,7 +735,7 @@ export class PixiRenderer2D implements Renderer2D {
     image: ImageSource,
     destination: Rect,
     options: ImageOptions | undefined,
-    containerId: string
+    containerId: string,
   ): void {
     let sprite: PIXI.Sprite;
     switch (image.type) {
@@ -873,7 +873,7 @@ export class PixiRenderer2D implements Renderer2D {
 
     const clampedScale = Math.min(
       Math.max(scale, PixiRenderer2D.ZOOM_MIN),
-      PixiRenderer2D.ZOOM_MAX
+      PixiRenderer2D.ZOOM_MAX,
     );
 
     if (clampedScale !== scale) {
@@ -911,7 +911,7 @@ export class PixiRenderer2D implements Renderer2D {
     const scaleY = (canvasH * squeeze) / worldRect.height;
     const scale = Math.min(
       Math.max(Math.min(scaleX, scaleY), PixiRenderer2D.ZOOM_MIN),
-      PixiRenderer2D.ZOOM_MAX
+      PixiRenderer2D.ZOOM_MAX,
     );
 
     const rectCenterX = worldRect.x + worldRect.width / 2;
@@ -938,7 +938,7 @@ export class PixiRenderer2D implements Renderer2D {
     if (!this.viewport || this.viewport.destroyed) return;
     const clamped = Math.max(
       PixiRenderer2D.ZOOM_MIN,
-      Math.min(PixiRenderer2D.ZOOM_MAX, next)
+      Math.min(PixiRenderer2D.ZOOM_MAX, next),
     );
     if (clamped !== current) {
       this.viewport.setZoom(clamped, true);
@@ -952,7 +952,7 @@ export class PixiRenderer2D implements Renderer2D {
     const current = this.viewport.scaled;
     const next = Math.min(
       current * PixiRenderer2D.ZOOM_FACTOR,
-      PixiRenderer2D.ZOOM_MAX
+      PixiRenderer2D.ZOOM_MAX,
     );
     this.applyZoom(current, next);
   }
@@ -962,7 +962,7 @@ export class PixiRenderer2D implements Renderer2D {
     const current = this.viewport.scaled;
     const next = Math.max(
       current / PixiRenderer2D.ZOOM_FACTOR,
-      PixiRenderer2D.ZOOM_MIN
+      PixiRenderer2D.ZOOM_MIN,
     );
     this.applyZoom(current, next);
   }
@@ -1095,7 +1095,7 @@ export class PixiRenderer2D implements Renderer2D {
   private addToContainer(
     element: PIXI.Container | PIXI.Graphics | PIXI.Text | PIXI.Sprite,
     containerId: string,
-    addToForeground: boolean = true
+    addToForeground: boolean = true,
   ): void {
     let container = this.containers.get(containerId);
     if (!container) {

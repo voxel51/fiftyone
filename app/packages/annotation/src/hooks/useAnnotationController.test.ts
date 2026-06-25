@@ -3,7 +3,7 @@ import { renderHook, act } from "@testing-library/react";
 
 vi.mock(
   "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useAnnotationContextManager",
-  () => ({ useAnnotationContextManager: vi.fn() })
+  () => ({ useAnnotationContextManager: vi.fn() }),
 );
 
 vi.mock("@fiftyone/state", () => ({
@@ -44,10 +44,10 @@ describe("useAnnotationController", () => {
     mockEventBus = { dispatch: vi.fn() };
 
     vi.mocked(useAnnotationContextManager).mockReturnValue(
-      mockContextManager as any
+      mockContextManager as any,
     );
     vi.mocked(useModalModeController).mockReturnValue(
-      mockModeController as any
+      mockModeController as any,
     );
     vi.mocked(useAnnotationEventBus).mockReturnValue(mockEventBus as any);
   });
@@ -63,11 +63,11 @@ describe("useAnnotationController", () => {
       expect(mockModeController.activateAnnotateMode).toHaveBeenCalledOnce();
       expect(mockContextManager.enter).toHaveBeenCalledWith(
         "predictions",
-        "label-1"
+        "label-1",
       );
       expect(mockEventBus.dispatch).toHaveBeenCalledWith(
         "annotation:enterAnnotationMode",
-        { path: "predictions", labelId: "label-1" }
+        { path: "predictions", labelId: "label-1" },
       );
     });
 
@@ -80,21 +80,21 @@ describe("useAnnotationController", () => {
 
       expect(mockContextManager.enter).toHaveBeenCalledWith(
         undefined,
-        undefined
+        undefined,
       );
       expect(mockEventBus.dispatch).toHaveBeenCalledWith(
         "annotation:enterAnnotationMode",
-        { path: undefined, labelId: undefined }
+        { path: undefined, labelId: undefined },
       );
     });
 
     it("activates annotate mode before entering context", async () => {
       const callOrder: string[] = [];
       mockModeController.activateAnnotateMode.mockImplementation(() =>
-        callOrder.push("activateAnnotateMode")
+        callOrder.push("activateAnnotateMode"),
       );
       mockContextManager.enter.mockImplementation(async () =>
-        callOrder.push("enter")
+        callOrder.push("enter"),
       );
 
       const { result } = renderHook(() => useAnnotationController());
@@ -110,10 +110,10 @@ describe("useAnnotationController", () => {
     it("dispatches the enter event after context.enter resolves", async () => {
       const callOrder: string[] = [];
       mockContextManager.enter.mockImplementation(async () =>
-        callOrder.push("enter")
+        callOrder.push("enter"),
       );
       mockEventBus.dispatch.mockImplementation(() =>
-        callOrder.push("dispatch")
+        callOrder.push("dispatch"),
       );
 
       const { result } = renderHook(() => useAnnotationController());
@@ -138,7 +138,7 @@ describe("useAnnotationController", () => {
       expect(mockContextManager.exit).toHaveBeenCalledOnce();
       expect(mockModeController.activateExploreMode).toHaveBeenCalledOnce();
       expect(mockEventBus.dispatch).toHaveBeenCalledWith(
-        "annotation:exitAnnotationMode"
+        "annotation:exitAnnotationMode",
       );
     });
   });

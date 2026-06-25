@@ -20,7 +20,7 @@ describe("isFo3dSceneReady", () => {
         cameraLifecycleState: FO3D_CAMERA_LIFECYCLE.WAITING_FOR_SCENE,
         foScene: null,
         rootAssetCount: 0,
-      })
+      }),
     ).toBe(false);
 
     expect(
@@ -28,7 +28,7 @@ describe("isFo3dSceneReady", () => {
         cameraLifecycleState: FO3D_CAMERA_LIFECYCLE.WAITING_FOR_SCENE,
         foScene: null,
         rootAssetCount: 1,
-      })
+      }),
     ).toBe(false);
   });
 
@@ -38,7 +38,7 @@ describe("isFo3dSceneReady", () => {
         cameraLifecycleState: FO3D_CAMERA_LIFECYCLE.WAITING_FOR_SCENE,
         foScene: makeScene(),
         rootAssetCount: 0,
-      })
+      }),
     ).toBe(true);
   });
 
@@ -60,7 +60,7 @@ describe("isFo3dSceneReady", () => {
           ],
         },
         rootAssetCount: 1,
-      })
+      }),
     ).toBe(false);
   });
 
@@ -82,7 +82,7 @@ describe("isFo3dSceneReady", () => {
           ],
         },
         rootAssetCount: 1,
-      })
+      }),
     ).toBe(true);
   });
 });

@@ -63,16 +63,16 @@ export function useFetchFrustumParameters() {
             fetch<void, GroupStaticTransformResponse>(
               "GET",
               `/dataset/${encodeURIComponent(
-                datasetId
-              )}/sample/${encodeURIComponent(sampleId)}/group/static_transforms`
+                datasetId,
+              )}/sample/${encodeURIComponent(sampleId)}/group/static_transforms`,
             ),
             fetch<void, GroupIntrinsicsResponse>(
               "GET",
               `/dataset/${encodeURIComponent(
-                datasetId
-              )}/sample/${encodeURIComponent(sampleId)}/group/intrinsics`
+                datasetId,
+              )}/sample/${encodeURIComponent(sampleId)}/group/intrinsics`,
             ),
-          ]
+          ],
         );
 
         // Build frustum data for each non-3D slice

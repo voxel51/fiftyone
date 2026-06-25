@@ -10,7 +10,7 @@ export type PythonCommandGenerator = (argv: string[]) => string;
 export class PythonRunner {
   constructor(
     private readonly pythonCommandGenerator: PythonCommandGenerator,
-    private readonly env?: Record<string, string>
+    private readonly env?: Record<string, string>,
   ) {
     this.pythonCommandGenerator = pythonCommandGenerator;
 
@@ -47,6 +47,24 @@ export class PythonRunner {
     proc.stdout.pipe(process.stdout);
     proc.stderr.pipe(process.stderr);
 
-    return new Promise<void>((resolve) => proc.on("exit", () => resolve()));
+    // Reject on non-zero exit so a crashing script surfaces at the actual
+    // call site instead of cascading into a downstream ENOENT (e.g. when a
+    // result file was never written) or a misleading UI timeout (e.g. when
+    // setup silently failed). stderr is already piped above, so the real
+    // traceback is visible before this error fires.
+    return new Promise<void>((resolve, reject) =>
+      proc.on("exit", (code, signal) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(
+            new Error(
+              `Python process exited with code ${code}` +
+                (signal ? ` (signal ${signal})` : ""),
+            ),
+          );
+        }
+      }),
+    );
   }
 }

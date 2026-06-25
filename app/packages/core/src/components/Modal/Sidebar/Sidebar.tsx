@@ -38,7 +38,7 @@ const Sidebar = () => {
   const { showAnnotationTab, disabledReason } = useCanAnnotate();
   const datasetNameValue = useRecoilValue(datasetName);
   const exploreFields = useRecoilValue(
-    activeFields({ modal: true, expanded: false })
+    activeFields({ modal: true, expanded: false }),
   );
   const setExploreFields = useSetAtom(exploreActiveFields);
 

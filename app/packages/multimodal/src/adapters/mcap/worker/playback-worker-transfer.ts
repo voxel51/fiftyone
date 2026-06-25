@@ -20,7 +20,7 @@ export function transferablesForMcapResult(result: unknown): Transferable[] {
 }
 
 function decodedMessagesFromResult(
-  result: unknown
+  result: unknown,
 ): readonly McapDecodedMessage[] {
   if (isSynchronizedWindow(result)) {
     return result.messages;
@@ -31,8 +31,8 @@ function decodedMessagesFromResult(
       isSynchronizedWindow(item)
         ? item.messages
         : isDecodedMessage(item)
-        ? [item]
-        : []
+          ? [item]
+          : [],
     );
   }
 
@@ -40,7 +40,7 @@ function decodedMessagesFromResult(
 }
 
 function isSynchronizedWindow(
-  value: unknown
+  value: unknown,
 ): value is McapSynchronizedMessageWindow {
   return Array.isArray(recordFromUnknown(value)?.messages);
 }

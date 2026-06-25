@@ -5,6 +5,7 @@ Intersection over union (IoU) utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import contextlib
 import itertools
 import logging
@@ -35,6 +36,7 @@ def compute_ious(
     use_masks=False,
     use_boxes=False,
     tolerance=None,
+    keypoint_sigmas=None,
     sparse=False,
     error_level=1,
 ):
@@ -48,6 +50,7 @@ def compute_ious(
 
     For keypoints, "IoUs" are computed via
     `object keypoint similarity <https://cocodataset.org/#keypoints-eval>`_.
+    You can pass ``keypoint_sigmas`` to customize the per-keypoint OKS falloff.
 
     Args:
         preds: a list of predicted
@@ -75,6 +78,8 @@ def compute_ious(
         tolerance (None): a tolerance, in pixels, when generating approximate
             polylines for instance masks. Typical values are 1-3 pixels. By
             default, IoUs are computed directly on the dense pixel masks
+        keypoint_sigmas (None): an optional list of per-keypoint OKS sigmas to
+            use when comparing :class:`fiftyone.core.labels.Keypoint` instances
         sparse (False): whether to return a sparse dict of non-zero IoUs rather
             than a full matrix
         error_level (1): the error level to use when manipulating instance
@@ -133,6 +138,7 @@ def compute_ious(
             preds,
             gts,
             classwise=classwise,
+            keypoint_sigmas=keypoint_sigmas,
             sparse=sparse,
         )
 
@@ -967,7 +973,9 @@ def _compute_segment_ious(preds, gts, sparse=False):
     return ious
 
 
-def _compute_keypoint_similarities(preds, gts, classwise=False, sparse=False):
+def _compute_keypoint_similarities(
+    preds, gts, classwise=False, keypoint_sigmas=None, sparse=False
+):
     is_symmetric = preds is gts
 
     if sparse:
@@ -985,7 +993,9 @@ def _compute_keypoint_similarities(preds, gts, classwise=False, sparse=False):
 
             gtp = gt.points
             predp = pred.points
-            sim = _compute_object_keypoint_similarity(gtp, predp)
+            sim = _compute_object_keypoint_similarity(
+                gtp, predp, keypoint_sigmas=keypoint_sigmas
+            )
             if sim <= 0:
                 continue
 
@@ -1001,9 +1011,16 @@ def _compute_keypoint_similarities(preds, gts, classwise=False, sparse=False):
     return sims
 
 
-def _compute_object_keypoint_similarity(gtp, predp):
+def _compute_object_keypoint_similarity(gtp, predp, keypoint_sigmas=None):
     gtp = np.asarray(gtp, dtype=float)
     predp = np.asarray(predp, dtype=float)
+
+    if keypoint_sigmas is not None:
+        if len(gtp) != len(keypoint_sigmas):
+            raise ValueError(
+                "The number of object keypoints (%d) must match the number of "
+                "`keypoint_sigmas` (%d)" % (len(gtp), len(keypoint_sigmas))
+            )
 
     # Use extent of GT points as proxy for box area
     scale = np.sqrt(np.prod(np.nanmax(gtp, axis=0) - np.nanmin(gtp, axis=0)))
@@ -1012,7 +1029,8 @@ def _compute_object_keypoint_similarity(gtp, predp):
     # If GT points are None/nan/inf: skip
     # If pred points are None/nan/inf: use max distance
     dists = []
-    for g, p in zip(gtp, predp):
+    sigmas = []
+    for idx, (g, p) in enumerate(zip(gtp, predp)):
         if not np.isfinite(g).all():
             continue
 
@@ -1023,6 +1041,8 @@ def _compute_object_keypoint_similarity(gtp, predp):
             d = 1
 
         dists.append(d)
+        if keypoint_sigmas is not None:
+            sigmas.append(keypoint_sigmas[idx])
 
     dists = np.array(dists)
     n = len(dists)
@@ -1030,9 +1050,14 @@ def _compute_object_keypoint_similarity(gtp, predp):
     if n == 0:
         return 0.0
 
-    # object keypoint similarity with kappa == 1
+    if keypoint_sigmas is None:
+        sigmas = 1.0  # default: kappa=1
+    else:
+        sigmas = np.array(sigmas)
+
+    # Object keypoint similarity
     # https://cocodataset.org/#keypoints-eval
-    return np.sum(np.exp(-(dists**2) / (2 * (scale**2)))) / n
+    return np.sum(np.exp(-(dists**2) / (2 * ((scale * sigmas) ** 2)))) / n
 
 
 def _float_to_pixel(gt_bb, img_w, img_h):

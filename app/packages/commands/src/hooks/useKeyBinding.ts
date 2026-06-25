@@ -12,7 +12,7 @@ import { resolveContext } from "./utils";
 export const useKeyBinding = (
   command: string | Command,
   binding: string,
-  context?: CommandContext | string
+  context?: CommandContext | string,
 ) => {
   const resolvedCtx = useMemo(() => {
     return resolveContext(context);
@@ -21,7 +21,7 @@ export const useKeyBinding = (
   useEffect(() => {
     if (!resolvedCtx) {
       console.error(`Could not resolve a command context.`);
-      return;
+      return undefined;
     }
     let cmd: Command | undefined;
     if (typeof command === "string") {

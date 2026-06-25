@@ -25,7 +25,7 @@ const useSchema = (readOnly: boolean) => {
 
   const allAttributes = useMemo(
     () => (Array.isArray(config?.attributes) ? config.attributes : []),
-    [config]
+    [config],
   );
 
   const visibleAttributes = useMemo(() => {
@@ -43,8 +43,11 @@ const useSchema = (readOnly: boolean) => {
     }, new Map<string, AttributeConfig>());
   }, [allAttributes, data]);
 
-  // Stable string key — only changes when the visible attribute set changes
-  const visibleKey = [...visibleAttributes.keys()].join("\0");
+  // Key on the winning entry's index, not its name: same-name variants must
+  // bust the schema memo when the active one swaps (Toyota model -> Honda).
+  const visibleKey = [...visibleAttributes.values()]
+    .map((attr) => allAttributes.indexOf(attr))
+    .join("\0");
 
   // Reruns only when the visible attribute set changes.
   return useMemo(() => {
@@ -105,7 +108,7 @@ const useParseFieldValue = () => {
 
         return data;
       },
-    []
+    [],
   );
 };
 
@@ -148,8 +151,8 @@ const useHandleSchemaChange = (readOnly: boolean) => {
           Object.entries(changes).map(async ([key, value]) => [
             key,
             await parseFieldValue(field, key, value),
-          ])
-        )
+          ]),
+        ),
       );
 
       const value = { ...data, ...result };
@@ -159,7 +162,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         : [];
 
       const uniqueConditionalNames = new Set(
-        allAttributes.filter((a) => a.when).map((a) => a.name)
+        allAttributes.filter((a) => a.when).map((a) => a.name),
       );
 
       // Iterate over the unique conditional attribute names, obtain the current and
@@ -171,12 +174,12 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         const prevOwner = resolveVisibleAttribute(
           name,
           allAttributes,
-          (data ?? {}) as Record<string, unknown>
+          (data ?? {}) as Record<string, unknown>,
         );
         const currentOwner = resolveVisibleAttribute(
           name,
           allAttributes,
-          value
+          value,
         );
 
         if (!currentOwner || prevOwner !== currentOwner) {
@@ -194,7 +197,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         value,
       });
     },
-    [eventBus, parseFieldValue, readOnly]
+    [eventBus, parseFieldValue, readOnly],
   );
 };
 
@@ -219,7 +222,7 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
       Object.entries(data || {}).map(([key, value]) => [
         key,
         Array.isArray(value) ? value.join(", ") : value,
-      ])
+      ]),
     );
   }, [data, readOnly]);
 

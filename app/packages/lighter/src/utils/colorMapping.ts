@@ -33,7 +33,7 @@ export interface StrokeStyles {
  */
 export function getOverlayColor(
   overlay: BaseOverlay,
-  context: ColorMappingContext
+  context: ColorMappingContext,
 ): string {
   // Convert ColorSchemeInput to Coloring interface
   const coloring = {
@@ -79,7 +79,7 @@ export function getOverlayColor(
         ? [...field.maskTargetsColors]
         : undefined,
       valueColors: field.valueColors ? [...field.valueColors] : undefined,
-    })
+    }),
   );
   const embeddedDocType = label["_cls"];
   const isPolyline3D =

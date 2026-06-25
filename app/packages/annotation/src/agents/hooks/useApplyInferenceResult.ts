@@ -13,7 +13,7 @@ import { DetectionAnnotationLabel } from "@fiftyone/state";
  * annotation session.
  */
 export type InferenceResultHandler = (
-  result: InferenceResult<InferenceResultProxy>
+  result: InferenceResult<InferenceResultProxy>,
 ) => void;
 
 /**
@@ -23,7 +23,7 @@ export type InferenceResultHandler = (
  * @param createDetection Callback which creates a new detection overlay
  */
 export const useApplyInferenceResult = (
-  createDetection: () => DetectionAnnotationLabel | null
+  createDetection: () => DetectionAnnotationLabel | null,
 ): InferenceResultHandler => {
   const { getOverlay, scene } = useLighter();
 
@@ -62,6 +62,6 @@ export const useApplyInferenceResult = (
         console.warn(`Unsupported result type: ${result.type}`);
       }
     },
-    [createDetection, getOverlay, scene]
+    [createDetection, getOverlay, scene],
   );
 };

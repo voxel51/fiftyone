@@ -48,6 +48,8 @@ from .parsers import (
     FiftyOneVideoLabelsSampleParser,
 )
 
+fota = fou.lazy_import("fiftyone.core.tags")
+
 logger = logging.getLogger(__name__)
 
 
@@ -1818,13 +1820,11 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._metadata_path = None
         self._samples_path = None
         self._frames_path = None
-        self._temporal_tags_path = None
+        self._tags_path = None
         self._has_frames = None
         self._media_fields = None
 
     def setup(self):
-        import fiftyone.multimodal.tags._temporal_tags as fommtt
-
         self._data_dir = os.path.join(self.dataset_dir, "data")
         self._fields_dir = os.path.join(self.dataset_dir, "fields")
         self._anno_dir = os.path.join(self.dataset_dir, "annotations")
@@ -1832,8 +1832,8 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._eval_dir = os.path.join(self.dataset_dir, "evaluations")
         self._runs_dir = os.path.join(self.dataset_dir, "runs")
         self._metadata_path = os.path.join(self.dataset_dir, "metadata.json")
-        self._temporal_tags_path = os.path.join(
-            self.dataset_dir, fommtt.TEMPORAL_TAGS_EXPORT_FILENAME
+        self._tags_path = os.path.join(
+            self.dataset_dir, fota.TAGS_EXPORT_FILENAME
         )
 
         if os.path.isdir(self._fields_dir):
@@ -1856,8 +1856,6 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 self._has_frames = False
 
     def import_samples(self, dataset, tags=None, progress=None):
-        import fiftyone.multimodal.tags._temporal_tags as fommtt
-
         dataset_dict = foo.import_document(self._metadata_path)
 
         if len(dataset) > 0 and fomi.needs_migration(
@@ -1882,9 +1880,9 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 dataset, dataset_dict, tags=tags, progress=progress
             )
 
-        fommtt.import_tags(
+        fota.import_tags(
             dataset,
-            self._temporal_tags_path,
+            self._tags_path,
             sample_ids=sample_ids if self.max_samples is not None else None,
             progress=progress,
         )

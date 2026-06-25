@@ -23,7 +23,7 @@ export class GridActionsRowPom {
 
   get filtersBookmark() {
     return this.gridActionsRow.getByTestId(
-      "action-convert-filters-to-view-stages"
+      "action-convert-filters-to-view-stages",
     );
   }
 

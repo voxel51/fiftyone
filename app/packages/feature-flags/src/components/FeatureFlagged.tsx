@@ -30,5 +30,5 @@ export const FeatureFlagged = ({
     return resolving ?? <Fragment />;
   }
 
-  return isEnabled ? children : fallback ?? <Fragment />;
+  return isEnabled ? children : (fallback ?? <Fragment />);
 };

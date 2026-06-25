@@ -182,7 +182,7 @@ interface DatasetOptions {
    */
   withSampleData?: (
     sampleScaffold: SampleScaffold,
-    helpers: Helpers
+    helpers: Helpers,
   ) => JSONObject;
 }
 
@@ -228,13 +228,13 @@ const createDataset = (() => {
   }: DatasetOptions) => {
     if (!Number.isInteger(numSamples)) {
       throw new Error(
-        `Expected 'numSamples' to be an integer, but got ${numSamples}`
+        `Expected 'numSamples' to be an integer, but got ${numSamples}`,
       );
     }
 
     if (numSamples < 1 || numSamples > 100) {
       throw new Error(
-        `'numSamples' must be >0 and <=100, but got ${numSamples}`
+        `'numSamples' must be >0 and <=100, but got ${numSamples}`,
       );
     }
 
@@ -250,7 +250,7 @@ const createDataset = (() => {
           outputPath: filepath,
           watermarkString: numbered ? index.toString() : undefined,
           ...imageOptions,
-        })
+        }),
       );
       const _id = indexToId(index);
       const sampleScaffold = {
@@ -260,8 +260,8 @@ const createDataset = (() => {
       };
       sampleData.push(
         `sample_data.append(json_util.loads('${JSON.stringify(
-          withSampleData(sampleScaffold, { createId })
-        )}'))`
+          withSampleData(sampleScaffold, { createId }),
+        )}'))`,
       );
     }
 
@@ -397,7 +397,7 @@ const createGroupDataset = (() => {
               width: 128,
               height: 128,
               hideLogs: true,
-            })
+            }),
           );
         } else {
           const plyPath = path.join(outputDir, `${slice.name}-${i}.ply`);
@@ -433,7 +433,7 @@ const createGroupDataset = (() => {
       .map((s) =>
         s.mediaType === "3d"
           ? `"${s.name}": fom.THREE_D`
-          : `"${s.name}": fom.IMAGE`
+          : `"${s.name}": fom.IMAGE`,
       )
       .join(", ");
     const defaultSlice = slices[0]?.name ?? "left";
@@ -481,6 +481,72 @@ dataset.add_samples(samples)
 })();
 
 /**
+ * Spec for a single detection seeded into an existing sample.
+ *
+ * `maskSize` (optional): attaches a square mask of all-ones with the given
+ * side length, producing a mask-detection. Omit for a plain bbox detection.
+ */
+export interface DetectionSpec {
+  label: string;
+  boundingBox: [number, number, number, number];
+  maskSize?: number;
+}
+
+/**
+ * Writes a `fo.Detections` value onto a sample in an existing dataset.
+ * Tests should prefer this over inline `executePythonCode` so the
+ * generated Python stays in one auditable place.
+ *
+ * @example
+ * await DatasetFactory.seedDetections({
+ *   datasetName: "merge-fixture",
+ *   field: "instances",
+ *   detections: [
+ *     { label: "cat", boundingBox: [0.25, 0.4, 0.2, 0.2], maskSize: 50 },
+ *     { label: "cat", boundingBox: [0.55, 0.4, 0.2, 0.2], maskSize: 50 },
+ *   ],
+ * });
+ */
+const seedDetections = (() => {
+  const loader = new OssLoader();
+  return async ({
+    datasetName,
+    field,
+    detections,
+    sampleIndex = 0,
+  }: {
+    datasetName: string;
+    field: string;
+    detections: DetectionSpec[];
+    sampleIndex?: number;
+  }) => {
+    const hasMask = detections.some((d) => d.maskSize);
+    const detLines = detections
+      .map((d, i) => {
+        const mask = d.maskSize
+          ? `, mask=np.ones((${d.maskSize}, ${d.maskSize}), dtype=bool)`
+          : "";
+        return `det_${i} = fo.Detection(label="${d.label}", bounding_box=[${d.boundingBox.join(", ")}]${mask})`;
+      })
+      .join("\n");
+    const detRefs = detections.map((_, i) => `det_${i}`).join(", ");
+
+    await loader.executePythonCode(`
+import fiftyone as fo
+${hasMask ? "import numpy as np" : ""}
+
+dataset = fo.load_dataset("${datasetName}")
+sample = list(dataset)[${sampleIndex}]
+
+${detLines}
+
+sample["${field}"] = fo.Detections(detections=[${detRefs}])
+sample.save()
+    `);
+  };
+})();
+
+/**
  * Factory for creating FiftyOne datasets in test and fixture contexts.
  *
  * @example
@@ -488,8 +554,10 @@ dataset.add_samples(samples)
  *
  * await DatasetFactory.createDataset({ datasetName: "test-dataset" });
  * await DatasetFactory.createGroupDataset({ datasetName: "my-groups" });
+ * await DatasetFactory.seedDetections({ datasetName, field, detections });
  */
 export const DatasetFactory = {
   createDataset,
   createGroupDataset,
+  seedDetections,
 };

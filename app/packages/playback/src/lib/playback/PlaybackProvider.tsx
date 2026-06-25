@@ -28,10 +28,12 @@ function PlaybackContextHost({
       duration: liveDuration,
       stepInterval: liveStepInterval,
     }),
-    [baseContext, liveDuration, liveStepInterval]
+    [baseContext, liveDuration, liveStepInterval],
   );
   return (
-    <PlaybackContext.Provider value={value}>{children}</PlaybackContext.Provider>
+    <PlaybackContext.Provider value={value}>
+      {children}
+    </PlaybackContext.Provider>
   );
 }
 
@@ -76,7 +78,8 @@ export function PlaybackProvider({
  */
 export function usePlayback(): PlaybackContextValue {
   const ctx = useContext(PlaybackContext);
-  if (!ctx) throw new Error("usePlayback must be used inside <PlaybackProvider>");
+  if (!ctx)
+    throw new Error("usePlayback must be used inside <PlaybackProvider>");
   return ctx;
 }
 

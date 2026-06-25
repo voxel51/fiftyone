@@ -26,10 +26,10 @@ export const TestWrapper = ({ children }: { children: React.ReactNode }) => {
 };
 
 export const mockUsePanelStateByIdCallback = vi.mocked(
-  usePanelStateByIdCallback
+  usePanelStateByIdCallback,
 );
 export const mockUseActivePanelEventsCount = vi.mocked(
-  useActivePanelEventsCount
+  useActivePanelEventsCount,
 );
 export let mockCallback: any;
 

@@ -1,8 +1,9 @@
 // ---------------------------------------------------------------------------
-// Reactive read-only hooks for the playback atoms. Components MUST go
-// through these instead of calling `useAtomValue(...)` directly — keeps
-// jotai out of the view layer and gives us one place to evolve the
-// reactive read story (memoization, derived state, dev warnings, …).
+// Reactive read hooks for the playback atoms. Components MUST go through
+// these instead of calling `useAtomValue(...)` directly — keeps jotai out
+// of the view layer and gives us one place to evolve the reactive read
+// story (memoization, derived state, dev warnings, …). Imperative reads
+// and stream-side writes live in `store-access.ts`.
 //
 // Every hook reads through `usePlaybackStore()` and targets that store
 // explicitly via `useAtomValue(atom, { store })`. That way the playback
@@ -13,6 +14,8 @@
 
 import { useAtomValue } from "jotai";
 import {
+  bufferedRangesAtom,
+  bufferingDetailAtom,
   currentTimeAtom,
   durationAtom,
   isBufferingAtom,
@@ -27,6 +30,7 @@ import {
   viewStartAtom,
 } from "./atoms";
 import { usePlaybackStore } from "./playback-store-context";
+import type { BufferedRanges, SeekEvent } from "./types";
 
 /** Visual playhead position in seconds — updates every RAF tick + on scrub. */
 export function usePlayhead(): number {
@@ -51,6 +55,24 @@ export function useIsPlaying(): boolean {
 export function useIsBuffering(): boolean {
   const store = usePlaybackStore();
   return useAtomValue(isBufferingAtom, { store });
+}
+
+/**
+ * Optional progress detail for the buffering indicator (e.g. "3/7
+ * streams"), or `null` when no stream has published one.
+ */
+export function useBufferingDetail(): string | null {
+  const store = usePlaybackStore();
+  return useAtomValue(bufferingDetailAtom, { store });
+}
+
+/**
+ * Time ranges (seconds) buffered and ready to play across every blocking
+ * stream, as published by the data layer. Empty until a stream reports.
+ */
+export function useBufferedRanges(): BufferedRanges {
+  const store = usePlaybackStore();
+  return useAtomValue(bufferedRangesAtom, { store });
 }
 
 /** Live duration (max of registered streams, or the provider's fallback). */
@@ -98,7 +120,7 @@ export function useSpeed(): number {
  * before any jump has fired. The `seq` counter changes even when `time`
  * repeats, so consumers can re-fire on every event.
  */
-export function useSeekEvent(): { time: number; seq: number } | null {
+export function useSeekEvent(): SeekEvent | null {
   const store = usePlaybackStore();
   return useAtomValue(seekEventAtom, { store });
 }

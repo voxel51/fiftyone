@@ -72,7 +72,7 @@ const calculateCameraPositionForSidePanel = (
   sidePanelViewType: SidePanelViewType,
   upVector: Vector3,
   lookAt: Vector3,
-  sceneBoundingBox: Box3 | null
+  sceneBoundingBox: Box3 | null,
 ): Vector3 => {
   if (!sceneBoundingBox) {
     // Fallback to default positions if no bounding box
@@ -154,7 +154,7 @@ const calculateCameraPositionForSidePanel = (
  */
 const calculateCameraUpForSidePanel = (
   sidePanelViewType: SidePanelViewType,
-  upVector: Vector3
+  upVector: Vector3,
 ): Vector3 => {
   const upDir = upVector.clone().normalize();
 
@@ -375,10 +375,10 @@ export const SidePanel = ({
             safeSelectValue,
             upVector,
             lookAt,
-            sceneBoundingBox
+            sceneBoundingBox,
           )
         : new Vector3(0, 10, 0),
-    [safeSelectValue, upVector, lookAt, sceneBoundingBox]
+    [safeSelectValue, upVector, lookAt, sceneBoundingBox],
   );
 
   const cameraUp = useMemo(
@@ -386,7 +386,7 @@ export const SidePanel = ({
       upVector
         ? calculateCameraUpForSidePanel(safeSelectValue, upVector)
         : new Vector3(0, 1, 0),
-    [safeSelectValue, upVector]
+    [safeSelectValue, upVector],
   );
 
   const theme = useTheme();
@@ -554,8 +554,8 @@ export const SidePanel = ({
 
 function findByUserData(
   scene: THREE.Scene,
-  key: typeof FO_USER_DATA[keyof typeof FO_USER_DATA],
-  value: unknown
+  key: (typeof FO_USER_DATA)[keyof typeof FO_USER_DATA],
+  value: unknown,
 ): THREE.Object3D | null {
   let result: THREE.Object3D | null = null;
   scene.traverse((o) => {
@@ -587,7 +587,7 @@ const BoundsSideEffectsComponent = () => {
     return THREE.MathUtils.clamp(
       maxSceneDimension * 0.05,
       MIN_POLYLINE_VERTEX_FOCUS_SIZE,
-      MAX_POLYLINE_VERTEX_FOCUS_SIZE
+      MAX_POLYLINE_VERTEX_FOCUS_SIZE,
     );
   };
 
@@ -607,7 +607,7 @@ const BoundsSideEffectsComponent = () => {
         const boxGeometry = new THREE.BoxGeometry(
           expandedSize.x,
           expandedSize.y,
-          expandedSize.z
+          expandedSize.z,
         );
         const helperMesh = new THREE.Mesh(boxGeometry);
         helperMesh.position.copy(expandedCenter);
@@ -634,7 +634,7 @@ const BoundsSideEffectsComponent = () => {
     const boxGeometry = new THREE.BoxGeometry(
       DEFAULT_CUBOID_CREATION_MARGIN,
       DEFAULT_CUBOID_CREATION_MARGIN,
-      DEFAULT_CUBOID_CREATION_MARGIN
+      DEFAULT_CUBOID_CREATION_MARGIN,
     );
     const helperMesh = new THREE.Mesh(boxGeometry);
     helperMesh.position.set(position[0], position[1], position[2]);
@@ -658,7 +658,7 @@ const BoundsSideEffectsComponent = () => {
       const boxGeometry = new THREE.BoxGeometry(
         focusBoxSize,
         focusBoxSize,
-        focusBoxSize
+        focusBoxSize,
       );
       const helperMesh = new THREE.Mesh(boxGeometry);
       helperMesh.position.set(position[0], position[1], position[2]);
@@ -671,7 +671,7 @@ const BoundsSideEffectsComponent = () => {
         scene.remove(helperMesh);
         boxGeometry.dispose();
       }, 0);
-    }
+    },
   );
 
   return null;

@@ -49,7 +49,7 @@ export function useTemporalTagMode(): {
 
   const enterTagMode = useCallback(() => {
     setState((s) =>
-      s.phase === "idle" ? { ...INITIAL_STATE, phase: "ready" } : s
+      s.phase === "idle" ? { ...INITIAL_STATE, phase: "ready" } : s,
     );
   }, []);
 
@@ -107,13 +107,13 @@ export function useTemporalTagMode(): {
 
   const setLabel = useCallback((label: string) => {
     setState((s) =>
-      s.phase === "selected" ? { ...s, pendingLabel: label } : s
+      s.phase === "selected" ? { ...s, pendingLabel: label } : s,
     );
   }, []);
 
   const cancel = useCallback(() => {
     setState((s) =>
-      s.phase === "idle" ? s : { ...INITIAL_STATE, phase: "ready" }
+      s.phase === "idle" ? s : { ...INITIAL_STATE, phase: "ready" },
     );
   }, []);
 

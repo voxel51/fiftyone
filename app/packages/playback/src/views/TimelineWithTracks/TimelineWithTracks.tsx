@@ -3,7 +3,6 @@ import clsx from "clsx";
 import React, { useMemo, useRef, useState } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import {
-  TIMELINE_DEFAULT_DRAWER_SIZE,
   TIMELINE_DRAWER_MAX_SIZE,
   TIMELINE_LABEL_WIDTH,
 } from "../../lib/constants";
@@ -15,7 +14,9 @@ import {
 import LoopOverlays from "../Loop/LoopOverlays";
 import PlayheadLine from "../Playhead/PlayheadLine";
 import TimelineHeader from "../TimelineHeader/TimelineHeader";
-import TimelineTrack, { type NormalizedEvent } from "../TimelineTrack/TimelineTrack";
+import TimelineTrack, {
+  type NormalizedEvent,
+} from "../TimelineTrack/TimelineTrack";
 import styles from "./TimelineWithTracks.module.css";
 
 export interface TimelineWithTracksProps {
@@ -115,8 +116,6 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
         side="bottom"
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
-        defaultSize={TIMELINE_DEFAULT_DRAWER_SIZE}
-        minSize={0}
         maxSize={maxSize}
         mode="push"
         header={({ toggle }) => (

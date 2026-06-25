@@ -106,7 +106,7 @@ export const useSampleMedia = ({
       // Schedule media fetch for newly expanded run
       pendingFetchRef.current = run.run_id;
     },
-    [expandedRunIds]
+    [expandedRunIds],
   );
 
   // Fetch media after expansion state settles
@@ -138,7 +138,7 @@ export const useSampleMedia = ({
       ...cacheRef.current.toRecord(),
       ...sampleMedia,
     }),
-    [sampleMedia]
+    [sampleMedia],
   );
 
   return { mergedMedia, handleToggleExpand };

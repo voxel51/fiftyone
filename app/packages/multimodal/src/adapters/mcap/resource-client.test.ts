@@ -46,7 +46,7 @@ describe("MCAP resource worker option", () => {
 
     expect(client).toBe(workerHarness.workerClient);
     expect(workerHarness.createWorkerMcapResourceClient).toHaveBeenCalledTimes(
-      1
+      1,
     );
   });
 });

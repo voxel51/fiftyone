@@ -16,7 +16,7 @@ export class MetadataThumbnailElement extends BaseElement<BaseState> {
 
   createHTMLElement(
     dispatchEvent: DispatchEvent,
-    config: Readonly<BaseConfig>
+    config: Readonly<BaseConfig>,
   ): HTMLElement {
     const element = document.createElement("div");
     element.setAttribute("data-cy", "file-thumbnail-looker");
@@ -54,7 +54,7 @@ export class MetadataThumbnailElement extends BaseElement<BaseState> {
 
   renderSelf(
     state: Readonly<BaseState>,
-    sample: Readonly<Sample>
+    sample: Readonly<Sample>,
   ): HTMLElement {
     this.#handleIcon(state, sample);
     this.#handleFileName(sample);
@@ -67,7 +67,7 @@ export class MetadataThumbnailElement extends BaseElement<BaseState> {
   #handleScaling(state: Readonly<BaseState>) {
     const scaleFactor = this.#getScaleFactor(
       state.windowBBox[2],
-      state.windowBBox[3]
+      state.windowBBox[3],
     );
 
     this.#container.style.scale = `${scaleFactor}`;

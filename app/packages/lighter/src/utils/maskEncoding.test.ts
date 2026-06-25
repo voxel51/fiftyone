@@ -28,7 +28,7 @@ describe("maskEncoding", () => {
     // Re-encode
     const reEncoded = await encodeMaskData(
       new Uint8Array(original.buffer),
-      original.shape
+      original.shape,
     );
 
     // Decode the re-encoded mask using the same real deserializer
@@ -39,7 +39,7 @@ describe("maskEncoding", () => {
 
     // Data must match byte-for-byte
     expect(new Uint8Array(roundTripped.buffer)).toEqual(
-      new Uint8Array(original.buffer)
+      new Uint8Array(original.buffer),
     );
   });
 
@@ -77,10 +77,18 @@ describe("maskEncoding", () => {
       const shape = [2, 2, 3];
       // 2x2 mask with 3 channels
       const mask = new Uint8Array([
-        1, 0, 1, // row 0 col 0
-        0, 1, 0, // row 0 col 1
-        1, 0, 1, // row 1 col 0
-        0, 1, 0, // row 1 col 1
+        1,
+        0,
+        1, // row 0 col 0
+        0,
+        1,
+        0, // row 0 col 1
+        1,
+        0,
+        1, // row 1 col 0
+        0,
+        1,
+        0, // row 1 col 1
       ]);
 
       const result = await roundTrip(mask, shape);
@@ -134,26 +142,26 @@ describe("maskEncoding", () => {
   describe("validation", () => {
     test("throws when shape is empty", async () => {
       await expect(encodeMaskData(new Uint8Array(0), [])).rejects.toThrow(
-        /Mask shape must be 2D or 3D/
+        /Mask shape must be 2D or 3D/,
       );
     });
 
     test("throws when shape contains a negative dimension", async () => {
-      await expect(
-        encodeMaskData(new Uint8Array(4), [2, -2])
-      ).rejects.toThrow(/Mask shape must be 2D or 3D/);
+      await expect(encodeMaskData(new Uint8Array(4), [2, -2])).rejects.toThrow(
+        /Mask shape must be 2D or 3D/,
+      );
     });
 
     test("throws when shape contains a non-integer dimension", async () => {
-      await expect(
-        encodeMaskData(new Uint8Array(4), [2, 2.5])
-      ).rejects.toThrow(/Mask shape must be 2D or 3D/);
+      await expect(encodeMaskData(new Uint8Array(4), [2, 2.5])).rejects.toThrow(
+        /Mask shape must be 2D or 3D/,
+      );
     });
 
     test("throws when shape does not match array length", async () => {
-      await expect(
-        encodeMaskData(new Uint8Array(5), [2, 3])
-      ).rejects.toThrow(/does not match shape/);
+      await expect(encodeMaskData(new Uint8Array(5), [2, 3])).rejects.toThrow(
+        /does not match shape/,
+      );
     });
   });
 

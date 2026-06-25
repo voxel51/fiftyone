@@ -18,7 +18,7 @@ vi.mock("@fiftyone/core/src/components/Modal/Sidebar/Annotate", () => ({
 
 // Helper to create a base overlay label for testing
 const createBaseOverlayLabel = (
-  overrides: Partial<OverlayLabel> = {}
+  overrides: Partial<OverlayLabel> = {},
 ): OverlayLabel => ({
   _id: "test-label-id",
   _cls: "Detection",
@@ -102,7 +102,7 @@ describe("reconcileDetection", () => {
 describe("reconcilePolyline", () => {
   const createPolylineOverlay = (
     points3d: [number, number, number][][],
-    overrides: Partial<OverlayLabel> = {}
+    overrides: Partial<OverlayLabel> = {},
   ): OverlayLabel & { points3d: [number, number, number][][] } => ({
     ...createBaseOverlayLabel({ _cls: "Polyline", ...overrides }),
     points3d,
@@ -229,7 +229,7 @@ describe("reconcilePolyline", () => {
       {
         color: "#00ff00",
         label: "my-polyline",
-      }
+      },
     );
 
     const result = reconcilePolyline(overlay);
@@ -276,13 +276,13 @@ describe("createNewDetection", () => {
       labelId,
       transformData,
       currentSampleId,
-      path
+      path,
     );
 
     expect(result._id).toBe(labelId);
     expect(result._cls).toBe("Detection");
     expect((result as unknown as Record<string, unknown>).type).toBe(
-      "Detection"
+      "Detection",
     );
     expect(result.path).toBe(path);
     expect(result.location).toEqual([10, 20, 30]);
@@ -347,7 +347,7 @@ describe("createNewPolyline", () => {
     expect(result!._id).toBe(labelId);
     expect(result!._cls).toBe("Polyline");
     expect((result as unknown as Record<string, unknown>).type).toBe(
-      "Polyline"
+      "Polyline",
     );
     expect(result!.path).toBe("predictions.polylines");
     expect(result!.label).toBe("my-polyline");

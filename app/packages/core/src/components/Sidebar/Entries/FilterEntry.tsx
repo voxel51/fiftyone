@@ -22,12 +22,12 @@ const Text = styled.div`
 const Filter = () => {
   const theme = useTheme();
   const [isFilterMode, setIsFilterMode] = useRecoilState(
-    fos.isSidebarFilterMode
+    fos.isSidebarFilterMode,
   );
 
   const setSchemaModal = useSetRecoilState(fos.settingsModal);
   const resetSelectedFieldStages = useResetRecoilState(
-    fos.fieldVisibilityStage
+    fos.fieldVisibilityStage,
   );
 
   const {

@@ -101,7 +101,7 @@ const GUIView = () => {
         setActiveTab(tabId);
       }
     },
-    [setActiveTab]
+    [setActiveTab],
   );
 
   return (

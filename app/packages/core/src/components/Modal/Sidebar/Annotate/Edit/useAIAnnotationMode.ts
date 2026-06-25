@@ -52,7 +52,7 @@ const useDefaultAgent = () => {
 const useLabelReset = (isActive: boolean, reset: () => void) => {
   const { selected } = useAnnotationContext();
   const previousSelectedLabelIdRef = useRef<string | null>(
-    selected?.label?.overlay?.id ?? null
+    selected?.label?.overlay?.id ?? null,
   );
 
   // When the selected label changes,
@@ -123,6 +123,6 @@ export const useAIAnnotationMode = (): AIAnnotationMode => {
       deactivate,
       isActive,
     }),
-    [activate, deactivate, isActive]
+    [activate, deactivate, isActive],
   );
 };

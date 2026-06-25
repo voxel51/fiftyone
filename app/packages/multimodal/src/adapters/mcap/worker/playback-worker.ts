@@ -20,7 +20,7 @@ type McapPlaybackWorkerScope = {
   onmessage: ((event: MessageEvent<McapPlaybackWorkerRequest>) => void) | null;
   postMessage(
     response: McapPlaybackWorkerResponse,
-    transfer?: readonly Transferable[]
+    transfer?: readonly Transferable[],
   ): void;
 };
 
@@ -37,7 +37,7 @@ workerScope.onmessage = (event: MessageEvent<McapPlaybackWorkerRequest>) => {
     setFetchFunction(
       message.payload.origin,
       message.payload.headers,
-      message.payload.pathPrefix
+      message.payload.pathPrefix,
     );
     return;
   }
@@ -86,7 +86,7 @@ async function runAndRespond(message: McapPlaybackWorkerRpcRequest) {
 }
 
 async function streamRequest(
-  message: McapPlaybackWorkerRpcRequest<McapPlaybackWorkerStreamType>
+  message: McapPlaybackWorkerRpcRequest<McapPlaybackWorkerStreamType>,
 ) {
   for await (const item of runMcapPlaybackWorkerStreamRequest(mcap, message)) {
     postResponse({

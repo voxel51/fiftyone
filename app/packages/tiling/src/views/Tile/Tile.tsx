@@ -86,11 +86,7 @@ const Tile: React.FC<TileProps> = ({
   className,
 }) => (
   <div className={clsx(styles.root, className)}>
-    <TileHeader
-      title={title}
-      onClose={onClose}
-      onFullscreen={onFullscreen}
-    />
+    <TileHeader title={title} onClose={onClose} onFullscreen={onFullscreen} />
     <div className={styles.content}>{children}</div>
   </div>
 );

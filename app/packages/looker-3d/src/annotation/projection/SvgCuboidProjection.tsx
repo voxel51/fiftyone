@@ -42,7 +42,7 @@ export function SvgCuboidProjection({
             fill={color}
             vectorEffect="non-scaling-stroke"
           />
-        ) : null
+        ) : null,
       )}
     </g>
   );

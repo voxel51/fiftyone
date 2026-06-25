@@ -16,7 +16,7 @@ import {
   useCurrent3dAnnotationMode,
   useSetCurrent3dAnnotationMode,
 } from "@fiftyone/looker-3d/src/state/accessors";
-import { is3DDataset, useIs3dPinned } from "@fiftyone/state";
+import { is3DDataset, useIs3dPinned, useIsGroupDataset } from "@fiftyone/state";
 import {
   DETECTION,
   DETECTIONS,
@@ -39,6 +39,7 @@ import { useDetectionMode } from "./Edit/useDetectionMode";
 import { usePolylineMode } from "./Edit/usePolylineMode";
 import { useSegmentationMode } from "./Edit/useSegmentationMode";
 import { useDeactivateAllModes } from "./useDeactivateAllModes";
+import { useGroupAnnotationSliceReady } from "./useGroupAnnotationSliceReady";
 
 const ActionsDiv = styled.div`
   align-items: center;
@@ -201,12 +202,8 @@ const Classification = () => {
 };
 
 const Detection = () => {
-  const {
-    activateDetectionMode,
-    detectionModeActive,
-    disabled,
-    tooltip,
-  } = useDetectionMode();
+  const { activateDetectionMode, detectionModeActive, disabled, tooltip } =
+    useDetectionMode();
   const deactivateAll = useDeactivateAll();
 
   return (
@@ -260,12 +257,8 @@ const Segmentation = () => {
 };
 
 const Polyline = () => {
-  const {
-    activatePolylineMode,
-    polylineModeActive,
-    disabled,
-    tooltip,
-  } = usePolylineMode();
+  const { activatePolylineMode, polylineModeActive, disabled, tooltip } =
+    usePolylineMode();
   const deactivateAll = useDeactivateAll();
 
   return (
@@ -337,8 +330,8 @@ export const ThreeDPolylines = () => {
       (fieldType) =>
         fieldType === POLYLINE.toLocaleLowerCase() ||
         fieldType === POLYLINES.toLocaleLowerCase(),
-      []
-    )
+      [],
+    ),
   );
 
   const hasPolylineFieldsInSchema = polylineFields && polylineFields.length > 0;
@@ -393,8 +386,8 @@ export const ThreeDCuboids = () => {
       (fieldType) =>
         fieldType === DETECTION.toLocaleLowerCase() ||
         fieldType === DETECTIONS.toLocaleLowerCase(),
-      []
-    )
+      [],
+    ),
   );
 
   const hasCuboidFieldsInSchema = cuboidFields && cuboidFields.length > 0;
@@ -456,6 +449,14 @@ const Actions = () => {
     !current3dAnnotationMode;
   const areThreeDActionsVisible = is3dDataset || is3dSamplePinned;
 
+  // For group datasets the 2D-vs-3D decision depends on the resolved annotation
+  // slice, which isn't known until the group's sample data loads. Withhold the
+  // slice-dependent tools until then so a 3D sample never flashes 2D tools.
+  // Non-group datasets resolve immediately and don't gate.
+  const isGroupDataset = useIsGroupDataset();
+  const [groupAnnotationSliceReady] = useGroupAnnotationSliceReady();
+  const toolsResolved = !isGroupDataset || groupAnnotationSliceReady;
+
   const deactivateAll = useDeactivateAllModes();
 
   return (
@@ -465,18 +466,19 @@ const Actions = () => {
           <ItemLeft style={{ columnGap: "0.1rem" }}>
             <Select active={noActiveActions} />
             <Classification />
-            {areThreeDActionsVisible ? (
-              <>
-                <ThreeDCuboids />
-                <ThreeDPolylines />
-              </>
-            ) : (
-              <>
-                <Detection />
-                <Segmentation />
-                <Polyline />
-              </>
-            )}
+            {toolsResolved &&
+              (areThreeDActionsVisible ? (
+                <>
+                  <ThreeDCuboids />
+                  <ThreeDPolylines />
+                </>
+              ) : (
+                <>
+                  <Detection />
+                  <Segmentation />
+                  <Polyline />
+                </>
+              ))}
           </ItemLeft>
           <ItemRight style={{ columnGap: "0.1rem" }}>
             <Undo />

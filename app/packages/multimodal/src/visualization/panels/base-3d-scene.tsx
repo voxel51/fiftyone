@@ -153,7 +153,7 @@ function ControlledOrbitControls({
 function setCameraPose(
   camera: CameraHandle,
   controls: OrbitControlsHandle,
-  pose: ThreeCameraPose
+  pose: ThreeCameraPose,
 ) {
   camera.position.set(...pose.position);
   controls.target.set(...pose.target);
@@ -161,7 +161,7 @@ function setCameraPose(
 
 function cameraPoseFromScene(
   camera: CameraHandle,
-  controls: OrbitControlsHandle
+  controls: OrbitControlsHandle,
 ): ThreeCameraPose {
   return {
     position: [camera.position.x, camera.position.y, camera.position.z],
@@ -171,7 +171,7 @@ function cameraPoseFromScene(
 
 function cameraPoseEquals(
   first: ThreeCameraPose | null | undefined,
-  second: ThreeCameraPose | null | undefined
+  second: ThreeCameraPose | null | undefined,
 ): boolean {
   if (!first || !second) {
     return first === second;
@@ -185,7 +185,7 @@ function cameraPoseEquals(
 
 function vectorTupleEquals(first: VectorTuple, second: VectorTuple): boolean {
   return first.every(
-    (value, index) => Math.abs(value - second[index]) <= CAMERA_POSE_EPSILON
+    (value, index) => Math.abs(value - second[index]) <= CAMERA_POSE_EPSILON,
   );
 }
 

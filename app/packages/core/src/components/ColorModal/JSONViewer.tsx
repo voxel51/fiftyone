@@ -33,7 +33,7 @@ const JSONViewer: React.FC = () => {
       fields: validateJSONSetting(colorScheme.fields ?? []),
       labelTags: validateLabelTags(colorScheme?.labelTags ?? {}),
       defaultMaskTargetsColors: validateMaskColor(
-        colorScheme.defaultMaskTargetsColors
+        colorScheme.defaultMaskTargetsColors,
       ),
       colorscales: validateColorscales(colorScheme?.colorscales) ?? [],
       defaultColorscale:
@@ -51,7 +51,7 @@ const JSONViewer: React.FC = () => {
       ref.current.dispatchEvent(
         new CustomEvent("json-viewer-update", {
           bubbles: true,
-        })
+        }),
       );
     }
   };
@@ -70,31 +70,31 @@ const JSONViewer: React.FC = () => {
       ?.filter((c) => isValidColor(c))
       .map((c) => colorString.to.hex(colorString.get.rgb(c)!));
     const validatedSetting = validateJSONSetting(
-      data.fields as ColorSchemeInput["fields"]
+      data.fields as ColorSchemeInput["fields"],
     );
 
     const validatedColorBy = ["field", "label"].includes(data?.colorBy)
       ? data?.colorBy
-      : colorScheme.colorBy ?? "field";
+      : (colorScheme.colorBy ?? "field");
     const validatedOpacity =
       typeof data?.opacity === "number" &&
       data.opacity <= 1 &&
       data.opacity >= 0
         ? data?.opacity
-        : colorScheme.opacity ?? fos.DEFAULT_ALPHA;
+        : (colorScheme.opacity ?? fos.DEFAULT_ALPHA);
     const validatedMulticolorKeypoints =
       typeof data?.multicolorKeypoints === "boolean"
         ? data?.multicolorKeypoints
-        : colorScheme?.multicolorKeypoints ?? false;
+        : (colorScheme?.multicolorKeypoints ?? false);
     const validatedShowSkeletons = Boolean(
       typeof data?.showSkeletons === "boolean"
         ? data?.showSkeletons
-        : colorScheme?.showSkeletons
+        : colorScheme?.showSkeletons,
     );
     const validatedLabelTags = {
       fieldColor: isValidColor(data?.labelTags?.fieldColor)
         ? colorString.to.hex(
-            colorString.get(data?.labelTags?.fieldColor as string)!.value
+            colorString.get(data?.labelTags?.fieldColor as string)!.value,
           )
         : undefined,
       valueColors: data?.labelTags?.valueColors
@@ -106,10 +106,10 @@ const JSONViewer: React.FC = () => {
     };
 
     const validatedDefaultMaskTargetsColors = validateMaskColor(
-      data.defaultMaskTargetsColors
+      data.defaultMaskTargetsColors,
     );
     const validatedDefaultColorscale = validateDefaultColorscale(
-      data.defaultColorscale
+      data.defaultColorscale,
     );
     const validatedColorscales = validateColorscales(data.colorscales);
 
@@ -147,7 +147,7 @@ const JSONViewer: React.FC = () => {
       ref?.current.dispatchEvent(
         new CustomEvent("json-viewer-update", {
           bubbles: true,
-        })
+        }),
       );
     }
   }, [setting, ref]);

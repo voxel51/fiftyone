@@ -110,7 +110,7 @@ export function useSampleTemporalTags({
 
       return created;
     },
-    [datasetId, reload, sampleId, temporalTagsClient]
+    [datasetId, reload, sampleId, temporalTagsClient],
   );
 
   const update = useCallback(
@@ -125,7 +125,7 @@ export function useSampleTemporalTags({
 
       return updated;
     },
-    [datasetId, reload, sampleId, temporalTagsClient]
+    [datasetId, reload, sampleId, temporalTagsClient],
   );
 
   const deleteTags = useCallback(
@@ -139,7 +139,7 @@ export function useSampleTemporalTags({
 
       return deleted;
     },
-    [datasetId, reload, sampleId, temporalTagsClient]
+    [datasetId, reload, sampleId, temporalTagsClient],
   );
 
   const clear = useCallback(
@@ -153,7 +153,7 @@ export function useSampleTemporalTags({
 
       return deleted;
     },
-    [datasetId, reload, sampleId, temporalTagsClient]
+    [datasetId, reload, sampleId, temporalTagsClient],
   );
 
   return {
@@ -174,7 +174,7 @@ export function useSampleRendererTemporalTags(
   options: {
     readonly client?: TemporalTagsClient;
     readonly filter?: TemporalTagFilter;
-  } = {}
+  } = {},
 ) {
   return useSampleTemporalTags({
     client: options.client,
@@ -186,7 +186,7 @@ export function useSampleRendererTemporalTags(
 
 function requireSampleScope(
   datasetId: string | undefined,
-  sampleId: string | undefined
+  sampleId: string | undefined,
 ) {
   if (!datasetId || !sampleId) {
     throw new Error("datasetId and sampleId are required");

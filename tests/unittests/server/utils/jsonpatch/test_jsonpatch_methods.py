@@ -58,6 +58,45 @@ class Person:
         raise AttributeError(f"Deletion of '{name}' is not allowed.")
 
 
+class EmbeddedDoc:
+    """Mimics a mongoengine embedded document whose serialized ``_id`` name
+    aliases its ``id`` attribute via a property with no deleter.
+
+    Item access is keyed on declared field *names* (``id``, not ``_id``),
+    matching mongoengine, so ``doc["_id"]`` raises ``KeyError`` while
+    ``getattr``/``setattr`` resolve ``_id`` through the property.
+    """
+
+    _fields = ("id", "label")
+
+    def __init__(self, id="original", label="cat"):
+        self.id = id
+        self.label = label
+
+    @property
+    def _id(self):
+        return self.id
+
+    @_id.setter
+    def _id(self, value):
+        self.id = value
+
+    def __getitem__(self, name):
+        if name in self._fields:
+            return getattr(self, name)
+        raise KeyError(name)
+
+    def __setitem__(self, name, value):
+        if name not in self._fields:
+            raise KeyError(name)
+        setattr(self, name, value)
+
+    def __delitem__(self, name):
+        if name not in self._fields:
+            raise KeyError(name)
+        delattr(self, name)
+
+
 @pytest.fixture(name="person")
 def fixture_person():
     """Returns an example Person."""
@@ -251,6 +290,31 @@ class TestAdd:
         assert person.pets[-1] == value
         assert res == person
 
+    @staticmethod
+    def test_setitem_falls_back_to_setattr_for_aliased_field():
+        """Tests that ``add`` falls back to attribute assignment when item
+        access rejects a serialized field name that resolves as an attribute,
+        e.g. an embedded document's ``_id``."""
+        doc = EmbeddedDoc()
+
+        #####
+        res = add(doc, "/_id", "new")
+        #####
+
+        assert doc.id == "new"
+        assert res is doc
+
+    @staticmethod
+    def test_setitem_keyerror_reraised_without_attribute():
+        """Tests that a ``KeyError`` from item access is re-raised (as
+        ``ValueError``) when there is no matching attribute to fall back to."""
+        doc = EmbeddedDoc()
+
+        with pytest.raises(ValueError):
+            #####
+            add(doc, "/missing", "value")
+            #####
+
 
 class TestRemove:
     """Tests for remove."""
@@ -403,3 +467,35 @@ def test_replace():
 
     assert res is src
     assert src["a"]["b"]["c"] == "new"
+
+
+def test_replace_list_element():
+    """Tests that replacing a list element overwrites in place (rather than
+    inserting), preserving the list length."""
+
+    src = {"vals": ["a", "b", "c"]}
+
+    #####
+    res = replace(src, "/vals/1", "new")
+    #####
+
+    assert res is src
+    assert src["vals"] == ["a", "new", "c"]
+
+
+def test_replace_aliased_field_does_not_remove_first():
+    """Tests that replacing an object member whose serialized name aliases a
+    read-only property (no deleter), e.g. an embedded document's ``_id``,
+    succeeds by overwriting in place rather than removing first.
+
+    Regression test: deleting a detection with an embedded ``instance`` used to
+    fail with "Unable to remove value with path: .../instance/_id".
+    """
+    doc = EmbeddedDoc(id="original")
+
+    #####
+    res = replace(doc, "/_id", "new")
+    #####
+
+    assert doc.id == "new"
+    assert res is doc

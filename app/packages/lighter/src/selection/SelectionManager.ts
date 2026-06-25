@@ -192,7 +192,7 @@ export class SelectionManager {
 
   private emitSelectionChanged(
     selectedIds: string[],
-    deselectedIds: string[]
+    deselectedIds: string[],
   ): void {
     if (selectedIds.length === 0 && deselectedIds.length === 0) return;
 

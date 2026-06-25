@@ -33,7 +33,7 @@ export interface Schema {
 
 export function getFieldInfo(
   fieldPath: string,
-  schema: Schema
+  schema: Schema,
 ): Field | undefined {
   const keys = fieldPath.split(".");
   let field: Field;
@@ -67,7 +67,7 @@ export function getCls(fieldPath: string, schema: Schema): string | undefined {
 export function getFieldsWithEmbeddedDocType(
   schema: Schema,
   embeddedDocType: string | string[],
-  shouldRecurse = true
+  shouldRecurse = true,
 ): Field[] {
   const result: Field[] = [];
 
@@ -95,7 +95,7 @@ export function getFieldsWithEmbeddedDocType(
 
 export function doesSchemaContainEmbeddedDocType(
   schema: Schema,
-  embeddedDocType: string
+  embeddedDocType: string,
 ): boolean {
   function recurse(schema: Schema): boolean {
     return Object.values(schema ?? {}).some((field) => {
@@ -116,7 +116,7 @@ export function getDenseLabelNames(schema: Schema): string[] {
   const denseLabels = getFieldsWithEmbeddedDocType(
     schema,
     DENSE_LABEL_EMBEDDED_DOC_TYPES,
-    false
+    false,
   );
 
   return denseLabels.map((label) => label.name);

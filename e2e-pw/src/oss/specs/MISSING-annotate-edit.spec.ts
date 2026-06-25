@@ -53,13 +53,13 @@ test.describe.serial("annotate-sidebar-smoke", () => {
     await annotateSDK.updateLabelSchema(
       datasetName,
       "ground_truth",
-      ground_truth_schema
+      ground_truth_schema,
     );
     await annotateSDK.addFieldToActiveLabelSchema(datasetName, "ground_truth");
     await annotateSDK.updateLabelSchema(
       datasetName,
       "uniqueness",
-      uniqueness_schema
+      uniqueness_schema,
     );
     await annotateSDK.addFieldToActiveLabelSchema(datasetName, "uniqueness");
     await grid.openFirstSample();
@@ -70,7 +70,7 @@ test.describe.serial("annotate-sidebar-smoke", () => {
     await modal.sidebar.edit.assert.redoIsEnabled(false);
     await modal.sidebar.edit.assert.verifyFieldLabel(
       "confidence",
-      "confidence"
+      "confidence",
     );
     await modal.sidebar.edit.setFieldValue("confidence", "0.85");
     await modal.sidebar.edit.assert.verifyFieldValue("confidence", "0.85");

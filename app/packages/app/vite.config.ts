@@ -40,7 +40,7 @@ async function loadConfig() {
             assetsDir = path.resolve(
               config.root,
               config.build.outDir,
-              "assets"
+              "assets",
             );
           },
           buildStart() {
@@ -107,6 +107,21 @@ async function loadConfig() {
           }
           warn(warning);
         },
+        output: {
+          // Give the heavy, lazily-loaded vendor libs their own deterministic
+          // chunks so rollup doesn't hoist them into the entry or glue them
+          // together (e.g. mapbox + plotly landing in one blob). Each only
+          // loads when its panel/view opens.
+          manualChunks(id) {
+            if (id.includes("node_modules")) {
+              if (/[\\/](mapbox-gl|@mapbox)[\\/]/.test(id)) return "mapbox-gl";
+              if (/[\\/]plotly\.js/.test(id) || /react-plotly\.js/.test(id))
+                return "plotly";
+              if (/[\\/]recharts[\\/]/.test(id)) return "recharts";
+              if (/[\\/]html2canvas[\\/]/.test(id)) return "html2canvas";
+            }
+          },
+        },
       },
     },
     server: {
@@ -156,7 +171,7 @@ function foxgloveWasmAsUrl(): Plugin {
         !source.endsWith(".wasm") ||
         !importer ||
         !/[\\/]node_modules[\\/]@foxglove[\\/]wasm-(lz4|zstd|bz2)[\\/]/.test(
-          importer
+          importer,
         )
       ) {
         return null;
@@ -183,20 +198,23 @@ function foxgloveWasmOptimizeAsUrl() {
   return {
     name: "foxglove-wasm-url",
     setup(build) {
-      build.onResolve({ filter: /^\.\/(?:wasm-(?:lz4|zstd)|module)\.wasm$/ }, (args) => {
-        if (!wrapperPattern.test(args.importer)) {
-          return undefined;
-        }
+      build.onResolve(
+        { filter: /^\.\/(?:wasm-(?:lz4|zstd)|module)\.wasm$/ },
+        (args) => {
+          if (!wrapperPattern.test(args.importer)) {
+            return undefined;
+          }
 
-        return {
-          namespace,
-          path: path.resolve(args.resolveDir, args.path),
-        };
-      });
+          return {
+            namespace,
+            path: path.resolve(args.resolveDir, args.path),
+          };
+        },
+      );
 
       build.onLoad({ filter: /.*/, namespace }, (args) => ({
         contents: `module.exports = ${JSON.stringify(
-          `/@fs/${normalizePath(args.path)}`
+          `/@fs/${normalizePath(args.path)}`,
         )};`,
         loader: "js",
       }));

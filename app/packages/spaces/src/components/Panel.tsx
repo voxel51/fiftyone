@@ -48,11 +48,13 @@ function Panel(props: PanelProps) {
       id={node.id}
       data-cy={panelContentTestId}
       className={scrollable}
-      ref={dimensions.ref}
+      ref={dimensions.ref as React.RefObject<HTMLDivElement>}
       style={style}
     >
       <PanelContext.Provider value={{ node, scope }}>
-        <Component panelNode={node} dimensions={dimensions} />
+        <React.Suspense fallback={<PanelSkeleton />}>
+          <Component panelNode={node} dimensions={dimensions} />
+        </React.Suspense>
       </PanelContext.Provider>
     </StyledPanel>
   );

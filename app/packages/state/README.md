@@ -6,10 +6,10 @@ FiftyOne App state APIs
 
 This package can be used in the following contexts
 
--   internal - for interacting with the app state within the core app modules
--   external - for interacting with the state of an embedded app aka the
-    `<Dataset />` component
--   plugin - for interacting with app state in your plugin
+- internal - for interacting with the app state within the core app modules
+- external - for interacting with the state of an embedded app aka the
+  `<Dataset />` component
+- plugin - for interacting with app state in your plugin
 
 ## Types
 
@@ -18,14 +18,14 @@ requires the ability to interact with the following types of objects.
 
 ### Recoil
 
--   `Atom`
--   `Selector`
--   `SelectorFamily`
+- `Atom`
+- `Selector`
+- `SelectorFamily`
 
 ### React Hooks
 
 Custom hooks following similar patterns to the following:
 
--   `useEffect`
--   `useState`
--   `useCallback`
+- `useEffect`
+- `useState`
+- `useCallback`

@@ -38,7 +38,7 @@ const TemporalTagTimeline: React.FC<TemporalTagTimelineProps> = ({
       tracks
         .filter((t) => t.id.startsWith("temporal-tag::"))
         .map((t) => t.label),
-    [tracks]
+    [tracks],
   );
   const tagContextValue = { state, actions, onTagCreate, existingTags };
 

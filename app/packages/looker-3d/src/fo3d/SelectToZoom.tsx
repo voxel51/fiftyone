@@ -12,7 +12,7 @@ export const SelectToZoom = ({ children }: { children: React.ReactNode }) => {
         api.refresh(e.object).clip().fit();
       }
     },
-    [api]
+    [api],
   );
 
   const pointerMissedHandler = useCallback(
@@ -21,7 +21,7 @@ export const SelectToZoom = ({ children }: { children: React.ReactNode }) => {
         api.refresh().clip().fit();
       }
     },
-    [api]
+    [api],
   );
 
   return (

@@ -44,7 +44,7 @@ const writeFrames = async () => {
           fillColor: FRAME_COLORS[i % 2],
           watermarkString: `${j}`,
           hideLogs: true,
-        })
+        }),
       );
     }
   }
@@ -53,7 +53,7 @@ const writeFrames = async () => {
   console.log(
     `Wrote ${NUM_VIDEOS * NUM_FRAMES_PER_VIDEO} frames in ${
       end - start
-    } milliseconds`
+    } milliseconds`,
   );
 };
 

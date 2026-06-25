@@ -118,7 +118,7 @@ export const counts = selectorFamily({
 
         if (
           VALID_KEYPOINTS.includes(
-            get(schemaAtoms.field(parent))?.embeddedDocType
+            get(schemaAtoms.field(parent))?.embeddedDocType,
           )
         ) {
           const skeleton = get(selectors.skeleton(parent));
@@ -137,7 +137,7 @@ export const counts = selectorFamily({
 
       if (data.__typename === "StringAggregation") {
         return Object.fromEntries(
-          data.values.map(({ count, value }) => [value, count])
+          data.values.map(({ count, value }) => [value, count]),
         );
       }
 
@@ -149,7 +149,7 @@ export const counts = selectorFamily({
         get(booleanCountResults(params)).results.map(({ value, count }) => [
           value,
           count,
-        ])
+        ]),
       );
     },
 });
@@ -195,7 +195,7 @@ export const cumulativeCounts = selectorFamily<
           }
           return result;
         },
-        {}
+        {},
       );
     },
 });

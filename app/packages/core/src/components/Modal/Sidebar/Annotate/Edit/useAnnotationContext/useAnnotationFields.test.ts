@@ -28,8 +28,7 @@ vi.mock("../../state", () => ({
     atom(refs.schemaByPath[path] ?? { type: undefined, read_only: false }),
   isFieldReadOnly: (schema: { read_only?: boolean } | undefined | null) =>
     Boolean(schema?.read_only),
-  fieldType: (path: string) =>
-    atom(refs.fieldTypeByPath[path] ?? "Detection"),
+  fieldType: (path: string) => atom(refs.fieldTypeByPath[path] ?? "Detection"),
   visibleLabelSchemas: atom((get) => {
     // Read the mutable cell so updates to `refs.visible` are picked up via
     // a poke to `visibleTrigger` between tests.
@@ -149,7 +148,11 @@ describe("useAnnotationFields.fields", () => {
   });
 
   it("returns fields sorted alphabetically", () => {
-    refs.fieldTypeByPath = { zeta: "Detection", alpha: "Detection", mid: "Detection" };
+    refs.fieldTypeByPath = {
+      zeta: "Detection",
+      alpha: "Detection",
+      mid: "Detection",
+    };
     setVisible(["zeta", "alpha", "mid"]);
 
     const { result } = renderHook(() => useAnnotationFields("Detection"));
@@ -227,7 +230,7 @@ describe("useAnnotationFields return-value memoization", () => {
     setVisible(["gt"]);
 
     const { result, rerender } = renderHook(() =>
-      useAnnotationFields("Detection")
+      useAnnotationFields("Detection"),
     );
     const first = result.current;
     rerender();
@@ -239,7 +242,7 @@ describe("useAnnotationFields return-value memoization", () => {
     setVisible(["gt"]);
 
     const { result, rerender } = renderHook(() =>
-      useAnnotationFields("Detection")
+      useAnnotationFields("Detection"),
     );
     const first = result.current;
 

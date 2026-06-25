@@ -5,10 +5,7 @@
 import { MARGIN } from "./constants";
 import { ItemData, OnItemResize, Render, RowData, Section } from "./state";
 
-import {
-  flashlightSection,
-  flashlightSectionHidden,
-} from "./styles.module.css";
+import styles from "./styles.module.css";
 
 export default class SectionElement implements Section {
   private attached: boolean = false;
@@ -22,7 +19,7 @@ export default class SectionElement implements Section {
   private readonly section: HTMLDivElement = document.createElement("div");
   private readonly rows: [
     { aspectRatio: number; extraMargins: number },
-    [HTMLDivElement, ItemData][]
+    [HTMLDivElement, ItemData][],
   ][];
   private readonly render: Render;
 
@@ -32,14 +29,14 @@ export default class SectionElement implements Section {
     rows: RowData[],
     render: Render,
     horizontal: boolean,
-    onItemClick?: (id: string, event: MouseEvent) => void
+    onItemClick?: (id: string, event: MouseEvent) => void,
   ) {
     this.index = index;
     this.itemIndex = itemIndex;
     this.horizontal = horizontal;
     this.render = render;
 
-    this.section.classList.add(flashlightSection);
+    this.section.classList.add(styles.flashlightSection);
 
     if (horizontal) {
       this.section.setAttribute("data-cy", "flashlight-section-horizontal");
@@ -119,7 +116,7 @@ export default class SectionElement implements Section {
           });
 
           localTop += height + MARGIN;
-        }
+        },
       );
 
       if (this.width !== width) {
@@ -169,10 +166,10 @@ export default class SectionElement implements Section {
               item,
               this.horizontal ? [height, width] : [width, height],
               false,
-              true
+              true,
             );
           });
-        }
+        },
       );
       this.attached = false;
     }
@@ -185,8 +182,8 @@ export default class SectionElement implements Section {
   show(element: HTMLDivElement, hidden: boolean, soft: boolean): void {
     if (hidden !== this.hidden) {
       hidden
-        ? this.section.classList.add(flashlightSectionHidden)
-        : this.section.classList.remove(flashlightSectionHidden);
+        ? this.section.classList.add(styles.flashlightSectionHidden)
+        : this.section.classList.remove(styles.flashlightSectionHidden);
       this.hidden = hidden;
     }
 
@@ -213,10 +210,10 @@ export default class SectionElement implements Section {
               item,
               this.horizontal ? [height, width] : [width, height],
               soft,
-              false
+              false,
             );
           });
-        }
+        },
       );
   }
 
@@ -235,10 +232,10 @@ export default class SectionElement implements Section {
 
           resizer(
             id,
-            this.horizontal ? [height, itemWidth] : [itemWidth, height]
+            this.horizontal ? [height, itemWidth] : [itemWidth, height],
           );
         });
-      }
+      },
     );
   }
 }

@@ -65,7 +65,7 @@ export abstract class PlaybackStreamBase<T> implements PlaybackStream {
 
   constructor(
     public readonly id: string,
-    options: PlaybackStreamBaseOptions = {}
+    options: PlaybackStreamBaseOptions = {},
   ) {
     this.blocking = options.blocking ?? true;
     this.duration = options.duration;

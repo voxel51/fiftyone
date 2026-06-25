@@ -45,9 +45,9 @@ export const cumulativeValues = selectorFamily<
               ...result,
               ...get(values({ extended, modal, path: `${path}.${key}` })),
             ],
-            []
-          )
-        )
+            [],
+          ),
+        ),
       ).sort();
     },
 });
