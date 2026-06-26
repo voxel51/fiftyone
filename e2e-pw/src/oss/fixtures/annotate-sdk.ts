@@ -17,6 +17,14 @@ export interface DetectionsState {
   count: number;
   /** Total non-zero pixel count across the first detection's mask, or 0. */
   maskPixels: number;
+  /**
+   * Fraction of `true` pixels in the first detection's mask (0–1), or 0 when
+   * there is no mask. Resolution-INDEPENDENT, unlike {@link maskPixels}: the
+   * mask is re-rasterized to the overlay's pixel resolution on commit, so the
+   * raw pixel count changes with the canvas size even when the painted region
+   * is unchanged. Use coverage to compare a mask before/after an edit.
+   */
+  maskCoverage: number;
 }
 
 export class AnnotateSDK {
@@ -91,7 +99,7 @@ export class AnnotateSDK {
       view = dataset.skip(${sampleIndex})
       sample = view.first() if len(view) > 0 else None
 
-      result = {"present": False, "count": 0, "mask_pixels": 0}
+      result = {"present": False, "count": 0, "mask_pixels": 0, "mask_coverage": 0.0}
       if sample is not None:
         try:
           detections_field = sample.get_field("${field}")
@@ -103,8 +111,9 @@ export class AnnotateSDK {
           result["present"] = True
           result["count"] = len(detections_field.detections)
           if mask is not None:
-            arr = np.asarray(mask)
-            result["mask_pixels"] = int(arr.astype(bool).sum())
+            arr = np.asarray(mask).astype(bool)
+            result["mask_pixels"] = int(arr.sum())
+            result["mask_coverage"] = float(arr.mean()) if arr.size else 0.0
 
       with open("${resultFile}", "w") as f:
         json.dump(result, f)
@@ -116,12 +125,62 @@ export class AnnotateSDK {
       present: boolean;
       count: number;
       mask_pixels: number;
+      mask_coverage: number;
     };
 
     return {
       present: parsed.present,
       count: parsed.count,
       maskPixels: parsed.mask_pixels,
+      maskCoverage: parsed.mask_coverage,
     };
+  }
+
+  /**
+   * Reads back the persisted state of a sample-level `Classification` field on a
+   * single sample. Use to verify a classification create/delete round-trip.
+   *
+   * @param dataset The dataset name
+   * @param field The `Classification` field to inspect
+   * @param options.sampleIndex Index into the dataset's sample order (default 0)
+   */
+  async getClassificationState(
+    dataset: string,
+    field: string,
+    options: { sampleIndex?: number } = {}
+  ): Promise<{ present: boolean; label: string | null }> {
+    const sampleIndex = options.sampleIndex ?? 0;
+    const resultFile = path.join(
+      os.tmpdir(),
+      `classification-state-${Date.now()}-${Math.random()
+        .toString(36)
+        .substring(2)}.json`
+    );
+
+    await this.loader.executePythonCode(`
+      import json
+      import fiftyone as fo
+
+      dataset = fo.load_dataset("${dataset}")
+      view = dataset.skip(${sampleIndex})
+      sample = view.first() if len(view) > 0 else None
+
+      result = {"present": False, "label": None}
+      if sample is not None:
+        try:
+          cls_field = sample.get_field("${field}")
+        except Exception:
+          cls_field = None
+        if cls_field is not None:
+          result["present"] = True
+          result["label"] = getattr(cls_field, "label", None)
+
+      with open("${resultFile}", "w") as f:
+        json.dump(result, f)
+    `);
+
+    const raw = fs.readFileSync(resultFile, "utf-8");
+    fs.unlinkSync(resultFile);
+    return JSON.parse(raw) as { present: boolean; label: string | null };
   }
 }

@@ -204,6 +204,15 @@ export class ModalAnnotateSidebarPom {
   async pickTool(tool: "Select" | "Brush" | "Pen" | "AI" | "Merge") {
     await this.toolbarButton(tool).click();
   }
+
+  /**
+   * Switch the brush paint mode in the segmentation toolbar's "mode" group:
+   * "Add" paints into the mask, "Remove" erases from it. The mode group only
+   * renders while the Brush or Pen tool is active.
+   */
+  async pickMaskMode(mode: "Add" | "Remove") {
+    await this.toolbarButton(mode).click();
+  }
 }
 
 /**
