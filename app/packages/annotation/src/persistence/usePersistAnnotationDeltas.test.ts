@@ -41,7 +41,10 @@ describe("usePersistAnnotationDeltas", () => {
   });
 
   it("returns null and does nothing else when no deltas are pending", async () => {
-    hoisted.supplyAnnotationDeltas.mockReturnValue({ deltas: [], metadata: undefined });
+    hoisted.supplyAnnotationDeltas.mockReturnValue({
+      deltas: [],
+      metadata: undefined,
+    });
     const { result } = renderHook(() => usePersistAnnotationDeltas());
 
     let res: unknown;
@@ -55,7 +58,10 @@ describe("usePersistAnnotationDeltas", () => {
   });
 
   it("non-generated view: dispatches persistenceInFlight then calls patchSample(deltas)", async () => {
-    hoisted.supplyAnnotationDeltas.mockReturnValue({ deltas: DELTAS, metadata: undefined });
+    hoisted.supplyAnnotationDeltas.mockReturnValue({
+      deltas: DELTAS,
+      metadata: undefined,
+    });
     hoisted.patchSample.mockResolvedValue(true);
     const { result } = renderHook(() => usePersistAnnotationDeltas());
 
@@ -66,7 +72,7 @@ describe("usePersistAnnotationDeltas", () => {
 
     expect(hoisted.eventBusDispatch).toHaveBeenCalledTimes(1);
     expect(hoisted.eventBusDispatch).toHaveBeenCalledWith(
-      "annotation:persistenceInFlight"
+      "annotation:persistenceInFlight",
     );
     expect(hoisted.patchSample).toHaveBeenCalledTimes(1);
     expect(hoisted.patchSample).toHaveBeenCalledWith(DELTAS);
@@ -74,7 +80,10 @@ describe("usePersistAnnotationDeltas", () => {
   });
 
   it("non-generated view: returns false when patchSample resolves to false", async () => {
-    hoisted.supplyAnnotationDeltas.mockReturnValue({ deltas: DELTAS, metadata: undefined });
+    hoisted.supplyAnnotationDeltas.mockReturnValue({
+      deltas: DELTAS,
+      metadata: undefined,
+    });
     hoisted.patchSample.mockResolvedValue(false);
     const { result } = renderHook(() => usePersistAnnotationDeltas());
 
@@ -126,7 +135,7 @@ describe("usePersistAnnotationDeltas", () => {
     expect(hoisted.patchSample).not.toHaveBeenCalled();
     // persistenceInFlight is still dispatched before the metadata check
     expect(hoisted.eventBusDispatch).toHaveBeenCalledWith(
-      "annotation:persistenceInFlight"
+      "annotation:persistenceInFlight",
     );
     expect(warnSpy).toHaveBeenCalledTimes(1);
     warnSpy.mockRestore();

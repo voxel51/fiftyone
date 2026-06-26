@@ -22,7 +22,7 @@ export const createStage = (
   submitted,
   loading,
   prevStage,
-  added?
+  added?,
 ) => ({
   id: id || uuid(),
   stage: stage,
@@ -50,7 +50,7 @@ function serializeStage(stage, stageMap, fieldNames) {
           "castTo",
           param.value,
           true,
-          fieldNames
+          fieldNames,
         ),
       ];
     }),
@@ -67,7 +67,7 @@ function operate(type, operator, value, isString = true, fieldNames) {
       if (
         parser.validate(
           !isString ? parser.castFrom(value, fieldNames) : value,
-          fieldNames
+          fieldNames,
         )
       ) {
         return parser[operator](value, fieldNames);
@@ -96,7 +96,7 @@ function makeEmptyView(fieldNames, stageInfo) {
     [],
     false,
     false,
-    ""
+    "",
   );
   return [
     {
@@ -130,7 +130,7 @@ function setStages(ctx, stageInfo) {
         i === Math.min(view.length - 1, ctx.activeStage),
         stage.kwargs.map((p, j) => {
           const stageInfoResult = stageInfo.filter(
-            (s) => s.name === stageName
+            (s) => s.name === stageName,
           )[0];
 
           return createParameter(
@@ -144,18 +144,18 @@ function setStages(ctx, stageInfo) {
               "castFrom",
               p[1],
               typeof p[1] === "string",
-              ctx.fieldNames
+              ctx.fieldNames,
             ),
             true,
             false,
             j === stageInfoResult.params.length - 1,
             i === Math.min(view.length - 1, ctx.activeStage),
-            stageInfoResult.params[j].placeholder
+            stageInfoResult.params[j].placeholder,
           );
         }),
         true,
         true,
-        ctx.stages[i - 1]
+        ctx.stages[i - 1],
       );
       return {
         ...newStage,
@@ -207,13 +207,13 @@ const viewBarMachine = createMachine(
                 entry: [
                   ({ stages }) =>
                     stages.forEach((stage) =>
-                      stage.ref.send({ type: "BAR_FOCUS" })
+                      stage.ref.send({ type: "BAR_FOCUS" }),
                     ),
                 ],
                 exit: [
                   ({ stages }) =>
                     stages.forEach((stage) =>
-                      stage.ref.send({ type: "BAR_BLUR" })
+                      stage.ref.send({ type: "BAR_BLUR" }),
                     ),
                 ],
                 on: {
@@ -262,7 +262,7 @@ const viewBarMachine = createMachine(
                         activeStage: ({ stages, activeStage }) =>
                           Math.min(
                             Math.floor(activeStage + 1),
-                            stages.length - 1
+                            stages.length - 1,
                           ),
                       }),
                       "sendStagesUpdate",
@@ -274,7 +274,7 @@ const viewBarMachine = createMachine(
                         activeStage: ({ stages, activeStage }) =>
                           Math.max(
                             Math.ceil(activeStage - 1),
-                            stages.length - 1
+                            stages.length - 1,
                           ),
                       }),
                       "sendStagesUpdate",
@@ -378,7 +378,7 @@ const viewBarMachine = createMachine(
                 [],
                 false,
                 false,
-                ctx.stages[index - 1]
+                ctx.stages[index - 1],
               );
               newStage.added = true;
               return [
@@ -430,7 +430,7 @@ const viewBarMachine = createMachine(
                 [],
                 false,
                 false,
-                ""
+                "",
               );
               return [
                 {
@@ -461,7 +461,7 @@ const viewBarMachine = createMachine(
                   [],
                   false,
                   false,
-                  ""
+                  "",
                 );
                 return [
                   {
@@ -472,7 +472,7 @@ const viewBarMachine = createMachine(
               } else {
                 return stages
                   .filter(
-                    (stage) => stage.id !== e.stage.id || stages.length === 1
+                    (stage) => stage.id !== e.stage.id || stages.length === 1,
                   )
                   .map((stage, index) => {
                     const newStage = stage.id === e.stage.id ? e.stage : stage;
@@ -512,19 +512,19 @@ const viewBarMachine = createMachine(
             active: stage.index === ctx.activeStage,
             stage: stage.stage,
             fieldNames: ctx.fieldNames,
-          })
+          }),
         );
       },
       submit: ({ stages, stageInfo, fieldNames, setView, view }) => {
         const stageMap = Object.fromEntries(
-          stageInfo.map((s) => [s.name, s.params])
+          stageInfo.map((s) => [s.name, s.params]),
         );
         const newView = serializeView(stages, stageMap, fieldNames);
         if (viewsAreEqual(newView, view)) return;
         setView(newView);
       },
     },
-  }
+  },
 );
 
 export default viewBarMachine;

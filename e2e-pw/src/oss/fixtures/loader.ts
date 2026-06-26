@@ -27,7 +27,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
   async loadZooDataset(
     zooDatasetName: string,
     id: string,
-    kwargs: Record<string, string> = {}
+    kwargs: Record<string, string> = {},
   ) {
     const kwargsStringified = getStringifiedKwargs(kwargs);
 
@@ -62,7 +62,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
     page: Page,
     datasetName: string,
     options?: WaitUntilGridVisibleOptions,
-    isRetry?: boolean
+    isRetry?: boolean,
   ): Promise<void> {
     const { isEmptyDataset, readySelector, searchParams, withGrid } =
       options ?? {
@@ -110,7 +110,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
         window.__FO_PLAYWRIGHT_LOADING_SCREEN_COUNT += 1;
         if (window.__FO_PLAYWRIGHT_LOADING_SCREEN_COUNT > 1) {
           throw new Error(
-            "Global loading screen fired more than once — top-level Suspense boundary re-activated after initial page load"
+            "Global loading screen fired more than once — top-level Suspense boundary re-activated after initial page load",
           );
         }
       });
@@ -126,7 +126,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
         await page.getByTestId(`selector-result-${datasetName}`).click();
       } else {
         const firstSelectorResult = page.locator(
-          "[data-cy=selector-results-container] > div"
+          "[data-cy=selector-results-container] > div",
         );
         await firstSelectorResult.click();
       }
@@ -165,7 +165,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
         }]`,
         {
           state: "visible",
-        }
+        },
       );
     } catch (e) {
       if (isRetry) {
@@ -222,7 +222,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
         );
       },
       {},
-      { timeout: Duration.Seconds(10) }
+      { timeout: Duration.Seconds(10) },
     );
   }
 }

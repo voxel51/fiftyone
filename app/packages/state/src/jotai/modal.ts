@@ -24,7 +24,7 @@ export enum ModalMode {
 export const modalMode = atomWithStorage<ModalMode>(
   "modalMode",
   ModalMode.EXPLORE,
-  createDatasetKeyedStorage<ModalMode>(parseDatasetNameFromUrl)
+  createDatasetKeyedStorage<ModalMode>(parseDatasetNameFromUrl),
 );
 
 /**

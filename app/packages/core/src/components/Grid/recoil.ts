@@ -240,7 +240,7 @@ export const recommendedGridZoom = atom<number | null>({
       ({ event }, { reset }, prev) =>
         event !== "modal" &&
         prev?.event !== "modal" &&
-        reset(recommendedGridZoom)
+        reset(recommendedGridZoom),
     ),
   ],
 });

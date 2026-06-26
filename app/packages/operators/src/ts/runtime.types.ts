@@ -3,11 +3,11 @@ import { ExecutionContext, OperatorResult } from "../operators";
 export type ExecutionCallbackOptions = { ctx: ExecutionContext };
 export type ExecutionCallback = (
   result: OperatorResult,
-  options: ExecutionCallbackOptions
+  options: ExecutionCallbackOptions,
 ) => void;
 export type ExecutionErrorCallback = (
   error: OperatorResult,
-  options: ExecutionCallbackOptions
+  options: ExecutionCallbackOptions,
 ) => void;
 
 export type OperatorExecutorOptions = {

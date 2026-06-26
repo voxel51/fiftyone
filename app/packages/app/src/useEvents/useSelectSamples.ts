@@ -19,7 +19,7 @@ const useSelectSamples: EventHandlerHook = () => {
       }
       setter("selectedSamples", map);
     },
-    [setter]
+    [setter],
   );
 };
 

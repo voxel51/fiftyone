@@ -13,7 +13,7 @@ export interface McapTimelineIndex {
 }
 
 export function createMcapTimelineIndex(
-  range: McapTimelineRange
+  range: McapTimelineRange,
 ): McapTimelineIndex {
   const startTimeNs = range.startTimeNs;
   // Split the bigint nanosecond delta into whole seconds + sub-second

@@ -14,7 +14,7 @@ const valueLabelFormat = (
   max: number,
   valueFormat: ValueFormat,
   valuePrecision = 6,
-  skipUnit = true
+  skipUnit = true,
 ) => {
   const formattedValue =
     valueFormat === "%"
@@ -95,8 +95,8 @@ export default function SliderView(props: ViewPropsType) {
   const computedMultipleOf = isNumber(multipleOf)
     ? multipleOf
     : isNumber(schemaMultipleOf)
-    ? schemaMultipleOf
-    : (max - min) / 100;
+      ? schemaMultipleOf
+      : (max - min) / 100;
 
   // external data reset re-renders the inputs
   useEffect(() => {
@@ -110,7 +110,7 @@ export default function SliderView(props: ViewPropsType) {
     min,
     max,
     unit,
-    valuePrecision
+    valuePrecision,
   );
 
   const maxText = valueLabelFormat(
@@ -118,7 +118,7 @@ export default function SliderView(props: ViewPropsType) {
     min,
     max,
     unit,
-    valuePrecision
+    valuePrecision,
   );
 
   useEffect(() => {

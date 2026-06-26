@@ -40,7 +40,7 @@ export type OnItemClick = (
   next: () => Promise<void>,
   id: string,
   itemIndexMap: ItemIndexMap,
-  event: MouseEvent
+  event: MouseEvent,
 ) => void;
 
 export type Render = (
@@ -48,7 +48,7 @@ export type Render = (
   element: HTMLDivElement,
   dimensions: [number, number],
   soft: boolean,
-  disable: boolean
+  disable: boolean,
 ) => (() => void) | void;
 
 export type OnItemResize = (id: string, dimensions: [number, number]) => void;

@@ -30,7 +30,7 @@ export function ProjectedPolylineItem({
     polyline.color,
     isSelected,
     isHovered,
-    isAnyLabelSelected
+    isAnyLabelSelected,
   );
 
   return (

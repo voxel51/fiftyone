@@ -7,7 +7,7 @@ export function getNumericDifference(
   value,
   compareValue,
   percentage = false,
-  fractionDigits?: number
+  fractionDigits?: number,
 ) {
   if (typeof value === "number" && typeof compareValue === "number") {
     const difference = value - compareValue;
@@ -23,7 +23,7 @@ export function getNumericDifference(
 
 export function getClasses(
   matrixData: MatrixData,
-  maskTargets?: MaskTargets["primary"]
+  maskTargets?: MaskTargets["primary"],
 ) {
   if (!matrixData) return [];
   return matrixData.classes.map((c) => {
@@ -44,7 +44,7 @@ export function computeSortedCompareKeys(
   evaluations: any[],
   currentName: string,
   currentType: string,
-  currentMethod: string
+  currentMethod: string,
 ): CompareKey[] {
   return evaluations
     .filter((evaluation) => evaluation.key !== currentName)
@@ -121,7 +121,7 @@ export function getInapplicableMetrics(evaluation) {
       "average_confidence",
       "tp",
       "fp",
-      "fn"
+      "fn",
     );
   }
 
@@ -142,7 +142,7 @@ export function getConfusionMatrix(
   classes: string[],
   matrix: number[][],
   masks?: MaskTargets,
-  options?: MatrixOptions
+  options?: MatrixOptions,
 ) {
   const classesWithCount: ClassWithCount[] = [];
   const classIndexMap: Record<string, number> = {};
@@ -185,7 +185,7 @@ export function getConfusionMatrix(
 
       // default to no sorting
       return 0;
-    }
+    },
   );
   const sortedClasses = sortedClassesWithCount.map((item) => item.class);
   const computedClasses = sortedClasses.slice(0, limit || sortedClasses.length);
@@ -227,7 +227,7 @@ export function getConfusionMatrix(
 
 export function getConfusionMatrixPlotlyData(
   data: MatrixData,
-  config: MatrixPlotDataConfig
+  config: MatrixPlotDataConfig,
 ) {
   const {
     classes: originalClasses,
@@ -239,7 +239,7 @@ export function getConfusionMatrixPlotlyData(
     originalClasses,
     originalMatrix,
     maskTargets,
-    config
+    config,
   );
   const colorscale = config.log
     ? colorscales?.logarithmic

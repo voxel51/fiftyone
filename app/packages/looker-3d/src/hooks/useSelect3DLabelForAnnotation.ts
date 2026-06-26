@@ -24,10 +24,10 @@ import {
 export const useSelect3DLabelForAnnotation = () => {
   const [transformMode, setTransformMode] = useRecoilState(transformModeAtom);
   const setSelectedLabelForAnnotation = useSetRecoilState(
-    selectedLabelForAnnotationAtom
+    selectedLabelForAnnotationAtom,
   );
   const setCurrentArchetypeSelectedForTransform = useSetRecoilState(
-    currentArchetypeSelectedForTransformAtom
+    currentArchetypeSelectedForTransformAtom,
   );
 
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
@@ -104,7 +104,7 @@ export const useSelect3DLabelForAnnotation = () => {
       setEditingToExistingPolyline,
       setEditingToExistingCuboid,
       annotationEventBus,
-    ]
+    ],
   );
 
   return select3DLabelForAnnotation;

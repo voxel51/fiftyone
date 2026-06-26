@@ -38,7 +38,7 @@ describe("TileSettingsSidebar", () => {
     render(
       <TilingProvider>
         <TileSettingsSidebar />
-      </TilingProvider>
+      </TilingProvider>,
     );
     expect(screen.getByText("Settings")).toBeTruthy();
     expect(screen.getByText("Focus a tile to edit its settings.")).toBeTruthy();
@@ -56,7 +56,7 @@ describe("TileSettingsSidebar", () => {
         </TileIdScope>
         <FocusButton id="camera-1" />
         <TileSettingsSidebar />
-      </TilingProvider>
+      </TilingProvider>,
     );
 
     expect(screen.queryByTestId(SETTINGS_LABEL)).toBeNull();

@@ -6,13 +6,13 @@ import { LightningBolt } from "../Sidebar/Entries/FilterablePathEntry/Icon";
 const Icon = ({ color, path }: { color?: string; path: string }) => {
   const hasFilters = useRecoilValue(fos.hasFilters(false));
   const filteredIndex = useRecoilValue(
-    fos.pathHasIndexes({ path, withFilters: true })
+    fos.pathHasIndexes({ path, withFilters: true }),
   );
   const pathColor = useRecoilValue(fos.pathColor(path));
 
   return (
     <LightningBolt
-      color={filteredIndex ? color ?? pathColor : undefined}
+      color={filteredIndex ? (color ?? pathColor) : undefined}
       tooltip={filteredIndex && hasFilters ? "Compound index" : "Indexed"}
     />
   );
@@ -22,10 +22,10 @@ export default function useQueryPerformanceIcon(
   modal: boolean,
   named: boolean,
   path: string,
-  color?: string
+  color?: string,
 ) {
   const filteredIndex = useRecoilValue(
-    fos.pathHasIndexes({ path, withFilters: true })
+    fos.pathHasIndexes({ path, withFilters: true }),
   );
   const frameField = useRecoilValue(fos.isFrameField(path));
   const indexed = useRecoilValue(fos.pathHasIndexes({ path }));

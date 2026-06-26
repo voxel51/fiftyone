@@ -110,7 +110,7 @@ const SampleTransformer: DataTransformer = {
  * @param sample Serialized sample data
  */
 export const transformSampleData = (
-  sample: Record<string, unknown>
+  sample: Record<string, unknown>,
 ): Record<string, unknown> => {
   return SampleTransformer.transform(sample);
 };
@@ -146,7 +146,7 @@ export const toExtendedJson = (data: unknown, fieldName?: string): unknown => {
   if (isObject(data)) {
     const result: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(
-      data as Record<string, unknown>
+      data as Record<string, unknown>,
     )) {
       result[key] = toExtendedJson(value, key);
     }

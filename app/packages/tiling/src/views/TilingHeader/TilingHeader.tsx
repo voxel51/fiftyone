@@ -53,7 +53,7 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
                     title: entry.typeLabel,
                     render: () => <TileComponent />,
                   },
-                  { idPrefix: entry.type }
+                  { idPrefix: entry.type },
                 );
               }}
             />

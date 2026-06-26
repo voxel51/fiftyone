@@ -11,7 +11,7 @@ import usePanelEvent, { usePendingPanelEventError } from "./usePanelEvent";
 
 vi.mock("@fiftyone/spaces", () => ({
   usePanelStateByIdCallback: vi.fn(
-    (cb) => (panelId, options) => cb(panelId, undefined, [options])
+    (cb) => (panelId, options) => cb(panelId, undefined, [options]),
   ),
 }));
 vi.mock("@fiftyone/state", () => ({
@@ -125,7 +125,7 @@ describe("usePanelEvent", () => {
       }),
       expect.objectContaining({
         callback: expect.any(Function),
-      })
+      }),
     );
   });
 

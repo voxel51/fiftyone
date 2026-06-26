@@ -20,11 +20,11 @@ type Operator<T, R> = {
 
 const operatorAsPromise = <T, R>(
   operator: Operator<T, R>,
-  request: T
+  request: T,
 ): Promise<R> => {
   return new Promise((resolve, reject) => {
     const operatorCallback: OperatorCallback<R> = (
-      response: OperatorResponse<R>
+      response: OperatorResponse<R>,
     ) => {
       if (response.error) {
         reject(new Error(response.error));
@@ -83,14 +83,14 @@ export interface SchemaResolver {
 
 export const useSchemaResolver = (): SchemaResolver => {
   const listSchemasOperator = useOperatorExecutor(
-    "@voxel51/operators/get_label_schemas"
+    "@voxel51/operators/get_label_schemas",
   ) as Operator<ListSchemasRequest, ListSchemasResponse>;
 
   const listSchemas = useCallback(
     (request: ListSchemasRequest): Promise<ListSchemasResponse> => {
       return operatorAsPromise(listSchemasOperator, request);
     },
-    [listSchemasOperator]
+    [listSchemasOperator],
   );
 
   return useMemo(() => ({ listSchemas }), [listSchemas]);

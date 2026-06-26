@@ -41,7 +41,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
         height: 25,
         fillColor: fillColor,
       });
-    })
+    }),
   );
 
   await fiftyoneLoader.executePythonCode(
@@ -98,7 +98,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
 
         dataset.app_config.default_visibility_labels = {"include": ["ground_truth", "prediction"]}
         dataset.save()
-        `
+        `,
   );
 });
 
@@ -121,7 +121,7 @@ test.describe.serial("detection-mask", () => {
       "grid-detections.png",
       {
         animations: "allow",
-      }
+      },
     );
   });
 });

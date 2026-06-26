@@ -55,7 +55,7 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
           break;
       }
     },
-    [onClose, onCancel, onSubmit, allowPropagation, submitOnControlEnter]
+    [onClose, onCancel, onSubmit, allowPropagation, submitOnControlEnter],
   );
 
   useEffect(() => {
@@ -67,7 +67,7 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
 
   const handleClose = (
     event: React.MouseEvent<HTMLDivElement, MouseEvent>,
-    reason: "escapeKeyDown" | "backdropClick"
+    reason: "escapeKeyDown" | "backdropClick",
   ) => {
     // Prevent closing if an action is in progress
     if (isExecuting) return;

@@ -9,7 +9,7 @@ import type { McapTimelineRange } from "../types";
  */
 export function mcapTimelineRangeFromReader(
   reader: McapIndexedReaderLike,
-  timeline: McapTimelineStrategy
+  timeline: McapTimelineStrategy,
 ): McapTimelineRange {
   if (reader.chunkIndexes.length === 0) {
     throw new Error("MCAP log timeline has no indexed chunks");
@@ -21,10 +21,10 @@ export function mcapTimelineRangeFromReader(
   return {
     activeTimeline: timeline.id,
     endTimeNs: maxBigInt(
-      chunkIndexes.map((chunkIndex) => timeline.chunkEndTimeNs(chunkIndex))
+      chunkIndexes.map((chunkIndex) => timeline.chunkEndTimeNs(chunkIndex)),
     ),
     startTimeNs: minBigInt(
-      chunkIndexes.map((chunkIndex) => timeline.chunkStartTimeNs(chunkIndex))
+      chunkIndexes.map((chunkIndex) => timeline.chunkStartTimeNs(chunkIndex)),
     ),
   };
 }

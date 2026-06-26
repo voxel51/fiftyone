@@ -101,7 +101,7 @@ const McapCameraTile: React.FC = () => {
               setImageDims((prev) =>
                 prev?.width === width && prev?.height === height
                   ? prev
-                  : { width, height }
+                  : { width, height },
               )
             }
           />

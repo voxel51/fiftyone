@@ -176,7 +176,7 @@ export function PointCloudPanel({
       onCameraPoseChange,
       pointSize,
       showGizmo,
-    ]
+    ],
   );
 
   return (
@@ -239,11 +239,11 @@ function PointCloudSceneContent({
         colors,
         scalarFields,
       }),
-    [colorBy, colors, maxRenderedPoints, positions, scalarFields]
+    [colorBy, colors, maxRenderedPoints, positions, scalarFields],
   );
   const objectTransform = useMemo(
     () => pointCloudObjectTransform(transform),
-    [transform]
+    [transform],
   );
 
   useEffect(() => {
@@ -297,11 +297,11 @@ function createPointCloudGeometry(data: PointCloudRenderData) {
   const geometry = new THREE.BufferGeometry();
   const positionAttribute = new THREE.BufferAttribute(
     data.positions,
-    POINT_COMPONENT_COUNT
+    POINT_COMPONENT_COUNT,
   );
   const colorAttribute = new THREE.BufferAttribute(
     data.colors,
-    POINT_COMPONENT_COUNT
+    POINT_COMPONENT_COUNT,
   );
   positionAttribute.setUsage(THREE.DynamicDrawUsage);
   colorAttribute.setUsage(THREE.DynamicDrawUsage);
@@ -321,20 +321,20 @@ function buildPointCloudRenderData(
     readonly colorBy?: PointCloudColorBy;
     readonly colors?: Float32Array;
     readonly scalarFields?: readonly PointCloudScalarField[];
-  }
+  },
 ): PointCloudRenderData {
   const sourcePointCount = Math.floor(
-    sourcePositions.length / POINT_COMPONENT_COUNT
+    sourcePositions.length / POINT_COMPONENT_COUNT,
   );
   const sampleEvery = Math.max(
     MIN_POINT_SAMPLE_COUNT,
     Math.ceil(
-      sourcePointCount / Math.max(MIN_POINT_SAMPLE_COUNT, maxRenderedPoints)
-    )
+      sourcePointCount / Math.max(MIN_POINT_SAMPLE_COUNT, maxRenderedPoints),
+    ),
   );
   const maxSampleCount = Math.max(
     MIN_POINT_SAMPLE_COUNT,
-    Math.ceil(sourcePointCount / sampleEvery)
+    Math.ceil(sourcePointCount / sampleEvery),
   );
   const positions = new Float32Array(maxSampleCount * POINT_COMPONENT_COUNT);
   const colors = new Float32Array(maxSampleCount * COLOR_COMPONENT_COUNT);
@@ -375,7 +375,7 @@ function buildPointCloudRenderData(
     tmpVec.set(
       positions[targetOffset + X_COMPONENT_INDEX],
       positions[targetOffset + Y_COMPONENT_INDEX],
-      positions[targetOffset + Z_COMPONENT_INDEX]
+      positions[targetOffset + Z_COMPONENT_INDEX],
     );
     bounds.expandByPoint(tmpVec);
     renderedPointCount++;
@@ -389,8 +389,8 @@ function buildPointCloudRenderData(
       new THREE.Vector3(
         EMPTY_POINT_CLOUD_BOUNDS_SIZE,
         EMPTY_POINT_CLOUD_BOUNDS_SIZE,
-        EMPTY_POINT_CLOUD_BOUNDS_SIZE
-      )
+        EMPTY_POINT_CLOUD_BOUNDS_SIZE,
+      ),
     );
   }
 
@@ -461,7 +461,7 @@ function resolvePointCloudColorSource({
       sourcePositions,
       sourcePointCount,
       scalarFields,
-      fieldName
+      fieldName,
     );
     if (scalarSource) {
       return scalarSource;
@@ -502,13 +502,13 @@ function requestedColorSource({
     sourcePositions,
     sourcePointCount,
     scalarFields,
-    colorBy
+    colorBy,
   );
 }
 
 function rgbColorSource(
   colors: Float32Array | undefined,
-  sourcePointCount: number
+  sourcePointCount: number,
 ): PointCloudColorSource | null {
   return colors && colors.length >= sourcePointCount * COLOR_COMPONENT_COUNT
     ? { colors, kind: "rgb" }
@@ -519,10 +519,10 @@ function scalarColorSource(
   sourcePositions: Float32Array,
   sourcePointCount: number,
   scalarFields: readonly PointCloudScalarField[] | undefined,
-  fieldName: string
+  fieldName: string,
 ): PointCloudColorSource | null {
   const scalarField = scalarFields?.find(
-    (field) => normalizedFieldName(field.name) === fieldName
+    (field) => normalizedFieldName(field.name) === fieldName,
   );
   if (!scalarField || scalarField.values.length < sourcePointCount) {
     return null;
@@ -542,7 +542,7 @@ function scalarColorSource(
 }
 
 function heightColorSource(
-  heightBounds: ReturnType<typeof computeSourceHeightBounds>
+  heightBounds: ReturnType<typeof computeSourceHeightBounds>,
 ): PointCloudColorSource | null {
   return hasUsefulRange({
     finitePointCount: heightBounds.finitePointCount,
@@ -562,7 +562,7 @@ function writePointColor(
   targetOffset: number,
   colorSource: PointCloudColorSource,
   sourcePointIndex: number,
-  z: number
+  z: number,
 ) {
   if (colorSource.kind === "rgb") {
     const sourceOffset = sourcePointIndex * COLOR_COMPONENT_COUNT;
@@ -576,7 +576,7 @@ function writePointColor(
     writeHeightColor(
       target,
       targetOffset,
-      normalizeValue(z, colorSource.minValue, colorSource.maxValue)
+      normalizeValue(z, colorSource.minValue, colorSource.maxValue),
     );
     return;
   }
@@ -587,7 +587,7 @@ function writePointColor(
       writeHeightColor(
         target,
         targetOffset,
-        normalizeValue(value, colorSource.minValue, colorSource.maxValue)
+        normalizeValue(value, colorSource.minValue, colorSource.maxValue),
       );
       return;
     }
@@ -598,14 +598,14 @@ function writePointColor(
 
 function computeScalarBounds(
   sourcePositions: Float32Array,
-  values: Float32Array
+  values: Float32Array,
 ) {
   let finitePointCount = 0;
   let minValue = Infinity;
   let maxValue = -Infinity;
   const pointCount = Math.min(
     values.length,
-    Math.floor(sourcePositions.length / POINT_COMPONENT_COUNT)
+    Math.floor(sourcePositions.length / POINT_COMPONENT_COUNT),
   );
 
   for (let pointIndex = 0; pointIndex < pointCount; pointIndex++) {
@@ -682,7 +682,7 @@ function computeSourceHeightBounds(sourcePositions: Float32Array) {
 }
 
 function pointCloudObjectTransform(
-  frameTransform: PointCloudFrameTransform | undefined
+  frameTransform: PointCloudFrameTransform | undefined,
 ): PointCloudObjectTransform {
   if (!frameTransform) {
     return {
@@ -715,7 +715,7 @@ function pointCloudObjectTransform(
 function writeHeightColor(target: Float32Array, offset: number, value: number) {
   const clamped = Math.max(
     NORMALIZED_HEIGHT_MIN,
-    Math.min(NORMALIZED_HEIGHT_MAX, value)
+    Math.min(NORMALIZED_HEIGHT_MAX, value),
   );
   const warm =
     clamped > HEIGHT_COLOR_MIDPOINT
@@ -757,7 +757,7 @@ function clamp01(value: number): number {
 function pointCountLabel(finitePointCount: number, declaredPointCount: number) {
   if (declaredPointCount > 0 && declaredPointCount !== finitePointCount) {
     return `${formatCount(finitePointCount)} / ${formatCount(
-      declaredPointCount
+      declaredPointCount,
     )} pts`;
   }
 

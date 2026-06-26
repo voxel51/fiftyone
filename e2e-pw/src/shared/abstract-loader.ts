@@ -35,7 +35,7 @@ export abstract class AbstractFiftyoneLoader {
   abstract loadZooDataset(
     zooDatasetName: string,
     id: string,
-    kwargs?: Record<string, string | number | boolean>
+    kwargs?: Record<string, string | number | boolean>,
   ): Promise<void>;
 
   /**
@@ -61,7 +61,7 @@ export abstract class AbstractFiftyoneLoader {
    */
   abstract selectDatasetFromSelector(
     page: Page,
-    datasetName: string
+    datasetName: string,
   ): Promise<void>;
 
   /**
@@ -74,6 +74,6 @@ export abstract class AbstractFiftyoneLoader {
   abstract waitUntilGridVisible(
     page: Page,
     datasetName: string,
-    options?: WaitUntilGridVisibleOptions
+    options?: WaitUntilGridVisibleOptions,
   ): Promise<void>;
 }

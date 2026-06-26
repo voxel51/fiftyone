@@ -22,7 +22,7 @@ const DefaultMaskTargets: React.FC = () => {
     () => ({
       useMaskTargetsColors: Boolean(values?.length),
     }),
-    [values]
+    [values],
   );
 
   const defaultValue = {
@@ -37,7 +37,7 @@ const DefaultMaskTargets: React.FC = () => {
         setColorScheme((cur) => ({ ...cur, defaultMaskTargetsColors: copy }));
       }
     },
-    [setColorScheme]
+    [setColorScheme],
   );
 
   useEffect(() => {

@@ -52,7 +52,7 @@ const CANONICAL_SCALAR_FIELDS = Object.freeze([
   "rcs",
 ] as const);
 const CANONICAL_SCALAR_FIELD_NAMES: ReadonlySet<string> = new Set(
-  CANONICAL_SCALAR_FIELDS
+  CANONICAL_SCALAR_FIELDS,
 );
 
 const RED_COLOR_CHANNEL_NAMES = Object.freeze(["r", "red"] as const);
@@ -72,7 +72,7 @@ export const foxglovePointCloudDecoder: Decoder = {
     const message = decodeProtobufMessage(
       bytes,
       FOXGLOVE_POINT_CLOUD_PAYLOAD,
-      context
+      context,
     );
     const data = requiredBytes(message, "data");
     const pointStride = requiredNumber(message, "pointStride", "point_stride");
@@ -132,7 +132,7 @@ interface DecodedPointCloudData {
 function extractPointCloudData(
   data: Uint8Array,
   pointStride: number,
-  fields: readonly PointCloudField[]
+  fields: readonly PointCloudField[],
 ): DecodedPointCloudData {
   if (pointStride <= 0) {
     throw new Error(`Invalid point stride ${pointStride}`);
@@ -156,7 +156,7 @@ function extractPointCloudData(
     data,
     pointStride,
     pointCount,
-    fields
+    fields,
   );
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
 
@@ -165,15 +165,15 @@ function extractPointCloudData(
     const positionOffset = index * POINT_COMPONENT_COUNT;
     positions[positionOffset + X_COMPONENT_INDEX] = view.getFloat32(
       baseOffset + x.offset,
-      true
+      true,
     );
     positions[positionOffset + Y_COMPONENT_INDEX] = view.getFloat32(
       baseOffset + y.offset,
-      true
+      true,
     );
     positions[positionOffset + Z_COMPONENT_INDEX] = view.getFloat32(
       baseOffset + z.offset,
-      true
+      true,
     );
   }
 
@@ -182,7 +182,7 @@ function extractPointCloudData(
 
 function alignedPointDataByteLength(
   data: Uint8Array,
-  pointStride: number
+  pointStride: number,
 ): number {
   const alignedByteLength =
     Math.floor(data.byteLength / pointStride) * pointStride;
@@ -203,7 +203,7 @@ function alignedPointDataByteLength(
 function isZeroRange(
   data: Uint8Array,
   startOffset: number,
-  endOffset: number
+  endOffset: number,
 ): boolean {
   for (let offset = startOffset; offset < endOffset; offset++) {
     if (data[offset] !== 0) {
@@ -218,7 +218,7 @@ function extractScalarFields(
   data: Uint8Array,
   pointStride: number,
   pointCount: number,
-  fields: readonly PointCloudField[]
+  fields: readonly PointCloudField[],
 ): readonly PointCloudScalarField[] {
   const scalarFields: PointCloudScalarField[] = [];
   const scalarFieldByName = new Map<string, PointCloudField>();
@@ -255,7 +255,7 @@ function extractColorField(
   data: Uint8Array,
   pointStride: number,
   pointCount: number,
-  fields: readonly PointCloudField[]
+  fields: readonly PointCloudField[],
 ): Float32Array | undefined {
   return (
     extractSeparateColorChannels(data, pointStride, pointCount, fields) ??
@@ -267,13 +267,13 @@ function extractSeparateColorChannels(
   data: Uint8Array,
   pointStride: number,
   pointCount: number,
-  fields: readonly PointCloudField[]
+  fields: readonly PointCloudField[],
 ): Float32Array | undefined {
   const red = findColorChannel(fields, pointStride, RED_COLOR_CHANNEL_NAMES);
   const green = findColorChannel(
     fields,
     pointStride,
-    GREEN_COLOR_CHANNEL_NAMES
+    GREEN_COLOR_CHANNEL_NAMES,
   );
   const blue = findColorChannel(fields, pointStride, BLUE_COLOR_CHANNEL_NAMES);
   if (!red || !green || !blue) {
@@ -288,15 +288,15 @@ function extractSeparateColorChannels(
     const colorOffset = index * COLOR_COMPONENT_COUNT;
     colors[colorOffset] = normalizeColorChannel(
       readNumericField(view, baseOffset + red.offset, red.type),
-      red.type
+      red.type,
     );
     colors[colorOffset + 1] = normalizeColorChannel(
       readNumericField(view, baseOffset + green.offset, green.type),
-      green.type
+      green.type,
     );
     colors[colorOffset + 2] = normalizeColorChannel(
       readNumericField(view, baseOffset + blue.offset, blue.type),
-      blue.type
+      blue.type,
     );
   }
 
@@ -307,13 +307,13 @@ function extractPackedColorField(
   data: Uint8Array,
   pointStride: number,
   pointCount: number,
-  fields: readonly PointCloudField[]
+  fields: readonly PointCloudField[],
 ): Float32Array | undefined {
   const field = fields.find(
     (candidate) =>
       PACKED_COLOR_FIELD_NAMES.includes(normalizedFieldName(candidate.name)) &&
       canReadNumericField(candidate, pointStride) &&
-      numericFieldByteWidth(candidate.type) === 4
+      numericFieldByteWidth(candidate.type) === 4,
   );
   if (!field) {
     return undefined;
@@ -337,12 +337,12 @@ function extractPackedColorField(
 function findColorChannel(
   fields: readonly PointCloudField[],
   pointStride: number,
-  names: readonly string[]
+  names: readonly string[],
 ): PointCloudField | undefined {
   return fields.find(
     (field) =>
       names.includes(normalizedFieldName(field.name)) &&
-      canReadNumericField(field, pointStride)
+      canReadNumericField(field, pointStride),
   );
 }
 
@@ -350,7 +350,7 @@ function extractNumericValues(
   data: Uint8Array,
   pointStride: number,
   pointCount: number,
-  field: PointCloudField
+  field: PointCloudField,
 ): Float32Array {
   const values = new Float32Array(pointCount);
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
@@ -359,7 +359,7 @@ function extractNumericValues(
     values[index] = readNumericField(
       view,
       index * pointStride + field.offset,
-      field.type
+      field.type,
     );
   }
 
@@ -368,7 +368,7 @@ function extractNumericValues(
 
 function canReadNumericField(
   field: PointCloudField,
-  pointStride: number
+  pointStride: number,
 ): boolean {
   const byteWidth = numericFieldByteWidth(field.type);
 
@@ -382,7 +382,7 @@ function canReadNumericField(
 function readNumericField(
   view: DataView,
   offset: number,
-  fieldType: number
+  fieldType: number,
 ): number {
   switch (fieldType) {
     case UINT8_FIELD_TYPE:
@@ -476,7 +476,7 @@ function packedFields(values: readonly unknown[]): readonly PointCloudField[] {
 
 function requiredFloat32Field(
   fields: readonly PointCloudField[],
-  name: string
+  name: string,
 ): PointCloudField {
   const field = fields.find((candidate) => candidate.name === name);
 

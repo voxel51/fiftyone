@@ -33,7 +33,7 @@ describe("MCAP playback worker transfer collection", () => {
           payload: { encoding: "protobuf" },
           streamId: "/camera",
         },
-      ])
+      ]),
     ).toEqual([]);
   });
 
@@ -48,7 +48,7 @@ describe("MCAP playback worker transfer collection", () => {
             },
           },
         },
-      })
+      }),
     ).toEqual([]);
   });
 });
@@ -62,7 +62,7 @@ function createTimelineRange(): McapTimelineRange {
 }
 
 function createWindow(
-  messages: readonly McapDecodedMessage[]
+  messages: readonly McapDecodedMessage[],
 ): McapSynchronizedMessageWindow {
   return {
     activeTimeline: "log",
@@ -76,7 +76,7 @@ function createWindow(
 }
 
 function createMessage(
-  transferables: readonly Transferable[]
+  transferables: readonly Transferable[],
 ): McapDecodedMessage {
   return {
     channelId: 1,

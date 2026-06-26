@@ -66,14 +66,14 @@ export const SchemaSelection = () => {
 
               let docTypeLabel = ftype.substring(
                 ftype.lastIndexOf(".") + 1,
-                ftype.length
+                ftype.length,
               );
 
               docTypeLabel =
                 ftype === EMBEDDED_DOCUMENT_FIELD
                   ? embedDocType.substring(
                       embedDocType.lastIndexOf(".") + 1,
-                      embedDocType.length
+                      embedDocType.length,
                     )
                   : docTypeLabel;
 
@@ -91,7 +91,7 @@ export const SchemaSelection = () => {
                   description={fDesc}
                 />
               );
-            }
+            },
           )}
       </Box>
     </Box>

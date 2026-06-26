@@ -7,7 +7,7 @@ const CSS_UNIT_PATTERN =
 export function parseSize(
   value: number | string,
   max?: number,
-  defaultUnit?: string
+  defaultUnit?: string,
 ) {
   const valueIsNumber = typeof value === "number";
   const valueIsRelativeString =

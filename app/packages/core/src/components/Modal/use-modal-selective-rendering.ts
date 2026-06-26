@@ -13,7 +13,7 @@ import { useDetectNewActiveLabelFields } from "../Sidebar/useDetectNewActiveLabe
 
 export const useImageModalSelectiveRendering = (
   modalId: string,
-  looker: Lookers
+  looker: Lookers,
 ) => {
   const { getNewFields } = useDetectNewActiveLabelFields({
     modal: true,
@@ -21,7 +21,7 @@ export const useImageModalSelectiveRendering = (
 
   const id = `${modalId}-${getColoringKey(
     looker.state.options.coloring,
-    looker.state.options.colorscale
+    looker.state.options.colorscale,
   )}-image`;
 
   useEffect(() => {
@@ -41,7 +41,7 @@ export const useImageModalSelectiveRendering = (
             o.label?.map_path?.length > 0 ||
             o.label?.mask ||
             o.label?.map) &&
-          newFields.includes(o.field)
+          newFields.includes(o.field),
       );
 
       if (newOverlays?.length) {
@@ -65,7 +65,7 @@ export const useImageModalSelectiveRendering = (
 
 export const useImavidModalSelectiveRendering = (
   id: string,
-  looker: ImaVidLooker
+  looker: ImaVidLooker,
 ) => {
   const lookerRef = useRef(looker);
   lookerRef.current = looker;
@@ -95,7 +95,7 @@ export const useImavidModalSelectiveRendering = (
 
 export const useVideoModalSelectiveRendering = (
   id: string,
-  looker: VideoLooker
+  looker: VideoLooker,
 ) => {
   const { getNewFields } = useDetectNewActiveLabelFields({
     modal: true,

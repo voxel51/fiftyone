@@ -4,7 +4,7 @@
  * @param boundingBox Bounding box in the form [x, y, width, height]
  */
 export const hasValidBounds = (
-  boundingBox: [number, number, number, number]
+  boundingBox: [number, number, number, number],
 ): boolean => {
   return (
     boundingBox.every((num) => Number.isFinite(num)) &&

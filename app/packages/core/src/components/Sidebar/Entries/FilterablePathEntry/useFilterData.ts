@@ -30,7 +30,7 @@ export const getFilterItemsProps = (
   modal: boolean,
   parent: Field | null,
   fields: Field[],
-  skeleton: (field: string) => KeypointSkeleton | null
+  skeleton: (field: string) => KeypointSkeleton | null,
 ): FilterItem[] => {
   if (path === "_label_tags") {
     return [
@@ -123,7 +123,7 @@ export const getFilterItemsProps = (
 const useFilterData = (
   modal: boolean,
   path: string,
-  filter?: (path: string) => boolean
+  filter?: (path: string) => boolean,
 ) => {
   const expandedPath = useRecoilValue(fos.expandPath(path));
   const color = useRecoilValue(fos.pathColor(path));
@@ -132,7 +132,7 @@ const useFilterData = (
     fos.fields({
       path: expandedPath,
       ftype: VALID_PRIMITIVE_TYPES,
-    })
+    }),
   );
 
   const skeleton = useRecoilValue(getSkeleton);
@@ -143,7 +143,7 @@ const useFilterData = (
       modal,
       field,
       fields,
-      skeleton
+      skeleton,
     );
     const filtered = filter ? data.filter(({ path }) => filter(path)) : data;
     const rest = filter ? data.filter(({ path }) => !filter(path)) : data;

@@ -6,7 +6,10 @@ import {
   usePlayhead,
 } from "../../lib/playback/use-playback-state";
 import PlayheadTime from "../Playhead/PlayheadTime";
-import { PauseIcon, PlayIcon } from "../TimelineControls/timeline-controls-icons";
+import {
+  PauseIcon,
+  PlayIcon,
+} from "../TimelineControls/timeline-controls-icons";
 import { clamp } from "../../lib/playback/utils";
 import styles from "./SimplePlaybackBar.module.css";
 

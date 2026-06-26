@@ -87,10 +87,10 @@ export default function NativeModelEvaluationView(props) {
               onChange("view.key", new_name);
             }
           }
-        }
+        },
       );
     },
-    [triggerEvent, rename_evaluation, evaluations, onChange]
+    [triggerEvent, rename_evaluation, evaluations, onChange],
   );
 
   const time = new Date().getTime();
@@ -107,12 +107,12 @@ export default function NativeModelEvaluationView(props) {
             // if after deletion, there is no evaluation left,
             // go to the create evaluation page
             const updatedEvaluations = evaluations.filter(
-              (evaluation) => evaluation.id !== eval_id
+              (evaluation) => evaluation.id !== eval_id,
             );
             onChange("evaluations", updatedEvaluations);
             onChange(
               "view.key",
-              `${eval_id}_${updatedEvaluations.length}_${time}`
+              `${eval_id}_${updatedEvaluations.length}_${time}`,
             );
             if (page === "evaluation") {
               // should return to overview page
@@ -121,10 +121,10 @@ export default function NativeModelEvaluationView(props) {
               triggerEvent(on_change_view);
             }
           }
-        }
+        },
       );
     },
-    [triggerEvent, delete_evaluation, evaluations, onChange, time]
+    [triggerEvent, delete_evaluation, evaluations, onChange, time],
   );
 
   const handleClose = () => {
@@ -157,13 +157,13 @@ export default function NativeModelEvaluationView(props) {
             id: string,
             key?: string,
             callback?: () => void,
-            refresh_cache?: false
+            refresh_cache?: false,
           ) => {
             triggerEvent(
               load_scenario,
               { id, key, refresh_cache },
               false,
-              callback
+              callback,
             );
           }}
           deleteScenario={(scenarioId: string, callback?: () => void) => {
@@ -171,7 +171,7 @@ export default function NativeModelEvaluationView(props) {
               delete_scenario,
               { id: scenarioId, eval_id: id },
               false,
-              callback
+              callback,
             );
           }}
           compareKey={compareKey}

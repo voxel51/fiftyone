@@ -94,8 +94,8 @@ describe("useOperatorPromptSubmitOptions", () => {
           availableOrchestrators: [],
           allowImmediateExecution: false,
         }),
-        mockExecute
-      )
+        mockExecute,
+      ),
     );
     expect(result.current.hasOptions).toBe(false);
     expect(result.current.options).toHaveLength(0);
@@ -106,8 +106,8 @@ describe("useOperatorPromptSubmitOptions", () => {
       useOperatorPromptSubmitOptions(
         OPERATOR_URI,
         createMockExecDetails({ allowImmediateExecution: true }),
-        mockExecute
-      )
+        mockExecute,
+      ),
     );
     expect(result.current.hasOptions).toBe(true);
     expect(result.current.options).toHaveLength(1);
@@ -123,8 +123,8 @@ describe("useOperatorPromptSubmitOptions", () => {
         OPERATOR_URI,
         createMockExecDetails({ allowImmediateExecution: true }),
         mockExecute,
-        { submitButtonLabel: "Run Now" }
-      )
+        { submitButtonLabel: "Run Now" },
+      ),
     );
     expect(result.current.options[0].label).toBe("Run Now");
   });
@@ -135,8 +135,8 @@ describe("useOperatorPromptSubmitOptions", () => {
         OPERATOR_URI,
         createMockExecDetails({ allowImmediateExecution: true }),
         mockExecute,
-        { submit_button_label: "Run!" }
-      )
+        { submit_button_label: "Run!" },
+      ),
     );
     expect(result.current.options[0].label).toBe("Run!");
   });
@@ -146,8 +146,8 @@ describe("useOperatorPromptSubmitOptions", () => {
       useOperatorPromptSubmitOptions(
         OPERATOR_URI,
         createMockExecDetails({ allowDelegatedExecution: true }),
-        mockExecute
-      )
+        mockExecute,
+      ),
     );
     expect(result.current.options).toHaveLength(1);
     const [opt] = result.current.options;
@@ -163,8 +163,8 @@ describe("useOperatorPromptSubmitOptions", () => {
           allowImmediateExecution: true,
           allowDelegatedExecution: true,
         }),
-        mockExecute
-      )
+        mockExecute,
+      ),
     );
     expect(result.current.options).toHaveLength(2);
     const ids = result.current.options.map((o) => o.id);
@@ -181,8 +181,8 @@ describe("useOperatorPromptSubmitOptions", () => {
           allowDelegatedExecution: true,
           defaultChoiceToDelegated: false,
         }),
-        mockExecute
-      )
+        mockExecute,
+      ),
     );
     expect(result.current.options[0].id).toBe("execute");
   });
@@ -196,8 +196,8 @@ describe("useOperatorPromptSubmitOptions", () => {
           allowDelegatedExecution: true,
           defaultChoiceToDelegated: true,
         }),
-        mockExecute
-      )
+        mockExecute,
+      ),
     );
     expect(result.current.options[0].id).toBe("schedule");
   });
@@ -216,8 +216,8 @@ describe("useOperatorPromptSubmitOptions", () => {
           orchestratorRegistrationEnabled: true,
           availableOrchestrators: orchestrators,
         }),
-        mockExecute
-      )
+        mockExecute,
+      ),
     );
     expect(result.current.options).toHaveLength(3);
     const orcOpts = result.current.options.filter((o) => o.isDelegated);
@@ -238,11 +238,11 @@ describe("useOperatorPromptSubmitOptions", () => {
           orchestratorRegistrationEnabled: true,
           availableOrchestrators: [],
         }),
-        mockExecute
-      )
+        mockExecute,
+      ),
     );
     const disabledOption = result.current.options.find(
-      (o) => o.id === "disabled-schedule"
+      (o) => o.id === "disabled-schedule",
     ) as OperatorExecutionOption;
     expect(disabledOption).toBeDefined();
     expect(disabledOption.isDisabledSchedule).toBe(true);
@@ -259,8 +259,8 @@ describe("useOperatorPromptSubmitOptions", () => {
           availableOrchestrators: [],
           allowImmediateExecution: false,
         }),
-        mockExecute
-      )
+        mockExecute,
+      ),
     );
     expect(result.current.requiresOrchestratorSetup).toBe(true);
   });
@@ -275,8 +275,8 @@ describe("useOperatorPromptSubmitOptions", () => {
           orchestratorRegistrationEnabled: true,
           availableOrchestrators: [],
         }),
-        mockExecute
-      )
+        mockExecute,
+      ),
     );
     expect(result.current.requiresOrchestratorSetup).toBe(false);
   });
@@ -290,8 +290,8 @@ describe("useOperatorPromptSubmitOptions", () => {
           orchestratorRegistrationEnabled: true,
           availableOrchestrators: [{ id: "orc-1", instanceID: "worker-1" }],
         }),
-        mockExecute
-      )
+        mockExecute,
+      ),
     );
     expect(result.current.requiresOrchestratorSetup).toBe(false);
   });
@@ -304,8 +304,8 @@ describe("useOperatorPromptSubmitOptions", () => {
           allowImmediateExecution: true,
           isLoading: true,
         }),
-        mockExecute
-      )
+        mockExecute,
+      ),
     );
     expect(result.current.isLoading).toBe(true);
   });
@@ -318,8 +318,8 @@ describe("useOperatorPromptSubmitOptions", () => {
           allowImmediateExecution: true,
           isLoading: false,
         }),
-        mockExecute
-      )
+        mockExecute,
+      ),
     );
     expect(result.current.isLoading).toBe(false);
   });
@@ -329,8 +329,8 @@ describe("useOperatorPromptSubmitOptions", () => {
       useOperatorPromptSubmitOptions(
         OPERATOR_URI,
         createMockExecDetails({ allowImmediateExecution: true }),
-        mockExecute
-      )
+        mockExecute,
+      ),
     );
     act(() => {
       result.current.handleSubmit();
@@ -346,8 +346,8 @@ describe("useOperatorPromptSubmitOptions", () => {
           allowDelegatedExecution: true,
           defaultChoiceToDelegated: true,
         }),
-        mockExecute
-      )
+        mockExecute,
+      ),
     );
     act(() => {
       result.current.handleSubmit();
@@ -364,8 +364,8 @@ describe("useOperatorPromptSubmitOptions", () => {
           orchestratorRegistrationEnabled: true,
           availableOrchestrators: [{ id: "orc-1", instanceID: "worker-1" }],
         }),
-        mockExecute
-      )
+        mockExecute,
+      ),
     );
     act(() => {
       result.current.handleSubmit();
@@ -381,8 +381,8 @@ describe("useOperatorPromptSubmitOptions", () => {
       useOperatorPromptSubmitOptions(
         OPERATOR_URI,
         createMockExecDetails({ allowImmediateExecution: true }),
-        mockExecute
-      )
+        mockExecute,
+      ),
     );
     const selected = result.current.options.filter((o) => o.selected);
     expect(selected).toHaveLength(1);
@@ -398,8 +398,8 @@ describe("useOperatorPromptSubmitOptions", () => {
           allowDelegatedExecution: true,
           defaultChoiceToDelegated: false,
         }),
-        mockExecute
-      )
+        mockExecute,
+      ),
     );
 
     // Initially execute is selected (first / default)
@@ -412,10 +412,10 @@ describe("useOperatorPromptSubmitOptions", () => {
     });
 
     expect(
-      result.current.options.find((o) => o.id === "schedule")?.selected
+      result.current.options.find((o) => o.id === "schedule")?.selected,
     ).toBe(true);
     expect(
-      result.current.options.find((o) => o.id === "execute")?.selected
+      result.current.options.find((o) => o.id === "execute")?.selected,
     ).toBeUndefined();
   });
 });

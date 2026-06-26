@@ -32,17 +32,20 @@ export interface McapTemporalTagsResult {
 }
 
 export function useMcapTemporalTags(
-  ctx: SampleRendererProps["ctx"]
+  ctx: SampleRendererProps["ctx"],
 ): McapTemporalTagsResult {
-  const { create, delete: deleteTags, temporalTags } =
-    useSampleRendererTemporalTags(ctx);
+  const {
+    create,
+    delete: deleteTags,
+    temporalTags,
+  } = useSampleRendererTemporalTags(ctx);
 
   const onTagDelete = useCallback(
     async (event: { data?: unknown }) => {
       const id = event.data;
       if (typeof id === "string") await deleteTags([id]);
     },
-    [deleteTags]
+    [deleteTags],
   );
 
   const onTagCreate = useCallback(
@@ -54,7 +57,7 @@ export function useMcapTemporalTags(
           end: Math.round(tag.end * 1_000_000_000),
         },
       ]).then(() => undefined),
-    [create]
+    [create],
   );
 
   const tracks = useMemo<Track[]>(() => {
@@ -70,8 +73,12 @@ export function useMcapTemporalTags(
     // Sort label groups newest-first so recently created tags appear at the
     // top of the pinned section.
     const sorted = Array.from(byLabel.entries()).sort(([, a], [, b]) => {
-      const tA = Math.max(...a.map((t) => (t.createdAt ? Date.parse(t.createdAt) : 0)));
-      const tB = Math.max(...b.map((t) => (t.createdAt ? Date.parse(t.createdAt) : 0)));
+      const tA = Math.max(
+        ...a.map((t) => (t.createdAt ? Date.parse(t.createdAt) : 0)),
+      );
+      const tB = Math.max(
+        ...b.map((t) => (t.createdAt ? Date.parse(t.createdAt) : 0)),
+      );
       return tB - tA;
     });
 

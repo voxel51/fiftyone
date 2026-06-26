@@ -12,7 +12,7 @@ import { getPageQuery } from "./Writer";
 export function loadContext(
   fragment: GraphQLTaggedNode,
   environment: IEnvironment,
-  data: unknown
+  data: unknown,
 ) {
   const node = getFragment(fragment);
   // @ts-ignore
@@ -27,7 +27,7 @@ export function loadContext(
       node,
       data,
       identifier,
-      "graphQLSyncFragmentAtom()"
+      "graphQLSyncFragmentAtom()",
     ),
     FragmentResource,
   };
@@ -35,7 +35,7 @@ export function loadContext(
 
 export function readFragment<TKey extends KeyType>(
   fragmentInput: GraphQLTaggedNode,
-  fragmentRef: TKey
+  fragmentRef: TKey,
 ): KeyTypeData<TKey> {
   const node = getFragment(fragmentInput);
   const {
@@ -51,6 +51,6 @@ export function readFragment<TKey extends KeyType>(
     node,
     fragmentRef,
     identifier,
-    "readFragment()"
+    "readFragment()",
   ).data;
 }

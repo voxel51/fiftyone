@@ -57,8 +57,8 @@ export const useTimeline = (name?: TimelineName) => {
         const currFramenumber = get(getFrameNumberAtom(timelineName));
         return currFramenumber;
       },
-      [timelineName]
-    )
+      [timelineName],
+    ),
   );
 
   const refresh = useAtomCallback(
@@ -71,8 +71,8 @@ export const useTimeline = (name?: TimelineName) => {
           newFrameNumber: currentFrameNumber,
         });
       },
-      [timelineName]
-    )
+      [timelineName],
+    ),
   );
 
   useEffect(() => {
@@ -87,13 +87,13 @@ export const useTimeline = (name?: TimelineName) => {
 
   const play = useCallback(() => {
     dispatchEvent(
-      new CustomEvent("play", { detail: { timelineName: timelineName } })
+      new CustomEvent("play", { detail: { timelineName: timelineName } }),
     );
   }, [timelineName]);
 
   const pause = useCallback(() => {
     dispatchEvent(
-      new CustomEvent("pause", { detail: { timelineName: timelineName } })
+      new CustomEvent("pause", { detail: { timelineName: timelineName } }),
     );
   }, [timelineName]);
 
@@ -102,15 +102,15 @@ export const useTimeline = (name?: TimelineName) => {
       (get) => {
         return get(getPlayheadStateAtom(timelineName));
       },
-      [timelineName]
-    )
+      [timelineName],
+    ),
   );
 
   const setPlayHeadState = useCallback(
     (newState: PlayheadState) => {
       setPlayheadStateWrapper({ name: timelineName, state: newState });
     },
-    [timelineName]
+    [timelineName],
   );
 
   const setSpeed = useCallback(
@@ -120,14 +120,14 @@ export const useTimeline = (name?: TimelineName) => {
         configDelta: { speed },
       });
     },
-    [updateConfig, timelineName]
+    [updateConfig, timelineName],
   );
 
   const subscribe = useCallback(
     (subscription: SequenceTimelineSubscription) => {
       subscribeImpl({ name: timelineName, subscription });
     },
-    [subscribeImpl, timelineName]
+    [subscribeImpl, timelineName],
   );
 
   return {

@@ -19,12 +19,12 @@ export interface AgentSelector {
 
   /** Set the active agent. */
   setActiveAgent: (
-    descriptor: AgentDescriptor<InferenceResultProxy> | null
+    descriptor: AgentDescriptor<InferenceResultProxy> | null,
   ) => void;
 }
 
 const activeAgentAtom = atom<AgentDescriptor<InferenceResultProxy> | null>(
-  null
+  null,
 );
 const isResolvedAtom = atom<boolean>(false);
 
@@ -36,7 +36,7 @@ export const useAgentSelector = (): AgentSelector => {
   const [isResolved, setIsResolved] = useAtom(isResolvedAtom);
 
   const [agents, setAgents] = useState<AgentDescriptor<InferenceResultProxy>[]>(
-    () => []
+    () => [],
   );
 
   const registry = useAgentRegistry();
@@ -68,6 +68,6 @@ export const useAgentSelector = (): AgentSelector => {
       isResolved,
       setActiveAgent,
     }),
-    [activeAgent, agents, isResolved, setActiveAgent]
+    [activeAgent, agents, isResolved, setActiveAgent],
   );
 };

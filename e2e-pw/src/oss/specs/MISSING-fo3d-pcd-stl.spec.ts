@@ -87,7 +87,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
     dataset.add_samples([sample1, sample2])
 
     fou3d.compute_orthographic_projection_images(dataset, (-1, 64), "/tmp/ortho/${datasetName}") 
-    `
+    `,
   );
 });
 
@@ -104,7 +104,7 @@ test.describe.serial("fo3d", () => {
       {
         mask,
         animations: "allow",
-      }
+      },
     );
 
     await grid.openFirstSample();

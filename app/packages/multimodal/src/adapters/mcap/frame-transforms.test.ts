@@ -18,7 +18,7 @@ describe("MCAP frame transform store", () => {
         sourceFrameId: "lidar",
         targetFrameId: "map",
         timeNs: 10n,
-      })
+      }),
     ).toMatchObject({
       sourceFrameId: "lidar",
       status: "resolved",
@@ -46,7 +46,7 @@ describe("MCAP frame transform store", () => {
         sourceFrameId: "base_link",
         targetFrameId: "map",
         timeNs: 250n,
-      })
+      }),
     ).toMatchObject({
       status: "resolved",
       transform: {
@@ -66,7 +66,7 @@ describe("MCAP frame transform store", () => {
         sourceFrameId: "base_link",
         targetFrameId: "map",
         timeNs: 250n,
-      })
+      }),
     ).toMatchObject({
       status: "missing",
     });
@@ -84,7 +84,7 @@ describe("MCAP frame transform store", () => {
         sourceFrameId: "lidar",
         targetFrameId: "map",
         timeNs: 150n,
-      })
+      }),
     ).toMatchObject({
       status: "resolved",
       transform: {
@@ -103,7 +103,7 @@ describe("MCAP frame transform store", () => {
         sourceFrameId: "map",
         targetFrameId: "lidar",
         timeNs: 10n,
-      })
+      }),
     ).toMatchObject({
       status: "resolved",
       transform: {
@@ -122,7 +122,7 @@ describe("MCAP frame transform store", () => {
         sourceFrameId: "lidar",
         targetFrameId: "map",
         timeNs: 10n,
-      })
+      }),
     ).toEqual({
       sourceFrameId: "lidar",
       status: "pending",
@@ -141,7 +141,7 @@ describe("MCAP frame transform store", () => {
         sourceFrameId: "lidar",
         targetFrameId: "map",
         timeNs: 10n,
-      })
+      }),
     ).toEqual({
       sourceFrameId: "lidar",
       status: "missing",
@@ -217,7 +217,7 @@ describe("frame transform worker boundary serialization", () => {
 
     const overWireWithoutDehydrate = structuredClone(set);
     const [received] = hydrateMcapFrameTransformSet(
-      overWireWithoutDehydrate
+      overWireWithoutDehydrate,
     ).samples;
     if (!received) {
       throw new Error("Expected one hydrated sample");
@@ -261,7 +261,7 @@ function sample(
         readonly y: number;
         readonly z: number;
       } = new Vector3(),
-  timeNs?: bigint
+  timeNs?: bigint,
 ): McapFrameTransformSample {
   return {
     childFrameId,

@@ -66,7 +66,7 @@ describe("applyTextureDimensionsToIntrinsics", () => {
       applyTextureDimensionsToIntrinsics(intrinsics, {
         width: 1920,
         height: 1080,
-      })
+      }),
     ).toEqual({
       ...intrinsics,
       width: 1920,
@@ -88,7 +88,7 @@ describe("applyTextureDimensionsToIntrinsics", () => {
       applyTextureDimensionsToIntrinsics(intrinsics, {
         width: 1920,
         height: 1080,
-      })
+      }),
     ).toBe(intrinsics);
   });
 });

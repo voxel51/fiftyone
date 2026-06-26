@@ -72,7 +72,7 @@ describe("useEventBus", () => {
 
   test("should maintain same bus instance across rerenders", () => {
     const { result, rerender } = renderHook(() =>
-      useEventBus<TestEventGroup>()
+      useEventBus<TestEventGroup>(),
     );
 
     const handler = vi.fn();

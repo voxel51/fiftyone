@@ -8,7 +8,7 @@ import { useLayoutEffect } from "react";
  */
 const useRetrieveViewport = (
   scene: Scene2D | null,
-  sampleId: string | undefined
+  sampleId: string | undefined,
 ) => {
   const setViewportState = useSaveModalViewport();
 

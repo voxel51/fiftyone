@@ -27,7 +27,7 @@ const IMAGE_TOPIC_SUFFIX_TOKENS = new Set([
  */
 export function chooseAnnotationTopic(
   imageTopic: string,
-  annotationTopics: readonly string[]
+  annotationTopics: readonly string[],
 ): string | null {
   if (annotationTopics.length === 0) {
     return null;
@@ -90,7 +90,7 @@ export function topicTokens(topic: string): Set<string> {
     topic
       .toLowerCase()
       .split(/[^a-z0-9]+/)
-      .filter((token) => token && !IGNORED_TOPIC_TOKENS.has(token))
+      .filter((token) => token && !IGNORED_TOPIC_TOKENS.has(token)),
   );
 }
 

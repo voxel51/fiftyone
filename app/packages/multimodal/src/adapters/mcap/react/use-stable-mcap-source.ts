@@ -11,7 +11,7 @@ import { getMcapSourceDescriptor } from "../sample";
  * context.
  */
 export function useStableMcapSource(
-  ctx: SampleRendererProps["ctx"]
+  ctx: SampleRendererProps["ctx"],
 ): ByteSourceDescriptor | null {
   const nextSource = getMcapSourceDescriptor(ctx);
   const nextSourceKey = nextSource ? byteSourceAccessKey(nextSource) : "";

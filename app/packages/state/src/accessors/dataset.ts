@@ -72,7 +72,7 @@ export const useGetKeypointSkeleton = () => {
     ({ snapshot }) =>
       (field: string) =>
         snapshot.getLoadable(skeleton(field)).getValue(),
-    []
+    [],
   );
 };
 
@@ -92,7 +92,7 @@ export const useGroupSlices = (mediaTypes: GroupSliceMediaType[]): string[] => {
       mediaTypes.some((type) => {
         if (type === "3d") return is3d(mediaType);
         return mediaType === type;
-      })
+      }),
     )
     .map(({ name }) => name);
 };

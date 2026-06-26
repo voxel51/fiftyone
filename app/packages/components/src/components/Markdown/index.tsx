@@ -36,7 +36,9 @@ const InlineCode = styled.span`
   border-radius: 3px;
   padding: 0.2em 0.4em;
   font-size: 85%;
-  font-family: Roboto Mono, monospace;
+  font-family:
+    Roboto Mono,
+    monospace;
 `;
 
 const CodeContainer = styled(Box)`

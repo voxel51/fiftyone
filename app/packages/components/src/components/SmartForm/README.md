@@ -54,10 +54,10 @@ yarn add @fiftyone/components
 
 **Dependencies:**
 
--   `@rjsf/core` - React JSON Schema Form core
--   `@rjsf/mui` - Material-UI theme
--   `@rjsf/validator-ajv8` - JSON Schema validation
--   `@rjsf/utils` - RJSF utilities
+- `@rjsf/core` - React JSON Schema Form core
+- `@rjsf/mui` - Material-UI theme
+- `@rjsf/validator-ajv8` - JSON Schema validation
+- `@rjsf/utils` - RJSF utilities
 
 ---
 
@@ -339,11 +339,11 @@ yarn test data.test
 
 **Test Coverage:**
 
--   ✅ 170+ test cases
--   ✅ All field types
--   ✅ Data conversion (bidirectional)
--   ✅ Edge cases
--   ✅ Integration tests
+- ✅ 170+ test cases
+- ✅ All field types
+- ✅ Data conversion (bidirectional)
+- ✅ Edge cases
+- ✅ Integration tests
 
 ---
 
@@ -436,10 +436,10 @@ import SmartForm from "@fiftyone/components/SmartForm";
 
 SmartForm is optimized for:
 
--   ✅ Fast schema translation (cached)
--   ✅ Minimal re-renders
--   ✅ Efficient data conversion
--   ✅ Large forms (100+ fields)
+- ✅ Fast schema translation (cached)
+- ✅ Minimal re-renders
+- ✅ Efficient data conversion
+- ✅ Large forms (100+ fields)
 
 ---
 
@@ -447,10 +447,10 @@ SmartForm is optimized for:
 
 Same as RJSF:
 
--   Chrome (latest)
--   Firefox (latest)
--   Safari (latest)
--   Edge (latest)
+- Chrome (latest)
+- Firefox (latest)
+- Safari (latest)
+- Edge (latest)
 
 ---
 
@@ -467,10 +467,10 @@ When adding new features:
 
 ## Resources
 
--   [Full Usage Examples](./USAGE_EXAMPLES.md)
--   [Translator Tests](./translators/__tests__/)
--   [RJSF Documentation](https://rjsf-team.github.io/react-jsonschema-form/)
--   [JSON Schema Specification](https://json-schema.org/)
+- [Full Usage Examples](./USAGE_EXAMPLES.md)
+- [Translator Tests](./translators/__tests__/)
+- [RJSF Documentation](https://rjsf-team.github.io/react-jsonschema-form/)
+- [JSON Schema Specification](https://json-schema.org/)
 
 ---
 
@@ -484,5 +484,5 @@ Apache-2.0
 
 For issues or questions:
 
--   GitHub: [voxel51/fiftyone](https://github.com/voxel51/fiftyone)
--   Documentation: [docs.voxel51.com](https://docs.voxel51.com)
+- GitHub: [voxel51/fiftyone](https://github.com/voxel51/fiftyone)
+- Documentation: [docs.voxel51.com](https://docs.voxel51.com)

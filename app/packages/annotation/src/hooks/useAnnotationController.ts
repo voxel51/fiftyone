@@ -37,7 +37,7 @@ export const useAnnotationController = (): AnnotationController => {
       await contextManager.enter(path, labelId);
       eventBus.dispatch("annotation:enterAnnotationMode", { path, labelId });
     },
-    [contextManager, eventBus, modeController]
+    [contextManager, eventBus, modeController],
   );
 
   const exit = useCallback(() => {
@@ -48,6 +48,6 @@ export const useAnnotationController = (): AnnotationController => {
 
   return useMemo(
     () => ({ enterAnnotationMode: enter, exitAnnotationMode: exit }),
-    [enter, exit]
+    [enter, exit],
   );
 };

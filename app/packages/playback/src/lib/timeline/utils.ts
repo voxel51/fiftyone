@@ -40,7 +40,7 @@ export const dispatchTimelineSetFrameNumberEvent = ({
 
     if (!sampleId && !groupId) {
       throw new Error(
-        "No timeline name provided and no 'id' or 'groupId' query param in URL"
+        "No timeline name provided and no 'id' or 'groupId' query param in URL",
       );
     }
     timelineName = getTimelineNameFromSampleAndGroupId(sampleId, groupId);
@@ -51,7 +51,7 @@ export const dispatchTimelineSetFrameNumberEvent = ({
   dispatchEvent(
     new CustomEvent(getTimelineSetFrameNumberEventName(timelineName), {
       detail: { frameNumber: Math.max(newFrameNumber, 1) },
-    })
+    }),
   );
 };
 
@@ -111,7 +111,7 @@ export const getGradientStringForSeekbar = (
     currentProgress: string;
     buffered: string;
     loading: string;
-  }
+  },
 ) => {
   const colorPriority = {
     [colorMap.currentProgress]: 4,
@@ -235,7 +235,7 @@ export const getGradientStringForSeekbar = (
   }
 
   const gradientStops = mergedRanges.map(
-    (range) => `${range.color} ${range.start}% ${range.end}%`
+    (range) => `${range.color} ${range.start}% ${range.end}%`,
   );
 
   return `linear-gradient(to right, ${gradientStops.join(", ")})`;

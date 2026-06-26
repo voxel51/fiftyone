@@ -16,8 +16,8 @@ describe("filter resolves correctly", () => {
         [],
         colorscale,
         {},
-        []
-      )
+        [],
+      ),
     ).toBeUndefined();
   });
 
@@ -30,8 +30,8 @@ describe("filter resolves correctly", () => {
         [],
         colorscale,
         {},
-        []
-      )
+        [],
+      ),
     ).toBeUndefined();
   });
 
@@ -44,8 +44,8 @@ describe("filter resolves correctly", () => {
         [],
         colorscale,
         [],
-        {}
-      )
+        {},
+      ),
     ).toBeUndefined();
   });
 
@@ -58,8 +58,8 @@ describe("filter resolves correctly", () => {
         [],
         colorscale,
         [],
-        {}
-      )
+        {},
+      ),
     ).toBeUndefined();
   });
 });

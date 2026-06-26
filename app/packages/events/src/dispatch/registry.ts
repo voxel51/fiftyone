@@ -12,7 +12,7 @@ const dispatcherRegistry = new Map<string, EventDispatcher<any>>();
  * Gets or creates an event dispatcher for the given channel ID.
  */
 function getDispatcher<T extends EventGroup>(
-  channelId: string
+  channelId: string,
 ): EventDispatcher<T> {
   if (!dispatcherRegistry.has(channelId)) {
     dispatcherRegistry.set(channelId, new EventDispatcher<T>());
@@ -46,7 +46,7 @@ function getDispatcher<T extends EventGroup>(
  * ```
  */
 export function getEventBus<T extends EventGroup>(
-  channelId = DEFAULT_CHANNEL_ID
+  channelId = DEFAULT_CHANNEL_ID,
 ): EventDispatcher<T> {
   return getDispatcher<T>(channelId);
 }
@@ -73,7 +73,7 @@ export function getEventBus<T extends EventGroup>(
  */
 export function clearChannel(
   channelId = DEFAULT_CHANNEL_ID,
-  removeFromRegistry = true
+  removeFromRegistry = true,
 ): void {
   const dispatcher = dispatcherRegistry.get(channelId);
   if (dispatcher) {

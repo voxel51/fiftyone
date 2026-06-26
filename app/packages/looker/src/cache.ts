@@ -33,7 +33,7 @@ export type Lookers = FrameLooker | ImageLooker | ImaVidLooker | VideoLooker;
  * @returns an exclusionary LRU cache
  */
 export const createCache = <T extends Instance | Lookers = Lookers>(
-  options: CacheOptions
+  options: CacheOptions,
 ) => {
   const { maxHiddenItems, maxHiddenItemsSizeBytes, onDispose, onSet } = options;
 
@@ -206,7 +206,7 @@ export const createCache = <T extends Instance | Lookers = Lookers>(
 
 const destroy = <T extends Instance | Lookers = Lookers>(
   map: Map<string, T>,
-  onDispose?: CacheCallback
+  onDispose?: CacheCallback,
 ) => {
   for (const [key, instance] of map.entries()) {
     instance.destroy();

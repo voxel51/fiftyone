@@ -1,10 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useCallback, useState } from "react";
 import type { MosaicNode } from "react-mosaic-component";
-import {
-  TilingProvider,
-  type TilingTile,
-} from "../../lib/TilingProvider";
+import { TilingProvider, type TilingTile } from "../../lib/TilingProvider";
 import MosaicGrid, {
   addTileToLayout,
   autoLayout,
@@ -56,10 +53,10 @@ function GridShell({
   initialIds?: string[];
 }) {
   const [tiles, setTiles] = useState<Record<string, TilingTile>>(() =>
-    Object.fromEntries(initialIds.map((id) => [id, makeTile(id)]))
+    Object.fromEntries(initialIds.map((id) => [id, makeTile(id)])),
   );
   const [layout, setLayout] = useState<MosaicNode<string> | null>(() =>
-    autoLayout(initialIds)
+    autoLayout(initialIds),
   );
   const [focused, setFocused] = useState<string | null>(null);
   const [counter, setCounter] = useState(initialIds.length);
@@ -97,7 +94,12 @@ function GridShell({
         <div style={{ padding: 8 }}>
           <button onClick={spawn}>Add tile</button>
           {focused && (
-            <span style={{ marginLeft: 12, color: "var(--color-content-text-muted)" }}>
+            <span
+              style={{
+                marginLeft: 12,
+                color: "var(--color-content-text-muted)",
+              }}
+            >
               focused: {focused}
             </span>
           )}

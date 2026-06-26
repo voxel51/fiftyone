@@ -6,7 +6,7 @@ import { isFo3dBackgroundOnAtom } from "../state";
 
 export const ToggleFo3dBackground = () => {
   const [isBackgroundOn, setIsBackgroundOn] = recoil.useRecoilState(
-    isFo3dBackgroundOnAtom
+    isFo3dBackgroundOnAtom,
   );
   const { primary } = useTheme();
 

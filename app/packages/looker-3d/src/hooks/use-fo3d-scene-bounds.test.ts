@@ -32,7 +32,7 @@ describe("useFo3dSceneBounds", () => {
         }),
       {
         initialProps: { isThreeJsLoading: true },
-      }
+      },
     );
 
     expect(useFo3dBoundsMock.mock.calls[0][1]).toBe(false);

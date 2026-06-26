@@ -120,14 +120,14 @@ const NUSCENES_INITIAL_TILES: Record<string, TilingTile> = {
 
 /** Discoverable data sources in the scene. POC: fixed NuScenes set. */
 export function useMcapSceneInventory(
-  _fileName: string
+  _fileName: string,
 ): readonly SceneSource[] {
   return NUSCENES_SOURCES;
 }
 
 /** Per-topic synchronization policies for the file. POC: fixed NuScenes set. */
 export function useMcapStreamPolicies(
-  _fileName: string
+  _fileName: string,
 ): McapStreamSyncPolicies {
   return NUSCENES_STREAM_POLICIES;
 }
@@ -137,7 +137,7 @@ export function useMcapStreamPolicies(
  * auto-binds to the first source of its type in the scene inventory.
  */
 export function useMcapInitialTiles(
-  _fileName: string
+  _fileName: string,
 ): Record<string, TilingTile> {
   return NUSCENES_INITIAL_TILES;
 }

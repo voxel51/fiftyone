@@ -50,7 +50,7 @@ const Y_AXIS_END = new Vector3(0, FRUSTUM_AXES_SIZE, 0);
 const Z_AXIS_END = new Vector3(0, 0, FRUSTUM_AXES_SIZE);
 
 function formatStaticTransformForTooltip(
-  staticTransform: StaticTransform
+  staticTransform: StaticTransform,
 ): Record<string, string> {
   const [tx, ty, tz] = staticTransform.translation;
   const [qx, qy, qz, qw] = staticTransform.quaternion;
@@ -60,11 +60,11 @@ function formatStaticTransformForTooltip(
     position: `${formatNumber(tx)}, ${formatNumber(ty)}, ${formatNumber(tz)}`,
     quaternion: `${formatNumber(qx, 4)}, ${formatNumber(qy, 4)}, ${formatNumber(
       qz,
-      4
+      4,
     )}, ${formatNumber(qw, 4)}`,
     rotation: `${formatNumber(euler[0], 1)}°, ${formatNumber(
       euler[1],
-      1
+      1,
     )}°, ${formatNumber(euler[2], 1)}°`,
   };
 }
@@ -140,15 +140,15 @@ function FrustumMesh({ frustumData, geometry, texture }: GeometryFrustumProps) {
         new Vector3(
           corners[idx1 * 3],
           corners[idx1 * 3 + 1],
-          corners[idx1 * 3 + 2]
-        )
+          corners[idx1 * 3 + 2],
+        ),
       );
       points.push(
         new Vector3(
           corners[idx2 * 3],
           corners[idx2 * 3 + 1],
-          corners[idx2 * 3 + 2]
-        )
+          corners[idx2 * 3 + 2],
+        ),
       );
     }
 
@@ -216,7 +216,7 @@ function FrustumMesh({ frustumData, geometry, texture }: GeometryFrustumProps) {
 
       if (frustumData.staticTransform) {
         const transformInfo = formatStaticTransformForTooltip(
-          frustumData.staticTransform
+          frustumData.staticTransform,
         );
         attributes.position = transformInfo.position;
         attributes.quaternion = transformInfo.quaternion;
@@ -229,7 +229,7 @@ function FrustumMesh({ frustumData, geometry, texture }: GeometryFrustumProps) {
         attributes,
       });
     },
-    [sliceName, frustumData.staticTransform, setHoverMetadata]
+    [sliceName, frustumData.staticTransform, setHoverMetadata],
   );
 
   const handlePointerOut = useCallback(
@@ -238,7 +238,7 @@ function FrustumMesh({ frustumData, geometry, texture }: GeometryFrustumProps) {
       setIsHovered(false);
       setHoverMetadata(null);
     },
-    [setHoverMetadata]
+    [setHoverMetadata],
   );
 
   const handleClick = useCallback(
@@ -248,7 +248,7 @@ function FrustumMesh({ frustumData, geometry, texture }: GeometryFrustumProps) {
         setShowTexture((prev) => !prev);
       }
     },
-    [canShowTexture]
+    [canShowTexture],
   );
 
   return (
@@ -350,7 +350,7 @@ function PlainFrustum({
 }) {
   const geometry = useMemo(
     () => buildFrustumGeometry(staticTransform, intrinsics, depth),
-    [depth, intrinsics, staticTransform]
+    [depth, intrinsics, staticTransform],
   );
 
   return <FrustumMesh frustumData={frustumData} geometry={geometry} />;
@@ -370,11 +370,11 @@ function TexturedFrustum({
   const texture = useFoLoaderNoSuspense(TextureLoader, imageUrl);
   const textureDimensions = useMemo(
     () => getTextureDimensions(texture),
-    [texture]
+    [texture],
   );
   const intrinsicsWithTextureDimensions = useMemo(
     () => applyTextureDimensionsToIntrinsics(intrinsics, textureDimensions),
-    [intrinsics, textureDimensions]
+    [intrinsics, textureDimensions],
   );
   const imageAspectRatio =
     textureDimensions &&
@@ -388,9 +388,9 @@ function TexturedFrustum({
         staticTransform,
         intrinsicsWithTextureDimensions,
         depth,
-        imageAspectRatio
+        imageAspectRatio,
       ),
-    [depth, imageAspectRatio, intrinsicsWithTextureDimensions, staticTransform]
+    [depth, imageAspectRatio, intrinsicsWithTextureDimensions, staticTransform],
   );
 
   return (

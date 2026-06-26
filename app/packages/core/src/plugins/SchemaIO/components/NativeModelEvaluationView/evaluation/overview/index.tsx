@@ -40,7 +40,7 @@ export default function Overview(props) {
   } = props;
   const [expanded, setExpanded] = usePanelStatePartial(
     `${name}_evaluation_overview_expanded`,
-    "summary"
+    "summary",
   );
   const [editNoteState, setEditNoteState] = useState({ open: false, note: "" });
   const [loadingCompare, setLoadingCompare] = useState(false);
@@ -65,7 +65,7 @@ export default function Overview(props) {
   const { can_edit_note } = data?.permissions || {};
   const [enable, message, cursor] = useMutation(
     can_edit_note,
-    "edit evaluation note"
+    "edit evaluation note",
   );
 
   useEffect(() => {
