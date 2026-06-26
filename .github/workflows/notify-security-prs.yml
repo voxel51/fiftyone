@@ -1,0 +1,36 @@
+name: Notify security PRs
+
+# Posts to #compliance-security when Renovate opens a vulnerability-remediation
+# PR. Those PRs carry the `security` label (renovate.json -> vulnerabilityAlerts)
+# and are authored by voxel51-bot. Routine version bumps are intentionally not
+# announced — only CVE/security PRs reach the channel.
+
+on:
+  pull_request:
+    types: [opened, reopened, labeled]
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    if: >-
+      github.repository == 'voxel51/fiftyone' &&
+      github.event.pull_request.user.login == 'voxel51-bot' &&
+      (
+        (github.event.action == 'labeled' && github.event.label.name == 'security') ||
+        (github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'security'))
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post to #compliance-security
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_COMPLIANCE_SECURITY_WEBHOOK_URL }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          payload=$(jq -n \
+            --arg text "Security dependency PR #${PR_NUMBER} opened in voxel51/fiftyone: ${PR_TITLE} ${PR_URL}" \
+            '{text: $text}')
+          curl -fsSL -X POST -H 'Content-type: application/json' --data "$payload" "$SLACK_WEBHOOK_URL"
