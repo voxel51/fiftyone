@@ -25,15 +25,6 @@ interface UseZoomToSelectedProps {
   useLegacyCoordinates?: boolean;
 }
 
-const getBoxCenterAndSize = (box: Box3) => {
-  const center = new Vector3();
-  const size = new Vector3();
-  box.getCenter(center);
-  box.getSize(size);
-
-  return { center, size };
-};
-
 /**
  * Hook that provides a handler function to zoom the camera to selected labels.
  * In annotation mode, it zooms to the selected label for annotation.
@@ -78,7 +69,10 @@ export const useZoomToSelected = ({
           return;
         }
 
-        const { center, size } = getBoxCenterAndSize(boundingBox);
+        const center = new Vector3();
+        const size = new Vector3();
+        boundingBox.getCenter(center);
+        boundingBox.getSize(size);
 
         const cameraPosition = calculateCameraPositionForUpVector(
           center,

@@ -17,6 +17,8 @@ type ModifierKey =
   | "controlLeft"
   | "metaRight"
   | "metaLeft"
+  // Alt keys are tracked only for the point-crop modifier; they are not part
+  // of the mouseButtons (rotate/pan/dolly) mapping below.
   | "altRight"
   | "altLeft";
 
@@ -106,11 +108,11 @@ export const useFo3dCameraControlsConfig = ({
     const isMetaPressed =
       keyState.current.metaRight || keyState.current.metaLeft;
 
-    // Modifier behavior:
-    // - Shift + drag => pan via OrbitControls' built-in ROTATE modifier path
-    // - Ctrl + drag  => dolly (zoom)
-    // - Cmd + drag   => rotate by using OrbitControls' PAN modifier reversal
-    // - default      => rotate
+    // Left-drag modifier behavior:
+    // - Ctrl + drag        => dolly (zoom)
+    // - Cmd (no Shift)     => pan
+    // - default (incl.
+    //   Shift, Cmd+Shift)  => rotate
     if (isControlPressed) {
       cameraControlsRef.current.mouseButtons.LEFT = MOUSE.DOLLY;
     } else if (isMetaPressed && !isShiftPressed) {

@@ -1,16 +1,14 @@
 import { useCallback } from "react";
-import type { PerspectiveCamera, Vector3, Vector3Tuple } from "three";
+import type { PerspectiveCamera } from "three";
 import {
   setCameraControlsLookAt,
   type Fo3dCameraControls,
 } from "../fo3d/camera-controls";
-
-type CameraVector = Vector3 | Vector3Tuple;
+import type { Vector3Input } from "../utils";
 
 interface LookAtParams {
-  position: CameraVector;
-  target: CameraVector;
-  animate: boolean;
+  position: Vector3Input;
+  target: Vector3Input;
 }
 
 interface UseFo3dCameraLookAtArgs {

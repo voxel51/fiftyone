@@ -199,10 +199,16 @@ const MainPanelOrbitControlsSync = ({
     });
   }, [cameraControlsRef, sceneBoundingBox]);
 
+  // This effect re-syncs the OrbitControls config (zoom/pan speed, min
+  // distance) whenever the sync callback changes, i.e. when the camera
+  // controls ref or scene bounding box changes.
   useEffect(() => {
     syncControls();
-  });
+  }, [syncControls]);
 
+  // This effect keeps the controls config in sync on every OrbitControls
+  // "change" event (e.g. zoom/pan/rotate), re-subscribing when the callback
+  // identity changes.
   useEffect(() => {
     const controls = cameraControlsRef.current;
     if (!controls) {
@@ -241,14 +247,21 @@ const MainPanelNavigationSyncEmitter = ({
   const raycastResultRef = useRef(raycastResult);
   const sequenceRef = useRef(0);
 
+  // This effect keeps a ref in sync with the active cursor panel so the
+  // window event handlers / render loop can read the latest value without
+  // having to re-subscribe their listeners.
   useEffect(() => {
     activeCursorPanelRef.current = activeCursorPanel;
   }, [activeCursorPanel]);
 
+  // This effect keeps a ref in sync with the latest raycast result so the
+  // window event handlers / render loop can read it without re-subscribing.
   useEffect(() => {
     raycastResultRef.current = raycastResult;
   }, [raycastResult]);
 
+  // This effect subscribes to window wheel events and emits a zoom sync
+  // intent so other panels can mirror the main panel's wheel zoom.
   useEffect(() => {
     const handleWheel = (event: WheelEvent) => {
       const timestamp = Date.now();
@@ -274,6 +287,9 @@ const MainPanelNavigationSyncEmitter = ({
     };
   }, [cameraControlsRef, cameraRef, setMainPanelZoomSyncIntent]);
 
+  // This effect tracks pointer drag state on the main panel via window
+  // pointer/blur events, capturing the controls target at drag start so the
+  // pan sync handler below can detect main-panel-driven panning.
   useEffect(() => {
     const handlePointerDown = () => {
       isMainPanelPointerDragRef.current =
@@ -299,6 +315,9 @@ const MainPanelNavigationSyncEmitter = ({
     };
   }, [cameraControlsRef]);
 
+  // This effect subscribes to OrbitControls "change" events to detect
+  // main-panel pan gestures and emit throttled pan sync intents so other
+  // panels can mirror the main panel's pan.
   useEffect(() => {
     const controls = cameraControlsRef.current;
     if (!controls) {

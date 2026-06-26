@@ -162,7 +162,6 @@ export const useFo3dCameraInitialization = ({
     const didApply = applyLookAt({
       position: config.position,
       target: config.target,
-      animate: false,
     });
 
     if (!didApply) {
@@ -205,7 +204,6 @@ export const useFo3dCameraInitialization = ({
     applyLookAt({
       position: overriddenCameraPosition,
       target: resolveTargetForOverridePosition(overriddenCameraPosition),
-      animate: true,
     });
   }, [overriddenCameraPosition, applyLookAt, resolveTargetForOverridePosition]);
 

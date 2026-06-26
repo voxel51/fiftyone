@@ -45,7 +45,7 @@ export const useFo3dCameraViewEvents = ({
   const pendingTimeoutIdsRef = useRef<number[]>([]);
 
   const buildViewLookAt = useCallback(
-    (view: "pov" | "top", useAnimation: boolean) => {
+    (view: "pov" | "top") => {
       const viewConfig = resolveViewConfig(view, {
         boundingBox: effectiveSceneBoundingBox,
         upVector,
@@ -57,7 +57,6 @@ export const useFo3dCameraViewEvents = ({
       return {
         position: viewConfig.position,
         target: viewConfig.target,
-        animate: useAnimation,
       };
     },
     [
@@ -67,16 +66,6 @@ export const useFo3dCameraViewEvents = ({
       foScene,
       settings,
     ],
-  );
-
-  const onChangeView = useCallback(
-    (
-      view: "pov" | "top",
-      { useAnimation = true }: { useAnimation?: boolean } = {},
-    ) => {
-      return applyLookAt(buildViewLookAt(view, useAnimation));
-    },
-    [buildViewLookAt, applyLookAt],
   );
 
   const handleViewChangeEvent = useCallback(
@@ -90,22 +79,15 @@ export const useFo3dCameraViewEvents = ({
           pendingTimeoutIdsRef.current = pendingTimeoutIdsRef.current.filter(
             (id) => id !== timeoutId,
           );
-          const lookAt = buildViewLookAt(view, true);
-          applyLookAt(lookAt);
+          applyLookAt(buildViewLookAt(view));
         }, BOUNDS_RETRY_DELAY_MS);
         pendingTimeoutIdsRef.current.push(timeoutId);
         return;
       }
 
-      onChangeView(view, { useAnimation: true });
+      applyLookAt(buildViewLookAt(view));
     },
-    [
-      onChangeView,
-      sceneBoundingBox,
-      recomputeBounds,
-      buildViewLookAt,
-      applyLookAt,
-    ],
+    [sceneBoundingBox, recomputeBounds, buildViewLookAt, applyLookAt],
   );
 
   // This effect clears any remaining timeouts

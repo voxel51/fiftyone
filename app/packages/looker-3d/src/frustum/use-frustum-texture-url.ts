@@ -17,14 +17,6 @@ export function useFrustumTextureUrl(
       return;
     }
 
-    if (
-      typeof URL === "undefined" ||
-      typeof URL.createObjectURL !== "function"
-    ) {
-      setTextureUrl(imageUrl);
-      return;
-    }
-
     let cancelled = false;
     let objectUrl: string | null = null;
 
@@ -46,12 +38,8 @@ export function useFrustumTextureUrl(
 
         objectUrl = URL.createObjectURL(blob);
         setTextureUrl(objectUrl);
-      } catch (error) {
+      } catch {
         if (!cancelled) {
-          console.warn("Failed to load frustum texture image", {
-            imageUrl,
-            error,
-          });
           setTextureUrl(null);
         }
       }

@@ -4,6 +4,10 @@ import { Quaternion, Vector3 } from "three";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as fos from "@fiftyone/state";
 import { MAIN_PANEL_ORBIT_ZOOM_SPEED } from "../../utils/side-panel-camera-sync";
+import {
+  MAIN_PANEL_CAMERA_TARGET_EPSILON,
+  MAIN_PANEL_ORBIT_PAN_SPEED,
+} from "../../utils/main-panel-orbit-controls";
 import { Fo3dSceneContent } from "../Fo3dCanvas";
 import type { FoScene } from "../render-types";
 
@@ -173,8 +177,8 @@ describe("Fo3dSceneContent", () => {
       expect.objectContaining({
         rotateSpeed: 1,
         zoomSpeed: MAIN_PANEL_ORBIT_ZOOM_SPEED,
-        panSpeed: 1.15,
-        minDistance: 0.0001,
+        panSpeed: MAIN_PANEL_ORBIT_PAN_SPEED,
+        minDistance: MAIN_PANEL_CAMERA_TARGET_EPSILON,
       }),
     );
   });

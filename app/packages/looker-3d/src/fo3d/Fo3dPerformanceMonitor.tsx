@@ -31,6 +31,8 @@ export const Fo3dPerformanceMonitor = () => {
     startedAtMs: null,
   });
 
+  // This effect resets the perf stats to defaults when the monitor unmounts,
+  // so a stale FPS/draw-call readout doesn't linger in the status bar.
   useEffect(() => {
     return () => {
       setPerformanceStats(DEFAULT_FO3D_PERFORMANCE_STATS);

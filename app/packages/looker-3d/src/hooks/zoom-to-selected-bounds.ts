@@ -1,5 +1,5 @@
 import type * as fos from "@fiftyone/state";
-import { get as _get } from "lodash";
+import { get } from "lodash";
 import {
   Box3,
   Euler,
@@ -93,7 +93,7 @@ const has3dGeometry = (label: unknown) => {
 };
 
 export const extractSelectedLabel = (
-  labelFieldData: any,
+  labelFieldData: unknown,
   labelId?: string,
 ): unknown | null => {
   if (!labelFieldData) {
@@ -104,18 +104,27 @@ export const extractSelectedLabel = (
     return findLabelById(labelFieldData, labelId);
   }
 
-  const detectionsLabel = findLabelById(labelFieldData.detections, labelId);
+  if (typeof labelFieldData !== "object") {
+    return null;
+  }
+
+  const candidate = labelFieldData as {
+    detections?: unknown;
+    polylines?: unknown;
+  };
+
+  const detectionsLabel = findLabelById(candidate.detections, labelId);
   if (detectionsLabel) {
     return detectionsLabel;
   }
 
-  const polylineLabel = findLabelById(labelFieldData.polylines, labelId);
+  const polylineLabel = findLabelById(candidate.polylines, labelId);
   if (polylineLabel) {
     return polylineLabel;
   }
 
   if (has3dGeometry(labelFieldData)) {
-    return labelId && !doesLabelIdMatch(labelFieldData, labelId)
+    return labelId && !doesLabelIdMatch(labelFieldData as LabelWithId, labelId)
       ? null
       : labelFieldData;
   }
@@ -293,10 +302,8 @@ export const resolveSelectedLabelBoundingBox = ({
     interactionSample,
     activeSampleMap,
   );
-  const fieldData = labelPath && sample ? _get(sample.sample, labelPath) : null;
-  const label =
-    extractSelectedLabel(fieldData, labelId) ??
-    extractSelectedLabel(selectedLabel, labelId);
+  const fieldData = labelPath && sample ? get(sample.sample, labelPath) : null;
+  const label = extractSelectedLabel(fieldData, labelId);
 
   return createLabelBoundingBox(label, { useLegacyCoordinates });
 };
