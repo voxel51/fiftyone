@@ -17,7 +17,9 @@ const computeYawQuaternion = (
     directionVector.dot(localX),
     directionVector.dot(localY),
   );
-  const yaw = Math.atan2(localDirection.y, localDirection.x);
+  // Forward (the box's local +X) points opposite the drag direction, so the
+  // front face is on the far side of the heading rather than toward it.
+  const yaw = Math.atan2(localDirection.y, localDirection.x) + Math.PI;
   const yawQuaternion = new THREE.Quaternion().setFromAxisAngle(normal, yaw);
   return yawQuaternion.multiply(planeQuaternion);
 };

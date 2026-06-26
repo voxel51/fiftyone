@@ -1,7 +1,16 @@
+import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import type { CuboidCreationState } from "../types";
 import type { AnnotationPlaneState } from "./types";
 import { getCuboidCreationPreview } from "./cuboid-creation-preview";
+
+// The box's forward axis (local +X) in world space.
+const forwardOf = (
+  preview: ReturnType<typeof getCuboidCreationPreview>,
+): THREE.Vector3 =>
+  new THREE.Vector3(1, 0, 0).applyQuaternion(
+    new THREE.Quaternion().fromArray(preview?.quaternion ?? [0, 0, 0, 1]),
+  );
 
 const annotationPlane: AnnotationPlaneState = {
   enabled: true,
@@ -38,7 +47,11 @@ describe("getCuboidCreationPreview", () => {
     // centered at the midpoint so the near edge stays at the first click.
     expect(preview?.location).toEqual([1, 0, 0]);
     expect(preview?.dimensions).toEqual([2, 0.1, 1]);
-    expect(preview?.quaternion).toEqual([0, 0, 0, 1]);
+    // Forward points opposite the drag (which was toward +X), i.e. -X.
+    const forward = forwardOf(preview);
+    expect(forward.x).toBeCloseTo(-1, 5);
+    expect(forward.y).toBeCloseTo(0, 5);
+    expect(forward.z).toBeCloseTo(0, 5);
   });
 
   it("grows the step-two width toward the cursor side only", () => {
@@ -56,6 +69,10 @@ describe("getCuboidCreationPreview", () => {
     // cursor so the anchored edge stays put: center = (1, 1, 0).
     expect(preview?.location).toEqual([1, 1, 0]);
     expect(preview?.dimensions).toEqual([2, 2, 1]);
-    expect(preview?.quaternion).toEqual([0, 0, 0, 1]);
+    // Forward points opposite the heading (which was toward +X), i.e. -X.
+    const forward = forwardOf(preview);
+    expect(forward.x).toBeCloseTo(-1, 5);
+    expect(forward.y).toBeCloseTo(0, 5);
+    expect(forward.z).toBeCloseTo(0, 5);
   });
 });
