@@ -50,6 +50,13 @@ vi.mock("../hooks/use-empty-canvas-interaction", () => ({
   useEmptyCanvasInteraction: mocks.useEmptyCanvasInteraction,
 }));
 
+// The renderer reads live scene point clouds (via useThree under the hood) to
+// fit a new cuboid's height; outside a Canvas we just report none, leaving the
+// gestured dimensions untouched.
+vi.mock("../hooks/use-scene-point-clouds", () => ({
+  useScenePointClouds: () => () => [],
+}));
+
 vi.mock("../state", () => ({
   ...mocks.atoms,
   useCuboidTransformCommands: () => ({
