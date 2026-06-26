@@ -15,7 +15,8 @@ describe("AnnotatePrerequisiteNotice", () => {
       container.querySelector('[data-cy="video-annotate-prerequisite-notice"]')
     ).toBeTruthy();
     getByText("Computed metadata required");
-    getByText(/compute_metadata/);
+    getByText(/frame count is unknown/);
+    getByText("Compute metadata");
   });
 
   it("renders the frames prompt", () => {
