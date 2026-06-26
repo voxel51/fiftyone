@@ -96,6 +96,19 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
   const tileMode = useTileMode();
   const prerequisites = useAnnotatePrerequisites(sample);
 
+  // The native-video tile binds to a single top-level URL. The ImaVid
+  // tile resolves a per-frame URL through the image stream, so it does
+  // not need (and ignores) this value. Computed before the prerequisite
+  // gate so hook order stays stable across the checking → ready transition.
+  const videoSrc = useMemo(() => {
+    if (tileMode !== "video") {
+      return null;
+    }
+
+    const url = sample.urls?.[0]?.url;
+    return url ? getSampleSrc(url) : null;
+  }, [sample, tileMode]);
+
   // Annotation needs computed metadata (frame count + fps) and sampled frame
   // images. When a prerequisite is missing, show an actionable prompt instead
   // of mounting the playback stream — which used to throw and take the whole
@@ -114,18 +127,6 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
       </div>
     );
   }
-
-  // The native-video tile binds to a single top-level URL. The ImaVid
-  // tile resolves a per-frame URL through the image stream, so it does
-  // not need (and ignores) this value.
-  const videoSrc = useMemo(() => {
-    if (tileMode !== "video") {
-      return null;
-    }
-
-    const url = sample.urls?.[0]?.url;
-    return url ? getSampleSrc(url) : null;
-  }, [sample, tileMode]);
 
   const media =
     tileMode === "imavid" ? (
