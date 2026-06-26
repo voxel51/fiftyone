@@ -37,7 +37,7 @@ export const usePointCloudCrop = ({
   const selectedLabel = useRecoilValue(selectedLabelForAnnotationAtom);
   const hoveredLabel = useRecoilValue(hoveredLabelAtom);
   const isPointCropModifierPressed = useRecoilValue(
-    isFo3dPointCropModifierPressedAtom
+    isFo3dPointCropModifierPressedAtom,
   );
   const isMainPanelPointerDown = useRecoilValue(isFo3dMainPanelPointerDownAtom);
   const raycastResult = useRecoilValue(raycastResultAtom);
@@ -65,7 +65,7 @@ export const usePointCloudCrop = ({
       return createPointCloudCropFromCuboidTransform(
         CUBOID_CREATION_CROP_ID,
         creationPreview,
-        { margin, source: "creation" }
+        { margin, source: "creation" },
       );
     }
 
@@ -99,7 +99,7 @@ export const usePointCloudCrop = ({
           source: "raycast-hover",
           upVector,
           visibleWorldHeightAtPoint: raycastResult.visibleWorldHeightAtPoint,
-        }
+        },
       );
 
       if (raycastHoverCrop) {

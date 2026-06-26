@@ -60,7 +60,7 @@ export class KeyManager {
             //If there are no more sequences to match, return the command
             if (index === sequences.length - 1) {
               command = commands.find(({ command: cmd }) =>
-                cmd.isEnabled()
+                cmd.isEnabled(),
               )?.command;
               break;
             }
@@ -123,7 +123,7 @@ export class KeyManager {
           priority,
           order: this.bindingOrder++,
         },
-      ].sort((a, b) => b.priority - a.priority || b.order - a.order)
+      ].sort((a, b) => b.priority - a.priority || b.order - a.order),
     );
   }
 
@@ -149,7 +149,7 @@ export class KeyManager {
     }
 
     const remainingCommands = commands.filter(
-      ({ command }) => command.id !== commandId
+      ({ command }) => command.id !== commandId,
     );
     if (remainingCommands.length === 0) {
       this.bindings.delete(binding);

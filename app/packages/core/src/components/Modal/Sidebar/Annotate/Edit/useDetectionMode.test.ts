@@ -56,7 +56,7 @@ const scene = () => refs.scene as MockScene;
 const onExit = () => refs.onExit as ReturnType<typeof vi.fn>;
 
 const createSelectedDetection = (
-  overrides?: Partial<MockAnnotationContextSelected>
+  overrides?: Partial<MockAnnotationContextSelected>,
 ): MockAnnotationContextSelected => ({
   label: { type: "Detection", data: {} },
   data: {},

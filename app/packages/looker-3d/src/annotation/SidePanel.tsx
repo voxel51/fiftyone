@@ -191,7 +191,7 @@ export const SidePanel = ({
         upVector: upVector ?? new Vector3(0, 1, 0),
         viewType: safeSelectValue,
       }),
-    [safeSelectValue, upVector, lookAt, sceneBoundingBox]
+    [safeSelectValue, upVector, lookAt, sceneBoundingBox],
   );
 
   const theme = useTheme();
@@ -387,7 +387,7 @@ const SidePanelCameraFrameController = ({
 }) => {
   const { camera, invalidate } = useThree();
   const fallbackControls = useThree(
-    (state) => state.controls as SidePanelControls | undefined
+    (state) => state.controls as SidePanelControls | undefined,
   );
 
   useLayoutEffect(() => {
@@ -419,7 +419,7 @@ const BoundsSideEffectsComponent = ({
 
   const { camera, scene, invalidate } = useThree();
   const controls = useThree(
-    (state) => state.controls as SidePanelControls | undefined
+    (state) => state.controls as SidePanelControls | undefined,
   );
   const hoveredLabel = useRecoilValue(hoveredLabelAtom);
   const isMainPanelPointerDown = useRecoilValue(isFo3dMainPanelPointerDownAtom);
@@ -445,7 +445,7 @@ const BoundsSideEffectsComponent = ({
     (
       object: THREE.Object3D | THREE.Box3 | undefined,
       target: THREE.Vector3,
-      shouldClip = false
+      shouldClip = false,
     ) => {
       const frame = retargetSidePanelCameraFrame(sidePanelCameraFrame, target);
       applySidePanelCameraFrame({
@@ -465,7 +465,7 @@ const BoundsSideEffectsComponent = ({
         bounds.clip();
       }
     },
-    [api, camera, controls, invalidate, sidePanelCameraFrame]
+    [api, camera, controls, invalidate, sidePanelCameraFrame],
   );
 
   const fitToTemporaryMesh = useCallback(
@@ -478,24 +478,24 @@ const BoundsSideEffectsComponent = ({
         dispose();
       }, 0);
     },
-    [fitBoundsWithSidePanelFrame, scene]
+    [fitBoundsWithSidePanelFrame, scene],
   );
 
   const fitToPointCloudCrop = useCallback(
     (crop: PointCloudCrop) => {
       const helperMesh = createPointCloudCropHelperMesh(crop);
       fitToTemporaryMesh(helperMesh, crop.center, () =>
-        disposePointCloudCropHelperMesh(helperMesh)
+        disposePointCloudCropHelperMesh(helperMesh),
       );
     },
-    [fitToTemporaryMesh]
+    [fitToTemporaryMesh],
   );
 
   const centerOnPointCloudCrop = useCallback(
     (crop: PointCloudCrop) => {
       const frame = retargetSidePanelCameraFrame(
         sidePanelCameraFrame,
-        crop.center
+        crop.center,
       );
 
       applySidePanelCameraFrame({
@@ -516,7 +516,7 @@ const BoundsSideEffectsComponent = ({
         fitToPointCloudCrop(crop);
       }
     },
-    [camera, controls, fitToPointCloudCrop, invalidate, sidePanelCameraFrame]
+    [camera, controls, fitToPointCloudCrop, invalidate, sidePanelCameraFrame],
   );
 
   const fitToBox = useCallback(
@@ -526,7 +526,7 @@ const BoundsSideEffectsComponent = ({
       const boxGeometry = new THREE.BoxGeometry(
         boxSize.x,
         boxSize.y,
-        boxSize.z
+        boxSize.z,
       );
       const boxMaterial = new THREE.MeshBasicMaterial({ visible: false });
       const helperMesh = new THREE.Mesh(boxGeometry, boxMaterial);
@@ -538,7 +538,7 @@ const BoundsSideEffectsComponent = ({
         boxMaterial.dispose();
       });
     },
-    [fitToTemporaryMesh]
+    [fitToTemporaryMesh],
   );
 
   const fitToCenteredBox = useCallback(
@@ -546,11 +546,11 @@ const BoundsSideEffectsComponent = ({
       fitToBox(
         new Box3().setFromCenterAndSize(
           new Vector3(...center),
-          new Vector3(size, size, size)
-        )
+          new Vector3(size, size, size),
+        ),
       );
     },
-    [fitToBox]
+    [fitToBox],
   );
 
   const fitToExpandedObject = useCallback(
@@ -560,14 +560,14 @@ const BoundsSideEffectsComponent = ({
       if (objectBox.isEmpty()) {
         fitBoundsWithSidePanelFrame(
           object,
-          object.getWorldPosition(new Vector3())
+          object.getWorldPosition(new Vector3()),
         );
         return;
       }
 
       fitToBox(expandBoundingBox(objectBox, 2.5));
     },
-    [fitBoundsWithSidePanelFrame, fitToBox]
+    [fitBoundsWithSidePanelFrame, fitToBox],
   );
 
   const restoreHoverFocus = useCallback(() => {
@@ -610,7 +610,7 @@ const BoundsSideEffectsComponent = ({
   useEffect(() => {
     const hoveredLabelId = isHoverEligibleForPointCloudCrop(
       hoveredLabel,
-      isMainPanelPointerDown
+      isMainPanelPointerDown,
     )
       ? hoveredLabel?.id
       : null;
@@ -645,7 +645,7 @@ const BoundsSideEffectsComponent = ({
     const object = findObjectByUserData(
       scene,
       FO_USER_DATA.LABEL_ID,
-      hoveredLabelId
+      hoveredLabelId,
     );
     if (object) {
       fitToExpandedObject(object);
@@ -783,10 +783,10 @@ const BoundsSideEffectsComponent = ({
         activeCrop: pointCloudCropRef.current,
         hasHoverFocus: Boolean(
           hoverFocusRef.current ||
-            isHoverEligibleForPointCloudCrop(
-              hoveredLabel,
-              isMainPanelPointerDown
-            )
+          isHoverEligibleForPointCloudCrop(
+            hoveredLabel,
+            isMainPanelPointerDown,
+          ),
         ),
         intent: mainPanelZoomSyncIntent,
         now: Date.now(),
@@ -825,10 +825,10 @@ const BoundsSideEffectsComponent = ({
         activeCrop: pointCloudCropRef.current,
         hasHoverFocus: Boolean(
           hoverFocusRef.current ||
-            isHoverEligibleForPointCloudCrop(
-              hoveredLabel,
-              isMainPanelPointerDown
-            )
+          isHoverEligibleForPointCloudCrop(
+            hoveredLabel,
+            isMainPanelPointerDown,
+          ),
         ),
         intent: mainPanelPanSyncIntent,
         now: Date.now(),
@@ -863,7 +863,7 @@ const BoundsSideEffectsComponent = ({
     return THREE.MathUtils.clamp(
       maxSceneDimension * 0.05,
       MIN_POLYLINE_VERTEX_FOCUS_SIZE,
-      MAX_POLYLINE_VERTEX_FOCUS_SIZE
+      MAX_POLYLINE_VERTEX_FOCUS_SIZE,
     );
   };
 
@@ -879,7 +879,7 @@ const BoundsSideEffectsComponent = ({
     const object = findObjectByUserData(
       scene,
       FO_USER_DATA.LABEL_ID,
-      label._id
+      label._id,
     );
 
     if (object) {
@@ -890,7 +890,7 @@ const BoundsSideEffectsComponent = ({
       } else {
         fitBoundsWithSidePanelFrame(
           object,
-          object.getWorldPosition(new Vector3())
+          object.getWorldPosition(new Vector3()),
         );
       }
     }
@@ -905,7 +905,7 @@ const BoundsSideEffectsComponent = ({
     "annotation:3dPolylineVertexSelected",
     (payload) => {
       fitToCenteredBox(payload.position, getVertexFocusBoxSize());
-    }
+    },
   );
 
   return null;

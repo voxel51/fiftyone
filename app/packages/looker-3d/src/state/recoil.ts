@@ -391,7 +391,7 @@ export const mainPanelZoomSyncIntentAtom = atom<MainPanelZoomSyncIntent | null>(
   {
     key: "fo3d-mainPanelZoomSyncIntent",
     default: null,
-  }
+  },
 );
 
 export const mainPanelPanSyncIntentAtom = atom<MainPanelPanSyncIntent | null>({

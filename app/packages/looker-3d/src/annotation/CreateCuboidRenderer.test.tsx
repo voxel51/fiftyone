@@ -9,10 +9,10 @@ const mocks = vi.hoisted(() => ({
     annotationPlaneAtom: Symbol("annotationPlaneAtom"),
     cuboidCreationStateAtom: Symbol("cuboidCreationStateAtom"),
     currentActiveAnnotationField3dAtom: Symbol(
-      "currentActiveAnnotationField3dAtom"
+      "currentActiveAnnotationField3dAtom",
     ),
     currentArchetypeSelectedForTransformAtom: Symbol(
-      "currentArchetypeSelectedForTransformAtom"
+      "currentArchetypeSelectedForTransformAtom",
     ),
     isCreatingCuboidAtom: Symbol("isCreatingCuboidAtom"),
     isCreatingCuboidPointerDownAtom: Symbol("isCreatingCuboidPointerDownAtom"),

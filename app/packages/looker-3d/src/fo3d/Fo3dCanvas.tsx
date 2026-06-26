@@ -229,10 +229,10 @@ const MainPanelNavigationSyncEmitter = ({
   const activeCursorPanel = useRecoilValue(activeCursorPanelAtom);
   const raycastResult = useRecoilValue(raycastResultAtom);
   const setMainPanelPanSyncIntent = useSetRecoilState(
-    mainPanelPanSyncIntentAtom
+    mainPanelPanSyncIntentAtom,
   );
   const setMainPanelZoomSyncIntent = useSetRecoilState(
-    mainPanelZoomSyncIntentAtom
+    mainPanelZoomSyncIntentAtom,
   );
   const activeCursorPanelRef = useRef(activeCursorPanel);
   const isMainPanelPointerDragRef = useRef(false);

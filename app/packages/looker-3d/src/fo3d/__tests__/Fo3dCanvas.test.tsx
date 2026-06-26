@@ -10,7 +10,7 @@ import type { FoScene } from "../render-types";
 const threeDLabelsMock = vi.fn((_: { sampleMap: unknown }) => null);
 const orbitControlsMock = vi.fn((_: Record<string, unknown>) => null);
 const frustumCollectionMock = vi.fn(
-  (_: { isSceneInitialized?: boolean }) => null
+  (_: { isSceneInitialized?: boolean }) => null,
 );
 
 vi.mock("@fiftyone/state", () => ({
@@ -175,7 +175,7 @@ describe("Fo3dSceneContent", () => {
         zoomSpeed: MAIN_PANEL_ORBIT_ZOOM_SPEED,
         panSpeed: 1.15,
         minDistance: 0.0001,
-      })
+      }),
     );
   });
 
@@ -194,7 +194,7 @@ describe("Fo3dSceneContent", () => {
         isSceneInitialized={false}
         assetsGroupRef={{ current: null }}
         cameraRef={{ current: null }}
-      />
+      />,
     );
 
     expect(threeDLabelsMock).not.toHaveBeenCalled();

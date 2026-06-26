@@ -10,7 +10,7 @@ type GetSelectedTransformArchetypeOptions = {
 };
 
 export const getSelectedLabelTransformArchetype = (
-  selectedLabelForAnnotation: unknown
+  selectedLabelForAnnotation: unknown,
 ): Archetype3d | null => {
   if (isDetection3dOverlay(selectedLabelForAnnotation)) {
     return "cuboid";
@@ -30,7 +30,7 @@ export const getSelectedTransformArchetype = ({
   selectedPoint = null,
 }: GetSelectedTransformArchetypeOptions): Archetype3d | null => {
   const selectedLabelArchetype = getSelectedLabelTransformArchetype(
-    selectedLabelForAnnotation
+    selectedLabelForAnnotation,
   );
 
   if (currentArchetypeSelectedForTransform === "point") {
@@ -57,7 +57,7 @@ export const getSelectedTransformArchetype = ({
 
 export const canTransformArchetypeUseMode = (
   archetype: Archetype3d | null,
-  mode: TransformMode
+  mode: TransformMode,
 ) => {
   if (!archetype) {
     return false;

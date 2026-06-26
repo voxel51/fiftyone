@@ -51,7 +51,7 @@ describe("useFrustumTextureUrl", () => {
 
   it("fetches an image URL as a blob and exposes an object URL", async () => {
     const { result, unmount } = renderHook(() =>
-      useFrustumTextureUrl("http://localhost:5151/media?filepath=image.png")
+      useFrustumTextureUrl("http://localhost:5151/media?filepath=image.png"),
     );
 
     expect(result.current).toBeNull();
@@ -62,7 +62,7 @@ describe("useFrustumTextureUrl", () => {
       "GET",
       "http://localhost:5151/media?filepath=image.png",
       undefined,
-      "blob"
+      "blob",
     );
 
     unmount();
@@ -77,7 +77,7 @@ describe("useFrustumTextureUrl", () => {
         initialProps: {
           imageUrl: "http://localhost:5151/media?filepath=image-1.png",
         },
-      }
+      },
     );
 
     await waitFor(() => expect(result.current).toBe("blob:frustum-1"));

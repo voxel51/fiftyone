@@ -44,7 +44,7 @@ export const GlobalCursorCoordinator = ({
 }: GlobalCursorCoordinatorProps) => {
   const setActiveCursorPanel = useSetRecoilState(activeCursorPanelAtom);
   const setIsMainPanelPointerDown = useSetRecoilState(
-    isFo3dMainPanelPointerDownAtom
+    isFo3dMainPanelPointerDownAtom,
   );
 
   const handlePointerMove = useCallback(
@@ -52,16 +52,16 @@ export const GlobalCursorCoordinator = ({
       const panelId = getPanelUnderCursor(ev.clientX, ev.clientY);
       setActiveCursorPanel(panelId);
     },
-    [setActiveCursorPanel]
+    [setActiveCursorPanel],
   );
 
   const handlePointerDown = useCallback(
     (ev: PointerEvent) => {
       setIsMainPanelPointerDown(
-        getPanelUnderCursor(ev.clientX, ev.clientY) === PANEL_ID_MAIN
+        getPanelUnderCursor(ev.clientX, ev.clientY) === PANEL_ID_MAIN,
       );
     },
-    [setIsMainPanelPointerDown]
+    [setIsMainPanelPointerDown],
   );
 
   const handlePointerUp = useCallback(() => {

@@ -11,7 +11,7 @@ const PERFORMANCE_SAMPLE_INTERVAL_MS = 500;
 
 const hasPerformanceStatsChanged = (
   previous: Fo3dPerformanceStats,
-  next: Fo3dPerformanceStats
+  next: Fo3dPerformanceStats,
 ) => {
   return (
     previous.fps !== next.fps ||
@@ -63,7 +63,7 @@ export const Fo3dPerformanceMonitor = () => {
     };
 
     setPerformanceStats((previous) =>
-      hasPerformanceStatsChanged(previous, nextStats) ? nextStats : previous
+      hasPerformanceStatsChanged(previous, nextStats) ? nextStats : previous,
     );
 
     sampleRef.current = {

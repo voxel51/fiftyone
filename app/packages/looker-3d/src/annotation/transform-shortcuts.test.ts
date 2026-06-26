@@ -23,14 +23,14 @@ describe("transform shortcuts", () => {
       getSelectedTransformArchetype({
         currentArchetypeSelectedForTransform: null,
         selectedLabelForAnnotation: selectedCuboid,
-      })
+      }),
     ).toBe("cuboid");
     expect(
       getSelectedTransformArchetype({
         currentArchetypeSelectedForTransform: "point",
         selectedLabelForAnnotation: selectedCuboid,
         selectedPoint: null,
-      })
+      }),
     ).toBe("cuboid");
     expect(
       getSelectedTransformArchetype({
@@ -41,14 +41,14 @@ describe("transform shortcuts", () => {
           segmentIndex: 0,
           pointIndex: 0,
         },
-      })
+      }),
     ).toBe("point");
     expect(
       getSelectedTransformArchetype({
         currentArchetypeSelectedForTransform: "annotation-plane",
         isAnnotationPlaneEnabled: true,
         selectedLabelForAnnotation: null,
-      })
+      }),
     ).toBe("annotation-plane");
   });
 
@@ -58,13 +58,13 @@ describe("transform shortcuts", () => {
     expect(canTransformArchetypeUseMode("cuboid", "scale")).toBe(true);
 
     expect(canTransformArchetypeUseMode("annotation-plane", "translate")).toBe(
-      true
+      true,
     );
     expect(canTransformArchetypeUseMode("annotation-plane", "rotate")).toBe(
-      true
+      true,
     );
     expect(canTransformArchetypeUseMode("annotation-plane", "scale")).toBe(
-      false
+      false,
     );
 
     expect(canTransformArchetypeUseMode("point", "translate")).toBe(true);

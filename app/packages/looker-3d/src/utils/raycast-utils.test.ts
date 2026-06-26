@@ -31,7 +31,7 @@ const buildPointCloudCrop = () => {
       dimensions: [2, 2, 2],
       rotation: [0, 0, 0],
     } as ReconciledDetection3D,
-    { margin: 0 }
+    { margin: 0 },
   )!;
 };
 
@@ -46,7 +46,7 @@ const buildIntersection = (object: Mesh | Points, point: Vector3) =>
     object,
     point,
     distance: 1,
-  } as Intersection);
+  }) as Intersection;
 
 const buildPanelElement = (width = 100, height = 100) =>
   ({
@@ -62,8 +62,8 @@ const buildPanelElement = (width = 100, height = 100) =>
         x: 0,
         y: 0,
         toJSON: () => {},
-      } as DOMRect),
-  } as HTMLElement);
+      }) as DOMRect,
+  }) as HTMLElement;
 
 const buildPerspectiveCamera = () => {
   const camera = new PerspectiveCamera(90, 1, 0.1, 1000);
@@ -78,14 +78,14 @@ describe("filterIntersectionsForPointCloudCrop", () => {
   it("keeps non-point intersections unchanged", () => {
     const meshIntersection = buildIntersection(
       new Mesh(new BufferGeometry()),
-      new Vector3(10, 10, 10)
+      new Vector3(10, 10, 10),
     );
 
     expect(
       filterIntersectionsForPointCloudCrop(
         [meshIntersection],
-        buildPointCloudCrop()
-      )
+        buildPointCloudCrop(),
+      ),
     ).toEqual([meshIntersection]);
   });
 
@@ -96,8 +96,8 @@ describe("filterIntersectionsForPointCloudCrop", () => {
     expect(
       filterIntersectionsForPointCloudCrop(
         [outside, inside],
-        buildPointCloudCrop()
-      )
+        buildPointCloudCrop(),
+      ),
     ).toEqual([inside]);
   });
 
@@ -105,7 +105,7 @@ describe("filterIntersectionsForPointCloudCrop", () => {
     const outside = buildIntersection(buildPoints(), new Vector3(2, 0, 0));
 
     expect(
-      filterIntersectionsForPointCloudCrop([outside], buildPointCloudCrop())
+      filterIntersectionsForPointCloudCrop([outside], buildPointCloudCrop()),
     ).toEqual([]);
   });
 
@@ -113,15 +113,15 @@ describe("filterIntersectionsForPointCloudCrop", () => {
     const inside = buildIntersection(buildPoints(), new Vector3(0.5, 0, 0));
     const insideCorner = buildIntersection(
       buildPoints(),
-      new Vector3(0.8, 0.8, 0.8)
+      new Vector3(0.8, 0.8, 0.8),
     );
     const outside = buildIntersection(buildPoints(), new Vector3(1.1, 0, 0));
 
     expect(
       filterIntersectionsForPointCloudCrop(
         [outside, insideCorner, inside],
-        createPointCloudCropFromPoint([0, 0, 0], { margin: 1 })
-      )
+        createPointCloudCropFromPoint([0, 0, 0], { margin: 1 }),
+      ),
     ).toEqual([insideCorner, inside]);
   });
 });
@@ -137,7 +137,7 @@ describe("getPointCloudRaycastThreshold", () => {
         camera,
         panelElement: buildPanelElement(100, 100),
         pickRadiusPx: 4,
-      })
+      }),
     ).toBeCloseTo(0.04);
   });
 
@@ -145,7 +145,7 @@ describe("getPointCloudRaycastThreshold", () => {
     const camera = buildPerspectiveCamera();
     const sceneBoundingBox = new Box3(
       new Vector3(-1, -1, -1),
-      new Vector3(1, 1, 1)
+      new Vector3(1, 1, 1),
     );
     const depth = 10 + Math.sqrt(3);
 
@@ -155,7 +155,7 @@ describe("getPointCloudRaycastThreshold", () => {
         panelElement: buildPanelElement(100, 100),
         sceneBoundingBox,
         pickRadiusPx: 4,
-      })
+      }),
     ).toBeCloseTo(((2 * depth) / 100) * 4);
   });
 
@@ -165,7 +165,7 @@ describe("getPointCloudRaycastThreshold", () => {
         camera: buildPerspectiveCamera(),
         panelElement: buildPanelElement(100, 0),
         pickRadiusPx: 4,
-      })
+      }),
     ).toBe(0);
   });
 });
@@ -174,7 +174,7 @@ describe("filterPointIntersectionsByScreenDistance", () => {
   it("keeps non-point intersections unchanged", () => {
     const meshIntersection = buildIntersection(
       new Mesh(new BufferGeometry()),
-      new Vector3(10, 10, 10)
+      new Vector3(10, 10, 10),
     );
 
     expect(
@@ -184,7 +184,7 @@ describe("filterPointIntersectionsByScreenDistance", () => {
         panelElement: buildPanelElement(),
         ndc: { x: 0, y: 0 },
         pickRadiusPx: 4,
-      })
+      }),
     ).toEqual([meshIntersection]);
   });
 
@@ -199,7 +199,7 @@ describe("filterPointIntersectionsByScreenDistance", () => {
         panelElement: buildPanelElement(),
         ndc: { x: 0, y: 0 },
         pickRadiusPx: 4,
-      })
+      }),
     ).toEqual([inside]);
   });
 });

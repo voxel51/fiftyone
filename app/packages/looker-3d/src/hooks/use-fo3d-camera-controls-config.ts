@@ -46,11 +46,11 @@ export const useFo3dCameraControlsConfig = ({
 }: UseFo3dCameraControlsConfigArgs) => {
   const isSegmentingPointerDown = useRecoilValue(isSegmentingPointerDownAtom);
   const isCreatingCuboidPointerDown = useRecoilValue(
-    isCreatingCuboidPointerDownAtom
+    isCreatingCuboidPointerDownAtom,
   );
   const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
   const setIsPointCropModifierPressed = useSetRecoilState(
-    isFo3dPointCropModifierPressedAtom
+    isFo3dPointCropModifierPressedAtom,
   );
 
   const keyState = useRef<Record<ModifierKey, boolean>>({
@@ -74,7 +74,7 @@ export const useFo3dCameraControlsConfig = ({
       isPointCropModifierPressedRef.current = isPressed;
       setIsPointCropModifierPressed(isPressed);
     },
-    [setIsPointCropModifierPressed]
+    [setIsPointCropModifierPressed],
   );
 
   const updateCameraControlsConfig = useCallback(() => {
@@ -145,11 +145,11 @@ export const useFo3dCameraControlsConfig = ({
           keyState.current.metaRight ||
           keyState.current.metaLeft ||
           keyState.current.altRight ||
-          keyState.current.altLeft
+          keyState.current.altLeft,
       );
       updateCameraControlsConfig();
     },
-    [setPointCropModifierPressed, updateCameraControlsConfig]
+    [setPointCropModifierPressed, updateCameraControlsConfig],
   );
 
   const resetModifierState = useCallback(() => {

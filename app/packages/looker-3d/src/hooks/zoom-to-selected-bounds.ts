@@ -69,7 +69,7 @@ const findLabelById = (labels: unknown, labelId?: string): unknown => {
       (label): label is LabelWithId =>
         Boolean(label) &&
         typeof label === "object" &&
-        doesLabelIdMatch(label as LabelWithId, labelId)
+        doesLabelIdMatch(label as LabelWithId, labelId),
     ) ?? null
   );
 };
@@ -94,7 +94,7 @@ const has3dGeometry = (label: unknown) => {
 
 export const extractSelectedLabel = (
   labelFieldData: any,
-  labelId?: string
+  labelId?: string,
 ): unknown | null => {
   if (!labelFieldData) {
     return null;
@@ -124,7 +124,7 @@ export const extractSelectedLabel = (
 };
 
 const getLabelQuaternion = (
-  label: ReconciledDetection3D | Record<string, unknown>
+  label: ReconciledDetection3D | Record<string, unknown>,
 ) => {
   if (isFiniteVector4Tuple(label.quaternion)) {
     return new Quaternion(...label.quaternion);
@@ -139,7 +139,7 @@ const getLabelQuaternion = (
 
 const createCuboidBoundingBox = (
   label: ReconciledDetection3D | Record<string, unknown>,
-  { useLegacyCoordinates = false }: { useLegacyCoordinates?: boolean } = {}
+  { useLegacyCoordinates = false }: { useLegacyCoordinates?: boolean } = {},
 ): Box3 | null => {
   if (
     !isFiniteVector3Tuple(label.location) ||
@@ -152,7 +152,7 @@ const createCuboidBoundingBox = (
   const size = new Vector3(
     Math.abs(label.dimensions[0]),
     Math.abs(label.dimensions[1]),
-    Math.abs(label.dimensions[2])
+    Math.abs(label.dimensions[2]),
   );
 
   if (useLegacyCoordinates) {
@@ -175,10 +175,10 @@ const createCuboidBoundingBox = (
           new Vector3(
             xSign * halfSize.x,
             ySign * halfSize.y,
-            zSign * halfSize.z
+            zSign * halfSize.z,
           )
             .applyQuaternion(quaternion)
-            .add(center)
+            .add(center),
         );
       }
     }
@@ -188,7 +188,7 @@ const createCuboidBoundingBox = (
 };
 
 const createPolylineBoundingBox = (
-  label: ReconciledPolyline3D | Record<string, unknown>
+  label: ReconciledPolyline3D | Record<string, unknown>,
 ): Box3 | null => {
   if (!Array.isArray(label.points3d)) {
     return null;
@@ -213,7 +213,7 @@ const createPolylineBoundingBox = (
 
 export const createLabelBoundingBox = (
   label: unknown,
-  options: { useLegacyCoordinates?: boolean } = {}
+  options: { useLegacyCoordinates?: boolean } = {},
 ): Box3 | null => {
   if (!label || typeof label !== "object") {
     return null;
@@ -241,7 +241,7 @@ const getSampleId = (sample: fos.ModalSample | null | undefined) =>
 
 const getCandidateSamples = (
   interactionSample: fos.ModalSample,
-  activeSampleMap: SampleMap
+  activeSampleMap: SampleMap,
 ) => {
   const samplesById = new Map<string, fos.ModalSample>();
 
@@ -261,7 +261,7 @@ const getCandidateSamples = (
 const findSampleForSelection = (
   selectedLabel: SelectedLabelLike,
   interactionSample: fos.ModalSample,
-  activeSampleMap: SampleMap
+  activeSampleMap: SampleMap,
 ) => {
   const sampleId = selectedLabel.sampleId;
   const samples = getCandidateSamples(interactionSample, activeSampleMap);
@@ -291,7 +291,7 @@ export const resolveSelectedLabelBoundingBox = ({
   const sample = findSampleForSelection(
     selectedLabel,
     interactionSample,
-    activeSampleMap
+    activeSampleMap,
   );
   const fieldData = labelPath && sample ? _get(sample.sample, labelPath) : null;
   const label =
@@ -317,7 +317,7 @@ export const resolveAnnotationLabelBoundingBox = ({
   const labelId = getLabelId(selectedLabel);
   const renderLabel = labelId
     ? [...renderModel.detections, ...renderModel.polylines].find(
-        (label) => label._id === labelId
+        (label) => label._id === labelId,
       )
     : null;
 
@@ -340,7 +340,7 @@ const ensureMinimumCameraBoxSize = (box: Box3) => {
 
   return new Box3().setFromCenterAndSize(
     center,
-    new Vector3(MIN_LABEL_CROP_SIZE, MIN_LABEL_CROP_SIZE, MIN_LABEL_CROP_SIZE)
+    new Vector3(MIN_LABEL_CROP_SIZE, MIN_LABEL_CROP_SIZE, MIN_LABEL_CROP_SIZE),
   );
 };
 
@@ -351,7 +351,7 @@ export const getUnionBoundingBox = (boxes: Box3[]) => {
 
   const box = boxes.reduce(
     (acc, current) => acc.union(current),
-    boxes[0].clone()
+    boxes[0].clone(),
   );
 
   return ensureMinimumCameraBoxSize(box);
@@ -375,7 +375,7 @@ export const getSelectedLabelsBoundingBox = ({
         interactionSample,
         activeSampleMap,
         useLegacyCoordinates,
-      })
+      }),
     )
     .filter((box): box is Box3 => Boolean(box));
 

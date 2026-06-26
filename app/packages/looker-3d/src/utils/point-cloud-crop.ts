@@ -24,8 +24,7 @@ interface CreatePointCloudCropOptions {
   useLegacyCoordinates?: boolean;
 }
 
-interface CreatePointCloudCropFromPointOptions
-  extends CreatePointCloudCropOptions {
+interface CreatePointCloudCropFromPointOptions extends CreatePointCloudCropOptions {
   labelId?: string;
   upVector?: THREE.Vector3 | null;
   visibleWorldHeightAtPoint?: number | null;
@@ -36,8 +35,7 @@ interface RenderModelPointCloudCropOptions extends CreatePointCloudCropOptions {
   renderModel: RenderModel;
 }
 
-interface SelectedPointCloudCropOptions
-  extends RenderModelPointCloudCropOptions {
+interface SelectedPointCloudCropOptions extends RenderModelPointCloudCropOptions {
   selectedLabelId?: string | null;
 }
 
@@ -49,7 +47,7 @@ const EPSILON = 1e-6;
 
 const isFiniteNumberTuple = (
   value: unknown,
-  length: number
+  length: number,
 ): value is number[] => {
   return (
     Array.isArray(value) &&
@@ -77,7 +75,7 @@ const getCuboidQuaternion = (cuboid: CuboidTransformData) => {
 
   if (isFiniteNumberTuple(cuboid.rotation, 3)) {
     return new THREE.Quaternion().setFromEuler(
-      new THREE.Euler(...cuboid.rotation)
+      new THREE.Euler(...cuboid.rotation),
     );
   }
 
@@ -99,7 +97,7 @@ export const createPointCloudCropFromCuboidTransform = (
     margin,
     source,
     useLegacyCoordinates = false,
-  }: CreatePointCloudCropOptions = {}
+  }: CreatePointCloudCropOptions = {},
 ): PointCloudCrop | null => {
   if (
     !isFiniteNumberTuple(cuboid.location, 3) ||
@@ -111,7 +109,7 @@ export const createPointCloudCropFromCuboidTransform = (
   const size = new THREE.Vector3(
     Math.abs(cuboid.dimensions[0]),
     Math.abs(cuboid.dimensions[1]),
-    Math.abs(cuboid.dimensions[2])
+    Math.abs(cuboid.dimensions[2]),
   );
 
   if (size.x <= EPSILON || size.y <= EPSILON || size.z <= EPSILON) {
@@ -129,7 +127,7 @@ export const createPointCloudCropFromCuboidTransform = (
   const boxToWorld = new THREE.Matrix4().compose(
     center,
     quaternion,
-    new THREE.Vector3(1, 1, 1)
+    new THREE.Vector3(1, 1, 1),
   );
 
   return {
@@ -144,21 +142,21 @@ export const createPointCloudCropFromCuboidTransform = (
 
 export const createPointCloudCropFromDetection = (
   detection: ReconciledDetection3D,
-  options: CreatePointCloudCropOptions = {}
+  options: CreatePointCloudCropOptions = {},
 ) => {
   return createPointCloudCropFromCuboidTransform(
     detection._id,
     detection,
-    options
+    options,
   );
 };
 
 export const createPointCloudCropFromPolyline = (
   polyline: ReconciledPolyline3D,
-  { margin, source }: CreatePointCloudCropOptions = {}
+  { margin, source }: CreatePointCloudCropOptions = {},
 ): PointCloudCrop | null => {
   const points = polyline.points3d.flatMap((segment) =>
-    segment.filter((point) => isFiniteNumberTuple(point, 3))
+    segment.filter((point) => isFiniteNumberTuple(point, 3)),
   );
 
   if (points.length === 0) {
@@ -185,7 +183,7 @@ export const createPointCloudCropFromPolyline = (
   const boxToWorld = new THREE.Matrix4().compose(
     center,
     quaternion,
-    new THREE.Vector3(1, 1, 1)
+    new THREE.Vector3(1, 1, 1),
   );
 
   return {
@@ -206,7 +204,7 @@ export const createPointCloudCropFromPoint = (
     source = "raycast-hover",
     upVector,
     visibleWorldHeightAtPoint,
-  }: CreatePointCloudCropFromPointOptions = {}
+  }: CreatePointCloudCropFromPointOptions = {},
 ): PointCloudCrop | null => {
   if (!isFiniteNumberTuple(point, 3)) {
     return null;
@@ -223,18 +221,18 @@ export const createPointCloudCropFromPoint = (
   const halfSize = new THREE.Vector3(
     resolvedMargin,
     resolvedMargin,
-    resolvedMargin
+    resolvedMargin,
   );
   const quaternion = pointCropUpVector
     ? new THREE.Quaternion().setFromUnitVectors(
         new THREE.Vector3(0, 1, 0),
-        pointCropUpVector
+        pointCropUpVector,
       )
     : new THREE.Quaternion();
   const boxToWorld = new THREE.Matrix4().compose(
     center,
     quaternion,
-    new THREE.Vector3(1, 1, 1)
+    new THREE.Vector3(1, 1, 1),
   );
 
   return {
@@ -260,7 +258,7 @@ export const getSelectedCuboidPointCloudCrop = ({
   }
 
   const selectedDetection = renderModel.detections.find(
-    (detection) => detection._id === selectedLabelId
+    (detection) => detection._id === selectedLabelId,
   );
 
   if (!selectedDetection) {
@@ -286,7 +284,7 @@ export const getLabelPointCloudCrop = ({
   }
 
   const detection = renderModel.detections.find(
-    (candidate) => candidate._id === labelId
+    (candidate) => candidate._id === labelId,
   );
   if (detection) {
     return createPointCloudCropFromDetection(detection, {
@@ -297,7 +295,7 @@ export const getLabelPointCloudCrop = ({
   }
 
   const polyline = renderModel.polylines.find(
-    (candidate) => candidate._id === labelId
+    (candidate) => candidate._id === labelId,
   );
   if (polyline) {
     return createPointCloudCropFromPolyline(polyline, {
@@ -311,7 +309,7 @@ export const getLabelPointCloudCrop = ({
 
 export const isPointInsidePointCloudCrop = (
   point: THREE.Vector3,
-  crop: PointCloudCrop
+  crop: PointCloudCrop,
 ) => {
   const boxPoint = point.clone().applyMatrix4(crop.worldToBox);
 
@@ -326,7 +324,7 @@ export const createPointCloudCropHelperMesh = (crop: PointCloudCrop) => {
   const geometry = new THREE.BoxGeometry(
     crop.halfSize.x * 2,
     crop.halfSize.y * 2,
-    crop.halfSize.z * 2
+    crop.halfSize.z * 2,
   );
   const material = new THREE.MeshBasicMaterial({ visible: false });
   const helperMesh = new THREE.Mesh(geometry, material);
@@ -339,7 +337,7 @@ export const createPointCloudCropHelperMesh = (crop: PointCloudCrop) => {
 };
 
 export const disposePointCloudCropHelperMesh = (
-  helperMesh: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>
+  helperMesh: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>,
 ) => {
   helperMesh.geometry.dispose();
   helperMesh.material.dispose();

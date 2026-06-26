@@ -31,20 +31,20 @@ export const CUBOID_EDGES: [number, number][] = [
 
 const getCuboidQuaternion = (
   rotation?: [number, number, number],
-  quaternion?: [number, number, number, number]
+  quaternion?: [number, number, number, number],
 ) => {
   if (quaternion) {
     return new Quaternion(
       quaternion[0],
       quaternion[1],
       quaternion[2],
-      quaternion[3]
+      quaternion[3],
     );
   }
 
   if (rotation) {
     return new Quaternion().setFromEuler(
-      new Euler(rotation[0], rotation[1], rotation[2])
+      new Euler(rotation[0], rotation[1], rotation[2]),
     );
   }
 
@@ -109,7 +109,7 @@ function computeCuboidOrientationProjection(
   label: CuboidTransformData,
   worldToCam: Matrix4,
   intrinsics: CameraIntrinsics,
-  upVector?: Vector3 | null
+  upVector?: Vector3 | null,
 ): ProjectedEdge | null {
   const headingLength = Math.abs(label.dimensions[0]) / 2;
 
@@ -196,7 +196,7 @@ export function computeCuboidProjection(
       label,
       worldToCam,
       intrinsics,
-      upVector
+      upVector,
     ),
   };
 }

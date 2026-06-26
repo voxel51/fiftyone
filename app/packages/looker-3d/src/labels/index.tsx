@@ -78,16 +78,16 @@ export const ThreeDLabels = ({
 
   const settings = fop.usePluginSettings<Looker3dSettings>(
     "3d",
-    defaultPluginSettings
+    defaultPluginSettings,
   );
   const onSelectLabel = fos.useOnSelectLabel();
   const pathFilter = usePathFilter();
   const colorScheme = useRecoilValue(fos.colorScheme);
   const [cuboidLineWidth, setCuboidLineWidth] = useRecoilState(
-    cuboidLabelLineWidthAtom
+    cuboidLabelLineWidthAtom,
   );
   const [polylineWidth, setPolylineWidth] = useRecoilState(
-    polylineLabelLineWidthAtom
+    polylineLabelLineWidthAtom,
   );
   const showCuboidOrientation = useRecoilValue(showCuboidOrientationAtom);
   const isCreatingCuboid = useRecoilValue(isCreatingCuboidAtom);
@@ -96,7 +96,7 @@ export const ThreeDLabels = ({
   const hoverSource = panelId ?? (isMainPanel ? PANEL_ID_MAIN : undefined);
 
   const selectedLabelForAnnotation = useRecoilValue(
-    selectedLabelForAnnotationAtom
+    selectedLabelForAnnotationAtom,
   );
   const hoveredLabel = useRecoilValue(hoveredLabelAtom);
   const onExit = useExit();
@@ -133,14 +133,14 @@ export const ThreeDLabels = ({
         collapsed: true,
       }),
     }),
-    [setCuboidLineWidth, setPolylineWidth]
+    [setCuboidLineWidth, setPolylineWidth],
   );
 
   const handleSelect = useCallback(
     (
       label: OverlayLabel,
       archetype: Archetype3d,
-      e: ThreeEvent<MouseEvent>
+      e: ThreeEvent<MouseEvent>,
     ) => {
       if (isSegmenting) return;
       if (mode === fos.ModalMode.ANNOTATE) {
@@ -158,7 +158,7 @@ export const ThreeDLabels = ({
         },
       });
     },
-    [onSelectLabel, mode, select3DLabelForAnnotation, isSegmenting]
+    [onSelectLabel, mode, select3DLabelForAnnotation, isSegmenting],
   );
 
   useEffect(() => {
@@ -190,10 +190,10 @@ export const ThreeDLabels = ({
     () => [
       toEulerFromDegreesArray(_get(settings, "overlay.rotation", [0, 0, 0])),
       toEulerFromDegreesArray(
-        _get(settings, "overlay.itemRotation", [0, 0, 0])
+        _get(settings, "overlay.itemRotation", [0, 0, 0]),
       ),
     ],
-    [settings]
+    [settings],
   );
 
   // Load raw overlays from sample data (for both explore and annotate modes)
@@ -223,7 +223,7 @@ export const ThreeDLabels = ({
           // In annotate mode, only show fields that exist in annotation schemas
           if (mode === fos.ModalMode.ANNOTATE) {
             const isInAnnotationSchemas = Boolean(
-              annotationSchemas?.includes(l.path)
+              annotationSchemas?.includes(l.path),
             );
 
             if (!isInAnnotationSchemas) {
@@ -244,7 +244,7 @@ export const ThreeDLabels = ({
       customizeColorSetting,
       mode,
       annotationSchemas,
-    ]
+    ],
   );
 
   // Working store management hooks run only in main panel
@@ -299,7 +299,7 @@ export const ThreeDLabels = ({
 
       return typeof overlay.color === "string" ? overlay.color : "#ffffff";
     },
-    [coloring, labelTagColors, customizeColorSetting]
+    [coloring, labelTagColors, customizeColorSetting],
   );
   const shouldDimLabelsForCreation =
     !isMainPanel && mode === fos.ModalMode.ANNOTATE && isCreatingCuboid;
@@ -343,7 +343,7 @@ export const ThreeDLabels = ({
 
       return effectiveUnfocusedLabelOpacity ?? labelAlpha;
     },
-    [effectiveUnfocusedLabelOpacity, focusedLabelIds, labelAlpha]
+    [effectiveUnfocusedLabelOpacity, focusedLabelIds, labelAlpha],
   );
 
   // Detections render model -> JSX
@@ -359,7 +359,7 @@ export const ThreeDLabels = ({
             handleSelect(
               overlay as unknown as OverlayLabel,
               ANNOTATION_CUBOID,
-              e
+              e,
             )
           }
         >
@@ -389,7 +389,7 @@ export const ThreeDLabels = ({
       getOverlayColor,
       isMainPanel,
       showCuboidOrientation,
-    ]
+    ],
   );
 
   // Polylines render model -> JSX
@@ -404,7 +404,7 @@ export const ThreeDLabels = ({
           handleSelect(
             overlay as unknown as OverlayLabel,
             ANNOTATION_POLYLINE,
-            e
+            e,
           )
         }
       >
@@ -437,7 +437,7 @@ export const ThreeDLabels = ({
       FO_LABEL_TOGGLED_EVENT,
       (e: LabelToggledEvent) => {
         getOnShiftClickLabelCallback(e);
-      }
+      },
     );
 
     return () => {

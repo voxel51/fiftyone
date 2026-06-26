@@ -3,7 +3,7 @@ import type { HoveredLabel } from "../types";
 
 export const isHoverEligibleForPointCloudCrop = (
   hoveredLabel: HoveredLabel | null,
-  isMainPanelPointerDown: boolean
+  isMainPanelPointerDown: boolean,
 ) => {
   if (!hoveredLabel) {
     return false;

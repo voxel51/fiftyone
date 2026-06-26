@@ -142,14 +142,14 @@ export const useAnnotationActions = () => {
         !isCreatingCuboid
       );
     },
-    [transformActionArchetype, isActivelySegmenting, isCreatingCuboid]
+    [transformActionArchetype, isActivelySegmenting, isCreatingCuboid],
   );
 
   const handleTransformShortcut = useCallback(
     (mode: TransformMode) => {
       handleTransformModeChange(mode);
     },
-    [handleTransformModeChange]
+    [handleTransformModeChange],
   );
 
   const transformKeyBindings = useMemo<KeyBinding[]>(
@@ -182,7 +182,7 @@ export const useAnnotationActions = () => {
         priority: TRANSFORM_SHORTCUT_PRIORITY,
       },
     ],
-    [canUseTransformShortcut, handleTransformShortcut]
+    [canUseTransformShortcut, handleTransformShortcut],
   );
 
   useKeyBindings(KnownContexts.ModalAnnotate, transformKeyBindings, [
@@ -280,7 +280,7 @@ export const useAnnotationActions = () => {
       isPolylineAnnotateActive,
       onExit,
       selectedPoint,
-    ]
+    ],
   );
 
   useKeyBindings(KnownContexts.ModalAnnotate, escapeKeyBindings, [
@@ -559,7 +559,7 @@ export const useAnnotationActions = () => {
             isActive: transformMode === "scale",
             isVisible: canTransformArchetypeUseMode(
               transformActionArchetype,
-              "scale"
+              "scale",
             ),
             onClick: () => handleTransformModeChange("scale"),
           },
@@ -573,7 +573,7 @@ export const useAnnotationActions = () => {
               !!transformActionArchetype && transformMode === "translate",
             isDisabled: !canTransformArchetypeUseMode(
               transformActionArchetype,
-              "translate"
+              "translate",
             ),
             onClick: () => handleTransformModeChange("translate"),
           },
@@ -585,7 +585,7 @@ export const useAnnotationActions = () => {
             tooltip: "Rotate object (R)",
             isVisible: canTransformArchetypeUseMode(
               transformActionArchetype,
-              "rotate"
+              "rotate",
             ),
             isActive: transformMode === "rotate",
             onClick: () => handleTransformModeChange("rotate"),

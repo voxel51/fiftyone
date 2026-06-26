@@ -307,7 +307,7 @@ describe("computeCuboidProjection", () => {
     const result = computeCuboidProjection(
       label,
       frustum,
-      new Vector3(0, 1, 0)
+      new Vector3(0, 1, 0),
     );
 
     expect(result?.orientation).toEqual({

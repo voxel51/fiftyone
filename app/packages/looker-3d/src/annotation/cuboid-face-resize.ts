@@ -9,7 +9,7 @@ export const CUBOID_RESIZE_FACES = [
   "-z",
 ] as const;
 
-export type CuboidResizeFace = typeof CUBOID_RESIZE_FACES[number];
+export type CuboidResizeFace = (typeof CUBOID_RESIZE_FACES)[number];
 
 export const MIN_CUBOID_FACE_RESIZE_DIMENSION = 1e-6;
 
@@ -28,7 +28,7 @@ const FACE_TO_AXIS: Record<
 const EPSILON = 1e-10;
 
 export function getCuboidResizeDimensionMagnitudes(
-  dimensions: THREE.Vector3Tuple
+  dimensions: THREE.Vector3Tuple,
 ): THREE.Vector3Tuple {
   return [
     Math.abs(dimensions[0]),
@@ -38,17 +38,17 @@ export function getCuboidResizeDimensionMagnitudes(
 }
 
 export function isValidCuboidResizeDimensions(
-  dimensions: THREE.Vector3Tuple
+  dimensions: THREE.Vector3Tuple,
 ): boolean {
   return getCuboidResizeDimensionMagnitudes(dimensions).every(
     (dimension) =>
       Number.isFinite(dimension) &&
-      dimension >= MIN_CUBOID_FACE_RESIZE_DIMENSION
+      dimension >= MIN_CUBOID_FACE_RESIZE_DIMENSION,
   );
 }
 
 export function getCuboidResizeFaceFromNormal(
-  normal: THREE.Vector3 | null | undefined
+  normal: THREE.Vector3 | null | undefined,
 ): CuboidResizeFace | null {
   if (!normal) {
     return null;
@@ -74,8 +74,8 @@ export function getCuboidResizeFaceFromNormal(
 }
 
 export function getCuboidResizeFaceAxis(
-  face: CuboidResizeFace
-): typeof FACE_TO_AXIS[CuboidResizeFace] {
+  face: CuboidResizeFace,
+): (typeof FACE_TO_AXIS)[CuboidResizeFace] {
   return FACE_TO_AXIS[face];
 }
 
@@ -108,7 +108,7 @@ export function getCuboidResizeQuaternion({
 
 export function getCuboidResizeFaceWorldNormal(
   face: CuboidResizeFace,
-  orientation: THREE.Quaternion
+  orientation: THREE.Quaternion,
 ): THREE.Vector3 {
   const { axis, sign } = FACE_TO_AXIS[face];
   const localNormal = new THREE.Vector3();
@@ -182,7 +182,7 @@ export function computeCuboidFaceResizeDelta({
     getCuboidResizeDimensionMagnitudes(dimensions)[axis];
   const clampedNewDimensionMagnitude = Math.max(
     minDimension,
-    oldDimensionMagnitude + dragDistance
+    oldDimensionMagnitude + dragDistance,
   );
   const clampedMagnitudeDelta =
     clampedNewDimensionMagnitude - oldDimensionMagnitude;
@@ -192,7 +192,7 @@ export function computeCuboidFaceResizeDelta({
   const orientation = getCuboidResizeQuaternion({ quaternion, rotation });
   const faceWorldNormal = getCuboidResizeFaceWorldNormal(face, orientation);
   const centerDeltaVector = faceWorldNormal.multiplyScalar(
-    clampedMagnitudeDelta / 2
+    clampedMagnitudeDelta / 2,
   );
   const positionDelta: THREE.Vector3Tuple = centerDeltaVector.toArray();
 

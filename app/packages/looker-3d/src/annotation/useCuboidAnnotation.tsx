@@ -198,7 +198,7 @@ export const useCuboidAnnotation = ({
     (transientUpdate: TransientCuboidState) => {
       updateCuboid(labelId, transientUpdate);
     },
-    [labelId, updateCuboid]
+    [labelId, updateCuboid],
   );
 
   const handleFaceResizeEnd = useCallback(() => {

@@ -284,11 +284,11 @@ describe("KeyManager", () => {
     expect(command2).toBeDefined();
 
     let state = keyManager.match(
-      new KeyboardEvent("keydown", { ctrlKey: true, key: "s" })
+      new KeyboardEvent("keydown", { ctrlKey: true, key: "s" }),
     );
     expect(state.partial).toBe(true);
     state = keyManager.match(
-      new KeyboardEvent("keydown", { altKey: true, key: "d" })
+      new KeyboardEvent("keydown", { altKey: true, key: "d" }),
     );
     expect(state.full?.id).toBe("fo.test.command2");
   });
@@ -301,7 +301,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     commandRegistry.registerCommand(
       "fo.test.command2",
@@ -310,7 +310,7 @@ describe("KeyManager", () => {
       },
       () => {
         return false;
-      }
+      },
     );
 
     keyManager.bindKey("s", "fo.test.command1");
@@ -328,7 +328,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     commandRegistry.registerCommand(
       "fo.test.command2",
@@ -337,7 +337,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
 
     keyManager.bindKey("s", "fo.test.command1", 100);
@@ -355,7 +355,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
     commandRegistry.registerCommand(
       "fo.test.command2",
@@ -364,7 +364,7 @@ describe("KeyManager", () => {
       },
       () => {
         return true;
-      }
+      },
     );
 
     keyManager.bindKey("s", "fo.test.command1");

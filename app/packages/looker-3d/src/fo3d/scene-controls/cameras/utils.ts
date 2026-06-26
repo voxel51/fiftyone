@@ -128,7 +128,7 @@ export const resolveCameraSelectorTarget = ({
     !areVectorsCoLocated(
       cameraPosition,
       fallbackTarget,
-      MIN_LOOK_AT_DISTANCE_SQUARED
+      MIN_LOOK_AT_DISTANCE_SQUARED,
     )
   ) {
     return fallbackTarget.clone();

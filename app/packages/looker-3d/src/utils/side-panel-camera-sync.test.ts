@@ -33,7 +33,7 @@ import {
 } from "./side-panel-camera-sync";
 
 const buildRaycastResult = (
-  overrides: Partial<RaycastResult> = {}
+  overrides: Partial<RaycastResult> = {},
 ): RaycastResult => ({
   sourcePanel: PANEL_ID_MAIN,
   worldPosition: [1, 2, 3],
@@ -63,7 +63,7 @@ const buildSelectionCrop = (): PointCloudCrop => {
       dimensions: [4, 4, 4],
       rotation: [0, 0, 0],
     },
-    { margin: 0, source: "selection" }
+    { margin: 0, source: "selection" },
   )!;
 };
 
@@ -102,7 +102,7 @@ describe("side panel camera sync", () => {
     });
     const retargeted = retargetSidePanelCameraFrame(
       frame,
-      new Vector3(10, 20, 30)
+      new Vector3(10, 20, 30),
     );
 
     expect(retargeted.direction.toArray()).toEqual([0, 1, 0]);
@@ -173,10 +173,10 @@ describe("side panel camera sync", () => {
     camera.updateMatrixWorld();
 
     expect(
-      getCameraVisibleWorldHeightAtPoint(camera, new Vector3(0, 0, 0))
+      getCameraVisibleWorldHeightAtPoint(camera, new Vector3(0, 0, 0)),
     ).toBeCloseTo(20);
     expect(
-      getCameraVisibleWorldHeightAtPoint(camera, new Vector3(0, 0, 5))
+      getCameraVisibleWorldHeightAtPoint(camera, new Vector3(0, 0, 5)),
     ).toBeCloseTo(10);
   });
 
@@ -184,7 +184,7 @@ describe("side panel camera sync", () => {
     const camera = new OrthographicCamera(-1, 1, 1, -1, 0.1, 1000);
 
     expect(getOrthographicZoomForVisibleWorldHeight(camera, 2)).toBeCloseTo(
-      1.5
+      1.5,
     );
     expect(getOrthographicZoomForVisibleWorldHeight(camera, 0)).toBeNull();
   });
@@ -197,7 +197,7 @@ describe("side panel camera sync", () => {
         id: "intent-1",
         raycastResult: buildRaycastResult(),
         timestamp: 101,
-      })
+      }),
     ).toMatchObject({
       id: "intent-1",
       anchor: [1, 2, 3],
@@ -211,7 +211,7 @@ describe("side panel camera sync", () => {
         id: "intent-2",
         raycastResult: buildRaycastResult(),
         timestamp: 101,
-      })
+      }),
     ).toBeNull();
 
     expect(
@@ -221,7 +221,7 @@ describe("side panel camera sync", () => {
         id: "intent-3",
         raycastResult: buildRaycastResult({ worldPosition: null }),
         timestamp: 101,
-      })
+      }),
     ).toBeNull();
   });
 
@@ -232,7 +232,7 @@ describe("side panel camera sync", () => {
         isMainPanelPointerDrag: true,
         raycastResult: buildRaycastResult(),
         timestamp: 101,
-      })
+      }),
     ).toEqual({
       id: "pan-1",
       anchor: [1, 2, 3],
@@ -245,7 +245,7 @@ describe("side panel camera sync", () => {
         isMainPanelPointerDrag: false,
         raycastResult: buildRaycastResult(),
         timestamp: 101,
-      })
+      }),
     ).toBeNull();
 
     expect(
@@ -254,7 +254,7 @@ describe("side panel camera sync", () => {
         isMainPanelPointerDrag: true,
         raycastResult: buildRaycastResult({ worldPosition: null }),
         timestamp: 101,
-      })
+      }),
     ).toBeNull();
   });
 
@@ -265,7 +265,7 @@ describe("side panel camera sync", () => {
       shouldApplyMainPanelZoomSyncIntent({
         intent,
         now: 1000,
-      })
+      }),
     ).toBe(false);
 
     expect(
@@ -273,7 +273,7 @@ describe("side panel camera sync", () => {
         intent,
         hasHoverFocus: true,
         now: 101,
-      })
+      }),
     ).toBe(false);
 
     expect(
@@ -281,14 +281,14 @@ describe("side panel camera sync", () => {
         intent,
         activeCrop: { ...buildSelectionCrop(), source: "creation" },
         now: 101,
-      })
+      }),
     ).toBe(false);
 
     expect(
       shouldApplyMainPanelPanSyncIntent({
         intent,
         now: 1000,
-      })
+      }),
     ).toBe(false);
   });
 
@@ -300,7 +300,7 @@ describe("side panel camera sync", () => {
         intent: { ...buildIntent(), anchor: [1, 1, 1] },
         activeCrop: crop,
         now: 101,
-      })
+      }),
     ).toBe(true);
 
     expect(
@@ -308,7 +308,7 @@ describe("side panel camera sync", () => {
         intent: { ...buildIntent(), anchor: [10, 0, 0] },
         activeCrop: crop,
         now: 101,
-      })
+      }),
     ).toBe(false);
   });
 
@@ -318,7 +318,7 @@ describe("side panel camera sync", () => {
     camera.lookAt(0, 0, 0);
 
     expect(doesPointCloudCropFitCamera(buildSelectionCrop(), camera)).toBe(
-      true
+      true,
     );
     expect(
       doesPointCloudCropFitCamera(
@@ -331,10 +331,10 @@ describe("side panel camera sync", () => {
             dimensions: [4, 4, 4],
             rotation: [0, 0, 0],
           },
-          { margin: 0, source: "selection" }
+          { margin: 0, source: "selection" },
         )!,
-        camera
-      )
+        camera,
+      ),
     ).toBe(false);
   });
 
@@ -386,7 +386,7 @@ describe("side panel camera sync", () => {
         controls,
         intent: buildIntent(),
         invalidate,
-      })
+      }),
     ).toBe(true);
 
     expect(camera.zoom).toBe(6);
@@ -415,7 +415,7 @@ describe("side panel camera sync", () => {
           visibleWorldHeightAtAnchor: 0.5,
         },
         invalidate,
-      })
+      }),
     ).toBe(true);
 
     expect(camera.zoom).toBe(6);
@@ -442,7 +442,7 @@ describe("side panel camera sync", () => {
         controls,
         crop,
         invalidate,
-      })
+      }),
     ).toBe(true);
 
     expect(camera.zoom).toBe(6);
@@ -469,7 +469,7 @@ describe("side panel camera sync", () => {
         controls,
         crop,
         invalidate,
-      })
+      }),
     ).toBe(false);
 
     expect(camera.zoom).toBe(2);
@@ -496,7 +496,7 @@ describe("side panel camera sync", () => {
         damping: 0.5,
         intent: buildIntent(),
         invalidate,
-      })
+      }),
     ).toBe(true);
 
     expect(camera.zoom).toBe(3);

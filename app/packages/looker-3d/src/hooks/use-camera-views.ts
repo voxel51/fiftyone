@@ -138,7 +138,7 @@ export const useCameraViews = ({
     selectedLabelForAnnotationAtom,
   );
   const currentArchetypeSelectedForTransform = useRecoilValue(
-    currentArchetypeSelectedForTransformAtom
+    currentArchetypeSelectedForTransformAtom,
   );
   const selectedPoint = useRecoilValue(selectedPolylineVertexAtom);
   const setIsFo3dBackgroundOn = useSetRecoilState(isFo3dBackgroundOnAtom);

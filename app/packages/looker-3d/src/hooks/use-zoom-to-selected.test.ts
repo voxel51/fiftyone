@@ -11,7 +11,7 @@ const makeSample = (sample: Record<string, unknown>) =>
   ({
     id: sample._id,
     sample,
-  } as any);
+  }) as any;
 
 const expectBox = (
   box: Box3 | null,
@@ -21,7 +21,7 @@ const expectBox = (
   }: {
     center: [number, number, number];
     size: [number, number, number];
-  }
+  },
 ) => {
   expect(box).not.toBeNull();
 
@@ -185,7 +185,7 @@ describe("zoom-to-selected bounds", () => {
         location: [0, 4, 0],
         dimensions: [2, 2, 2],
       },
-      { useLegacyCoordinates: true }
+      { useLegacyCoordinates: true },
     );
 
     expectBox(box, {

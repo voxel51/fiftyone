@@ -54,7 +54,7 @@ type CameraRenderState = {
 const hasCameraRenderStateChanged = (
   previousState: CameraRenderState | null,
   camera: THREE.PerspectiveCamera,
-  target: THREE.Vector3
+  target: THREE.Vector3,
 ) => {
   return (
     previousState === null ||
@@ -97,7 +97,9 @@ const GizmoContainer = styled.div`
   }
 
   .fo3d-gizmo-axis circle {
-    transition: r 120ms ease, filter 120ms ease;
+    transition:
+      r 120ms ease,
+      filter 120ms ease;
   }
 
   .fo3d-gizmo-axis:hover circle {
@@ -113,7 +115,7 @@ const GizmoContainer = styled.div`
 const projectAxis = (
   direction: THREE.Vector3,
   inverseCameraQuaternion: THREE.Quaternion,
-  length: number
+  length: number,
 ) => {
   const cameraSpaceDirection = direction
     .clone()
@@ -127,7 +129,7 @@ const projectAxis = (
 };
 
 const getAxisRenderState = (
-  cameraQuaternion: THREE.Quaternion
+  cameraQuaternion: THREE.Quaternion,
 ): AxisRenderState[] => {
   const inverseCameraQuaternion = cameraQuaternion.clone().invert();
 
@@ -135,13 +137,13 @@ const getAxisRenderState = (
     const positive = projectAxis(
       direction,
       inverseCameraQuaternion,
-      AXIS_LENGTH
+      AXIS_LENGTH,
     );
     const negativeDirection = direction.clone().negate();
     const negative = projectAxis(
       negativeDirection,
       inverseCameraQuaternion,
-      NEGATIVE_AXIS_LENGTH
+      NEGATIVE_AXIS_LENGTH,
     );
 
     const depthRatio = (positive.depth + 1) / 2;
@@ -183,13 +185,13 @@ const AnnotationOrientationGizmoSvg = ({
 }) => {
   const axes = useMemo(
     () => getAxisRenderState(cameraQuaternion),
-    [cameraQuaternion]
+    [cameraQuaternion],
   );
   const handleAxisSelection = useCallback(
     (direction: THREE.Vector3) => {
       onAxisPointerDown(direction);
     },
-    [onAxisPointerDown]
+    [onAxisPointerDown],
   );
 
   return (
@@ -351,7 +353,7 @@ const AnnotationOrientationGizmo = ({
         position: direction.clone().multiplyScalar(radius).add(target),
       });
     },
-    [mainCamera, cameraControlsRef, mainCameraState]
+    [mainCamera, cameraControlsRef, mainCameraState],
   );
 
   return (

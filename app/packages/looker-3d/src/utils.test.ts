@@ -108,7 +108,7 @@ describe("isFiniteVector3", () => {
     expect(isFiniteVector3(new Vector3(1, 2, 3))).toBe(true);
     expect(isFiniteVector3(new Vector3(Number.NaN, 2, 3))).toBe(false);
     expect(isFiniteVector3(new Vector3(1, Number.POSITIVE_INFINITY, 3))).toBe(
-      false
+      false,
     );
   });
 });
@@ -116,13 +116,13 @@ describe("isFiniteVector3", () => {
 describe("areVectorsCoLocated", () => {
   it("checks whether two vectors are within the distance threshold", () => {
     expect(
-      areVectorsCoLocated(new Vector3(0, 0, 0), new Vector3(0, 0, 0))
+      areVectorsCoLocated(new Vector3(0, 0, 0), new Vector3(0, 0, 0)),
     ).toBe(true);
     expect(
-      areVectorsCoLocated(new Vector3(0, 0, 0), new Vector3(0.01, 0, 0))
+      areVectorsCoLocated(new Vector3(0, 0, 0), new Vector3(0.01, 0, 0)),
     ).toBe(false);
     expect(
-      areVectorsCoLocated(new Vector3(0, 0, 0), new Vector3(0.01, 0, 0), 1e-2)
+      areVectorsCoLocated(new Vector3(0, 0, 0), new Vector3(0.01, 0, 0), 1e-2),
     ).toBe(true);
   });
 });

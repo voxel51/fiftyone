@@ -7,7 +7,7 @@ const DEFAULT_HEIGHT = 1;
 
 export const getCuboidCreationPreview = (
   creationState: CuboidCreationState,
-  annotationPlane: AnnotationPlaneState
+  annotationPlane: AnnotationPlaneState,
 ): CuboidTransformData | null => {
   const { step, centerPosition, orientationPoint, currentPosition } =
     creationState;
@@ -28,7 +28,7 @@ export const getCuboidCreationPreview = (
     const length = Math.max(directionVector.length(), MIN_DIMENSION);
     const localDirection = new THREE.Vector2(
       directionVector.dot(localX),
-      directionVector.dot(localY)
+      directionVector.dot(localY),
     );
     const yaw = Math.atan2(localDirection.y, localDirection.x);
     const yawQuaternion = new THREE.Quaternion().setFromAxisAngle(normal, yaw);
@@ -48,7 +48,7 @@ export const getCuboidCreationPreview = (
     const length = Math.max(directionVector.length(), MIN_DIMENSION);
     const localDirection = new THREE.Vector2(
       directionVector.dot(localX),
-      directionVector.dot(localY)
+      directionVector.dot(localY),
     );
     const yaw = Math.atan2(localDirection.y, localDirection.x);
     const yawQuaternion = new THREE.Quaternion().setFromAxisAngle(normal, yaw);

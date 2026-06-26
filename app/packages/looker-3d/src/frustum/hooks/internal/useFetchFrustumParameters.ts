@@ -142,7 +142,7 @@ export function useFetchFrustumParameters() {
         ...frustum,
         imageUrl: resolveUrlForImageSlice(frustum.sliceName) ?? undefined,
       })),
-    [data, resolveUrlForImageSlice]
+    [data, resolveUrlForImageSlice],
   );
 
   return {

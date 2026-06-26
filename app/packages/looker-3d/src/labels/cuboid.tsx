@@ -75,7 +75,7 @@ interface FaceResizeDragState {
 
 const getFaceResizeHighlightProps = (
   face: CuboidResizeFace,
-  dimensions: THREE.Vector3Tuple
+  dimensions: THREE.Vector3Tuple,
 ) => {
   const dimensionMagnitudes = getCuboidResizeDimensionMagnitudes(dimensions);
   const { axis, sign } = getCuboidResizeFaceAxis(face);
@@ -93,7 +93,7 @@ const getFaceResizeHighlightProps = (
       ] as THREE.Vector3Tuple,
       args: [dimensionMagnitudes[2], dimensionMagnitudes[1]] as [
         number,
-        number
+        number,
       ],
     };
   }
@@ -108,7 +108,7 @@ const getFaceResizeHighlightProps = (
       ] as THREE.Vector3Tuple,
       args: [dimensionMagnitudes[0], dimensionMagnitudes[2]] as [
         number,
-        number
+        number,
       ],
     };
   }
@@ -155,7 +155,7 @@ const getFiniteMagnitude = (value: number) =>
 const getCuboidOrientationMarkerProps = (
   dimensions: THREE.Vector3Tuple,
   orientation: THREE.Quaternion,
-  upVector?: THREE.Vector3 | null
+  upVector?: THREE.Vector3 | null,
 ): {
   headLength: number;
   headPosition: THREE.Vector3Tuple;
@@ -185,15 +185,15 @@ const getCuboidOrientationMarkerProps = (
   const extensionLength = length / 2;
   const headLength = Math.max(
     Math.min(length * 0.18, extensionLength),
-    ORIENTATION_MARKER_MIN_HEAD_LENGTH
+    ORIENTATION_MARKER_MIN_HEAD_LENGTH,
   );
   const crossSection = Math.max(
     Math.min(localYExtent, localZExtent),
-    length * 0.1
+    length * 0.1,
   );
   const headRadius = Math.max(
     Math.min(crossSection * 0.12, headLength * 0.45),
-    ORIENTATION_MARKER_MIN_HEAD_RADIUS
+    ORIENTATION_MARKER_MIN_HEAD_RADIUS,
   );
   const shaftEndX = faceX + extensionLength;
 
@@ -215,7 +215,7 @@ const CuboidOrientationMarker = ({
   const markerProps = getCuboidOrientationMarkerProps(
     dimensions,
     orientation,
-    upVector
+    upVector,
   );
 
   if (!markerProps) {
@@ -280,11 +280,11 @@ export const Cuboid = ({
   const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
   const isActivelySegmenting = useRecoilValue(isActivelySegmentingSelector);
   const isCreatingCuboidPointerDown = useRecoilValue(
-    isCreatingCuboidPointerDownAtom
+    isCreatingCuboidPointerDownAtom,
   );
   const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
   const setIsCurrentlyTransforming = useSetRecoilState(
-    isCurrentlyTransformingAtom
+    isCurrentlyTransformingAtom,
   );
   const [hoveredResizeFace, setHoveredResizeFace] =
     useState<CuboidResizeFace | null>(null);
@@ -301,7 +301,7 @@ export const Cuboid = ({
     useRecoilValue(selectedLabelForAnnotationAtom)?._id === label._id;
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
   const setCurrentArchetypeSelectedForTransform = useSetRecoilState(
-    currentArchetypeSelectedForTransformAtom
+    currentArchetypeSelectedForTransformAtom,
   );
 
   useEffect(() => {
@@ -359,7 +359,7 @@ export const Cuboid = ({
       setHoveredLabel({ id: label._id, source: hoverSource });
       return true;
     },
-    [hoverSource, label._id, setHoveredLabel]
+    [hoverSource, label._id, setHoveredLabel],
   );
 
   const transformMode = useRecoilValue(transformModeAtom);
@@ -459,7 +459,7 @@ export const Cuboid = ({
   useCursor(
     canFaceResize && isFaceResizeControlActive,
     isFaceResizeDragging ? "grabbing" : "grab",
-    "auto"
+    "auto",
   );
 
   useEffect(() => {
@@ -484,10 +484,10 @@ export const Cuboid = ({
         raycasterRef.current,
         camera,
         toNDC(event, gl.domElement),
-        plane
+        plane,
       );
     },
-    [camera, gl]
+    [camera, gl],
   );
 
   const beginFaceResize = useCallback(
@@ -513,7 +513,7 @@ export const Cuboid = ({
       });
       const dragPlane = new THREE.Plane().setFromNormalAndCoplanarPoint(
         dragPlaneNormal,
-        e.point
+        e.point,
       );
       const startPoint =
         getPointerDragPlaneIntersection(e.nativeEvent, dragPlane) ??
@@ -548,7 +548,7 @@ export const Cuboid = ({
       handleFaceResizeStart,
       orientationQuaternion,
       setIsCurrentlyTransforming,
-    ]
+    ],
   );
 
   const handleFaceResizePointerMove = useCallback(
@@ -565,14 +565,14 @@ export const Cuboid = ({
 
       setHoveredResizeFace(getCuboidResizeFaceFromNormal(e.face?.normal));
     },
-    [canFaceResize, isFaceResizeDragging, restEventHandlers]
+    [canFaceResize, isFaceResizeDragging, restEventHandlers],
   );
 
   const handleFaceResizePointerDown = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
       beginFaceResize(e, getCuboidResizeFaceFromNormal(e.face?.normal));
     },
-    [beginFaceResize]
+    [beginFaceResize],
   );
 
   const handleFaceResizeHandlePointerMove = useCallback(
@@ -589,7 +589,7 @@ export const Cuboid = ({
 
       setHoveredResizeFace(face);
     },
-    [canFaceResize, isFaceResizeDragging, restEventHandlers]
+    [canFaceResize, isFaceResizeDragging, restEventHandlers],
   );
 
   const handleFaceResizeHandlePointerOut = useCallback(
@@ -603,7 +603,7 @@ export const Cuboid = ({
       setHoveredLabel(null);
       onPointerOut();
     },
-    [isFaceResizeDragging, onPointerOut, setHoveredLabel]
+    [isFaceResizeDragging, onPointerOut, setHoveredLabel],
   );
 
   const updateFaceResizeFromPointer = useCallback(
@@ -615,7 +615,7 @@ export const Cuboid = ({
 
       const currentPoint = getPointerDragPlaneIntersection(
         event,
-        dragState.dragPlane
+        dragState.dragPlane,
       );
       if (!currentPoint) {
         return;
@@ -641,7 +641,7 @@ export const Cuboid = ({
       getPointerDragPlaneIntersection,
       handleFaceResizeChange,
       useLegacyCoordinates,
-    ]
+    ],
   );
 
   const finishFaceResize = useCallback(() => {

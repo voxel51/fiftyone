@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
  * cache state when the app and media server are served from different origins.
  */
 export function useFrustumTextureUrl(
-  imageUrl: string | null | undefined
+  imageUrl: string | null | undefined,
 ): string | null {
   const [textureUrl, setTextureUrl] = useState<string | null>(null);
 
@@ -37,7 +37,7 @@ export function useFrustumTextureUrl(
           "GET",
           imageUrl,
           undefined,
-          "blob"
+          "blob",
         );
 
         if (cancelled) {

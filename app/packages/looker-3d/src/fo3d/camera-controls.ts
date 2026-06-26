@@ -16,7 +16,7 @@ const FALLBACK_TARGET_DIRECTION = new Vector3(0, 0, -1);
 
 const getCurrentViewOffset = (
   camera: PerspectiveCamera,
-  controls: Fo3dCameraControls
+  controls: Fo3dCameraControls,
 ) => {
   const offset = controls.target.clone().sub(camera.position);
   const distanceSquared = offset.lengthSq();
@@ -74,7 +74,7 @@ const ensureTargetAwayFromPosition = ({
 
 export const getCameraControlsTarget = (
   controls: Fo3dCameraControls,
-  target = new Vector3()
+  target = new Vector3(),
 ) => {
   return target.copy(controls.target);
 };

@@ -17,7 +17,7 @@ vi.mock("@fiftyone/state", async () => {
     useEventHandler: (
       target: EventTarget | undefined,
       eventType: string,
-      handler: EventListener
+      handler: EventListener,
     ) => {
       React.useEffect(() => {
         target?.addEventListener(eventType, handler);
@@ -81,12 +81,12 @@ describe("useFo3dCameraControlsConfig", () => {
 
     act(() => {
       document.dispatchEvent(
-        new KeyboardEvent("keydown", { code: "ShiftLeft" })
+        new KeyboardEvent("keydown", { code: "ShiftLeft" }),
       );
     });
     expect(controls.mouseButtons.LEFT).toBe(MOUSE.ROTATE);
     expect(recoilMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
-      true
+      true,
     );
 
     act(() => {
@@ -94,36 +94,36 @@ describe("useFo3dCameraControlsConfig", () => {
     });
     expect(controls.mouseButtons.LEFT).toBe(MOUSE.ROTATE);
     expect(recoilMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
-      false
+      false,
     );
 
     act(() => {
       document.dispatchEvent(
-        new KeyboardEvent("keydown", { code: "ControlLeft" })
+        new KeyboardEvent("keydown", { code: "ControlLeft" }),
       );
     });
     expect(controls.mouseButtons.LEFT).toBe(MOUSE.DOLLY);
 
     act(() => {
       document.dispatchEvent(
-        new KeyboardEvent("keyup", { code: "ControlLeft" })
+        new KeyboardEvent("keyup", { code: "ControlLeft" }),
       );
     });
     expect(controls.mouseButtons.LEFT).toBe(MOUSE.ROTATE);
 
     act(() => {
       document.dispatchEvent(
-        new KeyboardEvent("keydown", { code: "MetaLeft" })
+        new KeyboardEvent("keydown", { code: "MetaLeft" }),
       );
     });
     expect(controls.mouseButtons.LEFT).toBe(MOUSE.PAN);
     expect(recoilMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
-      true
+      true,
     );
 
     act(() => {
       document.dispatchEvent(
-        new KeyboardEvent("keydown", { code: "ShiftLeft" })
+        new KeyboardEvent("keydown", { code: "ShiftLeft" }),
       );
     });
     expect(controls.mouseButtons.LEFT).toBe(MOUSE.ROTATE);
@@ -133,14 +133,14 @@ describe("useFo3dCameraControlsConfig", () => {
     });
     expect(controls.mouseButtons.LEFT).toBe(MOUSE.ROTATE);
     expect(recoilMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
-      true
+      true,
     );
 
     act(() => {
       document.dispatchEvent(new KeyboardEvent("keyup", { code: "ShiftLeft" }));
     });
     expect(recoilMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
-      false
+      false,
     );
 
     act(() => {
@@ -148,14 +148,14 @@ describe("useFo3dCameraControlsConfig", () => {
     });
     expect(controls.mouseButtons.LEFT).toBe(MOUSE.ROTATE);
     expect(recoilMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
-      true
+      true,
     );
 
     act(() => {
       document.dispatchEvent(new KeyboardEvent("keyup", { code: "AltLeft" }));
     });
     expect(recoilMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
-      false
+      false,
     );
   });
 
@@ -177,14 +177,14 @@ describe("useFo3dCameraControlsConfig", () => {
       expect(controls.enableRotate).toBe(false);
       expect(controls.enablePan).toBe(false);
       expect(controls.mouseButtons.LEFT).toBe(MOUSE.ROTATE);
-    }
+    },
   );
 
   it("restores drag navigation after annotation interactions release controls", () => {
     recoilMocks.values.set("fo3d-isCurrentlyTransformingAtom", true);
     const { controls, cameraControlsRef } = makeControls();
     const { rerender } = renderHook(() =>
-      useFo3dCameraControlsConfig({ cameraControlsRef })
+      useFo3dCameraControlsConfig({ cameraControlsRef }),
     );
 
     expect(controls.enableRotate).toBe(false);

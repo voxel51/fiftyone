@@ -16,7 +16,7 @@ const DISABLED_POINT_CLOUD_CROP_WORLD_TO_BOX = new THREE.Matrix4();
 const DISABLED_POINT_CLOUD_CROP_HALF_SIZE = new THREE.Vector3();
 
 const usePointCloudCropUniforms = (
-  pointCloudCrop: ShaderProps["pointCloudCrop"]
+  pointCloudCrop: ShaderProps["pointCloudCrop"],
 ) =>
   useMemo(
     () => ({
@@ -29,7 +29,7 @@ const usePointCloudCropUniforms = (
         value: pointCloudCrop?.halfSize ?? DISABLED_POINT_CLOUD_CROP_HALF_SIZE,
       },
     }),
-    [pointCloudCrop]
+    [pointCloudCrop],
   );
 
 export const DynamicAttributeShader = ({

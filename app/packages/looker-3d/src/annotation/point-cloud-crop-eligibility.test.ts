@@ -7,11 +7,11 @@ describe("isHoverEligibleForPointCloudCrop", () => {
     expect(
       isHoverEligibleForPointCloudCrop(
         { id: "label-1", source: "sidebar" },
-        true
-      )
+        true,
+      ),
     ).toBe(true);
     expect(isHoverEligibleForPointCloudCrop({ id: "label-1" }, true)).toBe(
-      true
+      true,
     );
   });
 
@@ -19,14 +19,14 @@ describe("isHoverEligibleForPointCloudCrop", () => {
     expect(
       isHoverEligibleForPointCloudCrop(
         { id: "label-1", source: PANEL_ID_MAIN },
-        false
-      )
+        false,
+      ),
     ).toBe(true);
     expect(
       isHoverEligibleForPointCloudCrop(
         { id: "label-1", source: PANEL_ID_MAIN },
-        true
-      )
+        true,
+      ),
     ).toBe(false);
   });
 
@@ -34,8 +34,8 @@ describe("isHoverEligibleForPointCloudCrop", () => {
     expect(
       isHoverEligibleForPointCloudCrop(
         { id: "label-1", source: PANEL_ID_SIDE_TOP },
-        false
-      )
+        false,
+      ),
     ).toBe(false);
   });
 });

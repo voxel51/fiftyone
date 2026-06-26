@@ -7,7 +7,7 @@ import { showCuboidOrientationAtom } from "../state";
 
 export const ToggleCuboidOrientation = () => {
   const [showCuboidOrientation, setShowCuboidOrientation] = useRecoilState(
-    showCuboidOrientationAtom
+    showCuboidOrientationAtom,
   );
   const { primary } = useTheme();
 

@@ -60,12 +60,12 @@ export const useZoomToSelected = ({
                 [
                   resolveAnnotationLabelBoundingBox({
                     selectedLabel: await snapshot.getPromise(
-                      selectedLabelForAnnotationAtom
+                      selectedLabelForAnnotationAtom,
                     ),
                     renderModel: await snapshot.getPromise(renderModelSelector),
                     useLegacyCoordinates,
                   }),
-                ].filter((box): box is Box3 => Boolean(box))
+                ].filter((box): box is Box3 => Boolean(box)),
               )
             : getSelectedLabelsBoundingBox({
                 selectedLabels: await snapshot.getPromise(fos.selectedLabels),
@@ -85,7 +85,7 @@ export const useZoomToSelected = ({
           size,
           upVector,
           2,
-          "top"
+          "top",
         );
 
         setCameraControlsLookAt({
@@ -102,7 +102,7 @@ export const useZoomToSelected = ({
       mode,
       cameraControlsRef,
       useLegacyCoordinates,
-    ]
+    ],
   );
 
   return handleZoomToSelected;

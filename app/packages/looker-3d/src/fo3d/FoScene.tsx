@@ -43,7 +43,7 @@ interface FoSceneProps {
 const getAssetJsx = (
   node: FoSceneNode,
   children: React.ReactNode,
-  pointCloudCrop?: PointCloudCrop | null
+  pointCloudCrop?: PointCloudCrop | null,
 ) => {
   if (!node.asset) {
     return null;

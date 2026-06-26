@@ -86,7 +86,7 @@ export function getRaycastableObjects(scene: THREE.Scene): THREE.Object3D[] {
 
 export const filterIntersectionsForPointCloudCrop = (
   intersections: THREE.Intersection[],
-  pointCloudCrop?: PointCloudCrop | null
+  pointCloudCrop?: PointCloudCrop | null,
 ) => {
   if (!pointCloudCrop) {
     return intersections;
@@ -108,13 +108,13 @@ const getPanelHeight = (panelElement: HTMLElement): number => {
 
 const getPerspectiveRaycastDepth = (
   camera: THREE.PerspectiveCamera,
-  sceneBoundingBox?: THREE.Box3 | null
+  sceneBoundingBox?: THREE.Box3 | null,
 ): number => {
   if (sceneBoundingBox && !sceneBoundingBox.isEmpty()) {
     const sphere = sceneBoundingBox.getBoundingSphere(new THREE.Sphere());
     return Math.max(
       camera.near,
-      camera.position.distanceTo(sphere.center) + sphere.radius
+      camera.position.distanceTo(sphere.center) + sphere.radius,
     );
   }
 

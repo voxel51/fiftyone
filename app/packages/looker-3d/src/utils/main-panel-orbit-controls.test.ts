@@ -18,7 +18,7 @@ const makeSceneBounds = () =>
 describe("main panel orbit controls", () => {
   it("derives a scene-scaled close navigation distance", () => {
     expect(getMainPanelCloseNavigationDistance(makeSceneBounds())).toBeCloseTo(
-      0.6
+      0.6,
     );
     expect(getMainPanelCloseNavigationDistance(null)).toBe(0.1);
   });
@@ -28,13 +28,13 @@ describe("main panel orbit controls", () => {
       getMainPanelOrbitZoomSpeed({
         distance: 2,
         sceneBoundingBox: makeSceneBounds(),
-      })
+      }),
     ).toBe(MAIN_PANEL_ORBIT_ZOOM_SPEED);
     expect(
       getMainPanelOrbitPanSpeed({
         distance: 2,
         sceneBoundingBox: makeSceneBounds(),
-      })
+      }),
     ).toBe(MAIN_PANEL_ORBIT_PAN_SPEED);
   });
 
@@ -78,13 +78,13 @@ describe("main panel orbit controls", () => {
       getMainPanelOrbitZoomSpeed({
         distance,
         sceneBoundingBox,
-      })
+      }),
     ).toBe(MAIN_PANEL_CLOSE_ZOOM_MAX_SPEED);
     expect(
       getMainPanelOrbitPanSpeed({
         distance,
         sceneBoundingBox,
-      })
+      }),
     ).toBe(MAIN_PANEL_CLOSE_PAN_MAX_SPEED);
   });
 

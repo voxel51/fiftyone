@@ -47,7 +47,7 @@ const getPositiveSpeed = (value: number, fallback: number) => {
 };
 
 export const getMainPanelCloseNavigationDistance = (
-  sceneBoundingBox?: Box3 | null
+  sceneBoundingBox?: Box3 | null,
 ) => {
   if (!sceneBoundingBox || sceneBoundingBox.isEmpty()) {
     return MAIN_PANEL_CLOSE_NAVIGATION_MIN_DISTANCE;
@@ -61,7 +61,7 @@ export const getMainPanelCloseNavigationDistance = (
   return MathUtils.clamp(
     diagonal * MAIN_PANEL_CLOSE_NAVIGATION_DISTANCE_RATIO,
     MAIN_PANEL_CLOSE_NAVIGATION_MIN_DISTANCE,
-    MAIN_PANEL_CLOSE_NAVIGATION_MAX_DISTANCE
+    MAIN_PANEL_CLOSE_NAVIGATION_MAX_DISTANCE,
   );
 };
 
@@ -73,11 +73,11 @@ export const getMainPanelOrbitZoomSpeed = ({
 }: GetMainPanelOrbitZoomSpeedOptions) => {
   const baseSpeed = getPositiveSpeed(
     baseZoomSpeed,
-    MAIN_PANEL_ORBIT_ZOOM_SPEED
+    MAIN_PANEL_ORBIT_ZOOM_SPEED,
   );
   const maxSpeed = Math.max(
     baseSpeed,
-    getPositiveSpeed(maxZoomSpeed, MAIN_PANEL_CLOSE_ZOOM_MAX_SPEED)
+    getPositiveSpeed(maxZoomSpeed, MAIN_PANEL_CLOSE_ZOOM_MAX_SPEED),
   );
 
   if (!Number.isFinite(distance) || distance <= 0) {
@@ -98,12 +98,12 @@ export const getMainPanelOrbitZoomSpeed = ({
   const targetRadiusDelta = closeNavigationDistance * (1 - baseRadiusRatio);
   const radiusDelta = Math.min(
     targetRadiusDelta,
-    distance - MAIN_PANEL_CAMERA_TARGET_EPSILON
+    distance - MAIN_PANEL_CAMERA_TARGET_EPSILON,
   );
   const radiusDeltaRatio = MathUtils.clamp(
     radiusDelta / distance,
     0,
-    MAX_CLOSE_ZOOM_RADIUS_DELTA_RATIO
+    MAX_CLOSE_ZOOM_RADIUS_DELTA_RATIO,
   );
 
   if (radiusDeltaRatio <= 0) {
@@ -113,7 +113,7 @@ export const getMainPanelOrbitZoomSpeed = ({
   return MathUtils.clamp(
     Math.log(1 - radiusDeltaRatio) / Math.log(ORBIT_CONTROLS_WHEEL_ZOOM_BASE),
     baseSpeed,
-    maxSpeed
+    maxSpeed,
   );
 };
 
@@ -126,7 +126,7 @@ export const getMainPanelOrbitPanSpeed = ({
   const baseSpeed = getPositiveSpeed(basePanSpeed, MAIN_PANEL_ORBIT_PAN_SPEED);
   const maxSpeed = Math.max(
     baseSpeed,
-    getPositiveSpeed(maxPanSpeed, MAIN_PANEL_CLOSE_PAN_MAX_SPEED)
+    getPositiveSpeed(maxPanSpeed, MAIN_PANEL_CLOSE_PAN_MAX_SPEED),
   );
 
   if (!Number.isFinite(distance) || distance <= 0) {
@@ -146,7 +146,7 @@ export const getMainPanelOrbitPanSpeed = ({
   return MathUtils.clamp(
     baseSpeed * Math.sqrt(closeNavigationDistance / distance),
     baseSpeed,
-    maxSpeed
+    maxSpeed,
   );
 };
 
@@ -158,7 +158,7 @@ export const syncMainPanelOrbitControls = ({
 
   controls.minDistance = Math.max(
     controls.minDistance ?? 0,
-    MAIN_PANEL_CAMERA_TARGET_EPSILON
+    MAIN_PANEL_CAMERA_TARGET_EPSILON,
   );
   controls.zoomSpeed = getMainPanelOrbitZoomSpeed({
     distance,

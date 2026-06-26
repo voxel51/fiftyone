@@ -21,7 +21,7 @@ import {
 } from "./point-cloud-crop";
 
 const buildDetection = (
-  overrides: Partial<ReconciledDetection3D> = {}
+  overrides: Partial<ReconciledDetection3D> = {},
 ): ReconciledDetection3D =>
   ({
     _cls: "Detection",
@@ -32,10 +32,10 @@ const buildDetection = (
     dimensions: [2, 4, 6],
     rotation: [0, 0, 0],
     ...overrides,
-  } as ReconciledDetection3D);
+  }) as ReconciledDetection3D;
 
 const buildPolyline = (
-  overrides: Partial<ReconciledPolyline3D> = {}
+  overrides: Partial<ReconciledPolyline3D> = {},
 ): ReconciledPolyline3D =>
   ({
     _cls: "Polyline",
@@ -49,7 +49,7 @@ const buildPolyline = (
       ],
     ],
     ...overrides,
-  } as ReconciledPolyline3D);
+  }) as ReconciledPolyline3D;
 
 describe("point-cloud crop", () => {
   it("does not create a crop outside annotate mode", () => {
@@ -80,27 +80,27 @@ describe("point-cloud crop", () => {
         mode: ModalMode.ANNOTATE,
         renderModel,
         selectedLabelId: null,
-      })
+      }),
     ).toBeNull();
     expect(
       getSelectedCuboidPointCloudCrop({
         mode: ModalMode.ANNOTATE,
         renderModel,
         selectedLabelId: "polyline-1",
-      })
+      }),
     ).toBeNull();
   });
 
   it("does not create a crop for invalid cuboid geometry", () => {
     expect(
       createPointCloudCropFromDetection(
-        buildDetection({ dimensions: [0, 1, 1] })
-      )
+        buildDetection({ dimensions: [0, 1, 1] }),
+      ),
     ).toBeNull();
     expect(
       createPointCloudCropFromDetection(
-        buildDetection({ location: [Number.NaN, 0, 0] })
-      )
+        buildDetection({ location: [Number.NaN, 0, 0] }),
+      ),
     ).toBeNull();
   });
 
@@ -111,10 +111,10 @@ describe("point-cloud crop", () => {
 
     expect(crop?.halfSize.toArray()).toEqual([2, 3, 4]);
     expect(isPointInsidePointCloudCrop(new Vector3(1.99, 0, 0), crop!)).toBe(
-      true
+      true,
     );
     expect(isPointInsidePointCloudCrop(new Vector3(2.01, 0, 0), crop!)).toBe(
-      false
+      false,
     );
   });
 
@@ -126,7 +126,7 @@ describe("point-cloud crop", () => {
         dimensions: [2, 4, 6],
         quaternion: [0, 0, 0, 1],
       },
-      { margin: 0.5 }
+      { margin: 0.5 },
     );
 
     expect(crop?.labelId).toBe("cuboid-creation-preview");
@@ -144,18 +144,18 @@ describe("point-cloud crop", () => {
     expect(crop?.center.toArray()).toEqual([1, 0, 2]);
     expect(crop?.halfSize.toArray()).toEqual([3, 3, 3]);
     expect(isPointInsidePointCloudCrop(new Vector3(3.9, 0, 2), crop!)).toBe(
-      true
+      true,
     );
     expect(isPointInsidePointCloudCrop(new Vector3(4.1, 0, 2), crop!)).toBe(
-      false
+      false,
     );
   });
 
   it("does not create a crop for invalid polyline geometry", () => {
     expect(
       createPointCloudCropFromPolyline(
-        buildPolyline({ points3d: [[[Number.NaN, 0, 0]]] })
-      )
+        buildPolyline({ points3d: [[[Number.NaN, 0, 0]]] }),
+      ),
     ).toBeNull();
   });
 
@@ -170,13 +170,13 @@ describe("point-cloud crop", () => {
     expect(crop?.center.toArray()).toEqual([1, 2, 3]);
     expect(crop?.halfSize.toArray()).toEqual([1.5, 1.5, 1.5]);
     expect(isPointInsidePointCloudCrop(new Vector3(2.49, 2, 3), crop!)).toBe(
-      true
+      true,
     );
     expect(isPointInsidePointCloudCrop(new Vector3(2.51, 2, 3), crop!)).toBe(
-      false
+      false,
     );
     expect(isPointInsidePointCloudCrop(new Vector3(2.1, 3.1, 4.1), crop!)).toBe(
-      true
+      true,
     );
   });
 
@@ -189,16 +189,16 @@ describe("point-cloud crop", () => {
     expect(crop?.center.toArray()).toEqual([0, 0, 0]);
     expect(crop?.halfSize.toArray()).toEqual([1, 1, 1]);
     expect(isPointInsidePointCloudCrop(new Vector3(0, 0.99, 0), crop!)).toBe(
-      true
+      true,
     );
     expect(isPointInsidePointCloudCrop(new Vector3(0, 1.01, 0), crop!)).toBe(
-      false
+      false,
     );
     expect(isPointInsidePointCloudCrop(new Vector3(0, -0.99, 0), crop!)).toBe(
-      true
+      true,
     );
     expect(isPointInsidePointCloudCrop(new Vector3(0, -1.01, 0), crop!)).toBe(
-      false
+      false,
     );
   });
 
@@ -211,22 +211,22 @@ describe("point-cloud crop", () => {
     expect(crop?.center.toArray()).toEqual([0, 0, 0]);
     expect(crop?.halfSize.toArray()).toEqual([1, 1, 1]);
     expect(isPointInsidePointCloudCrop(new Vector3(0, 0, 0.99), crop!)).toBe(
-      true
+      true,
     );
     expect(isPointInsidePointCloudCrop(new Vector3(0, 0, 1.01), crop!)).toBe(
-      false
+      false,
     );
     expect(isPointInsidePointCloudCrop(new Vector3(0, 0, -0.99), crop!)).toBe(
-      true
+      true,
     );
     expect(isPointInsidePointCloudCrop(new Vector3(0, 0, -1.01), crop!)).toBe(
-      false
+      false,
     );
   });
 
   it("does not create a raycast hover crop without usable point geometry", () => {
     expect(
-      createPointCloudCropFromPoint([Number.NaN, 0, 0], { margin: 1 })
+      createPointCloudCropFromPoint([Number.NaN, 0, 0], { margin: 1 }),
     ).toBeNull();
     expect(createPointCloudCropFromPoint([0, 0, 0], { margin: 0 })).toBeNull();
   });
@@ -234,7 +234,7 @@ describe("point-cloud crop", () => {
   it("prefers quaternion rotation over Euler rotation", () => {
     const quaternion = new Quaternion().setFromAxisAngle(
       new Vector3(0, 0, 1),
-      Math.PI / 2
+      Math.PI / 2,
     );
     const crop = createPointCloudCropFromDetection(
       buildDetection({
@@ -242,14 +242,14 @@ describe("point-cloud crop", () => {
         quaternion: [quaternion.x, quaternion.y, quaternion.z, quaternion.w],
         rotation: [0, 0, 0],
       }),
-      { margin: 0 }
+      { margin: 0 },
     );
 
     expect(isPointInsidePointCloudCrop(new Vector3(0, 0.9, 0), crop!)).toBe(
-      true
+      true,
     );
     expect(isPointInsidePointCloudCrop(new Vector3(0.9, 0, 0), crop!)).toBe(
-      false
+      false,
     );
   });
 
@@ -260,21 +260,21 @@ describe("point-cloud crop", () => {
         quaternion: undefined,
         rotation: [0, 0, Math.PI / 2],
       }),
-      { margin: 0 }
+      { margin: 0 },
     );
 
     expect(isPointInsidePointCloudCrop(new Vector3(0, 0.9, 0), crop!)).toBe(
-      true
+      true,
     );
     expect(isPointInsidePointCloudCrop(new Vector3(0.9, 0, 0), crop!)).toBe(
-      false
+      false,
     );
   });
 
   it("mirrors legacy-coordinate center adjustment", () => {
     const crop = createPointCloudCropFromDetection(
       buildDetection({ location: [0, 10, 0], dimensions: [2, 4, 6] }),
-      { useLegacyCoordinates: true }
+      { useLegacyCoordinates: true },
     );
 
     expect(crop?.center.toArray()).toEqual([0, 8, 0]);
@@ -283,7 +283,7 @@ describe("point-cloud crop", () => {
   it("uses live render-model transforms when deriving the selected crop", () => {
     const quaternion = new Quaternion().setFromAxisAngle(
       new Vector3(0, 0, 1),
-      Math.PI / 2
+      Math.PI / 2,
     );
     const detection = buildDetection({
       location: [1, 2, 3],
@@ -320,10 +320,10 @@ describe("point-cloud crop", () => {
     expect(crop?.center.toArray()).toEqual([2, 2, 3]);
     expect(crop?.halfSize.toArray()).toEqual([1.5, 2, 2.5]);
     expect(isPointInsidePointCloudCrop(new Vector3(2, 3.49, 3), crop!)).toBe(
-      true
+      true,
     );
     expect(isPointInsidePointCloudCrop(new Vector3(2, 3.51, 3), crop!)).toBe(
-      false
+      false,
     );
   });
 
@@ -345,7 +345,7 @@ describe("point-cloud crop", () => {
         mode: ModalMode.ANNOTATE,
         renderModel,
         selectedLabelId: "polyline-1",
-      })
+      }),
     ).toBeNull();
   });
 
@@ -363,7 +363,7 @@ describe("point-cloud crop", () => {
         renderModel,
         labelId: detection._id,
         margin: 0,
-      })?.source
+      })?.source,
     ).toBe("hover");
     expect(
       getLabelPointCloudCrop({
@@ -371,7 +371,7 @@ describe("point-cloud crop", () => {
         renderModel,
         labelId: polyline._id,
         margin: 0,
-      })?.labelId
+      })?.labelId,
     ).toBe(polyline._id);
   });
 });

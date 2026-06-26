@@ -170,7 +170,7 @@ export function formatNumber(n: number, decimals = 3): string {
 
 export const getComplementaryColor = (
   color: string,
-  options?: { brighten?: number }
+  options?: { brighten?: number },
 ) => {
   let result = chroma(color).set("hsl.h", "+180");
 
@@ -264,7 +264,7 @@ export const isFiniteVector3 = (vector: Vector3): boolean => {
 export const areVectorsCoLocated = (
   a: Vector3,
   b: Vector3,
-  minDistanceSquared = MIN_VECTOR_DISTANCE_SQUARED
+  minDistanceSquared = MIN_VECTOR_DISTANCE_SQUARED,
 ) => {
   return a.distanceToSquared(b) <= minDistanceSquared;
 };
@@ -272,7 +272,7 @@ export const areVectorsCoLocated = (
 export const findObjectByUserData = (
   scene: Scene,
   key: string,
-  value: unknown
+  value: unknown,
 ): Object3D | null => {
   let result: Object3D | null = null;
 

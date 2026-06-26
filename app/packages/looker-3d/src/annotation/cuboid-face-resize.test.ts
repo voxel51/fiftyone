@@ -14,7 +14,7 @@ import {
 
 const expectTupleCloseTo = (
   actual: THREE.Vector3Tuple,
-  expected: THREE.Vector3Tuple
+  expected: THREE.Vector3Tuple,
 ) => {
   expect(actual[0]).toBeCloseTo(expected[0]);
   expect(actual[1]).toBeCloseTo(expected[1]);
@@ -30,31 +30,31 @@ const faceAxis = (face: CuboidResizeFace) => {
 describe("getCuboidResizeFaceFromNormal", () => {
   it("maps local face normals to cuboid resize faces", () => {
     expect(getCuboidResizeFaceFromNormal(new THREE.Vector3(1, 0, 0))).toBe(
-      "+x"
+      "+x",
     );
     expect(getCuboidResizeFaceFromNormal(new THREE.Vector3(-1, 0, 0))).toBe(
-      "-x"
+      "-x",
     );
     expect(getCuboidResizeFaceFromNormal(new THREE.Vector3(0, 1, 0))).toBe(
-      "+y"
+      "+y",
     );
     expect(getCuboidResizeFaceFromNormal(new THREE.Vector3(0, -1, 0))).toBe(
-      "-y"
+      "-y",
     );
     expect(getCuboidResizeFaceFromNormal(new THREE.Vector3(0, 0, 1))).toBe(
-      "+z"
+      "+z",
     );
     expect(getCuboidResizeFaceFromNormal(new THREE.Vector3(0, 0, -1))).toBe(
-      "-z"
+      "-z",
     );
   });
 
   it("uses the dominant axis and ignores degenerate normals", () => {
     expect(
-      getCuboidResizeFaceFromNormal(new THREE.Vector3(0.1, -0.8, 0.3))
+      getCuboidResizeFaceFromNormal(new THREE.Vector3(0.1, -0.8, 0.3)),
     ).toBe("-y");
     expect(
-      getCuboidResizeFaceFromNormal(new THREE.Vector3(0, 0, 0))
+      getCuboidResizeFaceFromNormal(new THREE.Vector3(0, 0, 0)),
     ).toBeNull();
     expect(getCuboidResizeFaceFromNormal(null)).toBeNull();
   });
@@ -83,7 +83,7 @@ describe("computeCuboidFaceResizeDelta", () => {
       const axis = faceAxis(face);
       const faceWorldNormal = getCuboidResizeFaceWorldNormal(
         face,
-        new THREE.Quaternion()
+        new THREE.Quaternion(),
       );
       const centerDelta = new THREE.Vector3(...result.centerDelta);
       const oldOppositeFaceOffset = -dimensions[axis] / 2;
@@ -92,7 +92,7 @@ describe("computeCuboidFaceResizeDelta", () => {
 
       expect(result.dimensionsDelta[axis]).toBe(dragDistance);
       expect(result.resizedDimensions[axis]).toBe(
-        dimensions[axis] + dragDistance
+        dimensions[axis] + dragDistance,
       );
       expect(newOppositeFaceOffset).toBeCloseTo(oldOppositeFaceOffset);
     }
@@ -104,7 +104,7 @@ describe("computeCuboidFaceResizeDelta", () => {
         face: "+x",
         dimensions: [4, 6, 8],
         dragDistance: 3,
-      }).dimensionsDelta
+      }).dimensionsDelta,
     ).toEqual([3, 0, 0]);
 
     expect(
@@ -112,7 +112,7 @@ describe("computeCuboidFaceResizeDelta", () => {
         face: "-z",
         dimensions: [4, 6, 8],
         dragDistance: -3,
-      }).dimensionsDelta
+      }).dimensionsDelta,
     ).toEqual([0, 0, -3]);
   });
 
@@ -124,13 +124,13 @@ describe("computeCuboidFaceResizeDelta", () => {
     });
 
     expect(result.resizedDimensions[0]).toBeCloseTo(
-      MIN_CUBOID_FACE_RESIZE_DIMENSION
+      MIN_CUBOID_FACE_RESIZE_DIMENSION,
     );
     expect(result.dimensionsDelta[0]).toBeCloseTo(
-      MIN_CUBOID_FACE_RESIZE_DIMENSION - 4
+      MIN_CUBOID_FACE_RESIZE_DIMENSION - 4,
     );
     expect(result.centerDelta[0]).toBeCloseTo(
-      (MIN_CUBOID_FACE_RESIZE_DIMENSION - 4) / 2
+      (MIN_CUBOID_FACE_RESIZE_DIMENSION - 4) / 2,
     );
   });
 
@@ -148,7 +148,7 @@ describe("computeCuboidFaceResizeDelta", () => {
 
   it("uses quaternion orientation for local face movement", () => {
     const quaternion = new THREE.Quaternion().setFromEuler(
-      new THREE.Euler(0, 0, Math.PI / 2)
+      new THREE.Euler(0, 0, Math.PI / 2),
     );
     const result = computeCuboidFaceResizeDelta({
       face: "+x",
@@ -175,7 +175,7 @@ describe("computeCuboidFaceResizeDelta", () => {
 
     expectTupleCloseTo(
       getCuboidResizeFaceWorldNormal("+x", orientation).toArray(),
-      [0, 1, 0]
+      [0, 1, 0],
     );
     expectTupleCloseTo(result.centerDelta, [0, 1, 0]);
   });
