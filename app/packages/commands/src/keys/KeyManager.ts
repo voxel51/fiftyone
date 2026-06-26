@@ -93,12 +93,6 @@ export class KeyManager {
     return this.priorMatches.length > 0;
   }
   /**
-   * Checks if a binding is bound in a particular scope
-   * @param bindings The scope to check in
-   * @param test The sequences to check for
-   * @returns true if it is, false if not
-   */
-  /**
    * @see KeyParser for documentation of the sequence specification
    * @param sequence The sequence, ie "ctrl+shift+F12"
    * @param commandId A previously registered command id. @see CommandRegistry
