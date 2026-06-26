@@ -90,6 +90,13 @@ jobs:
       needs.modified-files.outputs.app-changes == 'true' ||
       needs.modified-files.outputs.fiftyone-changes == 'true')
     uses: ./.github/workflows/test.yml
+    with:
+      # Full Python coverage on PRs into long-lived release/main branches;
+      # boundary versions only (drop the 3.11 middle) on develop/feature PRs.
+      python-versions: >-
+        ${{ (github.base_ref == 'main' ||
+        startsWith(github.base_ref, 'release/'))
+        && '["3.10", "3.11", "3.12"]' || '["3.10", "3.12"]' }}
 
   test-windows:
     needs: modified-files
@@ -97,6 +104,11 @@ jobs:
       github.event.action != 'closed' &&
       needs.modified-files.outputs.fiftyone-changes == 'true'
     uses: ./.github/workflows/windows-test.yml
+    with:
+      python-versions: >-
+        ${{ (github.base_ref == 'main' ||
+        startsWith(github.base_ref, 'release/'))
+        && '["3.10", "3.11", "3.12"]' || '["3.10", "3.12"]' }}
 
   all-tests:
     runs-on: ubuntu-latest
