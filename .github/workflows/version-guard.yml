@@ -1,0 +1,53 @@
+name: Version Guard
+
+# Fails a PR that changes the package VERSION outside the release flow. This is
+# the deterministic replacement for routing setup.py through a human reviewer:
+# the version number is owned by the release process, not ad-hoc PRs.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  version-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Guard VERSION
+        env:
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # The release flow legitimately bumps VERSION:
+          #   - release automation / back-merge PRs (voxel51-bot, merge/*)
+          #   - release stabilization (PRs targeting a release/v* branch)
+          #   - a deliberate manual bump tagged with the 'version-bump' label
+          if [ "$AUTHOR" = "voxel51-bot" ] \
+            || [[ "$HEAD_REF" == merge/* ]] \
+            || [[ "$BASE_REF" == release/v* ]] \
+            || echo "$LABELS" | grep -q '"version-bump"'; then
+            echo "Release-flow PR; VERSION changes are allowed."
+            exit 0
+          fi
+
+          changed=$(git diff "$BASE_SHA...$HEAD_SHA" -- setup.py package/db/setup.py \
+            | grep -E '^[+-]VERSION = ' || true)
+
+          if [ -n "$changed" ]; then
+            echo "::error::This PR changes the package VERSION outside the release flow:"
+            echo "$changed"
+            echo "The version number is owned by the release process. Bump it on a"
+            echo "release/v* branch, or add the 'version-bump' label if this is intentional."
+            exit 1
+          fi
+
+          echo "No out-of-band VERSION change. OK."
