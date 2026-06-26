@@ -45,11 +45,8 @@ import { Lights } from "../fo3d/scene-controls/lights/Lights";
 import { ThreeDLabels } from "../labels";
 import { RaycastService } from "../services/RaycastService";
 import {
-  hoveredLabelAtom,
-  isFo3dMainPanelPointerDownAtom,
   mainPanelPanSyncIntentAtom,
   mainPanelZoomSyncIntentAtom,
-  selectedLabelForAnnotationAtom,
 } from "../state";
 import type { SidePanelId, SidePanelViewType } from "../types";
 import { expandBoundingBox, findObjectByUserData } from "../utils";
@@ -59,15 +56,12 @@ import {
   applyMainPanelPanSyncIntentToOrthographicCamera,
   applyMainPanelZoomSyncIntentToOrthographicCamera,
   applyPointCloudCropMainPanelSyncToOrthographicCamera,
-  captureSidePanelCameraSnapshot,
   deriveSidePanelCameraFrame,
   doesPointCloudCropFitCamera,
   retargetSidePanelCameraFrame,
-  restoreSidePanelCameraSnapshot,
   shouldApplyMainPanelNavigationSyncIntent,
   shouldApplyMainPanelPanSyncIntent,
   type SidePanelCameraFrame,
-  type SidePanelCameraSnapshot,
   type SidePanelControls,
 } from "../utils/side-panel-camera-sync";
 import type { PointCloudCrop } from "../utils/point-cloud-crop";
@@ -86,7 +80,6 @@ import {
 } from "./ImageSlicePanel";
 import { SegmentPolylineRenderer } from "./SegmentPolylineRenderer";
 import { useImageSlicesIfAvailable } from "./useImageSlicesIfAvailable";
-import { isHoverEligibleForPointCloudCrop } from "./point-cloud-crop-eligibility";
 import { usePointCloudCrop } from "./usePointCloudCrop";
 
 const SidePanelContainer = styled.div<{ $area: string }>`
@@ -213,8 +206,7 @@ export const SidePanel = ({
 
   const [fitBoundsKey, setFitBoundsKey] = useState(0);
   const pointCloudCropFitKey = pointCloudCrop
-    ? pointCloudCrop.source === "hover" ||
-      pointCloudCrop.source === "raycast-hover"
+    ? pointCloudCrop.source === "raycast-hover"
       ? null
       : `${pointCloudCrop.source}-${pointCloudCrop.labelId}-${fitBoundsKey}`
     : null;
@@ -421,9 +413,6 @@ const BoundsSideEffectsComponent = ({
   const controls = useThree(
     (state) => state.controls as SidePanelControls | undefined,
   );
-  const hoveredLabel = useRecoilValue(hoveredLabelAtom);
-  const isMainPanelPointerDown = useRecoilValue(isFo3dMainPanelPointerDownAtom);
-  const selectedLabel = useRecoilValue(selectedLabelForAnnotationAtom);
   const mainPanelPanSyncIntent = useRecoilValue(mainPanelPanSyncIntentAtom);
   const mainPanelZoomSyncIntent = useRecoilValue(mainPanelZoomSyncIntentAtom);
   const pointCloudCropRef = useRef(pointCloudCrop);
@@ -432,10 +421,6 @@ const BoundsSideEffectsComponent = ({
   const lastRaycastHoverSyncRef = useRef<RaycastHoverSyncSnapshot | null>(null);
   const lastHandledMainPanelPanSyncIntentRef = useRef<string | null>(null);
   const lastHandledMainPanelZoomSyncIntentRef = useRef<string | null>(null);
-  const hoverFocusRef = useRef<{
-    labelId: string;
-    snapshot: SidePanelCameraSnapshot;
-  } | null>(null);
 
   useEffect(() => {
     pointCloudCropRef.current = pointCloudCrop;
@@ -583,43 +568,6 @@ const BoundsSideEffectsComponent = ({
     [fitToBox],
   );
 
-  const fitToExpandedObject = useCallback(
-    (object: THREE.Object3D) => {
-      const objectBox = new Box3().setFromObject(object);
-
-      if (objectBox.isEmpty()) {
-        fitBoundsWithSidePanelFrame(
-          object,
-          object.getWorldPosition(new Vector3()),
-        );
-        return;
-      }
-
-      fitToBox(expandBoundingBox(objectBox, 2.5));
-    },
-    [fitBoundsWithSidePanelFrame, fitToBox],
-  );
-
-  const restoreHoverFocus = useCallback(() => {
-    const hoverFocus = hoverFocusRef.current;
-    if (!hoverFocus) {
-      return;
-    }
-
-    hoverFocusRef.current = null;
-
-    if (selectedLabel?._id === hoverFocus.labelId) {
-      return;
-    }
-
-    restoreSidePanelCameraSnapshot({
-      camera,
-      controls,
-      snapshot: hoverFocus.snapshot,
-      invalidate,
-    });
-  }, [camera, controls, invalidate, selectedLabel?._id]);
-
   useEffect(() => {
     if (!observe || pointCloudCropRef.current) {
       return;
@@ -636,61 +584,6 @@ const BoundsSideEffectsComponent = ({
 
     fitToPointCloudCrop(crop);
   }, [fitToPointCloudCrop, pointCloudCropFitKey]);
-
-  useEffect(() => {
-    const hoveredLabelId = isHoverEligibleForPointCloudCrop(
-      hoveredLabel,
-      isMainPanelPointerDown,
-    )
-      ? hoveredLabel?.id
-      : null;
-    if (!hoveredLabelId) {
-      restoreHoverFocus();
-      return;
-    }
-
-    const existingHoverFocus = hoverFocusRef.current;
-    if (existingHoverFocus?.labelId === hoveredLabelId) {
-      return;
-    }
-
-    if (!existingHoverFocus) {
-      hoverFocusRef.current = {
-        labelId: hoveredLabelId,
-        snapshot: captureSidePanelCameraSnapshot(camera, controls),
-      };
-    } else {
-      hoverFocusRef.current = {
-        ...existingHoverFocus,
-        labelId: hoveredLabelId,
-      };
-    }
-
-    const crop = pointCloudCropRef.current;
-    if (crop?.source === "hover" && crop.labelId === hoveredLabelId) {
-      fitToPointCloudCrop(crop);
-      return;
-    }
-
-    const object = findObjectByUserData(
-      scene,
-      FO_USER_DATA.LABEL_ID,
-      hoveredLabelId,
-    );
-    if (object) {
-      fitToExpandedObject(object);
-    }
-  }, [
-    camera,
-    controls,
-    fitToExpandedObject,
-    fitToPointCloudCrop,
-    hoveredLabel?.id,
-    hoveredLabel?.source,
-    isMainPanelPointerDown,
-    restoreHoverFocus,
-    scene,
-  ]);
 
   useEffect(() => {
     const crop = pointCloudCropRef.current;
@@ -786,13 +679,6 @@ const BoundsSideEffectsComponent = ({
     if (
       !shouldApplyMainPanelNavigationSyncIntent({
         activeCrop: pointCloudCropRef.current,
-        hasHoverFocus: Boolean(
-          hoverFocusRef.current ||
-          isHoverEligibleForPointCloudCrop(
-            hoveredLabel,
-            isMainPanelPointerDown,
-          ),
-        ),
         intent: mainPanelZoomSyncIntent,
         now: Date.now(),
       })
@@ -806,14 +692,7 @@ const BoundsSideEffectsComponent = ({
       intent: mainPanelZoomSyncIntent,
       invalidate,
     });
-  }, [
-    camera,
-    controls,
-    hoveredLabel,
-    invalidate,
-    isMainPanelPointerDown,
-    mainPanelZoomSyncIntent,
-  ]);
+  }, [camera, controls, invalidate, mainPanelZoomSyncIntent]);
 
   useEffect(() => {
     if (
@@ -828,13 +707,6 @@ const BoundsSideEffectsComponent = ({
     if (
       !shouldApplyMainPanelPanSyncIntent({
         activeCrop: pointCloudCropRef.current,
-        hasHoverFocus: Boolean(
-          hoverFocusRef.current ||
-          isHoverEligibleForPointCloudCrop(
-            hoveredLabel,
-            isMainPanelPointerDown,
-          ),
-        ),
         intent: mainPanelPanSyncIntent,
         now: Date.now(),
       })
@@ -848,14 +720,7 @@ const BoundsSideEffectsComponent = ({
       intent: mainPanelPanSyncIntent,
       invalidate,
     });
-  }, [
-    camera,
-    controls,
-    hoveredLabel,
-    invalidate,
-    isMainPanelPointerDown,
-    mainPanelPanSyncIntent,
-  ]);
+  }, [camera, controls, invalidate, mainPanelPanSyncIntent]);
 
   const getVertexFocusBoxSize = () => {
     const sceneBounds = new Box3().setFromObject(scene);

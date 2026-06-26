@@ -4,7 +4,6 @@ import type { RenderModel } from "../annotation/store";
 import type {
   CuboidTransformData,
   ReconciledDetection3D,
-  ReconciledPolyline3D,
 } from "../annotation/types";
 import {
   DEFAULT_SELECTED_CUBOID_CROP_MARGIN,
@@ -13,7 +12,7 @@ import {
 
 export interface PointCloudCrop {
   labelId: string;
-  source?: "creation" | "hover" | "raycast-hover" | "selection";
+  source?: "creation" | "raycast-hover" | "selection";
   center: THREE.Vector3;
   halfSize: THREE.Vector3;
   quaternion: THREE.Quaternion;
@@ -40,10 +39,6 @@ interface RenderModelPointCloudCropOptions extends CreatePointCloudCropOptions {
 
 interface SelectedPointCloudCropOptions extends RenderModelPointCloudCropOptions {
   selectedLabelId?: string | null;
-}
-
-interface LabelPointCloudCropOptions extends RenderModelPointCloudCropOptions {
-  labelId?: string | null;
 }
 
 const EPSILON = 1e-6;
@@ -154,51 +149,6 @@ export const createPointCloudCropFromDetection = (
   );
 };
 
-export const createPointCloudCropFromPolyline = (
-  polyline: ReconciledPolyline3D,
-  { margin, source }: CreatePointCloudCropOptions = {},
-): PointCloudCrop | null => {
-  const points = polyline.points3d.flatMap((segment) =>
-    segment.filter((point) => isFiniteNumberTuple(point, 3)),
-  );
-
-  if (points.length === 0) {
-    return null;
-  }
-
-  const box = new THREE.Box3();
-
-  for (const point of points) {
-    box.expandByPoint(new THREE.Vector3(point[0], point[1], point[2]));
-  }
-
-  if (box.isEmpty()) {
-    return null;
-  }
-
-  const resolvedMargin = resolveCropMargin(margin);
-  const center = box.getCenter(new THREE.Vector3());
-  const halfSize = box
-    .getSize(new THREE.Vector3())
-    .multiplyScalar(0.5)
-    .addScalar(resolvedMargin);
-  const quaternion = new THREE.Quaternion();
-  const boxToWorld = new THREE.Matrix4().compose(
-    center,
-    quaternion,
-    new THREE.Vector3(1, 1, 1),
-  );
-
-  return {
-    labelId: polyline._id,
-    source,
-    center,
-    halfSize,
-    quaternion,
-    worldToBox: boxToWorld.clone().invert(),
-  };
-};
-
 export const createPointCloudCropFromPoint = (
   point: [number, number, number],
   {
@@ -273,41 +223,6 @@ export const getSelectedCuboidPointCloudCrop = ({
     source: "selection",
     useLegacyCoordinates,
   });
-};
-
-export const getLabelPointCloudCrop = ({
-  mode,
-  renderModel,
-  labelId,
-  margin,
-  useLegacyCoordinates = false,
-}: LabelPointCloudCropOptions): PointCloudCrop | null => {
-  if (mode !== ModalMode.ANNOTATE || !labelId) {
-    return null;
-  }
-
-  const detection = renderModel.detections.find(
-    (candidate) => candidate._id === labelId,
-  );
-  if (detection) {
-    return createPointCloudCropFromDetection(detection, {
-      margin,
-      source: "hover",
-      useLegacyCoordinates,
-    });
-  }
-
-  const polyline = renderModel.polylines.find(
-    (candidate) => candidate._id === labelId,
-  );
-  if (polyline) {
-    return createPointCloudCropFromPolyline(polyline, {
-      margin,
-      source: "hover",
-    });
-  }
-
-  return null;
 };
 
 export const isPointInsidePointCloudCrop = (

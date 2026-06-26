@@ -17,7 +17,6 @@ import {
   applyMainPanelPanSyncIntentToOrthographicCamera,
   applyMainPanelZoomSyncIntentToOrthographicCamera,
   applyPointCloudCropMainPanelSyncToOrthographicCamera,
-  captureSidePanelCameraSnapshot,
   createMainPanelPanSyncIntent,
   createMainPanelZoomSyncIntent,
   deriveSidePanelCameraFrame,
@@ -27,7 +26,6 @@ import {
   getOrthographicZoomForVisibleWorldHeight,
   getOrbitControlsWheelZoomRatio,
   retargetSidePanelCameraFrame,
-  restoreSidePanelCameraSnapshot,
   shouldApplyMainPanelNavigationSyncIntent,
   shouldApplyMainPanelPanSyncIntent,
 } from "./side-panel-camera-sync";
@@ -258,21 +256,13 @@ describe("side panel camera sync", () => {
     ).toBeNull();
   });
 
-  it("skips stale intents and higher-priority hover or creation focus", () => {
+  it("skips stale intents and higher-priority creation focus", () => {
     const intent = buildIntent();
 
     expect(
       shouldApplyMainPanelNavigationSyncIntent({
         intent,
         now: 1000,
-      }),
-    ).toBe(false);
-
-    expect(
-      shouldApplyMainPanelNavigationSyncIntent({
-        intent,
-        hasHoverFocus: true,
-        now: 101,
       }),
     ).toBe(false);
 
@@ -336,38 +326,6 @@ describe("side panel camera sync", () => {
         camera,
       ),
     ).toBe(false);
-  });
-
-  it("captures and restores side-panel camera snapshots", () => {
-    const camera = new OrthographicCamera(-1, 1, 1, -1, 0.1, 1000);
-    camera.position.set(1, 2, 3);
-    camera.up.set(0, 1, 0);
-    camera.zoom = 4;
-    const controls = {
-      target: new Vector3(4, 5, 6),
-      update: vi.fn(),
-    };
-    const invalidate = vi.fn();
-    const snapshot = captureSidePanelCameraSnapshot(camera, controls);
-
-    camera.position.set(10, 20, 30);
-    camera.up.set(1, 0, 0);
-    camera.zoom = 8;
-    controls.target.set(40, 50, 60);
-
-    restoreSidePanelCameraSnapshot({
-      camera,
-      controls,
-      invalidate,
-      snapshot,
-    });
-
-    expect(camera.position.toArray()).toEqual([1, 2, 3]);
-    expect(camera.up.toArray()).toEqual([0, 1, 0]);
-    expect(camera.zoom).toBe(4);
-    expect(controls.target.toArray()).toEqual([4, 5, 6]);
-    expect(controls.update).toHaveBeenCalledTimes(1);
-    expect(invalidate).toHaveBeenCalledTimes(1);
   });
 
   it("pans side orthographic cameras to the raycast anchor and applies zoom", () => {

@@ -6,7 +6,6 @@ import { useFo3dContext } from "../fo3d/context";
 import {
   annotationPlaneAtom,
   cuboidCreationStateAtom,
-  hoveredLabelAtom,
   isFo3dMainPanelPointerDownAtom,
   isFo3dPointCropModifierPressedAtom,
   isCreatingCuboidAtom,
@@ -16,11 +15,9 @@ import {
 import {
   createPointCloudCropFromCuboidTransform,
   createPointCloudCropFromPoint,
-  getLabelPointCloudCrop,
   getSelectedCuboidPointCloudCrop,
 } from "../utils/point-cloud-crop";
 import { getCuboidCreationPreview } from "./cuboid-creation-preview";
-import { isHoverEligibleForPointCloudCrop } from "./point-cloud-crop-eligibility";
 import { useRenderModel } from "./store";
 
 interface UsePointCloudCropOptions {
@@ -35,7 +32,6 @@ export const usePointCloudCrop = ({
   const mode = fos.useModalMode();
   const { pluginSettings, pointCloudSettings, upVector } = useFo3dContext();
   const selectedLabel = useRecoilValue(selectedLabelForAnnotationAtom);
-  const hoveredLabel = useRecoilValue(hoveredLabelAtom);
   const isPointCropModifierPressed = useRecoilValue(
     isFo3dPointCropModifierPressedAtom,
   );
@@ -67,21 +63,6 @@ export const usePointCloudCrop = ({
         creationPreview,
         { margin, source: "creation" },
       );
-    }
-
-    if (
-      isHoverEligibleForPointCloudCrop(hoveredLabel, isMainPanelPointerDown)
-    ) {
-      const hoveredCrop = getLabelPointCloudCrop({
-        mode,
-        renderModel,
-        labelId: hoveredLabel?.id,
-        margin,
-        useLegacyCoordinates,
-      });
-      if (hoveredCrop) {
-        return hoveredCrop;
-      }
     }
 
     if (
@@ -117,8 +98,6 @@ export const usePointCloudCrop = ({
   }, [
     creationPreview,
     enabled,
-    hoveredLabel?.id,
-    hoveredLabel?.source,
     isMainPanelPointerDown,
     isPointCropModifierPressed,
     margin,

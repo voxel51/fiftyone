@@ -14,8 +14,6 @@ import {
   createPointCloudCropFromCuboidTransform,
   createPointCloudCropFromDetection,
   createPointCloudCropFromPoint,
-  createPointCloudCropFromPolyline,
-  getLabelPointCloudCrop,
   getPointCloudCropKey,
   getSelectedCuboidPointCloudCrop,
   isPointInsidePointCloudCrop,
@@ -34,23 +32,6 @@ const buildDetection = (
     rotation: [0, 0, 0],
     ...overrides,
   }) as ReconciledDetection3D;
-
-const buildPolyline = (
-  overrides: Partial<ReconciledPolyline3D> = {},
-): ReconciledPolyline3D =>
-  ({
-    _cls: "Polyline",
-    _id: "polyline-1",
-    path: "lanes",
-    label: "lane",
-    points3d: [
-      [
-        [-1, -2, 0],
-        [3, 2, 4],
-      ],
-    ],
-    ...overrides,
-  }) as ReconciledPolyline3D;
 
 describe("point-cloud crop", () => {
   it("does not create a crop outside annotate mode", () => {
@@ -133,31 +114,6 @@ describe("point-cloud crop", () => {
     expect(crop?.labelId).toBe("cuboid-creation-preview");
     expect(crop?.center.toArray()).toEqual([1, 2, 3]);
     expect(crop?.halfSize.toArray()).toEqual([1.5, 2.5, 3.5]);
-  });
-
-  it("creates a padded axis-aligned crop for hovered polylines", () => {
-    const crop = createPointCloudCropFromPolyline(buildPolyline(), {
-      margin: 1,
-      source: "hover",
-    });
-
-    expect(crop?.source).toBe("hover");
-    expect(crop?.center.toArray()).toEqual([1, 0, 2]);
-    expect(crop?.halfSize.toArray()).toEqual([3, 3, 3]);
-    expect(isPointInsidePointCloudCrop(new Vector3(3.9, 0, 2), crop!)).toBe(
-      true,
-    );
-    expect(isPointInsidePointCloudCrop(new Vector3(4.1, 0, 2), crop!)).toBe(
-      false,
-    );
-  });
-
-  it("does not create a crop for invalid polyline geometry", () => {
-    expect(
-      createPointCloudCropFromPolyline(
-        buildPolyline({ points3d: [[[Number.NaN, 0, 0]]] }),
-      ),
-    ).toBeNull();
   });
 
   it("creates a padded axis-aligned crop around a raycast hover point", () => {
@@ -348,32 +304,6 @@ describe("point-cloud crop", () => {
         selectedLabelId: "polyline-1",
       }),
     ).toBeNull();
-  });
-
-  it("derives a hover crop for cuboid and polyline labels", () => {
-    const detection = buildDetection();
-    const polyline = buildPolyline();
-    const renderModel = {
-      detections: [detection],
-      polylines: [polyline],
-    };
-
-    expect(
-      getLabelPointCloudCrop({
-        mode: ModalMode.ANNOTATE,
-        renderModel,
-        labelId: detection._id,
-        margin: 0,
-      })?.source,
-    ).toBe("hover");
-    expect(
-      getLabelPointCloudCrop({
-        mode: ModalMode.ANNOTATE,
-        renderModel,
-        labelId: polyline._id,
-        margin: 0,
-      })?.labelId,
-    ).toBe(polyline._id);
   });
 });
 

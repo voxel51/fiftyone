@@ -56,7 +56,6 @@ interface CreateMainPanelPanSyncIntentOptions {
 
 interface ShouldApplyMainPanelNavigationSyncIntentOptions {
   activeCrop?: PointCloudCrop | null;
-  hasHoverFocus?: boolean;
   intent: MainPanelPanSyncIntent | MainPanelZoomSyncIntent;
   maxAgeMs?: number;
   now: number;
@@ -146,16 +145,6 @@ export interface SidePanelCameraUpdate {
   position: THREE.Vector3;
   target: THREE.Vector3;
   zoom: number;
-}
-
-export interface SidePanelCameraSnapshot {
-  position: THREE.Vector3;
-  quaternion: THREE.Quaternion;
-  up: THREE.Vector3;
-  zoom?: number;
-  near: number;
-  far: number;
-  controlsTarget?: THREE.Vector3;
 }
 
 type SidePanelProjectionCamera = THREE.Camera & {
@@ -526,59 +515,6 @@ export const deriveSidePanelCameraUpdateFromMainViewer = ({
   };
 };
 
-export const captureSidePanelCameraSnapshot = (
-  camera: THREE.Camera,
-  controls?: SidePanelControls,
-): SidePanelCameraSnapshot => {
-  const projectionCamera = getProjectionCamera(camera);
-  const orthographicCamera = getOrthographicCamera(camera);
-
-  return {
-    position: camera.position.clone(),
-    quaternion: camera.quaternion.clone(),
-    up: camera.up.clone(),
-    zoom: orthographicCamera?.zoom,
-    near: projectionCamera.near,
-    far: projectionCamera.far,
-    controlsTarget: controls?.target?.clone(),
-  };
-};
-
-export const restoreSidePanelCameraSnapshot = ({
-  camera,
-  controls,
-  invalidate,
-  snapshot,
-}: {
-  camera: THREE.Camera;
-  controls?: SidePanelControls;
-  invalidate?: () => void;
-  snapshot: SidePanelCameraSnapshot;
-}) => {
-  const projectionCamera = getProjectionCamera(camera);
-
-  camera.position.copy(snapshot.position);
-  camera.quaternion.copy(snapshot.quaternion);
-  camera.up.copy(snapshot.up);
-  projectionCamera.near = snapshot.near;
-  projectionCamera.far = snapshot.far;
-
-  const orthographicCamera = getOrthographicCamera(camera);
-  if (orthographicCamera && snapshot.zoom !== undefined) {
-    orthographicCamera.zoom = snapshot.zoom;
-  }
-
-  camera.updateMatrixWorld();
-  projectionCamera.updateProjectionMatrix();
-
-  if (controls?.target && snapshot.controlsTarget) {
-    controls.target.copy(snapshot.controlsTarget);
-    controls.update?.();
-  }
-
-  invalidate?.();
-};
-
 export const doesPointCloudCropFitCamera = (
   crop: PointCloudCrop,
   camera: THREE.Camera,
@@ -667,7 +603,6 @@ export const createMainPanelPanSyncIntent = ({
 
 export const shouldApplyMainPanelNavigationSyncIntent = ({
   activeCrop,
-  hasHoverFocus = false,
   intent,
   maxAgeMs = MAIN_PANEL_ZOOM_SYNC_MAX_AGE_MS,
   now,
@@ -676,22 +611,20 @@ export const shouldApplyMainPanelNavigationSyncIntent = ({
     return false;
   }
 
-  if (hasHoverFocus) {
-    return false;
-  }
-
   if (!activeCrop) {
     return true;
   }
 
-  if (activeCrop.source === "creation" || activeCrop.source === "hover") {
+  if (activeCrop.source === "creation") {
     return false;
   }
 
-  return isPointInsidePointCloudCrop(
+  const isAnchorInsideCrop = isPointInsidePointCloudCrop(
     new THREE.Vector3(...intent.anchor),
     activeCrop,
   );
+
+  return isAnchorInsideCrop;
 };
 
 export const shouldApplyMainPanelPanSyncIntent = (
