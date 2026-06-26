@@ -88,6 +88,17 @@ export class ModalAnnotate3dPom {
   }
 
   /**
+   * Non-throwing read of whether New Segment is armed. New Segment is a toggle,
+   * so a retrying draw must check this before re-arming — clicking it while
+   * already active would disarm mid-draw.
+   */
+  async isNewSegmentActive(): Promise<boolean> {
+    const v =
+      await this.toolbarButton("new-segment").getAttribute("data-cy-active");
+    return v === "true";
+  }
+
+  /**
    * A floating annotation-toolbar button by its action id. The toolbar renders
    * in the modal portal, so it's targeted off `page`. Groups mount/unmount with
    * context (transform group needs a selection, cuboid group needs draw mode),

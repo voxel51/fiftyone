@@ -140,13 +140,17 @@ test.describe.serial("annotation cross-surface undo", () => {
     // a transform through the engine (lighter:overlay-drag-end → surface.commit).
     // Assert DIRECTIONALLY + via round-trip: container→media letterboxing makes the
     // exact moved coordinate unpredictable, but the move and its inverse are exact.
+    // step the drag through intermediate moves (a single jump can read as a
+    // teleport that Lighter never registers as a drag → no commit); this mirrors
+    // the canvas POM's own drag() helper.
     await modal.sampleCanvas.move(0.5, 0.5);
     await modal.sampleCanvas.down();
+    await modal.sampleCanvas.move(0.55, 0.55);
     await modal.sampleCanvas.move(0.6, 0.6);
     await modal.sampleCanvas.up();
 
     await expect
-      .poll(() => fieldNum(modal, "position.x"))
+      .poll(() => fieldNum(modal, "position.x"), { timeout: 15_000 })
       .toBeGreaterThan(before + 0.02);
     const moved = await fieldNum(modal, "position.x");
     await modal.sidebar.edit.assert.undoIsEnabled();

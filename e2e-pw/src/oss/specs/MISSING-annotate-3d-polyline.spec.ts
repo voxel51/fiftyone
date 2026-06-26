@@ -248,25 +248,32 @@ test.describe.serial("3d polyline creation", () => {
     await modal.annotate3d.enterPolylineMode();
     await modal.annotate3d.assert.polylineModeActive(true);
     await modal.looker3dControls.setTopView();
-    // let the top-view camera animation settle before drawing — the draw clicks
-    // raycast against the live camera, so a still-animating (perspective) camera
-    // can drop vertices and leave the polyline uncommitted under slower CI
-    // rendering
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await page.waitForTimeout(1000);
-    await modal.annotate3d.startSegment();
-    await modal.annotate3d.assert.newSegmentActive(true);
 
-    // place three vertices, then double-click to commit
-    await modal.annotate3d.drawPolyline([
-      [0.4, 0.4],
-      [0.6, 0.4],
-      [0.6, 0.6],
-    ]);
+    // The draw clicks raycast against the LIVE camera, so a still-animating
+    // top-view camera drops vertices and the polyline never commits. There's no
+    // camera-settled signal to await and a fixed wait is brittle to slow
+    // software-GL CI runners (where the animation outlasts any guess), so make
+    // the gesture adaptive: re-arm + redraw until a vertex lands and the
+    // freshly-created polyline auto-selects, opening its edit form. The success
+    // check is bounded so a dropped draw retries instead of hanging the test.
+    const labelInput = modal.sidebar.edit
+      .getFieldContainer("label")
+      .locator("input, textarea, select");
+    await expect(async () => {
+      if (!(await modal.annotate3d.isNewSegmentActive())) {
+        await modal.annotate3d.startSegment();
+      }
+      await modal.annotate3d.drawPolyline([
+        [0.4, 0.4],
+        [0.6, 0.4],
+        [0.6, 0.6],
+      ]);
+      await expect(labelInput).toBeVisible({ timeout: 3_000 });
+    }).toPass({ timeout: 90_000 });
 
     // the freshly-drawn polyline is auto-selected with its edit form open
-    // (which replaces the label list), so verify creation through the form,
-    // then assign a distinct class and let it autosave
+    // (which replaces the label list); verify creation through the form, then
+    // assign a distinct class and let it autosave
     await modal.sidebar.edit.assert.verifyFieldValue("label", "lane");
     const saved = page.waitForResponse(
       (r) =>

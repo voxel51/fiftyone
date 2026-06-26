@@ -119,6 +119,9 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
         async () =>
           (await annotateSDK.getDetectionsState(datasetName, "detections"))
             .maskPixels,
+        // each readback spawns a python process; the default 5s starves under
+        // CI load (the commit + re-rasterization round-trip needs room).
+        { timeout: 20_000 },
       )
       .toBeGreaterThan(before);
   });
@@ -152,6 +155,7 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
         async () =>
           (await annotateSDK.getDetectionsState(datasetName, "detections"))
             .maskCoverage,
+        { timeout: 20_000 },
       )
       .toBeLessThan(before);
 
@@ -166,6 +170,7 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
         async () =>
           (await annotateSDK.getDetectionsState(datasetName, "detections"))
             .maskCoverage,
+        { timeout: 20_000 },
       )
       .toBe(before);
   });
