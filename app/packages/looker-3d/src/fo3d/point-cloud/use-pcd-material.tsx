@@ -18,7 +18,10 @@ import {
   ShadeByIntensity,
   VertexColorShader,
 } from "../../renderables/pcd/shaders";
-import type { PointCloudCrop } from "../../utils/point-cloud-crop";
+import {
+  getPointCloudCropKey,
+  type PointCloudCrop,
+} from "../../utils/point-cloud-crop";
 import {
   computeMinMaxForColorBufferAttribute,
   computeMinMaxForScalarBufferAttribute,
@@ -144,13 +147,12 @@ export const usePcdMaterial = (
     const fallbackPointSize = isPointSizeAttenuated
       ? pointSize / 1000
       : pointSize / 2;
-    const pointCloudCropKey = pointCloudCrop
-      ? `${pointCloudCrop.labelId}-${pointCloudCrop.halfSize
-          .toArray()
-          .join(",")}-${pointCloudCrop.worldToBox.elements.join(",")}`
-      : "none";
+    // to trigger rerender. The crop key is part of the material key so the
+    // shader material remounts and re-binds its crop uniforms whenever the crop
+    // changes (a re-keyed <shaderMaterial> does not reliably pick up new uniform
+    // objects in place).
+    const pointCloudCropKey = getPointCloudCropKey(pointCloudCrop);
 
-    // to trigger rerender
     const key = `${name}-${opacity}-${pointSize}-${isPointSizeAttenuated}-${shadeBy}-${customColor}-${minMaxCoordinates}-${minIntensity}-${maxIntensity}-${upVector}-${
       quaternion
         ? JSON.stringify([

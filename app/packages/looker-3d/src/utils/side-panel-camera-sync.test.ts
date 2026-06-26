@@ -28,8 +28,8 @@ import {
   getOrbitControlsWheelZoomRatio,
   retargetSidePanelCameraFrame,
   restoreSidePanelCameraSnapshot,
+  shouldApplyMainPanelNavigationSyncIntent,
   shouldApplyMainPanelPanSyncIntent,
-  shouldApplyMainPanelZoomSyncIntent,
 } from "./side-panel-camera-sync";
 
 const buildRaycastResult = (
@@ -262,14 +262,14 @@ describe("side panel camera sync", () => {
     const intent = buildIntent();
 
     expect(
-      shouldApplyMainPanelZoomSyncIntent({
+      shouldApplyMainPanelNavigationSyncIntent({
         intent,
         now: 1000,
       }),
     ).toBe(false);
 
     expect(
-      shouldApplyMainPanelZoomSyncIntent({
+      shouldApplyMainPanelNavigationSyncIntent({
         intent,
         hasHoverFocus: true,
         now: 101,
@@ -277,7 +277,7 @@ describe("side panel camera sync", () => {
     ).toBe(false);
 
     expect(
-      shouldApplyMainPanelZoomSyncIntent({
+      shouldApplyMainPanelNavigationSyncIntent({
         intent,
         activeCrop: { ...buildSelectionCrop(), source: "creation" },
         now: 101,
@@ -296,7 +296,7 @@ describe("side panel camera sync", () => {
     const crop = buildSelectionCrop();
 
     expect(
-      shouldApplyMainPanelZoomSyncIntent({
+      shouldApplyMainPanelNavigationSyncIntent({
         intent: { ...buildIntent(), anchor: [1, 1, 1] },
         activeCrop: crop,
         now: 101,
@@ -304,7 +304,7 @@ describe("side panel camera sync", () => {
     ).toBe(true);
 
     expect(
-      shouldApplyMainPanelZoomSyncIntent({
+      shouldApplyMainPanelNavigationSyncIntent({
         intent: { ...buildIntent(), anchor: [10, 0, 0] },
         activeCrop: crop,
         now: 101,

@@ -16,6 +16,7 @@ import {
   createPointCloudCropFromPoint,
   createPointCloudCropFromPolyline,
   getLabelPointCloudCrop,
+  getPointCloudCropKey,
   getSelectedCuboidPointCloudCrop,
   isPointInsidePointCloudCrop,
 } from "./point-cloud-crop";
@@ -373,5 +374,44 @@ describe("point-cloud crop", () => {
         margin: 0,
       })?.labelId,
     ).toBe(polyline._id);
+  });
+});
+
+describe("getPointCloudCropKey", () => {
+  it("returns 'none' when there is no crop", () => {
+    expect(getPointCloudCropKey(null)).toBe("none");
+    expect(getPointCloudCropKey(undefined)).toBe("none");
+  });
+
+  it("changes as a raycast-hover crop tracks a new point", () => {
+    // Raycast-hover crops all share the same labelId ("raycast-hover"), so the
+    // key has to vary by geometry (worldToBox) as the pointer moves — otherwise
+    // the point-cloud material never remounts and the shader crop stays stale.
+    const first = createPointCloudCropFromPoint([1, 2, 3], {
+      margin: 1,
+      source: "raycast-hover",
+    });
+    const moved = createPointCloudCropFromPoint([4, 5, 6], {
+      margin: 1,
+      source: "raycast-hover",
+    });
+
+    expect(first).not.toBeNull();
+    expect(moved).not.toBeNull();
+    expect(first?.labelId).toBe(moved?.labelId);
+    expect(getPointCloudCropKey(first)).not.toBe(getPointCloudCropKey(moved));
+  });
+
+  it("is stable for an unchanged crop", () => {
+    const crop = createPointCloudCropFromPoint([1, 2, 3], {
+      margin: 1,
+      source: "raycast-hover",
+    });
+    const same = createPointCloudCropFromPoint([1, 2, 3], {
+      margin: 1,
+      source: "raycast-hover",
+    });
+
+    expect(getPointCloudCropKey(crop)).toBe(getPointCloudCropKey(same));
   });
 });

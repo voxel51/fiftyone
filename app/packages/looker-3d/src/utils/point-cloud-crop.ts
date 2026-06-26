@@ -6,7 +6,10 @@ import type {
   ReconciledDetection3D,
   ReconciledPolyline3D,
 } from "../annotation/types";
-import { DEFAULT_SELECTED_CUBOID_CROP_MARGIN } from "../constants";
+import {
+  DEFAULT_SELECTED_CUBOID_CROP_MARGIN,
+  POINT_CLOUD_CROP_BOUNDS_EPSILON,
+} from "../constants";
 
 export interface PointCloudCrop {
   labelId: string;
@@ -314,11 +317,24 @@ export const isPointInsidePointCloudCrop = (
   const boxPoint = point.clone().applyMatrix4(crop.worldToBox);
 
   return (
-    Math.abs(boxPoint.x) <= crop.halfSize.x + EPSILON &&
-    Math.abs(boxPoint.y) <= crop.halfSize.y + EPSILON &&
-    Math.abs(boxPoint.z) <= crop.halfSize.z + EPSILON
+    Math.abs(boxPoint.x) <= crop.halfSize.x + POINT_CLOUD_CROP_BOUNDS_EPSILON &&
+    Math.abs(boxPoint.y) <= crop.halfSize.y + POINT_CLOUD_CROP_BOUNDS_EPSILON &&
+    Math.abs(boxPoint.z) <= crop.halfSize.z + POINT_CLOUD_CROP_BOUNDS_EPSILON
   );
 };
+
+/**
+ * Stable identity for a crop's geometry. Folded into the point-cloud material
+ * `key` so the shader material remounts (and re-binds its crop uniforms)
+ * whenever the crop changes — e.g. as a raycast-hover crop tracks the pointer.
+ * Returns "none" when there is no active crop.
+ */
+export const getPointCloudCropKey = (pointCloudCrop?: PointCloudCrop | null) =>
+  pointCloudCrop
+    ? `${pointCloudCrop.labelId}-${pointCloudCrop.halfSize
+        .toArray()
+        .join(",")}-${pointCloudCrop.worldToBox.elements.join(",")}`
+    : "none";
 
 export const createPointCloudCropHelperMesh = (crop: PointCloudCrop) => {
   const geometry = new THREE.BoxGeometry(

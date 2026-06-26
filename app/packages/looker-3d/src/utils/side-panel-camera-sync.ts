@@ -31,6 +31,12 @@ export const SIDE_PANEL_PERSPECTIVE_ZOOM_GAIN = 1.5;
 export const ORBIT_CONTROLS_WHEEL_ZOOM_BASE = 0.95;
 const DEFAULT_SIDE_PANEL_CAMERA_DISTANCE = 10;
 
+// An up-vector component this dominant is treated as axis-aligned, letting the
+// cardinal views snap to exact world axes instead of derived cross products.
+const AXIS_ALIGNMENT_THRESHOLD = 0.9;
+// Shortest a derived camera-up may be before we fall back to a world axis.
+const MIN_DERIVED_UP_LENGTH = 0.1;
+
 interface CreateMainPanelZoomSyncIntentOptions {
   activeCursorPanel: PanelId | null;
   camera?: THREE.Camera;
@@ -163,20 +169,12 @@ const getFiniteControlZoomLimit = (value: unknown, fallback: number) => {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 };
 
-const isOrthographicCamera = (camera: THREE.Camera) => {
-  return Boolean(
-    (camera as THREE.OrthographicCamera & { isOrthographicCamera?: boolean })
-      .isOrthographicCamera,
-  );
-};
-
+// Any FO3D camera (perspective or orthographic) exposes near/far + projection.
 const getProjectionCamera = (camera: THREE.Camera) =>
   camera as SidePanelProjectionCamera;
 
 const getOrthographicCamera = (camera: THREE.Camera) => {
-  const maybeOrthographic = getProjectionCamera(
-    camera,
-  ) as THREE.OrthographicCamera & {
+  const maybeOrthographic = camera as THREE.OrthographicCamera & {
     isOrthographicCamera?: boolean;
   };
 
@@ -342,17 +340,17 @@ export const getSidePanelViewDirection = (
     case VIEW_TYPE_BOTTOM:
       return upDir.clone().negate();
     case VIEW_TYPE_LEFT:
-      if (Math.abs(upDir.y) > 0.9) {
+      if (Math.abs(upDir.y) > AXIS_ALIGNMENT_THRESHOLD) {
         return new THREE.Vector3(-1, 0, 0);
       }
       return new THREE.Vector3(0, 1, 0).cross(upDir).normalize().negate();
     case VIEW_TYPE_RIGHT:
-      if (Math.abs(upDir.y) > 0.9) {
+      if (Math.abs(upDir.y) > AXIS_ALIGNMENT_THRESHOLD) {
         return new THREE.Vector3(1, 0, 0);
       }
       return new THREE.Vector3(0, 1, 0).cross(upDir).normalize();
     case VIEW_TYPE_FRONT:
-      if (Math.abs(upDir.y) > 0.9) {
+      if (Math.abs(upDir.y) > AXIS_ALIGNMENT_THRESHOLD) {
         return new THREE.Vector3(0, 0, 1);
       }
       return upDir
@@ -360,7 +358,7 @@ export const getSidePanelViewDirection = (
         .cross(new THREE.Vector3(0, -1, 0).cross(upDir).normalize())
         .normalize();
     case VIEW_TYPE_BACK:
-      if (Math.abs(upDir.y) > 0.9) {
+      if (Math.abs(upDir.y) > AXIS_ALIGNMENT_THRESHOLD) {
         return new THREE.Vector3(0, 0, -1);
       }
       return upDir
@@ -383,15 +381,15 @@ export const getSidePanelCameraUp = (
     case VIEW_TYPE_BOTTOM: {
       let candidate: THREE.Vector3;
 
-      if (Math.abs(upDir.y) > 0.9) {
+      if (Math.abs(upDir.y) > AXIS_ALIGNMENT_THRESHOLD) {
         candidate = new THREE.Vector3(0, 0, 1);
-      } else if (Math.abs(upDir.z) > 0.9) {
+      } else if (Math.abs(upDir.z) > AXIS_ALIGNMENT_THRESHOLD) {
         candidate = new THREE.Vector3(0, 1, 0);
-      } else if (Math.abs(upDir.x) > 0.9) {
+      } else if (Math.abs(upDir.x) > AXIS_ALIGNMENT_THRESHOLD) {
         candidate = new THREE.Vector3(0, 1, 0);
       } else {
         const temp = new THREE.Vector3(0, 1, 0);
-        if (Math.abs(upDir.dot(temp)) > 0.9) {
+        if (Math.abs(upDir.dot(temp)) > AXIS_ALIGNMENT_THRESHOLD) {
           temp.set(1, 0, 0);
         }
         candidate = new THREE.Vector3().crossVectors(temp, upDir).normalize();
@@ -402,7 +400,9 @@ export const getSidePanelCameraUp = (
         .sub(upDir.clone().multiplyScalar(candidate.dot(upDir)))
         .normalize();
       const topUp =
-        projection.length() > 0.1 ? projection : new THREE.Vector3(0, 0, 1);
+        projection.length() > MIN_DERIVED_UP_LENGTH
+          ? projection
+          : new THREE.Vector3(0, 0, 1);
 
       if (viewType === VIEW_TYPE_TOP) {
         return topUp;
@@ -413,7 +413,7 @@ export const getSidePanelCameraUp = (
         .crossVectors(right, upDir.clone().negate())
         .normalize();
 
-      return bottomUp.length() > 0.1 ? bottomUp : topUp;
+      return bottomUp.length() > MIN_DERIVED_UP_LENGTH ? bottomUp : topUp;
     }
     case VIEW_TYPE_LEFT:
     case VIEW_TYPE_RIGHT:
@@ -694,9 +694,6 @@ export const shouldApplyMainPanelNavigationSyncIntent = ({
   );
 };
 
-export const shouldApplyMainPanelZoomSyncIntent =
-  shouldApplyMainPanelNavigationSyncIntent;
-
 export const shouldApplyMainPanelPanSyncIntent = (
   options: Omit<ShouldApplyMainPanelNavigationSyncIntentOptions, "maxAgeMs"> & {
     maxAgeMs?: number;
@@ -716,15 +713,9 @@ const applyMainPanelZoomSyncToOrthographicCamera = ({
   visibleWorldHeightAtAnchor,
   zoomRatio,
 }: ApplyMainPanelZoomSyncOptions) => {
-  const orthographicCamera = camera as THREE.OrthographicCamera & {
-    isOrthographicCamera?: boolean;
-  };
+  const orthographicCamera = getOrthographicCamera(camera);
 
-  if (
-    !isOrthographicCamera(camera) ||
-    !Number.isFinite(zoomRatio) ||
-    zoomRatio <= 0
-  ) {
+  if (!orthographicCamera || !Number.isFinite(zoomRatio) || zoomRatio <= 0) {
     return false;
   }
 
@@ -824,11 +815,10 @@ export const applyMainPanelPanSyncIntentToOrthographicCamera = ({
   intent,
   invalidate,
 }: ApplyMainPanelPanSyncIntentOptions) => {
-  if (!isOrthographicCamera(camera) || !controls?.target) {
+  const orthographicCamera = getOrthographicCamera(camera);
+  if (!orthographicCamera || !controls?.target) {
     return false;
   }
-
-  const orthographicCamera = camera as THREE.OrthographicCamera;
   const update = deriveSidePanelCameraUpdateFromMainViewer({
     currentPosition: camera.position,
     currentTarget: controls.target,

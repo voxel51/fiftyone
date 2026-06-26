@@ -1,3 +1,5 @@
+import { POINT_CLOUD_CROP_BOUNDS_EPSILON } from "../../../constants";
+
 const PointCloudCropVertexDeclarations = /* glsl */ `
   uniform bool pointCloudCropEnabled;
   uniform mat4 pointCloudCropWorldToBox;
@@ -19,7 +21,7 @@ const PointCloudCropVertexDeclarations = /* glsl */ `
     return all(
       lessThanEqual(
         abs(boxPosition),
-        pointCloudCropHalfSize + vec3(0.000001)
+        pointCloudCropHalfSize + vec3(${POINT_CLOUD_CROP_BOUNDS_EPSILON})
       )
     );
   }
@@ -98,6 +100,8 @@ export const ShadeByHeightShaders = {
     return (curval - minval) / (maxval - minval);
   }
 
+  // quaternion to rotation matrix (3x3)
+  // https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation
   mat3 quaternionToMatrix(vec4 q) {
     float x = q.x, y = q.y, z = q.z, w = q.w;
     return mat3(
@@ -139,6 +143,7 @@ export const ShadeByHeightShaders = {
   void main() {
     discardPointCloudCrop();
     float v = clamp(hValue, 0., 1.);
+    // sample from the middle of the gradient map to avoid border artifacts
     vec3 col = texture(gradientMap, vec2(0.5, v)).rgb;
     fragColor = vec4(col, opacity);
   }`,
@@ -173,6 +178,7 @@ export const ShadeByIntensityShaders = {
       isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0
     );
 
+    // hide points outside threshold range by setting size to 0
     if (intensity < thresholdMin || intensity > thresholdMax) {
       gl_PointSize = 0.0;
     } else {
@@ -236,6 +242,7 @@ export const ShadeByLegacyIntensityShaders = {
         isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0
       );
 
+      // hide points outside threshold range by setting size to 0
       if (intensity < thresholdMin || intensity > thresholdMax) {
         gl_PointSize = 0.0;
       } else {
@@ -373,6 +380,7 @@ export const DynamicAttributeShaders = {
       isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0
     );
 
+    // hide points outside threshold range by setting size to 0
     if (dynamicAttr < thresholdMin || dynamicAttr > thresholdMax) {
       gl_PointSize = 0.0;
     } else {

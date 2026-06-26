@@ -64,8 +64,8 @@ import {
   doesPointCloudCropFitCamera,
   retargetSidePanelCameraFrame,
   restoreSidePanelCameraSnapshot,
+  shouldApplyMainPanelNavigationSyncIntent,
   shouldApplyMainPanelPanSyncIntent,
-  shouldApplyMainPanelZoomSyncIntent,
   type SidePanelCameraFrame,
   type SidePanelCameraSnapshot,
   type SidePanelControls,
@@ -143,6 +143,13 @@ const getSafeSidePanelSelectValue = ({
   return view;
 };
 
+// Re-fit the side panel via <Bounds> for this long after a view change/reset,
+// then release control so the user can freely pan/zoom.
+const SIDE_PANEL_FIT_OBSERVE_DURATION_MS = 750;
+// <Bounds> framing margin and (near-instant) fit animation duration.
+const SIDE_PANEL_BOUNDS_FIT_MARGIN = 1.25;
+const SIDE_PANEL_BOUNDS_FIT_MAX_DURATION = 0.001;
+
 export interface SidePanelProps {
   panelId: SidePanelId;
   view: SidePanelViewType;
@@ -197,21 +204,11 @@ export const SidePanel = ({
   const theme = useTheme();
   const mapControlsRef = useRef<MapControlsImpl | null>(null);
 
-  // --- "Fit bounds" reset key mechanism ---
-  //
-  // We can't call drei's `useBounds()` API directly from here because it's
-  // only available inside the R3F <Bounds> component tree. Instead, we use a
-  // `fitBoundsKey` counter to coordinate two things:
-  //
-  // 1. Force-remount the R3F <View> (via its `key` prop) so the camera,
-  //    controls, and scene are cleanly re-initialized for the new orientation.
-  //
-  // 2. Temporarily run a side-panel-aware Bounds fit that preserves the
-  //    cardinal camera direction. We disable it after 750ms so the user can
-  //    freely pan/zoom without Bounds fighting them.
-  //
-  // Increment `fitBoundsKey` whenever the camera should re-fit: view changes,
-  // reset button clicks, etc.
+  // We can't use drei's `useBounds()` here (it only works inside the <Bounds>
+  // tree), so a `fitBoundsKey` counter coordinates the re-fit on view change or
+  // reset: it remounts the <View> for a clean camera/controls re-init, then
+  // briefly runs a cardinal-aware Bounds fit that we release after
+  // SIDE_PANEL_FIT_OBSERVE_DURATION_MS so the user can pan/zoom freely.
   const [observe, setObserve] = useState(true);
 
   const [fitBoundsKey, setFitBoundsKey] = useState(0);
@@ -226,7 +223,7 @@ export const SidePanel = ({
     setObserve(true);
     const timer = setTimeout(() => {
       setObserve(false);
-    }, 750);
+    }, SIDE_PANEL_FIT_OBSERVE_DURATION_MS);
 
     return () => clearTimeout(timer);
   }, [fitBoundsKey]);
@@ -270,7 +267,10 @@ export const SidePanel = ({
             controlsRef={mapControlsRef}
             frame={sidePanelCameraFrame}
           />
-          <Bounds margin={1.25} maxDuration={0.001}>
+          <Bounds
+            margin={SIDE_PANEL_BOUNDS_FIT_MARGIN}
+            maxDuration={SIDE_PANEL_BOUNDS_FIT_MAX_DURATION}
+          >
             <BoundsSideEffectsComponent
               observe={!pointCloudCrop && observe}
               pointCloudCrop={pointCloudCrop}
@@ -325,7 +325,7 @@ export const SidePanel = ({
           }}
           size="small"
           sx={{
-            backgroundColor: (theme as any).background.level3,
+            backgroundColor: theme.background.level3,
             "& .MuiSelect-select": {
               padding: "6px 10px",
               fontSize: "12px",
@@ -440,6 +440,36 @@ const BoundsSideEffectsComponent = ({
   useEffect(() => {
     pointCloudCropRef.current = pointCloudCrop;
   }, [pointCloudCrop]);
+
+  // Geometry identity of the active crop. The re-fit effects below read the
+  // latest crop through a ref, so they key off these derived signatures rather
+  // than spreading every vector component across their dependency arrays.
+  const cropGeometrySignature = useMemo(() => {
+    const crop = pointCloudCrop;
+    if (!crop) {
+      return null;
+    }
+    return [
+      crop.source,
+      crop.center.x,
+      crop.center.y,
+      crop.center.z,
+      crop.halfSize.x,
+      crop.halfSize.y,
+      crop.halfSize.z,
+      crop.quaternion.x,
+      crop.quaternion.y,
+      crop.quaternion.z,
+      crop.quaternion.w,
+    ].join(",");
+  }, [pointCloudCrop]);
+
+  const raycastHoverCropSignature = useMemo(() => {
+    if (cropGeometrySignature === null) {
+      return null;
+    }
+    return `${cropGeometrySignature},${pointCloudCrop?.visibleWorldHeightAtCenter}`;
+  }, [cropGeometrySignature, pointCloudCrop?.visibleWorldHeightAtCenter]);
 
   const fitBoundsWithSidePanelFrame = useCallback(
     (
@@ -679,21 +709,7 @@ const BoundsSideEffectsComponent = ({
 
     lastAutoExpandFitAtRef.current = now;
     fitToPointCloudCrop(crop);
-  }, [
-    camera,
-    fitToPointCloudCrop,
-    pointCloudCrop?.center.x,
-    pointCloudCrop?.center.y,
-    pointCloudCrop?.center.z,
-    pointCloudCrop?.halfSize.x,
-    pointCloudCrop?.halfSize.y,
-    pointCloudCrop?.halfSize.z,
-    pointCloudCrop?.quaternion.x,
-    pointCloudCrop?.quaternion.y,
-    pointCloudCrop?.quaternion.z,
-    pointCloudCrop?.quaternion.w,
-    pointCloudCrop?.source,
-  ]);
+  }, [camera, fitToPointCloudCrop, cropGeometrySignature]);
 
   useEffect(() => {
     const crop = pointCloudCropRef.current;
@@ -753,18 +769,7 @@ const BoundsSideEffectsComponent = ({
     centerOnPointCloudCrop,
     controls,
     invalidate,
-    pointCloudCrop?.center.x,
-    pointCloudCrop?.center.y,
-    pointCloudCrop?.center.z,
-    pointCloudCrop?.halfSize.x,
-    pointCloudCrop?.halfSize.y,
-    pointCloudCrop?.halfSize.z,
-    pointCloudCrop?.quaternion.x,
-    pointCloudCrop?.quaternion.y,
-    pointCloudCrop?.quaternion.z,
-    pointCloudCrop?.quaternion.w,
-    pointCloudCrop?.source,
-    pointCloudCrop?.visibleWorldHeightAtCenter,
+    raycastHoverCropSignature,
   ]);
 
   useEffect(() => {
@@ -779,7 +784,7 @@ const BoundsSideEffectsComponent = ({
     lastHandledMainPanelZoomSyncIntentRef.current = mainPanelZoomSyncIntent.id;
 
     if (
-      !shouldApplyMainPanelZoomSyncIntent({
+      !shouldApplyMainPanelNavigationSyncIntent({
         activeCrop: pointCloudCropRef.current,
         hasHoverFocus: Boolean(
           hoverFocusRef.current ||
