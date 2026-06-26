@@ -106,11 +106,15 @@ def image_dets(n):
 
 
 def cuboid_dets(n):
+    # offset well off the scene origin so a center canvas draw (the CREATE
+    # test) raycasts a clean z=0 plane instead of selecting a seeded cuboid;
+    # the looker frames the scene mesh at the origin, so these project to the
+    # periphery. Sidebar-driven select/edit/delete is position-agnostic.
     return fo.Detections(
         detections=[
             fo.Detection(
                 label="cat",
-                location=[0.6 * j, 0.0, 0.0],
+                location=[6.0 + 2.0 * j, 6.0, 0.0],
                 dimensions=[1.0, 1.0, 1.0],
                 rotation=[0.0, 0.0, 0.0],
             )
@@ -246,6 +250,12 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
   test.beforeEach(async ({ annotateSDK, fiftyoneLoader, modal, page }) => {
     await seedDataset(fiftyoneLoader, annotateSDK);
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+    // suppress the one-time 3D annotation tips popup — it overlays the
+    // looker3d action bar (bottom-left in multiview) and intercepts the
+    // set-top-view click the cuboid-create draw depends on
+    await page.evaluate(() =>
+      window.localStorage.setItem("fo-3d-annotation-tips-dismissed", "true")
+    );
     // serial describe shares one page; a modal left open by the prior test
     // would intercept the grid click below
     await modal.close({ ignoreError: true });
@@ -395,12 +405,64 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
       });
   });
 
-  // NOTE: cuboid CREATE on a 3D slice in a grouped modal is intentionally not
-  // covered. Once a 3D slice has no labels (e.g. an empty mesh, or after
-  // deleting its only cuboid) the annotate sidebar reports "No active fields"
-  // and the cuboid-create toolbar never mounts — so a fresh draw can't be
-  // started. 2D-slice create is covered above; 3D create here is blocked on that
-  // empty-slice field-activation behavior (looks like an app gap — flagged).
+  test("creating a cuboid on the 3D mesh slice persists only to that slice", async ({
+    grid,
+    modal,
+    fiftyoneLoader,
+  }) => {
+    await grid.openFirstSample();
+    await modal.waitForSampleLoadDomAttribute(true);
+    await modal.sidebar.switchMode("annotate");
+
+    await modal.sidebar.annotate.selectAnnotationSlice("mesh");
+    await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("mesh");
+    await modal.annotate3d.waitForSurface();
+    await expect
+      .poll(() => modal.sidebar.annotate.getActiveLabelsCount(), {
+        timeout: 20_000,
+      })
+      .toBe(1);
+
+    // keep the seeded cuboid (so the detections field stays enabled — the
+    // `cuboid-mode` toolbar mounts on field activation, and an emptied slice
+    // drops the field out of the Explore sidebar). The seeded cuboids sit OFF
+    // the scene origin (see `cuboid_dets`), so a center draw raycasts a clean
+    // z=0 plane instead of selecting the existing cuboid.
+    //
+    // Enter cuboid mode, look straight down Z so the three draw clicks land
+    // deterministically on the z=0 plane, then draw a cuboid at center.
+    await modal.annotate3d.enterCuboidMode();
+    await modal.looker3dControls.setTopView();
+    // let the top-view camera animation settle before drawing — the three
+    // draw clicks raycast against the live camera, so a still-animating
+    // (perspective) camera yields no planar cuboid
+    // eslint-disable-next-line playwright/no-wait-for-timeout
+    await modal.page.waitForTimeout(1000);
+    await modal.annotate3d.toggleCreateCuboid();
+    await modal.annotate3d.assert.createCuboidActive(true);
+    await modal.annotate3d.drawCuboid([
+      [0.4, 0.4],
+      [0.6, 0.4],
+      [0.6, 0.6],
+    ]);
+
+    // the freshly-drawn cuboid auto-selects with its edit form open; give it a
+    // distinct class so the create is unambiguous, then let it autosave
+    const saved = modal.sidebar.annotate.waitForPatch();
+    await modal.sidebar.edit.selectFieldChoice("label", "dog");
+    await modal.sidebar.edit.assert.verifyFieldValue("label", "dog");
+    await saved;
+
+    // the created "dog" cuboid lands on the mesh sample only — the seeded "cat"
+    // stays and image + cloud are untouched
+    await expect
+      .poll(() => readSliceClasses(fiftyoneLoader), { timeout: 20_000 })
+      .toEqual({
+        image: ["cat", "cat"],
+        mesh: ["cat", "dog"],
+        cloud: ["cat", "cat", "cat"],
+      });
+  });
 
   test("deleting a cuboid on the 3D mesh slice persists, and undo/redo round-trip — all only on that slice", async ({
     grid,
