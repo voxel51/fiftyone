@@ -4,7 +4,6 @@
     "baseBranches": ["develop"],
     "gitAuthor": "voxel51-bot <bot@voxel51.com>",
     "rangeStrategy": "widen",
-    "prConcurrentLimit": 5,
     "labels": ["dependencies"],
     "enabledManagers": [
         "pip_requirements",
@@ -21,11 +20,6 @@
         "voxel51-eta"
     ],
     "packageRules": [
-        {
-            "description": "pydicom 3 drops Python 3.9 and changes APIs we rely on",
-            "matchPackageNames": ["pydicom"],
-            "allowedVersions": "<3"
-        },
         {
             "matchManagers": ["pip_requirements", "pip_setup"],
             "groupName": "stable-python-packages",

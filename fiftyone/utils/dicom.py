@@ -17,7 +17,7 @@ import eta.core.utils as etau
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
-fou.ensure_package("pydicom<3")
+fou.ensure_package("pydicom>=2.2.0")
 import pydicom
 from pydicom.fileset import FileInstance, FileSet
 
@@ -271,26 +271,29 @@ def _get_image(ds):
 
 
 def _to_python(value):
+    if isinstance(value, _LIST_TYPES):
+        values = []
+        for v in value:
+            _v, success = _to_scalar(v)
+            if not success:
+                return None, False
+
+            values.append(_v)
+
+        return values, True
+
+    return _to_scalar(value)
+
+
+def _to_scalar(value):
     vtype = type(value)
-
-    if issubclass(vtype, _LIST_TYPES):
-        ctype = value.type_constructor
-
-        if ctype in _PRIMITIVE_TYPES:
-            return [ctype(v) for v in value], True
-
-        ctype = _SCALAR_FIELD_TYPES_MAP.get(ctype, None)
-        if ctype is not None:
-            return [ctype(v) for v in value], True
-
-        return None, False
 
     if vtype in _PRIMITIVE_TYPES:
         return value, True
 
-    vtype = _SCALAR_FIELD_TYPES_MAP.get(vtype, None)
-    if vtype is not None:
-        return vtype(value), True
+    ctype = _SCALAR_FIELD_TYPES_MAP.get(vtype, None)
+    if ctype is not None:
+        return ctype(value), True
 
     return None, False
 
@@ -305,6 +308,9 @@ _SCALAR_FIELD_TYPES_MAP = {
     pydicom.valuerep.DSdecimal: float,
     pydicom.valuerep.IS: int,
     pydicom.valuerep.PersonName: str,
-    pydicom.valuerep.PersonNameUnicode: str,
     pydicom.uid.UID: str,
 }
+
+# PersonNameUnicode was removed in pydicom 3; keep it for older pydicom
+if hasattr(pydicom.valuerep, "PersonNameUnicode"):
+    _SCALAR_FIELD_TYPES_MAP[pydicom.valuerep.PersonNameUnicode] = str
