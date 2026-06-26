@@ -131,6 +131,87 @@ describe("zoom-to-selected bounds", () => {
     });
   });
 
+  it("does not choose an arbitrary label when selection id is missing", () => {
+    const interactionSample = makeSample({
+      _id: "sample-one",
+      labels: {
+        detections: [
+          {
+            _id: "first-box",
+            _cls: "Detection",
+            location: [0, 0, 0],
+            dimensions: [1, 1, 1],
+          },
+          {
+            _id: "second-box",
+            _cls: "Detection",
+            location: [10, 0, 0],
+            dimensions: [1, 1, 1],
+          },
+        ],
+      },
+    });
+
+    const box = getSelectedLabelsBoundingBox({
+      selectedLabels: [
+        {
+          field: "labels",
+          sampleId: "sample-one",
+        },
+      ],
+      interactionSample,
+      activeSampleMap: { left: interactionSample },
+    });
+
+    expect(box).toBeNull();
+  });
+
+  it("uses the interaction sample when active samples contain the same id", () => {
+    const interactionSample = makeSample({
+      _id: "sample-one",
+      labels: {
+        detections: [
+          {
+            _id: "selected-box",
+            _cls: "Detection",
+            location: [0, 0, 0],
+            dimensions: [2, 2, 2],
+          },
+        ],
+      },
+    });
+    const staleActiveSample = makeSample({
+      _id: "sample-one",
+      labels: {
+        detections: [
+          {
+            _id: "selected-box",
+            _cls: "Detection",
+            location: [100, 0, 0],
+            dimensions: [2, 2, 2],
+          },
+        ],
+      },
+    });
+
+    const box = getSelectedLabelsBoundingBox({
+      selectedLabels: [
+        {
+          labelId: "selected-box",
+          field: "labels",
+          sampleId: "sample-one",
+        },
+      ],
+      interactionSample,
+      activeSampleMap: { left: staleActiveSample },
+    });
+
+    expectBox(box, {
+      center: [0, 0, 0],
+      size: [2, 2, 2],
+    });
+  });
+
   it("uses the render model for annotation crop bounds", () => {
     const renderModel: RenderModel = {
       detections: [

@@ -3,15 +3,18 @@ import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { PANEL_ID_MAIN } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
+import { load3dOverlays } from "../labels/loader";
 import {
   annotationPlaneAtom,
   cuboidCreationStateAtom,
-  isFo3dMainPanelPointerDownAtom,
   isFo3dPointCropModifierPressedAtom,
   isCreatingCuboidAtom,
-  raycastResultAtom,
-  selectedLabelForAnnotationAtom,
+  useCurrentSelected3dAnnotationLabel,
+  useFo3dMainPanelPointerDown,
+  useHoveredLabel3d,
+  useRaycastResult,
 } from "../state";
+import { isDetection3dOverlay } from "../types";
 import {
   createPointCloudCropFromCuboidTransform,
   createPointCloudCropFromPoint,
@@ -20,6 +23,7 @@ import {
 } from "../utils/point-cloud-crop";
 import { getCuboidCreationPreview } from "./cuboid-creation-preview";
 import { useRenderModel } from "./store";
+import type { RenderModel } from "./store/types";
 
 interface UsePointCloudCropOptions {
   enabled?: boolean;
@@ -32,18 +36,46 @@ export const usePointCloudCrop = ({
 }: UsePointCloudCropOptions = {}) => {
   const mode = fos.useModalMode();
   const { pluginSettings, pointCloudSettings, upVector } = useFo3dContext();
-  const selectedLabel = useRecoilValue(selectedLabelForAnnotationAtom);
+  const selectedLabel = useCurrentSelected3dAnnotationLabel();
+  const hoveredLabel = useHoveredLabel3d();
+  const selectedLabels = useRecoilValue(fos.selectedLabelMap);
+  const schema = useRecoilValue(
+    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
+  );
+  const { activeSampleMap } = fos.useRenderConfig3dState();
   const isPointCropModifierPressed = useRecoilValue(
     isFo3dPointCropModifierPressedAtom,
   );
-  const isMainPanelPointerDown = useRecoilValue(isFo3dMainPanelPointerDownAtom);
-  const raycastResult = useRecoilValue(raycastResultAtom);
+  const isMainPanelPointerDown = useFo3dMainPanelPointerDown();
+  const raycastResult = useRaycastResult();
   const isCreatingCuboid = useRecoilValue(isCreatingCuboidAtom);
   const cuboidCreationState = useRecoilValue(cuboidCreationStateAtom);
   const annotationPlane = useRecoilValue(annotationPlaneAtom);
   const renderModel = useRenderModel();
   const margin = pointCloudSettings.selectedCuboidCropMargin;
   const useLegacyCoordinates = pluginSettings?.useLegacyCoordinates;
+
+  const exploreRenderModel = useMemo<RenderModel>(() => {
+    if (mode === fos.ModalMode.ANNOTATE) {
+      return { detections: [], polylines: [] };
+    }
+
+    const overlays =
+      load3dOverlays(activeSampleMap ?? {}, selectedLabels ?? {}, [], schema) ??
+      [];
+
+    return {
+      detections: overlays.filter(isDetection3dOverlay),
+      polylines: [],
+    };
+  }, [activeSampleMap, mode, schema, selectedLabels]);
+
+  const cropRenderModel =
+    mode === fos.ModalMode.ANNOTATE ? renderModel : exploreRenderModel;
+  const selectedCuboidId =
+    mode === fos.ModalMode.ANNOTATE
+      ? selectedLabel?._id
+      : (hoveredLabel?.id ?? Object.keys(selectedLabels ?? {})[0] ?? null);
 
   const creationPreview = useMemo(() => {
     if (!isCreatingCuboid) {
@@ -74,7 +106,7 @@ export const usePointCloudCrop = ({
     ) {
       const raycastCuboidCrop = getCuboidPointCloudCrop({
         mode,
-        renderModel,
+        renderModel: cropRenderModel,
         labelId: raycastResult.intersectedLabelId,
         margin,
         source: "raycast-hover",
@@ -105,8 +137,8 @@ export const usePointCloudCrop = ({
 
     return getSelectedCuboidPointCloudCrop({
       mode,
-      renderModel,
-      selectedLabelId: selectedLabel?._id,
+      renderModel: cropRenderModel,
+      selectedLabelId: selectedCuboidId,
       margin,
       useLegacyCoordinates,
     });
@@ -123,7 +155,9 @@ export const usePointCloudCrop = ({
     raycastResult.visibleWorldHeightAtPoint,
     raycastResult.worldPosition,
     renderModel,
+    cropRenderModel,
     selectedLabel?._id,
+    selectedCuboidId,
     upVector,
     useLegacyCoordinates,
   ]);

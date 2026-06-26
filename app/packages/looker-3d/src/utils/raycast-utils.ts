@@ -84,6 +84,32 @@ export function getRaycastableObjects(scene: THREE.Scene): THREE.Object3D[] {
   return objects;
 }
 
+export const getIntersectionWorldPosition = (
+  intersection: THREE.Intersection,
+  target = new THREE.Vector3(),
+) => {
+  if (
+    !(intersection.object instanceof THREE.Points) ||
+    intersection.index == null
+  ) {
+    return target.copy(intersection.point);
+  }
+
+  const positionAttribute =
+    intersection.object.geometry.getAttribute("position");
+  if (!positionAttribute) {
+    return target.copy(intersection.point);
+  }
+
+  intersection.object.updateMatrixWorld();
+  return target
+    .fromBufferAttribute(
+      positionAttribute as THREE.BufferAttribute,
+      intersection.index,
+    )
+    .applyMatrix4(intersection.object.matrixWorld);
+};
+
 export const filterIntersectionsForPointCloudCrop = (
   intersections: THREE.Intersection[],
   pointCloudCrop?: PointCloudCrop | null,
@@ -97,7 +123,10 @@ export const filterIntersectionsForPointCloudCrop = (
       return true;
     }
 
-    return isPointInsidePointCloudCrop(intersection.point, pointCloudCrop);
+    return isPointInsidePointCloudCrop(
+      getIntersectionWorldPosition(intersection),
+      pointCloudCrop,
+    );
   });
 };
 
@@ -197,7 +226,7 @@ export const filterPointIntersectionsByScreenDistance = ({
       return true;
     }
 
-    projectedPoint.copy(intersection.point).project(camera);
+    getIntersectionWorldPosition(intersection, projectedPoint).project(camera);
     if (
       !Number.isFinite(projectedPoint.x) ||
       !Number.isFinite(projectedPoint.y) ||

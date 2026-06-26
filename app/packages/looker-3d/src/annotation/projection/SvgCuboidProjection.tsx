@@ -22,11 +22,23 @@ const getOrientationArrowHeadPoints = (edge: ProjectedEdge) => {
     return null;
   }
 
+  const headLength = Math.min(
+    ORIENTATION_ARROW_HEAD_LENGTH,
+    Math.max(length - MIN_ORIENTATION_ARROW_LENGTH, 0),
+  );
+
+  if (headLength <= 0) {
+    return null;
+  }
+
   const ux = dx / length;
   const uy = dy / length;
-  const baseX = edge.x2 - ux * ORIENTATION_ARROW_HEAD_LENGTH;
-  const baseY = edge.y2 - uy * ORIENTATION_ARROW_HEAD_LENGTH;
-  const halfWidth = ORIENTATION_ARROW_HEAD_WIDTH / 2;
+  const baseX = edge.x2 - ux * headLength;
+  const baseY = edge.y2 - uy * headLength;
+  const halfWidth =
+    (ORIENTATION_ARROW_HEAD_WIDTH * headLength) /
+    ORIENTATION_ARROW_HEAD_LENGTH /
+    2;
   const leftX = baseX - uy * halfWidth;
   const leftY = baseY + ux * halfWidth;
   const rightX = baseX + uy * halfWidth;

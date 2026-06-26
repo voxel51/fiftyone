@@ -528,7 +528,12 @@ export const doesPointCloudCropFitCamera = (
 
   return getPointCloudCropWorldCorners(crop).every((corner) => {
     const projected = corner.project(camera);
-    return Math.abs(projected.x) <= padding && Math.abs(projected.y) <= padding;
+    return (
+      Math.abs(projected.x) <= padding &&
+      Math.abs(projected.y) <= padding &&
+      projected.z >= -1 &&
+      projected.z <= 1
+    );
   });
 };
 

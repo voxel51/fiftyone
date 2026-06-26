@@ -1,16 +1,16 @@
 import { useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useRef } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { getPanelElementId } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
-import { activeCursorPanelAtom, raycastResultAtom } from "../state";
+import { useActiveCursorPanel, useSetRaycastResult } from "../state";
 import type { PanelId } from "../types";
 import { toNDCForElement } from "../utils";
 import type { PointCloudCrop } from "../utils/point-cloud-crop";
 import {
   filterPointIntersectionsByScreenDistance,
   filterIntersectionsForPointCloudCrop,
+  getIntersectionWorldPosition,
   getObjectLabelId,
   getPointCloudRaycastThreshold,
   getRaycastableObjects,
@@ -33,8 +33,8 @@ export const RaycastService = ({
   panelId,
   pointCloudCrop,
 }: RaycastServiceProps) => {
-  const activeCursorPanel = useRecoilValue(activeCursorPanelAtom);
-  const setRaycastResult = useSetRecoilState(raycastResultAtom);
+  const activeCursorPanel = useActiveCursorPanel();
+  const setRaycastResult = useSetRaycastResult();
 
   const { camera, raycaster, gl, events, scene } = useThree();
   const { sceneBoundingBox } = useFo3dContext();
@@ -104,7 +104,7 @@ export const RaycastService = ({
 
       // Use the closest intersection
       const closest = visibleIntersections[0];
-      const worldPos = closest.point;
+      const worldPos = getIntersectionWorldPosition(closest);
 
       const position: [number, number, number] = [
         worldPos.x,

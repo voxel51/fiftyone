@@ -224,7 +224,7 @@ export const usePcdMaterial = (
         );
 
       case SHADE_BY_NONE:
-        if (vertexColorsAvailable && geometry.hasAttribute("color")) {
+        if (geometry.hasAttribute("color")) {
           return (
             <VertexColorShader
               key={key}
@@ -236,7 +236,7 @@ export const usePcdMaterial = (
           );
         }
 
-        if (vertexColorsAvailable && geometry.hasAttribute("rgb")) {
+        if (geometry.hasAttribute("rgb")) {
           return (
             <RgbShader
               key={key}

@@ -35,14 +35,14 @@ const buildDetection = (
   }) as ReconciledDetection3D;
 
 describe("point-cloud crop", () => {
-  it("does not create a crop outside annotate mode", () => {
+  it("creates a crop from selected cuboids outside annotate mode", () => {
     const crop = getSelectedCuboidPointCloudCrop({
       mode: ModalMode.EXPLORE,
       renderModel: { detections: [buildDetection()], polylines: [] },
       selectedLabelId: "detection-1",
     });
 
-    expect(crop).toBeNull();
+    expect(crop?.labelId).toBe("detection-1");
   });
 
   it("does not create a crop without a selected cuboid", () => {

@@ -49,7 +49,7 @@ const getLabelPath = (label: SelectedLabelLike) => label.field ?? label.path;
 
 const doesLabelIdMatch = (label: LabelWithId, labelId?: string) => {
   if (!labelId) {
-    return true;
+    return false;
   }
 
   return label._id === labelId || label.id === labelId;
@@ -259,7 +259,7 @@ const getCandidateSamples = (
     ...Object.values(activeSampleMap ?? {}),
   ]) {
     const sampleId = getSampleId(sample);
-    if (sampleId) {
+    if (sampleId && !samplesById.has(sampleId)) {
       samplesById.set(sampleId, sample);
     }
   }

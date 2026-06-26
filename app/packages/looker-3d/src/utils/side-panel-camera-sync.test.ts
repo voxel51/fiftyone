@@ -327,6 +327,23 @@ describe("side panel camera sync", () => {
         camera,
       ),
     ).toBe(false);
+
+    expect(
+      doesPointCloudCropFitCamera(
+        createPointCloudCropFromDetection(
+          {
+            _cls: "Detection",
+            _id: "detection-behind",
+            path: "ground_truth",
+            location: [0, 0, 20],
+            dimensions: [1, 1, 1],
+            rotation: [0, 0, 0],
+          },
+          { margin: 0, source: "selection" },
+        )!,
+        camera,
+      ),
+    ).toBe(false);
   });
 
   it("pans side orthographic cameras to the raycast anchor and applies zoom", () => {

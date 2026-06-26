@@ -232,7 +232,6 @@ export const getSelectedCuboidPointCloudCrop = ({
 };
 
 export const getCuboidPointCloudCrop = ({
-  mode,
   renderModel,
   labelId,
   margin,
@@ -240,7 +239,7 @@ export const getCuboidPointCloudCrop = ({
   useLegacyCoordinates = false,
   visibleWorldHeightAtCenter,
 }: CuboidPointCloudCropOptions): PointCloudCrop | null => {
-  if (mode !== ModalMode.ANNOTATE || !labelId) {
+  if (!labelId) {
     return null;
   }
 

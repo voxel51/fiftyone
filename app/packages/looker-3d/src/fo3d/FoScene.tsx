@@ -1,5 +1,12 @@
 import { useControls } from "leva";
-import { Suspense, useEffect, useMemo } from "react";
+import {
+  createContext,
+  memo,
+  Suspense,
+  useContext,
+  useEffect,
+  useMemo,
+} from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { Fo3dErrorBoundary } from "../ErrorBoundary";
 import { PANEL_ORDER_VISIBILITY } from "../constants";
@@ -40,11 +47,63 @@ interface FoSceneProps {
   pointCloudCrop?: PointCloudCrop | null;
 }
 
-const getAssetJsx = (
-  node: FoSceneNode,
-  children: React.ReactNode,
-  pointCloudCrop?: PointCloudCrop | null,
-) => {
+const PointCloudCropContext = createContext<PointCloudCrop | null | undefined>(
+  null,
+);
+
+const PcdAssetNode = ({
+  children,
+  node,
+  nodeKey,
+}: {
+  children: React.ReactNode;
+  node: FoSceneNode & { asset: PcdAsset };
+  nodeKey: string;
+}) => {
+  const pointCloudCrop = useContext(PointCloudCropContext);
+
+  return (
+    <Pcd
+      key={nodeKey}
+      name={node.name}
+      pcd={node.asset}
+      position={node.position}
+      quaternion={node.quaternion}
+      scale={node.scale}
+      pointCloudCrop={pointCloudCrop}
+    >
+      {children}
+    </Pcd>
+  );
+};
+
+const PlyAssetNode = ({
+  children,
+  node,
+  nodeKey,
+}: {
+  children: React.ReactNode;
+  node: FoSceneNode & { asset: PlyAsset };
+  nodeKey: string;
+}) => {
+  const pointCloudCrop = useContext(PointCloudCropContext);
+
+  return (
+    <Ply
+      key={nodeKey}
+      name={node.name}
+      ply={node.asset}
+      position={node.position}
+      quaternion={node.quaternion}
+      scale={node.scale}
+      pointCloudCrop={pointCloudCrop}
+    >
+      {children}
+    </Ply>
+  );
+};
+
+const getAssetJsx = (node: FoSceneNode, children: React.ReactNode) => {
   if (!node.asset) {
     return null;
   }
@@ -67,31 +126,23 @@ const getAssetJsx = (
     );
   } else if (node.asset instanceof PcdAsset) {
     return (
-      <Pcd
+      <PcdAssetNode
         key={key}
-        name={node.name}
-        pcd={node.asset as PcdAsset}
-        position={node.position}
-        quaternion={node.quaternion}
-        scale={node.scale}
-        pointCloudCrop={pointCloudCrop}
+        node={node as FoSceneNode & { asset: PcdAsset }}
+        nodeKey={key}
       >
         {children}
-      </Pcd>
+      </PcdAssetNode>
     );
   } else if (node.asset instanceof PlyAsset) {
     return (
-      <Ply
+      <PlyAssetNode
         key={key}
-        name={node.name}
-        ply={node.asset as PlyAsset}
-        position={node.position}
-        quaternion={node.quaternion}
-        scale={node.scale}
-        pointCloudCrop={pointCloudCrop}
+        node={node as FoSceneNode & { asset: PlyAsset }}
+        nodeKey={key}
       >
         {children}
-      </Ply>
+      </PlyAssetNode>
     );
   } else if (node.asset instanceof StlAsset) {
     return (
@@ -192,11 +243,9 @@ const getAssetJsx = (
 const R3fNode = ({
   node,
   visibilityMap,
-  pointCloudCrop,
 }: {
   node: FoSceneNode;
   visibilityMap: ReturnType<typeof getVisibilityMapFromFo3dParsed>;
-  pointCloudCrop?: PointCloudCrop | null;
 }) => {
   const children = useMemo(() => {
     if (!node.children || node.children.length === 0) {
@@ -205,15 +254,10 @@ const R3fNode = ({
 
     return node.children.map((child) => {
       return (
-        <R3fNode
-          key={child.name}
-          node={child}
-          visibilityMap={visibilityMap}
-          pointCloudCrop={pointCloudCrop}
-        />
+        <R3fNode key={child.name} node={child} visibilityMap={visibilityMap} />
       );
     });
-  }, [node, visibilityMap, pointCloudCrop]);
+  }, [node, visibilityMap]);
 
   const label = useMemo(() => getLabelForSceneNode(node), [node]);
 
@@ -223,8 +267,8 @@ const R3fNode = ({
   );
 
   const assetJsx = useMemo(
-    () => (isNodeVisible ? getAssetJsx(node, children, pointCloudCrop) : null),
-    [node, children, isNodeVisible, pointCloudCrop],
+    () => (isNodeVisible ? getAssetJsx(node, children) : null),
+    [node, children, isNodeVisible],
   );
 
   if (!assetJsx) {
@@ -238,14 +282,12 @@ const R3fNode = ({
   );
 };
 
-const SceneR3f = ({
+const SceneR3fComponent = ({
   scene,
   visibilityMap,
-  pointCloudCrop,
 }: {
   scene: FoScene;
   visibilityMap: ReturnType<typeof getVisibilityMapFromFo3dParsed>;
-  pointCloudCrop?: PointCloudCrop | null;
 }) => {
   return (
     <group
@@ -254,16 +296,13 @@ const SceneR3f = ({
       scale={scene.scale}
     >
       {scene.children.map((child) => (
-        <R3fNode
-          key={child.name}
-          node={child}
-          visibilityMap={visibilityMap}
-          pointCloudCrop={pointCloudCrop}
-        />
+        <R3fNode key={child.name} node={child} visibilityMap={visibilityMap} />
       ))}
     </group>
   );
 };
+
+const SceneR3f = memo(SceneR3fComponent);
 
 export const FoSceneComponent = ({ scene, pointCloudCrop }: FoSceneProps) => {
   const defaultVisibilityMap = useMemo(
@@ -309,11 +348,9 @@ export const FoSceneComponent = ({ scene, pointCloudCrop }: FoSceneProps) => {
           </Suspense>
         </Fo3dErrorBoundary>
       )}
-      <SceneR3f
-        scene={scene}
-        visibilityMap={visibilityMap}
-        pointCloudCrop={pointCloudCrop}
-      />
+      <PointCloudCropContext.Provider value={pointCloudCrop}>
+        <SceneR3f scene={scene} visibilityMap={visibilityMap} />
+      </PointCloudCropContext.Provider>
     </>
   );
 };

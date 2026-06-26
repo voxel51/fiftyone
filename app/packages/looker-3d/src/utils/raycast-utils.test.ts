@@ -19,6 +19,7 @@ import {
 import {
   filterIntersectionsForPointCloudCrop,
   filterPointIntersectionsByScreenDistance,
+  getIntersectionWorldPosition,
   getObjectLabelId,
   getPointCloudRaycastThreshold,
 } from "./raycast-utils";
@@ -37,16 +38,21 @@ const buildPointCloudCrop = () => {
   )!;
 };
 
-const buildPoints = () => {
+const buildPoints = (positions = [0, 0, 0]) => {
   const geometry = new BufferGeometry();
-  geometry.setAttribute("position", new Float32BufferAttribute([0, 0, 0], 3));
+  geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
   return new Points(geometry);
 };
 
-const buildIntersection = (object: Mesh | Points, point: Vector3) =>
+const buildIntersection = (
+  object: Mesh | Points,
+  point: Vector3,
+  index?: number,
+) =>
   ({
     object,
     point,
+    index,
     distance: 1,
   }) as Intersection;
 
@@ -125,6 +131,32 @@ describe("filterIntersectionsForPointCloudCrop", () => {
         createPointCloudCropFromPoint([0, 0, 0], { margin: 1 }),
       ),
     ).toEqual([insideCorner, inside]);
+  });
+
+  it("filters point-cloud crops against the picked vertex position", () => {
+    const points = buildPoints([0.5, 0, 0]);
+    const intersection = buildIntersection(points, new Vector3(2, 0, 0), 0);
+
+    expect(
+      filterIntersectionsForPointCloudCrop(
+        [intersection],
+        buildPointCloudCrop(),
+      ),
+    ).toEqual([intersection]);
+  });
+});
+
+describe("getIntersectionWorldPosition", () => {
+  it("returns the picked point-cloud vertex in world coordinates", () => {
+    const points = buildPoints([1, 2, 3]);
+    points.position.set(10, 0, 0);
+    points.updateMatrixWorld();
+
+    expect(
+      getIntersectionWorldPosition(
+        buildIntersection(points, new Vector3(0, 0, 0), 0),
+      ).toArray(),
+    ).toEqual([11, 2, 3]);
   });
 });
 
@@ -218,5 +250,20 @@ describe("filterPointIntersectionsByScreenDistance", () => {
         pickRadiusPx: 4,
       }),
     ).toEqual([inside]);
+  });
+
+  it("uses the picked vertex position for point-cloud screen distance", () => {
+    const points = buildPoints([0, 0, 0]);
+    const intersection = buildIntersection(points, new Vector3(2, 0, 0), 0);
+
+    expect(
+      filterPointIntersectionsByScreenDistance({
+        intersections: [intersection],
+        camera: buildPerspectiveCamera(),
+        panelElement: buildPanelElement(),
+        ndc: { x: 0, y: 0 },
+        pickRadiusPx: 4,
+      }),
+    ).toEqual([intersection]);
   });
 });

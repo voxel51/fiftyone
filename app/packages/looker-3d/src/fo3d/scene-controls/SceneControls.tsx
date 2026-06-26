@@ -130,11 +130,13 @@ export const SceneControls = ({
           value: pointCloudSettings.enableTooltip,
           label: "Enable Tooltip",
           onChange: (value) => {
-            setPointCloudSettings({
-              ...pointCloudSettings,
+            setPointCloudSettings((prev) => ({
+              ...prev,
               enableTooltip: value,
-              selectedCuboidCropMargin,
-            });
+              selectedCuboidCropMargin:
+                prev.selectedCuboidCropMargin ??
+                DEFAULT_SELECTED_CUBOID_CROP_MARGIN,
+            }));
           },
         },
         selectedCuboidCropMargin: {
@@ -143,15 +145,19 @@ export const SceneControls = ({
           min: 0,
           step: 0.1,
           onChange: (value: number) => {
-            setPointCloudSettings({
-              ...pointCloudSettings,
+            setPointCloudSettings((prev) => ({
+              ...prev,
               selectedCuboidCropMargin: value,
-            });
+            }));
           },
         },
       }),
     }),
-    [pointCloudSettings, selectedCuboidCropMargin, setPointCloudSettings],
+    [
+      pointCloudSettings.enableTooltip,
+      selectedCuboidCropMargin,
+      setPointCloudSettings,
+    ],
   );
 
   return <Lights lights={scene?.lights} />;

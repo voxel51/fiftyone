@@ -29,7 +29,7 @@ interface Fo3dContextT {
   autoRotate: boolean;
   setAutoRotate: (autoRotate: boolean) => void;
   pointCloudSettings: Fo3dPointCloudSettings;
-  setPointCloudSettings: (pointCloudSettings: Fo3dPointCloudSettings) => void;
+  setPointCloudSettings: Dispatch<SetStateAction<Fo3dPointCloudSettings>>;
   hoverMetadata: HoverMetadata | null;
   setHoverMetadata: Dispatch<SetStateAction<HoverMetadata | null>>;
 }

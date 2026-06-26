@@ -39,7 +39,7 @@ const getCuboidQuaternion = (
       quaternion[1],
       quaternion[2],
       quaternion[3],
-    );
+    ).normalize();
   }
 
   if (rotation) {
