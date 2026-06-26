@@ -71,7 +71,7 @@ jobs:
             "$included")"
 
           number="$(gh pr list --repo "$REPO" --head community --base develop \
-            --state open --json number --jq '.[0].number')"
+            --state open --json number --jq '.[0].number // empty')"
           if [ -n "$number" ]; then
             gh pr edit "$number" --repo "$REPO" --body "$body"
             action="updated"
@@ -80,7 +80,7 @@ jobs:
               --title 'AUTOMATED MERGE `community` to `develop`' \
               --body "$body"
             number="$(gh pr list --repo "$REPO" --head community --base develop \
-              --state open --json number --jq '.[0].number')"
+              --state open --json number --jq '.[0].number // empty')"
             action="opened"
           fi
 
