@@ -7,9 +7,11 @@ import type {
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
   McapReadTopicsRequest,
+  McapReadTopicTimeBoundsRequest,
   McapReadTimelineRangeRequest,
   McapSynchronizedMessageWindow,
   McapTimelineRange,
+  McapTopicTimeBounds,
 } from "../types";
 import type { StreamInventory } from "../../../schemas/v1";
 
@@ -35,7 +37,7 @@ export const MCAP_PLAYBACK_WORKER_PRIORITY = Object.freeze({
  * Union of playback-worker priority values.
  */
 export type McapPlaybackWorkerPriority =
-  typeof MCAP_PLAYBACK_WORKER_PRIORITY[keyof typeof MCAP_PLAYBACK_WORKER_PRIORITY];
+  (typeof MCAP_PLAYBACK_WORKER_PRIORITY)[keyof typeof MCAP_PLAYBACK_WORKER_PRIORITY];
 
 /**
  * Fetch configuration copied from the main thread into the worker.
@@ -57,6 +59,7 @@ export type McapPlaybackWorkerRequestPayloadByType = {
   readonly readSynchronizedMessages: McapReadSynchronizedMessagesRequest;
   readonly readTimelineRange: McapReadTimelineRangeRequest;
   readonly readTopics: McapReadTopicsRequest;
+  readonly readTopicTimeBounds: McapReadTopicTimeBoundsRequest;
 };
 
 /**
@@ -69,6 +72,7 @@ export type McapPlaybackWorkerResultByType = {
   readonly readSynchronizedMessages: McapSynchronizedMessageWindow;
   readonly readTimelineRange: McapTimelineRange;
   readonly readTopics: readonly StreamInventory[];
+  readonly readTopicTimeBounds: readonly McapTopicTimeBounds[];
 };
 
 /**
@@ -99,7 +103,7 @@ export type McapPlaybackWorkerStreamType =
  * Envelope sent from the main thread for one scheduled worker RPC call.
  */
 export type McapPlaybackWorkerRpcRequest<
-  Type extends McapPlaybackWorkerRpcType = McapPlaybackWorkerRpcType
+  Type extends McapPlaybackWorkerRpcType = McapPlaybackWorkerRpcType,
 > = Type extends McapPlaybackWorkerRpcType
   ? {
       readonly id: number;

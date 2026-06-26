@@ -109,7 +109,7 @@ export const doPatchSample = async ({
         } else {
           console.error(
             "response data does not adhere to sample format",
-            cleanedSample
+            cleanedSample,
           );
         }
       } else {
@@ -150,7 +150,7 @@ export type LabelPersistenceArgs = {
       labelId?: string;
       labelPath?: string;
       opType?: OpType;
-    }
+    },
   ) => Promise<boolean>;
   annotationLabel: LabelProxy | null;
   schema: Field;
@@ -192,7 +192,7 @@ export const handleLabelPersistence = async ({
     annotationLabel,
     schema,
     opType,
-    isGenerated
+    isGenerated,
   ).map((delta) => ({
     ...delta,
     // Convert label delta to sample delta

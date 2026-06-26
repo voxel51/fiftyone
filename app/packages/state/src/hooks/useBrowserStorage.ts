@@ -8,7 +8,7 @@ export const useBrowserStorage = <T = string>(
   parseFn?: {
     parse: (value: string) => T;
     stringify: (value: T) => string;
-  }
+  },
 ) => {
   const storage = useSessionStorage
     ? window.sessionStorage
@@ -60,7 +60,7 @@ export const useBrowserStorage = <T = string>(
         storage.setItem(key, JSON.stringify(valueToStore));
       }
     },
-    [key, storage, parseFn]
+    [key, storage, parseFn],
   );
 
   return [storedValue, setValue] as const;

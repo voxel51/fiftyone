@@ -30,10 +30,10 @@ export const useClassificationMode = () => {
   const tooltip = isPatchView
     ? "Creating classifications is not supported in this view"
     : noActiveFields
-    ? "No active fields"
-    : classificationModeActive
-    ? "Exit classification creation"
-    : "Create new classification";
+      ? "No active fields"
+      : classificationModeActive
+        ? "Exit classification creation"
+        : "Create new classification";
 
   const activateClassificationMode = useCallback(() => {
     if (disabled) return;
@@ -74,6 +74,6 @@ export const useClassificationMode = () => {
       activateClassificationMode,
       deactivateClassificationMode,
       toggleClassificationMode,
-    ]
+    ],
   );
 };

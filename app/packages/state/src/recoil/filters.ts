@@ -59,7 +59,7 @@ export const filters = (() => {
         },
       ],
       key: "filters",
-    }
+    },
   );
 })();
 
@@ -133,7 +133,7 @@ export const fieldIsFiltered = selectorFamily<
         fields({
           path: expandedPath,
           ftype: VALID_PRIMITIVE_TYPES,
-        })
+        }),
       );
 
       return (

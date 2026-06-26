@@ -135,13 +135,13 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
 
     this.buffering = document.createElementNS(
       "http://www.w3.org/2000/svg",
-      "svg"
+      "svg",
     );
     this.buffering.classList.add(bufferingCircle);
     this.buffering.setAttribute("viewBox", "12 12 24 24");
     const circle = document.createElementNS(
       "http://www.w3.org/2000/svg",
-      "circle"
+      "circle",
     );
     circle.setAttribute("cx", "24");
     circle.setAttribute("cy", "24");
@@ -212,7 +212,7 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
         "fill",
         this.singleFrame
           ? "var(--fo-palette-text-tertiary)"
-          : "var(--fo-palette-text-secondary)"
+          : "var(--fo-palette-text-secondary)",
       );
       this.element.style.cursor = this.singleFrame ? "unset" : "pointer";
       this.element.title = this.singleFrame ? "Only one frame" : "Play (space)";
@@ -263,7 +263,7 @@ export class SeekBarThumbElement extends BaseElement<
       const value = ((frameNumber - 1) / (frameCount - 1)) * 100;
       this.element.style.setProperty(
         "--progress",
-        `${Math.max(0, value - 0.5)}%`
+        `${Math.max(0, value - 0.5)}%`,
       );
       //@ts-ignore
       this.element.value = value;
@@ -349,7 +349,7 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
 
       this.element.style.setProperty(
         "--buffer-progress",
-        `${Math.min(bufferValue, end)}%`
+        `${Math.min(bufferValue, end)}%`,
       );
       const value = ((frameNumber - 1) / (frameCount - 1)) * 100;
       this.element.style.display = "block";
@@ -446,7 +446,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
                 return {
                   waitingForVideo: false,
                 };
-              }
+              },
             );
             dispatchEvent("load");
           });
@@ -484,7 +484,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
               if (playing && !seeking && !buffering) {
                 this.requestCallback(callback);
               }
-            }
+            },
           );
         };
 
@@ -498,7 +498,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
           (state, overlays) => {
             dispatchTooltipEvent(dispatchEvent, state.playing)(state, overlays);
             this.requestCallback(callback);
-          }
+          },
         );
       },
       pause: ({ update, dispatchEvent }) => {
@@ -507,7 +507,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
             disableOverlays: false,
           },
           (state, overlays) =>
-            dispatchTooltipEvent(dispatchEvent, false)(state, overlays)
+            dispatchTooltipEvent(dispatchEvent, false)(state, overlays),
         );
       },
       timeupdate: ({ dispatchEvent, update }) => {
@@ -516,7 +516,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
             frameNumber: getFrameNumber(
               this.element.currentTime,
               duration,
-              frameRate
+              frameRate,
             ),
           });
 
@@ -620,7 +620,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
               }
 
               return {};
-            }
+            },
           );
         });
 
@@ -641,7 +641,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       this.imageSource = this.canvas;
       this.canvas &&
         this.update(({ waitingForVideo }) =>
-          waitingForVideo ? { waitingForVideo: false } : {}
+          waitingForVideo ? { waitingForVideo: false } : {},
         );
       return;
     }
@@ -803,7 +803,7 @@ const seekFn = (
     config: { frameRate, support },
     lockedToSupport,
   }: Readonly<VideoState>,
-  event: MouseEvent
+  event: MouseEvent,
 ): Partial<VideoState> => {
   if (duration && seeking) {
     const element = event.currentTarget as HTMLDivElement;
@@ -813,9 +813,9 @@ const seekFn = (
     const frameNumber = Math.min(
       Math.max(
         1,
-        Math.round(((event.clientX + 6 - left) / width) * frameCount)
+        Math.round(((event.clientX + 6 - left) / width) * frameCount),
       ),
-      frameCount
+      frameCount,
     );
 
     return {
@@ -998,7 +998,7 @@ class PlaybackRateBarElement extends BaseElement<VideoState, HTMLInputElement> {
       ).toFixed(2)} fps`;
       this.element.style.setProperty(
         "--playback",
-        `${(playbackRate / 2) * 100}%`
+        `${(playbackRate / 2) * 100}%`,
       );
       this.element.value = playbackRate.toFixed(4);
       this.playbackRate = playbackRate;

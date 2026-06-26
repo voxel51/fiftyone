@@ -21,7 +21,7 @@ export const lightningNumericResults = selectorFamily({
           {
             path,
           },
-        ])
+        ]),
       );
 
       if (data.__typename === "DateLightningResult") {
@@ -53,7 +53,7 @@ export const lightningNumericResults = selectorFamily({
       }
 
       throw new Error(
-        `unexpected ${data.__typename} for path '${path}' in lightningNumericResults`
+        `unexpected ${data.__typename} for path '${path}' in lightningNumericResults`,
       );
     },
 });
@@ -96,7 +96,7 @@ export const lightningNonfinites = selectorFamily({
           {
             path,
           },
-        ])
+        ]),
       );
 
       if (data.__typename === "FloatLightningResult") {

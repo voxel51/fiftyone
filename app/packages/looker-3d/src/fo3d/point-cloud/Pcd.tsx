@@ -35,7 +35,7 @@ export const Pcd = ({
     () =>
       preTransformedPcdPath ??
       getSampleSrc(getResolvedUrlForFo3dAsset(pcdPath, fo3dRoot)),
-    [pcdPath, preTransformedPcdPath, fo3dRoot]
+    [pcdPath, preTransformedPcdPath, fo3dRoot],
   );
 
   const points_ = useFoLoader(DynamicPCDLoader, pcdUrl);
@@ -63,7 +63,7 @@ export const Pcd = ({
     points.geometry,
     defaultMaterial,
     pcdContainerRef,
-    quaternion
+    quaternion,
   );
 
   const { currentHoveredPoint } = usePointCloudHoverFromRaycast({

@@ -100,7 +100,7 @@ describe("useAIAnnotationMode", () => {
       act(() => result.current.activate());
 
       expect(hoisted.activeTaskSpies.setActiveTask).toHaveBeenCalledWith(
-        hoisted.AgentTaskType.SEGMENT
+        hoisted.AgentTaskType.SEGMENT,
       );
       expect(hoisted.pointSelectionSpies.activate).toHaveBeenCalledTimes(1);
       expect(result.current.isActive).toBe(true);
@@ -154,16 +154,22 @@ describe("useAIAnnotationMode", () => {
       renderHook(() => useAIAnnotationMode());
 
       expect(
-        (hoisted.agentSelectorRef.value as { setActiveAgent: ReturnType<typeof vi.fn> })
-          .setActiveAgent
+        (
+          hoisted.agentSelectorRef.value as {
+            setActiveAgent: ReturnType<typeof vi.fn>;
+          }
+        ).setActiveAgent,
       ).toHaveBeenCalledWith({ id: "agent-1" });
     });
 
     it("does NOT change the active agent when one is already selected", () => {
       renderHook(() => useAIAnnotationMode());
       expect(
-        (hoisted.agentSelectorRef.value as { setActiveAgent: ReturnType<typeof vi.fn> })
-          .setActiveAgent
+        (
+          hoisted.agentSelectorRef.value as {
+            setActiveAgent: ReturnType<typeof vi.fn>;
+          }
+        ).setActiveAgent,
       ).not.toHaveBeenCalled();
     });
 
@@ -178,8 +184,11 @@ describe("useAIAnnotationMode", () => {
       renderHook(() => useAIAnnotationMode());
 
       expect(
-        (hoisted.agentSelectorRef.value as { setActiveAgent: ReturnType<typeof vi.fn> })
-          .setActiveAgent
+        (
+          hoisted.agentSelectorRef.value as {
+            setActiveAgent: ReturnType<typeof vi.fn>;
+          }
+        ).setActiveAgent,
       ).not.toHaveBeenCalled();
     });
   });

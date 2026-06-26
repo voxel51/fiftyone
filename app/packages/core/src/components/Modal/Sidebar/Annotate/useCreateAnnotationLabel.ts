@@ -49,7 +49,7 @@ export const useCreateAnnotationLabel = () => {
          * and any newly-decoded mask would be discarded.
          */
         skipMaskDecode?: boolean;
-      }
+      },
     ): Promise<AnnotationLabel> => {
       if (type === CLASSIFICATION) {
         const overlay = overlayFactory.create<
@@ -88,7 +88,7 @@ export const useCreateAnnotationLabel = () => {
         ) {
           console.warn(
             `[mask-path] detection ${data._id} in field "${field}" has ` +
-              "mask_path but the caller did not provide a resolvable URL"
+              "mask_path but the caller did not provide a resolvable URL",
           );
         }
         const preDecodedMask =
@@ -98,7 +98,7 @@ export const useCreateAnnotationLabel = () => {
         if (label?.mask_path && !label?.mask && maskUrl && !preDecodedMask) {
           console.warn(
             `[mask-path] decode failed for detection ${data._id} in field ` +
-              `"${field}" (url=${maskUrl})`
+              `"${field}" (url=${maskUrl})`,
           );
         }
 
@@ -136,7 +136,7 @@ export const useCreateAnnotationLabel = () => {
             draggable: false,
             deletable: false,
             selectable: true,
-          }
+          },
         );
 
         return { data: polylineLabel, overlay, path: field, type };
@@ -156,7 +156,7 @@ export const useCreateAnnotationLabel = () => {
             draggable: false,
             deletable: false,
             selectable: true,
-          }
+          },
         );
 
         return { data, overlay, path: field, type };
@@ -164,6 +164,6 @@ export const useCreateAnnotationLabel = () => {
 
       throw new Error(`unable to create label of type '${type}'`);
     },
-    [getSkeletonForField, overlayFactory]
+    [getSkeletonForField, overlayFactory],
   );
 };

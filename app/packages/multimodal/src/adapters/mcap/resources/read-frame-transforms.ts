@@ -57,7 +57,7 @@ interface FrameTransformChannel {
  * decodable today.
  */
 function discoverFrameTransformChannels(
-  reader: McapIndexedReaderLike
+  reader: McapIndexedReaderLike,
 ): readonly FrameTransformChannel[] {
   const channels: FrameTransformChannel[] = [];
   for (const channel of reader.channelsById.values()) {
@@ -90,12 +90,12 @@ function discoverFrameTransformChannels(
  * "always valid").
  */
 export async function readMcapFrameTransformBootstrap(
-  reader: McapIndexedReaderLike
+  reader: McapIndexedReaderLike,
 ): Promise<McapFrameTransformSet> {
   const bootstrapChannels = discoverFrameTransformChannels(reader).filter(
     (entry) =>
       entry.messageCount === undefined ||
-      entry.messageCount <= BOOTSTRAP_CHANNEL_MESSAGE_CAP
+      entry.messageCount <= BOOTSTRAP_CHANNEL_MESSAGE_CAP,
   );
   if (bootstrapChannels.length === 0) {
     return createMcapFrameTransformSet({ samples: [] });
@@ -216,12 +216,12 @@ function normalizeFrameTransformMessage({
         publishTime: message.publishTime,
       },
       streamId: channel.topic,
-    }
+    },
   );
 
   if (schema.name === FOXGLOVE_FRAME_TRANSFORMS_SCHEMA) {
     return requiredArray(record, "transforms").map((transform) =>
-      normalizeFrameTransformRecord(asRecord(transform))
+      normalizeFrameTransformRecord(asRecord(transform)),
     );
   }
 
@@ -229,12 +229,12 @@ function normalizeFrameTransformMessage({
 }
 
 function normalizeFrameTransformRecord(
-  record: Record<string, unknown>
+  record: Record<string, unknown>,
 ): McapFrameTransformSample {
   const parentFrameId = optionalString(
     record,
     "parentFrameId",
-    "parent_frame_id"
+    "parent_frame_id",
   );
   const childFrameId = optionalString(record, "childFrameId", "child_frame_id");
   const translation = optionalRecord(record, "translation");
@@ -261,13 +261,13 @@ function normalizeFrameTransformRecord(
       requiredNumber(rotation, "x"),
       requiredNumber(rotation, "y"),
       requiredNumber(rotation, "z"),
-      requiredNumber(rotation, "w")
+      requiredNumber(rotation, "w"),
     ).normalize(),
     ...(transformTimeNs !== undefined ? { timeNs: transformTimeNs } : {}),
     translation: new Vector3(
       requiredNumber(translation, "x"),
       requiredNumber(translation, "y"),
-      requiredNumber(translation, "z")
+      requiredNumber(translation, "z"),
     ),
   };
 }
@@ -286,10 +286,10 @@ function createMcapFrameTransformSet({
 
 function compareFrameTransformSamples(
   left: McapFrameTransformSample,
-  right: McapFrameTransformSample
+  right: McapFrameTransformSample,
 ) {
   const edgeOrder = frameTransformEdgeKey(left).localeCompare(
-    frameTransformEdgeKey(right)
+    frameTransformEdgeKey(right),
   );
   if (edgeOrder !== 0) {
     return edgeOrder;

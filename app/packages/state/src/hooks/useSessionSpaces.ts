@@ -11,12 +11,12 @@ const useSessionSpaces = () => {
 
   const computedSessionSpaces = useMemo(
     () => toAppFormat(sessionSpacesState),
-    [sessionSpacesState]
+    [sessionSpacesState],
   );
 
   const computedPanelsState = useMemo(
     () => extractPanelsState(computedSessionSpaces),
-    [computedSessionSpaces]
+    [computedSessionSpaces],
   );
 
   const setSessionSpaces = useCallback(
@@ -24,7 +24,7 @@ const useSessionSpaces = () => {
       const formattedSpaces = toAPIFormat(spaces, panelsState);
       setSessionSpacesState(formattedSpaces);
     },
-    [setSessionSpacesState]
+    [setSessionSpacesState],
   );
 
   const setSessionSpacesDebounced = useMemo(() => {
@@ -94,7 +94,7 @@ function extractPanelsState(space) {
     return space.reduce(
       (spaceState, itemState) =>
         Object.assign(spaceState, extractPanelsState(itemState)),
-      {}
+      {},
     );
   // expects state from session to always be an object
   if (size(space.state) > 0) spaceState[space.id] = space.state;

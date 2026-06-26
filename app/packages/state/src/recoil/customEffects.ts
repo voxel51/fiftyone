@@ -52,7 +52,7 @@ export const getBrowserStorageEffectForKey =
       valueClass: "string",
       prependDatasetNameInKey: false,
       useJsonSerialization: false,
-    }
+    },
   ): AtomEffect<T> =>
   ({ setSelf, onSet, getPromise }) => {
     (async () => {
@@ -104,7 +104,7 @@ export const getBrowserStorageEffectForKey =
             key,
             useJsonSerialization
               ? JSON.stringify(newValue)
-              : (newValue as string)
+              : (newValue as string),
           );
         }
       });

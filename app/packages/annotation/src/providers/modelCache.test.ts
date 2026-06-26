@@ -16,12 +16,18 @@ function createMockIDB(options?: { failOn?: "get" | "put" }) {
         error: failOn === "get" ? new Error("read failed") : null,
       };
       setTimeout(() => {
-        if (failOn === "get") { req.onerror?.(); }
-        else { req.result = store.get(key); req.onsuccess?.(); }
+        if (failOn === "get") {
+          req.onerror?.();
+        } else {
+          req.result = store.get(key);
+          req.onsuccess?.();
+        }
       });
       return req;
     },
-    put: (value: ArrayBuffer, key: string) => { if (failOn !== "put") store.set(key, value); },
+    put: (value: ArrayBuffer, key: string) => {
+      if (failOn !== "put") store.set(key, value);
+    },
   });
 
   const mockDB = {
@@ -33,14 +39,12 @@ function createMockIDB(options?: { failOn?: "get" | "put" }) {
         onerror: null as any,
         error: shouldFailPut ? new Error("write failed") : null,
         set oncomplete(fn: any) {
-          if (!shouldFailPut)
-            setTimeout(() => fn?.());
+          if (!shouldFailPut) setTimeout(() => fn?.());
         },
       };
-  
-      if (shouldFailPut)
-        setTimeout(() => tx.onerror?.());
-  
+
+      if (shouldFailPut) setTimeout(() => tx.onerror?.());
+
       return tx;
     },
     createObjectStore: () => {},
@@ -49,8 +53,16 @@ function createMockIDB(options?: { failOn?: "get" | "put" }) {
 
   const mockIndexedDB = {
     open: () => {
-      const req = { result: mockDB, onupgradeneeded: null as any, onsuccess: null as any, onerror: null as any };
-      setTimeout(() => { req.onupgradeneeded?.(); req.onsuccess?.(); });
+      const req = {
+        result: mockDB,
+        onupgradeneeded: null as any,
+        onsuccess: null as any,
+        onerror: null as any,
+      };
+      setTimeout(() => {
+        req.onupgradeneeded?.();
+        req.onsuccess?.();
+      });
       return req;
     },
   };
@@ -141,7 +153,9 @@ describe("loadModelWeights", () => {
   it("Streams progress via onProgress on cache miss", async () => {
     const chunk1 = new Uint8Array([1, 2, 3]);
     const chunk2 = new Uint8Array([4, 5]);
-    global.fetch = vi.fn().mockResolvedValue(mockStreamingResponse([chunk1, chunk2]));
+    global.fetch = vi
+      .fn()
+      .mockResolvedValue(mockStreamingResponse([chunk1, chunk2]));
     const onProgress = vi.fn();
 
     const result = await loadModelWeights(TEST_URL, TEST_CACHE_KEY, onProgress);
@@ -154,48 +168,85 @@ describe("loadModelWeights", () => {
   });
 
   it.each([
-    { name: "no onProgress callback", onProgress: undefined, fetchOverride: undefined },
-    { name: "ReadableStream body unavailable", onProgress: vi.fn(), fetchOverride: () => {
-      const response = mockFetchResponse(TEST_BUFFER);
-      Object.defineProperty(response, "body", { value: null });
-      return vi.fn().mockResolvedValue(response);
-    }},
-    { name: "Content-Length missing", onProgress: vi.fn(), fetchOverride: () =>
-      vi.fn().mockResolvedValue(new Response(new Uint8Array(64), { status: 200, statusText: "OK" }))
+    {
+      name: "no onProgress callback",
+      onProgress: undefined,
+      fetchOverride: undefined,
+    },
+    {
+      name: "ReadableStream body unavailable",
+      onProgress: vi.fn(),
+      fetchOverride: () => {
+        const response = mockFetchResponse(TEST_BUFFER);
+        Object.defineProperty(response, "body", { value: null });
+        return vi.fn().mockResolvedValue(response);
+      },
+    },
+    {
+      name: "Content-Length missing",
+      onProgress: vi.fn(),
+      fetchOverride: () =>
+        vi
+          .fn()
+          .mockResolvedValue(
+            new Response(new Uint8Array(64), { status: 200, statusText: "OK" }),
+          ),
     },
   ])("Skips streaming: $name", async ({ onProgress, fetchOverride }) => {
-    if (fetchOverride)
-      global.fetch = fetchOverride();
+    if (fetchOverride) global.fetch = fetchOverride();
 
     const result = await loadModelWeights(TEST_URL, TEST_CACHE_KEY, onProgress);
 
     expect(result.byteLength).toBe(64);
-    if (onProgress)
-      expect(onProgress).not.toHaveBeenCalled();
+    if (onProgress) expect(onProgress).not.toHaveBeenCalled();
     expect(closeSpy).toHaveBeenCalledTimes(1);
   });
 
   it("Throws on 4xx without retrying", async () => {
-    global.fetch = vi.fn().mockResolvedValue(mockFetchResponse(new ArrayBuffer(0), 404));
+    global.fetch = vi
+      .fn()
+      .mockResolvedValue(mockFetchResponse(new ArrayBuffer(0), 404));
 
-    await expect(loadModelWeights(TEST_URL, TEST_CACHE_KEY)).rejects.toThrow("404");
+    await expect(loadModelWeights(TEST_URL, TEST_CACHE_KEY)).rejects.toThrow(
+      "404",
+    );
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(closeSpy).toHaveBeenCalledTimes(1);
   });
 
   it.each([
-    { name: "5xx", mockFetch: () => vi.fn()
-      .mockResolvedValueOnce(mockFetchResponse(new ArrayBuffer(0), 500))
-      .mockResolvedValue(mockFetchResponse(TEST_BUFFER)) },
-    { name: "408 timeout", mockFetch: () => vi.fn()
-      .mockResolvedValueOnce(mockFetchResponse(new ArrayBuffer(0), 408))
-      .mockResolvedValue(mockFetchResponse(TEST_BUFFER)) },
-    { name: "429 throttle", mockFetch: () => vi.fn()
-      .mockResolvedValueOnce(mockFetchResponse(new ArrayBuffer(0), 429))
-      .mockResolvedValue(mockFetchResponse(TEST_BUFFER)) },
-    { name: "network error", mockFetch: () => vi.fn()
-      .mockRejectedValueOnce(new Error("Network Error"))
-      .mockResolvedValue(mockFetchResponse(TEST_BUFFER)) },
+    {
+      name: "5xx",
+      mockFetch: () =>
+        vi
+          .fn()
+          .mockResolvedValueOnce(mockFetchResponse(new ArrayBuffer(0), 500))
+          .mockResolvedValue(mockFetchResponse(TEST_BUFFER)),
+    },
+    {
+      name: "408 timeout",
+      mockFetch: () =>
+        vi
+          .fn()
+          .mockResolvedValueOnce(mockFetchResponse(new ArrayBuffer(0), 408))
+          .mockResolvedValue(mockFetchResponse(TEST_BUFFER)),
+    },
+    {
+      name: "429 throttle",
+      mockFetch: () =>
+        vi
+          .fn()
+          .mockResolvedValueOnce(mockFetchResponse(new ArrayBuffer(0), 429))
+          .mockResolvedValue(mockFetchResponse(TEST_BUFFER)),
+    },
+    {
+      name: "network error",
+      mockFetch: () =>
+        vi
+          .fn()
+          .mockRejectedValueOnce(new Error("Network Error"))
+          .mockResolvedValue(mockFetchResponse(TEST_BUFFER)),
+    },
   ])("Retries on $name and eventually succeeds", async ({ mockFetch }) => {
     vi.useFakeTimers();
     global.fetch = mockFetch();
@@ -212,11 +263,16 @@ describe("loadModelWeights", () => {
 
   it("Retries on fetch timeout and eventually succeeds", async () => {
     vi.useFakeTimers();
-    global.fetch = vi.fn()
-      .mockImplementationOnce((_url: string, init?: RequestInit) =>
-        new Promise((_resolve, reject) => {
-          init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
-        }))
+    global.fetch = vi
+      .fn()
+      .mockImplementationOnce(
+        (_url: string, init?: RequestInit) =>
+          new Promise((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () =>
+              reject(new DOMException("aborted", "AbortError")),
+            );
+          }),
+      )
       .mockResolvedValue(mockFetchResponse(TEST_BUFFER));
 
     const promise = loadModelWeights(TEST_URL, TEST_CACHE_KEY);
@@ -231,14 +287,28 @@ describe("loadModelWeights", () => {
   });
 
   it.each([
-    { name: "idbGet fails", failOn: "get" as const, warning: "IndexedDB cache read failed, downloading instead: Error: read failed" },
-    { name: "idbPut fails", failOn: "put" as const, warning: "IndexedDB cache write failed: Error: write failed" },
+    {
+      name: "idbGet fails",
+      failOn: "get" as const,
+      warning:
+        "IndexedDB cache read failed, downloading instead: Error: read failed",
+    },
+    {
+      name: "idbPut fails",
+      failOn: "put" as const,
+      warning: "IndexedDB cache write failed: Error: write failed",
+    },
   ])("Warns and falls through when $name", async ({ failOn, warning }) => {
     const idb = createMockIDB({ failOn });
     vi.stubGlobal("indexedDB", idb.mockIndexedDB);
     const onWarning = vi.fn();
 
-    const result = await loadModelWeights(TEST_URL, TEST_CACHE_KEY, undefined, onWarning);
+    const result = await loadModelWeights(
+      TEST_URL,
+      TEST_CACHE_KEY,
+      undefined,
+      onWarning,
+    );
 
     expect(result.byteLength).toBe(64);
     expect(global.fetch).toHaveBeenCalledTimes(1);
@@ -247,13 +317,24 @@ describe("loadModelWeights", () => {
   });
 
   it("Falls through to fetch and warns when IndexedDB is unavailable", async () => {
-    vi.stubGlobal("indexedDB", { open: () => { throw new Error("blocked"); } });
+    vi.stubGlobal("indexedDB", {
+      open: () => {
+        throw new Error("blocked");
+      },
+    });
     const onWarning = vi.fn();
 
-    const result = await loadModelWeights(TEST_URL, TEST_CACHE_KEY, undefined, onWarning);
+    const result = await loadModelWeights(
+      TEST_URL,
+      TEST_CACHE_KEY,
+      undefined,
+      onWarning,
+    );
 
     expect(result.byteLength).toBe(64);
-    expect(onWarning).toHaveBeenCalledWith("IndexedDB open failed, downloading instead: Error: blocked");
+    expect(onWarning).toHaveBeenCalledWith(
+      "IndexedDB open failed, downloading instead: Error: blocked",
+    );
     expect(closeSpy).not.toHaveBeenCalled();
   });
 
@@ -261,11 +342,15 @@ describe("loadModelWeights", () => {
     vi.useFakeTimers();
     const truncated = new Response(
       new ReadableStream({
-        start(controller) { controller.enqueue(new Uint8Array(32)); controller.close(); },
+        start(controller) {
+          controller.enqueue(new Uint8Array(32));
+          controller.close();
+        },
       }),
-      { status: 200, statusText: "OK", headers: { "content-length": "64" } }
+      { status: 200, statusText: "OK", headers: { "content-length": "64" } },
     );
-    global.fetch = vi.fn()
+    global.fetch = vi
+      .fn()
       .mockResolvedValueOnce(truncated)
       .mockResolvedValue(mockFetchResponse(TEST_BUFFER));
 
@@ -283,7 +368,9 @@ describe("loadModelWeights", () => {
     vi.useFakeTimers();
     global.fetch = vi.fn().mockRejectedValue(new Error("Network Error"));
 
-    const promise = loadModelWeights(TEST_URL, TEST_CACHE_KEY).catch((e: Error) => e);
+    const promise = loadModelWeights(TEST_URL, TEST_CACHE_KEY).catch(
+      (e: Error) => e,
+    );
     await vi.runAllTimersAsync();
     const err = await promise;
     expect(err).toBeInstanceOf(Error);
@@ -295,15 +382,23 @@ describe("loadModelWeights", () => {
 
   it("Throws on truncated response after all retries exhausted", async () => {
     vi.useFakeTimers();
-    const makeTruncated = () => new Response(
-      new ReadableStream({
-        start(controller) { controller.enqueue(new Uint8Array(32)); controller.close(); },
-      }),
-      { status: 200, statusText: "OK", headers: { "content-length": "64" } }
-    );
-    global.fetch = vi.fn().mockImplementation(() => Promise.resolve(makeTruncated()));
+    const makeTruncated = () =>
+      new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(new Uint8Array(32));
+            controller.close();
+          },
+        }),
+        { status: 200, statusText: "OK", headers: { "content-length": "64" } },
+      );
+    global.fetch = vi
+      .fn()
+      .mockImplementation(() => Promise.resolve(makeTruncated()));
 
-    const promise = loadModelWeights(TEST_URL, TEST_CACHE_KEY, vi.fn()).catch((e: Error) => e);
+    const promise = loadModelWeights(TEST_URL, TEST_CACHE_KEY, vi.fn()).catch(
+      (e: Error) => e,
+    );
     await vi.runAllTimersAsync();
     const err = await promise;
     expect(err).toBeInstanceOf(Error);

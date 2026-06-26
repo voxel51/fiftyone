@@ -2,14 +2,22 @@ import React, { createContext, useContext, useMemo } from "react";
 
 /**
  * One discoverable data source in the current scene. `type` is the
- * tile kind that knows how to render this id ("camera", "lidar", …).
- * `id` is opaque to the inventory — it's whatever the data domain
- * uses to address the source (an MCAP topic, a stream id, etc.).
+ * source kind tiles use to find what they can render ("image",
+ * "point-cloud", …). `id` is opaque to the inventory — it's whatever
+ * the data domain uses to address the source (an MCAP topic, a stream
+ * id, etc.).
  */
 export interface SceneSource {
   readonly id: string;
   readonly type: string;
   readonly label: string;
+
+  /**
+   * Total recorded messages for the source when the domain knows it.
+   * Layout heuristics use it to rank sources (a video-rate stream
+   * outranks a single keyframe).
+   */
+  readonly recordCount?: number;
 }
 
 interface SceneInventoryContextValue {
@@ -17,7 +25,7 @@ interface SceneInventoryContextValue {
 }
 
 const SceneInventoryContext = createContext<SceneInventoryContextValue | null>(
-  null
+  null,
 );
 
 export interface SceneInventoryProviderProps {
@@ -53,7 +61,7 @@ export function useSceneInventory(): readonly SceneSource[] {
   const ctx = useContext(SceneInventoryContext);
   if (!ctx) {
     throw new Error(
-      "useSceneInventory must be used inside <SceneInventoryProvider>"
+      "useSceneInventory must be used inside <SceneInventoryProvider>",
     );
   }
   return ctx.sources;

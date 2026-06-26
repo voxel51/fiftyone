@@ -35,7 +35,7 @@ function PlotlyWithCustomTooltip(props: EvaluationPlotProps) {
         onHover={(e) => {
           setTooltip(e);
         }}
-        onUnhover={(e) => {
+        onUnhover={() => {
           setTooltip(undefined);
         }}
         {...props}

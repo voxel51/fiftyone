@@ -81,13 +81,13 @@ export default () => {
   const mode = useAtomValue(modalMode);
   const isGroup = useMemo(
     () => isActualGroup || isDynamicGroup,
-    [isActualGroup, isDynamicGroup]
+    [isActualGroup, isDynamicGroup],
   );
 
   const [defaultXCoord, setDefaultXCoord] = fos.useBrowserStorage<number>(
     "modal-actions-row-x-coord",
     0,
-    false
+    false,
   );
 
   return (

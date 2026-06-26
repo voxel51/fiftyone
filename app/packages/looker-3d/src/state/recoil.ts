@@ -43,16 +43,16 @@ export const fo3dAssetsParseStatusThisSample = selector<AssetLoadingLog[]>({
   key: "fo3d-assetsParseStatusLogsThisSampleSelector",
   get: ({ get }) => {
     const thisModalUniqueId = `${get(groupId) ?? ""}-${get(
-      nullableModalSampleId
+      nullableModalSampleId,
     )}`;
     return get(fo3dAssetsParseStatusLog(`${thisModalUniqueId}`));
   },
   set: ({ get, set }, newValue) => {
     set(
       fo3dAssetsParseStatusLog(
-        `${get(groupId) ?? ""}-${get(nullableModalSampleId)}`
+        `${get(groupId) ?? ""}-${get(nullableModalSampleId)}`,
       ),
-      newValue
+      newValue,
     );
   },
 });
@@ -69,16 +69,16 @@ export const fo3dLoadingStatusThisSample = selector<LoadingStatusWithContext>({
   key: "fo3d-loadingStatusThisSampleSelector",
   get: ({ get }) => {
     const thisModalUniqueId = `${get(groupId) ?? ""}-${get(
-      nullableModalSampleId
+      nullableModalSampleId,
     )}`;
     return get(fo3dLoadingStatusLog(`${thisModalUniqueId}`));
   },
   set: ({ get, set }, newValue) => {
     set(
       fo3dLoadingStatusLog(
-        `${get(groupId) ?? ""}-${get(nullableModalSampleId)}`
+        `${get(groupId) ?? ""}-${get(nullableModalSampleId)}`,
       ),
-      newValue
+      newValue,
     );
   },
 });
@@ -523,7 +523,7 @@ const annotationPlaneAtomImpl = atomFamily<AnnotationPlaneState, string>({
       `fo3d-segmentationAnnotationPlane_${datasetName}`,
       {
         useJsonSerialization: true,
-      }
+      },
     ),
   ],
 });

@@ -32,7 +32,7 @@ export function GridRenderer({ ctx }: SampleRendererProps) {
     return sample._id ?? sample.id;
   }, [ctx.sample.sample]);
   const [selectedStreamTopic] = useMcapGridSelectedStreamTopic(
-    ctx.dataset.name
+    ctx.dataset.name,
   );
   const preview = useMcapGridPreview({
     selectedStreamTopic:
@@ -86,8 +86,8 @@ function useStableGridStreamTopics(topics: readonly string[]) {
   return useMemo(() => {
     const normalizedTopics = Array.from(
       new Set(
-        topics.map((topic) => topic.trim()).filter((topic) => topic.length > 0)
-      )
+        topics.map((topic) => topic.trim()).filter((topic) => topic.length > 0),
+      ),
     ).sort((a, b) => a.localeCompare(b));
     const key = normalizedTopics.join("\0");
 
@@ -113,12 +113,16 @@ function PointCloudPreviewFrame({
   readonly frame: Extract<McapGridPreviewFrame, { kind: "point-cloud" }>;
 }) {
   const [cameraPose, setCameraPose] = useMcapGridCameraPose();
+  const layers = useMemo(
+    () => [{ frame: frame.pointCloud, id: "preview" }],
+    [frame.pointCloud],
+  );
 
   return (
     <PointCloudPanel
       cameraPose={cameraPose}
       className={classes.imagePanel}
-      frame={frame.pointCloud}
+      layers={layers}
       onCameraPoseChange={setCameraPose}
       showGizmo={false}
       showHud={false}
@@ -146,7 +150,7 @@ function ImagePreviewFrame({
           setImageDims((prev) =>
             prev?.width === width && prev?.height === height
               ? prev
-              : { width, height }
+              : { width, height },
           )
         }
       />
@@ -190,7 +194,7 @@ function PreviewStatus({
 
 function previewStatusMessage(
   status: McapGridPreviewStatus,
-  hasPreviewTopics: boolean
+  hasPreviewTopics: boolean,
 ): string | null {
   if (status === "loading") {
     return null;

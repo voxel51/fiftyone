@@ -25,14 +25,14 @@ template unless you are certain your issue is outside its scope.
 
 Feature requests that are likely to be accepted:
 
--   Are minimal in scope (note that it's always easier to add additional
-    functionality later than remove functionality)
--   Are extensible (e.g. if adding an integration with an ML framework, is it
-    possible to add similar integrations with other frameworks?)
--   Have user impact & value that justifies the maintenance burden of
-    supporting the feature moving forwards. The
-    [JQuery contributor guide](https://contribute.jquery.org/open-source/#contributing-something-new)
-    has an excellent discussion on this.
+- Are minimal in scope (note that it's always easier to add additional
+  functionality later than remove functionality)
+- Are extensible (e.g. if adding an integration with an ML framework, is it
+  possible to add similar integrations with other frameworks?)
+- Have user impact & value that justifies the maintenance burden of supporting
+  the feature moving forwards. The
+  [JQuery contributor guide](https://contribute.jquery.org/open-source/#contributing-something-new)
+  has an excellent discussion on this.
 
 #### Lifecycle
 

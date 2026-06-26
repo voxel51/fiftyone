@@ -11,12 +11,12 @@ const MAX_CAROUSEL_HEIGHT = 600;
 export const DynamicGroupCarousel = React.memo(() => {
   const [height, setHeight] = useBrowserStorage(
     "dynamic-group-carousel-height",
-    150
+    150,
   );
 
   const theme = useTheme();
   const isMainVisible = useRecoilValue(
-    fos.groupMediaIsMain2DViewerVisibleSetting
+    fos.groupMediaIsMain2DViewerVisibleSetting,
   );
 
   return (

@@ -77,7 +77,7 @@ const SchemaSettings = () => {
 
   const { setFieldVisibilityStage } = fos.useSetSelectedFieldsStage();
   const resetFieldVisibilityStage = useResetRecoilState(
-    fos.fieldVisibilityStage
+    fos.fieldVisibilityStage,
   );
 
   const { resetAttributeFilters } = fos.useSchemaSettings();
@@ -98,7 +98,7 @@ const SchemaSettings = () => {
         setSettingsModal({ open: false });
       }
     },
-    [setSettingsModal]
+    [setSettingsModal],
   );
   fos.useEventHandler(document, "keydown", keyboardHandler);
 

@@ -202,7 +202,7 @@ export const useSegmentationActions = (): {
   const brushCursor = useMemo(() => {
     const cursorSize = Math.min(
       MAX_CURSOR_SIZE,
-      Math.max(MIN_CURSOR_SIZE, toolSize)
+      Math.max(MIN_CURSOR_SIZE, toolSize),
     );
 
     return buildBrushCursor({
@@ -378,7 +378,7 @@ export const useSegmentationActions = (): {
       toolMode,
       toolShape,
       toolSize,
-    ]
+    ],
   );
 
   // Wire `shortcut` declarations on toolbar actions into actual keybindings.
@@ -424,7 +424,7 @@ export const useSegmentationActions = (): {
           switchToolShape(
             toolShape === SegmentationToolShape.Circle
               ? SegmentationToolShape.Square
-              : SegmentationToolShape.Circle
+              : SegmentationToolShape.Circle,
           ),
         label: "Toggle brush shape",
         enablement: () => segmentationModeActive,

@@ -197,7 +197,7 @@ export class BoundingBoxPersistence {
     public readonly sampleId: string,
     public readonly label: string,
     public readonly bounds: Rect,
-    public readonly misc: Record<string, any> = {}
+    public readonly misc: Record<string, any> = {},
   ) {}
 }
 

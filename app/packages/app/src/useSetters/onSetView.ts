@@ -56,7 +56,7 @@ const onSetView: RegisteredSetter =
           }),
           {
             view,
-          }
+          },
         );
       },
     });

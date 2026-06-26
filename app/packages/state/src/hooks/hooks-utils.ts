@@ -18,7 +18,7 @@ export const useEventHandler = (
   target: EventTarget | undefined,
   eventType: string,
   handler: React.EventHandler<any>,
-  options?: boolean | AddEventListenerOptions
+  options?: boolean | AddEventListenerOptions,
 ) => {
   // Adapted from https://reactjs.org/docs/hooks-faq.html#what-can-i-do-if-my-effect-dependencies-change-too-often
   const handlerRef = useRef(handler);
@@ -74,7 +74,7 @@ export const useKeydownHandler = (handler: (e: KeyboardEvent) => void) =>
 export const useOutsideClick = (
   ref: React.MutableRefObject<HTMLElement | null | undefined>,
   handler: React.MouseEventHandler,
-  eventName = "mousedown"
+  eventName = "mousedown",
 ) => {
   const handleOutsideClick = useCallback(
     (event) => {
@@ -82,7 +82,7 @@ export const useOutsideClick = (
         handler(event);
       }
     },
-    [handler, ref]
+    [handler, ref],
   );
 
   useEventHandler(document, eventName, handleOutsideClick, true);
@@ -157,7 +157,7 @@ export type DebouncedState<T extends (...args: any) => ReturnType<T>> = ((
 export const useDebounceCallback = <T extends (...args: any) => ReturnType<T>>(
   func: T,
   delay = 500,
-  options?: DebounceOptions
+  options?: DebounceOptions,
 ): DebouncedState<T> => {
   const debouncedFunc = useRef<ReturnType<typeof debounce>>();
 
@@ -206,6 +206,6 @@ const useUnmount = (func: () => void) => {
     () => () => {
       funcRef.current();
     },
-    []
+    [],
   );
 };

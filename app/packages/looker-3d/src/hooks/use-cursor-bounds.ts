@@ -12,7 +12,7 @@ import { Box3 } from "three";
  */
 export function useCursorBounds(
   sceneBoundingBox: Box3 | null,
-  labelBounds: Box3 | null
+  labelBounds: Box3 | null,
 ): Box3 | null {
   return useMemo(() => {
     if (!sceneBoundingBox && !labelBounds) {

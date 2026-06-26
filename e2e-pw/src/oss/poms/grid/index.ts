@@ -17,7 +17,7 @@ export class GridPom {
 
   constructor(
     public readonly page: Page,
-    private readonly eventUtils: EventUtils
+    private readonly eventUtils: EventUtils,
   ) {
     this.assert = new GridAsserter(this);
     this.url = new UrlPom(page, eventUtils);
@@ -132,7 +132,7 @@ class GridAsserter {
   async nthSampleHasTagValue(
     n: number,
     tagName: string,
-    expectedTagValue: string
+    expectedTagValue: string,
   ) {
     const tagElement = this.gridPom
       .getNthLooker(n)
@@ -142,7 +142,7 @@ class GridAsserter {
 
   async isSelectionCountEqualTo(n: number) {
     const action = this.gridPom.actionsRow.gridActionsRow.getByTestId(
-      "action-manage-selected"
+      "action-manage-selected",
     );
 
     if (n === 0) {

@@ -27,7 +27,7 @@ export type PCDAttributes = Record<
   | Uint16Array
 >;
 
-export type PCDFileType = typeof PCDFileFormat[keyof typeof PCDFileFormat];
+export type PCDFileType = (typeof PCDFileFormat)[keyof typeof PCDFileFormat];
 
 export type ProgressCallback = (event: ProgressEvent) => void;
 export type ErrorCallback = (event: ErrorEvent | Error) => void;

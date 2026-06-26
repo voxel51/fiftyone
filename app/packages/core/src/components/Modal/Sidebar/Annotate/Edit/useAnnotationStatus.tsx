@@ -27,7 +27,7 @@ import {
 } from "./useSegmentationMode";
 
 const countVertices = (
-  points: PolylineAnnotationLabel["data"]["points"] | undefined
+  points: PolylineAnnotationLabel["data"]["points"] | undefined,
 ): number => points?.reduce((total, segment) => total + segment.length, 0) ?? 0;
 
 /**
@@ -43,7 +43,7 @@ export const useAnnotationStatus = () => {
 
   const detectionModeActive = useAtomValue(_unsafeDetectionModeActiveAtom);
   const segmentationModeActive = useAtomValue(
-    _unsafeSegmentationModeActiveAtom
+    _unsafeSegmentationModeActiveAtom,
   );
   const polylineModeActive = useAtomValue(_unsafePolylineModeActiveAtom);
   const tool = useAtomValue(_unsafeToolAtom);

@@ -36,7 +36,7 @@ const getValidLabelColors = (labelColors: unknown[]) => {
 
 // should return a valid customize color object that can be used to setCustomizeColor
 export const validateJSONSetting = (
-  json: ColorSchemeInput["fields"]
+  json: ColorSchemeInput["fields"],
 ): ColorSchemeInput["fields"] => {
   const filtered =
     json?.filter((s) => s && isObject(s) && isString(s["path"])) || [];
@@ -69,7 +69,7 @@ export const validateJSONSetting = (
 };
 
 export const validateLabelTags = (
-  obj: ColorSchemeInput["labelTags"]
+  obj: ColorSchemeInput["labelTags"],
 ): ColorSchemeInput["labelTags"] => {
   if (typeof obj === "object" && obj !== null) {
     const f = {
@@ -103,7 +103,7 @@ const getValidMaskColors = (maskColors: unknown[]) => {
 };
 
 export const validateMaskColor = (
-  arr: any
+  arr: any,
 ): ColorSchemeInput["defaultMaskTargetsColors"] => {
   return Array.isArray(arr) ? getValidMaskColors(arr) : null;
 };
@@ -130,7 +130,7 @@ const getValidColorscaleList = (list: unknown[]) => {
 };
 
 export const validateDefaultColorscale = (
-  obj: any
+  obj: any,
 ): ColorSchemeInput["defaultColorscale"] => {
   if (typeof obj === "object" && obj !== null) {
     const list = Array.isArray(obj["list"])
@@ -149,7 +149,7 @@ export const validateDefaultColorscale = (
 };
 
 export const validateColorscales = (
-  arr: any
+  arr: any,
 ): ColorSchemeInput["colorscales"] => {
   const result = Array.isArray(arr)
     ? arr

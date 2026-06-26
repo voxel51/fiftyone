@@ -32,7 +32,7 @@ export const use3dAnnotationEventHandlers = () => {
     (payload) => {
       select3DLabelForAnnotation(payload.data);
     },
-    [select3DLabelForAnnotation]
+    [select3DLabelForAnnotation],
   );
 
   const handleSidebarValueUpdated = useRecoilCallback(
@@ -63,7 +63,7 @@ export const use3dAnnotationEventHandlers = () => {
           updatePolyline(_id, coerced);
         }
       },
-    [updateCuboid, updatePolyline]
+    [updateCuboid, updatePolyline],
   );
 
   const handleSidebarLabelHover = useCallback(
@@ -72,7 +72,7 @@ export const use3dAnnotationEventHandlers = () => {
         id: payload.id,
       });
     },
-    [setHoveredLabel]
+    [setHoveredLabel],
   );
 
   const handleSidebarLabelUnhover = useCallback(() => {
@@ -81,30 +81,30 @@ export const use3dAnnotationEventHandlers = () => {
 
   useAnnotationEventHandler(
     "annotation:sidebarLabelSelected",
-    handleSidebarLabelSelected
+    handleSidebarLabelSelected,
   );
   useAnnotationEventHandler(
     "annotation:sidebarValueUpdated",
-    handleSidebarValueUpdated
+    handleSidebarValueUpdated,
   );
   useAnnotationEventHandler(
     "annotation:sidebarLabelHover",
-    handleSidebarLabelHover
+    handleSidebarLabelHover,
   );
   useAnnotationEventHandler(
     "annotation:sidebarLabelUnhover",
-    handleSidebarLabelUnhover
+    handleSidebarLabelUnhover,
   );
 
   const handleLabelEdit = useCallback(
     (
       payload:
         | AnnotationEventGroup["annotation:labelEdit"]
-        | AnnotationEventGroup["annotation:undoLabelEdit"]
+        | AnnotationEventGroup["annotation:undoLabelEdit"],
     ) => {
       updateLabelData(payload.label.id, payload.label);
     },
-    [updateLabelData]
+    [updateLabelData],
   );
 
   useAnnotationEventHandler("annotation:labelEdit", handleLabelEdit);

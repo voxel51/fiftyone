@@ -123,7 +123,7 @@ export interface DecodeExecutor {
    * strategy.
    */
   decode(
-    request: DecodeExecutionRequest
+    request: DecodeExecutionRequest,
   ): DecodedOutput | Promise<DecodedOutput>;
 }
 

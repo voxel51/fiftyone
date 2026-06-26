@@ -1,6 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect } from "react";
-import { TileIdScope, TilingProvider, useTiling } from "../../lib/TilingProvider";
+import {
+  TileIdScope,
+  TilingProvider,
+  useTiling,
+} from "../../lib/TilingProvider";
 import { useSetTileSelection } from "../../lib/use-tile-state";
 import TilingInspectorSidebar from "./TilingInspectorSidebar";
 

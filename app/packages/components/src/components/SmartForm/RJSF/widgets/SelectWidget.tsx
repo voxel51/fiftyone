@@ -5,12 +5,12 @@
 
 import { WidgetProps } from "@rjsf/utils";
 import { FormField, Select } from "@voxel51/voodo";
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 function computeSelectChangeValue(
   newValue: string | string[],
   multiple: boolean,
-  enumValues: unknown[]
+  enumValues: unknown[],
 ): unknown {
   // Select uses string IDs for options; resolve back to the schema's original enum
   // value so we preserve type (e.g. number or boolean) for validation and downstream use.
@@ -23,13 +23,12 @@ function computeSelectChangeValue(
     return arr.map(resolveToEnumValue);
   }
   return resolveToEnumValue(
-    typeof newValue === "string" ? newValue : newValue[0] ?? ""
+    typeof newValue === "string" ? newValue : (newValue[0] ?? ""),
   );
 }
 
 export default function SelectWidget(props: WidgetProps) {
-  const { value, onChange, schema, uiSchema, disabled, readonly, label } =
-    props;
+  const { value, onChange, schema, disabled, readonly, label } = props;
 
   const enumValues = schema.enum || [];
   const enumNames = schema.enumNames || enumValues;
@@ -40,7 +39,7 @@ export default function SelectWidget(props: WidgetProps) {
         id: String(val),
         data: { label: String(enumNames[index] ?? val) },
       })),
-    [enumValues, enumNames]
+    [enumValues, enumNames],
   );
 
   const multiple = schema.type === "array";
@@ -65,7 +64,7 @@ export default function SelectWidget(props: WidgetProps) {
       }
       onChange(computeSelectChangeValue(newValue, multiple, enumValues));
     },
-    [onChange, multiple, enumValues]
+    [onChange, multiple, enumValues],
   );
 
   return (

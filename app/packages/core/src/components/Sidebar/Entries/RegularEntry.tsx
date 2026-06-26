@@ -32,7 +32,7 @@ type RegularEntryProps = React.PropsWithChildren<{
   trigger?: (
     event: React.MouseEvent<HTMLDivElement>,
     key: string,
-    cb: () => void
+    cb: () => void,
   ) => void;
 }>;
 
@@ -51,7 +51,7 @@ const RegularEntry = React.forwardRef(
       title,
       trigger,
     }: RegularEntryProps,
-    ref
+    ref,
   ) => {
     const headerRef = useRef();
 
@@ -90,7 +90,7 @@ const RegularEntry = React.forwardRef(
         </Draggable>
       </Container>
     );
-  }
+  },
 );
 
 export default React.memo(RegularEntry);

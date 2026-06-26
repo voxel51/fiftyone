@@ -13,14 +13,14 @@ export class EmbeddingsPom {
 
   constructor(
     readonly page: Page,
-    eventUtils: EventUtils
+    eventUtils: EventUtils,
   ) {
     this.locator = this.page.getByTestId("embeddings-container");
     this.selector = new SelectorPom(this.locator, eventUtils, "embeddings");
     this.colorbySelector = new SelectorPom(
       this.locator,
       eventUtils,
-      "embeddings-colorby"
+      "embeddings-colorby",
     );
 
     this.plotContainer = this.page.getByTestId("embeddings-plot-container");
@@ -48,13 +48,13 @@ export class EmbeddingsPom {
         {
           message: "Waiting for embeddings plot container bounding box",
           timeout: 5000,
-        }
+        },
       )
       .not.toBeNull();
 
     if (!boundingBox) {
       throw new Error(
-        "Unable to get bounding box for embeddings plot container"
+        "Unable to get bounding box for embeddings plot container",
       );
     }
 
@@ -77,7 +77,7 @@ export class EmbeddingsPom {
 class EmebddingsAsserter {
   constructor(
     private readonly embeddingsPom: EmbeddingsPom,
-    private readonly panelPom: GridPanelPom
+    private readonly panelPom: GridPanelPom,
   ) {}
 
   async verifyPanelVisible() {

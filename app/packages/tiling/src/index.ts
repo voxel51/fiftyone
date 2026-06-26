@@ -46,7 +46,11 @@ export { default as Tile, TileHeader } from "./views/Tile/Tile";
 export type { TileProps, TileHeaderProps } from "./views/Tile/Tile";
 
 export { default as TilingHeader } from "./views/TilingHeader/TilingHeader";
-export type { TilingHeaderProps } from "./views/TilingHeader/TilingHeader";
+export type {
+  TilingHeaderCaption,
+  TilingHeaderCaptionContext,
+  TilingHeaderProps,
+} from "./views/TilingHeader/TilingHeader";
 
 export { default as SidebarPanel } from "./views/SidebarPanel/SidebarPanel";
 export type { SidebarPanelProps } from "./views/SidebarPanel/SidebarPanel";

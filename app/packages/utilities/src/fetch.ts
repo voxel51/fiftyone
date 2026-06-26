@@ -89,7 +89,7 @@ export interface FetchFunction {
     retries?: number,
     retryCodes?: number[],
     errorHandler?: (response: Response) => void | Promise<void>,
-    headers?: Record<string, string>
+    headers?: Record<string, string>,
   ): Promise<R>;
 }
 
@@ -105,7 +105,7 @@ export interface FetchFunctionExtended {
     retries?: number,
     retryCodes?: number[],
     errorHandler?: (response: Response) => void | Promise<void>,
-    headers?: Record<string, string>
+    headers?: Record<string, string>,
   ): Promise<FetchFunctionResult<R>>;
 }
 
@@ -127,7 +127,7 @@ export type GetFetchFunctionOptions = {
  */
 const withCache = <T>(
   cacheKey: string,
-  fetchFn: () => Promise<T>
+  fetchFn: () => Promise<T>,
 ): Promise<T> => {
   if (fetchCache.has(cacheKey)) {
     return Promise.resolve(fetchCache.get(cacheKey) as T);
@@ -177,7 +177,7 @@ export const getFetchFunction = (options?: GetFetchFunctionOptions) => {
     retries?: number,
     retryCodes?: number[],
     errorHandler?: (response: Response) => void | Promise<void>,
-    headers?: Record<string, string>
+    headers?: Record<string, string>,
   ): Promise<R> =>
     withCache(buildCacheKey(method, path, body), () =>
       fetchFunctionSingleton<A, R>(
@@ -188,8 +188,8 @@ export const getFetchFunction = (options?: GetFetchFunctionOptions) => {
         retries,
         retryCodes,
         errorHandler,
-        headers
-      )
+        headers,
+      ),
     );
 };
 
@@ -199,7 +199,7 @@ export const getFetchFunction = (options?: GetFetchFunctionOptions) => {
  */
 export const getFetchFunctionExtended =
   (): (<A, R>(
-    config: FetchFunctionConfig<A>
+    config: FetchFunctionConfig<A>,
   ) => Promise<FetchFunctionResult<R>>) =>
   <A, R>(config: FetchFunctionConfig<A>): Promise<FetchFunctionResult<R>> => {
     const doFetch = () =>
@@ -211,13 +211,13 @@ export const getFetchFunctionExtended =
         config.retries,
         config.retryCodes,
         config.errorHandler,
-        config.headers
+        config.headers,
       );
 
     if (config.cache) {
       return withCache(
         buildCacheKey(config.method, config.path, config.body),
-        doFetch
+        doFetch,
       );
     }
 
@@ -258,7 +258,7 @@ export const mergeHeaders = (
       // convert everything to Record<string, string>
       .map((h) => headersAsRecord(h))
       // reduce with spread, ignoring any undefined values
-      .reduce((a, b) => (a && b ? { ...a, ...b } : a ?? b), {})
+      .reduce((a, b) => (a && b ? { ...a, ...b } : (a ?? b)), {})
   );
 };
 
@@ -287,7 +287,7 @@ export function getFetchPathPrefix(): string {
 export const setFetchParameters = (
   origin: string,
   headers: HeadersInit = {},
-  pathPrefix = ""
+  pathPrefix = "",
 ) => {
   fetchHeaders = headers;
   fetchOrigin = origin;
@@ -305,7 +305,7 @@ export const getFetchParameters = () => {
 export const setFetchFunction = (
   origin: string,
   defaultHeaders: HeadersInit = {},
-  pathPrefix = ""
+  pathPrefix = "",
 ) => {
   setFetchParameters(origin, defaultHeaders, pathPrefix);
 
@@ -317,7 +317,7 @@ export const setFetchFunction = (
     retries = 2,
     retryCodes = [502, 503, 504],
     errorHandler,
-    headers
+    headers,
   ) => {
     let url: string;
     const controller = new AbortController();
@@ -341,7 +341,7 @@ export const setFetchFunction = (
     headers = mergeHeaders(
       body ? { "Content-Type": "application/json" } : {},
       defaultHeaders,
-      headers
+      headers,
     );
 
     const fetchCall = retries
@@ -355,6 +355,7 @@ export const setFetchFunction = (
             ) {
               return true;
             }
+            return false;
           },
         })
       : fetch;
@@ -436,7 +437,7 @@ export const setFetchFunction = (
     retries: number = 2,
     retryCodes: number[] = [502, 503, 504],
     errorHandler: (response: Response) => void | Promise<void>,
-    headers: Record<string, string>
+    headers: Record<string, string>,
   ) =>
     fetchFunctionExtended<A, R>(
       method,
@@ -446,12 +447,15 @@ export const setFetchFunction = (
       retries,
       retryCodes,
       errorHandler,
-      headers
+      headers,
     ).then((res) => res.response);
 };
 
 class JSONStreamParser {
-  constructor(response, private controller: AbortController) {
+  constructor(
+    response,
+    private controller: AbortController,
+  ) {
     this.reader = response.body.getReader();
     this.decoder = new TextDecoder();
     this.partialLine = "";
@@ -532,7 +536,7 @@ export const getEventSource = (
     onerror?: (error: Error) => void;
   },
   signal: AbortSignal,
-  body = {}
+  body = {},
 ): void => {
   if (polling) {
     pollingEventSource(path, events, signal, body);
@@ -597,8 +601,18 @@ export const getEventSource = (
             }
 
             throw new ServerError(
-              {},
-              (err as unknown as { stack: string }).stack
+              {
+                code: response.status,
+                bodyResponse: err,
+                route: response.url,
+                payload: {},
+                requestHeaders: init?.headers ?? {},
+                responseHeaders: response.headers,
+                statusText: response.statusText,
+                stack: (err as unknown as { stack?: string }).stack,
+              },
+              (err as unknown as { message?: string }).message ??
+                `${response.status} ${response.url}`,
             );
           }
 
@@ -633,7 +647,7 @@ const pollingEventSource = (
   },
   signal: AbortSignal,
   body = {},
-  opened = false
+  opened = false,
 ): void => {
   if (signal.aborted) {
     return;
@@ -661,7 +675,7 @@ const pollingEventSource = (
 
       setTimeout(
         () => pollingEventSource(path, events, signal, body, opened),
-        2000
+        2000,
       );
     })
     .catch((error) => {
@@ -678,22 +692,7 @@ const pollingEventSource = (
 
       setTimeout(
         () => pollingEventSource(path, events, signal, body, opened),
-        2000
+        2000,
       );
     });
-};
-
-const getFirstFilterPath = (requestBody: any) => {
-  if (requestBody && requestBody.query) {
-    if (requestBody.query.includes("paginateSamplesQuery")) {
-      const pathsArray = requestBody?.variables?.filters;
-      const paths = pathsArray ? Object.keys(pathsArray) : [];
-      return paths.length > 0 ? paths[0] : undefined;
-    }
-    if (requestBody.query.includes("lightningQuery")) {
-      const paths = requestBody?.variables?.input?.paths;
-      return paths && paths.length > 0 ? paths[0].path : undefined;
-    }
-  }
-  return undefined;
 };

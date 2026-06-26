@@ -54,10 +54,10 @@ Both `yarn dev:py` and `yarn dev:wpy` set `FIFTYONE_ALLOWED_ORIGINS` to the
 client dev server origin (`http://localhost:5173`) so the backend accepts
 cross-origin requests from the hot-reloading client. They accept two flags:
 
--   `-p, --port <port>` — client dev server port (default `5173`); the allowed
-    origin is derived from it.
--   `-n, --notebook` — also set the server's `proxy_url` to the client dev
-    server origin, for notebook development.
+- `-p, --port <port>` — client dev server port (default `5173`); the allowed
+  origin is derived from it.
+- `-n, --notebook` — also set the server's `proxy_url` to the client dev server
+  origin, for notebook development.
 
 ```shell
 yarn dev:wpy -p 5273 -n
@@ -245,7 +245,7 @@ It should be noted that this App began as this
 
 Best practices:
 
--   All React components should be function-based, not class-based
--   We recommend writing fully typed TypeScript, although we are still
-    transitioning
--   With the app dev environment installed, you can run `yarn storybook`
+- All React components should be function-based, not class-based
+- We recommend writing fully typed TypeScript, although we are still
+  transitioning
+- With the app dev environment installed, you can run `yarn storybook`

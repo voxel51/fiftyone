@@ -22,6 +22,6 @@ export const useActiveTask = (): ActiveTask => {
 
   return useMemo(
     () => ({ activeTask, setActiveTask }),
-    [activeTask, setActiveTask]
+    [activeTask, setActiveTask],
   );
 };

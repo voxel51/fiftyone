@@ -37,7 +37,7 @@ export const datasetName = graphQLSyncFragmentAtom<
   },
   {
     key: "datasetName",
-  }
+  },
 );
 
 export const datasetId = graphQLSyncFragmentAtom<
@@ -52,7 +52,7 @@ export const datasetId = graphQLSyncFragmentAtom<
   },
   {
     key: "datasetId",
-  }
+  },
 );
 
 export const isNotebook = selector<boolean>({
@@ -133,7 +133,7 @@ export const appConfigOption = atomFamily<any, { key: string; modal: boolean }>(
   {
     key: "appConfigOptions",
     default: appConfigDefault,
-  }
+  },
 );
 
 export const datasetAppConfig = graphQLSyncFragmentAtom<
@@ -148,7 +148,7 @@ export const datasetAppConfig = graphQLSyncFragmentAtom<
   },
   {
     key: "datasetAppConfig",
-  }
+  },
 );
 
 export const activeFieldsConfig = selector({
@@ -162,7 +162,7 @@ export const disableFrameFiltering = selector<boolean>({
     const datasetDisableFrameFiltering =
       get(datasetAppConfig)?.disableFrameFiltering;
     const globalDisableFrameFiltering = Boolean(
-      get(appConfigOption({ modal: true, key: "disableFrameFiltering" }))
+      get(appConfigOption({ modal: true, key: "disableFrameFiltering" })),
     );
 
     return datasetDisableFrameFiltering !== null
@@ -216,7 +216,7 @@ export const getSkeleton = selector<(field: string) => KeypointSkeleton | null>(
 
       return (field: string) => skeletons[field] || dataset.defaultSkeleton;
     },
-  }
+  },
 );
 
 export const skeleton = selectorFamily<KeypointSkeleton | null, string>({
@@ -242,7 +242,7 @@ export const getTarget = selector({
 
       if (isRgbMaskTargets(maskTargets)) {
         const maskTargetTuple = Object.entries(maskTargets).find(
-          ([_, el]) => el.intTarget === target
+          ([_, el]) => el.intTarget === target,
         );
 
         if (maskTargetTuple) {
@@ -266,7 +266,7 @@ export const selectedLabelMap = selector<State.SelectedLabelMap>({
         [labelId]: label,
         ...acc,
       }),
-      {}
+      {},
     );
   },
   set: ({ set }, newValue) => {
@@ -279,7 +279,7 @@ export const selectedLabelMap = selector<State.SelectedLabelMap>({
       Object.entries(newValue).map(([labelId, label]) => ({
         ...label,
         labelId,
-      }))
+      })),
     );
   },
 });
@@ -311,7 +311,7 @@ export const anyTagging = selector<boolean>({
     [true, false].forEach((i) =>
       [true, false].forEach((j) => {
         values.push(get(atoms.tagging({ modal: i, labels: j })));
-      })
+      }),
     );
     return values.some((v) => v);
   },
@@ -319,7 +319,7 @@ export const anyTagging = selector<boolean>({
     [true, false].forEach((i) =>
       [true, false].forEach((j) => {
         set(atoms.tagging({ modal: i, labels: j }), value);
-      })
+      }),
     );
   },
   cachePolicy_UNSTABLE: {
@@ -400,7 +400,7 @@ export const hiddenFieldLabels = selectorFamily<string[], string>({
       if (_id) {
         return Object.entries(labels)
           .filter(
-            ([_, { sampleId: id, field }]) => _id === id && field === fieldName
+            ([_, { sampleId: id, field }]) => _id === id && field === fieldName,
           )
           .map(([labelId]) => labelId);
       }
@@ -429,7 +429,7 @@ export const similarityMethods = selector<{
     return methods
       .filter(
         ({ config: { type, cls } }) =>
-          type == "similarity" || cls.toLowerCase().includes("similarity")
+          type == "similarity" || cls.toLowerCase().includes("similarity"),
       )
       .reduce(
         (
@@ -443,7 +443,7 @@ export const similarityMethods = selector<{
               maxK,
             },
             key,
-          }
+          },
         ) => {
           if (patchesField) {
             patches.push([
@@ -460,7 +460,7 @@ export const similarityMethods = selector<{
           }
           return { patches, samples };
         },
-        { patches: [], samples: [] }
+        { patches: [], samples: [] },
       );
   },
   cachePolicy_UNSTABLE: {
@@ -475,7 +475,7 @@ export const extendedStagesUnsorted = selector({
     const sampleIds = extendedSelection?.selection;
     const spatialSelection = extendedSelection?.spatialSelection;
     const extendedSelectionOverrideStage = get(
-      atoms.extendedSelectionOverrideStage
+      atoms.extendedSelectionOverrideStage,
     );
 
     if (extendedSelectionOverrideStage) {
@@ -584,7 +584,7 @@ export const selectedPatchIds = selectorFamily({
             ...getLabelIdsFromSample(
               sample,
               patchesField,
-              get(pathFilter(false))
+              get(pathFilter(false)),
             ),
           ];
         }

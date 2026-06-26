@@ -41,7 +41,10 @@ function circle(overrides: Record<string, unknown> = {}) {
 function pointsAnnotation(overrides: Record<string, unknown> = {}) {
   return {
     type: "LINE_STRIP",
-    points: [{ x: 0, y: 0 }, { x: 10, y: 10 }],
+    points: [
+      { x: 0, y: 0 },
+      { x: 10, y: 10 },
+    ],
     thickness: 3,
     outlineColor: color(1, 1, 0, 1),
     outlineColors: [],
@@ -87,7 +90,7 @@ describe("foxgloveImageAnnotationsDecoder", () => {
 
     const { visualization } = foxgloveImageAnnotationsDecoder.decode(
       EMPTY_BYTES,
-      {}
+      {},
     );
 
     expect(visualization?.kind).toBe(VISUALIZATION_KIND.IMAGE_ANNOTATIONS);
@@ -121,7 +124,7 @@ describe("foxgloveImageAnnotationsDecoder", () => {
 
     const { visualization } = foxgloveImageAnnotationsDecoder.decode(
       EMPTY_BYTES,
-      {}
+      {},
     );
 
     expect(visualization?.kind).toBe(VISUALIZATION_KIND.IMAGE_ANNOTATIONS);
@@ -141,7 +144,7 @@ describe("foxgloveImageAnnotationsDecoder", () => {
 
     const { visualization } = foxgloveImageAnnotationsDecoder.decode(
       EMPTY_BYTES,
-      {}
+      {},
     );
 
     expect(visualization?.kind).toBe(VISUALIZATION_KIND.IMAGE_ANNOTATIONS);
@@ -165,7 +168,7 @@ describe("foxgloveImageAnnotationsDecoder", () => {
 
     const { visualization } = foxgloveImageAnnotationsDecoder.decode(
       EMPTY_BYTES,
-      {}
+      {},
     );
 
     expect(visualization?.kind).toBe(VISUALIZATION_KIND.IMAGE_ANNOTATIONS);
@@ -184,7 +187,7 @@ describe("foxgloveImageAnnotationsDecoder", () => {
 
     const { visualization } = foxgloveImageAnnotationsDecoder.decode(
       EMPTY_BYTES,
-      {}
+      {},
     );
 
     expect(visualization?.kind).toBe(VISUALIZATION_KIND.IMAGE_ANNOTATIONS);
@@ -209,13 +212,13 @@ describe("foxgloveImageAnnotationsDecoder", () => {
 
       const { visualization } = foxgloveImageAnnotationsDecoder.decode(
         EMPTY_BYTES,
-        {}
+        {},
       );
 
       expect(visualization?.kind).toBe(VISUALIZATION_KIND.IMAGE_ANNOTATIONS);
-    if (visualization?.kind !== VISUALIZATION_KIND.IMAGE_ANNOTATIONS) {
-      throw new Error("Expected IMAGE_ANNOTATIONS visualization");
-    }
+      if (visualization?.kind !== VISUALIZATION_KIND.IMAGE_ANNOTATIONS) {
+        throw new Error("Expected IMAGE_ANNOTATIONS visualization");
+      }
       expect(visualization.points[0].type).toBe(expected);
     }
   });
@@ -229,7 +232,7 @@ describe("foxgloveImageAnnotationsDecoder", () => {
 
     const { visualization } = foxgloveImageAnnotationsDecoder.decode(
       EMPTY_BYTES,
-      {}
+      {},
     );
 
     expect(visualization?.kind).toBe(VISUALIZATION_KIND.IMAGE_ANNOTATIONS);
@@ -245,7 +248,10 @@ describe("foxgloveImageAnnotationsDecoder", () => {
       points: [
         pointsAnnotation({
           type: "POINTS",
-          points: [{ x: 5, y: 10 }, { x: 15, y: 20 }],
+          points: [
+            { x: 5, y: 10 },
+            { x: 15, y: 20 },
+          ],
           outlineColors: [color(1, 0, 0, 1), color(0, 1, 0, 1)],
         }),
       ],
@@ -254,7 +260,7 @@ describe("foxgloveImageAnnotationsDecoder", () => {
 
     const { visualization } = foxgloveImageAnnotationsDecoder.decode(
       EMPTY_BYTES,
-      {}
+      {},
     );
 
     expect(visualization?.kind).toBe(VISUALIZATION_KIND.IMAGE_ANNOTATIONS);
@@ -262,8 +268,14 @@ describe("foxgloveImageAnnotationsDecoder", () => {
       throw new Error("Expected IMAGE_ANNOTATIONS visualization");
     }
     const p = visualization.points[0];
-    expect(p.points).toEqual([[5, 10], [15, 20]]);
-    expect(p.outlineColors).toEqual([[1, 0, 0, 1], [0, 1, 0, 1]]);
+    expect(p.points).toEqual([
+      [5, 10],
+      [15, 20],
+    ]);
+    expect(p.outlineColors).toEqual([
+      [1, 0, 0, 1],
+      [0, 1, 0, 1],
+    ]);
   });
 
   // -------------------------------------------------------------------------
@@ -279,7 +291,7 @@ describe("foxgloveImageAnnotationsDecoder", () => {
 
     const { visualization } = foxgloveImageAnnotationsDecoder.decode(
       EMPTY_BYTES,
-      {}
+      {},
     );
 
     expect(visualization?.kind).toBe(VISUALIZATION_KIND.IMAGE_ANNOTATIONS);
@@ -303,7 +315,7 @@ describe("foxgloveImageAnnotationsDecoder", () => {
 
     const { visualization } = foxgloveImageAnnotationsDecoder.decode(
       EMPTY_BYTES,
-      {}
+      {},
     );
 
     expect(visualization?.kind).toBe(VISUALIZATION_KIND.IMAGE_ANNOTATIONS);
@@ -361,7 +373,7 @@ describe("foxgloveImageAnnotationsDecoder", () => {
 
     const { attributes } = foxgloveImageAnnotationsDecoder.decode(
       EMPTY_BYTES,
-      {}
+      {},
     );
 
     expect(attributes).toMatchObject({

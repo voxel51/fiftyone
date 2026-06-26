@@ -35,7 +35,7 @@ export class McapFrameTransformStore {
       if (normalized) {
         this.staticSamplesByEdge.set(
           frameTransformEdgeKey(normalized),
-          normalized
+          normalized,
         );
         this.addFrameIds(normalized);
       }
@@ -44,7 +44,7 @@ export class McapFrameTransformStore {
 
   addDynamic(
     samples: readonly McapFrameTransformSample[],
-    range: McapFrameTransformTimeRange
+    range: McapFrameTransformTimeRange,
   ): void {
     const touchedEdges = new Set<string>();
 
@@ -73,7 +73,7 @@ export class McapFrameTransformStore {
 
   isTimeIndexed(timeNs: bigint): boolean {
     return this.dynamicRanges.some(
-      (range) => range.startTimeNs <= timeNs && timeNs <= range.endTimeNs
+      (range) => range.startTimeNs <= timeNs && timeNs <= range.endTimeNs,
     );
   }
 
@@ -158,7 +158,7 @@ export class McapFrameTransformStore {
       pushAdjacency(
         adjacency,
         sample.parentFrameId,
-        invertFrameTransform(childToParent)
+        invertFrameTransform(childToParent),
       );
     }
 
@@ -167,7 +167,7 @@ export class McapFrameTransformStore {
 
   private effectiveSamplesForTime(timeNs: bigint | undefined) {
     const samples = new Map<string, McapFrameTransformSample>(
-      this.staticSamplesByEdge
+      this.staticSamplesByEdge,
     );
 
     if (timeNs === undefined) {
@@ -199,7 +199,7 @@ export class McapFrameTransformStore {
  * the receiving side.
  */
 export function dehydrateMcapFrameTransformSet(
-  set: McapFrameTransformSet
+  set: McapFrameTransformSet,
 ): McapFrameTransformSetWire {
   return {
     samples: set.samples.map((sample) => ({
@@ -225,7 +225,7 @@ export function dehydrateMcapFrameTransformSet(
  * reads structurally.
  */
 export function hydrateMcapFrameTransformSet(
-  set: McapFrameTransformSetWire
+  set: McapFrameTransformSetWire,
 ): McapFrameTransformSet {
   return {
     samples: set.samples.map((sample) => ({
@@ -234,12 +234,12 @@ export function hydrateMcapFrameTransformSet(
         sample.rotation.x,
         sample.rotation.y,
         sample.rotation.z,
-        sample.rotation.w
+        sample.rotation.w,
       ).normalize(),
       translation: new Vector3(
         sample.translation.x,
         sample.translation.y,
-        sample.translation.z
+        sample.translation.z,
       ),
     })),
   };
@@ -298,7 +298,7 @@ function resolveComposedTransform({
 
 function latestSampleAtOrBefore(
   samples: readonly McapFrameTransformSample[],
-  timeNs: bigint
+  timeNs: bigint,
 ) {
   let low = 0;
   let high = samples.length - 1;
@@ -357,7 +357,7 @@ export function frameTransformEdgeKey(sample: {
  */
 export function compareFrameTransformSamplesByTime(
   left: { readonly timeNs?: bigint },
-  right: { readonly timeNs?: bigint }
+  right: { readonly timeNs?: bigint },
 ) {
   if (left.timeNs === right.timeNs) {
     return 0;
@@ -373,12 +373,12 @@ export function compareFrameTransformSamplesByTime(
 }
 
 function sortAndMergeTimeRanges(
-  ranges: readonly McapFrameTransformTimeRange[]
+  ranges: readonly McapFrameTransformTimeRange[],
 ) {
   const sorted = [...ranges].sort((left, right) =>
     left.startTimeNs === right.startTimeNs
       ? compareBigInt(left.endTimeNs, right.endTimeNs)
-      : compareBigInt(left.startTimeNs, right.startTimeNs)
+      : compareBigInt(left.startTimeNs, right.startTimeNs),
   );
   const merged: McapFrameTransformTimeRange[] = [];
 
@@ -401,7 +401,7 @@ function sortAndMergeTimeRanges(
 function pushAdjacency<Value>(
   adjacency: Map<string, Value[]>,
   frameId: string,
-  value: Value
+  value: Value,
 ) {
   const values = adjacency.get(frameId);
   if (values) {
@@ -413,7 +413,7 @@ function pushAdjacency<Value>(
 
 function composeFrameTransforms(
   first: McapComposedFrameTransform,
-  second: McapComposedFrameTransform
+  second: McapComposedFrameTransform,
 ): McapComposedFrameTransform {
   const firstRotation = first.rotation.clone().normalize();
   const secondRotation = second.rotation.clone().normalize();
@@ -430,7 +430,7 @@ function composeFrameTransforms(
 }
 
 function invertFrameTransform(
-  transform: McapComposedFrameTransform
+  transform: McapComposedFrameTransform,
 ): McapComposedFrameTransform {
   const inverseRotation = transform.rotation.clone().normalize().invert();
 

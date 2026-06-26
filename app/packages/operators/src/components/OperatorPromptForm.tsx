@@ -11,7 +11,7 @@ export function OperatorPromptForm({ operatorPrompt }) {
       }
       operatorPrompt.setLiteValues(liteValues);
     },
-    [operatorPrompt]
+    [operatorPrompt],
   );
 
   return (

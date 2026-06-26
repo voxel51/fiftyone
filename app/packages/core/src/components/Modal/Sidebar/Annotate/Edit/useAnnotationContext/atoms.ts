@@ -3,7 +3,7 @@ import { atom, type PrimitiveAtom } from "jotai";
 import type { LabelType } from "./types";
 
 export const savedLabel = atom<AnnotationLabel["data"] | null>(
-  null
+  null,
 ) as PrimitiveAtom<AnnotationLabel["data"] | null>;
 
 /**
@@ -12,12 +12,12 @@ export const savedLabel = atom<AnnotationLabel["data"] | null>(
  * to a new field counts as dirty even when the merged data is structurally
  * unchanged.
  */
-export const savedLabelPath = atom<string | null>(
-  null
-) as PrimitiveAtom<string | null>;
+export const savedLabelPath = atom<string | null>(null) as PrimitiveAtom<
+  string | null
+>;
 
 export const currentEditingMaskAtom = atom<boolean>(
-  false
+  false,
 ) as PrimitiveAtom<boolean>;
 
 /**
@@ -27,7 +27,7 @@ export const currentEditingMaskAtom = atom<boolean>(
  * rather than touching this atom directly.
  */
 export const editingLabelAtom = atom<PrimitiveAtom<AnnotationLabel> | null>(
-  null
+  null,
 ) as PrimitiveAtom<PrimitiveAtom<AnnotationLabel> | null>;
 
 /**
@@ -36,5 +36,5 @@ export const editingLabelAtom = atom<PrimitiveAtom<AnnotationLabel> | null>(
  * exclusive with {@link editingLabelAtom}.
  */
 export const pendingNewTypeAtom = atom<LabelType | null>(
-  null
+  null,
 ) as PrimitiveAtom<LabelType | null>;

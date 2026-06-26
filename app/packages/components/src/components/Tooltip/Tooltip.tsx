@@ -64,7 +64,7 @@ const Tooltip: React.FC<{
               />
             </motion.div>
           )}
-        </AnimatePresence>
+        </AnimatePresence>,
       )}
     </>
   );

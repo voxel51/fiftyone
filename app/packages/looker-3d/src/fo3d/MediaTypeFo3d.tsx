@@ -132,7 +132,7 @@ export const MediaTypeFo3dComponent = () => {
 
   const [cameraLifecycleState, dispatchCameraLifecycle] = useReducer(
     fo3dCameraLifecycleReducer,
-    FO3D_CAMERA_LIFECYCLE.WAITING_FOR_SCENE
+    FO3D_CAMERA_LIFECYCLE.WAITING_FOR_SCENE,
   );
   const isSceneReady = isFo3dSceneReady({
     cameraLifecycleState,
@@ -188,7 +188,7 @@ export const MediaTypeFo3dComponent = () => {
       canAnnotate,
       isSceneReady,
       recomputeBounds,
-    }
+    },
   );
 
   const { mountCameraPosition } = useFo3dCameraInitialization({

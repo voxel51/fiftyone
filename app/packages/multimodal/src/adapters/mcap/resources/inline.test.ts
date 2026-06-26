@@ -9,19 +9,19 @@ import { createInlineMcapResourceClient } from "./inline";
 import { MCAP_ACTIVE_TIMELINE } from "../types";
 
 const FRAME_TRANSFORM_SCHEMA_DATA = bytes(
-  "CmcKH2dvb2dsZS9wcm90b2J1Zi90aW1lc3RhbXAucHJvdG8SD2dvb2dsZS5wcm90b2J1ZiIrCglUaW1lc3RhbXASDwoHc2Vjb25kcxgBIAEoAxINCgVuYW5vcxgCIAEoBWIGcHJvdG8zClYKFmZveGdsb3ZlL1ZlY3RvcjMucHJvdG8SCGZveGdsb3ZlIioKB1ZlY3RvcjMSCQoBeBgBIAEoARIJCgF5GAIgASgBEgkKAXoYAyABKAFiBnByb3RvMwpnChlmb3hnbG92ZS9RdWF0ZXJuaW9uLnByb3RvEghmb3hnbG92ZSI4CgpRdWF0ZXJuaW9uEgkKAXgYASABKAESCQoBeRgCIAEoARIJCgF6GAMgASgBEgkKAXcYBCABKAFiBnByb3RvMwrIAgodZm94Z2xvdmUvRnJhbWVUcmFuc2Zvcm0ucHJvdG8SCGZveGdsb3ZlGh9nb29nbGUvcHJvdG9idWYuVGltZXN0YW1wLnByb3RvGhZmb3hnbG92ZS9WZWN0b3IzLnByb3RvGhlmb3hnbG92ZS9RdWF0ZXJuaW9uLnByb3RvIsABCg5GcmFtZVRyYW5zZm9ybRItCgl0aW1lc3RhbXAYASABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhcKD3BhcmVudF9mcmFtZV9pZBgCIAEoCRIWCg5jaGlsZF9mcmFtZV9pZBgDIAEoCRImCgt0cmFuc2xhdGlvbhgEIAEoCzIRLmZveGdsb3ZlLlZlY3RvcjMSJgoIcm90YXRpb24YBSABKAsyFC5mb3hnbG92ZS5RdWF0ZXJuaW9uYgZwcm90bzM="
+  "CmcKH2dvb2dsZS9wcm90b2J1Zi90aW1lc3RhbXAucHJvdG8SD2dvb2dsZS5wcm90b2J1ZiIrCglUaW1lc3RhbXASDwoHc2Vjb25kcxgBIAEoAxINCgVuYW5vcxgCIAEoBWIGcHJvdG8zClYKFmZveGdsb3ZlL1ZlY3RvcjMucHJvdG8SCGZveGdsb3ZlIioKB1ZlY3RvcjMSCQoBeBgBIAEoARIJCgF5GAIgASgBEgkKAXoYAyABKAFiBnByb3RvMwpnChlmb3hnbG92ZS9RdWF0ZXJuaW9uLnByb3RvEghmb3hnbG92ZSI4CgpRdWF0ZXJuaW9uEgkKAXgYASABKAESCQoBeRgCIAEoARIJCgF6GAMgASgBEgkKAXcYBCABKAFiBnByb3RvMwrIAgodZm94Z2xvdmUvRnJhbWVUcmFuc2Zvcm0ucHJvdG8SCGZveGdsb3ZlGh9nb29nbGUvcHJvdG9idWYuVGltZXN0YW1wLnByb3RvGhZmb3hnbG92ZS9WZWN0b3IzLnByb3RvGhlmb3hnbG92ZS9RdWF0ZXJuaW9uLnByb3RvIsABCg5GcmFtZVRyYW5zZm9ybRItCgl0aW1lc3RhbXAYASABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhcKD3BhcmVudF9mcmFtZV9pZBgCIAEoCRIWCg5jaGlsZF9mcmFtZV9pZBgDIAEoCRImCgt0cmFuc2xhdGlvbhgEIAEoCzIRLmZveGdsb3ZlLlZlY3RvcjMSJgoIcm90YXRpb24YBSABKAsyFC5mb3hnbG92ZS5RdWF0ZXJuaW9uYgZwcm90bzM=",
 );
 const FRAME_TRANSFORMS_SCHEMA_DATA = bytes(
-  "CmcKH2dvb2dsZS9wcm90b2J1Zi90aW1lc3RhbXAucHJvdG8SD2dvb2dsZS5wcm90b2J1ZiIrCglUaW1lc3RhbXASDwoHc2Vjb25kcxgBIAEoAxINCgVuYW5vcxgCIAEoBWIGcHJvdG8zClYKFmZveGdsb3ZlL1ZlY3RvcjMucHJvdG8SCGZveGdsb3ZlIioKB1ZlY3RvcjMSCQoBeBgBIAEoARIJCgF5GAIgASgBEgkKAXoYAyABKAFiBnByb3RvMwpnChlmb3hnbG92ZS9RdWF0ZXJuaW9uLnByb3RvEghmb3hnbG92ZSI4CgpRdWF0ZXJuaW9uEgkKAXgYASABKAESCQoBeRgCIAEoARIJCgF6GAMgASgBEgkKAXcYBCABKAFiBnByb3RvMwrIAgodZm94Z2xvdmUvRnJhbWVUcmFuc2Zvcm0ucHJvdG8SCGZveGdsb3ZlGh9nb29nbGUvcHJvdG9idWYuVGltZXN0YW1wLnByb3RvGhZmb3hnbG92ZS9WZWN0b3IzLnByb3RvGhlmb3hnbG92ZS9RdWF0ZXJuaW9uLnByb3RvIsABCg5GcmFtZVRyYW5zZm9ybRItCgl0aW1lc3RhbXAYASABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhcKD3BhcmVudF9mcmFtZV9pZBgCIAEoCRIWCg5jaGlsZF9mcmFtZV9pZBgDIAEoCRImCgt0cmFuc2xhdGlvbhgEIAEoCzIRLmZveGdsb3ZlLlZlY3RvcjMSJgoIcm90YXRpb24YBSABKAsyFC5mb3hnbG92ZS5RdWF0ZXJuaW9uYgZwcm90bzMKkgEKHmZveGdsb3ZlL0ZyYW1lVHJhbnNmb3Jtcy5wcm90bxIIZm94Z2xvdmUaHWZveGdsb3ZlL0ZyYW1lVHJhbnNmb3JtLnByb3RvIj8KD0ZyYW1lVHJhbnNmb3JtcxIsCgp0cmFuc2Zvcm1zGAEgAygLMhguZm94Z2xvdmUuRnJhbWVUcmFuc2Zvcm1iBnByb3RvMw=="
+  "CmcKH2dvb2dsZS9wcm90b2J1Zi90aW1lc3RhbXAucHJvdG8SD2dvb2dsZS5wcm90b2J1ZiIrCglUaW1lc3RhbXASDwoHc2Vjb25kcxgBIAEoAxINCgVuYW5vcxgCIAEoBWIGcHJvdG8zClYKFmZveGdsb3ZlL1ZlY3RvcjMucHJvdG8SCGZveGdsb3ZlIioKB1ZlY3RvcjMSCQoBeBgBIAEoARIJCgF5GAIgASgBEgkKAXoYAyABKAFiBnByb3RvMwpnChlmb3hnbG92ZS9RdWF0ZXJuaW9uLnByb3RvEghmb3hnbG92ZSI4CgpRdWF0ZXJuaW9uEgkKAXgYASABKAESCQoBeRgCIAEoARIJCgF6GAMgASgBEgkKAXcYBCABKAFiBnByb3RvMwrIAgodZm94Z2xvdmUvRnJhbWVUcmFuc2Zvcm0ucHJvdG8SCGZveGdsb3ZlGh9nb29nbGUvcHJvdG9idWYuVGltZXN0YW1wLnByb3RvGhZmb3hnbG92ZS9WZWN0b3IzLnByb3RvGhlmb3hnbG92ZS9RdWF0ZXJuaW9uLnByb3RvIsABCg5GcmFtZVRyYW5zZm9ybRItCgl0aW1lc3RhbXAYASABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhcKD3BhcmVudF9mcmFtZV9pZBgCIAEoCRIWCg5jaGlsZF9mcmFtZV9pZBgDIAEoCRImCgt0cmFuc2xhdGlvbhgEIAEoCzIRLmZveGdsb3ZlLlZlY3RvcjMSJgoIcm90YXRpb24YBSABKAsyFC5mb3hnbG92ZS5RdWF0ZXJuaW9uYgZwcm90bzMKkgEKHmZveGdsb3ZlL0ZyYW1lVHJhbnNmb3Jtcy5wcm90bxIIZm94Z2xvdmUaHWZveGdsb3ZlL0ZyYW1lVHJhbnNmb3JtLnByb3RvIj8KD0ZyYW1lVHJhbnNmb3JtcxIsCgp0cmFuc2Zvcm1zGAEgAygLMhguZm94Z2xvdmUuRnJhbWVUcmFuc2Zvcm1iBnByb3RvMw==",
 );
 const FRAME_TRANSFORM_MESSAGE = bytes(
-  "CgQIBxAUEgNtYXAaBWxpZGFyIhsJAAAAAAAA8D8RAAAAAAAAAEAZAAAAAAAACEAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPw=="
+  "CgQIBxAUEgNtYXAaBWxpZGFyIhsJAAAAAAAA8D8RAAAAAAAAAEAZAAAAAAAACEAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPw==",
 );
 const FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP = bytes(
-  "EgNtYXAaBWxpZGFyIhsJAAAAAAAA8D8RAAAAAAAAAEAZAAAAAAAACEAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPw=="
+  "EgNtYXAaBWxpZGFyIhsJAAAAAAAA8D8RAAAAAAAAAEAZAAAAAAAACEAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPw==",
 );
 const FRAME_TRANSFORMS_MESSAGE_WITHOUT_TIMESTAMP = bytes(
-  "ClMSA21hcBoJYmFzZV9saW5rIhsJAAAAAAAA8D8RAAAAAAAAAAAZAAAAAAAAAAAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPwpVEgliYXNlX2xpbmsaBWxpZGFyIhsJAAAAAAAAAAARAAAAAAAAAEAZAAAAAAAAAAAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPw=="
+  "ClMSA21hcBoJYmFzZV9saW5rIhsJAAAAAAAA8D8RAAAAAAAAAAAZAAAAAAAAAAAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPwpVEgliYXNlX2xpbmsaBWxpZGFyIhsJAAAAAAAAAAARAAAAAAAAAEAZAAAAAAAAAAAqJAkAAAAAAAAAABEAAAAAAAAAABkAAAAAAAAAACEAAAAAAADwPw==",
 );
 
 describe("MCAP resources", () => {
@@ -80,7 +80,7 @@ describe("MCAP resources", () => {
               [9, 5n],
             ]),
           }),
-        })
+        }),
       ),
     });
 
@@ -107,7 +107,7 @@ describe("MCAP resources", () => {
       },
     });
     expect(topics[1]?.metadata["mcap.channel_metadata.frame_id"]).toBe(
-      "cam-left"
+      "cam-left",
     );
     expect(topics[2]).toMatchObject({
       displayName: "/lidar",
@@ -146,7 +146,7 @@ describe("MCAP resources", () => {
               }),
             ],
           ]),
-        })
+        }),
       ),
     });
 
@@ -155,10 +155,10 @@ describe("MCAP resources", () => {
     });
 
     expect(topics[0]?.metadata["mcap.channel_metadata.frame_id"]).toBe(
-      "raw-camera-front"
+      "raw-camera-front",
     );
     expect(topics[1]?.metadata["mcap.channel_metadata.frame_id"]).toBe(
-      "lidar-top"
+      "lidar-top",
     );
   });
 
@@ -172,7 +172,7 @@ describe("MCAP resources", () => {
           channelsById: new Map([
             [7, createChannel({ id: 7, topic: "/camera" })],
           ]),
-        })
+        }),
       ),
     });
 
@@ -208,7 +208,7 @@ describe("MCAP resources", () => {
             ],
           ]),
           schemasById: new Map(),
-        })
+        }),
       ),
     });
 
@@ -258,7 +258,7 @@ describe("MCAP resources", () => {
       readerFactory: vi.fn(async () =>
         createReader({
           readMessages,
-        })
+        }),
       ),
     });
 
@@ -304,7 +304,7 @@ describe("MCAP resources", () => {
           statistics: createStatistics({
             channelMessageCounts: new Map([[10, 1n]]),
           }),
-        })
+        }),
       ),
     });
 
@@ -356,7 +356,7 @@ describe("MCAP resources", () => {
               }),
             ],
           ]),
-        })
+        }),
       ),
     });
 
@@ -409,7 +409,7 @@ describe("MCAP resources", () => {
           statistics: createStatistics({
             channelMessageCounts: new Map([[10, 1n]]),
           }),
-        })
+        }),
       ),
     });
 
@@ -464,7 +464,7 @@ describe("MCAP resources", () => {
               }),
             ],
           ]),
-        })
+        }),
       ),
     });
 
@@ -521,7 +521,7 @@ describe("MCAP resources", () => {
               }),
             ],
           ]),
-        })
+        }),
       ),
     });
 
@@ -585,7 +585,7 @@ describe("MCAP resources", () => {
               }),
             ],
           ]),
-        })
+        }),
       ),
     });
 
@@ -637,7 +637,7 @@ describe("MCAP resources", () => {
           statistics: createStatistics({
             channelMessageCounts: new Map([[10, 1n]]),
           }),
-        })
+        }),
       ),
     });
 
@@ -683,7 +683,7 @@ describe("MCAP resources", () => {
           statistics: createStatistics({
             channelMessageCounts: new Map([[10, 10_000n]]),
           }),
-        })
+        }),
       ),
     });
 
@@ -709,7 +709,7 @@ describe("MCAP resources", () => {
           channelsById: new Map([[7, createChannel()]]),
           messages: [message],
           schemasById: new Map([[3, createSchema(schemaData)]]),
-        })
+        }),
       ),
     });
 
@@ -718,7 +718,7 @@ describe("MCAP resources", () => {
         limit: 1,
         source,
         topics: ["/topic"],
-      })
+      }),
     );
 
     expect(messages).toHaveLength(1);
@@ -765,7 +765,7 @@ describe("MCAP resources", () => {
       readerFactory: vi.fn(async () =>
         createReader({
           messages: [createMessage(new Uint8Array([1]))],
-        })
+        }),
       ),
     });
 
@@ -775,8 +775,8 @@ describe("MCAP resources", () => {
           limit: 0,
           source: createMcapSourceDescriptor(),
           topics: ["/topic"],
-        })
-      )
+        }),
+      ),
     ).resolves.toEqual([]);
     expect(decodeClient.decode).not.toHaveBeenCalled();
   });
@@ -816,7 +816,7 @@ describe("MCAP resources", () => {
             [8, createChannel({ id: 8, topic: "/lidar" })],
           ]),
           readMessages,
-        })
+        }),
       ),
     });
 
@@ -833,10 +833,10 @@ describe("MCAP resources", () => {
 
     expect(windows).toHaveLength(2);
     expect(
-      windows[0]?.messages.map((message) => message.timelineTimeNs)
+      windows[0]?.messages.map((message) => message.timelineTimeNs),
     ).toEqual([90n, 108n]);
     expect(
-      windows[1]?.messages.map((message) => message.timelineTimeNs)
+      windows[1]?.messages.map((message) => message.timelineTimeNs),
     ).toEqual([90n, 108n]);
     expect(readMessages).toHaveBeenCalledTimes(1);
     expect(decodeClient.decode).toHaveBeenCalledTimes(2);
@@ -863,7 +863,7 @@ describe("MCAP resources", () => {
       readerFactory: vi.fn(async () =>
         createReader({
           messages,
-        })
+        }),
       ),
     });
 
@@ -932,7 +932,7 @@ describe("MCAP resources", () => {
           ]),
           readIndexedMessageTimes,
           readMessages,
-        })
+        }),
       ),
     });
 
@@ -949,10 +949,10 @@ describe("MCAP resources", () => {
 
     expect(windows).toHaveLength(2);
     expect(
-      windows[0]?.messages.map((message) => message.timelineTimeNs)
+      windows[0]?.messages.map((message) => message.timelineTimeNs),
     ).toEqual([90n, 108n]);
     expect(
-      windows[1]?.messages.map((message) => message.timelineTimeNs)
+      windows[1]?.messages.map((message) => message.timelineTimeNs),
     ).toEqual([90n, 108n]);
     expect(readIndexedMessageTimes).toHaveBeenCalledWith({
       endTimeNs: 125n,
@@ -966,22 +966,74 @@ describe("MCAP resources", () => {
     expect(decodeClient.decode).toHaveBeenCalledTimes(2);
   });
 
-  it("rejects ambiguous indexed-to-raw message matches", async () => {
-    const source = createMcapSourceDescriptor();
-    const first = createMessage(new Uint8Array([1]), {
-      logTime: 90n,
-      publishTime: 91n,
+  it("soft-fails topic time bounds to nulls without summary indexes", async () => {
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () => createReader()),
     });
-    const second = createMessage(new Uint8Array([2]), {
-      logTime: 90n,
-      publishTime: 92n,
+
+    await expect(
+      client.readTopicTimeBounds({
+        source: createMcapSourceDescriptor(),
+        topics: ["/camera", "/lidar"],
+      }),
+    ).resolves.toEqual([
+      { firstMessageTimeNs: null, lastMessageTimeNs: null, topic: "/camera" },
+      { firstMessageTimeNs: null, lastMessageTimeNs: null, topic: "/lidar" },
+    ]);
+  });
+
+  it("caches topic time bounds per source and topic set", async () => {
+    const readTopicIndexedTimeBounds = vi.fn(async () => {
+      return new Map([
+        ["/camera", { firstLogTimeNs: 10n, lastLogTimeNs: 90n }],
+      ]);
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        Object.assign(createReader({ chunkIndexes: [createChunkIndex()] }), {
+          readTopicIndexedTimeBounds,
+        }),
+      ),
+    });
+    const request = {
+      source: createMcapSourceDescriptor(),
+      topics: ["/camera"],
+    };
+
+    await expect(client.readTopicTimeBounds(request)).resolves.toEqual([
+      { firstMessageTimeNs: 10n, lastMessageTimeNs: 90n, topic: "/camera" },
+    ]);
+    await client.readTopicTimeBounds(request);
+    expect(readTopicIndexedTimeBounds).toHaveBeenCalledTimes(1);
+  });
+
+  it("serves sparse topics from one bounded scan plus one predecessor probe", async () => {
+    const source = createMcapSourceDescriptor();
+    const old = createMessage(new Uint8Array([1]), {
+      channelId: 7,
+      logTime: 0n,
+      publishTime: 1n,
     });
     const readIndexedMessageTimes = vi.fn(async function* () {
-      yield createIndexedMessageTime("/topic", 7, 90n, 900n);
+      // Nothing in the scan window — the topic is sparse around the batch.
     });
-    const readMessages = vi.fn(async function* () {
-      yield first;
-      yield second;
+    const readLatestIndexedMessageTimes = vi.fn(async () => {
+      return new Map([
+        ["/topic", [createIndexedMessageTime("/topic", 7, 0n, 0n)]],
+      ]);
+    });
+    const readMessages = vi.fn(async function* (args?: {
+      readonly endTime?: bigint;
+      readonly startTime?: bigint;
+      readonly topics?: readonly string[];
+    }): AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void> {
+      if (args?.startTime === 0n && args?.endTime === 0n) {
+        yield old;
+      }
     });
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
@@ -989,23 +1041,378 @@ describe("MCAP resources", () => {
       readerFactory: vi.fn(async () =>
         createReader({
           readIndexedMessageTimes,
+          readLatestIndexedMessageTimes,
           readMessages,
-        })
+        }),
+      ),
+    });
+
+    const windows = await client.readSynchronizedMessageBatch({
+      timeNs: [5_000n, 5_033n],
+      source,
+      topics: ["/topic"],
+    });
+
+    // Both ticks resolve the far-past predecessor under the default
+    // unbounded-latest policy.
+    expect(windows).toHaveLength(2);
+    expect(windows[0]?.messagesByTopic["/topic"]?.[0]?.timelineTimeNs).toBe(0n);
+    expect(windows[1]?.messagesByTopic["/topic"]?.[0]?.timelineTimeNs).toBe(0n);
+
+    // The scan stays bounded by the batch tick span — never the file.
+    expect(readIndexedMessageTimes).toHaveBeenCalledWith({
+      endTimeNs: 5_033n,
+      startTimeNs: 5_000n,
+      topics: ["/topic"],
+    });
+    expect(readLatestIndexedMessageTimes).toHaveBeenCalledExactlyOnceWith({
+      limitPerTopic: 1,
+      timeNs: 5_000n,
+      topics: ["/topic"],
+    });
+  });
+
+  it("backfills enough indexed predecessors to satisfy latest limits", async () => {
+    const source = createMcapSourceDescriptor();
+    const older = createMessage(new Uint8Array([1]), {
+      channelId: 7,
+      logTime: 80n,
+      publishTime: 81n,
+    });
+    const newer = createMessage(new Uint8Array([2]), {
+      channelId: 7,
+      logTime: 90n,
+      publishTime: 91n,
+    });
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      yield createIndexedMessageTime("/topic", 7, 90n, 900n);
+    });
+    const readLatestIndexedMessageTimes = vi.fn(async () => {
+      return new Map([
+        [
+          "/topic",
+          [
+            createIndexedMessageTime("/topic", 7, 90n, 900n),
+            createIndexedMessageTime("/topic", 7, 80n, 800n),
+          ],
+        ],
+      ]);
+    });
+    const readMessages = vi.fn(async function* (args?: {
+      readonly endTime?: bigint;
+      readonly startTime?: bigint;
+    }): AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void> {
+      if (args?.startTime === 80n && args?.endTime === 80n) {
+        yield older;
+      }
+      if (args?.startTime === 90n && args?.endTime === 90n) {
+        yield newer;
+      }
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          readIndexedMessageTimes,
+          readLatestIndexedMessageTimes,
+          readMessages,
+        }),
+      ),
+    });
+
+    const windows = await client.readSynchronizedMessageBatch({
+      timeNs: [100n],
+      source,
+      streamPolicies: {
+        "/topic": {
+          limit: 2,
+          mode: PlaybackSyncMode.LATEST,
+        },
+      },
+      topics: ["/topic"],
+    });
+
+    expect(
+      windows[0]?.messagesByTopic["/topic"]?.map(
+        (message) => message.timelineTimeNs,
+      ),
+    ).toEqual([80n, 90n]);
+    expect(readLatestIndexedMessageTimes).toHaveBeenCalledExactlyOnceWith({
+      limitPerTopic: 2,
+      timeNs: 100n,
+      topics: ["/topic"],
+    });
+  });
+
+  it("memoizes predecessor lookups across batches and re-probes on backward seeks", async () => {
+    const source = createMcapSourceDescriptor();
+    const message = createMessage(new Uint8Array([1]), {
+      channelId: 7,
+      logTime: 4_000n,
+      publishTime: 4_001n,
+    });
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      // Every scan window misses the lone message at 4_000n.
+    });
+    const readLatestIndexedMessageTimes = vi.fn(
+      async (args: { readonly timeNs: bigint }) => {
+        return new Map([
+          [
+            "/topic",
+            args.timeNs >= 4_000n
+              ? [createIndexedMessageTime("/topic", 7, 4_000n, 0n)]
+              : [],
+          ],
+        ]);
+      },
+    );
+    const readMessages = vi.fn(async function* (args?: {
+      readonly endTime?: bigint;
+      readonly startTime?: bigint;
+    }): AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void> {
+      if (args?.startTime === 4_000n && args?.endTime === 4_000n) {
+        yield message;
+      }
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          readIndexedMessageTimes,
+          readLatestIndexedMessageTimes,
+          readMessages,
+        }),
+      ),
+    });
+
+    // First batch probes once and memoizes the resolution.
+    await client.readSynchronizedMessageBatch({
+      timeNs: [5_000n, 5_033n],
+      source,
+      topics: ["/topic"],
+    });
+    expect(readLatestIndexedMessageTimes).toHaveBeenCalledTimes(1);
+
+    // Overlapping later batch: memo hit, and its empty scan extends the
+    // memo's validity through 6_000n.
+    await client.readSynchronizedMessageBatch({
+      timeNs: [5_010n, 6_000n],
+      source,
+      topics: ["/topic"],
+    });
+    expect(readLatestIndexedMessageTimes).toHaveBeenCalledTimes(1);
+
+    // Within the extended interval: still no probe.
+    const windows = await client.readSynchronizedMessageBatch({
+      timeNs: [5_900n],
+      source,
+      topics: ["/topic"],
+    });
+    expect(readLatestIndexedMessageTimes).toHaveBeenCalledTimes(1);
+    expect(windows[0]?.messagesByTopic["/topic"]?.[0]?.timelineTimeNs).toBe(
+      4_000n,
+    );
+
+    // Backward seek before the memoized predecessor: fresh probe.
+    const earlier = await client.readSynchronizedMessageBatch({
+      timeNs: [100n],
+      source,
+      topics: ["/topic"],
+    });
+    expect(readLatestIndexedMessageTimes).toHaveBeenCalledTimes(2);
+    expect(readLatestIndexedMessageTimes).toHaveBeenLastCalledWith({
+      limitPerTopic: 1,
+      timeNs: 100n,
+      topics: ["/topic"],
+    });
+    expect(earlier[0]?.messagesByTopic["/topic"]).toEqual([]);
+  });
+
+  it("skips the predecessor probe when another topic's tolerance already covers it", async () => {
+    const source = createMcapSourceDescriptor();
+    const camera = createMessage(new Uint8Array([1]), {
+      channelId: 7,
+      logTime: 90n,
+      publishTime: 91n,
+    });
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      yield createIndexedMessageTime("/camera", 7, 90n, 900n);
+    });
+    const readLatestIndexedMessageTimes = vi.fn(async () => new Map());
+    const readMessages = vi.fn(async function* (args?: {
+      readonly endTime?: bigint;
+      readonly startTime?: bigint;
+    }): AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void> {
+      if (args?.startTime === 90n && args?.endTime === 90n) {
+        yield camera;
+      }
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [7, createChannel({ id: 7, topic: "/camera" })],
+            [8, createChannel({ id: 8, topic: "/lidar" })],
+          ]),
+          readIndexedMessageTimes,
+          readLatestIndexedMessageTimes,
+          readMessages,
+        }),
+      ),
+    });
+
+    const windows = await client.readSynchronizedMessageBatch({
+      timeNs: [100n],
+      source,
+      streamPolicies: {
+        "/lidar": {
+          mode: PlaybackSyncMode.NEAREST,
+          toleranceAfterNs: 0n,
+          toleranceBeforeNs: 20n,
+        },
+      },
+      topics: ["/camera", "/lidar"],
+    });
+
+    // The lidar tolerance widened the shared scan to [80, 100], which
+    // already contains the camera predecessor — no probe needed.
+    expect(readIndexedMessageTimes).toHaveBeenCalledWith({
+      endTimeNs: 100n,
+      startTimeNs: 80n,
+      topics: ["/camera", "/lidar"],
+    });
+    expect(readLatestIndexedMessageTimes).not.toHaveBeenCalled();
+    expect(windows[0]?.messagesByTopic["/camera"]?.[0]?.timelineTimeNs).toBe(
+      90n,
+    );
+  });
+
+  it("surfaces predecessor probe failures as batch failures", async () => {
+    const source = createMcapSourceDescriptor();
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      // empty scan forces the probe
+    });
+    const readLatestIndexedMessageTimes = vi.fn(async () => {
+      throw new Error("index read failed");
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          readIndexedMessageTimes,
+          readLatestIndexedMessageTimes,
+        }),
       ),
     });
 
     await expect(
       client.readSynchronizedMessageBatch({
-        timeNs: [90n],
+        timeNs: [5_000n],
         source,
-        defaultStreamPolicy: {
-          mode: PlaybackSyncMode.STRICT,
-        },
         topics: ["/topic"],
-      })
-    ).rejects.toThrow(
-      "Ambiguous MCAP indexed-to-raw match for /topic entry with channel 7 at 90"
+      }),
+    ).rejects.toThrow("index read failed");
+  });
+
+  it("falls back to a bounded raw lookback for readers without indexes", async () => {
+    const source = createMcapSourceDescriptor();
+    const old = createMessage(new Uint8Array([1]), {
+      channelId: 7,
+      logTime: 1_000n,
+      publishTime: 1_001n,
+    });
+    const readMessages = vi.fn(async function* (args?: {
+      readonly endTime?: bigint;
+      readonly startTime?: bigint;
+    }): AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void> {
+      if (
+        args?.startTime !== undefined &&
+        args?.endTime !== undefined &&
+        old.logTime >= args.startTime &&
+        old.logTime <= args.endTime
+      ) {
+        yield old;
+      }
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () => createReader({ readMessages })),
+    });
+
+    const windows = await client.readSynchronizedMessageBatch({
+      timeNs: [5_000n],
+      source,
+      topics: ["/topic"],
+    });
+
+    expect(windows[0]?.messagesByTopic["/topic"]?.[0]?.timelineTimeNs).toBe(
+      1_000n,
     );
+    // One bounded scan plus one bounded lookback — clamped at 0, never
+    // the whole file beyond the documented lookback.
+    expect(readMessages.mock.calls.map(([args]) => args)).toEqual([
+      { endTime: 5_000n, startTime: 5_000n, topics: ["/topic"] },
+      { endTime: 5_000n, startTime: 0n, topics: ["/topic"] },
+    ]);
+  });
+
+  it("resolves duplicate same-time messages to one deterministic frame", async () => {
+    // Real recordings can carry multiple messages on one channel at
+    // the same log time. The whole batch used to reject on the
+    // ambiguity, permanently failing every topic it covered.
+    const source = createMcapSourceDescriptor();
+    const first = createMessage(new Uint8Array([1]), {
+      logTime: 90n,
+      publishTime: 91n,
+      sequence: 1,
+    });
+    const second = createMessage(new Uint8Array([2]), {
+      logTime: 90n,
+      publishTime: 92n,
+      sequence: 2,
+    });
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      // Duplicate index entries for the duplicate messages.
+      yield createIndexedMessageTime("/topic", 7, 90n, 900n);
+      yield createIndexedMessageTime("/topic", 7, 90n, 901n);
+    });
+    const readMessages = vi.fn(async function* () {
+      yield first;
+      yield second;
+    });
+    const decodeClient = createTestDecodeClient();
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient,
+      readerFactory: vi.fn(async () =>
+        createReader({
+          readIndexedMessageTimes,
+          readMessages,
+        }),
+      ),
+    });
+
+    const windows = await client.readSynchronizedMessageBatch({
+      timeNs: [90n],
+      source,
+      defaultStreamPolicy: {
+        mode: PlaybackSyncMode.STRICT,
+      },
+      topics: ["/topic"],
+    });
+
+    // One frame, deterministically the lowest-sequence duplicate, and
+    // one decode — the duplicate index entry collapsed at collection.
+    expect(windows[0]?.messagesByTopic["/topic"]).toHaveLength(1);
+    expect(windows[0]?.messagesByTopic["/topic"]?.[0]?.sequence).toBe(1);
+    expect(windows[0]?.messagesByTopic["/topic"]?.[0]?.publishTimeNs).toBe(91n);
+    expect(decodeClient.decode).toHaveBeenCalledTimes(1);
   });
 
   it("returns empty synchronized batches without opening a reader", async () => {
@@ -1021,7 +1428,7 @@ describe("MCAP resources", () => {
         source: createMcapSourceDescriptor(),
         timeNs: [],
         topics: ["/camera"],
-      })
+      }),
     ).resolves.toEqual([]);
     expect(readerFactory).not.toHaveBeenCalled();
   });
@@ -1059,14 +1466,14 @@ describe("MCAP resources", () => {
           ],
           readIndexedMessageTimes,
           readMessages,
-        })
+        }),
       ),
     });
 
     await expect(
       client.readTimelineRange({
         source,
-      })
+      }),
     ).resolves.toEqual({
       activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
       endTimeNs: 450n,
@@ -1093,8 +1500,8 @@ describe("MCAP resources", () => {
         client.readDecodedMessages({
           source,
           topics: ["/topic"],
-        })
-      )
+        }),
+      ),
     ).rejects.toThrow("exceeds source size 128");
     expect(readBytes).not.toHaveBeenCalled();
   });
@@ -1111,7 +1518,7 @@ describe("MCAP resources", () => {
               messageStartTime: 10n,
             }),
           ],
-        })
+        }),
       );
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
@@ -1123,7 +1530,7 @@ describe("MCAP resources", () => {
     };
 
     await expect(client.readTimelineRange(request)).rejects.toThrow(
-      "temporary init failure"
+      "temporary init failure",
     );
     await expect(client.readTimelineRange(request)).resolves.toEqual({
       activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
@@ -1135,7 +1542,7 @@ describe("MCAP resources", () => {
 });
 
 async function collect<T>(
-  generator: AsyncGenerator<T, void, void>
+  generator: AsyncGenerator<T, void, void>,
 ): Promise<readonly T[]> {
   const messages: T[] = [];
   for await (const message of generator) {
@@ -1158,6 +1565,7 @@ function createReader({
   chunkIndexes = [],
   messages = [],
   readIndexedMessageTimes,
+  readLatestIndexedMessageTimes,
   readMessages,
   schemasById = new Map([[3, createSchema(new Uint8Array([9]))]]),
   statistics,
@@ -1179,6 +1587,22 @@ function createReader({
     void,
     void
   >;
+  readonly readLatestIndexedMessageTimes?: (args: {
+    readonly limitPerTopic?: number;
+    readonly timeNs: bigint;
+    readonly topics: readonly string[];
+  }) => Promise<
+    ReadonlyMap<
+      string,
+      readonly {
+        readonly channelId: number;
+        readonly chunkStartOffset: bigint;
+        readonly logTimeNs: bigint;
+        readonly messageOffset: bigint;
+        readonly topic: string;
+      }[]
+    >
+  >;
   readonly readMessages?: (args?: {
     readonly endTime?: bigint;
     readonly startTime?: bigint;
@@ -1194,6 +1618,7 @@ function createReader({
     channelsById,
     chunkIndexes,
     readIndexedMessageTimes,
+    readLatestIndexedMessageTimes,
     readMessages:
       readMessages ??
       vi.fn(async function* () {
@@ -1210,7 +1635,7 @@ function createIndexedMessageTime(
   topic: string,
   channelId: number,
   logTimeNs: bigint,
-  messageOffset: bigint
+  messageOffset: bigint,
 ) {
   return {
     channelId,
@@ -1234,7 +1659,7 @@ function createTestDecodeClient(): DecodeClient {
 }
 
 function createTestDecodedOutput(
-  overrides: Partial<DecodedOutput> = {}
+  overrides: Partial<DecodedOutput> = {},
 ): DecodedOutput {
   return {
     attributes: {},
@@ -1247,7 +1672,7 @@ function createTestDecodedOutput(
 }
 
 function createChannel(
-  options: Partial<McapTypes.TypedMcapRecords["Channel"]> = {}
+  options: Partial<McapTypes.TypedMcapRecords["Channel"]> = {},
 ): McapTypes.TypedMcapRecords["Channel"] {
   return {
     id: options.id ?? 7,
@@ -1261,7 +1686,7 @@ function createChannel(
 
 function createSchema(
   data: Uint8Array,
-  options: Partial<McapTypes.TypedMcapRecords["Schema"]> = {}
+  options: Partial<McapTypes.TypedMcapRecords["Schema"]> = {},
 ): McapTypes.TypedMcapRecords["Schema"] {
   return {
     data,
@@ -1273,7 +1698,7 @@ function createSchema(
 }
 
 function createStatistics(
-  options: Partial<McapTypes.TypedMcapRecords["Statistics"]> = {}
+  options: Partial<McapTypes.TypedMcapRecords["Statistics"]> = {},
 ): McapTypes.TypedMcapRecords["Statistics"] {
   return {
     attachmentCount: options.attachmentCount ?? 0,
@@ -1290,7 +1715,7 @@ function createStatistics(
 }
 
 function createChunkIndex(
-  options: Partial<McapTypes.TypedMcapRecords["ChunkIndex"]> = {}
+  options: Partial<McapTypes.TypedMcapRecords["ChunkIndex"]> = {},
 ): McapTypes.TypedMcapRecords["ChunkIndex"] {
   return {
     chunkLength: options.chunkLength ?? 256n,
@@ -1308,7 +1733,7 @@ function createChunkIndex(
 
 function createMessage(
   data: Uint8Array,
-  options: Partial<McapTypes.TypedMcapRecords["Message"]> = {}
+  options: Partial<McapTypes.TypedMcapRecords["Message"]> = {},
 ): McapTypes.TypedMcapRecords["Message"] {
   return {
     channelId: options.channelId ?? 7,

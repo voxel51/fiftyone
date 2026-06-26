@@ -55,7 +55,7 @@ const useSetSample: EventHandlerHook = ({ router }) => {
         setter("modalSelector", selector);
       });
     },
-    [router, setModalState, setter]
+    [router, setModalState, setter],
   );
 };
 

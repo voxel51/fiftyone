@@ -26,7 +26,7 @@ export default function ConfusionMatrixConfig(props) {
     Array.isArray(chosenClasses) && chosenClasses.length > 0;
   const showClassesFilter = classes.length > 0;
   const sortByLabel = CONFUSION_MATRIX_SORT_OPTIONS.find(
-    (option) => option.value === sortBy
+    (option) => option.value === sortBy,
   )?.label?.toLowerCase();
   const classFilterLabel = hasChosenClasses ? "chosen" : "all";
   const limitLabel =

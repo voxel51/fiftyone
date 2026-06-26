@@ -37,10 +37,10 @@ export const useDetectNewActiveLabelFields = ({
       return syncAndGetNewLabels(
         id,
         modal ? modalActivePathsLUT : gridActivePathsLUT,
-        new Set(activeLabelFieldsValue)
+        new Set(activeLabelFieldsValue),
       );
     },
-    [activeLabelFieldsValue, modal]
+    [activeLabelFieldsValue, modal],
   );
 
   const getExistingFields = useCallback(
@@ -50,7 +50,7 @@ export const useDetectNewActiveLabelFields = ({
         : gridActivePathsLUT.get(id);
       return mayBeFields ? Array.from(mayBeFields) : [];
     },
-    [modal]
+    [modal],
   );
 
   const removeField = useCallback(
@@ -61,7 +61,7 @@ export const useDetectNewActiveLabelFields = ({
         gridActivePathsLUT.delete(id);
       }
     },
-    [modal]
+    [modal],
   );
 
   const reset = useCallback(() => {

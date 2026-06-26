@@ -202,21 +202,21 @@ test.describe.serial("query performance sidebar", () => {
 
     let animation = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
-      () => true
+      () => true,
     );
     await sidebar.clickFieldDropdown("inf_label_list");
     await animation;
 
     animation = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
-      () => true
+      () => true,
     );
     await sidebar.clickFieldDropdown("nan_label_list");
     await animation;
 
     animation = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
-      () => true
+      () => true,
     );
     await sidebar.clickFieldDropdown("ninf_label_list");
     await animation;
@@ -230,7 +230,7 @@ test.describe.serial("query performance sidebar", () => {
       for (const subfield of subfieldsIndexed) {
         await sidebar.asserter.assertSubfieldHasQueryPerformance(
           `${field}.classifications.${subfield}`,
-          "categorical"
+          "categorical",
         );
       }
     }
@@ -244,7 +244,7 @@ test.describe.serial("query performance sidebar", () => {
       for (const subfield of subfieldsUnindexed) {
         await sidebar.asserter.assertSubfieldMissingQueryPerformance(
           `${field}.classifications.${subfield}`,
-          "categorical"
+          "categorical",
         );
       }
     }

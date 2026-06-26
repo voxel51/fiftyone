@@ -25,7 +25,7 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
 
     const labelsByField: Record<
       string,
-      Array<{ atom: typeof atoms[0]; id: string; label: string }>
+      Array<{ atom: (typeof atoms)[0]; id: string; label: string }>
     > = {};
 
     for (const atomItem of atoms) {

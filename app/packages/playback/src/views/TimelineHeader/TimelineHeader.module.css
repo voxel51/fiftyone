@@ -1,6 +1,31 @@
 .root {
   display: flex;
   flex-direction: column;
+  /* Positioning context for the buffered-ranges strip on the top edge. */
+  position: relative;
+}
+
+/* Buffered-ranges shading hugging the drawer's top edge. Absolutely
+   positioned so it overlays the controls row's top border instead of
+   adding height to the header. */
+.bufferStrip {
+  height: 2px;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  z-index: 2;
+}
+
+.bufferSegment {
+  background: color-mix(
+    in srgb,
+    var(--color-content-border-active) 80%,
+    transparent
+  );
+  border-radius: 1px;
+  height: 100%;
+  position: absolute;
+  top: 0;
 }
 
 /* Slot rendered below the ruler but still inside the always-visible

@@ -20,7 +20,7 @@ const onSetSessionSpaces: RegisteredWriter<"sessionSpaces"> =
           workspace: spaces._name || null,
         },
       }),
-      { ...state, event: "spaces", workspace: spaces._name || null }
+      { ...state, event: "spaces", workspace: spaces },
     );
 
     commitMutation<setSpacesMutation>(environment, {
