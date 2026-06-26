@@ -116,8 +116,20 @@ export class ModalAnnotateSidebarPom {
    * @param slice The slice name to select
    */
   async selectAnnotationSlice(slice: string) {
-    const resultsContainer = await this.openAnnotationSliceResults();
-    await resultsContainer.getByTestId(`selector-result-${slice}`).click();
+    // a non-default (3D) slice can be briefly absent from the selector while
+    // the open group's samples load, and the option list only refreshes when
+    // the popover is reopened. So each retry blurs (closes) then re-clicks
+    // (reopens, re-querying) the selector until the result is clickable. Blur,
+    // not Escape — Escape bubbles to the modal and can close it.
+    await expect(async () => {
+      await this.annotationSliceSelector.blur();
+      await this.annotationSliceSelector.click();
+      await expect(this.annotationSliceResultsContainer).toBeVisible();
+      await this.annotationSliceResultsContainer
+        .getByTestId(`selector-result-${slice}`)
+        .click({ timeout: 3000 });
+    }).toPass({ timeout: 30_000 });
+
     await expect(this.annotationSliceSelector).toHaveValue(slice);
   }
 
@@ -330,9 +342,8 @@ class ModalAnnotateSidebarAsserter {
    * @param active Whether segmentation mode should be active (default true)
    */
   async segmentationModeIsActive(active = true) {
-    const button = this.modalAnnotateSidebar.page.getByTestId(
-      "segmentation-mode"
-    );
+    const button =
+      this.modalAnnotateSidebar.page.getByTestId("segmentation-mode");
     await expect(button).toHaveAttribute("data-cy-active", active.toString());
   }
 
