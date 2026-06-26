@@ -58,6 +58,9 @@ export const Looker3d = () => {
 
   const thisSampleId = useRecoilValue(fos.modalSampleId);
 
+  // test affordance: 3D selection has no DOM signal, so expose its count
+  const selectedLabelCount = useRecoilValue(fos.selectedLabels).length;
+
   useEffect(() => {
     return () => {
       setFo3dHasBackground(false);
@@ -195,7 +198,12 @@ export const Looker3d = () => {
   return (
     <Fo3dErrorBoundary key={looker3dSceneKey} boundaryName="fo3d">
       <Leva />
-      <Container onMouseOver={update} onMouseMove={update} data-cy="looker3d">
+      <Container
+        onMouseOver={update}
+        onMouseMove={update}
+        data-cy="looker3d"
+        data-cy-selected-label-count={selectedLabelCount}
+      >
         <MediaTypeFo3dComponent key={looker3dSceneKey} />
         <ActionBar
           onMouseEnter={() => {
