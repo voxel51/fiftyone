@@ -9557,6 +9557,47 @@
             "date_added": "2025-07-03 12:00:00"
         },
         {
+            "base_name": "rtdetr-v2-l-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "High-accuracy real-time object detector with ResNet-101 backbone, offering the best accuracy in the RT-DETRv2 family",
+            "source": "https://huggingface.co/PekingU/rtdetr_v2_r101vd",
+            "author": "Wenyu Lv, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 307332000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "PekingU/rtdetr_v2_r101vd",
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "coco",
+                "embeddings",
+                "torch",
+                "transformers",
+                "rtdetr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-06-25 12:00:00"
+        },
+        {
             "base_name": "dfine-nano-coco-torch",
             "base_filename": null,
             "version": null,
