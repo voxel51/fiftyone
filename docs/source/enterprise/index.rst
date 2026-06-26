@@ -135,6 +135,12 @@ pages on this site apply to Enterprise deployments as well.
     :button_link: agent.html
 
 .. customcalloutitem::
+    :header: Workflows  __SUB_NEW__
+    :description: Define annotation and review workflows, run them over a dataset, and track per-sample task progress.
+    :button_text: Build your first workflow
+    :button_link: workflows.html
+
+.. customcalloutitem::
     :header: Plugins
     :description: Learn how to install and manage shared plugins for your Enterprise deployment.
     :button_text: Get plugins for FiftyOne Enterprise
@@ -190,6 +196,7 @@ pages on this site apply to Enterprise deployments as well.
     Data Quality <data_quality>
     Query Performance <query_performance>
     FiftyOne Agent __SUB_NEW__ <agent>
+    Workflows __SUB_NEW__ <workflows>
     Plugins <plugins>
     Secrets <secrets>
     Management SDK <management_sdk>
