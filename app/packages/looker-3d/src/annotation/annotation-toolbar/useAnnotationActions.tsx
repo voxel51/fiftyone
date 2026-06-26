@@ -8,7 +8,6 @@ import {
 import { Close, Delete, Edit, OpenWith, Straighten } from "@mui/icons-material";
 import AddBoxIcon from "@mui/icons-material/AddBox";
 import RectangleIcon from "@mui/icons-material/Rectangle";
-import RepeatIcon from "@mui/icons-material/Repeat";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import ThreeSixtyIcon from "@mui/icons-material/ThreeSixty";
 import PolylineIcon from "@mui/icons-material/Timeline";
@@ -20,7 +19,6 @@ import { useFo3dContext } from "../../fo3d/context";
 import {
   activeSegmentationStateAtom,
   annotationPlaneAtom,
-  continuousCuboidCreationAtom,
   currentArchetypeSelectedForTransformAtom,
   editSegmentsModeAtom,
   isActivelySegmentingSelector,
@@ -98,8 +96,6 @@ export const useAnnotationActions = () => {
   const [snapCloseAutomatically, setSnapCloseAutomatically] = useRecoilState(
     snapCloseAutomaticallyAtom,
   );
-  const [continuousCuboidCreation, setContinuousCuboidCreation] =
-    useRecoilState(continuousCuboidCreationAtom);
   const editing = useAnnotationContext().isEditing;
   const [editSegmentsMode, setEditSegmentsMode] =
     useRecoilState(editSegmentsModeAtom);
@@ -428,6 +424,25 @@ export const useAnnotationActions = () => {
     setIsCreatingCuboid(!isCreatingCuboid);
   }, [isCreatingCuboid, setIsCreatingCuboid]);
 
+  const createCuboidKeyBindings = useMemo<KeyBinding[]>(
+    () => [
+      {
+        commandId: "looker-3d.annotation.cuboid.toggle-create",
+        sequence: "c",
+        handler: handleToggleCreateCuboid,
+        label: "Toggle cuboid create mode",
+        description: "Enter or exit cuboid create mode.",
+        enablement: () => isCuboidAnnotateActive,
+        priority: TRANSFORM_SHORTCUT_PRIORITY,
+      },
+    ],
+    [handleToggleCreateCuboid, isCuboidAnnotateActive],
+  );
+
+  useKeyBindings(KnownContexts.ModalAnnotate, createCuboidKeyBindings, [
+    createCuboidKeyBindings,
+  ]);
+
   const actions: ToolbarActionGroup[] = useMemo(() => {
     const baseActions: ToolbarActionGroup[] = [
       {
@@ -505,20 +520,12 @@ export const useAnnotationActions = () => {
             id: "create-cuboid",
             label: "Create Cuboid",
             icon: <AddBoxIcon />,
+            shortcut: "C",
             tooltip: isCreatingCuboid
-              ? "Exit create mode"
-              : "First click to set the center position, then click again to set the orientation point, and finally click again to commit the width",
+              ? "Exit create mode (C)"
+              : "Create a cuboid (C): first click to set the first corner, click again to set the orientation point, then click again to commit the width",
             isActive: isCreatingCuboid,
             onClick: handleToggleCreateCuboid,
-          },
-          {
-            id: "continuous-cuboid-creation",
-            label: "Create Consecutively",
-            icon: <RepeatIcon />,
-            tooltip:
-              "When enabled, create mode stays active after placing a cuboid so you can keep adding boxes back-to-back (Escape exits). When disabled, the new cuboid is selected for editing and create mode exits.",
-            isActive: continuousCuboidCreation,
-            onClick: () => setContinuousCuboidCreation((prev) => !prev),
           },
         ],
       },
@@ -630,8 +637,6 @@ export const useAnnotationActions = () => {
     isPolylineAnnotateActive,
     isCuboidAnnotateActive,
     isCreatingCuboid,
-    continuousCuboidCreation,
-    setContinuousCuboidCreation,
     handleToggleCreateCuboid,
     onExit,
   ]);

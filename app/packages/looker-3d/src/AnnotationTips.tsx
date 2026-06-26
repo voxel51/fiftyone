@@ -145,10 +145,10 @@ const annotationTips = [
   {
     text: (
       <>
-        After enabling <HighlightText>Create Cuboid</HighlightText>, click to
-        set the center, heading, then width. Create mode stays active so you can
-        place boxes back-to-back — press{" "}
-        <KeyboardShortcut>Esc</KeyboardShortcut> to stop.
+        Press <KeyboardShortcut>C</KeyboardShortcut> to toggle{" "}
+        <HighlightText>Create Cuboid</HighlightText> mode, then click to set the{" "}
+        <HighlightText>first corner</HighlightText>, the heading, then the
+        width.
       </>
     ),
   },

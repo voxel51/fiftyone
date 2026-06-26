@@ -497,23 +497,6 @@ export const cuboidCreationStateAtom = atom<CuboidCreationState>({
 });
 
 /**
- * Whether create cuboid mode stays active after a cuboid is placed.
- * When enabled (default), finishing a cuboid keeps the user in create mode so
- * they can place the next one back-to-back; when disabled, the freshly created
- * cuboid is selected for editing and create mode exits (the original behavior).
- * Exit create mode at any time with Escape or by toggling the create button.
- */
-export const continuousCuboidCreationAtom = atom<boolean>({
-  key: "fo3d-continuousCuboidCreation",
-  default: true,
-  effects: [
-    getBrowserStorageEffectForKey("fo3d-continuousCuboidCreation", {
-      valueClass: "boolean",
-    }),
-  ],
-});
-
-/**
  * The currently active 3D annotation mode.
  * Can be 'cuboid', 'polyline', or null (no annotation mode active).
  * Persisted in session storage to maintain state across page reloads.

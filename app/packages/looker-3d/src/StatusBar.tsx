@@ -381,7 +381,7 @@ export const StatusBar = ({
 
   const cuboidCreationHint =
     cuboidCreationState.step === 0
-      ? "Click to place the center"
+      ? "Click to place the first corner"
       : cuboidCreationState.step === 1
         ? "Click to set the heading"
         : "Click to set the width";

@@ -8,7 +8,6 @@ import { CreateCuboidRenderer } from "./CreateCuboidRenderer";
 const mocks = vi.hoisted(() => ({
   atoms: {
     annotationPlaneAtom: Symbol("annotationPlaneAtom"),
-    continuousCuboidCreationAtom: Symbol("continuousCuboidCreationAtom"),
     cuboidCreationStateAtom: Symbol("cuboidCreationStateAtom"),
     currentActiveAnnotationField3dAtom: Symbol(
       "currentActiveAnnotationField3dAtom",
@@ -106,12 +105,10 @@ describe("CreateCuboidRenderer", () => {
   const setTransformMode = vi.fn();
 
   let creationStateValue: CuboidCreationState = INITIAL_CREATION_STATE;
-  let continuousCreationValue = true;
 
   beforeEach(() => {
     vi.clearAllMocks();
     creationStateValue = INITIAL_CREATION_STATE;
-    continuousCreationValue = true;
 
     (useRecoilState as Mock).mockImplementation((atom) => {
       if (atom === mocks.atoms.isCreatingCuboidAtom) {
@@ -128,10 +125,6 @@ describe("CreateCuboidRenderer", () => {
     (useRecoilValue as Mock).mockImplementation((atom) => {
       if (atom === mocks.atoms.currentActiveAnnotationField3dAtom) {
         return "ground_truth";
-      }
-
-      if (atom === mocks.atoms.continuousCuboidCreationAtom) {
-        return continuousCreationValue;
       }
 
       if (atom === mocks.atoms.annotationPlaneAtom) {
@@ -205,14 +198,12 @@ describe("CreateCuboidRenderer", () => {
     expect(event.defaultPrevented).toBe(true);
   });
 
-  it("stays in create mode after committing when continuous creation is on", () => {
+  it("creates the cuboid, selects it for editing, and exits create mode", () => {
     creationStateValue = STEP_TWO_CREATION_STATE;
-    continuousCreationValue = true;
 
     render(<CreateCuboidRenderer />);
     triggerCommitClick();
 
-    // Cuboid is committed and its class is remembered for the next one.
     expect(mocks.createCuboid).toHaveBeenCalledWith(
       "new-cuboid-id",
       expect.any(Object),
@@ -223,30 +214,11 @@ describe("CreateCuboidRenderer", () => {
       "ground_truth",
       "vehicle",
     );
-
-    // Create mode stays active; the new cuboid is not selected for editing.
-    expect(setIsCreatingCuboid).not.toHaveBeenCalled();
-    expect(mocks.setEditingToNewCuboid).not.toHaveBeenCalled();
-    expect(setSelectedLabelForAnnotation).not.toHaveBeenCalled();
-    expect(mocks.selectNewCuboidForTransform).not.toHaveBeenCalled();
-    expect(mocks.setTransformMode).not.toHaveBeenCalled();
-
-    // Gesture is reset so the next cuboid starts fresh.
-    expect(setCreationState).toHaveBeenCalledWith(INITIAL_CREATION_STATE);
-  });
-
-  it("selects the new cuboid and exits create mode when continuous creation is off", () => {
-    creationStateValue = STEP_TWO_CREATION_STATE;
-    continuousCreationValue = false;
-
-    render(<CreateCuboidRenderer />);
-    triggerCommitClick();
-
-    expect(mocks.createCuboid).toHaveBeenCalledTimes(1);
     expect(mocks.setEditingToNewCuboid).toHaveBeenCalledTimes(1);
     expect(setSelectedLabelForAnnotation).toHaveBeenCalledTimes(1);
     expect(mocks.selectNewCuboidForTransform).toHaveBeenCalledTimes(1);
     expect(mocks.setTransformMode).toHaveBeenCalledWith("scale");
+    // Create mode exits after a cuboid is placed; press C to start another.
     expect(setIsCreatingCuboid).toHaveBeenCalledWith(false);
   });
 });
