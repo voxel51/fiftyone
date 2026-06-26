@@ -8685,9 +8685,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@voxel51/voodo@npm:^0.0.35":
-  version: 0.0.35
-  resolution: "@voxel51/voodo@npm:0.0.35"
+"@voxel51/voodo@npm:^0.0.36":
+  version: 0.0.36
+  resolution: "@voxel51/voodo@npm:0.0.36"
   dependencies:
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
@@ -8704,7 +8704,7 @@ __metadata:
     react: ^18.0.0
     react-dom: ^18.0.0
     react-is: ^18.0.0
-  checksum: 10/a2cc59ae1a6f2842b494363c1c918349b165cb65dbc3a2c6c6c1cb8ff6cd74336d76ebd0df455c8bbc8a8b32100461e5ea2ecd7bcc89b8684bfe66315522b09e
+  checksum: 10/742c289f7c7714d3bfeca3d3d34de5c4c373fc1dd98b89ae070411736a6564dee309493fa79ee0e24ce7f46d89b6e0ec3cb5f004ab89d377a829ec8a40e5f382
   languageName: node
   linkType: hard
 
