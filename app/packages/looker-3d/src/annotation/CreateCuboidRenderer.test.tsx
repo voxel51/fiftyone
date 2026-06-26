@@ -1,12 +1,14 @@
-import { render } from "@testing-library/react";
+import { act, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Mock } from "vitest";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import type { CuboidCreationState } from "../types";
 import { CreateCuboidRenderer } from "./CreateCuboidRenderer";
 
 const mocks = vi.hoisted(() => ({
   atoms: {
     annotationPlaneAtom: Symbol("annotationPlaneAtom"),
+    continuousCuboidCreationAtom: Symbol("continuousCuboidCreationAtom"),
     cuboidCreationStateAtom: Symbol("cuboidCreationStateAtom"),
     currentActiveAnnotationField3dAtom: Symbol(
       "currentActiveAnnotationField3dAtom",
@@ -23,7 +25,9 @@ const mocks = vi.hoisted(() => ({
   createCuboid: vi.fn(),
   dispatchAnnotationEvent: vi.fn(),
   recordLastCreatedLabel: vi.fn(),
+  selectNewCuboidForTransform: vi.fn(),
   setEditingToNewCuboid: vi.fn(),
+  setTransformMode: vi.fn(),
   useEmptyCanvasInteraction: vi.fn(),
 }));
 
@@ -46,7 +50,13 @@ vi.mock("../hooks/use-empty-canvas-interaction", () => ({
   useEmptyCanvasInteraction: mocks.useEmptyCanvasInteraction,
 }));
 
-vi.mock("../state", () => mocks.atoms);
+vi.mock("../state", () => ({
+  ...mocks.atoms,
+  useCuboidTransformCommands: () => ({
+    selectNewCuboidForTransform: mocks.selectNewCuboidForTransform,
+    setTransformMode: mocks.setTransformMode,
+  }),
+}));
 
 vi.mock("./store/operations", () => ({
   useCuboidOperations: () => ({ createCuboid: mocks.createCuboid }),
@@ -65,6 +75,21 @@ vi.mock("./useSetEditingToNewCuboid", () => ({
   useSetEditingToNewCuboid: () => mocks.setEditingToNewCuboid,
 }));
 
+const INITIAL_CREATION_STATE: CuboidCreationState = {
+  step: 0,
+  centerPosition: null,
+  orientationPoint: null,
+  currentPosition: null,
+};
+
+// A finished step-2 gesture: center at origin, heading along +x, width along +y.
+const STEP_TWO_CREATION_STATE: CuboidCreationState = {
+  step: 2,
+  centerPosition: [0, 0, 0],
+  orientationPoint: [1, 0, 0],
+  currentPosition: [1, 1, 0],
+};
+
 describe("CreateCuboidRenderer", () => {
   const setCreationState = vi.fn();
   const setIsCreatingCuboid = vi.fn();
@@ -73,8 +98,13 @@ describe("CreateCuboidRenderer", () => {
   const setCurrentArchetypeSelectedForTransform = vi.fn();
   const setTransformMode = vi.fn();
 
+  let creationStateValue: CuboidCreationState = INITIAL_CREATION_STATE;
+  let continuousCreationValue = true;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    creationStateValue = INITIAL_CREATION_STATE;
+    continuousCreationValue = true;
 
     (useRecoilState as Mock).mockImplementation((atom) => {
       if (atom === mocks.atoms.isCreatingCuboidAtom) {
@@ -82,15 +112,7 @@ describe("CreateCuboidRenderer", () => {
       }
 
       if (atom === mocks.atoms.cuboidCreationStateAtom) {
-        return [
-          {
-            step: 0,
-            centerPosition: null,
-            orientationPoint: null,
-            currentPosition: null,
-          },
-          setCreationState,
-        ];
+        return [creationStateValue, setCreationState];
       }
 
       throw new Error(`Unexpected recoil state: ${String(atom)}`);
@@ -99,6 +121,10 @@ describe("CreateCuboidRenderer", () => {
     (useRecoilValue as Mock).mockImplementation((atom) => {
       if (atom === mocks.atoms.currentActiveAnnotationField3dAtom) {
         return "ground_truth";
+      }
+
+      if (atom === mocks.atoms.continuousCuboidCreationAtom) {
+        return continuousCreationValue;
       }
 
       if (atom === mocks.atoms.annotationPlaneAtom) {
@@ -144,6 +170,17 @@ describe("CreateCuboidRenderer", () => {
     document.body.style.cursor = "";
   });
 
+  // The handler the canvas wires up for the final (commit) click.
+  const triggerCommitClick = () => {
+    const lastCall = mocks.useEmptyCanvasInteraction.mock.calls.at(-1);
+    const onPointerUp = lastCall?.[0]?.onPointerUp;
+    expect(onPointerUp).toBeTypeOf("function");
+
+    act(() => {
+      onPointerUp({ x: 1, y: 1, z: 0 });
+    });
+  };
+
   it("exits cuboid create mode when Escape is pressed before the first click", () => {
     render(<CreateCuboidRenderer />);
 
@@ -157,12 +194,52 @@ describe("CreateCuboidRenderer", () => {
 
     expect(setIsCreatingCuboid).toHaveBeenCalledWith(false);
     expect(setIsCreatingCuboidPointerDown).toHaveBeenCalledWith(false);
-    expect(setCreationState).toHaveBeenCalledWith({
-      step: 0,
-      centerPosition: null,
-      orientationPoint: null,
-      currentPosition: null,
-    });
+    expect(setCreationState).toHaveBeenCalledWith(INITIAL_CREATION_STATE);
     expect(event.defaultPrevented).toBe(true);
+  });
+
+  it("stays in create mode after committing when continuous creation is on", () => {
+    creationStateValue = STEP_TWO_CREATION_STATE;
+    continuousCreationValue = true;
+
+    render(<CreateCuboidRenderer />);
+    triggerCommitClick();
+
+    // Cuboid is committed and its class is remembered for the next one.
+    expect(mocks.createCuboid).toHaveBeenCalledWith(
+      "new-cuboid-id",
+      expect.any(Object),
+      "ground_truth",
+      "vehicle",
+    );
+    expect(mocks.recordLastCreatedLabel).toHaveBeenCalledWith(
+      "ground_truth",
+      "vehicle",
+    );
+
+    // Create mode stays active; the new cuboid is not selected for editing.
+    expect(setIsCreatingCuboid).not.toHaveBeenCalled();
+    expect(mocks.setEditingToNewCuboid).not.toHaveBeenCalled();
+    expect(setSelectedLabelForAnnotation).not.toHaveBeenCalled();
+    expect(mocks.selectNewCuboidForTransform).not.toHaveBeenCalled();
+    expect(mocks.setTransformMode).not.toHaveBeenCalled();
+
+    // Gesture is reset so the next cuboid starts fresh.
+    expect(setCreationState).toHaveBeenCalledWith(INITIAL_CREATION_STATE);
+  });
+
+  it("selects the new cuboid and exits create mode when continuous creation is off", () => {
+    creationStateValue = STEP_TWO_CREATION_STATE;
+    continuousCreationValue = false;
+
+    render(<CreateCuboidRenderer />);
+    triggerCommitClick();
+
+    expect(mocks.createCuboid).toHaveBeenCalledTimes(1);
+    expect(mocks.setEditingToNewCuboid).toHaveBeenCalledTimes(1);
+    expect(setSelectedLabelForAnnotation).toHaveBeenCalledTimes(1);
+    expect(mocks.selectNewCuboidForTransform).toHaveBeenCalledTimes(1);
+    expect(mocks.setTransformMode).toHaveBeenCalledWith("scale");
+    expect(setIsCreatingCuboid).toHaveBeenCalledWith(false);
   });
 });

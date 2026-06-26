@@ -120,6 +120,38 @@ const annotationTips = [
       </>
     ),
   },
+  {
+    text: (
+      <>
+        With a label selected, press <KeyboardShortcut>T</KeyboardShortcut> to{" "}
+        <HighlightText>translate</HighlightText>,{" "}
+        <KeyboardShortcut>S</KeyboardShortcut> to{" "}
+        <HighlightText>scale</HighlightText>, and{" "}
+        <KeyboardShortcut>R</KeyboardShortcut> to{" "}
+        <HighlightText>rotate</HighlightText>.
+      </>
+    ),
+  },
+  {
+    text: (
+      <>
+        In <HighlightText>scale</HighlightText> mode (
+        <KeyboardShortcut>S</KeyboardShortcut>), drag any{" "}
+        <HighlightText>face</HighlightText> of a selected cuboid to resize it
+        along that axis.
+      </>
+    ),
+  },
+  {
+    text: (
+      <>
+        After enabling <HighlightText>Create Cuboid</HighlightText>, click to
+        set the center, heading, then width. Create mode stays active so you can
+        place boxes back-to-back — press{" "}
+        <KeyboardShortcut>Esc</KeyboardShortcut> to stop.
+      </>
+    ),
+  },
 ];
 
 export const AnnotationTips = ({

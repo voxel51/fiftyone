@@ -8,6 +8,7 @@ import {
 import { Close, Delete, Edit, OpenWith, Straighten } from "@mui/icons-material";
 import AddBoxIcon from "@mui/icons-material/AddBox";
 import RectangleIcon from "@mui/icons-material/Rectangle";
+import RepeatIcon from "@mui/icons-material/Repeat";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import ThreeSixtyIcon from "@mui/icons-material/ThreeSixty";
 import PolylineIcon from "@mui/icons-material/Timeline";
@@ -19,6 +20,7 @@ import { useFo3dContext } from "../../fo3d/context";
 import {
   activeSegmentationStateAtom,
   annotationPlaneAtom,
+  continuousCuboidCreationAtom,
   currentArchetypeSelectedForTransformAtom,
   editSegmentsModeAtom,
   isActivelySegmentingSelector,
@@ -96,6 +98,8 @@ export const useAnnotationActions = () => {
   const [snapCloseAutomatically, setSnapCloseAutomatically] = useRecoilState(
     snapCloseAutomaticallyAtom,
   );
+  const [continuousCuboidCreation, setContinuousCuboidCreation] =
+    useRecoilState(continuousCuboidCreationAtom);
   const editing = useAnnotationContext().isEditing;
   const [editSegmentsMode, setEditSegmentsMode] =
     useRecoilState(editSegmentsModeAtom);
@@ -507,6 +511,15 @@ export const useAnnotationActions = () => {
             isActive: isCreatingCuboid,
             onClick: handleToggleCreateCuboid,
           },
+          {
+            id: "continuous-cuboid-creation",
+            label: "Create Consecutively",
+            icon: <RepeatIcon />,
+            tooltip:
+              "When enabled, create mode stays active after placing a cuboid so you can keep adding boxes back-to-back (Escape exits). When disabled, the new cuboid is selected for editing and create mode exits.",
+            isActive: continuousCuboidCreation,
+            onClick: () => setContinuousCuboidCreation((prev) => !prev),
+          },
         ],
       },
       {
@@ -617,6 +630,8 @@ export const useAnnotationActions = () => {
     isPolylineAnnotateActive,
     isCuboidAnnotateActive,
     isCreatingCuboid,
+    continuousCuboidCreation,
+    setContinuousCuboidCreation,
     handleToggleCreateCuboid,
     onExit,
   ]);

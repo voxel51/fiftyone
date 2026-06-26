@@ -28,6 +28,8 @@ import {
   activeNodeAtom,
   activeSegmentationStateAtom,
   cameraViewStatusAtom,
+  cuboidCreationStateAtom,
+  isCreatingCuboidAtom,
   isStatusBarOnAtom,
   useFo3dPerformanceStats,
 } from "./state";
@@ -374,6 +376,15 @@ export const StatusBar = ({
   const segmentState = useRecoilValue(activeSegmentationStateAtom);
   const cameraViewStatus = useRecoilValue(cameraViewStatusAtom);
   const isMultiviewOn = useRecoilValue(isInMultiPanelViewAtom);
+  const isCreatingCuboid = useRecoilValue(isCreatingCuboidAtom);
+  const cuboidCreationState = useRecoilValue(cuboidCreationStateAtom);
+
+  const cuboidCreationHint =
+    cuboidCreationState.step === 0
+      ? "Click to place the center"
+      : cuboidCreationState.step === 1
+        ? "Click to set the heading"
+        : "Click to set the width";
 
   const springProps = useSpring({
     transform: showPerfStatus ? "translateY(10%)" : "translateY(0%)",
@@ -420,7 +431,18 @@ export const StatusBar = ({
         </SegmentHint>
       )}
 
-      {!segmentState.isActive && (
+      {isCreatingCuboid && (
+        <SegmentHint $border={theme.primary.main} $text={"#e0e0e0"}>
+          <SegmentHintRow>
+            <InfoOutlinedIcon
+              style={{ fontSize: 12, color: theme.primary.main }}
+            />
+            {cuboidCreationHint} • Esc to exit
+          </SegmentHintRow>
+        </SegmentHint>
+      )}
+
+      {!segmentState.isActive && !isCreatingCuboid && (
         <AnnotationTips isMultiviewOn={isMultiviewOn} />
       )}
 
