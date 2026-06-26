@@ -3,6 +3,7 @@ import {
   BufferGeometry,
   Float32BufferAttribute,
   type Intersection,
+  Group,
   Mesh,
   OrthographicCamera,
   PerspectiveCamera,
@@ -18,6 +19,7 @@ import {
 import {
   filterIntersectionsForPointCloudCrop,
   filterPointIntersectionsByScreenDistance,
+  getObjectLabelId,
   getPointCloudRaycastThreshold,
 } from "./raycast-utils";
 
@@ -123,6 +125,21 @@ describe("filterIntersectionsForPointCloudCrop", () => {
         createPointCloudCropFromPoint([0, 0, 0], { margin: 1 }),
       ),
     ).toEqual([insideCorner, inside]);
+  });
+});
+
+describe("getObjectLabelId", () => {
+  it("walks from a raycast child object to the labeled parent", () => {
+    const parent = new Group();
+    parent.userData.labelId = "label-1";
+    const child = new Mesh(new BufferGeometry());
+    parent.add(child);
+
+    expect(getObjectLabelId(child)).toBe("label-1");
+  });
+
+  it("returns null when no ancestor has a label id", () => {
+    expect(getObjectLabelId(new Mesh(new BufferGeometry()))).toBeNull();
   });
 });
 

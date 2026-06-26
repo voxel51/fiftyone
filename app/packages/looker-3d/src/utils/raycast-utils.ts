@@ -101,6 +101,23 @@ export const filterIntersectionsForPointCloudCrop = (
   });
 };
 
+export const getObjectLabelId = (
+  object?: THREE.Object3D | null,
+): string | null => {
+  let current: THREE.Object3D | null | undefined = object;
+
+  while (current) {
+    const labelId = current.userData?.[FO_USER_DATA.LABEL_ID];
+    if (typeof labelId === "string") {
+      return labelId;
+    }
+
+    current = current.parent;
+  }
+
+  return null;
+};
+
 const getPanelHeight = (panelElement: HTMLElement): number => {
   const rect = panelElement.getBoundingClientRect();
   return rect.height || panelElement.clientHeight || 0;

@@ -14,6 +14,7 @@ import {
   createPointCloudCropFromCuboidTransform,
   createPointCloudCropFromDetection,
   createPointCloudCropFromPoint,
+  getCuboidPointCloudCrop,
   getPointCloudCropKey,
   getSelectedCuboidPointCloudCrop,
   isPointInsidePointCloudCrop,
@@ -282,6 +283,23 @@ describe("point-cloud crop", () => {
     expect(isPointInsidePointCloudCrop(new Vector3(2, 3.51, 3), crop!)).toBe(
       false,
     );
+  });
+
+  it("derives a raycast crop from cuboid labels", () => {
+    const detection = buildDetection();
+    const crop = getCuboidPointCloudCrop({
+      mode: ModalMode.ANNOTATE,
+      renderModel: { detections: [detection], polylines: [] },
+      labelId: detection._id,
+      margin: 1,
+      source: "raycast-hover",
+      visibleWorldHeightAtCenter: 4,
+    });
+
+    expect(crop?.labelId).toBe(detection._id);
+    expect(crop?.source).toBe("raycast-hover");
+    expect(crop?.visibleWorldHeightAtCenter).toBe(4);
+    expect(crop?.halfSize.toArray()).toEqual([2, 3, 4]);
   });
 
   it("does not derive a crop for selected polylines", () => {

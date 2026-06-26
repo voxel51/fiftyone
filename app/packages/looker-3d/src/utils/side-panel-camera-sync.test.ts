@@ -37,6 +37,7 @@ const buildRaycastResult = (
   worldPosition: [1, 2, 3],
   visibleWorldHeightAtPoint: null,
   intersectedObjectUuid: "point-cloud",
+  intersectedLabelId: null,
   isPointCloud: true,
   pointIndex: 1,
   distance: 10,

@@ -24,6 +24,7 @@ interface CreatePointCloudCropOptions {
   margin?: number;
   source?: PointCloudCrop["source"];
   useLegacyCoordinates?: boolean;
+  visibleWorldHeightAtCenter?: number | null;
 }
 
 interface CreatePointCloudCropFromPointOptions extends CreatePointCloudCropOptions {
@@ -39,6 +40,11 @@ interface RenderModelPointCloudCropOptions extends CreatePointCloudCropOptions {
 
 interface SelectedPointCloudCropOptions extends RenderModelPointCloudCropOptions {
   selectedLabelId?: string | null;
+}
+
+interface CuboidPointCloudCropOptions extends RenderModelPointCloudCropOptions {
+  labelId?: string | null;
+  visibleWorldHeightAtCenter?: number | null;
 }
 
 const EPSILON = 1e-6;
@@ -88,6 +94,11 @@ const getPointCropUpVector = (upVector: THREE.Vector3 | null | undefined) => {
   return upVector.clone().normalize();
 };
 
+const getFinitePositiveNumber = (value: number | null | undefined) =>
+  typeof value === "number" && Number.isFinite(value) && value > 0
+    ? value
+    : null;
+
 export const createPointCloudCropFromCuboidTransform = (
   labelId: string,
   cuboid: CuboidTransformData,
@@ -95,6 +106,7 @@ export const createPointCloudCropFromCuboidTransform = (
     margin,
     source,
     useLegacyCoordinates = false,
+    visibleWorldHeightAtCenter,
   }: CreatePointCloudCropOptions = {},
 ): PointCloudCrop | null => {
   if (
@@ -135,6 +147,9 @@ export const createPointCloudCropFromCuboidTransform = (
     halfSize,
     quaternion,
     worldToBox: boxToWorld.clone().invert(),
+    visibleWorldHeightAtCenter: getFinitePositiveNumber(
+      visibleWorldHeightAtCenter,
+    ),
   };
 };
 
@@ -206,22 +221,42 @@ export const getSelectedCuboidPointCloudCrop = ({
   margin,
   useLegacyCoordinates = false,
 }: SelectedPointCloudCropOptions): PointCloudCrop | null => {
-  if (mode !== ModalMode.ANNOTATE || !selectedLabelId) {
-    return null;
-  }
-
-  const selectedDetection = renderModel.detections.find(
-    (detection) => detection._id === selectedLabelId,
-  );
-
-  if (!selectedDetection) {
-    return null;
-  }
-
-  return createPointCloudCropFromDetection(selectedDetection, {
+  return getCuboidPointCloudCrop({
+    mode,
+    renderModel,
+    labelId: selectedLabelId,
     margin,
     source: "selection",
     useLegacyCoordinates,
+  });
+};
+
+export const getCuboidPointCloudCrop = ({
+  mode,
+  renderModel,
+  labelId,
+  margin,
+  source,
+  useLegacyCoordinates = false,
+  visibleWorldHeightAtCenter,
+}: CuboidPointCloudCropOptions): PointCloudCrop | null => {
+  if (mode !== ModalMode.ANNOTATE || !labelId) {
+    return null;
+  }
+
+  const detection = renderModel.detections.find(
+    (candidate) => candidate._id === labelId,
+  );
+
+  if (!detection) {
+    return null;
+  }
+
+  return createPointCloudCropFromDetection(detection, {
+    margin,
+    source,
+    useLegacyCoordinates,
+    visibleWorldHeightAtCenter,
   });
 };
 

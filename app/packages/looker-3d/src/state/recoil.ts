@@ -362,7 +362,7 @@ export const isFo3dMainPanelPointerDownAtom = atom<boolean>({
 });
 
 /**
- * Whether a modifier key that activates point-hover side-panel cropping is
+ * Whether a modifier key that activates raycast-hover side-panel cropping is
  * currently pressed while the 3D modal is active.
  */
 export const isFo3dPointCropModifierPressedAtom = atom<boolean>({
@@ -380,6 +380,7 @@ export const raycastResultAtom = atom<RaycastResult>({
     worldPosition: null,
     visibleWorldHeightAtPoint: null,
     intersectedObjectUuid: null,
+    intersectedLabelId: null,
     isPointCloud: false,
     pointIndex: null,
     distance: null,

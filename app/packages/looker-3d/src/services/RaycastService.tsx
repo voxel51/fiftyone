@@ -11,6 +11,7 @@ import type { PointCloudCrop } from "../utils/point-cloud-crop";
 import {
   filterPointIntersectionsByScreenDistance,
   filterIntersectionsForPointCloudCrop,
+  getObjectLabelId,
   getPointCloudRaycastThreshold,
   getRaycastableObjects,
 } from "../utils/raycast-utils";
@@ -92,6 +93,7 @@ export const RaycastService = ({
           worldPosition: null,
           visibleWorldHeightAtPoint: null,
           intersectedObjectUuid: null,
+          intersectedLabelId: null,
           isPointCloud: false,
           pointIndex: null,
           distance: null,
@@ -111,6 +113,7 @@ export const RaycastService = ({
       ];
 
       const pointIndex = closest.index !== undefined ? closest.index : null;
+      const intersectedLabelId = getObjectLabelId(closest.object);
 
       setRaycastResult({
         sourcePanel: panelId,
@@ -122,6 +125,7 @@ export const RaycastService = ({
         // Note: Recoil freezes objects so can't store the full intersected object...
         // but we can store the UUID
         intersectedObjectUuid: closest.object.uuid,
+        intersectedLabelId,
         isPointCloud: closest.object instanceof THREE.Points,
         pointIndex,
         distance: closest.distance,
@@ -148,6 +152,7 @@ export const RaycastService = ({
         worldPosition: null,
         visibleWorldHeightAtPoint: null,
         intersectedObjectUuid: null,
+        intersectedLabelId: null,
         isPointCloud: false,
         pointIndex: null,
         distance: null,

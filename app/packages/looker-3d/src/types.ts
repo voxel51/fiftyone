@@ -181,6 +181,7 @@ export interface RaycastResult {
   worldPosition: [number, number, number] | null;
   visibleWorldHeightAtPoint: number | null;
   intersectedObjectUuid: string | null;
+  intersectedLabelId: string | null;
   isPointCloud: boolean;
   pointIndex: number | null;
   distance: number | null;

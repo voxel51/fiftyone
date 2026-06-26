@@ -15,6 +15,7 @@ import {
 import {
   createPointCloudCropFromCuboidTransform,
   createPointCloudCropFromPoint,
+  getCuboidPointCloudCrop,
   getSelectedCuboidPointCloudCrop,
 } from "../utils/point-cloud-crop";
 import { getCuboidCreationPreview } from "./cuboid-creation-preview";
@@ -69,22 +70,36 @@ export const usePointCloudCrop = ({
       mode === fos.ModalMode.ANNOTATE &&
       !isMainPanelPointerDown &&
       isPointCropModifierPressed &&
-      raycastResult.sourcePanel === PANEL_ID_MAIN &&
-      raycastResult.isPointCloud &&
-      raycastResult.worldPosition
+      raycastResult.sourcePanel === PANEL_ID_MAIN
     ) {
-      const raycastHoverCrop = createPointCloudCropFromPoint(
-        raycastResult.worldPosition,
-        {
-          margin,
-          source: "raycast-hover",
-          upVector,
-          visibleWorldHeightAtPoint: raycastResult.visibleWorldHeightAtPoint,
-        },
-      );
+      const raycastCuboidCrop = getCuboidPointCloudCrop({
+        mode,
+        renderModel,
+        labelId: raycastResult.intersectedLabelId,
+        margin,
+        source: "raycast-hover",
+        useLegacyCoordinates,
+        visibleWorldHeightAtCenter: raycastResult.visibleWorldHeightAtPoint,
+      });
 
-      if (raycastHoverCrop) {
-        return raycastHoverCrop;
+      if (raycastCuboidCrop) {
+        return raycastCuboidCrop;
+      }
+
+      if (raycastResult.isPointCloud && raycastResult.worldPosition) {
+        const raycastHoverCrop = createPointCloudCropFromPoint(
+          raycastResult.worldPosition,
+          {
+            margin,
+            source: "raycast-hover",
+            upVector,
+            visibleWorldHeightAtPoint: raycastResult.visibleWorldHeightAtPoint,
+          },
+        );
+
+        if (raycastHoverCrop) {
+          return raycastHoverCrop;
+        }
       }
     }
 
@@ -102,6 +117,7 @@ export const usePointCloudCrop = ({
     isPointCropModifierPressed,
     margin,
     mode,
+    raycastResult.intersectedLabelId,
     raycastResult.isPointCloud,
     raycastResult.sourcePanel,
     raycastResult.visibleWorldHeightAtPoint,
