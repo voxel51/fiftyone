@@ -1,5 +1,5 @@
 import { render } from "@testing-library/react";
-import { act } from "react-dom/test-utils";
+import { unstable_act as act } from "react";
 import { useSetRecoilState } from "recoil";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_FO3D_PERFORMANCE_STATS } from "../../state";
@@ -102,7 +102,7 @@ describe("Fo3dPerformanceMonitor", () => {
 
     const updateStats = harness.setPerformanceStats.mock.calls[0][0];
     expect(updateStats(DEFAULT_FO3D_PERFORMANCE_STATS)).toMatchObject({
-      fps: 6,
+      fps: 4,
       calls: 12,
       triangles: 345,
       points: 678,

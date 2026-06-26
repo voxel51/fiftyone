@@ -7,7 +7,6 @@ import {
 } from "@react-three/drei";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
 import type * as THREE from "three";
 import type { Vector3 } from "three";
 import { SpinningCube } from "../SpinningCube";
@@ -20,12 +19,7 @@ import { FrustumCollection } from "../frustum";
 import { useCameraViews } from "../hooks/use-camera-views";
 import { ThreeDLabels } from "../labels";
 import { RaycastService } from "../services/RaycastService";
-import {
-  activeCursorPanelAtom,
-  mainPanelPanSyncIntentAtom,
-  mainPanelZoomSyncIntentAtom,
-  raycastResultAtom,
-} from "../state";
+import { useMainPanelNavigationSyncEmitterState } from "../state";
 import type { Fo3dCameraControls } from "./camera-controls";
 import { useFo3dContext } from "./context";
 import { Fo3dPerformanceMonitor } from "./Fo3dPerformanceMonitor";
@@ -232,14 +226,12 @@ const MainPanelNavigationSyncEmitter = ({
   cameraControlsRef: React.RefObject<Fo3dCameraControls>;
   cameraRef?: React.RefObject<THREE.PerspectiveCamera>;
 }) => {
-  const activeCursorPanel = useRecoilValue(activeCursorPanelAtom);
-  const raycastResult = useRecoilValue(raycastResultAtom);
-  const setMainPanelPanSyncIntent = useSetRecoilState(
-    mainPanelPanSyncIntentAtom,
-  );
-  const setMainPanelZoomSyncIntent = useSetRecoilState(
-    mainPanelZoomSyncIntentAtom,
-  );
+  const {
+    activeCursorPanel,
+    raycastResult,
+    setMainPanelPanSyncIntent,
+    setMainPanelZoomSyncIntent,
+  } = useMainPanelNavigationSyncEmitterState();
   const activeCursorPanelRef = useRef(activeCursorPanel);
   const isMainPanelPointerDragRef = useRef(false);
   const lastControlsTargetRef = useRef<THREE.Vector3 | null>(null);

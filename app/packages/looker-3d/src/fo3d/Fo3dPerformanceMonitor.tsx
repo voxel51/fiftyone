@@ -1,10 +1,9 @@
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
-import { useSetRecoilState } from "recoil";
 import {
   DEFAULT_FO3D_PERFORMANCE_STATS,
-  fo3dPerformanceStatsAtom,
   type Fo3dPerformanceStats,
+  useSetFo3dPerformanceStats,
 } from "../state";
 
 const PERFORMANCE_SAMPLE_INTERVAL_MS = 500;
@@ -25,7 +24,7 @@ const hasPerformanceStatsChanged = (
 };
 
 export const Fo3dPerformanceMonitor = () => {
-  const setPerformanceStats = useSetRecoilState(fo3dPerformanceStatsAtom);
+  const setPerformanceStats = useSetFo3dPerformanceStats();
   const sampleRef = useRef<{ frames: number; startedAtMs: number | null }>({
     frames: 0,
     startedAtMs: null,
@@ -45,6 +44,7 @@ export const Fo3dPerformanceMonitor = () => {
 
     if (sample.startedAtMs === null) {
       sample.startedAtMs = nowMs;
+      return;
     }
 
     sample.frames += 1;

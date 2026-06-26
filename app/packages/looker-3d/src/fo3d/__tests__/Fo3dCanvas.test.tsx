@@ -88,10 +88,22 @@ vi.mock("../../services/RaycastService", () => ({
 }));
 
 vi.mock("../../state", () => ({
-  activeCursorPanelAtom: {},
-  mainPanelPanSyncIntentAtom: {},
-  mainPanelZoomSyncIntentAtom: {},
-  raycastResultAtom: {},
+  useMainPanelNavigationSyncEmitterState: () => ({
+    activeCursorPanel: null,
+    raycastResult: {
+      sourcePanel: null,
+      worldPosition: null,
+      visibleWorldHeightAtPoint: null,
+      intersectedObjectUuid: null,
+      intersectedLabelId: null,
+      isPointCloud: false,
+      pointIndex: null,
+      distance: null,
+      timestamp: 0,
+    },
+    setMainPanelPanSyncIntent: vi.fn(),
+    setMainPanelZoomSyncIntent: vi.fn(),
+  }),
 }));
 
 vi.mock("../FoScene", () => ({

@@ -28,8 +28,8 @@ import {
   activeNodeAtom,
   activeSegmentationStateAtom,
   cameraViewStatusAtom,
-  fo3dPerformanceStatsAtom,
   isStatusBarOnAtom,
+  useFo3dPerformanceStats,
 } from "./state";
 
 const PerfContainer = styled.div`
@@ -211,7 +211,7 @@ const CameraInfo = ({
 };
 
 const PerfStats = () => {
-  const perfStats = useRecoilValue(fo3dPerformanceStatsAtom);
+  const perfStats = useFo3dPerformanceStats();
 
   const statBarColors = {
     // blue

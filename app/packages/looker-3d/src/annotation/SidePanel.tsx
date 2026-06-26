@@ -20,7 +20,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import * as THREE from "three";
 import type { MapControls as MapControlsImpl } from "three-stdlib";
@@ -44,10 +43,7 @@ import { FoScene } from "../fo3d/render-types";
 import { Lights } from "../fo3d/scene-controls/lights/Lights";
 import { ThreeDLabels } from "../labels";
 import { RaycastService } from "../services/RaycastService";
-import {
-  mainPanelPanSyncIntentAtom,
-  mainPanelZoomSyncIntentAtom,
-} from "../state";
+import { useMainPanelNavigationSyncIntents } from "../state";
 import type { SidePanelId, SidePanelViewType } from "../types";
 import { expandBoundingBox, findObjectByUserData } from "../utils";
 import {
@@ -230,6 +226,7 @@ export const SidePanel = ({
           imageSlices={imageSlices}
           isLoadingImageSlices={isLoadingImageSlices}
           resolveUrlForImageSlice={resolveUrlForImageSlice}
+          upVector={upVector}
         />
       ) : (
         <View
@@ -413,8 +410,8 @@ const BoundsSideEffectsComponent = ({
   const controls = useThree(
     (state) => state.controls as SidePanelControls | undefined,
   );
-  const mainPanelPanSyncIntent = useRecoilValue(mainPanelPanSyncIntentAtom);
-  const mainPanelZoomSyncIntent = useRecoilValue(mainPanelZoomSyncIntentAtom);
+  const { mainPanelPanSyncIntent, mainPanelZoomSyncIntent } =
+    useMainPanelNavigationSyncIntents();
   const pointCloudCropRef = useRef(pointCloudCrop);
   const lastAutoExpandFitAtRef = useRef(0);
   const lastRaycastHoverSyncAtRef = useRef(0);

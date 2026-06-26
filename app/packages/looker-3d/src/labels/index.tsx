@@ -18,7 +18,7 @@ import { useAtomValue } from "jotai";
 import { folder, useControls } from "leva";
 import { get as _get } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 import { useIsWorkingInitialized, useRenderModel } from "../annotation/store";
 import type {
   ReconciledDetection3D,
@@ -34,15 +34,7 @@ import {
 } from "../constants";
 import { usePathFilter, useSelect3DLabelForAnnotation } from "../hooks";
 import { type Looker3dSettings, defaultPluginSettings } from "../settings";
-import {
-  cuboidLabelLineWidthAtom,
-  isActivelySegmentingSelector,
-  isCreatingCuboidAtom,
-  polylineLabelLineWidthAtom,
-  hoveredLabelAtom,
-  selectedLabelForAnnotationAtom,
-  showCuboidOrientationAtom,
-} from "../state";
+import { useThreeDLabelState } from "../state";
 import { isDetection3dOverlay, isPolyline3dOverlay } from "../types";
 import type { Archetype3d, PanelId } from "../types";
 import { toEulerFromDegreesArray } from "../utils";
@@ -79,7 +71,17 @@ export const ThreeDLabels = ({
   const annotationSchemas = useAtomValue(activeLabelSchemas);
   const { coloring, selectedLabelTags, customizeColorSetting, labelTagColors } =
     useRecoilValue(fos.lookerOptions({ withFilter: true, modal: true }));
-  const isSegmenting = useRecoilValue(isActivelySegmentingSelector);
+  const {
+    cuboidLineWidth,
+    hoveredLabel,
+    isCreatingCuboid,
+    isSegmenting,
+    polylineWidth,
+    selectedLabelForAnnotation,
+    setCuboidLineWidth,
+    setPolylineWidth,
+    showCuboidOrientation,
+  } = useThreeDLabelState();
 
   const settings = fop.usePluginSettings<Looker3dSettings>(
     "3d",
@@ -88,22 +90,9 @@ export const ThreeDLabels = ({
   const onSelectLabel = fos.useOnSelectLabel();
   const pathFilter = usePathFilter();
   const colorScheme = useRecoilValue(fos.colorScheme);
-  const [cuboidLineWidth, setCuboidLineWidth] = useRecoilState(
-    cuboidLabelLineWidthAtom,
-  );
-  const [polylineWidth, setPolylineWidth] = useRecoilState(
-    polylineLabelLineWidthAtom,
-  );
-  const showCuboidOrientation = useRecoilValue(showCuboidOrientationAtom);
-  const isCreatingCuboid = useRecoilValue(isCreatingCuboidAtom);
   const selectedLabels = useRecoilValue(fos.selectedLabelMap);
   const labelAlpha = globalOpacity ?? colorScheme.opacity;
   const hoverSource = panelId ?? (isMainPanel ? PANEL_ID_MAIN : undefined);
-
-  const selectedLabelForAnnotation = useRecoilValue(
-    selectedLabelForAnnotationAtom,
-  );
-  const hoveredLabel = useRecoilValue(hoveredLabelAtom);
   const onExit = useExit();
 
   const select3DLabelForAnnotation = useSelect3DLabelForAnnotation();

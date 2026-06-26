@@ -1,8 +1,7 @@
-import { useRecoilValue } from "recoil";
-import { useFo3dContext } from "../../fo3d/context";
+import type { Vector3 } from "three";
 import type { FrustumData } from "../../frustum/types";
 import {
-  showCuboidOrientationAtom,
+  useCuboidOrientation,
   useCurrentSelected3dAnnotationLabel,
   useHoveredLabel3d,
 } from "../../state";
@@ -13,6 +12,7 @@ import { OverlaySvg } from "./shared";
 
 interface AllProjectedAnnotationsProps {
   frustumData: FrustumData;
+  upVector?: Vector3 | null;
 }
 
 /**
@@ -20,12 +20,12 @@ interface AllProjectedAnnotationsProps {
  */
 export function AllProjectedAnnotations({
   frustumData,
+  upVector,
 }: AllProjectedAnnotationsProps) {
   const renderModel = useRenderModel();
   const selectedLabel = useCurrentSelected3dAnnotationLabel();
   const hoveredLabel = useHoveredLabel3d();
-  const showCuboidOrientation = useRecoilValue(showCuboidOrientationAtom);
-  const { upVector } = useFo3dContext();
+  const showCuboidOrientation = useCuboidOrientation();
 
   const { intrinsics } = frustumData;
 

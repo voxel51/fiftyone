@@ -1,14 +1,13 @@
 import { useTheme } from "@fiftyone/components";
 import TextRotationAngleupIcon from "@mui/icons-material/TextRotationAngleup";
+import { IconButton } from "@mui/material";
 import type { MouseEvent } from "react";
-import { useRecoilState } from "recoil";
 import { ActionItem } from "../containers";
-import { showCuboidOrientationAtom } from "../state";
+import { useCuboidOrientationState } from "../state";
 
 export const ToggleCuboidOrientation = () => {
-  const [showCuboidOrientation, setShowCuboidOrientation] = useRecoilState(
-    showCuboidOrientationAtom,
-  );
+  const [showCuboidOrientation, setShowCuboidOrientation] =
+    useCuboidOrientationState();
   const { primary } = useTheme();
 
   return (
@@ -16,17 +15,22 @@ export const ToggleCuboidOrientation = () => {
       title="Toggle Cuboid Orientation"
       data-cy="looker-3d-toggle-cuboid-orientation"
     >
-      <TextRotationAngleupIcon
-        sx={{ fontSize: 24 }}
-        style={{
-          color: showCuboidOrientation ? primary.main : "inherit",
-        }}
-        onClick={(e: MouseEvent) => {
+      <IconButton
+        aria-label="Toggle cuboid orientation"
+        aria-pressed={showCuboidOrientation}
+        size="small"
+        onClick={(e: MouseEvent<HTMLButtonElement>) => {
           setShowCuboidOrientation((prev) => !prev);
           e.stopPropagation();
           e.preventDefault();
         }}
-      />
+        sx={{
+          color: showCuboidOrientation ? primary.main : "inherit",
+          padding: 0,
+        }}
+      >
+        <TextRotationAngleupIcon sx={{ fontSize: 24 }} />
+      </IconButton>
     </ActionItem>
   );
 };
