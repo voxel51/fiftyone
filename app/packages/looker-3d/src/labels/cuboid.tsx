@@ -55,6 +55,10 @@ const ORIENTATION_MARKER_OPACITY = 0.95;
 const ORIENTATION_MARKER_MIN_HEAD_LENGTH = 0.08;
 const ORIENTATION_MARKER_MIN_HEAD_RADIUS = 0.03;
 const ORIENTATION_MARKER_HEAD_SEGMENTS = 24;
+const ORIENTATION_MARKER_HEAD_LENGTH_RATIO = 0.18;
+const ORIENTATION_MARKER_MIN_CROSS_SECTION_RATIO = 0.1;
+const ORIENTATION_MARKER_HEAD_RADIUS_RATIO = 0.12;
+const ORIENTATION_MARKER_HEAD_RADIUS_LENGTH_CAP = 0.45;
 
 type PointerCaptureTarget = EventTarget & {
   setPointerCapture?: (pointerId: number) => void;
@@ -184,15 +188,18 @@ const getCuboidOrientationMarkerProps = (
   const faceX = length / 2;
   const extensionLength = length / 2;
   const headLength = Math.max(
-    Math.min(length * 0.18, extensionLength),
+    Math.min(length * ORIENTATION_MARKER_HEAD_LENGTH_RATIO, extensionLength),
     ORIENTATION_MARKER_MIN_HEAD_LENGTH,
   );
   const crossSection = Math.max(
     Math.min(localYExtent, localZExtent),
-    length * 0.1,
+    length * ORIENTATION_MARKER_MIN_CROSS_SECTION_RATIO,
   );
   const headRadius = Math.max(
-    Math.min(crossSection * 0.12, headLength * 0.45),
+    Math.min(
+      crossSection * ORIENTATION_MARKER_HEAD_RADIUS_RATIO,
+      headLength * ORIENTATION_MARKER_HEAD_RADIUS_LENGTH_CAP,
+    ),
     ORIENTATION_MARKER_MIN_HEAD_RADIUS,
   );
   const shaftEndX = faceX + extensionLength;
@@ -304,6 +311,8 @@ export const Cuboid = ({
     currentArchetypeSelectedForTransformAtom,
   );
 
+  // This effect keeps the global 3D annotation mode set to "cuboid" while this
+  // cuboid is the label selected for annotation.
   useEffect(() => {
     if (isSelectedForAnnotation) {
       setCurrent3dAnnotationMode("cuboid");
@@ -462,6 +471,9 @@ export const Cuboid = ({
     "auto",
   );
 
+  // This effect claims the global "currently transforming" flag while a
+  // face-resize hover/drag is active and releases it on teardown (including
+  // unmount), so orbit/transform controls re-enable once resizing ends.
   useEffect(() => {
     if (!isFaceResizeControlActive) {
       return undefined;
@@ -664,6 +676,9 @@ export const Cuboid = ({
     setIsCurrentlyTransforming(false);
   }, [handleFaceResizeEnd, setIsCurrentlyTransforming]);
 
+  // This effect drives an in-progress face-resize drag from window pointer
+  // events (so it keeps tracking even when the pointer leaves the canvas) and
+  // removes the listeners when the drag ends.
   useEffect(() => {
     if (!isFaceResizeDragging) {
       return undefined;
@@ -680,24 +695,13 @@ export const Cuboid = ({
     };
   }, [finishFaceResize, isFaceResizeDragging, updateFaceResizeFromPointer]);
 
+  // This effect clears the hovered resize face once face-resizing is no longer
+  // available and no drag is in progress.
   useEffect(() => {
     if (!canFaceResize && !isFaceResizeDragging) {
       setHoveredResizeFace(null);
     }
   }, [canFaceResize, isFaceResizeDragging]);
-
-  useEffect(() => {
-    return () => {
-      if (faceResizeDragRef.current) {
-        faceResizeDragRef.current = null;
-      }
-
-      if (isDisablingControlsForFaceResizeRef.current) {
-        isDisablingControlsForFaceResizeRef.current = false;
-        setIsCurrentlyTransforming(false);
-      }
-    };
-  }, [setIsCurrentlyTransforming]);
 
   const renderBoxGeometry = useMemo(
     () => displayDimensions && new THREE.BoxGeometry(...displayDimensions),

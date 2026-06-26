@@ -187,12 +187,6 @@ const AnnotationOrientationGizmoSvg = ({
     () => getAxisRenderState(cameraQuaternion),
     [cameraQuaternion],
   );
-  const handleAxisSelection = useCallback(
-    (direction: THREE.Vector3) => {
-      onAxisPointerDown(direction);
-    },
-    [onAxisPointerDown],
-  );
 
   return (
     <svg
@@ -221,7 +215,7 @@ const AnnotationOrientationGizmoSvg = ({
 
             event.preventDefault();
             event.stopPropagation();
-            handleAxisSelection(axis.direction);
+            onAxisPointerDown(axis.direction);
           }}
           onPointerDown={(event) => {
             if (!event.isPrimary || event.button !== 0) {
@@ -230,7 +224,7 @@ const AnnotationOrientationGizmoSvg = ({
 
             event.preventDefault();
             event.stopPropagation();
-            handleAxisSelection(axis.direction);
+            onAxisPointerDown(axis.direction);
           }}
           role="button"
           tabIndex={0}

@@ -1,7 +1,7 @@
 import { Line, useCursor } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import * as THREE from "three";
 import { FO_USER_DATA } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
@@ -28,8 +28,7 @@ export const AnnotationPlane = ({
     useRecoilState(annotationPlaneAtom);
 
   const isSegmenting = useRecoilValue(isActivelySegmentingSelector);
-  const transformMode = useRecoilValue(transformModeAtom);
-  const setTransformMode = useSetRecoilState(transformModeAtom);
+  const [transformMode, setTransformMode] = useRecoilState(transformModeAtom);
 
   const [
     currentArchetypeSelectedForTransform,

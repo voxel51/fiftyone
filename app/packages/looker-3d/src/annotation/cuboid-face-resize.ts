@@ -27,6 +27,8 @@ const FACE_TO_AXIS: Record<
 
 const EPSILON = 1e-10;
 
+const AXIS_ALIGNMENT_THRESHOLD = 0.9;
+
 export function getCuboidResizeDimensionMagnitudes(
   dimensions: THREE.Vector3Tuple,
 ): THREE.Vector3Tuple {
@@ -146,7 +148,7 @@ export function getCuboidFaceResizeDragPlaneNormal({
   }
 
   const fallbackAxis =
-    Math.abs(normalizedFaceNormal.x) < 0.9
+    Math.abs(normalizedFaceNormal.x) < AXIS_ALIGNMENT_THRESHOLD
       ? new THREE.Vector3(1, 0, 0)
       : new THREE.Vector3(0, 1, 0);
 

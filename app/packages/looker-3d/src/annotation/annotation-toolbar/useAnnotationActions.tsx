@@ -145,19 +145,12 @@ export const useAnnotationActions = () => {
     [transformActionArchetype, isActivelySegmenting, isCreatingCuboid],
   );
 
-  const handleTransformShortcut = useCallback(
-    (mode: TransformMode) => {
-      handleTransformModeChange(mode);
-    },
-    [handleTransformModeChange],
-  );
-
   const transformKeyBindings = useMemo<KeyBinding[]>(
     () => [
       {
         commandId: "looker-3d.annotation.transform.translate",
         sequence: "t",
-        handler: () => handleTransformShortcut("translate"),
+        handler: () => handleTransformModeChange("translate"),
         label: "Translate selected 3D object",
         description: "Switch selected 3D object to translate mode.",
         enablement: () => canUseTransformShortcut("translate"),
@@ -166,7 +159,7 @@ export const useAnnotationActions = () => {
       {
         commandId: "looker-3d.annotation.transform.scale",
         sequence: "s",
-        handler: () => handleTransformShortcut("scale"),
+        handler: () => handleTransformModeChange("scale"),
         label: "Scale selected 3D object",
         description: "Switch selected 3D object to scale mode.",
         enablement: () => canUseTransformShortcut("scale"),
@@ -175,14 +168,14 @@ export const useAnnotationActions = () => {
       {
         commandId: "looker-3d.annotation.transform.rotate",
         sequence: "r",
-        handler: () => handleTransformShortcut("rotate"),
+        handler: () => handleTransformModeChange("rotate"),
         label: "Rotate selected 3D object",
         description: "Switch selected 3D object to rotate mode.",
         enablement: () => canUseTransformShortcut("rotate"),
         priority: TRANSFORM_SHORTCUT_PRIORITY,
       },
     ],
-    [canUseTransformShortcut, handleTransformShortcut],
+    [canUseTransformShortcut, handleTransformModeChange],
   );
 
   useKeyBindings(KnownContexts.ModalAnnotate, transformKeyBindings, [

@@ -4,6 +4,23 @@ import type { AnnotationPlaneState, CuboidTransformData } from "./types";
 
 const MIN_DIMENSION = 0.1;
 const DEFAULT_HEIGHT = 1;
+const MIN_PERPENDICULAR_LENGTH = 0.001;
+
+const computeYawQuaternion = (
+  directionVector: THREE.Vector3,
+  localX: THREE.Vector3,
+  localY: THREE.Vector3,
+  normal: THREE.Vector3,
+  planeQuaternion: THREE.Quaternion,
+): THREE.Quaternion => {
+  const localDirection = new THREE.Vector2(
+    directionVector.dot(localX),
+    directionVector.dot(localY),
+  );
+  const yaw = Math.atan2(localDirection.y, localDirection.x);
+  const yawQuaternion = new THREE.Quaternion().setFromAxisAngle(normal, yaw);
+  return yawQuaternion.multiply(planeQuaternion);
+};
 
 export const getCuboidCreationPreview = (
   creationState: CuboidCreationState,
@@ -26,13 +43,13 @@ export const getCuboidCreationPreview = (
   if (step === 1) {
     const directionVector = current.clone().sub(center);
     const length = Math.max(directionVector.length(), MIN_DIMENSION);
-    const localDirection = new THREE.Vector2(
-      directionVector.dot(localX),
-      directionVector.dot(localY),
+    const finalQuaternion = computeYawQuaternion(
+      directionVector,
+      localX,
+      localY,
+      normal,
+      planeQuaternion,
     );
-    const yaw = Math.atan2(localDirection.y, localDirection.x);
-    const yawQuaternion = new THREE.Quaternion().setFromAxisAngle(normal, yaw);
-    const finalQuaternion = yawQuaternion.multiply(planeQuaternion);
     const cuboidCenter = center.clone().add(current).multiplyScalar(0.5);
 
     return {
@@ -46,23 +63,24 @@ export const getCuboidCreationPreview = (
     const orientation = new THREE.Vector3(...orientationPoint);
     const directionVector = orientation.clone().sub(center);
     const length = Math.max(directionVector.length(), MIN_DIMENSION);
-    const localDirection = new THREE.Vector2(
-      directionVector.dot(localX),
-      directionVector.dot(localY),
+    const finalQuaternion = computeYawQuaternion(
+      directionVector,
+      localX,
+      localY,
+      normal,
+      planeQuaternion,
     );
-    const yaw = Math.atan2(localDirection.y, localDirection.x);
-    const yawQuaternion = new THREE.Quaternion().setFromAxisAngle(normal, yaw);
-    const finalQuaternion = yawQuaternion.multiply(planeQuaternion);
     const centerToOrientation = directionVector.clone().normalize();
     const centerToCurrent = current.clone().sub(center);
     const projection = centerToOrientation
       .clone()
       .multiplyScalar(centerToCurrent.dot(centerToOrientation));
     const perpendicular = centerToCurrent.clone().sub(projection);
-    const width = Math.max(perpendicular.length(), MIN_DIMENSION);
+    const perpendicularLength = perpendicular.length();
+    const width = Math.max(perpendicularLength, MIN_DIMENSION);
     const cuboidCenter = center.clone().add(orientation).multiplyScalar(0.5);
 
-    if (perpendicular.length() > 0.001) {
+    if (perpendicularLength > MIN_PERPENDICULAR_LENGTH) {
       const perpendicularDirection = perpendicular.clone().normalize();
       cuboidCenter.add(perpendicularDirection.multiplyScalar(width / 2));
     }

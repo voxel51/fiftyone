@@ -52,6 +52,11 @@ import { type OverlayLabel, load3dOverlays } from "./loader";
 import { type PolyLineProps, Polyline } from "./polyline";
 import { WorkingStoreManager } from "./WorkingStoreManager";
 
+// Fallback overlay color used when an existing label has no resolved string
+// color (e.g. coloring metadata is missing/non-string). Newly created labels
+// take their color from getLabelColor instead.
+const DEFAULT_OVERLAY_COLOR = "#ffffff";
+
 export interface ThreeDLabelsProps {
   sampleMap: Parameters<typeof load3dOverlays>[0];
   globalOpacity?: number;
@@ -297,7 +302,9 @@ export const ThreeDLabels = ({
         });
       }
 
-      return typeof overlay.color === "string" ? overlay.color : "#ffffff";
+      return typeof overlay.color === "string"
+        ? overlay.color
+        : DEFAULT_OVERLAY_COLOR;
     },
     [coloring, labelTagColors, customizeColorSetting],
   );
@@ -349,35 +356,35 @@ export const ThreeDLabels = ({
   // Detections render model -> JSX
   const cuboidOverlays = useMemo(
     () =>
-      detectionsToRender.map((overlay) => (
-        <DragGate3D
-          key={`cuboid-${overlay.isNew ? "new-" : ""}${overlay._id}-${
-            overlay.sampleId
-          }`}
-          dragThresholdPx={DRAG_GATE_THRESHOLD_PX}
-          onClick={(e) =>
-            handleSelect(
-              overlay as unknown as OverlayLabel,
-              ANNOTATION_CUBOID,
-              e,
-            )
-          }
-        >
-          <Cuboid
-            lineWidth={cuboidLineWidth}
-            rotation={overlayRotation}
-            itemRotation={overlay.rotation ?? itemRotation}
-            {...(overlay as unknown as CuboidProps)}
-            opacity={getOverlayOpacity(overlay._id)}
-            label={overlay as unknown as OverlayLabel}
-            useLegacyCoordinates={settings.useLegacyCoordinates}
-            color={getOverlayColor(overlay)}
-            enableFaceResize={isMainPanel}
-            hoverSource={hoverSource}
-            showOrientation={showCuboidOrientation}
-          />
-        </DragGate3D>
-      )),
+      detectionsToRender.map((overlay) => {
+        // ReconciledDetection3D omits OverlayLabel["selected"], so its
+        // `selected` is typed `unknown` via the index signature; restoring it
+        // is the single narrowing needed to treat the overlay as OverlayLabel.
+        const label = overlay as ReconciledDetection3D & { selected: boolean };
+        return (
+          <DragGate3D
+            key={`cuboid-${overlay.isNew ? "new-" : ""}${overlay._id}-${
+              overlay.sampleId
+            }`}
+            dragThresholdPx={DRAG_GATE_THRESHOLD_PX}
+            onClick={(e) => handleSelect(label, ANNOTATION_CUBOID, e)}
+          >
+            <Cuboid
+              lineWidth={cuboidLineWidth}
+              rotation={overlayRotation}
+              itemRotation={overlay.rotation ?? itemRotation}
+              {...(overlay as unknown as CuboidProps)}
+              opacity={getOverlayOpacity(overlay._id)}
+              label={label}
+              useLegacyCoordinates={settings.useLegacyCoordinates}
+              color={getOverlayColor(overlay)}
+              enableFaceResize={isMainPanel}
+              hoverSource={hoverSource}
+              showOrientation={showCuboidOrientation}
+            />
+          </DragGate3D>
+        );
+      }),
     [
       detectionsToRender,
       cuboidLineWidth,
@@ -394,31 +401,28 @@ export const ThreeDLabels = ({
 
   // Polylines render model -> JSX
   const polylineOverlays = useMemo(() => {
-    return polylinesToRender.map((overlay) => (
-      <DragGate3D
-        key={`polyline-draggate-${overlay.isNew ? "new-" : ""}${overlay._id}-${
-          overlay.sampleId
-        }`}
-        dragThresholdPx={DRAG_GATE_THRESHOLD_PX}
-        onClick={(e) =>
-          handleSelect(
-            overlay as unknown as OverlayLabel,
-            ANNOTATION_POLYLINE,
-            e,
-          )
-        }
-      >
-        <Polyline
-          rotation={overlayRotation}
-          lineWidth={polylineWidth}
-          {...(overlay as unknown as PolyLineProps)}
-          opacity={getOverlayOpacity(overlay._id)}
-          label={overlay as unknown as OverlayLabel}
-          color={getOverlayColor(overlay)}
-          hoverSource={hoverSource}
-        />
-      </DragGate3D>
-    ));
+    return polylinesToRender.map((overlay) => {
+      const label = overlay as ReconciledPolyline3D & { selected: boolean };
+      return (
+        <DragGate3D
+          key={`polyline-draggate-${overlay.isNew ? "new-" : ""}${
+            overlay._id
+          }-${overlay.sampleId}`}
+          dragThresholdPx={DRAG_GATE_THRESHOLD_PX}
+          onClick={(e) => handleSelect(label, ANNOTATION_POLYLINE, e)}
+        >
+          <Polyline
+            rotation={overlayRotation}
+            lineWidth={polylineWidth}
+            {...(overlay as unknown as PolyLineProps)}
+            opacity={getOverlayOpacity(overlay._id)}
+            label={label}
+            color={getOverlayColor(overlay)}
+            hoverSource={hoverSource}
+          />
+        </DragGate3D>
+      );
+    });
   }, [
     polylinesToRender,
     overlayRotation,
