@@ -1,5 +1,5 @@
 import { useTheme } from "@fiftyone/components";
-import AssistantDirectionIcon from "@mui/icons-material/AssistantDirection";
+import TextRotationAngleupIcon from "@mui/icons-material/TextRotationAngleup";
 import type { MouseEvent } from "react";
 import { useRecoilState } from "recoil";
 import { ActionItem } from "../containers";
@@ -16,7 +16,7 @@ export const ToggleCuboidOrientation = () => {
       title="Toggle Cuboid Orientation"
       data-cy="looker-3d-toggle-cuboid-orientation"
     >
-      <AssistantDirectionIcon
+      <TextRotationAngleupIcon
         sx={{ fontSize: 24 }}
         style={{
           color: showCuboidOrientation ? primary.main : "inherit",
