@@ -6,7 +6,12 @@
     "rangeStrategy": "widen",
     "prConcurrentLimit": 5,
     "labels": ["dependencies"],
-    "enabledManagers": ["pip_requirements", "pip_setup", "github-actions"],
+    "enabledManagers": [
+        "pip_requirements",
+        "pip_setup",
+        "github-actions",
+        "npm"
+    ],
     "ignoreDeps": [
         "pymongo",
         "motor",
@@ -30,6 +35,11 @@
             "matchManagers": ["github-actions"],
             "groupName": "github-actions",
             "addLabels": ["github-actions"]
+        },
+        {
+            "matchManagers": ["npm"],
+            "groupName": "app-dependencies",
+            "addLabels": ["app"]
         }
     ],
     "vulnerabilityAlerts": {
