@@ -1,6 +1,6 @@
 import { resetFrameStores, zoomAspectRatio } from "@fiftyone/looker";
 import type { paginateSamplesQuery } from "@fiftyone/relay";
-import type { ID, Response } from "@fiftyone/spotlight";
+import type { ID, ItemData, Response } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import { type Schema } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useRef } from "react";
@@ -43,41 +43,6 @@ const aspectRatioFromMetadata = (
   const width = md.width ?? md.frame_width;
   const height = md.height ?? md.frame_height;
   return width && height ? width / height : undefined;
-};
-
-const processSamplePageData = (
-  page: number,
-  store: WeakMap<ID, object>,
-  rows: fos.SampleRow[],
-  schema: Schema,
-  zoom: boolean,
-  records: Map<string, number>,
-  groupFields: string | string[] | undefined
-) => {
-  return rows.map((row, i) => {
-    // assemble the runtime sample from the projected field slice
-    const node = { ...row, sample: row.fields } as GridNode;
-    // rebuild `_group` here, where `node.sample` exists (a raw row has only `.fields`)
-    reconstructGroup(node, groupFields, schema);
-    const id = { description: node.id };
-
-    store.set(id, node);
-    records.set(node.id, page * PAGE_SIZE + i);
-
-    // auto-AR: prefer the server's value, else stored dimensions; the `?? 1` is a
-    // transient estimate for media whose dimensions aren't known until decode.
-    const aspectRatio =
-      node.aspectRatio ?? aspectRatioFromMetadata(node.sample) ?? 1;
-
-    return {
-      key: page,
-      aspectRatio: zoom
-        ? zoomAspectRatio(node.sample, schema, aspectRatio)
-        : aspectRatio,
-      id,
-      data: node as unknown as fos.Sample,
-    };
-  });
 };
 
 interface GroupByView {
@@ -166,7 +131,6 @@ const useSpotlightPager = ({
   records: Records;
   zoomSelector: RecoilValueReadOnly<boolean>;
 }) => {
-  const pager = useRecoilValue(pageSelector);
   const zoom = useRecoilValue(zoomSelector);
   // auto-AR publishes the spine's group total here so the counter shows groups, not
   // raw samples; fixed-AR's InfiniteGrid publishes the same atom.
@@ -183,14 +147,6 @@ const useSpotlightPager = ({
     // a view/filter change invalidates frame content; detach never drops these caches.
     resetFrameStores();
   }, [clearRecords, lookerStore]);
-
-  const keys = useRef(new Set<string>());
-
-  const pages = useMemo(() => {
-    /** Track already requested pages */
-    clearRecords;
-    return new Set();
-  }, [clearRecords]);
 
   // The id spine, reset whenever records reset.
   const spine = useMemo<SpineCache>(() => {
@@ -392,121 +348,71 @@ const useSpotlightPager = ({
   // clamps its layout to this so a filtered/grouped view isn't sized to the dataset.
   const spineTotal = useCallback(() => spine.total, [spine]);
 
-  // Cursor pager for the legacy Spotlight path (auto-AR): reuses the spine to group,
-  // then fetches the poster ids with media metadata for per-tile aspect ratios.
+  // Spotlight's page source — the SAME spine that drives the fixed grid, so one data
+  // engine feeds both layouts. ensureSpineWindow gives the ordered ids (+ aspect ratios)
+  // for the window; hydrateWindow loads the heavy sample/media by id. The spine handles
+  // flat and dynamic-group views alike (one path, no branch). hydrateWindow rebuilds
+  // `_group`, seeds `_group_count` from the spine (group totals never re-requested), and
+  // mirrors into the modal cache so opening a sample plays back instantly from
+  // grid-loaded data.
   const page = useRecoilCallback(
     ({ snapshot }) =>
       async (pageNumber: number): Promise<Response<number, fos.Sample>> => {
+        const start = pageNumber * PAGE_SIZE;
+        const entries = await ensureSpineWindow(start, PAGE_SIZE);
+        // the spine's resolved total (groups for a dynamic-group view); null until a
+        // flat view reaches its end, where the counter falls back to the dataset count
+        setSpineTotal(spineTotal());
+        if (!entries.length) {
+          return {
+            items: [],
+            next: null,
+            previous: pageNumber > 0 ? pageNumber - 1 : null,
+          };
+        }
+
         const schema = await snapshot.getPromise(
           fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
         );
-        const datasetId = await snapshot.getPromise(fos.datasetId);
-        const gridFields = await snapshot.getPromise(fos.gridSampleFields);
-        pages.add(pageNumber);
-        if (!datasetId) return { items: [], next: null, previous: null };
+        const nodes = await hydrateWindow(entries.map((e) => e.id));
+        const ss = store as unknown as WeakMap<ID, GridNode>;
 
-        const start = pageNumber * PAGE_SIZE;
-        const base = pager(0, PAGE_SIZE) as unknown as Record<string, unknown>;
-        const { view, groupFields, orderBy } = stripGroupBy(base);
-        const fields = fieldsWithGroup(gridFields, groupFields, orderBy);
-
-        let rows: fos.SampleRow[];
-        let hasMore: boolean;
-
-        if (groupFields) {
-          // dynamic group: group via the cached spine (no per-page re-group), then
-          // fetch those posters by id (indexed `$match {_id:$in}`), opening media so
-          // auto-AR has per-tile ratios. `_group` is rebuilt per poster downstream.
-          const spineEntries = await ensureSpineWindow(start, PAGE_SIZE);
-          // publish the accurate GROUP total — the counter must never show raw samples
-          setSpineTotal(spineTotal());
-          if (!spineEntries.length) {
+        const items = entries
+          .map((entry) => {
+            const node = nodes.get(entry.id);
+            if (!node) return undefined;
+            const id = { description: entry.id };
+            // Spotlight's showItem reads the sample from the shared grid store;
+            // hydrateWindow already mirrored it into the modal cache for instant open.
+            ss.set(id, node);
+            const aspectRatio =
+              entry.aspectRatio ??
+              node.aspectRatio ??
+              aspectRatioFromMetadata(node.sample) ??
+              1;
             return {
-              items: [],
-              next: null,
-              previous: pageNumber > 0 ? pageNumber - 1 : null,
+              key: pageNumber,
+              aspectRatio: zoom
+                ? zoomAspectRatio(node.sample, schema, aspectRatio)
+                : aspectRatio,
+              id,
+              data: node.sample as unknown as fos.Sample,
             };
-          }
-          const ids = spineEntries.map((e) => e.id);
-          const fetched = await fos.fetchSamples({
-            datasetId,
-            ids,
-            count: ids.length,
-            fields,
-            view,
-            filters: base.filters,
-            sortBy: base.sortBy as string | undefined,
-            desc: base.desc as boolean | undefined,
-            hint: base.hint as string | undefined,
-            skipMetadata: false,
-          });
-          // fetch-by-id is unordered; restore the spine's group order
-          const byId = new Map(fetched.map((r) => [r.id, r]));
-          rows = ids
-            .map((id) => byId.get(id))
-            .filter(Boolean) as fos.SampleRow[];
-          // the by-id fetch strips GroupBy, so carry the spine's group count onto each
-          // poster so the imavid modal seeds its total without a count query
-          const countById = new Map(
-            spineEntries.map((e) => [e.id, e.groupCount])
-          );
-          for (const row of rows) {
-            const gc = countById.get(row.id);
-            if (gc != null) {
-              (row.fields as Record<string, unknown>)._group_count = gc;
-            }
-          }
-          const total = spineTotal();
-          hasMore =
-            total != null
-              ? start + PAGE_SIZE < total
-              : spineEntries.length === PAGE_SIZE;
-        } else {
-          // flat view: a single offset read — no extra spine round-trip. Its count
-          // comes from the aggregation, so don't drive the spine-total atom.
-          setSpineTotal(null);
-          rows = await fos.fetchSamples({
-            datasetId,
-            after: start,
-            count: PAGE_SIZE,
-            fields,
-            view,
-            filters: base.filters,
-            sortBy: base.sortBy as string | undefined,
-            desc: base.desc as boolean | undefined,
-            hint: base.hint as string | undefined,
-            skipMetadata: base.skipMetadata as boolean | undefined,
-          });
-          hasMore = rows.length === PAGE_SIZE;
-        }
+          })
+          .filter(Boolean) as ItemData<number, fos.Sample>[];
 
-        const items = processSamplePageData(
-          pageNumber,
-          store,
-          rows,
-          schema,
-          zoom,
-          records,
-          groupFields
-        );
-        for (const item of items) keys.current.add(item.id.description);
-
+        const total = spineTotal();
+        const hasMore =
+          total != null
+            ? start + PAGE_SIZE < total
+            : entries.length === PAGE_SIZE;
         return {
           items,
           next: hasMore ? pageNumber + 1 : null,
           previous: pageNumber > 0 ? pageNumber - 1 : null,
         };
       },
-    [
-      pager,
-      pages,
-      records,
-      store,
-      zoom,
-      ensureSpineWindow,
-      spineTotal,
-      setSpineTotal,
-    ]
+    [ensureSpineWindow, hydrateWindow, store, zoom, spineTotal, setSpineTotal]
   );
 
   return {

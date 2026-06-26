@@ -8,16 +8,9 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
-import {
-  gridAspectRatio,
-  gridHeaderHeight,
-  gridSpacing,
-  gridSpineTotal,
-  parseAspectRatio,
-} from "./recoil";
-import justifiedLayout, { type GridLayout } from "./justifiedLayout";
-import useSpineLayout from "./useSpineLayout";
+import { useSetRecoilState } from "recoil";
+import { gridSpineTotal } from "./recoil";
+import useSpineLayout, { type SpineLayout } from "./useSpineLayout";
 import {
   PAGE_SIZE,
   isPlaceholder,
@@ -61,7 +54,7 @@ export interface GridScrollbar {
 export interface GridEngine {
   viewportRef: React.RefObject<HTMLDivElement>;
   size: { width: number; height: number };
-  layout: GridLayout;
+  layout: SpineLayout;
   vTop: number;
   moving: boolean;
   fast: boolean;
@@ -76,10 +69,10 @@ export interface GridEngine {
 }
 
 /**
- * The infinite grid's engine: owns layout (uniform fixed-AR or justified
- * auto-AR), synthetic scroll, the settle-gated window load/prefetch, scroll
- * state, and modal navigation. The component consumes its outputs and renders
- * tiles — no orchestration there.
+ * The fixed-AR grid's engine: owns the uniform deterministic layout, synthetic
+ * scroll, the settle-gated window load/prefetch, scroll state, and modal
+ * navigation. The component consumes its outputs and renders tiles — no
+ * orchestration there. (Auto-AR runs the Spotlight engine instead.)
  */
 export default function useGridEngine({
   reset,
@@ -142,41 +135,16 @@ export default function useGridEngine({
   const [loadedOnce, setLoadedOnce] = useState(false);
   // ids whose hydrate is in flight, so overlapping loads never re-request.
   const inflight = useRef(new Set<string>());
-  // greatest scroll depth reached — the scrollbar spans [0, maxReached], not the full height.
-  const maxReachedRef = useRef(0);
   // previous settle's first visible index — its delta gives the scroll direction.
   const prevStartRef = useRef(0);
 
   // null until the spine reveals the view's end; clamps the layout to the real count.
   const revealedTotal = spineTotal();
-  const uniform = useSpineLayout(size.width, revealedTotal);
-
-  // justified (auto-AR) layout reads each item's AR from the spine; fixed AR uses the
-  // uniform deterministic layout. Recomputes as ARs load (entriesVersion).
-  const isAuto = parseAspectRatio(useRecoilValue(gridAspectRatio)) === null;
-  const spacing = useRecoilValue(gridSpacing);
-  const headerOffset = useRecoilValue(gridHeaderHeight);
-  const justified = useMemo<GridLayout | null>(() => {
-    if (!isAuto || !size.width || !uniform.totalCount) return null;
-    return justifiedLayout({
-      width: size.width,
-      spacing,
-      headerOffset,
-      targetRowHeight: uniform.rowHeight,
-      totalCount: uniform.totalCount,
-      aspectRatioOf: (index) => entriesRef.current.get(index)?.aspectRatio,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    isAuto,
-    size.width,
-    spacing,
-    headerOffset,
-    uniform.rowHeight,
-    uniform.totalCount,
-    entriesVersion,
-  ]);
-  const layout: GridLayout = justified ?? uniform;
+  // the deterministic uniform layout: every index maps to a fixed position from
+  // width/AR/zoom alone, so the full virtual height is known up front (hence the
+  // full-length scrollbar + deep random access). Auto-AR's justified layout lives in
+  // the Spotlight engine instead.
+  const layout: SpineLayout = useSpineLayout(size.width, revealedTotal);
 
   // publish the revealed count for ResourceCount; reset on unmount so no stale count.
   const setSpineTotalAtom = useSetRecoilState(gridSpineTotal);
@@ -192,40 +160,6 @@ export default function useGridEngine({
     settleSpeed: layout.rowHeight * SETTLE_ROWS_PER_SEC,
     acceleratedSpeed: layout.rowHeight * ACCEL_ROWS_PER_SEC,
   });
-
-  // justified layout needs every item's AR up front, so positions don't reflow as the
-  // user scrolls. The AR spine is an id+ratio read, so eager-loading it is cheap.
-  useEffect(() => {
-    if (!isAuto) return undefined;
-    let cancelled = false;
-    void (async () => {
-      let cursor = 0;
-      for (;;) {
-        const got = await ensureSpineWindow(cursor, PAGE_SIZE);
-        if (cancelled || !got.length) break;
-        let changed = false;
-        got.forEach((e, i) => {
-          const idx = cursor + i;
-          const existing = entriesRef.current.get(idx);
-          // set when new, or when this entry carries an AR a cached fixed-mode entry
-          // lacked (fixed -> auto), so the justified layout reflows to real ratios.
-          if (
-            !existing ||
-            (existing.aspectRatio == null && e.aspectRatio != null)
-          ) {
-            entriesRef.current.set(idx, e);
-            changed = true;
-          }
-        });
-        if (changed) setEntriesVersion((v) => v + 1);
-        if (got.length < PAGE_SIZE) break;
-        cursor += got.length;
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuto, ensureSpineWindow, reset]);
 
   // modal next/prev resolves neighbours by spine index and hydrates them so the
   // looker reader finds them
@@ -406,7 +340,6 @@ export default function useGridEngine({
     document.dispatchEvent(new CustomEvent("grid-unmount"));
     entriesRef.current = new Map();
     idObjs.current = new Map();
-    maxReachedRef.current = 0;
     setLoadedOnce(false);
     setEntriesVersion((v) => v + 1);
   }, [reset]);
@@ -471,16 +404,20 @@ export default function useGridEngine({
     return () => clearTimeout(t);
   }, [moving, vTop]);
 
-  // thumb spans only the deepest point reached so far, not the full virtual height.
-  maxReachedRef.current = Math.max(maxReachedRef.current, vTop);
-  const explored = maxReachedRef.current;
-  const exploredContent = explored + size.height;
+  // fixed AR knows its full virtual height up front (uniform row height), so the thumb
+  // spans the whole length from the start and can be dragged to any depth — deep random
+  // access without having scrolled there first.
+  const maxScroll = Math.max(0, layout.virtualHeight - size.height);
+  const explored = maxScroll;
   const thumbHeight =
-    exploredContent > 0
-      ? Math.max(THUMB_MIN_PX, (size.height / exploredContent) * size.height)
+    layout.virtualHeight > 0
+      ? Math.max(
+          THUMB_MIN_PX,
+          (size.height / layout.virtualHeight) * size.height
+        )
       : 0;
   const thumbTop =
-    explored > 0 ? (vTop / explored) * (size.height - thumbHeight) : 0;
+    maxScroll > 0 ? (vTop / maxScroll) * (size.height - thumbHeight) : 0;
   const drag = useRef<{ y: number; vTop: number } | null>(null);
   const onThumbDown = useCallback(
     (e: React.PointerEvent) => {
@@ -496,8 +433,7 @@ export default function useGridEngine({
       const travel = size.height - thumbHeight;
       if (travel <= 0) return;
       const dy = e.clientY - drag.current.y;
-      const reached = maxReachedRef.current;
-      // bound to explored territory — the thumb can't drag past the deepest point.
+      const reached = Math.max(0, layout.virtualHeight - size.height);
       scrollTo(
         Math.min(
           Math.max(drag.current.vTop + (dy / travel) * reached, 0),
@@ -505,7 +441,7 @@ export default function useGridEngine({
         )
       );
     },
-    [scrollTo, size.height, thumbHeight]
+    [scrollTo, size.height, thumbHeight, layout.virtualHeight]
   );
   const onThumbUp = useCallback((e: React.PointerEvent) => {
     drag.current = null;

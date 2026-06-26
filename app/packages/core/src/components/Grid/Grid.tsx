@@ -1,79 +1,52 @@
 import styles from "./Grid.module.css";
 
-import * as fos from "@fiftyone/state";
 import React from "react";
 import { useRecoilValue } from "recoil";
-import { useMemoOne } from "use-memo-one";
-import { v4 as uuid } from "uuid";
 import { useSyncLabelsRenderingStatus } from "../../hooks";
-import { gridCrop, maxGridItemsSizeBytes, pageParameters } from "./recoil";
-import InfiniteGrid from "./InfiniteGrid";
-import useEscape from "./useEscape";
-import useLabelVisibility from "./useLabelVisibility";
-import useLookerCache from "./useLookerCache";
+import FixedGrid from "./FixedGrid";
+import SpotlightGrid from "./SpotlightGrid";
+import { gridAspectRatio, gridCrop, pageParameters, parseAspectRatio } from "./recoil";
 import useRecords from "./useRecords";
 import useRefreshers from "./useRefreshers";
-import useRenderer from "./useRenderer";
-import useScrollLocation from "./useScrollLocation";
 import useSpotlightPager from "./useSpotlightPager";
 
-const MAX_INSTANCES = 200;
-
+// The grid runs one of two engines, chosen by aspect-ratio mode, over a single shared
+// data layer (the spine in useSpotlightPager): fixed AR -> the deterministic engine
+// (full-length scrollbar, deep random access); auto AR -> the measured Spotlight
+// engine. Both read/write the same id spine + sample store, so switching mode keeps
+// the loaded data.
 function Grid() {
-  const id = useMemoOne(() => uuid(), []);
-
   const { pageReset, reset } = useRefreshers();
 
   useSyncLabelsRenderingStatus();
 
   const records = useRecords(pageReset);
+  const isAuto = parseAspectRatio(useRecoilValue(gridAspectRatio)) === null;
 
-  // divide by two, half for the hidden cache and half for max shown
-  const maxBytes = useRecoilValue(maxGridItemsSizeBytes) / 2;
-  // both are stable (useCallback/useRecoilCallback with no deps), so the cache
-  // identity below is preserved across renders.
-  const { onDispose, onSet } = useLabelVisibility();
-  const cache = useLookerCache({
-    maxHiddenItems: MAX_INSTANCES,
-    maxHiddenItemsSizeBytes: maxBytes,
-    reset,
-    onSet,
-    onDispose,
-  });
-
-  const { store, hydrateWindow, ensureSpineWindow, spineTotal } =
-    useSpotlightPager({
-      clearRecords: reset,
-      pageSelector: pageParameters,
-      records,
-      zoomSelector: gridCrop,
-    });
-
-  const { attachItem, releaseItem } = useRenderer({
-    cache,
-    id,
+  const pager = useSpotlightPager({
+    clearRecords: reset,
+    pageSelector: pageParameters,
     records,
-    store,
+    zoomSelector: gridCrop,
   });
-  useScrollLocation(pageReset);
-
-  const setSample = fos.useExpandSample(store);
-
-  useEscape();
 
   return (
     <div className={styles.gridContainer}>
-      <InfiniteGrid
-        id={id}
-        reset={reset}
-        ensureSpineWindow={ensureSpineWindow}
-        hydrateWindow={hydrateWindow}
-        spineTotal={spineTotal}
-        store={store}
-        attachItem={attachItem}
-        releaseItem={releaseItem}
-        onItemClick={setSample}
-      />
+      {isAuto ? (
+        <SpotlightGrid
+          reset={reset}
+          pageReset={pageReset}
+          records={records}
+          pager={pager}
+        />
+      ) : (
+        <FixedGrid
+          reset={reset}
+          pageReset={pageReset}
+          records={records}
+          pager={pager}
+        />
+      )}
     </div>
   );
 }

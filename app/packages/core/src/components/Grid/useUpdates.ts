@@ -1,9 +1,10 @@
 import { Coloring, ImaVidLooker, VideoLooker } from "@fiftyone/looker";
 import { Colorscale } from "@fiftyone/looker/src/state";
 import { RENDER_STATUS_PENDING } from "@fiftyone/looker/src/worker/shared";
+import type Spotlight from "@fiftyone/spotlight";
 import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { useDetectNewActiveLabelFields } from "../Sidebar/useDetectNewActiveLabelFields";
 import type { LookerCache } from "./types";
@@ -158,3 +159,45 @@ export const getColoringKey = (
 
   return `${coloring?.seed}-${coloring?.by}-${coloring.scale.length}-${coloring.pool.length}-${colorscale?.fields.length}-${colorscale?.default.name}-${suffix}`;
 };
+
+// Spotlight (auto-AR) re-applies the per-looker update on field/coloring change by
+// walking every live item. The fixed-AR engine has no Spotlight, so ./useRenderer
+// drives useItemUpdater itself on attach.
+export default function useUpdates({
+  cache,
+  getFontSize,
+  options,
+  spotlight,
+}: {
+  cache: LookerCache;
+  getFontSize: () => number;
+  options: ReturnType<typeof fos.useLookerOptions>;
+  spotlight?: Spotlight<number, fos.Sample>;
+}) {
+  const { init, deferred } = fos.useDeferrer();
+  const itemUpdater = useItemUpdater(cache, options);
+
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+
+  const lastColoringKeyRef = useRef(
+    getColoringKey(options.coloring, options.colorscale)
+  );
+
+  useEffect(() => {
+    deferred(() => {
+      spotlight?.updateItems(
+        itemUpdater(getFontSize(), lastColoringKeyRef.current)
+      );
+      lastColoringKeyRef.current = getColoringKey(
+        optionsRef.current.coloring,
+        optionsRef.current.colorscale
+      );
+      cache.empty();
+    });
+  }, [cache, deferred, getFontSize, itemUpdater, spotlight]);
+
+  useEffect(() => {
+    return spotlight ? init() : undefined;
+  }, [spotlight, init]);
+}
