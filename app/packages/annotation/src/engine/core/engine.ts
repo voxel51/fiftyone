@@ -527,6 +527,12 @@ export class AnnotationEngine {
     return [...this.stores.values()].some((store) => store.isDirty());
   }
 
+  captureBaseline(): void {
+    for (const store of this.stores.values()) {
+      store.captureBaseline();
+    }
+  }
+
   reconcilePersisted(results: { sample: string; deltas: JSONDeltas }[]): void {
     for (const { sample, deltas } of results) {
       this.stores.get(sample)?.reconcilePersisted(deltas);

@@ -199,6 +199,10 @@ export class SampleLabelStore implements LabelStore {
     return this.source.isDirty();
   }
 
+  captureBaseline(): void {
+    this.source.captureBaseline();
+  }
+
   reconcilePersisted(deltas: JSONDeltas): void {
     this.source.reconcilePersisted(deltas);
   }
