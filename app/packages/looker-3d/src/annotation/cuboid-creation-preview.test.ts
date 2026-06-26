@@ -24,7 +24,7 @@ describe("getCuboidCreationPreview", () => {
     expect(getCuboidCreationPreview(state, annotationPlane)).toBeNull();
   });
 
-  it("builds the step-one length preview", () => {
+  it("anchors the step-one length at the first click and grows toward the cursor", () => {
     const state: CuboidCreationState = {
       step: 1,
       centerPosition: [0, 0, 0],
@@ -34,12 +34,14 @@ describe("getCuboidCreationPreview", () => {
 
     const preview = getCuboidCreationPreview(state, annotationPlane);
 
-    expect(preview?.location).toEqual([0, 0, 0]);
-    expect(preview?.dimensions).toEqual([4, 0.1, 1]);
+    // Length equals the click-to-cursor distance (not doubled), and the box is
+    // centered at the midpoint so the near edge stays at the first click.
+    expect(preview?.location).toEqual([1, 0, 0]);
+    expect(preview?.dimensions).toEqual([2, 0.1, 1]);
     expect(preview?.quaternion).toEqual([0, 0, 0, 1]);
   });
 
-  it("builds the step-two width preview", () => {
+  it("grows the step-two width toward the cursor side only", () => {
     const state: CuboidCreationState = {
       step: 2,
       centerPosition: [0, 0, 0],
@@ -49,8 +51,11 @@ describe("getCuboidCreationPreview", () => {
 
     const preview = getCuboidCreationPreview(state, annotationPlane);
 
-    expect(preview?.location).toEqual([0, 0, 0]);
-    expect(preview?.dimensions).toEqual([4, 4, 1]);
+    // Length spans first click -> orientation (2). Width spans the perpendicular
+    // distance to the cursor (2), with the box shifted half its width toward the
+    // cursor so the anchored edge stays put: center = (1, 1, 0).
+    expect(preview?.location).toEqual([1, 1, 0]);
+    expect(preview?.dimensions).toEqual([2, 2, 1]);
     expect(preview?.quaternion).toEqual([0, 0, 0, 1]);
   });
 });
