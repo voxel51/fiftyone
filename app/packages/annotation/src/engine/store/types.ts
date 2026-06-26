@@ -99,6 +99,9 @@ export interface LabelStore {
   getJsonPatch(opts?: { isGenerated?: boolean }): JSONDeltas;
   pendingPaths(): readonly string[];
   isDirty(): boolean;
+  // snapshot the pre-persist transient; the trigger calls this before the patch
+  // is sent so reconcilePersisted can keep fields edited while it was in flight
+  captureBaseline(): void;
   reconcilePersisted(deltas: JSONDeltas): void;
 
   // lifecycle

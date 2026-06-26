@@ -157,6 +157,11 @@ export class VideoLabelStore implements LabelStore {
     return this.frames.isDirty() || this.sampleLevel.isDirty();
   }
 
+  captureBaseline(): void {
+    this.frames.captureBaseline();
+    this.sampleLevel.captureBaseline();
+  }
+
   reconcilePersisted(deltas: JSONDeltas): void {
     const frameDeltas: JSONDeltas = [];
     const sampleDeltas: JSONDeltas = [];

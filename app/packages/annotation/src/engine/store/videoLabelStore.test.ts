@@ -118,6 +118,10 @@ class FakeSampleStore implements LabelStore {
     return this.dirty;
   }
 
+  captureBaseline(): void {
+    this.calls.push("captureBaseline");
+  }
+
   reconcilePersisted(deltas: JSONDeltas): void {
     this.reconciled = deltas;
   }

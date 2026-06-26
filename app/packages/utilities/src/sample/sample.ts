@@ -3,6 +3,7 @@ import { JSONDeltas } from "../types";
 import {
   buildJsonPatch,
   EditedLabel,
+  fieldDeltas,
   firstEditedLabel,
   SampleSnapshot,
 } from "./diff";
@@ -138,6 +139,13 @@ export class Sample {
   private changeListeners: Set<SampleChangeListener> = new Set();
   private version = 0;
   private dispatching = false;
+  /**
+   * The transient as of the last {@link captureBaseline} — the reference
+   * {@link reconcilePersisted} compares against to keep a field edited while the
+   * patch was in flight. `null` until captured; reconcile releases nothing
+   * without it.
+   */
+  private patchBaseline: Record<string, unknown> | null = null;
 
   constructor(opts: SampleOptions = {}) {
     if (opts.data) {
@@ -552,6 +560,8 @@ export class Sample {
     this.assertNotDispatching("clear");
     this.transientData = {};
     this.transientDeletes.clear();
+    // a reset invalidates any captured baseline
+    this.patchBaseline = null;
     this.notify([{ path: "", kind: SampleChangeKind.Reset }]);
   }
 
@@ -563,6 +573,16 @@ export class Sample {
    */
   getJsonPatch(opts: { isGenerated?: boolean } = {}): JSONDeltas {
     return buildJsonPatch(this.snapshot(), opts);
+  }
+
+  /**
+   * Snapshot the transient before a persist so {@link reconcilePersisted} can
+   * tell an unedited field (safe to release) from one edited while the patch is
+   * in flight. A shallow copy suffices — mutators are copy-on-write, so the
+   * captured references stay pinned to their values.
+   */
+  captureBaseline(): void {
+    this.patchBaseline = { ...this.transientData };
   }
 
   /**
@@ -581,10 +601,14 @@ export class Sample {
    */
   reconcilePersisted(deltas: JSONDeltas): void {
     this.assertNotDispatching("reconcilePersisted");
+    // consume the baseline; null it so a stray second reconcile fails safe
+    const baseline = this.patchBaseline;
+    this.patchBaseline = null;
     const result = reconcilePersisted(
       this.snapshot(),
       deltas,
       this.serverOwnedFields,
+      baseline,
     );
 
     if (!result) {
@@ -625,10 +649,18 @@ export class Sample {
 
   /** Drop transient entries that have become no-ops vs. the current source. */
   private gc(): void {
+    const snapshot = this.snapshot();
+
     for (const path of Object.keys(this.transientData)) {
       const source = getNestedField(this.sourceData, path);
 
-      if (equalsNormalized(source, this.transientData[path])) {
+      // merge-aware emptiness: a transient that diffs to nothing against source
+      // contributes nothing — including a partial element left by reconcile's
+      // release, which raw equality would strand after the persist refresh
+      if (
+        fieldDeltas(snapshot, path, source, this.transientData[path]).length ===
+        0
+      ) {
         delete this.transientData[path];
       }
     }

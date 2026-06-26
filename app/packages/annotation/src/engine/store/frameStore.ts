@@ -281,6 +281,9 @@ export class FrameStore implements LabelStore {
     return this.working.size > 0;
   }
 
+  /** No-op: frames protect in-flight edits structurally (see {@link reconcilePersisted}). */
+  captureBaseline(): void {}
+
   /**
    * Fold the server-confirmed deltas into `source` (the new committed truth),
    * then drop working frames now equal to it (the `/frames` source is not

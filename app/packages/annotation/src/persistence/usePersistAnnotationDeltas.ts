@@ -88,6 +88,10 @@ export const usePersistAnnotationDeltas =
           return false;
         }
 
+        // snapshot the pre-persist transient so the reconcile after the await
+        // keeps any field edited while the patch is in flight
+        engine.captureBaseline();
+
         const success = await patchSelected(deltas, {
           labelId: metadata.labelId,
           labelPath: metadata.labelPath,
@@ -115,6 +119,10 @@ export const usePersistAnnotationDeltas =
       }
 
       eventBus.dispatch("annotation:persistenceInFlight");
+
+      // snapshot the pre-persist transient so the reconcile after each await
+      // keeps any field edited while the patch is in flight
+      engine.captureBaseline();
 
       let success = true;
       for (const entry of patches) {
