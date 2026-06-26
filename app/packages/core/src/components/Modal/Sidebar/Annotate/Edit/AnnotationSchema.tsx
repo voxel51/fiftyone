@@ -186,6 +186,15 @@ const useHandleSchemaChange = (readOnly: boolean) => {
           // null, not `delete`: the auto-save delta must carry an explicit
           // unset, otherwise the existing-detection merge resurrects the value.
           value[name] = null;
+        } else if (
+          prevOwner === undefined &&
+          currentOwner &&
+          value[name] == null
+        ) {
+          const defaultVal = currentOwner.default;
+          if (defaultVal !== undefined) {
+            value[name] = defaultVal;
+          }
         }
       }
 
