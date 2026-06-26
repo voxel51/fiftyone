@@ -15,7 +15,7 @@ export interface FramesProbeResponse {
 
 /** A `/frames` probe response counts as "sampled" iff frame 1 has a filepath. */
 export const responseHasSampledFrames = (
-  response: FramesProbeResponse
+  response: FramesProbeResponse,
 ): boolean => {
   const filepath = response?.frames?.[0]?.filepath;
   return typeof filepath === "string" && filepath.length > 0;
@@ -36,7 +36,7 @@ export const responseHasSampledFrames = (
  */
 export const useSampledFramesProbe = (
   frameCount: number | undefined,
-  enabled: boolean
+  enabled: boolean,
 ): SampledFramesState => {
   const dataset = useDatasetName();
   const view = useView();

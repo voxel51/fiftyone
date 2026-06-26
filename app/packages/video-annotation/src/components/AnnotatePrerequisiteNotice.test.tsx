@@ -8,11 +8,11 @@ import {
 describe("AnnotatePrerequisiteNotice", () => {
   it("renders the metadata prompt", () => {
     const { container, getByText } = render(
-      <AnnotatePrerequisiteNotice blocker="metadata" />
+      <AnnotatePrerequisiteNotice blocker="metadata" />,
     );
 
     expect(
-      container.querySelector('[data-cy="video-annotate-prerequisite-notice"]')
+      container.querySelector('[data-cy="video-annotate-prerequisite-notice"]'),
     ).toBeTruthy();
     getByText("Computed metadata required");
     getByText(/frame count is unknown/);
@@ -21,7 +21,7 @@ describe("AnnotatePrerequisiteNotice", () => {
 
   it("renders the frames prompt", () => {
     const { getByText } = render(
-      <AnnotatePrerequisiteNotice blocker="frames" />
+      <AnnotatePrerequisiteNotice blocker="frames" />,
     );
 
     getByText("Frames not sampled");
@@ -35,8 +35,8 @@ describe("AnnotatePrerequisiteChecking", () => {
 
     expect(
       container.querySelector(
-        '[data-cy="video-annotate-prerequisite-checking"]'
-      )
+        '[data-cy="video-annotate-prerequisite-checking"]',
+      ),
     ).toBeTruthy();
   });
 });

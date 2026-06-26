@@ -41,14 +41,14 @@ export interface AnnotatePrerequisites {
  * resolved, since it needs the frame count.
  */
 export const useAnnotatePrerequisites = (
-  sample: ModalSample
+  sample: ModalSample,
 ): AnnotatePrerequisites => {
   const frameRate = getModalSampleFrameRate(sample);
   const hasFrameRate =
     frameRate !== undefined && Number.isFinite(frameRate) && frameRate > 0;
 
   const frameCount = hasFrameRate
-    ? resolveFrameCount(sample, frameRate as number) ?? undefined
+    ? (resolveFrameCount(sample, frameRate as number) ?? undefined)
     : undefined;
 
   const metadataOk = hasFrameRate && frameCount !== undefined;

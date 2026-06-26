@@ -11,7 +11,7 @@ import type { ModalSample } from "@fiftyone/state";
  */
 export function resolveFrameCount(
   sample: ModalSample,
-  frameRate: number
+  frameRate: number,
 ): number | null {
   const metadata = (sample.sample as { metadata?: Record<string, unknown> })
     ?.metadata;

@@ -34,13 +34,13 @@ describe("responseHasSampledFrames", () => {
     expect(
       responseHasSampledFrames({
         frames: [{ frame_number: 1, filepath: "/a.jpg" }],
-      })
+      }),
     ).toBe(true);
     expect(responseHasSampledFrames({ frames: [{ frame_number: 1 }] })).toBe(
-      false
+      false,
     );
     expect(
-      responseHasSampledFrames({ frames: [{ frame_number: 1, filepath: "" }] })
+      responseHasSampledFrames({ frames: [{ frame_number: 1, filepath: "" }] }),
     ).toBe(false);
     expect(responseHasSampledFrames({ frames: [] })).toBe(false);
     expect(responseHasSampledFrames({})).toBe(false);
@@ -71,7 +71,7 @@ describe("useSampledFramesProbe", () => {
         frameNumber: 1,
         numFrames: 1,
         fields: ["filepath"],
-      })
+      }),
     );
   });
 
