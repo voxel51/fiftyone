@@ -117,7 +117,7 @@ export class KeyManager {
           priority,
           order: this.bindingOrder++,
         },
-      ].sort((a, b) => b.priority - a.priority || b.order - a.order),
+      ].sort((a, b) => b.priority - a.priority || a.order - b.order),
     );
   }
 

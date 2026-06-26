@@ -254,7 +254,7 @@ describe("KeyManager", () => {
     expect(state.full).toBeDefined();
   });
 
-  it("matches the latest enabled command for duplicate bindings", async () => {
+  it("matches the earliest enabled command for duplicate bindings", async () => {
     const command1 = commandRegistry.registerCommand(
       "fo.test.command1",
       async () => {
@@ -290,7 +290,7 @@ describe("KeyManager", () => {
     state = keyManager.match(
       new KeyboardEvent("keydown", { altKey: true, key: "d" }),
     );
-    expect(state.full?.id).toBe("fo.test.command2");
+    expect(state.full?.id).toBe("fo.test.command1");
   });
 
   it("falls back to an older duplicate binding when the latest is disabled", async () => {
