@@ -9544,7 +9544,7 @@
             "source": "https://huggingface.co/PekingU/rtdetr_v2_r101vd",
             "author": "Wenyu Lv, et al.",
             "license": "Apache 2.0",
-            "size_bytes": 514000000,
+            "size_bytes": 307332000,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
                 "config": {
