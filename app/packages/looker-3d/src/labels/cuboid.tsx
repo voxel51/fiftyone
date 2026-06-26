@@ -50,15 +50,18 @@ const FACE_RESIZE_EDGE_COLOR = "#ff2f2f";
 const FACE_RESIZE_HIGHLIGHT_OPACITY = 0.78;
 const FACE_RESIZE_HIGHLIGHT_OFFSET = 1e-4;
 const FACE_RESIZE_EDGE_LINE_WIDTH = 2;
-const ORIENTATION_MARKER_LINE_WIDTH = 3;
+const ORIENTATION_MARKER_LINE_WIDTH = 4;
 const ORIENTATION_MARKER_OPACITY = 0.95;
+// Flat triangular arrowhead, sized relative to the cuboid's heading length.
+const ORIENTATION_MARKER_EXTENSION_RATIO = 0.3;
+const ORIENTATION_MARKER_HEAD_LENGTH_RATIO = 0.16;
 const ORIENTATION_MARKER_MIN_HEAD_LENGTH = 0.08;
-const ORIENTATION_MARKER_MIN_HEAD_RADIUS = 0.03;
-const ORIENTATION_MARKER_HEAD_SEGMENTS = 24;
-const ORIENTATION_MARKER_HEAD_LENGTH_RATIO = 0.18;
 const ORIENTATION_MARKER_MIN_CROSS_SECTION_RATIO = 0.1;
-const ORIENTATION_MARKER_HEAD_RADIUS_RATIO = 0.12;
-const ORIENTATION_MARKER_HEAD_RADIUS_LENGTH_CAP = 0.45;
+// Half-width of the arrowhead base, as a fraction of its length and capped
+// against the cuboid's smaller cross-section so it never overhangs the box.
+const ORIENTATION_MARKER_HEAD_WIDTH_RATIO = 0.7;
+const ORIENTATION_MARKER_HEAD_WIDTH_CROSS_CAP = 0.4;
+const ORIENTATION_MARKER_MIN_HEAD_WIDTH = 0.03;
 
 type PointerCaptureTarget = EventTarget & {
   setPointerCapture?: (pointerId: number) => void;
@@ -161,11 +164,9 @@ const getCuboidOrientationMarkerProps = (
   orientation: THREE.Quaternion,
   upVector?: THREE.Vector3 | null,
 ): {
-  headLength: number;
-  headPosition: THREE.Vector3Tuple;
-  headRadius: number;
   shaftStart: THREE.Vector3Tuple;
   shaftEnd: THREE.Vector3Tuple;
+  headVertices: [THREE.Vector3Tuple, THREE.Vector3Tuple, THREE.Vector3Tuple];
 } | null => {
   const length = getFiniteMagnitude(dimensions[0]);
 
@@ -186,7 +187,7 @@ const getCuboidOrientationMarkerProps = (
   const localYExtent = getFiniteMagnitude(dimensions[1]);
   const localZExtent = getFiniteMagnitude(dimensions[2]);
   const faceX = length / 2;
-  const extensionLength = length / 2;
+  const extensionLength = length * ORIENTATION_MARKER_EXTENSION_RATIO;
   const headLength = Math.max(
     Math.min(length * ORIENTATION_MARKER_HEAD_LENGTH_RATIO, extensionLength),
     ORIENTATION_MARKER_MIN_HEAD_LENGTH,
@@ -195,21 +196,35 @@ const getCuboidOrientationMarkerProps = (
     Math.min(localYExtent, localZExtent),
     length * ORIENTATION_MARKER_MIN_CROSS_SECTION_RATIO,
   );
-  const headRadius = Math.max(
+  const headHalfWidth = Math.max(
     Math.min(
-      crossSection * ORIENTATION_MARKER_HEAD_RADIUS_RATIO,
-      headLength * ORIENTATION_MARKER_HEAD_RADIUS_LENGTH_CAP,
+      headLength * ORIENTATION_MARKER_HEAD_WIDTH_RATIO,
+      crossSection * ORIENTATION_MARKER_HEAD_WIDTH_CROSS_CAP,
     ),
-    ORIENTATION_MARKER_MIN_HEAD_RADIUS,
+    ORIENTATION_MARKER_MIN_HEAD_WIDTH,
   );
+
   const shaftEndX = faceX + extensionLength;
+  const tipX = shaftEndX + headLength;
+  const { y: baseY, z: baseZ } = basePoint;
+
+  // The base point sits on the cuboid's lowest face, so its non-zero offset
+  // axis is the "up" axis. Lay the flat arrowhead in the perpendicular
+  // (horizontal) plane so it reads as a full triangle from a top-down view.
+  const spreadAlongZ = Math.abs(baseY) >= Math.abs(baseZ);
+
+  const apex: THREE.Vector3Tuple = [tipX, baseY, baseZ];
+  const base1: THREE.Vector3Tuple = spreadAlongZ
+    ? [shaftEndX, baseY, baseZ + headHalfWidth]
+    : [shaftEndX, baseY + headHalfWidth, baseZ];
+  const base2: THREE.Vector3Tuple = spreadAlongZ
+    ? [shaftEndX, baseY, baseZ - headHalfWidth]
+    : [shaftEndX, baseY - headHalfWidth, baseZ];
 
   return {
-    headLength,
-    headPosition: [shaftEndX + headLength / 2, basePoint.y, basePoint.z],
-    headRadius,
     shaftStart: basePoint.toArray() as THREE.Vector3Tuple,
-    shaftEnd: [shaftEndX, basePoint.y, basePoint.z],
+    shaftEnd: [shaftEndX, baseY, baseZ],
+    headVertices: [apex, base1, base2],
   };
 };
 
@@ -219,13 +234,32 @@ const CuboidOrientationMarker = ({
   orientation,
   upVector,
 }: CuboidOrientationMarkerProps) => {
-  const markerProps = getCuboidOrientationMarkerProps(
-    dimensions,
-    orientation,
-    upVector,
+  const markerProps = useMemo(
+    () => getCuboidOrientationMarkerProps(dimensions, orientation, upVector),
+    [dimensions, orientation, upVector],
   );
 
-  if (!markerProps) {
+  const headGeometry = useMemo(() => {
+    if (!markerProps) {
+      return null;
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute(markerProps.headVertices.flat(), 3),
+    );
+    return geometry;
+  }, [markerProps]);
+
+  // This effect disposes the arrowhead geometry when it is replaced or unmounts.
+  useEffect(() => {
+    return () => {
+      headGeometry?.dispose();
+    };
+  }, [headGeometry]);
+
+  if (!markerProps || !headGeometry) {
     return null;
   }
 
@@ -240,23 +274,12 @@ const CuboidOrientationMarker = ({
         depthTest={false}
         raycast={() => null}
       />
-      <mesh
-        position={markerProps.headPosition}
-        rotation={[0, 0, -Math.PI / 2]}
-        renderOrder={3}
-        raycast={() => null}
-      >
-        <coneGeometry
-          args={[
-            markerProps.headRadius,
-            markerProps.headLength,
-            ORIENTATION_MARKER_HEAD_SEGMENTS,
-          ]}
-        />
+      <mesh geometry={headGeometry} renderOrder={3} raycast={() => null}>
         <meshBasicMaterial
           color={color}
           transparent
           opacity={ORIENTATION_MARKER_OPACITY}
+          side={THREE.DoubleSide}
           depthTest={false}
           depthWrite={false}
         />
