@@ -17,6 +17,7 @@ import {
  */
 export const useLighterPreviewSync = (
   engine: AnnotationEngine,
+  dataset: string,
   sample: string,
   scene: Scene2D | null
 ): void => {
@@ -32,7 +33,9 @@ export const useLighterPreviewSync = (
           return;
         }
 
-        if (identity.ref.sample !== sample) {
+        // scope to this surface's entity namespace — instanceIds can overlap
+        // across datasets/samples
+        if (identity.dataset !== dataset || identity.ref.sample !== sample) {
           return;
         }
 
@@ -48,5 +51,5 @@ export const useLighterPreviewSync = (
         } as Parameters<typeof overlay.applyLabel>[0]);
       }
     );
-  }, [engine, sample, scene]);
+  }, [engine, dataset, sample, scene]);
 };

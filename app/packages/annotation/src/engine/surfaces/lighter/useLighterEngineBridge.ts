@@ -296,7 +296,12 @@ export const useLighterEngineBridge = ({
   on("lighter:overlay-drag-move", publishGeometry);
   on("lighter:overlay-resize-move", publishGeometry);
 
-  useLighterPreviewSync(engine, sample, scene as Scene2D | null);
+  useLighterPreviewSync(
+    engine,
+    dataset,
+    sample,
+    enabled ? (scene as Scene2D | null) : null
+  );
 
   // interaction write-half
   on(
