@@ -33,6 +33,14 @@ export default function EditableLabel(props: EditableLabelProps) {
   const [mode, setMode] = useState<"view" | "edit">("view");
   const [updatedLabel, setUpdatedLabel] = useState(label);
 
+  // Seed the draft from the current label every time the editor opens so a
+  // reopen (or a label prop that changed since the last edit) never submits
+  // a stale draft — the input below is controlled by ``updatedLabel``.
+  const openEditor = () => {
+    setUpdatedLabel(label);
+    setMode("edit");
+  };
+
   // When a placeholder is supplied and the value is empty, render the
   // muted placeholder so the field stays a visible (clickable) target —
   // e.g. an unset description. Otherwise render exactly as before so
@@ -63,7 +71,7 @@ export default function EditableLabel(props: EditableLabelProps) {
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          setMode("edit");
+          openEditor();
         }}
         disabled={disabled}
       >
@@ -82,7 +90,7 @@ export default function EditableLabel(props: EditableLabelProps) {
       {mode === "view" && labelNode}
       {mode === "edit" && (
         <TextField
-          defaultValue={label}
+          value={updatedLabel}
           size="small"
           autoFocus={autoFocus}
           multiline={multiline}
