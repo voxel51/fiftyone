@@ -283,7 +283,7 @@ export const Polyline = ({
 
             setHoveredLabel({ id: label._id, source: hoverSource });
             handleAnnotationPointerOver();
-            onPointerOver();
+            onPointerOver(e);
           }}
           onPointerOut={() => {
             setHoveredLabel(null);

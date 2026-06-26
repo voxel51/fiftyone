@@ -830,7 +830,7 @@ export const Cuboid = ({
             return;
           }
 
-          onPointerOver();
+          onPointerOver(e);
         }}
         onPointerOut={() => {
           setHoveredLabel(null);
@@ -870,7 +870,7 @@ export const Cuboid = ({
               }
 
               setHoveredResizeFace(face);
-              onPointerOver();
+              onPointerOver(e);
             }}
             onPointerOut={handleFaceResizeHandlePointerOut}
             onPointerDown={(e) => beginFaceResize(e, face)}

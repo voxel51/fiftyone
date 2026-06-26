@@ -165,7 +165,7 @@ export interface HoverState {
 }
 
 export interface EventHandlers {
-  onPointerOver: () => void;
+  onPointerOver: (e?: ThreeEvent<PointerEvent>) => void;
   onPointerOut: () => void;
   onPointerMissed: () => void;
   onPointerMove: (e: ThreeEvent<PointerEvent>) => void;
