@@ -1,6 +1,5 @@
 import * as fos from "@fiftyone/state";
 import { Line as LineDrei } from "@react-three/drei";
-import { useAtomValue } from "jotai";
 import { useEffect, useMemo, useRef } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
@@ -52,7 +51,7 @@ export const Polyline = ({
 
   const isHovered = hoveredLabel?.id === label._id;
 
-  const isAnnotateMode = useAtomValue(fos.modalMode) === fos.ModalMode.ANNOTATE;
+  const isAnnotateMode = fos.useModalMode() === fos.ModalMode.ANNOTATE;
   const isSelectedForAnnotation =
     useRecoilValue(selectedLabelForAnnotationAtom)?._id === label._id;
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
@@ -91,6 +90,7 @@ export const Polyline = ({
     strokeAndFillColor,
     isAnnotateMode,
     isSelectedForAnnotation,
+    hoverSource,
   });
 
   const lines = useMemo(() => {

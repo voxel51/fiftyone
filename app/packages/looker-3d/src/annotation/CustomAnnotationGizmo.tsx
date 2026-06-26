@@ -337,10 +337,6 @@ const AnnotationOrientationGizmo = ({
       const target = mainCameraState.target.clone();
       const radius = mainCameraState.position.distanceTo(target);
 
-      if (radius <= 0) {
-        return;
-      }
-
       setCameraControlsPosition({
         camera: mainCamera.current,
         controls: cameraControlsRef.current,

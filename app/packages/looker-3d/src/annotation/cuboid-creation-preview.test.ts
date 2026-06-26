@@ -34,8 +34,8 @@ describe("getCuboidCreationPreview", () => {
 
     const preview = getCuboidCreationPreview(state, annotationPlane);
 
-    expect(preview?.location).toEqual([1, 0, 0]);
-    expect(preview?.dimensions).toEqual([2, 0.1, 1]);
+    expect(preview?.location).toEqual([0, 0, 0]);
+    expect(preview?.dimensions).toEqual([4, 0.1, 1]);
     expect(preview?.quaternion).toEqual([0, 0, 0, 1]);
   });
 
@@ -49,8 +49,8 @@ describe("getCuboidCreationPreview", () => {
 
     const preview = getCuboidCreationPreview(state, annotationPlane);
 
-    expect(preview?.location).toEqual([1, 1, 0]);
-    expect(preview?.dimensions).toEqual([2, 2, 1]);
+    expect(preview?.location).toEqual([0, 0, 0]);
+    expect(preview?.dimensions).toEqual([4, 4, 1]);
     expect(preview?.quaternion).toEqual([0, 0, 0, 1]);
   });
 });

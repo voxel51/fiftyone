@@ -110,6 +110,8 @@ describe("useFo3dCameraViewEvents", () => {
 
     expect(recomputeBounds).not.toHaveBeenCalled();
     expect(update).toHaveBeenCalledTimes(1);
+    expect(cameraRef.current?.position.toArray()).toEqual([0, 5, 0]);
+    expect(cameraControlsRef.current?.target.toArray()).toEqual([0, 0, 0]);
   });
 
   it("recomputes bounds and defers top-view action when bbox is missing", () => {
@@ -146,6 +148,8 @@ describe("useFo3dCameraViewEvents", () => {
 
     vi.advanceTimersByTime(1);
     expect(update).toHaveBeenCalledTimes(1);
+    expect(cameraRef.current?.position.toArray()).toEqual([0, 10, 0]);
+    expect(cameraControlsRef.current?.target.toArray()).toEqual([0, 0, 0]);
   });
 
   it("cleans up deferred view commands on unmount", () => {

@@ -1,10 +1,6 @@
 import { useCallback, useEffect } from "react";
-import { useSetRecoilState } from "recoil";
 import { PANEL_ID_MAIN, PANEL_IDS, getPanelElementId } from "../constants";
-import {
-  activeCursorPanelAtom,
-  isFo3dMainPanelPointerDownAtom,
-} from "../state";
+import { useGlobalCursorCoordinatorActions } from "../state";
 import type { PanelId } from "../types";
 
 /**
@@ -42,10 +38,8 @@ interface GlobalCursorCoordinatorProps {
 export const GlobalCursorCoordinator = ({
   containerRef,
 }: GlobalCursorCoordinatorProps) => {
-  const setActiveCursorPanel = useSetRecoilState(activeCursorPanelAtom);
-  const setIsMainPanelPointerDown = useSetRecoilState(
-    isFo3dMainPanelPointerDownAtom,
-  );
+  const { setActiveCursorPanel, setIsMainPanelPointerDown } =
+    useGlobalCursorCoordinatorActions();
 
   const handlePointerMove = useCallback(
     (ev: PointerEvent) => {
@@ -70,8 +64,7 @@ export const GlobalCursorCoordinator = ({
 
   const handlePointerLeave = useCallback(() => {
     setActiveCursorPanel(null);
-    setIsMainPanelPointerDown(false);
-  }, [setActiveCursorPanel, setIsMainPanelPointerDown]);
+  }, [setActiveCursorPanel]);
 
   useEffect(() => {
     const container = containerRef.current;

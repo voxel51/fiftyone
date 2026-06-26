@@ -149,7 +149,9 @@ export const AnnotationTips = ({
 
   // Rotate through tips every 5 seconds
   useEffect(() => {
-    if (!isVisible) return;
+    if (!isVisible) {
+      return undefined;
+    }
 
     const interval = setInterval(() => {
       setCurrentTipIndex((prev) => (prev + 1) % annotationTips.length);
@@ -184,6 +186,9 @@ export const AnnotationTips = ({
       </TipsContent>
 
       <TipsActions>
+        <TipsButton $variant="secondary" onClick={handleCancel}>
+          Dismiss
+        </TipsButton>
         <TipsButton $variant="primary" onClick={handleDoNotShowAgain}>
           Don't show again
         </TipsButton>

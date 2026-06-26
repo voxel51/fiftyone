@@ -715,6 +715,7 @@ export const Cuboid = ({
       window.removeEventListener("pointermove", updateFaceResizeFromPointer);
       window.removeEventListener("pointerup", finishFaceResize);
       window.removeEventListener("pointercancel", finishFaceResize);
+      finishFaceResize();
     };
   }, [finishFaceResize, isFaceResizeDragging, updateFaceResizeFromPointer]);
 

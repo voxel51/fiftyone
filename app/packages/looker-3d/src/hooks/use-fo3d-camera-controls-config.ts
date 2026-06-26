@@ -174,4 +174,10 @@ export const useFo3dCameraControlsConfig = ({
   });
 
   fos.useEventHandler(window, "blur", resetModifierState);
+
+  useEffect(() => {
+    return () => {
+      resetModifierState();
+    };
+  }, [resetModifierState]);
 };

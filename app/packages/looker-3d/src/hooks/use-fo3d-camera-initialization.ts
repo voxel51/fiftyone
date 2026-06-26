@@ -185,11 +185,11 @@ export const useFo3dCameraInitialization = ({
     dispatchCameraLifecycle,
   ]);
 
-  // Post-init override: animates to new position when operator sets
-  // cameraPositionAtom AFTER init.
+  // Post-init override: jumps to the new position when operator sets
+  // cameraPositionAtom after init.
   const prevOverrideRef = useRef(overriddenCameraPosition);
 
-  // This effect animates to a new overridden camera position after initialization.
+  // This effect applies a new overridden camera position after initialization.
   useEffect(() => {
     // Only fire when overriddenCameraPosition actually changes, not on mount/init
     if (prevOverrideRef.current === overriddenCameraPosition) {

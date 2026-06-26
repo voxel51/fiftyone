@@ -4,7 +4,6 @@ import type { AnnotationPlaneState, CuboidTransformData } from "./types";
 
 const MIN_DIMENSION = 0.1;
 const DEFAULT_HEIGHT = 1;
-const MIN_PERPENDICULAR_LENGTH = 0.001;
 
 const computeYawQuaternion = (
   directionVector: THREE.Vector3,
@@ -42,7 +41,7 @@ export const getCuboidCreationPreview = (
 
   if (step === 1) {
     const directionVector = current.clone().sub(center);
-    const length = Math.max(directionVector.length(), MIN_DIMENSION);
+    const length = Math.max(directionVector.length() * 2, MIN_DIMENSION);
     const finalQuaternion = computeYawQuaternion(
       directionVector,
       localX,
@@ -50,10 +49,9 @@ export const getCuboidCreationPreview = (
       normal,
       planeQuaternion,
     );
-    const cuboidCenter = center.clone().add(current).multiplyScalar(0.5);
 
     return {
-      location: cuboidCenter.toArray() as THREE.Vector3Tuple,
+      location: center.toArray() as THREE.Vector3Tuple,
       dimensions: [length, MIN_DIMENSION, DEFAULT_HEIGHT],
       quaternion: finalQuaternion.toArray() as [number, number, number, number],
     };
@@ -62,7 +60,7 @@ export const getCuboidCreationPreview = (
   if (step === 2 && orientationPoint) {
     const orientation = new THREE.Vector3(...orientationPoint);
     const directionVector = orientation.clone().sub(center);
-    const length = Math.max(directionVector.length(), MIN_DIMENSION);
+    const length = Math.max(directionVector.length() * 2, MIN_DIMENSION);
     const finalQuaternion = computeYawQuaternion(
       directionVector,
       localX,
@@ -77,16 +75,10 @@ export const getCuboidCreationPreview = (
       .multiplyScalar(centerToCurrent.dot(centerToOrientation));
     const perpendicular = centerToCurrent.clone().sub(projection);
     const perpendicularLength = perpendicular.length();
-    const width = Math.max(perpendicularLength, MIN_DIMENSION);
-    const cuboidCenter = center.clone().add(orientation).multiplyScalar(0.5);
-
-    if (perpendicularLength > MIN_PERPENDICULAR_LENGTH) {
-      const perpendicularDirection = perpendicular.clone().normalize();
-      cuboidCenter.add(perpendicularDirection.multiplyScalar(width / 2));
-    }
+    const width = Math.max(perpendicularLength * 2, MIN_DIMENSION);
 
     return {
-      location: cuboidCenter.toArray() as THREE.Vector3Tuple,
+      location: center.toArray() as THREE.Vector3Tuple,
       dimensions: [length, width, DEFAULT_HEIGHT],
       quaternion: finalQuaternion.toArray() as [number, number, number, number],
     };

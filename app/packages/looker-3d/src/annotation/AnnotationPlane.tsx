@@ -53,8 +53,14 @@ export const AnnotationPlane = ({
 
   useEffect(() => {
     setCurrentArchetypeSelectedForTransform(null);
+    setTransformMode("scale");
     setAnnotationPlane((prev) => ({ ...prev, enabled: false }));
-  }, [upVector]);
+  }, [
+    setAnnotationPlane,
+    setCurrentArchetypeSelectedForTransform,
+    setTransformMode,
+    upVector,
+  ]);
 
   const planeSize = useMemo(() => {
     if (!sceneBoundingBox) return 10;
@@ -211,6 +217,7 @@ export const AnnotationPlane = ({
       if (!isDragging) {
         if (isSelected) {
           setCurrentArchetypeSelectedForTransform(null);
+          setTransformMode("scale");
         } else {
           setTransformMode("translate");
           setCurrentArchetypeSelectedForTransform("annotation-plane");
@@ -271,6 +278,7 @@ export const AnnotationPlane = ({
 
       if (event.key === "Escape" && isSelected) {
         setCurrentArchetypeSelectedForTransform(null);
+        setTransformMode("scale");
         setIsDragging(false);
         event.stopImmediatePropagation();
         event.preventDefault();
@@ -282,7 +290,7 @@ export const AnnotationPlane = ({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isSelected]);
+  }, [isSelected, setCurrentArchetypeSelectedForTransform, setTransformMode]);
 
   if (!annotationPlane.enabled) {
     return null;

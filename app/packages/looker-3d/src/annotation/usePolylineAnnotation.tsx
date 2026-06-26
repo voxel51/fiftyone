@@ -14,12 +14,12 @@ import {
   useWorkingLabel,
 } from "../annotation/store";
 import type { TransientPolylineState } from "../annotation/store/types";
-import { PANEL_ID_MAIN } from "../constants";
 import {
   editSegmentsModeAtom,
   hoveredLabelAtom,
   selectedPolylineVertexAtom,
 } from "../state";
+import type { HoveredLabelSource } from "../types";
 import { getComplementaryColor } from "../utils";
 import { PolylinePointMarker } from "./PolylinePointMarker";
 import {
@@ -34,6 +34,7 @@ interface UsePolylineAnnotationProps {
   strokeAndFillColor: string;
   isAnnotateMode: boolean;
   isSelectedForAnnotation: boolean;
+  hoverSource: HoveredLabelSource;
 }
 
 export const usePolylineAnnotation = ({
@@ -42,6 +43,7 @@ export const usePolylineAnnotation = ({
   strokeAndFillColor,
   isAnnotateMode,
   isSelectedForAnnotation,
+  hoverSource,
 }: UsePolylineAnnotationProps) => {
   const labelId = label._id;
 
@@ -223,9 +225,9 @@ export const usePolylineAnnotation = ({
 
   const handlePointerOver = useCallback(() => {
     if (isAnnotateMode) {
-      setHoveredLabel({ id: labelId, source: PANEL_ID_MAIN });
+      setHoveredLabel({ id: labelId, source: hoverSource });
     }
-  }, [isAnnotateMode, setHoveredLabel, labelId]);
+  }, [hoverSource, isAnnotateMode, setHoveredLabel, labelId]);
 
   const handlePointerOut = useCallback(() => {
     if (isAnnotateMode) {
