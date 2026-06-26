@@ -13,10 +13,9 @@ import {
   gridSpineTotal,
   maxGridItemsSizeBytes,
 } from "./recoil";
+import type { LookerCache } from "./types";
 import useEscape from "./useEscape";
 import useEvents from "./useEvents";
-import useLabelVisibility from "./useLabelVisibility";
-import useLookerCache from "./useLookerCache";
 import type { Records } from "./useRecords";
 import useResize from "./useResize";
 import useScrollLocation from "./useScrollLocation";
@@ -25,22 +24,23 @@ import useSpotlightRenderer from "./useSpotlightRenderer";
 import useUpdates from "./useUpdates";
 import useZoomSetting from "./useZoomSetting";
 
-const MAX_INSTANCES = 200;
 const MAX_ROWS = 200;
 
-// Auto-AR grid: the measured Spotlight engine, fed by the same spine data layer as
-// the fixed-AR engine (its `get` pulls pages through the pager's spine-backed
-// `page()`).
+// Auto-AR grid: the measured Spotlight engine, fed by the same spine data layer as the
+// fixed-AR engine (its `get` pulls pages through the pager's spine-backed `page()`), and
+// sharing the looker cache owned by Grid.tsx.
 export default function SpotlightGrid({
   reset,
   pageReset,
   records,
   pager,
+  cache,
 }: {
   reset: string;
   pageReset: string;
   records: Records;
   pager: ReturnType<typeof useSpotlightPager>;
+  cache: LookerCache;
 }) {
   const id = useMemoOne(() => uuid(), []);
   const pixels = useMemoOne(() => uuid(), []);
@@ -50,14 +50,9 @@ export default function SpotlightGrid({
 
   const { page, store } = pager;
 
-  // divide by two, half for the hidden cache and half for max shown
+  // Spotlight's own memory cap (its autosizing feedback loop); the shared cache's byte
+  // budget is set in Grid.tsx.
   const maxBytes = useRecoilValue(maxGridItemsSizeBytes) / 2;
-  const cache = useLookerCache({
-    maxHiddenItems: MAX_INSTANCES,
-    maxHiddenItemsSizeBytes: maxBytes,
-    reset,
-    ...useLabelVisibility(),
-  });
 
   const { getFontSize, lookerOptions, renderer } = useSpotlightRenderer({
     cache,
