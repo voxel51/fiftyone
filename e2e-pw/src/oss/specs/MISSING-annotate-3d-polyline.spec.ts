@@ -248,6 +248,12 @@ test.describe.serial("3d polyline creation", () => {
     await modal.annotate3d.enterPolylineMode();
     await modal.annotate3d.assert.polylineModeActive(true);
     await modal.looker3dControls.setTopView();
+    // let the top-view camera animation settle before drawing — the draw clicks
+    // raycast against the live camera, so a still-animating (perspective) camera
+    // can drop vertices and leave the polyline uncommitted under slower CI
+    // rendering
+    // eslint-disable-next-line playwright/no-wait-for-timeout
+    await page.waitForTimeout(1000);
     await modal.annotate3d.startSegment();
     await modal.annotate3d.assert.newSegmentActive(true);
 
