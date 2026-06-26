@@ -698,14 +698,20 @@ export const reconcileComponent = (
 // =============================================================================
 
 /**
- * Get label type options based on media type
+ * Get label type options based on media type and field scope.
+ *
+ * Frame-level fields on video are per-image, so they support the full spatial
+ * label set; sample-level video fields are limited to clip-level label types.
  */
-export const getLabelTypeOptions = (mediaType: string | null | undefined) => {
+export const getLabelTypeOptions = (
+  mediaType: string | null | undefined,
+  isFrameField = false,
+) => {
   if (mediaType && is3d(mediaType)) {
     return LABEL_TYPE_OPTIONS_3D;
   }
   if (mediaType === "video") {
-    return LABEL_TYPE_OPTIONS_VIDEO;
+    return isFrameField ? LABEL_TYPE_OPTIONS : LABEL_TYPE_OPTIONS_VIDEO;
   }
   return LABEL_TYPE_OPTIONS;
 };
@@ -720,14 +726,27 @@ export const getLabelTypeOptions = (mediaType: string | null | undefined) => {
 export const validateFieldName = (
   fieldName: string,
   existingFields: Record<string, unknown> | null,
+  mediaType?: string | null,
 ): string | null => {
   const trimmed = fieldName.trim();
   if (!trimmed) return null;
   if (existingFields && trimmed in existingFields) {
     return "Field name already exists";
   }
-  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(trimmed)) {
-    return "Invalid field name (use letters, numbers, underscores)";
+
+  // Frame fields only exist on video, where a single "frames." prefix targets
+  // the frame schema (e.g. "frames.detections"). The "." stays disallowed
+  // everywhere else, and deeper paths are rejected.
+  const isVideo = mediaType === "video";
+  const pattern = isVideo
+    ? /^(frames\.)?[a-zA-Z_][a-zA-Z0-9_]*$/
+    : /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+  if (!pattern.test(trimmed)) {
+    return isVideo
+      ? "Invalid field name (use letters, numbers, underscores; prefix with frames. for a frame field)"
+      : "Invalid field name (use letters, numbers, underscores)";
   }
+
   return null;
 };

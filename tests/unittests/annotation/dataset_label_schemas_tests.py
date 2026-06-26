@@ -792,6 +792,71 @@ class FrameLabelSchemaTests(unittest.TestCase):
                 }
             )
 
+    @drop_datasets
+    def test_create_and_activate_frame_field_operator(self):
+        from fiftyone.operators.executor import ExecutionContext
+        from plugins.operators.annotation import CreateAndActivateField
+
+        dataset = fo.Dataset()
+        dataset.media_type = "video"
+
+        ctx = ExecutionContext(
+            operator_uri="create_and_activate_field",
+            request_params={
+                "dataset_name": dataset.name,
+                "params": {
+                    "field_name": "frames.detections",
+                    "field_category": "label",
+                    "field_type": "detections",
+                    "label_schema_config": {"classes": ["car", "person"]},
+                },
+            },
+        )
+
+        result = CreateAndActivateField().execute(ctx)
+        self.assertNotIn("error", result)
+
+        dataset.reload()
+
+        # the field is added to the FRAME schema, not the sample schema
+        self.assertIn("detections", dataset.get_frame_field_schema())
+        self.assertNotIn("detections", dataset.get_field_schema())
+
+        # its schema is stored and activated under the "frames." path
+        self.assertIn("frames.detections", dataset.label_schemas)
+        self.assertIn("frames.detections", dataset.active_label_schemas)
+
+    @drop_datasets
+    def test_create_and_activate_sample_field_operator(self):
+        from fiftyone.operators.executor import ExecutionContext
+        from plugins.operators.annotation import CreateAndActivateField
+
+        dataset = fo.Dataset()
+        dataset.media_type = "video"
+
+        ctx = ExecutionContext(
+            operator_uri="create_and_activate_field",
+            request_params={
+                "dataset_name": dataset.name,
+                "params": {
+                    "field_name": "events",
+                    "field_category": "label",
+                    "field_type": "classification",
+                    "label_schema_config": {"classes": ["a", "b"]},
+                },
+            },
+        )
+
+        result = CreateAndActivateField().execute(ctx)
+        self.assertNotIn("error", result)
+
+        dataset.reload()
+
+        # no "frames." prefix stays a sample-level field
+        self.assertIn("events", dataset.get_field_schema())
+        self.assertNotIn("events", dataset.get_frame_field_schema())
+        self.assertIn("events", dataset.active_label_schemas)
+
 
 def _make_video_dataset():
     dataset = fo.Dataset()

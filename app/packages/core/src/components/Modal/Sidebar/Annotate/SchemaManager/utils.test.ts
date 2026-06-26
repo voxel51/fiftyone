@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { LABEL_TYPE_OPTIONS, LABEL_TYPE_OPTIONS_VIDEO } from "./constants";
 import {
   createDefaultFormData,
   formatAttributeCount,
   formatSchemaCount,
   getAttributeTypeLabel,
   getClassNameError,
+  getLabelTypeOptions,
   toAttributeConfig,
   toFormData,
+  validateFieldName,
 } from "./utils";
 
 describe("getAttributeTypeLabel", () => {
@@ -147,5 +150,48 @@ describe("dynamic attribute flag", () => {
       type: "str",
     });
     expect(static_.dynamic).toBeUndefined();
+  });
+});
+
+describe("validateFieldName", () => {
+  it("rejects '.' for non-video media", () => {
+    expect(validateFieldName("frames.detections", null, "image")).toMatch(
+      /Invalid field name/,
+    );
+    expect(validateFieldName("detections", null, "image")).toBeNull();
+  });
+
+  it("allows a single 'frames.' prefix on video", () => {
+    expect(validateFieldName("frames.detections", null, "video")).toBeNull();
+    expect(validateFieldName("detections", null, "video")).toBeNull();
+  });
+
+  it("rejects deeper paths and a bare prefix on video", () => {
+    expect(validateFieldName("frames.detections.foo", null, "video")).toMatch(
+      /Invalid field name/,
+    );
+    expect(validateFieldName("frames.", null, "video")).toMatch(
+      /Invalid field name/,
+    );
+  });
+
+  it("flags duplicate field names", () => {
+    expect(
+      validateFieldName(
+        "frames.detections",
+        { "frames.detections": {} },
+        "video",
+      ),
+    ).toBe("Field name already exists");
+  });
+});
+
+describe("getLabelTypeOptions", () => {
+  it("offers the spatial set for a video frame field", () => {
+    expect(getLabelTypeOptions("video", true)).toBe(LABEL_TYPE_OPTIONS);
+  });
+
+  it("limits a sample-level video field to clip-level types", () => {
+    expect(getLabelTypeOptions("video", false)).toBe(LABEL_TYPE_OPTIONS_VIDEO);
   });
 });
