@@ -266,6 +266,10 @@ export const AnnotationPlane = ({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+
       if (event.key === "Escape" && isSelected) {
         setCurrentArchetypeSelectedForTransform(null);
         setIsDragging(false);

@@ -68,6 +68,9 @@ const createCoordinateAction = (customComponent: React.ReactNode) => ({
 });
 
 const TRANSFORM_SHORTCUT_PRIORITY = 100;
+const ACTIVE_ESCAPE_SHORTCUT_PRIORITY = 300;
+const SELECTED_VERTEX_ESCAPE_SHORTCUT_PRIORITY = 200;
+const EXIT_EDIT_ESCAPE_SHORTCUT_PRIORITY = 100;
 
 export const useAnnotationActions = () => {
   const selectedLabelForAnnotation = useRecoilValue(
@@ -203,6 +206,86 @@ export const useAnnotationActions = () => {
       isClosed: false,
     });
   }, [setSegmentState]);
+
+  const handleCancelCreateCuboid = useCallback(() => {
+    setIsCreatingCuboid(false);
+  }, [setIsCreatingCuboid]);
+
+  const handleClearSelectedPoint = useCallback(() => {
+    setSelectedPoint(null);
+    setCurrentArchetypeSelectedForTransform(null);
+  }, [setCurrentArchetypeSelectedForTransform, setSelectedPoint]);
+
+  const canExitEditModeWithEscape = useCallback(() => {
+    return (
+      !isActivelySegmenting &&
+      !isCreatingCuboid &&
+      selectedPoint === null &&
+      (selectedLabelForAnnotation !== null || editing)
+    );
+  }, [
+    editing,
+    isActivelySegmenting,
+    isCreatingCuboid,
+    selectedLabelForAnnotation,
+    selectedPoint,
+  ]);
+
+  const onExit = useExit();
+
+  const escapeKeyBindings = useMemo<KeyBinding[]>(
+    () => [
+      {
+        commandId: "looker-3d.annotation.escape.cancel-segment",
+        sequence: "escape",
+        handler: handleCancelSegmentPolyline,
+        label: "Cancel polyline segment",
+        enablement: () => isPolylineAnnotateActive && isActivelySegmenting,
+        priority: ACTIVE_ESCAPE_SHORTCUT_PRIORITY,
+      },
+      {
+        commandId: "looker-3d.annotation.escape.cancel-cuboid-create",
+        sequence: "escape",
+        handler: handleCancelCreateCuboid,
+        label: "Cancel cuboid creation",
+        enablement: () => isCuboidAnnotateActive && isCreatingCuboid,
+        priority: ACTIVE_ESCAPE_SHORTCUT_PRIORITY,
+      },
+      {
+        commandId: "looker-3d.annotation.escape.clear-selected-vertex",
+        sequence: "escape",
+        handler: handleClearSelectedPoint,
+        label: "Deselect polyline vertex",
+        enablement: () =>
+          !isActivelySegmenting && !isCreatingCuboid && selectedPoint !== null,
+        priority: SELECTED_VERTEX_ESCAPE_SHORTCUT_PRIORITY,
+      },
+      {
+        commandId: "looker-3d.annotation.escape.exit-edit-mode",
+        sequence: "escape",
+        handler: onExit,
+        label: "Exit edit mode and deselect label",
+        enablement: canExitEditModeWithEscape,
+        priority: EXIT_EDIT_ESCAPE_SHORTCUT_PRIORITY,
+      },
+    ],
+    [
+      canExitEditModeWithEscape,
+      handleCancelCreateCuboid,
+      handleCancelSegmentPolyline,
+      handleClearSelectedPoint,
+      isActivelySegmenting,
+      isCreatingCuboid,
+      isCuboidAnnotateActive,
+      isPolylineAnnotateActive,
+      onExit,
+      selectedPoint,
+    ]
+  );
+
+  useKeyBindings(KnownContexts.ModalAnnotate, escapeKeyBindings, [
+    escapeKeyBindings,
+  ]);
 
   const handleDeleteSelectedPoint = useCallback(() => {
     if (!selectedPoint) return;
@@ -347,8 +430,6 @@ export const useAnnotationActions = () => {
   const handleToggleCreateCuboid = useCallback(() => {
     setIsCreatingCuboid(!isCreatingCuboid);
   }, [isCreatingCuboid, setIsCreatingCuboid]);
-
-  const onExit = useExit();
 
   const actions: ToolbarActionGroup[] = useMemo(() => {
     const baseActions: ToolbarActionGroup[] = [

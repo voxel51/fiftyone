@@ -163,6 +163,10 @@ export const ThreeDLabels = ({
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+
       if (
         event.key === "Escape" &&
         mode === fos.ModalMode.ANNOTATE &&

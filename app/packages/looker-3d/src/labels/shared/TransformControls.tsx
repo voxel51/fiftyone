@@ -75,6 +75,10 @@ export const Transformable = ({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+
       if (event.key === "Escape" && isCurrentlyTransforming) {
         setIsCurrentlyTransforming(false);
         event.stopImmediatePropagation();
