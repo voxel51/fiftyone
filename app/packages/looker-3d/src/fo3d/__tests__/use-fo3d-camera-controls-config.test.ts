@@ -199,4 +199,37 @@ describe("useFo3dCameraControlsConfig", () => {
     expect(controls.enablePan).toBe(true);
     expect(controls.mouseButtons.LEFT).toBe(MOUSE.ROTATE);
   });
+
+  it("keeps modifier state through rerenders and resets it on unmount", () => {
+    const { cameraControlsRef } = makeControls();
+    const { rerender, unmount } = renderHook(() =>
+      useFo3dCameraControlsConfig({ cameraControlsRef }),
+    );
+
+    act(() => {
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { code: "ShiftLeft" }),
+      );
+    });
+    expect(recoilMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
+      true,
+    );
+
+    recoilMocks.setPointCropModifierPressed.mockClear();
+    recoilMocks.values.set("fo3d-isCurrentlyTransformingAtom", true);
+    act(() => {
+      rerender();
+    });
+
+    expect(recoilMocks.setPointCropModifierPressed).not.toHaveBeenCalled();
+
+    act(() => {
+      unmount();
+    });
+
+    expect(recoilMocks.setPointCropModifierPressed).toHaveBeenCalledTimes(1);
+    expect(recoilMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
+      false,
+    );
+  });
 });

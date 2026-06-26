@@ -42,6 +42,12 @@ interface SelectedPointCloudCropOptions extends RenderModelPointCloudCropOptions
   selectedLabelId?: string | null;
 }
 
+interface ExploreSelectedCuboidIdOptions {
+  renderModel: RenderModel;
+  hoveredLabelId?: string | null;
+  selectedLabels?: Record<string, unknown> | null;
+}
+
 interface CuboidPointCloudCropOptions extends RenderModelPointCloudCropOptions {
   labelId?: string | null;
   visibleWorldHeightAtCenter?: number | null;
@@ -229,6 +235,24 @@ export const getSelectedCuboidPointCloudCrop = ({
     source: "selection",
     useLegacyCoordinates,
   });
+};
+
+export const getExploreSelectedCuboidId = ({
+  renderModel,
+  hoveredLabelId,
+  selectedLabels,
+}: ExploreSelectedCuboidIdOptions) => {
+  if (
+    hoveredLabelId &&
+    renderModel.detections.some((detection) => detection._id === hoveredLabelId)
+  ) {
+    return hoveredLabelId;
+  }
+
+  return (
+    renderModel.detections.find((detection) => selectedLabels?.[detection._id])
+      ?._id ?? null
+  );
 };
 
 export const getCuboidPointCloudCrop = ({

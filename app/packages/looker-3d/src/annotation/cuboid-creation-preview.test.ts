@@ -54,6 +54,20 @@ describe("getCuboidCreationPreview", () => {
     expect(forward.z).toBeCloseTo(0, 5);
   });
 
+  it("keeps the step-one anchor fixed when clamping length", () => {
+    const state: CuboidCreationState = {
+      step: 1,
+      centerPosition: [0, 0, 0],
+      orientationPoint: null,
+      currentPosition: [0.02, 0, 0],
+    };
+
+    const preview = getCuboidCreationPreview(state, annotationPlane);
+
+    expect(preview?.location).toEqual([0.05, 0, 0]);
+    expect(preview?.dimensions).toEqual([0.1, 0.1, 1]);
+  });
+
   it("grows the step-two width toward the cursor side only", () => {
     const state: CuboidCreationState = {
       step: 2,
@@ -74,5 +88,19 @@ describe("getCuboidCreationPreview", () => {
     expect(forward.x).toBeCloseTo(-1, 5);
     expect(forward.y).toBeCloseTo(0, 5);
     expect(forward.z).toBeCloseTo(0, 5);
+  });
+
+  it("keeps the step-two anchor fixed when clamping length", () => {
+    const state: CuboidCreationState = {
+      step: 2,
+      centerPosition: [0, 0, 0],
+      orientationPoint: [0.02, 0, 0],
+      currentPosition: [0.02, 1, 0],
+    };
+
+    const preview = getCuboidCreationPreview(state, annotationPlane);
+
+    expect(preview?.location).toEqual([0.05, 0.5, 0]);
+    expect(preview?.dimensions).toEqual([0.1, 1, 1]);
   });
 });

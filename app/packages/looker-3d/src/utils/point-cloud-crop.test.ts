@@ -15,6 +15,7 @@ import {
   createPointCloudCropFromDetection,
   createPointCloudCropFromPoint,
   getCuboidPointCloudCrop,
+  getExploreSelectedCuboidId,
   getPointCloudCropKey,
   getSelectedCuboidPointCloudCrop,
   isPointInsidePointCloudCrop,
@@ -43,6 +44,31 @@ describe("point-cloud crop", () => {
     });
 
     expect(crop?.labelId).toBe("detection-1");
+  });
+
+  it("selects an explore cuboid that exists in the render model", () => {
+    const renderModel = {
+      detections: [
+        buildDetection({ _id: "cuboid-1" }),
+        buildDetection({ _id: "cuboid-2" }),
+      ],
+      polylines: [],
+    };
+
+    expect(
+      getExploreSelectedCuboidId({
+        renderModel,
+        hoveredLabelId: "polyline-1",
+        selectedLabels: { "polyline-1": true, "cuboid-2": true },
+      }),
+    ).toBe("cuboid-2");
+    expect(
+      getExploreSelectedCuboidId({
+        renderModel,
+        hoveredLabelId: "cuboid-1",
+        selectedLabels: { "cuboid-2": true },
+      }),
+    ).toBe("cuboid-1");
   });
 
   it("does not create a crop without a selected cuboid", () => {

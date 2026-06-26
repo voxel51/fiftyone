@@ -162,6 +162,8 @@ export const useFo3dCameraControlsConfig = ({
     setPointCropModifierPressed(false);
     updateCameraControlsConfig();
   }, [setPointCropModifierPressed, updateCameraControlsConfig]);
+  const resetModifierStateRef = useRef(resetModifierState);
+  resetModifierStateRef.current = resetModifierState;
 
   // Global listeners are intentional: modifier keys can change even when canvas
   // focus/pointer state changes mid-interaction.
@@ -177,7 +179,7 @@ export const useFo3dCameraControlsConfig = ({
 
   useEffect(() => {
     return () => {
-      resetModifierState();
+      resetModifierStateRef.current();
     };
-  }, [resetModifierState]);
+  }, []);
 };

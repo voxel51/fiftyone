@@ -18,6 +18,7 @@ import { isDetection3dOverlay } from "../types";
 import {
   createPointCloudCropFromCuboidTransform,
   createPointCloudCropFromPoint,
+  getExploreSelectedCuboidId,
   getCuboidPointCloudCrop,
   getSelectedCuboidPointCloudCrop,
 } from "../utils/point-cloud-crop";
@@ -70,12 +71,22 @@ export const usePointCloudCrop = ({
     };
   }, [activeSampleMap, mode, schema, selectedLabels]);
 
+  const selectedExploreCuboidId = useMemo(
+    () =>
+      getExploreSelectedCuboidId({
+        renderModel: exploreRenderModel,
+        hoveredLabelId: hoveredLabel?.id,
+        selectedLabels,
+      }),
+    [exploreRenderModel, hoveredLabel?.id, selectedLabels],
+  );
+
   const cropRenderModel =
     mode === fos.ModalMode.ANNOTATE ? renderModel : exploreRenderModel;
   const selectedCuboidId =
     mode === fos.ModalMode.ANNOTATE
       ? selectedLabel?._id
-      : (hoveredLabel?.id ?? Object.keys(selectedLabels ?? {})[0] ?? null);
+      : selectedExploreCuboidId;
 
   const creationPreview = useMemo(() => {
     if (!isCreatingCuboid) {

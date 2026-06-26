@@ -30,6 +30,7 @@ const EXCLUDED_USER_DATA_KEYS = [
   FO_USER_DATA.IS_HELPER,
   FO_USER_DATA.IS_ANNOTATION_PLANE,
 ];
+const pointCloudCropIntersectionWorldPosition = new THREE.Vector3();
 
 /**
  * Check if an object (and its entire subtree) should be excluded from raycasting.
@@ -124,7 +125,10 @@ export const filterIntersectionsForPointCloudCrop = (
     }
 
     return isPointInsidePointCloudCrop(
-      getIntersectionWorldPosition(intersection),
+      getIntersectionWorldPosition(
+        intersection,
+        pointCloudCropIntersectionWorldPosition,
+      ),
       pointCloudCrop,
     );
   });

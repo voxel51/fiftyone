@@ -47,15 +47,22 @@ export const getCuboidCreationPreview = (
     // toward the cursor only (its length axis runs center -> current), so the
     // far edge tracks the cursor instead of ballooning out both ways.
     const directionVector = current.clone().sub(center);
-    const length = Math.max(directionVector.length(), MIN_DIMENSION);
+    const directionLength = directionVector.length();
+    const length = Math.max(directionLength, MIN_DIMENSION);
+    const lengthDirection =
+      directionLength > MIN_PERPENDICULAR_LENGTH
+        ? directionVector.clone().normalize()
+        : localX.clone();
     const finalQuaternion = computeYawQuaternion(
-      directionVector,
+      lengthDirection,
       localX,
       localY,
       normal,
       planeQuaternion,
     );
-    const cuboidCenter = center.clone().add(current).multiplyScalar(0.5);
+    const cuboidCenter = center
+      .clone()
+      .addScaledVector(lengthDirection, length / 2);
 
     return {
       location: cuboidCenter.toArray() as THREE.Vector3Tuple,
@@ -68,15 +75,19 @@ export const getCuboidCreationPreview = (
     const orientation = new THREE.Vector3(...orientationPoint);
     // Length is anchored from the first click to the orientation point.
     const directionVector = orientation.clone().sub(center);
-    const length = Math.max(directionVector.length(), MIN_DIMENSION);
+    const directionLength = directionVector.length();
+    const length = Math.max(directionLength, MIN_DIMENSION);
+    const centerToOrientation =
+      directionLength > MIN_PERPENDICULAR_LENGTH
+        ? directionVector.clone().normalize()
+        : localX.clone();
     const finalQuaternion = computeYawQuaternion(
-      directionVector,
+      centerToOrientation,
       localX,
       localY,
       normal,
       planeQuaternion,
     );
-    const centerToOrientation = directionVector.clone().normalize();
     const centerToCurrent = current.clone().sub(center);
     const projection = centerToOrientation
       .clone()
@@ -84,7 +95,9 @@ export const getCuboidCreationPreview = (
     const perpendicular = centerToCurrent.clone().sub(projection);
     const perpendicularLength = perpendicular.length();
     const width = Math.max(perpendicularLength, MIN_DIMENSION);
-    const cuboidCenter = center.clone().add(orientation).multiplyScalar(0.5);
+    const cuboidCenter = center
+      .clone()
+      .addScaledVector(centerToOrientation, length / 2);
 
     // Width grows from the length axis toward the cursor side only, so the
     // anchored edge stays put while the opposite face tracks the cursor.
