@@ -18,8 +18,8 @@ export const useSyncAnnotationFrameClock = (): void => {
   useEffect(
     () =>
       engine.attachTemporal(
-        (e) => new FrameTemporalView(e, clock, (time) => time)
+        (e) => new FrameTemporalView(e, clock, (time) => time),
       ),
-    [engine, clock]
+    [engine, clock],
   );
 };

@@ -45,6 +45,6 @@ export const useSetSidebarExpanded = (params: SidebarExpandedParams) =>
  * setExpanded((v) => !v);
  */
 export const useSidebarExpandedState = (
-  params: SidebarExpandedParams
+  params: SidebarExpandedParams,
 ): [boolean, (value: boolean | ((prev: boolean) => boolean)) => void] =>
   useRecoilState(sidebarExpanded(params));

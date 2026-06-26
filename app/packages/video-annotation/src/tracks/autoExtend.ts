@@ -17,7 +17,7 @@ export const AUTO_EXTEND_FRAMES = 30;
  */
 export const autoExtendTargetFrames = (
   startFrame: number,
-  totalFrames: number
+  totalFrames: number,
 ): number[] => {
   const end = Math.min(startFrame + AUTO_EXTEND_FRAMES, totalFrames);
   const frames: number[] = [];

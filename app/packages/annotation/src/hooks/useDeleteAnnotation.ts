@@ -40,7 +40,7 @@ type DeleteAnnotationOptions = { gestureId?: string; ref?: LabelRef };
  */
 export const useDeleteAnnotation = (): ((
   label: AnnotationLabel,
-  options?: DeleteAnnotationOptions
+  options?: DeleteAnnotationOptions,
 ) => Promise<boolean>) => {
   const eventBus = useAnnotationEventBus();
   const engine = useAnnotationEngine();
@@ -138,6 +138,6 @@ export const useDeleteAnnotation = (): ((
         throw error;
       }
     },
-    [activeSample, engine, eventBus, persistAnnotationDeltas]
+    [activeSample, engine, eventBus, persistAnnotationDeltas],
   );
 };

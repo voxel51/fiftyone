@@ -48,7 +48,7 @@ const makeScene = () => {
 const td = (
   id: string,
   support: [number, number],
-  extra: Record<string, unknown> = {}
+  extra: Record<string, unknown> = {},
 ) => ({
   _cls: "TemporalDetection",
   _id: id,

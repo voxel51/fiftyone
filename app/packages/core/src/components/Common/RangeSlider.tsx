@@ -29,7 +29,7 @@ interface SliderStyledProps {
   $alternateThumbLabelDirection?: boolean;
 }
 
-const SliderStyled = styled(SliderUnstyled) <SliderStyledProps>`
+const SliderStyled = styled(SliderUnstyled)<SliderStyledProps>`
   && {
     color: ${({ theme }) => theme.palette.primary.plainColor};
     margin: 0 1.5rem 0 1.3rem;
@@ -216,7 +216,7 @@ const BaseSlider = <T extends Range | number>({
   const { formatter, hasTitle } = getFormatter(
     fieldType || "",
     fieldType === DATE_FIELD ? "UTC" : timeZone || "UTC",
-    bounds
+    bounds,
   );
 
   const handledRange = Array.isArray(value)
@@ -239,7 +239,7 @@ const BaseSlider = <T extends Range | number>({
               {getDateTimeRangeFormattersWithPrecision(
                 timeZone || "UTC",
                 bounds[0],
-                bounds[1]
+                bounds[1],
               ).common?.format(bounds[0])}
             </div>
           }

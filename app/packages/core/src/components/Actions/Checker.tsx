@@ -49,7 +49,7 @@ const Check = ({
   const theme = useTheme();
   const { style, onMouseEnter, onMouseLeave } = useHighlightHover(
     false,
-    active === name
+    active === name,
   );
   const ref = useRef<HTMLButtonElement>(null);
 
@@ -129,12 +129,12 @@ const createSubmit = ({ name, items, changes, count, setChange, value }) => {
         name,
         value === CheckState.REMOVE || items[name] === 0
           ? null
-          : CheckState.REMOVE
+          : CheckState.REMOVE,
       );
     } else if (name in items) {
       setChange(
         name,
-        count === items[name] ? CheckState.REMOVE : CheckState.ADD
+        count === items[name] ? CheckState.REMOVE : CheckState.ADD,
       );
     } else {
       setChange(
@@ -143,7 +143,7 @@ const createSubmit = ({ name, items, changes, count, setChange, value }) => {
           ? value in items
             ? CheckState.REMOVE
             : null
-          : CheckState.ADD
+          : CheckState.ADD,
       );
     }
   };
@@ -171,7 +171,7 @@ const Checker = ({
   clear,
 }: CheckerProps) => {
   const sorted = Object.entries({ ...items, ...changes }).sort(([a], [b]) =>
-    a < b ? -1 : 1
+    a < b ? -1 : 1,
   );
 
   const names = sorted.map(([name]) => name);
@@ -222,8 +222,8 @@ const Checker = ({
           changes[name] === CheckState.ADD
             ? count
             : changes[name] === CheckState.REMOVE
-            ? null
-            : items[name];
+              ? null
+              : items[name];
 
         return (
           <Check
@@ -233,10 +233,10 @@ const Checker = ({
               name in changes
                 ? changes[name]
                 : count === items[name]
-                ? CheckState.ADD
-                : 0 === items[name]
-                ? CheckState.REMOVE
-                : null
+                  ? CheckState.ADD
+                  : 0 === items[name]
+                    ? CheckState.REMOVE
+                    : null
             }
             setActive={setActive}
             key={name}

@@ -30,7 +30,7 @@ export default function useDelete() {
   const deleteAnnotation = useDeleteAnnotation();
   const sample = useActiveAnnotationSampleId();
   const schema = useRecoilValue(
-    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
+    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
   );
 
   const exit = useExit();
@@ -62,7 +62,7 @@ export default function useDelete() {
           sample,
           path: label.path,
           instanceId: label.data._id,
-        }
+        },
       );
 
       exit();
@@ -133,6 +133,6 @@ export default function useDelete() {
         description: "Delete label",
       },
     ],
-    [performDelete, isGenerated]
+    [performDelete, isGenerated],
   );
 }

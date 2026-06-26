@@ -25,7 +25,7 @@ export interface VideoSurfaceActions {
     trackId: string,
     sourceFrame: number,
     targetFrames: number[],
-    undoKey?: string
+    undoKey?: string,
   ): void;
   /** Delete this track's box on each of `frames`. */
   trimTrack(trackId: string, frames: number[]): void;
@@ -36,7 +36,7 @@ export interface VideoSurfaceActions {
   /** Merge track-level attributes onto every frame this track appears. */
   updateTrackAttributes(
     trackId: string,
-    attributes: Record<string, unknown>
+    attributes: Record<string, unknown>,
   ): void;
   /**
    * Split this track at `atFrame`: frames `>= atFrame` are re-keyed onto a
@@ -55,13 +55,13 @@ export interface VideoSurfaceActions {
   createTemporalDetection(
     fieldPath: string,
     support: [number, number],
-    label?: string
+    label?: string,
   ): string;
   /** Edit a sample-level TemporalDetection (e.g. `support`). */
   editTemporalDetection(
     fieldPath: string,
     detectionId: string,
-    update: Partial<LabelData>
+    update: Partial<LabelData>,
   ): void;
   /** Delete a sample-level TemporalDetection. */
   deleteTemporalDetection(fieldPath: string, detectionId: string): void;
@@ -91,7 +91,7 @@ interface FrameReader {
 
 const makeFrameReader = (
   engine: AnnotationEngine,
-  ctx: ReadyContext
+  ctx: ReadyContext,
 ): FrameReader => {
   const read = (instanceId: string, frame: number): LabelData | undefined =>
     engine.getLabel({
@@ -126,7 +126,7 @@ const makeTrackOps = (
   ctx: ReadyContext,
   actions: SurfaceActions,
   eventBus: AnnotationEventBus,
-  reader: FrameReader
+  reader: FrameReader,
 ) => {
   const { path, fps, totalFrames } = ctx;
   const { read, content, trackFrames } = reader;
@@ -181,7 +181,7 @@ const makeTrackOps = (
     trackId: string,
     sourceFrame: number,
     targetFrames: number[],
-    undoKey?: string
+    undoKey?: string,
   ): void => {
     const instanceId = instanceIdFromTrackId(trackId);
 
@@ -206,7 +206,7 @@ const makeTrackOps = (
           }
         }
       },
-      undoKey ? { undoKey } : undefined
+      undoKey ? { undoKey } : undefined,
     );
   };
 
@@ -229,7 +229,7 @@ const makeTrackOps = (
   const shiftTrack = (
     trackId: string,
     frames: number[],
-    delta: number
+    delta: number,
   ): void => {
     const instanceId = instanceIdFromTrackId(trackId);
 
@@ -258,7 +258,7 @@ const makeTrackOps = (
         if (target >= 1 && target <= totalFrames) {
           actions.updateLabel(
             { path, instanceId, frame: target },
-            content(det)
+            content(det),
           );
         }
       }
@@ -290,7 +290,7 @@ const makeTrackOps = (
 
   const updateTrackAttributes = (
     trackId: string,
-    attributes: Record<string, unknown>
+    attributes: Record<string, unknown>,
   ): void => {
     const instanceId = instanceIdFromTrackId(trackId);
 
@@ -333,7 +333,7 @@ const makeTrackIdentityOps = (
   actions: SurfaceActions,
   eventBus: AnnotationEventBus,
   reader: FrameReader,
-  engine: AnnotationEngine
+  engine: AnnotationEngine,
 ) => {
   const { path } = ctx;
   const { read, content, trackFrames } = reader;
@@ -341,7 +341,7 @@ const makeTrackIdentityOps = (
   /** A track's frames with detections read up front, for a stable snapshot. */
   const snapshot = (
     instanceId: string,
-    keep: (frame: number) => boolean
+    keep: (frame: number) => boolean,
   ): FrameDetection[] =>
     trackFrames(instanceId)
       .filter(keep)
@@ -368,7 +368,7 @@ const makeTrackIdentityOps = (
         actions.deleteLabel({ path, instanceId, frame });
         actions.updateLabel(
           { path, instanceId: newInstanceId, frame },
-          content(det)
+          content(det),
         );
       }
     });
@@ -409,7 +409,7 @@ const makeTrackIdentityOps = (
         if (!occupied.has(frame)) {
           actions.updateLabel(
             { path, instanceId: targetInstanceId, frame },
-            content(det)
+            content(det),
           );
         }
       }
@@ -431,7 +431,7 @@ const makeTemporalDetectionOps = (actions: SurfaceActions) => {
   const createTemporalDetection = (
     fieldPath: string,
     support: [number, number],
-    label?: string
+    label?: string,
   ): string => {
     const ref: LabelRef = actions.createLabel(fieldPath, {
       _cls: "TemporalDetection",
@@ -448,14 +448,14 @@ const makeTemporalDetectionOps = (actions: SurfaceActions) => {
   const editTemporalDetection = (
     fieldPath: string,
     detectionId: string,
-    update: Partial<LabelData>
+    update: Partial<LabelData>,
   ): void => {
     actions.updateLabel({ path: fieldPath, instanceId: detectionId }, update);
   };
 
   const deleteTemporalDetection = (
     fieldPath: string,
-    detectionId: string
+    detectionId: string,
   ): void => {
     actions.deleteLabel({ path: fieldPath, instanceId: detectionId });
   };
@@ -523,7 +523,7 @@ export const useVideoSurfaceActions = (): VideoSurfaceActions => {
       actions,
       eventBus,
       reader,
-      engine
+      engine,
     );
 
     return { ...track, ...identity, ...temporal };

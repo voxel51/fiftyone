@@ -32,7 +32,7 @@ export function mergeRange(ranges: Array<FrameRange>, add: FrameRange): void {
 /** Whether `frame` falls within any fetched range (both ends inclusive). */
 export function isInFetchedRange(
   ranges: ReadonlyArray<FrameRange>,
-  frame: number
+  frame: number,
 ): boolean {
   for (const [start, end] of ranges) {
     if (frame >= start && frame <= end) {
@@ -49,9 +49,9 @@ export function isInFetchedRange(
  */
 export function toSecondRanges(
   ranges: ReadonlyArray<FrameRange>,
-  frameRate: number
+  frameRate: number,
 ): Array<FrameRange> {
   return ranges.map(
-    ([start, end]) => [(start - 1) / frameRate, end / frameRate] as FrameRange
+    ([start, end]) => [(start - 1) / frameRate, end / frameRate] as FrameRange,
   );
 }

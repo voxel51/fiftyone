@@ -46,7 +46,7 @@ export const useLighter = () => {
         sceneRef.current.addOverlay(overlay, withUndo);
       }
     },
-    []
+    [],
   );
 
   const removeOverlay = useCallback(
@@ -55,7 +55,7 @@ export const useLighter = () => {
         sceneRef.current.removeOverlay(id, withUndo, lifecycle);
       }
     },
-    []
+    [],
   );
 
   const getOverlay = useCallback((id: string) => {
@@ -72,7 +72,7 @@ export const useLighter = () => {
       }
       return false;
     },
-    []
+    [],
   );
 
   /**
@@ -98,7 +98,7 @@ export const useLighter = () => {
         unregister();
       };
     },
-    []
+    [],
   );
 
   const zoomIn = useCallback(() => {

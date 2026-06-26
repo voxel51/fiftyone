@@ -22,7 +22,7 @@ export const useRegisterAnnotationEventHandlers = () => {
       if (retryController.canAttempt) {
         await handlePersistenceRequest();
       }
-    }, [handlePersistenceRequest, retryController.canAttempt])
+    }, [handlePersistenceRequest, retryController.canAttempt]),
   );
 
   useAnnotationEventHandler(
@@ -39,7 +39,7 @@ export const useRegisterAnnotationEventHandlers = () => {
           timeout: INDEFINITE_TOAST_TIMEOUT,
         });
       }
-    }, [retryController, setConfig])
+    }, [retryController, setConfig]),
   );
 
   useAnnotationEventHandler(
@@ -52,7 +52,7 @@ export const useRegisterAnnotationEventHandlers = () => {
       });
 
       retryController.reset();
-    }, [retryController, setConfig])
+    }, [retryController, setConfig]),
   );
 
   useAnnotationEventHandler(
@@ -77,7 +77,7 @@ export const useRegisterAnnotationEventHandlers = () => {
           });
         }
       },
-      [retryController.isUnhealthy, setConfig]
-    )
+      [retryController.isUnhealthy, setConfig],
+    ),
   );
 };

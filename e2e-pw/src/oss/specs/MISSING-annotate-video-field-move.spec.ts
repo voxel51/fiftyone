@@ -34,7 +34,7 @@ const savedSample = (page: Page) =>
   page.waitForResponse(
     (r) =>
       /\/sample\//.test(r.url()) &&
-      ["POST", "PATCH", "PUT"].includes(r.request().method())
+      ["POST", "PATCH", "PUT"].includes(r.request().method()),
   );
 
 /**
@@ -95,7 +95,7 @@ test.afterAll(async ({ foWebServer }) => {
 const openAnnotate = async (
   fiftyoneLoader: AbstractFiftyoneLoader,
   modal: ModalPom,
-  page: Page
+  page: Page,
 ) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
@@ -116,7 +116,7 @@ const reselect = async (modal: ModalPom, label = "vehicle") => {
 const inFreshContext = async (
   browser: Browser,
   fiftyoneLoader: AbstractFiftyoneLoader,
-  verify: (modal: ModalPom) => Promise<void>
+  verify: (modal: ModalPom) => Promise<void>,
 ) => {
   const context = await browser.newContext();
   const freshPage = await context.newPage();

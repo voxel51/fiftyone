@@ -74,7 +74,7 @@ test.beforeEach(async ({ videoAnnotateSDK }) => {
 const openAnnotate = async (
   fiftyoneLoader: AbstractFiftyoneLoader,
   modal: ModalPom,
-  page: Page
+  page: Page,
 ) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
@@ -88,7 +88,7 @@ const savedResponse = (page: Page) =>
   page.waitForResponse(
     (r) =>
       /\/sample\//.test(r.url()) &&
-      ["POST", "PATCH", "PUT", "DELETE"].includes(r.request().method())
+      ["POST", "PATCH", "PUT", "DELETE"].includes(r.request().method()),
   );
 
 const stepForward = async (modal: ModalPom, n: number) => {

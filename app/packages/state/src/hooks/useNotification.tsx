@@ -6,7 +6,7 @@ import React from "react";
 const SNACKBAR_AUTO_HIDE_DURATION = 3000;
 
 export default function useNotification(): (
-  options: NotificationOption
+  options: NotificationOption,
 ) => void {
   return (options: NotificationOption) => {
     const { msg, key, actions = [], ...otherOptions } = options;

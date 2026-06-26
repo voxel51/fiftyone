@@ -74,7 +74,7 @@ const registeredManagerAtom = atom<AnnotationContextManager | null>(null);
  * the modal opens).
  */
 export const useRegisterAnnotationContextManager = (
-  manager: AnnotationContextManager
+  manager: AnnotationContextManager,
 ): void => {
   const setManager = useSetAtom(registeredManagerAtom);
 

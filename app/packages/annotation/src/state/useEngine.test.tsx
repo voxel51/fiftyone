@@ -79,8 +79,8 @@ describe("useSyncAnnotationEngine", () => {
     expect(() =>
       result.current.engine.updateLabel(
         { sample: "vid", path: "frames.detections", instanceId: "d1" },
-        { label: "x" }
-      )
+        { label: "x" },
+      ),
     ).toThrow(/no store/);
 
     unmount();
@@ -95,8 +95,8 @@ describe("useSyncAnnotationEngine", () => {
     expect(() =>
       result.current.engine.updateLabel(
         { sample: "s1", path: "ground_truth", instanceId: "d1" },
-        { label: "x" }
-      )
+        { label: "x" },
+      ),
     ).toThrow(/no store/);
 
     unmount();
@@ -129,11 +129,11 @@ describe("useSyncAnnotationEngine", () => {
 
     expect(engine.interaction.getActive()).toEqual([]);
     expect(
-      engine.getLabel({ sample: "s1", path: "ground_truth", instanceId: "d1" })
+      engine.getLabel({ sample: "s1", path: "ground_truth", instanceId: "d1" }),
     ).toBeUndefined();
     expect(
       engine.getLabel({ sample: "s2", path: "ground_truth", instanceId: "d2" })
-        ?.label
+        ?.label,
     ).toBe("dog");
 
     unmount();
@@ -172,14 +172,14 @@ describe("useSyncAnnotationEngine", () => {
         sample: "s1",
         path: "ground_truth",
         instanceId: "d1",
-      })?.label
+      })?.label,
     ).toBe("cat");
     expect(
       engine.getLabel({
         sample: "pcd",
         path: "ground_truth",
         instanceId: "c1",
-      })?.label
+      })?.label,
     ).toBe("car");
     // the 3D label is NOT visible under the 2D slice's id, and vice versa
     expect(
@@ -187,7 +187,7 @@ describe("useSyncAnnotationEngine", () => {
         sample: "s1",
         path: "ground_truth",
         instanceId: "c1",
-      })
+      }),
     ).toBeUndefined();
 
     unmount();

@@ -47,7 +47,7 @@ interface ChangedElement {
  */
 export const buildJsonPatch = (
   snapshot: SampleSnapshot,
-  opts: { isGenerated?: boolean } = {}
+  opts: { isGenerated?: boolean } = {},
 ): JSONDeltas => {
   const { isGenerated = false } = opts;
   const deltas: JSONDeltas = [];
@@ -80,8 +80,8 @@ export const buildJsonPatch = (
         deltas.push(
           ...structuralSupplier(
             changed.source,
-            mergeLabel(changed.source, changed.element)
-          )
+            mergeLabel(changed.source, changed.element),
+          ),
         );
       }
 
@@ -104,7 +104,7 @@ export const fieldDeltas = (
   snapshot: SampleSnapshot,
   path: string,
   sourceValue: unknown,
-  transientValue: unknown
+  transientValue: unknown,
 ): JSONDeltas => {
   const type = snapshot.getLabelType(path);
   const child = LIST_LABEL_CHILD[type];
@@ -115,7 +115,7 @@ export const fieldDeltas = (
 
   return supplierFor(type)(
     sourceValue,
-    mergedForDiff(type, sourceValue, transientValue)
+    mergedForDiff(type, sourceValue, transientValue),
   ).map((d) => ({ ...d, path: buildJsonPath(path, d.path) }));
 };
 
@@ -138,7 +138,7 @@ const listLabelDeltas = (
   child: string,
   sourceValue: unknown,
   type: LabelType,
-  transientValue: unknown
+  transientValue: unknown,
 ): JSONDeltas => {
   const merged = mergedForDiff(type, sourceValue, transientValue) as Record<
     string,
@@ -173,7 +173,7 @@ const listLabelDeltas = (
  */
 export const firstEditedLabel = (
   snapshot: SampleSnapshot,
-  opts: { isGenerated?: boolean } = {}
+  opts: { isGenerated?: boolean } = {},
 ): EditedLabel | undefined => {
   const { isGenerated = false } = opts;
 
@@ -196,7 +196,7 @@ export const firstEditedLabel = (
     // from the generated mapping (the server resolves the label id inside
     // the source sample's list field)
     const child = isGenerated
-      ? LIST_LABEL_CHILD[type] ?? GENERATED_SOURCE_LIST_CHILD[type]
+      ? (LIST_LABEL_CHILD[type] ?? GENERATED_SOURCE_LIST_CHILD[type])
       : undefined;
 
     return {
@@ -223,7 +223,7 @@ export const firstEditedLabel = (
 const changedListElement = (
   type: LabelType,
   sourceValue: unknown,
-  transientValue: unknown
+  transientValue: unknown,
 ): ChangedElement | undefined => {
   const child = LIST_LABEL_CHILD[type];
 
@@ -274,7 +274,7 @@ const changedListElement = (
 const mergedForDiff = (
   type: LabelType,
   sourceValue: unknown,
-  transientValue: unknown
+  transientValue: unknown,
 ): unknown => {
   const child = LIST_LABEL_CHILD[type];
 
@@ -290,7 +290,7 @@ const mergedForDiff = (
     const sourceById = labelsById(sourceValue, child);
 
     const merged = (transientList as LabelData[]).map((el) =>
-      el?._id ? mergeLabel(sourceById.get(el._id), el) : el
+      el?._id ? mergeLabel(sourceById.get(el._id), el) : el,
     );
 
     return {
@@ -304,7 +304,7 @@ const mergedForDiff = (
     // Single-label field.
     return mergeLabel(
       sourceValue as LabelData | undefined,
-      transientValue as LabelData
+      transientValue as LabelData,
     );
   }
 
@@ -317,7 +317,7 @@ const mergedForDiff = (
  */
 const labelsById = (
   parentValue: unknown,
-  child: string
+  child: string,
 ): Map<string, LabelData> => {
   const byId = new Map<string, LabelData>();
   const list = (parentValue as Record<string, unknown> | undefined)?.[child];
@@ -336,7 +336,7 @@ const labelsById = (
  */
 export const mergeLabel = (
   source: LabelData | undefined,
-  element: LabelData
+  element: LabelData,
 ): LabelData => {
   if (source && typeof source === "object" && !Array.isArray(source)) {
     return { ...source, ...element };
@@ -379,7 +379,7 @@ export const unknownSupplier: JSONDeltaSupplier = (a, b) => {
   if (aIsObj && bIsObj) {
     return jsonpatch.compare(
       aNorm as Record<string, unknown> | unknown[],
-      bNorm as Record<string, unknown> | unknown[]
+      bNorm as Record<string, unknown> | unknown[],
     );
   }
 
@@ -417,7 +417,7 @@ export interface IdAlignedDeltaSpec<TCurrent, TBaseline> {
   diffMatched?: (
     current: TCurrent,
     baseline: TBaseline,
-    path: string
+    path: string,
   ) => JSONDeltas;
   /** Serialize an unmatched item into an `add` value; return null to skip it. */
   serializeAdd?: (current: TCurrent) => unknown;
@@ -447,7 +447,7 @@ export const idAlignedListDelta = <TCurrent = LabelData, TBaseline = LabelData>(
   baseline: readonly TBaseline[],
   containerPath: string,
   listChild: string,
-  spec: IdAlignedDeltaSpec<TCurrent, TBaseline> = {}
+  spec: IdAlignedDeltaSpec<TCurrent, TBaseline> = {},
 ): JSONDeltas => {
   const idOf = (item: unknown): string | undefined =>
     (item as { _id?: string } | undefined)?._id;
@@ -503,7 +503,7 @@ export const idAlignedListDelta = <TCurrent = LabelData, TBaseline = LabelData>(
     for (const op of diffMatched(
       item,
       baseline[index],
-      `${listPath}/${index}`
+      `${listPath}/${index}`,
     )) {
       ops.push(op);
     }

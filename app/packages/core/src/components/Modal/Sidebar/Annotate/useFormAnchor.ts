@@ -27,9 +27,9 @@ const STORE = getDefaultStore();
 const stubOverlay = (
   id: string,
   field: string,
-  label: AnnotationLabelData
+  label: AnnotationLabelData,
 ): AnnotationLabel["overlay"] =>
-  ({ id, field, label } as unknown as AnnotationLabel["overlay"]);
+  ({ id, field, label }) as unknown as AnnotationLabel["overlay"];
 
 /**
  * Form follows the anchor: the engine's interaction anchor is the single
@@ -106,7 +106,7 @@ export const useFormAnchor = (): void => {
         type: engine.getLabelType(ref.path),
       } as AnnotationLabel;
     },
-    [engine, scene]
+    [engine, scene],
   );
 
   useLayoutEffect(() => {
@@ -137,7 +137,7 @@ export const useFormAnchor = (): void => {
       resolved.current = {
         key,
         atom: atom<AnnotationLabel>(
-          {} as AnnotationLabel
+          {} as AnnotationLabel,
         ) as PrimitiveAtom<AnnotationLabel>,
       };
     }

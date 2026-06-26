@@ -29,7 +29,7 @@ const sameRows = (a: LabelRow[] | null, b: LabelRow[] | null): boolean => {
       (row, index) =>
         row.id === b[index].id &&
         row.path === b[index].path &&
-        row.frame === b[index].frame
+        row.frame === b[index].frame,
     )
   );
 };
@@ -92,14 +92,14 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
       // path `LabelEntry` resolves the label at.
       const result: LabelRow[] = [];
       const enginePaths = Object.keys(byField).sort(
-        (a, b) => activeFields.indexOf(a) - activeFields.indexOf(b)
+        (a, b) => activeFields.indexOf(a) - activeFields.indexOf(b),
       );
       for (const path of enginePaths) {
         const fieldRows = byField[path];
 
         // field -> label -> id, so equal-label rows have a stable order
         fieldRows.sort(
-          (a, b) => a.label.localeCompare(b.label) || a.id.localeCompare(b.id)
+          (a, b) => a.label.localeCompare(b.label) || a.id.localeCompare(b.id),
         );
         for (const { id, frame } of fieldRows) {
           result.push({ id, path, frame });
@@ -108,7 +108,7 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
 
       return result;
     },
-    sameRows
+    sameRows,
   );
 
   const entries = useMemo(() => {

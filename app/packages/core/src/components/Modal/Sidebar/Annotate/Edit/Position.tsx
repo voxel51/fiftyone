@@ -74,7 +74,7 @@ export default function Position({ readOnly = false }: PositionProps) {
       (overlay && sample
         ? { sample, path: overlay.field, instanceId: overlay.id }
         : null),
-    [selected?.ref, overlay, sample]
+    [selected?.ref, overlay, sample],
   );
 
   // committed baseline — the box's stored RELATIVE bounds, read reactively from
@@ -82,7 +82,7 @@ export default function Position({ readOnly = false }: PositionProps) {
   // undo/redo, playhead move to another frame of the track); absolute pixels are
   // arbitrary and drift through the round-trip.
   const committedBounds = useEngineSelector(engine, (e) =>
-    ref ? (e.getLabel(ref)?.bounding_box as number[] | undefined) : undefined
+    ref ? (e.getLabel(ref)?.bounding_box as number[] | undefined) : undefined,
   );
 
   useEffect(() => {
@@ -102,14 +102,14 @@ export default function Position({ readOnly = false }: PositionProps) {
   // committed write happens on drag-end through the bridge.
   const key = useMemo(
     () => (ref ? encodeEntityId(dataset, ref) : null),
-    [dataset, ref]
+    [dataset, ref],
   );
 
   const live = useSignalValue<GeometrySignal | null>(
     engine,
     GEOMETRY_SIGNAL,
     key,
-    null
+    null,
   );
 
   useEffect(() => {
@@ -146,7 +146,7 @@ export default function Position({ readOnly = false }: PositionProps) {
         },
       },
     }),
-    [readOnly]
+    [readOnly],
   );
 
   return (
@@ -190,7 +190,7 @@ export default function Position({ readOnly = false }: PositionProps) {
 
           if (
             [merged.x, merged.y, merged.width, merged.height].some(
-              (v) => typeof v !== "number"
+              (v) => typeof v !== "number",
             )
           ) {
             return;

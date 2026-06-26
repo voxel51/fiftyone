@@ -9,7 +9,7 @@ import { bindEngineCommits, bindEngineDrops } from "./engineUndoableBridge";
 const field = (
   embeddedDocType: string | null,
   fields?: Schema,
-  extras: Record<string, unknown> = {}
+  extras: Record<string, unknown> = {},
 ) => ({
   dbField: null,
   description: null,
@@ -112,8 +112,8 @@ describe("engine ↔ command-stack undoable bridge", () => {
         },
         () => {
           flag = false;
-        }
-      )
+        },
+      ),
     );
 
     // newest-first: the non-engine action reverses before the engine edit

@@ -48,7 +48,7 @@ export const RegisterSyntheticLabels: React.FC = () => {
     }
 
     const actors = DEFAULT_ACTOR_SPECS.map((spec) =>
-      resolveActor(spec, duration)
+      resolveActor(spec, duration),
     );
     stream.setActors(actors);
     seek(0);
@@ -74,7 +74,7 @@ export const SyntheticTrackTimeline: React.FC = () => {
         colorScheme: scheme,
         seed,
       }),
-    [scheme, seed]
+    [scheme, seed],
   );
 
   const actors = useMemo(
@@ -82,12 +82,12 @@ export const SyntheticTrackTimeline: React.FC = () => {
       duration > 0
         ? DEFAULT_ACTOR_SPECS.map((spec) => resolveActor(spec, duration))
         : [],
-    [duration]
+    [duration],
   );
 
   const tracks = useMemo(
     () => buildSyntheticTracks(actors, duration, resolveColor),
-    [actors, duration, resolveColor]
+    [actors, duration, resolveColor],
   );
 
   const pinned = useMemo(() => tracks.map((t) => t.id), [tracks]);

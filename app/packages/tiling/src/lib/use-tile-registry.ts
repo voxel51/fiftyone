@@ -26,11 +26,11 @@ export function useTileRegistry(): {
       // replaced this one.
       return () => {
         store.set(registeredTilesAtom, (prev) =>
-          prev.filter((t) => t !== entry)
+          prev.filter((t) => t !== entry),
         );
       };
     },
-    [store]
+    [store],
   );
   return { registerTile };
 }

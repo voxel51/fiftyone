@@ -82,7 +82,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
       ? (e.getLabel({ sample, path: field, instanceId: labelId }) as
           | DetectionLabel
           | undefined)
-      : undefined
+      : undefined,
   );
 
   useEffect(() => {
@@ -96,7 +96,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
 
     const rotation = committed.quaternion
       ? quaternionToRadians(committed.quaternion)
-      : committed.rotation ?? [0, 0, 0];
+      : (committed.rotation ?? [0, 0, 0]);
 
     setTransformState({
       position: {
@@ -126,14 +126,14 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
             instanceId: labelId,
           })
         : null,
-    [dataset, sample, field, labelId]
+    [dataset, sample, field, labelId],
   );
 
   const live = useSignalValue<GeometrySignal | null>(
     engine,
     GEOMETRY_SIGNAL,
     key,
-    null
+    null,
   );
 
   useEffect(() => {
@@ -212,7 +212,7 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
         rotation: newRotation,
       });
     },
-    [data, transformState, updateCuboid, readOnly]
+    [data, transformState, updateCuboid, readOnly],
   );
 
   return (

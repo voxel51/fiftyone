@@ -8,7 +8,7 @@ const INSTANCE = "inst-1";
 
 const keyframe = (
   id: string,
-  overrides: Partial<SyntheticBox> = {}
+  overrides: Partial<SyntheticBox> = {},
 ): SyntheticBox => ({
   id,
   _id: id,
@@ -43,14 +43,14 @@ const makeAgent = () => {
 };
 
 const baseArgs = (
-  emitted: Array<{ frame: number; det: PropagatedDetection }>
+  emitted: Array<{ frame: number; det: PropagatedDetection }>,
 ) => ({
   instanceId: INSTANCE,
   seedKeyframe: keyframe("seed"),
   fromFrame: 1,
   toFrame: 3,
   videoKey: "vid",
-  getFrameBitmap: async () => ({} as ImageBitmap),
+  getFrameBitmap: async () => ({}) as ImageBitmap,
   onDetection: (frame: number, det: PropagatedDetection) =>
     emitted.push({ frame, det }),
 });

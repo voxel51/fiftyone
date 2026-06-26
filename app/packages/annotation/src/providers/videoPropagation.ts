@@ -43,8 +43,8 @@ class PerfTracker {
       // eslint-disable-next-line no-console
       console.debug(
         `[sam2-perf] frame=${frameIdx} bitmap=${bitmapMs.toFixed(
-          1
-        )}ms infer=${inferMs.toFixed(1)}ms points=${pointsMs.toFixed(1)}ms`
+          1,
+        )}ms infer=${inferMs.toFixed(1)}ms points=${pointsMs.toFixed(1)}ms`,
       );
     }
   }
@@ -58,11 +58,11 @@ class PerfTracker {
     // eslint-disable-next-line no-console
     console.debug(
       `[sam2-perf] run done frames=${this.framesDone} wall=${wall.toFixed(
-        0
+        0,
       )}ms (${(wall / this.framesDone).toFixed(1)}ms/frame) ` +
         `bitmap=${this.bitmapMs.toFixed(0)}ms infer=${this.inferMs.toFixed(
-          0
-        )}ms points=${this.pointsMs.toFixed(0)}ms strategy=${strategy}`
+          0,
+        )}ms points=${this.pointsMs.toFixed(0)}ms strategy=${strategy}`,
     );
   }
 }
@@ -105,7 +105,7 @@ export interface PropagateOptions {
  */
 export async function propagate(
   provider: BrowserAnnotationProvider,
-  options: PropagateOptions
+  options: PropagateOptions,
 ): Promise<Map<number, InferenceResult>> {
   const {
     getFrameBitmap,
@@ -177,7 +177,7 @@ function nextPoints(
   prevResult: InferenceResult | null,
   kfA: Keyframe,
   kfB: Keyframe,
-  t: number
+  t: number,
 ): PromptPoint[] | null {
   if (strategy === "lerp") {
     return lerpPoints(kfA.points, kfB.points, t);
@@ -208,7 +208,7 @@ function centroidCount(s: PropagationStrategy): 1 | 3 | 5 {
 function lerpPoints(
   a: PromptPoint[],
   b: PromptPoint[],
-  t: number
+  t: number,
 ): PromptPoint[] {
   return a.map((pa, i) => ({
     x: pa.x + (b[i].x - pa.x) * t,
@@ -227,7 +227,7 @@ function lerpPoints(
  */
 function pointsFromMask(
   r: InferenceResult,
-  count: 1 | 3 | 5 = 5
+  count: 1 | 3 | 5 = 5,
 ): PromptPoint[] {
   let sx = 0;
   let sy = 0;
@@ -286,7 +286,7 @@ function pointsFromMask(
  */
 export function pointsFromBox(
   bbox: [number, number, number, number],
-  count: 1 | 3 | 5 = 5
+  count: 1 | 3 | 5 = 5,
 ): PromptPoint[] {
   const [x, y, w, h] = bbox;
   const cx = x + w / 2;

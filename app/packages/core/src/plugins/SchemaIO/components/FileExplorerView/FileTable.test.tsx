@@ -69,7 +69,7 @@ describe("FileTable", () => {
     ];
 
     render(
-      <FileTable {...defaultProps} files={files} onSelectFile={onSelectFile} />
+      <FileTable {...defaultProps} files={files} onSelectFile={onSelectFile} />,
     );
 
     fireEvent.click(screen.getAllByText("test.txt")[0]);
@@ -106,7 +106,7 @@ describe("FileTable", () => {
     const nextPage = vi.fn();
 
     render(
-      <FileTable {...defaultProps} hasNextPage={true} nextPage={nextPage} />
+      <FileTable {...defaultProps} hasNextPage={true} nextPage={nextPage} />,
     );
 
     fireEvent.click(screen.getByText("Load more"));

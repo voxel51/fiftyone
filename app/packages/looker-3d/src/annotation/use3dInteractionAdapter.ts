@@ -46,10 +46,10 @@ export const use3dInteractionAdapter = (): void => {
 
   const [transformMode, setTransformMode] = useRecoilState(transformModeAtom);
   const setSelectedLabelForAnnotation = useSetRecoilState(
-    selectedLabelForAnnotationAtom
+    selectedLabelForAnnotationAtom,
   );
   const setCurrentArchetypeSelectedForTransform = useSetRecoilState(
-    currentArchetypeSelectedForTransformAtom
+    currentArchetypeSelectedForTransformAtom,
   );
   const clearTransformState = useSetRecoilState(clearTransformStateSelector);
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
@@ -84,8 +84,8 @@ export const use3dInteractionAdapter = (): void => {
     const archetype = isDetection3dOverlay(label)
       ? ANNOTATION_CUBOID
       : isPolyline3dOverlay(label)
-      ? ANNOTATION_POLYLINE
-      : undefined;
+        ? ANNOTATION_POLYLINE
+        : undefined;
 
     if (!archetype) {
       return;
@@ -135,7 +135,7 @@ export const use3dInteractionAdapter = (): void => {
 
   useEffect(() => {
     const ref = hovered.find(
-      (candidate) => workingDoc.labelsById[candidate.instanceId]
+      (candidate) => workingDoc.labelsById[candidate.instanceId],
     );
     const targetId = ref?.instanceId ?? null;
 

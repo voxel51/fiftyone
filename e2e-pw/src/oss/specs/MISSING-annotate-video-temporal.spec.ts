@@ -44,7 +44,7 @@ test.afterAll(async ({ foWebServer }) => {
 const openAnnotate = async (
   fiftyoneLoader: AbstractFiftyoneLoader,
   modal: ModalPom,
-  page: import("src/oss/fixtures").Page
+  page: import("src/oss/fixtures").Page,
 ) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),

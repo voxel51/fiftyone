@@ -19,7 +19,7 @@ type Data = { [key: string]: unknown };
 export const getBubbles = (
   path: string,
   data: Data,
-  input: Schema
+  input: Schema,
 ): [Field, unknown[]] => {
   const out = parseSample(path.split("."), data, input);
 
@@ -55,14 +55,14 @@ export const getBubbles = (
 
     if (field.embeddedDocType === withPath(LABELS_PATH, CLASSIFICATIONS)) {
       out.values = unwind(field.dbField, out.values).flatMap(
-        (value) => value.classifications || []
+        (value) => value.classifications || [],
       ) as Sample[];
       break;
     }
 
     if (field.embeddedDocType === withPath(LABELS_PATH, TEMPORAL_DETECTIONS)) {
       out.values = unwind(field.dbField, out.values).flatMap(
-        (value) => value.detections || []
+        (value) => value.detections || [],
       ) as Sample[];
       break;
     }

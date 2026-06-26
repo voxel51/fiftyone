@@ -18,7 +18,7 @@ import type {
  * the latest off the atom.
  */
 const registeredControllerAtom = atom<SurfaceController<Looker3dHandle> | null>(
-  null
+  null,
 );
 
 /**
@@ -28,7 +28,7 @@ const registeredControllerAtom = atom<SurfaceController<Looker3dHandle> | null>(
  * than hit the not-ready controller's throwing methods.
  */
 export const useRegisterLooker3dSurfaceController = (
-  controller: SurfaceController<Looker3dHandle> | null
+  controller: SurfaceController<Looker3dHandle> | null,
 ): void => {
   const setController = useSetAtom(registeredControllerAtom);
 
@@ -91,6 +91,6 @@ export const useLooker3dSurfaceWrite = (): Looker3dSurfaceWrite => {
 
       remove: (ref) => controller?.deleteLabel(ref),
     }),
-    [controller]
+    [controller],
   );
 };

@@ -92,7 +92,7 @@ export class FrameStore implements LabelStore {
     }
 
     return this.listAt(ref.frame, ref.path).find(
-      (label) => addressIdOf(label) === ref.instanceId
+      (label) => addressIdOf(label) === ref.instanceId,
     );
   }
 
@@ -388,7 +388,7 @@ export class FrameStore implements LabelStore {
   /** Upsert an element via `produce(existing)`, replacing the list COW-style. */
   private writeFrame(
     ref: LabelRef,
-    produce: (existing: LabelData | undefined) => LabelData
+    produce: (existing: LabelData | undefined) => LabelData,
   ): void {
     if (ref.frame == null) {
       return;
@@ -397,7 +397,7 @@ export class FrameStore implements LabelStore {
     const doc = this.editableFrame(ref.frame);
     const list = doc.get(ref.path) ?? [];
     const index = list.findIndex(
-      (label) => addressIdOf(label) === ref.instanceId
+      (label) => addressIdOf(label) === ref.instanceId,
     );
     const next = produce(index >= 0 ? list[index] : undefined);
 
@@ -405,7 +405,7 @@ export class FrameStore implements LabelStore {
       ref.path,
       index >= 0
         ? [...list.slice(0, index), next, ...list.slice(index + 1)]
-        : [...list, next]
+        : [...list, next],
     );
 
     this.emit([{ ref, kind: "update" }]);

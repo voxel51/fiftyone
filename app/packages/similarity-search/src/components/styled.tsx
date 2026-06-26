@@ -19,7 +19,7 @@ function styled(baseStyle: CSSProperties) {
   const Component = forwardRef<HTMLDivElement, DivProps>(
     ({ style, ...props }, ref) => (
       <div ref={ref} style={{ ...baseStyle, ...style }} {...props} />
-    )
+    ),
   );
   return Component;
 }

@@ -35,11 +35,11 @@ export const publishLabelPreview = (
   engine: AnnotationEngine,
   dataset: string,
   ref: LabelRef,
-  patch: LabelPatchSignal
+  patch: LabelPatchSignal,
 ): void => {
   engine.publishSignal<LabelPatchSignal>(
     LABEL_PATCH_SIGNAL,
     encodeEntityId(dataset, ref),
-    patch
+    patch,
   );
 };

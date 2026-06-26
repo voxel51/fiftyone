@@ -40,7 +40,7 @@ describe("InteractionState active/anchor", () => {
     expect(state.getAnchor()).toEqual(ref("ground_truth", "d1"));
 
     expect(() => state.setAnchor(ref("ground_truth", "d9"))).toThrow(
-      /member of the active set/
+      /member of the active set/,
     );
   });
 
@@ -195,7 +195,7 @@ describe("InteractionState GC (engine-wired)", () => {
       engine.transaction(() => {
         engine.deleteLabel(ref("ground_truth", "d1"));
         throw new Error("abort");
-      })
+      }),
     ).toThrow("abort");
 
     expect(engine.interaction.isActive(ref("ground_truth", "d1"))).toBe(true);

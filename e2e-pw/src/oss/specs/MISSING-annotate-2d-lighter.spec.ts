@@ -71,7 +71,7 @@ const expectLabelsCount = async (modal: ModalPom, expected: number) => {
 const drawBox = async (
   modal: ModalPom,
   from: [number, number],
-  to: [number, number]
+  to: [number, number],
 ) => {
   await modal.sidebar.annotate.detectionMode("Detections");
   await modal.sampleCanvas.move(from[0], from[1], "crosshair");
@@ -126,7 +126,7 @@ test.describe.serial("2D Lighter annotation", () => {
     const saved = page.waitForResponse(
       (r) =>
         /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method())
+        ["POST", "PATCH", "PUT"].includes(r.request().method()),
     );
     await drawBox(modal, [0.1, 0.1], [0.28, 0.28]);
     await modal.sidebar.edit.exitToList();

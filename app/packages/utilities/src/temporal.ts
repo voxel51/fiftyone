@@ -47,7 +47,7 @@ export function isValidSupport(support: unknown): support is [number, number] {
  */
 export function isFrameInSupport(
   support: unknown,
-  frame: number
+  frame: number,
 ): support is [number, number] {
   return (
     Array.isArray(support) &&
@@ -59,7 +59,7 @@ export function isFrameInSupport(
 
 /** Type guard for a `TemporalDetections` wrapper field. */
 export function isTemporalDetectionsField(
-  value: unknown
+  value: unknown,
 ): value is RawTemporalDetectionsField {
   if (!value || typeof value !== "object") {
     return false;

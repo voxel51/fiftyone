@@ -4,7 +4,7 @@ import { atom, type PrimitiveAtom } from "jotai";
 import type { LabelType } from "./types";
 
 export const savedLabel = atom<AnnotationLabel["data"] | null>(
-  null
+  null,
 ) as PrimitiveAtom<AnnotationLabel["data"] | null>;
 
 /**
@@ -18,7 +18,7 @@ export const savedLabelPath = atom<string | null>(null) as PrimitiveAtom<
 >;
 
 export const currentEditingMaskAtom = atom<boolean>(
-  false
+  false,
 ) as PrimitiveAtom<boolean>;
 
 /**
@@ -28,7 +28,7 @@ export const currentEditingMaskAtom = atom<boolean>(
  * rather than touching this atom directly.
  */
 export const editingLabelAtom = atom<PrimitiveAtom<AnnotationLabel> | null>(
-  null
+  null,
 ) as PrimitiveAtom<PrimitiveAtom<AnnotationLabel> | null>;
 
 /**
@@ -42,7 +42,7 @@ export const editingLabelAtom = atom<PrimitiveAtom<AnnotationLabel> | null>(
  * the field + `data._id`, which is already correct for sample-level labels.
  */
 export const editingRefAtom = atom<LabelRef | null>(
-  null
+  null,
 ) as PrimitiveAtom<LabelRef | null>;
 
 /**
@@ -51,5 +51,5 @@ export const editingRefAtom = atom<LabelRef | null>(
  * exclusive with {@link editingLabelAtom}.
  */
 export const pendingNewTypeAtom = atom<LabelType | null>(
-  null
+  null,
 ) as PrimitiveAtom<LabelType | null>;

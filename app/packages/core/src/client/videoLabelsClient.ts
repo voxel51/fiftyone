@@ -73,7 +73,7 @@ export type GetVideoLabelsWindowResponse = {
 };
 
 const doFetch = <A, R>(
-  config: FetchFunctionConfig<A>
+  config: FetchFunctionConfig<A>,
 ): Promise<FetchFunctionResult<R>> => {
   return getFetchFunctionExtended()(config);
 };
@@ -86,7 +86,7 @@ const doFetch = <A, R>(
  * {@link getVideoLabelsWindow}.
  */
 export const getVideoLabelsIndex = async (
-  request: GetVideoLabelsIndexRequest
+  request: GetVideoLabelsIndexRequest,
 ): Promise<GetVideoLabelsIndexResponse> => {
   const { response } = await doFetch<
     GetVideoLabelsIndexRequest,
@@ -108,7 +108,7 @@ export const getVideoLabelsIndex = async (
  * map; frames carry only the requested fields they actually have.
  */
 export const getVideoLabelsWindow = async (
-  request: GetVideoLabelsWindowRequest
+  request: GetVideoLabelsWindowRequest,
 ): Promise<GetVideoLabelsWindowResponse> => {
   const { response } = await doFetch<
     GetVideoLabelsWindowRequest,

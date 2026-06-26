@@ -48,7 +48,7 @@ test.afterAll(async ({ foWebServer }) => {
 const openAnnotate = async (
   fiftyoneLoader: AbstractFiftyoneLoader,
   modal: ModalPom,
-  page: import("src/oss/fixtures").Page
+  page: import("src/oss/fixtures").Page,
 ) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
@@ -106,7 +106,7 @@ test.describe.serial("3d cuboid annotation", () => {
     const saved = page.waitForResponse(
       (r) =>
         /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method())
+        ["POST", "PATCH", "PUT"].includes(r.request().method()),
     );
     await modal.annotate3d.setGeometry("x", "1.5");
     await saved;
@@ -121,7 +121,7 @@ test.describe.serial("3d cuboid annotation", () => {
             ? Math.round(geom.location[0] * 100) / 100
             : null;
         },
-        { timeout: 20_000 }
+        { timeout: 20_000 },
       )
       .toBe(1.5);
 
@@ -143,7 +143,7 @@ test.describe.serial("3d cuboid annotation", () => {
     const saved = page.waitForResponse(
       (r) =>
         /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method())
+        ["POST", "PATCH", "PUT"].includes(r.request().method()),
     );
     await modal.sidebar.edit.selectFieldChoice("label", "truck");
     await modal.sidebar.edit.assert.verifyFieldValue("label", "truck");
@@ -187,7 +187,7 @@ test.describe.serial("3d cuboid annotation", () => {
     const saved = page.waitForResponse(
       (r) =>
         /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method())
+        ["POST", "PATCH", "PUT"].includes(r.request().method()),
     );
     await modal.annotate3d.deleteSelected();
     await modal.annotate3d.assert.labelCount(0);
@@ -215,7 +215,7 @@ test.describe.serial("3d cuboid annotation", () => {
       page.waitForResponse(
         (r) =>
           /\/sample\//.test(r.url()) &&
-          ["POST", "PATCH", "PUT"].includes(r.request().method())
+          ["POST", "PATCH", "PUT"].includes(r.request().method()),
       );
 
     await modal.annotate3d.selectLabel("car");
@@ -305,7 +305,7 @@ test.describe.serial("3d cuboid creation", () => {
     const saved = page.waitForResponse(
       (r) =>
         /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method())
+        ["POST", "PATCH", "PUT"].includes(r.request().method()),
     );
     await modal.sidebar.edit.selectFieldChoice("label", "truck");
     await modal.sidebar.edit.assert.verifyFieldValue("label", "truck");

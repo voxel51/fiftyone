@@ -7,7 +7,7 @@ import { usePlayback, usePresentedMediaTime } from "@fiftyone/playback";
  * vfc tick lands, for which the engine falls back to its dt advance.
  */
 export function useVfcClockSource(
-  videoRef: RefObject<HTMLVideoElement | null>
+  videoRef: RefObject<HTMLVideoElement | null>,
 ): void {
   const { setClockSource } = usePlayback();
   const presentedMediaTimeRef = usePresentedMediaTime(videoRef);

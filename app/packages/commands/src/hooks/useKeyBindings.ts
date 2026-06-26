@@ -20,7 +20,7 @@ export type KeyBinding = {
 export const useKeyBindings = (
   contextId: string,
   keyBindings: KeyBinding[],
-  deps: unknown[] = []
+  deps: unknown[] = [],
 ) => {
   const { context } = useCommandContext(contextId);
   const keyBindingsRef = useRef(keyBindings);
@@ -39,18 +39,18 @@ export const useKeyBindings = (
         commandId,
         async () => {
           const latest = keyBindingsRef.current.find(
-            (b) => b.commandId === commandId
+            (b) => b.commandId === commandId,
           );
           return await latest?.handler();
         },
         () => {
           const latest = keyBindingsRef.current.find(
-            (b) => b.commandId === commandId
+            (b) => b.commandId === commandId,
           );
           return latest?.enablement?.() ?? true;
         },
         label,
-        description
+        description,
       );
       registeredCommands.push(cmd.id);
 

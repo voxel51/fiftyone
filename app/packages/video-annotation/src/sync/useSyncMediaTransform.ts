@@ -27,10 +27,10 @@ import { useCallback } from "react";
  */
 export const useSyncMediaTransform = <T extends HTMLElement>(
   scene: Scene2D | null,
-  mediaRef: RefObject<T | null>
+  mediaRef: RefObject<T | null>,
 ): void => {
   const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
 
   const apply = useCallback(
@@ -42,12 +42,12 @@ export const useSyncMediaTransform = <T extends HTMLElement>(
 
       el.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
     },
-    [mediaRef]
+    [mediaRef],
   );
 
   useEventHandler(
     "lighter:viewport-moved",
-    useCallback((p) => apply(p.x, p.y, p.scale), [apply])
+    useCallback((p) => apply(p.x, p.y, p.scale), [apply]),
   );
 
   // Seed the resting transform once the renderer is ready — the pixi
@@ -64,6 +64,6 @@ export const useSyncMediaTransform = <T extends HTMLElement>(
 
       const { panX, panY, scale } = scene.getViewportState();
       apply(panX, panY, scale);
-    }, [scene, apply])
+    }, [scene, apply]),
   );
 };

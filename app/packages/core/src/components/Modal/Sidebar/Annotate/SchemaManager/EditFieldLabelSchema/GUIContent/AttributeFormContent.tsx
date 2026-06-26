@@ -288,7 +288,7 @@ const AttributeFormContent = ({
                 }
                 onChange={(index) =>
                   handleValuesModeChange(
-                    index === 0 ? VALUES_MODE.simple : VALUES_MODE.taxonomy
+                    index === 0 ? VALUES_MODE.simple : VALUES_MODE.taxonomy,
                   )
                 }
                 tabs={valuesModeTabs}
@@ -376,7 +376,7 @@ const AttributeFormContent = ({
                   />
                 )
               }
-              error={!isListType ? defaultError ?? undefined : undefined}
+              error={!isListType ? (defaultError ?? undefined) : undefined}
             />
           )}
         </Stack>

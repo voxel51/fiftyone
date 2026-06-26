@@ -19,7 +19,7 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
-  "annotate-cross-surface-undo"
+  "annotate-cross-surface-undo",
 );
 
 /** Fixed ObjectId addressing the single sample (so we can deep-link the modal). */
@@ -83,7 +83,7 @@ const fieldNum = async (modal: ModalPom, path: string) =>
 const drawBox = async (
   modal: ModalPom,
   from: [number, number],
-  to: [number, number]
+  to: [number, number],
 ) => {
   await modal.sidebar.annotate.detectionMode("Detections");
   await modal.sampleCanvas.move(from[0], from[1], "crosshair");

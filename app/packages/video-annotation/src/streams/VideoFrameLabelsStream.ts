@@ -322,7 +322,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   private async fetchChunk(startFrame: number): Promise<void> {
     const numFrames = Math.min(
       this.chunkSize,
-      this.frameCount - startFrame + 1
+      this.frameCount - startFrame + 1,
     );
 
     if (numFrames <= 0) {
@@ -378,7 +378,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       // prefetch calls will retry the missing frames.
       console.error(
         `[VideoFrameLabelsStream] fetch failed for [${startFrame}, ${endFrame}]`,
-        error
+        error,
       );
     }
   }
@@ -394,7 +394,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
  */
 function extractDetections(
   sample: FrameDoc,
-  frameField: string
+  frameField: string,
 ): SyntheticBox[] {
   const raw = sample[frameField] as RawDetectionsField | undefined;
   const detections = raw?.detections;

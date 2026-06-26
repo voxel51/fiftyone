@@ -18,7 +18,7 @@ import type { AnnotationLabel } from "@fiftyone/state";
 import { useDeleteAnnotation } from "./useDeleteAnnotation";
 
 function makeLabel(
-  overrides: Partial<{ labelId: string; labelType: string }> = {}
+  overrides: Partial<{ labelId: string; labelType: string }> = {},
 ): AnnotationLabel {
   const labelId = overrides.labelId ?? "label-1";
   const labelType = overrides.labelType ?? "Detection";
@@ -128,7 +128,7 @@ describe("useDeleteAnnotation", () => {
     const deleteAnnotation = getCallback();
 
     await deleteAnnotation(
-      makeLabel({ labelId: "label-42", labelType: "Polyline" })
+      makeLabel({ labelId: "label-42", labelType: "Polyline" }),
     );
 
     expect(mockDispatch).toHaveBeenCalledWith("annotation:persistenceSuccess");
@@ -148,7 +148,7 @@ describe("useDeleteAnnotation", () => {
     expect(result).toBe(false);
     expect(mockDispatch).toHaveBeenCalledWith(
       "annotation:persistenceError",
-      expect.objectContaining({ error: expect.any(Error) })
+      expect.objectContaining({ error: expect.any(Error) }),
     );
     expect(mockDispatch).toHaveBeenCalledWith("annotation:deleteError", {
       labelId: "label-7",
@@ -156,7 +156,7 @@ describe("useDeleteAnnotation", () => {
     });
     expect(mockDispatch).not.toHaveBeenCalledWith(
       "annotation:deleteSuccess",
-      expect.anything()
+      expect.anything(),
     );
   });
 
@@ -215,12 +215,12 @@ describe("useDeleteAnnotation", () => {
     const deleteAnnotation = getCallback();
 
     await expect(
-      deleteAnnotation(makeLabel({ labelId: "label-99" }))
+      deleteAnnotation(makeLabel({ labelId: "label-99" })),
     ).rejects.toThrow("network down");
 
     expect(mockDispatch).toHaveBeenCalledWith(
       "annotation:persistenceError",
-      expect.objectContaining({ error })
+      expect.objectContaining({ error }),
     );
     expect(mockDispatch).toHaveBeenCalledWith("annotation:deleteError", {
       labelId: "label-99",

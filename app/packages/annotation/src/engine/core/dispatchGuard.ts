@@ -28,7 +28,7 @@ export class DispatchGuard {
     if (REENTRANCY_CHECK_ENABLED && this.depth > 0) {
       throw new Error(
         `${op} was called from within a subscriber. Subscribers are sinks ` +
-          `and must never write back to the engine.`
+          `and must never write back to the engine.`,
       );
     }
   }

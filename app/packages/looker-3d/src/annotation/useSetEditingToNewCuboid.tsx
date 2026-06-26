@@ -103,6 +103,6 @@ export const useSetEditingToNewCuboid = () => {
       readEditing,
       select,
       setCurrentEditing,
-    ]
+    ],
   );
 };

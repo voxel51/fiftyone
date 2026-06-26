@@ -12,19 +12,19 @@ const overlay = (label: Record<string, unknown>) => ({
 });
 
 const scene = (overlays: Record<string, ReturnType<typeof overlay>>) =>
-  ({ getOverlay: (id: string) => overlays[id] } as never);
+  ({ getOverlay: (id: string) => overlays[id] }) as never;
 
 const publish = (
   engine: ReturnType<typeof makeEngine>["engine"],
   instanceId: string,
   patch: Record<string, unknown>,
   sample = "sample-1",
-  dataset = "ds"
+  dataset = "ds",
 ) =>
   engine.publishSignal(
     LABEL_PATCH_SIGNAL,
     encodeEntityId(dataset, ref("ground_truth", instanceId, sample)),
-    patch
+    patch,
   );
 
 describe("useLighterPreviewSync", () => {
@@ -32,7 +32,7 @@ describe("useLighterPreviewSync", () => {
     const { engine } = makeEngine();
     const d1 = overlay({ _id: "d1", label: "car", confidence: 0.2 });
     renderHook(() =>
-      useLighterPreviewSync(engine, "ds", "sample-1", scene({ d1 }))
+      useLighterPreviewSync(engine, "ds", "sample-1", scene({ d1 })),
     );
 
     publish(engine, "d1", { confidence: 0.9 });
@@ -48,7 +48,7 @@ describe("useLighterPreviewSync", () => {
     const { engine } = makeEngine();
     const d1 = overlay({ _id: "d1" });
     renderHook(() =>
-      useLighterPreviewSync(engine, "ds", "sample-1", scene({ d1 }))
+      useLighterPreviewSync(engine, "ds", "sample-1", scene({ d1 })),
     );
 
     publish(engine, "d1", { confidence: 0.9 }, "other-sample");
@@ -60,7 +60,7 @@ describe("useLighterPreviewSync", () => {
     const { engine } = makeEngine();
     const d1 = overlay({ _id: "d1" });
     renderHook(() =>
-      useLighterPreviewSync(engine, "ds", "sample-1", scene({ d1 }))
+      useLighterPreviewSync(engine, "ds", "sample-1", scene({ d1 })),
     );
 
     publish(engine, "d1", { confidence: 0.9 }, "sample-1", "other-dataset");
@@ -71,7 +71,7 @@ describe("useLighterPreviewSync", () => {
   it("no-ops when the scene has no matching overlay", () => {
     const { engine } = makeEngine();
     renderHook(() =>
-      useLighterPreviewSync(engine, "ds", "sample-1", scene({}))
+      useLighterPreviewSync(engine, "ds", "sample-1", scene({})),
     );
 
     expect(() => publish(engine, "absent", { confidence: 0.9 })).not.toThrow();
@@ -81,7 +81,7 @@ describe("useLighterPreviewSync", () => {
     const { engine } = makeEngine();
     const d1 = overlay({ _id: "d1" });
     const { unmount } = renderHook(() =>
-      useLighterPreviewSync(engine, "ds", "sample-1", scene({ d1 }))
+      useLighterPreviewSync(engine, "ds", "sample-1", scene({ d1 })),
     );
 
     unmount();

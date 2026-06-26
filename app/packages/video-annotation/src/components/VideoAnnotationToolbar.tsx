@@ -94,7 +94,7 @@ export const VideoAnnotationToolbar: React.FC = () => {
         .filter(
           (group) =>
             !group.isHidden &&
-            group.actions.some((action) => action.isVisible !== false)
+            group.actions.some((action) => action.isVisible !== false),
         )
         .map((group) => (
           <Stack

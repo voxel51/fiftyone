@@ -12,9 +12,9 @@ const fakeResult = (): InferenceResult => ({
 });
 
 const fakeProvider = (impl = vi.fn(async () => fakeResult())) =>
-  ({ inferBitmap: impl } as unknown as BrowserAnnotationProvider & {
+  ({ inferBitmap: impl }) as unknown as BrowserAnnotationProvider & {
     inferBitmap: ReturnType<typeof vi.fn>;
-  });
+  };
 
 const seedPoints = [{ x: 0.5, y: 0.5, label: PointLabel.POSITIVE }];
 
@@ -44,7 +44,7 @@ describe("propagate", () => {
   it("walks [A, B] inclusive, seeding the first frame from keyframe A", async () => {
     const infer = vi.fn(async () => fakeResult());
     const provider = fakeProvider(infer);
-    const getFrameBitmap = vi.fn(async () => ({} as ImageBitmap));
+    const getFrameBitmap = vi.fn(async () => ({}) as ImageBitmap);
     const onProgress = vi.fn();
 
     const results = await propagate(provider, {
@@ -70,7 +70,7 @@ describe("propagate", () => {
     const provider = fakeProvider();
     let calls = 0;
     const results = await propagate(provider, {
-      getFrameBitmap: async () => ({} as ImageBitmap),
+      getFrameBitmap: async () => ({}) as ImageBitmap,
       keyframeA: { frameIdx: 1, points: seedPoints },
       keyframeB: { frameIdx: 10, points: seedPoints },
       videoKey: "vid",
@@ -83,11 +83,11 @@ describe("propagate", () => {
   it("rejects a non-increasing keyframe range", async () => {
     await expect(
       propagate(fakeProvider(), {
-        getFrameBitmap: async () => ({} as ImageBitmap),
+        getFrameBitmap: async () => ({}) as ImageBitmap,
         keyframeA: { frameIdx: 5, points: seedPoints },
         keyframeB: { frameIdx: 5, points: seedPoints },
         videoKey: "vid",
-      })
+      }),
     ).rejects.toThrow(/keyframeA must precede keyframeB/);
   });
 });

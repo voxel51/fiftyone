@@ -42,7 +42,7 @@ export const fieldColorSetting = selectorFamily<
     (path) =>
     ({ get }) => {
       const field = get(fos.colorScheme).fields?.find(
-        (field) => path === field.path
+        (field) => path === field.path,
       );
       if (field) {
         const { path: _, ...setting } = field;
@@ -102,11 +102,11 @@ const FieldSetting = ({ path }: { path: string }) => {
   const state = useMemo(
     () => ({
       useLabelColors: Boolean(
-        setting?.valueColors && setting.valueColors.length > 0
+        setting?.valueColors && setting.valueColors.length > 0,
       ),
       useFieldColor: Boolean(setting && setting.fieldColor),
     }),
-    [setting]
+    [setting],
   );
 
   const isSegmentation = field.embeddedDocType?.includes(SEGMENTATION);
@@ -125,14 +125,14 @@ const FieldSetting = ({ path }: { path: string }) => {
         return { ...current, fieldColor: color };
       });
     },
-    [setSetting]
+    [setSetting],
   );
 
   const onValidateColor = useCallback(
     (input) => {
       if (isValidColor(input)) {
         const hexColor = colorString.to.hex(
-          colorString.get(input)?.value ?? []
+          colorString.get(input)?.value ?? [],
         );
         onChangeFieldColor(hexColor);
         setInput(hexColor);
@@ -146,7 +146,7 @@ const FieldSetting = ({ path }: { path: string }) => {
         }, 1000);
       }
     },
-    [fields, path, onChangeFieldColor, colors]
+    [fields, path, onChangeFieldColor, colors],
   );
 
   const toggleColorPicker = (e) => {

@@ -48,7 +48,7 @@ export type PropagationTarget =
 export function resolvePropagationTarget(
   stream: VideoFrameLabelsStream,
   selectedIds: readonly string[],
-  time: number
+  time: number,
 ): PropagationTarget {
   if (selectedIds.length === 0) {
     return { ok: false, reason: "Select a tracked object to propagate." };
@@ -63,7 +63,7 @@ export function resolvePropagationTarget(
   // instance-less detections) — match the snapshot the same way the engine
   // addresses a label.
   const selected = snapshot.detections.find((d) =>
-    selectedIds.includes(d.instance?._id ?? d.id)
+    selectedIds.includes(d.instance?._id ?? d.id),
   );
   if (!selected) {
     return {
@@ -86,7 +86,7 @@ export function resolvePropagationTarget(
   const { leftFrame, rightFrame } = findBracketingKeyframes(
     stream,
     instanceId,
-    currentFrame
+    currentFrame,
   );
 
   if (leftFrame === null && rightFrame === null) {
@@ -128,7 +128,7 @@ export function resolvePropagationTarget(
 function findBracketingKeyframes(
   stream: VideoFrameLabelsStream,
   instanceId: string,
-  currentFrame: number
+  currentFrame: number,
 ): { leftFrame: number | null; rightFrame: number | null } {
   let leftFrame: number | null = null;
   let rightFrame: number | null = null;
@@ -140,7 +140,7 @@ function findBracketingKeyframes(
     }
 
     const det = snap.detections.find(
-      (d) => d.keyframe && d.instance?._id === instanceId
+      (d) => d.keyframe && d.instance?._id === instanceId,
     );
     if (!det) {
       continue;
@@ -166,7 +166,7 @@ function findBracketingKeyframes(
 function forwardPresenceEnd(
   stream: VideoFrameLabelsStream,
   instanceId: string,
-  currentFrame: number
+  currentFrame: number,
 ): number {
   let endFrame = currentFrame;
 

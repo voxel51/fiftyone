@@ -29,7 +29,7 @@ export interface LighterInteractionPolicy {
  * knowledge — every "does this apply?" decision lives inside the interceptor.
  */
 export const combineInteractionPolicies = (
-  interceptors: readonly LighterInteractionPolicy[]
+  interceptors: readonly LighterInteractionPolicy[],
 ): LighterInteractionPolicy => ({
   interceptSelect: (id) =>
     interceptors.some((it) => it.interceptSelect?.(id) ?? false),

@@ -140,7 +140,7 @@ const make = (frameData?: FramesData) => {
   const store = new VideoLabelStore(
     SAMPLE,
     frames,
-    sampleLevel as unknown as SampleLabelStore
+    sampleLevel as unknown as SampleLabelStore,
   );
 
   return { store, frames, sampleLevel };
@@ -210,7 +210,7 @@ describe("VideoLabelStore persistence", () => {
     const ops = store.getJsonPatch();
     const containers = ops.map((op) => op.path);
     expect(containers.some((p) => p.startsWith("/frames/1/detections"))).toBe(
-      true
+      true,
     );
     expect(containers).toContain("/events");
   });

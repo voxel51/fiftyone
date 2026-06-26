@@ -22,7 +22,7 @@ type ColorResolver = (l: PerInstanceLabel, path: string) => string;
  */
 function makeEngine(frames: Record<number, LabelData[]>): FrameLabelReader {
   return {
-    listLabels: ({ frame }) => (frame ? frames[frame] ?? [] : []),
+    listLabels: ({ frame }) => (frame ? (frames[frame] ?? []) : []),
   };
 }
 
@@ -31,17 +31,18 @@ function makeEngine(frames: Record<number, LabelData[]>): FrameLabelReader {
  * its per-frame labels.
  */
 function makeMultiFieldEngine(
-  byPath: Record<string, Record<number, LabelData[]>>
+  byPath: Record<string, Record<number, LabelData[]>>,
 ): FrameLabelReader {
   return {
-    listLabels: ({ path, frame }) => (frame ? byPath[path]?.[frame] ?? [] : []),
+    listLabels: ({ path, frame }) =>
+      frame ? (byPath[path]?.[frame] ?? []) : [],
   };
 }
 
 function build(
   totalFrames: number,
   frames: Record<number, LabelData[]>,
-  resolveColor: ColorResolver = () => "#fff"
+  resolveColor: ColorResolver = () => "#fff",
 ) {
   return buildPerInstanceTracks({
     engine: makeEngine(frames),
@@ -79,7 +80,7 @@ describe("buildPerInstanceTracks", () => {
         index: 7,
         instance: { _cls: "Instance", _id: "abc123" },
       },
-      PATH
+      PATH,
     );
     // Display text still uses the persisted index as the ordinal.
     expect(tracks[0].label).toBe("person 7");
@@ -104,7 +105,7 @@ describe("buildPerInstanceTracks", () => {
         index: 3,
         instance: null,
       },
-      PATH
+      PATH,
     );
   });
 
@@ -147,7 +148,7 @@ describe("buildPerInstanceTracks", () => {
     };
 
     const resolveColor = vi.fn<ColorResolver>((_l, path) =>
-      path === POLY_PATH ? "#0f0" : "#00f"
+      path === POLY_PATH ? "#0f0" : "#00f",
     );
 
     const tracks = buildPerInstanceTracks({
@@ -193,7 +194,7 @@ describe("segmentAttribute", () => {
         { frame: 2, value: "off" },
         { frame: 3, value: "off" },
       ],
-      FPS
+      FPS,
     );
 
     expect(segments).toEqual([{ startSec: 0, endSec: 3 / FPS, value: "off" }]);
@@ -207,7 +208,7 @@ describe("segmentAttribute", () => {
         { frame: 3, value: "left" },
         { frame: 4, value: "left" },
       ],
-      FPS
+      FPS,
     );
 
     expect(segments).toEqual([
@@ -223,7 +224,7 @@ describe("segmentAttribute", () => {
         { frame: 2, value: "b" },
         { frame: 3, value: "c" },
       ],
-      FPS
+      FPS,
     );
 
     expect(segments.map((s) => s.value)).toEqual(["a", "b", "c"]);
@@ -238,7 +239,7 @@ describe("segmentAttribute", () => {
         { frame: 2, value: "off" },
         { frame: 4, value: "off" },
       ],
-      FPS
+      FPS,
     );
 
     expect(segments).toEqual([

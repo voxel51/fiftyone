@@ -25,7 +25,7 @@ export type FrameRange = [number, number];
 export function resolveSegmentsToRepropagate(
   keyframeFrames: number[],
   changedFrame: number,
-  kind: "set" | "removed"
+  kind: "set" | "removed",
 ): FrameRange[] {
   const sorted = [...keyframeFrames].sort((a, b) => a - b);
   const prev = sorted.filter((f) => f < changedFrame).at(-1) ?? null;
@@ -96,14 +96,14 @@ export const useAutoInterpolate = (): void => {
         const segments = resolveSegmentsToRepropagate(
           keyframeFrames,
           frame,
-          kind
+          kind,
         );
 
         segments.forEach(([from, to]) => {
           void propagate(instanceId, from, to, "linear");
         });
       },
-      [engine, sampleId, stream, propagate]
-    )
+      [engine, sampleId, stream, propagate],
+    ),
   );
 };

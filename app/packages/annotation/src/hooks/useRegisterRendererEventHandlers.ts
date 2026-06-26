@@ -31,7 +31,7 @@ export const useRegisterRendererEventHandlers = () => {
   // re-fires it).
   const resolved = useEngineSelector(
     engine,
-    (reads) => !!entranceLabel && reads.getLabel(entranceLabel) !== undefined
+    (reads) => !!entranceLabel && reads.getLabel(entranceLabel) !== undefined,
   );
 
   useEffect(() => {

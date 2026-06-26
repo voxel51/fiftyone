@@ -53,10 +53,10 @@ export const useSyncOverlayReadOnly = (sample: string): void => {
   }, [apply]);
 
   const on = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
   on(
     "lighter:overlay-added",
-    useCallback(() => apply(), [apply])
+    useCallback(() => apply(), [apply]),
   );
 };

@@ -44,7 +44,7 @@ describe("useRegisterMcapDataStream", () => {
       readTimelineRange: vi.fn((request) =>
         request.source.sourceId === sourceB.sourceId
           ? sourceBTimeline.promise
-          : Promise.resolve(createTimelineRange())
+          : Promise.resolve(createTimelineRange()),
       ),
     });
 
@@ -56,7 +56,7 @@ describe("useRegisterMcapDataStream", () => {
         }}
         source={sourceA}
       />,
-      { wrapper: TestProviders }
+      { wrapper: TestProviders },
     );
 
     await waitFor(() => {
@@ -70,7 +70,7 @@ describe("useRegisterMcapDataStream", () => {
           playbackStore = store;
         }}
         source={sourceB}
-      />
+      />,
     );
     await waitFor(() => {
       expect(client.readTimelineRange).toHaveBeenCalledTimes(2);
@@ -96,7 +96,7 @@ describe("useRegisterMcapDataStream", () => {
 
     await waitFor(() => {
       expect(
-        vi.mocked(client.readSynchronizedMessageBatch).mock.calls.length
+        vi.mocked(client.readSynchronizedMessageBatch).mock.calls.length,
       ).toBeGreaterThan(1);
     });
     expect(playbackStore?.get(streamValueAtom(TOPIC))).toBeNull();
@@ -119,7 +119,7 @@ describe("useRegisterMcapDataStream", () => {
         }}
         source={source}
       />,
-      { wrapper: TestProviders }
+      { wrapper: TestProviders },
     );
 
     await waitFor(() => {
@@ -134,7 +134,7 @@ describe("useRegisterMcapDataStream", () => {
         }}
         source={source}
         subscribe={false}
-      />
+      />,
     );
 
     await act(async () => {

@@ -26,7 +26,7 @@ export function byteRangeCacheKey(request: ByteRangeReadRequest): string {
  * Creates a byte-bounded in-memory cache for raw byte ranges.
  */
 export function createMemoryByteRangeCache(
-  options: MemoryCacheOptions
+  options: MemoryCacheOptions,
 ): ByteRangeCache {
   const cache = createByteBoundedCache<ByteRangeReadResult>(options);
 
@@ -66,12 +66,12 @@ export function createMemoryByteRangeCache(
       const maxSafeNumber = BigInt(Number.MAX_SAFE_INTEGER);
       if (sliceStartOffset > maxSafeNumber) {
         throw new Error(
-          `Byte length ${sliceStartOffset.toString()} exceeds safe number range`
+          `Byte length ${sliceStartOffset.toString()} exceeds safe number range`,
         );
       }
       if (request.range.length > maxSafeNumber) {
         throw new Error(
-          `Byte length ${request.range.length.toString()} exceeds safe number range`
+          `Byte length ${request.range.length.toString()} exceeds safe number range`,
         );
       }
 
@@ -90,7 +90,7 @@ export function createMemoryByteRangeCache(
         options,
         byteRangeCacheKey(result),
         result,
-        result.bytes.byteLength
+        result.bytes.byteLength,
       );
     },
   };

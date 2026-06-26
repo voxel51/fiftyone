@@ -40,7 +40,7 @@ const notImplemented = <K extends LabelKind>(kind: K): OverlayAdapter<K> =>
     update() {
       throw new Error(`Overlay adapter for "${kind}" is not implemented`);
     },
-  } as OverlayAdapter<K>);
+  }) as OverlayAdapter<K>;
 
 /**
  * Registry mapping each {@link LabelKind} to its {@link OverlayAdapter}.

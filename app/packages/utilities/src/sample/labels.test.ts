@@ -49,19 +49,19 @@ describe("LIST_LABEL_CHILD", () => {
 describe("embeddedDocTypeToLabelType", () => {
   it("resolves known embedded-doc types", () => {
     expect(embeddedDocTypeToLabelType("fiftyone.core.labels.Detections")).toBe(
-      LabelType.Detections
+      LabelType.Detections,
     );
     expect(embeddedDocTypeToLabelType("fiftyone.core.labels.Keypoint")).toBe(
-      LabelType.Keypoint
+      LabelType.Keypoint,
     );
     expect(
-      embeddedDocTypeToLabelType("fiftyone.core.labels.TemporalDetections")
+      embeddedDocTypeToLabelType("fiftyone.core.labels.TemporalDetections"),
     ).toBe(LabelType.TemporalDetections);
   });
 
   it("falls back to Unknown for unrecognized or empty input", () => {
     expect(embeddedDocTypeToLabelType("fiftyone.core.labels.Heatmap")).toBe(
-      LabelType.Unknown
+      LabelType.Unknown,
     );
     expect(embeddedDocTypeToLabelType(null)).toBe(LabelType.Unknown);
     expect(embeddedDocTypeToLabelType(undefined)).toBe(LabelType.Unknown);

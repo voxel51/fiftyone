@@ -68,7 +68,7 @@ export type GetFramesResponse = {
  * inflight bookkeeping).
  */
 const doFetch = <A, R>(
-  config: FetchFunctionConfig<A>
+  config: FetchFunctionConfig<A>,
 ): Promise<FetchFunctionResult<R>> => {
   return getFetchFunctionExtended()(config);
 };
@@ -91,7 +91,7 @@ const doFetch = <A, R>(
  * @param request Frame-chunk request
  */
 export const getFrames = async (
-  request: GetFramesRequest
+  request: GetFramesRequest,
 ): Promise<GetFramesResponse> => {
   const { response } = await doFetch<GetFramesRequest, GetFramesResponse>({
     method: "POST",

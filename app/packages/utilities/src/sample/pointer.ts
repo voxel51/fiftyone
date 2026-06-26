@@ -7,7 +7,7 @@
 /** Read the value at a dot-delimited path, or `undefined` if any segment is absent. */
 export const getNestedField = <T>(
   data: Record<string, unknown> | undefined,
-  path: string
+  path: string,
 ): T | undefined => {
   if (!data) {
     return undefined;
@@ -69,7 +69,7 @@ export const withoutPath = (root: unknown, segments: string[]): unknown => {
   } else {
     (clone as Record<string, unknown>)[head] = withoutPath(
       (clone as Record<string, unknown>)[head],
-      tail
+      tail,
     );
   }
 
@@ -82,11 +82,11 @@ export const withoutPath = (root: unknown, segments: string[]): unknown => {
  */
 export const buildJsonPath = (
   fieldPath: string,
-  operationPath: string
+  operationPath: string,
 ): string => {
   const parts = fieldPath.split(".").filter(Boolean);
   parts.push(
-    ...operationPath.split("/").filter((s) => s.length > 0 && s !== "/")
+    ...operationPath.split("/").filter((s) => s.length > 0 && s !== "/"),
   );
 
   return `/${parts.join("/")}`;

@@ -33,8 +33,8 @@ describe("reconcilePersisted", () => {
       reconcilePersisted(
         snap({ transientData: { ai_seg: { detections: [{ _id: "d1" }] } } }),
         deltas,
-        MASK
-      )
+        MASK,
+      ),
     ).toBeNull();
   });
 
@@ -61,7 +61,7 @@ describe("reconcilePersisted", () => {
     const result = reconcilePersisted(
       snap({ sourceData, transientData }),
       deltas,
-      MASK
+      MASK,
     );
 
     // mask released → detection matches source → entry swept entirely
@@ -82,7 +82,7 @@ describe("reconcilePersisted", () => {
 
     // persisted value ("OLD") no longer matches transient ("NEW") → no release
     expect(
-      reconcilePersisted(snap({ transientData }), deltas, MASK)
+      reconcilePersisted(snap({ transientData }), deltas, MASK),
     ).toBeNull();
   });
 
@@ -105,7 +105,7 @@ describe("reconcilePersisted", () => {
     const result = reconcilePersisted(
       snap({ sourceData, transientData }),
       deltas,
-      MASK
+      MASK,
     );
 
     expect(result).not.toBeNull();
@@ -137,7 +137,7 @@ describe("reconcilePersisted", () => {
       result = reconcilePersisted(
         snap({ sourceData, transientData }),
         deltas,
-        MASK
+        MASK,
       );
     }).not.toThrow();
     // a new object was produced; the frozen input was never written to

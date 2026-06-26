@@ -22,6 +22,6 @@ export const useLighterInteractionPolicy = (): LighterInteractionPolicy => {
 
   return useMemo(
     () => combineInteractionPolicies([mergeTool, generatedView, draftLock]),
-    [mergeTool, generatedView, draftLock]
+    [mergeTool, generatedView, draftLock],
   );
 };

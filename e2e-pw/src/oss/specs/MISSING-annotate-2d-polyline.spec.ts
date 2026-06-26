@@ -34,7 +34,7 @@ const savedSample = (page: Page) =>
   page.waitForResponse(
     (r) =>
       /\/sample\//.test(r.url()) &&
-      ["POST", "PATCH", "PUT"].includes(r.request().method())
+      ["POST", "PATCH", "PUT"].includes(r.request().method()),
   );
 
 /** Clear the sample's polylines so each serial test starts from zero. */
@@ -56,7 +56,7 @@ const test = base.extend<{ modal: ModalPom }>({
 /** Click each vertex on the image canvas (polyline mode must be active). */
 const drawPolyline = async (
   modal: ModalPom,
-  vertices: Array<[number, number]>
+  vertices: Array<[number, number]>,
 ) => {
   for (const [x, y] of vertices) {
     await modal.sampleCanvas.click(x, y);
@@ -66,7 +66,7 @@ const drawPolyline = async (
 const inFreshContext = async (
   browser: Browser,
   fiftyoneLoader: AbstractFiftyoneLoader,
-  verify: (modal: ModalPom) => Promise<void>
+  verify: (modal: ModalPom) => Promise<void>,
 ) => {
   const context = await browser.newContext();
   const freshPage = await context.newPage();
@@ -109,7 +109,7 @@ dataset.save()
       component: "dropdown",
     });
     await annotateSDK.addFieldToActiveLabelSchema(datasetName, "polylines");
-  }
+  },
 );
 
 test.afterAll(async ({ foWebServer }) => {

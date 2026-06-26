@@ -86,7 +86,7 @@ export const createLighterBridge = ({
   const insert = (
     descriptor: LighterDescriptor,
     label: LabelData,
-    mask: Awaited<ReturnType<typeof decodeMaskPath>>
+    mask: Awaited<ReturnType<typeof decodeMaskPath>>,
   ): BaseOverlay => {
     const overlay = overlayFactory.create<
       LighterDescriptor["options"],
@@ -126,7 +126,7 @@ export const createLighterBridge = ({
       if (!url) {
         console.warn(
           `[mask-path] detection ${id} in field "${path}" has mask_path ` +
-            "but no resolvable URL; mounting without its mask"
+            "but no resolvable URL; mounting without its mask",
         );
       }
 
@@ -151,7 +151,7 @@ export const createLighterBridge = ({
       if (url && !mask) {
         console.warn(
           `[mask-path] decode failed for detection ${id} in field ` +
-            `"${path}" (url=${url}); mounting without its mask`
+            `"${path}" (url=${url}); mounting without its mask`,
         );
       }
 

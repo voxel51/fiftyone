@@ -10,6 +10,6 @@ export default function useColorMappingContext() {
       colorScheme: currentColorScheme,
       seed: currentColorSeed,
     }),
-    [currentColorScheme, currentColorSeed]
+    [currentColorScheme, currentColorSeed],
   );
 }

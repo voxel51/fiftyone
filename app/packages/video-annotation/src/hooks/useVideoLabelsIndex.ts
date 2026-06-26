@@ -31,7 +31,7 @@ const toPerFrameField = (path: string): string =>
 export function useVideoLabelsIndex(
   stream: VideoFrameLabelsStream | null,
   fields: string[],
-  dynamicAttributes: string[] = []
+  dynamicAttributes: string[] = [],
 ): VideoLabelsIndexState {
   const [state, setState] = useState<VideoLabelsIndexState>(EMPTY);
   const fieldsKey = fields.join(",");

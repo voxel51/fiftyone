@@ -12,7 +12,7 @@ import {
 function keyframe(
   id: string,
   bbox: [number, number, number, number],
-  _id?: string
+  _id?: string,
 ): SyntheticBox {
   return {
     id,
@@ -39,7 +39,7 @@ describe("PropagationBrowserAgent.infer", () => {
     const right = keyframe(
       "instance-inst-1",
       [1.0, 1.0, 0.1, 0.1],
-      "oid-right"
+      "oid-right",
     );
 
     const context: PropagationContext = {
@@ -50,7 +50,7 @@ describe("PropagationBrowserAgent.infer", () => {
     };
 
     const result = (await agent.infer(
-      context
+      context,
     )) as SyncInferenceResult<PropagationInferenceResult> & { labelId: string };
 
     expect(result.type).toBe("sync");

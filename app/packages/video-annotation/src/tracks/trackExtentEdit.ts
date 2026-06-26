@@ -71,7 +71,7 @@ const clampShift = (
   first: number,
   last: number,
   totalFrames: number,
-  neighbors: ReadonlyArray<readonly [number, number]>
+  neighbors: ReadonlyArray<readonly [number, number]>,
 ): number => {
   let lo = 1 - first; // first + delta >= 1
   let hi = totalFrames - last; // last + delta <= totalFrames
@@ -95,7 +95,7 @@ const clampShift = (
  * for drags that snapped back to the original extent.
  */
 export function resolveTrackExtentEdit(
-  input: ResolveTrackExtentEditInput
+  input: ResolveTrackExtentEditInput,
 ): TrackExtentEdit {
   const { mode, fps, totalFrames } = input;
   if (!Number.isFinite(fps) || fps <= 0) {
@@ -112,7 +112,7 @@ export function resolveTrackExtentEdit(
   if (mode === "resize-end") {
     const newLast = Math.min(
       Math.max(lastFrameOf(input.newEndSec, fps), origFirst),
-      totalFrames
+      totalFrames,
     );
 
     if (newLast > origLast) {
@@ -133,7 +133,7 @@ export function resolveTrackExtentEdit(
   if (mode === "resize-start") {
     const newFirst = Math.max(
       Math.min(firstFrameOf(input.newStartSec, fps), origLast),
-      1
+      1,
     );
 
     if (newFirst < origFirst) {
@@ -157,7 +157,7 @@ export function resolveTrackExtentEdit(
     origFirst,
     origLast,
     totalFrames,
-    input.neighborSegments ?? []
+    input.neighborSegments ?? [],
   );
 
   if (delta === 0) {

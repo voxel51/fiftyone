@@ -35,7 +35,7 @@ export interface TrackEditSplit {
  */
 export const splitTrackEdit = (
   value: Record<string, unknown>,
-  dynamicKeys: ReadonlySet<string>
+  dynamicKeys: ReadonlySet<string>,
 ): TrackEditSplit => {
   const trackPartial: Record<string, unknown> = {};
   const dynamicPartial: Record<string, unknown> = {};
@@ -81,7 +81,7 @@ interface TrackFanOutEngine {
 export const buildTrackFanOut = (
   engine: TrackFanOutEngine,
   anchor: LabelRef,
-  trackPartial: Record<string, unknown>
+  trackPartial: Record<string, unknown>,
 ): FanOutWrite[] => {
   if (Object.keys(trackPartial).length === 0) {
     return [];
@@ -125,7 +125,7 @@ export const buildForwardFill = (
   engine: TrackFanOutEngine,
   anchor: LabelRef,
   dynamicPartial: Record<string, unknown>,
-  anchorBefore: Record<string, unknown>
+  anchorBefore: Record<string, unknown>,
 ): FanOutWrite[] => {
   if (Object.keys(dynamicPartial).length === 0 || anchor.frame == null) {
     return [];
@@ -141,7 +141,7 @@ export const buildForwardFill = (
         ref.path === anchor.path &&
         ref.instanceId === anchor.instanceId &&
         ref.frame != null &&
-        ref.frame > anchor.frame
+        ref.frame > anchor.frame,
     )
     .sort((a, b) => (a.frame as number) - (b.frame as number));
 

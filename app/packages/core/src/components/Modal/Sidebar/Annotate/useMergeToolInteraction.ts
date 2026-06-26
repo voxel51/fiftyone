@@ -66,7 +66,7 @@ export const useMergeToolInteraction = (): LighterInteractionPolicy => {
 
   // selection cleared (e.g. right-click deselect): drop the target + exit
   const on = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
   on(
     "lighter:selection-cleared",
@@ -80,11 +80,11 @@ export const useMergeToolInteraction = (): LighterInteractionPolicy => {
       if (!payload.ignoreSideEffects) {
         onExitRef.current();
       }
-    }, [])
+    }, []),
   );
 
   return useMemo(
     () => ({ interceptSelect, interceptDeselect }),
-    [interceptSelect, interceptDeselect]
+    [interceptSelect, interceptDeselect],
   );
 };

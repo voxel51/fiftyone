@@ -42,7 +42,7 @@ export const addLabel = atom(
   (get, set, newLabel: AnnotationLabel) => {
     const existingLabels = get(labels);
     const alreadyHaveIt = existingLabels.some(
-      (label) => label.overlay.id === newLabel.overlay.id
+      (label) => label.overlay.id === newLabel.overlay.id,
     );
 
     if (!alreadyHaveIt) {
@@ -50,7 +50,7 @@ export const addLabel = atom(
 
       set(labels, newList.sort(byLabelName));
     }
-  }
+  },
 );
 
 export const labels = atom<Array<AnnotationLabel>>([]);
@@ -109,7 +109,7 @@ const useUpdateLabelAtom = () => {
       }
 
       return false;
-    }, [])
+    }, []),
   );
 };
 
@@ -169,14 +169,14 @@ export const useLabelsContext = (): LabelsContext => {
     useCallback(
       (get, _set, id: string) =>
         get(labels).find((label) => label.data._id === id),
-      []
-    )
+      [],
+    ),
   );
 
   const removeLabelFromSidebar = useCallback(
     (labelId: string) =>
       setLabels((prev) => prev.filter((label) => label.data._id !== labelId)),
-    [setLabels]
+    [setLabels],
   );
 
   return useMemo(
@@ -186,7 +186,7 @@ export const useLabelsContext = (): LabelsContext => {
       removeLabelFromSidebar,
       updateLabelData,
     }),
-    [addLabelToSidebar, getLabelById, removeLabelFromSidebar, updateLabelData]
+    [addLabelToSidebar, getLabelById, removeLabelFromSidebar, updateLabelData],
   );
 };
 
@@ -223,9 +223,9 @@ const sameEntry = (a: AnnotationLabel, b: AnnotationLabel) =>
 const stubOverlay = (
   id: string,
   field: string,
-  label: AnnotationLabelData
+  label: AnnotationLabelData,
 ): AnnotationLabel["overlay"] =>
-  ({ id, field, label } as unknown as AnnotationLabel["overlay"]);
+  ({ id, field, label }) as unknown as AnnotationLabel["overlay"];
 
 /**
  * The sidebar label list, derived from the annotation engine (the engine is
@@ -306,7 +306,7 @@ export default function useLabels() {
             : stubOverlay(
                 data._id,
                 path,
-                data as AnnotationLabelData
+                data as AnnotationLabelData,
               ))) as AnnotationLabel["overlay"];
 
         const entry = {
@@ -376,7 +376,7 @@ export default function useLabels() {
             path,
             instanceId: label._id,
           }))
-        : []
+        : [],
     );
 
     if (all.length === 1) {
@@ -405,10 +405,10 @@ export default function useLabels() {
 
   // gated mounts insert without an engine change
   const on = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
   on(
     "lighter:overlay-added",
-    useCallback(() => reconcile(), [reconcile])
+    useCallback(() => reconcile(), [reconcile]),
   );
 }

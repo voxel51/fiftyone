@@ -31,7 +31,7 @@ const deserializeFormData = (data: unknown): unknown => {
 
     // recursively deserialize objects
     return Object.fromEntries(
-      Object.entries(obj).map(([k, v]) => [k, deserializeFormData(v)])
+      Object.entries(obj).map(([k, v]) => [k, deserializeFormData(v)]),
     );
   }
 
@@ -66,7 +66,7 @@ export default function RJSF(props: SmartFormProps) {
 
   if (!props.schema && !props.jsonSchema) {
     console.log(
-      "[SmartForm][RJSF] Either `schema` or `jsonSchema` must be provided"
+      "[SmartForm][RJSF] Either `schema` or `jsonSchema` must be provided",
     );
     return null;
   }
@@ -89,7 +89,7 @@ export default function RJSF(props: SmartFormProps) {
     if (isObject(props.data) && isObject(event.formData)) {
       const filteredData = filterEmptyArrays(
         event.formData as Record<string, unknown>,
-        props.data as Record<string, unknown>
+        props.data as Record<string, unknown>,
       );
       props.onChange(filteredData);
     } else {
@@ -121,7 +121,7 @@ export default function RJSF(props: SmartFormProps) {
         transformErrors(
           errors,
           uiSchema,
-          deserializeFormData(data) as Record<string, unknown>
+          deserializeFormData(data) as Record<string, unknown>,
         )
       }
       {...props.formProps}

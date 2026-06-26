@@ -98,7 +98,7 @@ const reselect = async (modal: ModalPom, label = "cat") => {
 const inFreshContext = async (
   browser: Browser,
   fiftyoneLoader: AbstractFiftyoneLoader,
-  verify: (modal: ModalPom) => Promise<void>
+  verify: (modal: ModalPom) => Promise<void>,
 ) => {
   const context = await browser.newContext();
   const freshPage = await context.newPage();
@@ -144,7 +144,8 @@ test.describe.serial("2D annotation field move", () => {
 
     try {
       const saved = page.waitForResponse(
-        (r) => /\/sample\//.test(r.url()) && isSamplePatch(r.request().method())
+        (r) =>
+          /\/sample\//.test(r.url()) && isSamplePatch(r.request().method()),
       );
       await modal.sidebar.edit.moveFieldTo(to);
       await saved;
@@ -183,7 +184,7 @@ test.describe.serial("2D annotation field move", () => {
     const to = otherField(from);
 
     const saved = page.waitForResponse(
-      (r) => /\/sample\//.test(r.url()) && isSamplePatch(r.request().method())
+      (r) => /\/sample\//.test(r.url()) && isSamplePatch(r.request().method()),
     );
     await modal.sidebar.edit.moveFieldTo(to);
     await saved;

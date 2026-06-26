@@ -16,7 +16,7 @@ vi.mock("@fiftyone/state", () => ({
   useEventHandler: (
     _target: EventTarget | undefined,
     eventType: string,
-    handler: () => void
+    handler: () => void,
   ) => {
     hookState.handlers.set(eventType, handler);
   },
@@ -67,7 +67,7 @@ const makeFoScene = (position: [number, number, number] | null = [0, 0, 10]) =>
       position,
       lookAt: [0, 0, 0],
     },
-  } as any);
+  }) as any;
 
 describe("useFo3dCameraViewEvents", () => {
   beforeEach(() => {
@@ -86,7 +86,7 @@ describe("useFo3dCameraViewEvents", () => {
     const recomputeBounds = vi.fn();
     const finiteBox = new ThreeBox3(
       new Vector3(-1, -1, -1),
-      new Vector3(1, 1, 1)
+      new Vector3(1, 1, 1),
     ) as Box3;
 
     renderHook(() =>
@@ -99,7 +99,7 @@ describe("useFo3dCameraViewEvents", () => {
         foScene: makeFoScene(),
         settings: null,
         recomputeBounds,
-      })
+      }),
     );
 
     const topHandler = hookState.handlers.get(SET_TOP_VIEW_EVENT);
@@ -117,7 +117,7 @@ describe("useFo3dCameraViewEvents", () => {
     const recomputeBounds = vi.fn();
     const effectiveBox = new ThreeBox3(
       new Vector3(-2, -2, -2),
-      new Vector3(2, 2, 2)
+      new Vector3(2, 2, 2),
     ) as Box3;
 
     renderHook(() =>
@@ -130,7 +130,7 @@ describe("useFo3dCameraViewEvents", () => {
         foScene: makeFoScene(),
         settings: null,
         recomputeBounds,
-      })
+      }),
     );
 
     const topHandler = hookState.handlers.get(SET_TOP_VIEW_EVENT);
@@ -153,7 +153,7 @@ describe("useFo3dCameraViewEvents", () => {
     const recomputeBounds = vi.fn();
     const effectiveBox = new ThreeBox3(
       new Vector3(-2, -2, -2),
-      new Vector3(2, 2, 2)
+      new Vector3(2, 2, 2),
     ) as Box3;
 
     const { unmount } = renderHook(() =>
@@ -166,7 +166,7 @@ describe("useFo3dCameraViewEvents", () => {
         foScene: makeFoScene(),
         settings: null,
         recomputeBounds,
-      })
+      }),
     );
 
     const topHandler = hookState.handlers.get(SET_TOP_VIEW_EVENT);
@@ -187,7 +187,7 @@ describe("useFo3dCameraViewEvents", () => {
     const recomputeBounds = vi.fn();
     const finiteBox = new ThreeBox3(
       new Vector3(-1, -1, -1),
-      new Vector3(1, 1, 1)
+      new Vector3(1, 1, 1),
     ) as Box3;
 
     renderHook(() =>
@@ -200,7 +200,7 @@ describe("useFo3dCameraViewEvents", () => {
         foScene: makeFoScene([9, 9, 9]),
         settings: null,
         recomputeBounds,
-      })
+      }),
     );
 
     const egoHandler = hookState.handlers.get(SET_EGO_VIEW_EVENT);

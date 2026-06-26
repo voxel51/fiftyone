@@ -35,6 +35,6 @@ export const useFrameClock = (): Clock => {
         return () => listeners.delete(listener);
       },
     }),
-    [listeners]
+    [listeners],
   );
 };

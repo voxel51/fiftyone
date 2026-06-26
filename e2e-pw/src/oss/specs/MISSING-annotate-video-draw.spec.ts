@@ -47,7 +47,7 @@ test.afterAll(async ({ foWebServer }) => {
 const openAnnotate = async (
   fiftyoneLoader: AbstractFiftyoneLoader,
   modal: ModalPom,
-  page: import("src/oss/fixtures").Page
+  page: import("src/oss/fixtures").Page,
 ) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
@@ -61,7 +61,7 @@ const openAnnotate = async (
 const inFreshContext = async (
   browser: Browser,
   fiftyoneLoader: AbstractFiftyoneLoader,
-  verify: (modal: ModalPom) => Promise<void>
+  verify: (modal: ModalPom) => Promise<void>,
 ) => {
   const context = await browser.newContext();
   const freshPage = await context.newPage();
@@ -100,7 +100,7 @@ test.describe.serial("video per-frame detection drawing", () => {
     const saved = page.waitForResponse(
       (r) =>
         /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method())
+        ["POST", "PATCH", "PUT"].includes(r.request().method()),
     );
     await modal.sidebar.edit.selectFieldChoice("label", "vehicle");
     await modal.sidebar.edit.assert.verifyFieldValue("label", "vehicle");

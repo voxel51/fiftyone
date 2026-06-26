@@ -29,7 +29,7 @@ vi.mock("@fiftyone/lighter", () => {
 vi.mock("@fiftyone/annotation", () => ({
   useAnnotationEventHandler: (
     event: string,
-    cb: (payload: unknown) => void
+    cb: (payload: unknown) => void,
   ) => {
     annotationHandlers.set(event, cb);
   },
@@ -45,7 +45,7 @@ const fireAnnotation = (event: string, payload: unknown) =>
 
 // A stable scene reference per test — the hook keys the `bumpOnSceneReady`
 // effect on `scene` identity, so a fresh object per render would loop.
-const makeScene = () => ({ getEventChannel: () => "channel-1" } as never);
+const makeScene = () => ({ getEventChannel: () => "channel-1" }) as never;
 let scene: ReturnType<typeof makeScene>;
 
 beforeEach(() => {
@@ -115,7 +115,7 @@ describe("useTemporalOverlayVersion", () => {
 
     it("bumps on a TD label edit when the flag is on", () => {
       const { result } = renderHook(() =>
-        useTemporalOverlayVersion(scene, { listenLabelEdit: true })
+        useTemporalOverlayVersion(scene, { listenLabelEdit: true }),
       );
 
       fireAnnotation("annotation:labelEdit", {
@@ -127,7 +127,7 @@ describe("useTemporalOverlayVersion", () => {
 
     it("ignores edits to non-TD labels even when the flag is on", () => {
       const { result } = renderHook(() =>
-        useTemporalOverlayVersion(scene, { listenLabelEdit: true })
+        useTemporalOverlayVersion(scene, { listenLabelEdit: true }),
       );
 
       fireAnnotation("annotation:labelEdit", { label: { _cls: "Detection" } });
@@ -140,7 +140,7 @@ describe("useTemporalOverlayVersion", () => {
   describe("bumpOnSceneReady", () => {
     it("emits a one-shot bump once the scene is available", () => {
       const { result } = renderHook(() =>
-        useTemporalOverlayVersion(scene, { bumpOnSceneReady: true })
+        useTemporalOverlayVersion(scene, { bumpOnSceneReady: true }),
       );
 
       expect(result.current).toBe(1);
@@ -148,7 +148,7 @@ describe("useTemporalOverlayVersion", () => {
 
     it("does not bump on mount when the scene is null", () => {
       const { result } = renderHook(() =>
-        useTemporalOverlayVersion(null, { bumpOnSceneReady: true })
+        useTemporalOverlayVersion(null, { bumpOnSceneReady: true }),
       );
 
       expect(result.current).toBe(0);

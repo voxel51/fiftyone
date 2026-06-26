@@ -24,7 +24,7 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
-  "annotate-2d-classification"
+  "annotate-2d-classification",
 );
 
 /** Fixed ObjectId addressing the single sample (so we can deep-link the modal). */
@@ -36,7 +36,7 @@ const savedSample = (page: Page) =>
   page.waitForResponse(
     (r) =>
       /\/sample\//.test(r.url()) &&
-      ["POST", "PATCH", "PUT"].includes(r.request().method())
+      ["POST", "PATCH", "PUT"].includes(r.request().method()),
   );
 
 /** Clear the sample's classification so each serial test starts empty. */
@@ -106,10 +106,8 @@ test.describe.serial("2D annotation classification", () => {
     await expect
       .poll(
         async () =>
-          (
-            await annotateSDK.getClassificationState(datasetName, FIELD)
-          ).label,
-        { timeout: 15_000 }
+          (await annotateSDK.getClassificationState(datasetName, FIELD)).label,
+        { timeout: 15_000 },
       )
       .toBe("cloudy");
   });
@@ -126,10 +124,8 @@ test.describe.serial("2D annotation classification", () => {
     await expect
       .poll(
         async () =>
-          (
-            await annotateSDK.getClassificationState(datasetName, FIELD)
-          ).label,
-        { timeout: 15_000 }
+          (await annotateSDK.getClassificationState(datasetName, FIELD)).label,
+        { timeout: 15_000 },
       )
       .toBe("cloudy");
 
@@ -140,10 +136,9 @@ test.describe.serial("2D annotation classification", () => {
     await expect
       .poll(
         async () =>
-          (
-            await annotateSDK.getClassificationState(datasetName, FIELD)
-          ).present,
-        { timeout: 15_000 }
+          (await annotateSDK.getClassificationState(datasetName, FIELD))
+            .present,
+        { timeout: 15_000 },
       )
       .toBe(false);
   });
@@ -154,40 +149,37 @@ test.describe.serial("2D annotation classification", () => {
   // stays empty. Single-label delete/undo isn't wired through the engine's
   // restore the way list labels are. Re-enable once the engine restores a
   // deleted single label on undo.
-  test.fixme(
-    "a classification deletion is undoable",
-    async ({ annotateSDK, modal, page }) => {
-      await modal.sidebar.annotate.createClassification();
-      const saved = savedSample(page);
-      await modal.sidebar.edit.selectFieldChoice("label", "cloudy");
-      await saved;
-      await expect
-        .poll(
-          async () =>
-            (
-              await annotateSDK.getClassificationState(datasetName, FIELD)
-            ).label,
-          { timeout: 15_000 }
-        )
-        .toBe("cloudy");
+  test.fixme("a classification deletion is undoable", async ({
+    annotateSDK,
+    modal,
+    page,
+  }) => {
+    await modal.sidebar.annotate.createClassification();
+    const saved = savedSample(page);
+    await modal.sidebar.edit.selectFieldChoice("label", "cloudy");
+    await saved;
+    await expect
+      .poll(
+        async () =>
+          (await annotateSDK.getClassificationState(datasetName, FIELD)).label,
+        { timeout: 15_000 },
+      )
+      .toBe("cloudy");
 
-      const deleted = savedSample(page);
-      await modal.sidebar.edit.deleteLabel();
-      await deleted;
+    const deleted = savedSample(page);
+    await modal.sidebar.edit.deleteLabel();
+    await deleted;
 
-      await modal.sidebar.edit.assert.undoIsEnabled();
-      const restored = savedSample(page);
-      await modal.sidebar.edit.undo();
-      await restored;
-      await expect
-        .poll(
-          async () =>
-            (
-              await annotateSDK.getClassificationState(datasetName, FIELD)
-            ).label,
-          { timeout: 15_000 }
-        )
-        .toBe("cloudy");
-    }
-  );
+    await modal.sidebar.edit.assert.undoIsEnabled();
+    const restored = savedSample(page);
+    await modal.sidebar.edit.undo();
+    await restored;
+    await expect
+      .poll(
+        async () =>
+          (await annotateSDK.getClassificationState(datasetName, FIELD)).label,
+        { timeout: 15_000 },
+      )
+      .toBe("cloudy");
+  });
 });

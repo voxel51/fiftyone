@@ -27,9 +27,8 @@ vi.mock("./useDraftLockInteraction", () => ({
   useDraftLockInteraction: () => DRAFT,
 }));
 
-const { useLighterInteractionPolicy } = await import(
-  "./useLighterInteractionPolicy"
-);
+const { useLighterInteractionPolicy } =
+  await import("./useLighterInteractionPolicy");
 
 describe("useLighterInteractionPolicy", () => {
   it("aggregates the interceptors in precedence order: merge → generated-view → draft", () => {

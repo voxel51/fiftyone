@@ -54,7 +54,7 @@ const useVersionedSelector = <T>(
   subscribe: (listener: () => void) => () => void,
   getVersion: () => number,
   read: () => T,
-  equals: Equals<T> = Object.is
+  equals: Equals<T> = Object.is,
 ): T => {
   const cache = useRef<SelectorCache<T> | null>(null);
 
@@ -84,18 +84,18 @@ const useVersionedSelector = <T>(
 export const useEngineSelector = <T>(
   engine: AnnotationEngine,
   selector: (reads: EngineReads) => T,
-  equals?: Equals<T>
+  equals?: Equals<T>,
 ): T => {
   const subscribe = useCallback(
     (listener: () => void) => engine.subscribe(listener),
-    [engine]
+    [engine],
   );
 
   return useVersionedSelector(
     subscribe,
     () => engine.getVersion(),
     () => selector(engine),
-    equals
+    equals,
   );
 };
 
@@ -103,18 +103,18 @@ export const useEngineSelector = <T>(
 export const useInteraction = <T>(
   engine: AnnotationEngine,
   selector: (reads: InteractionReads) => T,
-  equals?: Equals<T>
+  equals?: Equals<T>,
 ): T => {
   const subscribe = useCallback(
     (listener: () => void) => engine.interaction.subscribe(listener),
-    [engine]
+    [engine],
   );
 
   return useVersionedSelector(
     subscribe,
     () => engine.interaction.getVersion(),
     () => selector(engine.interaction),
-    equals
+    equals,
   );
 };
 
@@ -122,7 +122,7 @@ export const useInteraction = <T>(
 export const useTemporal = <T>(
   engine: AnnotationEngine,
   selector: (reads: TemporalReads) => T,
-  equals?: Equals<T>
+  equals?: Equals<T>,
 ): T => {
   // presence events don't bump the engine version; a local counter folds
   // them into the snapshot key (sum of monotonic counters is monotonic)
@@ -141,14 +141,14 @@ export const useTemporal = <T>(
         unsubscribePresence();
       };
     },
-    [engine]
+    [engine],
   );
 
   return useVersionedSelector(
     subscribe,
     () => engine.getVersion() + presenceVersion.current,
     () => selector(engine.temporal),
-    equals
+    equals,
   );
 };
 
@@ -173,7 +173,7 @@ export const useSignalValue = <T>(
   engine: AnnotationEngine,
   topic: string,
   key: EntityId | null,
-  initial: T
+  initial: T,
 ): T => {
   const [value, setValue] = useState<T>(initial);
 
@@ -196,7 +196,7 @@ export const useSignalValue = <T>(
 /** The shared ref-addressed write-half, bound to the ambient sample. */
 export const useSurfaceActions = (
   engine: AnnotationEngine,
-  surface: string
+  surface: string,
 ): SurfaceActions =>
   useMemo(
     () =>
@@ -205,5 +205,5 @@ export const useSurfaceActions = (
         surface,
         getSample: () => engine.ambientSample(),
       }),
-    [engine, surface]
+    [engine, surface],
   );

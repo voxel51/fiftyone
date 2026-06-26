@@ -24,12 +24,12 @@ import type { AdapterMap, LabelKindAdapter, SurfaceBridge } from "./types";
 export const registerBridgeLoop = <Handle, Descriptor>(
   engine: AnnotationEngine,
   bridge: SurfaceBridge<Handle, Descriptor>,
-  adapters: AdapterMap<Handle, Descriptor>
+  adapters: AdapterMap<Handle, Descriptor>,
 ): (() => void) => {
   const kinds = Object.keys(adapters) as LabelType[];
 
   const adapterFor = (
-    path: string
+    path: string,
   ): LabelKindAdapter<Handle, Descriptor> | undefined =>
     adapters[engine.getLabelType(path)];
 
@@ -53,7 +53,7 @@ export const registerBridgeLoop = <Handle, Descriptor>(
   const mountFresh = (
     ref: LabelRef,
     label: LabelData,
-    adapter: LabelKindAdapter<Handle, Descriptor>
+    adapter: LabelKindAdapter<Handle, Descriptor>,
   ): void => {
     const handle = bridge.mount(adapter.buildHandle(ref, label));
 
@@ -195,7 +195,7 @@ export const registerBridgeLoop = <Handle, Descriptor>(
   const applyFlag = (
     apply: ((handle: Handle, on: boolean) => void) | undefined,
     prev: Map<string, LabelRef>,
-    next: Map<string, LabelRef>
+    next: Map<string, LabelRef>,
   ): void => {
     if (!apply) {
       return;
@@ -225,10 +225,10 @@ export const registerBridgeLoop = <Handle, Descriptor>(
   const onInteraction = (): void => {
     const { interaction } = engine;
     const nextActive = new Map(
-      interaction.getActive().map((ref) => [refKey(ref), ref])
+      interaction.getActive().map((ref) => [refKey(ref), ref]),
     );
     const nextHovered = new Map(
-      interaction.getHovered().map((ref) => [refKey(ref), ref])
+      interaction.getHovered().map((ref) => [refKey(ref), ref]),
     );
     const nextAnchor = interaction.getAnchor();
 

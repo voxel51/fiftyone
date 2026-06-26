@@ -32,9 +32,9 @@ export const getSampleSrc = (url: string) => {
 export const mapSampleResponse = <
   T extends Nullable<{
     readonly sample?: Sample;
-  }>
+  }>,
 >(
-  data: T
+  data: T,
 ): T => {
   // This value may be a string that needs to be deserialized
   // Only occurs after calling useUpdateSample for 3D sample
@@ -55,7 +55,7 @@ export const fieldsMatcher = (
 
   matcher: (field: StrictField) => boolean,
   present?: Set<string>,
-  prefix = ""
+  prefix = "",
 ): string[] => {
   return fields
     .filter((field) => matcher(field))
@@ -154,8 +154,8 @@ export const getEmbeddedLabelFields = (fields: StrictField[], prefix = "") =>
         parent.fields || [],
         labelsMatcher(parent),
         undefined,
-        `${prefix}${parent.name}.`
-      )
+        `${prefix}${parent.name}.`,
+      ),
     )
     .flat();
 
@@ -175,7 +175,7 @@ export function resolveSelectionIcon(
   selectedSamples: Map<string, SelectionType>,
   style: SelectionStyle,
   sampleId: string,
-  isSelected: boolean
+  isSelected: boolean,
 ): {
   selectionType: SelectionType | null;
   selectionIcon: SelectionIconStyle | null;

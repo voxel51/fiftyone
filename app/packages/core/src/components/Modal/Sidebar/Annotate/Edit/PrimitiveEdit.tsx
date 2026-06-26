@@ -32,13 +32,13 @@ export default function PrimitiveEdit({
   const primitiveSchema = generatePrimitiveSchema(path, currentLabelSchema);
 
   const [fieldValue, setFieldValue] = useState<Primitive | Date>(
-    parseDatabaseValue(type, value)
+    parseDatabaseValue(type, value),
   );
 
   // synchronize external value changes with field
   useEffect(
     () => setFieldValue(parseDatabaseValue(type, value)),
-    [type, value]
+    [type, value],
   );
 
   // need to use a ref to access field value in command callback;
@@ -85,10 +85,10 @@ export default function PrimitiveEdit({
           } else {
             sample.setField(path, oldValueSerialized);
           }
-        }
+        },
       );
     }, [path, sample, type, value]),
-    () => true
+    () => true,
   );
 
   const handleChange = useCallback(
@@ -100,7 +100,7 @@ export default function PrimitiveEdit({
         editCommand.callback();
       }
     },
-    [editCommand]
+    [editCommand],
   );
 
   return (

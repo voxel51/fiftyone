@@ -42,9 +42,8 @@ import {
   type MockScene,
 } from "./__testing__/mocks";
 
-const { useDetectionMode, _unsafeDetectionModeActiveAtom } = await import(
-  "./useDetectionMode"
-);
+const { useDetectionMode, _unsafeDetectionModeActiveAtom } =
+  await import("./useDetectionMode");
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 

@@ -15,7 +15,7 @@ const timeOfFrame = (frame: number): number => (frame - 1) / FPS;
 
 /** Minimal tracked-detection snapshot row the resolver reads. */
 const det = (
-  keyframe: boolean
+  keyframe: boolean,
 ): Pick<SyntheticBox, "id" | "keyframe" | "instance"> => ({
   id: OVERLAY,
   keyframe,
@@ -29,7 +29,7 @@ const det = (
  */
 const fakeStream = (
   totalFrames: number,
-  keyframeByFrame: Record<number, boolean>
+  keyframeByFrame: Record<number, boolean>,
 ): VideoFrameLabelsStream =>
   ({
     fps: FPS,
@@ -44,7 +44,7 @@ const fakeStream = (
           : [],
       };
     },
-  } as unknown as VideoFrameLabelsStream);
+  }) as unknown as VideoFrameLabelsStream;
 
 describe("resolvePropagationTarget", () => {
   it("brackets between two keyframes around the playhead", () => {
@@ -52,7 +52,7 @@ describe("resolvePropagationTarget", () => {
     const target = resolvePropagationTarget(
       stream,
       [INSTANCE],
-      timeOfFrame(20)
+      timeOfFrame(20),
     );
     expect(target).toEqual({
       ok: true,
@@ -70,7 +70,7 @@ describe("resolvePropagationTarget", () => {
     const target = resolvePropagationTarget(
       stream,
       [INSTANCE],
-      timeOfFrame(20)
+      timeOfFrame(20),
     );
     expect(target).toEqual({
       ok: true,
@@ -87,7 +87,7 @@ describe("resolvePropagationTarget", () => {
     const target = resolvePropagationTarget(
       stream,
       [INSTANCE],
-      timeOfFrame(30)
+      timeOfFrame(30),
     );
     expect(target).toMatchObject({
       ok: true,
@@ -102,7 +102,7 @@ describe("resolvePropagationTarget", () => {
     const target = resolvePropagationTarget(
       stream,
       [INSTANCE],
-      timeOfFrame(10)
+      timeOfFrame(10),
     );
     expect(target).toEqual({
       ok: false,
@@ -116,7 +116,7 @@ describe("resolvePropagationTarget", () => {
     const target = resolvePropagationTarget(
       stream,
       [INSTANCE],
-      timeOfFrame(10)
+      timeOfFrame(10),
     );
     expect(target).toEqual({
       ok: false,
@@ -129,7 +129,7 @@ describe("resolvePropagationTarget", () => {
     const target = resolvePropagationTarget(
       stream,
       [INSTANCE],
-      timeOfFrame(10)
+      timeOfFrame(10),
     );
     expect(target).toEqual({
       ok: false,

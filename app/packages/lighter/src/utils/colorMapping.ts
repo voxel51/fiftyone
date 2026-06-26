@@ -37,7 +37,7 @@ export interface StrokeStyles {
 export function getLabelColorFromContext(
   path: string,
   label: unknown,
-  context: ColorMappingContext
+  context: ColorMappingContext,
 ): string {
   // Convert ColorSchemeInput to Coloring interface
   const coloring = {
@@ -80,7 +80,7 @@ export function getLabelColorFromContext(
         ? [...field.maskTargetsColors]
         : undefined,
       valueColors: field.valueColors ? [...field.valueColors] : undefined,
-    })
+    }),
   );
   const embeddedDocType = typedLabel["_cls"];
   const isPolyline3D =
@@ -117,7 +117,7 @@ export function getLabelColorFromContext(
  */
 export function getOverlayColor(
   overlay: BaseOverlay,
-  context: ColorMappingContext
+  context: ColorMappingContext,
 ): string {
   return getLabelColorFromContext(overlay.field, overlay.label, context);
 }

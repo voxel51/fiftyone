@@ -195,7 +195,7 @@ export class SelectionManager {
   private emitSelectionChanged(
     selectedIds: string[],
     deselectedIds: string[],
-    ignoreSideEffects = false
+    ignoreSideEffects = false,
   ): void {
     if (selectedIds.length === 0 && deselectedIds.length === 0) return;
 

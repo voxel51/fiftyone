@@ -63,7 +63,7 @@ describe("resolveSyntheticId", () => {
         instance: { _cls: "Instance", _id: "i1" },
         index: 3,
         _id: "d1",
-      })
+      }),
     ).toBe("instance-i1");
   });
 

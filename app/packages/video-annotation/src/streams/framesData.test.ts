@@ -24,7 +24,7 @@ describe("parseFramesData", () => {
         doc(1, [{ _id: "d1", instance: { _id: "A", _cls: "Instance" } }]),
         doc(2, [{ _id: "d2", instance: { _id: "A", _cls: "Instance" } }]),
       ],
-      DETECTIONS
+      DETECTIONS,
     );
 
     expect(Object.keys(data)).toEqual(["1", "2"]);
@@ -47,7 +47,7 @@ describe("parseFramesData", () => {
           },
         ]),
       ],
-      DETECTIONS
+      DETECTIONS,
     );
 
     const el = data[1]["frames.detections"][0];
@@ -74,7 +74,7 @@ describe("parseFramesData", () => {
       {
         "frames.detections": LabelType.Detections,
         "frames.polylines": LabelType.Polylines,
-      }
+      },
     );
 
     expect(data[1]["frames.detections"][0]).toMatchObject({
@@ -98,7 +98,7 @@ describe("parseFramesData", () => {
   it("respects a non-default per-frame field name", () => {
     const data = parseFramesData(
       [{ frame_number: 5, boxes: { detections: [{ _id: "d1" }] } }],
-      { "frames.boxes": LabelType.Detections }
+      { "frames.boxes": LabelType.Detections },
     );
 
     expect(data[5]["frames.boxes"]).toHaveLength(1);

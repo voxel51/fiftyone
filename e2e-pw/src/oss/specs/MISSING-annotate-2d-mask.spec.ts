@@ -117,10 +117,10 @@ test.beforeAll(
       });
       await annotateSDK.addFieldToActiveLabelSchema(
         cfg.datasetName,
-        "detections"
+        "detections",
       );
     }
-  }
+  },
 );
 
 test.afterAll(async ({ foWebServer }) => {
@@ -140,7 +140,7 @@ const inFreshContext = async (
   browser: Browser,
   fiftyoneLoader: AbstractFiftyoneLoader,
   datasetName: string,
-  verify: (modal: ModalPom) => Promise<void>
+  verify: (modal: ModalPom) => Promise<void>,
 ) => {
   const context = await browser.newContext();
   const freshPage = await context.newPage();
@@ -205,7 +205,7 @@ for (const cfg of KINDS) {
       try {
         const saved = page.waitForResponse(
           (r) =>
-            /\/sample\//.test(r.url()) && isSamplePatch(r.request().method())
+            /\/sample\//.test(r.url()) && isSamplePatch(r.request().method()),
         );
         await modal.sidebar.edit.removeMask();
         await saved;
@@ -236,7 +236,8 @@ for (const cfg of KINDS) {
       await modal.sidebar.edit.assert.hasMask(true);
 
       const saved = page.waitForResponse(
-        (r) => /\/sample\//.test(r.url()) && isSamplePatch(r.request().method())
+        (r) =>
+          /\/sample\//.test(r.url()) && isSamplePatch(r.request().method()),
       );
       await modal.sidebar.edit.removeMask();
       await saved;
@@ -249,7 +250,7 @@ for (const cfg of KINDS) {
         async (freshModal) => {
           await freshModal.sidebar.annotate.selectActiveLabel("cat", 0);
           await freshModal.sidebar.edit.assert.hasMask(false);
-        }
+        },
       );
     });
   });

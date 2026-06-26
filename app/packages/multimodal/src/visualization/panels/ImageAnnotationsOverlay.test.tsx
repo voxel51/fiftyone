@@ -29,11 +29,15 @@ beforeEach(() => {
             target: el,
           } as ResizeObserverEntry,
         ],
-        this
+        this,
       );
     }
-    disconnect() { return undefined; }
-    unobserve() { return undefined; }
+    disconnect() {
+      return undefined;
+    }
+    unobserve() {
+      return undefined;
+    }
   };
 });
 
@@ -46,7 +50,10 @@ const GREEN: RgbaColor = [0, 1, 0, 0.5];
 const WHITE: RgbaColor = [1, 1, 1, 1];
 const BLACK: RgbaColor = [0, 0, 0, 1];
 
-function requireElement<T extends Element>(container: HTMLElement, selector: string): T {
+function requireElement<T extends Element>(
+  container: HTMLElement,
+  selector: string,
+): T {
   const el = container.querySelector<T>(selector);
   expect(el, `Expected element matching selector: ${selector}`).toBeTruthy();
   if (!el) throw new Error(`Missing element: ${selector}`);
@@ -55,13 +62,21 @@ function requireElement<T extends Element>(container: HTMLElement, selector: str
 
 function requireAttribute(el: Element, attr: string): string {
   const val = el.getAttribute(attr);
-  expect(val, `Expected attribute "${attr}" on <${el.tagName.toLowerCase()}>`).not.toBeNull();
+  expect(
+    val,
+    `Expected attribute "${attr}" on <${el.tagName.toLowerCase()}>`,
+  ).not.toBeNull();
   if (val === null) throw new Error(`Missing attribute: ${attr}`);
   return val;
 }
 
 function emptySet(): ImageAnnotationsVisualization {
-  return { kind: VISUALIZATION_KIND.IMAGE_ANNOTATIONS, circles: [], points: [], texts: [] };
+  return {
+    kind: VISUALIZATION_KIND.IMAGE_ANNOTATIONS,
+    circles: [],
+    points: [],
+    texts: [],
+  };
 }
 
 function render200x100(annotations: ImageAnnotationsVisualization[]) {
@@ -74,7 +89,7 @@ function render200x100(annotations: ImageAnnotationsVisualization[]) {
       imageWidth={200}
       imageHeight={100}
       fit="contain"
-    />
+    />,
   );
 }
 
@@ -92,11 +107,24 @@ describe("ImageAnnotationsOverlay", () => {
   it("renders only an aria-hidden container when imageWidth is 0", () => {
     const { container } = render(
       <ImageAnnotationsOverlay
-        annotations={[{ ...emptySet(), circles: [{ position: [0, 0], diameter: 10, thickness: 1, outlineColor: RED, fillColor: null }] }]}
+        annotations={[
+          {
+            ...emptySet(),
+            circles: [
+              {
+                position: [0, 0],
+                diameter: 10,
+                thickness: 1,
+                outlineColor: RED,
+                fillColor: null,
+              },
+            ],
+          },
+        ]}
         imageWidth={0}
         imageHeight={100}
         fit="contain"
-      />
+      />,
     );
     expect(container.querySelector("svg")).toBeNull();
   });
@@ -104,11 +132,24 @@ describe("ImageAnnotationsOverlay", () => {
   it("renders only an aria-hidden container when imageHeight is 0", () => {
     const { container } = render(
       <ImageAnnotationsOverlay
-        annotations={[{ ...emptySet(), circles: [{ position: [0, 0], diameter: 10, thickness: 1, outlineColor: RED, fillColor: null }] }]}
+        annotations={[
+          {
+            ...emptySet(),
+            circles: [
+              {
+                position: [0, 0],
+                diameter: 10,
+                thickness: 1,
+                outlineColor: RED,
+                fillColor: null,
+              },
+            ],
+          },
+        ]}
         imageWidth={200}
         imageHeight={0}
         fit="contain"
-      />
+      />,
     );
     expect(container.querySelector("svg")).toBeNull();
   });
@@ -119,10 +160,20 @@ describe("ImageAnnotationsOverlay", () => {
 
   it("positions the SVG with letterbox offsets for a wide image in contain mode", () => {
     // 200×100 in 400×300: constrained by width → rect 400×200, y-offset 50
-    const { container } = render200x100([{
-      ...emptySet(),
-      circles: [{ position: [100, 50], diameter: 20, thickness: 1, outlineColor: RED, fillColor: null }],
-    }]);
+    const { container } = render200x100([
+      {
+        ...emptySet(),
+        circles: [
+          {
+            position: [100, 50],
+            diameter: 20,
+            thickness: 1,
+            outlineColor: RED,
+            fillColor: null,
+          },
+        ],
+      },
+    ]);
 
     const svg = requireElement<SVGSVGElement>(container, "svg");
     expect(svg.style.left).toBe("0px");
@@ -137,14 +188,24 @@ describe("ImageAnnotationsOverlay", () => {
     // rectHeight = 300, rectWidth = 300 * 0.5 = 150, x = (400-150)/2 = 125
     const { container } = render(
       <ImageAnnotationsOverlay
-        annotations={[{
-          ...emptySet(),
-          circles: [{ position: [0, 0], diameter: 10, thickness: 1, outlineColor: RED, fillColor: null }],
-        }]}
+        annotations={[
+          {
+            ...emptySet(),
+            circles: [
+              {
+                position: [0, 0],
+                diameter: 10,
+                thickness: 1,
+                outlineColor: RED,
+                fillColor: null,
+              },
+            ],
+          },
+        ]}
         imageWidth={100}
         imageHeight={200}
         fit="contain"
-      />
+      />,
     );
 
     const svg = requireElement<SVGSVGElement>(container, "svg");
@@ -155,13 +216,23 @@ describe("ImageAnnotationsOverlay", () => {
   });
 
   it("sets the SVG viewBox to match the image's natural pixel dimensions", () => {
-    const { container } = render200x100([{
-      ...emptySet(),
-      circles: [{ position: [0, 0], diameter: 10, thickness: 1, outlineColor: RED, fillColor: null }],
-    }]);
+    const { container } = render200x100([
+      {
+        ...emptySet(),
+        circles: [
+          {
+            position: [0, 0],
+            diameter: 10,
+            thickness: 1,
+            outlineColor: RED,
+            fillColor: null,
+          },
+        ],
+      },
+    ]);
 
     expect(container.querySelector("svg")?.getAttribute("viewBox")).toBe(
-      "0 0 200 100"
+      "0 0 200 100",
     );
   });
 
@@ -172,10 +243,20 @@ describe("ImageAnnotationsOverlay", () => {
   it("renders two nested circles per annotation: fill interior and stroke outline", () => {
     // The interactive CirclePrimitive renders [0] a fill circle and [1] a stroke
     // circle. Colours flow through CSS custom properties, not SVG attributes.
-    const { container } = render200x100([{
-      ...emptySet(),
-      circles: [{ position: [60, 40], diameter: 30, thickness: 3, outlineColor: RED, fillColor: GREEN }],
-    }]);
+    const { container } = render200x100([
+      {
+        ...emptySet(),
+        circles: [
+          {
+            position: [60, 40],
+            diameter: 30,
+            thickness: 3,
+            outlineColor: RED,
+            fillColor: GREEN,
+          },
+        ],
+      },
+    ]);
 
     const circles = container.querySelectorAll("circle");
     expect(circles).toHaveLength(2);
@@ -188,10 +269,20 @@ describe("ImageAnnotationsOverlay", () => {
   });
 
   it("stroke circle always has fill=none", () => {
-    const { container } = render200x100([{
-      ...emptySet(),
-      circles: [{ position: [0, 0], diameter: 10, thickness: 1, outlineColor: RED, fillColor: null }],
-    }]);
+    const { container } = render200x100([
+      {
+        ...emptySet(),
+        circles: [
+          {
+            position: [0, 0],
+            diameter: 10,
+            thickness: 1,
+            outlineColor: RED,
+            fillColor: null,
+          },
+        ],
+      },
+    ]);
 
     const circles = container.querySelectorAll("circle");
     expect(circles[1].getAttribute("fill")).toBe("none");
@@ -205,17 +296,25 @@ describe("ImageAnnotationsOverlay", () => {
     // The interactive renderer uses <polygon> for line-loop (auto-closes the
     // stroke path) rather than <polyline>. Two polygons are rendered: one for
     // the fill interior and one for the stroke.
-    const { container } = render200x100([{
-      ...emptySet(),
-      points: [{
-        type: "line-loop",
-        points: [[0, 0], [10, 0], [10, 10]],
-        thickness: 1,
-        outlineColor: RED,
-        outlineColors: [],
-        fillColor: null,
-      }],
-    }]);
+    const { container } = render200x100([
+      {
+        ...emptySet(),
+        points: [
+          {
+            type: "line-loop",
+            points: [
+              [0, 0],
+              [10, 0],
+              [10, 10],
+            ],
+            thickness: 1,
+            outlineColor: RED,
+            outlineColors: [],
+            fillColor: null,
+          },
+        ],
+      },
+    ]);
 
     const polygons = container.querySelectorAll("polygon");
     expect(polygons.length).toBeGreaterThanOrEqual(1);
@@ -225,17 +324,25 @@ describe("ImageAnnotationsOverlay", () => {
   });
 
   it("does not add a closing point to a line-strip", () => {
-    const { container } = render200x100([{
-      ...emptySet(),
-      points: [{
-        type: "line-strip",
-        points: [[0, 0], [10, 0], [10, 10]],
-        thickness: 1,
-        outlineColor: RED,
-        outlineColors: [],
-        fillColor: null,
-      }],
-    }]);
+    const { container } = render200x100([
+      {
+        ...emptySet(),
+        points: [
+          {
+            type: "line-strip",
+            points: [
+              [0, 0],
+              [10, 0],
+              [10, 10],
+            ],
+            thickness: 1,
+            outlineColor: RED,
+            outlineColors: [],
+            fillColor: null,
+          },
+        ],
+      },
+    ]);
 
     const polyline = requireElement<SVGPolylineElement>(container, "polyline");
     const pairs = requireAttribute(polyline, "points").trim().split(/\s+/);
@@ -243,17 +350,26 @@ describe("ImageAnnotationsOverlay", () => {
   });
 
   it("renders a line-list as individual <line> elements for each segment pair", () => {
-    const { container } = render200x100([{
-      ...emptySet(),
-      points: [{
-        type: "line-list",
-        points: [[0, 0], [10, 10], [20, 0], [30, 10]],
-        thickness: 2,
-        outlineColor: RED,
-        outlineColors: [],
-        fillColor: null,
-      }],
-    }]);
+    const { container } = render200x100([
+      {
+        ...emptySet(),
+        points: [
+          {
+            type: "line-list",
+            points: [
+              [0, 0],
+              [10, 10],
+              [20, 0],
+              [30, 10],
+            ],
+            thickness: 2,
+            outlineColor: RED,
+            outlineColors: [],
+            fillColor: null,
+          },
+        ],
+      },
+    ]);
 
     const lines = container.querySelectorAll("line");
     expect(lines).toHaveLength(2);
@@ -266,17 +382,24 @@ describe("ImageAnnotationsOverlay", () => {
   it("renders one circle per individual point", () => {
     // The interactive renderer draws a <circle> for each point; colour is
     // applied via CSS custom property, not the fill attribute.
-    const { container } = render200x100([{
-      ...emptySet(),
-      points: [{
-        type: "points",
-        points: [[5, 5], [15, 15]],
-        thickness: 4,
-        outlineColor: RED,
-        outlineColors: [WHITE, BLACK],
-        fillColor: null,
-      }],
-    }]);
+    const { container } = render200x100([
+      {
+        ...emptySet(),
+        points: [
+          {
+            type: "points",
+            points: [
+              [5, 5],
+              [15, 15],
+            ],
+            thickness: 4,
+            outlineColor: RED,
+            outlineColors: [WHITE, BLACK],
+            fillColor: null,
+          },
+        ],
+      },
+    ]);
 
     const circles = container.querySelectorAll("circle");
     expect(circles).toHaveLength(2);
@@ -291,10 +414,20 @@ describe("ImageAnnotationsOverlay", () => {
   // -------------------------------------------------------------------------
 
   it("renders a text element at the annotation position", () => {
-    const { container } = render200x100([{
-      ...emptySet(),
-      texts: [{ position: [50, 30], text: "hello", fontSize: 12, textColor: WHITE, backgroundColor: null }],
-    }]);
+    const { container } = render200x100([
+      {
+        ...emptySet(),
+        texts: [
+          {
+            position: [50, 30],
+            text: "hello",
+            fontSize: 12,
+            textColor: WHITE,
+            backgroundColor: null,
+          },
+        ],
+      },
+    ]);
 
     const text = requireElement<SVGTextElement>(container, "text");
     expect(text.getAttribute("x")).toBe("50");
@@ -303,10 +436,20 @@ describe("ImageAnnotationsOverlay", () => {
   });
 
   it("renders a background rect when backgroundColor is set", () => {
-    const { container } = render200x100([{
-      ...emptySet(),
-      texts: [{ position: [10, 20], text: "tag", fontSize: 10, textColor: WHITE, backgroundColor: BLACK }],
-    }]);
+    const { container } = render200x100([
+      {
+        ...emptySet(),
+        texts: [
+          {
+            position: [10, 20],
+            text: "tag",
+            fontSize: 10,
+            textColor: WHITE,
+            backgroundColor: BLACK,
+          },
+        ],
+      },
+    ]);
 
     const rect = container.querySelector("rect");
     expect(rect).toBeTruthy();
@@ -314,10 +457,20 @@ describe("ImageAnnotationsOverlay", () => {
   });
 
   it("omits the background rect when backgroundColor is null", () => {
-    const { container } = render200x100([{
-      ...emptySet(),
-      texts: [{ position: [0, 0], text: "no-bg", fontSize: 10, textColor: WHITE, backgroundColor: null }],
-    }]);
+    const { container } = render200x100([
+      {
+        ...emptySet(),
+        texts: [
+          {
+            position: [0, 0],
+            text: "no-bg",
+            fontSize: 10,
+            textColor: WHITE,
+            backgroundColor: null,
+          },
+        ],
+      },
+    ]);
 
     expect(container.querySelector("rect")).toBeNull();
   });
@@ -332,11 +485,27 @@ describe("ImageAnnotationsOverlay", () => {
     const { container } = render200x100([
       {
         ...emptySet(),
-        circles: [{ position: [0, 0], diameter: 10, thickness: 1, outlineColor: RED, fillColor: null }],
+        circles: [
+          {
+            position: [0, 0],
+            diameter: 10,
+            thickness: 1,
+            outlineColor: RED,
+            fillColor: null,
+          },
+        ],
       },
       {
         ...emptySet(),
-        circles: [{ position: [50, 50], diameter: 20, thickness: 1, outlineColor: GREEN, fillColor: null }],
+        circles: [
+          {
+            position: [50, 50],
+            diameter: 20,
+            thickness: 1,
+            outlineColor: GREEN,
+            fillColor: null,
+          },
+        ],
       },
     ]);
 

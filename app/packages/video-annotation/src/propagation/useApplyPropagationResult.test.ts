@@ -45,7 +45,7 @@ describe("useApplyPropagatedDetection", () => {
 
     expect(mockActions.updateLabel).toHaveBeenCalledWith(
       { path: PATH, instanceId: "inst-1", frame: 3 },
-      { bounding_box: [0, 0, 1, 1] }
+      { bounding_box: [0, 0, 1, 1] },
     );
   });
 
@@ -59,7 +59,7 @@ describe("useApplyPropagatedDetection", () => {
         instance: { _id: "inst-1" },
         bounding_box: [0, 0, 1, 1],
       } as never,
-      { undoKey: "propagate:1" }
+      { undoKey: "propagate:1" },
     );
 
     expect(mockActions.transaction).toHaveBeenCalledWith(expect.any(Function), {
@@ -74,7 +74,7 @@ describe("useApplyPropagatedDetection", () => {
 
     expect(mockActions.updateLabel).toHaveBeenCalledWith(
       { path: PATH, instanceId: "doc-2", frame: 2 },
-      { bounding_box: [0, 0, 1, 1] }
+      { bounding_box: [0, 0, 1, 1] },
     );
   });
 
@@ -83,7 +83,7 @@ describe("useApplyPropagatedDetection", () => {
     const { result } = renderHook(() => useApplyPropagatedDetection());
 
     expect(() =>
-      result.current(1, { instance: { _id: "x" } } as never)
+      result.current(1, { instance: { _id: "x" } } as never),
     ).not.toThrow();
     expect(mockActions.updateLabel).not.toHaveBeenCalled();
   });
@@ -107,7 +107,7 @@ describe("useApplyPropagationResult", () => {
     expect(mockActions.updateLabel).toHaveBeenCalledTimes(2);
     expect(mockActions.updateLabel).toHaveBeenCalledWith(
       { path: PATH, instanceId: "i", frame: 2 },
-      {}
+      {},
     );
   });
 

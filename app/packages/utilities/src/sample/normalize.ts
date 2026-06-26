@@ -18,7 +18,7 @@ export const normalizeForCompare = (data: unknown): unknown => {
     }
 
     return Object.fromEntries(
-      Object.entries(obj).map(([k, v]) => [k, normalizeForCompare(v)])
+      Object.entries(obj).map(([k, v]) => [k, normalizeForCompare(v)]),
     );
   }
 

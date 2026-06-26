@@ -84,7 +84,7 @@ export default function useAttributeForm({
 
     // Recursively collect all leaf conditions from the condition tree.
     const collectLeaves = (
-      cond: AttributeCondition
+      cond: AttributeCondition,
     ): AttributeConditionLeaf[] => {
       if (cond.operator === "and" || cond.operator === "or") {
         if (!Array.isArray(cond.conditions)) return [];
@@ -129,7 +129,7 @@ export default function useAttributeForm({
   // Validation - field-specific errors
   const formErrors = useMemo(
     () => getAttributeFormErrors(formState),
-    [formState]
+    [formState],
   );
 
   // Handlers
@@ -137,7 +137,7 @@ export default function useAttributeForm({
     (name: string) => {
       onFormStateChange({ ...formState, name });
     },
-    [formState, onFormStateChange]
+    [formState, onFormStateChange],
   );
 
   const handleTypeChange = useCallback(
@@ -160,7 +160,7 @@ export default function useAttributeForm({
           : { valuesMode: VALUES_MODE.simple, taxonomy: undefined }),
       });
     },
-    [formState, onFormStateChange]
+    [formState, onFormStateChange],
   );
 
   const handleComponentChange = useCallback(
@@ -185,49 +185,49 @@ export default function useAttributeForm({
           : { valuesMode: VALUES_MODE.simple, taxonomy: undefined }),
       });
     },
-    [formState, onFormStateChange]
+    [formState, onFormStateChange],
   );
 
   const handleValuesChange = useCallback(
     (newValues: string[]) => {
       onFormStateChange({ ...formState, values: newValues });
     },
-    [formState, onFormStateChange]
+    [formState, onFormStateChange],
   );
 
   const handleRangeChange = useCallback(
     (range: { min: string; max: string } | null) => {
       onFormStateChange({ ...formState, range });
     },
-    [formState, onFormStateChange]
+    [formState, onFormStateChange],
   );
 
   const handleDefaultChange = useCallback(
     (defaultValue: string) => {
       onFormStateChange({ ...formState, default: defaultValue });
     },
-    [formState, onFormStateChange]
+    [formState, onFormStateChange],
   );
 
   const handleListDefaultChange = useCallback(
     (values: (string | number)[]) => {
       onFormStateChange({ ...formState, listDefault: values });
     },
-    [formState, onFormStateChange]
+    [formState, onFormStateChange],
   );
 
   const handleReadOnlyChange = useCallback(
     (readOnly: boolean) => {
       onFormStateChange({ ...formState, read_only: readOnly });
     },
-    [formState, onFormStateChange]
+    [formState, onFormStateChange],
   );
 
   const handleDynamicChange = useCallback(
     (dynamic: boolean) => {
       onFormStateChange({ ...formState, dynamic });
     },
-    [formState, onFormStateChange]
+    [formState, onFormStateChange],
   );
 
   const handleValuesModeChange = useCallback(
@@ -242,14 +242,14 @@ export default function useAttributeForm({
         });
       }
     },
-    [formState, onFormStateChange]
+    [formState, onFormStateChange],
   );
 
   const handleTaxonomyChange = useCallback(
     (taxonomy: string) => {
       onFormStateChange({ ...formState, taxonomy });
     },
-    [formState, onFormStateChange]
+    [formState, onFormStateChange],
   );
 
   return {

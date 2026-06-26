@@ -13,7 +13,7 @@ import type { OverlayLabel } from "./loader";
  */
 export function reconcileDetection(
   overlay: OverlayLabel,
-  stagedTransform?: CuboidTransformData
+  stagedTransform?: CuboidTransformData,
 ): ReconciledDetection3D {
   return {
     ...overlay,
@@ -27,7 +27,7 @@ export function reconcileDetection(
  */
 export function reconcilePolyline(
   overlay: OverlayLabel & { points3d: [number, number, number][][] },
-  stagedTransform?: PolylinePointTransformData
+  stagedTransform?: PolylinePointTransformData,
 ): ReconciledPolyline3D {
   // Staged segments take precedence over original points3d
   let finalPoints3d = stagedTransform?.segments
@@ -54,7 +54,7 @@ export function createNewDetection(
   labelId: string,
   transformData: CuboidTransformData,
   currentSampleId: string,
-  path: string
+  path: string,
 ): ReconciledDetection3D {
   return {
     _id: labelId,
@@ -80,7 +80,7 @@ export function createNewDetection(
 export function createNewPolyline(
   labelId: string,
   transformData: PolylinePointTransformData,
-  currentSampleId: string
+  currentSampleId: string,
 ): ReconciledPolyline3D | null {
   if (!transformData.segments || transformData.segments.length === 0) {
     return null;

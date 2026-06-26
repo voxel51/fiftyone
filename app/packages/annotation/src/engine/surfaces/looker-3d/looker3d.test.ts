@@ -27,7 +27,7 @@ const cuboid = (id: string, label = "car"): Working3dLabel =>
     isNew: false,
     sampleId: "sample-1",
     tags: [],
-  } as unknown as Working3dLabel);
+  }) as unknown as Working3dLabel;
 
 /** In-memory working store standing in for the Recoil-backed implementation. */
 const makeFakeStore = () => {
@@ -57,28 +57,28 @@ describe("looker-3d adapters", () => {
         detection3dAdapter.renders?.({
           location: [1, 2, 3],
           dimensions: [4, 5, 6],
-        } as never)
+        } as never),
       ).toBe(true);
       // a 2D detection (bounding box, no 3D geometry) is out of scope
       expect(
-        detection3dAdapter.renders?.({ bounding_box: [0, 0, 1, 1] } as never)
+        detection3dAdapter.renders?.({ bounding_box: [0, 0, 1, 1] } as never),
       ).toBe(false);
       // box-less / geometry-less junk
       expect(detection3dAdapter.renders?.({ label: "car" } as never)).toBe(
-        false
+        false,
       );
     });
 
     it("a polyline renders only with 3D points", () => {
       expect(
-        polyline3dAdapter.renders?.({ points3d: [[[0, 0, 0]]] } as never)
+        polyline3dAdapter.renders?.({ points3d: [[[0, 0, 0]]] } as never),
       ).toBe(true);
       // a 2D polyline (`points`, no `points3d`) is out of scope
       expect(polyline3dAdapter.renders?.({ points: [[[0, 0]]] } as never)).toBe(
-        false
+        false,
       );
       expect(polyline3dAdapter.renders?.({ points3d: [] } as never)).toBe(
-        false
+        false,
       );
     });
   });
@@ -92,7 +92,7 @@ describe("looker-3d adapters", () => {
         label: "car",
         location: [1, 2, 3],
         dimensions: [4, 5, 6],
-      } as never
+      } as never,
     );
 
     expect(descriptor.label._id).toBe("c1");
@@ -170,7 +170,7 @@ describe("createLooker3dBridge", () => {
 
     expect(bridge.resolveHandle(ref("predictions", "c1"))).toBeUndefined();
     expect(
-      bridge.resolveHandle(ref("ground_truth", "missing"))
+      bridge.resolveHandle(ref("ground_truth", "missing")),
     ).toBeUndefined();
 
     const handle = bridge.resolveHandle(ref("ground_truth", "c1"));

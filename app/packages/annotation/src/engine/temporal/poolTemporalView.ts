@@ -11,7 +11,7 @@ import type { LabelRef } from "../identity/ref";
 import type { TemporalView } from "./types";
 
 const ALL_LABEL_TYPES = Object.values(LabelType).filter(
-  (type) => type !== LabelType.Unknown
+  (type) => type !== LabelType.Unknown,
 );
 
 interface PoolReads {

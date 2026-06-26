@@ -45,7 +45,7 @@ const CHANGE_KIND: Record<SampleChangeKind, LabelChangeKind> = {
 const collectLabelPaths = (
   schema: Schema,
   getLabelType: (path: string) => LabelType,
-  prefix = ""
+  prefix = "",
 ): string[] => {
   const paths: string[] = [];
 
@@ -261,7 +261,7 @@ export class SampleLabelStore implements LabelStore {
       // current state is the "after" side.
       const before = this.idsAt(change.path);
       const current = new Set(
-        this.currentLabels(change.path).map((label) => label._id)
+        this.currentLabels(change.path).map((label) => label._id),
       );
 
       for (const id of before) {
@@ -291,7 +291,7 @@ export class SampleLabelStore implements LabelStore {
 
   private labelPaths(): string[] {
     return collectLabelPaths(this.source.getSchema(), (path) =>
-      this.source.getLabelType(path)
+      this.source.getLabelType(path),
     );
   }
 
@@ -326,7 +326,7 @@ export class SampleLabelStore implements LabelStore {
       this.labelPaths().map((path) => [
         path,
         new Set(this.currentLabels(path).map((label) => label._id)),
-      ])
+      ]),
     );
   }
 }

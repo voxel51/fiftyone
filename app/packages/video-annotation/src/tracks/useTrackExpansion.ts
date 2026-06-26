@@ -33,7 +33,7 @@ export const useTrackExpansion = (): TrackExpansion => {
 
   const isExpanded = useCallback(
     (parentId: string) => expandedIds.has(parentId),
-    [expandedIds]
+    [expandedIds],
   );
 
   return { expandedIds, isExpanded, toggle };

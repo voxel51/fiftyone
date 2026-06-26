@@ -12,7 +12,7 @@ import { InitializationStatus } from "./useAnnotationContextManager";
 import type { RequiredField } from "./useSourceFieldToActivate";
 
 const mockActivateField = vi.fn(() =>
-  Promise.resolve({ status: InitializationStatus.Success })
+  Promise.resolve({ status: InitializationStatus.Success }),
 );
 const mockNotify = vi.fn();
 
@@ -80,7 +80,7 @@ describe("RequiredFieldPrompt", () => {
     render(<RequiredFieldPrompt requiredField={fieldWithoutSchema} />);
 
     fireEvent.click(
-      screen.getByRole("button", { name: /add "ground_truth" to schema/i })
+      screen.getByRole("button", { name: /add "ground_truth" to schema/i }),
     );
 
     await waitFor(() => {
@@ -96,7 +96,7 @@ describe("RequiredFieldPrompt", () => {
 
     render(<RequiredFieldPrompt requiredField={fieldWithoutSchema} />);
     fireEvent.click(
-      screen.getByRole("button", { name: /add "ground_truth" to schema/i })
+      screen.getByRole("button", { name: /add "ground_truth" to schema/i }),
     );
 
     await waitFor(() => {

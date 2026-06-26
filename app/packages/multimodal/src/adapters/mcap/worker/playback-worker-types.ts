@@ -35,7 +35,7 @@ export const MCAP_PLAYBACK_WORKER_PRIORITY = Object.freeze({
  * Union of playback-worker priority values.
  */
 export type McapPlaybackWorkerPriority =
-  typeof MCAP_PLAYBACK_WORKER_PRIORITY[keyof typeof MCAP_PLAYBACK_WORKER_PRIORITY];
+  (typeof MCAP_PLAYBACK_WORKER_PRIORITY)[keyof typeof MCAP_PLAYBACK_WORKER_PRIORITY];
 
 /**
  * Fetch configuration copied from the main thread into the worker.
@@ -99,7 +99,7 @@ export type McapPlaybackWorkerStreamType =
  * Envelope sent from the main thread for one scheduled worker RPC call.
  */
 export type McapPlaybackWorkerRpcRequest<
-  Type extends McapPlaybackWorkerRpcType = McapPlaybackWorkerRpcType
+  Type extends McapPlaybackWorkerRpcType = McapPlaybackWorkerRpcType,
 > = Type extends McapPlaybackWorkerRpcType
   ? {
       readonly id: number;

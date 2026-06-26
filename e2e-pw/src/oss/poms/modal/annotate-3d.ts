@@ -166,7 +166,7 @@ export class ModalAnnotate3dPom {
   /** The class text of every listed label row, in DOM order. */
   async listedLabels(): Promise<string[]> {
     return this.labelRows.evaluateAll((els) =>
-      els.map((e) => e.getAttribute("data-cy-label") ?? "")
+      els.map((e) => e.getAttribute("data-cy-label") ?? ""),
     );
   }
 
@@ -285,14 +285,14 @@ class ModalAnnotate3dAsserter {
   async createCuboidActive(active = true) {
     await expect(this.pom.toolbarButton("create-cuboid")).toHaveAttribute(
       "data-cy-active",
-      String(active)
+      String(active),
     );
   }
 
   /** Assert polyline annotation mode is active (the sidebar 3D Polylines button). */
   async polylineModeActive(active = true) {
     await expect(
-      this.pom.page.locator('[data-cy="polyline-mode-3d"]')
+      this.pom.page.locator('[data-cy="polyline-mode-3d"]'),
     ).toHaveAttribute("data-cy-active", String(active));
   }
 
@@ -300,7 +300,7 @@ class ModalAnnotate3dAsserter {
   async newSegmentActive(active = true) {
     await expect(this.pom.toolbarButton("new-segment")).toHaveAttribute(
       "data-cy-active",
-      String(active)
+      String(active),
     );
   }
 
@@ -311,7 +311,7 @@ class ModalAnnotate3dAsserter {
   async transformModeActive(mode: "translate" | "rotate" | "scale") {
     await expect(this.pom.toolbarButton(mode)).toHaveAttribute(
       "data-cy-active",
-      "true"
+      "true",
     );
   }
 

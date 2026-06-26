@@ -44,7 +44,7 @@ const toSyntheticBox = (label: LabelData): SyntheticBox => ({
  * source). Narrow by that method rather than casting blind.
  */
 const isSam2Agent = (
-  agent: AnnotationAgent<PropagationInferenceResult>
+  agent: AnnotationAgent<PropagationInferenceResult>,
 ): agent is SAM2PropagationBrowserAgent =>
   typeof (agent as Partial<SAM2PropagationBrowserAgent>).propagate ===
   "function";
@@ -55,7 +55,7 @@ const useResolveAgent = () => {
 
   return useCallback(
     async (
-      id: string
+      id: string,
     ): Promise<AnnotationAgent<PropagationInferenceResult> | null> => {
       const agents = await registry.listAgents();
       const descriptor = agents.find((a) => a.id === id);
@@ -64,7 +64,7 @@ const useResolveAgent = () => {
         ? (descriptor.agent as AnnotationAgent<PropagationInferenceResult>)
         : null;
     },
-    [registry]
+    [registry],
   );
 };
 
@@ -134,14 +134,14 @@ const useSam2Propagate = () => {
             done,
             total: runTotal,
             onStop,
-          })
+          }),
         );
       render();
 
       // Map a 1-based frame number to its decoded bitmap, fetching + decoding
       // on demand if the LRU doesn't already hold it.
       const getFrameBitmap = async (
-        frameNumber: number
+        frameNumber: number,
       ): Promise<ImageBitmap> => {
         const time = (frameNumber - 1) / imageStream.fps;
         await imageStream.warmup(time);
@@ -188,7 +188,7 @@ const useSam2Propagate = () => {
       sampleDescriptor,
       applyPropagatedDetection,
       setStatusContent,
-    ]
+    ],
   );
 };
 
@@ -232,7 +232,7 @@ const useLinearPropagate = () => {
       applyPropagation(result);
       return true;
     },
-    [resolveAgent, sampleDescriptor, applyPropagation]
+    [resolveAgent, sampleDescriptor, applyPropagation],
   );
 };
 
@@ -257,7 +257,7 @@ export const useVideoPropagate = () => {
       instanceId: string,
       fromFrame: number,
       toFrame: number,
-      method: PropagationMethod
+      method: PropagationMethod,
     ): Promise<boolean> => {
       if (!stream || fromFrame >= toFrame) {
         return false;
@@ -290,6 +290,6 @@ export const useVideoPropagate = () => {
 
       return linearPropagate(args);
     },
-    [engine, sampleId, stream, sam2Propagate, linearPropagate]
+    [engine, sampleId, stream, sam2Propagate, linearPropagate],
   );
 };

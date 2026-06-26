@@ -102,7 +102,7 @@ test.describe.serial("annotate undo durability", () => {
     const saved = page.waitForResponse(
       (r) =>
         /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method())
+        ["POST", "PATCH", "PUT"].includes(r.request().method()),
     );
     await modal.sidebar.edit.setFieldValue("position.x", "0.123");
     await expect

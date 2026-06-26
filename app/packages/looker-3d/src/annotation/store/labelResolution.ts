@@ -73,7 +73,7 @@ export function getDefaultLabel(field: string, workingDoc: WorkingDoc): string {
   }
 
   const mostCommon = Object.entries(labelCounts).sort(
-    (a, b) => b[1] - a[1]
+    (a, b) => b[1] - a[1],
   )[0]?.[0];
 
   if (mostCommon) {

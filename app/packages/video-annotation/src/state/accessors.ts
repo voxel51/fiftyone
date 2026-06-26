@@ -69,7 +69,7 @@ export const useTemporalDetectionFieldPaths = () =>
     fieldPaths({
       ftype: EMBEDDED_DOCUMENT_FIELD,
       embeddedDocType: TEMPORAL_DETECTIONS_FIELD,
-    })
+    }),
   );
 
 /** The overlay currently being edited in the sidebar (`@fiftyone/core`). */

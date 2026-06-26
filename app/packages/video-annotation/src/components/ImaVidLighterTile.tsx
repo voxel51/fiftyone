@@ -21,7 +21,7 @@ interface ImageDimensions {
  */
 function usePaintFrameToCanvas(
   frame: ImaVidImageFrame | undefined,
-  canvasRef: React.RefObject<HTMLCanvasElement | null>
+  canvasRef: React.RefObject<HTMLCanvasElement | null>,
 ): ImageDimensions | null {
   const [dims, setDims] = useState<ImageDimensions | null>(null);
 

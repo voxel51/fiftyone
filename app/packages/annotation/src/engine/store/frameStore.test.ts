@@ -29,7 +29,7 @@ const det = (
   docId: string,
   trackId: string,
   bounding: number[],
-  label = "x"
+  label = "x",
 ): LabelData => ({
   _id: docId,
   _cls: "Detection",
@@ -57,7 +57,7 @@ describe("FrameStore identity + resolution", () => {
       frames({
         1: { [PATH]: [det("doc-1", "A", [0, 0, 1, 1])] },
         2: { [PATH]: [det("doc-2", "A", [0, 0, 2, 2])] },
-      })
+      }),
     );
 
     expect(store.getLabel(ref("A", 1))?.bounding_box).toEqual([0, 0, 1, 1]);
@@ -76,7 +76,7 @@ describe("FrameStore identity + resolution", () => {
             det("doc-3", "B", [5, 5, 1, 1]),
           ],
         },
-      })
+      }),
     );
 
     expect(store.listLabels(PATH, 2)).toHaveLength(2);
@@ -153,7 +153,7 @@ describe("FrameStore through the engine: transactions + undo", () => {
       engine.transaction(() => {
         engine.updateLabel(ref("A", 1), { label: "edited" });
         throw new Error("abort");
-      })
+      }),
     ).toThrow("abort");
 
     expect(store.getLabel(ref("A", 1))?.label).toBe("x");

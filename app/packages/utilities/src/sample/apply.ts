@@ -16,5 +16,5 @@ export const applyDeltas = <T>(document: T, deltas: JSONDeltas): T =>
     document,
     deltas,
     /* validate */ false,
-    /* mutate */ false
+    /* mutate */ false,
   ).newDocument;

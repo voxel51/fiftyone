@@ -66,7 +66,7 @@ export const useFo3dInteractionLifecycle = ({
         set(clearTransformStateSelector, null);
         setAutoRotateRef.current(false);
       },
-    []
+    [],
   );
 
   // This effect clears active interaction state when scene readiness changes.

@@ -34,7 +34,7 @@ const isSamplePatch = (method: string) =>
 
 const savedSample = (page: Page) =>
   page.waitForResponse(
-    (r) => /\/sample\//.test(r.url()) && isSamplePatch(r.request().method())
+    (r) => /\/sample\//.test(r.url()) && isSamplePatch(r.request().method()),
   );
 
 /** A masked "cat" detection at a small bbox, mask fully set within the box. */
@@ -117,9 +117,8 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
     await expect
       .poll(
         async () =>
-          (
-            await annotateSDK.getDetectionsState(datasetName, "detections")
-          ).maskPixels
+          (await annotateSDK.getDetectionsState(datasetName, "detections"))
+            .maskPixels,
       )
       .toBeGreaterThan(before);
   });
@@ -151,9 +150,8 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
     await expect
       .poll(
         async () =>
-          (
-            await annotateSDK.getDetectionsState(datasetName, "detections")
-          ).maskCoverage
+          (await annotateSDK.getDetectionsState(datasetName, "detections"))
+            .maskCoverage,
       )
       .toBeLessThan(before);
 
@@ -166,9 +164,8 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
     await expect
       .poll(
         async () =>
-          (
-            await annotateSDK.getDetectionsState(datasetName, "detections")
-          ).maskCoverage
+          (await annotateSDK.getDetectionsState(datasetName, "detections"))
+            .maskCoverage,
       )
       .toBe(before);
   });

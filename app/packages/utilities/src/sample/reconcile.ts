@@ -43,7 +43,7 @@ interface LocatedTransient {
 export const reconcilePersisted = (
   snapshot: SampleSnapshot,
   deltas: JSONDeltas,
-  serverOwnedFields: ReadonlySet<string>
+  serverOwnedFields: ReadonlySet<string>,
 ): ReconcileResult | null => {
   let next: Record<string, unknown> | null = null;
 
@@ -62,13 +62,13 @@ export const reconcilePersisted = (
     const baseSegments = resolveAppend(
       op.path.split("/").filter(Boolean),
       op.value,
-      next ?? snapshot.transientData
+      next ?? snapshot.transientData,
     );
 
     for (const target of serverOwnedTargets(
       serverOwnedFields,
       baseSegments,
-      op.value
+      op.value,
     )) {
       const located = locateTransient(snapshot.transientData, target.segments);
       if (!located) {
@@ -120,7 +120,7 @@ export const reconcilePersisted = (
 const resolveAppend = (
   segments: string[],
   value: unknown,
-  transientData: Readonly<Record<string, unknown>>
+  transientData: Readonly<Record<string, unknown>>,
 ): string[] => {
   if (segments[segments.length - 1] !== "-") {
     return segments;
@@ -143,7 +143,7 @@ const resolveAppend = (
   }
 
   const index = list.findIndex(
-    (el) => (el as { _id?: string } | undefined)?._id === id
+    (el) => (el as { _id?: string } | undefined)?._id === id,
   );
   if (index < 0) {
     return segments;
@@ -163,7 +163,7 @@ const resolveAppend = (
 const serverOwnedTargets = (
   serverOwnedFields: ReadonlySet<string>,
   baseSegments: string[],
-  value: unknown
+  value: unknown,
 ): ServerOwnedTarget[] => {
   const targets: ServerOwnedTarget[] = [];
 
@@ -175,7 +175,7 @@ const serverOwnedTargets = (
     }
     if (val && typeof val === "object") {
       for (const [key, child] of Object.entries(
-        val as Record<string, unknown>
+        val as Record<string, unknown>,
       )) {
         visit([...segments, key], child);
       }
@@ -194,7 +194,7 @@ const serverOwnedTargets = (
  */
 const locateTransient = (
   transientData: Readonly<Record<string, unknown>>,
-  segments: string[]
+  segments: string[],
 ): LocatedTransient | undefined => {
   let best: LocatedTransient | undefined;
 

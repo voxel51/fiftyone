@@ -71,7 +71,7 @@ const LabelEntry = ({
   // `frame` is set for video frame labels (the playhead occurrence the row was
   // derived at) and absent for sample-level / image labels.
   const data = useEngineSelector(engine, (e) =>
-    sample ? e.getLabel({ sample, path, instanceId: id, frame }) : undefined
+    sample ? e.getLabel({ sample, path, instanceId: id, frame }) : undefined,
   );
   const labelText = data?.label as string | undefined;
 
@@ -85,7 +85,7 @@ const LabelEntry = ({
       instanceId: id,
       frame,
     }),
-    [sample, id, path, frame]
+    [sample, id, path, frame],
   );
 
   // full-identity read (sample included) — a hand-rolled instanceId+path match
@@ -100,8 +100,8 @@ const LabelEntry = ({
         id,
         field: path,
         label: data,
-      } as unknown as AnnotationLabel["overlay"]),
-    [id, path, data]
+      }) as unknown as AnnotationLabel["overlay"],
+    [id, path, data],
   );
   const color = useColor(overlay as Parameters<typeof useColor>[0]);
 

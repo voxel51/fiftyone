@@ -66,7 +66,7 @@ export const useSegmentationMode = () => {
   const isPatchView = useRecoilValue(isPatchesView);
   const { fields } = useAnnotationFields(DETECTION);
   const [segmentationModeActive, setSegmentationModeActive] = useAtom(
-    segmentationModeActiveAtom
+    segmentationModeActiveAtom,
   );
 
   const manualMode = useManualSegmentationTools();
@@ -96,10 +96,10 @@ export const useSegmentationMode = () => {
   const tooltip = isPatchView
     ? "Creating masks is not supported in this view"
     : noActiveFields
-    ? "No active fields"
-    : segmentationModeActive
-    ? "Exit mask creation"
-    : "Create new mask";
+      ? "No active fields"
+      : segmentationModeActive
+        ? "Exit mask creation"
+        : "Create new mask";
 
   // ---------------  Segmentation mode activation / deactivation  --------- //
 
@@ -198,7 +198,7 @@ export const useSegmentationMode = () => {
 
       manualMode.switchTool(nextTool);
     },
-    [aiMode, closeOpenLabel, manualMode, mergeTool, onExit]
+    [aiMode, closeOpenLabel, manualMode, mergeTool, onExit],
   );
 
   // Pen-tool lifecycle: install/exit the InteractivePenHandler reactively.
@@ -304,6 +304,6 @@ export const useSegmentationMode = () => {
       manualMode,
       switchTool,
       mergeTool,
-    ]
+    ],
   );
 };

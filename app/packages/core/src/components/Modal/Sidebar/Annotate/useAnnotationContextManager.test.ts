@@ -98,9 +98,8 @@ vi.mock("./useSchemaResolver", async () => {
   };
 });
 
-const { useAnnotationContextManager, InitializationStatus } = await import(
-  "./useAnnotationContextManager"
-);
+const { useAnnotationContextManager, InitializationStatus } =
+  await import("./useAnnotationContextManager");
 
 describe("activateField", () => {
   beforeEach(() => {
@@ -140,12 +139,12 @@ describe("activateField", () => {
       });
 
       expect(enterResult!.status).toBe(
-        InitializationStatus.InsufficientPermissions
+        InitializationStatus.InsufficientPermissions,
       );
       expect(mockListSchemas).not.toHaveBeenCalled();
       expect(mockInitializeSchema).not.toHaveBeenCalled();
       expect(mockActivateSchemas).not.toHaveBeenCalled();
-    }
+    },
   );
 
   it("uses schemaResolver for reads and mgmtOps for writes", async () => {

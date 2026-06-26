@@ -101,7 +101,7 @@ export const useSetEditingToNewPolyline = () => {
       // snapshot is the base label without them, so dirty tracking starts
       // from "fresh polyline with no vertices".
       setSavedData(
-        defaultPolylineLabelData as unknown as fos.AnnotationLabel["data"]
+        defaultPolylineLabelData as unknown as fos.AnnotationLabel["data"],
       );
     },
     [
@@ -114,6 +114,6 @@ export const useSetEditingToNewPolyline = () => {
       setCurrentEditing,
       setSavedData,
       shouldDefaultToClosed,
-    ]
+    ],
   );
 };

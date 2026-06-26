@@ -36,7 +36,7 @@ type TrackDecoration = Partial<{
  * `_id` matches the canvas overlay and sidebar row.
  */
 export const useVideoTrackDecorator = (): ((
-  track: Track
+  track: Track,
 ) => TrackDecoration) => {
   const {
     selectedTrackIds,
@@ -84,6 +84,6 @@ export const useVideoTrackDecorator = (): ((
       selectTrack,
       hoverLabel,
       selectLabel,
-    ]
+    ],
   );
 };

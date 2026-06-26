@@ -25,7 +25,7 @@ export function asRecord(value: unknown): Record<string, unknown> {
 export function optionalRecord(
   record: Record<string, unknown>,
   field: string,
-  fallbackField?: string
+  fallbackField?: string,
 ): Record<string, unknown> | undefined {
   const value =
     record[field] ?? (fallbackField ? record[fallbackField] : undefined);
@@ -41,7 +41,7 @@ export function optionalRecord(
  */
 export function requiredArray(
   record: Record<string, unknown>,
-  field: string
+  field: string,
 ): readonly unknown[] {
   const value = record[field];
   if (!Array.isArray(value)) {
@@ -70,7 +70,7 @@ export function requiredBytes(record: Record<string, unknown>, field: string) {
 export function requiredNumber(
   record: Record<string, unknown>,
   field: string,
-  fallbackField?: string
+  fallbackField?: string,
 ) {
   const value =
     record[field] ?? (fallbackField ? record[fallbackField] : undefined);
@@ -100,7 +100,7 @@ export function requiredString(record: Record<string, unknown>, field: string) {
 export function optionalString(
   record: Record<string, unknown>,
   field: string,
-  fallbackField?: string
+  fallbackField?: string,
 ) {
   const value =
     record[field] ?? (fallbackField ? record[fallbackField] : undefined);
@@ -118,7 +118,7 @@ export function optionalString(
  */
 export function optionalBigInt(
   record: Record<string, unknown>,
-  field: string
+  field: string,
 ): bigint | undefined {
   const value = record[field];
   if (value === undefined || value === null) {

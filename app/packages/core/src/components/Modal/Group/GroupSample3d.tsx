@@ -39,7 +39,7 @@ export default () => {
   const modalId = useRecoilValue(fos.modalSampleId);
   const sampleMapKey = useMemo(
     () => Object.keys(allSampleMap).sort().join(","),
-    [allSampleMap]
+    [allSampleMap],
   );
 
   useEffect(() => {

@@ -54,7 +54,7 @@ describe("useLooker3dEngineBridge", () => {
         sample: "sample-1",
         store,
         resolveColor: () => "#x",
-      })
+      }),
     );
 
     expect(map.get("c1")?.label).toBe("car");

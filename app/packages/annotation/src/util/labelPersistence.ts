@@ -102,7 +102,7 @@ export const doPatchSample = async ({
         } else {
           console.error(
             "response data does not adhere to sample format",
-            cleanedSample
+            cleanedSample,
           );
         }
       } else {

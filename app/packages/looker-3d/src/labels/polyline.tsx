@@ -64,7 +64,7 @@ export const Polyline = ({
     { selected, color },
     isHovered,
     label,
-    isSelectedForAnnotation
+    isSelectedForAnnotation,
   );
 
   const {
@@ -243,7 +243,7 @@ export const Polyline = ({
   const transientPolyline = useTransientPolyline(label._id);
   const centroidDragPosition = useMemo<THREE.Vector3Tuple>(
     () => transientPolyline?.positionDelta ?? [0, 0, 0],
-    [transientPolyline]
+    [transientPolyline],
   );
 
   const content = (

@@ -15,7 +15,7 @@ import { useFrameLabelsStream } from "../streams/frameLabelsStream";
  * pipeline picks up through `engine.getJsonPatch`.
  */
 export type PropagationResultHandler = (
-  result: InferenceResult<PropagationInferenceResult>
+  result: InferenceResult<PropagationInferenceResult>,
 ) => void;
 
 /**
@@ -26,7 +26,7 @@ export type PropagationResultHandler = (
 export type PropagatedDetectionWriter = (
   frameNumber: number,
   detection: PropagatedDetection,
-  opts?: { undoKey?: string }
+  opts?: { undoKey?: string },
 ) => void;
 
 const SURFACE = "video";
@@ -67,12 +67,12 @@ export const useApplyPropagatedDetection = (): PropagatedDetectionWriter => {
         () =>
           actions.updateLabel(
             { path, instanceId, frame: frameNumber },
-            content
+            content,
           ),
-        opts?.undoKey ? { undoKey: opts.undoKey } : undefined
+        opts?.undoKey ? { undoKey: opts.undoKey } : undefined,
       );
     },
-    [actions, stream]
+    [actions, stream],
   );
 };
 
@@ -95,10 +95,10 @@ export const useApplyPropagationResult = (): PropagationResultHandler => {
       // One transaction so the per-frame writers nest into a single undo unit.
       actions.transaction(() => {
         result.response.perFrame.forEach(({ frameNumber, detection }) =>
-          applyDetection(frameNumber, detection)
+          applyDetection(frameNumber, detection),
         );
       });
     },
-    [actions, applyDetection]
+    [actions, applyDetection],
   );
 };

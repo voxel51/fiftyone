@@ -31,7 +31,7 @@ type Bump = () => void;
 /** Bump on a `TemporalOverlay` add or any overlay removal in the scene. */
 const useSceneOverlayBumps = (scene: Scene2D | null, bump: Bump): void => {
   const useLighterEvent = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
 
   useLighterEvent(
@@ -42,8 +42,8 @@ const useSceneOverlayBumps = (scene: Scene2D | null, bump: Bump): void => {
           bump();
         }
       },
-      [bump]
-    )
+      [bump],
+    ),
   );
 
   // The removed payload carries only an id, so we can't tell a TD from a
@@ -52,7 +52,7 @@ const useSceneOverlayBumps = (scene: Scene2D | null, bump: Bump): void => {
   // the timeline rows in step.
   useLighterEvent(
     "lighter:overlay-removed",
-    useCallback(() => bump(), [bump])
+    useCallback(() => bump(), [bump]),
   );
 };
 
@@ -71,8 +71,8 @@ const useLabelEditBump = (enabled: boolean, bump: Bump): void => {
           bump();
         }
       },
-      [bump, enabled]
-    )
+      [bump, enabled],
+    ),
   );
 };
 
@@ -80,7 +80,7 @@ const useLabelEditBump = (enabled: boolean, bump: Bump): void => {
 const useSceneReadyBump = (
   enabled: boolean,
   scene: Scene2D | null,
-  bump: Bump
+  bump: Bump,
 ): void => {
   useEffect(() => {
     if (enabled && scene) {
@@ -104,7 +104,7 @@ export function useTemporalOverlayVersion(
   {
     listenLabelEdit = false,
     bumpOnSceneReady = false,
-  }: TemporalOverlayVersionOptions = {}
+  }: TemporalOverlayVersionOptions = {},
 ): number {
   const [version, setVersion] = useState(0);
   const bump = useCallback(() => setVersion((v) => v + 1), []);

@@ -89,7 +89,7 @@ export const decodeEntityId = (id: EntityId): EntityIdentity => {
   if (segments.length < 5 || segments.length > 6) {
     throw new MalformedEntityIdError(
       id,
-      `expected 5 or 6 segments, got ${segments.length}`
+      `expected 5 or 6 segments, got ${segments.length}`,
     );
   }
 

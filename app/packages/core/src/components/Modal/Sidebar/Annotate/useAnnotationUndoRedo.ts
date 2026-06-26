@@ -8,7 +8,7 @@ import { KnownContexts, useUndoHistory, useUndoRedo } from "@fiftyone/commands";
  */
 export const useAnnotationUndoRedo = () => {
   const { undo, redo, undoEnabled, redoEnabled } = useUndoRedo(
-    KnownContexts.ModalAnnotate
+    KnownContexts.ModalAnnotate,
   );
   const { undoStack, redoStack } = useUndoHistory(KnownContexts.ModalAnnotate);
 

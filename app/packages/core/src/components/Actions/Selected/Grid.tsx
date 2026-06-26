@@ -28,7 +28,7 @@ export default ({
       ]);
       close();
     },
-    [close, selected, setView]
+    [close, selected, setView],
   );
   const selectedLabels = useRecoilValue(fos.selectedLabelIds);
   const items = [

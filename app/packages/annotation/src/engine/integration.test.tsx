@@ -66,7 +66,7 @@ interface FakeDescriptor {
 const makeRetainedSurface = (
   engine: AnnotationEngine,
   sample: string,
-  name = "fake-retained"
+  name = "fake-retained",
 ) => {
   const handles = new Map<string, FakeHandle>();
   let mounts = 0;
@@ -170,24 +170,24 @@ const useMockSidebar = (engine: AnnotationEngine, sample: string) => {
     e
       .listLabels({ sample, path: "ground_truth" })
       .map((label) => `${label._id}:${label.label}`)
-      .join(",")
+      .join(","),
   );
   const anchor = useInteraction(engine, (i) => i.getAnchor());
   const activeIds = useInteraction(engine, (i) =>
     i
       .getActive()
       .map((r) => r.instanceId)
-      .join(",")
+      .join(","),
   );
   const hoveredIds = useInteraction(engine, (i) =>
     i
       .getHovered()
       .map((r) => r.instanceId)
-      .join(",")
+      .join(","),
   );
   // form-follows-anchor
   const form = useEngineSelector(engine, (e) =>
-    anchor ? e.getLabel(anchor) : undefined
+    anchor ? e.getLabel(anchor) : undefined,
   );
   const actions = useSurfaceActions(engine, "mock-sidebar");
 
@@ -239,7 +239,7 @@ describe("integration: cross-surface convergence", () => {
     act(() => {
       sidebar.result.current.actions.updateLabel(
         { path: "ground_truth", instanceId: "d2" },
-        { label: "shark" }
+        { label: "shark" },
       );
     });
 
@@ -376,7 +376,7 @@ describe("integration: interaction state", () => {
     act(() => {
       retained.controller.hoverHandle(
         retained.handle("d1") as FakeHandle,
-        true
+        true,
       );
     });
     expect(other.handle("d1")?.hovered).toBe(true);
@@ -385,7 +385,7 @@ describe("integration: interaction state", () => {
     act(() => {
       retained.controller.hoverHandle(
         retained.handle("d1") as FakeHandle,
-        false
+        false,
       );
     });
     expect(other.handle("d1")?.hovered).toBe(false);
@@ -417,7 +417,7 @@ describe("integration: interaction state", () => {
 
     // the anchor invariant: it must be a member of the active set
     expect(() =>
-      engine.interaction.setAnchor(ref("ground_truth", "ghost"))
+      engine.interaction.setAnchor(ref("ground_truth", "ghost")),
     ).toThrow(/member/);
   });
 
@@ -497,7 +497,7 @@ describe("integration: transactions and undo", () => {
         engine.updateLabel(ref("ground_truth", "d1"), { label: "broken" });
         engine.deleteLabel(ref("ground_truth", "d2"));
         throw new Error("boom");
-      })
+      }),
     ).toThrow("boom");
 
     expect(batches.length).toBe(0);
@@ -542,9 +542,9 @@ describe("integration: transactions and undo", () => {
         () =>
           retained.controller.updateLabel(
             { path: "ground_truth", instanceId: "d1" },
-            { label }
+            { label },
           ),
-        { undoKey: "drag:d1" }
+        { undoKey: "drag:d1" },
       );
     }
     expect(engine.getLabel(ref("ground_truth", "d1"))?.label).toBe("dog-3");
@@ -787,7 +787,7 @@ describe("integration: contract enforcement (subscribers are sinks)", () => {
     });
 
     expect(() =>
-      engine.updateLabel(ref("ground_truth", "d1"), { label: "dog" })
+      engine.updateLabel(ref("ground_truth", "d1"), { label: "dog" }),
     ).toThrow(/sinks/);
 
     unsubscribe();
@@ -841,7 +841,7 @@ describe("integration: contract enforcement (subscribers are sinks)", () => {
     const controller = createSurfaceController({ engine, bridge, adapters });
 
     expect(() =>
-      engine.updateLabel(ref("ground_truth", "d1"), { label: "dog" })
+      engine.updateLabel(ref("ground_truth", "d1"), { label: "dog" }),
     ).toThrow(/sinks/);
 
     unregister();
@@ -855,7 +855,7 @@ describe("integration: contract enforcement (subscribers are sinks)", () => {
     });
 
     expect(() =>
-      engine.interaction.setActive([ref("ground_truth", "d1")])
+      engine.interaction.setActive([ref("ground_truth", "d1")]),
     ).toThrow(/sinks/);
 
     unsubscribe();
@@ -875,7 +875,7 @@ describe("integration: signal pipe (transient cross-surface observation)", () =>
     const unsubscribe = engine.subscribeSignal<{ x: number }>(
       "drag-geometry",
       D1(),
-      (payload, key) => seen.push({ payload, key })
+      (payload, key) => seen.push({ payload, key }),
     );
     const batches: unknown[] = [];
     const unsubscribeChanges = engine.subscribeChanges((c) => batches.push(c));
@@ -918,7 +918,7 @@ describe("integration: signal pipe (transient cross-surface observation)", () =>
 
     const seen: unknown[] = [];
     engine.subscribeSignal("drag-geometry", D1(), (payload) =>
-      seen.push(payload)
+      seen.push(payload),
     );
     expect(seen).toEqual([]);
 
@@ -930,7 +930,7 @@ describe("integration: signal pipe (transient cross-surface observation)", () =>
     const { engine } = makeWorld();
     const seen: unknown[] = [];
     const unsubscribe = engine.subscribeSignal("drag-geometry", D1(), (p) =>
-      seen.push(p)
+      seen.push(p),
     );
 
     engine.publishSignal("drag-geometry", D1(), { x: 0.1 });
@@ -948,7 +948,7 @@ describe("integration: signal pipe (transient cross-surface observation)", () =>
     });
 
     expect(() => engine.publishSignal("drag-geometry", D1(), {})).toThrow(
-      /sinks/
+      /sinks/,
     );
     expect(engine.getLabel(ref("ground_truth", "d1"))?.label).toBe("cat");
   });
@@ -958,7 +958,7 @@ describe("integration: display and temporal projections", () => {
   it("the dirty flag is selectable and clears on the persist echo", () => {
     const { engine, retained, store } = makeWorld();
     const dirty = renderHook(() =>
-      useEngineSelector(engine, (e) => e.isDirty())
+      useEngineSelector(engine, (e) => e.isDirty()),
     );
     expect(dirty.result.current).toBe(false);
 
@@ -995,8 +995,8 @@ describe("integration: display and temporal projections", () => {
           .getPresent()
           .map((r) => r.instanceId)
           .sort()
-          .join(",")
-      )
+          .join(","),
+      ),
     );
     expect(present.result.current).toBe("d1,d2");
 
@@ -1025,7 +1025,7 @@ const frameDet = (
   docId: string,
   trackId: string,
   bounding: number[],
-  label = "x"
+  label = "x",
 ): LabelData => ({
   _id: docId,
   _cls: "Detection",
@@ -1082,12 +1082,12 @@ const makeFrameWorld = (data?: Record<number, Record<string, LabelData[]>>) => {
         ...new Set(
           e
             .listLabels({ sample: "v", path: FRAME_PATH })
-            .map((l) => (l.instance as { _id: string })._id)
+            .map((l) => (l.instance as { _id: string })._id),
         ),
       ]
         .sort()
-        .join(",")
-    )
+        .join(","),
+    ),
   );
 
   if (data) {
@@ -1209,7 +1209,7 @@ describe("integration: frame-indexed temporal path through the engine", () => {
             frameDet("doc-3", "B", [5, 5, 1, 1]),
           ],
         },
-      })
+      }),
     );
 
     expect(store.isDirty()).toBe(false);

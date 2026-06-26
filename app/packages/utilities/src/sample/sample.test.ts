@@ -5,7 +5,7 @@ import { Field, Schema } from "../schema";
 const field = (
   embeddedDocType: string | null,
   fields?: Schema,
-  extras: Partial<Field> = {}
+  extras: Partial<Field> = {},
 ): Field => ({
   dbField: null,
   description: null,
@@ -36,7 +36,7 @@ const detectionsSchema: Schema = {
 const makeDet = (
   id: string,
   label: string,
-  tags: string[] = []
+  tags: string[] = [],
 ): LabelData => ({
   _id: id,
   _cls: "Detection",
@@ -91,7 +91,7 @@ describe("Sample", () => {
     it("returns field info for a known path", () => {
       const s = new Sample({ schema: detectionsSchema });
       expect(s.getFieldInfo("ground_truth")?.embeddedDocType).toBe(
-        "fiftyone.core.labels.Detections"
+        "fiftyone.core.labels.Detections",
       );
     });
 
@@ -203,7 +203,7 @@ describe("Sample", () => {
     it("throws when _id is missing on a list-label update", () => {
       const s = new Sample({ schema: detectionsSchema });
       expect(() =>
-        s.updateLabel("ground_truth", { label: "cat" } as LabelData)
+        s.updateLabel("ground_truth", { label: "cat" } as LabelData),
       ).toThrow(/requires an _id/);
     });
   });
@@ -633,8 +633,8 @@ describe("Sample", () => {
           patch.map((d) => [
             d.path.replace(/^\//, ""),
             (d as { value: unknown }).value,
-          ])
-        )
+          ]),
+        ),
       ).toEqual({ _id: "d2", _cls: "Detection", label: "dog" });
     });
 
@@ -1227,7 +1227,7 @@ describe("Sample — TemporalDetections", () => {
 
     const ops = s.getJsonPatch();
     expect(ops.some((op) => op.path.startsWith("/events/detections"))).toBe(
-      true
+      true,
     );
   });
 });

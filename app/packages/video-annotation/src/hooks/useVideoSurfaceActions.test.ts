@@ -53,7 +53,7 @@ vi.mock("../streams/frameLabelsStream", () => ({
 const det = (
   id: string,
   instanceId: string,
-  over: Partial<LabelData> = {}
+  over: Partial<LabelData> = {},
 ): LabelData => ({
   _id: id,
   _cls: "Detection",
@@ -81,7 +81,7 @@ describe("track ops", () => {
     expect(mockActions.transaction).toHaveBeenCalledTimes(1);
     expect(mockActions.updateLabel).toHaveBeenCalledWith(
       { path: PATH, instanceId: "A", frame: 2 },
-      { keyframe: true, propagation: null }
+      { keyframe: true, propagation: null },
     );
     expect(mockBus.dispatch).toHaveBeenCalledWith(
       "annotation:keyframeChanged",
@@ -90,7 +90,7 @@ describe("track ops", () => {
         instanceId: "A",
         frame: 2,
         kind: "set",
-      }
+      },
     );
   });
 
@@ -120,7 +120,7 @@ describe("track ops", () => {
         bounding_box: [0, 0, 1, 1],
         confidence: 0.9,
         keyframe: false,
-      }
+      },
     );
   });
 
@@ -154,7 +154,7 @@ describe("track ops", () => {
         label: "x",
         bounding_box: [0, 0, 1, 1],
         keyframe: true,
-      }
+      },
     );
   });
 
@@ -177,7 +177,7 @@ describe("track ops", () => {
     expect(mockActions.updateLabel).toHaveBeenCalledTimes(2);
     expect(mockActions.updateLabel).toHaveBeenCalledWith(
       { path: PATH, instanceId: "A", frame: 1 },
-      { label: "car" }
+      { label: "car" },
     );
   });
 });
@@ -217,16 +217,16 @@ describe("track identity ops (split / merge)", () => {
         label: "x",
         bounding_box: [0, 0, 1, 1],
         keyframe: true,
-      }
+      },
     );
     expect(mockActions.updateLabel).toHaveBeenCalledWith(
       { path: PATH, instanceId: "NEW", frame: 4 },
-      { _cls: "Detection", label: "x", bounding_box: [0, 0, 1, 1] }
+      { _cls: "Detection", label: "x", bounding_box: [0, 0, 1, 1] },
     );
 
     // frames 1, 2 (< 3) are untouched
     expect(mockActions.deleteLabel).not.toHaveBeenCalledWith(
-      expect.objectContaining({ frame: 1 })
+      expect.objectContaining({ frame: 1 }),
     );
 
     expect(mockBus.dispatch).toHaveBeenCalledWith("annotation:trackSplit", {
@@ -286,7 +286,7 @@ describe("track identity ops (split / merge)", () => {
     expect(mockActions.updateLabel).toHaveBeenCalledTimes(1);
     expect(mockActions.updateLabel).toHaveBeenCalledWith(
       { path: PATH, instanceId: "A", frame: 3 },
-      { _cls: "Detection", label: "x", bounding_box: [0, 0, 1, 1] }
+      { _cls: "Detection", label: "x", bounding_box: [0, 0, 1, 1] },
     );
 
     expect(mockBus.dispatch).toHaveBeenCalledWith("annotation:trackMerged", {
@@ -321,7 +321,7 @@ describe("temporal-detection ops", () => {
     const id = render().current.createTemporalDetection(
       "events",
       [3, 12],
-      "speaking"
+      "speaking",
     );
 
     expect(id).toBe("new-td");
@@ -338,7 +338,7 @@ describe("temporal-detection ops", () => {
 
     expect(mockActions.updateLabel).toHaveBeenCalledWith(
       { path: "events", instanceId: "t1" },
-      { support: [5, 9] }
+      { support: [5, 9] },
     );
   });
 

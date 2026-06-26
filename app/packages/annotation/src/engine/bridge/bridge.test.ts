@@ -37,7 +37,7 @@ type FakeDescriptor = { id: string; path: string; label: LabelData };
 
 const makeFakeSurface = (
   sample = "sample-1",
-  renders?: (label: LabelData) => boolean
+  renders?: (label: LabelData) => boolean,
 ) => {
   const handles = new Map<string, FakeHandle>();
 
@@ -230,7 +230,7 @@ describe("bridge read-half", () => {
       engine.transaction(() => {
         engine.updateLabel(ref("ground_truth", "d1"), { label: "dog" });
         throw new Error("abort");
-      })
+      }),
     ).toThrow("abort");
 
     // the surface never saw the aborted edit
@@ -276,7 +276,7 @@ describe("bridge read-half", () => {
       },
     });
     const { handles, bridge, adapters } = makeFakeSurface("sample-1", (label) =>
-      Array.isArray(label.bounding_box)
+      Array.isArray(label.bounding_box),
     );
 
     engine.registerBridge(bridge, adapters);
@@ -293,7 +293,7 @@ describe("bridge read-half", () => {
       ground_truth: { detections: [makeDet("d1", "cat")] },
     });
     const { handles, bridge, adapters } = makeFakeSurface("sample-1", (label) =>
-      Array.isArray(label.bounding_box)
+      Array.isArray(label.bounding_box),
     );
 
     engine.registerBridge(bridge, adapters);
@@ -504,7 +504,7 @@ describe("surface controller (write-half)", () => {
     controller.transaction(() => {
       controller.updateLabel(
         { path: "ground_truth", instanceId: "d1" },
-        { label: "dog" }
+        { label: "dog" },
       );
       controller.createLabel("ground_truth", { label: "bird" });
     });
@@ -512,7 +512,7 @@ describe("surface controller (write-half)", () => {
     nav.undo();
     expect(engine.getLabel(ref("ground_truth", "d1"))?.label).toBe("cat");
     expect(
-      engine.listLabels({ sample: "sample-1", path: "ground_truth" })
+      engine.listLabels({ sample: "sample-1", path: "ground_truth" }),
     ).toHaveLength(1);
   });
 });

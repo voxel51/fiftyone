@@ -45,7 +45,7 @@ function drawPreview(
   source: CanvasImageSource,
   srcWidth: number,
   srcHeight: number,
-  isDark: boolean
+  isDark: boolean,
 ) {
   if (srcWidth === 0 || srcHeight === 0) return;
 
@@ -98,7 +98,7 @@ export default function MaskPreview() {
 
   const { scene } = useLighter();
   const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
 
   // Draws the preview from the overlay's current canvas or decoded bitmap.
@@ -135,7 +135,7 @@ export default function MaskPreview() {
 
       drawFromOverlay();
     },
-    [isDark, drawFromOverlay]
+    [isDark, drawFromOverlay],
   );
 
   useEventHandler("lighter:overlay-paint-end", handlePaintEnd);

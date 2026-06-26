@@ -22,7 +22,7 @@ export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const lighterHostRef = useRef<HTMLDivElement | null>(null);
   const [videoDims, setVideoDims] = useState<{ w: number; h: number } | null>(
-    null
+    null,
   );
 
   // Bind <video> -> playback engine. The video-annotation tile uses

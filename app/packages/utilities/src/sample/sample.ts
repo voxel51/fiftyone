@@ -149,7 +149,7 @@ export class Sample {
     }
 
     this.serverOwnedFields = new Set(
-      opts.serverOwnedFields ?? DEFAULT_SERVER_OWNED_FIELDS
+      opts.serverOwnedFields ?? DEFAULT_SERVER_OWNED_FIELDS,
     );
   }
 
@@ -231,7 +231,7 @@ export class Sample {
       throw new Error(
         `Sample.${op}() was called from within a subscriber. Subscribers ` +
           `(display and change) must be sinks and never write back to Sample ` +
-          `route the write through a user-gesture or reconcile path instead.`
+          `route the write through a user-gesture or reconcile path instead.`,
       );
     }
   }
@@ -382,7 +382,7 @@ export class Sample {
   private writeLabel(
     path: string,
     data: Partial<LabelData>,
-    replace: boolean
+    replace: boolean,
   ): void {
     this.assertNotDispatching(replace ? "replaceLabel" : "updateLabel");
     const type = this.getLabelType(path);
@@ -417,7 +417,7 @@ export class Sample {
     } else {
       const existing = replace
         ? ({} as LabelData)
-        : this.getResolved<LabelData>(path) ?? ({} as LabelData);
+        : (this.getResolved<LabelData>(path) ?? ({} as LabelData));
       this.transientData[path] = { ...existing, ...data };
     }
 
@@ -570,7 +570,7 @@ export class Sample {
    * route generated-view persistence). See {@link firstEditedLabel}.
    */
   firstEditedLabel(
-    opts: { isGenerated?: boolean } = {}
+    opts: { isGenerated?: boolean } = {},
   ): EditedLabel | undefined {
     return firstEditedLabel(this.snapshot(), opts);
   }
@@ -584,7 +584,7 @@ export class Sample {
     const result = reconcilePersisted(
       this.snapshot(),
       deltas,
-      this.serverOwnedFields
+      this.serverOwnedFields,
     );
 
     if (!result) {

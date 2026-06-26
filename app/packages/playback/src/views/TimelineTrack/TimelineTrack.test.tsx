@@ -55,7 +55,7 @@ function renderTrack(opts: RenderOpts = {}) {
       ) : null}
       <TimelineTrack {...baseTrack} {...track} />
       <PlayheadReadout />
-    </PlaybackProvider>
+    </PlaybackProvider>,
   );
 }
 
@@ -292,7 +292,7 @@ describe("TimelineTrack", () => {
         track: { start: 0, end: 10, events: [interval], labelWidth: 100 },
       });
       const bar = container.querySelector(
-        `.${styles.intervalBar}`
+        `.${styles.intervalBar}`,
       ) as HTMLElement;
       expect(bar).not.toBeNull();
       fireEvent.contextMenu(bar);
@@ -312,7 +312,7 @@ describe("TimelineTrack", () => {
         },
       });
       const bar = container.querySelector(
-        `.${styles.intervalBar}`
+        `.${styles.intervalBar}`,
       ) as HTMLElement;
       fireEvent.contextMenu(bar);
       fireEvent.click(screen.getByText("Delete track"));
@@ -337,7 +337,7 @@ describe("TimelineTrack", () => {
         },
       });
       const bar = container.querySelector(
-        `.${styles.intervalBar}`
+        `.${styles.intervalBar}`,
       ) as HTMLElement;
       fireEvent.contextMenu(bar);
       expect(screen.getByText("Delete track")).toBeTruthy();
@@ -356,7 +356,7 @@ describe("TimelineTrack", () => {
         },
       });
       const bar = container.querySelector(
-        `.${styles.intervalBar}`
+        `.${styles.intervalBar}`,
       ) as HTMLElement;
       fireEvent.contextMenu(bar);
       fireEvent.click(screen.getByText("Merge into…"));
@@ -378,7 +378,7 @@ describe("TimelineTrack", () => {
       const bar = container.querySelector(`.${styles.bar}`) as HTMLElement;
       // JSDOM normalizes #ff000055 to rgba(255, 0, 0, 0.333).
       expect(inlineStyle(bar).toLowerCase()).toMatch(
-        /background:\s*(#ff000055|rgba\(255,\s*0,\s*0,\s*0\.33)/
+        /background:\s*(#ff000055|rgba\(255,\s*0,\s*0,\s*0\.33)/,
       );
     });
   });
@@ -418,10 +418,10 @@ describe("TimelineTrack", () => {
       const handles = container.querySelectorAll(`.${styles.resizeHandle}`);
       expect(handles).toHaveLength(2);
       expect(
-        container.querySelector(`.${styles.resizeHandleStart}`)
+        container.querySelector(`.${styles.resizeHandleStart}`),
       ).not.toBeNull();
       expect(
-        container.querySelector(`.${styles.resizeHandleEnd}`)
+        container.querySelector(`.${styles.resizeHandleEnd}`),
       ).not.toBeNull();
     });
 
@@ -430,7 +430,7 @@ describe("TimelineTrack", () => {
         track: { start: 0, end: 10, events: [baseInterval] },
       });
       expect(
-        container.querySelectorAll(`.${styles.resizeHandle}`)
+        container.querySelectorAll(`.${styles.resizeHandle}`),
       ).toHaveLength(0);
     });
 
@@ -444,7 +444,7 @@ describe("TimelineTrack", () => {
         },
       });
       expect(
-        container.querySelectorAll(`.${styles.resizeHandle}`)
+        container.querySelectorAll(`.${styles.resizeHandle}`),
       ).toHaveLength(0);
     });
 
@@ -459,7 +459,7 @@ describe("TimelineTrack", () => {
         },
       });
       const endHandle = container.querySelector(
-        `.${styles.resizeHandleEnd}`
+        `.${styles.resizeHandleEnd}`,
       ) as HTMLElement;
       // Lane is 1000px wide for view [0, 10] → 100px per second.
       // Drag end handle right by 200px → +2s on endSec (4→6 becomes 4→8).
@@ -482,7 +482,7 @@ describe("TimelineTrack", () => {
         },
       });
       const startHandle = container.querySelector(
-        `.${styles.resizeHandleStart}`
+        `.${styles.resizeHandleStart}`,
       ) as HTMLElement;
       // Drag start handle left by 100px → -1s on startSec (4→6 becomes 3→6).
       dragOnElement(startHandle, 400, 300);
@@ -504,7 +504,7 @@ describe("TimelineTrack", () => {
         },
       });
       const bar = container.querySelector(
-        `.${styles.intervalBar}`
+        `.${styles.intervalBar}`,
       ) as HTMLElement;
       // Drag bar right by 100px → +1s on both endpoints (4→6 becomes 5→7).
       dragOnElement(bar, 500, 600);
@@ -528,7 +528,7 @@ describe("TimelineTrack", () => {
         },
       });
       const endHandle = container.querySelector(
-        `.${styles.resizeHandleEnd}`
+        `.${styles.resizeHandleEnd}`,
       ) as HTMLElement;
       // 175px right of pointer-down clientX 600 → 1.75s raw delta; new
       // endSec ≈ 7.75; rounded to nearest 0.2 → 7.8.
@@ -549,7 +549,7 @@ describe("TimelineTrack", () => {
         },
       });
       const endHandle = container.querySelector(
-        `.${styles.resizeHandleEnd}`
+        `.${styles.resizeHandleEnd}`,
       ) as HTMLElement;
       // Drag end handle far left past start (4) → should clamp to start+0.2.
       dragOnElement(endHandle, 600, 0);
@@ -570,7 +570,7 @@ describe("TimelineTrack", () => {
         },
       });
       const startHandle = container.querySelector(
-        `.${styles.resizeHandleStart}`
+        `.${styles.resizeHandleStart}`,
       ) as HTMLElement;
       // Drag start handle far right past end (6) → should clamp to end-0.2.
       dragOnElement(startHandle, 400, 1000);
@@ -590,7 +590,7 @@ describe("TimelineTrack", () => {
         },
       });
       const endHandle = container.querySelector(
-        `.${styles.resizeHandleEnd}`
+        `.${styles.resizeHandleEnd}`,
       ) as HTMLElement;
       // Move by 2px (under DRAG_THRESHOLD_PX = 3).
       dragOnElement(endHandle, 600, 602);
@@ -608,15 +608,15 @@ describe("TimelineTrack", () => {
         },
       });
       const bar = container.querySelector(
-        `.${styles.intervalBar}`
+        `.${styles.intervalBar}`,
       ) as HTMLElement;
       // Simulate drag + the synthetic click that mouseup triggers.
       fireEvent.mouseDown(bar, { clientX: 500 });
       document.dispatchEvent(
-        new MouseEvent("mousemove", { clientX: 600, bubbles: true })
+        new MouseEvent("mousemove", { clientX: 600, bubbles: true }),
       );
       document.dispatchEvent(
-        new MouseEvent("mouseup", { clientX: 600, bubbles: true })
+        new MouseEvent("mouseup", { clientX: 600, bubbles: true }),
       );
       // Browser would then fire click on the bar (and bubble to lane).
       fireEvent.click(bar, { clientX: 600 });

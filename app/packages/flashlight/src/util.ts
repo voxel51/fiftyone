@@ -10,7 +10,7 @@ export function argMin<T>(array: T[]): number {
 
 export const getDims = (
   horizontal: boolean,
-  element: HTMLElement
+  element: HTMLElement,
 ): { width: number; height: number } => {
   let { width, height } = element.getBoundingClientRect();
 

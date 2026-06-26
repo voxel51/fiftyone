@@ -63,7 +63,7 @@ export interface PresenceInterval {
  */
 export function resolveActor(
   spec: SyntheticActorSpec,
-  duration: number
+  duration: number,
 ): SyntheticActor {
   const safeDuration = duration > 0 ? duration : 1;
   return {
@@ -153,7 +153,7 @@ export function isPresent(time: number, actor: SyntheticActor): boolean {
  */
 export function getPresenceIntervals(
   actor: SyntheticActor,
-  duration: number
+  duration: number,
 ): PresenceInterval[] {
   if (!(duration > 0)) {
     return [];
@@ -190,7 +190,7 @@ export function getPresenceIntervals(
 function snapshotAtTime(
   time: number,
   fps: number,
-  actors: SyntheticActor[]
+  actors: SyntheticActor[],
 ): FrameLabelSnapshot {
   const frameNumber = Math.max(0, Math.floor(time * fps));
   const detections: SyntheticBox[] = [];
@@ -230,7 +230,7 @@ export class SyntheticLabelStream extends PlaybackStreamBase<FrameLabelSnapshot>
 
   constructor(
     id: string,
-    opts: { fps: number; duration?: number; actors?: SyntheticActor[] }
+    opts: { fps: number; duration?: number; actors?: SyntheticActor[] },
   ) {
     super(id, {
       blocking: false,

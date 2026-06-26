@@ -30,7 +30,7 @@ import { usePlaybackStore } from "./playback-store-context";
  * (see `playback-store-context.ts`).
  */
 export function useVideoSync(
-  videoRef: RefObject<HTMLVideoElement | null>
+  videoRef: RefObject<HTMLVideoElement | null>,
 ): void {
   const store = usePlaybackStore();
   const isPlaying = useAtomValue(isPlayingAtom, { store });

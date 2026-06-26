@@ -52,7 +52,7 @@ test.afterAll(async ({ foWebServer }) => {
 const openAnnotate = async (
   fiftyoneLoader: AbstractFiftyoneLoader,
   modal: ModalPom,
-  page: Page
+  page: Page,
 ) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
@@ -81,7 +81,7 @@ const savedResponse = (page: Page) =>
   page.waitForResponse(
     (r) =>
       /\/sample\//.test(r.url()) &&
-      ["POST", "PATCH", "PUT"].includes(r.request().method())
+      ["POST", "PATCH", "PUT"].includes(r.request().method()),
   );
 
 // re-seed per test: one tracked instance (vehicle) present on every frame.

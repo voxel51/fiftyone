@@ -15,7 +15,7 @@ export type ValueRun = [number, number, unknown];
  */
 export function removeFrames(
   segments: readonly Segment[],
-  removeSorted: readonly number[]
+  removeSorted: readonly number[],
 ): Segment[] {
   if (removeSorted.length === 0) {
     return segments.map(([s, e]) => [s, e]);
@@ -83,7 +83,7 @@ export function coalesce(segments: readonly Segment[]): Segment[] {
 export function mergePresence(
   baseline: readonly Segment[],
   dirtySorted: readonly number[],
-  presentSorted: readonly number[]
+  presentSorted: readonly number[],
 ): Segment[] {
   const kept = removeFrames(baseline, dirtySorted);
   const added = presentSorted.map((frame): Segment => [frame, frame]);
@@ -97,7 +97,7 @@ export function mergePresence(
  */
 function removeValueFrames(
   runs: readonly ValueRun[],
-  removeSorted: readonly number[]
+  removeSorted: readonly number[],
 ): ValueRun[] {
   if (removeSorted.length === 0) {
     return runs.map(([s, e, v]): ValueRun => [s, e, v]);
@@ -167,7 +167,7 @@ function coalesceValueRuns(runs: readonly ValueRun[]): ValueRun[] {
 export function mergeAttributeRuns(
   baseline: readonly ValueRun[],
   dirtySorted: readonly number[],
-  dirtyValues: ReadonlyMap<number, unknown>
+  dirtyValues: ReadonlyMap<number, unknown>,
 ): ValueRun[] {
   const kept = removeValueFrames(baseline, dirtySorted);
   const added: ValueRun[] = [];

@@ -22,12 +22,12 @@ let selectionCleared:
 const mockOn = vi.fn(
   (
     event: string,
-    handler: (payload: { ignoreSideEffects?: boolean }) => void
+    handler: (payload: { ignoreSideEffects?: boolean }) => void,
   ) => {
     if (event === "lighter:selection-cleared") {
       selectionCleared = handler;
     }
-  }
+  },
 );
 
 vi.mock("@fiftyone/lighter", () => ({

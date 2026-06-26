@@ -49,7 +49,7 @@ describe("TilingHeader", () => {
     render(
       <TilingProvider>
         <TilingHeader fileName="session.fo" />
-      </TilingProvider>
+      </TilingProvider>,
     );
     expect(screen.getByText("session.fo")).toBeTruthy();
     expect(screen.queryByTestId("tiling-header-add-tile")).toBeNull();
@@ -59,10 +59,14 @@ describe("TilingHeader", () => {
     render(
       <TilingProvider>
         <TilingHeader fileName="x" />
-      </TilingProvider>
+      </TilingProvider>,
     );
-    expect(screen.queryByTestId("tiling-header-toggle-left-sidebar")).toBeNull();
-    expect(screen.queryByTestId("tiling-header-toggle-right-sidebar")).toBeNull();
+    expect(
+      screen.queryByTestId("tiling-header-toggle-left-sidebar"),
+    ).toBeNull();
+    expect(
+      screen.queryByTestId("tiling-header-toggle-right-sidebar"),
+    ).toBeNull();
   });
 
   it("renders sidebar toggles and reflects open state via aria-pressed", () => {
@@ -77,7 +81,7 @@ describe("TilingHeader", () => {
           onToggleLeftSidebar={onLeft}
           onToggleRightSidebar={onRight}
         />
-      </TilingProvider>
+      </TilingProvider>,
     );
 
     const left = screen.getByTestId("tiling-header-toggle-left-sidebar");
@@ -113,7 +117,7 @@ describe("TilingHeader", () => {
           ]}
         />
         <TilingHeader fileName="x" />
-      </TilingProvider>
+      </TilingProvider>,
     );
     expect(screen.getByTestId("tiling-header-add-tile")).toBeTruthy();
   });
@@ -133,7 +137,7 @@ describe("TilingHeader", () => {
         />
         <TilingHeader fileName="x" />
         <TileCount />
-      </TilingProvider>
+      </TilingProvider>,
     );
     expect(screen.getByTestId("tile-count").textContent).toBe("0");
 

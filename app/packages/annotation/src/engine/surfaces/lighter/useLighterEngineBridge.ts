@@ -86,7 +86,7 @@ export const useLighterEngineBridge = ({
   // disabled → bind to the inert channel so handlers never fire on a scene this
   // surface doesn't own (rules-of-hooks safe: the hook is always called)
   const on = useLighterEventHandler(
-    enabled && scene ? scene.getEventChannel() : UNDEFINED_LIGHTER_SCENE_ID
+    enabled && scene ? scene.getEventChannel() : UNDEFINED_LIGHTER_SCENE_ID,
   );
 
   const bridge = useMemo(
@@ -115,7 +115,7 @@ export const useLighterEngineBridge = ({
       paths,
       resolveMediaUrl,
       frameOf,
-    ]
+    ],
   );
 
   // a replaced bridge (scope/scene/sample change) clears its overlays on the
@@ -126,7 +126,7 @@ export const useLighterEngineBridge = ({
         bridge.clear();
       }
     },
-    [bridge, scene]
+    [bridge, scene],
   );
 
   // the engine owns undo/redo on the surface it drives — Lighter must not also
@@ -155,7 +155,7 @@ export const useLighterEngineBridge = ({
     (event: { overlayId: string }) => {
       surface.commit((scene as Scene2D).getOverlay(event.overlayId));
     },
-    [scene, surface]
+    [scene, surface],
   );
 
   // Gesture coalescing: drawing a masked detection commits in several steps —
@@ -203,7 +203,7 @@ export const useLighterEngineBridge = ({
       surface.commit(overlay, { undoKey: key });
       return key;
     },
-    [gestureKeyFor, scene, surface]
+    [gestureKeyFor, scene, surface],
   );
 
   const commitMaskTail = useCallback(
@@ -218,10 +218,10 @@ export const useLighterEngineBridge = ({
       pendingMaskKey.current.delete(event.overlayId);
       surface.commit(
         (scene as Scene2D).getOverlay(event.overlayId),
-        key ? { undoKey: key } : undefined
+        key ? { undoKey: key } : undefined,
       );
     },
-    [scene, surface]
+    [scene, surface],
   );
 
   // Establish = a freshly drawn overlay finalizing. Commit it, then route its
@@ -243,7 +243,7 @@ export const useLighterEngineBridge = ({
       // draw's undo unit (video auto-extend), keyed by overlay id
       onEstablishCommit?.(event.overlayId, undoKey);
     },
-    [commitWithMaskTail, onEstablishCommit, scene, surface]
+    [commitWithMaskTail, onEstablishCommit, scene, surface],
   );
 
   // WRITE-HALF: finalize events → commit (upsert by the overlay's durable id).
@@ -290,7 +290,7 @@ export const useLighterEngineBridge = ({
         bounds: { x: b.x, y: b.y, width: b.width, height: b.height },
       });
     },
-    [dataset, engine, sample, scene]
+    [dataset, engine, sample, scene],
   );
 
   on("lighter:overlay-drag-move", publishGeometry);
@@ -300,7 +300,7 @@ export const useLighterEngineBridge = ({
     engine,
     dataset,
     sample,
-    enabled ? (scene as Scene2D | null) : null
+    enabled ? (scene as Scene2D | null) : null,
   );
 
   // interaction write-half
@@ -326,8 +326,8 @@ export const useLighterEngineBridge = ({
           additive: event.isShiftPressed,
         });
       },
-      [interactionPolicy, scene, surface]
-    )
+      [interactionPolicy, scene, surface],
+    ),
   );
 
   on(
@@ -351,14 +351,14 @@ export const useLighterEngineBridge = ({
           surface.toggleActive(
             stampFrame(
               { path: overlay.field, instanceId: overlay.id },
-              frameOf
+              frameOf,
             ),
-            false
+            false,
           );
         }
       },
-      [interactionPolicy, scene, surface, frameOf]
-    )
+      [interactionPolicy, scene, surface, frameOf],
+    ),
   );
 
   on(
@@ -371,8 +371,8 @@ export const useLighterEngineBridge = ({
           surface.hoverHandle(overlay, true);
         }
       },
-      [scene, surface]
-    )
+      [scene, surface],
+    ),
   );
 
   on(
@@ -385,8 +385,8 @@ export const useLighterEngineBridge = ({
           surface.hoverHandle(overlay, false);
         }
       },
-      [scene, surface]
-    )
+      [scene, surface],
+    ),
   );
 
   // the pointer left the canvas — release every hover THIS surface holds,
@@ -401,10 +401,10 @@ export const useLighterEngineBridge = ({
         .filter(
           (ref) =>
             ref.sample === sample &&
-            !!(scene as Scene2D).getOverlay(ref.instanceId)
+            !!(scene as Scene2D).getOverlay(ref.instanceId),
         );
 
       engine.interaction.pruneHovered(owned);
-    }, [engine, sample, scene])
+    }, [engine, sample, scene]),
   );
 };

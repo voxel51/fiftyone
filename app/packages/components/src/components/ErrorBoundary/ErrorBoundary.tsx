@@ -134,7 +134,7 @@ export const ErrorDisplayMarkup = <T extends AppError>({
 
 const ErrorsDisplayWithSideEffects = (
   onReset?: () => void,
-  disableReset?: boolean
+  disableReset?: boolean,
 ) => {
   const FallbackComponent = <T extends AppError>({
     error,
@@ -161,7 +161,7 @@ const TrackFallback =
   (
     Fallback: ComponentType<any> | undefined,
     onReset?: () => void,
-    disableReset?: boolean
+    disableReset?: boolean,
   ) =>
   (props: any) => {
     const ActualFallback =

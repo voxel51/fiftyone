@@ -16,7 +16,7 @@ import { BaseOverlay } from "@fiftyone/lighter/src/overlay/BaseOverlay";
 export function letterboxRect(
   original: Dimensions,
   containerW: number,
-  containerH: number
+  containerH: number,
 ): Rect {
   const origAspect = original.width / original.height;
   const targetAspect = containerW / containerH;

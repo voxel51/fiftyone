@@ -22,7 +22,7 @@ import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 import type { Page } from "src/oss/fixtures";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
-  "annotate-video-auto-extend"
+  "annotate-video-auto-extend",
 );
 const id = "000000000000000000000000";
 const clip = `/tmp/${datasetName}.webm`;
@@ -61,7 +61,7 @@ test.beforeEach(async ({ videoAnnotateSDK }) => {
 const openAnnotate = async (
   fiftyoneLoader: AbstractFiftyoneLoader,
   modal: ModalPom,
-  page: Page
+  page: Page,
 ) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
@@ -108,7 +108,7 @@ test.describe.serial("video annotation fresh draw", () => {
     const saved = page.waitForResponse(
       (r) =>
         /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method())
+        ["POST", "PATCH", "PUT"].includes(r.request().method()),
     );
     await modal.sidebar.edit.selectFieldChoice("label", "vehicle");
     await saved;
@@ -148,7 +148,7 @@ test.describe.serial("video annotation fresh draw", () => {
     const saved = page.waitForResponse(
       (r) =>
         /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method())
+        ["POST", "PATCH", "PUT"].includes(r.request().method()),
     );
     await modal.sidebar.edit.selectFieldChoice("label", "vehicle");
     await modal.sidebar.edit.assert.verifyFieldValue("label", "vehicle");

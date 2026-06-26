@@ -48,12 +48,12 @@ export const useFo3dCameraLookAt = ({
         targetX,
         targetY,
         targetZ,
-        lookAt.animate
+        lookAt.animate,
       );
 
       return true;
     },
-    [cameraRef, cameraControlsRef]
+    [cameraRef, cameraControlsRef],
   );
 
   return {

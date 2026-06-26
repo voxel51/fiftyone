@@ -28,7 +28,7 @@ import { getEmbedding, putEmbedding } from "./embeddingCache";
 
 function postNotification<T extends keyof WorkerNotifications>(
   type: T,
-  result: WorkerNotifications[T]
+  result: WorkerNotifications[T],
 ): void {
   self.postMessage({ type, result });
 }
@@ -53,7 +53,7 @@ function postResponse<T extends WorkerMessageType>(
   id: number,
   type: T,
   result: WorkerResponse<T>,
-  transfer: Transferable[] = []
+  transfer: Transferable[] = [],
 ): void {
   self.postMessage({ id, type, success: true, result }, transfer);
 }
@@ -102,7 +102,7 @@ const CACHE_PREFIX = `${ENCODER_CACHE_KEY}:${SAM2_INPUT_SIZE}:`;
 async function resolveModelUrl(family: string, file: string): Promise<string> {
   const data = await getFetchFunction()<undefined, { url: string }>(
     "GET",
-    `/runtime-assets/models/${family}/${file}`
+    `/runtime-assets/models/${family}/${file}`,
   );
   return data.url;
 }
@@ -129,7 +129,7 @@ if (SAM2_PERF_LOG) {
     `[sam2-perf] config crossOriginIsolated=${isCOI} ` +
       `numThreads=${ort.env.wasm.numThreads} simd=${ort.env.wasm.simd} ` +
       `hardwareConcurrency=${navigator.hardwareConcurrency} ` +
-      `webgpuAvailable=${WEBGPU_AVAILABLE}`
+      `webgpuAvailable=${WEBGPU_AVAILABLE}`,
   );
 }
 
@@ -156,7 +156,7 @@ async function loadImageData(url: string): Promise<ImageData> {
   }
   if (!response.ok)
     throw new Error(
-      `Image fetch failed: ${response.status} ${response.statusText}`
+      `Image fetch failed: ${response.status} ${response.statusText}`,
     );
 
   const blob = await response.blob();
@@ -227,7 +227,7 @@ async function loadModel(): Promise<void> {
     file: string,
     cacheKey: string,
     name: "encoder" | "decoder",
-    failureKind: "encoder_failure" | "decoder_failure"
+    failureKind: "encoder_failure" | "decoder_failure",
   ): Promise<ort.InferenceSession> {
     let buf: ArrayBuffer;
     try {
@@ -237,7 +237,7 @@ async function loadModel(): Promise<void> {
         cacheKey,
         (loaded, total) =>
           postProgressNotification({ file: name, loaded, total }),
-        postWarningNotification
+        postWarningNotification,
       );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -273,7 +273,7 @@ async function loadModel(): Promise<void> {
           console.debug(
             `[sam2-perf] session ${name} ep=${
               (executionProviders as string[])[0]
-            }`
+            }`,
           );
         }
         return session;
@@ -286,7 +286,7 @@ async function loadModel(): Promise<void> {
               (executionProviders as string[])[0]
             } FAILED, trying next: ${
               err instanceof Error ? err.message : String(err)
-            }`
+            }`,
           );
         }
       }
@@ -306,7 +306,7 @@ async function loadModel(): Promise<void> {
       ENCODER_FILE,
       ENCODER_CACHE_KEY,
       "encoder",
-      "encoder_failure"
+      "encoder_failure",
     );
 
   if (!decoderSession)
@@ -315,7 +315,7 @@ async function loadModel(): Promise<void> {
       DECODER_FILE,
       DECODER_CACHE_KEY,
       "decoder",
-      "decoder_failure"
+      "decoder_failure",
     );
 
   if (WEBGPU_AVAILABLE) await prewarmSessions();
@@ -335,7 +335,7 @@ async function prewarmSessions(): Promise<void> {
       image: new ort.Tensor(
         "float32",
         new Float32Array(3 * SAM2_INPUT_SIZE * SAM2_INPUT_SIZE),
-        [1, 3, SAM2_INPUT_SIZE, SAM2_INPUT_SIZE]
+        [1, 3, SAM2_INPUT_SIZE, SAM2_INPUT_SIZE],
       ),
     });
     await decoderSession.run({
@@ -345,13 +345,13 @@ async function prewarmSessions(): Promise<void> {
       point_coords: new ort.Tensor(
         "float32",
         new Float32Array([0, 0]),
-        [1, 1, 2]
+        [1, 1, 2],
       ),
       point_labels: new ort.Tensor("float32", new Float32Array([1]), [1, 1]),
       mask_input: new ort.Tensor(
         "float32",
         new Float32Array(SAM2_OUTPUT_SIZE * SAM2_OUTPUT_SIZE),
-        [1, 1, SAM2_OUTPUT_SIZE, SAM2_OUTPUT_SIZE]
+        [1, 1, SAM2_OUTPUT_SIZE, SAM2_OUTPUT_SIZE],
       ),
       has_mask_input: new ort.Tensor("float32", new Float32Array([0]), [1]),
     });
@@ -360,7 +360,7 @@ async function prewarmSessions(): Promise<void> {
     postWarningNotification(
       `Prewarm failed (non-fatal): ${
         err instanceof Error ? err.message : String(err)
-      }`
+      }`,
     );
   }
 }
@@ -386,13 +386,13 @@ function bitmapToImageData(bitmap: ImageBitmap): ImageData {
  */
 async function embedAndDecode(
   imageUrl: string,
-  points: PromptPoint[]
+  points: PromptPoint[],
 ): Promise<InferenceResult> {
   const imageData = await loadImageData(imageUrl);
   return embedAndDecodeFromImageData(
     imageData,
     CACHE_PREFIX + imageUrl,
-    points
+    points,
   );
 }
 
@@ -404,7 +404,7 @@ async function embedAndDecode(
 async function embedAndDecodeBitmap(
   bitmap: ImageBitmap,
   cacheKey: string,
-  points: PromptPoint[]
+  points: PromptPoint[],
 ): Promise<InferenceResult> {
   const tDecodeBitmap = performance.now();
   const imageData = bitmapToImageData(bitmap);
@@ -421,7 +421,7 @@ async function embedAndDecodeBitmap(
     imageData,
     CACHE_PREFIX + cacheKey,
     points,
-    /* useEmbeddingCache */ false
+    /* useEmbeddingCache */ false,
   );
 }
 
@@ -433,7 +433,7 @@ async function embedAndDecodeBitmap(
  */
 async function encodeBitmap(
   bitmap: ImageBitmap,
-  cacheKey: string
+  cacheKey: string,
 ): Promise<void> {
   if (!encoderSession) throw new Error("Model not loaded");
 
@@ -488,7 +488,7 @@ async function encodeBitmap(
         originalHeight: processed.originalHeight,
       },
     },
-    postWarningNotification
+    postWarningNotification,
   );
 }
 
@@ -503,23 +503,23 @@ interface ResolvedEmbedding {
 
 /** Rebuild encoder-output tensors from a cached embedding entry. */
 function tensorsFromCache(
-  cached: NonNullable<Awaited<ReturnType<typeof getEmbedding>>>
+  cached: NonNullable<Awaited<ReturnType<typeof getEmbedding>>>,
 ): Record<string, ort.Tensor> {
   return {
     image_embed: new ort.Tensor(
       "float32",
       cached.imageEmbed.data,
-      cached.imageEmbed.dims
+      cached.imageEmbed.dims,
     ),
     high_res_feats_0: new ort.Tensor(
       "float32",
       cached.highResFeats0.data,
-      cached.highResFeats0.dims
+      cached.highResFeats0.dims,
     ),
     high_res_feats_1: new ort.Tensor(
       "float32",
       cached.highResFeats1.data,
-      cached.highResFeats1.dims
+      cached.highResFeats1.dims,
     ),
   };
 }
@@ -534,7 +534,7 @@ async function resolveEmbedding(
   imageData: ImageData,
   cacheKey: string,
   useEmbeddingCache: boolean,
-  gpuTensors: ort.Tensor[]
+  gpuTensors: ort.Tensor[],
 ): Promise<ResolvedEmbedding> {
   if (!encoderSession) throw new Error("Model not loaded");
 
@@ -616,7 +616,7 @@ async function resolveEmbedding(
 async function storeEmbedding(
   cacheKey: string,
   encResults: Record<string, ort.Tensor>,
-  geometry: ImageGeometry
+  geometry: ImageGeometry,
 ): Promise<void> {
   const [imageEmbed, highResFeats0, highResFeats1] = (await Promise.all([
     encResults["image_embed"].getData(false),
@@ -644,7 +644,7 @@ async function storeEmbedding(
         originalHeight: geometry.originalHeight,
       },
     },
-    postWarningNotification
+    postWarningNotification,
   );
 }
 
@@ -662,7 +662,7 @@ interface DecodeMarks {
 async function decodeToMask(
   encResults: Record<string, ort.Tensor>,
   geometry: ImageGeometry,
-  points: PromptPoint[]
+  points: PromptPoint[],
 ): Promise<{ result: InferenceResult; marks: DecodeMarks }> {
   if (!decoderSession) throw new Error("Model not loaded");
 
@@ -687,7 +687,7 @@ async function decodeToMask(
     mask_input: new ort.Tensor(
       "float32",
       new Float32Array(SAM2_OUTPUT_SIZE * SAM2_OUTPUT_SIZE),
-      [1, 1, SAM2_OUTPUT_SIZE, SAM2_OUTPUT_SIZE]
+      [1, 1, SAM2_OUTPUT_SIZE, SAM2_OUTPUT_SIZE],
     ),
     has_mask_input: new ort.Tensor("float32", new Float32Array([0]), [1]),
   });
@@ -703,7 +703,7 @@ async function decodeToMask(
 /** Select the highest-IoU mask and crop/normalize it to the source image. */
 function bestMaskResult(
   decResults: Record<string, ort.Tensor>,
-  geometry: ImageGeometry
+  geometry: ImageGeometry,
 ): InferenceResult {
   const masks = decResults["masks"].data as Float32Array;
   const ious = decResults["iou_predictions"].data as Float32Array;
@@ -736,7 +736,7 @@ async function embedAndDecodeFromImageData(
   imageData: ImageData,
   cacheKey: string,
   points: PromptPoint[],
-  useEmbeddingCache = true
+  useEmbeddingCache = true,
 ): Promise<InferenceResult> {
   if (points.length === 0)
     throw new Error("At least one prompt point is required");
@@ -752,13 +752,13 @@ async function embedAndDecodeFromImageData(
       imageData,
       cacheKey,
       useEmbeddingCache,
-      gpuTensors
+      gpuTensors,
     );
 
     const { result, marks: decodeMarks } = await decodeToMask(
       encResults,
       geometry,
-      points
+      points,
     );
 
     perfLog(cacheHit ? "infer(cache-hit)" : "infer(cache-miss)", {
@@ -797,7 +797,7 @@ self.onmessage = async (e: MessageEvent<WorkerInbound>) => {
     } else if (msg.type === "embedAndDecode") {
       const result = await embedAndDecode(
         msg.payload.imageUrl,
-        msg.payload.points
+        msg.payload.points,
       );
       postStatusNotification("ready");
       postResponse(id, "embedAndDecode", result, [
@@ -807,7 +807,7 @@ self.onmessage = async (e: MessageEvent<WorkerInbound>) => {
       const result = await embedAndDecodeBitmap(
         msg.payload.bitmap,
         msg.payload.cacheKey,
-        msg.payload.points
+        msg.payload.points,
       );
       postStatusNotification("ready");
       postResponse(id, "embedAndDecodeBitmap", result, [

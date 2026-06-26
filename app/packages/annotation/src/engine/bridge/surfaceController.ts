@@ -23,7 +23,7 @@ export interface SurfaceActions {
   createLabel(
     path: string,
     label: Partial<LabelData>,
-    frame?: number
+    frame?: number,
   ): LabelRef;
   deleteLabel(ref: ScopedRef): void;
 
@@ -52,7 +52,7 @@ export interface SurfaceController<Handle> extends SurfaceActions {
   /** Interaction gestures by handle: `refOf` + the SurfaceActions write. */
   selectHandle(
     handle: Handle | undefined,
-    opts?: { additive?: boolean; toggle?: boolean }
+    opts?: { additive?: boolean; toggle?: boolean },
   ): void;
   hoverHandle(handle: Handle, on: boolean): void;
 }

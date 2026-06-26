@@ -77,7 +77,7 @@ export class Annotate3dSDK {
     const pyCuboids = JSON.stringify(cuboidSampleIndices);
     const pyPolylineClasses = JSON.stringify(polylineClasses ?? []);
     const pyPolylines = JSON.stringify(
-      seedPolylines ? polylineSampleIndices : []
+      seedPolylines ? polylineSampleIndices : [],
     );
     const pySeedPolylines = seedPolylines ? "True" : "False";
 
@@ -228,13 +228,13 @@ print(
    */
   async getCuboidLabels(
     dataset: string,
-    options: { field?: string; sampleIndex?: number } = {}
+    options: { field?: string; sampleIndex?: number } = {},
   ): Promise<string[]> {
     const field = options.field ?? "detections";
     const sampleIndex = options.sampleIndex ?? 0;
     const resultFile = path.join(
       os.tmpdir(),
-      `cuboid-labels-${dataset}-${field}-${sampleIndex}.json`
+      `cuboid-labels-${dataset}-${field}-${sampleIndex}.json`,
     );
 
     await this.loader.executePythonCode(`
@@ -274,7 +274,7 @@ with open("${resultFile}", "w") as f:
    */
   async getCuboidGeometry(
     dataset: string,
-    options: { field?: string; sampleIndex?: number } = {}
+    options: { field?: string; sampleIndex?: number } = {},
   ): Promise<{
     location: number[] | null;
     dimensions: number[] | null;
@@ -284,7 +284,7 @@ with open("${resultFile}", "w") as f:
     const sampleIndex = options.sampleIndex ?? 0;
     const resultFile = path.join(
       os.tmpdir(),
-      `cuboid-geom-${dataset}-${field}-${sampleIndex}.json`
+      `cuboid-geom-${dataset}-${field}-${sampleIndex}.json`,
     );
 
     await this.loader.executePythonCode(`
@@ -331,13 +331,13 @@ with open("${resultFile}", "w") as f:
    */
   async getPolylineLabels(
     dataset: string,
-    options: { field?: string; sampleIndex?: number } = {}
+    options: { field?: string; sampleIndex?: number } = {},
   ): Promise<string[]> {
     const field = options.field ?? "polylines";
     const sampleIndex = options.sampleIndex ?? 0;
     const resultFile = path.join(
       os.tmpdir(),
-      `polyline-labels-${dataset}-${field}-${sampleIndex}.json`
+      `polyline-labels-${dataset}-${field}-${sampleIndex}.json`,
     );
 
     await this.loader.executePythonCode(`
@@ -377,7 +377,7 @@ with open("${resultFile}", "w") as f:
    */
   async getPolylineGeometry(
     dataset: string,
-    options: { field?: string; sampleIndex?: number } = {}
+    options: { field?: string; sampleIndex?: number } = {},
   ): Promise<{
     points3d: number[][][] | null;
     closed: boolean | null;
@@ -387,7 +387,7 @@ with open("${resultFile}", "w") as f:
     const sampleIndex = options.sampleIndex ?? 0;
     const resultFile = path.join(
       os.tmpdir(),
-      `polyline-geom-${dataset}-${field}-${sampleIndex}.json`
+      `polyline-geom-${dataset}-${field}-${sampleIndex}.json`,
     );
 
     await this.loader.executePythonCode(`

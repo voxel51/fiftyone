@@ -43,7 +43,7 @@ export const useLooker3dAnnotationBridge = (): void => {
   const pathsKey = active ? [...active].sort().join(" ") : "";
   const paths = useMemo(
     () => new Set(pathsKey ? pathsKey.split(" ") : []),
-    [pathsKey]
+    [pathsKey],
   );
 
   // store.get reads the latest doc without re-creating the (stable) store —
@@ -63,7 +63,7 @@ export const useLooker3dAnnotationBridge = (): void => {
       update,
       remove,
     }),
-    [add, update, remove]
+    [add, update, remove],
   );
 
   const controller = useLooker3dEngineBridge({

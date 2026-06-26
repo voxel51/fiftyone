@@ -295,7 +295,7 @@ export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
 
     const numFrames = Math.min(
       this.chunkSize,
-      this.frameCount - startFrame + 1
+      this.frameCount - startFrame + 1,
     );
     if (numFrames <= 0) {
       return;
@@ -341,7 +341,7 @@ export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
   }
 
   private handleWorkerMessage = (
-    event: MessageEvent<OutboundMessage>
+    event: MessageEvent<OutboundMessage>,
   ): void => {
     const msg = event.data;
     switch (msg.type) {
@@ -388,7 +388,7 @@ export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
 
   private onChunkFailed(msg: ChunkFailedMessage): void {
     console.error(
-      `[ImaVidImageStream] worker chunk ${msg.reqId} failed: ${msg.error}`
+      `[ImaVidImageStream] worker chunk ${msg.reqId} failed: ${msg.error}`,
     );
     this.resolveOutstandingFrames(msg.reqId);
   }
@@ -435,7 +435,7 @@ function createInflightEntry(): InflightEntry {
 }
 
 function normalizeHeaders(
-  headers: HeadersInit | undefined
+  headers: HeadersInit | undefined,
 ): Record<string, string> {
   if (!headers) {
     return {};

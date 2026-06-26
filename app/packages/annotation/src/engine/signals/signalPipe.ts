@@ -46,7 +46,7 @@ export class SignalPipe {
   subscribe<T>(
     topic: string,
     key: EntityId | "*",
-    handler: SignalHandler<T>
+    handler: SignalHandler<T>,
   ): () => void {
     let subscriptions = this.topics.get(topic);
 

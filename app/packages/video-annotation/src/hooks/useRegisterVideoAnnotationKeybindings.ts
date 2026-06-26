@@ -47,6 +47,6 @@ export const useRegisterVideoAnnotationKeybindings = () => {
           "Toggle the keyframe attribute on the selected detection at the current frame.",
       },
     ],
-    [scene, actions]
+    [scene, actions],
   );
 };

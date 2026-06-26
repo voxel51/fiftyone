@@ -10,7 +10,7 @@ function makeTd(
   id: string,
   support: [number, number],
   label = "running",
-  extras: Record<string, unknown> = {}
+  extras: Record<string, unknown> = {},
 ) {
   return {
     _cls: "TemporalDetection" as const,
@@ -176,7 +176,7 @@ describe("buildTemporalDetectionTracks", () => {
           events: makeField(
             makeTd("z", [10, 20]),
             makeTd("a", [1, 5]),
-            makeTd("m", [10, 30])
+            makeTd("m", [10, 30]),
           ),
         },
         fps: DEFAULT_FPS,
@@ -212,7 +212,7 @@ describe("buildTemporalDetectionTracks", () => {
               support: [1] as unknown as [number, number],
             },
             { ...makeTd("b", [1, 5]), support: [NaN, 10] },
-            { ...makeTd("c", [1, 5]), support: [20, 10] }
+            { ...makeTd("c", [1, 5]), support: [20, 10] },
           ),
         },
         fps: DEFAULT_FPS,
@@ -282,7 +282,7 @@ describe("buildTemporalDetectionTracks", () => {
           sample: {},
           fps: DEFAULT_FPS,
           resolveColor: passthroughColor,
-        })
+        }),
       ).toEqual([]);
     });
 
@@ -293,21 +293,21 @@ describe("buildTemporalDetectionTracks", () => {
           sample,
           fps: 0,
           resolveColor: passthroughColor,
-        })
+        }),
       ).toEqual([]);
       expect(
         buildTemporalDetectionTracks({
           sample,
           fps: -10,
           resolveColor: passthroughColor,
-        })
+        }),
       ).toEqual([]);
       expect(
         buildTemporalDetectionTracks({
           sample,
           fps: Number.NaN,
           resolveColor: passthroughColor,
-        })
+        }),
       ).toEqual([]);
     });
   });

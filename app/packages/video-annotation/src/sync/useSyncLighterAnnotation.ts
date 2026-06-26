@@ -65,7 +65,7 @@ const useRegisterDrawHandler = ({
       } else if (detectionMode.detectionModeActive) {
         detectionMode.create();
       }
-    }, [detectionMode, segmentationMode])
+    }, [detectionMode, segmentationMode]),
   );
 };
 
@@ -132,7 +132,7 @@ const useRegisterDrawEstablishHandler = ({
 
           const targetFrames = autoExtendTargetFrames(
             anchor.frame,
-            stream.totalFrames
+            stream.totalFrames,
           );
 
           if (targetFrames.length === 0) {
@@ -144,12 +144,12 @@ const useRegisterDrawEstablishHandler = ({
             anchor.instanceId,
             anchor.frame,
             targetFrames,
-            drawUndoKey
+            drawUndoKey,
           );
         });
       },
-      [clear, engine, surfaceActions, stream]
-    )
+      [clear, engine, surfaceActions, stream],
+    ),
   );
 };
 
@@ -187,8 +187,8 @@ const useRegisterEditorTeardownHandler = ({
           queueMicrotask(() => exit());
         }
       },
-      [engine, exit, editingOverlay]
-    )
+      [engine, exit, editingOverlay],
+    ),
   );
 };
 
@@ -213,7 +213,7 @@ const useRegisterModeQuitHandlers = ({
     "lighter:detection-mode-quit",
     useCallback(() => {
       detectionMode.deactivateDetectionMode();
-    }, [detectionMode])
+    }, [detectionMode]),
   );
 
   registerHandler(
@@ -222,7 +222,7 @@ const useRegisterModeQuitHandlers = ({
       if (segmentationMode.segmentationModeActive) {
         segmentationMode.deactivateSegmentationMode();
       }
-    }, [segmentationMode])
+    }, [segmentationMode]),
   );
 
   registerHandler(
@@ -241,7 +241,7 @@ const useRegisterModeQuitHandlers = ({
       if (polylineMode.polylineModeActive) {
         polylineMode.deactivatePolylineMode();
       }
-    }, [detectionMode, segmentationMode, polylineMode])
+    }, [detectionMode, segmentationMode, polylineMode]),
   );
 };
 
@@ -258,7 +258,7 @@ const useRegisterTrackDeletedHandler = ({
     "annotation:trackDeleted",
     useCallback(() => {
       detectionMode.deactivateDetectionMode();
-    }, [detectionMode])
+    }, [detectionMode]),
   );
 };
 
@@ -286,7 +286,7 @@ const useRegisterTrackDeletedHandler = ({
  */
 export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
   const registerHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
 
   const detectionMode = useDetectionMode();

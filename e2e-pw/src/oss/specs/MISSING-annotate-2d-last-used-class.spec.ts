@@ -63,7 +63,7 @@ test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
 const drawBox = async (
   modal: ModalPom,
   from: [number, number],
-  to: [number, number]
+  to: [number, number],
 ) => {
   await modal.sidebar.annotate.detectionMode("Detections");
   await modal.sampleCanvas.move(from[0], from[1], "crosshair");

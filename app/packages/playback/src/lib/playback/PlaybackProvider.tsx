@@ -28,7 +28,7 @@ function PlaybackContextHost({
       duration: liveDuration,
       stepInterval: liveStepInterval,
     }),
-    [baseContext, liveDuration, liveStepInterval]
+    [baseContext, liveDuration, liveStepInterval],
   );
   return (
     <PlaybackContext.Provider value={value}>

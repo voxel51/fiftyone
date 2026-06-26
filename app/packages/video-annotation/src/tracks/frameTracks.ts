@@ -98,7 +98,7 @@ export interface PerInstanceLabel {
 /** Resolve a row's color from its label and the field path it lives on. */
 export type PerInstanceColorResolver = (
   label: PerInstanceLabel,
-  path: string
+  path: string,
 ) => string;
 
 export interface BuildPerInstanceTracksInput {
@@ -138,7 +138,7 @@ const indexOf = (label: LabelData): number | undefined =>
   label.index as number | undefined;
 
 const instanceOf = (
-  label: LabelData
+  label: LabelData,
 ): { _cls: "Instance"; _id?: string } | null =>
   (label.instance as { _cls: "Instance"; _id?: string } | null) ?? null;
 
@@ -181,7 +181,7 @@ export function buildPerInstanceTracks({
     paths,
     totalFrames,
     fps,
-    dynamicAttributes
+    dynamicAttributes,
   );
   return statesToTracks(states, resolveColor, dynamicAttributes);
 }
@@ -248,7 +248,7 @@ export function buildTracksFromIndex({
     overlay,
     fps,
     path,
-    dynamicAttributes
+    dynamicAttributes,
   );
   return statesToTracks(states, resolveColor, dynamicAttributes);
 }
@@ -257,7 +257,7 @@ export function buildTracksFromIndex({
 function statesToTracks(
   states: Map<string, InstanceState>,
   resolveColor: PerInstanceColorResolver,
-  dynamicAttributes: readonly string[]
+  dynamicAttributes: readonly string[],
 ): Track[] {
   assignDisplayOrdinals(states);
 
@@ -300,7 +300,7 @@ function mergeIndexWithOverlay(
   overlay: FrameOverlay,
   fps: number,
   path: string,
-  dynamicAttributes: readonly string[]
+  dynamicAttributes: readonly string[],
 ): Map<string, InstanceState> {
   const dirtySorted = [...overlay.keys()].sort((a, b) => a - b);
   const dirtySet = new Set(dirtySorted);
@@ -332,7 +332,7 @@ function mergeIndexWithOverlay(
         id,
         label,
         frame,
-        dynamicAttributes
+        dynamicAttributes,
       );
     }
   }
@@ -368,7 +368,7 @@ function mergeIndexWithOverlay(
         dynamicAttributes,
         dirtySorted,
         dirtyAttrs: dirtyAttrsByInstance.get(id),
-      })
+      }),
     );
   }
 
@@ -444,8 +444,8 @@ function indexInstanceState({
     path,
     persistedIndex: live
       ? indexOf(live)
-      : baseline?.persistedIndex ?? undefined,
-    instance: live ? instanceOf(live) : baseline?.instance ?? null,
+      : (baseline?.persistedIndex ?? undefined),
+    instance: live ? instanceOf(live) : (baseline?.instance ?? null),
     displayIndex: 0,
     inFrame: false,
     currentStart: null,
@@ -495,7 +495,7 @@ function accumulatePresence(
   paths: string[],
   totalFrames: number,
   fps: number,
-  dynamicAttributes: readonly string[]
+  dynamicAttributes: readonly string[],
 ): Map<string, InstanceState> {
   const states = new Map<string, InstanceState>();
 
@@ -584,7 +584,7 @@ function assignDisplayOrdinals(states: Map<string, InstanceState>): void {
 function toTrack(
   id: string,
   state: InstanceState,
-  resolveColor: PerInstanceColorResolver
+  resolveColor: PerInstanceColorResolver,
 ): Track {
   // Every event carries the field path so a row's click / hover resolves the
   // correct `(path, instanceId)` ref regardless of which frame field it's on.
@@ -601,7 +601,7 @@ function toTrack(
         label: "in frame",
         resizable: true,
         data,
-      })
+      }),
     ),
     // Point events render as diamond markers on top of the presence bar
     // via `TimelineTrack`'s no-`endSec` branch.
@@ -622,7 +622,7 @@ function toTrack(
         index: state.persistedIndex,
         instance: state.instance,
       },
-      state.path
+      state.path,
     ),
     events,
   };
@@ -634,7 +634,7 @@ function toTrack(
  */
 function sortByClassThenOrdinal(
   tracks: Track[],
-  states: Map<string, InstanceState>
+  states: Map<string, InstanceState>,
 ): Track[] {
   return tracks.sort((a, b) => {
     const sa = states.get(a.id)!;
@@ -661,7 +661,7 @@ export const subTrackId = (parentId: string, attr: string): string =>
  * Mongo `instance._id`s, so the separator never collides.
  */
 export const parseSubTrackId = (
-  id: string
+  id: string,
 ): { parentId: string; attr: string } | null => {
   const at = id.indexOf(SUB_TRACK_SEPARATOR);
   if (at === -1) {
@@ -690,7 +690,7 @@ function recordDynamicValues(
   state: InstanceState,
   label: LabelData,
   frame: number,
-  dynamicAttributes: readonly string[]
+  dynamicAttributes: readonly string[],
 ): void {
   for (const attr of dynamicAttributes) {
     const value =
@@ -718,7 +718,7 @@ function recordDirtyAttrValues(
   id: string,
   label: LabelData,
   frame: number,
-  dynamicAttributes: readonly string[]
+  dynamicAttributes: readonly string[],
 ): void {
   if (dynamicAttributes.length === 0) {
     return;
@@ -747,7 +747,7 @@ function recordDirtyAttrValues(
 /** Map frame-based value runs to the sec-based segments the rows render. */
 const toAttributeSegments = (
   runs: ValueRun[],
-  fps: number
+  fps: number,
 ): AttributeSegment[] =>
   runs.map(([startFrame, endFrame, value]) => ({
     startSec: (startFrame - 1) / fps,
@@ -764,7 +764,7 @@ const toAttributeSegments = (
  */
 export function segmentAttribute(
   records: ReadonlyArray<{ frame: number; value: unknown }>,
-  fps: number
+  fps: number,
 ): AttributeSegment[] {
   const segments: AttributeSegment[] = [];
 
@@ -812,7 +812,7 @@ export function segmentAttribute(
 function buildSubTracks(
   parent: Track,
   state: InstanceState,
-  dynamicAttributes: readonly string[]
+  dynamicAttributes: readonly string[],
 ): Track[] {
   const tracks: Track[] = [];
 
@@ -833,7 +833,7 @@ function toSubTrack(
   parent: Track,
   attr: string,
   segments: AttributeSegment[],
-  path: string
+  path: string,
 ): Track {
   // Carry the parent's field path on every event so a sub-track row resolves the
   // parent's `(path, instanceId)` ref when its row is clicked — selection is

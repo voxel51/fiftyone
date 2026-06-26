@@ -46,7 +46,7 @@ export const useLighterAnnotationBridge = (): void => {
   const pathsKey = active ? [...active].sort().join(" ") : "";
   const paths = useMemo(
     () => new Set(pathsKey ? pathsKey.split(" ") : []),
-    [pathsKey]
+    [pathsKey],
   );
 
   // mutable inputs go through refs so the resolver is referentially stable —
@@ -87,7 +87,7 @@ export const useLighterAnnotationBridge = (): void => {
 
       return typeof value === "string" ? getSampleSrc(value) : undefined;
     },
-    [engine]
+    [engine],
   );
 
   useLighterEngineBridge({

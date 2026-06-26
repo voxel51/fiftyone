@@ -68,7 +68,7 @@ describe("ActionManager", () => {
         },
         () => {
           return;
-        }
+        },
       );
 
     it("removes matching entries from the undo stack", async () => {
@@ -136,7 +136,7 @@ describe("ActionManager", () => {
         id,
         () => undefined,
         () => undefined,
-        label ? () => label : undefined
+        label ? () => label : undefined,
       );
 
     it("describes the undo stack newest-first, falling back to id", async () => {
@@ -163,12 +163,12 @@ describe("DelegatingUndoable.describe", () => {
       "fo.x",
       () => undefined,
       () => undefined,
-      () => "did x"
+      () => "did x",
     );
     const bare = new DelegatingUndoable(
       "fo.y",
       () => undefined,
-      () => undefined
+      () => undefined,
     );
 
     expect(described.describe()).toBe("did x");

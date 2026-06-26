@@ -7,6 +7,6 @@ import type { ModalSample } from "@fiftyone/state";
  * the union directly.
  */
 export const getModalSampleFrameRate = (
-  sample: ModalSample | null | undefined
+  sample: ModalSample | null | undefined,
 ): number | undefined =>
   (sample as { frameRate?: number } | null | undefined)?.frameRate;

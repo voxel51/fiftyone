@@ -20,8 +20,8 @@ describe("evaluateWhen", () => {
       expect(
         evaluateWhen(
           { operator: "equals", field: "category", value: "mammal" },
-          { category: "mammal" }
-        )
+          { category: "mammal" },
+        ),
       ).toBe(true);
     });
 
@@ -29,8 +29,8 @@ describe("evaluateWhen", () => {
       expect(
         evaluateWhen(
           { operator: "equals", field: "category", value: "mammal" },
-          { category: "bird" }
-        )
+          { category: "bird" },
+        ),
       ).toBe(false);
     });
 
@@ -38,8 +38,8 @@ describe("evaluateWhen", () => {
       expect(
         evaluateWhen(
           { operator: "equals", field: "category", value: "mammal" },
-          {}
-        )
+          {},
+        ),
       ).toBe(false);
     });
 
@@ -65,8 +65,8 @@ describe("evaluateWhen", () => {
       expect(
         evaluateWhen(
           { operator: "in", field: "category", value: ["mammal", "bird"] },
-          { category: "reptile" }
-        )
+          { category: "reptile" },
+        ),
       ).toBe(false);
     });
 
@@ -74,8 +74,8 @@ describe("evaluateWhen", () => {
       expect(
         evaluateWhen(
           { operator: "in", field: "category", value: "mammal" },
-          { category: "mammal" }
-        )
+          { category: "mammal" },
+        ),
       ).toBe(false);
     });
   });
@@ -94,8 +94,8 @@ describe("evaluateWhen", () => {
               { operator: "equals", field: "size", value: "large" },
             ],
           },
-          { category: "mammal", size: "large" }
-        )
+          { category: "mammal", size: "large" },
+        ),
       ).toBe(true);
     });
 
@@ -109,8 +109,8 @@ describe("evaluateWhen", () => {
               { operator: "equals", field: "size", value: "large" },
             ],
           },
-          { category: "mammal", size: "small" }
-        )
+          { category: "mammal", size: "small" },
+        ),
       ).toBe(false);
     });
 
@@ -124,8 +124,8 @@ describe("evaluateWhen", () => {
               { operator: "equals", field: "category", value: "bird" },
             ],
           },
-          { category: "reptile" }
-        )
+          { category: "reptile" },
+        ),
       ).toBe(false);
     });
   });
@@ -153,8 +153,8 @@ describe("evaluateWhen", () => {
               { operator: "equals", field: "category", value: "bird" },
             ],
           },
-          { category: "reptile" }
-        )
+          { category: "reptile" },
+        ),
       ).toBe(false);
     });
   });
@@ -179,10 +179,10 @@ describe("evaluateWhen", () => {
         ],
       };
       expect(evaluateWhen(cond, { has_damage: true, region: "front" })).toBe(
-        true
+        true,
       );
       expect(evaluateWhen(cond, { has_damage: true, region: "rear" })).toBe(
-        true
+        true,
       );
     });
 
@@ -205,7 +205,7 @@ describe("evaluateWhen", () => {
         ],
       };
       expect(evaluateWhen(cond, { has_damage: false, region: "front" })).toBe(
-        false
+        false,
       );
     });
 
@@ -232,7 +232,7 @@ describe("evaluateWhen", () => {
           category: "mammal",
           size: "large",
           priority: "low",
-        })
+        }),
       ).toBe(true);
       expect(evaluateWhen(cond, { priority: "urgent" })).toBe(true);
     });
@@ -271,7 +271,7 @@ describe("evaluateWhen", () => {
   it("throws on an unknown operator (exhaustiveness guard)", () => {
     expect(() =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      evaluateWhen({ operator: "contains" as any, field: "x", value: "y" }, {})
+      evaluateWhen({ operator: "contains" as any, field: "x", value: "y" }, {}),
     ).toThrow("Unhandled operator: contains");
   });
 });
@@ -305,8 +305,8 @@ describe("isWhenFulfillable", () => {
       expect(
         isWhenFulfillable(
           { operator: "equals", field: "category", value: "mammal" },
-          animalAttributes
-        )
+          animalAttributes,
+        ),
       ).toBe(true);
     });
 
@@ -314,8 +314,8 @@ describe("isWhenFulfillable", () => {
       expect(
         isWhenFulfillable(
           { operator: "equals", field: "category", value: "insect" },
-          animalAttributes
-        )
+          animalAttributes,
+        ),
       ).toBe(false);
     });
 
@@ -323,8 +323,8 @@ describe("isWhenFulfillable", () => {
       expect(
         isWhenFulfillable(
           { operator: "equals", field: "notes", value: "foo" },
-          animalAttributes
-        )
+          animalAttributes,
+        ),
       ).toBe(true);
     });
   });
@@ -334,8 +334,8 @@ describe("isWhenFulfillable", () => {
       expect(
         isWhenFulfillable(
           { operator: "in", field: "category", value: ["insect", "mammal"] },
-          animalAttributes
-        )
+          animalAttributes,
+        ),
       ).toBe(true);
     });
 
@@ -343,8 +343,8 @@ describe("isWhenFulfillable", () => {
       expect(
         isWhenFulfillable(
           { operator: "in", field: "category", value: ["insect", "fungus"] },
-          animalAttributes
-        )
+          animalAttributes,
+        ),
       ).toBe(false);
     });
   });
@@ -360,8 +360,8 @@ describe("isWhenFulfillable", () => {
               { operator: "equals", field: "size", value: "large" },
             ],
           },
-          animalAttributes
-        )
+          animalAttributes,
+        ),
       ).toBe(true);
     });
 
@@ -375,8 +375,8 @@ describe("isWhenFulfillable", () => {
               { operator: "equals", field: "category", value: "mammal" },
             ],
           },
-          animalAttributes
-        )
+          animalAttributes,
+        ),
       ).toBe(false);
     });
 
@@ -390,8 +390,8 @@ describe("isWhenFulfillable", () => {
               { operator: "equals", field: "category", value: "fungus" },
             ],
           },
-          animalAttributes
-        )
+          animalAttributes,
+        ),
       ).toBe(false);
     });
   });
@@ -407,8 +407,8 @@ describe("isWhenFulfillable", () => {
               { operator: "equals", field: "category", value: "mammal" },
             ],
           },
-          animalAttributes
-        )
+          animalAttributes,
+        ),
       ).toBe(true);
     });
 
@@ -422,8 +422,8 @@ describe("isWhenFulfillable", () => {
               { operator: "equals", field: "category", value: "fungus" },
             ],
           },
-          animalAttributes
-        )
+          animalAttributes,
+        ),
       ).toBe(false);
     });
   });
@@ -445,8 +445,8 @@ describe("isWhenFulfillable", () => {
               { operator: "equals", field: "size", value: "large" },
             ],
           },
-          animalAttributes
-        )
+          animalAttributes,
+        ),
       ).toBe(true);
     });
 
@@ -466,8 +466,8 @@ describe("isWhenFulfillable", () => {
               { operator: "equals", field: "size", value: "large" },
             ],
           },
-          animalAttributes
-        )
+          animalAttributes,
+        ),
       ).toBe(false);
     });
   });
@@ -476,8 +476,8 @@ describe("isWhenFulfillable", () => {
     expect(
       isWhenFulfillable(
         { operator: "equals", field: "category", value: "mammal" },
-        animalAttributes
-      )
+        animalAttributes,
+      ),
     ).toBe(true);
   });
 
@@ -485,8 +485,8 @@ describe("isWhenFulfillable", () => {
     expect(
       isWhenFulfillable(
         { operator: "equals", field: "category", value: "dragon" },
-        animalAttributes
-      )
+        animalAttributes,
+      ),
     ).toBe(false);
   });
 
@@ -528,8 +528,8 @@ describe("isWhenFulfillable", () => {
       expect(
         isWhenFulfillable(
           { operator: "equals", field: "animal_name", value: "dog" },
-          duplicateNameAttributes
-        )
+          duplicateNameAttributes,
+        ),
       ).toBe(true);
     });
 
@@ -537,8 +537,8 @@ describe("isWhenFulfillable", () => {
       expect(
         isWhenFulfillable(
           { operator: "equals", field: "animal_name", value: "snake" },
-          duplicateNameAttributes
-        )
+          duplicateNameAttributes,
+        ),
       ).toBe(true);
     });
 
@@ -546,8 +546,8 @@ describe("isWhenFulfillable", () => {
       expect(
         isWhenFulfillable(
           { operator: "equals", field: "animal_name", value: "dragon" },
-          duplicateNameAttributes
-        )
+          duplicateNameAttributes,
+        ),
       ).toBe(false);
     });
 
@@ -563,7 +563,7 @@ describe("isWhenFulfillable", () => {
         value: "dog",
       };
       expect(isWhenFulfillable(cond, duplicateNameAttributes)).toBe(
-        isWhenFulfillable(cond, reversed)
+        isWhenFulfillable(cond, reversed),
       );
     });
   });
@@ -575,8 +575,8 @@ describe("isWhenFulfillable", () => {
         // before the frontend is updated (e.g. from a newer backend).
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         { operator: "contains" as any, field: "category", value: "mammal" },
-        animalAttributes
-      )
+        animalAttributes,
+      ),
     ).toThrow("Unhandled operator: contains");
   });
 
@@ -590,8 +590,8 @@ describe("isWhenFulfillable", () => {
             { operator: "contains" as any, field: "category", value: "mammal" },
           ],
         },
-        animalAttributes
-      )
+        animalAttributes,
+      ),
     ).toThrow("Unhandled operator: contains");
   });
 });
@@ -661,7 +661,7 @@ describe("resolveVisibleAttribute", () => {
     const result = resolveVisibleAttribute(
       "impossible_field",
       schemaWithVariants,
-      { category: "mammal" }
+      { category: "mammal" },
     );
     expect(result).toBe(schemaWithVariants[3]);
   });
@@ -670,7 +670,7 @@ describe("resolveVisibleAttribute", () => {
     const result = resolveVisibleAttribute(
       "impossible_field",
       schemaWithVariants,
-      {}
+      {},
     );
     expect(result).toBe(schemaWithVariants[3]);
   });
@@ -749,7 +749,7 @@ describe("resolveVisibleAttribute", () => {
       const result = resolveVisibleAttribute(
         "damage_location",
         schemaWithAndVariant,
-        { has_damage: true, vehicle_type: "car" }
+        { has_damage: true, vehicle_type: "car" },
       );
       expect(result).toBe(schemaWithAndVariant[2]);
     });
@@ -758,7 +758,7 @@ describe("resolveVisibleAttribute", () => {
       const result = resolveVisibleAttribute(
         "damage_location",
         schemaWithAndVariant,
-        { has_damage: true, vehicle_type: "motorcycle" }
+        { has_damage: true, vehicle_type: "motorcycle" },
       );
       expect(result).toBeUndefined();
     });
@@ -823,7 +823,7 @@ describe("mixed conditional/unconditional variants for the same name", () => {
   it("unconditional-sibling guard check returns true for a mixed name", () => {
     // This is the exact predicate used in the AnnotationSchema fix.
     const hasUnconditional = mixedAttributes.some(
-      (a) => a.name === "notes" && !a.when
+      (a) => a.name === "notes" && !a.when,
     );
     expect(hasUnconditional).toBe(true);
   });
@@ -832,7 +832,7 @@ describe("mixed conditional/unconditional variants for the same name", () => {
     // "animal_name" in schemaWithVariants has no unconditional entry, so the
     // guard does NOT fire and deletion logic proceeds normally.
     const hasUnconditional = schemaWithVariants.some(
-      (a) => a.name === "animal_name" && !a.when
+      (a) => a.name === "animal_name" && !a.when,
     );
     expect(hasUnconditional).toBe(false);
   });

@@ -17,7 +17,7 @@ describe("useEngineSelector", () => {
     });
 
     const { result } = renderHook(() =>
-      useEngineSelector(engine, (e) => e.getLabel(ref("ground_truth", "d1")))
+      useEngineSelector(engine, (e) => e.getLabel(ref("ground_truth", "d1"))),
     );
     expect(result.current?.label).toBe("cat");
 
@@ -37,7 +37,8 @@ describe("useEngineSelector", () => {
       renders++;
       return useEngineSelector(
         engine,
-        (e) => e.listLabels({ sample: "sample-1", path: "ground_truth" }).length
+        (e) =>
+          e.listLabels({ sample: "sample-1", path: "ground_truth" }).length,
       );
     });
     expect(result.current).toBe(1);
@@ -66,9 +67,9 @@ describe("useEngineSelector", () => {
       ({ id }: { id: string }) =>
         useEngineSelector(
           engine,
-          (e) => e.getLabel(ref("ground_truth", id))?.label
+          (e) => e.getLabel(ref("ground_truth", id))?.label,
         ),
-      { initialProps: { id: "d1" } }
+      { initialProps: { id: "d1" } },
     );
     expect(result.current).toBe("cat");
 
@@ -84,7 +85,7 @@ describe("useInteraction", () => {
     });
 
     const { result } = renderHook(() =>
-      useInteraction(engine, (i) => i.getAnchor())
+      useInteraction(engine, (i) => i.getAnchor()),
     );
     expect(result.current).toBeUndefined();
 
@@ -101,7 +102,7 @@ describe("useInteraction", () => {
     engine.interaction.setActive([ref("ground_truth", "d1")]);
 
     const { result } = renderHook(() =>
-      useInteraction(engine, (i) => i.getAnchor())
+      useInteraction(engine, (i) => i.getAnchor()),
     );
 
     act(() => {
@@ -118,7 +119,7 @@ describe("useTemporal", () => {
     });
 
     const { result } = renderHook(() =>
-      useTemporal(engine, (t) => t.getPresent().length)
+      useTemporal(engine, (t) => t.getPresent().length),
     );
     expect(result.current).toBe(1);
 
@@ -140,7 +141,7 @@ describe("useSurfaceActions", () => {
     act(() => {
       result.current.updateLabel(
         { path: "ground_truth", instanceId: "d1" },
-        { label: "dog" }
+        { label: "dog" },
       );
     });
 
@@ -151,7 +152,7 @@ describe("useSurfaceActions", () => {
   it("is referentially stable across re-renders", () => {
     const { engine } = makeEngine();
     const { result, rerender } = renderHook(() =>
-      useSurfaceActions(engine, "sidebar")
+      useSurfaceActions(engine, "sidebar"),
     );
     const first = result.current;
 

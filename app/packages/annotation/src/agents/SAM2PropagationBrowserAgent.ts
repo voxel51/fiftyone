@@ -22,7 +22,7 @@ import { AgentTaskType, InferenceCapability } from "./types";
 
 /** Factory for the underlying provider; injectable for tests. */
 export type BrowserAnnotationProviderFactory = (
-  options: BrowserAnnotationProviderOptions
+  options: BrowserAnnotationProviderOptions,
 ) => BrowserAnnotationProvider;
 
 const DEFAULT_FACTORY: BrowserAnnotationProviderFactory = (options) =>
@@ -77,9 +77,7 @@ export interface Sam2PropagateArgs {
  * lazily initialised on the first run and reused thereafter; its status
  * events are bridged onto the agent lifecycle so the UI can show progress.
  */
-export class SAM2PropagationBrowserAgent
-  implements AnnotationAgent<PropagationInferenceResult>
-{
+export class SAM2PropagationBrowserAgent implements AnnotationAgent<PropagationInferenceResult> {
   private readonly provider: BrowserAnnotationProvider;
   private initialized = false;
   private initializing$: Promise<void> | null = null;
@@ -189,7 +187,7 @@ export class SAM2PropagationBrowserAgent
   async infer(): Promise<InferenceResult<PropagationInferenceResult>> {
     throw new Error(
       "SAM2PropagationBrowserAgent requires the dedicated propagate() entry " +
-        "point (it needs a frame source) and is not invocable via infer()."
+        "point (it needs a frame source) and is not invocable via infer().",
     );
   }
 

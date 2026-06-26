@@ -66,7 +66,7 @@ export const useCuboidAnnotation = ({
       Vector3Tuple,
       Vector3Tuple,
       Vector3Tuple,
-      [number, number, number, number] | null
+      [number, number, number, number] | null,
     ]
   >(() => {
     if (isDetection3dOverlay(workingLabel)) {
@@ -90,7 +90,7 @@ export const useCuboidAnnotation = ({
     (
       location: Vector3Tuple,
       dimensions: Vector3Tuple,
-      quaternion: [number, number, number, number]
+      quaternion: [number, number, number, number],
     ) => {
       const path = isDetection3dOverlay(workingLabel)
         ? workingLabel.path
@@ -103,10 +103,10 @@ export const useCuboidAnnotation = ({
       engine.publishSignal<GeometrySignal>(
         GEOMETRY_SIGNAL,
         encodeEntityId(dataset, { sample, path, instanceId: labelId }),
-        { kind: "3d", location, dimensions, quaternion }
+        { kind: "3d", location, dimensions, quaternion },
       );
     },
-    [engine, dataset, sample, workingLabel, labelId]
+    [engine, dataset, sample, workingLabel, labelId],
   );
 
   const handleTransformStart = useCallback(() => {

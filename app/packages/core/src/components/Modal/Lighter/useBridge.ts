@@ -33,12 +33,12 @@ export const useBridge = (scene: Scene2D | null) => {
   useLighterTooltipEventHandler(scene);
   const deleteAnnotation = useDeleteAnnotation();
   const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
   const { clear, readEditing, setEditingMask } = useAnnotationContext();
   const { getLabelById } = useLabelsContext();
   const fieldSchema = useRecoilValue(
-    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
+    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
   );
 
   const segmentationMode = useSegmentationMode();
@@ -59,8 +59,8 @@ export const useBridge = (scene: Scene2D | null) => {
           clear();
         }
       },
-      [readEditing, clear]
-    )
+      [readEditing, clear],
+    ),
   );
 
   useEventHandler(
@@ -83,8 +83,8 @@ export const useBridge = (scene: Scene2D | null) => {
           console.error("Failed to persist undo of creation:", error);
         });
       },
-      [deleteAnnotation, fieldSchema, getLabelById]
-    )
+      [deleteAnnotation, fieldSchema, getLabelById],
+    ),
   );
 
   // Mode bookkeeping when an overlay's label is mutated outside the command
@@ -97,8 +97,8 @@ export const useBridge = (scene: Scene2D | null) => {
       (payload) => {
         setEditingMask(payload.id, payload.hasMask);
       },
-      [setEditingMask]
-    )
+      [setEditingMask],
+    ),
   );
 
   useEventHandler(
@@ -109,7 +109,7 @@ export const useBridge = (scene: Scene2D | null) => {
       } else if (detectionMode.detectionModeActive) {
         detectionMode.create();
       }
-    }, [detectionMode, segmentationMode])
+    }, [detectionMode, segmentationMode]),
   );
 
   useEventHandler(
@@ -118,14 +118,14 @@ export const useBridge = (scene: Scene2D | null) => {
       if (segmentationMode.segmentationModeActive) {
         segmentationMode.deactivateSegmentationMode();
       }
-    }, [segmentationMode])
+    }, [segmentationMode]),
   );
 
   useEventHandler(
     "lighter:detection-mode-quit",
     useCallback(() => {
       detectionMode.deactivateDetectionMode();
-    }, [detectionMode])
+    }, [detectionMode]),
   );
 
   // Generic "quit the active mode" request from global gestures (e.g.
@@ -148,7 +148,7 @@ export const useBridge = (scene: Scene2D | null) => {
         polylineMode.deactivatePolylineMode();
         return;
       }
-    }, [detectionMode, polylineMode, segmentationMode])
+    }, [detectionMode, polylineMode, segmentationMode]),
   );
 
   useEventHandler(
@@ -160,7 +160,7 @@ export const useBridge = (scene: Scene2D | null) => {
         // detection
         focusRef.current.deselectOverlay();
       }
-    }, [segmentationMode])
+    }, [segmentationMode]),
   );
 
   const context = useColorMappingContext();

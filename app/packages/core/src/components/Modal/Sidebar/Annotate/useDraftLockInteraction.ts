@@ -67,6 +67,6 @@ export const useDraftLockInteraction = (): LighterInteractionPolicy => {
 
   return useMemo(
     () => ({ interceptSelect, interceptDeselect }),
-    [interceptSelect, interceptDeselect]
+    [interceptSelect, interceptDeselect],
   );
 };

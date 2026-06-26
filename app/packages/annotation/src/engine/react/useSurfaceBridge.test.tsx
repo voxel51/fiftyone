@@ -49,7 +49,7 @@ describe("useSurfaceBridge", () => {
     const { handles, bridge, adapters } = makeSurface();
 
     const { result, unmount } = renderHook(() =>
-      useSurfaceBridge({ engine, bridge, adapters })
+      useSurfaceBridge({ engine, bridge, adapters }),
     );
 
     expect(handles.has("d1")).toBe(true);
@@ -67,7 +67,7 @@ describe("useSurfaceBridge", () => {
     const { bridge, adapters } = makeSurface();
 
     const { result, rerender } = renderHook(() =>
-      useSurfaceBridge({ engine, bridge, adapters })
+      useSurfaceBridge({ engine, bridge, adapters }),
     );
     const first = result.current;
 

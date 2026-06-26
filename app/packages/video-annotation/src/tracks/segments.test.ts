@@ -39,8 +39,8 @@ describe("removeFrames", () => {
           [1, 5],
           [8, 12],
         ],
-        [2, 4, 10]
-      )
+        [2, 4, 10],
+      ),
     ).toEqual([
       [1, 1],
       [3, 3],
@@ -57,7 +57,7 @@ describe("coalesce", () => {
       coalesce([
         [1, 3],
         [4, 6],
-      ])
+      ]),
     ).toEqual([[1, 6]]);
   });
 
@@ -66,7 +66,7 @@ describe("coalesce", () => {
       coalesce([
         [1, 5],
         [3, 8],
-      ])
+      ]),
     ).toEqual([[1, 8]]);
   });
 
@@ -75,7 +75,7 @@ describe("coalesce", () => {
       coalesce([
         [1, 3],
         [5, 6],
-      ])
+      ]),
     ).toEqual([
       [1, 3],
       [5, 6],
@@ -88,7 +88,7 @@ describe("coalesce", () => {
         [5, 6],
         [1, 3],
         [4, 4],
-      ])
+      ]),
     ).toEqual([[1, 6]]);
   });
 });
@@ -127,8 +127,8 @@ describe("mergeAttributeRuns", () => {
           [3, 4, "left"],
         ],
         [],
-        new Map()
-      )
+        new Map(),
+      ),
     ).toEqual([
       [1, 2, "off"],
       [3, 4, "left"],
@@ -137,7 +137,7 @@ describe("mergeAttributeRuns", () => {
 
   it("splits a baseline run where the overlay edits one frame's value", () => {
     expect(
-      mergeAttributeRuns([[1, 4, "off"]], [3], new Map([[3, "left"]]))
+      mergeAttributeRuns([[1, 4, "off"]], [3], new Map([[3, "left"]])),
     ).toEqual([
       [1, 2, "off"],
       [3, 3, "left"],
@@ -147,7 +147,7 @@ describe("mergeAttributeRuns", () => {
 
   it("coalesces a dirty frame whose value matches its neighbors", () => {
     expect(
-      mergeAttributeRuns([[1, 4, "off"]], [3], new Map([[3, "off"]]))
+      mergeAttributeRuns([[1, 4, "off"]], [3], new Map([[3, "off"]])),
     ).toEqual([[1, 4, "off"]]);
   });
 
@@ -166,8 +166,8 @@ describe("mergeAttributeRuns", () => {
         new Map([
           [1, "left"],
           [2, "left"],
-        ])
-      )
+        ]),
+      ),
     ).toEqual([[1, 2, "left"]]);
   });
 });

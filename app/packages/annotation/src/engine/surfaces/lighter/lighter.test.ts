@@ -31,7 +31,7 @@ const makeOverlay = (
   id: string,
   field: string,
   label: Record<string, unknown>,
-  extras: Record<string, unknown> = {}
+  extras: Record<string, unknown> = {},
 ) => ({
   id,
   field,
@@ -76,8 +76,8 @@ const makeScene = () => {
           options.id as string,
           options.field as string,
           options.label as Record<string, unknown>,
-          { factoryKey }
-        ) as unknown as BaseOverlay
+          { factoryKey },
+        ) as unknown as BaseOverlay,
     ),
   } as unknown as OverlayFactory;
 
@@ -145,11 +145,11 @@ describe("lighter adapters", () => {
       "d1",
       "ground_truth",
       { _id: "d1" },
-      { relativeBounds: { x: 0, y: 0, width: 0, height: 0 } }
+      { relativeBounds: { x: 0, y: 0, width: 0, height: 0 } },
     );
 
     expect(detectionAdapter.toLabel(overlay as unknown as BaseOverlay)).toBe(
-      null
+      null,
     );
   });
 
@@ -158,11 +158,11 @@ describe("lighter adapters", () => {
       "d1",
       "ground_truth",
       { _id: "d1", label: "cat", mask_path: "/m.png" },
-      { hasMask: () => true, getPendingMask: () => "ENCODED" }
+      { hasMask: () => true, getPendingMask: () => "ENCODED" },
     );
 
     expect(
-      detectionAdapter.toLabel(overlay as unknown as BaseOverlay)
+      detectionAdapter.toLabel(overlay as unknown as BaseOverlay),
     ).toMatchObject({ mask: "ENCODED", mask_path: null });
   });
 
@@ -173,7 +173,7 @@ describe("lighter adapters", () => {
     });
 
     expect(
-      detectionAdapter.toLabel(overlay as unknown as BaseOverlay)
+      detectionAdapter.toLabel(overlay as unknown as BaseOverlay),
     ).toMatchObject({ mask: null, mask_path: null });
   });
 
@@ -191,7 +191,7 @@ describe("lighter adapters", () => {
         ],
         getClosed: () => true,
         getFilled: () => false,
-      }
+      },
     );
 
     expect(polylineAdapter.toLabel(overlay as unknown as BaseOverlay)).toEqual({
@@ -230,7 +230,7 @@ describe("lighter bridge", () => {
     overlays.set("image", makeOverlay("image", "", {}));
     overlays.set(
       "draft",
-      makeOverlay("draft", "ground_truth", { _id: "draft" })
+      makeOverlay("draft", "ground_truth", { _id: "draft" }),
     );
     // a pre-existing committed overlay the loop adopts via resolveHandle
     overlays.set("d1", makeOverlay("d1", "ground_truth", { _id: "d1" }));
@@ -245,7 +245,7 @@ describe("lighter bridge", () => {
       detectionAdapter.buildHandle(ref("ground_truth", "d2"), {
         _id: "d2",
         bounding_box: [0.1, 0.2, 0.3, 0.4],
-      })
+      }),
     );
     bridge.resolveHandle(ref("ground_truth", "d1"));
 
@@ -412,7 +412,7 @@ describe("lighter bridge gated mounts (deferred mask_path decode)", () => {
     expect(overlays.get("d1")).toBeDefined();
     expect(overlayFactory.create).toHaveBeenCalledWith(
       "detection",
-      expect.objectContaining({ preDecodedMask: MASK })
+      expect.objectContaining({ preDecodedMask: MASK }),
     );
     expect(onDeferredMount).toHaveBeenCalledWith(overlays.get("d1"));
   });
@@ -494,7 +494,7 @@ describe("lighter bridge gated mounts (deferred mask_path decode)", () => {
     expect(decodeMaskPath).toHaveBeenLastCalledWith(
       "http://x/m2.png",
       "ground_truth",
-      expect.anything()
+      expect.anything(),
     );
 
     second.resolve(MASK);
@@ -514,7 +514,7 @@ describe("lighter bridge gated mounts (deferred mask_path decode)", () => {
     expect(overlays.get("d1")).toBeDefined();
     expect(overlayFactory.create).toHaveBeenCalledWith(
       "detection",
-      expect.not.objectContaining({ preDecodedMask: expect.anything() })
+      expect.not.objectContaining({ preDecodedMask: expect.anything() }),
     );
     expect(console.warn).toHaveBeenCalled();
   });

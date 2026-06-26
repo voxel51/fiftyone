@@ -14,7 +14,7 @@ const origStartSec = (SEG_FIRST - 1) / FPS;
 const origEndSec = SEG_LAST / FPS;
 
 const base = (
-  over: Partial<ResolveTrackExtentEditInput>
+  over: Partial<ResolveTrackExtentEditInput>,
 ): ResolveTrackExtentEditInput => ({
   mode: "resize-end",
   origStartSec,
@@ -38,10 +38,10 @@ describe("resolveTrackExtentEdit", () => {
 
   it("returns none when the drag snaps back to the original extent", () => {
     expect(resolveTrackExtentEdit(base({ mode: "resize-end" })).op).toBe(
-      "none"
+      "none",
     );
     expect(resolveTrackExtentEdit(base({ mode: "resize-start" })).op).toBe(
-      "none"
+      "none",
     );
     expect(resolveTrackExtentEdit(base({ mode: "move" })).op).toBe("none");
   });
@@ -49,7 +49,7 @@ describe("resolveTrackExtentEdit", () => {
   describe("resize-end", () => {
     it("extends forward, copying the last frame onto the grown frames", () => {
       const edit = resolveTrackExtentEdit(
-        base({ mode: "resize-end", newEndSec: endSecOf(45) })
+        base({ mode: "resize-end", newEndSec: endSecOf(45) }),
       );
       expect(edit).toEqual({
         op: "extend",
@@ -60,7 +60,7 @@ describe("resolveTrackExtentEdit", () => {
 
     it("clamps growth to totalFrames", () => {
       const edit = resolveTrackExtentEdit(
-        base({ mode: "resize-end", newEndSec: endSecOf(200), totalFrames: 40 })
+        base({ mode: "resize-end", newEndSec: endSecOf(200), totalFrames: 40 }),
       );
       expect(edit).toEqual({
         op: "extend",
@@ -71,7 +71,7 @@ describe("resolveTrackExtentEdit", () => {
 
     it("trims from the end when dragged inward", () => {
       const edit = resolveTrackExtentEdit(
-        base({ mode: "resize-end", newEndSec: endSecOf(28) })
+        base({ mode: "resize-end", newEndSec: endSecOf(28) }),
       );
       expect(edit).toEqual({ op: "trim", frames: [29, 30, 31] });
     });
@@ -80,7 +80,7 @@ describe("resolveTrackExtentEdit", () => {
   describe("resize-start", () => {
     it("extends backward, copying the first frame onto the grown frames", () => {
       const edit = resolveTrackExtentEdit(
-        base({ mode: "resize-start", newStartSec: startSecOf(8) })
+        base({ mode: "resize-start", newStartSec: startSecOf(8) }),
       );
       expect(edit).toEqual({
         op: "extend",
@@ -91,7 +91,7 @@ describe("resolveTrackExtentEdit", () => {
 
     it("clamps backward growth to frame 1", () => {
       const edit = resolveTrackExtentEdit(
-        base({ mode: "resize-start", newStartSec: startSecOf(-5) })
+        base({ mode: "resize-start", newStartSec: startSecOf(-5) }),
       );
       expect(edit).toEqual({
         op: "extend",
@@ -102,7 +102,7 @@ describe("resolveTrackExtentEdit", () => {
 
     it("trims from the start when dragged inward", () => {
       const edit = resolveTrackExtentEdit(
-        base({ mode: "resize-start", newStartSec: startSecOf(14) })
+        base({ mode: "resize-start", newStartSec: startSecOf(14) }),
       );
       expect(edit).toEqual({ op: "trim", frames: [11, 12, 13] });
     });
@@ -111,7 +111,7 @@ describe("resolveTrackExtentEdit", () => {
   describe("move", () => {
     it("shifts the whole segment by the dragged delta", () => {
       const edit = resolveTrackExtentEdit(
-        base({ mode: "move", newStartSec: startSecOf(SEG_FIRST + 1) })
+        base({ mode: "move", newStartSec: startSecOf(SEG_FIRST + 1) }),
       );
       expect(edit).toEqual({
         op: "shift",
@@ -122,7 +122,7 @@ describe("resolveTrackExtentEdit", () => {
 
     it("clamps a backward shift to the clip start", () => {
       const edit = resolveTrackExtentEdit(
-        base({ mode: "move", newStartSec: startSecOf(1) })
+        base({ mode: "move", newStartSec: startSecOf(1) }),
       );
       // first is 11, so the most it can move left is -10.
       expect(edit).toMatchObject({ op: "shift", delta: -10 });
@@ -136,7 +136,7 @@ describe("resolveTrackExtentEdit", () => {
           // Neighbour occupies [40, 50]; segment end is 31, so the bar
           // can move forward at most to end at 39 → delta +8.
           neighborSegments: [[40, 50]],
-        })
+        }),
       );
       expect(edit).toMatchObject({ op: "shift", delta: 8 });
     });

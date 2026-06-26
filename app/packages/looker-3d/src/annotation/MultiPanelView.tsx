@@ -69,7 +69,7 @@ export const MultiPanelView = ({
   } = useFo3dContext();
   const [panelState, setPanelState] = useBrowserStorage<MultiPanelViewState>(
     "fo3d-multi-panel-state",
-    defaultState
+    defaultState,
   );
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -84,11 +84,11 @@ export const MultiPanelView = ({
   const setPanelView = useCallback(
     (
       which: keyof Pick<MultiPanelViewState, "top" | "bottom">,
-      view: SidePanelViewType
+      view: SidePanelViewType,
     ) => {
       setPanelState((prev) => ({ ...prev, [which]: view }));
     },
-    [setPanelState]
+    [setPanelState],
   );
 
   return (

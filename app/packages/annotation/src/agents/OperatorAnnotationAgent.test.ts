@@ -16,7 +16,7 @@ import {
 const OPERATOR_URI = "@test/my-operator";
 
 function makeContext(
-  overrides: Partial<AnnotationContext> = {}
+  overrides: Partial<AnnotationContext> = {},
 ): AnnotationContext {
   return {
     sampleDescriptor: { datasetId: "ds-1", sampleId: "s-1" },
@@ -26,7 +26,7 @@ function makeContext(
 }
 
 function makeResolveTypeResponse(
-  properties: Record<string, { default?: unknown }> = {}
+  properties: Record<string, { default?: unknown }> = {},
 ) {
   return { type: { properties } };
 }
@@ -72,7 +72,7 @@ describe("OperatorAnnotationAgent", () => {
       mockFetch.mockResolvedValue({ error: "server exploded" });
 
       await expect(agent.infer(makeContext())).rejects.toThrow(
-        "server exploded"
+        "server exploded",
       );
     });
 
@@ -86,7 +86,7 @@ describe("OperatorAnnotationAgent", () => {
       mockFetch.mockResolvedValue({ delegated: true });
 
       await expect(agent.infer(makeContext())).rejects.toThrow(
-        /no operator id/i
+        /no operator id/i,
       );
     });
 
@@ -108,7 +108,7 @@ describe("OperatorAnnotationAgent", () => {
       mockFetch.mockResolvedValue(
         makeResolveTypeResponse({
           supported_tasks: { default: ["segment", "detect"] },
-        })
+        }),
       );
 
       const tasks = await agent.listSupportedTasks();
@@ -136,7 +136,7 @@ describe("OperatorAnnotationAgent", () => {
           operator_uri: OPERATOR_URI,
           params: {},
           target: "inputs",
-        }
+        },
       );
     });
   });
@@ -148,7 +148,7 @@ describe("OperatorAnnotationAgent", () => {
           inference_capabilities: {
             default: ["positivePoint", "roi"],
           },
-        })
+        }),
       );
 
       const caps = await agent.listInferenceCapabilities(AgentTaskType.SEGMENT);
@@ -166,7 +166,7 @@ describe("OperatorAnnotationAgent", () => {
         "/operators/resolve-type",
         expect.objectContaining({
           params: { task: AgentTaskType.DETECT },
-        })
+        }),
       );
     });
 
@@ -186,7 +186,7 @@ describe("OperatorAnnotationAgent", () => {
           model_metadata: {
             default: { name: "SAM2", version: "1.0" },
           },
-        })
+        }),
       );
 
       const meta = await agent.getModelMetadata(AgentTaskType.SEGMENT);
@@ -249,7 +249,7 @@ describe("OperatorAnnotationAgent", () => {
         .mockResolvedValueOnce(
           makeResolveTypeResponse({
             supported_tasks: { default: ["segment"] },
-          })
+          }),
         )
         // resolveInputSchema for validate + listInferenceCapabilities share params
         .mockResolvedValue(
@@ -259,7 +259,7 @@ describe("OperatorAnnotationAgent", () => {
             },
             positivePoint: {},
             roi: {},
-          })
+          }),
         );
 
       await expect(agent.validateOperator()).resolves.toBeUndefined();
@@ -270,7 +270,7 @@ describe("OperatorAnnotationAgent", () => {
         .mockResolvedValueOnce(
           makeResolveTypeResponse({
             supported_tasks: { default: ["segment"] },
-          })
+          }),
         )
         .mockResolvedValue(
           makeResolveTypeResponse({
@@ -279,11 +279,11 @@ describe("OperatorAnnotationAgent", () => {
             },
             positivePoint: {},
             // "roi" is missing
-          })
+          }),
         );
 
       await expect(agent.validateOperator()).rejects.toThrow(
-        /missing required input property.*"roi".*task "segment"/i
+        /missing required input property.*"roi".*task "segment"/i,
       );
     });
   });

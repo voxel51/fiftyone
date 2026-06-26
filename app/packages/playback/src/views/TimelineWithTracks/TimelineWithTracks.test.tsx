@@ -40,7 +40,7 @@ function renderTimeline(opts: RenderOpts = {}) {
       <TrackProvider tracks={tracks} initialPinnedIds={pinnedIds}>
         <TimelineWithTracks labelWidth={labelWidth} />
       </TrackProvider>
-    </PlaybackProvider>
+    </PlaybackProvider>,
   );
 }
 

@@ -24,7 +24,7 @@ import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 import type { Page } from "src/oss/fixtures";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
-  "annotate-video-dynamic-attr"
+  "annotate-video-dynamic-attr",
 );
 const id = "000000000000000000000000";
 const clip = `/tmp/${datasetName}.webm`;
@@ -55,7 +55,7 @@ test.afterAll(async ({ foWebServer }) => {
 const openAnnotate = async (
   fiftyoneLoader: AbstractFiftyoneLoader,
   modal: ModalPom,
-  page: Page
+  page: Page,
 ) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
@@ -74,7 +74,7 @@ const savedResponse = (page: Page) =>
   page.waitForResponse(
     (r) =>
       /\/sample\//.test(r.url()) &&
-      ["POST", "PATCH", "PUT"].includes(r.request().method())
+      ["POST", "PATCH", "PUT"].includes(r.request().method()),
   );
 
 const ATTR = "turn_signal";

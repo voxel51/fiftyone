@@ -30,7 +30,7 @@ export default function useToPatches() {
           filters: await snapshot.getPromise(filters),
           extended: await snapshot.getPromise(extendedStages),
           sampleIds: Array.from(
-            (await snapshot.getPromise(selectedSamples)).keys()
+            (await snapshot.getPromise(selectedSamples)).keys(),
           ),
         });
         set(view, (v) => v);
@@ -46,6 +46,6 @@ export default function useToPatches() {
           unsubscribe();
         });
       },
-    []
+    [],
   );
 }

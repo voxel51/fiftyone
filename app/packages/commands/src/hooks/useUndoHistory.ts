@@ -11,15 +11,15 @@ import { useCommandContext } from "./useCommandContext";
  * the undo state changes. Backs the undo/redo history tooltips.
  */
 export const useUndoHistory = (
-  context?: CommandContext | string
+  context?: CommandContext | string,
 ): { undoStack: string[]; redoStack: string[] } => {
   const { context: boundContext } = useCommandContext(context);
 
   const [undoStack, setUndoStack] = useState(() =>
-    boundContext.describeUndoStack()
+    boundContext.describeUndoStack(),
   );
   const [redoStack, setRedoStack] = useState(() =>
-    boundContext.describeRedoStack()
+    boundContext.describeRedoStack(),
   );
 
   useEffect(() => {

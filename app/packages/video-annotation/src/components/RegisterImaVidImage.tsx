@@ -44,12 +44,12 @@ export const RegisterImaVidImage: React.FC<{
   const frameRate = getModalSampleFrameRate(sample);
   if (frameRate === undefined) {
     throw new Error(
-      "ImaVid playback requires VideoMetadata.frame_rate to be set on the sample"
+      "ImaVid playback requires VideoMetadata.frame_rate to be set on the sample",
     );
   }
   if (!Number.isFinite(frameRate) || frameRate <= 0) {
     throw new Error(
-      `ImaVid playback requires a positive, finite fps (got ${frameRate})`
+      `ImaVid playback requires a positive, finite fps (got ${frameRate})`,
     );
   }
 
@@ -87,7 +87,7 @@ export const RegisterImaVidImage: React.FC<{
  */
 export function resolveFrameCount(
   sample: ModalSample,
-  frameRate: number
+  frameRate: number,
 ): number {
   const metadata = (sample.sample as { metadata?: Record<string, unknown> })
     ?.metadata;
@@ -107,7 +107,7 @@ export function resolveFrameCount(
   }
 
   throw new Error(
-    "ImaVid playback requires VideoMetadata.total_frame_count (or .duration) on the sample"
+    "ImaVid playback requires VideoMetadata.total_frame_count (or .duration) on the sample",
   );
 }
 

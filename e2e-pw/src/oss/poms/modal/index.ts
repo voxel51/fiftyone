@@ -37,7 +37,7 @@ export class ModalPom {
 
   constructor(
     private readonly page: Page,
-    private readonly eventUtils: EventUtils
+    private readonly eventUtils: EventUtils,
   ) {
     this.assert = new ModalAsserter(this);
     this.locator = page.getByTestId("modal");
@@ -91,13 +91,13 @@ export class ModalPom {
   getLookerAttachedEvent() {
     return this.eventUtils.getEventReceivedPromiseForPredicate(
       "looker-attached",
-      () => true
+      () => true,
     );
   }
 
   getSampleNavigation(direction: "forward" | "backward") {
     return this.locator.getByTestId(
-      `nav-${direction === "forward" ? "right" : "left"}-button`
+      `nav-${direction === "forward" ? "right" : "left"}-button`,
     );
   }
 
@@ -152,7 +152,7 @@ export class ModalPom {
 
   async navigateSample(
     direction: "forward" | "backward",
-    allowErrorInfo = false
+    allowErrorInfo = false,
   ) {
     const currentSampleId = await this.sidebar.getSampleId();
 
@@ -163,7 +163,7 @@ export class ModalPom {
     // wait for sample id to change
     await this.page.waitForFunction((currentSampleId) => {
       const sampleId = document.querySelector(
-        "[data-cy=sidebar-entry-id]"
+        "[data-cy=sidebar-entry-id]",
       )?.textContent;
       return sampleId !== currentSampleId;
     }, currentSampleId);
@@ -211,12 +211,12 @@ export class ModalPom {
 
   async panSample(
     direction: "left" | "right" | "up" | "down",
-    offsetPixels = 100
+    offsetPixels = 100,
   ) {
     const modalBoundingBox = await this.modalContainer.boundingBox();
     await this.page.mouse.move(
       modalBoundingBox.width / 2,
-      modalBoundingBox.height / 2
+      modalBoundingBox.height / 2,
     );
     await this.page.mouse.down();
 
@@ -256,7 +256,7 @@ export class ModalPom {
   async navigateSlice(
     groupField: string,
     slice: string,
-    allowErrorInfo = false
+    allowErrorInfo = false,
   ) {
     const currentSlice = await this.sidebar.getSidebarEntryText(groupField);
     const lookers = this.groupCarousel.getByTestId("looker");
@@ -268,12 +268,12 @@ export class ModalPom {
     await this.page.waitForFunction(
       ({ currentSlice, groupField }) => {
         const slice = document.querySelector(
-          `[data-cy="sidebar-entry-${groupField}"]`
+          `[data-cy="sidebar-entry-${groupField}"]`,
         )?.textContent;
         return slice !== currentSlice;
       },
       { currentSlice, groupField },
-      { timeout: SAMPLE_LOAD_TIMEOUT }
+      { timeout: SAMPLE_LOAD_TIMEOUT },
     );
     return this.waitForSampleLoadDomAttribute(allowErrorInfo);
   }
@@ -324,7 +324,7 @@ export class ModalPom {
         if (
           allowErrorInfo &&
           document.querySelector(
-            "[data-cy=modal-looker-container] [data-cy=looker-error-info]"
+            "[data-cy=modal-looker-container] [data-cy=looker-error-info]",
           )
         ) {
           return true;
@@ -337,7 +337,7 @@ export class ModalPom {
         );
       },
       allowErrorInfo,
-      { timeout: SAMPLE_LOAD_TIMEOUT }
+      { timeout: SAMPLE_LOAD_TIMEOUT },
     );
   }
 
@@ -346,11 +346,11 @@ export class ModalPom {
       () =>
         (
           document.querySelector(
-            `[data-cy=lighter-sample-renderer]`
+            `[data-cy=lighter-sample-renderer]`,
           ) as HTMLElement | null
         )?.style.visibility === "visible",
       undefined,
-      { timeout: Duration.Seconds(20) }
+      { timeout: Duration.Seconds(20) },
     );
   }
 }
@@ -373,7 +373,7 @@ class ModalAsserter {
 
   async verifyHasNoViewerError() {
     await expect(
-      this.modalPom.modalContainer.getByTestId("looker-error-info")
+      this.modalPom.modalContainer.getByTestId("looker-error-info"),
     ).toHaveCount(0);
   }
 
@@ -404,7 +404,7 @@ class ModalAsserter {
 
   async verifyModalSamplePluginTitle(
     title: string,
-    { pinned }: { pinned: boolean } = { pinned: false }
+    { pinned }: { pinned: boolean } = { pinned: false },
   ) {
     await expect
       .poll(async () => this.modalPom.modalSamplePluginTitle, {

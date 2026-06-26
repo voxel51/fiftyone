@@ -57,7 +57,7 @@ const EMBEDDED_DOC_TYPE_TO_LABEL_TYPE: Record<string, LabelType> =
   Object.fromEntries(
     (Object.values(LabelType) as LabelType[])
       .filter((t) => t !== LabelType.Unknown)
-      .map((t) => [`fiftyone.core.labels.${t}`, t])
+      .map((t) => [`fiftyone.core.labels.${t}`, t]),
   );
 
 /** True if the given label type is a list label (e.g. Detections). */
@@ -66,7 +66,7 @@ export const isListLabelType = (type: LabelType): boolean =>
 
 /** Resolve a label type from an embedded-document type string. */
 export const embeddedDocTypeToLabelType = (
-  embeddedDocType: string | null | undefined
+  embeddedDocType: string | null | undefined,
 ): LabelType => {
   if (!embeddedDocType) {
     return LabelType.Unknown;

@@ -13,7 +13,7 @@ import type { PolylineSegmentTransform, SelectedPoint } from "../types";
  */
 export function applyTransformsToPolyline(
   originalPoints: Vector3Tuple[][],
-  segments: PolylineSegmentTransform[]
+  segments: PolylineSegmentTransform[],
 ): Vector3Tuple[][] {
   const result: Vector3Tuple[][] = [];
 
@@ -43,7 +43,7 @@ export function applyTransformsToPolyline(
  */
 export function applyDeltaToAllPoints(
   effectivePoints: Vector3Tuple[][],
-  delta: [number, number, number]
+  delta: [number, number, number],
 ): PolylineSegmentTransform[] {
   const [dx, dy, dz] = delta;
 
@@ -53,8 +53,8 @@ export function applyDeltaToAllPoints(
         [point[0] + dx, point[1] + dy, point[2] + dz] as [
           number,
           number,
-          number
-        ]
+          number,
+        ],
     ),
   }));
 }
@@ -64,7 +64,7 @@ export function applyDeltaToAllPoints(
  */
 function distanceSquared(
   p1: [number, number, number],
-  p2: [number, number, number]
+  p2: [number, number, number],
 ): number {
   const dx = p1[0] - p2[0];
   const dy = p1[1] - p2[1];
@@ -79,7 +79,7 @@ function distanceSquared(
 function pointToLineSegmentDistanceSquared(
   point: [number, number, number],
   lineStart: [number, number, number],
-  lineEnd: [number, number, number]
+  lineEnd: [number, number, number],
 ): { distanceSquared: number; closestPoint: [number, number, number] } {
   const [px, py, pz] = point;
   const [ax, ay, az] = lineStart;
@@ -134,7 +134,7 @@ function pointToLineSegmentDistanceSquared(
 export function findClickedSegment(
   effectivePoints: Vector3Tuple[][],
   clickPosition: Vector3Tuple,
-  distanceThreshold: number
+  distanceThreshold: number,
 ): { segmentIndex: number; newVertexPosition: Vector3Tuple } | null {
   let closestSegmentIndex = -1;
   let closestDistanceSquared = distanceThreshold * distanceThreshold;
@@ -190,7 +190,7 @@ export function insertVertexInSegment(
   currentSegments: PolylineSegmentTransform[],
   segmentIndex: number,
   newVertexPosition: Vector3Tuple,
-  clickPosition: Vector3Tuple
+  clickPosition: Vector3Tuple,
 ): PolylineSegmentTransform[] | null {
   const MIN_VERTEX_DISTANCE = 0.05; // Minimum distance between vertices
 
@@ -211,7 +211,7 @@ export function insertVertexInSegment(
     const { distanceSquared: dist } = pointToLineSegmentDistanceSquared(
       clickPosition,
       lineStart,
-      lineEnd
+      lineEnd,
     );
 
     if (dist < minDistance) {
@@ -265,7 +265,7 @@ export function insertVertexInSegment(
 export function shouldClosePolylineLoop(
   vertices: Vector3Tuple[],
   currentPosition: Vector3Tuple,
-  tolerance: number
+  tolerance: number,
 ): boolean {
   if (vertices.length < 3) {
     return false; // Need at least 3 vertices to close a loop
@@ -290,7 +290,7 @@ export function shouldClosePolylineLoop(
 export function getVertexPosition(
   selectedPoint: SelectedPoint,
   originalPoints: Vector3Tuple[][],
-  segments: PolylineSegmentTransform[]
+  segments: PolylineSegmentTransform[],
 ): Vector3Tuple | null {
   const { segmentIndex, pointIndex } = selectedPoint;
 
@@ -333,7 +333,7 @@ export function updateVertexPosition(
   segmentIndex: number,
   pointIndex: number,
   newPosition: Vector3Tuple,
-  updateShared = true
+  updateShared = true,
 ): PolylineSegmentTransform[] {
   if (
     segmentIndex < 0 ||
@@ -416,11 +416,11 @@ export function updateVertexPosition(
  * @returns Array of polyline segments
  */
 export function points3dToPolylineSegments(
-  points3d: Coordinates[][]
+  points3d: Coordinates[][],
 ): PolylineSegmentTransform[] {
   return points3d.map((segment) => ({
     points: segment.map(
-      (point) => [point[0], point[1], point[2]] as [number, number, number]
+      (point) => [point[0], point[1], point[2]] as [number, number, number],
     ),
   }));
 }

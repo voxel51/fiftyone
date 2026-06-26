@@ -30,14 +30,14 @@ describe("buildJsonPatch — deletes", () => {
       snap({
         sourceData: { notes: "hi" },
         transientDeletes: new Set(["notes"]),
-      })
+      }),
     );
     expect(deltas).toEqual([{ op: "remove", path: "/notes" }]);
   });
 
   it("skips a delete for a path absent from source", () => {
     const deltas = buildJsonPatch(
-      snap({ sourceData: {}, transientDeletes: new Set(["notes"]) })
+      snap({ sourceData: {}, transientDeletes: new Set(["notes"]) }),
     );
     expect(deltas).toEqual([]);
   });
@@ -57,7 +57,7 @@ describe("buildJsonPatch — label fields", () => {
         sourceData,
         transientData: { gt: sourceData.gt },
         getLabelType: () => LabelType.Detections,
-      })
+      }),
     );
     expect(deltas).toEqual([]);
   });
@@ -69,7 +69,7 @@ describe("buildJsonPatch — label fields", () => {
         // partial update: omits `tags`, which must NOT be removed
         transientData: { gt: { detections: [{ _id: "d1", label: "b" }] } },
         getLabelType: () => LabelType.Detections,
-      })
+      }),
     );
     expect(deltas).toEqual([
       { op: "replace", path: "/gt/detections/0/label", value: "b" },
@@ -90,7 +90,7 @@ describe("buildJsonPatch — label fields", () => {
           },
         },
         getLabelType: () => LabelType.Detections,
-      })
+      }),
     );
     expect(deltas).toEqual([
       {
@@ -108,7 +108,7 @@ describe("buildJsonPatch — label fields", () => {
         transientData: { gt: { detections: [{ _id: "d1", label: "b" }] } },
         getLabelType: () => LabelType.Detections,
       }),
-      { isGenerated: true }
+      { isGenerated: true },
     );
     // rooted at the label — no `/gt/detections/0` field prefix
     expect(deltas).toEqual([{ op: "replace", path: "/label", value: "b" }]);
@@ -131,8 +131,8 @@ describe("buildJsonPatch — label fields", () => {
           sourceData: frozenSource,
           transientData: frozenTransient,
           getLabelType: () => LabelType.Detections,
-        })
-      )
+        }),
+      ),
     ).not.toThrow();
   });
 });
@@ -143,7 +143,7 @@ describe("fieldDeltas — supplier resolution", () => {
       snap({ getLabelType: () => LabelType.Detection }),
       "gt",
       { label: "a" },
-      { label: "b" }
+      { label: "b" },
     );
     expect(deltas).toEqual([{ op: "replace", path: "/gt/label", value: "b" }]);
   });
@@ -166,8 +166,8 @@ describe("firstEditedLabel", () => {
           sourceData,
           transientData: { gt: { detections: [{ _id: "d1", label: "b" }] } },
           getLabelType: () => LabelType.Detections,
-        })
-      )
+        }),
+      ),
     ).toEqual({ labelId: "d1", labelPath: "gt" });
   });
 
@@ -179,8 +179,8 @@ describe("firstEditedLabel", () => {
           transientData: { gt: { detections: [{ _id: "d1", label: "b" }] } },
           getLabelType: () => LabelType.Detections,
         }),
-        { isGenerated: true }
-      )
+        { isGenerated: true },
+      ),
     ).toEqual({ labelId: "d1", labelPath: "gt.detections" });
   });
 
@@ -197,8 +197,8 @@ describe("firstEditedLabel", () => {
           transientData: { gt: { _cls: "Detection", _id: "d1", label: "b" } },
           getLabelType: () => LabelType.Detection,
         }),
-        { isGenerated: true }
-      )
+        { isGenerated: true },
+      ),
     ).toEqual({ labelId: "d1", labelPath: "gt.detections" });
   });
 
@@ -209,8 +209,8 @@ describe("firstEditedLabel", () => {
           sourceData,
           transientData: { gt: sourceData.gt },
           getLabelType: () => LabelType.Detections,
-        })
-      )
+        }),
+      ),
     ).toBeUndefined();
   });
 });

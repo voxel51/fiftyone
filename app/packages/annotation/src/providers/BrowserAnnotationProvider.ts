@@ -35,7 +35,7 @@ function checkBrowserCompatibility(): { errors: string[]; warnings: string[] } {
           0, 97, 115, 109, 1, 0, 0, 0, 1, 4, 1, 96, 0, 0, 3, 2, 1, 0, 10, 30, 1,
           28, 0, 65, 0, 253, 15, 253, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
           0, 0, 0, 253, 186, 1, 26, 11,
-        ])
+        ]),
       )
     )
       errors.push("WASM SIMD");
@@ -48,7 +48,7 @@ function checkBrowserCompatibility(): { errors: string[]; warnings: string[] } {
   // SharedArrayBuffer: enables multi-threaded WASM. Without it, falls back to single-threaded.
   if (typeof SharedArrayBuffer === "undefined")
     warnings.push(
-      "SharedArrayBuffer unavailable. Falling back to single-threaded WASM"
+      "SharedArrayBuffer unavailable. Falling back to single-threaded WASM",
     );
 
   return { errors, warnings };
@@ -270,7 +270,7 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
 
   private send<T extends WorkerMessageType>(
     type: T,
-    payload: WorkerRequest<T>
+    payload: WorkerRequest<T>,
   ): { id: number; promise: Promise<WorkerResponse<T>> } {
     const id = this.nextId++;
     const promise = new Promise<WorkerResponse<T>>((resolve, reject) => {

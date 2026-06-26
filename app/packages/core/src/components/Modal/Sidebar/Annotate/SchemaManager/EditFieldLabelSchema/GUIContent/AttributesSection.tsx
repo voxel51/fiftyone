@@ -55,7 +55,7 @@ const AttributesSection = ({
 
   const existingAttributeNames = useMemo(
     () => attributes.map((attr) => attr.name),
-    [attributes]
+    [attributes],
   );
 
   const editNameError =
@@ -63,7 +63,7 @@ const AttributesSection = ({
       ? getAttributeNameError(
           editingFormState.name,
           existingAttributeNames,
-          editingAttribute
+          editingAttribute,
         )
       : null;
 
@@ -80,7 +80,7 @@ const AttributesSection = ({
       onAddAttribute(config);
       setIsAdding(false);
     },
-    [onAddAttribute]
+    [onAddAttribute],
   );
 
   const handleStartEdit = useCallback(
@@ -91,7 +91,7 @@ const AttributesSection = ({
         setEditingFormState(toFormData(config));
       }
     },
-    [attributes]
+    [attributes],
   );
 
   const handleEditSave = useCallback(() => {
@@ -141,7 +141,7 @@ const AttributesSection = ({
       const secondaryParts = [typeLabel];
       if (optionCount !== undefined && optionCount > 0) {
         secondaryParts.push(
-          `${optionCount} option${optionCount !== 1 ? "s" : ""}`
+          `${optionCount} option${optionCount !== 1 ? "s" : ""}`,
         );
       }
 
@@ -189,7 +189,7 @@ const AttributesSection = ({
         .filter((attr): attr is AttributeConfig => attr !== undefined);
       onOrderChange?.(newOrder);
     },
-    [attributes, onOrderChange]
+    [attributes, onOrderChange],
   );
 
   return (

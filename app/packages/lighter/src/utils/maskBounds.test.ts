@@ -13,7 +13,7 @@ import { maskBounds } from "./maskBounds";
 const makeImageData = (
   width: number,
   height: number,
-  paint: (px: number, py: number) => boolean
+  paint: (px: number, py: number) => boolean,
 ): ImageData => {
   const data = new Uint8ClampedArray(width * height * 4);
   for (let py = 0; py < height; py++) {
@@ -48,7 +48,7 @@ describe("maskBounds", () => {
     const image = makeImageData(
       8,
       8,
-      (px, py) => px >= 2 && px <= 5 && py >= 1 && py <= 4
+      (px, py) => px >= 2 && px <= 5 && py >= 1 && py <= 4,
     );
     expect(maskBounds(image)).toEqual({
       minX: 2,
@@ -66,7 +66,7 @@ describe("maskBounds", () => {
         (px === 0 && py === 0) || // top-left
         (px === 3 && py === 0) || // top-right
         (px === 0 && py === 3) || // bottom-left
-        (px === 3 && py === 3) // bottom-right
+        (px === 3 && py === 3), // bottom-right
     );
     expect(maskBounds(image)).toEqual({
       minX: 0,
@@ -81,7 +81,7 @@ describe("maskBounds", () => {
     const image = makeImageData(
       8,
       8,
-      (px, py) => (px === 1 && py === 1) || (px === 5 && py === 3)
+      (px, py) => (px === 1 && py === 1) || (px === 5 && py === 3),
     );
     expect(maskBounds(image)).toEqual({
       minX: 1,

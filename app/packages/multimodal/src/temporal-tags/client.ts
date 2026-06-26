@@ -57,7 +57,7 @@ export interface CreateTemporalTagsClientOptions {
  * Creates a typed client for the tag HTTP routes.
  */
 export function createTemporalTagsClient(
-  options: CreateTemporalTagsClientOptions = {}
+  options: CreateTemporalTagsClientOptions = {},
 ): TemporalTagsClient {
   const fetchFunction = options.fetchFunction ?? getFetchFunctionExtended();
 
@@ -76,7 +76,7 @@ export function createTemporalTagsClient(
         },
         method: "POST",
         path: `/dataset/${encodeURIComponent(
-          datasetId
+          datasetId,
         )}/sample/${encodeURIComponent(sampleId)}/tags`,
       });
 
@@ -95,7 +95,7 @@ export function createTemporalTagsClient(
         body: clearTemporalTagsDto(filter),
         method: "DELETE",
         path: `/dataset/${encodeURIComponent(
-          datasetId
+          datasetId,
         )}/sample/${encodeURIComponent(sampleId)}/tags`,
       });
 
@@ -113,7 +113,7 @@ export function createTemporalTagsClient(
         method: "GET",
         path: withFilterQuery(
           `/dataset/${encodeURIComponent(datasetId)}/tags/counts`,
-          filter
+          filter,
         ),
       });
 
@@ -132,7 +132,7 @@ export function createTemporalTagsClient(
         body: deleteTemporalTagsDto(ids),
         method: "DELETE",
         path: `/dataset/${encodeURIComponent(
-          datasetId
+          datasetId,
         )}/sample/${encodeURIComponent(sampleId)}/tags`,
       });
 
@@ -147,7 +147,7 @@ export function createTemporalTagsClient(
         method: "GET",
         path: withFilterQuery(
           `/dataset/${encodeURIComponent(datasetId)}/tags`,
-          filter
+          filter,
         ),
       });
 
@@ -163,9 +163,9 @@ export function createTemporalTagsClient(
         method: "GET",
         path: withFilterQuery(
           `/dataset/${encodeURIComponent(
-            datasetId
+            datasetId,
           )}/sample/${encodeURIComponent(sampleId)}/tags`,
-          filter
+          filter,
         ),
       });
 
@@ -185,9 +185,9 @@ export function createTemporalTagsClient(
         body: temporalTagUpdateDto(update),
         method: "PATCH",
         path: `/dataset/${encodeURIComponent(
-          datasetId
+          datasetId,
         )}/sample/${encodeURIComponent(sampleId)}/tags/${encodeURIComponent(
-          temporalTagId
+          temporalTagId,
         )}`,
       });
 
@@ -221,7 +221,7 @@ function filterQueryParams(filter: TemporalTagFilter | undefined) {
 function appendNumber(
   params: URLSearchParams,
   field: string,
-  value: number | undefined
+  value: number | undefined,
 ) {
   if (value !== undefined) {
     params.append(field, value.toString());
@@ -231,7 +231,7 @@ function appendNumber(
 function appendValues(
   params: URLSearchParams,
   field: string,
-  value: readonly string[] | undefined
+  value: readonly string[] | undefined,
 ) {
   if (value === undefined) {
     return;
@@ -302,6 +302,6 @@ function temporalTagFromDto(dto: TemporalTagDto): TemporalTag {
 
 function stripUndefined<T extends Record<string, unknown>>(value: T) {
   return Object.fromEntries(
-    Object.entries(value).filter((entry) => entry[1] !== undefined)
+    Object.entries(value).filter((entry) => entry[1] !== undefined),
   ) as Partial<T>;
 }

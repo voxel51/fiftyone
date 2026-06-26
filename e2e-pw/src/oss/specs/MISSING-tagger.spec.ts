@@ -111,7 +111,7 @@ test.describe.serial("tag", () => {
     // come from per-label-field `.tags` aggregations (via cumulativeCounts).
     expect(
       aggregationWatcher.allPaths(),
-      "aggregationsQuery must never request '_label_tags'"
+      "aggregationsQuery must never request '_label_tags'",
     ).not.toContain("_label_tags");
   });
 
@@ -130,7 +130,7 @@ test.describe.serial("tag", () => {
 
     const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
-      () => true
+      () => true,
     );
     await modal.sidebar.clickFieldDropdown("predictions");
     await entryExpandPromise;

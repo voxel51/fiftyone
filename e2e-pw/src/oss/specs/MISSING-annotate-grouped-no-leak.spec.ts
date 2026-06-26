@@ -73,7 +73,7 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
  */
 const seedDataset = async (
   fiftyoneLoader: AbstractFiftyoneLoader,
-  annotateSDK: AnnotateSDK
+  annotateSDK: AnnotateSDK,
 ) => {
   await fiftyoneLoader.executePythonCode(`
 import fiftyone as fo
@@ -162,11 +162,11 @@ dataset.add_samples(samples)
  * (each call spawns a python process — poll with a generous timeout).
  */
 const readSliceClasses = async (
-  fiftyoneLoader: AbstractFiftyoneLoader
+  fiftyoneLoader: AbstractFiftyoneLoader,
 ): Promise<Record<string, string[]>> => {
   const resultFile = path.join(
     os.tmpdir(),
-    `grouped-slice-classes-${datasetName}.json`
+    `grouped-slice-classes-${datasetName}.json`,
   );
 
   await fiftyoneLoader.executePythonCode(`
@@ -254,7 +254,7 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     // looker3d action bar (bottom-left in multiview) and intercepts the
     // set-top-view click the cuboid-create draw depends on
     await page.evaluate(() =>
-      window.localStorage.setItem("fo-3d-annotation-tips-dismissed", "true")
+      window.localStorage.setItem("fo-3d-annotation-tips-dismissed", "true"),
     );
     // serial describe shares one page; a modal left open by the prior test
     // would intercept the grid click below

@@ -111,7 +111,7 @@ describe("EntityId encode/decode", () => {
 
   it("throws on extra segments", () => {
     expect(() => decodeEntityId("v1:d:s:p:i:1:extra")).toThrow(
-      MalformedEntityIdError
+      MalformedEntityIdError,
     );
   });
 
@@ -121,10 +121,10 @@ describe("EntityId encode/decode", () => {
 
   it("throws on a non-integer frame", () => {
     expect(() => decodeEntityId("v1:d:s:p:i:1.5")).toThrow(
-      MalformedEntityIdError
+      MalformedEntityIdError,
     );
     expect(() => decodeEntityId("v1:d:s:p:i:abc")).toThrow(
-      MalformedEntityIdError
+      MalformedEntityIdError,
     );
   });
 });

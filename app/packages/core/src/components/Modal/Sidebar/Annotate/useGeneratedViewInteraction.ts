@@ -17,7 +17,7 @@ export const useGeneratedViewInteraction = (): LighterInteractionPolicy => {
 
   const interceptDeselect = useCallback(
     (): boolean => isGeneratedRef.current,
-    []
+    [],
   );
 
   return useMemo(() => ({ interceptDeselect }), [interceptDeselect]);

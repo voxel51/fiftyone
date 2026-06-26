@@ -43,7 +43,7 @@ const channelRegistry = new Map<
 >();
 
 function getChannelMap(
-  channel: string | undefined
+  channel: string | undefined,
 ): Map<string, TemporalOverlay> {
   let map = channelRegistry.get(channel);
   if (!map) {
@@ -141,7 +141,7 @@ export class TemporalOverlay
     const active = [...getChannelMap(this.channel).values()]
       .filter((s) => s.isActive())
       .sort((a, b) =>
-        (a.label?.label ?? "").localeCompare(b.label?.label ?? "")
+        (a.label?.label ?? "").localeCompare(b.label?.label ?? ""),
       );
     return active.indexOf(this);
   }
@@ -225,7 +225,7 @@ export class TemporalOverlay
         tab: "left",
         dashline,
       },
-      this.containerId
+      this.containerId,
     );
 
     this.emitLoaded();

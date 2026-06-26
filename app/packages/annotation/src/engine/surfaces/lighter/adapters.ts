@@ -121,8 +121,8 @@ export const detectionAdapter: LighterAdapter = {
           ...(pendingMask && priorMaskPath ? { mask_path: null } : {}),
         }
       : hadMask
-      ? { mask: null, mask_path: null }
-      : {};
+        ? { mask: null, mask_path: null }
+        : {};
 
     return { ...data, ...maskData, bounding_box: boundingBox };
   },

@@ -8,7 +8,10 @@ import { FieldRowPom } from "./field-row";
 export class SchemaManagerPom {
   readonly assert: SchemaManagerAsserter;
 
-  constructor(readonly page: Page, readonly eventUtils: EventUtils) {
+  constructor(
+    readonly page: Page,
+    readonly eventUtils: EventUtils,
+  ) {
     this.assert = new SchemaManagerAsserter(this);
   }
 
@@ -121,7 +124,7 @@ class SchemaManagerAsserter {
    */
   async isActiveFieldRow(field: string) {
     const locator = this.schemaManagerPom.activeFields.getByTestId(
-      `field-row-${field}`
+      `field-row-${field}`,
     );
     await expect(locator).toBeAttached();
   }
@@ -133,7 +136,7 @@ class SchemaManagerAsserter {
    */
   async isHiddenFieldRow(field: string) {
     const locator = this.schemaManagerPom.hiddenFields.getByTestId(
-      `field-row-${field}`
+      `field-row-${field}`,
     );
     await expect(locator).toBeAttached();
   }
@@ -157,7 +160,7 @@ class SchemaManagerAsserter {
    */
   async isDisabled() {
     await expect(
-      this.schemaManagerPom.page.getByTestId("open-schema-manager")
+      this.schemaManagerPom.page.getByTestId("open-schema-manager"),
     ).toBeDisabled();
   }
 
@@ -166,7 +169,7 @@ class SchemaManagerAsserter {
    */
   async isEnabled() {
     await expect(
-      this.schemaManagerPom.page.getByTestId("open-schema-manager")
+      this.schemaManagerPom.page.getByTestId("open-schema-manager"),
     ).toBeEnabled();
   }
 

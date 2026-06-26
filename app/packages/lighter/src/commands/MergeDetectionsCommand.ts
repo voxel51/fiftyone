@@ -32,7 +32,7 @@ export class MergeDetectionsCommand implements Undoable {
     private paintData: PaintStrokeData,
     private deps: MergeDetectionsCommandDeps,
     targetId: string,
-    sourceId: string
+    sourceId: string,
   ) {
     this.id = `merge-${targetId}-${sourceId}-${Date.now()}`;
   }
@@ -40,7 +40,7 @@ export class MergeDetectionsCommand implements Undoable {
   async execute(): Promise<void> {
     this.target.restoreMaskSnapshot(
       this.paintData.afterSnapshot,
-      this.paintData.afterBounds
+      this.paintData.afterBounds,
     );
     await this.deps.deleteSource();
   }
@@ -48,7 +48,7 @@ export class MergeDetectionsCommand implements Undoable {
   async undo(): Promise<void> {
     this.target.restoreMaskSnapshot(
       this.paintData.beforeSnapshot,
-      this.paintData.beforeBounds
+      this.paintData.beforeBounds,
     );
     await this.deps.restoreSource();
   }

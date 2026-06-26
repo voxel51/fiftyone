@@ -14,7 +14,10 @@ const ownedIds = new Set<string>();
 const maskedIds = new Set<string>();
 
 class MockDetectionOverlay {
-  constructor(readonly id: string, private readonly masked: boolean) {}
+  constructor(
+    readonly id: string,
+    private readonly masked: boolean,
+  ) {}
   hasMask(): boolean {
     return this.masked;
   }
@@ -67,7 +70,7 @@ const makeEngine = () =>
       getHovered: () => hovered,
       pruneHovered: mockPruneHovered,
     },
-  } as never);
+  }) as never;
 
 const allUnhover = () =>
   handlers.get("lighter:overlay-all-unhover")?.(undefined);
@@ -96,7 +99,7 @@ describe("useLighterEngineBridge — overlay-all-unhover", () => {
         engine: makeEngine(),
         sample: "s1",
         dataset: "ds",
-      })
+      }),
     );
     allUnhover();
 
@@ -111,7 +114,7 @@ describe("useLighterEngineBridge — overlay-all-unhover", () => {
         engine: makeEngine(),
         sample: "s1",
         dataset: "ds",
-      })
+      }),
     );
     allUnhover();
 
@@ -133,7 +136,7 @@ describe("useLighterEngineBridge — mask gesture coalescing", () => {
         engine: makeEngine(),
         sample: "s1",
         dataset: "ds",
-      })
+      }),
     );
 
   const fire = (event: string, overlayId: string) =>
@@ -239,7 +242,7 @@ describe("useLighterEngineBridge — undo authority", () => {
         engine: makeEngine(),
         sample: "s1",
         dataset: "ds",
-      })
+      }),
     );
 
     expect(mockSetExternalUndoAuthority).toHaveBeenLastCalledWith(true);
@@ -256,7 +259,7 @@ describe("useLighterEngineBridge — undo authority", () => {
         sample: "s1",
         dataset: "ds",
         enabled: false,
-      })
+      }),
     );
 
     expect(mockSetExternalUndoAuthority).not.toHaveBeenCalled();

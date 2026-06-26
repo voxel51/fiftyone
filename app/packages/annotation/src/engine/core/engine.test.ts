@@ -84,7 +84,7 @@ describe("engine routing", () => {
     engine.updateLabel(ref("ground_truth", "d1", "s2"), { label: "bird" });
     expect(engine.getLabel(ref("ground_truth", "d1", "s1"))?.label).toBe("cat");
     expect(engine.getLabel(ref("ground_truth", "d1", "s2"))?.label).toBe(
-      "bird"
+      "bird",
     );
   });
 
@@ -96,7 +96,7 @@ describe("engine routing", () => {
     unregister();
     expect(engine.getLabel(ref("ground_truth", "d1", "s1"))).toBeUndefined();
     expect(() =>
-      engine.updateLabel(ref("ground_truth", "d1", "s1"), { label: "x" })
+      engine.updateLabel(ref("ground_truth", "d1", "s1"), { label: "x" }),
     ).toThrow(/no store/);
   });
 
@@ -149,13 +149,13 @@ describe("engine transactions", () => {
         engine.updateLabel(ref("ground_truth", "d1"), { label: "dog" });
         engine.createLabel("ground_truth", { label: "bird" });
         throw new Error("boom");
-      })
+      }),
     ).toThrow("boom");
 
     expect(listener).not.toHaveBeenCalled();
     expect(engine.getLabel(ref("ground_truth", "d1"))?.label).toBe("cat");
     expect(
-      engine.listLabels({ sample: "sample-1", path: "ground_truth" })
+      engine.listLabels({ sample: "sample-1", path: "ground_truth" }),
     ).toHaveLength(1);
     expect(engine.isDirty()).toBe(false);
     expect(nav.canUndo()).toBe(false);
@@ -188,7 +188,7 @@ describe("engine transactions", () => {
         engine.transaction(() => {
           throw new Error("inner");
         });
-      })
+      }),
     ).toThrow("inner");
 
     expect(engine.isDirty()).toBe(false);
@@ -239,7 +239,7 @@ describe("engine undo (driven through the commit/drop emission contract)", () =>
     nav.undo();
     // the added `confidence` field must not survive the undo
     expect(engine.getLabel(ref("ground_truth", "d1"))).toEqual(
-      makeDet("d1", "cat")
+      makeDet("d1", "cat"),
     );
 
     nav.redo();
@@ -285,7 +285,7 @@ describe("engine undo (driven through the commit/drop emission contract)", () =>
     nav.undo();
     expect(engine.getLabel(ref("ground_truth", "d1"))?.label).toBe("cat");
     expect(
-      engine.listLabels({ sample: "sample-1", path: "ground_truth" })
+      engine.listLabels({ sample: "sample-1", path: "ground_truth" }),
     ).toHaveLength(1);
   });
 
@@ -298,13 +298,13 @@ describe("engine undo (driven through the commit/drop emission contract)", () =>
     for (const confidence of [0.1, 0.5, 0.9]) {
       engine.transaction(
         () => engine.updateLabel(ref("ground_truth", "d1"), { confidence }),
-        { undoKey: "confidence-slider" }
+        { undoKey: "confidence-slider" },
       );
     }
 
     nav.undo();
     expect(engine.getLabel(ref("ground_truth", "d1"))).toEqual(
-      makeDet("d1", "cat")
+      makeDet("d1", "cat"),
     );
     expect(nav.canUndo()).toBe(false);
   });
@@ -324,7 +324,7 @@ describe("engine undo (driven through the commit/drop emission contract)", () =>
     // two commits tagged with one gesture id are one undo unit
     engine.transaction(
       () => engine.updateLabel(ref("ground_truth", "d1"), { label: "lion" }),
-      { undoKey: a }
+      { undoKey: a },
     );
     engine.transaction(() => engine.deleteLabel(ref("ground_truth", "d2")), {
       undoKey: a,
@@ -333,7 +333,7 @@ describe("engine undo (driven through the commit/drop emission contract)", () =>
     nav.undo();
     expect(engine.getLabel(ref("ground_truth", "d1"))?.label).toBe("cat");
     expect(engine.getLabel(ref("ground_truth", "d2"))).toEqual(
-      makeDet("d2", "dog")
+      makeDet("d2", "dog"),
     );
     expect(nav.canUndo()).toBe(false);
   });
@@ -394,17 +394,17 @@ describe("engine undo (driven through the commit/drop emission contract)", () =>
     const commits: boolean[] = [];
     const drops: string[][] = [];
     engine.subscribeUndoableCommit((_entry, coalesced) =>
-      commits.push(coalesced)
+      commits.push(coalesced),
     );
     engine.subscribeUndoableDrop((ids) => drops.push(ids));
 
     engine.transaction(
       () => engine.updateLabel(ref("ground_truth", "d1"), { confidence: 0.1 }),
-      { undoKey: "g" }
+      { undoKey: "g" },
     );
     engine.transaction(
       () => engine.updateLabel(ref("ground_truth", "d1"), { confidence: 0.9 }),
-      { undoKey: "g" }
+      { undoKey: "g" },
     );
     expect(commits).toEqual([false, true]);
 
@@ -429,7 +429,7 @@ describe("engine scope", () => {
 
     scoped.updateLabel(
       { path: "ground_truth", instanceId: "d2" },
-      { label: "dog" }
+      { label: "dog" },
     );
     expect(listener).toHaveBeenCalledTimes(1);
     expect(engine.getLabel(ref("ground_truth", "d2", "s2"))?.label).toBe("dog");
@@ -440,7 +440,7 @@ describe("engine scope", () => {
     engine.registerStore(makeStore("s2").store);
 
     expect(() => engine.createLabel("ground_truth", { label: "x" })).toThrow(
-      /scope/
+      /scope/,
     );
 
     const created = engine.scope("s2").createLabel("ground_truth", {
@@ -537,7 +537,7 @@ describe("store unregistration sweep", () => {
       ref("ground_truth", "d1", "s1"),
     ]);
     expect(engine.interaction.getAnchor()).toEqual(
-      ref("ground_truth", "d1", "s1")
+      ref("ground_truth", "d1", "s1"),
     );
     expect(nav.canUndo()).toBe(true);
     nav.undo();

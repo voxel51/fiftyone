@@ -14,7 +14,7 @@ describe("normalizeForCompare", () => {
       normalizeForCompare({
         created: { _cls: "DateTime", datetime: MS },
         history: [{ _cls: "DateTime", datetime: MS }],
-      })
+      }),
     ).toEqual({ created: ISO, history: [ISO] });
   });
 
@@ -38,7 +38,7 @@ describe("normalizeForCompare", () => {
 describe("equalsNormalized", () => {
   it("treats a DateTime wrapper and its ISO string as equal", () => {
     expect(equalsNormalized({ _cls: "DateTime", datetime: MS }, ISO)).toBe(
-      true
+      true,
     );
   });
 
@@ -46,8 +46,8 @@ describe("equalsNormalized", () => {
     expect(
       equalsNormalized(
         { at: { _cls: "DateTime", datetime: MS }, n: 1 },
-        { at: ISO, n: 1 }
-      )
+        { at: ISO, n: 1 },
+      ),
     ).toBe(true);
   });
 

@@ -18,7 +18,7 @@ export interface StringFilter {
 const getFilter = (
   get: GetRecoilValue,
   modal: boolean,
-  path: string
+  path: string,
 ): StringFilter => {
   return {
     values: [],
@@ -31,7 +31,7 @@ const getFilter = (
 const getVisibility = (
   get: GetRecoilValue,
   modal: boolean,
-  path: string
+  path: string,
 ): StringFilter => {
   return {
     values: [],
@@ -49,7 +49,7 @@ const setFilter = (
   modal: boolean,
   path: string,
   key: string,
-  value: boolean | (string | null)[] | DefaultValue
+  value: boolean | (string | null)[] | DefaultValue,
 ) => {
   let filter = {
     ...getFilter(get, modal, path),
@@ -74,7 +74,7 @@ const setVisibility = (
   modal: boolean,
   path: string,
   key: string,
-  value: boolean | (string | null)[] | DefaultValue
+  value: boolean | (string | null)[] | DefaultValue,
 ) => {
   let visibility = {
     ...getVisibility(get, modal, path),
@@ -279,7 +279,7 @@ export const listString = selectorFamily<
               value,
               visibilityNone,
               visibilityExclude,
-              true
+              true,
             );
           };
         }
@@ -290,14 +290,14 @@ export const listString = selectorFamily<
             value,
             none,
             exclude,
-            false
+            false,
           );
           const visibilityResult = handleValues(
             visibilityValues,
             value,
             visibilityNone,
             visibilityExclude,
-            true
+            true,
           );
 
           return filterResult && visibilityResult;
@@ -314,7 +314,7 @@ const handleValues = (
   value: string | null, // current value of the tag
   none: unknown,
   exclude: boolean,
-  isVisibility: boolean // filter and visibility has different logic for list values
+  isVisibility: boolean, // filter and visibility has different logic for list values
 ) => {
   const result =
     (isVisibility

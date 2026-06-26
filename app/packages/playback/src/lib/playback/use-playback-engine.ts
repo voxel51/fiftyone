@@ -43,7 +43,7 @@ import type {
 function frameBoundaryStep(
   time: number,
   step: number,
-  direction: "forward" | "back"
+  direction: "forward" | "back",
 ): number {
   if (!(step > 0)) {
     return direction === "forward" ? time + step : time - step;
@@ -120,7 +120,7 @@ export function usePlaybackEngine({
     const rawLoopEnd = clamp(
       defaultLoopEnd ?? initialDuration,
       0,
-      initialDuration
+      initialDuration,
     );
     // Inverted / collapsed window → fall back to the full timeline so the
     // RAF wrap path isn't trapped in a zero-width loop.
@@ -218,7 +218,7 @@ export function usePlaybackEngine({
         seekDebounceRef.current = setTimeout(fire, SEEK_BAR_DEBOUNCE);
       }
     },
-    [store]
+    [store],
   );
 
   const doCommit = useCallback(
@@ -229,7 +229,7 @@ export function usePlaybackEngine({
         s.onCommit?.(time, store);
       }
     },
-    [store, isActive]
+    [store, isActive],
   );
 
   /**
@@ -275,7 +275,7 @@ export function usePlaybackEngine({
 
       return !isBuffering;
     },
-    [store, isActive]
+    [store, isActive],
   );
 
   /**
@@ -348,7 +348,7 @@ export function usePlaybackEngine({
 
       rafIdRef.current = requestAnimationFrame(tick);
     },
-    [store, fireSeekEvent, doCommit, runBarrier]
+    [store, fireSeekEvent, doCommit, runBarrier],
   );
 
   useEffect(() => {
@@ -425,7 +425,7 @@ export function usePlaybackEngine({
         settleRafRef.current = requestAnimationFrame(settleTick);
       }
     },
-    [runBarrier, doCommit, settleTick]
+    [runBarrier, doCommit, settleTick],
   );
 
   const actions = useMemo(() => {
@@ -448,7 +448,7 @@ export function usePlaybackEngine({
       const snapped = clamp(
         displayedFrameStart(current, step),
         0,
-        store.get(durationAtom)
+        store.get(durationAtom),
       );
 
       if (Math.abs(snapped - current) < step * 1e-6) {
@@ -487,10 +487,10 @@ export function usePlaybackEngine({
           frameBoundaryStep(
             store.get(playheadAtom),
             store.get(stepIntervalAtom),
-            "back"
+            "back",
           ),
           0,
-          store.get(durationAtom)
+          store.get(durationAtom),
         );
         store.set(playheadAtom, next);
         fireSeekEvent(next, true);
@@ -501,10 +501,10 @@ export function usePlaybackEngine({
           frameBoundaryStep(
             store.get(playheadAtom),
             store.get(stepIntervalAtom),
-            "forward"
+            "forward",
           ),
           0,
-          store.get(durationAtom)
+          store.get(durationAtom),
         );
         store.set(playheadAtom, next);
         fireSeekEvent(next, true);
@@ -514,7 +514,7 @@ export function usePlaybackEngine({
         const bounds = clampAndValidateBounds(
           start,
           end,
-          store.get(durationAtom)
+          store.get(durationAtom),
         );
         if (!bounds) return;
         store.set(viewStartAtom, bounds.start);
@@ -524,7 +524,7 @@ export function usePlaybackEngine({
         const bounds = clampAndValidateBounds(
           start,
           end,
-          store.get(durationAtom)
+          store.get(durationAtom),
         );
         if (!bounds) return;
         store.set(loopStartAtom, bounds.start);
@@ -557,7 +557,7 @@ export function usePlaybackEngine({
       subscribeStream: (id: string) => {
         subscribersRef.current.set(
           id,
-          (subscribersRef.current.get(id) ?? 0) + 1
+          (subscribersRef.current.get(id) ?? 0) + 1,
         );
         // One-shot cleanup. StrictMode's setup→cleanup→setup cycle (and
         // any consumer that retains a stale cleanup) would otherwise
@@ -601,7 +601,7 @@ export function usePlaybackEngine({
 
   const contextValue = useMemo<PlaybackContextValue>(
     () => ({ duration, stepInterval, ...actions }),
-    [duration, stepInterval, actions]
+    [duration, stepInterval, actions],
   );
 
   return { store, contextValue };

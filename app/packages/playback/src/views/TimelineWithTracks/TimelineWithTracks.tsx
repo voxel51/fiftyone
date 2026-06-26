@@ -60,7 +60,7 @@ export interface TimelineWithTracksProps {
    */
   decorateTrack?: (
     track: Track,
-    pinned: boolean
+    pinned: boolean,
   ) => Partial<TimelineTrackProps>;
 }
 

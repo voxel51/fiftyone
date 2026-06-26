@@ -8,7 +8,7 @@ import type { Result } from "./Result";
 export default function (
   modal: boolean,
   path: string,
-  selectedAtom: RecoilState<(string | null)[]>
+  selectedAtom: RecoilState<(string | null)[]>,
 ) {
   return useRecoilCallback(
     ({ snapshot, set }) =>
@@ -30,6 +30,6 @@ export default function (
 
         return "";
       },
-    [modal, path, selectedAtom]
+    [modal, path, selectedAtom],
   );
 }

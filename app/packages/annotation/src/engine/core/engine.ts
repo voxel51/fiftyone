@@ -37,7 +37,7 @@ export interface ScopedEngine {
   createLabel(
     path: string,
     label: Partial<LabelData>,
-    frame?: number
+    frame?: number,
   ): LabelRef;
   subscribeChanges(listener: ChangeListener): () => void;
 }
@@ -121,7 +121,7 @@ export class AnnotationEngine {
    *   factory shape lets it close over the clock without the engine knowing it.
    */
   constructor(
-    opts: { temporal?: (engine: AnnotationEngine) => TemporalView } = {}
+    opts: { temporal?: (engine: AnnotationEngine) => TemporalView } = {},
   ) {
     this.interaction = new InteractionState(this.guard);
     this.signals = new SignalPipe(this.guard);
@@ -130,7 +130,7 @@ export class AnnotationEngine {
     )(this);
     this.bindTemporalPresence();
     this.registerBookkeeping((changes) =>
-      this.interaction.gc(changes, (ref) => this.getLabel(ref) !== undefined)
+      this.interaction.gc(changes, (ref) => this.getLabel(ref) !== undefined),
     );
   }
 
@@ -141,7 +141,7 @@ export class AnnotationEngine {
    * the prior one; idempotent if a later attach has already superseded it.
    */
   attachTemporal(
-    factory: (engine: AnnotationEngine) => TemporalView
+    factory: (engine: AnnotationEngine) => TemporalView,
   ): () => void {
     const previous = this._temporal;
     const next = factory(this);
@@ -220,7 +220,7 @@ export class AnnotationEngine {
       unsubscribeChanges();
       this.interaction.gc(
         [wholeSampleReset(store.sample)],
-        (ref) => this.getLabel(ref) !== undefined
+        (ref) => this.getLabel(ref) !== undefined,
       );
       this.emitUndoDrop(this.undos.dropSample(store.sample));
     };
@@ -300,7 +300,7 @@ export class AnnotationEngine {
   createLabel(
     path: string,
     label: Partial<LabelData>,
-    frame?: number
+    frame?: number,
   ): LabelRef {
     return this.createLabelIn(this.soleSample(), path, label, frame);
   }
@@ -459,7 +459,7 @@ export class AnnotationEngine {
   subscribeSignal<T>(
     topic: string,
     key: EntityId | "*",
-    handler: SignalHandler<T>
+    handler: SignalHandler<T>,
   ): () => void {
     return this.signals.subscribe(topic, key, handler);
   }
@@ -481,7 +481,7 @@ export class AnnotationEngine {
    */
   registerBridge<Handle, Descriptor>(
     bridge: SurfaceBridge<Handle, Descriptor>,
-    adapters: AdapterMap<Handle, Descriptor>
+    adapters: AdapterMap<Handle, Descriptor>,
   ): () => void {
     return registerBridgeLoop(this, bridge, adapters);
   }
@@ -539,7 +539,7 @@ export class AnnotationEngine {
     sample: string,
     path: string,
     label: Partial<LabelData>,
-    frame?: number
+    frame?: number,
   ): LabelRef {
     return this.transaction(() => {
       const ref: LabelRef = {
@@ -569,7 +569,7 @@ export class AnnotationEngine {
     if (this.stores.size !== 1) {
       throw new Error(
         `the ambient sample requires exactly one registered store ` +
-          `(have ${this.stores.size}); pass an explicit sample scope`
+          `(have ${this.stores.size}); pass an explicit sample scope`,
       );
     }
 

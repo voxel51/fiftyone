@@ -43,7 +43,7 @@ function generateObjectIdHex(): string {
     .toString(16)
     .padStart(8, "0");
   const random = Array.from({ length: 16 }, () =>
-    Math.floor(Math.random() * 16).toString(16)
+    Math.floor(Math.random() * 16).toString(16),
   ).join("");
   return timestamp + random;
 }
@@ -62,18 +62,16 @@ function generateObjectIdHex(): string {
  * Each emitted Detection carries `keyframe: false`, the propagation run's
  * provenance blob, and the shared `instance.id` from the source keyframes.
  */
-export class PropagationBrowserAgent
-  implements AnnotationAgent<PropagationInferenceResult>
-{
+export class PropagationBrowserAgent implements AnnotationAgent<PropagationInferenceResult> {
   private lifecycleStatus: AnnotationAgentLifecycleStatus = "idle";
   private readonly listeners = new Set<AnnotationAgentLifecycleListener>();
 
   async infer(
-    context: PropagationContext
+    context: PropagationContext,
   ): Promise<InferenceResult<PropagationInferenceResult>> {
     if (context.fromFrame >= context.toFrame) {
       throw new Error(
-        `fromFrame (${context.fromFrame}) must be less than toFrame (${context.toFrame})`
+        `fromFrame (${context.fromFrame}) must be less than toFrame (${context.toFrame})`,
       );
     }
 

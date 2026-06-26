@@ -43,7 +43,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
     // Sample-level only — temporal detections are video-level; the create
     // command targets a top-level field path.
     () => tdFieldPaths.find((p) => !p.startsWith("frames.")) ?? null,
-    [tdFieldPaths]
+    [tdFieldPaths],
   );
   const fps = getModalSampleFrameRate(modalSample);
   const canCreateTd =
@@ -130,7 +130,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
                 target.instanceId,
                 target.fromFrame,
                 target.toFrame,
-                "sam2"
+                "sam2",
               );
             },
           },
@@ -184,6 +184,6 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
       selectedIds,
       target,
       tdFieldPath,
-    ]
+    ],
   );
 };

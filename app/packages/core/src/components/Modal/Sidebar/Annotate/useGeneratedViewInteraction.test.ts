@@ -15,9 +15,8 @@ vi.mock("recoil", () => ({
   useRecoilValue: () => mockIsGenerated,
 }));
 
-const { useGeneratedViewInteraction } = await import(
-  "./useGeneratedViewInteraction"
-);
+const { useGeneratedViewInteraction } =
+  await import("./useGeneratedViewInteraction");
 
 describe("useGeneratedViewInteraction", () => {
   beforeEach(() => {

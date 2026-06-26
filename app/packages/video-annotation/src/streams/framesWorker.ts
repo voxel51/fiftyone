@@ -114,7 +114,7 @@ async function handleFetchChunk(msg: FetchChunkMessage): Promise<void> {
   // Kick off every frame's fetch+decode in parallel; post each one as
   // soon as it's ready so the main-thread cache fills incrementally.
   await Promise.all(
-    frames.frames.map((frame) => decodeAndDispatch(msg.reqId, frame))
+    frames.frames.map((frame) => decodeAndDispatch(msg.reqId, frame)),
   );
 
   postOutbound({
@@ -126,7 +126,7 @@ async function handleFetchChunk(msg: FetchChunkMessage): Promise<void> {
 
 async function decodeAndDispatch(
   reqId: number,
-  frame: { frame_number: number; filepath?: string }
+  frame: { frame_number: number; filepath?: string },
 ): Promise<void> {
   if (!frame.filepath || typeof frame.filepath !== "string") {
     return;
@@ -151,7 +151,7 @@ async function decodeAndDispatch(
     // re-requests on the next prefetch tick.
     console.error(
       `[framesWorker] decode failed for frame ${frame.frame_number}`,
-      error
+      error,
     );
 
     return;
@@ -167,7 +167,7 @@ async function decodeAndDispatch(
       width: bitmap.width,
       height: bitmap.height,
     },
-    [bitmap]
+    [bitmap],
   );
 }
 
@@ -184,7 +184,7 @@ function resolveMediaSrc(filepath: string): string {
   return `${joinUrl(
     origin,
     pathPrefix,
-    "/media"
+    "/media",
   )}?filepath=${encodeURIComponent(filepath)}`;
 }
 
@@ -197,7 +197,7 @@ function postOutbound(msg: OutboundMessage, transfer?: Transferable[]): void {
   // DedicatedWorkerGlobalScope signature.
   (self as unknown as DedicatedWorkerGlobalScope).postMessage(
     msg,
-    transfer ?? []
+    transfer ?? [],
   );
 }
 

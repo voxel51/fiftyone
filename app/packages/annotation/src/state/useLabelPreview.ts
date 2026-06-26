@@ -18,6 +18,6 @@ export const usePublishLabelPreview = () => {
   return useCallback(
     (dataset: string, ref: LabelRef, patch: LabelPatchSignal) =>
       publishLabelPreview(engine, dataset, ref, patch),
-    [engine]
+    [engine],
   );
 };

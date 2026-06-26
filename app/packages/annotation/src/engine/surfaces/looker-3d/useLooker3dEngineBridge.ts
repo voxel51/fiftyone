@@ -44,7 +44,7 @@ export const useLooker3dEngineBridge = ({
       sample
         ? createLooker3dBridge({ sample, paths, store, resolveColor })
         : undefined,
-    [sample, paths, store, resolveColor]
+    [sample, paths, store, resolveColor],
   );
 
   // a replaced bridge (scope/sample change) clears its entries on the way out;
@@ -53,7 +53,7 @@ export const useLooker3dEngineBridge = ({
     () => () => {
       bridge?.clear();
     },
-    [bridge]
+    [bridge],
   );
 
   return useSurfaceBridge({ engine, bridge, adapters: looker3dAdapters });

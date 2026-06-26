@@ -28,7 +28,7 @@ export const reservedLabelAttributes = [
  * engine or {@link Sample}.
  */
 export const stripReservedLabelAttributes = <T extends Record<string, unknown>>(
-  data: T
+  data: T,
 ): T => {
   const out = { ...data };
   for (const key of reservedLabelAttributes) {
@@ -48,13 +48,13 @@ export const stripReservedLabelAttributes = <T extends Record<string, unknown>>(
  * @param label Reconciled 3D detection or polyline
  */
 export const build3dLabel = (
-  label: ReconciledDetection3D | ReconciledPolyline3D
+  label: ReconciledDetection3D | ReconciledPolyline3D,
 ): LabelData | undefined => {
   if (label._cls !== "Detection" && label._cls !== "Polyline") {
     return undefined;
   }
 
   return stripReservedLabelAttributes(
-    label as unknown as Record<string, unknown>
+    label as unknown as Record<string, unknown>,
   ) as unknown as LabelData;
 };

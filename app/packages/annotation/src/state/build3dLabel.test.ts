@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { build3dLabel } from "./build3dLabel";
 
 const baseDetection = (
-  overrides: Partial<ReconciledDetection3D> = {}
+  overrides: Partial<ReconciledDetection3D> = {},
 ): ReconciledDetection3D =>
   ({
     _id: "det-1",
@@ -24,10 +24,10 @@ const baseDetection = (
     selected: false,
     isNew: false,
     ...overrides,
-  } as unknown as ReconciledDetection3D);
+  }) as unknown as ReconciledDetection3D;
 
 const basePolyline = (
-  overrides: Partial<ReconciledPolyline3D> = {}
+  overrides: Partial<ReconciledPolyline3D> = {},
 ): ReconciledPolyline3D =>
   ({
     _id: "poly-1",
@@ -49,7 +49,7 @@ const basePolyline = (
     selected: false,
     isNew: true,
     ...overrides,
-  } as unknown as ReconciledPolyline3D);
+  }) as unknown as ReconciledPolyline3D;
 
 describe("build3dLabel", () => {
   it("strips internal/reserved attributes from a detection", () => {
@@ -108,15 +108,15 @@ describe("build3dLabel", () => {
       label: "",
     });
     expect(
-      build3dLabel(baseDetection({ label: undefined as unknown as string }))
+      build3dLabel(baseDetection({ label: undefined as unknown as string })),
     ).toMatchObject({ _id: "det-1", _cls: "Detection" });
   });
 
   it("returns undefined for an unsupported _cls", () => {
     expect(
       build3dLabel(
-        baseDetection({ _cls: "Classification" as unknown as "Detection" })
-      )
+        baseDetection({ _cls: "Classification" as unknown as "Detection" }),
+      ),
     ).toBeUndefined();
   });
 

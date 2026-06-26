@@ -69,7 +69,7 @@ export interface TemporalDetectionEventData {
  * by the data, not a string prefix. Frame-less: a TD is sample-level.
  */
 export const temporalDetectionRefOf = (
-  track: Track
+  track: Track,
 ): { path: string; instanceId: string } | null => {
   const data = track.events[0]?.data as TemporalDetectionEventData | undefined;
 

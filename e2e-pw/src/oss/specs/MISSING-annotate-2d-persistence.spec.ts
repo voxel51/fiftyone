@@ -77,7 +77,7 @@ const fieldNum = async (modal: ModalPom, path: string) =>
 const inFreshContext = async (
   browser: Browser,
   fiftyoneLoader: AbstractFiftyoneLoader,
-  verify: (modal: ModalPom) => Promise<void>
+  verify: (modal: ModalPom) => Promise<void>,
 ) => {
   const context = await browser.newContext();
   const freshPage = await context.newPage();
@@ -111,7 +111,7 @@ test.describe.serial("2D annotation edit/delete persistence", () => {
     const saved = page.waitForResponse(
       (r) =>
         /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method())
+        ["POST", "PATCH", "PUT"].includes(r.request().method()),
     );
     await modal.sidebar.edit.setFieldValue("confidence", "0.7");
     await modal.sidebar.edit.assert.verifyFieldValue("confidence", "0.7");
@@ -136,7 +136,7 @@ test.describe.serial("2D annotation edit/delete persistence", () => {
     const saved = page.waitForResponse(
       (r) =>
         /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method())
+        ["POST", "PATCH", "PUT"].includes(r.request().method()),
     );
     await modal.sidebar.edit.setFieldValue("position.x", "0.111");
     await expect
@@ -163,7 +163,7 @@ test.describe.serial("2D annotation edit/delete persistence", () => {
     const saved = page.waitForResponse(
       (r) =>
         /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method())
+        ["POST", "PATCH", "PUT"].includes(r.request().method()),
     );
     await modal.sidebar.annotate.selectActiveLabel("cat", 0);
     await page.keyboard.press("Backspace");

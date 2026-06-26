@@ -12,7 +12,7 @@ import { DETECTION } from "@fiftyone/utilities";
 
 function makeDetection(
   id: string,
-  overrides: Partial<ReconciledDetection3D> = {}
+  overrides: Partial<ReconciledDetection3D> = {},
 ): ReconciledDetection3D {
   return {
     _id: id,

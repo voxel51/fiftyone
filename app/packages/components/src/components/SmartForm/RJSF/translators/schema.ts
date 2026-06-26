@@ -11,7 +11,7 @@ import { SmartFormInputs } from "../../types";
  */
 export function translateToJSONSchema(
   schemaIO: any,
-  context: TranslationContext
+  context: TranslationContext,
 ): RJSFSchema {
   const schema: RJSFSchema = {};
   const { type, default: defaultValue, required } = schemaIO;
@@ -67,7 +67,7 @@ export function translateToJSONSchema(
         };
         schema.additionalProperties = translateToJSONSchema(
           schemaIO.additionalProperties,
-          propContext
+          propContext,
         );
       }
       break;
@@ -109,7 +109,7 @@ export function translateToJSONSchema(
     default:
       addWarning(
         context,
-        `Unsupported type "${type}" at path: ${context.path.join(".")}`
+        `Unsupported type "${type}" at path: ${context.path.join(".")}`,
       );
   }
 
@@ -136,7 +136,7 @@ export function translateToJSONSchema(
  */
 export function addChoicesToSchema(
   schema: RJSFSchema,
-  schemaIO: SchemaType
+  schemaIO: SchemaType,
 ): RJSFSchema {
   const view = schemaIO.view;
   const component = view?.component || view?.name;
@@ -144,7 +144,7 @@ export function addChoicesToSchema(
   if (view?.choices && Array.isArray(view.choices)) {
     const enumValues = view.choices.map((choice: any) => choice.value);
     const enumNames = view.choices.map(
-      (choice: any) => choice.label || choice.value
+      (choice: any) => choice.label || choice.value,
     );
 
     // For array types (multi-select AutocompleteView), add items definition
@@ -180,7 +180,7 @@ export function addChoicesToSchema(
     for (const [key, propSchema] of Object.entries(schema.properties)) {
       schema.properties[key] = addChoicesToSchema(
         propSchema as RJSFSchema,
-        schemaIO.properties[key]
+        schemaIO.properties[key],
       );
     }
   }
@@ -189,12 +189,12 @@ export function addChoicesToSchema(
   if (schema.type === "array" && schema.items && schemaIO.items) {
     if (Array.isArray(schema.items) && Array.isArray(schemaIO.items)) {
       schema.items = schema.items.map((itemSchema, index) =>
-        addChoicesToSchema(itemSchema as RJSFSchema, schemaIO.items[index])
+        addChoicesToSchema(itemSchema as RJSFSchema, schemaIO.items[index]),
       );
     } else if (!Array.isArray(schema.items) && !Array.isArray(schemaIO.items)) {
       schema.items = addChoicesToSchema(
         schema.items as RJSFSchema,
-        schemaIO.items
+        schemaIO.items,
       );
     }
   }

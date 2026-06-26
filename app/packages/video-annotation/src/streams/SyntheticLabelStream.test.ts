@@ -61,7 +61,7 @@ describe("resolveActor", () => {
         presenceDuty: 0.5,
         presencePhase: 0,
       },
-      0
+      0,
     );
     expect(Number.isFinite(actor.xPeriodSec)).toBe(true);
   });

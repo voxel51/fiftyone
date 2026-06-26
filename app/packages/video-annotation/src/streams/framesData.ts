@@ -63,7 +63,7 @@ interface FieldSpec {
  */
 export const parseFramesData = (
   docs: Iterable<FrameDocLike>,
-  labelTypes: Record<string, LabelType>
+  labelTypes: Record<string, LabelType>,
 ): FramesData => {
   const specs = toFieldSpecs(labelTypes);
   const out: FramesData = {};

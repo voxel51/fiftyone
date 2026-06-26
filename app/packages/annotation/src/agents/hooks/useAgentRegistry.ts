@@ -41,14 +41,14 @@ export const useAgentRegistry = (): AgentRegistry => {
     async (
       id: string,
       label: string,
-      agent: AnnotationAgent<InferenceResultProxy>
+      agent: AnnotationAgent<InferenceResultProxy>,
     ) => setRegistry((prev) => ({ ...prev, [id]: { id, label, agent } })),
-    [setRegistry]
+    [setRegistry],
   );
 
   const listAgents = useCallback(
     async () => Object.values(registry),
-    [registry]
+    [registry],
   );
 
   return useMemo(() => ({ listAgents, register }), [listAgents, register]);

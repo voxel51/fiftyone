@@ -38,7 +38,7 @@ export type ScopedRef = Omit<LabelRef, "sample">;
  */
 export const stampFrame = <R extends { path: string }>(
   ref: R,
-  frameOf?: (path: string) => number | undefined
+  frameOf?: (path: string) => number | undefined,
 ): R & { frame?: number } => {
   const frame = frameOf?.(ref.path);
 

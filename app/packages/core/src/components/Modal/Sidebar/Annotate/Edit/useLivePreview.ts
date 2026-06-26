@@ -24,6 +24,6 @@ export const useLivePreview = (readOnly: boolean) => {
 
       publishPreview(dataset, ref, { [name]: value } as Partial<LabelData>);
     },
-    [publishPreview, readOnly, ref, dataset]
+    [publishPreview, readOnly, ref, dataset],
   );
 };

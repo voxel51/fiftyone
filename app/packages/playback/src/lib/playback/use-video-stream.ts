@@ -55,7 +55,7 @@ const VIDEO_DRIFT_TOLERANCE_S = 0.05;
 export function useVideoStream(
   id: string,
   videoRef: RefObject<HTMLVideoElement | null>,
-  options: { blocking?: boolean } = {}
+  options: { blocking?: boolean } = {},
 ): void {
   const blocking = options.blocking ?? true;
   const { registerStream } = usePlayback();
@@ -168,7 +168,7 @@ function isFiniteDuration(d: number): boolean {
  */
 export function usePresentedMediaTime(
   videoRef: RefObject<HTMLVideoElement | null>,
-  enabled = true
+  enabled = true,
 ): RefObject<number | null> {
   const ref = useRef<number | null>(null);
 
@@ -185,7 +185,7 @@ export function usePresentedMediaTime(
     // `requestVideoFrameCallback` exists on HTMLVideoElement but isn't
     // in lib.dom.d.ts on older TS targets — cast through to call it.
     type VFC = (
-      cb: (now: number, metadata: { mediaTime: number }) => void
+      cb: (now: number, metadata: { mediaTime: number }) => void,
     ) => number;
     const rvfc = (v as unknown as { requestVideoFrameCallback?: VFC })
       .requestVideoFrameCallback;

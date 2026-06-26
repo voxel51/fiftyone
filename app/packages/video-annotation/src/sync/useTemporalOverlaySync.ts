@@ -149,7 +149,7 @@ export function syncTemporalOverlays({
 const buildEngineTemporalSample = (
   engine: FrameLabelReader,
   sample: string,
-  tdPaths: readonly string[]
+  tdPaths: readonly string[],
 ): Record<string, unknown> => {
   const out: Record<string, unknown> = {};
 
@@ -171,7 +171,7 @@ const buildEngineTemporalSample = (
 /** Deep equality so the sync effect only re-runs when the TDs actually change. */
 const sameTemporalSample = (
   a: Record<string, unknown>,
-  b: Record<string, unknown>
+  b: Record<string, unknown>,
 ): boolean => JSON.stringify(a) === JSON.stringify(b);
 
 type Scene = ReturnType<typeof useLighterSetupWithPixi>["scene"];
@@ -185,7 +185,7 @@ const useEngineTemporalSample = (): Record<string, unknown> => {
   return useEngineSelector(
     engine,
     (e) => (sampleId ? buildEngineTemporalSample(e, sampleId, tdPaths) : {}),
-    sameTemporalSample
+    sameTemporalSample,
   );
 };
 
@@ -221,7 +221,7 @@ const useOverlayDiff = (
   temporalSample: Record<string, unknown>,
   activePaths: ReadonlySet<string>,
   overlaysRef: MutableRefObject<Map<string, TemporalOverlay>>,
-  currentFrameRef: MutableRefObject<number | null>
+  currentFrameRef: MutableRefObject<number | null>,
 ): void => {
   useEffect(() => {
     if (!scene || !canonicalMediaReady) {
@@ -247,7 +247,7 @@ const useOverlayDiff = (
 /** Push the playhead frame into each tracked overlay on playhead changes. */
 const usePlayheadPush = (
   currentFrame: number | null,
-  overlaysRef: MutableRefObject<Map<string, TemporalOverlay>>
+  overlaysRef: MutableRefObject<Map<string, TemporalOverlay>>,
 ): void => {
   useEffect(() => {
     if (currentFrame === null) {
@@ -268,7 +268,7 @@ const usePlayheadPush = (
  */
 const useOverlayCleanup = (
   scene: Scene,
-  overlaysRef: MutableRefObject<Map<string, TemporalOverlay>>
+  overlaysRef: MutableRefObject<Map<string, TemporalOverlay>>,
 ): void => {
   useEffect(() => {
     return () => {
@@ -298,7 +298,7 @@ const useOverlayCleanup = (
  */
 export function useTemporalOverlaySync(
   scene: Scene,
-  canonicalMediaReady: boolean
+  canonicalMediaReady: boolean,
 ): void {
   const overlaysRef = useRef<Map<string, TemporalOverlay>>(new Map());
 
@@ -316,7 +316,7 @@ export function useTemporalOverlaySync(
     temporalSample,
     activePaths,
     overlaysRef,
-    currentFrameRef
+    currentFrameRef,
   );
 
   usePlayheadPush(currentFrameRef.current, overlaysRef);

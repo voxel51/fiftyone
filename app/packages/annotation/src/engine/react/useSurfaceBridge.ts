@@ -47,7 +47,7 @@ export const useSurfaceBridge = <Handle, Descriptor>({
 }): SurfaceController<Handle> => {
   useEffect(
     () => (bridge ? engine.registerBridge(bridge, adapters) : undefined),
-    [engine, bridge, adapters]
+    [engine, bridge, adapters],
   );
 
   return useMemo(
@@ -55,6 +55,6 @@ export const useSurfaceBridge = <Handle, Descriptor>({
       bridge
         ? createSurfaceController({ engine, bridge, adapters })
         : (NOT_READY_CONTROLLER as SurfaceController<Handle>),
-    [engine, bridge, adapters]
+    [engine, bridge, adapters],
   );
 };

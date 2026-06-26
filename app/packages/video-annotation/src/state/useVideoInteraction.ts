@@ -67,7 +67,7 @@ export const useSelectedTrackIds = (): ReadonlySet<string> => {
   return useInteraction(
     engine,
     (i) => new Set(i.getActive().map((ref) => ref.instanceId)),
-    sameIds
+    sameIds,
   );
 };
 
@@ -77,7 +77,7 @@ export const useHoveredTrackIds = (): ReadonlySet<string> => {
   return useInteraction(
     engine,
     (i) => new Set(i.getHovered().map((ref) => ref.instanceId)),
-    sameIds
+    sameIds,
   );
 };
 
@@ -94,24 +94,24 @@ export const useVideoInteraction = (): VideoInteraction => {
     (instanceId: string, path: string) => {
       actions.setActive([{ path, instanceId, frame: getFrame() }]);
     },
-    [actions, getFrame]
+    [actions, getFrame],
   );
 
   const hoverTrack = useCallback(
     (instanceId: string, path: string, on: boolean) => {
       actions.setHovered({ path, instanceId, frame: getFrame() }, on);
     },
-    [actions, getFrame]
+    [actions, getFrame],
   );
 
   const selectLabel = useCallback(
     (ref: ScopedRef) => actions.setActive([ref]),
-    [actions]
+    [actions],
   );
 
   const hoverLabel = useCallback(
     (ref: ScopedRef, on: boolean) => actions.setHovered(ref, on),
-    [actions]
+    [actions],
   );
 
   return {
@@ -166,7 +166,7 @@ export const useScrollTrackToAnchor = (): void => {
   const engine = useAnnotationEngine();
   const anchorId = useInteraction(
     engine,
-    (i) => i.getAnchor()?.instanceId ?? null
+    (i) => i.getAnchor()?.instanceId ?? null,
   );
   const previous = useRef<string | null>(null);
 
@@ -182,7 +182,7 @@ export const useScrollTrackToAnchor = (): void => {
     // before scrolling.
     requestAnimationFrame(() => {
       const row = document.querySelector(
-        `[data-track-id="${CSS.escape(anchorId)}"]`
+        `[data-track-id="${CSS.escape(anchorId)}"]`,
       );
 
       row?.scrollIntoView({

@@ -62,11 +62,11 @@ const TabOption = ({
         o.text === active
           ? color || theme.primary.plainColor
           : hovering[i]
-          ? theme.background.body
-          : theme.background.level1,
+            ? theme.background.body
+            : theme.background.level1,
       color:
         o.text === active ? theme.text.buttonHighlight : theme.text.secondary,
-    }))
+    })),
   );
 
   const [style, set] = useSpring(() => ({

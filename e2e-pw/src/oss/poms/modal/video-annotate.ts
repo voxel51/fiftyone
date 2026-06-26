@@ -37,7 +37,7 @@ export class VideoAnnotatePom {
     const ids = await this.page
       .locator("[data-track-id]")
       .evaluateAll((els) =>
-        els.map((e) => e.getAttribute("data-track-id") ?? "")
+        els.map((e) => e.getAttribute("data-track-id") ?? ""),
       );
     return Array.from(new Set(ids.filter(Boolean)));
   }
@@ -49,7 +49,7 @@ export class VideoAnnotatePom {
    */
   async objectTrackIds(): Promise<string[]> {
     return (await this.trackIds()).filter(
-      (id) => !id.startsWith("td-") && !id.includes("::")
+      (id) => !id.startsWith("td-") && !id.includes("::"),
     );
   }
 
@@ -71,7 +71,7 @@ export class VideoAnnotatePom {
    */
   async subTrackIds(parentId: string): Promise<string[]> {
     return (await this.trackIds()).filter((id) =>
-      id.startsWith(`${parentId}::`)
+      id.startsWith(`${parentId}::`),
     );
   }
 
@@ -95,7 +95,7 @@ export class VideoAnnotatePom {
    */
   segmentBars(subTrackId: string): Locator {
     return this.track(subTrackId).locator(
-      "[data-event-index]:not([data-resize-handle])"
+      "[data-event-index]:not([data-resize-handle])",
     );
   }
 
@@ -122,7 +122,7 @@ export class VideoAnnotatePom {
   trackBar(trackId: string): Locator {
     return this.page
       .locator(
-        `[data-track-id="${trackId}"] [data-event-index]:not([data-resize-handle])`
+        `[data-track-id="${trackId}"] [data-event-index]:not([data-resize-handle])`,
       )
       .first();
   }
@@ -238,7 +238,7 @@ export class VideoAnnotatePom {
   /** The class texts of every label row currently listed in the sidebar. */
   async listedLabels(): Promise<string[]> {
     return this.labelRows.evaluateAll((els) =>
-      els.map((e) => e.getAttribute("data-cy-label") ?? "")
+      els.map((e) => e.getAttribute("data-cy-label") ?? ""),
     );
   }
 
@@ -313,7 +313,7 @@ export class VideoAnnotatePom {
           window as unknown as {
             __FO_PLAYWRIGHT_SCENE_OVERLAY_FIELDS?: () => string[];
           }
-        ).__FO_PLAYWRIGHT_SCENE_OVERLAY_FIELDS?.() ?? []
+        ).__FO_PLAYWRIGHT_SCENE_OVERLAY_FIELDS?.() ?? [],
     );
   }
 }

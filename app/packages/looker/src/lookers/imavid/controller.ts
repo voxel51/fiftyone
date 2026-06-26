@@ -33,7 +33,7 @@ export class ImaVidFramesController {
       key: string;
       totalFrameCountPromise: Promise<number>;
       targetFrameRate: number;
-    }
+    },
   ) {
     this.storeBufferManager = new BufferManager([
       [config.firstFrameNumber, config.firstFrameNumber],
@@ -112,7 +112,7 @@ export class ImaVidFramesController {
     if (totalFetchingRanges > 0 && totalUnfetchedRanges === 0) {
       this.timeoutId = window.setTimeout(
         this.executeFetch.bind(this),
-        BUFFERS_REFRESH_TIMEOUT_YIELD
+        BUFFERS_REFRESH_TIMEOUT_YIELD,
       );
       return;
     }
@@ -122,14 +122,14 @@ export class ImaVidFramesController {
     const fetchPromises = unfetchedRanges.map((range, index) => {
       this.fetchBufferManager.addMetadataToBufferRange(
         index,
-        BUFFER_METADATA_FETCHING
+        BUFFER_METADATA_FETCHING,
       );
 
       // subtract/add by two because 1) cursor is one based and 2) cursor here translates to "after" the cursor
       return this.fetchMore(range[0] - 2, range[1] - range[0] + 2).finally(
         () => {
           this.fetchBufferManager.removeMetadataFromBufferRange(index);
-        }
+        },
       );
     });
 
@@ -138,7 +138,7 @@ export class ImaVidFramesController {
     results.forEach((result, index) => {
       if (result.status === "rejected") {
         console.error(
-          `couldn't fetch buffer range ${this.fetchBufferManager.buffers[index]}: ${result.reason}`
+          `couldn't fetch buffer range ${this.fetchBufferManager.buffers[index]}: ${result.reason}`,
         );
       } else {
         this.fetchBufferManager.removeRangeAtIndex(index);
@@ -147,7 +147,7 @@ export class ImaVidFramesController {
 
     this.timeoutId = window.setTimeout(
       this.executeFetch.bind(this),
-      BUFFERS_REFRESH_TIMEOUT_YIELD
+      BUFFERS_REFRESH_TIMEOUT_YIELD,
     );
   }
 
@@ -175,7 +175,7 @@ export class ImaVidFramesController {
     if (!ImaVidStore.has(this.key)) {
       ImaVidStore.set(
         this.key,
-        new ImaVidFrameSamples(this.storeBufferManager)
+        new ImaVidFrameSamples(this.storeBufferManager),
       );
     }
 
@@ -214,7 +214,7 @@ export class ImaVidFramesController {
           networkCacheConfig: {
             transactionId: fetchUid,
           },
-        }
+        },
       ).subscribe({
         next: (data) => {
           if (data?.samples?.edges?.length) {
@@ -251,8 +251,8 @@ export class ImaVidFramesController {
                 this.store.fetchImageForSample(
                   sampleId,
                   sample["urls"],
-                  this.mediaField
-                )
+                  this.mediaField,
+                ),
               );
             }
 
@@ -273,7 +273,7 @@ export class ImaVidFramesController {
                 const newRange = [
                   Number(data.samples.edges[0].cursor) + 1,
                   Number(
-                    data.samples.edges[data.samples.edges.length - 1].cursor
+                    data.samples.edges[data.samples.edges.length - 1].cursor,
                   ) + 1,
                 ] as BufferRange;
 
@@ -285,7 +285,7 @@ export class ImaVidFramesController {
                       id: this.key,
                     },
                     bubbles: false,
-                  })
+                  }),
                 );
               });
           }

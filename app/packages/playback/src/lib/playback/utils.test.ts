@@ -66,7 +66,7 @@ describe("resolveAtTime", () => {
     ]);
     // Both within 0.5s — but "after" is past `time` and should be skipped.
     expect(
-      resolveAtTime(cache, 1, { ...NEAREST_PREVIOUS, thresholdSeconds: 0.5 })
+      resolveAtTime(cache, 1, { ...NEAREST_PREVIOUS, thresholdSeconds: 0.5 }),
     ).toBe("before");
   });
 
@@ -84,7 +84,7 @@ describe("resolveAtTime", () => {
       [0.9, "newer"],
     ]);
     expect(
-      resolveAtTime(cache, 1, { ...NEAREST_PREVIOUS, thresholdSeconds: 1 })
+      resolveAtTime(cache, 1, { ...NEAREST_PREVIOUS, thresholdSeconds: 1 }),
     ).toBe("newer");
   });
 

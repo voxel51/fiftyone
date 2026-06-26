@@ -19,13 +19,13 @@ export class MetadataLooker extends AbstractLooker<BaseState> {
 
   protected hasDefaultZoom(
     state: BaseState,
-    overlays: Overlay<BaseState>[]
+    overlays: Overlay<BaseState>[],
   ): boolean {
     return false;
   }
 
   protected getElements(
-    config: Readonly<BaseConfig>
+    config: Readonly<BaseConfig>,
   ): LookerElement<BaseState> {
     return getMetadataElements({
       abortController: this.abortController,
@@ -41,7 +41,7 @@ export class MetadataLooker extends AbstractLooker<BaseState> {
 
   protected getInitialState(
     config: BaseConfig,
-    options: Partial<BaseOptions>
+    options: Partial<BaseOptions>,
   ): BaseState {
     return {
       ...this.getInitialBaseState(),

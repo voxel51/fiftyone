@@ -49,7 +49,7 @@ export const useVideoLighterEngineBridge = (): void => {
   // each surface address a different occurrence and break cross-surface select.
   const frameOf = useCallback(
     (path: string) => (path.startsWith(FRAMES_PREFIX) ? getFrame() : undefined),
-    [getFrame]
+    [getFrame],
   );
 
   // Sample-level temporal-detections carry no Lighter adapter, so the loop's

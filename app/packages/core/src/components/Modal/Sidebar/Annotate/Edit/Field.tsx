@@ -21,7 +21,7 @@ import { buildNewLabelData } from "./useAnnotationContext/createNew";
 const createSchema = (
   choices: string[],
   disabled: Set<string>,
-  readOnly = false
+  readOnly = false,
 ) => ({
   type: "object",
   view: {
@@ -56,7 +56,7 @@ const Field = () => {
   const currentLabel = selected?.label ?? null;
   const schema = useMemo(
     () => createSchema(fields, disabled, isPatches),
-    [disabled, fields, isPatches]
+    [disabled, fields, isPatches],
   );
   const engine = useAnnotationEngine();
   const nextFieldValue = useRef(currentFieldValue);
@@ -125,7 +125,7 @@ const Field = () => {
               {
                 ...buildNewLabelData(to, cls, { id: instanceId }),
                 ...data,
-              } as Partial<LabelData>
+              } as Partial<LabelData>,
             );
           }
         });
@@ -137,10 +137,10 @@ const Field = () => {
       return new DelegatingUndoable(
         `update-${labelId}-field-action`,
         () => move(oldField, newField),
-        () => move(newField, oldField)
+        () => move(newField, oldField),
       );
     }, [currentLabelRef, engine, setCurrentField, labelId, currentFieldValue]),
-    () => true
+    () => true,
   );
 
   return (

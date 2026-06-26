@@ -84,7 +84,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       const vd = startVe - startVs;
       dragRef.current.maxAbsDelta = Math.max(
         dragRef.current.maxAbsDelta,
-        Math.abs(delta)
+        Math.abs(delta),
       );
       seek(clamp(startValue + (delta / laneWidth) * vd, 0, duration));
     },
@@ -105,7 +105,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       const t = clamp(
         startValue + (delta / laneWidth) * vd,
         0,
-        loopEnd - 1 / 60
+        loopEnd - 1 / 60,
       );
       setLoop(t, loopEnd);
     },
@@ -123,7 +123,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       const t = clamp(
         startValue + (delta / laneWidth) * vd,
         loopStart + 1 / 60,
-        duration
+        duration,
       );
       setLoop(loopStart, t);
     },
@@ -140,7 +140,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       const { startVs, startVe, laneWidth } = dragRef.current;
       dragRef.current.maxAbsDelta = Math.max(
         dragRef.current.maxAbsDelta,
-        Math.abs(delta)
+        Math.abs(delta),
       );
       const vd = startVe - startVs;
       const dt = (delta / laneWidth) * vd;
@@ -197,7 +197,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
         const ratio = clamp(
           (e.clientX - rect.left - labelWidth) / laneWidth,
           0,
-          1
+          1,
         );
         const pivotTime = vs + ratio * (ve - vs);
         const factor = e.deltaY > 0 ? 1.15 : 1 / 1.15;
@@ -205,7 +205,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
         const newStart = clamp(
           pivotTime - ratio * newDuration,
           0,
-          duration - newDuration
+          duration - newDuration,
         );
         setViewRef.current(newStart, newStart + newDuration);
       } else if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
@@ -257,8 +257,8 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
   const cursor = playheadDrag.isDragging
     ? "grabbing"
     : loopStartDrag.isDragging || loopEndDrag.isDragging
-    ? "ew-resize"
-    : undefined;
+      ? "ew-resize"
+      : undefined;
 
   return (
     <div

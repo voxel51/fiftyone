@@ -131,7 +131,7 @@ export class ModalAnnotateEditPom {
    */
   async getField(path: string) {
     return (await this.getFieldContainer(path)).locator(
-      "input, textarea, select"
+      "input, textarea, select",
     );
   }
 
@@ -276,7 +276,7 @@ class ModalAnnotateEditAsserter {
    */
   async hasMaskPreview(visible = true) {
     const preview = this.modalAnnotateEdit.page.getByTestId(
-      "annotate-mask-preview"
+      "annotate-mask-preview",
     );
     if (visible) {
       await expect(preview).toBeVisible();
@@ -296,7 +296,7 @@ class ModalAnnotateEditAsserter {
   async hasMask(hasMask = true) {
     await this.modalAnnotateEdit.openLabelMenu();
     const remove = this.modalAnnotateEdit.page.getByTestId(
-      "label-menu-remove-mask"
+      "label-menu-remove-mask",
     );
     const add = this.modalAnnotateEdit.page.getByTestId("label-menu-add-mask");
     if (hasMask) {

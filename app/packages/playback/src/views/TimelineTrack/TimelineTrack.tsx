@@ -152,7 +152,7 @@ export interface TimelineTrackProps {
     eventIndex: number,
     newStartSec: number,
     newEndSec: number,
-    mode: DragMode
+    mode: DragMode,
   ) => void;
   /**
    * Snap step (seconds) for drag-driven edits. Typically `1 / fps`,
@@ -269,7 +269,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
     eventIndex: number,
     origStart: number,
     origEnd: number,
-    mode: DragMode
+    mode: DragMode,
   ): void => {
     if (!onEventEdit) return;
 
@@ -497,7 +497,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
           const rect = e.currentTarget.getBoundingClientRect();
           seek(
             viewStart +
-              ((e.clientX - rect.left) / rect.width) * (viewEnd - viewStart)
+              ((e.clientX - rect.left) / rect.width) * (viewEnd - viewStart),
           );
         }}
       >
@@ -520,7 +520,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
           .filter(({ event }) =>
             event.endSec !== undefined
               ? event.endSec >= viewStart && event.startSec <= viewEnd
-              : event.startSec >= viewStart && event.startSec <= viewEnd
+              : event.startSec >= viewStart && event.startSec <= viewEnd,
           )
           .map(({ event, originalIndex }) => {
             const handleClick = (ev: React.MouseEvent) => {
@@ -540,7 +540,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                   viewStart +
                   Math.max(
                     0,
-                    Math.min(1, (ev.clientX - rect.left) / rect.width)
+                    Math.min(1, (ev.clientX - rect.left) / rect.width),
                   ) *
                     viewDuration;
                 seek(t);
@@ -549,7 +549,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
             };
             const isInterval = event.endSec !== undefined;
             const isResizable = Boolean(
-              isInterval && event.resizable && onEventEdit
+              isInterval && event.resizable && onEventEdit,
             );
             // Per-event override (value-segmented sub-tracks) or track color.
             const eventColor = event.color ?? color;
@@ -633,10 +633,10 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                     title={
                       event.label
                         ? `${event.label}  (${displayStart.toFixed(
-                            2
+                            2,
                           )}-${displayEnd.toFixed(2)}s)`
                         : `${labelText}  (${displayStart.toFixed(
-                            2
+                            2,
                           )}-${displayEnd.toFixed(2)}s)`
                     }
                     onClick={handleClick}
@@ -648,7 +648,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                               originalIndex,
                               event.startSec,
                               event.endSec!,
-                              "move"
+                              "move",
                             )
                         : undefined
                     }
@@ -658,7 +658,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                         <div
                           className={clsx(
                             styles.resizeHandle,
-                            styles.resizeHandleStart
+                            styles.resizeHandleStart,
                           )}
                           data-event-index={originalIndex}
                           data-resize-handle="start"
@@ -670,14 +670,14 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                               originalIndex,
                               event.startSec,
                               event.endSec!,
-                              "resize-start"
+                              "resize-start",
                             )
                           }
                         />
                         <div
                           className={clsx(
                             styles.resizeHandle,
-                            styles.resizeHandleEnd
+                            styles.resizeHandleEnd,
                           )}
                           data-event-index={originalIndex}
                           data-resize-handle="end"
@@ -689,7 +689,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                               originalIndex,
                               event.startSec,
                               event.endSec!,
-                              "resize-end"
+                              "resize-end",
                             )
                           }
                         />

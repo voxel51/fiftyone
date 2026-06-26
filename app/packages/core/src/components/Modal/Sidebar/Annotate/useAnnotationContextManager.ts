@@ -126,7 +126,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       setActivePrimitive,
       setActiveSchemaPaths,
       setLabelSchema,
-    ]
+    ],
   );
 
   const enter = useCallback(
@@ -174,7 +174,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       modalSampleId,
       setActiveFields,
       setEntranceLabel,
-    ]
+    ],
   );
 
   const exit = useCallback(() => {
@@ -191,6 +191,6 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       enter,
       exit,
     }),
-    [activateField, enter, exit]
+    [activateField, enter, exit],
   );
 };

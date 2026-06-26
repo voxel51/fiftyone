@@ -16,7 +16,7 @@ const stubEngine = (refs: { ref: LabelRef; data: LabelData }[]) => ({
   enumerateLabels: (_kinds: readonly LabelType[]) => refs.map((r) => r.ref),
   getLabel: (ref: LabelRef) =>
     refs.find(
-      (r) => r.ref.instanceId === ref.instanceId && r.ref.frame === ref.frame
+      (r) => r.ref.instanceId === ref.instanceId && r.ref.frame === ref.frame,
     )?.data,
 });
 
@@ -39,7 +39,7 @@ describe("splitTrackEdit", () => {
         index: 3,
         truncated: true,
       },
-      new Set()
+      new Set(),
     );
 
     expect(trackPartial).toEqual({ label: "cat", index: 3, truncated: true });
@@ -49,7 +49,7 @@ describe("splitTrackEdit", () => {
   it("routes declared dynamic keys to the dynamic half", () => {
     const { trackPartial, dynamicPartial } = splitTrackEdit(
       { label: "car", turn_signal: "left", index: 2 },
-      new Set(["turn_signal"])
+      new Set(["turn_signal"]),
     );
 
     expect(trackPartial).toEqual({ label: "car", index: 2 });
@@ -73,7 +73,7 @@ describe("buildForwardFill", () => {
       engine,
       dynRef(2),
       { turn_signal: "left" },
-      { turn_signal: "off" }
+      { turn_signal: "off" },
     );
 
     // frames 3 only — frame 4 already differs (a preserved change point),
@@ -94,7 +94,7 @@ describe("buildForwardFill", () => {
       engine,
       dynRef(2),
       { turn_signal: "left" },
-      { turn_signal: "off" }
+      { turn_signal: "off" },
     );
 
     expect(writes.map((w) => w.ref.frame)).toEqual([3]);
@@ -110,7 +110,7 @@ describe("buildForwardFill", () => {
       engine,
       dynRef(1),
       { turn_signal: "left" },
-      {}
+      {},
     );
 
     expect(writes.map((w) => w.ref.frame)).toEqual([2]);
@@ -126,8 +126,8 @@ describe("buildForwardFill", () => {
         engine,
         { sample: "s1", path: "detections", instanceId: "t1" },
         { turn_signal: "left" },
-        {}
-      )
+        {},
+      ),
     ).toEqual([]);
   });
 });
@@ -169,7 +169,7 @@ describe("buildTrackFanOut", () => {
         frameRef(1, "t2"),
         { sample: "s1", path: "detections", instanceId: "t1", frame: 1 },
       ],
-      getLabel: () => ({ _id: "x" } as LabelData),
+      getLabel: () => ({ _id: "x" }) as LabelData,
     };
 
     const writes = buildTrackFanOut(engine, frameRef(3, "t1"), {

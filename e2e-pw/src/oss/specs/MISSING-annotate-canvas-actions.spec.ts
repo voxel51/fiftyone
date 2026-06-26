@@ -9,7 +9,7 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
-  "smoke-annotate-canvas-actions"
+  "smoke-annotate-canvas-actions",
 );
 const id = "000000000000000000000000";
 
@@ -150,7 +150,7 @@ test.describe.serial("canvas interactions and action state", () => {
 
     // The label list should be hidden (edit form is showing)
     const labelListHeader = modal.sidebar.locator.getByText(
-      "Click labels to edit"
+      "Click labels to edit",
     );
     await expect(labelListHeader).toBeHidden();
   });
@@ -175,7 +175,7 @@ test.describe.serial("canvas interactions and action state", () => {
 
     // The label list should be hidden (edit form is showing)
     const labelListHeader = modal.sidebar.locator.getByText(
-      "Click labels to edit"
+      "Click labels to edit",
     );
     await expect(labelListHeader).toBeHidden();
   });
@@ -300,7 +300,7 @@ test.describe.serial("canvas interactions and action state", () => {
     // Wait for the new detection's edit form to open; quitting before the
     // async establish flow commits would re-activate detection mode
     await expect(
-      modal.sidebar.locator.getByText("Click labels to edit")
+      modal.sidebar.locator.getByText("Click labels to edit"),
     ).toBeHidden();
 
     await modal.sidebar.annotate.assert.detectionModeIsActive();

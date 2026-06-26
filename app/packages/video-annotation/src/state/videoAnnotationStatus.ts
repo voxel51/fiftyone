@@ -12,7 +12,7 @@ export type VideoAnnotationStatusContent = ReactElement | null;
  * {@link VideoAnnotationSurface}.
  */
 const statusContentAtom = atom<VideoAnnotationStatusContent>(
-  null
+  null,
 ) as PrimitiveAtom<VideoAnnotationStatusContent>;
 
 /**

@@ -37,11 +37,11 @@ subscribers. This is what makes the graph acyclic, so there are no echo guards,
 no settle-on-equality loops, and no "did I cause this?" bookkeeping. Two
 mechanisms enforce it:
 
--   every surface has a **silent apply** path (Lighter's `applyLabel` vs. its
-    event-emitting `updateLabel`; a React re-render is silent by nature), and
--   a shared [`DispatchGuard`](core/dispatchGuard.ts) throws in dev when any
-    guarded write happens during any dispatch (label changes, display ticks,
-    interaction notifications — one guard spans all three).
+- every surface has a **silent apply** path (Lighter's `applyLabel` vs. its
+  event-emitting `updateLabel`; a React re-render is silent by nature), and
+- a shared [`DispatchGuard`](core/dispatchGuard.ts) throws in dev when any
+  guarded write happens during any dispatch (label changes, display ticks,
+  interaction notifications — one guard spans all three).
 
 **4. Two integration shapes, one write-half.** _Retained-mode_ surfaces
 (long-lived imperative objects that must be told to change: Lighter, looker-3d)
@@ -127,17 +127,16 @@ await-and-rollback by replaying their own undo entry (`rollbackEntry`).
 `engine.transaction(fn)` is the only write boundary — bare mutators are
 implicit one-op transactions. It provides, per top-level call:
 
--   **atomicity** — a lazy `snapshot()` of each store on first touch; a throw
-    restores every touched store and discards the buffered change stream, so
-    subscribers never observe an abort;
--   **one coalesced dispatch** — changes buffer during the transaction and
-    dispatch once, in order, at commit (nested calls join the outermost);
--   **one undo unit** — value-based inverses (`{ref, before, after}` per
-    touched ref, captured lazily on first touch). Value-based means undo
-    _survives persistence_: undoing an autosaved edit is just a new, ordinary
-    transaction writing the before-values. `transaction(fn, { undoKey })`
-    merges consecutive units (slider drags, streaming batches) into a single
-    undo step.
+- **atomicity** — a lazy `snapshot()` of each store on first touch; a throw
+  restores every touched store and discards the buffered change stream, so
+  subscribers never observe an abort;
+- **one coalesced dispatch** — changes buffer during the transaction and
+  dispatch once, in order, at commit (nested calls join the outermost);
+- **one undo unit** — value-based inverses (`{ref, before, after}` per touched
+  ref, captured lazily on first touch). Value-based means undo _survives
+  persistence_: undoing an autosaved edit is just a new, ordinary transaction
+  writing the before-values. `transaction(fn, { undoKey })` merges consecutive
+  units (slider drags, streaming batches) into a single undo step.
 
 Undo replays are non-recording transactions writing known values through
 `replaceLabel` (exact value, not merge — merge would resurrect fields the
@@ -222,12 +221,12 @@ flowchart TB
 
 Start by answering one question: **can your surface re-render from state?**
 
--   It re-derives its UI from props/state on every update (React, anything
-    virtual-DOM-shaped) → it is a **declarative surface**. No bridge. Skip to
-    [Declarative surfaces](#declarative-surfaces).
--   It holds long-lived imperative objects that must be _told_ to change (a
-    canvas scene graph, three.js objects, an imperative timeline) → it is a
-    **retained-mode surface**. You ship a bridge + adapters.
+- It re-derives its UI from props/state on every update (React, anything
+  virtual-DOM-shaped) → it is a **declarative surface**. No bridge. Skip to
+  [Declarative surfaces](#declarative-surfaces).
+- It holds long-lived imperative objects that must be _told_ to change (a
+  canvas scene graph, three.js objects, an imperative timeline) → it is a
+  **retained-mode surface**. You ship a bridge + adapters.
 
 Either way you never subscribe to another surface, never keep a second label
 store, and never write from inside a change notification.
@@ -292,28 +291,27 @@ on("my-draw-done", (e) => {
 
 The contract, in rules:
 
--   **`updateHandle` and the `apply*` methods must be silent.** If your
-    handle's absorb path emits the same event your write-half listens to, you
-    have built a loop; the dev guard will throw when the echo tries to write.
--   **`resolveHandle` and `refOf` are inverses.** Any handle→ref quirk lives in
-    `refOf`. `buildHandle` stamping `id = instanceId` is what keeps them
-    consistent.
--   **`mount` may gate on async sources.** Return `undefined`, insert when the
-    source resolves, and: dedupe in-flight gates by id, re-read the label at
-    resolve time and discard if it no longer resolves, then report the insert
-    via `bridge.onDeferredMount` (the loop assigned it) so interaction state
-    applies. See
-    [`surfaces/lighter/lighterBridge.ts`](surfaces/lighter/lighterBridge.ts)
-    for the reference implementation (mask_path decode).
--   **Don't filter changes yourself.** The loop already scopes every branch to
-    `bridge.sample`. One scene = one bridge; a grid of scenes is N bridges.
--   **Transient gesture state is yours.** Mid-drag geometry, draw drafts,
-    marquee state never enter the engine. If another surface needs to _watch_ a
-    drag live, publish it on the
-    [signal pipe](#signals-watching-another-surfaces-transient-state).
--   **Temporal posture:** declare `temporal: "pool"` if your surface shows
-    entities beyond the current frame (timelines); the default `frame-locked`
-    renders the present subset and the engine folds presence into your loop.
+- **`updateHandle` and the `apply*` methods must be silent.** If your handle's
+  absorb path emits the same event your write-half listens to, you have built a
+  loop; the dev guard will throw when the echo tries to write.
+- **`resolveHandle` and `refOf` are inverses.** Any handle→ref quirk lives in
+  `refOf`. `buildHandle` stamping `id = instanceId` is what keeps them
+  consistent.
+- **`mount` may gate on async sources.** Return `undefined`, insert when the
+  source resolves, and: dedupe in-flight gates by id, re-read the label at
+  resolve time and discard if it no longer resolves, then report the insert via
+  `bridge.onDeferredMount` (the loop assigned it) so interaction state applies.
+  See [`surfaces/lighter/lighterBridge.ts`](surfaces/lighter/lighterBridge.ts)
+  for the reference implementation (mask_path decode).
+- **Don't filter changes yourself.** The loop already scopes every branch to
+  `bridge.sample`. One scene = one bridge; a grid of scenes is N bridges.
+- **Transient gesture state is yours.** Mid-drag geometry, draw drafts, marquee
+  state never enter the engine. If another surface needs to _watch_ a drag
+  live, publish it on the
+  [signal pipe](#signals-watching-another-surfaces-transient-state).
+- **Temporal posture:** declare `temporal: "pool"` if your surface shows
+  entities beyond the current frame (timelines); the default `frame-locked`
+  renders the present subset and the engine folds presence into your loop.
 
 The reference integration is [`surfaces/lighter/`](surfaces/lighter) — four
 kind adapters, the gated bridge, and a wiring hook that is nothing but event
@@ -328,11 +326,11 @@ with the shared actions:
 const Sidebar = ({ engine, sample }: Props) => {
     // reads: equality-checked selectors over read-only projections
     const entries = useEngineSelector(engine, (e) =>
-        e.listLabels({ sample, path: "ground_truth" })
+        e.listLabels({ sample, path: "ground_truth" }),
     );
     const anchor = useInteraction(engine, (i) => i.getAnchor());
     const form = useEngineSelector(engine, (e) =>
-        anchor ? e.getLabel(anchor) : undefined
+        anchor ? e.getLabel(anchor) : undefined,
     );
 
     // writes: the shared ref-addressed write-half
@@ -351,7 +349,7 @@ const Sidebar = ({ engine, sample }: Props) => {
                     onHover={(on) =>
                         actions.setHovered(
                             { path: "ground_truth", instanceId: label._id },
-                            on
+                            on,
                         )
                     }
                 />
@@ -369,21 +367,21 @@ const Sidebar = ({ engine, sample }: Props) => {
 
 Rules:
 
--   **Select, don't snapshot.** The selector re-runs per version bump and your
-    component re-renders only when the selected value changes (pass an `equals`
-    for derived arrays/objects). Don't copy engine state into local state/atoms
-    — that recreates the mirror the engine exists to delete.
--   **The type system is on your side**: selectors receive read-only
-    projections (`EngineReads`/`InteractionReads`/`TemporalReads`), so a
-    selector physically cannot write back.
--   **Compound gestures use `actions.transaction`** — one atomic unit, one
-    change dispatch, one undo step. Streaming writers: one transaction per
-    batch, a shared `undoKey` across the stream.
--   **Unset is an explicit `null` write**, not a field delete
-    (`actions.updateLabel(ref, { attr: null })`) — merge semantics are the
-    store's contract.
--   **Selection/hover live in interaction state**, not in your component state,
-    or other surfaces won't see them.
+- **Select, don't snapshot.** The selector re-runs per version bump and your
+  component re-renders only when the selected value changes (pass an `equals`
+  for derived arrays/objects). Don't copy engine state into local state/atoms —
+  that recreates the mirror the engine exists to delete.
+- **The type system is on your side**: selectors receive read-only projections
+  (`EngineReads`/`InteractionReads`/`TemporalReads`), so a selector physically
+  cannot write back.
+- **Compound gestures use `actions.transaction`** — one atomic unit, one change
+  dispatch, one undo step. Streaming writers: one transaction per batch, a
+  shared `undoKey` across the stream.
+- **Unset is an explicit `null` write**, not a field delete
+  (`actions.updateLabel(ref, { attr: null })`) — merge semantics are the
+  store's contract.
+- **Selection/hover live in interaction state**, not in your component state,
+  or other surfaces won't see them.
 
 ### Signals: watching another surface's transient state
 
@@ -403,23 +401,23 @@ onDragMove((e) => engine.publishSignal("drag-geometry", key, e.bounds));
 useEffect(
     () =>
         engine.subscribeSignal<Bounds>("drag-geometry", key, (bounds) =>
-            setPreview(bounds)
+            setPreview(bounds),
         ),
-    [engine, key]
+    [engine, key],
 );
 ```
 
 Rules:
 
--   **A signal is not an edit.** Publishing touches nothing: no change
-    dispatch, no dirty flag, no undo entry, no bridge loop. Commit the
-    gesture's result as an ordinary label write when it ends.
--   **Pure firehose.** No retention, no replay-on-subscribe — a late subscriber
-    sees only future events. If a value needs a queryable "current" answer, it
-    belongs in interaction state (or a label), not on the pipe.
--   **Observers are sinks.** The shared dev guard throws if a signal handler
-    writes back into the engine — the same acyclicity rule as every other
-    channel.
+- **A signal is not an edit.** Publishing touches nothing: no change dispatch,
+  no dirty flag, no undo entry, no bridge loop. Commit the gesture's result as
+  an ordinary label write when it ends.
+- **Pure firehose.** No retention, no replay-on-subscribe — a late subscriber
+  sees only future events. If a value needs a queryable "current" answer, it
+  belongs in interaction state (or a label), not on the pipe.
+- **Observers are sinks.** The shared dev guard throws if a signal handler
+  writes back into the engine — the same acyclicity rule as every other
+  channel.
 
 ### Rules that apply to everyone
 

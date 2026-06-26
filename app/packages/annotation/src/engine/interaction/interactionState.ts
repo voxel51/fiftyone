@@ -159,7 +159,7 @@ export class InteractionState {
    */
   gc(
     changes: readonly LabelChange[],
-    isLive: (ref: LabelRef) => boolean
+    isLive: (ref: LabelRef) => boolean,
   ): void {
     let pruned = false;
 
@@ -215,7 +215,7 @@ export class InteractionState {
 
   private pruneSample(
     sample: string,
-    isLive: (ref: LabelRef) => boolean
+    isLive: (ref: LabelRef) => boolean,
   ): boolean {
     let pruned = false;
 
@@ -257,7 +257,7 @@ export class InteractionState {
 
   private sameRefs(
     a: Map<string, LabelRef>,
-    b: Map<string, LabelRef>
+    b: Map<string, LabelRef>,
   ): boolean {
     if (a.size !== b.size) {
       return false;

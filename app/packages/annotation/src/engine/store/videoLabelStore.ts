@@ -52,7 +52,7 @@ export class VideoLabelStore implements LabelStore {
   constructor(
     sample: string,
     frames: FrameStore,
-    sampleLevel: SampleLabelStore
+    sampleLevel: SampleLabelStore,
   ) {
     this.sample = sample;
     this.frames = frames;

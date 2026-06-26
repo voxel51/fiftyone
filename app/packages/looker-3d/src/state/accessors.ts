@@ -34,7 +34,7 @@ export const useSetCurrent3dAnnotationMode = () => {
  */
 export const useReset3dAnnotationMode = () => {
   const reset3dAnnotationMode = useResetRecoilState(
-    current3dAnnotationModeAtom
+    current3dAnnotationModeAtom,
   );
 
   return reset3dAnnotationMode;

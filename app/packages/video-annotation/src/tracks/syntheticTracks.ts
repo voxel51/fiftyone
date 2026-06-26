@@ -39,7 +39,7 @@ function maximaTimes(
   periodSec: number,
   phase: number,
   duration: number,
-  limit: number
+  limit: number,
 ): number[] {
   // sin is maximal when its argument is π/2 + 2πn → t/period + phase = 0.25 + n
   const out: number[] = [];
@@ -75,7 +75,7 @@ function maximaTimes(
 export function buildSyntheticTracks(
   actors: SyntheticActor[],
   duration: number,
-  resolveColor: (label: SyntheticActorLabel) => string
+  resolveColor: (label: SyntheticActorLabel) => string,
 ): Track[] {
   if (!(duration > 0)) {
     return [];
@@ -89,7 +89,7 @@ export function buildSyntheticTracks(
         startSec,
         endSec,
         label: "in frame",
-      })
+      }),
     );
 
     // Only highlight x-maxima that fall inside a presence interval — a
@@ -98,7 +98,7 @@ export function buildSyntheticTracks(
       actor.xPeriodSec,
       actor.xPhase,
       duration,
-      MAX_HIGHLIGHTS * 2
+      MAX_HIGHLIGHTS * 2,
     )
       .filter((t) => isInsideAny(t, intervals))
       .slice(0, MAX_HIGHLIGHTS)

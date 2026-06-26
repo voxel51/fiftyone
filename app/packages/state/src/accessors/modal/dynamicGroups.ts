@@ -17,7 +17,7 @@ import { dynamicGroupsElementCount } from "../../recoil/pathData/groups";
 export const useGroupByFieldValue = (): string | null | undefined => {
   const loadable = useRecoilValueLoadable(groupByFieldValue);
   const ref = useRef<string | null | undefined>(
-    loadable.state === "hasValue" ? loadable.contents : undefined
+    loadable.state === "hasValue" ? loadable.contents : undefined,
   );
   if (loadable.state === "hasValue") {
     ref.current = loadable.contents;
@@ -34,10 +34,10 @@ export const useGroupByFieldValue = (): string | null | undefined => {
 export const useElementsCount = (modal: boolean): number => {
   const value = useGroupByFieldValue() ?? null;
   const loadable = useRecoilValueLoadable(
-    dynamicGroupsElementCount({ modal, value })
+    dynamicGroupsElementCount({ modal, value }),
   );
   const ref = useRef<number>(
-    loadable.state === "hasValue" ? loadable.contents : 0
+    loadable.state === "hasValue" ? loadable.contents : 0,
   );
   if (loadable.state === "hasError") {
     throw loadable.contents;

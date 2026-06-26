@@ -34,7 +34,7 @@ export const useCameraSelectorControls = ({
 
   const [cameraOptions, setCameraOptions] = useState<CameraControlOption[]>([]);
   const [selectedCameraKey, setSelectedCameraKey] = useState<string | null>(
-    null
+    null,
   );
 
   // This effect fetches available static transforms and builds camera selector options
@@ -64,7 +64,7 @@ export const useCameraSelectorControls = ({
     }
 
     const stillValid = cameraOptions.some(
-      (option) => option.key === selectedCameraKey
+      (option) => option.key === selectedCameraKey,
     );
     if (!stillValid) {
       setSelectedCameraKey(null);
@@ -74,7 +74,7 @@ export const useCameraSelectorControls = ({
   const applyCameraSelection = useCallback(
     (cameraKey: string) => {
       const selectedCamera = cameraOptions.find(
-        (option) => option.key === cameraKey
+        (option) => option.key === cameraKey,
       );
       if (!selectedCamera) {
         return;
@@ -99,11 +99,11 @@ export const useCameraSelectorControls = ({
           target.x,
           target.y,
           target.z,
-          true
+          true,
         );
       }
     },
-    [cameraOptions, cameraControlsRef, lookAt, setCameraPosition]
+    [cameraOptions, cameraControlsRef, lookAt, setCameraPosition],
   );
 
   const handleSelectCamera = useCallback(
@@ -111,7 +111,7 @@ export const useCameraSelectorControls = ({
       setSelectedCameraKey(cameraKey);
       applyCameraSelection(cameraKey);
     },
-    [applyCameraSelection]
+    [applyCameraSelection],
   );
 
   const cameraSelectorControl = useMemo(
@@ -121,7 +121,7 @@ export const useCameraSelectorControls = ({
         selectedCameraKey,
         onSelect: handleSelectCamera,
       }),
-    [cameraOptions, handleSelectCamera, selectedCameraKey]
+    [cameraOptions, handleSelectCamera, selectedCameraKey],
   );
 
   useControls(() => {
@@ -139,7 +139,7 @@ export const useCameraSelectorControls = ({
         {
           collapsed: false,
           order: PANEL_ORDER_CAMERAS,
-        }
+        },
       ),
     };
   }, [cameraOptions, cameraSelectorControl]);

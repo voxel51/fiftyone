@@ -26,7 +26,7 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
-  "annotate-video-label-types"
+  "annotate-video-label-types",
 );
 
 /** Fixed ObjectId addressing the first sample (so we can deep-link the modal). */
@@ -68,7 +68,7 @@ test.afterAll(async ({ foWebServer }) => {
 const openAnnotate = async (
   fiftyoneLoader: AbstractFiftyoneLoader,
   modal: ModalPom,
-  page: Page
+  page: Page,
 ) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
@@ -149,7 +149,7 @@ test.describe.serial("video non-box label rendering", () => {
     await modal.sidebar.annotate.polylineMode();
     await expect(page.getByTestId("polyline-mode")).toHaveAttribute(
       "data-cy-active",
-      "true"
+      "true",
     );
   });
 });

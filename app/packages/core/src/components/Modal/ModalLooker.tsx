@@ -24,7 +24,7 @@ export const useClearSelectedLabels = () => {
     ({ set }) =>
       async () =>
         set(fos.selectedLabels, []),
-    []
+    [],
   );
 };
 
@@ -61,7 +61,7 @@ export const ModalLooker = React.memo(
     ) : (
       <ModalLookerCurrentSample />
     );
-  }
+  },
 );
 
 const ModalLookerCurrentSample = React.memo(() => {
@@ -74,7 +74,7 @@ const ModalLookerContent = React.memo(
   ({ sample }: { sample: fos.ModalSample }) => {
     const mode = useAtomValue(fos.modalMode);
     const shouldRenderImavid = useRecoilValue(
-      fos.shouldRenderImaVidLooker(true)
+      fos.shouldRenderImaVidLooker(true),
     );
     const video = useRecoilValue(fos.isVideoDataset);
 
@@ -124,5 +124,5 @@ const ModalLookerContent = React.memo(
     return (
       <ModalSampleRenderer sample={sample} modalMediaField={modalMediaField} />
     );
-  }
+  },
 );

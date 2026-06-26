@@ -77,9 +77,8 @@ vi.mock("../useLabels", () => ({
   }),
 }));
 
-const { useMergeTool, _unsafeMergeTargetIdAtom } = await import(
-  "./useMergeTool"
-);
+const { useMergeTool, _unsafeMergeTargetIdAtom } =
+  await import("./useMergeTool");
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 
@@ -130,7 +129,7 @@ describe("useMergeTool", () => {
     const sourceLabel = { data: { _id: "source" }, path: "ground_truth" };
 
     mockGetOverlay.mockImplementation((id: string) =>
-      id === "target" ? target : undefined
+      id === "target" ? target : undefined,
     );
     mockGetLabelById.mockReturnValue(sourceLabel);
 

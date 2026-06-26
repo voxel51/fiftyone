@@ -104,7 +104,7 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
   children,
 }) => {
   const [pinnedIds, setPinnedSet] = useState<Set<string>>(
-    () => new Set(initialPinnedIds)
+    () => new Set(initialPinnedIds),
   );
 
   // Auto-pin tracks added one-at-a-time after the initial load (e.g. a
@@ -167,7 +167,7 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
       togglePin,
       setPinned,
     }),
-    [tracks, pinnedIds, togglePin, setPinned]
+    [tracks, pinnedIds, togglePin, setPinned],
   );
 
   return (
@@ -180,7 +180,7 @@ export function useTrackContext(): TrackContextValue {
   const ctx = useContext(TrackContext);
   if (!ctx) {
     throw new Error(
-      "useTrackContext (and friends) must be used inside <TrackProvider>"
+      "useTrackContext (and friends) must be used inside <TrackProvider>",
     );
   }
   return ctx;
@@ -196,7 +196,7 @@ export function usePinnedTracks(): Track[] {
   const { tracks, pinnedIds } = useTrackContext();
   return useMemo(
     () => tracks.filter((t) => pinnedIds.has(t.id)),
-    [tracks, pinnedIds]
+    [tracks, pinnedIds],
   );
 }
 

@@ -58,7 +58,7 @@ export const useSampleInstanceGetter = (): ((sampleId: string) => Sample) => {
   const store = useStore();
   return useCallback(
     (sampleId: string) => store.get(sampleFamily(sampleId)),
-    [store]
+    [store],
   );
 };
 
@@ -81,7 +81,7 @@ export const useSample = (sampleId?: string): Sample => {
  */
 export const useSampleSelector = <T>(
   selector: (s: Sample) => T,
-  sampleId?: string
+  sampleId?: string,
 ): T => {
   const activeId = useActiveSampleId();
   const sample = useAtomValue(sampleFamily(sampleId ?? activeId));

@@ -29,7 +29,7 @@ function makeVideo(initialTime = 0): FakeVideo {
       const arr = listeners.get(event) ?? [];
       listeners.set(
         event,
-        arr.filter((f) => f !== fn)
+        arr.filter((f) => f !== fn),
       );
     }),
     _fire(event: string) {
@@ -59,7 +59,7 @@ function renderSync(video: FakeVideo | null, duration = 10) {
           {children}
         </PlaybackProvider>
       ),
-    }
+    },
   );
 }
 
@@ -160,7 +160,7 @@ describe("useVideoSync", () => {
 
       expect(video.removeEventListener).toHaveBeenCalledWith(
         "ended",
-        expect.any(Function)
+        expect.any(Function),
       );
     });
   });

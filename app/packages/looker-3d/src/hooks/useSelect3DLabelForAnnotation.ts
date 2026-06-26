@@ -30,6 +30,6 @@ export const useSelect3DLabelForAnnotation = () => {
         },
       ]);
     },
-    [engine, sample]
+    [engine, sample],
   );
 };

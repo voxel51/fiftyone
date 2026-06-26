@@ -37,7 +37,7 @@ function det(over: Partial<LabelData> = {}): LabelData {
 function build(
   index: IndexInstance[],
   overlay: FrameOverlay = new Map(),
-  dynamicAttributes: string[] = []
+  dynamicAttributes: string[] = [],
 ) {
   return buildTracksFromIndex({
     path: "frames.detections",
@@ -111,7 +111,7 @@ describe("buildTracksFromIndex", () => {
 
     const tracks = build(
       [indexInstance({ segments: [[1, 3]], keyframes: [2] })],
-      overlay
+      overlay,
     );
 
     const bars = presence(tracks[0]);
@@ -129,7 +129,7 @@ describe("buildTracksFromIndex", () => {
 
     const tracks = build(
       [indexInstance({ classLabel: "person", persistedIndex: 1 })],
-      overlay
+      overlay,
     );
 
     // Row label combines the live class with its persisted index.
@@ -164,7 +164,7 @@ describe("buildTracksFromIndex dynamic-attribute sub-tracks", () => {
         }),
       ],
       new Map(),
-      ["signal"]
+      ["signal"],
     );
 
     expect(tracks).toHaveLength(2);
@@ -197,7 +197,7 @@ describe("buildTracksFromIndex dynamic-attribute sub-tracks", () => {
         }),
       ],
       overlay,
-      ["signal"]
+      ["signal"],
     );
 
     const [, child] = tracks;

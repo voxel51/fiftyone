@@ -9,7 +9,7 @@ import { TemporalOverlay, type TemporalLabel } from "./TemporalOverlay";
 
 const makeLabel = (
   support: [number, number],
-  overrides: Partial<TemporalLabel> = {}
+  overrides: Partial<TemporalLabel> = {},
 ): TemporalLabel => ({
   support,
   label: "running",
@@ -33,7 +33,7 @@ const STYLE: DrawStyle = { fillStyle: "#ff0000", strokeStyle: "#ff0000" };
 const make = (
   id: string,
   support: [number, number],
-  overrides: Partial<TemporalLabel> = {}
+  overrides: Partial<TemporalLabel> = {},
 ) =>
   new TemporalOverlay({
     id,
@@ -267,7 +267,7 @@ describe("TemporalOverlay", () => {
     it("reports the TEMPORAL_DETECTION selection priority", () => {
       const o = make("a", [10, 20]);
       expect(o.getSelectionPriority()).toBe(
-        LABEL_ARCHETYPE_PRIORITY.TEMPORAL_DETECTION
+        LABEL_ARCHETYPE_PRIORITY.TEMPORAL_DETECTION,
       );
     });
 

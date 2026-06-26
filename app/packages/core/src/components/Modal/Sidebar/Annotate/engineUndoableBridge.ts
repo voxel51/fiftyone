@@ -28,8 +28,8 @@ export const bindEngineCommits = ({
         entry.id,
         () => engine.applyRedo(entry),
         () => engine.applyUndo(entry),
-        () => describeEntry(entry)
-      )
+        () => describeEntry(entry),
+      ),
     );
   });
 

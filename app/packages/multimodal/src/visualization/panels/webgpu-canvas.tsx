@@ -131,7 +131,7 @@ export function WebGpuCanvas({
           rendererReadyRef.current = false;
           setIsReady(false);
           onErrorRef.current?.(
-            error instanceof Error ? error.message : String(error)
+            error instanceof Error ? error.message : String(error),
           );
         }
       });
@@ -201,7 +201,7 @@ export function WebGpuCanvas({
 
 function prepareWebGpuRenderer(
   renderer: THREE.WebGPURenderer,
-  clearColor: THREE.ColorRepresentation
+  clearColor: THREE.ColorRepresentation,
 ) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.setClearColor(clearColor, OPAQUE_CLEAR_ALPHA);

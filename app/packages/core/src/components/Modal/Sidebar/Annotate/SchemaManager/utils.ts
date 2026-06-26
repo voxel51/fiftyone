@@ -112,7 +112,7 @@ export const VALUES_MODE = {
   taxonomy: "taxonomy",
 } as const;
 
-export type ValuesMode = typeof VALUES_MODE[keyof typeof VALUES_MODE];
+export type ValuesMode = (typeof VALUES_MODE)[keyof typeof VALUES_MODE];
 
 // Form state for attribute editing (uses strings for form inputs)
 export interface AttributeFormData {
@@ -162,7 +162,7 @@ export const hasAttributes = (value: unknown): value is LabelSchema =>
 export const getAttributeNames = (value: unknown): Set<string> => {
   if (hasAttributes(value) && Array.isArray(value.attributes)) {
     return new Set(
-      value.attributes.filter(isNamedAttribute).map((attr) => attr.name)
+      value.attributes.filter(isNamedAttribute).map((attr) => attr.name),
     );
   }
   return new Set();
@@ -236,12 +236,12 @@ export const getAttributeTypeLabel = (type: string): string => {
 export const getClassNameError = (
   name: string,
   existingClasses: string[],
-  currentClass?: string
+  currentClass?: string,
 ): string | null => {
   const trimmed = name.trim();
   if (!trimmed) return "Class name cannot be empty";
   const isDuplicate = existingClasses.some(
-    (c) => c !== currentClass && c === trimmed
+    (c) => c !== currentClass && c === trimmed,
   );
   if (isDuplicate) return "Class name already exists";
   return null;
@@ -253,12 +253,12 @@ export const getClassNameError = (
 export const getAttributeNameError = (
   name: string,
   existingAttributes: string[],
-  currentAttribute?: string
+  currentAttribute?: string,
 ): string | null => {
   const trimmed = name.trim();
   if (!trimmed) return "Attribute name cannot be empty";
   const isDuplicate = existingAttributes.some(
-    (a) => a !== currentAttribute && a === trimmed
+    (a) => a !== currentAttribute && a === trimmed,
   );
   if (isDuplicate) return "Attribute name already exists";
   return null;
@@ -284,7 +284,7 @@ export const formatSchemaCount = (count: number): string => {
 export const buildFieldSecondaryContent = (
   fieldType: string,
   attrCount: number,
-  isSystemReadOnly: boolean
+  isSystemReadOnly: boolean,
 ): string => {
   const typeText = isSystemReadOnly ? SYSTEM_READ_ONLY_FIELD_NAME : fieldType;
   if (!isSystemReadOnly && attrCount > 0) {
@@ -442,7 +442,7 @@ export interface AttributeFormErrors {
  */
 export const validateValues = (
   values: string[],
-  isNumeric: boolean
+  isNumeric: boolean,
 ): string | null => {
   if (values.length === 0) {
     return "At least one value is required";
@@ -464,7 +464,7 @@ export const validateSingleValue = (
   value: string,
   existingValues: string[],
   isNumeric: boolean,
-  isInteger: boolean
+  isInteger: boolean,
 ): string | null => {
   if (!value.trim()) return null;
   if (isNumeric) {
@@ -480,7 +480,7 @@ export const validateSingleValue = (
  * Validate a range (min/max) for slider components.
  */
 export const validateRange = (
-  range: { min: string; max: string } | null
+  range: { min: string; max: string } | null,
 ): string | null => {
   if (!range || range.min === "" || range.max === "") {
     return "Min and max are required";
@@ -509,7 +509,7 @@ export const parseNumericValues = (vals: unknown[]): (string | number)[] =>
  * Remove duplicate values by string key, preserving the last occurrence's type.
  */
 export const deduplicateValues = (
-  vals: (string | number)[]
+  vals: (string | number)[],
 ): (string | number)[] => [
   ...new Map(vals.map((v) => [String(v), v])).values(),
 ];
@@ -525,7 +525,7 @@ const validateScalarDefault = (
   values: string[],
   valuesError: string | null,
   needsRange: boolean,
-  needsValues: boolean
+  needsValues: boolean,
 ): string | null => {
   const defaultNum = parseFloat(defaultValue);
 
@@ -559,7 +559,7 @@ const validateListDefault = (
   isIntegerList: boolean,
   values: string[],
   valuesError: string | null,
-  needsValues: boolean
+  needsValues: boolean,
 ): string | null => {
   if (!listDefault || listDefault.length === 0) return null;
 
@@ -598,7 +598,7 @@ const validateListDefault = (
  * Used for both UI display and canSave logic.
  */
 export const getAttributeFormErrors = (
-  data: AttributeFormData
+  data: AttributeFormData,
 ): AttributeFormErrors => {
   const isNumeric = NUMERIC_TYPES.includes(data.type);
   const needsValues = componentNeedsValues(data.component);
@@ -630,7 +630,7 @@ export const getAttributeFormErrors = (
       isTaxonomyMode ? [] : data.values,
       valuesError,
       needsRange,
-      needsValues && !isTaxonomyMode
+      needsValues && !isTaxonomyMode,
     );
   }
   if (!defaultError && isListType && !isTaxonomyMode) {
@@ -640,7 +640,7 @@ export const getAttributeFormErrors = (
       data.type === "list<int>",
       data.values,
       valuesError,
-      needsValues
+      needsValues,
     );
   }
 
@@ -668,7 +668,7 @@ export const hasAttributeFormError = (errors: AttributeFormErrors): boolean =>
  * - Classes removed + component is "radio"/"dropdown" → switch to "text"
  */
 export const reconcileComponent = (
-  config: SchemaConfigType
+  config: SchemaConfigType,
 ): SchemaConfigType => {
   const { classes, component } = config;
   const hasClasses = classes && classes.length > 0;
@@ -719,7 +719,7 @@ export const getLabelTypeOptions = (mediaType: string | null | undefined) => {
  */
 export const validateFieldName = (
   fieldName: string,
-  existingFields: Record<string, unknown> | null
+  existingFields: Record<string, unknown> | null,
 ): string | null => {
   const trimmed = fieldName.trim();
   if (!trimmed) return null;

@@ -82,7 +82,7 @@ type TrackDecoration = BaseTrackDecoration & {
     eventIndex: number,
     newStartSec: number,
     newEndSec: number,
-    mode: "resize-start" | "resize-end" | "move"
+    mode: "resize-start" | "resize-end" | "move",
   ) => void;
   depth?: number;
   isChild?: boolean;
@@ -99,13 +99,13 @@ const SUB_TRACK_ROW_HEIGHT = 22;
 /** Resolves the row color for a per-frame object track. */
 type ObjectTrackColorResolver = (
   label: PerInstanceLabel,
-  path: string
+  path: string,
 ) => string;
 
 /** Resolves the row color for a temporal-detection track. */
 type TemporalDetectionColorResolver = (
   path: string,
-  label: TemporalDetectionLabelLike
+  label: TemporalDetectionLabelLike,
 ) => string;
 
 /** Strip the `frames.` prefix so the value matches what `/frames` returns. */
@@ -246,7 +246,7 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
  */
 function useFrameDerivedTracks(
   resolveColor: ObjectTrackColorResolver,
-  dynamicAttributes: string[]
+  dynamicAttributes: string[],
 ): {
   tracks: Track[];
   resolved: boolean;
@@ -266,13 +266,13 @@ function useFrameDerivedTracks(
   // + sidebar.
   const paths = useMemo(
     () => allFields.filter((p) => visible.has(p)),
-    [allFields, visible]
+    [allFields, visible],
   );
 
   const { indexByPath, loaded } = useVideoLabelsIndex(
     stream,
     allFields,
-    dynamicAttributes
+    dynamicAttributes,
   );
 
   // engine version is the rebuild signal.
@@ -294,7 +294,7 @@ function useFrameDerivedTracks(
         fps: stream.fps,
         resolveColor,
         dynamicAttributes,
-      })
+      }),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps -- engineVersion is the invalidation signal
   }, [
@@ -325,7 +325,7 @@ function useFrameDerivedTracks(
 function readEngineOverlay(
   engine: ReturnType<typeof useAnnotationEngine>,
   sample: string,
-  path: string
+  path: string,
 ): FrameOverlay {
   const overlay: FrameOverlay = new Map<number, LabelData[]>();
 
@@ -343,7 +343,7 @@ function readEngineOverlay(
  */
 function useTemporalDetectionTracks(
   sample: ModalSample | undefined,
-  resolveColor: TemporalDetectionColorResolver
+  resolveColor: TemporalDetectionColorResolver,
 ): Track[] {
   const { scene } = useLighter();
   const tdVersion = useTemporalOverlayVersion(scene, {
@@ -399,7 +399,7 @@ function useTrackColorResolvers(): {
         colorScheme: scheme,
         seed,
       }),
-    [scheme, seed]
+    [scheme, seed],
   );
 
   const resolveTemporalDetectionColor = useCallback(
@@ -408,7 +408,7 @@ function useTrackColorResolvers(): {
         colorScheme: scheme,
         seed,
       }),
-    [scheme, seed]
+    [scheme, seed],
   );
 
   return { resolveObjectColor, resolveTemporalDetectionColor };
@@ -447,7 +447,7 @@ function useTrackDecorator({
       objectTracks
         .filter((t) => !parseSubTrackId(t.id))
         .map((t) => ({ id: t.id, label: t.label })),
-    [objectTracks]
+    [objectTracks],
   );
 
   return useCallback(
@@ -530,7 +530,7 @@ function useTrackDecorator({
       mergeCandidates,
       expansion,
       expandableParentIds,
-    ]
+    ],
   );
 }
 
@@ -558,13 +558,13 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
     useFrameDerivedTracks(resolveObjectColor, dynamicAttributeNames);
   const temporalDetectionTracks = useTemporalDetectionTracks(
     sample,
-    resolveTemporalDetectionColor
+    resolveTemporalDetectionColor,
   );
 
   // Object tracks (with their sub-tracks interleaved) followed by TD tracks.
   const tracks = useMemo(
     () => [...frameTracks, ...temporalDetectionTracks],
-    [frameTracks, temporalDetectionTracks]
+    [frameTracks, temporalDetectionTracks],
   );
 
   const expansion = useTrackExpansion();
@@ -589,7 +589,7 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
         const sub = parseSubTrackId(track.id);
         return !sub || expansion.expandedIds.has(sub.parentId);
       }),
-    [tracks, expansion.expandedIds]
+    [tracks, expansion.expandedIds],
   );
 
   const pinned = useMemo(() => visibleTracks.map((t) => t.id), [visibleTracks]);
@@ -707,7 +707,7 @@ function decorateTemporalDetectionTrack({
         onSelect: () =>
           actions.deleteTemporalDetection(
             tdEvent.fieldPath,
-            tdEvent.detectionId
+            tdEvent.detectionId,
           ),
       },
     ],
@@ -728,7 +728,7 @@ function decorateTemporalDetectionTrack({
  * way it consumes a server sample.
  */
 function buildVirtualTemporalSample(
-  overlays: TemporalOverlay[]
+  overlays: TemporalOverlay[],
 ): Record<string, unknown> {
   const byField = new Map<string, unknown[]>();
   for (const overlay of overlays) {
@@ -781,7 +781,7 @@ function applyObjectTrackEdit({
         [
           Math.round(e.startSec * fps) + 1,
           Math.round((e.endSec as number) * fps),
-        ] as const
+        ] as const,
     );
 
   const edit = resolveTrackExtentEdit({

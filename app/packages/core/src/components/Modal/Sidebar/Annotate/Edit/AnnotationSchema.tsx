@@ -40,7 +40,7 @@ const useSchema = (readOnly: boolean) => {
 
   const allAttributes = useMemo(
     () => (Array.isArray(config?.attributes) ? config.attributes : []),
-    [config]
+    [config],
   );
 
   const visibleAttributes = useMemo(() => {
@@ -77,8 +77,8 @@ const useSchema = (readOnly: boolean) => {
         component: taxonomy
           ? "dropdown"
           : hasClasses
-          ? (config?.component as ComponentType) || "dropdown"
-          : undefined,
+            ? (config?.component as ComponentType) || "dropdown"
+            : undefined,
         values: taxonomy ? [] : config?.classes || [],
         taxonomy,
         readOnly: effectiveReadOnly,
@@ -131,7 +131,7 @@ const useParseFieldValue = () => {
 
         return data;
       },
-    []
+    [],
   );
 };
 
@@ -186,8 +186,8 @@ const useHandleSchemaChange = (readOnly: boolean) => {
           Object.entries(changes).map(async ([key, value]) => [
             key,
             await parseFieldValue(field, key, value),
-          ])
-        )
+          ]),
+        ),
       );
 
       // Merge onto the live overlay label, which can be fresher than the
@@ -206,7 +206,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         : [];
 
       const uniqueConditionalNames = new Set(
-        allAttributes.filter((a) => a.when).map((a) => a.name)
+        allAttributes.filter((a) => a.when).map((a) => a.name),
       );
 
       // Iterate over the unique conditional attribute names, obtain the current and
@@ -218,12 +218,12 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         const prevOwner = resolveVisibleAttribute(
           name,
           allAttributes,
-          (data ?? {}) as Record<string, unknown>
+          (data ?? {}) as Record<string, unknown>,
         );
         const currentOwner = resolveVisibleAttribute(
           name,
           allAttributes,
-          value
+          value,
         );
 
         if (!currentOwner || prevOwner !== currentOwner) {
@@ -255,7 +255,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
       // pollutes Sample — the write-half's `build3dLabel` strips the same set,
       // so the idempotent guard would never match and the sync loops forever.
       const persistableValue = stripReservedLabelAttributes(
-        value as Record<string, unknown>
+        value as Record<string, unknown>,
       );
 
       // A video frame label belongs to a track. A static track-level edit
@@ -267,7 +267,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
       const dynamicKeys = new Set(
         allAttributes
           .filter((attr) => attr.dynamic && attr.name)
-          .map((attr) => attr.name as string)
+          .map((attr) => attr.name as string),
       );
 
       const { trackPartial, dynamicPartial }: TrackEditSplit =
@@ -285,7 +285,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
           engine,
           ref,
           dynamicPartial,
-          previous as Record<string, unknown>
+          previous as Record<string, unknown>,
         ),
       ];
 
@@ -312,7 +312,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         } as NonNullable<typeof live>);
       }
     },
-    [engine, parseFieldValue, readOnly, setCurrentLabel]
+    [engine, parseFieldValue, readOnly, setCurrentLabel],
   );
 };
 
@@ -338,7 +338,7 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
       Object.entries(data || {}).map(([key, value]) => [
         key,
         Array.isArray(value) ? value.join(", ") : value,
-      ])
+      ]),
     );
   }, [data, readOnly]);
 

@@ -63,7 +63,7 @@ test.beforeAll(
       component: "dropdown",
     });
     await annotateSDK.addFieldToActiveLabelSchema(datasetName, "detections");
-  }
+  },
 );
 
 test.afterAll(async ({ foWebServer }) => {
@@ -84,7 +84,7 @@ test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
 const inFreshContext = async (
   browser: Browser,
   fiftyoneLoader: AbstractFiftyoneLoader,
-  verify: (modal: ModalPom) => Promise<void>
+  verify: (modal: ModalPom) => Promise<void>,
 ) => {
   const context = await browser.newContext();
   const freshPage = await context.newPage();
@@ -119,7 +119,7 @@ test.describe.serial("2D annotation mask merge", () => {
     // First click sets the target (cat mask); the second merges the source
     // (dog mask) into it and deletes the source.
     const saved = page.waitForResponse(
-      (r) => /\/sample\//.test(r.url()) && isSamplePatch(r.request().method())
+      (r) => /\/sample\//.test(r.url()) && isSamplePatch(r.request().method()),
     );
     await modal.sampleCanvas.move(0.24, 0.5);
     await modal.sampleCanvas.down();
@@ -158,7 +158,7 @@ test.describe.serial("2D annotation mask merge", () => {
     // gestureId, so a SINGLE undo fully restores the source.
     await modal.sidebar.edit.assert.undoIsEnabled();
     const restored = page.waitForResponse(
-      (r) => /\/sample\//.test(r.url()) && isSamplePatch(r.request().method())
+      (r) => /\/sample\//.test(r.url()) && isSamplePatch(r.request().method()),
     );
     await modal.sidebar.edit.undo();
     await restored;

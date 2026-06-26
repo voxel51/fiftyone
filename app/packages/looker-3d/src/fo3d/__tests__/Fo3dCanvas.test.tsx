@@ -131,7 +131,7 @@ describe("Fo3dSceneContent", () => {
         pointCloudSettings={pointCloudSettings}
         assetsGroupRef={{ current: null }}
         cameraRef={{ current: null }}
-      />
+      />,
     );
 
     expect(threeDLabelsMock).toHaveBeenCalledTimes(1);

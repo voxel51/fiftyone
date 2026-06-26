@@ -34,7 +34,7 @@ type LighterScene = ReturnType<typeof useLighterSetupWithPixi>["scene"];
  * canvas would leave Pixi rendering to the old (image-modal) one.
  */
 function useAttachedSingletonCanvas(
-  hostRef: RefObject<HTMLDivElement | null>
+  hostRef: RefObject<HTMLDivElement | null>,
 ): HTMLCanvasElement | null {
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
 
@@ -76,7 +76,7 @@ function useSceneColorScheme(scene: LighterScene, sceneId: string): void {
 function useCanonicalMediaInstall(
   scene: LighterScene,
   sceneId: string,
-  dims: Dimensions | null
+  dims: Dimensions | null,
 ): boolean {
   const [ready, setReady] = useState(false);
 
@@ -118,7 +118,7 @@ function useViewportReset(scene: LighterScene, sceneId: string): void {
   const [rendererReady, setRendererReady] = useState(false);
   const [mediaBoundsReady, setMediaBoundsReady] = useState(false);
   const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
 
   useEffect(() => {
@@ -128,12 +128,12 @@ function useViewportReset(scene: LighterScene, sceneId: string): void {
   useEventHandler(
     "lighter:renderer-ready",
     useCallback(() => setRendererReady(true), []),
-    { once: true }
+    { once: true },
   );
 
   useEventHandler(
     "lighter:canonical-media-bounds-changed",
-    useCallback(() => setMediaBoundsReady(true), [])
+    useCallback(() => setMediaBoundsReady(true), []),
   );
 
   useEffect(() => {
@@ -187,7 +187,7 @@ export function useLighterTileScene({
     () => `${sceneIdPrefix}-${Math.random().toString(36).slice(2, 9)}`,
     // caller-supplied dep list; exhaustive-deps can't statically verify it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    sceneIdDeps
+    sceneIdDeps,
   );
 
   const { scene } = useLighterSetupWithPixi(canvas, options, sceneId);

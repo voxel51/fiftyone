@@ -14,7 +14,7 @@ import { SampleLabelStore } from "../store/sampleLabelStore";
 export const field = (
   embeddedDocType: string | null,
   fields?: Schema,
-  extras: Partial<Field> = {}
+  extras: Partial<Field> = {},
 ): Field => ({
   dbField: null,
   description: null,
@@ -53,7 +53,7 @@ export const makeDet = (id: string, label: string): LabelData => ({
 
 export const makeStore = (
   sampleId: string,
-  data: Record<string, unknown> = {}
+  data: Record<string, unknown> = {},
 ) => {
   const sample = new Sample({ data, schema: labelSchema });
   return { sample, store: new SampleLabelStore(sampleId, sample) };
@@ -62,7 +62,7 @@ export const makeStore = (
 /** An engine with one registered sample-level store. */
 export const makeEngine = (
   sampleId = "sample-1",
-  data: Record<string, unknown> = {}
+  data: Record<string, unknown> = {},
 ) => {
   const engine = new AnnotationEngine();
   const { sample, store } = makeStore(sampleId, data);
@@ -73,7 +73,7 @@ export const makeEngine = (
 export const ref = (
   path: string,
   instanceId: string,
-  sample = "sample-1"
+  sample = "sample-1",
 ): LabelRef => ({ sample, path, instanceId });
 
 /**

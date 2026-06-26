@@ -19,7 +19,7 @@ import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 import type { Page } from "src/oss/fixtures";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
-  "annotate-video-track-split-merge"
+  "annotate-video-track-split-merge",
 );
 const id = "000000000000000000000000";
 const clip = `/tmp/${datasetName}.webm`;
@@ -60,7 +60,7 @@ test.beforeEach(async ({ videoAnnotateSDK }) => {
 const openAnnotate = async (
   fiftyoneLoader: AbstractFiftyoneLoader,
   modal: ModalPom,
-  page: Page
+  page: Page,
 ) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
@@ -74,7 +74,7 @@ const savedResponse = (page: Page) =>
   page.waitForResponse(
     (r) =>
       /\/sample\//.test(r.url()) &&
-      ["POST", "PATCH", "PUT"].includes(r.request().method())
+      ["POST", "PATCH", "PUT"].includes(r.request().method()),
   );
 
 test.describe.serial("video annotation track split / merge", () => {

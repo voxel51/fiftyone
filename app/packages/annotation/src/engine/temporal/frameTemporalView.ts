@@ -35,7 +35,7 @@ import type {
 } from "./types";
 
 const ALL_LABEL_TYPES = Object.values(LabelType).filter(
-  (type) => type !== LabelType.Unknown
+  (type) => type !== LabelType.Unknown,
 );
 
 /** The two fields frame-presence reads off a sample-level label. */
@@ -50,7 +50,7 @@ const isTemporalDetection = (label: PresenceProbe | undefined): boolean =>
 
 /** A well-formed `[start, end]` frame span, else undefined. */
 const supportSpan = (
-  label: PresenceProbe
+  label: PresenceProbe,
 ): readonly [number, number] | undefined => {
   const support = label.support;
 
@@ -92,7 +92,7 @@ export class FrameTemporalView implements TemporalView {
   constructor(
     reads: FrameReads,
     clock: Clock,
-    frameAtTime: (time: number) => number
+    frameAtTime: (time: number) => number,
   ) {
     this.reads = reads;
     this.clock = clock;
@@ -103,7 +103,7 @@ export class FrameTemporalView implements TemporalView {
     this.unsubscribers.push(
       this.reads.subscribeChanges(() => {
         this.present = this.computePresent();
-      })
+      }),
     );
   }
 

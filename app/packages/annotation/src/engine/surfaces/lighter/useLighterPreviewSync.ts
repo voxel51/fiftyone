@@ -19,7 +19,7 @@ export const useLighterPreviewSync = (
   engine: AnnotationEngine,
   dataset: string,
   sample: string,
-  scene: Scene2D | null
+  scene: Scene2D | null,
 ): void => {
   useEffect(() => {
     return engine.subscribeSignal<LabelPatchSignal>(
@@ -49,7 +49,7 @@ export const useLighterPreviewSync = (
           ...(overlay.label as Record<string, unknown>),
           ...patch,
         } as Parameters<typeof overlay.applyLabel>[0]);
-      }
+      },
     );
   }, [engine, dataset, sample, scene]);
 };

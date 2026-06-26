@@ -50,7 +50,7 @@ test.afterAll(async ({ foWebServer }) => {
 const openAnnotate = async (
   fiftyoneLoader: AbstractFiftyoneLoader,
   modal: ModalPom,
-  page: import("src/oss/fixtures").Page
+  page: import("src/oss/fixtures").Page,
 ) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
@@ -107,7 +107,7 @@ test.describe.serial("3d polyline annotation", () => {
     const saved = page.waitForResponse(
       (r) =>
         /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method())
+        ["POST", "PATCH", "PUT"].includes(r.request().method()),
     );
     await modal.sidebar.edit.selectFieldChoice("label", "barrier");
     await modal.sidebar.edit.assert.verifyFieldValue("label", "barrier");
@@ -151,7 +151,7 @@ test.describe.serial("3d polyline annotation", () => {
     const saved = page.waitForResponse(
       (r) =>
         /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method())
+        ["POST", "PATCH", "PUT"].includes(r.request().method()),
     );
     await modal.annotate3d.deleteSelected();
     await modal.annotate3d.assert.labelCount(0);
@@ -179,7 +179,7 @@ test.describe.serial("3d polyline annotation", () => {
       page.waitForResponse(
         (r) =>
           /\/sample\//.test(r.url()) &&
-          ["POST", "PATCH", "PUT"].includes(r.request().method())
+          ["POST", "PATCH", "PUT"].includes(r.request().method()),
       );
 
     await modal.annotate3d.selectLabel("lane");
@@ -265,7 +265,7 @@ test.describe.serial("3d polyline creation", () => {
     const saved = page.waitForResponse(
       (r) =>
         /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method())
+        ["POST", "PATCH", "PUT"].includes(r.request().method()),
     );
     await modal.sidebar.edit.selectFieldChoice("label", "barrier");
     await modal.sidebar.edit.assert.verifyFieldValue("label", "barrier");

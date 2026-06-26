@@ -21,7 +21,7 @@ function renderControls(opts: RenderOpts = {}) {
       defaultLoopEnd={defaultLoopEnd}
     >
       <TimelineControls onToggle={onToggle} />
-    </PlaybackProvider>
+    </PlaybackProvider>,
   );
 }
 
@@ -112,7 +112,7 @@ describe("TimelineControls", () => {
     expect(
       screen
         .getByTestId("timeline-controls-root")
-        .classList.contains(styles.clickable)
+        .classList.contains(styles.clickable),
     ).toBe(true);
 
     cleanup();
@@ -120,7 +120,7 @@ describe("TimelineControls", () => {
     expect(
       screen
         .getByTestId("timeline-controls-root")
-        .classList.contains(styles.clickable)
+        .classList.contains(styles.clickable),
     ).toBe(false);
   });
 
@@ -135,10 +135,10 @@ describe("TimelineControls", () => {
       render(
         <PlaybackProvider duration={10} stepInterval={1 / 30}>
           <TimelineControls extraControls={<button>Custom Action</button>} />
-        </PlaybackProvider>
+        </PlaybackProvider>,
       );
       expect(
-        screen.getByRole("button", { name: "Custom Action" })
+        screen.getByRole("button", { name: "Custom Action" }),
       ).toBeTruthy();
     });
 
@@ -148,7 +148,7 @@ describe("TimelineControls", () => {
           <TimelineControls
             extraControls={<span data-testid="slot">hi</span>}
           />
-        </PlaybackProvider>
+        </PlaybackProvider>,
       );
       // extraControls sits between the transport buttons and the time display;
       // unlike extraActions it does not add its own divider.
@@ -168,10 +168,10 @@ describe("TimelineControls", () => {
       render(
         <PlaybackProvider duration={10} stepInterval={1 / 30}>
           <TimelineControls extraActions={<button>Trailing Action</button>} />
-        </PlaybackProvider>
+        </PlaybackProvider>,
       );
       expect(
-        screen.getByRole("button", { name: "Trailing Action" })
+        screen.getByRole("button", { name: "Trailing Action" }),
       ).toBeTruthy();
     });
 
@@ -179,7 +179,7 @@ describe("TimelineControls", () => {
       render(
         <PlaybackProvider duration={10} stepInterval={1 / 30}>
           <TimelineControls extraActions={<span data-testid="slot">hi</span>} />
-        </PlaybackProvider>
+        </PlaybackProvider>,
       );
       // extraActions renders far-right, preceded by a second divider.
       const dividers = screen.getAllByTestId("timeline-controls-divider");

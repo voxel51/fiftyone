@@ -40,7 +40,7 @@ class GridCustomRendererErrorBoundary extends React.Component<
   { hasError: boolean }
 > {
   constructor(
-    props: React.PropsWithChildren<{ onError: (error: Error) => void }>
+    props: React.PropsWithChildren<{ onError: (error: Error) => void }>,
   ) {
     super(props);
     this.state = { hasError: false };
@@ -136,7 +136,7 @@ function getPixelSizeBytes(width: number, height: number): number {
 
 function getSourceSizeHintBytes(
   sourceSizeBytes: number,
-  mediaType: string | null
+  mediaType: string | null,
 ): number {
   if (sourceSizeBytes > 0) {
     return Math.min(sourceSizeBytes, SOURCE_SIZE_HINT_CAP_BYTES);
@@ -159,7 +159,7 @@ type GridCustomRendererWrapperProps = React.PropsWithChildren<{
 }>;
 
 const stopGridActivationPropagation: React.MouseEventHandler<HTMLElement> = (
-  event
+  event,
 ) => {
   event.stopPropagation();
 };
@@ -234,14 +234,14 @@ export class GridCustomRendererItem {
   constructor(private readonly config: GridCustomRendererItemConfig) {
     Object.assign(this.hostElement.style, HOST_ELEMENT_STYLES);
     this.pluginFailed = fos.isGridCustomRendererFailOpen(
-      this.config.ctx.dataset.name
+      this.config.ctx.dataset.name,
     );
   }
 
   addEventListener(
     eventType: string,
     handler: EventListenerOrEventListenerObject | null,
-    options?: boolean | AddEventListenerOptions
+    options?: boolean | AddEventListenerOptions,
   ) {
     this.eventTarget.addEventListener(eventType, handler, options);
   }
@@ -249,7 +249,7 @@ export class GridCustomRendererItem {
   removeEventListener(
     eventType: string,
     handler: EventListenerOrEventListenerObject | null,
-    options?: boolean | EventListenerOptions
+    options?: boolean | EventListenerOptions,
   ) {
     this.eventTarget.removeEventListener(eventType, handler, options);
   }
@@ -295,7 +295,7 @@ export class GridCustomRendererItem {
             <GridTagBubbles sample={sample} />
           </GridCustomRendererWrapper>
         </GridCustomRendererErrorBoundary>
-      </RecoilBridge>
+      </RecoilBridge>,
     );
   }
 
@@ -313,7 +313,7 @@ export class GridCustomRendererItem {
   }
 
   private handleSelectSampleClick = (
-    event: React.MouseEvent<HTMLButtonElement>
+    event: React.MouseEvent<HTMLButtonElement>,
   ) => {
     event.preventDefault();
     event.stopPropagation();
@@ -328,7 +328,7 @@ export class GridCustomRendererItem {
   };
 
   private handleOpenModalClick = (
-    event: React.MouseEvent<HTMLButtonElement>
+    event: React.MouseEvent<HTMLButtonElement>,
   ) => {
     event.preventDefault();
     event.stopPropagation();
@@ -338,7 +338,7 @@ export class GridCustomRendererItem {
     }
 
     this.mountedElement.dispatchEvent(
-      new MouseEvent("click", { bubbles: true, cancelable: true })
+      new MouseEvent("click", { bubbles: true, cancelable: true }),
     );
   };
 
@@ -350,7 +350,7 @@ export class GridCustomRendererItem {
     console.error(
       `Grid sample renderer failed (plugin: ${this.config.pluginName}), ` +
         "disabling custom grid renderers for this dataset for the rest of this browser session:",
-      error
+      error,
     );
 
     this.pluginFailed = true;
@@ -371,7 +371,7 @@ export class GridCustomRendererItem {
   attach(
     element: HTMLElement | string,
     dimensions?: GridItemDimensions,
-    _fontSize?: number
+    _fontSize?: number,
   ) {
     if (this.destroyed) {
       return;
@@ -480,11 +480,11 @@ export class GridCustomRendererItem {
         : 0;
     const sourceSizeHintBytes = getSourceSizeHintBytes(
       sourceSizeBytes,
-      this.config.ctx.media.mediaType
+      this.config.ctx.media.mediaType,
     );
 
     return Math.ceil(
-      MIN_GRID_RENDERER_SIZE_BYTES + renderedSizeBytes + sourceSizeHintBytes
+      MIN_GRID_RENDERER_SIZE_BYTES + renderedSizeBytes + sourceSizeHintBytes,
     );
   }
 }

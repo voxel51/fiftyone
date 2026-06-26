@@ -9,7 +9,7 @@ import { isWholeSampleReset } from "./types";
 const field = (
   embeddedDocType: string | null,
   fields?: Schema,
-  extras: Partial<Field> = {}
+  extras: Partial<Field> = {},
 ): Field => ({
   dbField: null,
   description: null,
@@ -106,7 +106,7 @@ describe("SampleLabelStore resolution", () => {
       ref("ground_truth", "d1"),
     ]);
     expect(
-      store.enumerateLabels([LabelType.Detections, LabelType.Classification])
+      store.enumerateLabels([LabelType.Detections, LabelType.Classification]),
     ).toHaveLength(2);
   });
 });
@@ -133,7 +133,7 @@ describe("SampleLabelStore mutation", () => {
     store.replaceLabel(ref("ground_truth", "d1"), makeDet("d1", "cat"));
 
     expect(store.getLabel(ref("ground_truth", "d1"))).toEqual(
-      makeDet("d1", "cat")
+      makeDet("d1", "cat"),
     );
 
     // updateLabel by contrast merges

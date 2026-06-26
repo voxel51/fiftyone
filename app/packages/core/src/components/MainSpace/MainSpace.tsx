@@ -10,7 +10,7 @@ function MainSpace() {
     useSessionSpaces();
   const { spaces, updateSpaces, clearSpaces } = useSpaces(
     FIFTYONE_GRID_SPACES_ID,
-    sessionSpaces
+    sessionSpaces,
   );
   const [panelsState, setPanelsState] = usePanelsState();
   const oldSpaces = useRef(spaces);
