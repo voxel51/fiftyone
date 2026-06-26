@@ -4,8 +4,6 @@ on:
     branches:
       - docs-*
       - github-actions-*
-      - rel-*
-      - release-*
       - release/*
     tags:
       - dev-docs-publish
@@ -22,10 +20,7 @@ on:
   pull_request:
     branches:
       - develop
-      - feat/*
       - main
-      - rel-*
-      - release-*
       - release/*
     paths:
       - .github/workflows/build-docs.yml
@@ -36,6 +31,10 @@ on:
       - "**.py"
       - "**.md"
       - "**.rst"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
