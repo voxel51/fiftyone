@@ -95,13 +95,22 @@ class GenerateLabelSchemas(foo.Operator):
     def execute(self, ctx):
         field = ctx.params.get("field", None)
         limit = ctx.params.get("limit", None)
+        scan_samples = ctx.params.get("scan_samples", True)
+
+        # Backfill legacy `index`-based tracks into `instance` so they're
+        # recognized as tracks. Runs on the full dataset (not the scan's
+        # limited view) and only fills fields that have indexes but no
+        # instances yet, so existing tracks are never clobbered.
+        if scan_samples:
+            foau.backfill_instances_from_index(ctx.dataset, field)
+
         if limit:
             view = ctx.dataset.limit(limit)
         else:
             view = ctx.dataset
         return {
             "label_schema": view.generate_label_schemas(
-                fields=field, scan_samples=ctx.params.get("scan_samples", True)
+                fields=field, scan_samples=scan_samples
             )
         }
 

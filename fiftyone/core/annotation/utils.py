@@ -118,6 +118,61 @@ def list_valid_annotation_fields(
     return sorted(result)
 
 
+def backfill_instances_from_index(sample_collection, fields):
+    """Populates the ``instance`` attribute from a legacy ``index`` attribute
+    for any of the given track label fields that have ``index`` values but no
+    ``instance`` values yet.
+
+    Lets datasets whose tracks are defined by ``index`` (rather than
+    ``instance``) be recognized as tracks during a scan. Fields that already
+    have any ``instance`` values are left untouched, so existing tracks are
+    never clobbered and the operation is idempotent.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        fields: a field name or iterable of field names to process
+    """
+    if not fields:
+        return
+
+    if isinstance(fields, str):
+        fields = [fields]
+
+    for field in fields:
+        _maybe_backfill_field_instances(sample_collection, field)
+
+
+def _maybe_backfill_field_instances(sample_collection, field):
+    # imported lazily — `fiftyone.utils.labels` pulls in heavy deps we don't
+    # want at annotation-module import time
+    import fiftyone.utils.labels as foul
+
+    label_field = sample_collection.get_field(field)
+    if not isinstance(label_field, fof.EmbeddedDocumentField):
+        return
+
+    if not issubclass(label_field.document_type, foac.TRACK_LABEL_TYPES):
+        return
+
+    root, _ = sample_collection._get_label_field_root(field)
+    instance_path = f"{root}.instance"
+    index_path = f"{root}.index"
+
+    # `instance` is a dynamic attribute (absent from the declared schema), so
+    # count the data directly rather than checking the schema
+
+    # don't clobber a field that already has tracks
+    if sample_collection.count(instance_path) > 0:
+        return
+
+    # nothing to backfill from
+    if sample_collection.count(index_path) == 0:
+        return
+
+    foul.index_to_instance(sample_collection, field)
+
+
 def _valid_annotation_fields(
     collection, schema, require_app_support, exclude_spatial_labels=False
 ):

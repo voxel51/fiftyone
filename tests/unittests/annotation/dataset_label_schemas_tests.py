@@ -650,6 +650,80 @@ class FrameLabelSchemaTests(unittest.TestCase):
         self.assertIn("weather", valid)
 
     @drop_datasets
+    def test_backfill_instances_from_index(self):
+        import fiftyone.core.annotation.utils as foau
+
+        dataset = _make_video_dataset()
+        sample = fo.Sample(filepath="/tmp/video.mp4")
+        sample.frames[1] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="car", index=1, bounding_box=[0, 0, 0.1, 0.1]
+                    )
+                ]
+            )
+        )
+        sample.frames[2] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="car", index=1, bounding_box=[0, 0, 0.1, 0.1]
+                    ),
+                    fo.Detection(
+                        label="ped", index=2, bounding_box=[0.5, 0.5, 0.1, 0.1]
+                    ),
+                ]
+            )
+        )
+        dataset.add_sample(sample)
+
+        foau.backfill_instances_from_index(dataset, "frames.detections")
+
+        sample.reload()
+        car_f1 = sample.frames[1].detections.detections[0]
+        f2 = sample.frames[2].detections.detections
+        car_f2 = next(d for d in f2 if d.index == 1)
+        ped_f2 = next(d for d in f2 if d.index == 2)
+
+        # every indexed label gets an instance
+        self.assertIsNotNone(car_f1.instance)
+        self.assertIsNotNone(ped_f2.instance)
+        # the same index within a sample is one track
+        self.assertEqual(car_f1.instance.id, car_f2.instance.id)
+        # distinct indices are distinct tracks
+        self.assertNotEqual(car_f2.instance.id, ped_f2.instance.id)
+
+    @drop_datasets
+    def test_backfill_skips_fields_with_existing_instances(self):
+        import fiftyone.core.annotation.utils as foau
+
+        dataset = _make_video_dataset()
+        existing = fol.Instance()
+        sample = fo.Sample(filepath="/tmp/video.mp4")
+        sample.frames[1] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="car",
+                        index=1,
+                        instance=existing,
+                        bounding_box=[0, 0, 0.1, 0.1],
+                    )
+                ]
+            )
+        )
+        dataset.add_sample(sample)
+        original_id = sample.frames[1].detections.detections[0].instance.id
+
+        foau.backfill_instances_from_index(dataset, "frames.detections")
+
+        sample.reload()
+        self.assertEqual(
+            sample.frames[1].detections.detections[0].instance.id, original_id
+        )
+
+    @drop_datasets
     def test_frame_attribute_dynamic_flag(self):
         dataset = _make_video_dataset()
         dataset.add_frame_field(
