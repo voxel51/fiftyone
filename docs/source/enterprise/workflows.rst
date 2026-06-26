@@ -5,11 +5,12 @@ Workflows
 
 .. default-role:: code
 
-Workflows let your team define multi-stage **annotate → review** pipelines, run
-them over a dataset, assign the work to members, and track progress one sample at
-a time. Instead of coordinating labeling and review by hand, you build a workflow
-once, start it on a set of samples, and FiftyOne Enterprise routes each sample
-through the stages you defined until it is fully labeled and approved.
+Workflows provide a flexible framework for orchestrating data operations across
+your team. You define a multi-stage pipeline, run it over a dataset, assign work
+to members, and track progress one sample at a time. In the current release,
+workflows support **annotate → review** pipelines: you build a workflow once,
+start it on a set of samples, and FiftyOne Enterprise routes each sample through
+the stages you defined until it is fully labeled and approved.
 
 .. TODO: replace with a 30-60s end-to-end demo video (create -> run -> annotate
    -> review). Use the YouTube embed pattern, e.g.:
@@ -17,9 +18,6 @@ through the stages you defined until it is fully labeled and approved.
      <div style="margin-top: 20px; margin-bottom: 20px">
        <iframe id="youtube" src="https://www.youtube.com/embed/VIDEO_ID?rel=0" frameborder="0" allowfullscreen></iframe>
      </div>
-
-Workflows are **generally available** in FiftyOne Enterprise. No additional
-setup is required to start using them.
 
 .. _enterprise-workflows-annotate-tab:
 
@@ -58,20 +56,14 @@ A few concepts make the rest of this page easier to follow:
     two outgoing branches, **Accepted** and **Rejected**, which you wire up to
     decide what happens next.
 
-  Additional advanced stages (such as agentic labeling, batch, collect, and
-  stream) are available for more complex pipelines.
+  Additional stage types are planned, including **agentic labeling** (coming
+  soon), to support more complex pipelines.
 
 - **Tasks** — the units of work a running workflow assigns to members. Each
   member sees their assigned tasks under **My Tasks**.
 
-- **Per-sample progress** — progress is tracked per unique sample, which gives
-  workflows a few intuitive behaviors:
-
-  - A stage's total reflects the number of unique samples it must process.
-  - **Rejecting** a sample in review *reopens* it: it goes back for annotation,
-    and the review is no longer counted as complete until the fix is resubmitted.
-  - **Skipping** a sample parks it as pending — the total still includes it, but
-    it never counts as completed until someone comes back to it.
+- **Per-sample progress** — progress is tracked per unique sample. A stage's
+  total reflects the number of unique samples it must process.
 
 .. _enterprise-workflows-create:
 
@@ -189,13 +181,11 @@ The sample modal in task mode
 When you open a sample as part of a task, the sample modal adds three task
 surfaces alongside the usual viewer:
 
-- **Task banner** — shows the workflow and task you are working on, along with
-  the primary actions for the stage (**Skip** / **Submit & next** when
-  annotating, or accept / reject when reviewing).
-- **Task progress** — shows how far along the task is, such as *"x / y samples"*
-  and *"(n rejected)"*. Because progress is per sample, skipping or rejecting a
-  sample updates these counts as described in
-  :ref:`The Annotate tab <enterprise-workflows-annotate-tab>`.
+- **Task banner** — displays task progress at a glance, along with a
+  **Resume work** button to jump back into the task and a link to **View
+  workflow** for the full pipeline context.
+- **Task progress** — a detailed view of how many samples have been completed
+  out of the total assigned to the task (for example, *"2 / 66 samples"*).
 - **Discussion** — an in-app comment thread on the sample and its labels. You
   and your teammates can leave comments, edit or delete your own, and moderate
   the thread, keeping the conversation attached to the work itself.
