@@ -13,7 +13,7 @@
  * (segmentation mode) on the engine frame path. Detection-box draw is covered
  * separately (`MISSING-annotate-video-draw.spec.ts`).
  */
-import { Browser, expect, test as base, type Page } from "src/oss/fixtures";
+import { Browser, test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";

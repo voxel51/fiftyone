@@ -7,7 +7,7 @@
  * surface-owned draft slot, so the next draw kept the OLD default class
  * (fixed in AnnotationSchema.tsx: sync the draft slot on commit when isNew).
  */
-import { expect, test as base } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 

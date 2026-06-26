@@ -6,7 +6,7 @@
  * stack, and persists across a true round-trip. Exercises the MUI-Select-backed
  * dropdown path (distinct from the text/number inputs other specs drive).
  */
-import { Browser, expect, test as base } from "src/oss/fixtures";
+import { Browser, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";

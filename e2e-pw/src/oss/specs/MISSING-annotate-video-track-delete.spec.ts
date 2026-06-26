@@ -8,7 +8,7 @@
  * on every frame in one engine transaction. The removal survives a true
  * round-trip (fresh browser context) via autosave.
  */
-import { Browser, expect, test as base } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";

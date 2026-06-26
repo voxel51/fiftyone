@@ -409,6 +409,7 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     grid,
     modal,
     fiftyoneLoader,
+    page,
   }) => {
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute(true);
@@ -437,7 +438,7 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     // draw clicks raycast against the live camera, so a still-animating
     // (perspective) camera yields no planar cuboid
     // eslint-disable-next-line playwright/no-wait-for-timeout
-    await modal.page.waitForTimeout(1000);
+    await page.waitForTimeout(1000);
     await modal.annotate3d.toggleCreateCuboid();
     await modal.annotate3d.assert.createCuboidActive(true);
     await modal.annotate3d.drawCuboid([

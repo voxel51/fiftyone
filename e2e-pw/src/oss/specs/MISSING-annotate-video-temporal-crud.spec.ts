@@ -16,7 +16,7 @@
  * Seeded with the three demo events (approach [1,6] / pass [7,13] /
  * depart [14,20] over a 20-frame clip), re-seeded per test for isolation.
  */
-import { Browser, expect, test as base } from "src/oss/fixtures";
+import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";

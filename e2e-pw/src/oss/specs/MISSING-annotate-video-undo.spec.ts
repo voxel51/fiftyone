@@ -16,7 +16,7 @@
  * Re-seeded per test (one tracked instance, class `vehicle`, on every frame) so a
  * persisting edit in one test can't leak into the next.
  */
-import { expect, test as base } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
