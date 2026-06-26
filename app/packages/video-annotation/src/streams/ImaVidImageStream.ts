@@ -98,6 +98,13 @@ export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
   private readonly inflight = new Map<number, InflightEntry>();
   /** reqId → frame numbers that request asked for. */
   private readonly requestFrames = new Map<number, number[]>();
+  /**
+   * Frames that settled without a bitmap — unresolvable `filepath`, decode
+   * error, or a failed `/frames` chunk. Terminal: we never re-request them, so
+   * a bad frame can't drive an infinite `/frames` loop. Cleared only on
+   * `destroy` (a re-sampled clip arrives as a fresh, re-keyed stream).
+   */
+  private readonly failed = new Set<number>();
   private readonly fetchedRanges: Array<[number, number]> = [];
 
   private readonly worker: Worker;
@@ -160,7 +167,7 @@ export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
    */
   async warmup(time = 0): Promise<void> {
     const frame = this.timeToFrame(time);
-    if (this.cache.has(frame)) {
+    if (this.cache.has(frame) || this.failed.has(frame)) {
       return;
     }
 
@@ -194,6 +201,7 @@ export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
     }
     this.inflight.clear();
     this.requestFrames.clear();
+    this.failed.clear();
     this.cache.clear();
   }
 
@@ -214,6 +222,13 @@ export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
       return "ready";
     }
 
+    // A terminally-failed frame is reported "ready" (it just has no bitmap):
+    // the engine's buffer barrier plays through to a blank frame instead of
+    // stalling on it forever and re-issuing prefetch every tick.
+    if (this.failed.has(frame)) {
+      return "ready";
+    }
+
     if (this.inflight.has(frame)) {
       return "loading";
     }
@@ -229,7 +244,7 @@ export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
     // First missing frame wins — the engine re-calls prefetch as the
     // playhead advances, so we don't need to fan out here.
     for (let f = startFrame; f <= endFrame; f++) {
-      if (this.cache.has(f) || this.inflight.has(f)) {
+      if (this.cache.has(f) || this.inflight.has(f) || this.failed.has(f)) {
         continue;
       }
 
@@ -304,9 +319,9 @@ export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
     const reqId = this.nextReqId++;
     const frames: number[] = [];
     for (let f = startFrame; f < startFrame + numFrames; f++) {
-      // Skip frames the cache already has or another request is fetching;
-      // the worker doesn't dedupe so we have to.
-      if (this.cache.has(f) || this.inflight.has(f)) {
+      // Skip frames the cache already has, another request is fetching, or
+      // that already failed terminally; the worker doesn't dedupe so we have to.
+      if (this.cache.has(f) || this.inflight.has(f) || this.failed.has(f)) {
         continue;
       }
 
@@ -394,11 +409,11 @@ export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
   }
 
   /**
-   * Settle any in-flight frames from this request that never received
-   * a `frameReady` (e.g. missing filepath, decode error, top-level
-   * fetch failure). They drop from `loading` → `missing` so the engine
-   * re-prefetches on the next tick. Anyone awaiting `warmup` unblocks
-   * (the cache miss is observable via `bufferState`).
+   * Settle any in-flight frames from this request that never received a
+   * `frameReady` (missing/unresolvable filepath, decode error, or a failed
+   * chunk). They're marked terminally `failed` so we never re-request them —
+   * otherwise the engine, seeing them perpetually un-ready, would re-prefetch
+   * every tick and hammer `/frames` forever. Anyone awaiting `warmup` unblocks.
    */
   private resolveOutstandingFrames(reqId: number): void {
     const frames = this.requestFrames.get(reqId);
@@ -414,6 +429,7 @@ export class ImaVidImageStream extends PlaybackStreamBase<ImaVidImageFrame> {
         continue;
       }
 
+      this.failed.add(f);
       entry.resolve();
       this.inflight.delete(f);
     }

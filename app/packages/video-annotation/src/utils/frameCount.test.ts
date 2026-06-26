@@ -1,6 +1,6 @@
 import type { ModalSample } from "@fiftyone/state";
 import { describe, expect, it } from "vitest";
-import { resolveFrameCount } from "./RegisterImaVidImage";
+import { resolveFrameCount } from "./frameCount";
 
 const sampleWith = (metadata: Record<string, unknown>): ModalSample =>
   ({ sample: { metadata } }) as unknown as ModalSample;
@@ -22,7 +22,7 @@ describe("resolveFrameCount", () => {
     ).toBe(60);
   });
 
-  it("throws when neither total_frame_count nor duration is present", () => {
-    expect(() => resolveFrameCount(sampleWith({}), 30)).toThrow();
+  it("returns null when neither total_frame_count nor duration is present", () => {
+    expect(resolveFrameCount(sampleWith({}), 30)).toBeNull();
   });
 });

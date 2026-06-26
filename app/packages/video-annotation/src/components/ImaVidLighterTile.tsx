@@ -26,12 +26,17 @@ function usePaintFrameToCanvas(
   const [dims, setDims] = useState<ImageDimensions | null>(null);
 
   useEffect(() => {
-    if (!frame) {
+    const canvasEl = canvasRef.current;
+    if (!canvasEl) {
       return;
     }
 
-    const canvasEl = canvasRef.current;
-    if (!canvasEl) {
+    // No frame: initial load, or a frame the stream gave up on (unresolvable
+    // filepath / decode error) that the engine played through. Clear so the
+    // black `.body` shows instead of the previous frame lingering on-canvas.
+    if (!frame) {
+      const ctx = canvasEl.getContext("2d");
+      ctx?.clearRect(0, 0, canvasEl.width, canvasEl.height);
       return;
     }
 

@@ -7,7 +7,12 @@ import { useSyncAnnotationFrameClock } from "../hooks/useSyncAnnotationFrameCloc
 import { useSyncAnnotationVideoStore } from "../hooks/useSyncAnnotationVideoStore";
 import { useVideoLighterEngineBridge } from "../hooks/useVideoLighterEngineBridge";
 import { useFollowAnchorFrame } from "../state/useVideoInteraction";
+import { useAnnotatePrerequisites } from "../hooks/useAnnotatePrerequisites";
 import { PlaybackProvider } from "@fiftyone/playback";
+import {
+  AnnotatePrerequisiteChecking,
+  AnnotatePrerequisiteNotice,
+} from "./AnnotatePrerequisiteNotice";
 import { FrameLabelsTracks, RegisterFrameLabels } from "./FrameLabels";
 import { ImaVidLighterTile } from "./ImaVidLighterTile";
 import { RegisterImaVidImage } from "./RegisterImaVidImage";
@@ -89,10 +94,12 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
 }) => {
   const labelsMode = useLabelsMode();
   const tileMode = useTileMode();
+  const prerequisites = useAnnotatePrerequisites(sample);
 
   // The native-video tile binds to a single top-level URL. The ImaVid
   // tile resolves a per-frame URL through the image stream, so it does
-  // not need (and ignores) this value.
+  // not need (and ignores) this value. Computed before the prerequisite
+  // gate so hook order stays stable across the checking → ready transition.
   const videoSrc = useMemo(() => {
     if (tileMode !== "video") {
       return null;
@@ -101,6 +108,25 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
     const url = sample.urls?.[0]?.url;
     return url ? getSampleSrc(url) : null;
   }, [sample, tileMode]);
+
+  // Annotation needs computed metadata (frame count + fps) and sampled frame
+  // images. When a prerequisite is missing, show an actionable prompt instead
+  // of mounting the playback stream — which used to throw and take the whole
+  // modal down (metadata), or render a silent blank (frames).
+  if (prerequisites.status !== "ready") {
+    return (
+      <div className={styles.root}>
+        <VideoAnnotationTopBar sample={sample} />
+        <div className={styles.media}>
+          {prerequisites.status === "blocked" ? (
+            <AnnotatePrerequisiteNotice blocker={prerequisites.blocker} />
+          ) : (
+            <AnnotatePrerequisiteChecking />
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const media =
     tileMode === "imavid" ? (
@@ -143,7 +169,12 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
 
   const registered =
     tileMode === "imavid" ? (
-      <RegisterImaVidImage sample={sample}>{labels}</RegisterImaVidImage>
+      <RegisterImaVidImage
+        frameCount={prerequisites.frameCount}
+        frameRate={prerequisites.frameRate}
+      >
+        {labels}
+      </RegisterImaVidImage>
     ) : (
       labels
     );

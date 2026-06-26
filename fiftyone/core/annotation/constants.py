@@ -217,6 +217,28 @@ SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE = {
         fol.TemporalDetections,
     },
 }
+# Label types that support tracks (an ``instance`` linking the same object
+# across frames). Used to backfill legacy ``index``-based tracks into
+# ``instance``. Mirrors the types accepted by
+# :func:`fiftyone.utils.labels.index_to_instance`.
+TRACK_LABEL_TYPES = (
+    fol.Detection,
+    fol.Detections,
+    fol.Polyline,
+    fol.Polylines,
+    fol.Keypoint,
+    fol.Keypoints,
+)
+# Spatial label types that are only meaningful per-frame on video (a video
+# sample is the whole clip, so spatial detections/polylines belong to its
+# frames). Excluded from sample-level annotation fields for video; still
+# allowed at the frame level.
+SPATIAL_LABEL_TYPES = (
+    fol.Detection,
+    fol.Detections,
+    fol.Polyline,
+    fol.Polylines,
+)
 SUPPORTED_LISTS_OF_PRIMITIVES = (
     fof.FloatField,
     fof.IntField,

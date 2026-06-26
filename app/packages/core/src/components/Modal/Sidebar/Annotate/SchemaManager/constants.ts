@@ -61,11 +61,11 @@ export const LABEL_TYPE_OPTIONS_3D = [
   { id: "classification", data: { label: "Classification" } },
 ];
 
-// Label type options for video datasets
+// Label type options for video datasets. Spatial labels (detections/polylines)
+// are frame-level only on video, and this flow creates sample-level fields —
+// so it offers just the sample-level label types valid for a video clip.
 export const LABEL_TYPE_OPTIONS_VIDEO = [
-  { id: "detections", data: { label: "Detections" } },
   { id: "classification", data: { label: "Classification" } },
-  { id: "polylines", data: { label: "Polylines" } },
   { id: "temporaldetections", data: { label: "Temporal Detections" } },
 ];
 
