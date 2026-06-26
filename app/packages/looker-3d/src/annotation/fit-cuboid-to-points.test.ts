@@ -115,10 +115,10 @@ describe("fitCuboidHeightToPoints", () => {
   });
 
   it("honors a rotated cuboid's local height axis", () => {
-    // Rotate 90° about world X: the box's local Z now points along world -Y,
-    // so the height should be measured along world Y.
+    // Rotate -90° about world X: the box's local +Z (its "up", above the plane)
+    // now points along world +Y, so height is measured along world Y.
     const quaternion = new THREE.Quaternion().setFromEuler(
-      new THREE.Euler(Math.PI / 2, 0, 0),
+      new THREE.Euler(-Math.PI / 2, 0, 0),
     );
     const rotated: CuboidTransformData = {
       location: [0, 0, 0],
@@ -126,7 +126,7 @@ describe("fitCuboidHeightToPoints", () => {
       quaternion: quaternion.toArray() as [number, number, number, number],
     };
 
-    // Column of points spread along world Y in [1, 3], centered on the footprint.
+    // Column of points spread along world Y in [1, 3] (above the plane).
     const points: [number, number, number][] = [];
     for (let i = 0; i <= 10; i++) {
       points.push([0, 1 + (i / 10) * 2, 0]);
@@ -139,5 +139,57 @@ describe("fitCuboidHeightToPoints", () => {
     expect(result.location[0]).toBeCloseTo(0, 5);
     expect(result.location[1]).toBeCloseTo(2, 5);
     expect(result.location[2]).toBeCloseTo(0, 5);
+  });
+
+  it("drops points far below the plane (ground bleed / outliers)", () => {
+    // Object spans z in [0, 2] above the plane...
+    const object: [number, number, number][] = [];
+    for (let i = 0; i <= 10; i++) {
+      object.push([0, 0, (i / 10) * 2]);
+    }
+    // ...plus stray points well below the plane that must not drag the box down.
+    const below: [number, number, number][] = [
+      [0, 0, -3],
+      [0, 0, -5],
+    ];
+
+    const result = fitCuboidHeightToPoints(baseTransform, [
+      makeCloud([...object, ...below]),
+    ]);
+
+    // Bottom stays at the object base (~0), not at the -3/-5 outliers.
+    expect(result.dimensions[2]).toBeCloseTo(2.1, 5);
+    expect(result.location[2]).toBeCloseTo(1, 5);
+  });
+
+  it("keeps points within the below-plane margin", () => {
+    // Object dips slightly below the plane, to z = -0.3 (within belowMargin).
+    const points: [number, number, number][] = [];
+    for (let i = 0; i <= 10; i++) {
+      points.push([0, 0, -0.3 + (i / 10) * 2.3]);
+    }
+
+    const result = fitCuboidHeightToPoints(baseTransform, [makeCloud(points)], {
+      belowMargin: 0.5,
+    });
+
+    // Span is [-0.3, 2]; height = 2.3 + 2 * margin, center = midpoint 0.85.
+    expect(result.dimensions[2]).toBeCloseTo(2.4, 5);
+    expect(result.location[2]).toBeCloseTo(0.85, 5);
+  });
+
+  it("uses a high percentile so a lone tall outlier doesn't inflate height", () => {
+    // 50 dense points in [0, 2] plus one speckle far above at z = 10.
+    const points: [number, number, number][] = [];
+    for (let i = 0; i < 50; i++) {
+      points.push([0, 0, (i / 49) * 2]);
+    }
+    points.push([0, 0, 10]);
+
+    const result = fitCuboidHeightToPoints(baseTransform, [makeCloud(points)]);
+
+    // Top tracks the cluster (~2), not the outlier (10).
+    expect(result.dimensions[2]).toBeLessThan(3);
+    expect(result.location[2]).toBeLessThan(1.5);
   });
 });
