@@ -118,7 +118,7 @@ def list_valid_annotation_fields(
     return sorted(result)
 
 
-def backfill_instances_from_index(sample_collection, fields):
+def backfill_instances_from_index(sample_collection, fields=None):
     """Populates the ``instance`` attribute from a legacy ``index`` attribute
     for any of the given track label fields that have ``index`` values but no
     ``instance`` values yet.
@@ -131,12 +131,15 @@ def backfill_instances_from_index(sample_collection, fields):
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
-        fields: a field name or iterable of field names to process
+        fields (None): a field name or iterable of field names to process. By
+            default, all valid annotation fields are processed, matching the
+            all-fields scan in :func:`generate_label_schemas`
     """
-    if not fields:
-        return
-
-    if isinstance(fields, str):
+    if fields is None:
+        fields = list_valid_annotation_fields(
+            sample_collection, include_frames=True
+        )
+    elif isinstance(fields, str):
         fields = [fields]
 
     for field in fields:
