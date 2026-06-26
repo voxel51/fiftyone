@@ -1,4 +1,8 @@
-import { useCurrentSampleId, useStableSceneSample3d } from "@fiftyone/state";
+import {
+  groupMediaIsMain2DViewerVisible,
+  useStableSceneSample3d,
+} from "@fiftyone/state";
+import { useRecoilValue } from "recoil";
 import { useActiveSampleId } from "./useSample";
 
 /**
@@ -45,18 +49,22 @@ export const useThreeDSceneSampleId = (): string | undefined => {
 };
 
 /**
- * The sample whose labels the annotation sidebar reflects: the pinned 3D scene
- * when its slice is the active selection, otherwise the selected 2D slice.
+ * The sample whose labels the annotation sidebar reflects: the 3D scene when
+ * it's the active surface, otherwise the selected 2D slice. The only
+ * group-aware resolver — consumed by the sidebar list ({@link useLabels}) and
+ * edit refs, never the foundation.
  *
- * The ONLY group-aware resolver — consumed by the sidebar list
- * ({@link useLabels}) and the sidebar edit refs, never the foundation.
- * `currentSampleId` is used purely as an equality discriminator against the
- * stable scene id ("is the 3D slice the active selection?"), never as a key.
+ * Keys on which viewer is rendering (`groupMediaIsMain2DViewerVisible`, the
+ * same signal `useFo3dPanelRouting` uses), not on the 3D pin: pinning the 3D
+ * viewer to annotate a 2D slice makes the scene `currentSampleId` while the 2D
+ * slice is the real surface, which would leak the scene's cuboids into the 2D
+ * sidebar.
  */
 export const useActiveAnnotationSampleId = (): string => {
   const sceneId = useThreeDSceneSampleId();
-  const currentId = useCurrentSampleId();
   const modalId = useActiveSampleId();
 
-  return sceneId && currentId === sceneId ? sceneId : modalId;
+  const annotating2dSlice = useRecoilValue(groupMediaIsMain2DViewerVisible);
+
+  return sceneId && !annotating2dSlice ? sceneId : modalId;
 };
