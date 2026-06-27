@@ -22,6 +22,8 @@ import {
 } from "@voxel51/voodo";
 import { atom, useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
+import { useRecoilValue } from "recoil";
+import { mediaType as mediaTypeAtom } from "@fiftyone/state";
 import { fieldAttributeCount, fieldType } from "../state";
 import { useSchemaManager } from "../useSchemaManager";
 import { Item } from "./Components";
@@ -35,6 +37,7 @@ import {
 import SecondaryText from "./SecondaryText";
 import { fieldIsReadOnly } from "./state";
 import { GUISectionHeader } from "./styled";
+import { isFieldLabelTypeUnsupported } from "./utils";
 
 /**
  * Edit action button for field rows
@@ -110,33 +113,53 @@ const ActiveFieldsSection = () => {
 
   const { setActiveSchemas } = useSchemaManager();
 
+  const currentMediaType = useRecoilValue(mediaTypeAtom);
+
   const listItems = useMemo(
     () =>
-      fields.map((path) => ({
-        id: path,
-        data: {
-          canSelect: true,
-          canDrag: true,
-          "data-cy": `field-row-${path}`,
-          primaryContent: path,
-          secondaryContent: (
-            <SecondaryText
-              fieldType={fieldTypes[path] ?? ""}
-              attrCount={fieldAttrCounts[path]}
-              isSystemReadOnly={false}
-            />
-          ),
-          actions: (
-            <span className="flex items-center gap-2">
-              {fieldReadOnlyStates[path] && (
-                <Pill size={Size.Md}>Read-only</Pill>
-              )}
-              <FieldActions path={path} />
-            </span>
-          ),
-        } as ListItemProps,
-      })),
-    [fields, fieldTypes, fieldAttrCounts, fieldReadOnlyStates],
+      fields.map((path) => {
+        const isUnsupported = isFieldLabelTypeUnsupported(
+          path,
+          fieldTypes[path],
+          currentMediaType,
+        );
+        return {
+          id: path,
+          data: {
+            canSelect: true,
+            canDrag: true,
+            "data-cy": `field-row-${path}`,
+            primaryContent: path,
+            secondaryContent: (
+              <SecondaryText
+                fieldType={fieldTypes[path] ?? ""}
+                attrCount={fieldAttrCounts[path]}
+                isSystemReadOnly={false}
+              />
+            ),
+            actions: (
+              <span className="flex items-center gap-2">
+                {isUnsupported && (
+                  <Pill data-cy="pill-unsupported" size={Size.Md}>
+                    Unsupported
+                  </Pill>
+                )}
+                {fieldReadOnlyStates[path] && (
+                  <Pill size={Size.Md}>Read-only</Pill>
+                )}
+                <FieldActions path={path} />
+              </span>
+            ),
+          } as ListItemProps,
+        };
+      }),
+    [
+      fields,
+      fieldTypes,
+      fieldAttrCounts,
+      fieldReadOnlyStates,
+      currentMediaType,
+    ],
   );
 
   const handleOrderChange = useCallback(

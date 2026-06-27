@@ -708,15 +708,49 @@ export const getLabelTypeOptions = (
   mediaType: string | null | undefined,
   isFrameField = false,
 ) => {
+  let options: ReadonlyArray<{
+    id: string;
+    data: { label: string };
+    unsupported?: boolean;
+  }>;
   if (mediaType && is3d(mediaType)) {
-    return LABEL_TYPE_OPTIONS_3D;
-  }
-  if (mediaType === "video") {
-    return isFrameField
+    options = LABEL_TYPE_OPTIONS_3D;
+  } else if (mediaType === "video") {
+    options = isFrameField
       ? LABEL_TYPE_OPTIONS_VIDEO_FRAME
       : LABEL_TYPE_OPTIONS_VIDEO;
+  } else {
+    options = LABEL_TYPE_OPTIONS;
   }
-  return LABEL_TYPE_OPTIONS;
+  // Hide unsupported types from the create dropdown entirely. Existing
+  // fields of an unsupported type are flagged in the schema list view
+  // via `isFieldLabelTypeUnsupported`.
+  return options.filter((option) => option.unsupported !== true);
+};
+
+/**
+ * Whether a label-typed field at the given path is of an unsupported type
+ * for the current dataset's media type. Mirrors the gating that
+ * `getLabelTypeOptions` applies to the create dropdown so existing fields
+ * of unsupported types can be flagged in the schema list view.
+ *
+ * `fieldType` is the capitalized short type (e.g. "Classification") that
+ * the `fieldType` atom returns.
+ */
+export const isFieldLabelTypeUnsupported = (
+  path: string,
+  fieldType: string | undefined,
+  mediaType: string | null | undefined,
+): boolean => {
+  if (!fieldType || mediaType !== "video") return false;
+  const isFrameField = path.startsWith("frames.");
+  const sourceOptions = (
+    isFrameField ? LABEL_TYPE_OPTIONS_VIDEO_FRAME : LABEL_TYPE_OPTIONS_VIDEO
+  ) as ReadonlyArray<{ id: string; unsupported?: boolean }>;
+  const lowered = fieldType.toLowerCase();
+  return sourceOptions.some(
+    (option) => option.id === lowered && option.unsupported === true,
+  );
 };
 
 // =============================================================================
