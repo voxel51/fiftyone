@@ -11,6 +11,7 @@ import type { LabelData } from "@fiftyone/utilities";
 import type { AnnotationEngine } from "../core/engine";
 import type { LabelRef, ScopedRef } from "../identity/ref";
 import { toLabelRef } from "../identity/ref";
+import { autoKeyframeOnGeometryEdit } from "./autoKeyframe";
 import type { AdapterMap, SurfaceBridge } from "./types";
 
 export interface SurfaceActions {
@@ -131,11 +132,14 @@ export const createSurfaceController = <Handle, Descriptor>({
         return;
       }
 
-      const partial = toPartial(handle);
+      const rawPartial = toPartial(handle);
 
-      if (!partial || Object.keys(partial).length === 0) {
+      if (!rawPartial || Object.keys(rawPartial).length === 0) {
         return;
       }
+
+      const ref = bridge.refOf(handle);
+      const partial = autoKeyframeOnGeometryEdit(ref.path, rawPartial);
 
       // origin suppression: the loop must not echo this surface's own
       // write back onto the handle — the handle may hold state newer than
@@ -143,8 +147,6 @@ export const createSurfaceController = <Handle, Descriptor>({
       bridge.isWriting = true;
 
       try {
-        const ref = bridge.refOf(handle);
-
         if (opts?.undoKey) {
           actions.transaction(() => actions.updateLabel(ref, partial), {
             undoKey: opts.undoKey,
