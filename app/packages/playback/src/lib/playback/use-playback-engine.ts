@@ -468,6 +468,28 @@ export function usePlaybackEngine({
         fireSeekEvent(clamped);
         commitWhenReady(clamped);
       },
+      // Snapping companion to `seek`. Quantizes `time` onto the displayed-
+      // frame start when the provider has opted into `snapToFrameOnSettle`;
+      // otherwise behaves exactly like `seek`. The play-loop RAF tick MUST
+      // stay on plain `seek` (continuous sub-frame times) — this entry point
+      // is for human-driven scrub paths (playhead drag, lane click-to-seek)
+      // where users want the playhead to track discrete frame numbers
+      // continuously instead of only on drag-end settle.
+      seekSnapped: (time: number) => {
+        const clamped = clamp(time, 0, store.get(durationAtom));
+        const step = store.get(stepIntervalAtom);
+        const snapped =
+          snapToFrameRef.current && step > 0
+            ? displayedFrameStart(clamped, step)
+            : clamped;
+        // Skip redundant set/commit churn when the snap result already
+        // matches the current playhead — happens on every sub-frame drag
+        // delta once the playhead has landed on a boundary.
+        if (snapped === store.get(playheadAtom)) return;
+        store.set(playheadAtom, snapped);
+        fireSeekEvent(snapped);
+        commitWhenReady(snapped);
+      },
       play: () => {
         const current = store.get(playheadAtom);
         const ls = store.get(loopStartAtom);

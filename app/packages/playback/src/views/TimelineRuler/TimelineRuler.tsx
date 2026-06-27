@@ -45,7 +45,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
   const viewEnd = useViewEnd();
   const loopStart = useLoopStart();
   const loopEnd = useLoopEnd();
-  const { duration, seek, setView, setLoop, snapPlayheadToFrame } =
+  const { duration, seekSnapped, setView, setLoop, snapPlayheadToFrame } =
     usePlayback();
 
   const rulerRef = useRef<HTMLDivElement>(null);
@@ -86,10 +86,17 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
         dragRef.current.maxAbsDelta,
         Math.abs(delta),
       );
-      seek(clamp(startValue + (delta / laneWidth) * vd, 0, duration));
+      // `seekSnapped` quantizes to the displayed-frame start when the
+      // provider opted into snap-to-frame; otherwise it's a plain seek. The
+      // playhead now tracks discrete frame numbers continuously during the
+      // drag, matching the frame-indexed mental model the annotation surface
+      // uses elsewhere.
+      seekSnapped(clamp(startValue + (delta / laneWidth) * vd, 0, duration));
     },
-    // Continuous while dragging (above); snap to a frame boundary only once
-    // the drag settles. No-op unless the provider opted into snapping.
+    // Redundant when `seekSnapped` already landed each mid-drag tick on a
+    // frame boundary — kept as a belt-and-suspenders settle (cheap no-op
+    // when the playhead is already aligned, thanks to the equality guard
+    // inside `snapPlayheadToFrame`).
     onDragEnd: () => snapPlayheadToFrame(),
   });
 
@@ -160,10 +167,9 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       if (laneX < 0 || laneX > laneWidth) return;
       const vs = dragRef.current.startVs;
       const ve = dragRef.current.startVe;
-      seek(clamp(vs + (laneX / laneWidth) * (ve - vs), 0, duration));
-      // Land a click-to-seek on a frame boundary too (no-op unless snapping
-      // is enabled); reads the playhead `seek` just set.
-      snapPlayheadToFrame();
+      // `seekSnapped` lands the click on a frame boundary in one step when
+      // snapping is enabled; falls back to a continuous seek otherwise.
+      seekSnapped(clamp(vs + (laneX / laneWidth) * (ve - vs), 0, duration));
     },
   });
 
