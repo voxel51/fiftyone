@@ -16,8 +16,11 @@
  *   class/attribute-only edit must not flip the geometry-keyframe flag, since
  *   geometry keyframes and attribute "keyframes" are tracked independently.
  *
- * Idempotent: re-applying to an already-keyframed Detection is a no-op
- * write of `keyframe: true`, which the engine's update path collapses.
+ * Always promotes when the geometry gate trips: a user resize on an
+ * already-keyframed frame re-anchors that keyframe's geometry, which means
+ * the bracketing tween segments need to re-interp. Downstream listeners
+ * (e.g. `useAutoInterpolate`) coalesce bursts via a microtask drain so a
+ * drag-resize doesn't fan out into N redundant interp passes.
  */
 import type { LabelData } from "@fiftyone/utilities";
 
@@ -30,12 +33,6 @@ export const autoKeyframeOnGeometryEdit = (
     ("bounding_box" in partial || "points" in partial);
 
   if (!isFrameLevelGeometry) {
-    return partial;
-  }
-
-  // already a keyframe: identity pass-through so callers can detect a
-  // promotion via reference equality (`partial !== rawPartial`)
-  if (partial.keyframe === true) {
     return partial;
   }
 

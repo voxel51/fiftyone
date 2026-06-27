@@ -614,12 +614,12 @@ describe("surface controller (write-half)", () => {
       expect(instanceArg).toBe("d1");
     });
 
-    it("does not fire when the partial is already a keyframe (idempotency)", () => {
+    it("fires on a geometry edit at an already-keyframed frame (Case B)", () => {
       const { engine } = makeFrameSetup();
       const { bridge, adapters, handle } = makeFrameSurface();
-      // adapter that returns an already-keyframed partial — the
-      // helper must pass-through by reference, so the controller
-      // detects no promotion and skips the dispatch
+      // adapter that returns an already-keyframed partial — re-anchoring an
+      // existing keyframe's geometry still needs to fire so the bracketing
+      // tween segments re-interp. Downstream listeners coalesce.
       adapters[LabelType.Detections].toLabel = () => ({
         bounding_box: [0, 0, 1, 1],
         keyframe: true,
@@ -634,7 +634,16 @@ describe("surface controller (write-half)", () => {
 
       controller.commit(handle);
 
-      expect(onAutoKeyframe).not.toHaveBeenCalled();
+      expect(onAutoKeyframe).toHaveBeenCalledTimes(1);
+      const [refArg, frameArg, instanceArg] = onAutoKeyframe.mock.calls[0];
+      expect(refArg).toMatchObject({
+        sample: "sample-1",
+        path: "frames.detections",
+        instanceId: "d1",
+        frame: 3,
+      });
+      expect(frameArg).toBe(3);
+      expect(instanceArg).toBe("d1");
     });
 
     it("does not fire when ref.frame is undefined (sample-level safety)", () => {
