@@ -237,6 +237,15 @@ export interface PlaybackContextValue {
    * settle points (e.g. a playhead drag-end) — pausing snaps automatically.
    */
   snapPlayheadToFrame: () => void;
+  /**
+   * Snapping companion to {@link seek}. When the provider opted into
+   * `snapToFrameOnSettle`, quantizes `time` onto the start of the displayed
+   * frame before committing; otherwise behaves exactly like `seek`. Use for
+   * human-driven scrub paths (mid-drag updates, lane click-to-seek) where the
+   * playhead should track discrete frame numbers continuously. The play-loop
+   * RAF tick MUST keep using `seek` to avoid sub-frame stutter.
+   */
+  seekSnapped: (time: number) => void;
   stepBack: () => void;
   stepForward: () => void;
   setView: (start: number, end: number) => void;
