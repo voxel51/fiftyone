@@ -4133,6 +4133,82 @@
             "date_added": "2024-01-17 14:25:51"
         },
         {
+            "base_name": "grounding-dino-tiny-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Compact open-set object detector that finds objects described in natural language, using a Swin-T vision backbone and BERT text encoder",
+            "source": "https://huggingface.co/IDEA-Research/grounding-dino-tiny",
+            "author": "IDEA Research",
+            "license": "Apache 2.0",
+            "size_bytes": 659000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "IDEA-Research/grounding-dino-tiny"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "torch",
+                "transformers",
+                "zero-shot",
+                "official"
+            ],
+            "training_data": [
+                { "name": "Objects365v1", "url": "https://www.objects365.org" },
+                { "name": "GoldG", "url": "https://github.com/microsoft/GLIP" },
+                { "name": "Cap4M", "url": "https://arxiv.org/abs/2112.03857" }
+            ],
+            "date_added": "2026-06-26 00:00:00"
+        },
+        {
+            "base_name": "grounding-dino-base-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Full-size open-set object detector using a Swin-B vision backbone and BERT text encoder, with higher accuracy across a wide range of vocabulary",
+            "source": "https://huggingface.co/IDEA-Research/grounding-dino-base",
+            "author": "IDEA Research",
+            "license": "Apache 2.0",
+            "size_bytes": 892000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "IDEA-Research/grounding-dino-base"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "torch",
+                "transformers",
+                "zero-shot",
+                "official"
+            ],
+            "training_data": [
+                { "name": "Objects365v1", "url": "https://www.objects365.org" },
+                { "name": "GoldG", "url": "https://github.com/microsoft/GLIP" },
+                { "name": "Cap4M", "url": "https://arxiv.org/abs/2112.03857" }
+            ],
+            "date_added": "2026-06-26 00:00:00"
+        },
+        {
             "base_name": "clip-vit-base32-torch",
             "base_filename": "CLIP-ViT-B-32.pt",
             "version": null,
