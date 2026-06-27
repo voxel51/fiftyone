@@ -616,6 +616,7 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
       <TimelineWithTracks
         decorateTrack={decorateTrack}
         extraControls={<VideoAnnotationToolbar />}
+        autoExpandOnFirstTrack
       />
     </TrackProvider>
   );

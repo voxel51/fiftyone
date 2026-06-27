@@ -72,3 +72,14 @@
 .unpinnedTrack:hover {
   opacity: 0.9;
 }
+
+/* Strip below the pinned rows that surfaces unpinned tracks while the
+   drawer is closed. Bounded + scrollable so it can't push the
+   playhead/ruler off-screen when there are many unpinned tracks. */
+.collapsedUnpinned {
+  display: flex;
+  flex-direction: column;
+  max-height: 120px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
