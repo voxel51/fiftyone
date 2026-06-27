@@ -1746,6 +1746,50 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         self.assertEqual(len(relpath.split(os.path.sep)), 3)
 
     @drop_datasets
+    def test_voc_detection_dataset_single_dir(self):
+        # https://github.com/voxel51/fiftyone/issues/1781
+        #
+        # When images and VOC labels (`.xml`) live in the same directory, the
+        # importer must not mistake the label files for images
+        dataset = self._make_dataset()
+
+        # ``include_paths=False`` ensures the importer must locate images via
+        # the data directory (the label files do not embed the image path), so
+        # a label file masquerading as an image is not silently recovered
+        for include_paths in (True, False):
+            single_dir = self._new_dir()
+
+            dataset.export(
+                dataset_type=fo.types.VOCDetectionDataset,
+                data_path=single_dir,
+                labels_path=single_dir,
+                include_paths=include_paths,
+            )
+
+            dataset2 = fo.Dataset.from_dir(
+                dataset_type=fo.types.VOCDetectionDataset,
+                data_path=single_dir,
+                labels_path=single_dir,
+                label_field="predictions",
+                include_all_data=True,
+            )
+
+            # No imported sample's media should be a `.xml` labels file
+            for filepath in dataset2.values("filepath"):
+                self.assertFalse(
+                    filepath.endswith(".xml"),
+                    "Imported media should not be a VOC labels file: %s"
+                    % filepath,
+                )
+
+            # The images (not the label files) are imported as samples
+            self.assertEqual(len(dataset), len(dataset2))
+            self.assertEqual(
+                dataset.count("predictions.detections"),
+                dataset2.count("predictions.detections"),
+            )
+
+    @drop_datasets
     def test_kitti_detection_dataset(self):
         dataset = self._make_dataset()
 
