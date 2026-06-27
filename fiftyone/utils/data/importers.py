@@ -826,9 +826,17 @@ class ImportPathsMixin(object):
         return labels_path
 
     @staticmethod
-    def _load_data_map(data_path, ignore_exts=False, recursive=False):
+    def _load_data_map(
+        data_path, ignore_exts=False, recursive=False, image_only=False
+    ):
         """Helper function that parses either a data directory or a data
         manifest file into a UUID -> filepath map.
+
+        When ``image_only`` is True, only image files are included. This is
+        useful when ``data_path`` may contain non-image files such as labels
+        that live alongside the images (e.g. VOC ``.xml`` files). Filtering is
+        applied before UUIDs are computed so that, when ``ignore_exts`` is also
+        True, a non-image file does not clobber an image with the same basename.
         """
         if ignore_exts:
             to_uuid = lambda p: fos.normpath(os.path.splitext(p)[0])
@@ -836,7 +844,13 @@ class ImportPathsMixin(object):
             to_uuid = lambda p: fos.normpath(p)
 
         if isinstance(data_path, dict):
-            return {to_uuid(k): fos.normpath(v) for k, v in data_path.items()}
+            items = data_path.items()
+            if image_only:
+                items = [
+                    (k, v) for k, v in items if etai.is_image_mime_type(v)
+                ]
+
+            return {to_uuid(k): fos.normpath(v) for k, v in items}
 
         if not data_path:
             return {}
@@ -849,17 +863,27 @@ class ImportPathsMixin(object):
 
             data_map = etas.read_json(data_path)
             data_root = os.path.dirname(data_path)
+            items = data_map.items()
+            if image_only:
+                items = [
+                    (k, v) for k, v in items if etai.is_image_mime_type(v)
+                ]
+
             return {
                 to_uuid(k): fos.normpath(os.path.join(data_root, v))
-                for k, v in data_map.items()
+                for k, v in items
             }
 
         if not os.path.isdir(data_path):
             raise ValueError("Data directory '%s' does not exist" % data_path)
 
+        filepaths = etau.list_files(data_path, recursive=recursive)
+        if image_only:
+            filepaths = [p for p in filepaths if etai.is_image_mime_type(p)]
+
         return {
             to_uuid(p): fos.normpath(os.path.join(data_path, p))
-            for p in etau.list_files(data_path, recursive=recursive)
+            for p in filepaths
         }
 
 

@@ -182,8 +182,12 @@ class VOCDetectionDatasetImporter(
         return fol.Detections
 
     def setup(self):
+        # Only treat image files as media so that VOC labels (`.xml`) are not
+        # mistaken for images when ``data_path`` and ``labels_path`` are the
+        # same directory
+        # https://github.com/voxel51/fiftyone/issues/1781
         image_paths_map = self._load_data_map(
-            self.data_path, ignore_exts=True, recursive=True
+            self.data_path, ignore_exts=True, recursive=True, image_only=True
         )
 
         if self.labels_path is not None and os.path.isdir(self.labels_path):
