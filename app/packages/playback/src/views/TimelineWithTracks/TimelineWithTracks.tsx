@@ -1,6 +1,6 @@
 import { Drawer } from "@voxel51/voodo";
 import clsx from "clsx";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import {
   TIMELINE_DRAWER_MAX_SIZE,
@@ -62,15 +62,6 @@ export interface TimelineWithTracksProps {
     track: Track,
     pinned: boolean,
   ) => Partial<TimelineTrackProps>;
-  /**
-   * When true, the drawer auto-expands on the empty→non-empty `tracks`
-   * transition (i.e. the first track to land). Explicit user toggles set
-   * a sticky override so subsequent track additions don't re-expand a
-   * collapse the user just performed. Opt-in for surfaces that author
-   * tracks interactively (e.g. video annotation).
-   * @default false
-   */
-  autoExpandOnFirstTrack?: boolean;
 }
 
 /**
@@ -91,31 +82,16 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   extraControls,
   extraActions,
   decorateTrack,
-  autoExpandOnFirstTrack = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const tracks = useTracks();
   const { pinnedIds, togglePin } = useTrackPinning();
   const { seek } = usePlayback();
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  // Sticky: once the user explicitly toggles the drawer, auto-expand stops
-  // overriding their choice for the remainder of this mount.
-  const userOverrodeRef = useRef(false);
-  const prevHadTracksRef = useRef(tracks.length > 0);
-
-  useEffect(() => {
-    if (!autoExpandOnFirstTrack) return;
-    const hasTracks = tracks.length > 0;
-    if (hasTracks && !prevHadTracksRef.current && !userOverrodeRef.current) {
-      setDrawerOpen(true);
-    }
-    prevHadTracksRef.current = hasTracks;
-  }, [tracks.length, autoExpandOnFirstTrack]);
-
-  const onDrawerToggle = (next: boolean) => {
-    userOverrodeRef.current = true;
-    setDrawerOpen(next);
-  };
+  // Drawer starts open: the annotation surface remounts on each entry to
+  // annotate mode (sample change / mode toggle), so an initial-`true` covers
+  // the "make the timeline visible immediately" case without a tracks-length
+  // effect. User-initiated collapses persist until the next remount.
+  const [drawerOpen, setDrawerOpen] = useState(true);
 
   const labelWidth = tracks.length === 0 ? 0 : requestedLabelWidth;
 
@@ -167,7 +143,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
       <Drawer
         side="bottom"
         open={drawerOpen}
-        onOpenChange={onDrawerToggle}
+        onOpenChange={setDrawerOpen}
         maxSize={maxSize}
         mode="push"
         header={({ toggle }) => (
@@ -180,41 +156,15 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
             extraActions={extraActions}
           >
             <div className={styles.pinnedOverlayHost}>
-              {/* Pinned rows live here only while the drawer is closed; when it
-                  opens they move into the body below. Rendering both
-                  unconditionally double-mounts every pinned row under the same
-                  track id, so selecting one hit both.
-
-                  Unpinned rows are also rendered here when the drawer is
-                  closed (de-emphasized via .unpinnedTrack) so that toggling
-                  pin off doesn't hide a track entirely — pin acts as
-                  "sticky to top" rather than visibility gating. */}
+              {/* Pinned rows live here only while the drawer is closed; when
+                  it opens they move into the body below. Rendering both
+                  unconditionally double-mounts every pinned row under the
+                  same track id, so selecting one hits both. Unpinned tracks
+                  are filtered out entirely while the drawer is closed —
+                  pin acts as a noise-reduction filter, not a sticky-to-top
+                  affordance. Closing the drawer with nothing pinned shows
+                  only the ruler. */}
               {!drawerOpen && pinned.map(renderPinnedTrack)}
-              {!drawerOpen && unpinned.length > 0 && (
-                <div className={styles.collapsedUnpinned}>
-                  {unpinned.map((track) => {
-                    const extra = decorateTrack
-                      ? decorateTrack(track, false)
-                      : null;
-                    return (
-                      <TimelineTrack
-                        key={track.id}
-                        id={track.id}
-                        label={track.label}
-                        color={track.color}
-                        events={track.events}
-                        labelWidth={labelWidth}
-                        pinned={false}
-                        onPinClick={() => togglePin(track.id)}
-                        onEventClick={(e) => seek(e.startSec)}
-                        eventMenuItems={eventMenuItems}
-                        {...extra}
-                        className={clsx(styles.unpinnedTrack, extra?.className)}
-                      />
-                    );
-                  })}
-                </div>
-              )}
               <LoopOverlays labelWidth={labelWidth} />
               <PlayheadLine labelWidth={labelWidth} />
             </div>
