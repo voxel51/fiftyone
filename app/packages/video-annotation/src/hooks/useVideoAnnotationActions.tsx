@@ -1,12 +1,47 @@
 import type { ToolbarActionGroup } from "@fiftyone/components";
 import { useModalSample } from "@fiftyone/state";
 import { Icon, IconName, Size } from "@voxel51/voodo";
+import { useAtomValue } from "jotai";
+import CallMerge from "@mui/icons-material/CallMerge";
 import { useMemo } from "react";
 import { frameAt, usePlayhead } from "@fiftyone/playback";
 import { getModalSampleFrameRate } from "../utils/modalSample";
-import { useTemporalDetectionFieldPaths } from "../state/accessors";
+import {
+  labelSchemaData,
+  useTemporalDetectionFieldPaths,
+} from "../state/accessors";
 import { useSelectedTrackIds } from "../state/useVideoInteraction";
+import { useFrameKeyframeState } from "./useFrameKeyframeState";
 import { useVideoSurfaceActions } from "./useVideoSurfaceActions";
+
+/**
+ * Small SVG diamond glyph used by the Mark Keyframe toolbar button. Filled
+ * matches a keyframe present at the playhead on the selected track; outlined
+ * is the absent / no-selection state. Mirrors the lane's rotated-square
+ * keyframe marker so the toolbar reads as "this glyph = a keyframe".
+ */
+const DiamondIcon = ({ filled }: { filled: boolean }) => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 14 14"
+    aria-hidden="true"
+    focusable="false"
+    style={{ display: "block" }}
+  >
+    <rect
+      x="3.05"
+      y="3.05"
+      width="7.9"
+      height="7.9"
+      transform="rotate(45 7 7)"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinejoin="miter"
+    />
+  </svg>
+);
 
 /**
  * Builds the data-driven config for the video annotation toolbar, mirroring
@@ -41,10 +76,25 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
   const canCreateTd =
     !!tdFieldPath && Number.isFinite(fps) && fps !== undefined && fps > 0;
 
+  // Default class for a freshly-created TemporalDetection: schema's `default`
+  // if set, else the first declared class. Mirrors `buildNewLabelData` in
+  // core's createNew.ts so the surface matches the sidebar's create flow.
+  const tdSchema = useAtomValue(labelSchemaData(tdFieldPath ?? ""));
+  const tdSchemaDefault = tdSchema?.label_schema?.default;
+  const tdDefaultLabel: string | undefined =
+    typeof tdSchemaDefault === "string"
+      ? tdSchemaDefault
+      : tdSchema?.label_schema?.classes?.[0];
+
   // Selection is keyed on the engine instanceId — the same id the propagation
   // target resolver matches against the per-frame detections.
   const selectedIds = useMemo(() => Array.from(selected), [selected]);
   const hasSelection = selectedIds.length > 0;
+
+  // Reactive: filled when the (single) selected track has a keyframe at the
+  // current playhead. Outline otherwise (no selection, multi-selection, or no
+  // detection on this frame). See {@link useFrameKeyframeState}.
+  const isKeyframeAtPlayhead = useFrameKeyframeState(selectedIds, playhead);
 
   // split needs one track + a playhead frame; merge needs exactly two
   const canSplit =
@@ -60,7 +110,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
           {
             id: "mark-keyframe",
             label: "Mark Keyframe",
-            icon: <Icon name={IconName.VAL} size={Size.Sm} />,
+            icon: <DiamondIcon filled={isKeyframeAtPlayhead} />,
             shortcut: "K",
             tooltip: hasSelection
               ? "Toggle keyframe at this frame"
@@ -84,10 +134,11 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
               // Default: 1-second window starting at the playhead frame.
               const startFrame = frameAt(playhead, fps);
               const endFrame = startFrame + Math.round(fps);
-              actions.createTemporalDetection(tdFieldPath, [
-                startFrame,
-                endFrame,
-              ]);
+              actions.createTemporalDetection(
+                tdFieldPath,
+                [startFrame, endFrame],
+                tdDefaultLabel,
+              );
             },
           },
           {
@@ -109,7 +160,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
           {
             id: "merge-tracks",
             label: "Merge",
-            icon: <Icon name={IconName.Workspaces} size={Size.Sm} />,
+            icon: <CallMerge fontSize="small" />,
             // direction is ambiguous from a selection set, so fix a rule: the
             // first-selected merges into the last-selected, which survives
             tooltip: canMerge
@@ -134,8 +185,10 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
       canSplit,
       fps,
       hasSelection,
+      isKeyframeAtPlayhead,
       playhead,
       selectedIds,
+      tdDefaultLabel,
       tdFieldPath,
     ],
   );

@@ -131,7 +131,7 @@ export function buildTemporalDetectionTracks({
 
       const label = td.label ?? "";
       const startSec = (support[0] - 1) / fps;
-      const endSec = support[1] / fps;
+      const endSec = (support[1] - 1) / fps;
 
       const eventData: TemporalDetectionEventData = {
         fieldPath,

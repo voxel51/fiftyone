@@ -413,7 +413,7 @@ function indexInstanceState({
 }): InstanceState {
   const intervals = segments.map(([start, end]) => ({
     start: (start - 1) / fps,
-    end: end / fps,
+    end: (end - 1) / fps,
   }));
 
   const keyframeFrames = [
