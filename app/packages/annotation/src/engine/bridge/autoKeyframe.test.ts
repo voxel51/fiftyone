@@ -54,20 +54,22 @@ describe("autoKeyframeOnGeometryEdit", () => {
     );
   });
 
-  it("idempotent: keyframe already true stays true and bbox passes through", () => {
+  it("always returns a new object even when keyframe is already true", () => {
+    // Case B: a resize on an already-keyframed frame re-anchors the
+    // keyframe's geometry; the bracketing tween segments need to re-interp,
+    // so the helper must produce a new object so the controller fires
+    // `annotation:keyframeChanged`. Downstream listeners coalesce via
+    // microtask drain to keep work bounded per tick.
     const partial = {
       bounding_box: [0.1, 0.2, 0.3, 0.4],
       keyframe: true,
     };
     const result = autoKeyframeOnGeometryEdit("frames.detections", partial);
+    expect(result).not.toBe(partial); // new object: signals promotion
     expect(result).toEqual({
       bounding_box: [0.1, 0.2, 0.3, 0.4],
       keyframe: true,
     });
-    // reference equality is the contract: surface controllers detect a
-    // promotion by `partial !== rawPartial` and skip downstream dispatch
-    // when the partial was already a keyframe
-    expect(result).toBe(partial);
   });
 
   it("explicit keyframe=false on a geometry edit is overridden to true", () => {

@@ -151,9 +151,10 @@ export const createSurfaceController = <Handle, Descriptor>({
 
       const ref = bridge.refOf(handle);
       const partial = autoKeyframeOnGeometryEdit(ref.path, rawPartial);
-      // reference inequality means the helper promoted; idempotent
-      // pass-through (already keyframed) shares identity with rawPartial
-      // and must NOT re-fire the dispatch
+      // reference inequality means the helper hit the geometry gate; the
+      // helper always returns a new object when it does (Case A: promote a
+      // non-keyframe, Case B: re-anchor an existing keyframe). Downstream
+      // listeners coalesce bursts via microtask drain.
       const promoted = partial !== rawPartial;
 
       // origin suppression: the loop must not echo this surface's own
