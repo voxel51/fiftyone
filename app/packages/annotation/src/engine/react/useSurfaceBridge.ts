@@ -12,6 +12,7 @@
 
 import { useEffect, useMemo } from "react";
 
+import { useAnnotationEventBus } from "../../hooks";
 import { createSurfaceController } from "../bridge/surfaceController";
 import type { SurfaceController } from "../bridge/surfaceController";
 import type { AdapterMap, SurfaceBridge } from "../bridge/types";
@@ -45,6 +46,8 @@ export const useSurfaceBridge = <Handle, Descriptor>({
   bridge: SurfaceBridge<Handle, Descriptor> | undefined;
   adapters: AdapterMap<Handle, Descriptor>;
 }): SurfaceController<Handle> => {
+  const eventBus = useAnnotationEventBus();
+
   useEffect(
     () => (bridge ? engine.registerBridge(bridge, adapters) : undefined),
     [engine, bridge, adapters],
@@ -53,8 +56,26 @@ export const useSurfaceBridge = <Handle, Descriptor>({
   return useMemo(
     () =>
       bridge
-        ? createSurfaceController({ engine, bridge, adapters })
+        ? createSurfaceController({
+            engine,
+            bridge,
+            adapters,
+            // wakes `useAutoInterpolate`: a frame-level geometry edit
+            // auto-promoted to a keyframe must re-run linear interp on
+            // the bracketing tween segments. `trackId` is empty for now —
+            // the only listener (`useAutoInterpolate`) reads instanceId/
+            // frame/kind; downstream `trackId` consumers will be audited
+            // separately.
+            onAutoKeyframe: (_ref, frame, instanceId) => {
+              eventBus.dispatch("annotation:keyframeChanged", {
+                trackId: "",
+                instanceId,
+                frame,
+                kind: "set",
+              });
+            },
+          })
         : (NOT_READY_CONTROLLER as SurfaceController<Handle>),
-    [engine, bridge, adapters],
+    [engine, bridge, adapters, eventBus],
   );
 };

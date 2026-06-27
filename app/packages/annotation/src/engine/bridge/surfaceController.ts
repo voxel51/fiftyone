@@ -96,16 +96,27 @@ export const createSurfaceActions = ({
   };
 };
 
-interface ControllerDeps<Handle, Descriptor> {
+export interface ControllerDeps<Handle, Descriptor> {
   engine: AnnotationEngine;
   bridge: SurfaceBridge<Handle, Descriptor>;
   adapters: AdapterMap<Handle, Descriptor>;
+  /**
+   * Fired when `commit` auto-promotes a frame-level geometry edit to a
+   * keyframe (see `autoKeyframeOnGeometryEdit`). The React bridge wires
+   * this to the annotation event bus so `useAutoInterpolate` can re-run
+   * linear interp on the bracketing tween segments.
+   *
+   * Lives as a dep (not an event-bus import) to keep this package free
+   * of React/hook coupling.
+   */
+  onAutoKeyframe?: (ref: LabelRef, frame: number, instanceId: string) => void;
 }
 
 export const createSurfaceController = <Handle, Descriptor>({
   engine,
   bridge,
   adapters,
+  onAutoKeyframe,
 }: ControllerDeps<Handle, Descriptor>): SurfaceController<Handle> => {
   const actions = createSurfaceActions({
     engine,
@@ -140,6 +151,10 @@ export const createSurfaceController = <Handle, Descriptor>({
 
       const ref = bridge.refOf(handle);
       const partial = autoKeyframeOnGeometryEdit(ref.path, rawPartial);
+      // reference inequality means the helper promoted; idempotent
+      // pass-through (already keyframed) shares identity with rawPartial
+      // and must NOT re-fire the dispatch
+      const promoted = partial !== rawPartial;
 
       // origin suppression: the loop must not echo this surface's own
       // write back onto the handle — the handle may hold state newer than
@@ -156,6 +171,18 @@ export const createSurfaceController = <Handle, Descriptor>({
         }
       } finally {
         bridge.isWriting = false;
+      }
+
+      // dispatched AFTER the try/finally so the engine write is fully
+      // committed before downstream interpolators wake up. Guard `frame`
+      // for sample-level safety even though the helper's `frames.` gate
+      // should make this unreachable.
+      if (promoted && onAutoKeyframe && ref.frame !== undefined) {
+        onAutoKeyframe(
+          toLabelRef(bridge.sample, ref),
+          ref.frame,
+          ref.instanceId,
+        );
       }
     },
 

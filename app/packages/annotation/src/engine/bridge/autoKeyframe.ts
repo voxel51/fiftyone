@@ -29,5 +29,15 @@ export const autoKeyframeOnGeometryEdit = (
     refPath.startsWith("frames.") &&
     ("bounding_box" in partial || "points" in partial);
 
-  return isFrameLevelGeometry ? { ...partial, keyframe: true } : partial;
+  if (!isFrameLevelGeometry) {
+    return partial;
+  }
+
+  // already a keyframe: identity pass-through so callers can detect a
+  // promotion via reference equality (`partial !== rawPartial`)
+  if (partial.keyframe === true) {
+    return partial;
+  }
+
+  return { ...partial, keyframe: true };
 };

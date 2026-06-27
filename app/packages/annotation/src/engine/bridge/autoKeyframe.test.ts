@@ -55,14 +55,19 @@ describe("autoKeyframeOnGeometryEdit", () => {
   });
 
   it("idempotent: keyframe already true stays true and bbox passes through", () => {
-    const result = autoKeyframeOnGeometryEdit("frames.detections", {
+    const partial = {
       bounding_box: [0.1, 0.2, 0.3, 0.4],
       keyframe: true,
-    });
+    };
+    const result = autoKeyframeOnGeometryEdit("frames.detections", partial);
     expect(result).toEqual({
       bounding_box: [0.1, 0.2, 0.3, 0.4],
       keyframe: true,
     });
+    // reference equality is the contract: surface controllers detect a
+    // promotion by `partial !== rawPartial` and skip downstream dispatch
+    // when the partial was already a keyframe
+    expect(result).toBe(partial);
   });
 
   it("explicit keyframe=false on a geometry edit is overridden to true", () => {
