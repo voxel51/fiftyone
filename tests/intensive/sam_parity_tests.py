@@ -1455,10 +1455,6 @@ class TestSAM3ConceptParity(unittest.TestCase):
         direct_field = "sam3_concept_direct"
 
         self.dataset.apply_model(self.fo_model, label_field=fo_field)
-        self.dataset.set_field(
-            f"{fo_field}.detections.label",
-            F("label").if_else(F("label"), PLACEHOLDER_LABEL),
-        ).save()
 
         for sample in self.dataset.iter_samples(progress=False, autosave=True):
             image = _get_image_as_pil(sample.filepath)
@@ -1474,7 +1470,7 @@ class TestSAM3ConceptParity(unittest.TestCase):
                     prompt=prompt_text,
                 )
                 dets = _concept_output_to_detections(
-                    output, img_h, img_w, label=PLACEHOLDER_LABEL
+                    output, img_h, img_w, label=prompt_text
                 )
                 all_dets.extend(dets.detections)
 
@@ -1490,7 +1486,7 @@ class TestSAM3ConceptParity(unittest.TestCase):
 
     def test_concept_multi_prompt_parity(self):
         """Multiple text prompts: verify each prompt's detections match."""
-        multi_prompts = ["person", "car"]
+        multi_prompts = self.dataset.distinct("ground_truth.detections.label")
 
         fo_model_multi = foz.load_zoo_model(
             self.MODEL_NAME,
@@ -1502,10 +1498,6 @@ class TestSAM3ConceptParity(unittest.TestCase):
         direct_field = "sam3_multi_direct"
 
         self.dataset.apply_model(fo_model_multi, label_field=fo_field)
-        self.dataset.set_field(
-            f"{fo_field}.detections.label",
-            F("label").if_else(F("label"), PLACEHOLDER_LABEL),
-        ).save()
 
         for sample in self.dataset.iter_samples(progress=False, autosave=True):
             image = _get_image_as_pil(sample.filepath)
@@ -1521,7 +1513,7 @@ class TestSAM3ConceptParity(unittest.TestCase):
                     prompt=prompt_text,
                 )
                 dets = _concept_output_to_detections(
-                    output, img_h, img_w, label=PLACEHOLDER_LABEL
+                    output, img_h, img_w, label=prompt_text
                 )
                 all_dets.extend(dets.detections)
 

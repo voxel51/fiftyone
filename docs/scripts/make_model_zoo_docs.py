@@ -98,6 +98,7 @@ _MODEL_TEMPLATE = """
 {% elif 'segment-anything' in name and 'video' in name %}
     dataset = foz.load_zoo_dataset("quickstart-video", max_samples=2)
 
+{% if 'segment-anything-3' not in name %}
     # Only retain detections in the first frame
     (
         dataset
@@ -105,6 +106,7 @@ _MODEL_TEMPLATE = """
         .set_field("frames.detections", None)
         .save()
     )
+{% endif %}
 {% elif 'med-sam' in name %}
     dataset = load_from_hub("Voxel51/BTCV-CT-as-video-MedSAM2-dataset")[:2]
 
@@ -128,7 +130,75 @@ _MODEL_TEMPLATE = """
     )
 {% endif %}
 
-{% if 'segment-anything' in tags and 'video' not in tags %}
+{% if 'segment-anything-3' in name and 'video' not in name %}
+    # Concept mode: find and segment all objects matching a text prompt
+    model = foz.load_zoo_model(
+        "{{ name }}",
+        operation_mode="concept",
+        classes=["person", "car", "dog"],
+    )
+    dataset.apply_model(model, label_field="segmentations_concept")
+
+    # Exemplar concept mode: find and segment object with text prompts and exemplar Detections
+    model = foz.load_zoo_model(
+        "{{ name }}",
+        operation_mode="concept",
+        classes=["person"],
+    )
+    dataset.apply_model(
+            model,
+            label_field="segmentations_concept_with_exemplar",
+            prompt_field="person_detections", # contains exemplar Detections with positive / negative labels
+        )
+
+    # Visual mode: segment inside boxes or using keypoints
+    model = foz.load_zoo_model(
+        "{{ name }}",
+        operation_mode="visual",
+    )
+    dataset.apply_model(
+        model,
+        label_field="segmentations",
+        prompt_field="ground_truth",  # can contain Detections or Keypoints
+    )
+
+    session = fo.launch_app(dataset)
+{% elif 'segment-anything-3' in name and 'video' in name %}
+    # Concept mode: find and segment object with text prompts on selected frame, and track objects across frames
+    model = foz.load_zoo_model(
+        "{{ name }}",
+        classes=["person"],
+        operation_mode="concept",
+        propagation_direction="forward", # also supports backward and both
+        text_frame_idx=1,
+    )
+    dataset.apply_model(model, label_field="segmentations_concept")
+
+    # Exemplar concept mode: text prompt + exemplar boxes on frame 1, propagate forward
+    model = foz.load_zoo_model(
+        "{{ name }}",
+        classes=["person"],
+        operation_mode="concept",
+        propagation_direction="both",
+        prompt_frame_indices=[1],
+    )
+    dataset.apply_model(
+        model,
+        label_field="segmentations_concept_with_exemplar",
+        prompt_field="frames.person_detections",  # exemplar Detections on frame 1
+    )
+
+    # Visual mode: segment inside boxes and propagate to all frames
+    model = foz.load_zoo_model("{{ name }}")
+    dataset.apply_model(
+        model,
+        label_field="segmentations",
+        prompt_field="frames.detections",  # can contain Detections or Keypoints
+        prompt_frame_indices=[1],
+    )
+
+    session = fo.launch_app(dataset)
+{% elif 'segment-anything' in tags and 'video' not in tags %}
     model = foz.load_zoo_model("{{ name }}")
 
     # Segment inside boxes
