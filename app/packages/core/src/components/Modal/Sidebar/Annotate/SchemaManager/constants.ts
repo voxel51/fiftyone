@@ -47,6 +47,11 @@ export const isSystemReadOnlyField = (fieldName: string): boolean =>
 // Attribute Type & Component Constants
 // =============================================================================
 
+// Suffix appended to label-type options that aren't yet supported on video.
+// The select consumer also gates the create button on the option's
+// `unsupported` flag, so this is purely a hint to the user.
+export const UNSUPPORTED_SUFFIX = " (coming soon)";
+
 // Label type options for new field creation (image datasets)
 export const LABEL_TYPE_OPTIONS = [
   { id: "detections", data: { label: "Detections" } },
@@ -61,13 +66,35 @@ export const LABEL_TYPE_OPTIONS_3D = [
   { id: "classification", data: { label: "Classification" } },
 ];
 
+// Label type options for frame-level fields on video datasets. In M1 only
+// frame-level detections are fully supported; classification and polylines
+// are surfaced for discoverability but marked unsupported.
+export const LABEL_TYPE_OPTIONS_VIDEO_FRAME = [
+  { id: "detections", data: { label: "Detections" } },
+  {
+    id: "classification",
+    data: { label: `Classification${UNSUPPORTED_SUFFIX}` },
+    unsupported: true,
+  },
+  {
+    id: "polylines",
+    data: { label: `Polylines${UNSUPPORTED_SUFFIX}` },
+    unsupported: true,
+  },
+];
+
 // Label type options for sample-level fields on video datasets. Spatial labels
 // (detections/polylines) are frame-level only on video, so a sample-level field
 // is limited to the clip-level label types. Frame fields (a "frames." prefix)
-// use LABEL_TYPE_OPTIONS instead — see getLabelTypeOptions.
+// use LABEL_TYPE_OPTIONS_VIDEO_FRAME instead — see getLabelTypeOptions.
+// Classification on the sample (clip) level is not yet supported in M1.
 export const LABEL_TYPE_OPTIONS_VIDEO = [
-  { id: "classification", data: { label: "Classification" } },
   { id: "temporaldetections", data: { label: "Temporal Detections" } },
+  {
+    id: "classification",
+    data: { label: `Classification${UNSUPPORTED_SUFFIX}` },
+    unsupported: true,
+  },
 ];
 
 // =============================================================================

@@ -13,6 +13,7 @@ import {
   LABEL_TYPE_OPTIONS,
   LABEL_TYPE_OPTIONS_3D,
   LABEL_TYPE_OPTIONS_VIDEO,
+  LABEL_TYPE_OPTIONS_VIDEO_FRAME,
   LIST_TYPES,
   NUMERIC_TYPES,
   SYSTEM_READ_ONLY_FIELD_NAME,
@@ -711,7 +712,9 @@ export const getLabelTypeOptions = (
     return LABEL_TYPE_OPTIONS_3D;
   }
   if (mediaType === "video") {
-    return isFrameField ? LABEL_TYPE_OPTIONS : LABEL_TYPE_OPTIONS_VIDEO;
+    return isFrameField
+      ? LABEL_TYPE_OPTIONS_VIDEO_FRAME
+      : LABEL_TYPE_OPTIONS_VIDEO;
   }
   return LABEL_TYPE_OPTIONS;
 };

@@ -113,7 +113,24 @@ const NewFieldSchema = () => {
     [fieldName, schemasData, currentMediaType],
   );
 
-  const canCreate = fieldName.trim() !== "" && !fieldNameError && !isCreating;
+  // Selected label-type option may carry an `unsupported` flag (see
+  // LABEL_TYPE_OPTIONS_VIDEO[_FRAME]) for label types that aren't yet
+  // supported on video. The suffix in the option label hints to the user,
+  // and this gate blocks creation outright.
+  const selectedLabelOption = useMemo(
+    () => labelTypeOptions.find((option) => option.id === labelType),
+    [labelTypeOptions, labelType],
+  );
+  const labelTypeUnsupported =
+    category === "label" &&
+    (selectedLabelOption as { unsupported?: boolean } | undefined)
+      ?.unsupported === true;
+
+  const canCreate =
+    fieldName.trim() !== "" &&
+    !fieldNameError &&
+    !isCreating &&
+    !labelTypeUnsupported;
 
   const handleCategoryChange = useCallback((index: number) => {
     setCategory(index === CATEGORY_LABEL ? "label" : "primitive");
@@ -372,6 +389,11 @@ const NewFieldSchema = () => {
                     : ATTRIBUTE_TYPE_OPTIONS
                 }
               />
+            }
+            error={
+              labelTypeUnsupported
+                ? "Not yet supported on video — coming in a future release"
+                : undefined
             }
           />
 
