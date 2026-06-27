@@ -750,35 +750,26 @@
         },
         {
             "base_name": "fc-clip-coco-torch",
-            "base_filename": "fcclip/models/fcclip_cocopan.pth",
+            "base_filename": null,
             "version": null,
-            "description": "Open-vocabulary panoptic segmentation trained on COCO panoptic; returns both thing and stuff segments as instance masks.",
-            "source": "https://github.com/bytedance/fc-clip",
-            "author": "Michael Ryoo, et al.",
-            "license": "Apache 2.0",
+            "description": "Open-vocabulary panoptic segmentation with FC-CLIP (COCO); returns both thing and stuff segments as instance masks. Uses frozen ConvNeXt-Large CLIP backbone + Mask2Former decoder.",
+            "source": "https://huggingface.co/neerajaabhyankar/fc-clip",
+            "author": "Jiarui Xu, et al. (ByteDance)",
+            "license": "MIT",
             "size_bytes": 83000000,
-            "manager": {
-                "type": "fiftyone.core.models.ModelManager",
-                "config": {}
-            },
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.fcclip.FCCLIPModel",
                 "config": {
-                    "score_threshold": 0.5,
-                    "raw_inputs": true
+                    "name_or_path": "neerajaabhyankar/fc-clip"
                 }
             },
             "requirements": {
                 "packages": [
                     "torch",
                     "torchvision",
-                    "detectron2",
+                    "transformers",
                     "open_clip_torch",
-                    "timm",
-                    "scipy",
-                    "shapely",
-                    "scikit-image",
-                    "gdown"
+                    "safetensors"
                 ],
                 "cpu": {
                     "support": true
@@ -792,10 +783,9 @@
                 "open-vocabulary",
                 "zero-shot",
                 "torch",
+                "transformers",
                 "clip",
                 "coco",
-                "ade20k",
-                "transformer",
                 "panoptic",
                 "instance"
             ],
@@ -805,7 +795,7 @@
                     "url": "https://cocodataset.org/"
                 }
             ],
-            "date_added": "2026-06-26 12:00:00"
+            "date_added": "2026-06-26 00:00:00"
         },
         {
             "base_name": "med-sam-2-video-torch",
