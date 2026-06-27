@@ -592,11 +592,9 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
     [tracks, expansion.expandedIds],
   );
 
-  const pinned = useMemo(() => visibleTracks.map((t) => t.id), [visibleTracks]);
-
   // Bootstrap on frame-tracks-resolved, not `tracks.length`: TD tracks resolve
   // synchronously and would otherwise trip the empty→ready flip before frame
-  // tracks land, leaving frame tracks unpinned.
+  // tracks land.
   const ready = frameTracksResolved;
 
   useScrollTrackToAnchor();
@@ -607,16 +605,19 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
     expandableParentIds,
   });
 
+  // Nothing is pinned by default: pinning is a user-driven noise-reduction
+  // filter (collapsed drawer shows only pinned). Auto-pinning every visible
+  // track on mount would make clicking pin appear to "delete" a track when
+  // the drawer is collapsed.
   return (
     <TrackProvider
       key={ready ? "ready" : "init"}
       tracks={visibleTracks}
-      initialPinnedIds={pinned}
+      initialPinnedIds={[]}
     >
       <TimelineWithTracks
         decorateTrack={decorateTrack}
         extraControls={<VideoAnnotationToolbar />}
-        autoExpandOnFirstTrack
       />
     </TrackProvider>
   );
