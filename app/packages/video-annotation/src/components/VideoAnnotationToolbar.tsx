@@ -29,8 +29,7 @@ const Action: React.FC<{ action: ToolbarActionItem }> = ({ action }) => {
 
   const button = (
     <Button
-      borderless
-      variant={Variant.Secondary}
+      variant={Variant.Icon}
       size={Size.Xs}
       disabled={action.isDisabled}
       aria-label={action.label}
