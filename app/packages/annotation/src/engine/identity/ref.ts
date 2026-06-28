@@ -67,8 +67,13 @@ export const refsEqual = (a: LabelRef, b: LabelRef): boolean =>
 export const refKey = (ref: LabelRef): string =>
   [ref.sample, ref.path, ref.instanceId, ref.frame ?? ""].join(" ");
 
-/** Frame-agnostic track key; hover is track-level (all occurrences light up). */
-export const hoverKey = (ref: LabelRef): string =>
+/**
+ * Frame-agnostic track key — one occurrence-spanning identity per (sample, path,
+ * instanceId). Coarser than {@link refKey} (drops `frame`) for things that are
+ * track-level, not occurrence-level: hover lights up all of a track's
+ * occurrences, and a frame-locked surface holds one HANDLE per track.
+ */
+export const trackKey = (ref: LabelRef): string =>
   [ref.sample, ref.path, ref.instanceId].join(" ");
 
 /** Linkage-class key (`instanceId` alone) — cross-slice highlight ONLY. */

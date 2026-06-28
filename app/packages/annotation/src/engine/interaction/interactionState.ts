@@ -7,7 +7,7 @@
  */
 
 import type { LabelRef } from "../identity/ref";
-import { hoverKey, refKey } from "../identity/ref";
+import { trackKey, refKey } from "../identity/ref";
 import type { LabelChange } from "../store/types";
 import { isWholeSampleReset } from "../store/types";
 import { DispatchGuard } from "../core/dispatchGuard";
@@ -113,12 +113,12 @@ export class InteractionState {
   }
 
   isHovered(ref: LabelRef): boolean {
-    return this.hovered.has(hoverKey(ref));
+    return this.hovered.has(trackKey(ref));
   }
 
   setHovered(ref: LabelRef, on: boolean): void {
     this.guard.assert("InteractionState.setHovered");
-    const key = hoverKey(ref);
+    const key = trackKey(ref);
 
     if (on === this.hovered.has(key)) {
       return;
@@ -189,7 +189,7 @@ export class InteractionState {
     let pruned = false;
 
     for (const ref of refs) {
-      pruned = this.hovered.delete(hoverKey(ref)) || pruned;
+      pruned = this.hovered.delete(trackKey(ref)) || pruned;
     }
 
     if (pruned) {
@@ -203,8 +203,8 @@ export class InteractionState {
   private prune(ref: LabelRef): boolean {
     const key = refKey(ref);
     const inActive = this.active.delete(key);
-    // hover is frame-agnostic (see hoverKey) — prune it on its own key
-    const inHovered = this.hovered.delete(hoverKey(ref));
+    // hover is frame-agnostic (see trackKey) — prune it on its own key
+    const inHovered = this.hovered.delete(trackKey(ref));
 
     if (inActive) {
       this.promoteAnchorIfWas(key);

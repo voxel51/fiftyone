@@ -31,7 +31,8 @@ import {
   useTemporal,
 } from "./react/hooks";
 import { FrameStore } from "./store/frameStore";
-import type { LabelChange } from "./store/types";
+import type { ChangeListener, LabelChange } from "./store/types";
+import { wholeSampleReset } from "./store/types";
 import { FrameTemporalView } from "./temporal/frameTemporalView";
 import type { Clock } from "./temporal/types";
 import {
@@ -1068,6 +1069,17 @@ const makeFrameWorld = (data?: Record<number, Record<string, LabelData[]>>) => {
   const store = new FrameStore("v", {
     labelTypes: { [FRAME_PATH]: LabelType.Detections },
   });
+
+  // capture the engine's store-change listener so a test can inject a
+  // sample-level `wholeSampleReset` — the composite video store's sample half
+  // emits one on every post-persist echo, driving the frame bridge's reconcile
+  // (the FrameStore itself only emits targeted changes + a reset on `clear`).
+  let emitEngineChange: ChangeListener | undefined;
+  const realSubscribeChanges = store.subscribeChanges.bind(store);
+  store.subscribeChanges = (listener) => {
+    emitEngineChange = listener;
+    return realSubscribeChanges(listener);
+  };
   engine.registerStore(store);
 
   // the canvas: a frame-locked retained surface (default posture); its
@@ -1094,7 +1106,11 @@ const makeFrameWorld = (data?: Record<number, Record<string, LabelData[]>>) => {
     act(() => store.setData(data));
   }
 
-  return { engine, store, seek, canvas, timeline };
+  // a sample-level whole-sample reset (post-persist echo), data intact
+  const emitWholeSampleReset = () =>
+    emitEngineChange?.([wholeSampleReset("v")]);
+
+  return { engine, store, seek, canvas, timeline, emitWholeSampleReset };
 };
 
 // track A spans frames 1–2 (distinct doc ids, one instance); B is on 2 only
@@ -1130,6 +1146,52 @@ describe("integration: frame-indexed temporal path through the engine", () => {
     act(() => seek(9));
     expect(canvas.handles.size).toBe(0);
     expect(timeline.result.current).toBe("A,B");
+  });
+
+  it("re-scrubbing to a visited frame re-applies its geometry (the handle is per-track, not per-frame)", () => {
+    // Regression: the read-half skip-if-unchanged ledger keys on the HANDLE
+    // (one per track), not the frame-inclusive ref. Keying per-frame let a
+    // forward RE-VISIT skip — the box froze at whatever frame it last showed on
+    // a second scrub pass (a lerped track that stops tracking the playhead).
+    const { seek, canvas } = makeFrameWorld(CLIP);
+
+    // 1 → 2: A refreshes to frame-2 geometry
+    act(() => seek(2));
+    expect(canvas.handle("A")?.label.bounding_box).toEqual([0, 0, 2, 2]);
+
+    // back to 1: A refreshes to frame-1 geometry
+    act(() => seek(1));
+    expect(canvas.handle("A")?.label.bounding_box).toEqual([0, 0, 1, 1]);
+
+    // forward to 2 AGAIN: the revisit must re-apply frame-2 geometry, not stay
+    // frozen at frame 1
+    act(() => seek(2));
+    expect(canvas.handle("A")?.label.bounding_box).toEqual([0, 0, 2, 2]);
+  });
+
+  it("a post-scrub whole-sample reconcile refreshes the present track in place (no teardown churn)", () => {
+    // Regression: the reconcile ledger (`known`) keys on the HANDLE (trackKey),
+    // not the per-frame ref. Keying per-frame let scrubbing accumulate phantom
+    // occurrences, so the next whole-sample reset (every post-persist echo)
+    // diffed them as "gone" and tore the live overlay down + rebuilt it (and
+    // re-decoded its mask) on every autosave after a scrub.
+    const { seek, canvas, emitWholeSampleReset } = makeFrameWorld(CLIP);
+
+    // project A at more than one frame, then return to frame 1
+    act(() => seek(2));
+    act(() => seek(1));
+
+    const handleBefore = canvas.handle("A");
+    const mountsBefore = canvas.mountCount();
+    expect(handleBefore?.label.bounding_box).toEqual([0, 0, 1, 1]);
+
+    // the post-persist sample echo: the present handle must REFRESH in place —
+    // same object, no remount — not be torn down and rebuilt
+    act(() => emitWholeSampleReset());
+
+    expect(canvas.handle("A")).toBe(handleBefore);
+    expect(canvas.mountCount()).toBe(mountsBefore);
+    expect(canvas.handle("A")?.label.bounding_box).toEqual([0, 0, 1, 1]);
   });
 
   it("a current-frame edit converges on the canvas, persists, and undoes", () => {

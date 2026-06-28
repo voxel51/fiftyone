@@ -17,7 +17,7 @@ import { equalsNormalized } from "@fiftyone/utilities";
 
 import type { AnnotationEngine } from "../core/engine";
 import type { LabelRef } from "../identity/ref";
-import { refKey, refsEqual, toLabelRef } from "../identity/ref";
+import { refKey, refsEqual, toLabelRef, trackKey } from "../identity/ref";
 import type { LabelChange } from "../store/types";
 import { isWholeSampleReset } from "../store/types";
 import type { AdapterMap, LabelKindAdapter, SurfaceBridge } from "./types";
@@ -38,18 +38,34 @@ export const registerBridgeLoop = <Handle, Descriptor>(
     ref.sample === bridge.sample &&
     (bridge.paths === undefined || bridge.paths.has(ref.path));
 
-  /** Refs known to have a live handle — the reconcile ledger for resets.
-   *  Stale entries are harmless: `resolveHandle` re-checks before unmount. */
+  /**
+   * Refs known to have a live handle — the reconcile ledger for resets, keyed by
+   * `trackKey` (the handle's identity), NOT `refKey`. A frame-locked surface has
+   * one handle per track, so keying per-occurrence would let scrubbing
+   * accumulate a stale entry per visited frame; the next whole-sample reconcile
+   * would then diff those phantom occurrences as "gone" and unmount the live
+   * handle, only to re-mount it — tearing down + rebuilding the present overlay
+   * (and re-decoding its mask) on every autosave after a scrub. One entry per
+   * track keeps the reset a refresh-in-place. Stale entries are harmless:
+   * `resolveHandle` re-checks before unmount. */
   const known = new Map<string, LabelRef>();
 
   /**
-   * The label last applied to each handle, by refKey. A reproject whose label
-   * equals this is a no-op: re-applying it would clobber any in-flight canvas
-   * interaction (a resize, a half-drawn polyline, a fresh mask stroke) whose
-   * transient value has NOT reached the engine — the engine still resolves the
-   * committed value, so applying it would snap the overlay back. Routine resets
-   * (a sample-level `setData` round-trip → `wholeSampleReset`) drive a full
-   * reconcile, so without this every autosave tick re-applies every overlay. */
+   * The label last applied to each HANDLE, keyed by `trackKey` (track identity,
+   * frame-agnostic) — NOT `refKey`. A frame-locked surface holds ONE handle per
+   * track (`resolveHandle` keys on `instanceId`), reused across frames, so the
+   * ledger must be per-handle: keying by frame-inclusive `refKey` would record a
+   * separate "last applied" per frame, and re-visiting a frame whose entry still
+   * matches would skip — leaving the handle stale at whatever frame it last
+   * showed (a box that stops tracking the playhead on a second scrub pass).
+   *
+   * A reproject whose label equals this is a no-op: re-applying it would clobber
+   * any in-flight canvas interaction (a resize, a half-drawn polyline, a fresh
+   * mask stroke) whose transient has NOT reached the engine — the engine still
+   * resolves the committed value, so applying it would snap the overlay back.
+   * Routine resets (a sample-level `setData` round-trip → `wholeSampleReset`)
+   * drive a full reconcile, so without this every autosave tick re-applies every
+   * overlay. */
   const lastApplied = new Map<string, LabelData>();
 
   /** Every mount path applies current interaction state to the fresh handle. */
@@ -82,8 +98,8 @@ export const registerBridgeLoop = <Handle, Descriptor>(
       bridge.unmount(handle);
     }
 
-    known.delete(refKey(ref));
-    lastApplied.delete(refKey(ref));
+    known.delete(trackKey(ref));
+    lastApplied.delete(trackKey(ref));
   };
 
   /** Re-read current state and reconcile one ref onto the surface. */
@@ -110,8 +126,8 @@ export const registerBridgeLoop = <Handle, Descriptor>(
       return;
     }
 
-    known.set(refKey(ref), ref);
-    const key = refKey(ref);
+    const key = trackKey(ref);
+    known.set(key, ref);
 
     if (handle !== undefined) {
       // skip-if-unchanged: a reproject whose engine-resolved value equals what
@@ -150,7 +166,7 @@ export const registerBridgeLoop = <Handle, Descriptor>(
    */
   const reconcile = (): void => {
     const current = currentRefs();
-    const currentKeys = new Set(current.map(refKey));
+    const currentKeys = new Set(current.map(trackKey));
 
     for (const [key, ref] of [...known]) {
       if (!currentKeys.has(key)) {
@@ -178,7 +194,7 @@ export const registerBridgeLoop = <Handle, Descriptor>(
           continue;
         }
 
-        const key = refKey(change.ref);
+        const key = trackKey(change.ref);
 
         if (change.kind === "delete") {
           lastApplied.delete(key);
