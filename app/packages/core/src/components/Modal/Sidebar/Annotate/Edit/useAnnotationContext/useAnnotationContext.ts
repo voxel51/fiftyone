@@ -1,4 +1,8 @@
-import type { LabelRef } from "@fiftyone/annotation";
+import {
+  type LabelRef,
+  useActiveAnnotationSampleId,
+  useAnnotationEngine,
+} from "@fiftyone/annotation";
 import { useLighter } from "@fiftyone/lighter";
 import type { AnnotationLabel } from "@fiftyone/state";
 import { atom, type PrimitiveAtom, useAtomValue, useSetAtom } from "jotai";
@@ -59,6 +63,8 @@ const lastUsedLabelAtom = atomFamily(
  */
 export const useAnnotationContext = (): AnnotationContext => {
   const { scene, addOverlay, overlayFactory } = useLighter();
+  const engine = useAnnotationEngine();
+  const sample = useActiveAnnotationSampleId();
 
   const label = useAtomValue(current);
   const data = useAtomValue(currentData);
@@ -298,7 +304,7 @@ export const useAnnotationContext = (): AnnotationContext => {
       const built = createNewLabel(
         createType,
         { ...overrides, field: resolvedField, labelValue: resolvedLabelValue },
-        { scene, addOverlay, overlayFactory },
+        { scene, addOverlay, overlayFactory, engine, sample },
       );
 
       if (built) {
@@ -318,7 +324,9 @@ export const useAnnotationContext = (): AnnotationContext => {
       clear,
       computeFieldFor,
       computeLabelFor,
+      engine,
       overlayFactory,
+      sample,
       scene,
       setEditingLabel,
       setPendingNewType,
