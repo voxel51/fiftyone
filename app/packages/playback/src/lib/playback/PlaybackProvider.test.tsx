@@ -398,56 +398,66 @@ describe("PlaybackProvider engine actions", () => {
 
       it("crossing frame boundaries during a drag advances the playhead in discrete jumps", () => {
         const { result } = renderEngine({ snapToFrameOnSettle: true });
-        // Frame 15 = [0.5, 0.5333); frame 16 = [0.5333, 0.5667).
-        // Initial playhead at 0 (frame 0): 0.51 >= T_1, so floor-snap kicks in.
+        // Cell K spans [K*step, (K+1)*step). At step = 1/30:
+        //   cell 15 = [0.5, 0.5333); cell 16 = [0.5333, 0.5667).
+        // 0.51 is in cell 15 → snap to 15/30.
         act(() => result.current.api.seekSnapped(0.51));
         expect(result.current.playhead).toBeCloseTo(15 / 30, 5);
-        // At T_15, T_next = T_16 = 0.5333. 0.54 >= T_16 → snap forward.
+        // 0.54 is in cell 16 → snap to 16/30.
         act(() => result.current.api.seekSnapped(0.54));
         expect(result.current.playhead).toBeCloseTo(16 / 30, 5);
-        // At T_16, hysteresis is (T_15, T_17) = (0.5, 0.5667). 0.52 is
-        // inside the zone → stays at T_16 (snap-on-arrival both ways).
+        // 0.52 is back in cell 15 → snap to 15/30 (cell-based, no dead-band).
         act(() => result.current.api.seekSnapped(0.52));
-        expect(result.current.playhead).toBeCloseTo(16 / 30, 5);
+        expect(result.current.playhead).toBeCloseTo(15 / 30, 5);
       });
 
-      describe("hysteresis", () => {
+      describe("symmetric cell-based snap", () => {
         const STEP = 1 / 30;
         const T = (n: number) => n * STEP;
 
-        it("forward scrub within (T_N, T_{N+1}) stays on frame N", () => {
+        it("target inside the current cell stays on the current frame", () => {
           const { result } = renderEngine({ snapToFrameOnSettle: true });
-          // Settle on frame 5 first.
+          // Settle on cell 5 (playhead at T(5) = start of cell 5).
           act(() => result.current.api.seekSnapped(T(5)));
           expect(result.current.playhead).toBeCloseTo(T(5), 5);
-          // A target between T_5 and T_6 must stay on T_5 — the playhead
-          // only snaps when the cursor reaches the next anchor.
+          // A target between T(5) and T(6) is still in cell 5 → stays on T(5).
           act(() => result.current.api.seekSnapped(T(5) + STEP * 0.4));
           expect(result.current.playhead).toBeCloseTo(T(5), 5);
         });
 
-        it("forward scrub reaching T_{N+1} snaps to frame N+1", () => {
+        it("dragging forward by exactly one frame width advances one frame", () => {
           const { result } = renderEngine({ snapToFrameOnSettle: true });
           act(() => result.current.api.seekSnapped(T(5)));
-          // Exactly at T_6 → forward snap fires.
-          act(() => result.current.api.seekSnapped(T(6)));
+          // Cursor at T(5) + STEP = T(6) → cell 6 → snap to T(6).
+          act(() => result.current.api.seekSnapped(T(5) + STEP));
           expect(result.current.playhead).toBeCloseTo(T(6), 5);
         });
 
-        it("backward scrub within (T_{N-1}, T_N) stays on frame N", () => {
+        it("dragging backward by exactly one frame width retreats one frame", () => {
           const { result } = renderEngine({ snapToFrameOnSettle: true });
           act(() => result.current.api.seekSnapped(T(5)));
-          // A target between T_4 and T_5 must NOT eagerly snap to T_4 the
-          // way the old floor-snap did — this is the bug fix.
-          act(() => result.current.api.seekSnapped(T(5) - STEP * 0.4));
-          expect(result.current.playhead).toBeCloseTo(T(5), 5);
+          // Cursor at T(5) - STEP = T(4) → cell 4 → snap to T(4). This is
+          // the symmetric counterpart of the forward case — the previous
+          // hysteresis required 2 * STEP backward motion to trigger a snap.
+          act(() => result.current.api.seekSnapped(T(5) - STEP));
+          expect(result.current.playhead).toBeCloseTo(T(4), 5);
         });
 
-        it("backward scrub reaching T_{N-1} snaps to frame N-1", () => {
-          const { result } = renderEngine({ snapToFrameOnSettle: true });
-          act(() => result.current.api.seekSnapped(T(5)));
-          act(() => result.current.api.seekSnapped(T(4)));
-          expect(result.current.playhead).toBeCloseTo(T(4), 5);
+        it("forward and backward thresholds are identical in absolute seconds", () => {
+          // From the same starting anchor, advancing by +delta and retreating
+          // by -delta must produce mirror-image behavior for any delta == STEP.
+          const renderFwd = renderEngine({ snapToFrameOnSettle: true });
+          act(() => renderFwd.result.current.api.seekSnapped(T(5)));
+          act(() => renderFwd.result.current.api.seekSnapped(T(5) + STEP));
+          const fwdDelta = renderFwd.result.current.playhead - T(5);
+
+          const renderBack = renderEngine({ snapToFrameOnSettle: true });
+          act(() => renderBack.result.current.api.seekSnapped(T(5)));
+          act(() => renderBack.result.current.api.seekSnapped(T(5) - STEP));
+          const backDelta = T(5) - renderBack.result.current.playhead;
+
+          expect(fwdDelta).toBeCloseTo(backDelta, 5);
+          expect(fwdDelta).toBeCloseTo(STEP, 5);
         });
 
         it("big forward jump past multiple anchors snaps to the landing frame", () => {
