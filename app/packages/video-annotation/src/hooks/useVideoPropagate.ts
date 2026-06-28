@@ -9,10 +9,11 @@ import {
   useAnnotationEngine,
   useSampleDescriptor,
 } from "@fiftyone/annotation";
-import type {
-  LabelData,
-  PropagationBlob,
-  SyntheticBox,
+import {
+  type LabelData,
+  LabelType,
+  type PropagationBlob,
+  type SyntheticBox,
 } from "@fiftyone/utilities";
 import { createElement, useCallback } from "react";
 import { PropagationStatusItem } from "../components/PropagationStatusItem";
@@ -25,6 +26,10 @@ import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 import { useImaVidImageStream } from "../streams/imaVidImageStreamHandle";
 
 export type PropagationMethod = "sam2" | "linear";
+
+/** Bbox-bearing detection fields — the only kinds propagation can interpolate. */
+const isBoxFieldType = (type: LabelType): boolean =>
+  type === LabelType.Detection || type === LabelType.Detections;
 
 /** The engine's stored detection as the `SyntheticBox` the agents consume. */
 const toSyntheticBox = (label: LabelData): SyntheticBox => ({
@@ -285,6 +290,14 @@ export const useVideoPropagate = () => {
       const path = pathOverride ?? `frames.${stream.labelsField}`;
       const at: FrameReader = (frame) =>
         engine.getLabel({ sample: sampleId, path, instanceId, frame });
+
+      // propagation interpolates a bounding box, so it applies only to detection
+      // fields — a polyline (or any non-box) field has nothing to lerp and would
+      // feed the bbox agent an undefined box. Gate on the schema type, not the
+      // presence of a `bounding_box` on the label.
+      if (!isBoxFieldType(engine.getLabelType(path))) {
+        return false;
+      }
 
       const leftKeyframe = at(fromFrame);
 

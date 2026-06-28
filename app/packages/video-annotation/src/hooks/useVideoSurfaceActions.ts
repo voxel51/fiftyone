@@ -158,10 +158,9 @@ const makeTrackOps = (
   engine: AnnotationEngine,
 ) => {
   const { path, fps, totalFrames } = ctx;
-  const { read, content, trackFrames } = reader;
 
-  // A track may live on a non-primary frame field; resolve a reader scoped to
-  // its own path. The shared `reader` is the primary-field fast path.
+  // Every op resolves its reader through `readerFor` (the track's own field),
+  // which returns the shared `reader` for the primary-field fast path.
   const readerFor = (fieldPath: string): FrameReader =>
     fieldPath === path
       ? reader
