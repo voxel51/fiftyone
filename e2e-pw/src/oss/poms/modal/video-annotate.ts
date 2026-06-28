@@ -127,6 +127,40 @@ export class VideoAnnotatePom {
       .first();
   }
 
+  /** The human-readable interval span shown in a track bar's `title` tooltip. */
+  async trackBarTitle(trackId: string): Promise<string> {
+    return (await this.trackBar(trackId).getAttribute("title")) ?? "";
+  }
+
+  /**
+   * Drag a TD interval's END resize handle by `dxPx` pixels (positive = later),
+   * resizing its `support` end. The drag uses document-level mouse listeners and
+   * a 3px threshold, so move in several steps past it before releasing.
+   */
+  async dragTemporalIntervalEnd(trackId: string, dxPx: number) {
+    const handle = this.page
+      .locator(`[data-track-id="${trackId}"] [data-resize-handle="end"]`)
+      .first();
+    const box = await handle.boundingBox();
+
+    if (!box) {
+      throw new Error(`no end resize handle for track ${trackId}`);
+    }
+
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    const steps = 8;
+
+    await this.page.mouse.move(x, y);
+    await this.page.mouse.down();
+
+    for (let i = 1; i <= steps; i++) {
+      await this.page.mouse.move(x + (dxPx * i) / steps, y);
+    }
+
+    await this.page.mouse.up();
+  }
+
   /**
    * Right-click a track's interval bar and choose "Delete track" from the
    * timeline context menu — removes the whole track (every frame's label),
