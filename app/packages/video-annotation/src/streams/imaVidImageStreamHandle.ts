@@ -5,9 +5,9 @@ const { useStream, usePublishStream } = createStreamHandle<ImaVidImageStream>();
 
 /**
  * Active ImaVid image stream (decoded per-frame bitmaps). Published so
- * consumers outside the tile — e.g. SAM2 video propagation, which needs to
- * pull arbitrary frame bitmaps by index — can reach the stream instance to
- * call `warmup` / `getValue`.
+ * consumers outside the tile — e.g. propagation tooling that needs to pull
+ * arbitrary frame bitmaps by index — can reach the stream instance to call
+ * `warmup` / `getValue`.
  *
  * Mirrors {@link useFrameLabelsStream}: publication goes through
  * {@link usePublishImaVidImageStream} so external code can't write arbitrary

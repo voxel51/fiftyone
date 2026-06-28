@@ -22,8 +22,8 @@ import React from "react";
  * button — propagation polls the same flag via `shouldAbort`.
  *
  * @example
- * setContent(<PropagationStatusItem label="Loading SAM2…" onStop={stop} />);
- * setContent(<PropagationStatusItem label="SAM2 tracking" done={n} total={t} onStop={stop} />);
+ * setContent(<PropagationStatusItem label="Loading model…" onStop={stop} />);
+ * setContent(<PropagationStatusItem label="Propagating…" done={n} total={t} onStop={stop} />);
  */
 export const PropagationStatusItem: React.FC<{
   label: string;

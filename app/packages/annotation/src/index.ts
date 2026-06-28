@@ -13,7 +13,6 @@ export type {
 } from "./agents/types";
 export { useAgentRegistry } from "./agents/hooks/useAgentRegistry";
 export { useSampleDescriptor } from "./agents/hooks/useSampleDescriptor";
-export type { SAM2PropagationBrowserAgent } from "./agents/SAM2PropagationBrowserAgent";
 export * from "./events";
 export * from "./hooks";
 export * from "./persistence";

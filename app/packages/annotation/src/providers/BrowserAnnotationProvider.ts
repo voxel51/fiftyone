@@ -217,7 +217,7 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
 
   /**
    * Run SAM2 against an already-decoded frame bitmap (e.g. an ImaVid video
-   * frame). Used by video propagation; see `videoPropagation.ts`.
+   * frame).
    *
    * The bitmap is passed by structured clone, NOT as a transferable —
    * Firefox rejects a payload that both contains a bitmap and lists it in
