@@ -49,14 +49,14 @@ describe("buildTemporalDetectionTracks", () => {
 
       const ev = t.events[0];
       expect(ev.startSec).toBeCloseTo(0); // (1-1)/30
-      expect(ev.endSec).toBeCloseTo(30 / 30); // 30/30 = 1s
+      expect(ev.endSec).toBeCloseTo(29 / 30); // (30-1)/30 — frame N occupies [(N-1)/fps, N/fps)
       expect(ev.label).toBe("running");
     });
 
     it("converts 1-indexed inclusive frame support to seconds correctly", () => {
       // support = [16, 45] on a 30fps clip:
       //   startSec = (16 - 1) / 30 = 0.5
-      //   endSec   = 45 / 30 = 1.5
+      //   endSec   = (45 - 1) / 30 ≈ 1.4667
       const tracks = buildTemporalDetectionTracks({
         sample: { events: makeField(makeTd("a", [16, 45])) },
         fps: 30,
@@ -64,7 +64,7 @@ describe("buildTemporalDetectionTracks", () => {
       });
       const ev = tracks[0].events[0];
       expect(ev.startSec).toBeCloseTo(0.5);
-      expect(ev.endSec).toBeCloseTo(1.5);
+      expect(ev.endSec).toBeCloseTo(44 / 30);
     });
 
     it("marks emitted interval events as resizable for in-place edit", () => {
