@@ -150,7 +150,11 @@ export const createSurfaceController = <Handle, Descriptor>({
       }
 
       const ref = bridge.refOf(handle);
-      const partial = autoKeyframeOnGeometryEdit(ref.path, rawPartial);
+      // Pass the current label so the helper can distinguish a real
+      // geometry edit from a selection-only click whose adapter happens
+      // to echo the existing bbox/points back through the commit pipeline.
+      const current = engine.getLabel(toLabelRef(bridge.sample, ref));
+      const partial = autoKeyframeOnGeometryEdit(ref.path, rawPartial, current);
       // reference inequality means the helper hit the geometry gate; the
       // helper always returns a new object when it does (Case A: promote a
       // non-keyframe, Case B: re-anchor an existing keyframe). Downstream

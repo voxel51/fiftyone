@@ -534,11 +534,15 @@ describe("surface controller (write-half)", () => {
         updateHandle: (handle, label) => {
           handle.label = label;
         },
-        // the adapter emits a bbox partial — this is what makes the
-        // auto-keyframe rule fire when the path is frame-level
+        // the adapter emits a bbox partial DIFFERENT from the stored one,
+        // simulating a user-initiated geometry edit — this is what makes
+        // the auto-keyframe rule fire when the path is frame-level. (The
+        // helper now compares against the current label and only fires
+        // when geometry actually changed, so we can't echo the stored
+        // bbox here.)
         toLabel: (handle) => ({
           label: handle.label.label,
-          bounding_box: [0, 0, 1, 1],
+          bounding_box: [0.1, 0.2, 0.3, 0.4],
         }),
       };
 
@@ -621,7 +625,7 @@ describe("surface controller (write-half)", () => {
       // existing keyframe's geometry still needs to fire so the bracketing
       // tween segments re-interp. Downstream listeners coalesce.
       adapters[LabelType.Detections].toLabel = () => ({
-        bounding_box: [0, 0, 1, 1],
+        bounding_box: [0.1, 0.2, 0.3, 0.4],
         keyframe: true,
       });
       const onAutoKeyframe = vi.fn();
@@ -644,6 +648,38 @@ describe("surface controller (write-half)", () => {
       });
       expect(frameArg).toBe(3);
       expect(instanceArg).toBe("d1");
+    });
+
+    it("does not fire on a pure click that echoes the current geometry", () => {
+      // B22 regression: the commit pipeline fires for any handle commit,
+      // including a selection-only click whose adapter happens to emit the
+      // current bbox unchanged. The helper must filter this out so a click
+      // does NOT promote the label to a keyframe.
+      const { engine } = makeFrameSetup();
+      const { bridge, adapters, handle } = makeFrameSurface();
+      // adapter echoes the stored bbox verbatim — no geometry change
+      adapters[LabelType.Detections].toLabel = () => ({
+        bounding_box: [0, 0, 1, 1],
+      });
+      const onAutoKeyframe = vi.fn();
+      const controller = createSurfaceController({
+        engine,
+        bridge,
+        adapters,
+        onAutoKeyframe,
+      });
+
+      controller.commit(handle);
+
+      expect(onAutoKeyframe).not.toHaveBeenCalled();
+      // and the stored label is not silently flipped to keyframe=true
+      const stored = engine.getLabel({
+        sample: "sample-1",
+        path: FRAME_PATH,
+        instanceId: "d1",
+        frame: 3,
+      });
+      expect(stored?.keyframe).not.toBe(true);
     });
 
     it("does not fire when ref.frame is undefined (sample-level safety)", () => {

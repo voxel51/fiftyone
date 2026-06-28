@@ -72,6 +72,75 @@ describe("autoKeyframeOnGeometryEdit", () => {
     });
   });
 
+  it("does not promote when the bbox equals the current label's bbox (pure click)", () => {
+    // B22: a selection-only click flows through `commit` with the current
+    // geometry echoed in the partial. The helper must skip promotion AND
+    // signal "no promotion" by returning the original reference.
+    const partial = { bounding_box: [0.1, 0.2, 0.3, 0.4] };
+    const current = {
+      _id: "d1",
+      bounding_box: [0.1, 0.2, 0.3, 0.4],
+    };
+    const result = autoKeyframeOnGeometryEdit(
+      "frames.detections",
+      partial,
+      current,
+    );
+    expect(result).toBe(partial);
+    expect(result).not.toHaveProperty("keyframe");
+  });
+
+  it("does not promote when polyline points equal the current label's points", () => {
+    const partial = { points: [[[0.1, 0.2]]] };
+    const current = {
+      _id: "p1",
+      points: [[[0.1, 0.2]]],
+    };
+    const result = autoKeyframeOnGeometryEdit(
+      "frames.polylines",
+      partial,
+      current,
+    );
+    expect(result).toBe(partial);
+  });
+
+  it("promotes a real bbox nudge against the current label", () => {
+    const partial = { bounding_box: [0.1, 0.2, 0.3, 0.4] };
+    const current = {
+      _id: "d1",
+      bounding_box: [0.1, 0.2, 0.3, 0.5],
+    };
+    const result = autoKeyframeOnGeometryEdit(
+      "frames.detections",
+      partial,
+      current,
+    );
+    expect(result).not.toBe(partial);
+    expect(result.keyframe).toBe(true);
+  });
+
+  it("Case B: real edit on an already-keyframed label still re-fires", () => {
+    // A drag on a keyframed bbox must still produce a new object so the
+    // controller dispatches `onAutoKeyframe` and the bracketing tween
+    // segments re-interp. Equality is what gates the skip, not keyframe.
+    const partial = {
+      bounding_box: [0.15, 0.2, 0.3, 0.4],
+      keyframe: true,
+    };
+    const current = {
+      _id: "d1",
+      bounding_box: [0.1, 0.2, 0.3, 0.4],
+      keyframe: true,
+    };
+    const result = autoKeyframeOnGeometryEdit(
+      "frames.detections",
+      partial,
+      current,
+    );
+    expect(result).not.toBe(partial);
+    expect(result.keyframe).toBe(true);
+  });
+
   it("explicit keyframe=false on a geometry edit is overridden to true", () => {
     // Propagation-filled frames carry `keyframe: false`. A subsequent user
     // resize lands here with `keyframe: false` from the source; the auto-rule
