@@ -2,10 +2,13 @@ import {
   useActiveSampleId,
   useAnnotationEngine,
   useAnnotationEventHandler,
+  useSurfaceActions,
 } from "@fiftyone/annotation";
 import { useCallback } from "react";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 import { useVideoPropagate } from "./useVideoPropagate";
+
+const SURFACE = "video";
 
 /** Inclusive `[fromFrame, toFrame]` segment to re-propagate. */
 export type FrameRange = [number, number];
@@ -62,6 +65,7 @@ export const useAutoInterpolate = (): void => {
   const sampleId = useActiveSampleId();
   const stream = useFrameLabelsStream();
   const propagate = useVideoPropagate();
+  const actions = useSurfaceActions(engine, SURFACE);
 
   useAnnotationEventHandler(
     "annotation:keyframeChanged",
@@ -81,6 +85,9 @@ export const useAutoInterpolate = (): void => {
         // e.g. a polyline, re-lerps in place); fall back to the primary field
         const path = payload.path ?? `frames.${stream.labelsField}`;
         const keyframeFrames: number[] = [];
+        // Every frame the instance is present on (keyframe or filler). The tail
+        // step-hold below walks the trailing filler.
+        const presentFrames: number[] = [];
 
         for (let f = 1; f <= stream.totalFrames; f++) {
           const det = engine.getLabel({
@@ -90,7 +97,13 @@ export const useAutoInterpolate = (): void => {
             frame: f,
           });
 
-          if (det?.keyframe) {
+          if (!det) {
+            continue;
+          }
+
+          presentFrames.push(f);
+
+          if (det.keyframe) {
             keyframeFrames.push(f);
           }
         }
@@ -107,8 +120,61 @@ export const useAutoInterpolate = (): void => {
         segments.forEach(([from, to]) => {
           void propagate(instanceId, from, to, "linear", undoKey, path);
         });
+
+        // Case C — tail step-hold. Editing the LAST keyframe of a track has no
+        // keyframe after it to lerp toward, so the forward re-lerp above is a
+        // no-op for the trailing filler — yet a track can extend past its last
+        // keyframe with `keyframe: false` filler (a track extend, or the
+        // first-frame-only auto-keyframe asymmetry). Without this the filler
+        // keeps its stale geometry and the user sees a jump at `frame + 1`.
+        // Step-hold the edited keyframe's box forward over that filler,
+        // coalesced into the edit's undo unit. Detections only — a keyframe is a
+        // bbox concern (mirrors the guard in `useKeyframePromotionOnEdit`).
+        if (kind === "set") {
+          const anchor = engine.getLabel({
+            sample: sampleId,
+            path,
+            instanceId,
+            frame,
+          });
+          const hasNextKeyframe = keyframeFrames.some((kf) => kf > frame);
+
+          if (
+            anchor &&
+            Array.isArray(anchor.bounding_box) &&
+            !hasNextKeyframe
+          ) {
+            const tailFrames = presentFrames.filter((f) => f > frame);
+
+            if (tailFrames.length > 0) {
+              actions.transaction(
+                () => {
+                  for (const tailFrame of tailFrames) {
+                    const existing = engine.getLabel({
+                      sample: sampleId,
+                      path,
+                      instanceId,
+                      frame: tailFrame,
+                    });
+
+                    // Only overwrite filler — never a real keyframe in the tail.
+                    if (!existing || existing.keyframe === true) {
+                      continue;
+                    }
+
+                    actions.updateLabel(
+                      { path, instanceId, frame: tailFrame },
+                      { bounding_box: anchor.bounding_box, keyframe: false },
+                    );
+                  }
+                },
+                undoKey ? { undoKey } : undefined,
+              );
+            }
+          }
+        }
       },
-      [engine, sampleId, stream, propagate],
+      [engine, sampleId, stream, propagate, actions],
     ),
   );
 };
