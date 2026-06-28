@@ -12,7 +12,6 @@ import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 import { parseFramesData } from "../streams/framesData";
 import {
   useFrameLabelFields,
-  useTemporalDetectionFieldPaths,
   useVisibleLabelSchemas,
 } from "../state/accessors";
 
@@ -107,16 +106,21 @@ export const useSyncAnnotationVideoStore = (): void => {
 
 /**
  * Re-announce the sample-level backing once a sample-level label (e.g. a
- * sample Classification) becomes resolvable, so the engine Lighter bridge
- * hydrates its overlay on load.
+ * sample Classification, or a temporal detection) becomes resolvable, so the
+ * load-time consumers hydrate: the engine Lighter bridge mounts overlays and
+ * the temporal view refreshes its presence cache.
  *
- * The bridge runs its one-shot reconcile when the surface mounts — before the
- * `Sample`'s schema has resolved the field's label type. While the type reads
- * `Unknown` the field is excluded from the bridge's schema-derived enumeration,
- * so the overlay never mounts and (the `Sample` already being loaded) no later
- * change re-fires it; only an edit would. The frame backing avoids this because
- * `frames.setData` dispatches its own changes. Temporal detections avoid it by
- * rendering through `useTemporalOverlaySync` rather than the bridge.
+ * Both consumers run once when the surface mounts — before the `Sample`'s schema
+ * has resolved the field's label type. While the type reads `Unknown` the field
+ * is excluded (the bridge enumerates by schema-derived paths; the temporal view
+ * enumerates the store's label paths), and the `Sample` already being loaded, no
+ * later change re-fires them — only an edit would. The frame backing avoids this
+ * because `frames.setData` dispatches its own changes.
+ *
+ * A TD renders its overlay through `useTemporalOverlaySync` (not the bridge), but
+ * the annotate sidebar list is driven by `engine.temporal.getPresent()`, whose
+ * cache only recomputes on store changes — so a TD-only sample (no other
+ * sample-level field to nudge it) needs this resync to appear in the list.
  *
  * The signature folds in the resolved `getLabelType`, so it changes when the
  * label data lands AND again when the type settles — the latter is the edge
@@ -129,15 +133,13 @@ const useHydrateSampleLevelOverlays = (
   sampleLevelRef: MutableRefObject<SampleLabelStore | null>,
 ): void => {
   const visible = useVisibleLabelSchemas();
-  const tdPaths = useTemporalDetectionFieldPaths();
 
-  // Sample-level label fields that route through the bridge — exclude the frame
-  // fields (the FrameStore announces those) and TDs (their own sync renders).
+  // Sample-level label fields (exclude the frame fields — the FrameStore
+  // announces those itself). TDs are kept in: resync refreshes the temporal
+  // presence cache, and the bridge filters them out by kind on its own.
   const signature = useEngineSelector(engine, (reads) => {
-    const tds = new Set(tdPaths);
-
     return [...visible]
-      .filter((path) => !path.startsWith("frames.") && !tds.has(path))
+      .filter((path) => !path.startsWith("frames."))
       .sort()
       .map((path) => {
         const ids = reads
