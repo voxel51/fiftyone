@@ -207,7 +207,10 @@ describe("TimelineTrack", () => {
       const { container } = renderTrack({ duration: 10 });
       const lane = container.querySelector(`.${styles.lane}`) as HTMLElement;
       // Click at x=250 on a 1000-wide lane → 25% of view [0, 10] = 2.5s.
-      fireEvent.click(lane, { clientX: 250 });
+      // `detail: 1` flags this as a real user click — `fireEvent.click`'s
+      // default `detail: 0` would otherwise be treated as a synthetic
+      // programmatic click and bail (see the gate in TimelineTrack.tsx).
+      fireEvent.click(lane, { clientX: 250, detail: 1 });
       expect(screen.getByTestId("playhead").textContent).toBe("2.500");
     });
 
@@ -219,7 +222,7 @@ describe("TimelineTrack", () => {
       });
       const lane = container.querySelector(`.${styles.lane}`) as HTMLElement;
       // 50% of a [4, 8] window → 6s.
-      fireEvent.click(lane, { clientX: 500 });
+      fireEvent.click(lane, { clientX: 500, detail: 1 });
       expect(screen.getByTestId("playhead").textContent).toBe("6.000");
     });
 
@@ -232,7 +235,7 @@ describe("TimelineTrack", () => {
       // long interval bars can be scrubbed precisely. clientX:250 on a
       // 1000-wide lane → 25% of view [0, 10] = 2.5s, regardless of the
       // event's own startSec.
-      fireEvent.click(event, { clientX: 250 });
+      fireEvent.click(event, { clientX: 250, detail: 1 });
       expect(screen.getByTestId("playhead").textContent).toBe("2.500");
     });
   });
@@ -249,8 +252,10 @@ describe("TimelineTrack", () => {
         },
       });
       const event = container.querySelector(`.${styles.event}`) as HTMLElement;
-      // Default button on fireEvent.click is 0 (left).
-      fireEvent.click(event, { clientX: 250 });
+      // Default button on fireEvent.click is 0 (left). `detail: 1` marks
+      // it a real user click (vs. a programmatic `HTMLElement.click()`
+      // which the row's onClick gate intentionally drops).
+      fireEvent.click(event, { clientX: 250, detail: 1 });
       expect(onEventClick).toHaveBeenCalledTimes(1);
       expect(onEventClick.mock.calls[0][0]).toMatchObject({ startSec: 3 });
     });
@@ -324,13 +329,63 @@ describe("TimelineTrack", () => {
       expect(onTrackClick).not.toHaveBeenCalled();
     });
 
+    it("does NOT fire onTrackClick on a synthetic programmatic click (detail:0)", () => {
+      // voodo's ContextMenu opens by calling `HTMLElement.click()` on a
+      // hidden anchor that sits inside the row's React subtree, so the
+      // programmatic click bubbles up to the row root. That synthetic
+      // event reports `button === 0` (the default for every programmatic
+      // click — the button gate alone does NOT catch it) AND
+      // `detail === 0`. Real user clicks always have `detail >= 1`.
+      // Without the detail gate, right-clicking an event would call the
+      // row's `onTrackClick` → `selectTrack` → downstream playhead
+      // disruption.
+      const onTrackClick = vi.fn();
+      const { container } = renderTrack({
+        track: { start: 0, end: 10, events: [], onTrackClick },
+      });
+      const root = container.querySelector(`.${styles.root}`) as HTMLElement;
+      // No `button` → defaults to 0 (the spec default for programmatic
+      // clicks); detail 0 → not a user click.
+      fireEvent.click(root, { clientX: 500, detail: 0 });
+      expect(onTrackClick).not.toHaveBeenCalled();
+    });
+
+    it("does NOT seek on a synthetic programmatic click landing on the lane (detail:0)", () => {
+      // The voodo ContextMenu's hidden anchor sits inside the lane's DOM
+      // subtree — `currentTarget.contains(target)` returns true so the
+      // existing containment check can't reject the synthetic click. The
+      // detail-count check is what catches it.
+      const { container } = renderTrack({
+        track: { start: 0, end: 10, events: [] },
+      });
+      const lane = container.querySelector(`.${styles.lane}`) as HTMLElement;
+      fireEvent.click(lane, { clientX: 250, detail: 0 });
+      expect(screen.getByTestId("playhead").textContent).toBe("0.000");
+    });
+
+    it("does NOT seek on a synthetic programmatic click landing on an event marker (detail:0)", () => {
+      const onEventClick = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [{ startSec: 3 }],
+          onEventClick,
+        },
+      });
+      const event = container.querySelector(`.${styles.event}`) as HTMLElement;
+      fireEvent.click(event, { clientX: 300, detail: 0 });
+      expect(onEventClick).not.toHaveBeenCalled();
+      expect(screen.getByTestId("playhead").textContent).toBe("0.000");
+    });
+
     it("still fires onTrackClick on a primary-button click on the row root", () => {
       const onTrackClick = vi.fn();
       const { container } = renderTrack({
         track: { start: 0, end: 10, events: [], onTrackClick },
       });
       const root = container.querySelector(`.${styles.root}`) as HTMLElement;
-      fireEvent.click(root, { clientX: 500, button: 0 });
+      fireEvent.click(root, { clientX: 500, button: 0, detail: 1 });
       expect(onTrackClick).toHaveBeenCalledTimes(1);
     });
 
