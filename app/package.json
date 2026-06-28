@@ -72,7 +72,7 @@
         "react-plotly.js": "^2.6.0"
     },
     "resolutions": {
-        "@voxel51/voodo": "^0.0.36",
+        "@voxel51/voodo": "^0.0.37",
         "brace-expansion": "^5.0.6",
         "three-stdlib": "^2.36.1",
         "@types/react": "18.2.0",
