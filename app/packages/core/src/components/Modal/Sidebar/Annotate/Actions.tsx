@@ -155,7 +155,8 @@ const Square = styled(Container)<{ $active?: boolean }>`
 
 const DeactivateAllContext = createContext<() => void>(() => {});
 
-const VIDEO_UNSUPPORTED_TOOLTIP = "Not yet supported for video annotation";
+export const VIDEO_UNSUPPORTED_TOOLTIP =
+  "Not yet supported for video annotation";
 
 /**
  * Returns a callback that deactivates any active annotation actions.
