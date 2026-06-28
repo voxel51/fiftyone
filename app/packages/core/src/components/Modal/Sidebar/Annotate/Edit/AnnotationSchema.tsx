@@ -239,16 +239,30 @@ const useHandleSchemaChange = (readOnly: boolean) => {
       // track `instanceId` and the present `frame` for a video frame label. The
       // field is already the full path (`frames.<field>` for a frame field) — a
       // mid-edit field move tracks through it — so name the ref by it directly.
+      // Derive the frame-field flag from `field`, NOT the anchor: a freshly-drawn
+      // label is still a draft, so `editingRef` is null (the anchor binds only
+      // committed labels) yet `field` is correctly `frames.<field>`.
       const editingRef = editingRefRef.current;
-      const isFrameField = editingRef?.path?.startsWith(FRAMES_PREFIX) ?? false;
+      const isFrameField = field.startsWith(FRAMES_PREFIX);
+      const instanceId =
+        editingRef?.instanceId ?? (data as { _id?: string })?._id ?? overlay.id;
+      // A frame-field draft has no anchor frame; resolve the playhead occurrence
+      // from the engine's present set (the draft was just drawn at the playhead,
+      // so it is present). Without a frame, `frameStore.writeFrame` silently
+      // drops the edit — no delta, no autosave, no overlay update.
+      const frame =
+        editingRef?.frame ??
+        (isFrameField
+          ? engine.temporal
+              .getPresent()
+              .find((r) => r.path === field && r.instanceId === instanceId)
+              ?.frame
+          : undefined);
       const ref = {
         sample: sampleRef.current,
         path: field,
-        instanceId:
-          editingRef?.instanceId ??
-          (data as { _id?: string })?._id ??
-          overlay.id,
-        frame: editingRef?.frame,
+        instanceId,
+        frame,
       };
       // Persist only true label data: a 3D draft's slot carries the working/
       // overlay shape (type/isNew/color/path/sampleId), and committing those
