@@ -308,6 +308,15 @@ function mergeIndexWithOverlay(
   const presentByInstance = new Map<string, number[]>();
   const liveLabelByInstance = new Map<string, LabelData>();
   const dirtyKeyframesByInstance = new Map<string, number[]>();
+  // Frames where the overlay is *silent* about an instance's `keyframe` flag
+  // — the label has no `keyframe` key at all (vs. `keyframe: false`, which is
+  // an explicit removal). The sidebar's attribute-commit path merges with
+  // `overlay.label`, whose detection shape never carries `keyframe`, so the
+  // resulting overlay labels echo "no opinion" on most frames. Treating those
+  // as authoritative-`false` would wipe every baseline keyframe diamond from
+  // the parent lane the moment any attribute is touched (B21). The merge
+  // instead falls through to the baseline for these frames.
+  const silentKeyframesByInstance = new Map<string, Set<number>>();
   // Per instance, per dynamic attr, the live overlay value at each dirty frame.
   const dirtyAttrsByInstance = new Map<
     string,
@@ -325,6 +334,14 @@ function mergeIndexWithOverlay(
 
       if (label.keyframe) {
         pushTo(dirtyKeyframesByInstance, id, frame);
+      } else if (!("keyframe" in label)) {
+        // overlay is silent — preserve the baseline's verdict for this frame
+        let silent = silentKeyframesByInstance.get(id);
+        if (!silent) {
+          silent = new Set();
+          silentKeyframesByInstance.set(id, silent);
+        }
+        silent.add(frame);
       }
 
       recordDirtyAttrValues(
@@ -362,6 +379,7 @@ function mergeIndexWithOverlay(
         segments,
         baselineKeyframes: baseline?.keyframes ?? [],
         dirtyKeyframes: dirtyKeyframesByInstance.get(id) ?? [],
+        silentKeyframes: silentKeyframesByInstance.get(id) ?? new Set(),
         dirtySet,
         fps,
         path,
@@ -392,6 +410,7 @@ function indexInstanceState({
   segments,
   baselineKeyframes,
   dirtyKeyframes,
+  silentKeyframes,
   dirtySet,
   fps,
   path,
@@ -404,6 +423,13 @@ function indexInstanceState({
   segments: Segment[];
   baselineKeyframes: number[];
   dirtyKeyframes: number[];
+  /**
+   * Dirty frames where the overlay's label carried no `keyframe` key — neither
+   * an explicit set nor an explicit clear. Baseline keyframes at these frames
+   * survive the merge (the overlay only shadows the baseline where it has an
+   * opinion). See B21 in `mergeIndexWithOverlay`.
+   */
+  silentKeyframes: Set<number>;
   dirtySet: Set<number>;
   fps: number;
   path: string;
@@ -416,8 +442,18 @@ function indexInstanceState({
     end: (end - 1) / fps,
   }));
 
+  // A baseline keyframe survives the merge when the frame is either
+  //   - not dirty, OR
+  //   - dirty but the overlay's label is silent about the `keyframe` flag
+  //     (no `keyframe` key — neither set nor cleared)
+  // The second clause guards against sidebar-driven label rewrites whose
+  // partials carry no `keyframe` key by construction (`overlay.label` shape).
+  // An explicit `keyframe: false` in the overlay still removes the baseline
+  // keyframe — that's the `markKeyframe` toggle-off semantics.
   const keyframeFrames = [
-    ...baselineKeyframes.filter((frame) => !dirtySet.has(frame)),
+    ...baselineKeyframes.filter(
+      (frame) => !dirtySet.has(frame) || silentKeyframes.has(frame),
+    ),
     ...dirtyKeyframes,
   ].sort((a, b) => a - b);
 
