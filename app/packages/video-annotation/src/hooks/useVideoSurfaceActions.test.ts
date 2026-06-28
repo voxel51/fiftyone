@@ -16,12 +16,15 @@ const PATH = "frames.detections";
 
 // per-frame engine truth the hook reads through `engine.getLabel`
 let frameData: Record<number, Record<string, LabelData>>;
+// active interaction refs the hook reads to resolve a selected track's field
+let activeRefs: { instanceId: string; path: string }[];
 
 const mockEngine = {
   getLabel: ({ instanceId, frame }: { instanceId: string; frame?: number }) =>
     frame != null ? frameData[frame]?.[instanceId] : undefined,
   mintInstanceId: vi.fn(() => "NEW"),
   mintGestureId: vi.fn(() => "gesture:1"),
+  interaction: { getActive: () => activeRefs },
 };
 
 const mockActions = {
@@ -68,6 +71,7 @@ const render = () => renderHook(() => useVideoSurfaceActions()).result;
 
 beforeEach(() => {
   frameData = {};
+  activeRefs = [];
   vi.clearAllMocks();
 });
 
@@ -106,6 +110,19 @@ describe("track ops", () => {
     expect(mockActions.transaction).toHaveBeenCalledWith(expect.any(Function), {
       undoKey: "gesture:1",
     });
+  });
+
+  it("markKeyframe toggles on the track's own field when selected off-primary", () => {
+    frameData = { 2: { A: det("d2", "A", { keyframe: false }) } };
+    // the selected track's active ref points at a non-primary frame field
+    activeRefs = [{ instanceId: "A", path: "frames.polylines" }];
+
+    render().current.markKeyframe(2, ["instance-A"]);
+
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: "frames.polylines", instanceId: "A", frame: 2 },
+      { keyframe: true },
+    );
   });
 
   it("markKeyframe skips a legacy track-<index> id (no engine identity)", () => {

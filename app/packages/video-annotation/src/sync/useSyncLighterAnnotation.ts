@@ -152,12 +152,15 @@ const useRegisterDrawEstablishHandler = ({
             return;
           }
 
-          // fold the filler into the draw's undo unit (key taken above)
+          // fold the filler into the draw's undo unit (key taken above), on the
+          // field the box was actually drawn on — not the stream's primary,
+          // which a draw onto a non-primary active field would miss
           surfaceActions.extendTrack(
             anchor.instanceId,
             anchor.frame,
             targetFrames,
             drawUndoKey,
+            anchor.path,
           );
         });
       },

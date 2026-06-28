@@ -175,6 +175,13 @@ const makeTrackOps = (
     // triggers, so a single Ctrl-Z reverts both as one unit.
     const undoKey = engine.mintGestureId();
 
+    // A selected track may live on a non-primary frame field (e.g. a polyline);
+    // resolve each track's field from its active interaction ref so the toggle
+    // reads/writes where the label actually is, not the stream's primary field.
+    const fieldByInstance = new Map(
+      engine.interaction.getActive().map((ref) => [ref.instanceId, ref.path]),
+    );
+
     actions.transaction(
       () => {
         for (const trackId of trackIds) {
@@ -184,7 +191,8 @@ const makeTrackOps = (
             continue;
           }
 
-          const det = read(instanceId, frame);
+          const labelPath = fieldByInstance.get(instanceId) ?? path;
+          const det = readerFor(labelPath).read(instanceId, frame);
 
           if (!det) {
             continue;
@@ -199,7 +207,7 @@ const makeTrackOps = (
             update.propagation = null;
           }
 
-          actions.updateLabel({ path, instanceId, frame }, update);
+          actions.updateLabel({ path: labelPath, instanceId, frame }, update);
           changed.push({ trackId, instanceId, set });
         }
       },
