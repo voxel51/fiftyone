@@ -219,6 +219,40 @@ describe("bridge read-half", () => {
     expect(handles.get("d1")?.selected).toBe(true);
   });
 
+  it("a no-op reconcile preserves an in-flight transient (skip-if-unchanged)", () => {
+    const { engine, store } = makeEngine("sample-1", {
+      ground_truth: { detections: [makeDet("d1", "cat")] },
+    });
+    const { handles, bridge, adapters } = makeFakeSurface();
+    engine.registerBridge(bridge, adapters);
+
+    // an in-flight canvas gesture diverged the overlay from the committed
+    // engine value, but the transient has NOT been written to the engine
+    handles.get("d1")!.label = { _id: "d1", label: "DRAGGING" } as LabelData;
+
+    // an autosave round-trip echoes the unchanged committed value
+    store.setData({ ground_truth: { detections: [makeDet("d1", "cat")] } });
+
+    // the engine value didn't change, so the reproject is a no-op — the
+    // in-flight transient survives instead of being clobbered by applyLabel
+    expect(handles.get("d1")!.label.label).toBe("DRAGGING");
+  });
+
+  it("a reconcile whose value actually changed still re-applies", () => {
+    const { engine, store } = makeEngine("sample-1", {
+      ground_truth: { detections: [makeDet("d1", "cat")] },
+    });
+    const { handles, bridge, adapters } = makeFakeSurface();
+    engine.registerBridge(bridge, adapters);
+
+    handles.get("d1")!.label = { _id: "d1", label: "DRAGGING" } as LabelData;
+
+    // the server genuinely changed the value — it must win over the transient
+    store.setData({ ground_truth: { detections: [makeDet("d1", "fox")] } });
+
+    expect(handles.get("d1")!.label.label).toBe("fox");
+  });
+
   it("a transaction reconciles once, atomically", () => {
     const { engine } = makeEngine("sample-1", {
       ground_truth: { detections: [makeDet("d1", "cat")] },

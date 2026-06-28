@@ -13,6 +13,7 @@
  */
 
 import type { LabelData, LabelType } from "@fiftyone/utilities";
+import { equalsNormalized } from "@fiftyone/utilities";
 
 import type { AnnotationEngine } from "../core/engine";
 import type { LabelRef } from "../identity/ref";
@@ -40,6 +41,16 @@ export const registerBridgeLoop = <Handle, Descriptor>(
   /** Refs known to have a live handle — the reconcile ledger for resets.
    *  Stale entries are harmless: `resolveHandle` re-checks before unmount. */
   const known = new Map<string, LabelRef>();
+
+  /**
+   * The label last applied to each handle, by refKey. A reproject whose label
+   * equals this is a no-op: re-applying it would clobber any in-flight canvas
+   * interaction (a resize, a half-drawn polyline, a fresh mask stroke) whose
+   * transient value has NOT reached the engine — the engine still resolves the
+   * committed value, so applying it would snap the overlay back. Routine resets
+   * (a sample-level `setData` round-trip → `wholeSampleReset`) drive a full
+   * reconcile, so without this every autosave tick re-applies every overlay. */
+  const lastApplied = new Map<string, LabelData>();
 
   /** Every mount path applies current interaction state to the fresh handle. */
   const applyInteraction = (handle: Handle, ref: LabelRef): void => {
@@ -72,6 +83,7 @@ export const registerBridgeLoop = <Handle, Descriptor>(
     }
 
     known.delete(refKey(ref));
+    lastApplied.delete(refKey(ref));
   };
 
   /** Re-read current state and reconcile one ref onto the surface. */
@@ -99,13 +111,23 @@ export const registerBridgeLoop = <Handle, Descriptor>(
     }
 
     known.set(refKey(ref), ref);
+    const key = refKey(ref);
 
     if (handle !== undefined) {
+      // skip-if-unchanged: a reproject whose engine-resolved value equals what
+      // the handle already holds is a no-op — re-applying it would clobber an
+      // in-flight gesture whose transient hasn't yet reached the engine.
+      if (equalsNormalized(label, lastApplied.get(key))) {
+        return;
+      }
+
+      lastApplied.set(key, label);
       adapter.updateHandle(handle, label);
       return;
     }
 
     // create-from-engine falls out of the same branch
+    lastApplied.set(key, label);
     mountFresh(ref, label, adapter);
   };
 
@@ -143,6 +165,33 @@ export const registerBridgeLoop = <Handle, Descriptor>(
 
   const onChanges = (changes: readonly LabelChange[]): void => {
     if (bridge.isWriting) {
+      // the surface applied its own write straight to the handle — don't echo
+      // it back, but keep `lastApplied` honest so a LATER engine-driven
+      // reproject of the same value is correctly skipped while a divergent one
+      // (an undo, a server change) still re-applies onto the handle.
+      for (const change of changes) {
+        if (change.ref.sample !== bridge.sample || isWholeSampleReset(change)) {
+          continue;
+        }
+
+        if (!inScope(change.ref)) {
+          continue;
+        }
+
+        const key = refKey(change.ref);
+
+        if (change.kind === "delete") {
+          lastApplied.delete(key);
+          continue;
+        }
+
+        const written = engine.getLabel(change.ref);
+
+        if (written) {
+          lastApplied.set(key, written);
+        }
+      }
+
       return;
     }
 
