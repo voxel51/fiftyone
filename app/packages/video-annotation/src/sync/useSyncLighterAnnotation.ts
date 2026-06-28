@@ -130,6 +130,19 @@ const useRegisterDrawEstablishHandler = ({
             return;
           }
 
+          // The drawn frame is this track's first keyframe; the auto-extend
+          // fills the rest forward as non-keyframe filler, so a later edit on
+          // another frame brackets a real interpolation segment. Folded into the
+          // draw's undo unit.
+          if (!source.keyframe) {
+            engine.transaction(
+              () => {
+                engine.updateLabel(anchor, { keyframe: true });
+              },
+              { undoKey: drawUndoKey },
+            );
+          }
+
           const targetFrames = autoExtendTargetFrames(
             anchor.frame,
             stream.totalFrames,

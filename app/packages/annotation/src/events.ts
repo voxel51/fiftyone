@@ -110,6 +110,12 @@ export type AnnotationEventGroup = {
     /** 1-indexed frame number where the change happened. */
     frame: number;
     kind: "set" | "removed";
+    /**
+     * Gesture `undoKey` the triggering edit committed under. When present, the
+     * auto-interpolate re-lerp commits under it too, coalescing the geometry
+     * edit / keyframe toggle and the resulting interpolation into ONE undo unit.
+     */
+    undoKey?: string;
   };
 
   /**

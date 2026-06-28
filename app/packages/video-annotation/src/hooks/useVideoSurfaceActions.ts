@@ -31,8 +31,12 @@ export interface VideoSurfaceActions {
   trimTrack(trackId: string, frames: number[]): void;
   /** Move this track's boxes on `frames` by `delta`, keyframe/propagation intact. */
   shiftTrack(trackId: string, frames: number[], delta: number): void;
-  /** Delete this track's box on every frame it appears. */
-  deleteTrack(trackId: string): void;
+  /**
+   * Delete this track's box on every frame it appears. `fieldPath` addresses the
+   * track's own frames field (a non-primary field still deletes); defaults to the
+   * stream's primary field.
+   */
+  deleteTrack(trackId: string, fieldPath?: string): void;
   /** Merge track-level attributes onto every frame this track appears. */
   updateTrackAttributes(
     trackId: string,
@@ -42,15 +46,21 @@ export interface VideoSurfaceActions {
    * Split this track at `atFrame`: frames `>= atFrame` are re-keyed onto a
    * fresh instance (a distinct object); the original keeps frames `< atFrame`.
    * One undo unit. No-ops on a legacy/non-instance track or an empty tail.
+   * `fieldPath` addresses the track's own frames field; defaults to primary.
    */
-  splitTrack(trackId: string, atFrame: number): void;
+  splitTrack(trackId: string, atFrame: number, fieldPath?: string): void;
   /**
    * Merge `sourceTrackId` into `targetTrackId`: the source's frames are
    * re-keyed onto the target's instance, target-wins on overlapping frames
    * (the source box is dropped there). One undo unit. No-ops on a
-   * legacy/non-instance track or a self-merge.
+   * legacy/non-instance track or a self-merge. Both tracks share `fieldPath`
+   * (merge is within a field); defaults to primary.
    */
-  mergeTracks(sourceTrackId: string, targetTrackId: string): void;
+  mergeTracks(
+    sourceTrackId: string,
+    targetTrackId: string,
+    fieldPath?: string,
+  ): void;
   /** Create a sample-level TemporalDetection; returns its id (the new instanceId). */
   createTemporalDetection(
     fieldPath: string,
@@ -127,9 +137,17 @@ const makeTrackOps = (
   actions: SurfaceActions,
   eventBus: AnnotationEventBus,
   reader: FrameReader,
+  engine: AnnotationEngine,
 ) => {
   const { path, fps, totalFrames } = ctx;
   const { read, content, trackFrames } = reader;
+
+  // A track may live on a non-primary frame field; resolve a reader scoped to
+  // its own path. The shared `reader` is the primary-field fast path.
+  const readerFor = (fieldPath: string): FrameReader =>
+    fieldPath === path
+      ? reader
+      : makeFrameReader(engine, { ...ctx, path: fieldPath });
 
   const markKeyframe = (time: number, trackIds: readonly string[]): void => {
     if (trackIds.length === 0) {
@@ -139,33 +157,40 @@ const makeTrackOps = (
     const frame = frameAt(time, fps, totalFrames);
     const changed: { trackId: string; instanceId: string; set: boolean }[] = [];
 
-    actions.transaction(() => {
-      for (const trackId of trackIds) {
-        const instanceId = instanceIdFromTrackId(trackId);
+    // One gesture key for the toggle AND the auto-interpolate re-lerp it
+    // triggers, so a single Ctrl-Z reverts both as one unit.
+    const undoKey = engine.mintGestureId();
 
-        if (!instanceId) {
-          continue;
+    actions.transaction(
+      () => {
+        for (const trackId of trackIds) {
+          const instanceId = instanceIdFromTrackId(trackId);
+
+          if (!instanceId) {
+            continue;
+          }
+
+          const det = read(instanceId, frame);
+
+          if (!det) {
+            continue;
+          }
+
+          const set = !det.keyframe;
+          const update: Partial<LabelData> = { keyframe: set };
+
+          // promotion clears interpolation provenance — only when present, so
+          // an unchanged baseline doesn't accrue a no-op `propagation: null` op
+          if (set && det.propagation) {
+            update.propagation = null;
+          }
+
+          actions.updateLabel({ path, instanceId, frame }, update);
+          changed.push({ trackId, instanceId, set });
         }
-
-        const det = read(instanceId, frame);
-
-        if (!det) {
-          continue;
-        }
-
-        const set = !det.keyframe;
-        const update: Partial<LabelData> = { keyframe: set };
-
-        // promotion clears interpolation provenance — only when present, so
-        // an unchanged baseline doesn't accrue a no-op `propagation: null` op
-        if (set && det.propagation) {
-          update.propagation = null;
-        }
-
-        actions.updateLabel({ path, instanceId, frame }, update);
-        changed.push({ trackId, instanceId, set });
-      }
-    });
+      },
+      { undoKey },
+    );
 
     for (const { trackId, instanceId, set } of changed) {
       eventBus.dispatch("annotation:keyframeChanged", {
@@ -173,6 +198,7 @@ const makeTrackOps = (
         instanceId,
         frame,
         kind: set ? "set" : "removed",
+        undoKey,
       });
     }
   };
@@ -265,14 +291,14 @@ const makeTrackOps = (
     });
   };
 
-  const deleteTrack = (trackId: string): void => {
+  const deleteTrack = (trackId: string, fieldPath: string = path): void => {
     const instanceId = instanceIdFromTrackId(trackId);
 
     if (!instanceId) {
       return;
     }
 
-    const frames = trackFrames(instanceId);
+    const frames = readerFor(fieldPath).trackFrames(instanceId);
 
     if (frames.length === 0) {
       return;
@@ -280,7 +306,7 @@ const makeTrackOps = (
 
     actions.transaction(() => {
       for (const frame of frames) {
-        actions.deleteLabel({ path, instanceId, frame });
+        actions.deleteLabel({ path: fieldPath, instanceId, frame });
       }
     });
 
@@ -336,26 +362,39 @@ const makeTrackIdentityOps = (
   engine: AnnotationEngine,
 ) => {
   const { path } = ctx;
-  const { read, content, trackFrames } = reader;
+
+  // A track may live on a non-primary frame field; resolve a reader scoped to
+  // its own path. The shared `reader` is the primary-field fast path.
+  const readerFor = (fieldPath: string): FrameReader =>
+    fieldPath === path
+      ? reader
+      : makeFrameReader(engine, { ...ctx, path: fieldPath });
 
   /** A track's frames with detections read up front, for a stable snapshot. */
   const snapshot = (
+    r: FrameReader,
     instanceId: string,
     keep: (frame: number) => boolean,
   ): FrameDetection[] =>
-    trackFrames(instanceId)
+    r
+      .trackFrames(instanceId)
       .filter(keep)
-      .map((frame) => ({ frame, det: read(instanceId, frame) }))
+      .map((frame) => ({ frame, det: r.read(instanceId, frame) }))
       .filter((s): s is FrameDetection => !!s.det);
 
-  const splitTrack = (trackId: string, atFrame: number): void => {
+  const splitTrack = (
+    trackId: string,
+    atFrame: number,
+    fieldPath: string = path,
+  ): void => {
     const instanceId = instanceIdFromTrackId(trackId);
 
     if (!instanceId) {
       return;
     }
 
-    const tail = snapshot(instanceId, (frame) => frame >= atFrame);
+    const r = readerFor(fieldPath);
+    const tail = snapshot(r, instanceId, (frame) => frame >= atFrame);
 
     if (tail.length === 0) {
       return;
@@ -365,10 +404,10 @@ const makeTrackIdentityOps = (
 
     actions.transaction(() => {
       for (const { frame, det } of tail) {
-        actions.deleteLabel({ path, instanceId, frame });
+        actions.deleteLabel({ path: fieldPath, instanceId, frame });
         actions.updateLabel(
-          { path, instanceId: newInstanceId, frame },
-          content(det),
+          { path: fieldPath, instanceId: newInstanceId, frame },
+          r.content(det),
         );
       }
     });
@@ -381,7 +420,11 @@ const makeTrackIdentityOps = (
     });
   };
 
-  const mergeTracks = (sourceTrackId: string, targetTrackId: string): void => {
+  const mergeTracks = (
+    sourceTrackId: string,
+    targetTrackId: string,
+    fieldPath: string = path,
+  ): void => {
     const sourceInstanceId = instanceIdFromTrackId(sourceTrackId);
     const targetInstanceId = instanceIdFromTrackId(targetTrackId);
 
@@ -393,8 +436,9 @@ const makeTrackIdentityOps = (
       return;
     }
 
-    const occupied = new Set(trackFrames(targetInstanceId));
-    const sources = snapshot(sourceInstanceId, () => true);
+    const r = readerFor(fieldPath);
+    const occupied = new Set(r.trackFrames(targetInstanceId));
+    const sources = snapshot(r, sourceInstanceId, () => true);
 
     if (sources.length === 0) {
       return;
@@ -404,12 +448,16 @@ const makeTrackIdentityOps = (
       for (const { frame, det } of sources) {
         // target-wins: always drop the source box; only re-stamp onto the
         // target where it has no box on this frame
-        actions.deleteLabel({ path, instanceId: sourceInstanceId, frame });
+        actions.deleteLabel({
+          path: fieldPath,
+          instanceId: sourceInstanceId,
+          frame,
+        });
 
         if (!occupied.has(frame)) {
           actions.updateLabel(
-            { path, instanceId: targetInstanceId, frame },
-            content(det),
+            { path: fieldPath, instanceId: targetInstanceId, frame },
+            r.content(det),
           );
         }
       }
@@ -517,7 +565,7 @@ export const useVideoSurfaceActions = (): VideoSurfaceActions => {
     }
 
     const reader = makeFrameReader(engine, ctx);
-    const track = makeTrackOps(ctx, actions, eventBus, reader);
+    const track = makeTrackOps(ctx, actions, eventBus, reader, engine);
     const identity = makeTrackIdentityOps(
       ctx,
       actions,

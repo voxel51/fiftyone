@@ -83,6 +83,12 @@ interface PropagateArgs {
   leftKeyframe: LabelData;
   /** The end keyframe, if any. */
   rightKeyframe: LabelData | undefined;
+  /**
+   * Gesture key of the edit that triggered this re-lerp. When set, the linear
+   * write coalesces into that edit's undo unit. Omitted for an explicit
+   * propagate run (SAM2 mints its own per-run key).
+   */
+  undoKey?: string;
 }
 
 /**
@@ -203,8 +209,14 @@ const useLinearPropagate = () => {
 
   return useCallback(
     async (args: PropagateArgs): Promise<boolean> => {
-      const { instanceId, fromFrame, toFrame, leftKeyframe, rightKeyframe } =
-        args;
+      const {
+        instanceId,
+        fromFrame,
+        toFrame,
+        leftKeyframe,
+        rightKeyframe,
+        undoKey,
+      } = args;
 
       if (!rightKeyframe) {
         return false;
@@ -229,7 +241,7 @@ const useLinearPropagate = () => {
       };
 
       const result = await agent.infer(context);
-      applyPropagation(result);
+      applyPropagation(result, undoKey ? { undoKey } : undefined);
       return true;
     },
     [resolveAgent, sampleDescriptor, applyPropagation],
@@ -258,6 +270,7 @@ export const useVideoPropagate = () => {
       fromFrame: number,
       toFrame: number,
       method: PropagationMethod,
+      undoKey?: string,
     ): Promise<boolean> => {
       if (!stream || fromFrame >= toFrame) {
         return false;
@@ -282,6 +295,7 @@ export const useVideoPropagate = () => {
         at,
         leftKeyframe,
         rightKeyframe,
+        undoKey,
       };
 
       if (method === "sam2") {

@@ -16,6 +16,7 @@ import { useFrameLabelsStream } from "../streams/frameLabelsStream";
  */
 export type PropagationResultHandler = (
   result: InferenceResult<PropagationInferenceResult>,
+  opts?: { undoKey?: string },
 ) => void;
 
 /**
@@ -87,17 +88,22 @@ export const useApplyPropagationResult = (): PropagationResultHandler => {
   const applyDetection = useApplyPropagatedDetection();
 
   return useCallback(
-    (result: InferenceResult<PropagationInferenceResult>) => {
+    (result: InferenceResult<PropagationInferenceResult>, opts) => {
       if (result.type !== "sync") {
         return;
       }
 
       // One transaction so the per-frame writers nest into a single undo unit.
-      actions.transaction(() => {
-        result.response.perFrame.forEach(({ frameNumber, detection }) =>
-          applyDetection(frameNumber, detection),
-        );
-      });
+      // An `undoKey` (the triggering edit's gesture key) coalesces the whole
+      // batch INTO that edit's unit — one Ctrl-Z reverts the move + the lerp.
+      actions.transaction(
+        () => {
+          result.response.perFrame.forEach(({ frameNumber, detection }) =>
+            applyDetection(frameNumber, detection),
+          );
+        },
+        opts?.undoKey ? { undoKey: opts.undoKey } : undefined,
+      );
     },
     [actions, applyDetection],
   );

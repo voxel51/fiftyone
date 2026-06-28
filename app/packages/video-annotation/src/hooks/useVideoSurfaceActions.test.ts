@@ -21,6 +21,7 @@ const mockEngine = {
   getLabel: ({ instanceId, frame }: { instanceId: string; frame?: number }) =>
     frame != null ? frameData[frame]?.[instanceId] : undefined,
   mintInstanceId: vi.fn(() => "NEW"),
+  mintGestureId: vi.fn(() => "gesture:1"),
 };
 
 const mockActions = {
@@ -90,8 +91,21 @@ describe("track ops", () => {
         instanceId: "A",
         frame: 2,
         kind: "set",
+        undoKey: "gesture:1",
       },
     );
+  });
+
+  it("markKeyframe runs its toggle + re-lerp under one gesture key", () => {
+    frameData = { 2: { A: det("d2", "A", { keyframe: false }) } };
+
+    render().current.markKeyframe(2, ["instance-A"]);
+
+    // the toggle transaction carries the minted key so the auto-interpolate
+    // re-lerp coalesces into the same undo unit
+    expect(mockActions.transaction).toHaveBeenCalledWith(expect.any(Function), {
+      undoKey: "gesture:1",
+    });
   });
 
   it("markKeyframe skips a legacy track-<index> id (no engine identity)", () => {
@@ -164,8 +178,26 @@ describe("track ops", () => {
     render().current.deleteTrack("instance-A");
 
     expect(mockActions.deleteLabel).toHaveBeenCalledTimes(2);
+    expect(mockActions.deleteLabel).toHaveBeenCalledWith({
+      path: PATH,
+      instanceId: "A",
+      frame: 1,
+    });
     expect(mockBus.dispatch).toHaveBeenCalledWith("annotation:trackDeleted", {
       trackId: "instance-A",
+    });
+  });
+
+  it("deleteTrack addresses a non-primary frame field when given its path", () => {
+    frameData = { 2: { A: det("d2", "A") } };
+
+    render().current.deleteTrack("instance-A", "frames.detections_2");
+
+    expect(mockActions.deleteLabel).toHaveBeenCalledTimes(1);
+    expect(mockActions.deleteLabel).toHaveBeenCalledWith({
+      path: "frames.detections_2",
+      instanceId: "A",
+      frame: 2,
     });
   });
 

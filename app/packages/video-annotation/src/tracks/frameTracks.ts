@@ -20,6 +20,8 @@ export type FrameLabelReader = Pick<AnnotationEngine, "listLabels">;
  */
 export interface ObjectTrackEventData {
   path: string;
+  /** The instance's class label (e.g. "person"), for same-class gating. */
+  classLabel: string;
 }
 
 /**
@@ -30,6 +32,16 @@ export interface ObjectTrackEventData {
 export const objectTrackPathOf = (track: Track): string | null => {
   const data = track.events[0]?.data as ObjectTrackEventData | undefined;
   return typeof data?.path === "string" ? data.path : null;
+};
+
+/**
+ * The class label of an object track, read off its event payload. `null` for a
+ * TD row or any row without the payload. Used to restrict track merge to tracks
+ * of the same class.
+ */
+export const objectTrackClassOf = (track: Track): string | null => {
+  const data = track.events[0]?.data as ObjectTrackEventData | undefined;
+  return typeof data?.classLabel === "string" ? data.classLabel : null;
 };
 
 interface InstanceState {
@@ -588,7 +600,10 @@ function toTrack(
 ): Track {
   // Every event carries the field path so a row's click / hover resolves the
   // correct `(path, instanceId)` ref regardless of which frame field it's on.
-  const data: ObjectTrackEventData = { path: state.path };
+  const data: ObjectTrackEventData = {
+    path: state.path,
+    classLabel: state.classLabel,
+  };
 
   const events: TrackEvent[] = [
     // `resizable: true` opts each presence bar into in-place edit — drag

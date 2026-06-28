@@ -62,6 +62,15 @@ export interface UseLighterEngineBridgeArgs {
    */
   onEstablishCommit?: (overlayId: string, undoKey: string) => void;
   /**
+   * Called right after a geometry EDIT (drag / resize / keypoint move) is
+   * committed, with the overlay's id + field path and the gesture `undoKey` the
+   * commit landed under. A surface uses it to fold a follow-up write into the
+   * edit's single undo unit — the video surface promotes the touched frame to a
+   * keyframe and re-lerps adjacent segments. Omitted by image/3D, where a plain
+   * commit (no key) stays its own undo unit.
+   */
+  onEditCommit?: (overlayId: string, path: string, undoKey: string) => void;
+  /**
    * Gate the whole surface off without violating hook order: a disabled bridge
    * registers nothing AND binds its gesture handlers to the inert sentinel
    * channel, so a shared scene (the video tile sets the global `lighterSceneAtom`
@@ -80,6 +89,7 @@ export const useLighterEngineBridge = ({
   interactionPolicy,
   frameOf,
   onEstablishCommit,
+  onEditCommit,
   enabled = true,
 }: UseLighterEngineBridgeArgs): void => {
   const { scene, overlayFactory } = useLighter();
@@ -153,9 +163,22 @@ export const useLighterEngineBridge = ({
 
   const commitOverlay = useCallback(
     (event: { overlayId: string }) => {
-      surface.commit((scene as Scene2D).getOverlay(event.overlayId));
+      const overlay = (scene as Scene2D).getOverlay(event.overlayId);
+
+      // No edit-commit consumer (image / 3D): plain commit, its own undo unit.
+      if (!onEditCommit) {
+        surface.commit(overlay);
+        return;
+      }
+
+      // A surface that folds a follow-up write into this edit (video keyframe
+      // promotion) needs the commit + the follow-up to share one undo unit, so
+      // mint a key, commit under it, and hand it to the consumer.
+      const undoKey = engine.mintGestureId();
+      surface.commit(overlay, { undoKey });
+      onEditCommit(event.overlayId, overlay?.field ?? "", undoKey);
     },
-    [scene, surface],
+    [engine, onEditCommit, scene, surface],
   );
 
   // Gesture coalescing: drawing a masked detection commits in several steps —

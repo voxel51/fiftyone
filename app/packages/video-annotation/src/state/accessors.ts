@@ -136,4 +136,7 @@ export const useFrameLabelFields = (): Record<string, LabelType> => {
  * read hits the same `labelSchemaData` atom instance core writes (a direct
  * cross-package atom import would resolve to a different, never-written family).
  */
-export { useDynamicAttributeNames } from "../../../core/src/components/Modal/Sidebar/Annotate/state";
+export {
+  useDynamicAttributeNames,
+  useDynamicAttributeNamesGetter,
+} from "../../../core/src/components/Modal/Sidebar/Annotate/state";

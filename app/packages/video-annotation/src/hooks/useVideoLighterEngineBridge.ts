@@ -12,6 +12,7 @@ import { useCallback } from "react";
 import { useDatasetId, useVisibleLabelSchemas } from "../state/accessors";
 import { useCurrentFrameGetter } from "../state/useCurrentFrame";
 import { stashEstablishKey } from "../sync/establishKeyRelay";
+import { useKeyframePromotionOnEdit } from "./useKeyframePromotionOnEdit";
 
 /**
  * Mount the video canvas on the annotation engine. The tile's Lighter scene
@@ -52,6 +53,10 @@ export const useVideoLighterEngineBridge = (): void => {
     [getFrame],
   );
 
+  // After a box drag / resize commits, promote the touched frame to a keyframe
+  // and re-lerp adjacent segments — folded into the edit's undo unit.
+  const onEditCommit = useKeyframePromotionOnEdit();
+
   // Sample-level temporal-detections carry no Lighter adapter, so the loop's
   // kind filter drops them from hydration regardless of scope, but their
   // select/hover events still route through the bridge (frame-less ref,
@@ -65,5 +70,6 @@ export const useVideoLighterEngineBridge = (): void => {
     paths,
     frameOf,
     onEstablishCommit: stashEstablishKey,
+    onEditCommit,
   });
 };

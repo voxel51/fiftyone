@@ -71,7 +71,7 @@ export const useAutoInterpolate = (): void => {
           return;
         }
 
-        const { instanceId, frame, kind } = payload;
+        const { instanceId, frame, kind, undoKey } = payload;
 
         if (!instanceId) {
           return;
@@ -99,8 +99,10 @@ export const useAutoInterpolate = (): void => {
           kind,
         );
 
+        // Re-lerp under the triggering edit's gesture key (when present) so
+        // each segment coalesces into that edit's single undo unit.
         segments.forEach(([from, to]) => {
-          void propagate(instanceId, from, to, "linear");
+          void propagate(instanceId, from, to, "linear", undoKey);
         });
       },
       [engine, sampleId, stream, propagate],

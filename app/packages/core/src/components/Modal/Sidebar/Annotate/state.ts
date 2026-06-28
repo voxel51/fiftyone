@@ -2,7 +2,7 @@ import { atom, useAtom, useAtomValue } from "jotai";
 import { atomFamily } from "jotai/utils";
 import { capitalize } from "lodash";
 import { LabelSchemaMeta } from "./useSchemaManager";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { PRIMITIVE_FIELD_TYPES } from "./SchemaManager/constants";
 
 // Tab state for GUI/JSON toggle
@@ -121,19 +121,39 @@ export const fieldAttributeCount = atomFamily((path: string) =>
  * `labelSchemaData` atom instance core writes — a cross-package atom import
  * would resolve to a different, never-written family.
  */
+const dynamicAttributeNamesFromMeta = (
+  meta: LabelSchemaMeta | null | undefined,
+): string[] => {
+  const attributes = meta?.label_schema?.attributes;
+  if (!Array.isArray(attributes)) {
+    return [];
+  }
+
+  return attributes
+    .filter((attribute) => attribute.dynamic && attribute.name)
+    .map((attribute) => attribute.name);
+};
+
 export const useDynamicAttributeNames = (path: string | null): string[] => {
   const meta = useAtomValue(labelSchemaData(path ?? ""));
+  return useMemo(() => dynamicAttributeNamesFromMeta(meta), [meta]);
+};
 
-  return useMemo(() => {
-    const attributes = meta?.label_schema?.attributes;
-    if (!Array.isArray(attributes)) {
-      return [];
-    }
-
-    return attributes
-      .filter((attribute) => attribute.dynamic && attribute.name)
-      .map((attribute) => attribute.name);
-  }, [meta]);
+/**
+ * A getter resolving dynamic attribute names for ANY field path, reading the
+ * whole schema map once. Use this when several paths' attributes are needed in
+ * one render (e.g. building per-field tracks) — calling the per-path hook in a
+ * loop would break the rules of hooks, and a single primary-field lookup leaks
+ * one field's dynamic attributes onto every other field's tracks.
+ */
+export const useDynamicAttributeNamesGetter = (): ((
+  path: string | null,
+) => string[]) => {
+  const all = useAtomValue(labelSchemasData);
+  return useCallback(
+    (path: string | null) => dynamicAttributeNamesFromMeta(all?.[path ?? ""]),
+    [all],
+  );
 };
 
 export const fieldTypes = atom((get) => {
