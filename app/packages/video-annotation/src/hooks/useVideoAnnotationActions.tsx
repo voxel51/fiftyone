@@ -5,13 +5,7 @@ import { useMemo } from "react";
 import { frameAt, usePlayhead } from "@fiftyone/playback";
 import { getModalSampleFrameRate } from "../utils/modalSample";
 import { useTemporalDetectionFieldPaths } from "../state/accessors";
-import { useFrameLabelsStream } from "../streams/frameLabelsStream";
-import {
-  resolvePropagationTarget,
-  type PropagationTarget,
-} from "../propagation/propagationTarget";
 import { useSelectedTrackIds } from "../state/useVideoInteraction";
-import { useVideoPropagate } from "./useVideoPropagate";
 import { useVideoSurfaceActions } from "./useVideoSurfaceActions";
 
 /**
@@ -30,8 +24,6 @@ import { useVideoSurfaceActions } from "./useVideoSurfaceActions";
  */
 export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
   const actions = useVideoSurfaceActions();
-  const propagate = useVideoPropagate();
-  const stream = useFrameLabelsStream();
   const playhead = usePlayhead();
   const selected = useSelectedTrackIds();
   const modalSample = useModalSample();
@@ -58,23 +50,6 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
   const canSplit =
     selectedIds.length === 1 && Number.isFinite(fps) && !!fps && fps > 0;
   const canMerge = selectedIds.length === 2;
-
-  // Recomputed each playhead tick / selection change so the Propagate
-  // affordance reflects the current frame's bracketing keyframes. When
-  // disabled, `reason` becomes the tooltip — the "why can't I propagate?"
-  // diagnostic.
-  const target = useMemo<PropagationTarget>(() => {
-    if (!stream) {
-      return { ok: false, reason: "No active video stream." };
-    }
-    return resolvePropagationTarget(stream, selectedIds, playhead);
-  }, [stream, selectedIds, playhead]);
-
-  // When propagation can't run, `reason` is the disabled-tooltip diagnostic.
-  const propagateTooltip =
-    target.ok === false
-      ? target.reason
-      : `Track frames ${target.fromFrame}–${target.toFrame} with SAM2`;
 
   return useMemo<ToolbarActionGroup[]>(
     () => [
@@ -116,25 +91,6 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             },
           },
           {
-            id: "propagate-sam2",
-            label: "Track (SAM2)",
-            icon: <Icon name={IconName.AI} size={Size.Sm} />,
-            tooltip: propagateTooltip,
-            isDisabled: !target.ok,
-            onClick: () => {
-              if (!target.ok) {
-                return;
-              }
-
-              void propagate(
-                target.instanceId,
-                target.fromFrame,
-                target.toFrame,
-                "sam2",
-              );
-            },
-          },
-          {
             id: "split-track",
             label: "Split",
             icon: <Icon name={IconName.UnfoldMore} size={Size.Sm} />,
@@ -173,16 +129,13 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
     ],
     [
       actions,
-      propagate,
       canCreateTd,
       canMerge,
       canSplit,
       fps,
       hasSelection,
       playhead,
-      propagateTooltip,
       selectedIds,
-      target,
       tdFieldPath,
     ],
   );
