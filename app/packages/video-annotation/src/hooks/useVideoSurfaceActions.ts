@@ -254,8 +254,12 @@ const makeTrackOps = (
       return;
     }
 
-    // non-keyframe filler — a later propagate overwrites these in place
-    const filler = { ...r.content(source), keyframe: false };
+    // non-keyframe filler — a later propagate overwrites these in place.
+    // Deny-list the mask: filler frames share the keyframe's geometry, but a
+    // mask is per-frame pixels — copying it would paste the keyframe's mask onto
+    // every frame (and bloat storage). Every other field carries forward.
+    const { mask, mask_path, ...rest } = r.content(source);
+    const filler = { ...rest, keyframe: false };
 
     actions.transaction(
       () => {
