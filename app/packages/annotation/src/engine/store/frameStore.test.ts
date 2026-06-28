@@ -355,6 +355,87 @@ describe("FrameStore setData: re-baseline + GC", () => {
       },
     ]);
   });
+
+  it("a save echo of an already-applied edit emits NO change", () => {
+    // setData fires on every stream-cache echo (`subscribeToEdits`); a blanket
+    // reset there reprojected every overlay each persist tick — the dominant
+    // video-only re-creation path that fights in-flight interaction.
+    const store = makeStore({
+      1: {
+        [PATH]: [
+          det("doc-A", "A", [0, 0, 1, 1], "cat"),
+          det("doc-B", "B", [1, 1, 1, 1], "dog"),
+        ],
+      },
+    });
+
+    store.updateLabel(ref("A", 1), { label: "lynx" });
+
+    const emitted: unknown[] = [];
+    store.subscribeChanges((changes) => emitted.push(...changes));
+
+    // the echo carries exactly what we displayed — projection unchanged
+    store.setData({
+      1: {
+        [PATH]: [
+          det("doc-A", "A", [0, 0, 1, 1], "lynx"),
+          det("doc-B", "B", [1, 1, 1, 1], "dog"),
+        ],
+      },
+    });
+
+    expect(emitted).toEqual([]);
+    expect(store.isDirty()).toBe(false);
+  });
+
+  it("emits a targeted update only for the label the echo actually moved", () => {
+    const store = makeStore({
+      1: {
+        [PATH]: [
+          det("doc-A", "A", [0, 0, 1, 1], "cat"),
+          det("doc-B", "B", [1, 1, 1, 1], "dog"),
+        ],
+      },
+    });
+
+    const emitted: Array<{ ref: LabelRef; kind: string }> = [];
+    store.subscribeChanges((changes) =>
+      emitted.push(...(changes as Array<{ ref: LabelRef; kind: string }>)),
+    );
+
+    store.setData({
+      1: {
+        [PATH]: [
+          det("doc-A", "A", [0, 0, 1, 1], "cat"),
+          det("doc-B", "B", [5, 5, 5, 5], "dog"),
+        ],
+      },
+    });
+
+    expect(emitted).toEqual([{ ref: ref("B", 1), kind: "update" }]);
+  });
+
+  it("a re-seed does NOT reproject a frame with an edit in progress", () => {
+    const store = makeStore({
+      1: { [PATH]: [det("doc-A", "A", [0, 0, 1, 1], "cat")] },
+    });
+
+    // an edit in flight: working shadows source on frame 1
+    store.updateLabel(ref("A", 1), { bounding_box: [0.2, 0.2, 0.5, 0.5] });
+
+    const emitted: unknown[] = [];
+    store.subscribeChanges((changes) => emitted.push(...changes));
+
+    // a stale source echo lands mid-gesture; working must win, no reproject
+    store.setData({
+      1: { [PATH]: [det("doc-A", "A", [0, 0, 1, 1], "cat")] },
+    });
+
+    expect(emitted).toEqual([]);
+    expect(store.getLabel(ref("A", 1))?.bounding_box).toEqual([
+      0.2, 0.2, 0.5, 0.5,
+    ]);
+  });
 });
 
 describe("FrameStore reconcilePersisted: rebase from confirmed deltas", () => {
@@ -406,6 +487,62 @@ describe("FrameStore reconcilePersisted: rebase from confirmed deltas", () => {
     expect(store.isDirty()).toBe(false);
     expect(store.getLabel(ref("B", 1))).toBeUndefined();
     expect(store.getLabel(ref("C", 1))?._id).toBe("doc-C");
+  });
+
+  it("folding back already-applied deltas emits NO change (no overlay re-apply)", () => {
+    // the bridge reconciles off the change stream; a blanket whole-sample reset
+    // on every persist tick would reproject (applyLabel) every present overlay,
+    // clobbering in-flight canvas state (a resize, a polyline's sticky endpoint).
+    const store = makeStore({
+      1: {
+        [PATH]: [
+          det("doc-A", "A", [0, 0, 1, 1], "cat"),
+          det("doc-B", "B", [1, 1, 1, 1], "dog"),
+        ],
+      },
+    });
+
+    store.updateLabel(ref("A", 1), { label: "lynx" });
+
+    const emitted: unknown[] = [];
+    store.subscribeChanges((changes) => emitted.push(...changes));
+
+    // the server confirmed exactly what we sent — the displayed projection is
+    // unchanged, so nothing reaches the change stream
+    store.reconcilePersisted(store.getJsonPatch());
+
+    expect(emitted).toEqual([]);
+    expect(store.isDirty()).toBe(false);
+  });
+
+  it("emits a targeted update for a label the server actually changed", () => {
+    // a server-side change on a frame the client did NOT edit must surface as a
+    // single targeted update for that label — not a reset of every label
+    const store = makeStore({
+      1: { [PATH]: [det("doc-A", "A", [0, 0, 1, 1], "cat")] },
+      2: {
+        [PATH]: [
+          det("doc-A2", "A", [0, 0, 1, 1], "cat"),
+          det("doc-B2", "B", [1, 1, 1, 1], "dog"),
+        ],
+      },
+    });
+
+    const emitted: Array<{ ref: LabelRef; kind: string }> = [];
+    store.subscribeChanges((changes) =>
+      emitted.push(...(changes as Array<{ ref: LabelRef; kind: string }>)),
+    );
+
+    store.reconcilePersisted([
+      {
+        op: "replace",
+        path: "/frames/2/detections/detections/0/bounding_box",
+        value: [9, 9, 9, 9],
+      },
+    ]);
+
+    expect(emitted).toEqual([{ ref: ref("A", 2), kind: "update" }]);
+    expect(store.getLabel(ref("A", 2))?.bounding_box).toEqual([9, 9, 9, 9]);
   });
 
   it("an edit made DURING the save survives as the next delta", () => {

@@ -289,6 +289,17 @@ export class FrameStore implements LabelStore {
    * then drop working frames now equal to it (the `/frames` source is not
    * refetched after a save, so no echo arrives to drive the GC). A frame edited
    * mid-save still differs from the rebased source, so it stays dirty.
+   *
+   * Emits TARGETED per-label changes — only labels whose DISPLAYED value
+   * actually changed across the rebase — not a blanket whole-sample reset. The
+   * common case (folding back the deltas the client already applied) leaves the
+   * working-over-source projection identical, so it emits nothing to the change
+   * channel and the bridge re-applies no overlays. A blanket reset would
+   * reproject every present overlay on every persist tick, clobbering in-flight
+   * canvas interaction state (a resize in progress, a polyline's sticky
+   * endpoint). The display channel still fires (via `emit`), so dirty-state /
+   * version bookkeeping stays fresh — this mirrors the sample store's
+   * change-only-what-changed reconcile.
    */
   reconcilePersisted(deltas: JSONDeltas): void {
     const byFrame = new Map<number, JSONDeltas>();
@@ -321,6 +332,14 @@ export class FrameStore implements LabelStore {
       return;
     }
 
+    // snapshot the displayed projection for the affected frames BEFORE the
+    // rebase so the post-rebase diff sees only genuine visual changes
+    const before = new Map<number, Map<string, Map<string, LabelData>>>();
+
+    for (const frame of byFrame.keys()) {
+      before.set(frame, this.displayedById(frame));
+    }
+
     for (const [frame, frameOps] of byFrame) {
       this.source.set(frame, this.rebaseFrame(frame, frameOps));
     }
@@ -331,13 +350,119 @@ export class FrameStore implements LabelStore {
       }
     }
 
-    this.emit([wholeSampleReset(this.sample)]);
+    this.emit(this.diffDisplayed(before));
+  }
+
+  /**
+   * Diff a previously-captured displayed projection against the current one and
+   * emit one targeted change per label whose value actually moved. `before` was
+   * snapshotted (per affected frame) ahead of the source mutation; this reads
+   * the post-mutation projection and reports only genuine deltas — the engine of
+   * the change-only-what-changed reconcile that keeps in-flight canvas
+   * interaction (a resize, a polyline's sticky endpoint) from being clobbered by
+   * a blanket reproject.
+   */
+  private diffDisplayed(
+    before: Map<number, Map<string, Map<string, LabelData>>>,
+  ): LabelChange[] {
+    const changes: LabelChange[] = [];
+
+    for (const [frame, prevByPath] of before) {
+      const nextByPath = this.displayedById(frame);
+      const paths = new Set([...prevByPath.keys(), ...nextByPath.keys()]);
+
+      for (const path of paths) {
+        const prev = prevByPath.get(path) ?? new Map<string, LabelData>();
+        const next = nextByPath.get(path) ?? new Map<string, LabelData>();
+
+        for (const [instanceId, label] of prev) {
+          const after = next.get(instanceId);
+
+          if (!after) {
+            changes.push({
+              ref: { sample: this.sample, path, instanceId, frame },
+              kind: "delete",
+            });
+          } else if (!equalsNormalized(label, after)) {
+            changes.push({
+              ref: { sample: this.sample, path, instanceId, frame },
+              kind: "update",
+            });
+          }
+        }
+
+        for (const instanceId of next.keys()) {
+          if (!prev.has(instanceId)) {
+            changes.push({
+              ref: { sample: this.sample, path, instanceId, frame },
+              kind: "update",
+            });
+          }
+        }
+      }
+    }
+
+    return changes;
+  }
+
+  /** The displayed labels at a frame, indexed by track-address id, per path. */
+  private displayedById(frame: number): Map<string, Map<string, LabelData>> {
+    const byPath = new Map<string, Map<string, LabelData>>();
+
+    for (const path of Object.keys(this.labelTypes)) {
+      const byId = new Map<string, LabelData>();
+
+      for (const label of this.listAt(frame, path)) {
+        const instanceId = addressIdOf(label);
+
+        if (instanceId !== undefined) {
+          byId.set(instanceId, label);
+        }
+      }
+
+      byPath.set(path, byId);
+    }
+
+    return byPath;
   }
 
   // ---- lifecycle ----
 
+  /**
+   * Re-seed the source from the `/frames` stream. Fires on the initial seed and
+   * on every stream-cache edit echo (e.g. a persisted save flowing back), so it
+   * must NOT blanket-reset: that reprojected every present overlay on each tick,
+   * fighting in-flight interaction and re-creating overlays the user was editing
+   * (a video-only path the image store never had). Emits TARGETED changes only
+   * for frames whose SOURCE actually moved and whose displayed projection isn't
+   * shadowed by a still-dirty working overlay — so an edit in progress (working
+   * wins) emits nothing for its own label. Initial hydration mounts via the
+   * bridge's registration reconcile; here newcomers fall out as `update` adds.
+   */
   setData(data: Record<string, unknown>): void {
-    this.source = this.parse(data as FramesData);
+    const prevSource = this.source;
+    const next = this.parse(data as FramesData);
+
+    // candidate frames: where the SOURCE genuinely changed. A working frame
+    // shadows source, so its displayed value is unaffected by a re-seed — but
+    // capture it anyway and let the displayed diff (working-over-source) decide.
+    const before = new Map<number, Map<string, Map<string, LabelData>>>();
+
+    for (const frame of new Set([...prevSource.keys(), ...next.keys()])) {
+      const prev = prevSource.get(frame);
+      const after = next.get(frame);
+
+      if (prev === undefined || after === undefined) {
+        before.set(frame, this.displayedById(frame));
+        continue;
+      }
+
+      if (!this.frameEquals(prev, after)) {
+        before.set(frame, this.displayedById(frame));
+      }
+    }
+
+    this.source = next;
 
     // GC: a working frame now equal to the new source is no longer dirty;
     // one that still differs (edited mid-save) stays as the next delta
@@ -347,7 +472,7 @@ export class FrameStore implements LabelStore {
       }
     }
 
-    this.emit([wholeSampleReset(this.sample)]);
+    this.emit(this.diffDisplayed(before));
   }
 
   clear(): void {
