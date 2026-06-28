@@ -232,3 +232,33 @@ describe("isFieldLabelTypeUnsupported", () => {
     );
   });
 });
+
+describe("hidden-field activation gating (drives HiddenFieldsSection UI)", () => {
+  // The Hidden-fields list suppresses the Setup/Edit/select affordances and
+  // shows the "Unsupported" pill exactly when this predicate is true.
+
+  it("video + frame-level Polylines hidden field → unsupported (pill shown, not activatable)", () => {
+    expect(
+      isFieldLabelTypeUnsupported("frames.lines", "Polylines", "video"),
+    ).toBe(true);
+  });
+
+  it("video + frame-level Classification hidden field → unsupported", () => {
+    expect(
+      isFieldLabelTypeUnsupported("frames.framecls", "Classification", "video"),
+    ).toBe(true);
+  });
+
+  it("video + sample-level Classification hidden field → remains activatable", () => {
+    // Per LABEL_TYPE_OPTIONS_VIDEO, sample-level Classification is supported.
+    expect(
+      isFieldLabelTypeUnsupported("classsample", "Classification", "video"),
+    ).toBe(false);
+  });
+
+  it("image + Polylines hidden field → remains activatable", () => {
+    expect(isFieldLabelTypeUnsupported("lines", "Polylines", "image")).toBe(
+      false,
+    );
+  });
+});
