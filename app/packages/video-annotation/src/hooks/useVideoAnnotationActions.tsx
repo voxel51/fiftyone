@@ -1,5 +1,6 @@
 import type { ToolbarActionGroup } from "@fiftyone/components";
 import { useModalSample } from "@fiftyone/state";
+import CallMerge from "@mui/icons-material/CallMerge";
 import { Icon, IconName, Size } from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
@@ -9,6 +10,7 @@ import {
   labelSchemaData,
   useTemporalDetectionFieldPaths,
 } from "../state/accessors";
+import { useMergeFlow } from "../state/useMergeFlow";
 import { useSelectedTrackIds } from "../state/useVideoInteraction";
 import { useFrameKeyframeState } from "./useFrameKeyframeState";
 import { useVideoSurfaceActions } from "./useVideoSurfaceActions";
@@ -61,6 +63,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
   const playhead = usePlayhead();
   const selected = useSelectedTrackIds();
   const modalSample = useModalSample();
+  const mergeFlow = useMergeFlow();
 
   // Resolve from the dataset schema
   const tdFieldPaths = useTemporalDetectionFieldPaths();
@@ -95,10 +98,12 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
   // detection on this frame). See {@link useFrameKeyframeState}.
   const isKeyframeAtPlayhead = useFrameKeyframeState(selectedIds, playhead);
 
-  // split needs one track + a playhead frame; merge needs exactly two
+  // split needs one track + a playhead frame; merge now uses a two-click
+  // stateful flow (select target → click Merge → click source), so we only
+  // require one selected track to arm the button
   const canSplit =
     selectedIds.length === 1 && Number.isFinite(fps) && !!fps && fps > 0;
-  const canMerge = selectedIds.length === 2;
+  const canMerge = selectedIds.length === 1 || mergeFlow.pending;
 
   return useMemo<ToolbarActionGroup[]>(
     () => [
@@ -159,19 +164,28 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
           {
             id: "merge-tracks",
             label: "Merge",
-            icon: <Icon name={IconName.Workspaces} size={Size.Sm} />,
-            // direction is ambiguous from a selection set, so fix a rule: the
-            // first-selected merges into the last-selected, which survives
-            tooltip: canMerge
-              ? "Merge the two selected tracks (keeps the later selection)"
-              : "Select two tracks to merge them",
+            icon: <CallMerge fontSize="small" />,
+            // Two-click flow: the first-selected track is the target
+            // (survives); the next-clicked track is the source (consumed).
+            // Clicking the button while already pending toggles off.
+            tooltip: mergeFlow.pending
+              ? "Click another track to merge it into the selected one"
+              : canMerge
+                ? "Click Merge, then click another track to merge it in"
+                : "Select a track to merge another into it",
+            isActive: mergeFlow.pending,
             isDisabled: !canMerge,
             onClick: () => {
-              if (!canMerge) {
+              if (mergeFlow.pending) {
+                mergeFlow.cancelMerge();
                 return;
               }
 
-              actions.mergeTracks(selectedIds[0], selectedIds[1]);
+              if (selectedIds.length !== 1) {
+                return;
+              }
+
+              mergeFlow.beginMerge(selectedIds[0]);
             },
           },
         ],
@@ -185,6 +199,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
       fps,
       hasSelection,
       isKeyframeAtPlayhead,
+      mergeFlow,
       playhead,
       selectedIds,
       tdDefaultLabel,

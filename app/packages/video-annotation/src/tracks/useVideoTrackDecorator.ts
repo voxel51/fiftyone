@@ -5,6 +5,8 @@
 import type { Track } from "@fiftyone/playback";
 import clsx from "clsx";
 import { useCallback } from "react";
+import { useVideoSurfaceActions } from "../hooks/useVideoSurfaceActions";
+import { useMergeFlow } from "../state/useMergeFlow";
 import { useVideoInteraction } from "../state/useVideoInteraction";
 import { objectTrackPathOf } from "./frameTracks";
 import { temporalDetectionRefOf } from "./temporalDetectionTracks";
@@ -46,6 +48,8 @@ export const useVideoTrackDecorator = (): ((
     selectLabel,
     hoverLabel,
   } = useVideoInteraction();
+  const { consumeMerge } = useMergeFlow();
+  const surfaceActions = useVideoSurfaceActions();
 
   return useCallback(
     (track: Track) => {
@@ -59,7 +63,13 @@ export const useVideoTrackDecorator = (): ((
           }),
           onMouseEnter: () => hoverLabel(tdRef, true),
           onMouseLeave: () => hoverLabel(tdRef, false),
-          onTrackClick: () => selectLabel(tdRef),
+          // TDs aren't object tracks — clicking one during a pending merge
+          // cancels the merge (via consume → null branch) and proceeds with
+          // normal selection.
+          onTrackClick: () => {
+            consumeMerge(tdRef.instanceId);
+            selectLabel(tdRef);
+          },
         };
       }
 
@@ -74,7 +84,23 @@ export const useVideoTrackDecorator = (): ((
         }),
         onMouseEnter: () => path && hoverTrack(track.id, path, true),
         onMouseLeave: () => path && hoverTrack(track.id, path, false),
-        onTrackClick: () => path && selectTrack(track.id, path),
+        onTrackClick: () => {
+          if (!path) {
+            return;
+          }
+
+          // If a merge is pending, the click is consumed as the source — the
+          // target (the originally-selected track) survives. Self-clicks
+          // simply exit the pending mode without re-selecting.
+          const pair = consumeMerge(track.id);
+
+          if (pair) {
+            surfaceActions.mergeTracks(pair.source, pair.target);
+            return;
+          }
+
+          selectTrack(track.id, path);
+        },
       };
     },
     [
@@ -84,6 +110,8 @@ export const useVideoTrackDecorator = (): ((
       selectTrack,
       hoverLabel,
       selectLabel,
+      consumeMerge,
+      surfaceActions,
     ],
   );
 };

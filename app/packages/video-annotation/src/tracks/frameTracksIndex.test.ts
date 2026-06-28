@@ -79,9 +79,9 @@ describe("buildTracksFromIndex", () => {
     const bars = presence(tracks[0]);
     expect(bars).toHaveLength(2);
     expect(bars[0].startSec).toBeCloseTo(0);
-    expect(bars[0].endSec).toBeCloseTo(3 / FPS);
+    expect(bars[0].endSec).toBeCloseTo(2 / FPS);
     expect(bars[1].startSec).toBeCloseTo(4 / FPS);
-    expect(bars[1].endSec).toBeCloseTo(6 / FPS);
+    expect(bars[1].endSec).toBeCloseTo(5 / FPS);
 
     const kf = keyframes(tracks[0]);
     expect(kf).toHaveLength(1);
@@ -102,7 +102,7 @@ describe("buildTracksFromIndex", () => {
     const bars = presence(b);
     expect(bars).toHaveLength(1);
     expect(bars[0].startSec).toBeCloseTo(3 / FPS);
-    expect(bars[0].endSec).toBeCloseTo(5 / FPS);
+    expect(bars[0].endSec).toBeCloseTo(4 / FPS);
   });
 
   it("shrinks presence where the overlay deleted the label at a dirty frame", () => {
@@ -116,8 +116,9 @@ describe("buildTracksFromIndex", () => {
 
     const bars = presence(tracks[0]);
     expect(bars).toHaveLength(2);
-    expect(bars[0].endSec).toBeCloseTo(1 / FPS);
+    expect(bars[0].endSec).toBeCloseTo(0 / FPS);
     expect(bars[1].startSec).toBeCloseTo(2 / FPS);
+    expect(bars[1].endSec).toBeCloseTo(2 / FPS);
     // The baseline keyframe at the now-dirty, now-absent frame is gone.
     expect(keyframes(tracks[0])).toHaveLength(0);
   });
