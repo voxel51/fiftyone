@@ -489,33 +489,20 @@ export function usePlaybackEngine({
         }
 
         const current = store.get(playheadAtom);
-        // Frame index of the current playhead (rounded handles floating-point
-        // drift and unaligned initial states; round-then-floor still produces
-        // a sensible anchor for the hysteresis math).
-        const currentFrame = Math.round(current / step);
-        const T_curr = currentFrame * step;
-        const T_next = (currentFrame + 1) * step;
-        const T_prev = (currentFrame - 1) * step;
-
-        let snapped: number;
-        if (clamped >= T_next) {
-          // Crossed forward across at least one anchor → snap to whichever
-          // frame the cursor is now in.
-          snapped = displayedFrameStart(clamped, step);
-        } else if (clamped <= T_prev) {
-          // Crossed backward across at least one anchor → snap to that frame.
-          snapped = displayedFrameStart(clamped, step);
-        } else {
-          // Cursor is in the hysteresis zone (T_prev, T_next) around the
-          // current anchor — stay put. This gives symmetric snap-on-arrival
-          // behavior in both directions: the playhead "owns" the interval
-          // around its current anchor and only releases when the cursor
-          // reaches the adjacent anchor.
-          snapped = T_curr;
-        }
+        // Cell-based snap: frame K (0-indexed in `step` units) occupies
+        // [K*step, (K+1)*step). Snap to whichever frame's cell the cursor is
+        // in. This gives a symmetric contract — dragging by exactly one
+        // frame width in either direction advances the playhead by exactly
+        // one frame:
+        //   playhead at T_K, cursor at T_K + step → cell K+1 → snap to T_{K+1}
+        //   playhead at T_K, cursor at T_K - step → cell K-1 → snap to T_{K-1}
+        // The previous "playhead owns (T_{prev}, T_{next})" hysteresis was
+        // asymmetric — backward required two frame widths to cross T_{prev}.
+        const snapped = displayedFrameStart(clamped, step);
 
         // Early-return when the snap result matches the current playhead —
-        // happens on every sub-frame drag delta inside the hysteresis zone.
+        // happens on every sub-frame drag delta that stays within the same
+        // cell as the current playhead.
         if (snapped === current) return;
 
         store.set(playheadAtom, snapped);
