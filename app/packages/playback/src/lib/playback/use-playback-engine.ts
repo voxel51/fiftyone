@@ -489,16 +489,22 @@ export function usePlaybackEngine({
         }
 
         const current = store.get(playheadAtom);
-        // Cell-based snap: frame K (0-indexed in `step` units) occupies
-        // [K*step, (K+1)*step). Snap to whichever frame's cell the cursor is
-        // in. This gives a symmetric contract — dragging by exactly one
-        // frame width in either direction advances the playhead by exactly
-        // one frame:
-        //   playhead at T_K, cursor at T_K + step → cell K+1 → snap to T_{K+1}
-        //   playhead at T_K, cursor at T_K - step → cell K-1 → snap to T_{K-1}
-        // The previous "playhead owns (T_{prev}, T_{next})" hysteresis was
-        // asymmetric — backward required two frame widths to cross T_{prev}.
-        const snapped = displayedFrameStart(clamped, step);
+        // Nearest-anchor snap: round the cursor time to the closest frame
+        // anchor `K * step`. This is symmetric on BOTH the seconds axis
+        // and the visual axis. The playhead RENDERS at the start of frame
+        // K's cell (i.e. at `K * step`), so a floor-based cell snap was
+        // visually asymmetric — dragging one cell-width left put the
+        // cursor at the cell-start of the previous anchor (snap = 1 frame
+        // backward, but the playhead had already been visually sitting at
+        // the upper boundary of that cell, so the user perceived a 2-cell
+        // jump). Rounding to the nearest anchor makes the visual delta
+        // match the logical delta in both directions:
+        //   playhead at T_K, cursor at T_K + step → round → snap to T_{K+1}
+        //   playhead at T_K, cursor at T_K - step → round → snap to T_{K-1}
+        // Half-step ties round toward +Infinity per JS `Math.round`, so
+        // an exact midpoint cursor tips forward — deterministic and
+        // imperceptible in practice (sub-frame mouse precision).
+        const snapped = Math.round(clamped / step) * step;
 
         // Early-return when the snap result matches the current playhead —
         // happens on every sub-frame drag delta that stays within the same

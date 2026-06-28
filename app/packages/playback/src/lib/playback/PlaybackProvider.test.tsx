@@ -360,11 +360,11 @@ describe("PlaybackProvider engine actions", () => {
     });
 
     describe("seekSnapped (mid-drag scrub path)", () => {
-      // Continuous-time targets that all live inside displayed frame 15
-      // ([0.5, 0.5333)). With snapping on, every one of them should land
-      // the playhead at 0.5; with snapping off, each target is preserved
-      // exactly (no quantization).
-      const SUBFRAME_TARGETS = [0.501, 0.515, 0.5299];
+      // Continuous-time targets that all sit within half a frame of
+      // anchor 15 (0.5s) at step = 1/30 (half-step ≈ 0.0167). With
+      // nearest-anchor snap on, every one rounds to 0.5; with snapping
+      // off, each target is preserved exactly (no quantization).
+      const SUBFRAME_TARGETS = [0.501, 0.508, 0.515];
 
       it("snaps every mid-drag target to the displayed frame start when enabled", () => {
         const { result } = renderEngine({ snapToFrameOnSettle: true });
@@ -398,37 +398,37 @@ describe("PlaybackProvider engine actions", () => {
 
       it("crossing frame boundaries during a drag advances the playhead in discrete jumps", () => {
         const { result } = renderEngine({ snapToFrameOnSettle: true });
-        // Cell K spans [K*step, (K+1)*step). At step = 1/30:
-        //   cell 15 = [0.5, 0.5333); cell 16 = [0.5333, 0.5667).
-        // 0.51 is in cell 15 → snap to 15/30.
+        // Nearest-anchor snap at step = 1/30:
+        //   0.51 * 30 = 15.3 → round 15 → snap to 15/30.
         act(() => result.current.api.seekSnapped(0.51));
         expect(result.current.playhead).toBeCloseTo(15 / 30, 5);
-        // 0.54 is in cell 16 → snap to 16/30.
+        //   0.54 * 30 = 16.2 → round 16 → snap to 16/30.
         act(() => result.current.api.seekSnapped(0.54));
         expect(result.current.playhead).toBeCloseTo(16 / 30, 5);
-        // 0.52 is back in cell 15 → snap to 15/30 (cell-based, no dead-band).
+        //   0.52 * 30 = 15.6 → round 16 → snap to 16/30 (rounds toward
+        //   the nearer anchor; no dead-band on either side).
         act(() => result.current.api.seekSnapped(0.52));
-        expect(result.current.playhead).toBeCloseTo(15 / 30, 5);
+        expect(result.current.playhead).toBeCloseTo(16 / 30, 5);
       });
 
-      describe("symmetric cell-based snap", () => {
+      describe("symmetric nearest-frame snap", () => {
         const STEP = 1 / 30;
         const T = (n: number) => n * STEP;
 
-        it("target inside the current cell stays on the current frame", () => {
+        it("target within a quarter-step of the current anchor stays put", () => {
           const { result } = renderEngine({ snapToFrameOnSettle: true });
-          // Settle on cell 5 (playhead at T(5) = start of cell 5).
+          // Settle on T(5).
           act(() => result.current.api.seekSnapped(T(5)));
           expect(result.current.playhead).toBeCloseTo(T(5), 5);
-          // A target between T(5) and T(6) is still in cell 5 → stays on T(5).
-          act(() => result.current.api.seekSnapped(T(5) + STEP * 0.4));
+          // A target a quarter-step past T(5) is still nearest to T(5).
+          act(() => result.current.api.seekSnapped(T(5) + STEP * 0.25));
           expect(result.current.playhead).toBeCloseTo(T(5), 5);
         });
 
         it("dragging forward by exactly one frame width advances one frame", () => {
           const { result } = renderEngine({ snapToFrameOnSettle: true });
           act(() => result.current.api.seekSnapped(T(5)));
-          // Cursor at T(5) + STEP = T(6) → cell 6 → snap to T(6).
+          // Cursor at T(5) + STEP = T(6) → round → snap to T(6).
           act(() => result.current.api.seekSnapped(T(5) + STEP));
           expect(result.current.playhead).toBeCloseTo(T(6), 5);
         });
@@ -436,11 +436,34 @@ describe("PlaybackProvider engine actions", () => {
         it("dragging backward by exactly one frame width retreats one frame", () => {
           const { result } = renderEngine({ snapToFrameOnSettle: true });
           act(() => result.current.api.seekSnapped(T(5)));
-          // Cursor at T(5) - STEP = T(4) → cell 4 → snap to T(4). This is
-          // the symmetric counterpart of the forward case — the previous
-          // hysteresis required 2 * STEP backward motion to trigger a snap.
+          // Cursor at T(5) - STEP = T(4) → round → snap to T(4). Symmetric
+          // counterpart of the forward case; no per-direction asymmetry.
           act(() => result.current.api.seekSnapped(T(5) - STEP));
           expect(result.current.playhead).toBeCloseTo(T(4), 5);
+        });
+
+        it("dragging forward by half a frame width snaps to the next anchor", () => {
+          // JS Math.round ties toward +Infinity, so an exact half-step
+          // forward tips to the upper anchor. Validates the visual-symmetry
+          // story: a sub-frame forward gesture that crosses the cell
+          // midpoint commits to the next anchor.
+          const { result } = renderEngine({ snapToFrameOnSettle: true });
+          act(() => result.current.api.seekSnapped(T(5)));
+          act(() => result.current.api.seekSnapped(T(5) + STEP * 0.5));
+          expect(result.current.playhead).toBeCloseTo(T(6), 5);
+        });
+
+        it("dragging backward by half a frame width does not move the playhead", () => {
+          // Half-step backward sits exactly on a tie. JS Math.round
+          // rounds half UP (toward +Infinity), so -1.5 → -1 → snap back
+          // to the current anchor. Net effect: a half-frame backward
+          // gesture is treated as no movement. Acceptable — at the exact
+          // midpoint the tie has to go one way, and "forward bias" is
+          // perceptually invisible at sub-frame mouse precision.
+          const { result } = renderEngine({ snapToFrameOnSettle: true });
+          act(() => result.current.api.seekSnapped(T(5)));
+          act(() => result.current.api.seekSnapped(T(5) - STEP * 0.5));
+          expect(result.current.playhead).toBeCloseTo(T(5), 5);
         });
 
         it("forward and backward thresholds are identical in absolute seconds", () => {
