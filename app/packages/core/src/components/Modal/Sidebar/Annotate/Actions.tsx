@@ -474,9 +474,10 @@ const Actions = () => {
   const is3dDataset = useRecoilValue(is3DDataset);
   // Video annotation handles the per-frame spatial label types — boxes,
   // instance masks (Segmentation mode paints onto a detection), and polylines —
-  // so the surface shows that reduced set (Select + Detection + Segmentation +
-  // Polyline). Classification stays image-only for now. Undo/redo are shown —
-  // the engine's value-based stack backs them on video too.
+  // plus sample-level Classification (the field picker filters frame-level
+  // paths out). So the surface shows that set (Select + Classification +
+  // Detection + Segmentation + Polyline). Undo/redo are shown — the engine's
+  // value-based stack backs them on video too.
   const isVideo = useRecoilValue(isVideoDataset);
   // This checks if a 3d sample is pinned - is true when media type is `group` with a 3d slice pinned
   const is3dSamplePinned = useIs3dPinned();
@@ -513,6 +514,7 @@ const Actions = () => {
             <Select active={noActiveActions} />
             {isVideo ? (
               <>
+                <Classification />
                 <Detection />
                 <Segmentation />
                 <Polyline />
