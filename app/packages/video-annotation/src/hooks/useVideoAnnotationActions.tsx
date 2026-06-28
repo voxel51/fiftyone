@@ -121,22 +121,6 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
         label: "Edit",
         actions: [
           {
-            id: "mark-keyframe",
-            label: "Mark Keyframe",
-            icon: <DiamondIcon filled={isKeyframeAtPlayhead} />,
-            shortcut: "K",
-            tooltip: !hasSelection
-              ? "Select a label to mark a keyframe"
-              : !selectionIsKeyframeable
-                ? "Keyframes are only available for detections"
-                : "Toggle keyframe at this frame",
-            isDisabled: !canMarkKeyframe,
-            onClick: () => {
-              if (!canMarkKeyframe) return;
-              actions.markKeyframe(playhead, selectedIds);
-            },
-          },
-          {
             id: "create-temporal-detection",
             label: "New TD",
             icon: <Icon name={IconName.Add} size={Size.Sm} />,
@@ -154,6 +138,22 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
                 [startFrame, endFrame],
                 tdDefaultLabel,
               );
+            },
+          },
+          {
+            id: "mark-keyframe",
+            label: "Mark Keyframe",
+            icon: <DiamondIcon filled={isKeyframeAtPlayhead} />,
+            shortcut: "K",
+            tooltip: !hasSelection
+              ? "Select a label to mark a keyframe"
+              : !selectionIsKeyframeable
+                ? "Keyframes are only available for detections"
+                : "Toggle keyframe at this frame",
+            isDisabled: !canMarkKeyframe,
+            onClick: () => {
+              if (!canMarkKeyframe) return;
+              actions.markKeyframe(playhead, selectedIds);
             },
           },
           {
