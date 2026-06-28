@@ -177,7 +177,7 @@ const sameTemporalSample = (
 type Scene = ReturnType<typeof useLighterSetupWithPixi>["scene"];
 
 /** Engine-authoritative TD set as a sample dict, stable across unrelated bumps. */
-const useEngineTemporalSample = (): Record<string, unknown> => {
+export const useEngineTemporalSample = (): Record<string, unknown> => {
   const engine = useAnnotationEngine();
   const sampleId = useActiveSampleId();
   const tdPaths = useTemporalDetectionFieldPaths();

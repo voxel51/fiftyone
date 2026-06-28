@@ -3,11 +3,7 @@ import {
   useAnnotationEngine,
   useEngineSelector,
 } from "@fiftyone/annotation";
-import {
-  getLabelColorFromContext,
-  TemporalOverlay,
-  useLighter,
-} from "@fiftyone/lighter";
+import { getLabelColorFromContext } from "@fiftyone/lighter";
 import type { ModalSample } from "@fiftyone/state";
 import type { LabelData, Stage } from "@fiftyone/utilities";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
@@ -16,14 +12,14 @@ import {
   useColorScheme,
   useColorSeed,
   useDatasetName,
-  useDynamicAttributeNames,
+  useDynamicAttributeNamesGetter,
   useFrameLabelFields,
   useGroupSlice,
   useModalSampleId,
   useView,
   useVisibleLabelSchemas,
 } from "../state/accessors";
-import { useTemporalOverlayVersion } from "../hooks/useTemporalOverlayVersion";
+import { useEngineTemporalSample } from "../sync/useTemporalOverlaySync";
 import { useWarmupThenSeek } from "../hooks/useWarmupThenSeek";
 import {
   TimelineWithTracks,
@@ -39,6 +35,8 @@ import {
 } from "../streams/frameLabelsStream";
 import {
   buildTracksFromIndex,
+  objectTrackClassOf,
+  objectTrackPathOf,
   parseSubTrackId,
   type FrameOverlay,
   type PerInstanceLabel,
@@ -246,7 +244,7 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
  */
 function useFrameDerivedTracks(
   resolveColor: ObjectTrackColorResolver,
-  dynamicAttributes: string[],
+  getDynamicAttributes: (path: string | null) => string[],
 ): {
   tracks: Track[];
   resolved: boolean;
@@ -261,6 +259,23 @@ function useFrameDerivedTracks(
   // view) so visibility toggles filter client-side without re-fetching.
   const allFields = useMemo(() => Object.keys(labelTypes), [labelTypes]);
 
+  // Each field's declared dynamic attributes, scoped per path so a field
+  // without dynamic attributes gets no sub-tracks.
+  const dynamicByPath = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const path of allFields) {
+      map[path] = getDynamicAttributes(path);
+    }
+    return map;
+  }, [allFields, getDynamicAttributes]);
+
+  // The fetch takes the union across fields — the backend returns attribute
+  // segments only for the fields that actually declare each attribute.
+  const allDynamicAttributes = useMemo(
+    () => Array.from(new Set(Object.values(dynamicByPath).flat())),
+    [dynamicByPath],
+  );
+
   // Gate each frame field's tracks on the sidebar's visible set — deactivating
   // a field in the schema manager hides its timeline rows, matching the canvas
   // + sidebar.
@@ -272,7 +287,7 @@ function useFrameDerivedTracks(
   const { indexByPath, loaded } = useVideoLabelsIndex(
     stream,
     allFields,
-    dynamicAttributes,
+    allDynamicAttributes,
   );
 
   // engine version is the rebuild signal.
@@ -293,7 +308,7 @@ function useFrameDerivedTracks(
         overlay: readEngineOverlay(engine, sampleId, path),
         fps: stream.fps,
         resolveColor,
-        dynamicAttributes,
+        dynamicAttributes: dynamicByPath[path] ?? [],
       }),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps -- engineVersion is the invalidation signal
@@ -305,7 +320,7 @@ function useFrameDerivedTracks(
     resolveColor,
     indexByPath,
     loaded,
-    dynamicAttributes,
+    dynamicByPath,
     engineVersion,
   ]);
 
@@ -337,27 +352,21 @@ function readEngineOverlay(
 }
 
 /**
- * Derive TD tracks from the scene's live `TemporalOverlay` set rather than
- * the sample, which lags an autosave behind local edits. `useTemporalOverlaySync`
- * primes the overlays from the sample on first load.
+ * Derive TD tracks from the engine — the authoritative, reactive TD source.
+ * Reading it directly means a `support` / label edit (sidebar or timeline drag)
+ * rebuilds the rows immediately. The prior scene-overlay read only re-derived on
+ * an overlay add/remove, so an in-place support edit left the timeline stale;
+ * `useTemporalOverlaySync` keeps the canvas overlays in step from the same source.
  */
 function useTemporalDetectionTracks(
   sample: ModalSample | undefined,
   resolveColor: TemporalDetectionColorResolver,
 ): Track[] {
-  const { scene } = useLighter();
-  const tdVersion = useTemporalOverlayVersion(scene, {
-    listenLabelEdit: true,
-    bumpOnSceneReady: true,
-  });
+  const temporalSample = useEngineTemporalSample();
   const frameRate = getModalSampleFrameRate(sample);
   const visible = useVisibleLabelSchemas();
 
   return useMemo(() => {
-    if (!scene) {
-      return [];
-    }
-
     if (
       frameRate === undefined ||
       !Number.isFinite(frameRate) ||
@@ -366,20 +375,21 @@ function useTemporalDetectionTracks(
       return [];
     }
 
-    // Only overlays whose field is visible — a deactivated TD field drops its
+    // Only fields visible in the sidebar — a deactivated TD field drops its
     // timeline rows, matching the canvas + sidebar.
-    const temporalOverlays = scene
-      .getAllOverlays()
-      .filter((o): o is TemporalOverlay => o instanceof TemporalOverlay)
-      .filter((o) => visible.has(o.field));
+    const visibleSample: Record<string, unknown> = {};
+    for (const [path, value] of Object.entries(temporalSample)) {
+      if (visible.has(path)) {
+        visibleSample[path] = value;
+      }
+    }
 
     return buildTemporalDetectionTracks({
-      sample: buildVirtualTemporalSample(temporalOverlays),
+      sample: visibleSample,
       fps: frameRate,
       resolveColor,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- tdVersion is the invalidation signal
-  }, [scene, frameRate, resolveColor, tdVersion, visible]);
+  }, [temporalSample, frameRate, resolveColor, visible]);
 }
 
 /** Build the row-color resolvers, kept in lock-step with the overlays. */
@@ -440,13 +450,18 @@ function useTrackDecorator({
   // implicit context).
   const splitFrameRef = useRef(1);
 
-  // id + label of every object track, the universe of merge targets; each row
-  // filters itself out below.
+  // id + label + class of every object track, the universe of merge targets;
+  // each row filters itself out and to its own class below.
   const mergeCandidates = useMemo(
     () =>
       objectTracks
         .filter((t) => !parseSubTrackId(t.id))
-        .map((t) => ({ id: t.id, label: t.label })),
+        .map((t) => ({
+          id: t.id,
+          label: t.label,
+          classLabel: objectTrackClassOf(t),
+          path: objectTrackPathOf(t),
+        })),
     [objectTracks],
   );
 
@@ -488,7 +503,19 @@ function useTrackDecorator({
           actions,
           getCurrentFrame,
           splitFrameRef,
-          mergeTargets: mergeCandidates.filter((c) => c.id !== track.id),
+          // the track's own frames field — the per-frame ops address it directly,
+          // so a track on a non-primary field still deletes / splits / merges
+          trackPath: objectTrackPathOf(track),
+          // merge only into a different track OF THE SAME CLASS on the SAME field
+          // (a cross-field merge is meaningless)
+          mergeTargets: mergeCandidates
+            .filter(
+              (c) =>
+                c.id !== track.id &&
+                c.classLabel === objectTrackClassOf(track) &&
+                c.path === objectTrackPathOf(track),
+            )
+            .map((c) => ({ id: c.id, label: c.label })),
         });
 
         if (!expandableParentIds.has(track.id)) {
@@ -549,13 +576,13 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   const { resolveObjectColor, resolveTemporalDetectionColor } =
     useTrackColorResolvers();
 
-  // Dynamic attributes are declared on the primary labels stream's field.
-  const stream = useFrameLabelsStream();
-  const path = stream ? `frames.${stream.labelsField}` : null;
-  const dynamicAttributeNames = useDynamicAttributeNames(path);
+  // Dynamic attributes are declared per field, so resolve them per-path when
+  // building tracks — a single primary-field lookup leaks one field's dynamic
+  // attributes onto every other field's tracks.
+  const getDynamicAttributeNames = useDynamicAttributeNamesGetter();
 
   const { tracks: frameTracks, resolved: frameTracksResolved } =
-    useFrameDerivedTracks(resolveObjectColor, dynamicAttributeNames);
+    useFrameDerivedTracks(resolveObjectColor, getDynamicAttributeNames);
   const temporalDetectionTracks = useTemporalDetectionTracks(
     sample,
     resolveTemporalDetectionColor,
@@ -631,6 +658,7 @@ function decorateObjectTrack({
   actions,
   getCurrentFrame,
   splitFrameRef,
+  trackPath,
   mergeTargets,
 }: {
   track: Track;
@@ -641,22 +669,28 @@ function decorateObjectTrack({
   actions: VideoSurfaceActions;
   getCurrentFrame: () => number;
   splitFrameRef: React.MutableRefObject<number>;
+  trackPath: string | null;
   mergeTargets: { id: string; label: string }[];
 }): TrackDecoration {
+  // Address the track's own frames field so a non-primary-field track still
+  // operates; `undefined` falls back to the stream's primary field in the action.
+  const fieldPath = trackPath ?? undefined;
+
   const menuItems: TrackEventMenuItem[] = [
     {
       label: "Delete track",
       destructive: true,
-      onSelect: () => actions.deleteTrack(track.id),
+      onSelect: () => actions.deleteTrack(track.id, fieldPath),
     },
     {
       // splits at the frame captured when the menu opened (see onContextMenu)
       label: "Split at playhead",
-      onSelect: () => actions.splitTrack(track.id, splitFrameRef.current),
+      onSelect: () =>
+        actions.splitTrack(track.id, splitFrameRef.current, fieldPath),
     },
     ...mergeTargets.map((target) => ({
       label: `Merge into ${target.label}`,
-      onSelect: () => actions.mergeTracks(track.id, target.id),
+      onSelect: () => actions.mergeTracks(track.id, target.id, fieldPath),
     })),
   ];
 
@@ -720,29 +754,6 @@ function decorateTemporalDetectionTrack({
         actions,
       }),
   };
-}
-
-/**
- * Project scene `TemporalOverlay`s into a sample-shaped dict so
- * {@link buildTemporalDetectionTracks} consumes live overlay state the same
- * way it consumes a server sample.
- */
-function buildVirtualTemporalSample(
-  overlays: TemporalOverlay[],
-): Record<string, unknown> {
-  const byField = new Map<string, unknown[]>();
-  for (const overlay of overlays) {
-    const detections = byField.get(overlay.field) ?? [];
-    detections.push(overlay.label);
-    byField.set(overlay.field, detections);
-  }
-
-  const virtualSample: Record<string, unknown> = {};
-  for (const [field, detections] of byField) {
-    virtualSample[field] = { _cls: "TemporalDetections", detections };
-  }
-
-  return virtualSample;
 }
 
 /**
