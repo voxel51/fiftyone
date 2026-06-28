@@ -113,6 +113,8 @@ const NewFieldSchema = () => {
     [fieldName, schemasData, currentMediaType],
   );
 
+  // Unsupported label types are filtered out of `labelTypeOptions` upstream
+  // (see `getLabelTypeOptions`) so they can't be selected here at all.
   const canCreate = fieldName.trim() !== "" && !fieldNameError && !isCreating;
 
   const handleCategoryChange = useCallback((index: number) => {

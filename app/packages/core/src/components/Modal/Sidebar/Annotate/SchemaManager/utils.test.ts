@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { LABEL_TYPE_OPTIONS, LABEL_TYPE_OPTIONS_VIDEO } from "./constants";
 import {
   createDefaultFormData,
   formatAttributeCount,
@@ -7,6 +6,7 @@ import {
   getAttributeTypeLabel,
   getClassNameError,
   getLabelTypeOptions,
+  isFieldLabelTypeUnsupported,
   toAttributeConfig,
   toFormData,
   validateFieldName,
@@ -187,11 +187,48 @@ describe("validateFieldName", () => {
 });
 
 describe("getLabelTypeOptions", () => {
-  it("offers the spatial set for a video frame field", () => {
-    expect(getLabelTypeOptions("video", true)).toBe(LABEL_TYPE_OPTIONS);
+  it("offers only supported types for a video frame field", () => {
+    // Frame-level Classification and Polylines are gated as unsupported and
+    // must be omitted from the create dropdown entirely.
+    const ids = getLabelTypeOptions("video", true).map((o) => o.id);
+    expect(ids).toEqual(["detections"]);
   });
 
   it("limits a sample-level video field to clip-level types", () => {
-    expect(getLabelTypeOptions("video", false)).toBe(LABEL_TYPE_OPTIONS_VIDEO);
+    const ids = getLabelTypeOptions("video", false).map((o) => o.id);
+    // Sample-level Classification is supported on video.
+    expect(ids).toEqual(["temporaldetections", "classification"]);
+  });
+});
+
+describe("isFieldLabelTypeUnsupported", () => {
+  it("flags frame-level Classification on video", () => {
+    expect(
+      isFieldLabelTypeUnsupported("frames.framecls", "Classification", "video"),
+    ).toBe(true);
+  });
+
+  it("flags frame-level Polylines on video", () => {
+    expect(
+      isFieldLabelTypeUnsupported("frames.lines", "Polylines", "video"),
+    ).toBe(true);
+  });
+
+  it("does not flag sample-level Classification on video", () => {
+    expect(
+      isFieldLabelTypeUnsupported("classsample", "Classification", "video"),
+    ).toBe(false);
+  });
+
+  it("does not flag frame-level Detections on video", () => {
+    expect(
+      isFieldLabelTypeUnsupported("frames.detections", "Detections", "video"),
+    ).toBe(false);
+  });
+
+  it("does not flag anything on image datasets", () => {
+    expect(isFieldLabelTypeUnsupported("cls", "Classification", "image")).toBe(
+      false,
+    );
   });
 });
