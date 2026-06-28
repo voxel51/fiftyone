@@ -291,38 +291,15 @@ const Polyline = () => {
   );
 };
 
-// Terse newest-first stack dump so each undo/redo entry traces to its gesture.
-// Left-anchored because the monospace multi-line content is wider than a label.
-const HistoryTooltip = ({
-  title,
-  entries,
-}: {
-  title: string;
-  entries: string[];
-}) => (
-  <div style={{ maxWidth: 380, fontFamily: "monospace", fontSize: 11 }}>
-    <div style={{ fontWeight: 700, marginBottom: 4 }}>{title}</div>
-    {entries.length === 0 ? (
-      <div>(empty)</div>
-    ) : (
-      entries.map((entry, index) => (
-        <div key={index}>
-          {index + 1}. {entry}
-        </div>
-      ))
-    )}
-  </div>
-);
-
+// Undo/Redo show a generic tooltip rather than a full stack dump: on video a
+// single edit fans out across many frames, so the raw stack reads as noise.
+// `useAnnotationUndoRedo` still exposes `undoStack` / `redoStack` for debugging
+// and a likely future "history panel" resurfacing.
 export const Undo = () => {
-  const { undo, undoEnabled, undoStack } = useAnnotationUndoRedo();
+  const { undo, undoEnabled } = useAnnotationUndoRedo();
 
   return (
-    <Tooltip
-      anchor={Anchor.Left}
-      content={<HistoryTooltip title="Undo" entries={undoStack} />}
-      portal
-    >
+    <Tooltip anchor={Anchor.Top} content={<Text>Undo</Text>} portal>
       <Round
         onClick={undo}
         className={undoEnabled ? "" : "disabled"}
@@ -335,14 +312,10 @@ export const Undo = () => {
 };
 
 export const Redo = () => {
-  const { redo, redoEnabled, redoStack } = useAnnotationUndoRedo();
+  const { redo, redoEnabled } = useAnnotationUndoRedo();
 
   return (
-    <Tooltip
-      anchor={Anchor.Left}
-      content={<HistoryTooltip title="Redo" entries={redoStack} />}
-      portal
-    >
+    <Tooltip anchor={Anchor.Top} content={<Text>Redo</Text>} portal>
       <Round
         onClick={redo}
         className={redoEnabled ? "" : "disabled"}
