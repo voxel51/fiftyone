@@ -1,8 +1,6 @@
+import { MuiIconFont } from "@fiftyone/components";
 import {
   Align,
-  Icon,
-  IconColor,
-  IconName,
   Orientation,
   Size,
   Spacing,
@@ -32,10 +30,10 @@ const DocsLink: React.FC<{ href: string; children: React.ReactNode }> = ({
 
 const COPY: Record<
   AnnotateBlocker,
-  { icon: IconName; title: string; description: React.ReactNode }
+  { icon: string; title: string; description: React.ReactNode }
 > = {
   metadata: {
-    icon: IconName.Warning,
+    icon: "warning",
     title: "Computed metadata required",
     description: (
       <>
@@ -48,7 +46,7 @@ const COPY: Record<
     ),
   },
   frames: {
-    icon: IconName.ImageSearch,
+    icon: "image_search",
     title: "Frames not sampled",
     description: (
       <>
@@ -91,7 +89,12 @@ export const AnnotatePrerequisiteNotice: React.FC<{
         spacing={Spacing.Md}
         style={{ maxWidth: 520, padding: 40, textAlign: "center" }}
       >
-        <Icon name={copy.icon} size={Size.Xl} color={IconColor.Warning} />
+        {/* Match the schema-import empty state's icon treatment (a 48px
+            MuiIconFont); the voodo `Icon` caps at 18px and reads as tiny here. */}
+        <MuiIconFont
+          name={copy.icon}
+          sx={{ fontSize: 48, color: "var(--color-content-icon-warning)" }}
+        />
         <Text variant={TextVariant.Xl}>{copy.title}</Text>
         <Text color={TextColor.Muted}>{copy.description}</Text>
       </Stack>
