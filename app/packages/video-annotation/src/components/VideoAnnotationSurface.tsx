@@ -2,6 +2,7 @@ import { getSampleSrc } from "@fiftyone/state";
 import type { ModalSample } from "@fiftyone/state";
 import React, { useMemo, useState } from "react";
 import { useAutoInterpolate } from "../hooks/useAutoInterpolate";
+import { useMergeFlowCancellation } from "../hooks/useMergeFlowCancellation";
 import { useRegisterVideoAnnotationKeybindings } from "../hooks/useRegisterVideoAnnotationKeybindings";
 import { useSyncAnnotationFrameClock } from "../hooks/useSyncAnnotationFrameClock";
 import { useSyncAnnotationVideoStore } from "../hooks/useSyncAnnotationVideoStore";
@@ -207,6 +208,7 @@ const VideoAnnotationHandlerRegistration: React.FC = () => {
   // and a seeded frame store, not the degenerate pool view
   useVideoLighterEngineBridge();
   useRegisterVideoAnnotationKeybindings();
+  useMergeFlowCancellation();
   useAutoInterpolate();
   // editing a frame label: keep the anchor (and the form) on the playhead's
   // occurrence of the same track as the playhead moves
