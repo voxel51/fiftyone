@@ -8,10 +8,27 @@ import {
   useInteraction,
   useSurfaceActions,
 } from "@fiftyone/annotation";
+import { LabelType } from "@fiftyone/utilities";
 import { useCallback, useEffect, useRef } from "react";
 import { useCurrentFrame, useCurrentFrameGetter } from "./useCurrentFrame";
 
 const SURFACE = "video-timeline";
+
+// Keyframes exist to drive linear propagation, which interpolates a bounding
+// box — so a keyframe is a detection-only concern.
+const KEYFRAME_TYPES: ReadonlySet<LabelType> = new Set([
+  LabelType.Detection,
+  LabelType.Detections,
+]);
+
+// Split is a track-identity op, valid for any frame-level instance geometry we
+// support as a track (detections + polylines), but not for TDs / classifications.
+const INSTANCE_TRACK_TYPES: ReadonlySet<LabelType> = new Set([
+  LabelType.Detection,
+  LabelType.Detections,
+  LabelType.Polyline,
+  LabelType.Polylines,
+]);
 
 /** Membership equality so a selector only re-renders on an id set change. */
 const sameIds = (a: ReadonlySet<string>, b: ReadonlySet<string>): boolean => {
@@ -70,6 +87,35 @@ export const useSelectedTrackIds = (): ReadonlySet<string> => {
     sameIds,
   );
 };
+
+/**
+ * True iff the selection is non-empty and every active ref's field resolves to
+ * a label type in `allowed`. The type is read from the dataset schema via
+ * `engine.getLabelType`, so this gates on what the FIELD is — not on whether a
+ * given label happens to carry a `bounding_box`. Used to scope toolbar actions
+ * to the label kinds they make sense for.
+ */
+const useSelectionTypeGate = (allowed: ReadonlySet<LabelType>): boolean => {
+  const engine = useAnnotationEngine();
+  return useInteraction(engine, (i) => {
+    const active = i.getActive();
+    return (
+      active.length > 0 &&
+      active.every((ref) => allowed.has(engine.getLabelType(ref.path)))
+    );
+  });
+};
+
+/** True iff every selected track is a detection — gates Mark Keyframe. */
+export const useSelectionIsKeyframeable = (): boolean =>
+  useSelectionTypeGate(KEYFRAME_TYPES);
+
+/**
+ * True iff every selected track is an instance-geometry type (detection or
+ * polyline) — gates Split.
+ */
+export const useSelectionIsInstanceTrack = (): boolean =>
+  useSelectionTypeGate(INSTANCE_TRACK_TYPES);
 
 /** Read hovered track ids (engine instanceIds) from interaction state. */
 export const useHoveredTrackIds = (): ReadonlySet<string> => {

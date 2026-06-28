@@ -9,7 +9,11 @@ import {
   labelSchemaData,
   useTemporalDetectionFieldPaths,
 } from "../state/accessors";
-import { useSelectedTrackIds } from "../state/useVideoInteraction";
+import {
+  useSelectedTrackIds,
+  useSelectionIsInstanceTrack,
+  useSelectionIsKeyframeable,
+} from "../state/useVideoInteraction";
 import { useFrameKeyframeState } from "./useFrameKeyframeState";
 import { useVideoSurfaceActions } from "./useVideoSurfaceActions";
 
@@ -89,14 +93,26 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
   const selectedIds = useMemo(() => Array.from(selected), [selected]);
   const hasSelection = selectedIds.length > 0;
 
+  // Type gates: keyframes are detections-only; split also admits polylines.
+  // Both are false on TD / classification selections.
+  const selectionIsKeyframeable = useSelectionIsKeyframeable();
+  const selectionIsInstanceTrack = useSelectionIsInstanceTrack();
+
   // Reactive: filled when the (single) selected track has a keyframe at the
   // current playhead. Outline otherwise (no selection, multi-selection, or no
   // detection on this frame). See {@link useFrameKeyframeState}.
   const isKeyframeAtPlayhead = useFrameKeyframeState(selectedIds, playhead);
 
-  // split needs one track + a playhead frame
+  // Mark Keyframe needs a detection selection.
+  const canMarkKeyframe = hasSelection && selectionIsKeyframeable;
+
+  // split needs one instance-track (detection / polyline) + a playhead frame
   const canSplit =
-    selectedIds.length === 1 && Number.isFinite(fps) && !!fps && fps > 0;
+    selectedIds.length === 1 &&
+    selectionIsInstanceTrack &&
+    Number.isFinite(fps) &&
+    !!fps &&
+    fps > 0;
 
   return useMemo<ToolbarActionGroup[]>(
     () => [
@@ -109,12 +125,14 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             label: "Mark Keyframe",
             icon: <DiamondIcon filled={isKeyframeAtPlayhead} />,
             shortcut: "K",
-            tooltip: hasSelection
-              ? "Toggle keyframe at this frame"
-              : "Select a label to mark a keyframe",
-            isDisabled: !hasSelection,
+            tooltip: !hasSelection
+              ? "Select a label to mark a keyframe"
+              : !selectionIsKeyframeable
+                ? "Keyframes are only available for detections"
+                : "Toggle keyframe at this frame",
+            isDisabled: !canMarkKeyframe,
             onClick: () => {
-              if (!hasSelection) return;
+              if (!canMarkKeyframe) return;
               actions.markKeyframe(playhead, selectedIds);
             },
           },
@@ -144,7 +162,9 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             icon: <Icon name={IconName.UnfoldMore} size={Size.Sm} />,
             tooltip: canSplit
               ? "Split the selected track at this frame"
-              : "Select one track to split it at the playhead",
+              : selectedIds.length === 1 && !selectionIsInstanceTrack
+                ? "Splitting is only available for detections and polylines"
+                : "Select one track to split it at the playhead",
             isDisabled: !canSplit,
             onClick: () => {
               if (!canSplit || !fps) {
@@ -160,12 +180,15 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
     [
       actions,
       canCreateTd,
+      canMarkKeyframe,
       canSplit,
       fps,
       hasSelection,
       isKeyframeAtPlayhead,
       playhead,
       selectedIds,
+      selectionIsInstanceTrack,
+      selectionIsKeyframeable,
       tdDefaultLabel,
       tdFieldPath,
     ],
