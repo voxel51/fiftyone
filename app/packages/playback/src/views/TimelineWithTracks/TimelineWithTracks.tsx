@@ -86,7 +86,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const tracks = useTracks();
   const { pinnedIds, togglePin } = useTrackPinning();
-  const { seek } = usePlayback();
+  const { seekSnapped } = usePlayback();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const labelWidth = tracks.length === 0 ? 0 : requestedLabelWidth;
@@ -111,7 +111,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
       labelWidth={labelWidth}
       pinned
       onPinClick={() => togglePin(track.id)}
-      onEventClick={(e) => seek(e.startSec)}
+      onEventClick={(e) => seekSnapped(e.startSec)}
       eventMenuItems={eventMenuItems}
       {...(decorateTrack ? decorateTrack(track, true) : null)}
     />
@@ -186,7 +186,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
                     labelWidth={labelWidth}
                     pinned={false}
                     onPinClick={() => togglePin(track.id)}
-                    onEventClick={(e) => seek(e.startSec)}
+                    onEventClick={(e) => seekSnapped(e.startSec)}
                     eventMenuItems={eventMenuItems}
                     {...extra}
                     className={clsx(styles.unpinnedTrack, extra?.className)}

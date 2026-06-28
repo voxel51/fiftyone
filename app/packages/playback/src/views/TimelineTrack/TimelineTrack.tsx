@@ -406,7 +406,30 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
       onContextMenu={onContextMenu}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      onClick={onTrackClick}
+      onClick={(e) => {
+        // Only the primary button drives row-level click behavior. A
+        // right-mouse-up can synthesize a follow-up click through the
+        // ContextMenu portal (or browser quirks), which would otherwise
+        // ride down into consumers that seek the playhead. The native
+        // contextmenu event still fires on `onContextMenu` regardless,
+        // so right-click → menu UX is unaffected.
+        if (e.button !== 0) return;
+        // voodo's ContextMenu opens by calling `HTMLElement.click()` on a
+        // hidden anchor (its menu trigger). That programmatic click
+        // dispatches a real click event with `button === 0` AND
+        // `detail === 0` — the button gate above does NOT catch it,
+        // because every synthetic click reports button 0 regardless of
+        // which physical button opened the menu. The `detail` count is
+        // the reliable discriminator: real user clicks have detail >= 1
+        // (the consecutive-click counter), HTMLElement.click() sets 0.
+        // Without this gate, right-clicking a track event (which is
+        // wrapped in <ContextMenu>) bubbles the synthetic anchor click
+        // up to the row root, calling onTrackClick → selectTrack →
+        // setActive — which downstream of the video tile's onLoadedData
+        // re-seek manifested as a playhead jump to 0.
+        if (e.detail === 0) return;
+        onTrackClick?.(e);
+      }}
       data-track-id={id}
     >
       {labelWidth > 0 && (
@@ -476,6 +499,19 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
         ref={laneRef}
         className={styles.lane}
         onClick={(e) => {
+          // Right-click opens the context menu via a separate handler.
+          // Don't seek the playhead as a side-effect.
+          if (e.button !== 0) return;
+
+          // voodo's ContextMenu opens by calling `HTMLElement.click()`
+          // on a hidden anchor that sits inside this lane's DOM subtree
+          // (so the DOM-containment check below can't reject it). That
+          // programmatic click has `detail === 0`; real user clicks
+          // always have `detail >= 1`. Skip the synthetic case so
+          // right-clicking an event doesn't seek to that x-position as
+          // a side-effect of opening its menu.
+          if (e.detail === 0) return;
+
           // Suppress the synthetic click the browser fires immediately
           // after a real drag so the drop point doesn't double as a seek.
           if (justDraggedRef.current) return;
@@ -524,6 +560,21 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
           )
           .map(({ event, originalIndex }) => {
             const handleClick = (ev: React.MouseEvent) => {
+              // Only left-button clicks should move the playhead.
+              // Right-click is reserved for the context menu; without
+              // this gate the synthetic click that some browsers /
+              // ContextMenu portals dispatch on right-mouse-up would
+              // seek the playhead as a side-effect of opening the menu.
+              if (ev.button !== 0) return;
+
+              // Synthetic clicks dispatched by `HTMLElement.click()`
+              // (e.g. voodo's ContextMenu opening its menu) report
+              // `button === 0` like every programmatic click. The
+              // `detail` count is the reliable signal: real user clicks
+              // are always >= 1, programmatic clicks are 0. Skip those
+              // so opening an event's context menu doesn't also seek.
+              if (ev.detail === 0) return;
+
               // Suppress the synthetic click that pointerup fires
               // right after a resize / move drag — otherwise the drop
               // point seeks unexpectedly.

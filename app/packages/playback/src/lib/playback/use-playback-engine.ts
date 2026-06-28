@@ -468,6 +468,53 @@ export function usePlaybackEngine({
         fireSeekEvent(clamped);
         commitWhenReady(clamped);
       },
+      // Snapping companion to `seek`. Quantizes `time` onto the displayed-
+      // frame start when the provider has opted into `snapToFrameOnSettle`;
+      // otherwise behaves exactly like `seek`. The play-loop RAF tick MUST
+      // stay on plain `seek` (continuous sub-frame times) — this entry point
+      // is for human-driven scrub paths (playhead drag, lane click-to-seek)
+      // where users want the playhead to track discrete frame numbers
+      // continuously instead of only on drag-end settle.
+      seekSnapped: (time: number) => {
+        const clamped = clamp(time, 0, store.get(durationAtom));
+        const step = store.get(stepIntervalAtom);
+
+        if (!snapToFrameRef.current || step <= 0) {
+          // pass-through to normal seek behavior
+          if (clamped === store.get(playheadAtom)) return;
+          store.set(playheadAtom, clamped);
+          fireSeekEvent(clamped);
+          commitWhenReady(clamped);
+          return;
+        }
+
+        const current = store.get(playheadAtom);
+        // Nearest-anchor snap: round the cursor time to the closest frame
+        // anchor `K * step`. This is symmetric on BOTH the seconds axis
+        // and the visual axis. The playhead RENDERS at the start of frame
+        // K's cell (i.e. at `K * step`), so a floor-based cell snap was
+        // visually asymmetric — dragging one cell-width left put the
+        // cursor at the cell-start of the previous anchor (snap = 1 frame
+        // backward, but the playhead had already been visually sitting at
+        // the upper boundary of that cell, so the user perceived a 2-cell
+        // jump). Rounding to the nearest anchor makes the visual delta
+        // match the logical delta in both directions:
+        //   playhead at T_K, cursor at T_K + step → round → snap to T_{K+1}
+        //   playhead at T_K, cursor at T_K - step → round → snap to T_{K-1}
+        // Half-step ties round toward +Infinity per JS `Math.round`, so
+        // an exact midpoint cursor tips forward — deterministic and
+        // imperceptible in practice (sub-frame mouse precision).
+        const snapped = Math.round(clamped / step) * step;
+
+        // Early-return when the snap result matches the current playhead —
+        // happens on every sub-frame drag delta that stays within the same
+        // cell as the current playhead.
+        if (snapped === current) return;
+
+        store.set(playheadAtom, snapped);
+        fireSeekEvent(snapped);
+        commitWhenReady(snapped);
+      },
       play: () => {
         const current = store.get(playheadAtom);
         const ls = store.get(loopStartAtom);

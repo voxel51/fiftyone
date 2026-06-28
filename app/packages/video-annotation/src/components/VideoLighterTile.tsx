@@ -25,6 +25,16 @@ export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
     null,
   );
 
+  // Tracks which `videoSrc` we've already kicked the engine for. The
+  // `loadeddata` event can fire more than once on the same element
+  // (e.g. after `currentTime =` writes that cross an unbuffered range
+  // the browser has to refetch — readyState dips below HAVE_CURRENT_DATA
+  // and recovers, firing `loadeddata` again). Without this guard each
+  // such recovery would `seek(0)` and yank the playhead back to the
+  // start mid-session. We only want the first load per source — that's
+  // the one that needs the kick so overlays paint on initial mount.
+  const kickedSrcRef = useRef<string | null>(null);
+
   // Bind <video> -> playback engine. The video-annotation tile uses
   // video-anchored playback: `useVfcClockSource` registers the
   // element's vfc-presented mediaTime as the engine's clock source,
@@ -74,6 +84,13 @@ export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
           // a seek the label stream never gets `onCommit` called
           // and `useStream` stays at null, so no overlays paint on first
           // load.
+          //
+          // Guarded so a re-fire of `loadeddata` later in the session
+          // (after a seek that crossed an unbuffered range, etc.) does
+          // NOT reset the playhead. We only kick the engine on the
+          // FIRST `loadeddata` per `videoSrc`.
+          if (kickedSrcRef.current === videoSrc) return;
+          kickedSrcRef.current = videoSrc;
           seek(0);
         }}
       />
