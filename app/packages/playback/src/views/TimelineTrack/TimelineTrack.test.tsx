@@ -272,6 +272,68 @@ describe("TimelineTrack", () => {
       expect(screen.getByTestId("playhead").textContent).toBe("0.000");
     });
 
+    it("right-click on empty lane area does NOT seek (no contextmenu-driven jump)", () => {
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [],
+          onTrackClick: vi.fn(),
+        },
+      });
+      const lane = container.querySelector(`.${styles.lane}`) as HTMLElement;
+      // Full right-click event sequence: mousedown(2) → contextmenu → mouseup(2).
+      // Real browsers don't fire onClick for non-primary buttons, but the
+      // contextmenu open path (portal-based ContextMenu) can synthesize a
+      // follow-up click on right-mouse-up that bubbles to the lane.
+      fireEvent.mouseDown(lane, { clientX: 250, button: 2 });
+      fireEvent.contextMenu(lane, { clientX: 250 });
+      fireEvent.mouseUp(lane, { clientX: 250, button: 2 });
+      // A synthetic click (button defaults to 0) bubbling up after the
+      // contextmenu would otherwise seek to time 2.5s here.
+      fireEvent.click(lane, { clientX: 250, button: 2 });
+      expect(screen.getByTestId("playhead").textContent).toBe("0.000");
+    });
+
+    it("right-click on the row root does NOT trigger a seek via onTrackClick bubbling", () => {
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [],
+          onTrackClick: vi.fn(),
+        },
+      });
+      const root = container.querySelector(`.${styles.root}`) as HTMLElement;
+      fireEvent.contextMenu(root, { clientX: 500 });
+      // After the contextmenu, no seek should have fired.
+      expect(screen.getByTestId("playhead").textContent).toBe("0.000");
+    });
+
+    it("does NOT fire onTrackClick when a non-primary-button click reaches the row root", () => {
+      // A synthetic right-mouse-up-triggered click can bubble through a
+      // ContextMenu portal up to the row root. Without the button gate the
+      // consumer's `onTrackClick` would run as a side-effect of right-clicking,
+      // which (downstream of `setActive`) was producing a playhead jump.
+      const onTrackClick = vi.fn();
+      const { container } = renderTrack({
+        track: { start: 0, end: 10, events: [], onTrackClick },
+      });
+      const root = container.querySelector(`.${styles.root}`) as HTMLElement;
+      fireEvent.click(root, { clientX: 500, button: 2 });
+      expect(onTrackClick).not.toHaveBeenCalled();
+    });
+
+    it("still fires onTrackClick on a primary-button click on the row root", () => {
+      const onTrackClick = vi.fn();
+      const { container } = renderTrack({
+        track: { start: 0, end: 10, events: [], onTrackClick },
+      });
+      const root = container.querySelector(`.${styles.root}`) as HTMLElement;
+      fireEvent.click(root, { clientX: 500, button: 0 });
+      expect(onTrackClick).toHaveBeenCalledTimes(1);
+    });
+
     it("right-click on an event marker still fires onContextMenu on the row", () => {
       const onContextMenu = vi.fn();
       const { container } = renderTrack({

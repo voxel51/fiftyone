@@ -406,7 +406,16 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
       onContextMenu={onContextMenu}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      onClick={onTrackClick}
+      onClick={(e) => {
+        // Only the primary button drives row-level click behavior. A
+        // right-mouse-up can synthesize a follow-up click through the
+        // ContextMenu portal (or browser quirks), which would otherwise
+        // ride down into consumers that seek the playhead. The native
+        // contextmenu event still fires on `onContextMenu` regardless,
+        // so right-click → menu UX is unaffected.
+        if (e.button !== 0) return;
+        onTrackClick?.(e);
+      }}
       data-track-id={id}
     >
       {labelWidth > 0 && (
