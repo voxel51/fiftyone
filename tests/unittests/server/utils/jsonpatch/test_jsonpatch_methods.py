@@ -564,3 +564,37 @@ def test_replace_aliased_field_does_not_remove_first():
 
     assert doc.id == "new"
     assert res is doc
+
+
+def test_replace_detection_mask_decodes_array_string():
+    """A field-level ``replace`` of a Detection ``mask`` carries the wire value
+    as a base64-encoded string; it must be decoded to a numpy array so the
+    field validates.
+
+    Regression test: editing an existing mask (e.g. brushing onto a video
+    frame's detection) produced a bare ``replace /.../mask`` whose string value
+    failed validation with "Only numpy arrays may be used in an array field".
+    """
+    import numpy as np
+
+    import fiftyone.core.labels as fol
+    import fiftyone.core.utils as fou
+
+    original = np.array([[True, False], [False, True]])
+    detection = fol.Detection(
+        label="cat", bounding_box=[0.1, 0.1, 0.2, 0.2], mask=original
+    )
+
+    # the frontend serializes a mask to an ascii base64 string on the wire
+    updated = np.array([[False, True], [True, False]])
+    wire = fou.serialize_numpy_array(updated, ascii=True)
+    assert isinstance(wire, str)
+
+    #####
+    res = replace(detection, "/mask", wire)
+    #####
+
+    assert res is detection
+    assert isinstance(detection.mask, np.ndarray)
+    np.testing.assert_array_equal(detection.mask, updated)
+    detection.validate()

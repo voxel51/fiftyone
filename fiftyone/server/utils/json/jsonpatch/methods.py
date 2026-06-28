@@ -6,10 +6,11 @@ Apply JSON patch to python objects.
 |
 """
 
-from typing import TypeVar, Union
+from typing import Any, TypeVar, Union
 
 import jsonpointer
 
+import fiftyone.core.fields as fofld
 import fiftyone.core.frame as fof
 
 from fiftyone.server.utils.json.jsonpatch import RootDeleteError
@@ -91,6 +92,34 @@ def get(src: T, path: Union[str, jsonpointer.JsonPointer]) -> V:
         raise AttributeError(f"Cannot resolve path `{path}`: {err}") from err
 
 
+def _coerce_array_field(target: Any, name: str, value: Any) -> Any:
+    """Decode a serialized array string into a numpy array before assignment.
+
+    A field-level JSON-patch op against a single array field (e.g. a Detection
+    ``mask``, or an embedding ``VectorField``) carries the wire value as a
+    base64-encoded string. A plain ``setattr`` leaves it a string, which the
+    field's ``validate`` then rejects ("Only numpy arrays may be used in an
+    array field"). Whole-element ops avoid this because ``from_dict`` runs field
+    deserialization; field-level ops must do the equivalent here.
+    """
+    if not isinstance(value, str):
+        return value
+
+    get_field = getattr(target, "_get_field", None)
+    if get_field is None:
+        return value
+
+    try:
+        field = get_field(name, allow_missing=True)
+    except Exception:
+        return value
+
+    if isinstance(field, (fofld.ArrayField, fofld.VectorField)):
+        return field.to_python(value)
+
+    return value
+
+
 def add(
     src: T, path: Union[str, jsonpointer.JsonPointer], value: Union[T, V]
 ) -> T:
@@ -132,6 +161,7 @@ def add(
 
     target = get(src, jsonpointer.JsonPointer.from_parts(pointer.parts[:-1]))
     name = pointer.parts[-1]
+    value = _coerce_array_field(target, name, value)
 
     try:
         if isinstance(target, fof.Frames):
