@@ -7,6 +7,7 @@ import { Sample } from "@fiftyone/utilities";
 import { createSurfaceController } from "./surfaceController";
 import type { LabelKindAdapter, SurfaceBridge } from "./types";
 import { AnnotationEngine } from "../core/engine";
+import { FrameStore } from "../store/frameStore";
 import { SampleLabelStore } from "../store/sampleLabelStore";
 import {
   createUndoNavigator,
@@ -491,6 +492,179 @@ describe("surface controller (write-half)", () => {
 
     controller.selectHandle(undefined);
     expect(engine.interaction.getActive()).toEqual([]);
+  });
+
+  describe("onAutoKeyframe", () => {
+    const FRAME_PATH = "frames.detections";
+
+    // a minimal frame-level engine + surface: a FrameStore registers
+    // `frames.detections` as a Detections path so the controller's
+    // `getLabelType` lookup resolves the adapter
+    const makeFrameSetup = (sample = "sample-1") => {
+      const engine = new AnnotationEngine();
+      const frames = new FrameStore(sample, {
+        labelTypes: { [FRAME_PATH]: LabelType.Detections },
+        data: {
+          3: {
+            [FRAME_PATH]: [
+              {
+                _id: "d1",
+                _cls: "Detection",
+                label: "cat",
+                bounding_box: [0, 0, 1, 1],
+              },
+            ],
+          },
+        },
+      });
+      engine.registerStore(frames);
+      return { engine, frames };
+    };
+
+    // a minimal frame-level surface — handles point at `frames.detections`
+    // and the adapter returns a bbox so the auto-rule's geometry gate trips
+    const makeFrameSurface = (
+      sample = "sample-1",
+      path = "frames.detections",
+    ) => {
+      const handles = new Map<string, FakeHandle>();
+
+      const adapter: LabelKindAdapter<FakeHandle, FakeDescriptor> = {
+        buildHandle: (r, label) => ({ id: r.instanceId, path: r.path, label }),
+        updateHandle: (handle, label) => {
+          handle.label = label;
+        },
+        // the adapter emits a bbox partial — this is what makes the
+        // auto-keyframe rule fire when the path is frame-level
+        toLabel: (handle) => ({
+          label: handle.label.label,
+          bounding_box: [0, 0, 1, 1],
+        }),
+      };
+
+      const bridge: SurfaceBridge<FakeHandle, FakeDescriptor> = {
+        surface: "fake-frame",
+        sample,
+        resolveHandle: (r) => handles.get(r.instanceId),
+        // surface a frame on the ref so the controller can dispatch
+        refOf: (handle) => ({
+          path: handle.path,
+          instanceId: handle.id,
+          frame: 3,
+        }),
+        mount: (descriptor) => {
+          const handle: FakeHandle = {
+            ...descriptor,
+            selected: false,
+            hovered: false,
+            anchor: false,
+          };
+          handles.set(descriptor.id, handle);
+          return handle;
+        },
+        unmount: (handle) => {
+          handles.delete(handle.id);
+        },
+        clear: () => {
+          handles.clear();
+        },
+      };
+
+      const adapters = {
+        [LabelType.Detections]: adapter,
+        [LabelType.Detection]: adapter,
+      };
+
+      // seed a handle pointing at the frame-level path
+      const handle: FakeHandle = {
+        id: "d1",
+        path,
+        label: { _id: "d1", _cls: "Detection", label: "cat" },
+        selected: false,
+        hovered: false,
+        anchor: false,
+      };
+      handles.set("d1", handle);
+
+      return { handles, bridge, adapters, handle };
+    };
+
+    it("fires when a frame-level geometry edit promotes the partial", () => {
+      const { engine } = makeFrameSetup();
+      const { bridge, adapters, handle } = makeFrameSurface();
+      const onAutoKeyframe = vi.fn();
+      const controller = createSurfaceController({
+        engine,
+        bridge,
+        adapters,
+        onAutoKeyframe,
+      });
+
+      controller.commit(handle);
+
+      expect(onAutoKeyframe).toHaveBeenCalledTimes(1);
+      const [refArg, frameArg, instanceArg] = onAutoKeyframe.mock.calls[0];
+      expect(refArg).toMatchObject({
+        sample: "sample-1",
+        path: "frames.detections",
+        instanceId: "d1",
+        frame: 3,
+      });
+      expect(frameArg).toBe(3);
+      expect(instanceArg).toBe("d1");
+    });
+
+    it("fires on a geometry edit at an already-keyframed frame (Case B)", () => {
+      const { engine } = makeFrameSetup();
+      const { bridge, adapters, handle } = makeFrameSurface();
+      // adapter that returns an already-keyframed partial — re-anchoring an
+      // existing keyframe's geometry still needs to fire so the bracketing
+      // tween segments re-interp. Downstream listeners coalesce.
+      adapters[LabelType.Detections].toLabel = () => ({
+        bounding_box: [0, 0, 1, 1],
+        keyframe: true,
+      });
+      const onAutoKeyframe = vi.fn();
+      const controller = createSurfaceController({
+        engine,
+        bridge,
+        adapters,
+        onAutoKeyframe,
+      });
+
+      controller.commit(handle);
+
+      expect(onAutoKeyframe).toHaveBeenCalledTimes(1);
+      const [refArg, frameArg, instanceArg] = onAutoKeyframe.mock.calls[0];
+      expect(refArg).toMatchObject({
+        sample: "sample-1",
+        path: "frames.detections",
+        instanceId: "d1",
+        frame: 3,
+      });
+      expect(frameArg).toBe(3);
+      expect(instanceArg).toBe("d1");
+    });
+
+    it("does not fire when ref.frame is undefined (sample-level safety)", () => {
+      const { engine } = makeFrameSetup();
+      const { bridge, adapters, handle } = makeFrameSurface();
+      // strip the frame off the ref while keeping the frame-level path
+      // (a defensive belt to test the controller guard independent of the
+      // helper's `frames.` gate)
+      bridge.refOf = (h) => ({ path: h.path, instanceId: h.id });
+      const onAutoKeyframe = vi.fn();
+      const controller = createSurfaceController({
+        engine,
+        bridge,
+        adapters,
+        onAutoKeyframe,
+      });
+
+      controller.commit(handle);
+
+      expect(onAutoKeyframe).not.toHaveBeenCalled();
+    });
   });
 
   it("compound gestures: one transaction, one undo unit", () => {
