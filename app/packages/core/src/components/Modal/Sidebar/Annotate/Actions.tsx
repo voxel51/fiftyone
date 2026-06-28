@@ -544,7 +544,7 @@ const Actions = () => {
             <Select active={noActiveActions} />
             {isVideo ? (
               <>
-                <Classification forceDisabled />
+                <Classification />
                 <Detection />
                 <Segmentation forceDisabled />
                 <Polyline forceDisabled />
