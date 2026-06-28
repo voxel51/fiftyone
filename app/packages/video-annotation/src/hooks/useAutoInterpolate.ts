@@ -2,10 +2,31 @@ import {
   useActiveSampleId,
   useAnnotationEngine,
   useAnnotationEventHandler,
+  useSurfaceActions,
 } from "@fiftyone/annotation";
+import type { LabelData } from "@fiftyone/utilities";
 import { useCallback, useEffect, useRef } from "react";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 import { useVideoPropagate } from "./useVideoPropagate";
+
+const SURFACE = "video";
+
+/**
+ * Geometry-only subset copied during the "tail step-hold" pass. Whatever shape
+ * fields the anchor label carries (bbox-only Detection, keypoints, both) are
+ * forwarded as-is over the trailing non-keyframe filler — propagation
+ * provenance, attributes, and identity stay on the existing frame.
+ */
+const pickGeometry = (label: LabelData): Partial<LabelData> => {
+  const out: Partial<LabelData> = {};
+  if (label.bounding_box !== undefined) {
+    out.bounding_box = label.bounding_box;
+  }
+  if (label.points !== undefined) {
+    out.points = label.points;
+  }
+  return out;
+};
 
 /** Inclusive `[fromFrame, toFrame]` segment to re-propagate. */
 export type FrameRange = [number, number];
@@ -75,6 +96,7 @@ export const useAutoInterpolate = (): void => {
   const sampleId = useActiveSampleId();
   const stream = useFrameLabelsStream();
   const propagate = useVideoPropagate();
+  const actions = useSurfaceActions(engine, SURFACE);
 
   // Per-hook-instance state: pending events keyed by
   // `${instanceId}:${frame}:${kind}` and a "microtask scheduled" flag. Kept in
@@ -109,6 +131,9 @@ export const useAutoInterpolate = (): void => {
 
       const path = `frames.${stream.labelsField}`;
       const keyframeFrames: number[] = [];
+      // All frames where this instance is present (keyframe OR filler). Used
+      // by the tail step-hold below — see `runTailStepHold`.
+      const presentFrames: number[] = [];
 
       for (let f = 1; f <= stream.totalFrames; f++) {
         const det = engine.getLabel({
@@ -118,7 +143,11 @@ export const useAutoInterpolate = (): void => {
           frame: f,
         });
 
-        if (det?.keyframe) {
+        if (!det) {
+          continue;
+        }
+        presentFrames.push(f);
+        if (det.keyframe) {
           keyframeFrames.push(f);
         }
       }
@@ -132,8 +161,64 @@ export const useAutoInterpolate = (): void => {
       segments.forEach(([from, to]) => {
         void propagate(instanceId, from, to, "linear");
       });
+
+      // Case C — tail step-hold.
+      //
+      // Only applies on `"set"` (an edit that promotes/refreshes a keyframe).
+      // When no keyframe exists strictly after `frame`, the forward bracketing
+      // interp in `resolveSegmentsToRepropagate` is a no-op — but the track
+      // can still extend past this keyframe with non-keyframe filler (the
+      // first-frame-auto-keyframed / last-frame-not asymmetry). Without this
+      // pass, filler at `frame+1 ... last` keeps its old geometry and the
+      // user sees a visible jump at `frame+1`.
+      //
+      // Walk the trailing non-keyframe filler and overwrite geometry only;
+      // `keyframe: false` stays put so future bracketing interps still treat
+      // these frames as filler.
+      if (kind === "set") {
+        const hasNextKeyframe = keyframeFrames.some((kf) => kf > frame);
+
+        if (!hasNextKeyframe) {
+          const anchor = engine.getLabel({
+            sample: sampleId,
+            path,
+            instanceId,
+            frame,
+          });
+
+          if (anchor) {
+            const tailFrames = presentFrames.filter((f) => f > frame);
+            const geometry = pickGeometry(anchor);
+            const hasGeometry = Object.keys(geometry).length > 0;
+
+            if (tailFrames.length > 0 && hasGeometry) {
+              actions.transaction(() => {
+                for (const f of tailFrames) {
+                  const existing = engine.getLabel({
+                    sample: sampleId,
+                    path,
+                    instanceId,
+                    frame: f,
+                  });
+                  // Defensive: only overwrite filler. If a "real" keyframe
+                  // somehow appears in the tail (shouldn't, since we already
+                  // checked there's no next keyframe — but engine reads
+                  // aren't transactional with our scan), leave it alone.
+                  if (!existing || existing.keyframe === true) {
+                    continue;
+                  }
+                  actions.updateLabel(
+                    { path, instanceId, frame: f },
+                    { ...geometry, keyframe: false },
+                  );
+                }
+              });
+            }
+          }
+        }
+      }
     },
-    [engine, sampleId, stream, propagate],
+    [engine, sampleId, stream, propagate, actions],
   );
 
   useAnnotationEventHandler(
