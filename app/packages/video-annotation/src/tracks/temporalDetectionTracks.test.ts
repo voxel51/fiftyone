@@ -49,7 +49,7 @@ describe("buildTemporalDetectionTracks", () => {
 
       const ev = t.events[0];
       expect(ev.startSec).toBeCloseTo(0); // (1-1)/30
-      expect(ev.endSec).toBeCloseTo(30 / 30); // 30/30 = 1s
+      expect(ev.endSec).toBeCloseTo(1); // 30/30
       expect(ev.label).toBe("running");
     });
 
