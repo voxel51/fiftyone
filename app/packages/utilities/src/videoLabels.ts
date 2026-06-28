@@ -12,6 +12,12 @@
 /** ObjectId hex string. */
 export type ObjectIdHex = string;
 
+/**
+ * Persisted propagation method tag. `"linear"` is the only in-browser
+ * producer today; `"sam2"` is retained so readers tolerate historical
+ * labels written by the prior in-browser SAM2 tracker (no longer shipped)
+ * and so a future server-backed tracker can reuse the tag.
+ */
 export type PropagationMethod = "linear" | "sam2";
 
 /** Provenance written on labels created by a propagation run. */
@@ -19,9 +25,9 @@ export interface PropagationBlob {
   method: PropagationMethod;
   run_id: ObjectIdHex;
   /**
-   * Source keyframes' `_id`s. Two for a bracketed run (linear interp,
-   * or SAM2 between two keyframes); one for a SAM2 forward run that tracks
-   * from a single seed keyframe to the end of the clip.
+   * Source keyframes' `_id`s. Two for a bracketed run (linear interp);
+   * historical SAM2 forward runs persisted a single seed keyframe id, so
+   * readers must accept the one-element shape too.
    */
   parent_keyframes: [ObjectIdHex, ...ObjectIdHex[]];
 }

@@ -399,7 +399,7 @@ async function embedAndDecode(
 /**
  * SAM2 against an already-decoded frame bitmap. Mirrors {@link embedAndDecode}
  * but keys the embedding cache on the caller-supplied `cacheKey` instead of a
- * URL. Used by video propagation (see `videoPropagation.ts`).
+ * URL.
  */
 async function embedAndDecodeBitmap(
   bitmap: ImageBitmap,
