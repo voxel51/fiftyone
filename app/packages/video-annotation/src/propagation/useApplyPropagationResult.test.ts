@@ -67,6 +67,25 @@ describe("useApplyPropagatedDetection", () => {
     });
   });
 
+  it("writes to a non-primary frame field when given its path", () => {
+    const { result } = renderHook(() => useApplyPropagatedDetection());
+
+    result.current(
+      3,
+      {
+        _id: "m",
+        instance: { _id: "inst-1" },
+        bounding_box: [0, 0, 1, 1],
+      } as never,
+      { path: "frames.polylines" },
+    );
+
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: "frames.polylines", instanceId: "inst-1", frame: 3 },
+      { bounding_box: [0, 0, 1, 1] },
+    );
+  });
+
   it("falls back to the doc _id when the detection has no instance", () => {
     const { result } = renderHook(() => useApplyPropagatedDetection());
 
@@ -107,6 +126,27 @@ describe("useApplyPropagationResult", () => {
     expect(mockActions.updateLabel).toHaveBeenCalledTimes(2);
     expect(mockActions.updateLabel).toHaveBeenCalledWith(
       { path: PATH, instanceId: "i", frame: 2 },
+      {},
+    );
+  });
+
+  it("routes a sync result's per-frame writes to the given non-primary field", () => {
+    const { result } = renderHook(() => useApplyPropagationResult());
+
+    result.current(
+      {
+        type: "sync",
+        response: {
+          perFrame: [
+            { frameNumber: 2, detection: { _id: "a", instance: { _id: "i" } } },
+          ],
+        },
+      } as never,
+      { path: "frames.polylines" },
+    );
+
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: "frames.polylines", instanceId: "i", frame: 2 },
       {},
     );
   });

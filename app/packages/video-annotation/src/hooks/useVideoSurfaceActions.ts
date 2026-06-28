@@ -51,10 +51,14 @@ export interface VideoSurfaceActions {
    * stream's primary field.
    */
   deleteTrack(trackId: string, fieldPath?: string): void;
-  /** Merge track-level attributes onto every frame this track appears. */
+  /**
+   * Merge track-level attributes onto every frame this track appears.
+   * `fieldPath` addresses the track's own frames field; defaults to primary.
+   */
   updateTrackAttributes(
     trackId: string,
     attributes: Record<string, unknown>,
+    fieldPath?: string,
   ): void;
   /**
    * Split this track at `atFrame`: frames `>= atFrame` are re-keyed onto a
@@ -169,7 +173,12 @@ const makeTrackOps = (
     }
 
     const frame = frameAt(time, fps, totalFrames);
-    const changed: { trackId: string; instanceId: string; set: boolean }[] = [];
+    const changed: {
+      trackId: string;
+      instanceId: string;
+      set: boolean;
+      path: string;
+    }[] = [];
 
     // One gesture key for the toggle AND the auto-interpolate re-lerp it
     // triggers, so a single Ctrl-Z reverts both as one unit.
@@ -208,18 +217,19 @@ const makeTrackOps = (
           }
 
           actions.updateLabel({ path: labelPath, instanceId, frame }, update);
-          changed.push({ trackId, instanceId, set });
+          changed.push({ trackId, instanceId, set, path: labelPath });
         }
       },
       { undoKey },
     );
 
-    for (const { trackId, instanceId, set } of changed) {
+    for (const { trackId, instanceId, set, path: labelPath } of changed) {
       eventBus.dispatch("annotation:keyframeChanged", {
         trackId,
         instanceId,
         frame,
         kind: set ? "set" : "removed",
+        path: labelPath,
         undoKey,
       });
     }
@@ -350,6 +360,7 @@ const makeTrackOps = (
   const updateTrackAttributes = (
     trackId: string,
     attributes: Record<string, unknown>,
+    fieldPath: string = path,
   ): void => {
     const instanceId = instanceIdFromTrackId(trackId);
 
@@ -357,11 +368,12 @@ const makeTrackOps = (
       return;
     }
 
-    const frames = trackFrames(instanceId);
+    const r = readerFor(fieldPath);
+    const frames = r.trackFrames(instanceId);
 
     actions.transaction(() => {
       for (const frame of frames) {
-        actions.updateLabel({ path, instanceId, frame }, attributes);
+        actions.updateLabel({ path: fieldPath, instanceId, frame }, attributes);
       }
     });
   };

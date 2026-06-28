@@ -16,7 +16,7 @@ import { useFrameLabelsStream } from "../streams/frameLabelsStream";
  */
 export type PropagationResultHandler = (
   result: InferenceResult<PropagationInferenceResult>,
-  opts?: { undoKey?: string },
+  opts?: { undoKey?: string; path?: string },
 ) => void;
 
 /**
@@ -27,7 +27,7 @@ export type PropagationResultHandler = (
 export type PropagatedDetectionWriter = (
   frameNumber: number,
   detection: PropagatedDetection,
-  opts?: { undoKey?: string },
+  opts?: { undoKey?: string; path?: string },
 ) => void;
 
 const SURFACE = "video";
@@ -61,7 +61,8 @@ export const useApplyPropagatedDetection = (): PropagatedDetectionWriter => {
         return;
       }
 
-      const path = `frames.${stream.labelsField}`;
+      // the track's own frame field (e.g. a polyline), defaulting to primary
+      const path = opts?.path ?? `frames.${stream.labelsField}`;
       const { _id, instance, ...content } = detection;
 
       actions.transaction(
@@ -99,7 +100,7 @@ export const useApplyPropagationResult = (): PropagationResultHandler => {
       actions.transaction(
         () => {
           result.response.perFrame.forEach(({ frameNumber, detection }) =>
-            applyDetection(frameNumber, detection),
+            applyDetection(frameNumber, detection, { path: opts?.path }),
           );
         },
         opts?.undoKey ? { undoKey: opts.undoKey } : undefined,

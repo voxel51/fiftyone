@@ -73,6 +73,7 @@ export const useKeyframePromotionOnEdit = (): ((
         instanceId: overlayId,
         frame,
         kind: "set",
+        path,
         undoKey,
       });
     },

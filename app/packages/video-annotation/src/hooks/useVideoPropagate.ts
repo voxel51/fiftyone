@@ -172,7 +172,10 @@ const useSam2Propagate = () => {
           videoKey: sampleDescriptor.sampleId,
           getFrameBitmap,
           onDetection: (frameNumber, detection) =>
-            applyPropagatedDetection(frameNumber, detection, { undoKey }),
+            applyPropagatedDetection(frameNumber, detection, {
+              undoKey,
+              path: args.path,
+            }),
           onProgress: (done, runTotal) => {
             tracking = true;
             render(done, runTotal);
@@ -241,7 +244,7 @@ const useLinearPropagate = () => {
       };
 
       const result = await agent.infer(context);
-      applyPropagation(result, undoKey ? { undoKey } : undefined);
+      applyPropagation(result, { undoKey, path: args.path });
       return true;
     },
     [resolveAgent, sampleDescriptor, applyPropagation],
@@ -271,12 +274,15 @@ export const useVideoPropagate = () => {
       toFrame: number,
       method: PropagationMethod,
       undoKey?: string,
+      pathOverride?: string,
     ): Promise<boolean> => {
       if (!stream || fromFrame >= toFrame) {
         return false;
       }
 
-      const path = `frames.${stream.labelsField}`;
+      // the track's own frame field — a non-primary track (e.g. a polyline)
+      // re-lerps in place; defaults to the stream's primary field
+      const path = pathOverride ?? `frames.${stream.labelsField}`;
       const at: FrameReader = (frame) =>
         engine.getLabel({ sample: sampleId, path, instanceId, frame });
 

@@ -75,6 +75,7 @@ describe("useKeyframePromotionOnEdit", () => {
         instanceId: "A",
         frame: FRAME,
         kind: "set",
+        path: PATH,
         undoKey: "gesture:1",
       },
     );

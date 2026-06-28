@@ -111,6 +111,12 @@ export type AnnotationEventGroup = {
     frame: number;
     kind: "set" | "removed";
     /**
+     * Frame field the changed label lives on (e.g. `frames.polylines`). The
+     * re-lerp targets THIS field, not the stream's primary — a track on a
+     * non-primary field re-lerps in place. Omitted falls back to the primary.
+     */
+    path?: string;
+    /**
      * Gesture `undoKey` the triggering edit committed under. When present, the
      * auto-interpolate re-lerp commits under it too, coalescing the geometry
      * edit / keyframe toggle and the resulting interpolation into ONE undo unit.

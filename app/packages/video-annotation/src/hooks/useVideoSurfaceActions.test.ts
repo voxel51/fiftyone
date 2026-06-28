@@ -95,6 +95,7 @@ describe("track ops", () => {
         instanceId: "A",
         frame: 2,
         kind: "set",
+        path: PATH,
         undoKey: "gesture:1",
       },
     );
@@ -122,6 +123,11 @@ describe("track ops", () => {
     expect(mockActions.updateLabel).toHaveBeenCalledWith(
       { path: "frames.polylines", instanceId: "A", frame: 2 },
       { keyframe: true },
+    );
+    // the change event carries the field so the re-lerp targets it, not primary
+    expect(mockBus.dispatch).toHaveBeenCalledWith(
+      "annotation:keyframeChanged",
+      expect.objectContaining({ instanceId: "A", path: "frames.polylines" }),
     );
   });
 

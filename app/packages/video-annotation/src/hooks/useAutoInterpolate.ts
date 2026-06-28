@@ -77,7 +77,9 @@ export const useAutoInterpolate = (): void => {
           return;
         }
 
-        const path = `frames.${stream.labelsField}`;
+        // re-lerp on the field the change happened on (a non-primary track,
+        // e.g. a polyline, re-lerps in place); fall back to the primary field
+        const path = payload.path ?? `frames.${stream.labelsField}`;
         const keyframeFrames: number[] = [];
 
         for (let f = 1; f <= stream.totalFrames; f++) {
@@ -100,9 +102,10 @@ export const useAutoInterpolate = (): void => {
         );
 
         // Re-lerp under the triggering edit's gesture key (when present) so
-        // each segment coalesces into that edit's single undo unit.
+        // each segment coalesces into that edit's single undo unit, on the
+        // changed label's own field.
         segments.forEach(([from, to]) => {
-          void propagate(instanceId, from, to, "linear", undoKey);
+          void propagate(instanceId, from, to, "linear", undoKey, path);
         });
       },
       [engine, sampleId, stream, propagate],
