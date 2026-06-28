@@ -2,6 +2,7 @@ import { KnownContexts, useKeyBindings } from "@fiftyone/commands";
 import { useLighter } from "@fiftyone/lighter";
 import { useRef } from "react";
 import { usePlayhead } from "@fiftyone/playback";
+import { useSelectionIsKeyframeable } from "../state/useVideoInteraction";
 import { useVideoSurfaceActions } from "./useVideoSurfaceActions";
 
 /**
@@ -14,6 +15,12 @@ import { useVideoSurfaceActions } from "./useVideoSurfaceActions";
 export const useRegisterVideoAnnotationKeybindings = () => {
   const actions = useVideoSurfaceActions();
   const { scene } = useLighter();
+
+  // Same type gate the Mark Keyframe toolbar button uses — keyframes are
+  // detections-only, so K no-ops on a TD / classification / polyline selection.
+  const selectionIsKeyframeable = useSelectionIsKeyframeable();
+  const keyframeableRef = useRef(selectionIsKeyframeable);
+  keyframeableRef.current = selectionIsKeyframeable;
 
   // Read the visual playhead, not `useCurrentTime` — currentTime lags
   // playhead while streams buffer, so dispatching at "the moment the
@@ -36,7 +43,7 @@ export const useRegisterVideoAnnotationKeybindings = () => {
 
           const ids = scene.getSelectedOverlayIds();
 
-          if (ids.length === 0) {
+          if (ids.length === 0 || !keyframeableRef.current) {
             return;
           }
 
