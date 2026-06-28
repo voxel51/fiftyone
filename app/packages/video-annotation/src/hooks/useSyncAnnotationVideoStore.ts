@@ -3,13 +3,18 @@ import {
   SampleLabelStore,
   useActiveSampleId,
   useAnnotationEngine,
+  useEngineSelector,
   useSampleInstanceGetter,
   VideoLabelStore,
 } from "@fiftyone/annotation";
-import { useEffect, useRef } from "react";
+import { type MutableRefObject, useEffect, useRef } from "react";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 import { parseFramesData } from "../streams/framesData";
-import { useFrameLabelFields } from "../state/accessors";
+import {
+  useFrameLabelFields,
+  useTemporalDetectionFieldPaths,
+  useVisibleLabelSchemas,
+} from "../state/accessors";
 
 /**
  * Own the video sample's engine store for the lifetime of the surface.
@@ -44,6 +49,10 @@ export const useSyncAnnotationVideoStore = (): void => {
     snapshot: ReturnType<FrameStore["snapshot"]>;
   } | null>(null);
 
+  // The live sample-level backing, so the hydration nudge below can re-announce
+  // it without re-registering the composite store.
+  const sampleLevelRef = useRef<SampleLabelStore | null>(null);
+
   useEffect(() => {
     if (!sampleId || !stream) {
       return undefined;
@@ -58,6 +67,7 @@ export const useSyncAnnotationVideoStore = (): void => {
     const sampleLevel = new SampleLabelStore(sampleId, getSample(sampleId));
     const store = new VideoLabelStore(sampleId, frames, sampleLevel);
     const unregister = engine.registerStore(store);
+    sampleLevelRef.current = sampleLevel;
 
     const seed = () =>
       frames.setData(parseFramesData(stream.cachedFrames(), labelTypes));
@@ -88,6 +98,63 @@ export const useSyncAnnotationVideoStore = (): void => {
       unsubscribe();
       unregister();
       sampleLevel.dispose();
+      sampleLevelRef.current = null;
     };
   }, [engine, sampleId, labelTypes, getSample, stream]);
+
+  useHydrateSampleLevelOverlays(engine, sampleId, sampleLevelRef);
+};
+
+/**
+ * Re-announce the sample-level backing once a sample-level label (e.g. a
+ * sample Classification) becomes resolvable, so the engine Lighter bridge
+ * hydrates its overlay on load.
+ *
+ * The bridge runs its one-shot reconcile when the surface mounts — before the
+ * `Sample`'s schema has resolved the field's label type. While the type reads
+ * `Unknown` the field is excluded from the bridge's schema-derived enumeration,
+ * so the overlay never mounts and (the `Sample` already being loaded) no later
+ * change re-fires it; only an edit would. The frame backing avoids this because
+ * `frames.setData` dispatches its own changes. Temporal detections avoid it by
+ * rendering through `useTemporalOverlaySync` rather than the bridge.
+ *
+ * The signature folds in the resolved `getLabelType`, so it changes when the
+ * label data lands AND again when the type settles — the latter is the edge
+ * that drives the reconcile that finally hydrates. `resync` mutates nothing, so
+ * it can't loop.
+ */
+const useHydrateSampleLevelOverlays = (
+  engine: ReturnType<typeof useAnnotationEngine>,
+  sampleId: string,
+  sampleLevelRef: MutableRefObject<SampleLabelStore | null>,
+): void => {
+  const visible = useVisibleLabelSchemas();
+  const tdPaths = useTemporalDetectionFieldPaths();
+
+  // Sample-level label fields that route through the bridge — exclude the frame
+  // fields (the FrameStore announces those) and TDs (their own sync renders).
+  const signature = useEngineSelector(engine, (reads) => {
+    const tds = new Set(tdPaths);
+
+    return [...visible]
+      .filter((path) => !path.startsWith("frames.") && !tds.has(path))
+      .sort()
+      .map((path) => {
+        const ids = reads
+          .listLabels({ sample: sampleId, path })
+          .map((label) => label._id)
+          .join(",");
+
+        return `${path}:${reads.getLabelType(path)}:${ids}`;
+      })
+      .join("|");
+  });
+
+  useEffect(() => {
+    if (!signature) {
+      return;
+    }
+
+    sampleLevelRef.current?.resync();
+  }, [signature, sampleLevelRef]);
 };

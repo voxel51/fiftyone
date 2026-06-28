@@ -53,6 +53,12 @@ const makeTd = (id: string, label: string): LabelData => ({
   support: [1, 5],
 });
 
+const makeClassification = (id: string, label: string): LabelData => ({
+  _id: id,
+  _cls: "Classification",
+  label,
+});
+
 const SAMPLE = "sample-1";
 
 const makeStore = (data: Record<string, unknown> = {}) => {
@@ -349,6 +355,44 @@ describe("SampleLabelStore dirty introspection", () => {
 
     expect(store.isDirty()).toBe(true);
     expect(store.pendingPaths()).toEqual(["ground_truth"]);
+  });
+});
+
+describe("SampleLabelStore resync", () => {
+  it("re-announces current labels as a whole-sample reset without mutating", () => {
+    const { sample, store } = makeStore({
+      classification: makeClassification("c1", "sunny"),
+    });
+    const listener = vi.fn();
+    store.subscribeChanges(listener);
+
+    store.resync();
+
+    expect(listener).toHaveBeenCalledTimes(1);
+    const [changes] = listener.mock.calls[0];
+    expect(changes).toHaveLength(1);
+    expect(isWholeSampleReset(changes[0])).toBe(true);
+    // a nudge, not a write — the label is untouched and the sample stays clean
+    expect(store.getLabel(ref("classification", "c1"))?.label).toBe("sunny");
+    expect(sample.isDirty()).toBe(false);
+  });
+
+  it("rebuilds the index so a label added before resync diffs cleanly after", () => {
+    const { sample, store } = makeStore();
+    const listener = vi.fn();
+
+    // Seed via the source before anyone subscribed — no change relayed.
+    sample.setData({ classification: makeClassification("c1", "rain") });
+
+    store.subscribeChanges(listener);
+    store.resync();
+
+    // The reset adopts the existing label; a later edit is a plain update, not
+    // a spurious add (the index was rebuilt to include c1).
+    sample.updateLabel("classification", { _id: "c1", label: "snow" });
+    expect(listener).toHaveBeenCalledWith([
+      { ref: ref("classification", "c1"), kind: "update" },
+    ]);
   });
 });
 

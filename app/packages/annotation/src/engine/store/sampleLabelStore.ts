@@ -213,6 +213,24 @@ export class SampleLabelStore implements LabelStore {
     this.source.setData(data);
   }
 
+  /**
+   * Re-announce the current sample-level labels as a whole-sample reset, with no
+   * mutation — purely a reconcile nudge. A read-half bridge that registered (and
+   * ran its one-shot reconcile) before the source `Sample`'s schema resolved a
+   * field's label type would have skipped that field (it enumerates by
+   * schema-derived label paths); replaying the reset once the type is known
+   * drives a fresh reconcile that hydrates it.
+   */
+  resync(): void {
+    this.rebuildIndex();
+
+    const reset = [wholeSampleReset(this.sample)];
+
+    for (const listener of this.changeListeners) {
+      listener(reset);
+    }
+  }
+
   clear(): void {
     this.source.clear();
   }
