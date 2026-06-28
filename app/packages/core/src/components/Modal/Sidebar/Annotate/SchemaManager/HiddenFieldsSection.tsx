@@ -4,6 +4,7 @@
  * Displays the collapsible list of hidden fields.
  */
 
+import { mediaType as mediaTypeAtom } from "@fiftyone/state";
 import type { ListItemProps } from "@voxel51/voodo";
 import {
   Anchor,
@@ -21,6 +22,8 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import { useCallback, useMemo, useState } from "react";
+import { useRecoilValue } from "recoil";
+import { VIDEO_UNSUPPORTED_TOOLTIP } from "../Actions";
 import SecondaryText from "./SecondaryText";
 import { isSystemReadOnlyField } from "./constants";
 import {
@@ -32,6 +35,7 @@ import {
   useSetCurrentField,
 } from "./hooks";
 import { CollapsibleHeader, GUISectionHeader } from "./styled";
+import { isFieldLabelTypeUnsupported } from "./utils";
 
 /**
  * Actions component for hidden field rows
@@ -39,23 +43,44 @@ import { CollapsibleHeader, GUISectionHeader } from "./styled";
 const HiddenFieldActions = ({
   path,
   hasSchema,
+  fieldType,
+  mediaType,
 }: {
   path: string;
   hasSchema: boolean;
+  fieldType: string | undefined;
+  mediaType: string | null | undefined;
 }) => {
   const setField = useSetCurrentField();
   const fieldData = useFieldSchemaData(path);
   const isSystemReadOnly = isSystemReadOnlyField(path);
-  const isUnsupported = fieldData?.unsupported ?? false;
+  const isLabelTypeUnsupported = isFieldLabelTypeUnsupported(
+    path,
+    fieldType,
+    mediaType,
+  );
+  const isUnsupported =
+    (fieldData?.unsupported ?? false) || isLabelTypeUnsupported;
   const isReadOnly = useFieldIsReadOnly(path);
 
   return (
     <span className="flex items-center gap-2">
-      {isUnsupported && (
-        <Pill data-cy="pill" size={Size.Md}>
-          Unsupported
-        </Pill>
-      )}
+      {isUnsupported &&
+        (isLabelTypeUnsupported ? (
+          <Tooltip
+            content={<Text>{VIDEO_UNSUPPORTED_TOOLTIP}</Text>}
+            anchor={Anchor.Bottom}
+            portal
+          >
+            <Pill data-cy="pill" size={Size.Md}>
+              Unsupported
+            </Pill>
+          </Tooltip>
+        ) : (
+          <Pill data-cy="pill" size={Size.Md}>
+            Unsupported
+          </Pill>
+        ))}
       {(isReadOnly || isSystemReadOnly) && (
         <Pill data-cy="pill" size={Size.Md}>
           Read-only
@@ -108,13 +133,20 @@ const HiddenFieldsSection = () => {
   const [expanded, setExpanded] = useState(true);
   const { selected, setSelected } = useSelectedHiddenFields();
   const { setSelected: setActiveSelected } = useSelectedActiveFields();
+  const currentMediaType = useRecoilValue(mediaTypeAtom);
 
   const listItems = useMemo(
     () =>
       fields.map((path) => {
         const isSystemReadOnly = isSystemReadOnlyField(path);
         const hasSchema = fieldHasSchemaStates[path];
-        const canSelect = hasSchema && !isSystemReadOnly;
+        const isLabelTypeUnsupported = isFieldLabelTypeUnsupported(
+          path,
+          fieldTypes[path],
+          currentMediaType,
+        );
+        const canSelect =
+          hasSchema && !isSystemReadOnly && !isLabelTypeUnsupported;
 
         return {
           id: path,
@@ -130,11 +162,24 @@ const HiddenFieldsSection = () => {
                 isSystemReadOnly={isSystemReadOnly}
               />
             ),
-            actions: <HiddenFieldActions path={path} hasSchema={hasSchema} />,
+            actions: (
+              <HiddenFieldActions
+                path={path}
+                hasSchema={hasSchema}
+                fieldType={fieldTypes[path]}
+                mediaType={currentMediaType}
+              />
+            ),
           } as ListItemProps,
         };
       }),
-    [fields, fieldTypes, fieldAttrCounts, fieldHasSchemaStates],
+    [
+      fields,
+      fieldTypes,
+      fieldAttrCounts,
+      fieldHasSchemaStates,
+      currentMediaType,
+    ],
   );
 
   const handleSelected = useCallback(

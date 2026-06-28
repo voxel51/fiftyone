@@ -1,11 +1,19 @@
 import { useAtomValue } from "jotai";
 import { useCallback, useRef, useState } from "react";
-import { Round } from "../Actions";
+import { Round, VIDEO_UNSUPPORTED_TOOLTIP } from "../Actions";
 
 import { DetectionOverlay, useLighter } from "@fiftyone/lighter";
 import { West as Back } from "@mui/icons-material";
 import { Box, Menu, MenuItem, Stack } from "@mui/material";
-import { Clickable, Icon, IconName, Size, Text } from "@voxel51/voodo";
+import {
+  Anchor,
+  Clickable,
+  Icon,
+  IconName,
+  Size,
+  Text,
+  Tooltip,
+} from "@voxel51/voodo";
 import { DETECTION } from "@fiftyone/utilities";
 import { ItemLeft, ItemRight } from "../Components";
 import { ICONS } from "../Icons";
@@ -13,7 +21,7 @@ import { Row } from "./Components";
 
 import { labels } from "../useLabels";
 import * as fos from "@fiftyone/state";
-import { isGeneratedView } from "@fiftyone/state";
+import { isGeneratedView, isVideoDataset } from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
 import { useSchemaManagerModal } from "../SchemaManager/hooks";
 import { useAnnotationContext } from "./useAnnotationContext";
@@ -40,6 +48,7 @@ const LabelHamburgerMenu = () => {
   const currentFieldIsReadOnly = selected?.isFieldReadOnly ?? false;
   const { openSchemaManager } = useSchemaManagerModal();
   const isGenerated = useRecoilValue(isGeneratedView);
+  const isVideo = useRecoilValue(isVideoDataset);
 
   // Mask state
   const type = selected?.type ?? null;
@@ -104,11 +113,28 @@ const LabelHamburgerMenu = () => {
         onClose={() => setOpen(false)}
         sx={{ zIndex: 9999 }}
       >
-        {showAddMask && (
-          <MenuItem onClick={handleAddMask} data-cy="label-menu-add-mask">
-            Add mask
-          </MenuItem>
-        )}
+        {showAddMask &&
+          (isVideo ? (
+            <Tooltip
+              anchor={Anchor.Left}
+              content={<Text>{VIDEO_UNSUPPORTED_TOOLTIP}</Text>}
+              portal
+            >
+              <span>
+                <MenuItem
+                  disabled
+                  data-cy="label-menu-add-mask"
+                  data-cy-disabled="true"
+                >
+                  Add mask
+                </MenuItem>
+              </span>
+            </Tooltip>
+          ) : (
+            <MenuItem onClick={handleAddMask} data-cy="label-menu-add-mask">
+              Add mask
+            </MenuItem>
+          ))}
         {showRemoveMask && (
           <MenuItem onClick={handleRemoveMask} data-cy="label-menu-remove-mask">
             Remove mask

@@ -61,13 +61,31 @@ export const LABEL_TYPE_OPTIONS_3D = [
   { id: "classification", data: { label: "Classification" } },
 ];
 
+// Label type options for frame-level fields on video datasets. In M1 only
+// frame-level detections are fully supported; classification and polylines
+// are surfaced for discoverability but marked unsupported so that
+// `getLabelTypeOptions` strips them from the create dropdown.
+export const LABEL_TYPE_OPTIONS_VIDEO_FRAME = [
+  { id: "detections", data: { label: "Detections" } },
+  {
+    id: "classification",
+    data: { label: "Classification" },
+    unsupported: true,
+  },
+  {
+    id: "polylines",
+    data: { label: "Polylines" },
+    unsupported: true,
+  },
+];
+
 // Label type options for sample-level fields on video datasets. Spatial labels
 // (detections/polylines) are frame-level only on video, so a sample-level field
 // is limited to the clip-level label types. Frame fields (a "frames." prefix)
-// use LABEL_TYPE_OPTIONS instead — see getLabelTypeOptions.
+// use LABEL_TYPE_OPTIONS_VIDEO_FRAME instead — see getLabelTypeOptions.
 export const LABEL_TYPE_OPTIONS_VIDEO = [
-  { id: "classification", data: { label: "Classification" } },
   { id: "temporaldetections", data: { label: "Temporal Detections" } },
+  { id: "classification", data: { label: "Classification" } },
 ];
 
 // =============================================================================

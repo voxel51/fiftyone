@@ -13,6 +13,10 @@ const refs = vi.hoisted(() => ({
   visibleSchemas: [] as string[],
   labelsByPath: {} as Record<string, Array<{ data?: { label?: string } }>>,
   lighter: null as unknown,
+  sampleId: "SAMPLE_ID" as string,
+  engine: null as unknown as {
+    updateLabel: (...args: unknown[]) => void;
+  } & Record<string, unknown>,
 }));
 
 vi.mock("recoil", async (importOriginal) => {
@@ -22,6 +26,11 @@ vi.mock("recoil", async (importOriginal) => {
 
 vi.mock("@fiftyone/lighter", () => ({
   useLighter: () => refs.lighter,
+}));
+
+vi.mock("@fiftyone/annotation", () => ({
+  useAnnotationEngine: () => refs.engine,
+  useActiveAnnotationSampleId: () => refs.sampleId,
 }));
 
 // Stub the schema-state module the hook depends on.
@@ -108,8 +117,10 @@ beforeEach(() => {
   refs.lighter = {
     scene: null,
     addOverlay: vi.fn(),
-    overlayFactory: { create: vi.fn() },
+    overlayFactory: { create: vi.fn(() => ({ id: "OVERLAY_ID" })) },
   };
+  refs.sampleId = "SAMPLE_ID";
+  refs.engine = { updateLabel: vi.fn() } as typeof refs.engine;
   resetAtoms();
 });
 
@@ -390,6 +401,59 @@ describe("useAnnotationContext.setData", () => {
       _id: "abc",
       label: "dog",
     });
+  });
+});
+
+describe("useAnnotationContext.createNew (Classification persist)", () => {
+  it("writes the new Classification through to the engine immediately", () => {
+    // A visible sample-level Classification field with one class.
+    refs.schemas.cls = {
+      type: "Classification",
+      label_schema: { classes: ["dog", "cat"] },
+    };
+    setVisible(["cls"]);
+
+    const { result } = renderHook(() => useAnnotationContext());
+
+    act(() => {
+      result.current.createNew("Classification");
+    });
+
+    // The engine was written exactly once, with the new label's `_id` as the
+    // instanceId, the field as the ref path, and `_cls: Classification` plus
+    // the seeded default class in the payload.
+    expect(refs.engine.updateLabel).toHaveBeenCalledTimes(1);
+    const [ref, partial] = (
+      refs.engine.updateLabel as unknown as { mock: { calls: unknown[][] } }
+    ).mock.calls[0] as [
+      { sample: string; path: string; instanceId: string },
+      Record<string, unknown>,
+    ];
+    expect(ref).toEqual({
+      sample: "SAMPLE_ID",
+      path: "cls",
+      instanceId: "GENERATED_ID",
+    });
+    expect(partial._cls).toBe("Classification");
+    expect(partial._id).toBe("GENERATED_ID");
+    expect(partial.label).toBe("dog");
+  });
+
+  it("does not write to the engine for a Detection create (no draft commit)", () => {
+    refs.schemas.det = {
+      type: "Detection",
+      label_schema: { classes: ["a"] },
+    };
+    setVisible(["det"]);
+
+    const { result } = renderHook(() => useAnnotationContext());
+
+    act(() => {
+      result.current.createNew("Detection");
+    });
+
+    // Detection establishes through the Lighter draw gesture, not createNew.
+    expect(refs.engine.updateLabel).not.toHaveBeenCalled();
   });
 });
 

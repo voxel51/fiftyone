@@ -351,7 +351,6 @@ function useTemporalDetectionTracks(
     bumpOnSceneReady: true,
   });
   const frameRate = getModalSampleFrameRate(sample);
-  const visible = useVisibleLabelSchemas();
 
   return useMemo(() => {
     if (!scene) {
@@ -366,12 +365,19 @@ function useTemporalDetectionTracks(
       return [];
     }
 
-    // Only overlays whose field is visible — a deactivated TD field drops its
-    // timeline rows, matching the canvas + sidebar.
+    // Visibility is owned upstream by `useTemporalOverlaySync`: it diffs the
+    // scene's `TemporalOverlay` set against the visible label schemas so a
+    // deactivated TD field's overlays are evicted from the scene altogether.
+    // Re-applying a visible filter here would compete with that gate against a
+    // stale snapshot (the memo re-runs on `visible` ref changes BEFORE the
+    // sync effect updates the scene), which is what dropped TD rows when a
+    // sibling Classification field was activated (the `visible` array ref
+    // churned via the active-schemas write while the TD overlay set was
+    // unchanged). `tdVersion` is the authoritative invalidation signal — it
+    // bumps when the scene's TD set actually changes.
     const temporalOverlays = scene
       .getAllOverlays()
-      .filter((o): o is TemporalOverlay => o instanceof TemporalOverlay)
-      .filter((o) => visible.has(o.field));
+      .filter((o): o is TemporalOverlay => o instanceof TemporalOverlay);
 
     return buildTemporalDetectionTracks({
       sample: buildVirtualTemporalSample(temporalOverlays),
@@ -379,7 +385,7 @@ function useTemporalDetectionTracks(
       resolveColor,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- tdVersion is the invalidation signal
-  }, [scene, frameRate, resolveColor, tdVersion, visible]);
+  }, [scene, frameRate, resolveColor, tdVersion]);
 }
 
 /** Build the row-color resolvers, kept in lock-step with the overlays. */

@@ -277,6 +277,50 @@ describe("syncTemporalOverlays", () => {
       expect(scene.removeOverlay).toHaveBeenCalledWith("a");
       expect(overlays.has("a")).toBe(false);
     });
+
+    it("preserves the TD overlay when a sibling Classification field deactivates", () => {
+      // Reproduces the schema-manager deactivation flow: Detection + TD +
+      // Classification all active → user deactivates Classification. The
+      // TD-field-only activePaths set fed to the sync (post-fix) doesn't
+      // observe the Classification toggle at all — the TD field's own
+      // membership is unchanged, so the diff must keep its overlay intact.
+      // (Pre-fix, the sync read the full `visibleLabelSchemas` set and
+      // re-ran with a transient stale snapshot during the explore-active
+      // reset→repopulate ticks, briefly excluding the TD path and evicting
+      // its overlay.)
+      const scene = makeScene();
+      const overlays = new Map();
+
+      syncTemporalOverlays({
+        scene,
+        sample: { events: field(td("a", [1, 10])) },
+        // visible TD paths before deactivation — `events` only; Classification
+        // and frame-detection fields aren't TD paths, so they're never in this
+        // narrowed set to begin with.
+        activePaths: new Set(["events"]),
+        overlays,
+        create: createFake as never,
+      });
+
+      expect(overlays.has("a")).toBe(true);
+      scene.removeOverlay.mockClear();
+      scene.addOverlay.mockClear();
+
+      // Classification deactivates. Visible TD paths unchanged → fresh `Set`
+      // ref with identical content. Re-run the sync exactly as the effect
+      // would.
+      syncTemporalOverlays({
+        scene,
+        sample: { events: field(td("a", [1, 10])) },
+        activePaths: new Set(["events"]),
+        overlays,
+        create: createFake as never,
+      });
+
+      expect(scene.removeOverlay).not.toHaveBeenCalled();
+      expect(scene.addOverlay).not.toHaveBeenCalled();
+      expect(overlays.has("a")).toBe(true);
+    });
   });
 
   describe("filtering invalid entries", () => {

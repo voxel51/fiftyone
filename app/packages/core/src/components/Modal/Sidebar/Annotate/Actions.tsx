@@ -155,6 +155,9 @@ const Square = styled(Container)<{ $active?: boolean }>`
 
 const DeactivateAllContext = createContext<() => void>(() => {});
 
+export const VIDEO_UNSUPPORTED_TOOLTIP =
+  "Not yet supported for video annotation";
+
 /**
  * Returns a callback that deactivates any active annotation actions.
  * Action buttons should call this before activating themselves.
@@ -178,7 +181,7 @@ const Select = ({ active }: { active: boolean }) => {
   );
 };
 
-const Classification = () => {
+const Classification = ({ forceDisabled }: { forceDisabled?: boolean }) => {
   const {
     classificationModeActive,
     disabled,
@@ -187,18 +190,25 @@ const Classification = () => {
   } = useClassificationMode();
   const deactivateAll = useDeactivateAll();
 
+  const effectiveDisabled = forceDisabled || disabled;
+  const effectiveTooltip = forceDisabled ? VIDEO_UNSUPPORTED_TOOLTIP : tooltip;
+
   return (
-    <Tooltip anchor={Anchor.Top} content={<Text>{tooltip}</Text>} portal>
+    <Tooltip
+      anchor={Anchor.Top}
+      content={<Text>{effectiveTooltip}</Text>}
+      portal
+    >
       <Square
-        $active={classificationModeActive}
+        $active={classificationModeActive && !forceDisabled}
         data-cy="create-classification"
-        data-cy-active={classificationModeActive}
+        data-cy-active={classificationModeActive && !forceDisabled}
         onClick={() => {
-          if (disabled) return;
+          if (effectiveDisabled) return;
           deactivateAll();
           if (!classificationModeActive) activateClassificationMode();
         }}
-        className={disabled ? "disabled" : ""}
+        className={effectiveDisabled ? "disabled" : ""}
       >
         <ClassificationIcon />
       </Square>
@@ -206,20 +216,27 @@ const Classification = () => {
   );
 };
 
-const Detection = () => {
+const Detection = ({ forceDisabled }: { forceDisabled?: boolean }) => {
   const { activateDetectionMode, detectionModeActive, disabled, tooltip } =
     useDetectionMode();
   const deactivateAll = useDeactivateAll();
 
+  const effectiveDisabled = forceDisabled || disabled;
+  const effectiveTooltip = forceDisabled ? VIDEO_UNSUPPORTED_TOOLTIP : tooltip;
+
   return (
-    <Tooltip anchor={Anchor.Top} content={<Text>{tooltip}</Text>} portal>
+    <Tooltip
+      anchor={Anchor.Top}
+      content={<Text>{effectiveTooltip}</Text>}
+      portal
+    >
       <Square
-        $active={detectionModeActive}
-        className={disabled ? "disabled" : ""}
+        $active={detectionModeActive && !forceDisabled}
+        className={effectiveDisabled ? "disabled" : ""}
         data-cy="detection-mode"
-        data-cy-active={detectionModeActive}
+        data-cy-active={detectionModeActive && !forceDisabled}
         onClick={() => {
-          if (disabled) return;
+          if (effectiveDisabled) return;
           deactivateAll();
           if (!detectionModeActive) activateDetectionMode();
         }}
@@ -230,7 +247,7 @@ const Detection = () => {
   );
 };
 
-const Segmentation = () => {
+const Segmentation = ({ forceDisabled }: { forceDisabled?: boolean }) => {
   const {
     segmentationModeActive,
     disabled,
@@ -239,15 +256,22 @@ const Segmentation = () => {
   } = useSegmentationMode();
   const deactivateAll = useDeactivateAll();
 
+  const effectiveDisabled = forceDisabled || disabled;
+  const effectiveTooltip = forceDisabled ? VIDEO_UNSUPPORTED_TOOLTIP : tooltip;
+
   return (
-    <Tooltip anchor={Anchor.Top} content={<Text>{tooltip}</Text>} portal>
+    <Tooltip
+      anchor={Anchor.Top}
+      content={<Text>{effectiveTooltip}</Text>}
+      portal
+    >
       <Square
-        $active={segmentationModeActive}
-        className={disabled ? "disabled" : ""}
+        $active={segmentationModeActive && !forceDisabled}
+        className={effectiveDisabled ? "disabled" : ""}
         data-cy="segmentation-mode"
-        data-cy-active={segmentationModeActive}
+        data-cy-active={segmentationModeActive && !forceDisabled}
         onClick={() => {
-          if (disabled) return;
+          if (effectiveDisabled) return;
           deactivateAll();
 
           if (!segmentationModeActive) {
@@ -261,20 +285,27 @@ const Segmentation = () => {
   );
 };
 
-const Polyline = () => {
+const Polyline = ({ forceDisabled }: { forceDisabled?: boolean }) => {
   const { activatePolylineMode, polylineModeActive, disabled, tooltip } =
     usePolylineMode();
   const deactivateAll = useDeactivateAll();
 
+  const effectiveDisabled = forceDisabled || disabled;
+  const effectiveTooltip = forceDisabled ? VIDEO_UNSUPPORTED_TOOLTIP : tooltip;
+
   return (
-    <Tooltip anchor={Anchor.Top} content={<Text>{tooltip}</Text>} portal>
+    <Tooltip
+      anchor={Anchor.Top}
+      content={<Text>{effectiveTooltip}</Text>}
+      portal
+    >
       <Square
-        $active={polylineModeActive}
-        className={disabled ? "disabled" : ""}
+        $active={polylineModeActive && !forceDisabled}
+        className={effectiveDisabled ? "disabled" : ""}
         data-cy="polyline-mode"
-        data-cy-active={polylineModeActive}
+        data-cy-active={polylineModeActive && !forceDisabled}
         onClick={() => {
-          if (disabled) {
+          if (effectiveDisabled) {
             return;
           }
 
@@ -472,11 +503,11 @@ export const ThreeDCuboids = () => {
 const Actions = () => {
   // This checks if media type of the dataset resolved to 3d
   const is3dDataset = useRecoilValue(is3DDataset);
-  // Video annotation handles the per-frame spatial label types — boxes,
-  // instance masks (Segmentation mode paints onto a detection), and polylines —
-  // so the surface shows that reduced set (Select + Detection + Segmentation +
-  // Polyline). Classification stays image-only for now. Undo/redo are shown —
-  // the engine's value-based stack backs them on video too.
+  // Video annotation in M1 only fully supports per-frame bbox detections.
+  // Classification, segmentation, and polyline buttons are rendered but
+  // force-disabled with a "coming in a future release" tooltip so users
+  // discover the surface without being able to activate it. Undo/redo are
+  // shown — the engine's value-based stack backs them on video too.
   const isVideo = useRecoilValue(isVideoDataset);
   // This checks if a 3d sample is pinned - is true when media type is `group` with a 3d slice pinned
   const is3dSamplePinned = useIs3dPinned();
@@ -513,9 +544,10 @@ const Actions = () => {
             <Select active={noActiveActions} />
             {isVideo ? (
               <>
+                <Classification />
                 <Detection />
-                <Segmentation />
-                <Polyline />
+                <Segmentation forceDisabled />
+                <Polyline forceDisabled />
               </>
             ) : (
               <>
