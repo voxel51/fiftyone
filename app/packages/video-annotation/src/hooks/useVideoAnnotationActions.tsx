@@ -2,7 +2,6 @@ import type { ToolbarActionGroup } from "@fiftyone/components";
 import { useModalSample } from "@fiftyone/state";
 import { Icon, IconName, Size } from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
-import CallMerge from "@mui/icons-material/CallMerge";
 import { useMemo } from "react";
 import { frameAt, usePlayhead } from "@fiftyone/playback";
 import { getModalSampleFrameRate } from "../utils/modalSample";
@@ -160,7 +159,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
           {
             id: "merge-tracks",
             label: "Merge",
-            icon: <CallMerge fontSize="small" />,
+            icon: <Icon name={IconName.Workspaces} size={Size.Sm} />,
             // direction is ambiguous from a selection set, so fix a rule: the
             // first-selected merges into the last-selected, which survives
             tooltip: canMerge
