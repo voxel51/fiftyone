@@ -139,4 +139,5 @@ export const useFrameLabelFields = (): Record<string, LabelType> => {
 export {
   useDynamicAttributeNames,
   useDynamicAttributeNamesGetter,
+  labelSchemaData,
 } from "../../../core/src/components/Modal/Sidebar/Annotate/state";
