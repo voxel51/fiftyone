@@ -11,7 +11,10 @@ import {
   useTemporalDetectionFieldPaths,
 } from "../state/accessors";
 import { useMergeFlow } from "../state/useMergeFlow";
-import { useSelectedTrackIds } from "../state/useVideoInteraction";
+import {
+  useIsFrameLevelSelection,
+  useSelectedTrackIds,
+} from "../state/useVideoInteraction";
 import { useFrameKeyframeState } from "./useFrameKeyframeState";
 import { useVideoSurfaceActions } from "./useVideoSurfaceActions";
 
@@ -93,6 +96,13 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
   const selectedIds = useMemo(() => Array.from(selected), [selected]);
   const hasSelection = selectedIds.length > 0;
 
+  // True iff selection is non-empty AND every active ref is a per-frame track
+  // (path under `frames.*`). Sample-level tracks like TemporalDetections fail
+  // this check — Mark Keyframe / Split / Merge are meaningless for them.
+  const isFrameLevelSelection = useIsFrameLevelSelection();
+  const selectionIsTd = hasSelection && !isFrameLevelSelection;
+  const tdTooltip = "Not available for temporal detection tracks";
+
   // Reactive: filled when the (single) selected track has a keyframe at the
   // current playhead. Outline otherwise (no selection, multi-selection, or no
   // detection on this frame). See {@link useFrameKeyframeState}.
@@ -101,9 +111,15 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
   // split needs one track + a playhead frame; merge now uses a two-click
   // stateful flow (select target → click Merge → click source), so we only
   // require one selected track to arm the button
+  const canMarkKeyframe = hasSelection && isFrameLevelSelection;
   const canSplit =
-    selectedIds.length === 1 && Number.isFinite(fps) && !!fps && fps > 0;
-  const canMerge = selectedIds.length === 1 || mergeFlow.pending;
+    selectedIds.length === 1 &&
+    Number.isFinite(fps) &&
+    !!fps &&
+    fps > 0 &&
+    isFrameLevelSelection;
+  const canMerge =
+    (selectedIds.length === 1 || mergeFlow.pending) && isFrameLevelSelection;
 
   return useMemo<ToolbarActionGroup[]>(
     () => [
@@ -116,12 +132,14 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             label: "Mark Keyframe",
             icon: <DiamondIcon filled={isKeyframeAtPlayhead} />,
             shortcut: "K",
-            tooltip: hasSelection
-              ? "Toggle keyframe at this frame"
-              : "Select a label to mark a keyframe",
-            isDisabled: !hasSelection,
+            tooltip: selectionIsTd
+              ? tdTooltip
+              : hasSelection
+                ? "Toggle keyframe at this frame"
+                : "Select a label to mark a keyframe",
+            isDisabled: !canMarkKeyframe,
             onClick: () => {
-              if (!hasSelection) return;
+              if (!canMarkKeyframe) return;
               actions.markKeyframe(playhead, selectedIds);
             },
           },
@@ -149,9 +167,11 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             id: "split-track",
             label: "Split",
             icon: <Icon name={IconName.UnfoldMore} size={Size.Sm} />,
-            tooltip: canSplit
-              ? "Split the selected track at this frame"
-              : "Select one track to split it at the playhead",
+            tooltip: selectionIsTd
+              ? tdTooltip
+              : canSplit
+                ? "Split the selected track at this frame"
+                : "Select one track to split it at the playhead",
             isDisabled: !canSplit,
             onClick: () => {
               if (!canSplit || !fps) {
@@ -168,11 +188,13 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             // Two-click flow: the first-selected track is the target
             // (survives); the next-clicked track is the source (consumed).
             // Clicking the button while already pending toggles off.
-            tooltip: mergeFlow.pending
-              ? "Click another track to merge it into the selected one"
-              : canMerge
-                ? "Click Merge, then click another track to merge it in"
-                : "Select a track to merge another into it",
+            tooltip: selectionIsTd
+              ? tdTooltip
+              : mergeFlow.pending
+                ? "Click another track to merge it into the selected one"
+                : canMerge
+                  ? "Click Merge, then click another track to merge it in"
+                  : "Select a track to merge another into it",
             isActive: mergeFlow.pending,
             isDisabled: !canMerge,
             onClick: () => {
@@ -194,6 +216,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
     [
       actions,
       canCreateTd,
+      canMarkKeyframe,
       canMerge,
       canSplit,
       fps,
@@ -202,6 +225,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
       mergeFlow,
       playhead,
       selectedIds,
+      selectionIsTd,
       tdDefaultLabel,
       tdFieldPath,
     ],

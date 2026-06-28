@@ -3,6 +3,7 @@
  */
 
 import {
+  FRAMES_PREFIX,
   type ScopedRef,
   useAnnotationEngine,
   useInteraction,
@@ -69,6 +70,23 @@ export const useSelectedTrackIds = (): ReadonlySet<string> => {
     (i) => new Set(i.getActive().map((ref) => ref.instanceId)),
     sameIds,
   );
+};
+
+/**
+ * True iff the selection is non-empty and every active ref's path is a frame
+ * field (`frames.*`). Sample-level tracks like TemporalDetections live on
+ * top-level paths, so they fail this check — toolbar buttons that only make
+ * sense for per-frame tracks (Mark Keyframe / Split / Merge) gate on this.
+ */
+export const useIsFrameLevelSelection = (): boolean => {
+  const engine = useAnnotationEngine();
+  return useInteraction(engine, (i) => {
+    const active = i.getActive();
+    return (
+      active.length > 0 &&
+      active.every((ref) => ref.path.startsWith(FRAMES_PREFIX))
+    );
+  });
 };
 
 /** Read hovered track ids (engine instanceIds) from interaction state. */
