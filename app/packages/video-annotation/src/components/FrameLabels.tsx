@@ -713,6 +713,7 @@ function decorateObjectTrack({
         fps,
         totalFrames,
         actions,
+        fieldPath,
       }),
   };
 }
@@ -769,6 +770,7 @@ function applyObjectTrackEdit({
   fps,
   totalFrames,
   actions,
+  fieldPath,
 }: {
   track: Track;
   eventIndex: number;
@@ -778,6 +780,8 @@ function applyObjectTrackEdit({
   fps: number;
   totalFrames: number;
   actions: VideoSurfaceActions;
+  /** The track's own frames field, so a non-primary track edits in place. */
+  fieldPath?: string;
 }): void {
   const dragged = track.events[eventIndex];
   if (!dragged || dragged.endSec === undefined) {
@@ -808,13 +812,19 @@ function applyObjectTrackEdit({
 
   switch (edit.op) {
     case "extend":
-      actions.extendTrack(track.id, edit.sourceFrame, edit.targetFrames);
+      actions.extendTrack(
+        track.id,
+        edit.sourceFrame,
+        edit.targetFrames,
+        undefined,
+        fieldPath,
+      );
       break;
     case "trim":
-      actions.trimTrack(track.id, edit.frames);
+      actions.trimTrack(track.id, edit.frames, fieldPath);
       break;
     case "shift":
-      actions.shiftTrack(track.id, edit.frames, edit.delta);
+      actions.shiftTrack(track.id, edit.frames, edit.delta, fieldPath);
       break;
     default:
       break;

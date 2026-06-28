@@ -172,6 +172,59 @@ describe("track ops", () => {
     );
   });
 
+  // A polyline (or any non-primary-field track) is edited through the presence
+  // bar against ITS OWN frames field — addressing the primary field would miss
+  // the source and silently no-op (the drag snaps back).
+  it("extendTrack fills a non-primary frame field when given its path", () => {
+    frameData = { 1: { A: det("d1", "A", { keyframe: true }) } };
+
+    render().current.extendTrack(
+      "instance-A",
+      1,
+      [2],
+      undefined,
+      "frames.polylines",
+    );
+
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: "frames.polylines", instanceId: "A", frame: 2 },
+      {
+        _cls: "Detection",
+        label: "x",
+        bounding_box: [0, 0, 1, 1],
+        keyframe: false,
+      },
+    );
+  });
+
+  it("trimTrack deletes from a non-primary frame field when given its path", () => {
+    frameData = { 2: { A: det("d2", "A") } };
+
+    render().current.trimTrack("instance-A", [2], "frames.polylines");
+
+    expect(mockActions.deleteLabel).toHaveBeenCalledWith({
+      path: "frames.polylines",
+      instanceId: "A",
+      frame: 2,
+    });
+  });
+
+  it("shiftTrack re-lays content on a non-primary frame field when given its path", () => {
+    frameData = { 2: { A: det("d2", "A") } };
+
+    render().current.shiftTrack("instance-A", [2], 1, "frames.polylines");
+
+    expect(mockActions.deleteLabel).toHaveBeenCalledWith({
+      path: "frames.polylines",
+      instanceId: "A",
+      frame: 2,
+    });
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: "frames.polylines", instanceId: "A", frame: 3 },
+      { _cls: "Detection", label: "x", bounding_box: [0, 0, 1, 1] },
+    );
+  });
+
   it("deleteTrack removes every frame it appears on and notifies", () => {
     frameData = { 1: { A: det("d1", "A") }, 4: { A: det("d4", "A") } };
 

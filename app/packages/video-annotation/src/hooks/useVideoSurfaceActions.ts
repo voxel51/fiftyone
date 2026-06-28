@@ -19,18 +19,32 @@ export interface VideoSurfaceActions {
   /**
    * Fill `targetFrames` with the source frame's box (non-keyframe). Pass
    * `undoKey` to coalesce the fill into a prior commit's undo unit (the
-   * auto-extend folds into the draw that triggered it).
+   * auto-extend folds into the draw that triggered it). `fieldPath` addresses
+   * the track's own frames field (a non-primary field — e.g. a polyline — still
+   * extends); defaults to the stream's primary field.
    */
   extendTrack(
     trackId: string,
     sourceFrame: number,
     targetFrames: number[],
     undoKey?: string,
+    fieldPath?: string,
   ): void;
-  /** Delete this track's box on each of `frames`. */
-  trimTrack(trackId: string, frames: number[]): void;
-  /** Move this track's boxes on `frames` by `delta`, keyframe/propagation intact. */
-  shiftTrack(trackId: string, frames: number[], delta: number): void;
+  /**
+   * Delete this track's box on each of `frames`. `fieldPath` addresses the
+   * track's own frames field; defaults to the stream's primary field.
+   */
+  trimTrack(trackId: string, frames: number[], fieldPath?: string): void;
+  /**
+   * Move this track's boxes on `frames` by `delta`, keyframe/propagation intact.
+   * `fieldPath` addresses the track's own frames field; defaults to primary.
+   */
+  shiftTrack(
+    trackId: string,
+    frames: number[],
+    delta: number,
+    fieldPath?: string,
+  ): void;
   /**
    * Delete this track's box on every frame it appears. `fieldPath` addresses the
    * track's own frames field (a non-primary field still deletes); defaults to the
@@ -208,6 +222,7 @@ const makeTrackOps = (
     sourceFrame: number,
     targetFrames: number[],
     undoKey?: string,
+    fieldPath: string = path,
   ): void => {
     const instanceId = instanceIdFromTrackId(trackId);
 
@@ -215,20 +230,21 @@ const makeTrackOps = (
       return;
     }
 
-    const source = read(instanceId, sourceFrame);
+    const r = readerFor(fieldPath);
+    const source = r.read(instanceId, sourceFrame);
 
     if (!source) {
       return;
     }
 
     // non-keyframe filler — a later propagate overwrites these in place
-    const filler = { ...content(source), keyframe: false };
+    const filler = { ...r.content(source), keyframe: false };
 
     actions.transaction(
       () => {
         for (const frame of targetFrames) {
           if (frame >= 1 && frame <= totalFrames) {
-            actions.updateLabel({ path, instanceId, frame }, filler);
+            actions.updateLabel({ path: fieldPath, instanceId, frame }, filler);
           }
         }
       },
@@ -236,17 +252,23 @@ const makeTrackOps = (
     );
   };
 
-  const trimTrack = (trackId: string, frames: number[]): void => {
+  const trimTrack = (
+    trackId: string,
+    frames: number[],
+    fieldPath: string = path,
+  ): void => {
     const instanceId = instanceIdFromTrackId(trackId);
 
     if (!instanceId || frames.length === 0) {
       return;
     }
 
+    const r = readerFor(fieldPath);
+
     actions.transaction(() => {
       for (const frame of frames) {
-        if (read(instanceId, frame)) {
-          actions.deleteLabel({ path, instanceId, frame });
+        if (r.read(instanceId, frame)) {
+          actions.deleteLabel({ path: fieldPath, instanceId, frame });
         }
       }
     });
@@ -256,6 +278,7 @@ const makeTrackOps = (
     trackId: string,
     frames: number[],
     delta: number,
+    fieldPath: string = path,
   ): void => {
     const instanceId = instanceIdFromTrackId(trackId);
 
@@ -263,10 +286,12 @@ const makeTrackOps = (
       return;
     }
 
+    const r = readerFor(fieldPath);
+
     // read the whole segment up front so the delete/write passes operate on
     // a stable snapshot
     const sources = frames
-      .map((frame) => ({ frame, det: read(instanceId, frame) }))
+      .map((frame) => ({ frame, det: r.read(instanceId, frame) }))
       .filter((s): s is { frame: number; det: LabelData } => !!s.det);
 
     if (sources.length === 0) {
@@ -275,7 +300,7 @@ const makeTrackOps = (
 
     actions.transaction(() => {
       for (const { frame } of sources) {
-        actions.deleteLabel({ path, instanceId, frame });
+        actions.deleteLabel({ path: fieldPath, instanceId, frame });
       }
 
       for (const { frame, det } of sources) {
@@ -283,8 +308,8 @@ const makeTrackOps = (
 
         if (target >= 1 && target <= totalFrames) {
           actions.updateLabel(
-            { path, instanceId, frame: target },
-            content(det),
+            { path: fieldPath, instanceId, frame: target },
+            r.content(det),
           );
         }
       }
