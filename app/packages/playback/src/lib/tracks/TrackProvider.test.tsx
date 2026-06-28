@@ -1,4 +1,4 @@
-import { act, cleanup, renderHook } from "@testing-library/react";
+import { act, cleanup, render, renderHook } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -94,6 +94,41 @@ describe("TrackProvider", () => {
       );
       act(() => result.current.pinning.setPinned("cat", true));
       expect(result.current.pinned.map((t) => t.id)).toEqual(["cat"]);
+    });
+  });
+
+  describe("autoPinNewTracks", () => {
+    // Probe that mirrors the latest pinning context out for assertion.
+    const renderWithTracks = (autoPinNewTracks: boolean, initial: Track[]) => {
+      const captured: { pinnedIds: ReadonlySet<string> } = {
+        pinnedIds: new Set(),
+      };
+      const Probe = () => {
+        captured.pinnedIds = useTrackPinning().pinnedIds;
+        return null;
+      };
+      const ui = (tracks: Track[]) => (
+        <TrackProvider tracks={tracks} autoPinNewTracks={autoPinNewTracks}>
+          <Probe />
+        </TrackProvider>
+      );
+      const { rerender } = render(ui(initial));
+      return { captured, addAll: () => rerender(ui(TRACKS)) };
+    };
+
+    it("default: a track that appears after hydration is auto-pinned", () => {
+      const { captured, addAll } = renderWithTracks(true, [TRACKS[0]]);
+      expect(Array.from(captured.pinnedIds)).toEqual([]);
+      act(() => addAll());
+      // cat was present at hydration (seen, not pinned); dog + person are new.
+      expect(Array.from(captured.pinnedIds).sort()).toEqual(["dog", "person"]);
+    });
+
+    it("false: a track that appears after hydration is NOT pinned", () => {
+      const { captured, addAll } = renderWithTracks(false, [TRACKS[0]]);
+      expect(Array.from(captured.pinnedIds)).toEqual([]);
+      act(() => addAll());
+      expect(Array.from(captured.pinnedIds)).toEqual([]);
     });
   });
 });

@@ -87,6 +87,13 @@ export interface TrackProviderProps {
    * from `useTrackPinning()`.
    */
   initialPinnedIds?: string[];
+  /**
+   * Whether a track that first appears AFTER the initial hydration is
+   * auto-pinned (e.g. a newly created tag). Defaults to `true` for the generic
+   * timeline; the annotation surface opts out (`false`) so pinning is always an
+   * explicit user action.
+   */
+  autoPinNewTracks?: boolean;
   children: React.ReactNode;
 }
 
@@ -108,6 +115,7 @@ export interface TrackProviderProps {
 export const TrackProvider: React.FC<TrackProviderProps> = ({
   tracks = [],
   initialPinnedIds = [],
+  autoPinNewTracks = true,
   children,
 }) => {
   const [pinnedIds, setPinnedSet] = useState<Set<string>>(
@@ -123,6 +131,10 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
   const hydratedRef = useRef(tracks.length > 0);
   const seenTrackIdsRef = useRef<Set<string>>(new Set(tracks.map((t) => t.id)));
   useEffect(() => {
+    // Opt-out: the surface drives all pinning explicitly, so a new track must
+    // not pin itself.
+    if (!autoPinNewTracks) return;
+
     if (!hydratedRef.current) {
       // Still waiting for the first non-empty batch — don't advance
       // hydratedRef yet or seenTrackIdsRef would stay empty and every
@@ -144,7 +156,7 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
       for (const id of unseen) next.add(id);
       return next;
     });
-  }, [tracks]);
+  }, [tracks, autoPinNewTracks]);
 
   const togglePin = useCallback((id: string) => {
     setPinnedSet((prev) => {

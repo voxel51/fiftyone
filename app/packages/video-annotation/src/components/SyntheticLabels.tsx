@@ -90,7 +90,6 @@ export const SyntheticTrackTimeline: React.FC = () => {
     [actors, duration, resolveColor],
   );
 
-  const pinned = useMemo(() => tracks.map((t) => t.id), [tracks]);
   const ready = tracks.length > 0;
   // Synthetic actors carry no engine identity, so rows have no interaction
   // linkage — render them undecorated.
@@ -100,7 +99,7 @@ export const SyntheticTrackTimeline: React.FC = () => {
     <TrackProvider
       key={ready ? "ready" : "init"}
       tracks={tracks}
-      initialPinnedIds={pinned}
+      autoPinNewTracks={false}
     >
       <TimelineWithTracks decorateTrack={decorateTrack} />
     </TrackProvider>

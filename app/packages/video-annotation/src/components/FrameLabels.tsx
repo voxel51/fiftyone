@@ -619,8 +619,6 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
     [tracks, expansion.expandedIds],
   );
 
-  const pinned = useMemo(() => visibleTracks.map((t) => t.id), [visibleTracks]);
-
   // Bootstrap on frame-tracks-resolved, not `tracks.length`: TD tracks resolve
   // synchronously and would otherwise trip the empty→ready flip before frame
   // tracks land, leaving frame tracks unpinned.
@@ -638,7 +636,7 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
     <TrackProvider
       key={ready ? "ready" : "init"}
       tracks={visibleTracks}
-      initialPinnedIds={pinned}
+      autoPinNewTracks={false}
     >
       <TimelineWithTracks
         decorateTrack={decorateTrack}
