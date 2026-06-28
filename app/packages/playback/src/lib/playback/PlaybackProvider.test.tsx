@@ -358,6 +358,146 @@ describe("PlaybackProvider engine actions", () => {
       act(() => result.current.api.pause());
       expect(result.current.playhead).toBe(FRAME_START);
     });
+
+    describe("seekSnapped (mid-drag scrub path)", () => {
+      // Continuous-time targets that all sit within half a frame of
+      // anchor 15 (0.5s) at step = 1/30 (half-step ≈ 0.0167). With
+      // nearest-anchor snap on, every one rounds to 0.5; with snapping
+      // off, each target is preserved exactly (no quantization).
+      const SUBFRAME_TARGETS = [0.501, 0.508, 0.515];
+
+      it("snaps every mid-drag target to the displayed frame start when enabled", () => {
+        const { result } = renderEngine({ snapToFrameOnSettle: true });
+        for (const t of SUBFRAME_TARGETS) {
+          act(() => result.current.api.seekSnapped(t));
+          expect(result.current.playhead).toBeCloseTo(FRAME_START, 5);
+        }
+        // currentTime tracks the snapped value too (no blocking stream gate).
+        expect(result.current.currentTime).toBeCloseTo(FRAME_START, 5);
+      });
+
+      it("passes through continuous time when snapping is disabled", () => {
+        const { result } = renderEngine();
+        for (const t of SUBFRAME_TARGETS) {
+          act(() => result.current.api.seekSnapped(t));
+          expect(result.current.playhead).toBe(t);
+        }
+      });
+
+      it("clamps the target to [0, duration] before snapping", () => {
+        const { result } = renderEngine({
+          duration: 10,
+          snapToFrameOnSettle: true,
+        });
+        act(() => result.current.api.seekSnapped(-5));
+        expect(result.current.playhead).toBe(0);
+        act(() => result.current.api.seekSnapped(999));
+        // 10s is already a frame boundary at 1/30 step (300 frames).
+        expect(result.current.playhead).toBeCloseTo(10, 5);
+      });
+
+      it("crossing frame boundaries during a drag advances the playhead in discrete jumps", () => {
+        const { result } = renderEngine({ snapToFrameOnSettle: true });
+        // Nearest-anchor snap at step = 1/30:
+        //   0.51 * 30 = 15.3 → round 15 → snap to 15/30.
+        act(() => result.current.api.seekSnapped(0.51));
+        expect(result.current.playhead).toBeCloseTo(15 / 30, 5);
+        //   0.54 * 30 = 16.2 → round 16 → snap to 16/30.
+        act(() => result.current.api.seekSnapped(0.54));
+        expect(result.current.playhead).toBeCloseTo(16 / 30, 5);
+        //   0.52 * 30 = 15.6 → round 16 → snap to 16/30 (rounds toward
+        //   the nearer anchor; no dead-band on either side).
+        act(() => result.current.api.seekSnapped(0.52));
+        expect(result.current.playhead).toBeCloseTo(16 / 30, 5);
+      });
+
+      describe("symmetric nearest-frame snap", () => {
+        const STEP = 1 / 30;
+        const T = (n: number) => n * STEP;
+
+        it("target within a quarter-step of the current anchor stays put", () => {
+          const { result } = renderEngine({ snapToFrameOnSettle: true });
+          // Settle on T(5).
+          act(() => result.current.api.seekSnapped(T(5)));
+          expect(result.current.playhead).toBeCloseTo(T(5), 5);
+          // A target a quarter-step past T(5) is still nearest to T(5).
+          act(() => result.current.api.seekSnapped(T(5) + STEP * 0.25));
+          expect(result.current.playhead).toBeCloseTo(T(5), 5);
+        });
+
+        it("dragging forward by exactly one frame width advances one frame", () => {
+          const { result } = renderEngine({ snapToFrameOnSettle: true });
+          act(() => result.current.api.seekSnapped(T(5)));
+          // Cursor at T(5) + STEP = T(6) → round → snap to T(6).
+          act(() => result.current.api.seekSnapped(T(5) + STEP));
+          expect(result.current.playhead).toBeCloseTo(T(6), 5);
+        });
+
+        it("dragging backward by exactly one frame width retreats one frame", () => {
+          const { result } = renderEngine({ snapToFrameOnSettle: true });
+          act(() => result.current.api.seekSnapped(T(5)));
+          // Cursor at T(5) - STEP = T(4) → round → snap to T(4). Symmetric
+          // counterpart of the forward case; no per-direction asymmetry.
+          act(() => result.current.api.seekSnapped(T(5) - STEP));
+          expect(result.current.playhead).toBeCloseTo(T(4), 5);
+        });
+
+        it("dragging forward by half a frame width snaps to the next anchor", () => {
+          // JS Math.round ties toward +Infinity, so an exact half-step
+          // forward tips to the upper anchor. Validates the visual-symmetry
+          // story: a sub-frame forward gesture that crosses the cell
+          // midpoint commits to the next anchor.
+          const { result } = renderEngine({ snapToFrameOnSettle: true });
+          act(() => result.current.api.seekSnapped(T(5)));
+          act(() => result.current.api.seekSnapped(T(5) + STEP * 0.5));
+          expect(result.current.playhead).toBeCloseTo(T(6), 5);
+        });
+
+        it("dragging backward by half a frame width does not move the playhead", () => {
+          // Half-step backward sits exactly on a tie. JS Math.round
+          // rounds half UP (toward +Infinity), so -1.5 → -1 → snap back
+          // to the current anchor. Net effect: a half-frame backward
+          // gesture is treated as no movement. Acceptable — at the exact
+          // midpoint the tie has to go one way, and "forward bias" is
+          // perceptually invisible at sub-frame mouse precision.
+          const { result } = renderEngine({ snapToFrameOnSettle: true });
+          act(() => result.current.api.seekSnapped(T(5)));
+          act(() => result.current.api.seekSnapped(T(5) - STEP * 0.5));
+          expect(result.current.playhead).toBeCloseTo(T(5), 5);
+        });
+
+        it("forward and backward thresholds are identical in absolute seconds", () => {
+          // From the same starting anchor, advancing by +delta and retreating
+          // by -delta must produce mirror-image behavior for any delta == STEP.
+          const renderFwd = renderEngine({ snapToFrameOnSettle: true });
+          act(() => renderFwd.result.current.api.seekSnapped(T(5)));
+          act(() => renderFwd.result.current.api.seekSnapped(T(5) + STEP));
+          const fwdDelta = renderFwd.result.current.playhead - T(5);
+
+          const renderBack = renderEngine({ snapToFrameOnSettle: true });
+          act(() => renderBack.result.current.api.seekSnapped(T(5)));
+          act(() => renderBack.result.current.api.seekSnapped(T(5) - STEP));
+          const backDelta = T(5) - renderBack.result.current.playhead;
+
+          expect(fwdDelta).toBeCloseTo(backDelta, 5);
+          expect(fwdDelta).toBeCloseTo(STEP, 5);
+        });
+
+        it("big forward jump past multiple anchors snaps to the landing frame", () => {
+          const { result } = renderEngine({ snapToFrameOnSettle: true });
+          act(() => result.current.api.seekSnapped(T(5)));
+          act(() => result.current.api.seekSnapped(T(10)));
+          expect(result.current.playhead).toBeCloseTo(T(10), 5);
+        });
+
+        it("big backward jump past multiple anchors snaps to the landing frame", () => {
+          const { result } = renderEngine({ snapToFrameOnSettle: true });
+          act(() => result.current.api.seekSnapped(T(10)));
+          act(() => result.current.api.seekSnapped(T(3)));
+          expect(result.current.playhead).toBeCloseTo(T(3), 5);
+        });
+      });
+    });
   });
 
   describe("setView / setLoop / setSpeed", () => {

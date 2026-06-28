@@ -87,7 +87,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const tracks = useTracks();
   const { pinnedIds, togglePin } = useTrackPinning();
-  const { seek } = usePlayback();
+  const { seekSnapped } = usePlayback();
   // Drawer starts open: the annotation surface remounts on each entry to
   // annotate mode (sample change / mode toggle), so an initial-`true` covers
   // the "make the timeline visible immediately" case without a tracks-length
@@ -114,7 +114,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
       labelWidth={labelWidth}
       pinned
       onPinClick={() => togglePin(track.id)}
-      onEventClick={(e) => seek(e.startSec)}
+      onEventClick={(e) => seekSnapped(e.startSec)}
       eventMenuItems={eventMenuItems}
       {...(decorateTrack ? decorateTrack(track, true) : null)}
     />
@@ -189,7 +189,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
                     labelWidth={labelWidth}
                     pinned={false}
                     onPinClick={() => togglePin(track.id)}
-                    onEventClick={(e) => seek(e.startSec)}
+                    onEventClick={(e) => seekSnapped(e.startSec)}
                     eventMenuItems={eventMenuItems}
                     {...extra}
                     className={clsx(styles.unpinnedTrack, extra?.className)}
