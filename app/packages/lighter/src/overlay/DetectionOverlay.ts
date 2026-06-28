@@ -174,13 +174,24 @@ export class DetectionOverlay
         this.mask = new MaskCanvas(label.mask);
       }
       this.markDirty();
-    } else if (label.mask === null || !label.mask_path) {
+    } else if (
+      (label.mask === null || !label.mask_path) &&
+      !this.mask?.hasPendingEncode()
+    ) {
       // Drop a stale mask when the label carries neither inline `mask` data nor
       // a `mask_path` to decode — an explicit removal (`null`), or reconciling
       // this overlay onto a label with no mask at all (e.g. a video track's
       // mask-less frame as the playhead advances past the mask's keyframe).
       // A pending `mask_path` decode (mask `undefined`, `mask_path` set) is left
       // alone so the in-flight decode still lands.
+      //
+      // EXCEPTION: a freshly-painted mask whose async encode is still in flight.
+      // A reproject here (e.g. a video auto-extend / keyframe-promotion write
+      // that lands before the encode resolves) carries the COMMITTED, still
+      // mask-less value — stale relative to the local paint. Destroying the
+      // MaskCanvas would abort the encode (it bails on canvas-swap), so the mask
+      // would be lost and never reach the engine. Keep it; the encode's
+      // re-commit carries it across.
       const hadMask = !!this.mask;
       this.maskSource = undefined;
       this.mask?.destroy();
