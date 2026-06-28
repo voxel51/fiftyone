@@ -86,9 +86,21 @@ export const useSegmentationMode = () => {
   const labelData = selected?.label.data as
     | { mask?: unknown; mask_path?: unknown }
     | undefined;
+  // A detection being actively drawn with a paint tool IS a segmentation edit,
+  // even before its mask data has materialized — a brush stroke / pen polygon
+  // commits to the overlay canvas first, and a fresh draw has no `mask` /
+  // `mask_path` on its label yet. Without this, the auto-disable below would
+  // tear segmentation mode down mid-draw (e.g. between two pen points), routing
+  // the next click to the mode-quit path instead of the pen handler.
+  const isDrawingTool =
+    manualMode.tool === SegmentationTool.Brush ||
+    manualMode.tool === SegmentationTool.Pen;
   const isEditingSegmentation =
     editingLabelType === DETECTION &&
-    (!!labelData?.mask || !!labelData?.mask_path || isEditingMask);
+    (!!labelData?.mask ||
+      !!labelData?.mask_path ||
+      isEditingMask ||
+      (segmentationModeActive && isDrawingTool));
 
   const noActiveFields = fields.length === 0;
   const disabled = isPatchView || noActiveFields;
