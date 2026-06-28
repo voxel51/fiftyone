@@ -601,6 +601,51 @@ describe("bridge presence merge (temporal)", () => {
     expect(handles.has("td1")).toBe(true);
   });
 
+  it("ignores a foreign-kind ref entering interaction state", () => {
+    // applyFlag iterates interaction.getActive() / getHovered() and applies
+    // selection/hover flags by overlay handle. Without an adapter gate it would
+    // call resolveHandle for a TD ref (a sample-level TemporalDetection sharing
+    // the scene from useTemporalOverlaySync), which on the real lighter bridge
+    // silently adopts the overlay into `managed`. The next bridge re-create —
+    // e.g. a sibling Classification toggle bumps `visibleLabelSchemas`, which
+    // is the bridge's `paths` scope — would then `clear()` the managed set and
+    // evict the TD from the scene, hiding it from the timeline. Mirrors the
+    // presence-side gate at §284: only kinds this bridge adapts.
+    const engine = makeTemporalEngine();
+    const { handles, bridge, adapters } = makeFakeSurface();
+
+    handles.set("td1", {
+      id: "td1",
+      path: "events",
+      label: { _id: "td1", _cls: "TemporalDetection", label: "x" },
+      selected: false,
+      hovered: false,
+      anchor: false,
+    });
+
+    const resolveHandle = vi.fn(bridge.resolveHandle);
+    bridge.resolveHandle = resolveHandle;
+
+    engine.registerBridge(bridge, adapters);
+
+    // selecting + hovering + anchoring the TD ref must NOT route through the
+    // bridge's resolveHandle: the bridge doesn't adapt TemporalDetections.
+    resolveHandle.mockClear();
+    engine.interaction.setActive([ref("events", "td1")]);
+    engine.interaction.setHovered(ref("events", "td1"), true);
+
+    expect(resolveHandle).not.toHaveBeenCalled();
+    expect(handles.get("td1")?.selected).toBe(false);
+    expect(handles.get("td1")?.hovered).toBe(false);
+    expect(handles.get("td1")?.anchor).toBe(false);
+
+    // deselecting (the prev-side branch) must also stay silent.
+    engine.interaction.setActive([]);
+    engine.interaction.setHovered(ref("events", "td1"), false);
+
+    expect(resolveHandle).not.toHaveBeenCalled();
+  });
+
   it("still unmounts an adapter kind on a presence exit", () => {
     const engine = makeTemporalEngine();
     const { handles, bridge, adapters } = makeFakeSurface();

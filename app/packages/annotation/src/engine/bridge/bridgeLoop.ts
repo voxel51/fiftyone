@@ -192,6 +192,19 @@ export const registerBridgeLoop = <Handle, Descriptor>(
   let prevHovered = new Map<string, LabelRef>();
   let prevAnchor: LabelRef | undefined;
 
+  /**
+   * Only this bridge's adapted kinds — interaction state can include refs for
+   * kinds another surface owns on the same scene (a video tile's sample-level
+   * temporal detection shares the scene with frame detections; the video
+   * bridge adapts the latter but not the former). Calling `resolveHandle` for
+   * a foreign-kind ref would silently `managed.add` its overlay, so a later
+   * `clear()` (bridge re-create on a `paths` churn — e.g. a sidebar
+   * Classification toggle) would evict it from the scene even though this
+   * surface never owned it. Mirrors `onPresence`'s adapter gate (§284).
+   */
+  const adaptsKind = (ref: LabelRef): boolean =>
+    kinds.includes(engine.getLabelType(ref.path));
+
   const applyFlag = (
     apply: ((handle: Handle, on: boolean) => void) | undefined,
     prev: Map<string, LabelRef>,
@@ -202,7 +215,7 @@ export const registerBridgeLoop = <Handle, Descriptor>(
     }
 
     for (const [key, ref] of prev) {
-      if (!next.has(key) && inScope(ref)) {
+      if (!next.has(key) && inScope(ref) && adaptsKind(ref)) {
         const handle = bridge.resolveHandle(ref);
 
         if (handle !== undefined) {
@@ -212,7 +225,7 @@ export const registerBridgeLoop = <Handle, Descriptor>(
     }
 
     for (const [key, ref] of next) {
-      if (!prev.has(key) && inScope(ref)) {
+      if (!prev.has(key) && inScope(ref) && adaptsKind(ref)) {
         const handle = bridge.resolveHandle(ref);
 
         if (handle !== undefined) {
@@ -245,7 +258,7 @@ export const registerBridgeLoop = <Handle, Descriptor>(
           [prevAnchor, false],
           [nextAnchor, true],
         ] as const) {
-          if (ref && inScope(ref)) {
+          if (ref && inScope(ref) && adaptsKind(ref)) {
             const handle = bridge.resolveHandle(ref);
 
             if (handle !== undefined) {
