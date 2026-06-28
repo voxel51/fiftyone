@@ -51,6 +51,13 @@ export interface Track {
   color: string;
   /** Events on this track, in start-time order. */
   events: TrackEvent[];
+  /**
+   * Id of the parent track when this row is a sub-row (e.g. a dynamic-attribute
+   * timeline nested under its instance track). Sub-rows are not independently
+   * pinnable — they follow their parent's pin state so a parent + its children
+   * always render contiguously in the same bucket. Omit for top-level rows.
+   */
+  parentId?: string;
 }
 
 export interface TrackContextValue {
