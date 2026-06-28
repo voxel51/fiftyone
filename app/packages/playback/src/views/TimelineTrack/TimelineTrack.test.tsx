@@ -237,6 +237,58 @@ describe("TimelineTrack", () => {
     });
   });
 
+  describe("right-click on segment does not seek", () => {
+    it("left-click on an event marker invokes onEventClick with the event", () => {
+      const onEventClick = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [{ startSec: 3 }],
+          onEventClick,
+        },
+      });
+      const event = container.querySelector(`.${styles.event}`) as HTMLElement;
+      // Default button on fireEvent.click is 0 (left).
+      fireEvent.click(event, { clientX: 250 });
+      expect(onEventClick).toHaveBeenCalledTimes(1);
+      expect(onEventClick.mock.calls[0][0]).toMatchObject({ startSec: 3 });
+    });
+
+    it("right-click on an event marker does NOT invoke onEventClick or seek", () => {
+      const onEventClick = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [{ startSec: 3 }],
+          onEventClick,
+        },
+      });
+      const event = container.querySelector(`.${styles.event}`) as HTMLElement;
+      // Right-button click — handler should bail before seek or onEventClick.
+      fireEvent.click(event, { clientX: 250, button: 2 });
+      expect(onEventClick).not.toHaveBeenCalled();
+      expect(screen.getByTestId("playhead").textContent).toBe("0.000");
+    });
+
+    it("right-click on an event marker still fires onContextMenu on the row", () => {
+      const onContextMenu = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [{ startSec: 3 }],
+          onContextMenu,
+        },
+      });
+      const event = container.querySelector(`.${styles.event}`) as HTMLElement;
+      // contextmenu bubbles to the row root, which wires onContextMenu.
+      fireEvent.contextMenu(event);
+      expect(onContextMenu).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("pin button", () => {
     it("does not render when onPinClick is omitted", () => {
       renderTrack({ track: { labelWidth: 150 } });

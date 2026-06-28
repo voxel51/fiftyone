@@ -476,6 +476,10 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
         ref={laneRef}
         className={styles.lane}
         onClick={(e) => {
+          // Right-click opens the context menu via a separate handler.
+          // Don't seek the playhead as a side-effect.
+          if (e.button !== 0) return;
+
           // Suppress the synthetic click the browser fires immediately
           // after a real drag so the drop point doesn't double as a seek.
           if (justDraggedRef.current) return;
@@ -524,6 +528,13 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
           )
           .map(({ event, originalIndex }) => {
             const handleClick = (ev: React.MouseEvent) => {
+              // Only left-button clicks should move the playhead.
+              // Right-click is reserved for the context menu; without
+              // this gate the synthetic click that some browsers /
+              // ContextMenu portals dispatch on right-mouse-up would
+              // seek the playhead as a side-effect of opening the menu.
+              if (ev.button !== 0) return;
+
               // Suppress the synthetic click that pointerup fires
               // right after a resize / move drag — otherwise the drop
               // point seeks unexpectedly.
