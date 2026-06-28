@@ -29,9 +29,11 @@ export default function useDelete() {
   const engine = useAnnotationEngine();
   const deleteAnnotation = useDeleteAnnotation();
   const sample = useActiveAnnotationSampleId();
-  const schema = useRecoilValue(
-    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
-  );
+  // Use fullSchema so frame-level paths (e.g. "frames.detections" on video
+  // datasets) resolve. The sample-only schema doesn't include the `frames`
+  // root, so getFieldSchema returns null and the delete bails. fullSchema
+  // wraps the frame fields under a synthetic `frames` field for lookups.
+  const schema = useRecoilValue(fos.fullSchema);
 
   const exit = useExit();
   const setNotification = fos.useNotification();
