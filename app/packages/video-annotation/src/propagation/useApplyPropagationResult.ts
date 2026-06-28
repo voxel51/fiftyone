@@ -34,8 +34,8 @@ const SURFACE = "video";
 /**
  * Hook which returns a single-frame writer bound to the active session. Used by
  * the batch {@link useApplyPropagationResult} (sync agents returning every
- * frame at once) and by streaming agents (SAM2) that emit a frame at a time as
- * inference lands.
+ * frame at once) and by future streaming agents that emit a frame at a time
+ * as inference lands.
  *
  * The engine addresses a track by its `instance._id`, so a per-frame write
  * upserts that track's box at the frame — no fresh-id dedup dance: an existing

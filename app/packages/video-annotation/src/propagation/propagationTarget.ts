@@ -29,21 +29,22 @@ export type PropagationTarget =
 
 /**
  * Given the active stream, the currently-selected track ids (engine
- * instanceIds), and the visual playhead time, work out whether a SAM2
- * tracking run can start and,
- * if so, over which frame span.
+ * instanceIds), and the visual playhead time, work out whether a
+ * propagation run can start and, if so, over which frame span.
  *
  * Two shapes of run:
  *   - **Bracket** — the playhead sits between two keyframes of the selected
- *     object; tracks the seed (left) keyframe up to the next (right) one.
+ *     object; propagates from the seed (left) keyframe up to the next
+ *     (right) one (the bracketed range).
  *   - **Forward** — there's a seed keyframe at/before the playhead but none
- *     after it; tracks forward to the end of the track's presence run (the
- *     extended-but-unfilled frames), matching the timeline bar. The user can
- *     halt early via the Stop control. SAM2's natural strength. Drawing then
- *     extending a track and triggering this fills the extension.
+ *     after it; propagates forward to the end of the track's presence run
+ *     (the extended-but-unfilled frames), matching the timeline bar. The
+ *     user can halt early via the Stop control. Drawing then extending a
+ *     track and triggering this fills the extension.
  *
  * Pure (no React, no atoms) so it's trivially unit-testable and callable
- * from a render pass. Used by the timeline toolbar's "Track (SAM2)" action.
+ * from a render pass. Used by the timeline toolbar's propagation action to
+ * resolve a propagation target.
  */
 export function resolvePropagationTarget(
   stream: VideoFrameLabelsStream,
@@ -112,7 +113,7 @@ export function resolvePropagationTarget(
   if (endFrame <= leftFrame) {
     return {
       ok: false,
-      reason: "Extend the track past this frame to fill it with SAM2.",
+      reason: "Extend the track past this frame to fill it.",
     };
   }
 

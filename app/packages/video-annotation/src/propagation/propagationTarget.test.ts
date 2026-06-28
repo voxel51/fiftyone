@@ -106,7 +106,7 @@ describe("resolvePropagationTarget", () => {
     );
     expect(target).toEqual({
       ok: false,
-      reason: "Extend the track past this frame to fill it with SAM2.",
+      reason: "Extend the track past this frame to fill it.",
     });
   });
 
