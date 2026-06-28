@@ -1140,6 +1140,11 @@ export class InteractionManager {
         const segmentationToolState =
           segmentationModeBridge.getToolState(scale);
 
+        // Read before commit: an overlay with no valid bounds yet is a
+        // brand-new track whose first polygon establishes it. `commitPenPolygon`
+        // fills the bounds, so this signal must be captured beforehand.
+        const establishingNewTrack = !handler.hasValidBounds?.();
+
         handler.commitPenPolygon({
           point,
           worldPoint,
@@ -1153,6 +1158,23 @@ export class InteractionManager {
           // PaintStrokeCommand emitted by commitPenPolygon. The handler stays
           // installed so the user can keep drawing more polygons.
           interactiveHandler.pruneCommands();
+
+          // The pen handler is already installed by commit time, so the
+          // first-click establish path below is skipped — but a brand-new
+          // track's first polygon still needs `overlay-establish` to fire
+          // (it's the only signal video annotation fans the track across frames
+          // on). Re-emit it here for that first polygon, keeping the handler
+          // installed so the user can keep drawing more polygons.
+          if (establishingNewTrack && handler.hasValidBounds?.()) {
+            this.eventBus.dispatch("lighter:overlay-establish", {
+              id: handler.id,
+              overlayId: handler.overlay?.id ?? handler.id,
+              handler: interactiveHandler,
+              startBounds: handler.bounds,
+              startPosition: { x: handler.bounds.x, y: handler.bounds.y },
+              bounds: handler.bounds,
+            });
+          }
         } else if (interactiveHandler) {
           // First-click case: an InteractiveDetectionHandler still wraps the
           // freshly-created overlay. Tear it down and emit overlay-establish
