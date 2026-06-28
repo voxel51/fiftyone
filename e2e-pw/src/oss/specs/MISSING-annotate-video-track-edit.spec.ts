@@ -191,6 +191,55 @@ test.describe.serial("video annotation track editing", () => {
       .toBeCloseTo(before, 4);
   });
 
+  test("selecting a track on the canvas neither persists nor promotes a keyframe", async ({
+    fiftyoneLoader,
+    modal,
+    page,
+  }) => {
+    // A plain select-click can land in the box's resize hit-region, which set
+    // the overlay's interaction state to RESIZE on pointer-down — so without a
+    // movement gate the click finalized as a zero-delta resize, committing a
+    // no-op edit and (on video) promoting the frame to a keyframe + persisting.
+    await openAnnotate(fiftyoneLoader, modal, page);
+    const va = modal.videoAnnotate;
+
+    await va.assert.objectTrackCount(1);
+
+    // count autosave round-trips from the moment we select
+    let persists = 0;
+    const countPersist = (r: {
+      url(): string;
+      request(): { method(): string };
+    }) => {
+      if (
+        /\/sample\//.test(r.url()) &&
+        ["POST", "PATCH", "PUT"].includes(r.request().method())
+      ) {
+        persists += 1;
+      }
+    };
+    page.on("response", countPersist);
+
+    // select the track via the canvas overlay (hover until "pointer" registers)
+    await modal.sampleCanvas.move(0.4, 0.4, "pointer");
+    await modal.sampleCanvas.click(0.4, 0.4);
+
+    // the editor opened — selection worked — but more than one autosave cycle
+    // (3s) elapses with zero round-trips: a select is not an edit
+    await expect(modal.sidebar.edit.backButton).toBeVisible();
+    await page.waitForTimeout(4000);
+    expect(persists).toBe(0);
+
+    // prove the autosave loop is alive (the 0 above wasn't a dead-loop false
+    // negative): a real field edit DOES round-trip
+    const saved = savedResponse(page);
+    await modal.sidebar.edit.setFieldValue("position.x", "0.42");
+    await saved;
+    expect(persists).toBeGreaterThan(0);
+
+    page.off("response", countPersist);
+  });
+
   test("selecting on the canvas, timeline, and sidebar all open the same editor", async ({
     fiftyoneLoader,
     modal,

@@ -888,7 +888,13 @@ export class InteractionManager {
               handler: interactiveHandler,
             });
           }
-        } else {
+        } else if (this.isSpatialDragEvent(event)) {
+          // A press that set DRAGGING/RESIZE on pointer-down but never crossed
+          // the click threshold is a selection click (or a sub-threshold
+          // micro-adjustment), not an edit — selection already ran on
+          // pointer-down. Emitting a finalize here would commit a no-op edit
+          // and, on video, promote the frame to a keyframe. Gate on the same
+          // spatial drag threshold the click path uses.
           const type =
             interactionState === "DRAGGING"
               ? "lighter:overlay-drag-end"
