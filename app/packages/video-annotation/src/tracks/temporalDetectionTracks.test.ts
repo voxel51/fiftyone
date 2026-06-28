@@ -252,6 +252,35 @@ describe("buildTemporalDetectionTracks", () => {
       expect(tracks).toEqual([]);
     });
 
+    it("emits TD tracks when sibling Detection / Classification fields are also active", () => {
+      // Reproduces the schema shape that surfaces during the bug: a sample-level
+      // Classification (`_cls: "Classification"`) sits alongside the TD field
+      // and a sibling per-frame Detection field. The producer must walk past
+      // the non-TD fields and still emit the TD track — the Classification is
+      // not a TD wrapper and never generates a timeline lane of its own.
+      const tracks = buildTemporalDetectionTracks({
+        sample: {
+          // Active per-frame Detection field — populated, but it lives under
+          // `frames.*` in real data; the producer ignores it either way.
+          "frames.detections": {
+            _cls: "Detections",
+            detections: [{ _cls: "Detection", _id: "d1", label: "person" }],
+          },
+          // Active sample-level Classification field — must not produce a row
+          // and must not interfere with TD field discovery.
+          classification: { _cls: "Classification", _id: "c1", label: "kiss" },
+          // Active TD field — the row that the bug dropped.
+          events: makeField(makeTd("td1", [10, 25], "running")),
+        },
+        fps: DEFAULT_FPS,
+        resolveColor: passthroughColor,
+      });
+
+      expect(tracks).toHaveLength(1);
+      expect(tracks[0].id).toBe("td-events-td1");
+      expect(tracks[0].label).toBe("running (events)");
+    });
+
     it("tolerates a TemporalDetections field with an empty detections list", () => {
       const tracks = buildTemporalDetectionTracks({
         sample: { events: makeField() },
