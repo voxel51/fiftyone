@@ -399,13 +399,70 @@ describe("PlaybackProvider engine actions", () => {
       it("crossing frame boundaries during a drag advances the playhead in discrete jumps", () => {
         const { result } = renderEngine({ snapToFrameOnSettle: true });
         // Frame 15 = [0.5, 0.5333); frame 16 = [0.5333, 0.5667).
+        // Initial playhead at 0 (frame 0): 0.51 >= T_1, so floor-snap kicks in.
         act(() => result.current.api.seekSnapped(0.51));
         expect(result.current.playhead).toBeCloseTo(15 / 30, 5);
+        // At T_15, T_next = T_16 = 0.5333. 0.54 >= T_16 → snap forward.
         act(() => result.current.api.seekSnapped(0.54));
         expect(result.current.playhead).toBeCloseTo(16 / 30, 5);
+        // At T_16, hysteresis is (T_15, T_17) = (0.5, 0.5667). 0.52 is
+        // inside the zone → stays at T_16 (snap-on-arrival both ways).
         act(() => result.current.api.seekSnapped(0.52));
-        // Back across the boundary — drops back to frame 15.
-        expect(result.current.playhead).toBeCloseTo(15 / 30, 5);
+        expect(result.current.playhead).toBeCloseTo(16 / 30, 5);
+      });
+
+      describe("hysteresis", () => {
+        const STEP = 1 / 30;
+        const T = (n: number) => n * STEP;
+
+        it("forward scrub within (T_N, T_{N+1}) stays on frame N", () => {
+          const { result } = renderEngine({ snapToFrameOnSettle: true });
+          // Settle on frame 5 first.
+          act(() => result.current.api.seekSnapped(T(5)));
+          expect(result.current.playhead).toBeCloseTo(T(5), 5);
+          // A target between T_5 and T_6 must stay on T_5 — the playhead
+          // only snaps when the cursor reaches the next anchor.
+          act(() => result.current.api.seekSnapped(T(5) + STEP * 0.4));
+          expect(result.current.playhead).toBeCloseTo(T(5), 5);
+        });
+
+        it("forward scrub reaching T_{N+1} snaps to frame N+1", () => {
+          const { result } = renderEngine({ snapToFrameOnSettle: true });
+          act(() => result.current.api.seekSnapped(T(5)));
+          // Exactly at T_6 → forward snap fires.
+          act(() => result.current.api.seekSnapped(T(6)));
+          expect(result.current.playhead).toBeCloseTo(T(6), 5);
+        });
+
+        it("backward scrub within (T_{N-1}, T_N) stays on frame N", () => {
+          const { result } = renderEngine({ snapToFrameOnSettle: true });
+          act(() => result.current.api.seekSnapped(T(5)));
+          // A target between T_4 and T_5 must NOT eagerly snap to T_4 the
+          // way the old floor-snap did — this is the bug fix.
+          act(() => result.current.api.seekSnapped(T(5) - STEP * 0.4));
+          expect(result.current.playhead).toBeCloseTo(T(5), 5);
+        });
+
+        it("backward scrub reaching T_{N-1} snaps to frame N-1", () => {
+          const { result } = renderEngine({ snapToFrameOnSettle: true });
+          act(() => result.current.api.seekSnapped(T(5)));
+          act(() => result.current.api.seekSnapped(T(4)));
+          expect(result.current.playhead).toBeCloseTo(T(4), 5);
+        });
+
+        it("big forward jump past multiple anchors snaps to the landing frame", () => {
+          const { result } = renderEngine({ snapToFrameOnSettle: true });
+          act(() => result.current.api.seekSnapped(T(5)));
+          act(() => result.current.api.seekSnapped(T(10)));
+          expect(result.current.playhead).toBeCloseTo(T(10), 5);
+        });
+
+        it("big backward jump past multiple anchors snaps to the landing frame", () => {
+          const { result } = renderEngine({ snapToFrameOnSettle: true });
+          act(() => result.current.api.seekSnapped(T(10)));
+          act(() => result.current.api.seekSnapped(T(3)));
+          expect(result.current.playhead).toBeCloseTo(T(3), 5);
+        });
       });
     });
   });

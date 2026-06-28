@@ -478,14 +478,46 @@ export function usePlaybackEngine({
       seekSnapped: (time: number) => {
         const clamped = clamp(time, 0, store.get(durationAtom));
         const step = store.get(stepIntervalAtom);
-        const snapped =
-          snapToFrameRef.current && step > 0
-            ? displayedFrameStart(clamped, step)
-            : clamped;
-        // Skip redundant set/commit churn when the snap result already
-        // matches the current playhead — happens on every sub-frame drag
-        // delta once the playhead has landed on a boundary.
-        if (snapped === store.get(playheadAtom)) return;
+
+        if (!snapToFrameRef.current || step <= 0) {
+          // pass-through to normal seek behavior
+          if (clamped === store.get(playheadAtom)) return;
+          store.set(playheadAtom, clamped);
+          fireSeekEvent(clamped);
+          commitWhenReady(clamped);
+          return;
+        }
+
+        const current = store.get(playheadAtom);
+        // Frame index of the current playhead (rounded handles floating-point
+        // drift and unaligned initial states; round-then-floor still produces
+        // a sensible anchor for the hysteresis math).
+        const currentFrame = Math.round(current / step);
+        const T_curr = currentFrame * step;
+        const T_next = (currentFrame + 1) * step;
+        const T_prev = (currentFrame - 1) * step;
+
+        let snapped: number;
+        if (clamped >= T_next) {
+          // Crossed forward across at least one anchor → snap to whichever
+          // frame the cursor is now in.
+          snapped = displayedFrameStart(clamped, step);
+        } else if (clamped <= T_prev) {
+          // Crossed backward across at least one anchor → snap to that frame.
+          snapped = displayedFrameStart(clamped, step);
+        } else {
+          // Cursor is in the hysteresis zone (T_prev, T_next) around the
+          // current anchor — stay put. This gives symmetric snap-on-arrival
+          // behavior in both directions: the playhead "owns" the interval
+          // around its current anchor and only releases when the cursor
+          // reaches the adjacent anchor.
+          snapped = T_curr;
+        }
+
+        // Early-return when the snap result matches the current playhead —
+        // happens on every sub-frame drag delta inside the hysteresis zone.
+        if (snapped === current) return;
+
         store.set(playheadAtom, snapped);
         fireSeekEvent(snapped);
         commitWhenReady(snapped);

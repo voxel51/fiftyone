@@ -1,7 +1,6 @@
 import { Drawer } from "@voxel51/voodo";
 import clsx from "clsx";
 import React, { useMemo, useRef, useState } from "react";
-import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import {
   TIMELINE_DRAWER_MAX_SIZE,
   TIMELINE_LABEL_WIDTH,
@@ -86,7 +85,6 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const tracks = useTracks();
   const { pinnedIds, togglePin } = useTrackPinning();
-  const { seek } = usePlayback();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const labelWidth = tracks.length === 0 ? 0 : requestedLabelWidth;
@@ -111,7 +109,6 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
       labelWidth={labelWidth}
       pinned
       onPinClick={() => togglePin(track.id)}
-      onEventClick={(e) => seek(e.startSec)}
       eventMenuItems={eventMenuItems}
       {...(decorateTrack ? decorateTrack(track, true) : null)}
     />
@@ -186,7 +183,6 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
                     labelWidth={labelWidth}
                     pinned={false}
                     onPinClick={() => togglePin(track.id)}
-                    onEventClick={(e) => seek(e.startSec)}
                     eventMenuItems={eventMenuItems}
                     {...extra}
                     className={clsx(styles.unpinnedTrack, extra?.className)}
