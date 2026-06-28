@@ -25,6 +25,13 @@ export interface BitmapInferenceRequest {
   bitmap: ImageBitmap;
   cacheKey: string;
   points: PromptPoint[];
+  /**
+   * Persist + reuse the per-frame encoder embedding keyed on `cacheKey`.
+   * Defaults to `false` for one-shot propagation (each frame encoded once,
+   * GPU-resident); interactive click-to-segment sets it so repeated point
+   * prompts on the same frame skip re-encoding.
+   */
+  useEmbeddingCache?: boolean;
 }
 
 /**

@@ -405,6 +405,7 @@ async function embedAndDecodeBitmap(
   bitmap: ImageBitmap,
   cacheKey: string,
   points: PromptPoint[],
+  useEmbeddingCache = false,
 ): Promise<InferenceResult> {
   const tDecodeBitmap = performance.now();
   const imageData = bitmapToImageData(bitmap);
@@ -412,16 +413,17 @@ async function embedAndDecodeBitmap(
     ms: performance.now() - tDecodeBitmap,
     px: bitmap.width * bitmap.height,
   });
-  // Propagation runs the GPU-resident path: each frame's embedding is used
-  // exactly once (encode → decode same frame), so we skip the embedding cache
-  // entirely. That keeps the encoder outputs on the GPU (no per-frame readback)
-  // and avoids ~16MB/frame of pointless IndexedDB writes. Trade-off: re-running
-  // propagation over the same frames re-encodes instead of hitting the cache.
+  // Propagation (the default) runs the GPU-resident path: each frame's embedding
+  // is used exactly once (encode → decode same frame), so it skips the embedding
+  // cache — keeping encoder outputs on the GPU (no per-frame readback) and
+  // avoiding ~16MB/frame of pointless IndexedDB writes. Interactive
+  // click-to-segment opts in (`useEmbeddingCache`) so successive point prompts
+  // on the same frame reuse the embedding instead of re-encoding.
   return embedAndDecodeFromImageData(
     imageData,
     CACHE_PREFIX + cacheKey,
     points,
-    /* useEmbeddingCache */ false,
+    useEmbeddingCache,
   );
 }
 
@@ -808,6 +810,7 @@ self.onmessage = async (e: MessageEvent<WorkerInbound>) => {
         msg.payload.bitmap,
         msg.payload.cacheKey,
         msg.payload.points,
+        msg.payload.useEmbeddingCache,
       );
       postStatusNotification("ready");
       postResponse(id, "embedAndDecodeBitmap", result, [

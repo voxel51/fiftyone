@@ -3,6 +3,7 @@ import type { ModalSample } from "@fiftyone/state";
 import React, { useMemo, useState } from "react";
 import { useAutoInterpolate } from "../hooks/useAutoInterpolate";
 import { useRegisterVideoAnnotationKeybindings } from "../hooks/useRegisterVideoAnnotationKeybindings";
+import { useRegisterVideoSegmentBitmap } from "../hooks/useRegisterVideoSegmentBitmap";
 import { useSyncAnnotationFrameClock } from "../hooks/useSyncAnnotationFrameClock";
 import { useSyncAnnotationVideoStore } from "../hooks/useSyncAnnotationVideoStore";
 import { useVideoLighterEngineBridge } from "../hooks/useVideoLighterEngineBridge";
@@ -207,6 +208,8 @@ const VideoAnnotationHandlerRegistration: React.FC = () => {
   // and a seeded frame store, not the degenerate pool view
   useVideoLighterEngineBridge();
   useRegisterVideoAnnotationKeybindings();
+  // expose the active ImaVid frame to the SAM2 agent for click-to-segment
+  useRegisterVideoSegmentBitmap();
   useAutoInterpolate();
   // editing a frame label: keep the anchor (and the form) on the playhead's
   // occurrence of the same track as the playhead moves

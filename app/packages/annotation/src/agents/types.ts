@@ -79,6 +79,19 @@ export type SampleDescriptor = {
 };
 
 /**
+ * An already-decoded frame of the media being annotated, with a stable
+ * per-frame key for the encoder-embedding cache. Supplied by surfaces that
+ * hold decoded pixels (e.g. the ImaVid video-frame cache) so the agent can run
+ * inference on the bitmap instead of fetching + decoding `mediaUrl` — which for
+ * a video would be the container file, not an image.
+ */
+export type MediaBitmap = {
+  bitmap: ImageBitmap;
+  /** Stable per-frame embedding-cache key (e.g. `"<sampleId>#frame=<n>"`). */
+  cacheKey: string;
+};
+
+/**
  * Union of all inputs the UX may supply to an agent for a single inference call.
  *
  * Agents are expected to validate or silently ignore fields that are
@@ -89,6 +102,13 @@ export type AnnotationContext = {
   sampleDescriptor: SampleDescriptor;
   /** The type of annotation task being performed. */
   taskType: AgentTaskType;
+  /**
+   * Resolves the currently-displayed media as a decoded bitmap (e.g. the active
+   * video frame). When present and it yields a bitmap, the agent infers on the
+   * bitmap instead of fetching `sampleDescriptor.mediaUrl`. Image surfaces omit
+   * it and the agent falls back to the URL path.
+   */
+  getMediaBitmap?: () => Promise<MediaBitmap | null>;
   /** Image coordinates the user marked as belonging to the target object. */
   positivePoints?: Vec2[];
   /** Image coordinates the user marked as not belonging to the target object. */

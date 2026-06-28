@@ -7,12 +7,17 @@ export { AgentTaskType } from "./agents/types";
 export type {
   AnnotationAgent,
   InferenceResult,
+  MediaBitmap,
   PropagatedDetection,
   PropagationContext,
   PropagationInferenceResult,
 } from "./agents/types";
 export { useAgentRegistry } from "./agents/hooks/useAgentRegistry";
 export { useSampleDescriptor } from "./agents/hooks/useSampleDescriptor";
+export {
+  useSetSegmentBitmapSource,
+  type SegmentBitmapResolver,
+} from "./agents/hooks/useSegmentBitmapSource";
 export type { SAM2PropagationBrowserAgent } from "./agents/SAM2PropagationBrowserAgent";
 export * from "./events";
 export * from "./hooks";
