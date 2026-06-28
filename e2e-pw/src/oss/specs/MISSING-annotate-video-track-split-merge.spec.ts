@@ -8,15 +8,18 @@
  * source ceases to exist). Both are single engine transactions — one undo unit
  * — and survive a true round-trip (fresh browser context) via autosave.
  *
- * Seeded with two distinct tracks on sample 0: a "vehicle" (index=1) and a
- * "person" (index=2), each on every frame.
+ * Seeded with two tracks on sample 0, each on every frame. By default they are
+ * distinct classes ("vehicle" index=1 + "person" index=2) — used by split and
+ * by the cross-class merge-gating test. The successful-merge test re-seeds both
+ * as the same class, since merge is gated to same-class tracks.
  */
-import { test as base } from "src/oss/fixtures";
+import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 import type { Page } from "src/oss/fixtures";
+import type { VideoAnnotateSDK } from "src/oss/fixtures/video-annotate-sdk";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-track-split-merge",
@@ -46,15 +49,21 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeEach(async ({ videoAnnotateSDK }) => {
-  // two tracks on sample 0: vehicle (index=1) + person (index=2), every frame.
-  await videoAnnotateSDK.seed({
+// Two tracks on sample 0 (vehicle index=1 + a second index=2), every frame.
+// `secondTrackClassIndex` 1 => cross-class ("person"); 0 => same-class ("vehicle").
+const seedTwoTracks = (sdk: VideoAnnotateSDK, secondTrackClassIndex = 1) =>
+  sdk.seed({
     datasetName,
     videoPaths: [clip],
     withEvents: false,
     trackedSampleIndices: [0],
     secondTrackSampleIndices: [0],
+    secondTrackClassIndex,
   });
+
+test.beforeEach(async ({ videoAnnotateSDK }) => {
+  // default: cross-class (vehicle + person) — used by split + merge-gating.
+  await seedTwoTracks(videoAnnotateSDK);
 });
 
 const openAnnotate = async (
@@ -125,28 +134,31 @@ test.describe.serial("video annotation track split / merge", () => {
     await va.assert.objectTrackCount(3);
   });
 
-  test("merge (context menu) folds the source into the target and persists", async ({
+  test("merge (context menu) folds one same-class track into the other and persists", async ({
     browser,
     fiftyoneLoader,
     modal,
     page,
+    videoAnnotateSDK,
   }) => {
+    // merge is gated to same-class tracks, so re-seed both as "vehicle". The
+    // two share a class but are distinct instances (index 1 vs 2).
+    await seedTwoTracks(videoAnnotateSDK, 0);
+
     await openAnnotate(fiftyoneLoader, modal, page);
     const va = modal.videoAnnotate;
 
     await va.assert.objectTrackCount(2);
     await va.assert.labelListed("vehicle");
-    await va.assert.labelListed("person");
-    const personId = await va.labelRowId("person");
+    const [sourceId] = await va.objectTrackIds();
 
-    // merge person INTO vehicle; both span every frame, so target-wins drops
-    // every person frame — the person track disappears, vehicle survives
+    // merge one vehicle INTO the other; both span every frame, so target-wins
+    // drops every source frame — one track remains, still "vehicle"
     const saved = savedResponse(page);
-    await va.mergeTrackViaContextMenu(personId, "vehicle");
+    await va.mergeTrackViaContextMenu(sourceId, "vehicle");
     await va.assert.objectTrackCount(1);
     await saved;
 
-    await va.assert.labelListed("person", false);
     await va.assert.labelListed("vehicle");
 
     // the merge survives a true round-trip
@@ -156,10 +168,41 @@ test.describe.serial("video annotation track split / merge", () => {
       const m2 = new ModalPom(freshPage, new EventUtils(freshPage));
       await openAnnotate(fiftyoneLoader, m2, freshPage);
       await m2.videoAnnotate.assert.objectTrackCount(1);
-      await m2.videoAnnotate.assert.labelListed("person", false);
       await m2.videoAnnotate.assert.labelListed("vehicle");
     } finally {
       await context.close();
     }
+  });
+
+  test("merge is gated by class: a cross-class track offers no merge target", async ({
+    fiftyoneLoader,
+    modal,
+    page,
+  }) => {
+    // default seed is cross-class (vehicle + person). Merge folds a track into
+    // another OF THE SAME CLASS, so neither track may merge into the other —
+    // the context menu must offer no "Merge into …" item.
+    await openAnnotate(fiftyoneLoader, modal, page);
+    const va = modal.videoAnnotate;
+
+    await va.assert.objectTrackCount(2);
+    await va.assert.labelListed("vehicle");
+    await va.assert.labelListed("person");
+    const personId = await va.labelRowId("person");
+
+    // right-click the person track's bar; the menu opens (Delete track proves
+    // it did) but carries no merge target — the only other track is a different
+    // class
+    await va.trackBar(personId).click({ button: "right" });
+    await expect(
+      page.getByRole("menuitem", { name: "Delete track" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("menuitem", { name: /^Merge into / }),
+    ).toHaveCount(0);
+
+    // both tracks survive — nothing merged
+    await page.keyboard.press("Escape");
+    await va.assert.objectTrackCount(2);
   });
 });

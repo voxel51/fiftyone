@@ -24,10 +24,18 @@ export interface SeedVideoAnnotationOptions {
   trackedSampleIndices?: number[];
   /**
    * Sample indices that should carry a SECOND tracked instance (`index=2`,
-   * class `classes[1]`, on every frame) alongside the first — so tests can
-   * exercise multi-track ops like merge. Additive; defaults to none.
+   * class `classes[secondTrackClassIndex]`, on every frame) alongside the
+   * first — so tests can exercise multi-track ops like merge. Additive;
+   * defaults to none.
    */
   secondTrackSampleIndices?: number[];
+  /**
+   * Class index (into `classes`) for the SECOND tracked instance. Defaults to 1
+   * (a DIFFERENT class than the first track's `classes[0]`). Set to 0 to make
+   * both tracks share a class — merge is gated to same-class tracks, so a
+   * same-class pair is required to exercise a successful merge.
+   */
+  secondTrackClassIndex?: number;
   /**
    * Subset of {@link trackedSampleIndices} whose tracked detection should also
    * carry an instance mask (a full `np.ones` mask) on every frame, so tests can
@@ -87,6 +95,7 @@ export class VideoAnnotateSDK {
       withEvents = true,
       trackedSampleIndices = [],
       secondTrackSampleIndices = [],
+      secondTrackClassIndex = 1,
       maskedSampleIndices = [],
       polylineSampleIndices = [],
       withPolylineField = false,
@@ -99,6 +108,7 @@ export class VideoAnnotateSDK {
     const pyEventClasses = JSON.stringify(eventClasses);
     const pyTracked = JSON.stringify(trackedSampleIndices);
     const pySecondTracked = JSON.stringify(secondTrackSampleIndices);
+    const pySecondTrackClassIndex = JSON.stringify(secondTrackClassIndex);
     const pyMasked = JSON.stringify(maskedSampleIndices);
     const pyPolyline = JSON.stringify(polylineSampleIndices);
     const pyWithPolylineField = withPolylineField ? "True" : "False";
@@ -118,6 +128,7 @@ EVENT_CLASSES = ${pyEventClasses}
 WITH_EVENTS = ${withEvents ? "True" : "False"}
 TRACKED = set(${pyTracked})
 SECOND_TRACKED = set(${pySecondTracked})
+SECOND_TRACK_CLASS = CLASSES[${pySecondTrackClassIndex}]
 MASKED = set(${pyMasked})
 POLYLINE_TRACKED = set(${pyPolyline})
 # Declare + activate the polylines field whenever a track is seeded OR a
@@ -222,8 +233,8 @@ for idx, sample in enumerate(dataset.iter_samples(progress=False, autosave=True)
             ]
         )
 
-# A SECOND tracked instance (index=2, class CLASSES[1]) appended on every
-# frame of requested samples — for multi-track ops (merge).
+# A SECOND tracked instance (index=2, class SECOND_TRACK_CLASS) appended on
+# every frame of requested samples — for multi-track ops (merge).
 for idx, sample in enumerate(dataset.iter_samples(progress=False, autosave=True)):
     if idx not in SECOND_TRACKED:
         continue
@@ -233,7 +244,7 @@ for idx, sample in enumerate(dataset.iter_samples(progress=False, autosave=True)
             dets = fo.Detections(detections=[])
         dets.detections.append(
             fo.Detection(
-                label=CLASSES[1],
+                label=SECOND_TRACK_CLASS,
                 bounding_box=[0.55, 0.55, 0.2, 0.2],
                 index=2,
             )
