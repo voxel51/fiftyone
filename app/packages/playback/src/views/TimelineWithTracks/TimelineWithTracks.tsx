@@ -18,6 +18,7 @@ import TimelineTrack, {
   type TimelineTrackProps,
   type TrackEventMenuItem,
 } from "../TimelineTrack/TimelineTrack";
+import { partitionTracksByPin } from "./partitionTracksByPin";
 import styles from "./TimelineWithTracks.module.css";
 
 export interface TimelineWithTracksProps {
@@ -87,19 +88,21 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   const tracks = useTracks();
   const { pinnedIds, togglePin } = useTrackPinning();
   const { seekSnapped } = usePlayback();
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  // Drawer starts open: the annotation surface remounts on each entry to
+  // annotate mode (sample change / mode toggle), so an initial-`true` covers
+  // the "make the timeline visible immediately" case without a tracks-length
+  // effect. User-initiated collapses persist until the next remount.
+  const [drawerOpen, setDrawerOpen] = useState(true);
 
   const labelWidth = tracks.length === 0 ? 0 : requestedLabelWidth;
 
-  const { pinned, unpinned } = useMemo(() => {
-    const p: Track[] = [];
-    const u: Track[] = [];
-    for (const t of tracks) {
-      if (pinnedIds.has(t.id)) p.push(t);
-      else u.push(t);
-    }
-    return { pinned: p, unpinned: u };
-  }, [tracks, pinnedIds]);
+  // Sub-rows follow their parent's pin state via `parentId` so a partial pin
+  // doesn't strand attribute children above unrelated parents — see
+  // {@link partitionTracksByPin}.
+  const { pinned, unpinned } = useMemo(
+    () => partitionTracksByPin(tracks, pinnedIds),
+    [tracks, pinnedIds],
+  );
 
   const renderPinnedTrack = (track: Track) => (
     <TimelineTrack
