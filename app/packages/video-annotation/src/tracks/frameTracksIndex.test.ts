@@ -78,10 +78,12 @@ describe("buildTracksFromIndex", () => {
 
     const bars = presence(tracks[0]);
     expect(bars).toHaveLength(2);
+    // Inclusive frame run [A, B] → startSec (A-1)/fps, endSec B/fps,
+    // matching the walk-based builder and `resolveTrackExtentEdit`.
     expect(bars[0].startSec).toBeCloseTo(0);
-    expect(bars[0].endSec).toBeCloseTo(2 / FPS);
+    expect(bars[0].endSec).toBeCloseTo(3 / FPS);
     expect(bars[1].startSec).toBeCloseTo(4 / FPS);
-    expect(bars[1].endSec).toBeCloseTo(5 / FPS);
+    expect(bars[1].endSec).toBeCloseTo(6 / FPS);
 
     const kf = keyframes(tracks[0]);
     expect(kf).toHaveLength(1);
@@ -102,7 +104,7 @@ describe("buildTracksFromIndex", () => {
     const bars = presence(b);
     expect(bars).toHaveLength(1);
     expect(bars[0].startSec).toBeCloseTo(3 / FPS);
-    expect(bars[0].endSec).toBeCloseTo(4 / FPS);
+    expect(bars[0].endSec).toBeCloseTo(5 / FPS);
   });
 
   it("shrinks presence where the overlay deleted the label at a dirty frame", () => {
@@ -116,9 +118,10 @@ describe("buildTracksFromIndex", () => {
 
     const bars = presence(tracks[0]);
     expect(bars).toHaveLength(2);
-    expect(bars[0].endSec).toBeCloseTo(0 / FPS);
+    // Frame run [1,1] → endSec 1/fps; [3,3] → endSec 3/fps.
+    expect(bars[0].endSec).toBeCloseTo(1 / FPS);
     expect(bars[1].startSec).toBeCloseTo(2 / FPS);
-    expect(bars[1].endSec).toBeCloseTo(2 / FPS);
+    expect(bars[1].endSec).toBeCloseTo(3 / FPS);
     // The baseline keyframe at the now-dirty, now-absent frame is gone.
     expect(keyframes(tracks[0])).toHaveLength(0);
   });
@@ -147,6 +150,22 @@ describe("buildTracksFromIndex", () => {
     ]);
 
     expect(build([indexInstance({ segments: [[1, 3]] })], overlay)).toEqual([]);
+  });
+
+  // Regression: the index path's seconds mapping must round-trip through the
+  // resize handler. Previously `end: (B - 1) / fps` shipped `endSec`
+  // one frame short, and `resolveTrackExtentEdit`'s `lastFrameOf(endSec)`
+  // saw `B - 1` — dragging the end handle back trimmed `B - 1` and stranded
+  // a phantom at `B`; dragging forward extended onto `B` itself (a no-op the
+  // user perceived as "snap back").
+  it("end-handle seconds round-trip to the inclusive last frame", () => {
+    const tracks = build([indexInstance({ segments: [[1, 5]] })]);
+    const bars = presence(tracks[0]);
+    expect(bars).toHaveLength(1);
+
+    // Inversion mirrors `lastFrameOf` in `trackExtentEdit.ts`.
+    const lastFrame = Math.round((bars[0].endSec as number) * FPS);
+    expect(lastFrame).toBe(5);
   });
 });
 

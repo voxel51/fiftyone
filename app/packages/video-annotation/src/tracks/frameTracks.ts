@@ -437,9 +437,19 @@ function indexInstanceState({
   dirtySorted: readonly number[];
   dirtyAttrs: Map<string, Map<number, unknown>> | undefined;
 }): InstanceState {
+  // Inclusive 1-indexed frame run `[A, B]` projects to seconds the same way
+  // the walk-based path projects it (`accumulatePresence` + `closeInterval`):
+  //   startSec = (A - 1) / fps
+  //   endSec   = B / fps
+  // The previous `(B - 1) / fps` end stranded the last frame's right edge
+  // one frame shy, so the resize handler's seconds-to-frame inversion
+  // (`lastFrameOf(endSec)`) saw `B - 1` instead of `B`. Dragging the end
+  // handle back by one frame trimmed `B - 1` and left a 1-frame phantom at
+  // `B`; dragging forward by one frame computed an "extend" that overwrote
+  // `B` in place and visually snapped back.
   const intervals = segments.map(([start, end]) => ({
     start: (start - 1) / fps,
-    end: (end - 1) / fps,
+    end: end / fps,
   }));
 
   // A baseline keyframe survives the merge when the frame is either

@@ -141,4 +141,173 @@ describe("resolveTrackExtentEdit", () => {
       expect(edit).toMatchObject({ op: "shift", delta: 8 });
     });
   });
+
+  // Round-trip the seconds the index builder reports back through
+  // `resolveTrackExtentEdit`. Together with the index builder's frame→sec
+  // mapping (`(A-1)/fps`, `B/fps`), these assert that the user's "drag the
+  // end handle back by 1 frame" lands exactly on frame `B`'s trim, and
+  // "drag end forward by 5 frames" extends onto `[B+1 .. B+5]`. Catches the
+  // off-by-one in `indexInstanceState`'s `end` projection that left a
+  // phantom at `B` on a backwards drag and snapped the bar back on a
+  // forwards drag.
+  describe("end-handle round-trip with the index builder's seconds", () => {
+    // Match `indexInstanceState`'s mapping.
+    const startSecOfFrame = (frame: number) => (frame - 1) / FPS;
+    const endSecOfFrame = (frame: number) => frame / FPS;
+
+    it("trims exactly the last frame when the end handle is dragged back by one frame", () => {
+      const origStartSec = startSecOfFrame(SEG_FIRST);
+      const origEndSec = endSecOfFrame(SEG_LAST);
+      const newEndSec = endSecOfFrame(SEG_LAST - 1);
+
+      const edit = resolveTrackExtentEdit(
+        base({
+          mode: "resize-end",
+          origStartSec,
+          origEndSec,
+          newStartSec: origStartSec,
+          newEndSec,
+        }),
+      );
+
+      expect(edit).toEqual({ op: "trim", frames: [SEG_LAST] });
+    });
+
+    it("trims the trailing 5 frames when the end handle is dragged back by 5 frames", () => {
+      const origStartSec = startSecOfFrame(SEG_FIRST);
+      const origEndSec = endSecOfFrame(SEG_LAST);
+      const newEndSec = endSecOfFrame(SEG_LAST - 5);
+
+      const edit = resolveTrackExtentEdit(
+        base({
+          mode: "resize-end",
+          origStartSec,
+          origEndSec,
+          newStartSec: origStartSec,
+          newEndSec,
+        }),
+      );
+
+      // Frames strictly past the new end — every one of them — must be cleared
+      // so the rendered presence segment collapses to [SEG_FIRST .. newEnd].
+      expect(edit).toEqual({
+        op: "trim",
+        frames: [
+          SEG_LAST - 4,
+          SEG_LAST - 3,
+          SEG_LAST - 2,
+          SEG_LAST - 1,
+          SEG_LAST,
+        ],
+      });
+    });
+
+    it("extends onto the next frame when the end handle is dragged forward by one frame", () => {
+      const origStartSec = startSecOfFrame(SEG_FIRST);
+      const origEndSec = endSecOfFrame(SEG_LAST);
+      const newEndSec = endSecOfFrame(SEG_LAST + 1);
+
+      const edit = resolveTrackExtentEdit(
+        base({
+          mode: "resize-end",
+          origStartSec,
+          origEndSec,
+          newStartSec: origStartSec,
+          newEndSec,
+        }),
+      );
+
+      // Source frame is the original last (keyframe-bearing) frame; target is
+      // strictly the new tail — never the original last itself, so its
+      // keyframe survives.
+      expect(edit).toEqual({
+        op: "extend",
+        sourceFrame: SEG_LAST,
+        targetFrames: [SEG_LAST + 1],
+      });
+    });
+
+    it("extends 5 fresh frames when the end handle is dragged forward by 5 frames", () => {
+      const origStartSec = startSecOfFrame(SEG_FIRST);
+      const origEndSec = endSecOfFrame(SEG_LAST);
+      const newEndSec = endSecOfFrame(SEG_LAST + 5);
+
+      const edit = resolveTrackExtentEdit(
+        base({
+          mode: "resize-end",
+          origStartSec,
+          origEndSec,
+          newStartSec: origStartSec,
+          newEndSec,
+        }),
+      );
+
+      expect(edit).toEqual({
+        op: "extend",
+        sourceFrame: SEG_LAST,
+        targetFrames: [
+          SEG_LAST + 1,
+          SEG_LAST + 2,
+          SEG_LAST + 3,
+          SEG_LAST + 4,
+          SEG_LAST + 5,
+        ],
+      });
+    });
+  });
+
+  // Symmetric round-trip for the start handle: dragging the left edge in by
+  // one frame trims exactly frame A; dragging it out by 5 frames extends
+  // onto `[A-5 .. A-1]` with frame A's geometry held back as non-keyframe
+  // filler.
+  describe("start-handle round-trip with the index builder's seconds", () => {
+    const startSecOfFrame = (frame: number) => (frame - 1) / FPS;
+    const endSecOfFrame = (frame: number) => frame / FPS;
+
+    it("trims exactly the first frame when the start handle is dragged forward by one frame", () => {
+      const origStartSec = startSecOfFrame(SEG_FIRST);
+      const origEndSec = endSecOfFrame(SEG_LAST);
+      const newStartSec = startSecOfFrame(SEG_FIRST + 1);
+
+      const edit = resolveTrackExtentEdit(
+        base({
+          mode: "resize-start",
+          origStartSec,
+          origEndSec,
+          newStartSec,
+          newEndSec: origEndSec,
+        }),
+      );
+
+      expect(edit).toEqual({ op: "trim", frames: [SEG_FIRST] });
+    });
+
+    it("extends backward by 5 frames, copying the first-frame geometry onto each", () => {
+      const origStartSec = startSecOfFrame(SEG_FIRST);
+      const origEndSec = endSecOfFrame(SEG_LAST);
+      const newStartSec = startSecOfFrame(SEG_FIRST - 5);
+
+      const edit = resolveTrackExtentEdit(
+        base({
+          mode: "resize-start",
+          origStartSec,
+          origEndSec,
+          newStartSec,
+          newEndSec: origEndSec,
+        }),
+      );
+
+      expect(edit).toEqual({
+        op: "extend",
+        sourceFrame: SEG_FIRST,
+        targetFrames: [
+          SEG_FIRST - 5,
+          SEG_FIRST - 4,
+          SEG_FIRST - 3,
+          SEG_FIRST - 2,
+          SEG_FIRST - 1,
+        ],
+      });
+    });
+  });
 });
