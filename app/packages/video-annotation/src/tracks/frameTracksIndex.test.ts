@@ -218,4 +218,78 @@ describe("buildTracksFromIndex dynamic-attribute sub-tracks", () => {
 
     expect(subTracks(tracks)).toHaveLength(0);
   });
+
+  // B21: marking a dynamic attribute (e.g. `occluded`) on a frame must not
+  // strip the parent track's keyframe diamonds. The overlay covers every
+  // loaded frame (the engine's frame store post-`warmupAll`), so the merge's
+  // `dirtySet` includes EVERY frame the instance is present on. Previously
+  // the merge filtered every baseline keyframe out as "dirty" and replaced
+  // them with only the frames whose overlay label carried a truthy
+  // `keyframe` field — so any overlay label missing the `keyframe` key (the
+  // sidebar's commit path stamps from `overlay.label`, which doesn't carry
+  // `keyframe`; updateLabel merges, but the resulting label may still echo
+  // an unset flag on frames the user never marked) caused the diamonds to
+  // disappear from the lane.
+  //
+  // The fix preserves a baseline keyframe at a dirty frame UNLESS the overlay
+  // explicitly says `keyframe: false` (a removal) OR the instance is absent
+  // there. Pure "no opinion" overlay frames fall through to baseline.
+  it("preserves baseline keyframes at dirty frames where the overlay is silent about the keyframe flag", () => {
+    // Baseline says the instance has a keyframe at F=2. The overlay covers
+    // F=1..3 (e.g. a `warmupAll` clip) but its labels carry no `keyframe`
+    // field at all (typical post-attribute-write shape: `{label, index,
+    // bounding_box, instance, occluded}` — the sidebar's overlay.label has
+    // no `keyframe`, and the engine's merged result need not surface one).
+    const silent = (extra: Partial<LabelData> = {}): LabelData => {
+      const label = det(extra) as LabelData & { keyframe?: boolean };
+      delete label.keyframe;
+      return label;
+    };
+    const overlay: FrameOverlay = new Map([
+      [1, [silent()]],
+      [2, [silent({ occluded: true } as Partial<LabelData>)]],
+      [3, [silent()]],
+    ]);
+
+    const tracks = build(
+      [indexInstance({ segments: [[1, 3]], keyframes: [2] })],
+      overlay,
+      ["occluded"],
+    );
+
+    const kf = keyframes(tracks[0]);
+    expect(kf).toHaveLength(1);
+    expect(kf[0].startSec).toBeCloseTo(1 / FPS);
+  });
+
+  it("still drops a baseline keyframe when the overlay explicitly clears it (keyframe: false)", () => {
+    // The opposite direction: a user-driven keyframe-toggle off should still
+    // make the diamond vanish. We keep the explicit-removal semantics so
+    // `markKeyframe` (toolbar) still rounds-trips.
+    const overlay: FrameOverlay = new Map([
+      [1, [det({ keyframe: false })]],
+      [2, [det({ keyframe: false })]],
+      [3, [det({ keyframe: false })]],
+    ]);
+
+    const tracks = build(
+      [indexInstance({ segments: [[1, 3]], keyframes: [2] })],
+      overlay,
+    );
+
+    expect(keyframes(tracks[0])).toHaveLength(0);
+  });
+
+  it("dirty-overlay keyframe at a frame the baseline didn't have still surfaces", () => {
+    // Sanity: a freshly drawn track's keyframes are overlay-only.
+    const overlay: FrameOverlay = new Map([
+      [1, [det({ keyframe: true })]],
+      [2, [det({ keyframe: false })]],
+      [3, [det({ keyframe: true })]],
+    ]);
+
+    const tracks = build([], overlay);
+    const kf = keyframes(tracks[0]);
+    expect(kf.map((e) => e.startSec)).toEqual([0, 2 / FPS]);
+  });
 });

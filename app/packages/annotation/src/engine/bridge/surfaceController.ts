@@ -11,6 +11,7 @@ import type { LabelData } from "@fiftyone/utilities";
 import type { AnnotationEngine } from "../core/engine";
 import type { LabelRef, ScopedRef } from "../identity/ref";
 import { toLabelRef } from "../identity/ref";
+import { autoKeyframeOnGeometryEdit } from "./autoKeyframe";
 import type { AdapterMap, SurfaceBridge } from "./types";
 
 export interface SurfaceActions {
@@ -95,16 +96,27 @@ export const createSurfaceActions = ({
   };
 };
 
-interface ControllerDeps<Handle, Descriptor> {
+export interface ControllerDeps<Handle, Descriptor> {
   engine: AnnotationEngine;
   bridge: SurfaceBridge<Handle, Descriptor>;
   adapters: AdapterMap<Handle, Descriptor>;
+  /**
+   * Fired when `commit` auto-promotes a frame-level geometry edit to a
+   * keyframe (see `autoKeyframeOnGeometryEdit`). The React bridge wires
+   * this to the annotation event bus so `useAutoInterpolate` can re-run
+   * linear interp on the bracketing tween segments.
+   *
+   * Lives as a dep (not an event-bus import) to keep this package free
+   * of React/hook coupling.
+   */
+  onAutoKeyframe?: (ref: LabelRef, frame: number, instanceId: string) => void;
 }
 
 export const createSurfaceController = <Handle, Descriptor>({
   engine,
   bridge,
   adapters,
+  onAutoKeyframe,
 }: ControllerDeps<Handle, Descriptor>): SurfaceController<Handle> => {
   const actions = createSurfaceActions({
     engine,
@@ -131,11 +143,23 @@ export const createSurfaceController = <Handle, Descriptor>({
         return;
       }
 
-      const partial = toPartial(handle);
+      const rawPartial = toPartial(handle);
 
-      if (!partial || Object.keys(partial).length === 0) {
+      if (!rawPartial || Object.keys(rawPartial).length === 0) {
         return;
       }
+
+      const ref = bridge.refOf(handle);
+      // Pass the current label so the helper can distinguish a real
+      // geometry edit from a selection-only click whose adapter happens
+      // to echo the existing bbox/points back through the commit pipeline.
+      const current = engine.getLabel(toLabelRef(bridge.sample, ref));
+      const partial = autoKeyframeOnGeometryEdit(ref.path, rawPartial, current);
+      // reference inequality means the helper hit the geometry gate; the
+      // helper always returns a new object when it does (Case A: promote a
+      // non-keyframe, Case B: re-anchor an existing keyframe). Downstream
+      // listeners coalesce bursts via microtask drain.
+      const promoted = partial !== rawPartial;
 
       // origin suppression: the loop must not echo this surface's own
       // write back onto the handle — the handle may hold state newer than
@@ -143,8 +167,6 @@ export const createSurfaceController = <Handle, Descriptor>({
       bridge.isWriting = true;
 
       try {
-        const ref = bridge.refOf(handle);
-
         if (opts?.undoKey) {
           actions.transaction(() => actions.updateLabel(ref, partial), {
             undoKey: opts.undoKey,
@@ -154,6 +176,18 @@ export const createSurfaceController = <Handle, Descriptor>({
         }
       } finally {
         bridge.isWriting = false;
+      }
+
+      // dispatched AFTER the try/finally so the engine write is fully
+      // committed before downstream interpolators wake up. Guard `frame`
+      // for sample-level safety even though the helper's `frames.` gate
+      // should make this unreachable.
+      if (promoted && onAutoKeyframe && ref.frame !== undefined) {
+        onAutoKeyframe(
+          toLabelRef(bridge.sample, ref),
+          ref.frame,
+          ref.instanceId,
+        );
       }
     },
 

@@ -144,6 +144,16 @@ export function buildNewLabelData(
     }
   }
 
+  // A frame-level Detection / Polyline placed by hand is a real keyframe by
+  // definition — the user just drew it. Without this flag the per-frame
+  // `keyframe` boolean stays unset, no diamond renders on the timeline track,
+  // and downstream propagation has no anchor to interpolate from. Detected
+  // by the field path: video annotation always addresses by `frames.<field>`,
+  // image annotation by `<field>` directly. Satisfies the PRD invariant that
+  // a track's first and last keyframes are always explicit, never inferred.
+  const isFrameLevelGeometry =
+    field.startsWith("frames.") && (type === DETECTION || type === POLYLINE);
+
   const data = {
     _cls:
       type === CLASSIFICATION
@@ -156,6 +166,7 @@ export function buildNewLabelData(
     _id: labelId,
     ...defaults,
     ...(labelValue && { label: labelValue }),
+    ...(isFrameLevelGeometry && { keyframe: true }),
   };
 
   if (type === POLYLINE) {

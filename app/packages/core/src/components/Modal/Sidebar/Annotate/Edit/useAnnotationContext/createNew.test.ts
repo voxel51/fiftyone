@@ -172,4 +172,38 @@ describe("buildNewLabelData", () => {
       expect("points" in data).toBe(false);
     });
   });
+
+  describe("frame-level keyframe seeding", () => {
+    it("marks a frame-level Detection as a keyframe", () => {
+      const data = buildNewLabelData(
+        "frames.detections",
+        "Detection",
+      ) as Record<string, unknown>;
+      expect(data.keyframe).toBe(true);
+    });
+
+    it("marks a frame-level Polyline as a keyframe", () => {
+      const data = buildNewLabelData("frames.polylines", "Polyline") as Record<
+        string,
+        unknown
+      >;
+      expect(data.keyframe).toBe(true);
+    });
+
+    it("does not mark sample-level Detections as keyframes", () => {
+      const data = buildNewLabelData("detections", "Detection") as Record<
+        string,
+        unknown
+      >;
+      expect("keyframe" in data).toBe(false);
+    });
+
+    it("does not mark Classifications as keyframes (no track concept)", () => {
+      const data = buildNewLabelData(
+        "frames.classification",
+        "Classification",
+      ) as Record<string, unknown>;
+      expect("keyframe" in data).toBe(false);
+    });
+  });
 });
