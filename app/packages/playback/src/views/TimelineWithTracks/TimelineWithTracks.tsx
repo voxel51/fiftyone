@@ -87,7 +87,11 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   const tracks = useTracks();
   const { pinnedIds, togglePin } = useTrackPinning();
   const { seek } = usePlayback();
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  // Drawer starts open: the annotation surface remounts on each entry to
+  // annotate mode (sample change / mode toggle), so an initial-`true` covers
+  // the "make the timeline visible immediately" case without a tracks-length
+  // effect. User-initiated collapses persist until the next remount.
+  const [drawerOpen, setDrawerOpen] = useState(true);
 
   const labelWidth = tracks.length === 0 ? 0 : requestedLabelWidth;
 
@@ -152,10 +156,14 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
             extraActions={extraActions}
           >
             <div className={styles.pinnedOverlayHost}>
-              {/* Pinned rows live here only while the drawer is closed; when it
-                  opens they move into the body below. Rendering both
-                  unconditionally double-mounts every pinned row under the same
-                  track id, so selecting one hit both. */}
+              {/* Pinned rows live here only while the drawer is closed; when
+                  it opens they move into the body below. Rendering both
+                  unconditionally double-mounts every pinned row under the
+                  same track id, so selecting one hits both. Unpinned tracks
+                  are filtered out entirely while the drawer is closed —
+                  pin acts as a noise-reduction filter, not a sticky-to-top
+                  affordance. Closing the drawer with nothing pinned shows
+                  only the ruler. */}
               {!drawerOpen && pinned.map(renderPinnedTrack)}
               <LoopOverlays labelWidth={labelWidth} />
               <PlayheadLine labelWidth={labelWidth} />
