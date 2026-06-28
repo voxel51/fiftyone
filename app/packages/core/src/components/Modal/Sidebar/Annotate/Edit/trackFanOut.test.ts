@@ -46,6 +46,16 @@ describe("splitTrackEdit", () => {
     expect(dynamicPartial).toEqual({});
   });
 
+  it("keeps `keyframe` per-frame so a track-level edit never fans it out", () => {
+    const { trackPartial, dynamicPartial } = splitTrackEdit(
+      { label: "cat", keyframe: true },
+      new Set(),
+    );
+
+    expect(trackPartial).toEqual({ label: "cat" });
+    expect(dynamicPartial).toEqual({});
+  });
+
   it("routes declared dynamic keys to the dynamic half", () => {
     const { trackPartial, dynamicPartial } = splitTrackEdit(
       { label: "car", turn_signal: "left", index: 2 },

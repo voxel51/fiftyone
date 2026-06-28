@@ -7,8 +7,11 @@ import { isEqual } from "lodash";
  * but classification-level fields (label, index, custom attributes) describe
  * the whole track — so a sidebar edit to one of them on one frame should apply
  * to every frame the instance appears on. These are the keys that stay
- * PER-FRAME (geometry) plus the store-owned identity keys; everything else fans
- * out across the track.
+ * PER-FRAME — geometry, the store-owned identity keys, and `keyframe` (a frame's
+ * own keyframe-vs-interpolated status) — everything else fans out across the
+ * track. `keyframe` MUST stay per-frame: fanning it out would stamp the edited
+ * frame's status onto every frame (turning the whole track into keyframes, or
+ * wiping them all, depending on where the edit was made).
  */
 const PER_FRAME_KEYS = new Set([
   "bounding_box",
@@ -17,6 +20,7 @@ const PER_FRAME_KEYS = new Set([
   "points",
   "_id",
   "instance",
+  "keyframe",
 ]);
 
 /** A label edit partitioned by how it propagates across a track's frames. */
