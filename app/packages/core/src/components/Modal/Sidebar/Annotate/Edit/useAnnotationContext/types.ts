@@ -1,4 +1,4 @@
-import type { LabelRef } from "@fiftyone/annotation";
+import type { AnnotationEngine, LabelRef } from "@fiftyone/annotation";
 import type { AnnotationLabel } from "@fiftyone/state";
 import {
   CLASSIFICATION,
@@ -36,6 +36,15 @@ export interface CreateDeps {
   scene: Scene2D | null;
   addOverlay: (overlay: BaseOverlay, withUndo?: boolean) => void;
   overlayFactory: OverlayFactory;
+  /**
+   * Engine + sample so the Classification create path can write the new label
+   * through to the engine immediately — Classification has no draw gesture
+   * (no `lighter:overlay-establish` ever fires), so without an explicit
+   * engine.updateLabel here the new label lives only in the sidebar's jotai
+   * draft and never reaches the underlying sample / labels list.
+   */
+  engine: AnnotationEngine;
+  sample: string;
 }
 
 /**
