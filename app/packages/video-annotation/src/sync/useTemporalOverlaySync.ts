@@ -16,7 +16,7 @@ import {
 } from "@fiftyone/lighter";
 import { useModalSample } from "@fiftyone/state";
 import { isTemporalDetectionsField } from "@fiftyone/utilities";
-import { type MutableRefObject, useEffect, useRef } from "react";
+import { type MutableRefObject, useEffect, useMemo, useRef } from "react";
 import { frameAt, usePlayhead } from "@fiftyone/playback";
 import {
   useTemporalDetectionFieldPaths,
@@ -176,6 +176,42 @@ const sameTemporalSample = (
 
 type Scene = ReturnType<typeof useLighterSetupWithPixi>["scene"];
 
+/** `|` can't appear in a FiftyOne field path — safe field-set delimiter. */
+const PATH_FINGERPRINT_DELIM = "|";
+
+/**
+ * The set of currently-visible TD field paths — the visible-label-schemas set
+ * narrowed to the schema's TD paths. Content-stable: returns the *same* `Set`
+ * reference across renders when the visible TD subset is unchanged, so the
+ * downstream diff effect doesn't run on unrelated active-field churn (e.g. a
+ * sample-level Classification toggle). A sorted-content fingerprint guards the
+ * memo so order changes don't churn the ref either.
+ */
+const useVisibleTemporalDetectionPaths = (): ReadonlySet<string> => {
+  const visible = useVisibleLabelSchemas();
+  const tdPaths = useTemporalDetectionFieldPaths();
+
+  // Sorted-content fingerprint — invariant across array ref churn when the
+  // visible TD subset is unchanged.
+  const fingerprint = useMemo(() => {
+    const visibleTd: string[] = [];
+    for (const path of tdPaths) {
+      if (visible.has(path)) {
+        visibleTd.push(path);
+      }
+    }
+
+    visibleTd.sort();
+    return visibleTd.join(PATH_FINGERPRINT_DELIM);
+  }, [visible, tdPaths]);
+
+  return useMemo(() => {
+    return new Set(
+      fingerprint ? fingerprint.split(PATH_FINGERPRINT_DELIM) : [],
+    );
+  }, [fingerprint]);
+};
+
 /** Engine-authoritative TD set as a sample dict, stable across unrelated bumps. */
 const useEngineTemporalSample = (): Record<string, unknown> => {
   const engine = useAnnotationEngine();
@@ -305,9 +341,18 @@ export function useTemporalOverlaySync(
   const temporalSample = useEngineTemporalSample();
   // Gate on the sidebar's visible set (annotation-active ∩ explore-active) so a
   // schema-manager deactivation evicts the TD overlay from the canvas too —
-  // matching the timeline + sidebar. (Was explore-active only, which the schema
-  // manager never touches.)
-  const activePaths = useVisibleLabelSchemas();
+  // matching the timeline + sidebar. Narrow the dep to *just* the visible TD
+  // field paths: toggling a sibling field (e.g. a sample-level Classification)
+  // re-derives the full `visibleLabelSchemas` array — and therefore its `Set`
+  // ref — every time, which would re-run the diff with a transient stale
+  // snapshot of activePaths (mid-write, between the explore-active reset →
+  // repopulate ticks Sidebar's `setExploreFields(null)` cleanup opens) and
+  // evict the TD overlay even though TD-field visibility never actually
+  // changed. Keying on the TD-paths-only Set makes the effect stable across
+  // unrelated active-field churn and only re-runs when a TD field's own
+  // visibility flips. (Activation path B30 race lived in the consumer; this
+  // closes the dual race on the producer.)
+  const activePaths = useVisibleTemporalDetectionPaths();
   const currentFrameRef = useCurrentFrameRef();
 
   useOverlayDiff(
