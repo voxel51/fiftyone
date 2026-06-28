@@ -890,6 +890,9 @@ function toSubTrack(
     // Fallback only — each segment carries its own value-hashed color.
     color: parent.color,
     events,
+    // Sub-rows are not independently pinnable: the timeline partitions them
+    // alongside the parent so a partial pin keeps parent + children contiguous.
+    parentId: parent.id,
   };
 }
 
