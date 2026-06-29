@@ -173,7 +173,7 @@ class KITTIDetectionDatasetImporter(
 
     def setup(self):
         image_paths_map = self._load_data_map(
-            self.data_path, ignore_exts=True, recursive=True
+            self.data_path, ignore_exts=True, skip_exts=".txt", recursive=True
         )
 
         if self.labels_path is not None and os.path.isdir(self.labels_path):
