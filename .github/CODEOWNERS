@@ -1,1 +1,5 @@
 *   @voxel51/developers
+
+# Aloha Shirts own CI/build infrastructure
+.github/                     @voxel51/aloha-shirts
+Dockerfile                   @voxel51/aloha-shirts
