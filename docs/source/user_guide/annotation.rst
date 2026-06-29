@@ -580,7 +580,7 @@ There are two ways a track's value can vary over time:
   position. They are created automatically when you draw or resize an
   object, or by pressing **K** at the playhead to commit the current
   geometry without resizing. Between adjacent bounding box keyframes,
-  FiftyOne linearly interpolates the bounding box at render time. These
+  FiftyOne linearly interpolates the bounding box on edits. These
   keyframes are indicated by diamonds.
 * **Dynamic attribute changes** are propagated forward in time rather than
   interpolated. When you change a dynamic attribute's value from the right
