@@ -25,6 +25,21 @@ class FCCLIPModelConfig(fout.TorchImageModelConfig, HasZooModel):
             d, "score_threshold", default=0.8
         )
         self.class_names = self.parse_array(d, "class_names", default=None)
+        self.validate_config()
+
+    def validate_config(self):
+        if not 0 <= self.score_threshold <= 1:
+            raise ValueError("score_threshold must be between 0 and 1")
+        if self.class_names is not None:
+            if not self.class_names:
+                raise ValueError(
+                    "class_names must contain at least one prompt"
+                )
+            if any(
+                not isinstance(c, str) or not c.strip()
+                for c in self.class_names
+            ):
+                raise ValueError("class_names must contain non-empty strings")
 
 
 class FCCLIPModel(fout.TorchImageModel):
