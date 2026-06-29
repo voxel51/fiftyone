@@ -122,7 +122,7 @@ setup(
     python_requires=">=3.10",
     extras_require={
         "multimodal": [
-            "protobuf==7.35.0",
+            "protobuf==6.33.6",
         ],
     },
 )
